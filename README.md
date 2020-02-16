@@ -5,6 +5,7 @@
 https://github.com/nukieberry/SerialCon
 
 ## PokemonTycoon（宝可小管家）
+![PokemonTycoon](https://user-images.githubusercontent.com/55907281/74600748-beb8fc00-5063-11ea-986c-79b9b7fb4c7b.png)
 * 自用版，含图像处理，脚本逻辑比较复杂，外带一套截图取色工具。
 * 图像处理使用采集卡，经过OBS投屏后采集屏幕，比较绕远但在多种方式中最适合我自己。只要修改PokemonTycoon.Graphic.VideoCapture类的函数实现就能从别的渠道获取图像，不过图像和颜色可能要重新测。
 * 脚本均按自己的需求定制，支持各种复杂的参数比如孵蛋筛选表达式、极巨战目标过滤等。根据实际使用的情况也加入了各种容错判断/纠正机制。
@@ -13,6 +14,7 @@ https://github.com/nukieberry/SerialCon
 **（仅供参考，因为过于个人定制）**
 
 ## EasyCon（伊机控）
+![EasyCon](https://user-images.githubusercontent.com/55907281/74600747-be206580-5063-11ea-8b5b-21795e7ab6cf.png)
 * 发布版，不需要采集卡，并且为不同用户设计了三种不同运行方式（脚本和固件均相互兼容）。
 * 【联机模式】通过电脑控制单片机，脚本在电脑端运行，可以看到运行过程，可以使用虚拟手柄直接操作NS。
 * 【烧录模式】连线写入程序，脚本在单片机上运行，运行时不需要电脑，但电脑可以控制运行/停止。支持一些极限效率脚本。
