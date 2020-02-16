@@ -78,6 +78,7 @@
             this.buttonRemoteStart = new System.Windows.Forms.Button();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
             this.buttonGenerateFirmware = new System.Windows.Forms.Button();
+            this.项目源码ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -191,7 +192,8 @@
             this.使用方法ToolStripMenuItem,
             this.显示调试信息ToolStripMenuItem,
             this.toolStripSeparator2,
-            this.关于ToolStripMenuItem});
+            this.关于ToolStripMenuItem,
+            this.项目源码ToolStripMenuItem});
             this.帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
             this.帮助ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
             this.帮助ToolStripMenuItem.Text = "帮助";
@@ -203,7 +205,7 @@
             this.烧录模式ToolStripMenuItem,
             this.固件模式ToolStripMenuItem});
             this.使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
-            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
+            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.使用方法ToolStripMenuItem.Text = "使用方法";
             // 
             // 联机模式ToolStripMenuItem
@@ -230,19 +232,19 @@
             // 显示调试信息ToolStripMenuItem
             // 
             this.显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
+            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             this.显示调试信息ToolStripMenuItem.Click += new System.EventHandler(this.显示调试信息ToolStripMenuItem_Click);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(145, 6);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
             // 
             // 关于ToolStripMenuItem
             // 
             this.关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
+            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.关于ToolStripMenuItem.Text = "关于";
             this.关于ToolStripMenuItem.Click += new System.EventHandler(this.关于ToolStripMenuItem_Click);
             // 
@@ -538,6 +540,13 @@
             this.buttonGenerateFirmware.UseVisualStyleBackColor = true;
             this.buttonGenerateFirmware.Click += new System.EventHandler(this.buttonGenerateFirmware_Click);
             // 
+            // 项目源码ToolStripMenuItem
+            // 
+            this.项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
+            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.项目源码ToolStripMenuItem.Text = "项目源码";
+            this.项目源码ToolStripMenuItem.Click += new System.EventHandler(this.项目源码ToolStripMenuItem_Click);
+            // 
             // EasyConForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 16F);
@@ -629,6 +638,7 @@
         private System.Windows.Forms.ToolStripMenuItem 烧录模式ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 固件模式ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 显示调试信息ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 项目源码ToolStripMenuItem;
     }
 }
 

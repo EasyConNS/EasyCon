@@ -904,5 +904,10 @@ namespace EasyCon
         {
             显示调试信息ToolStripMenuItem.Checked = !显示调试信息ToolStripMenuItem.Checked;
         }
+
+        private void 项目源码ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Process.Start("https://github.com/nukieberry/PokemonTycoon");
+        }
     }
 }
