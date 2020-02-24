@@ -1,14 +1,20 @@
-﻿using System;
+﻿using EasyCon.Script.Assembly;
+using EasyCon.Script.Assembly.Instructions;
+using EasyCon.Script.Parsing;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace EasyCon.Script
+namespace EasyCon.Script.Parsing.Statements
 {
     class SerialPrint : Statement
     {
+#if DEBUG
+        public static readonly IStatementParser Parser = new StatementParser(Parse);
+#endif
         public readonly uint Value;
         public readonly bool Mem;
 
@@ -18,20 +24,18 @@ namespace EasyCon.Script
             Mem = mem;
         }
 
-#if DEBUG
-        public static Statement TryCompile(string text)
+        public static Statement Parse(ParserArgument args)
         {
-            var m = Regex.Match(text, @"^sprint\s+(\d+)$", RegexOptions.IgnoreCase);
+            var m = Regex.Match(args.Text, @"^sprint\s+(\d+)$", RegexOptions.IgnoreCase);
             if (m.Success)
                 return new SerialPrint(uint.Parse(m.Groups[1].Value), false);
-            m = Regex.Match(text, @"^smem\s+(\d+)$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, @"^smem\s+(\d+)$", RegexOptions.IgnoreCase);
             if (m.Success)
                 return new SerialPrint(uint.Parse(m.Groups[1].Value), true);
             return null;
         }
-#endif
 
-        protected override string _ToString()
+        protected override string _GetString(Formats.Formatter formatter)
         {
             return Mem ? $"SMEM {Value}" : $"SPRINT {Value}";
         }
@@ -39,6 +43,11 @@ namespace EasyCon.Script
         public override void Exec(Processor processor)
         {
             //processor.Output.Print(Value.ToString());
+        }
+
+        public override void Assemble(Assembler assembler)
+        {
+            assembler.Add(AsmSerialPrint.Create(Mem ? 1u : 0, Value));
         }
     }
 }

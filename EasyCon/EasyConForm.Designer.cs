@@ -46,9 +46,11 @@
             this.联机模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.烧录模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.固件模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.下载AtmelFlipToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.显示调试信息ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.关于ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.项目源码ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.buttonCLS = new System.Windows.Forms.Button();
             this.labelTimer = new System.Windows.Forms.Label();
@@ -78,7 +80,9 @@
             this.buttonRemoteStart = new System.Windows.Forms.Button();
             this.groupBox5 = new System.Windows.Forms.GroupBox();
             this.buttonGenerateFirmware = new System.Windows.Forms.Button();
-            this.项目源码ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.comboBoxBoardType = new System.Windows.Forms.ComboBox();
+            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.textBoxFirmware = new System.Windows.Forms.TextBox();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -86,6 +90,7 @@
             this.groupBox3.SuspendLayout();
             this.groupBox6.SuspendLayout();
             this.groupBox5.SuspendLayout();
+            this.groupBox2.SuspendLayout();
             this.SuspendLayout();
             // 
             // menuStrip1
@@ -190,6 +195,7 @@
             // 
             this.帮助ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.使用方法ToolStripMenuItem,
+            this.下载AtmelFlipToolStripMenuItem,
             this.显示调试信息ToolStripMenuItem,
             this.toolStripSeparator2,
             this.关于ToolStripMenuItem,
@@ -229,6 +235,13 @@
             this.固件模式ToolStripMenuItem.Text = "固件模式";
             this.固件模式ToolStripMenuItem.Click += new System.EventHandler(this.固件模式ToolStripMenuItem_Click);
             // 
+            // 下载AtmelFlipToolStripMenuItem
+            // 
+            this.下载AtmelFlipToolStripMenuItem.Name = "下载AtmelFlipToolStripMenuItem";
+            this.下载AtmelFlipToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.下载AtmelFlipToolStripMenuItem.Text = "下载Atmel Flip";
+            this.下载AtmelFlipToolStripMenuItem.Click += new System.EventHandler(this.下载AtmelFlipToolStripMenuItem_Click);
+            // 
             // 显示调试信息ToolStripMenuItem
             // 
             this.显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
@@ -247,6 +260,13 @@
             this.关于ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.关于ToolStripMenuItem.Text = "关于";
             this.关于ToolStripMenuItem.Click += new System.EventHandler(this.关于ToolStripMenuItem_Click);
+            // 
+            // 项目源码ToolStripMenuItem
+            // 
+            this.项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
+            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.项目源码ToolStripMenuItem.Text = "项目源码";
+            this.项目源码ToolStripMenuItem.Click += new System.EventHandler(this.项目源码ToolStripMenuItem_Click);
             // 
             // groupBox1
             // 
@@ -523,9 +543,9 @@
             // groupBox5
             // 
             this.groupBox5.Controls.Add(this.buttonGenerateFirmware);
-            this.groupBox5.Location = new System.Drawing.Point(14, 414);
+            this.groupBox5.Location = new System.Drawing.Point(14, 499);
             this.groupBox5.Name = "groupBox5";
-            this.groupBox5.Size = new System.Drawing.Size(145, 189);
+            this.groupBox5.Size = new System.Drawing.Size(145, 104);
             this.groupBox5.TabIndex = 4;
             this.groupBox5.TabStop = false;
             this.groupBox5.Text = "固件模式";
@@ -534,24 +554,49 @@
             // 
             this.buttonGenerateFirmware.Location = new System.Drawing.Point(6, 21);
             this.buttonGenerateFirmware.Name = "buttonGenerateFirmware";
-            this.buttonGenerateFirmware.Size = new System.Drawing.Size(134, 162);
+            this.buttonGenerateFirmware.Size = new System.Drawing.Size(134, 77);
             this.buttonGenerateFirmware.TabIndex = 0;
             this.buttonGenerateFirmware.Text = "生成固件";
             this.buttonGenerateFirmware.UseVisualStyleBackColor = true;
             this.buttonGenerateFirmware.Click += new System.EventHandler(this.buttonGenerateFirmware_Click);
             // 
-            // 项目源码ToolStripMenuItem
+            // comboBoxBoardType
             // 
-            this.项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.项目源码ToolStripMenuItem.Text = "项目源码";
-            this.项目源码ToolStripMenuItem.Click += new System.EventHandler(this.项目源码ToolStripMenuItem_Click);
+            this.comboBoxBoardType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBoxBoardType.FormattingEnabled = true;
+            this.comboBoxBoardType.Location = new System.Drawing.Point(6, 21);
+            this.comboBoxBoardType.Name = "comboBoxBoardType";
+            this.comboBoxBoardType.Size = new System.Drawing.Size(133, 24);
+            this.comboBoxBoardType.TabIndex = 5;
+            this.comboBoxBoardType.SelectedIndexChanged += new System.EventHandler(this.comboBoxBoardType_SelectedIndexChanged);
+            // 
+            // groupBox2
+            // 
+            this.groupBox2.Controls.Add(this.textBoxFirmware);
+            this.groupBox2.Controls.Add(this.comboBoxBoardType);
+            this.groupBox2.Location = new System.Drawing.Point(14, 414);
+            this.groupBox2.Name = "groupBox2";
+            this.groupBox2.Size = new System.Drawing.Size(145, 79);
+            this.groupBox2.TabIndex = 5;
+            this.groupBox2.TabStop = false;
+            this.groupBox2.Text = "单片机类型";
+            // 
+            // textBoxFirmware
+            // 
+            this.textBoxFirmware.Cursor = System.Windows.Forms.Cursors.Default;
+            this.textBoxFirmware.Location = new System.Drawing.Point(6, 49);
+            this.textBoxFirmware.Name = "textBoxFirmware";
+            this.textBoxFirmware.ReadOnly = true;
+            this.textBoxFirmware.Size = new System.Drawing.Size(133, 22);
+            this.textBoxFirmware.TabIndex = 5;
+            this.textBoxFirmware.WordWrap = false;
             // 
             // EasyConForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1119, 761);
+            this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox6);
             this.Controls.Add(this.groupBox5);
             this.Controls.Add(this.groupBox3);
@@ -567,7 +612,7 @@
             this.MaximizeBox = false;
             this.Name = "EasyConForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "伊机控 EasyCon v1.01";
+            this.Text = "伊机控 EasyCon v1.11";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.EasyConForm_KeyDown);
@@ -582,6 +627,8 @@
             this.groupBox3.PerformLayout();
             this.groupBox6.ResumeLayout(false);
             this.groupBox5.ResumeLayout(false);
+            this.groupBox2.ResumeLayout(false);
+            this.groupBox2.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -639,6 +686,10 @@
         private System.Windows.Forms.ToolStripMenuItem 固件模式ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 显示调试信息ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 项目源码ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 下载AtmelFlipToolStripMenuItem;
+        private System.Windows.Forms.ComboBox comboBoxBoardType;
+        private System.Windows.Forms.GroupBox groupBox2;
+        private System.Windows.Forms.TextBox textBoxFirmware;
     }
 }
 

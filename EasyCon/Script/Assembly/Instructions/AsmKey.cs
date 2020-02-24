@@ -1,24 +1,29 @@
-﻿using System;
+﻿using EasyCon.Script.Assembly;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EasyCon.Script.Assemble
+namespace EasyCon.Script.Assembly.Instructions
 {
-    abstract class AsmKey : Instruction, IAsmKey
+    abstract class AsmKey : Instruction
     {
-        public uint KeyCode { get; set; }
+        public int KeyCode;
     }
 
     class AsmKey_Standard : AsmKey
     {
-        public uint Duration;
+        public int RealDuration => Duration * Unit;
+        public const int Unit = 10;
+        public int Duration;
 
-        public static Instruction Create(uint keycode, uint duration)
+        public static Instruction Create(int keycode, int duration)
         {
-            Scale(ref duration, 10);
+            Scale(ref duration, Unit);
+            if (duration < 0)
+                return AsmEmpty.Create();
             if (duration >= 1 << 8)
                 return Failed.OutOfRange;
             var ins = new AsmKey_Standard();
@@ -38,14 +43,16 @@ namespace EasyCon.Script.Assemble
 
     class AsmKey_Compressed : AsmKey
     {
-        public uint WaitTime;
+        public int WaitTime;
 
-        public override uint InsCount => 2;
+        public override int InsCount => 2;
 
-        public static Instruction Create(uint keycode, uint duration, uint waittime)
+        public static Instruction Create(int keycode, int duration, int waittime)
         {
             if (duration != 50)
                 return Failed.InvalidArgument;
+            if (waittime < 0)
+                waittime = 0;
             if (waittime == 0 || !Scale(ref waittime, 50))
                 return Failed.InvalidArgument;
             if (waittime >= 1 << 7)
@@ -65,11 +72,11 @@ namespace EasyCon.Script.Assemble
         }
     }
 
-    class AsmKey_Hold : AsmKey, IAsmHold
+    class AsmKey_Hold : AsmKey
     {
-        public uint HoldUntil { get; set; }
+        public Instruction HoldUntil;
 
-        public static Instruction Create(uint keycode)
+        public static Instruction Create(int keycode)
         {
             var ins = new AsmKey_Hold();
             ins.KeyCode = keycode;
@@ -78,26 +85,13 @@ namespace EasyCon.Script.Assemble
 
         public override void WriteBytes(Stream stream)
         {
+            var offset = HoldUntil?.Index - Index ?? 0;
+            if (offset >= 1 << 7)
+                offset = 0;
             WriteBits(stream, 0b10, 2);
             WriteBits(stream, KeyCode, 5);
             WriteBits(stream, 0b11, 2);
-            WriteBits(stream, HoldUntil, 7);
+            WriteBits(stream, offset, 7);
         }
-    }
-
-    class AsmKey_Release : AsmKey
-    {
-        public override uint InsCount => 0;
-        public override uint ByteCount => 0;
-
-        public static Instruction Create(uint keycode)
-        {
-            var ins = new AsmKey_Release();
-            ins.KeyCode = keycode;
-            return ins;
-        }
-
-        public override void WriteBytes(Stream stream)
-        { }
     }
 }

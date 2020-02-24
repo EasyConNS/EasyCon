@@ -1,16 +1,21 @@
-﻿using System;
+﻿using EasyCon.Script.Assembly;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EasyCon.Script.Assemble
+namespace EasyCon.Script.Assembly.Instructions
 {
     abstract class AsmWait : Instruction
     {
-        public static Instruction Create(uint duration)
+        public abstract int RealDuration { get; }
+
+        public static Instruction Create(int duration)
         {
+            if (duration < 0)
+                return AsmEmpty.Create();
             var ins = AsmWait_HighPrecision.Create(duration);
             if (ins.Success)
                 return ins;
@@ -23,11 +28,13 @@ namespace EasyCon.Script.Assemble
 
     class AsmWait_Standard : AsmWait
     {
-        public uint Duration;
+        public override int RealDuration => Duration * Unit;
+        public const int Unit = 10;
+        public int Duration;
 
-        public static Instruction Create(uint duration)
+        public static Instruction Create(int duration)
         {
-            Scale(ref duration, 10);
+            Scale(ref duration, Unit);
             if (duration >= 1 << 10)
                 return Failed.OutOfRange;
             var ins = new AsmWait_Standard();
@@ -46,13 +53,15 @@ namespace EasyCon.Script.Assemble
 
     class AsmWait_Extended : AsmWait
     {
-        public uint Duration;
+        public override int RealDuration => Duration * Unit;
+        public const int Unit = 10;
+        public int Duration;
 
-        public override uint ByteCount => 4;
+        public override int ByteCount => 4;
 
-        public static Instruction Create(uint duration)
+        public static Instruction Create(int duration)
         {
-            Scale(ref duration, 10);
+            Scale(ref duration, Unit);
             if (duration >= 1 << 25)
                 return Failed.OutOfRange;
             var ins = new AsmWait_Extended();
@@ -72,9 +81,10 @@ namespace EasyCon.Script.Assemble
 
     class AsmWait_HighPrecision : AsmWait
     {
-        public uint Duration;
+        public override int RealDuration => Duration;
+        public int Duration;
 
-        public static Instruction Create(uint duration)
+        public static Instruction Create(int duration)
         {
             if (duration >= 1 << 9)
                 return Failed.OutOfRange;

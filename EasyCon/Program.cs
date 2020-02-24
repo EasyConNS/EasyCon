@@ -22,6 +22,7 @@ namespace EasyCon
             {
                 if (newProcess)
                 {
+                    AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(GlobalExceptionLogger);
                     Application.EnableVisualStyles();
                     Application.SetCompatibleTextRenderingDefault(false);
                     Application.Run(new EasyConForm());
@@ -32,6 +33,23 @@ namespace EasyCon
                     MessageBox.Show("程序已经在运行了！");
                 }
             }
+        }
+
+        private static void GlobalExceptionLogger(object sender, UnhandledExceptionEventArgs e)
+        {
+            try
+            {
+                var ex = e.ExceptionObject as Exception;
+                if (ex == null)
+                    return;
+                System.Text.StringBuilder builder = new System.Text.StringBuilder();
+                builder.AppendLine(DateTime.Now.ToString("[yyyy.M.d h:mm:ss.fff]"));
+                builder.AppendLine(ex.ToString());
+                builder.AppendLine();
+                System.IO.File.AppendAllText("error.log", builder.ToString());
+            }
+            catch
+            { }
         }
     }
 }

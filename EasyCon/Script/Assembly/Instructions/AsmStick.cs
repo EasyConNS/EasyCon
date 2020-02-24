@@ -1,26 +1,29 @@
-﻿using System;
+﻿using EasyCon.Script.Assembly;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EasyCon.Script.Assemble
+namespace EasyCon.Script.Assembly.Instructions
 {
-    abstract class AsmStick : Instruction, IAsmKey
+    abstract class AsmStick : Instruction
     {
-        public uint KeyCode { get; set; }
-        public uint LR => KeyCode & 1;
-        public uint DIndex;
+        public int KeyCode;
+        public int LR => KeyCode & 1;
+        public int DIndex;
     }
 
     class AsmStick_Standard : AsmStick
     {
-        public uint Duration;
+        public int Duration;
 
-        public static Instruction Create(uint keycode, uint dindex, uint duration)
+        public static Instruction Create(int keycode, int dindex, int duration)
         {
             Scale(ref duration, 50);
+            if (duration < 0)
+                return AsmEmpty.Create();
             if (duration >= 1 << 7)
                 return Failed.OutOfRange;
             var ins = new AsmStick_Standard();
@@ -40,11 +43,11 @@ namespace EasyCon.Script.Assemble
         }
     }
 
-    class AsmStick_Hold : AsmStick, IAsmHold
+    class AsmStick_Hold : AsmStick
     {
-        public uint HoldUntil { get; set; }
+        public Instruction HoldUntil;
 
-        public static Instruction Create(uint keycode, uint dindex)
+        public static Instruction Create(int keycode, int dindex)
         {
             var ins = new AsmStick_Hold();
             ins.KeyCode = keycode;
@@ -54,27 +57,14 @@ namespace EasyCon.Script.Assemble
 
         public override void WriteBytes(Stream stream)
         {
+            var offset = HoldUntil?.Index - Index ?? 0;
+            if (offset >= 1 << 7)
+                offset = 0;
             WriteBits(stream, 0b11, 2);
             WriteBits(stream, LR, 1);
             WriteBits(stream, DIndex, 5);
             WriteBits(stream, 1, 1);
-            WriteBits(stream, HoldUntil, 7);
+            WriteBits(stream, offset, 7);
         }
-    }
-
-    class AsmStick_Reset : AsmStick
-    {
-        public override uint InsCount => 0;
-        public override uint ByteCount => 0;
-
-        public static Instruction Create(uint keycode)
-        {
-            var ins = new AsmStick_Reset();
-            ins.KeyCode = keycode;
-            return ins;
-        }
-
-        public override void WriteBytes(Stream stream)
-        { }
     }
 }

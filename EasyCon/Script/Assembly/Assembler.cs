@@ -4,16 +4,24 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using PTDevice;
-using EasyCon.Script.Assemble;
 using System.IO;
+using EasyCon.Script.Parsing;
+using EasyCon.Script.Parsing.Statements;
+using EasyCon.Script.Assembly.Instructions;
 
-namespace EasyCon.Script
+namespace EasyCon.Script.Assembly
 {
     class Assembler
     {
-        public const int MaxBytes = 400;
-        public const int FirmwareVersion = 0x42;
         public static readonly byte[] EmptyAsm = new byte[] { 0xFF, 0xFF };
+        public const uint IReg = 7;
+
+        readonly List<Instruction> _instructions = new List<Instruction>();
+        public Dictionary<For, AsmFor> ForMapping = new Dictionary<For, AsmFor>();
+        public Dictionary<If, AsmBranchFalse> IfMapping = new Dictionary<If, AsmBranchFalse>();
+        public Dictionary<Else, AsmBranch> ElseMapping = new Dictionary<Else, AsmBranch>();
+        public Dictionary<int, AsmKey_Hold> KeyMapping = new Dictionary<int, AsmKey_Hold>();
+        public Dictionary<int, AsmStick_Hold> StickMapping = new Dictionary<int, AsmStick_Hold>();
 
         public static int GetDirectionIndex(NintendoSwitch.Key key)
         {
@@ -33,164 +41,118 @@ namespace EasyCon.Script
             return ins;
         }
 
-        public static byte[] Assemble(List<Statement> statements)
+        public void Add(Instruction ins)
         {
+            _instructions.Add(Assert(ins));
+        }
+
+        public Instruction Last()
+        {
+            return _instructions.Last();
+        }
+
+        public byte[] Assemble(List<Statement> statements)
+        {
+            // initialize
+            _instructions.Clear();
+            ForMapping.Clear();
+            IfMapping.Clear();
+            ElseMapping.Clear();
+            KeyMapping.Clear();
+            StickMapping.Clear();
+
             // compile into instructions
-            Dictionary<ForLoop, AsmFor> formapping = new Dictionary<ForLoop, AsmFor>();
-            List<Instruction> instructions = new List<Instruction>();
             for (int i = 0; i < statements.Count; i++)
             {
-                var st = statements[i];
-                Instruction ins = null;
-                if (st is Empty || st is Print)
-                    continue;
-                else if (st is SerialPrint)
+                try
                 {
-                    uint mem = (st as SerialPrint).Mem ? 1u : 0;
-                    uint value = (st as SerialPrint).Value;
-                    instructions.Add(Assert(AsmSerialPrint.Create(mem, value)));
-                    continue;
+                    statements[i].Assemble(this);
                 }
-                else if (st is KeyAction)
+                catch (AssembleException ex)
                 {
-                    var key = (st as KeyAction).Key;
-                    uint keycode = (uint)key.KeyCode;
-                    if (st is KeyPress)
-                    {
-                        uint duration = (uint)(st as KeyPress).Duration;
-                        uint waittime = 0;
-                        if (i + 1 < statements.Count && statements[i + 1] is Wait)
-                            waittime = (uint)(statements[i + 1] as Wait).Duration;
-                        ins = AsmKey_Compressed.Create(keycode, duration, waittime);
-                        if (ins.Success)
-                        {
-                            i++;
-                            instructions.Add(ins);
-                            continue;
-                        }
-                        ins = AsmKey_Standard.Create(keycode, duration);
-                        if (ins.Success)
-                        {
-                            instructions.Add(ins);
-                            continue;
-                        }
-                        else if (ins == Instruction.Failed.OutOfRange)
-                        {
-                            instructions.Add(Assert(AsmKey_Hold.Create(keycode)));
-                            instructions.Add(Assert(AsmWait.Create(duration)));
-                            instructions.Add(Assert(AsmKey_Release.Create(keycode)));
-                            continue;
-                        }
-                    }
-                    else if (st is KeyDown)
-                    {
-                        instructions.Add(Assert(AsmKey_Hold.Create(keycode)));
-                        continue;
-                    }
-                    else if (st is KeyUp)
-                    {
-                        instructions.Add(Assert(AsmKey_Release.Create(keycode)));
-                        continue;
-                    }
+                    ex.Index = i;
+                    throw;
                 }
-                else if (st is StickAction)
-                {
-                    var key = (st as StickAction).Key;
-                    uint keycode = (uint)key.KeyCode;
-                    uint dindex = (uint)GetDirectionIndex((st as StickAction).Key);
-                    if (st is StickPress)
-                    {
-                        uint duration = (uint)(st as StickPress).Duration;
-                        ins = AsmStick_Standard.Create(keycode, dindex, duration);
-                        if (ins.Success)
-                        {
-                            instructions.Add(ins);
-                            continue;
-                        }
-                        else if (ins == Instruction.Failed.OutOfRange)
-                        {
-                            instructions.Add(Assert(AsmStick_Hold.Create(keycode, dindex)));
-                            instructions.Add(Assert(AsmWait.Create(duration)));
-                            instructions.Add(Assert(AsmStick_Reset.Create(keycode)));
-                            continue;
-                        }
-                    }
-                    else if (st is StickDown)
-                    {
-                        instructions.Add(Assert(AsmStick_Hold.Create(keycode, dindex)));
-                        continue;
-                    }
-                    else if (st is StickUp)
-                    {
-                        instructions.Add(Assert(AsmStick_Reset.Create(keycode)));
-                        continue;
-                    }
-                }
-                else if (st is Wait)
-                {
-                    uint waittime = (uint)(st as Wait).Duration;
-                    instructions.Add(Assert(AsmWait.Create(waittime)));
-                    continue;
-                }
-                else if (st is ForLoop)
-                {
-                    uint loopnumber = 0;
-                    if (st is ForLoopInfinite)
-                        loopnumber = 0;
-                    else if (st is ForLoopStatic)
-                        loopnumber = (uint)(st as ForLoopStatic).Times;
-                    ins = Assert(AsmFor.Create(loopnumber));
-                    formapping[st as ForLoop] = ins as AsmFor;
-                    instructions.Add(ins);
-                    continue;
-                }
-                else if (st is Next)
-                {
-                    var @for = formapping[(st as Next).ForLoop];
-                    ins = Assert(AsmNext.Create(@for));
-                    @for.Next = ins as AsmNext;
-                    instructions.Add(ins);
-                    continue;
-                }
-                throw new NotImplementedException();
             }
 
-            // calculate address and index
-            uint addr = 2;
-            uint index = 0;
-            for (int i = 0; i < instructions.Count; i++)
+            // optimize
+            var discarded = new HashSet<Instruction>();
+            var list = new List<Instruction>();
+            foreach (var item in _instructions)
             {
-                var ins = instructions[i];
+                list.Add(item);
+
+                // 1 Instruction
+                var ins1 = list[list.Count - 1];
+
+                // 2 Instructions
+                if (list.Count < 2)
+                    continue;
+                var ins2 = ins1;
+                ins1 = list[list.Count - 2];
+                // keypress-wait => compressed keypress
+                if (ins1 is AsmKey_Standard && ins2 is AsmWait)
+                {
+                    var press = ins1 as AsmKey_Standard;
+                    var wait = ins2 as AsmWait;
+                    var ins = AsmKey_Compressed.Create(press.KeyCode, press.RealDuration, wait.RealDuration);
+                    if (ins.Success)
+                    {
+                        list.Add(ins);
+                        discarded.Add(ins1);
+                        discarded.Add(ins2);
+                        continue;
+                    }
+                }
+
+                // 3 Instructions
+                if (list.Count < 3)
+                    continue;
+                var ins3 = ins2;
+                ins2 = ins1;
+                ins1 = list[list.Count - 3];
+                // if-loopcontrol-endif => loopcontrol_cf
+                if (ins1 is AsmBranchFalse && ins2 is AsmLoopControl && ins3 is AsmEmpty && (ins1 as AsmBranchFalse).Target == ins3)
+                {
+                    (ins2 as AsmLoopControl).CheckFlag = 1;
+                    discarded.Add(ins1);
+                    continue;
+                }
+
+                // 4 Instructions
+                if (list.Count < 4)
+                    continue;
+                var ins4 = ins3;
+                ins3 = ins2;
+                ins2 = ins1;
+                ins1 = list[list.Count - 4];
+                // if-loopcontrol-else-endif => loopcontrol_cf-ifnot-endif
+                if (ins1 is AsmBranchFalse && ins2 is AsmLoopControl && ins3 is AsmBranch && ins4 is AsmEmpty && (ins1 as AsmBranchFalse).Target == ins4)
+                {
+                    (ins2 as AsmLoopControl).CheckFlag = 1;
+                    list.Add(AsmBranchTrue.Create((ins3 as AsmBranch).Target));
+                    discarded.Add(ins1);
+                    discarded.Add(ins3);
+                    continue;
+                }
+            }
+            _instructions.Clear();
+            _instructions.AddRange(list);
+
+            // update address and index
+            int addr = 2;
+            int index = 0;
+            for (int i = 0; i < _instructions.Count; i++)
+            {
+                var ins = _instructions[i];
                 ins.Address = addr;
-                addr += ins.ByteCount;
                 ins.Index = index;
-                index += ins.InsCount;
-            }
-
-            // calculate key/stick release
-            Dictionary<uint, List<Instruction>> keychain = new Dictionary<uint, List<Instruction>>();
-            foreach (var ins in instructions)
-            {
-                if (ins is IAsmKey)
+                if (!discarded.Contains(ins))
                 {
-                    var keycode = (ins as IAsmKey).KeyCode;
-                    if (!keychain.ContainsKey(keycode))
-                        keychain[keycode] = new List<Instruction>();
-                    keychain[keycode].Add(ins);
+                    addr += ins.ByteCount;
+                    index += ins.InsCount;
                 }
             }
-            foreach (var list in keychain.Values)
-                for (int i = 0; i < list.Count; i++)
-                {
-                    var ins = list[i] as IAsmHold;
-                    if (ins != null)
-                    {
-                        uint offset = ((i + 1 < list.Count) ? list[i + 1].Index : index) - list[i].Index;
-                        if (offset >= 1 << 7)
-                            throw new AssembleException("松开按键间隔过远", i);
-                        ins.HoldUntil = offset;
-                    }
-                }
 
             // generate bytecode
             using (var stream = new MemoryStream())
@@ -199,8 +161,9 @@ namespace EasyCon.Script
                 stream.WriteByte(0);
                 stream.WriteByte(0);
                 // write instructions
-                foreach (var ins in instructions)
-                    ins.WriteBytes(stream);
+                foreach (var ins in _instructions)
+                    if (!discarded.Contains(ins))
+                        ins.WriteBytes(stream);
                 // get array
                 var bytes = stream.ToArray();
                 // write length
@@ -210,14 +173,14 @@ namespace EasyCon.Script
             }
         }
 
-        public static string WriteHex(string hexStr, byte[] asmBytes)
+        public static string WriteHex(string hexStr, byte[] asmBytes, Board board)
         {
-            if (asmBytes.Length > MaxBytes)
+            if (asmBytes.Length > board.DataSize)
                 throw new AssembleException("烧录失败！字节超出限制");
             const int DataLen = 16;
             List<byte> list = new List<byte>(asmBytes);
             // fill zeros
-            while (list.Count < MaxBytes)
+            while (list.Count < board.DataSize)
                 list.Add(0);
             // load hex file
             var lines = hexStr.Split('\r', '\n');
@@ -241,14 +204,14 @@ namespace EasyCon.Script
                 if (hex.Data.Length < 0x10)
                     return false;
                 for (int i = 0; i < hex.Data.Length; i++)
-                    if ((i < 2 && hex.Data[i] != 0xFF) || (i > 2 && hex.Data[i] != 0))
+                    if (i < 2 && hex.Data[i] != 0xFF || i > 2 && hex.Data[i] != 0)
                         return false;
                 return true;
             });
             if (index == -1)
                 throw new AssembleException("固件读取失败！未找到数据结构");
             int ver = hexFile[index].Data[2];
-            if (ver < FirmwareVersion)
+            if (ver < board.Version)
                 throw new AssembleException("固件版本不符，请使用最新版的固件");
             ushort address = hexFile[index].StartAddress;
             // remove original data

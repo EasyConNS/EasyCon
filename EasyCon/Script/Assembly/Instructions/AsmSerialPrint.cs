@@ -1,11 +1,12 @@
-﻿using System;
+﻿using EasyCon.Script.Assembly;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace EasyCon.Script.Assemble
+namespace EasyCon.Script.Assembly.Instructions
 {
     class AsmSerialPrint : Instruction
     {

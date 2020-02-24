@@ -1,4 +1,6 @@
-﻿using System;
+﻿using EasyCon.Script.Assembly;
+using EasyCon.Script.Parsing;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,12 +10,14 @@ namespace EasyCon.Script
 {
     public class Script
     {
+        public Dictionary<string, int> Constants = new Dictionary<string, int>();
+
         List<Statement> _statements;
         Processor _processor;
 
-        public void Compile(string code)
+        public void Parse(string code)
         {
-            _statements = new Compiler().Compile(code);
+            _statements = new Parser(Constants).Parse(code);
         }
 
         public void Run(IOutputAdapter output)
@@ -30,12 +34,13 @@ namespace EasyCon.Script
 
         public string ToCode()
         {
-            return string.Join(Environment.NewLine, _statements);
+            var formatter = new Formats.Formatter(Constants);
+            return string.Join(Environment.NewLine, _statements.Select(u => u.GetString(formatter)));
         }
 
         public byte[] Assemble()
         {
-            return Assembler.Assemble(_statements);
+            return new Assembler().Assemble(_statements);
         }
     }
 }

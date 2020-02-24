@@ -18,6 +18,8 @@ using System.Media;
 using System.IO;
 using Newtonsoft.Json;
 using PTDevice.Arduino;
+using EasyCon.Script.Assembly;
+using EasyCon.Script.Parsing;
 
 namespace EasyCon
 {
@@ -35,9 +37,11 @@ namespace EasyCon
         DateTime _startTime = DateTime.MinValue;
         TimeSpan _lastRunningTime = TimeSpan.Zero;
         Queue<Tuple<RichTextBox, object, Color?>> _messages = new Queue<Tuple<RichTextBox, object, Color?>>();
+        bool _msgNewLine = true;
+        bool _msgFirstLine = true;
 
         const string ScriptPath = @"Script\";
-        const string FirmwarePath = @"Arduino.hex";
+        const string FirmwarePath = @"Firmware\";
         string _currentFile = null;
         bool _fileEdited = false;
 
@@ -53,15 +57,7 @@ namespace EasyCon
 
         private void EasyConForm_Load(object sender, EventArgs e)
         {
-            //var names = SerialPort.GetPortNames();
-            //foreach (var s in names)
-            //    Debug.WriteLine(s);
-            //var uno = new PTDevice.Arduino.ArduinoSerial("COM5");
-            //uno.Start();
-            //uno.BytesReceived += bytes => Debug.WriteLine("> " + string.Join(" ", bytes.Select(b => b.ToString("X2"))));
-            //uno.Write(0xA5);
-            //uno.Write(0x82);
-
+            InitBoards();
             RegisterKeys();
 
             // UI updating timer
@@ -84,15 +80,11 @@ namespace EasyCon
 #if DEBUG
             // pack release folder
             DirectoryInfo dir = new DirectoryInfo(@"..\Release");
-            if (dir.Exists)
+            if (dir.Exists && !Directory.Exists(@"..\EasyCon"))
             {
                 foreach (var fi in dir.GetFiles())
                     if (!fi.Extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) && !fi.Extension.Equals(".dll", StringComparison.OrdinalIgnoreCase) && !fi.Extension.Equals(".hex", StringComparison.OrdinalIgnoreCase))
                         fi.Delete();
-                var hex0 = @"F:\Users\Nukieberry\Documents\GitHub\SerialCon\Joystick.hex";
-                var hex1 = Path.Combine(dir.FullName, FirmwarePath);
-                if (File.Exists(hex0) && !File.Exists(hex1))
-                    File.Copy(hex0, hex1);
                 dir.MoveTo(Path.Combine(dir.Parent.FullName, "EasyCon"));
             }
             // enable debug print
@@ -224,6 +216,45 @@ namespace EasyCon
             File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(_config));
         }
 
+        void InitBoards()
+        {
+            comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "ATmega16U2", 0x43, 400));
+            comboBoxBoardType.SelectedIndex = 0;
+        }
+
+        string GetFirmwareName(string corename)
+        {
+            DirectoryInfo dir = new DirectoryInfo(FirmwarePath);
+            if (!dir.Exists)
+                return null;
+            var max = 0;
+            string filename = null;
+            foreach (var fi in dir.GetFiles())
+            {
+                var m = Regex.Match(fi.Name, $@"^{corename} v(\d+)\.hex$", RegexOptions.IgnoreCase);
+                if (m.Success)
+                {
+                    var ver = int.Parse(m.Groups[1].Value);
+                    if (ver > max)
+                    {
+                        max = ver;
+                        filename = fi.Name;
+                    }
+                }
+            }
+            return filename;
+        }
+
+        string GetFirmwareName()
+        {
+            return GetFirmwareName(GetSelectedBoard().CoreName);
+        }
+
+        Board GetSelectedBoard()
+        {
+            return comboBoxBoardType.SelectedItem as Board;
+        }
+
         void RegisterKeys()
         {
             formController.UnregisterAllKeys();
@@ -260,22 +291,36 @@ namespace EasyCon
         {
             lock (_messages)
             {
-                if (timestamp)
-                    _messages.Enqueue(new Tuple<RichTextBox, object, Color?>(richTextBoxMessage, DateTime.Now.ToString("[HH:mm:ss.fff] "), Color.Gray));
+                if (_msgNewLine)
+                {
+                    if (!_msgFirstLine)
+                        _messages.Enqueue(new Tuple<RichTextBox, object, Color?>(richTextBoxMessage, Environment.NewLine, null));
+                    _msgFirstLine = false;
+                    if (timestamp)
+                        _messages.Enqueue(new Tuple<RichTextBox, object, Color?>(richTextBoxMessage, DateTime.Now.ToString("[HH:mm:ss.fff] "), Color.Gray));
+                }
                 _messages.Enqueue(new Tuple<RichTextBox, object, Color?>(richTextBoxMessage, message, color));
-                _messages.Enqueue(new Tuple<RichTextBox, object, Color?>(richTextBoxMessage, Environment.NewLine, null));
+                _msgNewLine = true;
             }
         }
 
-        public void Print(string message)
+        public void Print(string message, bool newline = true)
         {
-            Print(message, null);
+            lock (_messages)
+            {
+                _msgNewLine = _msgNewLine && newline;
+                Print(message, null);
+            }
         }
 
         public void CLS()
         {
             lock (_messages)
+            {
                 _messages.Enqueue(new Tuple<RichTextBox, object, Color?>(richTextBoxMessage, null, null));
+                _msgFirstLine = true;
+                _msgNewLine = true;
+            }
         }
 
         public void StatusShowProgress(double d)
@@ -298,6 +343,7 @@ namespace EasyCon
         {
             if (index < 0)
                 return;
+            textBoxScript.Focus();
             int position = textBoxScript.GetFirstCharIndexFromLine(index);
             if (position < 0)
             {
@@ -320,12 +366,12 @@ namespace EasyCon
             {
                 _eventdisabled = true;
                 _program = new Script.Script();
-                _program.Compile(textBoxScript.Text);
+                _program.Parse(textBoxScript.Text);
                 textBoxScript.Text = _program.ToCode();
                 textBoxScript.Select(0, 0);
                 return true;
             }
-            catch (CompileException ex)
+            catch (ParseException ex)
             {
                 _program = null;
                 string str = $"{ex.Message}: 行{ex.Index + 1}";
@@ -389,9 +435,11 @@ namespace EasyCon
                 Print("-- 运行出错 --", Color.OrangeRed);
                 StatusShowLog("运行出错");
                 SystemSounds.Hand.Play();
+                throw;
             }
             finally
             {
+                NS.Reset();
                 Invoke((Action)delegate
                 {
                     textBoxScript.ReadOnly = false;
@@ -441,7 +489,7 @@ namespace EasyCon
             }
             StatusShowLog("连接失败");
             SystemSounds.Hand.Play();
-            MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（RX接0，TX接1，GND接GND）\n3.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n\n可用端口：" + string.Join("、", ports));
+            MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（RX接0，TX接1，GND接GND）\n3.以上两步操作正确的话，点击搜索时单片机上的RX灯会闪烁\n4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n5.以上步骤都完成后重启程序再试\n\n可用手动连接端口：" + string.Join("、", ports));
             return null;
         }
 
@@ -474,7 +522,7 @@ namespace EasyCon
             {
                 StatusShowLog("连接失败");
                 SystemSounds.Hand.Play();
-                MessageBox.Show("连接失败！该端口不存在、无法使用或已被占用");
+                MessageBox.Show("连接失败！该端口不存在、无法使用或已被占用。请在设备管理器确认TTL所在串口正确识别，关闭其它占用USB的程序，并重启伊机控再试。");
                 return false;
             }
         }
@@ -532,6 +580,7 @@ namespace EasyCon
                         return false;
                 }
             }
+            _currentFile = null;
             textBoxScript.Text = string.Empty;
             _fileEdited = false;
             StatusShowLog("文件已关闭");
@@ -553,13 +602,19 @@ namespace EasyCon
             {
                 StatusShowLog("开始生成固件...");
                 var bytes = _program.Assemble();
-#if DEBUG
-                File.WriteAllBytes("1.bin", bytes);
-#endif
+                File.WriteAllBytes("temp.bin", bytes);
                 string hexStr;
+                var filename = GetFirmwareName();
+                if (filename == null)
+                {
+                    StatusShowLog("固件生成失败");
+                    SystemSounds.Hand.Play();
+                    MessageBox.Show("未找到固件！");
+                    return false;
+                }
                 try
                 {
-                    hexStr = File.ReadAllText(FirmwarePath);
+                    hexStr = File.ReadAllText(FirmwarePath + filename);
                 }
                 catch (Exception)
                 {
@@ -568,13 +623,13 @@ namespace EasyCon
                     MessageBox.Show("固件读取失败！");
                     return false;
                 }
-                hexStr = Assembler.WriteHex(hexStr, bytes);
+                hexStr = Assembler.WriteHex(hexStr, bytes, GetSelectedBoard());
                 string name = Path.GetFileNameWithoutExtension(_currentFile);
-                var path = FirmwarePath.Replace(".", $"+Script.");
-                File.WriteAllText(path, hexStr);
+                filename = filename.Replace(".", $"+Script.");
+                File.WriteAllText(filename, hexStr);
                 StatusShowLog("固件生成完毕");
                 SystemSounds.Beep.Play();
-                MessageBox.Show("固件生成完毕！已保存为" + Path.GetFileName(path));
+                MessageBox.Show("固件生成完毕！已保存为" + Path.GetFileName(filename));
                 return true;
             }
             catch (AssembleException ex)
@@ -585,7 +640,7 @@ namespace EasyCon
                 ScriptSelectLine(ex.Index);
                 return false;
             }
-            catch (CompileException ex)
+            catch (ParseException ex)
             {
                 StatusShowLog("固件生成失败");
                 SystemSounds.Hand.Play();
@@ -619,9 +674,14 @@ namespace EasyCon
             {
                 StatusShowLog("开始烧录...");
                 var bytes = _program.Assemble();
-#if DEBUG
-                File.WriteAllBytes("1.bin", bytes);
-#endif
+                File.WriteAllBytes("temp.bin", bytes);
+                if (bytes.Length > GetSelectedBoard().DataSize)
+                {
+                    StatusShowLog("烧录失败");
+                    SystemSounds.Hand.Play();
+                    MessageBox.Show("烧录失败！长度超出限制");
+                    return false;
+                }
                 if (!NS.Flash(bytes))
                 {
                     StatusShowLog("烧录失败");
@@ -629,6 +689,9 @@ namespace EasyCon
                     MessageBox.Show("烧录失败！请检查设备连接后重试");
                     return false;
                 }
+                StatusShowLog("烧录完毕");
+                SystemSounds.Beep.Play();
+                MessageBox.Show($"烧录完毕！已使用存储空间({bytes.Length}/{GetSelectedBoard().DataSize})");
             }
             catch (AssembleException ex)
             {
@@ -638,7 +701,7 @@ namespace EasyCon
                 ScriptSelectLine(ex.Index);
                 return false;
             }
-            catch (CompileException ex)
+            catch (ParseException ex)
             {
                 StatusShowLog("烧录失败");
                 SystemSounds.Hand.Play();
@@ -646,9 +709,6 @@ namespace EasyCon
                 ScriptSelectLine(ex.Index);
                 return false;
             }
-            StatusShowLog("烧录完毕");
-            SystemSounds.Beep.Play();
-            MessageBox.Show("烧录完毕");
             return true;
         }
 
@@ -659,7 +719,7 @@ namespace EasyCon
             if (NS.GetConnectionStatus() == ArduinoSerial.Status.ConnectedUnsafe)
                 return true;
             int ver = NS.GetVersion();
-            if (ver < Assembler.FirmwareVersion)
+            if (ver < GetSelectedBoard().Version)
             {
                 StatusShowLog("需要更新固件");
                 SystemSounds.Hand.Play();
@@ -781,7 +841,7 @@ namespace EasyCon
 
         private void 关于ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("作者：铃落（Nukieberry）\n\nv1.01改动：\n- 新增调试信息显示\n- 修复了固件模式生成的固件用avr-programmer无法刷入的问题\n- 增加了一个CH340G常见问题的解决方法说明\n- 尝试修复一个导致自动搜索卡死的问题", "关于");
+            MessageBox.Show("作者：铃落（Nukieberry）\n\nv1.11：\n- 增加了脚本过长无法烧录的提示\n- 修复了取负和取反操作的语法校正错误\n- 增加了错误日志，遇到软件打不开的情况请查看error.log\n\nv1.1：\n- 新增常量、变量、条件判断、数值运算，基础语句也更新了使用变量的语法\n- 支持LED灯（TX显示数据收发，RX显示脚本运行）\n- 固件移动到Firmware文件夹，未来将支持更多的单片机\n- 增加了连接失败的自我诊断提示\n- 项目已开源", "关于");
         }
 
         private void buttonSerialPortSearch_Click(object sender, EventArgs e)
@@ -887,17 +947,17 @@ namespace EasyCon
 
         private void 联机模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("- 使用电脑控制单片机的模式\n- 可视化运行，一键切换脚本（即将实装）\n- 无需反复刷固件\n- 支持超长脚本\n- 可使用虚拟手柄，用键盘玩游戏\n\n硬件准备：\n一个Arduino UNO R3官方版，外加杜邦线若干。\n一根USB Type-B线，连电脑用Flip把Arduino.hex固件烧进去，然后拔了连NS。\n一根USB-TTL线，USB端连电脑（TTL端连单片机，RX接0，TX接1，GND接GND）\n\n软件使用：\n1.菜单，文件，打开，选一个脚本\n2.点“运行”按钮", "联机模式");
+            MessageBox.Show("- 使用电脑控制单片机的模式\n- 可视化运行，一键切换脚本（即将实装）\n- 无需反复刷固件\n- 支持超长脚本\n- 可使用虚拟手柄，用键盘玩游戏\n\n硬件准备：\n一个Arduino UNO R3官方版，外加杜邦线若干\n一根USB Type-B线\n一根USB-TTL线，USB端连电脑，TTL端连单片机（RX接0，TX接1，GND接GND）\n\n软件使用：\n1.下载安装Flip\n2.USB连接电脑，用Flip把Firmware文件夹中对应的固件烧进去\n（以上为一次性操作，以后不用重新烧）\n3.单片机连接NS，按照上面说明连好TTL线\n4.菜单，文件，打开，选一个脚本\n5.点“运行”按钮", "联机模式");
         }
 
         private void 烧录模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("- 连线烧录后脱机运行的模式\n- 独立挂机，即插即用\n- 一键烧录，可控运行\n- 无需反复刷固件\n- 支持极限效率脚本\n\n硬件准备：\n一个Arduino UNO R3官方版，外加杜邦线若干。\n一根USB Type-B线，连电脑用Flip把Arduino.hex固件烧进去，然后拔了连NS。\n一根USB-TTL线，USB端连电脑，TTL端连单片机（RX接0，TX接1，GND接GND）\n\n软件使用：\n1.菜单，文件，打开，选一个脚本\n2.点“编译并烧录”按钮\n3.点“远程运行”来立即运行，或拔掉单片机，下次插上时会自动运行", "烧录模式");
+            MessageBox.Show("- 连线烧录后脱机运行的模式\n- 独立挂机，即插即用\n- 一键烧录，可控运行\n- 无需反复刷固件\n- 支持极限效率脚本\n\n硬件准备：\n一个Arduino UNO R3官方版，外加杜邦线若干。\n一根USB Type-B线，连电脑用Flip把Arduino.hex固件烧进去，然后拔了连NS。\n一根USB-TTL线，USB端连电脑（TTL端连单片机，RX接0，TX接1，GND接GND）\n\n软件使用：\n1.下载安装Flip\n2.USB连接电脑，用Flip把Firmware文件夹中对应的固件烧进去\n（以上为一次性操作，但如果之前用过固件模式，必须重新烧原版固件，否则会被固件带的脚本覆盖）\n3.单片机连接NS，按照上面说明连好TTL线\n4.菜单，文件，打开，选一个脚本\n5.点“编译并烧录”按钮\n6.点“远程运行”来立即运行，或拔掉单片机，下次插上时会自动运行", "烧录模式");
         }
 
         private void 固件模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("- 生成固件后手动刷入单片机的模式\n- 独立挂机，即插即用\n- 支持极限效率脚本\n- 不需要任何额外配件\n\n硬件准备：\n一个Arduino UNO R3官方版，外加杜邦线若干。\n一根USB Type-B线。\n\n软件使用：\n1.菜单，文件，打开，选一个脚本\n2.点“生成固件”按钮\n3.单片机连电脑，用Flip把生成的Arduino+Script.hex固件刷进去，拔掉再连NS就会自动运行", "固件模式");
+            MessageBox.Show("- 生成固件后手动刷入单片机的模式\n- 独立挂机，即插即用\n- 支持极限效率脚本\n- 不需要任何额外配件\n\n硬件准备：\n一个Arduino UNO R3官方版，外加杜邦线若干。\n一根USB Type-B线。\n\n软件使用：\n1.下载安装Flip\n2.菜单，文件，打开，选一个脚本\n3.点“生成固件”按钮\n4.USB连接电脑，用Flip把生成的.hex固件烧进去\n5.拔掉USB再连NS就会自动运行", "固件模式");
         }
 
         private void 显示调试信息ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -908,6 +968,16 @@ namespace EasyCon
         private void 项目源码ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Process.Start("https://github.com/nukieberry/PokemonTycoon");
+        }
+
+        private void 下载AtmelFlipToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Process.Start("https://www.microchip.com/DevelopmentTools/ProductDetails/PartNO/FLIP");
+        }
+
+        private void comboBoxBoardType_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            textBoxFirmware.Text = $"{(comboBoxBoardType.SelectedItem as Board)?.CoreName}.hex";
         }
     }
 }
