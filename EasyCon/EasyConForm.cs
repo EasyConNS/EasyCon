@@ -219,6 +219,7 @@ namespace EasyCon
         void InitBoards()
         {
             comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "ATmega16U2", 0x43, 400));
+            comboBoxBoardType.Items.Add(new Board("Teensy 2.0", "ATmega32U4", 0x43, 1024));
             comboBoxBoardType.SelectedIndex = 0;
         }
 
