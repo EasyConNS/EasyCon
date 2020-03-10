@@ -28,9 +28,9 @@ namespace EasyCon.Script.Parsing.Statements
             int duration;
             if (int.TryParse(args.Text, out duration))
                 return new Wait(duration, true);
-            var m = Regex.Match(args.Text, $@"^wait\s+{Formats.Value}$", RegexOptions.IgnoreCase);
+            var m = Regex.Match(args.Text, $@"^wait\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
-                return new Wait(args.Formatter.GetValue(m.Groups[1].Value), false);
+                return new Wait(args.Formatter.GetValueEx(m.Groups[1].Value), false);
             return null;
         }
 
@@ -51,8 +51,10 @@ namespace EasyCon.Script.Parsing.Statements
                 assembler.Add(AsmStoreOp.Create((Duration as ValReg).Index));
                 assembler.Add(AsmWait.Create(0));
             }
-            else
+            else if (Duration is ValInstant)
                 assembler.Add(AsmWait.Create((Duration as ValInstant).Val));
+            else
+                throw new AssembleException(ErrorMessage.NotSupported);
         }
     }
 }

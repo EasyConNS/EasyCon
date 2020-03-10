@@ -13,6 +13,8 @@ namespace EasyCon.Script.Parsing
         public int Address = -1;
         public string Indent;
         public string Comment;
+        public virtual int IndentThis => 0;
+        public virtual int IndentNext => 0;
 
         public abstract void Exec(Processor processor);
 
@@ -24,5 +26,11 @@ namespace EasyCon.Script.Parsing
         }
 
         protected abstract string _GetString(Formats.Formatter formatter);
+
+        protected static class ErrorMessage
+        {
+            public const string NotSupported = "该语句目前仅支持联机模式";
+            public const string NotImplemented = "类型未定义，这可能是一个bug，请汇报给作者";
+        }
     }
 }

@@ -13,6 +13,7 @@ namespace EasyCon.Script.Parsing.Statements
     abstract class For : Statement
     {
         public static IStatementParser Parser = new StatementParser(Parse);
+        public override int IndentNext => 1;
         public readonly ValBase Count;
         public Next Next;
 
@@ -34,12 +35,12 @@ namespace EasyCon.Script.Parsing.Statements
             Match m;
             if (args.Text.Equals("for", StringComparison.OrdinalIgnoreCase))
                 return new For_Infinite();
-            m = Regex.Match(args.Text, $@"^for\s+{Formats.Value}$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, $@"^for\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
-                return new For_Static(args.Formatter.GetValue(m.Groups[1].Value));
-            m = Regex.Match(args.Text, $@"^for\s+{Formats.Register}\s*=\s*{Formats.Value}\s*to\s*{Formats.Value}$", RegexOptions.IgnoreCase);
+                return new For_Static(args.Formatter.GetValueEx(m.Groups[1].Value));
+            m = Regex.Match(args.Text, $@"^for\s+{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}\s*to\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
-                return new For_Full(args.Formatter.GetReg(m.Groups[1].Value, true).Index, args.Formatter.GetValue(m.Groups[2].Value), args.Formatter.GetValue(m.Groups[3].Value));
+                return new For_Full(args.Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value), args.Formatter.GetValueEx(m.Groups[3].Value));
             return null;
         }
 
@@ -128,6 +129,8 @@ namespace EasyCon.Script.Parsing.Statements
                 assembler.Add(AsmMov.Create(Assembler.IReg, (int)((Count as ValReg).Index << 4)));
                 assembler.Add(AsmStoreOp.Create(Assembler.IReg));
             }
+            else if (Count is ValReg32)
+                throw new AssembleException(ErrorMessage.NotSupported);
             assembler.Add(AsmFor.Create());
             assembler.ForMapping[this] = assembler.Last() as AsmFor;
         }
@@ -135,10 +138,10 @@ namespace EasyCon.Script.Parsing.Statements
 
     class For_Full : For
     {
-        public uint RegIter;
+        public ValRegEx RegIter;
         public ValBase InitVal;
 
-        public For_Full(uint regiter, ValBase initval, ValBase count)
+        public For_Full(ValRegEx regiter, ValBase initval, ValBase count)
             : base(count)
         {
             RegIter = regiter;
@@ -147,7 +150,7 @@ namespace EasyCon.Script.Parsing.Statements
 
         protected override void Init(Processor processor)
         {
-            processor.Register[RegIter] = (short)InitVal.Evaluate(processor);
+            processor.Register[RegIter] = InitVal.Evaluate(processor);
             processor.LoopCount[this] = Count.Evaluate(processor);
         }
 
@@ -163,15 +166,19 @@ namespace EasyCon.Script.Parsing.Statements
 
         protected override string _GetString(Formats.Formatter formatter)
         {
-            return $"FOR {formatter.GetRegText(RegIter)} = {InitVal.GetCodeText(formatter)} TO {Count.GetCodeText(formatter)}";
+            return $"FOR {RegIter.GetCodeText(formatter)} = {InitVal.GetCodeText(formatter)} TO {Count.GetCodeText(formatter)}";
         }
 
         public override void Assemble(Assembler assembler)
         {
-            assembler.Add(AsmMov.Create(RegIter, InitVal));
-            uint e_val = RegIter;
+            if (RegIter is ValReg32)
+                throw new AssembleException(ErrorMessage.NotSupported);
+            assembler.Add(AsmMov.Create(RegIter.Index, InitVal));
+            uint e_val = RegIter.Index;
             if (Count is ValReg)
                 e_val |= (Count as ValReg).Index << 4;
+            else if (Count is ValReg32)
+                throw new AssembleException(ErrorMessage.NotSupported);
             assembler.Add(AsmMov.Create(Assembler.IReg, (int)e_val));
             assembler.Add(AsmStoreOp.Create(Assembler.IReg));
             assembler.Add(AsmFor.Create());
@@ -182,6 +189,7 @@ namespace EasyCon.Script.Parsing.Statements
     class Next : Statement
     {
         public static readonly IStatementParser Parser = new StatementParser(Parse);
+        public override int IndentThis => -1;
         public For For;
 
         public static Statement Parse(ParserArgument args)

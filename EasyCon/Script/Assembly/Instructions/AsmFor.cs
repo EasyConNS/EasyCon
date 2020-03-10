@@ -44,7 +44,8 @@ namespace EasyCon.Script.Assembly.Instructions
     {
         public static new Instruction Create(int loopnumber)
         {
-            if (loopnumber >= 1 << 10)
+            //if (loopnumber >= 1 << 10 || loopnumber < 0)
+            if (loopnumber >= 1 << 9 || loopnumber < 0)
                 return Failed.OutOfRange;
             var ins = new AsmNext_Small();
             ins.LoopNumber = loopnumber;
@@ -66,7 +67,8 @@ namespace EasyCon.Script.Assembly.Instructions
 
         public static new Instruction Create(int loopnumber)
         {
-            if (loopnumber >= 1 << 26)
+            //if (loopnumber >= 1 << 26 || loopnumber < 0)
+            if (loopnumber >= 1 << 25 || loopnumber < 0)
                 return Failed.OutOfRange;
             var ins = new AsmNext_Large();
             ins.LoopNumber = loopnumber;

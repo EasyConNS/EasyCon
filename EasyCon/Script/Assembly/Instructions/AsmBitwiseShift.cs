@@ -34,7 +34,7 @@ namespace EasyCon.Script.Assembly.Instructions
             {
                 return Failed.InvalidArgument;
             }
-            else
+            else if (value is ValInstant)
             {
                 var val = (value as ValInstant).Val;
                 if (val < 0 || val >= 1 << 4)
@@ -44,6 +44,8 @@ namespace EasyCon.Script.Assembly.Instructions
                 ins.Value = val;
                 return ins;
             }
+            else
+                return Failed.NotImplemented;
         }
 
         public override void WriteBytes(Stream stream)

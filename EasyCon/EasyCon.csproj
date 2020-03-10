@@ -86,6 +86,7 @@
     <Compile Include="Script\Assembly\Instructions\AsmUnaryOp.cs" />
     <Compile Include="Script\Parsing\Statements\If.cs" />
     <Compile Include="Script\Parsing\IStatementParser.cs" />
+    <Compile Include="Script\Parsing\Statements\Standalone.cs" />
     <Compile Include="Script\Parsing\Statements\UnaryOp.cs" />
     <Compile Include="Script\Parsing\Statements\BinaryOp.cs" />
     <Compile Include="Script\Parsing\Statements\Mov.cs" />
@@ -113,6 +114,7 @@
     <Compile Include="Script\Parsing\ValBase.cs" />
     <EmbeddedResource Include="EasyConForm.resx">
       <DependentUpon>EasyConForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="FormKeyMapping.resx">
       <DependentUpon>FormKeyMapping.cs</DependentUpon>
@@ -148,6 +150,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\favicon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="更新说明.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

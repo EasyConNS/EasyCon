@@ -29,9 +29,9 @@ namespace EasyCon.Script.Parsing.Statements
             m = Regex.Match(args.Text, @"^([a-z]+)$", RegexOptions.IgnoreCase);
             if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
                 return new KeyPress(key);
-            m = Regex.Match(args.Text, $@"^([a-z]+)\s+{Formats.Value}$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, $@"^([a-z]+)\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
-                return new KeyPress(key, args.Formatter.GetValue(m.Groups[2].Value));
+                return new KeyPress(key, args.Formatter.GetValueEx(m.Groups[2].Value));
             m = Regex.Match(args.Text, @"^([a-z]+)\s+down$", RegexOptions.IgnoreCase);
             if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
                 return new KeyDown(key);
@@ -88,14 +88,16 @@ namespace EasyCon.Script.Parsing.Statements
         public override void Assemble(Assembler assembler)
         {
             int keycode = Key.KeyCode;
-            var reg = Duration as ValReg;
-            if (reg != null)
+            if (Duration is ValRegEx)
             {
+                if (Duration is ValReg32)
+                    throw new AssembleException(ErrorMessage.NotSupported);
+                var reg = Duration as ValReg;
                 assembler.Add(AsmStoreOp.Create(reg.Index));
                 assembler.Add(AsmKey_Standard.Create(keycode, 0));
                 ReleasePrevious(assembler);
             }
-            else
+            else if (Duration is ValInstant)
             {
                 int duration = (Duration as ValInstant).Val;
                 var ins = AsmKey_Standard.Create(keycode, duration);
@@ -114,6 +116,8 @@ namespace EasyCon.Script.Parsing.Statements
                     ReleasePrevious(assembler);
                 }
             }
+            else
+                throw new AssembleException(ErrorMessage.NotImplemented);
         }
     }
 

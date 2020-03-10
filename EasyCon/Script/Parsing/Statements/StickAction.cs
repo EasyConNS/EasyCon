@@ -48,7 +48,7 @@ namespace EasyCon.Script.Parsing.Statements
                     return null;
                 return new StickDown(key, keyname, direction);
             }
-            m = Regex.Match(args.Text, $@"^([lr]s)\s+([a-z0-9]+)\s*,\s*({Formats.Value})$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, $@"^([lr]s)\s+([a-z0-9]+)\s*,\s*({Formats.ValueEx})$", RegexOptions.IgnoreCase);
             if (m.Success)
             {
                 var keyname = m.Groups[1].Value;
@@ -57,7 +57,7 @@ namespace EasyCon.Script.Parsing.Statements
                 var key = GetKey(keyname, direction);
                 if (key == null)
                     return null;
-                return new StickPress(key, keyname, direction, args.Formatter.GetValue(duration));
+                return new StickPress(key, keyname, direction, args.Formatter.GetValueEx(duration));
             }
             return null;
         }
@@ -122,14 +122,16 @@ namespace EasyCon.Script.Parsing.Statements
         {
             int keycode = Key.KeyCode;
             int dindex = Assembler.GetDirectionIndex(Key);
-            var reg = Duration as ValReg;
-            if (reg != null)
+            if (Duration is ValRegEx)
             {
+                if (Duration is ValReg32)
+                    throw new AssembleException(ErrorMessage.NotSupported);
+                var reg = Duration as ValRegEx;
                 assembler.Add(AsmStoreOp.Create(reg.Index));
                 assembler.Add(AsmStick_Standard.Create(keycode, dindex, 0));
                 ReleasePrevious(assembler);
             }
-            else
+            else if (Duration is ValInstant)
             {
                 int duration = (Duration as ValInstant).Val;
                 var ins = AsmStick_Standard.Create(keycode, dindex, duration);
@@ -148,6 +150,8 @@ namespace EasyCon.Script.Parsing.Statements
                     ReleasePrevious(assembler);
                 }
             }
+            else
+                throw new AssembleException(ErrorMessage.NotImplemented);
         }
     }
 

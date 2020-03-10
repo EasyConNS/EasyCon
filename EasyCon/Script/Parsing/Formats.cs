@@ -11,13 +11,18 @@ namespace EasyCon.Script.Parsing
     {
         const string __Constant = @"_[\d\p{L}_]+";
         const string __Register = @"\$\d+";
+        const string __Register32 = @"\$\$\d+";
         const string __Number = @"-?\d+";
         public const string Constant = "(" + __Constant + ")";
         public const string Constant_F = "^" + __Constant + "$";
         public const string Register = "(" + __Register + ")";
         public const string Register_F = "^" + __Register + "$";
+        public const string Register32_F = "^" + __Register32 + "$";
+        public const string RegisterEx = "(" + __Register + "|" + __Register32 + ")";
+        public const string RegisterEx_F = "^" + __Register + "|" + __Register32 + "$";
         public const string Instant = "(" + __Constant + "|" + __Number + ")";
         public const string Value = "(" + __Constant + "|" + __Register + "|" + __Number + ")";
+        public const string ValueEx = "(" + __Constant + "|" + __Register + "|" + __Register32 + "|" + __Number + ")";
 
         public class Formatter
         {
@@ -26,6 +31,16 @@ namespace EasyCon.Script.Parsing
             public Formatter(Dictionary<string, int> constants)
             {
                 Constants = constants;
+            }
+
+            public string GetRegText(uint reg)
+            {
+                return $"${reg}";
+            }
+
+            public string GetReg32Text(uint reg)
+            {
+                return $"$${reg}";
             }
 
             public ValReg GetReg(string text, bool lhs = false)
@@ -41,9 +56,26 @@ namespace EasyCon.Script.Parsing
                 return new ValReg(reg);
             }
 
-            public string GetRegText(uint reg)
+            public ValReg32 GetReg32(string text, bool lhs = false)
             {
-                return $"${reg}";
+                var m = Regex.Match(text, @"\$\$(\d+)");
+                if (!m.Success)
+                    throw new FormatException();
+                var reg = uint.Parse(m.Groups[1].Value);
+                if (reg + 1 >= Processor.RegisterCount)
+                    throw new ParseException($"32位寄存器取值范围$$0~$${Processor.RegisterCount - 2}");
+                if (lhs && reg == 0)
+                    throw new ParseException($"寄存器$$0为只读");
+                return new ValReg32(reg);
+            }
+
+            public ValRegEx GetRegEx(string text, bool lhs = false)
+            {
+                if (Regex.Match(text, Register_F).Success)
+                    return GetReg(text, lhs);
+                if (Regex.Match(text, Register32_F).Success)
+                    return GetReg32(text, lhs);
+                throw new FormatException();
             }
 
             public ValInstant GetConstant(string text, bool zeroOrPos = false)
@@ -73,6 +105,14 @@ namespace EasyCon.Script.Parsing
             {
                 if (Regex.Match(text, Register_F).Success)
                     return GetReg(text, lhs);
+                else
+                    return GetInstant(text);
+            }
+
+            public ValBase GetValueEx(string text, bool lhs = false)
+            {
+                if (Regex.Match(text, RegisterEx_F).Success)
+                    return GetRegEx(text, lhs);
                 else
                     return GetInstant(text);
             }

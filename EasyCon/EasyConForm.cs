@@ -82,8 +82,9 @@ namespace EasyCon
             DirectoryInfo dir = new DirectoryInfo(@"..\Release");
             if (dir.Exists && !Directory.Exists(@"..\EasyCon"))
             {
+                var ext = new string[] { ".exe", ".dll", ".txt" };
                 foreach (var fi in dir.GetFiles())
-                    if (!fi.Extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) && !fi.Extension.Equals(".dll", StringComparison.OrdinalIgnoreCase) && !fi.Extension.Equals(".hex", StringComparison.OrdinalIgnoreCase))
+                    if (!ext.Contains(fi.Extension))
                         fi.Delete();
                 dir.MoveTo(Path.Combine(dir.Parent.FullName, "EasyCon"));
             }
@@ -409,6 +410,7 @@ namespace EasyCon
                 Invoke((Action)delegate
                 {
                     textBoxScript.ReadOnly = true;
+                    formController.ControllerEnabled = false;
                     StatusShowLog("开始运行");
                 });
                 Print("-- 开始运行 --", Color.Lime);
@@ -489,7 +491,7 @@ namespace EasyCon
             }
             StatusShowLog("连接失败");
             SystemSounds.Hand.Play();
-            MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（RX接0，TX接1，GND接GND）\n3.以上两步操作正确的话，点击搜索时单片机上的RX灯会闪烁\n4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n5.以上步骤都完成后重启程序再试\n\n可用手动连接端口：" + string.Join("、", ports));
+            MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（RX接0，TX接1，GND接GND）\n3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁\n4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n5.以上步骤都完成后重启程序再试\n\n可用手动连接端口：" + string.Join("、", ports));
             return null;
         }
 
@@ -841,7 +843,7 @@ namespace EasyCon
 
         private void 关于ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("作者：铃落（Nukieberry）\n\nv1.11：\n- 增加了脚本过长无法烧录的提示\n- 修复了取负和取反操作的语法校正错误\n- 增加了错误日志，遇到软件打不开的情况请查看error.log\n\nv1.1：\n- 新增常量、变量、条件判断、数值运算，基础语句也更新了使用变量的语法\n- 支持LED灯（TX显示数据收发，RX显示脚本运行）\n- 固件移动到Firmware文件夹，未来将支持更多的单片机\n- 增加了连接失败的自我诊断提示\n- 项目已开源", "关于");
+            MessageBox.Show("Copyright © 2020. 铃落(Nukieberry)", "关于");
         }
 
         private void buttonSerialPortSearch_Click(object sender, EventArgs e)

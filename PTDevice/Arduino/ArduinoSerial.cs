@@ -32,7 +32,6 @@ namespace PTDevice.Arduino
             Connected,
             ConnectedUnsafe,
             Error,
-            Timeout,
         }
 
         public delegate void StatusChangedHandler(Status status);
@@ -114,7 +113,6 @@ namespace PTDevice.Arduino
                 else
                     CurrentStatus = Status.ConnectedUnsafe;
                 bool hellocheck = _sayhello;
-                var hellotimer = DateTime.Now.AddMilliseconds(100);
 
                 byte[] inBuffer = new byte[255];
                 List<byte> outBuffer = new List<byte>();
@@ -154,13 +152,6 @@ namespace PTDevice.Arduino
                         var bytes = outBuffer.ToArray();
                         _port.Write(bytes, 0, bytes.Length);
                         BytesSent?.Invoke(_name, bytes);
-                    }
-
-                    // hello time out
-                    if (hellocheck && DateTime.Now >= hellotimer)
-                    {
-                        CurrentStatus = Status.Timeout;
-                        break;
                     }
                 }
             }

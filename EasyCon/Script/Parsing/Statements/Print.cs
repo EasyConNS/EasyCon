@@ -43,9 +43,9 @@ namespace EasyCon.Script.Parsing.Statements
 
         public class RegContent : Content
         {
-            public readonly uint Reg;
+            public readonly ValRegEx Reg;
 
-            public RegContent(uint reg)
+            public RegContent(ValRegEx reg)
             {
                 Reg = reg;
             }
@@ -57,7 +57,7 @@ namespace EasyCon.Script.Parsing.Statements
 
             public override string GetCodeString(Formats.Formatter formatter)
             {
-                return formatter.GetRegText(Reg);
+                return Reg.GetCodeText(formatter);
             }
         }
 
@@ -94,10 +94,10 @@ namespace EasyCon.Script.Parsing.Statements
                         contents.Add(new TextContent(" ", ""));
                         continue;
                     }
-                    m = Regex.Match(s, Formats.Register_F);
+                    m = Regex.Match(s, Formats.RegisterEx_F);
                     if (m.Success)
                     {
-                        contents.Add(new RegContent(args.Formatter.GetReg(s).Index));
+                        contents.Add(new RegContent(args.Formatter.GetRegEx(s)));
                         continue;
                     }
                     m = Regex.Match(s, Formats.Constant_F);

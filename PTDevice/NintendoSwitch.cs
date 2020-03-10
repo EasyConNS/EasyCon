@@ -414,11 +414,6 @@ namespace PTDevice
                         result = ConnectResult.Success;
                         ewh.Set();
                     }
-                    if (status == ArduinoSerial.Status.Timeout)
-                    {
-                        result = ConnectResult.Timeout;
-                        ewh.Set();
-                    }
                     if (status == ArduinoSerial.Status.Error)
                     {
                         result = ConnectResult.Error;
@@ -428,7 +423,7 @@ namespace PTDevice
             };
             Arduino.StatusChanged += statuschanged;
             Arduino.Connect(sayhello);
-            if (!ewh.WaitOne(100) && sayhello)
+            if (!ewh.WaitOne(300) && sayhello)
             {
                 Arduino.Disconnect();
                 Arduino = null;

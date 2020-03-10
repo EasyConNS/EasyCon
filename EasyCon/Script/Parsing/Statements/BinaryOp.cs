@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace EasyCon.Script.Statements
+namespace EasyCon.Script.Parsing.Statements
 {
     abstract class BinaryOp : Statement
     {
@@ -41,18 +41,18 @@ namespace EasyCon.Script.Statements
 
             public Statement Parse(ParserArgument args)
             {
-                var m = Regex.Match(args.Text, $@"^{Formats.Register}\s*\{_meta.Operator}\s*{(_meta.OnlyInstant ? Formats.Instant : Formats.Value)}$", RegexOptions.IgnoreCase);
+                var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\{_meta.Operator}\s*{(_meta.OnlyInstant ? Formats.Instant : Formats.ValueEx)}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, args.Formatter.GetReg(m.Groups[1].Value, true), args.Formatter.GetValue(m.Groups[2].Value)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, args.Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value)) as Statement;
                 return null;
             }
         }
 
         protected abstract Meta MetaInfo { get; }
-        public readonly ValReg RegDst;
+        public readonly ValRegEx RegDst;
         public readonly ValBase Value;
 
-        public BinaryOp(ValReg regdst, ValBase value)
+        public BinaryOp(ValRegEx regdst, ValBase value)
         {
             RegDst = regdst;
             Value = value;
@@ -65,7 +65,7 @@ namespace EasyCon.Script.Statements
 
         public override void Exec(Processor processor)
         {
-            processor.Register[RegDst.Index] = (short)MetaInfo.Function(processor.Register[RegDst.Index], Value.Evaluate(processor));
+            processor.Register[RegDst] = MetaInfo.Function(processor.Register[RegDst], Value.Evaluate(processor));
         }
 
         public override void Assemble(Assembler assembler)
@@ -80,7 +80,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public Add(ValReg regdst, ValBase value)
+        public Add(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
     }
@@ -91,7 +91,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public Sub(ValReg regdst, ValBase value)
+        public Sub(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
 
@@ -102,12 +102,14 @@ namespace EasyCon.Script.Statements
                 assembler.Add(AsmMov.Create(Assembler.IReg, -(Value as ValInstant).Val));
                 assembler.Add(AsmAdd.Create(RegDst.Index, new ValReg(Assembler.IReg)));
             }
-            else
+            else if (Value is ValReg)
             {
                 assembler.Add(AsmMov.Create(Assembler.IReg, Value));
                 assembler.Add(AsmNegative.Create(Assembler.IReg));
                 assembler.Add(AsmAdd.Create(RegDst.Index, new ValReg(Assembler.IReg)));
             }
+            else
+                throw new AssembleException(ErrorMessage.NotSupported);
         }
     }
 
@@ -117,7 +119,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public Mul(ValReg regdst, ValBase value)
+        public Mul(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
     }
@@ -128,7 +130,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public Div(ValReg regdst, ValBase value)
+        public Div(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
     }
@@ -139,7 +141,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public Mod(ValReg regdst, ValBase value)
+        public Mod(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
     }
@@ -150,7 +152,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public And(ValReg regdst, ValBase value)
+        public And(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
     }
@@ -161,7 +163,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public Or(ValReg regdst, ValBase value)
+        public Or(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
     }
@@ -172,7 +174,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public Xor(ValReg regdst, ValBase value)
+        public Xor(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
     }
@@ -183,7 +185,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public ShiftLeft(ValReg regdst, ValBase value)
+        public ShiftLeft(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
     }
@@ -194,7 +196,7 @@ namespace EasyCon.Script.Statements
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-        public ShiftRight(ValReg regdst, ValBase value)
+        public ShiftRight(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
     }

@@ -43,7 +43,7 @@ namespace EasyCon.Script.Assembly.Instructions
                 ins.RegSrc = (value as ValReg).Index;
                 return ins;
             }
-            else
+            else if (value is ValInstant)
             {
                 var val = (value as ValInstant).Val;
                 if (val < -(1 << 15) || val >= 1 << 15)
@@ -53,6 +53,8 @@ namespace EasyCon.Script.Assembly.Instructions
                 ins.Value = (value as ValInstant).Val;
                 return ins;
             }
+            else
+                return Failed.NotImplemented;
         }
 
         public override void WriteBytes(Stream stream)

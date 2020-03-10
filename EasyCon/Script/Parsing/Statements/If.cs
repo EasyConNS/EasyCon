@@ -36,13 +36,14 @@ namespace EasyCon.Script.Parsing.Statements
         }
 
         public static IStatementParser Parser = new StatementParser(Parse);
+        public override int IndentNext => 1;
         public Else Else;
         public EndIf EndIf;
         public readonly CompareOperator Operater;
-        public readonly ValReg Left;
+        public readonly ValRegEx Left;
         public readonly ValBase Right;
 
-        public If(CompareOperator op, ValReg left, ValBase right)
+        public If(CompareOperator op, ValRegEx left, ValBase right)
         {
             Operater = op;
             Left = left;
@@ -53,9 +54,9 @@ namespace EasyCon.Script.Parsing.Statements
         {
             foreach (var op in CompareOperator.All)
             {
-                var m = Regex.Match(args.Text, $@"^if\s+{Formats.Register}\s*{op.Operator}\s*{Formats.Value}$", RegexOptions.IgnoreCase);
+                var m = Regex.Match(args.Text, $@"^if\s+{Formats.RegisterEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return new If(op, args.Formatter.GetReg(m.Groups[1].Value), args.Formatter.GetValue(m.Groups[2].Value));
+                    return new If(op, args.Formatter.GetRegEx(m.Groups[1].Value), args.Formatter.GetValueEx(m.Groups[2].Value));
             }
             return null;
         }
@@ -100,6 +101,8 @@ namespace EasyCon.Script.Parsing.Statements
     class Else : Statement
     {
         public static IStatementParser Parser = new StatementParser(Parse);
+        public override int IndentThis => -1;
+        public override int IndentNext => 1;
         public If If;
 
         public static Statement Parse(ParserArgument args)
@@ -132,6 +135,7 @@ namespace EasyCon.Script.Parsing.Statements
     class EndIf : Statement
     {
         public static IStatementParser Parser = new StatementParser(Parse);
+        public override int IndentThis => -1;
         public If If;
 
         public static Statement Parse(ParserArgument args)

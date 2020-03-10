@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace EasyCon.Script.Parsing
 {
+    // base of valuetype
     abstract class ValBase
     {
         public abstract int Evaluate(Processor processor);
@@ -17,6 +18,7 @@ namespace EasyCon.Script.Parsing
         }
     }
 
+    // instant number, including constant
     class ValInstant : ValBase
     {
         public readonly int Val;
@@ -50,14 +52,23 @@ namespace EasyCon.Script.Parsing
         }
     }
 
-    class ValReg : ValBase
+    // register, either 16 or 32 bits
+    abstract class ValRegEx : ValBase
     {
         public readonly uint Index;
 
-        public ValReg(uint reg)
+        public ValRegEx(uint reg)
         {
             Index = reg;
         }
+    }
+
+    // 16-bit register
+    class ValReg : ValRegEx
+    {
+        public ValReg(uint reg)
+            : base(reg)
+        { }
 
         public override int Evaluate(Processor processor)
         {
@@ -67,6 +78,24 @@ namespace EasyCon.Script.Parsing
         public override string GetCodeText(Formats.Formatter formatter)
         {
             return formatter.GetRegText(Index);
+        }
+    }
+
+    // 32-bit combined register
+    class ValReg32 : ValRegEx
+    {
+        public ValReg32(uint reg)
+            : base(reg)
+        { }
+
+        public override int Evaluate(Processor processor)
+        {
+            return processor.Register.GetReg32(Index);
+        }
+
+        public override string GetCodeText(Formats.Formatter formatter)
+        {
+            return formatter.GetReg32Text(Index);
         }
     }
 }

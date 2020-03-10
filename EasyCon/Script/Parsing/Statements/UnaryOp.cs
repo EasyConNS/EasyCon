@@ -31,25 +31,27 @@ namespace EasyCon.Script.Parsing.Statements
         protected class UnaryOpParser : IStatementParser
         {
             readonly Meta _meta;
+            readonly bool _lhs;
 
-            public UnaryOpParser(Meta meta)
+            public UnaryOpParser(Meta meta, bool lhs = true)
             {
                 _meta = meta;
+                _lhs = lhs;
             }
 
             public Statement Parse(ParserArgument args)
             {
                 var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.Register}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, args.Formatter.GetReg(m.Groups[1].Value, true)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, args.Formatter.GetReg(m.Groups[1].Value, _lhs)) as Statement;
                 return null;
             }
         }
 
         protected abstract Meta MetaInfo { get; }
-        public readonly ValReg RegDst;
+        public readonly ValRegEx RegDst;
 
-        public UnaryOp(ValReg regdst)
+        public UnaryOp(ValRegEx regdst)
         {
             RegDst = regdst;
         }
@@ -61,11 +63,13 @@ namespace EasyCon.Script.Parsing.Statements
 
         public override void Exec(Processor processor)
         {
-            processor.Register[RegDst.Index] = (short)MetaInfo.Function(processor.Register[RegDst.Index]);
+            processor.Register[RegDst] = MetaInfo.Function(processor.Register[RegDst]);
         }
 
         public override void Assemble(Assembler assembler)
         {
+            if (RegDst is ValReg32)
+                throw new AssembleException(ErrorMessage.NotSupported);
             assembler.Add(Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index) as Instruction);
         }
     }
@@ -99,18 +103,18 @@ namespace EasyCon.Script.Parsing.Statements
 
             public Statement Parse(ParserArgument args)
             {
-                var m = Regex.Match(args.Text, $@"^{Formats.Register}\s*\=\s*{_meta.Operator}\s*{Formats.Register}$", RegexOptions.IgnoreCase);
+                var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\=\s*{_meta.Operator}\s*{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, args.Formatter.GetReg(m.Groups[1].Value, true), args.Formatter.GetReg(m.Groups[2].Value, false)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, args.Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetRegEx(m.Groups[2].Value, false)) as Statement;
                 return null;
             }
         }
 
         protected abstract Meta MetaInfo { get; }
-        public readonly ValReg RegDst;
-        public readonly ValReg RegSrc;
+        public readonly ValRegEx RegDst;
+        public readonly ValRegEx RegSrc;
 
-        public UnaryOpEx(ValReg regdst, ValReg regsrc)
+        public UnaryOpEx(ValRegEx regdst, ValRegEx regsrc)
         {
             RegDst = regdst;
             RegSrc = regsrc;
@@ -123,11 +127,13 @@ namespace EasyCon.Script.Parsing.Statements
 
         public override void Exec(Processor processor)
         {
-            processor.Register[RegDst.Index] = (short)MetaInfo.Function(processor.Register[RegSrc.Index]);
+            processor.Register[RegDst] = MetaInfo.Function(processor.Register[RegSrc]);
         }
 
         public override void Assemble(Assembler assembler)
         {
+            if (RegDst is ValReg32)
+                throw new AssembleException(ErrorMessage.NotSupported);
             assembler.Add(AsmMov.Create(RegDst.Index, RegSrc));
             assembler.Add(Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index) as Instruction);
         }
@@ -159,7 +165,7 @@ namespace EasyCon.Script.Parsing.Statements
     {
         static readonly Meta _Meta = new Meta(typeof(Push), typeof(AsmPush), "PUSH", null);
         protected override Meta MetaInfo => _Meta;
-        public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
+        public static readonly IStatementParser Parser = new UnaryOpParser(_Meta, false);
 
         public Push(ValReg regdst)
             : base(regdst)

@@ -42,62 +42,59 @@ namespace EasyCon.Script.Parsing
             }
         }
 
-        Statement ParseLing(string text)
-        {
-            Match m;
-            string indent;
-            string comment;
-            // get indent
-            m = Regex.Match(text, @"^(\s*)([^\s]?.*)$");
-            indent = m.Groups[1].Value;
-            text = m.Groups[2].Value;
-            // get comment
-            m = Regex.Match(text, @"(\s*#.*)$");
-            if (m.Success)
-            {
-                comment = m.Groups[1].Value;
-                text = text.Substring(0, text.Length - comment.Length);
-            }
-            else
-            {
-                comment = string.Empty;
-                text = text.Trim();
-            }
-            try
-            {
-                // enumerate generators
-                var args = new ParserArgument();
-                args.Text = text;
-                args.Formatter = new Formats.Formatter(_constants);
-                foreach (var parser in _parsers)
-                {
-                    var cmd = parser.Parse(args);
-                    if (cmd != null)
-                    {
-                        cmd.Indent = indent;
-                        cmd.Comment = comment;
-                        return cmd;
-                    }
-                }
-            }
-            catch (OverflowException)
-            {
-                throw new ParseException("数值溢出");
-            }
-            throw new ParseException("格式错误");
-        }
-
         public List<Statement> Parse(string text)
         {
             List<Statement> list = new List<Statement>();
             var lines = text.Replace("\r", "").Split('\n');
+            int indentnum = 0;
             for (int i = 0; i < lines.Length; i++)
             {
+                text = lines[i];
+                Match m;
+                string indent;
+                string comment;
+                // get indent
+                m = Regex.Match(text, @"^(\s*)([^\s]?.*)$");
+                indent = m.Groups[1].Value;
+                text = m.Groups[2].Value;
+                // get comment
+                m = Regex.Match(text, @"(\s*#.*)$");
+                if (m.Success)
+                {
+                    comment = m.Groups[1].Value;
+                    text = text.Substring(0, text.Length - comment.Length);
+                }
+                else
+                {
+                    comment = string.Empty;
+                    text = text.Trim();
+                }
                 try
                 {
-                    var cmd = ParseLing(lines[i]);
-                    if (cmd != null)
-                        list.Add(cmd);
+                    // enumerate generators
+                    var args = new ParserArgument();
+                    args.Text = text;
+                    args.Formatter = new Formats.Formatter(_constants);
+                    Statement st = null;
+                    foreach (var parser in _parsers)
+                    {
+                        st = parser.Parse(args);
+                        if (st != null)
+                        {
+                            indentnum += st.IndentThis;
+                            st.Indent = new string(' ', indentnum < 0 ? 0 : indentnum * 4);
+                            st.Comment = comment;
+                            list.Add(st);
+                            indentnum += st.IndentNext;
+                            break;
+                        }
+                    }
+                    if (st == null)
+                        throw new ParseException("格式错误", i);
+                }
+                catch (OverflowException)
+                {
+                    throw new ParseException("数值溢出", i);
                 }
                 catch (ParseException ex)
                 {
