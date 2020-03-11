@@ -177,11 +177,7 @@ namespace EasyCon.Script.Assembly
         {
             if (asmBytes.Length > board.DataSize)
                 throw new AssembleException("烧录失败！字节超出限制");
-            const int DataLen = 16;
             List<byte> list = new List<byte>(asmBytes);
-            // fill zeros
-            while (list.Count < board.DataSize)
-                list.Add(0);
             // load hex file
             var lines = hexStr.Split('\r', '\n');
             List<IntelHex> hexFile = new List<IntelHex>();
@@ -213,19 +209,17 @@ namespace EasyCon.Script.Assembly
             int ver = hexFile[index].Data[2];
             if (ver < board.Version)
                 throw new AssembleException("固件版本不符，请使用最新版的固件");
-            ushort address = hexFile[index].StartAddress;
-            // remove original data
-            hexFile.RemoveRange(index, hexFile.Count - index);
             // write data from asmBytes
-            for (int i = 0; i < list.Count; i += DataLen)
+            for (int i = 0; i < list.Count; )
             {
-                int len = Math.Min(DataLen, list.Count - i);
-                byte[] data = list.GetRange(i, len).ToArray();
-                hexFile.Add(new IntelHex(address, 0, data));
-                address += (ushort)len;
+                int len = Math.Min(hexFile[index].DataSize, list.Count - i);
+                byte[] data = hexFile[index].Data.ToArray();
+                list.CopyTo(i, data, 0, len);
+                hexFile[index].WriteData(data);
+                i += len;
+                index++;
             }
-            // write eof
-            hexFile.Add(new IntelHex(0, 1, new byte[0]));
+            // get string
             var str = new StringBuilder();
             foreach (var hex in hexFile)
                 str.AppendLine(hex.ToString());

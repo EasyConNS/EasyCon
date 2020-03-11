@@ -205,4 +205,16 @@ namespace EasyCon.Script.Parsing.Statements
             : base(regdst)
         { }
     }
+
+    class Rand : UnaryOp
+    {
+        static Random _rand = new Random();
+        static readonly Meta _Meta = new Meta(typeof(Rand), typeof(AsmRand), "RAND", a => _rand.Next(a));
+        protected override Meta MetaInfo => _Meta;
+        public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
+
+        public Rand(ValReg regdst)
+            : base(regdst)
+        { }
+    }
 }

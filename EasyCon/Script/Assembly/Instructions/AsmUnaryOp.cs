@@ -19,6 +19,7 @@ namespace EasyCon.Script.Assembly.Instructions
             LoadFor = 0b0110,
             StoreOp = 0b0111,
             Bool = 0b1000,
+            Rand = 0b1001,
         }
 
         public uint Op;
@@ -89,6 +90,14 @@ namespace EasyCon.Script.Assembly.Instructions
         public static Instruction Create(uint reg)
         {
             return Create<AsmBool>(Operator.Bool, reg);
+        }
+    }
+
+    class AsmRand : AsmUnaryOp
+    {
+        public static Instruction Create(uint reg)
+        {
+            return Create<AsmRand>(Operator.Rand, reg);
         }
     }
 }

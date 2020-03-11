@@ -273,6 +273,10 @@ Xor：目标变量 ^= 变量|值
 语法：BOOL 变量
 （值为零则得到0，非零则得到1）
 
+【随机数】
+语法：RAND 变量
+（生成一个随机数，取值范围为0~变量值-1，结果存入该变量）
+
 &lt;To Be Continued...&gt;</value>
   </data>
   <metadata name="statusStrip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
