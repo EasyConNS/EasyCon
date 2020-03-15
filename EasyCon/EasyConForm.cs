@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO.Ports;
 using PTDevice;
@@ -118,12 +115,12 @@ namespace EasyCon
 
                         // serial port status
                         var status = NS.GetConnectionStatus();
-                        if (status == PTDevice.Arduino.ArduinoSerial.Status.Connected)
+                        if (status == Status.Connected)
                         {
                             labelSerialStatus.Text = "已连接(稳定模式)";
                             labelSerialStatus.ForeColor = Color.Lime;
                         }
-                        else if (status == PTDevice.Arduino.ArduinoSerial.Status.ConnectedUnsafe)
+                        else if (status == Status.ConnectedUnsafe)
                         {
                             labelSerialStatus.Text = "已连接(单向模式)";
                             labelSerialStatus.ForeColor = Color.Yellow;
@@ -520,7 +517,7 @@ namespace EasyCon
             {
                 StatusShowLog("连接成功");
                 textBoxSerialPort.Text = portName;
-                if (NS.GetConnectionStatus() == ArduinoSerial.Status.ConnectedUnsafe)
+                if (NS.GetConnectionStatus() == Status.ConnectedUnsafe)
                     MessageBox.Show("正在使用单向连接模式。这是一种应急方案，并不表示成功连接到单片机，有可能无法正常工作。请检查连线并尽量使用稳定模式。");
                 return true;
             }
@@ -660,7 +657,7 @@ namespace EasyCon
         {
             if (!SerialCheckConnect())
                 return false;
-            if (NS.GetConnectionStatus() == ArduinoSerial.Status.ConnectedUnsafe)
+            if (NS.GetConnectionStatus() == Status.ConnectedUnsafe)
             {
                 MessageBox.Show("需要稳定模式才能烧录");
                 return false;
@@ -722,7 +719,7 @@ namespace EasyCon
         {
             if (!SerialCheckConnect())
                 return false;
-            if (NS.GetConnectionStatus() == ArduinoSerial.Status.ConnectedUnsafe)
+            if (NS.GetConnectionStatus() == Status.ConnectedUnsafe)
                 return true;
             int ver = NS.GetVersion();
             if (ver < GetSelectedBoard().Version)
@@ -756,7 +753,7 @@ namespace EasyCon
         {
             if (!SerialCheckConnect())
                 return;
-            if (NS.RemoteStart() || NS.GetConnectionStatus() == ArduinoSerial.Status.ConnectedUnsafe)
+            if (NS.RemoteStart() || NS.GetConnectionStatus() == Status.ConnectedUnsafe)
             {
                 SystemSounds.Beep.Play();
                 StatusShowLog("远程运行已开始");
@@ -772,7 +769,7 @@ namespace EasyCon
         {
             if (!SerialCheckConnect())
                 return;
-            if (NS.RemoteStop() || NS.GetConnectionStatus() == ArduinoSerial.Status.ConnectedUnsafe)
+            if (NS.RemoteStop() || NS.GetConnectionStatus() == Status.ConnectedUnsafe)
             {
                 SystemSounds.Beep.Play();
                 StatusShowLog("远程运行已停止");

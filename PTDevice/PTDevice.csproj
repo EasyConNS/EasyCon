@@ -41,8 +41,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Arduino\ArduinoBluetooth.cs" />
-    <Compile Include="Arduino\ArduinoSerial.cs" />
+    <Compile Include="IArduino.cs" />
+    <Compile Include="Arduinos\ArduinoBluetooth.cs" />
+    <Compile Include="Arduinos\ArduinoSerial.cs" />
+    <Compile Include="Arduinos\ArduinoWIFI.cs" />
+    <Compile Include="lib\Command.cs" />
+    <Compile Include="lib\Reply.cs" />
+    <Compile Include="lib\Status.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="LowLevelKeyboard.cs" />
     <Compile Include="NintendoSwitch.cs" />

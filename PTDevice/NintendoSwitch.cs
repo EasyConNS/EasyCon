@@ -312,7 +312,7 @@ namespace PTDevice
             }
         }
 
-        public ArduinoSerial Arduino { get; private set; }
+        public IArduino Arduino { get; private set; }
         Report _report = new Report();
         Dictionary<int, KeyStroke> _keystrokes = new Dictionary<int, KeyStroke>();
         bool _reset = false;
@@ -325,8 +325,8 @@ namespace PTDevice
 
         public delegate void LogHandler(string s);
         public event LogHandler Log;
-        public event ArduinoSerial.BytesTransferedHandler BytesSent;
-        public event ArduinoSerial.BytesTransferedHandler BytesReceived;
+        public event IArduino.BytesTransferedHandler BytesSent;
+        public event IArduino.BytesTransferedHandler BytesReceived;
 
         static NintendoSwitch _instance;
 
@@ -345,7 +345,7 @@ namespace PTDevice
             if (key == 1)
             {
                 //NS.TryConnect("COM5", true);
-                Arduino.Write(ArduinoSerial.Command.Ready, ArduinoSerial.Command.Debug);
+                Arduino.Write(Command.Ready, Command.Debug);
             }
             else if (key == 2)
             {
@@ -361,11 +361,11 @@ namespace PTDevice
             }
             else if (key == 3)
             {
-                Arduino.Write(ArduinoSerial.Command.Ready, ArduinoSerial.Command.ScriptStart);
+                Arduino.Write(Command.Ready, Command.ScriptStart);
             }
             else if (key == 4)
             {
-                Arduino.Write(ArduinoSerial.Command.Ready, ArduinoSerial.Command.ScriptStop);
+                Arduino.Write(Command.Ready, Command.ScriptStop);
             }
             else if (key == 5)
             {
@@ -393,28 +393,28 @@ namespace PTDevice
             Error,
         }
 
-        public ConnectResult TryConnect(string portName, bool sayhello)
+        public ConnectResult TryConnect(string connString, bool sayhello)
         {
-            if (portName == "")
+            if (connString == "")
                 return ConnectResult.InvalidArgument;
             Disconnect();
             EventWaitHandle ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
             ConnectResult result = ConnectResult.None;
-            Arduino = new ArduinoSerial(portName);
+            Arduino = new ArduinoSerial(connString);
             Arduino.BytesSent += (port, bytes) => BytesSent?.Invoke(port, bytes);
             Arduino.BytesReceived += (port, bytes) => BytesReceived?.Invoke(port, bytes);
-            ArduinoSerial.StatusChangedHandler statuschanged = status =>
+            IArduino.StatusChangedHandler statuschanged = status =>
             {
                 lock (ewh)
                 {
                     if (result != ConnectResult.None)
                         return;
-                    if (status == ArduinoSerial.Status.Connected || status == ArduinoSerial.Status.ConnectedUnsafe)
+                    if (status == Status.Connected || status == Status.ConnectedUnsafe)
                     {
                         result = ConnectResult.Success;
                         ewh.Set();
                     }
-                    if (status == ArduinoSerial.Status.Error)
+                    if (status == Status.Error)
                     {
                         result = ConnectResult.Error;
                         ewh.Set();
@@ -453,12 +453,12 @@ namespace PTDevice
 
         public bool IsConnected()
         {
-            return Arduino?.CurrentStatus == ArduinoSerial.Status.Connected || Arduino?.CurrentStatus == ArduinoSerial.Status.ConnectedUnsafe;
+            return Arduino?.CurrentStatus == Status.Connected || Arduino?.CurrentStatus == Status.ConnectedUnsafe;
         }
 
-        public ArduinoSerial.Status GetConnectionStatus()
+        public Status GetConnectionStatus()
         {
-            return Arduino?.CurrentStatus ?? ArduinoSerial.Status.Connecting;
+            return Arduino?.CurrentStatus ?? Status.Connecting;
         }
 
         public Report GetReport()
@@ -478,7 +478,7 @@ namespace PTDevice
         bool SendSync(Func<byte, bool> predicate, int timeout, params byte[] bytes)
         {
             EventWaitHandle ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
-            ArduinoSerial.BytesTransferedHandler h = (port, bytes_) =>
+            IArduino.BytesTransferedHandler h = (port, bytes_) =>
             {
                 foreach (var b in bytes_)
                     if (predicate(b))
@@ -504,16 +504,16 @@ namespace PTDevice
         bool ResetControl()
         {
             EventWaitHandle ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
-            ArduinoSerial.BytesTransferedHandler h = (port, bytes_) =>
+            IArduino.BytesTransferedHandler h = (port, bytes_) =>
             {
-                if (bytes_.Contains(ArduinoSerial.Reply.Hello))
+                if (bytes_.Contains(Reply.Hello))
                     ewh.Set();
             };
             try
             {
                 Arduino.BytesReceived += h;
                 for (int i = 0; i < 3; i++)
-                    Arduino.Write(ArduinoSerial.Command.Ready, ArduinoSerial.Command.Hello);
+                    Arduino.Write(Command.Ready, Command.Hello);
                 return ewh.WaitOne(50);
             }
             finally
@@ -755,16 +755,16 @@ namespace PTDevice
                 while (true)
                 {
                     if (!SendSync(
-                            b => b == ArduinoSerial.Reply.FlashStart,
+                            b => b == Reply.FlashStart,
                             100,
-                            ArduinoSerial.Command.Ready,
+                            Command.Ready,
                             (byte)(i & 0x7F),
                             (byte)(i >> 7),
                             (byte)(len & 0x7F),
                             (byte)(len >> 7),
-                            ArduinoSerial.Command.Flash)
+                            Command.Flash)
                         || !SendSync(
-                            b => b == ArduinoSerial.Reply.FlashEnd,
+                            b => b == Reply.FlashEnd,
                             100,
                             packet)
                         )
@@ -782,12 +782,12 @@ namespace PTDevice
 
         public bool RemoteStart()
         {
-            return SendSync(b => b == ArduinoSerial.Reply.ScriptAck, 100, ArduinoSerial.Command.Ready, ArduinoSerial.Command.ScriptStart);
+            return SendSync(b => b == Reply.ScriptAck, 100, Command.Ready, Command.ScriptStart);
         }
 
         public bool RemoteStop()
         {
-            return SendSync(b => b == ArduinoSerial.Reply.ScriptAck, 100, ArduinoSerial.Command.Ready, ArduinoSerial.Command.ScriptStop);
+            return SendSync(b => b == Reply.ScriptAck, 100, Command.Ready, Command.ScriptStop);
         }
 
         public int GetVersion()
@@ -801,7 +801,7 @@ namespace PTDevice
                     return true;
                 }
                 return false;
-            }, 100, ArduinoSerial.Command.Ready, ArduinoSerial.Command.Version);
+            }, 100, Command.Ready, Command.Version);
             return ver;
         }
     }

@@ -1,20 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.IO;
 using System.IO.Ports;
 using System.Threading;
 using System.Diagnostics;
 
 namespace PTDevice.Arduino
 {
-    public class ArduinoSerial
+    public class ArduinoSerial : IArduino
     {
         const bool DEBUG_MESSAGE = false;
 
-        string _name;
+        readonly string _name;
         SerialPort _port;
         bool _sayhello;
         Thread _t;
@@ -22,26 +20,15 @@ namespace PTDevice.Arduino
         List<byte[]> _outBuffer = new List<byte[]>();
         DateTime _time = DateTime.MinValue;
 
-        public delegate void BytesTransferedHandler(string portName, byte[] bytes);
-        public event BytesTransferedHandler BytesSent;
-        public event BytesTransferedHandler BytesReceived;
-
-        public enum Status
-        {
-            Connecting,
-            Connected,
-            ConnectedUnsafe,
-            Error,
-        }
-
-        public delegate void StatusChangedHandler(Status status);
-        public event StatusChangedHandler StatusChanged;
+        public override event BytesTransferedHandler BytesSent;
+        public override event BytesTransferedHandler BytesReceived;
+        public override event StatusChangedHandler StatusChanged;
         Status _status = Status.Connecting;
-        public Status CurrentStatus
+        public override Status CurrentStatus
         {
             get => _status;
 
-            private set
+            protected set
             {
                 if (_status == value)
                     return;
@@ -50,33 +37,12 @@ namespace PTDevice.Arduino
             }
         }
 
-        public static class Command
-        {
-            public const byte Ready = 0xA5;
-            public const byte Debug = 0x80;
-            public const byte Hello = 0x81;
-            public const byte Flash = 0x82;
-            public const byte ScriptStart = 0x83;
-            public const byte ScriptStop = 0x84;
-            public const byte Version = 0x85;
-        }
-
-        public static class Reply
-        {
-            public const byte Error = 0x0;
-            public const byte Ack = 0xFF;
-            public const byte Hello = 0x80;
-            public const byte FlashStart = 0x81;
-            public const byte FlashEnd = 0x82;
-            public const byte ScriptAck = 0x83;
-        }
-
         public ArduinoSerial(string portName)
         {
             _name = portName;
         }
 
-        public void Connect(bool sayhello = true)
+        public override void Connect(bool sayhello = true)
         {
             if (_t != null)
                 return;
@@ -90,7 +56,7 @@ namespace PTDevice.Arduino
             _t.Start();
         }
 
-        public void Disconnect()
+        public override void Disconnect()
         {
             _t?.Abort();
             _t?.Join(100);
@@ -165,7 +131,7 @@ namespace PTDevice.Arduino
             }
         }
 
-        public void Write(params byte[] val)
+        public override void Write(params byte[] val)
         {
             if (_t == null)
                 return;
