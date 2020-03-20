@@ -13,6 +13,7 @@ namespace PTDevice.Arduino
         const bool DEBUG_MESSAGE = false;
 
         readonly string _name;
+        readonly int _baudrate = 9600;
         SerialPort _port;
         bool _sayhello;
         Thread _t;
@@ -49,7 +50,7 @@ namespace PTDevice.Arduino
 
             _port = new SerialPort();
             _port.PortName = _name;
-            _port.BaudRate = 9600;
+            _port.BaudRate = _baudrate;
             _sayhello = sayhello;
             _t = new Thread(Do);
             _t.IsBackground = true;

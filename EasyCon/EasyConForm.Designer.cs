@@ -68,7 +68,6 @@
             this.labelSerialStatus = new System.Windows.Forms.Label();
             this.buttonSerialPortConnect = new System.Windows.Forms.Button();
             this.buttonSerialPortSearch = new System.Windows.Forms.Button();
-            this.textBoxSerialPort = new System.Windows.Forms.TextBox();
             this.label18 = new System.Windows.Forms.Label();
             this.buttonKeyMapping = new System.Windows.Forms.Button();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
@@ -83,6 +82,7 @@
             this.comboBoxBoardType = new System.Windows.Forms.ComboBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.textBoxFirmware = new System.Windows.Forms.TextBox();
+            this.comboBoxSerialPort = new System.Windows.Forms.ComboBox();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -95,7 +95,7 @@
             // 
             // menuStrip1
             // 
-            this.menuStrip1.Font = new System.Drawing.Font("Microsoft YaHei", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.menuStrip1.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.文件ToolStripMenuItem,
             this.脚本ToolStripMenuItem,
@@ -370,6 +370,7 @@
             // 
             this.textBoxScript.AcceptsReturn = true;
             this.textBoxScript.AcceptsTab = true;
+            this.textBoxScript.AllowDrop = true;
             this.textBoxScript.Location = new System.Drawing.Point(7, 23);
             this.textBoxScript.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.textBoxScript.Multiline = true;
@@ -378,6 +379,8 @@
             this.textBoxScript.Size = new System.Drawing.Size(422, 671);
             this.textBoxScript.TabIndex = 0;
             this.textBoxScript.TextChanged += new System.EventHandler(this.textBoxScript_TextChanged);
+            this.textBoxScript.DragDrop += new System.Windows.Forms.DragEventHandler(this.textBoxScript_DragDrop);
+            this.textBoxScript.DragEnter += new System.Windows.Forms.DragEventHandler(this.textBoxScript_DragEnter);
             this.textBoxScript.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.textBoxScript_PreviewKeyDown);
             // 
             // statusStrip1
@@ -403,11 +406,11 @@
             // 
             // groupBox3
             // 
+            this.groupBox3.Controls.Add(this.comboBoxSerialPort);
             this.groupBox3.Controls.Add(this.buttonControllerHelp);
             this.groupBox3.Controls.Add(this.labelSerialStatus);
             this.groupBox3.Controls.Add(this.buttonSerialPortConnect);
             this.groupBox3.Controls.Add(this.buttonSerialPortSearch);
-            this.groupBox3.Controls.Add(this.textBoxSerialPort);
             this.groupBox3.Controls.Add(this.label18);
             this.groupBox3.Controls.Add(this.buttonKeyMapping);
             this.groupBox3.Controls.Add(this.buttonShowController);
@@ -432,9 +435,9 @@
             // 
             this.labelSerialStatus.BackColor = System.Drawing.Color.DimGray;
             this.labelSerialStatus.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.labelSerialStatus.Location = new System.Drawing.Point(117, 21);
+            this.labelSerialStatus.Location = new System.Drawing.Point(137, 21);
             this.labelSerialStatus.Name = "labelSerialStatus";
-            this.labelSerialStatus.Size = new System.Drawing.Size(189, 22);
+            this.labelSerialStatus.Size = new System.Drawing.Size(169, 22);
             this.labelSerialStatus.TabIndex = 31;
             this.labelSerialStatus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
@@ -458,18 +461,9 @@
             this.buttonSerialPortSearch.UseVisualStyleBackColor = true;
             this.buttonSerialPortSearch.Click += new System.EventHandler(this.buttonSerialPortSearch_Click);
             // 
-            // textBoxSerialPort
-            // 
-            this.textBoxSerialPort.BackColor = System.Drawing.Color.White;
-            this.textBoxSerialPort.Location = new System.Drawing.Point(62, 21);
-            this.textBoxSerialPort.Name = "textBoxSerialPort";
-            this.textBoxSerialPort.Size = new System.Drawing.Size(49, 22);
-            this.textBoxSerialPort.TabIndex = 27;
-            this.textBoxSerialPort.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            // 
             // label18
             // 
-            this.label18.Location = new System.Drawing.Point(6, 23);
+            this.label18.Location = new System.Drawing.Point(6, 22);
             this.label18.Margin = new System.Windows.Forms.Padding(0);
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(53, 18);
@@ -591,8 +585,18 @@
             this.textBoxFirmware.TabIndex = 5;
             this.textBoxFirmware.WordWrap = false;
             // 
+            // comboBoxSerialPort
+            // 
+            this.comboBoxSerialPort.FormattingEnabled = true;
+            this.comboBoxSerialPort.Location = new System.Drawing.Point(58, 19);
+            this.comboBoxSerialPort.Name = "comboBoxSerialPort";
+            this.comboBoxSerialPort.Size = new System.Drawing.Size(70, 24);
+            this.comboBoxSerialPort.TabIndex = 34;
+            this.comboBoxSerialPort.Text = "选择串口";
+            // 
             // EasyConForm
             // 
+            this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1119, 761);
@@ -604,7 +608,7 @@
             this.Controls.Add(this.groupBoxScript);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.menuStrip1);
-            this.Font = new System.Drawing.Font("Microsoft YaHei", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("微软雅黑", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.KeyPreview = true;
             this.MainMenuStrip = this.menuStrip1;
@@ -612,7 +616,7 @@
             this.MaximizeBox = false;
             this.Name = "EasyConForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "伊机控 EasyCon v1.13";
+            this.Text = "伊机控 EasyCon v1.13.1 cale·改";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.EasyConForm_KeyDown);
@@ -624,7 +628,6 @@
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();
             this.groupBox3.ResumeLayout(false);
-            this.groupBox3.PerformLayout();
             this.groupBox6.ResumeLayout(false);
             this.groupBox5.ResumeLayout(false);
             this.groupBox2.ResumeLayout(false);
@@ -664,7 +667,6 @@
         private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.Button buttonKeyMapping;
         private System.Windows.Forms.Button buttonSerialPortSearch;
-        private System.Windows.Forms.TextBox textBoxSerialPort;
         private System.Windows.Forms.Label label18;
         private System.Windows.Forms.Button buttonSerialPortConnect;
         private System.Windows.Forms.Label labelSerialStatus;
@@ -690,6 +692,7 @@
         private System.Windows.Forms.ComboBox comboBoxBoardType;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.TextBox textBoxFirmware;
+        private System.Windows.Forms.ComboBox comboBoxSerialPort;
     }
 }
 

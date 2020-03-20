@@ -40,7 +40,7 @@ namespace PTDevice.Arduino
             }
         }
 
-        public ArduinoWIFI(string addr, int port = 1229)
+        public ArduinoWIFI(string addr, int port = 8266)
         {
             _ipaddr = addr;
             _port = port;

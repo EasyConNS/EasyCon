@@ -54,6 +54,7 @@ namespace EasyCon
 
         private void EasyConForm_Load(object sender, EventArgs e)
         {
+            InitSerialPorts();
             InitBoards();
             RegisterKeys();
 
@@ -88,6 +89,16 @@ namespace EasyCon
             // enable debug print
             显示调试信息ToolStripMenuItem.Checked = true;
 #endif
+        }
+        protected override void WndProc(ref Message m)
+        {
+            switch (m.Msg)
+            {
+                case 0x0219: // WM_DEVICECHANGE
+                    InitSerialPorts();
+                    break;
+            }
+            base.WndProc(ref m);
         }
 
         void Test(int key)
@@ -214,6 +225,16 @@ namespace EasyCon
             File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(_config));
         }
 
+        void InitSerialPorts()
+        {
+            comboBoxSerialPort.Items.Clear();
+
+            comboBoxSerialPort.Items.AddRange(SerialPort.GetPortNames());
+            if (comboBoxSerialPort.Items.Count > 0)
+            {
+                comboBoxSerialPort.SelectedIndex = 0;
+            }
+        }
         void InitBoards()
         {
             comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "UNO", 0x44, 400));
@@ -469,8 +490,8 @@ namespace EasyCon
         {
             if (NS.IsConnected())
                 return true;
-            if (textBoxSerialPort.Text != "")
-                return SerialConnect(textBoxSerialPort.Text);
+            if (comboBoxSerialPort.Text != "")
+                return SerialConnect(comboBoxSerialPort.Text);
             return SerialSearchConnect() != null;
         }
 
@@ -486,7 +507,7 @@ namespace EasyCon
                 if (r == NintendoSwitch.ConnectResult.Success)
                 {
                     StatusShowLog("连接成功");
-                    textBoxSerialPort.Text = portName;
+                    // textBoxSerialPort.Text = portName;
                     return portName;
                 }
             }
@@ -498,9 +519,9 @@ namespace EasyCon
 
         public bool SerialConnect(string portName)
         {
+            // portName = "10.10.10.163";
             StatusShowLog("开始连接...");
-            int n;
-            if (int.TryParse(portName, out n))
+            if (int.TryParse(portName, out int n))
                 portName = "COM" + portName;
             // try stable connection
             var r = NS.TryConnect(portName, true);
@@ -516,7 +537,7 @@ namespace EasyCon
             if (r == NintendoSwitch.ConnectResult.Success)
             {
                 StatusShowLog("连接成功");
-                textBoxSerialPort.Text = portName;
+                // textBoxSerialPort.Text = portName;
                 if (NS.GetConnectionStatus() == Status.ConnectedUnsafe)
                     MessageBox.Show("正在使用单向连接模式。这是一种应急方案，并不表示成功连接到单片机，有可能无法正常工作。请检查连线并尽量使用稳定模式。");
                 return true;
@@ -855,7 +876,7 @@ namespace EasyCon
 
         private void buttonSerialPortConnect_Click(object sender, EventArgs e)
         {
-            if (SerialConnect(textBoxSerialPort.Text))
+            if (SerialConnect(comboBoxSerialPort.Text))
                 SystemSounds.Beep.Play();
         }
 
@@ -981,6 +1002,31 @@ namespace EasyCon
         private void comboBoxBoardType_SelectedIndexChanged(object sender, EventArgs e)
         {
             textBoxFirmware.Text = $"{(comboBoxBoardType.SelectedItem as Board)?.CoreName}.hex";
+        }
+
+        private void textBoxScript_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effect = DragDropEffects.All;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        private void textBoxScript_DragDrop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                string[] path = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+                var _script = File.ReadAllText(path[0]);
+                if (Path.GetExtension(path[0]) != ".txt") return;
+                textBoxScript.Text = _script;
+            }
+            catch
+            { }
         }
     }
 }

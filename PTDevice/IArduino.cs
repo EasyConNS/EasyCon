@@ -6,7 +6,7 @@ namespace PTDevice
 {
     public abstract class IArduino
     {
-        public delegate void BytesTransferedHandler(string portName, byte[] bytes);
+        public delegate void BytesTransferedHandler(string connString, byte[] bytes);
         public delegate void StatusChangedHandler(Status status);
         public virtual event BytesTransferedHandler BytesSent;
         public virtual event BytesTransferedHandler BytesReceived;
