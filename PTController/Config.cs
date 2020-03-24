@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.IO;
+using Newtonsoft.Json;
 
-namespace EasyCon
+namespace PTController
 {
     public class Config
     {
@@ -41,6 +39,28 @@ namespace EasyCon
             KeyMapping.RSLeft = Keys.Left;
             KeyMapping.RSRight = Keys.Right;
         }
+        public static Config LoadConfig(string configPath)
+        {
+            Config _config;
+            try
+            {
+                _config = JsonConvert.DeserializeObject<Config>(File.ReadAllText(configPath));
+            }
+            catch (Exception ex)
+            {
+                if (!(ex is FileNotFoundException))
+                    MessageBox.Show("读取设置文件失败！");
+                _config = new Config();
+                _config.SetDefault();
+            }
+            return _config;
+        }
+
+        public static void SaveConfig(Config _config, string configPath)
+        {
+            File.WriteAllText(configPath, JsonConvert.SerializeObject(_config));
+        }
+
     }
 
     public struct KeyMapping

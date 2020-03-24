@@ -49,7 +49,6 @@
     <Compile Include="lib\Reply.cs" />
     <Compile Include="lib\Status.cs" />
     <Compile Include="Extensions.cs" />
-    <Compile Include="LowLevelKeyboard.cs" />
     <Compile Include="NintendoSwitch.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

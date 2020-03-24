@@ -13,10 +13,10 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Media;
 using System.IO;
-using Newtonsoft.Json;
 using PTDevice.Arduino;
 using EasyCon.Script.Assembly;
 using EasyCon.Script.Parsing;
+using static EasyCon.Properties.Settings;
 
 namespace EasyCon
 {
@@ -45,11 +45,12 @@ namespace EasyCon
         public EasyConForm()
         {
             InitializeComponent();
+            Text = $"伊机控 EasyCon {Default.version} cale·改";
             Icon = Properties.Resources.favicon;
 
             formController = new FormController(new ControllerAdapter());
             formKeyMapping = new FormKeyMapping();
-            LoadConfig();
+            _config = Config.LoadConfig(ConfigPath);
         }
 
         private void EasyConForm_Load(object sender, EventArgs e)
@@ -205,26 +206,6 @@ namespace EasyCon
             { }
         }
 
-        void LoadConfig()
-        {
-            try
-            {
-                _config = JsonConvert.DeserializeObject<Config>(File.ReadAllText(ConfigPath));
-            }
-            catch (Exception ex)
-            {
-                if (!(ex is FileNotFoundException))
-                    MessageBox.Show("读取设置文件失败！");
-                _config = new Config();
-                _config.SetDefault();
-            }
-        }
-
-        void SaveConfig()
-        {
-            File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(_config));
-        }
-
         void InitSerialPorts()
         {
             comboBoxSerialPort.Items.Clear();
@@ -237,11 +218,11 @@ namespace EasyCon
         }
         void InitBoards()
         {
-            comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "UNO", 0x44, 400));
-            comboBoxBoardType.Items.Add(new Board("Teensy 2.0", "Teensy2", 0x44, 900));
-            comboBoxBoardType.Items.Add(new Board("Teensy 2.0++", "Teensy2pp", 0x44, 900));
             comboBoxBoardType.Items.Add(new Board("Leonardo", "Leonardo", 0x44, 900));
             comboBoxBoardType.Items.Add(new Board("Beetle", "Beetle", 0x44, 900));
+            comboBoxBoardType.Items.Add(new Board("Teensy 2.0", "Teensy2", 0x44, 900));
+            comboBoxBoardType.Items.Add(new Board("Teensy 2.0++", "Teensy2pp", 0x44, 900));
+            comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "UNO", 0x44, 400));
             comboBoxBoardType.SelectedIndex = 0;
         }
 
@@ -490,7 +471,7 @@ namespace EasyCon
         {
             if (NS.IsConnected())
                 return true;
-            if (comboBoxSerialPort.Text != "")
+            if (comboBoxSerialPort.Items.Count != 0)
                 return SerialConnect(comboBoxSerialPort.Text);
             return SerialSearchConnect() != null;
         }
@@ -499,7 +480,8 @@ namespace EasyCon
         {
             StatusShowLog("尝试连接...");
             var ports = SerialPort.GetPortNames();
-            foreach (var portName in ports)
+            
+            foreach (string portName in comboBoxSerialPort.Items)
             {
                 var r = NS.TryConnect(portName, true);
                 if (显示调试信息ToolStripMenuItem.Checked)
@@ -519,7 +501,6 @@ namespace EasyCon
 
         public bool SerialConnect(string portName)
         {
-            // portName = "10.10.10.163";
             StatusShowLog("开始连接...");
             if (int.TryParse(portName, out int n))
                 portName = "COM" + portName;
@@ -816,7 +797,7 @@ namespace EasyCon
             {
                 ShowControllerHelp();
                 _config.ShowControllerHelp = false;
-                SaveConfig();
+                Config.SaveConfig(_config, ConfigPath);
             }
         }
 
@@ -921,7 +902,7 @@ namespace EasyCon
             if (formKeyMapping.ShowDialog() == DialogResult.OK)
             {
                 _config.KeyMapping = formKeyMapping.KeyMapping;
-                SaveConfig();
+                Config.SaveConfig(_config, ConfigPath);
                 RegisterKeys();
             }
         }
