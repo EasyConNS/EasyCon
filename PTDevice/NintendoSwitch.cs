@@ -393,14 +393,27 @@ namespace PTDevice
             Error,
         }
 
-        public ConnectResult TryConnect(string connString, bool sayhello)
+        public ConnectResult TryConnect(string connString, int mode = 1, bool sayhello = true)
         {
             if (connString == "")
                 return ConnectResult.InvalidArgument;
             Disconnect();
             EventWaitHandle ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
             ConnectResult result = ConnectResult.None;
-            Arduino = new ArduinoSerial(connString);
+            switch (mode)
+            {
+                case 2:
+                    Arduino = new ArduinoWIFI(connString);
+                    break;
+                case 3:
+                    // TODO
+                    Arduino = new ArduinoBluetooth(connString);
+                    break;
+                case 1:
+                default:
+                    Arduino = new ArduinoSerial(connString);
+                    break;
+            }
             Arduino.BytesSent += (port, bytes) => BytesSent?.Invoke(port, bytes);
             Arduino.BytesReceived += (port, bytes) => BytesReceived?.Invoke(port, bytes);
             IArduino.StatusChangedHandler statuschanged = status =>

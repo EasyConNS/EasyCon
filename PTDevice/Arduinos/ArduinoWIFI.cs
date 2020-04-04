@@ -52,9 +52,6 @@ namespace PTDevice.Arduino
                 return;
 
             tcpClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            IPAddress ipaddress = IPAddress.Parse(_ipaddr);
-            _point = new IPEndPoint(ipaddress, _port);
-
             _sayhello = sayhello;
             _t = new Thread(Do);
             _t.IsBackground = true;
@@ -72,6 +69,8 @@ namespace PTDevice.Arduino
         {
             try
             {
+                IPAddress ipaddress = IPAddress.Parse(_ipaddr);
+                _point = new IPEndPoint(ipaddress, _port);
                 tcpClient.Connect(_point);
 
                 // say hello

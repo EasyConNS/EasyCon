@@ -64,6 +64,7 @@
             this.toolStripProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.comboBoxSerialPort = new System.Windows.Forms.ComboBox();
             this.buttonControllerHelp = new System.Windows.Forms.Button();
             this.labelSerialStatus = new System.Windows.Forms.Label();
             this.buttonSerialPortConnect = new System.Windows.Forms.Button();
@@ -77,19 +78,17 @@
             this.buttonFlash = new System.Windows.Forms.Button();
             this.buttonRemoteStop = new System.Windows.Forms.Button();
             this.buttonRemoteStart = new System.Windows.Forms.Button();
-            this.groupBox5 = new System.Windows.Forms.GroupBox();
-            this.buttonGenerateFirmware = new System.Windows.Forms.Button();
             this.comboBoxBoardType = new System.Windows.Forms.ComboBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.buttonGenerateFirmware = new System.Windows.Forms.Button();
             this.textBoxFirmware = new System.Windows.Forms.TextBox();
-            this.comboBoxSerialPort = new System.Windows.Forms.ComboBox();
+            this.buttonWIFIConnect = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             this.groupBox3.SuspendLayout();
             this.groupBox6.SuspendLayout();
-            this.groupBox5.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -332,7 +331,7 @@
             // 
             // buttonShowController
             // 
-            this.buttonShowController.Location = new System.Drawing.Point(6, 79);
+            this.buttonShowController.Location = new System.Drawing.Point(5, 116);
             this.buttonShowController.Name = "buttonShowController";
             this.buttonShowController.Size = new System.Drawing.Size(185, 40);
             this.buttonShowController.TabIndex = 3;
@@ -406,6 +405,7 @@
             // 
             // groupBox3
             // 
+            this.groupBox3.Controls.Add(this.buttonWIFIConnect);
             this.groupBox3.Controls.Add(this.comboBoxSerialPort);
             this.groupBox3.Controls.Add(this.buttonControllerHelp);
             this.groupBox3.Controls.Add(this.labelSerialStatus);
@@ -414,16 +414,25 @@
             this.groupBox3.Controls.Add(this.label18);
             this.groupBox3.Controls.Add(this.buttonKeyMapping);
             this.groupBox3.Controls.Add(this.buttonShowController);
-            this.groupBox3.Location = new System.Drawing.Point(14, 609);
+            this.groupBox3.Location = new System.Drawing.Point(14, 572);
             this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(312, 126);
+            this.groupBox3.Size = new System.Drawing.Size(312, 163);
             this.groupBox3.TabIndex = 4;
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "连接";
             // 
+            // comboBoxSerialPort
+            // 
+            this.comboBoxSerialPort.FormattingEnabled = true;
+            this.comboBoxSerialPort.Location = new System.Drawing.Point(58, 19);
+            this.comboBoxSerialPort.Name = "comboBoxSerialPort";
+            this.comboBoxSerialPort.Size = new System.Drawing.Size(93, 24);
+            this.comboBoxSerialPort.TabIndex = 34;
+            this.comboBoxSerialPort.Text = "选择/编辑地址";
+            // 
             // buttonControllerHelp
             // 
-            this.buttonControllerHelp.Location = new System.Drawing.Point(192, 79);
+            this.buttonControllerHelp.Location = new System.Drawing.Point(191, 116);
             this.buttonControllerHelp.Name = "buttonControllerHelp";
             this.buttonControllerHelp.Size = new System.Drawing.Size(33, 40);
             this.buttonControllerHelp.TabIndex = 33;
@@ -435,17 +444,17 @@
             // 
             this.labelSerialStatus.BackColor = System.Drawing.Color.DimGray;
             this.labelSerialStatus.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.labelSerialStatus.Location = new System.Drawing.Point(137, 21);
+            this.labelSerialStatus.Location = new System.Drawing.Point(6, 64);
             this.labelSerialStatus.Name = "labelSerialStatus";
-            this.labelSerialStatus.Size = new System.Drawing.Size(169, 22);
+            this.labelSerialStatus.Size = new System.Drawing.Size(145, 37);
             this.labelSerialStatus.TabIndex = 31;
             this.labelSerialStatus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // buttonSerialPortConnect
             // 
-            this.buttonSerialPortConnect.Location = new System.Drawing.Point(6, 45);
+            this.buttonSerialPortConnect.Location = new System.Drawing.Point(157, 11);
             this.buttonSerialPortConnect.Name = "buttonSerialPortConnect";
-            this.buttonSerialPortConnect.Size = new System.Drawing.Size(150, 32);
+            this.buttonSerialPortConnect.Size = new System.Drawing.Size(149, 32);
             this.buttonSerialPortConnect.TabIndex = 30;
             this.buttonSerialPortConnect.Text = "连接单片机(手动)";
             this.buttonSerialPortConnect.UseVisualStyleBackColor = true;
@@ -468,12 +477,12 @@
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(53, 18);
             this.label18.TabIndex = 28;
-            this.label18.Text = "串行口";
+            this.label18.Text = "连接地址";
             this.label18.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // buttonKeyMapping
             // 
-            this.buttonKeyMapping.Location = new System.Drawing.Point(226, 79);
+            this.buttonKeyMapping.Location = new System.Drawing.Point(225, 116);
             this.buttonKeyMapping.Name = "buttonKeyMapping";
             this.buttonKeyMapping.Size = new System.Drawing.Size(81, 40);
             this.buttonKeyMapping.TabIndex = 4;
@@ -489,16 +498,16 @@
             this.groupBox6.Controls.Add(this.buttonRemoteStart);
             this.groupBox6.Location = new System.Drawing.Point(165, 414);
             this.groupBox6.Name = "groupBox6";
-            this.groupBox6.Size = new System.Drawing.Size(161, 189);
+            this.groupBox6.Size = new System.Drawing.Size(161, 152);
             this.groupBox6.TabIndex = 5;
             this.groupBox6.TabStop = false;
             this.groupBox6.Text = "烧录模式";
             // 
             // buttonFlashClear
             // 
-            this.buttonFlashClear.Location = new System.Drawing.Point(6, 128);
+            this.buttonFlashClear.Location = new System.Drawing.Point(6, 105);
             this.buttonFlashClear.Name = "buttonFlashClear";
-            this.buttonFlashClear.Size = new System.Drawing.Size(149, 55);
+            this.buttonFlashClear.Size = new System.Drawing.Size(149, 42);
             this.buttonFlashClear.TabIndex = 4;
             this.buttonFlashClear.Text = "清除烧录的程序";
             this.buttonFlashClear.UseVisualStyleBackColor = true;
@@ -506,9 +515,9 @@
             // 
             // buttonFlash
             // 
-            this.buttonFlash.Location = new System.Drawing.Point(6, 21);
+            this.buttonFlash.Location = new System.Drawing.Point(6, 20);
             this.buttonFlash.Name = "buttonFlash";
-            this.buttonFlash.Size = new System.Drawing.Size(149, 55);
+            this.buttonFlash.Size = new System.Drawing.Size(149, 40);
             this.buttonFlash.TabIndex = 1;
             this.buttonFlash.Text = "编译并烧录";
             this.buttonFlash.UseVisualStyleBackColor = true;
@@ -516,9 +525,9 @@
             // 
             // buttonRemoteStop
             // 
-            this.buttonRemoteStop.Location = new System.Drawing.Point(81, 77);
+            this.buttonRemoteStop.Location = new System.Drawing.Point(81, 62);
             this.buttonRemoteStop.Name = "buttonRemoteStop";
-            this.buttonRemoteStop.Size = new System.Drawing.Size(74, 50);
+            this.buttonRemoteStop.Size = new System.Drawing.Size(74, 41);
             this.buttonRemoteStop.TabIndex = 3;
             this.buttonRemoteStop.Text = "远程停止";
             this.buttonRemoteStop.UseVisualStyleBackColor = true;
@@ -526,33 +535,13 @@
             // 
             // buttonRemoteStart
             // 
-            this.buttonRemoteStart.Location = new System.Drawing.Point(6, 77);
+            this.buttonRemoteStart.Location = new System.Drawing.Point(6, 62);
             this.buttonRemoteStart.Name = "buttonRemoteStart";
-            this.buttonRemoteStart.Size = new System.Drawing.Size(74, 50);
+            this.buttonRemoteStart.Size = new System.Drawing.Size(74, 41);
             this.buttonRemoteStart.TabIndex = 2;
             this.buttonRemoteStart.Text = "远程运行";
             this.buttonRemoteStart.UseVisualStyleBackColor = true;
             this.buttonRemoteStart.Click += new System.EventHandler(this.buttonRemoteStart_Click);
-            // 
-            // groupBox5
-            // 
-            this.groupBox5.Controls.Add(this.buttonGenerateFirmware);
-            this.groupBox5.Location = new System.Drawing.Point(14, 499);
-            this.groupBox5.Name = "groupBox5";
-            this.groupBox5.Size = new System.Drawing.Size(145, 104);
-            this.groupBox5.TabIndex = 4;
-            this.groupBox5.TabStop = false;
-            this.groupBox5.Text = "固件模式";
-            // 
-            // buttonGenerateFirmware
-            // 
-            this.buttonGenerateFirmware.Location = new System.Drawing.Point(6, 21);
-            this.buttonGenerateFirmware.Name = "buttonGenerateFirmware";
-            this.buttonGenerateFirmware.Size = new System.Drawing.Size(134, 77);
-            this.buttonGenerateFirmware.TabIndex = 0;
-            this.buttonGenerateFirmware.Text = "生成固件";
-            this.buttonGenerateFirmware.UseVisualStyleBackColor = true;
-            this.buttonGenerateFirmware.Click += new System.EventHandler(this.buttonGenerateFirmware_Click);
             // 
             // comboBoxBoardType
             // 
@@ -566,14 +555,25 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.buttonGenerateFirmware);
             this.groupBox2.Controls.Add(this.textBoxFirmware);
             this.groupBox2.Controls.Add(this.comboBoxBoardType);
             this.groupBox2.Location = new System.Drawing.Point(14, 414);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(145, 79);
+            this.groupBox2.Size = new System.Drawing.Size(145, 152);
             this.groupBox2.TabIndex = 5;
             this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "单片机类型";
+            this.groupBox2.Text = "固件模式";
+            // 
+            // buttonGenerateFirmware
+            // 
+            this.buttonGenerateFirmware.Location = new System.Drawing.Point(5, 77);
+            this.buttonGenerateFirmware.Name = "buttonGenerateFirmware";
+            this.buttonGenerateFirmware.Size = new System.Drawing.Size(134, 68);
+            this.buttonGenerateFirmware.TabIndex = 6;
+            this.buttonGenerateFirmware.Text = "生成固件";
+            this.buttonGenerateFirmware.UseVisualStyleBackColor = true;
+            this.buttonGenerateFirmware.Click += new System.EventHandler(this.buttonGenerateFirmware_Click);
             // 
             // textBoxFirmware
             // 
@@ -585,14 +585,15 @@
             this.textBoxFirmware.TabIndex = 5;
             this.textBoxFirmware.WordWrap = false;
             // 
-            // comboBoxSerialPort
+            // buttonWIFIConnect
             // 
-            this.comboBoxSerialPort.FormattingEnabled = true;
-            this.comboBoxSerialPort.Location = new System.Drawing.Point(58, 19);
-            this.comboBoxSerialPort.Name = "comboBoxSerialPort";
-            this.comboBoxSerialPort.Size = new System.Drawing.Size(70, 24);
-            this.comboBoxSerialPort.TabIndex = 34;
-            this.comboBoxSerialPort.Text = "选择串口";
+            this.buttonWIFIConnect.Location = new System.Drawing.Point(157, 79);
+            this.buttonWIFIConnect.Name = "buttonWIFIConnect";
+            this.buttonWIFIConnect.Size = new System.Drawing.Size(149, 32);
+            this.buttonWIFIConnect.TabIndex = 37;
+            this.buttonWIFIConnect.Text = "WIFI连接";
+            this.buttonWIFIConnect.UseVisualStyleBackColor = true;
+            this.buttonWIFIConnect.Click += new System.EventHandler(this.buttonWIFIConnect_Click);
             // 
             // EasyConForm
             // 
@@ -602,7 +603,6 @@
             this.ClientSize = new System.Drawing.Size(1119, 761);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox6);
-            this.Controls.Add(this.groupBox5);
             this.Controls.Add(this.groupBox3);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.groupBoxScript);
@@ -629,7 +629,6 @@
             this.statusStrip1.PerformLayout();
             this.groupBox3.ResumeLayout(false);
             this.groupBox6.ResumeLayout(false);
-            this.groupBox5.ResumeLayout(false);
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
             this.ResumeLayout(false);
@@ -676,13 +675,11 @@
         private System.Windows.Forms.ToolStripMenuItem 使用方法ToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.Button buttonCLS;
-        private System.Windows.Forms.Button buttonGenerateFirmware;
         private System.Windows.Forms.Button buttonFlash;
         private System.Windows.Forms.Button buttonRemoteStop;
         private System.Windows.Forms.Button buttonRemoteStart;
         private System.Windows.Forms.GroupBox groupBox6;
         private System.Windows.Forms.Button buttonFlashClear;
-        private System.Windows.Forms.GroupBox groupBox5;
         private System.Windows.Forms.ToolStripMenuItem 联机模式ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 烧录模式ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 固件模式ToolStripMenuItem;
@@ -693,6 +690,8 @@
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.TextBox textBoxFirmware;
         private System.Windows.Forms.ComboBox comboBoxSerialPort;
+        private System.Windows.Forms.Button buttonGenerateFirmware;
+        private System.Windows.Forms.Button buttonWIFIConnect;
     }
 }
 

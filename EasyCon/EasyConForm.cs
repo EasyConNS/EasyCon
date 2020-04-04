@@ -501,7 +501,7 @@ namespace EasyCon
             var ports = SerialPort.GetPortNames();
             foreach (var portName in ports)
             {
-                var r = NS.TryConnect(portName, true);
+                var r = NS.TryConnect(portName, 1);
                 if (显示调试信息ToolStripMenuItem.Checked)
                     Print($"{portName} {r.GetName()}");
                 if (r == NintendoSwitch.ConnectResult.Success)
@@ -524,13 +524,13 @@ namespace EasyCon
             if (int.TryParse(portName, out int n))
                 portName = "COM" + portName;
             // try stable connection
-            var r = NS.TryConnect(portName, true);
+            var r = NS.TryConnect(portName);
             if (显示调试信息ToolStripMenuItem.Checked)
                 Print($"{portName} {r.GetName()}");
             if (r != NintendoSwitch.ConnectResult.Success)
             {
                 // try unstable connection
-                r = NS.TryConnect(portName, false);
+                r = NS.TryConnect(portName,1, false);
                 if (显示调试信息ToolStripMenuItem.Checked)
                     Print($"{portName} {r.GetName()}");
             }
@@ -547,6 +547,26 @@ namespace EasyCon
                 StatusShowLog("连接失败");
                 SystemSounds.Hand.Play();
                 MessageBox.Show("连接失败！该端口不存在、无法使用或已被占用。请在设备管理器确认TTL所在串口正确识别，关闭其它占用USB的程序，并重启伊机控再试。");
+                return false;
+            }
+        }
+
+        bool WIFIConnect(string ipaddr)
+        {
+            StatusShowLog("开始连接...");
+            var r = NS.TryConnect(ipaddr, 2);
+            if (显示调试信息ToolStripMenuItem.Checked)
+                Print($"{ipaddr} {r.GetName()}");
+            if (r == NintendoSwitch.ConnectResult.Success)
+            {
+                StatusShowLog("连接成功");
+                return true;
+            }
+            else
+            {
+                StatusShowLog("连接失败");
+                SystemSounds.Hand.Play();
+                MessageBox.Show("连接失败！无法连接目标服务器或与单片机通讯失败。\n请确认目标ip是否正确，单片机与esp8266是否连接正确，且esp8266是否已连到正确的WIFI。");
                 return false;
             }
         }
@@ -1027,6 +1047,14 @@ namespace EasyCon
             }
             catch
             { }
+        }
+
+        private void buttonWIFIConnect_Click(object sender, EventArgs e)
+        {
+            if (WIFIConnect(comboBoxSerialPort.Text))
+            {
+                SystemSounds.Beep.Play();
+            }
         }
     }
 }
