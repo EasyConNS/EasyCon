@@ -219,11 +219,11 @@ namespace EasyCon
 
         void InitBoards()
         {
-            comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "UNO", 0x44, 400));
-            comboBoxBoardType.Items.Add(new Board("Teensy 2.0", "Teensy2", 0x44, 900));
-            comboBoxBoardType.Items.Add(new Board("Teensy 2.0++", "Teensy2pp", 0x44, 900));
-            comboBoxBoardType.Items.Add(new Board("Leonardo", "Leonardo", 0x44, 900));
-            comboBoxBoardType.Items.Add(new Board("Beetle", "Beetle", 0x44, 900));
+            comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "UNO", 0x45, 400));
+            comboBoxBoardType.Items.Add(new Board("Teensy 2.0", "Teensy2", 0x45, 900));
+            comboBoxBoardType.Items.Add(new Board("Teensy 2.0++", "Teensy2pp", 0x45, 900));
+            comboBoxBoardType.Items.Add(new Board("Leonardo", "Leonardo", 0x45, 900));
+            comboBoxBoardType.Items.Add(new Board("Beetle", "Beetle", 0x45, 900));
             comboBoxBoardType.SelectedIndex = 0;
         }
 
@@ -495,7 +495,7 @@ namespace EasyCon
             }
             StatusShowLog("连接失败");
             SystemSounds.Hand.Play();
-            MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（RX接0，TX接1，GND接GND）\n3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁\n4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n5.以上步骤都完成后重启程序再试\n\n可用手动连接端口：" + string.Join("、", ports));
+            MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（详细使用教程见群946057081文档）\n3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁\n4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n5.以上步骤都完成后重启程序再试\n\n可用手动连接端口：" + string.Join("、", ports));
             return null;
         }
 
@@ -847,7 +847,7 @@ namespace EasyCon
 
         private void 关于ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Copyright © 2020. 铃落(Nukieberry)", "关于");
+            MessageBox.Show("详细使用教程见群946057081文档\n\nCopyright © 2020. 铃落(Nukieberry)", "关于");
         }
 
         private void buttonSerialPortSearch_Click(object sender, EventArgs e)
@@ -953,17 +953,17 @@ namespace EasyCon
 
         private void 联机模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("- 使用电脑控制单片机的模式\n- 可视化运行，一键切换脚本（即将实装）\n- 无需反复刷固件\n- 支持超长脚本\n- 可使用虚拟手柄，用键盘玩游戏\n\n硬件准备：\n一个Arduino UNO R3官方版，外加杜邦线若干\n一根USB Type-B线\n一根USB-TTL线，USB端连电脑，TTL端连单片机（RX接0，TX接1，GND接GND）\n\n软件使用：\n1.下载安装Flip\n2.USB连接电脑，用Flip把Firmware文件夹中对应的固件烧进去\n（以上为一次性操作，以后不用重新烧）\n3.单片机连接NS，按照上面说明连好TTL线\n4.菜单，文件，打开，选一个脚本\n5.点“运行”按钮", "联机模式");
+            MessageBox.Show("- 使用电脑控制单片机的模式\n- 可视化运行，一键切换脚本（即将实装）\n- 无需反复刷固件\n- 支持超长脚本\n- 可使用虚拟手柄，用键盘玩游戏\n\n详细使用教程见群946057081文档", "联机模式");
         }
 
         private void 烧录模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("- 连线烧录后脱机运行的模式\n- 独立挂机，即插即用\n- 一键烧录，可控运行\n- 无需反复刷固件\n- 支持极限效率脚本\n\n硬件准备：\n一个Arduino UNO R3官方版，外加杜邦线若干。\n一根USB Type-B线，连电脑用Flip把Arduino.hex固件烧进去，然后拔了连NS。\n一根USB-TTL线，USB端连电脑（TTL端连单片机，RX接0，TX接1，GND接GND）\n\n软件使用：\n1.下载安装Flip\n2.USB连接电脑，用Flip把Firmware文件夹中对应的固件烧进去\n（以上为一次性操作，但如果之前用过固件模式，必须重新烧原版固件，否则会被固件带的脚本覆盖）\n3.单片机连接NS，按照上面说明连好TTL线\n4.菜单，文件，打开，选一个脚本\n5.点“编译并烧录”按钮\n6.点“远程运行”来立即运行，或拔掉单片机，下次插上时会自动运行", "烧录模式");
+            MessageBox.Show("- 连线烧录后脱机运行的模式\n- 独立挂机，即插即用\n- 一键烧录，可控运行\n- 无需反复刷固件\n- 支持极限效率脚本\n\n详细使用教程见群946057081文档", "烧录模式");
         }
 
         private void 固件模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("- 生成固件后手动刷入单片机的模式\n- 独立挂机，即插即用\n- 支持极限效率脚本\n- 不需要任何额外配件\n\n硬件准备：\n一个Arduino UNO R3官方版，外加杜邦线若干。\n一根USB Type-B线。\n\n软件使用：\n1.下载安装Flip\n2.菜单，文件，打开，选一个脚本\n3.点“生成固件”按钮\n4.USB连接电脑，用Flip把生成的.hex固件烧进去\n5.拔掉USB再连NS就会自动运行", "固件模式");
+            MessageBox.Show("- 生成固件后手动刷入单片机的模式\n- 独立挂机，即插即用\n- 支持极限效率脚本\n- 不需要任何额外配件\n\n详细使用教程见群946057081文档", "固件模式");
         }
 
         private void 显示调试信息ToolStripMenuItem_Click(object sender, EventArgs e)
