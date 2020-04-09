@@ -120,6 +120,7 @@ namespace PTDevice.Arduino
                         _port.Write(bytes, 0, bytes.Length);
                         BytesSent?.Invoke(_name, bytes);
                     }
+                    Thread.Sleep(1);
                 }
             }
             catch (Exception ex)

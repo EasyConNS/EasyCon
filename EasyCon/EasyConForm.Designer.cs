@@ -64,6 +64,7 @@
             this.toolStripProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.buttonWIFIConnect = new System.Windows.Forms.Button();
             this.comboBoxSerialPort = new System.Windows.Forms.ComboBox();
             this.buttonControllerHelp = new System.Windows.Forms.Button();
             this.labelSerialStatus = new System.Windows.Forms.Label();
@@ -82,7 +83,6 @@
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.buttonGenerateFirmware = new System.Windows.Forms.Button();
             this.textBoxFirmware = new System.Windows.Forms.TextBox();
-            this.buttonWIFIConnect = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -421,6 +421,16 @@
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "连接";
             // 
+            // buttonWIFIConnect
+            // 
+            this.buttonWIFIConnect.Location = new System.Drawing.Point(157, 79);
+            this.buttonWIFIConnect.Name = "buttonWIFIConnect";
+            this.buttonWIFIConnect.Size = new System.Drawing.Size(149, 32);
+            this.buttonWIFIConnect.TabIndex = 37;
+            this.buttonWIFIConnect.Text = "WIFI连接";
+            this.buttonWIFIConnect.UseVisualStyleBackColor = true;
+            this.buttonWIFIConnect.Click += new System.EventHandler(this.buttonWIFIConnect_Click);
+            // 
             // comboBoxSerialPort
             // 
             this.comboBoxSerialPort.FormattingEnabled = true;
@@ -585,16 +595,6 @@
             this.textBoxFirmware.TabIndex = 5;
             this.textBoxFirmware.WordWrap = false;
             // 
-            // buttonWIFIConnect
-            // 
-            this.buttonWIFIConnect.Location = new System.Drawing.Point(157, 79);
-            this.buttonWIFIConnect.Name = "buttonWIFIConnect";
-            this.buttonWIFIConnect.Size = new System.Drawing.Size(149, 32);
-            this.buttonWIFIConnect.TabIndex = 37;
-            this.buttonWIFIConnect.Text = "WIFI连接";
-            this.buttonWIFIConnect.UseVisualStyleBackColor = true;
-            this.buttonWIFIConnect.Click += new System.EventHandler(this.buttonWIFIConnect_Click);
-            // 
             // EasyConForm
             // 
             this.AllowDrop = true;
@@ -616,7 +616,7 @@
             this.MaximizeBox = false;
             this.Name = "EasyConForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "伊机控 EasyCon v1.13.1 cale·改";
+            this.Text = "伊机控 EasyCon v1.14";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.EasyConForm_KeyDown);

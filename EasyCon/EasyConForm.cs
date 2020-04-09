@@ -237,11 +237,11 @@ namespace EasyCon
         }
         void InitBoards()
         {
-            comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "UNO", 0x44, 400));
-            comboBoxBoardType.Items.Add(new Board("Teensy 2.0", "Teensy2", 0x44, 900));
-            comboBoxBoardType.Items.Add(new Board("Teensy 2.0++", "Teensy2pp", 0x44, 900));
-            comboBoxBoardType.Items.Add(new Board("Leonardo", "Leonardo", 0x44, 900));
-            comboBoxBoardType.Items.Add(new Board("Beetle", "Beetle", 0x44, 900));
+            comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "UNO", 0x45, 400));
+            comboBoxBoardType.Items.Add(new Board("Teensy 2.0", "Teensy2", 0x45, 900));
+            comboBoxBoardType.Items.Add(new Board("Teensy 2.0++", "Teensy2pp", 0x45, 900));
+            comboBoxBoardType.Items.Add(new Board("Leonardo", "Leonardo", 0x45, 900));
+            comboBoxBoardType.Items.Add(new Board("Beetle", "Beetle", 0x45, 900));
             comboBoxBoardType.SelectedIndex = 0;
         }
 
