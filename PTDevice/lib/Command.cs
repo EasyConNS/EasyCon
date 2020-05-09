@@ -9,5 +9,6 @@
         public const byte ScriptStart = 0x83;
         public const byte ScriptStop = 0x84;
         public const byte Version = 0x85;
+        public const byte ScriptScope = 0x86;
     }
 }
