@@ -769,7 +769,7 @@ namespace PTDevice
                 {
                     if (!SendSync(
                             b => b == Reply.FlashStart,
-                            150,
+                            300,
                             Command.Ready,
                             (byte)(i & 0x7F),
                             (byte)(i >> 7),
@@ -778,7 +778,7 @@ namespace PTDevice
                             Command.Flash)
                         || !SendSync(
                             b => b == Reply.FlashEnd,
-                            150,
+                            300,
                             packet)
                         )
                     {
@@ -795,12 +795,17 @@ namespace PTDevice
 
         public bool RemoteStart()
         {
-            return SendSync(b => b == Reply.ScriptAck, 150, Command.Ready, Command.ScriptStart);
+            return SendSync(b => b == Reply.ScriptAck, 350, Command.Ready, Command.ScriptStart);
         }
 
         public bool RemoteStop()
         {
-            return SendSync(b => b == Reply.ScriptAck, 150, Command.Ready, Command.ScriptStop);
+            return SendSync(b => b == Reply.ScriptAck, 350, Command.Ready, Command.ScriptStop);
+        }
+
+        public bool SwitchScope()
+        {
+            return SendSync(b => b == Reply.ScriptScope, 350, Command.Ready, Command.ScriptScope);
         }
 
         public int GetVersion()
@@ -814,7 +819,7 @@ namespace PTDevice
                     return true;
                 }
                 return false;
-            }, 150, Command.Ready, Command.Version);
+            }, 350, Command.Ready, Command.Version);
             return ver;
         }
     }

@@ -25,6 +25,7 @@ namespace EasyCon
         internal NintendoSwitch NS = NintendoSwitch.GetInstance();
         internal FormController formController;
         internal FormKeyMapping formKeyMapping;
+        internal FormSCombin formCombin;
 
         const string ConfigPath = @"config.json";
         Config _config;
@@ -49,6 +50,7 @@ namespace EasyCon
 
             formController = new FormController(new ControllerAdapter());
             formKeyMapping = new FormKeyMapping();
+            formCombin = new FormSCombin();
             LoadConfig();
         }
 
@@ -706,7 +708,7 @@ namespace EasyCon
             return true;
         }
 
-        public bool FlashProgram()
+        public bool FlashProgram(byte[] codes)
         {
             if (!FlashPrepare())
                 return false;
@@ -717,16 +719,16 @@ namespace EasyCon
             try
             {
                 StatusShowLog("开始烧录...");
-                var bytes = _program.Assemble();
-                File.WriteAllBytes("temp.bin", bytes);
-                if (bytes.Length > GetSelectedBoard().DataSize)
+                // var bytes = _program.Assemble();
+                File.WriteAllBytes("temp.bin", codes);
+                if (codes.Length > GetSelectedBoard().DataSize)
                 {
                     StatusShowLog("烧录失败");
                     SystemSounds.Hand.Play();
                     MessageBox.Show("烧录失败！长度超出限制");
                     return false;
                 }
-                if (!NS.Flash(bytes))
+                if (!NS.Flash(codes))
                 {
                     StatusShowLog("烧录失败");
                     SystemSounds.Hand.Play();
@@ -735,7 +737,7 @@ namespace EasyCon
                 }
                 StatusShowLog("烧录完毕");
                 SystemSounds.Beep.Play();
-                MessageBox.Show($"烧录完毕！已使用存储空间({bytes.Length}/{GetSelectedBoard().DataSize})");
+                MessageBox.Show($"烧录完毕！已使用存储空间({codes.Length}/{GetSelectedBoard().DataSize})");
             }
             catch (AssembleException ex)
             {
@@ -822,6 +824,22 @@ namespace EasyCon
             }
         }
 
+        void SwitchScriptScope()
+        {
+            if (!SerialCheckConnect())
+                return;
+            if (NS.SwitchScope() || NS.GetConnectionStatus() == Status.ConnectedUnsafe)
+            {
+                SystemSounds.Beep.Play();
+                StatusShowLog("脚本切换成功，需要手动远程运行/重插拔单片机");
+            }
+            else
+            {
+                SystemSounds.Hand.Play();
+                StatusShowLog("脚本切换失败，请确认单片机连接无问题且固件版本兼容。");
+            }
+        }
+
         void ShowControllerHelp()
         {
             MessageBox.Show("鼠标左键：启用/禁用\n鼠标右键：拖动移动位置，右键点击重置初始位置\n鼠标中键：禁用并隐藏\n\n（注意：在有脚本远程运行的情况下无法使用）", "关于虚拟手柄");
@@ -845,6 +863,7 @@ namespace EasyCon
             if (ScriptCompile())
             {
                 StatusShowLog("编译成功");
+                var bytes = _program.Assemble();
                 SystemSounds.Beep.Play();
                 MessageBox.Show($"编译成功！");
             }
@@ -885,7 +904,7 @@ namespace EasyCon
 
         private void 关于ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Copyright © 2020. 铃落(Nukieberry)", "关于");
+            MessageBox.Show("Copyright © 2020. 铃落(Nukieberry)\nFork By ca1e", "关于");
         }
 
         private void buttonSerialPortSearch_Click(object sender, EventArgs e)
@@ -971,7 +990,7 @@ namespace EasyCon
 
         private void buttonFlash_Click(object sender, EventArgs e)
         {
-            FlashProgram();
+            FlashProgram(_program.Assemble());
         }
 
         private void buttonRemoteStart_Click(object sender, EventArgs e)
@@ -982,6 +1001,11 @@ namespace EasyCon
         private void buttonRemoteStop_Click(object sender, EventArgs e)
         {
             RemoteStop();
+        }
+
+        private void buttonSwitchScope_Click(object sender, EventArgs e)
+        {
+            SwitchScriptScope();
         }
 
         private void buttonFlashClear_Click(object sender, EventArgs e)
@@ -1054,6 +1078,45 @@ namespace EasyCon
             if (WIFIConnect(comboBoxSerialPort.Text))
             {
                 SystemSounds.Beep.Play();
+            }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("这个按钮先放在这，功能以后再做(by ca1e)","开发中");
+        }
+
+        private void 合并ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (formCombin.ShowDialog() == DialogResult.OK)
+            {
+                ScriptCompile();
+                try
+                {
+                    var bytes1 = _program.Assemble();
+                    _eventdisabled = true;
+                    _program = new Script.Script();
+                    _program.Parse(formCombin.script2);
+                    var bytes2 = _program.Assemble();
+                    _program = null;
+                    List<byte> list = new List<byte>(bytes1);
+                    list.AddRange(new List<byte>(bytes2));
+                    // flash
+                    FlashProgram(list.ToArray());
+                }
+                catch (ParseException ex)
+                {
+                    _program = null;
+                    string str = $"{ex.Message}: 行{ex.Index + 1}";
+                    SystemSounds.Hand.Play();
+                    MessageBox.Show(str, "脚本2错误");
+                    StatusShowLog(str);
+                    ScriptSelectLine(ex.Index);
+                }
+                finally
+                {
+                    _eventdisabled = false;
+                }
             }
         }
     }

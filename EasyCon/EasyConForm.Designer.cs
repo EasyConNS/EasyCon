@@ -75,6 +75,8 @@
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.button1 = new System.Windows.Forms.Button();
+            this.buttonSwitchScope = new System.Windows.Forms.Button();
             this.buttonFlashClear = new System.Windows.Forms.Button();
             this.buttonFlash = new System.Windows.Forms.Button();
             this.buttonRemoteStop = new System.Windows.Forms.Button();
@@ -83,6 +85,7 @@
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.buttonGenerateFirmware = new System.Windows.Forms.Button();
             this.textBoxFirmware = new System.Windows.Forms.TextBox();
+            this.合并ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -171,7 +174,8 @@
             // 
             this.脚本ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.编译ToolStripMenuItem,
-            this.执行ToolStripMenuItem});
+            this.执行ToolStripMenuItem,
+            this.合并ToolStripMenuItem});
             this.脚本ToolStripMenuItem.Name = "脚本ToolStripMenuItem";
             this.脚本ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
             this.脚本ToolStripMenuItem.Text = "脚本";
@@ -179,14 +183,14 @@
             // 编译ToolStripMenuItem
             // 
             this.编译ToolStripMenuItem.Name = "编译ToolStripMenuItem";
-            this.编译ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
+            this.编译ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.编译ToolStripMenuItem.Text = "编译";
             this.编译ToolStripMenuItem.Click += new System.EventHandler(this.编译ToolStripMenuItem_Click);
             // 
             // 执行ToolStripMenuItem
             // 
             this.执行ToolStripMenuItem.Name = "执行ToolStripMenuItem";
-            this.执行ToolStripMenuItem.Size = new System.Drawing.Size(100, 22);
+            this.执行ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.执行ToolStripMenuItem.Text = "执行";
             this.执行ToolStripMenuItem.Click += new System.EventHandler(this.执行ToolStripMenuItem_Click);
             // 
@@ -502,6 +506,8 @@
             // 
             // groupBox6
             // 
+            this.groupBox6.Controls.Add(this.button1);
+            this.groupBox6.Controls.Add(this.buttonSwitchScope);
             this.groupBox6.Controls.Add(this.buttonFlashClear);
             this.groupBox6.Controls.Add(this.buttonFlash);
             this.groupBox6.Controls.Add(this.buttonRemoteStop);
@@ -513,13 +519,33 @@
             this.groupBox6.TabStop = false;
             this.groupBox6.Text = "烧录模式";
             // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(81, 104);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(74, 41);
+            this.button1.TabIndex = 6;
+            this.button1.Text = "待开发功能";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
+            // buttonSwitchScope
+            // 
+            this.buttonSwitchScope.Location = new System.Drawing.Point(6, 104);
+            this.buttonSwitchScope.Name = "buttonSwitchScope";
+            this.buttonSwitchScope.Size = new System.Drawing.Size(74, 41);
+            this.buttonSwitchScope.TabIndex = 5;
+            this.buttonSwitchScope.Text = "切换脚本";
+            this.buttonSwitchScope.UseVisualStyleBackColor = true;
+            this.buttonSwitchScope.Click += new System.EventHandler(this.buttonSwitchScope_Click);
+            // 
             // buttonFlashClear
             // 
-            this.buttonFlashClear.Location = new System.Drawing.Point(6, 105);
+            this.buttonFlashClear.Location = new System.Drawing.Point(81, 20);
             this.buttonFlashClear.Name = "buttonFlashClear";
-            this.buttonFlashClear.Size = new System.Drawing.Size(149, 42);
+            this.buttonFlashClear.Size = new System.Drawing.Size(74, 40);
             this.buttonFlashClear.TabIndex = 4;
-            this.buttonFlashClear.Text = "清除烧录的程序";
+            this.buttonFlashClear.Text = "清除烧录";
             this.buttonFlashClear.UseVisualStyleBackColor = true;
             this.buttonFlashClear.Click += new System.EventHandler(this.buttonFlashClear_Click);
             // 
@@ -527,7 +553,7 @@
             // 
             this.buttonFlash.Location = new System.Drawing.Point(6, 20);
             this.buttonFlash.Name = "buttonFlash";
-            this.buttonFlash.Size = new System.Drawing.Size(149, 40);
+            this.buttonFlash.Size = new System.Drawing.Size(74, 40);
             this.buttonFlash.TabIndex = 1;
             this.buttonFlash.Text = "编译并烧录";
             this.buttonFlash.UseVisualStyleBackColor = true;
@@ -595,6 +621,13 @@
             this.textBoxFirmware.TabIndex = 5;
             this.textBoxFirmware.WordWrap = false;
             // 
+            // 合并ToolStripMenuItem
+            // 
+            this.合并ToolStripMenuItem.Name = "合并ToolStripMenuItem";
+            this.合并ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.合并ToolStripMenuItem.Text = "合并";
+            this.合并ToolStripMenuItem.Click += new System.EventHandler(this.合并ToolStripMenuItem_Click);
+            // 
             // EasyConForm
             // 
             this.AllowDrop = true;
@@ -616,7 +649,7 @@
             this.MaximizeBox = false;
             this.Name = "EasyConForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "伊机控 EasyCon v1.14";
+            this.Text = "伊机控 EasyCon v1.14sa - ByCale";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.EasyConForm_KeyDown);
@@ -692,6 +725,9 @@
         private System.Windows.Forms.ComboBox comboBoxSerialPort;
         private System.Windows.Forms.Button buttonGenerateFirmware;
         private System.Windows.Forms.Button buttonWIFIConnect;
+        private System.Windows.Forms.Button buttonSwitchScope;
+        private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.ToolStripMenuItem 合并ToolStripMenuItem;
     }
 }
 

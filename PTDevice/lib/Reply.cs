@@ -8,5 +8,6 @@
         public const byte FlashStart = 0x81;
         public const byte FlashEnd = 0x82;
         public const byte ScriptAck = 0x83;
+        public const byte ScriptScope = 0x86;
     }
 }
