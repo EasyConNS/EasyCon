@@ -14,14 +14,14 @@ namespace EasyCon
         static void Main()
         {
             bool newProcess;
-            using (Mutex mutex = new Mutex(true, "EasyCon", out newProcess))
+            using (Mutex mutex = new Mutex(true, "EasyCon2", out newProcess))
             {
                 if (newProcess)
                 {
                     AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(GlobalExceptionLogger);
                     Application.EnableVisualStyles();
                     Application.SetCompatibleTextRenderingDefault(false);
-                    Application.Run(new EasyConForm());
+                    Application.Run(new EasyConFormV2());
                 }
                 else
                 {

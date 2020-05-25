@@ -1,4 +1,4 @@
-﻿namespace EasyCon
+﻿namespace PTController
 {
     partial class FormKeyMapping
     {

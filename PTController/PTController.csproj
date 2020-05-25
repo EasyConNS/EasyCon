@@ -43,11 +43,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Config.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="FormController.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="FormController.Designer.cs">
       <DependentUpon>FormController.cs</DependentUpon>
+    </Compile>
+    <Compile Include="FormKeyMapping.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormKeyMapping.Designer.cs">
+      <DependentUpon>FormKeyMapping.cs</DependentUpon>
     </Compile>
     <Compile Include="LowLevelKeyboard.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -61,6 +69,9 @@
   <ItemGroup>
     <EmbeddedResource Include="FormController.resx">
       <DependentUpon>FormController.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormKeyMapping.resx">
+      <DependentUpon>FormKeyMapping.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
