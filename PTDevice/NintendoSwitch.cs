@@ -58,6 +58,10 @@ namespace PTDevice
             Down = 0x2,
             Left = 0x4,
             Right = 0x8,
+            UpLeft = 0x16,
+            DownLeft = 0x32,
+            UpRight = 0x64,
+            DownRight = 0x128,
         }
 
         public class Report : ICloneable
@@ -308,7 +312,102 @@ namespace PTDevice
                 Key = key;
                 Up = up;
                 Duration = duration;
-                Time = time;
+                Time = DateTime.Now;
+            }
+        }
+        public enum RecordState
+        {
+            RECORD_START = 0x00,
+            RECORD_PAUSE = 0x01,
+            RECORD_STOP = 0x02,
+        }
+
+        class OperationRecords
+        {
+            private List<KeyStroke> records = new List<KeyStroke>();
+            string script = "";
+
+            public OperationRecords()
+            {
+            }
+
+            private string GetScriptKeyName(string key)
+            {
+                switch(key)
+                {
+                    case "RStick(128,0)":
+                        return "RS UP";
+                    case "RStick(128,128)":
+                        return "RS RESET";
+                    case "RStick(128,255)":
+                        return "RS DOWN";
+                    case "RStick(0,128)":
+                        return "RS LEFT";
+                    case "RStick(255,128)":
+                        return "RS RIGHT";
+
+                    case "LStick(128,0)":
+                        return "LS UP";
+                    case "LStick(128,128)":
+                        return "LS RESET";
+                    case "LStick(128,255)":
+                        return "LS DOWN";
+                    case "LStick(0,128)":
+                        return "LS LEFT";
+                    case "LStick(255,128)":
+                        return "LS RIGHT";
+
+                    case "HAT.TOP":
+                        return "UP";
+                    case "HAT.BOTTOM":
+                        return "DOWN";
+                    case "HAT.LEFT":
+                        return "LEFT";
+                    case "HAT.RIGHT":
+                        return "RIGHT";
+
+                    case "HAT.TOP_LEFT":
+                        return "UPLEFT";
+                    case "HAT.TOP_RIGHT":
+                        return "UPRIGHT";
+                    case "HAT.BOTTOM_LEFT":
+                        return "DOWNLEFT";
+                    case "HAT.BOTTOM_RIGHT":
+                        return "DOWNRIGHT";
+
+                    default:
+                        return key;
+                }
+            }
+
+            public void AddRecord(KeyStroke key)
+            {
+                records.Add(key);
+                script += GetScriptKeyName(key.Key.Name);
+                if(key.Up)
+                {
+                    script += " UP" + "\r\n";
+                }
+                else
+                {
+                    script += " DOWN"+ "\r\n";
+                }
+
+            }
+
+            public void Clear()
+            {
+                records.Clear();
+                script = "";
+            }
+            public string ToScript(bool WithComment)
+            {
+                if (WithComment)
+                {
+
+                }
+
+                return script;
             }
         }
 
@@ -329,6 +428,8 @@ namespace PTDevice
         public event ArduinoSerial.BytesTransferedHandler BytesReceived;
 
         static NintendoSwitch _instance;
+        OperationRecords operationRecords = new OperationRecords();
+        public RecordState recordState = RecordState.RECORD_STOP;
 
         NintendoSwitch()
         { }
@@ -544,7 +645,7 @@ namespace PTDevice
         void PrintKey(string str, Key key = null)
         {
             str = str + " " + key?.Name ?? "";
-            //Debug.WriteLine(str);
+            Debug.WriteLine(str);
             //Log?.Invoke(str);;
         }
 
@@ -567,6 +668,10 @@ namespace PTDevice
                 Debug.Write("code:" + key.KeyCode);
                 Signal();
                 _keystrokes[key.KeyCode] = new KeyStroke(key);
+                if (recordState == RecordState.RECORD_START)
+                {
+                    operationRecords.AddRecord(_keystrokes[key.KeyCode]);
+                }
             }
         }
 
@@ -577,6 +682,10 @@ namespace PTDevice
                 PrintKey("Up", key);
                 Signal();
                 _keystrokes[key.KeyCode] = new KeyStroke(key, true);
+                if (recordState == RecordState.RECORD_START)
+                {
+                    operationRecords.AddRecord(_keystrokes[key.KeyCode]);
+                }
             }
         }
 
@@ -805,5 +914,30 @@ namespace PTDevice
             }, 100, ArduinoSerial.Command.Ready, ArduinoSerial.Command.Version);
             return ver;
         }
+
+        public bool StartRecord()
+        {
+            recordState = RecordState.RECORD_START;
+            operationRecords.Clear();
+            return true;
+        }
+
+        public bool StopRecord()
+        {
+            recordState = RecordState.RECORD_STOP;
+            return true;
+        }
+
+        public bool PauseRecord()
+        {
+            recordState = RecordState.RECORD_PAUSE;
+            return true;
+        }
+
+        public string GetRecordScript()
+        {
+            return operationRecords.ToScript(true);
+        }
+
     }
 }

@@ -83,6 +83,11 @@ namespace PokemonTycoon.Scripts
                 public static readonly NintendoSwitch.Key Down = NintendoSwitch.Key.HAT(NintendoSwitch.DirectionKey.Down);
                 public static readonly NintendoSwitch.Key Left = NintendoSwitch.Key.HAT(NintendoSwitch.DirectionKey.Left);
                 public static readonly NintendoSwitch.Key Right = NintendoSwitch.Key.HAT(NintendoSwitch.DirectionKey.Right);
+
+                public static readonly NintendoSwitch.Key UpLeft = NintendoSwitch.Key.HAT(NintendoSwitch.DirectionKey.UpLeft);
+                public static readonly NintendoSwitch.Key DownLeft = NintendoSwitch.Key.HAT(NintendoSwitch.DirectionKey.DownLeft);
+                public static readonly NintendoSwitch.Key UpRight = NintendoSwitch.Key.HAT(NintendoSwitch.DirectionKey.UpRight);
+                public static readonly NintendoSwitch.Key DownRight = NintendoSwitch.Key.HAT(NintendoSwitch.DirectionKey.DownRight);
             }
         }
 

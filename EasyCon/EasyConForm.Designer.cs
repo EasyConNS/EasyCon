@@ -84,6 +84,7 @@
             this.comboBoxBoardType = new System.Windows.Forms.ComboBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.textBoxFirmware = new System.Windows.Forms.TextBox();
+            this.buttonRecordPause = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -490,6 +491,7 @@
             // 
             // groupBox6
             // 
+            this.groupBox6.Controls.Add(this.buttonRecordPause);
             this.groupBox6.Controls.Add(this.buttonRecord);
             this.groupBox6.Controls.Add(this.buttonFlashClear);
             this.groupBox6.Controls.Add(this.buttonFlash);
@@ -506,7 +508,7 @@
             // 
             this.buttonRecord.Location = new System.Drawing.Point(6, 129);
             this.buttonRecord.Name = "buttonRecord";
-            this.buttonRecord.Size = new System.Drawing.Size(149, 55);
+            this.buttonRecord.Size = new System.Drawing.Size(74, 55);
             this.buttonRecord.TabIndex = 5;
             this.buttonRecord.Text = "录制脚本";
             this.buttonRecord.UseVisualStyleBackColor = true;
@@ -602,6 +604,17 @@
             this.textBoxFirmware.Size = new System.Drawing.Size(133, 22);
             this.textBoxFirmware.TabIndex = 5;
             this.textBoxFirmware.WordWrap = false;
+            // 
+            // buttonRecordPause
+            // 
+            this.buttonRecordPause.Enabled = false;
+            this.buttonRecordPause.Location = new System.Drawing.Point(81, 129);
+            this.buttonRecordPause.Name = "buttonRecordPause";
+            this.buttonRecordPause.Size = new System.Drawing.Size(74, 55);
+            this.buttonRecordPause.TabIndex = 6;
+            this.buttonRecordPause.Text = "暂停录制";
+            this.buttonRecordPause.UseVisualStyleBackColor = true;
+            this.buttonRecordPause.Click += new System.EventHandler(this.buttonRecordPause_Click);
             // 
             // EasyConForm
             // 
@@ -703,6 +716,7 @@
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.TextBox textBoxFirmware;
         private System.Windows.Forms.Button buttonRecord;
+        private System.Windows.Forms.Button buttonRecordPause;
     }
 }
 

@@ -116,6 +116,15 @@ namespace EasyCon
                         else
                             buttonScriptRunStop.Text = "运行";
 
+                        // update record script to text
+                        if (NS.recordState == NintendoSwitch.RecordState.RECORD_START)
+                        {
+                            buttonRecord.Text = "停止录制";
+                            textBoxScript.Text = NS.GetRecordScript();
+                            this.textBoxScript.SelectionStart = this.textBoxScript.TextLength;
+                            this.textBoxScript.ScrollToCaret();
+                        }
+
                         // serial port status
                         var status = NS.GetConnectionStatus();
                         if (status == PTDevice.Arduino.ArduinoSerial.Status.Connected)
@@ -993,16 +1002,30 @@ namespace EasyCon
         private void buttonRecord_Click(object sender, EventArgs e)
         {
             // if record.state = start
+            if (NS.recordState == NintendoSwitch.RecordState.RECORD_STOP)
+            {
+                buttonRecord.Text = "停止录制";
+                buttonRecordPause.Enabled = true;
+                textBoxScript.Enabled = false;
+                NS.StartRecord();
+            }
+            else
+            {
+                Debug.Write("stop");
+                buttonRecord.Text = "录制脚本";
+                buttonRecordPause.Enabled = false;
+                textBoxScript.Enabled = true;
+                NS.StopRecord(); 
+            }
+        }
 
-            //the reocrd start
-            System.Diagnostics.Debug.WriteLine("start record");
-
-            // new a script
-
-
-            // if record.state = stop
-
-            // save it and display in script
+        private void buttonRecordPause_Click(object sender, EventArgs e)
+        {
+            // pause the record
+            if (NS.recordState == NintendoSwitch.RecordState.RECORD_START)
+            {
+                NS.PauseRecord();
+            }
         }
     }
 }
