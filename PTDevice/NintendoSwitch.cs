@@ -564,6 +564,7 @@ namespace PTDevice
             lock (this)
             {
                 PrintKey("Down", key);
+                Debug.Write("code:" + key.KeyCode);
                 Signal();
                 _keystrokes[key.KeyCode] = new KeyStroke(key);
             }

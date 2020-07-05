@@ -38,6 +38,10 @@ namespace EasyCon
             _dict[checkBoxDown] = "Down";
             _dict[checkBoxLeft] = "Left";
             _dict[checkBoxRight] = "Right";
+            _dict[checkBoxUpLeft] = "UpLeft";
+            _dict[checkBoxDownLeft] = "DownLeft";
+            _dict[checkBoxUpRight] = "UpRight";
+            _dict[checkBoxDownRight] = "DownRight";
             _dict[checkBoxLSUp] = "LSUp";
             _dict[checkBoxLSDown] = "LSDown";
             _dict[checkBoxLSLeft] = "LSLeft";

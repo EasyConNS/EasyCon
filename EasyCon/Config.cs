@@ -32,6 +32,10 @@ namespace EasyCon
             KeyMapping.Down = Keys.None;
             KeyMapping.Left = Keys.None;
             KeyMapping.Right = Keys.None;
+            KeyMapping.UpLeft = Keys.None;
+            KeyMapping.UpRight = Keys.None;
+            KeyMapping.DownLeft = Keys.None;
+            KeyMapping.DownRight = Keys.None;
             KeyMapping.LSUp = Keys.W;
             KeyMapping.LSDown = Keys.S;
             KeyMapping.LSLeft = Keys.A;
@@ -63,6 +67,10 @@ namespace EasyCon
         public Keys Down;
         public Keys Left;
         public Keys Right;
+        public Keys UpRight;
+        public Keys DownRight;
+        public Keys UpLeft;
+        public Keys DownLeft;
         public Keys LSUp;
         public Keys LSDown;
         public Keys LSLeft;

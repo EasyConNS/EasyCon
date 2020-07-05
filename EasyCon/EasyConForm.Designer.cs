@@ -74,6 +74,7 @@
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.buttonRecord = new System.Windows.Forms.Button();
             this.buttonFlashClear = new System.Windows.Forms.Button();
             this.buttonFlash = new System.Windows.Forms.Button();
             this.buttonRemoteStop = new System.Windows.Forms.Button();
@@ -489,6 +490,7 @@
             // 
             // groupBox6
             // 
+            this.groupBox6.Controls.Add(this.buttonRecord);
             this.groupBox6.Controls.Add(this.buttonFlashClear);
             this.groupBox6.Controls.Add(this.buttonFlash);
             this.groupBox6.Controls.Add(this.buttonRemoteStop);
@@ -500,13 +502,23 @@
             this.groupBox6.TabStop = false;
             this.groupBox6.Text = "烧录模式";
             // 
+            // buttonRecord
+            // 
+            this.buttonRecord.Location = new System.Drawing.Point(6, 129);
+            this.buttonRecord.Name = "buttonRecord";
+            this.buttonRecord.Size = new System.Drawing.Size(149, 55);
+            this.buttonRecord.TabIndex = 5;
+            this.buttonRecord.Text = "录制脚本";
+            this.buttonRecord.UseVisualStyleBackColor = true;
+            this.buttonRecord.Click += new System.EventHandler(this.buttonRecord_Click);
+            // 
             // buttonFlashClear
             // 
-            this.buttonFlashClear.Location = new System.Drawing.Point(6, 128);
+            this.buttonFlashClear.Location = new System.Drawing.Point(81, 21);
             this.buttonFlashClear.Name = "buttonFlashClear";
-            this.buttonFlashClear.Size = new System.Drawing.Size(149, 55);
+            this.buttonFlashClear.Size = new System.Drawing.Size(74, 55);
             this.buttonFlashClear.TabIndex = 4;
-            this.buttonFlashClear.Text = "清除烧录的程序";
+            this.buttonFlashClear.Text = "清除烧录";
             this.buttonFlashClear.UseVisualStyleBackColor = true;
             this.buttonFlashClear.Click += new System.EventHandler(this.buttonFlashClear_Click);
             // 
@@ -514,7 +526,7 @@
             // 
             this.buttonFlash.Location = new System.Drawing.Point(6, 21);
             this.buttonFlash.Name = "buttonFlash";
-            this.buttonFlash.Size = new System.Drawing.Size(149, 55);
+            this.buttonFlash.Size = new System.Drawing.Size(74, 55);
             this.buttonFlash.TabIndex = 1;
             this.buttonFlash.Text = "编译并烧录";
             this.buttonFlash.UseVisualStyleBackColor = true;
@@ -690,6 +702,7 @@
         private System.Windows.Forms.ComboBox comboBoxBoardType;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.TextBox textBoxFirmware;
+        private System.Windows.Forms.Button buttonRecord;
     }
 }
 

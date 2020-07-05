@@ -282,6 +282,10 @@ namespace EasyCon
             formController.RegisterKey(_config.KeyMapping.Down, NintendoSwitch.HAT.BOTTOM);
             formController.RegisterKey(_config.KeyMapping.Left, NintendoSwitch.HAT.LEFT);
             formController.RegisterKey(_config.KeyMapping.Right, NintendoSwitch.HAT.RIGHT);
+            formController.RegisterKey(_config.KeyMapping.UpRight, NintendoSwitch.HAT.TOP_RIGHT);
+            formController.RegisterKey(_config.KeyMapping.DownRight, NintendoSwitch.HAT.BOTTOM_RIGHT);
+            formController.RegisterKey(_config.KeyMapping.UpLeft, NintendoSwitch.HAT.TOP_LEFT);
+            formController.RegisterKey(_config.KeyMapping.DownLeft, NintendoSwitch.HAT.BOTTOM_LEFT);
             formController.RegisterKey(_config.KeyMapping.LSUp, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Up, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Up, false));
             formController.RegisterKey(_config.KeyMapping.LSDown, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Down, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Down, false));
             formController.RegisterKey(_config.KeyMapping.LSLeft, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Left, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Left, false));
@@ -984,6 +988,21 @@ namespace EasyCon
         private void comboBoxBoardType_SelectedIndexChanged(object sender, EventArgs e)
         {
             textBoxFirmware.Text = $"{(comboBoxBoardType.SelectedItem as Board)?.CoreName}.hex";
+        }
+
+        private void buttonRecord_Click(object sender, EventArgs e)
+        {
+            // if record.state = start
+
+            //the reocrd start
+            System.Diagnostics.Debug.WriteLine("start record");
+
+            // new a script
+
+
+            // if record.state = stop
+
+            // save it and display in script
         }
     }
 }
