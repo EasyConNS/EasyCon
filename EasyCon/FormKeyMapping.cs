@@ -91,6 +91,7 @@ namespace EasyCon
 
         private void FormKeyMapping_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
         {
+            e.IsInputKey = true;
             SetKey(e.KeyCode);
         }
 

@@ -568,7 +568,32 @@
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.FormKeyMapping_KeyDown);
             this.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
             this.ResumeLayout(false);
-
+            this.checkBoxLeft.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxLSDown.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxLSLeft.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxLSRight.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxLSUp.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxMinus.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxPlus.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxR.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxRClick.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxRight.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxRSDown.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxRSLeft.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxRSRight.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxRSUp.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxUp.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxX.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxY.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxZL.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxZR.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxLClick.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxL.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxHome.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxDown.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxCapture.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxB.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
+            this.checkBoxA.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
         }
 
         #endregion
