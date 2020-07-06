@@ -21,6 +21,7 @@ namespace PTDevice.Arduino
         List<byte> _inBuffer = new List<byte>();
         List<byte[]> _outBuffer = new List<byte[]>();
         DateTime _time = DateTime.MinValue;
+        public bool CpuOpt =true;
 
         public delegate void BytesTransferedHandler(string portName, byte[] bytes);
         public event BytesTransferedHandler BytesSent;
@@ -153,7 +154,10 @@ namespace PTDevice.Arduino
                         _port.Write(bytes, 0, bytes.Length);
                         BytesSent?.Invoke(_name, bytes);
                     }
-                    Thread.Sleep(1);
+
+                    // cpu optimization
+                    if(CpuOpt)
+                        Thread.Sleep(1);
                 }
             }
             catch (Exception ex)

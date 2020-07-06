@@ -51,6 +51,7 @@
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.关于ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.项目源码ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.CpuOptToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.buttonCLS = new System.Windows.Forms.Button();
             this.labelTimer = new System.Windows.Forms.Label();
@@ -74,6 +75,7 @@
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
+            this.buttonRecordPause = new System.Windows.Forms.Button();
             this.buttonRecord = new System.Windows.Forms.Button();
             this.buttonFlashClear = new System.Windows.Forms.Button();
             this.buttonFlash = new System.Windows.Forms.Button();
@@ -84,7 +86,6 @@
             this.comboBoxBoardType = new System.Windows.Forms.ComboBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.textBoxFirmware = new System.Windows.Forms.TextBox();
-            this.buttonRecordPause = new System.Windows.Forms.Button();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -201,7 +202,8 @@
             this.显示调试信息ToolStripMenuItem,
             this.toolStripSeparator2,
             this.关于ToolStripMenuItem,
-            this.项目源码ToolStripMenuItem});
+            this.项目源码ToolStripMenuItem,
+            this.CpuOptToolStripMenuItem});
             this.帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
             this.帮助ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
             this.帮助ToolStripMenuItem.Text = "帮助";
@@ -213,7 +215,7 @@
             this.烧录模式ToolStripMenuItem,
             this.固件模式ToolStripMenuItem});
             this.使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
-            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.使用方法ToolStripMenuItem.Text = "使用方法";
             // 
             // 联机模式ToolStripMenuItem
@@ -240,35 +242,42 @@
             // 下载AtmelFlipToolStripMenuItem
             // 
             this.下载AtmelFlipToolStripMenuItem.Name = "下载AtmelFlipToolStripMenuItem";
-            this.下载AtmelFlipToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.下载AtmelFlipToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.下载AtmelFlipToolStripMenuItem.Text = "下载Atmel Flip";
             this.下载AtmelFlipToolStripMenuItem.Click += new System.EventHandler(this.下载AtmelFlipToolStripMenuItem_Click);
             // 
             // 显示调试信息ToolStripMenuItem
             // 
             this.显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             this.显示调试信息ToolStripMenuItem.Click += new System.EventHandler(this.显示调试信息ToolStripMenuItem_Click);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(154, 6);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
             // 
             // 关于ToolStripMenuItem
             // 
             this.关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.关于ToolStripMenuItem.Text = "关于";
             this.关于ToolStripMenuItem.Click += new System.EventHandler(this.关于ToolStripMenuItem_Click);
             // 
             // 项目源码ToolStripMenuItem
             // 
             this.项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.项目源码ToolStripMenuItem.Text = "项目源码";
             this.项目源码ToolStripMenuItem.Click += new System.EventHandler(this.项目源码ToolStripMenuItem_Click);
+            // 
+            // CpuOptToolStripMenuItem
+            // 
+            this.CpuOptToolStripMenuItem.Name = "CpuOptToolStripMenuItem";
+            this.CpuOptToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.CpuOptToolStripMenuItem.Text = "CPU优化-关闭";
+            this.CpuOptToolStripMenuItem.Click += new System.EventHandler(this.CpuOptToolStripMenuItem_Click);
             // 
             // groupBox1
             // 
@@ -372,6 +381,7 @@
             // 
             this.textBoxScript.AcceptsReturn = true;
             this.textBoxScript.AcceptsTab = true;
+            this.textBoxScript.AllowDrop = true;
             this.textBoxScript.Location = new System.Drawing.Point(7, 23);
             this.textBoxScript.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.textBoxScript.Multiline = true;
@@ -380,6 +390,8 @@
             this.textBoxScript.Size = new System.Drawing.Size(422, 671);
             this.textBoxScript.TabIndex = 0;
             this.textBoxScript.TextChanged += new System.EventHandler(this.textBoxScript_TextChanged);
+            this.textBoxScript.DragDrop += new System.Windows.Forms.DragEventHandler(this.textBoxScript_DragDrop);
+            this.textBoxScript.DragEnter += new System.Windows.Forms.DragEventHandler(this.textBoxScript_DragEnter);
             this.textBoxScript.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.textBoxScript_PreviewKeyDown);
             // 
             // statusStrip1
@@ -504,6 +516,17 @@
             this.groupBox6.TabStop = false;
             this.groupBox6.Text = "烧录模式";
             // 
+            // buttonRecordPause
+            // 
+            this.buttonRecordPause.Enabled = false;
+            this.buttonRecordPause.Location = new System.Drawing.Point(81, 129);
+            this.buttonRecordPause.Name = "buttonRecordPause";
+            this.buttonRecordPause.Size = new System.Drawing.Size(74, 55);
+            this.buttonRecordPause.TabIndex = 6;
+            this.buttonRecordPause.Text = "暂停录制";
+            this.buttonRecordPause.UseVisualStyleBackColor = true;
+            this.buttonRecordPause.Click += new System.EventHandler(this.buttonRecordPause_Click);
+            // 
             // buttonRecord
             // 
             this.buttonRecord.Location = new System.Drawing.Point(6, 129);
@@ -605,17 +628,6 @@
             this.textBoxFirmware.TabIndex = 5;
             this.textBoxFirmware.WordWrap = false;
             // 
-            // buttonRecordPause
-            // 
-            this.buttonRecordPause.Enabled = false;
-            this.buttonRecordPause.Location = new System.Drawing.Point(81, 129);
-            this.buttonRecordPause.Name = "buttonRecordPause";
-            this.buttonRecordPause.Size = new System.Drawing.Size(74, 55);
-            this.buttonRecordPause.TabIndex = 6;
-            this.buttonRecordPause.Text = "暂停录制";
-            this.buttonRecordPause.UseVisualStyleBackColor = true;
-            this.buttonRecordPause.Click += new System.EventHandler(this.buttonRecordPause_Click);
-            // 
             // EasyConForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 16F);
@@ -637,7 +649,7 @@
             this.MaximizeBox = false;
             this.Name = "EasyConForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "伊机控 EasyCon v1.14";
+            this.Text = "伊机控 EasyCon v1.2";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.EasyConForm_KeyDown);
@@ -717,6 +729,7 @@
         private System.Windows.Forms.TextBox textBoxFirmware;
         private System.Windows.Forms.Button buttonRecord;
         private System.Windows.Forms.Button buttonRecordPause;
+        private System.Windows.Forms.ToolStripMenuItem CpuOptToolStripMenuItem;
     }
 }
 

@@ -382,17 +382,30 @@ namespace PTDevice
 
             public void AddRecord(KeyStroke key)
             {
-                records.Add(key);
-                script += GetScriptKeyName(key.Key.Name);
-                if(key.Up)
+                string new_item = "";
+
+                // insert the wait cmd
+                if (records.Count() > 0)
                 {
-                    script += " UP" + "\r\n";
-                }
-                else
-                {
-                    script += " DOWN"+ "\r\n";
+                    long wait_time = (key.Time.Ticks - records.Last().Time.Ticks) / 10000;
+                    script += "WAIT " + wait_time+ "\r\n";
                 }
 
+                records.Add(key);
+                new_item += GetScriptKeyName(key.Key.Name);
+                Debug.WriteLine("keycode:"+key.KeyCode);
+                if(key.KeyCode != 32 && key.KeyCode !=33)
+                {
+                    if (key.Up)
+                    {
+                        new_item += " UP";
+                    }
+                    else
+                    {
+                        new_item += " DOWN" ;
+                    }
+                }
+                script += new_item + "\r\n";
             }
 
             public void Clear()
@@ -939,5 +952,14 @@ namespace PTDevice
             return operationRecords.ToScript(true);
         }
 
+        public bool SetCpuOpt(bool enable)
+        {
+            if (IsConnected())
+            {
+                Arduino.CpuOpt = enable;
+                return true;
+            }
+            return false;
+        }
     }
 }

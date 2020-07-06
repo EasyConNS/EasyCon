@@ -1004,6 +1004,9 @@ namespace EasyCon
             // if record.state = start
             if (NS.recordState == NintendoSwitch.RecordState.RECORD_STOP)
             {
+                if (!SerialCheckConnect())
+                    return;
+                formController.ControllerEnabled = true;
                 buttonRecord.Text = "停止录制";
                 buttonRecordPause.Enabled = true;
                 textBoxScript.Enabled = false;
@@ -1025,6 +1028,60 @@ namespace EasyCon
             if (NS.recordState == NintendoSwitch.RecordState.RECORD_START)
             {
                 NS.PauseRecord();
+            }
+        }
+
+        private void CpuOptToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (CpuOptToolStripMenuItem.Text == "CPU优化-关闭")
+            {
+                if (NS.SetCpuOpt(false))
+                {
+                    CpuOptToolStripMenuItem.Text = "CPU优化-开启";
+                }
+                else
+                {
+                    MessageBox.Show("串口未连接", "CPU优化");
+                }
+            }
+            else
+            {
+                if (NS.SetCpuOpt(true))
+                {
+                    CpuOptToolStripMenuItem.Text = "CPU优化-关闭";
+                }
+                else
+                {
+                    MessageBox.Show("串口未连接", "CPU优化");
+                }
+            }
+
+        }
+
+        private void textBoxScript_DragDrop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                string[] path = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+                var _script = File.ReadAllText(path[0]);
+                if (Path.GetExtension(path[0]) != ".txt") return;
+                textBoxScript.Text = _script;
+            }
+            catch
+            {
+                MessageBox.Show("打开失败了，原因未知", "打开脚本");
+            }
+        }
+
+        private void textBoxScript_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effect = DragDropEffects.All;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
             }
         }
     }
