@@ -21,12 +21,20 @@ namespace EasyCon.Script.Parsing
             _keyDict.Add("RIGHT", NintendoSwitch.Key.HAT(NintendoSwitch.HAT.RIGHT));
             _keyDict.Add("UP", NintendoSwitch.Key.HAT(NintendoSwitch.HAT.TOP));
             _keyDict.Add("DOWN", NintendoSwitch.Key.HAT(NintendoSwitch.HAT.BOTTOM));
+            _keyDict.Add("DOWNLEFT", NintendoSwitch.Key.HAT(NintendoSwitch.HAT.BOTTOM_LEFT));
+            _keyDict.Add("DOWNRIGHT", NintendoSwitch.Key.HAT(NintendoSwitch.HAT.BOTTOM_RIGHT));
+            _keyDict.Add("UPLEFT", NintendoSwitch.Key.HAT(NintendoSwitch.HAT.TOP_LEFT));
+            _keyDict.Add("UPRIGHT", NintendoSwitch.Key.HAT(NintendoSwitch.HAT.TOP_RIGHT));
             foreach (var pair in _keyDict)
                 _keyName[pair.Value] = pair.Key;
             _directions.Add("UP", NintendoSwitch.DirectionKey.Up);
             _directions.Add("DOWN", NintendoSwitch.DirectionKey.Down);
             _directions.Add("LEFT", NintendoSwitch.DirectionKey.Left);
             _directions.Add("RIGHT", NintendoSwitch.DirectionKey.Right);
+            _directions.Add("DOWNLEFT", NintendoSwitch.DirectionKey.DownLeft);
+            _directions.Add("DOWNRIGHT", NintendoSwitch.DirectionKey.DownRight);
+            _directions.Add("UPLEFT", NintendoSwitch.DirectionKey.UpLeft);
+            _directions.Add("UPRIGHT", NintendoSwitch.DirectionKey.UpRight);
         }
 
         public static NintendoSwitch.Key Get(string name)

@@ -268,8 +268,8 @@ namespace PTController
 
         void ResetLocation()
         {
-            Left = 0;
-            Top = Screen.FromControl(this).WorkingArea.Height - Height;
+            Left = Screen.FromControl(this).WorkingArea.Width/2;
+            Top = (Screen.FromControl(this).WorkingArea.Height - Height)/2;
         }
 
         private void FormController_MouseDown(object sender, MouseEventArgs e)
