@@ -31,10 +31,6 @@ namespace EasyCon.Script.Parsing
             _directions.Add("DOWN", NintendoSwitch.DirectionKey.Down);
             _directions.Add("LEFT", NintendoSwitch.DirectionKey.Left);
             _directions.Add("RIGHT", NintendoSwitch.DirectionKey.Right);
-            _directions.Add("DOWNLEFT", NintendoSwitch.DirectionKey.DownLeft);
-            _directions.Add("DOWNRIGHT", NintendoSwitch.DirectionKey.DownRight);
-            _directions.Add("UPLEFT", NintendoSwitch.DirectionKey.UpLeft);
-            _directions.Add("UPRIGHT", NintendoSwitch.DirectionKey.UpRight);
         }
 
         public static NintendoSwitch.Key Get(string name)

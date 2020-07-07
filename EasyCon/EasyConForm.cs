@@ -287,14 +287,15 @@ namespace EasyCon
             formController.RegisterKey(_config.KeyMapping.Home, NintendoSwitch.Button.HOME);
             formController.RegisterKey(_config.KeyMapping.LClick, NintendoSwitch.Button.LCLICK);
             formController.RegisterKey(_config.KeyMapping.RClick, NintendoSwitch.Button.RCLICK);
-            formController.RegisterKey(_config.KeyMapping.Up, NintendoSwitch.HAT.TOP);
-            formController.RegisterKey(_config.KeyMapping.Down, NintendoSwitch.HAT.BOTTOM);
-            formController.RegisterKey(_config.KeyMapping.Left, NintendoSwitch.HAT.LEFT);
-            formController.RegisterKey(_config.KeyMapping.Right, NintendoSwitch.HAT.RIGHT);
             formController.RegisterKey(_config.KeyMapping.UpRight, NintendoSwitch.HAT.TOP_RIGHT);
             formController.RegisterKey(_config.KeyMapping.DownRight, NintendoSwitch.HAT.BOTTOM_RIGHT);
             formController.RegisterKey(_config.KeyMapping.UpLeft, NintendoSwitch.HAT.TOP_LEFT);
             formController.RegisterKey(_config.KeyMapping.DownLeft, NintendoSwitch.HAT.BOTTOM_LEFT);
+            formController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(NintendoSwitch.DirectionKey.Up, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Up, false));
+            formController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(NintendoSwitch.DirectionKey.Down, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Down, false));
+            formController.RegisterKey(_config.KeyMapping.Left, () => NS.HatDirection(NintendoSwitch.DirectionKey.Left, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Left, false));
+            formController.RegisterKey(_config.KeyMapping.Right, () => NS.HatDirection(NintendoSwitch.DirectionKey.Right, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Right, false));
+
             formController.RegisterKey(_config.KeyMapping.LSUp, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Up, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Up, false));
             formController.RegisterKey(_config.KeyMapping.LSDown, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Down, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Down, false));
             formController.RegisterKey(_config.KeyMapping.LSLeft, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Left, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Left, false));

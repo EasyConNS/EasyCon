@@ -58,10 +58,6 @@ namespace PTDevice
             Down = 0x2,
             Left = 0x4,
             Right = 0x8,
-            UpLeft = 0x16,
-            DownLeft = 0x32,
-            UpRight = 0x64,
-            DownRight = 0x128,
         }
 
         public class Report : ICloneable
@@ -160,7 +156,7 @@ namespace PTDevice
             public enum StickKeyCode
             {
                 LS = 32,
-                RS = 33,
+                RS = 33,s
             }
 
             public readonly string Name;
@@ -217,7 +213,7 @@ namespace PTDevice
                 return new Key(name,
                     (int)hat | HatMask,
                     r => r.HAT = (byte)hat,
-                    r => r.HAT = (byte)NintendoSwitch.HAT.CENTER
+                    r => r.HAT = (byte)hat
                 );
             }
 
@@ -346,6 +342,15 @@ namespace PTDevice
                     case "RStick(255,128)":
                         return "RS RIGHT";
 
+                    case "RStick(0,0)":
+                        return "RS 135";
+                    case "RStick(255,255)":
+                        return "RS 315";
+                    case "RStick(0,255)":
+                        return "RS 225";
+                    case "RStick(255,0)":
+                        return "RS 45";
+
                     case "LStick(128,0)":
                         return "LS UP";
                     case "LStick(128,128)":
@@ -356,6 +361,15 @@ namespace PTDevice
                         return "LS LEFT";
                     case "LStick(255,128)":
                         return "LS RIGHT";
+
+                    case "LStick(0,0)":
+                        return "LS 135";
+                    case "LStick(255,255)":
+                        return "LS 315";
+                    case "LStick(0,255)":
+                        return "LS 225";
+                    case "LStick(255,0)":
+                        return "LS 45";
 
                     case "HAT.TOP":
                         return "UP";
@@ -433,6 +447,7 @@ namespace PTDevice
         DateTime _nextSendTime = DateTime.MinValue;
         DirectionKey _leftStick = 0;
         DirectionKey _rightStick = 0;
+        DirectionKey _hat = 0;
         DateTime _lastActionTime = DateTime.MinValue;
 
         public delegate void LogHandler(string s);
@@ -807,6 +822,35 @@ namespace PTDevice
         public void RightDirection(DirectionKey dkey, bool down)
         {
             Direction(dkey, down, ref _rightStick, Key.RStick);
+        }
+
+        public void HatDirection(DirectionKey dkey, bool down)
+        {
+            var oldflags = _hat;
+            if (down)
+            {
+                _hat |= dkey;
+                GetHATFromDirection(_hat);
+                Down(Key.HAT(_hat));
+            }
+            else
+            {
+                _hat &= ~dkey;
+                if(GetHATFromDirection(_hat)== HAT.CENTER)
+                { 
+                    Debug.WriteLine("_hat none");
+                    Debug.WriteLine("_hat " + _hat.GetName());
+                    Debug.WriteLine("dkey " + dkey.GetName());
+                    Up(Key.HAT(dkey));
+                }
+                else
+                {
+                    Debug.WriteLine("_hat not none");
+                    Debug.WriteLine("_hat " + _hat.GetName());
+                    Debug.WriteLine("dkey " + dkey.GetName());
+                    Down(Key.HAT(_hat));
+                }
+            }
         }
 
         void Loop()
