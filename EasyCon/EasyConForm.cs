@@ -20,6 +20,7 @@ using Newtonsoft.Json;
 using PTDevice.Arduino;
 using EasyCon.Script.Assembly;
 using EasyCon.Script.Parsing;
+using EasyCon.Graphic;
 
 namespace EasyCon
 {
@@ -1084,6 +1085,19 @@ namespace EasyCon
             {
                 e.Effect = DragDropEffects.None;
             }
+        }
+
+        private void 选择采集卡设备ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            //VideoCapture.CaptureCamera(index);
+            //videoSourcePlayerMonitor.VideoSource = VideoCapture.VideoSource;
+            //buttonCaptureCamera.Text = $"采集USB[{VideoCapture.CameraIndex}]";
+            //buttonCaptureScreen.Text = $"采集屏幕";
+        }
+
+        private void 显示采集窗口ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
