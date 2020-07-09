@@ -29,6 +29,7 @@ namespace EasyCon
         internal NintendoSwitch NS = NintendoSwitch.GetInstance();
         internal FormController formController;
         internal FormKeyMapping formKeyMapping;
+        internal CaptureVideo captureVideo;
 
         const string ConfigPath = @"config.json";
         Config _config;
@@ -1087,17 +1088,37 @@ namespace EasyCon
             }
         }
 
-        private void 选择采集卡设备ToolStripMenuItem_Click(object sender, EventArgs e)
+        private void CaptureDeviceItem_Click(object sender, EventArgs e)
         {
-            //VideoCapture.CaptureCamera(index);
-            //videoSourcePlayerMonitor.VideoSource = VideoCapture.VideoSource;
-            //buttonCaptureCamera.Text = $"采集USB[{VideoCapture.CameraIndex}]";
-            //buttonCaptureScreen.Text = $"采集屏幕";
+            ((ToolStripMenuItem)sender).Checked = true;
+            ((ToolStripMenuItem)sender).CheckState = System.Windows.Forms.CheckState.Checked;
+
+            Debug.WriteLine((int)(((ToolStripMenuItem)sender).Tag));
+            VideoCapture.CaptureCamera((int)((ToolStripMenuItem)sender).Tag);
+            captureVideo = new CaptureVideo(VideoCapture.VideoSource);
+            captureVideo.Show();
         }
 
-        private void 显示采集窗口ToolStripMenuItem_Click(object sender, EventArgs e)
+        private void SelectDeviceToolStripMenuItem_MouseHover(object sender, EventArgs e)
         {
+            // first get the device list
+            List<string> devsNames = VideoCapture.GetCaptureCamera();
 
+            this.SelectDeviceToolStripMenuItem.DropDownItems.Clear();
+            int tag = 0;
+            foreach (string name in devsNames)
+            {
+                ToolStripMenuItem item = new System.Windows.Forms.ToolStripMenuItem();
+                this.SelectDeviceToolStripMenuItem.DropDownItems.Add(item);
+                item.Checked = false;
+                item.CheckState = System.Windows.Forms.CheckState.Unchecked;
+                item.Name = "toolStripMenuItem2";
+                item.Size = new System.Drawing.Size(180, 22);
+                item.Text = name;
+                item.Click += new System.EventHandler(this.CaptureDeviceItem_Click);
+                item.Tag = tag;
+                tag++;
+            }
         }
     }
 }

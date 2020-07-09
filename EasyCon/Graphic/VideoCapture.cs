@@ -106,6 +106,21 @@ namespace EasyCon.Graphic
             }
         }
 
+        public static List<string> GetCaptureCamera()
+        {
+            var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
+
+            List<string> names = new List<string>();
+            foreach(FilterInfo dev in videoDevices)
+            {
+                names.Add(dev.Name);
+                Debug.WriteLine(dev.Name);
+                Debug.WriteLine(dev.MonikerString);
+            }
+
+            return names;
+        }
+
         static void NewFrameHandler(object sender, NewFrameEventArgs eventArgs)
         {
             if (Monitor.TryEnter(_lock))

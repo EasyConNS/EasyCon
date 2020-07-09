@@ -52,6 +52,8 @@
             this.关于ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.项目源码ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.CpuOptToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.CaptureDevToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.SelectDeviceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.buttonCLS = new System.Windows.Forms.Button();
             this.labelTimer = new System.Windows.Forms.Label();
@@ -86,9 +88,6 @@
             this.comboBoxBoardType = new System.Windows.Forms.ComboBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.textBoxFirmware = new System.Windows.Forms.TextBox();
-            this.采集卡ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.选择采集卡设备ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.显示采集窗口ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -106,7 +105,7 @@
             this.文件ToolStripMenuItem,
             this.脚本ToolStripMenuItem,
             this.帮助ToolStripMenuItem,
-            this.采集卡ToolStripMenuItem});
+            this.CaptureDevToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Padding = new System.Windows.Forms.Padding(7, 2, 0, 2);
@@ -219,13 +218,14 @@
             this.烧录模式ToolStripMenuItem,
             this.固件模式ToolStripMenuItem});
             this.使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
-            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.使用方法ToolStripMenuItem.Text = "使用方法";
             // 
             // 联机模式ToolStripMenuItem
             // 
             this.联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
             this.联机模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
+            this.联机模式ToolStripMenuItem.Tag = "";
             this.联机模式ToolStripMenuItem.Text = "联机模式";
             this.联机模式ToolStripMenuItem.Click += new System.EventHandler(this.联机模式ToolStripMenuItem_Click);
             // 
@@ -246,42 +246,57 @@
             // 下载AtmelFlipToolStripMenuItem
             // 
             this.下载AtmelFlipToolStripMenuItem.Name = "下载AtmelFlipToolStripMenuItem";
-            this.下载AtmelFlipToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.下载AtmelFlipToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.下载AtmelFlipToolStripMenuItem.Text = "下载Atmel Flip";
             this.下载AtmelFlipToolStripMenuItem.Click += new System.EventHandler(this.下载AtmelFlipToolStripMenuItem_Click);
             // 
             // 显示调试信息ToolStripMenuItem
             // 
             this.显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             this.显示调试信息ToolStripMenuItem.Click += new System.EventHandler(this.显示调试信息ToolStripMenuItem_Click);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(154, 6);
             // 
             // 关于ToolStripMenuItem
             // 
             this.关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.关于ToolStripMenuItem.Text = "关于";
             this.关于ToolStripMenuItem.Click += new System.EventHandler(this.关于ToolStripMenuItem_Click);
             // 
             // 项目源码ToolStripMenuItem
             // 
             this.项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.项目源码ToolStripMenuItem.Text = "项目源码";
             this.项目源码ToolStripMenuItem.Click += new System.EventHandler(this.项目源码ToolStripMenuItem_Click);
             // 
             // CpuOptToolStripMenuItem
             // 
             this.CpuOptToolStripMenuItem.Name = "CpuOptToolStripMenuItem";
-            this.CpuOptToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.CpuOptToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
             this.CpuOptToolStripMenuItem.Text = "CPU优化-关闭";
             this.CpuOptToolStripMenuItem.Click += new System.EventHandler(this.CpuOptToolStripMenuItem_Click);
+            // 
+            // CaptureDevToolStripMenuItem
+            // 
+            this.CaptureDevToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.SelectDeviceToolStripMenuItem});
+            this.CaptureDevToolStripMenuItem.Name = "CaptureDevToolStripMenuItem";
+            this.CaptureDevToolStripMenuItem.Size = new System.Drawing.Size(56, 21);
+            this.CaptureDevToolStripMenuItem.Text = "采集卡";
+            // 
+            // SelectDeviceToolStripMenuItem
+            // 
+            this.SelectDeviceToolStripMenuItem.Name = "SelectDeviceToolStripMenuItem";
+            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.SelectDeviceToolStripMenuItem.Text = "选择采集设备";
+            this.SelectDeviceToolStripMenuItem.MouseHover += new System.EventHandler(this.SelectDeviceToolStripMenuItem_MouseHover);
             // 
             // groupBox1
             // 
@@ -632,29 +647,6 @@
             this.textBoxFirmware.TabIndex = 5;
             this.textBoxFirmware.WordWrap = false;
             // 
-            // 采集卡ToolStripMenuItem
-            // 
-            this.采集卡ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.选择采集卡设备ToolStripMenuItem,
-            this.显示采集窗口ToolStripMenuItem});
-            this.采集卡ToolStripMenuItem.Name = "采集卡ToolStripMenuItem";
-            this.采集卡ToolStripMenuItem.Size = new System.Drawing.Size(56, 21);
-            this.采集卡ToolStripMenuItem.Text = "采集卡";
-            // 
-            // 选择采集卡设备ToolStripMenuItem
-            // 
-            this.选择采集卡设备ToolStripMenuItem.Name = "选择采集卡设备ToolStripMenuItem";
-            this.选择采集卡设备ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.选择采集卡设备ToolStripMenuItem.Text = "选择采集卡设备";
-            this.选择采集卡设备ToolStripMenuItem.Click += new System.EventHandler(this.选择采集卡设备ToolStripMenuItem_Click);
-            // 
-            // 显示采集窗口ToolStripMenuItem
-            // 
-            this.显示采集窗口ToolStripMenuItem.Name = "显示采集窗口ToolStripMenuItem";
-            this.显示采集窗口ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.显示采集窗口ToolStripMenuItem.Text = "显示采集窗口";
-            this.显示采集窗口ToolStripMenuItem.Click += new System.EventHandler(this.显示采集窗口ToolStripMenuItem_Click);
-            // 
             // EasyConForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 16F);
@@ -757,9 +749,8 @@
         private System.Windows.Forms.Button buttonRecord;
         private System.Windows.Forms.Button buttonRecordPause;
         private System.Windows.Forms.ToolStripMenuItem CpuOptToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 采集卡ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 选择采集卡设备ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 显示采集窗口ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem CaptureDevToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem SelectDeviceToolStripMenuItem;
     }
 }
 
