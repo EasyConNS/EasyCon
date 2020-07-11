@@ -294,7 +294,7 @@
             // SelectDeviceToolStripMenuItem
             // 
             this.SelectDeviceToolStripMenuItem.Name = "SelectDeviceToolStripMenuItem";
-            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
             this.SelectDeviceToolStripMenuItem.Text = "选择采集设备";
             this.SelectDeviceToolStripMenuItem.MouseHover += new System.EventHandler(this.SelectDeviceToolStripMenuItem_MouseHover);
             // 
@@ -661,7 +661,6 @@
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.menuStrip1);
             this.Font = new System.Drawing.Font("微软雅黑", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.KeyPreview = true;
             this.MainMenuStrip = this.menuStrip1;
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
@@ -672,6 +671,7 @@
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.EasyConForm_KeyDown);
+            this.Resize += new System.EventHandler(this.EasyConForm_Resize);
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.groupBox1.ResumeLayout(false);
