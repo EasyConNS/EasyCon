@@ -497,8 +497,8 @@ namespace EasyCon
         {
             if (NS.IsConnected())
                 return true;
-            if (textBoxSerialPort.Text != "")
-                return SerialConnect(textBoxSerialPort.Text);
+            if (ComPort.Text != "" || ComPort.Text != "下拉选择串口")
+                return SerialConnect(ComPort.Text);
             return SerialSearchConnect() != null;
         }
 
@@ -514,7 +514,7 @@ namespace EasyCon
                 if (r == NintendoSwitch.ConnectResult.Success)
                 {
                     StatusShowLog("连接成功");
-                    textBoxSerialPort.Text = portName;
+                    ComPort.Text = portName;
                     return portName;
                 }
             }
@@ -544,7 +544,7 @@ namespace EasyCon
             if (r == NintendoSwitch.ConnectResult.Success)
             {
                 StatusShowLog("连接成功");
-                textBoxSerialPort.Text = portName;
+                ComPort.Text = portName;
                 if (NS.GetConnectionStatus() == ArduinoSerial.Status.ConnectedUnsafe)
                     MessageBox.Show("正在使用单向连接模式。这是一种应急方案，并不表示成功连接到单片机，有可能无法正常工作。请检查连线并尽量使用稳定模式。");
                 return true;
@@ -883,7 +883,7 @@ namespace EasyCon
 
         private void buttonSerialPortConnect_Click(object sender, EventArgs e)
         {
-            if (SerialConnect(textBoxSerialPort.Text))
+            if (SerialConnect(ComPort.Text))
                 SystemSounds.Beep.Play();
         }
 
@@ -1175,6 +1175,17 @@ namespace EasyCon
                 {
                     setControls(newx, newy, con);
                 }
+            }
+        }
+
+        private void ComPort_DropDown(object sender, EventArgs e)
+        {
+            StatusShowLog("尝试连接...");
+            var ports = SerialPort.GetPortNames();
+            this.ComPort.Items.Clear();
+            foreach (var portName in ports)
+            {
+                this.ComPort.Items.Add(portName);
             }
         }
     }

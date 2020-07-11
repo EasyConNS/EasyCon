@@ -67,11 +67,11 @@
             this.toolStripProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.ComPort = new System.Windows.Forms.ComboBox();
             this.buttonControllerHelp = new System.Windows.Forms.Button();
             this.labelSerialStatus = new System.Windows.Forms.Label();
             this.buttonSerialPortConnect = new System.Windows.Forms.Button();
             this.buttonSerialPortSearch = new System.Windows.Forms.Button();
-            this.textBoxSerialPort = new System.Windows.Forms.TextBox();
             this.label18 = new System.Windows.Forms.Label();
             this.buttonKeyMapping = new System.Windows.Forms.Button();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
@@ -364,7 +364,7 @@
             // 
             this.buttonShowController.Location = new System.Drawing.Point(6, 79);
             this.buttonShowController.Name = "buttonShowController";
-            this.buttonShowController.Size = new System.Drawing.Size(185, 40);
+            this.buttonShowController.Size = new System.Drawing.Size(150, 40);
             this.buttonShowController.TabIndex = 3;
             this.buttonShowController.Text = "启用虚拟手柄";
             this.buttonShowController.UseVisualStyleBackColor = true;
@@ -436,11 +436,11 @@
             // 
             // groupBox3
             // 
+            this.groupBox3.Controls.Add(this.ComPort);
             this.groupBox3.Controls.Add(this.buttonControllerHelp);
             this.groupBox3.Controls.Add(this.labelSerialStatus);
             this.groupBox3.Controls.Add(this.buttonSerialPortConnect);
             this.groupBox3.Controls.Add(this.buttonSerialPortSearch);
-            this.groupBox3.Controls.Add(this.textBoxSerialPort);
             this.groupBox3.Controls.Add(this.label18);
             this.groupBox3.Controls.Add(this.buttonKeyMapping);
             this.groupBox3.Controls.Add(this.buttonShowController);
@@ -451,11 +451,21 @@
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "连接";
             // 
+            // ComPort
+            // 
+            this.ComPort.FormattingEnabled = true;
+            this.ComPort.Location = new System.Drawing.Point(39, 20);
+            this.ComPort.Name = "ComPort";
+            this.ComPort.Size = new System.Drawing.Size(116, 24);
+            this.ComPort.TabIndex = 34;
+            this.ComPort.Text = "下拉选择串口";
+            this.ComPort.DropDown += new System.EventHandler(this.ComPort_DropDown);
+            // 
             // buttonControllerHelp
             // 
-            this.buttonControllerHelp.Location = new System.Drawing.Point(192, 79);
+            this.buttonControllerHelp.Location = new System.Drawing.Point(157, 79);
             this.buttonControllerHelp.Name = "buttonControllerHelp";
-            this.buttonControllerHelp.Size = new System.Drawing.Size(33, 40);
+            this.buttonControllerHelp.Size = new System.Drawing.Size(74, 40);
             this.buttonControllerHelp.TabIndex = 33;
             this.buttonControllerHelp.Text = "?";
             this.buttonControllerHelp.UseVisualStyleBackColor = true;
@@ -465,9 +475,9 @@
             // 
             this.labelSerialStatus.BackColor = System.Drawing.Color.DimGray;
             this.labelSerialStatus.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.labelSerialStatus.Location = new System.Drawing.Point(117, 21);
+            this.labelSerialStatus.Location = new System.Drawing.Point(158, 21);
             this.labelSerialStatus.Name = "labelSerialStatus";
-            this.labelSerialStatus.Size = new System.Drawing.Size(189, 22);
+            this.labelSerialStatus.Size = new System.Drawing.Size(148, 22);
             this.labelSerialStatus.TabIndex = 31;
             this.labelSerialStatus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
@@ -491,30 +501,21 @@
             this.buttonSerialPortSearch.UseVisualStyleBackColor = true;
             this.buttonSerialPortSearch.Click += new System.EventHandler(this.buttonSerialPortSearch_Click);
             // 
-            // textBoxSerialPort
-            // 
-            this.textBoxSerialPort.BackColor = System.Drawing.Color.White;
-            this.textBoxSerialPort.Location = new System.Drawing.Point(62, 21);
-            this.textBoxSerialPort.Name = "textBoxSerialPort";
-            this.textBoxSerialPort.Size = new System.Drawing.Size(49, 22);
-            this.textBoxSerialPort.TabIndex = 27;
-            this.textBoxSerialPort.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            // 
             // label18
             // 
-            this.label18.Location = new System.Drawing.Point(6, 23);
+            this.label18.Location = new System.Drawing.Point(3, 21);
             this.label18.Margin = new System.Windows.Forms.Padding(0);
             this.label18.Name = "label18";
-            this.label18.Size = new System.Drawing.Size(53, 18);
+            this.label18.Size = new System.Drawing.Size(45, 18);
             this.label18.TabIndex = 28;
-            this.label18.Text = "串行口";
+            this.label18.Text = "串口";
             this.label18.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // buttonKeyMapping
             // 
-            this.buttonKeyMapping.Location = new System.Drawing.Point(226, 79);
+            this.buttonKeyMapping.Location = new System.Drawing.Point(232, 79);
             this.buttonKeyMapping.Name = "buttonKeyMapping";
-            this.buttonKeyMapping.Size = new System.Drawing.Size(81, 40);
+            this.buttonKeyMapping.Size = new System.Drawing.Size(75, 40);
             this.buttonKeyMapping.TabIndex = 4;
             this.buttonKeyMapping.Text = "按键设置";
             this.buttonKeyMapping.UseVisualStyleBackColor = true;
@@ -680,7 +681,6 @@
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();
             this.groupBox3.ResumeLayout(false);
-            this.groupBox3.PerformLayout();
             this.groupBox6.ResumeLayout(false);
             this.groupBox5.ResumeLayout(false);
             this.groupBox2.ResumeLayout(false);
@@ -720,7 +720,6 @@
         private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.Button buttonKeyMapping;
         private System.Windows.Forms.Button buttonSerialPortSearch;
-        private System.Windows.Forms.TextBox textBoxSerialPort;
         private System.Windows.Forms.Label label18;
         private System.Windows.Forms.Button buttonSerialPortConnect;
         private System.Windows.Forms.Label labelSerialStatus;
@@ -751,6 +750,7 @@
         private System.Windows.Forms.ToolStripMenuItem CpuOptToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem CaptureDevToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem SelectDeviceToolStripMenuItem;
+        private System.Windows.Forms.ComboBox ComPort;
     }
 }
 
