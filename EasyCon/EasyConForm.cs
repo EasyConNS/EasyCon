@@ -1138,6 +1138,7 @@ namespace EasyCon
             float newy = (this.Height) / Y;//窗体高度缩放比例
             setControls(newx, newy, this);//随窗体改变控件大小
         }
+
         /// <summary>
         /// 将控件的宽，高，左边距，顶边距和字体大小暂存到tag属性中
         /// </summary>
@@ -1151,6 +1152,7 @@ namespace EasyCon
                     setTag(con);
             }
         }
+
         //根据窗体大小调整控件大小
         private void setControls(float newx, float newy, Control cons)
         {
