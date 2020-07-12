@@ -22,7 +22,7 @@ namespace EasyCon.Graphic
         public static readonly Func<int, Sampler> LineSampler;
         public static readonly Func<int, Sampler> PointSampler;
 
-        public static IVideoSource VideoSource { get; private set; }
+        public static VideoCaptureDevice VideoSource { get; private set; }
         public delegate void VideoSourceChangedHandler();
         public static event VideoSourceChangedHandler VideoSourceChanged;
         public static int CameraIndex { get; private set; } = -1;
@@ -84,27 +84,34 @@ namespace EasyCon.Graphic
                 if (CameraIndex >= videoDevices.Count)
                     CameraIndex = 0;
                 VideoSource = new VideoCaptureDevice(videoDevices[CameraIndex].MonikerString);
+                // there is a problem,maybe some capture device could not support 1080p
+                // it could make the output pic low resolution
+                foreach(var vc in VideoSource.VideoCapabilities)
+                {
+                    Debug.WriteLine(vc.FrameSize.ToString());
+                }
+                //VideoSource.VideoResolution = VideoSource.VideoCapabilities[0];
                 VideoSource.NewFrame += NewFrameHandler;
                 VideoSource.Start();
                 VideoSourceChanged?.Invoke();
             }
         }
 
-        public static void CaptureScreen(int? index = null)
-        {
-            lock (_lock)
-            {
-                VideoSource?.SignalToStop();
-                ScreenIndex = index ?? ScreenIndex + 1;
-                CameraIndex = -1;
-                if (ScreenIndex >= Screen.AllScreens.Length)
-                    ScreenIndex = 0;
-                VideoSource = new ScreenCaptureStream(Screen.AllScreens[ScreenIndex].Bounds);
-                VideoSource.NewFrame += NewFrameHandler;
-                VideoSource.Start();
-                VideoSourceChanged?.Invoke();
-            }
-        }
+        //public static void CaptureScreen(int? index = null)
+        //{
+        //    lock (_lock)
+        //    {
+        //        VideoSource?.SignalToStop();
+        //        ScreenIndex = index ?? ScreenIndex + 1;
+        //        CameraIndex = -1;
+        //        if (ScreenIndex >= Screen.AllScreens.Length)
+        //            ScreenIndex = 0;
+        //        VideoSource = new ScreenCaptureStream(Screen.AllScreens[ScreenIndex].Bounds);
+        //        VideoSource.NewFrame += NewFrameHandler;
+        //        VideoSource.Start();
+        //        VideoSourceChanged?.Invoke();
+        //    }
+        //}
 
         public static List<string> GetCaptureCamera()
         {

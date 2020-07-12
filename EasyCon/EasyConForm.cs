@@ -497,7 +497,7 @@ namespace EasyCon
         {
             if (NS.IsConnected())
                 return true;
-            if (ComPort.Text != "" || ComPort.Text != "下拉选择串口")
+            if (!(ComPort.Text.Equals("下拉选择串口")))
                 return SerialConnect(ComPort.Text);
             return SerialSearchConnect() != null;
         }
@@ -1108,7 +1108,7 @@ namespace EasyCon
             captureVideo.Show();
         }
 
-        private void SelectDeviceToolStripMenuItem_MouseHover(object sender, EventArgs e)
+        private void FindCaptures()
         {
             // first get the device list
             List<string> devsNames = VideoCapture.GetCaptureCamera();
@@ -1128,6 +1128,11 @@ namespace EasyCon
                 item.Tag = tag;
                 tag++;
             }
+        }
+
+        private void SelectDeviceToolStripMenuItem_MouseHover(object sender, EventArgs e)
+        {
+            FindCaptures();
         }
 
         private void EasyConForm_Resize(object sender, EventArgs e)
@@ -1187,6 +1192,11 @@ namespace EasyCon
             {
                 this.ComPort.Items.Add(portName);
             }
+        }
+
+        private void SelectDeviceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FindCaptures();
         }
     }
 }

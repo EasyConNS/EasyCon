@@ -294,8 +294,9 @@
             // SelectDeviceToolStripMenuItem
             // 
             this.SelectDeviceToolStripMenuItem.Name = "SelectDeviceToolStripMenuItem";
-            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
+            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.SelectDeviceToolStripMenuItem.Text = "选择采集设备";
+            this.SelectDeviceToolStripMenuItem.Click += new System.EventHandler(this.SelectDeviceToolStripMenuItem_Click);
             this.SelectDeviceToolStripMenuItem.MouseHover += new System.EventHandler(this.SelectDeviceToolStripMenuItem_MouseHover);
             // 
             // groupBox1

@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.IO;
+using EasyCon.Graphic;
 
 namespace EasyCon
 {
@@ -47,21 +49,21 @@ namespace EasyCon
         private void VideoSourcePlayerMonitor_MouseWheel(object sender, MouseEventArgs e)
         {
             var newSize = new Size(this.Size.Width, this.Size.Height);
-            monitorScale = (e.Delta>0)?1.1:0.90909;
+            monitorScale = (e.Delta > 0) ? 1.1 : 0.90909;
 
-            Debug.WriteLine(monitorScale.ToString()+" "+ newSize.ToString());
+            Debug.WriteLine(monitorScale.ToString() + " " + newSize.ToString());
 
-            if (monitorHorOrVerZoom==1)
+            if (monitorHorOrVerZoom == 1)
             {
                 newSize.Height = (int)(newSize.Height * monitorScale);
             }
-            else if(monitorHorOrVerZoom==2)
+            else if (monitorHorOrVerZoom == 2)
             {
                 newSize.Width = (int)(newSize.Width * monitorScale);
             }
             else
             {
-                newSize.Width = (int)(newSize.Width*monitorScale);
+                newSize.Width = (int)(newSize.Width * monitorScale);
                 newSize.Height = (int)(newSize.Height * monitorScale);
             }
 
@@ -133,6 +135,7 @@ namespace EasyCon
                 this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
                 this.VideoSourcePlayerMonitor.Dock = System.Windows.Forms.DockStyle.None;
                 monitorMode = MonitorMode.Editor;
+                needUpdate = true;
                 this.Refresh();
             }
             else if (monitorMode == MonitorMode.Editor)
@@ -142,6 +145,7 @@ namespace EasyCon
                 this.VideoSourcePlayerMonitor.Dock = System.Windows.Forms.DockStyle.Fill;
                 monitorMode = MonitorMode.NoBorder;
                 this.VideoSourcePlayerMonitor.BringToFront();
+                needUpdate = true;
                 this.Refresh();
             }
         }
@@ -194,6 +198,178 @@ namespace EasyCon
                 mouse.Offset(mouseOffset.X, mouseOffset.Y);
                 Debug.WriteLine("mouse move" + mouseOffset.X + " " + mouseOffset.Y);
                 this.Location = mouse;
+            }
+        }
+
+        private Graphics SnapshotGraphic;
+        Bitmap bitmap;
+        private void button1_Click(object sender, EventArgs e)
+        {
+            string path = System.Windows.Forms.Application.StartupPath + "\\Capture\\";
+            //判断该路径下文件夹是否存在，不存在的情况下新建文件夹
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            bitmap = VideoSourcePlayerMonitor.GetCurrentVideoFrame();
+            //VideoSourcePlayerMonitor
+            bitmap.Save(path + DateTime.Now.Ticks.ToString() + ".bmp", System.Drawing.Imaging.ImageFormat.Bmp);
+            // Snapshot.Image = bitmap;
+            //Snapshot.SizeMode = PictureBoxSizeMode.StretchImage;
+
+            //      this.SetStyle(ControlStyles.DoubleBuffer |
+            //ControlStyles.UserPaint |
+            //ControlStyles.AllPaintingInWmPaint,
+            //true);
+            //this.UpdateStyles();
+            //this.Snapshot.set
+            //Snapshot
+            //bitmaps
+            SnapshotGraphic = Snapshot.CreateGraphics();
+            //SnapshotGraphic.dou
+            bmpPos.X = 0;
+            bmpPos.Y = 0;
+            bmpScale.X = 1.0f;
+            bmpScale.Y = 1.0f;
+            SnapshotGraphic.DrawImage(bitmap, new Rectangle(0, 0, Snapshot.Width, Snapshot.Height), new Rectangle(bmpPos.X, bmpPos.Y, bitmap.Width, bitmap.Height), GraphicsUnit.Pixel);
+            //bmpPos.X = Snapshot.Width / 2;
+            //bmpPos.Y = Snapshot.Height / 2;
+        }
+
+        private Point mouseDownPoint = new Point();
+        private Point mouseDownPoint1 = new Point();
+        private Point mouseDownPoint2 = new Point();
+        private bool isMove;
+        private bool isMove1;
+        private bool needUpdate = false;
+        private void Snapshot_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                mouseDownPoint.X = e.X;   //记录鼠标左键按下时位置
+                mouseDownPoint.Y = e.Y;
+                //Debug.WriteLine("donw:"+e.X.ToString()+" "+e.Y.ToString());
+                isMove = true;
+                Snapshot.Focus();    //鼠标滚轮事件(缩放时)需要picturebox有焦点
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                mouseDownPoint1.X = e.X;   //记录鼠标s左键按下时位置
+                mouseDownPoint1.Y = e.Y;
+                isMove1 = true;
+                //Debug.WriteLine("donw:"+e.X.ToString()+" "+e.Y.ToString());
+                Snapshot.Focus();    //鼠标滚轮事件(缩放时)需要picturebox有焦点
+            }
+        }
+
+        private void Snapshot_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left || e.Button == MouseButtons.Right)
+            {
+                isMove = false;
+                isMove1 = false;
+            }
+        }
+
+        private void Snapshot_MouseMove(object sender, MouseEventArgs e)
+        {
+            Snapshot.Focus();    //鼠标在picturebox上时才有焦点，此时可以缩放
+
+            if (e.Button == MouseButtons.Left && isMove)
+            {
+                SnapshotTranslate.X = e.X - mouseDownPoint.X;
+                SnapshotTranslate.Y = e.Y - mouseDownPoint.Y;
+                mouseDownPoint.X = e.X;
+                mouseDownPoint.Y = e.Y;
+                needUpdate = true;
+                Snapshot.Refresh();
+            }
+            else if (e.Button == MouseButtons.Right && isMove1)
+            {
+                mouseDownPoint2.X = e.X;
+                mouseDownPoint2.Y = e.Y;
+                needUpdate = true;
+                Snapshot.Refresh();
+            }
+        }
+
+        private void Snapshot_MouseWheel(object sender, MouseEventArgs e)
+        {
+            //Snapshot.Focus();    //鼠标在picturebox上时才有焦点，此时可以缩放
+            ////var newSize = new Size(this.Size.Width, this.Size.Height);
+            //bmpScale.X += (e.Delta > 0) ? -0.1f:0.1f;
+            //bmpScale.Y += (e.Delta > 0) ? -0.1f:0.1f;
+
+            //bmpScale.X = (float)Math.Max(bmpScale.X, 0.1);
+            //bmpScale.Y = (float)Math.Max(bmpScale.Y, 0.1);
+
+            ////Debug.WriteLine("bmpscale:" + bmpScale.ToString());
+            //Snapshot.Refresh();
+            //needUpdate = true;
+        }
+
+        private Point SnapshotTranslate = new Point();
+        private Point bmpPos = new Point();
+        private PointF bmpScale = new Point();
+        private void Snapshot_Paint(object sender, PaintEventArgs e)
+        {
+            if (needUpdate)
+            {
+                if (bitmap == null)
+                    return;
+
+                //Debug.WriteLine("paint:"+mouseDownPoint.ToString());
+                SnapshotGraphic = e.Graphics;//Snapshot.CreateGraphics();s
+                bmpPos.X -= (int)(SnapshotTranslate.X);
+                bmpPos.Y -= (int)(SnapshotTranslate.Y);
+                SnapshotTranslate.X = 0;
+                SnapshotTranslate.Y = 0;
+                needUpdate = false;
+                Debug.WriteLine("wh:" + mouseDownPoint1.X.ToString() + " " + mouseDownPoint1.Y.ToString());
+                SnapshotGraphic.DrawImage(bitmap, new Rectangle(0, 0, Snapshot.Width, Snapshot.Height), new Rectangle(bmpPos.X, bmpPos.Y, (int)(Snapshot.Width), (int)(Snapshot.Height)), GraphicsUnit.Pixel);
+                SnapshotGraphic.DrawRectangle(new Pen(Color.Red, 5), new Rectangle(mouseDownPoint1.X, mouseDownPoint1.Y, mouseDownPoint2.X - mouseDownPoint1.X, mouseDownPoint2.Y - mouseDownPoint1.Y));
+                //SnapshotGraphic.DrawImage(bitmap, new Rectangle(0, 0, Snapshot.Width, Snapshot.Height), new Rectangle(bmpPos.X , bmpPos.Y, (int)(bitmap.Width*bmpScale.X), (int)(bitmap.Height * bmpScale.Y)), GraphicsUnit.Pixel);
+            }
+        }
+
+        private Bitmap searchPic;
+        private void button2_Click(object sender, EventArgs e)
+        {
+            if (bitmap == null)
+                return;
+
+            if ((mouseDownPoint2.X - mouseDownPoint1.X) <= 0 || (mouseDownPoint2.Y - mouseDownPoint1.Y)<=0)
+                return;
+
+            Rectangle searchRange;
+            string path = System.Windows.Forms.Application.StartupPath + "\\SearchPic\\";
+            //判断该路径下文件夹是否存在，不存在的情况下新建文件夹
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+            //Debug.WriteLine("x:" + (bmpPos.X + mouseDownPoint1.X).ToString());
+            //Debug.WriteLine("y:" + (bmpPos.Y + mouseDownPoint1.Y).ToString());
+            searchRange = new Rectangle(bmpPos.X + mouseDownPoint1.X, bmpPos.Y + mouseDownPoint1.Y, mouseDownPoint2.X - mouseDownPoint1.X, mouseDownPoint2.Y - mouseDownPoint1.Y);
+            searchPic = bitmap.Clone(searchRange, bitmap.PixelFormat);
+            searchPic.Save(path + DateTime.Now.Ticks.ToString() + "_search.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            if (bitmap == null || searchPic == null)
+                return;
+
+            DateTime cur = DateTime.Now;
+            var list = VideoCapture.SearchImage(0, 0, bitmap.Width, bitmap.Height, searchPic, 0.9, VideoCapture.LineSampler(3), VideoCapture.DefaultSampler);
+            DateTime end = DateTime.Now;
+            for (int i = 0; i < list.Count; i++)
+                Debug.WriteLine($"({list[i].X},{list[i].Y})");
+
+            if(list.Count>0)
+            {
+                MessageBox.Show("找到目标图片,用时间:"+(end-cur).ToString());
             }
         }
     }
