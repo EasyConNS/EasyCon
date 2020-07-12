@@ -294,7 +294,7 @@
             // SelectDeviceToolStripMenuItem
             // 
             this.SelectDeviceToolStripMenuItem.Name = "SelectDeviceToolStripMenuItem";
-            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
             this.SelectDeviceToolStripMenuItem.Text = "选择采集设备";
             this.SelectDeviceToolStripMenuItem.Click += new System.EventHandler(this.SelectDeviceToolStripMenuItem_Click);
             this.SelectDeviceToolStripMenuItem.MouseHover += new System.EventHandler(this.SelectDeviceToolStripMenuItem_MouseHover);
@@ -669,7 +669,7 @@
             this.MaximizeBox = false;
             this.Name = "EasyConForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "伊机控 EasyCon v1.21";
+            this.Text = "伊机控 EasyCon v1.22测试版本";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.EasyConForm_KeyDown);

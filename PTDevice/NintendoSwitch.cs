@@ -156,7 +156,7 @@ namespace PTDevice
             public enum StickKeyCode
             {
                 LS = 32,
-                RS = 33,s
+                RS = 33
             }
 
             public readonly string Name;
@@ -213,7 +213,7 @@ namespace PTDevice
                 return new Key(name,
                     (int)hat | HatMask,
                     r => r.HAT = (byte)hat,
-                    r => r.HAT = (byte)hat
+                    r => r.HAT = (byte)NintendoSwitch.HAT.CENTER
                 );
             }
 
@@ -673,7 +673,7 @@ namespace PTDevice
         void PrintKey(string str, Key key = null)
         {
             str = str + " " + key?.Name ?? "";
-            Debug.WriteLine(str);
+            //Debug.WriteLine(str);
             //Log?.Invoke(str);;
         }
 
@@ -693,7 +693,7 @@ namespace PTDevice
             lock (this)
             {
                 PrintKey("Down", key);
-                Debug.Write("code:" + key.KeyCode);
+                //Debug.Write("code:" + key.KeyCode);
                 Signal();
                 _keystrokes[key.KeyCode] = new KeyStroke(key);
                 if (recordState == RecordState.RECORD_START)
@@ -838,14 +838,12 @@ namespace PTDevice
                 _hat &= ~dkey;
                 if(GetHATFromDirection(_hat)== HAT.CENTER)
                 { 
-                    Debug.WriteLine("_hat none");
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
                     Up(Key.HAT(dkey));
                 }
                 else
                 {
-                    Debug.WriteLine("_hat not none");
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
                     Down(Key.HAT(_hat));
