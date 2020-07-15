@@ -232,6 +232,7 @@ namespace EasyCon
             bmpPos.Y = 0;
             bmpScale.X = 1.0f;
             bmpScale.Y = 1.0f;
+            first = true;
             SnapshotGraphic.DrawImage(bitmap, new Rectangle(0, 0, Snapshot.Width, Snapshot.Height), new Rectangle(bmpPos.X, bmpPos.Y, bitmap.Width, bitmap.Height), GraphicsUnit.Pixel);
             //bmpPos.X = Snapshot.Width / 2;
             //bmpPos.Y = Snapshot.Height / 2;
@@ -242,6 +243,7 @@ namespace EasyCon
         private Point mouseDownPoint2 = new Point();
         private bool isMove;
         private bool isMove1;
+        private bool first;
         private bool needUpdate = false;
         private void Snapshot_MouseDown(object sender, MouseEventArgs e)
         {
@@ -251,6 +253,19 @@ namespace EasyCon
                 mouseDownPoint.Y = e.Y;
                 //Debug.WriteLine("donw:"+e.X.ToString()+" "+e.Y.ToString());
                 isMove = true;
+                if(first)
+                {
+                    Debug.WriteLine("donw:" + e.X.ToString() + " " + e.Y.ToString());
+                    bmpPos.X = (int)((float)e.X / Snapshot.Width * bitmap.Width - e.X);
+                    bmpPos.Y = (int)((float)e.Y / Snapshot.Height * bitmap.Height- e.Y);
+                    //bmpPos.X = (int)((float)e.X / Snapshot.Width * bitmap.Width - Snapshot.Width/2);
+                    //bmpPos.Y = (int)((float)e.Y / Snapshot.Height * bitmap.Height- Snapshot.Height/2);
+                    //first = false;
+
+                    needUpdate = true;
+                    Snapshot.Refresh();
+                }
+
                 Snapshot.Focus();    //鼠标滚轮事件(缩放时)需要picturebox有焦点
             }
             else if (e.Button == MouseButtons.Right)
@@ -274,10 +289,11 @@ namespace EasyCon
 
         private void Snapshot_MouseMove(object sender, MouseEventArgs e)
         {
-            Snapshot.Focus();    //鼠标在picturebox上时才有焦点，此时可以缩放
+            //Snapshot.Focus();    //鼠标在picturebox上时才有焦点，此时可以缩放
 
             if (e.Button == MouseButtons.Left && isMove)
             {
+                Snapshot.Focus();    //鼠标在picturebox上时才有焦点，此时可以缩放
                 SnapshotTranslate.X = e.X - mouseDownPoint.X;
                 SnapshotTranslate.Y = e.Y - mouseDownPoint.Y;
                 mouseDownPoint.X = e.X;
@@ -287,6 +303,7 @@ namespace EasyCon
             }
             else if (e.Button == MouseButtons.Right && isMove1)
             {
+                Snapshot.Focus();    //鼠标在picturebox上时才有焦点，此时可以缩放
                 mouseDownPoint2.X = e.X;
                 mouseDownPoint2.Y = e.Y;
                 needUpdate = true;
@@ -314,21 +331,32 @@ namespace EasyCon
         private PointF bmpScale = new Point();
         private void Snapshot_Paint(object sender, PaintEventArgs e)
         {
-            if (needUpdate)
+            //if (needUpdate)
             {
                 if (bitmap == null)
                     return;
 
                 //Debug.WriteLine("paint:"+mouseDownPoint.ToString());
                 SnapshotGraphic = e.Graphics;//Snapshot.CreateGraphics();s
-                bmpPos.X -= (int)(SnapshotTranslate.X);
-                bmpPos.Y -= (int)(SnapshotTranslate.Y);
-                SnapshotTranslate.X = 0;
-                SnapshotTranslate.Y = 0;
+
+                if (first)
+                {
+                    Debug.WriteLine("paint:" + bmpPos.X.ToString() + " " + bmpPos.Y.ToString());
+                    //bmpPos.X = e.X + bitmap.Width / 2;
+                    //bmpPos.Y = e.Y + bitmap.Height / 2;
+                    first = false;
+                }
+                else
+                {
+                    bmpPos.X -= (int)(SnapshotTranslate.X);
+                    bmpPos.Y -= (int)(SnapshotTranslate.Y);
+                    SnapshotTranslate.X = 0;
+                    SnapshotTranslate.Y = 0;
+                }
                 needUpdate = false;
-                Debug.WriteLine("wh:" + mouseDownPoint1.X.ToString() + " " + mouseDownPoint1.Y.ToString());
+                //Debug.WriteLine("wh:" + mouseDownPoint1.X.ToString() + " " + mouseDownPoint1.Y.ToString());
                 SnapshotGraphic.DrawImage(bitmap, new Rectangle(0, 0, Snapshot.Width, Snapshot.Height), new Rectangle(bmpPos.X, bmpPos.Y, (int)(Snapshot.Width), (int)(Snapshot.Height)), GraphicsUnit.Pixel);
-                SnapshotGraphic.DrawRectangle(new Pen(Color.Red, 5), new Rectangle(mouseDownPoint1.X, mouseDownPoint1.Y, mouseDownPoint2.X - mouseDownPoint1.X, mouseDownPoint2.Y - mouseDownPoint1.Y));
+                SnapshotGraphic.DrawRectangle(new Pen(Color.Red, 3), new Rectangle(mouseDownPoint1.X, mouseDownPoint1.Y, mouseDownPoint2.X - mouseDownPoint1.X, mouseDownPoint2.Y - mouseDownPoint1.Y));
                 //SnapshotGraphic.DrawImage(bitmap, new Rectangle(0, 0, Snapshot.Width, Snapshot.Height), new Rectangle(bmpPos.X , bmpPos.Y, (int)(bitmap.Width*bmpScale.X), (int)(bitmap.Height * bmpScale.Y)), GraphicsUnit.Pixel);
             }
         }
@@ -351,7 +379,26 @@ namespace EasyCon
             }
             //Debug.WriteLine("x:" + (bmpPos.X + mouseDownPoint1.X).ToString());
             //Debug.WriteLine("y:" + (bmpPos.Y + mouseDownPoint1.Y).ToString());
-            searchRange = new Rectangle(bmpPos.X + mouseDownPoint1.X, bmpPos.Y + mouseDownPoint1.Y, mouseDownPoint2.X - mouseDownPoint1.X, mouseDownPoint2.Y - mouseDownPoint1.Y);
+            int x = Math.Max(bmpPos.X + mouseDownPoint1.X, 0);
+            int y = Math.Max(bmpPos.Y + mouseDownPoint1.Y, 0);
+            x = Math.Min(bitmap.Width, x);
+            y = Math.Min(bitmap.Height,y);
+            int width = mouseDownPoint2.X - mouseDownPoint1.X;
+            int height = mouseDownPoint2.Y - mouseDownPoint1.Y;
+
+            if (x + width > bitmap.Width)
+                width = bitmap.Width - x;
+
+            if (x + width < 0)
+                width = x;
+
+            if (y + height > bitmap.Height)
+                height = bitmap.Width - y;
+
+            if (y + height < 0)
+                height = y;
+
+            searchRange = new Rectangle(x, y, width, height);
             searchPic = bitmap.Clone(searchRange, bitmap.PixelFormat);
             searchPic.Save(path + DateTime.Now.Ticks.ToString() + "_search.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
         }
@@ -362,15 +409,77 @@ namespace EasyCon
                 return;
 
             DateTime cur = DateTime.Now;
-            var list = VideoCapture.SearchImage(0, 0, bitmap.Width, bitmap.Height, searchPic, 0.9, VideoCapture.LineSampler(3), VideoCapture.DefaultSampler);
-            DateTime end = DateTime.Now;
+            Stopwatch sw = new Stopwatch();
+
+            sw.Reset();
+            sw.Start(); //计时开始
+            //var list = VideoCapture.SearchImage(0, 0, bitmap.Width, bitmap.Height, searchPic, 0.9, VideoCapture.LineSampler(3), VideoCapture.DefaultSampler);
+            var list = GraphicSearch.FindPic(0, 0, bitmap.Width, bitmap.Height, bitmap,searchPic, 1);
+            sw.Stop();   //计时结束
+            Debug.WriteLine("sf:"+sw.ElapsedMilliseconds + "毫秒");
+
+
+            Debug.WriteLine($"({list[0].X},{list[0].Y})");
+            Bitmap big = new Bitmap("C:\\Users\\elmag\\Pictures\\bit.bmp");
+            Bitmap small = new Bitmap("C:\\Users\\elmag\\Pictures\\small.bmp");
+            sw.Reset();
+            sw.Start(); //计时开始
+            //list.AddRange(GraphicSearch.FindPic(0, 0, big.Width, big.Height, big, small, 2));
+            list.AddRange(GraphicSearch.FindPic(0, 0, bitmap.Width, bitmap.Height, bitmap, searchPic, 2));
+            sw.Stop();   //计时结束
+            Debug.WriteLine("sf opt:" + sw.ElapsedMilliseconds + "毫秒");
+            Debug.WriteLine("num:"+list.Count());
+
+            sw.Reset();
+            sw.Start(); //计时开始
+            //var list = VideoCapture.SearchImage(0, 0, bitmap.Width, bitmap.Height, searchPic, 0.9, VideoCapture.LineSampler(3), VideoCapture.DefaultSampler);
+            list.AddRange( GraphicSearchOpenCv.FindPic(0, 0, bitmap.Width, bitmap.Height, bitmap, searchPic, 1));
+            sw.Stop();   //计时结束
+            Debug.WriteLine("oc1:"+sw.ElapsedMilliseconds + "毫秒");
+
+            sw.Reset();
+            sw.Start(); //计时开始
+            list.AddRange(GraphicSearchOpenCv.FindPic(0, 0, bitmap.Width, bitmap.Height, bitmap, searchPic, 2));
+            sw.Stop();   //计时结束
+            Debug.WriteLine("oc2:" + sw.ElapsedMilliseconds + "毫秒");
+
+            sw.Reset();
+            sw.Start(); //计时开始
+            list.AddRange(GraphicSearchOpenCv.FindPic(0, 0, bitmap.Width, bitmap.Height, bitmap, searchPic, 3));
+            sw.Stop();   //计时结束
+            Debug.WriteLine("oc3:" + sw.ElapsedMilliseconds + "毫秒");
+
+            sw.Reset();
+            sw.Start(); //计时开始
+            list.AddRange(GraphicSearchOpenCv.FindPic(0, 0, bitmap.Width, bitmap.Height, bitmap, searchPic, 4));
+            sw.Stop();   //计时结束
+            Debug.WriteLine("oc4:" + sw.ElapsedMilliseconds + "毫秒");
+
+            sw.Reset();
+            sw.Start(); //计时开始
+            list.AddRange(GraphicSearchOpenCv.FindPic(0, 0, bitmap.Width, bitmap.Height, bitmap, searchPic, 5));
+            sw.Stop();   //计时结束
+            Debug.WriteLine("oc5:" + sw.ElapsedMilliseconds + "毫秒");
+
+            sw.Reset();
+            sw.Start(); //计时开始
+            list.AddRange(GraphicSearchOpenCv.FindPic(0, 0, bitmap.Width, bitmap.Height, bitmap, searchPic, 6));
+            sw.Stop();   //计时结束
+            Debug.WriteLine("oc6:" + sw.ElapsedMilliseconds + "毫秒");
+
             for (int i = 0; i < list.Count; i++)
                 Debug.WriteLine($"({list[i].X},{list[i].Y})");
 
-            if(list.Count>0)
-            {
-                MessageBox.Show("找到目标图片,用时间:"+(end-cur).ToString());
-            }
+
+            //if (list.Count>0)
+            //{
+            //    MessageBox.Show("找到目标图片,用时间:"+(end-cur).ToString());
+            //}
+        }
+
+        private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            VideoCapture.VideoSource?.SignalToStop();
         }
     }
 }

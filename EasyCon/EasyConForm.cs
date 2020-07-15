@@ -497,7 +497,7 @@ namespace EasyCon
         {
             if (NS.IsConnected())
                 return true;
-            if (!(ComPort.Text.Equals("下拉选择串口")))
+            if (!ComPort.Text.Equals("    下拉选择串口"))
                 return SerialConnect(ComPort.Text);
             return SerialSearchConnect() != null;
         }
@@ -920,6 +920,7 @@ namespace EasyCon
         private void EasyConForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             e.Cancel = !FileClose();
+            VideoCapture.VideoSource?.SignalToStop();
         }
 
         private void buttonKeyMapping_Click(object sender, EventArgs e)
@@ -1194,7 +1195,7 @@ namespace EasyCon
             }
         }
 
-        private void SelectDeviceToolStripMenuItem_Click(object sender, EventArgs e)
+        private void SelectDeviceToolStripMenuItem_MouseDown(object sender, MouseEventArgs e)
         {
             FindCaptures();
         }

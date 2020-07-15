@@ -296,7 +296,7 @@
             this.SelectDeviceToolStripMenuItem.Name = "SelectDeviceToolStripMenuItem";
             this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
             this.SelectDeviceToolStripMenuItem.Text = "选择采集设备";
-            this.SelectDeviceToolStripMenuItem.Click += new System.EventHandler(this.SelectDeviceToolStripMenuItem_Click);
+            this.SelectDeviceToolStripMenuItem.MouseDown += new System.Windows.Forms.MouseEventHandler(this.SelectDeviceToolStripMenuItem_MouseDown);
             this.SelectDeviceToolStripMenuItem.MouseHover += new System.EventHandler(this.SelectDeviceToolStripMenuItem_MouseHover);
             // 
             // groupBox1
@@ -455,11 +455,11 @@
             // ComPort
             // 
             this.ComPort.FormattingEnabled = true;
-            this.ComPort.Location = new System.Drawing.Point(39, 20);
+            this.ComPort.Location = new System.Drawing.Point(41, 20);
             this.ComPort.Name = "ComPort";
-            this.ComPort.Size = new System.Drawing.Size(116, 24);
+            this.ComPort.Size = new System.Drawing.Size(114, 24);
             this.ComPort.TabIndex = 34;
-            this.ComPort.Text = "下拉选择串口";
+            this.ComPort.Text = "    下拉选择串口";
             this.ComPort.DropDown += new System.EventHandler(this.ComPort_DropDown);
             // 
             // buttonControllerHelp
@@ -504,10 +504,10 @@
             // 
             // label18
             // 
-            this.label18.Location = new System.Drawing.Point(3, 21);
+            this.label18.Location = new System.Drawing.Point(3, 24);
             this.label18.Margin = new System.Windows.Forms.Padding(0);
             this.label18.Name = "label18";
-            this.label18.Size = new System.Drawing.Size(45, 18);
+            this.label18.Size = new System.Drawing.Size(35, 18);
             this.label18.TabIndex = 28;
             this.label18.Text = "串口";
             this.label18.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;

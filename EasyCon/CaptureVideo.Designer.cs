@@ -117,9 +117,9 @@
             this.label3.AutoSize = true;
             this.label3.Location = new System.Drawing.Point(48, 362);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(473, 12);
+            this.label3.Size = new System.Drawing.Size(491, 12);
             this.label3.TabIndex = 6;
-            this.label3.Text = "截图放大区域，按住左键平移（会自动放大到原始分辨率），按住右键移动圈选搜索区域";
+            this.label3.Text = "截图放大区域,截图后首次点击会放大对应区域，按住左键平移，按住右键移动圈选搜索区域";
             // 
             // label4
             // 
@@ -169,6 +169,7 @@
             this.MaximizeBox = false;
             this.Name = "CaptureVideo";
             this.Text = "CaptureVideo";
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.CaptureVideo_FormClosed);
             this.Load += new System.EventHandler(this.CaptureVideo_Load);
             this.Resize += new System.EventHandler(this.CaptureVideo_Resize);
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).EndInit();
