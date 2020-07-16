@@ -117,7 +117,7 @@
       <DependentUpon>FormKeyMapping.cs</DependentUpon>
     </Compile>
     <Compile Include="Global\Pokemon.cs" />
-    <Compile Include="Graphic\OpenCv.cs" />
+    <Compile Include="Graphic\ImgLabel.cs" />
     <Compile Include="Graphic\GraphicSearch.cs" />
     <Compile Include="Graphic\HSVColor.cs" />
     <Compile Include="Graphic\ImageRes.cs" />

@@ -7,22 +7,15 @@ using System.Drawing.Imaging;
 using System.Drawing.Drawing2D;
 using System.Diagnostics;
 using System.Drawing;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
+using System.Runtime.InteropServices;
 
 namespace EasyCon.Graphic
 {
-    //class GraphicSearch
-    //{
-    //}
     public class GraphicSearch
     {
-        /// <summary>
-        /// 在大图里找小图
-        /// </summary>
-        /// <param name="S_bmp">大图</param>
-        /// <param name="P_bmp">小图</param>
-        /// <param name="similar">容错值 取值0--255，数值越高效率越低，不建议超过50</param>
-        /// <returns></returns>
-        public static List<Point> FindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, int method)
+        public static List<System.Drawing.Point> FindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, ImgLabel.SearchMethod method)
         {
             if (S_bmp.PixelFormat != PixelFormat.Format24bppRgb) { throw new Exception("颜色格式只支持24位bmp"); }
             if (P_bmp.PixelFormat != PixelFormat.Format24bppRgb) { throw new Exception("颜色格式只支持24位bmp"); }
@@ -33,27 +26,42 @@ namespace EasyCon.Graphic
             Color BackColor = P_bmp.GetPixel(0, 0); //背景色
             BitmapData S_Data = S_bmp.LockBits(new Rectangle(0, 0, S_Width, S_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
             BitmapData P_Data = P_bmp.LockBits(new Rectangle(0, 0, P_Width, P_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-            List<Point> List;
+            List<System.Drawing.Point> List;
             int similar = 10;
             switch (method)
             {
-                case 1:
-                    List = _FindPic(left, top, width, height, S_Data, P_Data);
+                case ImgLabel.SearchMethod.SqDiff:
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 0);
                     break;
-                case 2:
-                    List = _FindPicOpt(left, top, width, height, S_Data, P_Data);
+                case ImgLabel.SearchMethod.SqDiffNormed:
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 1);
                     break;
-                case 3:
-                    List = _FindPic(left, top, width, height, S_Data, P_Data, GetPixelData(P_Data, BackColor), similar);
+                case ImgLabel.SearchMethod.CCorr:
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 2);
                     break;
-                case 4:
-                    List = _FindPic(left, top, width, height, S_Data, P_Data, similar);
+                case ImgLabel.SearchMethod.CCorrNormed:
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 3);
                     break;
-                case 5:
-                    List = null;
+                case ImgLabel.SearchMethod.CCoeff:
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 4);
+                    break;
+                case ImgLabel.SearchMethod.CCoeffNormed:
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 5);
+                    break;
+                case ImgLabel.SearchMethod.StrictMatch:
+                    List = StrictMatch(left, top, width, height, S_Data, P_Data);
+                    break;
+                case ImgLabel.SearchMethod.StrictMatchRND:
+                    List = StrictMatchRND(left, top, width, height, S_Data, P_Data);
+                    break;
+                case ImgLabel.SearchMethod.OpacityDiff:
+                    List = OpacityDiff(left, top, width, height, S_Data, P_Data, GetPixelData(P_Data, BackColor), similar);
+                    break;
+                case ImgLabel.SearchMethod.SimilarMatch:
+                    List = SimilarMatch(left, top, width, height, S_Data, P_Data, similar);
                     break;
                 default:
-                    List = _FindPic(left, top, width, height, S_Data, P_Data);
+                    List = StrictMatchRND(left, top, width, height, S_Data, P_Data);
                     break;
             }
 
@@ -61,15 +69,10 @@ namespace EasyCon.Graphic
             P_bmp.UnlockBits(P_Data);
             return List;
         }
-        /// <summary>
-        /// 全匹配找图
-        /// </summary>
-        /// <param name="S_Data">大图数据</param>
-        /// <param name="P_Data">小图数据</param>
-        /// <returns></returns>
-        private static unsafe List<Point> _FindPic(int left, int top, int width, int height, BitmapData S_Data, BitmapData P_Data)
+
+        private static unsafe List<System.Drawing.Point> StrictMatch(int left, int top, int width, int height, BitmapData S_Data, BitmapData P_Data)
         {
-            List<Point> List = new List<Point>();
+            List<System.Drawing.Point> List = new List<System.Drawing.Point>();
             int S_stride = S_Data.Stride;
             int P_stride = P_Data.Stride;
             IntPtr S_Iptr = S_Data.Scan0;
@@ -103,16 +106,16 @@ namespace EasyCon.Graphic
                         }
                         if (!IsOk) { break; }
                     }
-                    if (IsOk) { List.Add(new Point(w, h)); }
+                    if (IsOk) { List.Add(new System.Drawing.Point(w, h)); }
                     IsOk = false;
                 }
             }
             return List;
         }
 
-        private static unsafe List<Point> _FindPicOpt(int left, int top, int width, int height, BitmapData S_Data, BitmapData P_Data)
+        private static unsafe List<System.Drawing.Point> StrictMatchRND(int left, int top, int width, int height, BitmapData S_Data, BitmapData P_Data)
         {
-            List<Point> List = new List<Point>();
+            List<System.Drawing.Point> List = new List<System.Drawing.Point>();
             int S_stride = S_Data.Stride;
             int P_stride = P_Data.Stride;
             IntPtr S_Iptr = S_Data.Scan0;
@@ -176,7 +179,7 @@ namespace EasyCon.Graphic
                     if (IsOk) 
                     {
                         //Debug.WriteLine("find");
-                        List.Add(new Point(w, h)); 
+                        List.Add(new System.Drawing.Point(w, h)); 
                     }
                     IsOk = false;
                 }
@@ -184,16 +187,9 @@ namespace EasyCon.Graphic
             return List;
         }
 
-        /// <summary>
-        /// 相似找图
-        /// </summary>
-        /// <param name="S_Data">大图数据</param>
-        /// <param name="P_Data">小图数据</param>
-        /// <param name="similar">误差值</param>
-        /// <returns></returns>
-        private static unsafe List<Point> _FindPic(int left, int top, int width, int height, BitmapData S_Data, BitmapData P_Data, int similar)
+        private static unsafe List<System.Drawing.Point> SimilarMatch(int left, int top, int width, int height, BitmapData S_Data, BitmapData P_Data, int similar)
         {
-            List<Point> List = new List<Point>();
+            List<System.Drawing.Point> List = new List<System.Drawing.Point>();
             int S_stride = S_Data.Stride;
             int P_stride = P_Data.Stride;
             IntPtr S_Iptr = S_Data.Scan0;
@@ -225,23 +221,16 @@ namespace EasyCon.Graphic
                         }
                         if (IsOk == false) { break; }
                     }
-                    if (IsOk) { List.Add(new Point(w, h)); }
+                    if (IsOk) { List.Add(new System.Drawing.Point(w, h)); }
                     IsOk = false;
                 }
             }
             return List;
         }
-        /// <summary>
-        /// 透明找图
-        /// </summary>
-        /// <param name="S_Data">大图数据</param>
-        /// <param name="P_Data">小图数据</param>
-        /// <param name="PixelData">小图中需要比较的像素数据</param>
-        /// <param name="similar">误差值</param>
-        /// <returns></returns>
-        private static unsafe List<Point> _FindPic(int left, int top, int width, int height, BitmapData S_Data, BitmapData P_Data, int[,] PixelData, int similar)
+
+        private static unsafe List<System.Drawing.Point> OpacityDiff(int left, int top, int width, int height, BitmapData S_Data, BitmapData P_Data, int[,] PixelData, int similar)
         {
-            List<Point> List = new List<Point>();
+            List<System.Drawing.Point> List = new List<System.Drawing.Point>();
             int Len = PixelData.GetLength(0);
             int S_stride = S_Data.Stride;
             int P_stride = P_Data.Stride;
@@ -269,32 +258,69 @@ namespace EasyCon.Graphic
                             IsOk = false; break;
                         }
                     }
-                    if (IsOk) { List.Add(new Point(w, h)); }
+                    if (IsOk) { List.Add(new System.Drawing.Point(w, h)); }
                     IsOk = false;
                 }
             }
             return List;
         }
 
-        #region 范围找色
-        /// <summary>
-        /// 范围找色
-        /// </summary>
-        /// <param name="left">起始X</param>
-        /// <param name="top">起始Y</param>
-        /// <param name="width">查询宽度</param>
-        /// <param name="height">查询高度</param>
-        /// <param name="S_bmp">图片</param>
-        /// <param name="clr">要查询的颜色</param>
-        /// <param name="similar">误差值0-255</param>
-        /// <returns></returns>
-        public static unsafe List<Point> FindColor(int left, int top, int width, int height, Bitmap S_bmp, Color clr, int similar)
+        public static List<System.Drawing.Point> OpenCvFindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, int method)
+        {
+            List<System.Drawing.Point> res = new List<System.Drawing.Point>();
+            Mat small = BitmapToMat(S_bmp);
+            Mat big = BitmapToMat(P_bmp);
+            Mat result = new Mat();
+
+            switch (method)
+            {
+                case 5:
+                    Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeffNormed);
+                    break;
+                case 0:
+                    Cv2.MatchTemplate(big, small, result, TemplateMatchModes.SqDiff);
+                    break;
+                case 1:
+                    Cv2.MatchTemplate(big, small, result, TemplateMatchModes.SqDiffNormed);
+                    break;
+                case 2:
+                    // not good for our usage
+                    Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCorr);
+                    break;
+                case 3:
+                    Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCorrNormed);
+                    break;
+                case 4:
+                    Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeff);
+                    break;
+                default:
+                    Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeffNormed);
+                    break;
+            }
+
+            OpenCvSharp.Point minLoc = new OpenCvSharp.Point(0, 0);
+            OpenCvSharp.Point maxLoc = new OpenCvSharp.Point(0, 0);
+            Cv2.MinMaxLoc(result, out minLoc, out maxLoc);
+
+            // the sqD lower is good
+            if (method == 3 || method == 2)
+            {
+                res.Add(new System.Drawing.Point(minLoc.X, minLoc.Y));
+            }
+            else
+            {
+                res.Add(new System.Drawing.Point(maxLoc.X, maxLoc.Y));
+            }
+            return res;
+        }
+
+        public static unsafe List<System.Drawing.Point> FindColor(int left, int top, int width, int height, Bitmap S_bmp, Color clr, int similar)
         {
             if (S_bmp.PixelFormat != PixelFormat.Format24bppRgb) { throw new Exception("颜色格式只支持24位bmp"); }
             BitmapData S_Data = S_bmp.LockBits(new Rectangle(0, 0, S_bmp.Width, S_bmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
             IntPtr _Iptr = S_Data.Scan0;
             byte* _ptr;
-            List<Point> List = new List<Point>();
+            List<System.Drawing.Point> List = new List<System.Drawing.Point>();
             for (int y = top; y < height; y++)
             {
                 for (int x = left; x < width; x++)
@@ -302,21 +328,14 @@ namespace EasyCon.Graphic
                     _ptr = (byte*)((int)_Iptr + S_Data.Stride * (y) + (x) * 3);
                     if (ScanColor(_ptr[0], _ptr[1], _ptr[2], clr.B, clr.G, clr.R, similar))
                     {
-                        List.Add(new Point(x, y));
+                        List.Add(new System.Drawing.Point(x, y));
                     }
                 }
             }
             S_bmp.UnlockBits(S_Data);
             return List;
         }
-        #endregion
 
-        #region 比较两个Color
-        /// <summary>
-        /// 比较两个 Color 
-        /// </summary>
-        /// <param name="similar">容错值</param>
-        /// <returns></returns>
         public static bool IsColor(Color clr1, Color clr2, int similar = 0)
         {
             if (ScanColor(clr1.B, clr1.G, clr1.R, clr2.B, clr2.G, clr2.R, similar))
@@ -325,28 +344,19 @@ namespace EasyCon.Graphic
             }
             return false;
         }
-        #endregion
 
-        #region 屏幕截图
-        /// <summary>
-        /// 屏幕截图
-        /// </summary>
-        /// <param name="rect">截图矩形范围</param>
-        /// <returns></returns>
         public static unsafe Bitmap CopyScreen(int Width, int Height, int x, int y)
         {
             Bitmap bitmap = new Bitmap(Width, Height, PixelFormat.Format24bppRgb);
             using (Graphics g = Graphics.FromImage(bitmap))
             {
-                g.CopyFromScreen(x, y, 0, 0, new Size(Width, Height));
+                g.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(Width, Height));
                 g.Dispose();
             }
             System.GC.Collect();
             return bitmap;
         }
-        #endregion
 
-        #region 私有方法
         private static unsafe int[,] GetPixelData(BitmapData P_Data, Color BackColor)
         {
             byte B = BackColor.B, G = BackColor.G, R = BackColor.R;
@@ -378,7 +388,6 @@ namespace EasyCon.Graphic
             return PixelData2;
         }
 
-        //找图BGR比较
         private static unsafe bool ScanColor(byte b1, byte g1, byte r1, byte b2, byte g2, byte r2, int similar)
         {
             if ((Math.Abs(b1 - b2)) > similar) { return false; } //B
@@ -387,6 +396,22 @@ namespace EasyCon.Graphic
             return true;
         }
 
-        #endregion
+        private static Mat BitmapToMat(Bitmap srcbit)
+        {
+            int iwidth = srcbit.Width;
+            int iheight = srcbit.Height;
+            int iByte = iwidth * iheight * 3;
+            byte[] result = new byte[iByte];
+            int step;
+
+            Rectangle rect = new Rectangle(0, 0, iwidth, iheight);
+            BitmapData bmpData = srcbit.LockBits(rect, ImageLockMode.ReadWrite, srcbit.PixelFormat);
+            IntPtr iPtr = bmpData.Scan0;
+            Marshal.Copy(iPtr, result, 0, iByte);
+            step = bmpData.Stride;
+            srcbit.UnlockBits(bmpData);
+
+            return new Mat(srcbit.Height, srcbit.Width, new MatType(MatType.CV_8UC3), result, step);
+        }
     }
 }
