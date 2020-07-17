@@ -116,6 +116,14 @@ namespace EasyCon
             X = this.Width;//获取窗体的宽度
             Y = this.Height;//获取窗体的高度
             setTag(this);//调用方法
+
+            // get the search methord list
+            List<ImgLabel.SearchMethod> searchMethods = ImgLabel.GetAllSearchMethod();
+            foreach(var method in searchMethods)
+            {
+                searchMethodComBox.Items.Add(method.ToDescription());
+            }
+
         }
 
         private void CaptureVideo_Resize(object sender, EventArgs e)
@@ -219,8 +227,9 @@ namespace EasyCon
         private Point SnapshotTranslate = new Point();
         private Point SnapshotPos = new Point();
 
-        private Rectangle SnapshotRangeR = new Rectangle();
-        private Rectangle SnapshotSearchObjR = new Rectangle();
+        private Rectangle SnapshotRangeR = new Rectangle(0,0,0,0);
+        private Rectangle SnapshotSearchObjR = new Rectangle(0, 0, 0, 0);
+        ImgLabel curImgLabel = new ImgLabel();
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -414,11 +423,18 @@ namespace EasyCon
 
             DateTime cur = DateTime.Now;
             Stopwatch sw = new Stopwatch();
+            ImgLabel.SearchMethod method;
+            if (searchMethodComBox.SelectedItem == null)
+                method = ImgLabel.SearchMethod.StrictMatchRND;
+            else
+                method = EnumHelper.GetEnumFromString<ImgLabel.SearchMethod>(searchMethodComBox.SelectedItem.ToString());
+
+            Debug.WriteLine(method);
 
             sw.Reset();
             sw.Start(); //计时开始
-            ImgLabel imgLabel = new ImgLabel(searchRangeImg, searchObjImg, SnapshotRangeR, ImgLabel.SearchMethod.StrictMatchRND);
-            var list = imgLabel.search();
+            curImgLabel = new ImgLabel(searchRangeImg, searchObjImg, SnapshotRangeR, method);
+            var list = curImgLabel.search();
             sw.Stop();   //计时结束
             Debug.WriteLine("sf:" + sw.ElapsedMilliseconds + "毫秒");
 
@@ -458,6 +474,16 @@ namespace EasyCon
 
             searchObjImg = snapshot.Clone(range, snapshot.PixelFormat);
             searchObjImg.Save(path + DateTime.Now.Ticks.ToString() + "_search_obj.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            // save the imglabel to local
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

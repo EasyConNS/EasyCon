@@ -24,10 +24,17 @@ namespace EasyCon.Graphic
             int P_Width = P_bmp.Width;
             int P_Height = P_bmp.Height;
             Color BackColor = P_bmp.GetPixel(0, 0); //背景色
-            BitmapData S_Data = S_bmp.LockBits(new Rectangle(0, 0, S_Width, S_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-            BitmapData P_Data = P_bmp.LockBits(new Rectangle(0, 0, P_Width, P_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            BitmapData S_Data = null;
+            BitmapData P_Data = null;
             List<System.Drawing.Point> List;
             int similar = 10;
+
+            if((int)method>5)
+            {
+                S_Data = S_bmp.LockBits(new Rectangle(0, 0, S_Width, S_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+                P_Data = P_bmp.LockBits(new Rectangle(0, 0, P_Width, P_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            }
+
             switch (method)
             {
                 case ImgLabel.SearchMethod.SqDiff:
@@ -65,8 +72,12 @@ namespace EasyCon.Graphic
                     break;
             }
 
-            S_bmp.UnlockBits(S_Data);
-            P_bmp.UnlockBits(P_Data);
+            if ((int)method > 5)
+            {
+                S_bmp.UnlockBits(S_Data);
+                P_bmp.UnlockBits(P_Data);
+            }
+
             return List;
         }
 
@@ -268,8 +279,10 @@ namespace EasyCon.Graphic
         public static List<System.Drawing.Point> OpenCvFindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, int method)
         {
             List<System.Drawing.Point> res = new List<System.Drawing.Point>();
-            Mat small = BitmapToMat(S_bmp);
-            Mat big = BitmapToMat(P_bmp);
+            Mat small = BitmapToMat(P_bmp);
+            Mat big = BitmapToMat(S_bmp);
+            //Mat small = OpenCvSharp.Extensions.BitmapConverter.ToMat(P_bmp);
+            //Mat big = OpenCvSharp.Extensions.BitmapConverter.ToMat(S_bmp);
             Mat result = new Mat();
 
             switch (method)
@@ -303,7 +316,7 @@ namespace EasyCon.Graphic
             Cv2.MinMaxLoc(result, out minLoc, out maxLoc);
 
             // the sqD lower is good
-            if (method == 3 || method == 2)
+            if (method == 0 || method == 1)
             {
                 res.Add(new System.Drawing.Point(minLoc.X, minLoc.Y));
             }
@@ -405,7 +418,7 @@ namespace EasyCon.Graphic
             int step;
 
             Rectangle rect = new Rectangle(0, 0, iwidth, iheight);
-            BitmapData bmpData = srcbit.LockBits(rect, ImageLockMode.ReadWrite, srcbit.PixelFormat);
+            BitmapData bmpData = srcbit.LockBits(rect, ImageLockMode.ReadOnly, srcbit.PixelFormat);
             IntPtr iPtr = bmpData.Scan0;
             Marshal.Copy(iPtr, result, 0, iByte);
             step = bmpData.Stride;
