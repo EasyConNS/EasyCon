@@ -9,6 +9,10 @@ using System.Diagnostics;
 using System.Drawing;
 using System.ComponentModel;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Windows;
+using System.Windows.Input;
+using JetBrains.Annotations;
 
 namespace EasyCon.Graphic
 {
@@ -56,8 +60,174 @@ namespace EasyCon.Graphic
         }
 
     }
-    public class ImgLabel
+
+    // for ui data binding
+    public class ImgLabel : INotifyPropertyChanged
     {
+        //======================================
+        // Actual implementation
+        //======================================
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        [NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            var handler = PropertyChanged;
+            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private int _RangeX=0;
+        public int RangeX
+        {
+            get { return _RangeX; }
+            set
+            {
+                // do not trigger change event if values are the same
+                if (Equals(value, _RangeX)) return;
+                _RangeX = value < 0 ? 0 : value;
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
+        private int _RangeY=0;
+        public int RangeY
+        {
+            get { return _RangeY; }
+            set
+            {
+                // do not trigger change event if values are the same
+                if (Equals(value, _RangeY)) return;
+                _RangeY = value < 0 ? 0 : value;
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
+        private int _RangeWidth=0;
+        public int RangeWidth
+        {
+            get { return _RangeWidth; }
+            set
+            {
+                // do not trigger change event if values are the same
+                if (Equals(value, _RangeWidth)) return;
+                _RangeWidth = value < 0 ? 0 : value;
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
+        private int _RangeHeight=0;
+        public int RangeHeight
+        {
+            get { return _RangeHeight; }
+            set
+            {
+                // do not trigger change event if values are the same
+                if (Equals(value, _RangeHeight)) return;
+                _RangeHeight = value < 0 ? 0 : value;
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
+        private int _TargetX=0;
+        public int TargetX
+        {
+            get { return _TargetX; }
+            set
+            {
+                // do not trigger change event if values are the same
+                if (Equals(value, _TargetX)) return;
+                _TargetX = value < 0 ? 0 : value;
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
+        private int _TargetY=0;
+        public int TargetY
+        {
+            get { return _TargetY; }
+            set
+            {
+                // do not trigger change event if values are the same
+                if (Equals(value, _TargetY)) return;
+                _TargetY = value < 0 ? 0 : value;
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
+        private int _TargetWidth=0;
+        public int TargetWidth
+        {
+            get { return _TargetWidth; }
+            set
+            {
+                // do not trigger change event if values are the same
+                if (Equals(value, _TargetWidth)) return;
+                _TargetWidth = value < 0 ? 0 : value;
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
+        private int _TargetHeight=0;
+        public int TargetHeight
+        {
+            get { return _TargetHeight; }
+            set
+            {
+                // do not trigger change event if values are the same
+                if (Equals(value, _TargetHeight)) return;
+                _TargetHeight = value < 0 ? 0 : value;
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
+        public string Method
+        {
+            get { return searchMethod.ToDescription(); }
+            set
+            {
+                // do not trigger change event if values are the same
+                //if (Equals(value, searchMethod)) return;
+                searchMethod = EnumHelper.GetEnumFromString<ImgLabel.SearchMethod>(value);
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
         public enum SearchMethod
         {
             [Description("平方差匹配")]
@@ -130,10 +300,21 @@ namespace EasyCon.Graphic
             return result;
         }
 
+        public List<Point> search(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method)
+        {
+            sourcePic = sourceObj.Clone(new Rectangle(0, 0, sourceObj.Width, sourceObj.Height), sourceObj.PixelFormat);
+            searchImg = searchObj;//.Clone(new Rectangle(0, 0, searchObj.Width, searchObj.Height), searchObj.PixelFormat);
+            searchRange = range;
+            searchMethod = method;
+            result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod);
+            return result;
+        }
+
+
         private Bitmap sourcePic;
         private Bitmap searchImg;
         private SearchMethod searchMethod;
-        public Rectangle searchRange{get;set;}
+        private Rectangle searchRange;
         private List<Point> result = new List<Point>();
     }
 }

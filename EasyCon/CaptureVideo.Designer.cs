@@ -74,6 +74,7 @@
             this.button5 = new System.Windows.Forms.Button();
             this.label23 = new System.Windows.Forms.Label();
             this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
+            this.button7 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.imgLabelBindingSource)).BeginInit();
@@ -488,21 +489,32 @@
             // label23
             // 
             this.label23.AutoSize = true;
-            this.label23.Location = new System.Drawing.Point(545, 516);
+            this.label23.Location = new System.Drawing.Point(514, 517);
             this.label23.Name = "label23";
-            this.label23.Size = new System.Drawing.Size(53, 12);
+            this.label23.Size = new System.Drawing.Size(113, 12);
             this.label23.TabIndex = 21;
-            this.label23.Text = "搜索结果";
+            this.label23.Text = "搜索结果如下,耗时:";
             // 
             // imgLabelBindingSource
             // 
             this.imgLabelBindingSource.DataSource = typeof(EasyCon.Graphic.ImgLabel);
+            // 
+            // button7
+            // 
+            this.button7.Location = new System.Drawing.Point(413, 470);
+            this.button7.Name = "button7";
+            this.button7.Size = new System.Drawing.Size(95, 23);
+            this.button7.TabIndex = 22;
+            this.button7.Text = "当前图片测试";
+            this.button7.UseVisualStyleBackColor = true;
+            this.button7.Click += new System.EventHandler(this.button7_Click);
             // 
             // CaptureVideo
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1096, 661);
+            this.Controls.Add(this.button7);
             this.Controls.Add(this.label23);
             this.Controls.Add(this.button5);
             this.Controls.Add(this.imgLableList);
@@ -587,5 +599,6 @@
         private System.Windows.Forms.Label label23;
         private System.Windows.Forms.Button button6;
         private System.Windows.Forms.BindingSource imgLabelBindingSource;
+        private System.Windows.Forms.Button button7;
     }
 }
