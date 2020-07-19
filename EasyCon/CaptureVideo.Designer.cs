@@ -41,15 +41,12 @@
             this.button2 = new System.Windows.Forms.Button();
             this.button3 = new System.Windows.Forms.Button();
             this.button4 = new System.Windows.Forms.Button();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
             this.label7 = new System.Windows.Forms.Label();
-            this.label8 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
-            this.label10 = new System.Windows.Forms.Label();
             this.label11 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.button6 = new System.Windows.Forms.Button();
+            this.textBox9 = new System.Windows.Forms.TextBox();
+            this.label6 = new System.Windows.Forms.Label();
             this.label22 = new System.Windows.Forms.Label();
             this.label21 = new System.Windows.Forms.Label();
             this.textBox4 = new System.Windows.Forms.TextBox();
@@ -73,10 +70,13 @@
             this.imgLableList = new System.Windows.Forms.ListBox();
             this.button5 = new System.Windows.Forms.Button();
             this.label23 = new System.Windows.Forms.Label();
-            this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.button7 = new System.Windows.Forms.Button();
+            this.label5 = new System.Windows.Forms.Label();
+            this.searchResultImg = new System.Windows.Forms.PictureBox();
+            this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.imgLabelBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
@@ -103,7 +103,7 @@
             this.reasultListBox.ItemHeight = 12;
             this.reasultListBox.Location = new System.Drawing.Point(525, 542);
             this.reasultListBox.Name = "reasultListBox";
-            this.reasultListBox.Size = new System.Drawing.Size(120, 112);
+            this.reasultListBox.Size = new System.Drawing.Size(120, 40);
             this.reasultListBox.TabIndex = 1;
             // 
             // label1
@@ -120,9 +120,9 @@
             this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(32, 387);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(95, 12);
+            this.label2.Size = new System.Drawing.Size(329, 12);
             this.label2.TabIndex = 3;
-            this.label2.Text = "第二步右键圈选(";
+            this.label2.Text = "第二步点击开始圈选(红)，右键圈选，然后点击确定搜索范围";
             // 
             // Snapshot
             // 
@@ -138,12 +138,13 @@
             this.Snapshot.MouseDown += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseDown);
             this.Snapshot.MouseMove += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseMove);
             this.Snapshot.MouseUp += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseUp);
+            this.Snapshot.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseWheel);
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(29, 506);
+            this.button1.Location = new System.Drawing.Point(26, 506);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.Size = new System.Drawing.Size(66, 23);
             this.button1.TabIndex = 5;
             this.button1.Text = "截图";
             this.button1.UseVisualStyleBackColor = true;
@@ -169,19 +170,19 @@
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(110, 506);
+            this.button2.Location = new System.Drawing.Point(98, 506);
             this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(95, 23);
+            this.button2.Size = new System.Drawing.Size(86, 23);
             this.button2.TabIndex = 8;
-            this.button2.Text = "确定搜索范围";
+            this.button2.Text = "开始圈选(红)";
             this.button2.UseVisualStyleBackColor = true;
             this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(312, 506);
+            this.button3.Location = new System.Drawing.Point(282, 506);
             this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(95, 23);
+            this.button3.Size = new System.Drawing.Size(74, 23);
             this.button3.TabIndex = 9;
             this.button3.Text = "搜索测试";
             this.button3.UseVisualStyleBackColor = true;
@@ -189,52 +190,22 @@
             // 
             // button4
             // 
-            this.button4.Location = new System.Drawing.Point(211, 506);
+            this.button4.Location = new System.Drawing.Point(190, 506);
             this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(95, 23);
+            this.button4.Size = new System.Drawing.Size(86, 23);
             this.button4.TabIndex = 10;
-            this.button4.Text = "确定目标图片";
+            this.button4.Text = "开始圈选(绿)";
             this.button4.UseVisualStyleBackColor = true;
             this.button4.Click += new System.EventHandler(this.button4_Click);
-            // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.ForeColor = System.Drawing.Color.SpringGreen;
-            this.label5.Location = new System.Drawing.Point(134, 414);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(29, 12);
-            this.label5.TabIndex = 11;
-            this.label5.Text = "绿圈";
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Font = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.label6.ForeColor = System.Drawing.Color.Crimson;
-            this.label6.Location = new System.Drawing.Point(134, 387);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(29, 12);
-            this.label6.TabIndex = 12;
-            this.label6.Text = "红圈";
             // 
             // label7
             // 
             this.label7.AutoSize = true;
             this.label7.Location = new System.Drawing.Point(32, 414);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(95, 12);
+            this.label7.Size = new System.Drawing.Size(329, 12);
             this.label7.TabIndex = 13;
-            this.label7.Text = "第三步右键圈选(";
-            // 
-            // label8
-            // 
-            this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(169, 414);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(227, 12);
-            this.label8.TabIndex = 14;
-            this.label8.Text = ")，确定目标图片，然后点击确定目标图片";
+            this.label7.Text = "第三步点击开始圈选(绿)，右键圈选，然后点击确定搜索目标";
             // 
             // label9
             // 
@@ -244,15 +215,6 @@
             this.label9.Size = new System.Drawing.Size(293, 12);
             this.label9.TabIndex = 15;
             this.label9.Text = "注意：务必保证红圈在图片范围内，绿圈在红圈范围内";
-            // 
-            // label10
-            // 
-            this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(169, 387);
-            this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(227, 12);
-            this.label10.TabIndex = 16;
-            this.label10.Text = ")，确定搜索范围，然后点击确定搜索范围";
             // 
             // label11
             // 
@@ -265,7 +227,8 @@
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.button6);
+            this.groupBox1.Controls.Add(this.textBox9);
+            this.groupBox1.Controls.Add(this.label6);
             this.groupBox1.Controls.Add(this.label22);
             this.groupBox1.Controls.Add(this.label21);
             this.groupBox1.Controls.Add(this.textBox4);
@@ -293,15 +256,21 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "搜索参数";
             // 
-            // button6
+            // textBox9
             // 
-            this.button6.Location = new System.Drawing.Point(300, 20);
-            this.button6.Name = "button6";
-            this.button6.Size = new System.Drawing.Size(95, 23);
-            this.button6.TabIndex = 30;
-            this.button6.Text = "全图搜索";
-            this.button6.UseVisualStyleBackColor = true;
-            this.button6.Click += new System.EventHandler(this.button6_Click);
+            this.textBox9.Location = new System.Drawing.Point(261, 20);
+            this.textBox9.Name = "textBox9";
+            this.textBox9.Size = new System.Drawing.Size(69, 21);
+            this.textBox9.TabIndex = 31;
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(185, 25);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(71, 12);
+            this.label6.TabIndex = 30;
+            this.label6.Text = "最低匹配度:";
             // 
             // label22
             // 
@@ -463,7 +432,7 @@
             this.searchMethodComBox.FormattingEnabled = true;
             this.searchMethodComBox.Location = new System.Drawing.Point(68, 20);
             this.searchMethodComBox.Name = "searchMethodComBox";
-            this.searchMethodComBox.Size = new System.Drawing.Size(121, 20);
+            this.searchMethodComBox.Size = new System.Drawing.Size(104, 20);
             this.searchMethodComBox.TabIndex = 0;
             this.searchMethodComBox.Text = "选择搜索方法";
             // 
@@ -478,9 +447,9 @@
             // 
             // button5
             // 
-            this.button5.Location = new System.Drawing.Point(413, 506);
+            this.button5.Location = new System.Drawing.Point(440, 506);
             this.button5.Name = "button5";
-            this.button5.Size = new System.Drawing.Size(95, 23);
+            this.button5.Size = new System.Drawing.Size(68, 23);
             this.button5.TabIndex = 20;
             this.button5.Text = "保存标签";
             this.button5.UseVisualStyleBackColor = true;
@@ -489,31 +458,51 @@
             // label23
             // 
             this.label23.AutoSize = true;
-            this.label23.Location = new System.Drawing.Point(514, 517);
+            this.label23.Location = new System.Drawing.Point(523, 506);
             this.label23.Name = "label23";
             this.label23.Size = new System.Drawing.Size(113, 12);
             this.label23.TabIndex = 21;
             this.label23.Text = "搜索结果如下,耗时:";
             // 
+            // button7
+            // 
+            this.button7.Location = new System.Drawing.Point(362, 506);
+            this.button7.Name = "button7";
+            this.button7.Size = new System.Drawing.Size(72, 23);
+            this.button7.TabIndex = 22;
+            this.button7.Text = "动态测试";
+            this.button7.UseVisualStyleBackColor = true;
+            this.button7.Click += new System.EventHandler(this.button7_Click);
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(525, 524);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(47, 12);
+            this.label5.TabIndex = 23;
+            this.label5.Text = "匹配度:";
+            // 
+            // searchResultImg
+            // 
+            this.searchResultImg.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.searchResultImg.Location = new System.Drawing.Point(525, 584);
+            this.searchResultImg.Name = "searchResultImg";
+            this.searchResultImg.Size = new System.Drawing.Size(120, 68);
+            this.searchResultImg.TabIndex = 24;
+            this.searchResultImg.TabStop = false;
+            // 
             // imgLabelBindingSource
             // 
             this.imgLabelBindingSource.DataSource = typeof(EasyCon.Graphic.ImgLabel);
-            // 
-            // button7
-            // 
-            this.button7.Location = new System.Drawing.Point(413, 470);
-            this.button7.Name = "button7";
-            this.button7.Size = new System.Drawing.Size(95, 23);
-            this.button7.TabIndex = 22;
-            this.button7.Text = "当前图片测试";
-            this.button7.UseVisualStyleBackColor = true;
-            this.button7.Click += new System.EventHandler(this.button7_Click);
             // 
             // CaptureVideo
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1096, 661);
+            this.Controls.Add(this.searchResultImg);
+            this.Controls.Add(this.label5);
             this.Controls.Add(this.button7);
             this.Controls.Add(this.label23);
             this.Controls.Add(this.button5);
@@ -521,12 +510,8 @@
             this.Controls.Add(this.reasultListBox);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.label11);
-            this.Controls.Add(this.label10);
             this.Controls.Add(this.label9);
-            this.Controls.Add(this.label8);
             this.Controls.Add(this.label7);
-            this.Controls.Add(this.label6);
-            this.Controls.Add(this.label5);
             this.Controls.Add(this.button4);
             this.Controls.Add(this.button3);
             this.Controls.Add(this.button2);
@@ -547,6 +532,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.imgLabelBindingSource)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -566,12 +552,8 @@
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.Button button3;
         private System.Windows.Forms.Button button4;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.Label label8;
         private System.Windows.Forms.Label label9;
-        private System.Windows.Forms.Label label10;
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.ListBox imgLableList;
@@ -597,8 +579,11 @@
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.ComboBox searchMethodComBox;
         private System.Windows.Forms.Label label23;
-        private System.Windows.Forms.Button button6;
         private System.Windows.Forms.BindingSource imgLabelBindingSource;
         private System.Windows.Forms.Button button7;
+        private System.Windows.Forms.Label label5;
+        private System.Windows.Forms.PictureBox searchResultImg;
+        private System.Windows.Forms.TextBox textBox9;
+        private System.Windows.Forms.Label label6;
     }
 }

@@ -286,27 +286,30 @@ namespace EasyCon.Graphic
         public static List<SearchMethod> GetAllSearchMethod()
         {
             List<SearchMethod> list = new List<SearchMethod>();
-            System.Array valueList = System.Enum.GetValues(typeof(SearchMethod));
-            foreach (var value in valueList)
-            {
-                list.Add((SearchMethod)value);
-            }
+            //System.Array valueList = System.Enum.GetValues(typeof(SearchMethod));
+            //foreach (var value in valueList)
+            //{
+            //    list.Add((SearchMethod)value);
+            //}
+            list.Add(SearchMethod.SqDiffNormed);
+            list.Add(SearchMethod.CCorrNormed);
+            list.Add(SearchMethod.CCoeffNormed);
             return list;
         }
 
         public List<Point> search()
         {
-            result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod);
+            //result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod);
             return result;
         }
 
-        public List<Point> search(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method)
+        public List<Point> search(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method,out double matchDegree)
         {
             sourcePic = sourceObj.Clone(new Rectangle(0, 0, sourceObj.Width, sourceObj.Height), sourceObj.PixelFormat);
-            searchImg = searchObj;//.Clone(new Rectangle(0, 0, searchObj.Width, searchObj.Height), searchObj.PixelFormat);
+            searchImg = searchObj.Clone(new Rectangle(0, 0, searchObj.Width, searchObj.Height), searchObj.PixelFormat);
             searchRange = range;
             searchMethod = method;
-            result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod);
+            result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out matchDegree);
             return result;
         }
 

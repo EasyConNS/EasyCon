@@ -15,7 +15,7 @@ namespace EasyCon.Graphic
 {
     public class GraphicSearch
     {
-        public static List<System.Drawing.Point> FindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, ImgLabel.SearchMethod method)
+        public static List<System.Drawing.Point> FindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, ImgLabel.SearchMethod method, out double matchDegree)
         {
             if (S_bmp.PixelFormat != PixelFormat.Format24bppRgb) { throw new Exception("颜色格式只支持24位bmp"); }
             if (P_bmp.PixelFormat != PixelFormat.Format24bppRgb) { throw new Exception("颜色格式只支持24位bmp"); }
@@ -38,37 +38,42 @@ namespace EasyCon.Graphic
             switch (method)
             {
                 case ImgLabel.SearchMethod.SqDiff:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 0);
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 0,out matchDegree);
                     break;
                 case ImgLabel.SearchMethod.SqDiffNormed:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 1);
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 1, out matchDegree);
                     break;
                 case ImgLabel.SearchMethod.CCorr:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 2);
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 2, out matchDegree);
                     break;
                 case ImgLabel.SearchMethod.CCorrNormed:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 3);
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 3, out matchDegree);
                     break;
                 case ImgLabel.SearchMethod.CCoeff:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 4);
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 4, out matchDegree);
                     break;
                 case ImgLabel.SearchMethod.CCoeffNormed:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 5);
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 5, out matchDegree);
                     break;
                 case ImgLabel.SearchMethod.StrictMatch:
                     List = StrictMatch(left, top, width, height, S_Data, P_Data);
+                    matchDegree = 1;
                     break;
                 case ImgLabel.SearchMethod.StrictMatchRND:
                     List = StrictMatchRND(left, top, width, height, S_Data, P_Data);
+                    matchDegree = 1;
                     break;
                 case ImgLabel.SearchMethod.OpacityDiff:
                     List = OpacityDiff(left, top, width, height, S_Data, P_Data, GetPixelData(P_Data, BackColor), similar);
+                    matchDegree = 1;
                     break;
                 case ImgLabel.SearchMethod.SimilarMatch:
                     List = SimilarMatch(left, top, width, height, S_Data, P_Data, similar);
+                    matchDegree = 1;
                     break;
                 default:
                     List = StrictMatchRND(left, top, width, height, S_Data, P_Data);
+                    matchDegree = 1;
                     break;
             }
 
@@ -276,44 +281,61 @@ namespace EasyCon.Graphic
             return List;
         }
 
-        public static List<System.Drawing.Point> OpenCvFindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, int method)
+        public static List<System.Drawing.Point> OpenCvFindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, int method, out double matchDegree)
         {
             List<System.Drawing.Point> res = new List<System.Drawing.Point>();
-            Mat small = BitmapToMat(P_bmp);
-            Mat big = BitmapToMat(S_bmp);
-            //Mat small = OpenCvSharp.Extensions.BitmapConverter.ToMat(P_bmp);
-            //Mat big = OpenCvSharp.Extensions.BitmapConverter.ToMat(S_bmp);
+            //Mat small = BitmapToMat(P_bmp);
+            //Mat big = BitmapToMat(S_bmp);
+            Mat small = OpenCvSharp.Extensions.BitmapConverter.ToMat(P_bmp);
+            Mat big = OpenCvSharp.Extensions.BitmapConverter.ToMat(S_bmp);
             Mat result = new Mat();
-
+            OpenCvSharp.Point minLoc = new OpenCvSharp.Point(0, 0);
+            OpenCvSharp.Point maxLoc = new OpenCvSharp.Point(0, 0);
+            double max = 0, min = 0;
+            matchDegree = 0;
             switch (method)
             {
                 case 5:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeffNormed);
+                    Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
+                    matchDegree = max / 1.0;
+                    Debug.WriteLine($"CCoeffNormed:{min} {max}");
                     break;
                 case 0:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.SqDiff);
+                    Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
+                    Debug.WriteLine($"SqDiff:{min} {max}");
                     break;
                 case 1:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.SqDiffNormed);
+                    Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
+                    matchDegree = (1-min) / 1.0;
+                    Debug.WriteLine($"SqDiffNormed:{min} {max}");
                     break;
                 case 2:
                     // not good for our usage
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCorr);
+                    Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
+                    Debug.WriteLine($"CCorr:{min} {max}");
                     break;
                 case 3:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCorrNormed);
+                    Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
+                    Debug.WriteLine($"CCorrNormed:{min} {max}");
+                    matchDegree = max / 1.0;
                     break;
                 case 4:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeff);
+                    Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
+                    Debug.WriteLine($"CCoeff:{min} {max}");
                     break;
                 default:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeffNormed);
+                    Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
+                    Debug.WriteLine($"CCoeffNormed:{min} {max}");
+                    matchDegree = max / 1.0;
                     break;
             }
-
-            OpenCvSharp.Point minLoc = new OpenCvSharp.Point(0, 0);
-            OpenCvSharp.Point maxLoc = new OpenCvSharp.Point(0, 0);
-            Cv2.MinMaxLoc(result, out minLoc, out maxLoc);
 
             // the sqD lower is good
             if (method == 0 || method == 1)
@@ -324,6 +346,10 @@ namespace EasyCon.Graphic
             {
                 res.Add(new System.Drawing.Point(maxLoc.X, maxLoc.Y));
             }
+
+            result.Dispose();
+            big.Dispose();
+            small.Dispose();
             return res;
         }
 
