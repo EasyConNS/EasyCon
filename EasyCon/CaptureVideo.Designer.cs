@@ -258,15 +258,16 @@
             // 
             // textBox9
             // 
-            this.textBox9.Location = new System.Drawing.Point(261, 20);
+            this.textBox9.Location = new System.Drawing.Point(441, 17);
             this.textBox9.Name = "textBox9";
-            this.textBox9.Size = new System.Drawing.Size(69, 21);
+            this.textBox9.Size = new System.Drawing.Size(62, 21);
             this.textBox9.TabIndex = 31;
+            this.textBox9.Text = "50.0";
             // 
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(185, 25);
+            this.label6.Location = new System.Drawing.Point(364, 21);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(71, 12);
             this.label6.TabIndex = 30;
@@ -288,7 +289,7 @@
             this.label21.Name = "label21";
             this.label21.Size = new System.Drawing.Size(53, 12);
             this.label21.TabIndex = 28;
-            this.label21.Text = "目标范围";
+            this.label21.Text = "目标位置";
             // 
             // textBox4
             // 
@@ -421,7 +422,7 @@
             // label12
             // 
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(10, 24);
+            this.label12.Location = new System.Drawing.Point(10, 21);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(53, 12);
             this.label12.TabIndex = 1;
@@ -430,7 +431,7 @@
             // searchMethodComBox
             // 
             this.searchMethodComBox.FormattingEnabled = true;
-            this.searchMethodComBox.Location = new System.Drawing.Point(68, 20);
+            this.searchMethodComBox.Location = new System.Drawing.Point(68, 17);
             this.searchMethodComBox.Name = "searchMethodComBox";
             this.searchMethodComBox.Size = new System.Drawing.Size(104, 20);
             this.searchMethodComBox.TabIndex = 0;

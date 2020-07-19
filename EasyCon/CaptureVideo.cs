@@ -369,6 +369,10 @@ namespace EasyCon
                     SnapshotRangeR.Y = SnapshotPos.Y + (int)((SnapshotRangeMDP.Y) * snapshotScale.Y);
                     SnapshotRangeR.Width = (int)((SnapshotRangeMMP.X - SnapshotRangeMDP.X) * snapshotScale.X);
                     SnapshotRangeR.Height = (int)((SnapshotRangeMMP.Y - SnapshotRangeMDP.Y) * snapshotScale.Y);
+                    curImgLabel.RangeX = SnapshotRangeR.X + 2 - 1920;
+                    curImgLabel.RangeY = SnapshotRangeR.Y + 2 - 1080;
+                    curImgLabel.RangeWidth = SnapshotRangeR.Width - 3;
+                    curImgLabel.RangeHeight = SnapshotRangeR.Height - 3;
                 }
 
                 // range rectangle
@@ -381,6 +385,10 @@ namespace EasyCon
                     SnapshotSearchObjR.Y = SnapshotPos.Y + (int)((SnapshotRangeMDP.Y) * snapshotScale.Y);
                     SnapshotSearchObjR.Width = (int)((SnapshotRangeMMP.X - SnapshotRangeMDP.X) * snapshotScale.X);
                     SnapshotSearchObjR.Height = (int)((SnapshotRangeMMP.Y - SnapshotRangeMDP.Y) * snapshotScale.Y);
+                    curImgLabel.TargetX = SnapshotSearchObjR.X + 2 - 1920;
+                    curImgLabel.TargetY = SnapshotSearchObjR.Y + 2 - 1080;
+                    curImgLabel.TargetWidth = SnapshotSearchObjR.Width - 3;
+                    curImgLabel.TargetHeight = SnapshotSearchObjR.Height - 3;
                 }
 
                 // range rectangle
@@ -573,16 +581,23 @@ namespace EasyCon
                 {
                     //Debug.WriteLine($"({list[i].X},{list[i].Y})");
                     reasultListBox.Items.Add(list[i].X.ToString() + "," + list[i].Y.ToString());
+                    matchDegree *= 100;
+                    if (matchDegree > double.Parse(textBox9.Text))
+                    {
+                        range = new Rectangle(list[i].X, list[i].Y, searchObjImg.Width, searchObjImg.Height);
 
-                    range = new Rectangle(list[i].X, list[i].Y, searchObjImg.Width, searchObjImg.Height);
+                        Bitmap result = newRangePic.Clone(range, snapshot.PixelFormat);
+                        Graphics g = searchResultImg.CreateGraphics();
+                        g.Clear(Color.FromArgb(240, 240, 240));
+                        g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
+                        g.Dispose();
+                    }else
+                    {
+                        searchResultImg.Refresh();
+                    }
 
-                    Bitmap result = newRangePic.Clone(range, snapshot.PixelFormat);
-                    Graphics g = searchResultImg.CreateGraphics();
-                    g.Clear(Color.FromArgb(240, 240, 240));
-                    g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
-                    g.Dispose();
                 }
-                label5.Text = $"匹配度:{matchDegree * 100:f1}%";
+                label5.Text = $"匹配度:{matchDegree:f1}%";
             }
             else
             {
