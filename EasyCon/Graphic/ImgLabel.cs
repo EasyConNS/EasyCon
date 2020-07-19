@@ -13,6 +13,9 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using JetBrains.Annotations;
+using System.IO;
+using System.Windows.Forms;
+using Newtonsoft.Json;
 
 namespace EasyCon.Graphic
 {
@@ -212,22 +215,6 @@ namespace EasyCon.Graphic
             }
         }
 
-        public string Method
-        {
-            get { return searchMethod.ToDescription(); }
-            set
-            {
-                // do not trigger change event if values are the same
-                //if (Equals(value, searchMethod)) return;
-                searchMethod = EnumHelper.GetEnumFromString<ImgLabel.SearchMethod>(value);
-
-                //===================
-                // Usage in the Source
-                //===================
-                OnPropertyChanged();
-            }
-        }
-
         public enum SearchMethod
         {
             [Description("平方差匹配")]
@@ -256,7 +243,7 @@ namespace EasyCon.Graphic
             sourcePic = null;
             searchImg = null;
             searchRange = new Rectangle();
-            searchMethod = SearchMethod.StrictMatchRND;
+            searchMethod = SearchMethod.SqDiffNormed;
         }
 
         public ImgLabel(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method)
@@ -265,22 +252,6 @@ namespace EasyCon.Graphic
             searchImg = searchObj.Clone(new Rectangle(0, 0, searchObj.Width, searchObj.Height), searchObj.PixelFormat);
             searchRange = range;
             searchMethod = method;
-        }
-
-        public ImgLabel(Bitmap searchObj, Rectangle range)
-        {
-            searchImg = searchObj.Clone(new Rectangle(0, 0, searchObj.Width, searchObj.Height), searchObj.PixelFormat);
-            searchRange = range;
-        }
-
-        public void SetRange(Rectangle range)
-        {
-            searchRange = range;
-        }
-
-        public void SetBmpSource(Bitmap sourceObj)
-        {
-            sourcePic = sourceObj.Clone(new Rectangle(0, 0, sourceObj.Width, sourceObj.Height), sourceObj.PixelFormat);
         }
 
         public static List<SearchMethod> GetAllSearchMethod()
@@ -297,12 +268,6 @@ namespace EasyCon.Graphic
             return list;
         }
 
-        public List<Point> search()
-        {
-            //result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod);
-            return result;
-        }
-
         public List<Point> search(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method,out double matchDegree)
         {
             sourcePic = sourceObj.Clone(new Rectangle(0, 0, sourceObj.Width, sourceObj.Height), sourceObj.PixelFormat);
@@ -313,10 +278,95 @@ namespace EasyCon.Graphic
             return result;
         }
 
+        private String ImgToBase64String(Image bmp)
+        {
+            String strbaser64 = String.Empty;
+            var btarr = convertByte(bmp);
+            strbaser64 = Convert.ToBase64String(btarr);
 
-        private Bitmap sourcePic;
+            return strbaser64;
+        }
+        private string ToBase64(Bitmap bmp)
+        {
+            try
+            {
+                MemoryStream ms = new MemoryStream();
+                bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
+                byte[] arr = new byte[ms.Length];
+                ms.Position = 0;
+                ms.Read(arr, 0, (int)ms.Length);
+                ms.Close();
+                String strbaser64 = Convert.ToBase64String(arr);
+                return strbaser64;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("ImgToBase64String 转换失败 Exception:" + ex.Message);
+                return "";
+            }
+        }
+        private static byte[] convertByte(Image img)
+        {
+            MemoryStream ms = new MemoryStream();
+            img.Save(ms, img.RawFormat);
+            byte[] bytes = ms.ToArray();
+            ms.Close();
+            return bytes;
+        }
+
+        private Bitmap Base64StringToImage(string basestr)
+        {
+            Bitmap bitmap = null;
+            try
+            {
+                String inputStr = basestr;
+                byte[] arr = Convert.FromBase64String(inputStr);
+                MemoryStream ms = new MemoryStream(arr);
+                Bitmap bmp = new Bitmap(ms);
+                ms.Close();
+                bitmap = bmp;
+                //MessageBox.Show("转换成功！");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Base64StringToImage 转换失败\nException：" + ex.Message);
+            }
+
+            return bitmap;
+        }
+
+        public void setSearchImg(Bitmap bmp)
+        {
+            searchImg = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
+        }
+
+        public void getSearchImg(Bitmap bmp)
+        {
+            searchImg = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
+        }
+
+        public void save()
+        {
+            // save the imglabel to loc
+
+            string path = System.Windows.Forms.Application.StartupPath + "\\ImgLabel\\";
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            ImgBase64 = ToBase64(searchImg);
+
+            File.WriteAllText(path+name+".IL", JsonConvert.SerializeObject(this));
+        }
+
+        public string name;
+        public SearchMethod searchMethod;
+        public double matchDegree;
+        public string ImgBase64;
+
         private Bitmap searchImg;
-        private SearchMethod searchMethod;
+        private Bitmap sourcePic;
         private Rectangle searchRange;
         private List<Point> result = new List<Point>();
     }

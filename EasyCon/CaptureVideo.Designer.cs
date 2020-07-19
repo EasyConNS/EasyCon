@@ -73,6 +73,8 @@
             this.button7 = new System.Windows.Forms.Button();
             this.label5 = new System.Windows.Forms.Label();
             this.searchResultImg = new System.Windows.Forms.PictureBox();
+            this.textBox10 = new System.Windows.Forms.TextBox();
+            this.label8 = new System.Windows.Forms.Label();
             this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
@@ -227,6 +229,8 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.textBox10);
+            this.groupBox1.Controls.Add(this.label8);
             this.groupBox1.Controls.Add(this.textBox9);
             this.groupBox1.Controls.Add(this.label6);
             this.groupBox1.Controls.Add(this.label22);
@@ -422,7 +426,7 @@
             // label12
             // 
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(10, 21);
+            this.label12.Location = new System.Drawing.Point(187, 21);
             this.label12.Name = "label12";
             this.label12.Size = new System.Drawing.Size(53, 12);
             this.label12.TabIndex = 1;
@@ -431,7 +435,7 @@
             // searchMethodComBox
             // 
             this.searchMethodComBox.FormattingEnabled = true;
-            this.searchMethodComBox.Location = new System.Drawing.Point(68, 17);
+            this.searchMethodComBox.Location = new System.Drawing.Point(245, 17);
             this.searchMethodComBox.Name = "searchMethodComBox";
             this.searchMethodComBox.Size = new System.Drawing.Size(104, 20);
             this.searchMethodComBox.TabIndex = 0;
@@ -445,6 +449,7 @@
             this.imgLableList.Name = "imgLableList";
             this.imgLableList.Size = new System.Drawing.Size(143, 292);
             this.imgLableList.TabIndex = 19;
+            this.imgLableList.DoubleClick += new System.EventHandler(this.imgLableList_DoubleClick);
             // 
             // button5
             // 
@@ -492,6 +497,23 @@
             this.searchResultImg.Size = new System.Drawing.Size(120, 68);
             this.searchResultImg.TabIndex = 24;
             this.searchResultImg.TabStop = false;
+            // 
+            // textBox10
+            // 
+            this.textBox10.Location = new System.Drawing.Point(82, 16);
+            this.textBox10.Name = "textBox10";
+            this.textBox10.Size = new System.Drawing.Size(99, 21);
+            this.textBox10.TabIndex = 33;
+            this.textBox10.Text = "5号路蛋屋主人";
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(9, 21);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(71, 12);
+            this.label8.TabIndex = 32;
+            this.label8.Text = "搜图标签名:";
             // 
             // imgLabelBindingSource
             // 
@@ -586,5 +608,7 @@
         private System.Windows.Forms.PictureBox searchResultImg;
         private System.Windows.Forms.TextBox textBox9;
         private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.TextBox textBox10;
+        private System.Windows.Forms.Label label8;
     }
 }

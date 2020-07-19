@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.IO;
 using EasyCon.Graphic;
+using Newtonsoft.Json;
 
 namespace EasyCon
 {
@@ -111,6 +112,7 @@ namespace EasyCon
             }
         }
 
+        private List<ImgLabel> imgLabels = new List<ImgLabel>();
         private void CaptureVideo_Load(object sender, EventArgs e)
         {
             X = this.Width;//获取窗体的宽度
@@ -133,6 +135,16 @@ namespace EasyCon
             textBox5.DataBindings.Add("Text", curImgLabel, "TargetY");
             textBox7.DataBindings.Add("Text", curImgLabel, "TargetWidth");
             textBox8.DataBindings.Add("Text", curImgLabel, "TargetHeight");
+
+            // load the imglabel
+            string parentDir = System.Windows.Forms.Application.StartupPath + "\\ImgLabel\\";
+            string[] file = Directory.GetFiles(parentDir, "*.IL");
+            for (int i = 0; i < file.Length; i++)
+            {
+                ImgLabel temp = JsonConvert.DeserializeObject<ImgLabel>(File.ReadAllText(file[i]));
+                imgLabels.Add(temp);
+                imgLableList.Items.Add(temp.name);         
+            }
         }
 
         private void CaptureVideo_Resize(object sender, EventArgs e)
@@ -304,7 +316,6 @@ namespace EasyCon
                 SnapshotRangeMove = false;
             }
         }
-
 
         private void Snapshot_MouseMove(object sender, MouseEventArgs e)
         {
@@ -529,10 +540,20 @@ namespace EasyCon
 
         private void button5_Click(object sender, EventArgs e)
         {
-
-
-
             // save the imglabel to local
+            curImgLabel.name = textBox10.Text;
+
+            ImgLabel.SearchMethod method;
+            if (searchMethodComBox.SelectedItem == null)
+                method = ImgLabel.SearchMethod.SqDiffNormed;
+            else
+                method = EnumHelper.GetEnumFromString<ImgLabel.SearchMethod>(searchMethodComBox.SelectedItem.ToString());
+
+            curImgLabel.searchMethod = method;
+            curImgLabel.matchDegree = double.Parse(textBox9.Text);
+            curImgLabel.setSearchImg(searchObjImg);
+            curImgLabel.save();
+            imgLableList.Items.Add(curImgLabel.name);
         }
 
         private void button6_Click(object sender, EventArgs e)
@@ -605,6 +626,11 @@ namespace EasyCon
                 label5.Text = "匹配度:0";
             }
             newRangePic.Dispose();
+        }
+
+        private void imgLableList_DoubleClick(object sender, EventArgs e)
+        {
+
         }
     }
 }
