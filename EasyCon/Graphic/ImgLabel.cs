@@ -16,9 +16,37 @@ using JetBrains.Annotations;
 using System.IO;
 using System.Windows.Forms;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace EasyCon.Graphic
 {
+    public static class Cloner
+    {
+        public static T Clone<T>(T source)
+        {
+            if (ReferenceEquals(source, null))
+                return default(T);
+
+            var settings = new JsonSerializerSettings { ContractResolver = new ContractResolver() };
+
+            return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(source, settings), settings);
+        }
+
+        class ContractResolver : DefaultContractResolver
+        {
+            protected override IList<JsonProperty> CreateProperties(Type type, MemberSerialization memberSerialization)
+            {
+                var props = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    .Select(p => base.CreateProperty(p, memberSerialization))
+                    .Union(type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                        .Select(f => base.CreateProperty(f, memberSerialization)))
+                    .ToList();
+                props.ForEach(p => { p.Writable = true; p.Readable = true; });
+                return props;
+            }
+        }
+    }
+
     public static class EnumHelper
     {
         /// <summary>
@@ -79,7 +107,7 @@ namespace EasyCon.Graphic
             if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        private int _RangeX=0;
+        private int _RangeX = 0;
         public int RangeX
         {
             get { return _RangeX; }
@@ -96,7 +124,7 @@ namespace EasyCon.Graphic
             }
         }
 
-        private int _RangeY=0;
+        private int _RangeY = 0;
         public int RangeY
         {
             get { return _RangeY; }
@@ -113,7 +141,7 @@ namespace EasyCon.Graphic
             }
         }
 
-        private int _RangeWidth=0;
+        private int _RangeWidth = 0;
         public int RangeWidth
         {
             get { return _RangeWidth; }
@@ -130,7 +158,7 @@ namespace EasyCon.Graphic
             }
         }
 
-        private int _RangeHeight=0;
+        private int _RangeHeight = 0;
         public int RangeHeight
         {
             get { return _RangeHeight; }
@@ -147,7 +175,7 @@ namespace EasyCon.Graphic
             }
         }
 
-        private int _TargetX=0;
+        private int _TargetX = 0;
         public int TargetX
         {
             get { return _TargetX; }
@@ -164,7 +192,7 @@ namespace EasyCon.Graphic
             }
         }
 
-        private int _TargetY=0;
+        private int _TargetY = 0;
         public int TargetY
         {
             get { return _TargetY; }
@@ -181,7 +209,7 @@ namespace EasyCon.Graphic
             }
         }
 
-        private int _TargetWidth=0;
+        private int _TargetWidth = 0;
         public int TargetWidth
         {
             get { return _TargetWidth; }
@@ -198,7 +226,7 @@ namespace EasyCon.Graphic
             }
         }
 
-        private int _TargetHeight=0;
+        private int _TargetHeight = 0;
         public int TargetHeight
         {
             get { return _TargetHeight; }
@@ -218,17 +246,17 @@ namespace EasyCon.Graphic
         public enum SearchMethod
         {
             [Description("平方差匹配")]
-            SqDiff=0,
+            SqDiff = 0,
             [Description("标准差匹配")]
-            SqDiffNormed =1,
+            SqDiffNormed = 1,
             [Description("相关匹配")]
-            CCorr =2,
+            CCorr = 2,
             [Description("标准相关匹配")]
-            CCorrNormed =3,
+            CCorrNormed = 3,
             [Description("相关系数匹配")]
-            CCoeff =4,
+            CCoeff = 4,
             [Description("标准相关系数匹配")]
-            CCoeffNormed =5,
+            CCoeffNormed = 5,
             [Description("严格匹配")]
             StrictMatch = 6,
             [Description("随机严格匹配")]
@@ -268,7 +296,7 @@ namespace EasyCon.Graphic
             return list;
         }
 
-        public List<Point> search(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method,out double matchDegree)
+        public List<Point> search(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method, out double matchDegree)
         {
             sourcePic = sourceObj.Clone(new Rectangle(0, 0, sourceObj.Width, sourceObj.Height), sourceObj.PixelFormat);
             searchImg = searchObj.Clone(new Rectangle(0, 0, searchObj.Width, searchObj.Height), searchObj.PixelFormat);
@@ -316,33 +344,24 @@ namespace EasyCon.Graphic
 
         private Bitmap Base64StringToImage(string basestr)
         {
-            Bitmap bitmap = null;
-            try
-            {
-                String inputStr = basestr;
-                byte[] arr = Convert.FromBase64String(inputStr);
-                MemoryStream ms = new MemoryStream(arr);
-                Bitmap bmp = new Bitmap(ms);
-                ms.Close();
-                bitmap = bmp;
-                //MessageBox.Show("转换成功！");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Base64StringToImage 转换失败\nException：" + ex.Message);
-            }
-
-            return bitmap;
+            // Convert Base64 String to byte[]
+            byte[] imageBytes = Convert.FromBase64String(basestr);
+            MemoryStream ms = new MemoryStream(imageBytes, 0, imageBytes.Length);
+            // Convert byte[] to Image
+            ms.Write(imageBytes, 0, imageBytes.Length);
+            Image image = Image.FromStream(ms, true);
+            return (Bitmap)image;
         }
 
         public void setSearchImg(Bitmap bmp)
         {
-            searchImg = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
+            if (bmp != null)
+                searchImg = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
         }
 
-        public void getSearchImg(Bitmap bmp)
+        public Bitmap getSearchImg()
         {
-            searchImg = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
+            return searchImg.Clone(new Rectangle(0, 0, searchImg.Width, searchImg.Height), searchImg.PixelFormat);
         }
 
         public void save()
@@ -357,8 +376,30 @@ namespace EasyCon.Graphic
 
             ImgBase64 = ToBase64(searchImg);
 
-            File.WriteAllText(path+name+".IL", JsonConvert.SerializeObject(this));
+            File.WriteAllText(path + name + ".IL", JsonConvert.SerializeObject(this));
         }
+
+        public void copy(ImgLabel il)
+        {
+            name = il.name;
+            RangeX = il.RangeX;
+            RangeY = il.RangeY;
+            RangeWidth = il.RangeWidth;
+            RangeHeight = il.RangeHeight;
+            TargetX = il.TargetX;
+            TargetY = il.TargetY;
+            TargetWidth = il.TargetWidth;
+            TargetHeight = il.TargetHeight;
+            searchMethod = il.searchMethod;
+            matchDegree = il.matchDegree;
+            ImgBase64 = il.ImgBase64;
+            //Debug.Print(il.ImgBase64);
+            //string path = System.Windows.Forms.Application.StartupPath + "\\test\\";
+            searchImg = Base64StringToImage(il.ImgBase64);
+            //Debug.WriteLine(searchImg.Width);
+            //searchImg.Save(path + "123.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
+        }
+
 
         public string name;
         public SearchMethod searchMethod;

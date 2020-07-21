@@ -143,7 +143,7 @@ namespace EasyCon
             {
                 ImgLabel temp = JsonConvert.DeserializeObject<ImgLabel>(File.ReadAllText(file[i]));
                 imgLabels.Add(temp);
-                imgLableList.Items.Add(temp.name);         
+                imgLableList.Items.Add(temp.name);
             }
         }
 
@@ -232,8 +232,8 @@ namespace EasyCon
             NoAction,
             FirstZoom,
             SecondRangeSelect,
-            SecondRangeSelectEnd,
-            ThridObjSelect
+            ThridObjSelect,
+            Refresh
         }
 
         private Graphics SnapshotGraphic;
@@ -268,7 +268,7 @@ namespace EasyCon
             ss = VideoSourcePlayerMonitor.GetCurrentVideoFrame();
             ss.Save(path + DateTime.Now.Ticks.ToString() + ".bmp", System.Drawing.Imaging.ImageFormat.Bmp);
 
-            snapshot = new Bitmap(ss.Width*3, ss.Height*3,System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            snapshot = new Bitmap(ss.Width * 3, ss.Height * 3, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
 
             Graphics g = Graphics.FromImage(snapshot);
             g.Clear(Color.FromArgb(240, 240, 240));
@@ -351,6 +351,7 @@ namespace EasyCon
             Debug.WriteLine("bmpscale:" + snapshotScale.ToString());
             Snapshot.Refresh();
         }
+
         private void Snapshot_Paint(object sender, PaintEventArgs e)
         {
 
@@ -367,7 +368,7 @@ namespace EasyCon
             SnapshotLMMD.X = 0;
             SnapshotLMMD.Y = 0;
 
-            if(snapshotMode != SnapshotMode.NoAction)
+            if (snapshotMode != SnapshotMode.NoAction)
             {
                 Graphics g = Graphics.FromImage(snapshot);
                 g.Clear(Color.FromArgb(240, 240, 240));
@@ -396,10 +397,10 @@ namespace EasyCon
                     SnapshotSearchObjR.Y = SnapshotPos.Y + (int)((SnapshotRangeMDP.Y) * snapshotScale.Y);
                     SnapshotSearchObjR.Width = (int)((SnapshotRangeMMP.X - SnapshotRangeMDP.X) * snapshotScale.X);
                     SnapshotSearchObjR.Height = (int)((SnapshotRangeMMP.Y - SnapshotRangeMDP.Y) * snapshotScale.Y);
-                    curImgLabel.TargetX = SnapshotSearchObjR.X + 2 - 1920;
-                    curImgLabel.TargetY = SnapshotSearchObjR.Y + 2 - 1080;
-                    curImgLabel.TargetWidth = SnapshotSearchObjR.Width - 3;
-                    curImgLabel.TargetHeight = SnapshotSearchObjR.Height - 3;
+                    curImgLabel.TargetX = SnapshotSearchObjR.X + 1 - 1920;
+                    curImgLabel.TargetY = SnapshotSearchObjR.Y + 1 - 1080;
+                    curImgLabel.TargetWidth = SnapshotSearchObjR.Width - 2;
+                    curImgLabel.TargetHeight = SnapshotSearchObjR.Height - 2;
                 }
 
                 // range rectangle
@@ -433,24 +434,26 @@ namespace EasyCon
                     Directory.CreateDirectory(path);
                 }
 
-                Rectangle range = new Rectangle(SnapshotRangeR.X+2, SnapshotRangeR.Y+2, SnapshotRangeR.Width-3, SnapshotRangeR.Height-3);
+                Rectangle range = new Rectangle(SnapshotRangeR.X + 2, SnapshotRangeR.Y + 2, SnapshotRangeR.Width - 3, SnapshotRangeR.Height - 3);
 
                 searchRangeImg = snapshot.Clone(range, snapshot.PixelFormat);
                 searchRangeImg.Save(path + DateTime.Now.Ticks.ToString() + "_search_range.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
 
                 snapshotMode = SnapshotMode.NoAction;
                 button2.Text = "开始圈选(红)";
+                button4.Enabled = true;
             }
             else
             {
                 snapshotMode = SnapshotMode.SecondRangeSelect;
                 button2.Text = "确定搜索范围";
+                button4.Enabled = false;
             }
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
-            if (snapshot == null|| searchObjImg == null || searchRangeImg == null)
+            if (snapshot == null || searchObjImg == null || searchRangeImg == null)
                 return;
 
             Stopwatch sw = new Stopwatch();
@@ -467,7 +470,7 @@ namespace EasyCon
             sw.Reset();
             sw.Start(); //计时开始
                         //curImgLabel = new ImgLabel(searchRangeImg, searchObjImg, SnapshotRangeR, method);
-            var list = curImgLabel.search(searchRangeImg, searchObjImg, range, method,out matchDegree);
+            var list = curImgLabel.search(searchRangeImg, searchObjImg, range, method, out matchDegree);
             sw.Stop();   //计时结束
             Debug.WriteLine("sf:" + sw.ElapsedMilliseconds + "毫秒");
 
@@ -522,28 +525,52 @@ namespace EasyCon
                     Directory.CreateDirectory(path);
                 }
 
-                Rectangle range = new Rectangle(SnapshotSearchObjR.X+1, SnapshotSearchObjR.Y+1, SnapshotSearchObjR.Width-2, SnapshotSearchObjR.Height-2);
+                Rectangle range = new Rectangle(SnapshotSearchObjR.X + 1, SnapshotSearchObjR.Y + 1, SnapshotSearchObjR.Width - 2, SnapshotSearchObjR.Height - 2);
 
                 searchObjImg = snapshot.Clone(range, snapshot.PixelFormat);
+                curImgLabel.setSearchImg(searchObjImg);
                 searchObjImg.Save(path + DateTime.Now.Ticks.ToString() + "_search_obj.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
 
                 snapshotMode = SnapshotMode.NoAction;
                 button4.Text = "开始圈选(绿)";
+                button2.Enabled = true;
             }
             else
             {
                 snapshotMode = SnapshotMode.ThridObjSelect;
                 button4.Text = "确定搜索目标";
+                button2.Enabled = false;
             }
 
         }
 
         private void button5_Click(object sender, EventArgs e)
         {
+            ImgLabel.SearchMethod method;
+
             // save the imglabel to local
+            foreach (var item in imgLabels)
+            {
+                if(item.name == textBox10.Text)
+                {
+                    if (searchMethodComBox.SelectedItem == null)
+                        method = ImgLabel.SearchMethod.SqDiffNormed;
+                    else
+                        method = EnumHelper.GetEnumFromString<ImgLabel.SearchMethod>(searchMethodComBox.SelectedItem.ToString());
+
+                    curImgLabel.searchMethod = method;
+                    curImgLabel.matchDegree = double.Parse(textBox9.Text);
+                    curImgLabel.setSearchImg(curImgLabel.getSearchImg());
+                    curImgLabel.save();
+                    item.copy(curImgLabel);
+                    return;
+                }
+            }
+
+            // not find, add a new one
+            ImgLabel newone = new ImgLabel();
             curImgLabel.name = textBox10.Text;
 
-            ImgLabel.SearchMethod method;
             if (searchMethodComBox.SelectedItem == null)
                 method = ImgLabel.SearchMethod.SqDiffNormed;
             else
@@ -551,9 +578,13 @@ namespace EasyCon
 
             curImgLabel.searchMethod = method;
             curImgLabel.matchDegree = double.Parse(textBox9.Text);
-            curImgLabel.setSearchImg(searchObjImg);
+            curImgLabel.setSearchImg(curImgLabel.getSearchImg());
             curImgLabel.save();
-            imgLableList.Items.Add(curImgLabel.name);
+            newone.copy(curImgLabel);
+
+            // add to list and ui
+            imgLabels.Add(newone);
+            imgLableList.Items.Add(newone.name);
         }
 
         private void button6_Click(object sender, EventArgs e)
@@ -579,7 +610,7 @@ namespace EasyCon
             Debug.WriteLine(method);
 
             // get search pic
-            Rectangle range = new Rectangle(SnapshotRangeR.X + 2-1920, SnapshotRangeR.Y + 2-1080, SnapshotRangeR.Width - 3, SnapshotRangeR.Height - 3);
+            Rectangle range = new Rectangle(SnapshotRangeR.X + 2 - 1920, SnapshotRangeR.Y + 2 - 1080, SnapshotRangeR.Width - 3, SnapshotRangeR.Height - 3);
 
             Bitmap newRangePic = newPic.Clone(range, newPic.PixelFormat);
 
@@ -612,7 +643,8 @@ namespace EasyCon
                         g.Clear(Color.FromArgb(240, 240, 240));
                         g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
                         g.Dispose();
-                    }else
+                    }
+                    else
                     {
                         searchResultImg.Refresh();
                     }
@@ -630,7 +662,44 @@ namespace EasyCon
 
         private void imgLableList_DoubleClick(object sender, EventArgs e)
         {
+            if (imgLableList.SelectedItem != null)
+            {
+                // load the click item
+                foreach(var item in imgLabels)
+                {
+                    if(item.name == imgLableList.SelectedItem)
+                    {
+                        curImgLabel.copy(item);
+                        textBox10.Text = curImgLabel.name;
+                        searchMethodComBox.SelectedItem = curImgLabel.searchMethod.ToDescription();
+                        textBox9.Text = curImgLabel.matchDegree.ToString();
+                        Debug.WriteLine("find" + item.name);
+                        string path = System.Windows.Forms.Application.StartupPath + "\\test\\";
+                        if (!Directory.Exists(path))
+                        {
+                            Directory.CreateDirectory(path);
+                        }
+                        Bitmap a = curImgLabel.getSearchImg();
+                        a.Save(path + DateTime.Now.Ticks.ToString() + ".bmp", System.Drawing.Imaging.ImageFormat.Bmp);
+                        searchObjImg = curImgLabel.getSearchImg();
+                        SnapshotRangeR.X = curImgLabel.RangeX + 1920 - 2;
+                        SnapshotRangeR.Y = curImgLabel.RangeY + 1080 - 2;
+                        SnapshotRangeR.Width = curImgLabel.RangeWidth + 3;
+                        SnapshotRangeR.Height = curImgLabel.RangeHeight + 3;
 
+                        SnapshotSearchObjR.X = curImgLabel.TargetX + 1920 - 1;
+                        SnapshotSearchObjR.Y = curImgLabel.TargetY + 1080 - 1;
+                        SnapshotSearchObjR.Width = curImgLabel.TargetWidth + 2;
+                        SnapshotSearchObjR.Height = curImgLabel.TargetHeight + 2;
+
+                        Rectangle range = new Rectangle(SnapshotRangeR.X + 2, SnapshotRangeR.Y + 2, SnapshotRangeR.Width - 3, SnapshotRangeR.Height - 3);
+                        searchRangeImg = snapshot.Clone(range, snapshot.PixelFormat);
+
+                        snapshotMode = SnapshotMode.Refresh;
+                        Snapshot.Refresh();
+                    }
+                }
+            }
         }
     }
 }
