@@ -98,4 +98,27 @@ namespace EasyCon.Script.Parsing
             return formatter.GetReg32Text(Index);
         }
     }
+
+    // imglabel 
+    class ValImglabel : ValRegEx
+    {
+        public readonly string Text;
+        public readonly int Val;
+        public ValImglabel(uint reg,string text,int val)
+            : base(reg)
+        { 
+            Text = text;
+            Val = val;
+        }
+
+        public override int Evaluate(Processor processor)
+        {
+            return Val;
+        }
+
+        public override string GetCodeText(Formats.Formatter formatter)
+        {
+            return Text;
+        }
+    }
 }

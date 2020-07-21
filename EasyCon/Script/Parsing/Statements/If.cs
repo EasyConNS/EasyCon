@@ -3,6 +3,7 @@ using EasyCon.Script.Assembly.Instructions;
 using EasyCon.Script.Parsing;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -57,6 +58,14 @@ namespace EasyCon.Script.Parsing.Statements
                 var m = Regex.Match(args.Text, $@"^if\s+{Formats.RegisterEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)
                     return new If(op, args.Formatter.GetRegEx(m.Groups[1].Value), args.Formatter.GetValueEx(m.Groups[2].Value));
+
+                // just for imglabel
+                var i = Regex.Match(args.Text, $@"^if\s+{Formats.ImagLabel_Ex}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
+                if (i.Success) 
+                {
+                    Debug.WriteLine("fond imglabel");
+                    return new If(op, args.Formatter.ImagLabel_Ex(i.Groups[1].Value), args.Formatter.GetValueEx(i.Groups[2].Value));
+                }
             }
             return null;
         }

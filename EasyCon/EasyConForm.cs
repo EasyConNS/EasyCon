@@ -396,7 +396,7 @@ namespace EasyCon
             {
                 _eventdisabled = true;
                 _program = new Script.Script();
-                _program.Parse(textBoxScript.Text);
+                _program.Parse(textBoxScript.Text,CaptureVideo.imgLabels);
                 textBoxScript.Text = _program.ToCode();
                 textBoxScript.Select(0, 0);
                 return true;

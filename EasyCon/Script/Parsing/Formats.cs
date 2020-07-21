@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EasyCon.Graphic;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,6 +14,8 @@ namespace EasyCon.Script.Parsing
         const string __Register = @"\$\d+";
         const string __Register32 = @"\$\$\d+";
         const string __Number = @"-?\d+";
+        const string __ImagLabel = @"@[\d\p{L}_]+";
+
         public const string Constant = "(" + __Constant + ")";
         public const string Constant_F = "^" + __Constant + "$";
         public const string Register = "(" + __Register + ")";
@@ -23,14 +26,19 @@ namespace EasyCon.Script.Parsing
         public const string Instant = "(" + __Constant + "|" + __Number + ")";
         public const string Value = "(" + __Constant + "|" + __Register + "|" + __Number + ")";
         public const string ValueEx = "(" + __Constant + "|" + __Register + "|" + __Register32 + "|" + __Number + ")";
+        public const string ImagLabel_Ex = "(" + __ImagLabel + ")";
 
         public class Formatter
         {
             public readonly Dictionary<string, int> Constants;
 
-            public Formatter(Dictionary<string, int> constants)
+            // add imglabel list
+            private List<ImgLabel> ImgLabels;
+
+            public Formatter(Dictionary<string, int> constants,List<ImgLabel> imgLabels)
             {
                 Constants = constants;
+                ImgLabels = imgLabels;
             }
 
             public string GetRegText(uint reg)
@@ -115,6 +123,19 @@ namespace EasyCon.Script.Parsing
                     return GetRegEx(text, lhs);
                 else
                     return GetInstant(text);
+            }
+
+            public ValRegEx ImagLabel_Ex(string text)
+            {
+                foreach(var imgLabel in ImgLabels)
+                {
+                    if(imgLabel.name == text)
+                    {
+                        // implement the imglabel search by api
+                        return new ValImglabel(999,text,1);
+                    }
+                }
+                throw new ParseException($"未定义的图标签“{text}”");
             }
         }
     }

@@ -1,4 +1,5 @@
-﻿using EasyCon.Script.Assembly;
+﻿using EasyCon.Graphic;
+using EasyCon.Script.Assembly;
 using EasyCon.Script.Parsing;
 using System;
 using System.Collections.Generic;
@@ -14,10 +15,12 @@ namespace EasyCon.Script
 
         List<Statement> _statements;
         Processor _processor;
+        List<ImgLabel> _imgLabels;
 
-        public void Parse(string code)
+        public void Parse(string code, List<ImgLabel> imgLabels)
         {
-            _statements = new Parser(Constants).Parse(code);
+            _imgLabels = imgLabels;
+            _statements = new Parser(Constants, _imgLabels).Parse(code);
         }
 
         public void Run(IOutputAdapter output)
@@ -34,7 +37,7 @@ namespace EasyCon.Script
 
         public string ToCode()
         {
-            var formatter = new Formats.Formatter(Constants);
+            var formatter = new Formats.Formatter(Constants, _imgLabels);
             return string.Join(Environment.NewLine, _statements.Select(u => u.GetString(formatter)));
         }
 

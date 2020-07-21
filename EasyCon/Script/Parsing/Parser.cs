@@ -1,4 +1,5 @@
-﻿using EasyCon.Script.Parsing.Statements;
+﻿using EasyCon.Graphic;
+using EasyCon.Script.Parsing.Statements;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,11 +13,13 @@ namespace EasyCon.Script.Parsing
     class Parser
     {
         readonly Dictionary<string, int> _constants;
+        readonly List<ImgLabel> _imgLabels;
         List<IStatementParser> _parsers = new List<IStatementParser>();
 
-        public Parser(Dictionary<string, int> constants)
+        public Parser(Dictionary<string, int> constants, List<ImgLabel> imgLabels)
         {
             _constants = constants;
+            _imgLabels = imgLabels;
 
             // constant declaration
             _parsers.Add(new StatementParser(args =>
@@ -74,7 +77,7 @@ namespace EasyCon.Script.Parsing
                     // enumerate generators
                     var args = new ParserArgument();
                     args.Text = text;
-                    args.Formatter = new Formats.Formatter(_constants);
+                    args.Formatter = new Formats.Formatter(_constants, _imgLabels);
                     Statement st = null;
                     foreach (var parser in _parsers)
                     {

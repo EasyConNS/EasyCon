@@ -23,6 +23,7 @@ namespace EasyCon
             NoBorder = 0,
             Editor = 1,
         }
+
         bool isMouseDown = false;
         Point mouseOffset;
         double monitorScale = 1.1;
@@ -112,7 +113,7 @@ namespace EasyCon
             }
         }
 
-        private List<ImgLabel> imgLabels = new List<ImgLabel>();
+        public static List<ImgLabel> imgLabels = new List<ImgLabel>();
         private void CaptureVideo_Load(object sender, EventArgs e)
         {
             X = this.Width;//获取窗体的宽度
