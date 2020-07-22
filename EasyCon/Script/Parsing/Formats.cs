@@ -1,6 +1,7 @@
 ﻿using EasyCon.Graphic;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -131,6 +132,7 @@ namespace EasyCon.Script.Parsing
                 {
                     if(imgLabel.name == text)
                     {
+                        Debug.WriteLine("imglabel" + imgLabel.name);
                         // implement the imglabel search by api
                         return new ValImglabel(999,text,1);
                     }
