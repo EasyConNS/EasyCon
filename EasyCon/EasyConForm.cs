@@ -754,7 +754,7 @@ namespace EasyCon
                 return false;
             if (NS.GetConnectionStatus() == ArduinoSerial.Status.ConnectedUnsafe)
                 return true;
-            int ver = NS.GetVersion() + 10;
+            int ver = NS.GetVersion();
             if (ver < GetSelectedBoard().Version)
             {
                 StatusShowLog("需要更新固件");
