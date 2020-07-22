@@ -140,6 +140,7 @@
     <Compile Include="Script\Assembly\Instructions\AsmBranchBase.cs" />
     <Compile Include="Script\Assembly\Instructions\AsmCompare.cs" />
     <Compile Include="Script\Assembly\Instructions\AsmUnaryOp.cs" />
+    <Compile Include="Script\ExternalVariable.cs" />
     <Compile Include="Script\Parsing\Statements\If.cs" />
     <Compile Include="Script\Parsing\IStatementParser.cs" />
     <Compile Include="Script\Parsing\Statements\Standalone.cs" />

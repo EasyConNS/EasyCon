@@ -72,7 +72,7 @@ namespace EasyCon.Script.Parsing.Statements
 
         public override void Exec(Processor processor)
         {
-            var duration = Duration.Evaluate(processor);
+            var duration = Duration.Get(processor);
             if (duration > 0)
             {
                 NintendoSwitch.GetInstance().Press(Key, duration);

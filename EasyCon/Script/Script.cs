@@ -12,15 +12,16 @@ namespace EasyCon.Script
     public class Script
     {
         public Dictionary<string, int> Constants = new Dictionary<string, int>();
+        public Dictionary<string, ExternalVariable> ExtVars = new Dictionary<string, ExternalVariable>();
 
         List<Statement> _statements;
         Processor _processor;
-        List<ImgLabel> _imgLabels;
 
-        public void Parse(string code, List<ImgLabel> imgLabels)
+        public void Parse(string code, IEnumerable<ExternalVariable> extVars)
         {
-            _imgLabels = imgLabels;
-            _statements = new Parser(Constants, _imgLabels).Parse(code);
+            foreach (var ev in extVars)
+                ExtVars[ev.Name] = ev;
+            _statements = new Parser(Constants, ExtVars).Parse(code);
         }
 
         public void Run(IOutputAdapter output)
@@ -37,7 +38,7 @@ namespace EasyCon.Script
 
         public string ToCode()
         {
-            var formatter = new Formats.Formatter(Constants, _imgLabels);
+            var formatter = new Formats.Formatter(Constants, ExtVars);
             return string.Join(Environment.NewLine, _statements.Select(u => u.GetString(formatter)));
         }
 

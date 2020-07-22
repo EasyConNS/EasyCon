@@ -37,7 +37,7 @@ namespace EasyCon.Script.Parsing.Statements
 
         public override void Exec(Processor processor)
         {
-            processor.Register[RegDst] = Value.Evaluate(processor);
+            processor.Register[RegDst] = Value.Get(processor);
         }
 
         public override void Assemble(Assembler assembler)

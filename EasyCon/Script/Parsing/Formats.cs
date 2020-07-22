@@ -15,31 +15,32 @@ namespace EasyCon.Script.Parsing
         const string __Register = @"\$\d+";
         const string __Register32 = @"\$\$\d+";
         const string __Number = @"-?\d+";
-        const string __ImagLabel = @"@[\d\p{L}_]+";
+        const string __ExtVar = @"@[\d\p{L}_]+";
 
         public const string Constant = "(" + __Constant + ")";
         public const string Constant_F = "^" + __Constant + "$";
         public const string Register = "(" + __Register + ")";
         public const string Register_F = "^" + __Register + "$";
         public const string Register32_F = "^" + __Register32 + "$";
+        public const string ExtVar = "(" + __ExtVar + ")";
+        public const string ExtVar_F = "(" + __ExtVar + ")";
         public const string RegisterEx = "(" + __Register + "|" + __Register32 + ")";
         public const string RegisterEx_F = "^" + __Register + "|" + __Register32 + "$";
+        public const string VariableEx = "(" + __Register + "|" + __Register32 + "|" + __ExtVar + ")";
+        public const string VariableEx_F = "^" + __Register + "|" + __Register32 + "|" + __ExtVar + "$";
         public const string Instant = "(" + __Constant + "|" + __Number + ")";
         public const string Value = "(" + __Constant + "|" + __Register + "|" + __Number + ")";
-        public const string ValueEx = "(" + __Constant + "|" + __Register + "|" + __Register32 + "|" + __Number + ")";
-        public const string ImagLabel_Ex = "(" + __ImagLabel + ")";
+        public const string ValueEx = "(" + __Constant + "|" + __Register + "|" + __Register32 + "|" + __ExtVar + "|" + __Number + ")";
 
         public class Formatter
         {
             public readonly Dictionary<string, int> Constants;
+            public readonly Dictionary<string, ExternalVariable> ExtVars;
 
-            // add imglabel list
-            private List<ImgLabel> ImgLabels;
-
-            public Formatter(Dictionary<string, int> constants,List<ImgLabel> imgLabels)
+            public Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
             {
                 Constants = constants;
-                ImgLabels = imgLabels;
+                ExtVars = extVars;
             }
 
             public string GetRegText(uint reg)
@@ -50,6 +51,11 @@ namespace EasyCon.Script.Parsing
             public string GetReg32Text(uint reg)
             {
                 return $"$${reg}";
+            }
+
+            public string GetExtVarText(string name)
+            {
+                return $"@{name}";
             }
 
             public ValReg GetReg(string text, bool lhs = false)
@@ -87,6 +93,23 @@ namespace EasyCon.Script.Parsing
                 throw new FormatException();
             }
 
+            public ValExtVar GetExtVar(string text, bool lhs = false)
+            {
+                if (!text.StartsWith("@"))
+                    throw new FormatException();
+                var name = text.Substring(1);
+                if (!ExtVars.ContainsKey(name))
+                    throw new ParseException($"未定义的外部变量“{text}”");
+                return new ValExtVar(ExtVars[name]);
+            }
+
+            public ValVar GetVar(string text, bool lhs = false)
+            {
+                if (Regex.Match(text, ExtVar_F).Success)
+                    return GetExtVar(text, lhs);
+                return GetRegEx(text, lhs);
+            }
+
             public ValInstant GetConstant(string text, bool zeroOrPos = false)
             {
                 if (!Constants.ContainsKey(text))
@@ -110,34 +133,12 @@ namespace EasyCon.Script.Parsing
                 }
             }
 
-            public ValBase GetValue(string text, bool lhs = false)
-            {
-                if (Regex.Match(text, Register_F).Success)
-                    return GetReg(text, lhs);
-                else
-                    return GetInstant(text);
-            }
-
             public ValBase GetValueEx(string text, bool lhs = false)
             {
-                if (Regex.Match(text, RegisterEx_F).Success)
-                    return GetRegEx(text, lhs);
+                if (Regex.Match(text, VariableEx_F).Success)
+                    return GetVar(text, lhs);
                 else
                     return GetInstant(text);
-            }
-
-            public ValRegEx ImagLabel_Ex(string text)
-            {
-                foreach(var imgLabel in ImgLabels)
-                {
-                    if(imgLabel.name == text)
-                    {
-                        Debug.WriteLine("imglabel" + imgLabel.name);
-                        // implement the imglabel search by api
-                        return new ValImglabel(999,text,1);
-                    }
-                }
-                throw new ParseException($"未定义的图标签“{text}”");
             }
         }
     }

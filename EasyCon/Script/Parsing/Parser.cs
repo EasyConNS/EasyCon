@@ -13,13 +13,13 @@ namespace EasyCon.Script.Parsing
     class Parser
     {
         readonly Dictionary<string, int> _constants;
-        readonly List<ImgLabel> _imgLabels;
+        readonly Dictionary<string, ExternalVariable> _extVars;
         List<IStatementParser> _parsers = new List<IStatementParser>();
 
-        public Parser(Dictionary<string, int> constants, List<ImgLabel> imgLabels)
+        public Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
         {
             _constants = constants;
-            _imgLabels = imgLabels;
+            _extVars = extVars;
 
             // constant declaration
             _parsers.Add(new StatementParser(args =>
@@ -77,7 +77,7 @@ namespace EasyCon.Script.Parsing
                     // enumerate generators
                     var args = new ParserArgument();
                     args.Text = text;
-                    args.Formatter = new Formats.Formatter(_constants, _imgLabels);
+                    args.Formatter = new Formats.Formatter(_constants, _extVars);
                     Statement st = null;
                     foreach (var parser in _parsers)
                     {

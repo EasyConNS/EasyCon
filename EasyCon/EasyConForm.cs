@@ -396,7 +396,12 @@ namespace EasyCon
             {
                 _eventdisabled = true;
                 _program = new Script.Script();
-                _program.Parse(textBoxScript.Text,CaptureVideo.imgLabels);
+                // 在这里根据图像处理窗口的情况，创建一个ExternalVariable的数组或List传给Parse函数
+                // 每个ExternalVariable对应一个图像标签，name为名字，get为用来获取结果的函数，set暂时没有语句支持所以先省略
+                Random rand = new Random();
+                _program.Parse(textBoxScript.Text, new ExternalVariable[] {
+                    new ExternalVariable("test", () => rand.Next(0, 100)),  // 返回0~99随机数的测试标签
+                });
                 textBoxScript.Text = _program.ToCode();
                 textBoxScript.Select(0, 0);
                 return true;
@@ -749,7 +754,7 @@ namespace EasyCon
                 return false;
             if (NS.GetConnectionStatus() == ArduinoSerial.Status.ConnectedUnsafe)
                 return true;
-            int ver = NS.GetVersion();
+            int ver = NS.GetVersion() + 10;
             if (ver < GetSelectedBoard().Version)
             {
                 StatusShowLog("需要更新固件");

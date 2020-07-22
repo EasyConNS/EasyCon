@@ -104,7 +104,7 @@ namespace EasyCon.Script.Parsing.Statements
         protected override void Init(Processor processor)
         {
             processor.LoopTime[this] = 0;
-            processor.LoopCount[this] = Count.Evaluate(processor);
+            processor.LoopCount[this] = Count.Get(processor);
         }
 
         protected override bool Cond(Processor processor)
@@ -150,8 +150,8 @@ namespace EasyCon.Script.Parsing.Statements
 
         protected override void Init(Processor processor)
         {
-            processor.Register[RegIter] = InitVal.Evaluate(processor);
-            processor.LoopCount[this] = Count.Evaluate(processor);
+            processor.Register[RegIter] = InitVal.Get(processor);
+            processor.LoopCount[this] = Count.Get(processor);
         }
 
         protected override bool Cond(Processor processor)

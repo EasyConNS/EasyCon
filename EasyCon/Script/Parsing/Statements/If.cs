@@ -41,10 +41,10 @@ namespace EasyCon.Script.Parsing.Statements
         public Else Else;
         public EndIf EndIf;
         public readonly CompareOperator Operater;
-        public readonly ValRegEx Left;
+        public readonly ValVar Left;
         public readonly ValBase Right;
 
-        public If(CompareOperator op, ValRegEx left, ValBase right)
+        public If(CompareOperator op, ValVar left, ValBase right)
         {
             Operater = op;
             Left = left;
@@ -55,24 +55,16 @@ namespace EasyCon.Script.Parsing.Statements
         {
             foreach (var op in CompareOperator.All)
             {
-                var m = Regex.Match(args.Text, $@"^if\s+{Formats.RegisterEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
+                var m = Regex.Match(args.Text, $@"^if\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return new If(op, args.Formatter.GetRegEx(m.Groups[1].Value), args.Formatter.GetValueEx(m.Groups[2].Value));
-
-                // just for imglabel
-                var i = Regex.Match(args.Text, $@"^if\s+{Formats.ImagLabel_Ex}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-                if (i.Success) 
-                {
-                    Debug.WriteLine("fond imglabel");
-                    return new If(op, args.Formatter.ImagLabel_Ex(i.Groups[1].Value), args.Formatter.GetValueEx(i.Groups[2].Value));
-                }
+                    return new If(op, args.Formatter.GetVar(m.Groups[1].Value), args.Formatter.GetValueEx(m.Groups[2].Value));
             }
             return null;
         }
 
         public override void Exec(Processor processor)
         {
-            if (Operater.Compare(Left.Evaluate(processor), Right.Evaluate(processor)))
+            if (Operater.Compare(Left.Get(processor), Right.Get(processor)))
             {
                 // do nothing
             }
@@ -93,14 +85,17 @@ namespace EasyCon.Script.Parsing.Statements
 
         public override void Assemble(Assembler assembler)
         {
+            var left = Left as ValRegEx;
+            if (left == null)
+                throw new AssembleException("外部变量仅限联机模式使用");
             if (Right is ValInstant)
             {
                 assembler.Add(AsmMov.Create(Assembler.IReg, Right));
-                assembler.Add(Operater.Assemble(Left.Index, Assembler.IReg));
+                assembler.Add(Operater.Assemble(left.Index, Assembler.IReg));
             }
             else
             {
-                assembler.Add(Operater.Assemble(Left.Index, (Right as ValReg).Index));
+                assembler.Add(Operater.Assemble(left.Index, (Right as ValReg).Index));
             }
             assembler.Add(AsmBranchFalse.Create());
             assembler.IfMapping[this] = assembler.Last() as AsmBranchFalse;

@@ -41,7 +41,7 @@ namespace EasyCon.Script.Parsing.Statements
 
         public override void Exec(Processor processor)
         {
-            Thread.Sleep(Duration.Evaluate(processor));
+            Thread.Sleep(Duration.Get(processor));
         }
 
         public override void Assemble(Assembler assembler)

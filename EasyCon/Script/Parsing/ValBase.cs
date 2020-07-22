@@ -9,7 +9,13 @@ namespace EasyCon.Script.Parsing
     // base of valuetype
     abstract class ValBase
     {
-        public abstract int Evaluate(Processor processor);
+        public abstract int Get(Processor processor);
+
+        public virtual void Set(Processor processor, int value)
+        {
+            throw new InvalidOperationException();
+        }
+
         public abstract string GetCodeText(Formats.Formatter formatter);
 
         public static implicit operator ValBase(int val)
@@ -36,7 +42,7 @@ namespace EasyCon.Script.Parsing
             Text = text;
         }
 
-        public override int Evaluate(Processor processor)
+        public override int Get(Processor processor)
         {
             return Val;
         }
@@ -52,14 +58,25 @@ namespace EasyCon.Script.Parsing
         }
     }
 
+    // variable, either register or external
+    abstract class ValVar : ValBase
+    {
+        public abstract override void Set(Processor processor, int value);
+    }
+
     // register, either 16 or 32 bits
-    abstract class ValRegEx : ValBase
+    abstract class ValRegEx : ValVar
     {
         public readonly uint Index;
 
         public ValRegEx(uint reg)
         {
             Index = reg;
+        }
+
+        public override void Set(Processor processor, int value)
+        {
+            processor.Register[this] = value;
         }
     }
 
@@ -70,7 +87,7 @@ namespace EasyCon.Script.Parsing
             : base(reg)
         { }
 
-        public override int Evaluate(Processor processor)
+        public override int Get(Processor processor)
         {
             return processor.Register[Index];
         }
@@ -88,7 +105,7 @@ namespace EasyCon.Script.Parsing
             : base(reg)
         { }
 
-        public override int Evaluate(Processor processor)
+        public override int Get(Processor processor)
         {
             return processor.Register.GetReg32(Index);
         }
@@ -99,26 +116,29 @@ namespace EasyCon.Script.Parsing
         }
     }
 
-    // imglabel 
-    class ValImglabel : ValRegEx
+    // external variable 
+    class ValExtVar : ValVar
     {
-        public readonly string Text;
-        public readonly int Val;
-        public ValImglabel(uint reg,string text,int val)
-            : base(reg)
-        { 
-            Text = text;
-            Val = val;
+        public readonly ExternalVariable Var;
+
+        public ValExtVar(ExternalVariable var)
+        {
+            Var = var;
         }
 
-        public override int Evaluate(Processor processor)
+        public override int Get(Processor processor)
         {
-            return Val;
+            return Var.Get();
+        }
+
+        public override void Set(Processor processor, int value)
+        {
+            Var.Set(value);
         }
 
         public override string GetCodeText(Formats.Formatter formatter)
         {
-            return Text;
+            return formatter.GetExtVarText(Var.Name);
         }
     }
 }
