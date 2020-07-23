@@ -143,6 +143,7 @@ namespace EasyCon
             for (int i = 0; i < file.Length; i++)
             {
                 ImgLabel temp = JsonConvert.DeserializeObject<ImgLabel>(File.ReadAllText(file[i]));
+                temp.refresh(VideoSourcePlayerMonitor);
                 imgLabels.Add(temp);
                 imgLableList.Items.Add(temp.name);
             }
@@ -693,8 +694,8 @@ namespace EasyCon
                         SnapshotSearchObjR.Width = curImgLabel.TargetWidth + 2;
                         SnapshotSearchObjR.Height = curImgLabel.TargetHeight + 2;
 
-                        Rectangle range = new Rectangle(SnapshotRangeR.X + 2, SnapshotRangeR.Y + 2, SnapshotRangeR.Width - 3, SnapshotRangeR.Height - 3);
-                        searchRangeImg = snapshot.Clone(range, snapshot.PixelFormat);
+                        //Rectangle range = new Rectangle(SnapshotRangeR.X + 2, SnapshotRangeR.Y + 2, SnapshotRangeR.Width - 3, SnapshotRangeR.Height - 3);
+                        //searchRangeImg = snapshot.Clone(range, snapshot.PixelFormat);
 
                         snapshotMode = SnapshotMode.Refresh;
                         Snapshot.Refresh();

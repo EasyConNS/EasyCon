@@ -17,6 +17,7 @@ using System.IO;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using AForge.Video;
 
 namespace EasyCon.Graphic
 {
@@ -400,12 +401,30 @@ namespace EasyCon.Graphic
             //searchImg.Save(path + "123.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
         }
 
+        public int search()
+        {
+            Bitmap ss = _VideoSourcePlayerMonitor.GetCurrentVideoFrame();
+            sourcePic = ss.Clone(new Rectangle(RangeX,RangeY,RangeWidth,RangeHeight), ss.PixelFormat);
+            GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out matchDegree);
+            return (int)(matchDegree*100);
+        }
+
+        public void refresh(AForge.Controls.VideoSourcePlayer VideoSourcePlayerMonitor)
+        {
+            searchImg = Base64StringToImage(ImgBase64);
+            searchRange.X = TargetX;
+            searchRange.Y = TargetY;
+            searchRange.Width = TargetWidth;
+            searchRange.Height = TargetHeight;
+            _VideoSourcePlayerMonitor = VideoSourcePlayerMonitor;
+        }
 
         public string name;
         public SearchMethod searchMethod;
         public double matchDegree;
         public string ImgBase64;
 
+        private AForge.Controls.VideoSourcePlayer _VideoSourcePlayerMonitor;
         private Bitmap searchImg;
         private Bitmap sourcePic;
         private Rectangle searchRange;
