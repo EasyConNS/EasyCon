@@ -353,6 +353,7 @@ namespace EasyCon.Graphic
             Bitmap ss = _VideoSourcePlayerMonitor.GetCurrentVideoFrame();
             sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
             result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out md);
+            md *= 100;
 
             // update the search pic
             if (md >= _matchDegree)
@@ -361,7 +362,7 @@ namespace EasyCon.Graphic
                 searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, searchImg.Width, searchImg.Height), ss.PixelFormat);
             }
 
-            return (int)(md * 100);
+            return (int)md;
         }
 
         public Bitmap getResultImg(int index)
