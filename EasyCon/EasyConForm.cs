@@ -396,14 +396,9 @@ namespace EasyCon
             {
                 _eventdisabled = true;
                 _program = new Script.Script();
-                // 在这里根据图像处理窗口的情况，创建一个ExternalVariable的数组或List传给Parse函数
-                // 每个ExternalVariable对应一个图像标签，name为名字，get为用来获取结果的函数，set暂时没有语句支持所以先省略
-                //ExternalVariable[] externalVariables = new ExternalVariable[CaptureVideo.imgLabels.Count];
-                //for (int index = 0; index < CaptureVideo.imgLabels.Count; index++)
-                //{
-                //    externalVariables[index] = new ExternalVariable("test", null);
-                //}
 
+                // 在这里根据图像处理窗口的情况，创建一个ExternalVariable的数组或List传给Parse函数
+                // 每个ExternalVariable对应一个图像标签，name为名字，get为用来获取结果的函数，set暂时没有语句支持所以先省略                
                 List<ExternalVariable> externalVariables = new List<ExternalVariable>();
                 foreach (var il in CaptureVideo.imgLabels)
                 {

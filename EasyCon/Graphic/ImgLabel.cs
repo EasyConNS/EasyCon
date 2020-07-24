@@ -244,6 +244,23 @@ namespace EasyCon.Graphic
             }
         }
 
+        private double _matchDegree = 0.0;
+        public double matchDegree
+        {
+            get { return _matchDegree; }
+            set
+            {
+                // do not trigger change event if values are the same
+                if (Equals(value, _matchDegree)) return;
+                _matchDegree = value < 0 ? 0 : value;
+
+                //===================
+                // Usage in the Source
+                //===================
+                OnPropertyChanged();
+            }
+        }
+
         public enum SearchMethod
         {
             [Description("平方差匹配")]
@@ -275,6 +292,15 @@ namespace EasyCon.Graphic
             searchMethod = SearchMethod.SqDiffNormed;
         }
 
+        public ImgLabel(AForge.Controls.VideoSourcePlayer VideoSourcePlayerMonitor)
+        {
+            _VideoSourcePlayerMonitor = VideoSourcePlayerMonitor;
+            sourcePic = null;
+            searchImg = null;
+            searchRange = new Rectangle();
+            searchMethod = SearchMethod.SqDiffNormed;
+        }
+
         public ImgLabel(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method)
         {
             sourcePic = sourceObj.Clone(new Rectangle(0, 0, sourceObj.Width, sourceObj.Height), sourceObj.PixelFormat);
@@ -297,14 +323,134 @@ namespace EasyCon.Graphic
             return list;
         }
 
-        public List<Point> search(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method, out double matchDegree)
+        public List<Point> search(out double md)
         {
-            sourcePic = sourceObj.Clone(new Rectangle(0, 0, sourceObj.Width, sourceObj.Height), sourceObj.PixelFormat);
-            searchImg = searchObj.Clone(new Rectangle(0, 0, searchObj.Width, searchObj.Height), searchObj.PixelFormat);
-            searchRange = range;
-            searchMethod = method;
-            result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out matchDegree);
+            if (searchImg.Width > RangeWidth || searchImg.Height > RangeHeight)
+                throw new Exception("搜索图片大于搜索范围");
+
+            Bitmap ss = _VideoSourcePlayerMonitor.GetCurrentVideoFrame();
+            sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
+                        
+            result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out md);
+            md *= 100;
+
+            // update the search pic
+            if (md >= _matchDegree)
+            {
+                Debug.WriteLine("update img");
+                searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, searchImg.Width, searchImg.Height), ss.PixelFormat);
+            }
+
             return result;
+        }
+
+        public int search()
+        {
+            if (searchImg.Width > RangeWidth || searchImg.Height > RangeHeight)
+                throw new Exception("搜索图片大于搜索范围");
+
+            double md = 0;
+            Bitmap ss = _VideoSourcePlayerMonitor.GetCurrentVideoFrame();
+            sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
+            result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out md);
+
+            // update the search pic
+            if (md >= _matchDegree)
+            {
+                Debug.WriteLine("update img");
+                searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, searchImg.Width, searchImg.Height), ss.PixelFormat);
+            }
+
+            return (int)(md * 100);
+        }
+
+        public Bitmap getResultImg(int index)
+        {
+            if(index < result.Count())
+            {
+                resultImg = sourcePic.Clone(new Rectangle(result[index].X, result[index].Y, searchImg.Width, searchImg.Height), sourcePic.PixelFormat);
+                return resultImg;
+            }
+
+            return null;
+        }
+
+        public void setSearchImg(Bitmap bmp)
+        {
+            if (bmp != null)
+            {
+                searchImg = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
+                // update cur search range
+                searchRange.X = TargetX;
+                searchRange.Y = TargetY;
+                searchRange.Width = TargetWidth;
+                searchRange.Height = TargetHeight;
+            }
+        }
+
+        public Bitmap getSearchImg()
+        {
+            if (searchImg!=null)
+                return searchImg.Clone(new Rectangle(0, 0, searchImg.Width, searchImg.Height), searchImg.PixelFormat);
+            else
+                return null;
+        }
+
+        public void save()
+        {
+            // save the imglabel to loc
+            string path = System.Windows.Forms.Application.StartupPath + "\\ImgLabel\\";
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            ImgBase64 = ToBase64(searchImg);
+
+            File.WriteAllText(path + name + ".IL", JsonConvert.SerializeObject(this));
+        }
+
+        public void copy(ImgLabel il)
+        {
+            name = il.name;
+            RangeX = il.RangeX;
+            RangeY = il.RangeY;
+            RangeWidth = il.RangeWidth;
+            RangeHeight = il.RangeHeight;
+            TargetX = il.TargetX;
+            TargetY = il.TargetY;
+            TargetWidth = il.TargetWidth;
+            TargetHeight = il.TargetHeight;
+            searchMethod = il.searchMethod;
+            matchDegree = il.matchDegree;
+            ImgBase64 = il.ImgBase64;
+
+            searchRange.X = TargetX;
+            searchRange.Y = TargetY;
+            searchRange.Width = TargetWidth;
+            searchRange.Height = TargetHeight;
+            searchImg = il.getSearchImg();//Base64StringToImage(il.ImgBase64);
+            _VideoSourcePlayerMonitor = il.getSource();
+        }
+
+        public void refresh(AForge.Controls.VideoSourcePlayer VideoSourcePlayerMonitor)
+        {
+            searchImg = Base64StringToImage(ImgBase64);
+            searchRange.X = TargetX;
+            searchRange.Y = TargetY;
+            searchRange.Width = TargetWidth;
+            searchRange.Height = TargetHeight;
+            _VideoSourcePlayerMonitor = VideoSourcePlayerMonitor;
+        }
+
+        public void setSource(AForge.Controls.VideoSourcePlayer VideoSourcePlayerMonitor)
+        {
+            _VideoSourcePlayerMonitor = VideoSourcePlayerMonitor;
+        }
+
+        public AForge.Controls.VideoSourcePlayer getSource()
+        {
+            return _VideoSourcePlayerMonitor;
         }
 
         private String ImgToBase64String(Image bmp)
@@ -353,81 +499,16 @@ namespace EasyCon.Graphic
             Image image = Image.FromStream(ms, true);
             return (Bitmap)image;
         }
-
-        public void setSearchImg(Bitmap bmp)
-        {
-            if (bmp != null)
-                searchImg = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
-        }
-
-        public Bitmap getSearchImg()
-        {
-            return searchImg.Clone(new Rectangle(0, 0, searchImg.Width, searchImg.Height), searchImg.PixelFormat);
-        }
-
-        public void save()
-        {
-            // save the imglabel to loc
-
-            string path = System.Windows.Forms.Application.StartupPath + "\\ImgLabel\\";
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
-
-            ImgBase64 = ToBase64(searchImg);
-
-            File.WriteAllText(path + name + ".IL", JsonConvert.SerializeObject(this));
-        }
-
-        public void copy(ImgLabel il)
-        {
-            name = il.name;
-            RangeX = il.RangeX;
-            RangeY = il.RangeY;
-            RangeWidth = il.RangeWidth;
-            RangeHeight = il.RangeHeight;
-            TargetX = il.TargetX;
-            TargetY = il.TargetY;
-            TargetWidth = il.TargetWidth;
-            TargetHeight = il.TargetHeight;
-            searchMethod = il.searchMethod;
-            matchDegree = il.matchDegree;
-            ImgBase64 = il.ImgBase64;
-            //Debug.Print(il.ImgBase64);
-            //string path = System.Windows.Forms.Application.StartupPath + "\\test\\";
-            searchImg = Base64StringToImage(il.ImgBase64);
-            //Debug.WriteLine(searchImg.Width);
-            //searchImg.Save(path + "123.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
-        }
-
-        public int search()
-        {
-            Bitmap ss = _VideoSourcePlayerMonitor.GetCurrentVideoFrame();
-            sourcePic = ss.Clone(new Rectangle(RangeX,RangeY,RangeWidth,RangeHeight), ss.PixelFormat);
-            GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out matchDegree);
-            return (int)(matchDegree*100);
-        }
-
-        public void refresh(AForge.Controls.VideoSourcePlayer VideoSourcePlayerMonitor)
-        {
-            searchImg = Base64StringToImage(ImgBase64);
-            searchRange.X = TargetX;
-            searchRange.Y = TargetY;
-            searchRange.Width = TargetWidth;
-            searchRange.Height = TargetHeight;
-            _VideoSourcePlayerMonitor = VideoSourcePlayerMonitor;
-        }
-
+        
         public string name;
         public SearchMethod searchMethod;
-        public double matchDegree;
         public string ImgBase64;
+        public Rectangle searchRange;
 
         private AForge.Controls.VideoSourcePlayer _VideoSourcePlayerMonitor;
         private Bitmap searchImg;
         private Bitmap sourcePic;
-        private Rectangle searchRange;
+        private Bitmap resultImg;
         private List<Point> result = new List<Point>();
     }
 }
