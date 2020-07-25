@@ -118,10 +118,53 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <metadata name="timer1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-    <value>209, 17</value>
-  </metadata>
-  <metadata name="imgLabelBindingSource.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
+  </metadata>
+  <data name="CaptureVideoHelp.Text" xml:space="preserve">
+    <value>注意：这个窗口最好不要调节分辨率，否则可能会导致搜图参数出错
+
+名词解释：
+
+【采样分辨率】
+目前暂时只支持1080p，低于的话可能会有问题
+主机设置中请设置1080p，不要用自动，自动可能会因为过热降频自动下调
+
+【动态测试】
+实时根据搜索参数，在采集到的图像中查找，并返回搜索结果
+
+【最低匹配度】
+由于游戏内存在天气或者时间流逝，导致这个搜索目标可能会因为渲染而发生明显变化，这个时候脚本里设置的识别匹配度就不符合之前的要求了
+
+所以为了解决这个问题，当满足最低匹配度的时候，会自动更新搜索目标，这样认为就算游戏内存在渲染变化（渐变），也能在每次找到以后自动适应
+
+关闭自动更新搜索目标可以把最低匹配度设置为101以上就可以关闭了
+
+正常使用自动更新，则是把匹配度设置为0-100以内
+
+【搜图标签】
+这里的搜图标签是保持在\ImgLabel文件夹中，只需要把对应名称的文件分享给其他人，对方就能用了
+
+【搜索方法】
+目前一共给了三种
+标准差匹配 
+标准相关匹配
+标准相关系数匹配
+这三种方法的匹配度是不同的，比如静态的情况下，标准差匹配可能得到的匹配度是97，但是标准相关匹配可能得到的匹配度是39，具体用哪个测试以后看情况使用
+
+这三种方法，都是不支持图像旋转扭曲的，放大缩小也只支持轻微的程度，本身都是一种模糊匹配
+
+【搜索时间】
+搜索时间取决于搜索的范围和搜索的目标大小，越大耗时越长
+如果要尽可能快的搜索，满足60fps，就要把搜索时间控制到17ms以内
+
+【多样性匹配】
+为了更精准的匹配，可以设置多个图表签来识别同一个目标，比如5号路孵蛋女，由于她本身存在动画转身，大概有2种稳定状态，所以搜图时有2个情况判断
+
+如果是识别闪或者其他的动态图，建议多个图表签同时搜索，提高正确匹配的可能性
+</value>
+  </data>
+  <metadata name="imgLabelBindingSource.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>107, 17</value>
   </metadata>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
   <data name="$this.Icon" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">

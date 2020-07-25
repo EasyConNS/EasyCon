@@ -45,6 +45,7 @@
             this.label9 = new System.Windows.Forms.Label();
             this.label11 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.targetImg = new System.Windows.Forms.PictureBox();
             this.textBox10 = new System.Windows.Forms.TextBox();
             this.label8 = new System.Windows.Forms.Label();
             this.textBox9 = new System.Windows.Forms.TextBox();
@@ -76,12 +77,12 @@
             this.label5 = new System.Windows.Forms.Label();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.searchResultImg = new System.Windows.Forms.PictureBox();
-            this.targetImg = new System.Windows.Forms.PictureBox();
+            this.CaptureVideoHelp = new System.Windows.Forms.TextBox();
             this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.imgLabelBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
@@ -114,7 +115,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(944, 346);
+            this.label1.Location = new System.Drawing.Point(664, 349);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(107, 12);
             this.label1.TabIndex = 2;
@@ -167,7 +168,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(646, 274);
+            this.label4.Location = new System.Drawing.Point(646, 259);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(449, 12);
             this.label4.TabIndex = 7;
@@ -263,6 +264,15 @@
             this.groupBox1.TabIndex = 18;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "搜索参数";
+            // 
+            // targetImg
+            // 
+            this.targetImg.Location = new System.Drawing.Point(438, 68);
+            this.targetImg.Name = "targetImg";
+            this.targetImg.Size = new System.Drawing.Size(63, 48);
+            this.targetImg.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.targetImg.TabIndex = 34;
+            this.targetImg.TabStop = false;
             // 
             // textBox10
             // 
@@ -466,7 +476,7 @@
             // 
             this.imgLableList.FormattingEnabled = true;
             this.imgLableList.ItemHeight = 12;
-            this.imgLableList.Location = new System.Drawing.Point(931, 362);
+            this.imgLableList.Location = new System.Drawing.Point(651, 365);
             this.imgLableList.Name = "imgLableList";
             this.imgLableList.Size = new System.Drawing.Size(143, 292);
             this.imgLableList.TabIndex = 19;
@@ -523,14 +533,18 @@
             this.searchResultImg.TabIndex = 24;
             this.searchResultImg.TabStop = false;
             // 
-            // targetImg
+            // CaptureVideoHelp
             // 
-            this.targetImg.Location = new System.Drawing.Point(438, 68);
-            this.targetImg.Name = "targetImg";
-            this.targetImg.Size = new System.Drawing.Size(63, 48);
-            this.targetImg.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
-            this.targetImg.TabIndex = 34;
-            this.targetImg.TabStop = false;
+            this.CaptureVideoHelp.Cursor = System.Windows.Forms.Cursors.Arrow;
+            this.CaptureVideoHelp.Location = new System.Drawing.Point(800, 324);
+            this.CaptureVideoHelp.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            this.CaptureVideoHelp.Multiline = true;
+            this.CaptureVideoHelp.Name = "CaptureVideoHelp";
+            this.CaptureVideoHelp.ReadOnly = true;
+            this.CaptureVideoHelp.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.CaptureVideoHelp.Size = new System.Drawing.Size(284, 333);
+            this.CaptureVideoHelp.TabIndex = 25;
+            this.CaptureVideoHelp.Text = resources.GetString("CaptureVideoHelp.Text");
             // 
             // imgLabelBindingSource
             // 
@@ -541,6 +555,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1096, 661);
+            this.Controls.Add(this.CaptureVideoHelp);
             this.Controls.Add(this.searchResultImg);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.button7);
@@ -572,8 +587,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.imgLabelBindingSource)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -630,5 +645,6 @@
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.PictureBox searchResultImg;
         private System.Windows.Forms.PictureBox targetImg;
+        private System.Windows.Forms.TextBox CaptureVideoHelp;
     }
 }

@@ -212,6 +212,7 @@
     <None Include="Resources\favicon.ico" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Resources\CaptureVideo.ico" />
     <Content Include="更新说明.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
