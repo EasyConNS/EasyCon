@@ -73,12 +73,11 @@
             this.button5 = new System.Windows.Forms.Button();
             this.label23 = new System.Windows.Forms.Label();
             this.button7 = new System.Windows.Forms.Button();
-            this.label5 = new System.Windows.Forms.Label();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.searchResultImg = new System.Windows.Forms.PictureBox();
             this.CaptureVideoHelp = new System.Windows.Forms.TextBox();
-            this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.button6 = new System.Windows.Forms.Button();
+            this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).BeginInit();
@@ -486,11 +485,11 @@
             // label23
             // 
             this.label23.AutoSize = true;
-            this.label23.Location = new System.Drawing.Point(523, 506);
+            this.label23.Location = new System.Drawing.Point(524, 499);
             this.label23.Name = "label23";
-            this.label23.Size = new System.Drawing.Size(113, 12);
+            this.label23.Size = new System.Drawing.Size(89, 12);
             this.label23.TabIndex = 21;
-            this.label23.Text = "搜索结果如下,耗时:";
+            this.label23.Text = "匹配度：耗时：";
             // 
             // button7
             // 
@@ -501,15 +500,6 @@
             this.button7.Text = "动态测试";
             this.button7.UseVisualStyleBackColor = true;
             this.button7.Click += new System.EventHandler(this.button7_Click);
-            // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(525, 524);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(47, 12);
-            this.label5.TabIndex = 23;
-            this.label5.Text = "匹配度:";
             // 
             // timer1
             // 
@@ -537,10 +527,6 @@
             this.CaptureVideoHelp.TabIndex = 25;
             this.CaptureVideoHelp.Text = resources.GetString("CaptureVideoHelp.Text");
             // 
-            // imgLabelBindingSource
-            // 
-            this.imgLabelBindingSource.DataSource = typeof(EasyCon.Graphic.ImgLabel);
-            // 
             // button6
             // 
             this.button6.Location = new System.Drawing.Point(12, 506);
@@ -551,6 +537,10 @@
             this.button6.UseVisualStyleBackColor = true;
             this.button6.Click += new System.EventHandler(this.button6_Click_1);
             // 
+            // imgLabelBindingSource
+            // 
+            this.imgLabelBindingSource.DataSource = typeof(EasyCon.Graphic.ImgLabel);
+            // 
             // CaptureVideo
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -559,7 +549,6 @@
             this.Controls.Add(this.button6);
             this.Controls.Add(this.CaptureVideoHelp);
             this.Controls.Add(this.searchResultImg);
-            this.Controls.Add(this.label5);
             this.Controls.Add(this.button7);
             this.Controls.Add(this.label23);
             this.Controls.Add(this.button5);
@@ -637,7 +626,6 @@
         private System.Windows.Forms.Label label23;
         private System.Windows.Forms.BindingSource imgLabelBindingSource;
         private System.Windows.Forms.Button button7;
-        private System.Windows.Forms.Label label5;
         private System.Windows.Forms.TextBox textBox9;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox textBox10;

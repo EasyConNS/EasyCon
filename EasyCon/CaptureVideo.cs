@@ -395,6 +395,7 @@ namespace EasyCon
             SnapshotGraphic.DrawImage(snapshot, new Rectangle(0, 0, Snapshot.Width, Snapshot.Height), delta, GraphicsUnit.Pixel);
         }
 
+        double max_matchDegree = 0;
         private void searchImg_test()
         {
             Stopwatch sw = new Stopwatch();
@@ -417,7 +418,7 @@ namespace EasyCon
             reasultListBox.Items.Clear();
             if (list.Count > 0)
             {
-                label23.Text = "搜索结果如下,耗时:" + sw.ElapsedMilliseconds + "毫秒";
+
                 for (int i = 0; i < list.Count; i++)
                 {
                     reasultListBox.Items.Add(list[i].X.ToString() + "," + list[i].Y.ToString());
@@ -428,12 +429,13 @@ namespace EasyCon
                     g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
                     g.Dispose();
                 }
-                label5.Text = $"匹配度:{matchDegree:f1}%";
+                max_matchDegree = Math.Max(matchDegree, max_matchDegree);
+
+                label23.Text = $"匹配度:{matchDegree:f1}%\n" + "耗时:" + sw.ElapsedMilliseconds + "毫秒\n" + $"最大匹配度:{max_matchDegree:f1}%";
             }
             else
             {
                 label23.Text = "无法找到目标";
-                label5.Text = "匹配度:0";
             }
         }
 
@@ -497,6 +499,7 @@ namespace EasyCon
 
         private void button3_Click(object sender, EventArgs e)
         {
+            max_matchDegree = 0;
             targetImg.Image?.Dispose();
             targetImg.Image = curImgLabel.getSearchImg();
             if (targetImg.Image != null)
@@ -581,6 +584,7 @@ namespace EasyCon
         {
             if(button7.Text == "动态测试")
             {
+                max_matchDegree = 0;
                 targetImg.Image?.Dispose();
                 targetImg.Image = curImgLabel.getSearchImg();
                 if (targetImg.Image != null)
