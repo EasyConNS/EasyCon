@@ -388,7 +388,7 @@ namespace EasyCon.Graphic
         {
             if (bmp != null)
             {
-                searchImg.Dispose();
+                searchImg?.Dispose();
                 searchImg = bmp;
                 // update cur search range
                 searchRange.X = TargetX;

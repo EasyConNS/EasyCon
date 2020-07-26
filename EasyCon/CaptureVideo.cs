@@ -439,9 +439,16 @@ namespace EasyCon
 
         private void button1_Click(object sender, EventArgs e)
         {
+            string path = System.Windows.Forms.Application.StartupPath + "\\Capture\\";
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
             // get cur bmp
             ss?.Dispose();
             ss = VideoSourcePlayerMonitor.GetCurrentVideoFrame();
+            ss.Save(path + DateTime.Now.Ticks.ToString() + ".bmp", System.Drawing.Imaging.ImageFormat.Bmp);
 
             // need a 9 times of the real pic for display
             snapshot?.Dispose();
@@ -649,6 +656,49 @@ namespace EasyCon
         private void timer1_Tick(object sender, EventArgs e)
         {
             searchImg_test();
+        }
+
+        private void button6_Click_1(object sender, EventArgs e)
+        {
+            string path = System.Windows.Forms.Application.StartupPath + "\\Capture\\";
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            OpenFileDialog openFileDialog1 = new OpenFileDialog();
+            openFileDialog1.Title = "打开";
+            openFileDialog1.RestoreDirectory = true;
+            openFileDialog1.InitialDirectory = Path.GetFullPath(path);
+            openFileDialog1.Filter = @"文本文件 (*.bmp)|*.bmp|所有文件 (*.*)|*.*";
+            openFileDialog1.FileName = string.Empty;
+            if (openFileDialog1.ShowDialog() != DialogResult.OK)
+                return;
+            Debug.WriteLine(openFileDialog1.FileName);
+
+            // get new snatshot pic
+            // get cur bmp
+            ss?.Dispose();
+            ss = new Bitmap(openFileDialog1.FileName);
+
+            // need a 9 times of the real pic for display
+            snapshot?.Dispose();
+            snapshot = new Bitmap(ss.Width * 3, ss.Height * 3, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+
+            // draw it at center
+            Graphics g = Graphics.FromImage(snapshot);
+            g.Clear(Color.FromArgb(240, 240, 240));
+            g.DrawImage(ss, new Rectangle(ss.Width, ss.Height, ss.Width, ss.Height), new Rectangle(0, 0, ss.Width, ss.Height), GraphicsUnit.Pixel);
+            g.Dispose();
+
+            // default settings
+            SnapshotPos.X = ss.Width;
+            SnapshotPos.Y = ss.Height;
+            snapshotScale.X = ss.Width / Snapshot.Width;
+            snapshotScale.Y = ss.Height / Snapshot.Height;
+
+            // show it
+            Snapshot.Refresh();
         }
     }
 }
