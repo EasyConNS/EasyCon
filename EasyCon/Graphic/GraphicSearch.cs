@@ -298,7 +298,7 @@ namespace EasyCon.Graphic
                 case 5:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeffNormed);
                     Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
-                    matchDegree = max / 1.0;
+                    matchDegree = (max + 1) / 2.0;
                     Debug.WriteLine($"CCoeffNormed:{min} {max}");
                     break;
                 case 0:
@@ -333,7 +333,7 @@ namespace EasyCon.Graphic
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeffNormed);
                     Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
                     Debug.WriteLine($"CCoeffNormed:{min} {max}");
-                    matchDegree = max / 1.0;
+                    matchDegree = (max+1) / 2.0;
                     break;
             }
 
