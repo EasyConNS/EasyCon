@@ -86,11 +86,12 @@ namespace EasyCon.Graphic
                 VideoSource = new VideoCaptureDevice(videoDevices[CameraIndex].MonikerString);
                 // there is a problem,maybe some capture device could not support 1080p
                 // it could make the output pic low resolution
-                foreach(var vc in VideoSource.VideoCapabilities)
-                {
-                    Debug.WriteLine(vc.FrameSize.ToString());
-                }
-                //VideoSource.VideoResolution = VideoSource.VideoCapabilities[0];
+                //foreach(var vc in VideoSource.VideoCapabilities)
+                //{
+                //    Debug.WriteLine(vc.FrameSize.ToString());
+                //}
+                VideoSource.VideoResolution = VideoSource.VideoCapabilities[0];
+                Debug.WriteLine(VideoSource.VideoResolution.FrameSize.ToString());
                 VideoSource.NewFrame += NewFrameHandler;
                 VideoSource.Start();
                 VideoSourceChanged?.Invoke();
