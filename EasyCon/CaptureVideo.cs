@@ -37,10 +37,13 @@ namespace EasyCon
             InitializeComponent();
         }
 
-        public CaptureVideo(IVideoSource source)
+        public CaptureVideo(int deviceId)
         {
             InitializeComponent();
-            VideoSourcePlayerMonitor.VideoSource = source;
+
+            Debug.WriteLine(deviceId);
+            VideoCapture.CaptureCamera(deviceId);
+            VideoSourcePlayerMonitor.VideoSource = VideoCapture.VideoSource;
         }
 
         public void setVideoSource(IVideoSource source)
@@ -247,7 +250,6 @@ namespace EasyCon
 
         private Graphics SnapshotGraphic;
         static private Bitmap snapshot;
-        static private Bitmap searchRangeImg;
         private Point SnapshotLMDP = new Point();
         private Point SnapshotLMMD = new Point();
         private bool SnapshotLMMing;
@@ -438,9 +440,11 @@ namespace EasyCon
         private void button1_Click(object sender, EventArgs e)
         {
             // get cur bmp
+            ss?.Dispose();
             ss = VideoSourcePlayerMonitor.GetCurrentVideoFrame();
 
             // need a 9 times of the real pic for display
+            snapshot?.Dispose();
             snapshot = new Bitmap(ss.Width * 3, ss.Height * 3, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
 
             // draw it at center
@@ -472,10 +476,6 @@ namespace EasyCon
                     return;
                 }
 
-                Rectangle range = new Rectangle(SnapshotRangeR.X + 2, SnapshotRangeR.Y + 2, SnapshotRangeR.Width - 3, SnapshotRangeR.Height - 3);
-
-                searchRangeImg = snapshot.Clone(range, snapshot.PixelFormat);
-
                 snapshotMode = SnapshotMode.NoAction;
                 button2.Text = "开始圈选(红)";
                 button4.Enabled = true;
@@ -490,6 +490,7 @@ namespace EasyCon
 
         private void button3_Click(object sender, EventArgs e)
         {
+            targetImg.Image?.Dispose();
             targetImg.Image = curImgLabel.getSearchImg();
             if (targetImg.Image != null)
                 searchImg_test();
@@ -573,6 +574,7 @@ namespace EasyCon
         {
             if(button7.Text == "动态测试")
             {
+                targetImg.Image?.Dispose();
                 targetImg.Image = curImgLabel.getSearchImg();
                 if (targetImg.Image != null)
                     searchImg_test();
@@ -582,8 +584,6 @@ namespace EasyCon
                     return;
                 }
                     
-
-                targetImg.Image = curImgLabel.getSearchImg();
                 // 60 fps
                 timer1.Interval = (int)(1000.0 / 60.0);
 

@@ -1109,12 +1109,8 @@ namespace EasyCon
 
         private void CaptureDeviceItem_Click(object sender, EventArgs e)
         {
-            ((ToolStripMenuItem)sender).Checked = true;
-            ((ToolStripMenuItem)sender).CheckState = System.Windows.Forms.CheckState.Checked;
-
-            Debug.WriteLine((int)(((ToolStripMenuItem)sender).Tag));
-            VideoCapture.CaptureCamera((int)((ToolStripMenuItem)sender).Tag);
-            captureVideo = new CaptureVideo(VideoCapture.VideoSource);
+            // tag = device id
+            captureVideo = new CaptureVideo((int)(((ToolStripMenuItem)sender).Tag));
             captureVideo.Show();
         }
 

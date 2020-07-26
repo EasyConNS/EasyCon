@@ -244,7 +244,7 @@ namespace EasyCon.Graphic
             }
         }
 
-        private double _matchDegree = 0.0;
+        private double _matchDegree = 95.0;
         public double matchDegree
         {
             get { return _matchDegree; }
@@ -328,17 +328,20 @@ namespace EasyCon.Graphic
             if (searchImg.Width > RangeWidth || searchImg.Height > RangeHeight)
                 throw new Exception("搜索图片大于搜索范围");
 
+            sourcePic?.Dispose();
             Bitmap ss = _VideoSourcePlayerMonitor.GetCurrentVideoFrame();
             sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
-                        
+            ss.Dispose();
+
             result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out md);
             md *= 100;
 
             // update the search pic
             if (md >= _matchDegree)
             {
+                searchImg?.Dispose();
                 Debug.WriteLine("update img");
-                searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, searchImg.Width, searchImg.Height), ss.PixelFormat);
+                searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
             }
 
             return result;
@@ -350,8 +353,11 @@ namespace EasyCon.Graphic
                 throw new Exception("搜索图片大于搜索范围");
 
             double md = 0;
+            sourcePic?.Dispose();
             Bitmap ss = _VideoSourcePlayerMonitor.GetCurrentVideoFrame();
             sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
+            ss.Dispose();
+
             result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out md);
             md *= 100;
 
@@ -359,7 +365,8 @@ namespace EasyCon.Graphic
             if (md >= _matchDegree)
             {
                 Debug.WriteLine("update img");
-                searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, searchImg.Width, searchImg.Height), ss.PixelFormat);
+                searchImg?.Dispose();
+                searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
             }
 
             return (int)md;
@@ -369,6 +376,7 @@ namespace EasyCon.Graphic
         {
             if(index < result.Count())
             {
+                resultImg?.Dispose();
                 resultImg = sourcePic.Clone(new Rectangle(result[index].X, result[index].Y, searchImg.Width, searchImg.Height), sourcePic.PixelFormat);
                 return resultImg;
             }
@@ -380,7 +388,8 @@ namespace EasyCon.Graphic
         {
             if (bmp != null)
             {
-                searchImg = bmp.Clone(new Rectangle(0, 0, bmp.Width, bmp.Height), bmp.PixelFormat);
+                searchImg.Dispose();
+                searchImg = bmp;
                 // update cur search range
                 searchRange.X = TargetX;
                 searchRange.Y = TargetY;

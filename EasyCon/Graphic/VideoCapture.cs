@@ -92,7 +92,7 @@ namespace EasyCon.Graphic
                 //}
                 VideoSource.VideoResolution = VideoSource.VideoCapabilities[0];
                 Debug.WriteLine(VideoSource.VideoResolution.FrameSize.ToString());
-                VideoSource.NewFrame += NewFrameHandler;
+                //VideoSource.NewFrame += NewFrameHandler;
                 VideoSource.Start();
                 VideoSourceChanged?.Invoke();
             }
@@ -168,6 +168,8 @@ namespace EasyCon.Graphic
             lock (_lock)
             {
                 PrepareImage();
+                if (_image == null)
+                    return null;
                 return new Bitmap(_image);
             }
         }
@@ -207,9 +209,14 @@ namespace EasyCon.Graphic
                 PrepareImage();
                 Bitmap img = new Bitmap(w, h);
                 Rectangle rect = new Rectangle(x, y, w, h);
+                if (_image == null)
+                    return null;
+
                 using (var g = Graphics.FromImage(img))
                     g.DrawImage(_image, 0, 0, rect, GraphicsUnit.Pixel);
                 return img;
+
+
             }
         }
 
