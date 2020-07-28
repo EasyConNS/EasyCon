@@ -32,50 +32,7 @@ namespace EasyCon
         private bool IsFirst = true;
         private float X;//当前窗体的宽度
         private float Y;//当前窗体的高度
-        public CaptureVideo()
-        {
-            InitializeComponent();
-        }
-
-        public CaptureVideo(int deviceId)
-        {
-            InitializeComponent();
-
-            Debug.WriteLine(deviceId);
-            VideoCapture.CaptureCamera(deviceId);
-            VideoSourcePlayerMonitor.VideoSource = VideoCapture.VideoSource;
-        }
-
-        public void setVideoSource(IVideoSource source)
-        {
-            VideoSourcePlayerMonitor.VideoSource = source;
-        }
-
-        private void VideoSourcePlayerMonitor_MouseWheel(object sender, MouseEventArgs e)
-        {
-            var newSize = new Size(this.Size.Width, this.Size.Height);
-            monitorScale = (e.Delta > 0) ? 1.1 : 0.90909;
-
-            Debug.WriteLine(monitorScale.ToString() + " " + newSize.ToString());
-
-            if (monitorHorOrVerZoom == 1)
-            {
-                newSize.Height = (int)(newSize.Height * monitorScale);
-            }
-            else if (monitorHorOrVerZoom == 2)
-            {
-                newSize.Width = (int)(newSize.Width * monitorScale);
-            }
-            else
-            {
-                newSize.Width = (int)(newSize.Width * monitorScale);
-                newSize.Height = (int)(newSize.Height * monitorScale);
-            }
-
-            Debug.WriteLine("new size:" + newSize.ToString());
-            monitorHorOrVerZoom = 0;
-            this.Size = newSize;
-        }
+        Point curResolution = new Point(1920, 1080);
 
         /// <summary>
         /// 将控件的宽，高，左边距，顶边距和字体大小暂存到tag属性中
@@ -117,6 +74,20 @@ namespace EasyCon
         }
 
         public static List<ImgLabel> imgLabels = new List<ImgLabel>();
+        public CaptureVideo()
+        {
+            InitializeComponent();
+        }
+
+        public CaptureVideo(int deviceId)
+        {
+            InitializeComponent();
+
+            Debug.WriteLine(deviceId);
+            VideoCapture.CaptureCamera(deviceId);
+            VideoSourcePlayerMonitor.VideoSource = VideoCapture.VideoSource;
+        }
+
         private void CaptureVideo_Load(object sender, EventArgs e)
         {
             X = this.Width;//获取窗体的宽度
@@ -207,7 +178,7 @@ namespace EasyCon
                 Control control = sender as Control;
                 int offsetX = -e.X;
                 int offsetY = -e.Y;
-                //判断是窗体还是控件，从而改进鼠标相对于窗体的位置
+
                 if (!(control is System.Windows.Forms.Form))
                 {
                     offsetX = offsetX - control.Left;
@@ -237,6 +208,32 @@ namespace EasyCon
                 Debug.WriteLine("mouse move" + mouseOffset.X + " " + mouseOffset.Y);
                 this.Location = mouse;
             }
+        }
+
+        private void VideoSourcePlayerMonitor_MouseWheel(object sender, MouseEventArgs e)
+        {
+            var newSize = new Size(this.Size.Width, this.Size.Height);
+            monitorScale = (e.Delta > 0) ? 1.1 : 0.90909;
+
+            Debug.WriteLine(monitorScale.ToString() + " " + newSize.ToString());
+
+            if (monitorHorOrVerZoom == 1)
+            {
+                newSize.Height = (int)(newSize.Height * monitorScale);
+            }
+            else if (monitorHorOrVerZoom == 2)
+            {
+                newSize.Width = (int)(newSize.Width * monitorScale);
+            }
+            else
+            {
+                newSize.Width = (int)(newSize.Width * monitorScale);
+                newSize.Height = (int)(newSize.Height * monitorScale);
+            }
+
+            Debug.WriteLine("new size:" + newSize.ToString());
+            monitorHorOrVerZoom = 0;
+            this.Size = newSize;
         }
 
         private enum SnapshotMode
@@ -343,8 +340,8 @@ namespace EasyCon
             Rectangle delta = new Rectangle();
             delta.X = SnapshotPos.X - (int)((SnapshotLMMD.X) * snapshotScale.X);
             delta.Y = SnapshotPos.Y - (int)((SnapshotLMMD.Y) * snapshotScale.Y);
-            delta.Width = (int)(640 * snapshotScale.X);
-            delta.Height = (int)(360 * snapshotScale.Y);
+            delta.Width = (int)(Snapshot.Width * snapshotScale.X);
+            delta.Height = (int)(Snapshot.Height * snapshotScale.Y);
             SnapshotLMMD.X = 0;
             SnapshotLMMD.Y = 0;
 
@@ -361,8 +358,8 @@ namespace EasyCon
                     SnapshotRangeR.Y = SnapshotPos.Y + (int)((SnapshotRangeMDP.Y) * snapshotScale.Y);
                     SnapshotRangeR.Width = (int)((SnapshotRangeMMP.X - SnapshotRangeMDP.X) * snapshotScale.X);
                     SnapshotRangeR.Height = (int)((SnapshotRangeMMP.Y - SnapshotRangeMDP.Y) * snapshotScale.Y);
-                    curImgLabel.RangeX = SnapshotRangeR.X + 2 - 1920;
-                    curImgLabel.RangeY = SnapshotRangeR.Y + 2 - 1080;
+                    curImgLabel.RangeX = SnapshotRangeR.X + 2 - curResolution.X;
+                    curImgLabel.RangeY = SnapshotRangeR.Y + 2 - curResolution.Y;
                     curImgLabel.RangeWidth = SnapshotRangeR.Width - 3;
                     curImgLabel.RangeHeight = SnapshotRangeR.Height - 3;
                 }
@@ -377,8 +374,8 @@ namespace EasyCon
                     SnapshotSearchObjR.Y = SnapshotPos.Y + (int)((SnapshotRangeMDP.Y) * snapshotScale.Y);
                     SnapshotSearchObjR.Width = (int)((SnapshotRangeMMP.X - SnapshotRangeMDP.X) * snapshotScale.X);
                     SnapshotSearchObjR.Height = (int)((SnapshotRangeMMP.Y - SnapshotRangeMDP.Y) * snapshotScale.Y);
-                    curImgLabel.TargetX = SnapshotSearchObjR.X + 1 - 1920;
-                    curImgLabel.TargetY = SnapshotSearchObjR.Y + 1 - 1080;
+                    curImgLabel.TargetX = SnapshotSearchObjR.X + 1 - curResolution.X;
+                    curImgLabel.TargetY = SnapshotSearchObjR.Y + 1 - curResolution.Y;
                     curImgLabel.TargetWidth = SnapshotSearchObjR.Width - 2;
                     curImgLabel.TargetHeight = SnapshotSearchObjR.Height - 2;
                 }
@@ -575,11 +572,6 @@ namespace EasyCon
             imgLableList.Items.Add(newone.name);
         }
 
-        private void button6_Click(object sender, EventArgs e)
-        {
-
-        }
-
         private void button7_Click(object sender, EventArgs e)
         {
             if(button7.Text == "动态测试")
@@ -640,13 +632,13 @@ namespace EasyCon
                         if (targetImg.Image == null)
                             MessageBox.Show("没有搜索目标图片");
 
-                        SnapshotRangeR.X = curImgLabel.RangeX + 1920 - 2;
-                        SnapshotRangeR.Y = curImgLabel.RangeY + 1080 - 2;
+                        SnapshotRangeR.X = curImgLabel.RangeX + curResolution.X - 2;
+                        SnapshotRangeR.Y = curImgLabel.RangeY + curResolution.Y - 2;
                         SnapshotRangeR.Width = curImgLabel.RangeWidth + 3;
                         SnapshotRangeR.Height = curImgLabel.RangeHeight + 3;
 
-                        SnapshotSearchObjR.X = curImgLabel.TargetX + 1920 - 1;
-                        SnapshotSearchObjR.Y = curImgLabel.TargetY + 1080 - 1;
+                        SnapshotSearchObjR.X = curImgLabel.TargetX + curResolution.X - 1;
+                        SnapshotSearchObjR.Y = curImgLabel.TargetY + curResolution.Y - 1;
                         SnapshotSearchObjR.Width = curImgLabel.TargetWidth + 2;
                         SnapshotSearchObjR.Height = curImgLabel.TargetHeight + 2;
 
@@ -662,7 +654,7 @@ namespace EasyCon
             searchImg_test();
         }
 
-        private void button6_Click_1(object sender, EventArgs e)
+        private void button6_Click(object sender, EventArgs e)
         {
             string path = System.Windows.Forms.Application.StartupPath + "\\Capture\\";
             if (!Directory.Exists(path))
@@ -703,6 +695,34 @@ namespace EasyCon
 
             // show it
             Snapshot.Refresh();
+        }
+
+        private void button8_Click(object sender, EventArgs e)
+        {
+            if(button8.Text == "分辨率：1080P")
+            {
+                // 720p
+                VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[4];
+                curResolution = new Point(1280, 720);
+                button8.Text = "分辨率：720P";
+            }
+            else if(button8.Text == "分辨率：720P")
+            {
+                // 480p
+                VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[1];
+                curResolution = new Point(640, 480);
+                button8.Text = "分辨率：480p";
+            }
+            else
+            {
+                // 1080p
+                VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[0];
+                curResolution = new Point(1920, 1080);
+                button8.Text = "分辨率：1080P";
+            }
+
+            VideoCapture.VideoSource?.Stop();
+            VideoCapture.VideoSource?.Start();
         }
     }
 }

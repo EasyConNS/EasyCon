@@ -77,6 +77,7 @@
             this.searchResultImg = new System.Windows.Forms.PictureBox();
             this.CaptureVideoHelp = new System.Windows.Forms.TextBox();
             this.button6 = new System.Windows.Forms.Button();
+            this.button8 = new System.Windows.Forms.Button();
             this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
@@ -167,7 +168,7 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(646, 259);
+            this.label4.Location = new System.Drawing.Point(649, 282);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(449, 12);
             this.label4.TabIndex = 7;
@@ -535,7 +536,17 @@
             this.button6.TabIndex = 26;
             this.button6.Text = "打开截图";
             this.button6.UseVisualStyleBackColor = true;
-            this.button6.Click += new System.EventHandler(this.button6_Click_1);
+            this.button6.Click += new System.EventHandler(this.button6_Click);
+            // 
+            // button8
+            // 
+            this.button8.Location = new System.Drawing.Point(648, 256);
+            this.button8.Name = "button8";
+            this.button8.Size = new System.Drawing.Size(123, 23);
+            this.button8.TabIndex = 27;
+            this.button8.Text = "分辨率：1080P";
+            this.button8.UseVisualStyleBackColor = true;
+            this.button8.Click += new System.EventHandler(this.button8_Click);
             // 
             // imgLabelBindingSource
             // 
@@ -546,6 +557,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1096, 661);
+            this.Controls.Add(this.button8);
             this.Controls.Add(this.button6);
             this.Controls.Add(this.CaptureVideoHelp);
             this.Controls.Add(this.searchResultImg);
@@ -635,5 +647,6 @@
         private System.Windows.Forms.PictureBox targetImg;
         private System.Windows.Forms.TextBox CaptureVideoHelp;
         private System.Windows.Forms.Button button6;
+        private System.Windows.Forms.Button button8;
     }
 }
