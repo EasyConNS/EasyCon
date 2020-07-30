@@ -13,6 +13,8 @@ using System.Runtime.InteropServices;
 using System.IO;
 using EasyCon.Graphic;
 using Newtonsoft.Json;
+using System.Windows.Threading;
+using System.Windows.Interop;
 
 namespace EasyCon
 {
@@ -123,6 +125,65 @@ namespace EasyCon
                 imgLabels.Add(temp);
                 imgLableList.Items.Add(temp.name);
             }
+
+            //uint pcount = (uint)(curResolution.X * curResolution.Y * PixelFormats.Bgr32.BitsPerPixel / 8);
+            //section = CreateFileMapping(new IntPtr(-1), IntPtr.Zero, 0x04, 0, pcount, null);
+            //map = MapViewOfFile(section, 0xF001F, 0, 0, pcount);
+            //VideoCapture.VideoSource.NewFrame += NewFrameHandler;
+        }
+        [DllImport("Kernel32.dll", EntryPoint = "RtlMoveMemory")]
+        private static extern void CopyMemory(IntPtr Destination, IntPtr Source, int Length);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern IntPtr CreateFileMapping(IntPtr hFile, IntPtr lpFileMappingAttributes, uint flProtect, uint dwMaximumSizeHigh, uint dwMaximumSizeLow, string lpName);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern IntPtr MapViewOfFile(IntPtr hFileMappingObject, uint dwDesiredAccess, uint dwFileOffsetHigh, uint dwFileOffsetLow, uint dwNumberOfBytesToMap);
+        private IntPtr map;
+        private IntPtr section;
+        private InteropBitmap bitmapSource;
+        private void NewFrameHandler(object sender, NewFrameEventArgs eventArgs)
+        {
+            //if (this.Dispatcher != null)
+            //{
+            //    this.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Render, (SendOrPostCallback)delegate
+            //    {
+            //if (map != IntPtr.Zero)
+            //{
+            pictureBox1.Image?.Dispose();
+            pictureBox1.Image = eventArgs.Frame.Clone() as Bitmap;
+            //System.Drawing.Imaging.BitmapData bmpData = eventArgs.Frame.LockBits(new System.Drawing.Rectangle(0, 0, curResolution.X, curResolution.Y),
+            //System.Drawing.Imaging.ImageLockMode.ReadWrite, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+            ///* Get the pointer to the pixels */
+            //IntPtr pBmp = bmpData.Scan0;
+            //int srcStride = bmpData.Stride;
+            //int pSize = srcStride * (int)this.Height;
+            //CopyMemory(map, pBmp, pSize);
+            //eventArgs.Frame.UnlockBits(bmpData);
+            //}
+
+            if (bitmapSource != null)
+                    {
+                        bitmapSource.Invalidate();
+                    }
+                //}, null);
+
+            //}
+
+            //if (captureLock)
+            //{
+            //    try
+            //    {
+            //        lock (mutCurrentImg)
+            //        {
+            //            eventArgs.Frame.Save(imageFileName);
+            //        }
+            //    }
+            //    catch (System.Exception ex)
+            //    {
+            //    }
+            //    captureLock = false;
+            //}
         }
 
         private void CaptureVideo_Resize(object sender, EventArgs e)
@@ -548,10 +609,10 @@ namespace EasyCon
             curImgLabel.matchDegree = double.Parse(textBox9.Text);
 
             // save the imglabel to local
-            for(int index=0;index<imgLabels.Count; index++)
+            for (int index = 0; index < imgLabels.Count; index++)
             {
                 // if the name exist,just overwrite it
-                if(imgLabels[index].name == textBox10.Text)
+                if (imgLabels[index].name == textBox10.Text)
                 {
 
                     imgLabels[index].copy(curImgLabel);
@@ -574,7 +635,7 @@ namespace EasyCon
 
         private void button7_Click(object sender, EventArgs e)
         {
-            if(button7.Text == "动态测试")
+            if (button7.Text == "动态测试")
             {
                 max_matchDegree = 0;
                 targetImg.Image?.Dispose();
@@ -586,7 +647,7 @@ namespace EasyCon
                     MessageBox.Show("没有搜索目标");
                     return;
                 }
-                    
+
                 // 60 fps
                 timer1.Interval = (int)(1000.0 / 60.0);
 
@@ -616,10 +677,10 @@ namespace EasyCon
             if (imgLableList.SelectedItem != null)
             {
                 // load the click item
-                foreach(var item in imgLabels)
+                foreach (var item in imgLabels)
                 {
-                    if(item.name == imgLableList.SelectedItem)
-                    { 
+                    if (item.name == imgLableList.SelectedItem)
+                    {
                         //Debug.WriteLine("find" + item.name);
                         curImgLabel.copy(item);
                         curImgLabel.refresh(VideoSourcePlayerMonitor);
@@ -699,14 +760,14 @@ namespace EasyCon
 
         private void button8_Click(object sender, EventArgs e)
         {
-            if(button8.Text == "分辨率：1080P")
+            if (button8.Text == "分辨率：1080P")
             {
                 // 720p
                 VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[4];
                 curResolution = new Point(1280, 720);
                 button8.Text = "分辨率：720P";
             }
-            else if(button8.Text == "分辨率：720P")
+            else if (button8.Text == "分辨率：720P")
             {
                 // 480p
                 VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[1];

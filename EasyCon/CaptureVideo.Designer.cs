@@ -78,11 +78,13 @@
             this.CaptureVideoHelp = new System.Windows.Forms.TextBox();
             this.button6 = new System.Windows.Forms.Button();
             this.button8 = new System.Windows.Forms.Button();
+            this.pictureBox1 = new AForge.Controls.PictureBox();
             this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.imgLabelBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
@@ -548,6 +550,16 @@
             this.button8.UseVisualStyleBackColor = true;
             this.button8.Click += new System.EventHandler(this.button8_Click);
             // 
+            // pictureBox1
+            // 
+            this.pictureBox1.Image = null;
+            this.pictureBox1.Location = new System.Drawing.Point(108, 56);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(444, 250);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.pictureBox1.TabIndex = 28;
+            this.pictureBox1.TabStop = false;
+            // 
             // imgLabelBindingSource
             // 
             this.imgLabelBindingSource.DataSource = typeof(EasyCon.Graphic.ImgLabel);
@@ -557,6 +569,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1096, 661);
+            this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.button8);
             this.Controls.Add(this.button6);
             this.Controls.Add(this.CaptureVideoHelp);
@@ -591,6 +604,7 @@
             this.groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.imgLabelBindingSource)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -648,5 +662,6 @@
         private System.Windows.Forms.TextBox CaptureVideoHelp;
         private System.Windows.Forms.Button button6;
         private System.Windows.Forms.Button button8;
+        private AForge.Controls.PictureBox pictureBox1;
     }
 }

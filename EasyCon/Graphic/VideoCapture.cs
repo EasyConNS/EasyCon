@@ -89,9 +89,13 @@ namespace EasyCon.Graphic
                 foreach (var vc in VideoSource.VideoCapabilities)
                 {
                     Debug.WriteLine(vc.FrameSize.ToString());
+                    Debug.WriteLine(vc.MaximumFrameRate.ToString());
+                    Debug.WriteLine(vc.AverageFrameRate.ToString());
                 }
                 // 1080p
                 VideoSource.VideoResolution = VideoSource.VideoCapabilities[0];
+                //VideoSource.VideoResolution = new VideoCapabilities(1920, 1080, 60);
+                //VideoSource.VideoCapabilities[0].AverageFrameRate();
                 // 480p
                 //VideoSource.VideoResolution = VideoSource.VideoCapabilities[1];
                 // 720p

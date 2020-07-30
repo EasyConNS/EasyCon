@@ -323,7 +323,7 @@ namespace EasyCon.Graphic
             return list;
         }
 
-        public List<Point> search(out double md)
+        public List<System.Drawing.Point> search(out double md)
         {
             if (searchImg.Width > RangeWidth || searchImg.Height > RangeHeight)
                 throw new Exception("搜索图片大于搜索范围");
@@ -519,6 +519,6 @@ namespace EasyCon.Graphic
         private Bitmap searchImg;
         private Bitmap sourcePic;
         private Bitmap resultImg;
-        private List<Point> result = new List<Point>();
+        private List<System.Drawing.Point> result = new List<System.Drawing.Point>();
     }
 }
