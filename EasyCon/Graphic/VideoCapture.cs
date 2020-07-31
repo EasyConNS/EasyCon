@@ -37,6 +37,8 @@ namespace EasyCon.Graphic
         public static void Close()
         {
             capture_run_handler?.Abort();
+            capture?.Release();
+            capture?.Dispose();
         }
 
         public static List<string> GetCaptureCamera()

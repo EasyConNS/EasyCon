@@ -286,7 +286,8 @@ namespace EasyCon.Graphic
         }
 
         public delegate Bitmap GetNewFrame();
-        // function for reading
+
+        [NonSerialized]
         public GetNewFrame getNewFrame;
         public ImgLabel()
         {
