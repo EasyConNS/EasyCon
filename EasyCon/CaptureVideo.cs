@@ -728,7 +728,7 @@ namespace EasyCon
 
         private void timer2_Tick(object sender, EventArgs e)
         {
-            //VideoSourcePlayerMonitor.Image?.Dispose();
+            VideoSourcePlayerMonitor.Image?.Dispose();
             VideoSourcePlayerMonitor.Image = VideoCapture.GetImage();
         }
     }
