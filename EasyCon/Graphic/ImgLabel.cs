@@ -284,6 +284,10 @@ namespace EasyCon.Graphic
             [Description("相似匹配")]
             SimilarMatch = 9,
         }
+
+        public delegate Bitmap GetNewFrame();
+        // function for reading
+        public GetNewFrame getNewFrame;
         public ImgLabel()
         {
             sourcePic = null;
@@ -292,9 +296,8 @@ namespace EasyCon.Graphic
             searchMethod = SearchMethod.SqDiffNormed;
         }
 
-        public ImgLabel(AForge.Controls.VideoSourcePlayer VideoSourcePlayerMonitor)
+        public ImgLabel(GetNewFrame getNewFrame)
         {
-            _VideoSourcePlayerMonitor = VideoSourcePlayerMonitor;
             sourcePic = null;
             searchImg = null;
             searchRange = new Rectangle();
@@ -329,7 +332,7 @@ namespace EasyCon.Graphic
                 throw new Exception("搜索图片大于搜索范围");
 
             sourcePic?.Dispose();
-            Bitmap ss = _VideoSourcePlayerMonitor.GetCurrentVideoFrame();
+            Bitmap ss = getNewFrame();
             sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
             ss.Dispose();
 
@@ -354,7 +357,7 @@ namespace EasyCon.Graphic
 
             double md = 0;
             sourcePic?.Dispose();
-            Bitmap ss = _VideoSourcePlayerMonitor.GetCurrentVideoFrame();
+            Bitmap ss = getNewFrame();
             sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
             ss.Dispose();
 
@@ -415,7 +418,7 @@ namespace EasyCon.Graphic
                 Directory.CreateDirectory(path);
             }
 
-            ImgBase64 = ToBase64(searchImg);
+            ImgBase64 = ImageToBase64(searchImg);
 
             File.WriteAllText(path + name + ".IL", JsonConvert.SerializeObject(this));
         }
@@ -440,38 +443,25 @@ namespace EasyCon.Graphic
             searchRange.Width = TargetWidth;
             searchRange.Height = TargetHeight;
             searchImg = il.getSearchImg();//Base64StringToImage(il.ImgBase64);
-            _VideoSourcePlayerMonitor = il.getSource();
+            getNewFrame = il.getNewFrame;
         }
 
-        public void refresh(AForge.Controls.VideoSourcePlayer VideoSourcePlayerMonitor)
+        public void refresh(GetNewFrame getnew)
         {
             searchImg = Base64StringToImage(ImgBase64);
             searchRange.X = TargetX;
             searchRange.Y = TargetY;
             searchRange.Width = TargetWidth;
             searchRange.Height = TargetHeight;
-            _VideoSourcePlayerMonitor = VideoSourcePlayerMonitor;
+            getNewFrame = getnew;
         }
 
-        public void setSource(AForge.Controls.VideoSourcePlayer VideoSourcePlayerMonitor)
+        public void setSource(GetNewFrame getnew)
         {
-            _VideoSourcePlayerMonitor = VideoSourcePlayerMonitor;
+            getNewFrame = getnew;
         }
-
-        public AForge.Controls.VideoSourcePlayer getSource()
-        {
-            return _VideoSourcePlayerMonitor;
-        }
-
-        private String ImgToBase64String(Image bmp)
-        {
-            String strbaser64 = String.Empty;
-            var btarr = convertByte(bmp);
-            strbaser64 = Convert.ToBase64String(btarr);
-
-            return strbaser64;
-        }
-        private string ToBase64(Bitmap bmp)
+        
+        private string ImageToBase64(Bitmap bmp)
         {
             try
             {
@@ -490,14 +480,6 @@ namespace EasyCon.Graphic
                 return "";
             }
         }
-        private static byte[] convertByte(Image img)
-        {
-            MemoryStream ms = new MemoryStream();
-            img.Save(ms, img.RawFormat);
-            byte[] bytes = ms.ToArray();
-            ms.Close();
-            return bytes;
-        }
 
         private Bitmap Base64StringToImage(string basestr)
         {
@@ -515,7 +497,6 @@ namespace EasyCon.Graphic
         public string ImgBase64;
         public Rectangle searchRange;
 
-        private AForge.Controls.VideoSourcePlayer _VideoSourcePlayerMonitor;
         private Bitmap searchImg;
         private Bitmap sourcePic;
         private Bitmap resultImg;
