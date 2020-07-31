@@ -87,7 +87,6 @@ namespace EasyCon
 
             Debug.WriteLine(deviceId);
             VideoCapture.CaptureCamera(deviceId);
-            VideoSourcePlayerMonitor.VideoSource = VideoCapture.VideoSource;
         }
 
         private void CaptureVideo_Load(object sender, EventArgs e)
@@ -115,77 +114,21 @@ namespace EasyCon
             textBox9.DataBindings.Add("Text", curImgLabel, "matchDegree");
 
             // load the imglabel
-            curImgLabel.setSource(VideoSourcePlayerMonitor);
+            curImgLabel.setSource(() => VideoCapture.GetImage());
             string parentDir = System.Windows.Forms.Application.StartupPath + "\\ImgLabel\\";
             string[] file = Directory.GetFiles(parentDir, "*.IL");
             for (int i = 0; i < file.Length; i++)
             {
                 ImgLabel temp = JsonConvert.DeserializeObject<ImgLabel>(File.ReadAllText(file[i]));
-                temp.refresh(VideoSourcePlayerMonitor);
+                temp.refresh(()=>VideoCapture.GetImage());
                 imgLabels.Add(temp);
                 imgLableList.Items.Add(temp.name);
             }
 
-            //uint pcount = (uint)(curResolution.X * curResolution.Y * PixelFormats.Bgr32.BitsPerPixel / 8);
-            //section = CreateFileMapping(new IntPtr(-1), IntPtr.Zero, 0x04, 0, pcount, null);
-            //map = MapViewOfFile(section, 0xF001F, 0, 0, pcount);
-            //VideoCapture.VideoSource.NewFrame += NewFrameHandler;
+            timer2.Enabled = true;
+            timer2.Start();
         }
-        [DllImport("Kernel32.dll", EntryPoint = "RtlMoveMemory")]
-        private static extern void CopyMemory(IntPtr Destination, IntPtr Source, int Length);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern IntPtr CreateFileMapping(IntPtr hFile, IntPtr lpFileMappingAttributes, uint flProtect, uint dwMaximumSizeHigh, uint dwMaximumSizeLow, string lpName);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern IntPtr MapViewOfFile(IntPtr hFileMappingObject, uint dwDesiredAccess, uint dwFileOffsetHigh, uint dwFileOffsetLow, uint dwNumberOfBytesToMap);
-        private IntPtr map;
-        private IntPtr section;
-        private InteropBitmap bitmapSource;
-        private void NewFrameHandler(object sender, NewFrameEventArgs eventArgs)
-        {
-            //if (this.Dispatcher != null)
-            //{
-            //    this.Dispatcher.Invoke(System.Windows.Threading.DispatcherPriority.Render, (SendOrPostCallback)delegate
-            //    {
-            //if (map != IntPtr.Zero)
-            //{
-            pictureBox1.Image?.Dispose();
-            pictureBox1.Image = eventArgs.Frame.Clone() as Bitmap;
-            //System.Drawing.Imaging.BitmapData bmpData = eventArgs.Frame.LockBits(new System.Drawing.Rectangle(0, 0, curResolution.X, curResolution.Y),
-            //System.Drawing.Imaging.ImageLockMode.ReadWrite, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
-            ///* Get the pointer to the pixels */
-            //IntPtr pBmp = bmpData.Scan0;
-            //int srcStride = bmpData.Stride;
-            //int pSize = srcStride * (int)this.Height;
-            //CopyMemory(map, pBmp, pSize);
-            //eventArgs.Frame.UnlockBits(bmpData);
-            //}
-
-            if (bitmapSource != null)
-                    {
-                        bitmapSource.Invalidate();
-                    }
-                //}, null);
-
-            //}
-
-            //if (captureLock)
-            //{
-            //    try
-            //    {
-            //        lock (mutCurrentImg)
-            //        {
-            //            eventArgs.Frame.Save(imageFileName);
-            //        }
-            //    }
-            //    catch (System.Exception ex)
-            //    {
-            //    }
-            //    captureLock = false;
-            //}
-        }
-
+        
         private void CaptureVideo_Resize(object sender, EventArgs e)
         {
             //如果是第一次运行，需要把下面的if语句取消注释，否则会没反应，其以后再运行或调试的时候，就把它注释即可
@@ -197,7 +140,7 @@ namespace EasyCon
 
         private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
         {
-            VideoCapture.VideoSource?.SignalToStop();
+            VideoCapture.Close();
         }
 
         private void VideoSourcePlayerMonitor_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -220,7 +163,7 @@ namespace EasyCon
             }
         }
 
-        private void VideoSourcePlayerMonitor_KeyDown(object sender, KeyEventArgs e)
+        private void VideoSourcePlayerMonitor_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
         {
             if (e.Control)
             {
@@ -507,7 +450,7 @@ namespace EasyCon
 
             // get cur bmp
             ss?.Dispose();
-            ss = VideoSourcePlayerMonitor.GetCurrentVideoFrame();
+            ss = VideoCapture.GetImage();
             ss.Save(path + DateTime.Now.Ticks.ToString() + ".bmp", System.Drawing.Imaging.ImageFormat.Bmp);
 
             // need a 9 times of the real pic for display
@@ -622,7 +565,7 @@ namespace EasyCon
             }
 
             // not find, add a new one
-            ImgLabel newone = new ImgLabel(VideoSourcePlayerMonitor);
+            ImgLabel newone = new ImgLabel(()=>VideoCapture.GetImage());
             curImgLabel.name = textBox10.Text;
 
             newone.copy(curImgLabel);
@@ -683,7 +626,7 @@ namespace EasyCon
                     {
                         //Debug.WriteLine("find" + item.name);
                         curImgLabel.copy(item);
-                        curImgLabel.refresh(VideoSourcePlayerMonitor);
+                        curImgLabel.refresh(()=>VideoCapture.GetImage());
 
                         // update ui
                         textBox10.Text = curImgLabel.name;
@@ -763,27 +706,30 @@ namespace EasyCon
             if (button8.Text == "当前分辨率：1080P")
             {
                 // 720p
-                VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[4];
                 curResolution = new Point(1280, 720);
+                VideoCapture.SetResolution(curResolution);
                 button8.Text = "当前分辨率：720P";
             }
             else if (button8.Text == "当前分辨率：720P")
             {
                 // 480p
-                VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[1];
-                curResolution = new Point(640, 480);
+                curResolution = new Point(853, 480);
+                VideoCapture.SetResolution(curResolution);
                 button8.Text = "当前分辨率：480p";
             }
             else
             {
                 // 1080p
-                VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[0];
                 curResolution = new Point(1920, 1080);
+                VideoCapture.SetResolution(curResolution);
                 button8.Text = "当前分辨率：1080P";
             }
+        }
 
-            VideoCapture.VideoSource?.Stop();
-            VideoCapture.VideoSource?.Start();
+        private void timer2_Tick(object sender, EventArgs e)
+        {
+            //VideoSourcePlayerMonitor.Image?.Dispose();
+            VideoSourcePlayerMonitor.Image = VideoCapture.GetImage();
         }
     }
 }

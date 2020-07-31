@@ -20,17 +20,23 @@ namespace EasyCon.Graphic
         static Bitmap _image;
         private static OpenCvSharp.VideoCapture capture;
         private static Thread capture_run_handler;
+        private static System.Drawing.Point curResolution = new System.Drawing.Point(1920, 1080);
 
         public static void CaptureCamera(int index = 0)
         {
 
-            capture = new OpenCvSharp.VideoCapture(index, VideoCaptureAPIs.ANY);
-            capture.Set(VideoCaptureProperties.FrameWidth, 1920);
-            capture.Set(VideoCaptureProperties.FrameHeight, 1080);
+            capture = new OpenCvSharp.VideoCapture(index, VideoCaptureAPIs.DSHOW);
+            capture.Set(VideoCaptureProperties.FrameWidth, curResolution.X);
+            capture.Set(VideoCaptureProperties.FrameHeight, curResolution.Y);
             capture.Set(VideoCaptureProperties.Fps, 60);
 
             capture_run_handler = new Thread(Capture_Frame);
             capture_run_handler.Start();
+        }
+
+        public static void Close()
+        {
+            capture_run_handler?.Abort();
         }
 
         public static List<string> GetCaptureCamera()
@@ -47,19 +53,42 @@ namespace EasyCon.Graphic
             return devs;
         }
 
+        public static void SetResolution(System.Drawing.Point res)
+        {
+            if(curResolution.X != res.X || curResolution.Y != res.Y)
+            {
+                lock (_lock)
+                {
+                    curResolution = res;
+                    capture_run_handler.Suspend();
+                    capture.Set(VideoCaptureProperties.FrameWidth, curResolution.X);
+                    capture.Set(VideoCaptureProperties.FrameHeight, curResolution.Y);
+                    Thread.Sleep(500);
+                    capture_run_handler.Resume();
+                }
+            }
+        }
+
         static void Capture_Frame()
         {
             while (true)
             {
                 if (Monitor.TryEnter(_lock))
                 {
-                    using (var frameMat = capture.RetrieveMat())
+                    try
                     {
-                        if (!frameMat.Empty())
+                        using (var frameMat = capture.RetrieveMat())
                         {
-                            _image.Dispose();
-                            _image = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(frameMat);
+                            if (!frameMat.Empty())
+                            {
+                                _image?.Dispose();
+                                _image = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(frameMat);
+                            }
                         }
+                    }
+                    finally
+                    {
+                        Monitor.Exit(_lock);
                     }
                 }
                 Thread.Sleep(16);
@@ -76,6 +105,16 @@ namespace EasyCon.Graphic
                 Bitmap img = new Bitmap(range.Width,range.Height, PixelFormat.Format24bppRgb);
                 using (var g = Graphics.FromImage(img))
                     g.DrawImage(_image, 0, 0, range, GraphicsUnit.Pixel);
+                return img;
+            }
+        }
+        public static Bitmap GetImage()
+        {
+            lock (_lock)
+            {
+                Bitmap img = new Bitmap(_image.Width, _image.Height, PixelFormat.Format24bppRgb);
+                using (var g = Graphics.FromImage(img))
+                    g.DrawImage(_image, 0, 0, new Rectangle(0,0, _image.Width, _image.Height), GraphicsUnit.Pixel);
                 return img;
             }
         }

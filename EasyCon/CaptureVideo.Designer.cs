@@ -30,7 +30,6 @@
         {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CaptureVideo));
-            this.VideoSourcePlayerMonitor = new AForge.Controls.VideoSourcePlayer();
             this.reasultListBox = new System.Windows.Forms.ListBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
@@ -78,30 +77,14 @@
             this.CaptureVideoHelp = new System.Windows.Forms.TextBox();
             this.button6 = new System.Windows.Forms.Button();
             this.button8 = new System.Windows.Forms.Button();
-            this.pictureBox1 = new AForge.Controls.PictureBox();
+            this.VideoSourcePlayerMonitor = new AForge.Controls.PictureBox();
+            this.timer2 = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.VideoSourcePlayerMonitor)).BeginInit();
             this.SuspendLayout();
-            // 
-            // VideoSourcePlayerMonitor
-            // 
-            this.VideoSourcePlayerMonitor.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
-            this.VideoSourcePlayerMonitor.Location = new System.Drawing.Point(648, 0);
-            this.VideoSourcePlayerMonitor.Margin = new System.Windows.Forms.Padding(0);
-            this.VideoSourcePlayerMonitor.Name = "VideoSourcePlayerMonitor";
-            this.VideoSourcePlayerMonitor.Size = new System.Drawing.Size(447, 251);
-            this.VideoSourcePlayerMonitor.TabIndex = 0;
-            this.VideoSourcePlayerMonitor.Text = "videoSourcePlayer1";
-            this.VideoSourcePlayerMonitor.VideoSource = null;
-            this.VideoSourcePlayerMonitor.KeyDown += new System.Windows.Forms.KeyEventHandler(this.VideoSourcePlayerMonitor_KeyDown);
-            this.VideoSourcePlayerMonitor.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseDoubleClick);
-            this.VideoSourcePlayerMonitor.MouseDown += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseDown);
-            this.VideoSourcePlayerMonitor.MouseMove += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseMove);
-            this.VideoSourcePlayerMonitor.MouseUp += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseUp);
-            this.VideoSourcePlayerMonitor.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseWheel);
             // 
             // reasultListBox
             // 
@@ -549,22 +532,34 @@
             this.button8.UseVisualStyleBackColor = true;
             this.button8.Click += new System.EventHandler(this.button8_Click);
             // 
-            // pictureBox1
+            // VideoSourcePlayerMonitor
             // 
-            this.pictureBox1.Image = null;
-            this.pictureBox1.Location = new System.Drawing.Point(108, 56);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(444, 250);
-            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
-            this.pictureBox1.TabIndex = 28;
-            this.pictureBox1.TabStop = false;
+            this.VideoSourcePlayerMonitor.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
+            this.VideoSourcePlayerMonitor.Image = null;
+            this.VideoSourcePlayerMonitor.Location = new System.Drawing.Point(648, 0);
+            this.VideoSourcePlayerMonitor.Margin = new System.Windows.Forms.Padding(0);
+            this.VideoSourcePlayerMonitor.Name = "VideoSourcePlayerMonitor";
+            this.VideoSourcePlayerMonitor.Size = new System.Drawing.Size(447, 251);
+            this.VideoSourcePlayerMonitor.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.VideoSourcePlayerMonitor.TabIndex = 28;
+            this.VideoSourcePlayerMonitor.TabStop = false;
+            this.VideoSourcePlayerMonitor.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseDoubleClick);
+            this.VideoSourcePlayerMonitor.MouseDown += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseDown);
+            this.VideoSourcePlayerMonitor.MouseMove += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseMove);
+            this.VideoSourcePlayerMonitor.MouseUp += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseUp);
+            this.VideoSourcePlayerMonitor.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseWheel);
+            this.VideoSourcePlayerMonitor.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.VideoSourcePlayerMonitor_PreviewKeyDown);
+            // 
+            // timer2
+            // 
+            this.timer2.Tick += new System.EventHandler(this.timer2_Tick);
             // 
             // CaptureVideo
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1096, 661);
-            this.Controls.Add(this.pictureBox1);
+            this.Controls.Add(this.VideoSourcePlayerMonitor);
             this.Controls.Add(this.button8);
             this.Controls.Add(this.button6);
             this.Controls.Add(this.CaptureVideoHelp);
@@ -586,7 +581,6 @@
             this.Controls.Add(this.Snapshot);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.VideoSourcePlayerMonitor);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.Name = "CaptureVideo";
@@ -599,15 +593,13 @@
             this.groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.VideoSourcePlayerMonitor)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
         #endregion
-
-        private AForge.Controls.VideoSourcePlayer VideoSourcePlayerMonitor;
         private System.Windows.Forms.ListBox reasultListBox;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
@@ -655,6 +647,7 @@
         private System.Windows.Forms.TextBox CaptureVideoHelp;
         private System.Windows.Forms.Button button6;
         private System.Windows.Forms.Button button8;
-        private AForge.Controls.PictureBox pictureBox1;
+        private AForge.Controls.PictureBox VideoSourcePlayerMonitor;
+        private System.Windows.Forms.Timer timer2;
     }
 }
