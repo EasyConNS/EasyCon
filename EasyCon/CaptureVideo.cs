@@ -115,7 +115,14 @@ namespace EasyCon
 
             // load the imglabel
             curImgLabel.setSource(() => VideoCapture.GetImage());
+
+            // if no imglabel, create one
             string parentDir = System.Windows.Forms.Application.StartupPath + "\\ImgLabel\\";
+            if (!Directory.Exists(parentDir))
+            {
+                Directory.CreateDirectory(parentDir);
+            }
+
             string[] file = Directory.GetFiles(parentDir, "*.IL");
             for (int i = 0; i < file.Length; i++)
             {
@@ -713,7 +720,7 @@ namespace EasyCon
             else if (button8.Text == "当前分辨率：720P")
             {
                 // 480p
-                curResolution = new Point(853, 480);
+                curResolution = new Point(640, 480);
                 VideoCapture.SetResolution(curResolution);
                 button8.Text = "当前分辨率：480p";
             }
