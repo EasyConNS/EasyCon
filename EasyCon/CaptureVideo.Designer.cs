@@ -79,13 +79,11 @@
             this.button6 = new System.Windows.Forms.Button();
             this.button8 = new System.Windows.Forms.Button();
             this.pictureBox1 = new AForge.Controls.PictureBox();
-            this.imgLabelBindingSource = new System.Windows.Forms.BindingSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.imgLabelBindingSource)).BeginInit();
             this.SuspendLayout();
             // 
             // VideoSourcePlayerMonitor
@@ -544,9 +542,10 @@
             // 
             this.button8.Location = new System.Drawing.Point(648, 256);
             this.button8.Name = "button8";
-            this.button8.Size = new System.Drawing.Size(123, 23);
+            this.button8.Size = new System.Drawing.Size(116, 23);
             this.button8.TabIndex = 27;
-            this.button8.Text = "分辨率：1080P";
+            this.button8.Text = "当前分辨率：1080P";
+            this.button8.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.button8.UseVisualStyleBackColor = true;
             this.button8.Click += new System.EventHandler(this.button8_Click);
             // 
@@ -559,10 +558,6 @@
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pictureBox1.TabIndex = 28;
             this.pictureBox1.TabStop = false;
-            // 
-            // imgLabelBindingSource
-            // 
-            this.imgLabelBindingSource.DataSource = typeof(EasyCon.Graphic.ImgLabel);
             // 
             // CaptureVideo
             // 
@@ -605,7 +600,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.imgLabelBindingSource)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -650,7 +644,6 @@
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.ComboBox searchMethodComBox;
         private System.Windows.Forms.Label label23;
-        private System.Windows.Forms.BindingSource imgLabelBindingSource;
         private System.Windows.Forms.Button button7;
         private System.Windows.Forms.TextBox textBox9;
         private System.Windows.Forms.Label label6;

@@ -760,26 +760,26 @@ namespace EasyCon
 
         private void button8_Click(object sender, EventArgs e)
         {
-            if (button8.Text == "分辨率：1080P")
+            if (button8.Text == "当前分辨率：1080P")
             {
                 // 720p
                 VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[4];
                 curResolution = new Point(1280, 720);
-                button8.Text = "分辨率：720P";
+                button8.Text = "当前分辨率：720P";
             }
-            else if (button8.Text == "分辨率：720P")
+            else if (button8.Text == "当前分辨率：720P")
             {
                 // 480p
                 VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[1];
                 curResolution = new Point(640, 480);
-                button8.Text = "分辨率：480p";
+                button8.Text = "当前分辨率：480p";
             }
             else
             {
                 // 1080p
                 VideoCapture.VideoSource.VideoResolution = VideoCapture.VideoSource.VideoCapabilities[0];
                 curResolution = new Point(1920, 1080);
-                button8.Text = "分辨率：1080P";
+                button8.Text = "当前分辨率：1080P";
             }
 
             VideoCapture.VideoSource?.Stop();
