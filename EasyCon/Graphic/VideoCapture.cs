@@ -25,10 +25,22 @@ namespace EasyCon.Graphic
         public static void CaptureCamera(int index = 0)
         {
 
-            capture = new OpenCvSharp.VideoCapture(index, VideoCaptureAPIs.DSHOW);
+            capture = new OpenCvSharp.VideoCapture(index, VideoCaptureAPIs.ANY);
+            if (!capture.IsOpened())
+            {
+                Close();
+                return;
+            }
+
             capture.Set(VideoCaptureProperties.FrameWidth, curResolution.X);
             capture.Set(VideoCaptureProperties.FrameHeight, curResolution.Y);
             capture.Set(VideoCaptureProperties.Fps, 60);
+
+            //capture.Set(VideoCaptureProperties.ConvertRgb, 0);
+
+            Debug.WriteLine(capture.Get(VideoCaptureProperties.Mode));
+            Debug.WriteLine(capture.Get(VideoCaptureProperties.FourCC));
+            Debug.WriteLine(capture.Get(VideoCaptureProperties.Backend));
 
             capture_run_handler = new Thread(Capture_Frame);
             capture_run_handler.Start();
