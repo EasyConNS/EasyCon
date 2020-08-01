@@ -15,6 +15,7 @@ using EasyCon.Graphic;
 using Newtonsoft.Json;
 using System.Windows.Threading;
 using System.Windows.Interop;
+using System.Drawing.Imaging;
 
 namespace EasyCon
 {
@@ -735,6 +736,14 @@ namespace EasyCon
 
         private void timer2_Tick(object sender, EventArgs e)
         {
+            //VideoSourcePlayerMonitor.Image?.Dispose();
+            //Bitmap _image = VideoCapture.GetImage();
+            //Bitmap img = new Bitmap(VideoSourcePlayerMonitor.Width, VideoSourcePlayerMonitor.Height, PixelFormat.Format24bppRgb);
+            //using (var g = Graphics.FromImage(img))
+            //    g.DrawImage(_image, new Rectangle(0, 0, VideoSourcePlayerMonitor.Width, VideoSourcePlayerMonitor.Height), new Rectangle(0, 0, _image.Width, _image.Height), GraphicsUnit.Pixel);
+            //_image.Dispose();
+            //VideoSourcePlayerMonitor.Image = img;
+
             VideoSourcePlayerMonitor.Image?.Dispose();
             VideoSourcePlayerMonitor.Image = VideoCapture.GetImage();
         }
