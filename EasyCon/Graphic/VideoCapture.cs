@@ -52,6 +52,9 @@ namespace EasyCon.Graphic
 
         public static void Close()
         {
+            if (capture == null)
+                return;
+
             capture_run_handler?.Abort();
             if (!capture.IsDisposed)
             {
