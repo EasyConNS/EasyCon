@@ -929,7 +929,7 @@ namespace EasyCon
         private void EasyConForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             e.Cancel = !FileClose();
-            VideoCapture.Close();
+            captureVideo?.Close();
         }
 
         private void buttonKeyMapping_Click(object sender, EventArgs e)
