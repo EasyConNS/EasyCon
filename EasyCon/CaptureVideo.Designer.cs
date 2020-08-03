@@ -75,6 +75,7 @@
             this.button8 = new System.Windows.Forms.Button();
             this.VideoSourcePlayerMonitor = new System.Windows.Forms.PictureBox();
             this.label2 = new System.Windows.Forms.Label();
+            this.button9 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).BeginInit();
@@ -484,7 +485,7 @@
             // 
             // button8
             // 
-            this.button8.Location = new System.Drawing.Point(648, 256);
+            this.button8.Location = new System.Drawing.Point(648, 255);
             this.button8.Name = "button8";
             this.button8.Size = new System.Drawing.Size(116, 23);
             this.button8.TabIndex = 27;
@@ -519,11 +520,23 @@
             this.label2.TabIndex = 30;
             this.label2.Text = "左键按住移动，滚轮缩放，右键按住圈选";
             // 
+            // button9
+            // 
+            this.button9.Location = new System.Drawing.Point(770, 255);
+            this.button9.Name = "button9";
+            this.button9.Size = new System.Drawing.Size(64, 23);
+            this.button9.TabIndex = 31;
+            this.button9.Text = "关闭显示";
+            this.button9.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.button9.UseVisualStyleBackColor = true;
+            this.button9.Click += new System.EventHandler(this.button9_Click);
+            // 
             // CaptureVideo
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1096, 628);
+            this.Controls.Add(this.button9);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.VideoSourcePlayerMonitor);
             this.Controls.Add(this.button8);
@@ -607,5 +620,6 @@
         private System.Windows.Forms.Button button8;
         private System.Windows.Forms.PictureBox VideoSourcePlayerMonitor;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Button button9;
     }
 }

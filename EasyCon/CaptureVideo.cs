@@ -767,5 +767,19 @@ namespace EasyCon
             g.DrawImage(newframe, new Rectangle(0, 0, VideoSourcePlayerMonitor.Width, VideoSourcePlayerMonitor.Height), new Rectangle(0, 0, curResolution.X, curResolution.Y), GraphicsUnit.Pixel);
             newframe.Dispose();
         }
+
+        private void button9_Click(object sender, EventArgs e)
+        {
+            if (button9.Text == "关闭显示")
+            {
+                VideoSourcePlayerMonitor.Visible = false;
+                button9.Text = "打开显示";
+            }
+            else if (button9.Text == "打开显示")
+            {
+                VideoSourcePlayerMonitor.Visible = true;
+                button9.Text = "关闭显示";
+            }
+        }
     }
 }
