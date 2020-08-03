@@ -277,6 +277,19 @@ Xor：目标变量 ^= 变量|值
 语法：RAND 变量
 （生成一个随机数，取值范围为0~变量值-1，结果存入该变量）
 
+【搜图语法】
+语法：@搜图标签
+（@开头，搜索对应名称图标签所代表的图像）
+示例：
+    # 搜索5号路蛋屋主人对应的图片
+    $2 = @5号路蛋屋主人
+    # 判断匹配度是否大于95
+    IF $2 &gt; 95
+        PRINT $2 &amp; 找到了
+    ENDIF
+
+其他相关配置请查看搜图窗口中的帮助
+
 &lt;To Be Continued...&gt;</value>
   </data>
   <metadata name="statusStrip1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">

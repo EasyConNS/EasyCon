@@ -16,6 +16,7 @@ using Newtonsoft.Json;
 using System.Windows.Threading;
 using System.Windows.Interop;
 using System.Drawing.Imaging;
+using System.Drawing.Drawing2D;
 
 namespace EasyCon
 {
@@ -87,7 +88,7 @@ namespace EasyCon
             InitializeComponent();
 
             Debug.WriteLine(deviceId);
-            VideoCapture.CaptureCamera(deviceId);
+            VideoCapture.CaptureCamera(VideoSourcePlayerMonitor,deviceId);
         }
 
         private void CaptureVideo_Load(object sender, EventArgs e)
@@ -133,8 +134,6 @@ namespace EasyCon
                 imgLableList.Items.Add(temp.name);
             }
 
-            timer2.Enabled = true;
-            timer2.Start();
         }
         
         private void CaptureVideo_Resize(object sender, EventArgs e)
@@ -224,6 +223,9 @@ namespace EasyCon
 
         private void VideoSourcePlayerMonitor_MouseWheel(object sender, MouseEventArgs e)
         {
+            if (monitorMode == MonitorMode.Editor)
+                return;
+
             var newSize = new Size(this.Size.Width, this.Size.Height);
             monitorScale = (e.Delta > 0) ? 1.1 : 0.90909;
 
@@ -746,6 +748,24 @@ namespace EasyCon
 
             VideoSourcePlayerMonitor.Image?.Dispose();
             VideoSourcePlayerMonitor.Image = VideoCapture.GetImage();
+        }
+
+        //uint count = 0;
+        private void VideoSourcePlayerMonitor_Paint(object sender, PaintEventArgs e)
+        {
+            //count++;
+            //Debug.WriteLine("---" + (count / (VideoCapture.runTime.ElapsedMilliseconds / 1000.0)).ToString("#.00") + " fps");
+            //if (VideoCapture.runTime.ElapsedMilliseconds > 20000)
+            //{
+            //    VideoCapture.runTime.Restart();
+            //    count = 0;
+            //}
+
+            Graphics g = e.Graphics;
+            g.InterpolationMode = InterpolationMode.NearestNeighbor;
+            Bitmap newframe = VideoCapture.GetImage();
+            g.DrawImage(newframe, new Rectangle(0, 0, VideoSourcePlayerMonitor.Width, VideoSourcePlayerMonitor.Height), new Rectangle(0, 0, curResolution.X, curResolution.Y), GraphicsUnit.Pixel);
+            newframe.Dispose();
         }
     }
 }

@@ -23,8 +23,10 @@ namespace EasyCon.Graphic
         private static System.Drawing.Point curResolution = new System.Drawing.Point(1920, 1080);
         private static List<string> devs = new List<string>();
         private static int devs_index = 0;
-        public static void CaptureCamera(int index = 0)
+        private static PictureBox displayUI;
+        public static void CaptureCamera( PictureBox pictureBox,int index = 0)
         {
+            displayUI = pictureBox;
             devs_index = index;
             if (devs[index].Equals("TCUB90"))
                 capture = new OpenCvSharp.VideoCapture(devs_index, VideoCaptureAPIs.DSHOW);
@@ -103,8 +105,11 @@ namespace EasyCon.Graphic
             }
         }
 
+        private static ulong frameCount = 0;
+        public static System.Diagnostics.Stopwatch runTime = new System.Diagnostics.Stopwatch();
         static void Capture_Frame()
         {
+            runTime.Start();
             while (true)
             {
                 if (Monitor.TryEnter(_lock))
@@ -117,6 +122,10 @@ namespace EasyCon.Graphic
                             {
                                 _image?.Dispose();
                                 _image = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(frameMat);
+                                frameCount++;
+                                //Debug.WriteLine("capture fps: " + (frameCount / (runTime.ElapsedMilliseconds / 1000.0)).ToString("#.00"));
+
+                                displayUI.Invalidate();
                             }
                         }
                     }
@@ -125,7 +134,7 @@ namespace EasyCon.Graphic
                         Monitor.Exit(_lock);
                     }
                 }
-                Thread.Sleep(16);
+                Thread.Sleep(6);
             }
         }
 
@@ -151,9 +160,10 @@ namespace EasyCon.Graphic
             {
                 if (_image == null)
                     return null;
-                Bitmap img = new Bitmap(_image.Width, _image.Height, PixelFormat.Format24bppRgb);
-                using (var g = Graphics.FromImage(img))
-                    g.DrawImage(_image, 0, 0, new Rectangle(0,0, _image.Width, _image.Height), GraphicsUnit.Pixel);
+                //Bitmap img = new Bitmap(_image.Width, _image.Height, PixelFormat.Format24bppRgb);
+                Bitmap img = _image.Clone(new Rectangle(0, 0, _image.Width, _image.Height), _image.PixelFormat);
+                //using (var g = Graphics.FromImage(img))
+                //    g.DrawImage(_image, 0, 0, new Rectangle(0,0, _image.Width, _image.Height), GraphicsUnit.Pixel);
                 return img;
             }
         }

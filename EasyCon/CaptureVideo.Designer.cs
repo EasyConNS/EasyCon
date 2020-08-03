@@ -73,7 +73,6 @@
             this.CaptureVideoHelp = new System.Windows.Forms.TextBox();
             this.button6 = new System.Windows.Forms.Button();
             this.button8 = new System.Windows.Forms.Button();
-            this.timer2 = new System.Windows.Forms.Timer(this.components);
             this.VideoSourcePlayerMonitor = new System.Windows.Forms.PictureBox();
             this.label2 = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
@@ -494,10 +493,6 @@
             this.button8.UseVisualStyleBackColor = true;
             this.button8.Click += new System.EventHandler(this.button8_Click);
             // 
-            // timer2
-            // 
-            this.timer2.Tick += new System.EventHandler(this.timer2_Tick);
-            // 
             // VideoSourcePlayerMonitor
             // 
             this.VideoSourcePlayerMonitor.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
@@ -505,9 +500,9 @@
             this.VideoSourcePlayerMonitor.Margin = new System.Windows.Forms.Padding(0);
             this.VideoSourcePlayerMonitor.Name = "VideoSourcePlayerMonitor";
             this.VideoSourcePlayerMonitor.Size = new System.Drawing.Size(447, 251);
-            this.VideoSourcePlayerMonitor.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.VideoSourcePlayerMonitor.TabIndex = 29;
             this.VideoSourcePlayerMonitor.TabStop = false;
+            this.VideoSourcePlayerMonitor.Paint += new System.Windows.Forms.PaintEventHandler(this.VideoSourcePlayerMonitor_Paint);
             this.VideoSourcePlayerMonitor.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseDoubleClick);
             this.VideoSourcePlayerMonitor.MouseDown += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseDown);
             this.VideoSourcePlayerMonitor.MouseMove += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseMove);
@@ -610,7 +605,6 @@
         private System.Windows.Forms.TextBox CaptureVideoHelp;
         private System.Windows.Forms.Button button6;
         private System.Windows.Forms.Button button8;
-        private System.Windows.Forms.Timer timer2;
         private System.Windows.Forms.PictureBox VideoSourcePlayerMonitor;
         private System.Windows.Forms.Label label2;
     }
