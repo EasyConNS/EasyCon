@@ -1110,6 +1110,11 @@ namespace EasyCon
         private void CaptureDeviceItem_Click(object sender, EventArgs e)
         {
             // tag = device id
+            if(captureVideo?.deviceId == (int)(((ToolStripMenuItem)sender).Tag))
+            {
+                MessageBox.Show("相同采集卡已经打开了");
+                return;
+            }
             captureVideo = new CaptureVideo((int)(((ToolStripMenuItem)sender).Tag));
             captureVideo.Show();
         }

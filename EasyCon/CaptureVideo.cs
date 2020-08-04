@@ -20,7 +20,7 @@ using System.Drawing.Drawing2D;
 
 namespace EasyCon
 {
-    public partial class CaptureVideo : Form
+    public partial class CaptureVideo : Form,IDisposable
     {
         private enum MonitorMode
         {
@@ -37,6 +37,7 @@ namespace EasyCon
         private float X;//当前窗体的宽度
         private float Y;//当前窗体的高度
         Point curResolution = new Point(1920, 1080);
+        public int deviceId = -1;
 
         /// <summary>
         /// 将控件的宽，高，左边距，顶边距和字体大小暂存到tag属性中
@@ -83,10 +84,11 @@ namespace EasyCon
             InitializeComponent();
         }
 
-        public CaptureVideo(int deviceId)
+        public CaptureVideo(int id)
         {
             InitializeComponent();
 
+            deviceId = id;
             Debug.WriteLine(deviceId);
             VideoCapture.CaptureCamera(VideoSourcePlayerMonitor,deviceId);
         }
@@ -148,6 +150,7 @@ namespace EasyCon
         private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
         {
             VideoCapture.Close();
+            deviceId = -1;
         }
 
         private void VideoSourcePlayerMonitor_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -760,12 +763,19 @@ namespace EasyCon
             //    VideoCapture.runTime.Restart();
             //    count = 0;
             //}
+            try
+            {
+                Graphics g = e.Graphics;
+                g.InterpolationMode = InterpolationMode.NearestNeighbor;
+                Bitmap newframe = VideoCapture.GetImage();
+                g.DrawImage(newframe, new Rectangle(0, 0, VideoSourcePlayerMonitor.Width, VideoSourcePlayerMonitor.Height), new Rectangle(0, 0, curResolution.X, curResolution.Y), GraphicsUnit.Pixel);
+                newframe.Dispose();
+            }
+            catch
+            {
+                // something wrong, beacause when closing but the render is paintting
+            }
 
-            Graphics g = e.Graphics;
-            g.InterpolationMode = InterpolationMode.NearestNeighbor;
-            Bitmap newframe = VideoCapture.GetImage();
-            g.DrawImage(newframe, new Rectangle(0, 0, VideoSourcePlayerMonitor.Width, VideoSourcePlayerMonitor.Height), new Rectangle(0, 0, curResolution.X, curResolution.Y), GraphicsUnit.Pixel);
-            newframe.Dispose();
         }
 
         private void button9_Click(object sender, EventArgs e)

@@ -56,12 +56,14 @@ namespace EasyCon.Graphic
         {
             if (capture == null)
                 return;
-
-            capture_run_handler?.Abort();
-            if (!capture.IsDisposed)
+            lock (_lock)
             {
-                capture?.Release();
-                capture?.Dispose();
+                capture_run_handler?.Abort();
+                if (!capture.IsDisposed)
+                {
+                    capture?.Release();
+                    capture?.Dispose();
+                }
             }
         }
 
