@@ -39,6 +39,8 @@
             this.button3 = new System.Windows.Forms.Button();
             this.button4 = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.label3 = new System.Windows.Forms.Label();
+            this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.targetImg = new System.Windows.Forms.PictureBox();
             this.textBox10 = new System.Windows.Forms.TextBox();
             this.label8 = new System.Windows.Forms.Label();
@@ -76,8 +78,6 @@
             this.VideoSourcePlayerMonitor = new System.Windows.Forms.PictureBox();
             this.label2 = new System.Windows.Forms.Label();
             this.button9 = new System.Windows.Forms.Button();
-            this.label3 = new System.Windows.Forms.Label();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
             ((System.ComponentModel.ISupportInitialize)(this.Snapshot)).BeginInit();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).BeginInit();
@@ -204,6 +204,24 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "搜索参数";
             // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(25, 53);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(47, 12);
+            this.label3.TabIndex = 36;
+            this.label3.Text = "图类型:";
+            // 
+            // comboBox1
+            // 
+            this.comboBox1.FormattingEnabled = true;
+            this.comboBox1.Location = new System.Drawing.Point(78, 50);
+            this.comboBox1.Name = "comboBox1";
+            this.comboBox1.Size = new System.Drawing.Size(104, 20);
+            this.comboBox1.TabIndex = 35;
+            this.comboBox1.Text = "选择图类型";
+            // 
             // targetImg
             // 
             this.targetImg.Location = new System.Drawing.Point(439, 120);
@@ -327,7 +345,7 @@
             this.label20.Name = "label20";
             this.label20.Size = new System.Drawing.Size(23, 12);
             this.label20.TabIndex = 20;
-            this.label20.Text = "长:";
+            this.label20.Text = "高:";
             // 
             // textBox2
             // 
@@ -391,7 +409,7 @@
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(23, 12);
             this.label18.TabIndex = 12;
-            this.label18.Text = "长:";
+            this.label18.Text = "高:";
             // 
             // label12
             // 
@@ -534,24 +552,6 @@
             this.button9.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.button9.UseVisualStyleBackColor = true;
             this.button9.Click += new System.EventHandler(this.button9_Click);
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(25, 53);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(47, 12);
-            this.label3.TabIndex = 36;
-            this.label3.Text = "图类型:";
-            // 
-            // comboBox1
-            // 
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(78, 50);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(104, 20);
-            this.comboBox1.TabIndex = 35;
-            this.comboBox1.Text = "选择图类型";
             // 
             // CaptureVideo
             // 
