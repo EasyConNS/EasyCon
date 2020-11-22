@@ -534,6 +534,7 @@ namespace PTDevice
             Arduino = new ArduinoSerial(portName);
             Arduino.BytesSent += (port, bytes) => BytesSent?.Invoke(port, bytes);
             Arduino.BytesReceived += (port, bytes) => BytesReceived?.Invoke(port, bytes);
+            Arduino.CpuOpt = need_cpu_opt;
             ArduinoSerial.StatusChangedHandler statuschanged = status =>
             {
                 lock (ewh)

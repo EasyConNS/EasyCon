@@ -547,6 +547,8 @@ namespace EasyCon
                     ComPort.Text = portName;
                     return portName;
                 }
+                // fix the internal thread cant quit safely,so wait 1s for next connect
+                Thread.Sleep(1000);
             }
             StatusShowLog("连接失败");
             SystemSounds.Hand.Play();
@@ -557,9 +559,6 @@ namespace EasyCon
         public bool SerialConnect(string portName)
         {
             StatusShowLog("开始连接...");
-            int n;
-            if (int.TryParse(portName, out n))
-                portName = "COM" + portName;
             // try stable connection
             var r = NS.TryConnect(portName, true);
             if (显示调试信息ToolStripMenuItem.Checked)
@@ -1220,6 +1219,7 @@ namespace EasyCon
             foreach (var portName in ports)
             {
                 this.ComPort.Items.Add(portName);
+                Debug.WriteLine(portName);
             }
         }
 
