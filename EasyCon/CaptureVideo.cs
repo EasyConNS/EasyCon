@@ -1,5 +1,4 @@
-﻿using AForge.Video;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -84,13 +83,13 @@ namespace EasyCon
             InitializeComponent();
         }
 
-        public CaptureVideo(int id)
+        public CaptureVideo(int devId,int typeId)
         {
             InitializeComponent();
 
-            deviceId = id;
+            deviceId = devId;
             Debug.WriteLine(deviceId);
-            VideoCapture.CaptureCamera(VideoSourcePlayerMonitor,deviceId);
+            VideoCapture.CaptureCamera(VideoSourcePlayerMonitor,deviceId, typeId);
         }
 
         private void CaptureVideo_Load(object sender, EventArgs e)

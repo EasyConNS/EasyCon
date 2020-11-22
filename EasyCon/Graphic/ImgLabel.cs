@@ -17,7 +17,6 @@ using System.IO;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using AForge.Video;
 
 namespace EasyCon.Graphic
 {

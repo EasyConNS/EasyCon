@@ -50,6 +50,7 @@ namespace EasyCon
         private float X;//当前窗体的宽度
         private float Y;//当前窗体的高度
         private bool IsFirst = true;
+        private List<ToolStripMenuItem> captureTypes = new List<ToolStripMenuItem>();
 
         public EasyConForm()
         {
@@ -102,6 +103,26 @@ namespace EasyCon
             // enable debug print
             显示调试信息ToolStripMenuItem.Checked = true;
 #endif
+
+            // add capture types
+            Dictionary<string, int> types = VideoCapture.GetCaptureTypes();
+
+            this.DeviceTypeToolStripMenuItem.DropDownItems.Clear();
+            foreach (string name in types.Keys)
+            {
+                ToolStripMenuItem item = new System.Windows.Forms.ToolStripMenuItem();
+                this.DeviceTypeToolStripMenuItem.DropDownItems.Add(item);
+                item.Checked = false;
+                item.CheckState = System.Windows.Forms.CheckState.Unchecked;
+                item.Name = "toolStripMenuItem2";
+                item.Size = new System.Drawing.Size(180, 22);
+                item.Text = name;
+                item.Click += new System.EventHandler(this.DeviceTypeItem_Click);
+                item.Tag = types[name];
+                if (name == _config.CaptureType)
+                    item.Checked = true;
+                captureTypes.Add(item);
+            }
         }
 
         void Test(int key)
@@ -1115,7 +1136,15 @@ namespace EasyCon
                 MessageBox.Show("相同采集卡已经打开了");
                 return;
             }
-            captureVideo = new CaptureVideo((int)(((ToolStripMenuItem)sender).Tag));
+
+            int dev_type = 0;
+            foreach (var item in captureTypes)
+            {
+                if (item.Checked == true)
+                    dev_type = (int)item.Tag;
+            }
+
+            captureVideo = new CaptureVideo((int)(((ToolStripMenuItem)sender).Tag), dev_type);
             captureVideo.Show();
         }
 
@@ -1208,6 +1237,26 @@ namespace EasyCon
         private void SelectDeviceToolStripMenuItem_MouseDown(object sender, MouseEventArgs e)
         {
             FindCaptures();
+        }
+
+        private void DeviceTypeItem_Click(object sender, EventArgs e)
+        {
+            // tag = device id
+            //(ToolStripMenuItem)sender = true;
+            foreach(var item in captureTypes)
+            {
+                item.Checked = false;
+            }
+            ToolStripMenuItem selected = (ToolStripMenuItem)sender;
+            selected.Checked = true;
+            _config.CaptureType = selected.Text;
+            Debug.WriteLine(selected.Text);
+            SaveConfig();
+        }
+
+        private void 采集卡帮助ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("默认采集卡类型选择any，会自动选择合适的采集卡\n- 常见采集卡类型是DSHOW，MSMF，DC1394等\n- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开\n- 详细使用教程见群946057081文档", "采集卡");
         }
     }
 }

@@ -4,13 +4,14 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using AForge.Video.DirectShow;
 using OpenCvSharp;
+using SharpDX.MediaFoundation;
 
 namespace EasyCon.Graphic
 {
@@ -22,16 +23,19 @@ namespace EasyCon.Graphic
         private static Thread capture_run_handler;
         private static System.Drawing.Point curResolution = new System.Drawing.Point(1920, 1080);
         private static List<string> devs = new List<string>();
-        private static int devs_index = 0;
+        private static int dev_index = 0;
+        private static int dev_type = 0;
+        private static Dictionary<string, int> captureTypes = new Dictionary<string, int>();
         private static PictureBox displayUI;
-        public static void CaptureCamera( PictureBox pictureBox,int index = 0)
+        public static void CaptureCamera(PictureBox pictureBox, int index = 0, int typeId = 0)
         {
             displayUI = pictureBox;
-            devs_index = index;
-            if (devs[index].Equals("TCUB90"))
-                capture = new OpenCvSharp.VideoCapture(devs_index, VideoCaptureAPIs.DSHOW);
-            else
-                capture = new OpenCvSharp.VideoCapture(devs_index, VideoCaptureAPIs.ANY);
+            dev_index = index;
+            dev_type = typeId;
+            //if (devs[index].Equals("TCUB90"))
+            //    capture = new OpenCvSharp.VideoCapture(dev_index, VideoCaptureAPIs.DSHOW);
+            //else
+            capture = new OpenCvSharp.VideoCapture(dev_index, (VideoCaptureAPIs)dev_type);
             if (!capture.IsOpened())
             {
                 Close();
@@ -67,23 +71,37 @@ namespace EasyCon.Graphic
             }
         }
 
+        public static Dictionary<string, int> GetCaptureTypes()
+        {
+            System.Array values = System.Enum.GetValues(typeof(VideoCaptureAPIs));
+            foreach (var value in values)
+            {
+                Debug.WriteLine(value + "--" + (int)value);//获取名称和值
+                if (captureTypes.ContainsKey(value.ToString()))
+                    continue;
+                captureTypes.Add(value.ToString(), (int)value);
+            }
+            return captureTypes;
+        }
+
         public static List<string> GetCaptureCamera()
         {
-            var videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
             devs.Clear();
-            foreach (FilterInfo dev in videoDevices)
+            var attributes = new MediaAttributes(1);
+            attributes.Set(CaptureDeviceAttributeKeys.SourceType.Guid, CaptureDeviceAttributeKeys.SourceTypeVideoCapture.Guid);
+            var devices = MediaFactory.EnumDeviceSources(attributes);
+            for (var i = 0; i < devices.Count(); i++)
             {
-                devs.Add(dev.Name);
-                Debug.WriteLine(dev.Name);
-                Debug.WriteLine(dev.MonikerString);
+                var friendlyName = devices[i].Get(CaptureDeviceAttributeKeys.FriendlyName);
+                devs.Add(friendlyName);
+                Debug.WriteLine(friendlyName);
             }
-
             return devs;
         }
 
         public static void SetResolution(System.Drawing.Point res)
         {
-            if(curResolution.X != res.X || curResolution.Y != res.Y)
+            if (curResolution.X != res.X || curResolution.Y != res.Y)
             {
                 lock (_lock)
                 {
@@ -94,10 +112,7 @@ namespace EasyCon.Graphic
                     capture?.Dispose();
 
                     // reopen it 
-                    if (devs[devs_index].Equals("TCUB90"))
-                        capture = new OpenCvSharp.VideoCapture(devs_index, VideoCaptureAPIs.DSHOW);
-                    else
-                        capture = new OpenCvSharp.VideoCapture(devs_index, VideoCaptureAPIs.ANY);
+                    capture = new OpenCvSharp.VideoCapture(dev_index, (VideoCaptureAPIs)dev_type);
 
                     capture.Set(VideoCaptureProperties.FrameWidth, curResolution.X);
                     capture.Set(VideoCaptureProperties.FrameHeight, curResolution.Y);
@@ -150,7 +165,7 @@ namespace EasyCon.Graphic
                 if (_image == null)
                     return null;
 
-                Bitmap img = new Bitmap(range.Width,range.Height, PixelFormat.Format24bppRgb);
+                Bitmap img = new Bitmap(range.Width, range.Height, PixelFormat.Format24bppRgb);
                 using (var g = Graphics.FromImage(img))
                     g.DrawImage(_image, 0, 0, range, GraphicsUnit.Pixel);
                 return img;

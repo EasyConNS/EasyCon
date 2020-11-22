@@ -11,6 +11,7 @@ namespace EasyCon
     {
         public KeyMapping KeyMapping;
         public bool ShowControllerHelp = true;
+        public String CaptureType = "ANY";
 
         public void SetDefault()
         {

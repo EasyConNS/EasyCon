@@ -53,6 +53,7 @@
             this.项目源码ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.CpuOptToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.CaptureDevToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.DeviceTypeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.SelectDeviceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.buttonCLS = new System.Windows.Forms.Button();
@@ -88,6 +89,7 @@
             this.comboBoxBoardType = new System.Windows.Forms.ComboBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.textBoxFirmware = new System.Windows.Forms.TextBox();
+            this.采集卡帮助ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -286,16 +288,24 @@
             // CaptureDevToolStripMenuItem
             // 
             this.CaptureDevToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.SelectDeviceToolStripMenuItem});
+            this.DeviceTypeToolStripMenuItem,
+            this.SelectDeviceToolStripMenuItem,
+            this.采集卡帮助ToolStripMenuItem});
             this.CaptureDevToolStripMenuItem.Name = "CaptureDevToolStripMenuItem";
             this.CaptureDevToolStripMenuItem.Size = new System.Drawing.Size(56, 21);
             this.CaptureDevToolStripMenuItem.Text = "采集卡";
             // 
+            // DeviceTypeToolStripMenuItem
+            // 
+            this.DeviceTypeToolStripMenuItem.Name = "DeviceTypeToolStripMenuItem";
+            this.DeviceTypeToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.DeviceTypeToolStripMenuItem.Text = "采集卡类型";
+            // 
             // SelectDeviceToolStripMenuItem
             // 
             this.SelectDeviceToolStripMenuItem.Name = "SelectDeviceToolStripMenuItem";
-            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
-            this.SelectDeviceToolStripMenuItem.Text = "选择采集设备";
+            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.SelectDeviceToolStripMenuItem.Text = "打开采集卡";
             this.SelectDeviceToolStripMenuItem.MouseDown += new System.Windows.Forms.MouseEventHandler(this.SelectDeviceToolStripMenuItem_MouseDown);
             this.SelectDeviceToolStripMenuItem.MouseHover += new System.EventHandler(this.SelectDeviceToolStripMenuItem_MouseHover);
             // 
@@ -649,6 +659,13 @@
             this.textBoxFirmware.TabIndex = 5;
             this.textBoxFirmware.WordWrap = false;
             // 
+            // 采集卡帮助ToolStripMenuItem
+            // 
+            this.采集卡帮助ToolStripMenuItem.Name = "采集卡帮助ToolStripMenuItem";
+            this.采集卡帮助ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.采集卡帮助ToolStripMenuItem.Text = "采集卡帮助";
+            this.采集卡帮助ToolStripMenuItem.Click += new System.EventHandler(this.采集卡帮助ToolStripMenuItem_Click);
+            // 
             // EasyConForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 16F);
@@ -752,6 +769,8 @@
         private System.Windows.Forms.ToolStripMenuItem CaptureDevToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem SelectDeviceToolStripMenuItem;
         private System.Windows.Forms.ComboBox ComPort;
+        private System.Windows.Forms.ToolStripMenuItem DeviceTypeToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 采集卡帮助ToolStripMenuItem;
     }
 }
 
