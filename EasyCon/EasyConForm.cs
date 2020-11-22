@@ -1078,25 +1078,14 @@ namespace EasyCon
         {
             if (CpuOptToolStripMenuItem.Text == "CPU优化-关闭")
             {
-                if (NS.SetCpuOpt(false))
-                {
-                    CpuOptToolStripMenuItem.Text = "CPU优化-开启";
-                }
-                else
-                {
-                    MessageBox.Show("串口未连接", "CPU优化");
-                }
+                NS.SetCpuOpt(false);
+                CpuOptToolStripMenuItem.Text = "CPU优化-开启";
+               
             }
             else
             {
-                if (NS.SetCpuOpt(true))
-                {
-                    CpuOptToolStripMenuItem.Text = "CPU优化-关闭";
-                }
-                else
-                {
-                    MessageBox.Show("串口未连接", "CPU优化");
-                }
+                NS.SetCpuOpt(true);
+                CpuOptToolStripMenuItem.Text = "CPU优化-关闭";
             }
 
         }

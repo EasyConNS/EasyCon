@@ -449,6 +449,7 @@ namespace PTDevice
         DirectionKey _rightStick = 0;
         DirectionKey _hat = 0;
         DateTime _lastActionTime = DateTime.MinValue;
+        bool need_cpu_opt = true;
 
         public delegate void LogHandler(string s);
         public event LogHandler Log;
@@ -508,6 +509,7 @@ namespace PTDevice
             Arduino.BytesSent += (port, bytes) => BytesSent?.Invoke(port, bytes);
             Arduino.BytesReceived += (port, bytes) => BytesReceived?.Invoke(port, bytes);
             Arduino.Connect(false);
+            Arduino.CpuOpt = need_cpu_opt;
             _thread = new Thread(Loop);
             _thread.IsBackground = true;
             _thread.Start();
@@ -996,12 +998,8 @@ namespace PTDevice
 
         public bool SetCpuOpt(bool enable)
         {
-            if (IsConnected())
-            {
-                Arduino.CpuOpt = enable;
-                return true;
-            }
-            return false;
+            need_cpu_opt = enable;
+            return true;
         }
     }
 }
