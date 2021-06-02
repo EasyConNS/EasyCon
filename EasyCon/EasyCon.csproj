@@ -126,6 +126,7 @@
     <Reference Include="System.Drawing.Common, Version=4.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Drawing.Common.4.7.0\lib\net461\System.Drawing.Common.dll</HintPath>
     </Reference>
+    <Reference Include="System.Management" />
     <Reference Include="System.Messaging" />
     <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.6.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.7.1\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
@@ -142,6 +143,13 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BTController.cs" />
+    <Compile Include="BTDeviceSelector.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="BTDeviceSelector.Designer.cs">
+      <DependentUpon>BTDeviceSelector.cs</DependentUpon>
+    </Compile>
     <Compile Include="CaptureVideo.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -214,6 +222,9 @@
     <Compile Include="Script\Parsing\Statements\StickAction.cs" />
     <Compile Include="Script\Parsing\Statements\Wait.cs" />
     <Compile Include="Script\Parsing\ValBase.cs" />
+    <EmbeddedResource Include="BTDeviceSelector.resx">
+      <DependentUpon>BTDeviceSelector.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="CaptureVideo.resx">
       <DependentUpon>CaptureVideo.cs</DependentUpon>
     </EmbeddedResource>

@@ -27,6 +27,7 @@ namespace EasyCon
     public partial class EasyConForm : Form, IOutputAdapter
     {
         internal NintendoSwitch NS = NintendoSwitch.GetInstance();
+        BTDeviceSelector bTDeviceSelector = new BTDeviceSelector();
         internal FormController formController;
         internal FormKeyMapping formKeyMapping;
         internal CaptureVideo captureVideo;
@@ -963,11 +964,6 @@ namespace EasyCon
             }
         }
 
-        private void buttonControllerHelp_Click(object sender, EventArgs e)
-        {
-            ShowControllerHelp();
-        }
-
         private void buttonCLS_Click(object sender, EventArgs e)
         {
             CLS();
@@ -1246,6 +1242,29 @@ namespace EasyCon
         private void 采集卡帮助ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             MessageBox.Show("默认采集卡类型选择any，会自动选择合适的采集卡\n- 常见采集卡类型是DSHOW，MSMF，DC1394等\n- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开\n- 详细使用教程见群946057081文档", "采集卡");
+        }
+
+        private void 虚拟手柄帮助ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ShowControllerHelp();
+        }
+
+        private void 安装蓝牙驱动ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            bTDeviceSelector.ShowDialog();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                BTController.open();
+                StatusShowLog("连接成功");
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("蓝牙连接错误");
+            }
         }
     }
 }

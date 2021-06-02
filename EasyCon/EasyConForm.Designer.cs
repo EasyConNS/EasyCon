@@ -52,9 +52,13 @@
             this.关于ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.项目源码ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.CpuOptToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.虚拟手柄帮助ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.CaptureDevToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.DeviceTypeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.SelectDeviceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.采集卡帮助ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.蓝牙ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.安装蓝牙驱动ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.buttonCLS = new System.Windows.Forms.Button();
             this.labelTimer = new System.Windows.Forms.Label();
@@ -68,8 +72,8 @@
             this.toolStripProgressBar1 = new System.Windows.Forms.ToolStripProgressBar();
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.button1 = new System.Windows.Forms.Button();
             this.ComPort = new System.Windows.Forms.ComboBox();
-            this.buttonControllerHelp = new System.Windows.Forms.Button();
             this.labelSerialStatus = new System.Windows.Forms.Label();
             this.buttonSerialPortConnect = new System.Windows.Forms.Button();
             this.buttonSerialPortSearch = new System.Windows.Forms.Button();
@@ -89,7 +93,6 @@
             this.comboBoxBoardType = new System.Windows.Forms.ComboBox();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.textBoxFirmware = new System.Windows.Forms.TextBox();
-            this.采集卡帮助ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBoxScript.SuspendLayout();
@@ -107,7 +110,8 @@
             this.文件ToolStripMenuItem,
             this.脚本ToolStripMenuItem,
             this.帮助ToolStripMenuItem,
-            this.CaptureDevToolStripMenuItem});
+            this.CaptureDevToolStripMenuItem,
+            this.蓝牙ToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Padding = new System.Windows.Forms.Padding(7, 2, 0, 2);
@@ -208,7 +212,8 @@
             this.toolStripSeparator2,
             this.关于ToolStripMenuItem,
             this.项目源码ToolStripMenuItem,
-            this.CpuOptToolStripMenuItem});
+            this.CpuOptToolStripMenuItem,
+            this.虚拟手柄帮助ToolStripMenuItem});
             this.帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
             this.帮助ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
             this.帮助ToolStripMenuItem.Text = "帮助";
@@ -285,6 +290,13 @@
             this.CpuOptToolStripMenuItem.Text = "CPU优化-关闭";
             this.CpuOptToolStripMenuItem.Click += new System.EventHandler(this.CpuOptToolStripMenuItem_Click);
             // 
+            // 虚拟手柄帮助ToolStripMenuItem
+            // 
+            this.虚拟手柄帮助ToolStripMenuItem.Name = "虚拟手柄帮助ToolStripMenuItem";
+            this.虚拟手柄帮助ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.虚拟手柄帮助ToolStripMenuItem.Text = "虚拟手柄帮助";
+            this.虚拟手柄帮助ToolStripMenuItem.Click += new System.EventHandler(this.虚拟手柄帮助ToolStripMenuItem_Click);
+            // 
             // CaptureDevToolStripMenuItem
             // 
             this.CaptureDevToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -298,16 +310,38 @@
             // DeviceTypeToolStripMenuItem
             // 
             this.DeviceTypeToolStripMenuItem.Name = "DeviceTypeToolStripMenuItem";
-            this.DeviceTypeToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.DeviceTypeToolStripMenuItem.Size = new System.Drawing.Size(136, 22);
             this.DeviceTypeToolStripMenuItem.Text = "采集卡类型";
             // 
             // SelectDeviceToolStripMenuItem
             // 
             this.SelectDeviceToolStripMenuItem.Name = "SelectDeviceToolStripMenuItem";
-            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.SelectDeviceToolStripMenuItem.Size = new System.Drawing.Size(136, 22);
             this.SelectDeviceToolStripMenuItem.Text = "打开采集卡";
             this.SelectDeviceToolStripMenuItem.MouseDown += new System.Windows.Forms.MouseEventHandler(this.SelectDeviceToolStripMenuItem_MouseDown);
             this.SelectDeviceToolStripMenuItem.MouseHover += new System.EventHandler(this.SelectDeviceToolStripMenuItem_MouseHover);
+            // 
+            // 采集卡帮助ToolStripMenuItem
+            // 
+            this.采集卡帮助ToolStripMenuItem.Name = "采集卡帮助ToolStripMenuItem";
+            this.采集卡帮助ToolStripMenuItem.Size = new System.Drawing.Size(136, 22);
+            this.采集卡帮助ToolStripMenuItem.Text = "采集卡帮助";
+            this.采集卡帮助ToolStripMenuItem.Click += new System.EventHandler(this.采集卡帮助ToolStripMenuItem_Click);
+            // 
+            // 蓝牙ToolStripMenuItem
+            // 
+            this.蓝牙ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.安装蓝牙驱动ToolStripMenuItem});
+            this.蓝牙ToolStripMenuItem.Name = "蓝牙ToolStripMenuItem";
+            this.蓝牙ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
+            this.蓝牙ToolStripMenuItem.Text = "蓝牙";
+            // 
+            // 安装蓝牙驱动ToolStripMenuItem
+            // 
+            this.安装蓝牙驱动ToolStripMenuItem.Name = "安装蓝牙驱动ToolStripMenuItem";
+            this.安装蓝牙驱动ToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
+            this.安装蓝牙驱动ToolStripMenuItem.Text = "安装蓝牙驱动";
+            this.安装蓝牙驱动ToolStripMenuItem.Click += new System.EventHandler(this.安装蓝牙驱动ToolStripMenuItem_Click);
             // 
             // groupBox1
             // 
@@ -373,11 +407,11 @@
             // 
             // buttonShowController
             // 
-            this.buttonShowController.Location = new System.Drawing.Point(6, 79);
+            this.buttonShowController.Location = new System.Drawing.Point(157, 79);
             this.buttonShowController.Name = "buttonShowController";
-            this.buttonShowController.Size = new System.Drawing.Size(150, 40);
+            this.buttonShowController.Size = new System.Drawing.Size(74, 40);
             this.buttonShowController.TabIndex = 3;
-            this.buttonShowController.Text = "启用虚拟手柄";
+            this.buttonShowController.Text = "虚拟手柄";
             this.buttonShowController.UseVisualStyleBackColor = true;
             this.buttonShowController.Click += new System.EventHandler(this.buttonShowController_Click);
             // 
@@ -447,8 +481,8 @@
             // 
             // groupBox3
             // 
+            this.groupBox3.Controls.Add(this.button1);
             this.groupBox3.Controls.Add(this.ComPort);
-            this.groupBox3.Controls.Add(this.buttonControllerHelp);
             this.groupBox3.Controls.Add(this.labelSerialStatus);
             this.groupBox3.Controls.Add(this.buttonSerialPortConnect);
             this.groupBox3.Controls.Add(this.buttonSerialPortSearch);
@@ -462,6 +496,16 @@
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "连接";
             // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(6, 79);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(149, 39);
+            this.button1.TabIndex = 35;
+            this.button1.Text = "蓝牙连接";
+            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.button1_Click);
+            // 
             // ComPort
             // 
             this.ComPort.FormattingEnabled = true;
@@ -471,16 +515,6 @@
             this.ComPort.TabIndex = 34;
             this.ComPort.Text = "    下拉选择串口";
             this.ComPort.DropDown += new System.EventHandler(this.ComPort_DropDown);
-            // 
-            // buttonControllerHelp
-            // 
-            this.buttonControllerHelp.Location = new System.Drawing.Point(157, 79);
-            this.buttonControllerHelp.Name = "buttonControllerHelp";
-            this.buttonControllerHelp.Size = new System.Drawing.Size(74, 40);
-            this.buttonControllerHelp.TabIndex = 33;
-            this.buttonControllerHelp.Text = "?";
-            this.buttonControllerHelp.UseVisualStyleBackColor = true;
-            this.buttonControllerHelp.Click += new System.EventHandler(this.buttonControllerHelp_Click);
             // 
             // labelSerialStatus
             // 
@@ -514,12 +548,12 @@
             // 
             // label18
             // 
-            this.label18.Location = new System.Drawing.Point(3, 24);
+            this.label18.Location = new System.Drawing.Point(6, 24);
             this.label18.Margin = new System.Windows.Forms.Padding(0);
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(35, 18);
             this.label18.TabIndex = 28;
-            this.label18.Text = "串口";
+            this.label18.Text = "端口";
             this.label18.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // buttonKeyMapping
@@ -659,13 +693,6 @@
             this.textBoxFirmware.TabIndex = 5;
             this.textBoxFirmware.WordWrap = false;
             // 
-            // 采集卡帮助ToolStripMenuItem
-            // 
-            this.采集卡帮助ToolStripMenuItem.Name = "采集卡帮助ToolStripMenuItem";
-            this.采集卡帮助ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.采集卡帮助ToolStripMenuItem.Text = "采集卡帮助";
-            this.采集卡帮助ToolStripMenuItem.Click += new System.EventHandler(this.采集卡帮助ToolStripMenuItem_Click);
-            // 
             // EasyConForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 16F);
@@ -686,7 +713,7 @@
             this.MaximizeBox = false;
             this.Name = "EasyConForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "伊机控 EasyCon v1.40";
+            this.Text = "伊机控 EasyCon v1.50";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
             this.KeyDown += new System.Windows.Forms.KeyEventHandler(this.EasyConForm_KeyDown);
@@ -743,7 +770,6 @@
         private System.Windows.Forms.Label labelSerialStatus;
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
         private System.Windows.Forms.SaveFileDialog saveFileDialog1;
-        private System.Windows.Forms.Button buttonControllerHelp;
         private System.Windows.Forms.ToolStripMenuItem 使用方法ToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.Button buttonCLS;
@@ -771,6 +797,10 @@
         private System.Windows.Forms.ComboBox ComPort;
         private System.Windows.Forms.ToolStripMenuItem DeviceTypeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 采集卡帮助ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 虚拟手柄帮助ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 蓝牙ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 安装蓝牙驱动ToolStripMenuItem;
+        private System.Windows.Forms.Button button1;
     }
 }
 
