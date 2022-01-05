@@ -1,0 +1,13 @@
+hex描述：
+10：返回固件版本(C0)
+80：ping/pong(return 7F)
+6X：按键操作
+
+- 60 00： reset
+- 61|62(press/release) ABXY(button)
+- 63 XX(hat)
+- 64|65(左|右) xx yy(摇杆操作)
+
+其他：
+B7(错误)
+7F(PING/PONG)

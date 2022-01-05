@@ -33,6 +33,7 @@
             // FormController
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
+            this.BackgroundImage = global::PTController.Properties.Resources.JoyCon;
             this.ClientSize = new System.Drawing.Size(100, 100);
             this.Cursor = System.Windows.Forms.Cursors.Hand;
             this.DoubleBuffered = true;

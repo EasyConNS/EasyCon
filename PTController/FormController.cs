@@ -1,22 +1,17 @@
-﻿using System;
+﻿using ECDevice;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using PTDevice;
 
 namespace PTController
 {
     public partial class FormController : Form
     {
-        IControllerAdapter script;
+        readonly IControllerAdapter script;
 
         int _controllerEnabledLevel = 0;
         public int ControllerEnabledLevel
@@ -28,7 +23,8 @@ namespace PTController
                 Visible = _controllerEnabledLevel > 0;
             }
         }
-        public bool ControllerEnabled {
+        public bool ControllerEnabled
+        {
             get => ControllerEnabledLevel == 2;
             set
             {
@@ -41,8 +37,8 @@ namespace PTController
 
         public FormController(IControllerAdapter script)
         {
-            this.script = script;
             InitializeComponent();
+            this.script = script;
         }
 
         private void FormController_Load(object sender, EventArgs e)
@@ -55,16 +51,11 @@ namespace PTController
             ResetLocation();
             Task.Run(() =>
             {
-                try
+                while (true)
                 {
-                    while (true)
-                    {
-                        Invalidate();
-                        Thread.Sleep(20);
-                    }
+                    Invalidate();
+                    Thread.Sleep(25);
                 }
-                catch
-                { }
             });
         }
 
@@ -75,20 +66,20 @@ namespace PTController
 
         public void RegisterKey(Keys key, Action keydownAction, Action keyupAction = null)
         {
-            Func<bool> keydown = () =>
+            bool keydown()
             {
                 if (!ControllerEnabled)
                     return false;
                 keydownAction?.Invoke();
                 return true;
-            };
-            Func<bool> keyup = () =>
+            }
+            bool keyup()
             {
                 if (!ControllerEnabled)
                     return false;
                 keyupAction?.Invoke();
                 return true;
-            };
+            }
             LowLevelKeyboard.GetInstance().RegisterKeyEvent((int)key, keydown, keyup);
         }
 
@@ -99,7 +90,7 @@ namespace PTController
 
         static class Images
         {
-            static Dictionary<string, Bitmap> _dict = new Dictionary<string, Bitmap>();
+            static Dictionary<string, Bitmap> _dict = new();
 
             static Images()
             {
@@ -131,9 +122,7 @@ namespace PTController
 
         private void FormController_Paint(object sender, PaintEventArgs e)
         {
-            const int Padding = 5;
             var g = e.Graphics;
-            var rect = new Rectangle(e.ClipRectangle.X + Padding, e.ClipRectangle.Y + Padding, e.ClipRectangle.Width - Padding * 2, e.ClipRectangle.Height - Padding * 2);
             var report = NintendoSwitch.GetInstance().GetReport();
             int x0, y0, w0, h0;
             int x, y, w, h;
@@ -250,7 +239,7 @@ namespace PTController
             path.AddArc(new Rectangle(x, y, d1, d1), 180, 90);
 
             // top right arc
-            path.AddArc(new Rectangle(x + w -d2, y, d2, d2), 270, 90);
+            path.AddArc(new Rectangle(x + w - d2, y, d2, d2), 270, 90);
 
             // bottom right arc
             path.AddArc(new Rectangle(x + w - d3, y + h - d3, d3, d3), 0, 90);
@@ -268,8 +257,8 @@ namespace PTController
 
         void ResetLocation()
         {
-            Left = Screen.FromControl(this).WorkingArea.Width/2;
-            Top = (Screen.FromControl(this).WorkingArea.Height - Height)/2;
+            Left = Screen.FromControl(this).WorkingArea.Width / 2;
+            Top = (Screen.FromControl(this).WorkingArea.Height - Height) / 2;
         }
 
         private void FormController_MouseDown(object sender, MouseEventArgs e)
