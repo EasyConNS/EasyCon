@@ -2,7 +2,9 @@
 {
     class Processor
     {
-        public const uint RegisterCount = 8;
+        // only for online
+        public const uint RegisterCount = 64;
+        public const uint OfflineMaxRegisterCount = 8;
 
         public IOutputAdapter Output;
         public ICGamePad GamePad;

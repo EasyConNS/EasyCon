@@ -27,7 +27,7 @@ namespace EasyCon2.Script.Parsing.Statements
             return null;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return Mem ? $"SMEM {Value}" : $"SPRINT {Value}";
         }

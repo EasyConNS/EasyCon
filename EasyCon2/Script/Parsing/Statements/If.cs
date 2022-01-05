@@ -69,7 +69,7 @@ namespace EasyCon2.Script.Parsing.Statements
             }
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"IF {Left.GetCodeText(formatter)} {Operater.Operator} {Right.GetCodeText(formatter)}";
         }
@@ -113,7 +113,7 @@ namespace EasyCon2.Script.Parsing.Statements
             processor.PC = If.EndIf.Address + 1;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return "ELSE";
         }
@@ -143,7 +143,7 @@ namespace EasyCon2.Script.Parsing.Statements
         public override void Exec(Processor processor)
         { }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return "ENDIF";
         }

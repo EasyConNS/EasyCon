@@ -36,7 +36,7 @@
 
         public string ToCode()
         {
-            var formatter = new Parsing.Formats.Formatter(Constants, ExtVars);
+            var formatter = new Parsing.Formatter(Constants, ExtVars);
             return string.Join(Environment.NewLine, _statements.Select(u => u.GetString(formatter)));
         }
 

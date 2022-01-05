@@ -42,7 +42,7 @@ namespace EasyCon2.Script.Parsing.Statements
                     m = Regex.Match(s, Formats.RegisterEx_F);
                     if (m.Success)
                     {
-                        contents.Add(new RegContent(args.Formatter.GetRegEx(s)));
+                        contents.Add(new RegContent(Formatter.GetRegEx(s)));
                         continue;
                     }
                     m = Regex.Match(s, Formats.Constant_F);
@@ -59,7 +59,7 @@ namespace EasyCon2.Script.Parsing.Statements
             return null;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return Contents.Length == 0 ? "PRINT" : $"PRINT {string.Join(" & ", Contents.Select(u => u.GetCodeString(formatter)))}";
         }

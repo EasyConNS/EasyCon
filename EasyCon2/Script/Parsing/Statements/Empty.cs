@@ -17,7 +17,7 @@
             return null;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return Text;
         }

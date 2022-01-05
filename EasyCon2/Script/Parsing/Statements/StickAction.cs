@@ -81,7 +81,7 @@ namespace EasyCon2.Script.Parsing.Statements
             }
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"{KeyName} {Direction},{Duration.GetCodeText(formatter)}";
         }
@@ -134,7 +134,7 @@ namespace EasyCon2.Script.Parsing.Statements
             processor.GamePad.PressButtons(Key);
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"{KeyName} {Direction}";
         }
@@ -158,7 +158,7 @@ namespace EasyCon2.Script.Parsing.Statements
             processor.GamePad.ReleaseButtons(Key);
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"{KeyName} RESET";
         }

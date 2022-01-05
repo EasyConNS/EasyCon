@@ -69,7 +69,7 @@ namespace EasyCon2.Script.Parsing
                     // enumerate generators
                     var args = new ParserArgument();
                     args.Text = text;
-                    args.Formatter = new Formats.Formatter(_constants, _extVars);
+                    args.Formatter = new Formatter(_constants, _extVars);
                     Statement st = null;
                     foreach (var parser in _parsers)
                     {
