@@ -1,4 +1,4 @@
-﻿using ECDevice.Arduino;
+﻿using ECDevice.Connection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -301,12 +301,12 @@ namespace ECDevice
             }
         }
 
-        public ConClient clientCon { get; private set; }
-        Report _report = new Report();
+        private IConnClient clientCon { get; set; }
+        Report _report = new();
         Dictionary<int, KeyStroke> _keystrokes = new();
         bool _reset = false;
 
-        CancellationTokenSource source;
+        CancellationTokenSource source = new();
         EventWaitHandle _ewh = new(false, EventResetMode.ManualReset);
 
         DateTime _nextSendTime = DateTime.MinValue;
@@ -317,8 +317,8 @@ namespace ECDevice
 
         public delegate void LogHandler(string s);
         public event LogHandler Log;
-        public event ConClient.BytesTransferedHandler BytesSent;
-        public event ConClient.BytesTransferedHandler BytesReceived;
+        public event IConnClient.BytesTransferedHandler BytesSent;
+        public event IConnClient.BytesTransferedHandler BytesReceived;
 
         private OperationRecords operationRecords = new();
         public RecordState recordState = RecordState.RECORD_STOP;
@@ -328,7 +328,7 @@ namespace ECDevice
             if (connStr == "")
                 return ConnectResult.InvalidArgument;
 
-            EventWaitHandle ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
+            var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
             ConnectResult result = ConnectResult.None;
             void statuschanged(Status status)
             {
@@ -350,10 +350,10 @@ namespace ECDevice
             }
 
             Disconnect();
-            clientCon = new ConClient(connStr);
+            clientCon = new TTLSerialClient(connStr);
             clientCon.BytesSent += (port, bytes) => BytesSent?.Invoke(port, bytes);
             clientCon.BytesReceived += (port, bytes) => BytesReceived?.Invoke(port, bytes);
-            clientCon.CpuOpt = need_cpu_opt;
+            clientCon.CPUOpt = need_cpu_opt;
             
             clientCon.StatusChanged += statuschanged;
             clientCon.Connect(sayhello);
@@ -389,7 +389,6 @@ namespace ECDevice
             {
                 source.Cancel();
             }
-            source.Cancel();
         }
 
         public bool IsConnected()
@@ -405,6 +404,12 @@ namespace ECDevice
         public Report GetReport()
         {
             return _report.Clone() as Report;
+        }
+
+        void PrintKey(string str, Key key = null)
+        {
+            str = str + " " + key?.Name ?? "";
+            Debug.WriteLine(str);
         }
 
         public void Reset()

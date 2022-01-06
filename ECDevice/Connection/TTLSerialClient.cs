@@ -6,41 +6,36 @@ using System.Threading;
 using System.Diagnostics;
 using System.IO.Ports;
 
-namespace ECDevice.Arduino
+namespace ECDevice.Connection
 {
-    public class ConClient
+    public class TTLSerialClient : IConnClient
     {
         const bool DEBUG_MESSAGE = false;
 
-        string _connStr;
-        int _port;
+        readonly string _connStr;
+        readonly int _port;
+        bool _sayhello = true;
 
         SerialPort _sport;
 
-        bool _sayhello = true;
-        public bool CpuOpt = true;
-
-        public delegate void BytesTransferedHandler(string portName, byte[] bytes);
-        public delegate void StatusChangedHandler(Status status);
-
-        public event BytesTransferedHandler BytesSent;
-        public event BytesTransferedHandler BytesReceived;
-        public event StatusChangedHandler StatusChanged;
-
-        List<byte> _inBuffer = new List<byte>();
-        List<byte[]> _outBuffer = new List<byte[]>();
+        List<byte> _inBuffer = new();
+        List<byte[]> _outBuffer = new();
         DateTime _time = DateTime.MinValue;
         Status _status = Status.Connecting;
+
+        public override event BytesTransferedHandler BytesSent;
+        public override event BytesTransferedHandler BytesReceived;
+        public override event StatusChangedHandler StatusChanged;
 
         Task _t;
         CancellationTokenSource source;
         CancellationToken token;
 
-        public Status CurrentStatus
+        public override Status CurrentStatus
         {
             get => _status;
 
-            private set
+            protected set
             {
                 if (_status == value)
                     return;
@@ -49,13 +44,13 @@ namespace ECDevice.Arduino
             }
         }
 
-        public ConClient(string connStr, int port = 9600)
+        public TTLSerialClient(string connStr, int port = 9600)
         {
             _connStr = connStr;
             _port = port;
         }
 
-        public void Connect(bool sayhello = true)
+        public override void Connect(bool sayhello = true)
         {
             if (_t != null)
                 return;
@@ -72,7 +67,7 @@ namespace ECDevice.Arduino
             token);
         }
 
-        public void Disconnect()
+        public override void Disconnect()
         {
             if (source != null)
             {
@@ -138,7 +133,7 @@ namespace ECDevice.Arduino
                     }
 
                     // cpu optimization
-                    if (CpuOpt)
+                    if (CPUOpt)
                         Thread.Sleep(1);
                 }
             }
@@ -152,7 +147,7 @@ namespace ECDevice.Arduino
             }
         }
 
-        public void Write(params byte[] val)
+        public override void Write(params byte[] val)
         {
             if (_t == null)
                 return;

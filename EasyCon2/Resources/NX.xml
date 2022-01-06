@@ -1,26 +1,20 @@
 <?xml version="1.0"?>
-
 <SyntaxDefinition name = "NX" extensions = ".nmcx">
-	
-	<Properties>
-		<Property name="LineComment" value="#"/>
-	</Properties>
-	
-	<Digits name = "Digits" bold = "false" italic = "false" color = "DarkBlue"/>
-	
-	<RuleSets>
-		<RuleSet ignorecase = "true">
+  <Properties>
+    <Property name="LineComment" value="#"/>
+  </Properties>
+  <Digits name = "Digits" bold = "false" italic = "false" color = "DarkBlue"/>
+  <RuleSets>
+    <RuleSet ignorecase = "true">
       <Span name = "LineComment" bold="false" italic="false" color="Green" stopateol = "true">
-				<Begin>#</Begin>
-			</Span>
-
-			<KeyWords name = "Funcs" bold="true" italic="false" color="LightBlue">
-				<Key word = "RAND" />
+        <Begin>#</Begin>
+      </Span>
+      <KeyWords name = "Funcs" bold="true" italic="false" color="LightBlue">
+        <Key word = "RAND" />
         <Key word = "PRINT" />
         <Key word = "ALERT" />
         <Key word = "WAIT" />
       </KeyWords>
-
       <KeyWords name = "Conditions" bold="true" italic="false" color="Blue">
         <Key word = "FOR" />
         <Key word = "TO" />
@@ -28,12 +22,11 @@
         <Key word = "BREAK" />
         <Key word = "CONTINUE" />
         <Key word = "IF" />
-				<Key word = "ELSE" />
+        <Key word = "ELSE" />
         <Key word = "ENDIF" />
         <Key word = "@" />
         <Key word = "_" />
       </KeyWords>
-
       <KeyWords name = "Buttons" bold="true" italic="false" color="Red">
         <Key word = "A" />
         <Key word = "B" />
@@ -56,7 +49,6 @@
         <Key word = "LS" />
         <Key word = "RS" />
       </KeyWords>
-		</RuleSet>
-	</RuleSets>
+    </RuleSet>
+  </RuleSets>
 </SyntaxDefinition>
-
