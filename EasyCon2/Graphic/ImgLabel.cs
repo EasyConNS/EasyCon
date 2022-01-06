@@ -1,11 +1,11 @@
 ﻿using EasyCon2.Capture;
 using EasyCon2.Global;
 using JetBrains.Annotations;
-using Newtonsoft.Json;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace EasyCon2.Graphic
 {
@@ -341,7 +341,7 @@ namespace EasyCon2.Graphic
 
             ImgBase64 = this.ImageToBase64(searchImg);
 
-            File.WriteAllText(path + name + ".IL", JsonConvert.SerializeObject(this));
+            File.WriteAllText(path + name + ".IL", JsonSerializer.Serialize(this));
         }
 
         public void copy(ImgLabel il)

@@ -8,13 +8,13 @@ using ECDevice;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
-using Newtonsoft.Json;
 using PTController;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
 
@@ -222,11 +222,12 @@ namespace EasyCon2.Forms
         {
             try
             {
-                _config = JsonConvert.DeserializeObject<VControllerConfig>(File.ReadAllText(ConfigPath));
+                _config = JsonSerializer.Deserialize<VControllerConfig>(File.ReadAllText(ConfigPath));
+                _config = _config == null ? new VControllerConfig() : _config;
             }
             catch (Exception ex)
             {
-                if (!(ex is FileNotFoundException))
+                if (ex is not FileNotFoundException)
                     MessageBox.Show("读取设置文件失败！");
                 _config = new VControllerConfig();
                 _config.SetDefault();
@@ -235,7 +236,7 @@ namespace EasyCon2.Forms
 
         private void SaveConfig()
         {
-            File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(_config));
+            File.WriteAllText(ConfigPath, JsonSerializer.Serialize(_config));
         }
 
         private string GetFirmwareName(string corename)
