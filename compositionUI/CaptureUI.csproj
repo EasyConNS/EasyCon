@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>9</LangVersion>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VideoCaptureCore\VideoCaptureCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Composition\CompositionHost.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Composition\CompositionHostControl.cs" />
+  </ItemGroup>
+
+</Project>
