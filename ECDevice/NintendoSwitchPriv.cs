@@ -69,7 +69,6 @@ namespace ECDevice
         {
             str = str + " " + key?.Name ?? "";
             Debug.WriteLine(str);
-            //Log?.Invoke(str);;
         }
 
         private void Direction(DirectionKey dkey, bool down, ref DirectionKey flags, Func<byte, byte, Key> getkey)
@@ -88,6 +87,8 @@ namespace ECDevice
             int sleep = 0;
             while (true)
             {
+                if (source.Token.IsCancellationRequested)
+                    return;
                 if (_keystrokes.Count == 0)
                     _ewh.WaitOne();
                 else
@@ -95,7 +96,6 @@ namespace ECDevice
                 if (DateTime.Now < _nextSendTime)
                     Thread.Sleep((int)(_nextSendTime - DateTime.Now).TotalMilliseconds);
                 sleep = int.MaxValue;
-                //Thread.Yield();
                 lock (this)
                 {
                     if (_reset)
@@ -130,9 +130,7 @@ namespace ECDevice
                                 _keystrokes.Remove(ks.KeyCode);
                         }
                     }
-                    string log;
-                    log = $"[Send {DateTime.Now.ToString("ss.fff")}] { _report.GetKeyStr()}";
-                    //Debug.WriteLine(log);
+                    var log = $"[Send {DateTime.Now:ss.fff}] { _report.GetKeyStr()}";
                     Log?.Invoke(log);
                     clientCon.Write(_report.GetBytes());
                     _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);
