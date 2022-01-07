@@ -91,6 +91,8 @@
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.textBoxScriptHelp = new System.Windows.Forms.TextBox();
+            this.蓝牙ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.设备驱动配置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBox6.SuspendLayout();
@@ -108,6 +110,7 @@
             this.文件ToolStripMenuItem,
             this.脚本ToolStripMenuItem,
             this.CaptureDevToolStripMenuItem,
+            this.蓝牙ToolStripMenuItem,
             this.设置ToolStripMenuItem,
             this.帮助ToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(1, 1);
@@ -669,6 +672,22 @@
             this.textBoxScriptHelp.TabIndex = 35;
             this.textBoxScriptHelp.Text = resources.GetString("textBoxScriptHelp.Text");
             // 
+            // 蓝牙ToolStripMenuItem
+            // 
+            this.蓝牙ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.设备驱动配置ToolStripMenuItem});
+            this.蓝牙ToolStripMenuItem.Name = "蓝牙ToolStripMenuItem";
+            this.蓝牙ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
+            this.蓝牙ToolStripMenuItem.Text = "蓝牙";
+            this.蓝牙ToolStripMenuItem.Visible = false;
+            // 
+            // 设备驱动配置ToolStripMenuItem
+            // 
+            this.设备驱动配置ToolStripMenuItem.Name = "设备驱动配置ToolStripMenuItem";
+            this.设备驱动配置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
+            this.设备驱动配置ToolStripMenuItem.Click += new System.EventHandler(this.设备驱动配置ToolStripMenuItem_Click);
+            // 
             // EasyConForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
@@ -776,6 +795,8 @@
         private System.Windows.Forms.Integration.ElementHost elementHost1;
         private TextBox textBoxScriptHelp;
         private ToolStripMenuItem 推送设置ToolStripMenuItem;
+        private ToolStripMenuItem 蓝牙ToolStripMenuItem;
+        private ToolStripMenuItem 设备驱动配置ToolStripMenuItem;
     }
 }
 

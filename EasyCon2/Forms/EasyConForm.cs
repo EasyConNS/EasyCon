@@ -55,8 +55,12 @@ namespace EasyCon2.Forms
 
             formController = new FormController(new ControllerAdapter());
             formKeyMapping = new FormKeyMapping();
+
             LoadConfig();
             InitEditor();
+#if DEBUG
+            蓝牙ToolStripMenuItem.Visible = true;
+#endif
         }
 
         private void InitEditor()
@@ -1137,6 +1141,13 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
                 _config.AlertToken = form.TokenString;
                 SaveConfig();
             }
+        }
+
+        private void 设备驱动配置ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var btform = new win32.BTDeviceForm();
+            btform.ShowDialog();
+            btform.Dispose();
         }
         #endregion
     }
