@@ -13,6 +13,6 @@
 
     public class ScriptAbortException : ScriptException
     {
-        public ScriptAbortException(string message) : base(message, 0) {}
+        public ScriptAbortException(string message = "aborted!") : base(message, 0) {}
     }
 }

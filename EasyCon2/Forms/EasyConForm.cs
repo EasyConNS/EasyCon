@@ -38,7 +38,7 @@ namespace EasyCon2.Forms
         private Scripter _program = new();
         private bool scriptCompiling = false;
         private bool scriptRunning = false;
-        private CancellationTokenSource cts = new();
+        private Thread thd;
 
         private DateTime _startTime = DateTime.MinValue;
         private TimeSpan _lastRunningTime = TimeSpan.Zero;
@@ -130,7 +130,6 @@ namespace EasyCon2.Forms
                             buttonScriptRunStop.Text = "终止";
                         else
                             buttonScriptRunStop.Text = "运行";
-
                         // update record script to text
                         if (NS.recordState == RecordState.RECORD_START)
                         {
@@ -368,7 +367,7 @@ namespace EasyCon2.Forms
 
         private void StatusShowLog(string str)
         {
-            Invoke((Action)delegate
+            Invoke(delegate
             {
                 toolStripStatusLabel1.Text = str;
             });
@@ -423,8 +422,8 @@ namespace EasyCon2.Forms
             if (!ScriptCompile())
                 return;
 
-            cts = new();
-            Task.Run(() => _RunScript(), cts.Token);
+            thd = new Thread(_RunScript);
+            thd?.Start();
         }
 
         private void _RunScript()
@@ -434,18 +433,18 @@ namespace EasyCon2.Forms
             {
                 _startTime = DateTime.Now;
                 _lastRunningTime = TimeSpan.Zero;
-                Invoke((Action)delegate
+                Invoke(delegate
                 {
                     formController.ControllerEnabled = false;
                     StatusShowLog("开始运行");
                 });
                 Print("-- 开始运行 --", Color.Lime);
-                _program.Run(this, this, cts.Token);
+                _program.Run(this, this);
                 Print("-- 运行结束 --", Color.Lime);
                 StatusShowLog("运行结束");
                 SystemSounds.Beep.Play();
             }
-            catch (ScriptAbortException)
+            catch (ThreadInterruptedException)
             {
                 Print("-- 运行终止 --", Color.Orange);
                 StatusShowLog("运行终止");
@@ -479,7 +478,7 @@ namespace EasyCon2.Forms
         {
             if (scriptRunning)
             {
-                cts.Cancel();
+                thd?.Interrupt();
                 scriptRunning = false;
                 StatusShowLog("运行被终止");
                 SystemSounds.Beep.Play();
@@ -753,7 +752,9 @@ namespace EasyCon2.Forms
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
         {
             if (!scriptRunning)
+            {
                 ScriptRun();
+            } 
             else
                 ScriptStop();
         }

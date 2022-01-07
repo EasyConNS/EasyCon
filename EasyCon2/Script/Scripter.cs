@@ -15,7 +15,7 @@
             _statements = new Parsing.Parser(Constants, ExtVars).Parse(code);
         }
 
-        public void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token)
+        public void Run(IOutputAdapter output, ICGamePad pad)
         {
             var _processor = new Processor
             {
@@ -24,10 +24,6 @@
             };
             while (_processor.PC < _statements.Count)
             {
-                if (token.IsCancellationRequested)
-                {
-                    throw new ScriptAbortException("task aborted!");
-                }
                 var cmd = _statements[_processor.PC];
                 _processor.PC++;
                 cmd.Exec(_processor);
