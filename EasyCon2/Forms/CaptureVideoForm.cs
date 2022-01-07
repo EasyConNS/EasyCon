@@ -1,6 +1,7 @@
 ﻿using EasyCon2.Capture;
 using EasyCon2.Graphic;
 using EasyCon2.Helper;
+using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -106,7 +107,7 @@ namespace EasyCon2.Forms
             {
                 try
                 {
-                    var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(file));
+                    var temp = JsonConvert.DeserializeObject<ImgLabel>(File.ReadAllText(file));
                     if (temp.name == "") continue;
                     temp.Refresh(() => cvcap.GetImage());
                     imgLabels.Add(temp);
