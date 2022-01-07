@@ -35,7 +35,7 @@ namespace EasyCon2.Script.Parsing.Statements
             {
                 var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.Register}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, args.Formatter.GetReg(m.Groups[1].Value, _lhs)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, Formatter.GetReg(m.Groups[1].Value, _lhs)) as Statement;
                 return null;
             }
         }
@@ -48,7 +48,7 @@ namespace EasyCon2.Script.Parsing.Statements
             RegDst = regdst;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"{MetaInfo.KeyWord} {RegDst.GetCodeText(formatter)}";
         }
@@ -97,7 +97,7 @@ namespace EasyCon2.Script.Parsing.Statements
             {
                 var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\=\s*{_meta.Operator}\s*{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, args.Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetRegEx(m.Groups[2].Value, false)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, Formatter.GetRegEx(m.Groups[1].Value, true), Formatter.GetRegEx(m.Groups[2].Value, false)) as Statement;
                 return null;
             }
         }
@@ -112,7 +112,7 @@ namespace EasyCon2.Script.Parsing.Statements
             RegSrc = regsrc;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"{RegDst.GetCodeText(formatter)} = {MetaInfo.Operator}{RegSrc.GetCodeText(formatter)}";
         }

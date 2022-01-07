@@ -32,7 +32,7 @@ namespace EasyCon2.Script.Parsing.Statements
                 return new For_Static(args.Formatter.GetValueEx(m.Groups[1].Value));
             m = Regex.Match(args.Text, $@"^for\s+{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}\s*to\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
-                return new For_Full(args.Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value), args.Formatter.GetValueEx(m.Groups[3].Value));
+                return new For_Full(Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value), args.Formatter.GetValueEx(m.Groups[3].Value));
             return null;
         }
 
@@ -75,7 +75,7 @@ namespace EasyCon2.Script.Parsing.Statements
             return true;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"FOR";
         }
@@ -109,7 +109,7 @@ namespace EasyCon2.Script.Parsing.Statements
             processor.LoopTime[this]++;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"FOR {Count.GetCodeText(formatter)}";
         }
@@ -156,7 +156,7 @@ namespace EasyCon2.Script.Parsing.Statements
             processor.Register[RegIter]++;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"FOR {RegIter.GetCodeText(formatter)} = {InitVal.GetCodeText(formatter)} TO {Count.GetCodeText(formatter)}";
         }
@@ -191,7 +191,7 @@ namespace EasyCon2.Script.Parsing.Statements
             return null;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"NEXT";
         }
@@ -251,7 +251,7 @@ namespace EasyCon2.Script.Parsing.Statements
             return null;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return _omitted ? $"BREAK" : $"BREAK {Level.GetCodeText(formatter)}";
         }
@@ -293,7 +293,7 @@ namespace EasyCon2.Script.Parsing.Statements
             return null;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return _omitted ? $"CONTINUE" : $"CONTINUE {Level.GetCodeText(formatter)}";
         }

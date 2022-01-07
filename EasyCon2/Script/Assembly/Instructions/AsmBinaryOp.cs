@@ -31,9 +31,11 @@ namespace EasyCon2.Script.Assembly.Instructions
         {
             if (value is Parsing.ValReg)
             {
-                var ins = new T();
-                ins.RegDst = regdst;
-                ins.RegSrc = (value as Parsing.ValReg).Index;
+                var ins = new T
+                {
+                    RegDst = regdst,
+                    RegSrc = (value as Parsing.ValReg).Index
+                };
                 return ins;
             }
             else if (value is Parsing.ValInstant)
@@ -41,9 +43,11 @@ namespace EasyCon2.Script.Assembly.Instructions
                 var val = (value as Parsing.ValInstant).Val;
                 if (val < -(1 << 15) || val >= 1 << 15)
                     return Failed.OutOfRange;
-                var ins = new AsmBinaryOpInstant<T>();
-                ins.RegDst = regdst;
-                ins.Value = (value as Parsing.ValInstant).Val;
+                var ins = new AsmBinaryOpInstant<T>
+                {
+                    RegDst = regdst,
+                    Value = (value as Parsing.ValInstant).Val
+                };
                 return ins;
             }
             else
@@ -145,15 +149,16 @@ namespace EasyCon2.Script.Assembly.Instructions
 
         public static Instruction Create(uint regdst, Parsing.ValBase value)
         {
-            if (!(value is Parsing.ValInstant))
+            if (value is not Parsing.ValInstant)
                 return Failed.InvalidArgument;
             var val = (value as Parsing.ValInstant).Val;
             if (val < -(1 << 6) || val >= 1 << 6)
                 return Failed.OutOfRange;
-            var ins = new AsmMovCompressed();
-            ins.RegDst = regdst;
-            ins.Value = val;
-            return ins;
+            return new AsmMovCompressed
+            {
+                RegDst = regdst,
+                Value = val
+            };
         }
 
         public override void WriteBytes(Stream stream)

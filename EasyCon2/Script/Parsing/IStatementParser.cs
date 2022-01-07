@@ -25,6 +25,6 @@
     class ParserArgument
     {
         public string Text;
-        public Formats.Formatter Formatter;
+        public Formatter Formatter;
     }
 }

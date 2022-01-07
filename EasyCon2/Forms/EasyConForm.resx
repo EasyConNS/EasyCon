@@ -63,6 +63,9 @@
   <metadata name="elementHost1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
   </metadata>
+  <metadata name="elementHost1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>17, 17</value>
+  </metadata>
   <metadata name="openFileDialog1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>393, 17</value>
   </metadata>
@@ -77,7 +80,7 @@
 
 【注释】
 语法：# 注释内容
-（多写注释是个好习惯，尤其是分享给别人的时候）
+（多写注释是个好习惯，尤其是分享脚本给别人的时候）
 
 【输出】
 语法：PRINT 输出内容
@@ -87,6 +90,7 @@
 语法：ALERT 输出内容
 （联机模式专用，发送推送消息，基于推送加服务）
 注意！需要先关注&lt;pushplus推送加&gt;小程序生成token
+取得token后请在设置-&gt;推送设置页面配置，否则无法使用
 
 【按键】
 语法：键位 [持续时间(ms)|DOWN|UP]
@@ -98,11 +102,13 @@
 【摇杆】
 语法：LS|RS 方向|角度 [, 持续时间(ms)]
 语法：LS|RS RESET
+语法：LSS|RSS 方向(1.45新增慢推语法，仅支持方向，不支持角度)
 （LS左摇杆，RS右摇杆；方向可取UP、DOWN、LEFT、RIGHT；角度可取0~360，以右侧为0度，逆时针旋转；持续时间省略则一直保持，直到用RESET恢复原位）
 示例：RS UP,50（右摇杆上推50毫秒）
 示例：RS DOWN,2000（右摇杆下推2秒）
 示例：LS 135（左摇杆左上方向，保持不动）
 示例：LS RESET（左摇杆恢复原位）
+示例：LSS UP（左摇杆向上慢推，即推一半）
 
 【等待】
 语法：[WAIT] 等待时间(ms)
@@ -134,6 +140,7 @@ NEXT
 32位变量名语法：$$索引
 （变量不支持自定义命名，只能使用数字编号；变量名必须以“$”开头，后加索引，取值0~7；其中$0常驻为0，无法修改，$7用于存储计算中间值，尽量避免使用；变量取值范围为-32768至+32767）
 （1.12新增32位变量支持，但实际是使用相邻的两个16位变量，例如$$1相当于使用$1和$2，因而推荐仅使用$$1、$$3、$$5，并且使用$$1的时候就不要使用$1和$2，其它同理；32位变量取值范围为-2147483648至+2147483647）
+（1.45提高变量索引上限0~63，仅限联机模式可用）
 （32位变量暂时只有联机模式可用）
 
 【赋值】

@@ -32,24 +32,18 @@ namespace EasyCon2.Script.Parsing
         public static NintendoSwitch.Key Get(string name)
         {
             name = name.ToUpper();
-            if (_keyDict.ContainsKey(name))
-                return _keyDict[name];
-            return null;
+            return _keyDict.GetValueOrDefault(name, null);
         }
 
         public static string GetName(NintendoSwitch.Key key)
         {
-            if (_keyName.ContainsKey(key))
-                return _keyName[key];
-            return string.Empty;
+            return _keyName.GetValueOrDefault(key, string.Empty);
         }
 
         public static NintendoSwitch.DirectionKey GetDirection(string direction)
         {
             direction = direction.ToUpper();
-            if (_directions.ContainsKey(direction))
-                return _directions[direction];
-            return NintendoSwitch.DirectionKey.None;
+            return _directions.GetValueOrDefault(direction, NintendoSwitch.DirectionKey.None);
         }
     }
 }

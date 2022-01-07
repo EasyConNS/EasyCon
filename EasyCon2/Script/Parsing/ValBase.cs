@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace EasyCon2.Script.Parsing
+﻿namespace EasyCon2.Script.Parsing
 {
     // base of valuetype
     abstract class ValBase
@@ -12,7 +10,7 @@ namespace EasyCon2.Script.Parsing
             throw new InvalidOperationException();
         }
 
-        public abstract string GetCodeText(Formats.Formatter formatter);
+        public abstract string GetCodeText(Formatter formatter);
 
         public static implicit operator ValBase(int val)
         {
@@ -43,7 +41,7 @@ namespace EasyCon2.Script.Parsing
             return Val;
         }
 
-        public override string GetCodeText(Formats.Formatter formatter)
+        public override string GetCodeText(Formatter formatter)
         {
             return Text;
         }
@@ -88,9 +86,9 @@ namespace EasyCon2.Script.Parsing
             return processor.Register[Index];
         }
 
-        public override string GetCodeText(Formats.Formatter formatter)
+        public override string GetCodeText(Formatter formatter)
         {
-            return formatter.GetRegText(Index);
+            return Formatter.GetRegText(Index);
         }
     }
 
@@ -106,9 +104,9 @@ namespace EasyCon2.Script.Parsing
             return processor.Register.GetReg32(Index);
         }
 
-        public override string GetCodeText(Formats.Formatter formatter)
+        public override string GetCodeText(Formatter formatter)
         {
-            return formatter.GetReg32Text(Index);
+            return Formatter.GetReg32Text(Index);
         }
     }
 
@@ -132,9 +130,9 @@ namespace EasyCon2.Script.Parsing
             Var.Set(value);
         }
 
-        public override string GetCodeText(Formats.Formatter formatter)
+        public override string GetCodeText(Formatter formatter)
         {
-            return formatter.GetExtVarText(Var.Name);
+            return Formatter.GetExtVarText(Var.Name);
         }
     }
 }

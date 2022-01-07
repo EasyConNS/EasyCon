@@ -12,16 +12,17 @@
 
         public abstract void Assemble(Assembly.Assembler assembler);
 
-        public string GetString(Formats.Formatter formatter)
+        public string GetString(Formatter formatter)
         {
             return $"{Indent}{_GetString(formatter)}{Comment}";
         }
 
-        protected abstract string _GetString(Formats.Formatter formatter);
+        protected abstract string _GetString(Formatter formatter);
 
         protected static class ErrorMessage
         {
             public const string NotSupported = "该语句目前仅支持联机模式";
+            public const string RegisterCountNotSupported = "联机寄存器不能烧录为固件模式";
             public const string NotImplemented = "类型未定义，这可能是一个bug，请汇报给作者";
         }
     }

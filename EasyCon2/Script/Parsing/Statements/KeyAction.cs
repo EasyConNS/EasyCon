@@ -6,7 +6,7 @@ namespace EasyCon2.Script.Parsing.Statements
     abstract class KeyAction : Statement
     {
         public static readonly IStatementParser Parser = new StatementParser(Parse);
-        public readonly NintendoSwitch.Key Key;
+        protected readonly NintendoSwitch.Key Key;
 
         public KeyAction(NintendoSwitch.Key key)
         {
@@ -71,7 +71,7 @@ namespace EasyCon2.Script.Parsing.Statements
             }
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return _omitted ? $"{NSKeys.GetName(Key)}" : $"{NSKeys.GetName(Key)} {Duration.GetCodeText(formatter)}";
         }
@@ -123,7 +123,7 @@ namespace EasyCon2.Script.Parsing.Statements
             NintendoSwitch.GetInstance().Down(Key);
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"{NSKeys.GetName(Key)} DOWN";
         }
@@ -147,7 +147,7 @@ namespace EasyCon2.Script.Parsing.Statements
             NintendoSwitch.GetInstance().Up(Key);
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"{NSKeys.GetName(Key)} UP";
         }

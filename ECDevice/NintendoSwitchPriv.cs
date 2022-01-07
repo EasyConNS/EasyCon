@@ -1,6 +1,4 @@
-﻿using ECDevice.Arduino;
-using System;
-using System.Diagnostics;
+﻿using System;
 using System.Linq;
 using System.Threading;
 
@@ -21,7 +19,7 @@ namespace ECDevice
         bool SendSync(Func<byte, bool> predicate, int timeout = 100, params byte[] bytes)
         {
             EventWaitHandle ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
-            ConClient.BytesTransferedHandler h = (port, bytes_) =>
+            void h(string port, byte[] bytes_)
             {
                 foreach (var b in bytes_)
                     if (predicate(b))
@@ -29,7 +27,7 @@ namespace ECDevice
                         ewh.Set();
                         break;
                     }
-            };
+            }
             try
             {
                 clientCon.BytesReceived += h;
@@ -46,12 +44,12 @@ namespace ECDevice
 
         bool ResetControl()
         {
-            EventWaitHandle ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
-            ConClient.BytesTransferedHandler h = (port, bytes_) =>
+            var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
+            void h(string port, byte[] bytes_)
             {
                 if (bytes_.Contains(Reply.Hello))
                     ewh.Set();
-            };
+            }
             try
             {
                 clientCon.BytesReceived += h;
@@ -65,16 +63,8 @@ namespace ECDevice
             }
         }
 
-        void PrintKey(string str, Key key = null)
-        {
-            str = str + " " + key?.Name ?? "";
-            Debug.WriteLine(str);
-            //Log?.Invoke(str);;
-        }
-
         private void Direction(DirectionKey dkey, bool down, ref DirectionKey flags, Func<byte, byte, Key> getkey)
         {
-            var oldflags = flags;
             if (down)
                 flags |= dkey;
             else
@@ -88,6 +78,8 @@ namespace ECDevice
             int sleep = 0;
             while (true)
             {
+                if (source.Token.IsCancellationRequested)
+                    return;
                 if (_keystrokes.Count == 0)
                     _ewh.WaitOne();
                 else
@@ -95,7 +87,6 @@ namespace ECDevice
                 if (DateTime.Now < _nextSendTime)
                     Thread.Sleep((int)(_nextSendTime - DateTime.Now).TotalMilliseconds);
                 sleep = int.MaxValue;
-                //Thread.Yield();
                 lock (this)
                 {
                     if (_reset)
@@ -130,9 +121,7 @@ namespace ECDevice
                                 _keystrokes.Remove(ks.KeyCode);
                         }
                     }
-                    string log;
-                    log = $"[Send {DateTime.Now.ToString("ss.fff")}] { _report.GetKeyStr()}";
-                    //Debug.WriteLine(log);
+                    var log = $"[Send {DateTime.Now:ss.fff}] { _report.GetKeyStr()}";
                     Log?.Invoke(log);
                     clientCon.Write(_report.GetBytes());
                     _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);

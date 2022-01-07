@@ -9,10 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\VideoCaptureCore\VideoCaptureCore.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="Composition\CompositionHost.cs">
       <SubType>Component</SubType>
     </Compile>

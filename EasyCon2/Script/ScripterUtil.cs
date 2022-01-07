@@ -26,9 +26,10 @@ namespace EasyCon2.Script
 
         public static NintendoSwitch.Key GetKey(string keyname, string direction = "0")
         {
+            var isSlow = keyname.EndsWith("SS", StringComparison.OrdinalIgnoreCase);
             if (int.TryParse(direction, out int degree))
             {
-                if (keyname.Equals("LS", StringComparison.OrdinalIgnoreCase))
+                if (keyname.StartsWith("LS", StringComparison.OrdinalIgnoreCase))
                     return NintendoSwitch.Key.LStick(degree);
                 else
                     return NintendoSwitch.Key.RStick(degree);
@@ -38,12 +39,11 @@ namespace EasyCon2.Script
                 var dk = NSKeys.GetDirection(direction);
                 if (dk == NintendoSwitch.DirectionKey.None)
                     return null;
-                if (keyname.Equals("LS", StringComparison.OrdinalIgnoreCase))
-                    return NintendoSwitch.Key.LStick(dk);
+                if (keyname.StartsWith("LS", StringComparison.OrdinalIgnoreCase))
+                    return NintendoSwitch.Key.LStick(dk, isSlow);
                 else
-                    return NintendoSwitch.Key.RStick(dk);
+                    return NintendoSwitch.Key.RStick(dk, isSlow);
             }
         }
-
     }
 }

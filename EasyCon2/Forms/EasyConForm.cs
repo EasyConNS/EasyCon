@@ -8,13 +8,13 @@ using ECDevice;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
-using Newtonsoft.Json;
 using PTController;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
 
@@ -28,16 +28,6 @@ namespace EasyCon2.Forms
         internal FormKeyMapping formKeyMapping;
         internal CaptureVideoForm captureVideo;
 
-        private class ControllerAdapter : IControllerAdapter
-        {
-            public Color CurrentLight => Color.White;
-
-            public bool IsRunning()
-            {
-                return false;
-            }
-        }
-
         const string ConfigPath = @"config.json";
         const string ScriptPath = @"Script\";
         const string FirmwarePath = @"Firmware\";
@@ -48,7 +38,7 @@ namespace EasyCon2.Forms
         private Scripter _program = new();
         private bool scriptCompiling = false;
         private bool scriptRunning = false;
-        private CancellationTokenSource cts = new();
+        private Thread thd;
 
         private DateTime _startTime = DateTime.MinValue;
         private TimeSpan _lastRunningTime = TimeSpan.Zero;
@@ -65,8 +55,12 @@ namespace EasyCon2.Forms
 
             formController = new FormController(new ControllerAdapter());
             formKeyMapping = new FormKeyMapping();
+
             LoadConfig();
             InitEditor();
+#if DEBUG
+            蓝牙ToolStripMenuItem.Visible = true;
+#endif
         }
 
         private void InitEditor()
@@ -83,7 +77,8 @@ namespace EasyCon2.Forms
 
         private void EasyConForm_Load(object sender, EventArgs e)
         {
-            InitBoards();
+            comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
+            comboBoxBoardType.SelectedIndex = 0;
             RegisterKeys();
 
             // UI updating timer
@@ -128,16 +123,15 @@ namespace EasyCon2.Forms
             {
                 while (true)
                 {
-                    Invoke((Action)delegate
+                    Invoke(delegate
                     {
                         // run/stop button
                         if (scriptRunning)
                             buttonScriptRunStop.Text = "终止";
                         else
                             buttonScriptRunStop.Text = "运行";
-
                         // update record script to text
-                        if (NS.recordState == NintendoSwitch.RecordState.RECORD_START)
+                        if (NS.recordState == RecordState.RECORD_START)
                         {
                             buttonRecord.Text = "停止录制";
                             textBoxScript.Text = NS.GetRecordScript();
@@ -231,11 +225,12 @@ namespace EasyCon2.Forms
         {
             try
             {
-                _config = JsonConvert.DeserializeObject<VControllerConfig>(File.ReadAllText(ConfigPath));
+                _config = JsonSerializer.Deserialize<VControllerConfig>(File.ReadAllText(ConfigPath));
+                _config = _config == null ? new VControllerConfig() : _config;
             }
             catch (Exception ex)
             {
-                if (!(ex is FileNotFoundException))
+                if (ex is not FileNotFoundException)
                     MessageBox.Show("读取设置文件失败！");
                 _config = new VControllerConfig();
                 _config.SetDefault();
@@ -244,17 +239,7 @@ namespace EasyCon2.Forms
 
         private void SaveConfig()
         {
-            File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(_config));
-        }
-
-        void InitBoards()
-        {
-            comboBoxBoardType.Items.Add(new Board("Arduino UNO R3", "UNO", 400));
-            comboBoxBoardType.Items.Add(new Board("Beetle", "Beetle", 900));
-            comboBoxBoardType.Items.Add(new Board("Leonardo", "Leonardo", 900));
-            comboBoxBoardType.Items.Add(new Board("Teensy 2.0", "Teensy2", 900));
-            comboBoxBoardType.Items.Add(new Board("Teensy 2.0++", "Teensy2pp", 900));
-            comboBoxBoardType.SelectedIndex = 0;
+            File.WriteAllText(ConfigPath, JsonSerializer.Serialize(_config));
         }
 
         private string GetFirmwareName(string corename)
@@ -366,23 +351,23 @@ namespace EasyCon2.Forms
 
         void ICGamePad.ClickButtons(NintendoSwitch.Key key, int duration)
         {
-            NintendoSwitch.GetInstance().Press(key, duration);
+            NS.Press(key, duration);
         }
 
         void ICGamePad.PressButtons(NintendoSwitch.Key key)
         {
-            NintendoSwitch.GetInstance().Down(key);
+            NS.Down(key);
         }
 
         void ICGamePad.ReleaseButtons(NintendoSwitch.Key key)
         {
-            NintendoSwitch.GetInstance().Up(key);
+            NS.Up(key);
         }
         #endregion
 
         private void StatusShowLog(string str)
         {
-            Invoke((Action)delegate
+            Invoke(delegate
             {
                 toolStripStatusLabel1.Text = str;
             });
@@ -437,8 +422,8 @@ namespace EasyCon2.Forms
             if (!ScriptCompile())
                 return;
 
-            cts = new();
-            Task.Run(() => _RunScript(), cts.Token);
+            thd = new Thread(_RunScript);
+            thd?.Start();
         }
 
         private void _RunScript()
@@ -448,18 +433,18 @@ namespace EasyCon2.Forms
             {
                 _startTime = DateTime.Now;
                 _lastRunningTime = TimeSpan.Zero;
-                Invoke((Action)delegate
+                Invoke(delegate
                 {
                     formController.ControllerEnabled = false;
                     StatusShowLog("开始运行");
                 });
                 Print("-- 开始运行 --", Color.Lime);
-                _program.Run(this, this, cts.Token);
+                _program.Run(this, this);
                 Print("-- 运行结束 --", Color.Lime);
                 StatusShowLog("运行结束");
                 SystemSounds.Beep.Play();
             }
-            catch (ScriptAbortException)
+            catch (ThreadInterruptedException)
             {
                 Print("-- 运行终止 --", Color.Orange);
                 StatusShowLog("运行终止");
@@ -493,7 +478,7 @@ namespace EasyCon2.Forms
         {
             if (scriptRunning)
             {
-                cts.Cancel();
+                thd?.Interrupt();
                 scriptRunning = false;
                 StatusShowLog("运行被终止");
                 SystemSounds.Beep.Play();
@@ -515,7 +500,7 @@ namespace EasyCon2.Forms
         {
             if (NS.IsConnected())
                 return true;
-            if (!ComPort.Text.Equals("    下拉选择串口"))
+            if (!ComPort.Text.Equals("下拉选择串口"))
                 return SerialConnect(ComPort.Text);
             return SerialSearchConnect() != null;
         }
@@ -767,7 +752,9 @@ namespace EasyCon2.Forms
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
         {
             if (!scriptRunning)
+            {
                 ScriptRun();
+            } 
             else
                 ScriptStop();
         }
@@ -974,7 +961,7 @@ namespace EasyCon2.Forms
         private void buttonRecord_Click(object sender, EventArgs e)
         {
             // if record.state = start
-            if (NS.recordState == NintendoSwitch.RecordState.RECORD_STOP)
+            if (NS.recordState == RecordState.RECORD_STOP)
             {
                 if (!SerialCheckConnect())
                     return;
@@ -997,7 +984,7 @@ namespace EasyCon2.Forms
         private void buttonRecordPause_Click(object sender, EventArgs e)
         {
             // pause the record
-            if (NS.recordState == NintendoSwitch.RecordState.RECORD_START)
+            if (NS.recordState == RecordState.RECORD_START)
             {
                 NS.PauseRecord();
             }
@@ -1129,7 +1116,11 @@ namespace EasyCon2.Forms
 
         private void 关于ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("详细使用教程见群946057081文档\n\nCopyright © 2020. 铃落(Nukieberry)\n\nFork by cale", "关于");
+            MessageBox.Show(@"详细使用教程见群946057081文档
+
+Copyright © 2020. 铃落(Nukieberry)
+Copyright © 2021. 云浅雪
+Copyright © 2022. 卡尔(ca1e)", "关于");
         }
 
         private void 项目源码ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1151,6 +1142,13 @@ namespace EasyCon2.Forms
                 _config.AlertToken = form.TokenString;
                 SaveConfig();
             }
+        }
+
+        private void 设备驱动配置ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var btform = new win32.BTDeviceForm();
+            btform.ShowDialog();
+            btform.Dispose();
         }
         #endregion
     }

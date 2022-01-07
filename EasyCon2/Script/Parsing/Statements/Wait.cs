@@ -5,8 +5,8 @@ namespace EasyCon2.Script.Parsing.Statements
     class Wait : Statement
     {
         public static readonly IStatementParser Parser = new StatementParser(Parse);
-        public readonly ValBase Duration;
-        bool _omitted;
+        protected readonly ValBase Duration;
+        protected bool _omitted;
 
         public Wait(ValBase duration, bool omitted)
         {
@@ -25,7 +25,7 @@ namespace EasyCon2.Script.Parsing.Statements
             return null;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return _omitted ? $"{Duration.GetCodeText(formatter)}" : $"WAIT {Duration.GetCodeText(formatter)}";
         }

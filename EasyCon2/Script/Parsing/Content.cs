@@ -3,7 +3,7 @@
     abstract class Content
     {
         public abstract string GetPrintString(Processor processor);
-        public abstract string GetCodeString(Formats.Formatter formatter);
+        public abstract string GetCodeString(Formatter formatter);
     }
 
     class TextContent : Content
@@ -22,7 +22,7 @@
             return Text;
         }
 
-        public override string GetCodeString(Formats.Formatter formatter)
+        public override string GetCodeString(Formatter formatter)
         {
             return CodeText;
         }
@@ -42,7 +42,7 @@
             return processor.Register[Reg].ToString();
         }
 
-        public override string GetCodeString(Formats.Formatter formatter)
+        public override string GetCodeString(Formatter formatter)
         {
             return Reg.GetCodeText(formatter);
         }

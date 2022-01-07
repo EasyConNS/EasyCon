@@ -35,7 +35,7 @@ namespace EasyCon2.Script.Parsing.Statements
             {
                 var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\{_meta.Operator}\s*{(_meta.OnlyInstant ? Formats.Instant : Formats.ValueEx)}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, args.Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value)) as Statement;
                 return null;
             }
         }
@@ -50,7 +50,7 @@ namespace EasyCon2.Script.Parsing.Statements
             Value = value;
         }
 
-        protected override string _GetString(Formats.Formatter formatter)
+        protected override string _GetString(Formatter formatter)
         {
             return $"{RegDst.GetCodeText(formatter)} {MetaInfo.Operator} {Value.GetCodeText(formatter)}";
         }

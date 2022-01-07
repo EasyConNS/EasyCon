@@ -1,4 +1,4 @@
-﻿using ECDevice.Arduino;
+﻿using ECDevice.Connection;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,6 +11,12 @@ namespace ECDevice
     public partial class NintendoSwitch
     {
         const int MINIMAL_INTERVAL = 30;
+
+        public const byte STICK_MIN = 0;
+        public const byte STICK_CENMIN = 64;
+        public const byte STICK_CENTER = 128;
+        public const byte STICK_CENMAX = 192;
+        public const byte STICK_MAX = 255;
 
         [Flags]
         public enum Button
@@ -43,10 +49,6 @@ namespace ECDevice
             TOP_LEFT = 0x07,
             CENTER = 0x08,
         }
-
-        public const byte STICK_MIN = 0;
-        public const byte STICK_CENTER = 128;
-        public const byte STICK_MAX = 255;
 
         [Flags]
         public enum DirectionKey
@@ -255,31 +257,27 @@ namespace ECDevice
                 );
             }
 
-            public static Key LStick(DirectionKey dkey)
+            public static Key LStick(DirectionKey dkey, bool slow = false)
             {
-                byte x, y;
-                GetXYFromDirection(dkey, out x, out y);
+                GetXYFromDirection(dkey, out byte x, out byte y, slow);
                 return LStick(x, y);
             }
 
-            public static Key RStick(DirectionKey dkey)
+            public static Key RStick(DirectionKey dkey, bool slow = false)
             {
-                byte x, y;
-                GetXYFromDirection(dkey, out x, out y);
+                GetXYFromDirection(dkey, out byte x, out byte y, slow);
                 return RStick(x, y);
             }
 
             public static Key LStick(double degree)
             {
-                byte x, y;
-                GetXYFromDirection(degree, out x, out y);
+                GetXYFromDegree(degree, out byte x, out byte y);
                 return LStick(x, y);
             }
 
             public static Key RStick(double degree)
             {
-                byte x, y;
-                GetXYFromDirection(degree, out x, out y);
+                GetXYFromDegree(degree, out byte x, out byte y);
                 return RStick(x, y);
             }
 
@@ -301,124 +299,12 @@ namespace ECDevice
             }
         }
 
-        class KeyStroke
-        {
-            public readonly Key Key;
-            public readonly bool Up;
-            public readonly int Duration;
-            public readonly DateTime Time;
-            public int KeyCode => Key.KeyCode;
-
-            public KeyStroke(Key key, bool up = false, int duration = 0, DateTime time = default)
-            {
-                Key = key;
-                Up = up;
-                Duration = duration;
-                Time = DateTime.Now;
-            }
-        }
-        public enum RecordState
-        {
-            RECORD_START = 0x00,
-            RECORD_PAUSE = 0x01,
-            RECORD_STOP = 0x02,
-        }
-
-        class OperationRecords
-        {
-            private List<KeyStroke> records = new List<KeyStroke>();
-            string script = "";
-
-            public OperationRecords()
-            {
-            }
-
-            private string GetScriptKeyName(string key)
-            {
-                return key switch
-                {
-                    "RStick(128,0)" => "RS UP",
-                    "RStick(128,128)" => "RS RESET",
-                    "RStick(128,255)" => "RS DOWN",
-                    "RStick(0,128)" => "RS LEFT",
-                    "RStick(255,128)" => "RS RIGHT",
-                    "RStick(0,0)" => "RS 135",
-                    "RStick(255,255)" => "RS 315",
-                    "RStick(0,255)" => "RS 225",
-                    "RStick(255,0)" => "RS 45",
-                    "LStick(128,0)" => "LS UP",
-                    "LStick(128,128)" => "LS RESET",
-                    "LStick(128,255)" => "LS DOWN",
-                    "LStick(0,128)" => "LS LEFT",
-                    "LStick(255,128)" => "LS RIGHT",
-                    "LStick(0,0)" => "LS 135",
-                    "LStick(255,255)" => "LS 315",
-                    "LStick(0,255)" => "LS 225",
-                    "LStick(255,0)" => "LS 45",
-                    "HAT.TOP" => "UP",
-                    "HAT.BOTTOM" => "DOWN",
-                    "HAT.LEFT" => "LEFT",
-                    "HAT.RIGHT" => "RIGHT",
-                    "HAT.TOP_LEFT" => "UPLEFT",
-                    "HAT.TOP_RIGHT" => "UPRIGHT",
-                    "HAT.BOTTOM_LEFT" => "DOWNLEFT",
-                    "HAT.BOTTOM_RIGHT" => "DOWNRIGHT",
-                    _ => key,
-                };
-            }
-
-            public void AddRecord(KeyStroke key)
-            {
-                string new_item = "";
-
-                // insert the wait cmd
-                if (records.Count() > 0)
-                {
-                    long wait_time = (key.Time.Ticks - records.Last().Time.Ticks) / 10000;
-                    script += "WAIT " + wait_time + "\r\n";
-                }
-
-                records.Add(key);
-                new_item += GetScriptKeyName(key.Key.Name);
-                Debug.WriteLine("keycode:" + key.KeyCode);
-                if (key.KeyCode != 32 && key.KeyCode != 33)
-                {
-                    if (key.Up)
-                    {
-                        new_item += " UP";
-                    }
-                    else
-                    {
-                        new_item += " DOWN";
-                    }
-                }
-                script += new_item + "\r\n";
-            }
-
-            public void Clear()
-            {
-                records.Clear();
-                script = "";
-            }
-            public string ToScript(bool WithComment)
-            {
-                if (WithComment)
-                {
-
-                }
-
-                return script;
-            }
-        }
-
-        public ConClient clientCon { get; private set; }
-        Report _report = new Report();
+        private IConnClient clientCon { get; set; }
+        Report _report = new();
         Dictionary<int, KeyStroke> _keystrokes = new();
         bool _reset = false;
 
-        Task _thread;
-        CancellationTokenSource source;
-        CancellationToken token;
+        CancellationTokenSource source = new();
         EventWaitHandle _ewh = new(false, EventResetMode.ManualReset);
 
         DateTime _nextSendTime = DateTime.MinValue;
@@ -429,10 +315,10 @@ namespace ECDevice
 
         public delegate void LogHandler(string s);
         public event LogHandler Log;
-        public event ConClient.BytesTransferedHandler BytesSent;
-        public event ConClient.BytesTransferedHandler BytesReceived;
+        public event IConnClient.BytesTransferedHandler BytesSent;
+        public event IConnClient.BytesTransferedHandler BytesReceived;
 
-        OperationRecords operationRecords = new OperationRecords();
+        private OperationRecords operationRecords = new();
         public RecordState recordState = RecordState.RECORD_STOP;
 
         public ConnectResult TryConnect(string connStr, bool sayhello)
@@ -440,7 +326,7 @@ namespace ECDevice
             if (connStr == "")
                 return ConnectResult.InvalidArgument;
 
-            EventWaitHandle ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
+            var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
             ConnectResult result = ConnectResult.None;
             void statuschanged(Status status)
             {
@@ -462,10 +348,10 @@ namespace ECDevice
             }
 
             Disconnect();
-            clientCon = new ConClient(connStr);
+            clientCon = new TTLSerialClient(connStr);
             clientCon.BytesSent += (port, bytes) => BytesSent?.Invoke(port, bytes);
             clientCon.BytesReceived += (port, bytes) => BytesReceived?.Invoke(port, bytes);
-            clientCon.CpuOpt = need_cpu_opt;
+            clientCon.CPUOpt = need_cpu_opt;
             
             clientCon.StatusChanged += statuschanged;
             clientCon.Connect(sayhello);
@@ -484,12 +370,11 @@ namespace ECDevice
             clientCon.StatusChanged -= statuschanged;
 
             source = new CancellationTokenSource();
-            token = source.Token;
-            _thread = Task.Run(() =>
+            Task.Run(() =>
             {
                 Loop();
             },
-            token);
+            source.Token);
 
             return ConnectResult.Success;
         }
@@ -502,7 +387,6 @@ namespace ECDevice
             {
                 source.Cancel();
             }
-            _thread = null;
         }
 
         public bool IsConnected()
@@ -518,6 +402,12 @@ namespace ECDevice
         public Report GetReport()
         {
             return _report.Clone() as Report;
+        }
+
+        void PrintKey(string str, Key key = null)
+        {
+            str = str + " " + key?.Name ?? "";
+            Debug.WriteLine(str);
         }
 
         public void Reset()
@@ -536,7 +426,6 @@ namespace ECDevice
             lock (this)
             {
                 PrintKey("Down", key);
-                //Debug.Write("code:" + key.KeyCode);
                 Signal();
                 _keystrokes[key.KeyCode] = new KeyStroke(key);
                 if (recordState == RecordState.RECORD_START)

@@ -35,7 +35,7 @@ namespace ECDevice
             };
         }
 
-        static void GetXYFromDirection(double degree, out byte x, out byte y)
+        static void GetXYFromDegree(double degree, out byte x, out byte y)
         {
             double radian = degree * Math.PI / 180;
             double dy = Math.Round((Math.Tan(radian) * Math.Sign(Math.Cos(radian))).Clamp(-1, 1), 4);
@@ -44,18 +44,18 @@ namespace ECDevice
             y = (byte)((-dy + 1) / 2 * (STICK_MAX - STICK_MIN) + STICK_MIN);
         }
 
-        static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y)
+        static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, bool slow = false)
         {
             if (dkey.HasFlag(DirectionKey.Left) && !dkey.HasFlag(DirectionKey.Right))
-                x = STICK_MIN;
+                x = slow? STICK_CENMIN : STICK_MIN;
             else if (!dkey.HasFlag(DirectionKey.Left) && dkey.HasFlag(DirectionKey.Right))
-                x = STICK_MAX;
+                x = slow? STICK_CENMAX : STICK_MAX;
             else
                 x = STICK_CENTER;
             if (dkey.HasFlag(DirectionKey.Up) && !dkey.HasFlag(DirectionKey.Down))
-                y = STICK_MIN;
+                y = slow ? STICK_CENMIN: STICK_MIN;
             else if (!dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
-                y = STICK_MAX;
+                y = slow ? STICK_CENMAX : STICK_MAX;
             else
                 y = STICK_CENTER;
         }

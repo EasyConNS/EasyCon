@@ -81,15 +81,29 @@ namespace EasyCon2.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &lt;NotepadPlus&gt;
-        ///    &lt;UserLang name=&quot;EasyCon&quot; ext=&quot;&quot; udlVersion=&quot;2.1&quot;&gt;
-        ///        &lt;Settings&gt;
-        ///            &lt;Global caseIgnored=&quot;yes&quot; allowFoldOfComments=&quot;no&quot; foldCompact=&quot;no&quot; forcePureLC=&quot;0&quot; decimalSeparator=&quot;0&quot; /&gt;
-        ///            &lt;Prefix Keywords1=&quot;no&quot; Keywords2=&quot;no&quot; Keywords3=&quot;yes&quot; Keywords4=&quot;yes&quot; Keywords5=&quot;yes&quot; Keywords6=&quot;no&quot; Keywords7=&quot;no&quot; Keywords8=&quot;no&quot; /&gt;
-        ///        &lt;/Settings&gt;
-        ///        &lt;KeywordLists&gt;
-        ///            &lt;Keywords name=&quot;Comments&quot;&gt;00# 01 02 03 04&lt;/Keywords&gt;
-        ///            &lt;Keywords name=&quot;Numbers, prefix [rest of string was truncated]&quot;;.
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] lua {
+            get {
+                object obj = ResourceManager.GetObject("lua", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot;?&gt;
+        ///&lt;SyntaxDefinition name = &quot;NX&quot; extensions = &quot;.nmcx&quot;&gt;
+        ///  &lt;Properties&gt;
+        ///    &lt;Property name=&quot;LineComment&quot; value=&quot;#&quot;/&gt;
+        ///  &lt;/Properties&gt;
+        ///  &lt;Digits name = &quot;Digits&quot; bold = &quot;false&quot; italic = &quot;false&quot; color = &quot;DarkBlue&quot;/&gt;
+        ///  &lt;RuleSets&gt;
+        ///    &lt;RuleSet ignorecase = &quot;true&quot;&gt;
+        ///      &lt;Span name = &quot;LineComment&quot; bold=&quot;false&quot; italic=&quot;false&quot; color=&quot;Green&quot; stopateol = &quot;true&quot;&gt;
+        ///        &lt;Begin&gt;#&lt;/Begin&gt;
+        ///      &lt;/Span&gt;
+        ///      &lt;KeyWords name = &quot;Funcs&quot; bold=&quot;true&quot; italic=&quot;false&quot; color=&quot;LightBlue&quot;&gt;
+        ///        &lt;Key  [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string NX {
             get {
