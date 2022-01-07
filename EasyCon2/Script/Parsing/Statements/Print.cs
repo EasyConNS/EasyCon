@@ -6,8 +6,8 @@ namespace EasyCon2.Script.Parsing.Statements
     {
         public static readonly IStatementParser Parser = new StatementParser(Parse);
 
-        public readonly Content[] Contents;
-        public readonly bool CancelLineBreak;
+        private readonly Content[] Contents;
+        private readonly bool CancelLineBreak;
 
         public Print(Content[] contents, bool cancellinebreak)
         {

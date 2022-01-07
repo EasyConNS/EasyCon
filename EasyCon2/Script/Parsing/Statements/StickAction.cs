@@ -5,9 +5,9 @@ namespace EasyCon2.Script.Parsing.Statements
     abstract class StickAction : Statement
     {
         public static readonly IStatementParser Parser = new StatementParser(Parse);
-        public readonly ECDevice.NintendoSwitch.Key Key;
-        public readonly string KeyName;
-        public readonly string Direction;
+        protected readonly ECDevice.NintendoSwitch.Key Key;
+        protected readonly string KeyName;
+        protected readonly string Direction;
 
         public StickAction(ECDevice.NintendoSwitch.Key key, string keyname, string direcion)
         {
@@ -28,7 +28,7 @@ namespace EasyCon2.Script.Parsing.Statements
                     return null;
                 return new StickUp(key, keyname);
             }
-            m = Regex.Match(args.Text, @"^([lr]s)\s+([a-z0-9]+)$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, @"^([lr]s{1,2})\s+([a-z0-9]+)$", RegexOptions.IgnoreCase);
             if (m.Success)
             {
                 var keyname = m.Groups[1].Value;
@@ -38,7 +38,7 @@ namespace EasyCon2.Script.Parsing.Statements
                     return null;
                 return new StickDown(key, keyname, direction);
             }
-            m = Regex.Match(args.Text, $@"^([lr]s)\s+([a-z0-9]+)\s*,\s*({Formats.ValueEx})$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, $@"^([lr]s{{1,2}})\s+([a-z0-9]+)\s*,\s*({Formats.ValueEx})$", RegexOptions.IgnoreCase);
             if (m.Success)
             {
                 var keyname = m.Groups[1].Value;

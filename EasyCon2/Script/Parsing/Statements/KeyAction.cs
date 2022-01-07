@@ -6,7 +6,7 @@ namespace EasyCon2.Script.Parsing.Statements
     abstract class KeyAction : Statement
     {
         public static readonly IStatementParser Parser = new StatementParser(Parse);
-        public readonly NintendoSwitch.Key Key;
+        protected readonly NintendoSwitch.Key Key;
 
         public KeyAction(NintendoSwitch.Key key)
         {

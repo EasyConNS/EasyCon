@@ -13,7 +13,9 @@ namespace ECDevice
         const int MINIMAL_INTERVAL = 30;
 
         public const byte STICK_MIN = 0;
+        public const byte STICK_CENMIN = 64;
         public const byte STICK_CENTER = 128;
+        public const byte STICK_CENMAX = 192;
         public const byte STICK_MAX = 255;
 
         [Flags]
@@ -255,31 +257,27 @@ namespace ECDevice
                 );
             }
 
-            public static Key LStick(DirectionKey dkey)
+            public static Key LStick(DirectionKey dkey, bool slow = false)
             {
-                byte x, y;
-                GetXYFromDirection(dkey, out x, out y);
+                GetXYFromDirection(dkey, out byte x, out byte y, slow);
                 return LStick(x, y);
             }
 
-            public static Key RStick(DirectionKey dkey)
+            public static Key RStick(DirectionKey dkey, bool slow = false)
             {
-                byte x, y;
-                GetXYFromDirection(dkey, out x, out y);
+                GetXYFromDirection(dkey, out byte x, out byte y, slow);
                 return RStick(x, y);
             }
 
             public static Key LStick(double degree)
             {
-                byte x, y;
-                GetXYFromDirection(degree, out x, out y);
+                GetXYFromDegree(degree, out byte x, out byte y);
                 return LStick(x, y);
             }
 
             public static Key RStick(double degree)
             {
-                byte x, y;
-                GetXYFromDirection(degree, out x, out y);
+                GetXYFromDegree(degree, out byte x, out byte y);
                 return RStick(x, y);
             }
 

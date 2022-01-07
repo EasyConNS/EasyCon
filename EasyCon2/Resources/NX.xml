@@ -47,7 +47,9 @@
         <Key word = "RIGHT" />
         <Key word = "LEFT" />
         <Key word = "LS" />
+        <Key word = "LSS" />
         <Key word = "RS" />
+        <Key word = "RSS" />
       </KeyWords>
     </RuleSet>
   </RuleSets>

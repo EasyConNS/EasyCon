@@ -5,8 +5,8 @@ namespace EasyCon2.Script.Parsing.Statements
     class Wait : Statement
     {
         public static readonly IStatementParser Parser = new StatementParser(Parse);
-        public readonly ValBase Duration;
-        bool _omitted;
+        protected readonly ValBase Duration;
+        protected bool _omitted;
 
         public Wait(ValBase duration, bool omitted)
         {

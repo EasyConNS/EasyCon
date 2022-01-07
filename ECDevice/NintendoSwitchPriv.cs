@@ -65,7 +65,6 @@ namespace ECDevice
 
         private void Direction(DirectionKey dkey, bool down, ref DirectionKey flags, Func<byte, byte, Key> getkey)
         {
-            var oldflags = flags;
             if (down)
                 flags |= dkey;
             else

@@ -6,7 +6,7 @@ namespace EasyCon2.Script.Parsing.Statements
     {
         public static readonly IStatementParser Parser = new StatementParser(Parse);
 
-        public readonly Content[] Contents;
+        protected readonly Content[] Contents;
 
         public Alert(Content[] contents)
         {

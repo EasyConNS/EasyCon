@@ -5,8 +5,8 @@ namespace EasyCon2.Script.Parsing.Statements
     class Mov : Statement
     {
         public static readonly IStatementParser Parser = new StatementParser(Parse);
-        public readonly ValRegEx RegDst;
-        public readonly ValBase Value;
+        protected readonly ValRegEx RegDst;
+        protected readonly ValBase Value;
 
         public Mov(ValRegEx regdst, ValBase value)
         {
