@@ -8,7 +8,7 @@ namespace EasyCon2.Script.Parsing.Statements
         protected readonly ValBase Duration;
         protected bool _omitted;
 
-        public Wait(ValBase duration, bool omitted)
+        public Wait(ValBase duration, bool omitted = false)
         {
             Duration = duration;
             _omitted = omitted;
@@ -21,7 +21,7 @@ namespace EasyCon2.Script.Parsing.Statements
                 return new Wait(duration, true);
             var m = Regex.Match(args.Text, $@"^wait\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
-                return new Wait(args.Formatter.GetValueEx(m.Groups[1].Value), false);
+                return new Wait(args.Formatter.GetValueEx(m.Groups[1].Value));
             return null;
         }
 

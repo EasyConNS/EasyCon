@@ -39,25 +39,23 @@ namespace EasyCon2.Script.Parsing
 
         public List<Statement> Parse(string text)
         {
-            List<Statement> list = new List<Statement>();
+            var list = new List<Statement>();
             var lines = text.Replace("\r", "").Split('\n');
             int indentnum = 0;
             for (int i = 0; i < lines.Length; i++)
             {
                 text = lines[i];
-                Match m;
-                string indent;
-                string comment;
                 // get indent
-                m = Regex.Match(text, @"^(\s*)([^\s]?.*)$");
-                indent = m.Groups[1].Value;
+                var m = Regex.Match(text, @"^(\s*)([^\s]?.*)$");
+                _ = m.Groups[1].Value;
                 text = m.Groups[2].Value;
                 // get comment
                 m = Regex.Match(text, @"(\s*#.*)$");
+                string comment;
                 if (m.Success)
                 {
                     comment = m.Groups[1].Value;
-                    text = text.Substring(0, text.Length - comment.Length);
+                    text = text[..^comment.Length];
                 }
                 else
                 {
@@ -67,9 +65,11 @@ namespace EasyCon2.Script.Parsing
                 try
                 {
                     // enumerate generators
-                    var args = new ParserArgument();
-                    args.Text = text;
-                    args.Formatter = new Formatter(_constants, _extVars);
+                    var args = new ParserArgument
+                    {
+                        Text = text,
+                        Formatter = new Formatter(_constants, _extVars)
+                    };
                     Statement st = null;
                     foreach (var parser in _parsers)
                     {

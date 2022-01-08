@@ -38,8 +38,6 @@
             this.searchTestBtn = new System.Windows.Forms.Button();
             this.targetBtn = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.label3 = new System.Windows.Forms.Label();
-            this.imgTypeCbx = new System.Windows.Forms.ComboBox();
             this.targetImg = new System.Windows.Forms.PictureBox();
             this.imgLabelNametxt = new System.Windows.Forms.TextBox();
             this.label8 = new System.Windows.Forms.Label();
@@ -159,8 +157,6 @@
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.label3);
-            this.groupBox1.Controls.Add(this.imgTypeCbx);
             this.groupBox1.Controls.Add(this.targetImg);
             this.groupBox1.Controls.Add(this.imgLabelNametxt);
             this.groupBox1.Controls.Add(this.label8);
@@ -194,26 +190,6 @@
             this.groupBox1.TabIndex = 18;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "搜索参数";
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(34, 75);
-            this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(47, 17);
-            this.label3.TabIndex = 36;
-            this.label3.Text = "图类型:";
-            // 
-            // imgTypeCbx
-            // 
-            this.imgTypeCbx.FormattingEnabled = true;
-            this.imgTypeCbx.Location = new System.Drawing.Point(91, 71);
-            this.imgTypeCbx.Margin = new System.Windows.Forms.Padding(4);
-            this.imgTypeCbx.Name = "imgTypeCbx";
-            this.imgTypeCbx.Size = new System.Drawing.Size(121, 25);
-            this.imgTypeCbx.TabIndex = 35;
-            this.imgTypeCbx.Text = "选择图类型";
             // 
             // targetImg
             // 
@@ -681,8 +657,6 @@
         private System.Windows.Forms.Button openCapBtn;
         private System.Windows.Forms.Button ResolutionBtn;
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.ComboBox imgTypeCbx;
         private System.Windows.Forms.CheckBox monitorVisChk;
         private PaintControl VideoSourcePlayerMonitor;
         private PaintControl Snapshot;

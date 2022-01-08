@@ -3,8 +3,8 @@
     abstract class Statement
     {
         public int Address = -1;
-        public string Indent;
-        public string Comment;
+        public string Indent { get; set; }
+        public string Comment { get; set; }
         public virtual int IndentThis => 0;
         public virtual int IndentNext => 0;
 
