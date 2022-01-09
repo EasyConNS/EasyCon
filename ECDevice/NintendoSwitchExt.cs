@@ -35,7 +35,7 @@ namespace ECDevice
             };
         }
 
-        static void GetXYFromDegree(double degree, out byte x, out byte y)
+        private static void GetXYFromDegree(double degree, out byte x, out byte y)
         {
             double radian = degree * Math.PI / 180;
             double dy = Math.Round((Math.Tan(radian) * Math.Sign(Math.Cos(radian))).Clamp(-1, 1), 4);
@@ -44,7 +44,7 @@ namespace ECDevice
             y = (byte)((-dy + 1) / 2 * (STICK_MAX - STICK_MIN) + STICK_MIN);
         }
 
-        static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, bool slow = false)
+        private static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, bool slow = false)
         {
             if (dkey.HasFlag(DirectionKey.Left) && !dkey.HasFlag(DirectionKey.Right))
                 x = slow? STICK_CENMIN : STICK_MIN;
@@ -60,7 +60,7 @@ namespace ECDevice
                 y = STICK_CENTER;
         }
 
-        static HAT GetHATFromDirection(DirectionKey dkey)
+        private static HAT GetHATFromDirection(DirectionKey dkey)
         {
             if (dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
                 dkey &= ~DirectionKey.Up & ~DirectionKey.Down;
