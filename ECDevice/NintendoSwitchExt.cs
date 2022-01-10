@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO.Ports;
 
 namespace ECDevice
@@ -17,6 +18,12 @@ namespace ECDevice
             if (_instance == null)
                 _instance = new NintendoSwitch();
             return _instance;
+        }
+
+        private static void PrintKey(string str, Key key = null)
+        {
+            str = str + " " + key?.Name ?? "";
+            Debug.WriteLine(str);
         }
 
         public static DirectionKey GetDirectionFromHAT(HAT hat)

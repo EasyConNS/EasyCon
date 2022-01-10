@@ -103,7 +103,7 @@
             // 
             // captureBtn
             // 
-            this.captureBtn.Location = new System.Drawing.Point(1, 490);
+            this.captureBtn.Location = new System.Drawing.Point(35, 487);
             this.captureBtn.Margin = new System.Windows.Forms.Padding(4);
             this.captureBtn.Name = "captureBtn";
             this.captureBtn.Size = new System.Drawing.Size(77, 33);
@@ -124,7 +124,7 @@
             // 
             // rangeBtn
             // 
-            this.rangeBtn.Location = new System.Drawing.Point(85, 490);
+            this.rangeBtn.Location = new System.Drawing.Point(119, 487);
             this.rangeBtn.Margin = new System.Windows.Forms.Padding(4);
             this.rangeBtn.Name = "rangeBtn";
             this.rangeBtn.Size = new System.Drawing.Size(100, 33);
@@ -135,7 +135,7 @@
             // 
             // searchTestBtn
             // 
-            this.searchTestBtn.Location = new System.Drawing.Point(300, 490);
+            this.searchTestBtn.Location = new System.Drawing.Point(334, 487);
             this.searchTestBtn.Margin = new System.Windows.Forms.Padding(4);
             this.searchTestBtn.Name = "searchTestBtn";
             this.searchTestBtn.Size = new System.Drawing.Size(86, 33);
@@ -146,7 +146,7 @@
             // 
             // targetBtn
             // 
-            this.targetBtn.Location = new System.Drawing.Point(193, 490);
+            this.targetBtn.Location = new System.Drawing.Point(227, 487);
             this.targetBtn.Margin = new System.Windows.Forms.Padding(4);
             this.targetBtn.Name = "targetBtn";
             this.targetBtn.Size = new System.Drawing.Size(100, 33);
@@ -436,7 +436,7 @@
             // 
             // SaveTagBtn
             // 
-            this.SaveTagBtn.Location = new System.Drawing.Point(506, 490);
+            this.SaveTagBtn.Location = new System.Drawing.Point(540, 487);
             this.SaveTagBtn.Margin = new System.Windows.Forms.Padding(4);
             this.SaveTagBtn.Name = "SaveTagBtn";
             this.SaveTagBtn.Size = new System.Drawing.Size(79, 33);
@@ -457,7 +457,7 @@
             // 
             // DynTestBtn
             // 
-            this.DynTestBtn.Location = new System.Drawing.Point(393, 490);
+            this.DynTestBtn.Location = new System.Drawing.Point(427, 487);
             this.DynTestBtn.Margin = new System.Windows.Forms.Padding(4);
             this.DynTestBtn.Name = "DynTestBtn";
             this.DynTestBtn.Size = new System.Drawing.Size(112, 33);
@@ -495,7 +495,7 @@
             // 
             // openCapBtn
             // 
-            this.openCapBtn.Location = new System.Drawing.Point(593, 490);
+            this.openCapBtn.Location = new System.Drawing.Point(627, 487);
             this.openCapBtn.Margin = new System.Windows.Forms.Padding(4);
             this.openCapBtn.Name = "openCapBtn";
             this.openCapBtn.Size = new System.Drawing.Size(77, 33);

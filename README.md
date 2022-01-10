@@ -42,10 +42,9 @@
 
 # 作者
 
-1. 铃落
-
-2. elmagnifico
-3. ca1e(当前维护者)
+- [铃落](https://github.com/nukieberry)
+- [elmagnifico](https://github.com/elmagnificogi)
+- [ca1e(当前维护者)](https://github.com/ca1e)
 
 
 

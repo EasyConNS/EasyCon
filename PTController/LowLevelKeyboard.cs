@@ -30,9 +30,9 @@ namespace PTController
         delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
         LowLevelKeyboardProc _proc;
         IntPtr _hookID = IntPtr.Zero;
-        Dictionary<int, bool> _keyDownResult = new Dictionary<int, bool>();
-        Dictionary<int, Func<bool>> _keyDownHandlers = new Dictionary<int, Func<bool>>();
-        Dictionary<int, Func<bool>> _keyUpHandlers = new Dictionary<int, Func<bool>>();
+        Dictionary<int, bool> _keyDownResult = new();
+        Dictionary<int, Func<bool>> _keyDownHandlers = new();
+        Dictionary<int, Func<bool>> _keyUpHandlers = new();
 
         static LowLevelKeyboard _instance;
 

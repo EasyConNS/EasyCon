@@ -327,7 +327,7 @@ namespace ECDevice
                 return ConnectResult.InvalidArgument;
 
             var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
-            ConnectResult result = ConnectResult.None;
+            var result = ConnectResult.None;
             void statuschanged(Status status)
             {
                 lock (ewh)
@@ -394,20 +394,11 @@ namespace ECDevice
             return clientCon?.CurrentStatus == Status.Connected || clientCon?.CurrentStatus == Status.ConnectedUnsafe;
         }
 
-        public Status GetConnectionStatus()
-        {
-            return clientCon?.CurrentStatus ?? Status.Connecting;
-        }
+        public Status ConnectionStatus => clientCon?.CurrentStatus ?? Status.Connecting;
 
         public Report GetReport()
         {
             return _report.Clone() as Report;
-        }
-
-        private void PrintKey(string str, Key key = null)
-        {
-            str = str + " " + key?.Name ?? "";
-            Debug.WriteLine(str);
         }
 
         public void Reset()
