@@ -45,6 +45,8 @@
             this.采集卡类型ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.打开搜图ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.搜图说明ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.蓝牙ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.设备驱动配置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.推送设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.显示调试信息ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -91,8 +93,6 @@
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.textBoxScriptHelp = new System.Windows.Forms.TextBox();
-            this.蓝牙ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.设备驱动配置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBox6.SuspendLayout();
@@ -234,6 +234,22 @@
             this.搜图说明ToolStripMenuItem.Size = new System.Drawing.Size(136, 22);
             this.搜图说明ToolStripMenuItem.Text = "搜图说明";
             this.搜图说明ToolStripMenuItem.Click += new System.EventHandler(this.搜图说明ToolStripMenuItem_Click);
+            // 
+            // 蓝牙ToolStripMenuItem
+            // 
+            this.蓝牙ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.设备驱动配置ToolStripMenuItem});
+            this.蓝牙ToolStripMenuItem.Name = "蓝牙ToolStripMenuItem";
+            this.蓝牙ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
+            this.蓝牙ToolStripMenuItem.Text = "蓝牙";
+            this.蓝牙ToolStripMenuItem.Visible = false;
+            // 
+            // 设备驱动配置ToolStripMenuItem
+            // 
+            this.设备驱动配置ToolStripMenuItem.Name = "设备驱动配置ToolStripMenuItem";
+            this.设备驱动配置ToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
+            this.设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
+            this.设备驱动配置ToolStripMenuItem.Click += new System.EventHandler(this.设备驱动配置ToolStripMenuItem_Click);
             // 
             // 设置ToolStripMenuItem
             // 
@@ -670,23 +686,6 @@
             this.textBoxScriptHelp.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBoxScriptHelp.Size = new System.Drawing.Size(312, 347);
             this.textBoxScriptHelp.TabIndex = 35;
-            this.textBoxScriptHelp.Text = resources.GetString("textBoxScriptHelp.Text");
-            // 
-            // 蓝牙ToolStripMenuItem
-            // 
-            this.蓝牙ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.设备驱动配置ToolStripMenuItem});
-            this.蓝牙ToolStripMenuItem.Name = "蓝牙ToolStripMenuItem";
-            this.蓝牙ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
-            this.蓝牙ToolStripMenuItem.Text = "蓝牙";
-            this.蓝牙ToolStripMenuItem.Visible = false;
-            // 
-            // 设备驱动配置ToolStripMenuItem
-            // 
-            this.设备驱动配置ToolStripMenuItem.Name = "设备驱动配置ToolStripMenuItem";
-            this.设备驱动配置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
-            this.设备驱动配置ToolStripMenuItem.Click += new System.EventHandler(this.设备驱动配置ToolStripMenuItem_Click);
             // 
             // EasyConForm
             // 

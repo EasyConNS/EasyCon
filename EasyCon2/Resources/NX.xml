@@ -24,6 +24,9 @@
         <Key word = "IF" />
         <Key word = "ELSE" />
         <Key word = "ENDIF" />
+        <Key word = "FUNC" />
+        <Key word = "CALL" />
+        <Key word = "RET" />
         <Key word = "@" />
         <Key word = "_" />
       </KeyWords>

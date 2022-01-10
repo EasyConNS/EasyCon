@@ -78,6 +78,7 @@ namespace EasyCon2.Forms
 
         private void EasyConForm_Load(object sender, EventArgs e)
         {
+            textBoxScriptHelp.Text = Resources.scriptdoc;
             comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
             comboBoxBoardType.SelectedIndex = 0;
             RegisterKeys();

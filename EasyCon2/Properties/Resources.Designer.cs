@@ -61,6 +61,46 @@ namespace EasyCon2.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to 操作说明：
+        ///
+        ///第一步，先截图，截图放大区域，截图后按住左键平移截图，滚轮放大缩小图片
+        ///
+        ///第二步，点击开始圈选(红)，右键圈选（这里圈选的是搜索范围），然后点击确定搜索范围
+        ///
+        ///第三步，点击开始圈选(绿)，右键圈选（这里群选的是搜索目标），然后点击确定搜索目标
+        ///
+        ///第四步，点击搜索测试，查看是否能找到目标图片
+        ///
+        ///第五步，动态测试，游戏内操作，查看是否能够找到目标图片，并且最高匹配度达到多少，以此作为自动更新最低匹配度或者判断找到的条件
+        ///
+        ///第六步，保持标签，脚本内就可以使用@该标签了
+        ///
+        ///每次修改后，务必保存标签，否则脚本内无法生效
+        ///切勿在脚本运行时，保存标签，容易崩溃
+        ///
+        ///切换分辨率会导致之前在不同分辨率下的标签位移，建议标签上加上使用分辨率容易区分
+        ///
+        ///【搜图语法】
+        ///语法：@搜图标签
+        ///（@开头，搜索对应名称图标签所代表的图像）
+        ///示例：
+        ///    # 搜索5号路蛋屋主人对应的图片
+        ///    $2 = @5号路蛋屋主人
+        ///    # 判断匹配度是否大于95
+        ///    IF $2 &gt; 95
+        ///        PRINT $2 &amp; 找到了
+        ///    ENDIF
+        ///
+        ///名词解释：
+        ///        /// [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string capturedoc {
+            get {
+                return ResourceManager.GetString("capturedoc", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
         internal static System.Drawing.Icon CaptureVideo {
@@ -108,6 +148,40 @@ namespace EasyCon2.Properties {
         internal static string NX {
             get {
                 return ResourceManager.GetString("NX", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 所有代码不区分大小写，支持前置后置空格，支持行内注释。
+        ///
+        ///【注释】
+        ///语法：# 注释内容
+        ///（多写注释是个好习惯，尤其是分享脚本给别人的时候）
+        ///
+        ///【输出】
+        ///语法：PRINT 输出内容
+        ///（联机模式专用，在控制台显示文字）
+        ///
+        ///【消息推送】
+        ///语法：ALERT 输出内容
+        ///（联机模式专用，发送推送消息，基于推送加服务）
+        ///注意！需要先关注&lt;pushplus推送加&gt;小程序生成token
+        ///取得token后请在设置-&gt;推送设置页面配置，否则无法使用
+        ///
+        ///【按键】
+        ///语法：键位 [持续时间(ms)|DOWN|UP]
+        ///（键位可以取A、B、X、Y、L、R、ZL、ZR、MINUS(-)、PLUS(+)、LCLICK(按左摇杆)、RCLICK(按右摇杆)、HOME(返回系统)、CAPTURE(截屏)、LEFT、RIGHT、UP、DOWN；持续时间省略则为默认50ms）
+        ///示例：A（按下A键50毫秒）
+        ///示例：HOME 1000（按下Home键1秒）
+        ///示例：LEFT DOWN（按住左十字键，需要手动用LEFT UP松开）
+        ///
+        ///【摇杆】
+        ///语法：LS|RS 方向|角度 [, 持续时间(ms)]
+        ///语法：LS| [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string scriptdoc {
+            get {
+                return ResourceManager.GetString("scriptdoc", resourceCulture);
             }
         }
     }

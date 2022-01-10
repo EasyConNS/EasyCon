@@ -242,10 +242,9 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public static Statement Parse(ParserArgument args)
         {
-            Match m;
             if (args.Text.Equals("break", StringComparison.OrdinalIgnoreCase))
                 return new Break();
-            m = Regex.Match(args.Text, $@"^break\s+{Formats.Instant}$", RegexOptions.IgnoreCase);
+            var m = Regex.Match(args.Text, $@"^break\s+{Formats.Instant}$", RegexOptions.IgnoreCase);
             if (m.Success)
                 return new Break(args.Formatter.GetInstant(m.Groups[1].Value, true));
             return null;
@@ -284,10 +283,9 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public static Statement Parse(ParserArgument args)
         {
-            Match m;
             if (args.Text.Equals("continue", StringComparison.OrdinalIgnoreCase))
                 return new Continue();
-            m = Regex.Match(args.Text, $@"^continue\s+{Formats.Instant}$", RegexOptions.IgnoreCase);
+            var m = Regex.Match(args.Text, $@"^continue\s+{Formats.Instant}$", RegexOptions.IgnoreCase);
             if (m.Success)
                 return new Continue(args.Formatter.GetInstant(m.Groups[1].Value, true));
             return null;

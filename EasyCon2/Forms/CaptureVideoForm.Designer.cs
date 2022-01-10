@@ -492,7 +492,6 @@
             this.CaptureVideoHelp.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.CaptureVideoHelp.Size = new System.Drawing.Size(331, 332);
             this.CaptureVideoHelp.TabIndex = 25;
-            this.CaptureVideoHelp.Text = resources.GetString("CaptureVideoHelp.Text");
             // 
             // openCapBtn
             // 
