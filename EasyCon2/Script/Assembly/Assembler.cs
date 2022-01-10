@@ -15,6 +15,8 @@ namespace EasyCon2.Script.Assembly
         public Dictionary<Parsing.Statements.Else, Instructions.AsmBranch> ElseMapping = new();
         public Dictionary<int, Instructions.AsmKey_Hold> KeyMapping = new();
         public Dictionary<int, Instructions.AsmStick_Hold> StickMapping = new();
+        public Dictionary<string, Instructions.AsmBranch> FunctionMapping = new();
+        public Dictionary<string, Instructions.AsmEmpty> CallMapping = new();
 
         public void Add(Instruction ins)
         {
@@ -35,6 +37,8 @@ namespace EasyCon2.Script.Assembly
             ElseMapping.Clear();
             KeyMapping.Clear();
             StickMapping.Clear();
+            FunctionMapping.Clear();
+            CallMapping.Clear();
 
             // compile into instructions
             for (int i = 0; i < statements.Count; i++)
@@ -78,6 +82,17 @@ namespace EasyCon2.Script.Assembly
                         discarded.Add(ins2);
                         continue;
                     }
+                }
+
+                if (ins1 is Instructions.AsmCall && ins2 is Instructions.AsmLabel)
+                {
+                    var funclbl = (ins2 as Instructions.AsmLabel);
+                    var callfunc = CallMapping.GetValueOrDefault(funclbl.Label, null);
+                    var ins = Instructions.AsmCall.Create(callfunc);
+                    list.Add(ins);
+                    discarded.Add(ins1);
+                    discarded.Add(ins2);
+                    continue;
                 }
 
                 // 3 Instructions

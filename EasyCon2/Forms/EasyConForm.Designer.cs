@@ -45,6 +45,8 @@
             this.采集卡类型ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.打开搜图ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.搜图说明ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.蓝牙ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.设备驱动配置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.推送设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.显示调试信息ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -55,7 +57,6 @@
             this.联机模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.烧录模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.固件模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.下载AtmelFlipToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.关于ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.项目源码ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -91,8 +92,6 @@
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.textBoxScriptHelp = new System.Windows.Forms.TextBox();
-            this.蓝牙ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.设备驱动配置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBox6.SuspendLayout();
@@ -235,6 +234,22 @@
             this.搜图说明ToolStripMenuItem.Text = "搜图说明";
             this.搜图说明ToolStripMenuItem.Click += new System.EventHandler(this.搜图说明ToolStripMenuItem_Click);
             // 
+            // 蓝牙ToolStripMenuItem
+            // 
+            this.蓝牙ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.设备驱动配置ToolStripMenuItem});
+            this.蓝牙ToolStripMenuItem.Name = "蓝牙ToolStripMenuItem";
+            this.蓝牙ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
+            this.蓝牙ToolStripMenuItem.Text = "蓝牙";
+            this.蓝牙ToolStripMenuItem.Visible = false;
+            // 
+            // 设备驱动配置ToolStripMenuItem
+            // 
+            this.设备驱动配置ToolStripMenuItem.Name = "设备驱动配置ToolStripMenuItem";
+            this.设备驱动配置ToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
+            this.设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
+            this.设备驱动配置ToolStripMenuItem.Click += new System.EventHandler(this.设备驱动配置ToolStripMenuItem_Click);
+            // 
             // 设置ToolStripMenuItem
             // 
             this.设置ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -282,7 +297,6 @@
             // 
             this.帮助ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.使用方法ToolStripMenuItem,
-            this.下载AtmelFlipToolStripMenuItem,
             this.toolStripSeparator2,
             this.关于ToolStripMenuItem,
             this.项目源码ToolStripMenuItem});
@@ -297,13 +311,13 @@
             this.烧录模式ToolStripMenuItem,
             this.固件模式ToolStripMenuItem});
             this.使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
-            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.使用方法ToolStripMenuItem.Text = "使用方法";
             // 
             // 联机模式ToolStripMenuItem
             // 
             this.联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
-            this.联机模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
+            this.联机模式ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.联机模式ToolStripMenuItem.Tag = "";
             this.联机模式ToolStripMenuItem.Text = "联机模式";
             this.联机模式ToolStripMenuItem.Click += new System.EventHandler(this.联机模式ToolStripMenuItem_Click);
@@ -311,40 +325,33 @@
             // 烧录模式ToolStripMenuItem
             // 
             this.烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
-            this.烧录模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
+            this.烧录模式ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.烧录模式ToolStripMenuItem.Text = "烧录模式";
             this.烧录模式ToolStripMenuItem.Click += new System.EventHandler(this.烧录模式ToolStripMenuItem_Click);
             // 
             // 固件模式ToolStripMenuItem
             // 
             this.固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
-            this.固件模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
+            this.固件模式ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.固件模式ToolStripMenuItem.Text = "固件模式";
             this.固件模式ToolStripMenuItem.Click += new System.EventHandler(this.固件模式ToolStripMenuItem_Click);
-            // 
-            // 下载AtmelFlipToolStripMenuItem
-            // 
-            this.下载AtmelFlipToolStripMenuItem.Name = "下载AtmelFlipToolStripMenuItem";
-            this.下载AtmelFlipToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
-            this.下载AtmelFlipToolStripMenuItem.Text = "下载Atmel Flip";
-            this.下载AtmelFlipToolStripMenuItem.Click += new System.EventHandler(this.下载AtmelFlipToolStripMenuItem_Click);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(154, 6);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
             // 
             // 关于ToolStripMenuItem
             // 
             this.关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.关于ToolStripMenuItem.Text = "关于";
             this.关于ToolStripMenuItem.Click += new System.EventHandler(this.关于ToolStripMenuItem_Click);
             // 
             // 项目源码ToolStripMenuItem
             // 
             this.项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(157, 22);
+            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.项目源码ToolStripMenuItem.Text = "项目源码";
             this.项目源码ToolStripMenuItem.Click += new System.EventHandler(this.项目源码ToolStripMenuItem_Click);
             // 
@@ -670,23 +677,6 @@
             this.textBoxScriptHelp.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.textBoxScriptHelp.Size = new System.Drawing.Size(312, 347);
             this.textBoxScriptHelp.TabIndex = 35;
-            this.textBoxScriptHelp.Text = resources.GetString("textBoxScriptHelp.Text");
-            // 
-            // 蓝牙ToolStripMenuItem
-            // 
-            this.蓝牙ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.设备驱动配置ToolStripMenuItem});
-            this.蓝牙ToolStripMenuItem.Name = "蓝牙ToolStripMenuItem";
-            this.蓝牙ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
-            this.蓝牙ToolStripMenuItem.Text = "蓝牙";
-            this.蓝牙ToolStripMenuItem.Visible = false;
-            // 
-            // 设备驱动配置ToolStripMenuItem
-            // 
-            this.设备驱动配置ToolStripMenuItem.Name = "设备驱动配置ToolStripMenuItem";
-            this.设备驱动配置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
-            this.设备驱动配置ToolStripMenuItem.Click += new System.EventHandler(this.设备驱动配置ToolStripMenuItem_Click);
             // 
             // EasyConForm
             // 
@@ -774,7 +764,6 @@
         private System.Windows.Forms.ToolStripMenuItem 烧录模式ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 固件模式ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 项目源码ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 下载AtmelFlipToolStripMenuItem;
         private System.Windows.Forms.ComboBox comboBoxBoardType;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.TextBox textBoxFirmware;

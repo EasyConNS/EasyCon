@@ -38,8 +38,6 @@
             this.searchTestBtn = new System.Windows.Forms.Button();
             this.targetBtn = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.label3 = new System.Windows.Forms.Label();
-            this.imgTypeCbx = new System.Windows.Forms.ComboBox();
             this.targetImg = new System.Windows.Forms.PictureBox();
             this.imgLabelNametxt = new System.Windows.Forms.TextBox();
             this.label8 = new System.Windows.Forms.Label();
@@ -105,7 +103,7 @@
             // 
             // captureBtn
             // 
-            this.captureBtn.Location = new System.Drawing.Point(1, 490);
+            this.captureBtn.Location = new System.Drawing.Point(35, 487);
             this.captureBtn.Margin = new System.Windows.Forms.Padding(4);
             this.captureBtn.Name = "captureBtn";
             this.captureBtn.Size = new System.Drawing.Size(77, 33);
@@ -126,7 +124,7 @@
             // 
             // rangeBtn
             // 
-            this.rangeBtn.Location = new System.Drawing.Point(85, 490);
+            this.rangeBtn.Location = new System.Drawing.Point(119, 487);
             this.rangeBtn.Margin = new System.Windows.Forms.Padding(4);
             this.rangeBtn.Name = "rangeBtn";
             this.rangeBtn.Size = new System.Drawing.Size(100, 33);
@@ -137,7 +135,7 @@
             // 
             // searchTestBtn
             // 
-            this.searchTestBtn.Location = new System.Drawing.Point(300, 490);
+            this.searchTestBtn.Location = new System.Drawing.Point(334, 487);
             this.searchTestBtn.Margin = new System.Windows.Forms.Padding(4);
             this.searchTestBtn.Name = "searchTestBtn";
             this.searchTestBtn.Size = new System.Drawing.Size(86, 33);
@@ -148,7 +146,7 @@
             // 
             // targetBtn
             // 
-            this.targetBtn.Location = new System.Drawing.Point(193, 490);
+            this.targetBtn.Location = new System.Drawing.Point(227, 487);
             this.targetBtn.Margin = new System.Windows.Forms.Padding(4);
             this.targetBtn.Name = "targetBtn";
             this.targetBtn.Size = new System.Drawing.Size(100, 33);
@@ -159,8 +157,6 @@
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.label3);
-            this.groupBox1.Controls.Add(this.imgTypeCbx);
             this.groupBox1.Controls.Add(this.targetImg);
             this.groupBox1.Controls.Add(this.imgLabelNametxt);
             this.groupBox1.Controls.Add(this.label8);
@@ -194,26 +190,6 @@
             this.groupBox1.TabIndex = 18;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "搜索参数";
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(34, 75);
-            this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(47, 17);
-            this.label3.TabIndex = 36;
-            this.label3.Text = "图类型:";
-            // 
-            // imgTypeCbx
-            // 
-            this.imgTypeCbx.FormattingEnabled = true;
-            this.imgTypeCbx.Location = new System.Drawing.Point(91, 71);
-            this.imgTypeCbx.Margin = new System.Windows.Forms.Padding(4);
-            this.imgTypeCbx.Name = "imgTypeCbx";
-            this.imgTypeCbx.Size = new System.Drawing.Size(121, 25);
-            this.imgTypeCbx.TabIndex = 35;
-            this.imgTypeCbx.Text = "选择图类型";
             // 
             // targetImg
             // 
@@ -460,7 +436,7 @@
             // 
             // SaveTagBtn
             // 
-            this.SaveTagBtn.Location = new System.Drawing.Point(506, 490);
+            this.SaveTagBtn.Location = new System.Drawing.Point(540, 487);
             this.SaveTagBtn.Margin = new System.Windows.Forms.Padding(4);
             this.SaveTagBtn.Name = "SaveTagBtn";
             this.SaveTagBtn.Size = new System.Drawing.Size(79, 33);
@@ -481,7 +457,7 @@
             // 
             // DynTestBtn
             // 
-            this.DynTestBtn.Location = new System.Drawing.Point(393, 490);
+            this.DynTestBtn.Location = new System.Drawing.Point(427, 487);
             this.DynTestBtn.Margin = new System.Windows.Forms.Padding(4);
             this.DynTestBtn.Name = "DynTestBtn";
             this.DynTestBtn.Size = new System.Drawing.Size(112, 33);
@@ -516,11 +492,10 @@
             this.CaptureVideoHelp.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.CaptureVideoHelp.Size = new System.Drawing.Size(331, 332);
             this.CaptureVideoHelp.TabIndex = 25;
-            this.CaptureVideoHelp.Text = resources.GetString("CaptureVideoHelp.Text");
             // 
             // openCapBtn
             // 
-            this.openCapBtn.Location = new System.Drawing.Point(593, 490);
+            this.openCapBtn.Location = new System.Drawing.Point(627, 487);
             this.openCapBtn.Margin = new System.Windows.Forms.Padding(4);
             this.openCapBtn.Name = "openCapBtn";
             this.openCapBtn.Size = new System.Drawing.Size(77, 33);
@@ -681,8 +656,6 @@
         private System.Windows.Forms.Button openCapBtn;
         private System.Windows.Forms.Button ResolutionBtn;
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.ComboBox imgTypeCbx;
         private System.Windows.Forms.CheckBox monitorVisChk;
         private PaintControl VideoSourcePlayerMonitor;
         private PaintControl Snapshot;

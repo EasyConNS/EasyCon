@@ -46,7 +46,7 @@ namespace EasyCon2.Script.Parsing.Statements
         public const int DefaultDuration = 50;
 
         public readonly ValBase Duration;
-        bool _omitted = false;
+        private bool _omitted = false;
 
         public KeyPress(NintendoSwitch.Key key)
             : base(key)

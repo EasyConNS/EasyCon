@@ -6,22 +6,20 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 
 namespace EasyCon2.Graphic
 {
     // for ui data binding
     public class ImgLabel : INotifyPropertyChanged
     {
-        public string name;
-        public SearchMethod searchMethod;
-        public string ImgBase64;
-        public Rectangle searchRange;
+        public string name { get; set; }
+        public SearchMethod searchMethod { get; set; }
+        public string ImgBase64 { get; set; }
 
         private Bitmap searchImg;
         private Bitmap sourcePic;
         private Bitmap resultImg;
-        private List<Point> result = new List<Point>();
+        private List<Point> result = new();
         //======================================
         // Actual implementation
         //======================================
@@ -30,11 +28,18 @@ namespace EasyCon2.Graphic
         [NotifyPropertyChangedInvocator]
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            var handler = PropertyChanged;
-            if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         private int _RangeX = 0;
+        private int _RangeY = 0;
+        private int _RangeWidth = 0;
+        private int _RangeHeight = 0;
+        private int _TargetX = 0;
+        private int _TargetY = 0;
+        private int _TargetWidth = 0;
+        private int _TargetHeight = 0;
+        private double _matchDegree = 95.0;
         public int RangeX
         {
             get { return _RangeX; }
@@ -51,7 +56,6 @@ namespace EasyCon2.Graphic
             }
         }
 
-        private int _RangeY = 0;
         public int RangeY
         {
             get { return _RangeY; }
@@ -68,7 +72,6 @@ namespace EasyCon2.Graphic
             }
         }
 
-        private int _RangeWidth = 0;
         public int RangeWidth
         {
             get { return _RangeWidth; }
@@ -85,7 +88,6 @@ namespace EasyCon2.Graphic
             }
         }
 
-        private int _RangeHeight = 0;
         public int RangeHeight
         {
             get { return _RangeHeight; }
@@ -102,7 +104,6 @@ namespace EasyCon2.Graphic
             }
         }
 
-        private int _TargetX = 0;
         public int TargetX
         {
             get { return _TargetX; }
@@ -119,7 +120,6 @@ namespace EasyCon2.Graphic
             }
         }
 
-        private int _TargetY = 0;
         public int TargetY
         {
             get { return _TargetY; }
@@ -136,7 +136,6 @@ namespace EasyCon2.Graphic
             }
         }
 
-        private int _TargetWidth = 0;
         public int TargetWidth
         {
             get { return _TargetWidth; }
@@ -153,7 +152,6 @@ namespace EasyCon2.Graphic
             }
         }
 
-        private int _TargetHeight = 0;
         public int TargetHeight
         {
             get { return _TargetHeight; }
@@ -170,7 +168,6 @@ namespace EasyCon2.Graphic
             }
         }
 
-        private double _matchDegree = 95.0;
         public double matchDegree
         {
             get { return _matchDegree; }
@@ -215,11 +212,11 @@ namespace EasyCon2.Graphic
 
         [NonSerialized]
         public GetNewFrame getNewFrame;
+       
         public ImgLabel()
         {
             sourcePic = null;
             searchImg = null;
-            searchRange = new Rectangle();
             searchMethod = SearchMethod.SqDiffNormed;
         }
 
@@ -227,16 +224,7 @@ namespace EasyCon2.Graphic
         {
             sourcePic = null;
             searchImg = null;
-            searchRange = new Rectangle();
             searchMethod = SearchMethod.SqDiffNormed;
-        }
-
-        public ImgLabel(Bitmap sourceObj, Bitmap searchObj, Rectangle range, SearchMethod method)
-        {
-            sourcePic = sourceObj.Clone(new Rectangle(0, 0, sourceObj.Width, sourceObj.Height), sourceObj.PixelFormat);
-            searchImg = searchObj.Clone(new Rectangle(0, 0, searchObj.Width, searchObj.Height), searchObj.PixelFormat);
-            searchRange = range;
-            searchMethod = method;
         }
 
         public static List<SearchMethod> GetAllSearchMethod()
@@ -258,7 +246,7 @@ namespace EasyCon2.Graphic
             sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
             ss.Dispose();
 
-            result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out md);
+            result = GraphicSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, searchImg, searchMethod, out md);
             md *= 100;
 
             // update the search pic
@@ -283,7 +271,7 @@ namespace EasyCon2.Graphic
             sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
             ss.Dispose();
 
-            result = GraphicSearch.FindPic(0, 0, searchRange.Width, searchRange.Height, sourcePic, searchImg, searchMethod, out md);
+            result = GraphicSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, searchImg, searchMethod, out md);
             md *= 100;
 
             // update the search pic
@@ -315,11 +303,6 @@ namespace EasyCon2.Graphic
             {
                 searchImg?.Dispose();
                 searchImg = bmp;
-                // update cur search range
-                searchRange.X = TargetX;
-                searchRange.Y = TargetY;
-                searchRange.Width = TargetWidth;
-                searchRange.Height = TargetHeight;
             }
         }
 
@@ -345,7 +328,7 @@ namespace EasyCon2.Graphic
             File.WriteAllText(path + name + ".IL", JsonConvert.SerializeObject(this));
         }
 
-        public void copy(ImgLabel il)
+        public void Copy(ImgLabel il)
         {
             name = il.name;
             RangeX = il.RangeX;
@@ -359,11 +342,6 @@ namespace EasyCon2.Graphic
             searchMethod = il.searchMethod;
             matchDegree = il.matchDegree;
             ImgBase64 = il.ImgBase64;
-
-            searchRange.X = TargetX;
-            searchRange.Y = TargetY;
-            searchRange.Width = TargetWidth;
-            searchRange.Height = TargetHeight;
             searchImg = il.getSearchImg();//Base64StringToImage(il.ImgBase64);
             getNewFrame = il.getNewFrame;
         }
@@ -371,10 +349,6 @@ namespace EasyCon2.Graphic
         public void Refresh(GetNewFrame getnew)
         {
             searchImg = this.Base64StringToImage(ImgBase64);
-            searchRange.X = TargetX;
-            searchRange.Y = TargetY;
-            searchRange.Width = TargetWidth;
-            searchRange.Height = TargetHeight;
             getNewFrame = getnew;
         }
 

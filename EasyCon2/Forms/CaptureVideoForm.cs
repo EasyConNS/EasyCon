@@ -1,11 +1,11 @@
 ﻿using EasyCon2.Capture;
 using EasyCon2.Graphic;
 using EasyCon2.Helper;
+using EasyCon2.Properties;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.IO;
-using System.Text.Json;
 
 namespace EasyCon2.Forms
 {
@@ -74,6 +74,7 @@ namespace EasyCon2.Forms
 
         private void CaptureVideo_Load(object sender, EventArgs e)
         {
+            CaptureVideoHelp.Text = Resources.capturedoc;
             if (!Directory.Exists(CapDir))
             {
                 Directory.CreateDirectory(CapDir);
@@ -548,7 +549,7 @@ namespace EasyCon2.Forms
                 // if the name exist,just overwrite it
                 if (imgLabels[index].name == imgLabelNametxt.Text)
                 {
-                    imgLabels[index].copy(curImgLabel);
+                    imgLabels[index].Copy(curImgLabel);
                     imgLabels[index].Save();
                     return;
                 }
@@ -558,7 +559,7 @@ namespace EasyCon2.Forms
             ImgLabel newone = new(() => cvcap.GetImage());
             curImgLabel.name = imgLabelNametxt.Text;
 
-            newone.copy(curImgLabel);
+            newone.Copy(curImgLabel);
             newone.Save();
 
             // add to list and ui
@@ -652,7 +653,7 @@ namespace EasyCon2.Forms
                     if (item.name == imgLableList.SelectedItem.ToString())
                     {
                         //Debug.WriteLine("find" + item.name);
-                        curImgLabel.copy(item);
+                        curImgLabel.Copy(item);
                         curImgLabel.Refresh(() => cvcap.GetImage());
 
                         // update ui

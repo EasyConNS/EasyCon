@@ -10,6 +10,7 @@ namespace ECDevice
         public const byte ScriptStart = 0x83;
         public const byte ScriptStop = 0x84;
         public const byte Version = 0x85;
+        public const byte LED = 0x86;
     }
 
     public static class Reply

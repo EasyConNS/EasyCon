@@ -10,9 +10,11 @@ namespace EasyCon2.Script.Assembly.Instructions
         protected static Instruction Create<T>(uint code, Instruction target = null)
             where T : AsmBranchBase, new()
         {
-            var ins = new T();
-            ins.Code = code;
-            ins.Target = target;
+            var ins = new T
+            {
+                Code = code,
+                Target = target
+            };
             return ins;
         }
 
@@ -54,9 +56,14 @@ namespace EasyCon2.Script.Assembly.Instructions
 
     class AsmCall : AsmBranchBase
     {
+        public readonly string lbl;
         public static Instruction Create(Instruction target = null)
         {
             return Create<AsmCall>(0b11, target);
+        }
+        public static Instruction Create(string label)
+        {
+            return Create<AsmCall>(0b11, null);
         }
     }
 
@@ -64,10 +71,12 @@ namespace EasyCon2.Script.Assembly.Instructions
     {
         public uint CheckFlag;
 
-        protected static Instruction Create(uint checkflag)
+        public static Instruction Create(uint checkflag)
         {
-            var ins = new AsmReturn();
-            ins.CheckFlag = checkflag;
+            var ins = new AsmReturn
+            {
+                CheckFlag = checkflag
+            };
             return ins;
         }
 

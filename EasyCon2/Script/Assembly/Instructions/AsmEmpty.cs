@@ -16,4 +16,21 @@ namespace EasyCon2.Script.Assembly.Instructions
         public override void WriteBytes(Stream stream)
         { }
     }
+
+    class AsmLabel : Instruction
+    {
+        public override int ByteCount => 0;
+
+        public override int InsCount => 0;
+
+        public string Label { get; set; } = string.Empty;
+
+        public static Instruction Create(string lbl)
+        {
+            return new AsmLabel() { Label  = lbl};
+        }
+
+        public override void WriteBytes(Stream stream)
+        { }
+    }
 }

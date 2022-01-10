@@ -11,6 +11,7 @@
         public int PC = 0;
         public bool CancelLineBreak = false;
         public Stack<short> Stack = new();
+        public Stack<int> CallStack = new();
         public Stack<Parsing.Statements.For> LoopStack = new();
         public Dictionary<Parsing.Statements.For, int> LoopTime = new();
         public Dictionary<Parsing.Statements.For, int> LoopCount = new();

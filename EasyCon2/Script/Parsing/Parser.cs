@@ -39,25 +39,23 @@ namespace EasyCon2.Script.Parsing
 
         public List<Statement> Parse(string text)
         {
-            List<Statement> list = new List<Statement>();
+            var list = new List<Statement>();
             var lines = text.Replace("\r", "").Split('\n');
             int indentnum = 0;
             for (int i = 0; i < lines.Length; i++)
             {
                 text = lines[i];
-                Match m;
-                string indent;
-                string comment;
                 // get indent
-                m = Regex.Match(text, @"^(\s*)([^\s]?.*)$");
-                indent = m.Groups[1].Value;
+                var m = Regex.Match(text, @"^(\s*)([^\s]?.*)$");
+                _ = m.Groups[1].Value;
                 text = m.Groups[2].Value;
                 // get comment
                 m = Regex.Match(text, @"(\s*#.*)$");
+                string comment;
                 if (m.Success)
                 {
                     comment = m.Groups[1].Value;
-                    text = text.Substring(0, text.Length - comment.Length);
+                    text = text[..^comment.Length];
                 }
                 else
                 {
@@ -67,9 +65,11 @@ namespace EasyCon2.Script.Parsing
                 try
                 {
                     // enumerate generators
-                    var args = new ParserArgument();
-                    args.Text = text;
-                    args.Formatter = new Formatter(_constants, _extVars);
+                    var args = new ParserArgument
+                    {
+                        Text = text,
+                        Formatter = new Formatter(_constants, _extVars)
+                    };
                     Statement st = null;
                     foreach (var parser in _parsers)
                     {
@@ -104,7 +104,7 @@ namespace EasyCon2.Script.Parsing
 
             // pair For & Next
             var _fors = new Stack<Statements.For>();
-            for (int i = 0; i < list.Count; i++)
+            for (var i = 0; i < list.Count; i++)
             {
                 var st = list[i];
                 if (st is Statements.For)
@@ -124,12 +124,12 @@ namespace EasyCon2.Script.Parsing
                         throw new ParseException("循环层数不足", i);
                 }
             }
-            if (_fors.Count > 0)
+            if (_fors.Count > 0) 
                 throw new ParseException("For语句需要Next结束", _fors.Peek().Address);
 
             // pair If & Else & Endif
             var _ifs = new Stack<Statements.If>();
-            for (int i = 0; i < list.Count; i++)
+            for (var i = 0; i < list.Count; i++)
             {
                 var st = list[i];
                 if (st is Statements.If)
@@ -158,6 +158,52 @@ namespace EasyCon2.Script.Parsing
             }
             if (_ifs.Count > 0)
                 throw new ParseException("If语句需要Endif结束", _ifs.Peek().Address);
+
+            // pair Func & Ret
+            var _funcs = new Stack<Statements.Function>();
+            var _funcTables = new Dictionary<string, Statements.Function>();
+            for (var i = 0; i < list.Count; i++)
+            {
+                var st = list[i];
+                if (st is Statements.Function)
+                {
+                    var fst = st as Statements.Function;
+                    if(_funcTables.ContainsKey(fst.Label))
+                    {
+                        throw new ParseException("重复定义的函数名", i);
+                    }
+                    _funcTables[fst.Label] = fst;
+                    _funcs.Push(fst);
+                }
+                else if (st is Statements.ReturnStat)
+                {
+                    if (_funcs.Count == 0)
+                        throw new ParseException("找不到对应的Func定义", i);
+                    var @func = _funcs.Peek();
+                    @func.Ret = (st as Statements.ReturnStat);
+                    var @ret = (st as Statements.ReturnStat);
+                    @ret.Label = @func.Label;
+                    _funcs.Pop();
+                }
+            }
+            if (_funcs.Count > 0)
+                throw new ParseException("Func语句需要Ret结束", _funcs.Peek().Address);
+            // pair call func
+            for (var i = 0; i < list.Count; i++)
+            {
+                var st = list[i];
+                if (st is Statements.CallStat)
+                {
+                    var cst = st as Statements.CallStat;
+
+                    var @func = _funcTables.GetValueOrDefault(cst.Label, null);
+                    if(@func == null)
+                    {
+                        throw new ParseException("找不到调用的函数", i);
+                    }
+                    cst.Func = @func;
+                }
+            }
 
             return list;
         }

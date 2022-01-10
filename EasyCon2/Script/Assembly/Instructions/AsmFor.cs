@@ -40,8 +40,10 @@ namespace EasyCon2.Script.Assembly.Instructions
         {
             if (loopnumber >= 1 << 10 || loopnumber < 0)
                 return Failed.OutOfRange;
-            var ins = new AsmNext_Small();
-            ins.LoopNumber = loopnumber;
+            var ins = new AsmNext_Small
+            {
+                LoopNumber = loopnumber
+            };
             return ins;
         }
 

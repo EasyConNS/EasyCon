@@ -78,6 +78,7 @@ namespace EasyCon2.Forms
 
         private void EasyConForm_Load(object sender, EventArgs e)
         {
+            textBoxScriptHelp.Text = Resources.scriptdoc;
             comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
             comboBoxBoardType.SelectedIndex = 0;
             RegisterKeys();
@@ -140,7 +141,7 @@ namespace EasyCon2.Forms
                         }
 
                         // serial port status
-                        var status = NS.GetConnectionStatus();
+                        var status = NS.ConnectionStatus;
                         if (status == Status.Connected)
                         {
                             labelSerialStatus.Text = "已连接(稳定模式)";
@@ -547,7 +548,7 @@ namespace EasyCon2.Forms
             {
                 StatusShowLog("连接成功");
                 ComPort.Text = portName;
-                if (NS.GetConnectionStatus() == Status.ConnectedUnsafe)
+                if (NS.ConnectionStatus == Status.ConnectedUnsafe)
                     MessageBox.Show("正在使用单向连接模式。这是一种应急方案，并不表示成功连接到单片机，有可能无法正常工作。请检查连线并尽量使用稳定模式。");
                 return true;
             }
@@ -680,7 +681,7 @@ namespace EasyCon2.Forms
         {
             if (!SerialCheckConnect())
                 return false;
-            if (NS.GetConnectionStatus() == Status.ConnectedUnsafe)
+            if (NS.ConnectionStatus == Status.ConnectedUnsafe)
             {
                 MessageBox.Show("需要稳定模式才能烧录");
                 return false;
@@ -692,7 +693,7 @@ namespace EasyCon2.Forms
         {
             if (!SerialCheckConnect())
                 return false;
-            if (NS.GetConnectionStatus() == Status.ConnectedUnsafe)
+            if (NS.ConnectionStatus == Status.ConnectedUnsafe)
                 return true;
             int ver = NS.GetVersion();
             if (ver < GetSelectedBoard().Version)
@@ -906,7 +907,7 @@ namespace EasyCon2.Forms
         {
             if (!SerialCheckConnect())
                 return;
-            if (NS.RemoteStart() || NS.GetConnectionStatus() == Status.ConnectedUnsafe)
+            if (NS.RemoteStart() || NS.ConnectionStatus == Status.ConnectedUnsafe)
             {
                 SystemSounds.Beep.Play();
                 StatusShowLog("远程运行已开始");
@@ -922,7 +923,7 @@ namespace EasyCon2.Forms
         {
             if (!SerialCheckConnect())
                 return;
-            if (NS.RemoteStop() || NS.GetConnectionStatus() == Status.ConnectedUnsafe)
+            if (NS.RemoteStop() || NS.ConnectionStatus == Status.ConnectedUnsafe)
             {
                 SystemSounds.Beep.Play();
                 StatusShowLog("远程运行已停止");
@@ -1109,11 +1110,6 @@ namespace EasyCon2.Forms
             MessageBox.Show("- 生成固件后手动刷入单片机的模式\n- 独立挂机，即插即用\n- 支持极限效率脚本\n- 不需要任何额外配件\n\n详细使用教程见群946057081文档", "固件模式");
         }
 
-        private void 下载AtmelFlipToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Process.Start("https://www.microchip.com/DevelopmentTools/ProductDetails/PartNO/FLIP");
-        }
-
         private void 关于ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             MessageBox.Show(@"详细使用教程见群946057081文档
@@ -1125,7 +1121,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
 
         private void 项目源码ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Process.Start("https://github.com/nukieberry/PokemonTycoon");
+            Process.Start(new ProcessStartInfo("https://github.com/nukieberry/PokemonTycoon") { UseShellExecute = true });
         }
 
         private void 脚本自动运行ToolStripMenuItem_Click(object sender, EventArgs e)

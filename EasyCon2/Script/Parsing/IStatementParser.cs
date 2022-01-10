@@ -22,9 +22,9 @@
         }
     }
 
-    class ParserArgument
+    record ParserArgument
     {
-        public string Text;
-        public Formatter Formatter;
+        public string Text { get; init; }
+        public Formatter Formatter { get; init; }
     }
 }

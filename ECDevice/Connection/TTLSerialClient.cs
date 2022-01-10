@@ -93,7 +93,7 @@ namespace ECDevice.Connection
                 bool hellocheck = _sayhello;
 
                 byte[] inBuffer = new byte[255];
-                List<byte> outBuffer = new List<byte>();
+                var outBuffer = new List<byte>();
                 while (true)
                 {
                     // read
