@@ -59,6 +59,8 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
+            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            // TODO
             assembler.Add(Assembly.Instructions.AsmCall.Create());
             assembler.Add(Assembly.Instructions.AsmLabel.Create(Label));
         }
