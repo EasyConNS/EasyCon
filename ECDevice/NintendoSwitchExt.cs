@@ -26,18 +26,18 @@ namespace ECDevice
             Debug.WriteLine(str);
         }
 
-        public static DirectionKey GetDirectionFromHAT(HAT hat)
+        public static DirectionKey GetDirectionFromHAT(SwitchHAT hat)
         {
             return hat switch
             {
-                HAT.TOP => DirectionKey.Up,
-                HAT.TOP_RIGHT => DirectionKey.Up | DirectionKey.Right,
-                HAT.RIGHT => DirectionKey.Right,
-                HAT.BOTTOM_RIGHT => DirectionKey.Down | DirectionKey.Right,
-                HAT.BOTTOM => DirectionKey.Down,
-                HAT.BOTTOM_LEFT => DirectionKey.Down | DirectionKey.Left,
-                HAT.LEFT => DirectionKey.Left,
-                HAT.TOP_LEFT => DirectionKey.Up | DirectionKey.Left,
+                SwitchHAT.TOP => DirectionKey.Up,
+                SwitchHAT.TOP_RIGHT => DirectionKey.Up | DirectionKey.Right,
+                SwitchHAT.RIGHT => DirectionKey.Right,
+                SwitchHAT.BOTTOM_RIGHT => DirectionKey.Down | DirectionKey.Right,
+                SwitchHAT.BOTTOM => DirectionKey.Down,
+                SwitchHAT.BOTTOM_LEFT => DirectionKey.Down | DirectionKey.Left,
+                SwitchHAT.LEFT => DirectionKey.Left,
+                SwitchHAT.TOP_LEFT => DirectionKey.Up | DirectionKey.Left,
                 _ => DirectionKey.None,
             };
         }
@@ -47,49 +47,49 @@ namespace ECDevice
             double radian = degree * Math.PI / 180;
             double dy = Math.Round((Math.Tan(radian) * Math.Sign(Math.Cos(radian))).Clamp(-1, 1), 4);
             double dx = radian == 0 ? 1 : Math.Round((1 / Math.Tan(radian) * Math.Sign(Math.Sin(radian))).Clamp(-1, 1), 4);
-            x = (byte)((dx + 1) / 2 * (STICK_MAX - STICK_MIN) + STICK_MIN);
-            y = (byte)((-dy + 1) / 2 * (STICK_MAX - STICK_MIN) + STICK_MIN);
+            x = (byte)((dx + 1) / 2 * (NSwitchUtil.STICK_MAX - NSwitchUtil.STICK_MIN) + NSwitchUtil.STICK_MIN);
+            y = (byte)((-dy + 1) / 2 * (NSwitchUtil.STICK_MAX - NSwitchUtil.STICK_MIN) + NSwitchUtil.STICK_MIN);
         }
 
         private static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, bool slow = false)
         {
             if (dkey.HasFlag(DirectionKey.Left) && !dkey.HasFlag(DirectionKey.Right))
-                x = slow? STICK_CENMIN : STICK_MIN;
+                x = slow? NSwitchUtil.STICK_CENMIN : NSwitchUtil.STICK_MIN;
             else if (!dkey.HasFlag(DirectionKey.Left) && dkey.HasFlag(DirectionKey.Right))
-                x = slow? STICK_CENMAX : STICK_MAX;
+                x = slow? NSwitchUtil.STICK_CENMAX : NSwitchUtil.STICK_MAX;
             else
-                x = STICK_CENTER;
+                x = NSwitchUtil.STICK_CENTER;
             if (dkey.HasFlag(DirectionKey.Up) && !dkey.HasFlag(DirectionKey.Down))
-                y = slow ? STICK_CENMIN: STICK_MIN;
+                y = slow ? NSwitchUtil.STICK_CENMIN : NSwitchUtil.STICK_MIN;
             else if (!dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
-                y = slow ? STICK_CENMAX : STICK_MAX;
+                y = slow ? NSwitchUtil.STICK_CENMAX : NSwitchUtil.STICK_MAX;
             else
-                y = STICK_CENTER;
+                y = NSwitchUtil.STICK_CENTER;
         }
 
-        private static HAT GetHATFromDirection(DirectionKey dkey)
+        private static SwitchHAT GetHATFromDirection(DirectionKey dkey)
         {
             if (dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
                 dkey &= ~DirectionKey.Up & ~DirectionKey.Down;
             if (dkey.HasFlag(DirectionKey.Left) && dkey.HasFlag(DirectionKey.Right))
                 dkey &= ~DirectionKey.Left & ~DirectionKey.Right;
             if (dkey == DirectionKey.Up)
-                return HAT.TOP;
+                return SwitchHAT.TOP;
             if (dkey == DirectionKey.Down)
-                return HAT.BOTTOM;
+                return SwitchHAT.BOTTOM;
             if (dkey == DirectionKey.Left)
-                return HAT.LEFT;
+                return SwitchHAT.LEFT;
             if (dkey == DirectionKey.Right)
-                return HAT.RIGHT;
+                return SwitchHAT.RIGHT;
             if (dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Left))
-                return HAT.TOP_LEFT;
+                return SwitchHAT.TOP_LEFT;
             if (dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Right))
-                return HAT.TOP_RIGHT;
+                return SwitchHAT.TOP_RIGHT;
             if (dkey.HasFlag(DirectionKey.Down) && dkey.HasFlag(DirectionKey.Left))
-                return HAT.BOTTOM_LEFT;
+                return SwitchHAT.BOTTOM_LEFT;
             if (dkey.HasFlag(DirectionKey.Down) && dkey.HasFlag(DirectionKey.Right))
-                return HAT.BOTTOM_RIGHT;
-            return HAT.CENTER;
+                return SwitchHAT.BOTTOM_RIGHT;
+            return SwitchHAT.CENTER;
         }
     }
 }

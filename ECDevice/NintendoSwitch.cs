@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,54 +11,6 @@ namespace ECDevice
     {
         const int MINIMAL_INTERVAL = 30;
 
-        public const byte STICK_MIN = 0;
-        public const byte STICK_CENMIN = 64;
-        public const byte STICK_CENTER = 128;
-        public const byte STICK_CENMAX = 192;
-        public const byte STICK_MAX = 255;
-
-        [Flags]
-        public enum Button
-        {
-            Y = 0x01,
-            B = 0x02,
-            A = 0x04,
-            X = 0x08,
-            L = 0x10,
-            R = 0x20,
-            ZL = 0x40,
-            ZR = 0x80,
-            MINUS = 0x100,
-            PLUS = 0x200,
-            LCLICK = 0x400,
-            RCLICK = 0x800,
-            HOME = 0x1000,
-            CAPTURE = 0x2000,
-        }
-
-        public enum HAT
-        {
-            TOP = 0x00,
-            TOP_RIGHT = 0x01,
-            RIGHT = 0x02,
-            BOTTOM_RIGHT = 0x03,
-            BOTTOM = 0x04,
-            BOTTOM_LEFT = 0x05,
-            LEFT = 0x06,
-            TOP_LEFT = 0x07,
-            CENTER = 0x08,
-        }
-
-        [Flags]
-        public enum DirectionKey
-        {
-            None = 0x0,
-            Up = 0x1,
-            Down = 0x2,
-            Left = 0x4,
-            Right = 0x8,
-        }
-
         public enum ConnectResult
         {
             None,
@@ -67,94 +18,6 @@ namespace ECDevice
             InvalidArgument,
             Timeout,
             Error,
-        }
-
-        public class Report : ICloneable
-        {
-            public ushort Button;
-            public byte HAT;
-            public byte LX;
-            public byte LY;
-            public byte RX;
-            public byte RY;
-
-            public Report()
-            {
-                Reset();
-            }
-
-            public void Reset()
-            {
-                Button = 0;
-                HAT = (byte)NintendoSwitch.HAT.CENTER;
-                LX = STICK_CENTER;
-                LY = STICK_CENTER;
-                RX = STICK_CENTER;
-                RY = STICK_CENTER;
-            }
-
-            public byte[] GetBytes(bool raw = false)
-            {
-                // Protocal packet structure:
-                // bit 7 (highest):    0 = data byte, 1 = end flag
-                // bit 6~0:            data (Big-Endian)
-                // serialize data
-                var serialized = new List<byte>();
-                serialized.AddRange(BitConverter.GetBytes(Button).Reverse());
-                serialized.Add(HAT);
-                serialized.Add(LX);
-                serialized.Add(LY);
-                serialized.Add(RX);
-                serialized.Add(RY);
-                if (raw)
-                    return serialized.ToArray();
-
-                // generate packet
-                var packet = new List<byte>();
-                long n = 0;
-                int bits = 0;
-                foreach (var b in serialized)
-                {
-                    n = (n << 8) | b;
-                    bits += 8;
-                    while (bits >= 7)
-                    {
-                        bits -= 7;
-                        packet.Add((byte)(n >> bits));
-                        n &= (1 << bits) - 1;
-                    }
-                }
-                packet[packet.Count - 1] |= 0x80;
-                return packet.ToArray();
-            }
-
-            public object Clone()
-            {
-                return new Report
-                {
-                    Button = Button,
-                    HAT = HAT,
-                    LX = LX,
-                    LY = LY,
-                    RX = RX,
-                    RY = RY,
-                };
-            }
-
-            public string GetKeyStr()
-            {
-                var list = new List<string>();
-                foreach (Button button in Enum.GetValues(typeof(Button)))
-                    if ((Button & (ushort)button) != 0)
-                        list.Add(button.GetName());
-                if (HAT != (byte)NintendoSwitch.HAT.CENTER)
-                    list.Add($"HAT.{((NintendoSwitch.HAT)HAT).GetName()}");
-                if (LX != STICK_CENTER || LY != STICK_CENTER)
-                    list.Add($"LS({LX},{LY})");
-                if (RX != STICK_CENTER || RY != STICK_CENTER)
-                    list.Add($"RS({RX},{RY})");
-                return string.Join(" ", list);
-            }
         }
 
         public class Key
@@ -169,12 +32,12 @@ namespace ECDevice
 
             public readonly string Name;
             public readonly int KeyCode;
-            public readonly Action<Report> Down;
-            public readonly Action<Report> Up;
+            public readonly Action<SwitchReport> Down;
+            public readonly Action<SwitchReport> Up;
             public readonly int StickX;
             public readonly int StickY;
 
-            Key(string name, int keyCode, Action<Report> down, Action<Report> up, int x = -1, int y = -1)
+            Key(string name, int keyCode, Action<SwitchReport> down, Action<SwitchReport> up, int x = -1, int y = -1)
             {
                 Name = name;
                 KeyCode = keyCode;
@@ -184,11 +47,11 @@ namespace ECDevice
                 StickY = y;
             }
 
-            static Dictionary<Button, int> _buttonKeyCodes = new();
+            static Dictionary<SwitchButton, int> _buttonKeyCodes = new();
 
             static Key()
             {
-                foreach (Button b in Enum.GetValues(typeof(Button)))
+                foreach (SwitchButton b in Enum.GetValues(typeof(SwitchButton)))
                 {
                     int n = (int)b;
                     int k = -1;
@@ -201,7 +64,7 @@ namespace ECDevice
                 }
             }
 
-            public static Key Button(Button button)
+            public static Key Button(SwitchButton button)
             {
                 return new Key(button.GetName(),
                     _buttonKeyCodes[button],
@@ -210,22 +73,22 @@ namespace ECDevice
                 );
             }
 
-            public static implicit operator Key(Button button)
+            public static implicit operator Key(SwitchButton button)
             {
                 return Button(button);
             }
 
-            public static Key HAT(HAT hat)
+            public static Key HAT(SwitchHAT hat)
             {
                 var name = "HAT." + hat.GetName();
                 return new Key(name,
                     (int)hat | HatMask,
                     r => r.HAT = (byte)hat,
-                    r => r.HAT = (byte)NintendoSwitch.HAT.CENTER
+                    r => r.HAT = (byte)SwitchHAT.CENTER
                 );
             }
 
-            public static implicit operator Key(HAT hat)
+            public static implicit operator Key(SwitchHAT hat)
             {
                 return HAT(hat);
             }
@@ -240,7 +103,7 @@ namespace ECDevice
                 return new Key($"LStick({x},{y})",
                     (int)StickKeyCode.LS,
                     r => { r.LX = x; r.LY = y; },
-                    r => { r.LX = STICK_CENTER; r.LY = STICK_CENTER; },
+                    r => { r.LX = NSwitchUtil.STICK_CENTER; r.LY = NSwitchUtil.STICK_CENTER; },
                     x,
                     y
                 );
@@ -251,7 +114,7 @@ namespace ECDevice
                 return new Key($"RStick({x},{y})",
                     (int)StickKeyCode.RS,
                     r => { r.RX = x; r.RY = y; },
-                    r => { r.RX = STICK_CENTER; r.RY = STICK_CENTER; },
+                    r => { r.RX = NSwitchUtil.STICK_CENTER; r.RY = NSwitchUtil.STICK_CENTER; },
                     x,
                     y
                 );
@@ -284,13 +147,13 @@ namespace ECDevice
             public static Key FromKeyCode(int keyCode)
             {
                 if (keyCode < HatMask)
-                    return Button((Button)(1 << keyCode));
+                    return Button((SwitchButton)(1 << keyCode));
                 else if (keyCode == (int)StickKeyCode.LS)
-                    return LStick(STICK_CENTER, STICK_CENTER);
+                    return LStick(NSwitchUtil.STICK_CENTER, NSwitchUtil.STICK_CENTER);
                 else if (keyCode == (int)StickKeyCode.RS)
-                    return RStick(STICK_CENTER, STICK_CENTER);
+                    return RStick(NSwitchUtil.STICK_CENTER, NSwitchUtil.STICK_CENTER);
                 else
-                    return HAT((HAT)(keyCode ^ HatMask));
+                    return HAT((SwitchHAT)(keyCode ^ HatMask));
             }
 
             public static implicit operator Key(int keyCode)
@@ -300,7 +163,7 @@ namespace ECDevice
         }
 
         private IConnClient clientCon { get; set; }
-        Report _report = new();
+        SwitchReport _report = new();
         Dictionary<int, KeyStroke> _keystrokes = new();
         bool _reset = false;
 
@@ -396,9 +259,9 @@ namespace ECDevice
 
         public Status ConnectionStatus => clientCon?.CurrentStatus ?? Status.Connecting;
 
-        public Report GetReport()
+        public SwitchReport GetReport()
         {
-            return _report.Clone() as Report;
+            return _report.Clone() as SwitchReport;
         }
 
         public void Reset()
@@ -471,7 +334,7 @@ namespace ECDevice
             else
             {
                 _hat &= ~dkey;
-                if (GetHATFromDirection(_hat) == HAT.CENTER)
+                if (GetHATFromDirection(_hat) == SwitchHAT.CENTER)
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());

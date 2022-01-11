@@ -18,9 +18,17 @@ namespace EasyCon2.Script.Assembly
         public Dictionary<string, Instructions.AsmBranch> FunctionMapping = new();
         public Dictionary<string, Instructions.AsmEmpty> CallMapping = new();
 
+
+        static Instruction Assert(Instruction ins)
+        {
+            if (ins is Instruction.Failed)
+                throw new AssembleException((ins as Instruction.Failed).Message);
+            return ins;
+        }
+
         public void Add(Instruction ins)
         {
-            _instructions.Add(ScripterUtil.Assert(ins));
+            _instructions.Add(Assert(ins));
         }
 
         public Instruction Last()

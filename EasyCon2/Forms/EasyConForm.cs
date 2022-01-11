@@ -5,6 +5,7 @@ using EasyCon2.Script;
 using EasyCon2.Script.Assembly;
 using EasyCon2.Script.Parsing;
 using ECDevice;
+using ECDevice.Exts;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
@@ -15,7 +16,6 @@ using System.IO;
 using System.Media;
 using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
 
@@ -275,39 +275,39 @@ namespace EasyCon2.Forms
         {
             formController.UnregisterAllKeys();
 
-            formController.RegisterKey(_config.KeyMapping.A, NintendoSwitch.Button.A);
-            formController.RegisterKey(_config.KeyMapping.B, NintendoSwitch.Button.B);
-            formController.RegisterKey(_config.KeyMapping.X, NintendoSwitch.Button.X);
-            formController.RegisterKey(_config.KeyMapping.Y, NintendoSwitch.Button.Y);
-            formController.RegisterKey(_config.KeyMapping.L, NintendoSwitch.Button.L);
-            formController.RegisterKey(_config.KeyMapping.R, NintendoSwitch.Button.R);
-            formController.RegisterKey(_config.KeyMapping.ZL, NintendoSwitch.Button.ZL);
-            formController.RegisterKey(_config.KeyMapping.ZR, NintendoSwitch.Button.ZR);
-            formController.RegisterKey(_config.KeyMapping.Plus, NintendoSwitch.Button.PLUS);
-            formController.RegisterKey(_config.KeyMapping.Minus, NintendoSwitch.Button.MINUS);
-            formController.RegisterKey(_config.KeyMapping.Capture, NintendoSwitch.Button.CAPTURE);
-            formController.RegisterKey(_config.KeyMapping.Home, NintendoSwitch.Button.HOME);
-            formController.RegisterKey(_config.KeyMapping.LClick, NintendoSwitch.Button.LCLICK);
-            formController.RegisterKey(_config.KeyMapping.RClick, NintendoSwitch.Button.RCLICK);
+            formController.RegisterKey(_config.KeyMapping.A, SwitchButton.A);
+            formController.RegisterKey(_config.KeyMapping.B, SwitchButton.B);
+            formController.RegisterKey(_config.KeyMapping.X, SwitchButton.X);
+            formController.RegisterKey(_config.KeyMapping.Y, SwitchButton.Y);
+            formController.RegisterKey(_config.KeyMapping.L, SwitchButton.L);
+            formController.RegisterKey(_config.KeyMapping.R, SwitchButton.R);
+            formController.RegisterKey(_config.KeyMapping.ZL, SwitchButton.ZL);
+            formController.RegisterKey(_config.KeyMapping.ZR, SwitchButton.ZR);
+            formController.RegisterKey(_config.KeyMapping.Plus, SwitchButton.PLUS);
+            formController.RegisterKey(_config.KeyMapping.Minus, SwitchButton.MINUS);
+            formController.RegisterKey(_config.KeyMapping.Capture, SwitchButton.CAPTURE);
+            formController.RegisterKey(_config.KeyMapping.Home, SwitchButton.HOME);
+            formController.RegisterKey(_config.KeyMapping.LClick, SwitchButton.LCLICK);
+            formController.RegisterKey(_config.KeyMapping.RClick, SwitchButton.RCLICK);
 
-            formController.RegisterKey(_config.KeyMapping.UpRight, NintendoSwitch.HAT.TOP_RIGHT);
-            formController.RegisterKey(_config.KeyMapping.DownRight, NintendoSwitch.HAT.BOTTOM_RIGHT);
-            formController.RegisterKey(_config.KeyMapping.UpLeft, NintendoSwitch.HAT.TOP_LEFT);
-            formController.RegisterKey(_config.KeyMapping.DownLeft, NintendoSwitch.HAT.BOTTOM_LEFT);
+            formController.RegisterKey(_config.KeyMapping.UpRight, SwitchHAT.TOP_RIGHT);
+            formController.RegisterKey(_config.KeyMapping.DownRight, SwitchHAT.BOTTOM_RIGHT);
+            formController.RegisterKey(_config.KeyMapping.UpLeft, SwitchHAT.TOP_LEFT);
+            formController.RegisterKey(_config.KeyMapping.DownLeft, SwitchHAT.BOTTOM_LEFT);
 
-            formController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(NintendoSwitch.DirectionKey.Up, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Up, false));
-            formController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(NintendoSwitch.DirectionKey.Down, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Down, false));
-            formController.RegisterKey(_config.KeyMapping.Left, () => NS.HatDirection(NintendoSwitch.DirectionKey.Left, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Left, false));
-            formController.RegisterKey(_config.KeyMapping.Right, () => NS.HatDirection(NintendoSwitch.DirectionKey.Right, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Right, false));
+            formController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(DirectionKey.Up, true), () => NS.HatDirection(DirectionKey.Up, false));
+            formController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(DirectionKey.Down, true), () => NS.HatDirection(DirectionKey.Down, false));
+            formController.RegisterKey(_config.KeyMapping.Left, () => NS.HatDirection(DirectionKey.Left, true), () => NS.HatDirection(DirectionKey.Left, false));
+            formController.RegisterKey(_config.KeyMapping.Right, () => NS.HatDirection(DirectionKey.Right, true), () => NS.HatDirection(DirectionKey.Right, false));
 
-            formController.RegisterKey(_config.KeyMapping.LSUp, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Up, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Up, false));
-            formController.RegisterKey(_config.KeyMapping.LSDown, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Down, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Down, false));
-            formController.RegisterKey(_config.KeyMapping.LSLeft, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Left, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Left, false));
-            formController.RegisterKey(_config.KeyMapping.LSRight, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Right, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Right, false));
-            formController.RegisterKey(_config.KeyMapping.RSUp, () => NS.RightDirection(NintendoSwitch.DirectionKey.Up, true), () => NS.RightDirection(NintendoSwitch.DirectionKey.Up, false));
-            formController.RegisterKey(_config.KeyMapping.RSDown, () => NS.RightDirection(NintendoSwitch.DirectionKey.Down, true), () => NS.RightDirection(NintendoSwitch.DirectionKey.Down, false));
-            formController.RegisterKey(_config.KeyMapping.RSLeft, () => NS.RightDirection(NintendoSwitch.DirectionKey.Left, true), () => NS.RightDirection(NintendoSwitch.DirectionKey.Left, false));
-            formController.RegisterKey(_config.KeyMapping.RSRight, () => NS.RightDirection(NintendoSwitch.DirectionKey.Right, true), () => NS.RightDirection(NintendoSwitch.DirectionKey.Right, false));
+            formController.RegisterKey(_config.KeyMapping.LSUp, () => NS.LeftDirection(DirectionKey.Up, true), () => NS.LeftDirection(DirectionKey.Up, false));
+            formController.RegisterKey(_config.KeyMapping.LSDown, () => NS.LeftDirection(DirectionKey.Down, true), () => NS.LeftDirection(DirectionKey.Down, false));
+            formController.RegisterKey(_config.KeyMapping.LSLeft, () => NS.LeftDirection(DirectionKey.Left, true), () => NS.LeftDirection(DirectionKey.Left, false));
+            formController.RegisterKey(_config.KeyMapping.LSRight, () => NS.LeftDirection(DirectionKey.Right, true), () => NS.LeftDirection(DirectionKey.Right, false));
+            formController.RegisterKey(_config.KeyMapping.RSUp, () => NS.RightDirection(DirectionKey.Up, true), () => NS.RightDirection(DirectionKey.Up, false));
+            formController.RegisterKey(_config.KeyMapping.RSDown, () => NS.RightDirection(DirectionKey.Down, true), () => NS.RightDirection(DirectionKey.Down, false));
+            formController.RegisterKey(_config.KeyMapping.RSLeft, () => NS.RightDirection(DirectionKey.Left, true), () => NS.RightDirection(DirectionKey.Left, false));
+            formController.RegisterKey(_config.KeyMapping.RSRight, () => NS.RightDirection(DirectionKey.Right, true), () => NS.RightDirection(DirectionKey.Right, false));
         }
 
         #region 脚本功能接口
