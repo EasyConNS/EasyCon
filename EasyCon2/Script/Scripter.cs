@@ -7,6 +7,20 @@
 
         List<Parsing.Statement> _statements = new();
 
+        public bool HasKeyAction {
+            get
+            {
+                foreach(var stat in _statements)
+                {
+                    if (stat is Parsing.Statements.KeyAction)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
         public void Parse(string code, IEnumerable<ExternalVariable> extVars)
         {
             ExtVars = new();
@@ -39,6 +53,13 @@
         public byte[] Assemble(bool auto = true)
         {
             return new Assembly.Assembler().Assemble(_statements, auto);
+        }
+
+        public void Reset()
+        {
+            Constants = new();
+            ExtVars = new();
+            _statements = new();
         }
     }
 }

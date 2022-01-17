@@ -5,6 +5,16 @@ namespace EasyCon2.Graphic
 {
     internal static class ImgLabelExt
     {
+        public static List<SearchMethod> GetAllSearchMethod()
+        {
+            var list = new List<SearchMethod>
+            {
+                SearchMethod.SqDiffNormed,
+                SearchMethod.CCorrNormed,
+                SearchMethod.CCoeffNormed
+            };
+            return list;
+        }
 
         public static string ImageToBase64(this ImgLabel self, Bitmap bmp)
         {

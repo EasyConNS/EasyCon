@@ -62,7 +62,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index, Value) as Assembly.Instruction);
+            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index, Value));
         }
     }
 
@@ -125,6 +125,22 @@ namespace EasyCon2.Script.Parsing.Statements
         public Div(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
+    }
+
+    class RoundDiv : BinaryOp
+    {
+        static readonly Meta _Meta = new Meta(typeof(RoundDiv), typeof(Assembly.Instructions.AsmDiv), @"\=", (a, b) => (int)Math.Round((double)a / b) );
+        protected override Meta MetaInfo => _Meta;
+        public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
+
+        public RoundDiv(ValRegEx regdst, ValBase value)
+            : base(regdst, value)
+        { }
+
+        public override void Assemble(Assembly.Assembler assembler)
+        {
+            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+        }
     }
 
     class Mod : BinaryOp

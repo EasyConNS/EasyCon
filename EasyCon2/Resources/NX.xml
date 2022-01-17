@@ -11,6 +11,7 @@
       </Span>
       <KeyWords name = "Funcs" bold="true" italic="false" color="LightBlue">
         <Key word = "RAND" />
+        <Key word = "TIME" />
         <Key word = "PRINT" />
         <Key word = "ALERT" />
         <Key word = "WAIT" />

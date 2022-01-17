@@ -36,7 +36,7 @@ namespace EasyCon2.Forms
         private VControllerConfig _config;
         private string _currentFile = null;
 
-        private Scripter _program = new();
+        private readonly Scripter _program = new();
         private bool scriptCompiling = false;
         private bool scriptRunning = false;
         private Thread thd;
@@ -416,12 +416,15 @@ namespace EasyCon2.Forms
 
         private void ScriptRun()
         {
-            if (!SerialCheckConnect())
-                return;
-            if (!CheckFirmwareVersion())
-                return;
             if (!ScriptCompile())
                 return;
+            if(_program.HasKeyAction)
+            {
+                if (!SerialCheckConnect())
+                    return;
+                if (!CheckFirmwareVersion())
+                    return;
+            }
 
             thd = new Thread(_RunScript);
             thd?.Start();
@@ -747,7 +750,7 @@ namespace EasyCon2.Forms
             if (scriptCompiling)
                 return;
             _fileEdited = true;
-            _program = new();
+            _program.Reset();
         }
 
         private void buttonScriptRunStop_Click(object sender, EventArgs e)

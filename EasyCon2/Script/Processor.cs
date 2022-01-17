@@ -16,6 +16,8 @@
         public Dictionary<Parsing.Statements.For, int> LoopTime = new();
         public Dictionary<Parsing.Statements.For, int> LoopCount = new();
         public RegisterFile Register = new(RegisterCount);
+
+        public ExternTime et = new(DateTime.Now);
     }
 
     class RegisterFile

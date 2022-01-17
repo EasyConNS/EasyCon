@@ -34,8 +34,9 @@ namespace EasyCon2.Script.Parsing.Statements
             public Statement Parse(ParserArgument args)
             {
                 var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.Register}$", RegexOptions.IgnoreCase);
+                
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, Formatter.GetReg(m.Groups[1].Value, _lhs)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, Formatter.GetRegEx(m.Groups[1].Value, _lhs)) as Statement;
                 return null;
             }
         }
@@ -62,7 +63,7 @@ namespace EasyCon2.Script.Parsing.Statements
         {
             if (RegDst is ValReg32)
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index) as Assembly.Instruction);
+            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index));
         }
     }
 
@@ -127,7 +128,7 @@ namespace EasyCon2.Script.Parsing.Statements
             if (RegDst is ValReg32)
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
             assembler.Add(Assembly.Instructions.AsmMov.Create(RegDst.Index, RegSrc));
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index) as Assembly.Instruction);
+            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index));
         }
     }
 
@@ -200,7 +201,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Rand : UnaryOp
     {
-        static Random _rand = new Random();
+        static Random _rand = new();
         static readonly Meta _Meta = new Meta(typeof(Rand), typeof(Assembly.Instructions.AsmRand), "RAND", a => _rand.Next(a));
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);

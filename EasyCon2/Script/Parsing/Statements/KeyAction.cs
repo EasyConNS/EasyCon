@@ -66,7 +66,7 @@ namespace EasyCon2.Script.Parsing.Statements
             var duration = Duration.Get(processor);
             if (duration > 0)
             {
-                NintendoSwitch.GetInstance().Press(Key, duration);
+                processor.GamePad.ClickButtons(Key, duration);
                 Thread.Sleep(duration);
             }
         }
@@ -120,7 +120,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Exec(Processor processor)
         {
-            NintendoSwitch.GetInstance().Down(Key);
+            processor.GamePad.PressButtons(Key);
         }
 
         protected override string _GetString(Formatter formatter)
@@ -144,7 +144,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Exec(Processor processor)
         {
-            NintendoSwitch.GetInstance().Up(Key);
+            processor.GamePad.ReleaseButtons(Key);
         }
 
         protected override string _GetString(Formatter formatter)

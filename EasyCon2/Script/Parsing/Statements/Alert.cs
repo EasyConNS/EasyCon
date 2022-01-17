@@ -16,7 +16,7 @@ namespace EasyCon2.Script.Parsing.Statements
         public static Statement Parse(ParserArgument args)
         {
             if (args.Text.Equals("alert", StringComparison.OrdinalIgnoreCase))
-                return new Alert(new Content[0]);
+                return new Alert(Array.Empty<Content>());
             var m = Regex.Match(args.Text, @"^alert\s+(.*)$", RegexOptions.IgnoreCase);
             if (m.Success)
             {

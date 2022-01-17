@@ -84,7 +84,7 @@ namespace EasyCon2.Forms
                 Directory.CreateDirectory(ImgDir);
             }
 
-            foreach (var method in ImgLabel.GetAllSearchMethod())
+            foreach (var method in ImgLabelExt.GetAllSearchMethod())
             {
                 searchMethodComBox.Items.Add(method.ToDescription());
             }
@@ -109,12 +109,19 @@ namespace EasyCon2.Forms
                 try
                 {
                     var temp = JsonConvert.DeserializeObject<ImgLabel>(File.ReadAllText(file));
+                    if(temp == null)
+                    {
+                        throw new Exception();
+                    }
                     if (temp.name == "") continue;
                     temp.Refresh(() => cvcap.GetImage());
                     imgLabels.Add(temp);
                     imgLableList.Items.Add(temp.name);
                 }
-                catch {/*ignore errors*/ }
+                catch
+                {
+                    Debug.WriteLine("无法加载标签:", file);
+                }
             }
 
             VideoSourcePlayerMonitor.PaintEventHandler += new PaintEventHandler(MonitorPaint);
@@ -389,11 +396,11 @@ namespace EasyCon2.Forms
         private void searchImg_test()
         {
             Stopwatch sw = new();
-            ImgLabel.SearchMethod method;
+            SearchMethod method;
             if (searchMethodComBox.SelectedItem == null)
-                method = ImgLabel.SearchMethod.SqDiffNormed;
+                method = SearchMethod.SqDiffNormed;
             else
-                method = EnumHelper.GetEnumFromString<ImgLabel.SearchMethod>(searchMethodComBox.SelectedItem.ToString());
+                method = EnumHelper.GetEnumFromString<SearchMethod>(searchMethodComBox.SelectedItem.ToString());
 
             curImgLabel.searchMethod = method;
             //Debug.WriteLine(method);
@@ -529,16 +536,16 @@ namespace EasyCon2.Forms
 
         private void SaveTagBtn_Click(object sender, EventArgs e)
         {
-            ImgLabel.SearchMethod method;
+            SearchMethod method;
             if (imgLabelNametxt.Text == "")
             {
                 MessageBox.Show("搜图标签为空无法保存");
                 return;
             }
             if (searchMethodComBox.SelectedItem == null)
-                method = ImgLabel.SearchMethod.SqDiffNormed;
+                method = SearchMethod.SqDiffNormed;
             else
-                method = EnumHelper.GetEnumFromString<ImgLabel.SearchMethod>(searchMethodComBox.SelectedItem.ToString());
+                method = EnumHelper.GetEnumFromString<SearchMethod>(searchMethodComBox.SelectedItem.ToString());
 
             curImgLabel.searchMethod = method;
             curImgLabel.matchDegree = double.Parse(lowestMatch.Text);

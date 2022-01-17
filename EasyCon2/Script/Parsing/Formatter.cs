@@ -17,7 +17,7 @@ namespace EasyCon2.Script.Parsing
         {
             if (!text.StartsWith("@"))
                 throw new FormatException();
-            var name = text.Substring(1);
+            var name = text[1..];
             if (!ExtVars.ContainsKey(name))
                 throw new ParseException($"未定义的外部变量“{text}”");
             return new ValExtVar(ExtVars[name]);
