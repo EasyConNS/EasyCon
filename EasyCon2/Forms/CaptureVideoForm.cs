@@ -90,14 +90,14 @@ namespace EasyCon2.Forms
             }
 
             // data binding
-            searchRangX.DataBindings.Add("Text", curImgLabel, "RangeX");
-            searchRangY.DataBindings.Add("Text", curImgLabel, "RangeY");
-            searchRangW.DataBindings.Add("Text", curImgLabel, "RangeWidth");
-            searchRangH.DataBindings.Add("Text", curImgLabel, "RangeHeight");
-            targRangX.DataBindings.Add("Text", curImgLabel, "TargetX");
-            targRangY.DataBindings.Add("Text", curImgLabel, "TargetY");
-            targRangW.DataBindings.Add("Text", curImgLabel, "TargetWidth");
-            targRangH.DataBindings.Add("Text", curImgLabel, "TargetHeight");
+            searchXNUD.DataBindings.Add("Value", curImgLabel, "RangeX");
+            searchYNUD.DataBindings.Add("Value", curImgLabel, "RangeY");
+            searchWNUD.DataBindings.Add("Value", curImgLabel, "RangeWidth");
+            searchHNUD.DataBindings.Add("Value", curImgLabel, "RangeHeight");
+            targetXNUD.DataBindings.Add("Value", curImgLabel, "TargetX");
+            targetYNUD.DataBindings.Add("Value", curImgLabel, "TargetY");
+            targetWNUD.DataBindings.Add("Value", curImgLabel, "TargetWidth");
+            targetHNUD.DataBindings.Add("Value", curImgLabel, "TargetHeight");
             lowestMatch.DataBindings.Add("Text", curImgLabel, "matchDegree");
 
             // load the imglabel

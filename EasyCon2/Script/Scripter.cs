@@ -2,8 +2,8 @@
 {
     public class Scripter
     {
-        public Dictionary<string, int> Constants = new();
-        public Dictionary<string, ExternalVariable> ExtVars = new();
+        private Dictionary<string, int> Constants = new();
+        private Dictionary<string, ExternalVariable> ExtVars = new();
 
         List<Parsing.Statement> _statements = new();
 

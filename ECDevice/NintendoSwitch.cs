@@ -47,7 +47,7 @@ namespace ECDevice
                 StickY = y;
             }
 
-            static Dictionary<SwitchButton, int> _buttonKeyCodes = new();
+            static readonly Dictionary<SwitchButton, int> _buttonKeyCodes = new();
 
             static Key()
             {
@@ -64,6 +64,16 @@ namespace ECDevice
                 }
             }
 
+            public static implicit operator Key(SwitchButton button)
+            {
+                return Button(button);
+            }
+
+            public static implicit operator Key(SwitchHAT hat)
+            {
+                return HAT(hat);
+            }
+
             public static Key Button(SwitchButton button)
             {
                 return new Key(button.GetName(),
@@ -73,29 +83,13 @@ namespace ECDevice
                 );
             }
 
-            public static implicit operator Key(SwitchButton button)
-            {
-                return Button(button);
-            }
-
             public static Key HAT(SwitchHAT hat)
             {
-                var name = "HAT." + hat.GetName();
-                return new Key(name,
+                return new Key("HAT." + hat.GetName(),
                     (int)hat | HatMask,
                     r => r.HAT = (byte)hat,
                     r => r.HAT = (byte)SwitchHAT.CENTER
                 );
-            }
-
-            public static implicit operator Key(SwitchHAT hat)
-            {
-                return HAT(hat);
-            }
-
-            public static Key HAT(DirectionKey dkey)
-            {
-                return HAT(GetHATFromDirection(dkey));
             }
 
             public static Key LStick(byte x, byte y)
@@ -144,6 +138,11 @@ namespace ECDevice
                 return RStick(x, y);
             }
 
+            public static implicit operator Key(int keyCode)
+            {
+                return FromKeyCode(keyCode);
+            }
+
             public static Key FromKeyCode(int keyCode)
             {
                 if (keyCode < HatMask)
@@ -154,11 +153,6 @@ namespace ECDevice
                     return RStick(NSwitchUtil.STICK_CENTER, NSwitchUtil.STICK_CENTER);
                 else
                     return HAT((SwitchHAT)(keyCode ^ HatMask));
-            }
-
-            public static implicit operator Key(int keyCode)
-            {
-                return FromKeyCode(keyCode);
             }
         }
 
@@ -329,7 +323,7 @@ namespace ECDevice
             {
                 _hat |= dkey;
                 GetHATFromDirection(_hat);
-                Down(Key.HAT(_hat));
+                Down(Key.HAT(GetHATFromDirection(_hat)));
             }
             else
             {
@@ -338,13 +332,13 @@ namespace ECDevice
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Up(Key.HAT(dkey));
+                    Up(Key.HAT(GetHATFromDirection(dkey)));
                 }
                 else
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Down(Key.HAT(_hat));
+                    Down(Key.HAT(GetHATFromDirection(_hat)));
                 }
             }
         }
