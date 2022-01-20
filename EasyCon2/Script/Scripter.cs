@@ -2,8 +2,8 @@
 {
     public class Scripter
     {
-        private Dictionary<string, int> Constants = new();
-        private Dictionary<string, ExternalVariable> ExtVars = new();
+        readonly Dictionary<string, int> Constants = new();
+        readonly Dictionary<string, ExternalVariable> ExtVars = new();
 
         List<Parsing.Statement> _statements = new();
 
@@ -23,7 +23,7 @@
 
         public void Parse(string code, IEnumerable<ExternalVariable> extVars)
         {
-            ExtVars = new();
+            ExtVars.Clear();
             foreach (var ev in extVars)
                 ExtVars[ev.Name] = ev;
             _statements = new Parsing.Parser(Constants, ExtVars).Parse(code);
@@ -57,9 +57,9 @@
 
         public void Reset()
         {
-            Constants = new();
-            ExtVars = new();
-            _statements = new();
+            Constants.Clear();
+            ExtVars.Clear();
+            _statements.Clear();
         }
     }
 }

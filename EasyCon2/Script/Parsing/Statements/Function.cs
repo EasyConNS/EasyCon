@@ -1,27 +1,10 @@
-﻿using System.Text.RegularExpressions;
-
-namespace EasyCon2.Script.Parsing.Statements
+﻿namespace EasyCon2.Script.Parsing.Statements
 {
     class Function : Statement
     {
         public override int IndentNext => 1;
         public readonly string Label;
         public ReturnStat Ret = null;
-
-        public static IStatementParser Parser = new StatementParser(Parse);
-
-        public static Statement Parse(ParserArgument args)
-        {
-            var m = Regex.Match(args.Text, @"^func\s+(\D[\d\p{L}_]+)$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new Function(m.Groups[1].Value);
-            m = Regex.Match(args.Text, @"^call\s+(\D[\d\p{L}_]+)$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new CallStat(m.Groups[1].Value);
-            if (args.Text.Equals("ret", StringComparison.OrdinalIgnoreCase))
-                return new ReturnStat();
-            return null;
-        }
 
         public Function(string lbl)
         {

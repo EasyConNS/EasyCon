@@ -4,7 +4,6 @@ namespace EasyCon2.Script.Parsing.Statements
 {
     class Mov : Statement
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
         protected readonly ValRegEx RegDst;
         protected readonly ValBase Value;
 
@@ -12,14 +11,6 @@ namespace EasyCon2.Script.Parsing.Statements
         {
             RegDst = regdst;
             Value = value;
-        }
-
-        public static Statement Parse(ParserArgument args)
-        {
-            var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new Mov(Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value));
-            return null;
         }
 
         protected override string _GetString(Formatter formatter)

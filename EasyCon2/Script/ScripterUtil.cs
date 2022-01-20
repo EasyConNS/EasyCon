@@ -5,7 +5,7 @@ namespace EasyCon2.Script
 {
     internal static class ScripterUtil
     {
-        public static int GetDirectionIndex(NintendoSwitch.Key key)
+        public static int GetDirectionIndex(NintendoSwitch.ECKey key)
         {
             int x = key.StickX;
             int y = key.StickY;
@@ -16,15 +16,15 @@ namespace EasyCon2.Script
             return x >= y ? x + y : 32 - x - y;
         }
 
-        public static NintendoSwitch.Key GetKey(string keyname, string direction = "0")
+        public static NintendoSwitch.ECKey GetKey(string keyname, string direction = "0")
         {
             var isSlow = keyname.EndsWith("SS", StringComparison.OrdinalIgnoreCase);
             if (int.TryParse(direction, out int degree))
             {
                 if (keyname.StartsWith("LS", StringComparison.OrdinalIgnoreCase))
-                    return NintendoSwitch.Key.LStick(degree);
+                    return ECKeyUtil.LStick(degree);
                 else
-                    return NintendoSwitch.Key.RStick(degree);
+                    return ECKeyUtil.RStick(degree);
             }
             else
             {
@@ -32,9 +32,9 @@ namespace EasyCon2.Script
                 if (dk == DirectionKey.None)
                     return null;
                 if (keyname.StartsWith("LS", StringComparison.OrdinalIgnoreCase))
-                    return NintendoSwitch.Key.LStick(dk, isSlow);
+                    return ECKeyUtil.LStick(dk, isSlow);
                 else
-                    return NintendoSwitch.Key.RStick(dk, isSlow);
+                    return ECKeyUtil.RStick(dk, isSlow);
             }
         }
     }

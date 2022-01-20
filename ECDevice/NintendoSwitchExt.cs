@@ -20,7 +20,7 @@ namespace ECDevice
             return _instance;
         }
 
-        private static void PrintKey(string str, Key key = null)
+        private static void PrintKey(string str, ECKey key = null)
         {
             str = str + " " + key?.Name ?? "";
             Debug.WriteLine(str);
@@ -42,7 +42,7 @@ namespace ECDevice
             };
         }
 
-        private static void GetXYFromDegree(double degree, out byte x, out byte y)
+        public static void GetXYFromDegree(double degree, out byte x, out byte y)
         {
             double radian = degree * Math.PI / 180;
             double dy = Math.Round((Math.Tan(radian) * Math.Sign(Math.Cos(radian))).Clamp(-1, 1), 4);
@@ -51,7 +51,7 @@ namespace ECDevice
             y = (byte)((-dy + 1) / 2 * (NSwitchUtil.STICK_MAX - NSwitchUtil.STICK_MIN) + NSwitchUtil.STICK_MIN);
         }
 
-        private static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, bool slow = false)
+        public static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, bool slow = false)
         {
             if (dkey.HasFlag(DirectionKey.Left) && !dkey.HasFlag(DirectionKey.Right))
                 x = slow? NSwitchUtil.STICK_CENMIN : NSwitchUtil.STICK_MIN;

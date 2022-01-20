@@ -1,10 +1,7 @@
-﻿using System.Text.RegularExpressions;
-
-namespace EasyCon2.Script.Parsing.Statements
+﻿namespace EasyCon2.Script.Parsing.Statements
 {
     class If : Statement
     {
-        public static IStatementParser Parser = new StatementParser(Parse);
         public override int IndentNext => 1;
         public Else Else;
         public EndIf EndIf;
@@ -17,17 +14,6 @@ namespace EasyCon2.Script.Parsing.Statements
             Operater = op;
             Left = left;
             Right = right;
-        }
-
-        public static Statement Parse(ParserArgument args)
-        {
-            foreach (var op in CompareOperator.All)
-            {
-                var m = Regex.Match(args.Text, $@"^if\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-                if (m.Success)
-                    return new If(op, args.Formatter.GetVar(m.Groups[1].Value), args.Formatter.GetValueEx(m.Groups[2].Value));
-            }
-            return null;
         }
 
         public override void Exec(Processor processor)
@@ -72,17 +58,9 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Else : Statement
     {
-        public static IStatementParser Parser = new StatementParser(Parse);
         public override int IndentThis => -1;
         public override int IndentNext => 1;
         public If If;
-
-        public static Statement Parse(ParserArgument args)
-        {
-            if (args.Text.Equals("else", StringComparison.OrdinalIgnoreCase))
-                return new Else();
-            return null;
-        }
 
         public override void Exec(Processor processor)
         {
@@ -106,16 +84,8 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class EndIf : Statement
     {
-        public static IStatementParser Parser = new StatementParser(Parse);
         public override int IndentThis => -1;
         public If If;
-
-        public static Statement Parse(ParserArgument args)
-        {
-            if (args.Text.Equals("endif", StringComparison.OrdinalIgnoreCase))
-                return new EndIf();
-            return null;
-        }
 
         public override void Exec(Processor processor)
         { }

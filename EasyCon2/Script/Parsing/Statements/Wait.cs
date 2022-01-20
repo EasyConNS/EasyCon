@@ -1,10 +1,7 @@
-﻿using System.Text.RegularExpressions;
-
-namespace EasyCon2.Script.Parsing.Statements
+﻿namespace EasyCon2.Script.Parsing.Statements
 {
     class Wait : Statement
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
         protected readonly ValBase Duration;
         protected bool _omitted;
 
@@ -12,17 +9,6 @@ namespace EasyCon2.Script.Parsing.Statements
         {
             Duration = duration;
             _omitted = omitted;
-        }
-
-        public static Statement Parse(ParserArgument args)
-        {
-            int duration;
-            if (int.TryParse(args.Text, out duration))
-                return new Wait(duration, true);
-            var m = Regex.Match(args.Text, $@"^wait\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new Wait(args.Formatter.GetValueEx(m.Groups[1].Value));
-            return null;
         }
 
         protected override string _GetString(Formatter formatter)

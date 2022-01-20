@@ -6,35 +6,28 @@ namespace EasyCon2.Script.Parsing
     {
         readonly Dictionary<string, int> _constants;
         readonly Dictionary<string, ExternalVariable> _extVars;
-        List<IStatementParser> _parsers = new();
+        static readonly List<IStatementParser> _parsers = new();
+
+        static Parser()
+        {
+            var types = (from domainAssembly in AppDomain.CurrentDomain.GetAssemblies()
+                         from assemblyType in domainAssembly.GetTypes()
+                         where assemblyType.IsTypePlugin(typeof(IStatementParser))
+                         select assemblyType).ToArray();
+            foreach (var t in types)
+            {
+                IStatementParser? activate;
+                try { activate = (IStatementParser?)Activator.CreateInstance(t); }
+                catch (Exception) { continue; }
+                if (activate != null)
+                    _parsers.Add(activate);
+            }
+        }
 
         public Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
         {
             _constants = constants;
             _extVars = extVars;
-
-            // constant declaration
-            _parsers.Add(new StatementParser(args =>
-            {
-                var m = Regex.Match(args.Text, $@"^{Formats.Constant}\s*=\s*(\d+)$", RegexOptions.IgnoreCase);
-                if (m.Success)
-                {
-                    _constants[m.Groups[1].Value] = int.Parse(m.Groups[2].Value);
-                    return new Statements.Empty($"{m.Groups[1].Value} = {m.Groups[2].Value}");
-                }
-                return null;
-            }));
-            // others
-            var types = (from domainAssembly in AppDomain.CurrentDomain.GetAssemblies()
-                         from assemblyType in domainAssembly.GetTypes()
-                         where assemblyType.IsSubclassOf(typeof(Statement))
-                         select assemblyType).ToArray();
-            foreach (var type in types)
-            {
-                var field = type.GetField("Parser");
-                if (field != null)
-                    _parsers.Add(field.GetValue(null) as IStatementParser);
-            }
         }
 
         public List<Statement> Parse(string text)

@@ -1,21 +1,8 @@
-﻿using System.Text.RegularExpressions;
-
-namespace EasyCon2.Script.Parsing.Statements
+﻿namespace EasyCon2.Script.Parsing.Statements
 {
     class TimeStamp : Statement
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
         private readonly ValRegEx RegDst;
-
-        public static Statement Parse(ParserArgument args)
-        {
-            var m = Regex.Match(args.Text, $@"^TIME\s+{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-            {
-                return new TimeStamp(Formatter.GetRegEx(m.Groups[1].Value));
-            }
-            return null;
-        }
 
         public TimeStamp(ValRegEx val)
         {

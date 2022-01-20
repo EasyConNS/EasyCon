@@ -83,7 +83,7 @@ namespace PTController
             LowLevelKeyboard.GetInstance().RegisterKeyEvent((int)key, keydown, keyup);
         }
 
-        public void RegisterKey(Keys key, NintendoSwitch.Key nskey)
+        public void RegisterKey(Keys key, NintendoSwitch.ECKey nskey)
         {
             RegisterKey(key, () => NintendoSwitch.GetInstance().Down(nskey), () => NintendoSwitch.GetInstance().Up(nskey));
         }

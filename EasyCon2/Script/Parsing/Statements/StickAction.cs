@@ -1,55 +1,16 @@
-﻿using System.Text.RegularExpressions;
-
-namespace EasyCon2.Script.Parsing.Statements
+﻿namespace EasyCon2.Script.Parsing.Statements
 {
     abstract class StickAction : Statement
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
-        protected readonly ECDevice.NintendoSwitch.Key Key;
+        protected readonly ECDevice.NintendoSwitch.ECKey Key;
         protected readonly string KeyName;
         protected readonly string Direction;
 
-        public StickAction(ECDevice.NintendoSwitch.Key key, string keyname, string direcion)
+        public StickAction(ECDevice.NintendoSwitch.ECKey key, string keyname, string direcion)
         {
             Key = key;
             KeyName = keyname?.ToUpper();
             Direction = direcion?.ToUpper();
-        }
-
-        public static Statement Parse(ParserArgument args)
-        {
-            Match m;
-            m = Regex.Match(args.Text, @"^([lr]s)\s+(reset)$", RegexOptions.IgnoreCase);
-            if (m.Success)
-            {
-                var keyname = m.Groups[1].Value;
-                var key = ScripterUtil.GetKey(keyname);
-                if (key == null)
-                    return null;
-                return new StickUp(key, keyname);
-            }
-            m = Regex.Match(args.Text, @"^([lr]s{1,2})\s+([a-z0-9]+)$", RegexOptions.IgnoreCase);
-            if (m.Success)
-            {
-                var keyname = m.Groups[1].Value;
-                var direction = m.Groups[2].Value;
-                var key = ScripterUtil.GetKey(keyname, direction);
-                if (key == null)
-                    return null;
-                return new StickDown(key, keyname, direction);
-            }
-            m = Regex.Match(args.Text, $@"^([lr]s{{1,2}})\s+([a-z0-9]+)\s*,\s*({Formats.ValueEx})$", RegexOptions.IgnoreCase);
-            if (m.Success)
-            {
-                var keyname = m.Groups[1].Value;
-                var direction = m.Groups[2].Value;
-                var duration = m.Groups[3].Value;
-                var key = ScripterUtil.GetKey(keyname, direction);
-                if (key == null)
-                    return null;
-                return new StickPress(key, keyname, direction, args.Formatter.GetValueEx(duration));
-            }
-            return null;
         }
 
         protected void ReleasePrevious(Assembly.Assembler assembler)
@@ -65,7 +26,7 @@ namespace EasyCon2.Script.Parsing.Statements
     {
         public readonly ValBase Duration;
 
-        public StickPress(ECDevice.NintendoSwitch.Key key, string keyname, string direction, ValBase duration)
+        public StickPress(ECDevice.NintendoSwitch.ECKey key, string keyname, string direction, ValBase duration)
             : base(key, keyname, direction)
         {
             Duration = duration;
@@ -125,7 +86,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class StickDown : StickAction
     {
-        public StickDown(ECDevice.NintendoSwitch.Key key, string keyname, string direction)
+        public StickDown(ECDevice.NintendoSwitch.ECKey key, string keyname, string direction)
             : base(key, keyname, direction)
         { }
 
@@ -149,7 +110,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class StickUp : StickAction
     {
-        public StickUp(ECDevice.NintendoSwitch.Key key, string keyname)
+        public StickUp(ECDevice.NintendoSwitch.ECKey key, string keyname)
             : base(key, keyname, null)
         { }
 

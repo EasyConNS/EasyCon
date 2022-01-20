@@ -63,7 +63,7 @@ namespace ECDevice
             }
         }
 
-        private void Direction(DirectionKey dkey, bool down, ref DirectionKey flags, Func<byte, byte, Key> getkey)
+        private void Direction(DirectionKey dkey, bool down, ref DirectionKey flags, Func<byte, byte, ECKey> getkey)
         {
             if (down)
                 flags |= dkey;

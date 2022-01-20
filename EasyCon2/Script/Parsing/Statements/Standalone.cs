@@ -4,15 +4,6 @@ namespace EasyCon2.Script.Parsing.Statements
 {
     class PushAll : Statement
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
-
-        public static Statement Parse(ParserArgument args)
-        {
-            if (args.Text.Equals("PUSHALL", StringComparison.OrdinalIgnoreCase))
-                return new PushAll();
-            return null;
-        }
-
         protected override string _GetString(Formatter formatter)
         {
             return $"PUSHALL";
@@ -32,15 +23,6 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class PopAll : Statement
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
-
-        public static Statement Parse(ParserArgument args)
-        {
-            if (args.Text.Equals("POPALL", StringComparison.OrdinalIgnoreCase))
-                return new PopAll();
-            return null;
-        }
-
         protected override string _GetString(Formatter formatter)
         {
             return $"POPALL";

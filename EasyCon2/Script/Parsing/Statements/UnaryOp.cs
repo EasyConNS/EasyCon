@@ -134,7 +134,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Not : UnaryOpEx
     {
-        static readonly Meta _Meta = new Meta(typeof(Not), typeof(Assembly.Instructions.AsmNot), "~", a => ~a);
+        static readonly Meta _Meta = new(typeof(Not), typeof(Assembly.Instructions.AsmNot), "~", a => ~a);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
@@ -145,7 +145,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Negative : UnaryOpEx
     {
-        static readonly Meta _Meta = new Meta(typeof(Negative), typeof(Assembly.Instructions.AsmNegative), "-", a => -a);
+        static readonly Meta _Meta = new(typeof(Negative), typeof(Assembly.Instructions.AsmNegative), "-", a => -a);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
@@ -156,7 +156,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Push : UnaryOp
     {
-        static readonly Meta _Meta = new Meta(typeof(Push), typeof(Assembly.Instructions.AsmPush), "PUSH", null);
+        static readonly Meta _Meta = new(typeof(Push), typeof(Assembly.Instructions.AsmPush), "PUSH", null);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta, false);
 
@@ -172,7 +172,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Pop : UnaryOp
     {
-        static readonly Meta _Meta = new Meta(typeof(Pop), typeof(Assembly.Instructions.AsmPop), "POP", null);
+        static readonly Meta _Meta = new(typeof(Pop), typeof(Assembly.Instructions.AsmPop), "POP", null);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
@@ -190,7 +190,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Bool : UnaryOp
     {
-        static readonly Meta _Meta = new Meta(typeof(Bool), typeof(Assembly.Instructions.AsmBool), "BOOL", a => a == 0 ? 0 : 1);
+        static readonly Meta _Meta = new(typeof(Bool), typeof(Assembly.Instructions.AsmBool), "BOOL", a => a == 0 ? 0 : 1);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
@@ -202,7 +202,7 @@ namespace EasyCon2.Script.Parsing.Statements
     class Rand : UnaryOp
     {
         static Random _rand = new();
-        static readonly Meta _Meta = new Meta(typeof(Rand), typeof(Assembly.Instructions.AsmRand), "RAND", a => _rand.Next(a));
+        static readonly Meta _Meta = new(typeof(Rand), typeof(Assembly.Instructions.AsmRand), "RAND", a => _rand.Next(a));
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 

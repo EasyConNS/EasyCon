@@ -20,142 +20,6 @@ namespace ECDevice
             Error,
         }
 
-        public class Key
-        {
-            const int HatMask = 0b00010000;
-
-            public enum StickKeyCode
-            {
-                LS = 32,
-                RS = 33
-            }
-
-            public readonly string Name;
-            public readonly int KeyCode;
-            public readonly Action<SwitchReport> Down;
-            public readonly Action<SwitchReport> Up;
-            public readonly int StickX;
-            public readonly int StickY;
-
-            Key(string name, int keyCode, Action<SwitchReport> down, Action<SwitchReport> up, int x = -1, int y = -1)
-            {
-                Name = name;
-                KeyCode = keyCode;
-                Down = down;
-                Up = up;
-                StickX = x;
-                StickY = y;
-            }
-
-            static readonly Dictionary<SwitchButton, int> _buttonKeyCodes = new();
-
-            static Key()
-            {
-                foreach (SwitchButton b in Enum.GetValues(typeof(SwitchButton)))
-                {
-                    int n = (int)b;
-                    int k = -1;
-                    while (n != 0)
-                    {
-                        n >>= 1;
-                        k++;
-                    }
-                    _buttonKeyCodes[b] = k;
-                }
-            }
-
-            public static implicit operator Key(SwitchButton button)
-            {
-                return Button(button);
-            }
-
-            public static implicit operator Key(SwitchHAT hat)
-            {
-                return HAT(hat);
-            }
-
-            public static Key Button(SwitchButton button)
-            {
-                return new Key(button.GetName(),
-                    _buttonKeyCodes[button],
-                    r => r.Button |= (ushort)button,
-                    r => r.Button &= (ushort)~button
-                );
-            }
-
-            public static Key HAT(SwitchHAT hat)
-            {
-                return new Key("HAT." + hat.GetName(),
-                    (int)hat | HatMask,
-                    r => r.HAT = (byte)hat,
-                    r => r.HAT = (byte)SwitchHAT.CENTER
-                );
-            }
-
-            public static Key LStick(byte x, byte y)
-            {
-                return new Key($"LStick({x},{y})",
-                    (int)StickKeyCode.LS,
-                    r => { r.LX = x; r.LY = y; },
-                    r => { r.LX = NSwitchUtil.STICK_CENTER; r.LY = NSwitchUtil.STICK_CENTER; },
-                    x,
-                    y
-                );
-            }
-
-            public static Key RStick(byte x, byte y)
-            {
-                return new Key($"RStick({x},{y})",
-                    (int)StickKeyCode.RS,
-                    r => { r.RX = x; r.RY = y; },
-                    r => { r.RX = NSwitchUtil.STICK_CENTER; r.RY = NSwitchUtil.STICK_CENTER; },
-                    x,
-                    y
-                );
-            }
-
-            public static Key LStick(DirectionKey dkey, bool slow = false)
-            {
-                GetXYFromDirection(dkey, out byte x, out byte y, slow);
-                return LStick(x, y);
-            }
-
-            public static Key RStick(DirectionKey dkey, bool slow = false)
-            {
-                GetXYFromDirection(dkey, out byte x, out byte y, slow);
-                return RStick(x, y);
-            }
-
-            public static Key LStick(double degree)
-            {
-                GetXYFromDegree(degree, out byte x, out byte y);
-                return LStick(x, y);
-            }
-
-            public static Key RStick(double degree)
-            {
-                GetXYFromDegree(degree, out byte x, out byte y);
-                return RStick(x, y);
-            }
-
-            public static implicit operator Key(int keyCode)
-            {
-                return FromKeyCode(keyCode);
-            }
-
-            public static Key FromKeyCode(int keyCode)
-            {
-                if (keyCode < HatMask)
-                    return Button((SwitchButton)(1 << keyCode));
-                else if (keyCode == (int)StickKeyCode.LS)
-                    return LStick(NSwitchUtil.STICK_CENTER, NSwitchUtil.STICK_CENTER);
-                else if (keyCode == (int)StickKeyCode.RS)
-                    return RStick(NSwitchUtil.STICK_CENTER, NSwitchUtil.STICK_CENTER);
-                else
-                    return HAT((SwitchHAT)(keyCode ^ HatMask));
-            }
-        }
-
         private IConnClient clientCon { get; set; }
         SwitchReport _report = new();
         Dictionary<int, KeyStroke> _keystrokes = new();
@@ -269,7 +133,7 @@ namespace ECDevice
             }
         }
 
-        public void Down(Key key)
+        public void Down(ECKey key)
         {
             lock (this)
             {
@@ -283,7 +147,7 @@ namespace ECDevice
             }
         }
 
-        public void Up(Key key)
+        public void Up(ECKey key)
         {
             lock (this)
             {
@@ -297,7 +161,7 @@ namespace ECDevice
             }
         }
 
-        public void Press(Key key, int duration)
+        public void Press(ECKey key, int duration)
         {
             lock (this)
             {
@@ -309,12 +173,12 @@ namespace ECDevice
 
         public void LeftDirection(DirectionKey dkey, bool down)
         {
-            Direction(dkey, down, ref _leftStick, Key.LStick);
+            Direction(dkey, down, ref _leftStick, ECKeyUtil.LStick);
         }
 
         public void RightDirection(DirectionKey dkey, bool down)
         {
-            Direction(dkey, down, ref _rightStick, Key.RStick);
+            Direction(dkey, down, ref _rightStick, ECKeyUtil.RStick);
         }
 
         public void HatDirection(DirectionKey dkey, bool down)
@@ -323,7 +187,7 @@ namespace ECDevice
             {
                 _hat |= dkey;
                 GetHATFromDirection(_hat);
-                Down(Key.HAT(GetHATFromDirection(_hat)));
+                Down(ECKeyUtil.HAT(GetHATFromDirection(_hat)));
             }
             else
             {
@@ -332,13 +196,13 @@ namespace ECDevice
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Up(Key.HAT(GetHATFromDirection(dkey)));
+                    Up(ECKeyUtil.HAT(GetHATFromDirection(dkey)));
                 }
                 else
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Down(Key.HAT(GetHATFromDirection(_hat)));
+                    Down(ECKeyUtil.HAT(GetHATFromDirection(_hat)));
                 }
             }
         }

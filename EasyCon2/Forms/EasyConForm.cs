@@ -350,17 +350,17 @@ namespace EasyCon2.Forms
             Print(result);
         }
 
-        void ICGamePad.ClickButtons(NintendoSwitch.Key key, int duration)
+        void ICGamePad.ClickButtons(NintendoSwitch.ECKey key, int duration)
         {
             NS.Press(key, duration);
         }
 
-        void ICGamePad.PressButtons(NintendoSwitch.Key key)
+        void ICGamePad.PressButtons(NintendoSwitch.ECKey key)
         {
             NS.Down(key);
         }
 
-        void ICGamePad.ReleaseButtons(NintendoSwitch.Key key)
+        void ICGamePad.ReleaseButtons(NintendoSwitch.ECKey key)
         {
             NS.Up(key);
         }
