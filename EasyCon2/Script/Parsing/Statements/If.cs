@@ -1,10 +1,16 @@
 ﻿namespace EasyCon2.Script.Parsing.Statements
 {
-    class If : Statement
+    abstract class BranchOp : Statement
+    {
+        public BranchOp? If;
+        public BranchOp? Else;
+        public EndIf EndIf;
+        public bool Passthrough = true;
+    }
+
+    class If : BranchOp
     {
         public override int IndentNext => 1;
-        public Else Else;
-        public EndIf EndIf;
         public readonly CompareOperator Operater;
         public readonly ValVar Left;
         public readonly ValBase Right;
@@ -18,15 +24,17 @@
 
         public override void Exec(Processor processor)
         {
+            Passthrough = true;
             if (Operater.Compare(Left.Get(processor), Right.Get(processor)))
             {
                 // do nothing
+                Passthrough = false;
             }
             else
             {
                 // jump
                 if (Else != null)
-                    processor.PC = Else.Address + 1;
+                    processor.PC = Else.Address;
                 else
                     processor.PC = EndIf.Address + 1;
             }
@@ -39,8 +47,7 @@
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            var left = Left as ValRegEx;
-            if (left == null)
+            if (Left is not ValRegEx left)
                 throw new Assembly.AssembleException("外部变量仅限联机模式使用");
             if (Right is ValInstant)
             {
@@ -56,16 +63,68 @@
         }
     }
 
-    class Else : Statement
+    class ElseIf : BranchOp
     {
         public override int IndentThis => -1;
         public override int IndentNext => 1;
-        public If If;
+        public readonly CompareOperator Operater;
+        public readonly ValVar Left;
+        public readonly ValBase Right;
+
+        public ElseIf(CompareOperator op, ValVar left, ValBase right)
+        {
+            Operater = op;
+            Left = left;
+            Right = right;
+        }
+
+        public override void Exec(Processor processor)
+        {
+            if(!If.Passthrough)
+            {
+                processor.PC = If.EndIf.Address + 1;
+            }
+            else
+            {
+                Passthrough = true;
+                if (Operater.Compare(Left.Get(processor), Right.Get(processor)))
+                {
+                    // do nothing
+                    Passthrough = false;
+                }
+                else
+                {
+                    // jump
+                    if (Else != null)
+                        processor.PC = Else.Address;
+                    else
+                        processor.PC = EndIf.Address + 1;
+                }
+            }   
+        }
+
+        protected override string _GetString(Formatter formatter)
+        {
+            return $"ELIF {Left.GetCodeText(formatter)} {Operater.Operator} {Right.GetCodeText(formatter)}";
+        }
+
+        public override void Assemble(Assembly.Assembler assembler)
+        {
+            // TODO
+            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+        }
+    }
+
+    class Else : BranchOp
+    {
+        public override int IndentThis => -1;
+        public override int IndentNext => 1;
 
         public override void Exec(Processor processor)
         {
             // end of if-block
-            processor.PC = If.EndIf.Address + 1;
+            if(!If.Passthrough)
+                processor.PC = If.EndIf.Address + 1;
         }
 
         protected override string _GetString(Formatter formatter)
@@ -82,10 +141,9 @@
         }
     }
 
-    class EndIf : Statement
+    class EndIf : BranchOp
     {
         public override int IndentThis => -1;
-        public If If;
 
         public override void Exec(Processor processor)
         { }

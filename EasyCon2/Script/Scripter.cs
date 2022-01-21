@@ -54,12 +54,5 @@
         {
             return new Assembly.Assembler().Assemble(_statements, auto);
         }
-
-        public void Reset()
-        {
-            Constants.Clear();
-            ExtVars.Clear();
-            _statements.Clear();
-        }
     }
 }

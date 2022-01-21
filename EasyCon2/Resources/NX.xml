@@ -23,6 +23,7 @@
         <Key word = "BREAK" />
         <Key word = "CONTINUE" />
         <Key word = "IF" />
+        <Key word = "ELIF" />
         <Key word = "ELSE" />
         <Key word = "ENDIF" />
         <Key word = "FUNC" />

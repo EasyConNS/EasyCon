@@ -12,6 +12,10 @@ namespace EasyCon2.Script.Parsing.Lexers
                 var m = Regex.Match(args.Text, $@"^if\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)
                     return new If(op, args.Formatter.GetVar(m.Groups[1].Value), args.Formatter.GetValueEx(m.Groups[2].Value));
+                // else if
+                m = Regex.Match(args.Text, $@"^elif\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
+                if (m.Success)
+                    return new ElseIf(op, args.Formatter.GetVar(m.Groups[1].Value), args.Formatter.GetValueEx(m.Groups[2].Value));
             }
             return ElseParse(args);
         }

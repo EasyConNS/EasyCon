@@ -36,7 +36,7 @@ namespace EasyCon2.Forms
         private VControllerConfig _config;
         private string _currentFile = null;
 
-        private readonly Scripter _program = new();
+        private Scripter _program = new();
         private bool scriptCompiling = false;
         private bool scriptRunning = false;
         private Thread thd;
@@ -750,7 +750,7 @@ namespace EasyCon2.Forms
             if (scriptCompiling)
                 return;
             _fileEdited = true;
-            _program.Reset();
+            _program = new();
         }
 
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
@@ -999,8 +999,8 @@ namespace EasyCon2.Forms
             try
             {
                 var path = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-                var _script = File.ReadAllText(path[0]);
                 if (Path.GetExtension(path[0]) != ".txt") return;
+                var _script = File.ReadAllText(path[0]);
                 textBoxScript.Text = _script;
             }
             catch

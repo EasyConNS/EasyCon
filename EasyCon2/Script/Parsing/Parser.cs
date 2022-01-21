@@ -35,6 +35,7 @@ namespace EasyCon2.Script.Parsing
             var list = new List<Statement>();
             var lines = text.Replace("\r", "").Split('\n');
             int indentnum = 0;
+            var formatter = new Formatter(_constants, _extVars);
             for (int i = 0; i < lines.Length; i++)
             {
                 text = lines[i];
@@ -61,7 +62,7 @@ namespace EasyCon2.Script.Parsing
                     var args = new ParserArgument
                     {
                         Text = text,
-                        Formatter = new Formatter(_constants, _extVars)
+                        Formatter = formatter,
                     };
                     Statement st = null;
                     foreach (var parser in _parsers)
@@ -120,23 +121,38 @@ namespace EasyCon2.Script.Parsing
             if (_fors.Count > 0) 
                 throw new ParseException("For语句需要Next结束", _fors.Peek().Address);
 
-            // pair If & Else & Endif
-            var _ifs = new Stack<Statements.If>();
+            // pair If /  Elif / Else / Endif
+            var _ifs = new Stack<Statements.BranchOp>();
+            var _elifs = new Stack<Statements.BranchOp>();
             for (var i = 0; i < list.Count; i++)
             {
                 var st = list[i];
                 if (st is Statements.If)
                     _ifs.Push(st as Statements.If);
-                else if (st is Statements.Else || st is Statements.EndIf)
+                else if (st is Statements.ElseIf || st is Statements.Else || st is Statements.EndIf)
                 {
                     if (_ifs.Count == 0)
                         throw new ParseException("找不到对应的If语句", i);
                     var @if = _ifs.Peek();
-                    if (st is Statements.Else)
+                    if(st is Statements.ElseIf)
+                    {
+                        var elif = st as Statements.ElseIf;
+                        if (@if.Else != null)
+                        {
+                            throw new ParseException("多余的Else语句", i);
+                        }
+                        @if.Else = st as Statements.BranchOp;
+                        elif.If = @if;
+                        _elifs.Push(_ifs.Pop());
+                        _ifs.Push(elif);
+                    }
+                    else if (st is Statements.Else)
                     {
                         if (@if.Else != null)
+                        {
                             throw new ParseException("一个If只能对应一个Else", i);
-                        var @else = st as Statements.Else;
+                        }
+                        var @else = st as Statements.BranchOp;
                         @if.Else = @else;
                         @else.If = @if;
                     }
@@ -146,10 +162,14 @@ namespace EasyCon2.Script.Parsing
                         @if.EndIf = endif;
                         endif.If = @if;
                         _ifs.Pop();
+                        while(_elifs.Count > 0)
+                        {
+                            _elifs.Pop().EndIf = endif;
+                        }
                     }
                 }
             }
-            if (_ifs.Count > 0)
+            if (_ifs.Count > 0 || _elifs.Count > 0)
                 throw new ParseException("If语句需要Endif结束", _ifs.Peek().Address);
 
             // pair Func & Ret
@@ -181,7 +201,7 @@ namespace EasyCon2.Script.Parsing
             }
             if (_funcs.Count > 0)
                 throw new ParseException("Func语句需要Ret结束", _funcs.Peek().Address);
-            // pair call func
+            // pair Call
             for (var i = 0; i < list.Count; i++)
             {
                 var st = list[i];

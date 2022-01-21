@@ -11,8 +11,8 @@ namespace EasyCon2.Script.Assembly
 
         readonly List<Instruction> _instructions = new();
         public Dictionary<Parsing.Statements.For, Instructions.AsmFor> ForMapping = new();
-        public Dictionary<Parsing.Statements.If, Instructions.AsmBranchFalse> IfMapping = new();
-        public Dictionary<Parsing.Statements.Else, Instructions.AsmBranch> ElseMapping = new();
+        public Dictionary<Parsing.Statements.BranchOp, Instructions.AsmBranchFalse> IfMapping = new();
+        public Dictionary<Parsing.Statements.BranchOp, Instructions.AsmBranch> ElseMapping = new();
         public Dictionary<int, Instructions.AsmKey_Hold> KeyMapping = new();
         public Dictionary<int, Instructions.AsmStick_Hold> StickMapping = new();
         public Dictionary<string, Instructions.AsmBranch> FunctionMapping = new();
@@ -70,13 +70,13 @@ namespace EasyCon2.Script.Assembly
                 list.Add(item);
 
                 // 1 Instruction
-                var ins1 = list[list.Count - 1];
+                var ins1 = list[^1]; // list.Count - 1
 
                 // 2 Instructions
                 if (list.Count < 2)
                     continue;
                 var ins2 = ins1;
-                ins1 = list[list.Count - 2];
+                ins1 = list[^2]; // list.Count - 2
                 // keypress-wait => compressed keypress
                 if (ins1 is Instructions.AsmKey_Standard && ins2 is Instructions.AsmWait)
                 {
@@ -108,7 +108,7 @@ namespace EasyCon2.Script.Assembly
                     continue;
                 var ins3 = ins2;
                 ins2 = ins1;
-                ins1 = list[list.Count - 3];
+                ins1 = list[^3];
                 // if-loopcontrol-endif => loopcontrol_cf
                 if (ins1 is Instructions.AsmBranchFalse && ins2 is Instructions.AsmLoopControl && ins3 is Instructions.AsmEmpty && (ins1 as Instructions.AsmBranchFalse).Target == ins3)
                 {

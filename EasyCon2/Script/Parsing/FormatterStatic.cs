@@ -4,21 +4,6 @@ namespace EasyCon2.Script.Parsing
 {
     partial class Formatter
     {
-        public static string GetRegText(uint reg)
-        {
-            return $"${reg}";
-        }
-
-        public static string GetReg32Text(uint reg)
-        {
-            return $"$${reg}";
-        }
-
-        public static string GetExtVarText(string name)
-        {
-            return $"@{name}";
-        }
-
         public static ValReg GetReg(string text, bool lhs = false)
         {
             var m = Regex.Match(text, @"\$(\d+)");

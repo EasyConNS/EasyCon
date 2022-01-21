@@ -4,13 +4,18 @@ namespace EasyCon2.Script.Parsing
 {
     partial class Formatter
     {
-        public readonly Dictionary<string, int> Constants;
-        public readonly Dictionary<string, ExternalVariable> ExtVars;
+        private readonly Dictionary<string, int> Constants;
+        private readonly Dictionary<string, ExternalVariable> ExtVars;
 
         public Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
         {
             Constants = constants;
             ExtVars = extVars;
+        }
+
+        public void SetConstantTable(string key, int valu)
+        {
+            Constants[key] = valu;
         }
         
         private ValExtVar GetExtVar(string text, bool lhs = false)

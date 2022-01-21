@@ -88,7 +88,7 @@
 
         public override string GetCodeText(Formatter formatter)
         {
-            return Formatter.GetRegText(Index);
+            return $"${Index}";
         }
     }
 
@@ -106,7 +106,7 @@
 
         public override string GetCodeText(Formatter formatter)
         {
-            return Formatter.GetReg32Text(Index);
+            return $"$${Index}";
         }
     }
 
@@ -132,7 +132,7 @@
 
         public override string GetCodeText(Formatter formatter)
         {
-            return Formatter.GetExtVarText(Var.Name);
+            return $"@{Var.Name}";
         }
     }
 }
