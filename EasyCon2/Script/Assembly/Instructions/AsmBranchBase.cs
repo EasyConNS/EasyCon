@@ -4,15 +4,23 @@ namespace EasyCon2.Script.Assembly.Instructions
 {
     abstract class AsmBranchBase : Instruction
     {
+        protected enum BranchType
+        {
+            Force = 0b00,
+            JmpTrue = 0b01,
+            JmpFalse = 0b10,
+            Call = 0b11,
+        }
+
         public uint Code;
         public Instruction Target;
 
-        protected static Instruction Create<T>(uint code, Instruction target = null)
+        protected static Instruction Create<T>(BranchType code, Instruction target = null)
             where T : AsmBranchBase, new()
         {
             var ins = new T
             {
-                Code = code,
+                Code = (uint)code,
                 Target = target
             };
             return ins;
@@ -34,7 +42,7 @@ namespace EasyCon2.Script.Assembly.Instructions
     {
         public static Instruction Create(Instruction target = null)
         {
-            return Create<AsmBranch>(0b00, target);
+            return Create<AsmBranch>(BranchType.Force, target);
         }
     }
 
@@ -42,7 +50,7 @@ namespace EasyCon2.Script.Assembly.Instructions
     {
         public static Instruction Create(Instruction target = null)
         {
-            return Create<AsmBranchTrue>(0b01, target);
+            return Create<AsmBranchTrue>(BranchType.JmpTrue, target);
         }
     }
 
@@ -50,7 +58,7 @@ namespace EasyCon2.Script.Assembly.Instructions
     {
         public static Instruction Create(Instruction target = null)
         {
-            return Create<AsmBranchFalse>(0b10, target);
+            return Create<AsmBranchFalse>(BranchType.JmpFalse, target);
         }
     }
 
@@ -59,11 +67,11 @@ namespace EasyCon2.Script.Assembly.Instructions
         public readonly string lbl;
         public static Instruction Create(Instruction target = null)
         {
-            return Create<AsmCall>(0b11, target);
+            return Create<AsmCall>(BranchType.Call, target);
         }
         public static Instruction Create(string label)
         {
-            return Create<AsmCall>(0b11, null);
+            return Create<AsmCall>(BranchType.Call, null);
         }
     }
 

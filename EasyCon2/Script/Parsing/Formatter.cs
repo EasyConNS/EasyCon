@@ -2,7 +2,7 @@
 
 namespace EasyCon2.Script.Parsing
 {
-    partial class Formatter
+    class Formatter
     {
         private readonly Dictionary<string, int> Constants;
         private readonly Dictionary<string, ExternalVariable> ExtVars;
@@ -32,7 +32,7 @@ namespace EasyCon2.Script.Parsing
         {
             if (Regex.Match(text, Formats.ExtVar_F).Success)
                 return GetExtVar(text, lhs);
-            return GetRegEx(text, lhs);
+            return FormatterUtil.GetRegEx(text, lhs);
         }
 
         public ValInstant GetConstant(string text, bool zeroOrPos = false)

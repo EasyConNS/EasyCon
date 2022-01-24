@@ -22,9 +22,11 @@ namespace EasyCon2.Script.Assembly.Instructions
         protected static Instruction Create<T>(Operator op, uint reg)
             where T : AsmUnaryOp, new()
         {
-            var ins = new T();
-            ins.Op = (uint)op;
-            ins.Reg = reg;
+            var ins = new T
+            {
+                Op = (uint)op,
+                Reg = reg
+            };
             return ins;
         }
 

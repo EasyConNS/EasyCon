@@ -36,7 +36,7 @@ namespace EasyCon2.Script.Parsing.Statements
                 var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.Register}$", RegexOptions.IgnoreCase);
                 
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, Formatter.GetRegEx(m.Groups[1].Value, _lhs)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, _lhs)) as Statement;
                 return null;
             }
         }
@@ -98,7 +98,7 @@ namespace EasyCon2.Script.Parsing.Statements
             {
                 var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\=\s*{_meta.Operator}\s*{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, Formatter.GetRegEx(m.Groups[1].Value, true), Formatter.GetRegEx(m.Groups[2].Value, false)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, true), FormatterUtil.GetRegEx(m.Groups[2].Value, false)) as Statement;
                 return null;
             }
         }

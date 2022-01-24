@@ -35,8 +35,10 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(172, 181);
-            this.button1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.button1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.button1.Location = new System.Drawing.Point(172, 160);
+            this.button1.Margin = new System.Windows.Forms.Padding(4);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(106, 51);
             this.button1.TabIndex = 0;
@@ -57,7 +59,7 @@
             // TokenBox
             // 
             this.TokenBox.Location = new System.Drawing.Point(76, 82);
-            this.TokenBox.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.TokenBox.Margin = new System.Windows.Forms.Padding(4);
             this.TokenBox.MaxLength = 64;
             this.TokenBox.Name = "TokenBox";
             this.TokenBox.Size = new System.Drawing.Size(372, 23);
@@ -66,12 +68,12 @@
             // ConfigForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
-            this.ClientSize = new System.Drawing.Size(462, 249);
+            this.ClientSize = new System.Drawing.Size(462, 228);
             this.Controls.Add(this.TokenBox);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.button1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
-            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.Margin = new System.Windows.Forms.Padding(4);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "ConfigForm";

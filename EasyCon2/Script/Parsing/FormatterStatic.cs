@@ -2,7 +2,7 @@
 
 namespace EasyCon2.Script.Parsing
 {
-    partial class Formatter
+    class FormatterUtil
     {
         public static ValReg GetReg(string text, bool lhs = false)
         {

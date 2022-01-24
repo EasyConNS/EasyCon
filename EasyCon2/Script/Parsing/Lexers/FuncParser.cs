@@ -38,7 +38,7 @@ namespace EasyCon2.Script.Parsing.Lexers
             var m = Regex.Match(args.Text, $@"^TIME\s+{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
             {
-                return new TimeStamp(Formatter.GetRegEx(m.Groups[1].Value));
+                return new TimeStamp(FormatterUtil.GetRegEx(m.Groups[1].Value));
             }
             return null;
         }

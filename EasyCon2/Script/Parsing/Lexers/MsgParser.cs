@@ -35,7 +35,7 @@ namespace EasyCon2.Script.Parsing.Lexers
                     m = Regex.Match(s, Formats.RegisterEx_F);
                     if (m.Success)
                     {
-                        contents.Add(new RegContent(Formatter.GetRegEx(s)));
+                        contents.Add(new RegContent(FormatterUtil.GetRegEx(s)));
                         continue;
                     }
                     m = Regex.Match(s, Formats.Constant_F);
@@ -79,7 +79,7 @@ namespace EasyCon2.Script.Parsing.Lexers
                     m = Regex.Match(s, Formats.RegisterEx_F);
                     if (m.Success)
                     {
-                        contents.Add(new RegContent(Formatter.GetRegEx(s)));
+                        contents.Add(new RegContent(FormatterUtil.GetRegEx(s)));
                         continue;
                     }
                     m = Regex.Match(s, Formats.Constant_F);

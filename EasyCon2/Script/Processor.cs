@@ -8,6 +8,7 @@
 
         public IOutputAdapter Output;
         public ICGamePad GamePad;
+
         public int PC = 0;
         public bool CancelLineBreak = false;
         public Stack<short> Stack = new();

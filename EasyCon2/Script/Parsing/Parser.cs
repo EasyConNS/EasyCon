@@ -30,15 +30,13 @@ namespace EasyCon2.Script.Parsing
             _extVars = extVars;
         }
 
-        public List<Statement> Parse(string text)
+        private IEnumerable<ParserArgument> ParseToken(string text)
         {
-            var list = new List<Statement>();
             var lines = text.Replace("\r", "").Split('\n');
-            int indentnum = 0;
             var formatter = new Formatter(_constants, _extVars);
-            for (int i = 0; i < lines.Length; i++)
+            foreach (var line in lines)
             {
-                text = lines[i];
+                text = line;
                 // get indent
                 var m = Regex.Match(text, @"^(\s*)([^\s]?.*)$");
                 _ = m.Groups[1].Value;
@@ -56,15 +54,26 @@ namespace EasyCon2.Script.Parsing
                     comment = string.Empty;
                     text = text.Trim();
                 }
+                yield return new ParserArgument
+                {
+                    Text = text,
+                    Comment = comment,
+                    Formatter = formatter,
+                };
+            }
+        }
+
+        public List<Statement> Parse(string text)
+        {
+            var list = new List<Statement>();
+            int indentnum = 0;
+            int linnum = 0;
+            foreach (var args in ParseToken(text))
+            { 
                 try
                 {
-                    // enumerate generators
-                    var args = new ParserArgument
-                    {
-                        Text = text,
-                        Formatter = formatter,
-                    };
                     Statement st = null;
+                    // enumerate generators
                     foreach (var parser in _parsers)
                     {
                         st = parser.Parse(args);
@@ -72,24 +81,25 @@ namespace EasyCon2.Script.Parsing
                         {
                             indentnum += st.IndentThis;
                             st.Indent = new string(' ', indentnum < 0 ? 0 : indentnum * 4);
-                            st.Comment = comment;
+                            st.Comment = args.Comment;
                             list.Add(st);
                             indentnum += st.IndentNext;
                             break;
                         }
                     }
                     if (st == null)
-                        throw new ParseException("格式错误", i);
+                        throw new ParseException("格式错误", linnum);
                 }
                 catch (OverflowException)
                 {
-                    throw new ParseException("数值溢出", i);
+                    throw new ParseException("数值溢出", linnum);
                 }
                 catch (ParseException ex)
                 {
-                    ex.Index = i;
+                    ex.Index = linnum;
                     throw;
                 }
+                linnum++;
             }
 
             // update address

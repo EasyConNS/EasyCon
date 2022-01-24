@@ -14,7 +14,7 @@ namespace EasyCon2.Script.Parsing.Lexers
                 return new For_Static(args.Formatter.GetValueEx(m.Groups[1].Value));
             m = Regex.Match(args.Text, $@"^for\s+{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}\s*to\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
-                return new For_Full(Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value), args.Formatter.GetValueEx(m.Groups[3].Value));
+                return new For_Full(FormatterUtil.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value), args.Formatter.GetValueEx(m.Groups[3].Value));
             // next
             return NextParse(args);
         }

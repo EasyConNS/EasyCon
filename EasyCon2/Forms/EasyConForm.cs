@@ -36,7 +36,7 @@ namespace EasyCon2.Forms
         private VControllerConfig _config;
         private string _currentFile = null;
 
-        private Scripter _program = new();
+        private readonly Scripter _program = new();
         private bool scriptCompiling = false;
         private bool scriptRunning = false;
         private Thread thd;
@@ -98,6 +98,29 @@ namespace EasyCon2.Forms
                     Print($"{port} << " + string.Join(" ", bytes.Select(b => b.ToString("X2"))), null, true);
             };
 
+            InitCaptureTypes();
+
+            // resize
+            Xvalue = this.Width;
+            Yvalue = this.Height;
+            setTag(this);
+        }
+
+        public float Xvalue;
+        public float Yvalue;
+
+        private void setTag(Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
+                if (con.Controls.Count > 0)
+                    setTag(con);
+            }
+        }
+
+        private void InitCaptureTypes()
+        {
             // add capture types
             var types = OpenCVCapture.GetCaptureTypes();
 
@@ -749,8 +772,10 @@ namespace EasyCon2.Forms
         {
             if (scriptCompiling)
                 return;
+            if (scriptRunning)
+                return;
             _fileEdited = true;
-            _program = new();
+            _program.Reset();
         }
 
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
@@ -1150,5 +1175,42 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             btform.Dispose();
         }
         #endregion
+
+        private void EasyConForm_Resize(object sender, EventArgs e)
+        {
+            float newx = (this.Width) / Xvalue;
+            float newy = this.Height / Yvalue;
+            setControls(newx, newy, this);
+        }
+
+        private void setControls(float newx, float newy, Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                string[] mytag = con.Tag.ToString().Split(new char[] { ':' });
+                float a = Convert.ToSingle(mytag[0]) * newx;
+                con.Width = (int)a;
+                a = Convert.ToSingle(mytag[1]) * newy;
+                con.Height = (int)(a);
+                a = Convert.ToSingle(mytag[2]) * newx;
+                con.Left = (int)(a);
+                a = Convert.ToSingle(mytag[3]) * newy;
+                con.Top = (int)(a);
+                Single currentSize = Convert.ToSingle(mytag[4]) * newy;
+
+                //改变字体大小
+                con.Font = new Font(con.Font.Name, currentSize, con.Font.Style, con.Font.Unit);
+
+                if (con.Controls.Count > 0)
+                {
+                    try
+                    {
+                        setControls(newx, newy, con);
+                    }
+                    catch
+                    { }
+                }
+            }
+        }
     }
 }
