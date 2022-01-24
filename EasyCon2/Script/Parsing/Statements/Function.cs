@@ -14,9 +14,9 @@
         public override void Assemble(Assembly.Assembler assembler)
         {
             assembler.Add(Assembly.Instructions.AsmBranch.Create());
-            assembler.FunctionMapping[this.Label] = assembler.Last() as Assembly.Instructions.AsmBranch;
+            assembler.FunctionMapping[Label] = assembler.Last() as Assembly.Instructions.AsmBranch;
             assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-            assembler.CallMapping[this.Label] = assembler.Last() as Assembly.Instructions.AsmEmpty;
+            assembler.CallMapping[Label] = assembler.Last() as Assembly.Instructions.AsmEmpty;
         }
 
         public override void Exec(Processor processor)
@@ -42,10 +42,8 @@
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            // TODO
-            assembler.Add(Assembly.Instructions.AsmCall.Create());
-            assembler.Add(Assembly.Instructions.AsmLabel.Create(Label));
+            var callfunc = assembler.CallMapping.GetValueOrDefault(Label, null);
+            assembler.Add(Assembly.Instructions.AsmCall.Create(callfunc));
         }
 
         public override void Exec(Processor processor)

@@ -2,10 +2,10 @@
 using EasyCon2.Graphic;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
-using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.IO;
+using System.Text.Json;
 
 namespace EasyCon2.Forms
 {
@@ -108,7 +108,7 @@ namespace EasyCon2.Forms
             {
                 try
                 {
-                    var temp = JsonConvert.DeserializeObject<ImgLabel>(File.ReadAllText(file));
+                    var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(file));
                     if(temp == null)
                     {
                         throw new Exception();
