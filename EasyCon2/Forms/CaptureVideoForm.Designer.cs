@@ -76,6 +76,7 @@
             this.monitorVisChk = new System.Windows.Forms.CheckBox();
             this.VideoSourcePlayerMonitor = new EasyCon2.Forms.PaintControl();
             this.Snapshot = new EasyCon2.Forms.PaintControl();
+            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.searchHNUD)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.searchWNUD)).BeginInit();
@@ -304,6 +305,7 @@
             this.targetImg.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.targetImg.TabIndex = 34;
             this.targetImg.TabStop = false;
+            this.targetImg.DoubleClick += new System.EventHandler(this.targetImg_DoubleClick);
             // 
             // imgLabelNametxt
             // 
@@ -554,7 +556,7 @@
             this.ResolutionBtn.Text = "当前分辨率：1080P点击切换";
             this.ResolutionBtn.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.ResolutionBtn.UseVisualStyleBackColor = true;
-            this.ResolutionBtn.Click += new System.EventHandler(this.button8_Click);
+            this.ResolutionBtn.Click += new System.EventHandler(this.ResolutionBtn_Click);
             // 
             // label2
             // 
@@ -609,6 +611,12 @@
             this.Snapshot.MouseUp += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseUp);
             this.Snapshot.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseWheel);
             // 
+            // openFileDialog1
+            // 
+            this.openFileDialog1.DefaultExt = "png";
+            this.openFileDialog1.FileName = "target";
+            this.openFileDialog1.Filter = "图片文件(*.jpg,*.gif,*.bmp,*.png)|*.jpg;*.gif;*.bmp;*.png";
+            // 
             // CaptureVideoForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
@@ -643,6 +651,7 @@
             this.Text = "搜图控制台";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.CaptureVideo_FormClosed);
             this.Load += new System.EventHandler(this.CaptureVideo_Load);
+            this.Resize += new System.EventHandler(this.CaptureVideoForm_Resize);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.searchHNUD)).EndInit();
@@ -707,5 +716,6 @@
         private NumericUpDown searchWNUD;
         private NumericUpDown searchYNUD;
         private NumericUpDown searchXNUD;
+        private OpenFileDialog openFileDialog1;
     }
 }

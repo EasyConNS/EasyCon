@@ -110,8 +110,25 @@
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            // TODO
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            // need test
+            assembler.Add(Assembly.Instructions.AsmBranch.Create());
+            assembler.ElseMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranch;
+            assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+            assembler.IfMapping[If].Target = assembler.Last();
+
+            if (Left is not ValRegEx left)
+                throw new Assembly.AssembleException("外部变量仅限联机模式使用");
+            if (Right is ValInstant)
+            {
+                assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
+                assembler.Add(Operater.Assemble(left.Index, Assembly.Assembler.IReg));
+            }
+            else
+            {
+                assembler.Add(Operater.Assemble(left.Index, (Right as ValReg).Index));
+            }
+            assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
+            assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
         }
     }
 
@@ -159,7 +176,15 @@
             if (If.Else == null)
                 assembler.IfMapping[If].Target = assembler.Last();
             else
+            {
                 assembler.ElseMapping[If.Else].Target = assembler.Last();
+                var @elif = If;
+                while (@elif is ElseIf)
+                {
+                    assembler.ElseMapping[@elif].Target = assembler.Last();
+                    @elif = @elif.If;
+                }
+            }
         }
     }
 }

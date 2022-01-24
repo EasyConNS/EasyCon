@@ -41,14 +41,14 @@ namespace EasyCon2.Forms
         private bool scriptRunning = false;
         private Thread thd;
 
+        private readonly Queue<Tuple<RichTextBox, object, Color?>> _messages = new();
         private DateTime _startTime = DateTime.MinValue;
         private TimeSpan _lastRunningTime = TimeSpan.Zero;
-        private Queue<Tuple<RichTextBox, object, Color?>> _messages = new();
         private bool _msgNewLine = true;
         private bool _msgFirstLine = true;
         private bool _fileEdited = false;
 
-        private List<ToolStripMenuItem> captureTypes = new();
+        private readonly List<ToolStripMenuItem> captureTypes = new();
 
         public EasyConForm()
         {

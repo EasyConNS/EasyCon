@@ -126,6 +126,24 @@ namespace EasyCon2.Forms
 
             VideoSourcePlayerMonitor.PaintEventHandler += new PaintEventHandler(MonitorPaint);
             Snapshot.PaintEventHandler += new PaintEventHandler(SnapshotPaint);
+
+            // resize
+            Xvalue = this.Width;
+            Yvalue = this.Height;
+            setTag(this);
+        }
+
+        public float Xvalue;
+        public float Yvalue;
+
+        private void setTag(Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
+                if (con.Controls.Count > 0)
+                    setTag(con);
+            }
         }
 
         private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
@@ -576,7 +594,6 @@ namespace EasyCon2.Forms
 
         private void openCapBtn_Click(object sender, EventArgs e)
         {
-            OpenFileDialog openFileDialog1 = new();
             openFileDialog1.Title = "打开";
             openFileDialog1.RestoreDirectory = true;
             openFileDialog1.InitialDirectory = Path.GetFullPath(CapDir);
@@ -650,6 +667,28 @@ namespace EasyCon2.Forms
             }
         }
 
+        private void targetImg_DoubleClick(object sender, EventArgs e)
+        {
+            openFileDialog1.Title = "打开";
+            openFileDialog1.RestoreDirectory = true;
+            openFileDialog1.InitialDirectory = Application.StartupPath;
+            openFileDialog1.Filter = @"图片文件(*.jpg,*.gif,*.bmp,*.png)|*.jpg;*.gif;*.bmp;*.png";
+            openFileDialog1.FileName = string.Empty;
+            if (openFileDialog1.ShowDialog() != DialogResult.OK)
+                return;
+ 
+            Debug.WriteLine(openFileDialog1.FileName);
+
+            // get new target pic
+            var tap = new Bitmap(openFileDialog1.FileName);
+            // set new target
+            curImgLabel.setSearchImg(tap);
+            curImgLabel.TargetHeight = tap.Height;
+            curImgLabel.TargetWidth = tap.Width;
+            targetImg.Image = curImgLabel.getSearchImg();
+            tap?.Dispose();
+        }
+
         private void imgLableList_DoubleClick(object sender, EventArgs e)
         {
             if (imgLableList.SelectedItem != null && imgLableList.SelectedItem.ToString()!= "")
@@ -689,7 +728,7 @@ namespace EasyCon2.Forms
             }
         }
 
-        private void button8_Click(object sender, EventArgs e)
+        private void ResolutionBtn_Click(object sender, EventArgs e)
         {
             if (ResolutionBtn.Text == "当前分辨率：1080P")
             {
@@ -715,6 +754,43 @@ namespace EasyCon2.Forms
         {
             var checkBox = (CheckBox)sender;
             VideoSourcePlayerMonitor.Visible = checkBox.Checked;
+        }
+
+        private void CaptureVideoForm_Resize(object sender, EventArgs e)
+        {
+            float newx = (this.Width) / Xvalue;
+            float newy = this.Height / Yvalue;
+            setControls(newx, newy, this);
+        }
+
+        private void setControls(float newx, float newy, Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                string[] mytag = con.Tag.ToString().Split(new char[] { ':' });
+                float a = Convert.ToSingle(mytag[0]) * newx;
+                con.Width = (int)a;
+                a = Convert.ToSingle(mytag[1]) * newy;
+                con.Height = (int)(a);
+                a = Convert.ToSingle(mytag[2]) * newx;
+                con.Left = (int)(a);
+                a = Convert.ToSingle(mytag[3]) * newy;
+                con.Top = (int)(a);
+                Single currentSize = Convert.ToSingle(mytag[4]) * newy;
+
+                //改变字体大小
+                con.Font = new Font(con.Font.Name, currentSize, con.Font.Style, con.Font.Unit);
+
+                if (con.Controls.Count > 0)
+                {
+                    try
+                    {
+                        setControls(newx, newy, con);
+                    }
+                    catch
+                    { }
+                }
+            }
         }
     }
 }

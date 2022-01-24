@@ -1,7 +1,7 @@
 ﻿using ECDevice;
 using ECDevice.Exts;
 
-namespace EasyCon2.Script.Parsing
+namespace EasyCon2.Script
 {
     static class NSKeys
     {
