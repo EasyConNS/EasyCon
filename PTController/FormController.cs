@@ -83,7 +83,7 @@ namespace PTController
             LowLevelKeyboard.GetInstance().RegisterKeyEvent((int)key, keydown, keyup);
         }
 
-        public void RegisterKey(Keys key, NintendoSwitch.ECKey nskey)
+        public void RegisterKey(Keys key, ECKey nskey)
         {
             RegisterKey(key, () => NintendoSwitch.GetInstance().Down(nskey), () => NintendoSwitch.GetInstance().Up(nskey));
         }
@@ -186,7 +186,7 @@ namespace PTController
             DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.RCLICK) != 0 ? _brushStickBGDown : _brushStickBG, x, y, w, h);
 
             // HAT
-            var dkey = NintendoSwitch.GetDirectionFromHAT((SwitchHAT)report.HAT);
+            var dkey = NSKeyUtil.GetDirectionFromHAT((SwitchHAT)report.HAT);
             DrawPath(g, pen, dkey.HasFlag(DirectionKey.Up) ? _brushButtonDown : _brushButtonUp, RoundedRect(21, 55, 6, 6, 2, 2, 2, 2));
             DrawPath(g, pen, dkey.HasFlag(DirectionKey.Down) ? _brushButtonDown : _brushButtonUp, RoundedRect(21, 67, 6, 6, 2, 2, 2, 2));
             DrawPath(g, pen, dkey.HasFlag(DirectionKey.Left) ? _brushButtonDown : _brushButtonUp, RoundedRect(15, 61, 6, 6, 2, 2, 2, 2));

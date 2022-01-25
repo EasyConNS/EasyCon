@@ -73,25 +73,25 @@ namespace ECDevice
 
         public static ECKey LStick(DirectionKey dkey, bool slow = false)
         {
-            GetXYFromDirection(dkey, out byte x, out byte y, slow);
+            NSKeyUtil.GetXYFromDirection(dkey, out byte x, out byte y, slow);
             return LStick(x, y);
         }
 
         public static ECKey RStick(DirectionKey dkey, bool slow = false)
         {
-            GetXYFromDirection(dkey, out byte x, out byte y, slow);
+            NSKeyUtil.GetXYFromDirection(dkey, out byte x, out byte y, slow);
             return RStick(x, y);
         }
 
         public static ECKey LStick(double degree)
         {
-            GetXYFromDegree(degree, out byte x, out byte y);
+            NSKeyUtil.GetXYFromDegree(degree, out byte x, out byte y);
             return LStick(x, y);
         }
 
         public static ECKey RStick(double degree)
         {
-            GetXYFromDegree(degree, out byte x, out byte y);
+            NSKeyUtil.GetXYFromDegree(degree, out byte x, out byte y);
             return RStick(x, y);
         }
 

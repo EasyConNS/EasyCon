@@ -4,9 +4,9 @@ namespace EasyCon2.Script.Parsing.Statements
 {
     abstract class KeyAction : Statement
     {
-        protected readonly NintendoSwitch.ECKey Key;
+        protected readonly ECKey Key;
 
-        public KeyAction(NintendoSwitch.ECKey key)
+        public KeyAction(ECKey key)
         {
             Key = key;
         }
@@ -27,14 +27,14 @@ namespace EasyCon2.Script.Parsing.Statements
         public readonly ValBase Duration;
         private bool _omitted = false;
 
-        public KeyPress(NintendoSwitch.ECKey key)
+        public KeyPress(ECKey key)
             : base(key)
         {
             Duration = DefaultDuration;
             _omitted = true;
         }
 
-        public KeyPress(NintendoSwitch.ECKey key, ValBase duration)
+        public KeyPress(ECKey key, ValBase duration)
             : base(key)
         {
             Duration = duration;
@@ -93,7 +93,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class KeyDown : KeyAction
     {
-        public KeyDown(NintendoSwitch.ECKey key)
+        public KeyDown(ECKey key)
             : base(key)
         { }
 
@@ -117,7 +117,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class KeyUp : KeyAction
     {
-        public KeyUp(NintendoSwitch.ECKey key)
+        public KeyUp(ECKey key)
             : base(key)
         { }
 

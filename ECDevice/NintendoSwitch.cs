@@ -117,11 +117,6 @@ namespace ECDevice
 
         public Status ConnectionStatus => clientCon?.CurrentStatus ?? Status.Connecting;
 
-        public SwitchReport GetReport()
-        {
-            return _report.Clone() as SwitchReport;
-        }
-
         public void Reset()
         {
             lock (this)
@@ -186,25 +181,36 @@ namespace ECDevice
             if (down)
             {
                 _hat |= dkey;
-                GetHATFromDirection(_hat);
-                Down(ECKeyUtil.HAT(GetHATFromDirection(_hat)));
+                NSKeyUtil.GetHATFromDirection(_hat);
+                Down(ECKeyUtil.HAT(NSKeyUtil.GetHATFromDirection(_hat)));
             }
             else
             {
                 _hat &= ~dkey;
-                if (GetHATFromDirection(_hat) == SwitchHAT.CENTER)
+                if (NSKeyUtil.GetHATFromDirection(_hat) == SwitchHAT.CENTER)
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Up(ECKeyUtil.HAT(GetHATFromDirection(dkey)));
+                    Up(ECKeyUtil.HAT(NSKeyUtil.GetHATFromDirection(dkey)));
                 }
                 else
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Down(ECKeyUtil.HAT(GetHATFromDirection(_hat)));
+                    Down(ECKeyUtil.HAT(NSKeyUtil.GetHATFromDirection(_hat)));
                 }
             }
+        }
+        
+        private static void PrintKey(string str, ECKey key = null)
+        {
+            str = str + " " + key?.Name ?? "";
+            Debug.WriteLine(str);
+        }
+
+        public SwitchReport GetReport()
+        {
+            return _report.Clone() as SwitchReport;
         }
 
         public bool StartRecord()

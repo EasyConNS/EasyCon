@@ -5,8 +5,8 @@ namespace EasyCon2.Script
 {
     static class NSKeys
     {
-        static Dictionary<string, NintendoSwitch.ECKey> _keyDict = new();
-        static Dictionary<NintendoSwitch.ECKey, string> _keyName = new();
+        static Dictionary<string, ECKey> _keyDict = new();
+        static Dictionary<ECKey, string> _keyName = new();
         static Dictionary<string, DirectionKey> _directions = new();
 
         static NSKeys()
@@ -29,13 +29,13 @@ namespace EasyCon2.Script
             _directions.Add("RIGHT", DirectionKey.Right);
         }
 
-        public static NintendoSwitch.ECKey Get(string name)
+        public static ECKey Get(string name)
         {
             name = name.ToUpper();
             return _keyDict.GetValueOrDefault(name, null);
         }
 
-        public static string GetName(NintendoSwitch.ECKey key)
+        public static string GetName(ECKey key)
         {
             return _keyName.GetValueOrDefault(key, string.Empty);
         }

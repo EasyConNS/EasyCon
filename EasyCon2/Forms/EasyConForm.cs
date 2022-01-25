@@ -298,25 +298,25 @@ namespace EasyCon2.Forms
         {
             formController.UnregisterAllKeys();
 
-            formController.RegisterKey(_config.KeyMapping.A, SwitchButton.A);
-            formController.RegisterKey(_config.KeyMapping.B, SwitchButton.B);
-            formController.RegisterKey(_config.KeyMapping.X, SwitchButton.X);
-            formController.RegisterKey(_config.KeyMapping.Y, SwitchButton.Y);
-            formController.RegisterKey(_config.KeyMapping.L, SwitchButton.L);
-            formController.RegisterKey(_config.KeyMapping.R, SwitchButton.R);
-            formController.RegisterKey(_config.KeyMapping.ZL, SwitchButton.ZL);
-            formController.RegisterKey(_config.KeyMapping.ZR, SwitchButton.ZR);
-            formController.RegisterKey(_config.KeyMapping.Plus, SwitchButton.PLUS);
-            formController.RegisterKey(_config.KeyMapping.Minus, SwitchButton.MINUS);
-            formController.RegisterKey(_config.KeyMapping.Capture, SwitchButton.CAPTURE);
-            formController.RegisterKey(_config.KeyMapping.Home, SwitchButton.HOME);
-            formController.RegisterKey(_config.KeyMapping.LClick, SwitchButton.LCLICK);
-            formController.RegisterKey(_config.KeyMapping.RClick, SwitchButton.RCLICK);
+            formController.RegisterKey(_config.KeyMapping.A, ECKeyUtil.Button(SwitchButton.A));
+            formController.RegisterKey(_config.KeyMapping.B, ECKeyUtil.Button(SwitchButton.B));
+            formController.RegisterKey(_config.KeyMapping.X, ECKeyUtil.Button(SwitchButton.X));
+            formController.RegisterKey(_config.KeyMapping.Y, ECKeyUtil.Button(SwitchButton.Y));
+            formController.RegisterKey(_config.KeyMapping.L, ECKeyUtil.Button(SwitchButton.L));
+            formController.RegisterKey(_config.KeyMapping.R, ECKeyUtil.Button(SwitchButton.R));
+            formController.RegisterKey(_config.KeyMapping.ZL, ECKeyUtil.Button(SwitchButton.ZL));
+            formController.RegisterKey(_config.KeyMapping.ZR, ECKeyUtil.Button(SwitchButton.ZR));
+            formController.RegisterKey(_config.KeyMapping.Plus, ECKeyUtil.Button(SwitchButton.PLUS));
+            formController.RegisterKey(_config.KeyMapping.Minus, ECKeyUtil.Button(SwitchButton.MINUS));
+            formController.RegisterKey(_config.KeyMapping.Capture, ECKeyUtil.Button(SwitchButton.CAPTURE));
+            formController.RegisterKey(_config.KeyMapping.Home, ECKeyUtil.Button(SwitchButton.HOME));
+            formController.RegisterKey(_config.KeyMapping.LClick, ECKeyUtil.Button(SwitchButton.LCLICK));
+            formController.RegisterKey(_config.KeyMapping.RClick, ECKeyUtil.Button(SwitchButton.RCLICK));
 
-            formController.RegisterKey(_config.KeyMapping.UpRight, SwitchHAT.TOP_RIGHT);
-            formController.RegisterKey(_config.KeyMapping.DownRight, SwitchHAT.BOTTOM_RIGHT);
-            formController.RegisterKey(_config.KeyMapping.UpLeft, SwitchHAT.TOP_LEFT);
-            formController.RegisterKey(_config.KeyMapping.DownLeft, SwitchHAT.BOTTOM_LEFT);
+            formController.RegisterKey(_config.KeyMapping.UpRight, ECKeyUtil.HAT(SwitchHAT.TOP_RIGHT));
+            formController.RegisterKey(_config.KeyMapping.DownRight, ECKeyUtil.HAT(SwitchHAT.BOTTOM_RIGHT));
+            formController.RegisterKey(_config.KeyMapping.UpLeft, ECKeyUtil.HAT(SwitchHAT.TOP_LEFT));
+            formController.RegisterKey(_config.KeyMapping.DownLeft, ECKeyUtil.HAT(SwitchHAT.BOTTOM_LEFT));
 
             formController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(DirectionKey.Up, true), () => NS.HatDirection(DirectionKey.Up, false));
             formController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(DirectionKey.Down, true), () => NS.HatDirection(DirectionKey.Down, false));
@@ -373,17 +373,17 @@ namespace EasyCon2.Forms
             Print(result);
         }
 
-        void ICGamePad.ClickButtons(NintendoSwitch.ECKey key, int duration)
+        void ICGamePad.ClickButtons(ECKey key, int duration)
         {
             NS.Press(key, duration);
         }
 
-        void ICGamePad.PressButtons(NintendoSwitch.ECKey key)
+        void ICGamePad.PressButtons(ECKey key)
         {
             NS.Down(key);
         }
 
-        void ICGamePad.ReleaseButtons(NintendoSwitch.ECKey key)
+        void ICGamePad.ReleaseButtons(ECKey key)
         {
             NS.Up(key);
         }
