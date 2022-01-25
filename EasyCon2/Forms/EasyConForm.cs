@@ -5,10 +5,10 @@ using EasyCon2.Script;
 using EasyCon2.Script.Assembly;
 using EasyCon2.Script.Parsing;
 using ECDevice;
+using ECDevice.Exts;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
-using Newtonsoft.Json;
 using PTController;
 using System.Diagnostics;
 using System.IO;
@@ -36,19 +36,19 @@ namespace EasyCon2.Forms
         private VControllerConfig _config;
         private string _currentFile = null;
 
-        private Scripter _program = new();
+        private readonly Scripter _program = new();
         private bool scriptCompiling = false;
         private bool scriptRunning = false;
         private Thread thd;
 
+        private readonly Queue<Tuple<RichTextBox, object, Color?>> _messages = new();
         private DateTime _startTime = DateTime.MinValue;
         private TimeSpan _lastRunningTime = TimeSpan.Zero;
-        private Queue<Tuple<RichTextBox, object, Color?>> _messages = new();
         private bool _msgNewLine = true;
         private bool _msgFirstLine = true;
         private bool _fileEdited = false;
 
-        private List<ToolStripMenuItem> captureTypes = new();
+        private readonly List<ToolStripMenuItem> captureTypes = new();
 
         public EasyConForm()
         {
@@ -98,6 +98,29 @@ namespace EasyCon2.Forms
                     Print($"{port} << " + string.Join(" ", bytes.Select(b => b.ToString("X2"))), null, true);
             };
 
+            InitCaptureTypes();
+
+            // resize
+            Xvalue = this.Width;
+            Yvalue = this.Height;
+            setTag(this);
+        }
+
+        public float Xvalue;
+        public float Yvalue;
+
+        private void setTag(Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
+                if (con.Controls.Count > 0)
+                    setTag(con);
+            }
+        }
+
+        private void InitCaptureTypes()
+        {
             // add capture types
             var types = OpenCVCapture.GetCaptureTypes();
 
@@ -227,7 +250,7 @@ namespace EasyCon2.Forms
         {
             try
             {
-                _config = JsonConvert.DeserializeObject<VControllerConfig>(File.ReadAllText(ConfigPath));
+                _config = JsonSerializer.Deserialize<VControllerConfig>(File.ReadAllText(ConfigPath));
             }
             catch (Exception ex)
             {
@@ -240,7 +263,7 @@ namespace EasyCon2.Forms
 
         private void SaveConfig()
         {
-            File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(_config));
+            File.WriteAllText(ConfigPath, JsonSerializer.Serialize(_config));
         }
 
         private string GetFirmwareName(string corename)
@@ -275,39 +298,39 @@ namespace EasyCon2.Forms
         {
             formController.UnregisterAllKeys();
 
-            formController.RegisterKey(_config.KeyMapping.A, NintendoSwitch.Button.A);
-            formController.RegisterKey(_config.KeyMapping.B, NintendoSwitch.Button.B);
-            formController.RegisterKey(_config.KeyMapping.X, NintendoSwitch.Button.X);
-            formController.RegisterKey(_config.KeyMapping.Y, NintendoSwitch.Button.Y);
-            formController.RegisterKey(_config.KeyMapping.L, NintendoSwitch.Button.L);
-            formController.RegisterKey(_config.KeyMapping.R, NintendoSwitch.Button.R);
-            formController.RegisterKey(_config.KeyMapping.ZL, NintendoSwitch.Button.ZL);
-            formController.RegisterKey(_config.KeyMapping.ZR, NintendoSwitch.Button.ZR);
-            formController.RegisterKey(_config.KeyMapping.Plus, NintendoSwitch.Button.PLUS);
-            formController.RegisterKey(_config.KeyMapping.Minus, NintendoSwitch.Button.MINUS);
-            formController.RegisterKey(_config.KeyMapping.Capture, NintendoSwitch.Button.CAPTURE);
-            formController.RegisterKey(_config.KeyMapping.Home, NintendoSwitch.Button.HOME);
-            formController.RegisterKey(_config.KeyMapping.LClick, NintendoSwitch.Button.LCLICK);
-            formController.RegisterKey(_config.KeyMapping.RClick, NintendoSwitch.Button.RCLICK);
+            formController.RegisterKey(_config.KeyMapping.A, SwitchButton.A);
+            formController.RegisterKey(_config.KeyMapping.B, SwitchButton.B);
+            formController.RegisterKey(_config.KeyMapping.X, SwitchButton.X);
+            formController.RegisterKey(_config.KeyMapping.Y, SwitchButton.Y);
+            formController.RegisterKey(_config.KeyMapping.L, SwitchButton.L);
+            formController.RegisterKey(_config.KeyMapping.R, SwitchButton.R);
+            formController.RegisterKey(_config.KeyMapping.ZL, SwitchButton.ZL);
+            formController.RegisterKey(_config.KeyMapping.ZR, SwitchButton.ZR);
+            formController.RegisterKey(_config.KeyMapping.Plus, SwitchButton.PLUS);
+            formController.RegisterKey(_config.KeyMapping.Minus, SwitchButton.MINUS);
+            formController.RegisterKey(_config.KeyMapping.Capture, SwitchButton.CAPTURE);
+            formController.RegisterKey(_config.KeyMapping.Home, SwitchButton.HOME);
+            formController.RegisterKey(_config.KeyMapping.LClick, SwitchButton.LCLICK);
+            formController.RegisterKey(_config.KeyMapping.RClick, SwitchButton.RCLICK);
 
-            formController.RegisterKey(_config.KeyMapping.UpRight, NintendoSwitch.HAT.TOP_RIGHT);
-            formController.RegisterKey(_config.KeyMapping.DownRight, NintendoSwitch.HAT.BOTTOM_RIGHT);
-            formController.RegisterKey(_config.KeyMapping.UpLeft, NintendoSwitch.HAT.TOP_LEFT);
-            formController.RegisterKey(_config.KeyMapping.DownLeft, NintendoSwitch.HAT.BOTTOM_LEFT);
+            formController.RegisterKey(_config.KeyMapping.UpRight, SwitchHAT.TOP_RIGHT);
+            formController.RegisterKey(_config.KeyMapping.DownRight, SwitchHAT.BOTTOM_RIGHT);
+            formController.RegisterKey(_config.KeyMapping.UpLeft, SwitchHAT.TOP_LEFT);
+            formController.RegisterKey(_config.KeyMapping.DownLeft, SwitchHAT.BOTTOM_LEFT);
 
-            formController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(NintendoSwitch.DirectionKey.Up, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Up, false));
-            formController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(NintendoSwitch.DirectionKey.Down, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Down, false));
-            formController.RegisterKey(_config.KeyMapping.Left, () => NS.HatDirection(NintendoSwitch.DirectionKey.Left, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Left, false));
-            formController.RegisterKey(_config.KeyMapping.Right, () => NS.HatDirection(NintendoSwitch.DirectionKey.Right, true), () => NS.HatDirection(NintendoSwitch.DirectionKey.Right, false));
+            formController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(DirectionKey.Up, true), () => NS.HatDirection(DirectionKey.Up, false));
+            formController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(DirectionKey.Down, true), () => NS.HatDirection(DirectionKey.Down, false));
+            formController.RegisterKey(_config.KeyMapping.Left, () => NS.HatDirection(DirectionKey.Left, true), () => NS.HatDirection(DirectionKey.Left, false));
+            formController.RegisterKey(_config.KeyMapping.Right, () => NS.HatDirection(DirectionKey.Right, true), () => NS.HatDirection(DirectionKey.Right, false));
 
-            formController.RegisterKey(_config.KeyMapping.LSUp, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Up, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Up, false));
-            formController.RegisterKey(_config.KeyMapping.LSDown, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Down, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Down, false));
-            formController.RegisterKey(_config.KeyMapping.LSLeft, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Left, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Left, false));
-            formController.RegisterKey(_config.KeyMapping.LSRight, () => NS.LeftDirection(NintendoSwitch.DirectionKey.Right, true), () => NS.LeftDirection(NintendoSwitch.DirectionKey.Right, false));
-            formController.RegisterKey(_config.KeyMapping.RSUp, () => NS.RightDirection(NintendoSwitch.DirectionKey.Up, true), () => NS.RightDirection(NintendoSwitch.DirectionKey.Up, false));
-            formController.RegisterKey(_config.KeyMapping.RSDown, () => NS.RightDirection(NintendoSwitch.DirectionKey.Down, true), () => NS.RightDirection(NintendoSwitch.DirectionKey.Down, false));
-            formController.RegisterKey(_config.KeyMapping.RSLeft, () => NS.RightDirection(NintendoSwitch.DirectionKey.Left, true), () => NS.RightDirection(NintendoSwitch.DirectionKey.Left, false));
-            formController.RegisterKey(_config.KeyMapping.RSRight, () => NS.RightDirection(NintendoSwitch.DirectionKey.Right, true), () => NS.RightDirection(NintendoSwitch.DirectionKey.Right, false));
+            formController.RegisterKey(_config.KeyMapping.LSUp, () => NS.LeftDirection(DirectionKey.Up, true), () => NS.LeftDirection(DirectionKey.Up, false));
+            formController.RegisterKey(_config.KeyMapping.LSDown, () => NS.LeftDirection(DirectionKey.Down, true), () => NS.LeftDirection(DirectionKey.Down, false));
+            formController.RegisterKey(_config.KeyMapping.LSLeft, () => NS.LeftDirection(DirectionKey.Left, true), () => NS.LeftDirection(DirectionKey.Left, false));
+            formController.RegisterKey(_config.KeyMapping.LSRight, () => NS.LeftDirection(DirectionKey.Right, true), () => NS.LeftDirection(DirectionKey.Right, false));
+            formController.RegisterKey(_config.KeyMapping.RSUp, () => NS.RightDirection(DirectionKey.Up, true), () => NS.RightDirection(DirectionKey.Up, false));
+            formController.RegisterKey(_config.KeyMapping.RSDown, () => NS.RightDirection(DirectionKey.Down, true), () => NS.RightDirection(DirectionKey.Down, false));
+            formController.RegisterKey(_config.KeyMapping.RSLeft, () => NS.RightDirection(DirectionKey.Left, true), () => NS.RightDirection(DirectionKey.Left, false));
+            formController.RegisterKey(_config.KeyMapping.RSRight, () => NS.RightDirection(DirectionKey.Right, true), () => NS.RightDirection(DirectionKey.Right, false));
         }
 
         #region 脚本功能接口
@@ -350,17 +373,17 @@ namespace EasyCon2.Forms
             Print(result);
         }
 
-        void ICGamePad.ClickButtons(NintendoSwitch.Key key, int duration)
+        void ICGamePad.ClickButtons(NintendoSwitch.ECKey key, int duration)
         {
             NS.Press(key, duration);
         }
 
-        void ICGamePad.PressButtons(NintendoSwitch.Key key)
+        void ICGamePad.PressButtons(NintendoSwitch.ECKey key)
         {
             NS.Down(key);
         }
 
-        void ICGamePad.ReleaseButtons(NintendoSwitch.Key key)
+        void ICGamePad.ReleaseButtons(NintendoSwitch.ECKey key)
         {
             NS.Up(key);
         }
@@ -416,12 +439,15 @@ namespace EasyCon2.Forms
 
         private void ScriptRun()
         {
-            if (!SerialCheckConnect())
-                return;
-            if (!CheckFirmwareVersion())
-                return;
             if (!ScriptCompile())
                 return;
+            if(_program.HasKeyAction)
+            {
+                if (!SerialCheckConnect())
+                    return;
+                if (!CheckFirmwareVersion())
+                    return;
+            }
 
             thd = new Thread(_RunScript);
             thd?.Start();
@@ -746,8 +772,10 @@ namespace EasyCon2.Forms
         {
             if (scriptCompiling)
                 return;
+            if (scriptRunning)
+                return;
             _fileEdited = true;
-            _program = new();
+            _program.Reset();
         }
 
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
@@ -996,8 +1024,8 @@ namespace EasyCon2.Forms
             try
             {
                 var path = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-                var _script = File.ReadAllText(path[0]);
                 if (Path.GetExtension(path[0]) != ".txt") return;
+                var _script = File.ReadAllText(path[0]);
                 textBoxScript.Text = _script;
             }
             catch
@@ -1147,5 +1175,42 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             btform.Dispose();
         }
         #endregion
+
+        private void EasyConForm_Resize(object sender, EventArgs e)
+        {
+            float newx = (this.Width) / Xvalue;
+            float newy = this.Height / Yvalue;
+            setControls(newx, newy, this);
+        }
+
+        private void setControls(float newx, float newy, Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                string[] mytag = con.Tag.ToString().Split(new char[] { ':' });
+                float a = Convert.ToSingle(mytag[0]) * newx;
+                con.Width = (int)a;
+                a = Convert.ToSingle(mytag[1]) * newy;
+                con.Height = (int)(a);
+                a = Convert.ToSingle(mytag[2]) * newx;
+                con.Left = (int)(a);
+                a = Convert.ToSingle(mytag[3]) * newy;
+                con.Top = (int)(a);
+                Single currentSize = Convert.ToSingle(mytag[4]) * newy;
+
+                //改变字体大小
+                con.Font = new Font(con.Font.Name, currentSize, con.Font.Style, con.Font.Unit);
+
+                if (con.Controls.Count > 0)
+                {
+                    try
+                    {
+                        setControls(newx, newy, con);
+                    }
+                    catch
+                    { }
+                }
+            }
+        }
     }
 }

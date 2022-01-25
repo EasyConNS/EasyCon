@@ -4,43 +4,46 @@ namespace EasyCon2.Global
 {
     public class VControllerConfig
     {
-        public KeyMapping KeyMapping;
-        public bool ShowControllerHelp = true;
-        public string CaptureType = "ANY";
-        public string AlertToken = "";
+        public KeyMapping KeyMapping { get; set; }
+        public bool ShowControllerHelp { get; set; } = true;
+        public string CaptureType { get; set; } = "ANY";
+        public string AlertToken { get; set; } = string.Empty;
 
         public void SetDefault()
         {
-            KeyMapping.A = Keys.Y;
-            KeyMapping.B = Keys.U;
-            KeyMapping.X = Keys.I;
-            KeyMapping.Y = Keys.H;
-            KeyMapping.L = Keys.G;
-            KeyMapping.R = Keys.T;
-            KeyMapping.ZL = Keys.F;
-            KeyMapping.ZR = Keys.R;
-            KeyMapping.Plus = Keys.K;
-            KeyMapping.Minus = Keys.J;
-            KeyMapping.Capture = Keys.Z;
-            KeyMapping.Home = Keys.C;
-            KeyMapping.LClick = Keys.Q;
-            KeyMapping.RClick = Keys.E;
-            KeyMapping.Up = Keys.None;
-            KeyMapping.Down = Keys.None;
-            KeyMapping.Left = Keys.None;
-            KeyMapping.Right = Keys.None;
-            KeyMapping.UpLeft = Keys.None;
-            KeyMapping.UpRight = Keys.None;
-            KeyMapping.DownLeft = Keys.None;
-            KeyMapping.DownRight = Keys.None;
-            KeyMapping.LSUp = Keys.W;
-            KeyMapping.LSDown = Keys.S;
-            KeyMapping.LSLeft = Keys.A;
-            KeyMapping.LSRight = Keys.D;
-            KeyMapping.RSUp = Keys.Up;
-            KeyMapping.RSDown = Keys.Down;
-            KeyMapping.RSLeft = Keys.Left;
-            KeyMapping.RSRight = Keys.Right;
+            KeyMapping = new KeyMapping
+            {
+                A = Keys.Y,
+                B = Keys.U,
+                X = Keys.I,
+                Y = Keys.H,
+                L = Keys.G,
+                R = Keys.T,
+                ZL = Keys.F,
+                ZR = Keys.R,
+                Plus = Keys.K,
+                Minus = Keys.J,
+                Capture = Keys.Z,
+                Home = Keys.C,
+                LClick = Keys.Q,
+                RClick = Keys.E,
+                Up = Keys.None,
+                Down = Keys.None,
+                Left = Keys.None,
+                Right = Keys.None,
+                UpLeft = Keys.None,
+                UpRight = Keys.None,
+                DownLeft = Keys.None,
+                DownRight = Keys.None,
+                LSUp = Keys.W,
+                LSDown = Keys.S,
+                LSLeft = Keys.A,
+                LSRight = Keys.D,
+                RSUp = Keys.Up,
+                RSDown = Keys.Down,
+                RSLeft = Keys.Left,
+                RSRight = Keys.Right
+            };
         }
     }
 }

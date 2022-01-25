@@ -2,14 +2,28 @@
 {
     public class Scripter
     {
-        public Dictionary<string, int> Constants = new();
-        public Dictionary<string, ExternalVariable> ExtVars = new();
+        readonly Dictionary<string, int> Constants = new();
+        readonly Dictionary<string, ExternalVariable> ExtVars = new();
 
         List<Parsing.Statement> _statements = new();
 
+        public bool HasKeyAction {
+            get
+            {
+                foreach(var stat in _statements)
+                {
+                    if (stat is Parsing.Statements.KeyAction)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
         public void Parse(string code, IEnumerable<ExternalVariable> extVars)
         {
-            ExtVars = new();
+            ExtVars.Clear();
             foreach (var ev in extVars)
                 ExtVars[ev.Name] = ev;
             _statements = new Parsing.Parser(Constants, ExtVars).Parse(code);
@@ -39,6 +53,12 @@
         public byte[] Assemble(bool auto = true)
         {
             return new Assembly.Assembler().Assemble(_statements, auto);
+        }
+
+        public void Reset()
+        {
+            _statements = new();
+            ExtVars.Clear();
         }
     }
 }

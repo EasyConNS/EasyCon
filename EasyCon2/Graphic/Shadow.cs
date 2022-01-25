@@ -1,4 +1,4 @@
-﻿using EasyCon2.Global;
+﻿using ECDevice.Exts;
 using System.IO;
 using System.Security.Cryptography;
 

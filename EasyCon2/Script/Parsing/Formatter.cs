@@ -2,22 +2,27 @@
 
 namespace EasyCon2.Script.Parsing
 {
-    partial class Formatter
+    class Formatter
     {
-        public readonly Dictionary<string, int> Constants;
-        public readonly Dictionary<string, ExternalVariable> ExtVars;
+        private readonly Dictionary<string, int> Constants;
+        private readonly Dictionary<string, ExternalVariable> ExtVars;
 
         public Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
         {
             Constants = constants;
             ExtVars = extVars;
         }
+
+        public void SetConstantTable(string key, int valu)
+        {
+            Constants[key] = valu;
+        }
         
         private ValExtVar GetExtVar(string text, bool lhs = false)
         {
             if (!text.StartsWith("@"))
                 throw new FormatException();
-            var name = text.Substring(1);
+            var name = text[1..];
             if (!ExtVars.ContainsKey(name))
                 throw new ParseException($"未定义的外部变量“{text}”");
             return new ValExtVar(ExtVars[name]);
@@ -27,7 +32,7 @@ namespace EasyCon2.Script.Parsing
         {
             if (Regex.Match(text, Formats.ExtVar_F).Success)
                 return GetExtVar(text, lhs);
-            return GetRegEx(text, lhs);
+            return FormatterUtil.GetRegEx(text, lhs);
         }
 
         public ValInstant GetConstant(string text, bool zeroOrPos = false)

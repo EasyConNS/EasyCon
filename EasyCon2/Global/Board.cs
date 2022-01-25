@@ -12,7 +12,7 @@
             new ("Beetle", "Beetle", 924),
             new ("Leonardo", "Leonardo", 924),
             new("Teensy 2.0", "Teensy2", 924),
-            new("Teensy 2.0++", "Teensy2pp", 924),
+            new("Teensy 2.0++", "Teensy2pp", 3996),
             };
 
         public Board(string displayname, string corename, int datasize)

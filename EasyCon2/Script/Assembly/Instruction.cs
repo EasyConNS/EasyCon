@@ -74,10 +74,10 @@ namespace EasyCon2.Script.Assembly
                 throw new InvalidOperationException();
             }
 
-            public static readonly Failed OutOfRange = new Failed("数值超出范围");
-            public static readonly Failed InvalidArgument = new Failed("错误的参数格式");
-            public static readonly Failed NotSupported = new Failed("这个语句暂时只能联机模式使用");
-            public static readonly Failed NotImplemented = new Failed("类型未定义，这可能是一个bug，请汇报给作者");
+            public static readonly Failed OutOfRange = new("数值超出范围");
+            public static readonly Failed InvalidArgument = new("错误的参数格式");
+            public static readonly Failed NotSupported = new("这个语句暂时只能联机模式使用");
+            public static readonly Failed NotImplemented = new("类型未定义，这可能是一个bug，请汇报给作者");
         }
 
         public static Instruction CreateInstance(Type type, params object[] args)

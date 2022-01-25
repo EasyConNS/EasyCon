@@ -52,7 +52,7 @@ namespace PTController
         {
             foreach (var pair in _dict)
             {
-                var key = (Keys)(typeof(KeyMapping).GetField(pair.Value).GetValue(KeyMapping));
+                var key = (Keys)(typeof(KeyMapping).GetProperty(pair.Value).GetValue(KeyMapping));
                 SetName(pair.Key, key);
             }
         }
@@ -75,7 +75,7 @@ namespace PTController
             if (_currentBox != null)
             {
                 object obj = KeyMapping;
-                typeof(KeyMapping).GetField(_dict[_currentBox]).SetValue(obj, key);
+                typeof(KeyMapping).GetProperty(_dict[_currentBox]).SetValue(obj, key);
                 KeyMapping = (KeyMapping)obj;
                 SetName(_currentBox, key);
                 Check(null);

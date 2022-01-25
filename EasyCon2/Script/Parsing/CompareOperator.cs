@@ -15,7 +15,8 @@
             All.Add(this);
         }
 
-        public static readonly CompareOperator Equal = new("=", (v0, v1) => v0 == v1, (r0, r1) => Assembly.Instructions.AsmEqual.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));
+        public static readonly CompareOperator EqualOld = new("=", (v0, v1) => v0 == v1, (r0, r1) => Assembly.Instructions.AsmEqual.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));
+        public static readonly CompareOperator Equal = new("==", (v0, v1) => v0 == v1, (r0, r1) => Assembly.Instructions.AsmEqual.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));
         public static readonly CompareOperator NotEqual = new("!=", (v0, v1) => v0 != v1, (r0, r1) => Assembly.Instructions.AsmNotEqual.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));
         public static readonly CompareOperator LessThan = new("<", (v0, v1) => v0 < v1, (r0, r1) => Assembly.Instructions.AsmLessThan.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));
         public static readonly CompareOperator LessOrEqual = new("<=", (v0, v1) => v0 <= v1, (r0, r1) => Assembly.Instructions.AsmLessOrEqual.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));

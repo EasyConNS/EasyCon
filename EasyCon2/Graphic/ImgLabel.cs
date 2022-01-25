@@ -1,16 +1,15 @@
 ﻿using EasyCon2.Capture;
-using EasyCon2.Global;
 using JetBrains.Annotations;
-using Newtonsoft.Json;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace EasyCon2.Graphic
 {
     // for ui data binding
-    public class ImgLabel : INotifyPropertyChanged
+    public partial class ImgLabel : INotifyPropertyChanged
     {
         public string name { get; set; }
         public SearchMethod searchMethod { get; set; }
@@ -31,23 +30,17 @@ namespace EasyCon2.Graphic
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        private int _RangeX = 0;
-        private int _RangeY = 0;
-        private int _RangeWidth = 0;
-        private int _RangeHeight = 0;
-        private int _TargetX = 0;
-        private int _TargetY = 0;
-        private int _TargetWidth = 0;
-        private int _TargetHeight = 0;
+        private Rectangle _round = Rectangle.Empty;
+        private Rectangle _target = Rectangle.Empty;
         private double _matchDegree = 95.0;
         public int RangeX
         {
-            get { return _RangeX; }
+            get { return _round.X; }
             set
             {
                 // do not trigger change event if values are the same
-                if (Equals(value, _RangeX)) return;
-                _RangeX = value < 0 ? 0 : value;
+                if (Equals(value, _round.X)) return;
+                _round.X = value < 0 ? 0 : value;
 
                 //===================
                 // Usage in the Source
@@ -58,12 +51,12 @@ namespace EasyCon2.Graphic
 
         public int RangeY
         {
-            get { return _RangeY; }
+            get { return _round.Y; }
             set
             {
                 // do not trigger change event if values are the same
-                if (Equals(value, _RangeY)) return;
-                _RangeY = value < 0 ? 0 : value;
+                if (Equals(value, _round.Y)) return;
+                _round.Y = value < 0 ? 0 : value;
 
                 //===================
                 // Usage in the Source
@@ -74,12 +67,12 @@ namespace EasyCon2.Graphic
 
         public int RangeWidth
         {
-            get { return _RangeWidth; }
+            get { return _round.Width; }
             set
             {
                 // do not trigger change event if values are the same
-                if (Equals(value, _RangeWidth)) return;
-                _RangeWidth = value < 0 ? 0 : value;
+                if (Equals(value, _round.Width)) return;
+                _round.Width = value < 0 ? 0 : value;
 
                 //===================
                 // Usage in the Source
@@ -90,12 +83,12 @@ namespace EasyCon2.Graphic
 
         public int RangeHeight
         {
-            get { return _RangeHeight; }
+            get { return _round.Height; }
             set
             {
                 // do not trigger change event if values are the same
-                if (Equals(value, _RangeHeight)) return;
-                _RangeHeight = value < 0 ? 0 : value;
+                if (Equals(value, _round.Height)) return;
+                _round.Height = value < 0 ? 0 : value;
 
                 //===================
                 // Usage in the Source
@@ -106,12 +99,12 @@ namespace EasyCon2.Graphic
 
         public int TargetX
         {
-            get { return _TargetX; }
+            get { return _target.X; }
             set
             {
                 // do not trigger change event if values are the same
-                if (Equals(value, _TargetX)) return;
-                _TargetX = value < 0 ? 0 : value;
+                if (Equals(value, _target.X)) return;
+                _target.X = value < 0 ? 0 : value;
 
                 //===================
                 // Usage in the Source
@@ -122,12 +115,12 @@ namespace EasyCon2.Graphic
 
         public int TargetY
         {
-            get { return _TargetY; }
+            get { return _target.Y; }
             set
             {
                 // do not trigger change event if values are the same
-                if (Equals(value, _TargetY)) return;
-                _TargetY = value < 0 ? 0 : value;
+                if (Equals(value, _target.Y)) return;
+                _target.Y = value < 0 ? 0 : value;
 
                 //===================
                 // Usage in the Source
@@ -138,12 +131,12 @@ namespace EasyCon2.Graphic
 
         public int TargetWidth
         {
-            get { return _TargetWidth; }
+            get { return _target.Width; }
             set
             {
                 // do not trigger change event if values are the same
-                if (Equals(value, _TargetWidth)) return;
-                _TargetWidth = value < 0 ? 0 : value;
+                if (Equals(value, _target.Width)) return;
+                _target.Width = value < 0 ? 0 : value;
 
                 //===================
                 // Usage in the Source
@@ -154,12 +147,12 @@ namespace EasyCon2.Graphic
 
         public int TargetHeight
         {
-            get { return _TargetHeight; }
+            get { return _target.Height; }
             set
             {
                 // do not trigger change event if values are the same
-                if (Equals(value, _TargetHeight)) return;
-                _TargetHeight = value < 0 ? 0 : value;
+                if (Equals(value, _target.Height)) return;
+                _target.Height = value < 0 ? 0 : value;
 
                 //===================
                 // Usage in the Source
@@ -184,30 +177,6 @@ namespace EasyCon2.Graphic
             }
         }
 
-        public enum SearchMethod
-        {
-            [Description("平方差匹配")]
-            SqDiff = 0,
-            [Description("标准差匹配")]
-            SqDiffNormed = 1,
-            [Description("相关匹配")]
-            CCorr = 2,
-            [Description("标准相关匹配")]
-            CCorrNormed = 3,
-            [Description("相关系数匹配")]
-            CCoeff = 4,
-            [Description("标准相关系数匹配")]
-            CCoeffNormed = 5,
-            [Description("严格匹配")]
-            StrictMatch = 6,
-            [Description("随机严格匹配")]
-            StrictMatchRND = 7,
-            [Description("透明度匹配")]
-            OpacityDiff = 8,
-            [Description("相似匹配")]
-            SimilarMatch = 9,
-        }
-
         public delegate Bitmap GetNewFrame();
 
         [NonSerialized]
@@ -225,15 +194,6 @@ namespace EasyCon2.Graphic
             sourcePic = null;
             searchImg = null;
             searchMethod = SearchMethod.SqDiffNormed;
-        }
-
-        public static List<SearchMethod> GetAllSearchMethod()
-        {
-            var list = new List<SearchMethod>();
-            list.Add(SearchMethod.SqDiffNormed);
-            list.Add(SearchMethod.CCorrNormed);
-            list.Add(SearchMethod.CCoeffNormed);
-            return list;
         }
 
         public List<Point> Search(out double md)
@@ -325,7 +285,7 @@ namespace EasyCon2.Graphic
 
             ImgBase64 = this.ImageToBase64(searchImg);
 
-            File.WriteAllText(path + name + ".IL", JsonConvert.SerializeObject(this));
+            File.WriteAllText(path + name + ".IL", JsonSerializer.Serialize(this));
         }
 
         public void Copy(ImgLabel il)

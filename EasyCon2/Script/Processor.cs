@@ -8,6 +8,7 @@
 
         public IOutputAdapter Output;
         public ICGamePad GamePad;
+
         public int PC = 0;
         public bool CancelLineBreak = false;
         public Stack<short> Stack = new();
@@ -16,6 +17,8 @@
         public Dictionary<Parsing.Statements.For, int> LoopTime = new();
         public Dictionary<Parsing.Statements.For, int> LoopCount = new();
         public RegisterFile Register = new(RegisterCount);
+
+        public ExternTime et = new(DateTime.Now);
     }
 
     class RegisterFile

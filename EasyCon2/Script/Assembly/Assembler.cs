@@ -10,17 +10,25 @@ namespace EasyCon2.Script.Assembly
         public const uint IReg = 7;
 
         readonly List<Instruction> _instructions = new();
-        public Dictionary<Parsing.Statements.For, Instructions.AsmFor> ForMapping = new();
-        public Dictionary<Parsing.Statements.If, Instructions.AsmBranchFalse> IfMapping = new();
-        public Dictionary<Parsing.Statements.Else, Instructions.AsmBranch> ElseMapping = new();
-        public Dictionary<int, Instructions.AsmKey_Hold> KeyMapping = new();
-        public Dictionary<int, Instructions.AsmStick_Hold> StickMapping = new();
-        public Dictionary<string, Instructions.AsmBranch> FunctionMapping = new();
-        public Dictionary<string, Instructions.AsmEmpty> CallMapping = new();
+        public readonly Dictionary<Parsing.Statements.For, Instructions.AsmFor> ForMapping = new();
+        public readonly Dictionary<Parsing.Statements.BranchOp, Instructions.AsmBranchFalse> IfMapping = new();
+        public readonly Dictionary<Parsing.Statements.BranchOp, Instructions.AsmBranch> ElseMapping = new();
+        public readonly Dictionary<int, Instructions.AsmKey_Hold> KeyMapping = new();
+        public readonly Dictionary<int, Instructions.AsmStick_Hold> StickMapping = new();
+        public readonly Dictionary<string, Instructions.AsmBranch> FunctionMapping = new();
+        public readonly Dictionary<string, Instructions.AsmEmpty> CallMapping = new();
+
+
+        static Instruction Assert(Instruction ins)
+        {
+            if (ins is Instruction.Failed)
+                throw new AssembleException((ins as Instruction.Failed).Message);
+            return ins;
+        }
 
         public void Add(Instruction ins)
         {
-            _instructions.Add(ScripterUtil.Assert(ins));
+            _instructions.Add(Assert(ins));
         }
 
         public Instruction Last()
@@ -56,19 +64,19 @@ namespace EasyCon2.Script.Assembly
 
             // optimize
             var discarded = new HashSet<Instruction>();
-            var list = new List<Instruction>();
+            List<Instruction> list = new();
             foreach (var item in _instructions)
             {
                 list.Add(item);
 
                 // 1 Instruction
-                var ins1 = list[list.Count - 1];
+                var ins1 = list[^1]; // list.Count - 1
 
                 // 2 Instructions
                 if (list.Count < 2)
                     continue;
                 var ins2 = ins1;
-                ins1 = list[list.Count - 2];
+                ins1 = list[^2]; // list.Count - 2
                 // keypress-wait => compressed keypress
                 if (ins1 is Instructions.AsmKey_Standard && ins2 is Instructions.AsmWait)
                 {
@@ -84,23 +92,12 @@ namespace EasyCon2.Script.Assembly
                     }
                 }
 
-                if (ins1 is Instructions.AsmCall && ins2 is Instructions.AsmLabel)
-                {
-                    var funclbl = (ins2 as Instructions.AsmLabel);
-                    var callfunc = CallMapping.GetValueOrDefault(funclbl.Label, null);
-                    var ins = Instructions.AsmCall.Create(callfunc);
-                    list.Add(ins);
-                    discarded.Add(ins1);
-                    discarded.Add(ins2);
-                    continue;
-                }
-
                 // 3 Instructions
                 if (list.Count < 3)
                     continue;
                 var ins3 = ins2;
                 ins2 = ins1;
-                ins1 = list[list.Count - 3];
+                ins1 = list[^3];
                 // if-loopcontrol-endif => loopcontrol_cf
                 if (ins1 is Instructions.AsmBranchFalse && ins2 is Instructions.AsmLoopControl && ins3 is Instructions.AsmEmpty && (ins1 as Instructions.AsmBranchFalse).Target == ins3)
                 {
@@ -127,20 +124,20 @@ namespace EasyCon2.Script.Assembly
                 }
             }
             _instructions.Clear();
-            _instructions.AddRange(list);
 
             // update address and index
             int addr = 2;
             int index = 0;
-            for (int i = 0; i < _instructions.Count; i++)
+            for (int i = 0; i < list.Count; i++)
             {
-                var ins = _instructions[i];
+                var ins = list[i];
                 ins.Address = addr;
                 ins.Index = index;
                 if (!discarded.Contains(ins))
                 {
                     addr += ins.ByteCount;
                     index += ins.InsCount;
+                    _instructions.Add(ins);
                 }
             }
 
@@ -237,10 +234,10 @@ namespace EasyCon2.Script.Assembly
                 line = line.Trim();
                 if (line[0] != ':')
                     throw new AssembleException("需要以“:”作为起始");
-                List<byte> bytes = new List<byte>();
+                var bytes = new List<byte>();
                 for (int i = 1; i < line.Length; i += 2)
                     bytes.Add(Convert.ToByte(line.Substring(i, 2), 16));
-                IntelHex hex = new IntelHex();
+                var hex = new IntelHex();
                 int index = 0;
                 hex.DataSize = bytes[index++];
                 hex.StartAddress = (ushort)(bytes[index++] << 8);

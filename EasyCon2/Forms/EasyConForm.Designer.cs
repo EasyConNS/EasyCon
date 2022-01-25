@@ -311,13 +311,13 @@
             this.烧录模式ToolStripMenuItem,
             this.固件模式ToolStripMenuItem});
             this.使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
-            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
             this.使用方法ToolStripMenuItem.Text = "使用方法";
             // 
             // 联机模式ToolStripMenuItem
             // 
             this.联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
-            this.联机模式ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.联机模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
             this.联机模式ToolStripMenuItem.Tag = "";
             this.联机模式ToolStripMenuItem.Text = "联机模式";
             this.联机模式ToolStripMenuItem.Click += new System.EventHandler(this.联机模式ToolStripMenuItem_Click);
@@ -325,33 +325,33 @@
             // 烧录模式ToolStripMenuItem
             // 
             this.烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
-            this.烧录模式ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.烧录模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
             this.烧录模式ToolStripMenuItem.Text = "烧录模式";
             this.烧录模式ToolStripMenuItem.Click += new System.EventHandler(this.烧录模式ToolStripMenuItem_Click);
             // 
             // 固件模式ToolStripMenuItem
             // 
             this.固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
-            this.固件模式ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.固件模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
             this.固件模式ToolStripMenuItem.Text = "固件模式";
             this.固件模式ToolStripMenuItem.Click += new System.EventHandler(this.固件模式ToolStripMenuItem_Click);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(121, 6);
             // 
             // 关于ToolStripMenuItem
             // 
             this.关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
             this.关于ToolStripMenuItem.Text = "关于";
             this.关于ToolStripMenuItem.Click += new System.EventHandler(this.关于ToolStripMenuItem_Click);
             // 
             // 项目源码ToolStripMenuItem
             // 
             this.项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
             this.项目源码ToolStripMenuItem.Text = "项目源码";
             this.项目源码ToolStripMenuItem.Click += new System.EventHandler(this.项目源码ToolStripMenuItem_Click);
             // 
@@ -692,7 +692,6 @@
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.menuStrip1);
             this.Font = new System.Drawing.Font("微软雅黑", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.KeyPreview = true;
             this.MainMenuStrip = this.menuStrip1;
@@ -705,6 +704,7 @@
             this.Text = "伊机控 EasyCon v1.45";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
+            this.Resize += new System.EventHandler(this.EasyConForm_Resize);
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.groupBox1.ResumeLayout(false);

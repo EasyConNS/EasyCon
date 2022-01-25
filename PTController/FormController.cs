@@ -83,7 +83,7 @@ namespace PTController
             LowLevelKeyboard.GetInstance().RegisterKeyEvent((int)key, keydown, keyup);
         }
 
-        public void RegisterKey(Keys key, NintendoSwitch.Key nskey)
+        public void RegisterKey(Keys key, NintendoSwitch.ECKey nskey)
         {
             RegisterKey(key, () => NintendoSwitch.GetInstance().Down(nskey), () => NintendoSwitch.GetInstance().Up(nskey));
         }
@@ -167,10 +167,10 @@ namespace PTController
             p = 2;
             w = 15;
             h = 15;
-            x = x0 + (w0 - w) * report.LX / NintendoSwitch.STICK_MAX;
-            y = y0 + (h0 - h) * report.LY / NintendoSwitch.STICK_MAX;
-            DrawEllipse(g, pen, report.LX == NintendoSwitch.STICK_CENTER && report.LY == NintendoSwitch.STICK_CENTER ? _brushStickAreaBG : _brushStickAreaBGDown, x0 + p, y0 + p, w0 - p * 2, h0 - p * 2);
-            DrawEllipse(g, pen, (report.Button & (ushort)NintendoSwitch.Button.LCLICK) != 0 ? _brushStickBGDown : _brushStickBG, x, y, w, h);
+            x = x0 + (w0 - w) * report.LX / NSwitchUtil.STICK_MAX;
+            y = y0 + (h0 - h) * report.LY / NSwitchUtil.STICK_MAX;
+            DrawEllipse(g, pen, report.LX == NSwitchUtil.STICK_CENTER && report.LY == NSwitchUtil.STICK_CENTER ? _brushStickAreaBG : _brushStickAreaBGDown, x0 + p, y0 + p, w0 - p * 2, h0 - p * 2);
+            DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.LCLICK) != 0 ? _brushStickBGDown : _brushStickBG, x, y, w, h);
 
             // right stick
             x0 = 63;
@@ -180,31 +180,31 @@ namespace PTController
             p = 2;
             w = 15;
             h = 15;
-            x = x0 + (w0 - w) * report.RX / NintendoSwitch.STICK_MAX;
-            y = y0 + (h0 - h) * report.RY / NintendoSwitch.STICK_MAX;
-            DrawEllipse(g, pen, report.RX == NintendoSwitch.STICK_CENTER && report.RY == NintendoSwitch.STICK_CENTER ? _brushStickAreaBG : _brushStickAreaBGDown, x0 + p, y0 + p, w0 - p * 2, h0 - p * 2);
-            DrawEllipse(g, pen, (report.Button & (ushort)NintendoSwitch.Button.RCLICK) != 0 ? _brushStickBGDown : _brushStickBG, x, y, w, h);
+            x = x0 + (w0 - w) * report.RX / NSwitchUtil.STICK_MAX;
+            y = y0 + (h0 - h) * report.RY / NSwitchUtil.STICK_MAX;
+            DrawEllipse(g, pen, report.RX == NSwitchUtil.STICK_CENTER && report.RY == NSwitchUtil.STICK_CENTER ? _brushStickAreaBG : _brushStickAreaBGDown, x0 + p, y0 + p, w0 - p * 2, h0 - p * 2);
+            DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.RCLICK) != 0 ? _brushStickBGDown : _brushStickBG, x, y, w, h);
 
             // HAT
-            var dkey = NintendoSwitch.GetDirectionFromHAT((NintendoSwitch.HAT)report.HAT);
-            DrawPath(g, pen, dkey.HasFlag(NintendoSwitch.DirectionKey.Up) ? _brushButtonDown : _brushButtonUp, RoundedRect(21, 55, 6, 6, 2, 2, 2, 2));
-            DrawPath(g, pen, dkey.HasFlag(NintendoSwitch.DirectionKey.Down) ? _brushButtonDown : _brushButtonUp, RoundedRect(21, 67, 6, 6, 2, 2, 2, 2));
-            DrawPath(g, pen, dkey.HasFlag(NintendoSwitch.DirectionKey.Left) ? _brushButtonDown : _brushButtonUp, RoundedRect(15, 61, 6, 6, 2, 2, 2, 2));
-            DrawPath(g, pen, dkey.HasFlag(NintendoSwitch.DirectionKey.Right) ? _brushButtonDown : _brushButtonUp, RoundedRect(27, 61, 6, 6, 2, 2, 2, 2));
+            var dkey = NintendoSwitch.GetDirectionFromHAT((SwitchHAT)report.HAT);
+            DrawPath(g, pen, dkey.HasFlag(DirectionKey.Up) ? _brushButtonDown : _brushButtonUp, RoundedRect(21, 55, 6, 6, 2, 2, 2, 2));
+            DrawPath(g, pen, dkey.HasFlag(DirectionKey.Down) ? _brushButtonDown : _brushButtonUp, RoundedRect(21, 67, 6, 6, 2, 2, 2, 2));
+            DrawPath(g, pen, dkey.HasFlag(DirectionKey.Left) ? _brushButtonDown : _brushButtonUp, RoundedRect(15, 61, 6, 6, 2, 2, 2, 2));
+            DrawPath(g, pen, dkey.HasFlag(DirectionKey.Right) ? _brushButtonDown : _brushButtonUp, RoundedRect(27, 61, 6, 6, 2, 2, 2, 2));
 
             // buttons
-            g.DrawImage(Images.Get($"JoyCon_ZL_{Math.Sign((report.Button & (ushort)NintendoSwitch.Button.ZL))}"), e.ClipRectangle);
-            g.DrawImage(Images.Get($"JoyCon_ZR_{Math.Sign((report.Button & (ushort)NintendoSwitch.Button.ZR))}"), e.ClipRectangle);
-            g.DrawImage(Images.Get($"JoyCon_L_{Math.Sign((report.Button & (ushort)NintendoSwitch.Button.L))}"), e.ClipRectangle);
-            g.DrawImage(Images.Get($"JoyCon_R_{Math.Sign((report.Button & (ushort)NintendoSwitch.Button.R))}"), e.ClipRectangle);
-            DrawEllipse(g, pen, (report.Button & (ushort)NintendoSwitch.Button.A) != 0 ? _brushButtonDown : _brushButtonUp, 79, 29, 9, 9);
-            DrawEllipse(g, pen, (report.Button & (ushort)NintendoSwitch.Button.B) != 0 ? _brushButtonDown : _brushButtonUp, 71, 37, 9, 9);
-            DrawEllipse(g, pen, (report.Button & (ushort)NintendoSwitch.Button.X) != 0 ? _brushButtonDown : _brushButtonUp, 71, 21, 9, 9);
-            DrawEllipse(g, pen, (report.Button & (ushort)NintendoSwitch.Button.Y) != 0 ? _brushButtonDown : _brushButtonUp, 63, 29, 9, 9);
-            DrawPath(g, pen, (report.Button & (ushort)NintendoSwitch.Button.MINUS) != 0 ? _brushButtonDown : _brushButtonUp, RoundedRect(29, 12, 5, 5, 1, 1, 1, 1));
-            DrawPath(g, pen, (report.Button & (ushort)NintendoSwitch.Button.PLUS) != 0 ? _brushButtonDown : _brushButtonUp, RoundedRect(65, 12, 5, 5, 1, 1, 1, 1));
-            DrawPath(g, pen, (report.Button & (ushort)NintendoSwitch.Button.CAPTURE) != 0 ? _brushButtonDown : _brushButtonUp, RoundedRect(27, 82, 5, 5, 1, 1, 1, 1));
-            DrawPath(g, pen, (report.Button & (ushort)NintendoSwitch.Button.HOME) != 0 ? _brushButtonDown : _brushButtonUp, RoundedRect(67, 82, 5, 5, 1, 1, 1, 1));
+            g.DrawImage(Images.Get($"JoyCon_ZL_{Math.Sign((report.Button & (ushort)SwitchButton.ZL))}"), e.ClipRectangle);
+            g.DrawImage(Images.Get($"JoyCon_ZR_{Math.Sign((report.Button & (ushort)SwitchButton.ZR))}"), e.ClipRectangle);
+            g.DrawImage(Images.Get($"JoyCon_L_{Math.Sign((report.Button & (ushort)SwitchButton.L))}"), e.ClipRectangle);
+            g.DrawImage(Images.Get($"JoyCon_R_{Math.Sign((report.Button & (ushort)SwitchButton.R))}"), e.ClipRectangle);
+            DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.A) != 0 ? _brushButtonDown : _brushButtonUp, 79, 29, 9, 9);
+            DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.B) != 0 ? _brushButtonDown : _brushButtonUp, 71, 37, 9, 9);
+            DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.X) != 0 ? _brushButtonDown : _brushButtonUp, 71, 21, 9, 9);
+            DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.Y) != 0 ? _brushButtonDown : _brushButtonUp, 63, 29, 9, 9);
+            DrawPath(g, pen, (report.Button & (ushort)SwitchButton.MINUS) != 0 ? _brushButtonDown : _brushButtonUp, RoundedRect(29, 12, 5, 5, 1, 1, 1, 1));
+            DrawPath(g, pen, (report.Button & (ushort)SwitchButton.PLUS) != 0 ? _brushButtonDown : _brushButtonUp, RoundedRect(65, 12, 5, 5, 1, 1, 1, 1));
+            DrawPath(g, pen, (report.Button & (ushort)SwitchButton.CAPTURE) != 0 ? _brushButtonDown : _brushButtonUp, RoundedRect(27, 82, 5, 5, 1, 1, 1, 1));
+            DrawPath(g, pen, (report.Button & (ushort)SwitchButton.HOME) != 0 ? _brushButtonDown : _brushButtonUp, RoundedRect(67, 82, 5, 5, 1, 1, 1, 1));
 
             //if (report.Button != 0)
             //    g.FillPath(Brushes.Lime, RoundedRect(rect, 20, 1, 1, 20));

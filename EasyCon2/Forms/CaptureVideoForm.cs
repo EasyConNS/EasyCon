@@ -2,10 +2,10 @@
 using EasyCon2.Graphic;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
-using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.IO;
+using System.Text.Json;
 
 namespace EasyCon2.Forms
 {
@@ -84,20 +84,20 @@ namespace EasyCon2.Forms
                 Directory.CreateDirectory(ImgDir);
             }
 
-            foreach (var method in ImgLabel.GetAllSearchMethod())
+            foreach (var method in ImgLabelExt.GetAllSearchMethod())
             {
                 searchMethodComBox.Items.Add(method.ToDescription());
             }
 
             // data binding
-            searchRangX.DataBindings.Add("Text", curImgLabel, "RangeX");
-            searchRangY.DataBindings.Add("Text", curImgLabel, "RangeY");
-            searchRangW.DataBindings.Add("Text", curImgLabel, "RangeWidth");
-            searchRangH.DataBindings.Add("Text", curImgLabel, "RangeHeight");
-            targRangX.DataBindings.Add("Text", curImgLabel, "TargetX");
-            targRangY.DataBindings.Add("Text", curImgLabel, "TargetY");
-            targRangW.DataBindings.Add("Text", curImgLabel, "TargetWidth");
-            targRangH.DataBindings.Add("Text", curImgLabel, "TargetHeight");
+            searchXNUD.DataBindings.Add("Value", curImgLabel, "RangeX");
+            searchYNUD.DataBindings.Add("Value", curImgLabel, "RangeY");
+            searchWNUD.DataBindings.Add("Value", curImgLabel, "RangeWidth");
+            searchHNUD.DataBindings.Add("Value", curImgLabel, "RangeHeight");
+            targetXNUD.DataBindings.Add("Value", curImgLabel, "TargetX");
+            targetYNUD.DataBindings.Add("Value", curImgLabel, "TargetY");
+            targetWNUD.DataBindings.Add("Value", curImgLabel, "TargetWidth");
+            targetHNUD.DataBindings.Add("Value", curImgLabel, "TargetHeight");
             lowestMatch.DataBindings.Add("Text", curImgLabel, "matchDegree");
 
             // load the imglabel
@@ -108,17 +108,42 @@ namespace EasyCon2.Forms
             {
                 try
                 {
-                    var temp = JsonConvert.DeserializeObject<ImgLabel>(File.ReadAllText(file));
+                    var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(file));
+                    if(temp == null)
+                    {
+                        throw new Exception();
+                    }
                     if (temp.name == "") continue;
                     temp.Refresh(() => cvcap.GetImage());
                     imgLabels.Add(temp);
                     imgLableList.Items.Add(temp.name);
                 }
-                catch {/*ignore errors*/ }
+                catch
+                {
+                    Debug.WriteLine("无法加载标签:", file);
+                }
             }
 
             VideoSourcePlayerMonitor.PaintEventHandler += new PaintEventHandler(MonitorPaint);
             Snapshot.PaintEventHandler += new PaintEventHandler(SnapshotPaint);
+
+            // resize
+            Xvalue = this.Width;
+            Yvalue = this.Height;
+            setTag(this);
+        }
+
+        public float Xvalue;
+        public float Yvalue;
+
+        private void setTag(Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
+                if (con.Controls.Count > 0)
+                    setTag(con);
+            }
         }
 
         private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
@@ -389,11 +414,11 @@ namespace EasyCon2.Forms
         private void searchImg_test()
         {
             Stopwatch sw = new();
-            ImgLabel.SearchMethod method;
+            SearchMethod method;
             if (searchMethodComBox.SelectedItem == null)
-                method = ImgLabel.SearchMethod.SqDiffNormed;
+                method = SearchMethod.SqDiffNormed;
             else
-                method = EnumHelper.GetEnumFromString<ImgLabel.SearchMethod>(searchMethodComBox.SelectedItem.ToString());
+                method = EnumHelper.GetEnumFromString<SearchMethod>(searchMethodComBox.SelectedItem.ToString());
 
             curImgLabel.searchMethod = method;
             //Debug.WriteLine(method);
@@ -529,16 +554,16 @@ namespace EasyCon2.Forms
 
         private void SaveTagBtn_Click(object sender, EventArgs e)
         {
-            ImgLabel.SearchMethod method;
+            SearchMethod method;
             if (imgLabelNametxt.Text == "")
             {
                 MessageBox.Show("搜图标签为空无法保存");
                 return;
             }
             if (searchMethodComBox.SelectedItem == null)
-                method = ImgLabel.SearchMethod.SqDiffNormed;
+                method = SearchMethod.SqDiffNormed;
             else
-                method = EnumHelper.GetEnumFromString<ImgLabel.SearchMethod>(searchMethodComBox.SelectedItem.ToString());
+                method = EnumHelper.GetEnumFromString<SearchMethod>(searchMethodComBox.SelectedItem.ToString());
 
             curImgLabel.searchMethod = method;
             curImgLabel.matchDegree = double.Parse(lowestMatch.Text);
@@ -569,7 +594,6 @@ namespace EasyCon2.Forms
 
         private void openCapBtn_Click(object sender, EventArgs e)
         {
-            OpenFileDialog openFileDialog1 = new();
             openFileDialog1.Title = "打开";
             openFileDialog1.RestoreDirectory = true;
             openFileDialog1.InitialDirectory = Path.GetFullPath(CapDir);
@@ -643,6 +667,28 @@ namespace EasyCon2.Forms
             }
         }
 
+        private void targetImg_DoubleClick(object sender, EventArgs e)
+        {
+            openFileDialog1.Title = "打开";
+            openFileDialog1.RestoreDirectory = true;
+            openFileDialog1.InitialDirectory = Application.StartupPath;
+            openFileDialog1.Filter = @"图片文件(*.jpg,*.gif,*.bmp,*.png)|*.jpg;*.gif;*.bmp;*.png";
+            openFileDialog1.FileName = string.Empty;
+            if (openFileDialog1.ShowDialog() != DialogResult.OK)
+                return;
+ 
+            Debug.WriteLine(openFileDialog1.FileName);
+
+            // get new target pic
+            var tap = new Bitmap(openFileDialog1.FileName);
+            // set new target
+            curImgLabel.setSearchImg(tap);
+            curImgLabel.TargetHeight = tap.Height;
+            curImgLabel.TargetWidth = tap.Width;
+            targetImg.Image = curImgLabel.getSearchImg();
+            tap?.Dispose();
+        }
+
         private void imgLableList_DoubleClick(object sender, EventArgs e)
         {
             if (imgLableList.SelectedItem != null && imgLableList.SelectedItem.ToString()!= "")
@@ -682,7 +728,7 @@ namespace EasyCon2.Forms
             }
         }
 
-        private void button8_Click(object sender, EventArgs e)
+        private void ResolutionBtn_Click(object sender, EventArgs e)
         {
             if (ResolutionBtn.Text == "当前分辨率：1080P")
             {
@@ -708,6 +754,43 @@ namespace EasyCon2.Forms
         {
             var checkBox = (CheckBox)sender;
             VideoSourcePlayerMonitor.Visible = checkBox.Checked;
+        }
+
+        private void CaptureVideoForm_Resize(object sender, EventArgs e)
+        {
+            float newx = (this.Width) / Xvalue;
+            float newy = this.Height / Yvalue;
+            setControls(newx, newy, this);
+        }
+
+        private void setControls(float newx, float newy, Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                string[] mytag = con.Tag.ToString().Split(new char[] { ':' });
+                float a = Convert.ToSingle(mytag[0]) * newx;
+                con.Width = (int)a;
+                a = Convert.ToSingle(mytag[1]) * newy;
+                con.Height = (int)(a);
+                a = Convert.ToSingle(mytag[2]) * newx;
+                con.Left = (int)(a);
+                a = Convert.ToSingle(mytag[3]) * newy;
+                con.Top = (int)(a);
+                Single currentSize = Convert.ToSingle(mytag[4]) * newy;
+
+                //改变字体大小
+                con.Font = new Font(con.Font.Name, currentSize, con.Font.Style, con.Font.Unit);
+
+                if (con.Controls.Count > 0)
+                {
+                    try
+                    {
+                        setControls(newx, newy, con);
+                    }
+                    catch
+                    { }
+                }
+            }
         }
     }
 }

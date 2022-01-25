@@ -1,35 +1,14 @@
 ﻿using ECDevice;
-using System.Text.RegularExpressions;
 
 namespace EasyCon2.Script.Parsing.Statements
 {
     abstract class KeyAction : Statement
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
-        protected readonly NintendoSwitch.Key Key;
+        protected readonly NintendoSwitch.ECKey Key;
 
-        public KeyAction(NintendoSwitch.Key key)
+        public KeyAction(NintendoSwitch.ECKey key)
         {
             Key = key;
-        }
-
-        public static Statement Parse(ParserArgument args)
-        {
-            NintendoSwitch.Key key;
-            Match m;
-            m = Regex.Match(args.Text, @"^([a-z]+)$", RegexOptions.IgnoreCase);
-            if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
-                return new KeyPress(key);
-            m = Regex.Match(args.Text, $@"^([a-z]+)\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-            if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
-                return new KeyPress(key, args.Formatter.GetValueEx(m.Groups[2].Value));
-            m = Regex.Match(args.Text, @"^([a-z]+)\s+down$", RegexOptions.IgnoreCase);
-            if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
-                return new KeyDown(key);
-            m = Regex.Match(args.Text, @"^([a-z]+)\s+up$", RegexOptions.IgnoreCase);
-            if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
-                return new KeyUp(key);
-            return null;
         }
 
         protected void ReleasePrevious(Assembly.Assembler assembler)
@@ -48,14 +27,14 @@ namespace EasyCon2.Script.Parsing.Statements
         public readonly ValBase Duration;
         private bool _omitted = false;
 
-        public KeyPress(NintendoSwitch.Key key)
+        public KeyPress(NintendoSwitch.ECKey key)
             : base(key)
         {
             Duration = DefaultDuration;
             _omitted = true;
         }
 
-        public KeyPress(NintendoSwitch.Key key, ValBase duration)
+        public KeyPress(NintendoSwitch.ECKey key, ValBase duration)
             : base(key)
         {
             Duration = duration;
@@ -66,7 +45,7 @@ namespace EasyCon2.Script.Parsing.Statements
             var duration = Duration.Get(processor);
             if (duration > 0)
             {
-                NintendoSwitch.GetInstance().Press(Key, duration);
+                processor.GamePad.ClickButtons(Key, duration);
                 Thread.Sleep(duration);
             }
         }
@@ -114,13 +93,13 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class KeyDown : KeyAction
     {
-        public KeyDown(NintendoSwitch.Key key)
+        public KeyDown(NintendoSwitch.ECKey key)
             : base(key)
         { }
 
         public override void Exec(Processor processor)
         {
-            NintendoSwitch.GetInstance().Down(Key);
+            processor.GamePad.PressButtons(Key);
         }
 
         protected override string _GetString(Formatter formatter)
@@ -138,13 +117,13 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class KeyUp : KeyAction
     {
-        public KeyUp(NintendoSwitch.Key key)
+        public KeyUp(NintendoSwitch.ECKey key)
             : base(key)
         { }
 
         public override void Exec(Processor processor)
         {
-            NintendoSwitch.GetInstance().Up(Key);
+            processor.GamePad.ReleaseButtons(Key);
         }
 
         protected override string _GetString(Formatter formatter)

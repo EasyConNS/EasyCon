@@ -1,18 +1,19 @@
-﻿using EasyCon2.Graphic;
+﻿using System.Drawing.Imaging;
 using System.IO;
 
-namespace EasyCon2.Global
+namespace EasyCon2.Graphic
 {
-    static class Extensions
+    internal static class ImgLabelExt
     {
-        public static double Compare(this Color self, Color color)
+        public static List<SearchMethod> GetAllSearchMethod()
         {
-            return 1 - (Math.Abs(self.R - color.R) + Math.Abs(self.G - color.G) + Math.Abs(self.B - color.B)) / 255.0 / 3;
-        }
-
-        public static string GetName(this Enum self)
-        {
-            return Enum.GetName(self.GetType(), self);
+            var list = new List<SearchMethod>
+            {
+                SearchMethod.SqDiffNormed,
+                SearchMethod.CCorrNormed,
+                SearchMethod.CCoeffNormed
+            };
+            return list;
         }
 
         public static string ImageToBase64(this ImgLabel self, Bitmap bmp)
@@ -20,7 +21,7 @@ namespace EasyCon2.Global
             try
             {
                 var ms = new MemoryStream();
-                bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
+                bmp.Save(ms, ImageFormat.Bmp);
                 byte[] arr = new byte[ms.Length];
                 ms.Position = 0;
                 ms.Read(arr, 0, (int)ms.Length);

@@ -3,8 +3,8 @@
     static class Formats
     {
         const string __Constant = @"_[\d\p{L}_]+";
-        const string __Register = @"\$\d+";
-        const string __Register32 = @"\$\$\d+";
+        const string __Register = @"\$[\da-zA-Z_]+";
+        const string __Register32 = @"\${2}[\da-zA-Z_]+";
         const string __Number = @"-?\d+";
         const string __ExtVar = @"@[\d\p{L}_]+";
 

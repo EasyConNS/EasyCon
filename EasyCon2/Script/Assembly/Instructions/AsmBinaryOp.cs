@@ -105,7 +105,7 @@ namespace EasyCon2.Script.Assembly.Instructions
     [AsmBinaryOperator(BinaryOperator.Mov)]
     class AsmMov : AsmBinaryOp<AsmMov>
     {
-        public static Instruction Create(uint regdst, Parsing.ValBase value)
+        public static new Instruction Create(uint regdst, Parsing.ValBase value)
         {
             var ins = AsmMovCompressed.Create(regdst, value);
             if (ins.Success)

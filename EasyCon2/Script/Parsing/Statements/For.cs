@@ -1,10 +1,7 @@
-﻿using System.Text.RegularExpressions;
-
-namespace EasyCon2.Script.Parsing.Statements
+﻿namespace EasyCon2.Script.Parsing.Statements
 {
     abstract class For : Statement
     {
-        public static IStatementParser Parser = new StatementParser(Parse);
         public override int IndentNext => 1;
         public readonly ValBase Count;
         public Next Next;
@@ -21,20 +18,6 @@ namespace EasyCon2.Script.Parsing.Statements
 
         protected virtual void Step(Processor processor)
         { }
-
-        public static Statement Parse(ParserArgument args)
-        {
-            Match m;
-            if (args.Text.Equals("for", StringComparison.OrdinalIgnoreCase))
-                return new For_Infinite();
-            m = Regex.Match(args.Text, $@"^for\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new For_Static(args.Formatter.GetValueEx(m.Groups[1].Value));
-            m = Regex.Match(args.Text, $@"^for\s+{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}\s*to\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new For_Full(Formatter.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value), args.Formatter.GetValueEx(m.Groups[3].Value));
-            return null;
-        }
 
         public override sealed void Exec(Processor processor)
         {
@@ -180,16 +163,8 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Next : Statement
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
         public override int IndentThis => -1;
         public For For;
-
-        public static Statement Parse(ParserArgument args)
-        {
-            if (args.Text.Equals("next", StringComparison.OrdinalIgnoreCase))
-                return new Next();
-            return null;
-        }
 
         protected override string _GetString(Formatter formatter)
         {
@@ -231,24 +206,12 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Break : LoopControl
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
-
         public Break()
         { }
 
         public Break(ValInstant level)
             : base(level)
         { }
-
-        public static Statement Parse(ParserArgument args)
-        {
-            if (args.Text.Equals("break", StringComparison.OrdinalIgnoreCase))
-                return new Break();
-            var m = Regex.Match(args.Text, $@"^break\s+{Formats.Instant}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new Break(args.Formatter.GetInstant(m.Groups[1].Value, true));
-            return null;
-        }
 
         protected override string _GetString(Formatter formatter)
         {
@@ -272,24 +235,12 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Continue : LoopControl
     {
-        public static readonly IStatementParser Parser = new StatementParser(Parse);
-
         public Continue()
         { }
 
         public Continue(ValInstant level)
             : base(level)
         { }
-
-        public static Statement Parse(ParserArgument args)
-        {
-            if (args.Text.Equals("continue", StringComparison.OrdinalIgnoreCase))
-                return new Continue();
-            var m = Regex.Match(args.Text, $@"^continue\s+{Formats.Instant}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new Continue(args.Formatter.GetInstant(m.Groups[1].Value, true));
-            return null;
-        }
 
         protected override string _GetString(Formatter formatter)
         {

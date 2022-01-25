@@ -34,8 +34,9 @@ namespace EasyCon2.Script.Parsing.Statements
             public Statement Parse(ParserArgument args)
             {
                 var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.Register}$", RegexOptions.IgnoreCase);
+                
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, Formatter.GetReg(m.Groups[1].Value, _lhs)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, _lhs)) as Statement;
                 return null;
             }
         }
@@ -62,7 +63,7 @@ namespace EasyCon2.Script.Parsing.Statements
         {
             if (RegDst is ValReg32)
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index) as Assembly.Instruction);
+            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index));
         }
     }
 
@@ -97,7 +98,7 @@ namespace EasyCon2.Script.Parsing.Statements
             {
                 var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\=\s*{_meta.Operator}\s*{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, Formatter.GetRegEx(m.Groups[1].Value, true), Formatter.GetRegEx(m.Groups[2].Value, false)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, true), FormatterUtil.GetRegEx(m.Groups[2].Value, false)) as Statement;
                 return null;
             }
         }
@@ -127,13 +128,13 @@ namespace EasyCon2.Script.Parsing.Statements
             if (RegDst is ValReg32)
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
             assembler.Add(Assembly.Instructions.AsmMov.Create(RegDst.Index, RegSrc));
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index) as Assembly.Instruction);
+            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index));
         }
     }
 
     class Not : UnaryOpEx
     {
-        static readonly Meta _Meta = new Meta(typeof(Not), typeof(Assembly.Instructions.AsmNot), "~", a => ~a);
+        static readonly Meta _Meta = new(typeof(Not), typeof(Assembly.Instructions.AsmNot), "~", a => ~a);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
@@ -144,7 +145,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Negative : UnaryOpEx
     {
-        static readonly Meta _Meta = new Meta(typeof(Negative), typeof(Assembly.Instructions.AsmNegative), "-", a => -a);
+        static readonly Meta _Meta = new(typeof(Negative), typeof(Assembly.Instructions.AsmNegative), "-", a => -a);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
@@ -155,7 +156,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Push : UnaryOp
     {
-        static readonly Meta _Meta = new Meta(typeof(Push), typeof(Assembly.Instructions.AsmPush), "PUSH", null);
+        static readonly Meta _Meta = new(typeof(Push), typeof(Assembly.Instructions.AsmPush), "PUSH", null);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta, false);
 
@@ -171,7 +172,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Pop : UnaryOp
     {
-        static readonly Meta _Meta = new Meta(typeof(Pop), typeof(Assembly.Instructions.AsmPop), "POP", null);
+        static readonly Meta _Meta = new(typeof(Pop), typeof(Assembly.Instructions.AsmPop), "POP", null);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
@@ -189,7 +190,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Bool : UnaryOp
     {
-        static readonly Meta _Meta = new Meta(typeof(Bool), typeof(Assembly.Instructions.AsmBool), "BOOL", a => a == 0 ? 0 : 1);
+        static readonly Meta _Meta = new(typeof(Bool), typeof(Assembly.Instructions.AsmBool), "BOOL", a => a == 0 ? 0 : 1);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
@@ -200,8 +201,8 @@ namespace EasyCon2.Script.Parsing.Statements
 
     class Rand : UnaryOp
     {
-        static Random _rand = new Random();
-        static readonly Meta _Meta = new Meta(typeof(Rand), typeof(Assembly.Instructions.AsmRand), "RAND", a => _rand.Next(a));
+        static Random _rand = new();
+        static readonly Meta _Meta = new(typeof(Rand), typeof(Assembly.Instructions.AsmRand), "RAND", a => _rand.Next(a));
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 

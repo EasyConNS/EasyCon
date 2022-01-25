@@ -1,13 +1,16 @@
-﻿using System.Text.RegularExpressions;
-
-namespace EasyCon2.Script.Parsing.Statements
+﻿namespace EasyCon2.Script.Parsing.Statements
 {
-    class If : Statement
+    abstract class BranchOp : Statement
     {
-        public static IStatementParser Parser = new StatementParser(Parse);
-        public override int IndentNext => 1;
-        public Else Else;
+        public BranchOp? If;
+        public BranchOp? Else;
         public EndIf EndIf;
+        public bool Passthrough = true;
+    }
+
+    class If : BranchOp
+    {
+        public override int IndentNext => 1;
         public readonly CompareOperator Operater;
         public readonly ValVar Left;
         public readonly ValBase Right;
@@ -19,28 +22,19 @@ namespace EasyCon2.Script.Parsing.Statements
             Right = right;
         }
 
-        public static Statement Parse(ParserArgument args)
-        {
-            foreach (var op in CompareOperator.All)
-            {
-                var m = Regex.Match(args.Text, $@"^if\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-                if (m.Success)
-                    return new If(op, args.Formatter.GetVar(m.Groups[1].Value), args.Formatter.GetValueEx(m.Groups[2].Value));
-            }
-            return null;
-        }
-
         public override void Exec(Processor processor)
         {
+            Passthrough = true;
             if (Operater.Compare(Left.Get(processor), Right.Get(processor)))
             {
                 // do nothing
+                Passthrough = false;
             }
             else
             {
                 // jump
                 if (Else != null)
-                    processor.PC = Else.Address + 1;
+                    processor.PC = Else.Address;
                 else
                     processor.PC = EndIf.Address + 1;
             }
@@ -53,8 +47,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            var left = Left as ValRegEx;
-            if (left == null)
+            if (Left is not ValRegEx left)
                 throw new Assembly.AssembleException("外部变量仅限联机模式使用");
             if (Right is ValInstant)
             {
@@ -70,24 +63,85 @@ namespace EasyCon2.Script.Parsing.Statements
         }
     }
 
-    class Else : Statement
+    class ElseIf : BranchOp
     {
-        public static IStatementParser Parser = new StatementParser(Parse);
         public override int IndentThis => -1;
         public override int IndentNext => 1;
-        public If If;
+        public readonly CompareOperator Operater;
+        public readonly ValVar Left;
+        public readonly ValBase Right;
 
-        public static Statement Parse(ParserArgument args)
+        public ElseIf(CompareOperator op, ValVar left, ValBase right)
         {
-            if (args.Text.Equals("else", StringComparison.OrdinalIgnoreCase))
-                return new Else();
-            return null;
+            Operater = op;
+            Left = left;
+            Right = right;
         }
 
         public override void Exec(Processor processor)
         {
+            if(!If.Passthrough)
+            {
+                processor.PC = If.EndIf.Address + 1;
+            }
+            else
+            {
+                Passthrough = true;
+                if (Operater.Compare(Left.Get(processor), Right.Get(processor)))
+                {
+                    // do nothing
+                    Passthrough = false;
+                }
+                else
+                {
+                    // jump
+                    if (Else != null)
+                        processor.PC = Else.Address;
+                    else
+                        processor.PC = EndIf.Address + 1;
+                }
+            }   
+        }
+
+        protected override string _GetString(Formatter formatter)
+        {
+            return $"ELIF {Left.GetCodeText(formatter)} {Operater.Operator} {Right.GetCodeText(formatter)}";
+        }
+
+        public override void Assemble(Assembly.Assembler assembler)
+        {
+            // need test
+            assembler.Add(Assembly.Instructions.AsmBranch.Create());
+            assembler.ElseMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranch;
+            assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+            assembler.IfMapping[If].Target = assembler.Last();
+
+            if (Left is not ValRegEx left)
+                throw new Assembly.AssembleException("外部变量仅限联机模式使用");
+            if (Right is ValInstant)
+            {
+                assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
+                assembler.Add(Operater.Assemble(left.Index, Assembly.Assembler.IReg));
+            }
+            else
+            {
+                assembler.Add(Operater.Assemble(left.Index, (Right as ValReg).Index));
+            }
+            assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
+            assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
+        }
+    }
+
+    class Else : BranchOp
+    {
+        public override int IndentThis => -1;
+        public override int IndentNext => 1;
+
+        public override void Exec(Processor processor)
+        {
             // end of if-block
-            processor.PC = If.EndIf.Address + 1;
+            if(!If.Passthrough)
+                processor.PC = If.EndIf.Address + 1;
         }
 
         protected override string _GetString(Formatter formatter)
@@ -104,18 +158,9 @@ namespace EasyCon2.Script.Parsing.Statements
         }
     }
 
-    class EndIf : Statement
+    class EndIf : BranchOp
     {
-        public static IStatementParser Parser = new StatementParser(Parse);
         public override int IndentThis => -1;
-        public If If;
-
-        public static Statement Parse(ParserArgument args)
-        {
-            if (args.Text.Equals("endif", StringComparison.OrdinalIgnoreCase))
-                return new EndIf();
-            return null;
-        }
 
         public override void Exec(Processor processor)
         { }
@@ -131,7 +176,15 @@ namespace EasyCon2.Script.Parsing.Statements
             if (If.Else == null)
                 assembler.IfMapping[If].Target = assembler.Last();
             else
+            {
                 assembler.ElseMapping[If.Else].Target = assembler.Last();
+                var @elif = If;
+                while (@elif is ElseIf)
+                {
+                    assembler.ElseMapping[@elif].Target = assembler.Last();
+                    @elif = @elif.If;
+                }
+            }
         }
     }
 }

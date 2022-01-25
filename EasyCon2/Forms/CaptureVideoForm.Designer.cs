@@ -38,6 +38,14 @@
             this.searchTestBtn = new System.Windows.Forms.Button();
             this.targetBtn = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.searchHNUD = new System.Windows.Forms.NumericUpDown();
+            this.searchWNUD = new System.Windows.Forms.NumericUpDown();
+            this.searchYNUD = new System.Windows.Forms.NumericUpDown();
+            this.searchXNUD = new System.Windows.Forms.NumericUpDown();
+            this.targetHNUD = new System.Windows.Forms.NumericUpDown();
+            this.targetWNUD = new System.Windows.Forms.NumericUpDown();
+            this.targetYNUD = new System.Windows.Forms.NumericUpDown();
+            this.targetXNUD = new System.Windows.Forms.NumericUpDown();
             this.targetImg = new System.Windows.Forms.PictureBox();
             this.imgLabelNametxt = new System.Windows.Forms.TextBox();
             this.label8 = new System.Windows.Forms.Label();
@@ -45,21 +53,13 @@
             this.label6 = new System.Windows.Forms.Label();
             this.label22 = new System.Windows.Forms.Label();
             this.label21 = new System.Windows.Forms.Label();
-            this.targRangX = new System.Windows.Forms.TextBox();
             this.label16 = new System.Windows.Forms.Label();
-            this.targRangY = new System.Windows.Forms.TextBox();
             this.label17 = new System.Windows.Forms.Label();
-            this.targRangW = new System.Windows.Forms.TextBox();
             this.label19 = new System.Windows.Forms.Label();
-            this.targRangH = new System.Windows.Forms.TextBox();
             this.label20 = new System.Windows.Forms.Label();
-            this.searchRangX = new System.Windows.Forms.TextBox();
             this.label14 = new System.Windows.Forms.Label();
-            this.searchRangY = new System.Windows.Forms.TextBox();
             this.label15 = new System.Windows.Forms.Label();
-            this.searchRangW = new System.Windows.Forms.TextBox();
             this.label13 = new System.Windows.Forms.Label();
-            this.searchRangH = new System.Windows.Forms.TextBox();
             this.label18 = new System.Windows.Forms.Label();
             this.label12 = new System.Windows.Forms.Label();
             this.searchMethodComBox = new System.Windows.Forms.ComboBox();
@@ -76,7 +76,16 @@
             this.monitorVisChk = new System.Windows.Forms.CheckBox();
             this.VideoSourcePlayerMonitor = new EasyCon2.Forms.PaintControl();
             this.Snapshot = new EasyCon2.Forms.PaintControl();
+            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
             this.groupBox1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.searchHNUD)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.searchWNUD)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.searchYNUD)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.searchXNUD)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.targetHNUD)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.targetWNUD)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.targetYNUD)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.targetXNUD)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).BeginInit();
             this.SuspendLayout();
@@ -157,6 +166,14 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.searchHNUD);
+            this.groupBox1.Controls.Add(this.searchWNUD);
+            this.groupBox1.Controls.Add(this.searchYNUD);
+            this.groupBox1.Controls.Add(this.searchXNUD);
+            this.groupBox1.Controls.Add(this.targetHNUD);
+            this.groupBox1.Controls.Add(this.targetWNUD);
+            this.groupBox1.Controls.Add(this.targetYNUD);
+            this.groupBox1.Controls.Add(this.targetXNUD);
             this.groupBox1.Controls.Add(this.targetImg);
             this.groupBox1.Controls.Add(this.imgLabelNametxt);
             this.groupBox1.Controls.Add(this.label8);
@@ -164,21 +181,13 @@
             this.groupBox1.Controls.Add(this.label6);
             this.groupBox1.Controls.Add(this.label22);
             this.groupBox1.Controls.Add(this.label21);
-            this.groupBox1.Controls.Add(this.targRangX);
             this.groupBox1.Controls.Add(this.label16);
-            this.groupBox1.Controls.Add(this.targRangY);
             this.groupBox1.Controls.Add(this.label17);
-            this.groupBox1.Controls.Add(this.targRangW);
             this.groupBox1.Controls.Add(this.label19);
-            this.groupBox1.Controls.Add(this.targRangH);
             this.groupBox1.Controls.Add(this.label20);
-            this.groupBox1.Controls.Add(this.searchRangX);
             this.groupBox1.Controls.Add(this.label14);
-            this.groupBox1.Controls.Add(this.searchRangY);
             this.groupBox1.Controls.Add(this.label15);
-            this.groupBox1.Controls.Add(this.searchRangW);
             this.groupBox1.Controls.Add(this.label13);
-            this.groupBox1.Controls.Add(this.searchRangH);
             this.groupBox1.Controls.Add(this.label18);
             this.groupBox1.Controls.Add(this.label12);
             this.groupBox1.Controls.Add(this.searchMethodComBox);
@@ -191,15 +200,112 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "搜索参数";
             // 
+            // searchHNUD
+            // 
+            this.searchHNUD.Location = new System.Drawing.Point(411, 158);
+            this.searchHNUD.Maximum = new decimal(new int[] {
+            9999,
+            0,
+            0,
+            0});
+            this.searchHNUD.Name = "searchHNUD";
+            this.searchHNUD.Size = new System.Drawing.Size(57, 23);
+            this.searchHNUD.TabIndex = 42;
+            // 
+            // searchWNUD
+            // 
+            this.searchWNUD.Location = new System.Drawing.Point(296, 156);
+            this.searchWNUD.Maximum = new decimal(new int[] {
+            9999,
+            0,
+            0,
+            0});
+            this.searchWNUD.Name = "searchWNUD";
+            this.searchWNUD.Size = new System.Drawing.Size(57, 23);
+            this.searchWNUD.TabIndex = 41;
+            // 
+            // searchYNUD
+            // 
+            this.searchYNUD.Location = new System.Drawing.Point(411, 125);
+            this.searchYNUD.Maximum = new decimal(new int[] {
+            9999,
+            0,
+            0,
+            0});
+            this.searchYNUD.Name = "searchYNUD";
+            this.searchYNUD.Size = new System.Drawing.Size(57, 23);
+            this.searchYNUD.TabIndex = 40;
+            // 
+            // searchXNUD
+            // 
+            this.searchXNUD.Location = new System.Drawing.Point(296, 127);
+            this.searchXNUD.Maximum = new decimal(new int[] {
+            9999,
+            0,
+            0,
+            0});
+            this.searchXNUD.Name = "searchXNUD";
+            this.searchXNUD.Size = new System.Drawing.Size(57, 23);
+            this.searchXNUD.TabIndex = 39;
+            // 
+            // targetHNUD
+            // 
+            this.targetHNUD.Location = new System.Drawing.Point(149, 156);
+            this.targetHNUD.Maximum = new decimal(new int[] {
+            9999,
+            0,
+            0,
+            0});
+            this.targetHNUD.Name = "targetHNUD";
+            this.targetHNUD.Size = new System.Drawing.Size(57, 23);
+            this.targetHNUD.TabIndex = 38;
+            // 
+            // targetWNUD
+            // 
+            this.targetWNUD.Location = new System.Drawing.Point(48, 154);
+            this.targetWNUD.Maximum = new decimal(new int[] {
+            9999,
+            0,
+            0,
+            0});
+            this.targetWNUD.Name = "targetWNUD";
+            this.targetWNUD.Size = new System.Drawing.Size(57, 23);
+            this.targetWNUD.TabIndex = 37;
+            // 
+            // targetYNUD
+            // 
+            this.targetYNUD.Location = new System.Drawing.Point(149, 127);
+            this.targetYNUD.Maximum = new decimal(new int[] {
+            9999,
+            0,
+            0,
+            0});
+            this.targetYNUD.Name = "targetYNUD";
+            this.targetYNUD.Size = new System.Drawing.Size(57, 23);
+            this.targetYNUD.TabIndex = 36;
+            // 
+            // targetXNUD
+            // 
+            this.targetXNUD.Location = new System.Drawing.Point(48, 125);
+            this.targetXNUD.Maximum = new decimal(new int[] {
+            9999,
+            0,
+            0,
+            0});
+            this.targetXNUD.Name = "targetXNUD";
+            this.targetXNUD.Size = new System.Drawing.Size(57, 23);
+            this.targetXNUD.TabIndex = 35;
+            // 
             // targetImg
             // 
-            this.targetImg.Location = new System.Drawing.Point(512, 135);
+            this.targetImg.Location = new System.Drawing.Point(495, 82);
             this.targetImg.Margin = new System.Windows.Forms.Padding(4);
             this.targetImg.Name = "targetImg";
             this.targetImg.Size = new System.Drawing.Size(74, 68);
             this.targetImg.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.targetImg.TabIndex = 34;
             this.targetImg.TabStop = false;
+            this.targetImg.DoubleClick += new System.EventHandler(this.targetImg_DoubleClick);
             // 
             // imgLabelNametxt
             // 
@@ -242,161 +348,97 @@
             // label22
             // 
             this.label22.AutoSize = true;
-            this.label22.Location = new System.Drawing.Point(370, 108);
+            this.label22.Location = new System.Drawing.Point(270, 100);
             this.label22.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label22.Name = "label22";
-            this.label22.Size = new System.Drawing.Size(56, 17);
+            this.label22.Size = new System.Drawing.Size(59, 17);
             this.label22.TabIndex = 29;
-            this.label22.Text = "搜索范围";
+            this.label22.Text = "搜索范围:";
             // 
             // label21
             // 
             this.label21.AutoSize = true;
-            this.label21.Location = new System.Drawing.Point(117, 108);
+            this.label21.Location = new System.Drawing.Point(28, 100);
             this.label21.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label21.Name = "label21";
-            this.label21.Size = new System.Drawing.Size(56, 17);
+            this.label21.Size = new System.Drawing.Size(59, 17);
             this.label21.TabIndex = 28;
-            this.label21.Text = "目标位置";
-            // 
-            // targRangX
-            // 
-            this.targRangX.Location = new System.Drawing.Point(48, 136);
-            this.targRangX.Margin = new System.Windows.Forms.Padding(4);
-            this.targRangX.Name = "targRangX";
-            this.targRangX.Size = new System.Drawing.Size(80, 23);
-            this.targRangX.TabIndex = 27;
+            this.label21.Text = "目标位置:";
             // 
             // label16
             // 
             this.label16.AutoSize = true;
-            this.label16.Location = new System.Drawing.Point(19, 143);
+            this.label16.Location = new System.Drawing.Point(22, 127);
             this.label16.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label16.Name = "label16";
             this.label16.Size = new System.Drawing.Size(19, 17);
             this.label16.TabIndex = 26;
             this.label16.Text = "X:";
             // 
-            // targRangY
-            // 
-            this.targRangY.Location = new System.Drawing.Point(168, 136);
-            this.targRangY.Margin = new System.Windows.Forms.Padding(4);
-            this.targRangY.Name = "targRangY";
-            this.targRangY.Size = new System.Drawing.Size(80, 23);
-            this.targRangY.TabIndex = 25;
-            // 
             // label17
             // 
             this.label17.AutoSize = true;
-            this.label17.Location = new System.Drawing.Point(139, 143);
+            this.label17.Location = new System.Drawing.Point(124, 129);
             this.label17.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label17.Name = "label17";
             this.label17.Size = new System.Drawing.Size(18, 17);
             this.label17.TabIndex = 24;
             this.label17.Text = "Y:";
             // 
-            // targRangW
-            // 
-            this.targRangW.Location = new System.Drawing.Point(48, 175);
-            this.targRangW.Margin = new System.Windows.Forms.Padding(4);
-            this.targRangW.Name = "targRangW";
-            this.targRangW.Size = new System.Drawing.Size(80, 23);
-            this.targRangW.TabIndex = 23;
-            // 
             // label19
             // 
             this.label19.AutoSize = true;
-            this.label19.Location = new System.Drawing.Point(15, 182);
+            this.label19.Location = new System.Drawing.Point(18, 156);
             this.label19.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label19.Name = "label19";
             this.label19.Size = new System.Drawing.Size(23, 17);
             this.label19.TabIndex = 22;
             this.label19.Text = "宽:";
             // 
-            // targRangH
-            // 
-            this.targRangH.Location = new System.Drawing.Point(168, 175);
-            this.targRangH.Margin = new System.Windows.Forms.Padding(4);
-            this.targRangH.Name = "targRangH";
-            this.targRangH.Size = new System.Drawing.Size(80, 23);
-            this.targRangH.TabIndex = 21;
-            // 
             // label20
             // 
             this.label20.AutoSize = true;
-            this.label20.Location = new System.Drawing.Point(135, 182);
+            this.label20.Location = new System.Drawing.Point(119, 156);
             this.label20.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label20.Name = "label20";
             this.label20.Size = new System.Drawing.Size(23, 17);
             this.label20.TabIndex = 20;
             this.label20.Text = "高:";
             // 
-            // searchRangX
-            // 
-            this.searchRangX.Location = new System.Drawing.Point(299, 136);
-            this.searchRangX.Margin = new System.Windows.Forms.Padding(4);
-            this.searchRangX.Name = "searchRangX";
-            this.searchRangX.Size = new System.Drawing.Size(80, 23);
-            this.searchRangX.TabIndex = 19;
-            // 
             // label14
             // 
             this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(268, 143);
+            this.label14.Location = new System.Drawing.Point(270, 127);
             this.label14.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label14.Name = "label14";
             this.label14.Size = new System.Drawing.Size(19, 17);
             this.label14.TabIndex = 18;
             this.label14.Text = "X:";
             // 
-            // searchRangY
-            // 
-            this.searchRangY.Location = new System.Drawing.Point(419, 136);
-            this.searchRangY.Margin = new System.Windows.Forms.Padding(4);
-            this.searchRangY.Name = "searchRangY";
-            this.searchRangY.Size = new System.Drawing.Size(80, 23);
-            this.searchRangY.TabIndex = 17;
-            // 
             // label15
             // 
             this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(388, 143);
+            this.label15.Location = new System.Drawing.Point(386, 129);
             this.label15.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label15.Name = "label15";
             this.label15.Size = new System.Drawing.Size(18, 17);
             this.label15.TabIndex = 16;
             this.label15.Text = "Y:";
             // 
-            // searchRangW
-            // 
-            this.searchRangW.Location = new System.Drawing.Point(299, 175);
-            this.searchRangW.Margin = new System.Windows.Forms.Padding(4);
-            this.searchRangW.Name = "searchRangW";
-            this.searchRangW.Size = new System.Drawing.Size(80, 23);
-            this.searchRangW.TabIndex = 15;
-            // 
             // label13
             // 
             this.label13.AutoSize = true;
-            this.label13.Location = new System.Drawing.Point(266, 182);
+            this.label13.Location = new System.Drawing.Point(266, 156);
             this.label13.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(23, 17);
             this.label13.TabIndex = 14;
             this.label13.Text = "宽:";
             // 
-            // searchRangH
-            // 
-            this.searchRangH.Location = new System.Drawing.Point(419, 175);
-            this.searchRangH.Margin = new System.Windows.Forms.Padding(4);
-            this.searchRangH.Name = "searchRangH";
-            this.searchRangH.Size = new System.Drawing.Size(80, 23);
-            this.searchRangH.TabIndex = 13;
-            // 
             // label18
             // 
             this.label18.AutoSize = true;
-            this.label18.Location = new System.Drawing.Point(386, 182);
+            this.label18.Location = new System.Drawing.Point(386, 158);
             this.label18.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label18.Name = "label18";
             this.label18.Size = new System.Drawing.Size(23, 17);
@@ -514,7 +556,7 @@
             this.ResolutionBtn.Text = "当前分辨率：1080P点击切换";
             this.ResolutionBtn.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.ResolutionBtn.UseVisualStyleBackColor = true;
-            this.ResolutionBtn.Click += new System.EventHandler(this.button8_Click);
+            this.ResolutionBtn.Click += new System.EventHandler(this.ResolutionBtn_Click);
             // 
             // label2
             // 
@@ -569,6 +611,12 @@
             this.Snapshot.MouseUp += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseUp);
             this.Snapshot.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseWheel);
             // 
+            // openFileDialog1
+            // 
+            this.openFileDialog1.DefaultExt = "png";
+            this.openFileDialog1.FileName = "target";
+            this.openFileDialog1.Filter = "图片文件(*.jpg,*.gif,*.bmp,*.png)|*.jpg;*.gif;*.bmp;*.png";
+            // 
             // CaptureVideoForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
@@ -603,8 +651,17 @@
             this.Text = "搜图控制台";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.CaptureVideo_FormClosed);
             this.Load += new System.EventHandler(this.CaptureVideo_Load);
+            this.Resize += new System.EventHandler(this.CaptureVideoForm_Resize);
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.searchHNUD)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.searchWNUD)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.searchYNUD)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.searchXNUD)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.targetHNUD)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.targetWNUD)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.targetYNUD)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.targetXNUD)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.targetImg)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).EndInit();
             this.ResumeLayout(false);
@@ -625,21 +682,13 @@
         private System.Windows.Forms.Button SaveTagBtn;
         private System.Windows.Forms.Label label22;
         private System.Windows.Forms.Label label21;
-        private System.Windows.Forms.TextBox targRangX;
         private System.Windows.Forms.Label label16;
-        private System.Windows.Forms.TextBox targRangY;
         private System.Windows.Forms.Label label17;
-        private System.Windows.Forms.TextBox targRangW;
         private System.Windows.Forms.Label label19;
-        private System.Windows.Forms.TextBox targRangH;
         private System.Windows.Forms.Label label20;
-        private System.Windows.Forms.TextBox searchRangX;
         private System.Windows.Forms.Label label14;
-        private System.Windows.Forms.TextBox searchRangY;
         private System.Windows.Forms.Label label15;
-        private System.Windows.Forms.TextBox searchRangW;
         private System.Windows.Forms.Label label13;
-        private System.Windows.Forms.TextBox searchRangH;
         private System.Windows.Forms.Label label18;
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.ComboBox searchMethodComBox;
@@ -659,5 +708,14 @@
         private System.Windows.Forms.CheckBox monitorVisChk;
         private PaintControl VideoSourcePlayerMonitor;
         private PaintControl Snapshot;
+        private NumericUpDown targetXNUD;
+        private NumericUpDown targetHNUD;
+        private NumericUpDown targetWNUD;
+        private NumericUpDown targetYNUD;
+        private NumericUpDown searchHNUD;
+        private NumericUpDown searchWNUD;
+        private NumericUpDown searchYNUD;
+        private NumericUpDown searchXNUD;
+        private OpenFileDialog openFileDialog1;
     }
 }

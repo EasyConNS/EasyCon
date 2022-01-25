@@ -1,48 +1,40 @@
-﻿using EasyCon2.Script.Assembly;
-using EasyCon2.Script.Parsing;
+﻿using EasyCon2.Script.Parsing;
 using ECDevice;
 
 namespace EasyCon2.Script
 {
     internal static class ScripterUtil
     {
-        public static int GetDirectionIndex(NintendoSwitch.Key key)
+        public static int GetDirectionIndex(NintendoSwitch.ECKey key)
         {
             int x = key.StickX;
             int y = key.StickY;
-            if (x == NintendoSwitch.STICK_CENTER && y == NintendoSwitch.STICK_CENTER)
+            if (x == NSwitchUtil.STICK_CENTER && y == NSwitchUtil.STICK_CENTER)
                 return -1;
             x = (int)Math.Round(x / 32d);
             y = (int)Math.Round(y / 32d);
             return x >= y ? x + y : 32 - x - y;
         }
 
-        public static Instruction Assert(Instruction ins)
-        {
-            if (ins is Instruction.Failed)
-                throw new AssembleException((ins as Instruction.Failed).Message);
-            return ins;
-        }
-
-        public static NintendoSwitch.Key GetKey(string keyname, string direction = "0")
+        public static NintendoSwitch.ECKey GetKey(string keyname, string direction = "0")
         {
             var isSlow = keyname.EndsWith("SS", StringComparison.OrdinalIgnoreCase);
             if (int.TryParse(direction, out int degree))
             {
                 if (keyname.StartsWith("LS", StringComparison.OrdinalIgnoreCase))
-                    return NintendoSwitch.Key.LStick(degree);
+                    return ECKeyUtil.LStick(degree);
                 else
-                    return NintendoSwitch.Key.RStick(degree);
+                    return ECKeyUtil.RStick(degree);
             }
             else
             {
                 var dk = NSKeys.GetDirection(direction);
-                if (dk == NintendoSwitch.DirectionKey.None)
+                if (dk == DirectionKey.None)
                     return null;
                 if (keyname.StartsWith("LS", StringComparison.OrdinalIgnoreCase))
-                    return NintendoSwitch.Key.LStick(dk, isSlow);
+                    return ECKeyUtil.LStick(dk, isSlow);
                 else
-                    return NintendoSwitch.Key.RStick(dk, isSlow);
+                    return ECKeyUtil.RStick(dk, isSlow);
             }
         }
     }

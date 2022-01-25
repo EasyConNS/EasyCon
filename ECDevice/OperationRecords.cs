@@ -6,12 +6,8 @@ namespace ECDevice
 {
     public class OperationRecords
     {
-        private List<KeyStroke> records = new List<KeyStroke>();
+        private List<KeyStroke> records = new();
         string script = "";
-
-        public OperationRecords()
-        {
-        }
 
         private string GetScriptKeyName(string key)
         {
