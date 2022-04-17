@@ -1,4 +1,5 @@
-﻿using EasyCon2.Capture;
+﻿using EasyCon2.Assist;
+using EasyCon2.Capture;
 using EasyCon2.Global;
 using EasyCon2.Properties;
 using EasyCon2.Script;
@@ -49,6 +50,8 @@ namespace EasyCon2.Forms
         private bool _fileEdited = false;
 
         private readonly List<ToolStripMenuItem> captureTypes = new();
+
+        private Web_Socket ws;
 
         public EasyConForm()
         {
@@ -362,15 +365,36 @@ namespace EasyCon2.Forms
         
         public void Alert(string message)
         {
+            bool canPush = true;
             if(_config.AlertToken == "")
             {
-                Print("推送Token不能为空");
-                return;
+                canPush = false;
+                Print("pushplus推送Token为空");
             }
-            var address = $"https://www.pushplus.plus/send/{_config.AlertToken}?content={message}&title=伊机控消息";
-            using var client = new HttpClient();
-            var result = client.GetAsync(address).Result.Content.ReadAsStringAsync().Result;
-            Print(result);
+            else
+            {
+                var address = $"https://www.pushplus.plus/send/{_config.AlertToken}?content={message}&title=伊机控消息";
+                using var client = new HttpClient();
+                var result = client.GetAsync(address).Result.Content.ReadAsStringAsync().Result;
+                Print(result);
+                canPush = true;
+            }
+
+            if (_config.ChannelToken == "")
+            {
+                canPush = false;
+            }
+            else
+            {
+                Notification notification = new Notification(_config.ChannelToken, message);
+                ws.SendMsg(notification);
+                canPush = true;
+            }
+
+            if(canPush == false)
+            {
+                Print("推送Token为空");
+            }
         }
 
         void ICGamePad.ClickButtons(NintendoSwitch.ECKey key, int duration)
@@ -1143,7 +1167,7 @@ namespace EasyCon2.Forms
             MessageBox.Show(@"详细使用教程见群946057081文档
 
 Copyright © 2020. 铃落(Nukieberry)
-Copyright © 2021. 云浅雪
+Copyright © 2021. elmagnifico
 Copyright © 2022. 卡尔(ca1e)", "关于");
         }
 
@@ -1160,7 +1184,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
 
         private void 推送设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var form = new ConfigForm(_config);
+            var form = new ConfigForm(_config,ConfigForm.TokenType.pushplus);
             if(form.ShowDialog() == DialogResult.OK)
             {
                 _config.AlertToken = form.TokenString;
@@ -1211,6 +1235,58 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
                     { }
                 }
             }
+        }
+
+        private void 频道推送ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var form = new ConfigForm(_config, ConfigForm.TokenType.channel);
+            if (form.ShowDialog() == DialogResult.OK)
+            {
+                _config.ChannelToken = form.TokenString;
+                SaveConfig();
+            }
+        }
+
+        bool WSRun = false;
+        private bool Start_WebSocket()
+        {
+            try
+            {
+                ws = new Web_Socket();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("WesSocke timeout");
+                return false;
+            }
+            Task task = Task.Run(() =>
+            {
+                WSRun = true;
+                while (WSRun)
+                {
+                    //ws.SendMsg("init");
+
+                    LogResponse logResponse = new LogResponse(_config.ChannelToken, "log res");
+
+                    Notification notification = new Notification(_config.ChannelToken, "notification");
+
+                    ws.SendMsg(logResponse);
+                    ws.SendMsg(notification);
+
+                    Thread.Sleep(1000);
+                }
+            });
+            return true;
+        }
+
+        private void 频道远程ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var menu = (ToolStripMenuItem)sender;
+            menu.Checked = !menu.Checked;
+            if(menu.Checked)
+                menu.Checked = Start_WebSocket();
+            else
+                WSRun = false;
         }
     }
 }
