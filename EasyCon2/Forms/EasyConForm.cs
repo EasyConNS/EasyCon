@@ -235,7 +235,8 @@ namespace EasyCon2.Forms
                             box.SelectionLength = 0;
                             box.SelectionColor = color ?? box.ForeColor;
                             box.AppendText(message.ToString());
-                            if (color == null)
+                            Debug.WriteLine("-"+message.ToString());
+                            if (color == null && message.ToString() != "\r\n")
                             {
                                 temp_msg += message.ToString();
                                 string msg = Regex.Replace(temp_msg, @"[\r\n]", "");
