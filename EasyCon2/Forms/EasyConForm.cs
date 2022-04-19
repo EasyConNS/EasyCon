@@ -62,6 +62,13 @@ namespace EasyCon2.Forms
 
             LoadConfig();
             InitEditor();
+
+            频道远程ToolStripMenuItem.Checked = _config.ChannelControl;
+            if(_config.ChannelControl)
+            {
+                Start_WebSocket();
+            }
+
 #if DEBUG
             蓝牙ToolStripMenuItem.Visible = true;
 #endif
@@ -195,6 +202,7 @@ namespace EasyCon2.Forms
 
                         // message
                         var boxes = new HashSet<RichTextBox>();
+                        string temp_msg = "";
                         while (_messages.Count > 0)
                         {
                             Tuple<RichTextBox, object, Color?> tuple;
@@ -227,6 +235,21 @@ namespace EasyCon2.Forms
                             box.SelectionLength = 0;
                             box.SelectionColor = color ?? box.ForeColor;
                             box.AppendText(message.ToString());
+                            if (color == null)
+                            {
+                                temp_msg += message.ToString();
+                                string msg = Regex.Replace(temp_msg, @"[\r\n]", "");
+                                if (msg != string.Empty)
+                                {
+                                    LogResponse logResponse = new LogResponse(_config.ChannelToken, msg);
+                                    ws.SendMsg(logResponse);
+                                }
+                            }
+                            else
+                            {
+                                temp_msg = message.ToString();
+                            }
+
                         }
                         foreach (var box in boxes)
                         {
@@ -1256,7 +1279,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("WesSocke timeout");
+                Debug.WriteLine("WesSocke timeout",ex);
                 return false;
             }
             Task task = Task.Run(() =>
@@ -1264,16 +1287,24 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
                 WSRun = true;
                 while (WSRun)
                 {
-                    //ws.SendMsg("init");
+                    try
+                    {
+                        //ws.SendMsg("init");
 
-                    LogResponse logResponse = new LogResponse(_config.ChannelToken, "log res");
+                        //LogResponse logResponse = new LogResponse(_config.ChannelToken, "log res");
 
-                    Notification notification = new Notification(_config.ChannelToken, "notification");
+                        //Notification notification = new Notification(_config.ChannelToken, "notification");
 
-                    ws.SendMsg(logResponse);
-                    ws.SendMsg(notification);
+                        //ws.SendMsg(logResponse);
+                        //ws.SendMsg(notification);
 
-                    Thread.Sleep(1000);
+                        Thread.Sleep(1000);
+                    }
+                    catch
+                    {
+                        ws = new Web_Socket();
+                        Debug.WriteLine("ws lost connection,retry");
+                    }
                 }
             });
             return true;
@@ -1284,9 +1315,17 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             var menu = (ToolStripMenuItem)sender;
             menu.Checked = !menu.Checked;
             if(menu.Checked)
+            {
                 menu.Checked = Start_WebSocket();
+                _config.ChannelControl = true;
+            }
             else
+            {
                 WSRun = false;
+                _config.ChannelControl = false;
+            }
+            SaveConfig();
+
         }
     }
 }

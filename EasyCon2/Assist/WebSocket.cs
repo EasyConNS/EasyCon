@@ -12,7 +12,8 @@ namespace EasyCon2.Assist
     public class Web_Socket
     {
         WebSocket webSocket;
-        string webPath = "ws://127.0.0.1:43963";
+        //string webPath = "ws://127.0.0.1:43963";
+        string webPath = "ws://106.52.245.228:43963";
         public Web_Socket()
         {
             webSocket = new WebSocket(webPath);
@@ -31,9 +32,17 @@ namespace EasyCon2.Assist
 
         public void SendMsg(WS_Message ws_Message)
         {
-            String json = JsonSerializer.Serialize(ws_Message);
-            Debug.WriteLine(json);
-            webSocket.Send(json);//发送消息的函数
+            try
+            {
+                String json = JsonSerializer.Serialize(ws_Message);
+                Debug.WriteLine(json);
+                webSocket.Send(json);//发送消息的函数
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
+
         }
     }
 }

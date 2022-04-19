@@ -10,6 +10,8 @@ namespace EasyCon2.Global
         public string AlertToken { get; set; } = string.Empty;
         public string ChannelToken { get; set; } = string.Empty;
 
+        public bool ChannelControl { get; set; } = true;
+
         public void SetDefault()
         {
             KeyMapping = new KeyMapping

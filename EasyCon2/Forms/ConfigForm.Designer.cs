@@ -60,7 +60,7 @@
             // 
             this.TokenBox.Location = new System.Drawing.Point(76, 82);
             this.TokenBox.Margin = new System.Windows.Forms.Padding(4);
-            this.TokenBox.MaxLength = 64;
+            this.TokenBox.MaxLength = 256;
             this.TokenBox.Name = "TokenBox";
             this.TokenBox.Size = new System.Drawing.Size(372, 23);
             this.TokenBox.TabIndex = 2;
