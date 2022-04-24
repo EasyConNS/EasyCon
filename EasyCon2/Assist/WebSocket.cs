@@ -25,6 +25,22 @@ namespace EasyCon2.Assist
             };
         }
 
+        public void Reconnect()
+        {
+            webSocket = new WebSocket(webPath);
+            webSocket.Connect();
+            webSocket.OnMessage += (sender, e) =>
+            {
+                Debug.WriteLine(e.Data.ToString());
+                //接收到消息并处理
+            };
+        }
+
+        public bool CheckConnect()
+        {
+            return webSocket.IsAlive;
+        }
+
         public void SendMsg(String s)
         {
             webSocket.Send(s);//发送消息的函数
@@ -41,6 +57,7 @@ namespace EasyCon2.Assist
             catch (Exception ex)
             {
                 Debug.WriteLine(ex);
+                //Reconnect();
             }
 
         }

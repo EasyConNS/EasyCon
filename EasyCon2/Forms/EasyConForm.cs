@@ -393,7 +393,7 @@ namespace EasyCon2.Forms
             if(_config.AlertToken == "")
             {
                 canPush = false;
-                Print("pushplus推送Token为空");
+                //Print("pushplus推送Token为空");
             }
             else
             {
@@ -1290,6 +1290,8 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
                 {
                     try
                     {
+                        if (!ws.CheckConnect())
+                            ws.Reconnect();
                         //ws.SendMsg("init");
 
                         //LogResponse logResponse = new LogResponse(_config.ChannelToken, "log res");
