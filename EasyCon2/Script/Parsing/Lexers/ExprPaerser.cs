@@ -17,7 +17,7 @@ namespace EasyCon2.Script.Parsing.Lexers
 
         private static Statement KeyParse(ParserArgument args)
         {
-            NintendoSwitch.ECKey key;
+            ECKey key;
             var m = Regex.Match(args.Text, @"^([a-z]+)$", RegexOptions.IgnoreCase);
             if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
                 return new KeyPress(key);

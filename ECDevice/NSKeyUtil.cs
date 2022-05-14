@@ -1,31 +1,9 @@
 ﻿using System;
-using System.Diagnostics;
-using System.IO.Ports;
 
 namespace ECDevice
 {
-    public partial class NintendoSwitch
+    public static class NSKeyUtil
     {
-        private static NintendoSwitch _instance;
-
-        public static string[] GetPortNames()
-        {
-            return SerialPort.GetPortNames();
-        }
-
-        public static NintendoSwitch GetInstance()
-        {
-            if (_instance == null)
-                _instance = new NintendoSwitch();
-            return _instance;
-        }
-
-        private static void PrintKey(string str, ECKey key = null)
-        {
-            str = str + " " + key?.Name ?? "";
-            Debug.WriteLine(str);
-        }
-
         public static DirectionKey GetDirectionFromHAT(SwitchHAT hat)
         {
             return hat switch
@@ -67,7 +45,7 @@ namespace ECDevice
                 y = NSwitchUtil.STICK_CENTER;
         }
 
-        private static SwitchHAT GetHATFromDirection(DirectionKey dkey)
+        public static SwitchHAT GetHATFromDirection(DirectionKey dkey)
         {
             if (dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
                 dkey &= ~DirectionKey.Up & ~DirectionKey.Down;

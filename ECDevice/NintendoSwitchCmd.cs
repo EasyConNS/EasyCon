@@ -1,14 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Ports;
 
 namespace ECDevice
 {
     public partial class NintendoSwitch
     {
+        private static NintendoSwitch _instance;
+
+        public static string[] GetPortNames()
+        {
+            return SerialPort.GetPortNames();
+        }
+
+        public static NintendoSwitch GetInstance()
+        {
+            if (_instance == null)
+                _instance = new NintendoSwitch();
+            return _instance;
+        }
+
         public bool Flash(byte[] asmBytes)
         {
             const int PacketSize = 20;
-            List<byte> list = new List<byte>(asmBytes);
+            List<byte> list = new(asmBytes);
             for (int i = 0; i < list.Count; i += PacketSize)
             {
                 int len = Math.Min(PacketSize, list.Count - i);

@@ -69,7 +69,7 @@ namespace ECDevice
                 flags |= dkey;
             else
                 flags &= ~dkey;
-            GetXYFromDirection(flags, out byte x, out byte y);
+            NSKeyUtil.GetXYFromDirection(flags, out byte x, out byte y);
             Down(getkey(x, y));
         }
 

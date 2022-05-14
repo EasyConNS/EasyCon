@@ -1,11 +1,10 @@
-﻿using EasyCon2.Script.Parsing;
-using ECDevice;
+﻿using ECDevice;
 
 namespace EasyCon2.Script
 {
     internal static class ScripterUtil
     {
-        public static int GetDirectionIndex(NintendoSwitch.ECKey key)
+        public static int GetDirectionIndex(ECKey key)
         {
             int x = key.StickX;
             int y = key.StickY;
@@ -16,7 +15,7 @@ namespace EasyCon2.Script
             return x >= y ? x + y : 32 - x - y;
         }
 
-        public static NintendoSwitch.ECKey GetKey(string keyname, string direction = "0")
+        public static ECKey GetKey(string keyname, string direction = "0")
         {
             var isSlow = keyname.EndsWith("SS", StringComparison.OrdinalIgnoreCase);
             if (int.TryParse(direction, out int degree))

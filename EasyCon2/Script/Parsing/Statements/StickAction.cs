@@ -2,11 +2,11 @@
 {
     abstract class StickAction : Statement
     {
-        protected readonly ECDevice.NintendoSwitch.ECKey Key;
+        protected readonly ECDevice.ECKey Key;
         protected readonly string KeyName;
         protected readonly string Direction;
 
-        public StickAction(ECDevice.NintendoSwitch.ECKey key, string keyname, string direcion)
+        public StickAction(ECDevice.ECKey key, string keyname, string direcion)
         {
             Key = key;
             KeyName = keyname?.ToUpper();
@@ -26,7 +26,7 @@
     {
         public readonly ValBase Duration;
 
-        public StickPress(ECDevice.NintendoSwitch.ECKey key, string keyname, string direction, ValBase duration)
+        public StickPress(ECDevice.ECKey key, string keyname, string direction, ValBase duration)
             : base(key, keyname, direction)
         {
             Duration = duration;
@@ -86,7 +86,7 @@
 
     class StickDown : StickAction
     {
-        public StickDown(ECDevice.NintendoSwitch.ECKey key, string keyname, string direction)
+        public StickDown(ECDevice.ECKey key, string keyname, string direction)
             : base(key, keyname, direction)
         { }
 
@@ -110,7 +110,7 @@
 
     class StickUp : StickAction
     {
-        public StickUp(ECDevice.NintendoSwitch.ECKey key, string keyname)
+        public StickUp(ECDevice.ECKey key, string keyname)
             : base(key, keyname, null)
         { }
 
