@@ -4,18 +4,33 @@ namespace EasyCon2.Forms
 {
     public partial class ConfigForm : Form
     {
+        public enum TokenType
+        {
+            pushplus,
+            channel,
+        }
+
+
         private readonly VControllerConfig Config;
         public string TokenString => TokenBox.Text;
-        public ConfigForm(VControllerConfig cfg)
+        private TokenType tokenType;
+        public ConfigForm(VControllerConfig cfg, TokenType type)
         {
             InitializeComponent();
-
+            tokenType = type;
             Config = cfg;
         }
 
         private void ConfigForm_Load(object sender, EventArgs e)
         {
-            TokenBox.Text = Config.AlertToken;
+            if(tokenType == TokenType.pushplus)
+            {
+                TokenBox.Text = Config.AlertToken;
+            }
+            else
+            {
+                TokenBox.Text = Config.ChannelToken;
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -25,13 +40,22 @@ namespace EasyCon2.Forms
                 MessageBox.Show("Token不能为空");
                 return;
             }
-            if (TokenBox.Text.Length != 32)
+            if(tokenType == TokenType.pushplus)
             {
-                MessageBox.Show("Token格式不正确，请仔细检查");
-                return;
+                if (TokenBox.Text.Length != 32)
+                {
+                    MessageBox.Show("Token格式不正确，请仔细检查");
+                    return;
+                }
             }
+            else
+            {
+                ;// todo some check
+            }
+
             DialogResult = DialogResult.OK;
             Close();
+
         }
     }
 }
