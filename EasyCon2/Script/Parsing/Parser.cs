@@ -7,6 +7,7 @@ namespace EasyCon2.Script.Parsing
         readonly Dictionary<string, int> _constants;
         readonly Dictionary<string, ExternalVariable> _extVars;
         static readonly List<IStatementParser> _parsers = new();
+        static readonly Compiler.Scanners.Lexer lexer = new();
 
         static Parser()
         {
@@ -22,6 +23,8 @@ namespace EasyCon2.Script.Parsing
                 if (activate != null)
                     _parsers.Add(activate);
             }
+
+            Compiler.Scanners.TokenDefine.GetECPLexer(lexer);
         }
 
         public Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
@@ -32,18 +35,23 @@ namespace EasyCon2.Script.Parsing
 
         private IEnumerable<ParserArgument> ParseToken(string text)
         {
-            var lines = text.Replace("\r", "").Split('\n');
+            System.Diagnostics.Debug.WriteLine("v2 start---");
+            foreach (var t in lexer.Parse(text))
+            {
+                System.Diagnostics.Debug.WriteLine(t);
+            }
+            System.Diagnostics.Debug.WriteLine("v2   end---");
+
+            var lines = Regex.Split(text, "\r\n|\r|\n");
             var formatter = new Formatter(_constants, _extVars);
             foreach (var line in lines)
             {
-                text = line;
                 // get indent
-                var m = Regex.Match(text, @"^(\s*)([^\s]?.*)$");
-                _ = m.Groups[1].Value;
-                text = m.Groups[2].Value;
+                text = line.TrimStart();
+                var _text = text;
                 // get comment
-                m = Regex.Match(text, @"(\s*#.*)$");
-                string comment;
+                var m = Regex.Match(text, @"(\s*#.*)$");
+                string comment = string.Empty;
                 if (m.Success)
                 {
                     comment = m.Groups[1].Value;
@@ -51,7 +59,6 @@ namespace EasyCon2.Script.Parsing
                 }
                 else
                 {
-                    comment = string.Empty;
                     text = text.Trim();
                 }
                 yield return new ParserArgument
