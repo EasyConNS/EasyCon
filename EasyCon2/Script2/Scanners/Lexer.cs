@@ -54,15 +54,20 @@ public class Lexer
                 output.Clear();
                 Token? token = null;
                 System.Diagnostics.Debug.WriteLine($"matching:{line[position..]}");
+
                 foreach (var rule in rules)
                 {
                     var m = rule.Match(line[position..]);
                     if (m.Success)
                     {
                         System.Diagnostics.Debug.WriteLine($"matched rule:{rule.Tag}");
-                        output.Append(m.Value);
-                        token = rule.Tag;
-                        break;
+                        
+                        if(m.Value.Length > output.Length)
+                        {
+                            output.Clear();
+                            output.Append(m.Value);
+                            token = rule.Tag;
+                        }
                     }
                 }
                 if (token != null)

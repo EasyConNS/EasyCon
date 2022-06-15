@@ -60,7 +60,7 @@ namespace EasyCon2.Script.Parsing.Statements
             int keycode = Key.KeyCode;
             if (Duration is ValRegEx)
             {
-                if (Duration is ValReg32)
+                if (Duration is ValRegEx)
                     throw new Assembly.AssembleException(ErrorMessage.NotSupported);
                 var reg = Duration as ValReg;
                 assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Index));

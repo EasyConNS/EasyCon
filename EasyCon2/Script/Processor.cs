@@ -23,7 +23,8 @@
 
     class RegisterFile
     {
-        private short[] _register;
+        private readonly short[] _register;
+        private readonly Dictionary<string, int> _variables = new();
 
         public RegisterFile(uint length)
         {
@@ -36,14 +37,20 @@
             set => _register[index] = value;
         }
 
+        public int this[string index]
+        {
+            get => _variables[index];
+            set => _variables[index] = value;
+        }
+
         public int this[Parsing.ValRegEx val]
         {
             get
             {
                 if (val is Parsing.ValReg)
                     return this[(val as Parsing.ValReg).Index];
-                else if (val is Parsing.ValReg32)
-                    return GetReg32((val as Parsing.ValReg32).Index);
+                else
+                    return this[val.Tag];
                 throw new ArgumentException();
             }
 
@@ -51,20 +58,9 @@
             {
                 if (val is Parsing.ValReg)
                     _register[(val as Parsing.ValReg).Index] = (short)value;
-                else if (val is Parsing.ValReg32)
-                    SetReg32((val as Parsing.ValReg32).Index, value);
+                else
+                    this[val.Tag] = value;
             }
-        }
-
-        public int GetReg32(uint index)
-        {
-            return ((ushort)_register[index] | (_register[index + 1] << 16));
-        }
-
-        public void SetReg32(uint index, int value)
-        {
-            _register[index] = (short)value;
-            _register[index + 1] = (short)(value >> 16);
         }
     }
 }

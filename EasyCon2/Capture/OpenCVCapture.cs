@@ -6,7 +6,7 @@ namespace EasyCon2.Capture
 {
     public partial class OpenCVCapture
     {
-        private readonly object _lock = new object();
+        private readonly object _lock = new();
         private int dev_index = 0;
         private int dev_type = 0;
         private VideoCapture capture;

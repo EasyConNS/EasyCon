@@ -58,55 +58,45 @@
         public abstract override void Set(Processor processor, int value);
     }
 
-    // register, either 16 or 32 bits
-    abstract class ValRegEx : ValVar
+    // register variable, either 16 or 32 bits
+    class ValRegEx : ValVar
     {
-        public readonly uint Index;
+        public readonly string Tag;
+
+        public ValRegEx(string reg)
+        {
+            Tag = reg;
+        }
 
         public ValRegEx(uint reg)
         {
-            Index = reg;
+            Tag = reg.ToString();
         }
 
         public override void Set(Processor processor, int value)
         {
             processor.Register[this] = value;
         }
+
+        public override int Get(Processor processor)
+        {
+            return processor.Register[this];
+        }
+
+        public override string GetCodeText(Formatter formatter)
+        {
+            return $"${Tag}";
+        }
     }
 
-    // 16-bit register
+    // 16-bit register Index variable
     class ValReg : ValRegEx
     {
-        public ValReg(uint reg)
-            : base(reg)
-        { }
+        public readonly uint Index;
 
-        public override int Get(Processor processor)
+        public ValReg(uint reg) : base(reg)
         {
-            return processor.Register[Index];
-        }
-
-        public override string GetCodeText(Formatter formatter)
-        {
-            return $"${Index}";
-        }
-    }
-
-    // 32-bit combined register
-    class ValReg32 : ValRegEx
-    {
-        public ValReg32(uint reg)
-            : base(reg)
-        { }
-
-        public override int Get(Processor processor)
-        {
-            return processor.Register.GetReg32(Index);
-        }
-
-        public override string GetCodeText(Formatter formatter)
-        {
-            return $"$${Index}";
+            Index = reg;
         }
     }
 

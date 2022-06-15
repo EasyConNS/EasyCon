@@ -47,8 +47,8 @@
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            if (Left is not ValRegEx left)
-                throw new Assembly.AssembleException("外部变量仅限联机模式使用");
+            if (Left is not ValReg left)
+                throw new Assembly.AssembleException(ErrorMessage.NotSupported);
             if (Right is ValInstant)
             {
                 assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
@@ -116,7 +116,7 @@
             assembler.Add(Assembly.Instructions.AsmEmpty.Create());
             assembler.IfMapping[If].Target = assembler.Last();
 
-            if (Left is not ValRegEx left)
+            if (Left is not ValReg left)
                 throw new Assembly.AssembleException("外部变量仅限联机模式使用");
             if (Right is ValInstant)
             {

@@ -62,7 +62,10 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index, Value));
+            if(RegDst is ValReg dest)
+                assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, dest.Index, Value));
+            else
+                throw new Assembly.AssembleException(ErrorMessage.NotSupported);
         }
     }
 
@@ -89,16 +92,16 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            if (Value is ValInstant)
+            if (Value is ValInstant && RegDst is ValReg dest)
             {
                 assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, -(Value as ValInstant).Val));
-                assembler.Add(Assembly.Instructions.AsmAdd.Create(RegDst.Index, new ValReg(Assembly.Assembler.IReg)));
+                assembler.Add(Assembly.Instructions.AsmAdd.Create(dest.Index, new ValReg(Assembly.Assembler.IReg)));
             }
-            else if (Value is ValReg)
+            else if (Value is ValReg val)
             {
                 assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Value));
                 assembler.Add(Assembly.Instructions.AsmNegative.Create(Assembly.Assembler.IReg));
-                assembler.Add(Assembly.Instructions.AsmAdd.Create(RegDst.Index, new ValReg(Assembly.Assembler.IReg)));
+                assembler.Add(Assembly.Instructions.AsmAdd.Create(val.Index, new ValReg(Assembly.Assembler.IReg)));
             }
             else
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
