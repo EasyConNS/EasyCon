@@ -4,7 +4,7 @@
     {
         public readonly string DisplayName;
         public readonly string CoreName;
-        public readonly int Version = 0x46;
+        public readonly int Version = 0x45;
         public readonly int DataSize;
 
         public static Board[] SupportedBoards = new Board[] {

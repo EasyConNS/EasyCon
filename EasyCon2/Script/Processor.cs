@@ -37,10 +37,10 @@
             set => _register[index] = value;
         }
 
-        public int this[string index]
+        public int this[string tag]
         {
-            get => _variables[index];
-            set => _variables[index] = value;
+            get => _variables.ContainsKey(tag)? _variables[tag]:0;
+            set => _variables[tag] = value;
         }
 
         public int this[Parsing.ValRegEx val]
