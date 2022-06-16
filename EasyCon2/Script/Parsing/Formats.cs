@@ -4,9 +4,9 @@
     {
         const string _ident = @"[\d\p{L}_]+";
         const string _Constant = @"_" + _ident;
+        const string _ExtVar = @"@" + _ident;
         const string _Variable = @"\${1,2}[\da-zA-Z_]+";
         const string _Number = @"-?\d+";
-        const string _ExtVar = @"@" + _ident;
 
         //const string _Register = @"\$[\da-zA-Z_]+";
 

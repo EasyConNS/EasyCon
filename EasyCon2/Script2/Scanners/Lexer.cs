@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -5,6 +6,16 @@ namespace Compiler.Scanners;
 
 public class Lexer
 {
+    private static readonly ICollection<UnicodeCategory> lettersCategories = new HashSet<UnicodeCategory>()
+    {
+        UnicodeCategory.LetterNumber,
+        UnicodeCategory.LowercaseLetter,
+        UnicodeCategory.ModifierLetter,
+        UnicodeCategory.OtherLetter,
+        UnicodeCategory.TitlecaseLetter,
+        UnicodeCategory.UppercaseLetter
+    };
+
     private List<TokenInfo> rules = new List<TokenInfo>();
 
     public readonly Token lineToken = new("-NEWLINE-", -1);
@@ -77,6 +88,10 @@ public class Lexer
                     yield return new Lexeme(s, token, this, position, col, row);
                     position += s.Length;
                     col += s.EnumerateRunes().Count();
+                }
+                else if (!lettersCategories.Contains(char.GetUnicodeCategory(line.AsSpan()[position])))
+                {
+                    throw new ArgumentException($"error char `{line.AsSpan()[position]}` in line:{row},col:{col}");
                 }
                 else
                 {

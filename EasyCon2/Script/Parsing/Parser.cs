@@ -9,6 +9,8 @@ namespace EasyCon2.Script.Parsing
         static readonly List<IStatementParser> _parsers = new();
         static readonly Compiler.Scanners.Lexer lexer = new();
 
+        public static Compiler.Scanners.Lexer Lexer => lexer;
+
         static Parser()
         {
             var types = (from domainAssembly in AppDomain.CurrentDomain.GetAssemblies()
@@ -24,7 +26,7 @@ namespace EasyCon2.Script.Parsing
                     _parsers.Add(activate);
             }
 
-            Compiler.Scanners.TokenDefine.GetECPLexer(lexer);
+            ECP.Parser.ECParser.OnDefineLexer(lexer);
         }
 
         public Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
@@ -35,13 +37,6 @@ namespace EasyCon2.Script.Parsing
 
         private IEnumerable<ParserArgument> ParseToken(string text)
         {
-            System.Diagnostics.Debug.WriteLine("v2 start---");
-            foreach (var t in lexer.Parse(text))
-            {
-                System.Diagnostics.Debug.WriteLine(t);
-            }
-            System.Diagnostics.Debug.WriteLine("v2   end---");
-
             var lines = Regex.Split(text, "\r\n|\r|\n");
             var formatter = new Formatter(_constants, _extVars);
             foreach (var line in lines)
@@ -76,7 +71,14 @@ namespace EasyCon2.Script.Parsing
             int indentnum = 0;
             int linnum = 0;
             foreach (var args in ParseToken(text))
-            { 
+            {
+                System.Diagnostics.Debug.WriteLine("v2 start---");
+                foreach (var t in lexer.Parse(args.Text))
+                {
+                    System.Diagnostics.Debug.WriteLine(t);
+                }
+                System.Diagnostics.Debug.WriteLine("v2   end---");
+
                 try
                 {
                     Statement st = null;

@@ -1,25 +1,9 @@
-﻿using System.Globalization;
+﻿using Compiler.Scanners;
 
-namespace Compiler.Scanners;
-static class TokenDefine
+namespace ECP.Parser;
+
+static class ECParser
 {
-    private static ICollection<UnicodeCategory> lettersCategories = new HashSet<UnicodeCategory>()
-    { 
-        UnicodeCategory.LetterNumber,
-        UnicodeCategory.LowercaseLetter,
-        UnicodeCategory.ModifierLetter,
-        UnicodeCategory.OtherLetter,
-        UnicodeCategory.TitlecaseLetter,
-        UnicodeCategory.UppercaseLetter
-    };
-    // button key words
-    const string KeyABXYLR = "[ABXYLR]";
-    const string KeyZLR = "Z[LR]";
-    const string KeyStick = "[LR]S{1,2}";
-    const string KeyFn = "HOME|^CAPTURE|^PLUS|^MINUS";
-    const string KeyClick = "[LR]CLICK";
-    const string KeyDPAD = "LEFT|^RIGHT|^UP|^DOWN";
-
     // idents
     // need escape: $ () * + . [] ? \ ^ {} |
     const string _ident = @"[\d\p{L}_]+";
@@ -29,7 +13,7 @@ static class TokenDefine
 
     const string inputchar = "[^\u000D\u000A\u0085\u2028\u2029]*";
 
-    public static void GetECPLexer(Lexer lexer)
+    public static void OnDefineLexer(Lexer lexer)
     {
         lexer.DefineToken("#" + inputchar, "COMMENT");
         #region key words
@@ -58,23 +42,24 @@ static class TokenDefine
         {
             lexer.DefineToken("wait", "WAIT");
             lexer.DefineToken("reset", "RESET(R)");
-            lexer.DefineToken(KeyFn, "KEY_FUNCTION");
-            lexer.DefineToken(KeyDPAD, "KEY_DPAD");
-            lexer.DefineToken(KeyClick, "KEY_CLICK");
-            lexer.DefineToken(KeyStick, "KEY_STICK");
-            lexer.DefineToken(KeyZLR, "KEY_ZLR");
-            lexer.DefineToken(KeyABXYLR, "KEY_ABXYLR");
+            lexer.DefineToken("LEFT|^RIGHT|^UP|^DOWN", "KEY_DPAD");
+            lexer.DefineToken("[LR]S{1,2}", "KEY_STICK");
+            lexer.DefineToken("[ABXYLR]|^Z[LR]|^[LR]CLICK|^HOME|^CAPTURE|^PLUS|^MINUS", "KEY_GAMEPAD");
         }
         #endregion
         #region symbols
         {
             lexer.DefineToken("&&", "OP_AND");
             lexer.DefineToken(@"\|\|", "OP_OR");
-            lexer.DefineToken(@"[\+\-\*/<>\^=]=?", "OP_SYMBOL");
-            lexer.DefineToken("%=", "OP_MOD_EQ");
             lexer.DefineToken("!", "OP_NOT");
+            lexer.DefineToken(@"[\+\-\*/\\<>\^=]=?", "OP_ARITH");
+            lexer.DefineToken(@"[&\|]=?", "OP_LOGI");
+            lexer.DefineToken("%=", "OP_MOD_EQ");
             lexer.DefineToken("~", "OP_NEGATIVE");
-            lexer.DefineToken(@"[&\|]=?", "OP_ALG");
+            lexer.DefineToken(@"\(", "LEFT_PH");
+            lexer.DefineToken(@"\)", "RIGHT_PH");
+            lexer.DefineToken(@"\[", "LEFT_BK");
+            lexer.DefineToken(@"\]", "RIGHT_BK");
             lexer.DefineToken(@",", "COMMA");
             lexer.DefineToken(@"\.", "DOT");
         }
