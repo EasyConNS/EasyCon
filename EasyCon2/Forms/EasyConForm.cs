@@ -28,7 +28,7 @@ namespace EasyCon2.Forms
         internal NintendoSwitch NS = NintendoSwitch.GetInstance();
         internal FormController formController;
         internal FormKeyMapping formKeyMapping;
-        internal CaptureVideoForm captureVideo;
+        internal CaptureVideoForm captureVideo = new();
 
         const string ConfigPath = @"config.json";
         const string ScriptPath = @"Script\";
@@ -62,6 +62,7 @@ namespace EasyCon2.Forms
 
             LoadConfig();
             InitEditor();
+            captureVideo.LoadImgLabels();
 
             频道远程ToolStripMenuItem.Checked = _config.ChannelControl;
             if(_config.ChannelControl)
@@ -109,6 +110,8 @@ namespace EasyCon2.Forms
             };
 
             InitCaptureTypes();
+
+            StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabelCount}");
 
             // resize
             Xvalue = this.Width;
@@ -460,7 +463,7 @@ namespace EasyCon2.Forms
                 // 在这里根据图像处理窗口的情况，创建一个ExternalVariable的数组或List传给Parse函数
                 // 每个ExternalVariable对应一个图像标签，name为名字，get为用来获取结果的函数，set暂时没有语句支持所以先省略                
                 var externalVariables = new List<ExternalVariable>();
-                foreach (var il in CaptureVideoForm.imgLabels)
+                foreach (var il in captureVideo.LoadedLabels)
                 {
                     externalVariables.Add(new ExternalVariable(il.name, () => il.Search()));
                 }
@@ -1113,7 +1116,7 @@ namespace EasyCon2.Forms
         private void CaptureDeviceItem_Click(object sender, EventArgs e)
         {
             // tag = device id
-            if (captureVideo?.deviceId == (int)(((ToolStripMenuItem)sender).Tag))
+            if (captureVideo?.DeviceID == (int)(((ToolStripMenuItem)sender).Tag))
             {
                 MessageBox.Show("相同采集卡已经打开了");
                 return;

@@ -104,7 +104,7 @@
                 assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)((Count as ValReg).Index << 4)));
                 assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
             }
-            else if (Count is ValReg32)
+            else
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
             assembler.Add(Assembly.Instructions.AsmFor.Create());
             assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
@@ -146,18 +146,22 @@
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            if (RegIter is ValReg32)
+            if (RegIter is ValReg reg)
+                assembler.Add(Assembly.Instructions.AsmMov.Create(reg.Index, InitVal));
+            else 
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            assembler.Add(Assembly.Instructions.AsmMov.Create(RegIter.Index, InitVal));
-            uint e_val = RegIter.Index;
-            if (Count is ValReg)
-                e_val |= (Count as ValReg).Index << 4;
-            else if (Count is ValReg32)
+            
+            if (Count is ValReg countval)
+            {
+                uint e_val = countval.Index;
+                e_val |= countval.Index << 4;
+                assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)e_val));
+                assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
+                assembler.Add(Assembly.Instructions.AsmFor.Create());
+                assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
+            } 
+            else
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)e_val));
-            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
-            assembler.Add(Assembly.Instructions.AsmFor.Create());
-            assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
         }
     }
 

@@ -23,17 +23,15 @@
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            if (RegDst is ValReg32)
-                throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            if (RegDst.Index >= Processor.OfflineMaxRegisterCount)
-                throw new Assembly.AssembleException(ErrorMessage.RegisterCountNotSupported);
-            if (Value is ValRegEx)
+            if (RegDst is ValReg reg)
             {
-                if( (Value as ValRegEx).Index >= Processor.OfflineMaxRegisterCount)
+                if (reg.Index >= Processor.OfflineMaxRegisterCount)
                     throw new Assembly.AssembleException(ErrorMessage.RegisterCountNotSupported);
+                assembler.Add(Assembly.Instructions.AsmMov.Create(reg.Index, Value));
+            }else
+            {
+                throw new Assembly.AssembleException(ErrorMessage.NotSupported);
             }
-
-            assembler.Add(Assembly.Instructions.AsmMov.Create(RegDst.Index, Value));
         }
     }
 }

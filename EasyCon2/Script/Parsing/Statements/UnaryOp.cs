@@ -33,7 +33,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
             public Statement Parse(ParserArgument args)
             {
-                var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.Register}$", RegexOptions.IgnoreCase);
+                var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
                 
                 if (m.Success)
                     return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, _lhs)) as Statement;
@@ -61,9 +61,10 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            if (RegDst is ValReg32)
+            if (RegDst is ValReg)
+                assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, (RegDst as ValReg).Index));
+            else 
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index));
         }
     }
 
@@ -125,10 +126,15 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            if (RegDst is ValReg32)
+            if (RegDst is ValReg)
+            {
+                var val = RegDst as ValReg;
+                assembler.Add(Assembly.Instructions.AsmMov.Create(val.Index, RegSrc));
+                assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, val.Index));
+            }else
+            {
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            assembler.Add(Assembly.Instructions.AsmMov.Create(RegDst.Index, RegSrc));
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, RegDst.Index));
+            }
         }
     }
 
@@ -166,7 +172,7 @@ namespace EasyCon2.Script.Parsing.Statements
 
         public override void Exec(Processor processor)
         {
-            processor.Stack.Push(processor.Register[RegDst.Index]);
+            processor.Stack.Push((short)processor.Register[RegDst]);
         }
     }
 
@@ -184,7 +190,7 @@ namespace EasyCon2.Script.Parsing.Statements
         {
             if (processor.Stack.Count <= 0)
                 throw new ScriptException("栈为空，无法出栈", Address);
-            processor.Register[RegDst.Index] = processor.Stack.Pop();
+            processor.Register[RegDst] = processor.Stack.Pop();
         }
     }
 

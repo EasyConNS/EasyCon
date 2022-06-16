@@ -11,11 +11,6 @@ namespace EasyCon2.Forms
 {
     public partial class CaptureVideoForm : Form, IDisposable
     {
-        public CaptureVideoForm()
-        {
-            InitializeComponent();
-        }
-
         private enum MonitorMode
         {
             NoBorder = 0,
@@ -31,8 +26,10 @@ namespace EasyCon2.Forms
             Refresh
         }
 
-        readonly string CapDir = Application.StartupPath + "\\Capture\\";
-        readonly string ImgDir = Application.StartupPath + "\\ImgLabel\\";
+        static readonly string CapDir = Application.StartupPath + "\\Capture\\";
+        static readonly string ImgDir = Application.StartupPath + "\\ImgLabel\\";
+        private static readonly List<ImgLabel> imgLabels = new();
+        private readonly OpenCVCapture cvcap = new();
 
         private bool isMouseDown = false;
         private Point mouseOffset;
@@ -40,7 +37,6 @@ namespace EasyCon2.Forms
         private int monitorHorOrVerZoom = 0;
         private MonitorMode monitorMode = MonitorMode.Editor;
 
-        private Graphics SnapshotGraphic;
         private static Bitmap snapshot;
         private static Bitmap ss;
         private Point SnapshotLMDP = new();
@@ -58,17 +54,23 @@ namespace EasyCon2.Forms
         private PointF snapshotScale;
 
         private ImgLabel curImgLabel = new();
-        public static List<ImgLabel> imgLabels = new();
-
-        public int deviceId = -1;
-        private readonly OpenCVCapture cvcap = new();
+        private int deviceId = -1;
+        
+        public ICollection<ImgLabel> LoadedLabels => imgLabels;
+        public int DeviceID => deviceId;
+        public int LoadedLabelCount => imgLabels.Count;
+        
+        public CaptureVideoForm()
+        {
+            InitializeComponent();
+        }
 
         public CaptureVideoForm(int devId, int typeId)
         {
             InitializeComponent();
 
             deviceId = devId;
-            Debug.WriteLine(deviceId);
+            Debug.WriteLine($"device ID:{deviceId}");
             cvcap.CaptureCamera(VideoSourcePlayerMonitor, devId, typeId);
         }
 
@@ -102,27 +104,9 @@ namespace EasyCon2.Forms
 
             // load the imglabel
             curImgLabel.SetSource(() => cvcap.GetImage());
-
-            var files = Directory.GetFiles(ImgDir, "*.IL");
-            foreach (var file in files)
-            {
-                try
-                {
-                    var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(file));
-                    if(temp == null)
-                    {
-                        throw new Exception();
-                    }
-                    if (temp.name == "") continue;
-                    temp.Refresh(() => cvcap.GetImage());
-                    imgLabels.Add(temp);
-                    imgLableList.Items.Add(temp.name);
-                }
-                catch
-                {
-                    Debug.WriteLine("无法加载标签:", file);
-                }
-            }
+            
+            LoadImgLabels();
+            UpdateImgListBox();
 
             VideoSourcePlayerMonitor.PaintEventHandler += new PaintEventHandler(MonitorPaint);
             Snapshot.PaintEventHandler += new PaintEventHandler(SnapshotPaint);
@@ -133,23 +117,35 @@ namespace EasyCon2.Forms
             setTag(this);
         }
 
-        public float Xvalue;
-        public float Yvalue;
-
-        private void setTag(Control cons)
+        public void LoadImgLabels()
         {
-            foreach (Control con in cons.Controls)
+            imgLabels.Clear();
+            foreach (var file in Directory.GetFiles(ImgDir, "*.IL"))
             {
-                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
-                if (con.Controls.Count > 0)
-                    setTag(con);
+                try
+                {
+                    var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(file));
+                    if (temp == null)
+                    {
+                        throw new Exception();
+                    }
+                    if (temp.name == "") continue;
+                    temp.Refresh(() => cvcap.GetImage());
+                    imgLabels.Add(temp);
+                }
+                catch
+                {
+                    Debug.WriteLine("无法加载标签:", file);
+                }
             }
         }
 
-        private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
+        private void UpdateImgListBox()
         {
-            deviceId = -1;
-            cvcap.Close();
+            imgLableList.BeginUpdate();
+            imgLableList.Items.Clear();
+            imgLableList.Items.AddRange(imgLabels.Select(i=>i.name).ToArray());
+            imgLableList.EndUpdate();
         }
 
         private void MonitorPaint(object sender, PaintEventArgs e)
@@ -158,6 +154,7 @@ namespace EasyCon2.Forms
             try
             {
                 using var newframe = cvcap.GetImage();
+                if (newframe == null) return;
                 var g = e.Graphics;
                 // Maximize performance
                 g.CompositingMode = CompositingMode.SourceOver;
@@ -172,23 +169,22 @@ namespace EasyCon2.Forms
             }
             catch
             {
-                // something wrong, beacause when closing but the render is paintting
+                Debug.WriteLine("something wrong, beacause when closing but the render is paintting");
             }
         }
         
         private void SnapshotPaint(object sender, PaintEventArgs e)
         {
-
             if (snapshot == null)
                 return;
 
-            SnapshotGraphic = e.Graphics;
-
-            Rectangle delta = new();
-            delta.X = SnapshotPos.X - (int)((SnapshotLMMD.X) * snapshotScale.X);
-            delta.Y = SnapshotPos.Y - (int)((SnapshotLMMD.Y) * snapshotScale.Y);
-            delta.Width = (int)(Snapshot.Width * snapshotScale.X);
-            delta.Height = (int)(Snapshot.Height * snapshotScale.Y);
+            var delta = new Rectangle()
+            {
+                X = SnapshotPos.X - (int)((SnapshotLMMD.X) * snapshotScale.X),
+                Y = SnapshotPos.Y - (int)((SnapshotLMMD.Y) * snapshotScale.Y),
+                Width = (int)(Snapshot.Width * snapshotScale.X),
+                Height = (int)(Snapshot.Height * snapshotScale.Y)
+            };
             SnapshotLMMD.X = 0;
             SnapshotLMMD.Y = 0;
 
@@ -240,7 +236,7 @@ namespace EasyCon2.Forms
             SnapshotPos.Y = delta.Y;
 
             // draw snapshot
-            SnapshotGraphic.DrawImage(snapshot, new Rectangle(0, 0, Snapshot.Width, Snapshot.Height), delta, GraphicsUnit.Pixel);
+            e.Graphics.DrawImage(snapshot, new Rectangle(0, 0, Snapshot.Width, Snapshot.Height), delta, GraphicsUnit.Pixel);
         }
 
         private void VideoSourcePlayerMonitor_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -411,16 +407,18 @@ namespace EasyCon2.Forms
         }
 
         double max_matchDegree = 0;
+
+        private SearchMethod getSelectedMethod()
+        {
+            if (searchMethodComBox.SelectedItem == null)
+                return SearchMethod.SqDiffNormed;
+            else
+                return EnumHelper.GetEnumFromString<SearchMethod>(searchMethodComBox.SelectedItem.ToString());
+        }
         private void searchImg_test()
         {
             Stopwatch sw = new();
-            SearchMethod method;
-            if (searchMethodComBox.SelectedItem == null)
-                method = SearchMethod.SqDiffNormed;
-            else
-                method = EnumHelper.GetEnumFromString<SearchMethod>(searchMethodComBox.SelectedItem.ToString());
-
-            curImgLabel.searchMethod = method;
+            curImgLabel.searchMethod = getSelectedMethod();
             //Debug.WriteLine(method);
 
             sw.Reset();
@@ -549,23 +547,17 @@ namespace EasyCon2.Forms
                 targetBtn.Text = "确定搜索目标";
                 rangeBtn.Enabled = false;
             }
-
         }
 
         private void SaveTagBtn_Click(object sender, EventArgs e)
         {
-            SearchMethod method;
             if (imgLabelNametxt.Text == "")
             {
                 MessageBox.Show("搜图标签为空无法保存");
                 return;
             }
-            if (searchMethodComBox.SelectedItem == null)
-                method = SearchMethod.SqDiffNormed;
-            else
-                method = EnumHelper.GetEnumFromString<SearchMethod>(searchMethodComBox.SelectedItem.ToString());
 
-            curImgLabel.searchMethod = method;
+            curImgLabel.searchMethod = getSelectedMethod();
             curImgLabel.matchDegree = double.Parse(lowestMatch.Text);
 
             // save the imglabel to local
@@ -589,7 +581,7 @@ namespace EasyCon2.Forms
 
             // add to list and ui
             imgLabels.Add(newone);
-            imgLableList.Items.Add(newone.name);
+            UpdateImgListBox();
         }
 
         private void openCapBtn_Click(object sender, EventArgs e)
@@ -693,37 +685,36 @@ namespace EasyCon2.Forms
         {
             if (imgLableList.SelectedItem != null && imgLableList.SelectedItem.ToString()!= "")
             {
-                // load the click item
-                foreach (var item in imgLabels)
+                var items = imgLabels.Where(i => i.name == imgLableList.SelectedItem.ToString());
+
+                if(items.Count() == 1)
                 {
-                    if (item.name == imgLableList.SelectedItem.ToString())
-                    {
-                        //Debug.WriteLine("find" + item.name);
-                        curImgLabel.Copy(item);
-                        curImgLabel.Refresh(() => cvcap.GetImage());
+                    var item = items.First();
+                    //Debug.WriteLine("find" + item.name);
+                    curImgLabel.Copy(item);
+                    curImgLabel.Refresh(() => cvcap.GetImage());
 
-                        // update ui
-                        imgLabelNametxt.Text = curImgLabel.name;
-                        searchMethodComBox.SelectedItem = curImgLabel.searchMethod.ToDescription();
-                        lowestMatch.Text = curImgLabel.matchDegree.ToString();
-                        targetImg.Image = curImgLabel.getSearchImg();
-                        if (targetImg.Image == null)
-                            MessageBox.Show("没有搜索目标图片");
+                    // update ui
+                    imgLabelNametxt.Text = curImgLabel.name;
+                    searchMethodComBox.SelectedItem = curImgLabel.searchMethod.ToDescription();
+                    lowestMatch.Text = curImgLabel.matchDegree.ToString();
+                    targetImg.Image = curImgLabel.getSearchImg();
+                    if (targetImg.Image == null)
+                        MessageBox.Show("没有搜索目标图片");
 
-                        var resolution = cvcap.CurResolution;
-                        SnapshotRangeR.X = curImgLabel.RangeX + resolution.X - 2;
-                        SnapshotRangeR.Y = curImgLabel.RangeY + resolution.Y - 2;
-                        SnapshotRangeR.Width = curImgLabel.RangeWidth + 3;
-                        SnapshotRangeR.Height = curImgLabel.RangeHeight + 3;
+                    var resolution = cvcap.CurResolution;
+                    SnapshotRangeR.X = curImgLabel.RangeX + resolution.X - 2;
+                    SnapshotRangeR.Y = curImgLabel.RangeY + resolution.Y - 2;
+                    SnapshotRangeR.Width = curImgLabel.RangeWidth + 3;
+                    SnapshotRangeR.Height = curImgLabel.RangeHeight + 3;
 
-                        SnapshotSearchObjR.X = curImgLabel.TargetX + resolution.X - 1;
-                        SnapshotSearchObjR.Y = curImgLabel.TargetY + resolution.Y - 1;
-                        SnapshotSearchObjR.Width = curImgLabel.TargetWidth + 2;
-                        SnapshotSearchObjR.Height = curImgLabel.TargetHeight + 2;
+                    SnapshotSearchObjR.X = curImgLabel.TargetX + resolution.X - 1;
+                    SnapshotSearchObjR.Y = curImgLabel.TargetY + resolution.Y - 1;
+                    SnapshotSearchObjR.Width = curImgLabel.TargetWidth + 2;
+                    SnapshotSearchObjR.Height = curImgLabel.TargetHeight + 2;
 
-                        snapshotMode = SnapshotMode.Refresh;
-                        Snapshot.Refresh();
-                    }
+                    snapshotMode = SnapshotMode.Refresh;
+                    Snapshot.Refresh();
                 }
             }
         }
@@ -754,6 +745,26 @@ namespace EasyCon2.Forms
         {
             var checkBox = (CheckBox)sender;
             VideoSourcePlayerMonitor.Visible = checkBox.Checked;
+        }
+
+        #region resize funcs
+        public float Xvalue;
+        public float Yvalue;
+
+        private void setTag(Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
+                if (con.Controls.Count > 0)
+                    setTag(con);
+            }
+        }
+
+        private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            deviceId = -1;
+            cvcap.Close();
         }
 
         private void CaptureVideoForm_Resize(object sender, EventArgs e)
@@ -792,5 +803,6 @@ namespace EasyCon2.Forms
                 }
             }
         }
+        #endregion
     }
 }

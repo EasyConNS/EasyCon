@@ -2,25 +2,24 @@
 {
     static class Formats
     {
-        const string __Constant = @"_[\d\p{L}_]+";
-        const string __Register = @"\$[\da-zA-Z_]+";
-        const string __Register32 = @"\${2}[\da-zA-Z_]+";
-        const string __Number = @"-?\d+";
-        const string __ExtVar = @"@[\d\p{L}_]+";
+        const string _ident = @"[\d\p{L}_]+";
+        const string _Constant = @"_" + _ident;
+        const string _Variable = @"\${1,2}[\da-zA-Z_]+";
+        const string _Number = @"-?\d+";
+        const string _ExtVar = @"@" + _ident;
 
-        public const string Constant = "(" + __Constant + ")";
-        public const string Constant_F = "^" + __Constant + "$";
-        public const string Register = "(" + __Register + ")";
-        public const string Register_F = "^" + __Register + "$";
-        public const string Register32_F = "^" + __Register32 + "$";
-        public const string ExtVar = "(" + __ExtVar + ")";
-        public const string ExtVar_F = "(" + __ExtVar + ")";
-        public const string RegisterEx = "(" + __Register + "|" + __Register32 + ")";
-        public const string RegisterEx_F = "^" + __Register + "|" + __Register32 + "$";
-        public const string VariableEx = "(" + __Register + "|" + __Register32 + "|" + __ExtVar + ")";
-        public const string VariableEx_F = "^" + __Register + "|" + __Register32 + "|" + __ExtVar + "$";
-        public const string Instant = "(" + __Constant + "|" + __Number + ")";
-        public const string Value = "(" + __Constant + "|" + __Register + "|" + __Number + ")";
-        public const string ValueEx = "(" + __Constant + "|" + __Register + "|" + __Register32 + "|" + __ExtVar + "|" + __Number + ")";
+        //const string _Register = @"\$[\da-zA-Z_]+";
+
+        public const string Constant = "(" + _Constant + ")";
+        public const string Constant_F = "^" + _Constant + "$";
+        public const string ExtVar = "(" + _ExtVar + ")";
+        public const string ExtVar_F = "(" + _ExtVar + ")";
+        public const string RegisterEx = "(" + _Variable + ")";
+        public const string RegisterEx_F = "^" + _Variable + "$";
+        public const string VariableEx = "(" + _Variable + "|" + _ExtVar + ")";
+        public const string VariableEx_F = "^" + _Variable + "|" + _ExtVar + "$";
+        public const string Instant = "(" + _Constant + "|" + _Number + ")";
+        public const string Value = "(" + _Constant + "|" + _Variable + "|" + _Number + ")";
+        public const string ValueEx = "(" + _Constant + "|" + _Variable + "|" + _ExtVar + "|" + _Number + ")";
     }
 }

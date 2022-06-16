@@ -52,10 +52,9 @@
             int keycode = Key.KeyCode;
             int dindex = ScripterUtil.GetDirectionIndex(Key);
             if (Duration is ValRegEx)
+                throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            if (Duration is ValReg reg)
             {
-                if (Duration is ValReg32)
-                    throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-                var reg = Duration as ValRegEx;
                 assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Index));
                 assembler.Add(Assembly.Instructions.AsmStick_Standard.Create(keycode, dindex, 0));
                 ReleasePrevious(assembler);
