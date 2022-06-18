@@ -106,7 +106,7 @@
             // 
             // menuStrip1
             // 
-            this.menuStrip1.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.menuStrip1.Font = new System.Drawing.Font("Microsoft YaHei", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.文件ToolStripMenuItem,
             this.脚本ToolStripMenuItem,
@@ -415,7 +415,6 @@
             // 
             this.richTextBoxMessage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
             this.richTextBoxMessage.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.richTextBoxMessage.Cursor = System.Windows.Forms.Cursors.Arrow;
             this.richTextBoxMessage.ForeColor = System.Drawing.Color.White;
             this.richTextBoxMessage.Location = new System.Drawing.Point(6, 14);
             this.richTextBoxMessage.Name = "richTextBoxMessage";
@@ -535,7 +534,6 @@
             // 
             // textBoxFirmware
             // 
-            this.textBoxFirmware.Cursor = System.Windows.Forms.Cursors.Default;
             this.textBoxFirmware.Location = new System.Drawing.Point(19, 55);
             this.textBoxFirmware.Name = "textBoxFirmware";
             this.textBoxFirmware.ReadOnly = true;
@@ -625,7 +623,7 @@
             this.buttonSerialPortConnect.Name = "buttonSerialPortConnect";
             this.buttonSerialPortConnect.Size = new System.Drawing.Size(114, 32);
             this.buttonSerialPortConnect.TabIndex = 30;
-            this.buttonSerialPortConnect.Text = "连接单片机(手动)";
+            this.buttonSerialPortConnect.Text = "手动连接";
             this.buttonSerialPortConnect.UseVisualStyleBackColor = true;
             this.buttonSerialPortConnect.Click += new System.EventHandler(this.buttonSerialPortConnect_Click);
             // 
@@ -635,7 +633,7 @@
             this.buttonSerialPortSearch.Name = "buttonSerialPortSearch";
             this.buttonSerialPortSearch.Size = new System.Drawing.Size(150, 32);
             this.buttonSerialPortSearch.TabIndex = 29;
-            this.buttonSerialPortSearch.Text = "自动搜索端口(推荐)";
+            this.buttonSerialPortSearch.Text = "自动连接(推荐)";
             this.buttonSerialPortSearch.UseVisualStyleBackColor = true;
             this.buttonSerialPortSearch.Click += new System.EventHandler(this.buttonSerialPortSearch_Click);
             // 
@@ -709,7 +707,7 @@
             this.Controls.Add(this.groupBoxScript);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.menuStrip1);
-            this.Font = new System.Drawing.Font("微软雅黑", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.Font = new System.Drawing.Font("Microsoft YaHei", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.KeyPreview = true;
             this.MainMenuStrip = this.menuStrip1;

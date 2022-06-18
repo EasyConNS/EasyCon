@@ -22,12 +22,16 @@ using System.Xml;
 
 namespace EasyCon2.Forms
 {
-    public partial class EasyConForm : Form, IOutputAdapter, ICGamePad
+    public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter, ICGamePad
     {
         private readonly TextEditor textBoxScript = new();
+        internal readonly FormController formController;
+        internal readonly FormKeyMapping formKeyMapping = new();
+
+        public Color CurrentLight => Color.White;
+        bool IControllerAdapter.IsRunning() => scriptRunning;
+
         internal NintendoSwitch NS = NintendoSwitch.GetInstance();
-        internal FormController formController;
-        internal FormKeyMapping formKeyMapping;
         internal CaptureVideoForm captureVideo = new();
 
         const string ConfigPath = @"config.json";
@@ -57,15 +61,14 @@ namespace EasyCon2.Forms
         {
             InitializeComponent();
 
-            formController = new FormController(new ControllerAdapter());
-            formKeyMapping = new FormKeyMapping();
+            formController = new FormController(this);
 
             LoadConfig();
             InitEditor();
             captureVideo.LoadImgLabels();
 
-            频道远程ToolStripMenuItem.Checked = _config.ChannelControl;
-            if(_config.ChannelControl)
+            频道远程ToolStripMenuItem.Checked = _config?.ChannelControl ?? true;
+            if(_config?.ChannelControl ?? true)
             {
                 Start_WebSocket();
             }
@@ -101,12 +104,12 @@ namespace EasyCon2.Forms
             NS.BytesSent += (port, bytes) =>
             {
                 if (显示调试信息ToolStripMenuItem.Checked)
-                    Print($"{port} >> " + string.Join(" ", bytes.Select(b => b.ToString("X2"))), null, true);
+                    Print($"{port} >> {string.Join(" ", bytes.Select(b => b.ToString("X2")))}", null);
             };
             NS.BytesReceived += (port, bytes) =>
             {
                 if (显示调试信息ToolStripMenuItem.Checked)
-                    Print($"{port} << " + string.Join(" ", bytes.Select(b => b.ToString("X2"))), null, true);
+                    Print($"{port} << {string.Join(" ", bytes.Select(b => b.ToString("X2")))}", null);
             };
 
             InitCaptureTypes();
@@ -117,19 +120,6 @@ namespace EasyCon2.Forms
             Xvalue = this.Width;
             Yvalue = this.Height;
             setTag(this);
-        }
-
-        public float Xvalue;
-        public float Yvalue;
-
-        private void setTag(Control cons)
-        {
-            foreach (Control con in cons.Controls)
-            {
-                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
-                if (con.Controls.Count > 0)
-                    setTag(con);
-            }
         }
 
         private void InitCaptureTypes()
@@ -144,7 +134,7 @@ namespace EasyCon2.Forms
                 采集卡类型ToolStripMenuItem.DropDownItems.Add(item);
                 item.Checked = false;
                 item.CheckState = CheckState.Unchecked;
-                item.Name = "toolStripMenuItem2";
+                item.Name = $"tsmCapType{name}";
                 item.Size = new Size(180, 22);
                 item.Text = name;
                 item.Click += new EventHandler(this.DeviceTypeItem_Click);
@@ -245,8 +235,7 @@ namespace EasyCon2.Forms
                                 string msg = Regex.Replace(temp_msg, @"[\r\n]", "");
                                 if (msg != string.Empty)
                                 {
-                                    LogResponse logResponse = new LogResponse(_config.ChannelToken, msg);
-                                    ws.SendMsg(logResponse);
+                                    ws.SendMsg(new LogResponse(_config.ChannelToken, msg));
                                 }
                             }
                             else
@@ -1225,44 +1214,6 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             btform.ShowDialog();
             btform.Dispose();
         }
-        #endregion
-
-        private void EasyConForm_Resize(object sender, EventArgs e)
-        {
-            float newx = (this.Width) / Xvalue;
-            float newy = this.Height / Yvalue;
-            setControls(newx, newy, this);
-        }
-
-        private void setControls(float newx, float newy, Control cons)
-        {
-            foreach (Control con in cons.Controls)
-            {
-                string[] mytag = con.Tag.ToString().Split(new char[] { ':' });
-                float a = Convert.ToSingle(mytag[0]) * newx;
-                con.Width = (int)a;
-                a = Convert.ToSingle(mytag[1]) * newy;
-                con.Height = (int)(a);
-                a = Convert.ToSingle(mytag[2]) * newx;
-                con.Left = (int)(a);
-                a = Convert.ToSingle(mytag[3]) * newy;
-                con.Top = (int)(a);
-                Single currentSize = Convert.ToSingle(mytag[4]) * newy;
-
-                //改变字体大小
-                con.Font = new Font(con.Font.Name, currentSize, con.Font.Style, con.Font.Unit);
-
-                if (con.Controls.Count > 0)
-                {
-                    try
-                    {
-                        setControls(newx, newy, con);
-                    }
-                    catch
-                    { }
-                }
-            }
-        }
 
         private void 频道推送ToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -1331,7 +1282,60 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
                 _config.ChannelControl = false;
             }
             SaveConfig();
-
         }
+        #endregion
+
+        #region form resize
+
+        public float Xvalue;
+        public float Yvalue;
+
+        private void setTag(Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
+                if (con.Controls.Count > 0)
+                    setTag(con);
+            }
+        }
+
+        private void EasyConForm_Resize(object sender, EventArgs e)
+        {
+            float newx = (this.Width) / Xvalue;
+            float newy = this.Height / Yvalue;
+            setControls(newx, newy, this);
+        }
+
+        private void setControls(float newx, float newy, Control cons)
+        {
+            foreach (Control con in cons.Controls)
+            {
+                string[] mytag = con.Tag.ToString().Split(new char[] { ':' });
+                float a = Convert.ToSingle(mytag[0]) * newx;
+                con.Width = (int)a;
+                a = Convert.ToSingle(mytag[1]) * newy;
+                con.Height = (int)(a);
+                a = Convert.ToSingle(mytag[2]) * newx;
+                con.Left = (int)(a);
+                a = Convert.ToSingle(mytag[3]) * newy;
+                con.Top = (int)(a);
+                Single currentSize = Convert.ToSingle(mytag[4]) * newy;
+
+                //改变字体大小
+                con.Font = new Font(con.Font.Name, currentSize, con.Font.Style, con.Font.Unit);
+
+                if (con.Controls.Count > 0)
+                {
+                    try
+                    {
+                        setControls(newx, newy, con);
+                    }
+                    catch
+                    { }
+                }
+            }
+        }
+        #endregion
     }
 }
