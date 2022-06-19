@@ -17,14 +17,14 @@ namespace EasyCon2.Script.Parsing.Lexers
                 if (m.Success)
                     return new ElseIf(op, args.Formatter.GetVar(m.Groups[1].Value), args.Formatter.GetValueEx(m.Groups[2].Value));
             }
-            return ElseParse(args);
+            return ElseParse(args) ?? EndParse(args);
         }
 
         private static Statement ElseParse(ParserArgument args)
         {
             if (args.Text.Equals("else", StringComparison.OrdinalIgnoreCase))
                 return new Else();
-            return EndParse(args);
+            return null;
         }
 
         private static Statement EndParse(ParserArgument args)

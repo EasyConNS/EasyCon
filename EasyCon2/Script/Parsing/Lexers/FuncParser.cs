@@ -7,7 +7,7 @@ namespace EasyCon2.Script.Parsing.Lexers
     {
         Statement? IStatementParser.Parse(ParserArgument args)
         {
-            return WaitParse(args);
+            return WaitParse(args) ?? FuncParse(args) ?? TimestampParse(args);
         }
 
         private static Statement WaitParse(ParserArgument args)
@@ -17,7 +17,7 @@ namespace EasyCon2.Script.Parsing.Lexers
             var m = Regex.Match(args.Text, $@"^wait\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
                 return new Wait(args.Formatter.GetValueEx(m.Groups[1].Value));
-            return FuncParse(args);
+            return null;
         }
 
         private static Statement FuncParse(ParserArgument args)
@@ -30,7 +30,7 @@ namespace EasyCon2.Script.Parsing.Lexers
                 return new CallStat(m.Groups[1].Value);
             if (args.Text.Equals("ret", StringComparison.OrdinalIgnoreCase))
                 return new ReturnStat();
-            return TimestampParse(args);
+            return null;
         }
 
         private static Statement TimestampParse(ParserArgument args)

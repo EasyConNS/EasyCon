@@ -1,18 +1,17 @@
-﻿namespace EasyCon2.Script
+﻿namespace EasyCon2.Script;
+
+public class ScriptException : Exception
 {
-    public class ScriptException : Exception
-    {
-        public int Address { get; private set; }
+    public int Address { get; private set; }
 
-        public ScriptException(string message, int address)
-            : base(message)
-        {
-            Address = address;
-        }
-    }
-
-    public class ScriptAbortException : ScriptException
+    public ScriptException(string message, int address)
+        : base(message)
     {
-        public ScriptAbortException(string message = "aborted!") : base(message, 0) {}
+        Address = address;
     }
+}
+
+public class ScriptAbortException : ScriptException
+{
+    public ScriptAbortException(string message = "aborted!") : base(message, 0) {}
 }

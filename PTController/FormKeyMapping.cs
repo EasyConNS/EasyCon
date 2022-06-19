@@ -6,13 +6,15 @@ namespace PTController
 {
     public partial class FormKeyMapping : Form
     {
-        Dictionary<CheckBox, string> _dict = new();
+        readonly Dictionary<CheckBox, string> _dict = new();
 
-        public KeyMapping KeyMapping;
+        public KeyMapping KeyMapping { get; set; }
 
-        public FormKeyMapping()
+        public FormKeyMapping(KeyMapping mapping)
         {
             InitializeComponent();
+
+            KeyMapping = mapping;
 
             _dict[checkBoxA] = "A";
             _dict[checkBoxB] = "B";

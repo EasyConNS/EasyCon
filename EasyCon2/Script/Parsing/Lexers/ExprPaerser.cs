@@ -6,8 +6,8 @@ namespace EasyCon2.Script.Parsing.Lexers
 {
     internal class ExprPaerser : IStatementParser
     {
-        const string GPKey = "^[ABXYLR]|^Z[LR]|^[LR]CLICK|^HOME|^CAPTURE|^PLUS|^MINUS|^LEFT|^RIGHT";
-        const string GPUPDOWN = "^UP|^DOWN";
+        const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN";
+
         Statement? IStatementParser.Parse(ParserArgument args)
         {
             // empty
@@ -19,20 +19,24 @@ namespace EasyCon2.Script.Parsing.Lexers
 
         private static Statement KeyParse(ParserArgument args)
         {
-            var tokens = Parser.Lexer.Parse(args.Text).ToList();
+            //var tokens = Parser.Lexer.Parse(args.Text).ToList();
             ECKey key;
-            var m = Regex.Match(args.Text, GPKey + "|" + GPUPDOWN + "$", RegexOptions.IgnoreCase);
+            var m = Regex.Match(args.Text, $"^({GPKey})$", RegexOptions.IgnoreCase);
             if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
                 return new KeyPress(key);
-            m = Regex.Match(args.Text, $@"^([a-z]+)\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, $@"^({GPKey})\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
                 return new KeyPress(key, args.Formatter.GetValueEx(m.Groups[2].Value));
-            m = Regex.Match(args.Text, @"^([a-z]+)\s+down$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, $@"^({GPKey})\s+(up|down)$", RegexOptions.IgnoreCase);
             if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
-                return new KeyDown(key);
-            m = Regex.Match(args.Text, @"^([a-z]+)\s+up$", RegexOptions.IgnoreCase);
-            if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
-                return new KeyUp(key);
+            {
+                return m.Groups[2].Value.ToUpper() switch
+                {
+                    "UP"=> new KeyUp(key),
+                    "DOWN"=> new KeyDown(key),
+                };
+            }
+
             // stick
             m = Regex.Match(args.Text, @"^([lr]s)\s+(reset)$", RegexOptions.IgnoreCase);
             if (m.Success)

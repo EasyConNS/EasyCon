@@ -12,6 +12,7 @@ namespace PTController
     public partial class FormController : Form
     {
         readonly IControllerAdapter script;
+        readonly IReporter reporter;
 
         int _controllerEnabledLevel = 0;
         public int ControllerEnabledLevel
@@ -35,10 +36,11 @@ namespace PTController
             }
         }
 
-        public FormController(IControllerAdapter script)
+        public FormController(IControllerAdapter script, IReporter gamepad)
         {
             InitializeComponent();
             this.script = script;
+            this.reporter = gamepad;
         }
 
         private void FormController_Load(object sender, EventArgs e)
@@ -83,11 +85,6 @@ namespace PTController
             LowLevelKeyboard.GetInstance().RegisterKeyEvent((int)key, keydown, keyup);
         }
 
-        public void RegisterKey(Keys key, ECKey nskey)
-        {
-            RegisterKey(key, () => NintendoSwitch.GetInstance().Down(nskey), () => NintendoSwitch.GetInstance().Up(nskey));
-        }
-
         static class Images
         {
             static Dictionary<string, Bitmap> _dict = new();
@@ -123,7 +120,7 @@ namespace PTController
         private void FormController_Paint(object sender, PaintEventArgs e)
         {
             var g = e.Graphics;
-            var report = NintendoSwitch.GetInstance().GetReport();
+            var report = reporter.GetReport();
             int x0, y0, w0, h0;
             int x, y, w, h;
             int p;

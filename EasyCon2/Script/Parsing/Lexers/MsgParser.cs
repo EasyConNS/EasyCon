@@ -7,7 +7,7 @@ namespace EasyCon2.Script.Parsing.Lexers
     {
         Statement? IStatementParser.Parse(ParserArgument args)
         {
-            return AlertParse(args);
+            return AlertParse(args) ?? PrintParse(args);
         }
 
         private static Statement AlertParse(ParserArgument args)
@@ -49,7 +49,7 @@ namespace EasyCon2.Script.Parsing.Lexers
                 }
                 return new Alert(contents.ToArray());
             }
-            return PrintParse(args);
+            return null;
         }
 
         private static Statement PrintParse(ParserArgument args)

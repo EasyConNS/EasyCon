@@ -16,15 +16,14 @@ namespace EasyCon2.Script.Parsing.Lexers
             if (m.Success)
                 return new For_Full(FormatterUtil.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value), args.Formatter.GetValueEx(m.Groups[3].Value));
             // next
-            return NextParse(args);
+            return NextParse(args) ?? LoopControlParse(args);
         }
 
         private static Statement NextParse(ParserArgument args)
         {
             if (args.Text.Equals("next", StringComparison.OrdinalIgnoreCase))
                 return new Next();
-            // loop-control
-            return LoopControlParse(args);
+            return null;
         }
 
         private static Statement LoopControlParse(ParserArgument args)

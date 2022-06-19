@@ -1,23 +1,132 @@
-﻿using System;
+﻿using ECDevice.Connection;
+using System;
 using System.Collections.Generic;
 using System.IO.Ports;
+using System.Linq;
+using System.Threading;
 
 namespace ECDevice
 {
     public partial class NintendoSwitch
     {
-        private static NintendoSwitch _instance;
+        private IConnection clientCon { get; set; }
 
         public static string[] GetPortNames()
         {
             return SerialPort.GetPortNames();
         }
 
-        public static NintendoSwitch GetInstance()
+        private ConnectResult _TryConnect(string connStr, bool sayhello)
         {
-            if (_instance == null)
-                _instance = new NintendoSwitch();
-            return _instance;
+            if (connStr == "")
+                return ConnectResult.InvalidArgument;
+
+            var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
+            var result = ConnectResult.None;
+            void statuschanged(Status status)
+            {
+                lock (ewh)
+                {
+                    if (result != ConnectResult.None)
+                        return;
+                    if (status == Status.Connected || status == Status.ConnectedUnsafe)
+                    {
+                        result = ConnectResult.Success;
+                        ewh.Set();
+                    }
+                    if (status == Status.Error)
+                    {
+                        result = ConnectResult.Error;
+                        ewh.Set();
+                    }
+                }
+            }
+
+            Disconnect();
+            clientCon = new TTLSerialClient(connStr);
+            clientCon.BytesSent += (port, bytes) => BytesSent?.Invoke(port, bytes);
+            clientCon.BytesReceived += (port, bytes) => BytesReceived?.Invoke(port, bytes);
+            clientCon.CPUOpt = need_cpu_opt;
+
+            clientCon.StatusChanged += statuschanged;
+            clientCon.Connect(sayhello);
+            if (!ewh.WaitOne(300) && sayhello)
+            {
+                clientCon.Disconnect();
+                clientCon = null;
+                return ConnectResult.Timeout;
+            }
+            if (result != ConnectResult.Success)
+            {
+                clientCon.Disconnect();
+                clientCon = null;
+                return result;
+            }
+            clientCon.StatusChanged -= statuschanged;
+
+            return ConnectResult.Success;
+        }
+
+        public void Disconnect()
+        {
+            clientCon?.Disconnect();
+            clientCon = null;
+            source?.Cancel();
+        }
+
+        public bool IsConnected() => clientCon?.CurrentStatus == Status.Connected || clientCon?.CurrentStatus == Status.ConnectedUnsafe;
+        public Status ConnectionStatus => clientCon?.CurrentStatus ?? Status.Connecting;
+
+        void WriteReport(Span<byte> b)
+        {
+            clientCon.Write(b.ToArray());
+        }
+
+        bool SendSync(Func<byte, bool> predicate, int timeout = 100, params byte[] bytes)
+        {
+            var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
+            void h(string port, byte[] bytes_)
+            {
+                foreach (var b in bytes_)
+                    if (predicate(b))
+                    {
+                        ewh.Set();
+                        break;
+                    }
+            }
+            try
+            {
+                clientCon.BytesReceived += h;
+                clientCon.Write(bytes);
+                if (!ewh.WaitOne(timeout))
+                    return false;
+                return true;
+            }
+            finally
+            {
+                clientCon.BytesReceived -= h;
+            }
+        }
+
+        bool ResetControl()
+        {
+            var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
+            void h(string port, byte[] bytes_)
+            {
+                if (bytes_.Contains(Reply.Hello))
+                    ewh.Set();
+            }
+            try
+            {
+                clientCon.BytesReceived += h;
+                for (int i = 0; i < 3; i++)
+                    clientCon.Write(Command.Ready, Command.Hello);
+                return ewh.WaitOne(50);
+            }
+            finally
+            {
+                clientCon.BytesReceived -= h;
+            }
         }
 
         public bool Flash(byte[] asmBytes)

@@ -1,10 +1,9 @@
 ﻿
-namespace EasyCon2.Script
-{
-    public interface IOutputAdapter
-    {
-        void Print(string message, bool newline);
+namespace EasyCon2.Script;
 
-        void Alert(string message);
-    }
+public interface IOutputAdapter
+{
+    void Print(string message, bool newline);
+
+    void Alert(string message);
 }

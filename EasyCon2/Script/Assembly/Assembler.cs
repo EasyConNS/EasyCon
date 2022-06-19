@@ -1,5 +1,4 @@
-﻿using EasyCon2.Global;
-using System.IO;
+﻿using System.IO;
 using System.Text;
 
 namespace EasyCon2.Script.Assembly
@@ -163,9 +162,9 @@ namespace EasyCon2.Script.Assembly
             return bytes;
         }
 
-        public static string WriteHex(string hexStr, byte[] asmBytes, Board board)
+        public static string WriteHex(string hexStr, byte[] asmBytes, int size, int version)
         {
-            if (asmBytes.Length > board.DataSize)
+            if (asmBytes.Length > size)
                 throw new AssembleException("烧录失败！字节超出限制");
             var list = new List<byte>(asmBytes);
             // load hex file
@@ -197,7 +196,7 @@ namespace EasyCon2.Script.Assembly
             if (index == -1)
                 throw new AssembleException("固件读取失败！未找到数据结构");
             int ver = hexFile[index].Data[2];
-            if (ver < board.Version)
+            if (ver < version)
                 throw new AssembleException("固件版本不符，请使用最新版的固件");
             // write data from asmBytes
             for (int i = 0; i < list.Count;)

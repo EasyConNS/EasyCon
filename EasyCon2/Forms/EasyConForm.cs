@@ -6,7 +6,6 @@ using EasyCon2.Script;
 using EasyCon2.Script.Assembly;
 using EasyCon2.Script.Parsing;
 using ECDevice;
-using ECDevice.Exts;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
@@ -26,12 +25,11 @@ namespace EasyCon2.Forms
     {
         private readonly TextEditor textBoxScript = new();
         internal readonly FormController formController;
-        internal readonly FormKeyMapping formKeyMapping = new();
 
         public Color CurrentLight => Color.White;
         bool IControllerAdapter.IsRunning() => scriptRunning;
 
-        internal NintendoSwitch NS = NintendoSwitch.GetInstance();
+        internal NintendoSwitch NS = new ();
         internal CaptureVideoForm captureVideo = new();
 
         const string ConfigPath = @"config.json";
@@ -61,7 +59,7 @@ namespace EasyCon2.Forms
         {
             InitializeComponent();
 
-            formController = new FormController(this);
+            formController = new FormController(this, this.NS);
 
             LoadConfig();
             InitEditor();
@@ -101,6 +99,11 @@ namespace EasyCon2.Forms
             Task.Run(() => { UpdateUI(); });
 
             // serial debug
+            NS.Log += (message) =>
+            {
+                if (显示调试信息ToolStripMenuItem.Checked)
+                    Print($"NS LOG >> {message}", null);
+            };
             NS.BytesSent += (port, bytes) =>
             {
                 if (显示调试信息ToolStripMenuItem.Checked)
@@ -313,29 +316,34 @@ namespace EasyCon2.Forms
             return comboBoxBoardType.SelectedItem as Board;
         }
 
+        private void RegisterKey(Keys key, ECKey nskey)
+        {
+            formController.RegisterKey(key, () => NS.Down(nskey), () => NS.Up(nskey));
+        }
+
         private void RegisterKeys()
         {
             formController.UnregisterAllKeys();
 
-            formController.RegisterKey(_config.KeyMapping.A, ECKeyUtil.Button(SwitchButton.A));
-            formController.RegisterKey(_config.KeyMapping.B, ECKeyUtil.Button(SwitchButton.B));
-            formController.RegisterKey(_config.KeyMapping.X, ECKeyUtil.Button(SwitchButton.X));
-            formController.RegisterKey(_config.KeyMapping.Y, ECKeyUtil.Button(SwitchButton.Y));
-            formController.RegisterKey(_config.KeyMapping.L, ECKeyUtil.Button(SwitchButton.L));
-            formController.RegisterKey(_config.KeyMapping.R, ECKeyUtil.Button(SwitchButton.R));
-            formController.RegisterKey(_config.KeyMapping.ZL, ECKeyUtil.Button(SwitchButton.ZL));
-            formController.RegisterKey(_config.KeyMapping.ZR, ECKeyUtil.Button(SwitchButton.ZR));
-            formController.RegisterKey(_config.KeyMapping.Plus, ECKeyUtil.Button(SwitchButton.PLUS));
-            formController.RegisterKey(_config.KeyMapping.Minus, ECKeyUtil.Button(SwitchButton.MINUS));
-            formController.RegisterKey(_config.KeyMapping.Capture, ECKeyUtil.Button(SwitchButton.CAPTURE));
-            formController.RegisterKey(_config.KeyMapping.Home, ECKeyUtil.Button(SwitchButton.HOME));
-            formController.RegisterKey(_config.KeyMapping.LClick, ECKeyUtil.Button(SwitchButton.LCLICK));
-            formController.RegisterKey(_config.KeyMapping.RClick, ECKeyUtil.Button(SwitchButton.RCLICK));
+            RegisterKey( _config.KeyMapping.A, ECKeyUtil.Button(SwitchButton.A));
+            RegisterKey( _config.KeyMapping.B, ECKeyUtil.Button(SwitchButton.B));
+            RegisterKey( _config.KeyMapping.X, ECKeyUtil.Button(SwitchButton.X));
+            RegisterKey( _config.KeyMapping.Y, ECKeyUtil.Button(SwitchButton.Y));
+            RegisterKey( _config.KeyMapping.L, ECKeyUtil.Button(SwitchButton.L));
+            RegisterKey( _config.KeyMapping.R, ECKeyUtil.Button(SwitchButton.R));
+            RegisterKey( _config.KeyMapping.ZL, ECKeyUtil.Button(SwitchButton.ZL));
+            RegisterKey( _config.KeyMapping.ZR, ECKeyUtil.Button(SwitchButton.ZR));
+            RegisterKey( _config.KeyMapping.Plus, ECKeyUtil.Button(SwitchButton.PLUS));
+            RegisterKey( _config.KeyMapping.Minus, ECKeyUtil.Button(SwitchButton.MINUS));
+            RegisterKey( _config.KeyMapping.Capture, ECKeyUtil.Button(SwitchButton.CAPTURE));
+            RegisterKey( _config.KeyMapping.Home, ECKeyUtil.Button(SwitchButton.HOME));
+            RegisterKey( _config.KeyMapping.LClick, ECKeyUtil.Button(SwitchButton.LCLICK));
+            RegisterKey( _config.KeyMapping.RClick, ECKeyUtil.Button(SwitchButton.RCLICK));
 
-            formController.RegisterKey(_config.KeyMapping.UpRight, ECKeyUtil.HAT(SwitchHAT.TOP_RIGHT));
-            formController.RegisterKey(_config.KeyMapping.DownRight, ECKeyUtil.HAT(SwitchHAT.BOTTOM_RIGHT));
-            formController.RegisterKey(_config.KeyMapping.UpLeft, ECKeyUtil.HAT(SwitchHAT.TOP_LEFT));
-            formController.RegisterKey(_config.KeyMapping.DownLeft, ECKeyUtil.HAT(SwitchHAT.BOTTOM_LEFT));
+            RegisterKey( _config.KeyMapping.UpRight, ECKeyUtil.HAT(SwitchHAT.TOP_RIGHT));
+            RegisterKey( _config.KeyMapping.DownRight, ECKeyUtil.HAT(SwitchHAT.BOTTOM_RIGHT));
+            RegisterKey( _config.KeyMapping.UpLeft, ECKeyUtil.HAT(SwitchHAT.TOP_LEFT));
+            RegisterKey( _config.KeyMapping.DownLeft, ECKeyUtil.HAT(SwitchHAT.BOTTOM_LEFT));
 
             formController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(DirectionKey.Up, true), () => NS.HatDirection(DirectionKey.Up, false));
             formController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(DirectionKey.Down, true), () => NS.HatDirection(DirectionKey.Down, false));
@@ -713,12 +721,12 @@ namespace EasyCon2.Forms
                 {
                     StatusShowLog("固件生成失败");
                     SystemSounds.Hand.Play();
-                    MessageBox.Show($"固件读取失败！{ex.ToString()}");
+                    MessageBox.Show($"固件读取失败！{ex}");
                     return false;
                 }
-                hexStr = Assembler.WriteHex(hexStr, bytes, GetSelectedBoard());
+                hexStr = Assembler.WriteHex(hexStr, bytes, GetSelectedBoard().DataSize, GetSelectedBoard().Version);
                 string name = Path.GetFileNameWithoutExtension(_currentFile);
-                filename = filename.Replace(".", $"+Script.");
+                filename = filename.Replace(".", "+Script.");
                 File.WriteAllText(filename, hexStr);
                 StatusShowLog("固件生成完毕");
                 SystemSounds.Beep.Play();
@@ -884,13 +892,15 @@ namespace EasyCon2.Forms
 
         private void buttonKeyMapping_Click(object sender, EventArgs e)
         {
-            formKeyMapping.KeyMapping = _config.KeyMapping;
-            if (formKeyMapping.ShowDialog() == DialogResult.OK)
+            using (var formKeyMapping = new FormKeyMapping(_config.KeyMapping))
             {
-                _config.KeyMapping = formKeyMapping.KeyMapping;
-                SaveConfig();
-                RegisterKeys();
-            }
+                if (formKeyMapping.ShowDialog() == DialogResult.OK)
+                {
+                    _config.KeyMapping = formKeyMapping.KeyMapping;
+                    SaveConfig();
+                    RegisterKeys();
+                }
+            } 
         }
 
         private void buttonControllerHelp_Click(object sender, EventArgs e)
@@ -1200,10 +1210,10 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
 
         private void 推送设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var form = new ConfigForm(_config,ConfigForm.TokenType.pushplus);
+            var form = new ConfigForm(_config);
             if(form.ShowDialog() == DialogResult.OK)
             {
-                _config.AlertToken = form.TokenString;
+                _config = form.Config;
                 SaveConfig();
             }
         }
@@ -1213,16 +1223,6 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             var btform = new win32.BTDeviceForm();
             btform.ShowDialog();
             btform.Dispose();
-        }
-
-        private void 频道推送ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            var form = new ConfigForm(_config, ConfigForm.TokenType.channel);
-            if (form.ShowDialog() == DialogResult.OK)
-            {
-                _config.ChannelToken = form.TokenString;
-                SaveConfig();
-            }
         }
 
         bool WSRun = false;
