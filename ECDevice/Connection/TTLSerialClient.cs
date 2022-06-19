@@ -10,8 +10,6 @@ namespace ECDevice.Connection;
 
 class TTLSerialClient : IConnection
 {
-    const bool DEBUG_MESSAGE = false;
-
     readonly string _connStr;
     readonly int _port;
 
@@ -100,8 +98,9 @@ class TTLSerialClient : IConnection
                 if (_sport.BytesToRead > 0)
                 {
                     int count = _sport.Read(inBuffer, 0, inBuffer.Length);
-                    if (DEBUG_MESSAGE)
-                        Debug.WriteLine($"[{_connStr}] " + string.Join(" ", inBuffer.Take(count).Select(b => b.ToString("X2"))));
+#if DEBUG
+                    Debug.WriteLine($"[{_connStr}] " + string.Join(" ", inBuffer.Take(count).Select(b => b.ToString("X2"))));
+#endif
                     lock (_inBuffer)
                     {
                         _inBuffer.Clear();
@@ -114,8 +113,10 @@ class TTLSerialClient : IConnection
                         CurrentStatus = Status.Connected;
                     }
                     BytesReceived?.Invoke(_connStr, _inBuffer.ToArray());
-                    if (DEBUG_MESSAGE && _time != DateTime.MinValue)
+#if DEBUG
+                    if (_time != DateTime.MinValue)
                         Debug.WriteLine("Delay: " + (DateTime.Now - _time).TotalMilliseconds);
+#endif
                 }
 
                 // write
@@ -151,8 +152,9 @@ class TTLSerialClient : IConnection
     {
         if (_t == null)
             return;
-        if (DEBUG_MESSAGE)
-            Debug.WriteLine("Output: " + string.Join(" ", val.Select(b => b.ToString("X2"))));
+#if DEBUG
+        Debug.WriteLine("Output: " + string.Join(" ", val.Select(b => b.ToString("X2"))));
+#endif
         lock (_outBuffer)
         {
             _outBuffer.Add(val);

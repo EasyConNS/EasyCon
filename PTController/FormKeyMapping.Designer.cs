@@ -70,9 +70,7 @@
             this.buttonOK = new System.Windows.Forms.Button();
             this.buttonCancel = new System.Windows.Forms.Button();
             this.checkBoxLClick = new System.Windows.Forms.CheckBox();
-            this.label16 = new System.Windows.Forms.Label();
             this.checkBoxRClick = new System.Windows.Forms.CheckBox();
-            this.label17 = new System.Windows.Forms.Label();
             this.checkBoxUpRight = new System.Windows.Forms.CheckBox();
             this.checkBoxDownRight = new System.Windows.Forms.CheckBox();
             this.checkBoxUpLeft = new System.Windows.Forms.CheckBox();
@@ -81,9 +79,10 @@
             // 
             // label1
             // 
-            this.label1.Location = new System.Drawing.Point(4, 14);
+            this.label1.Location = new System.Drawing.Point(5, 20);
+            this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(46, 21);
+            this.label1.Size = new System.Drawing.Size(54, 30);
             this.label1.TabIndex = 0;
             this.label1.Text = "ZL";
             this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -91,9 +90,10 @@
             // checkBoxZL
             // 
             this.checkBoxZL.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxZL.Location = new System.Drawing.Point(56, 12);
+            this.checkBoxZL.Location = new System.Drawing.Point(65, 17);
+            this.checkBoxZL.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxZL.Name = "checkBoxZL";
-            this.checkBoxZL.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxZL.Size = new System.Drawing.Size(80, 35);
             this.checkBoxZL.TabIndex = 1;
             this.checkBoxZL.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxZL.UseVisualStyleBackColor = true;
@@ -102,9 +102,10 @@
             // checkBoxL
             // 
             this.checkBoxL.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxL.Location = new System.Drawing.Point(56, 42);
+            this.checkBoxL.Location = new System.Drawing.Point(65, 60);
+            this.checkBoxL.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxL.Name = "checkBoxL";
-            this.checkBoxL.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxL.Size = new System.Drawing.Size(80, 35);
             this.checkBoxL.TabIndex = 3;
             this.checkBoxL.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxL.UseVisualStyleBackColor = true;
@@ -112,9 +113,10 @@
             // 
             // label2
             // 
-            this.label2.Location = new System.Drawing.Point(4, 44);
+            this.label2.Location = new System.Drawing.Point(5, 62);
+            this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(46, 21);
+            this.label2.Size = new System.Drawing.Size(54, 30);
             this.label2.TabIndex = 2;
             this.label2.Text = "L";
             this.label2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -122,9 +124,10 @@
             // checkBoxR
             // 
             this.checkBoxR.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxR.Location = new System.Drawing.Point(427, 42);
+            this.checkBoxR.Location = new System.Drawing.Point(498, 60);
+            this.checkBoxR.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxR.Name = "checkBoxR";
-            this.checkBoxR.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxR.Size = new System.Drawing.Size(80, 35);
             this.checkBoxR.TabIndex = 7;
             this.checkBoxR.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxR.UseVisualStyleBackColor = true;
@@ -132,9 +135,10 @@
             // 
             // label3
             // 
-            this.label3.Location = new System.Drawing.Point(375, 44);
+            this.label3.Location = new System.Drawing.Point(438, 62);
+            this.label3.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(46, 21);
+            this.label3.Size = new System.Drawing.Size(54, 30);
             this.label3.TabIndex = 6;
             this.label3.Text = "R";
             this.label3.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -142,9 +146,10 @@
             // checkBoxZR
             // 
             this.checkBoxZR.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxZR.Location = new System.Drawing.Point(427, 12);
+            this.checkBoxZR.Location = new System.Drawing.Point(498, 17);
+            this.checkBoxZR.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxZR.Name = "checkBoxZR";
-            this.checkBoxZR.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxZR.Size = new System.Drawing.Size(80, 35);
             this.checkBoxZR.TabIndex = 5;
             this.checkBoxZR.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxZR.UseVisualStyleBackColor = true;
@@ -152,9 +157,10 @@
             // 
             // label4
             // 
-            this.label4.Location = new System.Drawing.Point(375, 14);
+            this.label4.Location = new System.Drawing.Point(438, 20);
+            this.label4.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(46, 21);
+            this.label4.Size = new System.Drawing.Size(54, 30);
             this.label4.TabIndex = 4;
             this.label4.Text = "ZR";
             this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -162,9 +168,10 @@
             // checkBoxLSLeft
             // 
             this.checkBoxLSLeft.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxLSLeft.Location = new System.Drawing.Point(37, 136);
+            this.checkBoxLSLeft.Location = new System.Drawing.Point(5, 194);
+            this.checkBoxLSLeft.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxLSLeft.Name = "checkBoxLSLeft";
-            this.checkBoxLSLeft.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxLSLeft.Size = new System.Drawing.Size(80, 35);
             this.checkBoxLSLeft.TabIndex = 11;
             this.checkBoxLSLeft.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxLSLeft.UseVisualStyleBackColor = true;
@@ -173,9 +180,10 @@
             // checkBoxLSUp
             // 
             this.checkBoxLSUp.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxLSUp.Location = new System.Drawing.Point(75, 105);
+            this.checkBoxLSUp.Location = new System.Drawing.Point(88, 149);
+            this.checkBoxLSUp.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxLSUp.Name = "checkBoxLSUp";
-            this.checkBoxLSUp.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxLSUp.Size = new System.Drawing.Size(80, 35);
             this.checkBoxLSUp.TabIndex = 9;
             this.checkBoxLSUp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxLSUp.UseVisualStyleBackColor = true;
@@ -183,9 +191,10 @@
             // 
             // label6
             // 
-            this.label6.Location = new System.Drawing.Point(75, 81);
+            this.label6.Location = new System.Drawing.Point(88, 115);
+            this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(69, 21);
+            this.label6.Size = new System.Drawing.Size(80, 30);
             this.label6.TabIndex = 8;
             this.label6.Text = "左摇杆";
             this.label6.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -193,9 +202,10 @@
             // checkBoxLSRight
             // 
             this.checkBoxLSRight.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxLSRight.Location = new System.Drawing.Point(112, 136);
+            this.checkBoxLSRight.Location = new System.Drawing.Point(175, 194);
+            this.checkBoxLSRight.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxLSRight.Name = "checkBoxLSRight";
-            this.checkBoxLSRight.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxLSRight.Size = new System.Drawing.Size(80, 35);
             this.checkBoxLSRight.TabIndex = 12;
             this.checkBoxLSRight.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxLSRight.UseVisualStyleBackColor = true;
@@ -204,9 +214,10 @@
             // checkBoxLSDown
             // 
             this.checkBoxLSDown.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxLSDown.Location = new System.Drawing.Point(75, 166);
+            this.checkBoxLSDown.Location = new System.Drawing.Point(88, 235);
+            this.checkBoxLSDown.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxLSDown.Name = "checkBoxLSDown";
-            this.checkBoxLSDown.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxLSDown.Size = new System.Drawing.Size(80, 35);
             this.checkBoxLSDown.TabIndex = 13;
             this.checkBoxLSDown.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxLSDown.UseVisualStyleBackColor = true;
@@ -215,9 +226,10 @@
             // checkBoxRSDown
             // 
             this.checkBoxRSDown.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxRSDown.Location = new System.Drawing.Point(406, 325);
+            this.checkBoxRSDown.Location = new System.Drawing.Point(474, 428);
+            this.checkBoxRSDown.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxRSDown.Name = "checkBoxRSDown";
-            this.checkBoxRSDown.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxRSDown.Size = new System.Drawing.Size(80, 35);
             this.checkBoxRSDown.TabIndex = 18;
             this.checkBoxRSDown.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxRSDown.UseVisualStyleBackColor = true;
@@ -226,9 +238,10 @@
             // checkBoxRSRight
             // 
             this.checkBoxRSRight.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxRSRight.Location = new System.Drawing.Point(443, 295);
+            this.checkBoxRSRight.Location = new System.Drawing.Point(554, 386);
+            this.checkBoxRSRight.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxRSRight.Name = "checkBoxRSRight";
-            this.checkBoxRSRight.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxRSRight.Size = new System.Drawing.Size(80, 35);
             this.checkBoxRSRight.TabIndex = 17;
             this.checkBoxRSRight.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxRSRight.UseVisualStyleBackColor = true;
@@ -237,9 +250,10 @@
             // checkBoxRSLeft
             // 
             this.checkBoxRSLeft.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxRSLeft.Location = new System.Drawing.Point(368, 295);
+            this.checkBoxRSLeft.Location = new System.Drawing.Point(392, 386);
+            this.checkBoxRSLeft.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxRSLeft.Name = "checkBoxRSLeft";
-            this.checkBoxRSLeft.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxRSLeft.Size = new System.Drawing.Size(80, 35);
             this.checkBoxRSLeft.TabIndex = 16;
             this.checkBoxRSLeft.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxRSLeft.UseVisualStyleBackColor = true;
@@ -248,9 +262,10 @@
             // checkBoxRSUp
             // 
             this.checkBoxRSUp.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxRSUp.Location = new System.Drawing.Point(406, 264);
+            this.checkBoxRSUp.Location = new System.Drawing.Point(474, 342);
+            this.checkBoxRSUp.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxRSUp.Name = "checkBoxRSUp";
-            this.checkBoxRSUp.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxRSUp.Size = new System.Drawing.Size(80, 35);
             this.checkBoxRSUp.TabIndex = 15;
             this.checkBoxRSUp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxRSUp.UseVisualStyleBackColor = true;
@@ -258,9 +273,10 @@
             // 
             // label5
             // 
-            this.label5.Location = new System.Drawing.Point(406, 240);
+            this.label5.Location = new System.Drawing.Point(474, 308);
+            this.label5.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(69, 21);
+            this.label5.Size = new System.Drawing.Size(80, 30);
             this.label5.TabIndex = 14;
             this.label5.Text = "右摇杆";
             this.label5.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -268,9 +284,10 @@
             // checkBoxB
             // 
             this.checkBoxB.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxB.Location = new System.Drawing.Point(406, 166);
+            this.checkBoxB.Location = new System.Drawing.Point(474, 235);
+            this.checkBoxB.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxB.Name = "checkBoxB";
-            this.checkBoxB.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxB.Size = new System.Drawing.Size(80, 35);
             this.checkBoxB.TabIndex = 22;
             this.checkBoxB.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxB.UseVisualStyleBackColor = true;
@@ -279,9 +296,10 @@
             // checkBoxA
             // 
             this.checkBoxA.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxA.Location = new System.Drawing.Point(443, 136);
+            this.checkBoxA.Location = new System.Drawing.Point(517, 193);
+            this.checkBoxA.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxA.Name = "checkBoxA";
-            this.checkBoxA.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxA.Size = new System.Drawing.Size(80, 35);
             this.checkBoxA.TabIndex = 21;
             this.checkBoxA.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxA.UseVisualStyleBackColor = true;
@@ -290,9 +308,10 @@
             // checkBoxY
             // 
             this.checkBoxY.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxY.Location = new System.Drawing.Point(368, 136);
+            this.checkBoxY.Location = new System.Drawing.Point(429, 193);
+            this.checkBoxY.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxY.Name = "checkBoxY";
-            this.checkBoxY.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxY.Size = new System.Drawing.Size(80, 35);
             this.checkBoxY.TabIndex = 20;
             this.checkBoxY.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxY.UseVisualStyleBackColor = true;
@@ -301,9 +320,10 @@
             // checkBoxX
             // 
             this.checkBoxX.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxX.Location = new System.Drawing.Point(406, 105);
+            this.checkBoxX.Location = new System.Drawing.Point(474, 149);
+            this.checkBoxX.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxX.Name = "checkBoxX";
-            this.checkBoxX.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxX.Size = new System.Drawing.Size(80, 35);
             this.checkBoxX.TabIndex = 19;
             this.checkBoxX.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxX.UseVisualStyleBackColor = true;
@@ -312,9 +332,10 @@
             // checkBoxDown
             // 
             this.checkBoxDown.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxDown.Location = new System.Drawing.Point(77, 320);
+            this.checkBoxDown.Location = new System.Drawing.Point(90, 421);
+            this.checkBoxDown.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxDown.Name = "checkBoxDown";
-            this.checkBoxDown.Size = new System.Drawing.Size(60, 25);
+            this.checkBoxDown.Size = new System.Drawing.Size(70, 35);
             this.checkBoxDown.TabIndex = 27;
             this.checkBoxDown.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxDown.UseVisualStyleBackColor = true;
@@ -323,9 +344,10 @@
             // checkBoxRight
             // 
             this.checkBoxRight.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxRight.Location = new System.Drawing.Point(110, 290);
+            this.checkBoxRight.Location = new System.Drawing.Point(161, 379);
+            this.checkBoxRight.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxRight.Name = "checkBoxRight";
-            this.checkBoxRight.Size = new System.Drawing.Size(60, 25);
+            this.checkBoxRight.Size = new System.Drawing.Size(70, 35);
             this.checkBoxRight.TabIndex = 26;
             this.checkBoxRight.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxRight.UseVisualStyleBackColor = true;
@@ -334,9 +356,10 @@
             // checkBoxLeft
             // 
             this.checkBoxLeft.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxLeft.Location = new System.Drawing.Point(46, 290);
+            this.checkBoxLeft.Location = new System.Drawing.Point(19, 379);
+            this.checkBoxLeft.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxLeft.Name = "checkBoxLeft";
-            this.checkBoxLeft.Size = new System.Drawing.Size(60, 25);
+            this.checkBoxLeft.Size = new System.Drawing.Size(70, 35);
             this.checkBoxLeft.TabIndex = 25;
             this.checkBoxLeft.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxLeft.UseVisualStyleBackColor = true;
@@ -345,9 +368,10 @@
             // checkBoxUp
             // 
             this.checkBoxUp.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxUp.Location = new System.Drawing.Point(77, 259);
+            this.checkBoxUp.Location = new System.Drawing.Point(90, 335);
+            this.checkBoxUp.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxUp.Name = "checkBoxUp";
-            this.checkBoxUp.Size = new System.Drawing.Size(60, 25);
+            this.checkBoxUp.Size = new System.Drawing.Size(70, 35);
             this.checkBoxUp.TabIndex = 24;
             this.checkBoxUp.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxUp.UseVisualStyleBackColor = true;
@@ -355,45 +379,50 @@
             // 
             // label7
             // 
-            this.label7.Location = new System.Drawing.Point(65, 235);
+            this.label7.Location = new System.Drawing.Point(77, 301);
+            this.label7.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(69, 21);
+            this.label7.Size = new System.Drawing.Size(80, 30);
             this.label7.TabIndex = 23;
             this.label7.Text = "十字键";
             this.label7.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // label8
             // 
-            this.label8.Location = new System.Drawing.Point(406, 81);
+            this.label8.Location = new System.Drawing.Point(474, 115);
+            this.label8.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(69, 21);
+            this.label8.Size = new System.Drawing.Size(80, 30);
             this.label8.TabIndex = 28;
             this.label8.Text = "X";
             this.label8.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // label9
             // 
-            this.label9.Location = new System.Drawing.Point(406, 194);
+            this.label9.Location = new System.Drawing.Point(474, 275);
+            this.label9.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label9.Name = "label9";
-            this.label9.Size = new System.Drawing.Size(69, 21);
+            this.label9.Size = new System.Drawing.Size(80, 30);
             this.label9.TabIndex = 29;
             this.label9.Text = "B";
             this.label9.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // label10
             // 
-            this.label10.Location = new System.Drawing.Point(336, 138);
+            this.label10.Location = new System.Drawing.Point(392, 196);
+            this.label10.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(26, 21);
+            this.label10.Size = new System.Drawing.Size(30, 30);
             this.label10.TabIndex = 30;
             this.label10.Text = "Y";
             this.label10.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // label11
             // 
-            this.label11.Location = new System.Drawing.Point(518, 138);
+            this.label11.Location = new System.Drawing.Point(604, 196);
+            this.label11.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label11.Name = "label11";
-            this.label11.Size = new System.Drawing.Size(26, 21);
+            this.label11.Size = new System.Drawing.Size(30, 30);
             this.label11.TabIndex = 31;
             this.label11.Text = "A";
             this.label11.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -401,9 +430,10 @@
             // checkBoxPlus
             // 
             this.checkBoxPlus.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxPlus.Location = new System.Drawing.Point(293, 66);
+            this.checkBoxPlus.Location = new System.Drawing.Point(330, 94);
+            this.checkBoxPlus.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxPlus.Name = "checkBoxPlus";
-            this.checkBoxPlus.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxPlus.Size = new System.Drawing.Size(80, 35);
             this.checkBoxPlus.TabIndex = 33;
             this.checkBoxPlus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxPlus.UseVisualStyleBackColor = true;
@@ -411,9 +441,10 @@
             // 
             // label12
             // 
-            this.label12.Location = new System.Drawing.Point(293, 43);
+            this.label12.Location = new System.Drawing.Point(330, 61);
+            this.label12.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(69, 21);
+            this.label12.Size = new System.Drawing.Size(80, 30);
             this.label12.TabIndex = 32;
             this.label12.Text = "(+)";
             this.label12.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -421,9 +452,10 @@
             // checkBoxMinus
             // 
             this.checkBoxMinus.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxMinus.Location = new System.Drawing.Point(187, 66);
+            this.checkBoxMinus.Location = new System.Drawing.Point(218, 94);
+            this.checkBoxMinus.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxMinus.Name = "checkBoxMinus";
-            this.checkBoxMinus.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxMinus.Size = new System.Drawing.Size(80, 35);
             this.checkBoxMinus.TabIndex = 35;
             this.checkBoxMinus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxMinus.UseVisualStyleBackColor = true;
@@ -431,9 +463,10 @@
             // 
             // label13
             // 
-            this.label13.Location = new System.Drawing.Point(187, 43);
+            this.label13.Location = new System.Drawing.Point(218, 61);
+            this.label13.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label13.Name = "label13";
-            this.label13.Size = new System.Drawing.Size(69, 21);
+            this.label13.Size = new System.Drawing.Size(80, 30);
             this.label13.TabIndex = 34;
             this.label13.Text = "(-)";
             this.label13.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -441,9 +474,10 @@
             // checkBoxCapture
             // 
             this.checkBoxCapture.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxCapture.Location = new System.Drawing.Point(195, 359);
+            this.checkBoxCapture.Location = new System.Drawing.Point(233, 481);
+            this.checkBoxCapture.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxCapture.Name = "checkBoxCapture";
-            this.checkBoxCapture.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxCapture.Size = new System.Drawing.Size(80, 35);
             this.checkBoxCapture.TabIndex = 39;
             this.checkBoxCapture.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxCapture.UseVisualStyleBackColor = true;
@@ -451,9 +485,10 @@
             // 
             // label14
             // 
-            this.label14.Location = new System.Drawing.Point(195, 337);
+            this.label14.Location = new System.Drawing.Point(233, 449);
+            this.label14.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label14.Name = "label14";
-            this.label14.Size = new System.Drawing.Size(69, 21);
+            this.label14.Size = new System.Drawing.Size(80, 30);
             this.label14.TabIndex = 38;
             this.label14.Text = "截屏";
             this.label14.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -461,9 +496,10 @@
             // checkBoxHome
             // 
             this.checkBoxHome.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxHome.Location = new System.Drawing.Point(289, 359);
+            this.checkBoxHome.Location = new System.Drawing.Point(330, 481);
+            this.checkBoxHome.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxHome.Name = "checkBoxHome";
-            this.checkBoxHome.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxHome.Size = new System.Drawing.Size(80, 35);
             this.checkBoxHome.TabIndex = 37;
             this.checkBoxHome.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxHome.UseVisualStyleBackColor = true;
@@ -471,18 +507,20 @@
             // 
             // label15
             // 
-            this.label15.Location = new System.Drawing.Point(289, 337);
+            this.label15.Location = new System.Drawing.Point(330, 449);
+            this.label15.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label15.Name = "label15";
-            this.label15.Size = new System.Drawing.Size(69, 21);
+            this.label15.Size = new System.Drawing.Size(80, 30);
             this.label15.TabIndex = 36;
-            this.label15.Text = "主界面";
+            this.label15.Text = "HOME";
             this.label15.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // buttonOK
             // 
-            this.buttonOK.Location = new System.Drawing.Point(88, 411);
+            this.buttonOK.Location = new System.Drawing.Point(98, 545);
+            this.buttonOK.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.buttonOK.Name = "buttonOK";
-            this.buttonOK.Size = new System.Drawing.Size(174, 32);
+            this.buttonOK.Size = new System.Drawing.Size(203, 45);
             this.buttonOK.TabIndex = 40;
             this.buttonOK.Text = "确定";
             this.buttonOK.UseVisualStyleBackColor = true;
@@ -490,9 +528,10 @@
             // 
             // buttonCancel
             // 
-            this.buttonCancel.Location = new System.Drawing.Point(287, 411);
+            this.buttonCancel.Location = new System.Drawing.Point(330, 545);
+            this.buttonCancel.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.buttonCancel.Name = "buttonCancel";
-            this.buttonCancel.Size = new System.Drawing.Size(174, 32);
+            this.buttonCancel.Size = new System.Drawing.Size(203, 45);
             this.buttonCancel.TabIndex = 41;
             this.buttonCancel.Text = "取消";
             this.buttonCancel.UseVisualStyleBackColor = true;
@@ -501,49 +540,34 @@
             // checkBoxLClick
             // 
             this.checkBoxLClick.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxLClick.Location = new System.Drawing.Point(150, 190);
+            this.checkBoxLClick.Location = new System.Drawing.Point(88, 194);
+            this.checkBoxLClick.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxLClick.Name = "checkBoxLClick";
-            this.checkBoxLClick.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxLClick.Size = new System.Drawing.Size(80, 35);
             this.checkBoxLClick.TabIndex = 43;
             this.checkBoxLClick.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxLClick.UseVisualStyleBackColor = true;
             this.checkBoxLClick.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
             // 
-            // label16
-            // 
-            this.label16.Location = new System.Drawing.Point(150, 168);
-            this.label16.Name = "label16";
-            this.label16.Size = new System.Drawing.Size(69, 21);
-            this.label16.TabIndex = 42;
-            this.label16.Text = "按下";
-            this.label16.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
             // checkBoxRClick
             // 
             this.checkBoxRClick.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxRClick.Location = new System.Drawing.Point(325, 255);
+            this.checkBoxRClick.Location = new System.Drawing.Point(474, 386);
+            this.checkBoxRClick.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxRClick.Name = "checkBoxRClick";
-            this.checkBoxRClick.Size = new System.Drawing.Size(69, 25);
+            this.checkBoxRClick.Size = new System.Drawing.Size(80, 35);
             this.checkBoxRClick.TabIndex = 45;
             this.checkBoxRClick.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxRClick.UseVisualStyleBackColor = true;
             this.checkBoxRClick.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.FormKeyMapping_PreviewKeyDown);
             // 
-            // label17
-            // 
-            this.label17.Location = new System.Drawing.Point(325, 233);
-            this.label17.Name = "label17";
-            this.label17.Size = new System.Drawing.Size(69, 21);
-            this.label17.TabIndex = 44;
-            this.label17.Text = "按下";
-            this.label17.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
             // checkBoxUpRight
             // 
             this.checkBoxUpRight.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxUpRight.Location = new System.Drawing.Point(138, 259);
+            this.checkBoxUpRight.Location = new System.Drawing.Point(161, 335);
+            this.checkBoxUpRight.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxUpRight.Name = "checkBoxUpRight";
-            this.checkBoxUpRight.Size = new System.Drawing.Size(60, 25);
+            this.checkBoxUpRight.Size = new System.Drawing.Size(70, 35);
             this.checkBoxUpRight.TabIndex = 46;
             this.checkBoxUpRight.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxUpRight.UseVisualStyleBackColor = true;
@@ -552,9 +576,10 @@
             // checkBoxDownRight
             // 
             this.checkBoxDownRight.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxDownRight.Location = new System.Drawing.Point(138, 321);
+            this.checkBoxDownRight.Location = new System.Drawing.Point(161, 423);
+            this.checkBoxDownRight.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxDownRight.Name = "checkBoxDownRight";
-            this.checkBoxDownRight.Size = new System.Drawing.Size(60, 25);
+            this.checkBoxDownRight.Size = new System.Drawing.Size(70, 35);
             this.checkBoxDownRight.TabIndex = 47;
             this.checkBoxDownRight.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxDownRight.UseVisualStyleBackColor = true;
@@ -563,9 +588,10 @@
             // checkBoxUpLeft
             // 
             this.checkBoxUpLeft.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxUpLeft.Location = new System.Drawing.Point(16, 259);
+            this.checkBoxUpLeft.Location = new System.Drawing.Point(19, 335);
+            this.checkBoxUpLeft.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxUpLeft.Name = "checkBoxUpLeft";
-            this.checkBoxUpLeft.Size = new System.Drawing.Size(60, 25);
+            this.checkBoxUpLeft.Size = new System.Drawing.Size(70, 35);
             this.checkBoxUpLeft.TabIndex = 48;
             this.checkBoxUpLeft.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxUpLeft.UseVisualStyleBackColor = true;
@@ -574,9 +600,10 @@
             // checkBoxDownLeft
             // 
             this.checkBoxDownLeft.Appearance = System.Windows.Forms.Appearance.Button;
-            this.checkBoxDownLeft.Location = new System.Drawing.Point(16, 320);
+            this.checkBoxDownLeft.Location = new System.Drawing.Point(19, 421);
+            this.checkBoxDownLeft.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.checkBoxDownLeft.Name = "checkBoxDownLeft";
-            this.checkBoxDownLeft.Size = new System.Drawing.Size(60, 25);
+            this.checkBoxDownLeft.Size = new System.Drawing.Size(70, 35);
             this.checkBoxDownLeft.TabIndex = 49;
             this.checkBoxDownLeft.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.checkBoxDownLeft.UseVisualStyleBackColor = true;
@@ -584,17 +611,15 @@
             // 
             // FormKeyMapping
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(556, 450);
+            this.ClientSize = new System.Drawing.Size(649, 604);
             this.Controls.Add(this.checkBoxDownLeft);
             this.Controls.Add(this.checkBoxUpLeft);
             this.Controls.Add(this.checkBoxDownRight);
             this.Controls.Add(this.checkBoxUpRight);
             this.Controls.Add(this.checkBoxRClick);
-            this.Controls.Add(this.label17);
             this.Controls.Add(this.checkBoxLClick);
-            this.Controls.Add(this.label16);
             this.Controls.Add(this.buttonCancel);
             this.Controls.Add(this.buttonOK);
             this.Controls.Add(this.checkBoxCapture);
@@ -638,6 +663,7 @@
             this.Controls.Add(this.label1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.KeyPreview = true;
+            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.MaximizeBox = false;
             this.Name = "FormKeyMapping";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
@@ -693,9 +719,7 @@
         private System.Windows.Forms.Button buttonOK;
         private System.Windows.Forms.Button buttonCancel;
         private System.Windows.Forms.CheckBox checkBoxLClick;
-        private System.Windows.Forms.Label label16;
         private System.Windows.Forms.CheckBox checkBoxRClick;
-        private System.Windows.Forms.Label label17;
         private System.Windows.Forms.CheckBox checkBoxUpRight;
         private System.Windows.Forms.CheckBox checkBoxDownRight;
         private System.Windows.Forms.CheckBox checkBoxUpLeft;

@@ -34,12 +34,10 @@ namespace PTController
         Dictionary<int, Func<bool>> _keyDownHandlers = new();
         Dictionary<int, Func<bool>> _keyUpHandlers = new();
 
-        static LowLevelKeyboard _instance;
+        static LowLevelKeyboard _instance = new ();
 
         public static LowLevelKeyboard GetInstance()
         {
-            if (_instance == null)
-                _instance = new LowLevelKeyboard();
             return _instance;
         }
 
@@ -56,11 +54,8 @@ namespace PTController
 
         IntPtr SetHook(LowLevelKeyboardProc proc)
         {
-            using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
-            {
-                return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
-            }
+            using var mainMod = Process.GetCurrentProcess().MainModule;
+            return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(mainMod?.ModuleName ?? ""), 0);
         }
 
         IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)

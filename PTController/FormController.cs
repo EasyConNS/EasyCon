@@ -66,7 +66,7 @@ namespace PTController
             LowLevelKeyboard.GetInstance().UnregisterKeyEventAll();
         }
 
-        public void RegisterKey(Keys key, Action keydownAction, Action keyupAction = null)
+        public void RegisterKey(Keys key, Action keydownAction, Action? keyupAction = null)
         {
             bool keydown()
             {
@@ -183,7 +183,7 @@ namespace PTController
             DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.RCLICK) != 0 ? _brushStickBGDown : _brushStickBG, x, y, w, h);
 
             // HAT
-            var dkey = NSKeyUtil.GetDirectionFromHAT((SwitchHAT)report.HAT);
+            var dkey = ((SwitchHAT)report.HAT).GetDirectionFromHAT();
             DrawPath(g, pen, dkey.HasFlag(DirectionKey.Up) ? _brushButtonDown : _brushButtonUp, RoundedRect(21, 55, 6, 6, 2, 2, 2, 2));
             DrawPath(g, pen, dkey.HasFlag(DirectionKey.Down) ? _brushButtonDown : _brushButtonUp, RoundedRect(21, 67, 6, 6, 2, 2, 2, 2));
             DrawPath(g, pen, dkey.HasFlag(DirectionKey.Left) ? _brushButtonDown : _brushButtonUp, RoundedRect(15, 61, 6, 6, 2, 2, 2, 2));

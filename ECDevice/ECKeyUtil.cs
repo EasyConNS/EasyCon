@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace ECDevice;
 
@@ -7,33 +6,22 @@ public static class ECKeyUtil
 {
     const int HatMask = 0b00010000;
 
-    enum StickKeyCode
+    static int Keycode(SwitchButton key)
     {
-        LS = 32,
-        RS = 33
-    }
-
-    static readonly Dictionary<SwitchButton, int> _buttonKeyCodes = new();
-
-    static ECKeyUtil()
-    {
-        foreach (SwitchButton b in Enum.GetValues(typeof(SwitchButton)))
+        int n = (int)key;
+        int k = -1;
+        while (n != 0)
         {
-            int n = (int)b;
-            int k = -1;
-            while (n != 0)
-            {
-                n >>= 1;
-                k++;
-            }
-            _buttonKeyCodes[b] = k;
+            n >>= 1;
+            k++;
         }
+        return k;
     }
 
     public static ECKey Button(SwitchButton button)
     {
         return new ECKey(button.GetName(),
-            _buttonKeyCodes[button],
+            Keycode(button),
             r => r.Button |= (ushort)button,
             r => r.Button &= (ushort)~button
         );
@@ -48,10 +36,15 @@ public static class ECKeyUtil
         );
     }
 
-    public static ECKey LStick(byte x, byte y)
+    public static ECKey HAT(DirectionKey dhat)
+    {
+        return HAT(dhat.GetHATFromDirection());
+    }
+
+    static ECKey LStick(byte x, byte y)
     {
         return new ECKey($"LStick({x},{y})",
-            (int)StickKeyCode.LS,
+            32,
             r => { r.LX = x; r.LY = y; },
             r => { r.LX = NSwitchUtil.STICK_CENTER; r.LY = NSwitchUtil.STICK_CENTER; },
             x,
@@ -59,10 +52,10 @@ public static class ECKeyUtil
         );
     }
 
-    public static ECKey RStick(byte x, byte y)
+    static ECKey RStick(byte x, byte y)
     {
         return new ECKey($"RStick({x},{y})",
-            (int)StickKeyCode.RS,
+            33,
             r => { r.RX = x; r.RY = y; },
             r => { r.RX = NSwitchUtil.STICK_CENTER; r.RY = NSwitchUtil.STICK_CENTER; },
             x,
@@ -70,27 +63,52 @@ public static class ECKeyUtil
         );
     }
 
+    static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, bool slow = false)
+    {
+        if (dkey.HasFlag(DirectionKey.Left) && !dkey.HasFlag(DirectionKey.Right))
+            x = slow ? NSwitchUtil.STICK_CENMIN : NSwitchUtil.STICK_MIN;
+        else if (!dkey.HasFlag(DirectionKey.Left) && dkey.HasFlag(DirectionKey.Right))
+            x = slow ? NSwitchUtil.STICK_CENMAX : NSwitchUtil.STICK_MAX;
+        else
+            x = NSwitchUtil.STICK_CENTER;
+        if (dkey.HasFlag(DirectionKey.Up) && !dkey.HasFlag(DirectionKey.Down))
+            y = slow ? NSwitchUtil.STICK_CENMIN : NSwitchUtil.STICK_MIN;
+        else if (!dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
+            y = slow ? NSwitchUtil.STICK_CENMAX : NSwitchUtil.STICK_MAX;
+        else
+            y = NSwitchUtil.STICK_CENTER;
+    }
+
     public static ECKey LStick(DirectionKey dkey, bool slow = false)
     {
-        NSKeyUtil.GetXYFromDirection(dkey, out byte x, out byte y, slow);
+        GetXYFromDirection(dkey, out byte x, out byte y, slow);
         return LStick(x, y);
     }
 
     public static ECKey RStick(DirectionKey dkey, bool slow = false)
     {
-        NSKeyUtil.GetXYFromDirection(dkey, out byte x, out byte y, slow);
+        GetXYFromDirection(dkey, out byte x, out byte y, slow);
         return RStick(x, y);
+    }
+
+    static void GetXYFromDegree(double degree, out byte x, out byte y)
+    {
+        double radian = degree * Math.PI / 180;
+        double dy = Math.Round((Math.Tan(radian) * Math.Sign(Math.Cos(radian))).Clamp(-1, 1), 4);
+        double dx = radian == 0 ? 1 : Math.Round((1 / Math.Tan(radian) * Math.Sign(Math.Sin(radian))).Clamp(-1, 1), 4);
+        x = (byte)((dx + 1) / 2 * (NSwitchUtil.STICK_MAX - NSwitchUtil.STICK_MIN) + NSwitchUtil.STICK_MIN);
+        y = (byte)((-dy + 1) / 2 * (NSwitchUtil.STICK_MAX - NSwitchUtil.STICK_MIN) + NSwitchUtil.STICK_MIN);
     }
 
     public static ECKey LStick(double degree)
     {
-        NSKeyUtil.GetXYFromDegree(degree, out byte x, out byte y);
+        GetXYFromDegree(degree, out byte x, out byte y);
         return LStick(x, y);
     }
 
     public static ECKey RStick(double degree)
     {
-        NSKeyUtil.GetXYFromDegree(degree, out byte x, out byte y);
+        GetXYFromDegree(degree, out byte x, out byte y);
         return RStick(x, y);
     }
 }

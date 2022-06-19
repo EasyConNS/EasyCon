@@ -4,8 +4,8 @@ namespace EasyCon2.Script.Parsing
 {
     class Parser
     {
-        readonly Dictionary<string, int> _constants;
-        readonly Dictionary<string, ExternalVariable> _extVars;
+        readonly Formatter _formatter;
+
         static readonly List<IStatementParser> _parsers = new();
         static readonly Compiler.Scanners.Lexer lexer = new();
 
@@ -31,14 +31,12 @@ namespace EasyCon2.Script.Parsing
 
         public Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
         {
-            _constants = constants;
-            _extVars = extVars;
+            _formatter = new Formatter(constants, extVars);
         }
 
-        private IEnumerable<ParserArgument> ParseToken(string text)
+        private IEnumerable<ParserArgument> ParseLines(string text)
         {
             var lines = Regex.Split(text, "\r\n|\r|\n");
-            var formatter = new Formatter(_constants, _extVars);
             foreach (var line in lines)
             {
                 // get indent
@@ -60,7 +58,7 @@ namespace EasyCon2.Script.Parsing
                 {
                     Text = text,
                     Comment = comment,
-                    Formatter = formatter,
+                    Formatter = _formatter,
                 };
             }
         }
@@ -70,7 +68,8 @@ namespace EasyCon2.Script.Parsing
             var list = new List<Statement>();
             int indentnum = 0;
             int linnum = 0;
-            foreach (var args in ParseToken(text))
+            int address = 0;
+            foreach (var args in ParseLines(text))
             {
                 System.Diagnostics.Debug.WriteLine("v2 start---");
                 foreach (var t in lexer.Parse(args.Text))
@@ -91,8 +90,11 @@ namespace EasyCon2.Script.Parsing
                             indentnum += st.IndentThis;
                             st.Indent = new string(' ', indentnum < 0 ? 0 : indentnum * 4);
                             st.Comment = args.Comment;
+                            // update address
+                            st.Address = address;
                             list.Add(st);
                             indentnum += st.IndentNext;
+                            address+=1;
                             break;
                         }
                     }
@@ -111,59 +113,64 @@ namespace EasyCon2.Script.Parsing
                 linnum++;
             }
 
-            // update address
-            for (var i = 0; i < list.Count; i++)
-                list[i].Address = i;
-
             // pair For & Next
             var _fors = new Stack<Statements.For>();
+            // pair If /  Elif / Else / Endif
+            var _ifs = new Stack<Statements.BranchOp>();
+            var _elifs = new Stack<Statements.BranchOp>();
+            // pair Func & Ret
+            var _funcs = new Stack<Statements.Function>();
+            var _funcTables = new Dictionary<string, Statements.Function>();
+            // block stack
+            var _blockStacks = new Stack<string>();
+
             for (var i = 0; i < list.Count; i++)
             {
                 var st = list[i];
                 if (st is Statements.For)
-                    _fors.Push(st as Statements.For);
-                else if (st is Statements.Next)
                 {
+                    _fors.Push(st as Statements.For);
+                    _blockStacks.Push("for");
+                }
+                    
+                else if (st is Statements.Next nextst)
+                {
+                    if(_blockStacks.Peek()!= "for")
+                        throw new ParseException($"发现未结束的语句：{_blockStacks.Peek()}", i);
                     if (_fors.Count == 0)
                         throw new ParseException("找不到对应的For语句", i);
                     var @for = _fors.Pop();
-                    var next = st as Statements.Next;
-                    next.For = @for;
-                    @for.Next = next;
+                    nextst.For = @for;
+                    @for.Next = nextst;
+                    _blockStacks.Pop();
                 }
-                else if (st is Statements.LoopControl)
+                else if (st is Statements.LoopControl loopst)
                 {
-                    if ((st as Statements.LoopControl).Level.Val > _fors.Count)
+                    if (loopst.Level.Val > _fors.Count)
                         throw new ParseException("循环层数不足", i);
                 }
-            }
-            if (_fors.Count > 0) 
-                throw new ParseException("For语句需要Next结束", _fors.Peek().Address);
 
-            // pair If /  Elif / Else / Endif
-            var _ifs = new Stack<Statements.BranchOp>();
-            var _elifs = new Stack<Statements.BranchOp>();
-            for (var i = 0; i < list.Count; i++)
-            {
-                var st = list[i];
                 if (st is Statements.If)
+                {
                     _ifs.Push(st as Statements.If);
+                    _blockStacks.Push("if");
+                }
+                    
                 else if (st is Statements.ElseIf || st is Statements.Else || st is Statements.EndIf)
                 {
                     if (_ifs.Count == 0)
                         throw new ParseException("找不到对应的If语句", i);
                     var @if = _ifs.Peek();
-                    if(st is Statements.ElseIf)
+                    if(st is Statements.ElseIf selif)
                     {
-                        var elif = st as Statements.ElseIf;
                         if (@if.Else != null)
                         {
                             throw new ParseException("多余的Else语句", i);
                         }
                         @if.Else = st as Statements.BranchOp;
-                        elif.If = @if;
+                        selif.If = @if;
                         _elifs.Push(_ifs.Pop());
-                        _ifs.Push(elif);
+                        _ifs.Push(selif);
                     }
                     else if (st is Statements.Else)
                     {
@@ -175,49 +182,50 @@ namespace EasyCon2.Script.Parsing
                         @if.Else = @else;
                         @else.If = @if;
                     }
-                    else
+                    else if (st is Statements.EndIf endifst)
                     {
-                        var endif = st as Statements.EndIf;
-                        @if.EndIf = endif;
-                        endif.If = @if;
+                        if (_blockStacks.Peek() != "if")
+                            throw new ParseException($"发现未结束的语句：{_blockStacks.Peek()}", i);
+                        @if.EndIf = endifst;
+                        endifst.If = @if;
                         _ifs.Pop();
                         while(_elifs.Count > 0)
                         {
-                            _elifs.Pop().EndIf = endif;
+                            _elifs.Pop().EndIf = endifst;
                         }
+                        _blockStacks.Pop();
                     }
+                    else
+                        throw new ArgumentException($"非预期的类型：{st.GetType()}");
                 }
-            }
-            if (_ifs.Count > 0 || _elifs.Count > 0)
-                throw new ParseException("If语句需要Endif结束", _ifs.Peek().Address);
 
-            // pair Func & Ret
-            var _funcs = new Stack<Statements.Function>();
-            var _funcTables = new Dictionary<string, Statements.Function>();
-            for (var i = 0; i < list.Count; i++)
-            {
-                var st = list[i];
-                if (st is Statements.Function)
+                if (st is Statements.Function fst)
                 {
-                    var fst = st as Statements.Function;
                     if(_funcTables.ContainsKey(fst.Label))
                     {
                         throw new ParseException("重复定义的函数名", i);
                     }
                     _funcTables[fst.Label] = fst;
                     _funcs.Push(fst);
+                    _blockStacks.Push("func");
                 }
-                else if (st is Statements.ReturnStat)
+                else if (st is Statements.ReturnStat rst)
                 {
+                    if (_blockStacks.Peek() != "func")
+                        throw new ParseException($"发现未结束的语句：{_blockStacks.Peek()}", i);
                     if (_funcs.Count == 0)
                         throw new ParseException("找不到对应的Func定义", i);
                     var @func = _funcs.Peek();
-                    @func.Ret = (st as Statements.ReturnStat);
-                    var @ret = (st as Statements.ReturnStat);
-                    @ret.Label = @func.Label;
+                    @func.Ret = rst;
+                    rst.Label = @func.Label;
                     _funcs.Pop();
+                    _blockStacks.Pop();
                 }
             }
+            if (_fors.Count > 0)
+                throw new ParseException("For语句需要Next结束", _fors.Peek().Address);
+            if (_ifs.Count > 0 || _elifs.Count > 0)
+                throw new ParseException("If语句需要Endif结束", _ifs.Peek().Address);
             if (_funcs.Count > 0)
                 throw new ParseException("Func语句需要Ret结束", _funcs.Peek().Address);
             // pair Call

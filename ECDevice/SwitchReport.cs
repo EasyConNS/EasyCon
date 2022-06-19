@@ -76,7 +76,7 @@ namespace ECDevice
             };
         }
 
-        public string GetKeyStr()
+        public override string ToString()
         {
             var list = new List<string>();
             foreach (SwitchButton button in Enum.GetValues(typeof(SwitchButton)))

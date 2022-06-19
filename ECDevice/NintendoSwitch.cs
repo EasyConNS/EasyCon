@@ -116,8 +116,7 @@ namespace ECDevice
                 _leftStick |= dkey;
             else
                 _leftStick &= ~dkey;
-            NSKeyUtil.GetXYFromDirection(_leftStick, out byte x, out byte y);
-            Down(ECKeyUtil.LStick(x, y));
+            Down(ECKeyUtil.LStick(_leftStick));
         }
 
         public void RightDirection(DirectionKey dkey, bool down)
@@ -126,8 +125,7 @@ namespace ECDevice
                 _rightStick |= dkey;
             else
                 _rightStick &= ~dkey;
-            NSKeyUtil.GetXYFromDirection(_rightStick, out byte x, out byte y);
-            Down(ECKeyUtil.RStick(x, y));
+            Down(ECKeyUtil.RStick(_rightStick));
         }
 
         public void HatDirection(DirectionKey dkey, bool down)
@@ -135,23 +133,22 @@ namespace ECDevice
             if (down)
             {
                 _hat |= dkey;
-                NSKeyUtil.GetHATFromDirection(_hat);
-                Down(ECKeyUtil.HAT(NSKeyUtil.GetHATFromDirection(_hat)));
+                Down(ECKeyUtil.HAT(_hat));
             }
             else
             {
                 _hat &= ~dkey;
-                if (NSKeyUtil.GetHATFromDirection(_hat) == SwitchHAT.CENTER)
+                if (_hat.GetHATFromDirection() == SwitchHAT.CENTER)
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Up(ECKeyUtil.HAT(NSKeyUtil.GetHATFromDirection(dkey)));
+                    Up(ECKeyUtil.HAT(dkey));
                 }
                 else
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Down(ECKeyUtil.HAT(NSKeyUtil.GetHATFromDirection(_hat)));
+                    Down(ECKeyUtil.HAT(_hat));
                 }
             }
         }

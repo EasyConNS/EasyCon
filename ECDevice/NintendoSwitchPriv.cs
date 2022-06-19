@@ -61,7 +61,7 @@ namespace ECDevice
                                 _keystrokes.Remove(ks.KeyCode);
                         }
                     }
-                    var log = $"[Send {DateTime.Now:ss.fff}] { _report.GetKeyStr()}";
+                    var log = $"[Send {DateTime.Now:ss.fff}] { _report}";
                     Log?.Invoke(log);
                     WriteReport(_report.GetBytes());
                     _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);

@@ -79,7 +79,7 @@ namespace EasyCon2.Forms
         private void InitEditor()
         {
             textBoxScript.ShowLineNumbers = true;
-            IHighlightingDefinition syntaxHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Encoding.UTF8.GetBytes(Resources.NX))), HighlightingManager.Instance);
+            var syntaxHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Encoding.UTF8.GetBytes(Resources.NX))), HighlightingManager.Instance);
             textBoxScript.SyntaxHighlighting = syntaxHighlighting;
             textBoxScript.DragEnter += new System.Windows.DragEventHandler(this.textBoxScript_DragEnter);
             textBoxScript.Drop += new System.Windows.DragEventHandler(this.textBoxScript_DragDrop);

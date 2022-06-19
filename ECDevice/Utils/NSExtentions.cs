@@ -24,5 +24,45 @@ public static class NXExtensions
         else
             return self;
     }
-}
 
+    public static DirectionKey GetDirectionFromHAT(this SwitchHAT hat)
+    {
+        return hat switch
+        {
+            SwitchHAT.TOP => DirectionKey.Up,
+            SwitchHAT.TOP_RIGHT => DirectionKey.Up | DirectionKey.Right,
+            SwitchHAT.RIGHT => DirectionKey.Right,
+            SwitchHAT.BOTTOM_RIGHT => DirectionKey.Down | DirectionKey.Right,
+            SwitchHAT.BOTTOM => DirectionKey.Down,
+            SwitchHAT.BOTTOM_LEFT => DirectionKey.Down | DirectionKey.Left,
+            SwitchHAT.LEFT => DirectionKey.Left,
+            SwitchHAT.TOP_LEFT => DirectionKey.Up | DirectionKey.Left,
+            _ => DirectionKey.None,
+        };
+    }
+
+    public static SwitchHAT GetHATFromDirection(this DirectionKey dkey)
+    {
+        if (dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
+            dkey &= ~DirectionKey.Up & ~DirectionKey.Down;
+        if (dkey.HasFlag(DirectionKey.Left) && dkey.HasFlag(DirectionKey.Right))
+            dkey &= ~DirectionKey.Left & ~DirectionKey.Right;
+        if (dkey == DirectionKey.Up)
+            return SwitchHAT.TOP;
+        if (dkey == DirectionKey.Down)
+            return SwitchHAT.BOTTOM;
+        if (dkey == DirectionKey.Left)
+            return SwitchHAT.LEFT;
+        if (dkey == DirectionKey.Right)
+            return SwitchHAT.RIGHT;
+        if (dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Left))
+            return SwitchHAT.TOP_LEFT;
+        if (dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Right))
+            return SwitchHAT.TOP_RIGHT;
+        if (dkey.HasFlag(DirectionKey.Down) && dkey.HasFlag(DirectionKey.Left))
+            return SwitchHAT.BOTTOM_LEFT;
+        if (dkey.HasFlag(DirectionKey.Down) && dkey.HasFlag(DirectionKey.Right))
+            return SwitchHAT.BOTTOM_RIGHT;
+        return SwitchHAT.CENTER;
+    }
+}
