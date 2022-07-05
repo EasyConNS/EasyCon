@@ -2,9 +2,9 @@
 using EasyCon2.Capture;
 using EasyCon2.Global;
 using EasyCon2.Properties;
-using EasyCon2.Script;
-using EasyCon2.Script.Assembly;
-using EasyCon2.Script.Parsing;
+using EasyScript;
+using EasyScript.Assembly;
+using EasyScript.Parsing;
 using ECDevice;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
@@ -29,7 +29,7 @@ namespace EasyCon2.Forms
         public Color CurrentLight => Color.White;
         bool IControllerAdapter.IsRunning() => scriptRunning;
 
-        internal NintendoSwitch NS = new ();
+        internal NintendoSwitch NS = new();
         internal CaptureVideoForm captureVideo = new();
 
         const string ConfigPath = @"config.json";
@@ -724,7 +724,7 @@ namespace EasyCon2.Forms
                     MessageBox.Show($"固件读取失败！{ex}");
                     return false;
                 }
-                hexStr = Assembler.WriteHex(hexStr, bytes, GetSelectedBoard().DataSize, GetSelectedBoard().Version);
+                hexStr = HexWriter.WriteHex(hexStr, bytes, GetSelectedBoard().DataSize, GetSelectedBoard().Version);
                 string name = Path.GetFileNameWithoutExtension(_currentFile);
                 filename = filename.Replace(".", "+Script.");
                 File.WriteAllText(filename, hexStr);
@@ -1018,7 +1018,7 @@ namespace EasyCon2.Forms
             if (!FlashPrepare())
                 StatusShowLog("还未准备好烧录");
 
-            if (!NS.Flash(Assembler.EmptyAsm))
+            if (!NS.Flash(HexWriter.EmptyAsm))
             {
                 StatusShowLog("烧录失败");
                 SystemSounds.Hand.Play();

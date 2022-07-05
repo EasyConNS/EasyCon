@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\EasyScript\EasyScript.csproj" />
     <ProjectReference Include="..\ECDevice\ECDevice.csproj" />
     <ProjectReference Include="..\PTController\PTController.csproj" />
   </ItemGroup>
