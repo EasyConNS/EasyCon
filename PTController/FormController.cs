@@ -1,6 +1,5 @@
 ﻿using ECDevice;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Threading;
@@ -85,27 +84,21 @@ namespace PTController
             LowLevelKeyboard.GetInstance().RegisterKeyEvent((int)key, keydown, keyup);
         }
 
-        static class Images
+        static Bitmap GetJCImg(string name)
         {
-            static Dictionary<string, Bitmap> _dict = new();
-
-            static Images()
+            return name switch
             {
-                _dict["JoyCon"] = Properties.Resources.JoyCon;
-                _dict["JoyCon_L_0"] = Properties.Resources.JoyCon_L_0;
-                _dict["JoyCon_L_1"] = Properties.Resources.JoyCon_L_1;
-                _dict["JoyCon_R_0"] = Properties.Resources.JoyCon_R_0;
-                _dict["JoyCon_R_1"] = Properties.Resources.JoyCon_R_1;
-                _dict["JoyCon_ZL_0"] = Properties.Resources.JoyCon_ZL_0;
-                _dict["JoyCon_ZL_1"] = Properties.Resources.JoyCon_ZL_1;
-                _dict["JoyCon_ZR_0"] = Properties.Resources.JoyCon_ZR_0;
-                _dict["JoyCon_ZR_1"] = Properties.Resources.JoyCon_ZR_1;
-            }
-
-            public static Bitmap Get(string name)
-            {
-                return _dict[name];
-            }
+                "JoyCon" => Properties.Resources.JoyCon,
+                "JoyCon_L_0" => Properties.Resources.JoyCon_L_0,
+                "JoyCon_L_1" => Properties.Resources.JoyCon_L_1,
+                "JoyCon_R_0" => Properties.Resources.JoyCon_R_0,
+                "JoyCon_R_1" => Properties.Resources.JoyCon_R_1,
+                "JoyCon_ZL_0" => Properties.Resources.JoyCon_ZL_0,
+                "JoyCon_ZL_1" => Properties.Resources.JoyCon_ZL_1,
+                "JoyCon_ZR_0" => Properties.Resources.JoyCon_ZR_0,
+                "JoyCon_ZR_1" => Properties.Resources.JoyCon_ZR_1,
+                _ => throw new NotImplementedException(),
+            };
         }
 
         DateTime _starttime = DateTime.MinValue;
@@ -129,7 +122,7 @@ namespace PTController
             Opacity = ControllerEnabled ? 1 : 0.5;
 
             // background
-            g.DrawImage(Images.Get("JoyCon"), e.ClipRectangle);
+            g.DrawImage(GetJCImg("JoyCon"), e.ClipRectangle);
 
             // script lights
             int flashIndex = -1;
@@ -164,9 +157,9 @@ namespace PTController
             p = 2;
             w = 15;
             h = 15;
-            x = x0 + (w0 - w) * report.LX / NSwitchUtil.STICK_MAX;
-            y = y0 + (h0 - h) * report.LY / NSwitchUtil.STICK_MAX;
-            DrawEllipse(g, pen, report.LX == NSwitchUtil.STICK_CENTER && report.LY == NSwitchUtil.STICK_CENTER ? _brushStickAreaBG : _brushStickAreaBGDown, x0 + p, y0 + p, w0 - p * 2, h0 - p * 2);
+            x = x0 + (w0 - w) * report.LX / SwitchStick.STICK_MAX;
+            y = y0 + (h0 - h) * report.LY / SwitchStick.STICK_MAX;
+            DrawEllipse(g, pen, report.LX == SwitchStick.STICK_CENTER && report.LY == SwitchStick.STICK_CENTER ? _brushStickAreaBG : _brushStickAreaBGDown, x0 + p, y0 + p, w0 - p * 2, h0 - p * 2);
             DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.LCLICK) != 0 ? _brushStickBGDown : _brushStickBG, x, y, w, h);
 
             // right stick
@@ -177,9 +170,9 @@ namespace PTController
             p = 2;
             w = 15;
             h = 15;
-            x = x0 + (w0 - w) * report.RX / NSwitchUtil.STICK_MAX;
-            y = y0 + (h0 - h) * report.RY / NSwitchUtil.STICK_MAX;
-            DrawEllipse(g, pen, report.RX == NSwitchUtil.STICK_CENTER && report.RY == NSwitchUtil.STICK_CENTER ? _brushStickAreaBG : _brushStickAreaBGDown, x0 + p, y0 + p, w0 - p * 2, h0 - p * 2);
+            x = x0 + (w0 - w) * report.RX / SwitchStick.STICK_MAX;
+            y = y0 + (h0 - h) * report.RY / SwitchStick.STICK_MAX;
+            DrawEllipse(g, pen, report.RX == SwitchStick.STICK_CENTER && report.RY == SwitchStick.STICK_CENTER ? _brushStickAreaBG : _brushStickAreaBGDown, x0 + p, y0 + p, w0 - p * 2, h0 - p * 2);
             DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.RCLICK) != 0 ? _brushStickBGDown : _brushStickBG, x, y, w, h);
 
             // HAT
@@ -190,10 +183,10 @@ namespace PTController
             DrawPath(g, pen, dkey.HasFlag(DirectionKey.Right) ? _brushButtonDown : _brushButtonUp, RoundedRect(27, 61, 6, 6, 2, 2, 2, 2));
 
             // buttons
-            g.DrawImage(Images.Get($"JoyCon_ZL_{Math.Sign((report.Button & (ushort)SwitchButton.ZL))}"), e.ClipRectangle);
-            g.DrawImage(Images.Get($"JoyCon_ZR_{Math.Sign((report.Button & (ushort)SwitchButton.ZR))}"), e.ClipRectangle);
-            g.DrawImage(Images.Get($"JoyCon_L_{Math.Sign((report.Button & (ushort)SwitchButton.L))}"), e.ClipRectangle);
-            g.DrawImage(Images.Get($"JoyCon_R_{Math.Sign((report.Button & (ushort)SwitchButton.R))}"), e.ClipRectangle);
+            g.DrawImage(GetJCImg($"JoyCon_ZL_{Math.Sign((report.Button & (ushort)SwitchButton.ZL))}"), e.ClipRectangle);
+            g.DrawImage(GetJCImg($"JoyCon_ZR_{Math.Sign((report.Button & (ushort)SwitchButton.ZR))}"), e.ClipRectangle);
+            g.DrawImage(GetJCImg($"JoyCon_L_{Math.Sign((report.Button & (ushort)SwitchButton.L))}"), e.ClipRectangle);
+            g.DrawImage(GetJCImg($"JoyCon_R_{Math.Sign((report.Button & (ushort)SwitchButton.R))}"), e.ClipRectangle);
             DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.A) != 0 ? _brushButtonDown : _brushButtonUp, 79, 29, 9, 9);
             DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.B) != 0 ? _brushButtonDown : _brushButtonUp, 71, 37, 9, 9);
             DrawEllipse(g, pen, (report.Button & (ushort)SwitchButton.X) != 0 ? _brushButtonDown : _brushButtonUp, 71, 21, 9, 9);

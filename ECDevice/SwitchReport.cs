@@ -22,10 +22,10 @@ namespace ECDevice
         {
             Button = 0;
             HAT = (byte)SwitchHAT.CENTER;
-            LX = NSwitchUtil.STICK_CENTER;
-            LY = NSwitchUtil.STICK_CENTER;
-            RX = NSwitchUtil.STICK_CENTER;
-            RY = NSwitchUtil.STICK_CENTER;
+            LX = SwitchStick.STICK_CENTER;
+            LY = SwitchStick.STICK_CENTER;
+            RX = SwitchStick.STICK_CENTER;
+            RY = SwitchStick.STICK_CENTER;
         }
 
         public byte[] GetBytes(bool raw = false)
@@ -84,9 +84,9 @@ namespace ECDevice
                     list.Add(button.GetName());
             if (HAT != (byte)SwitchHAT.CENTER)
                 list.Add($"HAT.{((SwitchHAT)HAT).GetName()}");
-            if (LX != NSwitchUtil.STICK_CENTER || LY != NSwitchUtil.STICK_CENTER)
+            if (LX != SwitchStick.STICK_CENTER || LY != SwitchStick.STICK_CENTER)
                 list.Add($"LS({LX},{LY})");
-            if (RX != NSwitchUtil.STICK_CENTER || RY != NSwitchUtil.STICK_CENTER)
+            if (RX != SwitchStick.STICK_CENTER || RY != SwitchStick.STICK_CENTER)
                 list.Add($"RS({RX},{RY})");
             return string.Join(" ", list);
         }

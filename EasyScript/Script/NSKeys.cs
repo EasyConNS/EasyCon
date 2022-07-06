@@ -38,7 +38,7 @@ static class NSKeys
     {
         int x = key.StickX;
         int y = key.StickY;
-        if (x == NSwitchUtil.STICK_CENTER && y == NSwitchUtil.STICK_CENTER)
+        if (x == SwitchStick.STICK_CENTER && y == SwitchStick.STICK_CENTER)
             return -1;
         x = (int)Math.Round(x / 32d);
         y = (int)Math.Round(y / 32d);

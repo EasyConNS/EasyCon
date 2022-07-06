@@ -9,7 +9,7 @@ namespace ECDevice
         private List<KeyStroke> records = new();
         string script = "";
 
-        private string GetScriptKeyName(string key)
+        private static string GetScriptKeyName(string key)
         {
             return key switch
             {

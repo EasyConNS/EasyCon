@@ -46,7 +46,7 @@ public static class ECKeyUtil
         return new ECKey($"LStick({x},{y})",
             32,
             r => { r.LX = x; r.LY = y; },
-            r => { r.LX = NSwitchUtil.STICK_CENTER; r.LY = NSwitchUtil.STICK_CENTER; },
+            r => { r.LX = SwitchStick.STICK_CENTER; r.LY = SwitchStick.STICK_CENTER; },
             x,
             y
         );
@@ -57,7 +57,7 @@ public static class ECKeyUtil
         return new ECKey($"RStick({x},{y})",
             33,
             r => { r.RX = x; r.RY = y; },
-            r => { r.RX = NSwitchUtil.STICK_CENTER; r.RY = NSwitchUtil.STICK_CENTER; },
+            r => { r.RX = SwitchStick.STICK_CENTER; r.RY = SwitchStick.STICK_CENTER; },
             x,
             y
         );
@@ -66,17 +66,17 @@ public static class ECKeyUtil
     static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, bool slow = false)
     {
         if (dkey.HasFlag(DirectionKey.Left) && !dkey.HasFlag(DirectionKey.Right))
-            x = slow ? NSwitchUtil.STICK_CENMIN : NSwitchUtil.STICK_MIN;
+            x = slow ? SwitchStick.STICK_CENMIN : SwitchStick.STICK_MIN;
         else if (!dkey.HasFlag(DirectionKey.Left) && dkey.HasFlag(DirectionKey.Right))
-            x = slow ? NSwitchUtil.STICK_CENMAX : NSwitchUtil.STICK_MAX;
+            x = slow ? SwitchStick.STICK_CENMAX : SwitchStick.STICK_MAX;
         else
-            x = NSwitchUtil.STICK_CENTER;
+            x = SwitchStick.STICK_CENTER;
         if (dkey.HasFlag(DirectionKey.Up) && !dkey.HasFlag(DirectionKey.Down))
-            y = slow ? NSwitchUtil.STICK_CENMIN : NSwitchUtil.STICK_MIN;
+            y = slow ? SwitchStick.STICK_CENMIN : SwitchStick.STICK_MIN;
         else if (!dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
-            y = slow ? NSwitchUtil.STICK_CENMAX : NSwitchUtil.STICK_MAX;
+            y = slow ? SwitchStick.STICK_CENMAX : SwitchStick.STICK_MAX;
         else
-            y = NSwitchUtil.STICK_CENTER;
+            y = SwitchStick.STICK_CENTER;
     }
 
     public static ECKey LStick(DirectionKey dkey, bool slow = false)
@@ -96,8 +96,8 @@ public static class ECKeyUtil
         double radian = degree * Math.PI / 180;
         double dy = Math.Round((Math.Tan(radian) * Math.Sign(Math.Cos(radian))).Clamp(-1, 1), 4);
         double dx = radian == 0 ? 1 : Math.Round((1 / Math.Tan(radian) * Math.Sign(Math.Sin(radian))).Clamp(-1, 1), 4);
-        x = (byte)((dx + 1) / 2 * (NSwitchUtil.STICK_MAX - NSwitchUtil.STICK_MIN) + NSwitchUtil.STICK_MIN);
-        y = (byte)((-dy + 1) / 2 * (NSwitchUtil.STICK_MAX - NSwitchUtil.STICK_MIN) + NSwitchUtil.STICK_MIN);
+        x = (byte)((dx + 1) / 2 * (SwitchStick.STICK_MAX - SwitchStick.STICK_MIN) + SwitchStick.STICK_MIN);
+        y = (byte)((-dy + 1) / 2 * (SwitchStick.STICK_MAX - SwitchStick.STICK_MIN) + SwitchStick.STICK_MIN);
     }
 
     public static ECKey LStick(double degree)

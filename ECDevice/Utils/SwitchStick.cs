@@ -2,7 +2,7 @@
 
 namespace ECDevice;
 
-public static class NSwitchUtil
+public static class SwitchStick
 {
     public const byte STICK_MIN = 0;
     public const byte STICK_CENMIN = 64;

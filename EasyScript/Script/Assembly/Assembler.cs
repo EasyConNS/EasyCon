@@ -16,8 +16,8 @@ class Assembler
 
     static Instruction Assert(Instruction ins)
     {
-        if (ins is Instruction.Failed)
-            throw new AssembleException((ins as Instruction.Failed).Message);
+        if (ins is Instruction.Failed fins)
+            throw new AssembleException(fins.Message);
         return ins;
     }
 
@@ -73,10 +73,8 @@ class Assembler
             var ins2 = ins1;
             ins1 = list[^2]; // list.Count - 2
             // keypress-wait => compressed keypress
-            if (ins1 is Instructions.AsmKey_Standard && ins2 is Instructions.AsmWait)
+            if (ins1 is Instructions.AsmKey_Standard press && ins2 is Instructions.AsmWait wait)
             {
-                var press = ins1 as Instructions.AsmKey_Standard;
-                var wait = ins2 as Instructions.AsmWait;
                 var ins = Instructions.AsmKey_Compressed.Create(press.KeyCode, press.RealDuration, wait.RealDuration);
                 if (ins.Success)
                 {
@@ -94,9 +92,9 @@ class Assembler
             ins2 = ins1;
             ins1 = list[^3];
             // if-loopcontrol-endif => loopcontrol_cf
-            if (ins1 is Instructions.AsmBranchFalse && ins2 is Instructions.AsmLoopControl && ins3 is Instructions.AsmEmpty && (ins1 as Instructions.AsmBranchFalse).Target == ins3)
+            if (ins1 is Instructions.AsmBranchFalse falseins && ins2 is Instructions.AsmLoopControl ctlins && ins3 is Instructions.AsmEmpty && falseins.Target == ins3)
             {
-                (ins2 as Instructions.AsmLoopControl).CheckFlag = 1;
+                ctlins.CheckFlag = 1;
                 discarded.Add(ins1);
                 continue;
             }
@@ -109,10 +107,10 @@ class Assembler
             ins2 = ins1;
             ins1 = list[list.Count - 4];
             // if-loopcontrol-else-endif => loopcontrol_cf-ifnot-endif
-            if (ins1 is Instructions.AsmBranchFalse && ins2 is Instructions.AsmLoopControl && ins3 is Instructions.AsmBranch && ins4 is Instructions.AsmEmpty && (ins1 as Instructions.AsmBranchFalse).Target == ins4)
+            if (ins1 is Instructions.AsmBranchFalse falsein && ins2 is Instructions.AsmLoopControl ctlin && ins3 is Instructions.AsmBranch branch3 && ins4 is Instructions.AsmEmpty && falsein.Target == ins4)
             {
-                (ins2 as Instructions.AsmLoopControl).CheckFlag = 1;
-                list.Add(Instructions.AsmBranchTrue.Create((ins3 as Instructions.AsmBranch).Target));
+                ctlin.CheckFlag = 1;
+                list.Add(Instructions.AsmBranchTrue.Create(branch3.Target));
                 discarded.Add(ins1);
                 discarded.Add(ins3);
                 continue;

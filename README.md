@@ -36,7 +36,7 @@
 
 单片机仓库：
 
-> https://github.com/nukieberry/SerialCon
+> https://github.com/EasyConNS/EasyMCU
 
 
 

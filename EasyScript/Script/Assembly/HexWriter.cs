@@ -118,11 +118,13 @@ class IntelHex
 
     public byte[] GetBytes()
     {
-        List<byte> bytes = new List<byte>();
-        bytes.Add(DataSize);
-        bytes.Add((byte)(StartAddress >> 8));
-        bytes.Add((byte)(StartAddress & 0xFF));
-        bytes.Add(RecordType);
+        var bytes = new List<byte>
+        {
+            DataSize,
+            (byte)(StartAddress >> 8),
+            (byte)(StartAddress & 0xFF),
+            RecordType
+        };
         bytes.AddRange(Data);
         bytes.Add(Checksum);
         return bytes.ToArray();
