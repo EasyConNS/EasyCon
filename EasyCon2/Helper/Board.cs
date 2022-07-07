@@ -12,7 +12,7 @@
             new("Teensy 2.0", "Teensy2", 924),
             new("Teensy 2.0++", "Teensy2pp", 3996),
             new ("Beetle", "Beetle", 924),
-            new ("Arduino UNO R3", "UNO", 412),
+           // new ("Arduino UNO R3", "UNO", 412),
             };
 
         public Board(string displayname, string corename, int datasize)

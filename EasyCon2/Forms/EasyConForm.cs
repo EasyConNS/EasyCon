@@ -1199,7 +1199,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
 
         private void 项目源码ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Process.Start(new ProcessStartInfo("https://github.com/nukieberry/PokemonTycoon") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("https://github.com/EasyConNS/EasyCon") { UseShellExecute = true });
         }
 
         private void 脚本自动运行ToolStripMenuItem_Click(object sender, EventArgs e)
