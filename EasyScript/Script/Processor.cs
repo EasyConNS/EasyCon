@@ -47,8 +47,8 @@ class RegisterFile
     {
         get
         {
-            if (val is Parsing.ValReg)
-                return this[(val as Parsing.ValReg).Index];
+            if (val is Parsing.ValReg val1)
+                return this[val1.Index];
             else
                 return this[val.Tag];
             throw new ArgumentException();
@@ -56,8 +56,8 @@ class RegisterFile
 
         set
         {
-            if (val is Parsing.ValReg)
-                _register[(val as Parsing.ValReg).Index] = (short)value;
+            if (val is Parsing.ValReg val1)
+                _register[val1.Index] = (short)value;
             else
                 this[val.Tag] = value;
         }

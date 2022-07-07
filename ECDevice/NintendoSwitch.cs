@@ -14,8 +14,6 @@ namespace ECDevice
     public delegate void LogHandler(string s);
     public partial class NintendoSwitch : IReporter
     {
-        const int MINIMAL_INTERVAL = 30;
-
         public enum ConnectResult
         {
             None,
@@ -31,7 +29,6 @@ namespace ECDevice
         bool _reset = false;
         CancellationTokenSource source = new();
 
-        DateTime _nextSendTime = DateTime.MinValue;
         DirectionKey _leftStick = 0;
         DirectionKey _rightStick = 0;
         DirectionKey _hat = 0;

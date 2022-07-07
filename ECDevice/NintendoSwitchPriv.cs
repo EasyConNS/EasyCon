@@ -6,6 +6,9 @@ namespace ECDevice
 {
     public partial class NintendoSwitch
     {
+        const int MINIMAL_INTERVAL = 30;
+
+        DateTime _nextSendTime = DateTime.MinValue;
         private readonly EventWaitHandle _ewh = new(false, EventResetMode.ManualReset);
 
         void Signal()

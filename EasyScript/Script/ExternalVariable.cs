@@ -12,7 +12,7 @@ public class ExternalVariable
     // function for writing
     public readonly Setter Set;
 
-    public ExternalVariable(string name, Getter get, Setter set = null)
+    public ExternalVariable(string name, Getter get, Setter? set = null)
     {
         if (name == null || get == null)
             throw new ArgumentNullException();

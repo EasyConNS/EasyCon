@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace PTController
 {
-    public class LowLevelKeyboard
+    class LowLevelKeyboard
     {
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
