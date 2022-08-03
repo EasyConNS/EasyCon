@@ -44,7 +44,7 @@ namespace ECDevice.Connection
             }
         }
 
-        public TTLSerialClient(string connStr, int port = 9600)
+        public TTLSerialClient(string connStr, int port = 115200)
         {
             _connStr = connStr;
             _port = port;
@@ -69,6 +69,7 @@ namespace ECDevice.Connection
 
         public override void Disconnect()
         {
+            _sport?.Close();
             if (source != null)
             {
                 source.Cancel();

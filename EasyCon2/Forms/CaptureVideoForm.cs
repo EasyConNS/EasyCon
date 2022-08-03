@@ -120,6 +120,10 @@ namespace EasyCon2.Forms
         public void LoadImgLabels()
         {
             imgLabels.Clear();
+            if (!Directory.Exists(ImgDir))
+            {
+                Directory.CreateDirectory(ImgDir);
+            }
             foreach (var file in Directory.GetFiles(ImgDir, "*.IL"))
             {
                 try
