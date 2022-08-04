@@ -60,16 +60,18 @@ namespace EasyScript.Parsing.Statements
             int keycode = Key.KeyCode;
             if (Duration is ValRegEx)
             {
-                if (Duration is ValRegEx)
-                    throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-                var reg = Duration as ValReg;
-                assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Index));
-                assembler.Add(Assembly.Instructions.AsmKey_Standard.Create(keycode, 0));
-                ReleasePrevious(assembler);
+                if (Duration is ValReg reg)
+                {
+                    assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Index));
+                    assembler.Add(Assembly.Instructions.AsmKey_Standard.Create(keycode, 0));
+                    ReleasePrevious(assembler);
+                    return;
+                }
+                throw new Assembly.AssembleException(ErrorMessage.NotSupported);
             }
-            else if (Duration is ValInstant)
+            else if (Duration is ValInstant dur)
             {
-                int duration = (Duration as ValInstant).Val;
+                int duration = dur.Val;
                 var ins = Assembly.Instructions.AsmKey_Standard.Create(keycode, duration);
                 if (ins.Success)
                 {

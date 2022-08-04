@@ -10,8 +10,8 @@ abstract class StickAction : Statement
     public StickAction(ECKey key, string keyname, string direcion)
     {
         Key = key;
-        KeyName = keyname?.ToUpper();
-        Direction = direcion?.ToUpper();
+        KeyName = keyname.ToUpper();
+        Direction = direcion.ToUpper();
     }
 
     protected void ReleasePrevious(Assembly.Assembler assembler)
@@ -20,6 +20,16 @@ abstract class StickAction : Statement
             return;
         assembler.StickMapping[Key.KeyCode].HoldUntil = assembler.Last();
         assembler.StickMapping.Remove(Key.KeyCode);
+    }
+
+
+    public static int GetDirectionIndex(int x, int y)
+    {
+        if (x == SwitchStick.STICK_CENTER && y == SwitchStick.STICK_CENTER)
+            return -1;
+        x = (int)Math.Round(x / 32d);
+        y = (int)Math.Round(y / 32d);
+        return x >= y ? x + y : 32 - x - y;
     }
 }
 
@@ -51,7 +61,7 @@ class StickPress : StickAction
     public override void Assemble(Assembly.Assembler assembler)
     {
         int keycode = Key.KeyCode;
-        int dindex = NSKeys.GetDirectionIndex(Key);
+        int dindex = GetDirectionIndex(Key.StickX, Key.StickY);
         if (Duration is ValRegEx)
             throw new Assembly.AssembleException(ErrorMessage.NotSupported);
         if (Duration is ValReg reg)
@@ -60,9 +70,9 @@ class StickPress : StickAction
             assembler.Add(Assembly.Instructions.AsmStick_Standard.Create(keycode, dindex, 0));
             ReleasePrevious(assembler);
         }
-        else if (Duration is ValInstant)
+        else if (Duration is ValInstant dur)
         {
-            int duration = (Duration as ValInstant).Val;
+            int duration = dur.Val;
             var ins = Assembly.Instructions.AsmStick_Standard.Create(keycode, dindex, duration);
             if (ins.Success)
             {
@@ -102,7 +112,7 @@ class StickDown : StickAction
 
     public override void Assemble(Assembly.Assembler assembler)
     {
-        assembler.Add(Assembly.Instructions.AsmStick_Hold.Create(Key.KeyCode, NSKeys.GetDirectionIndex(Key)));
+        assembler.Add(Assembly.Instructions.AsmStick_Hold.Create(Key.KeyCode, GetDirectionIndex(Key.StickX, Key.StickY)));
         ReleasePrevious(assembler);
         assembler.StickMapping[Key.KeyCode] = assembler.Last() as Assembly.Instructions.AsmStick_Hold;
     }
@@ -111,7 +121,7 @@ class StickDown : StickAction
 class StickUp : StickAction
 {
     public StickUp(ECKey key, string keyname)
-        : base(key, keyname, null)
+        : base(key, keyname, "")
     { }
 
     public override void Exec(Processor processor)

@@ -104,7 +104,7 @@
                 assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)((Count as ValReg).Index << 4)));
                 assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
             }
-            else
+            else if (Count is ValRegEx)
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
             assembler.Add(Assembly.Instructions.AsmFor.Create());
             assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;

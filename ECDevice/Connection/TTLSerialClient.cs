@@ -27,7 +27,13 @@ class TTLSerialClient : IConnection
 
     Task _t;
     CancellationTokenSource source;
-    CancellationToken token;
+
+
+    TimeSpan _Timeout => TimeSpan.FromMilliseconds(Timeout);
+
+    public double Timeout { get; set; } = 200;
+
+    public bool Connected { get; protected set; }
 
     public override Status CurrentStatus
     {
@@ -57,7 +63,7 @@ class TTLSerialClient : IConnection
         _sayhello = sayhello;
 
         source = new CancellationTokenSource();
-        token = source.Token;
+        var token = source.Token;
         _t = Task.Run(()=>
         {
             Loop();
@@ -67,10 +73,7 @@ class TTLSerialClient : IConnection
 
     public override void Disconnect()
     {
-        if (source != null)
-        {
-            source.Cancel();
-        }
+        source?.Cancel();
     }
 
     void Loop()
@@ -79,11 +82,12 @@ class TTLSerialClient : IConnection
         {
             _sport.Open();
 
+            var stream = _sport.BaseStream;
             // say hello
             if (_sayhello)
             {
                 var hellobytes = new byte[] { Command.Ready, Command.Ready, Command.Hello };
-                _sport.Write(hellobytes, 0, hellobytes.Length);
+                stream.Write(hellobytes, 0, hellobytes.Length);
                 BytesSent?.Invoke(_connStr, hellobytes);
             }
             else
@@ -97,7 +101,7 @@ class TTLSerialClient : IConnection
                 // read
                 if (_sport.BytesToRead > 0)
                 {
-                    int count = _sport.Read(inBuffer, 0, inBuffer.Length);
+                    int count = stream.Read(inBuffer, 0, inBuffer.Length);
 #if DEBUG
                     Debug.WriteLine($"[{_connStr}] " + string.Join(" ", inBuffer.Take(count).Select(b => b.ToString("X2"))));
 #endif
@@ -129,7 +133,7 @@ class TTLSerialClient : IConnection
                 if (outBuffer.Count > 0)
                 {
                     var bytes = outBuffer.ToArray();
-                    _sport.Write(bytes, 0, bytes.Length);
+                    stream.Write(bytes, 0, bytes.Length);
                     BytesSent?.Invoke(_connStr, bytes);
                 }
 

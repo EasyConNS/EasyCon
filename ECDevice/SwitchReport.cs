@@ -28,7 +28,7 @@ namespace ECDevice
             RY = SwitchStick.STICK_CENTER;
         }
 
-        public byte[] GetBytes(bool raw = false)
+        public byte[] GetBytes()
         {
             // Protocal packet structure:
             // bit 7 (highest):    0 = data byte, 1 = end flag
@@ -41,8 +41,6 @@ namespace ECDevice
             serialized.Add(LY);
             serialized.Add(RX);
             serialized.Add(RY);
-            if (raw)
-                return serialized.ToArray();
 
             // generate packet
             var packet = new List<byte>();

@@ -17,7 +17,7 @@ namespace EasyScript.Parsing.Lexers
             return KeyParse(args) ?? MovParse(args);
         }
 
-        private static Statement KeyParse(ParserArgument args)
+        private static Statement? KeyParse(ParserArgument args)
         {
             ECKey key;
             var m = Regex.Match(args.Text, $"^({GPKey})$", RegexOptions.IgnoreCase);
@@ -47,7 +47,7 @@ namespace EasyScript.Parsing.Lexers
                     return null;
                 return new StickUp(key, keyname);
             }
-            m = Regex.Match(args.Text, @"^([lr]s{1,2})\s+([a-z0-9]+)$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, @"^([lr]s)\s+([a-z0-9]+)$", RegexOptions.IgnoreCase);
             if (m.Success)
             {
                 var keyname = m.Groups[1].Value;
@@ -57,7 +57,7 @@ namespace EasyScript.Parsing.Lexers
                     return null;
                 return new StickDown(key, keyname, direction);
             }
-            m = Regex.Match(args.Text, $@"^([lr]s{{1,2}})\s+([a-z0-9]+)\s*,\s*({Formats.ValueEx})$", RegexOptions.IgnoreCase);
+            m = Regex.Match(args.Text, $@"^([lr]s)\s+([a-z0-9]+)\s*,\s*({Formats.ValueEx})$", RegexOptions.IgnoreCase);
             if (m.Success)
             {
                 var keyname = m.Groups[1].Value;
@@ -71,7 +71,7 @@ namespace EasyScript.Parsing.Lexers
             return null;
         }
 
-        private static Statement MovParse(ParserArgument args)
+        private static Statement? MovParse(ParserArgument args)
         {
             var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)

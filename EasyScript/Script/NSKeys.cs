@@ -34,17 +34,6 @@ static class NSKeys
         return _keyName.GetValueOrDefault(key, string.Empty);
     }
 
-    public static int GetDirectionIndex(ECKey key)
-    {
-        int x = key.StickX;
-        int y = key.StickY;
-        if (x == SwitchStick.STICK_CENTER && y == SwitchStick.STICK_CENTER)
-            return -1;
-        x = (int)Math.Round(x / 32d);
-        y = (int)Math.Round(y / 32d);
-        return x >= y ? x + y : 32 - x - y;
-    }
-
     public static ECKey GetKey(string keyname, string direction = "0")
     {
         var isSlow = keyname.EndsWith("SS", StringComparison.OrdinalIgnoreCase);

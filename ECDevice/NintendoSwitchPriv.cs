@@ -17,7 +17,7 @@ namespace ECDevice
                 _ewh.Set();
         }
 
-        private void Loop(CancellationToken token)
+        void Loop(CancellationToken token)
         {
             int sleep = 0;
             while (true)
@@ -65,7 +65,7 @@ namespace ECDevice
                         }
                     }
                     var log = $"[Send {DateTime.Now:ss.fff}] { _report}";
-                    Log?.Invoke(log);
+                    System.Diagnostics.Debug.WriteLine(log);
                     WriteReport(_report.GetBytes());
                     _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);
                     _ewh.Reset();
