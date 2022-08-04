@@ -6,79 +6,23 @@ namespace ECDevice
 {
     public partial class NintendoSwitch
     {
+        const int MINIMAL_INTERVAL = 30;
+
+        DateTime _nextSendTime = DateTime.MinValue;
+        private readonly EventWaitHandle _ewh = new(false, EventResetMode.ManualReset);
 
         void Signal()
         {
-            if (clientCon == null)
-                return;
-            //PrintTime();
-            else
+            if (this.IsConnected())
                 _ewh.Set();
         }
 
-        bool SendSync(Func<byte, bool> predicate, int timeout = 100, params byte[] bytes)
-        {
-            EventWaitHandle ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
-            void h(string port, byte[] bytes_)
-            {
-                foreach (var b in bytes_)
-                    if (predicate(b))
-                    {
-                        ewh.Set();
-                        break;
-                    }
-            }
-            try
-            {
-                clientCon.BytesReceived += h;
-                clientCon.Write(bytes);
-                if (!ewh.WaitOne(timeout))
-                    return false;
-                return true;
-            }
-            finally
-            {
-                clientCon.BytesReceived -= h;
-            }
-        }
-
-        bool ResetControl()
-        {
-            var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
-            void h(string port, byte[] bytes_)
-            {
-                if (bytes_.Contains(Reply.Hello))
-                    ewh.Set();
-            }
-            try
-            {
-                clientCon.BytesReceived += h;
-                for (int i = 0; i < 3; i++)
-                    clientCon.Write(Command.Ready, Command.Hello);
-                return ewh.WaitOne(50);
-            }
-            finally
-            {
-                clientCon.BytesReceived -= h;
-            }
-        }
-
-        private void Direction(DirectionKey dkey, bool down, ref DirectionKey flags, Func<byte, byte, ECKey> getkey)
-        {
-            if (down)
-                flags |= dkey;
-            else
-                flags &= ~dkey;
-            NSKeyUtil.GetXYFromDirection(flags, out byte x, out byte y);
-            Down(getkey(x, y));
-        }
-
-        private void Loop()
+        void Loop(CancellationToken token)
         {
             int sleep = 0;
             while (true)
             {
-                if (source.Token.IsCancellationRequested)
+                if (token.IsCancellationRequested)
                     return;
                 if (_keystrokes.Count == 0)
                     _ewh.WaitOne();
@@ -94,8 +38,7 @@ namespace ECDevice
                         _report.Reset();
                         _reset = false;
                     }
-                    var values = _keystrokes.Values.ToArray();
-                    foreach (var ks in values)
+                    foreach (var ks in _keystrokes.Values.ToArray())
                     {
                         if (ks.Time > DateTime.Now)
                         {
@@ -121,9 +64,9 @@ namespace ECDevice
                                 _keystrokes.Remove(ks.KeyCode);
                         }
                     }
-                    var log = $"[Send {DateTime.Now:ss.fff}] { _report.GetKeyStr()}";
-                    Log?.Invoke(log);
-                    clientCon.Write(_report.GetBytes());
+                    var log = $"[Send {DateTime.Now:ss.fff}] { _report}";
+                    System.Diagnostics.Debug.WriteLine(log);
+                    WriteReport(_report.GetBytes());
                     _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);
                     _ewh.Reset();
                 }

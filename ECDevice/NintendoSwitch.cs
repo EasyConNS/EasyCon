@@ -7,10 +7,13 @@ using System.Threading.Tasks;
 
 namespace ECDevice
 {
-    public partial class NintendoSwitch
+    public interface IReporter
     {
-        const int MINIMAL_INTERVAL = 30;
-
+        SwitchReport GetReport();
+    }
+    public delegate void LogHandler(string s);
+    public partial class NintendoSwitch : IReporter
+    {
         public enum ConnectResult
         {
             None,
@@ -20,102 +23,40 @@ namespace ECDevice
             Error,
         }
 
-        private IConnClient clientCon { get; set; }
-        SwitchReport _report = new();
-        Dictionary<int, KeyStroke> _keystrokes = new();
+        readonly SwitchReport _report = new();
+        readonly Dictionary<int, KeyStroke> _keystrokes = new();
+
         bool _reset = false;
-
         CancellationTokenSource source = new();
-        EventWaitHandle _ewh = new(false, EventResetMode.ManualReset);
 
-        DateTime _nextSendTime = DateTime.MinValue;
         DirectionKey _leftStick = 0;
         DirectionKey _rightStick = 0;
         DirectionKey _hat = 0;
         bool need_cpu_opt = true;
 
-        public delegate void LogHandler(string s);
         public event LogHandler Log;
-        public event IConnClient.BytesTransferedHandler BytesSent;
-        public event IConnClient.BytesTransferedHandler BytesReceived;
+        public event BytesTransferedHandler BytesSent;
+        public event BytesTransferedHandler BytesReceived;
 
-        private OperationRecords operationRecords = new();
+        private readonly OperationRecords operationRecords = new();
         public RecordState recordState = RecordState.RECORD_STOP;
 
-        public ConnectResult TryConnect(string connStr, bool sayhello)
+        public ConnectResult TryConnect(string constr, bool keepalive)
         {
-            if (connStr == "")
-                return ConnectResult.InvalidArgument;
+            var result = _TryConnect(constr, keepalive);
 
-            var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
-            var result = ConnectResult.None;
-            void statuschanged(Status status)
+            if (result == ConnectResult.Success)
             {
-                lock (ewh)
+                source = new();
+                Task.Run(() =>
                 {
-                    if (result != ConnectResult.None)
-                        return;
-                    if (status == Status.Connected || status == Status.ConnectedUnsafe)
-                    {
-                        result = ConnectResult.Success;
-                        ewh.Set();
-                    }
-                    if (status == Status.Error)
-                    {
-                        result = ConnectResult.Error;
-                        ewh.Set();
-                    }
-                }
+                    Loop(source.Token);
+                },
+                source.Token);
             }
 
-            Disconnect();
-            clientCon = new TTLSerialClient(connStr);
-            clientCon.BytesSent += (port, bytes) => BytesSent?.Invoke(port, bytes);
-            clientCon.BytesReceived += (port, bytes) => BytesReceived?.Invoke(port, bytes);
-            clientCon.CPUOpt = need_cpu_opt;
-            
-            clientCon.StatusChanged += statuschanged;
-            clientCon.Connect(sayhello);
-            if (!ewh.WaitOne(300) && sayhello)
-            {
-                clientCon.Disconnect();
-                clientCon = null;
-                return ConnectResult.Timeout;
-            }
-            if (result != ConnectResult.Success)
-            {
-                clientCon.Disconnect();
-                clientCon = null;
-                return result;
-            }
-            clientCon.StatusChanged -= statuschanged;
-
-            source = new CancellationTokenSource();
-            Task.Run(() =>
-            {
-                Loop();
-            },
-            source.Token);
-
-            return ConnectResult.Success;
+            return result;
         }
-
-        public void Disconnect()
-        {
-            clientCon?.Disconnect();
-            clientCon = null;
-            if (source != null)
-            {
-                source.Cancel();
-            }
-        }
-
-        public bool IsConnected()
-        {
-            return clientCon?.CurrentStatus == Status.Connected || clientCon?.CurrentStatus == Status.ConnectedUnsafe;
-        }
-
-        public Status ConnectionStatus => clientCon?.CurrentStatus ?? Status.Connecting;
 
         public void Reset()
         {
@@ -168,12 +109,20 @@ namespace ECDevice
 
         public void LeftDirection(DirectionKey dkey, bool down)
         {
-            Direction(dkey, down, ref _leftStick, ECKeyUtil.LStick);
+            if (down)
+                _leftStick |= dkey;
+            else
+                _leftStick &= ~dkey;
+            Down(ECKeyUtil.LStick(_leftStick));
         }
 
         public void RightDirection(DirectionKey dkey, bool down)
         {
-            Direction(dkey, down, ref _rightStick, ECKeyUtil.RStick);
+            if (down)
+                _rightStick |= dkey;
+            else
+                _rightStick &= ~dkey;
+            Down(ECKeyUtil.RStick(_rightStick));
         }
 
         public void HatDirection(DirectionKey dkey, bool down)
@@ -181,23 +130,22 @@ namespace ECDevice
             if (down)
             {
                 _hat |= dkey;
-                NSKeyUtil.GetHATFromDirection(_hat);
-                Down(ECKeyUtil.HAT(NSKeyUtil.GetHATFromDirection(_hat)));
+                Down(ECKeyUtil.HAT(_hat));
             }
             else
             {
                 _hat &= ~dkey;
-                if (NSKeyUtil.GetHATFromDirection(_hat) == SwitchHAT.CENTER)
+                if (_hat.GetHATFromDirection() == SwitchHAT.CENTER)
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Up(ECKeyUtil.HAT(NSKeyUtil.GetHATFromDirection(dkey)));
+                    Up(ECKeyUtil.HAT(dkey));
                 }
                 else
                 {
                     Debug.WriteLine("_hat " + _hat.GetName());
                     Debug.WriteLine("dkey " + dkey.GetName());
-                    Down(ECKeyUtil.HAT(NSKeyUtil.GetHATFromDirection(_hat)));
+                    Down(ECKeyUtil.HAT(_hat));
                 }
             }
         }
@@ -208,28 +156,25 @@ namespace ECDevice
             Debug.WriteLine(str);
         }
 
-        public SwitchReport GetReport()
+        SwitchReport IReporter.GetReport()
         {
             return _report.Clone() as SwitchReport;
         }
 
-        public bool StartRecord()
+        public void StartRecord()
         {
             recordState = RecordState.RECORD_START;
             operationRecords.Clear();
-            return true;
         }
 
-        public bool StopRecord()
+        public void StopRecord()
         {
             recordState = RecordState.RECORD_STOP;
-            return true;
         }
 
-        public bool PauseRecord()
+        public void PauseRecord()
         {
             recordState = RecordState.RECORD_PAUSE;
-            return true;
         }
 
         public string GetRecordScript()

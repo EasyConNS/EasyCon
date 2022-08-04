@@ -1,9 +1,5 @@
 <?xml version="1.0"?>
-<SyntaxDefinition name = "NX" extensions = ".nmcx">
-  <Properties>
-    <Property name="LineComment" value="#"/>
-  </Properties>
-  <Digits name = "Digits" bold = "false" italic = "false" color = "DarkBlue"/>
+<SyntaxDefinition name = "ECP" extensions = ".nxec">
   <RuleSets>
     <RuleSet ignorecase = "true">
       <Span name = "LineComment" bold="false" italic="false" color="Green" stopateol = "true">
@@ -19,6 +15,7 @@
       <KeyWords name = "Conditions" bold="true" italic="false" color="Blue">
         <Key word = "FOR" />
         <Key word = "TO" />
+        <Key word = "STEP" />
         <Key word = "NEXT" />
         <Key word = "BREAK" />
         <Key word = "CONTINUE" />
@@ -27,10 +24,8 @@
         <Key word = "ELSE" />
         <Key word = "ENDIF" />
         <Key word = "FUNC" />
-        <Key word = "CALL" />
         <Key word = "RET" />
-        <Key word = "@" />
-        <Key word = "_" />
+        <Key word = "CALL" />
       </KeyWords>
       <KeyWords name = "Buttons" bold="true" italic="false" color="Red">
         <Key word = "A" />

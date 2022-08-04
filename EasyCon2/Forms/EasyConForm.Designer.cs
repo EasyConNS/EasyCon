@@ -50,7 +50,6 @@
             this.显示调试信息ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.cPU优化设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.脚本自动运行ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.频道推送ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.频道远程ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.蓝牙ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.设备驱动配置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -106,7 +105,7 @@
             // 
             // menuStrip1
             // 
-            this.menuStrip1.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.menuStrip1.Font = new System.Drawing.Font("Microsoft YaHei", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.文件ToolStripMenuItem,
             this.脚本ToolStripMenuItem,
@@ -243,7 +242,6 @@
             this.显示调试信息ToolStripMenuItem,
             this.cPU优化设置ToolStripMenuItem,
             this.脚本自动运行ToolStripMenuItem,
-            this.频道推送ToolStripMenuItem,
             this.频道远程ToolStripMenuItem});
             this.设置ToolStripMenuItem.Name = "设置ToolStripMenuItem";
             this.设置ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
@@ -252,14 +250,14 @@
             // 推送设置ToolStripMenuItem
             // 
             this.推送设置ToolStripMenuItem.Name = "推送设置ToolStripMenuItem";
-            this.推送设置ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.推送设置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.推送设置ToolStripMenuItem.Text = "推送设置";
             this.推送设置ToolStripMenuItem.Click += new System.EventHandler(this.推送设置ToolStripMenuItem_Click);
             // 
             // 显示调试信息ToolStripMenuItem
             // 
             this.显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             this.显示调试信息ToolStripMenuItem.Click += new System.EventHandler(this.显示调试信息ToolStripMenuItem_Click);
             // 
@@ -268,7 +266,7 @@
             this.cPU优化设置ToolStripMenuItem.Checked = true;
             this.cPU优化设置ToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.cPU优化设置ToolStripMenuItem.Name = "cPU优化设置ToolStripMenuItem";
-            this.cPU优化设置ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.cPU优化设置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.cPU优化设置ToolStripMenuItem.Text = "CPU优化";
             this.cPU优化设置ToolStripMenuItem.Click += new System.EventHandler(this.CPU优化设置ToolStripMenuItem_Click);
             // 
@@ -277,21 +275,14 @@
             this.脚本自动运行ToolStripMenuItem.Checked = true;
             this.脚本自动运行ToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.脚本自动运行ToolStripMenuItem.Name = "脚本自动运行ToolStripMenuItem";
-            this.脚本自动运行ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.脚本自动运行ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.脚本自动运行ToolStripMenuItem.Text = "烧录自动运行";
             this.脚本自动运行ToolStripMenuItem.Click += new System.EventHandler(this.脚本自动运行ToolStripMenuItem_Click);
-            // 
-            // 频道推送ToolStripMenuItem
-            // 
-            this.频道推送ToolStripMenuItem.Name = "频道推送ToolStripMenuItem";
-            this.频道推送ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
-            this.频道推送ToolStripMenuItem.Text = "频道推送设置";
-            this.频道推送ToolStripMenuItem.Click += new System.EventHandler(this.频道推送ToolStripMenuItem_Click);
             // 
             // 频道远程ToolStripMenuItem
             // 
             this.频道远程ToolStripMenuItem.Name = "频道远程ToolStripMenuItem";
-            this.频道远程ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.频道远程ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.频道远程ToolStripMenuItem.Text = "频道远程控制启动";
             this.频道远程ToolStripMenuItem.Click += new System.EventHandler(this.频道远程ToolStripMenuItem_Click);
             // 
@@ -415,7 +406,6 @@
             // 
             this.richTextBoxMessage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
             this.richTextBoxMessage.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.richTextBoxMessage.Cursor = System.Windows.Forms.Cursors.Arrow;
             this.richTextBoxMessage.ForeColor = System.Drawing.Color.White;
             this.richTextBoxMessage.Location = new System.Drawing.Point(6, 14);
             this.richTextBoxMessage.Name = "richTextBoxMessage";
@@ -535,7 +525,6 @@
             // 
             // textBoxFirmware
             // 
-            this.textBoxFirmware.Cursor = System.Windows.Forms.Cursors.Default;
             this.textBoxFirmware.Location = new System.Drawing.Point(19, 55);
             this.textBoxFirmware.Name = "textBoxFirmware";
             this.textBoxFirmware.ReadOnly = true;
@@ -625,7 +614,7 @@
             this.buttonSerialPortConnect.Name = "buttonSerialPortConnect";
             this.buttonSerialPortConnect.Size = new System.Drawing.Size(114, 32);
             this.buttonSerialPortConnect.TabIndex = 30;
-            this.buttonSerialPortConnect.Text = "连接单片机(手动)";
+            this.buttonSerialPortConnect.Text = "手动连接";
             this.buttonSerialPortConnect.UseVisualStyleBackColor = true;
             this.buttonSerialPortConnect.Click += new System.EventHandler(this.buttonSerialPortConnect_Click);
             // 
@@ -635,7 +624,7 @@
             this.buttonSerialPortSearch.Name = "buttonSerialPortSearch";
             this.buttonSerialPortSearch.Size = new System.Drawing.Size(150, 32);
             this.buttonSerialPortSearch.TabIndex = 29;
-            this.buttonSerialPortSearch.Text = "自动搜索端口(推荐)";
+            this.buttonSerialPortSearch.Text = "自动连接(推荐)";
             this.buttonSerialPortSearch.UseVisualStyleBackColor = true;
             this.buttonSerialPortSearch.Click += new System.EventHandler(this.buttonSerialPortSearch_Click);
             // 
@@ -709,7 +698,7 @@
             this.Controls.Add(this.groupBoxScript);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.menuStrip1);
-            this.Font = new System.Drawing.Font("微软雅黑", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.Font = new System.Drawing.Font("Microsoft YaHei", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.KeyPreview = true;
             this.MainMenuStrip = this.menuStrip1;
@@ -804,7 +793,6 @@
         private ToolStripMenuItem 推送设置ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙ToolStripMenuItem;
         private ToolStripMenuItem 设备驱动配置ToolStripMenuItem;
-        private ToolStripMenuItem 频道推送ToolStripMenuItem;
         private ToolStripMenuItem 频道远程ToolStripMenuItem;
     }
 }

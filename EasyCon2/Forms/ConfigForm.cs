@@ -4,49 +4,35 @@ namespace EasyCon2.Forms
 {
     public partial class ConfigForm : Form
     {
-        public enum TokenType
-        {
-            pushplus,
-            channel,
-        }
+        public VControllerConfig Config => _config;
+        private readonly VControllerConfig _config;
 
-
-        private readonly VControllerConfig Config;
-        public string TokenString => TokenBox.Text;
-        private TokenType tokenType;
-        public ConfigForm(VControllerConfig cfg, TokenType type)
+        public ConfigForm(VControllerConfig cfg)
         {
             InitializeComponent();
-            tokenType = type;
-            Config = cfg;
-        }
 
-        private void ConfigForm_Load(object sender, EventArgs e)
-        {
-            if(tokenType == TokenType.pushplus)
-            {
-                TokenBox.Text = Config.AlertToken;
-            }
-            else
-            {
-                TokenBox.Text = Config.ChannelToken;
-            }
+            _config = cfg;
+
+            PPTokenBox.DataBindings.Add(new Binding("Text", _config, "AlertToken"));
+            QQTokenBox.DataBindings.Add(new Binding("Text", _config, "ChannelToken"));
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            if(TokenBox.Text == "")
+            if(_config.AlertToken == "")
             {
-                MessageBox.Show("Token不能为空");
+                MessageBox.Show("pushlus推送Token不能为空");
                 return;
             }
-            if(tokenType == TokenType.pushplus)
+            if (_config.ChannelToken == "")
             {
-                if (TokenBox.Text.Length != 32)
-                {
-                    MessageBox.Show("Token格式不正确，请仔细检查");
-                    return;
-                }
+                MessageBox.Show("频道推送Token不能为空");
+                return;
+            }
+            if (_config.CheckPPToken())
+            {
+                MessageBox.Show("pushlus推送Token格式不正确，请仔细检查");
+                return;
             }
             else
             {
@@ -55,7 +41,6 @@ namespace EasyCon2.Forms
 
             DialogResult = DialogResult.OK;
             Close();
-
         }
     }
 }

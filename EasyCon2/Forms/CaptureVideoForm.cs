@@ -81,10 +81,6 @@ namespace EasyCon2.Forms
             {
                 Directory.CreateDirectory(CapDir);
             }
-            if (!Directory.Exists(ImgDir))
-            {
-                Directory.CreateDirectory(ImgDir);
-            }
 
             foreach (var method in ImgLabelExt.GetAllSearchMethod())
             {
@@ -119,6 +115,11 @@ namespace EasyCon2.Forms
 
         public void LoadImgLabels()
         {
+            if (!Directory.Exists(ImgDir))
+            {
+                Directory.CreateDirectory(ImgDir);
+            }
+
             imgLabels.Clear();
             if (!Directory.Exists(ImgDir))
             {

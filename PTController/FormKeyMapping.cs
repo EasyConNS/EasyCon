@@ -6,13 +6,15 @@ namespace PTController
 {
     public partial class FormKeyMapping : Form
     {
-        Dictionary<CheckBox, string> _dict = new();
+        readonly Dictionary<CheckBox, string> _dict = new();
 
-        public KeyMapping KeyMapping;
+        public KeyMapping KeyMapping { get; set; }
 
-        public FormKeyMapping()
+        public FormKeyMapping(KeyMapping mapping)
         {
             InitializeComponent();
+
+            KeyMapping = mapping;
 
             _dict[checkBoxA] = "A";
             _dict[checkBoxB] = "B";
@@ -57,9 +59,9 @@ namespace PTController
             }
         }
 
-        CheckBox _currentBox = null;
+        CheckBox? _currentBox = null;
         bool _changing = false;
-        void Check(CheckBox checkBox)
+        void Check(CheckBox? checkBox)
         {
             if (_changing)
                 return;
@@ -74,6 +76,8 @@ namespace PTController
         {
             if (_currentBox != null)
             {
+                if (key == Keys.Escape)
+                    key = Keys.None;
                 object obj = KeyMapping;
                 typeof(KeyMapping).GetProperty(_dict[_currentBox]).SetValue(obj, key);
                 KeyMapping = (KeyMapping)obj;
@@ -113,9 +117,9 @@ namespace PTController
 
     static class Extensions
     {
-        public static string GetName(this Enum self)
+        public static string GetName(this Keys self)
         {
-            return Enum.GetName(self.GetType(), self);
+            return Enum.GetName(typeof(Keys), self) ?? "";
         }
     }
 }

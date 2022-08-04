@@ -42,7 +42,6 @@
             this.ShowInTaskbar = false;
             this.TopMost = true;
             this.Load += new System.EventHandler(this.FormController_Load);
-            this.Paint += new System.Windows.Forms.PaintEventHandler(this.FormController_Paint);
             this.MouseDown += new System.Windows.Forms.MouseEventHandler(this.FormController_MouseDown);
             this.MouseMove += new System.Windows.Forms.MouseEventHandler(this.FormController_MouseMove);
             this.MouseUp += new System.Windows.Forms.MouseEventHandler(this.FormController_MouseUp);
