@@ -65,7 +65,7 @@ namespace EasyCon2.Forms
             InitEditor();
             captureVideo.LoadImgLabels();
 
-            频道远程ToolStripMenuItem.Checked = _config?.ChannelControl ?? true;
+            频道远程ToolStripMenuItem.Checked = _config?.ChannelControl ?? false;
             if(_config?.ChannelControl ?? true)
             {
                 Start_WebSocket();
