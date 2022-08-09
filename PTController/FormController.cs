@@ -57,8 +57,18 @@ namespace PTController
             {
                 while (true)
                 {
-                    Invalidate();
-                    this.BeginInvoke(new Action(() => { Opacity = ControllerEnabled ? 1 : 0.5; }));
+                    try
+                    {
+                        Invalidate();
+                        this.BeginInvoke(new Action(() => {
+                            Opacity = ControllerEnabled ? 1 : 0.5;
+                        }));
+                        
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
                     Thread.Sleep(100);
                 }
             });
