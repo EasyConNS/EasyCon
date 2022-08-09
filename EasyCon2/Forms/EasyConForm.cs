@@ -66,7 +66,7 @@ namespace EasyCon2.Forms
             captureVideo.LoadImgLabels();
 
             频道远程ToolStripMenuItem.Checked = _config?.ChannelControl ?? false;
-            if(_config?.ChannelControl ?? true)
+            if(_config?.ChannelControl ?? false)
             {
                 Start_WebSocket();
             }
@@ -238,7 +238,7 @@ namespace EasyCon2.Forms
                                 string msg = Regex.Replace(temp_msg, @"[\r\n]", "");
                                 if (msg != string.Empty)
                                 {
-                                    ws.SendMsg(new LogResponse(_config.ChannelToken, msg));
+                                    ws?.SendMsg(new LogResponse(_config.ChannelToken, msg));
                                 }
                             }
                             else
