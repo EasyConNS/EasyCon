@@ -250,14 +250,14 @@
             // 推送设置ToolStripMenuItem
             // 
             this.推送设置ToolStripMenuItem.Name = "推送设置ToolStripMenuItem";
-            this.推送设置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.推送设置ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.推送设置ToolStripMenuItem.Text = "推送设置";
             this.推送设置ToolStripMenuItem.Click += new System.EventHandler(this.推送设置ToolStripMenuItem_Click);
             // 
             // 显示调试信息ToolStripMenuItem
             // 
             this.显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             this.显示调试信息ToolStripMenuItem.Click += new System.EventHandler(this.显示调试信息ToolStripMenuItem_Click);
             // 
@@ -266,7 +266,7 @@
             this.cPU优化设置ToolStripMenuItem.Checked = true;
             this.cPU优化设置ToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.cPU优化设置ToolStripMenuItem.Name = "cPU优化设置ToolStripMenuItem";
-            this.cPU优化设置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.cPU优化设置ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.cPU优化设置ToolStripMenuItem.Text = "CPU优化";
             this.cPU优化设置ToolStripMenuItem.Click += new System.EventHandler(this.CPU优化设置ToolStripMenuItem_Click);
             // 
@@ -275,14 +275,14 @@
             this.脚本自动运行ToolStripMenuItem.Checked = true;
             this.脚本自动运行ToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.脚本自动运行ToolStripMenuItem.Name = "脚本自动运行ToolStripMenuItem";
-            this.脚本自动运行ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.脚本自动运行ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.脚本自动运行ToolStripMenuItem.Text = "烧录自动运行";
             this.脚本自动运行ToolStripMenuItem.Click += new System.EventHandler(this.脚本自动运行ToolStripMenuItem_Click);
             // 
             // 频道远程ToolStripMenuItem
             // 
             this.频道远程ToolStripMenuItem.Name = "频道远程ToolStripMenuItem";
-            this.频道远程ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.频道远程ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
             this.频道远程ToolStripMenuItem.Text = "频道远程控制启动";
             this.频道远程ToolStripMenuItem.Click += new System.EventHandler(this.频道远程ToolStripMenuItem_Click);
             // 
@@ -708,7 +708,7 @@
             this.Name = "EasyConForm";
             this.Padding = new System.Windows.Forms.Padding(1);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "伊机控 EasyCon v1.471";
+            this.Text = "伊机控 EasyCon v1.472";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
             this.Load += new System.EventHandler(this.EasyConForm_Load);
             this.Resize += new System.EventHandler(this.EasyConForm_Resize);
