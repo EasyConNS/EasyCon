@@ -16,17 +16,20 @@ public class Lexer
         UnicodeCategory.UppercaseLetter
     };
 
-    private List<TokenInfo> rules = new List<TokenInfo>();
+    private List<TokenInfo> rules = new();
+    private List<Token> tokens = new();
 
-    public readonly Token lineToken = new("-NEWLINE-", -1);
+    public readonly Token lineToken = new("NEWLINE", -1);
 
     private readonly Regex ignores = new("[\u0020\u0009\u000B\u000C]");// whitespace
     private readonly Regex linebreak = new(@"\r\n"+"|[\u000D\u000A\u0085\u2028\u2029]");
     private readonly StringBuilder output = new();
 
-    public ICollection<TokenInfo> GetTokens()
+    public ICollection<Token> GetTokens() => tokens;
+
+    public Lexer()
     {
-        return rules;
+        tokens.Add(lineToken);
     }
 
     public Token DefineToken(string definition, string description)
@@ -37,6 +40,7 @@ public class Lexer
         var tag = new Token(description, rules.Count);
         var token = new TokenInfo(reg, tag);
         rules.Add(token);
+        tokens.Add(tag);
         return tag;
     }
 

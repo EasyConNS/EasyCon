@@ -15,6 +15,7 @@ static class ECParser
 
     public static void OnDefineLexer(Lexer lexer)
     {
+        lexer.DefineToken("\"" + inputchar +"\"$", "STRING");
         lexer.DefineToken("#" + inputchar, "COMMENT");
         #region key words
         {
@@ -27,6 +28,7 @@ static class ECParser
         {
             lexer.DefineToken("for", "FOR");
             lexer.DefineToken("to", "TO");
+            lexer.DefineToken("in", "IN");
             lexer.DefineToken("step", "STEP");
             lexer.DefineToken("next", "NEXT");
             lexer.DefineToken("break", "BREAK");
@@ -35,6 +37,7 @@ static class ECParser
         {
             lexer.DefineToken("func", "FUNCDEF");
             lexer.DefineToken("ret", "RETURN");
+            lexer.DefineToken("endfunc", "FUNCEND");
             lexer.DefineToken("call", "CALL(R");
         }
         #endregion

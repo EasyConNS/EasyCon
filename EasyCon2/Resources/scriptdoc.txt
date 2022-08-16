@@ -121,9 +121,9 @@ NEXT
 
 【函数定义】
 语法：
-FUNC 函数名
+FUNC 函数名  #函数名只能使用英文，且大小写敏感
 ...语句
-RET
+ENDFUNC
 调用语法：
 CALL 函数名
 
@@ -133,7 +133,7 @@ for 3
 a
 500
 next
-RET ## 结束函数定义
+ENDFUNC ## 结束函数定义
 ## 在需要执行函数的地方写如下CALL语句
 CALL loop
 
