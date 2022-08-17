@@ -93,7 +93,7 @@ public static class ECParser
             G_RESET = lexer.DefineToken("reset", "RESET(R)");
             G_DPAD = lexer.DefineToken("LEFT|^RIGHT|^UP|^DOWN", "KEY_DPAD");
             G_STICK = lexer.DefineToken("[LR]S{1,2}", "KEY_STICK");
-            G_BTN = lexer.DefineToken("[ABXYLR]|^Z[LR]|^[LR]CLICK|^HOME|^CAPTURE|^PLUS|^MINUS", "KEY_GAMEPAD");
+            G_BTN = lexer.DefineToken("Z[LR]|^[LR]CLICK|^HOME|^CAPTURE|^PLUS|^MINUS|^[ABXYLR]", "KEY_GAMEPAD");
         }
         #endregion
         #region symbols

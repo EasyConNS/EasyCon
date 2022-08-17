@@ -23,6 +23,7 @@ namespace EasyCon2.Forms
 {
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter, ICGamePad
     {
+        private readonly Version VER = new(1,47,2);
         private readonly TextEditor textBoxScript = new();
         internal readonly FormController formController;
 
@@ -90,6 +91,7 @@ namespace EasyCon2.Forms
 
         private void EasyConForm_Load(object sender, EventArgs e)
         {
+            this.Text = $"伊机控 EasyCon v{VER}  QQ群:946057081";
             textBoxScriptHelp.Text = Resources.scriptdoc;
             comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
             comboBoxBoardType.SelectedIndex = 0;
