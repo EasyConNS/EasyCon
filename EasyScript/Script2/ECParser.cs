@@ -2,7 +2,7 @@
 
 namespace ECP.Parser;
 
-static class ECParser
+public static class ECParser
 {
     // idents
     // need escape: $ () * + . [] ? \ ^ {} |
@@ -36,7 +36,7 @@ static class ECParser
         }
         {
             lexer.DefineToken("func", "FUNCDEF");
-            lexer.DefineToken("ret", "RETURN");
+            lexer.DefineToken("return", "RETURN");
             lexer.DefineToken("endfunc", "FUNCEND");
             lexer.DefineToken("call", "CALL(R");
         }
@@ -72,7 +72,7 @@ static class ECParser
             lexer.DefineToken(consts, "CONST");
             lexer.DefineToken(vars, "VARIABLE");
             lexer.DefineToken(extVars, "EXVAR");
-            lexer.DefineToken(@"\d+", "NUM");
+            lexer.DefineToken(@"-?\d+", "NUM");
         }
         #endregion
         // must be the last
