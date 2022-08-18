@@ -7,9 +7,8 @@ namespace EasyScript.Parsing
         readonly Formatter _formatter;
 
         static readonly List<IStatementParser> _parsers = new();
-        static readonly Compiler.Scanners.Lexer lexer = new();
 
-        public static Compiler.Scanners.Lexer Lexer => lexer;
+        public ECP.ECScript ECParser = new();
 
         static Parser()
         {
@@ -25,8 +24,6 @@ namespace EasyScript.Parsing
                 if (activate != null)
                     _parsers.Add(activate);
             }
-
-            ECP.Parser.ECParser.OnDefineLexer(lexer);
         }
 
         public Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
@@ -72,7 +69,7 @@ namespace EasyScript.Parsing
             System.Diagnostics.Debug.WriteLine("v2 start---");
             try
             {
-                foreach (var t in lexer.Parse(text))
+                foreach (var t in ECParser.Parse(text))
                 {
                     System.Diagnostics.Debug.WriteLine(t);
                 }

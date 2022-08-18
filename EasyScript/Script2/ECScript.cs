@@ -1,8 +1,10 @@
 ﻿using Compiler.Scanners;
+using Compiler.Parsers;
+using ECP.Ast;
 
-namespace ECP.Parser;
+namespace ECP;
 
-public static class ECParser
+public class ECScript : ParserBase<Program>
 {
     // idents
     // need escape: $ () * + . [] ? \ ^ {} |
@@ -13,52 +15,52 @@ public static class ECParser
 
     const string inputchar = "[^\u000D\u000A\u0085\u2028\u2029]*";
 
-    public static Token K_IF;
-    public static Token K_ELIF;
-    public static Token K_ELSE;
-    public static Token K_ENDIF;
-    public static Token K_FOR;
-    public static Token K_TO;
-    public static Token K_IN;
-    public static Token K_STEP;
-    public static Token K_NEXT;
-    public static Token K_BRK;
-    public static Token K_CONTU;
-    public static Token K_FUNC;
-    public static Token K_RET;
-    public static Token K_ENDFUNC;
-    public static Token K_CALL;
+    private Token K_IF;
+    private Token K_ELIF;
+    private Token K_ELSE;
+    private Token K_ENDIF;
+    private Token K_FOR;
+    private Token K_TO;
+    private Token K_IN;
+    private Token K_STEP;
+    private Token K_NEXT;
+    private Token K_BRK;
+    private Token K_CONTU;
+    private Token K_FUNC;
+    private Token K_RET;
+    private Token K_ENDFUNC;
+    private Token K_CALL;
 
-    public static Token G_WAIT;
-    public static Token G_RESET;
-    public static Token G_DPAD;
-    public static Token G_STICK;
-    public static Token G_BTN;
+    private Token G_WAIT;
+    private Token G_RESET;
+    private Token G_DPAD;
+    private Token G_STICK;
+    private Token G_BTN;
 
-    public static Token O_AND;
-    public static Token O_OR;
-    public static Token O_NOT;
-    public static Token O_ARH;
-    public static Token O_SHFT;
-    public static Token O_LPH;
-    public static Token O_RPH;
-    public static Token O_LBK;
-    public static Token O_RBK;
-    public static Token O_COMA;
-    public static Token O_DOT;
+    private Token O_AND;
+    private Token O_OR;
+    private Token O_NOT;
+    private Token O_ARH;
+    private Token O_SHFT;
+    private Token O_LPH;
+    private Token O_RPH;
+    private Token O_LBK;
+    private Token O_RBK;
+    private Token O_COMA;
+    private Token O_DOT;
 
-    public static Token V_CONST;
-    public static Token V_VAR;
-    public static Token V_EXVAR;
-    public static Token V_NUM;
+    private Token V_CONST;
+    private Token V_VAR;
+    private Token V_EXVAR;
+    private Token V_NUM;
 
-    public static Token S_STR;
-    public static Token S_COMMENT;
-    public static Token T_IDENT;
+    private Token S_STR;
+    private Token S_COMMENT;
+    private Token T_IDENT;
 
-    public static Token T_NEWLINE;
+    private Token T_NEWLINE;
 
-    public static void OnDefineLexer(Lexer lexer)
+    protected override void OnDefineLexer(Lexer lexer)
     {
         S_STR = lexer.DefineToken("\"" + inputchar +"\"$", "STRING");
         S_COMMENT = lexer.DefineToken("#" + inputchar, "COMMENT");
@@ -123,5 +125,10 @@ public static class ECParser
         #endregion
         // must be the last
         T_IDENT = lexer.DefineToken(_ident, "IDENT");
+    }
+
+    protected override ProductionBase<Program> OnDefineParser()
+    {
+        return new Production<Program>();
     }
 }

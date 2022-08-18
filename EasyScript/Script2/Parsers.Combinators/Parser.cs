@@ -1,4 +1,4 @@
-namespace Compiler.Parsers;
+namespace Compiler.Parsers.Combinators;
 
 public delegate Result<T> ParserFunc<T>(ForkableScanner scanner, ParserContext context);
 public delegate ParserFunc<TFuture> Future<in T, TFuture>(T value);
