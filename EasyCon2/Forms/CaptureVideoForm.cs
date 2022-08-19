@@ -531,7 +531,7 @@ namespace EasyCon2.Forms
 
             if (snapshotMode == SnapshotMode.ThridObjSelect)
             {
-                if (SnapshotRangeR.Width <= 0 || SnapshotRangeR.Height <= 0)
+                if (SnapshotSearchObjR.Width <= 0 || SnapshotSearchObjR.Height <= 0)
                 {
                     MessageBox.Show("搜索目标太小，请重新圈选");
                     return;
