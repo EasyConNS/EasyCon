@@ -40,6 +40,10 @@ public abstract class ParserBase<T>
             OnInitialize();
         }
 
-        return m_lexer.Parse(source);
+        foreach(var t in m_lexer.Parse(source))
+        {
+            // TODO
+            yield return t;
+        }
     }
 }

@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Compiler.Scanners;
 
 public record Lexeme
