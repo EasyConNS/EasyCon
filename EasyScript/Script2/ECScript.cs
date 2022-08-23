@@ -135,12 +135,30 @@ public class ECScript : ParserBase<Program>
     }
 
     private Production<Program> PProgram = new();
+    private Production<Statement> PStatement = new();
+    private Production<Statement> PConstDefine = new();
+    private Production<Statement> PForWhile = new();
 
     protected override ProductionBase<Program> OnDefineParser()
     {
         PProgram.Rule = 
-            from expr in V_CONST
+            from statements in PStatement.Many()
             select new Program();
+        
+        PStatement.Rule =
+            PForWhile |
+            PConstDefine;
+        
+        PConstDefine.Rule =
+            from constVal in V_CONST
+            from mov in O_MOV
+            from number in V_NUM
+            select (Statement)new ConstDefine();
+        
+        PForWhile.Rule =
+            from _for in K_FOR
+            from _next in K_NEXT
+            select (Statement)new ForWhile();
 
         return PProgram;
     }

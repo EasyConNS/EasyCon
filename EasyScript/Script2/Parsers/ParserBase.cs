@@ -1,3 +1,4 @@
+using Compiler.Parsers.Generator;
 using Compiler.Scanners;
 
 namespace Compiler.Parsers;
@@ -5,6 +6,8 @@ namespace Compiler.Parsers;
 public abstract class ParserBase<T>
 {
     private bool m_isInitialized = false;
+
+    private ProductionInfoManager m_productionInfoManager;
 
     private Lexer m_lexer;
 
@@ -20,6 +23,7 @@ public abstract class ParserBase<T>
         {
             throw new InvalidOperationException("Root producton is not defined");
         }
+        m_productionInfoManager = new ProductionInfoManager(production);
 
         m_isInitialized = true;
     }
@@ -39,10 +43,16 @@ public abstract class ParserBase<T>
         {
             OnInitialize();
         }
-
-        foreach(var t in m_lexer.Parse(source))
+        foreach(var p in  m_productionInfoManager.Productions)
         {
             // TODO
+            //var result = p.Accept(null, t);
+            Console.WriteLine($"{p}");
+        }
+
+        foreach(var t in  m_lexer.Parse(source))
+        {
+            
             yield return t;
         }
     }
