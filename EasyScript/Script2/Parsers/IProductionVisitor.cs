@@ -4,6 +4,8 @@ public interface IProductionVisitor<TArg, TResult>
 {
     TResult VisitTerminal(Terminal terminal, TArg argument);
 
+    TResult VisitMapping<TSource, TReturn>(MappingProduction<TSource, TReturn> mappingProduction, TArg argument);
+
     TResult VisitEmpty<T>(EmptyProduction<T> emptyProduction, TArg argument);
 
     TResult VisitAlternation<T>(AlternationProduction<T> alternationProduction, TArg argument);

@@ -62,7 +62,6 @@ public class ECScript : ParserBase<Program>
     private Token S_STR;
     private Token S_COMMENT;
     private Token T_IDENT;
-
     private Token T_NEWLINE;
 
     protected override void OnDefineLexer(Lexer lexer)
@@ -135,8 +134,14 @@ public class ECScript : ParserBase<Program>
         T_IDENT = lexer.DefineToken(_ident, "IDENT");
     }
 
+    private Production<Program> PProgram = new();
+
     protected override ProductionBase<Program> OnDefineParser()
     {
-        return new Production<Program>();
+        PProgram.Rule = 
+            from expr in V_CONST
+            select new Program();
+
+        return PProgram;
     }
 }
