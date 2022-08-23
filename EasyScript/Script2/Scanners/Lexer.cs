@@ -16,9 +16,8 @@ public class Lexer
         UnicodeCategory.UppercaseLetter
     };
 
-    private List<TokenInfo> rules = new();
-    private List<Token> tokens = new();
-
+    private readonly List<Token> tokens = new();
+    public Lexicon Lexicon { get;init; }
     public readonly Token lineToken = new("NEWLINE", -1);
 
     private readonly Regex ignores = new("[\u0020\u0009\u000B\u000C]");// whitespace
@@ -27,21 +26,18 @@ public class Lexer
 
     public ICollection<Token> GetTokens() => tokens;
 
-    public Lexer()
+    public Lexer(Lexicon lexicon)
     {
+        Lexicon = lexicon;
         tokens.Add(lineToken);
     }
 
     public Token DefineToken(string definition, string description)
     {
-        var contains = rules.Exists(r=>r.Tag.Description == description);
-        if (contains) throw new ArgumentException("duplicate token defined!");
-        var reg = new Regex("^" + definition, RegexOptions.IgnoreCase);
-        var tag = new Token(description, rules.Count);
-        var token = new TokenInfo(reg, tag);
-        rules.Add(token);
-        tokens.Add(tag);
-        return tag;
+        var tokenInfo = Lexicon.AddToken(definition, description);
+        tokens.Add(tokenInfo.Tag);
+
+        return tokenInfo.Tag;
     }
 
     public IEnumerable<Lexeme> Parse(string text)
@@ -70,7 +66,7 @@ public class Lexer
                 Token? token = null;
                 System.Diagnostics.Debug.WriteLine($"matching:{line[position..]}");
 
-                foreach (var rule in rules)
+                foreach (var rule in Lexicon.GetTokens())
                 {
                     var m = rule.Match(line[position..]);
                     if (m.Success)

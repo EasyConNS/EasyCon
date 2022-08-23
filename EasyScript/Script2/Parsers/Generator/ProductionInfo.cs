@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Compiler.Parsers.Generator;
 
 public class ProductionInfo

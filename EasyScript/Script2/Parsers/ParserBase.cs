@@ -9,13 +9,13 @@ public abstract class ParserBase<T>
 
     private ProductionInfoManager m_productionInfoManager;
 
-    private Lexer m_lexer;
+    private Lexicon m_lexicon;
 
     private void OnInitialize()
     {
-        m_lexer = new();
+        m_lexicon = new();
 
-        OnDefineLexer(m_lexer);
+        OnDefineLexer(m_lexicon);
 
         var production = OnDefineParser();
 
@@ -28,7 +28,7 @@ public abstract class ParserBase<T>
         m_isInitialized = true;
     }
 
-    protected abstract void OnDefineLexer(Lexer lexer);
+    protected abstract void OnDefineLexer(Lexicon lexicon);
 
     protected abstract ProductionBase<T> OnDefineParser();
 
@@ -50,7 +50,7 @@ public abstract class ParserBase<T>
             Console.WriteLine($"{p}");
         }
 
-        foreach(var t in  m_lexer.Parse(source))
+        foreach(var t in m_lexicon.Lexer.Parse(source))
         {
             
             yield return t;

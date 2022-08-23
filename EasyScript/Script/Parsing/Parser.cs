@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Text;
+using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing
 {
@@ -60,6 +61,34 @@ namespace EasyScript.Parsing
             }
         }
 
+        private static string compat(string text)
+        {
+            var builder = new StringBuilder();
+            var lines = Regex.Split(text, "\r\n|\r|\n");
+            foreach (var line in lines)
+            {
+                var _text = line.Trim();
+                var m = Regex.Match(_text, @"(\s*#.*)$");
+                if (m.Success)
+                {
+                    var comment = m.Groups[1].Value;
+                    _text = line[..^comment.Length];
+                }
+                if (_text == string.Empty) continue;
+                var mp = Regex.Match(_text, @"^print\s+(.*)$", RegexOptions.IgnoreCase);
+                if (mp.Success)
+                {
+                    builder.Append($"print \"{mp.Groups[1].Value}\"");
+                }
+                else
+                {
+                    builder.Append(_text);
+                }
+                builder.Append("\r\n");
+            }
+            return builder.ToString();
+        }
+
         public List<Statement> Parse(string text)
         {
             var list = new List<Statement>();
@@ -69,7 +98,7 @@ namespace EasyScript.Parsing
             System.Diagnostics.Debug.WriteLine("v2 start---");
             try
             {
-                foreach (var t in ECParser.Parse(text))
+                foreach (var t in ECParser.Parse(compat(text)))
                 {
                     System.Diagnostics.Debug.WriteLine(t);
                 }

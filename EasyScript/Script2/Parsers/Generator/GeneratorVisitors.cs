@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Compiler.Parsers.Generator;
 
 internal class ProductionAggregationVisitor : IProductionVisitor<List<IProduction>, List<IProduction>>

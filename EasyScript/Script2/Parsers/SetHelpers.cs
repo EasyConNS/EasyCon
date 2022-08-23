@@ -14,22 +14,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Collections.Generic;
+namespace Compiler.Parsers;
 
-namespace Compiler.Parsers
+internal static class SetHelpers
 {
-    internal static class SetHelpers
+    internal static bool UnionCheck<T>(this ISet<T> set, IEnumerable<T> toUnion)
     {
-        internal static bool UnionCheck<T>(this ISet<T> set, IEnumerable<T> toUnion)
+        bool changed = false;
+
+        foreach (var item in toUnion)
         {
-            bool changed = false;
-
-            foreach (var item in toUnion)
-            {
-                changed = set.Add(item) || changed;
-            }
-
-            return changed;
+            changed = set.Add(item) || changed;
         }
+
+        return changed;
     }
 }
