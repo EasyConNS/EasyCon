@@ -141,7 +141,7 @@ public partial class NintendoSwitch
             {
                 if (!SendSync(
                         b => b == Reply.FlashStart,
-                        200,
+                        1000,
                         Command.Ready,
                         (byte)(i & 0x7F),
                         (byte)(i >> 7),
@@ -150,7 +150,7 @@ public partial class NintendoSwitch
                         Command.Flash)
                     || !SendSync(
                         b => b == Reply.FlashEnd,
-                        200,
+                        1000,
                         packet)
                     )
                 {
