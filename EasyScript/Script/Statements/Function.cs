@@ -64,7 +64,7 @@
         public string Label;
         protected override string _GetString(Formatter formatter)
         {
-            return "RET";
+            return "ENDFUNC";
         }
 
         public override void Exec(Processor processor)

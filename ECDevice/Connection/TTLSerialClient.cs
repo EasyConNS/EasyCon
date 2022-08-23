@@ -71,10 +71,9 @@ class TTLSerialClient : IConnection
         token);
     }
 
-        public override void Disconnect()
-        {
-            _sport?.Close();
-            source?.Cancel();
+    public override void Disconnect()
+    {
+        source?.Cancel();
     }
 
     void Loop()
@@ -97,7 +96,7 @@ class TTLSerialClient : IConnection
 
             byte[] inBuffer = new byte[255];
             var outBuffer = new List<byte>();
-            while (true)
+            while (!source.IsCancellationRequested)
             {
                 // read
                 if (_sport.BytesToRead > 0)

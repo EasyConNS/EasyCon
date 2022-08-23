@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Compiler.Scanners;
 
 public record Lexeme
@@ -7,9 +5,7 @@ public record Lexeme
     private Lexer lexer  { get; init; }
     public Token Tag { get; init; }
 
-    public int Pos { get; init; }
-    public int Col { get; init; }
-    public int Row { get; init; }
+    public SourceSpan Span { get; init; }
 
     public string Value { get; init; }
 
@@ -18,9 +14,6 @@ public record Lexeme
         Value = value;
         Tag = tag;
         lexer = lex;
-
-        Pos = pos;
-        Col = col;
-        Row = row;
+        Span = new(pos, col, row);
     }
 }

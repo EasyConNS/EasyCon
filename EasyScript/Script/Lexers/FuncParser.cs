@@ -28,7 +28,7 @@ namespace EasyScript.Parsing.Lexers
             m = Regex.Match(args.Text, @"^call\s+(\D[\d\p{L}_]+)$", RegexOptions.IgnoreCase);
             if (m.Success)
                 return new CallStat(m.Groups[1].Value);
-            if (args.Text.Equals("ret", StringComparison.OrdinalIgnoreCase))
+            if (args.Text.Equals("endfunc", StringComparison.OrdinalIgnoreCase))
                 return new ReturnStat();
             return null;
         }

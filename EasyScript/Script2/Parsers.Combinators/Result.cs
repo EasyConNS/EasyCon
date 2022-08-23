@@ -1,4 +1,4 @@
-﻿namespace Compiler.Parsers;
+﻿namespace Compiler.Parsers.Combinators;
 
 public enum ResultType
 {
