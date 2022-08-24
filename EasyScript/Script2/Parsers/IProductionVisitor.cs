@@ -6,6 +6,8 @@ public interface IProductionVisitor<TArg, TResult>
 
     TResult VisitMapping<TSource, TReturn>(MappingProduction<TSource, TReturn> mappingProduction, TArg argument);
 
+    TResult VisitEndOfStream(EndOfStream endOfStream, TArg argument);
+
     TResult VisitEmpty<T>(EmptyProduction<T> emptyProduction, TArg argument);
 
     TResult VisitAlternation<T>(AlternationProduction<T> alternationProduction, TArg argument);

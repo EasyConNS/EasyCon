@@ -32,4 +32,8 @@ public record TokenInfo
     {
         return Definition.Match(input);
     }
+    public string[] Split(string input)
+    {
+        return Definition.Split(input);
+    }
 }

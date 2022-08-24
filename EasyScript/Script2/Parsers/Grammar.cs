@@ -27,6 +27,11 @@ public static class Grammar
         return Terminal.GetTerminal(token);
     }
 
+    public static ProductionBase<Lexeme> Eos()
+    {
+        return EndOfStream.Instance;
+    }
+
     public static ProductionBase<T> Empty<T>(T value)
     {
         return new EmptyProduction<T>(value);

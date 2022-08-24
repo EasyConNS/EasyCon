@@ -1,11 +1,12 @@
-﻿using Compiler;
-using Compiler.Scanners;
-using Compiler.Parsers;
+﻿using VBF.Compilers;
+using VBF.Compilers.Parsers;
+using VBF.Compilers.Scanners;
+using RE = VBF.Compilers.Scanners.RegularExpression;
 using ECP.Ast;
 
 namespace ECP;
 
-public class ECScript : ParserBase<Program>
+public class VBFECScript : ParserBase<Program>
 {
     // idents
     // need escape: $ () * + . [] ? \ ^ {} |
@@ -67,7 +68,7 @@ public class ECScript : ParserBase<Program>
     private Token S_COMMENT;
     private Token S_WHITESPACE;
 
-    public ECScript(CompilationErrorManager errorManager) : base(errorManager) { }
+    public VBFECScript(CompilationErrorManager errorManager) : base(errorManager) { }
 
     protected override void OnDefineLexer(Lexicon lexicon, ICollection<Token> skippedTokens)
     {
@@ -152,7 +153,7 @@ public class ECScript : ParserBase<Program>
     private readonly Production<Statement> PIfElse = new();
     private readonly Production<Statement> PForWhile = new();
 
-    protected override ProductionBase<Program> OnDefineParser()
+    protected override ProductionBase<Program> OnDefineGrammar()
     {
         PProgram.Rule = 
             from statements in PStatement.Many()

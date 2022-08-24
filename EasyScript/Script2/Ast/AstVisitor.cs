@@ -14,6 +14,11 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
+    public virtual AstNode VisitIfElse(IfElse ast)
+    {
+        return ast;
+    }
+
     public virtual AstNode VisitForWhile(ForWhile ast)
     {
         return ast;

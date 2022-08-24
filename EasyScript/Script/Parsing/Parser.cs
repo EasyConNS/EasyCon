@@ -9,7 +9,7 @@ namespace EasyScript.Parsing
 
         static readonly List<IStatementParser> _parsers = new();
 
-        public ECP.ECScript ECParser = new();
+        public ECP.ECScript ECParser = new(new Compiler.CompilationErrorManager());
 
         static Parser()
         {
@@ -68,13 +68,7 @@ namespace EasyScript.Parsing
             foreach (var line in lines)
             {
                 var _text = line.Trim();
-                var m = Regex.Match(_text, @"(\s*#.*)$");
-                if (m.Success)
-                {
-                    var comment = m.Groups[1].Value;
-                    _text = line[..^comment.Length];
-                }
-                if (_text == string.Empty) continue;
+                //if(_text == string.Empty)continue;
                 var mp = Regex.Match(_text, @"^print\s+(.*)$", RegexOptions.IgnoreCase);
                 if (mp.Success)
                 {

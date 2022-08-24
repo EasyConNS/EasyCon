@@ -1,19 +1,22 @@
+using System.Diagnostics;
+
 namespace Compiler.Scanners;
 
+[DebuggerDisplay("Token:{Tag} {Value.ToString()} {Span}")]
 public record Lexeme
 {
-    private Lexer lexer  { get; init; }
-    public Token Tag { get; init; }
+    private Scanner m_scanner  { get; init; }
+    private int m_stateIndex { get; init; }
+    public LexemeValue Value { get; init; }
 
-    public SourceSpan Span { get; init; }
-
-    public string Value { get; init; }
-
-    public Lexeme(string value, Token tag, Lexer lex, int pos, int col, int row)
+    public Lexeme(Scanner scanner, int state, SourceSpan span, string content)
     {
-        Value = value;
-        Tag = tag;
-        lexer = lex;
-        Span = new(pos, col, row);
+        m_scanner = scanner;
+        m_stateIndex = state;
+        Value = new LexemeValue(content, span);
     }
+
+    public SourceSpan Span => Value.Span;
+
+    public bool IsEndOfStream => m_stateIndex == m_scanner.EndOfStreamTokenIndex;
 }

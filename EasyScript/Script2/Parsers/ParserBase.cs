@@ -7,15 +7,27 @@ public abstract class ParserBase<T>
 {
     private bool m_isInitialized = false;
 
+    private CompilationErrorManager m_errorManager;
     private ProductionInfoManager m_productionInfoManager;
 
-    private Lexicon m_lexicon;
+    private readonly List<Token> m_ignoreTokens = new();
+
+    protected ParserBase(CompilationErrorManager errorManager)
+    {
+        CodeContract.RequiresArgumentNotNull(errorManager, "errorManager");
+
+        m_errorManager = errorManager;
+    }
+
+    private readonly Lexicon m_lexicon = new();
+
+    protected abstract void OnDefineLexer(Lexicon lexicon, ICollection<Token> triviaTokens);
+
+    protected abstract ProductionBase<T> OnDefineParser();
 
     private void OnInitialize()
     {
-        m_lexicon = new();
-
-        OnDefineLexer(m_lexicon);
+        OnDefineLexer(m_lexicon, m_ignoreTokens);
 
         var production = OnDefineParser();
 
@@ -25,12 +37,21 @@ public abstract class ParserBase<T>
         }
         m_productionInfoManager = new ProductionInfoManager(production);
 
+        OnDefineParserErrors(m_errorManager);
+
         m_isInitialized = true;
     }
 
-    protected abstract void OnDefineLexer(Lexicon lexicon);
+    protected virtual Scanner CreateScanner()
+    {
+        return m_lexicon.CreateScanner();
+    }
 
-    protected abstract ProductionBase<T> OnDefineParser();
+    protected virtual void OnDefineParserErrors(CompilationErrorManager errorManager)
+    {
+        // TODO
+        //errorManager.DefineError();
+    }
 
     public IEnumerable<Lexeme> Parse(string source)
     {
@@ -39,20 +60,25 @@ public abstract class ParserBase<T>
 
     public IEnumerable<Lexeme> Parse(string source, CancellationToken ctoken)
     {
+        CodeContract.RequiresArgumentNotNull(source, "source");
+
         if (!m_isInitialized)
         {
             OnInitialize();
         }
+
+        var scanner = CreateScanner();
+        scanner.SetSkipTokens(m_ignoreTokens.Select(t => t.Index).ToArray());
+
         foreach(var p in  m_productionInfoManager.Productions)
         {
             // TODO
-            //var result = p.Accept(null, t);
-            Console.WriteLine($"{p}");
+            if (!p.IsTerminal)
+                Console.WriteLine($"{p}");
         }
 
-        foreach(var t in m_lexicon.Lexer.Parse(source))
+        foreach(var t in scanner.Parse(source))
         {
-            
             yield return t;
         }
     }

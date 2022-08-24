@@ -1,3 +1,19 @@
+// Copyright 2012 Fan Shi
+// 
+// This file is part of the VBF project.
+// 
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// 
+//     http://www.apache.org/licenses/LICENSE-2.0
+// 
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 namespace Compiler.Parsers.Generator;
 
 internal class ProductionAggregationVisitor : IProductionVisitor<List<IProduction>, List<IProduction>>
@@ -33,6 +49,24 @@ internal class ProductionAggregationVisitor : IProductionVisitor<List<IProductio
         mappingProduction.Info.Index = Productions.Count;
         mappingProduction.Info.SymbolCount = 1;
         Productions.Add(mappingProduction);
+
+        return Productions;
+    }
+
+    List<IProduction> IProductionVisitor<List<IProduction>, List<IProduction>>.VisitEndOfStream(EndOfStream endOfStream, List<IProduction> Productions)
+    {
+        if (endOfStream.Info != null)
+        {
+            return Productions;
+        }
+
+        endOfStream.Info = new ProductionInfo();
+        endOfStream.Info.First.Add(endOfStream);
+
+        endOfStream.Info.Index = Productions.Count;
+        endOfStream.Info.SymbolCount = 1;
+
+        Productions.Add(endOfStream);
 
         return Productions;
     }
@@ -116,10 +150,10 @@ internal class FirstFollowVisitor : IProductionVisitor<bool, bool>
         return IsChanged;
     }
 
-    //bool IProductionVisitor<bool, bool>.VisitEndOfStream(EndOfStream endOfStream, bool IsChanged)
-    //{
-    //    return IsChanged;
-    //}
+    bool IProductionVisitor<bool, bool>.VisitEndOfStream(EndOfStream endOfStream, bool IsChanged)
+    {
+        return IsChanged;
+    }
 
     bool IProductionVisitor<bool, bool>.VisitEmpty<T>(EmptyProduction<T> emptyProduction, bool IsChanged)
     {
@@ -188,4 +222,126 @@ internal class FirstFollowVisitor : IProductionVisitor<bool, bool>
     }
 
 
+}
+
+internal class DotSymbolVisitor : IProductionVisitor<int, IReadOnlyList<IProduction>>
+{
+    private static readonly IProduction[] s_empty = new IProduction[0];
+
+    IReadOnlyList<IProduction> IProductionVisitor<int, IReadOnlyList<IProduction>>.VisitTerminal(Terminal terminal, int DotLocation)
+    {
+        throw new InvalidOperationException("Terminals are not allowed in LR states");
+    }
+
+    IReadOnlyList<IProduction> IProductionVisitor<int, IReadOnlyList<IProduction>>.VisitMapping<TSource, TReturn>(MappingProduction<TSource, TReturn> mappingProduction, int DotLocation)
+    {
+        if (DotLocation == 0)
+        {
+            return new IProduction[1] { mappingProduction.SourceProduction };
+        }
+        else
+        {
+            return s_empty;
+        }
+    }
+
+    IReadOnlyList<IProduction> IProductionVisitor<int, IReadOnlyList<IProduction>>.VisitEndOfStream(EndOfStream endOfStream, int DotLocation)
+    {
+        throw new InvalidOperationException("Terminal EOS is not allowed in LR states");
+    }
+
+    IReadOnlyList<IProduction> IProductionVisitor<int, IReadOnlyList<IProduction>>.VisitEmpty<T>(EmptyProduction<T> emptyProduction, int DotLocation)
+    {
+        return s_empty;
+    }
+
+    IReadOnlyList<IProduction> IProductionVisitor<int, IReadOnlyList<IProduction>>.VisitAlternation<T>(AlternationProduction<T> alternationProduction, int DotLocation)
+    {
+        if (DotLocation == 0)
+        {
+            return new IProduction[2] { alternationProduction.Production1, alternationProduction.Production2 };
+        }
+        else
+        {
+            return s_empty;
+        }
+    }
+
+    IReadOnlyList<IProduction> IProductionVisitor<int, IReadOnlyList<IProduction>>.VisitConcatenation<T1, T2, TR>(ConcatenationProduction<T1, T2, TR> concatenationProduction, int DotLocation)
+    {
+        switch (DotLocation)
+        {
+            case 0:
+                return new IProduction[1] { concatenationProduction.ProductionLeft };
+            case 1:
+                return new IProduction[1] { concatenationProduction.ProductionRight };
+            default:
+                return s_empty;
+        }
+    }
+}
+
+internal class ItemStringVisitor : IProductionVisitor<int, string>
+{
+
+    string IProductionVisitor<int, string>.VisitTerminal(Terminal terminal, int DotLocation)
+    {
+        throw new NotSupportedException("Terminals do not have item strings");
+    }
+
+    string IProductionVisitor<int, string>.VisitMapping<TSource, TReturn>(MappingProduction<TSource, TReturn> mappingProduction, int DotLocation)
+    {
+        if (DotLocation == 0)
+        {
+            return mappingProduction.DebugName + " ::=." + mappingProduction.SourceProduction.DebugName;
+        }
+        else
+        {
+            return mappingProduction.DebugName + " ::= " + mappingProduction.SourceProduction.DebugName + '.';
+        }
+    }
+
+    string IProductionVisitor<int, string>.VisitEndOfStream(EndOfStream endOfStream, int DotLocation)
+    {
+        throw new NotSupportedException("Terminal EOS does not have an item string");
+    }
+
+    string IProductionVisitor<int, string>.VisitEmpty<T>(EmptyProduction<T> emptyProduction, int DotLocation)
+    {
+        return emptyProduction.ToString() + '.';
+    }
+
+    string IProductionVisitor<int, string>.VisitAlternation<T>(AlternationProduction<T> alternationProduction, int DotLocation)
+    {
+        if (DotLocation == 0)
+        {
+            return String.Format("{0} ::=.({1}|{2})", alternationProduction.DebugName,
+                    alternationProduction.Production1.DebugName,
+                    alternationProduction.Production2.DebugName);
+
+        }
+        else
+        {
+            return String.Format("{0} ::= ({1}|{2}).", alternationProduction.DebugName,
+                    alternationProduction.Production1.DebugName,
+                    alternationProduction.Production2.DebugName);
+        }
+    }
+
+    string IProductionVisitor<int, string>.VisitConcatenation<T1, T2, TR>(ConcatenationProduction<T1, T2, TR> concatenationProduction, int DotLocation)
+    {
+        switch (DotLocation)
+        {
+            case 0:
+                return String.Format("{0} ::=.{1} {2}", concatenationProduction.DebugName,
+                    concatenationProduction.ProductionLeft.DebugName,
+                    concatenationProduction.ProductionRight.DebugName);
+            case 1:
+                return String.Format("{0} ::= {1}.{2}", concatenationProduction.DebugName,
+                    concatenationProduction.ProductionLeft.DebugName,
+                    concatenationProduction.ProductionRight.DebugName);
+            default:
+                return concatenationProduction.ToString() + '.';
+        }
+    }
 }
