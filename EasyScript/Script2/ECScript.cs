@@ -1,21 +1,14 @@
-﻿using Compiler;
-using Compiler.Scanners;
-using Compiler.Parsers;
+﻿using System.Globalization;
+using VBF.Compilers;
+using VBF.Compilers.Parsers.Combinators;
+using VBF.Compilers.Scanners;
+using RE = VBF.Compilers.Scanners.RegularExpression;
 using ECP.Ast;
 
 namespace ECP;
 
-public class ECScript : ParserBase<Program>
+public class ECScript : ParserFrame<Program>
 {
-    // idents
-    // need escape: $ () * + . [] ? \ ^ {} |
-    const string _ident = @"[\d\p{L}_]+";
-    const string consts = @"_" + _ident;
-    const string extVars = "@" + _ident;
-    const string vars = @"\${1,2}[\da-zA-Z_]+";
-
-    const string inputchar = "[^\u000D\u000A\u0085\u2028\u2029]*";
-
     private Token K_IF;
     private Token K_ELIF;
     private Token K_ELSE;
@@ -44,7 +37,6 @@ public class ECScript : ParserBase<Program>
     private Token O_MOV;
     private Token O_ARH;
     private Token O_ARHEQ;
-    private Token O_LOGISY;
     private Token O_NEGI;
     private Token O_SHFTL;
     private Token O_SHFTR;
@@ -67,93 +59,159 @@ public class ECScript : ParserBase<Program>
     private Token S_COMMENT;
     private Token S_WHITESPACE;
 
-    public ECScript(CompilationErrorManager errorManager) : base(errorManager) { }
+    public ECScript(CompilationErrorManager errorManager) : base(errorManager, 101, 201, 202) { }
 
     protected override void OnDefineLexer(Lexicon lexicon, ICollection<Token> skippedTokens)
     {
-        var lexer = lexicon.Lexer;
+        var lettersCategories = new HashSet<UnicodeCategory>()
+        { 
+            UnicodeCategory.LetterNumber,
+            UnicodeCategory.LowercaseLetter,
+            UnicodeCategory.ModifierLetter,
+            UnicodeCategory.OtherLetter,
+            UnicodeCategory.TitlecaseLetter,
+            UnicodeCategory.UppercaseLetter
+        };
 
-        S_STR = lexer.DefineToken("\"" + inputchar +"\"$", "STRING");
-        S_COMMENT = lexer.DefineToken("#" + inputchar, "COMMENT");
-        S_WHITESPACE = lexer.DefineToken("[\u0020\u0009\u000B\u000C]", "WHITESPACE");
+        RE RE_IdChar = null;
+        RE RE_SpaceChar = null;
+        RE RE_InputChar = null;
+
+        CharSetExpressionBuilder charSetBuilder = new CharSetExpressionBuilder();
+
+        charSetBuilder.DefineCharSet(c => lettersCategories.Contains(Char.GetUnicodeCategory(c)), re => RE_IdChar = re | RE.Symbol('_'));
+        charSetBuilder.DefineCharSet(c => Char.GetUnicodeCategory(c) == UnicodeCategory.SpaceSeparator, re => RE_SpaceChar = re);
+        charSetBuilder.DefineCharSet(c => "\u000D\u000A\u0085\u2028\u2029".IndexOf(c) < 0, re => RE_InputChar = re);
+
+        charSetBuilder.Build();
+
+        var lexer = lexicon.Lexer;
+        var literalcase = (string key) => {
+            return RE.Literal(key.ToLower()) | RE.Literal(key.ToUpper());
+        } ;
+
+        S_STR = lexer.DefineToken(RE.Symbol('"') >> RE_InputChar.Many() >> RE.Symbol('"') , "STRING");
+        S_COMMENT = lexer.DefineToken(RE.Symbol('#') >> RE_InputChar.Many(), "COMMENT");
+        S_WHITESPACE = lexer.DefineToken(RE_SpaceChar | RE.CharSet("\u0009\u000B\u000C"));
         
-        T_NEWLINE = lexicon.LineBreaker;
+        T_NEWLINE = lexer.DefineToken(
+            RE.CharSet("\u000D\u000A\u0085\u2028\u2029") |
+            RE.Literal("\r\n")
+        , "NEWLINE");
         #region key words
         {
             // program key words
-            K_IF = lexer.DefineToken("if");
-            K_ELIF = lexer.DefineToken("elif");
-            K_ELSE = lexer.DefineToken("else");
-            K_ENDIF = lexer.DefineToken("endif");
+            K_IF = lexer.DefineToken(literalcase("if"), "IF");
+            K_ELIF = lexer.DefineToken(literalcase("elif"),"ELIF");
+            K_ELSE = lexer.DefineToken(literalcase("else"));
+            K_ENDIF = lexer.DefineToken(literalcase("endif"));
         }
         {
-            K_FOR = lexer.DefineToken("for");
-            K_TO = lexer.DefineToken("to");
-            K_IN = lexer.DefineToken("in", "IN(R");
-            K_STEP = lexer.DefineToken("step");
-            K_NEXT = lexer.DefineToken("next");
-            K_BRK = lexer.DefineToken("break");
-            K_CONTU = lexer.DefineToken("continue");
+            K_FOR = lexer.DefineToken(literalcase("for"));
+            K_TO = lexer.DefineToken(literalcase("to"));
+            K_IN = lexer.DefineToken(literalcase("in"), "IN(R");
+            K_STEP = lexer.DefineToken(literalcase("step"));
+            K_NEXT = lexer.DefineToken(literalcase("next"));
+            K_BRK = lexer.DefineToken(literalcase("break"));
+            K_CONTU = lexer.DefineToken(literalcase("continue"));
         }
         {
-            K_FUNC = lexer.DefineToken("func", "FUNCTION");
-            K_RET = lexer.DefineToken("return");
-            K_ENDFUNC = lexer.DefineToken("endfunc", "FUNCEND");
-            K_CALL = lexer.DefineToken("call", "CALL(R");
+            K_FUNC = lexer.DefineToken(literalcase("func"), "FUNCTION");
+            K_RET = lexer.DefineToken(literalcase("return"));
+            K_ENDFUNC = lexer.DefineToken(literalcase("endfunc"), "FUNCEND");
+            K_CALL = lexer.DefineToken(literalcase("call"), "call");
         }
         #endregion
         #region gamepad key
         {
-            G_WAIT = lexer.DefineToken("wait");
-            G_RESET = lexer.DefineToken("reset", "RESET(R)");
-            G_DPAD = lexer.DefineToken("LEFT|^RIGHT|^UP|^DOWN", "KEY_DPAD");
-            G_STICK = lexer.DefineToken("[LR]S{1,2}", "KEY_STICK");
-            G_BTN = lexer.DefineToken("Z[LR]|^[LR]CLICK|^HOME|^CAPTURE|^PLUS|^MINUS|^[ABXYLR]", "KEY_GAMEPAD");
+            G_WAIT = lexer.DefineToken(literalcase("wait"), "wait");
+            G_RESET = lexer.DefineToken(literalcase("reset"), "RESET(R)");
+        //    G_DPAD = lexer.DefineToken("LEFT|^RIGHT|^UP|^DOWN", "KEY_DPAD");
+        //    G_STICK = lexer.DefineToken("[LR]S{1,2}", "KEY_STICK");
+        //    G_BTN = lexer.DefineToken("Z[LR]|^[LR]CLICK|^HOME|^CAPTURE|^PLUS|^MINUS|^[ABXYLR]", "KEY_GAMEPAD");
         }
         #endregion
         #region symbols
         {
-            O_AND = lexer.DefineToken("&&", "OP_AND");
-            O_OR = lexer.DefineToken(@"\|\|", "OP_OR");
-            O_NOT = lexer.DefineToken("!", "OP_NOT");
-            O_MOV = lexer.DefineToken("=", "OP_MOVE");
-            O_ARH = lexer.DefineToken(@"[\+\-\*/\\<>\^%]", "OP_ARITH");
-            O_ARHEQ = lexer.DefineToken(@"[\+\-\*/\\<>\^%=]=", "OP_ARITHEQ");
-            O_LOGISY = lexer.DefineToken(@"[&\|]=?", "OP_LOGI");
-            O_NEGI = lexer.DefineToken("~", "OP_NEGATIVE");
-            O_SHFTL = lexer.DefineToken("<<=", "OP_SHLEFT");
-            O_SHFTR = lexer.DefineToken(">>=", "OP_SHRIGHT");
-            O_LPH = lexer.DefineToken(@"\(", "LEFT_PH");
-            O_RPH = lexer.DefineToken(@"\)", "RIGHT_PH");
-            O_LBK = lexer.DefineToken(@"\[", "LEFT_BK");
-            O_RBK = lexer.DefineToken(@"\]", "RIGHT_BK");
-            O_COMA = lexer.DefineToken(@",", "COMMA");
-            O_DOT = lexer.DefineToken(@"\.", "DOT");
+            O_AND = lexer.DefineToken(RE.Literal("&&"));
+            O_OR = lexer.DefineToken(RE.Literal("||"));
+            O_NOT = lexer.DefineToken(RE.Symbol('!'));
+            O_MOV = lexer.DefineToken(RE.Symbol('='));
+            O_ARH = lexer.DefineToken(RE.CharSet(@"+-*/\<>^%&|"), "OP_ARITH");
+            O_ARHEQ = lexer.DefineToken(RE.CharSet(@"+-*/\<>^%&|") >> RE.Symbol('='), "OP_ARITHEQ");
+            O_NEGI = lexer.DefineToken(RE.Symbol('~'));
+            O_SHFTL = lexer.DefineToken(RE.Literal("<<="));
+            O_SHFTR = lexer.DefineToken(RE.Literal(">>="));
+            O_LPH = lexer.DefineToken(RE.Symbol('('));
+            O_RPH = lexer.DefineToken(RE.Symbol(')'));
+            O_LBK = lexer.DefineToken(RE.Symbol('['));
+            O_RBK = lexer.DefineToken(RE.Symbol(']'));
+            O_COMA = lexer.DefineToken(RE.Symbol(','));
+            O_DOT = lexer.DefineToken(RE.Symbol('.'));
         }
         #endregion
         #region ident
         {
-            V_CONST = lexer.DefineToken(consts, "CONST");
-            V_VAR = lexer.DefineToken(vars, "VARIABLE");
-            V_EXVAR = lexer.DefineToken(extVars, "EXVAR");
-            V_NUM = lexer.DefineToken(@"-?\d+", "NUM");
+            V_CONST = lexer.DefineToken(RE.Symbol('_') >> (RE_IdChar | RE.Range('0', '9')).Many(), "CONST");
+            V_VAR = lexer.DefineToken((RE.Symbol('$') | RE.Literal("$$")) >> (RE_IdChar | RE.Range('0', '9')).Many(), "VARIABLE");
+            V_EXVAR = lexer.DefineToken(RE.Symbol('@') >> (RE_IdChar | RE.Range('0', '9')).Many(), "EXVAR");
+            V_NUM = lexer.DefineToken(RE.Range('0', '9').Many1(), "NUM");
         }
         #endregion
-        // must be the last
-        T_IDENT = lexer.DefineToken(_ident, "IDENT");
+        T_IDENT = lexer.DefineToken(RE_IdChar >>
+            (RE_IdChar | RE.Range('0', '9')).Many(), "IDENT");
 
         skippedTokens.Add(S_WHITESPACE);
         skippedTokens.Add(S_COMMENT);
     }
 
-    private readonly Production<Program> PProgram = new();
-    private readonly Production<Statement> PStatement = new();
-    private readonly Production<Statement> PConstDefine = new();
-    private readonly Production<Statement> PIfElse = new();
-    private readonly Production<Statement> PForWhile = new();
+    private readonly ParserReference<Program> PProgram = new();
+    private readonly ParserReference<Statement> PStatement = new();
+    private readonly ParserReference<Statement> PConstDefine = new();
+    private readonly ParserReference<Statement> PIfElse = new();
+    private readonly ParserReference<Expression> PExp = new();
+    private readonly ParserReference<Statement> PForWhile = new();
 
-    protected override ProductionBase<Program> OnDefineParser()
+    protected override Parser<Program> OnDefineParser()
     {
+        PProgram.Reference = 
+            from statements in PStatement.Many()
+            select new Program(statements.ToArray());
+        
+        PStatement.Reference =
+            PForWhile |
+            PIfElse |
+            PConstDefine;
+
+        PConstDefine.Reference =
+            from constVal in V_CONST
+            from mov in O_MOV
+            from number in V_NUM
+            from _nl in T_NEWLINE.Many1()
+            select (Statement)new ConstDefine();
+
+        PIfElse.Reference =
+            from _if in K_IF
+            from condExp in PExp
+            from _nlif1 in T_NEWLINE.Many1()
+            from statements in PStatement.Many()
+            from _endif in K_ENDIF
+            from _nlif2 in T_NEWLINE.Many1()
+            select (Statement)new IfElse(condExp, statements.ToArray());
+
+        PForWhile.Reference =
+            from _for in K_FOR
+            from _nlfor1 in T_NEWLINE.Many1()
+            from statements in PStatement.Many()
+            from _next in K_NEXT
+            from _nlfor2 in T_NEWLINE.Many1()
+            select (Statement)new ForWhile(statements.ToArray());
+
+        PExp.Reference =
+            from _1 in V_VAR
+            from _2 in V_VAR
+            select (Expression)new Binary();
+
         return PProgram;
     }
 }
