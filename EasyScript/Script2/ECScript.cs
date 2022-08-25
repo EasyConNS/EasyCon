@@ -154,33 +154,6 @@ public class ECScript : ParserBase<Program>
 
     protected override ProductionBase<Program> OnDefineParser()
     {
-        PProgram.Rule = 
-            from statements in PStatement.Many()
-            select new Program(statements.ToArray());
-        
-        PStatement.Rule =
-            PForWhile |
-            PIfElse |
-            PConstDefine;
-
-        PConstDefine.Rule =
-            from constVal in V_CONST
-            from mov in O_MOV
-            from number in V_NUM
-            select (Statement)new ConstDefine();
-
-        PIfElse.Rule =
-            from _if in K_IF
-            from statements in PStatement.Many()
-            from _endif in K_ENDIF
-            select (Statement)new IfElse();
-
-        PForWhile.Rule =
-            from _for in K_FOR
-            from statements in PStatement.Many()
-            from _next in K_NEXT
-            select (Statement)new ForWhile();
-
         return PProgram;
     }
 }

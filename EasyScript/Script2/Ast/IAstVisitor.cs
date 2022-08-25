@@ -5,5 +5,6 @@ public interface IAstVisitor<T>
     T VisitProgram(Program ast);
     T VisitConstDefine(ConstDefine ast);
     T VisitIfElse(IfElse ast);
+    T VisitBinary(Binary ast);
     T VisitForWhile(ForWhile ast);
 }

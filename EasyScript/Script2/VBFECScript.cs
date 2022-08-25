@@ -97,7 +97,7 @@ public class VBFECScript : ParserBase<Program>
         T_NEWLINE = lexer.DefineToken(
             RE.CharSet("\u000D\u000A\u0085\u2028\u2029") |
             RE.Literal("\r\n")
-        );
+        , "NEWLINE");
         #region key words
         {
             // program key words
@@ -137,7 +137,7 @@ public class VBFECScript : ParserBase<Program>
             O_OR = lexer.DefineToken(RE.Literal("||"));
             O_NOT = lexer.DefineToken(RE.Symbol('!'));
             O_MOV = lexer.DefineToken(RE.Symbol('='));
-            O_ARH = lexer.DefineToken(RE.CharSet(@"+-*/\<>^%&|"));
+            O_ARH = lexer.DefineToken(RE.CharSet(@"+-*/\<>^%&|"), "OP_ARITH");
             O_ARHEQ = lexer.DefineToken(RE.CharSet(@"+-*/\<>^%&|") >> RE.Symbol('='), "OP_ARITHEQ");
             O_NEGI = lexer.DefineToken(RE.Symbol('~'));
             O_SHFTL = lexer.DefineToken(RE.Literal("<<="));
@@ -169,6 +169,7 @@ public class VBFECScript : ParserBase<Program>
     private readonly Production<Statement> PStatement = new();
     private readonly Production<Statement> PConstDefine = new();
     private readonly Production<Statement> PIfElse = new();
+    private readonly Production<Expression> PExp = new Production<Expression>();
     private readonly Production<Statement> PForWhile = new();
 
     protected override ProductionBase<Program> OnDefineGrammar()
@@ -186,24 +187,30 @@ public class VBFECScript : ParserBase<Program>
             from constVal in V_CONST
             from mov in O_MOV
             from number in V_NUM
-            from _nl in T_NEWLINE
+            from _nl in T_NEWLINE.Many1()
             select (Statement)new ConstDefine();
 
         PIfElse.Rule =
             from _if in K_IF
-            from _nlif1 in T_NEWLINE
+            from condExp in PExp
+            from _nlif1 in T_NEWLINE.Many1()
             from statements in PStatement.Many()
             from _endif in K_ENDIF
-            from _nlif2 in T_NEWLINE
-            select (Statement)new IfElse();
+            from _nlif2 in T_NEWLINE.Many1()
+            select (Statement)new IfElse(condExp, statements.ToArray());
 
         PForWhile.Rule =
             from _for in K_FOR
-            from _nlfor1 in T_NEWLINE
+            from _nlfor1 in T_NEWLINE.Many1()
             from statements in PStatement.Many()
             from _next in K_NEXT
-            from _nlfor2 in T_NEWLINE
-            select (Statement)new ForWhile();
+            from _nlfor2 in T_NEWLINE.Many1()
+            select (Statement)new ForWhile(statements.ToArray());
+
+        PExp.Rule =
+            from _1 in V_VAR
+            from _2 in V_VAR
+            select (Expression)new Binary();
 
         return PProgram;
     }
