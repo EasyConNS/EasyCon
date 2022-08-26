@@ -18,12 +18,13 @@
     <Reference Include="Compilers.Parsers">
       <HintPath>..\..\VBF\bin\net6.0\Compilers.Parsers.dll</HintPath>
     </Reference>
-    <Reference Include="Compilers.Parsers.Combinators">
-      <HintPath>..\..\VBF\bin\net6.0\Compilers.Parsers.Combinators.dll</HintPath>
-    </Reference>
     <Reference Include="Compilers.Scanners">
       <HintPath>..\..\VBF\bin\net6.0\Compilers.Scanners.dll</HintPath>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="NewFolder\" />
   </ItemGroup>
 
 </Project>

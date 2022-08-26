@@ -66,7 +66,6 @@ namespace EasyScript.Parsing
             foreach (var line in lines)
             {
                 var _text = line.Trim();
-                //if(_text == string.Empty)continue;
                 var mp = Regex.Match(_text, @"^print\s+(.*)$", RegexOptions.IgnoreCase);
                 if (mp.Success)
                 {
@@ -91,10 +90,10 @@ namespace EasyScript.Parsing
             try
             {
                 VBF.Compilers.CompilationErrorManager ceMgr = new();
-                ECP.ECScript ECParser = new(ceMgr);
+                ECP.VBFECScript ECParser = new(ceMgr);
                 ECParser.Initialize();
-                var ast = ECParser.Parse(text, ceMgr.CreateErrorList());
-                System.Diagnostics.Debug.WriteLine(ast);
+                var ast = ECParser.Parse(compat(text), ceMgr.CreateErrorList());
+                ast.Show();
             }
             catch (Exception e)
             {

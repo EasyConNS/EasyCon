@@ -29,7 +29,7 @@ namespace EasyCon2.Forms
                 MessageBox.Show("频道推送Token不能为空");
                 return;
             }
-            if (_config.CheckPPToken())
+            if (!_config.CheckPPToken())
             {
                 MessageBox.Show("pushlus推送Token格式不正确，请仔细检查");
                 return;

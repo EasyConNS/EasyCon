@@ -95,7 +95,7 @@ public class VBFECScript : ParserBase<Program>
         RE RE_SpaceChar = null;
         RE RE_InputChar = null;
 
-        CharSetExpressionBuilder charSetBuilder = new CharSetExpressionBuilder();
+        var charSetBuilder = new CharSetExpressionBuilder();
 
         charSetBuilder.DefineCharSet(c => lettersCategories.Contains(Char.GetUnicodeCategory(c)), re => RE_IdChar = re | RE.Symbol('_'));
         charSetBuilder.DefineCharSet(c => Char.GetUnicodeCategory(c) == UnicodeCategory.SpaceSeparator, re => RE_SpaceChar = re);
