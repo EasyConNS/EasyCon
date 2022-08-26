@@ -166,52 +166,9 @@ public class ECScript : ParserFrame<Program>
     }
 
     private readonly ParserReference<Program> PProgram = new();
-    private readonly ParserReference<Statement> PStatement = new();
-    private readonly ParserReference<Statement> PConstDefine = new();
-    private readonly ParserReference<Statement> PIfElse = new();
-    private readonly ParserReference<Expression> PExp = new();
-    private readonly ParserReference<Statement> PForWhile = new();
 
     protected override Parser<Program> OnDefineParser()
     {
-        PProgram.Reference = 
-            from statements in PStatement.Many()
-            select new Program(statements.ToArray());
-        
-        PStatement.Reference =
-            PForWhile |
-            PIfElse |
-            PConstDefine;
-
-        PConstDefine.Reference =
-            from constVal in V_CONST
-            from mov in O_MOV
-            from number in V_NUM
-            from _nl in T_NEWLINE.Many1()
-            select (Statement)new ConstDefine();
-
-        PIfElse.Reference =
-            from _if in K_IF
-            from condExp in PExp
-            from _nlif1 in T_NEWLINE.Many1()
-            from statements in PStatement.Many()
-            from _endif in K_ENDIF
-            from _nlif2 in T_NEWLINE.Many1()
-            select (Statement)new IfElse(condExp, statements.ToArray());
-
-        PForWhile.Reference =
-            from _for in K_FOR
-            from _nlfor1 in T_NEWLINE.Many1()
-            from statements in PStatement.Many()
-            from _next in K_NEXT
-            from _nlfor2 in T_NEWLINE.Many1()
-            select (Statement)new ForWhile(statements.ToArray());
-
-        PExp.Reference =
-            from _1 in V_VAR
-            from _2 in V_VAR
-            select (Expression)new Binary();
-
         return PProgram;
     }
 }

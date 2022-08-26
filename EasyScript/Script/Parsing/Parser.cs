@@ -8,8 +8,6 @@ namespace EasyScript.Parsing
         readonly Formatter _formatter;
 
         static readonly List<IStatementParser> _parsers = new();
-        public VBF.Compilers.CompilationErrorManager ceMgr = new();
-        public ECP.ECScript ECParser = new(ceMgr);
 
         static Parser()
         {
@@ -92,8 +90,10 @@ namespace EasyScript.Parsing
             System.Diagnostics.Debug.WriteLine("v2 start---");
             try
             {
+                VBF.Compilers.CompilationErrorManager ceMgr = new();
+                ECP.ECScript ECParser = new(ceMgr);
                 ECParser.Initialize();
-                var ast = ECParser.Parse(text, ceMgr..CreateErrorList());
+                var ast = ECParser.Parse(text, ceMgr.CreateErrorList());
                 System.Diagnostics.Debug.WriteLine(ast);
             }
             catch (Exception e)

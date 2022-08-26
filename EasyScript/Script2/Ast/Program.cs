@@ -15,4 +15,12 @@ public class Program : AstNode
     {
         return visitor.VisitProgram(this);
     }
+
+    public override void Show()
+    {
+        foreach(var st in Statements)
+        {
+            st.Show();
+        }
+    }
 }

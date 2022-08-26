@@ -6,4 +6,8 @@ public class ConstDefine : Expression
     {
         return visitor.VisitConstDefine(this);
     }
+    public override void Show()
+    {
+        Console.WriteLine(this);
+    }
 }

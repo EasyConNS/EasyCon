@@ -1,10 +1,10 @@
 namespace ECP.Ast;
 
-public class Binary : Expression
+public class MovStatement : Expression
 {
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        return visitor.VisitBinary(this);
+        return visitor.VisitMovStatement(this);
     }
 
     public override void Show()

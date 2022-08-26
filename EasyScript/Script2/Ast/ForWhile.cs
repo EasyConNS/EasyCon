@@ -15,4 +15,14 @@ public class ForWhile : Statement
     {
         return visitor.VisitForWhile(this);
     }
+
+    public override void Show()
+    {
+        Console.WriteLine($"{this} - start");
+        foreach(var st in Statements)
+        {
+            st.Show();
+        }
+        Console.WriteLine($"{this} - end");
+    }
 }
