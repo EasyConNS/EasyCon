@@ -1,20 +1,18 @@
 ﻿using ECDevice;
 namespace EasyScript.Parsing.Statements;
 
-abstract class StickAction : Statement
+abstract class StickAction : KeyAction
 {
-    protected readonly ECKey Key;
     protected readonly string KeyName;
     protected readonly string Direction;
 
-    public StickAction(ECKey key, string keyname, string direcion)
+    public StickAction(ECKey key, string keyname, string direcion) : base(key)
     {
-        Key = key;
         KeyName = keyname.ToUpper();
         Direction = direcion.ToUpper();
     }
 
-    protected void ReleasePrevious(Assembly.Assembler assembler)
+    protected override void ReleasePrevious(Assembly.Assembler assembler)
     {
         if (!assembler.StickMapping.ContainsKey(Key.KeyCode))
             return;

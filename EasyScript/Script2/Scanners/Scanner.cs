@@ -30,8 +30,17 @@ public class Scanner
 
     public IEnumerable<Lexeme> Parse(string text)
     {
+        var linebreaker = (from lxm in Lexicon.GetTokens()
+        where lxm.Tag.Description == "LINE_BREAK"
+        select lxm).First();
+
+        if(linebreaker == null)
+        {
+            throw new ArgumentException("LINE_BREAK NOT FOUND");
+        }
+
         int row = 0;
-        foreach(var line in Lexicon.linebreak.Split(text))
+        foreach(var line in linebreaker.Split(text))
         {
             System.Diagnostics.Debug.WriteLine($"parsing:{line}");
             row += 1;
@@ -81,7 +90,7 @@ public class Scanner
                     break;
                 }
             }
-            yield return new Lexeme(this, Lexicon.LineBreaker.Index, new SourceSpan(-1, -1, row), "");
+            yield return new Lexeme(this, linebreaker.Tag.Index, new SourceSpan(-1, -1, row), "");
         }
         yield return new Lexeme(this, EndOfStreamTokenIndex, new SourceSpan(-1, -1, row), "");
     }

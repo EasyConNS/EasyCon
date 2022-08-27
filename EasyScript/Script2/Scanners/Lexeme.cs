@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace Compiler.Scanners;
 
-[DebuggerDisplay("Token:{Tag} {Value.ToString()} {Span}")]
+[DebuggerDisplay("Token:{Value.ToString()} {Span}")]
 public record Lexeme
 {
     private Scanner m_scanner  { get; init; }

@@ -15,10 +15,6 @@ public class Lexicon
         UnicodeCategory.TitlecaseLetter,
         UnicodeCategory.UppercaseLetter
     };
-    const string BRSYB = @"\r\n"+"|[\u000D\u000A\u0085\u2028\u2029]";
-    
-    private readonly Token lineToken;
-    public readonly Regex linebreak = new(BRSYB);
 
     private readonly Lexer m_defaultState;
     private readonly List<TokenInfo> m_tokenList = new();
@@ -26,10 +22,8 @@ public class Lexicon
     public Lexicon()
     {
         m_defaultState = new Lexer(this, 0);
-        lineToken = m_defaultState.DefineToken(BRSYB, "NEWLINE");
     }
 
-    public Token LineBreaker => lineToken;
     public Lexer Lexer => m_defaultState;
     public int TokenCount => m_tokenList.Count;
 

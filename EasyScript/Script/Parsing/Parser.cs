@@ -69,7 +69,7 @@ namespace EasyScript.Parsing
                 var mp = Regex.Match(_text, @"^print\s+(.*)$", RegexOptions.IgnoreCase);
                 if (mp.Success)
                 {
-                    builder.Append($"print \"{mp.Groups[1].Value}\"");
+                    builder.Append($"PRINT \"{mp.Groups[1].Value}\"");
                 }
                 else
                 {
@@ -89,11 +89,20 @@ namespace EasyScript.Parsing
             System.Diagnostics.Debug.WriteLine("v2 start---");
             try
             {
-                VBF.Compilers.CompilationErrorManager ceMgr = new();
-                ECP.VBFECScript ECParser = new(ceMgr);
-                ECParser.Initialize();
-                var ast = ECParser.Parse(compat(text), ceMgr.CreateErrorList());
-                ast.Show();
+                var lxon = new Compiler.Scanners.Lexicon();
+                var skips = new List<Compiler.Scanners.Token>();
+                var parser = new ECP.ECScript(lxon, skips);
+                var scanner = lxon.CreateScanner();
+                scanner.SetSkipTokens(skips.Select(z=> z.Index).ToArray());
+                foreach(var lxm in scanner.Parse(compat(text)))
+                {
+                    System.Diagnostics.Debug.WriteLine(lxm);
+                }
+                //VBF.Compilers.CompilationErrorManager ceMgr = new();
+                //ECP.VBFECScript ECParser = new(ceMgr);
+                //ECParser.Initialize();
+                //var ast = ECParser.Parse(compat(text), ceMgr.CreateErrorList());
+                //ast.Show();
             }
             catch (Exception e)
             {
