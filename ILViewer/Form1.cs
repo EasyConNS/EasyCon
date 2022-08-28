@@ -14,6 +14,11 @@ namespace ILViewer
 
         private void openBtn_Click(object sender, EventArgs e)
         {
+            if(!File.Exists(ILpathBox.Text))
+            {
+                MessageBox.Show("找不到文件");
+                return;
+            }
             var by = File.ReadAllBytes(ILpathBox.Text);
             var readOnlySpan = new ReadOnlySpan<byte>(by);
             ImgLabel? deIL = JsonSerializer.Deserialize<ImgLabel>(readOnlySpan);
