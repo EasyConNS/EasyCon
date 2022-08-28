@@ -24,7 +24,7 @@
         <Key word = "ELSE" />
         <Key word = "ENDIF" />
         <Key word = "FUNC" />
-        <Key word = "RET" />
+        <Key word = "ENDFUNC" />
         <Key word = "CALL" />
       </KeyWords>
       <KeyWords name = "Buttons" bold="true" italic="false" color="Red">

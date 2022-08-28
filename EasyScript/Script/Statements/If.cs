@@ -63,20 +63,12 @@
         }
     }
 
-    class ElseIf : BranchOp
+    class ElseIf : If
     {
         public override int IndentThis => -1;
-        public override int IndentNext => 1;
-        public readonly CompareOperator Operater;
-        public readonly ValVar Left;
-        public readonly ValBase Right;
 
-        public ElseIf(CompareOperator op, ValVar left, ValBase right)
-        {
-            Operater = op;
-            Left = left;
-            Right = right;
-        }
+        public ElseIf(CompareOperator op, ValVar left, ValBase right) : base(op, left, right)
+        { }
 
         public override void Exec(Processor processor)
         {

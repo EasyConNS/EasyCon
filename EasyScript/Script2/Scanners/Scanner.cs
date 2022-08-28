@@ -6,7 +6,7 @@ namespace Compiler.Scanners;
 public class Scanner
 {
     private Lexicon Lexicon { get;init; }
-    private readonly ICollection<UnicodeCategory> lettersCategories;
+    private readonly ICollection<UnicodeCategory> m_lettersCategories;
     private List<int> m_skipIndexes = new();
     
     private readonly StringBuilder output = new();
@@ -14,7 +14,7 @@ public class Scanner
     internal Scanner(Lexicon lexicon, ICollection<UnicodeCategory> lettersCategories)
     {
         Lexicon = lexicon;
-        lettersCategories = lettersCategories;
+        m_lettersCategories = lettersCategories;
         EndOfStreamTokenIndex = lexicon.TokenCount;
     }
 
@@ -81,7 +81,7 @@ public class Scanner
                     position += s.Length;
                     col += s.EnumerateRunes().Count();
                 }
-                else if (!lettersCategories.Contains(char.GetUnicodeCategory(line.AsSpan()[position])))
+                else if (!m_lettersCategories.Contains(char.GetUnicodeCategory(line.AsSpan()[position])))
                 {
                     throw new ArgumentException($"error char `{line.AsSpan()[position]}` in line:{row},col:{col}");
                 }

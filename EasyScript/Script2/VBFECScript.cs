@@ -9,6 +9,7 @@ namespace ECP;
 
 public class VBFECScript : ParserBase<Program>
 {
+    #region token define
     private Token K_IF;
     private Token K_ELIF;
     private Token K_ELSE;
@@ -76,6 +77,7 @@ public class VBFECScript : ParserBase<Program>
     private Token S_STR;
     private Token S_COMMENT;
     private Token S_WHITESPACE;
+    #endregion
 
     public VBFECScript(CompilationErrorManager errorManager) : base(errorManager) { }
 

@@ -146,121 +146,138 @@ namespace EasyScript.Parsing
                 linnum++;
             }
 
-            // pair For & Next
-            var _fors = new Stack<Statements.For>();
-            // pair If /  Elif / Else / Endif
-            var _ifs = new Stack<Statements.BranchOp>();
+            var _blocks = new Stack<Statement>();
             var _elifs = new Stack<Statements.BranchOp>();
-            // pair Func & Ret
-            var _funcs = new Stack<Statements.Function>();
             var _funcTables = new Dictionary<string, Statements.Function>();
-            // block stack
-            var _blockStacks = new Stack<string>();
 
             for (var i = 0; i < list.Count; i++)
             {
                 var st = list[i];
-                if (st is Statements.For)
+
+                if (st is Statements.For || (st is Statements.If && st is not Statements.ElseIf) || st is Statements.Function)
                 {
-                    _fors.Push(st as Statements.For);
-                    _blockStacks.Push("for");
+                    _blocks.Push(st);
+                    if (st is Statements.Function fst)
+                    {
+                        if (_funcTables.ContainsKey(fst.Label))
+                        {
+                            throw new ParseException("重复定义的函数名", i);
+                        }
+                        _funcTables[fst.Label] = fst;
+                    }
+                    continue;
                 }
-                    
-                else if (st is Statements.Next nextst)
+                // for/next
+                if (st is Statements.LoopControl loopstat)
                 {
-                    if(_blockStacks.Peek()!= "for")
-                        throw new ParseException($"发现未结束的语句：{_blockStacks.Peek()}", i);
-                    if (_fors.Count == 0)
-                        throw new ParseException("找不到对应的For语句", i);
-                    var @for = _fors.Pop();
-                    nextst.For = @for;
-                    @for.Next = nextst;
-                    _blockStacks.Pop();
-                }
-                else if (st is Statements.LoopControl loopst)
-                {
-                    if (loopst.Level.Val > _fors.Count)
+                    var forcount = (from forstate in _blocks
+                                   where forstate is Statements.For
+                                   select forstate).Count();
+                    if (loopstat.Level.Val > forcount)
                         throw new ParseException("循环层数不足", i);
                 }
-
-                if (st is Statements.If)
+                if (st is Statements.Next nextstat)
                 {
-                    _ifs.Push(st as Statements.If);
-                    _blockStacks.Push("if");
-                }
-                    
-                else if (st is Statements.ElseIf || st is Statements.Else || st is Statements.EndIf)
-                {
-                    if (_ifs.Count == 0)
-                        throw new ParseException("找不到对应的If语句", i);
-                    var @if = _ifs.Peek();
-                    if(st is Statements.ElseIf selif)
+                    if(_blocks.Count == 0)
+                        throw new ParseException("多余的语句", i);
+                    var last = _blocks.Peek();
+                    if (last is Statements.For lastfor)
                     {
-                        if (@if.Else != null)
-                        {
-                            throw new ParseException("多余的Else语句", i);
-                        }
-                        @if.Else = st as Statements.BranchOp;
-                        selif.If = @if;
-                        _elifs.Push(_ifs.Pop());
-                        _ifs.Push(selif);
+                        _blocks.Pop();
+                        nextstat.For = lastfor;
+                        lastfor.Next = nextstat;
+                    } else
+                    {
+                        throw new ParseException("NEXT需要对应的For语句", i);   
                     }
-                    else if (st is Statements.Else)
+                }
+                // if/elif/elif/else/endif
+                if (st is Statements.ElseIf selif)
+                {
+                    if (_blocks.Count == 0)
+                        throw new ParseException("多余的语句", i);
+                    var last = _blocks.Peek();
+                    if (last is Statements.If lastif)
                     {
-                        if (@if.Else != null)
+                        if (lastif.Else != null)
+                        {
+                            throw new ParseException("多余的Elseif语句", i);
+                        }
+                        _blocks.Pop();
+                        _blocks.Push(selif);
+                        lastif.Else = st as Statements.BranchOp;
+                        selif.If = lastif;
+                        _elifs.Push(lastif);
+                    }
+                    else
+                    {
+                        throw new ParseException("elif需要配合if语句使用", i);
+                    }
+                }
+                if (st is Statements.Else selse)
+                {
+                    if (_blocks.Count == 0)
+                        throw new ParseException("多余的语句", i);
+                    var last = _blocks.Peek();
+                    if (last is Statements.If lastif)
+                    {
+                        if (lastif.Else != null)
                         {
                             throw new ParseException("一个If只能对应一个Else", i);
                         }
-                        var @else = st as Statements.BranchOp;
-                        @if.Else = @else;
-                        @else.If = @if;
-                    }
-                    else if (st is Statements.EndIf endifst)
-                    {
-                        if (_blockStacks.Peek() != "if")
-                            throw new ParseException($"发现未结束的语句：{_blockStacks.Peek()}", i);
-                        @if.EndIf = endifst;
-                        endifst.If = @if;
-                        _ifs.Pop();
-                        while(_elifs.Count > 0)
-                        {
-                            _elifs.Pop().EndIf = endifst;
-                        }
-                        _blockStacks.Pop();
+                        lastif.Else = st as Statements.BranchOp;
+                        selse.If = lastif;
                     }
                     else
-                        throw new ArgumentException($"非预期的类型：{st.GetType()}");
-                }
-
-                if (st is Statements.Function fst)
-                {
-                    if(_funcTables.ContainsKey(fst.Label))
                     {
-                        throw new ParseException("重复定义的函数名", i);
+                        throw new ParseException("else需要配合if语句使用", i);
                     }
-                    _funcTables[fst.Label] = fst;
-                    _funcs.Push(fst);
-                    _blockStacks.Push("func");
                 }
-                else if (st is Statements.ReturnStat rst)
+                if (st is Statements.EndIf endifst)
                 {
-                    if (_blockStacks.Peek() != "func")
-                        throw new ParseException($"发现未结束的语句：{_blockStacks.Peek()}", i);
-                    if (_funcs.Count == 0)
-                        throw new ParseException("找不到对应的Func定义", i);
-                    var @func = _funcs.Peek();
-                    @func.Ret = rst;
-                    rst.Label = @func.Label;
-                    _funcs.Pop();
-                    _blockStacks.Pop();
+                    if (_blocks.Count == 0)
+                        throw new ParseException("多余的语句", i);
+                    var last = _blocks.Peek();
+                    if (last is Statements.If lastif)
+                    {
+                        _blocks.Pop();
+                        lastif.EndIf = endifst;
+                        endifst.If = lastif;
+
+                        if(_elifs.Count != 0 && _elifs.Peek().Else == last)
+                        {
+                            while (_elifs.Count > 0)
+                            {
+                                _elifs.Pop().EndIf = endifst;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        throw new ParseException("endif需要对应的If语句", i);
+                    }
+                }
+                // function
+                if (st is Statements.ReturnStat rst)
+                {
+                    if (_blocks.Count == 0)
+                        throw new ParseException("多余的语句", i);
+                    var last = _blocks.Peek();
+                    if (last is Statements.Function lastfunc)
+                    {
+                        _blocks.Pop();
+                        lastfunc.Ret = rst;
+                        rst.Label = lastfunc.Label;
+                    }
+                    else
+                    {
+                        throw new ParseException("Endfunc需要对应的Func语句", i);
+                    }
                 }
             }
-            if (_fors.Count > 0)
-                throw new ParseException("For语句需要Next结束", _fors.Peek().Address);
-            if (_ifs.Count > 0 || _elifs.Count > 0)
-                throw new ParseException("If语句需要Endif结束", _ifs.Peek().Address);
-            if (_funcs.Count > 0)
-                throw new ParseException("Func语句需要Ret结束", _funcs.Peek().Address);
+
+            if (_blocks.Count != 0)
+                throw new ParseException($"发现未结束的语句：{_blocks.Peek()}", _blocks.Peek().Address);
             // pair Call
             for (var i = 0; i < list.Count; i++)
             {
