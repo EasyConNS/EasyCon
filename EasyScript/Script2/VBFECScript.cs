@@ -72,9 +72,9 @@ public class VBFECScript : ParserBase<Program>
     private Token V_NUM;
 
     private Token T_IDENT;
-
     private Token T_NEWLINE;
-    private Token S_STR;
+    private Token T_STR;
+
     private Token S_COMMENT;
     private Token S_WHITESPACE;
     #endregion
@@ -108,18 +108,7 @@ public class VBFECScript : ParserBase<Program>
         var lexer = lexicon.Lexer;
         var literalcase = (string key) => {
             return RE.Literal(key.ToLower()) | RE.Literal(key.ToUpper());
-        } ;
-
-        S_STR = lexer.DefineToken(RE.Symbol('"') >> RE_InputChar.Many() >> RE.Symbol('"'), "STRING");
-        S_COMMENT = lexer.DefineToken(RE.Symbol('#') >> RE_InputChar.Many(), "COMMENT");
-        S_WHITESPACE = lexer.DefineToken(RE_SpaceChar | RE.CharSet("\u0009\u000B\u000C"));
-        
-        T_NEWLINE = lexer.DefineToken(
-            RE.CharSet("\u000D\u000A\u0085\u2028\u2029") |
-            RE.Literal("\r\n")
-        , "NEWLINE");
-        T_IDENT = lexer.DefineToken(RE_IdChar >>
-            (RE_IdChar | RE.Range('0', '9')).Many(), "IDENT");
+        };
         #region key words
         {
             // program key words
@@ -200,12 +189,22 @@ public class VBFECScript : ParserBase<Program>
             V_VAR = lexer.DefineToken((RE.Symbol('$') | RE.Literal("$$")) >> (RE_IdChar | RE.Range('0', '9')).Many(), "VARIABLE");
             V_EXVAR = lexer.DefineToken(RE.Symbol('@') >> (RE_IdChar | RE.Range('0', '9')).Many(), "EXVAR");
             V_NUM = lexer.DefineToken(RE.Range('0', '9').Many1(), "NUM");
+
+            T_STR = lexer.DefineToken(RE.Symbol('"') >> RE_InputChar.Many() >> RE.Symbol('"'), "STRING");
+            T_NEWLINE = lexer.DefineToken(
+                RE.CharSet("\u000D\u000A\u0085\u2028\u2029") |
+                RE.Literal("\r\n")
+            , "NEWLINE");
+            T_IDENT = lexer.DefineToken(RE_IdChar >>
+                (RE_IdChar | RE.Range('0', '9')).Many(), "IDENT");
         }
         #endregion
+        S_COMMENT = lexer.DefineToken(RE.Symbol('#') >> RE_InputChar.Many() >> RE.Literal("\r\n"), "COMMENT");
+        S_WHITESPACE = lexer.DefineToken(RE_SpaceChar | RE.CharSet("\u0009\u000B\u000C"));
 
         skippedTokens.Add(S_WHITESPACE);
         skippedTokens.Add(S_COMMENT);
-        skippedTokens.Add(T_NEWLINE);
+        //skippedTokens.Add(T_NEWLINE);
     }
 
     private readonly Production<Program> PProgram = new();
@@ -232,8 +231,14 @@ public class VBFECScript : ParserBase<Program>
         PProgram.Rule =
             from statements in PStatement.Many()
             select new Program(statements.ToArray());
-        
+
+        Production<Statement> PEmpty = new();
+        PEmpty.Rule =
+            from _1 in S_COMMENT
+            select (Statement)new Empty(_1.Value.Content);
+
         PStatement.Rule =
+            PEmpty |
             PForWhile |
             PIfElse |
             PConstDefine |
@@ -247,8 +252,8 @@ public class VBFECScript : ParserBase<Program>
             from constVal in V_CONST
             from mov in O_MOV
             from number in (V_NUM.AsTerminal() | V_CONST.AsTerminal())
-            from _nl in O_SEMI
-            select (Statement)new ConstDefine("");
+            from _nl in T_NEWLINE.Many1()
+            select (Statement)new ConstDefine(constVal.Value.Content, number.Value);
         
         PInstant.Rule =
             from number in (V_CONST.AsTerminal() | V_NUM.AsTerminal())
@@ -267,83 +272,90 @@ public class VBFECScript : ParserBase<Program>
                         O_SHFTL.AsTerminal() | O_SHFTR.AsTerminal())
             from eq in O_MOV
             from number in PValue
-            from _nl in O_SEMI
-            select (Statement)new Binary();
+            from _nl in T_NEWLINE.Many1()
+            select (Statement)new Binary(dVal.Value, number);
         PMovExp.Rule =
             BinaryEq |
-            from dVal in V_VAR
+            (from dVal in V_VAR
             from mov in O_MOV
             from number in PValue
-            from _nl in O_SEMI
-            select (Statement)new MovStatement();
+            from _nl in T_NEWLINE.Many1()
+            select (Statement)new MovStatement(dVal.Value, number));
 
         PIfElse.Rule =
             from _if in K_IF
             from condExp in PIfExp
-            from _nlif1 in O_COLON
+            from _nlif1 in T_NEWLINE.Many1()
             from statements in PStatement.Many()
             from _endif in K_ENDIF
-            from _nlif2 in O_SEMI
+            from _nlif2 in T_NEWLINE.Many1()
             select (Statement)new IfElse(condExp, statements.ToArray());
 
         PIfExp.Rule =
             from _1 in PValue
             from op in (O_LESS.AsTerminal()|O_LESSEQ.AsTerminal() |O_GREATER.AsTerminal() | O_GREATEREQ.AsTerminal()|O_NOTEQ.AsTerminal() |O_EQUAL.AsTerminal() | O_MOV.AsTerminal())
             from _2 in PValue
-            select new Binary();
+            select new Binary(_1, _2);
 
-        Production<Statement> PForFull = new();
-        PForFull.Rule =
+        Production<ForStatement> PForFull = new()
+        {
+            Rule =
             from dVal in V_VAR
             from mov in O_MOV
             from _start in PNum
             from _to in K_TO
             from _end in PNum
-            select (Statement)new ForStatement();
-        Production<Statement> PForExp = new();
-        PForExp.Rule = 
+            select new ForStatement()
+        };
+        Production<ForStatement> PForExp = new()
+        {
+            Rule =
             PForFull |
-            from _num in PNum
-            select (Statement)new ForStatement();
+            (from _num in PNum
+             select new ForStatement())
+        };
         PForWhile.Rule =
             from _1 in K_FOR
             from _forExp in PForExp.Optional()
-            from _nl1 in O_COLON
+            from _nl1 in T_NEWLINE.Many1()
             from statements in (PStatement.Many())
             from _next in K_NEXT
-            from _nl2 in O_SEMI
-            select (Statement)new ForWhile(statements.ToArray());
+            from _nl2 in T_NEWLINE.Many1()
+            select (Statement)new ForWhile(_forExp, statements.ToArray());
         
         PWait.Rule =
             from _1 in G_WAIT.Optional()
-            from number in PNum
-            from _nl2 in O_SEMI
-            select (Statement)new WaitExp();
+            from number in (V_VAR.AsTerminal() | V_NUM.AsTerminal())
+            from _nl2 in T_NEWLINE.Many1()
+            select (Statement)new WaitExp(new Number(number.Value));
 
-        Production<Statement> PKeyHold = new();
-        PKeyHold.Rule =
+        Production<Statement> PKeyHold = new()
+        {
+            Rule =
             from _key in (G_BTN.AsTerminal() | G_DPAD.AsTerminal())
-            from dest in G_DPAD where (dest.Value.Content == "UP" || dest.Value.Content == "DOWN")
-            from _nl2 in O_SEMI
-            select (Statement)new ButtonAction(_key.Value);
+            from dest in G_DPAD
+            where (dest.Value.Content == "UP" || dest.Value.Content == "DOWN")
+            from _nl2 in T_NEWLINE.Many1()
+            select (Statement)new ButtonAction(_key.Value)
+        };
         PKeyAction.Rule =
             PKeyHold |
             from _key in (G_BTN.AsTerminal() | G_DPAD.AsTerminal())
             from dur in PValue.Optional()
-            from _nl2 in O_SEMI
+            from _nl2 in T_NEWLINE.Many1()
             select (Statement)new ButtonAction(_key.Value);
 
         PStickAction.Rule =
             from _key in G_STICK
             from dest in G_DPAD
-            from _end in O_SEMI
+            from _end in T_NEWLINE.Many1()
             select (Statement)new ButtonAction(_key.Value);
 
         PSTD.Rule =
             from _k in T_IDENT
-            from arg in (S_STR.AsTerminal() | V_VAR.AsTerminal())
-            from _end in O_SEMI
-            select (Statement)new PrintState();
+            from arg in (T_STR.AsTerminal() | V_VAR.AsTerminal())
+            from _end in T_NEWLINE.Many1()
+            select (Statement)new BuildinState(_k.Value.Content);
 
         return PProgram;
     }

@@ -1,9 +1,9 @@
 namespace ECP.Ast;
 
-public class ForStatement : Expression
+public class FuncState : Statement
 {
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        return visitor.VisitForState(this);
+        return visitor.VisitFuncState(this);
     }
 }

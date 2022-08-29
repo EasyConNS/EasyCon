@@ -21,9 +21,4 @@ public class ButtonAction : KeyAction
     {
         return visitor.VisitButtonAction(this);
     }
-
-    public override void Show()
-    {
-        Console.WriteLine($"press({Key}, {Duration})");
-    }
 }

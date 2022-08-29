@@ -17,11 +17,4 @@ public class IfElse : Statement
     {
         return visitor.VisitIfElse(this);
     }
-
-    public override void Show()
-    {
-        Console.WriteLine($"{this}:{Condition} - start");
-        BlockStmt.Show();
-        Console.WriteLine($"{this} - end");
-    }
 }

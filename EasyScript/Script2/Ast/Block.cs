@@ -20,12 +20,4 @@ public class Block : Statement
     {
         return visitor.VisitBlock(this);
     }
-
-    public override void Show()
-    {
-        foreach(var st in Statements)
-        {
-            st.Show();
-        }
-    }
 }
