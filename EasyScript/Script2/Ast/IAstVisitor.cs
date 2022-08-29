@@ -8,10 +8,11 @@ public interface IAstVisitor<T>
     T VisitConstDefine(ConstDefine ast);
     T VisitMovStatement(MovStatement ast);
     T VisitWaitExp(WaitExp ast);
-    T VisitPrintState(PrintState ast);
     T VisitIfElse(IfElse ast);
     T VisitBinary(Binary ast);
     T VisitForState(ForStatement ast);
     T VisitForWhile(ForWhile ast);
     T VisitButtonAction(ButtonAction ast);
+    T VisitFuncState(FuncState ast);
+    T VisitBuildinState(BuildinState ast);
 }

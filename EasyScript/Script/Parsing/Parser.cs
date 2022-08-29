@@ -89,17 +89,18 @@ namespace EasyScript.Parsing
             System.Diagnostics.Debug.WriteLine("v2 start---");
             try
             {
-                var program = new ECP.ECScript();
-                program.Initialize();
-                foreach(var lxm in program.Parse(compat(text)))
-                {
-                    System.Diagnostics.Debug.WriteLine(lxm);
-                }
-                //VBF.Compilers.CompilationErrorManager ceMgr = new();
-                //ECP.VBFECScript ECParser = new(ceMgr);
-                //ECParser.Initialize();
-                //var ast = ECParser.Parse(compat(text), ceMgr.CreateErrorList());
-                //ast.Show();
+                //var program = new ECP.ECScript();
+                //program.Initialize();
+                //foreach(var lxm in program.Parse(compat(text)))
+                //{
+                //    System.Diagnostics.Debug.WriteLine(lxm);
+                //}
+                var ceMgr = new VBF.Compilers.CompilationErrorManager();
+                var ECParser = new ECP.VBFECScript(ceMgr);
+                ECParser.Initialize();
+                var ast = ECParser.Parse(compat(text), ceMgr.CreateErrorList());
+                var visitor = new ECP.SimpleVisitor();
+                visitor.Visit(ast);
             }
             catch (Exception e)
             {

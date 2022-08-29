@@ -15,9 +15,4 @@ public class Number : Expression
     {
         return visitor.VisitNumber(this);
     }
-
-    public override void Show()
-    {
-        Console.WriteLine($"{this}:{VariableRef}");
-    }
 }

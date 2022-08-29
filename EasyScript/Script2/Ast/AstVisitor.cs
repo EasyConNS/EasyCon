@@ -53,13 +53,18 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
     {
         return ast;
     }
+
+    public virtual AstNode VisitButtonAction(ButtonAction ast)
+    {
+        return ast;
+    }
     
-    public virtual AstNode VisitPrintState(PrintState ast)
+    public virtual AstNode VisitFuncState(FuncState ast)
     {
         return ast;
     }
 
-    public virtual AstNode VisitButtonAction(ButtonAction ast)
+    public virtual AstNode VisitBuildinState(BuildinState ast)
     {
         return ast;
     }

@@ -4,25 +4,17 @@ namespace ECP.Ast;
 
 public class ForWhile : Statement
 {
-    public ForWhile(IList<Statement> statements)
+    public ForWhile(ForStatement forcond, IList<Statement> statements)
     {
-        Statements = new ReadOnlyCollection<Statement>(statements);
+        Condition = forcond;
+        BlockStmt = new Block(statements);
     }
 
-    public ReadOnlyCollection<Statement> Statements { get; init; }
+    public ForStatement Condition { get; init; }
+    public Block BlockStmt { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitForWhile(this);
-    }
-
-    public override void Show()
-    {
-        Console.WriteLine($"{this} - start");
-        foreach(var st in Statements)
-        {
-            st.Show();
-        }
-        Console.WriteLine($"{this} - end");
     }
 }
