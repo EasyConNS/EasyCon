@@ -89,12 +89,9 @@ namespace EasyScript.Parsing
             System.Diagnostics.Debug.WriteLine("v2 start---");
             try
             {
-                var lxon = new Compiler.Scanners.Lexicon();
-                var skips = new List<Compiler.Scanners.Token>();
-                var parser = new ECP.ECScript(lxon, skips);
-                var scanner = lxon.CreateScanner();
-                scanner.SetSkipTokens(skips.Select(z=> z.Index).ToArray());
-                foreach(var lxm in scanner.Parse(compat(text)))
+                var program = new ECP.ECScript();
+                program.Initialize();
+                foreach(var lxm in program.Parse(compat(text)))
                 {
                     System.Diagnostics.Debug.WriteLine(lxm);
                 }

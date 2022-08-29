@@ -2,8 +2,8 @@ namespace Compiler.Scanners;
 
 public record Token : IEquatable<Token>
 {
-    public int Index { get; private set; }
-    public string Description { get; private set; }
+    public int Index { get; init; }
+    public string Description { get; init; }
 
     public Token(string description, int index)
     {

@@ -9,6 +9,11 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
+    public virtual AstNode VisitBlock(Block ast)
+    {
+        return ast;
+    }
+
     public virtual AstNode VisitNumber(Number ast)
     {
         return ast;

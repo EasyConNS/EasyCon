@@ -27,14 +27,13 @@ public class Lexicon
     public Lexer Lexer => m_defaultState;
     public int TokenCount => m_tokenList.Count;
 
-    internal TokenInfo AddToken(string definition, string description)
+    internal TokenInfo AddToken(RegExpression definition, string description)
     {
-        description = description == string.Empty ? definition : description;
+        description = description == string.Empty ? definition.ToString() : description;
         var contains = m_tokenList.Exists(r => r.Tag.Description == description);
         if (contains) throw new ArgumentException("duplicate token defined!");
-        var reg = new Regex("^" + definition, RegexOptions.IgnoreCase);
         var tag = new Token(description, m_tokenList.Count);
-        var token = new TokenInfo(reg, tag);
+        var token = new TokenInfo(definition, tag);
         m_tokenList.Add(token);
 
         return token;
