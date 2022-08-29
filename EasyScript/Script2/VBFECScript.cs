@@ -248,7 +248,7 @@ public class VBFECScript : ParserBase<Program>
             from mov in O_MOV
             from number in (V_NUM.AsTerminal() | V_CONST.AsTerminal())
             from _nl in O_SEMI
-            select (Statement)new ConstDefine();
+            select (Statement)new ConstDefine("");
         
         PInstant.Rule =
             from number in (V_CONST.AsTerminal() | V_NUM.AsTerminal())

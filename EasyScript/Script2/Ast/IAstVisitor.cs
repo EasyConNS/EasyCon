@@ -3,6 +3,7 @@ namespace ECP.Ast;
 public interface IAstVisitor<T>
 {
     T VisitProgram(Program ast);
+    T VisitBlock(Block ast);
     T VisitNumber(Number ast);
     T VisitConstDefine(ConstDefine ast);
     T VisitMovStatement(MovStatement ast);

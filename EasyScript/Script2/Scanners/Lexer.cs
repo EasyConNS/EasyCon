@@ -16,14 +16,14 @@ public class Lexer
         Index = index;
     }
 
-    public Token DefineToken(string definition, string description)
+    public Token DefineToken(RegExpression definition, string description)
     {
         var tokenInfo = Lexicon.AddToken(definition, description);
         tokens.Add(tokenInfo.Tag);
         return tokenInfo.Tag;
     }
 
-    public Token DefineToken(string definition)
+    public Token DefineToken(RegExpression definition)
     {
         var tokenInfo = Lexicon.AddToken(definition, "");
         tokens.Add(tokenInfo.Tag);

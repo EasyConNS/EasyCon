@@ -7,11 +7,11 @@ public class IfElse : Statement
     public IfElse(Binary condition, IList<Statement> statements)
     {
         Condition = condition;
-        Statements = new ReadOnlyCollection<Statement>(statements);
+        BlockStmt = new Block(statements);
     }
 
     public Binary Condition { get; init; }
-    public ReadOnlyCollection<Statement> Statements { get; init; }
+    public Block BlockStmt { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -21,10 +21,7 @@ public class IfElse : Statement
     public override void Show()
     {
         Console.WriteLine($"{this}:{Condition} - start");
-        foreach(var st in Statements)
-        {
-            st.Show();
-        }
+        BlockStmt.Show();
         Console.WriteLine($"{this} - end");
     }
 }
