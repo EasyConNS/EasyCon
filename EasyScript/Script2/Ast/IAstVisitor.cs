@@ -10,9 +10,12 @@ public interface IAstVisitor<T>
     T VisitWaitExp(WaitExp ast);
     T VisitIfElse(IfElse ast);
     T VisitBinary(Binary ast);
+    T VisitOpAssign(OpAssign ast);
     T VisitForState(ForStatement ast);
     T VisitForWhile(ForWhile ast);
+    T VisitLoopControl(LoopControl ast);
     T VisitButtonAction(ButtonAction ast);
+    T VisitStickAction(StickAction ast);
     T VisitFuncState(FuncState ast);
     T VisitBuildinState(BuildinState ast);
 }

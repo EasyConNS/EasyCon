@@ -237,6 +237,7 @@ public class VBFECScript : ParserBase<Program>
         Production<Statement> PEmpty = new();
         PEmpty.Rule =
             from _1 in S_COMMENT
+            from _nl in T_NEWLINE.Many1()
             select (Statement)new Empty(_1.Value.Content);
 
         PStatement.Rule =
@@ -275,7 +276,7 @@ public class VBFECScript : ParserBase<Program>
             from eq in O_MOV
             from number in PValue
             from _nl in T_NEWLINE.Many1()
-            select (Statement)new Binary(op.Value.Content, dVal.Value, number);
+            select (Statement)new OpAssign(op.Value.Content, dVal.Value, number);
         PMovExp.Rule =
             BinaryEq |
             (from dVal in V_VAR
@@ -320,20 +321,28 @@ public class VBFECScript : ParserBase<Program>
             from _start in PNum
             from _to in K_TO
             from _end in PNum
-            select new ForStatement()
+            select new ForStatement(dVal.Value, _start, _end)
         };
         Production<ForStatement> PForExp = new()
         {
             Rule =
             PForFull |
             (from _num in PNum
-             select new ForStatement())
+             select new ForStatement(_num))
+        };
+        Production<Statement> PLoopCtrl = new()
+        {
+            Rule =
+            from _lc in (K_BRK.AsTerminal() | K_CONTU.AsTerminal())
+            from lvl in (V_NUM.AsTerminal() | V_CONST.AsTerminal()).Optional()
+            from _nl2 in T_NEWLINE.Many1()
+            select (Statement)new LoopControl(_lc.Value.Content, lvl?.Value)
         };
         PForWhile.Rule =
             from _1 in K_FOR
             from _forExp in PForExp.Optional()
             from _nl1 in T_NEWLINE.Many1()
-            from statements in (PStatement.Many())
+            from statements in ((PStatement|PLoopCtrl).Many())
             from _next in K_NEXT
             from _nl2 in T_NEWLINE.Many1()
             select (Statement)new ForWhile(_forExp, statements.ToArray());
@@ -351,20 +360,20 @@ public class VBFECScript : ParserBase<Program>
             from dest in G_DPAD
             where (dest.Value.Content == "UP" || dest.Value.Content == "DOWN")
             from _nl2 in T_NEWLINE.Many1()
-            select (Statement)new ButtonAction(_key.Value)
+            select (Statement)new ButtonAction(_key.Value, dest.Value.Content)
         };
         PKeyAction.Rule =
             PKeyHold |
             from _key in (G_BTN.AsTerminal() | G_DPAD.AsTerminal())
             from dur in PValue.Optional()
             from _nl2 in T_NEWLINE.Many1()
-            select (Statement)new ButtonAction(_key.Value);
+            select (Statement)new ButtonAction(_key.Value, dur);
 
         PStickAction.Rule =
             from _key in G_STICK
             from dest in G_DPAD
             from _end in T_NEWLINE.Many1()
-            select (Statement)new ButtonAction(_key.Value);
+            select (Statement)new StickAction(_key.Value, dest.Value.Content);
 
         PSTD.Rule =
             from _k in T_IDENT

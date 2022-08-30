@@ -44,6 +44,11 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
+    public virtual AstNode VisitOpAssign(OpAssign ast)
+    {
+        return ast;
+    }
+
     public virtual AstNode VisitForState(ForStatement ast)
     {
         return ast;
@@ -54,7 +59,17 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
+    public virtual AstNode VisitLoopControl(LoopControl ast)
+    {
+        return ast;
+    }
+
     public virtual AstNode VisitButtonAction(ButtonAction ast)
+    {
+        return ast;
+    }
+
+    public virtual AstNode VisitStickAction(StickAction ast)
     {
         return ast;
     }

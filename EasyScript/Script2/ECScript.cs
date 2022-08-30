@@ -70,7 +70,7 @@ public class ECScript : ParserBase
         S_STR = lexer.DefineToken(inputchar.PackBy("\""), "STRING");
         S_COMMENT = lexer.DefineToken(RE.Simple("#").Concat(inputchar), "COMMENT");
         S_WHITESPACE = lexer.DefineToken(RE.Simple("[\u0020\u0009\u000B\u000C]"), "WHITESPACE");
-        T_NEWLINE = lexer.DefineToken(RE.Simple("[\u000D\u000A\u0085\u2028\u2029]|\r\n"), "LINE_BREAK");
+        T_NEWLINE = lexer.DefineToken(RE.Simple("[\u000D\u000A\u0085\u2028\u2029]|\r\n"), Scanner.LINEBREAKER);
 
         #region key words
         {

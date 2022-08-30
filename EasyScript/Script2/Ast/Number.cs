@@ -15,4 +15,9 @@ public class Number : Expression
     {
         return visitor.VisitNumber(this);
     }
+
+    public override string ToString()
+    {
+        return VariableRef.Content;
+    }
 }
