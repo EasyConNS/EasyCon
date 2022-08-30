@@ -18,6 +18,7 @@ public class Scanner
         EndOfStreamTokenIndex = lexicon.TokenCount;
     }
 
+    public const string LINEBREAKER = "LINE_BREAK";
     public int EndOfStreamTokenIndex { get; init; }
 
     public void SetSkipTokens(params int[] ignoreIndexes)
@@ -31,7 +32,7 @@ public class Scanner
     public IEnumerable<Lexeme> Parse(string text)
     {
         var linebreaker = (from lxm in Lexicon.GetTokens()
-        where lxm.Tag.Description == "LINE_BREAK"
+        where lxm.Tag.Description == LINEBREAKER
         select lxm).First();
 
         if(linebreaker == null)

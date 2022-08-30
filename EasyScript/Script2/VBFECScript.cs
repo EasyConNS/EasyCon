@@ -213,6 +213,8 @@ public class VBFECScript : ParserBase<Program>
     private readonly Production<Statement> BinaryEq = new();
     private readonly Production<Statement> PMovExp = new();
     private readonly Production<Statement> PIfElse = new();
+    private readonly Production<Statement> PElif = new();
+    private readonly Production<Statement> PElse = new();
     private readonly Production<Binary> PIfExp = new();
     private readonly Production<Statement> PForWhile = new();
     private readonly Production<Statement> PBreak = new();
@@ -273,7 +275,7 @@ public class VBFECScript : ParserBase<Program>
             from eq in O_MOV
             from number in PValue
             from _nl in T_NEWLINE.Many1()
-            select (Statement)new Binary(dVal.Value, number);
+            select (Statement)new Binary(op.Value.Content, dVal.Value, number);
         PMovExp.Rule =
             BinaryEq |
             (from dVal in V_VAR
@@ -287,15 +289,28 @@ public class VBFECScript : ParserBase<Program>
             from condExp in PIfExp
             from _nlif1 in T_NEWLINE.Many1()
             from statements in PStatement.Many()
+            from _elif in PElif.Many()
+            from _else in PElse.Optional()
             from _endif in K_ENDIF
             from _nlif2 in T_NEWLINE.Many1()
             select (Statement)new IfElse(condExp, statements.ToArray());
+        PElif.Rule =
+            from _elif in K_ELIF
+            from condExp in PIfExp
+            from _nlif1 in T_NEWLINE.Many1()
+            from statements in PStatement.Many()
+            select (Statement)new Empty("else if");
+        PElse.Rule =
+            from _else in K_ELSE
+            from _nlif1 in T_NEWLINE.Many1()
+            from statements in PStatement.Many()
+            select (Statement)new Empty("else");
 
         PIfExp.Rule =
             from _1 in PValue
             from op in (O_LESS.AsTerminal()|O_LESSEQ.AsTerminal() |O_GREATER.AsTerminal() | O_GREATEREQ.AsTerminal()|O_NOTEQ.AsTerminal() |O_EQUAL.AsTerminal() | O_MOV.AsTerminal())
             from _2 in PValue
-            select new Binary(_1, _2);
+            select new Binary(op.Value.Content, _1, _2);
 
         Production<ForStatement> PForFull = new()
         {

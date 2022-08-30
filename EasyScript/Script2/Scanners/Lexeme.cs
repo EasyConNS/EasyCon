@@ -16,6 +16,7 @@ public record Lexeme
         Value = new LexemeValue(content, span);
     }
 
+    public int Index => m_stateIndex;
     public SourceSpan Span => Value.Span;
 
     public bool IsEndOfStream => m_stateIndex == m_scanner.EndOfStreamTokenIndex;

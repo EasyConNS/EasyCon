@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace Compiler.Scanners;
@@ -20,5 +22,27 @@ public abstract class RegExpression
     public static RegExpression operator|(RegExpression left, RegExpression right)
     {
         return new AlternationExpression(left, right);
+    }
+
+    public RegExpression PackBy(string a)
+    {
+        return Simple(a + ToString() + a);
+    }
+
+    public RegExpression Concat(RegExpression follow)
+    {
+        return new ConcatenationExpression(this, follow);
+    }
+
+    [SpecialName]
+    public static RegExpression op_RightShift(RegExpression first, RegExpression follow)
+    {
+        return new ConcatenationExpression(first, follow);
+    }
+
+    [SpecialName]
+    public static RegExpression op_Concatenate(RegExpression first, RegExpression follow)
+    {
+        return new ConcatenationExpression(first, follow);
     }
 }

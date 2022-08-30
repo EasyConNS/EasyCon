@@ -6,15 +6,6 @@ namespace ECP;
 
 public class ECScript : ParserBase
 {
-    // idents
-    // need escape: $ () * + . [] ? \ ^ {} |
-    const string _ident = @"[\d\p{L}_]+";
-    const string consts = @"_" + _ident;
-    const string extVars = "@" + _ident;
-    const string vars = @"\${1,2}[\da-zA-Z_]+";
-
-    const string inputchar = "[^\u000D\u000A\u0085\u2028\u2029]*";
-
     private Token K_IF;
     private Token K_ELIF;
     private Token K_ELSE;
@@ -73,9 +64,11 @@ public class ECScript : ParserBase
     protected override void OnDefineLexer(Lexicon lexicon, ICollection<Token> skippedTokens)
     {
         var lexer = lexicon.Lexer;
+        var inputchar = RE.Simple("[^\u000D\u000A\u0085\u2028\u2029]*");
+        var ident = RE.Simple(@"[\d\p{L}_]+");
 
-        S_STR = lexer.DefineToken(RE.Simple("\"" + inputchar + "\""), "STRING");
-        S_COMMENT = lexer.DefineToken(RE.Simple("#" + inputchar), "COMMENT");
+        S_STR = lexer.DefineToken(inputchar.PackBy("\""), "STRING");
+        S_COMMENT = lexer.DefineToken(RE.Simple("#").Concat(inputchar), "COMMENT");
         S_WHITESPACE = lexer.DefineToken(RE.Simple("[\u0020\u0009\u000B\u000C]"), "WHITESPACE");
         T_NEWLINE = lexer.DefineToken(RE.Simple("[\u000D\u000A\u0085\u2028\u2029]|\r\n"), "LINE_BREAK");
 
@@ -119,6 +112,7 @@ public class ECScript : ParserBase
         #endregion
         #region symbols
         {
+            // need escape: $ () * + . [] ? \ ^ {} |
             LO_AND = lexer.DefineToken(RE.Simple("&&"), "OP_AND");
             LO_OR = lexer.DefineToken(RE.Simple(@"\|\|"), "OP_OR");
             LO_NOT = lexer.DefineToken(RE.Simple("!"), "OP_NOT");
@@ -142,14 +136,14 @@ public class ECScript : ParserBase
         #endregion
         #region ident
         {
-            V_CONST = lexer.DefineToken(RE.Simple(consts), "CONST");
-            V_VAR = lexer.DefineToken(RE.Simple(vars), "VARIABLE");
-            V_EXVAR = lexer.DefineToken(RE.Simple(extVars), "EXVAR");
+            V_CONST = lexer.DefineToken(RE.Simple(@"_").Concat(ident), "CONST");
+            V_EXVAR = lexer.DefineToken(RE.Simple("@").Concat(ident), "EXVAR");
+            V_VAR = lexer.DefineToken(RE.Simple( @"\${1,2}[\da-zA-Z_]+"), "VARIABLE");
             V_NUM = lexer.DefineToken(RE.Simple(@"-?\d+"), "NUM");
         }
         #endregion
         // must be the last
-        T_IDENT = lexer.DefineToken(RE.Simple(_ident), "IDENT");
+        T_IDENT = lexer.DefineToken(ident, "IDENT");
 
         skippedTokens.Add(S_COMMENT);
         skippedTokens.Add(S_WHITESPACE);
