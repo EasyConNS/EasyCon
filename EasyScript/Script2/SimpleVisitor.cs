@@ -48,15 +48,34 @@ public class SimpleVisitor : AstVisitor
 
     public override AstNode VisitIfElse(IfElse ast)
     {
+        Console.WriteLine("if:");
         Visit(ast.Condition);
         Visit(ast.BlockStmt);
+        if(ast.ElifStmt != null)
+        {
+            foreach(var el in ast.ElifStmt)
+                Visit(el);
+        }
+        if(ast.ElseStmt != null)
+        {
+            Console.WriteLine("else:");
+            Visit(ast.ElseStmt);
+        }
         Console.WriteLine("endif");
+        return ast;
+    }
+
+    public override AstNode VisitElseIf(ElseIf ast)
+    {
+        Console.WriteLine("elif:");
+        Visit(ast.Condition);
+        Visit(ast.BlockStmt);
         return ast;
     }
 
     public override AstNode VisitBinary(Binary ast)
     {
-        Console.WriteLine($"if:{ast.m_number} {ast.Operator} {ast.r_number}");
+        Console.WriteLine($"{ast.m_number} {ast.Operator} {ast.r_number}");
         return ast;
     }
 

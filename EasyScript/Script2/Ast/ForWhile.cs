@@ -5,10 +5,10 @@ namespace ECP.Ast;
 
 public class ForWhile : Statement
 {
-    public ForWhile(ForStatement forcond, IList<Statement> statements)
+    public ForWhile(ForStatement forcond, Block statements)
     {
         Condition = forcond;
-        BlockStmt = new Block(statements);
+        BlockStmt = statements;
     }
 
     public ForStatement Condition { get; init; }

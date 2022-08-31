@@ -1,13 +1,41 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
 namespace ECP.Ast;
 
 public class IfElse : Statement
 {
-    public IfElse(Binary condition, IList<Statement> statements)
+    public IfElse(Binary condition, Block statements, IList<ElseIf> elifStmt, Block elsestmt)
     {
         Condition = condition;
-        BlockStmt = new Block(statements);
+        if(elifStmt != null)
+        {
+            ElifStmt = new ReadOnlyCollection<ElseIf>(elifStmt);
+        }
+        if(elsestmt != null)
+        {
+            ElseStmt = elsestmt;
+        }
+        BlockStmt = statements;
+    }
+
+    public Binary Condition { get; init; }
+    public Block BlockStmt { get; init; }
+    public ReadOnlyCollection<ElseIf> ElifStmt { get; init; }
+    public Block ElseStmt { get; init; }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitIfElse(this);
+    }
+}
+
+public class ElseIf : Statement
+{
+    public ElseIf(Binary condition, Block statements)
+    {
+        Condition = condition;
+        BlockStmt = statements;
     }
 
     public Binary Condition { get; init; }
@@ -15,6 +43,6 @@ public class IfElse : Statement
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        return visitor.VisitIfElse(this);
+        return visitor.VisitElseIf(this);
     }
 }

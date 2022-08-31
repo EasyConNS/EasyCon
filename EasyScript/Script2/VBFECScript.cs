@@ -213,8 +213,8 @@ public class VBFECScript : ParserBase<Program>
     private readonly Production<Statement> BinaryEq = new();
     private readonly Production<Statement> PMovExp = new();
     private readonly Production<Statement> PIfElse = new();
-    private readonly Production<Statement> PElif = new();
-    private readonly Production<Statement> PElse = new();
+    private readonly Production<ElseIf> PElif = new();
+    private readonly Production<Block> PElse = new();
     private readonly Production<Binary> PIfExp = new();
     private readonly Production<Statement> PForWhile = new();
     private readonly Production<Statement> PBreak = new();
@@ -250,6 +250,21 @@ public class VBFECScript : ParserBase<Program>
             PKeyAction |
             PStickAction |
             PSTD;
+        
+        Production<Statement> PLoopCtrl = new()
+        {
+            Rule =
+            from _lc in (K_BRK.AsTerminal() | K_CONTU.AsTerminal())
+            from lvl in (V_NUM.AsTerminal() | V_CONST.AsTerminal()).Optional()
+            from _nl2 in T_NEWLINE.Many1()
+            select (Statement)new LoopControl(_lc.Value.Content, lvl?.Value)
+        };
+        Production<Block> PBlock = new()
+        {
+            Rule =
+            from statements in ((PStatement|PLoopCtrl).Many())
+            select new Block(statements.ToArray())
+        };
 
         PConstDefine.Rule =
             from constVal in V_CONST
@@ -289,23 +304,23 @@ public class VBFECScript : ParserBase<Program>
             from _if in K_IF
             from condExp in PIfExp
             from _nlif1 in T_NEWLINE.Many1()
-            from statements in PStatement.Many()
+            from blockstmt in PBlock
             from _elif in PElif.Many()
             from _else in PElse.Optional()
             from _endif in K_ENDIF
             from _nlif2 in T_NEWLINE.Many1()
-            select (Statement)new IfElse(condExp, statements.ToArray());
+            select (Statement)new IfElse(condExp, blockstmt, _elif.ToArray(), _else);
         PElif.Rule =
             from _elif in K_ELIF
             from condExp in PIfExp
             from _nlif1 in T_NEWLINE.Many1()
-            from statements in PStatement.Many()
-            select (Statement)new Empty("else if");
+            from blockstmt in PBlock
+            select new ElseIf(condExp, blockstmt);
         PElse.Rule =
             from _else in K_ELSE
             from _nlif1 in T_NEWLINE.Many1()
-            from statements in PStatement.Many()
-            select (Statement)new Empty("else");
+            from block in PBlock
+            select block;
 
         PIfExp.Rule =
             from _1 in PValue
@@ -330,22 +345,14 @@ public class VBFECScript : ParserBase<Program>
             (from _num in PNum
              select new ForStatement(_num))
         };
-        Production<Statement> PLoopCtrl = new()
-        {
-            Rule =
-            from _lc in (K_BRK.AsTerminal() | K_CONTU.AsTerminal())
-            from lvl in (V_NUM.AsTerminal() | V_CONST.AsTerminal()).Optional()
-            from _nl2 in T_NEWLINE.Many1()
-            select (Statement)new LoopControl(_lc.Value.Content, lvl?.Value)
-        };
         PForWhile.Rule =
             from _1 in K_FOR
             from _forExp in PForExp.Optional()
             from _nl1 in T_NEWLINE.Many1()
-            from statements in ((PStatement|PLoopCtrl).Many())
+            from block in PBlock
             from _next in K_NEXT
             from _nl2 in T_NEWLINE.Many1()
-            select (Statement)new ForWhile(_forExp, statements.ToArray());
+            select (Statement)new ForWhile(_forExp, block);
         
         PWait.Rule =
             from _1 in G_WAIT.Optional()
@@ -358,7 +365,7 @@ public class VBFECScript : ParserBase<Program>
             Rule =
             from _key in (G_BTN.AsTerminal() | G_DPAD.AsTerminal())
             from dest in G_DPAD
-            where (dest.Value.Content == "UP" || dest.Value.Content == "DOWN")
+            where (dest.Value.Content.ToUpper() == "UP" || dest.Value.Content.ToUpper() == "DOWN")
             from _nl2 in T_NEWLINE.Many1()
             select (Statement)new ButtonAction(_key.Value, dest.Value.Content)
         };
@@ -368,12 +375,28 @@ public class VBFECScript : ParserBase<Program>
             from dur in PValue.Optional()
             from _nl2 in T_NEWLINE.Many1()
             select (Statement)new ButtonAction(_key.Value, dur);
+        
+        Production<Statement> PStickReset = new()
+        {
+            Rule =
+            from _key in G_STICK
+            from dest in G_RESET
+            from _nl2 in T_NEWLINE.Many1()
+            select (Statement)new StickAction(_key.Value, "RESET")
+        };
+        Production<Number> PCoValue = new();
+        PCoValue.Rule =
+            from _c in O_COMA
+            from number in PValue
+            select number;
 
         PStickAction.Rule =
+            PStickReset |
             from _key in G_STICK
-            from dest in G_DPAD
+            from dest in (G_DPAD.AsTerminal() | V_NUM.AsTerminal())
+            from dur in PCoValue.Optional()
             from _end in T_NEWLINE.Many1()
-            select (Statement)new StickAction(_key.Value, dest.Value.Content);
+            select (Statement)new StickAction(_key.Value, dest.Value.Content, dur);
 
         PSTD.Rule =
             from _k in T_IDENT

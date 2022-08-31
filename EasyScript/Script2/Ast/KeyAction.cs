@@ -17,13 +17,13 @@ public class ButtonAction : KeyAction
     public ButtonAction(LexemeValue name, Number duration)
     {
         Key = name.Content.ToUpper();
-        Duration = duration != null ? duration.VariableRef.Content : "50";
+        Duration = duration?.VariableRef.Content ?? "-";
     }
 
     public ButtonAction(LexemeValue name, string destination)
     {
         Key = name.Content.ToUpper();
-        Duration = destination ?? "50";
+        Duration = destination.ToUpper();
     }
 
     public string Key { get; init; }
@@ -38,6 +38,11 @@ public class ButtonAction : KeyAction
 public class StickAction : ButtonAction
 {
     public StickAction(LexemeValue name, string destination) : base(name)
+    {
+        Destination = destination;
+    }
+
+    public StickAction(LexemeValue name, string destination, Number duration) : base(name, duration)
     {
         Destination = destination;
     }

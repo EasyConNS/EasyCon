@@ -9,6 +9,7 @@ public interface IAstVisitor<T>
     T VisitMovStatement(MovStatement ast);
     T VisitWaitExp(WaitExp ast);
     T VisitIfElse(IfElse ast);
+    T VisitElseIf(ElseIf ast);
     T VisitBinary(Binary ast);
     T VisitOpAssign(OpAssign ast);
     T VisitForState(ForStatement ast);

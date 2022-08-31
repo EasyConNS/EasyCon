@@ -39,6 +39,11 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
+    public virtual AstNode VisitElseIf(ElseIf ast)
+    {
+        return ast;
+    }
+
     public virtual AstNode VisitBinary(Binary ast)
     {
         return ast;
