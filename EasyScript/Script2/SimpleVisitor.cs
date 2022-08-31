@@ -1,9 +1,24 @@
 using ECP.Ast;
+using VBF.Compilers;
 
 namespace ECP;
 
 public class SimpleVisitor : AstVisitor
 {
+    private CompilationErrorList m_errorList;
+    private readonly CompilationErrorManager m_errorManager;
+
+    public SimpleVisitor(CompilationErrorManager errorManager)
+    {
+        m_errorManager = errorManager;
+    }
+
+    public CompilationErrorList ErrorList
+    {
+        get { return m_errorList; }
+        set { m_errorList = value; }
+    }
+
     public override AstNode VisitProgram(Program ast)
     {
         Console.WriteLine("program start:");
@@ -36,7 +51,8 @@ public class SimpleVisitor : AstVisitor
 
     public override AstNode VisitMovStatement(MovStatement ast)
     {
-        Console.WriteLine($"{ast.DestVar} = {ast.AssignExpr}");
+        var op = ast.Negi ? "= ~": "= ";
+        Console.WriteLine($"{ast.DestVar} {op}{ast.AssignExpr}");
         return ast;
     }
 

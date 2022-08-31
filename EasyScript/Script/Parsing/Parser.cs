@@ -90,11 +90,22 @@ namespace EasyScript.Parsing
             try
             {
                 var ceMgr = new VBF.Compilers.CompilationErrorManager();
+                var errList = ceMgr.CreateErrorList();
                 var ECParser = new ECP.VBFECScript(ceMgr);
                 ECParser.Initialize();
-                var ast = ECParser.Parse(compat(text), ceMgr.CreateErrorList());
-                var visitor = new ECP.SimpleVisitor();
-                visitor.Visit(ast);
+                var ast = ECParser.Parse(compat(text), errList);
+                if(errList.Count != 0)
+                {
+                    foreach(var err in errList)
+                    {
+                        System.Diagnostics.Debug.WriteLine(err);
+                    }
+                }
+                else
+                {
+                    var visitor = new ECP.SimpleVisitor(ceMgr);
+                    visitor.Visit(ast);
+                }
             }
             catch (Exception e)
             {

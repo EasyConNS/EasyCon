@@ -217,11 +217,8 @@ public class VBFECScript : ParserBase<Program>
     private readonly Production<Block> PElse = new();
     private readonly Production<Binary> PIfExp = new();
     private readonly Production<Statement> PForWhile = new();
-    private readonly Production<Statement> PBreak = new();
-    private readonly Production<Statement> PContinue = new();
+    private readonly Production<Statement> PFunction = new();
     private readonly Production<Statement> PWait = new();
-    private readonly Production<Expression> PExp = new();
-    private readonly Production<Number> PInstant = new();
     private readonly Production<Number> PNum = new();
     private readonly Production<Number> PValue = new();
     private readonly Production<Statement> PSTD = new();
@@ -244,13 +241,14 @@ public class VBFECScript : ParserBase<Program>
             PEmpty |
             PForWhile |
             PIfElse |
+            PFunction |
             PConstDefine |
             PMovExp |
             PWait |
             PKeyAction |
             PStickAction |
             PSTD;
-        
+
         Production<Statement> PLoopCtrl = new()
         {
             Rule =
@@ -262,7 +260,7 @@ public class VBFECScript : ParserBase<Program>
         Production<Block> PBlock = new()
         {
             Rule =
-            from statements in ((PStatement|PLoopCtrl).Many())
+            from statements in ((PStatement | PLoopCtrl).Many())
             select new Block(statements.ToArray())
         };
 
@@ -272,10 +270,14 @@ public class VBFECScript : ParserBase<Program>
             from number in (V_NUM.AsTerminal() | V_CONST.AsTerminal())
             from _nl in T_NEWLINE.Many1()
             select (Statement)new ConstDefine(constVal.Value.Content, number.Value);
-        
-        PInstant.Rule =
+
+
+        Production<Number> PInstant = new()
+        {
+            Rule =
             from number in (V_CONST.AsTerminal() | V_NUM.AsTerminal())
-            select new Number(number.Value);
+            select new Number(number.Value)
+        };
         PNum.Rule =
             from number in (V_CONST.AsTerminal() | V_VAR.AsTerminal() | V_NUM.AsTerminal())
             select new Number(number.Value);
@@ -286,19 +288,21 @@ public class VBFECScript : ParserBase<Program>
         BinaryEq.Rule =
             from dVal in V_VAR
             from op in (O_PLUS.AsTerminal() | O_MINUS.AsTerminal() | O_ASTERISK.AsTerminal() | O_SLASH.AsTerminal() | O_SLASHI.AsTerminal() |
-                        O_MOD.AsTerminal() | O_AND.AsTerminal() | O_OR.AsTerminal() | O_XOR.AsTerminal()|
+                        O_MOD.AsTerminal() | O_AND.AsTerminal() | O_OR.AsTerminal() | O_XOR.AsTerminal() |
                         O_SHFTL.AsTerminal() | O_SHFTR.AsTerminal())
             from eq in O_MOV
             from number in PValue
             from _nl in T_NEWLINE.Many1()
             select (Statement)new OpAssign(op.Value.Content, dVal.Value, number);
+
         PMovExp.Rule =
             BinaryEq |
             (from dVal in V_VAR
             from mov in O_MOV
-            from number in PValue
+             from _n in O_NEGI.Optional()
+             from number in PValue
             from _nl in T_NEWLINE.Many1()
-            select (Statement)new MovStatement(dVal.Value, number));
+            select (Statement)new MovStatement(dVal.Value, number, _n != null));
 
         PIfElse.Rule =
             from _if in K_IF
@@ -353,7 +357,16 @@ public class VBFECScript : ParserBase<Program>
             from _next in K_NEXT
             from _nl2 in T_NEWLINE.Many1()
             select (Statement)new ForWhile(_forExp, block);
-        
+
+        PFunction.Rule =
+            from _f in K_FUNC
+            from funcname in T_IDENT
+            from _nl1 in T_NEWLINE.Many1()
+            from statements in PStatement.Many()
+            from _fe in K_ENDFUNC
+            from _nl2 in T_NEWLINE.Many1()
+            select (Statement)new Ast.Empty($"func:{funcname.Value.Content}");
+
         PWait.Rule =
             from _1 in G_WAIT.Optional()
             from number in (V_VAR.AsTerminal() | V_NUM.AsTerminal())
