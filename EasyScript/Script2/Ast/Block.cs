@@ -9,6 +9,7 @@ public class Block : Statement
     {
         if (statements == null)
         {
+            Statements = new ReadOnlyCollection<Statement>(new List<Statement>());
             return;
         }
         Statements = new ReadOnlyCollection<Statement>(statements);

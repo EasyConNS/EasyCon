@@ -4,20 +4,27 @@ namespace ECP.Ast;
 
 public class ForStatement : Expression
 {
-    public ForStatement(Number loopCount)
+    public ForStatement(Number count)
     {
-        Desp = $"{loopCount.VariableRef.Content}";
+        LoopCount = count;
     }
 
-    public ForStatement(LexemeValue name, Number start, Number end)
-    {
-        Desp = $"{name.Content} = {start.VariableRef.Content} to {end.VariableRef.Content}";
-    }
-
-    public string Desp { get; init; }
+    public Number LoopCount { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitForState(this);
     }
+}
+
+public class ForStatementFull : ForStatement
+{
+    public ForStatementFull(LexemeValue name, Number start, Number end) : base(end)
+    {
+        Var = name;
+        Start = start;
+    }
+
+    public LexemeValue Var { get; init; }
+    public Number Start { get; init; }
 }

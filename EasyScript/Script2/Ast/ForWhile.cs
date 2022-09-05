@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using VBF.Compilers.Scanners;
 
 namespace ECP.Ast;
@@ -30,7 +29,6 @@ public class LoopControl : Statement
         {
             Level = int.Parse(level.Content);
         }
-        
     }
 
     public string LoopType { get; init; }

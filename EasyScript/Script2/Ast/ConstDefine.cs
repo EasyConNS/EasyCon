@@ -4,13 +4,13 @@ namespace ECP.Ast;
 
 public class ConstDefine : Expression
 {
-    public ConstDefine(string name, LexemeValue value)
+    public ConstDefine(LexemeValue name, LexemeValue value)
     {
         ConstName = name;
         ConstValue = value;
     }
 
-    public string ConstName { get; init; }
+    public LexemeValue ConstName { get; init; }
     public LexemeValue ConstValue { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)

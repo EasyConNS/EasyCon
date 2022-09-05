@@ -13,13 +13,13 @@
 
   <ItemGroup>
     <Reference Include="Compilers.Common">
-      <HintPath>..\..\VBF\bin\net6.0\Compilers.Common.dll</HintPath>
+      <HintPath>..\deps\Compilers.Common.dll</HintPath>
     </Reference>
     <Reference Include="Compilers.Parsers">
-      <HintPath>..\..\VBF\bin\net6.0\Compilers.Parsers.dll</HintPath>
+      <HintPath>..\deps\Compilers.Parsers.dll</HintPath>
     </Reference>
     <Reference Include="Compilers.Scanners">
-      <HintPath>..\..\VBF\bin\net6.0\Compilers.Scanners.dll</HintPath>
+      <HintPath>..\deps\Compilers.Scanners.dll</HintPath>
     </Reference>
   </ItemGroup>
 

@@ -96,12 +96,14 @@ public class VBFECScript : ParserBase<Program>
         RE RE_IdChar = null;
         RE RE_SpaceChar = null;
         RE RE_InputChar = null;
+        RE RE_StrInput = null;
 
         var charSetBuilder = new CharSetExpressionBuilder();
 
-        charSetBuilder.DefineCharSet(c => lettersCategories.Contains(Char.GetUnicodeCategory(c)), re => RE_IdChar = re | RE.Symbol('_'));
+        charSetBuilder.DefineCharSet(c => lettersCategories.Contains(Char.GetUnicodeCategory(c)), re => RE_IdChar = re); //  | RE.Symbol('_')?
         charSetBuilder.DefineCharSet(c => Char.GetUnicodeCategory(c) == UnicodeCategory.SpaceSeparator, re => RE_SpaceChar = re);
         charSetBuilder.DefineCharSet(c => "\u000D\u000A\u0085\u2028\u2029".IndexOf(c) < 0, re => RE_InputChar = re);
+        charSetBuilder.DefineCharSet(c => "\"".IndexOf(c) < 0, re => RE_StrInput = re);
 
         charSetBuilder.Build();
 
@@ -190,7 +192,6 @@ public class VBFECScript : ParserBase<Program>
             V_EXVAR = lexer.DefineToken(RE.Symbol('@') >> (RE_IdChar | RE.Range('0', '9')).Many(), "EXVAR");
             V_NUM = lexer.DefineToken(RE.Range('0', '9').Many1(), "NUM");
 
-            T_STR = lexer.DefineToken(RE.Symbol('"') >> RE_InputChar.Many() >> RE.Symbol('"'), "STRING");
             T_NEWLINE = lexer.DefineToken(
                 RE.CharSet("\u000D\u000A\u0085\u2028\u2029") |
                 RE.Literal("\r\n")
@@ -199,23 +200,24 @@ public class VBFECScript : ParserBase<Program>
                 (RE_IdChar | RE.Range('0', '9')).Many(), "IDENT");
         }
         #endregion
-        S_COMMENT = lexer.DefineToken(RE.Symbol('#') >> RE_InputChar.Many() >> RE.Literal("\r\n"), "COMMENT");
+        S_COMMENT = lexer.DefineToken(RE.Symbol('#') >> RE_InputChar.Many(), "COMMENT");
+        T_STR = lexer.DefineToken(RE.Symbol('"') >> RE_StrInput.Many() >> RE.Symbol('"'), "STRING");
         S_WHITESPACE = lexer.DefineToken(RE_SpaceChar | RE.CharSet("\u0009\u000B\u000C"));
 
         skippedTokens.Add(S_WHITESPACE);
         skippedTokens.Add(S_COMMENT);
-        //skippedTokens.Add(T_NEWLINE);
+        skippedTokens.Add(T_NEWLINE);
     }
 
     private readonly Production<Program> PProgram = new();
     private readonly Production<Statement> PStatement = new();
     private readonly Production<Statement> PConstDefine = new();
-    private readonly Production<Statement> BinaryEq = new();
+    private readonly Production<Expression> PExp = new();
+    private readonly Production<Statement> BinaryAssign = new();
     private readonly Production<Statement> PMovExp = new();
     private readonly Production<Statement> PIfElse = new();
     private readonly Production<ElseIf> PElif = new();
     private readonly Production<Block> PElse = new();
-    private readonly Production<Binary> PIfExp = new();
     private readonly Production<Statement> PForWhile = new();
     private readonly Production<Statement> PFunction = new();
     private readonly Production<Statement> PWait = new();
@@ -231,14 +233,7 @@ public class VBFECScript : ParserBase<Program>
             from statements in PStatement.Many()
             select new Program(statements.ToArray());
 
-        Production<Statement> PEmpty = new();
-        PEmpty.Rule =
-            from _1 in S_COMMENT
-            from _nl in T_NEWLINE.Many1()
-            select (Statement)new Empty(_1.Value.Content);
-
         PStatement.Rule =
-            PEmpty |
             PForWhile |
             PIfElse |
             PFunction |
@@ -254,13 +249,13 @@ public class VBFECScript : ParserBase<Program>
             Rule =
             from _lc in (K_BRK.AsTerminal() | K_CONTU.AsTerminal())
             from lvl in (V_NUM.AsTerminal() | V_CONST.AsTerminal()).Optional()
-            from _nl2 in T_NEWLINE.Many1()
+            from _nl2 in O_SEMI
             select (Statement)new LoopControl(_lc.Value.Content, lvl?.Value)
         };
         Production<Block> PBlock = new()
         {
             Rule =
-            from statements in ((PStatement | PLoopCtrl).Many())
+            from statements in (PStatement | PLoopCtrl).Many()
             select new Block(statements.ToArray())
         };
 
@@ -268,15 +263,20 @@ public class VBFECScript : ParserBase<Program>
             from constVal in V_CONST
             from mov in O_MOV
             from number in (V_NUM.AsTerminal() | V_CONST.AsTerminal())
-            from _nl in T_NEWLINE.Many1()
-            select (Statement)new ConstDefine(constVal.Value.Content, number.Value);
+            from _nl in O_SEMI
+            select (Statement)new ConstDefine(constVal.Value, number.Value);
 
-
-        Production<Number> PInstant = new()
+        Production<Expression> PNumber = new()
         {
             Rule =
-            from number in (V_CONST.AsTerminal() | V_NUM.AsTerminal())
-            select new Number(number.Value)
+            from name in (V_CONST.AsTerminal() | V_NUM.AsTerminal())
+            select (Expression)new Number(name.Value)
+        };
+        Production<Expression> PVariable = new()
+        {
+            Rule =
+            from name in (V_VAR.AsTerminal() | V_EXVAR.AsTerminal())
+            select (Expression)new Variable(name.Value)
         };
         PNum.Rule =
             from number in (V_CONST.AsTerminal() | V_VAR.AsTerminal() | V_NUM.AsTerminal())
@@ -285,52 +285,98 @@ public class VBFECScript : ParserBase<Program>
             from number in (V_CONST.AsTerminal() | V_VAR.AsTerminal() | V_NUM.AsTerminal() | V_EXVAR.AsTerminal())
             select new Number(number.Value);
 
-        BinaryEq.Rule =
+        var foundationExp =
+            PNumber |
+            PVariable |
+            PExp.PackedBy(O_LPH, O_RPH);
+        Production<Expression> PNot = new();
+        PNot.Rule = // ! exp
+            foundationExp |
+            from _n in LO_NOT
+            from exp in PNot
+            select (Expression)new Not(exp);
+        Production<Expression> PFactor = new();
+        PFactor.Rule = // exp | !exp
+            PNot;
+        Production<Expression> PTerm = new();
+        PTerm.Rule = // term * factor | factor
+            PFactor |
+            from term in PTerm
+            from op in (O_ASTERISK.AsTerminal() | O_SLASH.AsTerminal() | O_SLASHI.AsTerminal() | O_MOD.AsTerminal())
+            from factor in PFactor
+            select (Expression)new Binary(op.Value, term, factor);
+        Production<Expression> PComparand = new();
+        PComparand.Rule = // comparand + term | term
+            PTerm |
+            from comparand in PComparand
+            from op in (O_PLUS.AsTerminal() | O_MINUS.AsTerminal())
+            from term in PTerm
+            select (Expression)new Binary(op.Value, comparand, term);
+        Production<Expression> PComparison = new();
+        PComparison.Rule =
+            PComparand |
+            from comparison in PComparison
+            from op in (O_LESS.AsTerminal()|O_LESSEQ.AsTerminal() |O_GREATER.AsTerminal() | O_GREATEREQ.AsTerminal()|
+                    O_NOTEQ.AsTerminal() |O_EQUAL.AsTerminal() |
+                    O_MOV.AsTerminal()) // for compat
+            from comparand in PComparand
+            select (Expression)new Binary(op.Value, comparison, comparand);
+        Production<Expression> PAnd = new();
+        PAnd.Rule = // andexp && comparison | comparison
+            PComparison |
+            from andexp in PAnd
+            from op in LO_AND
+            from comparison in PComparison
+            select (Expression)new Binary(op.Value, andexp, comparison);
+        Production<Expression> POr = new();
+        POr.Rule =
+            PAnd |
+            from orexp in POr
+            from op in LO_OR
+            from andexp in PAnd
+            select (Expression)new Binary(op.Value, orexp, andexp);
+        PExp.Rule = POr;
+
+        BinaryAssign.Rule =
             from dVal in V_VAR
-            from op in (O_PLUS.AsTerminal() | O_MINUS.AsTerminal() | O_ASTERISK.AsTerminal() | O_SLASH.AsTerminal() | O_SLASHI.AsTerminal() |
+            from op in (O_PLUS.AsTerminal() | O_MINUS.AsTerminal() |
+                        O_ASTERISK.AsTerminal() | O_SLASH.AsTerminal() | O_SLASHI.AsTerminal() |
                         O_MOD.AsTerminal() | O_AND.AsTerminal() | O_OR.AsTerminal() | O_XOR.AsTerminal() |
                         O_SHFTL.AsTerminal() | O_SHFTR.AsTerminal())
             from eq in O_MOV
             from number in PValue
-            from _nl in T_NEWLINE.Many1()
-            select (Statement)new OpAssign(op.Value.Content, dVal.Value, number);
+            from _nl in O_SEMI
+            select (Statement)new OpAssign(op.Value, dVal.Value, number);
 
         PMovExp.Rule =
-            BinaryEq |
+            BinaryAssign |
             (from dVal in V_VAR
             from mov in O_MOV
-             from _n in O_NEGI.Optional()
-             from number in PValue
-            from _nl in T_NEWLINE.Many1()
-            select (Statement)new MovStatement(dVal.Value, number, _n != null));
+             from exp in PExp
+             from _nl in O_SEMI
+             select (Statement)new Assign(dVal.Value, exp));
 
         PIfElse.Rule =
             from _if in K_IF
-            from condExp in PIfExp
-            from _nlif1 in T_NEWLINE.Many1()
+            from condExp in PExp
+            from _nlif1 in O_COLON
             from blockstmt in PBlock
             from _elif in PElif.Many()
             from _else in PElse.Optional()
             from _endif in K_ENDIF
-            from _nlif2 in T_NEWLINE.Many1()
+            from _nlif2 in O_SEMI
             select (Statement)new IfElse(condExp, blockstmt, _elif.ToArray(), _else);
         PElif.Rule =
             from _elif in K_ELIF
-            from condExp in PIfExp
-            from _nlif1 in T_NEWLINE.Many1()
+            from condExp in PExp
+            from _nlif1 in O_COLON
             from blockstmt in PBlock
             select new ElseIf(condExp, blockstmt);
         PElse.Rule =
             from _else in K_ELSE
-            from _nlif1 in T_NEWLINE.Many1()
+            from _nlif1 in O_COLON
             from block in PBlock
             select block;
-
-        PIfExp.Rule =
-            from _1 in PValue
-            from op in (O_LESS.AsTerminal()|O_LESSEQ.AsTerminal() |O_GREATER.AsTerminal() | O_GREATEREQ.AsTerminal()|O_NOTEQ.AsTerminal() |O_EQUAL.AsTerminal() | O_MOV.AsTerminal())
-            from _2 in PValue
-            select new Binary(op.Value.Content, _1, _2);
 
         Production<ForStatement> PForFull = new()
         {
@@ -340,7 +386,7 @@ public class VBFECScript : ParserBase<Program>
             from _start in PNum
             from _to in K_TO
             from _end in PNum
-            select new ForStatement(dVal.Value, _start, _end)
+            select (ForStatement)new ForStatementFull(dVal.Value, _start, _end)
         };
         Production<ForStatement> PForExp = new()
         {
@@ -352,26 +398,26 @@ public class VBFECScript : ParserBase<Program>
         PForWhile.Rule =
             from _1 in K_FOR
             from _forExp in PForExp.Optional()
-            from _nl1 in T_NEWLINE.Many1()
+            from _nl1 in O_COLON
             from block in PBlock
             from _next in K_NEXT
-            from _nl2 in T_NEWLINE.Many1()
+            from _nl2 in O_SEMI
             select (Statement)new ForWhile(_forExp, block);
 
         PFunction.Rule =
             from _f in K_FUNC
             from funcname in T_IDENT
-            from _nl1 in T_NEWLINE.Many1()
+            from _nl1 in O_COLON
             from statements in PStatement.Many()
             from _fe in K_ENDFUNC
-            from _nl2 in T_NEWLINE.Many1()
-            select (Statement)new Ast.Empty($"func:{funcname.Value.Content}");
+            from _nl2 in O_SEMI
+            select (Statement)new FuncState(funcname.Value.Content, statements.ToArray());
 
         PWait.Rule =
             from _1 in G_WAIT.Optional()
             from number in (V_VAR.AsTerminal() | V_NUM.AsTerminal())
-            from _nl2 in T_NEWLINE.Many1()
-            select (Statement)new WaitExp(new Number(number.Value));
+            from _nl2 in O_SEMI
+            select (Statement)new WaitExp(number.Value);
 
         Production<Statement> PKeyHold = new()
         {
@@ -379,14 +425,14 @@ public class VBFECScript : ParserBase<Program>
             from _key in (G_BTN.AsTerminal() | G_DPAD.AsTerminal())
             from dest in G_DPAD
             where (dest.Value.Content.ToUpper() == "UP" || dest.Value.Content.ToUpper() == "DOWN")
-            from _nl2 in T_NEWLINE.Many1()
+            from _nl2 in O_SEMI
             select (Statement)new ButtonAction(_key.Value, dest.Value.Content)
         };
         PKeyAction.Rule =
             PKeyHold |
-            from _key in (G_BTN.AsTerminal() | G_DPAD.AsTerminal())
+            from _key in G_BTN.AsTerminal() | G_DPAD.AsTerminal()
             from dur in PValue.Optional()
-            from _nl2 in T_NEWLINE.Many1()
+            from _nl2 in O_SEMI
             select (Statement)new ButtonAction(_key.Value, dur);
         
         Production<Statement> PStickReset = new()
@@ -394,28 +440,30 @@ public class VBFECScript : ParserBase<Program>
             Rule =
             from _key in G_STICK
             from dest in G_RESET
-            from _nl2 in T_NEWLINE.Many1()
+            from _nl2 in O_SEMI
             select (Statement)new StickAction(_key.Value, "RESET")
         };
-        Production<Number> PCoValue = new();
-        PCoValue.Rule =
+        Production<Number> PCoValue = new()
+        {
+            Rule =
             from _c in O_COMA
             from number in PValue
-            select number;
+            select number
+        };
 
         PStickAction.Rule =
             PStickReset |
-            from _key in G_STICK
+            (from _key in G_STICK
             from dest in (G_DPAD.AsTerminal() | V_NUM.AsTerminal())
             from dur in PCoValue.Optional()
-            from _end in T_NEWLINE.Many1()
-            select (Statement)new StickAction(_key.Value, dest.Value.Content, dur);
+            from _end in O_SEMI
+            select (Statement)new StickAction(_key.Value, dest.Value.Content, dur));
 
         PSTD.Rule =
             from _k in T_IDENT
             from arg in (T_STR.AsTerminal() | V_VAR.AsTerminal())
-            from _end in T_NEWLINE.Many1()
-            select (Statement)new BuildinState(_k.Value.Content);
+            from _end in O_SEMI
+            select (Statement)new BuildinState(_k.Value.Content, arg.Value);
 
         return PProgram;
     }

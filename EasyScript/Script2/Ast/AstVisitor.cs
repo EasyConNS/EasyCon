@@ -19,17 +19,32 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
+    public virtual AstNode VisitVariable(Variable ast)
+    {
+        return ast;
+    }
+
     public virtual AstNode VisitConstDefine(ConstDefine ast)
     {
         return ast;
     }
 
-    public virtual AstNode VisitMovStatement(MovStatement ast)
+    public virtual AstNode VisitNot(Not ast)
     {
         return ast;
     }
 
-    public virtual AstNode VisitWaitExp(WaitExp ast)
+    public virtual AstNode VisitBinary(Binary ast)
+    {
+        return ast;
+    }
+
+    public virtual AstNode VisitAssign(Assign ast)
+    {
+        return ast;
+    }
+
+    public virtual AstNode VisitWait(WaitExp ast)
     {
         return ast;
     }
@@ -40,11 +55,6 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
     }
 
     public virtual AstNode VisitElseIf(ElseIf ast)
-    {
-        return ast;
-    }
-
-    public virtual AstNode VisitBinary(Binary ast)
     {
         return ast;
     }
@@ -79,7 +89,7 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
     
-    public virtual AstNode VisitFuncState(FuncState ast)
+    public virtual AstNode VisitFunction(FuncState ast)
     {
         return ast;
     }

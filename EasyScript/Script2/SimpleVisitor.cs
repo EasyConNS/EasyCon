@@ -21,7 +21,7 @@ public class SimpleVisitor : AstVisitor
 
     public override AstNode VisitProgram(Program ast)
     {
-        Console.WriteLine("program start:");
+        System.Diagnostics.Debug.WriteLine("program start:");
         foreach (var st in ast.Statements)
         {
             Visit(st);
@@ -39,32 +39,43 @@ public class SimpleVisitor : AstVisitor
     }
     public override AstNode VisitNumber(Number ast)
     {
-        Console.WriteLine(ast);
+        System.Diagnostics.Debug.WriteLine(ast);
         return ast;
     }
 
     public override AstNode VisitConstDefine(ConstDefine ast)
     {
-        Console.WriteLine($"{ast.ConstName}={ast.ConstValue}");
+        System.Diagnostics.Debug.WriteLine($"{ast.ConstName}={ast.ConstValue}");
         return ast;
     }
 
-    public override AstNode VisitMovStatement(MovStatement ast)
+    public override AstNode VisitAssign(Assign ast)
     {
-        var op = ast.Negi ? "= ~": "= ";
-        Console.WriteLine($"{ast.DestVar} {op}{ast.AssignExpr}");
+        System.Diagnostics.Debug.WriteLine($"{ast.DestVar} = {ast.AssignExpr}");
         return ast;
     }
 
-    public override AstNode VisitWaitExp(WaitExp ast)
+    public override AstNode VisitOpAssign(OpAssign ast)
     {
-        Console.WriteLine($"WAIT({ast.Duration})");
+        System.Diagnostics.Debug.WriteLine($"{ast.DestVar} {ast.Operator}= {ast.AssignExpr}");
+        return ast;
+    }
+
+    public override AstNode VisitBinary(Binary ast)
+    {
+        System.Diagnostics.Debug.WriteLine($"{ast.Left} {ast.Operator} {ast.Right}");
+        return ast;
+    }
+
+    public override AstNode VisitWait(WaitExp ast)
+    {
+        System.Diagnostics.Debug.WriteLine($"WAIT({ast.Duration})");
         return ast;
     }
 
     public override AstNode VisitIfElse(IfElse ast)
     {
-        Console.WriteLine("if:");
+        System.Diagnostics.Debug.WriteLine("if:");
         Visit(ast.Condition);
         Visit(ast.BlockStmt);
         if(ast.ElifStmt != null)
@@ -74,36 +85,32 @@ public class SimpleVisitor : AstVisitor
         }
         if(ast.ElseStmt != null)
         {
-            Console.WriteLine("else:");
+            System.Diagnostics.Debug.WriteLine("else:");
             Visit(ast.ElseStmt);
         }
-        Console.WriteLine("endif");
+        System.Diagnostics.Debug.WriteLine("endif");
         return ast;
     }
 
     public override AstNode VisitElseIf(ElseIf ast)
     {
-        Console.WriteLine("elif:");
+        System.Diagnostics.Debug.WriteLine("elif:");
         Visit(ast.Condition);
         Visit(ast.BlockStmt);
         return ast;
     }
 
-    public override AstNode VisitBinary(Binary ast)
-    {
-        Console.WriteLine($"{ast.m_number} {ast.Operator} {ast.r_number}");
-        return ast;
-    }
-
-    public override AstNode VisitOpAssign(OpAssign ast)
-    {
-        Console.WriteLine($"{ast.m_number} {ast.Operator} {ast.r_number}");
-        return ast;
-    }
-
     public override AstNode VisitForState(ForStatement ast)
     {
-        Console.WriteLine($"for {ast.Desp}:");
+
+        if (ast is ForStatementFull astFull)
+        {
+            System.Diagnostics.Debug.WriteLine($"for {astFull.Start}:");
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"for {ast.LoopCount}:");
+        }
         return ast;
     }
 
@@ -111,43 +118,43 @@ public class SimpleVisitor : AstVisitor
     {
         if(ast.Condition==null)
         {
-            Console.WriteLine("for infinite:");
+            System.Diagnostics.Debug.WriteLine("for infinite:");
         }
         else
         {
             Visit(ast.Condition);
         }
         Visit(ast.BlockStmt);
-        Console.WriteLine("next");
+        System.Diagnostics.Debug.WriteLine("next");
         return ast;
     }
 
     public override AstNode VisitLoopControl(LoopControl ast)
     {
-        Console.WriteLine(ast.LoopType);
+        System.Diagnostics.Debug.WriteLine(ast.LoopType);
         return ast;
     }
 
     public override AstNode VisitButtonAction(ButtonAction ast)
     {
-        Console.WriteLine($"{ast.Key}({ast.Duration})");
+        System.Diagnostics.Debug.WriteLine($"{ast.Key}({ast.Duration})");
         return ast;
     }
     public override AstNode VisitStickAction(StickAction ast)
     {
-        Console.WriteLine($"{ast.Key},{ast.Destination}({ast.Duration})");
+        System.Diagnostics.Debug.WriteLine($"{ast.Key},{ast.Destination}({ast.Duration})");
         return ast;
     }
 
-    public override AstNode VisitFuncState(FuncState ast)
+    public override AstNode VisitFunction(FuncState ast)
     {
-        Console.WriteLine(ast);
+        System.Diagnostics.Debug.WriteLine(ast);
         return ast;
     }
 
     public override AstNode VisitBuildinState(BuildinState ast)
     {
-        Console.WriteLine(ast.BuildinFunc);
+        System.Diagnostics.Debug.WriteLine($"{ast.BuildinFunc}({ast.Args})");
         return ast;
     }
 }

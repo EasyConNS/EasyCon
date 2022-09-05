@@ -1,13 +1,17 @@
+using VBF.Compilers.Scanners;
+
 namespace ECP.Ast;
 
 public class BuildinState : Statement
 {
-    public BuildinState(string ident)
+    public BuildinState(string name, LexemeValue args)
     {
-        BuildinFunc = ident;
+        BuildinFunc = name;
+        Args = args;
     }
 
     public string BuildinFunc { get; init; }
+    public LexemeValue Args { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
