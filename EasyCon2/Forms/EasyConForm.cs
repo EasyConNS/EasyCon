@@ -1339,5 +1339,27 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             }
         }
         #endregion
+
+        private void 手柄设置ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ControllerConfig controllerConfig = new ControllerConfig(NS);
+            controllerConfig.ShowDialog();
+        }
+
+        private void 取消配对ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (!SerialCheckConnect())
+                return;
+            if (NS.UnPair())
+            {
+                SystemSounds.Beep.Play();
+                StatusShowLog("取消配对成功");
+            }
+            else
+            {
+                SystemSounds.Hand.Play();
+                StatusShowLog("取消配对失败");
+            }
+        }
     }
 }

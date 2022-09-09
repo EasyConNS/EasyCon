@@ -196,6 +196,37 @@ public partial class NintendoSwitch
     {
         return SendSync(b => b == 0, 200, Command.Ready, Command.LED);
     }
+
+    public bool UnPair()
+    {
+        return SendSync(b => b == Reply.Ack, 200, Command.Ready, Command.UnPair);
+    }
+
+    public bool ChangeControllerMode(byte mode)
+    {
+        return SendSync(b => b == Reply.Ack, 200, Command.Ready, Command.ChangeControllerMode, mode);
+    }
+
+    public bool ChangeControllerColor(byte[] color)
+    {
+        List<byte> list = new List<byte>();
+        list.Add(Command.Ready);
+        list.Add(Command.ChangeControllerColor);
+        list.AddRange(color);
+        var packet = list.ToArray();
+        return SendSync(b => b == Reply.Ack, 200, packet);
+    }
+
+    public bool SaveAmiibo(byte index,byte[] amiibo)
+    {
+        List<byte> list = new List<byte>();
+        list.Add(Command.Ready);
+        list.Add(Command.SaveAmiibo);
+        list.Add(index);
+        list.AddRange(amiibo);
+        var packet = list.ToArray();
+        return SendSync(b => b == Reply.Ack, 200, packet);
+    }
 }
 
 public enum Status

@@ -53,6 +53,8 @@
             this.频道远程ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.蓝牙ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.设备驱动配置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.eSP32ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.手柄设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.帮助ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.使用方法ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.联机模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -93,6 +95,7 @@
             this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.textBoxScriptHelp = new System.Windows.Forms.TextBox();
+            this.取消配对ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBox6.SuspendLayout();
@@ -105,13 +108,14 @@
             // 
             // menuStrip1
             // 
-            this.menuStrip1.Font = new System.Drawing.Font("Microsoft YaHei", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.menuStrip1.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.文件ToolStripMenuItem,
             this.脚本ToolStripMenuItem,
             this.CaptureDevToolStripMenuItem,
             this.设置ToolStripMenuItem,
             this.蓝牙ToolStripMenuItem,
+            this.eSP32ToolStripMenuItem,
             this.帮助ToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(1, 1);
             this.menuStrip1.Name = "menuStrip1";
@@ -250,14 +254,14 @@
             // 推送设置ToolStripMenuItem
             // 
             this.推送设置ToolStripMenuItem.Name = "推送设置ToolStripMenuItem";
-            this.推送设置ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.推送设置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.推送设置ToolStripMenuItem.Text = "推送设置";
             this.推送设置ToolStripMenuItem.Click += new System.EventHandler(this.推送设置ToolStripMenuItem_Click);
             // 
             // 显示调试信息ToolStripMenuItem
             // 
             this.显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             this.显示调试信息ToolStripMenuItem.Click += new System.EventHandler(this.显示调试信息ToolStripMenuItem_Click);
             // 
@@ -266,7 +270,7 @@
             this.cPU优化设置ToolStripMenuItem.Checked = true;
             this.cPU优化设置ToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.cPU优化设置ToolStripMenuItem.Name = "cPU优化设置ToolStripMenuItem";
-            this.cPU优化设置ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.cPU优化设置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.cPU优化设置ToolStripMenuItem.Text = "CPU优化";
             this.cPU优化设置ToolStripMenuItem.Click += new System.EventHandler(this.CPU优化设置ToolStripMenuItem_Click);
             // 
@@ -275,14 +279,14 @@
             this.脚本自动运行ToolStripMenuItem.Checked = true;
             this.脚本自动运行ToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
             this.脚本自动运行ToolStripMenuItem.Name = "脚本自动运行ToolStripMenuItem";
-            this.脚本自动运行ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.脚本自动运行ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.脚本自动运行ToolStripMenuItem.Text = "烧录自动运行";
             this.脚本自动运行ToolStripMenuItem.Click += new System.EventHandler(this.脚本自动运行ToolStripMenuItem_Click);
             // 
             // 频道远程ToolStripMenuItem
             // 
             this.频道远程ToolStripMenuItem.Name = "频道远程ToolStripMenuItem";
-            this.频道远程ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
+            this.频道远程ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.频道远程ToolStripMenuItem.Text = "频道远程控制启动";
             this.频道远程ToolStripMenuItem.Click += new System.EventHandler(this.频道远程ToolStripMenuItem_Click);
             // 
@@ -298,9 +302,25 @@
             // 设备驱动配置ToolStripMenuItem
             // 
             this.设备驱动配置ToolStripMenuItem.Name = "设备驱动配置ToolStripMenuItem";
-            this.设备驱动配置ToolStripMenuItem.Size = new System.Drawing.Size(148, 22);
+            this.设备驱动配置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
             this.设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
             this.设备驱动配置ToolStripMenuItem.Click += new System.EventHandler(this.设备驱动配置ToolStripMenuItem_Click);
+            // 
+            // eSP32ToolStripMenuItem
+            // 
+            this.eSP32ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.手柄设置ToolStripMenuItem,
+            this.取消配对ToolStripMenuItem});
+            this.eSP32ToolStripMenuItem.Name = "eSP32ToolStripMenuItem";
+            this.eSP32ToolStripMenuItem.Size = new System.Drawing.Size(55, 21);
+            this.eSP32ToolStripMenuItem.Text = "ESP32";
+            // 
+            // 手柄设置ToolStripMenuItem
+            // 
+            this.手柄设置ToolStripMenuItem.Name = "手柄设置ToolStripMenuItem";
+            this.手柄设置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.手柄设置ToolStripMenuItem.Text = "手柄设置";
+            this.手柄设置ToolStripMenuItem.Click += new System.EventHandler(this.手柄设置ToolStripMenuItem_Click);
             // 
             // 帮助ToolStripMenuItem
             // 
@@ -685,6 +705,13 @@
             this.textBoxScriptHelp.Size = new System.Drawing.Size(312, 347);
             this.textBoxScriptHelp.TabIndex = 35;
             // 
+            // 取消配对ToolStripMenuItem
+            // 
+            this.取消配对ToolStripMenuItem.Name = "取消配对ToolStripMenuItem";
+            this.取消配对ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.取消配对ToolStripMenuItem.Text = "取消配对";
+            this.取消配对ToolStripMenuItem.Click += new System.EventHandler(this.取消配对ToolStripMenuItem_Click);
+            // 
             // EasyConForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
@@ -698,7 +725,7 @@
             this.Controls.Add(this.groupBoxScript);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.menuStrip1);
-            this.Font = new System.Drawing.Font("Microsoft YaHei", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.Font = new System.Drawing.Font("微软雅黑", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.KeyPreview = true;
             this.MainMenuStrip = this.menuStrip1;
@@ -794,6 +821,9 @@
         private ToolStripMenuItem 蓝牙ToolStripMenuItem;
         private ToolStripMenuItem 设备驱动配置ToolStripMenuItem;
         private ToolStripMenuItem 频道远程ToolStripMenuItem;
+        private ToolStripMenuItem eSP32ToolStripMenuItem;
+        private ToolStripMenuItem 手柄设置ToolStripMenuItem;
+        private ToolStripMenuItem 取消配对ToolStripMenuItem;
     }
 }
 
