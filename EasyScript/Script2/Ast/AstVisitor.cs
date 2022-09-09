@@ -44,7 +44,7 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
-    public virtual AstNode VisitWait(WaitExp ast)
+    public virtual AstNode VisitWait(Wait ast)
     {
         return ast;
     }
@@ -89,7 +89,7 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
     
-    public virtual AstNode VisitFunction(FuncState ast)
+    public virtual AstNode VisitFunction(Function ast)
     {
         return ast;
     }

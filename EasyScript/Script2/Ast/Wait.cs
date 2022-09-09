@@ -2,14 +2,14 @@ using VBF.Compilers.Scanners;
 
 namespace ECP.Ast;
 
-public class WaitExp : Statement
+public class Wait : Statement
 {
-    public WaitExp(Number duration)
+    public Wait(Number duration)
     {
         Duration = duration;
     }
 
-    public WaitExp(LexemeValue durVal)
+    public Wait(LexemeValue durVal)
     {
         Duration = new Number(durVal);
     }

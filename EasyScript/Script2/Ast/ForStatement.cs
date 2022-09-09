@@ -19,9 +19,9 @@ public class ForStatement : Expression
 
 public class ForStatementFull : ForStatement
 {
-    public ForStatementFull(LexemeValue name, Number start, Number end) : base(end)
+    public ForStatementFull(LexemeValue initvar, Number start, Number end) : base(end)
     {
-        Var = name;
+        Var = initvar;
         Start = start;
     }
 

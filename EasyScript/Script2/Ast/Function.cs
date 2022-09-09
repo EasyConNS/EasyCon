@@ -1,12 +1,13 @@
+using VBF.Compilers.Scanners;
 using System.Collections.ObjectModel;
 
 namespace ECP.Ast;
 
-public class FuncState : Statement
+public class Function : Statement
 {
-    public FuncState(string name, IList<Statement> statements)
+    public Function(LexemeValue func, IList<Statement> statements)
     {
-        Name = name;
+        Name = func.Content;
         if (statements == null)
         {
             Statements = new ReadOnlyCollection<Statement>(new List<Statement>());

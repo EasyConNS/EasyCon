@@ -67,7 +67,7 @@ public class SimpleVisitor : AstVisitor
         return ast;
     }
 
-    public override AstNode VisitWait(WaitExp ast)
+    public override AstNode VisitWait(Wait ast)
     {
         System.Diagnostics.Debug.WriteLine($"WAIT({ast.Duration})");
         return ast;
@@ -146,7 +146,7 @@ public class SimpleVisitor : AstVisitor
         return ast;
     }
 
-    public override AstNode VisitFunction(FuncState ast)
+    public override AstNode VisitFunction(Function ast)
     {
         System.Diagnostics.Debug.WriteLine(ast);
         return ast;

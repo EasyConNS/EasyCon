@@ -4,9 +4,9 @@ namespace ECP.Ast;
 
 public class ForWhile : Statement
 {
-    public ForWhile(ForStatement forcond, Block statements)
+    public ForWhile(ForStatement condition, Block statements)
     {
-        Condition = forcond;
+        Condition = condition;
         BlockStmt = statements;
     }
 
@@ -21,7 +21,7 @@ public class ForWhile : Statement
 
 public class LoopControl : Statement
 {
-    public LoopControl(string type, LexemeValue level)
+    public LoopControl(LexemeValue type, LexemeValue level)
     {
         LoopType = type;
         Level = 1;
@@ -31,7 +31,7 @@ public class LoopControl : Statement
         }
     }
 
-    public string LoopType { get; init; }
+    public LexemeValue LoopType { get; init; }
     public int Level { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)

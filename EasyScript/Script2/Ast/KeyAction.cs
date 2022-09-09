@@ -37,17 +37,17 @@ public class ButtonAction : KeyAction
 
 public class StickAction : ButtonAction
 {
-    public StickAction(LexemeValue name, string destination) : base(name)
+    public StickAction(LexemeValue name, LexemeValue destination) : base(name)
     {
         Destination = destination;
     }
 
-    public StickAction(LexemeValue name, string destination, Number duration) : base(name, duration)
+    public StickAction(LexemeValue name, LexemeValue destination, Number duration) : base(name, duration)
     {
         Destination = destination;
     }
 
-    public string Destination { get; init; }
+    public LexemeValue Destination { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {

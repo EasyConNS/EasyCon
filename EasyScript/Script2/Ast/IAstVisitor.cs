@@ -11,7 +11,7 @@ public interface IAstVisitor<T>
     T VisitBinary(Binary ast);
     T VisitAssign(Assign ast);
     T VisitOpAssign(OpAssign ast);
-    T VisitWait(WaitExp ast);
+    T VisitWait(Wait ast);
     T VisitIfElse(IfElse ast);
     T VisitElseIf(ElseIf ast);
     T VisitForState(ForStatement ast);
@@ -19,6 +19,6 @@ public interface IAstVisitor<T>
     T VisitLoopControl(LoopControl ast);
     T VisitButtonAction(ButtonAction ast);
     T VisitStickAction(StickAction ast);
-    T VisitFunction(FuncState ast);
+    T VisitFunction(Function ast);
     T VisitBuildinState(BuildinState ast);
 }

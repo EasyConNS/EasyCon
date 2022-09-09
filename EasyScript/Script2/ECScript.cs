@@ -1,3 +1,4 @@
+#if legency
 using Compiler.Parsers;
 using Compiler.Scanners;
 using RE = Compiler.Scanners.RegExpression;
@@ -72,7 +73,7 @@ public class ECScript : ParserBase
         S_WHITESPACE = lexer.DefineToken(RE.Simple("[\u0020\u0009\u000B\u000C]"), "WHITESPACE");
         T_NEWLINE = lexer.DefineToken(RE.Simple("[\u000D\u000A\u0085\u2028\u2029]|\r\n"), Scanner.LINEBREAKER);
 
-        #region key words
+#region key words
         {
             // program key words
             K_IF = lexer.DefineToken(RE.IgnoreCase("if"));
@@ -95,8 +96,8 @@ public class ECScript : ParserBase
             K_ENDFUNC = lexer.DefineToken(RE.IgnoreCase("endfunc"), "FUNCEND");
             K_CALL = lexer.DefineToken(RE.IgnoreCase("call"), "CALL(R");
         }
-        #endregion
-        #region gamepad key
+#endregion
+#region gamepad key
         {
             G_WAIT = lexer.DefineToken(RE.IgnoreCase("wait"));
             G_RESET = lexer.DefineToken(RE.IgnoreCase("reset"), "RESET(R)");
@@ -109,8 +110,8 @@ public class ECScript : ParserBase
             , "KEY_GAMEPAD");
 
         }
-        #endregion
-        #region symbols
+#endregion
+#region symbols
         {
             // need escape: $ () * + . [] ? \ ^ {} |
             LO_AND = lexer.DefineToken(RE.Simple("&&"), "OP_AND");
@@ -133,15 +134,15 @@ public class ECScript : ParserBase
             O_SEMI = lexer.DefineToken(RE.Simple(";"), "SEMICOLON");
             O_DOT = lexer.DefineToken(RE.Simple(@"\."), "DOT");
         }
-        #endregion
-        #region ident
+#endregion
+#region ident
         {
             V_CONST = lexer.DefineToken(RE.Simple(@"_").Concat(ident), "CONST");
             V_EXVAR = lexer.DefineToken(RE.Simple("@").Concat(ident), "EXVAR");
             V_VAR = lexer.DefineToken(RE.Simple( @"\${1,2}[\da-zA-Z_]+"), "VARIABLE");
             V_NUM = lexer.DefineToken(RE.Simple(@"-?\d+"), "NUM");
         }
-        #endregion
+#endregion
         // must be the last
         T_IDENT = lexer.DefineToken(ident, "IDENT");
 
@@ -150,3 +151,4 @@ public class ECScript : ParserBase
         skippedTokens.Add(T_NEWLINE);
     }
 }
+#endif

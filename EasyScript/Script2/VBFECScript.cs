@@ -250,7 +250,7 @@ public class VBFECScript : ParserBase<Program>
             from _lc in (K_BRK.AsTerminal() | K_CONTU.AsTerminal())
             from lvl in (V_NUM.AsTerminal() | V_CONST.AsTerminal()).Optional()
             from _nl2 in O_SEMI
-            select (Statement)new LoopControl(_lc.Value.Content, lvl?.Value)
+            select (Statement)new LoopControl(_lc.Value, lvl?.Value)
         };
         Production<Block> PBlock = new()
         {
@@ -321,20 +321,23 @@ public class VBFECScript : ParserBase<Program>
                     O_MOV.AsTerminal()) // for compat
             from comparand in PComparand
             select (Expression)new Binary(op.Value, comparison, comparand);
+
         Production<Expression> PAnd = new();
         PAnd.Rule = // andexp && comparison | comparison
             PComparison |
-            from andexp in PAnd
+            (from andexp in PAnd
             from op in LO_AND
             from comparison in PComparison
-            select (Expression)new Binary(op.Value, andexp, comparison);
+            select (Expression)new Binary(op.Value, andexp, comparison));
+
         Production<Expression> POr = new();
         POr.Rule =
             PAnd |
-            from orexp in POr
+            (from orexp in POr
             from op in LO_OR
             from andexp in PAnd
-            select (Expression)new Binary(op.Value, orexp, andexp);
+            select (Expression)new Binary(op.Value, orexp, andexp));
+        
         PExp.Rule = POr;
 
         BinaryAssign.Rule =
@@ -358,20 +361,20 @@ public class VBFECScript : ParserBase<Program>
 
         PIfElse.Rule =
             from _if in K_IF
-            from condExp in PExp
+            from condition in PExp
             from _nlif1 in O_COLON
-            from blockstmt in PBlock
+            from block in PBlock
             from _elif in PElif.Many()
             from _else in PElse.Optional()
             from _endif in K_ENDIF
             from _nlif2 in O_SEMI
-            select (Statement)new IfElse(condExp, blockstmt, _elif.ToArray(), _else);
+            select (Statement)new IfElse(condition, block, _elif.ToArray(), _else);
         PElif.Rule =
             from _elif in K_ELIF
-            from condExp in PExp
+            from condition in PExp
             from _nlif1 in O_COLON
-            from blockstmt in PBlock
-            select new ElseIf(condExp, blockstmt);
+            from block in PBlock
+            select new ElseIf(condition, block);
         PElse.Rule =
             from _else in K_ELSE
             from _nlif1 in O_COLON
@@ -411,13 +414,13 @@ public class VBFECScript : ParserBase<Program>
             from statements in PStatement.Many()
             from _fe in K_ENDFUNC
             from _nl2 in O_SEMI
-            select (Statement)new FuncState(funcname.Value.Content, statements.ToArray());
+            select (Statement)new Function(funcname.Value, statements.ToArray());
 
         PWait.Rule =
             from _1 in G_WAIT.Optional()
             from number in (V_VAR.AsTerminal() | V_NUM.AsTerminal())
             from _nl2 in O_SEMI
-            select (Statement)new WaitExp(number.Value);
+            select (Statement)new Wait(number.Value);
 
         Production<Statement> PKeyHold = new()
         {
@@ -441,7 +444,7 @@ public class VBFECScript : ParserBase<Program>
             from _key in G_STICK
             from dest in G_RESET
             from _nl2 in O_SEMI
-            select (Statement)new StickAction(_key.Value, "RESET")
+            select (Statement)new StickAction(_key.Value, dest.Value)
         };
         Production<Number> PCoValue = new()
         {
@@ -457,7 +460,7 @@ public class VBFECScript : ParserBase<Program>
             from dest in (G_DPAD.AsTerminal() | V_NUM.AsTerminal())
             from dur in PCoValue.Optional()
             from _end in O_SEMI
-            select (Statement)new StickAction(_key.Value, dest.Value.Content, dur));
+            select (Statement)new StickAction(_key.Value, dest.Value, dur));
 
         PSTD.Rule =
             from _k in T_IDENT
