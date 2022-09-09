@@ -100,7 +100,7 @@ public class SimpleVisitor : AstVisitor
         return ast;
     }
 
-    public override AstNode VisitForState(ForStatement ast)
+    public override AstNode VisitForCondition(ForStatement ast)
     {
 
         if (ast is ForStatementFull astFull)
@@ -149,6 +149,11 @@ public class SimpleVisitor : AstVisitor
     public override AstNode VisitFunction(Function ast)
     {
         System.Diagnostics.Debug.WriteLine(ast);
+        return ast;
+    }
+    public override AstNode VisitCallExpression(CallExpression ast)
+    {
+        System.Diagnostics.Debug.WriteLine($"call:{ast.Name}");
         return ast;
     }
 

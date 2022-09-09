@@ -14,11 +14,12 @@ public interface IAstVisitor<T>
     T VisitWait(Wait ast);
     T VisitIfElse(IfElse ast);
     T VisitElseIf(ElseIf ast);
-    T VisitForState(ForStatement ast);
+    T VisitForCondition(ForStatement ast);
     T VisitForWhile(ForWhile ast);
     T VisitLoopControl(LoopControl ast);
     T VisitButtonAction(ButtonAction ast);
     T VisitStickAction(StickAction ast);
     T VisitFunction(Function ast);
+    T VisitCallExpression(CallExpression ast);
     T VisitBuildinState(BuildinState ast);
 }

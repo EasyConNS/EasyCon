@@ -220,9 +220,8 @@ public class VBFECScript : ParserBase<Program>
     private readonly Production<Block> PElse = new();
     private readonly Production<Statement> PForWhile = new();
     private readonly Production<Statement> PFunction = new();
+    private readonly Production<Statement> PCall = new();
     private readonly Production<Statement> PWait = new();
-    private readonly Production<Number> PNum = new();
-    private readonly Production<Number> PValue = new();
     private readonly Production<Statement> PSTD = new();
     private readonly Production<Statement> PKeyAction = new();
     private readonly Production<Statement> PStickAction = new();
@@ -237,6 +236,7 @@ public class VBFECScript : ParserBase<Program>
             PForWhile |
             PIfElse |
             PFunction |
+            PCall |
             PConstDefine |
             PMovExp |
             PWait |
@@ -278,12 +278,18 @@ public class VBFECScript : ParserBase<Program>
             from name in (V_VAR.AsTerminal() | V_EXVAR.AsTerminal())
             select (Expression)new Variable(name.Value)
         };
-        PNum.Rule =
+        Production<Number> PNum = new()
+        {
+            Rule =
             from number in (V_CONST.AsTerminal() | V_VAR.AsTerminal() | V_NUM.AsTerminal())
-            select new Number(number.Value);
-        PValue.Rule =
+            select new Number(number.Value)
+        };
+        Production<Number> PValue = new()
+        {
+            Rule =
             from number in (V_CONST.AsTerminal() | V_VAR.AsTerminal() | V_NUM.AsTerminal() | V_EXVAR.AsTerminal())
-            select new Number(number.Value);
+            select new Number(number.Value)
+        };
 
         var foundationExp =
             PNumber |
@@ -295,9 +301,11 @@ public class VBFECScript : ParserBase<Program>
             from _n in LO_NOT
             from exp in PNot
             select (Expression)new Not(exp);
-        Production<Expression> PFactor = new();
-        PFactor.Rule = // exp | !exp
-            PNot;
+        Production<Expression> PFactor = new()
+        {
+            Rule = // exp | !exp
+            PNot
+        };
         Production<Expression> PTerm = new();
         PTerm.Rule = // term * factor | factor
             PFactor |
@@ -415,6 +423,11 @@ public class VBFECScript : ParserBase<Program>
             from _fe in K_ENDFUNC
             from _nl2 in O_SEMI
             select (Statement)new Function(funcname.Value, statements.ToArray());
+
+        PCall.Rule =
+            from _k in K_CALL
+            from funcname in T_IDENT
+            select (Statement)new CallExpression(funcname.Value);
 
         PWait.Rule =
             from _1 in G_WAIT.Optional()
