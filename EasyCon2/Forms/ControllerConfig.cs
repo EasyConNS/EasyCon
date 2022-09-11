@@ -29,13 +29,13 @@ namespace EasyCon2.Forms
             byte mode = 0;
 
             if(radioButton1.Checked)
-                mode = 0;
+                mode = 3;
             if(radioButton2.Checked)
-                mode = 1;
-            if(radioButton3.Checked)
                 mode = 2;
+            if(radioButton3.Checked)
+                mode = 1;
 
-            if (NS.IsConnected())
+            if (!NS.IsConnected())
                 return;
             if (NS.ChangeControllerMode(mode))
             {
@@ -64,7 +64,7 @@ namespace EasyCon2.Forms
             color[10] = label5.BackColor.G;
             color[11] = label5.BackColor.B;
 
-            if (NS.IsConnected())
+            if (!NS.IsConnected())
                 return;
             if (NS.ChangeControllerColor(color))
             {
@@ -79,7 +79,7 @@ namespace EasyCon2.Forms
 
         private void button1_Click(object sender, EventArgs e)
         {
-            //if (NS.IsConnected())
+            //if (!NS.IsConnected())
             //    return;
             //if (NS.SaveAmiibo(comboBox1.SelectedIndex,new byte[540]))
             //{

@@ -204,28 +204,77 @@ public partial class NintendoSwitch
 
     public bool ChangeControllerMode(byte mode)
     {
-        return SendSync(b => b == Reply.Ack, 200, Command.Ready, Command.ChangeControllerMode, mode);
+        return SendSync(b => b == Reply.Ack, 200, Command.Ready, mode,Command.ChangeControllerMode);
     }
 
     public bool ChangeControllerColor(byte[] color)
     {
         List<byte> list = new List<byte>();
-        list.Add(Command.Ready);
-        list.Add(Command.ChangeControllerColor);
         list.AddRange(color);
         var packet = list.ToArray();
-        return SendSync(b => b == Reply.Ack, 200, packet);
+        uint i = 0;
+        uint len = 12;
+        return !SendSync(
+        b => b == Reply.Ack,
+        1000,
+        Command.Ready,
+        (byte)(i & 0x7F),
+        (byte)(i >> 7),
+        (byte)(len & 0x7F),
+        (byte)(len >> 7),
+        Command.ChangeControllerColor)
+    || !SendSync(
+        b => b == Reply.Ack,
+        1000,
+        packet)
+        ;
     }
 
     public bool SaveAmiibo(byte index,byte[] amiibo)
     {
-        List<byte> list = new List<byte>();
-        list.Add(Command.Ready);
-        list.Add(Command.SaveAmiibo);
-        list.Add(index);
-        list.AddRange(amiibo);
-        var packet = list.ToArray();
-        return SendSync(b => b == Reply.Ack, 200, packet);
+        //const int PacketSize = 20;
+        //List<byte> list = new(amiibo);
+
+        //// set amiibo index
+
+        //for (int i = 0; i < list.Count; i += PacketSize)
+        //{
+        //    int len = Math.Min(PacketSize, list.Count - i);
+        //    var packet = list.GetRange(i, len).ToArray();
+        //    while (true)
+        //    {
+        //        if (!SendSync(
+        //                b => b == Reply.FlashStart,
+        //                1000,
+        //                Command.Ready,
+        //                (byte)(i & 0x7F),
+        //                (byte)(i >> 7),
+        //                (byte)(len & 0x7F),
+        //                (byte)(len >> 7),
+        //                Command.Flash)
+        //            || !SendSync(
+        //                b => b == Reply.FlashEnd,
+        //                1000,
+        //                packet)
+        //            )
+        //        {
+        //            // error, retry
+        //            if (!ResetControl())
+        //                return false;
+        //            continue;
+        //        }
+        //        break;
+        //    }
+        //}
+        //return true;
+
+        //List<byte> list = new List<byte>();
+        //list.Add(Command.Ready);
+        //list.Add(Command.SaveAmiibo);
+        //list.Add(index);
+        //list.AddRange(amiibo);
+        //var packet = list.ToArray();
+        return SendSync(b => b == Reply.Ack, 200, Reply.Ack);
     }
 }
 
