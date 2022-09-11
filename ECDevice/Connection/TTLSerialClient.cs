@@ -80,9 +80,15 @@ class TTLSerialClient : IConnection
     {
         try
         {
+            byte[] inBuffer = new byte[2550];
             _sport.Open();
-
+            _sport.DiscardInBuffer();
+            _sport.DiscardOutBuffer();
             var stream = _sport.BaseStream;
+            // sleep for a mount of data get in when open port
+            Thread.Sleep(1000);
+            Debug.WriteLine("left byte:" + _sport.BytesToRead.ToString());
+            _sport.DiscardInBuffer();
             // say hello
             if (_sayhello)
             {
@@ -93,8 +99,6 @@ class TTLSerialClient : IConnection
             else
                 CurrentStatus = Status.ConnectedUnsafe;
             bool hellocheck = _sayhello;
-
-            byte[] inBuffer = new byte[255];
             var outBuffer = new List<byte>();
             while (!source.IsCancellationRequested)
             {
@@ -110,7 +114,8 @@ class TTLSerialClient : IConnection
                         _inBuffer.Clear();
                         _inBuffer.AddRange(inBuffer.Take(count));
                     }
-                    if (hellocheck && _inBuffer[0] == Reply.Hello)
+
+                    if (hellocheck && inBuffer[0] == Reply.Hello)
                     {
                         // hello received
                         hellocheck = false;
