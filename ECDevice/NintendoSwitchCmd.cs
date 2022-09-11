@@ -50,7 +50,7 @@ public partial class NintendoSwitch
 
         clientCon.StatusChanged += statuschanged;
         clientCon.Connect(sayhello);
-        if (!ewh.WaitOne(1200) && sayhello)
+        if (!ewh.WaitOne(900) && sayhello)
         {
             clientCon.Disconnect();
             clientCon = null;

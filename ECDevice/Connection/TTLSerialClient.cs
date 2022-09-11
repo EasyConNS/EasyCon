@@ -86,7 +86,7 @@ class TTLSerialClient : IConnection
             _sport.DiscardOutBuffer();
             var stream = _sport.BaseStream;
             // sleep for a mount of data get in when open port
-            Thread.Sleep(1000);
+            Thread.Sleep(700);
             Debug.WriteLine("left byte:" + _sport.BytesToRead.ToString());
             _sport.DiscardInBuffer();
             // say hello
