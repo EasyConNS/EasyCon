@@ -64,7 +64,7 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
-    public virtual AstNode VisitForState(ForStatement ast)
+    public virtual AstNode VisitForCondition(ForStatement ast)
     {
         return ast;
     }
@@ -90,6 +90,11 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
     }
     
     public virtual AstNode VisitFunction(Function ast)
+    {
+        return ast;
+    }
+
+    public virtual AstNode VisitCallExpression(CallExpression ast)
     {
         return ast;
     }
