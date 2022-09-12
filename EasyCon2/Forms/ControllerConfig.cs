@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Media;
 using System.Text;
@@ -17,6 +18,7 @@ namespace EasyCon2.Forms
     {
         ColorDialog colorDialog = new ColorDialog();
         internal NintendoSwitch NS;
+        static readonly string AmiiboDir = Application.StartupPath + "\\Amiibo\\";
 
         public ControllerConfig(NintendoSwitch gamepad)
         {
@@ -79,22 +81,52 @@ namespace EasyCon2.Forms
 
         private void button1_Click(object sender, EventArgs e)
         {
-            //if (!NS.IsConnected())
-            //    return;
-            //if (NS.SaveAmiibo(comboBox1.SelectedIndex,new byte[540]))
+            if (!NS.IsConnected())
+                return;
+            Debug.WriteLine(AmiiboDir + comboBox2.SelectedItem);
+            FileStream fileStream = new FileStream(AmiiboDir+comboBox2.SelectedItem, FileMode.Open);
+            BinaryReader br = new BinaryReader(fileStream, Encoding.UTF8);
+            int file_len = (int)fileStream.Length;
+            if(file_len != 540)
+            {
+                MessageBox.Show("Amiibo文件长度不正确");
+                return;
+            }
+
+            Byte[] data = br.ReadBytes(file_len);
+            ////累加每字节数组转字符串
+            //foreach (byte j in binchar)
             //{
-            //    SystemSounds.Beep.Play();
-            //    MessageBox.Show("手柄颜色修改成功，请重启手柄后查看效果");
+            //    bin_str += "0x" + j.ToString("X2") + " ";
             //}
-            //else
-            //{
-            //    SystemSounds.Hand.Play();
-            //}
+            if (NS.SaveAmiibo((byte)comboBox1.SelectedIndex, data))
+            {
+                SystemSounds.Beep.Play();
+                MessageBox.Show("amiibo存储成功");
+            }
+            else
+            {
+                SystemSounds.Hand.Play();
+            }
+            br.Close();
         }
 
         private void comboBox2_DropDown(object sender, EventArgs e)
         {
+            if (!Directory.Exists(AmiiboDir))
+            {
+                Directory.CreateDirectory(AmiiboDir);
+                MessageBox.Show("Amiibo文件不存在，请将bin文件放在Amiibo目录下");
+                return;
+            }
+
             // refresh amiibo ,add to list
+            DirectoryInfo directoryInfo = new DirectoryInfo(AmiiboDir);
+            FileInfo[] files = directoryInfo.GetFiles();//"*.png"
+            foreach (FileInfo file in files)
+            {
+                comboBox2.Items.Add(file.Name);
+            }
         }
 
         public static void ColorToHSV(Color color, out double hue, out double saturation, out double value)

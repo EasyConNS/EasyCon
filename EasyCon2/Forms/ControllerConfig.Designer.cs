@@ -191,7 +191,6 @@
             this.groupBox3.Controls.Add(this.comboBox2);
             this.groupBox3.Controls.Add(this.label1);
             this.groupBox3.Controls.Add(this.comboBox1);
-            this.groupBox3.Enabled = false;
             this.groupBox3.Location = new System.Drawing.Point(27, 206);
             this.groupBox3.Name = "groupBox3";
             this.groupBox3.Size = new System.Drawing.Size(559, 76);

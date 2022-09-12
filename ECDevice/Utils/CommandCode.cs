@@ -14,6 +14,7 @@ public static class Command
     public const byte ChangeControllerMode = 0x88;
     public const byte ChangeControllerColor = 0x89;
     public const byte SaveAmiibo = 0x90;
+    public const byte ChangeAmiiboIndex = 0x91;
 }
 
 public static class Reply
