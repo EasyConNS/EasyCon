@@ -2,6 +2,11 @@
 （如在使用中遇到软件错误请报告群管理员）
 （如果遇到打不开的情况请安装dotnet desktop runtime最新版本然后重试）
 
+v1.48
+- 修复ESP32连接超时，需要连接两次的问题
+- 增加Amiibo支持，Amiibo存储，Amiibo切换语法
+- JoyCon模拟全功能ok
+
 v1.473
 - ESP32支持
 - 增加语法
