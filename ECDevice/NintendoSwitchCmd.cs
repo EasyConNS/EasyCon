@@ -268,6 +268,11 @@ public partial class NintendoSwitch
         }
         return true;
     }
+
+    public bool ChangeAmiiboIndex(byte index)
+    {
+        return SendSync(b => b == Reply.Ack, 200, Command.Ready, index, Command.ChangeAmiiboIndex);
+    }
 }
 
 public enum Status

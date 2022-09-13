@@ -440,7 +440,8 @@ namespace EasyCon2.Forms
 
         void ICGamePad.ChangeAmiibo(uint index)
         {
-            Print($"切换Amiibo序号:{index}");
+            //Print($"切换Amiibo序号:{index}");
+            NS.ChangeAmiiboIndex((byte)(index&0x0F));
         }
         #endregion
 
