@@ -11,6 +11,7 @@
         <Key word = "PRINT" />
         <Key word = "ALERT" />
         <Key word = "WAIT" />
+        <Key word = "AMIIBO" />
       </KeyWords>
       <KeyWords name = "Conditions" bold="true" italic="false" color="Blue">
         <Key word = "FOR" />

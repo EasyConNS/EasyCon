@@ -190,6 +190,17 @@ Xor：目标变量 ^= 变量|值
         PRINT $2 & 找到了
     ENDIF
 
+【Amiibo切换】
+语法： AMIIBO 序号(序号范围0-9)
+
+示例：
+# 循环切换amiibo
+FOR $3 = 0 TO 10
+    AMIIBO $3 # 从0-9号切换Amiibo
+NEXT
+# 切换固定amiibo序号
+AMIIBO 3 # 激活3号amiibo
+
 其他相关配置请查看搜图窗口中的帮助
 
 <To Be Continued...>

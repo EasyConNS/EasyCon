@@ -12,4 +12,5 @@ public interface ICGamePad
     void SetLeftStick();
     void SetRightStick();
     */
+    void ChangeAmiibo(uint index);
 }
