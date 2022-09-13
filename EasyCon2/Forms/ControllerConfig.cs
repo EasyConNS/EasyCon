@@ -119,7 +119,7 @@ namespace EasyCon2.Forms
                 MessageBox.Show("Amiibo文件不存在，请将bin文件放在Amiibo目录下");
                 return;
             }
-
+            comboBox2.Items.Clear();
             // refresh amiibo ,add to list
             DirectoryInfo directoryInfo = new DirectoryInfo(AmiiboDir);
             FileInfo[] files = directoryInfo.GetFiles();//"*.png"
