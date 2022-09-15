@@ -15,5 +15,6 @@ for /F %%i in ('git rev-parse --short HEAD') do ( set commitid=%%i)
 ren EasyCon2.exe EasyCon.net6.0.%commitid%.exe
 cd ../
 xcopy .\Firmware .\publish\Firmware\
+xcopy .\Firmware .\publish\Amiibo\
 
 pause
