@@ -243,5 +243,21 @@ namespace EasyCon2.Forms
                 label5.ForeColor = rc;
             }
         }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            byte index = (byte)comboBox3.SelectedIndex;
+            if (!NS.IsConnected())
+                return;
+            if (NS.ChangeAmiiboIndex(index))
+            {
+                SystemSounds.Beep.Play();
+                MessageBox.Show("当前Amiibo切换成功");
+            }
+            else
+            {
+                SystemSounds.Hand.Play();
+            }
+        }
     }
 }
