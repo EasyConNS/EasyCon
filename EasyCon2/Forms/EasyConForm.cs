@@ -23,7 +23,7 @@ namespace EasyCon2.Forms
 {
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter, ICGamePad
     {
-        private readonly Version VER = new(1,48,1);
+        private readonly Version VER = new(1,48,2);
         private readonly TextEditor textBoxScript = new();
         internal readonly FormController formController;
 
@@ -1366,6 +1366,12 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
                 SystemSounds.Hand.Play();
                 StatusShowLog("取消配对失败");
             }
+        }
+
+        private void 喷射ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DrawingBoard board = new DrawingBoard(NS);
+            board.Show();
         }
     }
 }
