@@ -736,7 +736,7 @@ namespace EasyCon2.Forms
             {
                 // 480p
                 cvcap.CurResolution = new Point(640, 480);
-                ResolutionBtn.Text = "当前分辨率：480p";
+                ResolutionBtn.Text = "当前分辨率：480P";
             }
             else
             {
