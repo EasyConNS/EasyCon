@@ -43,14 +43,14 @@
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.button3 = new System.Windows.Forms.Button();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.button4 = new System.Windows.Forms.Button();
+            this.label7 = new System.Windows.Forms.Label();
+            this.comboBox3 = new System.Windows.Forms.ComboBox();
             this.button1 = new System.Windows.Forms.Button();
             this.label6 = new System.Windows.Forms.Label();
             this.comboBox2 = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.comboBox1 = new System.Windows.Forms.ComboBox();
-            this.label7 = new System.Windows.Forms.Label();
-            this.comboBox3 = new System.Windows.Forms.ComboBox();
-            this.button4 = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
@@ -204,9 +204,48 @@
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Amiibo";
             // 
+            // button4
+            // 
+            this.button4.Location = new System.Drawing.Point(454, 68);
+            this.button4.Name = "button4";
+            this.button4.Size = new System.Drawing.Size(75, 23);
+            this.button4.TabIndex = 7;
+            this.button4.Text = "设置";
+            this.button4.UseVisualStyleBackColor = true;
+            this.button4.Click += new System.EventHandler(this.button4_Click);
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(228, 71);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(56, 17);
+            this.label7.TabIndex = 6;
+            this.label7.Text = "当前序号";
+            // 
+            // comboBox3
+            // 
+            this.comboBox3.FormattingEnabled = true;
+            this.comboBox3.Items.AddRange(new object[] {
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9"});
+            this.comboBox3.Location = new System.Drawing.Point(290, 67);
+            this.comboBox3.Name = "comboBox3";
+            this.comboBox3.Size = new System.Drawing.Size(158, 25);
+            this.comboBox3.TabIndex = 5;
+            this.comboBox3.Text = "选择序号";
+            // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(454, 24);
+            this.button1.Location = new System.Drawing.Point(454, 21);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(75, 23);
             this.button1.TabIndex = 4;
@@ -217,7 +256,7 @@
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(252, 27);
+            this.label6.Location = new System.Drawing.Point(228, 24);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(56, 17);
             this.label6.TabIndex = 3;
@@ -226,9 +265,9 @@
             // comboBox2
             // 
             this.comboBox2.FormattingEnabled = true;
-            this.comboBox2.Location = new System.Drawing.Point(314, 23);
+            this.comboBox2.Location = new System.Drawing.Point(290, 20);
             this.comboBox2.Name = "comboBox2";
-            this.comboBox2.Size = new System.Drawing.Size(121, 25);
+            this.comboBox2.Size = new System.Drawing.Size(158, 25);
             this.comboBox2.TabIndex = 2;
             this.comboBox2.Text = "选择Amiibo";
             this.comboBox2.DropDown += new System.EventHandler(this.comboBox2_DropDown);
@@ -256,50 +295,11 @@
             "7",
             "8",
             "9"});
-            this.comboBox1.Location = new System.Drawing.Point(117, 21);
+            this.comboBox1.Location = new System.Drawing.Point(117, 20);
             this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(121, 25);
+            this.comboBox1.Size = new System.Drawing.Size(100, 25);
             this.comboBox1.TabIndex = 0;
             this.comboBox1.Text = "选择序号";
-            // 
-            // label7
-            // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(252, 71);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(56, 17);
-            this.label7.TabIndex = 6;
-            this.label7.Text = "当前序号";
-            // 
-            // comboBox3
-            // 
-            this.comboBox3.FormattingEnabled = true;
-            this.comboBox3.Items.AddRange(new object[] {
-            "0",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9"});
-            this.comboBox3.Location = new System.Drawing.Point(314, 67);
-            this.comboBox3.Name = "comboBox3";
-            this.comboBox3.Size = new System.Drawing.Size(121, 25);
-            this.comboBox3.TabIndex = 5;
-            this.comboBox3.Text = "选择序号";
-            // 
-            // button4
-            // 
-            this.button4.Location = new System.Drawing.Point(454, 68);
-            this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(75, 23);
-            this.button4.TabIndex = 7;
-            this.button4.Text = "设置";
-            this.button4.UseVisualStyleBackColor = true;
-            this.button4.Click += new System.EventHandler(this.button4_Click);
             // 
             // ControllerConfig
             // 

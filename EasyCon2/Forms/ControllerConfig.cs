@@ -94,11 +94,10 @@ namespace EasyCon2.Forms
             }
 
             Byte[] data = br.ReadBytes(file_len);
-            ////累加每字节数组转字符串
-            //foreach (byte j in binchar)
-            //{
-            //    bin_str += "0x" + j.ToString("X2") + " ";
-            //}
+
+            if (comboBox1.SelectedIndex >= 10)
+                return;
+
             if (NS.SaveAmiibo((byte)comboBox1.SelectedIndex, data))
             {
                 SystemSounds.Beep.Play();
