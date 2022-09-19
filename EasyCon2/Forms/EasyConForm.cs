@@ -1373,5 +1373,13 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             DrawingBoard board = new DrawingBoard(NS);
             board.Show();
         }
+
+        private void toolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            var menu = (ToolStripMenuItem)sender;
+            menu.Checked = !menu.Checked;
+            var rlt = NS.SetOpenDelay(menu.Checked);
+            StatusShowLog($"串口打开延迟已{(rlt ? "开启" : "关闭")}");
+        }
     }
 }
