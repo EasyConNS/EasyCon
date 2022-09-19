@@ -1,4 +1,6 @@
-﻿using ECDevice;
+﻿using EasyCon2.Helper;
+using EasyCon2.Properties;
+using ECDevice;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -8,7 +10,9 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Media;
+using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -18,7 +22,9 @@ namespace EasyCon2.Forms
     {
         ColorDialog colorDialog = new ColorDialog();
         internal NintendoSwitch NS;
-        static readonly string AmiiboDir = Application.StartupPath + "\\Amiibo\\";
+        static readonly string AmiiboDir = Application.StartupPath + "Amiibo\\";
+        List<Amiibo> amiibos;
+        Amiibo amiibo;
 
         public ControllerConfig(NintendoSwitch gamepad)
         {
@@ -81,10 +87,34 @@ namespace EasyCon2.Forms
 
         private void button1_Click(object sender, EventArgs e)
         {
+            FileStream fileStream;
+
             if (!NS.IsConnected())
                 return;
             Debug.WriteLine(AmiiboDir + comboBox2.SelectedItem);
-            FileStream fileStream = new FileStream(AmiiboDir+comboBox2.SelectedItem, FileMode.Open);
+            // first need generate amiibo bin
+            if(amiibo != null)
+            {
+                if (!Directory.Exists(AmiiboDir + "temp"))
+                {
+                    Directory.CreateDirectory(AmiiboDir + "temp");
+                }
+                // call exe
+                System.Diagnostics.Process process = new System.Diagnostics.Process();
+
+                process.StartInfo.FileName = AmiiboDir+ "amiitool.net.exe";   //IE浏览器，可以更换
+
+
+                process.StartInfo.Arguments = " -g "+amiibo.head+amiibo.tail+" \""+ AmiiboDir+"temp\\temp.bin\" ";
+
+                process.Start();
+                Thread.Sleep(1000);
+                fileStream = new FileStream(AmiiboDir + "temp\\temp.bin", FileMode.Open);
+            }
+            else
+            {
+                fileStream = new FileStream(AmiiboDir + comboBox2.SelectedItem, FileMode.Open);
+            }
             BinaryReader br = new BinaryReader(fileStream, Encoding.UTF8);
             int file_len = (int)fileStream.Length;
             if(file_len != 540)
@@ -115,16 +145,23 @@ namespace EasyCon2.Forms
             if (!Directory.Exists(AmiiboDir))
             {
                 Directory.CreateDirectory(AmiiboDir);
-                MessageBox.Show("Amiibo文件不存在，请将bin文件放在Amiibo目录下");
+                MessageBox.Show("Amiibo文件不存在，请将自定义bin文件放在Amiibo目录下");
                 return;
             }
             comboBox2.Items.Clear();
+            foreach (Amiibo am in amiibos)
+            {
+                comboBox2.Items.Add(am.name);
+                //Debug.WriteLine(am.ToString());
+            }
+
             // refresh amiibo ,add to list
             DirectoryInfo directoryInfo = new DirectoryInfo(AmiiboDir);
             FileInfo[] files = directoryInfo.GetFiles();//"*.png"
             foreach (FileInfo file in files)
             {
-                comboBox2.Items.Add(file.Name);
+                if (file.Extension == ".bin")
+                    comboBox2.Items.Add(file.Name);
             }
         }
 
@@ -256,6 +293,33 @@ namespace EasyCon2.Forms
             else
             {
                 SystemSounds.Hand.Play();
+            }
+        }
+
+        private void ControllerConfig_Load(object sender, EventArgs e)
+        {
+            // load amiibo
+            string str = System.Text.Encoding.UTF8.GetString(Resources.Amiibo);
+            //Debug.WriteLine(str);
+            amiibos = JsonSerializer.Deserialize<List<Amiibo>>(str);
+        }
+
+        private void comboBox2_SelectionChangeCommitted(object sender, EventArgs e)
+        {
+            // show image
+            if(comboBox2.SelectedIndex < amiibos.Count)
+            {
+                amiibo = amiibos[comboBox2.SelectedIndex];
+                string imageName = amiibo.image.Split('/').Last();
+                imageName = imageName.Replace("png", "jpg");
+                Debug.WriteLine(imageName);
+                pictureBox1.Image = Image.FromFile(AmiiboDir+ "AmiiboImages\\" + imageName);
+            }
+            else
+            {
+                // TODO 
+                pictureBox1.Image = null;
+                amiibo = null;
             }
         }
     }
