@@ -52,6 +52,7 @@
             this.comboBox2 = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this.label8 = new System.Windows.Forms.Label();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
@@ -191,6 +192,7 @@
             // 
             // groupBox3
             // 
+            this.groupBox3.Controls.Add(this.label8);
             this.groupBox3.Controls.Add(this.pictureBox1);
             this.groupBox3.Controls.Add(this.button4);
             this.groupBox3.Controls.Add(this.label7);
@@ -218,7 +220,7 @@
             // 
             // button4
             // 
-            this.button4.Location = new System.Drawing.Point(19, 155);
+            this.button4.Location = new System.Drawing.Point(19, 208);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(220, 23);
             this.button4.TabIndex = 7;
@@ -229,7 +231,7 @@
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(19, 128);
+            this.label7.Location = new System.Drawing.Point(19, 181);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(56, 17);
             this.label7.TabIndex = 6;
@@ -249,7 +251,7 @@
             "7",
             "8",
             "9"});
-            this.comboBox3.Location = new System.Drawing.Point(81, 124);
+            this.comboBox3.Location = new System.Drawing.Point(81, 177);
             this.comboBox3.Name = "comboBox3";
             this.comboBox3.Size = new System.Drawing.Size(158, 25);
             this.comboBox3.TabIndex = 5;
@@ -314,6 +316,14 @@
             this.comboBox1.TabIndex = 0;
             this.comboBox1.Text = "选择序号";
             // 
+            // label8
+            // 
+            this.label8.Location = new System.Drawing.Point(19, 121);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(220, 38);
+            this.label8.TabIndex = 9;
+            this.label8.Text = "默认Amiibo是自动生成，也可以copy bin到Amiibo文件夹内";
+            // 
             // ControllerConfig
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
@@ -363,5 +373,6 @@
         private Label label7;
         private ComboBox comboBox3;
         private PictureBox pictureBox1;
+        private Label label8;
     }
 }
