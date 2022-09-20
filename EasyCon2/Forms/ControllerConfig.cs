@@ -93,21 +93,22 @@ namespace EasyCon2.Forms
                 return;
             Debug.WriteLine(AmiiboDir + comboBox2.SelectedItem);
             // first need generate amiibo bin
-            if(amiibo != null)
+            if (comboBox2.SelectedIndex < amiibos.Count)
             {
                 if (!Directory.Exists(AmiiboDir + "temp"))
                 {
                     Directory.CreateDirectory(AmiiboDir + "temp");
                 }
-                // call exe
-                System.Diagnostics.Process process = new System.Diagnostics.Process();
 
-                process.StartInfo.FileName = AmiiboDir+ "amiitool.net.exe";   //IE浏览器，可以更换
-
-
-                process.StartInfo.Arguments = " -g "+amiibo.head+amiibo.tail+" \""+ AmiiboDir+"temp\\temp.bin\" ";
-
-                process.Start();
+                Task.Run(() =>
+                {
+                    // call exe
+                    System.Diagnostics.Process process = new System.Diagnostics.Process();
+                    process.StartInfo.FileName = AmiiboDir + "amiitool.net.exe";
+                    // TODO add user name and nick name
+                    process.StartInfo.Arguments = " -g " + amiibo.head + amiibo.tail + " \"" + AmiiboDir + "temp\\temp.bin\" ";
+                    process.Start();
+                });
                 Thread.Sleep(1000);
                 fileStream = new FileStream(AmiiboDir + "temp\\temp.bin", FileMode.Open);
             }
@@ -310,16 +311,31 @@ namespace EasyCon2.Forms
             if(comboBox2.SelectedIndex < amiibos.Count)
             {
                 amiibo = amiibos[comboBox2.SelectedIndex];
-                string imageName = amiibo.image.Split('/').Last();
-                imageName = imageName.Replace("png", "jpg");
-                Debug.WriteLine(imageName);
-                pictureBox1.Image = Image.FromFile(AmiiboDir+ "AmiiboImages\\" + imageName);
             }
             else
             {
-                // TODO 
-                pictureBox1.Image = null;
                 amiibo = null;
+                fileStream = new FileStream(AmiiboDir + comboBox2.SelectedItem, FileMode.Open);
+                BinaryReader br = new BinaryReader(fileStream, Encoding.UTF8);
+                string head = br[84].ToString() + br[85].ToString() + br[86].ToString() + br[87].ToString();
+                string tail = br[88].ToString() + br[89].ToString() + br[90].ToString() + br[91].ToString();
+                Debug.WriteLine(head);
+                Debug.WriteLine(tail);
+                foreach (Amiibo am in amiibos)
+                {
+                    if(am.head == head && am.tail == tail)
+                    {
+                        amiibo = am;
+                        break;
+                    }
+                }
+            }
+            if (amiibo != null)
+            {
+                string imageName = amiibo.image.Split('/').Last();
+                imageName = imageName.Replace("png", "jpg");
+                Debug.WriteLine(imageName);
+                pictureBox1.Image = Image.FromFile(AmiiboDir + "AmiiboImages\\" + imageName);
             }
         }
     }
