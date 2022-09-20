@@ -20,6 +20,12 @@ namespace EasyCon2
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 #endif
+            string dotNetVersion = Environment.Version.ToString();
+            if (dotNetVersion.CompareTo("6.0.6") <= 0)
+            {
+                MessageBox.Show(".Net6版本过低，请升级到最新版");
+                return;
+            }
             Application.Run(new Forms.EasyConForm());
         }
 
