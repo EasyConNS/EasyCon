@@ -646,7 +646,7 @@
             this.MaximizeBox = false;
             this.Name = "CaptureVideoForm";
             this.Padding = new System.Windows.Forms.Padding(1);
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "搜图控制台";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.CaptureVideo_FormClosed);
             this.Load += new System.EventHandler(this.CaptureVideo_Load);
