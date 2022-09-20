@@ -1374,7 +1374,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             board.Show();
         }
 
-        private void toolStripMenuItem1_Click(object sender, EventArgs e)
+        private void openDelayToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var menu = (ToolStripMenuItem)sender;
             menu.Checked = !menu.Checked;
