@@ -140,56 +140,17 @@ namespace EasyCon2.Forms
             InitializeComponent();
         }
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            string filepath;
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "Files|*.png;*.jpg";
-            //openFileDialog.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory;           
-            openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-
-            if (openFileDialog.ShowDialog() == DialogResult.OK)
-            {
-                // 取得文件路径及文件名
-                filepath = openFileDialog.FileName;
-            }
-            else
-            {
-                return;
-            }
-            image = Image.FromFile(filepath);
-            if(image.Width != 320 && image.Height != 120)
-            {
-                MessageBox.Show("图片不是320*120大小，建议重新修改");
-                return;
-            }
-
-            pictureBox1.Image = image;
-        }
-
-        static int Keycode(SwitchButton key)
-        {
-            int n = (int)key;
-            int k = -1;
-            while (n != 0)
-            {
-                n >>= 1;
-                k++;
-            }
-            return k;
-        }
-
         private void draw_task_opt()
         {
             Pos = new Point(0, 0);
             Rows = new List<List<Forms.Line>>();
             Bitmap pic = new Bitmap(image);
-            wait = int.Parse(textBox1.Text);
-            duration = int.Parse(textBox2.Text);
+            wait = int.Parse(delayBox.Text);
+            duration = int.Parse(durationBox.Text);
 
-            int col = int.Parse(textBox3.Text);
-            int row = int.Parse(textBox4.Text);
-            bool reverse = checkBox1.Checked;
+            int col = int.Parse(widthBox.Text);
+            int row = int.Parse(heightBox.Text);
+            bool reverse = reverseCheck.Checked;
 
             // search line
             for (int i = 0; i < row; i++)
@@ -275,14 +236,14 @@ namespace EasyCon2.Forms
             }
             NS.Reset();
             Thread.Sleep(wait);
-            button2.Enabled = true;
+            startButton.Enabled = true;
         }
 
         private void draw_task()
         {
             Bitmap pic = new Bitmap(image);
-            wait = int.Parse(textBox1.Text);
-            duration = int.Parse(textBox2.Text);
+            wait = int.Parse(delayBox.Text);
+            duration = int.Parse(durationBox.Text);
 
             int col = 320;//30 for test
             int row = 120;
@@ -327,12 +288,38 @@ namespace EasyCon2.Forms
                 Thread.Sleep(wait);
             }
             NS.Reset();
-            button2.Enabled = true;
+            startButton.Enabled = true;
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void loadPicButton_Click(object sender, EventArgs e)
         {
-            
+            string filepath;
+            OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "Files|*.png;*.jpg";
+            //openFileDialog.InitialDirectory = AppDomain.CurrentDomain.BaseDirectory;           
+            openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                // 取得文件路径及文件名
+                filepath = openFileDialog.FileName;
+            }
+            else
+            {
+                return;
+            }
+            image = Image.FromFile(filepath);
+            if (image.Width != 320 && image.Height != 120)
+            {
+                MessageBox.Show("图片不是320*120大小，建议重新修改");
+                return;
+            }
+
+            pictureBox1.Image = image;
+        }
+
+        private void startButton_Click(object sender, EventArgs e)
+        {
             source = new CancellationTokenSource();
             //开启一个task执行任务
             DrawTask = new Task(() =>
@@ -341,29 +328,29 @@ namespace EasyCon2.Forms
                 //draw_task();
             });
             DrawTask.Start();
-            button2.Enabled = false;
+            startButton.Enabled = false;
         }
 
-        private void button3_Click(object sender, EventArgs e)
+        private void stopButton_Click(object sender, EventArgs e)
         {
             source.Cancel();
             Thread.Sleep(1000);
             NS.Reset();
-            button2.Enabled = true;
+            startButton.Enabled = true;
             //DrawTask.Dispose();
         }
 
-        private void button4_Click(object sender, EventArgs e)
+        private void evaluateButton_Click(object sender, EventArgs e)
         {
             Pos = new Point(0, 0);
             Rows = new List<List<Forms.Line>>();
             Bitmap pic = new Bitmap(image);
-            wait = int.Parse(textBox1.Text);
-            duration = int.Parse(textBox2.Text);
+            wait = int.Parse(delayBox.Text);
+            duration = int.Parse(durationBox.Text);
 
-            int col = int.Parse(textBox3.Text);
-            int row = int.Parse(textBox4.Text);
-            bool reverse = checkBox1.Checked;
+            int col = int.Parse(widthBox.Text);
+            int row = int.Parse(heightBox.Text);
+            bool reverse = reverseCheck.Checked;
 
             int point_num = 0;
 
@@ -449,7 +436,7 @@ namespace EasyCon2.Forms
                         point_num += Math.Abs(Pos.Y - line.end.Y);
                         Pos.Y = line.end.Y;
                         Pos.X = line.end.X;
-                    }   
+                    }
                     else
                     {
                         point_num += Math.Abs(Pos.Y - line.start.Y);
@@ -458,7 +445,7 @@ namespace EasyCon2.Forms
                     }
                 }
             }
-            label6.Text = "耗时：" + (point_num * wait / 1000.0/60.0).ToString()+"mins";
+            evaluateLabel.Text = "耗时：" + (point_num * wait / 1000.0 / 60.0).ToString() + "mins";
         }
     }
     public class Line

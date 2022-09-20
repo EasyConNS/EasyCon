@@ -28,54 +28,54 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.button1 = new System.Windows.Forms.Button();
-            this.button2 = new System.Windows.Forms.Button();
-            this.button3 = new System.Windows.Forms.Button();
+            this.loadPicButton = new System.Windows.Forms.Button();
+            this.startButton = new System.Windows.Forms.Button();
+            this.stopButton = new System.Windows.Forms.Button();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.tipLabel = new System.Windows.Forms.Label();
+            this.delayBox = new System.Windows.Forms.TextBox();
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
-            this.textBox2 = new System.Windows.Forms.TextBox();
+            this.durationBox = new System.Windows.Forms.TextBox();
             this.label4 = new System.Windows.Forms.Label();
-            this.textBox3 = new System.Windows.Forms.TextBox();
+            this.widthBox = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
-            this.textBox4 = new System.Windows.Forms.TextBox();
-            this.checkBox1 = new System.Windows.Forms.CheckBox();
-            this.button4 = new System.Windows.Forms.Button();
-            this.label6 = new System.Windows.Forms.Label();
+            this.heightBox = new System.Windows.Forms.TextBox();
+            this.reverseCheck = new System.Windows.Forms.CheckBox();
+            this.evaluateButton = new System.Windows.Forms.Button();
+            this.evaluateLabel = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
-            // button1
+            // loadPicButton
             // 
-            this.button1.Location = new System.Drawing.Point(17, 271);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(87, 46);
-            this.button1.TabIndex = 0;
-            this.button1.Text = "加载图片";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
+            this.loadPicButton.Location = new System.Drawing.Point(17, 271);
+            this.loadPicButton.Name = "loadPicButton";
+            this.loadPicButton.Size = new System.Drawing.Size(87, 46);
+            this.loadPicButton.TabIndex = 0;
+            this.loadPicButton.Text = "加载图片";
+            this.loadPicButton.UseVisualStyleBackColor = true;
+            this.loadPicButton.Click += new System.EventHandler(this.loadPicButton_Click);
             // 
-            // button2
+            // startButton
             // 
-            this.button2.Location = new System.Drawing.Point(425, 271);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(75, 46);
-            this.button2.TabIndex = 1;
-            this.button2.Text = "开始画图";
-            this.button2.UseVisualStyleBackColor = true;
-            this.button2.Click += new System.EventHandler(this.button2_Click);
+            this.startButton.Location = new System.Drawing.Point(425, 271);
+            this.startButton.Name = "startButton";
+            this.startButton.Size = new System.Drawing.Size(75, 46);
+            this.startButton.TabIndex = 1;
+            this.startButton.Text = "开始画图";
+            this.startButton.UseVisualStyleBackColor = true;
+            this.startButton.Click += new System.EventHandler(this.startButton_Click);
             // 
-            // button3
+            // stopButton
             // 
-            this.button3.Location = new System.Drawing.Point(506, 271);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(70, 46);
-            this.button3.TabIndex = 2;
-            this.button3.Text = "停止";
-            this.button3.UseVisualStyleBackColor = true;
-            this.button3.Click += new System.EventHandler(this.button3_Click);
+            this.stopButton.Location = new System.Drawing.Point(506, 271);
+            this.stopButton.Name = "stopButton";
+            this.stopButton.Size = new System.Drawing.Size(70, 46);
+            this.stopButton.TabIndex = 2;
+            this.stopButton.Text = "停止";
+            this.stopButton.UseVisualStyleBackColor = true;
+            this.stopButton.Click += new System.EventHandler(this.stopButton_Click);
             // 
             // pictureBox1
             // 
@@ -87,22 +87,22 @@
             this.pictureBox1.TabIndex = 3;
             this.pictureBox1.TabStop = false;
             // 
-            // label1
+            // tipLabel
             // 
-            this.label1.AutoEllipsis = true;
-            this.label1.Location = new System.Drawing.Point(17, 320);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(586, 17);
-            this.label1.TabIndex = 4;
-            this.label1.Text = "开始前，请先进入画画页面，笔刷调整到最小，光标移动到你想要开始的位置，绘制是从左上到右下";
+            this.tipLabel.AutoEllipsis = true;
+            this.tipLabel.Location = new System.Drawing.Point(17, 320);
+            this.tipLabel.Name = "tipLabel";
+            this.tipLabel.Size = new System.Drawing.Size(586, 17);
+            this.tipLabel.TabIndex = 4;
+            this.tipLabel.Text = "开始前，请先进入画画页面，笔刷调整到最小，光标移动到你想要开始的位置，绘制是从左上到右下";
             // 
-            // textBox1
+            // delayBox
             // 
-            this.textBox1.Location = new System.Drawing.Point(350, 297);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(62, 23);
-            this.textBox1.TabIndex = 5;
-            this.textBox1.Text = "80";
+            this.delayBox.Location = new System.Drawing.Point(350, 297);
+            this.delayBox.Name = "delayBox";
+            this.delayBox.Size = new System.Drawing.Size(62, 23);
+            this.delayBox.TabIndex = 5;
+            this.delayBox.Text = "80";
             // 
             // label2
             // 
@@ -122,13 +122,13 @@
             this.label3.TabIndex = 8;
             this.label3.Text = "按键持续";
             // 
-            // textBox2
+            // durationBox
             // 
-            this.textBox2.Location = new System.Drawing.Point(254, 297);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(44, 23);
-            this.textBox2.TabIndex = 7;
-            this.textBox2.Text = "45";
+            this.durationBox.Location = new System.Drawing.Point(254, 297);
+            this.durationBox.Name = "durationBox";
+            this.durationBox.Size = new System.Drawing.Size(44, 23);
+            this.durationBox.TabIndex = 7;
+            this.durationBox.Text = "45";
             // 
             // label4
             // 
@@ -139,13 +139,13 @@
             this.label4.TabIndex = 12;
             this.label4.Text = "绘制大小 宽";
             // 
-            // textBox3
+            // widthBox
             // 
-            this.textBox3.Location = new System.Drawing.Point(254, 271);
-            this.textBox3.Name = "textBox3";
-            this.textBox3.Size = new System.Drawing.Size(44, 23);
-            this.textBox3.TabIndex = 11;
-            this.textBox3.Text = "320";
+            this.widthBox.Location = new System.Drawing.Point(254, 271);
+            this.widthBox.Name = "widthBox";
+            this.widthBox.Size = new System.Drawing.Size(44, 23);
+            this.widthBox.TabIndex = 11;
+            this.widthBox.Text = "320";
             // 
             // label5
             // 
@@ -156,64 +156,64 @@
             this.label5.TabIndex = 10;
             this.label5.Text = "高";
             // 
-            // textBox4
+            // heightBox
             // 
-            this.textBox4.Location = new System.Drawing.Point(350, 271);
-            this.textBox4.Name = "textBox4";
-            this.textBox4.Size = new System.Drawing.Size(62, 23);
-            this.textBox4.TabIndex = 9;
-            this.textBox4.Text = "120";
+            this.heightBox.Location = new System.Drawing.Point(350, 271);
+            this.heightBox.Name = "heightBox";
+            this.heightBox.Size = new System.Drawing.Size(62, 23);
+            this.heightBox.TabIndex = 9;
+            this.heightBox.Text = "120";
             // 
-            // checkBox1
+            // reverseCheck
             // 
-            this.checkBox1.AutoSize = true;
-            this.checkBox1.Location = new System.Drawing.Point(110, 299);
-            this.checkBox1.Name = "checkBox1";
-            this.checkBox1.Size = new System.Drawing.Size(75, 21);
-            this.checkBox1.TabIndex = 13;
-            this.checkBox1.Text = "反转黑白";
-            this.checkBox1.UseVisualStyleBackColor = true;
+            this.reverseCheck.AutoSize = true;
+            this.reverseCheck.Location = new System.Drawing.Point(110, 299);
+            this.reverseCheck.Name = "reverseCheck";
+            this.reverseCheck.Size = new System.Drawing.Size(75, 21);
+            this.reverseCheck.TabIndex = 13;
+            this.reverseCheck.Text = "反转黑白";
+            this.reverseCheck.UseVisualStyleBackColor = true;
             // 
-            // button4
+            // evaluateButton
             // 
-            this.button4.Location = new System.Drawing.Point(582, 271);
-            this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(70, 46);
-            this.button4.TabIndex = 14;
-            this.button4.Text = "估算耗时";
-            this.button4.UseVisualStyleBackColor = true;
-            this.button4.Click += new System.EventHandler(this.button4_Click);
+            this.evaluateButton.Location = new System.Drawing.Point(582, 271);
+            this.evaluateButton.Name = "evaluateButton";
+            this.evaluateButton.Size = new System.Drawing.Size(70, 46);
+            this.evaluateButton.TabIndex = 14;
+            this.evaluateButton.Text = "估算耗时";
+            this.evaluateButton.UseVisualStyleBackColor = true;
+            this.evaluateButton.Click += new System.EventHandler(this.evaluateButton_Click);
             // 
-            // label6
+            // evaluateLabel
             // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(582, 320);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(44, 17);
-            this.label6.TabIndex = 15;
-            this.label6.Text = "耗时：";
+            this.evaluateLabel.AutoSize = true;
+            this.evaluateLabel.Location = new System.Drawing.Point(582, 320);
+            this.evaluateLabel.Name = "evaluateLabel";
+            this.evaluateLabel.Size = new System.Drawing.Size(44, 17);
+            this.evaluateLabel.TabIndex = 15;
+            this.evaluateLabel.Text = "耗时：";
             // 
             // DrawingBoard
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(682, 355);
-            this.Controls.Add(this.label6);
-            this.Controls.Add(this.button4);
-            this.Controls.Add(this.checkBox1);
+            this.Controls.Add(this.evaluateLabel);
+            this.Controls.Add(this.evaluateButton);
+            this.Controls.Add(this.reverseCheck);
             this.Controls.Add(this.label4);
-            this.Controls.Add(this.textBox3);
+            this.Controls.Add(this.widthBox);
             this.Controls.Add(this.label5);
-            this.Controls.Add(this.textBox4);
+            this.Controls.Add(this.heightBox);
             this.Controls.Add(this.label3);
-            this.Controls.Add(this.textBox2);
+            this.Controls.Add(this.durationBox);
             this.Controls.Add(this.label2);
-            this.Controls.Add(this.textBox1);
-            this.Controls.Add(this.label1);
+            this.Controls.Add(this.delayBox);
+            this.Controls.Add(this.tipLabel);
             this.Controls.Add(this.pictureBox1);
-            this.Controls.Add(this.button3);
-            this.Controls.Add(this.button2);
-            this.Controls.Add(this.button1);
+            this.Controls.Add(this.stopButton);
+            this.Controls.Add(this.startButton);
+            this.Controls.Add(this.loadPicButton);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Name = "DrawingBoard";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
@@ -226,21 +226,21 @@
 
         #endregion
 
-        private Button button1;
-        private Button button2;
-        private Button button3;
+        private Button loadPicButton;
+        private Button startButton;
+        private Button stopButton;
         private PictureBox pictureBox1;
-        private Label label1;
-        private TextBox textBox1;
+        private Label tipLabel;
+        private TextBox delayBox;
         private Label label2;
         private Label label3;
-        private TextBox textBox2;
+        private TextBox durationBox;
         private Label label4;
-        private TextBox textBox3;
+        private TextBox widthBox;
         private Label label5;
-        private TextBox textBox4;
-        private CheckBox checkBox1;
-        private Button button4;
-        private Label label6;
+        private TextBox heightBox;
+        private CheckBox reverseCheck;
+        private Button evaluateButton;
+        private Label evaluateLabel;
     }
 }
