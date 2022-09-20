@@ -239,6 +239,7 @@ namespace EasyCon2.Forms
             startButton.Enabled = true;
         }
 
+        // deprecated
         private void draw_task()
         {
             Bitmap pic = new Bitmap(image);

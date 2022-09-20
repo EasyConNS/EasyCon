@@ -30,131 +30,131 @@
         {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ControllerConfig));
-            this.radioButton1 = new System.Windows.Forms.RadioButton();
-            this.radioButton2 = new System.Windows.Forms.RadioButton();
-            this.radioButton3 = new System.Windows.Forms.RadioButton();
-            this.label2 = new System.Windows.Forms.Label();
+            this.proButton = new System.Windows.Forms.RadioButton();
+            this.jcrButton = new System.Windows.Forms.RadioButton();
+            this.jclButton = new System.Windows.Forms.RadioButton();
+            this.bodyLabel = new System.Windows.Forms.Label();
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
-            this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
+            this.buttonLabel = new System.Windows.Forms.Label();
+            this.gripLLabel = new System.Windows.Forms.Label();
+            this.gripRlabel = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.button2 = new System.Windows.Forms.Button();
+            this.setModeButton = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.button3 = new System.Windows.Forms.Button();
+            this.setColorButton = new System.Windows.Forms.Button();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
-            this.textBox2 = new System.Windows.Forms.TextBox();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.nickBox = new System.Windows.Forms.TextBox();
+            this.usernameBox = new System.Windows.Forms.TextBox();
             this.label11 = new System.Windows.Forms.Label();
             this.label10 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
-            this.comboBox4 = new System.Windows.Forms.ComboBox();
+            this.selectGameBox = new System.Windows.Forms.ComboBox();
             this.label8 = new System.Windows.Forms.Label();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.button4 = new System.Windows.Forms.Button();
+            this.amiiboView = new System.Windows.Forms.PictureBox();
+            this.changeAmiiboButton = new System.Windows.Forms.Button();
             this.label7 = new System.Windows.Forms.Label();
-            this.comboBox3 = new System.Windows.Forms.ComboBox();
-            this.button1 = new System.Windows.Forms.Button();
+            this.amiiboIndexBox = new System.Windows.Forms.ComboBox();
+            this.saveAmiiboButton = new System.Windows.Forms.Button();
             this.label6 = new System.Windows.Forms.Label();
-            this.comboBox2 = new System.Windows.Forms.ComboBox();
+            this.selectAmiiboBox = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this.saveIndexBox = new System.Windows.Forms.ComboBox();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.amiiboView)).BeginInit();
             this.SuspendLayout();
             // 
-            // radioButton1
+            // proButton
             // 
-            this.radioButton1.AutoSize = true;
-            this.radioButton1.Checked = true;
-            this.radioButton1.Location = new System.Drawing.Point(63, 23);
-            this.radioButton1.Name = "radioButton1";
-            this.radioButton1.Size = new System.Drawing.Size(46, 21);
-            this.radioButton1.TabIndex = 0;
-            this.radioButton1.TabStop = true;
-            this.radioButton1.Text = "Pro";
-            this.radioButton1.UseVisualStyleBackColor = true;
+            this.proButton.AutoSize = true;
+            this.proButton.Checked = true;
+            this.proButton.Location = new System.Drawing.Point(63, 23);
+            this.proButton.Name = "proButton";
+            this.proButton.Size = new System.Drawing.Size(46, 21);
+            this.proButton.TabIndex = 0;
+            this.proButton.TabStop = true;
+            this.proButton.Text = "Pro";
+            this.proButton.UseVisualStyleBackColor = true;
             // 
-            // radioButton2
+            // jcrButton
             // 
-            this.radioButton2.AutoSize = true;
-            this.radioButton2.Location = new System.Drawing.Point(63, 50);
-            this.radioButton2.Name = "radioButton2";
-            this.radioButton2.Size = new System.Drawing.Size(81, 21);
-            this.radioButton2.TabIndex = 1;
-            this.radioButton2.Text = "JoyCon-R";
-            this.radioButton2.UseVisualStyleBackColor = true;
+            this.jcrButton.AutoSize = true;
+            this.jcrButton.Location = new System.Drawing.Point(63, 50);
+            this.jcrButton.Name = "jcrButton";
+            this.jcrButton.Size = new System.Drawing.Size(81, 21);
+            this.jcrButton.TabIndex = 1;
+            this.jcrButton.Text = "JoyCon-R";
+            this.jcrButton.UseVisualStyleBackColor = true;
             // 
-            // radioButton3
+            // jclButton
             // 
-            this.radioButton3.AutoSize = true;
-            this.radioButton3.Location = new System.Drawing.Point(63, 77);
-            this.radioButton3.Name = "radioButton3";
-            this.radioButton3.Size = new System.Drawing.Size(79, 21);
-            this.radioButton3.TabIndex = 2;
-            this.radioButton3.Text = "JoyCon-L";
-            this.radioButton3.UseVisualStyleBackColor = true;
+            this.jclButton.AutoSize = true;
+            this.jclButton.Location = new System.Drawing.Point(63, 77);
+            this.jclButton.Name = "jclButton";
+            this.jclButton.Size = new System.Drawing.Size(79, 21);
+            this.jclButton.TabIndex = 2;
+            this.jclButton.Text = "JoyCon-L";
+            this.jclButton.UseVisualStyleBackColor = true;
             // 
-            // label2
+            // bodyLabel
             // 
-            this.label2.AutoSize = true;
-            this.label2.BackColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.label2.ForeColor = System.Drawing.SystemColors.ControlLightLight;
-            this.label2.Location = new System.Drawing.Point(39, 50);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(56, 17);
-            this.label2.TabIndex = 4;
-            this.label2.Text = "机身颜色";
-            this.label2.Click += new System.EventHandler(this.label2_Click);
+            this.bodyLabel.AutoSize = true;
+            this.bodyLabel.BackColor = System.Drawing.SystemColors.ActiveCaptionText;
+            this.bodyLabel.ForeColor = System.Drawing.SystemColors.ControlLightLight;
+            this.bodyLabel.Location = new System.Drawing.Point(39, 50);
+            this.bodyLabel.Name = "bodyLabel";
+            this.bodyLabel.Size = new System.Drawing.Size(56, 17);
+            this.bodyLabel.TabIndex = 4;
+            this.bodyLabel.Text = "机身颜色";
+            this.bodyLabel.Click += new System.EventHandler(this.body_Click);
             // 
             // contextMenuStrip1
             // 
             this.contextMenuStrip1.Name = "contextMenuStrip1";
             this.contextMenuStrip1.Size = new System.Drawing.Size(61, 4);
             // 
-            // label3
+            // buttonLabel
             // 
-            this.label3.AutoSize = true;
-            this.label3.BackColor = System.Drawing.SystemColors.ButtonHighlight;
-            this.label3.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.label3.Location = new System.Drawing.Point(38, 121);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(56, 17);
-            this.label3.TabIndex = 6;
-            this.label3.Text = "按钮颜色";
-            this.label3.Click += new System.EventHandler(this.label3_Click);
+            this.buttonLabel.AutoSize = true;
+            this.buttonLabel.BackColor = System.Drawing.SystemColors.ButtonHighlight;
+            this.buttonLabel.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.buttonLabel.Location = new System.Drawing.Point(38, 121);
+            this.buttonLabel.Name = "buttonLabel";
+            this.buttonLabel.Size = new System.Drawing.Size(56, 17);
+            this.buttonLabel.TabIndex = 6;
+            this.buttonLabel.Text = "按钮颜色";
+            this.buttonLabel.Click += new System.EventHandler(this.button_Click);
             // 
-            // label4
+            // gripLLabel
             // 
-            this.label4.AutoSize = true;
-            this.label4.BackColor = System.Drawing.SystemColors.Highlight;
-            this.label4.Location = new System.Drawing.Point(120, 50);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(136, 17);
-            this.label4.TabIndex = 7;
-            this.label4.Text = "左手柄颜色（Pro独有）";
-            this.label4.Click += new System.EventHandler(this.label4_Click);
+            this.gripLLabel.AutoSize = true;
+            this.gripLLabel.BackColor = System.Drawing.SystemColors.Highlight;
+            this.gripLLabel.Location = new System.Drawing.Point(120, 50);
+            this.gripLLabel.Name = "gripLLabel";
+            this.gripLLabel.Size = new System.Drawing.Size(136, 17);
+            this.gripLLabel.TabIndex = 7;
+            this.gripLLabel.Text = "左手柄颜色（Pro独有）";
+            this.gripLLabel.Click += new System.EventHandler(this.gripl_Click);
             // 
-            // label5
+            // gripRlabel
             // 
-            this.label5.AutoSize = true;
-            this.label5.BackColor = System.Drawing.Color.Yellow;
-            this.label5.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.label5.Location = new System.Drawing.Point(120, 121);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(136, 17);
-            this.label5.TabIndex = 8;
-            this.label5.Text = "右手柄颜色（Pro独有）";
-            this.label5.Click += new System.EventHandler(this.label5_Click);
+            this.gripRlabel.AutoSize = true;
+            this.gripRlabel.BackColor = System.Drawing.Color.Yellow;
+            this.gripRlabel.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.gripRlabel.Location = new System.Drawing.Point(120, 121);
+            this.gripRlabel.Name = "gripRlabel";
+            this.gripRlabel.Size = new System.Drawing.Size(136, 17);
+            this.gripRlabel.TabIndex = 8;
+            this.gripRlabel.Text = "右手柄颜色（Pro独有）";
+            this.gripRlabel.Click += new System.EventHandler(this.gripr_Click);
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.button2);
-            this.groupBox1.Controls.Add(this.radioButton2);
-            this.groupBox1.Controls.Add(this.radioButton1);
-            this.groupBox1.Controls.Add(this.radioButton3);
+            this.groupBox1.Controls.Add(this.setModeButton);
+            this.groupBox1.Controls.Add(this.jcrButton);
+            this.groupBox1.Controls.Add(this.proButton);
+            this.groupBox1.Controls.Add(this.jclButton);
             this.groupBox1.Location = new System.Drawing.Point(12, 12);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(165, 172);
@@ -162,23 +162,23 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "手柄模式";
             // 
-            // button2
+            // setModeButton
             // 
-            this.button2.Location = new System.Drawing.Point(63, 121);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(75, 23);
-            this.button2.TabIndex = 3;
-            this.button2.Text = "设置";
-            this.button2.UseVisualStyleBackColor = true;
-            this.button2.Click += new System.EventHandler(this.button2_Click);
+            this.setModeButton.Location = new System.Drawing.Point(63, 121);
+            this.setModeButton.Name = "setModeButton";
+            this.setModeButton.Size = new System.Drawing.Size(75, 23);
+            this.setModeButton.TabIndex = 3;
+            this.setModeButton.Text = "设置";
+            this.setModeButton.UseVisualStyleBackColor = true;
+            this.setModeButton.Click += new System.EventHandler(this.setMode_Click);
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.button3);
-            this.groupBox2.Controls.Add(this.label3);
-            this.groupBox2.Controls.Add(this.label2);
-            this.groupBox2.Controls.Add(this.label5);
-            this.groupBox2.Controls.Add(this.label4);
+            this.groupBox2.Controls.Add(this.setColorButton);
+            this.groupBox2.Controls.Add(this.buttonLabel);
+            this.groupBox2.Controls.Add(this.bodyLabel);
+            this.groupBox2.Controls.Add(this.gripRlabel);
+            this.groupBox2.Controls.Add(this.gripLLabel);
             this.groupBox2.Location = new System.Drawing.Point(194, 12);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(365, 172);
@@ -186,34 +186,34 @@
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "颜色";
             // 
-            // button3
+            // setColorButton
             // 
-            this.button3.Location = new System.Drawing.Point(271, 77);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(75, 23);
-            this.button3.TabIndex = 9;
-            this.button3.Text = "设置";
-            this.button3.UseVisualStyleBackColor = true;
-            this.button3.Click += new System.EventHandler(this.button3_Click);
+            this.setColorButton.Location = new System.Drawing.Point(271, 77);
+            this.setColorButton.Name = "setColorButton";
+            this.setColorButton.Size = new System.Drawing.Size(75, 23);
+            this.setColorButton.TabIndex = 9;
+            this.setColorButton.Text = "设置";
+            this.setColorButton.UseVisualStyleBackColor = true;
+            this.setColorButton.Click += new System.EventHandler(this.setColor_Click);
             // 
             // groupBox3
             // 
-            this.groupBox3.Controls.Add(this.textBox2);
-            this.groupBox3.Controls.Add(this.textBox1);
+            this.groupBox3.Controls.Add(this.nickBox);
+            this.groupBox3.Controls.Add(this.usernameBox);
             this.groupBox3.Controls.Add(this.label11);
             this.groupBox3.Controls.Add(this.label10);
             this.groupBox3.Controls.Add(this.label9);
-            this.groupBox3.Controls.Add(this.comboBox4);
+            this.groupBox3.Controls.Add(this.selectGameBox);
             this.groupBox3.Controls.Add(this.label8);
-            this.groupBox3.Controls.Add(this.pictureBox1);
-            this.groupBox3.Controls.Add(this.button4);
+            this.groupBox3.Controls.Add(this.amiiboView);
+            this.groupBox3.Controls.Add(this.changeAmiiboButton);
             this.groupBox3.Controls.Add(this.label7);
-            this.groupBox3.Controls.Add(this.comboBox3);
-            this.groupBox3.Controls.Add(this.button1);
+            this.groupBox3.Controls.Add(this.amiiboIndexBox);
+            this.groupBox3.Controls.Add(this.saveAmiiboButton);
             this.groupBox3.Controls.Add(this.label6);
-            this.groupBox3.Controls.Add(this.comboBox2);
+            this.groupBox3.Controls.Add(this.selectAmiiboBox);
             this.groupBox3.Controls.Add(this.label1);
-            this.groupBox3.Controls.Add(this.comboBox1);
+            this.groupBox3.Controls.Add(this.saveIndexBox);
             this.groupBox3.Location = new System.Drawing.Point(12, 190);
             this.groupBox3.Name = "groupBox3";
             this.groupBox3.Size = new System.Drawing.Size(547, 346);
@@ -221,19 +221,19 @@
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Amiibo";
             // 
-            // textBox2
+            // nickBox
             // 
-            this.textBox2.Location = new System.Drawing.Point(81, 160);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(100, 23);
-            this.textBox2.TabIndex = 15;
+            this.nickBox.Location = new System.Drawing.Point(81, 160);
+            this.nickBox.Name = "nickBox";
+            this.nickBox.Size = new System.Drawing.Size(100, 23);
+            this.nickBox.TabIndex = 15;
             // 
-            // textBox1
+            // usernameBox
             // 
-            this.textBox1.Location = new System.Drawing.Point(81, 131);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(100, 23);
-            this.textBox1.TabIndex = 14;
+            this.usernameBox.Location = new System.Drawing.Point(81, 131);
+            this.usernameBox.Name = "usernameBox";
+            this.usernameBox.Size = new System.Drawing.Size(100, 23);
+            this.usernameBox.TabIndex = 14;
             // 
             // label11
             // 
@@ -262,15 +262,15 @@
             this.label9.TabIndex = 11;
             this.label9.Text = "游戏";
             // 
-            // comboBox4
+            // selectGameBox
             // 
-            this.comboBox4.FormattingEnabled = true;
-            this.comboBox4.Location = new System.Drawing.Point(81, 66);
-            this.comboBox4.Name = "comboBox4";
-            this.comboBox4.Size = new System.Drawing.Size(158, 25);
-            this.comboBox4.TabIndex = 10;
-            this.comboBox4.Text = "选择游戏";
-            this.comboBox4.SelectionChangeCommitted += new System.EventHandler(this.comboBox4_SelectionChangeCommitted);
+            this.selectGameBox.FormattingEnabled = true;
+            this.selectGameBox.Location = new System.Drawing.Point(81, 66);
+            this.selectGameBox.Name = "selectGameBox";
+            this.selectGameBox.Size = new System.Drawing.Size(158, 25);
+            this.selectGameBox.TabIndex = 10;
+            this.selectGameBox.Text = "选择游戏";
+            this.selectGameBox.SelectionChangeCommitted += new System.EventHandler(this.game_SelectionChangeCommitted);
             // 
             // label8
             // 
@@ -280,24 +280,24 @@
             this.label8.TabIndex = 9;
             this.label8.Text = "默认Amiibo是自动生成，自定义通过copy bin文件到Amiibo文件夹内";
             // 
-            // pictureBox1
+            // amiiboView
             // 
-            this.pictureBox1.Location = new System.Drawing.Point(261, 22);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(258, 305);
-            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
-            this.pictureBox1.TabIndex = 8;
-            this.pictureBox1.TabStop = false;
+            this.amiiboView.Location = new System.Drawing.Point(261, 22);
+            this.amiiboView.Name = "amiiboView";
+            this.amiiboView.Size = new System.Drawing.Size(258, 305);
+            this.amiiboView.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.amiiboView.TabIndex = 8;
+            this.amiiboView.TabStop = false;
             // 
-            // button4
+            // changeAmiiboButton
             // 
-            this.button4.Location = new System.Drawing.Point(19, 300);
-            this.button4.Name = "button4";
-            this.button4.Size = new System.Drawing.Size(220, 23);
-            this.button4.TabIndex = 7;
-            this.button4.Text = "设置";
-            this.button4.UseVisualStyleBackColor = true;
-            this.button4.Click += new System.EventHandler(this.button4_Click);
+            this.changeAmiiboButton.Location = new System.Drawing.Point(19, 300);
+            this.changeAmiiboButton.Name = "changeAmiiboButton";
+            this.changeAmiiboButton.Size = new System.Drawing.Size(220, 23);
+            this.changeAmiiboButton.TabIndex = 7;
+            this.changeAmiiboButton.Text = "设置";
+            this.changeAmiiboButton.UseVisualStyleBackColor = true;
+            this.changeAmiiboButton.Click += new System.EventHandler(this.changeAmiibo_Click);
             // 
             // label7
             // 
@@ -308,10 +308,10 @@
             this.label7.TabIndex = 6;
             this.label7.Text = "当前序号";
             // 
-            // comboBox3
+            // amiiboIndexBox
             // 
-            this.comboBox3.FormattingEnabled = true;
-            this.comboBox3.Items.AddRange(new object[] {
+            this.amiiboIndexBox.FormattingEnabled = true;
+            this.amiiboIndexBox.Items.AddRange(new object[] {
             "0",
             "1",
             "2",
@@ -322,21 +322,21 @@
             "7",
             "8",
             "9"});
-            this.comboBox3.Location = new System.Drawing.Point(81, 269);
-            this.comboBox3.Name = "comboBox3";
-            this.comboBox3.Size = new System.Drawing.Size(158, 25);
-            this.comboBox3.TabIndex = 5;
-            this.comboBox3.Text = "选择序号";
+            this.amiiboIndexBox.Location = new System.Drawing.Point(81, 269);
+            this.amiiboIndexBox.Name = "amiiboIndexBox";
+            this.amiiboIndexBox.Size = new System.Drawing.Size(158, 25);
+            this.amiiboIndexBox.TabIndex = 5;
+            this.amiiboIndexBox.Text = "选择序号";
             // 
-            // button1
+            // saveAmiiboButton
             // 
-            this.button1.Location = new System.Drawing.Point(19, 189);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(220, 23);
-            this.button1.TabIndex = 4;
-            this.button1.Text = "设置";
-            this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.button1_Click);
+            this.saveAmiiboButton.Location = new System.Drawing.Point(19, 189);
+            this.saveAmiiboButton.Name = "saveAmiiboButton";
+            this.saveAmiiboButton.Size = new System.Drawing.Size(220, 23);
+            this.saveAmiiboButton.TabIndex = 4;
+            this.saveAmiiboButton.Text = "设置";
+            this.saveAmiiboButton.UseVisualStyleBackColor = true;
+            this.saveAmiiboButton.Click += new System.EventHandler(this.saveAmiibo_Click);
             // 
             // label6
             // 
@@ -347,16 +347,16 @@
             this.label6.TabIndex = 3;
             this.label6.Text = "存储内容";
             // 
-            // comboBox2
+            // selectAmiiboBox
             // 
-            this.comboBox2.FormattingEnabled = true;
-            this.comboBox2.Location = new System.Drawing.Point(81, 97);
-            this.comboBox2.Name = "comboBox2";
-            this.comboBox2.Size = new System.Drawing.Size(158, 25);
-            this.comboBox2.TabIndex = 2;
-            this.comboBox2.Text = "选择Amiibo";
-            this.comboBox2.DropDown += new System.EventHandler(this.comboBox2_DropDown);
-            this.comboBox2.SelectionChangeCommitted += new System.EventHandler(this.comboBox2_SelectionChangeCommitted);
+            this.selectAmiiboBox.FormattingEnabled = true;
+            this.selectAmiiboBox.Location = new System.Drawing.Point(81, 97);
+            this.selectAmiiboBox.Name = "selectAmiiboBox";
+            this.selectAmiiboBox.Size = new System.Drawing.Size(158, 25);
+            this.selectAmiiboBox.TabIndex = 2;
+            this.selectAmiiboBox.Text = "选择Amiibo";
+            this.selectAmiiboBox.DropDown += new System.EventHandler(this.amiibo_DropDown);
+            this.selectAmiiboBox.SelectionChangeCommitted += new System.EventHandler(this.amiibo_SelectionChangeCommitted);
             // 
             // label1
             // 
@@ -367,10 +367,10 @@
             this.label1.TabIndex = 1;
             this.label1.Text = "存储序号";
             // 
-            // comboBox1
+            // saveIndexBox
             // 
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Items.AddRange(new object[] {
+            this.saveIndexBox.FormattingEnabled = true;
+            this.saveIndexBox.Items.AddRange(new object[] {
             "0",
             "1",
             "2",
@@ -381,11 +381,11 @@
             "7",
             "8",
             "9"});
-            this.comboBox1.Location = new System.Drawing.Point(81, 33);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(100, 25);
-            this.comboBox1.TabIndex = 0;
-            this.comboBox1.Text = "选择序号";
+            this.saveIndexBox.Location = new System.Drawing.Point(81, 33);
+            this.saveIndexBox.Name = "saveIndexBox";
+            this.saveIndexBox.Size = new System.Drawing.Size(100, 25);
+            this.saveIndexBox.TabIndex = 0;
+            this.saveIndexBox.Text = "选择序号";
             // 
             // ControllerConfig
             // 
@@ -407,40 +407,40 @@
             this.groupBox2.PerformLayout();
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.amiiboView)).EndInit();
             this.ResumeLayout(false);
 
         }
 
         #endregion
 
-        private RadioButton radioButton1;
-        private RadioButton radioButton2;
-        private RadioButton radioButton3;
-        private Label label2;
+        private RadioButton proButton;
+        private RadioButton jcrButton;
+        private RadioButton jclButton;
+        private Label bodyLabel;
         private ContextMenuStrip contextMenuStrip1;
-        private Label label3;
-        private Label label4;
-        private Label label5;
+        private Label buttonLabel;
+        private Label gripLLabel;
+        private Label gripRlabel;
         private GroupBox groupBox1;
         private GroupBox groupBox2;
-        private Button button2;
-        private Button button3;
+        private Button setModeButton;
+        private Button setColorButton;
         private GroupBox groupBox3;
-        private Button button1;
+        private Button saveAmiiboButton;
         private Label label6;
-        private ComboBox comboBox2;
+        private ComboBox selectAmiiboBox;
         private Label label1;
-        private ComboBox comboBox1;
-        private Button button4;
+        private ComboBox saveIndexBox;
+        private Button changeAmiiboButton;
         private Label label7;
-        private ComboBox comboBox3;
-        private PictureBox pictureBox1;
+        private ComboBox amiiboIndexBox;
+        private PictureBox amiiboView;
         private Label label8;
         private Label label9;
-        private ComboBox comboBox4;
-        private TextBox textBox2;
-        private TextBox textBox1;
+        private ComboBox selectGameBox;
+        private TextBox nickBox;
+        private TextBox usernameBox;
         private Label label11;
         private Label label10;
     }

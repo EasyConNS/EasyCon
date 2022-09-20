@@ -36,15 +36,15 @@ namespace EasyCon2.Forms
             InitializeComponent();
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void setMode_Click(object sender, EventArgs e)
         {
             byte mode = 0;
 
-            if(radioButton1.Checked)
+            if(proButton.Checked)
                 mode = 3;
-            if(radioButton2.Checked)
+            if(jcrButton.Checked)
                 mode = 2;
-            if(radioButton3.Checked)
+            if(jclButton.Checked)
                 mode = 1;
 
             if (!NS.IsConnected())
@@ -60,21 +60,21 @@ namespace EasyCon2.Forms
             }
         }
 
-        private void button3_Click(object sender, EventArgs e)
+        private void setColor_Click(object sender, EventArgs e)
         {
             byte[] color = new byte[12];
-            color[0] = label2.BackColor.R;
-            color[1] = label2.BackColor.G;
-            color[2] = label2.BackColor.B;
-            color[3] = label3.BackColor.R;
-            color[4] = label3.BackColor.G;
-            color[5] = label3.BackColor.B;
-            color[6] = label4.BackColor.R;
-            color[7] = label4.BackColor.G;
-            color[8] = label4.BackColor.B;
-            color[9] = label5.BackColor.R;
-            color[10] = label5.BackColor.G;
-            color[11] = label5.BackColor.B;
+            color[0] = bodyLabel.BackColor.R;
+            color[1] = bodyLabel.BackColor.G;
+            color[2] = bodyLabel.BackColor.B;
+            color[3] = buttonLabel.BackColor.R;
+            color[4] = buttonLabel.BackColor.G;
+            color[5] = buttonLabel.BackColor.B;
+            color[6] = gripLLabel.BackColor.R;
+            color[7] = gripLLabel.BackColor.G;
+            color[8] = gripLLabel.BackColor.B;
+            color[9] = gripRlabel.BackColor.R;
+            color[10] = gripRlabel.BackColor.G;
+            color[11] = gripRlabel.BackColor.B;
 
             if (!NS.IsConnected())
                 return;
@@ -89,21 +89,28 @@ namespace EasyCon2.Forms
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void saveAmiibo_Click(object sender, EventArgs e)
         {
             Stream dataStream;
 
             if (!NS.IsConnected())
                 return;
-            Debug.WriteLine(AmiiboDir + comboBox2.SelectedItem);
-            // first need generate amiibo bin
-            if (comboBox4.SelectedItem.ToString() != "自定义")
+            Debug.WriteLine(AmiiboDir + selectAmiiboBox.SelectedItem);
+
+            if(saveIndexBox.SelectedIndex >=10)
             {
-                dataStream = new MemoryStream(CreateAmiibo(amiibo.head+amiibo.tail,textBox2.Text,textBox1.Text));
+                MessageBox.Show("请选择存储位置");
+                return;
+            }
+
+            // first need generate amiibo bin
+            if (selectGameBox.SelectedItem.ToString() != "自定义")
+            {
+                dataStream = new MemoryStream(CreateAmiibo(amiibo.head+amiibo.tail,nickBox.Text,usernameBox.Text));
             }
             else
             {
-                dataStream = new FileStream(AmiiboDir + comboBox2.SelectedItem, FileMode.Open);
+                dataStream = new FileStream(AmiiboDir + selectAmiiboBox.SelectedItem, FileMode.Open);
                 if(dataStream.Length != 540)
                 {
                     MessageBox.Show("Amiibo文件长度不正确");
@@ -114,10 +121,10 @@ namespace EasyCon2.Forms
 
             var data = br.ReadBytes(540);
 
-            if (comboBox1.SelectedIndex >= 10)
+            if (saveIndexBox.SelectedIndex >= 10)
                 return;
 
-            if (NS.SaveAmiibo((byte)comboBox1.SelectedIndex, data))
+            if (NS.SaveAmiibo((byte)saveIndexBox.SelectedIndex, data))
             {
                 SystemSounds.Beep.Play();
                 MessageBox.Show("amiibo存储成功");
@@ -129,7 +136,7 @@ namespace EasyCon2.Forms
             br.Close();
         }
 
-        private void comboBox2_DropDown(object sender, EventArgs e)
+        private void amiibo_DropDown(object sender, EventArgs e)
         {
             if (!Directory.Exists(AmiiboDir))
             {
@@ -144,16 +151,16 @@ namespace EasyCon2.Forms
             //}
 
             // refresh amiibo ,add to list
-            if(comboBox4.SelectedItem?.ToString() == "自定义")
+            if(selectGameBox.SelectedItem?.ToString() == "自定义")
             {
-                comboBox2.Items.Clear();
+                selectAmiiboBox.Items.Clear();
                 DirectoryInfo directoryInfo = new DirectoryInfo(AmiiboDir);
                 FileInfo[] files = directoryInfo.GetFiles();//"*.png"
                 foreach (FileInfo file in files)
                 {
                     if (file.Extension == ".bin")
                     {
-                        comboBox2.Items.Add(file.Name);
+                        selectAmiiboBox.Items.Add(file.Name);
                     }
                 }
             }
@@ -194,7 +201,7 @@ namespace EasyCon2.Forms
                 return Color.FromArgb(255, v, p, q);
         }
 
-        private void label2_Click(object sender, EventArgs e)
+        private void body_Click(object sender, EventArgs e)
         {
             double[] hsv = {0,0,0};
             if (colorDialog.ShowDialog() == DialogResult.OK)
@@ -209,12 +216,12 @@ namespace EasyCon2.Forms
                     rc = Color.Black;
 
                 Debug.WriteLine(hsv[0].ToString()+" "+hsv[1].ToString()+" "+hsv[2].ToString());
-                label2.BackColor = colorDialog.Color;
-                label2.ForeColor = rc;
+                bodyLabel.BackColor = colorDialog.Color;
+                bodyLabel.ForeColor = rc;
             }
         }
 
-        private void label4_Click(object sender, EventArgs e)
+        private void gripl_Click(object sender, EventArgs e)
         {
             double[] hsv = { 0, 0, 0 };
             if (colorDialog.ShowDialog() == DialogResult.OK)
@@ -229,12 +236,12 @@ namespace EasyCon2.Forms
                     rc = Color.Black;
 
                 Debug.WriteLine(hsv[0].ToString() + " " + hsv[1].ToString() + " " + hsv[2].ToString());
-                label4.BackColor = colorDialog.Color;
-                label4.ForeColor = rc;
+                gripLLabel.BackColor = colorDialog.Color;
+                gripLLabel.ForeColor = rc;
             }
         }
 
-        private void label3_Click(object sender, EventArgs e)
+        private void button_Click(object sender, EventArgs e)
         {
             double[] hsv = { 0, 0, 0 };
             if (colorDialog.ShowDialog() == DialogResult.OK)
@@ -249,12 +256,12 @@ namespace EasyCon2.Forms
                     rc = Color.Black;
 
                 Debug.WriteLine(hsv[0].ToString() + " " + hsv[1].ToString() + " " + hsv[2].ToString());
-                label3.BackColor = colorDialog.Color;
-                label3.ForeColor = rc;
+                buttonLabel.BackColor = colorDialog.Color;
+                buttonLabel.ForeColor = rc;
             }
         }
 
-        private void label5_Click(object sender, EventArgs e)
+        private void gripr_Click(object sender, EventArgs e)
         {
             double[] hsv = { 0, 0, 0 };
             if (colorDialog.ShowDialog() == DialogResult.OK)
@@ -269,14 +276,14 @@ namespace EasyCon2.Forms
                     rc = Color.Black;
 
                 Debug.WriteLine(hsv[0].ToString() + " " + hsv[1].ToString() + " " + hsv[2].ToString());
-                label5.BackColor = colorDialog.Color;
-                label5.ForeColor = rc;
+                gripRlabel.BackColor = colorDialog.Color;
+                gripRlabel.ForeColor = rc;
             }
         }
 
-        private void button4_Click(object sender, EventArgs e)
+        private void changeAmiibo_Click(object sender, EventArgs e)
         {
-            byte index = (byte)comboBox3.SelectedIndex;
+            byte index = (byte)amiiboIndexBox.SelectedIndex;
             if (!NS.IsConnected())
                 return;
             if (NS.ChangeAmiiboIndex(index))
@@ -302,27 +309,27 @@ namespace EasyCon2.Forms
                 if(!amiibosDict.ContainsKey(am.gameSeries))
                 {
                     amiibosDict[am.gameSeries] = new List<AmiiboInfo>();
-                    comboBox4.Items.Add(am.gameSeries);
+                    selectGameBox.Items.Add(am.gameSeries);
                 }
                 amiibosDict[am.gameSeries].Add(am);
             }
 
             amiibosDict["自定义"] = new List<AmiiboInfo>();
-            comboBox4.Items.Add("自定义");
+            selectGameBox.Items.Add("自定义");
         }
 
-        private void comboBox2_SelectionChangeCommitted(object sender, EventArgs e)
+        private void amiibo_SelectionChangeCommitted(object sender, EventArgs e)
         {
             FileStream fileStream;
             // show image
-            if (comboBox4.SelectedItem.ToString()!="自定义")
+            if (selectGameBox.SelectedItem.ToString()!="自定义")
             {
-                amiibo = amiibosDict[comboBox4.SelectedItem.ToString()][comboBox2.SelectedIndex];
+                amiibo = amiibosDict[selectGameBox.SelectedItem.ToString()][selectAmiiboBox.SelectedIndex];
             }
             else
             {
                 amiibo = null;
-                fileStream = new FileStream(AmiiboDir + comboBox2.SelectedItem, FileMode.Open);
+                fileStream = new FileStream(AmiiboDir + selectAmiiboBox.SelectedItem, FileMode.Open);
                 BinaryReader br = new BinaryReader(fileStream, Encoding.UTF8);
                 var data = br.ReadBytes(540);
                 string head = data[84].ToString("X2") + data[85].ToString("X2") + data[86].ToString("X2") + data[87].ToString("X2");
@@ -345,8 +352,8 @@ namespace EasyCon2.Forms
                 string imageName = amiibo.image.Split('/').Last();
                 imageName = imageName.Replace("png", "jpg");
                 Debug.WriteLine(imageName);
-                pictureBox1.Image = Image.FromFile(AmiiboDir + "AmiiboImages\\" + imageName);
-                textBox2.Text = amiibo.name;
+                amiiboView.Image = Image.FromFile(AmiiboDir + "AmiiboImages\\" + imageName);
+                nickBox.Text = amiibo.name;
             }
         }
         private static byte[] CreateAmiibo(string id, string nick = "ca1e", string owner = "EasyCon")
@@ -372,13 +379,14 @@ namespace EasyCon2.Forms
             return amiiboData.EncryptWithKeys();
         }
 
-        private void comboBox4_SelectionChangeCommitted(object sender, EventArgs e)
+        private void game_SelectionChangeCommitted(object sender, EventArgs e)
         {
-            comboBox2.Items.Clear();
-            foreach(var am in amiibosDict[comboBox4.SelectedItem.ToString()])
+            selectAmiiboBox.Items.Clear();
+            foreach(var am in amiibosDict[selectGameBox.SelectedItem.ToString()])
             {
-                comboBox2.Items.Add(am.name);
+                selectAmiiboBox.Items.Add(am.name);
             }
         }
+
     }
 }
