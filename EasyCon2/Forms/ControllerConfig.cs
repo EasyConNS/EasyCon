@@ -15,6 +15,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Security.Cryptography;
+using LibAmiibo.Data;
+using LibAmiibo.Data.Figurine;
 
 namespace EasyCon2.Forms
 {
@@ -23,8 +26,8 @@ namespace EasyCon2.Forms
         ColorDialog colorDialog = new ColorDialog();
         internal NintendoSwitch NS;
         static readonly string AmiiboDir = Application.StartupPath + "Amiibo\\";
-        List<Amiibo> amiibos;
-        Amiibo amiibo;
+        List<AmiiboInfo> amiibos;
+        AmiiboInfo amiibo;
 
         public ControllerConfig(NintendoSwitch gamepad)
         {
@@ -87,7 +90,7 @@ namespace EasyCon2.Forms
 
         private void button1_Click(object sender, EventArgs e)
         {
-            FileStream fileStream;
+            Stream dataStream;
 
             if (!NS.IsConnected())
                 return;
@@ -95,36 +98,20 @@ namespace EasyCon2.Forms
             // first need generate amiibo bin
             if (comboBox2.SelectedIndex < amiibos.Count)
             {
-                if (!Directory.Exists(AmiiboDir + "temp"))
-                {
-                    Directory.CreateDirectory(AmiiboDir + "temp");
-                }
-
-                Task.Run(() =>
-                {
-                    // call exe
-                    System.Diagnostics.Process process = new System.Diagnostics.Process();
-                    process.StartInfo.FileName = AmiiboDir + "amiitool.net.exe";
-                    // TODO add user name and nick name
-                    process.StartInfo.Arguments = " -g " + amiibo.head + amiibo.tail + " \"" + AmiiboDir + "temp\\temp.bin\" ";
-                    process.Start();
-                });
-                Thread.Sleep(1000);
-                fileStream = new FileStream(AmiiboDir + "temp\\temp.bin", FileMode.Open);
+                dataStream = new MemoryStream(CreateAmiibo(amiibo.head+amiibo.tail, amiibo.name));
             }
             else
             {
-                fileStream = new FileStream(AmiiboDir + comboBox2.SelectedItem, FileMode.Open);
+                dataStream = new FileStream(AmiiboDir + comboBox2.SelectedItem, FileMode.Open);
+                if(dataStream.Length != 540)
+                {
+                    MessageBox.Show("Amiibo文件长度不正确");
+                    return;
+                }
             }
-            BinaryReader br = new BinaryReader(fileStream, Encoding.UTF8);
-            int file_len = (int)fileStream.Length;
-            if(file_len != 540)
-            {
-                MessageBox.Show("Amiibo文件长度不正确");
-                return;
-            }
+            var br = new BinaryReader(dataStream, Encoding.UTF8);
 
-            Byte[] data = br.ReadBytes(file_len);
+            var data = br.ReadBytes(540);
 
             if (comboBox1.SelectedIndex >= 10)
                 return;
@@ -150,7 +137,7 @@ namespace EasyCon2.Forms
                 return;
             }
             comboBox2.Items.Clear();
-            foreach (Amiibo am in amiibos)
+            foreach (var am in amiibos)
             {
                 comboBox2.Items.Add(am.name);
                 //Debug.WriteLine(am.ToString());
@@ -302,7 +289,7 @@ namespace EasyCon2.Forms
             // load amiibo
             string str = System.Text.Encoding.UTF8.GetString(Resources.Amiibo);
             //Debug.WriteLine(str);
-            amiibos = JsonSerializer.Deserialize<List<Amiibo>>(str);
+            amiibos = JsonSerializer.Deserialize<List<AmiiboInfo>>(str);
         }
 
         private void comboBox2_SelectionChangeCommitted(object sender, EventArgs e)
@@ -337,6 +324,28 @@ namespace EasyCon2.Forms
                 Debug.WriteLine(imageName);
                 pictureBox1.Image = Image.FromFile(AmiiboDir + "AmiiboImages\\" + imageName);
             }
+        }
+        private static byte[] CreateAmiibo(string id, string nick = "ca1e", string miiNick = "云浅雪")
+        {
+            var bytes = new byte[552];
+            // Set BCC, Internal, Static Lock, and CC
+            Array.Copy(new byte[] { 0x65, 0x48, 0x0F, 0xE0, 0xF1, 0x10, 0xFF, 0xEE }, bytes, 8);
+            bytes[0x28] = 0xA5;
+            // Set Dynamic Lock, and RFUI
+            Array.Copy(new byte[] { 0x01, 0x00, 0x0F, 0xBD }, 0, bytes, 0x208, 4);
+            // Set CFG0
+            Array.Copy(new byte[] { 0x00, 0x00, 0x00, 0x04 }, 0, bytes, 0x20C, 4);
+            // Set CFG1
+            Array.Copy(new byte[] { 0x5F, 0x00, 0x00, 0x00 }, 0, bytes, 0x210, 4);
+            // Set Keygen Salt
+            RandomNumberGenerator.Create().GetBytes(new Span<byte>(bytes, 0x1E8, 0x20));
+            var amiiboData = AmiiboTag.FromInternalTag(new ArraySegment<byte>(bytes));
+            // into the soul
+            amiiboData.Amiibo = Amiibo.FromStatueId(id);
+            amiiboData.AmiiboSettings.AmiiboUserData.AmiiboNickname = nick;
+            amiiboData.AmiiboSettings.AmiiboUserData.OwnerMii.MiiNickname = miiNick;
+            amiiboData.RandomizeUID();
+            return amiiboData.EncryptWithKeys();
         }
     }
 }

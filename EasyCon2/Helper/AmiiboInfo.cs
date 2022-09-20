@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace EasyCon2.Helper
 {
-    public class Amiibo
+    public class AmiiboInfo
     {
         public string amiiboSeries { get; set; }
         public string character { get; set; }

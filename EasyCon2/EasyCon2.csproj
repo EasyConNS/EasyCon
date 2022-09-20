@@ -32,6 +32,11 @@
     <ProjectReference Include="..\ECDevice\ECDevice.csproj" />
     <ProjectReference Include="..\PTController\PTController.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Reference Include="LibAmiibo">
+      <HintPath>.\deps\libamiibo.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
