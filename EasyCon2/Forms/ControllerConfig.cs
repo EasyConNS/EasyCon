@@ -107,6 +107,7 @@ namespace EasyCon2.Forms
             if (selectGameBox.SelectedItem.ToString() != "自定义")
             {
                 dataStream = new MemoryStream(CreateAmiibo(amiibo.head+amiibo.tail,nickBox.Text,usernameBox.Text));
+
             }
             else
             {
@@ -118,8 +119,14 @@ namespace EasyCon2.Forms
                 }
             }
             var br = new BinaryReader(dataStream, Encoding.UTF8);
-
             var data = br.ReadBytes(540);
+
+            // test
+            //FileStream fs = new FileStream(AmiiboDir + "temp.bin", FileMode.Create);
+            //BinaryWriter bw = new BinaryWriter(fs);
+            //bw.Write(data);
+            //bw.Close();
+            //fs.Close();
 
             if (saveIndexBox.SelectedIndex >= 10)
                 return;

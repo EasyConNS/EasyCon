@@ -47,14 +47,18 @@ namespace EasyCon2.Forms
                 if (Pos.X < x)
                 {
                     NS.Press(down, duration);
+                    NS.Press(down, duration);
                     Thread.Sleep(wait);
+                    NS.Up(down);
                     NS.Up(down);
                 }
                 else
                 {
                     NS.Press(up, duration);
+                    NS.Press(up, duration);
                     Thread.Sleep(wait);
                     NS.Up(up);
+                    NS.Up(down);
                 }
             }
             Thread.Sleep(wait);
@@ -93,13 +97,17 @@ namespace EasyCon2.Forms
                 if (Pos.Y < y)
                 {
                     NS.Press(right, duration);
+                    NS.Press(right, duration);
                     Thread.Sleep(wait);
+                    NS.Up(right);
                     NS.Up(right);
                 }
                 else
                 {
                     NS.Press(left, duration);
+                    NS.Press(left, duration);
                     Thread.Sleep(wait);
+                    NS.Up(left);
                     NS.Up(left);
                 }
             }
@@ -224,19 +232,23 @@ namespace EasyCon2.Forms
                     else
                         MoveTo(line.start.X, line.end.Y);
                     NS.Down(a);
+                    NS.Down(a);
                     Thread.Sleep(wait);
                     if (Math.Abs(Pos.Y - line.start.Y) < Math.Abs(Pos.Y - line.end.Y))
                         MoveTo(line.end.X, line.end.Y);
                     else
                         MoveTo(line.end.X, line.start.Y);
                     NS.Reset();
+                    NS.Reset();
                     Thread.Sleep(wait);
                     //Thread.Sleep(wait);
                 }
             }
             NS.Reset();
+            NS.Reset();
             Thread.Sleep(wait);
-            startButton.Enabled = true;
+            Action<bool> AsyncUIDelegate = delegate (bool n) { startButton.Enabled = n; };//定义一个委托
+            startButton.Invoke(AsyncUIDelegate, new object[] { true });
         }
 
         // deprecated
@@ -446,7 +458,7 @@ namespace EasyCon2.Forms
                     }
                 }
             }
-            evaluateLabel.Text = "耗时：" + (point_num * wait / 1000.0 / 60.0).ToString() + "mins";
+            evaluateLabel.Text = "耗时：" + (point_num * wait / 1000.0 / 60.0).ToString("0.00") + "mins";
         }
     }
     public class Line
