@@ -59,4 +59,8 @@
     </None>
   </ItemGroup>
 
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="xcopy &quot;$(SolutionDir)Amiibo\AmiiboImages&quot; &quot;$(TargetDir)Amiibo\AmiiboImages\&quot; /Y " />
+  </Target>
+
 </Project>

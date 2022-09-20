@@ -27,6 +27,7 @@ namespace EasyCon2.Forms
         internal NintendoSwitch NS;
         static readonly string AmiiboDir = Application.StartupPath + "Amiibo\\";
         List<AmiiboInfo> amiibos;
+        Dictionary<string,List<AmiiboInfo>> amiibosDict;
         AmiiboInfo amiibo;
 
         public ControllerConfig(NintendoSwitch gamepad)
@@ -96,9 +97,9 @@ namespace EasyCon2.Forms
                 return;
             Debug.WriteLine(AmiiboDir + comboBox2.SelectedItem);
             // first need generate amiibo bin
-            if (comboBox2.SelectedIndex < amiibos.Count)
+            if (comboBox4.SelectedItem.ToString() != "自定义")
             {
-                dataStream = new MemoryStream(CreateAmiibo(amiibo.head+amiibo.tail, amiibo.name));
+                dataStream = new MemoryStream(CreateAmiibo(amiibo.head+amiibo.tail,textBox2.Text,textBox1.Text));
             }
             else
             {
@@ -136,20 +137,25 @@ namespace EasyCon2.Forms
                 MessageBox.Show("Amiibo文件不存在，请将自定义bin文件放在Amiibo目录下");
                 return;
             }
-            comboBox2.Items.Clear();
-            foreach (var am in amiibos)
-            {
-                comboBox2.Items.Add(am.name);
-                //Debug.WriteLine(am.ToString());
-            }
+            //foreach (var am in amiibos)
+            //{
+            //    comboBox2.Items.Add(am.name);
+            //    //Debug.WriteLine(am.ToString());
+            //}
 
             // refresh amiibo ,add to list
-            DirectoryInfo directoryInfo = new DirectoryInfo(AmiiboDir);
-            FileInfo[] files = directoryInfo.GetFiles();//"*.png"
-            foreach (FileInfo file in files)
+            if(comboBox4.SelectedItem?.ToString() == "自定义")
             {
-                if (file.Extension == ".bin")
-                    comboBox2.Items.Add(file.Name);
+                comboBox2.Items.Clear();
+                DirectoryInfo directoryInfo = new DirectoryInfo(AmiiboDir);
+                FileInfo[] files = directoryInfo.GetFiles();//"*.png"
+                foreach (FileInfo file in files)
+                {
+                    if (file.Extension == ".bin")
+                    {
+                        comboBox2.Items.Add(file.Name);
+                    }
+                }
             }
         }
 
@@ -286,29 +292,46 @@ namespace EasyCon2.Forms
 
         private void ControllerConfig_Load(object sender, EventArgs e)
         {
+            amiibosDict = new Dictionary<string, List<AmiiboInfo>>();
             // load amiibo
             string str = System.Text.Encoding.UTF8.GetString(Resources.Amiibo);
             //Debug.WriteLine(str);
             amiibos = JsonSerializer.Deserialize<List<AmiiboInfo>>(str);
+            foreach(var am in amiibos)
+            {
+                if(!amiibosDict.ContainsKey(am.gameSeries))
+                {
+                    amiibosDict[am.gameSeries] = new List<AmiiboInfo>();
+                    comboBox4.Items.Add(am.gameSeries);
+                }
+                amiibosDict[am.gameSeries].Add(am);
+            }
+
+            amiibosDict["自定义"] = new List<AmiiboInfo>();
+            comboBox4.Items.Add("自定义");
         }
 
         private void comboBox2_SelectionChangeCommitted(object sender, EventArgs e)
         {
+            FileStream fileStream;
             // show image
-            if(comboBox2.SelectedIndex < amiibos.Count)
+            if (comboBox4.SelectedItem.ToString()!="自定义")
             {
-                amiibo = amiibos[comboBox2.SelectedIndex];
+                amiibo = amiibosDict[comboBox4.SelectedItem.ToString()][comboBox2.SelectedIndex];
             }
             else
             {
                 amiibo = null;
                 fileStream = new FileStream(AmiiboDir + comboBox2.SelectedItem, FileMode.Open);
                 BinaryReader br = new BinaryReader(fileStream, Encoding.UTF8);
-                string head = br[84].ToString() + br[85].ToString() + br[86].ToString() + br[87].ToString();
-                string tail = br[88].ToString() + br[89].ToString() + br[90].ToString() + br[91].ToString();
+                var data = br.ReadBytes(540);
+                string head = data[84].ToString("X2") + data[85].ToString("X2") + data[86].ToString("X2") + data[87].ToString("X2");
+                string tail = data[88].ToString("X2") + data[89].ToString("X2") + data[90].ToString("X2") + data[91].ToString("X2");
                 Debug.WriteLine(head);
                 Debug.WriteLine(tail);
-                foreach (Amiibo am in amiibos)
+                head = head.ToLower();
+                tail = tail.ToLower();
+                foreach (AmiiboInfo am in amiibos)
                 {
                     if(am.head == head && am.tail == tail)
                     {
@@ -323,9 +346,10 @@ namespace EasyCon2.Forms
                 imageName = imageName.Replace("png", "jpg");
                 Debug.WriteLine(imageName);
                 pictureBox1.Image = Image.FromFile(AmiiboDir + "AmiiboImages\\" + imageName);
+                textBox2.Text = amiibo.name;
             }
         }
-        private static byte[] CreateAmiibo(string id, string nick = "ca1e", string miiNick = "云浅雪")
+        private static byte[] CreateAmiibo(string id, string nick = "ca1e", string owner = "EasyCon")
         {
             var bytes = new byte[552];
             // Set BCC, Internal, Static Lock, and CC
@@ -343,9 +367,18 @@ namespace EasyCon2.Forms
             // into the soul
             amiiboData.Amiibo = Amiibo.FromStatueId(id);
             amiiboData.AmiiboSettings.AmiiboUserData.AmiiboNickname = nick;
-            amiiboData.AmiiboSettings.AmiiboUserData.OwnerMii.MiiNickname = miiNick;
+            amiiboData.AmiiboSettings.AmiiboUserData.OwnerMii.MiiNickname = owner;
             amiiboData.RandomizeUID();
             return amiiboData.EncryptWithKeys();
+        }
+
+        private void comboBox4_SelectionChangeCommitted(object sender, EventArgs e)
+        {
+            comboBox2.Items.Clear();
+            foreach(var am in amiibosDict[comboBox4.SelectedItem.ToString()])
+            {
+                comboBox2.Items.Add(am.name);
+            }
         }
     }
 }

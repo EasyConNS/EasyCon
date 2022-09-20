@@ -3,9 +3,8 @@
 （如果遇到打不开的情况请安装dotnet desktop runtime最新版本然后重试）
 
 - 支持显示自定义bin的Amiibo图片
-- 支持用户自定义登记信息 TODO
-- 支持Amiibo过滤选择 TODO
-- Amiibo信息翻译 TODO
+- 支持用户自定义登记信息
+- 支持Amiibo过滤选择
 
 v1.483
 - 优化画图速度，估计画图时间，允许调整画图大小，允许反转图片
