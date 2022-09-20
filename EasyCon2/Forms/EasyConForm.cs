@@ -1381,5 +1381,11 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             var rlt = NS.SetOpenDelay(menu.Checked);
             StatusShowLog($"串口打开延迟已{(rlt ? "开启" : "关闭")}");
         }
+
+        private void 自由画板鼠标代替摇杆ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Mouse mouse = new Mouse(NS);
+            mouse.Show();
+        }
     }
 }

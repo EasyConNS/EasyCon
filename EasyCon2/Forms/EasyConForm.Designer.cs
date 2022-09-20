@@ -433,6 +433,7 @@
             this.自由画板鼠标代替摇杆ToolStripMenuItem.Name = "自由画板鼠标代替摇杆ToolStripMenuItem";
             this.自由画板鼠标代替摇杆ToolStripMenuItem.Size = new System.Drawing.Size(220, 22);
             this.自由画板鼠标代替摇杆ToolStripMenuItem.Text = "自由画板（鼠标代替摇杆）";
+            this.自由画板鼠标代替摇杆ToolStripMenuItem.Click += new System.EventHandler(this.自由画板鼠标代替摇杆ToolStripMenuItem_Click);
             // 
             // groupBox1
             // 
