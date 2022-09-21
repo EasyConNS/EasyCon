@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.mValueY10 = new System.Windows.Forms.NumericUpDown();
             this.mValueX10 = new System.Windows.Forms.NumericUpDown();
             this.checkBox10 = new System.Windows.Forms.CheckBox();
@@ -88,26 +89,7 @@
             this.label17 = new System.Windows.Forms.Label();
             this.label18 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
-            this.mTrackBarY10 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX10 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarY9 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX9 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarY8 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX8 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarY6 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX6 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarY7 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX7 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarY5 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX5 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarY4 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX4 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarY3 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX3 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarY2 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX2 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarY1 = new EasyCon2.Forms.NoFocusTrackBar();
-            this.mTrackBarX1 = new EasyCon2.Forms.NoFocusTrackBar();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.mValueY10)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.mValueX10)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.mValueY9)).BeginInit();
@@ -128,26 +110,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.mValueX2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.mValueY1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.mValueX1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY10)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX10)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY9)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX9)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY8)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX8)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY6)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX6)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY7)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX7)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY5)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX5)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY4)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX4)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY3)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX3)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY2)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX2)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX1)).BeginInit();
             this.SuspendLayout();
             // 
             // mValueY10
@@ -980,239 +942,10 @@
             this.label4.TabIndex = 115;
             this.label4.Text = "Sensitivity";
             // 
-            // mTrackBarY10
+            // timer1
             // 
-            this.mTrackBarY10.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarY10.Enabled = false;
-            this.mTrackBarY10.Location = new System.Drawing.Point(843, 593);
-            this.mTrackBarY10.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY10.Maximum = 1000;
-            this.mTrackBarY10.Minimum = -1000;
-            this.mTrackBarY10.Name = "mTrackBarY10";
-            this.mTrackBarY10.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY10.TabIndex = 192;
-            this.mTrackBarY10.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX10
-            // 
-            this.mTrackBarX10.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarX10.Location = new System.Drawing.Point(843, 559);
-            this.mTrackBarX10.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX10.Maximum = 1000;
-            this.mTrackBarX10.Minimum = -1000;
-            this.mTrackBarX10.Name = "mTrackBarX10";
-            this.mTrackBarX10.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX10.TabIndex = 191;
-            this.mTrackBarX10.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarY9
-            // 
-            this.mTrackBarY9.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarY9.Enabled = false;
-            this.mTrackBarY9.Location = new System.Drawing.Point(843, 478);
-            this.mTrackBarY9.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY9.Maximum = 1000;
-            this.mTrackBarY9.Name = "mTrackBarY9";
-            this.mTrackBarY9.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY9.TabIndex = 184;
-            this.mTrackBarY9.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX9
-            // 
-            this.mTrackBarX9.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarX9.Location = new System.Drawing.Point(843, 444);
-            this.mTrackBarX9.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX9.Maximum = 1000;
-            this.mTrackBarX9.Name = "mTrackBarX9";
-            this.mTrackBarX9.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX9.TabIndex = 183;
-            this.mTrackBarX9.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarY8
-            // 
-            this.mTrackBarY8.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarY8.Enabled = false;
-            this.mTrackBarY8.Location = new System.Drawing.Point(843, 363);
-            this.mTrackBarY8.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY8.Maximum = 1000;
-            this.mTrackBarY8.Name = "mTrackBarY8";
-            this.mTrackBarY8.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY8.TabIndex = 176;
-            this.mTrackBarY8.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX8
-            // 
-            this.mTrackBarX8.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarX8.Location = new System.Drawing.Point(843, 329);
-            this.mTrackBarX8.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX8.Maximum = 1000;
-            this.mTrackBarX8.Name = "mTrackBarX8";
-            this.mTrackBarX8.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX8.TabIndex = 175;
-            this.mTrackBarX8.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarY6
-            // 
-            this.mTrackBarY6.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarY6.Enabled = false;
-            this.mTrackBarY6.Location = new System.Drawing.Point(843, 131);
-            this.mTrackBarY6.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY6.Maximum = 1000;
-            this.mTrackBarY6.Name = "mTrackBarY6";
-            this.mTrackBarY6.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY6.TabIndex = 168;
-            this.mTrackBarY6.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX6
-            // 
-            this.mTrackBarX6.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarX6.Location = new System.Drawing.Point(843, 97);
-            this.mTrackBarX6.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX6.Maximum = 1000;
-            this.mTrackBarX6.Name = "mTrackBarX6";
-            this.mTrackBarX6.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX6.TabIndex = 167;
-            this.mTrackBarX6.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarY7
-            // 
-            this.mTrackBarY7.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarY7.Enabled = false;
-            this.mTrackBarY7.Location = new System.Drawing.Point(843, 248);
-            this.mTrackBarY7.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY7.Maximum = 1000;
-            this.mTrackBarY7.Name = "mTrackBarY7";
-            this.mTrackBarY7.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY7.TabIndex = 160;
-            this.mTrackBarY7.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX7
-            // 
-            this.mTrackBarX7.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            this.mTrackBarX7.Location = new System.Drawing.Point(843, 214);
-            this.mTrackBarX7.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX7.Maximum = 1000;
-            this.mTrackBarX7.Name = "mTrackBarX7";
-            this.mTrackBarX7.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX7.TabIndex = 159;
-            this.mTrackBarX7.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarY5
-            // 
-            this.mTrackBarY5.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarY5.Enabled = false;
-            this.mTrackBarY5.Location = new System.Drawing.Point(294, 591);
-            this.mTrackBarY5.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY5.Maximum = 1000;
-            this.mTrackBarY5.Name = "mTrackBarY5";
-            this.mTrackBarY5.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY5.TabIndex = 152;
-            this.mTrackBarY5.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX5
-            // 
-            this.mTrackBarX5.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarX5.Location = new System.Drawing.Point(294, 557);
-            this.mTrackBarX5.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX5.Maximum = 1000;
-            this.mTrackBarX5.Name = "mTrackBarX5";
-            this.mTrackBarX5.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX5.TabIndex = 151;
-            this.mTrackBarX5.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarY4
-            // 
-            this.mTrackBarY4.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarY4.Enabled = false;
-            this.mTrackBarY4.Location = new System.Drawing.Point(294, 476);
-            this.mTrackBarY4.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY4.Maximum = 1000;
-            this.mTrackBarY4.Minimum = -1000;
-            this.mTrackBarY4.Name = "mTrackBarY4";
-            this.mTrackBarY4.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY4.TabIndex = 144;
-            this.mTrackBarY4.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX4
-            // 
-            this.mTrackBarX4.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarX4.Location = new System.Drawing.Point(294, 442);
-            this.mTrackBarX4.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX4.Maximum = 1000;
-            this.mTrackBarX4.Minimum = -1000;
-            this.mTrackBarX4.Name = "mTrackBarX4";
-            this.mTrackBarX4.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX4.TabIndex = 143;
-            this.mTrackBarX4.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarY3
-            // 
-            this.mTrackBarY3.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarY3.Enabled = false;
-            this.mTrackBarY3.Location = new System.Drawing.Point(294, 361);
-            this.mTrackBarY3.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY3.Maximum = 1000;
-            this.mTrackBarY3.Name = "mTrackBarY3";
-            this.mTrackBarY3.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY3.TabIndex = 136;
-            this.mTrackBarY3.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX3
-            // 
-            this.mTrackBarX3.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarX3.Location = new System.Drawing.Point(294, 327);
-            this.mTrackBarX3.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX3.Maximum = 1000;
-            this.mTrackBarX3.Name = "mTrackBarX3";
-            this.mTrackBarX3.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX3.TabIndex = 135;
-            this.mTrackBarX3.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarY2
-            // 
-            this.mTrackBarY2.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarY2.Enabled = false;
-            this.mTrackBarY2.Location = new System.Drawing.Point(294, 246);
-            this.mTrackBarY2.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY2.Maximum = 64000;
-            this.mTrackBarY2.Name = "mTrackBarY2";
-            this.mTrackBarY2.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY2.TabIndex = 128;
-            this.mTrackBarY2.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX2
-            // 
-            this.mTrackBarX2.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarX2.Location = new System.Drawing.Point(294, 212);
-            this.mTrackBarX2.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX2.Maximum = 64000;
-            this.mTrackBarX2.Name = "mTrackBarX2";
-            this.mTrackBarX2.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX2.TabIndex = 127;
-            this.mTrackBarX2.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarY1
-            // 
-            this.mTrackBarY1.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarY1.Enabled = false;
-            this.mTrackBarY1.Location = new System.Drawing.Point(294, 131);
-            this.mTrackBarY1.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarY1.Maximum = 64000;
-            this.mTrackBarY1.Name = "mTrackBarY1";
-            this.mTrackBarY1.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarY1.TabIndex = 120;
-            this.mTrackBarY1.TickStyle = System.Windows.Forms.TickStyle.None;
-            // 
-            // mTrackBarX1
-            // 
-            this.mTrackBarX1.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.mTrackBarX1.Location = new System.Drawing.Point(294, 97);
-            this.mTrackBarX1.Margin = new System.Windows.Forms.Padding(4);
-            this.mTrackBarX1.Maximum = 64000;
-            this.mTrackBarX1.Name = "mTrackBarX1";
-            this.mTrackBarX1.Size = new System.Drawing.Size(152, 45);
-            this.mTrackBarX1.TabIndex = 119;
-            this.mTrackBarX1.TickStyle = System.Windows.Forms.TickStyle.None;
+            this.timer1.Interval = 1;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             // 
             // Mouse
             // 
@@ -1279,26 +1012,6 @@
             this.Controls.Add(this.label17);
             this.Controls.Add(this.label18);
             this.Controls.Add(this.label4);
-            this.Controls.Add(this.mTrackBarY10);
-            this.Controls.Add(this.mTrackBarX10);
-            this.Controls.Add(this.mTrackBarY9);
-            this.Controls.Add(this.mTrackBarX9);
-            this.Controls.Add(this.mTrackBarY8);
-            this.Controls.Add(this.mTrackBarX8);
-            this.Controls.Add(this.mTrackBarY6);
-            this.Controls.Add(this.mTrackBarX6);
-            this.Controls.Add(this.mTrackBarY7);
-            this.Controls.Add(this.mTrackBarX7);
-            this.Controls.Add(this.mTrackBarY5);
-            this.Controls.Add(this.mTrackBarX5);
-            this.Controls.Add(this.mTrackBarY4);
-            this.Controls.Add(this.mTrackBarX4);
-            this.Controls.Add(this.mTrackBarY3);
-            this.Controls.Add(this.mTrackBarX3);
-            this.Controls.Add(this.mTrackBarY2);
-            this.Controls.Add(this.mTrackBarX2);
-            this.Controls.Add(this.mTrackBarY1);
-            this.Controls.Add(this.mTrackBarX1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Name = "Mouse";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
@@ -1323,26 +1036,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.mValueX2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.mValueY1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.mValueX1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY10)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX10)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY9)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX9)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY8)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX8)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY6)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX6)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY7)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX7)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY5)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX5)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY4)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX4)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY3)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX3)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY2)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX2)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarY1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.mTrackBarX1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -1430,5 +1123,6 @@
         private NoFocusTrackBar mTrackBarX2;
         private NoFocusTrackBar mTrackBarY1;
         private NoFocusTrackBar mTrackBarX1;
+        private System.Windows.Forms.Timer timer1;
     }
 }

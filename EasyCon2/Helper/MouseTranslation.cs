@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace SwitchKBMEmulator
+namespace EasyCon2.Helper
 {
-    class MouseTranslation
+    public class MouseTranslation
     {
         //Sensitivity
         public System.Windows.Point mc_sensitivity = new System.Windows.Point(0.5, 0.5);
