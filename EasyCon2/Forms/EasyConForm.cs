@@ -23,7 +23,7 @@ namespace EasyCon2.Forms
 {
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter, ICGamePad
     {
-        private readonly Version VER = new(1,48,4);
+        private readonly Version VER = new(1,48,5);
         private readonly TextEditor textBoxScript = new();
         internal readonly FormController formController;
 
