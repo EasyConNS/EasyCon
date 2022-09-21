@@ -354,7 +354,7 @@ namespace EasyCon2.Forms
                 nickBox.Text = amiibo.name;
             }
         }
-        private static byte[] CreateAmiibo(string id, string nick = "EasyCon", string owner = "")
+        private static byte[] CreateAmiibo(string id, string nick = "EasyCon", string owner = "ca1e")
         {
             var bytes = new byte[552];
             Array.Copy(Resources.tmp, bytes, 532);
@@ -364,7 +364,8 @@ namespace EasyCon2.Forms
             // into the soul
             amiiboData.Amiibo = Amiibo.FromStatueId(id);
             amiiboData.AmiiboSettings.AmiiboUserData.AmiiboNickname = nick;
-            //amiiboData.AmiiboSettings.AmiiboUserData.OwnerMii.MiiNickname = owner;
+            amiiboData.AmiiboSettings.AmiiboUserData.OwnerMii.MiiNickname = owner;
+            amiiboData.AmiiboSettings.AmiiboUserData.OwnerMii.CalcCRC();
             amiiboData.RandomizeUID();
             return amiiboData.EncryptWithKeys();
         }
