@@ -39,7 +39,11 @@ namespace EasyCon2.Forms
                 mode = 1;
 
             if (!NS.IsConnected())
+            {
+                MessageBox.Show("串口未连接");
                 return;
+            }
+                
             if (NS.ChangeControllerMode(mode))
             {
                 SystemSounds.Beep.Play();
@@ -68,7 +72,11 @@ namespace EasyCon2.Forms
             color[11] = gripRlabel.BackColor.B;
 
             if (!NS.IsConnected())
+            {
+                MessageBox.Show("串口未连接");
                 return;
+            }
+
             if (NS.ChangeControllerColor(color))
             {
                 SystemSounds.Beep.Play();
@@ -85,12 +93,22 @@ namespace EasyCon2.Forms
             Stream dataStream;
 
             if (!NS.IsConnected())
+            {
+                MessageBox.Show("串口未连接");
                 return;
-            Debug.WriteLine(AmiiboDir + selectAmiiboBox.SelectedItem);
+            }
+
+            //Debug.WriteLine(AmiiboDir + selectAmiiboBox.SelectedItem);
 
             if(saveIndexBox.SelectedIndex >=10)
             {
                 MessageBox.Show("请选择存储位置");
+                return;
+            }
+
+            if(usernameBox.Text.Length > 20 || nickBox.Text.Length>20)
+            {
+                MessageBox.Show("用户名或者卡名过长");
                 return;
             }
 
@@ -283,7 +301,10 @@ namespace EasyCon2.Forms
         {
             byte index = (byte)amiiboIndexBox.SelectedIndex;
             if (!NS.IsConnected())
+            {
+                MessageBox.Show("串口未连接");
                 return;
+            }
             if (NS.ChangeAmiiboIndex(index))
             {
                 SystemSounds.Beep.Play();
@@ -354,7 +375,7 @@ namespace EasyCon2.Forms
                 nickBox.Text = amiibo.name;
             }
         }
-        private static byte[] CreateAmiibo(string id, string nick = "EasyCon", string owner = "ca1e")
+        private static byte[] CreateAmiibo(string id, string nick = "cale", string owner = "EasyCon")
         {
             var bytes = new byte[552];
             Array.Copy(Resources.tmp, bytes, 532);

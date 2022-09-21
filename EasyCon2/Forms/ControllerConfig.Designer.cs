@@ -230,11 +230,11 @@
             // 
             // usernameBox
             // 
-            this.usernameBox.Enabled = false;
             this.usernameBox.Location = new System.Drawing.Point(81, 131);
             this.usernameBox.Name = "usernameBox";
             this.usernameBox.Size = new System.Drawing.Size(100, 23);
             this.usernameBox.TabIndex = 14;
+            this.usernameBox.Text = "EasyCon";
             // 
             // label11
             // 
@@ -248,7 +248,6 @@
             // label10
             // 
             this.label10.AutoSize = true;
-            this.label10.Enabled = false;
             this.label10.Location = new System.Drawing.Point(31, 134);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(44, 17);

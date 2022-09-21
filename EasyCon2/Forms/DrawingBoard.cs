@@ -333,6 +333,12 @@ namespace EasyCon2.Forms
 
         private void startButton_Click(object sender, EventArgs e)
         {
+            if (!NS.IsConnected())
+            {
+                MessageBox.Show("串口未连接");
+                return;
+            }
+
             source = new CancellationTokenSource();
             //开启一个task执行任务
             DrawTask = new Task(() =>
