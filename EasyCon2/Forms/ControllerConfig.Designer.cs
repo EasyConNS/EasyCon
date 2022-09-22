@@ -43,6 +43,7 @@
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.setColorButton = new System.Windows.Forms.Button();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.amiiboIndexNum = new System.Windows.Forms.NumericUpDown();
             this.nickBox = new System.Windows.Forms.TextBox();
             this.usernameBox = new System.Windows.Forms.TextBox();
             this.label11 = new System.Windows.Forms.Label();
@@ -52,16 +53,16 @@
             this.label8 = new System.Windows.Forms.Label();
             this.amiiboView = new System.Windows.Forms.PictureBox();
             this.changeAmiiboButton = new System.Windows.Forms.Button();
-            this.label7 = new System.Windows.Forms.Label();
-            this.amiiboIndexBox = new System.Windows.Forms.ComboBox();
             this.saveAmiiboButton = new System.Windows.Forms.Button();
             this.label6 = new System.Windows.Forms.Label();
             this.selectAmiiboBox = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.saveIndexBox = new System.Windows.Forms.ComboBox();
+            this.label2 = new System.Windows.Forms.Label();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.amiiboIndexNum)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.amiiboView)).BeginInit();
             this.SuspendLayout();
             // 
@@ -69,7 +70,7 @@
             // 
             this.proButton.AutoSize = true;
             this.proButton.Checked = true;
-            this.proButton.Location = new System.Drawing.Point(63, 23);
+            this.proButton.Location = new System.Drawing.Point(31, 24);
             this.proButton.Name = "proButton";
             this.proButton.Size = new System.Drawing.Size(46, 21);
             this.proButton.TabIndex = 0;
@@ -80,7 +81,7 @@
             // jcrButton
             // 
             this.jcrButton.AutoSize = true;
-            this.jcrButton.Location = new System.Drawing.Point(63, 50);
+            this.jcrButton.Location = new System.Drawing.Point(31, 51);
             this.jcrButton.Name = "jcrButton";
             this.jcrButton.Size = new System.Drawing.Size(81, 21);
             this.jcrButton.TabIndex = 1;
@@ -90,7 +91,7 @@
             // jclButton
             // 
             this.jclButton.AutoSize = true;
-            this.jclButton.Location = new System.Drawing.Point(63, 77);
+            this.jclButton.Location = new System.Drawing.Point(31, 78);
             this.jclButton.Name = "jclButton";
             this.jclButton.Size = new System.Drawing.Size(79, 21);
             this.jclButton.TabIndex = 2;
@@ -102,7 +103,7 @@
             this.bodyLabel.AutoSize = true;
             this.bodyLabel.BackColor = System.Drawing.SystemColors.ActiveCaptionText;
             this.bodyLabel.ForeColor = System.Drawing.SystemColors.ControlLightLight;
-            this.bodyLabel.Location = new System.Drawing.Point(39, 50);
+            this.bodyLabel.Location = new System.Drawing.Point(40, 26);
             this.bodyLabel.Name = "bodyLabel";
             this.bodyLabel.Size = new System.Drawing.Size(56, 17);
             this.bodyLabel.TabIndex = 4;
@@ -119,7 +120,7 @@
             this.buttonLabel.AutoSize = true;
             this.buttonLabel.BackColor = System.Drawing.SystemColors.ButtonHighlight;
             this.buttonLabel.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.buttonLabel.Location = new System.Drawing.Point(38, 121);
+            this.buttonLabel.Location = new System.Drawing.Point(40, 76);
             this.buttonLabel.Name = "buttonLabel";
             this.buttonLabel.Size = new System.Drawing.Size(56, 17);
             this.buttonLabel.TabIndex = 6;
@@ -130,7 +131,7 @@
             // 
             this.gripLLabel.AutoSize = true;
             this.gripLLabel.BackColor = System.Drawing.SystemColors.Highlight;
-            this.gripLLabel.Location = new System.Drawing.Point(120, 50);
+            this.gripLLabel.Location = new System.Drawing.Point(121, 26);
             this.gripLLabel.Name = "gripLLabel";
             this.gripLLabel.Size = new System.Drawing.Size(136, 17);
             this.gripLLabel.TabIndex = 7;
@@ -142,7 +143,7 @@
             this.gripRlabel.AutoSize = true;
             this.gripRlabel.BackColor = System.Drawing.Color.Yellow;
             this.gripRlabel.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.gripRlabel.Location = new System.Drawing.Point(120, 121);
+            this.gripRlabel.Location = new System.Drawing.Point(122, 76);
             this.gripRlabel.Name = "gripRlabel";
             this.gripRlabel.Size = new System.Drawing.Size(136, 17);
             this.gripRlabel.TabIndex = 8;
@@ -157,18 +158,18 @@
             this.groupBox1.Controls.Add(this.jclButton);
             this.groupBox1.Location = new System.Drawing.Point(12, 12);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(165, 172);
+            this.groupBox1.Size = new System.Drawing.Size(176, 138);
             this.groupBox1.TabIndex = 9;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "手柄模式";
             // 
             // setModeButton
             // 
-            this.setModeButton.Location = new System.Drawing.Point(63, 121);
+            this.setModeButton.Location = new System.Drawing.Point(31, 105);
             this.setModeButton.Name = "setModeButton";
             this.setModeButton.Size = new System.Drawing.Size(75, 23);
             this.setModeButton.TabIndex = 3;
-            this.setModeButton.Text = "设置";
+            this.setModeButton.Text = "修改模式";
             this.setModeButton.UseVisualStyleBackColor = true;
             this.setModeButton.Click += new System.EventHandler(this.setMode_Click);
             // 
@@ -181,23 +182,25 @@
             this.groupBox2.Controls.Add(this.gripLLabel);
             this.groupBox2.Location = new System.Drawing.Point(194, 12);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(365, 172);
+            this.groupBox2.Size = new System.Drawing.Size(352, 138);
             this.groupBox2.TabIndex = 10;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "颜色";
             // 
             // setColorButton
             // 
-            this.setColorButton.Location = new System.Drawing.Point(271, 77);
+            this.setColorButton.Location = new System.Drawing.Point(79, 103);
             this.setColorButton.Name = "setColorButton";
-            this.setColorButton.Size = new System.Drawing.Size(75, 23);
+            this.setColorButton.Size = new System.Drawing.Size(102, 23);
             this.setColorButton.TabIndex = 9;
-            this.setColorButton.Text = "设置";
+            this.setColorButton.Text = "修改颜色";
             this.setColorButton.UseVisualStyleBackColor = true;
             this.setColorButton.Click += new System.EventHandler(this.setColor_Click);
             // 
             // groupBox3
             // 
+            this.groupBox3.Controls.Add(this.label2);
+            this.groupBox3.Controls.Add(this.amiiboIndexNum);
             this.groupBox3.Controls.Add(this.nickBox);
             this.groupBox3.Controls.Add(this.usernameBox);
             this.groupBox3.Controls.Add(this.label11);
@@ -207,19 +210,29 @@
             this.groupBox3.Controls.Add(this.label8);
             this.groupBox3.Controls.Add(this.amiiboView);
             this.groupBox3.Controls.Add(this.changeAmiiboButton);
-            this.groupBox3.Controls.Add(this.label7);
-            this.groupBox3.Controls.Add(this.amiiboIndexBox);
             this.groupBox3.Controls.Add(this.saveAmiiboButton);
             this.groupBox3.Controls.Add(this.label6);
             this.groupBox3.Controls.Add(this.selectAmiiboBox);
             this.groupBox3.Controls.Add(this.label1);
             this.groupBox3.Controls.Add(this.saveIndexBox);
-            this.groupBox3.Location = new System.Drawing.Point(12, 190);
+            this.groupBox3.Location = new System.Drawing.Point(12, 156);
             this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(547, 346);
+            this.groupBox3.Size = new System.Drawing.Size(534, 336);
             this.groupBox3.TabIndex = 11;
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Amiibo";
+            // 
+            // amiiboIndexNum
+            // 
+            this.amiiboIndexNum.Location = new System.Drawing.Point(81, 293);
+            this.amiiboIndexNum.Maximum = new decimal(new int[] {
+            9,
+            0,
+            0,
+            0});
+            this.amiiboIndexNum.Name = "amiiboIndexNum";
+            this.amiiboIndexNum.Size = new System.Drawing.Size(45, 23);
+            this.amiiboIndexNum.TabIndex = 16;
             // 
             // nickBox
             // 
@@ -292,42 +305,13 @@
             // 
             // changeAmiiboButton
             // 
-            this.changeAmiiboButton.Location = new System.Drawing.Point(19, 300);
+            this.changeAmiiboButton.Location = new System.Drawing.Point(137, 292);
             this.changeAmiiboButton.Name = "changeAmiiboButton";
-            this.changeAmiiboButton.Size = new System.Drawing.Size(220, 23);
+            this.changeAmiiboButton.Size = new System.Drawing.Size(102, 23);
             this.changeAmiiboButton.TabIndex = 7;
-            this.changeAmiiboButton.Text = "设置";
+            this.changeAmiiboButton.Text = "激活";
             this.changeAmiiboButton.UseVisualStyleBackColor = true;
             this.changeAmiiboButton.Click += new System.EventHandler(this.changeAmiibo_Click);
-            // 
-            // label7
-            // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(19, 273);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(56, 17);
-            this.label7.TabIndex = 6;
-            this.label7.Text = "当前序号";
-            // 
-            // amiiboIndexBox
-            // 
-            this.amiiboIndexBox.FormattingEnabled = true;
-            this.amiiboIndexBox.Items.AddRange(new object[] {
-            "0",
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9"});
-            this.amiiboIndexBox.Location = new System.Drawing.Point(81, 269);
-            this.amiiboIndexBox.Name = "amiiboIndexBox";
-            this.amiiboIndexBox.Size = new System.Drawing.Size(158, 25);
-            this.amiiboIndexBox.TabIndex = 5;
-            this.amiiboIndexBox.Text = "选择序号";
             // 
             // saveAmiiboButton
             // 
@@ -335,7 +319,7 @@
             this.saveAmiiboButton.Name = "saveAmiiboButton";
             this.saveAmiiboButton.Size = new System.Drawing.Size(220, 23);
             this.saveAmiiboButton.TabIndex = 4;
-            this.saveAmiiboButton.Text = "设置";
+            this.saveAmiiboButton.Text = "保存Amiibo";
             this.saveAmiiboButton.UseVisualStyleBackColor = true;
             this.saveAmiiboButton.Click += new System.EventHandler(this.saveAmiibo_Click);
             // 
@@ -382,17 +366,26 @@
             "7",
             "8",
             "9"});
-            this.saveIndexBox.Location = new System.Drawing.Point(81, 33);
+            this.saveIndexBox.Location = new System.Drawing.Point(81, 34);
             this.saveIndexBox.Name = "saveIndexBox";
             this.saveIndexBox.Size = new System.Drawing.Size(100, 25);
             this.saveIndexBox.TabIndex = 0;
             this.saveIndexBox.Text = "选择序号";
             // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(19, 295);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(56, 17);
+            this.label2.TabIndex = 17;
+            this.label2.Text = "当前序号";
+            // 
             // ControllerConfig
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(571, 549);
+            this.ClientSize = new System.Drawing.Size(556, 494);
             this.Controls.Add(this.groupBox3);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
@@ -408,6 +401,7 @@
             this.groupBox2.PerformLayout();
             this.groupBox3.ResumeLayout(false);
             this.groupBox3.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.amiiboIndexNum)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.amiiboView)).EndInit();
             this.ResumeLayout(false);
 
@@ -434,8 +428,6 @@
         private Label label1;
         private ComboBox saveIndexBox;
         private Button changeAmiiboButton;
-        private Label label7;
-        private ComboBox amiiboIndexBox;
         private PictureBox amiiboView;
         private Label label8;
         private Label label9;
@@ -444,5 +436,7 @@
         private TextBox usernameBox;
         private Label label11;
         private Label label10;
+        private NumericUpDown amiiboIndexNum;
+        private Label label2;
     }
 }

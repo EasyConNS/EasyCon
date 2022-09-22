@@ -299,7 +299,7 @@ namespace EasyCon2.Forms
 
         private void changeAmiibo_Click(object sender, EventArgs e)
         {
-            byte index = (byte)amiiboIndexBox.SelectedIndex;
+            byte index = (byte)amiiboIndexNum.Value;
             if (!NS.IsConnected())
             {
                 MessageBox.Show("串口未连接");
