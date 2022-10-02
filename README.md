@@ -20,14 +20,11 @@
 
 * 设计方向是简单易学，人人可用，不需要搞C语言就能自己定制脚本并达到最高效率。
 
+
+使用obs虚拟摄像头： [文档](./docs/obs-virtual-cam.md)
   
 
-
 # 相关仓库
-
-虚拟摄像头插件：
-
-> https://github.com/Fenrirthviti/obs-virtual-cam
 
 单片机端指令集：  
 
