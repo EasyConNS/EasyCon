@@ -150,22 +150,42 @@ namespace EasyCon2.Forms
 
         private void draw_task_opt()
         {
+            Action<bool> AsyncUIDelegate = delegate (bool n) { startButton.Enabled = n; };
             Pos = new Point(0, 0);
             Rows = new List<List<Forms.Line>>();
+            if(image == null)
+            {
+                startButton.Invoke(AsyncUIDelegate, new object[] { true });
+                MessageBox.Show("未加载图片");
+                return;
+            }
             Bitmap pic = new Bitmap(image);
             wait = int.Parse(delayBox.Text);
             duration = int.Parse(durationBox.Text);
+
+            int start_row = int.Parse(startPosY.Text);
+            int start_col = int.Parse(startPosX.Text);
 
             int col = int.Parse(widthBox.Text);
             int row = int.Parse(heightBox.Text);
             bool reverse = reverseCheck.Checked;
 
+            if (start_row + row > 120)
+            {
+                row = 120 - start_row;
+            }
+
+            if (start_col + col > 320)
+            {
+                col = 320 - start_col;
+            }
+
             // search line
-            for (int i = 0; i < row; i++)
+            for (int i = start_row; i < start_row+row; i++)
             {
                 bool line_find = false;
                 List<Line> Lines = new List<Line>();
-                for (int j = 0; j < col; j++)
+                for (int j = start_col; j < start_col+col; j++)
                 {
                     Color color = pic.GetPixel(j, i);
                     if(reverse)
@@ -208,7 +228,7 @@ namespace EasyCon2.Forms
                 {
                     if (Lines.Last().end.Y == 0)
                     {
-                        Lines.Last().end.Y = col - 1;
+                        Lines.Last().end.Y = start_col + col - 1;
                         line_find = false;
                     }
                     Rows.Add(Lines);
@@ -247,7 +267,7 @@ namespace EasyCon2.Forms
             NS.Reset();
             NS.Reset();
             Thread.Sleep(wait);
-            Action<bool> AsyncUIDelegate = delegate (bool n) { startButton.Enabled = n; };//定义一个委托
+            
             startButton.Invoke(AsyncUIDelegate, new object[] { true });
         }
 
@@ -352,7 +372,7 @@ namespace EasyCon2.Forms
 
         private void stopButton_Click(object sender, EventArgs e)
         {
-            source.Cancel();
+            source?.Cancel();
             Thread.Sleep(1000);
             NS.Reset();
             startButton.Enabled = true;
@@ -363,22 +383,39 @@ namespace EasyCon2.Forms
         {
             Pos = new Point(0, 0);
             Rows = new List<List<Forms.Line>>();
+            if (image == null)
+            {
+                MessageBox.Show("未加载图片");
+                return;
+            }
             Bitmap pic = new Bitmap(image);
             wait = int.Parse(delayBox.Text);
             duration = int.Parse(durationBox.Text);
 
+            int start_row = int.Parse(startPosY.Text);
+            int start_col = int.Parse(startPosX.Text);
+
             int col = int.Parse(widthBox.Text);
             int row = int.Parse(heightBox.Text);
             bool reverse = reverseCheck.Checked;
-
             int point_num = 0;
 
+            if(start_row + row>120)
+            {
+                row = 120 - start_row;
+            }
+
+            if(start_col + col>320)
+            {
+                col = 320 - start_col;
+            }
+
             // search line
-            for (int i = 0; i < row; i++)
+            for (int i = start_row; i < start_row + row; i++)
             {
                 bool line_find = false;
                 List<Line> Lines = new List<Line>();
-                for (int j = 0; j < col; j++)
+                for (int j = start_col; j < start_col + col; j++)
                 {
                     Color color = pic.GetPixel(j, i);
                     if (reverse)
@@ -421,11 +458,12 @@ namespace EasyCon2.Forms
                 {
                     if (Lines.Last().end.Y == 0)
                     {
-                        Lines.Last().end.Y = col - 1;
+                        Lines.Last().end.Y = start_col + col - 1;
                         line_find = false;
                     }
                     Rows.Add(Lines);
                 }
+
             }
 
             foreach (List<Line> Lines in Rows)
@@ -464,7 +502,15 @@ namespace EasyCon2.Forms
                     }
                 }
             }
-            evaluateLabel.Text = "耗时：" + (point_num * wait / 1000.0 / 60.0).ToString("0.00") + "mins";
+            evaluateLabel.Text = "耗时：" + (point_num * (wait+ duration) / 1000.0 / 60.0).ToString("0.00") + "mins";
+        }
+
+        private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                curPosLabel.Text="当前位置:"+(e.X/2).ToString()+","+(e.Y/2).ToString();
+            }
         }
     }
     public class Line

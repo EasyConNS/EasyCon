@@ -191,12 +191,12 @@ Xor：目标变量 ^= 变量|值
     ENDIF
 
 【Amiibo切换】
-语法： AMIIBO 序号(序号范围0-9)
+语法： AMIIBO 序号(序号范围0-19)
 
 示例：
 # 循环切换amiibo
-FOR $3 = 0 TO 10
-    AMIIBO $3 # 从0-9号切换Amiibo
+FOR $3 = 0 TO 20
+    AMIIBO $3 # 从0-19号切换Amiibo
 NEXT
 # 切换固定amiibo序号
 AMIIBO 3 # 激活3号amiibo
