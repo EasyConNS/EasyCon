@@ -106,22 +106,20 @@ namespace EasyCon2.Forms
                 return;
             }
 
-            if(usernameBox.Text.Length > 20 || nickBox.Text.Length>20)
-            {
-                MessageBox.Show("用户名或者卡名过长");
-                return;
-            }
-
             // first need generate amiibo bin
             if (selectGameBox.SelectedItem.ToString() != "自定义")
             {
+                if (usernameBox.Text.Length > 20 || nickBox.Text.Length > 20)
+                {
+                    MessageBox.Show("用户名或者卡名过长");
+                    return;
+                }
                 dataStream = new MemoryStream(CreateAmiibo(amiibo.head+amiibo.tail,nickBox.Text,usernameBox.Text));
-
             }
             else
             {
-                dataStream = new FileStream(AmiiboDir + selectAmiiboBox.SelectedItem, FileMode.Open);
-                if(dataStream.Length != 540)
+                dataStream = new FileStream(AmiiboDir + selectAmiiboBox.SelectedItem, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                if (dataStream.Length != 540)
                 {
                     MessageBox.Show("Amiibo文件长度不正确");
                     return;
@@ -150,6 +148,7 @@ namespace EasyCon2.Forms
                 SystemSounds.Hand.Play();
             }
             br.Close();
+            dataStream.Close();
         }
 
         private void amiibo_DropDown(object sender, EventArgs e)
