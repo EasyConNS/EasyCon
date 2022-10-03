@@ -43,6 +43,7 @@
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.setColorButton = new System.Windows.Forms.Button();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.label2 = new System.Windows.Forms.Label();
             this.amiiboIndexNum = new System.Windows.Forms.NumericUpDown();
             this.nickBox = new System.Windows.Forms.TextBox();
             this.usernameBox = new System.Windows.Forms.TextBox();
@@ -58,7 +59,6 @@
             this.selectAmiiboBox = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.saveIndexBox = new System.Windows.Forms.ComboBox();
-            this.label2 = new System.Windows.Forms.Label();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
@@ -222,11 +222,20 @@
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Amiibo";
             // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(19, 295);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(56, 17);
+            this.label2.TabIndex = 17;
+            this.label2.Text = "当前序号";
+            // 
             // amiiboIndexNum
             // 
             this.amiiboIndexNum.Location = new System.Drawing.Point(81, 293);
             this.amiiboIndexNum.Maximum = new decimal(new int[] {
-            9,
+            19,
             0,
             0,
             0});
@@ -365,21 +374,22 @@
             "6",
             "7",
             "8",
-            "9"});
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19"});
             this.saveIndexBox.Location = new System.Drawing.Point(81, 34);
             this.saveIndexBox.Name = "saveIndexBox";
             this.saveIndexBox.Size = new System.Drawing.Size(100, 25);
             this.saveIndexBox.TabIndex = 0;
             this.saveIndexBox.Text = "选择序号";
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(19, 295);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(56, 17);
-            this.label2.TabIndex = 17;
-            this.label2.Text = "当前序号";
             // 
             // ControllerConfig
             // 

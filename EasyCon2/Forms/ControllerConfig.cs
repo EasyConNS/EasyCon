@@ -100,7 +100,7 @@ namespace EasyCon2.Forms
 
             //Debug.WriteLine(AmiiboDir + selectAmiiboBox.SelectedItem);
 
-            if(saveIndexBox.SelectedIndex >=10)
+            if(saveIndexBox.SelectedIndex >=20)
             {
                 MessageBox.Show("请选择存储位置");
                 return;
@@ -135,7 +135,7 @@ namespace EasyCon2.Forms
             //bw.Close();
             //fs.Close();
 
-            if (saveIndexBox.SelectedIndex >= 10)
+            if (saveIndexBox.SelectedIndex >= 20)
                 return;
 
             if (NS.SaveAmiibo((byte)saveIndexBox.SelectedIndex, data))
@@ -299,6 +299,12 @@ namespace EasyCon2.Forms
         private void changeAmiibo_Click(object sender, EventArgs e)
         {
             byte index = (byte)amiiboIndexNum.Value;
+            if(index >= 20)
+            {
+                MessageBox.Show("当前序号不存在");
+                return;
+            }
+
             if (!NS.IsConnected())
             {
                 MessageBox.Show("串口未连接");
@@ -371,7 +377,7 @@ namespace EasyCon2.Forms
                 imageName = imageName.Replace("png", "jpg");
                 Debug.WriteLine(imageName);
                 amiiboView.Image = Image.FromFile(AmiiboDir + "AmiiboImages\\" + imageName);
-                nickBox.Text = amiibo.name;
+                nickBox.Text = amiibo.name.Replace(" ","");
             }
         }
         private static byte[] CreateAmiibo(string id, string nick = "cale", string owner = "EasyCon")
