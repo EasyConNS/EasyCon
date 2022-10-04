@@ -109,7 +109,7 @@
             this.delayBox.Name = "delayBox";
             this.delayBox.Size = new System.Drawing.Size(44, 23);
             this.delayBox.TabIndex = 5;
-            this.delayBox.Text = "80";
+            this.delayBox.Text = "40";
             // 
             // label2
             // 
@@ -135,7 +135,7 @@
             this.durationBox.Name = "durationBox";
             this.durationBox.Size = new System.Drawing.Size(44, 23);
             this.durationBox.TabIndex = 7;
-            this.durationBox.Text = "45";
+            this.durationBox.Text = "50";
             // 
             // label4
             // 

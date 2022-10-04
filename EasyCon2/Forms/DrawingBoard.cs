@@ -46,20 +46,17 @@ namespace EasyCon2.Forms
             {
                 if (Pos.X < x)
                 {
-                    NS.Press(down, duration);
-                    NS.Press(down, duration);
-                    Thread.Sleep(wait);
-                    NS.Up(down);
+                    NS.Down(down);
+                    Thread.Sleep(duration);
                     NS.Up(down);
                 }
                 else
                 {
-                    NS.Press(up, duration);
-                    NS.Press(up, duration);
-                    Thread.Sleep(wait);
+                    NS.Down(up);
+                    Thread.Sleep(duration);
                     NS.Up(up);
-                    NS.Up(down);
                 }
+                Thread.Sleep(wait);
             }
             Thread.Sleep(wait);
             //if (Pos.X < x)
@@ -96,20 +93,17 @@ namespace EasyCon2.Forms
             {
                 if (Pos.Y < y)
                 {
-                    NS.Press(right, duration);
-                    NS.Press(right, duration);
-                    Thread.Sleep(wait);
-                    NS.Up(right);
+                    NS.Down(right);
+                    Thread.Sleep(duration);
                     NS.Up(right);
                 }
                 else
                 {
-                    NS.Press(left, duration);
-                    NS.Press(left, duration);
-                    Thread.Sleep(wait);
-                    NS.Up(left);
+                    NS.Down(left);
+                    Thread.Sleep(duration);
                     NS.Up(left);
                 }
+                Thread.Sleep(wait);
             }
             Thread.Sleep(wait);
             //// move y
@@ -252,22 +246,19 @@ namespace EasyCon2.Forms
                     else
                         MoveTo(line.start.X, line.end.Y);
                     NS.Down(a);
-                    NS.Down(a);
                     Thread.Sleep(wait);
                     if (Math.Abs(Pos.Y - line.start.Y) < Math.Abs(Pos.Y - line.end.Y))
                         MoveTo(line.end.X, line.end.Y);
                     else
                         MoveTo(line.end.X, line.start.Y);
                     NS.Reset();
-                    NS.Reset();
                     Thread.Sleep(wait);
                     //Thread.Sleep(wait);
                 }
             }
             NS.Reset();
-            NS.Reset();
             Thread.Sleep(wait);
-            
+            NS.Reset();
             startButton.Invoke(AsyncUIDelegate, new object[] { true });
         }
 
