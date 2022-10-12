@@ -370,6 +370,8 @@ namespace EasyCon2.Forms
                         break;
                     }
                 }
+                fileStream.Close();
+                br.Close();
             }
             if (amiibo != null)
             {
