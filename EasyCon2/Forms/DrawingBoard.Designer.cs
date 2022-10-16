@@ -109,7 +109,7 @@
             this.delayBox.Name = "delayBox";
             this.delayBox.Size = new System.Drawing.Size(44, 23);
             this.delayBox.TabIndex = 5;
-            this.delayBox.Text = "40";
+            this.delayBox.Text = "45";
             // 
             // label2
             // 

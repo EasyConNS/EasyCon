@@ -20,8 +20,8 @@ namespace EasyCon2
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 #endif
-            string dotNetVersion = Environment.Version.ToString();
-            if (dotNetVersion.CompareTo("6.0.6") <= 0)
+            var version = Environment.Version;
+            if (version.Major <6 && version.Build <=6)
             {
                 MessageBox.Show(".Net6版本过低，请升级到最新版");
                 return;
