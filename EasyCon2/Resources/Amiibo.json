@@ -9600,6 +9600,22 @@
     "type": "Figure"
   },
   {
+    "amiiboSeries": "Splatoon",
+    "character": "Inkling",
+    "gameSeries": "Splatoon",
+    "head": "08000100",
+    "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_08000100-04150402.png",
+    "name": "Inkling Girl - Yellow",
+    "release": {
+      "au": "2022-11-11",
+      "eu": "2022-11-11",
+      "jp": "2022-11-11",
+      "na": "2022-11-11"
+    },
+    "tail": "04150402",
+    "type": "Figure"
+  },
+  {
     "amiiboSeries": "Super Smash Bros.",
     "character": "Inkling",
     "gameSeries": "Splatoon",
@@ -9811,6 +9827,22 @@
     "amiiboSeries": "Splatoon",
     "character": "Octoling",
     "gameSeries": "Splatoon",
+    "head": "08050200",
+    "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_08050200-041b0402.png",
+    "name": "Octoling Boy - Blue",
+    "release": {
+      "au": "2022-11-11",
+      "eu": "2022-11-11",
+      "jp": "2022-11-11",
+      "na": "2022-11-11"
+    },
+    "tail": "041b0402",
+    "type": "Figure"
+  },
+  {
+    "amiiboSeries": "Splatoon",
+    "character": "Octoling",
+    "gameSeries": "Splatoon",
     "head": "08050300",
     "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_08050300-03900402.png",
     "name": "Octoling Octopus",
@@ -9821,6 +9853,22 @@
       "na": "2018-11-09"
     },
     "tail": "03900402",
+    "type": "Figure"
+  },
+  {
+    "amiiboSeries": "Splatoon",
+    "character": "Smallfry",
+    "gameSeries": "Splatoon",
+    "head": "08060100",
+    "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_08060100-041c0402.png",
+    "name": "Smallfry",
+    "release": {
+      "au": "2022-11-11",
+      "eu": "2022-11-11",
+      "jp": "2022-11-11",
+      "na": "2022-11-11"
+    },
+    "tail": "041c0402",
     "type": "Figure"
   },
   {
