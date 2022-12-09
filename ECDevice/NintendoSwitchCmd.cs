@@ -16,7 +16,7 @@ public partial class NintendoSwitch
         return SerialPort.GetPortNames();
     }
 
-    private ConnectResult _TryConnect(string connStr, bool sayhello)
+    private ConnectResult _TryConnect(string connStr, bool sayhello, int baudrate=115200)
     {
         if (connStr == "")
             return ConnectResult.InvalidArgument;
@@ -43,7 +43,7 @@ public partial class NintendoSwitch
         }
 
         Disconnect();
-        clientCon = new TTLSerialClient(connStr);
+        clientCon = new TTLSerialClient(connStr,baudrate);
         clientCon.BytesSent += BytesSent;
         clientCon.BytesReceived += BytesReceived;
         clientCon.CPUOpt = need_cpu_opt;

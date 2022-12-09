@@ -55,6 +55,20 @@ namespace ECDevice
                 },
                 source.Token);
             }
+            else
+            {
+                Thread.Sleep(100);
+                result = _TryConnect(constr, keepalive,9600);
+                if (result == ConnectResult.Success)
+                {
+                    source = new();
+                    Task.Run(() =>
+                    {
+                        Loop(source.Token);
+                    },
+                    source.Token);
+                }
+            }
 
             return result;
         }
