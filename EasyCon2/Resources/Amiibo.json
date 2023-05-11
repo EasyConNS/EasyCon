@@ -13358,5 +13358,21 @@
     },
     "tail": "04230002",
     "type": "Figure"
+  },
+   {
+    "amiiboSeries": "Super Smash Bros.",
+    "character": "Link - Tears of the Kingdom",
+    "gameSeries": "The Legend of Zelda",
+    "head": "01000000",
+    "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_01000000-04180902.png",
+    "name": "Alex",
+    "release":{
+				"au": "2023-05-12",
+				"eu": "2023-05-12",
+				"jp": "2023-05-12",
+				"na": "2023-05-12"
+			},
+    "tail": "04180902",
+    "type": "Figure"
   }
 ]
