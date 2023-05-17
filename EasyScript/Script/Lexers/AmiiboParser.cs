@@ -7,6 +7,8 @@ internal class AmiiboParser : IStatementParser
 {
     Statement? IStatementParser.Parse(ParserArgument args)
     {
+        if (args.Text.Equals("AMIIBO_RESET", StringComparison.OrdinalIgnoreCase))
+            return new AmiiboReset();
         var m = Regex.Match(args.Text, $@"amiibo\s*{Formats.Value}$", RegexOptions.IgnoreCase);
         if (m.Success)
         {

@@ -151,8 +151,8 @@ public class VBFECScript : ParserBase<Program>
         #endregion
         #region symbols
         {
-            LO_AND = lexer.DefineToken(RE.Literal("&&"));
-            LO_OR = lexer.DefineToken(RE.Literal("||"));
+            LO_AND = lexer.DefineToken(RE.Literal("&&")|RE.Literal("and"));
+            LO_OR = lexer.DefineToken(RE.Literal("||")|RE.Literal("or"));
             LO_NOT = lexer.DefineToken(RE.Symbol('!'));
             O_LESS = lexer.DefineToken(RE.Symbol('<'));
             O_LESSEQ = lexer.DefineToken(RE.Literal("<="));

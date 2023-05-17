@@ -58,7 +58,9 @@ public class Binary : Expression
             ["=="] = BinaryOperator.Equal,
             ["!="] = BinaryOperator.NotEqual,
             ["&&"] = BinaryOperator.LogicalAnd,
-            ["||"] = BinaryOperator.LogicalOr
+            ["and"] = BinaryOperator.LogicalAnd,
+            ["||"] = BinaryOperator.LogicalOr,
+            ["or"] = BinaryOperator.LogicalOr
         };
     }
 
@@ -78,5 +80,10 @@ public class Binary : Expression
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitBinary(this);
+    }
+
+    public override string ToString()
+    {
+        return $"{Left}{OpLexeme}{Right}";
     }
 }
