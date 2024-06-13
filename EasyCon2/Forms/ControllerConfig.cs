@@ -378,6 +378,7 @@ namespace EasyCon2.Forms
                 string imageName = amiibo.image.Split('/').Last();
                 imageName = imageName.Replace("png", "jpg");
                 Debug.WriteLine(imageName);
+                if (!File.Exists(AmiiboDir + "AmiiboImages\\" + imageName)) return;
                 amiiboView.Image = Image.FromFile(AmiiboDir + "AmiiboImages\\" + imageName);
                 nickBox.Text = amiibo.name.Replace(" ","");
             }

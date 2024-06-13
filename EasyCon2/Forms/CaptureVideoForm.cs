@@ -134,7 +134,7 @@ namespace EasyCon2.Forms
                     {
                         throw new Exception();
                     }
-                    if (temp.name == "") continue;
+                    temp.name = Path.GetFileNameWithoutExtension(file);
                     temp.Refresh(() => cvcap.GetImage());
                     imgLabels.Add(temp);
                 }

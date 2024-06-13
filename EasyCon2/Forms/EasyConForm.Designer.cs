@@ -29,774 +29,743 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(EasyConForm));
-            this.menuStrip1 = new System.Windows.Forms.MenuStrip();
-            this.文件ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.新建ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.打开ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.保存ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.另存为ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.关闭ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
-            this.退出ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.脚本ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.编译ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.执行ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.CaptureDevToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.采集卡类型ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.打开搜图ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.搜图说明ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.推送设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.显示调试信息ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.openDelayToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.cPU优化设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.脚本自动运行ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.频道远程ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.蓝牙ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.设备驱动配置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.eSP32ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.手柄设置ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.取消配对ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.帮助ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.使用方法ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.联机模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.烧录模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.固件模式ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
-            this.关于ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.项目源码ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.画图ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.喷射ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.动物之森ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.自由画板鼠标代替摇杆ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.buttonCLS = new System.Windows.Forms.Button();
-            this.labelTimer = new System.Windows.Forms.Label();
-            this.richTextBoxMessage = new System.Windows.Forms.RichTextBox();
-            this.buttonScriptRunStop = new System.Windows.Forms.Button();
-            this.groupBox6 = new System.Windows.Forms.GroupBox();
-            this.buttonRecordPause = new System.Windows.Forms.Button();
-            this.buttonRecord = new System.Windows.Forms.Button();
-            this.buttonFlashClear = new System.Windows.Forms.Button();
-            this.buttonFlash = new System.Windows.Forms.Button();
-            this.buttonRemoteStop = new System.Windows.Forms.Button();
-            this.buttonRemoteStart = new System.Windows.Forms.Button();
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.buttonGenerateFirmware = new System.Windows.Forms.Button();
-            this.textBoxFirmware = new System.Windows.Forms.TextBox();
-            this.comboBoxBoardType = new System.Windows.Forms.ComboBox();
-            this.buttonShowController = new System.Windows.Forms.Button();
-            this.groupBoxScript = new System.Windows.Forms.GroupBox();
-            this.elementHost1 = new System.Windows.Forms.Integration.ElementHost();
-            this.groupBox3 = new System.Windows.Forms.GroupBox();
-            this.ComPort = new System.Windows.Forms.ComboBox();
-            this.labelSerialStatus = new System.Windows.Forms.Label();
-            this.buttonSerialPortConnect = new System.Windows.Forms.Button();
-            this.buttonSerialPortSearch = new System.Windows.Forms.Button();
-            this.buttonControllerHelp = new System.Windows.Forms.Button();
-            this.buttonKeyMapping = new System.Windows.Forms.Button();
-            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
-            this.groupBox4 = new System.Windows.Forms.GroupBox();
-            this.toolStripStatusLabel1 = new System.Windows.Forms.ToolStripStatusLabel();
-            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
-            this.textBoxScriptHelp = new System.Windows.Forms.TextBox();
-            this.menuStrip1.SuspendLayout();
-            this.groupBox1.SuspendLayout();
-            this.groupBox6.SuspendLayout();
-            this.groupBox2.SuspendLayout();
-            this.groupBoxScript.SuspendLayout();
-            this.groupBox3.SuspendLayout();
-            this.groupBox4.SuspendLayout();
-            this.statusStrip1.SuspendLayout();
-            this.SuspendLayout();
+            menuStrip1 = new MenuStrip();
+            文件ToolStripMenuItem = new ToolStripMenuItem();
+            新建ToolStripMenuItem = new ToolStripMenuItem();
+            打开ToolStripMenuItem = new ToolStripMenuItem();
+            保存ToolStripMenuItem = new ToolStripMenuItem();
+            另存为ToolStripMenuItem = new ToolStripMenuItem();
+            关闭ToolStripMenuItem = new ToolStripMenuItem();
+            toolStripSeparator1 = new ToolStripSeparator();
+            退出ToolStripMenuItem = new ToolStripMenuItem();
+            脚本ToolStripMenuItem = new ToolStripMenuItem();
+            编译ToolStripMenuItem = new ToolStripMenuItem();
+            执行ToolStripMenuItem = new ToolStripMenuItem();
+            CaptureDevToolStripMenuItem = new ToolStripMenuItem();
+            采集卡类型ToolStripMenuItem = new ToolStripMenuItem();
+            打开搜图ToolStripMenuItem = new ToolStripMenuItem();
+            搜图说明ToolStripMenuItem = new ToolStripMenuItem();
+            设置ToolStripMenuItem = new ToolStripMenuItem();
+            推送设置ToolStripMenuItem = new ToolStripMenuItem();
+            显示调试信息ToolStripMenuItem = new ToolStripMenuItem();
+            openDelayToolStripMenuItem = new ToolStripMenuItem();
+            cPU优化设置ToolStripMenuItem = new ToolStripMenuItem();
+            脚本自动运行ToolStripMenuItem = new ToolStripMenuItem();
+            频道远程ToolStripMenuItem = new ToolStripMenuItem();
+            蓝牙ToolStripMenuItem = new ToolStripMenuItem();
+            设备驱动配置ToolStripMenuItem = new ToolStripMenuItem();
+            eSP32ToolStripMenuItem = new ToolStripMenuItem();
+            手柄设置ToolStripMenuItem = new ToolStripMenuItem();
+            取消配对ToolStripMenuItem = new ToolStripMenuItem();
+            帮助ToolStripMenuItem = new ToolStripMenuItem();
+            使用方法ToolStripMenuItem = new ToolStripMenuItem();
+            联机模式ToolStripMenuItem = new ToolStripMenuItem();
+            烧录模式ToolStripMenuItem = new ToolStripMenuItem();
+            固件模式ToolStripMenuItem = new ToolStripMenuItem();
+            toolStripSeparator2 = new ToolStripSeparator();
+            关于ToolStripMenuItem = new ToolStripMenuItem();
+            项目源码ToolStripMenuItem = new ToolStripMenuItem();
+            画图ToolStripMenuItem = new ToolStripMenuItem();
+            喷射ToolStripMenuItem = new ToolStripMenuItem();
+            动物之森ToolStripMenuItem = new ToolStripMenuItem();
+            自由画板鼠标代替摇杆ToolStripMenuItem = new ToolStripMenuItem();
+            groupBox1 = new GroupBox();
+            buttonCLS = new Button();
+            labelTimer = new Label();
+            richTextBoxMessage = new RichTextBox();
+            buttonScriptRunStop = new Button();
+            groupBox6 = new GroupBox();
+            buttonRecordPause = new Button();
+            buttonRecord = new Button();
+            buttonFlashClear = new Button();
+            buttonFlash = new Button();
+            buttonRemoteStop = new Button();
+            buttonRemoteStart = new Button();
+            groupBox2 = new GroupBox();
+            buttonGenerateFirmware = new Button();
+            textBoxFirmware = new TextBox();
+            comboBoxBoardType = new ComboBox();
+            buttonShowController = new Button();
+            groupBoxScript = new GroupBox();
+            elementHost1 = new System.Windows.Forms.Integration.ElementHost();
+            groupBox3 = new GroupBox();
+            ComPort = new ComboBox();
+            labelSerialStatus = new Label();
+            buttonSerialPortConnect = new Button();
+            buttonSerialPortSearch = new Button();
+            buttonControllerHelp = new Button();
+            buttonKeyMapping = new Button();
+            openFileDialog1 = new OpenFileDialog();
+            saveFileDialog1 = new SaveFileDialog();
+            groupBox4 = new GroupBox();
+            toolStripStatusLabel1 = new ToolStripStatusLabel();
+            statusStrip1 = new StatusStrip();
+            textBoxScriptHelp = new TextBox();
+            设置环境变量ToolStripMenuItem = new ToolStripMenuItem();
+            menuStrip1.SuspendLayout();
+            groupBox1.SuspendLayout();
+            groupBox6.SuspendLayout();
+            groupBox2.SuspendLayout();
+            groupBoxScript.SuspendLayout();
+            groupBox3.SuspendLayout();
+            groupBox4.SuspendLayout();
+            statusStrip1.SuspendLayout();
+            SuspendLayout();
             // 
             // menuStrip1
             // 
-            this.menuStrip1.Font = new System.Drawing.Font("微软雅黑", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.文件ToolStripMenuItem,
-            this.脚本ToolStripMenuItem,
-            this.CaptureDevToolStripMenuItem,
-            this.设置ToolStripMenuItem,
-            this.蓝牙ToolStripMenuItem,
-            this.eSP32ToolStripMenuItem,
-            this.帮助ToolStripMenuItem,
-            this.画图ToolStripMenuItem});
-            this.menuStrip1.Location = new System.Drawing.Point(1, 1);
-            this.menuStrip1.Name = "menuStrip1";
-            this.menuStrip1.Padding = new System.Windows.Forms.Padding(7, 2, 0, 2);
-            this.menuStrip1.RenderMode = System.Windows.Forms.ToolStripRenderMode.Professional;
-            this.menuStrip1.Size = new System.Drawing.Size(1101, 25);
-            this.menuStrip1.TabIndex = 0;
-            this.menuStrip1.Text = "menuStrip1";
+            menuStrip1.Font = new Font("Microsoft YaHei", 9F);
+            menuStrip1.ImageScalingSize = new Size(20, 20);
+            menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 脚本ToolStripMenuItem, CaptureDevToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 帮助ToolStripMenuItem, 画图ToolStripMenuItem });
+            menuStrip1.Location = new Point(1, 1);
+            menuStrip1.Name = "menuStrip1";
+            menuStrip1.Padding = new Padding(7, 2, 0, 2);
+            menuStrip1.RenderMode = ToolStripRenderMode.Professional;
+            menuStrip1.Size = new Size(1101, 28);
+            menuStrip1.TabIndex = 0;
+            menuStrip1.Text = "menuStrip1";
             // 
             // 文件ToolStripMenuItem
             // 
-            this.文件ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.新建ToolStripMenuItem,
-            this.打开ToolStripMenuItem,
-            this.保存ToolStripMenuItem,
-            this.另存为ToolStripMenuItem,
-            this.关闭ToolStripMenuItem,
-            this.toolStripSeparator1,
-            this.退出ToolStripMenuItem});
-            this.文件ToolStripMenuItem.Name = "文件ToolStripMenuItem";
-            this.文件ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
-            this.文件ToolStripMenuItem.Text = "文件";
+            文件ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 新建ToolStripMenuItem, 打开ToolStripMenuItem, 保存ToolStripMenuItem, 另存为ToolStripMenuItem, 关闭ToolStripMenuItem, toolStripSeparator1, 退出ToolStripMenuItem });
+            文件ToolStripMenuItem.Name = "文件ToolStripMenuItem";
+            文件ToolStripMenuItem.Size = new Size(53, 24);
+            文件ToolStripMenuItem.Text = "文件";
             // 
             // 新建ToolStripMenuItem
             // 
-            this.新建ToolStripMenuItem.Name = "新建ToolStripMenuItem";
-            this.新建ToolStripMenuItem.Size = new System.Drawing.Size(112, 22);
-            this.新建ToolStripMenuItem.Text = "新建";
-            this.新建ToolStripMenuItem.Click += new System.EventHandler(this.新建ToolStripMenuItem_Click);
+            新建ToolStripMenuItem.Name = "新建ToolStripMenuItem";
+            新建ToolStripMenuItem.Size = new Size(137, 26);
+            新建ToolStripMenuItem.Text = "新建";
+            新建ToolStripMenuItem.Click += 新建ToolStripMenuItem_Click;
             // 
             // 打开ToolStripMenuItem
             // 
-            this.打开ToolStripMenuItem.Name = "打开ToolStripMenuItem";
-            this.打开ToolStripMenuItem.Size = new System.Drawing.Size(112, 22);
-            this.打开ToolStripMenuItem.Text = "打开";
-            this.打开ToolStripMenuItem.Click += new System.EventHandler(this.打开ToolStripMenuItem_Click);
+            打开ToolStripMenuItem.Name = "打开ToolStripMenuItem";
+            打开ToolStripMenuItem.Size = new Size(137, 26);
+            打开ToolStripMenuItem.Text = "打开";
+            打开ToolStripMenuItem.Click += 打开ToolStripMenuItem_Click;
             // 
             // 保存ToolStripMenuItem
             // 
-            this.保存ToolStripMenuItem.Name = "保存ToolStripMenuItem";
-            this.保存ToolStripMenuItem.Size = new System.Drawing.Size(112, 22);
-            this.保存ToolStripMenuItem.Text = "保存";
-            this.保存ToolStripMenuItem.Click += new System.EventHandler(this.保存ToolStripMenuItem_Click);
+            保存ToolStripMenuItem.Name = "保存ToolStripMenuItem";
+            保存ToolStripMenuItem.Size = new Size(137, 26);
+            保存ToolStripMenuItem.Text = "保存";
+            保存ToolStripMenuItem.Click += 保存ToolStripMenuItem_Click;
             // 
             // 另存为ToolStripMenuItem
             // 
-            this.另存为ToolStripMenuItem.Name = "另存为ToolStripMenuItem";
-            this.另存为ToolStripMenuItem.Size = new System.Drawing.Size(112, 22);
-            this.另存为ToolStripMenuItem.Text = "另存为";
-            this.另存为ToolStripMenuItem.Click += new System.EventHandler(this.另存为ToolStripMenuItem_Click);
+            另存为ToolStripMenuItem.Name = "另存为ToolStripMenuItem";
+            另存为ToolStripMenuItem.Size = new Size(137, 26);
+            另存为ToolStripMenuItem.Text = "另存为";
+            另存为ToolStripMenuItem.Click += 另存为ToolStripMenuItem_Click;
             // 
             // 关闭ToolStripMenuItem
             // 
-            this.关闭ToolStripMenuItem.Name = "关闭ToolStripMenuItem";
-            this.关闭ToolStripMenuItem.Size = new System.Drawing.Size(112, 22);
-            this.关闭ToolStripMenuItem.Text = "关闭";
-            this.关闭ToolStripMenuItem.Click += new System.EventHandler(this.关闭ToolStripMenuItem_Click);
+            关闭ToolStripMenuItem.Name = "关闭ToolStripMenuItem";
+            关闭ToolStripMenuItem.Size = new Size(137, 26);
+            关闭ToolStripMenuItem.Text = "关闭";
+            关闭ToolStripMenuItem.Click += 关闭ToolStripMenuItem_Click;
             // 
             // toolStripSeparator1
             // 
-            this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(109, 6);
+            toolStripSeparator1.Name = "toolStripSeparator1";
+            toolStripSeparator1.Size = new Size(134, 6);
             // 
             // 退出ToolStripMenuItem
             // 
-            this.退出ToolStripMenuItem.Name = "退出ToolStripMenuItem";
-            this.退出ToolStripMenuItem.Size = new System.Drawing.Size(112, 22);
-            this.退出ToolStripMenuItem.Text = "退出";
-            this.退出ToolStripMenuItem.Click += new System.EventHandler(this.退出ToolStripMenuItem_Click);
+            退出ToolStripMenuItem.Name = "退出ToolStripMenuItem";
+            退出ToolStripMenuItem.Size = new Size(137, 26);
+            退出ToolStripMenuItem.Text = "退出";
+            退出ToolStripMenuItem.Click += 退出ToolStripMenuItem_Click;
             // 
             // 脚本ToolStripMenuItem
             // 
-            this.脚本ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.编译ToolStripMenuItem,
-            this.执行ToolStripMenuItem});
-            this.脚本ToolStripMenuItem.Name = "脚本ToolStripMenuItem";
-            this.脚本ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
-            this.脚本ToolStripMenuItem.Text = "脚本";
+            脚本ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 编译ToolStripMenuItem, 执行ToolStripMenuItem });
+            脚本ToolStripMenuItem.Name = "脚本ToolStripMenuItem";
+            脚本ToolStripMenuItem.Size = new Size(53, 24);
+            脚本ToolStripMenuItem.Text = "脚本";
             // 
             // 编译ToolStripMenuItem
             // 
-            this.编译ToolStripMenuItem.Name = "编译ToolStripMenuItem";
-            this.编译ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.编译ToolStripMenuItem.Text = "编译";
-            this.编译ToolStripMenuItem.Click += new System.EventHandler(this.编译ToolStripMenuItem_Click);
+            编译ToolStripMenuItem.Name = "编译ToolStripMenuItem";
+            编译ToolStripMenuItem.Size = new Size(122, 26);
+            编译ToolStripMenuItem.Text = "编译";
+            编译ToolStripMenuItem.Click += 编译ToolStripMenuItem_Click;
             // 
             // 执行ToolStripMenuItem
             // 
-            this.执行ToolStripMenuItem.Name = "执行ToolStripMenuItem";
-            this.执行ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.执行ToolStripMenuItem.Text = "执行";
-            this.执行ToolStripMenuItem.Click += new System.EventHandler(this.执行ToolStripMenuItem_Click);
+            执行ToolStripMenuItem.Name = "执行ToolStripMenuItem";
+            执行ToolStripMenuItem.Size = new Size(122, 26);
+            执行ToolStripMenuItem.Text = "执行";
+            执行ToolStripMenuItem.Click += 执行ToolStripMenuItem_Click;
             // 
             // CaptureDevToolStripMenuItem
             // 
-            this.CaptureDevToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.采集卡类型ToolStripMenuItem,
-            this.打开搜图ToolStripMenuItem,
-            this.搜图说明ToolStripMenuItem});
-            this.CaptureDevToolStripMenuItem.Name = "CaptureDevToolStripMenuItem";
-            this.CaptureDevToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
-            this.CaptureDevToolStripMenuItem.Text = "搜图";
+            CaptureDevToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 采集卡类型ToolStripMenuItem, 打开搜图ToolStripMenuItem, 搜图说明ToolStripMenuItem, 设置环境变量ToolStripMenuItem });
+            CaptureDevToolStripMenuItem.Name = "CaptureDevToolStripMenuItem";
+            CaptureDevToolStripMenuItem.Size = new Size(53, 24);
+            CaptureDevToolStripMenuItem.Text = "搜图";
             // 
             // 采集卡类型ToolStripMenuItem
             // 
-            this.采集卡类型ToolStripMenuItem.Name = "采集卡类型ToolStripMenuItem";
-            this.采集卡类型ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.采集卡类型ToolStripMenuItem.Text = "采集卡类型";
+            采集卡类型ToolStripMenuItem.Name = "采集卡类型ToolStripMenuItem";
+            采集卡类型ToolStripMenuItem.Size = new Size(224, 26);
+            采集卡类型ToolStripMenuItem.Text = "采集卡类型";
             // 
             // 打开搜图ToolStripMenuItem
             // 
-            this.打开搜图ToolStripMenuItem.Name = "打开搜图ToolStripMenuItem";
-            this.打开搜图ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.打开搜图ToolStripMenuItem.Text = "打开搜图";
-            this.打开搜图ToolStripMenuItem.MouseHover += new System.EventHandler(this.打开搜图ToolStripMenuItem_MouseHover);
+            打开搜图ToolStripMenuItem.Name = "打开搜图ToolStripMenuItem";
+            打开搜图ToolStripMenuItem.Size = new Size(224, 26);
+            打开搜图ToolStripMenuItem.Text = "打开搜图";
+            打开搜图ToolStripMenuItem.MouseHover += 打开搜图ToolStripMenuItem_MouseHover;
             // 
             // 搜图说明ToolStripMenuItem
             // 
-            this.搜图说明ToolStripMenuItem.Name = "搜图说明ToolStripMenuItem";
-            this.搜图说明ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.搜图说明ToolStripMenuItem.Text = "搜图说明";
-            this.搜图说明ToolStripMenuItem.Click += new System.EventHandler(this.搜图说明ToolStripMenuItem_Click);
+            搜图说明ToolStripMenuItem.Name = "搜图说明ToolStripMenuItem";
+            搜图说明ToolStripMenuItem.Size = new Size(224, 26);
+            搜图说明ToolStripMenuItem.Text = "搜图说明";
+            搜图说明ToolStripMenuItem.Click += 搜图说明ToolStripMenuItem_Click;
             // 
             // 设置ToolStripMenuItem
             // 
-            this.设置ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.推送设置ToolStripMenuItem,
-            this.显示调试信息ToolStripMenuItem,
-            this.openDelayToolStripMenuItem,
-            this.cPU优化设置ToolStripMenuItem,
-            this.脚本自动运行ToolStripMenuItem,
-            this.频道远程ToolStripMenuItem});
-            this.设置ToolStripMenuItem.Name = "设置ToolStripMenuItem";
-            this.设置ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
-            this.设置ToolStripMenuItem.Text = "设置";
+            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, openDelayToolStripMenuItem, cPU优化设置ToolStripMenuItem, 脚本自动运行ToolStripMenuItem, 频道远程ToolStripMenuItem });
+            设置ToolStripMenuItem.Name = "设置ToolStripMenuItem";
+            设置ToolStripMenuItem.Size = new Size(53, 24);
+            设置ToolStripMenuItem.Text = "设置";
             // 
             // 推送设置ToolStripMenuItem
             // 
-            this.推送设置ToolStripMenuItem.Name = "推送设置ToolStripMenuItem";
-            this.推送设置ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
-            this.推送设置ToolStripMenuItem.Text = "推送设置";
-            this.推送设置ToolStripMenuItem.Click += new System.EventHandler(this.推送设置ToolStripMenuItem_Click);
+            推送设置ToolStripMenuItem.Name = "推送设置ToolStripMenuItem";
+            推送设置ToolStripMenuItem.Size = new Size(212, 26);
+            推送设置ToolStripMenuItem.Text = "推送设置";
+            推送设置ToolStripMenuItem.Click += 推送设置ToolStripMenuItem_Click;
             // 
             // 显示调试信息ToolStripMenuItem
             // 
-            this.显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            this.显示调试信息ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
-            this.显示调试信息ToolStripMenuItem.Text = "显示调试信息";
-            this.显示调试信息ToolStripMenuItem.Click += new System.EventHandler(this.显示调试信息ToolStripMenuItem_Click);
+            显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
+            显示调试信息ToolStripMenuItem.Size = new Size(212, 26);
+            显示调试信息ToolStripMenuItem.Text = "显示调试信息";
+            显示调试信息ToolStripMenuItem.Click += 显示调试信息ToolStripMenuItem_Click;
             // 
             // openDelayToolStripMenuItem
             // 
-            this.openDelayToolStripMenuItem.Name = "openDelayToolStripMenuItem";
-            this.openDelayToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
-            this.openDelayToolStripMenuItem.Text = "串口打开延迟";
-            this.openDelayToolStripMenuItem.Click += new System.EventHandler(this.openDelayToolStripMenuItem_Click);
+            openDelayToolStripMenuItem.Name = "openDelayToolStripMenuItem";
+            openDelayToolStripMenuItem.Size = new Size(212, 26);
+            openDelayToolStripMenuItem.Text = "串口打开延迟";
+            openDelayToolStripMenuItem.Click += openDelayToolStripMenuItem_Click;
             // 
             // cPU优化设置ToolStripMenuItem
             // 
-            this.cPU优化设置ToolStripMenuItem.Checked = true;
-            this.cPU优化设置ToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.cPU优化设置ToolStripMenuItem.Name = "cPU优化设置ToolStripMenuItem";
-            this.cPU优化设置ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
-            this.cPU优化设置ToolStripMenuItem.Text = "CPU优化";
-            this.cPU优化设置ToolStripMenuItem.Click += new System.EventHandler(this.CPU优化设置ToolStripMenuItem_Click);
+            cPU优化设置ToolStripMenuItem.Checked = true;
+            cPU优化设置ToolStripMenuItem.CheckState = CheckState.Checked;
+            cPU优化设置ToolStripMenuItem.Name = "cPU优化设置ToolStripMenuItem";
+            cPU优化设置ToolStripMenuItem.Size = new Size(212, 26);
+            cPU优化设置ToolStripMenuItem.Text = "CPU优化";
+            cPU优化设置ToolStripMenuItem.Click += CPU优化设置ToolStripMenuItem_Click;
             // 
             // 脚本自动运行ToolStripMenuItem
             // 
-            this.脚本自动运行ToolStripMenuItem.Checked = true;
-            this.脚本自动运行ToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.脚本自动运行ToolStripMenuItem.Name = "脚本自动运行ToolStripMenuItem";
-            this.脚本自动运行ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
-            this.脚本自动运行ToolStripMenuItem.Text = "烧录自动运行";
-            this.脚本自动运行ToolStripMenuItem.Click += new System.EventHandler(this.脚本自动运行ToolStripMenuItem_Click);
+            脚本自动运行ToolStripMenuItem.Checked = true;
+            脚本自动运行ToolStripMenuItem.CheckState = CheckState.Checked;
+            脚本自动运行ToolStripMenuItem.Name = "脚本自动运行ToolStripMenuItem";
+            脚本自动运行ToolStripMenuItem.Size = new Size(212, 26);
+            脚本自动运行ToolStripMenuItem.Text = "烧录自动运行";
+            脚本自动运行ToolStripMenuItem.Click += 脚本自动运行ToolStripMenuItem_Click;
             // 
             // 频道远程ToolStripMenuItem
             // 
-            this.频道远程ToolStripMenuItem.Name = "频道远程ToolStripMenuItem";
-            this.频道远程ToolStripMenuItem.Size = new System.Drawing.Size(172, 22);
-            this.频道远程ToolStripMenuItem.Text = "频道远程控制启动";
-            this.频道远程ToolStripMenuItem.Click += new System.EventHandler(this.频道远程ToolStripMenuItem_Click);
+            频道远程ToolStripMenuItem.Name = "频道远程ToolStripMenuItem";
+            频道远程ToolStripMenuItem.Size = new Size(212, 26);
+            频道远程ToolStripMenuItem.Text = "频道远程控制启动";
+            频道远程ToolStripMenuItem.Click += 频道远程ToolStripMenuItem_Click;
             // 
             // 蓝牙ToolStripMenuItem
             // 
-            this.蓝牙ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.设备驱动配置ToolStripMenuItem});
-            this.蓝牙ToolStripMenuItem.Name = "蓝牙ToolStripMenuItem";
-            this.蓝牙ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
-            this.蓝牙ToolStripMenuItem.Text = "蓝牙";
-            this.蓝牙ToolStripMenuItem.Visible = false;
+            蓝牙ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 设备驱动配置ToolStripMenuItem });
+            蓝牙ToolStripMenuItem.Name = "蓝牙ToolStripMenuItem";
+            蓝牙ToolStripMenuItem.Size = new Size(53, 24);
+            蓝牙ToolStripMenuItem.Text = "蓝牙";
+            蓝牙ToolStripMenuItem.Visible = false;
             // 
             // 设备驱动配置ToolStripMenuItem
             // 
-            this.设备驱动配置ToolStripMenuItem.Name = "设备驱动配置ToolStripMenuItem";
-            this.设备驱动配置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
-            this.设备驱动配置ToolStripMenuItem.Click += new System.EventHandler(this.设备驱动配置ToolStripMenuItem_Click);
+            设备驱动配置ToolStripMenuItem.Name = "设备驱动配置ToolStripMenuItem";
+            设备驱动配置ToolStripMenuItem.Size = new Size(182, 26);
+            设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
+            设备驱动配置ToolStripMenuItem.Click += 设备驱动配置ToolStripMenuItem_Click;
             // 
             // eSP32ToolStripMenuItem
             // 
-            this.eSP32ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.手柄设置ToolStripMenuItem,
-            this.取消配对ToolStripMenuItem});
-            this.eSP32ToolStripMenuItem.Name = "eSP32ToolStripMenuItem";
-            this.eSP32ToolStripMenuItem.Size = new System.Drawing.Size(55, 21);
-            this.eSP32ToolStripMenuItem.Text = "ESP32";
+            eSP32ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 手柄设置ToolStripMenuItem, 取消配对ToolStripMenuItem });
+            eSP32ToolStripMenuItem.Name = "eSP32ToolStripMenuItem";
+            eSP32ToolStripMenuItem.Size = new Size(67, 24);
+            eSP32ToolStripMenuItem.Text = "ESP32";
             // 
             // 手柄设置ToolStripMenuItem
             // 
-            this.手柄设置ToolStripMenuItem.Name = "手柄设置ToolStripMenuItem";
-            this.手柄设置ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.手柄设置ToolStripMenuItem.Text = "手柄设置";
-            this.手柄设置ToolStripMenuItem.Click += new System.EventHandler(this.手柄设置ToolStripMenuItem_Click);
+            手柄设置ToolStripMenuItem.Name = "手柄设置ToolStripMenuItem";
+            手柄设置ToolStripMenuItem.Size = new Size(152, 26);
+            手柄设置ToolStripMenuItem.Text = "手柄设置";
+            手柄设置ToolStripMenuItem.Click += 手柄设置ToolStripMenuItem_Click;
             // 
             // 取消配对ToolStripMenuItem
             // 
-            this.取消配对ToolStripMenuItem.Name = "取消配对ToolStripMenuItem";
-            this.取消配对ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.取消配对ToolStripMenuItem.Text = "取消配对";
-            this.取消配对ToolStripMenuItem.Click += new System.EventHandler(this.取消配对ToolStripMenuItem_Click);
+            取消配对ToolStripMenuItem.Name = "取消配对ToolStripMenuItem";
+            取消配对ToolStripMenuItem.Size = new Size(152, 26);
+            取消配对ToolStripMenuItem.Text = "取消配对";
+            取消配对ToolStripMenuItem.Click += 取消配对ToolStripMenuItem_Click;
             // 
             // 帮助ToolStripMenuItem
             // 
-            this.帮助ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.使用方法ToolStripMenuItem,
-            this.toolStripSeparator2,
-            this.关于ToolStripMenuItem,
-            this.项目源码ToolStripMenuItem});
-            this.帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
-            this.帮助ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
-            this.帮助ToolStripMenuItem.Text = "帮助";
+            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 使用方法ToolStripMenuItem, toolStripSeparator2, 关于ToolStripMenuItem, 项目源码ToolStripMenuItem });
+            帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
+            帮助ToolStripMenuItem.Size = new Size(53, 24);
+            帮助ToolStripMenuItem.Text = "帮助";
             // 
             // 使用方法ToolStripMenuItem
             // 
-            this.使用方法ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.联机模式ToolStripMenuItem,
-            this.烧录模式ToolStripMenuItem,
-            this.固件模式ToolStripMenuItem});
-            this.使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
-            this.使用方法ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.使用方法ToolStripMenuItem.Text = "使用方法";
+            使用方法ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, 固件模式ToolStripMenuItem });
+            使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
+            使用方法ToolStripMenuItem.Size = new Size(152, 26);
+            使用方法ToolStripMenuItem.Text = "使用方法";
             // 
             // 联机模式ToolStripMenuItem
             // 
-            this.联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
-            this.联机模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
-            this.联机模式ToolStripMenuItem.Tag = "";
-            this.联机模式ToolStripMenuItem.Text = "联机模式";
-            this.联机模式ToolStripMenuItem.Click += new System.EventHandler(this.联机模式ToolStripMenuItem_Click);
+            联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
+            联机模式ToolStripMenuItem.Size = new Size(152, 26);
+            联机模式ToolStripMenuItem.Tag = "";
+            联机模式ToolStripMenuItem.Text = "联机模式";
+            联机模式ToolStripMenuItem.Click += 联机模式ToolStripMenuItem_Click;
             // 
             // 烧录模式ToolStripMenuItem
             // 
-            this.烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
-            this.烧录模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
-            this.烧录模式ToolStripMenuItem.Text = "烧录模式";
-            this.烧录模式ToolStripMenuItem.Click += new System.EventHandler(this.烧录模式ToolStripMenuItem_Click);
+            烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
+            烧录模式ToolStripMenuItem.Size = new Size(152, 26);
+            烧录模式ToolStripMenuItem.Text = "烧录模式";
+            烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
             // 
             // 固件模式ToolStripMenuItem
             // 
-            this.固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
-            this.固件模式ToolStripMenuItem.Size = new System.Drawing.Size(124, 22);
-            this.固件模式ToolStripMenuItem.Text = "固件模式";
-            this.固件模式ToolStripMenuItem.Click += new System.EventHandler(this.固件模式ToolStripMenuItem_Click);
+            固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
+            固件模式ToolStripMenuItem.Size = new Size(152, 26);
+            固件模式ToolStripMenuItem.Text = "固件模式";
+            固件模式ToolStripMenuItem.Click += 固件模式ToolStripMenuItem_Click;
             // 
             // toolStripSeparator2
             // 
-            this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new Size(149, 6);
             // 
             // 关于ToolStripMenuItem
             // 
-            this.关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            this.关于ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.关于ToolStripMenuItem.Text = "关于";
-            this.关于ToolStripMenuItem.Click += new System.EventHandler(this.关于ToolStripMenuItem_Click);
+            关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
+            关于ToolStripMenuItem.Size = new Size(152, 26);
+            关于ToolStripMenuItem.Text = "关于";
+            关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
             // 
             // 项目源码ToolStripMenuItem
             // 
-            this.项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            this.项目源码ToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
-            this.项目源码ToolStripMenuItem.Text = "项目源码";
-            this.项目源码ToolStripMenuItem.Click += new System.EventHandler(this.项目源码ToolStripMenuItem_Click);
+            项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
+            项目源码ToolStripMenuItem.Size = new Size(152, 26);
+            项目源码ToolStripMenuItem.Text = "项目源码";
+            项目源码ToolStripMenuItem.Click += 项目源码ToolStripMenuItem_Click;
             // 
             // 画图ToolStripMenuItem
             // 
-            this.画图ToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.喷射ToolStripMenuItem,
-            this.动物之森ToolStripMenuItem,
-            this.自由画板鼠标代替摇杆ToolStripMenuItem});
-            this.画图ToolStripMenuItem.Name = "画图ToolStripMenuItem";
-            this.画图ToolStripMenuItem.Size = new System.Drawing.Size(44, 21);
-            this.画图ToolStripMenuItem.Text = "画图";
+            画图ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 喷射ToolStripMenuItem, 动物之森ToolStripMenuItem, 自由画板鼠标代替摇杆ToolStripMenuItem });
+            画图ToolStripMenuItem.Name = "画图ToolStripMenuItem";
+            画图ToolStripMenuItem.Size = new Size(53, 24);
+            画图ToolStripMenuItem.Text = "画图";
             // 
             // 喷射ToolStripMenuItem
             // 
-            this.喷射ToolStripMenuItem.Name = "喷射ToolStripMenuItem";
-            this.喷射ToolStripMenuItem.Size = new System.Drawing.Size(220, 22);
-            this.喷射ToolStripMenuItem.Text = "喷射战士";
-            this.喷射ToolStripMenuItem.Click += new System.EventHandler(this.喷射ToolStripMenuItem_Click);
+            喷射ToolStripMenuItem.Name = "喷射ToolStripMenuItem";
+            喷射ToolStripMenuItem.Size = new Size(272, 26);
+            喷射ToolStripMenuItem.Text = "喷射战士";
+            喷射ToolStripMenuItem.Click += 喷射ToolStripMenuItem_Click;
             // 
             // 动物之森ToolStripMenuItem
             // 
-            this.动物之森ToolStripMenuItem.Name = "动物之森ToolStripMenuItem";
-            this.动物之森ToolStripMenuItem.Size = new System.Drawing.Size(220, 22);
-            this.动物之森ToolStripMenuItem.Text = "动物之森";
+            动物之森ToolStripMenuItem.Name = "动物之森ToolStripMenuItem";
+            动物之森ToolStripMenuItem.Size = new Size(272, 26);
+            动物之森ToolStripMenuItem.Text = "动物之森";
             // 
             // 自由画板鼠标代替摇杆ToolStripMenuItem
             // 
-            this.自由画板鼠标代替摇杆ToolStripMenuItem.Name = "自由画板鼠标代替摇杆ToolStripMenuItem";
-            this.自由画板鼠标代替摇杆ToolStripMenuItem.Size = new System.Drawing.Size(220, 22);
-            this.自由画板鼠标代替摇杆ToolStripMenuItem.Text = "自由画板（鼠标代替摇杆）";
-            this.自由画板鼠标代替摇杆ToolStripMenuItem.Click += new System.EventHandler(this.自由画板鼠标代替摇杆ToolStripMenuItem_Click);
+            自由画板鼠标代替摇杆ToolStripMenuItem.Name = "自由画板鼠标代替摇杆ToolStripMenuItem";
+            自由画板鼠标代替摇杆ToolStripMenuItem.Size = new Size(272, 26);
+            自由画板鼠标代替摇杆ToolStripMenuItem.Text = "自由画板（鼠标代替摇杆）";
+            自由画板鼠标代替摇杆ToolStripMenuItem.Click += 自由画板鼠标代替摇杆ToolStripMenuItem_Click;
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.buttonCLS);
-            this.groupBox1.Controls.Add(this.labelTimer);
-            this.groupBox1.Controls.Add(this.richTextBoxMessage);
-            this.groupBox1.Controls.Add(this.buttonScriptRunStop);
-            this.groupBox1.Location = new System.Drawing.Point(8, 30);
-            this.groupBox1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Padding = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.groupBox1.Size = new System.Drawing.Size(312, 399);
-            this.groupBox1.TabIndex = 1;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "日志";
+            groupBox1.Controls.Add(buttonCLS);
+            groupBox1.Controls.Add(labelTimer);
+            groupBox1.Controls.Add(richTextBoxMessage);
+            groupBox1.Controls.Add(buttonScriptRunStop);
+            groupBox1.Location = new Point(8, 30);
+            groupBox1.Margin = new Padding(3, 4, 3, 4);
+            groupBox1.Name = "groupBox1";
+            groupBox1.Padding = new Padding(3, 4, 3, 4);
+            groupBox1.Size = new Size(312, 399);
+            groupBox1.TabIndex = 1;
+            groupBox1.TabStop = false;
+            groupBox1.Text = "日志";
             // 
             // buttonCLS
             // 
-            this.buttonCLS.Location = new System.Drawing.Point(125, 349);
-            this.buttonCLS.Name = "buttonCLS";
-            this.buttonCLS.Size = new System.Drawing.Size(46, 46);
-            this.buttonCLS.TabIndex = 36;
-            this.buttonCLS.Text = "清屏";
-            this.buttonCLS.UseVisualStyleBackColor = true;
-            this.buttonCLS.Click += new System.EventHandler(this.buttonCLS_Click);
+            buttonCLS.Location = new Point(125, 349);
+            buttonCLS.Name = "buttonCLS";
+            buttonCLS.Size = new Size(46, 46);
+            buttonCLS.TabIndex = 36;
+            buttonCLS.Text = "清屏";
+            buttonCLS.UseVisualStyleBackColor = true;
+            buttonCLS.Click += buttonCLS_Click;
             // 
             // labelTimer
             // 
-            this.labelTimer.BackColor = System.Drawing.Color.Black;
-            this.labelTimer.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-            this.labelTimer.Font = new System.Drawing.Font("Microsoft YaHei UI", 13F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.labelTimer.ForeColor = System.Drawing.Color.White;
-            this.labelTimer.Location = new System.Drawing.Point(6, 349);
-            this.labelTimer.Name = "labelTimer";
-            this.labelTimer.Size = new System.Drawing.Size(119, 46);
-            this.labelTimer.TabIndex = 35;
-            this.labelTimer.Text = "00:00:00";
-            this.labelTimer.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            labelTimer.BackColor = Color.Black;
+            labelTimer.BorderStyle = BorderStyle.Fixed3D;
+            labelTimer.Font = new Font("Microsoft YaHei UI", 13F, FontStyle.Bold);
+            labelTimer.ForeColor = Color.White;
+            labelTimer.Location = new Point(6, 349);
+            labelTimer.Name = "labelTimer";
+            labelTimer.Size = new Size(119, 46);
+            labelTimer.TabIndex = 35;
+            labelTimer.Text = "00:00:00";
+            labelTimer.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // richTextBoxMessage
             // 
-            this.richTextBoxMessage.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
-            this.richTextBoxMessage.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.richTextBoxMessage.ForeColor = System.Drawing.Color.White;
-            this.richTextBoxMessage.Location = new System.Drawing.Point(6, 14);
-            this.richTextBoxMessage.Name = "richTextBoxMessage";
-            this.richTextBoxMessage.ReadOnly = true;
-            this.richTextBoxMessage.Size = new System.Drawing.Size(302, 332);
-            this.richTextBoxMessage.TabIndex = 34;
-            this.richTextBoxMessage.Text = "";
-            this.richTextBoxMessage.WordWrap = false;
+            richTextBoxMessage.BackColor = Color.FromArgb(64, 64, 64);
+            richTextBoxMessage.BorderStyle = BorderStyle.FixedSingle;
+            richTextBoxMessage.ForeColor = Color.White;
+            richTextBoxMessage.Location = new Point(6, 14);
+            richTextBoxMessage.Name = "richTextBoxMessage";
+            richTextBoxMessage.ReadOnly = true;
+            richTextBoxMessage.Size = new Size(302, 332);
+            richTextBoxMessage.TabIndex = 34;
+            richTextBoxMessage.Text = "";
+            richTextBoxMessage.WordWrap = false;
             // 
             // buttonScriptRunStop
             // 
-            this.buttonScriptRunStop.Location = new System.Drawing.Point(171, 349);
-            this.buttonScriptRunStop.Name = "buttonScriptRunStop";
-            this.buttonScriptRunStop.Size = new System.Drawing.Size(136, 46);
-            this.buttonScriptRunStop.TabIndex = 4;
-            this.buttonScriptRunStop.Text = "运行";
-            this.buttonScriptRunStop.UseVisualStyleBackColor = true;
-            this.buttonScriptRunStop.Click += new System.EventHandler(this.buttonScriptRunStop_Click);
+            buttonScriptRunStop.Location = new Point(171, 349);
+            buttonScriptRunStop.Name = "buttonScriptRunStop";
+            buttonScriptRunStop.Size = new Size(136, 46);
+            buttonScriptRunStop.TabIndex = 4;
+            buttonScriptRunStop.Text = "运行";
+            buttonScriptRunStop.UseVisualStyleBackColor = true;
+            buttonScriptRunStop.Click += buttonScriptRunStop_Click;
             // 
             // groupBox6
             // 
-            this.groupBox6.Controls.Add(this.buttonRecordPause);
-            this.groupBox6.Controls.Add(this.buttonRecord);
-            this.groupBox6.Controls.Add(this.buttonFlashClear);
-            this.groupBox6.Controls.Add(this.buttonFlash);
-            this.groupBox6.Controls.Add(this.buttonRemoteStop);
-            this.groupBox6.Controls.Add(this.buttonRemoteStart);
-            this.groupBox6.Location = new System.Drawing.Point(784, 30);
-            this.groupBox6.Name = "groupBox6";
-            this.groupBox6.Size = new System.Drawing.Size(312, 111);
-            this.groupBox6.TabIndex = 5;
-            this.groupBox6.TabStop = false;
-            this.groupBox6.Text = "选项";
+            groupBox6.Controls.Add(buttonRecordPause);
+            groupBox6.Controls.Add(buttonRecord);
+            groupBox6.Controls.Add(buttonFlashClear);
+            groupBox6.Controls.Add(buttonFlash);
+            groupBox6.Controls.Add(buttonRemoteStop);
+            groupBox6.Controls.Add(buttonRemoteStart);
+            groupBox6.Location = new Point(784, 30);
+            groupBox6.Name = "groupBox6";
+            groupBox6.Size = new Size(312, 111);
+            groupBox6.TabIndex = 5;
+            groupBox6.TabStop = false;
+            groupBox6.Text = "选项";
             // 
             // buttonRecordPause
             // 
-            this.buttonRecordPause.Enabled = false;
-            this.buttonRecordPause.Location = new System.Drawing.Point(210, 67);
-            this.buttonRecordPause.Name = "buttonRecordPause";
-            this.buttonRecordPause.Size = new System.Drawing.Size(96, 42);
-            this.buttonRecordPause.TabIndex = 6;
-            this.buttonRecordPause.Text = "暂停录制";
-            this.buttonRecordPause.UseVisualStyleBackColor = true;
-            this.buttonRecordPause.Click += new System.EventHandler(this.buttonRecordPause_Click);
+            buttonRecordPause.Enabled = false;
+            buttonRecordPause.Location = new Point(210, 67);
+            buttonRecordPause.Name = "buttonRecordPause";
+            buttonRecordPause.Size = new Size(96, 42);
+            buttonRecordPause.TabIndex = 6;
+            buttonRecordPause.Text = "暂停录制";
+            buttonRecordPause.UseVisualStyleBackColor = true;
+            buttonRecordPause.Click += buttonRecordPause_Click;
             // 
             // buttonRecord
             // 
-            this.buttonRecord.Location = new System.Drawing.Point(210, 17);
-            this.buttonRecord.Name = "buttonRecord";
-            this.buttonRecord.Size = new System.Drawing.Size(96, 47);
-            this.buttonRecord.TabIndex = 5;
-            this.buttonRecord.Text = "录制脚本";
-            this.buttonRecord.UseVisualStyleBackColor = true;
-            this.buttonRecord.Click += new System.EventHandler(this.buttonRecord_Click);
+            buttonRecord.Location = new Point(210, 17);
+            buttonRecord.Name = "buttonRecord";
+            buttonRecord.Size = new Size(96, 47);
+            buttonRecord.TabIndex = 5;
+            buttonRecord.Text = "录制脚本";
+            buttonRecord.UseVisualStyleBackColor = true;
+            buttonRecord.Click += buttonRecord_Click;
             // 
             // buttonFlashClear
             // 
-            this.buttonFlashClear.Location = new System.Drawing.Point(6, 67);
-            this.buttonFlashClear.Name = "buttonFlashClear";
-            this.buttonFlashClear.Size = new System.Drawing.Size(96, 42);
-            this.buttonFlashClear.TabIndex = 4;
-            this.buttonFlashClear.Text = "清除烧录";
-            this.buttonFlashClear.UseVisualStyleBackColor = true;
-            this.buttonFlashClear.Click += new System.EventHandler(this.buttonFlashClear_Click);
+            buttonFlashClear.Location = new Point(6, 67);
+            buttonFlashClear.Name = "buttonFlashClear";
+            buttonFlashClear.Size = new Size(96, 42);
+            buttonFlashClear.TabIndex = 4;
+            buttonFlashClear.Text = "清除烧录";
+            buttonFlashClear.UseVisualStyleBackColor = true;
+            buttonFlashClear.Click += buttonFlashClear_Click;
             // 
             // buttonFlash
             // 
-            this.buttonFlash.Location = new System.Drawing.Point(6, 19);
-            this.buttonFlash.Name = "buttonFlash";
-            this.buttonFlash.Size = new System.Drawing.Size(96, 47);
-            this.buttonFlash.TabIndex = 1;
-            this.buttonFlash.Text = "编译烧录";
-            this.buttonFlash.UseVisualStyleBackColor = true;
-            this.buttonFlash.Click += new System.EventHandler(this.buttonFlash_Click);
+            buttonFlash.Location = new Point(6, 19);
+            buttonFlash.Name = "buttonFlash";
+            buttonFlash.Size = new Size(96, 47);
+            buttonFlash.TabIndex = 1;
+            buttonFlash.Text = "编译烧录";
+            buttonFlash.UseVisualStyleBackColor = true;
+            buttonFlash.Click += buttonFlash_Click;
             // 
             // buttonRemoteStop
             // 
-            this.buttonRemoteStop.Location = new System.Drawing.Point(108, 67);
-            this.buttonRemoteStop.Name = "buttonRemoteStop";
-            this.buttonRemoteStop.Size = new System.Drawing.Size(96, 42);
-            this.buttonRemoteStop.TabIndex = 3;
-            this.buttonRemoteStop.Text = "远程停止";
-            this.buttonRemoteStop.UseVisualStyleBackColor = true;
-            this.buttonRemoteStop.Click += new System.EventHandler(this.buttonRemoteStop_Click);
+            buttonRemoteStop.Location = new Point(108, 67);
+            buttonRemoteStop.Name = "buttonRemoteStop";
+            buttonRemoteStop.Size = new Size(96, 42);
+            buttonRemoteStop.TabIndex = 3;
+            buttonRemoteStop.Text = "远程停止";
+            buttonRemoteStop.UseVisualStyleBackColor = true;
+            buttonRemoteStop.Click += buttonRemoteStop_Click;
             // 
             // buttonRemoteStart
             // 
-            this.buttonRemoteStart.Location = new System.Drawing.Point(108, 17);
-            this.buttonRemoteStart.Name = "buttonRemoteStart";
-            this.buttonRemoteStart.Size = new System.Drawing.Size(96, 47);
-            this.buttonRemoteStart.TabIndex = 2;
-            this.buttonRemoteStart.Text = "远程运行";
-            this.buttonRemoteStart.UseVisualStyleBackColor = true;
-            this.buttonRemoteStart.Click += new System.EventHandler(this.buttonRemoteStart_Click);
+            buttonRemoteStart.Location = new Point(108, 17);
+            buttonRemoteStart.Name = "buttonRemoteStart";
+            buttonRemoteStart.Size = new Size(96, 47);
+            buttonRemoteStart.TabIndex = 2;
+            buttonRemoteStart.Text = "远程运行";
+            buttonRemoteStart.UseVisualStyleBackColor = true;
+            buttonRemoteStart.Click += buttonRemoteStart_Click;
             // 
             // groupBox2
             // 
-            this.groupBox2.Controls.Add(this.buttonGenerateFirmware);
-            this.groupBox2.Controls.Add(this.textBoxFirmware);
-            this.groupBox2.Controls.Add(this.comboBoxBoardType);
-            this.groupBox2.Location = new System.Drawing.Point(784, 147);
-            this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(312, 87);
-            this.groupBox2.TabIndex = 5;
-            this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "固件";
+            groupBox2.Controls.Add(buttonGenerateFirmware);
+            groupBox2.Controls.Add(textBoxFirmware);
+            groupBox2.Controls.Add(comboBoxBoardType);
+            groupBox2.Location = new Point(784, 147);
+            groupBox2.Name = "groupBox2";
+            groupBox2.Size = new Size(312, 87);
+            groupBox2.TabIndex = 5;
+            groupBox2.TabStop = false;
+            groupBox2.Text = "固件";
             // 
             // buttonGenerateFirmware
             // 
-            this.buttonGenerateFirmware.Location = new System.Drawing.Point(192, 21);
-            this.buttonGenerateFirmware.Name = "buttonGenerateFirmware";
-            this.buttonGenerateFirmware.Size = new System.Drawing.Size(114, 52);
-            this.buttonGenerateFirmware.TabIndex = 0;
-            this.buttonGenerateFirmware.Text = "生成固件";
-            this.buttonGenerateFirmware.UseVisualStyleBackColor = true;
-            this.buttonGenerateFirmware.Click += new System.EventHandler(this.buttonGenerateFirmware_Click);
+            buttonGenerateFirmware.Location = new Point(192, 21);
+            buttonGenerateFirmware.Name = "buttonGenerateFirmware";
+            buttonGenerateFirmware.Size = new Size(114, 52);
+            buttonGenerateFirmware.TabIndex = 0;
+            buttonGenerateFirmware.Text = "生成固件";
+            buttonGenerateFirmware.UseVisualStyleBackColor = true;
+            buttonGenerateFirmware.Click += buttonGenerateFirmware_Click;
             // 
             // textBoxFirmware
             // 
-            this.textBoxFirmware.Location = new System.Drawing.Point(19, 55);
-            this.textBoxFirmware.Name = "textBoxFirmware";
-            this.textBoxFirmware.ReadOnly = true;
-            this.textBoxFirmware.Size = new System.Drawing.Size(149, 22);
-            this.textBoxFirmware.TabIndex = 5;
-            this.textBoxFirmware.WordWrap = false;
+            textBoxFirmware.Location = new Point(19, 55);
+            textBoxFirmware.Name = "textBoxFirmware";
+            textBoxFirmware.ReadOnly = true;
+            textBoxFirmware.Size = new Size(149, 26);
+            textBoxFirmware.TabIndex = 5;
+            textBoxFirmware.WordWrap = false;
             // 
             // comboBoxBoardType
             // 
-            this.comboBoxBoardType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBoxBoardType.FormattingEnabled = true;
-            this.comboBoxBoardType.Location = new System.Drawing.Point(19, 21);
-            this.comboBoxBoardType.Name = "comboBoxBoardType";
-            this.comboBoxBoardType.Size = new System.Drawing.Size(149, 24);
-            this.comboBoxBoardType.TabIndex = 5;
-            this.comboBoxBoardType.SelectedIndexChanged += new System.EventHandler(this.comboBoxBoardType_SelectedIndexChanged);
+            comboBoxBoardType.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxBoardType.FormattingEnabled = true;
+            comboBoxBoardType.Location = new Point(19, 21);
+            comboBoxBoardType.Name = "comboBoxBoardType";
+            comboBoxBoardType.Size = new Size(149, 28);
+            comboBoxBoardType.TabIndex = 5;
+            comboBoxBoardType.SelectedIndexChanged += comboBoxBoardType_SelectedIndexChanged;
             // 
             // buttonShowController
             // 
-            this.buttonShowController.Location = new System.Drawing.Point(6, 16);
-            this.buttonShowController.Name = "buttonShowController";
-            this.buttonShowController.Size = new System.Drawing.Size(112, 40);
-            this.buttonShowController.TabIndex = 3;
-            this.buttonShowController.Text = "虚拟手柄";
-            this.buttonShowController.UseVisualStyleBackColor = true;
-            this.buttonShowController.Click += new System.EventHandler(this.buttonShowController_Click);
+            buttonShowController.Location = new Point(6, 16);
+            buttonShowController.Name = "buttonShowController";
+            buttonShowController.Size = new Size(112, 40);
+            buttonShowController.TabIndex = 3;
+            buttonShowController.Text = "虚拟手柄";
+            buttonShowController.UseVisualStyleBackColor = true;
+            buttonShowController.Click += buttonShowController_Click;
             // 
             // groupBoxScript
             // 
-            this.groupBoxScript.Controls.Add(this.elementHost1);
-            this.groupBoxScript.Location = new System.Drawing.Point(327, 30);
-            this.groupBoxScript.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.groupBoxScript.Name = "groupBoxScript";
-            this.groupBoxScript.Padding = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.groupBoxScript.Size = new System.Drawing.Size(451, 561);
-            this.groupBoxScript.TabIndex = 2;
-            this.groupBoxScript.TabStop = false;
-            this.groupBoxScript.Text = "脚本";
+            groupBoxScript.Controls.Add(elementHost1);
+            groupBoxScript.Location = new Point(327, 30);
+            groupBoxScript.Margin = new Padding(3, 4, 3, 4);
+            groupBoxScript.Name = "groupBoxScript";
+            groupBoxScript.Padding = new Padding(3, 4, 3, 4);
+            groupBoxScript.Size = new Size(451, 561);
+            groupBoxScript.TabIndex = 2;
+            groupBoxScript.TabStop = false;
+            groupBoxScript.Text = "脚本";
             // 
             // elementHost1
             // 
-            this.elementHost1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.elementHost1.Location = new System.Drawing.Point(3, 19);
-            this.elementHost1.Name = "elementHost1";
-            this.elementHost1.Size = new System.Drawing.Size(445, 538);
-            this.elementHost1.TabIndex = 0;
-            this.elementHost1.Text = "elementHost1";
+            elementHost1.Dock = DockStyle.Fill;
+            elementHost1.Location = new Point(3, 23);
+            elementHost1.Name = "elementHost1";
+            elementHost1.Size = new Size(445, 534);
+            elementHost1.TabIndex = 0;
+            elementHost1.Text = "elementHost1";
             // 
             // groupBox3
             // 
-            this.groupBox3.Controls.Add(this.ComPort);
-            this.groupBox3.Controls.Add(this.labelSerialStatus);
-            this.groupBox3.Controls.Add(this.buttonSerialPortConnect);
-            this.groupBox3.Controls.Add(this.buttonSerialPortSearch);
-            this.groupBox3.Location = new System.Drawing.Point(8, 431);
-            this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(312, 92);
-            this.groupBox3.TabIndex = 4;
-            this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "连接";
+            groupBox3.Controls.Add(ComPort);
+            groupBox3.Controls.Add(labelSerialStatus);
+            groupBox3.Controls.Add(buttonSerialPortConnect);
+            groupBox3.Controls.Add(buttonSerialPortSearch);
+            groupBox3.Location = new Point(8, 431);
+            groupBox3.Name = "groupBox3";
+            groupBox3.Size = new Size(312, 92);
+            groupBox3.TabIndex = 4;
+            groupBox3.TabStop = false;
+            groupBox3.Text = "连接";
             // 
             // ComPort
             // 
-            this.ComPort.FormattingEnabled = true;
-            this.ComPort.Location = new System.Drawing.Point(177, 20);
-            this.ComPort.Name = "ComPort";
-            this.ComPort.Size = new System.Drawing.Size(114, 24);
-            this.ComPort.TabIndex = 34;
-            this.ComPort.Text = "下拉选择串口";
-            this.ComPort.DropDown += new System.EventHandler(this.ComPort_DropDown);
+            ComPort.FormattingEnabled = true;
+            ComPort.Location = new Point(177, 20);
+            ComPort.Name = "ComPort";
+            ComPort.Size = new Size(114, 28);
+            ComPort.TabIndex = 34;
+            ComPort.Text = "下拉选择串口";
+            ComPort.DropDown += ComPort_DropDown;
             // 
             // labelSerialStatus
             // 
-            this.labelSerialStatus.BackColor = System.Drawing.Color.DimGray;
-            this.labelSerialStatus.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.labelSerialStatus.ForeColor = System.Drawing.SystemColors.ControlLight;
-            this.labelSerialStatus.Location = new System.Drawing.Point(21, 18);
-            this.labelSerialStatus.Name = "labelSerialStatus";
-            this.labelSerialStatus.Size = new System.Drawing.Size(150, 26);
-            this.labelSerialStatus.TabIndex = 31;
-            this.labelSerialStatus.Text = "单片机未连接";
-            this.labelSerialStatus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            labelSerialStatus.BackColor = Color.DimGray;
+            labelSerialStatus.BorderStyle = BorderStyle.FixedSingle;
+            labelSerialStatus.ForeColor = SystemColors.ControlLight;
+            labelSerialStatus.Location = new Point(21, 18);
+            labelSerialStatus.Name = "labelSerialStatus";
+            labelSerialStatus.Size = new Size(150, 26);
+            labelSerialStatus.TabIndex = 31;
+            labelSerialStatus.Text = "单片机未连接";
+            labelSerialStatus.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // buttonSerialPortConnect
             // 
-            this.buttonSerialPortConnect.Location = new System.Drawing.Point(177, 51);
-            this.buttonSerialPortConnect.Name = "buttonSerialPortConnect";
-            this.buttonSerialPortConnect.Size = new System.Drawing.Size(114, 32);
-            this.buttonSerialPortConnect.TabIndex = 30;
-            this.buttonSerialPortConnect.Text = "手动连接";
-            this.buttonSerialPortConnect.UseVisualStyleBackColor = true;
-            this.buttonSerialPortConnect.Click += new System.EventHandler(this.buttonSerialPortConnect_Click);
+            buttonSerialPortConnect.Location = new Point(177, 51);
+            buttonSerialPortConnect.Name = "buttonSerialPortConnect";
+            buttonSerialPortConnect.Size = new Size(114, 32);
+            buttonSerialPortConnect.TabIndex = 30;
+            buttonSerialPortConnect.Text = "手动连接";
+            buttonSerialPortConnect.UseVisualStyleBackColor = true;
+            buttonSerialPortConnect.Click += buttonSerialPortConnect_Click;
             // 
             // buttonSerialPortSearch
             // 
-            this.buttonSerialPortSearch.Location = new System.Drawing.Point(21, 51);
-            this.buttonSerialPortSearch.Name = "buttonSerialPortSearch";
-            this.buttonSerialPortSearch.Size = new System.Drawing.Size(150, 32);
-            this.buttonSerialPortSearch.TabIndex = 29;
-            this.buttonSerialPortSearch.Text = "自动连接(推荐)";
-            this.buttonSerialPortSearch.UseVisualStyleBackColor = true;
-            this.buttonSerialPortSearch.Click += new System.EventHandler(this.buttonSerialPortSearch_Click);
+            buttonSerialPortSearch.Location = new Point(21, 51);
+            buttonSerialPortSearch.Name = "buttonSerialPortSearch";
+            buttonSerialPortSearch.Size = new Size(150, 32);
+            buttonSerialPortSearch.TabIndex = 29;
+            buttonSerialPortSearch.Text = "自动连接(推荐)";
+            buttonSerialPortSearch.UseVisualStyleBackColor = true;
+            buttonSerialPortSearch.Click += buttonSerialPortSearch_Click;
             // 
             // buttonControllerHelp
             // 
-            this.buttonControllerHelp.Location = new System.Drawing.Point(127, 16);
-            this.buttonControllerHelp.Name = "buttonControllerHelp";
-            this.buttonControllerHelp.Size = new System.Drawing.Size(65, 40);
-            this.buttonControllerHelp.TabIndex = 33;
-            this.buttonControllerHelp.Text = "帮助";
-            this.buttonControllerHelp.UseVisualStyleBackColor = true;
-            this.buttonControllerHelp.Click += new System.EventHandler(this.buttonControllerHelp_Click);
+            buttonControllerHelp.Location = new Point(127, 16);
+            buttonControllerHelp.Name = "buttonControllerHelp";
+            buttonControllerHelp.Size = new Size(65, 40);
+            buttonControllerHelp.TabIndex = 33;
+            buttonControllerHelp.Text = "帮助";
+            buttonControllerHelp.UseVisualStyleBackColor = true;
+            buttonControllerHelp.Click += buttonControllerHelp_Click;
             // 
             // buttonKeyMapping
             // 
-            this.buttonKeyMapping.Location = new System.Drawing.Point(202, 16);
-            this.buttonKeyMapping.Name = "buttonKeyMapping";
-            this.buttonKeyMapping.Size = new System.Drawing.Size(89, 40);
-            this.buttonKeyMapping.TabIndex = 4;
-            this.buttonKeyMapping.Text = "按键映射";
-            this.buttonKeyMapping.UseVisualStyleBackColor = true;
-            this.buttonKeyMapping.Click += new System.EventHandler(this.buttonKeyMapping_Click);
+            buttonKeyMapping.Location = new Point(202, 16);
+            buttonKeyMapping.Name = "buttonKeyMapping";
+            buttonKeyMapping.Size = new Size(89, 40);
+            buttonKeyMapping.TabIndex = 4;
+            buttonKeyMapping.Text = "按键映射";
+            buttonKeyMapping.UseVisualStyleBackColor = true;
+            buttonKeyMapping.Click += buttonKeyMapping_Click;
             // 
             // groupBox4
             // 
-            this.groupBox4.Controls.Add(this.buttonShowController);
-            this.groupBox4.Controls.Add(this.buttonControllerHelp);
-            this.groupBox4.Controls.Add(this.buttonKeyMapping);
-            this.groupBox4.Location = new System.Drawing.Point(8, 529);
-            this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Size = new System.Drawing.Size(312, 62);
-            this.groupBox4.TabIndex = 34;
-            this.groupBox4.TabStop = false;
-            this.groupBox4.Text = "手柄";
+            groupBox4.Controls.Add(buttonShowController);
+            groupBox4.Controls.Add(buttonControllerHelp);
+            groupBox4.Controls.Add(buttonKeyMapping);
+            groupBox4.Location = new Point(8, 529);
+            groupBox4.Name = "groupBox4";
+            groupBox4.Size = new Size(312, 62);
+            groupBox4.TabIndex = 34;
+            groupBox4.TabStop = false;
+            groupBox4.Text = "手柄";
             // 
             // toolStripStatusLabel1
             // 
-            this.toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-            this.toolStripStatusLabel1.Size = new System.Drawing.Size(0, 17);
+            toolStripStatusLabel1.Name = "toolStripStatusLabel1";
+            toolStripStatusLabel1.Size = new Size(0, 16);
             // 
             // statusStrip1
             // 
-            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripStatusLabel1});
-            this.statusStrip1.Location = new System.Drawing.Point(1, 595);
-            this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(1101, 22);
-            this.statusStrip1.TabIndex = 3;
-            this.statusStrip1.Text = "statusStrip1";
+            statusStrip1.ImageScalingSize = new Size(20, 20);
+            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1 });
+            statusStrip1.Location = new Point(1, 595);
+            statusStrip1.Name = "statusStrip1";
+            statusStrip1.Size = new Size(1101, 22);
+            statusStrip1.TabIndex = 3;
+            statusStrip1.Text = "statusStrip1";
             // 
             // textBoxScriptHelp
             // 
-            this.textBoxScriptHelp.Location = new System.Drawing.Point(784, 240);
-            this.textBoxScriptHelp.Multiline = true;
-            this.textBoxScriptHelp.Name = "textBoxScriptHelp";
-            this.textBoxScriptHelp.ReadOnly = true;
-            this.textBoxScriptHelp.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.textBoxScriptHelp.Size = new System.Drawing.Size(312, 347);
-            this.textBoxScriptHelp.TabIndex = 35;
+            textBoxScriptHelp.Location = new Point(784, 240);
+            textBoxScriptHelp.Multiline = true;
+            textBoxScriptHelp.Name = "textBoxScriptHelp";
+            textBoxScriptHelp.ReadOnly = true;
+            textBoxScriptHelp.ScrollBars = ScrollBars.Vertical;
+            textBoxScriptHelp.Size = new Size(312, 347);
+            textBoxScriptHelp.TabIndex = 35;
+            // 
+            // 设置环境变量ToolStripMenuItem
+            // 
+            设置环境变量ToolStripMenuItem.Name = "设置环境变量ToolStripMenuItem";
+            设置环境变量ToolStripMenuItem.Size = new Size(224, 26);
+            设置环境变量ToolStripMenuItem.Text = "设置环境变量";
+            设置环境变量ToolStripMenuItem.Click += 设置环境变量ToolStripMenuItem_Click;
             // 
             // EasyConForm
             // 
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
-            this.ClientSize = new System.Drawing.Size(1103, 618);
-            this.Controls.Add(this.textBoxScriptHelp);
-            this.Controls.Add(this.groupBox4);
-            this.Controls.Add(this.groupBox3);
-            this.Controls.Add(this.groupBox6);
-            this.Controls.Add(this.groupBox2);
-            this.Controls.Add(this.statusStrip1);
-            this.Controls.Add(this.groupBoxScript);
-            this.Controls.Add(this.groupBox1);
-            this.Controls.Add(this.menuStrip1);
-            this.Font = new System.Drawing.Font("微软雅黑", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.KeyPreview = true;
-            this.MainMenuStrip = this.menuStrip1;
-            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.MaximizeBox = false;
-            this.MinimumSize = new System.Drawing.Size(800, 600);
-            this.Name = "EasyConForm";
-            this.Padding = new System.Windows.Forms.Padding(1);
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "EasyCon";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.EasyConForm_FormClosing);
-            this.Load += new System.EventHandler(this.EasyConForm_Load);
-            this.Resize += new System.EventHandler(this.EasyConForm_Resize);
-            this.menuStrip1.ResumeLayout(false);
-            this.menuStrip1.PerformLayout();
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox6.ResumeLayout(false);
-            this.groupBox2.ResumeLayout(false);
-            this.groupBox2.PerformLayout();
-            this.groupBoxScript.ResumeLayout(false);
-            this.groupBox3.ResumeLayout(false);
-            this.groupBox4.ResumeLayout(false);
-            this.statusStrip1.ResumeLayout(false);
-            this.statusStrip1.PerformLayout();
-            this.ResumeLayout(false);
-            this.PerformLayout();
-
+            AutoScaleMode = AutoScaleMode.Inherit;
+            ClientSize = new Size(1103, 618);
+            Controls.Add(textBoxScriptHelp);
+            Controls.Add(groupBox4);
+            Controls.Add(groupBox3);
+            Controls.Add(groupBox6);
+            Controls.Add(groupBox2);
+            Controls.Add(statusStrip1);
+            Controls.Add(groupBoxScript);
+            Controls.Add(groupBox1);
+            Controls.Add(menuStrip1);
+            Font = new Font("Microsoft YaHei", 8.25F);
+            Icon = (Icon)resources.GetObject("$this.Icon");
+            KeyPreview = true;
+            MainMenuStrip = menuStrip1;
+            Margin = new Padding(3, 4, 3, 4);
+            MaximizeBox = false;
+            MinimumSize = new Size(800, 600);
+            Name = "EasyConForm";
+            Padding = new Padding(1);
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "EasyCon";
+            FormClosing += EasyConForm_FormClosing;
+            Load += EasyConForm_Load;
+            Resize += EasyConForm_Resize;
+            menuStrip1.ResumeLayout(false);
+            menuStrip1.PerformLayout();
+            groupBox1.ResumeLayout(false);
+            groupBox6.ResumeLayout(false);
+            groupBox2.ResumeLayout(false);
+            groupBox2.PerformLayout();
+            groupBoxScript.ResumeLayout(false);
+            groupBox3.ResumeLayout(false);
+            groupBox4.ResumeLayout(false);
+            statusStrip1.ResumeLayout(false);
+            statusStrip1.PerformLayout();
+            ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
@@ -873,6 +842,7 @@
         private ToolStripMenuItem 动物之森ToolStripMenuItem;
         private ToolStripMenuItem 自由画板鼠标代替摇杆ToolStripMenuItem;
         private ToolStripMenuItem openDelayToolStripMenuItem;
+        private ToolStripMenuItem 设置环境变量ToolStripMenuItem;
     }
 }
 

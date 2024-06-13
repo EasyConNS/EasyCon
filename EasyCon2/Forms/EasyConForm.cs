@@ -23,7 +23,7 @@ namespace EasyCon2.Forms
 {
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter, ICGamePad
     {
-        private readonly Version VER = new(1,48,9);
+        private readonly Version VER = new(1, 50, 0);
         private readonly TextEditor textBoxScript = new();
         internal readonly FormController formController;
 
@@ -67,7 +67,7 @@ namespace EasyCon2.Forms
             captureVideo.LoadImgLabels();
 
             频道远程ToolStripMenuItem.Checked = _config?.ChannelControl ?? false;
-            if(_config?.ChannelControl ?? false)
+            if (_config?.ChannelControl ?? false)
             {
                 Start_WebSocket();
             }
@@ -233,7 +233,7 @@ namespace EasyCon2.Forms
                             box.SelectionLength = 0;
                             box.SelectionColor = color ?? box.ForeColor;
                             box.AppendText(message.ToString());
-                            Debug.WriteLine("-"+message.ToString());
+                            Debug.WriteLine("-" + message.ToString());
                             if (color == null && message.ToString() != "\r\n")
                             {
                                 temp_msg += message.ToString();
@@ -264,7 +264,7 @@ namespace EasyCon2.Forms
                     Thread.Sleep(25);
                 }
             }
-            catch(Exception)
+            catch (Exception)
             {
                 Debug.WriteLine("UI Task error occured!");
             }
@@ -327,25 +327,25 @@ namespace EasyCon2.Forms
         {
             formController.UnregisterAllKeys();
 
-            RegisterKey( _config.KeyMapping.A, ECKeyUtil.Button(SwitchButton.A));
-            RegisterKey( _config.KeyMapping.B, ECKeyUtil.Button(SwitchButton.B));
-            RegisterKey( _config.KeyMapping.X, ECKeyUtil.Button(SwitchButton.X));
-            RegisterKey( _config.KeyMapping.Y, ECKeyUtil.Button(SwitchButton.Y));
-            RegisterKey( _config.KeyMapping.L, ECKeyUtil.Button(SwitchButton.L));
-            RegisterKey( _config.KeyMapping.R, ECKeyUtil.Button(SwitchButton.R));
-            RegisterKey( _config.KeyMapping.ZL, ECKeyUtil.Button(SwitchButton.ZL));
-            RegisterKey( _config.KeyMapping.ZR, ECKeyUtil.Button(SwitchButton.ZR));
-            RegisterKey( _config.KeyMapping.Plus, ECKeyUtil.Button(SwitchButton.PLUS));
-            RegisterKey( _config.KeyMapping.Minus, ECKeyUtil.Button(SwitchButton.MINUS));
-            RegisterKey( _config.KeyMapping.Capture, ECKeyUtil.Button(SwitchButton.CAPTURE));
-            RegisterKey( _config.KeyMapping.Home, ECKeyUtil.Button(SwitchButton.HOME));
-            RegisterKey( _config.KeyMapping.LClick, ECKeyUtil.Button(SwitchButton.LCLICK));
-            RegisterKey( _config.KeyMapping.RClick, ECKeyUtil.Button(SwitchButton.RCLICK));
+            RegisterKey(_config.KeyMapping.A, ECKeyUtil.Button(SwitchButton.A));
+            RegisterKey(_config.KeyMapping.B, ECKeyUtil.Button(SwitchButton.B));
+            RegisterKey(_config.KeyMapping.X, ECKeyUtil.Button(SwitchButton.X));
+            RegisterKey(_config.KeyMapping.Y, ECKeyUtil.Button(SwitchButton.Y));
+            RegisterKey(_config.KeyMapping.L, ECKeyUtil.Button(SwitchButton.L));
+            RegisterKey(_config.KeyMapping.R, ECKeyUtil.Button(SwitchButton.R));
+            RegisterKey(_config.KeyMapping.ZL, ECKeyUtil.Button(SwitchButton.ZL));
+            RegisterKey(_config.KeyMapping.ZR, ECKeyUtil.Button(SwitchButton.ZR));
+            RegisterKey(_config.KeyMapping.Plus, ECKeyUtil.Button(SwitchButton.PLUS));
+            RegisterKey(_config.KeyMapping.Minus, ECKeyUtil.Button(SwitchButton.MINUS));
+            RegisterKey(_config.KeyMapping.Capture, ECKeyUtil.Button(SwitchButton.CAPTURE));
+            RegisterKey(_config.KeyMapping.Home, ECKeyUtil.Button(SwitchButton.HOME));
+            RegisterKey(_config.KeyMapping.LClick, ECKeyUtil.Button(SwitchButton.LCLICK));
+            RegisterKey(_config.KeyMapping.RClick, ECKeyUtil.Button(SwitchButton.RCLICK));
 
-            RegisterKey( _config.KeyMapping.UpRight, ECKeyUtil.HAT(SwitchHAT.TOP_RIGHT));
-            RegisterKey( _config.KeyMapping.DownRight, ECKeyUtil.HAT(SwitchHAT.BOTTOM_RIGHT));
-            RegisterKey( _config.KeyMapping.UpLeft, ECKeyUtil.HAT(SwitchHAT.TOP_LEFT));
-            RegisterKey( _config.KeyMapping.DownLeft, ECKeyUtil.HAT(SwitchHAT.BOTTOM_LEFT));
+            RegisterKey(_config.KeyMapping.UpRight, ECKeyUtil.HAT(SwitchHAT.TOP_RIGHT));
+            RegisterKey(_config.KeyMapping.DownRight, ECKeyUtil.HAT(SwitchHAT.BOTTOM_RIGHT));
+            RegisterKey(_config.KeyMapping.UpLeft, ECKeyUtil.HAT(SwitchHAT.TOP_LEFT));
+            RegisterKey(_config.KeyMapping.DownLeft, ECKeyUtil.HAT(SwitchHAT.BOTTOM_LEFT));
 
             formController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(DirectionKey.Up, true), () => NS.HatDirection(DirectionKey.Up, false));
             formController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(DirectionKey.Down, true), () => NS.HatDirection(DirectionKey.Down, false));
@@ -388,36 +388,44 @@ namespace EasyCon2.Forms
                 Print(message, null);
             }
         }
-        
+
         public void Alert(string message)
         {
             bool canPush = true;
-            if(_config.AlertToken == "")
+            try
             {
-                canPush = false;
-                //Print("pushplus推送Token为空");
+                if (_config.AlertToken == "")
+                {
+                    canPush = false;
+                    //Print("pushplus推送Token为空");
+                }
+                else
+                {
+                    var address = $"https://www.pushplus.plus/send/{_config.AlertToken}?content={message}&title=伊机控消息";
+                    using var client = new HttpClient();
+                    var result = client.GetAsync(address).Result.Content.ReadAsStringAsync().Result;
+                    Print(result);
+                    canPush = true;
+                }
+
+                if (_config.ChannelToken == "")
+                {
+                    canPush = false;
+                }
+                else
+                {
+                    Notification notification = new Notification(_config.ChannelToken, message);
+                    ws.SendMsg(notification);
+                    canPush = true;
+                }
             }
-            else
+            catch (Exception e)
             {
-                var address = $"https://www.pushplus.plus/send/{_config.AlertToken}?content={message}&title=伊机控消息";
-                using var client = new HttpClient();
-                var result = client.GetAsync(address).Result.Content.ReadAsStringAsync().Result;
-                Print(result);
-                canPush = true;
+                Print($"推送失败:{e.Message}");
             }
 
-            if (_config.ChannelToken == "")
-            {
-                canPush = false;
-            }
-            else
-            {
-                Notification notification = new Notification(_config.ChannelToken, message);
-                ws.SendMsg(notification);
-                canPush = true;
-            }
 
-            if(canPush == false)
+            if (canPush == false)
             {
                 Print("推送Token为空");
             }
@@ -441,7 +449,7 @@ namespace EasyCon2.Forms
         void ICGamePad.ChangeAmiibo(uint index)
         {
             //Print($"切换Amiibo序号:{index}");
-            NS.ChangeAmiiboIndex((byte)(index&0x0F));
+            NS.ChangeAmiiboIndex((byte)(index & 0x0F));
         }
         #endregion
 
@@ -497,7 +505,7 @@ namespace EasyCon2.Forms
         {
             if (!ScriptCompile())
                 return;
-            if(_program.HasKeyAction)
+            if (_program.HasKeyAction)
             {
                 if (!SerialCheckConnect())
                     return;
@@ -839,7 +847,7 @@ namespace EasyCon2.Forms
             if (!scriptRunning)
             {
                 ScriptRun();
-            } 
+            }
             else
                 ScriptStop();
         }
@@ -908,7 +916,7 @@ namespace EasyCon2.Forms
                     SaveConfig();
                     RegisterKeys();
                 }
-            } 
+            }
         }
 
         private void buttonControllerHelp_Click(object sender, EventArgs e)
@@ -1165,7 +1173,7 @@ namespace EasyCon2.Forms
 
         private void 搜图说明ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("默认采集卡类型选择any，会自动选择合适的采集卡\n- 常见采集卡类型是DSHOW，MSMF，DC1394等\n- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开\n- 详细使用教程见群946057081文档", "采集卡");
+            MessageBox.Show("默认采集卡类型选择any，会自动选择合适的采集卡\n- 常见采集卡类型是DSHOW，MSMF，DC1394等\n- obs30+版本已支持内置虚拟摄像头，无需安装额外插件\n- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开\n- 如果遇到搜图卡顿问题可尝试点击一次<设置环境变量>菜单\n- 详细使用教程见群946057081文档", "采集卡");
         }
 
         private void 显示调试信息ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1219,7 +1227,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
         private void 推送设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var form = new ConfigForm(_config);
-            if(form.ShowDialog() == DialogResult.OK)
+            if (form.ShowDialog() == DialogResult.OK)
             {
                 _config = form.Config;
                 SaveConfig();
@@ -1242,7 +1250,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("WesSocke timeout",ex);
+                Debug.WriteLine("WesSocke timeout", ex);
                 return false;
             }
             Task task = Task.Run(() =>
@@ -1279,7 +1287,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
         {
             var menu = (ToolStripMenuItem)sender;
             menu.Checked = !menu.Checked;
-            if(menu.Checked)
+            if (menu.Checked)
             {
                 menu.Checked = Start_WebSocket();
                 _config.ChannelControl = true;
@@ -1386,6 +1394,13 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
         {
             Mouse mouse = new Mouse(NS);
             mouse.Show();
+        }
+
+        private void 设置环境变量ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Environment.SetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS", "0");
+            var oc = Environment.GetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS");
+            StatusShowLog($"环境变量设置成功：{oc}");
         }
     }
 }
