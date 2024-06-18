@@ -1,6 +1,6 @@
 ﻿namespace EC.Window
 {
-    partial class Main
+    partial class MainForm
     {
         /// <summary>
         ///  Required designer variable.
@@ -30,12 +30,13 @@
         {
             SuspendLayout();
             // 
-            // Main
+            // MainForm
             // 
-            AutoScaleDimensions = new SizeF(9F, 20F);
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(816, 519);
-            Name = "Main";
+            AutoScaleMode = AutoScaleMode.Inherit;
+            ClientSize = new Size(816, 553);
+            MinimumSize = new Size(800, 600);
+            Name = "MainForm";
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "EasyCon2";
             ResumeLayout(false);
         }
