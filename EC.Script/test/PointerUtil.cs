@@ -1,4 +1,4 @@
-namespace Injection;
+namespace EC.Script;
 
 static class PointerUtil
 {

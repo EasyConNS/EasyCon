@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using VBF.Compilers;
 using System.Text;
-namespace Scripter;
+namespace EC.Script;
 
 static class ScriptUtil
 {

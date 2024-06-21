@@ -9,11 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EC.Capture\EC.Capture.csproj" />
     <ProjectReference Include="..\EC.Core\EC.Core.csproj" />
-    <ProjectReference Include="..\EC.Device\EC.Device.csproj" />
-    <ProjectReference Include="..\EC.Script\EC.Script.csproj" />
-    <ProjectReference Include="..\EC.VPad\EC.VPad.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
 using ECP.Ast;
 using VBF.Compilers;
 
-namespace Scripter;
+namespace EC.Script;
 
 public class SimpleVisitor : AstVisitor
 {
