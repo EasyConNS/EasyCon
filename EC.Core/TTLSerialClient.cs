@@ -44,11 +44,11 @@ class TTLSerialClient : IConnection
         }
     }
 
-        public TTLSerialClient(string connStr, int port = 115200)
-        {
-            _connStr = connStr;
-            _port = port;
-        }
+    public TTLSerialClient(string connStr, int port = 115200)
+    {
+        _connStr = connStr;
+        _port = port;
+    }
 
     public override void Connect(bool sayhello = true)
     {

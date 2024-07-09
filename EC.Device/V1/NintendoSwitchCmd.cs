@@ -1,23 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO.Ports;
-using System.Linq;
-using System.Threading;
-
-namespace EC.Device;
+﻿namespace EC.Device;
 
 public partial class NintendoSwitch
 {
     private IConnection clientCon { get; set; }
 
-    public static string[] GetPortNames()
+    private ConnectResult _TryConnect(IConnection conn, bool sayhello)
     {
-        return SerialPort.GetPortNames();
-    }
-
-    private ConnectResult _TryConnect(string connStr, bool sayhello, int baudrate=115200)
-    {
-        if (connStr == "")
+        if (conn is null)
             return ConnectResult.InvalidArgument;
 
         var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
@@ -42,7 +31,7 @@ public partial class NintendoSwitch
         }
 
         Disconnect();
-        clientCon = new TTLSerialClient(connStr,baudrate);
+        clientCon = conn;
         clientCon.BytesSent += BytesSent;
         clientCon.BytesReceived += BytesReceived;
         clientCon.CPUOpt = need_cpu_opt;

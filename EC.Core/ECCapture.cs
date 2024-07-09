@@ -2,7 +2,7 @@
 
 namespace EC.Core;
 
-public partial class ECCapture
+public partial class ECCore
 {
     public static List<string> GetCaptureCamera() => UsbCamera.FindDevices().ToList();
 }

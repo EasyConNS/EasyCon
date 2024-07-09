@@ -46,26 +46,3 @@ public class VariableRef
 
     public LexemeValue VariableName { get; init; }
 }
-
-/*
-private VariableInfo ResolveVariable(LexemeValue identifier)
-{
-    //step1, check local parameter & variable definitions
-    if (m_currentMethodParameters.Contains(identifier.Content))
-    {
-        return m_currentMethodParameters[identifier.Content];
-    }
-    else if (m_currentMethodVariables.Contains(identifier.Content))
-    {
-        return m_currentMethodVariables[identifier.Content];
-    }
-    //step2, if not static method, check fields
-    if (!m_currentMethod.IsStatic)
-    {
-        return ResolveField(m_currentType, identifier);
-    }
-
-    AddError(c_SE_VariableDeclMissing, identifier.Span, identifier.Content);
-    return null;
-}
-*/
