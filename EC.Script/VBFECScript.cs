@@ -24,13 +24,14 @@ public class VBFECScript : ParserBase<Program>
     private Token K_FUNC;
     private Token K_RET;
     private Token K_ENDFUNC;
-    private Token K_CALL;
+    private Token K_IMPORT;
 
     private Token G_WAIT;
     private Token G_RESET;
     private Token G_DPAD;
     private Token G_STICK;
     private Token G_BTN;
+    private Token G_DIR;
 
     private Token LO_AND;
     private Token LO_OR;
@@ -113,6 +114,7 @@ public class VBFECScript : ParserBase<Program>
         };
         #region key words
         {
+            K_IMPORT = lexer.DefineToken(literalcase("import"), "IMPORT");
             // program key words
             K_IF = lexer.DefineToken(literalcase("if"), "IF");
             K_ELIF = lexer.DefineToken(literalcase("elif"),"ELIF");
@@ -122,7 +124,7 @@ public class VBFECScript : ParserBase<Program>
         {
             K_FOR = lexer.DefineToken(literalcase("for"));
             K_TO = lexer.DefineToken(literalcase("to"));
-            K_IN = lexer.DefineToken(literalcase("in"), "IN(R");
+            K_IN = lexer.DefineToken(literalcase("in"), "IN(R)");
             K_STEP = lexer.DefineToken(literalcase("step"));
             K_NEXT = lexer.DefineToken(literalcase("next"));
             K_BRK = lexer.DefineToken(literalcase("break"));
@@ -132,21 +134,21 @@ public class VBFECScript : ParserBase<Program>
             K_FUNC = lexer.DefineToken(literalcase("func"), "FUNCTION");
             K_RET = lexer.DefineToken(literalcase("return"));
             K_ENDFUNC = lexer.DefineToken(literalcase("endfunc"), "FUNCEND");
-            K_CALL = lexer.DefineToken(literalcase("call"), "call");
         }
         #endregion
         #region gamepad key
         {
-            G_WAIT = lexer.DefineToken(literalcase("wait"), "wait");
-            G_RESET = lexer.DefineToken(literalcase("reset"), "RESET(R)");
+            G_WAIT = lexer.DefineToken(literalcase("WAIT"), "wait");
+            G_RESET = lexer.DefineToken(literalcase("RESET"), "RESET(R)");
             
-            G_DPAD = lexer.DefineToken(literalcase("LEFT")|literalcase("RIGHT")|literalcase("UP")|literalcase("DOWN"), "KEY_DPAD");
+            G_DPAD = lexer.DefineToken(literalcase("DLEFT")|literalcase("DRIGHT") |literalcase("DUP") |literalcase("DDOWN"), "KEY_DPAD");
             G_STICK = lexer.DefineToken(literalcase("RS")|literalcase("LS")|literalcase("RSS")|literalcase("LSS"), "KEY_STICK");
-            G_BTN = lexer.DefineToken(literalcase("ZL")|literalcase("ZR")|
+            G_BTN = lexer.DefineToken(literalcase("A") | literalcase("B") | literalcase("X") | literalcase("Y") | literalcase("L") | literalcase("R") |
+            literalcase("ZL")|literalcase("ZR")|
             literalcase("LCLICK")|literalcase("RCLICK")|
-            literalcase("HOME")|literalcase("CAPTURE")|literalcase("PLUS")|literalcase("MINUS")|
-            literalcase("A")|literalcase("B")|literalcase("X")|literalcase("Y")|literalcase("L")|literalcase("R")
+            literalcase("HOME")|literalcase("CAPTURE")|literalcase("PLUS")|literalcase("MINUS")
             , "KEY_GAMEPAD");
+            G_DIR = lexer.DefineToken(literalcase("UP")| literalcase("DOWN"),"direction");
         }
         #endregion
         #region symbols
@@ -206,7 +208,6 @@ public class VBFECScript : ParserBase<Program>
 
         skippedTokens.Add(S_WHITESPACE);
         skippedTokens.Add(S_COMMENT);
-        skippedTokens.Add(T_NEWLINE);
     }
 
     private readonly Production<Program> PProgram = new();
@@ -425,8 +426,9 @@ public class VBFECScript : ParserBase<Program>
             select (Statement)new Function(funcname.Value, statements.ToArray());
 
         PCall.Rule =
-            from _k in K_CALL
             from funcname in T_IDENT
+            from _ in O_LPH
+            from __ in O_RPH
             select (Statement)new CallExpression(funcname.Value);
 
         PWait.Rule =
