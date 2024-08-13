@@ -7,7 +7,7 @@ public class SimpleExpression : RegExpression
     public SimpleExpression(string definition)
     {
         m_definition = definition;
-        m_regex = new("^" + m_definition);
+        m_regex = new(m_definition);
     }
     private Regex m_regex{ get; init; }
     private string m_definition{ get; init; }

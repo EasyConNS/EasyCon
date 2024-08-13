@@ -1,4 +1,4 @@
 if 1 + 1 > 2 || 3+3<4
 $a = $a+1
-print ok
+print "ok" & $a
 endif

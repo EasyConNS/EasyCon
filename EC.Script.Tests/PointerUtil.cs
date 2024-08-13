@@ -1,4 +1,4 @@
-namespace EC.Script;
+namespace EC.Script.Tests;
 
 static class PointerUtil
 {

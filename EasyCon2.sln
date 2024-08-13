@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EC.VPad", "EC.VPad\EC.VPad.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EC.Capture", "EC.Capture\EC.Capture.csproj", "{55D5C12B-C4BD-4306-A9E4-D297FDB1E1AB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EC.Script.Tests", "EC.Script.Tests\EC.Script.Tests.csproj", "{9D757FA7-0F16-4434-8D34-3756B3AC68D6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,6 +47,10 @@ Global
 		{55D5C12B-C4BD-4306-A9E4-D297FDB1E1AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{55D5C12B-C4BD-4306-A9E4-D297FDB1E1AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{55D5C12B-C4BD-4306-A9E4-D297FDB1E1AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

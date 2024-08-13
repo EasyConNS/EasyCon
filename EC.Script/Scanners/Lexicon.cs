@@ -1,23 +1,22 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Text.RegularExpressions;
 
 namespace Compiler.Scanners;
 
 public class Lexicon
 {
-    private static readonly ICollection<UnicodeCategory> lettersCategories = new HashSet<UnicodeCategory>()
-    {
+    private static readonly ICollection<UnicodeCategory> lettersCategories =
+    [
         UnicodeCategory.LetterNumber,
         UnicodeCategory.LowercaseLetter,
         UnicodeCategory.ModifierLetter,
         UnicodeCategory.OtherLetter,
         UnicodeCategory.TitlecaseLetter,
         UnicodeCategory.UppercaseLetter
-    };
+    ];
 
     private readonly Lexer m_defaultState;
-    private readonly List<TokenInfo> m_tokenList = new();
+    private readonly List<TokenInfo> m_tokenList = [];
 
     public Lexicon()
     {

@@ -4,9 +4,9 @@ public partial class NintendoSwitch
 {
     private IConnection clientCon { get; set; }
 
-    private ConnectResult _TryConnect(IConnection conn, bool sayhello)
+    private ConnectResult _TryConnect(string connStr, bool sayhello, int baudrate = 115200)
     {
-        if (conn is null)
+        if (connStr == "")
             return ConnectResult.InvalidArgument;
 
         var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
@@ -31,7 +31,7 @@ public partial class NintendoSwitch
         }
 
         Disconnect();
-        clientCon = conn;
+        clientCon = new TTLSerialClient(connStr, baudrate);
         clientCon.BytesSent += BytesSent;
         clientCon.BytesReceived += BytesReceived;
         clientCon.CPUOpt = need_cpu_opt;

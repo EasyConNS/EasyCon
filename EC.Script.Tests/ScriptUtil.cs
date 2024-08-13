@@ -1,28 +1,11 @@
 using System.Text.RegularExpressions;
-using VBF.Compilers;
+using EC.Script;
 using System.Text;
-namespace EC.Script;
+
+namespace EC.Script.Tests;
 
 static class ScriptUtil
 {
-    public static void Build(string text)
-    {
-        CompilationErrorManager errorManager = new CompilationErrorManager();
-        CompilationErrorList errorList = errorManager.CreateErrorList();
-        var scripter = new ECP.VBFECScript(errorManager);
-        scripter.Initialize();
-        var ast = scripter.Parse(compat(text), errorList);
-        if(errorList.Count != 0)
-                {
-                    foreach(var err in errorList)
-                    {
-                        Console.WriteLine(err);
-                    }
-                }
-        var visitor = new SimpleVisitor(errorManager);
-        visitor.Visit(ast);
-    }
-
     private static string compat(string text)
         {
             var builder = new StringBuilder();

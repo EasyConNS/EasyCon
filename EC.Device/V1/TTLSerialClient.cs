@@ -1,8 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO.Ports;
-using EC.Device;
 
-namespace EC.Core;
+namespace EC.Device;
 
 class TTLSerialClient : IConnection
 {

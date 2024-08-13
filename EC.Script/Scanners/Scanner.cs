@@ -7,7 +7,7 @@ public class Scanner
 {
     private Lexicon Lexicon { get;init; }
     private readonly ICollection<UnicodeCategory> m_lettersCategories;
-    private List<int> m_skipIndexes = new();
+    private readonly List<int> m_skipIndexes = [];
     
     private readonly StringBuilder output = new();
 

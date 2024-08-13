@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
@@ -24,6 +23,11 @@ public abstract class RegExpression
         return new AlternationExpression(left, right);
     }
 
+    public static RegExpression operator >>(RegExpression left, RegExpression right)
+    {
+        return new ConcatenationExpression(left, right);
+    }
+
     public RegExpression PackBy(string a)
     {
         return Simple(a + ToString() + a);
@@ -32,12 +36,6 @@ public abstract class RegExpression
     public RegExpression Concat(RegExpression follow)
     {
         return new ConcatenationExpression(this, follow);
-    }
-
-    [SpecialName]
-    public static RegExpression op_RightShift(RegExpression first, RegExpression follow)
-    {
-        return new ConcatenationExpression(first, follow);
     }
 
     [SpecialName]

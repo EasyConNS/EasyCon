@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\EC.Capture\EC.Capture.csproj" />
     <ProjectReference Include="..\EC.Device\EC.Device.csproj" />
     <ProjectReference Include="..\EC.Script\EC.Script.csproj" />
