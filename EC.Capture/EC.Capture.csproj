@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <PackageReference Include="OpenCvSharp4" />
-    <PackageReference Include="OpenCvSharp4.Extensions" />
     <PackageReference Include="OpenCvSharp4.runtime.win" />
     <PackageReference Include="Tesseract" />
   </ItemGroup>
