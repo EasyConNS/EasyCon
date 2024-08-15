@@ -1,4 +1,4 @@
-// Copyright 2012 Fan Shi
+﻿// Copyright 2012 Fan Shi
 // 
 // This file is part of the VBF project.
 // 

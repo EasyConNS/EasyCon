@@ -4,9 +4,9 @@ public abstract class Expression : Statement
 {
 }
 
-public class Empty : Statement
+public class SimpleExpr : Statement
 {
-    public Empty(string txt)
+    public SimpleExpr(string txt)
     {
         Content = txt;
     }

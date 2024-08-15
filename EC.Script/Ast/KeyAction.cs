@@ -17,7 +17,7 @@ public class ButtonAction : KeyAction
     public ButtonAction(LexemeValue name, Number duration)
     {
         Key = name.Content.ToUpper();
-        Duration = duration?.VariableRef.VariableName.Content ?? "-";
+        Duration = duration.VariableRef.VariableName.Content;
     }
 
     public ButtonAction(LexemeValue name, string destination)

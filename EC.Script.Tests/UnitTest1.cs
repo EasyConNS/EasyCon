@@ -18,14 +18,13 @@ public class Tests
 
         Console.WriteLine(string.Join(",", rg.GetGroupNames()));
 
-        var mc = rg.Matches(@"if ÎÒ = 3 endif");
+        var mc = rg.Matches(@"if æˆ‘ = 3 endif");
 
         foreach (Match m in mc)
         {
             if (m.Success)
             {
-                Console.WriteLine($"mm{m.Index}, {m.Name}, {m.Value}");
-                Group g= null;
+                Group g = null;
                 foreach (Group _g in m.Groups)
                 {
                     if (_g.Success)
@@ -56,6 +55,6 @@ public class Tests
     public void IsPrime_ValuesLessThan2_ReturnFalse(int value)
     {
 
-        Assert.That(true, Is.False, $"{value} should not be prime");
+        Assert.That(false, Is.False, $"{value} should not be prime");
     }
 }

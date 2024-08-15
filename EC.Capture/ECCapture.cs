@@ -1,12 +1,10 @@
-﻿using GitHub.secile.Video;
+﻿namespace EC.Capture;
 
-namespace EC.Capture;
-
-public class ECCapture
+public partial class ECCapture
 {
-    public static List<string> GetCaptureCamera() => FindDevices();
-    private static List<string>FindDevices()
-    {
-        return DirectShow.GetFiltes(DirectShow.DsGuid.CLSID_VideoInputDeviceCategory);
-    }
+    public static List<string> GetCaptureCamera() => getCamera();
+
+#if true
+    private static List<string> getCamera() => GitHub.secile.Video.DirectShow.GetFiltes(GitHub.secile.Video.DirectShow.DsGuid.CLSID_VideoInputDeviceCategory);
+#endif
 }

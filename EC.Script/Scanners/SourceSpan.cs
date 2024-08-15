@@ -1,4 +1,4 @@
-namespace Compiler;
+﻿namespace Compiler;
 
 public record SourceSpan : IEquatable<SourceSpan>
 {
