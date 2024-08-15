@@ -1,16 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <TargetFrameworks>$(TFMS)</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenCvSharp4" Version="4.10.0.20240616" />
-    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.10.0.20240616" />
-    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20240616" />
-    <PackageReference Include="Tesseract" Version="5.2.0" />
+    <PackageReference Include="OpenCvSharp4" />
+    <PackageReference Include="OpenCvSharp4.Extensions" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" />
+    <PackageReference Include="Tesseract" />
   </ItemGroup>
 
 </Project>
