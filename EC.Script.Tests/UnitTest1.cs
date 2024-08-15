@@ -25,14 +25,15 @@ public class Tests
             if (m.Success)
             {
                 Console.WriteLine($"mm{m.Index}, {m.Name}, {m.Value}");
-
-                foreach (Group g in m.Groups)
+                Group g= null;
+                foreach (Group _g in m.Groups)
                 {
-                    if (g.Success)
+                    if (_g.Success)
                     {
-                        Console.WriteLine($"gg{g.Index}, {g.Name}, {g.Value}");
+                        g = _g;
                     }
                 }
+                Console.WriteLine($"gg{g.Index}, {g.Name}, {g.Value}");
             }
             else
             {
