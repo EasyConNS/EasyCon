@@ -1,0 +1,29 @@
+<Project>
+  <PropertyGroup>
+    <!-- Enable central package management -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable> 
+    <TFMS>net6.0;net8.0</TFMS>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Avalonia" Version="11.1.0" />
+    <PackageVersion Include="Avalonia.Desktop" Version="11.1.0" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.1.0" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="11.1.0" />
+    <PackageVersion Include="Avalonia.Diagnostics" Version="11.1.0" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageVersion Include="NUnit" Version="3.14.0" />
+    <PackageVersion Include="NUnit.Analyzers" Version="3.9.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="4.5.0" />
+    <PackageVersion Include="OpenCvSharp4" Version="4.10.0.20240616" />
+    <PackageVersion Include="OpenCvSharp4.Extensions" Version="4.10.0.20240616" />
+    <PackageVersion Include="OpenCvSharp4.runtime.win" Version="4.10.0.20240616" />
+    <PackageVersion Include="System.IO.Ports" Version="8.0.0" />
+    <PackageVersion Include="Tesseract" Version="5.2.0" />
+  </ItemGroup>
+</Project>

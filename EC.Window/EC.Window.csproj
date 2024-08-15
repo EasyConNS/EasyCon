@@ -2,10 +2,8 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFrameworks>net6.0-windows;net8.0-windows</TargetFrameworks>
+    <UseWindowsForms>true</UseWindowsForms>    
   </PropertyGroup>
 
   <ItemGroup>

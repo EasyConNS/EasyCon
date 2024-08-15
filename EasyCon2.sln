@@ -3,19 +3,27 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.34928.147
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Window", "EC.Window\EC.Window.csproj", "{B36DB04A-4F46-4F76-A510-68D8C28BAA40}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Device", "EC.Device\EC.Device.csproj", "{422FBC0A-C323-4C0A-8011-B5A221127192}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Script", "EC.Script\EC.Script.csproj", "{27EE54A7-2CFB-4617-BF69-353EE8F85E53}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Core", "EC.Core\EC.Core.csproj", "{9D5BD7BC-DF8F-4209-9411-0F87DE310AF9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EC.VPad", "EC.VPad\EC.VPad.csproj", "{DF37FC09-3B53-40AA-8AB7-C7E7176390C8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.VPad", "EC.VPad\EC.VPad.csproj", "{DF37FC09-3B53-40AA-8AB7-C7E7176390C8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EC.Capture", "EC.Capture\EC.Capture.csproj", "{55D5C12B-C4BD-4306-A9E4-D297FDB1E1AB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Capture", "EC.Capture\EC.Capture.csproj", "{55D5C12B-C4BD-4306-A9E4-D297FDB1E1AB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EC.Script.Tests", "EC.Script.Tests\EC.Script.Tests.csproj", "{9D757FA7-0F16-4434-8D34-3756B3AC68D6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Script.Tests", "EC.Script.Tests\EC.Script.Tests.csproj", "{9D757FA7-0F16-4434-8D34-3756B3AC68D6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{083BEF92-5E14-4170-979C-E1C1E11E4781}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		Directory.packages.props = Directory.packages.props
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Avalonia", "EC.Avalonia\EC.Avalonia.csproj", "{9A8052C9-4D02-44AB-BE0C-150FB80FD7F6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Window", "EC.Window\EC.Window.csproj", "{469B8144-0013-4219-9B13-1465223B4727}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +31,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B36DB04A-4F46-4F76-A510-68D8C28BAA40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B36DB04A-4F46-4F76-A510-68D8C28BAA40}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B36DB04A-4F46-4F76-A510-68D8C28BAA40}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B36DB04A-4F46-4F76-A510-68D8C28BAA40}.Release|Any CPU.Build.0 = Release|Any CPU
 		{422FBC0A-C323-4C0A-8011-B5A221127192}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{422FBC0A-C323-4C0A-8011-B5A221127192}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{422FBC0A-C323-4C0A-8011-B5A221127192}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -51,6 +55,14 @@ Global
 		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A8052C9-4D02-44AB-BE0C-150FB80FD7F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A8052C9-4D02-44AB-BE0C-150FB80FD7F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A8052C9-4D02-44AB-BE0C-150FB80FD7F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A8052C9-4D02-44AB-BE0C-150FB80FD7F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{469B8144-0013-4219-9B13-1465223B4727}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{469B8144-0013-4219-9B13-1465223B4727}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{469B8144-0013-4219-9B13-1465223B4727}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{469B8144-0013-4219-9B13-1465223B4727}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
