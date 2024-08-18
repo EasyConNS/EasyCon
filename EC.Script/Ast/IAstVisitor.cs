@@ -8,7 +8,7 @@ public interface IAstVisitor<T>
     T VisitBooleanLiteral(BooleanLiteral ast);
     T VisitVariable(Variable ast);
     T VisitConstDefine(ConstDefine ast);
-    T VisitNot(Not ast);
+    T VisitUnary(Unary ast);
     T VisitBinary(Binary ast);
     T VisitAssign(Assign ast);
     T VisitOpAssign(OpAssign ast);

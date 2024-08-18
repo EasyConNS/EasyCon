@@ -2,15 +2,15 @@ using VBF.Compilers.Scanners;
 
 namespace ECP.Ast;
 
-public class Assign : Expression
+public class Assign : Statement
 {
-    public Assign(LexemeValue var, Expression expr)
+    public Assign(Expression sufexpr, Expression resexpr)
     {
-        Variable = new VariableRef(var);
-        AssignExpr = expr;
+        SufExpr = sufexpr;
+        AssignExpr = resexpr;
     }
 
-    public VariableRef Variable { get; init; }
+    public Expression SufExpr { get; init; }
     public Expression AssignExpr { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)

@@ -10,5 +10,5 @@ public class MethodRef
     }
 
     public LexemeValue MethodName { get; set; }
-    public Method MethodInfo { get; set; }
+    // public Method MethodInfo { get; set; }
 }

@@ -51,7 +51,7 @@ public class SimpleVisitor : AstVisitor
 
     public override AstNode VisitAssign(Assign ast)
     {
-        System.Diagnostics.Debug.WriteLine($"{ast.Variable} = {ast.AssignExpr}");
+        System.Diagnostics.Debug.WriteLine($"{ast.SufExpr} = {ast.AssignExpr}");
         return ast;
     }
 
@@ -67,17 +67,11 @@ public class SimpleVisitor : AstVisitor
         return ast;
     }
 
-    public override AstNode VisitWait(Call ast)
-    {
-        System.Diagnostics.Debug.WriteLine($"WAIT({ast.Duration})");
-        return ast;
-    }
-
     public override AstNode VisitIfElse(IfElse ast)
     {
         System.Diagnostics.Debug.WriteLine("if:");
         Visit(ast.Condition);
-        Visit(ast.BlockStmt);
+        Visit(ast.TrueBlock);
         if(ast.ElifStmt != null)
         {
             foreach(var el in ast.ElifStmt)
@@ -149,17 +143,6 @@ public class SimpleVisitor : AstVisitor
     public override AstNode VisitFunction(Function ast)
     {
         System.Diagnostics.Debug.WriteLine(ast);
-        return ast;
-    }
-    public override AstNode VisitCallExpression(CallExpression ast)
-    {
-        System.Diagnostics.Debug.WriteLine($"call:{ast.Name}");
-        return ast;
-    }
-
-    public override AstNode VisitBuildinState(BuildinState ast)
-    {
-        System.Diagnostics.Debug.WriteLine($"{ast.BuildinFunc}({ast.Args})");
         return ast;
     }
 }

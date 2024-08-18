@@ -206,40 +206,49 @@ public class VBFECScript : ParserBase<Program>
     private readonly Production<Program> PProgram = new();
     private readonly Production<Statement> PStatement = new();
     private readonly Production<Expression> PExpression = new();
-
+    private readonly Production<Statement> PConstDefine = new();
+    private readonly Production<Statement> PAssignment = new();
+    private readonly Production<Expression> PSuffExp = new();
+    private readonly Production<Expression> PRestAssign = new();
+    
     protected override ProductionBase<Program> OnDefineGrammar()
     {
         PProgram.Rule =
             from statements in PStatement.Many()
             select new Program(statements.ToArray());
+
+        PStatement.Rule =
+            from stmt in (PConstDefine | PAssignment)
+            from nl in T_NEWLINE
+            select stmt;
         /*
+         * stmt ::= [ assignment | funccall | keyaction | stickaction | ifstmt | forstmt | funcstmt ] T_NEWLINE
+         * 
          * prestmt ::= importstmt | constdefine
          * 
          * importstmt ::= K_IMPORT T_STR [ K_AS T_IDENT ]
          * 
          * constdefine ::= V_CONST O_ASSIGN expr
          */
-        Production<ConstDefine> PConstDefine = new()
-        {
-            Rule =
+        PConstDefine.Rule =
             from cn in V_CONST
             from _ in O_ASSIGN
             from num in V_NUM
             from __ in T_NEWLINE
-            select new ConstDefine(cn.Value, num.Value)
-        };
-
-        // exprlist ::= expr { O_COMA expr }
-        Production<Expression> PExpList = new();
-        PExpList.Rule = // number
-            from eps in PExpression.Many(O_COMA)
-            select new ExpressionList(eps);
+            select (Statement)new ConstDefine(cn.Value, num.Value);
 
         //basic
         Production<Expression> PNumberLiteral = new();
         PNumberLiteral.Rule = // number
             from intvalue in V_NUM
             select (Expression)new Number(intvalue.Value);
+
+        Production<Expression> PIntArrayType = new();
+        PIntArrayType.Rule = // [num{,num}]
+            from _ in O_LBK
+            from num in V_NUM.Many(O_COMA)
+            from __ in O_RBK
+            select (Expression)new IntArrayType(num.ToList());
 
         Production<Expression> PBoolLiteral = new();
         PBoolLiteral.Rule = // true | false
@@ -251,31 +260,44 @@ public class VBFECScript : ParserBase<Program>
             from varName in V_VAR
             select (Expression)new Variable(varName.Value);
 
-        // simpleexp ::= V_NUM | V_CONST | V_EXVAR | T_STR | K_TRUE | K_FALSE | suffexp | O_LPH expr O_RPH
-        var simpleExp =
-                PNumberLiteral |
-                PBoolLiteral |
-                PVariable |
-                PExpression.PackedBy(O_LPH, O_RPH);
-
-        // suffexp ::= V_VAR [ O_LBK expr O_RBK ]
-        Production<Expression> PSuffExp = new();
-        PSuffExp.Rule =
-            from varName in V_VAR
-            from idx in (O_LBK.AsTerminal() | O_RBK.AsTerminal())
-            select (Expression)new Variable(varName.Value);
-
         /*
-         * stmt ::= [ assignment | funccall | keyaction | stickaction | ifstmt | forstmt | funcstmt ] T_NEWLINE
+         * exprlist ::= expr { O_COMA expr }
          * 
          * assignment ::= suffexp restassign
          * 
          * restassign ::= O_COMA suffexp restassign | O_ASSIGN exprlist
-         * 
-         * funccall ::= [ T_IDENT O_DOT ] T_IDENT funcargs
+         */
+        PAssignment.Rule =
+            from p in PSuffExp.Concat(PRestAssign)
+            select (Statement)new Assign(p.Item1, p.Item2);
 
-         * expr ::= ( simpleexp | unop expr ) { binop expr } 
+        PRestAssign.Rule =
+            from eps in PExpression.Many(O_COMA).SuffixedBy(O_ASSIGN)
+            select (Expression)new Assign(eps.First(), eps.Last());
+
+        // 
+        /*
+         * expr ::= ( simpleexp | unop expr ) { binop expr }
          * 
+         * simpleexp ::= V_NUM | V_CONST | V_EXVAR | T_STR | (O_LBK O_RBK) | K_TRUE | K_FALSE | suffexp | O_LPH expr O_RPH
+         * 
+         * numexp ::= V_NUM | V_CONST | V_VAR | V_EXVAR
+         * 
+         * suffexp ::= V_VAR [ O_LBK numexp O_RBK ]
+         */
+        var simpleExp =
+                PNumberLiteral |
+                PIntArrayType |
+                PBoolLiteral |
+                PVariable |
+                PSuffExp |
+                PExpression.PackedBy(O_LPH, O_RPH);
+
+        PSuffExp.Rule =
+            from varName in V_VAR
+            from idx in PExpression.PackedBy(O_LBK, O_RBK).Optional()
+            select (Expression)new Variable(varName.Value, idx);
+        /*
          * unop ::= O_MINUS | O_NEGI | LO_NOT // '-' , '~' , 'not'
          * 
          * binop ::= O_PLUS | O_MINUS | O_MULT | O_SLASH | '%' | '^' | '&' | '|' | '<<' | '>>' |
@@ -288,6 +310,8 @@ public class VBFECScript : ParserBase<Program>
          * funcargs ::= O_LPH [ V_VAR { O_COMA V_VAR } ] O_RPH
          * 
          * funcstmt ::= K_FUNC T_IDENT funcargs T_NEWLINE { stmt } K_ENDFUNC
+         * 
+         * funccall ::= [ T_IDENT O_DOT ] T_IDENT funcargs
          * 
          * strargs ::= ( T_STR | expr ) { O_AND strargs }
          */

@@ -9,7 +9,15 @@ public class Variable : Expression
         VariableRef = new VariableRef(name);
     }
 
+    public Variable(LexemeValue name, Expression index)
+    {
+        VariableRef = new VariableRef(name);
+        ArrIndex = index;
+    }
+
     public VariableRef VariableRef { get; init; }
+
+    public LexemeValue ArrIndex { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -25,5 +33,5 @@ public class VariableRef
     }
 
     public LexemeValue VariableName { get; init; }
-    public VariableInfo VariableInfo { get; set; }
+    // public VariableInfo VariableInfo { get; set; }
 }

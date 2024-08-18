@@ -29,7 +29,7 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
-    public virtual AstNode VisitNot(Not ast)
+    public virtual AstNode VisitNot(Unary ast)
     {
         return ast;
     }
