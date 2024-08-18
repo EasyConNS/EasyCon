@@ -1,15 +1,17 @@
-using VBF.Compilers.Scanners;
+using VBF.Compilers;
 
 namespace ECP.Ast;
 
 public class Not : Expression
 {
-    public Not(Expression exp)
+    public Not(Expression exp, SourceSpan opSpan)
     {
         Operand = exp;
+        OpSpan = opSpan;
     }
 
-    public Expression Operand { get; init; }
+    public Expression Operand { get; private set; }
+    public SourceSpan OpSpan { get; private set; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {

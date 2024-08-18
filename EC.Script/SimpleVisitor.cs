@@ -51,13 +51,13 @@ public class SimpleVisitor : AstVisitor
 
     public override AstNode VisitAssign(Assign ast)
     {
-        System.Diagnostics.Debug.WriteLine($"{ast.DestVar} = {ast.AssignExpr}");
+        System.Diagnostics.Debug.WriteLine($"{ast.Variable} = {ast.AssignExpr}");
         return ast;
     }
 
     public override AstNode VisitOpAssign(OpAssign ast)
     {
-        System.Diagnostics.Debug.WriteLine($"{ast.DestVar} {ast.Operator}= {ast.AssignExpr}");
+        System.Diagnostics.Debug.WriteLine($"{ast.Variable} {ast.Operator}= {ast.AssignExpr}");
         return ast;
     }
 
@@ -67,7 +67,7 @@ public class SimpleVisitor : AstVisitor
         return ast;
     }
 
-    public override AstNode VisitWait(Wait ast)
+    public override AstNode VisitWait(Call ast)
     {
         System.Diagnostics.Debug.WriteLine($"WAIT({ast.Duration})");
         return ast;

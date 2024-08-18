@@ -24,18 +24,3 @@ public class Function : Statement
         return visitor.VisitFunction(this);
     }
 }
-
-public class CallExpression : Expression
-{
-    public CallExpression(LexemeValue func)
-    {
-        Name = func.Content;
-    }
-
-    public string Name { get; init; }
-
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitCallExpression(this);
-    }
-}

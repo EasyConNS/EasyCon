@@ -54,12 +54,9 @@ public class Binary : Expression
             ["<="] = BinaryOperator.LessEq,
             [">"] = BinaryOperator.Greater,
             [">="] = BinaryOperator.GreaterEq,
-            ["="] = BinaryOperator.Equal,
             ["=="] = BinaryOperator.Equal,
             ["!="] = BinaryOperator.NotEqual,
-            ["&&"] = BinaryOperator.LogicalAnd,
             ["and"] = BinaryOperator.LogicalAnd,
-            ["||"] = BinaryOperator.LogicalOr,
             ["or"] = BinaryOperator.LogicalOr
         };
     }

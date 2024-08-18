@@ -26,13 +26,14 @@ public class VBFECScript : ParserBase<Program>
     private Token K_ENDFUNC;
     private Token K_IMPORT;
     private Token K_AS;
+    private Token K_TRUE;
+    private Token K_FALSE;
 
-    private Token G_WAIT;
-    private Token G_RESET;
     private Token G_DPAD;
     private Token G_STICK;
     private Token G_BTN;
     private Token G_DIR;
+    private Token G_RESET;
 
     private Token LO_AND;
     private Token LO_OR;
@@ -127,13 +128,13 @@ public class VBFECScript : ParserBase<Program>
             K_FUNC = lexer.DefineToken(literalcase("func"), "FUNCTION");
             K_RET = lexer.DefineToken(literalcase("return"),"RETURN");
             K_ENDFUNC = lexer.DefineToken(literalcase("endfunc"), "ENDFUNC");
+            K_TRUE = lexer.DefineToken(literalcase("true"), "true");
+            K_FALSE = lexer.DefineToken(literalcase("false"), "false");
         }
         #endregion
         #region gamepad key
         {
-            G_WAIT = lexer.DefineToken(literalcase("wait"), "WAIT");
             G_RESET = lexer.DefineToken(literalcase("reset"), "RESET(R)");
-            
             G_DPAD = lexer.DefineToken(literalcase("DLEFT")|literalcase("DRIGHT") |literalcase("DUP") |literalcase("DDOWN"), "KEY_DPAD");
             G_STICK = lexer.DefineToken(literalcase("RS")|literalcase("LS"), "KEY_STICK");
             G_BTN = lexer.DefineToken(literalcase("A") | literalcase("B") | literalcase("X") | literalcase("Y") | literalcase("L") | literalcase("R") |
@@ -188,7 +189,7 @@ public class VBFECScript : ParserBase<Program>
             V_CONST = lexer.DefineToken(RE.Symbol('_') >> (RE_IdChar | RE.Range('0', '9')).Many(), "CONST");
             V_VAR = lexer.DefineToken((RE.Symbol('$') | RE.Literal("$$")) >> (RE_IdChar | RE.Range('0', '9')).Many(), "VAR");
             V_EXVAR = lexer.DefineToken(RE.Symbol('@') >> (RE_IdChar | RE.Range('0', '9')).Many(), "EXVAR");
-            V_NUM = lexer.DefineToken(RE.Range('0', '9').Many1(), "NUM");
+            V_NUM = lexer.DefineToken(RE.Range('0', '9').Many1() >> (RE.Symbol('.') >> RE.Range('0', '9').Many1()).Optional(), "NUM");
 
             T_NEWLINE = lexer.DefineToken(RE.CharSet("\u000D\u000A\u0085\u2028\u2029\r\n"), "NEWLINE");
             T_IDENT = lexer.DefineToken(RE_IdChar >>(RE_IdChar | RE.Range('0', '9')).Many(), "IDENT");
@@ -204,56 +205,97 @@ public class VBFECScript : ParserBase<Program>
 
     private readonly Production<Program> PProgram = new();
     private readonly Production<Statement> PStatement = new();
+    private readonly Production<Expression> PExpression = new();
 
     protected override ProductionBase<Program> OnDefineGrammar()
     {
         PProgram.Rule =
             from statements in PStatement.Many()
             select new Program(statements.ToArray());
-
         /*
-         * prestmt ::= importstmt | constassignment
-         * 
-         * stmt ::= assignment | funccall | keyaction | stickaction
+         * prestmt ::= importstmt | constdefine
          * 
          * importstmt ::= K_IMPORT T_STR [ K_AS T_IDENT ]
          * 
-         * constassignment ::= V_CONST O_ASSIGN expr
+         * constdefine ::= V_CONST O_ASSIGN expr
+         */
+        Production<ConstDefine> PConstDefine = new()
+        {
+            Rule =
+            from cn in V_CONST
+            from _ in O_ASSIGN
+            from num in V_NUM
+            from __ in T_NEWLINE
+            select new ConstDefine(cn.Value, num.Value)
+        };
+
+        // exprlist ::= expr { O_COMA expr }
+        Production<Expression> PExpList = new();
+        PExpList.Rule = // number
+            from eps in PExpression.Many(O_COMA)
+            select new ExpressionList(eps);
+
+        //basic
+        Production<Expression> PNumberLiteral = new();
+        PNumberLiteral.Rule = // number
+            from intvalue in V_NUM
+            select (Expression)new Number(intvalue.Value);
+
+        Production<Expression> PBoolLiteral = new();
+        PBoolLiteral.Rule = // true | false
+            from b in K_TRUE.AsTerminal() | K_FALSE.AsTerminal()
+            select (Expression)new BooleanLiteral(b.Value);
+
+        Production<Expression> PVariable = new();
+        PVariable.Rule =
+            from varName in V_VAR
+            select (Expression)new Variable(varName.Value);
+
+        // simpleexp ::= V_NUM | V_CONST | V_EXVAR | T_STR | K_TRUE | K_FALSE | suffexp | O_LPH expr O_RPH
+        var simpleExp =
+                PNumberLiteral |
+                PBoolLiteral |
+                PVariable |
+                PExpression.PackedBy(O_LPH, O_RPH);
+
+        // suffexp ::= V_VAR [ O_LBK expr O_RBK ]
+        Production<Expression> PSuffExp = new();
+        PSuffExp.Rule =
+            from varName in V_VAR
+            from idx in (O_LBK.AsTerminal() | O_RBK.AsTerminal())
+            select (Expression)new Variable(varName.Value);
+
+        /*
+         * stmt ::= [ assignment | funccall | keyaction | stickaction | ifstmt | forstmt | funcstmt ] T_NEWLINE
          * 
          * assignment ::= suffexp restassign
          * 
          * restassign ::= O_COMA suffexp restassign | O_ASSIGN exprlist
          * 
-         * funccall ::= T_IDENT [ O_DOT T_IDENT ] funcargs
+         * funccall ::= [ T_IDENT O_DOT ] T_IDENT funcargs
+
+         * expr ::= ( simpleexp | unop expr ) { binop expr } 
          * 
-         * exprlist ::= expr { O_COMA expr }
-         * 
-         * expr ::= ( simpleexp | unop expr ) { binop expr }
-         * 
-         * simpleexp ::= V_NUM | V_CONST | V_EXVAR | T_STR | suffexp
-         * 
-         * primexp ::= V_VAR | O_LPH expr O_RPH
-         * 
-         * suffexp ::= primexp [ O_LBK expr O_RBK ]
-         * 
-         * unop ::= O_MINUS | O_NEGI | LO_NOT // '-', '~', 'not'
+         * unop ::= O_MINUS | O_NEGI | LO_NOT // '-' , '~' , 'not'
          * 
          * binop ::= O_PLUS | O_MINUS | O_MULT | O_SLASH | '%' | '^' | '&' | '|' | '<<' | '>>' |
-         * '>' | '<' | '>=' | '<=' | '==' | '!=' | LO_AND | LO_OR
+         * '>' | '<' | '>=' | '<=' | '==' | '!=' | LO_AND | LO_OR // 'and' , 'or'
          * 
-         * ifstmt ::= K_IF condition { K_ELIF } [ K_ELSE ] K_ENDIF
+         * ifstmt ::= K_IF expr { K_ELIF } [ K_ELSE ] K_ENDIF
          * 
          * forstmt ::= K_FOR K_NEXT
          * 
          * funcargs ::= O_LPH [ V_VAR { O_COMA V_VAR } ] O_RPH
          * 
          * funcstmt ::= K_FUNC T_IDENT funcargs T_NEWLINE { stmt } K_ENDFUNC
+         * 
+         * strargs ::= ( T_STR | expr ) { O_AND strargs }
          */
 
         /*
-         * keyaction ::=
+         * keyaction ::= ( G_BTN | G_DPAD ) { O_PLUS keyaction } [ V_NUM | V_CONST | V_VAR ]
          * 
-         * stickaction ::=
+         * stickaction ::= G_STICK G_DIR [ V_NUM | V_CONST | V_VAR ]
          */
 
         return PProgram;

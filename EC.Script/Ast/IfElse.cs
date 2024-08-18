@@ -1,26 +1,25 @@
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
 namespace ECP.Ast;
 
 public class IfElse : Statement
 {
-    public IfElse(Expression condition, Block statements, IList<ElseIf> elifStmt, Block elsestmt)
+    public IfElse(Expression condition, Block trueBlock, IList<ElseIf> elifStmt, Block? elseBlock)
     {
         Condition = condition;
-        if(elifStmt != null)
+        TrueBlock = trueBlock;
+        if (elifStmt != null)
         {
             ElifStmt = new ReadOnlyCollection<ElseIf>(elifStmt);
         }
-        if(elsestmt != null)
+        if(elseBlock != null)
         {
-            ElseStmt = elsestmt;
+            ElseStmt = elseBlock;
         }
-        BlockStmt = statements;
     }
 
     public Expression Condition { get; init; }
-    public Block BlockStmt { get; init; }
+    public Block TrueBlock { get; init; }
     public ReadOnlyCollection<ElseIf> ElifStmt { get; init; }
     public Block ElseStmt { get; init; }
 

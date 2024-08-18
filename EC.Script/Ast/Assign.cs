@@ -4,13 +4,13 @@ namespace ECP.Ast;
 
 public class Assign : Expression
 {
-    public Assign(LexemeValue dest, Expression expr)
+    public Assign(LexemeValue var, Expression expr)
     {
-        DestVar = new Variable(dest);
+        Variable = new VariableRef(var);
         AssignExpr = expr;
     }
 
-    public Variable DestVar { get; init; }
+    public VariableRef Variable { get; init; }
     public Expression AssignExpr { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
