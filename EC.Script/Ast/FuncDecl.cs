@@ -3,9 +3,9 @@ using System.Collections.ObjectModel;
 
 namespace ECP.Ast;
 
-public class Function : Statement
+public class FuncDecl : Statement
 {
-    public Function(LexemeValue func, IList<Statement> statements)
+    public FuncDecl(LexemeValue func, IList<Statement> statements)
     {
         Name = func.Content;
         if (statements == null)

@@ -7,7 +7,7 @@ public interface IAstVisitor<T>
     T VisitNumber(Number ast);
     T VisitBooleanLiteral(BooleanLiteral ast);
     T VisitVariable(Variable ast);
-    T VisitConstDefine(ConstDefine ast);
+    T VisitConstDefine(ConstDecl ast);
     T VisitUnary(Unary ast);
     T VisitBinary(Binary ast);
     T VisitAssign(Assign ast);
@@ -20,5 +20,5 @@ public interface IAstVisitor<T>
     T VisitLoopControl(LoopControl ast);
     T VisitButtonAction(ButtonAction ast);
     T VisitStickAction(StickAction ast);
-    T VisitFunction(Function ast);
+    T VisitFunction(FuncDecl ast);
 }

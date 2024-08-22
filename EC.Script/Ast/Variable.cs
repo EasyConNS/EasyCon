@@ -17,7 +17,7 @@ public class Variable : Expression
 
     public VariableRef VariableRef { get; init; }
 
-    public LexemeValue ArrIndex { get; init; }
+    public Expression ArrIndex { get; init; }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {

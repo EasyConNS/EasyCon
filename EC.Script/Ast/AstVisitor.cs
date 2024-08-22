@@ -24,7 +24,7 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
 
-    public virtual AstNode VisitConstDefine(ConstDefine ast)
+    public virtual AstNode VisitConstDefine(ConstDecl ast)
     {
         return ast;
     }
@@ -35,6 +35,11 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
     }
 
     public virtual AstNode VisitBinary(Binary ast)
+    {
+        return ast;
+    }
+
+    public virtual AstNode VisitUnary(Unary ast)
     {
         return ast;
     }
@@ -89,7 +94,7 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast;
     }
     
-    public virtual AstNode VisitFunction(Function ast)
+    public virtual AstNode VisitFunction(FuncDecl ast)
     {
         return ast;
     }

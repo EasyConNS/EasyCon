@@ -5,14 +5,14 @@ namespace ECP.Ast;
 
 public class Call : Expression
 {
-    public Call(Expression target, LexemeValue methodName, IList<Expression> argList)
+    public Call(LexemeValue package, LexemeValue methodName, IList<Expression> argList)
     {
-        Target = target;
+        Package = package;
         Method = new MethodRef(methodName);
         Arguments = new ReadOnlyCollection<Expression>(argList);
     }
 
-    public Expression Target { get; private set; }
+    public LexemeValue Package { get; private set; }
     public MethodRef Method { get; private set; }
     public ReadOnlyCollection<Expression> Arguments { get; private set; }
 

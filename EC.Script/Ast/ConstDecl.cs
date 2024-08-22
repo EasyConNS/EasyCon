@@ -2,9 +2,9 @@ using VBF.Compilers.Scanners;
 
 namespace ECP.Ast;
 
-public class ConstDefine : Statement
+public class ConstDecl : Statement
 {
-    public ConstDefine(LexemeValue name, LexemeValue value)
+    public ConstDecl(LexemeValue name, LexemeValue value)
     {
         ConstName = name.Content;
         ConstValue = new Number(value);

@@ -205,11 +205,11 @@ public class VBFECScript : ParserBase<Program>
 
     private readonly Production<Program> PProgram = new();
     private readonly Production<Statement> PStatement = new();
+    private readonly Production<Statement> PAssignment = new();
     private readonly Production<Expression> PExpression = new();
     private readonly Production<Statement> PConstDefine = new();
-    private readonly Production<Statement> PAssignment = new();
-    private readonly Production<Expression> PSuffExp = new();
-    private readonly Production<Expression> PRestAssign = new();
+    private readonly Production<Statement> PFunctionDefine = new();
+    private readonly Production<Statement> PFunctionCall = new();
     
     protected override ProductionBase<Program> OnDefineGrammar()
     {
@@ -218,9 +218,25 @@ public class VBFECScript : ParserBase<Program>
             select new Program(statements.ToArray());
 
         PStatement.Rule =
-            from stmt in (PConstDefine | PAssignment)
+            from stmt in (PConstDefine | PAssignment | PFunctionCall)
             from nl in T_NEWLINE
             select stmt;
+
+        Production<Statement> PLoopCtrl = new()
+        {
+            Rule =
+            from _lc in (K_BRK.AsTerminal() | K_CONTU.AsTerminal())
+            from lvl in (V_NUM.AsTerminal() | V_CONST.AsTerminal()).Optional()
+            from _nl2 in O_SEMI
+            select (Statement)new LoopControl(_lc.Value, lvl?.Value)
+        };
+
+        Production<Block> PBlock = new()
+        {
+            Rule =
+            from statements in (PStatement | PLoopCtrl).Many()
+            select new Block(statements.ToArray())
+        };
         /*
          * stmt ::= [ assignment | funccall | keyaction | stickaction | ifstmt | forstmt | funcstmt ] T_NEWLINE
          * 
@@ -235,7 +251,7 @@ public class VBFECScript : ParserBase<Program>
             from _ in O_ASSIGN
             from num in V_NUM
             from __ in T_NEWLINE
-            select (Statement)new ConstDefine(cn.Value, num.Value);
+            select (Statement)new ConstDecl(cn.Value, num.Value);
 
         //basic
         Production<Expression> PNumberLiteral = new();
@@ -248,7 +264,7 @@ public class VBFECScript : ParserBase<Program>
             from _ in O_LBK
             from num in V_NUM.Many(O_COMA)
             from __ in O_RBK
-            select (Expression)new IntArrayType(num.ToList());
+            select (Expression)new IntArrayType(num.ToArray());
 
         Production<Expression> PBoolLiteral = new();
         PBoolLiteral.Rule = // true | false
@@ -260,6 +276,11 @@ public class VBFECScript : ParserBase<Program>
             from varName in V_VAR
             select (Expression)new Variable(varName.Value);
 
+        Production<Expression> PExVar = new();
+        PVariable.Rule =
+            from varName in V_EXVAR
+            select (Expression)new Variable(varName.Value);
+
         /*
          * exprlist ::= expr { O_COMA expr }
          * 
@@ -267,15 +288,14 @@ public class VBFECScript : ParserBase<Program>
          * 
          * restassign ::= O_COMA suffexp restassign | O_ASSIGN exprlist
          */
+        Production<Expression> PSuffExp = new();
         PAssignment.Rule =
-            from p in PSuffExp.Concat(PRestAssign)
-            select (Statement)new Assign(p.Item1, p.Item2);
+            from pre in PSuffExp.Many(O_COMA)
+            from _ in O_ASSIGN
+            from res in PExpression.Many(O_COMA)
+            select (Statement)new Assign(pre.First(), res.First());
+        // TODO
 
-        PRestAssign.Rule =
-            from eps in PExpression.Many(O_COMA).SuffixedBy(O_ASSIGN)
-            select (Expression)new Assign(eps.First(), eps.Last());
-
-        // 
         /*
          * expr ::= ( simpleexp | unop expr ) { binop expr }
          * 
@@ -297,25 +317,46 @@ public class VBFECScript : ParserBase<Program>
             from varName in V_VAR
             from idx in PExpression.PackedBy(O_LBK, O_RBK).Optional()
             select (Expression)new Variable(varName.Value, idx);
+
+        Production<Expression> PUnary = new();
+        Production<Expression> PBinary = new();
         /*
          * unop ::= O_MINUS | O_NEGI | LO_NOT // '-' , '~' , 'not'
          * 
          * binop ::= O_PLUS | O_MINUS | O_MULT | O_SLASH | '%' | '^' | '&' | '|' | '<<' | '>>' |
          * '>' | '<' | '>=' | '<=' | '==' | '!=' | LO_AND | LO_OR // 'and' , 'or'
-         * 
+         */
+        PUnary.Rule =
+            from op in (O_MINUS.AsTerminal() | O_NEGI.AsTerminal() | LO_NOT.AsTerminal())
+            select (Expression)new Unary(op.Value);
+        PBinary.Rule =
+            from op in (O_PLUS.AsTerminal() | O_MINUS.AsTerminal() | O_MULT.AsTerminal() | O_SLASH.AsTerminal())
+            select (Expression)new Binary(op.Value);
+        /*
          * ifstmt ::= K_IF expr { K_ELIF } [ K_ELSE ] K_ENDIF
          * 
          * forstmt ::= K_FOR K_NEXT
-         * 
+         */
+        /*
          * funcargs ::= O_LPH [ V_VAR { O_COMA V_VAR } ] O_RPH
          * 
          * funcstmt ::= K_FUNC T_IDENT funcargs T_NEWLINE { stmt } K_ENDFUNC
          * 
          * funccall ::= [ T_IDENT O_DOT ] T_IDENT funcargs
          * 
-         * strargs ::= ( T_STR | expr ) { O_AND strargs }
+         * strargs ::= ( T_STR | numexp ) { O_AND strargs }
          */
-
+        Production<Expression> PFuncargs = new()
+        {
+            Rule =
+            from args in V_VAR.AsTerminal().Many(O_COMA).PackedBy(O_LPH, O_RPH)
+            select (Expression)new Variable(args.First().Value) // TODO
+        };
+        PFunctionDefine.Rule =
+            from name in T_IDENT
+            from args in PFuncargs
+            from block in PBlock
+            select (Statement)new FuncDecl(name.Value, block.Statements);
         /*
          * keyaction ::= ( G_BTN | G_DPAD ) { O_PLUS keyaction } [ V_NUM | V_CONST | V_VAR ]
          * 

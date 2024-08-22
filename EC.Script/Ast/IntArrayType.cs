@@ -8,7 +8,7 @@ public class IntArrayType : Expression
     {
         if (items == null)
         {
-            Items = new ReadOnlyCollection<Number>(new List<Number>());
+            Items = new ReadOnlyCollection<Number>([]);
             return;
         }
         Items = new ReadOnlyCollection<Number>(items.Select(i=>new Number(i.Value)).ToList());

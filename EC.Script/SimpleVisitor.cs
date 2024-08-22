@@ -43,7 +43,7 @@ public class SimpleVisitor : AstVisitor
         return ast;
     }
 
-    public override AstNode VisitConstDefine(ConstDefine ast)
+    public override AstNode VisitConstDefine(ConstDecl ast)
     {
         System.Diagnostics.Debug.WriteLine($"{ast.ConstName}={ast.ConstValue}");
         return ast;
@@ -140,7 +140,7 @@ public class SimpleVisitor : AstVisitor
         return ast;
     }
 
-    public override AstNode VisitFunction(Function ast)
+    public override AstNode VisitFunction(FuncDecl ast)
     {
         System.Diagnostics.Debug.WriteLine(ast);
         return ast;

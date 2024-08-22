@@ -21,7 +21,7 @@ public class ForWhile : Statement
 
 public class LoopControl : Statement
 {
-    public LoopControl(LexemeValue type, LexemeValue level)
+    public LoopControl(LexemeValue type, LexemeValue? level)
     {
         LoopType = type;
         Level = 1;

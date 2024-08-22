@@ -26,6 +26,8 @@ public enum BinaryOperator
     Divide,
     RangeDivide,
     Mod,
+    LShift,
+    RShift,
     Less,
     LessEq,
     Greater,
@@ -50,6 +52,8 @@ public class Binary : Expression
             ["/"] = BinaryOperator.Divide,
             ["\\"] = BinaryOperator.RangeDivide,
             ["%"] = BinaryOperator.Mod,
+            ["<<"] = BinaryOperator.LShift,
+            [">>"] = BinaryOperator.RShift,
             ["<"] = BinaryOperator.Less,
             ["<="] = BinaryOperator.LessEq,
             [">"] = BinaryOperator.Greater,
@@ -77,10 +81,5 @@ public class Binary : Expression
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitBinary(this);
-    }
-
-    public override string ToString()
-    {
-        return $"{Left}{OpLexeme}{Right}";
     }
 }
