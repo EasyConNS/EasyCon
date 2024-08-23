@@ -1,4 +1,3 @@
-using Compiler.Scanners;
 using System.Text.RegularExpressions;
 
 namespace EC.Script.Tests;
@@ -6,19 +5,17 @@ namespace EC.Script.Tests;
 [TestFixture]
 public class Tests
 {
-    private Scanner _scanner;
-
     [SetUp]
     public void Setup()
     {
-        string[] pats = { @"[\\d\\p{L}_]+", @"\d+(\.\d*)?","=", "if", "endif" };
+        string[] pats = { @"[\d\p{L}_]+", @"\s*", @"\d+(\.\d*)?","==", "if", "endif" };
         var p = pats.Select((r,i)=> $"(?<PATTERN{i}>{r})" );
         var pattn = string.Join("|",p);
         var rg= new Regex(pattn);
 
         Console.WriteLine(string.Join(",", rg.GetGroupNames()));
 
-        var mc = rg.Matches(@"if 我 = 3 endif");
+        var mc = rg.Matches(@"if    我!! ! 3 endif");
 
         foreach (Match m in mc)
         {

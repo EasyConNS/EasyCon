@@ -4,16 +4,4 @@
     <TargetFrameworks>$(TFMS)</TargetFrameworks>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Reference Include="Compilers.Common">
-      <HintPath>.\deps\Compilers.Common.dll</HintPath>
-    </Reference>
-    <Reference Include="Compilers.Parsers">
-      <HintPath>.\deps\Compilers.Parsers.dll</HintPath>
-    </Reference>
-    <Reference Include="Compilers.Scanners">
-      <HintPath>.\deps\Compilers.Scanners.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
 </Project>

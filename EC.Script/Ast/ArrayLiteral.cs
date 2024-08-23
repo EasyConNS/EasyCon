@@ -1,10 +1,9 @@
-using ECScript.Syntax;
+﻿using ECScript.Syntax;
 
 namespace ECP.Ast;
-
-internal sealed class ConstDecl : Statement
+internal sealed class ArrayLiteral : Expression
 {
-    public ConstDecl(SyntaxNode syntax) : base(syntax)
+    public ArrayLiteral(SyntaxNode syntax) : base(syntax)
     {
     }
 
@@ -12,6 +11,6 @@ internal sealed class ConstDecl : Statement
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        return visitor.VisitConstDecl(this);
+        throw new NotImplementedException();
     }
 }

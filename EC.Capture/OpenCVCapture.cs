@@ -1,5 +1,4 @@
 ﻿using OpenCvSharp;
-using Tesseract;
 
 namespace EC.Capture;
 

@@ -1,12 +1,16 @@
-using VBF.Compilers.Scanners;
+using ECScript.Syntax;
 
 namespace ECP.Ast;
 
-public abstract class KeyAction : Statement
+/*
+internal abstract class KeyAction : Statement
 {
+    protected KeyAction(SyntaxNode syntax) : base(syntax)
+    {
+    }
 }
 
-public class ButtonAction : KeyAction
+internal sealed class ButtonAction : KeyAction
 {
     public ButtonAction(LexemeValue name)
     {
@@ -14,7 +18,7 @@ public class ButtonAction : KeyAction
         Duration = "50";
     }
 
-    public ButtonAction(LexemeValue name, Number duration)
+    public ButtonAction(LexemeValue name, IntLiteral duration)
     {
         Key = name.Content.ToUpper();
         Duration = duration.VariableRef.VariableName.Content;
@@ -29,6 +33,8 @@ public class ButtonAction : KeyAction
     public string Key { get; init; }
     public string Duration { get; init; }
 
+    public override AstNodeType Kind => throw new NotImplementedException();
+
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitButtonAction(this);
@@ -42,7 +48,7 @@ public class StickAction : ButtonAction
         Destination = destination;
     }
 
-    public StickAction(LexemeValue name, LexemeValue destination, Number duration) : base(name, duration)
+    public StickAction(LexemeValue name, LexemeValue destination, IntLiteral duration) : base(name, duration)
     {
         Destination = destination;
     }
@@ -54,3 +60,4 @@ public class StickAction : ButtonAction
         return visitor.VisitStickAction(this);
     }
 }
+*/

@@ -1,37 +1,32 @@
-﻿using VBF.Compilers.Scanners;
+﻿using ECScript.Syntax;
 
 namespace ECP.Ast;
 
-public class Variable : Expression
+internal sealed class Variable : Expression
 {
-    public Variable(LexemeValue name)
+    public Variable(SyntaxNode node, VariableRef variable) : base(node)
     {
-        VariableRef = new VariableRef(name);
-    }
-
-    public Variable(LexemeValue name, Expression index)
-    {
-        VariableRef = new VariableRef(name);
-        ArrIndex = index;
+        VariableRef = variable;
     }
 
     public VariableRef VariableRef { get; init; }
 
-    public Expression ArrIndex { get; init; }
+    public override AstNodeType Kind => AstNodeType.VariableExpression;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        return visitor.VisitVariable(this);
+        throw new NotImplementedException();
     }
 }
 
 public class VariableRef
 {
-    public VariableRef(LexemeValue name)
+    public VariableRef(string name)
     {
         VariableName = name;
     }
 
-    public LexemeValue VariableName { get; init; }
+    public string VariableName { get; init; }
+    public bool IsReadOnly { get; init; }
     // public VariableInfo VariableInfo { get; set; }
 }
