@@ -1,4 +1,4 @@
-namespace ECP.Ast;
+namespace EC.Script.Ast;
 
 internal interface IAstVisitor<T>
 {

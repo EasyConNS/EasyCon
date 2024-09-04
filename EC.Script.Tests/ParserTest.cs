@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace EC.Script.Tests;
+namespace ECScript.Tests;
 
 [TestFixture]
 public class Tests

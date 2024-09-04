@@ -1,4 +1,4 @@
-namespace ECScript.Syntax;
+namespace EC.Script.Syntax;
 
 public sealed class SyntaxTrivia
 {

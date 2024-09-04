@@ -1,4 +1,4 @@
-namespace ECScript.Syntax;
+namespace EC.Script.Syntax;
 
 public enum TokenType
 {
@@ -17,7 +17,7 @@ public enum TokenType
     ConstToken, // _XXX
     VarToken, // $XXX
     ExVarToken, // @XXX
-    EqualsToken, // =
+    AssignToken, // =
     PlusToken, // +
     PlusEqualsToken, // +=
     MinusToken, // -

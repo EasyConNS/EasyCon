@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace EC.Device;
+﻿namespace EC.Device;
 
 public static class ECKeyUtil
 {

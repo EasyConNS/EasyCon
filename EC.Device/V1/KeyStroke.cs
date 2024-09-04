@@ -1,21 +1,18 @@
-﻿using System;
+﻿namespace EC.Device;
 
-namespace EC.Device
+public class KeyStroke
 {
-    public class KeyStroke
-    {
-        public readonly ECKey Key;
-        public int KeyCode => Key.KeyCode;
-        public readonly bool Up;
-        public readonly int Duration;
-        public readonly DateTime Time;
+    public readonly ECKey Key;
+    public int KeyCode => Key.KeyCode;
+    public readonly bool Up;
+    public readonly int Duration;
+    public readonly DateTime Time;
 
-        public KeyStroke(ECKey key, bool up = false, int duration = 0, DateTime time = default)
-        {
-            Key = key;
-            Up = up;
-            Duration = duration;
-            Time = DateTime.Now;
-        }
+    public KeyStroke(ECKey key, bool up = false, int duration = 0, DateTime time = default)
+    {
+        Key = key;
+        Up = up;
+        Duration = duration;
+        Time = DateTime.Now;
     }
 }

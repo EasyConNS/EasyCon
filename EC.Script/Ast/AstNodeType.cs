@@ -1,4 +1,4 @@
-﻿namespace ECP.Ast;
+﻿namespace EC.Script.Ast;
 
 internal enum AstNodeType
 {
@@ -13,6 +13,7 @@ internal enum AstNodeType
     ConditionalGotoStatement,
     ReturnStatement,
     ExpressionStatement,
+    KeyActionStatement,
 
     // Expressions
     ErrorExpression,

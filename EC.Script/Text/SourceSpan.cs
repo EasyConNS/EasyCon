@@ -1,6 +1,4 @@
-using System.Data.Common;
-
-namespace ECScript.Text;
+namespace EC.Script.Text;
 
 public record SourceSpan : IEquatable<SourceSpan>
 {

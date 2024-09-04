@@ -1,6 +1,6 @@
-using ECScript.Syntax;
+using EC.Script.Syntax;
 
-namespace ECP.Ast;
+namespace EC.Script.Ast;
 
 internal sealed class IfStmt : Statement
 {
@@ -8,7 +8,7 @@ internal sealed class IfStmt : Statement
     {
     }
 
-    public override AstNodeType Kind => throw new NotImplementedException();
+    public override AstNodeType Kind => AstNodeType.IfStatement;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {

@@ -1,6 +1,6 @@
-using ECScript.Syntax;
+using EC.Script.Syntax;
 
-namespace ECP.Ast;
+namespace EC.Script.Ast;
 
 internal sealed class ConstDecl : Statement
 {

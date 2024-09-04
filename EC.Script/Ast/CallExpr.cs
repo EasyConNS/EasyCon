@@ -1,7 +1,7 @@
-using ECScript.Syntax;
+using EC.Script.Syntax;
 using System.Collections.ObjectModel;
 
-namespace ECP.Ast;
+namespace EC.Script.Ast;
 
 internal sealed class CallExpr : Expression
 {

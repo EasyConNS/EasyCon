@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace ECScript.Syntax;
+namespace EC.Script.Syntax;
 
 public sealed class SyntaxToken : SyntaxNode
 {

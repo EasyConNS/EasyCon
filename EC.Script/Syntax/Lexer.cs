@@ -1,46 +1,22 @@
-using System.Text.RegularExpressions;
-using ECScript.Text;
+using EC.Script.Text;
 
-namespace ECScript.Syntax;
+namespace EC.Script.Syntax;
 
 internal sealed partial class Lexer
 {
-    private readonly List<string> _diagnostics = [];
-    private readonly string _text;
+    private readonly DiagnosticBag _diagnostics = new();
+    private readonly SyntaxTree _syntaxTree;
+    private readonly SourceText _text;
 
-    public Lexer(string text)
+    public Lexer(SyntaxTree syntaxTree)
     {
-        _text = text;
+        _syntaxTree = syntaxTree;
+        _text = syntaxTree.Text;
     }
 
-    public IEnumerable<TextLine> LexLine()
+    public IEnumerable<TextLine> Lex()
     {
-        var lines = Regex.Split(_text, @"[\u000D\u000A\u0085\u2028\u2029]|\r\n");
-        foreach (var line in lines)
-        {
-            uint linecount = 0;
-            var curline = line.TrimStart();
-            var comment = string.Empty;
-            var m = LineRegex().Match(curline);
-            if (m.Success)
-            {
-                comment = m.Groups[1].Value;
-                curline = curline[..^comment.Length];
-            }
-            else
-            {
-                curline = curline.Trim();
-            }
-            yield return new TextLine
-            {
-                Text = curline,
-                Comment = comment,
-                Line = linecount++,
-            };
-        }
+        return _text.Lines;
     }
-
-    [GeneratedRegex(@"(\s*#.*)$")]
-    private static partial Regex LineRegex();
 }
  

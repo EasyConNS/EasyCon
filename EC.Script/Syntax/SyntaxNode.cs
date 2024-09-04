@@ -1,6 +1,6 @@
-﻿using ECScript.Text;
+﻿using EC.Script.Text;
 
-namespace ECScript.Syntax;
+namespace EC.Script.Syntax;
 
 public abstract class SyntaxNode
 {

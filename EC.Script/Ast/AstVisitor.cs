@@ -1,4 +1,4 @@
-namespace ECP.Ast;
+namespace EC.Script.Ast;
 
 internal abstract class AstVisitor : IAstVisitor<AstNode>
 {

@@ -1,4 +1,4 @@
-﻿namespace ECP.Ast;
+﻿namespace EC.Script.Ast;
 
 internal enum BinaryOperator
 {

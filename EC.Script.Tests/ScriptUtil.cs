@@ -1,8 +1,7 @@
 using System.Text.RegularExpressions;
-using EC.Script;
 using System.Text;
 
-namespace EC.Script.Tests;
+namespace ECScript.Tests;
 
 static class ScriptUtil
 {
