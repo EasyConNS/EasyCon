@@ -3,19 +3,21 @@
 internal sealed class Parser
 {
     private readonly DiagnosticBag _diagnostics = [];
+
     public Parser(SyntaxTree syntaxTree)
     {
         var lexer = new Lexer(syntaxTree);
-        lexer.Lex();
+        lexer.Lex().ToArray();
     }
 
     public DiagnosticBag Diagnostics => _diagnostics;
+
     private SyntaxToken NextToken()
     {
         throw new NotImplementedException();
     }
 
-    public SyntaxToken MatchToken(TokenType kind)
+    private SyntaxToken MatchToken(TokenType kind)
     {
         throw new NotImplementedException();
     }
@@ -25,12 +27,33 @@ internal sealed class Parser
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseFunctionDeclaration()
+    private StatementSyntax ParseImportDeclaration()
     {
+        MatchToken(TokenType.ImportKeyword);
+        MatchToken(TokenType.StringToken);
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseStatement()
+    private SyntaxToken ParseIndexDeclaration()
+    {
+        MatchToken(TokenType.LeftBKToken);
+        MatchToken(TokenType.RightBKToken);
+        throw new NotImplementedException();
+    }
+
+    private FunctionDeclarationSyntax ParseFunctionDeclaration()
+    {
+        MatchToken(TokenType.FunctionKeyword);
+        MatchToken(TokenType.IdentifierToken);
+
+        MatchToken(TokenType.LeftPHToken);
+        MatchToken(TokenType.RightPHToken);
+
+        MatchToken(TokenType.EndFunctionKeyword);
+        throw new NotImplementedException();
+    }
+
+    private StatementSyntax ParseStatement()
     {
         ParseAssignmentStatement();
         ParseIfStatement();
@@ -38,63 +61,65 @@ internal sealed class Parser
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseIfStatement()
+    private IfStatementSyntax ParseIfStatement()
     {
+        MatchToken(TokenType.IfKeyword);
+        MatchToken(TokenType.EndifKeyword);
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseElIfStatement()
+    private StatementSyntax ParseElIfStatement()
     {
+        MatchToken(TokenType.ElifKeyword);
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseOptionalElseClause()
+    private StatementSyntax ParseOptionalElseClause()
     {
+        MatchToken(TokenType.ElseKeyword);
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseForStatement()
+    private ForStatementSyntax ParseForStatement()
     {
+        MatchToken(TokenType.ForKeyword);
+        MatchToken(TokenType.NextKeyword);
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseBreakStatement()
+    private StatementSyntax ParseBreakStatement()
     {
+        MatchToken(TokenType.BreakKeyword);
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseContinueStatement()
+    private StatementSyntax ParseContinueStatement()
     {
+        MatchToken(TokenType.ContinueKeyword);
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseReturnStatement()
+    private StatementSyntax ParseReturnStatement()
     {
+        MatchToken(TokenType.ReturnKeyword);
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseAssignmentStatement()
+    private AssignmentStatement ParseAssignmentStatement()
     {
         var targetVariable = ParseVariable();
         // AugAssign
         MatchToken(TokenType.AssignToken);
-        return ParseExpression();
+        var expr = ParseExpression();
+        return new AssignmentStatement(expr);
     }
 
-    public SyntaxToken ParseExpression()
+    private ExpressionSyntax ParseExpression()
     {
         return ParseBinaryExpression();
     }
 
-    public SyntaxToken ParseParenthesizedExpression()
-    {
-        MatchToken(TokenType.LeftPHToken);
-        var expression = ParseExpression();
-        MatchToken(TokenType.RightPHToken);
-        throw new NotImplementedException();
-    }
-
-    public SyntaxToken ParseBinaryExpression(int parentPrecedence = 0)
+    private ExpressionSyntax ParseBinaryExpression(int parentPrecedence = 0)
     {
         var unaryOperatorPrecedence = TokenType.NotKeyword.GetUnaryOperatorPrecedence();
         if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
@@ -113,7 +138,7 @@ internal sealed class Parser
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParsePrimaryExpression()
+    private ExpressionSyntax ParsePrimaryExpression()
     {
         ParseNumberLiteral();
         ParseStringLiteral();
@@ -122,41 +147,54 @@ internal sealed class Parser
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseNumberLiteral()
+    private ExpressionSyntax ParseParenthesizedExpression()
+    {
+        MatchToken(TokenType.LeftPHToken);
+        var expression = ParseExpression();
+        MatchToken(TokenType.RightPHToken);
+        throw new NotImplementedException();
+    }
+
+    private SyntaxToken ParseNumberLiteral()
     {
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseStringLiteral()
+    private ExpressionSyntax ParseStringLiteral()
     {
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseVariable()
+    private ExpressionSyntax ParseVariable()
     {
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseCallExpression()
-    {
-        throw new NotImplementedException();
-    }
-    public IList<SyntaxToken> ParseArguments()
+    private ExpressionSyntax ParseIndexExpression()
     {
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseKeyAction()
+    private ExpressionSyntax ParseCallExpression()
+    {
+        throw new NotImplementedException();
+    }
+    private IList<SyntaxToken> ParseArguments()
     {
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseButtonKeyAction()
+    private StatementSyntax ParseKeyAction()
     {
         throw new NotImplementedException();
     }
 
-    public SyntaxToken ParseStickKeyAction()
+    private StatementSyntax ParseButtonKeyAction()
+    {
+        throw new NotImplementedException();
+    }
+
+    private StatementSyntax ParseStickKeyAction()
     {
         throw new NotImplementedException();
     }

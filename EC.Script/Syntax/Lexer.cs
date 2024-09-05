@@ -1,22 +1,33 @@
 using EC.Script.Text;
+using System.Collections.Immutable;
 
 namespace EC.Script.Syntax;
 
-internal sealed partial class Lexer
+internal sealed partial class Lexer(SyntaxTree syntaxTree)
 {
     private readonly DiagnosticBag _diagnostics = new();
-    private readonly SyntaxTree _syntaxTree;
-    private readonly SourceText _text;
+    private readonly SyntaxTree _syntaxTree = syntaxTree;
+    private readonly SourceText _text = syntaxTree.Text;
 
-    public Lexer(SyntaxTree syntaxTree)
+    private ImmutableArray<SyntaxToken>.Builder _tokenBuilder = ImmutableArray.CreateBuilder<SyntaxToken>();
+
+    public IEnumerable<SyntaxLine> Lex()
     {
-        _syntaxTree = syntaxTree;
-        _text = syntaxTree.Text;
+        foreach(var l in _text.Lines)
+        {
+            var trivia = new SyntaxTrivia(TokenType.CommentTrivia, l.Comment);
+
+            ReadToken(l.Text);
+
+            yield return new SyntaxLine(_tokenBuilder.ToImmutable(), trivia, l.Line);
+        }
     }
 
-    public IEnumerable<TextLine> Lex()
+    private void ReadToken(string text)
     {
-        return _text.Lines;
+        _tokenBuilder.Clear();
+        // TODO
+        //_tokenBuilder.Add();
     }
 }
  
