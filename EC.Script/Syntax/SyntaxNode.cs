@@ -4,6 +4,13 @@ namespace EC.Script.Syntax;
 
 public abstract class SyntaxNode
 {
+    private protected SyntaxNode(SyntaxTree syntaxTree)
+    {
+        SyntaxTree = syntaxTree;
+    }
+
+    public SyntaxTree SyntaxTree { get; }
+
     public abstract TokenType Kind { get; init; }
 
     public virtual SourceSpan Span

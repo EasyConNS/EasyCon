@@ -1,8 +1,8 @@
 ﻿namespace EC.Script.Syntax;
 
-public sealed partial class KeyActionSyntax : StatementSyntax
+public sealed partial class VariableSyntax : ExpressionSyntax
 {
-    internal KeyActionSyntax(SyntaxTree syntaxTree) : base(syntaxTree) { }
+    internal VariableSyntax(SyntaxTree syntaxTree, SyntaxToken variableToken) : base(syntaxTree) {}
 
     public override TokenType Kind { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
 

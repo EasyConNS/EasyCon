@@ -3,11 +3,13 @@
 internal sealed class Parser
 {
     private readonly DiagnosticBag _diagnostics = [];
+    private readonly SyntaxTree _syntaxTree;
 
     public Parser(SyntaxTree syntaxTree)
     {
         var lexer = new Lexer(syntaxTree);
         lexer.Lex().ToArray();
+        _syntaxTree = syntaxTree;
     }
 
     public DiagnosticBag Diagnostics => _diagnostics;
@@ -109,9 +111,9 @@ internal sealed class Parser
     {
         var targetVariable = ParseVariable();
         // AugAssign
-        MatchToken(TokenType.AssignToken);
+        var operatorToken = MatchToken(TokenType.AssignToken);
         var expr = ParseExpression();
-        return new AssignmentStatement(expr);
+        return new AssignmentStatement(_syntaxTree, null, operatorToken, expr);
     }
 
     private ExpressionSyntax ParseExpression()

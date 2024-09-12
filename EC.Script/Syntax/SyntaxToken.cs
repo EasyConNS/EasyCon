@@ -4,7 +4,7 @@ namespace EC.Script.Syntax;
 
 public sealed class SyntaxToken : SyntaxNode
 {
-    internal SyntaxToken(TokenType kind, string? text, SourceSpan span)
+    internal SyntaxToken(SyntaxTree syntaxTree, TokenType kind, string? text, SourceSpan span) : base(syntaxTree)
     {
         Kind = kind;
         Text = text ?? string.Empty;

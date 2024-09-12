@@ -1,8 +1,10 @@
 ﻿namespace EC.Script.Syntax;
 
-public sealed partial class KeyActionSyntax : StatementSyntax
+public sealed partial class ReturnStatementSyntax : StatementSyntax
 {
-    internal KeyActionSyntax(SyntaxTree syntaxTree) : base(syntaxTree) { }
+    public ReturnStatementSyntax(SyntaxTree syntaxTree, SyntaxToken keyword) : base(syntaxTree)
+    {
+    }
 
     public override TokenType Kind { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
 
