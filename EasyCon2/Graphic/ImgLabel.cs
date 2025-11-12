@@ -210,12 +210,12 @@ namespace EasyCon2.Graphic
             md *= 100;
 
             // update the search pic
-            if (md >= _matchDegree)
-            {
-                searchImg?.Dispose();
-                Debug.WriteLine("update img");
-                searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
-            }
+            //if (md >= _matchDegree)
+            //{
+            //    searchImg?.Dispose();
+            //    Debug.WriteLine("update img");
+            //    searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+            //}
 
             return result;
         }
@@ -235,12 +235,12 @@ namespace EasyCon2.Graphic
             md *= 100;
 
             // update the search pic
-            if (md >= _matchDegree)
-            {
-                Debug.WriteLine("update img");
-                searchImg?.Dispose();
-                searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
-            }
+            //if (md >= _matchDegree)
+            //{
+            //    Debug.WriteLine("update img");
+            //    searchImg?.Dispose();
+            //    searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+            //}
 
             return (int)md;
         }

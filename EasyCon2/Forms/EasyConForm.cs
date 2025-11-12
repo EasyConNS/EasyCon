@@ -23,7 +23,7 @@ namespace EasyCon2.Forms
 {
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter, ICGamePad
     {
-        private readonly Version VER = new(1, 50, 0);
+        private readonly Version VER = new(1, 50, 1);
         private readonly TextEditor textBoxScript = new();
         internal readonly FormController formController;
 
@@ -554,7 +554,6 @@ namespace EasyCon2.Forms
                 Print("-- 运行出错 --", Color.OrangeRed);
                 StatusShowLog("运行出错");
                 SystemSounds.Hand.Play();
-                throw;
             }
             finally
             {

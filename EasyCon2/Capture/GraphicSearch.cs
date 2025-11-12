@@ -31,22 +31,12 @@ namespace EasyCon2.Capture
             switch (method)
             {
                 case SearchMethod.SqDiff:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 0, out matchDegree);
-                    break;
                 case SearchMethod.SqDiffNormed:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 1, out matchDegree);
-                    break;
                 case SearchMethod.CCorr:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 2, out matchDegree);
-                    break;
                 case SearchMethod.CCorrNormed:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 3, out matchDegree);
-                    break;
                 case SearchMethod.CCoeff:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 4, out matchDegree);
-                    break;
                 case SearchMethod.CCoeffNormed:
-                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, 5, out matchDegree);
+                    List = OpenCvFindPic(left, top, width, height, S_bmp, P_bmp, method, out matchDegree);
                     break;
                 case SearchMethod.StrictMatch:
                     List = StrictMatch(left, top, width, height, S_Data, P_Data);
@@ -274,7 +264,7 @@ namespace EasyCon2.Capture
             return List;
         }
 
-        public static List<System.Drawing.Point> OpenCvFindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, int method, out double matchDegree)
+        public static List<System.Drawing.Point> OpenCvFindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap P_bmp, SearchMethod method, out double matchDegree)
         {
             List<System.Drawing.Point> res = new List<System.Drawing.Point>();
             //Mat small = BitmapToMat(P_bmp);
@@ -288,35 +278,35 @@ namespace EasyCon2.Capture
             matchDegree = 0;
             switch (method)
             {
-                case 0:
+                case SearchMethod.SqDiff:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.SqDiff);
                     Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
                     Debug.WriteLine($"SqDiff:{min} {max}");
                     break;
-                case 1:
+                case SearchMethod.SqDiffNormed:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.SqDiffNormed);
                     Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
                     matchDegree = (1 - min) / 1.0;
                     Debug.WriteLine($"SqDiffNormed:{min} {max}");
                     break;
-                case 2:
+                case SearchMethod.CCorr:
                     // not good for our usage
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCorr);
                     Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
                     Debug.WriteLine($"CCorr:{min} {max}");
                     break;
-                case 3:
+                case SearchMethod.CCorrNormed:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCorrNormed);
                     Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
                     Debug.WriteLine($"CCorrNormed:{min} {max}");
                     matchDegree = max / 1.0;
                     break;
-                case 4:
+                case SearchMethod.CCoeff:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeff);
                     Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
                     Debug.WriteLine($"CCoeff:{min} {max}");
                     break;
-                case 5:
+                case SearchMethod.CCoeffNormed:
                 default:
                     Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeffNormed);
                     Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
@@ -324,9 +314,8 @@ namespace EasyCon2.Capture
                     Debug.WriteLine($"CCoeffNormed:{min} {max}");
                     break;
             }
-
-            // the sqD lower is good
-            if (method == 0 || method == 1)
+                // the sqD lower is good
+            if (method == SearchMethod.SqDiff || method == SearchMethod.SqDiffNormed)
             {
                 res.Add(new System.Drawing.Point(minLoc.X, minLoc.Y));
             }

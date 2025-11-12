@@ -2,26 +2,25 @@
 
 namespace EasyScript.Parsing.Statements
 {
+    public class Meta
+    {
+        public readonly Type StatementType;
+        public readonly Type InstructionType;
+        public readonly string Operator;
+        public readonly Func<int, int, int> Function;
+        public readonly bool OnlyInstant;
+
+        public Meta(Type statementType, Type instructionType, string op, Func<int, int, int> function, bool onlyInstant = false)
+        {
+            StatementType = statementType;
+            InstructionType = instructionType;
+            Operator = op;
+            Function = function;
+            OnlyInstant = onlyInstant;
+        }
+    }
     abstract class BinaryOp : Statement
     {
-        protected class Meta
-        {
-            public readonly Type StatementType;
-            public readonly Type InstructionType;
-            public readonly string Operator;
-            public readonly Func<int, int, int> Function;
-            public readonly bool OnlyInstant;
-
-            public Meta(Type statementType, Type instructionType, string @operator, Func<int, int, int> function, bool onlyInstant = false)
-            {
-                StatementType = statementType;
-                InstructionType = instructionType;
-                Operator = @operator;
-                Function = function;
-                OnlyInstant = onlyInstant;
-            }
-        }
-
         protected class BinaryOpParser : IStatementParser
         {
             readonly Meta _meta;
@@ -33,7 +32,7 @@ namespace EasyScript.Parsing.Statements
 
             public Statement Parse(ParserArgument args)
             {
-                var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\{_meta.Operator}\s*{(_meta.OnlyInstant ? Formats.Instant : Formats.ValueEx)}$", RegexOptions.IgnoreCase);
+                var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\{_meta.Operator}=\s*{(_meta.OnlyInstant ? Formats.Instant : Formats.ValueEx)}$", RegexOptions.IgnoreCase);
                 if (m.Success)
                     return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value)) as Statement;
                 return null;
@@ -50,9 +49,10 @@ namespace EasyScript.Parsing.Statements
             Value = value;
         }
 
+
         protected override string _GetString(Formatter formatter)
         {
-            return $"{RegDst.GetCodeText(formatter)} {MetaInfo.Operator} {Value.GetCodeText(formatter)}";
+            return $"{RegDst.GetCodeText(formatter)} {MetaInfo.Operator}= {Value.GetCodeText(formatter)}";
         }
 
         public override void Exec(Processor processor)
@@ -71,18 +71,19 @@ namespace EasyScript.Parsing.Statements
 
     class Add : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(Add), typeof(Assembly.Instructions.AsmAdd), "+=", (a, b) => a + b);
+        static readonly Meta _Meta = new(typeof(Add), typeof(Assembly.Instructions.AsmAdd), "+", (a, b) => a + b);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
         public Add(ValRegEx regdst, ValBase value)
             : base(regdst, value)
         { }
+
     }
 
     class Sub : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(Sub), null, "-=", (a, b) => a - b);
+        static readonly Meta _Meta = new(typeof(Sub), null, "-", (a, b) => a - b);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
@@ -92,16 +93,20 @@ namespace EasyScript.Parsing.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            if (Value is ValInstant && RegDst is ValReg dest)
+            if (RegDst is ValReg dest)
             {
-                assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, -(Value as ValInstant).Val));
-                assembler.Add(Assembly.Instructions.AsmAdd.Create(dest.Index, new ValReg(Assembly.Assembler.IReg)));
-            }
-            else if (Value is ValReg val)
-            {
-                assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Value));
-                assembler.Add(Assembly.Instructions.AsmNegative.Create(Assembly.Assembler.IReg));
-                assembler.Add(Assembly.Instructions.AsmAdd.Create(val.Index, new ValReg(Assembly.Assembler.IReg)));
+                if (Value is ValInstant)
+                {
+                    assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, -(Value as ValInstant).Val));
+                    assembler.Add(Assembly.Instructions.AsmAdd.Create(dest.Index, new ValReg(Assembly.Assembler.IReg)));
+                }
+                else if (Value is ValReg)
+                {
+                    assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Value));
+                    assembler.Add(Assembly.Instructions.AsmNegative.Create(Assembly.Assembler.IReg));
+                    assembler.Add(Assembly.Instructions.AsmAdd.Create(dest.Index, new ValReg(Assembly.Assembler.IReg)));
+                }else
+                    throw new Assembly.AssembleException(ErrorMessage.NotSupported);
             }
             else
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
@@ -110,7 +115,7 @@ namespace EasyScript.Parsing.Statements
 
     class Mul : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(Mul), typeof(Assembly.Instructions.AsmMul), "*=", (a, b) => a * b);
+        static readonly Meta _Meta = new(typeof(Mul), typeof(Assembly.Instructions.AsmMul), "*", (a, b) => a * b);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
@@ -121,7 +126,7 @@ namespace EasyScript.Parsing.Statements
 
     class Div : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(Div), typeof(Assembly.Instructions.AsmDiv), "/=", (a, b) => a / b);
+        static readonly Meta _Meta = new(typeof(Div), typeof(Assembly.Instructions.AsmDiv), "/", (a, b) => a / b);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
@@ -132,7 +137,7 @@ namespace EasyScript.Parsing.Statements
 
     class RoundDiv : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(RoundDiv), typeof(Assembly.Instructions.AsmDiv), @"\=", (a, b) => (int)Math.Round((double)a / b) );
+        static readonly Meta _Meta = new(typeof(RoundDiv), typeof(Assembly.Instructions.AsmDiv), @"\", (a, b) => (int)Math.Round((double)a / b) );
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
@@ -148,7 +153,7 @@ namespace EasyScript.Parsing.Statements
 
     class Mod : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(Mod), typeof(Assembly.Instructions.AsmMod), "%=", (a, b) => a % b);
+        static readonly Meta _Meta = new(typeof(Mod), typeof(Assembly.Instructions.AsmMod), "%", (a, b) => a % b);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
@@ -159,7 +164,7 @@ namespace EasyScript.Parsing.Statements
 
     class And : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(And), typeof(Assembly.Instructions.AsmAnd), "&=", (a, b) => a & b);
+        static readonly Meta _Meta = new(typeof(And), typeof(Assembly.Instructions.AsmAnd), "&", (a, b) => a & b);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
@@ -170,7 +175,7 @@ namespace EasyScript.Parsing.Statements
 
     class Or : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(Or), typeof(Assembly.Instructions.AsmOr), "|=", (a, b) => a | b);
+        static readonly Meta _Meta = new(typeof(Or), typeof(Assembly.Instructions.AsmOr), "|", (a, b) => a | b);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
@@ -181,7 +186,7 @@ namespace EasyScript.Parsing.Statements
 
     class Xor : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(Xor), typeof(Assembly.Instructions.AsmOr), "^=", (a, b) => a ^ b);
+        static readonly Meta _Meta = new(typeof(Xor), typeof(Assembly.Instructions.AsmOr), "^", (a, b) => a ^ b);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
@@ -192,7 +197,7 @@ namespace EasyScript.Parsing.Statements
 
     class ShiftLeft : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(ShiftLeft), typeof(Assembly.Instructions.AsmShiftLeft), "<<=", (a, b) => a << b, true);
+        static readonly Meta _Meta = new(typeof(ShiftLeft), typeof(Assembly.Instructions.AsmShiftLeft), "<<", (a, b) => a << b, true);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
@@ -203,7 +208,7 @@ namespace EasyScript.Parsing.Statements
 
     class ShiftRight : BinaryOp
     {
-        static readonly Meta _Meta = new(typeof(ShiftRight), typeof(Assembly.Instructions.AsmShiftRight), ">>=", (a, b) => a >> b, true);
+        static readonly Meta _Meta = new(typeof(ShiftRight), typeof(Assembly.Instructions.AsmShiftRight), ">>", (a, b) => a >> b, true);
         protected override Meta MetaInfo => _Meta;
         public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 

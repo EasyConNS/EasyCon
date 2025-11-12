@@ -4,17 +4,13 @@ using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing.Lexers;
 
-internal class ExprPaerser : IStatementParser
+internal class KeyPaerser : IStatementParser
 {
     const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN";
 
     Statement? IStatementParser.Parse(ParserArgument args)
     {
-        // empty
-        if (args.Text.Length == 0)
-            return new Empty();
-        // key or mov
-        return KeyParse(args) ?? MovParse(args);
+        return KeyParse(args);
     }
 
     private static Statement? KeyParse(ParserArgument args)
@@ -68,14 +64,6 @@ internal class ExprPaerser : IStatementParser
                 return null;
             return new StickPress(key, keyname, direction, args.Formatter.GetValueEx(duration));
         }
-        return null;
-    }
-
-    private static Statement? MovParse(ParserArgument args)
-    {
-        var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new Mov(FormatterUtil.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value));
         return null;
     }
 }

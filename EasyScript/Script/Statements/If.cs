@@ -42,7 +42,8 @@
 
         protected override string _GetString(Formatter formatter)
         {
-            return $"IF {Left.GetCodeText(formatter)} {Operater.Operator} {Right.GetCodeText(formatter)}";
+            var op = Operater.Operator == "=" ? "==" : Operater.Operator;
+            return $"IF {Left.GetCodeText(formatter)} {op} {Right.GetCodeText(formatter)}";
         }
 
         public override void Assemble(Assembly.Assembler assembler)
@@ -97,7 +98,8 @@
 
         protected override string _GetString(Formatter formatter)
         {
-            return $"ELIF {Left.GetCodeText(formatter)} {Operater.Operator} {Right.GetCodeText(formatter)}";
+            var op = Operater.Operator == "=" ? "==" : Operater.Operator;
+            return $"ELIF {Left.GetCodeText(formatter)} {op} {Right.GetCodeText(formatter)}";
         }
 
         public override void Assemble(Assembly.Assembler assembler)

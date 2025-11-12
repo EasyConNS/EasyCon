@@ -29,24 +29,24 @@ abstract class AsmBinaryOp<T> : Instruction
 
     public static Instruction Create(uint regdst, Parsing.ValBase value)
     {
-        if (value is Parsing.ValReg)
+        if (value is Parsing.ValReg valR)
         {
             var ins = new T
             {
                 RegDst = regdst,
-                RegSrc = (value as Parsing.ValReg).Index
+                RegSrc = valR.Index
             };
             return ins;
         }
-        else if (value is Parsing.ValInstant)
+        else if (value is Parsing.ValInstant valIns)
         {
-            var val = (value as Parsing.ValInstant).Val;
+            var val = valIns.Val;
             if (val < -(1 << 15) || val >= 1 << 15)
                 return Failed.OutOfRange;
             var ins = new AsmBinaryOpInstant<T>
             {
                 RegDst = regdst,
-                Value = (value as Parsing.ValInstant).Val
+                Value = val
             };
             return ins;
         }

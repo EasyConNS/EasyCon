@@ -1,6 +1,7 @@
-﻿using System.Diagnostics;
+﻿using EasyScript;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
+using System.Diagnostics;
 
 namespace EasyCon2.Capture
 {
@@ -143,6 +144,8 @@ namespace EasyCon2.Capture
 
         public Bitmap? GetImage()
         {
+            if (capture == null)
+                throw new Exception("采集卡设备读取失败");
             lock (_lock)
             {
                 if (_image == null)

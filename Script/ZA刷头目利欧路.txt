@@ -1,0 +1,104 @@
+#【ZA利欧路头目刷闪】by未来的未来
+# 看图片位置启动
+#先坐一次椅子后再来上面，只有白天和不下雨天气才有利欧路
+
+_多少次检查 = 100
+# 唤醒设备
+FOR 5
+    LCLICK 120
+    100
+NEXT
+
+$2 = 0
+$3 = 0
+$5 = 0
+#开始操作
+FOR
+    $1 = @ZA选择精灵
+    IF $1 > 95
+        BREAK
+    ENDIF
+    RIGHT 200
+    200
+NEXT
+X 200
+1500
+R 200
+1500
+A 200
+3000
+A 200
+500
+FOR
+    B
+    500
+    $1 = @ZA选择精灵
+    IF $1 > 95
+        BREAK
+    ENDIF
+NEXT
+FOR
+    LS UP
+    100
+    B 3000
+    100
+    LS RESET
+    100
+    $2 += 1
+    $3 += 1
+    PRINT 已刷 & $2 & 次
+    IF $3 = _多少次检查
+        $3 = 0
+        LS UP
+        100
+        B 5000
+        100
+        LS RESET
+        100
+        RS LEFT,800
+        FOR 15
+            ZL 600
+            100
+            $1 = @闪光利欧路
+            100
+            IF $1 > 92
+                $5 += 1
+                PRINT 发现闪光利欧路 & $5 & 次！
+                FOR 10
+                    ZL 600
+                    100
+                    $4 = @头目利欧路
+                    100
+                    IF $4 > 90
+                        PRINT 头目闪利欧路！！
+                        X 200
+                        BREAK 2
+                    ENDIF
+                NEXT
+                BREAK
+            ENDIF
+            RS RIGHT,200
+        NEXT
+        HOME 200
+        2500
+        X 200
+        1500
+        FOR
+            A
+            1000
+            $1 = @ZA选择精灵
+            IF $1 >= 95
+                BREAK
+            ENDIF
+        NEXT
+    ENDIF
+    IF $3 != 0
+        LS DOWN
+        100
+        B 3000
+        100
+        LS RESET
+        100
+    ENDIF
+NEXT
+
