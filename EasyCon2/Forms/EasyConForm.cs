@@ -9,6 +9,7 @@ using ECDevice;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
+using OpenCvSharp.Internal;
 using PTController;
 using System.Diagnostics;
 using System.IO;
@@ -75,6 +76,25 @@ namespace EasyCon2.Forms
 #if DEBUG
             蓝牙ToolStripMenuItem.Visible = true;
 #endif
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            switch (m.Msg)
+            {
+                case 0x0219:
+                    switch (m.WParam)
+                    {
+                        case 0x8000:
+                            Debug.WriteLine("dev arrived");
+                            break;
+                        case 0x8004:
+                            Debug.WriteLine("dev removed");
+                            break;
+                    }
+                    break;
+            }
+            base.WndProc(ref m);
         }
 
         private void InitEditor()
