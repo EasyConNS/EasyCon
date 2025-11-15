@@ -66,13 +66,20 @@ public class Scripter
         foreach (var ev in extVars)
             ExtVars[ev.Name] = ev;
     }
-    public void explain(
-        IOutputAdapter output, ICGamePad pad
+
+    public void explain(IOutputAdapter output, ICGamePad pad)
+    {
+        explain(output, pad, out Processor _processor);
+    }
+
+    internal void explain(
+        IOutputAdapter output, ICGamePad pad,
+        out Processor _processor
         )
     {
 
         var parser = new Parser(Constants, ExtVars);
-        var _processor = new Processor
+        _processor = new Processor
         {
             Output = output,
             GamePad = pad,

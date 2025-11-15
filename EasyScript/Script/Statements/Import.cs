@@ -27,8 +27,12 @@ namespace EasyScript.Parsing.Statements
         override public void Exec(Processor processor)
         {
             Scripter scripter = new();
-            scripter.Parse(FileContent, processor.extVars);
-            scripter.Run(processor.Output, processor.GamePad);
+            scripter.load(FileContent, processor.extVars);
+            scripter.explain(processor.Output, processor.GamePad, out var _subProcessor);
+            foreach(var kvp in _subProcessor.FunctionDefinitions)
+            {
+                processor.FunctionDefinitions.Add(kvp.Key, kvp.Value);
+            }
         }
 
         override public void Assemble(Assembly.Assembler assembler)
