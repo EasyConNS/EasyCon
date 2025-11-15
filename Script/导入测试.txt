@@ -1,0 +1,3 @@
+import <被导入文件>
+import <E:\Tools\伊机控\源码\Script\被导入文件>
+print 主文件

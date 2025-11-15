@@ -35,6 +35,7 @@ public class Scripter
         {
             Output = output,
             GamePad = pad,
+            extVars = ExtVars.Values
         };
         while (_processor.PC < _statements.Count)
         {

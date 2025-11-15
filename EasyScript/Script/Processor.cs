@@ -19,6 +19,8 @@ class Processor
     public RegisterFile Register = new(RegisterCount);
 
     public ExternTime et = new(DateTime.Now);
+
+    public IEnumerable<ExternalVariable> extVars = new List<ExternalVariable>();
 }
 
 class RegisterFile
