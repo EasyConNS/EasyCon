@@ -198,7 +198,7 @@
                 }
                 else
                 {
-                    throw new ParseException($"NEXT without FOR", processor.PC);
+                    throw new ScriptException($"NEXT without FOR", processor.PC);
                 }
             }
             processor.PC = For.Address - 1;
@@ -260,7 +260,7 @@
                 }
                 catch (InvalidOperationException)
                 {
-                    throw new ParseException($"BREAK 层数过多", processor.PC);
+                    throw new ScriptException($"BREAK 层数过多", processor.PC);
                 }
             }
             For.Break(processor);
@@ -302,7 +302,7 @@
                 }
                 catch (InvalidOperationException)
                 {
-                    throw new ParseException($"BREAK 层数过多", processor.PC);
+                    throw new ScriptException($"BREAK 层数过多", processor.PC);
                 }
             }
             For.Continue(processor);

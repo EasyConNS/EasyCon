@@ -76,7 +76,7 @@
             }
             else
             {
-                throw new ParseException("ELIF must be in IF", this.Address);
+                throw new ScriptException("ELIF must be in IF", this.Address);
             }
 
         }
@@ -125,7 +125,7 @@
             }
             else
             {
-                throw new ParseException("ELSE must be in IF", this.Address);
+                throw new ScriptException("ELSE must be in IF", this.Address);
             }
         }
 
@@ -157,7 +157,7 @@
             }
             else
             {
-                throw new ParseException("ENDIF must be in IF", this.Address);
+                throw new ScriptException("ENDIF must be in IF", this.Address);
             }
         }
 

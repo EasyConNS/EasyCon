@@ -1,6 +1,5 @@
 ﻿using EasyScript.Parsing;
 using EasyScript.Parsing.Statements;
-using System.Threading;
 
 namespace EasyScript;
 
@@ -91,25 +90,10 @@ public class Scripter
                 cmd.Address = _processor.PC;
                 if (_processor.FunctionDefinitionStack.Count == 0)  // 如果现在不在定义函数
                 {
-                    try
+                    // 这里不处理错误，由GUI处理
+                    if (!_processor.SkipState || cmd is BranchOp)
                     {
-                        if (!_processor.SkipState || cmd is BranchOp)
-                        {
-                            cmd.Exec(_processor);
-                        }
-                    }
-                    catch (ThreadInterruptedException)
-                    {
-                        throw;
-                    }
-                    catch (ParseException)
-                    {
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        output.Print($"[Line {_processor.PC + 1}] {ex.GetType().Name}: {ex.Message}", true);
-                        throw;
+                        cmd.Exec(_processor);
                     }
                     
                 }
