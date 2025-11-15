@@ -31,7 +31,7 @@ namespace EasyScript.Parsing.Statements
             scripter.explain(processor.Output, processor.GamePad, out var _subProcessor);
             foreach(var kvp in _subProcessor.FunctionDefinitions)
             {
-                processor.FunctionDefinitions.Add(kvp.Key, kvp.Value);
+                processor.FunctionDefinitions[kvp.Key] = kvp.Value;
             }
         }
 
