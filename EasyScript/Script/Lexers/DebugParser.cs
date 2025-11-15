@@ -21,7 +21,7 @@ internal class DebugParser : IStatementParser
 
 internal class ExtParser : IStatementParser
 {
-    Statement? IStatementParser.Parse(ParserArgument args)
+    Statement? IStatementParser.ParseWildcard(ParserArgument args)
     {
         if (args.Text.Equals("PUSHALL", StringComparison.OrdinalIgnoreCase))
             return new PushAll();

@@ -5,7 +5,7 @@ namespace EasyScript.Parsing.Lexers;
 
 internal class ForParser : IStatementParser
 {
-    Statement? IStatementParser.Parse(ParserArgument args)
+    Statement? IStatementParser.ParseWildcard(ParserArgument args)
     {
         if (args.Text.Equals("for", StringComparison.OrdinalIgnoreCase))
             return new For_Infinite();

@@ -30,7 +30,7 @@ namespace EasyScript.Parsing.Statements
                 _meta = meta;
             }
 
-            public Statement Parse(ParserArgument args)
+            public Statement ParseWildcard(ParserArgument args)
             {
                 var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\{_meta.Operator}=\s*{(_meta.OnlyInstant ? Formats.Instant : Formats.ValueEx)}$", RegexOptions.IgnoreCase);
                 if (m.Success)

@@ -1,6 +1,6 @@
 ﻿namespace EasyScript.Parsing.Statements
 {
-    abstract class For : Statement
+    abstract class For : ControlStatement
     {
         public override int IndentNext => 1;
         public readonly ValBase Count;
@@ -21,10 +21,10 @@
 
         public override sealed void Exec(Processor processor)
         {
-            if (processor.LoopStack.Count == 0 || processor.LoopStack.Peek() != this)
+            if (processor.ControlStack.Count == 0 || processor.ControlStack.Peek().Address != Address)
             {
                 // entering
-                processor.LoopStack.Push(this);
+                processor.ControlStack.Push(this);
                 Init(processor);
             }
             else
@@ -33,17 +33,29 @@
                 Step(processor);
             }
             if (!Cond(processor))
-                Break(processor);
+            { 
+                Break(processor); 
+            }
         }
 
         public static void Break(Processor processor)
         {
-            processor.PC = processor.LoopStack.Pop().Next.Address + 1;
+            var ctrl = processor.ControlStack.Peek();
+            if (ctrl is For forCmd)
+            {
+                processor.PC = forCmd.Next.Address + 1;
+                processor.ControlStack.Pop();
+            }    
         }
 
         public static void Continue(Processor processor)
         {
-            processor.PC = processor.LoopStack.Peek().Next.Address;
+            var ctrl = processor.ControlStack.Peek();
+            if (ctrl is For forCmd)
+            {
+                processor.PC = forCmd.Next.Address;
+            }
+            
         }
     }
 
@@ -78,18 +90,18 @@
 
         protected override void Init(Processor processor)
         {
-            processor.LoopTime[this] = 0;
-            processor.LoopCount[this] = Count.Get(processor);
+            processor.LoopTime[this.Address] = 0;
+            processor.LoopCount[this.Address] = Count.Get(processor);
         }
 
         protected override bool Cond(Processor processor)
         {
-            return processor.LoopTime[this] < processor.LoopCount[this];
+            return processor.LoopTime[this.Address] < processor.LoopCount[this.Address];
         }
 
         protected override void Step(Processor processor)
         {
-            processor.LoopTime[this]++;
+            processor.LoopTime[this.Address]++;
         }
 
         protected override string _GetString(Formatter formatter)
@@ -126,12 +138,12 @@
         protected override void Init(Processor processor)
         {
             processor.Register[RegIter] = InitVal.Get(processor);
-            processor.LoopCount[this] = Count.Get(processor);
+            processor.LoopCount[this.Address] = Count.Get(processor);
         }
 
         protected override bool Cond(Processor processor)
         {
-            return processor.Register[RegIter] < processor.LoopCount[this];
+            return processor.Register[RegIter] < processor.LoopCount[this.Address];
         }
 
         protected override void Step(Processor processor)
@@ -168,7 +180,7 @@
     class Next : Statement
     {
         public override int IndentThis => -1;
-        public For For;
+        public For For = null;
 
         protected override string _GetString(Formatter formatter)
         {
@@ -177,7 +189,19 @@
 
         public override void Exec(Processor processor)
         {
-            processor.PC = For.Address;
+            if (For == null)
+            {
+                if (processor.ControlStack.Peek() is For forCmd)
+                {
+                    For = forCmd;
+                    For.Next = this;
+                }
+                else
+                {
+                    throw new ScriptException($"NEXT without FOR", processor.PC);
+                }
+            }
+            processor.PC = For.Address - 1;
         }
 
         public override void Assemble(Assembly.Assembler assembler)
@@ -224,8 +248,21 @@
 
         public override void Exec(Processor processor)
         {
-            for (int i = 0; i < Level.Val - 1; i++)
-                processor.LoopStack.Pop();
+            int i = Level.Val - 1;
+            while (i > 0) 
+            {
+                try
+                {
+                    if (processor.ControlStack.Pop() is For)
+                    {
+                        i--;
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    throw new ScriptException($"BREAK 层数过多", processor.PC);
+                }
+            }
             For.Break(processor);
         }
 
@@ -253,8 +290,21 @@
 
         public override void Exec(Processor processor)
         {
-            for (int i = 0; i < Level.Val - 1; i++)
-                processor.LoopStack.Pop();
+            int i = Level.Val - 1;
+            while (i > 0)
+            {
+                try
+                {
+                    if (processor.ControlStack.Pop() is For)
+                    {
+                        i--;
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    throw new ScriptException($"BREAK 层数过多", processor.PC);
+                }
+            }
             For.Continue(processor);
         }
 

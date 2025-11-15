@@ -5,7 +5,7 @@ namespace EasyScript.Parsing.Lexers;
 
 internal class AmiiboParser : IStatementParser
 {
-    Statement? IStatementParser.Parse(ParserArgument args)
+    Statement? IStatementParser.ParseWildcard(ParserArgument args)
     {
         if (args.Text.Equals("AMIIBO_RESET", StringComparison.OrdinalIgnoreCase))
             return new AmiiboReset();

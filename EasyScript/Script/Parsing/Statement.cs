@@ -1,6 +1,6 @@
 ﻿namespace EasyScript.Parsing;
 
-abstract class Statement
+internal abstract class Statement
 {
     public int Address = -1;
     public string Indent { get; set; }

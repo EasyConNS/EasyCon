@@ -11,18 +11,7 @@ namespace EasyScript.Parsing
 
         static Parser()
         {
-            var types = (from domainAssembly in AppDomain.CurrentDomain.GetAssemblies()
-                         from assemblyType in domainAssembly.GetTypes()
-                         where assemblyType.IsTypePlugin(typeof(IStatementParser))
-                         select assemblyType).ToArray();
-            foreach (var t in types)
-            {
-                IStatementParser? activate;
-                try { activate = (IStatementParser?)Activator.CreateInstance(t); }
-                catch (Exception) { continue; }
-                if (activate != null)
-                    _parsers.Add(activate);
-            }
+            
         }
 
         public Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
@@ -30,7 +19,7 @@ namespace EasyScript.Parsing
             _formatter = new Formatter(constants, extVars);
         }
 
-        private IEnumerable<ParserArgument> ParseLines(string text)
+        internal IEnumerable<ParserArgument> ParseLines(string text)
         {
             var lines = Regex.Split(text, "\r\n|\r|\n");
             foreach (var line in lines)
@@ -55,6 +44,7 @@ namespace EasyScript.Parsing
                     Text = text,
                     Comment = comment,
                     Formatter = _formatter,
+                    Arguments = text.Split(' ').Where(x => !string.IsNullOrEmpty(x)).ToList()
                 };
             }
         }
@@ -158,7 +148,7 @@ namespace EasyScript.Parsing
                     // enumerate generators
                     foreach (var parser in _parsers)
                     {
-                        st = parser.Parse(args);
+                        //st = parser.Parse(args);
                         if (st != null)
                         {
                             indentnum += st.IndentThis;

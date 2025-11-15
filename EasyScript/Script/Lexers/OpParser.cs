@@ -16,12 +16,12 @@ internal class OpParser : IStatementParser
         return types;
     }
 
-    Statement? IStatementParser.Parse(ParserArgument args)
+    Statement? IStatementParser.ParseWildcard(ParserArgument args)
     {
         Statement st = null;
         foreach (var p in AsmParser())
         {
-            st = p.Parse(args);
+            st = p.ParseWildcard(args);
             if(st != null)return st;
         }
         return st;
