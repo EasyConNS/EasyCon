@@ -10,7 +10,7 @@ namespace EasyScript.Parsing.Lexers;
 
 internal class ImportParser : IStatementParser
 {
-    Statement? IStatementParser.Parse(ParserArgument args)
+    Statement? IStatementParser.ParseWildcard(ParserArgument args)
     {
         return ImportParse(args);
     }

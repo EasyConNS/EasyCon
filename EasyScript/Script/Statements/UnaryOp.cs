@@ -31,7 +31,7 @@ namespace EasyScript.Parsing.Statements
                 _lhs = lhs;
             }
 
-            public Statement Parse(ParserArgument args)
+            public Statement ParseWildcard(ParserArgument args)
             {
                 var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
                 
@@ -95,7 +95,7 @@ namespace EasyScript.Parsing.Statements
                 _meta = meta;
             }
 
-            public Statement Parse(ParserArgument args)
+            public Statement ParseWildcard(ParserArgument args)
             {
                 var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\=\s*{_meta.Operator}\s*{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)

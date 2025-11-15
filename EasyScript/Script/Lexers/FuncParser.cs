@@ -5,7 +5,7 @@ namespace EasyScript.Parsing.Lexers
 {
     internal class FuncParser : IStatementParser
     {
-        Statement? IStatementParser.Parse(ParserArgument args)
+        Statement? IStatementParser.ParseWildcard(ParserArgument args)
         {
             return WaitParse(args) ?? FuncParse(args) ?? TimestampParse(args);
         }

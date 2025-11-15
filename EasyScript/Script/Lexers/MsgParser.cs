@@ -3,11 +3,12 @@ using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing.Lexers;
 
-internal class MsgParser : IStatementParser
+internal static class MsgParser 
 {
-    Statement? IStatementParser.Parse(ParserArgument args)
+    internal static void Init()
     {
-        return AlertParse(args) ?? PrintParse(args);
+        KeywordLexer.Register("alert", AlertParse);
+        KeywordLexer.Register("print", PrintParse);
     }
 
     private static Statement AlertParse(ParserArgument args)

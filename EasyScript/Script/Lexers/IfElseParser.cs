@@ -5,7 +5,7 @@ namespace EasyScript.Parsing.Lexers
 {
     internal class IfElseParser : IStatementParser
     {
-        Statement? IStatementParser.Parse(ParserArgument args)
+        Statement? IStatementParser.ParseWildcard(ParserArgument args)
         {
             foreach (var op in CompareOperator.All)
             {

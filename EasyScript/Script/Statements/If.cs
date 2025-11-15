@@ -1,11 +1,11 @@
 ﻿namespace EasyScript.Parsing.Statements
 {
-    abstract class BranchOp : Statement
+    abstract class BranchOp : ControlStatement
     {
         public BranchOp? If;
         public BranchOp? Else;
         public EndIf EndIf;
-        public bool Passthrough = true;
+        public bool Branch = true;
     }
 
     class If : BranchOp
@@ -24,20 +24,9 @@
 
         public override void Exec(Processor processor)
         {
-            Passthrough = true;
-            if (Operater.Compare(Left.Get(processor), Right.Get(processor)))
-            {
-                // do nothing
-                Passthrough = false;
-            }
-            else
-            {
-                // jump
-                if (Else != null)
-                    processor.PC = Else.Address;
-                else
-                    processor.PC = EndIf.Address + 1;
-            }
+            Branch = Operater.Compare(Left.Get(processor), Right.Get(processor));
+            processor.ControlStack.Push(this);
+            processor.SkipState = !Branch;
         }
 
         protected override string _GetString(Formatter formatter)
@@ -73,27 +62,23 @@
 
         public override void Exec(Processor processor)
         {
-            if(!If.Passthrough)
+            var ctrl = processor.ControlStack.Peek();
+            if (ctrl is If ifCtrl)
             {
-                processor.PC = If.EndIf.Address + 1;
+                processor.SkipState = (ifCtrl.Branch);
+                if (!processor.SkipState)
+                {
+                    processor.ControlStack.Pop();
+                    Branch = Operater.Compare(Left.Get(processor), Right.Get(processor));
+                    processor.ControlStack.Push(this);
+                    processor.SkipState = !Branch;
+                }
             }
             else
             {
-                Passthrough = true;
-                if (Operater.Compare(Left.Get(processor), Right.Get(processor)))
-                {
-                    // do nothing
-                    Passthrough = false;
-                }
-                else
-                {
-                    // jump
-                    if (Else != null)
-                        processor.PC = Else.Address;
-                    else
-                        processor.PC = EndIf.Address + 1;
-                }
-            }   
+                throw new ParseException("ELIF must be in IF", this.Address);
+            }
+
         }
 
         protected override string _GetString(Formatter formatter)
@@ -133,9 +118,15 @@
 
         public override void Exec(Processor processor)
         {
-            // end of if-block
-            if(!If.Passthrough)
-                processor.PC = If.EndIf.Address + 1;
+            var ctrl = processor.ControlStack.Peek();
+            if (ctrl is If ifCtrl)
+            {
+                processor.SkipState = (ifCtrl.Branch);
+            }
+            else
+            {
+                throw new ParseException("ELSE must be in IF", this.Address);
+            }
         }
 
         protected override string _GetString(Formatter formatter)
@@ -157,7 +148,18 @@
         public override int IndentThis => -1;
 
         public override void Exec(Processor processor)
-        { }
+        { 
+            var ctrl = processor.ControlStack.Peek();
+            if (ctrl is If ifCtrl)
+            {
+                processor.ControlStack.Pop();
+                processor.SkipState = false;
+            }
+            else
+            {
+                throw new ParseException("ENDIF must be in IF", this.Address);
+            }
+        }
 
         protected override string _GetString(Formatter formatter)
         {

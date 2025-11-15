@@ -21,7 +21,9 @@
 
         public override void Exec(Processor processor)
         {
-            processor.PC = Ret.Address + 1;
+            processor.FunctionDefinitionStack.Push(
+                new FunctionDefinition(Label, processor.PC)
+                );
         }
 
         protected override string _GetString(Formatter formatter)
@@ -48,8 +50,18 @@
 
         public override void Exec(Processor processor)
         {
-            processor.CallStack.Push(processor.PC);
-            processor.PC = Func.Address + 1;
+            
+            processor.FunctionDefinitions.TryGetValue(Label, out var func);
+            if (func != null)
+            {
+                int prevPC = processor.PC;
+                func.Exec(processor);
+                processor.PC = prevPC;
+            }
+            else
+            {
+                throw new ScriptException($"函数 {Label} 未定义", processor.PC);
+            }
         }
 
         protected override string _GetString(Formatter formatter)
@@ -69,7 +81,8 @@
 
         public override void Exec(Processor processor)
         {
-            processor.PC = processor.CallStack.Pop();
+            var f = processor.FunctionDefinitionStack.Pop();
+            processor.FunctionDefinitions.Add(f.Label, f);
         }
 
         public override void Assemble(Assembly.Assembler assembler)

@@ -4,7 +4,7 @@ namespace EasyScript.Parsing.Lexers;
 
 internal class ConstantParser : IStatementParser
 {
-    Statement? IStatementParser.Parse(ParserArgument args)
+    Statement? IStatementParser.ParseWildcard(ParserArgument args)
     {
         var m = Regex.Match(args.Text, $@"^{Formats.Constant}\s*=\s*{Formats.Instant}$", RegexOptions.IgnoreCase);
         if (m.Success)

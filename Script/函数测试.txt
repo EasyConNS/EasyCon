@@ -1,0 +1,7 @@
+func test_func
+for 10
+print test_func
+next
+endfunc
+
+call test_func

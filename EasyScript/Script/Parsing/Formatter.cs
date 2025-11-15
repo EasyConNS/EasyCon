@@ -2,7 +2,7 @@
 
 namespace EasyScript.Parsing
 {
-    class Formatter
+    internal class Formatter
     {
         private readonly Dictionary<string, int> Constants;
         private readonly Dictionary<string, ExternalVariable> ExtVars;

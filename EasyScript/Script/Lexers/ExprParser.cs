@@ -19,7 +19,7 @@ internal class ExprPaerser : IStatementParser
         return types;
     }
 
-    Statement? IStatementParser.Parse(ParserArgument args)
+    Statement? IStatementParser.ParseWildcard(ParserArgument args)
     {
         // empty
         if (args.Text.Length == 0)

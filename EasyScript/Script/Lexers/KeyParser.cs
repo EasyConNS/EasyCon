@@ -4,16 +4,27 @@ using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing.Lexers;
 
-internal class KeyPaerser : IStatementParser
+internal static class KeyParser
 {
     const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN";
-
-    Statement? IStatementParser.Parse(ParserArgument args)
+    internal static void Init()
     {
-        return KeyParse(args);
-    }
+        typeof(SwitchButton).GetEnumNames().ToList()
+            .Concat(
+                typeof(DirectionKey)
+                .GetEnumNames()
+                .Where(x => !x.Equals("None"))
+                )
+            .ToList()
+            .ForEach(
+                key => KeywordLexer.Register(key, KeyParse)
+            );
 
-    private static Statement? KeyParse(ParserArgument args)
+        KeywordLexer.Register("LS", StickParse);
+        KeywordLexer.Register("RS", StickParse);
+
+    }
+    internal static Statement? KeyParse(ParserArgument args)
     {
         ECKey key;
         var m = Regex.Match(args.Text, $"^({GPKey})$", RegexOptions.IgnoreCase);
@@ -27,14 +38,19 @@ internal class KeyPaerser : IStatementParser
         {
             return m.Groups[2].Value.ToUpper() switch
             {
-                "UP"=> new KeyUp(key),
-                "DOWN"=> new KeyDown(key),
+                "UP" => new KeyUp(key),
+                "DOWN" => new KeyDown(key),
                 _ => null,
             };
         }
+        return null;
+    }
 
+    internal static Statement? StickParse(ParserArgument args)
+    {
+        ECKey key;
         // stick
-        m = Regex.Match(args.Text, @"^([lr]s)\s+(reset)$", RegexOptions.IgnoreCase);
+        var m = Regex.Match(args.Text, @"^([lr]s)\s+(reset)$", RegexOptions.IgnoreCase);
         if (m.Success)
         {
             var keyname = m.Groups[1].Value;

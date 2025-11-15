@@ -523,8 +523,8 @@ namespace EasyCon2.Forms
 
         private void ScriptRun()
         {
-            if (!ScriptCompile())
-                return;
+            //if (!ScriptCompile())
+            //    return;
             if (_program.HasKeyAction)
             {
                 if (!SerialCheckConnect())
@@ -533,6 +533,12 @@ namespace EasyCon2.Forms
                     return;
             }
 
+            var externalVariables = new List<ExternalVariable>();
+            foreach (var il in captureVideo.LoadedLabels)
+            {
+                externalVariables.Add(new ExternalVariable(il.name, () => il.Search()));
+            }
+            _program.load(textBoxScript.Text, externalVariables);
             thd = new Thread(_RunScript);
             thd?.Start();
         }
@@ -550,7 +556,28 @@ namespace EasyCon2.Forms
                     StatusShowLog("开始运行");
                 });
                 Print("-- 开始运行 --", Color.Lime);
-                _program.Run(this, this);
+                try
+                {
+                    _program.explain(this, this);
+                }
+                catch (AggregateException ex)
+                {
+                    Invoke(delegate
+                    {
+                        string str = "";
+                        foreach (Exception ex1 in ex.InnerExceptions)
+                        {
+                            if (ex1 is ParseException pex)
+                            {
+                                str += $"{pex.Message}: 行{pex.Index + 1}";
+                                ScriptSelectLine(pex.Index);
+                            }
+                        }
+                        SystemSounds.Hand.Play();
+                        MessageBox.Show(str);
+                        StatusShowLog(str);
+                    });
+                }
                 Print("-- 运行结束 --", Color.Lime);
                 StatusShowLog("运行结束");
                 SystemSounds.Beep.Play();
@@ -863,8 +890,10 @@ namespace EasyCon2.Forms
 
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
         {
+            
             if (!scriptRunning)
             {
+                Print("-- 开始编译 --", Color.Lime);
                 ScriptRun();
             }
             else
