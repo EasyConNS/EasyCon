@@ -21,7 +21,7 @@ public class SimpleVisitor : AstVisitor
 
     public override AstNode VisitProgram(Program ast)
     {
-        System.Diagnostics.Debug.WriteLine("program start:");
+        System.Diagnostics.Debug.WriteLine("visit start:");
         foreach (var st in ast.Statements)
         {
             Visit(st);

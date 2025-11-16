@@ -16,7 +16,7 @@ public partial class NintendoSwitch
         return SerialPort.GetPortNames();
     }
 
-    private ConnectResult _TryConnect(string connStr, bool sayhello, int baudrate=115200)
+    private ConnectResult _TryConnect(string connStr, int baudrate=115200)
     {
         if (connStr == "")
             return ConnectResult.InvalidArgument;
@@ -29,7 +29,7 @@ public partial class NintendoSwitch
             {
                 if (result != ConnectResult.None)
                     return;
-                if (status == Status.Connected || status == Status.ConnectedUnsafe)
+                if (status == Status.Connected)
                 {
                     result = ConnectResult.Success;
                     ewh.Set();
@@ -50,8 +50,8 @@ public partial class NintendoSwitch
         clientCon.OpenDelay = need_open_delay;
 
         clientCon.StatusChanged += statuschanged;
-        clientCon.Connect(sayhello);
-        if (!ewh.WaitOne(900) && sayhello)
+        clientCon.Connect();
+        if (!ewh.WaitOne(1000))
         {
             clientCon.Disconnect();
             clientCon = null;
@@ -75,7 +75,7 @@ public partial class NintendoSwitch
         source?.Cancel();
     }
 
-    public bool IsConnected() => clientCon?.CurrentStatus == Status.Connected || clientCon?.CurrentStatus == Status.ConnectedUnsafe;
+    public bool IsConnected() => clientCon?.CurrentStatus == Status.Connected;
     public Status ConnectionStatus => clientCon?.CurrentStatus ?? Status.Connecting;
 
     void WriteReport(Span<byte> b)
@@ -280,6 +280,5 @@ public enum Status
 {
     Connecting,
     Connected,
-    ConnectedUnsafe,
     Error,
 }

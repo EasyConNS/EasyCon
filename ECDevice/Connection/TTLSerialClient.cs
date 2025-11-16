@@ -14,7 +14,6 @@ class TTLSerialClient : IConnection
     readonly int _port;
 
     SerialPort _sport;
-    bool _sayhello = true;
 
     readonly List<byte> _inBuffer = new();
     readonly List<byte[]> _outBuffer = new();
@@ -60,7 +59,6 @@ class TTLSerialClient : IConnection
             return;
 
         _sport = new SerialPort(_connStr, _port);
-        _sayhello = sayhello;
 
         source = new CancellationTokenSource();
         var token = source.Token;
@@ -91,15 +89,9 @@ class TTLSerialClient : IConnection
             Debug.WriteLine("left byte:" + _sport.BytesToRead.ToString());
             _sport.DiscardInBuffer();
             // say hello
-            if (_sayhello)
-            {
-                var hellobytes = new byte[] { Command.Ready, Command.Ready, Command.Hello };
-                stream.Write(hellobytes, 0, hellobytes.Length);
-                BytesSent?.Invoke(_connStr, hellobytes);
-            }
-            else
-                CurrentStatus = Status.ConnectedUnsafe;
-            bool hellocheck = _sayhello;
+            var hellobytes = new byte[] { Command.Ready, Command.Ready, Command.Hello };
+            stream.Write(hellobytes, 0, hellobytes.Length);
+            BytesSent?.Invoke(_connStr, hellobytes);
             var outBuffer = new List<byte>();
             while (!source.IsCancellationRequested)
             {
@@ -116,10 +108,9 @@ class TTLSerialClient : IConnection
                         _inBuffer.AddRange(inBuffer.Take(count));
                     }
 
-                    if (hellocheck && inBuffer[0] == Reply.Hello)
+                    if (inBuffer[0] == Reply.Hello)
                     {
                         // hello received
-                        hellocheck = false;
                         CurrentStatus = Status.Connected;
                     }
                     BytesReceived?.Invoke(_connStr, _inBuffer.ToArray());

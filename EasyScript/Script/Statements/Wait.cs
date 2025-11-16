@@ -13,7 +13,7 @@
 
         protected override string _GetString(Formatter formatter)
         {
-            return _omitted ? $"{Duration.GetCodeText(formatter)}" : $"WAIT {Duration.GetCodeText(formatter)}";
+            return $"WAIT {Duration.GetCodeText(formatter)}";
         }
 
         public override void Exec(Processor processor)

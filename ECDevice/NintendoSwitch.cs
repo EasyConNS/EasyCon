@@ -42,9 +42,9 @@ namespace ECDevice
         private readonly OperationRecords operationRecords = new();
         public RecordState recordState = RecordState.RECORD_STOP;
 
-        public ConnectResult TryConnect(string constr, bool keepalive)
+        public ConnectResult TryConnect(string constr)
         {
-            var result = _TryConnect(constr, keepalive);
+            var result = _TryConnect(constr);
 
             if (result == ConnectResult.Success)
             {
@@ -58,7 +58,7 @@ namespace ECDevice
             else
             {
                 Thread.Sleep(100);
-                result = _TryConnect(constr, keepalive,9600);
+                result = _TryConnect(constr,9600);
                 if (result == ConnectResult.Success)
                 {
                     source = new();

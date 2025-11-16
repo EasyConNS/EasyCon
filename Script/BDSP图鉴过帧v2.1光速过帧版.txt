@@ -1,0 +1,224 @@
+#【BDSP光速过帧v2.1】by 未来的未来
+#直接运行脚本就行了，不用提前光标停留在图鉴上
+#图鉴位置必须再地图上方,秘密基地测帧得再上方开洞
+#比老版本提升了80%左右的效率
+
+_过帧模式 = 1 	#1翻图鉴过帧，2开关图鉴过帧   3是翻页图鉴过帧
+_在哪测帧 = 1	#1是在地上测，2是在秘密基地   3是野外乱数
+
+#全图鉴翻一次7500帧左右,关闭图鉴200帧左右。只过1次图鉴也就是7700
+
+_翻几次 = 1
+_开关几次 = 8	#图鉴页面有1个精灵就是15帧，有9个就开关一次图鉴200帧左右
+_过几次 = 13       #过1次160帧 速度比开关图鉴快但是需要全图鉴 预留300帧
+
+#图鉴过帧数和图鉴完成数有关
+
+# 唤醒设备
+FOR 5
+    LCLICK 120
+    100
+NEXT
+
+$1 = 0
+$2 = 0
+$3 = _过帧模式
+$4 = _在哪测帧
+
+#翻图鉴过帧
+FUNC FAN
+    A 200
+    WAIT 800
+    #打开图鉴
+    FOR _翻几次
+        $1 += 1
+        RS RIGHT
+        LS RIGHT
+        WAIT 2200  #翻不完一页就改这里参数
+        DOWN
+        WAIT 150
+        PRINT 已过帧 & $1 & 次
+        $2 += 1
+        IF $2 = 50
+            $2 = 0
+            RS RESET
+            LS RESET
+            LS DOWN,200
+            WAIT 200
+            B 200
+            WAIT 1000
+            A 500
+        ENDIF
+    NEXT
+ENDFUNC
+#开关图鉴
+FUNC KAIGUAN
+    #打开图鉴
+    FOR _开关几次
+        A 200
+        WAIT 1000
+        B 200
+        WAIT 600
+        $1 += 1
+        PRINT 已过帧 & $1 & 次
+    NEXT
+ENDFUNC
+FUNC GUO
+    #打开图鉴
+    A 200
+    WAIT 2000
+    $5 = _过几次
+    $5 -= 1
+    FOR $5
+        RIGHT 50
+        WAIT 100
+        $1 += 1
+        PRINT 已过帧 & $1 & 次
+    NEXT
+    WAIT 1000
+ENDFUNC
+#地上过帧
+FUNC DISAHNGA
+    B 200
+    WAIT 200
+    B 200
+    WAIT 200
+    X 200
+    WAIT 1000
+    PLUS 200
+    WAIT 1000
+    B 200
+    WAIT 1000
+    UP 200
+    WAIT 200
+ENDFUNC
+#地上矫正
+FUNC DISHANGB
+    1000
+    RS RESET
+    LS RESET
+    WAIT 1000
+    B 200
+    WAIT 1000
+    B 200
+    WAIT 200
+    PLUS
+    WAIT 1000
+    LS RIGHT,100
+    WAIT 500
+    A 200
+    WAIT 1000
+    HOME 50
+    WAIT 50
+    HOME 50
+ENDFUNC
+#野外矫正
+FUNC YEWAI
+    1000
+    RS RESET
+    LS RESET
+    WAIT 1000
+    B 200
+    WAIT 1000
+    RIGHT 200
+    WAIT 400
+    RIGHT 200
+    WAIT 400
+    B 200
+    WAIT 200
+    PLUS
+    WAIT 1000
+    LS RIGHT,100
+    WAIT 500
+    A 200
+    WAIT 1000
+    HOME 100
+    WAIT 100
+    HOME 100
+ENDFUNC
+#地下过帧出洞
+FUNC DIXIAA
+    B 120
+    LS DOWN,1200
+    WAIT 2700
+    X 200
+    WAIT 1000
+    PLUS 200
+    WAIT 1000
+    B 200
+    WAIT 1000
+    UP 200
+    WAIT 200
+ENDFUNC
+#地下矫正进洞
+FUNC DIXIAB
+    1000
+    RS RESET
+    LS RESET
+    WAIT 3000
+    B 200
+    WAIT 1000
+    B 200
+    WAIT 200
+    LS UP,300
+    WAIT 200
+    A 200
+    WAIT 600
+    A 200
+    WAIT 4200
+    LS UP,1900
+    WAIT 50
+    Y 100
+ENDFUNC
+
+IF $4 = 1
+    IF $3 = 1
+        CALL DISAHNGA
+        CALL FAN
+        CALL DISHANGB
+    ENDIF
+    IF $3 = 2
+        CALL DISAHNGA
+        CALL KAIGUAN
+        CALL DISHANGB
+    ENDIF
+    IF $3 = 3
+        CALL DISAHNGA
+        CALL GUO
+        CALL DISHANGB
+    ENDIF
+ENDIF
+IF $4 = 2
+    IF $3 = 1
+        CALL DIXIAA
+        CALL FAN
+        CALL DIXIAB
+    ENDIF
+    IF $3 = 2
+        CALL DIXIAA
+        CALL KAIGUAN
+        CALL DIXIAB
+    ENDIF
+    IF $3 = 3
+        CALL DIXIAA
+        CALL GUO
+        CALL DIXIAB
+    ENDIF
+ENDIF
+IF $4 = 3
+    IF $3 = 1
+        CALL DISAHNGA
+        CALL FAN
+        CALL YEWAI
+    ENDIF
+    IF $3 = 2
+        CALL DISAHNGA
+        CALL KAIGUAN
+        CALL YEWAI
+    ENDIF
+    IF $3 = 3
+        CALL DISAHNGA
+        CALL GUO
+        CALL YEWAI
+    ENDIF
+ENDIF

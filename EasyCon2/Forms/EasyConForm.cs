@@ -147,6 +147,12 @@ namespace EasyCon2.Forms
             setTag(this);
         }
 
+        private void EasyConForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            e.Cancel = !FileClose();
+            captureVideo?.Close();
+        }
+
         private void InitCaptureTypes()
         {
             // add capture types
@@ -197,11 +203,6 @@ namespace EasyCon2.Forms
                         {
                             labelSerialStatus.Text = "已连接(稳定模式)";
                             labelSerialStatus.ForeColor = Color.Lime;
-                        }
-                        else if (status == Status.ConnectedUnsafe)
-                        {
-                            labelSerialStatus.Text = "已连接(单向模式)";
-                            labelSerialStatus.ForeColor = Color.Yellow;
                         }
                         else
                         {
@@ -508,16 +509,16 @@ namespace EasyCon2.Forms
             }
             catch (ParseException ex)
             {
-                string str = $"{ex.Message}: 行{ex.Index + 1}";
                 SystemSounds.Hand.Play();
-                MessageBox.Show(str);
-                StatusShowLog(str);
+                StatusShowLog("编译失败");
                 ScriptSelectLine(ex.Index);
+                MessageBox.Show($"{ex.Message}: 行{ex.Index + 1}");
                 return false;
             }
             finally
             {
                 scriptCompiling = false;
+                StatusShowLog("编译完成");
             }
         }
 
@@ -561,9 +562,27 @@ namespace EasyCon2.Forms
                 StatusShowLog("运行终止");
                 SystemSounds.Beep.Play();
             }
+            catch (AggregateException ex)
+            {
+                Invoke(delegate
+                {
+                    string str = "";
+                    foreach (Exception ex1 in ex.InnerExceptions)
+                    {
+                        if (ex1 is ParseException pex)
+                        {
+                            str += $"{pex.Message}: 行{pex.Index + 1}";
+                            ScriptSelectLine(pex.Index);
+                        }
+                    }
+                    SystemSounds.Hand.Play();
+                    MessageBox.Show(str);
+                    StatusShowLog(str);
+                });
+            }
             catch (ScriptException ex)
             {
-                Print(ex.Message, Color.OrangeRed);
+                Print($"[L{ex.Address}] " + ex.Message, Color.OrangeRed);
                 Print("-- 运行出错 --", Color.OrangeRed);
                 StatusShowLog("运行出错");
                 SystemSounds.Hand.Play();
@@ -597,7 +616,6 @@ namespace EasyCon2.Forms
 
         private void ComPort_DropDown(object sender, EventArgs e)
         {
-            StatusShowLog("尝试连接...");
             var ports = NintendoSwitch.GetPortNames();
             ComPort.Items.Clear();
             foreach (var portName in ports)
@@ -606,29 +624,26 @@ namespace EasyCon2.Forms
                 Debug.WriteLine(portName);
             }
         }
+        
         private bool SerialCheckConnect()
         {
-            if (NS.IsConnected())
-                return true;
-            if (!ComPort.Text.Equals("下拉选择串口"))
-                return SerialConnect(ComPort.Text);
-            return SerialSearchConnect() != null;
+            return NS.IsConnected();
         }
 
-        private string SerialSearchConnect()
+        private async void SerialSearchConnect()
         {
             StatusShowLog("尝试连接...");
             var ports = NintendoSwitch.GetPortNames();
             foreach (var portName in ports)
             {
-                var r = NS.TryConnect(portName, true);
+                var r = NS.TryConnect(portName);
                 if (显示调试信息ToolStripMenuItem.Checked)
                     Print($"{portName} {r.GetName()}");
                 if (r == NintendoSwitch.ConnectResult.Success)
                 {
                     StatusShowLog("连接成功");
                     ComPort.Text = portName;
-                    return portName;
+                    SystemSounds.Beep.Play();
                 }
                 // fix the internal thread cant quit safely,so wait 1s for next connect
                 Thread.Sleep(1000);
@@ -636,37 +651,27 @@ namespace EasyCon2.Forms
             StatusShowLog("连接失败");
             SystemSounds.Hand.Play();
             MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（详细使用教程见群946057081文档）\n3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁\n4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n5.以上步骤都完成后重启程序再试\n\n可用手动连接端口：" + string.Join("、", ports));
-            return null;
         }
 
-        private bool SerialConnect(string portName)
+        private async void SerialConnect(string portName)
         {
             StatusShowLog("开始连接...");
             // try stable connection
-            var r = NS.TryConnect(portName, true);
+            var r = NS.TryConnect(portName);
             if (显示调试信息ToolStripMenuItem.Checked)
                 Print($"{portName} {r.GetName()}");
-            if (r != NintendoSwitch.ConnectResult.Success)
-            {
-                // try unstable connection
-                r = NS.TryConnect(portName, false);
-                if (显示调试信息ToolStripMenuItem.Checked)
-                    Print($"{portName} {r.GetName()}");
-            }
+
             if (r == NintendoSwitch.ConnectResult.Success)
             {
                 StatusShowLog("连接成功");
+                SystemSounds.Beep.Play();
                 ComPort.Text = portName;
-                if (NS.ConnectionStatus == Status.ConnectedUnsafe)
-                    MessageBox.Show("正在使用单向连接模式。这是一种应急方案，并不表示成功连接到单片机，有可能无法正常工作。请检查连线并尽量使用稳定模式。");
-                return true;
             }
             else
             {
                 StatusShowLog("连接失败");
                 SystemSounds.Hand.Play();
                 MessageBox.Show("连接失败！该端口不存在、无法使用或已被占用。请在设备管理器确认TTL所在串口正确识别，关闭其它占用USB的程序，并重启伊机控再试。");
-                return false;
             }
         }
 
@@ -788,22 +793,13 @@ namespace EasyCon2.Forms
 
         private bool FlashPrepare()
         {
-            if (!SerialCheckConnect())
-                return false;
-            if (NS.ConnectionStatus == Status.ConnectedUnsafe)
-            {
-                MessageBox.Show("需要稳定模式才能烧录");
-                return false;
-            }
-            return true;
+            return SerialCheckConnect();
         }
 
         private bool CheckFirmwareVersion()
         {
             if (!SerialCheckConnect())
                 return false;
-            if (NS.ConnectionStatus == Status.ConnectedUnsafe)
-                return true;
             int ver = NS.GetVersion();
             if (ver < GetSelectedBoard().Version)
             {
@@ -871,58 +867,15 @@ namespace EasyCon2.Forms
                 ScriptStop();
         }
 
-        private void buttonScriptStop_Click(object sender, EventArgs e)
-        {
-            ScriptStop();
-        }
-
         private void buttonSerialPortSearch_Click(object sender, EventArgs e)
         {
-            if (SerialSearchConnect() != null)
-                SystemSounds.Beep.Play();
+            SerialSearchConnect();
+                
         }
 
         private void buttonSerialPortConnect_Click(object sender, EventArgs e)
         {
-            if (SerialConnect(ComPort.Text))
-                SystemSounds.Beep.Play();
-        }
-
-        private void 新建ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            FileClose();
-            StatusShowLog("新建完毕");
-        }
-
-        private void 打开ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            FileOpen();
-        }
-
-        private void 保存ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            FileSave();
-        }
-
-        private void 另存为ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            FileSave(true);
-        }
-
-        private void 关闭ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            FileClose();
-        }
-
-        private void 退出ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Close();
-        }
-
-        private void EasyConForm_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            e.Cancel = !FileClose();
-            captureVideo?.Close();
+            SerialConnect(ComPort.Text);
         }
 
         private void buttonKeyMapping_Click(object sender, EventArgs e)
@@ -1020,7 +973,7 @@ namespace EasyCon2.Forms
         {
             if (!SerialCheckConnect())
                 return;
-            if (NS.RemoteStart() || NS.ConnectionStatus == Status.ConnectedUnsafe)
+            if (NS.RemoteStart())
             {
                 SystemSounds.Beep.Play();
                 StatusShowLog("远程运行已开始");
@@ -1036,7 +989,7 @@ namespace EasyCon2.Forms
         {
             if (!SerialCheckConnect())
                 return;
-            if (NS.RemoteStop() || NS.ConnectionStatus == Status.ConnectedUnsafe)
+            if (NS.RemoteStop())
             {
                 SystemSounds.Beep.Play();
                 StatusShowLog("远程运行已停止");
@@ -1132,6 +1085,37 @@ namespace EasyCon2.Forms
         }
 
         #region  EasyCon菜单功能
+        private void 新建ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FileClose();
+            StatusShowLog("新建完毕");
+        }
+
+        private void 打开ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FileOpen();
+        }
+
+        private void 保存ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FileSave();
+        }
+
+        private void 另存为ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FileSave(true);
+        }
+
+        private void 关闭ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FileClose();
+        }
+
+        private void 退出ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Close();
+        }
+
         private void DeviceTypeItem_Click(object sender, EventArgs e)
         {
             // tag = device id
@@ -1318,7 +1302,6 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             }
             SaveConfig();
         }
-        #endregion
 
         #region form resize
 
@@ -1375,7 +1358,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
 
         private void 手柄设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            ControllerConfig controllerConfig = new ControllerConfig(NS);
+            var controllerConfig = new ControllerConfig(NS);
             controllerConfig.Show();
         }
 
@@ -1397,7 +1380,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
 
         private void 喷射ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            DrawingBoard board = new DrawingBoard(NS);
+            var board = new DrawingBoard(NS);
             board.Show();
         }
 
@@ -1411,7 +1394,7 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
 
         private void 自由画板鼠标代替摇杆ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Mouse mouse = new Mouse(NS);
+            Mouse mouse = new(NS);
             mouse.Show();
         }
 
@@ -1421,5 +1404,6 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             var oc = Environment.GetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS");
             StatusShowLog($"环境变量设置成功：{oc}");
         }
+        #endregion
     }
 }

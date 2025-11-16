@@ -36,7 +36,7 @@
             Text = text;
         }
 
-        public override int Get(Processor processor)
+        public override int Get(Processor _)
         {
             return Val;
         }
