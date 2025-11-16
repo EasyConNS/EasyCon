@@ -14,7 +14,7 @@ namespace EasyScript {
         public int PC = 0;
         public bool CancelLineBreak = false;
         public Stack<short> Stack = new();
-        //public Stack<int> CallStack = new();
+        public Stack<int> CallStack = new();
         public RegisterFile Register = new(RegisterCount);
 
         public ExternTime et = new(DateTime.Now);
@@ -79,27 +79,3 @@ namespace EasyScript {
     }
 }
 
-namespace EasyScript.Parsing
-{
-    internal record FunctionDefinition(
-        string Label,
-        int OffsetLineNo        
-        )
-    {
-        public readonly IEnumerable<Statement> Statements = new List<Statement>();
-        public void Push(Statement statement)
-        {
-            Statements.Append(statement);
-        }
-
-        public void Exec(Processor processor)
-        {
-            processor.PC = OffsetLineNo;
-            foreach (var statement in Statements)
-            {
-                processor.PC++;
-                statement.Exec(processor);
-            }
-        }
-    };
-}

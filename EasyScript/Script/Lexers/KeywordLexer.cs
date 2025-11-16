@@ -1,10 +1,4 @@
-﻿using EasyScript.Parsing;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿
 namespace EasyScript.Parsing.Lexers
 {
     internal static partial class KeywordLexer
@@ -38,6 +32,9 @@ namespace EasyScript.Parsing.Lexers
         {
             KeyParser.Init();
             MsgParser.Init();
+            ImportParser.Init();
+            IfElseParser.Init();
+            ForParser.Init();
         }
 
         

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿
 
 namespace EasyScript.Parsing.Statements
 {
@@ -28,7 +23,12 @@ namespace EasyScript.Parsing.Statements
         {
             Scripter scripter = new();
             scripter.load(FileContent, processor.extVars);
-            scripter.explain(processor.Output, processor.GamePad, out var _subProcessor);
+            Processor _subProcessor = scripter.explain(new Processor() { 
+                    Output = processor.Output,
+                    GamePad = processor.GamePad,
+                    extVars = processor.extVars
+            });
+            
             foreach(var kvp in _subProcessor.FunctionDefinitions)
             {
                 processor.FunctionDefinitions[kvp.Key] = kvp.Value;

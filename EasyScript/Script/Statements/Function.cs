@@ -21,9 +21,7 @@
 
         public override void Exec(Processor processor)
         {
-            processor.FunctionDefinitionStack.Push(
-                new FunctionDefinition(Label, processor.PC)
-                );
+            processor.FunctionDefinitionStack.Push(new FunctionDefinition(Label));
         }
 
         protected override string _GetString(Formatter formatter)
@@ -32,7 +30,7 @@
         }
     }
 
-    class CallStat : Statement
+    class CallStat : ControlStatement
     {
         public readonly string Label;
         public Function Func = null;
@@ -50,17 +48,19 @@
 
         public override void Exec(Processor processor)
         {
-            
-            processor.FunctionDefinitions.TryGetValue(Label, out var func);
-            if (func != null)
+            if(processor.FunctionDefinitions.TryGetValue(Label, out var func))
             {
-                int prevPC = processor.PC;
-                func.Exec(processor);
-                processor.PC = prevPC;
+                processor.CallStack.Push(processor.PC);
+                processor.PC = 0;
+
+                var scriptor = new Scripter();
+                scriptor.load(func.Body(), processor.extVars);
+                processor = scriptor.explain(processor);
+                processor.PC = processor.CallStack.Pop();
             }
             else
             {
-                throw new ScriptException($"函数 {Label} 未定义", processor.PC);
+                throw new ScriptException($"Function {Label} not found", Address);
             }
         }
 
@@ -82,6 +82,7 @@
         public override void Exec(Processor processor)
         {
             var f = processor.FunctionDefinitionStack.Pop();
+
             processor.FunctionDefinitions.Add(f.Label, f);
         }
 
@@ -92,4 +93,26 @@
             assembler.FunctionMapping[this.Label].Target = assembler.Last();
         }
     }
+
+    internal class FunctionDefinition
+    {
+        public readonly string Label;
+
+        public readonly List<string> Statements = new ();
+
+        public FunctionDefinition(string lbl)
+        {
+            Label = lbl;
+        }
+
+        public void Push(ParserArgument statement)
+        {
+            Statements.Add(statement.Text);
+        }
+
+        public string Body()
+        {
+            return string.Join("\n", Statements);
+        }
+    };
 }

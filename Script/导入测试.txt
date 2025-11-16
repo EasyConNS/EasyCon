@@ -1,3 +1,12 @@
-import <被导入文件>
-import <E:\Tools\伊机控\源码\Script\被导入文件>
+import <被导入文件.txt>
+import <E:\Tools\伊机控\源码\Script\被导入文件.txt>
 print 主文件
+
+
+func de
+print de
+endfunc
+
+call de
+print 11
+call test_import_func

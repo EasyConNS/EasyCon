@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Immutable;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing
@@ -22,6 +23,7 @@ namespace EasyScript.Parsing
         internal IEnumerable<ParserArgument> ParseLines(string text)
         {
             var lines = Regex.Split(text, "\r\n|\r|\n");
+            int lineno = 0;
             foreach (var line in lines)
             {
                 // get indent
@@ -44,8 +46,9 @@ namespace EasyScript.Parsing
                     Text = text,
                     Comment = comment,
                     Formatter = _formatter,
-                    Arguments = text.Split(' ').Where(x => !string.IsNullOrEmpty(x)).ToList()
+                    Arguments = text.Split(' ').Where(x => !string.IsNullOrEmpty(x)).ToImmutableList(),
                 };
+                lineno++;
             }
         }
 

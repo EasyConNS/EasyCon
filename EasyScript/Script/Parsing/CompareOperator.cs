@@ -3,6 +3,7 @@
 class CompareOperator
 {
     public static readonly List<CompareOperator> All = new();
+    public static readonly Dictionary<string, CompareOperator> AllDict = new();
     public readonly string Operator;
     public readonly Func<int, int, bool> Compare;
     public readonly Func<uint, uint, Assembly.Instruction> Assemble;
@@ -13,6 +14,7 @@ class CompareOperator
         Compare = compare;
         Assemble = assemble;
         All.Add(this);
+        AllDict.Add(op, this);
     }
 
     public static readonly CompareOperator EqualOld = new("=", (v0, v1) => v0 == v1, (r0, r1) => Assembly.Instructions.AsmEqual.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));

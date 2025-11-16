@@ -47,14 +47,8 @@ public class Scripter
             
             var cmd = _statements[_processor.PC];
             _processor.PC++;
-            if (_processor.FunctionDefinitionStack.Count == 0)
-            {
-                cmd.Exec(_processor);
-            }
-            else
-            {
-                _processor.FunctionDefinitionStack.Peek().Push(cmd);
-            }
+            cmd.Exec(_processor);
+            
         }
     }
 
@@ -69,51 +63,54 @@ public class Scripter
 
     public void explain(IOutputAdapter output, ICGamePad pad)
     {
-        explain(output, pad, out Processor _processor);
+        explain(new Processor
+            {
+                Output = output,
+                GamePad = pad,
+                extVars = ExtVars.Values,
+            }
+        );
     }
 
-    internal void explain(
-        IOutputAdapter output, ICGamePad pad,
-        out Processor _processor
+    internal Processor explain(
+        Processor _processor
         )
     {
-
         var parser = new Parser(Constants, ExtVars);
-        _processor = new Processor
-        {
-            Output = output,
-            GamePad = pad,
-            extVars = ExtVars.Values
-        };
         var formatter = new Parsing.Formatter(Constants, ExtVars);
 
         var lines = parser.ParseLines(code).ToArray();
-        while (_processor.PC < lines.Count())
+        _processor.PC = 0;
+        while (_processor.PC < lines.Length)
         {
             var pline = lines[_processor.PC];
             var cmd = ParserManager.Parse(pline);
             if (cmd != null)
             {
                 cmd.Address = _processor.PC;
-                if (_processor.FunctionDefinitionStack.Count == 0)  // 如果现在不在定义函数
+                if (_processor.FunctionDefinitionStack.Count == 0)  // 没在定义函数
                 {
                     // 这里不处理错误，由GUI处理
                     if (!_processor.SkipState || cmd is BranchOp)
                     {
                         cmd.Exec(_processor);
                     }
-                    
                 }
-                else    // 正在定义函数
+                else    // 在定义函数，对于普通指令只添加到函数栈，不执行
                 {
-                    // 不执行，只是添加到函数定义中
-                    _processor.FunctionDefinitionStack.Peek().Push(cmd);
+                    if (cmd is ReturnStat || cmd is Function)   // 对于函数定义语句还是要执行的
+                    {
+                        cmd.Exec(_processor);
+                    }
+                    else 
+                    { 
+                        _processor.FunctionDefinitionStack.Peek().Push(pline); 
+                    }
                 }
             }
             else
             {
-                output.Print($"[Line {_processor.PC + 1}] Unknown command: {pline}", true);
-
+                throw new ParseException("Unknown command", _processor.PC);
             }
 
             _processor.PC++;
@@ -135,6 +132,7 @@ public class Scripter
         {
             throw new AggregateException(errors.ToArray());
         }
+        return _processor;
     }
 
     public string ToCode()

@@ -1,4 +1,6 @@
 ﻿using EasyScript.Parsing.Lexers;
+using System.Collections.Immutable;
+using System.ComponentModel.DataAnnotations;
 
 namespace EasyScript.Parsing;
 
@@ -42,5 +44,8 @@ record ParserArgument
     public Formatter Formatter { get; init; }
     public string Comment { get; init; } = string.Empty;
 
-    public List<string> Arguments = new();
+    
+    public ImmutableList<string> Arguments;
+
+    public int Address;
 }

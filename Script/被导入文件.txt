@@ -1,1 +1,5 @@
-print 被导入的文件
+func test_import_func
+print success
+endfunc
+
+print test_import
