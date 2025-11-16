@@ -9,7 +9,6 @@ using ECDevice;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
-using OpenCvSharp.Internal;
 using PTController;
 using System.Diagnostics;
 using System.IO;
@@ -24,7 +23,7 @@ namespace EasyCon2.Forms
 {
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter, ICGamePad
     {
-        private readonly Version VER = new(1, 50, 1);
+        private readonly Version VER = new(1, 51, 0);
         private readonly TextEditor textBoxScript = new();
         internal readonly FormController formController;
 
@@ -39,21 +38,13 @@ namespace EasyCon2.Forms
         const string FirmwarePath = @"Firmware\";
 
         private VControllerConfig _config;
-        private string _currentFile = null;
-
-        private readonly Scripter _program = new();
-        private bool scriptCompiling = false;
-        private bool scriptRunning = false;
-        private Thread thd;
-
-        private readonly Queue<Tuple<RichTextBox, object, Color?>> _messages = new();
-        private DateTime _startTime = DateTime.MinValue;
-        private TimeSpan _lastRunningTime = TimeSpan.Zero;
-        private bool _msgNewLine = true;
-        private bool _msgFirstLine = true;
+        // 当前打开的脚本文件路径
+        private string _currentFile = "";
         private bool _fileEdited = false;
 
-        private readonly List<ToolStripMenuItem> captureTypes = new();
+        private readonly Queue<Tuple<RichTextBox, object, Color?>> _messages = new();
+
+        private readonly List<ToolStripMenuItem> captureTypes = [];
 
         private Web_Socket ws;
 
@@ -64,7 +55,6 @@ namespace EasyCon2.Forms
             formController = new FormController(this, this.NS);
 
             LoadConfig();
-            InitEditor();
             captureVideo.LoadImgLabels();
 
             频道远程ToolStripMenuItem.Checked = _config?.ChannelControl ?? false;
@@ -116,6 +106,7 @@ namespace EasyCon2.Forms
             comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
             comboBoxBoardType.SelectedIndex = 0;
             RegisterKeys();
+            InitEditor();
 
             // UI updating timer
             Task.Run(() => { UpdateUI(); });
@@ -211,13 +202,12 @@ namespace EasyCon2.Forms
                         }
 
                         // timer
-                        TimeSpan time;
-                        if (_startTime == DateTime.MinValue)
-                            time = _lastRunningTime;
-                        else
-                            time = DateTime.Now - _startTime;
-                        labelTimer.Text = time.ToString(@"hh\:mm\:ss");
                         labelTimer.ForeColor = scriptRunning ? Color.Lime : Color.White;
+                        if (_startTime != DateTime.MinValue)
+                        {
+                            var time = DateTime.Now - _startTime;
+                            labelTimer.Text = time.ToString(@"hh\:mm\:ss");
+                        }
 
                         // message
                         var boxes = new HashSet<RichTextBox>();
@@ -384,6 +374,8 @@ namespace EasyCon2.Forms
         }
 
         #region 脚本功能接口
+        private bool _msgNewLine = true;
+        private bool _msgFirstLine = true;
         private void Print(string message, Color? color, bool timestamp = true)
         {
             lock (_messages)
@@ -487,13 +479,17 @@ namespace EasyCon2.Forms
             textBoxScript.ScrollToLine(index);
         }
 
+        private readonly Scripter _program = new();
+        private bool scriptCompiling = false;
+        private bool scriptRunning = false;
+        private Thread thd;
+
         private bool ScriptCompile()
         {
             StatusShowLog("开始编译...");
+            scriptCompiling = true;
             try
             {
-                scriptCompiling = true;
-
                 // 在这里根据图像处理窗口的情况，创建一个ExternalVariable的数组或List传给Parse函数
                 // 每个ExternalVariable对应一个图像标签，name为名字，get为用来获取结果的函数，set暂时没有语句支持所以先省略                
                 var externalVariables = new List<ExternalVariable>();
@@ -538,13 +534,14 @@ namespace EasyCon2.Forms
             thd?.Start();
         }
 
+        private DateTime _startTime = DateTime.MinValue;
+
         private void _RunScript()
         {
             scriptRunning = true;
             try
             {
                 _startTime = DateTime.Now;
-                _lastRunningTime = TimeSpan.Zero;
                 Invoke(delegate
                 {
                     formController.ControllerEnabled = false;
@@ -597,7 +594,6 @@ namespace EasyCon2.Forms
             finally
             {
                 NS.Reset();
-                _lastRunningTime = DateTime.Now - _startTime;
                 _startTime = DateTime.MinValue;
                 scriptRunning = false;
             }
@@ -605,13 +601,10 @@ namespace EasyCon2.Forms
 
         private void ScriptStop()
         {
-            if (scriptRunning)
-            {
-                thd?.Interrupt();
-                scriptRunning = false;
-                StatusShowLog("运行被终止");
-                SystemSounds.Beep.Play();
-            }
+            thd?.Interrupt();
+            scriptRunning = false;
+            StatusShowLog("运行被终止");
+            SystemSounds.Beep.Play();
         }
 
         private void ComPort_DropDown(object sender, EventArgs e)
@@ -624,55 +617,54 @@ namespace EasyCon2.Forms
                 Debug.WriteLine(portName);
             }
         }
-        
+
         private bool SerialCheckConnect()
         {
+            if (NS.IsConnected())
+                return true;
+            var port = ComPort.Text.Equals("下拉选择串口") ? "" : ComPort.Text;
+            SerialSearchConnect(port);
             return NS.IsConnected();
         }
 
-        private async void SerialSearchConnect()
+        private async void SerialSearchConnect(string port = "")
         {
+            EnableConnBtn(false);
             StatusShowLog("尝试连接...");
-            var ports = NintendoSwitch.GetPortNames();
-            foreach (var portName in ports)
+
+            var ports = port == "" ? NintendoSwitch.GetPortNames() : [port];
+
+            await Task.Run(() =>
             {
-                var r = NS.TryConnect(portName);
-                if (显示调试信息ToolStripMenuItem.Checked)
-                    Print($"{portName} {r.GetName()}");
-                if (r == NintendoSwitch.ConnectResult.Success)
+                foreach (var portName in ports)
                 {
-                    StatusShowLog("连接成功");
-                    ComPort.Text = portName;
-                    SystemSounds.Beep.Play();
+                    var r = NS.TryConnect(portName);
+                    if (显示调试信息ToolStripMenuItem.Checked)
+                        Print($"{portName} {r.GetName()}");
+                    if (r == NintendoSwitch.ConnectResult.Success)
+                    {
+                        StatusShowLog("连接成功");
+                        SystemSounds.Beep.Play();
+                        ComPort.Text = portName;
+                        break;
+                    }
+                    // fix the internal thread cant quit safely,so wait 1s for next connect
+                    Thread.Sleep(1000);
                 }
-                // fix the internal thread cant quit safely,so wait 1s for next connect
-                Thread.Sleep(1000);
-            }
-            StatusShowLog("连接失败");
-            SystemSounds.Hand.Play();
-            MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（详细使用教程见群946057081文档）\n3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁\n4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n5.以上步骤都完成后重启程序再试\n\n可用手动连接端口：" + string.Join("、", ports));
-        }
+            });
 
-        private async void SerialConnect(string portName)
-        {
-            StatusShowLog("开始连接...");
-            // try stable connection
-            var r = NS.TryConnect(portName);
-            if (显示调试信息ToolStripMenuItem.Checked)
-                Print($"{portName} {r.GetName()}");
-
-            if (r == NintendoSwitch.ConnectResult.Success)
-            {
-                StatusShowLog("连接成功");
-                SystemSounds.Beep.Play();
-                ComPort.Text = portName;
-            }
-            else
+            if (!NS.IsConnected())
             {
                 StatusShowLog("连接失败");
                 SystemSounds.Hand.Play();
-                MessageBox.Show("连接失败！该端口不存在、无法使用或已被占用。请在设备管理器确认TTL所在串口正确识别，关闭其它占用USB的程序，并重启伊机控再试。");
+                if (port != "")
+
+                    MessageBox.Show("连接失败！该端口不存在、无法使用或已被占用。请在设备管理器确认TTL所在串口正确识别，关闭其它占用USB的程序，并重启伊机控再试。");
+                else
+                    MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（详细使用教程见群946057081文档）\n3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁\n4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n5.以上步骤都完成后重启程序再试\n\n可用手动连接端口：" + string.Join("、", ports));
             }
+
+            EnableConnBtn();
         }
 
         private bool FileOpen()
@@ -697,7 +689,7 @@ namespace EasyCon2.Forms
         {
             if (close && !FileClose())
                 return false;
-            if (saveAs || _currentFile == null)
+            if (saveAs || _currentFile == "")
             {
                 Directory.CreateDirectory(ScriptPath);
                 saveFileDialog1.Title = saveAs ? "另存为" : "保存";
@@ -728,7 +720,7 @@ namespace EasyCon2.Forms
                         return false;
                 }
             }
-            _currentFile = null;
+            _currentFile = "";
             textBoxScript.Text = string.Empty;
             _fileEdited = false;
             StatusShowLog("文件已关闭");
@@ -867,15 +859,20 @@ namespace EasyCon2.Forms
                 ScriptStop();
         }
 
+        private void EnableConnBtn(bool show = true)
+        {
+            buttonSerialPortSearch.Enabled = show;
+            buttonSerialPortConnect.Enabled = show;
+        }
+
         private void buttonSerialPortSearch_Click(object sender, EventArgs e)
         {
             SerialSearchConnect();
-                
         }
 
         private void buttonSerialPortConnect_Click(object sender, EventArgs e)
         {
-            SerialConnect(ComPort.Text);
+            SerialSearchConnect(ComPort.Text);
         }
 
         private void buttonKeyMapping_Click(object sender, EventArgs e)

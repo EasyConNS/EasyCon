@@ -6,7 +6,7 @@
     <Nullable>warnings</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
-    <LangVersion>10</LangVersion>
+    <LangVersion>12.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>Resources\favicon.ico</ApplicationIcon>

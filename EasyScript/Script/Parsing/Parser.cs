@@ -518,7 +518,7 @@ namespace EasyScript.Parsing
 
         public List<Statement> Parse(string text)
         {
-
+#if DEBUG
             Debug.WriteLine("v2---start---");
             try
             {
@@ -545,8 +545,7 @@ namespace EasyScript.Parsing
                 Debug.WriteLine(e);
             }
             Debug.WriteLine("v2---end---");
-
-            // TODO
+#endif
             int indentnum = 0;
             int linnum = 0;
             int address = 0;
@@ -583,20 +582,19 @@ namespace EasyScript.Parsing
                 }
                 linnum++;
             }
-            // TODO end
 
             var _blocks = new Stack<Statement>();
-            var _elifs = new Stack<Statements.BranchOp>();
-            var _funcTables = new Dictionary<string, Statements.Function>();
+            var _elifs = new Stack<BranchOp>();
+            var _funcTables = new Dictionary<string, Function>();
 
             for (var i = 0; i < list.Count; i++)
             {
                 var st = list[i];
 
-                if (st is Statements.For || (st is Statements.If && st is not Statements.ElseIf) || st is Statements.Function)
+                if (st is For || (st is If && st is not ElseIf) || st is Function)
                 {
                     _blocks.Push(st);
-                    if (st is Statements.Function fst)
+                    if (st is Function fst)
                     {
                         if (_funcTables.ContainsKey(fst.Label))
                         {
@@ -607,7 +605,7 @@ namespace EasyScript.Parsing
                     continue;
                 }
                 // for/next
-                if (st is Statements.LoopControl loopstat)
+                if (st is LoopControl loopstat)
                 {
                     var forcount = (from forstate in _blocks
                                     where forstate is Statements.For
