@@ -35,6 +35,7 @@ namespace EasyScript.Parsing.Lexers
             ImportParser.Init();
             IfElseParser.Init();
             ForParser.Init();
+            AmiiboParser.Init();
         }
 
         

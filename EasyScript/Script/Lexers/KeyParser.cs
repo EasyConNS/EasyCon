@@ -43,7 +43,7 @@ internal static class KeyParser
                 _ => null,
             };
         }
-        return null;
+        throw new ParseException("KeyParse failed", args.Address);
     }
 
     internal static Statement? StickParse(ParserArgument args)
