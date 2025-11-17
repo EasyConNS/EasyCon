@@ -1,4 +1,5 @@
-﻿using EasyCon2.Assist;
+﻿using EasyCapture;
+using EasyCon2.Assist;
 using EasyCon2.Capture;
 using EasyCon2.Global;
 using EasyCon2.Properties;
@@ -609,7 +610,7 @@ namespace EasyCon2.Forms
 
         private void ComPort_DropDown(object sender, EventArgs e)
         {
-            var ports = NintendoSwitch.GetPortNames();
+            var ports = ECDevice.ECDevice.GetPortNames();
             ComPort.Items.Clear();
             foreach (var portName in ports)
             {
@@ -632,7 +633,7 @@ namespace EasyCon2.Forms
             EnableConnBtn(false);
             StatusShowLog("尝试连接...");
 
-            var ports = port == "" ? NintendoSwitch.GetPortNames() : [port];
+            var ports = port == "" ? ECDevice.ECDevice.GetPortNames() : [port];
 
             await Task.Run(() =>
             {
@@ -783,11 +784,6 @@ namespace EasyCon2.Forms
             }
         }
 
-        private bool FlashPrepare()
-        {
-            return SerialCheckConnect();
-        }
-
         private bool CheckFirmwareVersion()
         {
             if (!SerialCheckConnect())
@@ -910,7 +906,7 @@ namespace EasyCon2.Forms
 
         private void buttonFlash_Click(object sender, EventArgs e)
         {
-            if (!FlashPrepare())
+            if (!SerialCheckConnect())
             {
                 return;
             }
@@ -1000,8 +996,12 @@ namespace EasyCon2.Forms
 
         private void buttonFlashClear_Click(object sender, EventArgs e)
         {
-            if (!FlashPrepare())
+            if (!SerialCheckConnect())
+            {
                 StatusShowLog("还未准备好烧录");
+                SystemSounds.Hand.Play();
+                return;
+            }
 
             if (!NS.Flash(HexWriter.EmptyAsm))
             {
@@ -1151,7 +1151,7 @@ namespace EasyCon2.Forms
         private void 打开搜图ToolStripMenuItem_MouseHover(object sender, EventArgs e)
         {
             var openDevice = (ToolStripMenuItem)sender;
-            var devs = OpenCVCapture.GetCaptureCamera();
+            var devs = ECCapture.GetCaptureCamera();
 
             openDevice.DropDownItems.Clear();
             int tag = 0;

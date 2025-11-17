@@ -194,7 +194,7 @@ namespace ECDevice
 
         public string GetRecordScript()
         {
-            return operationRecords.ToScript(true);
+            return operationRecords.ToScript();
         }
 
         public bool SetCpuOpt(bool enable)

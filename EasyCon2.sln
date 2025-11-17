@@ -1,15 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.32014.148
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11206.111 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon2", "EasyCon2\EasyCon2.csproj", "{53DD390A-7372-45C1-85C7-6CF070E0694F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ECDevice", "ECDevice\ECDevice.csproj", "{3CA35B95-9764-4DD4-B5DE-1784E6FD7E51}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyDevice", "ECDevice\EasyDevice.csproj", "{3CA35B95-9764-4DD4-B5DE-1784E6FD7E51}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PTController", "PTController\PTController.csproj", "{5E89F088-E9CD-4390-8A78-7F3A391AC7B2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyScript", "EasyScript\EasyScript.csproj", "{FC55EBC4-FC1E-446B-A83B-7B4A5C3E0194}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyCapture", "EasyCapture\EasyCapture.csproj", "{2FD3997D-B64E-4B39-9EB7-24D279C3897B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{FC55EBC4-FC1E-446B-A83B-7B4A5C3E0194}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC55EBC4-FC1E-446B-A83B-7B4A5C3E0194}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FC55EBC4-FC1E-446B-A83B-7B4A5C3E0194}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2FD3997D-B64E-4B39-9EB7-24D279C3897B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2FD3997D-B64E-4B39-9EB7-24D279C3897B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2FD3997D-B64E-4B39-9EB7-24D279C3897B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2FD3997D-B64E-4B39-9EB7-24D279C3897B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

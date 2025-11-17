@@ -1,5 +1,4 @@
-﻿using EasyScript;
-using OpenCvSharp;
+﻿using OpenCvSharp;
 using OpenCvSharp.Extensions;
 using System.Diagnostics;
 

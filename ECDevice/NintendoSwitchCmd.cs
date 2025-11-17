@@ -1,7 +1,6 @@
 ﻿using ECDevice.Connection;
 using System;
 using System.Collections.Generic;
-using System.IO.Ports;
 using System.Linq;
 using System.Threading;
 
@@ -10,11 +9,6 @@ namespace ECDevice;
 public partial class NintendoSwitch
 {
     private IConnection clientCon { get; set; }
-
-    public static string[] GetPortNames()
-    {
-        return SerialPort.GetPortNames();
-    }
 
     private ConnectResult _TryConnect(string connStr, int baudrate=115200)
     {

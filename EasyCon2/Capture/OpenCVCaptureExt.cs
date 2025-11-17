@@ -1,5 +1,4 @@
-﻿using GitHub.secile.Video;
-using OpenCvSharp;
+﻿using OpenCvSharp;
 using System.Diagnostics;
 
 namespace EasyCon2.Capture
@@ -19,11 +18,6 @@ namespace EasyCon2.Capture
                 captureTypes.Add(value.ToString(), (int)value);
             }
             return captureTypes;
-        }
-
-        public static List<string> GetCaptureCamera()
-        {
-            return UsbCamera.FindDevices().ToList();
         }
     }
 }

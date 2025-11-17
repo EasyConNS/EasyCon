@@ -352,15 +352,6 @@ namespace EasyCon2.Capture
             return List;
         }
 
-        public static bool IsColor(Color clr1, Color clr2, int similar = 0)
-        {
-            if (ScanColor(clr1.B, clr1.G, clr1.R, clr2.B, clr2.G, clr2.R, similar))
-            {
-                return true;
-            }
-            return false;
-        }
-
         private static unsafe int[,] GetPixelData(BitmapData P_Data, Color BackColor)
         {
             byte B = BackColor.B, G = BackColor.G, R = BackColor.R;
@@ -398,24 +389,6 @@ namespace EasyCon2.Capture
             if ((Math.Abs(g1 - g2)) > similar) { return false; } //G
             if ((Math.Abs(r1 - r2)) > similar) { return false; } //R
             return true;
-        }
-
-        private static Mat BitmapToMat(Bitmap srcbit)
-        {
-            int iwidth = srcbit.Width;
-            int iheight = srcbit.Height;
-            int iByte = iwidth * iheight * 3;
-            byte[] result = new byte[iByte];
-            int step;
-
-            Rectangle rect = new Rectangle(0, 0, iwidth, iheight);
-            BitmapData bmpData = srcbit.LockBits(rect, ImageLockMode.ReadOnly, srcbit.PixelFormat);
-            IntPtr iPtr = bmpData.Scan0;
-            Marshal.Copy(iPtr, result, 0, iByte);
-            step = bmpData.Stride;
-            srcbit.UnlockBits(bmpData);
-
-            return new Mat(srcbit.Height, srcbit.Width, new MatType(MatType.CV_8UC3), result, step);
         }
     }
 }

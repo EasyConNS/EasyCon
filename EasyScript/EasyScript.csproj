@@ -8,19 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ECDevice\ECDevice.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Compilers.Common">
-      <HintPath>.\deps\Compilers.Common.dll</HintPath>
-    </Reference>
-    <Reference Include="Compilers.Parsers">
-      <HintPath>.\deps\Compilers.Parsers.dll</HintPath>
-    </Reference>
-    <Reference Include="Compilers.Scanners">
-      <HintPath>.\deps\Compilers.Scanners.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\ECDevice\EasyDevice.csproj" />
   </ItemGroup>
 
 </Project>
