@@ -11,42 +11,46 @@ public enum TokenType
     CommentTrivia, // #{XXX}
 
     // Tokens
-    EndOfFileToken,
-    NumberToken,
-    StringToken,
-    ConstToken, // _XXX
-    VarToken, // $XXX
-    ExVarToken, // @XXX
-    AssignToken, // =
-    PlusToken, // +
-    PlusEqualsToken, // +=
-    MinusToken, // -
-    MinusEqualsToken, // -=
-    StarToken, // *
-    StarEqualsToken, // *=
-    SlashToken, // /
-    SlashEqualsToken, // /=
-    SlashIToken, // \
-    SlashIEqualsToken, // \=
-    ModToken, // %
-    ModEqualsToken, // %=
-    AndToken, // &
-    AndEqualsToken, // &=
-    OrToken, // |
-    OrEqualsToken, // |=
-    XorToken, // ^
-    XorEqualsToken, // ^=
-    TildeToken, // ~
-    LeftShiftToken, // <<
-    LeftShiftEqualsToken, // <<=
-    RightShiftToken, // >>
-    RightShiftEqualsToken, // >>=
-    LessToken, // <
-    LessEqualsToken, // <=
-    GreaterToken, // >
-    GreaterEqualsToken, // >=
-    EqualsEqualsToken, // ==
-    NotEqualsToken, // !=
+    EOF,
+    Number,
+    String,
+    Const, // _XXX
+    Variable, // $XXX
+    ExtVariable, // @XXX
+    Assign, // =
+    Plus, // +
+    PlusAssign, // +=
+    Minus, // -
+    MinusAssign, // -=
+    Multiply, // *
+    MultiplyAssign, // *=
+    Divide, // /
+    DivideAssign, // /=
+    SlashI, // \
+    SlashIAssign, // \=
+    Modulus, // %
+    ModulusAssign, // %=
+    BitAnd, // &
+    BitAndAssign, // &=
+    BitOr, // |
+    BitOrAssign, // |=
+    BitXor, // ^
+    BitXorAssign, // ^=
+    BitNot, // ~
+    LeftShift, // <<
+    LeftShiftAssign, // <<=
+    RightShift, // >>
+    RightShiftAssign, // >>=
+    LessThan, // <
+    LessThanEqual, // <=
+    GreaterThan, // >
+    GreaterThanEqual, // >=
+    EqualEqual, // ==
+    NotEqual, // !=
+
+    // TODO
+    Punctuation,
+
     LeftPHToken, // (
     RightPHToken, // )
     LeftBKToken, // [
@@ -57,27 +61,27 @@ public enum TokenType
     DotToken, // .
    
     // Keywords
-    ImportKeyword, // IMPORT
-    AsKeyword, // AS
-    IfKeyword, // IF
-    ElifKeyword, // ELIF
-    ElseKeyword, // ELSE
-    EndifKeyword, // ENDIF
-    ForKeyword, // FOR
-    ToKeyword, // TO
-    InKeyword, //IN
-    StepKeyword, // STEP
-    BreakKeyword, // BREAK
-    ContinueKeyword, // CONTINUE
-    NextKeyword, // NEXT
-    FunctionKeyword, // FUNC
-    ReturnKeyword, // RETURN
-    EndFunctionKeyword, // ENDFUNC
-    TrueKeyword, // TRUE
-    FalseKeyword, // FALSE
-    AndKeyword, // AND
-    OrKeyword, // OR
-    NotKeyword, // NOT
+    Import, // IMPORT
+    As, // AS
+    If, // IF
+    Elif, // ELIF
+    Else, // ELSE
+    Endif, // ENDIF
+    For, // FOR
+    To, // TO
+    In, //IN
+    Step, // STEP
+    Break, // BREAK
+    Continue, // CONTINUE
+    Next, // NEXT
+    Func, // FUNC
+    Return, // RETURN
+    EndFunc, // ENDFUNC
+    True, // TRUE
+    False, // FALSE
+    LogicAnd, // AND
+    LogicOr, // OR
+    LogicNot, // NOT
 
     // Gamepad Keys
     ResetKeyword, // RESET
@@ -87,5 +91,5 @@ public enum TokenType
     ButtonKeyword, // A,B,X,Y.L,R,ZL,ZR.LCLICK,RCLICK.HOME,CAPTURE,PLUS,MINUS
 
     // Ident
-    IdentifierToken,
+    Identifier,
 }

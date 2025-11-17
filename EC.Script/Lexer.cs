@@ -1,20 +1,25 @@
 namespace EC.Script.Syntax;
-#if false
+
 // 定义词法分析器类
-public partial class Lexer
+partial class Lexer
 {
     private string input;     private int position;
     private int lineNumber = 1;
     
-    private static readonly List<string> keywords = new List<string> { "import", "if", "elif", "else", "endif", "for", "to", "step", "break", "continue", "next", "func", "return", "endfunc", "and", "or", "not" };
+    private static readonly List<string> keywords = ["import", "if", "elif", "else", "endif", "for", "to", "step", "break", "continue", "next", "func", "return", "endfunc", "and", "or", "not"];
 
-    private static readonly List<string> gamepadKeys = new List<string> { "A", "B", "X", "Y", "L", "R", "ZL", "ZR", "LCLICK", "RCLICK", "DUP", "DDOWN", "DLEFT", "DRIGHT", "PLUS", "MINUS", "HOME", "CAPTURE", "LS", "RS", "UP", "DOWN", "LEFT", "RIGHT", "RESET"};
+    private static readonly List<string> gamepadKeys = ["A", "B", "X", "Y", "L", "R", "ZL", "ZR", "LCLICK", "RCLICK",
+        "DUP", "DDOWN", "DLEFT", "DRIGHT",
+        "PLUS", "MINUS", "HOME", "CAPTURE",
+        "LS", "RS",
+        "UP", "DOWN", "LEFT", "RIGHT",
+        "RESET"];
 
-    public Lexer(string input)
-    {
-        this.input = input;
-        this.position = 0;
-    }
+    //public Lexer(string input)
+    //{
+    //    this.input = input;
+    //    this.position = 0;
+    //}
 
     // 获取下一个Token
     public Token GetNextToken()
@@ -72,7 +77,7 @@ public partial class Lexer
             position++;
         }
         string value = input.Substring(start, position - start);
-        return new Token(TokenType.Comment, value, lineNumber);
+        return new Token(TokenType.CommentTrivia, value, lineNumber);
     }
 
     // 跳过空白字符
@@ -110,7 +115,7 @@ public partial class Lexer
         }
         if (gamepadKeys.Contains(value))
         {
-            return new Token(TokenType.GamepadKeyword, value, lineNumber);
+            return new Token(TokenType.ButtonKeyword, value, lineNumber);
         }
         return new Token(TokenType.Identifier, value, lineNumber);
     }
@@ -255,24 +260,24 @@ public partial class Lexer
             case '&':
                 if (position + 1 < input.Length && input[position + 1] == '=') {
                     position += 2;
-                    return new Token(TokenType.BitwiseAndAssign, "&=", lineNumber);
+                    return new Token(TokenType.BitAndAssign, "&=", lineNumber);
                 }
                 position++;
-                return new Token(TokenType.BitwiseAnd, "&", lineNumber);
+                return new Token(TokenType.BitAnd, "&", lineNumber);
             case '|':
                 if (position + 1 < input.Length && input[position + 1] == '=') {
                     position += 2;
-                    return new Token(TokenType.BitwiseOrAssign, "|=", lineNumber);
+                    return new Token(TokenType.BitOrAssign, "|=", lineNumber);
                 }
                 position++;
-                return new Token(TokenType.BitwiseOr, "|", lineNumber);
+                return new Token(TokenType.BitOr, "|", lineNumber);
             case '^':
                 if (position + 1 < input.Length && input[position + 1] == '=') {
                     position += 2;
-                    return new Token(TokenType.BitwiseXorAssign, "^=", lineNumber);
+                    return new Token(TokenType.BitXorAssign, "^=", lineNumber);
                 }
                 position++;
-                return new Token(TokenType.BitwiseXor, "^", lineNumber);
+                return new Token(TokenType.BitXor, "^", lineNumber);
             case '=':
                 if (position + 1 < input.Length && input[position + 1] == '=') {
                     position += 2;
@@ -319,7 +324,7 @@ public partial class Lexer
                 return new Token(TokenType.GreaterThan, ">", lineNumber);
             case '~':
                 position++;
-                return new Token(TokenType.BitwiseNot, "~", lineNumber);
+                return new Token(TokenType.BitNot, "~", lineNumber);
             default:
                 throw new Exception($"Unexpected character: {input[position]}");
         }
@@ -345,4 +350,3 @@ public partial class Lexer
         return "()[]{},.;:".IndexOf(c) != -1;
     }
 }
-#endif
