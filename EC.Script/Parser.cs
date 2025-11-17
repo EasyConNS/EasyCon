@@ -1,5 +1,5 @@
 namespace EC.Script.Syntax;
-
+#if false
 // 定义语法分析器类
 public class Parser
 {
@@ -230,3 +230,4 @@ public class Parser
         }
     }
 }
+#endif

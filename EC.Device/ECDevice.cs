@@ -4,5 +4,5 @@ namespace EC.Device;
 
 public partial class ECDevice
 {
-    public static List<string> GetPortNames() => SerialPort.GetPortNames().ToList();
+    public static List<string> GetPortNames() => [.. SerialPort.GetPortNames()];
 }

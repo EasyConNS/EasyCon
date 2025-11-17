@@ -1,7 +1,7 @@
 namespace EC.Script.Syntax;
 
 // 定义Token类型
-public enum TokenType
+public enum TokenType1
 {
     Comment,
 

@@ -1,3 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
 namespace EC.Device;
 
 class EasyConPad
@@ -116,7 +121,8 @@ class EasyConPad
         // bit 6~0:            data (Big-Endian)
         // serialize data
         var serialized = new List<byte>();
-        serialized.AddRange(BitConverter.GetBytes(r.Button).Reverse());
+        serialized.AddRange(BitConverter.GetBytes(r.Button));
+        serialized.Reverse();
         serialized.Add(r.HAT);
         serialized.Add(r.LX);
         serialized.Add(r.LY);

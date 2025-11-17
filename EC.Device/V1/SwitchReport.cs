@@ -31,7 +31,8 @@ public class SwitchReport : ICloneable
         // bit 6~0:            data (Big-Endian)
         // serialize data
         var serialized = new List<byte>();
-        serialized.AddRange(BitConverter.GetBytes(Button).Reverse());
+        serialized.AddRange(BitConverter.GetBytes(Button));
+        serialized.Reverse();
         serialized.Add(HAT);
         serialized.Add(LX);
         serialized.Add(LY);

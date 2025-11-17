@@ -24,6 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EC.Core\EC.Core.csproj" />
+    <ProjectReference Include="..\EC.Core\EasyCore.csproj" />
   </ItemGroup>
 </Project>

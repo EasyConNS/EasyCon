@@ -1,19 +1,19 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.10.34928.147
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11206.111 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Device", "EC.Device\EC.Device.csproj", "{422FBC0A-C323-4C0A-8011-B5A221127192}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyDevice", "EC.Device\EasyDevice.csproj", "{422FBC0A-C323-4C0A-8011-B5A221127192}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Script", "EC.Script\EC.Script.csproj", "{27EE54A7-2CFB-4617-BF69-353EE8F85E53}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyScript", "EC.Script\EasyScript.csproj", "{27EE54A7-2CFB-4617-BF69-353EE8F85E53}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Core", "EC.Core\EC.Core.csproj", "{9D5BD7BC-DF8F-4209-9411-0F87DE310AF9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCore", "EC.Core\EasyCore.csproj", "{9D5BD7BC-DF8F-4209-9411-0F87DE310AF9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.VPad", "EC.VPad\EC.VPad.csproj", "{DF37FC09-3B53-40AA-8AB7-C7E7176390C8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyVPad", "EC.VPad\EasyVPad.csproj", "{DF37FC09-3B53-40AA-8AB7-C7E7176390C8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Capture", "EC.Capture\EC.Capture.csproj", "{55D5C12B-C4BD-4306-A9E4-D297FDB1E1AB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCapture", "EC.Capture\EasyCapture.csproj", "{55D5C12B-C4BD-4306-A9E4-D297FDB1E1AB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Script.Tests", "EC.Script.Tests\EC.Script.Tests.csproj", "{9D757FA7-0F16-4434-8D34-3756B3AC68D6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyScript.Tests", "EC.Script.Tests\EasyScript.Tests.csproj", "{9D757FA7-0F16-4434-8D34-3756B3AC68D6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{083BEF92-5E14-4170-979C-E1C1E11E4781}"
 	ProjectSection(SolutionItems) = preProject
@@ -21,7 +21,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 		Directory.packages.props = Directory.packages.props
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EC.Avalonia", "EC.Avalonia\EC.Avalonia.csproj", "{9A8052C9-4D02-44AB-BE0C-150FB80FD7F6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyAvalonia", "EC.Avalonia\EasyAvalonia.csproj", "{9A8052C9-4D02-44AB-BE0C-150FB80FD7F6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,7 +1,7 @@
 namespace EC.Script.Syntax;
-
+#if false
 // 定义词法分析器类
-public class Lexer
+public partial class Lexer
 {
     private string input;     private int position;
     private int lineNumber = 1;
@@ -345,3 +345,4 @@ public class Lexer
         return "()[]{},.;:".IndexOf(c) != -1;
     }
 }
+#endif

@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(TFMS)</TargetFrameworks>    
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EC.Capture\EasyCapture.csproj" />
+    <ProjectReference Include="..\EC.Device\EasyDevice.csproj" />
+    <ProjectReference Include="..\EC.Script\EasyScript.csproj" />
+    <ProjectReference Include="..\EC.VPad\EasyVPad.csproj" />
+  </ItemGroup>
+
+</Project>
