@@ -31,7 +31,7 @@
   <ItemGroup>
     <ProjectReference Include="..\EasyCapture\EasyCapture.csproj" />
     <ProjectReference Include="..\EasyScript\EasyScript.csproj" />
-    <ProjectReference Include="..\ECDevice\EasyDevice.csproj" />
+    <ProjectReference Include="..\EasyDevice\EasyDevice.csproj" />
     <ProjectReference Include="..\PTController\PTController.csproj" />
   </ItemGroup>
   <ItemGroup>
