@@ -1,6 +1,7 @@
 ﻿using EasyScript.Assembly;
+using EasyScript.Parsing;
 
-namespace EasyScript.Parsing.Statements
+namespace EasyScript.Statements
 {
     class PushAll : Statement
     {

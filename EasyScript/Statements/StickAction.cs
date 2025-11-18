@@ -1,5 +1,7 @@
 ﻿using ECDevice;
-namespace EasyScript.Parsing.Statements;
+using EasyScript.Parsing;
+
+namespace EasyScript.Statements;
 
 abstract class StickAction : KeyAction
 {
@@ -35,8 +37,8 @@ class StickPress : StickAction
 {
     public readonly ValBase Duration;
 
-    public StickPress(ECKey key, string keyname, string direction, ValBase duration)
-        : base(key, keyname, direction)
+    public StickPress(string keyname, string direction, ValBase duration)
+        : base(NSKeys.GetKey(keyname, direction), keyname, direction)
     {
         Duration = duration;
     }
@@ -94,8 +96,8 @@ class StickPress : StickAction
 
 class StickDown : StickAction
 {
-    public StickDown(ECKey key, string keyname, string direction)
-        : base(key, keyname, direction)
+    public StickDown(string keyname, string direction)
+        : base(NSKeys.GetKey(keyname, direction), keyname, direction)
     { }
 
     public override void Exec(Processor processor)
@@ -118,8 +120,8 @@ class StickDown : StickAction
 
 class StickUp : StickAction
 {
-    public StickUp(ECKey key, string keyname)
-        : base(key, keyname, "")
+    public StickUp(string keyname)
+        : base(NSKeys.GetKey(keyname), keyname, "")
     { }
 
     public override void Exec(Processor processor)

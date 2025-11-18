@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
+using EasyScript.Parsing;
 
-namespace EasyScript.Parsing.Statements
+namespace EasyScript.Statements
 {
     public class Meta
     {

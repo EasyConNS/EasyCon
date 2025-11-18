@@ -1,4 +1,6 @@
-﻿namespace EasyScript.Parsing.Statements;
+﻿using EasyScript.Parsing;
+
+namespace EasyScript.Statements;
 
 class TimeStamp : Statement
 {

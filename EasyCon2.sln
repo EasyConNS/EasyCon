@@ -5,7 +5,7 @@ VisualStudioVersion = 18.3.11206.111 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon2", "EasyCon2\EasyCon2.csproj", "{53DD390A-7372-45C1-85C7-6CF070E0694F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyDevice", "ECDevice\EasyDevice.csproj", "{3CA35B95-9764-4DD4-B5DE-1784E6FD7E51}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyDevice", "EasyDevice\EasyDevice.csproj", "{3CA35B95-9764-4DD4-B5DE-1784E6FD7E51}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PTController", "PTController\PTController.csproj", "{5E89F088-E9CD-4390-8A78-7F3A391AC7B2}"
 EndProject

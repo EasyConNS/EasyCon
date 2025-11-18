@@ -13,9 +13,9 @@ class Processor
     public bool CancelLineBreak = false;
     public Stack<short> Stack = new();
     public Stack<int> CallStack = new();
-    public Stack<Parsing.Statements.For> LoopStack = new();
-    public Dictionary<Parsing.Statements.For, int> LoopTime = new();
-    public Dictionary<Parsing.Statements.For, int> LoopCount = new();
+    public Stack<Statements.For> LoopStack = new();
+    public Dictionary<Statements.For, int> LoopTime = new();
+    public Dictionary<Statements.For, int> LoopCount = new();
     public RegisterFile Register = new(RegisterCount);
 
     public ExternTime et = new(DateTime.Now);

@@ -1,4 +1,4 @@
-﻿using EasyScript.Parsing.Statements;
+﻿using EasyScript.Statements;
 using ECDevice;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -147,6 +147,16 @@ class Parser
         }
     }
 
+    private static bool IsValidVariable(string variable)
+    {
+        return !string.IsNullOrEmpty(variable) && Regex.Match(variable, $"^{Formats.ValueEx}$", RegexOptions.IgnoreCase).Success;
+    }
+
+    private static void ParseExpression(string text)
+    {
+        // TODO
+    }
+
     private Statement? ParseConstantDecl(string text)
     {
         var m = Regex.Match(text, $@"^{Formats.Constant}\s*=\s*{Formats.Instant}$", RegexOptions.IgnoreCase);
@@ -157,11 +167,6 @@ class Parser
             return new Empty($"{m.Groups[1].Value} = {m.Groups[2].Value}");
         }
         return null;
-    }
-
-    private static bool IsValidVariable(string variable)
-    {
-        return !string.IsNullOrEmpty(variable) && Regex.Match(variable, $"^{Formats.ValueEx}$", RegexOptions.IgnoreCase).Success;
     }
 
     private Statement? ParseAssignment(string text)
@@ -287,20 +292,19 @@ class Parser
     const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN";
     private Statement? ParseKey(string text)
     {
-        ECKey key;
         var m = Regex.Match(text, $"^({GPKey})$", RegexOptions.IgnoreCase);
-        if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
-            return new KeyPress(key);
+        if (m.Success && (NSKeys.Get(m.Groups[1].Value)) != null)
+            return new KeyPress(m.Groups[1].Value);
         m = Regex.Match(text, $@"^({GPKey})\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-        if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
-            return new KeyPress(key, _formatter.GetValueEx(m.Groups[2].Value));
+        if (m.Success && (NSKeys.Get(m.Groups[1].Value)) != null)
+            return new KeyPress(m.Groups[1].Value, _formatter.GetValueEx(m.Groups[2].Value));
         m = Regex.Match(text, $@"^({GPKey})\s+(up|down)$", RegexOptions.IgnoreCase);
-        if (m.Success && (key = NSKeys.Get(m.Groups[1].Value)) != null)
+        if (m.Success && (NSKeys.Get(m.Groups[1].Value)) != null)
         {
             return m.Groups[2].Value.ToUpper() switch
             {
-                "UP" => new KeyUp(key),
-                "DOWN" => new KeyDown(key),
+                "UP" => new KeyUp(m.Groups[1].Value),
+                "DOWN" => new KeyDown(m.Groups[1].Value),
                 _ => null,
             };
         }
@@ -310,20 +314,18 @@ class Parser
         if (m.Success)
         {
             var keyname = m.Groups[1].Value;
-            key = NSKeys.GetKey(keyname);
-            if (key == null)
+            if (NSKeys.GetKey(keyname) == null)
                 return null;
-            return new StickUp(key, keyname);
+            return new StickUp(keyname);
         }
         m = Regex.Match(text, @"^([lr]s)\s+([a-z0-9]+)$", RegexOptions.IgnoreCase);
         if (m.Success)
         {
             var keyname = m.Groups[1].Value;
             var direction = m.Groups[2].Value;
-            key = NSKeys.GetKey(keyname, direction);
-            if (key == null)
+            if (NSKeys.GetKey(keyname, direction) == null)
                 return null;
-            return new StickDown(key, keyname, direction);
+            return new StickDown(keyname, direction);
         }
         m = Regex.Match(text, $@"^([lr]s)\s+([a-z0-9]+)\s*,\s*({Formats.ValueEx})$", RegexOptions.IgnoreCase);
         if (m.Success)
@@ -331,10 +333,9 @@ class Parser
             var keyname = m.Groups[1].Value;
             var direction = m.Groups[2].Value;
             var duration = m.Groups[3].Value;
-            key = NSKeys.GetKey(keyname, direction);
-            if (key == null)
+            if (NSKeys.GetKey(keyname, direction) == null)
                 return null;
-            return new StickPress(key, keyname, direction, _formatter.GetValueEx(duration));
+            return new StickPress(keyname, direction, _formatter.GetValueEx(duration));
         }
         return null;
     }

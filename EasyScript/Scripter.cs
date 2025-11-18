@@ -12,7 +12,7 @@ public class Scripter
         {
             foreach(var stat in _statements)
             {
-                if (stat is Parsing.Statements.KeyAction)
+                if (stat is Statements.KeyAction)
                 {
                     return true;
                 }

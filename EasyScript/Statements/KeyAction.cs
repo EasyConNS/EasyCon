@@ -1,6 +1,7 @@
 ﻿using ECDevice;
+using EasyScript.Parsing;
 
-namespace EasyScript.Parsing.Statements;
+namespace EasyScript.Statements;
 
 abstract class KeyAction : Statement
 {
@@ -27,15 +28,15 @@ class KeyPress : KeyAction
     public readonly ValBase Duration;
     private bool _omitted = false;
 
-    public KeyPress(ECKey key)
-        : base(key)
+    public KeyPress(string key)
+        : base(NSKeys.Get(key))
     {
         Duration = DefaultDuration;
         _omitted = true;
     }
 
-    public KeyPress(ECKey key, ValBase duration)
-        : base(key)
+    public KeyPress(string key, ValBase duration)
+        : base(NSKeys.Get(key))
     {
         Duration = duration;
     }
@@ -95,8 +96,8 @@ class KeyPress : KeyAction
 
 class KeyDown : KeyAction
 {
-    public KeyDown(ECKey key)
-        : base(key)
+    public KeyDown(string key)
+        : base(NSKeys.Get(key))
     { }
 
     public override void Exec(Processor processor)
@@ -119,8 +120,8 @@ class KeyDown : KeyAction
 
 class KeyUp : KeyAction
 {
-    public KeyUp(ECKey key)
-        : base(key)
+    public KeyUp(string key)
+        : base(NSKeys.Get(key))
     { }
 
     public override void Exec(Processor processor)
