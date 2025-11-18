@@ -1,6 +1,6 @@
 ﻿namespace PTController
 {
-    partial class FormController
+    partial class VPadForm
     {
         /// <summary>
         /// Required designer variable.

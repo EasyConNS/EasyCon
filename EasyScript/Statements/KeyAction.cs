@@ -3,14 +3,9 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-abstract class KeyAction : Statement
+abstract class KeyAction(string keyName) : Statement
 {
-    protected readonly ECKey Key;
-
-    public KeyAction(ECKey key)
-    {
-        Key = key;
-    }
+    protected readonly ECKey Key = NSKeys.Get(keyName);
 
     protected virtual void ReleasePrevious(Assembly.Assembler assembler)
     {
@@ -26,17 +21,17 @@ class KeyPress : KeyAction
     public const int DefaultDuration = 50;
 
     public readonly ValBase Duration;
-    private bool _omitted = false;
+    private readonly bool _omitted = false;
 
     public KeyPress(string key)
-        : base(NSKeys.Get(key))
+        : base(key)
     {
         Duration = DefaultDuration;
         _omitted = true;
     }
 
     public KeyPress(string key, ValBase duration)
-        : base(NSKeys.Get(key))
+        : base(key)
     {
         Duration = duration;
     }
@@ -94,12 +89,8 @@ class KeyPress : KeyAction
     }
 }
 
-class KeyDown : KeyAction
+class KeyDown(string key) : KeyAction(key)
 {
-    public KeyDown(string key)
-        : base(NSKeys.Get(key))
-    { }
-
     public override void Exec(Processor processor)
     {
         processor.GamePad.PressButtons(Key);
@@ -118,12 +109,8 @@ class KeyDown : KeyAction
     }
 }
 
-class KeyUp : KeyAction
+class KeyUp(string key) : KeyAction(key)
 {
-    public KeyUp(string key)
-        : base(NSKeys.Get(key))
-    { }
-
     public override void Exec(Processor processor)
     {
         processor.GamePad.ReleaseButtons(Key);

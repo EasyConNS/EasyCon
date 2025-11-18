@@ -1,5 +1,4 @@
 ﻿using EasyScript.Statements;
-using ECDevice;
 using System.Reflection;
 using System.Text.RegularExpressions;
 

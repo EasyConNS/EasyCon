@@ -26,7 +26,7 @@ namespace EasyCon2.Forms
     {
         private readonly Version VER = new(1, 51, 0);
         private readonly TextEditor textBoxScript = new();
-        internal readonly FormController formController;
+        internal readonly VPadForm virtController;
 
         public Color CurrentLight => Color.White;
         bool IControllerAdapter.IsRunning() => scriptRunning;
@@ -53,7 +53,7 @@ namespace EasyCon2.Forms
         {
             InitializeComponent();
 
-            formController = new FormController(this, this.NS);
+            virtController = new VPadForm(this, this.NS);
 
             LoadConfig();
             captureVideo.LoadImgLabels();
@@ -332,12 +332,12 @@ namespace EasyCon2.Forms
 
         private void RegisterKey(Keys key, ECKey nskey)
         {
-            formController.RegisterKey(key, () => NS.Down(nskey), () => NS.Up(nskey));
+            virtController.RegisterKey(key, () => NS.Down(nskey), () => NS.Up(nskey));
         }
 
         private void RegisterKeys()
         {
-            formController.UnregisterAllKeys();
+            virtController.UnregisterAllKeys();
 
             RegisterKey(_config.KeyMapping.A, ECKeyUtil.Button(SwitchButton.A));
             RegisterKey(_config.KeyMapping.B, ECKeyUtil.Button(SwitchButton.B));
@@ -359,19 +359,19 @@ namespace EasyCon2.Forms
             RegisterKey(_config.KeyMapping.UpLeft, ECKeyUtil.HAT(SwitchHAT.TOP_LEFT));
             RegisterKey(_config.KeyMapping.DownLeft, ECKeyUtil.HAT(SwitchHAT.BOTTOM_LEFT));
 
-            formController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(DirectionKey.Up, true), () => NS.HatDirection(DirectionKey.Up, false));
-            formController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(DirectionKey.Down, true), () => NS.HatDirection(DirectionKey.Down, false));
-            formController.RegisterKey(_config.KeyMapping.Left, () => NS.HatDirection(DirectionKey.Left, true), () => NS.HatDirection(DirectionKey.Left, false));
-            formController.RegisterKey(_config.KeyMapping.Right, () => NS.HatDirection(DirectionKey.Right, true), () => NS.HatDirection(DirectionKey.Right, false));
+            virtController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(DirectionKey.Up, true), () => NS.HatDirection(DirectionKey.Up, false));
+            virtController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(DirectionKey.Down, true), () => NS.HatDirection(DirectionKey.Down, false));
+            virtController.RegisterKey(_config.KeyMapping.Left, () => NS.HatDirection(DirectionKey.Left, true), () => NS.HatDirection(DirectionKey.Left, false));
+            virtController.RegisterKey(_config.KeyMapping.Right, () => NS.HatDirection(DirectionKey.Right, true), () => NS.HatDirection(DirectionKey.Right, false));
 
-            formController.RegisterKey(_config.KeyMapping.LSUp, () => NS.LeftDirection(DirectionKey.Up, true), () => NS.LeftDirection(DirectionKey.Up, false));
-            formController.RegisterKey(_config.KeyMapping.LSDown, () => NS.LeftDirection(DirectionKey.Down, true), () => NS.LeftDirection(DirectionKey.Down, false));
-            formController.RegisterKey(_config.KeyMapping.LSLeft, () => NS.LeftDirection(DirectionKey.Left, true), () => NS.LeftDirection(DirectionKey.Left, false));
-            formController.RegisterKey(_config.KeyMapping.LSRight, () => NS.LeftDirection(DirectionKey.Right, true), () => NS.LeftDirection(DirectionKey.Right, false));
-            formController.RegisterKey(_config.KeyMapping.RSUp, () => NS.RightDirection(DirectionKey.Up, true), () => NS.RightDirection(DirectionKey.Up, false));
-            formController.RegisterKey(_config.KeyMapping.RSDown, () => NS.RightDirection(DirectionKey.Down, true), () => NS.RightDirection(DirectionKey.Down, false));
-            formController.RegisterKey(_config.KeyMapping.RSLeft, () => NS.RightDirection(DirectionKey.Left, true), () => NS.RightDirection(DirectionKey.Left, false));
-            formController.RegisterKey(_config.KeyMapping.RSRight, () => NS.RightDirection(DirectionKey.Right, true), () => NS.RightDirection(DirectionKey.Right, false));
+            virtController.RegisterKey(_config.KeyMapping.LSUp, () => NS.LeftDirection(DirectionKey.Up, true), () => NS.LeftDirection(DirectionKey.Up, false));
+            virtController.RegisterKey(_config.KeyMapping.LSDown, () => NS.LeftDirection(DirectionKey.Down, true), () => NS.LeftDirection(DirectionKey.Down, false));
+            virtController.RegisterKey(_config.KeyMapping.LSLeft, () => NS.LeftDirection(DirectionKey.Left, true), () => NS.LeftDirection(DirectionKey.Left, false));
+            virtController.RegisterKey(_config.KeyMapping.LSRight, () => NS.LeftDirection(DirectionKey.Right, true), () => NS.LeftDirection(DirectionKey.Right, false));
+            virtController.RegisterKey(_config.KeyMapping.RSUp, () => NS.RightDirection(DirectionKey.Up, true), () => NS.RightDirection(DirectionKey.Up, false));
+            virtController.RegisterKey(_config.KeyMapping.RSDown, () => NS.RightDirection(DirectionKey.Down, true), () => NS.RightDirection(DirectionKey.Down, false));
+            virtController.RegisterKey(_config.KeyMapping.RSLeft, () => NS.RightDirection(DirectionKey.Left, true), () => NS.RightDirection(DirectionKey.Left, false));
+            virtController.RegisterKey(_config.KeyMapping.RSRight, () => NS.RightDirection(DirectionKey.Right, true), () => NS.RightDirection(DirectionKey.Right, false));
         }
 
         #region 脚本功能接口
@@ -545,7 +545,7 @@ namespace EasyCon2.Forms
                 _startTime = DateTime.Now;
                 Invoke(delegate
                 {
-                    formController.ControllerEnabled = false;
+                    virtController.ControllerEnabled = false;
                     StatusShowLog("开始运行");
                 });
                 Print("-- 开始运行 --", Color.Lime);
@@ -808,7 +808,7 @@ namespace EasyCon2.Forms
         {
             if (!SerialCheckConnect())
                 return;
-            formController.ControllerEnabled = true;
+            virtController.ControllerEnabled = true;
             if (_config.ShowControllerHelp)
             {
                 ShowControllerHelp();
@@ -1029,7 +1029,7 @@ namespace EasyCon2.Forms
             {
                 if (!SerialCheckConnect())
                     return;
-                formController.ControllerEnabled = true;
+                virtController.ControllerEnabled = true;
                 buttonRecord.Text = "停止录制";
                 buttonRecordPause.Enabled = true;
                 textBoxScript.IsEnabled = false;

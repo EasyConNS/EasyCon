@@ -2,7 +2,7 @@
 
 namespace ECDevice;
 
-public class ECKey
+public sealed class ECKey
 {
     public readonly string Name;
     public readonly int KeyCode;

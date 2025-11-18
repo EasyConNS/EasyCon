@@ -2946,7 +2946,7 @@
     {
       "amiiboSeries": "Super Smash Bros.",
       "character": "Mythra",
-      "gameSeries": "Xenoblade Chronicles",
+      "gameSeries": "Xenoblade",
       "head": "22420000",
       "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_22420000-041f0002.png",
       "name": "Mythra",
@@ -3213,6 +3213,38 @@
         "na": "2014-11-21"
       },
       "tail": "00060002",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Metroid",
+      "character": "Samus",
+      "gameSeries": "Metroid",
+      "head": "05c00000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_05c00000-043b1302.png",
+      "name": "Samus",
+      "release": {
+        "au": "2025-11-06",
+        "eu": "2025-11-06",
+        "jp": "2025-11-06",
+        "na": "2025-11-06"
+      },
+      "tail": "043b1302",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Metroid",
+      "character": "Samus",
+      "gameSeries": "Metroid",
+      "head": "05c00000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_05c00000-043a1302.png",
+      "name": "Samus & Vi-O-La",
+      "release": {
+        "au": "2025-11-06",
+        "eu": "2025-11-06",
+        "jp": "2025-11-06",
+        "na": "2025-11-06"
+      },
+      "tail": "043a1302",
       "type": "Figure"
     },
     {
@@ -4224,6 +4256,22 @@
       "type": "Figure"
     },
     {
+      "amiiboSeries": "My Mario Wooden Blocks",
+      "character": "Luigi",
+      "gameSeries": "Super Mario",
+      "head": "00010004",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_00010004-04401c02.png",
+      "name": "Luigi - My Mario Wooden Blocks",
+      "release": {
+        "au": null,
+        "eu": null,
+        "jp": "2025-08-26",
+        "na": null
+      },
+      "tail": "04401c02",
+      "type": "Block"
+    },
+    {
       "amiiboSeries": "Animal Crossing",
       "character": "Label",
       "gameSeries": "Animal Crossing",
@@ -4318,6 +4366,22 @@
       },
       "tail": "00370102",
       "type": "Figure"
+    },
+    {
+      "amiiboSeries": "My Mario Wooden Blocks",
+      "character": "Yoshi",
+      "gameSeries": "Super Mario",
+      "head": "00030004",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_00030004-04421c02.png",
+      "name": "Yoshi - My Mario Wooden Blocks",
+      "release": {
+        "au": null,
+        "eu": null,
+        "jp": "2025-08-26",
+        "na": null
+      },
+      "tail": "04421c02",
+      "type": "Block"
     },
     {
       "amiiboSeries": "Animal Crossing",
@@ -4656,6 +4720,70 @@
       "type": "Figure"
     },
     {
+      "amiiboSeries": "Legend Of Zelda",
+      "character": "Tulin",
+      "gameSeries": "The Legend of Zelda",
+      "head": "010b0000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_010b0000-04a50902.png",
+      "name": "Tulin",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04a50902",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Legend Of Zelda",
+      "character": "Yunobo",
+      "gameSeries": "The Legend of Zelda",
+      "head": "010c0000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_010c0000-04a60902.png",
+      "name": "Yunobo",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04a60902",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Legend Of Zelda",
+      "character": "Sidon",
+      "gameSeries": "The Legend of Zelda",
+      "head": "010a0000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_010a0000-04a40902.png",
+      "name": "Sidon",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04a40902",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Legend Of Zelda",
+      "character": "Riju",
+      "gameSeries": "The Legend of Zelda",
+      "head": "01090000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_01090000-04a30902.png",
+      "name": "Riju",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04a30902",
+      "type": "Figure"
+    },
+    {
       "amiiboSeries": "Animal Crossing",
       "character": "Chops",
       "gameSeries": "Animal Crossing",
@@ -4866,7 +4994,7 @@
     {
       "amiiboSeries": "Super Smash Bros.",
       "character": "Ken",
-      "gameSeries": "Street fighter",
+      "gameSeries": "Street Fighter",
       "head": "34c10000",
       "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c10000-03890002.png",
       "name": "Ken",
@@ -5085,6 +5213,22 @@
         "na": "2016-07-08"
       },
       "tail": "025d0402",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Splatoon",
+      "character": "Callie",
+      "gameSeries": "Splatoon",
+      "head": "08010000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_08010000-04360402.png",
+      "name": "Callie - Alterna",
+      "release": {
+        "au": "2024-09-05",
+        "eu": "2024-09-05",
+        "jp": "2024-09-05",
+        "na": "2024-09-05"
+      },
+      "tail": "04360402",
       "type": "Figure"
     },
     {
@@ -5469,6 +5613,22 @@
         "na": "2016-07-08"
       },
       "tail": "025e0402",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Splatoon",
+      "character": "Marie",
+      "gameSeries": "Splatoon",
+      "head": "08020000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_08020000-04370402.png",
+      "name": "Marie - Alterna",
+      "release": {
+        "au": "2024-09-05",
+        "eu": "2024-09-05",
+        "jp": "2024-09-05",
+        "na": "2024-09-05"
+      },
+      "tail": "04370402",
       "type": "Figure"
     },
     {
@@ -5934,6 +6094,22 @@
       },
       "tail": "00340102",
       "type": "Figure"
+    },
+    {
+      "amiiboSeries": "My Mario Wooden Blocks",
+      "character": "Mario",
+      "gameSeries": "Super Mario",
+      "head": "00000004",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_00000004-043f1c02.png",
+      "name": "Mario - My Mario Wooden Blocks",
+      "release": {
+        "au": null,
+        "eu": null,
+        "jp": "2025-08-26",
+        "na": null
+      },
+      "tail": "043f1c02",
+      "type": "Block"
     },
     {
       "amiiboSeries": "Super Smash Bros.",
@@ -6509,6 +6685,22 @@
         "na": "2018-07-13"
       },
       "tail": "03760402",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Splatoon",
+      "character": "Pearl",
+      "gameSeries": "Splatoon",
+      "head": "08030000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_08030000-04380402.png",
+      "name": "Pearl - Side Order",
+      "release": {
+        "au": "2024-09-05",
+        "eu": "2024-09-05",
+        "jp": "2024-09-05",
+        "na": "2024-09-05"
+      },
+      "tail": "04380402",
       "type": "Figure"
     },
     {
@@ -8818,7 +9010,7 @@
     {
       "amiiboSeries": "Super Smash Bros.",
       "character": "Shulk",
-      "gameSeries": "Xenoblade Chronicles",
+      "gameSeries": "Xenoblade",
       "head": "22400000",
       "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_22400000-002b0002.png",
       "name": "Shulk",
@@ -9918,6 +10110,22 @@
       },
       "tail": "00010002",
       "type": "Figure"
+    },
+    {
+      "amiiboSeries": "My Mario Wooden Blocks",
+      "character": "Peach",
+      "gameSeries": "Super Mario",
+      "head": "00020004",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_00020004-04411c02.png",
+      "name": "Peach - My Mario Wooden Blocks",
+      "release": {
+        "au": null,
+        "eu": null,
+        "jp": "2025-08-26",
+        "na": null
+      },
+      "tail": "04411c02",
+      "type": "Block"
     },
     {
       "amiiboSeries": "Super Mario Bros.",
@@ -11024,6 +11232,22 @@
       "type": "Figure"
     },
     {
+      "amiiboSeries": "Super Nintendo World",
+      "character": "Diddy Kong",
+      "gameSeries": "Super Mario",
+      "head": "00090003",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_00090003-0432ff02.png",
+      "name": "Diddy Kong - Power Up Band",
+      "release": {
+        "au": null,
+        "eu": null,
+        "jp": "2024-12-11",
+        "na": null
+      },
+      "tail": "0432ff02",
+      "type": "Band"
+    },
+    {
       "amiiboSeries": "Animal Crossing",
       "character": "Canberra",
       "gameSeries": "Animal Crossing",
@@ -11298,7 +11522,7 @@
     {
       "amiiboSeries": "Super Smash Bros.",
       "character": "Pyra",
-      "gameSeries": "Xenoblade Chronicles",
+      "gameSeries": "Xenoblade",
       "head": "22410000",
       "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_22410000-041e0002.png",
       "name": "Pyra",
@@ -11474,7 +11698,7 @@
     {
       "amiiboSeries": "Super Smash Bros.",
       "character": "Ryu",
-      "gameSeries": "Street fighter",
+      "gameSeries": "Street Fighter",
       "head": "34c00000",
       "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c00000-02530002.png",
       "name": "Ryu",
@@ -11486,6 +11710,1014 @@
       },
       "tail": "02530002",
       "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Luke",
+      "gameSeries": "Street Fighter",
+      "head": "34c20000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c20000-04aa1d02.png",
+      "name": "Luke",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04aa1d02",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Luke",
+      "gameSeries": "Street Fighter",
+      "head": "34c20001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c20001-04ab1d02.png",
+      "name": "Luke",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04ab1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Jamie",
+      "gameSeries": "Street Fighter",
+      "head": "34c30000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c30000-04ac1d02.png",
+      "name": "Jamie",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04ac1d02",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Jamie",
+      "gameSeries": "Street Fighter",
+      "head": "34c30001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c30001-04ad1d02.png",
+      "name": "Jamie",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04ad1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Manon",
+      "gameSeries": "Street Fighter",
+      "head": "34cc0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34cc0001-04b71d02.png",
+      "name": "Manon",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b71d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Kimberly",
+      "gameSeries": "Street Fighter",
+      "head": "34c40000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c40000-04ae1d02.png",
+      "name": "Kimberly",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04ae1d02",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Kimberly",
+      "gameSeries": "Street Fighter",
+      "head": "34c40001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c40001-04af1d02.png",
+      "name": "Kimberly",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04af1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Marisa",
+      "gameSeries": "Street Fighter",
+      "head": "34cd0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34cd0001-04b81d02.png",
+      "name": "Marisa",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b81d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Lily",
+      "gameSeries": "Street Fighter",
+      "head": "34d00001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d00001-04bb1d02.png",
+      "name": "Lily",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04bb1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "JP",
+      "gameSeries": "Street Fighter",
+      "head": "34ce0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34ce0001-04b91d02.png",
+      "name": "JP",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b91d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Juri",
+      "gameSeries": "Street Fighter",
+      "head": "34c70001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c70001-04b21d02.png",
+      "name": "Juri",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b21d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Dee Jay",
+      "gameSeries": "Street Fighter",
+      "head": "34cb0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34cb0001-04b61d02.png",
+      "name": "Dee Jay",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b61d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Cammy",
+      "gameSeries": "Street Fighter",
+      "head": "34d10001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d10001-04bc1d02.png",
+      "name": "Cammy",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04bc1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Ryu",
+      "gameSeries": "Street Fighter",
+      "head": "34c00001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c00001-04a81d02.png",
+      "name": "Ryu",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04a81d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "E. Honda",
+      "gameSeries": "Street Fighter",
+      "head": "34ca0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34ca0001-04b51d02.png",
+      "name": "E. Honda",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b51d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Blanka",
+      "gameSeries": "Street Fighter",
+      "head": "34c80001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c80001-04b31d02.png",
+      "name": "Blanka",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b31d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Guile",
+      "gameSeries": "Street Fighter",
+      "head": "34c60001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c60001-04b11d02.png",
+      "name": "Guile",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b11d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Ken",
+      "gameSeries": "Street Fighter",
+      "head": "34c10001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c10001-04a91d02.png",
+      "name": "Ken",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04a91d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Chun-Li",
+      "gameSeries": "Street Fighter",
+      "head": "34c50001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c50001-04b01d02.png",
+      "name": "Chun-Li",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b01d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Zangief",
+      "gameSeries": "Street Fighter",
+      "head": "34cf0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34cf0001-04ba1d02.png",
+      "name": "Zangief",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04ba1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Dhalsim",
+      "gameSeries": "Street Fighter",
+      "head": "34c90001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c90001-04b41d02.png",
+      "name": "Dhalsim",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04b41d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Rashid",
+      "gameSeries": "Street Fighter",
+      "head": "34d20001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d20001-04bd1d02.png",
+      "name": "Rashid",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04bd1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "A.K.I",
+      "gameSeries": "Street Fighter",
+      "head": "34d30001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d30001-04be1d02.png",
+      "name": "A.K.I",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04be1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Ed",
+      "gameSeries": "Street Fighter",
+      "head": "34d40001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d40001-04bf1d02.png",
+      "name": "Ed",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04bf1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Akuma",
+      "gameSeries": "Street Fighter",
+      "head": "34d50001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d50001-04c01d02.png",
+      "name": "Akuma",
+      "release": {
+        "au": "2025-06-05",
+        "eu": "2025-06-05",
+        "jp": "2025-06-05",
+        "na": "2025-06-05"
+      },
+      "tail": "04c01d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "M. Bison",
+      "gameSeries": "Street Fighter",
+      "head": "34d60001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d60001-04e11d02.png",
+      "name": "M. Bison",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04e11d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Terry",
+      "gameSeries": "Fatal Fury",
+      "head": "3c800001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_3c800001-04e81d02.png",
+      "name": "Terry",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04e81d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Mai",
+      "gameSeries": "Fatal Fury",
+      "head": "3c810001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_3c810001-04f21d02.png",
+      "name": "Mai",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04f21d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Elena",
+      "gameSeries": "Street Fighter",
+      "head": "34d80001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d80001-04e31d02.png",
+      "name": "Elena",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04e31d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Sagat",
+      "gameSeries": "Street Fighter",
+      "head": "34d90001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d90001-04e41d02.png",
+      "name": "Sagat",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04e41d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "C. Viper",
+      "gameSeries": "Street Fighter",
+      "head": "34da0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34da0001-04e51d02.png",
+      "name": "C. Viper",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04e51d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Alex",
+      "gameSeries": "Street Fighter",
+      "head": "34db0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34db0001-04e61d02.png",
+      "name": "Alex",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04e61d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Ingrid",
+      "gameSeries": "Street Fighter",
+      "head": "34dc0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34dc0001-04e71d02.png",
+      "name": "Ingrid",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04e71d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Luke",
+      "gameSeries": "Street Fighter",
+      "head": "34c20001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c20001-04cd1d02.png",
+      "name": "Luke",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04cd1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Jamie",
+      "gameSeries": "Street Fighter",
+      "head": "34c30001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c30001-04ce1d02.png",
+      "name": "Jamie",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04ce1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Manon",
+      "gameSeries": "Street Fighter",
+      "head": "34cc0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34cc0001-04d71d02.png",
+      "name": "Manon",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d71d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Kimberly",
+      "gameSeries": "Street Fighter",
+      "head": "34c40001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c40001-04cf1d02.png",
+      "name": "Kimberly",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04cf1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Marisa",
+      "gameSeries": "Street Fighter",
+      "head": "34cd0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34cd0001-04d81d02.png",
+      "name": "Marisa",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d81d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Lily",
+      "gameSeries": "Street Fighter",
+      "head": "34d00001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d00001-04db1d02.png",
+      "name": "Lily",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04db1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "JP",
+      "gameSeries": "Street Fighter",
+      "head": "34ce0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34ce0001-04d91d02.png",
+      "name": "JP",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d91d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Juri",
+      "gameSeries": "Street Fighter",
+      "head": "34c70001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c70001-04d21d02.png",
+      "name": "Juri",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d21d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Dee Jay",
+      "gameSeries": "Street Fighter",
+      "head": "34cb0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34cb0001-04d61d02.png",
+      "name": "Dee Jay",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d61d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Cammy",
+      "gameSeries": "Street Fighter",
+      "head": "34d10001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d10001-04dc1d02.png",
+      "name": "Cammy",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04dc1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Ryu",
+      "gameSeries": "Street Fighter",
+      "head": "34c00001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c00001-04cb1d02.png",
+      "name": "Ryu",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04cb1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "E. Honda",
+      "gameSeries": "Street Fighter",
+      "head": "34ca0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34ca0001-04d51d02.png",
+      "name": "E. Honda",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d51d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Blanka",
+      "gameSeries": "Street Fighter",
+      "head": "34c80001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c80001-04d31d02.png",
+      "name": "Blanka",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d31d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Guile",
+      "gameSeries": "Street Fighter",
+      "head": "34c60001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c60001-04d11d02.png",
+      "name": "Guile",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d11d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Ken",
+      "gameSeries": "Street Fighter",
+      "head": "34c10001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c10001-04cc1d02.png",
+      "name": "Ken",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04cc1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Chun-Li",
+      "gameSeries": "Street Fighter",
+      "head": "34c50001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c50001-04d01d02.png",
+      "name": "Chun-Li",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d01d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Zangief",
+      "gameSeries": "Street Fighter",
+      "head": "34cf0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34cf0001-04da1d02.png",
+      "name": "Zangief",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04da1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Dhalsim",
+      "gameSeries": "Street Fighter",
+      "head": "34c90001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34c90001-04d41d02.png",
+      "name": "Dhalsim",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04d41d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Rashid",
+      "gameSeries": "Street Fighter",
+      "head": "34d20001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d20001-04dd1d02.png",
+      "name": "Rashid",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04dd1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "A.K.I",
+      "gameSeries": "Street Fighter",
+      "head": "34d30001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d30001-04de1d02.png",
+      "name": "A.K.I",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04de1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Ed",
+      "gameSeries": "Street Fighter",
+      "head": "34d40001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d40001-04df1d02.png",
+      "name": "Ed",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04df1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Akuma",
+      "gameSeries": "Street Fighter",
+      "head": "34d50001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d50001-04e01d02.png",
+      "name": "Akuma",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04e01d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "M. Bison",
+      "gameSeries": "Street Fighter",
+      "head": "34d60001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d60001-04eb1d02.png",
+      "name": "M. Bison",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04eb1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Terry",
+      "gameSeries": "Fatal Fury",
+      "head": "3c800001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_3c800001-04f11d02.png",
+      "name": "Terry",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04f11d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Mai",
+      "gameSeries": "Fatal Fury",
+      "head": "3c810001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_3c810001-04f31d02.png",
+      "name": "Mai",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04f31d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Elena",
+      "gameSeries": "Street Fighter",
+      "head": "34d80001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d80001-04ec1d02.png",
+      "name": "Elena",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04ec1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Sagat",
+      "gameSeries": "Street Fighter",
+      "head": "34d90001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34d90001-04ed1d02.png",
+      "name": "Sagat",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04ed1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "C. Viper",
+      "gameSeries": "Street Fighter",
+      "head": "34da0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34da0001-04ee1d02.png",
+      "name": "C. Viper",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04ee1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Alex",
+      "gameSeries": "Street Fighter",
+      "head": "34db0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34db0001-04ef1d02.png",
+      "name": "Alex",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04ef1d02",
+      "type": "Card"
+    },
+    {
+      "amiiboSeries": "Street Fighter 6",
+      "character": "Ingrid",
+      "gameSeries": "Street Fighter",
+      "head": "34dc0001",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_34dc0001-04f01d02.png",
+      "name": "Ingrid",
+      "release": {
+        "au": "2025-09-30",
+        "eu": "2025-09-30",
+        "jp": "2025-09-30",
+        "na": "2025-09-30"
+      },
+      "tail": "04f01d02",
+      "type": "Card"
     },
     {
       "amiiboSeries": "Animal Crossing",
@@ -12189,6 +13421,22 @@
         "na": "2018-07-13"
       },
       "tail": "03770402",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Splatoon",
+      "character": "Marina",
+      "gameSeries": "Splatoon",
+      "head": "08040000",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_08040000-04390402.png",
+      "name": "Marina - Side Order",
+      "release": {
+        "au": "2024-09-05",
+        "eu": "2024-09-05",
+        "jp": "2024-09-05",
+        "na": "2024-09-05"
+      },
+      "tail": "04390402",
       "type": "Figure"
     },
     {
@@ -13072,6 +14320,38 @@
       "type": "Figure"
     },
     {
+      "amiiboSeries": "Donkey Kong",
+      "character": "Donkey Kong",
+      "gameSeries": "Super Mario",
+      "head": "00080100",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_00080100-042f1a02.png",
+      "name": "Donkey Kong & Pauline",
+      "release": {
+        "au": "2025-07-17",
+        "eu": "2025-07-17",
+        "jp": "2025-07-17",
+        "na": "2025-07-17"
+      },
+      "tail": "042f1a02",
+      "type": "Figure"
+    },
+    {
+      "amiiboSeries": "Super Nintendo World",
+      "character": "Donkey Kong",
+      "gameSeries": "Super Mario",
+      "head": "00080003",
+      "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_00080003-0431ff02.png",
+      "name": "Donkey Kong - Power Up Band",
+      "release": {
+        "au": null,
+        "eu": null,
+        "jp": "2024-12-11",
+        "na": null
+      },
+      "tail": "0431ff02",
+      "type": "Band"
+    },
+    {
       "amiiboSeries": "Animal Crossing",
       "character": "Cherry",
       "gameSeries": "Animal Crossing",
@@ -13538,7 +14818,7 @@
     {
       "amiiboSeries": "Xenoblade Chronicles 3",
       "character": "Noah",
-      "gameSeries": "Xenoblade Chronicles",
+      "gameSeries": "Xenoblade",
       "head": "22430000",
       "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_22430000-043d1b02.png",
       "name": "Noah",
@@ -13554,7 +14834,7 @@
     {
       "amiiboSeries": "Xenoblade Chronicles 3",
       "character": "Mio",
-      "gameSeries": "Xenoblade Chronicles",
+      "gameSeries": "Xenoblade",
       "head": "22440000",
       "image": "https://raw.githubusercontent.com/N3evin/AmiiboAPI/master/images/icon_22440000-043e1b02.png",
       "name": "Mio",

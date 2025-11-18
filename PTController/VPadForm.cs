@@ -7,7 +7,7 @@ using System.Windows.Forms;
 
 namespace PTController
 {
-    public partial class FormController : Form
+    public partial class VPadForm : Form
     {
         readonly JCPainter painter;
 
@@ -33,7 +33,7 @@ namespace PTController
             }
         }
 
-        public FormController(IControllerAdapter script, IReporter gamepad)
+        public VPadForm(IControllerAdapter script, IReporter gamepad)
         {
             InitializeComponent();
             this.painter = new(gamepad, script, GetJCImg);

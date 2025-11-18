@@ -3,18 +3,13 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-abstract class StickAction : KeyAction
+abstract class StickAction(string keyname, string direction) : Statement
 {
-    protected readonly string KeyName;
-    protected readonly string Direction;
+    protected readonly string KeyName = keyname.ToUpper();
+    protected readonly ECKey Key = NSKeys.GetKey(keyname, direction);
+    protected readonly string Direction = direction.ToUpper();
 
-    public StickAction(ECKey key, string keyname, string direcion) : base(key)
-    {
-        KeyName = keyname.ToUpper();
-        Direction = direcion.ToUpper();
-    }
-
-    protected override void ReleasePrevious(Assembly.Assembler assembler)
+    protected virtual void ReleasePrevious(Assembly.Assembler assembler)
     {
         if (!assembler.StickMapping.ContainsKey(Key.KeyCode))
             return;
@@ -38,7 +33,7 @@ class StickPress : StickAction
     public readonly ValBase Duration;
 
     public StickPress(string keyname, string direction, ValBase duration)
-        : base(NSKeys.GetKey(keyname, direction), keyname, direction)
+        : base(keyname, direction)
     {
         Duration = duration;
     }
@@ -97,7 +92,7 @@ class StickPress : StickAction
 class StickDown : StickAction
 {
     public StickDown(string keyname, string direction)
-        : base(NSKeys.GetKey(keyname, direction), keyname, direction)
+        : base(keyname, direction)
     { }
 
     public override void Exec(Processor processor)
@@ -121,7 +116,7 @@ class StickDown : StickAction
 class StickUp : StickAction
 {
     public StickUp(string keyname)
-        : base(NSKeys.GetKey(keyname), keyname, "")
+        : base(keyname, "0")
     { }
 
     public override void Exec(Processor processor)
