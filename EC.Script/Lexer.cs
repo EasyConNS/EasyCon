@@ -6,7 +6,7 @@ partial class Lexer
     private string input;     private int position;
     private int lineNumber = 1;
     
-    private static readonly List<string> keywords = ["import", "if", "elif", "else", "endif", "for", "to", "step", "break", "continue", "next", "func", "return", "endfunc", "and", "or", "not"];
+    private static readonly List<string> keywords = ["IMPORT", "IF", "ELIF", "ELSE", "ENDIF", "FOR", "TO", "STEP", "BREAK", "CONTINUE", "NEXT", "FUNC", "RETURN", "ENDFUNC", "AND", "OR", "NOT"];
 
     private static readonly List<string> gamepadKeys = ["A", "B", "X", "Y", "L", "R", "ZL", "ZR", "LCLICK", "RCLICK",
         "DUP", "DDOWN", "DLEFT", "DRIGHT",

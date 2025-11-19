@@ -11,12 +11,12 @@ public enum TokenType
     CommentTrivia, // #{XXX}
 
     // Tokens
-    EOF,
     Number,
     String,
     Const, // _XXX
     Variable, // $XXX
     ExtVariable, // @XXX
+
     Assign, // =
     Plus, // +
     PlusAssign, // +=
@@ -41,12 +41,16 @@ public enum TokenType
     LeftShiftAssign, // <<=
     RightShift, // >>
     RightShiftAssign, // >>=
+
+    EqualEqual, // ==
+    NotEqual, // !=
     LessThan, // <
     LessThanEqual, // <=
     GreaterThan, // >
     GreaterThanEqual, // >=
-    EqualEqual, // ==
-    NotEqual, // !=
+    LogicAnd, // AND
+    LogicOr, // OR
+    LogicNot, // NOT
 
     // TODO
     Punctuation,
@@ -79,9 +83,6 @@ public enum TokenType
     EndFunc, // ENDFUNC
     True, // TRUE
     False, // FALSE
-    LogicAnd, // AND
-    LogicOr, // OR
-    LogicNot, // NOT
 
     // Gamepad Keys
     ResetKeyword, // RESET
@@ -92,4 +93,6 @@ public enum TokenType
 
     // Ident
     Identifier,
+
+    EOF
 }
