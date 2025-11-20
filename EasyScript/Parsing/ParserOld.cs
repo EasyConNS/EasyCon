@@ -74,75 +74,47 @@ partial class Parser
         {
             return ParseConstantDecl(text);
         }
-        if (text.StartsWith('$'))
+        else if (text.StartsWith('$'))
         {
             return ParseAssignment(text);
         }
-        if (text.StartsWith("if", StringComparison.OrdinalIgnoreCase))
+        else if (text.StartsWith("if", StringComparison.OrdinalIgnoreCase))
         {
             return ParseIfelse(text);
         }
-        if (text.StartsWith("elif", StringComparison.OrdinalIgnoreCase))
+        else if (text.StartsWith("elif", StringComparison.OrdinalIgnoreCase))
         {
             return ParseIfelse(text, true);
         }
-        if (text.Equals("else", StringComparison.OrdinalIgnoreCase))
+        else if (text.Equals("else", StringComparison.OrdinalIgnoreCase))
         {
             return new Else();
         }
-        if (text.Equals("endif", StringComparison.OrdinalIgnoreCase))
+        else if (text.Equals("endif", StringComparison.OrdinalIgnoreCase))
         {
             return new EndIf();
         }
-        if (text.StartsWith("for", StringComparison.OrdinalIgnoreCase))
+        else if (text.StartsWith("for", StringComparison.OrdinalIgnoreCase))
         {
             return ParseFor(text);
         }
-        if (text.StartsWith("break", StringComparison.OrdinalIgnoreCase) || text.StartsWith("continue", StringComparison.OrdinalIgnoreCase))
+        else if (text.StartsWith("break", StringComparison.OrdinalIgnoreCase) || text.StartsWith("continue", StringComparison.OrdinalIgnoreCase))
         {
             return ParseLoopCtrl(text);
         }
-        if (text.Equals("next", StringComparison.OrdinalIgnoreCase))
+        else if (text.Equals("next", StringComparison.OrdinalIgnoreCase))
         {
             return new Next();
         }
-        if (text.StartsWith("func", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseFunctionDecl(text);
-        }
-        if (text.StartsWith("call", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseCall(text);
-        }
-        if (text.Equals("endfunc", StringComparison.OrdinalIgnoreCase))
+        else if (text.Equals("endfunc", StringComparison.OrdinalIgnoreCase))
         {
             return new ReturnStat();
         }
-        if (text.StartsWith("amiibo", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseAmiibo(text);
-        }
-        if (int.TryParse(text, out int duration))
+        else if (int.TryParse(text, out int duration))
             return new Wait(duration, true);
-        if (text.StartsWith("wait", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseWait(text);
-        }
-        if (text.StartsWith("alert", StringComparison.OrdinalIgnoreCase) || text.StartsWith("print", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseAlert(text) ?? ParsePrint(text);
-        }
-        if (text.StartsWith("TIME", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseGetTime(text);
-        }
-        if (text.Equals("PUSHALL", StringComparison.OrdinalIgnoreCase))
-            return new PushAll();
-        if (text.Equals("POPALL", StringComparison.OrdinalIgnoreCase))
-            return new PopAll();
         else
         {
-            return ParseKey(text) ?? ParseDebug(text);
+            return ParseNamedExpression(text) ?? ParseKey(text) ?? ParseDebug(text);
         }
     }
 
@@ -155,15 +127,20 @@ partial class Parser
 #if DEBUG
         try
         {
-            var tokens = new Lexer(text).Tokenize();
-            foreach (var token in tokens)
+            var lex = new Lexer(text);
+            foreach (var t in lex.Tokenize())
             {
-                Debug.Write(token, ",");
-                if (token.Type == TokenType.NEWLINE)
+                Debug.Write(t);
+                if (t.Type == TokenType.NEWLINE)
                 {
-                    Debug.WriteLine("|");
+                    Debug.WriteLine($"L:{t.Line}");
                 }
             }
+            //var np = new EasyScript.Parser(lex).Parse();
+            //foreach (var st in np)
+            //{
+            //    Debug.Write(st);
+            //}
         }
         catch (Exception e) { Debug.WriteLine(e.Message); }
 #endif
@@ -337,7 +314,7 @@ partial class Parser
         for (var i = 0; i < list.Count; i++)
         {
             var st = list[i];
-            if (st is Statements.CallStat cst)
+            if (st is CallStat cst)
             {
                 var @func = _funcTables.GetValueOrDefault(cst.Label, null);
                 if (@func == null)

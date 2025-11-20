@@ -3,7 +3,7 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
-    class PushAll : Statement
+    class PushAll : Parsing.Statement
     {
         protected override string _GetString(Formatter formatter)
         {
@@ -22,7 +22,7 @@ namespace EasyScript.Statements
         }
     }
 
-    class PopAll : Statement
+    class PopAll : Parsing.Statement
     {
         protected override string _GetString(Formatter formatter)
         {

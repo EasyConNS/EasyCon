@@ -69,10 +69,8 @@ internal partial class Lexer(string input)
             { "endfunc", TokenType.EndFunc },
             { "return", TokenType.Return },
 
-            { "and", TokenType.LogicAnd },
-            { "or", TokenType.LogicOr },
-            { "not", TokenType.LogicNot },
-
+            { "true", TokenType.True },
+            { "false", TokenType.False },
             { "reset", TokenType.ResetKeyword },
         };
     private static readonly Dictionary<string, TokenType> logicwords = new()
@@ -91,6 +89,7 @@ internal partial class Lexer(string input)
 
     public List<Token> Tokenize()
     {
+        SkipWhitespace();
         while (_position < _input.Length)
         {
             var current = Current;
@@ -184,11 +183,12 @@ internal partial class Lexer(string input)
     // 跳过空白字符
     private void SkipWhitespace()
     {
-        while (_position < _input.Length && char.IsWhiteSpace(Peek()))
+        while (_position < _input.Length && char.IsWhiteSpace(Current))
         {
-            if ("\u000D\u000A\u0085\u2028\u2029\r\n".IndexOf(Peek()) != -1)
+            if ("\u000D\u000A\u0085\u2028\u2029\r\n".IndexOf(Current) != -1)
             {
-                _line++;
+                if(Current == '\r' && Lookahead == '\n')
+                    _line++;
             }
             _position++;
         }
@@ -209,48 +209,22 @@ internal partial class Lexer(string input)
     private void ReadNumber()
     {
         var start = _position;
-        var hasDecimal = false;
-        var decimalDigits = 0;
-
         while (_position < _input.Length && (char.IsDigit(Current) || Current == '.'))
         {
-            if (Current == '.')
-            {
-                if (hasDecimal)
-                {
-                    throw new Exception($"Multiple decimal points in number at line {_line}");
-                }
-                hasDecimal = true;
-            }
-            else if (hasDecimal)
-            {
-                decimalDigits++;
-                // 检查小数位数
-                if (decimalDigits > 2)
-                {
-                    throw new Exception($"小数只支持两位小数 at line {_line}");
-                }
-            }
-
             Advance();
         }
 
         var number = _input.Substring(start, _position - start);
-
-        if (hasDecimal)
+        if (number.Contains('.'))
         {
+            if (!double.TryParse(number, out _))
+            {
+                throw new Exception($"数字字面量格式不正确 在行：{_line}");
+            }
             AddToken(TokenType.Number, number);
         }
         else
         {
-            // 检查整数范围
-            if (long.TryParse(number, out long longValue))
-            {
-                if (longValue < short.MinValue || longValue > short.MaxValue)
-                {
-                    throw new Exception($"整数超出范围 ({short.MinValue} 到 {short.MaxValue}) at line {_line}");
-                }
-            }
             AddToken(TokenType.Integer, number);
         }
     }
@@ -262,14 +236,18 @@ internal partial class Lexer(string input)
 
         while (_position < _input.Length && Current != '"')
         {
+            if (Current == '\n' || Current == '\r')
+            {
+                break;
+            }
             sb.Append(Advance());
         }
 
-        if (Current == '"')
+        if (Current != '"')
         {
-            Advance(); // 跳过结束的引号
+            throw new Exception($"字符串没有结束引号 在行：{_line}");
         }
-
+        Advance(); // 跳过结束的引号
         AddToken(TokenType.String, sb.ToString());
     }
 
@@ -302,8 +280,6 @@ internal partial class Lexer(string input)
             case '@':
                 AddToken(TokenType.ExtVariable, identifier);
                 break;
-            default:
-                throw new Exception($"未知的变量前缀: {firstChar}");
         }
     }
 
@@ -328,7 +304,7 @@ internal partial class Lexer(string input)
         else if ((isAllUpper || isAllLower) && logicwords.ContainsKey(word.ToLower()))
         {
             // and, or, not关键字小写
-            AddToken(keywords[word.ToLower()], word.ToLower());
+            AddToken(logicwords[word.ToLower()], word.ToLower());
         }
         else if ((isAllUpper || isAllLower) && gamepadKeywords.Contains(word.ToUpper()))
         {
@@ -464,10 +440,6 @@ internal partial class Lexer(string input)
                     Advance();
                     AddToken(TokenType.NotEqual, "!=");
                 }
-                else
-                {
-                    throw new Exception($"{current}不能单独出现 at line {_line}");
-                }
                 break;
             case '>':
                 if (next == '>')
@@ -536,7 +508,7 @@ internal partial class Lexer(string input)
                 AddToken(TokenType.RightBracket, "]");
                 break;
             default:
-                throw new Exception($"无法识别字符：'{current}' at line {_line}");
+                throw new Exception($"无法识别的字符：'{current}' 在行：{_line}");
         }
     }
 

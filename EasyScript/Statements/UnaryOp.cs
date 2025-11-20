@@ -3,7 +3,7 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
-    abstract class UnaryOp : Statement
+    abstract class UnaryOp : Parsing.Statement
     {
         protected class Meta
         {
@@ -32,12 +32,12 @@ namespace EasyScript.Statements
                 _lhs = lhs;
             }
 
-            public Statement Parse(ParserArgument args)
+            public Parsing.Statement Parse(ParserArgument args)
             {
                 var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
                 
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, _lhs)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, _lhs)) as Parsing.Statement;
                 return null;
             }
         }
@@ -69,7 +69,7 @@ namespace EasyScript.Statements
         }
     }
 
-    abstract class UnaryOpEx : Statement
+    abstract class UnaryOpEx : Parsing.Statement
     {
         protected class Meta
         {
@@ -96,11 +96,11 @@ namespace EasyScript.Statements
                 _meta = meta;
             }
 
-            public Statement Parse(ParserArgument args)
+            public Parsing.Statement Parse(ParserArgument args)
             {
                 var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\=\s*{_meta.Operator}\s*{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, true), FormatterUtil.GetRegEx(m.Groups[2].Value, false)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, true), FormatterUtil.GetRegEx(m.Groups[2].Value, false)) as Parsing.Statement;
                 return null;
             }
         }

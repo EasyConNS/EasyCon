@@ -2,7 +2,7 @@
 
 namespace EasyScript.Statements
 {
-    class Wait : Statement
+    class Wait : Parsing.Statement
     {
         protected readonly ValBase Duration;
         protected bool _omitted;

@@ -3,7 +3,7 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-abstract class KeyAction(string keyName) : Statement
+abstract class KeyAction(string keyName) : Parsing.Statement
 {
     protected readonly ECKey Key = NSKeys.Get(keyName);
 

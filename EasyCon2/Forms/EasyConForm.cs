@@ -1300,8 +1300,8 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             SaveConfig();
         }
 
-        #region form resize
-
+#region form resize
+#if true
         public float Xvalue;
         public float Yvalue;
 
@@ -1351,7 +1351,8 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
                 }
             }
         }
-        #endregion
+#endif
+#endregion
 
         private void 手柄设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {

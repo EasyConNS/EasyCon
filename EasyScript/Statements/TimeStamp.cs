@@ -2,7 +2,7 @@
 
 namespace EasyScript.Statements;
 
-class TimeStamp : Statement
+class TimeStamp : Parsing.Statement
 {
     private readonly ValRegEx RegDst;
 

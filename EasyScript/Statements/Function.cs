@@ -2,7 +2,7 @@
 
 namespace EasyScript.Statements
 {
-    class Function : Statement
+    class Function : Parsing.Statement
     {
         public override int IndentNext => 1;
         public readonly string Label;
@@ -32,7 +32,7 @@ namespace EasyScript.Statements
         }
     }
 
-    class CallStat : Statement
+    class CallStat : Parsing.Statement
     {
         public readonly string Label;
         public Function Func = null;
@@ -60,7 +60,7 @@ namespace EasyScript.Statements
         }
     }
 
-    class ReturnStat : Statement
+    class ReturnStat : Parsing.Statement
     {
         public override int IndentThis => -1;
         public string Label;

@@ -2,7 +2,7 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
-    class AmiiboChanger : Statement
+    class AmiiboChanger : Parsing.Statement
     {
         protected readonly ValBase Index;
 
@@ -31,21 +31,5 @@ namespace EasyScript.Statements
         {
             assembler.Add(Assembly.Instructions.AsmAmiibo.Create(Index));
         }
-    }
-
-    class AmiiboReset : Statement
-    {
-        protected override string _GetString(Formatter formatter)
-        {
-            return $"AMIIBO_RESET";
-        }
-
-        public override void Exec(Processor processor)
-        {
-            // TODO
-        }
-
-        public override void Assemble(Assembly.Assembler assembler)
-        { }
     }
 }

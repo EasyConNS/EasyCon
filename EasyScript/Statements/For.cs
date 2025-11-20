@@ -2,7 +2,7 @@
 
 namespace EasyScript.Statements
 {
-    abstract class For : Statement
+    abstract class For : Parsing.Statement
     {
         public override int IndentNext => 1;
         public readonly ValBase Count;
@@ -35,17 +35,7 @@ namespace EasyScript.Statements
                 Step(processor);
             }
             if (!Cond(processor))
-                Break(processor);
-        }
-
-        public static void Break(Processor processor)
-        {
-            processor.PC = processor.LoopStack.Pop().Next.Address + 1;
-        }
-
-        public static void Continue(Processor processor)
-        {
-            processor.PC = processor.LoopStack.Peek().Next.Address;
+                processor.PC = processor.LoopStack.Pop().Next.Address + 1;
         }
     }
 
@@ -167,7 +157,7 @@ namespace EasyScript.Statements
         }
     }
 
-    class Next : Statement
+    class Next : Parsing.Statement
     {
         public override int IndentThis => -1;
         public For For;
@@ -192,7 +182,7 @@ namespace EasyScript.Statements
         }
     }
 
-    abstract class LoopControl : Statement
+    abstract class LoopControl : Parsing.Statement
     {
         public readonly ValInstant Level;
         protected bool _omitted;
@@ -228,7 +218,7 @@ namespace EasyScript.Statements
         {
             for (int i = 0; i < Level.Val - 1; i++)
                 processor.LoopStack.Pop();
-            For.Break(processor);
+            processor.PC = processor.LoopStack.Pop().Next.Address + 1;
         }
 
         public override void Assemble(Assembly.Assembler assembler)
@@ -257,7 +247,7 @@ namespace EasyScript.Statements
         {
             for (int i = 0; i < Level.Val - 1; i++)
                 processor.LoopStack.Pop();
-            For.Continue(processor);
+            processor.PC = processor.LoopStack.Peek().Next.Address;
         }
 
         public override void Assemble(Assembly.Assembler assembler)

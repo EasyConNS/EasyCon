@@ -2,7 +2,7 @@
 
 namespace EasyScript.Statements
 {
-    abstract class BranchOp : Statement
+    abstract class BranchOp : Parsing.Statement
     {
         public BranchOp? If;
         public BranchOp? Else;

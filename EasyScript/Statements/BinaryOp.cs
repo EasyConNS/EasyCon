@@ -20,7 +20,7 @@ namespace EasyScript.Statements
             OnlyInstant = onlyInstant;
         }
     }
-    abstract class BinaryOp : Statement
+    abstract class BinaryOp : Parsing.Statement
     {
         protected class BinaryOpParser : IStatementParser
         {
@@ -31,11 +31,11 @@ namespace EasyScript.Statements
                 _meta = meta;
             }
 
-            public Statement Parse(ParserArgument args)
+            public Parsing.Statement Parse(ParserArgument args)
             {
                 var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\{_meta.Operator}=\s*{(_meta.OnlyInstant ? Formats.Instant : Formats.ValueEx)}$", RegexOptions.IgnoreCase);
                 if (m.Success)
-                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value)) as Statement;
+                    return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value)) as Parsing.Statement;
                 return null;
             }
         }

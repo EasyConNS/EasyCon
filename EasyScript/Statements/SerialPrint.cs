@@ -2,7 +2,7 @@
 
 namespace EasyScript.Statements
 {
-    class SerialPrint : Statement
+    class SerialPrint : Parsing.Statement
     {
         public readonly uint Value;
         public readonly bool Mem;

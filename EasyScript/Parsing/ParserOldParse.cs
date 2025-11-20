@@ -14,12 +14,14 @@ internal partial class Parser
 
     private Statement? ParseConstantDecl(string text)
     {
-        var m = Regex.Match(text, $@"^{Formats.Constant}\s*=\s*{Formats.Instant}$", RegexOptions.IgnoreCase);
-        if (m.Success)
+        var lexer = new Lexer(text).Tokenize();
+        if (lexer.Count != 3 + 2)
+            return null;
+        if (lexer[0].Type == TokenType.Const && lexer[1].Type == TokenType.Assign && lexer[2].Type == TokenType.Integer)
         {
-            var val = _formatter.GetInstant(m.Groups[2].Value);
-            _formatter.SetConstantTable(m.Groups[1].Value, val.Val);
-            return new Empty($"{m.Groups[1].Value} = {m.Groups[2].Value}");
+            var val = _formatter.GetInstant(lexer[2].Value);
+            _formatter.SetConstantTable(lexer[0].Value, val.Val);
+            return new Empty($"{lexer[0].Value} = {lexer[2].Value}");
         }
         return null;
     }
@@ -58,12 +60,12 @@ internal partial class Parser
 
                     if (IsValidVariable(var1) && IsValidVariable(var2))
                     {
-                        return new Expr(des, _formatter.GetValueEx(var1), op, _formatter.GetValueEx(var2));
+                        return new Statements.Express(des, _formatter.GetValueEx(var1), op, _formatter.GetValueEx(var2));
                     }
                 }
                 else if (IsValidVariable(exprStr))
                 {
-                    return new Expr(des, _formatter.GetValueEx(vR.Groups[1].Value), null, null);
+                    return new Statements.Express(des, _formatter.GetValueEx(vR.Groups[1].Value), null, null);
                 }
             }
         }
@@ -112,35 +114,31 @@ internal partial class Parser
 
     private Statement? ParseLoopCtrl(string text)
     {
-        // break
-        if (text.Equals("break", StringComparison.OrdinalIgnoreCase))
-            return new Break();
-        var m = Regex.Match(text, $@"^break\s+{Formats.Instant}$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new Break(_formatter.GetInstant(m.Groups[1].Value, true));
+        var tokens = new Lexer(text).Tokenize().Take(2).ToList();
 
-        // continue
-        if (text.Equals("continue", StringComparison.OrdinalIgnoreCase))
-            return new Continue();
-        m = Regex.Match(text, $@"^continue\s+{Formats.Instant}$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new Continue(_formatter.GetInstant(m.Groups[1].Value, true));
-        return null;
-    }
-
-    private Statement? ParseFunctionDecl(string text)
-    {
-        var m = Regex.Match(text, @"^func\s+(\D[\d\p{L}_]+)$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new Function(m.Groups[1].Value);
-        return null;
-    }
-
-    private Statement? ParseCall(string text)
-    {
-        var m = Regex.Match(text, @"^call\s+(\D[\d\p{L}_]+)$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new CallStat(m.Groups[1].Value);
+        switch (tokens[0].Type)
+        {
+            case TokenType.Break:
+                if (tokens[1].Type == TokenType.Const || tokens[1].Type == TokenType.Integer)
+                {
+                    return new Break(_formatter.GetInstant(tokens[1].Value, true));
+                }
+                else if (tokens[1].Type == TokenType.NEWLINE)
+                {
+                    return new Break();
+                }
+                break;
+            case TokenType.Continue:
+                if (tokens[1].Type == TokenType.Const || tokens[1].Type == TokenType.Integer)
+                {
+                    return new Continue(_formatter.GetInstant(tokens[1].Value, true));
+                }
+                else if (tokens[1].Type == TokenType.NEWLINE)
+                {
+                    return new Continue();
+                }
+                break;
+        }
         return null;
     }
 
@@ -195,48 +193,57 @@ internal partial class Parser
         return null;
     }
 
-    private Statement? ParseWait(string text)
+    private Statement? ParseNamedExpression(string text)
     {
-        var m = Regex.Match(text, $@"^wait\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new Wait(_formatter.GetValueEx(m.Groups[1].Value));
-        return null;
-    }
-
-    private Statement? ParseAlert(string text)
-    {
-        if (text.Equals("alert", StringComparison.OrdinalIgnoreCase))
-            return new Alert(Array.Empty<Content>());
-        var m = Regex.Match(text, @"^alert\s+(.*)$", RegexOptions.IgnoreCase);
-        if (m.Success)
+        var tokens = new Lexer(text).Tokenize();
+        var first = tokens.First()!;
+        switch (first.Value.ToLower())
         {
-            var contents = ParseContents(m.Groups[1].Value, out _);
-            return new Alert(contents.ToArray());
+            case "func":
+                return tokens[1].Type == TokenType.Identifier ? new Function(tokens[1].Value) : null;
+            case "call":
+                return tokens[1].Type == TokenType.Identifier ? new CallStat(tokens[1].Value) : null;
+            case "alert":
+            case "print":
+                if (tokens[1].Type == TokenType.String)
+                {
+                    var contents = ParseContents(tokens[1].Value, out bool cancellinebreak);
+                    if (first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
+                        return new Print(contents.ToArray(), cancellinebreak);
+                    else
+                        return new Alert(contents.ToArray());
+                }
+                else if (tokens[1].Type == TokenType.NEWLINE)
+                {
+                    if (first.Value.ToLower() == "print")
+                        return new Print([], false);
+                    else
+                        return new Alert([]);
+                }
+                break;
+            case "time":
+                if (tokens[1].Type == TokenType.Variable)
+                    return new TimeStamp(FormatterUtil.GetRegEx(tokens[1].Value));
+                break;
+            case "wait":
+                if (tokens[1].Type == TokenType.Const || tokens[1].Type == TokenType.Integer || tokens[1].Type == TokenType.Variable)
+                {
+                    return new Wait(_formatter.GetValueEx(tokens[1].Value));
+                }
+                break;
+            case "amiibo":
+                if (tokens[1].Type == TokenType.Const || tokens[1].Type == TokenType.Integer || tokens[1].Type == TokenType.Variable)
+                {
+                    var amiiboidx = _formatter.GetValueEx(tokens[1].Value);
+                    return new AmiiboChanger(amiiboidx);
+                }
+                break;
         }
+        if (text.Equals("PUSHALL", StringComparison.OrdinalIgnoreCase))
+            return new PushAll();
+        if (text.Equals("POPALL", StringComparison.OrdinalIgnoreCase))
+            return new PopAll();
 
-        return null;
-    }
-
-    private Statement? ParsePrint(string text)
-    {
-        if (text.Equals("print", StringComparison.OrdinalIgnoreCase))
-            return new Print(Array.Empty<Content>(), false);
-        var m = Regex.Match(text, @"^print\s+(.*)$", RegexOptions.IgnoreCase);
-        if (m.Success)
-        {
-            var contents = ParseContents(m.Groups[1].Value, out bool cancellinebreak);
-            return new Print(contents.ToArray(), cancellinebreak);
-        }
-        return null;
-    }
-
-    private Statement? ParseGetTime(string text)
-    {
-        var m = Regex.Match(text, $@"^TIME\s+{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
-        if (m.Success)
-        {
-            return new TimeStamp(FormatterUtil.GetRegEx(m.Groups[1].Value));
-        }
         return null;
     }
 
@@ -292,18 +299,5 @@ internal partial class Parser
         return null;
     }
 
-    private Statement? ParseAmiibo(string text)
-    {
-        if (text.Equals("AMIIBO_RESET", StringComparison.OrdinalIgnoreCase))
-            return new AmiiboReset();
-        var m = Regex.Match(text, $@"amiibo\s*{Formats.Value}$", RegexOptions.IgnoreCase);
-        if (m.Success)
-        {
-            var amiiboidx = _formatter.GetValueEx(m.Groups[1].Value);
-            return new AmiiboChanger(amiiboidx);
-        }
-        return null;
-    }
     #endregion
-
 }

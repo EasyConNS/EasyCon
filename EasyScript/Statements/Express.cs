@@ -2,14 +2,14 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
-    class Expr : Statement
+    class Express : Parsing.Statement
     {
         protected readonly ValRegEx RegDst;
         protected readonly ValBase ValueLeft;
         protected readonly Meta? OpMeta;
         protected readonly ValBase? ValueRight;
 
-        public Expr(ValRegEx regdst, ValBase valueLeft, Meta? op, ValBase? valueRight)
+        public Express(ValRegEx regdst, ValBase valueLeft, Meta? op, ValBase? valueRight)
         {
             RegDst = regdst;
             ValueLeft = valueLeft;

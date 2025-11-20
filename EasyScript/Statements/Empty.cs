@@ -2,7 +2,7 @@
 
 namespace EasyScript.Statements;
 
-class Empty : Statement
+class Empty : Parsing.Statement
 {
     private readonly string Text;
 
