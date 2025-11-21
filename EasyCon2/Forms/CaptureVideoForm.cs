@@ -29,7 +29,7 @@ namespace EasyCon2.Forms
         static readonly string CapDir = Application.StartupPath + "\\Capture\\";
         static readonly string ImgDir = Application.StartupPath + "\\ImgLabel\\";
         private static readonly List<ImgLabel> imgLabels = new();
-        private readonly OpenCVCapture cvcap = new();
+        private readonly ClasicCapture cvcap = new();
 
         private bool isMouseDown = false;
         private Point mouseOffset;

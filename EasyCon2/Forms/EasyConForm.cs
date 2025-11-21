@@ -148,7 +148,7 @@ namespace EasyCon2.Forms
         private void InitCaptureTypes()
         {
             // add capture types
-            var types = OpenCVCapture.GetCaptureTypes();
+            var types = ECCapture.GetCaptureTypes();
 
             采集卡类型ToolStripMenuItem.DropDownItems.Clear();
             foreach (var name in types.Keys)

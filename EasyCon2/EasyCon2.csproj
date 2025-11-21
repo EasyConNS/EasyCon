@@ -18,13 +18,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="AvalonEdit" Version="6.3.0.90" />
-    <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" />
-    <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
-    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
-    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" />
-    <PackageReference Include="System.Management" Version="8.0.0" />
-    <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
+    <PackageReference Include="AvalonEdit" />
+    <PackageReference Include="JetBrains.Annotations" />
+    <PackageReference Include="OpenCvSharp4.Extensions" />
+    <PackageReference Include="System.Management" />
+    <PackageReference Include="WebSocketSharp-netstandard" />
     <!--<PackageReference Include="NLua" Version="1.6.0" />-->
   </ItemGroup>
 

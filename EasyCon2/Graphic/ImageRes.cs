@@ -1,57 +1,56 @@
 ﻿using System.IO;
 
-namespace EasyCon2.Graphic
+namespace EasyCon2.Graphic;
+
+public static class ImageRes
 {
-    public static class ImageRes
+    public const string ImagePath = @"Image\";
+    public const string ImageExtension = ".png";
+
+    static readonly Dictionary<string, Bitmap> _dict = new Dictionary<string, Bitmap>();
+
+    public static readonly Bitmap PictureBoxBackground;
+
+    static ImageRes()
     {
-        public const string ImagePath = @"Image\";
-        public const string ImageExtension = ".png";
+        PictureBoxBackground = _GetPictureBoxBackground();
+    }
 
-        static readonly Dictionary<string, Bitmap> _dict = new Dictionary<string, Bitmap>();
-
-        public static readonly Bitmap PictureBoxBackground;
-
-        static ImageRes()
+    static Bitmap _GetPictureBoxBackground()
+    {
+        int w = 20, h = 20;
+        Bitmap img = new Bitmap(w, h);
+        using (var g = Graphics.FromImage(img))
         {
-            PictureBoxBackground = _GetPictureBoxBackground();
+            g.Clear(Color.Black);
+            var b = new SolidBrush(Color.FromArgb(40, 40, 40));
+            g.FillRectangle(b, 0, 0, w / 2, h / 2);
+            g.FillRectangle(b, w / 2, h / 2, w, h);
         }
+        return img;
+    }
 
-        static Bitmap _GetPictureBoxBackground()
+    public static string GetImagePath(string name)
+    {
+        return $"{ImagePath}{name}.png";
+    }
+
+    public static IEnumerable<FileInfo> GetImages()
+    {
+        return new DirectoryInfo(ImagePath).GetFiles().Where(fi => fi.Extension.Equals(ImageExtension, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static Bitmap Get(string name)
+    {
+        try
         {
-            int w = 20, h = 20;
-            Bitmap img = new Bitmap(w, h);
-            using (var g = Graphics.FromImage(img))
-            {
-                g.Clear(Color.Black);
-                var b = new SolidBrush(Color.FromArgb(40, 40, 40));
-                g.FillRectangle(b, 0, 0, w / 2, h / 2);
-                g.FillRectangle(b, w / 2, h / 2, w, h);
-            }
-            return img;
+            if (!_dict.ContainsKey(name))
+                _dict[name] = Image.FromFile(GetImagePath(name)) as Bitmap;
+            return _dict[name];
         }
-
-        public static string GetImagePath(string name)
+        catch (FileNotFoundException)
         {
-            return $"{ImagePath}{name}.png";
-        }
-
-        public static IEnumerable<FileInfo> GetImages()
-        {
-            return new DirectoryInfo(ImagePath).GetFiles().Where(fi => fi.Extension.Equals(ImageExtension, StringComparison.OrdinalIgnoreCase));
-        }
-
-        public static Bitmap Get(string name)
-        {
-            try
-            {
-                if (!_dict.ContainsKey(name))
-                    _dict[name] = Image.FromFile(GetImagePath(name)) as Bitmap;
-                return _dict[name];
-            }
-            catch (FileNotFoundException)
-            {
-                return null;
-            }
+            return null;
         }
     }
 }

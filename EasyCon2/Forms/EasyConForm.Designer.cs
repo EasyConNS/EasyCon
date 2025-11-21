@@ -45,6 +45,7 @@
             采集卡类型ToolStripMenuItem = new ToolStripMenuItem();
             打开搜图ToolStripMenuItem = new ToolStripMenuItem();
             搜图说明ToolStripMenuItem = new ToolStripMenuItem();
+            设置环境变量ToolStripMenuItem = new ToolStripMenuItem();
             设置ToolStripMenuItem = new ToolStripMenuItem();
             推送设置ToolStripMenuItem = new ToolStripMenuItem();
             显示调试信息ToolStripMenuItem = new ToolStripMenuItem();
@@ -101,7 +102,6 @@
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             statusStrip1 = new StatusStrip();
             textBoxScriptHelp = new TextBox();
-            设置环境变量ToolStripMenuItem = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             groupBox1.SuspendLayout();
             groupBox6.SuspendLayout();
@@ -114,9 +114,9 @@
             // 
             // menuStrip1
             // 
-            menuStrip1.Font = new Font("Microsoft YaHei", 9F);
+            menuStrip1.Font = new Font("微软雅黑", 9F);
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 脚本ToolStripMenuItem, CaptureDevToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 帮助ToolStripMenuItem, 画图ToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 脚本ToolStripMenuItem, CaptureDevToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 画图ToolStripMenuItem, 帮助ToolStripMenuItem });
             menuStrip1.Location = new Point(1, 1);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(7, 2, 0, 2);
@@ -210,22 +210,29 @@
             // 采集卡类型ToolStripMenuItem
             // 
             采集卡类型ToolStripMenuItem.Name = "采集卡类型ToolStripMenuItem";
-            采集卡类型ToolStripMenuItem.Size = new Size(224, 26);
+            采集卡类型ToolStripMenuItem.Size = new Size(182, 26);
             采集卡类型ToolStripMenuItem.Text = "采集卡类型";
             // 
             // 打开搜图ToolStripMenuItem
             // 
             打开搜图ToolStripMenuItem.Name = "打开搜图ToolStripMenuItem";
-            打开搜图ToolStripMenuItem.Size = new Size(224, 26);
+            打开搜图ToolStripMenuItem.Size = new Size(182, 26);
             打开搜图ToolStripMenuItem.Text = "打开搜图";
             打开搜图ToolStripMenuItem.MouseHover += 打开搜图ToolStripMenuItem_MouseHover;
             // 
             // 搜图说明ToolStripMenuItem
             // 
             搜图说明ToolStripMenuItem.Name = "搜图说明ToolStripMenuItem";
-            搜图说明ToolStripMenuItem.Size = new Size(224, 26);
+            搜图说明ToolStripMenuItem.Size = new Size(182, 26);
             搜图说明ToolStripMenuItem.Text = "搜图说明";
             搜图说明ToolStripMenuItem.Click += 搜图说明ToolStripMenuItem_Click;
+            // 
+            // 设置环境变量ToolStripMenuItem
+            // 
+            设置环境变量ToolStripMenuItem.Name = "设置环境变量ToolStripMenuItem";
+            设置环境变量ToolStripMenuItem.Size = new Size(182, 26);
+            设置环境变量ToolStripMenuItem.Text = "设置环境变量";
+            设置环境变量ToolStripMenuItem.Click += 设置环境变量ToolStripMenuItem_Click;
             // 
             // 设置ToolStripMenuItem
             // 
@@ -327,7 +334,7 @@
             // 
             使用方法ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, 固件模式ToolStripMenuItem });
             使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
-            使用方法ToolStripMenuItem.Size = new Size(152, 26);
+            使用方法ToolStripMenuItem.Size = new Size(224, 26);
             使用方法ToolStripMenuItem.Text = "使用方法";
             // 
             // 联机模式ToolStripMenuItem
@@ -355,19 +362,19 @@
             // toolStripSeparator2
             // 
             toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new Size(149, 6);
+            toolStripSeparator2.Size = new Size(221, 6);
             // 
             // 关于ToolStripMenuItem
             // 
             关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            关于ToolStripMenuItem.Size = new Size(152, 26);
+            关于ToolStripMenuItem.Size = new Size(224, 26);
             关于ToolStripMenuItem.Text = "关于";
             关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
             // 
             // 项目源码ToolStripMenuItem
             // 
             项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            项目源码ToolStripMenuItem.Size = new Size(152, 26);
+            项目源码ToolStripMenuItem.Size = new Size(224, 26);
             项目源码ToolStripMenuItem.Text = "项目源码";
             项目源码ToolStripMenuItem.Click += 项目源码ToolStripMenuItem_Click;
             // 
@@ -719,13 +726,6 @@
             textBoxScriptHelp.Size = new Size(312, 347);
             textBoxScriptHelp.TabIndex = 35;
             // 
-            // 设置环境变量ToolStripMenuItem
-            // 
-            设置环境变量ToolStripMenuItem.Name = "设置环境变量ToolStripMenuItem";
-            设置环境变量ToolStripMenuItem.Size = new Size(224, 26);
-            设置环境变量ToolStripMenuItem.Text = "设置环境变量";
-            设置环境变量ToolStripMenuItem.Click += 设置环境变量ToolStripMenuItem_Click;
-            // 
             // EasyConForm
             // 
             AutoScaleMode = AutoScaleMode.Inherit;
@@ -739,7 +739,7 @@
             Controls.Add(groupBoxScript);
             Controls.Add(groupBox1);
             Controls.Add(menuStrip1);
-            Font = new Font("Microsoft YaHei", 8.25F);
+            Font = new Font("微软雅黑", 8.25F);
             Icon = (Icon)resources.GetObject("$this.Icon");
             KeyPreview = true;
             MainMenuStrip = menuStrip1;
