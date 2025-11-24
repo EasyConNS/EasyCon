@@ -68,8 +68,6 @@ internal class Parser(Lexer lexer)
                 statements.Add(statement);
             }
 
-            // TODO trailing trivia
-
             // 消耗语句后的换行符
             if (Check(TokenType.NEWLINE))
             {
@@ -116,8 +114,14 @@ internal class Parser(Lexer lexer)
             Advance();
             return null;
         }
+        if (Check(TokenType.CommentTrivia))
+        {
+            // TODO trailing trivia
+            Advance();
+            return null;
+        }
         else
-            throw new Exception($"语法错误:{Current.Type}:L{Current.Line}");
+            throw new Exception($"语法错误:{Current.Type}  行{Current.Line}");
     }
 
     private AssignmentStatement ParseAssignment()

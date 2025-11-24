@@ -41,7 +41,7 @@
             脚本ToolStripMenuItem = new ToolStripMenuItem();
             编译ToolStripMenuItem = new ToolStripMenuItem();
             执行ToolStripMenuItem = new ToolStripMenuItem();
-            CaptureDevToolStripMenuItem = new ToolStripMenuItem();
+            搜图ToolStripMenuItem = new ToolStripMenuItem();
             采集卡类型ToolStripMenuItem = new ToolStripMenuItem();
             打开搜图ToolStripMenuItem = new ToolStripMenuItem();
             搜图说明ToolStripMenuItem = new ToolStripMenuItem();
@@ -49,27 +49,24 @@
             设置ToolStripMenuItem = new ToolStripMenuItem();
             推送设置ToolStripMenuItem = new ToolStripMenuItem();
             显示调试信息ToolStripMenuItem = new ToolStripMenuItem();
-            openDelayToolStripMenuItem = new ToolStripMenuItem();
-            cPU优化设置ToolStripMenuItem = new ToolStripMenuItem();
-            脚本自动运行ToolStripMenuItem = new ToolStripMenuItem();
+            串口延迟ToolStripMenuItem = new ToolStripMenuItem();
+            烧录自动运行ToolStripMenuItem = new ToolStripMenuItem();
             频道远程ToolStripMenuItem = new ToolStripMenuItem();
             蓝牙ToolStripMenuItem = new ToolStripMenuItem();
-            设备驱动配置ToolStripMenuItem = new ToolStripMenuItem();
+            蓝牙设备驱动配置ToolStripMenuItem = new ToolStripMenuItem();
             eSP32ToolStripMenuItem = new ToolStripMenuItem();
             手柄设置ToolStripMenuItem = new ToolStripMenuItem();
             取消配对ToolStripMenuItem = new ToolStripMenuItem();
             画图ToolStripMenuItem = new ToolStripMenuItem();
             喷射ToolStripMenuItem = new ToolStripMenuItem();
-            动物之森ToolStripMenuItem = new ToolStripMenuItem();
             自由画板鼠标代替摇杆ToolStripMenuItem = new ToolStripMenuItem();
             帮助ToolStripMenuItem = new ToolStripMenuItem();
-            使用方法ToolStripMenuItem = new ToolStripMenuItem();
+            固件模式ToolStripMenuItem = new ToolStripMenuItem();
             联机模式ToolStripMenuItem = new ToolStripMenuItem();
             烧录模式ToolStripMenuItem = new ToolStripMenuItem();
-            固件模式ToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator2 = new ToolStripSeparator();
-            关于ToolStripMenuItem = new ToolStripMenuItem();
             项目源码ToolStripMenuItem = new ToolStripMenuItem();
+            关于ToolStripMenuItem = new ToolStripMenuItem();
             groupBox1 = new GroupBox();
             buttonCLS = new Button();
             labelTimer = new Label();
@@ -116,7 +113,7 @@
             // 
             menuStrip1.Font = new Font("微软雅黑", 9F);
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 脚本ToolStripMenuItem, CaptureDevToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 画图ToolStripMenuItem, 帮助ToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 脚本ToolStripMenuItem, 搜图ToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 画图ToolStripMenuItem, 帮助ToolStripMenuItem });
             menuStrip1.Location = new Point(1, 1);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(7, 2, 0, 2);
@@ -197,7 +194,7 @@
             // 
             编译ToolStripMenuItem.Name = "编译ToolStripMenuItem";
             编译ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.R;
-            编译ToolStripMenuItem.Size = new Size(224, 26);
+            编译ToolStripMenuItem.Size = new Size(178, 26);
             编译ToolStripMenuItem.Text = "编译";
             编译ToolStripMenuItem.Click += 编译ToolStripMenuItem_Click;
             // 
@@ -205,16 +202,16 @@
             // 
             执行ToolStripMenuItem.Name = "执行ToolStripMenuItem";
             执行ToolStripMenuItem.ShortcutKeys = Keys.F5;
-            执行ToolStripMenuItem.Size = new Size(224, 26);
+            执行ToolStripMenuItem.Size = new Size(178, 26);
             执行ToolStripMenuItem.Text = "执行";
             执行ToolStripMenuItem.Click += 执行ToolStripMenuItem_Click;
             // 
-            // CaptureDevToolStripMenuItem
+            // 搜图ToolStripMenuItem
             // 
-            CaptureDevToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 采集卡类型ToolStripMenuItem, 打开搜图ToolStripMenuItem, 搜图说明ToolStripMenuItem, 设置环境变量ToolStripMenuItem });
-            CaptureDevToolStripMenuItem.Name = "CaptureDevToolStripMenuItem";
-            CaptureDevToolStripMenuItem.Size = new Size(53, 24);
-            CaptureDevToolStripMenuItem.Text = "搜图";
+            搜图ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 采集卡类型ToolStripMenuItem, 打开搜图ToolStripMenuItem, 搜图说明ToolStripMenuItem, 设置环境变量ToolStripMenuItem });
+            搜图ToolStripMenuItem.Name = "搜图ToolStripMenuItem";
+            搜图ToolStripMenuItem.Size = new Size(53, 24);
+            搜图ToolStripMenuItem.Text = "搜图";
             // 
             // 采集卡类型ToolStripMenuItem
             // 
@@ -245,7 +242,7 @@
             // 
             // 设置ToolStripMenuItem
             // 
-            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, openDelayToolStripMenuItem, cPU优化设置ToolStripMenuItem, 脚本自动运行ToolStripMenuItem, 频道远程ToolStripMenuItem });
+            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, 串口延迟ToolStripMenuItem, 烧录自动运行ToolStripMenuItem, 频道远程ToolStripMenuItem });
             设置ToolStripMenuItem.Name = "设置ToolStripMenuItem";
             设置ToolStripMenuItem.Size = new Size(53, 24);
             设置ToolStripMenuItem.Text = "设置";
@@ -264,30 +261,21 @@
             显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             显示调试信息ToolStripMenuItem.Click += 显示调试信息ToolStripMenuItem_Click;
             // 
-            // openDelayToolStripMenuItem
+            // 串口延迟ToolStripMenuItem
             // 
-            openDelayToolStripMenuItem.Name = "openDelayToolStripMenuItem";
-            openDelayToolStripMenuItem.Size = new Size(212, 26);
-            openDelayToolStripMenuItem.Text = "串口打开延迟";
-            openDelayToolStripMenuItem.Click += openDelayToolStripMenuItem_Click;
+            串口延迟ToolStripMenuItem.Name = "串口延迟ToolStripMenuItem";
+            串口延迟ToolStripMenuItem.Size = new Size(212, 26);
+            串口延迟ToolStripMenuItem.Text = "串口打开延迟";
+            串口延迟ToolStripMenuItem.Click += openDelayToolStripMenuItem_Click;
             // 
-            // cPU优化设置ToolStripMenuItem
+            // 烧录自动运行ToolStripMenuItem
             // 
-            cPU优化设置ToolStripMenuItem.Checked = true;
-            cPU优化设置ToolStripMenuItem.CheckState = CheckState.Checked;
-            cPU优化设置ToolStripMenuItem.Name = "cPU优化设置ToolStripMenuItem";
-            cPU优化设置ToolStripMenuItem.Size = new Size(212, 26);
-            cPU优化设置ToolStripMenuItem.Text = "CPU优化";
-            cPU优化设置ToolStripMenuItem.Click += CPU优化设置ToolStripMenuItem_Click;
-            // 
-            // 脚本自动运行ToolStripMenuItem
-            // 
-            脚本自动运行ToolStripMenuItem.Checked = true;
-            脚本自动运行ToolStripMenuItem.CheckState = CheckState.Checked;
-            脚本自动运行ToolStripMenuItem.Name = "脚本自动运行ToolStripMenuItem";
-            脚本自动运行ToolStripMenuItem.Size = new Size(212, 26);
-            脚本自动运行ToolStripMenuItem.Text = "烧录自动运行";
-            脚本自动运行ToolStripMenuItem.Click += 脚本自动运行ToolStripMenuItem_Click;
+            烧录自动运行ToolStripMenuItem.Checked = true;
+            烧录自动运行ToolStripMenuItem.CheckState = CheckState.Checked;
+            烧录自动运行ToolStripMenuItem.Name = "烧录自动运行ToolStripMenuItem";
+            烧录自动运行ToolStripMenuItem.Size = new Size(212, 26);
+            烧录自动运行ToolStripMenuItem.Text = "烧录自动运行";
+            烧录自动运行ToolStripMenuItem.Click += 脚本自动运行ToolStripMenuItem_Click;
             // 
             // 频道远程ToolStripMenuItem
             // 
@@ -298,18 +286,18 @@
             // 
             // 蓝牙ToolStripMenuItem
             // 
-            蓝牙ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 设备驱动配置ToolStripMenuItem });
+            蓝牙ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 蓝牙设备驱动配置ToolStripMenuItem });
             蓝牙ToolStripMenuItem.Name = "蓝牙ToolStripMenuItem";
             蓝牙ToolStripMenuItem.Size = new Size(53, 24);
             蓝牙ToolStripMenuItem.Text = "蓝牙";
             蓝牙ToolStripMenuItem.Visible = false;
             // 
-            // 设备驱动配置ToolStripMenuItem
+            // 蓝牙设备驱动配置ToolStripMenuItem
             // 
-            设备驱动配置ToolStripMenuItem.Name = "设备驱动配置ToolStripMenuItem";
-            设备驱动配置ToolStripMenuItem.Size = new Size(182, 26);
-            设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
-            设备驱动配置ToolStripMenuItem.Click += 设备驱动配置ToolStripMenuItem_Click;
+            蓝牙设备驱动配置ToolStripMenuItem.Name = "蓝牙设备驱动配置ToolStripMenuItem";
+            蓝牙设备驱动配置ToolStripMenuItem.Size = new Size(182, 26);
+            蓝牙设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
+            蓝牙设备驱动配置ToolStripMenuItem.Click += 设备驱动配置ToolStripMenuItem_Click;
             // 
             // eSP32ToolStripMenuItem
             // 
@@ -334,7 +322,7 @@
             // 
             // 画图ToolStripMenuItem
             // 
-            画图ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 喷射ToolStripMenuItem, 动物之森ToolStripMenuItem, 自由画板鼠标代替摇杆ToolStripMenuItem });
+            画图ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 喷射ToolStripMenuItem, 自由画板鼠标代替摇杆ToolStripMenuItem });
             画图ToolStripMenuItem.Name = "画图ToolStripMenuItem";
             画图ToolStripMenuItem.Size = new Size(53, 24);
             画图ToolStripMenuItem.Text = "画图";
@@ -346,12 +334,6 @@
             喷射ToolStripMenuItem.Text = "喷射战士";
             喷射ToolStripMenuItem.Click += 喷射ToolStripMenuItem_Click;
             // 
-            // 动物之森ToolStripMenuItem
-            // 
-            动物之森ToolStripMenuItem.Name = "动物之森ToolStripMenuItem";
-            动物之森ToolStripMenuItem.Size = new Size(272, 26);
-            动物之森ToolStripMenuItem.Text = "动物之森";
-            // 
             // 自由画板鼠标代替摇杆ToolStripMenuItem
             // 
             自由画板鼠标代替摇杆ToolStripMenuItem.Name = "自由画板鼠标代替摇杆ToolStripMenuItem";
@@ -361,23 +343,22 @@
             // 
             // 帮助ToolStripMenuItem
             // 
-            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 使用方法ToolStripMenuItem, toolStripSeparator2, 关于ToolStripMenuItem, 项目源码ToolStripMenuItem });
+            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 固件模式ToolStripMenuItem, 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, toolStripSeparator2, 项目源码ToolStripMenuItem, 关于ToolStripMenuItem });
             帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
             帮助ToolStripMenuItem.Size = new Size(53, 24);
             帮助ToolStripMenuItem.Text = "帮助";
             // 
-            // 使用方法ToolStripMenuItem
+            // 固件模式ToolStripMenuItem
             // 
-            使用方法ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, 固件模式ToolStripMenuItem });
-            使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
-            使用方法ToolStripMenuItem.Size = new Size(152, 26);
-            使用方法ToolStripMenuItem.Text = "使用方法";
+            固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
+            固件模式ToolStripMenuItem.Size = new Size(152, 26);
+            固件模式ToolStripMenuItem.Text = "固件模式";
+            固件模式ToolStripMenuItem.Click += 固件模式ToolStripMenuItem_Click;
             // 
             // 联机模式ToolStripMenuItem
             // 
             联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
             联机模式ToolStripMenuItem.Size = new Size(152, 26);
-            联机模式ToolStripMenuItem.Tag = "";
             联机模式ToolStripMenuItem.Text = "联机模式";
             联机模式ToolStripMenuItem.Click += 联机模式ToolStripMenuItem_Click;
             // 
@@ -388,24 +369,10 @@
             烧录模式ToolStripMenuItem.Text = "烧录模式";
             烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
             // 
-            // 固件模式ToolStripMenuItem
-            // 
-            固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
-            固件模式ToolStripMenuItem.Size = new Size(152, 26);
-            固件模式ToolStripMenuItem.Text = "固件模式";
-            固件模式ToolStripMenuItem.Click += 固件模式ToolStripMenuItem_Click;
-            // 
             // toolStripSeparator2
             // 
             toolStripSeparator2.Name = "toolStripSeparator2";
             toolStripSeparator2.Size = new Size(149, 6);
-            // 
-            // 关于ToolStripMenuItem
-            // 
-            关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            关于ToolStripMenuItem.Size = new Size(152, 26);
-            关于ToolStripMenuItem.Text = "关于";
-            关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
             // 
             // 项目源码ToolStripMenuItem
             // 
@@ -413,6 +380,13 @@
             项目源码ToolStripMenuItem.Size = new Size(152, 26);
             项目源码ToolStripMenuItem.Text = "项目源码";
             项目源码ToolStripMenuItem.Click += 项目源码ToolStripMenuItem_Click;
+            // 
+            // 关于ToolStripMenuItem
+            // 
+            关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
+            关于ToolStripMenuItem.Size = new Size(152, 26);
+            关于ToolStripMenuItem.Text = "关于";
+            关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
             // 
             // groupBox1
             // 
@@ -818,7 +792,6 @@
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
         private System.Windows.Forms.SaveFileDialog saveFileDialog1;
         private System.Windows.Forms.Button buttonControllerHelp;
-        private System.Windows.Forms.ToolStripMenuItem 使用方法ToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.Button buttonCLS;
         private System.Windows.Forms.Button buttonGenerateFirmware;
@@ -827,16 +800,13 @@
         private System.Windows.Forms.Button buttonRemoteStart;
         private System.Windows.Forms.GroupBox groupBox6;
         private System.Windows.Forms.Button buttonFlashClear;
-        private System.Windows.Forms.ToolStripMenuItem 联机模式ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 烧录模式ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 固件模式ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 项目源码ToolStripMenuItem;
         private System.Windows.Forms.ComboBox comboBoxBoardType;
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.TextBox textBoxFirmware;
         private System.Windows.Forms.Button buttonRecord;
         private System.Windows.Forms.Button buttonRecordPause;
-        private System.Windows.Forms.ToolStripMenuItem CaptureDevToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 搜图ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 打开搜图ToolStripMenuItem;
         private System.Windows.Forms.ComboBox ComPort;
         private System.Windows.Forms.GroupBox groupBox4;
@@ -845,24 +815,25 @@
         private System.Windows.Forms.ToolStripMenuItem 搜图说明ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 采集卡类型ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 设置ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem cPU优化设置ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 显示调试信息ToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem 脚本自动运行ToolStripMenuItem;
         private System.Windows.Forms.Integration.ElementHost elementHost1;
         private TextBox textBoxScriptHelp;
         private ToolStripMenuItem 推送设置ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙ToolStripMenuItem;
-        private ToolStripMenuItem 设备驱动配置ToolStripMenuItem;
+        private ToolStripMenuItem 蓝牙设备驱动配置ToolStripMenuItem;
         private ToolStripMenuItem 频道远程ToolStripMenuItem;
         private ToolStripMenuItem eSP32ToolStripMenuItem;
         private ToolStripMenuItem 手柄设置ToolStripMenuItem;
         private ToolStripMenuItem 取消配对ToolStripMenuItem;
         private ToolStripMenuItem 画图ToolStripMenuItem;
         private ToolStripMenuItem 喷射ToolStripMenuItem;
-        private ToolStripMenuItem 动物之森ToolStripMenuItem;
         private ToolStripMenuItem 自由画板鼠标代替摇杆ToolStripMenuItem;
-        private ToolStripMenuItem openDelayToolStripMenuItem;
+        private ToolStripMenuItem 串口延迟ToolStripMenuItem;
         private ToolStripMenuItem 设置环境变量ToolStripMenuItem;
+        private ToolStripMenuItem 固件模式ToolStripMenuItem;
+        private ToolStripMenuItem 联机模式ToolStripMenuItem;
+        private ToolStripMenuItem 烧录模式ToolStripMenuItem;
+        private ToolStripMenuItem 烧录自动运行ToolStripMenuItem;
     }
 }
 

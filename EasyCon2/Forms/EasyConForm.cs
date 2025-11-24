@@ -735,7 +735,7 @@ namespace EasyCon2.Forms
             try
             {
                 StatusShowLog("开始生成固件...");
-                var bytes = _program.Assemble(脚本自动运行ToolStripMenuItem.Checked);
+                var bytes = _program.Assemble(烧录自动运行ToolStripMenuItem.Checked);
                 File.WriteAllBytes("temp.bin", bytes);
                 string hexStr;
                 var filename = GetFirmwareName(GetSelectedBoard().CoreName);
@@ -797,6 +797,49 @@ namespace EasyCon2.Forms
                 return false;
             }
             return true;
+        }
+
+        private void FlashScript()
+        {
+            try
+            {
+                StatusShowLog("开始烧录...");
+                var bytes = _program.Assemble(烧录自动运行ToolStripMenuItem.Checked);
+                File.WriteAllBytes("temp.bin", bytes);
+                if (bytes.Length > GetSelectedBoard().DataSize)
+                {
+                    StatusShowLog("烧录失败");
+                    SystemSounds.Hand.Play();
+                    MessageBox.Show("烧录失败！长度超出限制");
+                    return;
+                }
+                if (!NS.Flash(bytes))
+                {
+                    StatusShowLog("烧录失败");
+                    SystemSounds.Hand.Play();
+                    MessageBox.Show("烧录失败！请检查设备连接后重试");
+                    return;
+                }
+                StatusShowLog("烧录完毕");
+                SystemSounds.Beep.Play();
+                MessageBox.Show($"烧录完毕！已使用存储空间({bytes.Length}/{GetSelectedBoard().DataSize})");
+            }
+            catch (AssembleException ex)
+            {
+                StatusShowLog("烧录失败");
+                SystemSounds.Hand.Play();
+                MessageBox.Show("烧录失败！" + ex.Message);
+                ScriptSelectLine(ex.Index);
+                return;
+            }
+            catch (ParseException ex)
+            {
+                StatusShowLog("烧录失败");
+                SystemSounds.Hand.Play();
+                MessageBox.Show("烧录失败！" + ex.Message);
+                ScriptSelectLine(ex.Index);
+                return;
+            }
         }
 
         private void ShowControllerHelp()
@@ -920,46 +963,7 @@ namespace EasyCon2.Forms
             {
                 return;
             }
-
-            try
-            {
-                StatusShowLog("开始烧录...");
-                var bytes = _program.Assemble(脚本自动运行ToolStripMenuItem.Checked);
-                File.WriteAllBytes("temp.bin", bytes);
-                if (bytes.Length > GetSelectedBoard().DataSize)
-                {
-                    StatusShowLog("烧录失败");
-                    SystemSounds.Hand.Play();
-                    MessageBox.Show("烧录失败！长度超出限制");
-                    return;
-                }
-                if (!NS.Flash(bytes))
-                {
-                    StatusShowLog("烧录失败");
-                    SystemSounds.Hand.Play();
-                    MessageBox.Show("烧录失败！请检查设备连接后重试");
-                    return;
-                }
-                StatusShowLog("烧录完毕");
-                SystemSounds.Beep.Play();
-                MessageBox.Show($"烧录完毕！已使用存储空间({bytes.Length}/{GetSelectedBoard().DataSize})");
-            }
-            catch (AssembleException ex)
-            {
-                StatusShowLog("烧录失败");
-                SystemSounds.Hand.Play();
-                MessageBox.Show("烧录失败！" + ex.Message);
-                ScriptSelectLine(ex.Index);
-                return;
-            }
-            catch (ParseException ex)
-            {
-                StatusShowLog("烧录失败");
-                SystemSounds.Hand.Play();
-                MessageBox.Show("烧录失败！" + ex.Message);
-                ScriptSelectLine(ex.Index);
-                return;
-            }
+            FlashScript();
         }
 
         private void buttonRemoteStart_Click(object sender, EventArgs e)
@@ -1205,11 +1209,11 @@ namespace EasyCon2.Forms
 
         private void 关于ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show(@"详细使用教程见群946057081文档
+            MessageBox.Show($@"伊机控 v{VER}  QQ群:946057081
 
 Copyright © 2020. 铃落(Nukieberry)
 Copyright © 2021. elmagnifico
-Copyright © 2022. 卡尔(ca1e)", "关于");
+Copyright © 2025. 卡尔(ca1e)", "关于");
         }
 
         private void 项目源码ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1235,9 +1239,8 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
 
         private void 设备驱动配置ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var btform = new win32.BTDeviceForm();
+            using var btform = new win32.BTDeviceForm();
             btform.ShowDialog();
-            btform.Dispose();
         }
 
         bool WSRun = false;
@@ -1301,8 +1304,8 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
 
         private void 手柄设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var controllerConfig = new ControllerConfig(NS);
-            controllerConfig.Show();
+            using var controllerConfig = new ControllerConfig(NS);
+            controllerConfig.ShowDialog();
         }
 
         private void 取消配对ToolStripMenuItem_Click(object sender, EventArgs e)
