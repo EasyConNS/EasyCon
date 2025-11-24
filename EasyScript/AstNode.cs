@@ -5,6 +5,7 @@ public abstract class ASTNode
 {
     public int Line { get; set; }
     public int Column { get; set; }
+    public abstract T Accept<T>(IAstVisitor<T> visitor);
 }
 
 // 表达式节点
@@ -35,6 +36,11 @@ public class LiteralExpression : Expression
             Value = value;
         }
     }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitLiteral(this);
+    }
 }
 
 // 变量表达式
@@ -49,6 +55,10 @@ public class VariableExpression : Expression
         Name = name;
         IsConstant = isConstant;
         IsSpecial = isSpecial;
+    }
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitVariable(this);
     }
 }
 
@@ -65,6 +75,11 @@ public class BinaryExpression : Expression
         Operator = op;
         Right = right;
     }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitBinaryOp(this);
+    }
 }
 
 // 条件表达式
@@ -79,6 +94,11 @@ public class ConditionExpression : Expression
         Left = left;
         Operator = op;
         Right = right;
+    }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitCondition(this);
     }
 }
 
@@ -100,6 +120,10 @@ public class AssignmentStatement : Statement
         AssignmentType = assignmentType;
         Value = value;
     }
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitAssignmentStat(this);
+    }
 }
 
 // If语句
@@ -118,6 +142,11 @@ public class IfStatement : Statement
         ElseIfBranch = elseIfBranch;
         ElseBranch = elseBranch;
     }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitIfStat(this);
+    }
 }
 
 public class ElseClause : Statement
@@ -127,6 +156,11 @@ public class ElseClause : Statement
     public ElseClause(List<Statement> elseBranch)
     {
         ElseBranch = elseBranch;
+    }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitElseClause(this);
     }
 }
 
@@ -153,6 +187,10 @@ public class ForStatement : Statement
         IsInfinite = isInfinite;
         Body = body;
     }
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitForStat(this);
+    }
 }
 
 // Break语句
@@ -161,6 +199,10 @@ public class BreakStatement : Statement
     public int Circle { get; }
     public BreakStatement(int circle = 1) {
         Circle = circle;
+    }
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitBreak(this);
     }
 }
 
@@ -171,6 +213,10 @@ public class ContinueStatement : Statement
     public ContinueStatement(int circle = 1)
     {
         Circle = circle;
+    }
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitContinue(this);
     }
 }
 
@@ -187,6 +233,10 @@ public class FunctionDefinitionStatement : Statement
         Parameters = parameters;
         Body = body;
     }
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitFunctionDefinition(this);
+    }
 }
 
 // Return语句
@@ -197,6 +247,11 @@ public class ReturnStatement : Statement
     public ReturnStatement(Expression value)
     {
         Value = value;
+    }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitReturn(this);
     }
 }
 
@@ -217,5 +272,25 @@ public class CallExpression : Statement
     {
         FunctionName = functionName;
         Arguments = arguments;
+    }
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitCall(this);
+    }
+}
+
+
+public class KeyStatement : Statement
+{ 
+    public string KeyName { get; }
+
+    public KeyStatement(string keyName)
+    {
+        KeyName = keyName;
+    }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitKey(this);
     }
 }

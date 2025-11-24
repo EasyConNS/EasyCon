@@ -39,7 +39,7 @@ internal class Parser(Lexer lexer)
         if (Check(type))
             return Advance();
 
-        throw new Exception($"{message} at line {Peek()?.Line ?? 0}");
+        throw new Exception($"{message}:错误的 {Current.Value} L:{Peek()?.Line ?? 0}");
     }
 
     public List<Statement> Parse()
@@ -48,7 +48,7 @@ internal class Parser(Lexer lexer)
 
         while (!Check(TokenType.EOF))
         {
-            if (Check(TokenType.NEWLINE) || Check(TokenType.CommentTrivia))
+            if (Check(TokenType.NEWLINE))
             {
                 Advance();
                 continue;
@@ -100,7 +100,14 @@ internal class Parser(Lexer lexer)
         {
             return ParseSpecIdentStatement();
         }
-        throw new Exception($"语法错误:{Peek().Type}:L{Peek().Line}");
+
+        if (Check(TokenType.CommentTrivia))
+        {
+            Advance();
+            return null;
+        }
+        else
+            throw new Exception($"语法错误:{Current.Type}:L{Current.Line}");
     }
 
     private AssignmentStatement ParseAssignment()
@@ -109,22 +116,22 @@ internal class Parser(Lexer lexer)
         string variableName = variableToken.Value;
         bool isConstant = variableToken.Type == TokenType.Const;
 
-        TokenType assignmentType;
+        TokenType assignmentOp;
         if (Match(TokenType.Assign, TokenType.PlusAssign, TokenType.MinusAssign,
                  TokenType.MultiplyAssign, TokenType.DivideAssign, TokenType.SlashIAssign,
                  TokenType.ModulusAssign, TokenType.BitXorAssign, TokenType.BitAndAssign, TokenType.BitOrAssign,
                  TokenType.LeftShiftAssign, TokenType.RightShiftAssign))
         {
-            assignmentType = _tokens[_position - 1].Type;
+            assignmentOp = _tokens[_position - 1].Type;
         }
         else
         {
-            throw new Exception($"不支持的操作符 {Peek().Line}");
+            throw new Exception($"不支持的操作符:{Current.Type}:L{Current.Line}");
         }
 
         var value = ParseExpression();
 
-        return new AssignmentStatement(variableName, isConstant, assignmentType, value)
+        return new AssignmentStatement(variableName, isConstant, assignmentOp, value)
         {
             Line = variableToken.Line,
             Column = variableToken.Column
@@ -133,17 +140,22 @@ internal class Parser(Lexer lexer)
 
     private Statement ParseSpecIdentStatement()
     {
-        if (Current.Type == TokenType.Integer)
+        var func = Advance();
+        var cur = Peek();
+
+        while (!Check(TokenType.NEWLINE))
         {
             Advance();
-            // TODO wait语句
         }
-        if (Current.Type == TokenType.Identifier)
+
+        var name = func.Type == TokenType.Integer ? "WAIT" : cur.Value;
+        name = func.Value == "CALL" ? cur.Value : func.Value;
+
+        return new CallExpression(name, null)
         {
-            Advance();
-            // TODO
-        }
-        return null;
+            Line = func.Line,
+            Column = func.Column
+        };
     }
 
     private IfStatement ParseIfStatement()
@@ -151,7 +163,7 @@ internal class Parser(Lexer lexer)
         var ifToken = Consume(TokenType.If, "if语法不正确");
         var condition = ParseCondition();
 
-        Consume(TokenType.NEWLINE, "需要换行");
+        Consume(TokenType.NEWLINE, "if条件语法不正确");
 
         var thenBranch = new List<Statement>();
         while (!Check(TokenType.Elif) && !Check(TokenType.Endif) && !Check(TokenType.EOF))
@@ -164,8 +176,6 @@ internal class Parser(Lexer lexer)
             thenBranch.Add(ParseStatement());
             if (Check(TokenType.NEWLINE)) Advance();
         }
-
-        Consume(TokenType.NEWLINE, "需要换行");
 
         var elseBranch = new List<Statement>();
         while (!Check(TokenType.Endif) && !Check(TokenType.EOF))
@@ -291,18 +301,18 @@ internal class Parser(Lexer lexer)
         var functionToken = Consume(TokenType.Func, "Expected 'func'");
         var functionName = Consume(TokenType.Identifier, "Expected function name").Value;
 
-        Consume(TokenType.LeftParen, "Expected '(' after function name");
+        // Consume(TokenType.LeftParen, "Expected '(' after function name");
 
-        var parameters = new List<string>();
-        if (!Check(TokenType.RightParen))
-        {
-            do
-            {
-                parameters.Add(Consume(TokenType.Identifier, "Expected parameter name").Value);
-            } while (Match(TokenType.Comma));
-        }
+        // var parameters = new List<string>();
+        // if (!Check(TokenType.RightParen))
+        // {
+        //     do
+        //     {
+        //         parameters.Add(Consume(TokenType.Identifier, "Expected parameter name").Value);
+        //     } while (Match(TokenType.Comma));
+        // }
 
-        Consume(TokenType.RightParen, "Expected ')' after parameters");
+        // Consume(TokenType.RightParen, "Expected ')' after parameters");
         Consume(TokenType.NEWLINE, "Expected newline after function signature");
 
         var body = new List<Statement>();
@@ -319,7 +329,7 @@ internal class Parser(Lexer lexer)
 
         Consume(TokenType.EndFunc, "Expected 'endfunc'");
 
-        return new FunctionDefinitionStatement(functionName, parameters, body)
+        return new FunctionDefinitionStatement(functionName, null, body)
         {
             Line = functionToken.Line,
             Column = functionToken.Column
@@ -340,9 +350,17 @@ internal class Parser(Lexer lexer)
 
     private Statement ParseKeyStatement()
     {
-        var breakToken = Consume(TokenType.ButtonKeyword, "未知的按键命令");
+        var keyToken = Consume(TokenType.ButtonKeyword, "未知的按键命令");
 
-        throw new Exception("unexpected key");
+        while (!Check(TokenType.NEWLINE))
+        {
+            Advance();
+        }
+        return new KeyStatement(keyToken.Value)
+        {
+            Line = keyToken.Line,
+            Column = keyToken.Column
+        };
     }
 
     // 计算表达式
