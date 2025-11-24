@@ -103,7 +103,11 @@ public class ConditionExpression : Expression
 }
 
 // 语句节点
-public abstract class Statement : ASTNode { }
+public abstract class Statement : ASTNode
+{
+    public List<string> LeadingTrivia = [];
+    public List<string> TrailingTrivia = [];
+}
 
 // 赋值语句
 public class AssignmentStatement : Statement
@@ -197,7 +201,8 @@ public class ForStatement : Statement
 public class BreakStatement : Statement
 {
     public int Circle { get; }
-    public BreakStatement(int circle = 1) {
+    public BreakStatement(int circle = 1)
+    {
         Circle = circle;
     }
     public override T Accept<T>(IAstVisitor<T> visitor)
@@ -281,7 +286,7 @@ public class CallExpression : Statement
 
 
 public class KeyStatement : Statement
-{ 
+{
     public string KeyName { get; }
 
     public KeyStatement(string keyName)

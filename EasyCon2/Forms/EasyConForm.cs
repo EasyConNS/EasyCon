@@ -1,6 +1,5 @@
 ﻿using EasyCapture;
 using EasyCon2.Assist;
-using EasyCon2.Capture;
 using EasyCon2.Global;
 using EasyCon2.Properties;
 using EasyScript;
@@ -132,11 +131,6 @@ namespace EasyCon2.Forms
             InitCaptureTypes();
 
             StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabelCount}");
-
-            // resize
-            Xvalue = this.Width;
-            Yvalue = this.Height;
-            setTag(this);
         }
 
         private void EasyConForm_FormClosing(object sender, FormClosingEventArgs e)
@@ -668,31 +662,37 @@ namespace EasyCon2.Forms
             EnableConnBtn();
         }
 
-        private bool FileOpen()
+        private bool FileOpen(string path = "")
         {
-            if (!FileClose())
-                return false;
             Directory.CreateDirectory(ScriptPath);
             openFileDialog1.Title = "打开";
             openFileDialog1.RestoreDirectory = true;
             openFileDialog1.InitialDirectory = Path.GetFullPath(ScriptPath);
             openFileDialog1.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
             openFileDialog1.FileName = string.Empty;
-            if (openFileDialog1.ShowDialog() != DialogResult.OK)
-                return false;
-            _currentFile = openFileDialog1.FileName;
+
+            _currentFile = path;
+            if (_currentFile == "")
+            {
+                if (openFileDialog1.ShowDialog() != DialogResult.OK)
+                    return false;
+                if (!FileClose())
+                    return false;
+                _currentFile = openFileDialog1.FileName;
+            }
+
             textBoxScript.Text = File.ReadAllText(_currentFile);
             _fileEdited = false;
             return true;
         }
 
-        private bool FileSave(bool saveAs = false, bool close = false)
+        private bool FileSave(bool saveAs = false)
         {
-            if (close && !FileClose())
+            Directory.CreateDirectory(ScriptPath);
+            if (!_fileEdited)
                 return false;
             if (saveAs || _currentFile == "")
             {
-                Directory.CreateDirectory(ScriptPath);
                 saveFileDialog1.Title = saveAs ? "另存为" : "保存";
                 saveFileDialog1.RestoreDirectory = true;
                 saveFileDialog1.InitialDirectory = Path.GetFullPath(ScriptPath);
@@ -717,7 +717,7 @@ namespace EasyCon2.Forms
                     return false;
                 else if (r == DialogResult.Yes)
                 {
-                    if (!FileSave(false, false))
+                    if (!FileSave())
                         return false;
                 }
             }
@@ -1060,8 +1060,7 @@ namespace EasyCon2.Forms
             {
                 var path = (string[])e.Data.GetData(DataFormats.FileDrop, false);
                 if (Path.GetExtension(path[0]) != ".txt") return;
-                var _script = File.ReadAllText(path[0]);
-                textBoxScript.Text = _script;
+                FileOpen(path[0]);
             }
             catch
             {
@@ -1299,60 +1298,6 @@ Copyright © 2022. 卡尔(ca1e)", "关于");
             }
             SaveConfig();
         }
-
-#region form resize
-#if true
-        public float Xvalue;
-        public float Yvalue;
-
-        private void setTag(Control cons)
-        {
-            foreach (Control con in cons.Controls)
-            {
-                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
-                if (con.Controls.Count > 0)
-                    setTag(con);
-            }
-        }
-
-        private void EasyConForm_Resize(object sender, EventArgs e)
-        {
-            float newx = (this.Width) / Xvalue;
-            float newy = this.Height / Yvalue;
-            setControls(newx, newy, this);
-        }
-
-        private void setControls(float newx, float newy, Control cons)
-        {
-            foreach (Control con in cons.Controls)
-            {
-                string[] mytag = con.Tag.ToString().Split(new char[] { ':' });
-                float a = Convert.ToSingle(mytag[0]) * newx;
-                con.Width = (int)a;
-                a = Convert.ToSingle(mytag[1]) * newy;
-                con.Height = (int)(a);
-                a = Convert.ToSingle(mytag[2]) * newx;
-                con.Left = (int)(a);
-                a = Convert.ToSingle(mytag[3]) * newy;
-                con.Top = (int)(a);
-                Single currentSize = Convert.ToSingle(mytag[4]) * newy;
-
-                //改变字体大小
-                con.Font = new Font(con.Font.Name, currentSize, con.Font.Style, con.Font.Unit);
-
-                if (con.Controls.Count > 0)
-                {
-                    try
-                    {
-                        setControls(newx, newy, con);
-                    }
-                    catch
-                    { }
-                }
-            }
-        }
-#endif
-#endregion
 
         private void 手柄设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {

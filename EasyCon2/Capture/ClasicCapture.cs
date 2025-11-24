@@ -19,9 +19,9 @@ public partial class ClasicCapture
 
     private static readonly Stopwatch runTime = new();
 
-    private System.Drawing.Point _curResolution = new(1920, 1080);
+    private Point _curResolution = new(1920, 1080);
 
-    public System.Drawing.Point CurResolution
+    public Point CurResolution
     {
         get
         {

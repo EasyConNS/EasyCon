@@ -58,6 +58,10 @@
             eSP32ToolStripMenuItem = new ToolStripMenuItem();
             手柄设置ToolStripMenuItem = new ToolStripMenuItem();
             取消配对ToolStripMenuItem = new ToolStripMenuItem();
+            画图ToolStripMenuItem = new ToolStripMenuItem();
+            喷射ToolStripMenuItem = new ToolStripMenuItem();
+            动物之森ToolStripMenuItem = new ToolStripMenuItem();
+            自由画板鼠标代替摇杆ToolStripMenuItem = new ToolStripMenuItem();
             帮助ToolStripMenuItem = new ToolStripMenuItem();
             使用方法ToolStripMenuItem = new ToolStripMenuItem();
             联机模式ToolStripMenuItem = new ToolStripMenuItem();
@@ -66,10 +70,6 @@
             toolStripSeparator2 = new ToolStripSeparator();
             关于ToolStripMenuItem = new ToolStripMenuItem();
             项目源码ToolStripMenuItem = new ToolStripMenuItem();
-            画图ToolStripMenuItem = new ToolStripMenuItem();
-            喷射ToolStripMenuItem = new ToolStripMenuItem();
-            动物之森ToolStripMenuItem = new ToolStripMenuItem();
-            自由画板鼠标代替摇杆ToolStripMenuItem = new ToolStripMenuItem();
             groupBox1 = new GroupBox();
             buttonCLS = new Button();
             labelTimer = new Label();
@@ -121,7 +121,7 @@
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(7, 2, 0, 2);
             menuStrip1.RenderMode = ToolStripRenderMode.Professional;
-            menuStrip1.Size = new Size(1101, 28);
+            menuStrip1.Size = new Size(1121, 28);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -135,47 +135,54 @@
             // 新建ToolStripMenuItem
             // 
             新建ToolStripMenuItem.Name = "新建ToolStripMenuItem";
-            新建ToolStripMenuItem.Size = new Size(137, 26);
+            新建ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.N;
+            新建ToolStripMenuItem.Size = new Size(236, 26);
             新建ToolStripMenuItem.Text = "新建";
             新建ToolStripMenuItem.Click += 新建ToolStripMenuItem_Click;
             // 
             // 打开ToolStripMenuItem
             // 
             打开ToolStripMenuItem.Name = "打开ToolStripMenuItem";
-            打开ToolStripMenuItem.Size = new Size(137, 26);
+            打开ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.O;
+            打开ToolStripMenuItem.Size = new Size(236, 26);
             打开ToolStripMenuItem.Text = "打开";
             打开ToolStripMenuItem.Click += 打开ToolStripMenuItem_Click;
             // 
             // 保存ToolStripMenuItem
             // 
             保存ToolStripMenuItem.Name = "保存ToolStripMenuItem";
-            保存ToolStripMenuItem.Size = new Size(137, 26);
+            保存ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.S;
+            保存ToolStripMenuItem.Size = new Size(236, 26);
             保存ToolStripMenuItem.Text = "保存";
             保存ToolStripMenuItem.Click += 保存ToolStripMenuItem_Click;
             // 
             // 另存为ToolStripMenuItem
             // 
             另存为ToolStripMenuItem.Name = "另存为ToolStripMenuItem";
-            另存为ToolStripMenuItem.Size = new Size(137, 26);
+            另存为ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Shift | Keys.S;
+            另存为ToolStripMenuItem.Size = new Size(236, 26);
             另存为ToolStripMenuItem.Text = "另存为";
             另存为ToolStripMenuItem.Click += 另存为ToolStripMenuItem_Click;
             // 
             // 关闭ToolStripMenuItem
             // 
             关闭ToolStripMenuItem.Name = "关闭ToolStripMenuItem";
-            关闭ToolStripMenuItem.Size = new Size(137, 26);
+            关闭ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.W;
+            关闭ToolStripMenuItem.Size = new Size(236, 26);
             关闭ToolStripMenuItem.Text = "关闭";
             关闭ToolStripMenuItem.Click += 关闭ToolStripMenuItem_Click;
             // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(134, 6);
+            toolStripSeparator1.Size = new Size(233, 6);
             // 
             // 退出ToolStripMenuItem
             // 
             退出ToolStripMenuItem.Name = "退出ToolStripMenuItem";
-            退出ToolStripMenuItem.Size = new Size(137, 26);
+            退出ToolStripMenuItem.ShortcutKeyDisplayString = "";
+            退出ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Q;
+            退出ToolStripMenuItem.Size = new Size(236, 26);
             退出ToolStripMenuItem.Text = "退出";
             退出ToolStripMenuItem.Click += 退出ToolStripMenuItem_Click;
             // 
@@ -189,14 +196,16 @@
             // 编译ToolStripMenuItem
             // 
             编译ToolStripMenuItem.Name = "编译ToolStripMenuItem";
-            编译ToolStripMenuItem.Size = new Size(122, 26);
+            编译ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.R;
+            编译ToolStripMenuItem.Size = new Size(224, 26);
             编译ToolStripMenuItem.Text = "编译";
             编译ToolStripMenuItem.Click += 编译ToolStripMenuItem_Click;
             // 
             // 执行ToolStripMenuItem
             // 
             执行ToolStripMenuItem.Name = "执行ToolStripMenuItem";
-            执行ToolStripMenuItem.Size = new Size(122, 26);
+            执行ToolStripMenuItem.ShortcutKeys = Keys.F5;
+            执行ToolStripMenuItem.Size = new Size(224, 26);
             执行ToolStripMenuItem.Text = "执行";
             执行ToolStripMenuItem.Click += 执行ToolStripMenuItem_Click;
             // 
@@ -323,61 +332,6 @@
             取消配对ToolStripMenuItem.Text = "取消配对";
             取消配对ToolStripMenuItem.Click += 取消配对ToolStripMenuItem_Click;
             // 
-            // 帮助ToolStripMenuItem
-            // 
-            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 使用方法ToolStripMenuItem, toolStripSeparator2, 关于ToolStripMenuItem, 项目源码ToolStripMenuItem });
-            帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
-            帮助ToolStripMenuItem.Size = new Size(53, 24);
-            帮助ToolStripMenuItem.Text = "帮助";
-            // 
-            // 使用方法ToolStripMenuItem
-            // 
-            使用方法ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, 固件模式ToolStripMenuItem });
-            使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
-            使用方法ToolStripMenuItem.Size = new Size(224, 26);
-            使用方法ToolStripMenuItem.Text = "使用方法";
-            // 
-            // 联机模式ToolStripMenuItem
-            // 
-            联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
-            联机模式ToolStripMenuItem.Size = new Size(152, 26);
-            联机模式ToolStripMenuItem.Tag = "";
-            联机模式ToolStripMenuItem.Text = "联机模式";
-            联机模式ToolStripMenuItem.Click += 联机模式ToolStripMenuItem_Click;
-            // 
-            // 烧录模式ToolStripMenuItem
-            // 
-            烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
-            烧录模式ToolStripMenuItem.Size = new Size(152, 26);
-            烧录模式ToolStripMenuItem.Text = "烧录模式";
-            烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
-            // 
-            // 固件模式ToolStripMenuItem
-            // 
-            固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
-            固件模式ToolStripMenuItem.Size = new Size(152, 26);
-            固件模式ToolStripMenuItem.Text = "固件模式";
-            固件模式ToolStripMenuItem.Click += 固件模式ToolStripMenuItem_Click;
-            // 
-            // toolStripSeparator2
-            // 
-            toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new Size(221, 6);
-            // 
-            // 关于ToolStripMenuItem
-            // 
-            关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            关于ToolStripMenuItem.Size = new Size(224, 26);
-            关于ToolStripMenuItem.Text = "关于";
-            关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
-            // 
-            // 项目源码ToolStripMenuItem
-            // 
-            项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            项目源码ToolStripMenuItem.Size = new Size(224, 26);
-            项目源码ToolStripMenuItem.Text = "项目源码";
-            项目源码ToolStripMenuItem.Click += 项目源码ToolStripMenuItem_Click;
-            // 
             // 画图ToolStripMenuItem
             // 
             画图ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 喷射ToolStripMenuItem, 动物之森ToolStripMenuItem, 自由画板鼠标代替摇杆ToolStripMenuItem });
@@ -405,8 +359,64 @@
             自由画板鼠标代替摇杆ToolStripMenuItem.Text = "自由画板（鼠标代替摇杆）";
             自由画板鼠标代替摇杆ToolStripMenuItem.Click += 自由画板鼠标代替摇杆ToolStripMenuItem_Click;
             // 
+            // 帮助ToolStripMenuItem
+            // 
+            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 使用方法ToolStripMenuItem, toolStripSeparator2, 关于ToolStripMenuItem, 项目源码ToolStripMenuItem });
+            帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
+            帮助ToolStripMenuItem.Size = new Size(53, 24);
+            帮助ToolStripMenuItem.Text = "帮助";
+            // 
+            // 使用方法ToolStripMenuItem
+            // 
+            使用方法ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, 固件模式ToolStripMenuItem });
+            使用方法ToolStripMenuItem.Name = "使用方法ToolStripMenuItem";
+            使用方法ToolStripMenuItem.Size = new Size(152, 26);
+            使用方法ToolStripMenuItem.Text = "使用方法";
+            // 
+            // 联机模式ToolStripMenuItem
+            // 
+            联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
+            联机模式ToolStripMenuItem.Size = new Size(152, 26);
+            联机模式ToolStripMenuItem.Tag = "";
+            联机模式ToolStripMenuItem.Text = "联机模式";
+            联机模式ToolStripMenuItem.Click += 联机模式ToolStripMenuItem_Click;
+            // 
+            // 烧录模式ToolStripMenuItem
+            // 
+            烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
+            烧录模式ToolStripMenuItem.Size = new Size(152, 26);
+            烧录模式ToolStripMenuItem.Text = "烧录模式";
+            烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
+            // 
+            // 固件模式ToolStripMenuItem
+            // 
+            固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
+            固件模式ToolStripMenuItem.Size = new Size(152, 26);
+            固件模式ToolStripMenuItem.Text = "固件模式";
+            固件模式ToolStripMenuItem.Click += 固件模式ToolStripMenuItem_Click;
+            // 
+            // toolStripSeparator2
+            // 
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new Size(149, 6);
+            // 
+            // 关于ToolStripMenuItem
+            // 
+            关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
+            关于ToolStripMenuItem.Size = new Size(152, 26);
+            关于ToolStripMenuItem.Text = "关于";
+            关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
+            // 
+            // 项目源码ToolStripMenuItem
+            // 
+            项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
+            项目源码ToolStripMenuItem.Size = new Size(152, 26);
+            项目源码ToolStripMenuItem.Text = "项目源码";
+            项目源码ToolStripMenuItem.Click += 项目源码ToolStripMenuItem_Click;
+            // 
             // groupBox1
             // 
+            groupBox1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
             groupBox1.Controls.Add(buttonCLS);
             groupBox1.Controls.Add(labelTimer);
             groupBox1.Controls.Add(richTextBoxMessage);
@@ -415,14 +425,15 @@
             groupBox1.Margin = new Padding(3, 4, 3, 4);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new Padding(3, 4, 3, 4);
-            groupBox1.Size = new Size(312, 399);
+            groupBox1.Size = new Size(312, 453);
             groupBox1.TabIndex = 1;
             groupBox1.TabStop = false;
             groupBox1.Text = "日志";
             // 
             // buttonCLS
             // 
-            buttonCLS.Location = new Point(125, 349);
+            buttonCLS.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            buttonCLS.Location = new Point(125, 400);
             buttonCLS.Name = "buttonCLS";
             buttonCLS.Size = new Size(46, 46);
             buttonCLS.TabIndex = 36;
@@ -432,11 +443,12 @@
             // 
             // labelTimer
             // 
+            labelTimer.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             labelTimer.BackColor = Color.Black;
             labelTimer.BorderStyle = BorderStyle.Fixed3D;
             labelTimer.Font = new Font("Microsoft YaHei UI", 13F, FontStyle.Bold);
             labelTimer.ForeColor = Color.White;
-            labelTimer.Location = new Point(6, 349);
+            labelTimer.Location = new Point(6, 400);
             labelTimer.Name = "labelTimer";
             labelTimer.Size = new Size(119, 46);
             labelTimer.TabIndex = 35;
@@ -445,20 +457,22 @@
             // 
             // richTextBoxMessage
             // 
+            richTextBoxMessage.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
             richTextBoxMessage.BackColor = Color.FromArgb(64, 64, 64);
             richTextBoxMessage.BorderStyle = BorderStyle.FixedSingle;
             richTextBoxMessage.ForeColor = Color.White;
             richTextBoxMessage.Location = new Point(6, 14);
             richTextBoxMessage.Name = "richTextBoxMessage";
             richTextBoxMessage.ReadOnly = true;
-            richTextBoxMessage.Size = new Size(302, 332);
+            richTextBoxMessage.Size = new Size(302, 383);
             richTextBoxMessage.TabIndex = 34;
             richTextBoxMessage.Text = "";
             richTextBoxMessage.WordWrap = false;
             // 
             // buttonScriptRunStop
             // 
-            buttonScriptRunStop.Location = new Point(171, 349);
+            buttonScriptRunStop.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            buttonScriptRunStop.Location = new Point(171, 400);
             buttonScriptRunStop.Name = "buttonScriptRunStop";
             buttonScriptRunStop.Size = new Size(136, 46);
             buttonScriptRunStop.TabIndex = 4;
@@ -468,15 +482,16 @@
             // 
             // groupBox6
             // 
+            groupBox6.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             groupBox6.Controls.Add(buttonRecordPause);
             groupBox6.Controls.Add(buttonRecord);
             groupBox6.Controls.Add(buttonFlashClear);
             groupBox6.Controls.Add(buttonFlash);
             groupBox6.Controls.Add(buttonRemoteStop);
             groupBox6.Controls.Add(buttonRemoteStart);
-            groupBox6.Location = new Point(784, 30);
+            groupBox6.Location = new Point(804, 30);
             groupBox6.Name = "groupBox6";
-            groupBox6.Size = new Size(312, 111);
+            groupBox6.Size = new Size(312, 118);
             groupBox6.TabIndex = 5;
             groupBox6.TabStop = false;
             groupBox6.Text = "选项";
@@ -544,12 +559,13 @@
             // 
             // groupBox2
             // 
+            groupBox2.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             groupBox2.Controls.Add(buttonGenerateFirmware);
             groupBox2.Controls.Add(textBoxFirmware);
             groupBox2.Controls.Add(comboBoxBoardType);
-            groupBox2.Location = new Point(784, 147);
+            groupBox2.Location = new Point(804, 147);
             groupBox2.Name = "groupBox2";
-            groupBox2.Size = new Size(312, 87);
+            groupBox2.Size = new Size(312, 94);
             groupBox2.TabIndex = 5;
             groupBox2.TabStop = false;
             groupBox2.Text = "固件";
@@ -595,12 +611,13 @@
             // 
             // groupBoxScript
             // 
+            groupBoxScript.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             groupBoxScript.Controls.Add(elementHost1);
             groupBoxScript.Location = new Point(327, 30);
             groupBoxScript.Margin = new Padding(3, 4, 3, 4);
             groupBoxScript.Name = "groupBoxScript";
             groupBoxScript.Padding = new Padding(3, 4, 3, 4);
-            groupBoxScript.Size = new Size(451, 561);
+            groupBoxScript.Size = new Size(471, 615);
             groupBoxScript.TabIndex = 2;
             groupBoxScript.TabStop = false;
             groupBoxScript.Text = "脚本";
@@ -610,19 +627,20 @@
             elementHost1.Dock = DockStyle.Fill;
             elementHost1.Location = new Point(3, 23);
             elementHost1.Name = "elementHost1";
-            elementHost1.Size = new Size(445, 534);
+            elementHost1.Size = new Size(465, 588);
             elementHost1.TabIndex = 0;
             elementHost1.Text = "elementHost1";
             // 
             // groupBox3
             // 
+            groupBox3.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             groupBox3.Controls.Add(ComPort);
             groupBox3.Controls.Add(labelSerialStatus);
             groupBox3.Controls.Add(buttonSerialPortConnect);
             groupBox3.Controls.Add(buttonSerialPortSearch);
-            groupBox3.Location = new Point(8, 431);
+            groupBox3.Location = new Point(8, 482);
             groupBox3.Name = "groupBox3";
-            groupBox3.Size = new Size(312, 92);
+            groupBox3.Size = new Size(312, 95);
             groupBox3.TabIndex = 4;
             groupBox3.TabStop = false;
             groupBox3.Text = "连接";
@@ -691,12 +709,13 @@
             // 
             // groupBox4
             // 
+            groupBox4.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             groupBox4.Controls.Add(buttonShowController);
             groupBox4.Controls.Add(buttonControllerHelp);
             groupBox4.Controls.Add(buttonKeyMapping);
-            groupBox4.Location = new Point(8, 529);
+            groupBox4.Location = new Point(8, 578);
             groupBox4.Name = "groupBox4";
-            groupBox4.Size = new Size(312, 62);
+            groupBox4.Size = new Size(312, 67);
             groupBox4.TabIndex = 34;
             groupBox4.TabStop = false;
             groupBox4.Text = "手柄";
@@ -710,26 +729,27 @@
             // 
             statusStrip1.ImageScalingSize = new Size(20, 20);
             statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1 });
-            statusStrip1.Location = new Point(1, 595);
+            statusStrip1.Location = new Point(1, 649);
             statusStrip1.Name = "statusStrip1";
-            statusStrip1.Size = new Size(1101, 22);
+            statusStrip1.Size = new Size(1121, 22);
             statusStrip1.TabIndex = 3;
             statusStrip1.Text = "statusStrip1";
             // 
             // textBoxScriptHelp
             // 
-            textBoxScriptHelp.Location = new Point(784, 240);
+            textBoxScriptHelp.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
+            textBoxScriptHelp.Location = new Point(804, 240);
             textBoxScriptHelp.Multiline = true;
             textBoxScriptHelp.Name = "textBoxScriptHelp";
             textBoxScriptHelp.ReadOnly = true;
             textBoxScriptHelp.ScrollBars = ScrollBars.Vertical;
-            textBoxScriptHelp.Size = new Size(312, 347);
+            textBoxScriptHelp.Size = new Size(312, 401);
             textBoxScriptHelp.TabIndex = 35;
             // 
             // EasyConForm
             // 
             AutoScaleMode = AutoScaleMode.Inherit;
-            ClientSize = new Size(1103, 618);
+            ClientSize = new Size(1123, 672);
             Controls.Add(textBoxScriptHelp);
             Controls.Add(groupBox4);
             Controls.Add(groupBox3);
@@ -739,6 +759,7 @@
             Controls.Add(groupBoxScript);
             Controls.Add(groupBox1);
             Controls.Add(menuStrip1);
+            DoubleBuffered = true;
             Font = new Font("微软雅黑", 8.25F);
             Icon = (Icon)resources.GetObject("$this.Icon");
             KeyPreview = true;
@@ -752,7 +773,6 @@
             Text = "EasyCon";
             FormClosing += EasyConForm_FormClosing;
             Load += EasyConForm_Load;
-            Resize += EasyConForm_Resize;
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
             groupBox1.ResumeLayout(false);

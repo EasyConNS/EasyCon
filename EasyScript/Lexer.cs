@@ -5,13 +5,13 @@ namespace EasyScript;
 
 internal partial class Lexer(string input)
 {
-    private readonly string _input = compat(input);
+    private readonly string _input = Compat(input);
     private int _position = 0;
     private int _line = 1;
     private int _column = 1;
     private readonly List<Token> _tokens = [];
 
-    private static string compat(string text)
+    private static string Compat(string text)
     {
         var builder = new StringBuilder();
         foreach (var line in Regex.Split(text, "\r\n|\r|\n"))

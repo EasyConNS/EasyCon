@@ -2,128 +2,79 @@ namespace EasyScript;
 
 public interface IAstVisitor<T>
 {
-    T VisitProgram(Statement ast);
-    T VisitBlock(Block ast);
-    T VisitNumber(Number ast);
-    T VisitVariable(Variable ast);
-    T VisitConstDefine(ConstDefine ast);
-    T VisitNot(Not ast);
-    T VisitBinary(Binary ast);
-    T VisitAssign(Assign ast);
-    T VisitOpAssign(OpAssign ast);
-    T VisitWait(Wait ast);
-    T VisitIfElse(IfElse ast);
-    T VisitElseIf(ElseIf ast);
-    T VisitForCondition(ForStatement ast);
-    T VisitForWhile(ForWhile ast);
-    T VisitLoopControl(LoopControl ast);
-    T VisitButtonAction(ButtonAction ast);
-    T VisitStickAction(StickAction ast);
-    T VisitFunction(Function ast);
-    T VisitCallExpression(CallExpression ast);
-    T VisitBuildinState(BuildinState ast);
+    T VisitLiteral(LiteralExpression ast);
+    T VisitVariable(VariableExpression ast);
+    T VisitBinaryOp(BinaryExpression ast);
+    T VisitCondition(ConditionExpression ast);
+    T VisitAssignmentStat(AssignmentStatement ast);
+    T VisitIfStat(IfStatement ast);
+    T VisitElseClause(ElseClause ast);
+    T VisitForStat(ForStatement ast);
+    T VisitBreak(BreakStatement ast);
+    T VisitContinue(ContinueStatement ast);
+    T VisitFunctionDefinition(FunctionDefinitionStatement ast);
+    T VisitReturn(ReturnStatement ast);
+    T VisitCall(CallExpression ast);
+    T VisitKey(KeyStatement ast);
 }
 
 public abstract class AstVisitor : IAstVisitor<ASTNode>
 {
     protected AstVisitor() { }
 
-    public virtual ASTNode VisitProgram(Statement ast)
+    public virtual ASTNode VisitLiteral(LiteralExpression ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitBlock(Block ast)
+    public virtual ASTNode VisitVariable(VariableExpression ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitNumber(Number ast)
+    public virtual ASTNode VisitBinaryOp(BinaryExpression ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitVariable(Variable ast)
+    public virtual ASTNode VisitCondition(ConditionExpression ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitConstDefine(ConstDefine ast)
+    public virtual ASTNode VisitAssignmentStat(AssignmentStatement ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitNot(Not ast)
+    public virtual ASTNode VisitIfStat(IfStatement ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitBinary(Binary ast)
+    public virtual ASTNode VisitElseClause(ElseClause ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitAssign(Assign ast)
+    public virtual ASTNode VisitForStat(ForStatement ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitWait(Wait ast)
+    public virtual ASTNode VisitBreak(BreakStatement ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitIfElse(IfElse ast)
+    public virtual ASTNode VisitContinue(ContinueStatement ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitElseIf(ElseIf ast)
+    public virtual ASTNode VisitFunctionDefinition(FunctionDefinitionStatement ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitOpAssign(OpAssign ast)
+    public virtual ASTNode VisitReturn(ReturnStatement ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitForCondition(ForStatement ast)
+    public virtual ASTNode VisitCall(CallExpression ast)
     {
         return ast;
     }
-
-    public virtual ASTNode VisitForWhile(ForWhile ast)
-    {
-        return ast;
-    }
-
-    public virtual ASTNode VisitLoopControl(LoopControl ast)
-    {
-        return ast;
-    }
-
-    public virtual ASTNode VisitButtonAction(ButtonAction ast)
-    {
-        return ast;
-    }
-
-    public virtual ASTNode VisitStickAction(StickAction ast)
-    {
-        return ast;
-    }
-    
-    public virtual ASTNode VisitFunction(Function ast)
-    {
-        return ast;
-    }
-
-    public virtual ASTNode VisitCallExpression(CallExpression ast)
-    {
-        return ast;
-    }
-
-    public virtual ASTNode VisitBuildinState(BuildinState ast)
+    public virtual ASTNode VisitKey(KeyStatement ast)
     {
         return ast;
     }

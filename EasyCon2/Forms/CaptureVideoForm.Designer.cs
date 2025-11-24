@@ -28,643 +28,609 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CaptureVideoForm));
-            this.reasultListBox = new System.Windows.Forms.ListBox();
-            this.label1 = new System.Windows.Forms.Label();
-            this.captureBtn = new System.Windows.Forms.Button();
-            this.label4 = new System.Windows.Forms.Label();
-            this.rangeBtn = new System.Windows.Forms.Button();
-            this.searchTestBtn = new System.Windows.Forms.Button();
-            this.targetBtn = new System.Windows.Forms.Button();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.searchHNUD = new System.Windows.Forms.NumericUpDown();
-            this.searchWNUD = new System.Windows.Forms.NumericUpDown();
-            this.searchYNUD = new System.Windows.Forms.NumericUpDown();
-            this.searchXNUD = new System.Windows.Forms.NumericUpDown();
-            this.targetHNUD = new System.Windows.Forms.NumericUpDown();
-            this.targetWNUD = new System.Windows.Forms.NumericUpDown();
-            this.targetYNUD = new System.Windows.Forms.NumericUpDown();
-            this.searchResultImg = new System.Windows.Forms.PictureBox();
-            this.targetXNUD = new System.Windows.Forms.NumericUpDown();
-            this.targetImg = new System.Windows.Forms.PictureBox();
-            this.imgLabelNametxt = new System.Windows.Forms.TextBox();
-            this.label8 = new System.Windows.Forms.Label();
-            this.label23 = new System.Windows.Forms.Label();
-            this.lowestMatch = new System.Windows.Forms.TextBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.label22 = new System.Windows.Forms.Label();
-            this.label21 = new System.Windows.Forms.Label();
-            this.label16 = new System.Windows.Forms.Label();
-            this.label17 = new System.Windows.Forms.Label();
-            this.label19 = new System.Windows.Forms.Label();
-            this.label20 = new System.Windows.Forms.Label();
-            this.label14 = new System.Windows.Forms.Label();
-            this.label15 = new System.Windows.Forms.Label();
-            this.label13 = new System.Windows.Forms.Label();
-            this.label18 = new System.Windows.Forms.Label();
-            this.label12 = new System.Windows.Forms.Label();
-            this.searchMethodComBox = new System.Windows.Forms.ComboBox();
-            this.imgLableList = new System.Windows.Forms.ListBox();
-            this.SaveTagBtn = new System.Windows.Forms.Button();
-            this.DynTestBtn = new System.Windows.Forms.Button();
-            this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.CaptureVideoHelp = new System.Windows.Forms.TextBox();
-            this.openCapBtn = new System.Windows.Forms.Button();
-            this.ResolutionBtn = new System.Windows.Forms.Button();
-            this.label2 = new System.Windows.Forms.Label();
-            this.monitorVisChk = new System.Windows.Forms.CheckBox();
-            this.VideoSourcePlayerMonitor = new EasyCon2.Forms.PaintControl();
-            this.Snapshot = new EasyCon2.Forms.PaintControl();
-            this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
-            this.groupBox1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.searchHNUD)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.searchWNUD)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.searchYNUD)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.searchXNUD)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetHNUD)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetWNUD)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetYNUD)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetXNUD)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetImg)).BeginInit();
-            this.SuspendLayout();
+            reasultListBox = new ListBox();
+            label1 = new Label();
+            captureBtn = new Button();
+            label4 = new Label();
+            rangeBtn = new Button();
+            searchTestBtn = new Button();
+            targetBtn = new Button();
+            groupBox1 = new GroupBox();
+            searchHNUD = new NumericUpDown();
+            searchWNUD = new NumericUpDown();
+            searchYNUD = new NumericUpDown();
+            searchXNUD = new NumericUpDown();
+            targetHNUD = new NumericUpDown();
+            targetWNUD = new NumericUpDown();
+            targetYNUD = new NumericUpDown();
+            searchResultImg = new PictureBox();
+            targetXNUD = new NumericUpDown();
+            targetImg = new PictureBox();
+            imgLabelNametxt = new TextBox();
+            label8 = new Label();
+            label23 = new Label();
+            lowestMatch = new TextBox();
+            label6 = new Label();
+            label22 = new Label();
+            label21 = new Label();
+            label16 = new Label();
+            label17 = new Label();
+            label19 = new Label();
+            label20 = new Label();
+            label14 = new Label();
+            label15 = new Label();
+            label13 = new Label();
+            label18 = new Label();
+            label12 = new Label();
+            searchMethodComBox = new ComboBox();
+            imgLableList = new ListBox();
+            SaveTagBtn = new Button();
+            DynTestBtn = new Button();
+            timer1 = new System.Windows.Forms.Timer(components);
+            CaptureVideoHelp = new TextBox();
+            openCapBtn = new Button();
+            ResolutionBtn = new Button();
+            label2 = new Label();
+            monitorVisChk = new CheckBox();
+            VideoSourcePlayerMonitor = new PaintControl();
+            Snapshot = new PaintControl();
+            openFileDialog1 = new OpenFileDialog();
+            groupBox1.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)searchHNUD).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)searchWNUD).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)searchYNUD).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)searchXNUD).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)targetHNUD).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)targetWNUD).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)targetYNUD).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)searchResultImg).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)targetXNUD).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)targetImg).BeginInit();
+            SuspendLayout();
             // 
             // reasultListBox
             // 
-            this.reasultListBox.FormattingEnabled = true;
-            this.reasultListBox.ItemHeight = 17;
-            this.reasultListBox.Location = new System.Drawing.Point(405, 22);
-            this.reasultListBox.Margin = new System.Windows.Forms.Padding(4);
-            this.reasultListBox.Name = "reasultListBox";
-            this.reasultListBox.Size = new System.Drawing.Size(119, 55);
-            this.reasultListBox.TabIndex = 1;
+            reasultListBox.FormattingEnabled = true;
+            reasultListBox.Location = new Point(405, 22);
+            reasultListBox.Margin = new Padding(4);
+            reasultListBox.Name = "reasultListBox";
+            reasultListBox.Size = new Size(119, 44);
+            reasultListBox.TabIndex = 1;
             // 
             // label1
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(756, 391);
-            this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(109, 17);
-            this.label1.TabIndex = 2;
-            this.label1.Text = "搜图标签-双击加载";
+            label1.AutoSize = true;
+            label1.Location = new Point(756, 391);
+            label1.Margin = new Padding(4, 0, 4, 0);
+            label1.Name = "label1";
+            label1.Size = new Size(135, 20);
+            label1.TabIndex = 2;
+            label1.Text = "搜图标签-双击加载";
             // 
             // captureBtn
             // 
-            this.captureBtn.Location = new System.Drawing.Point(35, 487);
-            this.captureBtn.Margin = new System.Windows.Forms.Padding(4);
-            this.captureBtn.Name = "captureBtn";
-            this.captureBtn.Size = new System.Drawing.Size(77, 33);
-            this.captureBtn.TabIndex = 5;
-            this.captureBtn.Text = "截图";
-            this.captureBtn.UseVisualStyleBackColor = true;
-            this.captureBtn.Click += new System.EventHandler(this.captureBtn_Click);
+            captureBtn.Location = new Point(35, 487);
+            captureBtn.Margin = new Padding(4);
+            captureBtn.Name = "captureBtn";
+            captureBtn.Size = new Size(77, 33);
+            captureBtn.TabIndex = 5;
+            captureBtn.Text = "截图";
+            captureBtn.UseVisualStyleBackColor = true;
+            captureBtn.Click += captureBtn_Click;
             // 
             // label4
             // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(756, 364);
-            this.label4.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(421, 17);
-            this.label4.TabIndex = 7;
-            this.label4.Text = "双击切换放大/编辑模式，滚轮缩放，ctrl+滚轮水平缩放，shift+滚轮垂直缩放";
+            label4.AutoSize = true;
+            label4.Location = new Point(756, 364);
+            label4.Margin = new Padding(4, 0, 4, 0);
+            label4.Name = "label4";
+            label4.Size = new Size(527, 20);
+            label4.TabIndex = 7;
+            label4.Text = "双击切换放大/编辑模式，滚轮缩放，ctrl+滚轮水平缩放，shift+滚轮垂直缩放";
             // 
             // rangeBtn
             // 
-            this.rangeBtn.Location = new System.Drawing.Point(119, 487);
-            this.rangeBtn.Margin = new System.Windows.Forms.Padding(4);
-            this.rangeBtn.Name = "rangeBtn";
-            this.rangeBtn.Size = new System.Drawing.Size(100, 33);
-            this.rangeBtn.TabIndex = 8;
-            this.rangeBtn.Text = "开始圈选(红)";
-            this.rangeBtn.UseVisualStyleBackColor = true;
-            this.rangeBtn.Click += new System.EventHandler(this.rangeBtn_Click);
+            rangeBtn.Location = new Point(119, 487);
+            rangeBtn.Margin = new Padding(4);
+            rangeBtn.Name = "rangeBtn";
+            rangeBtn.Size = new Size(100, 33);
+            rangeBtn.TabIndex = 8;
+            rangeBtn.Text = "开始圈选(红)";
+            rangeBtn.UseVisualStyleBackColor = true;
+            rangeBtn.Click += rangeBtn_Click;
             // 
             // searchTestBtn
             // 
-            this.searchTestBtn.Location = new System.Drawing.Point(334, 487);
-            this.searchTestBtn.Margin = new System.Windows.Forms.Padding(4);
-            this.searchTestBtn.Name = "searchTestBtn";
-            this.searchTestBtn.Size = new System.Drawing.Size(86, 33);
-            this.searchTestBtn.TabIndex = 9;
-            this.searchTestBtn.Text = "搜索测试";
-            this.searchTestBtn.UseVisualStyleBackColor = true;
-            this.searchTestBtn.Click += new System.EventHandler(this.searchTestBtn_Click);
+            searchTestBtn.Location = new Point(334, 487);
+            searchTestBtn.Margin = new Padding(4);
+            searchTestBtn.Name = "searchTestBtn";
+            searchTestBtn.Size = new Size(86, 33);
+            searchTestBtn.TabIndex = 9;
+            searchTestBtn.Text = "搜索测试";
+            searchTestBtn.UseVisualStyleBackColor = true;
+            searchTestBtn.Click += searchTestBtn_Click;
             // 
             // targetBtn
             // 
-            this.targetBtn.Location = new System.Drawing.Point(227, 487);
-            this.targetBtn.Margin = new System.Windows.Forms.Padding(4);
-            this.targetBtn.Name = "targetBtn";
-            this.targetBtn.Size = new System.Drawing.Size(100, 33);
-            this.targetBtn.TabIndex = 10;
-            this.targetBtn.Text = "开始圈选(绿)";
-            this.targetBtn.UseVisualStyleBackColor = true;
-            this.targetBtn.Click += new System.EventHandler(this.targetBtn_Click);
+            targetBtn.Location = new Point(227, 487);
+            targetBtn.Margin = new Padding(4);
+            targetBtn.Name = "targetBtn";
+            targetBtn.Size = new Size(100, 33);
+            targetBtn.TabIndex = 10;
+            targetBtn.Text = "开始圈选(绿)";
+            targetBtn.UseVisualStyleBackColor = true;
+            targetBtn.Click += targetBtn_Click;
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.searchHNUD);
-            this.groupBox1.Controls.Add(this.searchWNUD);
-            this.groupBox1.Controls.Add(this.searchYNUD);
-            this.groupBox1.Controls.Add(this.searchXNUD);
-            this.groupBox1.Controls.Add(this.targetHNUD);
-            this.groupBox1.Controls.Add(this.targetWNUD);
-            this.groupBox1.Controls.Add(this.targetYNUD);
-            this.groupBox1.Controls.Add(this.searchResultImg);
-            this.groupBox1.Controls.Add(this.targetXNUD);
-            this.groupBox1.Controls.Add(this.targetImg);
-            this.groupBox1.Controls.Add(this.imgLabelNametxt);
-            this.groupBox1.Controls.Add(this.label8);
-            this.groupBox1.Controls.Add(this.label23);
-            this.groupBox1.Controls.Add(this.lowestMatch);
-            this.groupBox1.Controls.Add(this.reasultListBox);
-            this.groupBox1.Controls.Add(this.label6);
-            this.groupBox1.Controls.Add(this.label22);
-            this.groupBox1.Controls.Add(this.label21);
-            this.groupBox1.Controls.Add(this.label16);
-            this.groupBox1.Controls.Add(this.label17);
-            this.groupBox1.Controls.Add(this.label19);
-            this.groupBox1.Controls.Add(this.label20);
-            this.groupBox1.Controls.Add(this.label14);
-            this.groupBox1.Controls.Add(this.label15);
-            this.groupBox1.Controls.Add(this.label13);
-            this.groupBox1.Controls.Add(this.label18);
-            this.groupBox1.Controls.Add(this.label12);
-            this.groupBox1.Controls.Add(this.searchMethodComBox);
-            this.groupBox1.Location = new System.Drawing.Point(35, 531);
-            this.groupBox1.Margin = new System.Windows.Forms.Padding(4);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Padding = new System.Windows.Forms.Padding(4);
-            this.groupBox1.Size = new System.Drawing.Size(669, 214);
-            this.groupBox1.TabIndex = 18;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "搜索参数";
+            groupBox1.Controls.Add(searchHNUD);
+            groupBox1.Controls.Add(searchWNUD);
+            groupBox1.Controls.Add(searchYNUD);
+            groupBox1.Controls.Add(searchXNUD);
+            groupBox1.Controls.Add(targetHNUD);
+            groupBox1.Controls.Add(targetWNUD);
+            groupBox1.Controls.Add(targetYNUD);
+            groupBox1.Controls.Add(searchResultImg);
+            groupBox1.Controls.Add(targetXNUD);
+            groupBox1.Controls.Add(targetImg);
+            groupBox1.Controls.Add(imgLabelNametxt);
+            groupBox1.Controls.Add(label8);
+            groupBox1.Controls.Add(label23);
+            groupBox1.Controls.Add(lowestMatch);
+            groupBox1.Controls.Add(reasultListBox);
+            groupBox1.Controls.Add(label6);
+            groupBox1.Controls.Add(label22);
+            groupBox1.Controls.Add(label21);
+            groupBox1.Controls.Add(label16);
+            groupBox1.Controls.Add(label17);
+            groupBox1.Controls.Add(label19);
+            groupBox1.Controls.Add(label20);
+            groupBox1.Controls.Add(label14);
+            groupBox1.Controls.Add(label15);
+            groupBox1.Controls.Add(label13);
+            groupBox1.Controls.Add(label18);
+            groupBox1.Controls.Add(label12);
+            groupBox1.Controls.Add(searchMethodComBox);
+            groupBox1.Location = new Point(35, 531);
+            groupBox1.Margin = new Padding(4);
+            groupBox1.Name = "groupBox1";
+            groupBox1.Padding = new Padding(4);
+            groupBox1.Size = new Size(669, 214);
+            groupBox1.TabIndex = 18;
+            groupBox1.TabStop = false;
+            groupBox1.Text = "搜索参数";
             // 
             // searchHNUD
             // 
-            this.searchHNUD.Location = new System.Drawing.Point(341, 180);
-            this.searchHNUD.Maximum = new decimal(new int[] {
-            9999,
-            0,
-            0,
-            0});
-            this.searchHNUD.Name = "searchHNUD";
-            this.searchHNUD.Size = new System.Drawing.Size(57, 23);
-            this.searchHNUD.TabIndex = 42;
+            searchHNUD.Location = new Point(341, 180);
+            searchHNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            searchHNUD.Name = "searchHNUD";
+            searchHNUD.Size = new Size(57, 27);
+            searchHNUD.TabIndex = 42;
             // 
             // searchWNUD
             // 
-            this.searchWNUD.Location = new System.Drawing.Point(246, 179);
-            this.searchWNUD.Maximum = new decimal(new int[] {
-            9999,
-            0,
-            0,
-            0});
-            this.searchWNUD.Name = "searchWNUD";
-            this.searchWNUD.Size = new System.Drawing.Size(57, 23);
-            this.searchWNUD.TabIndex = 41;
+            searchWNUD.Location = new Point(246, 179);
+            searchWNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            searchWNUD.Name = "searchWNUD";
+            searchWNUD.Size = new Size(57, 27);
+            searchWNUD.TabIndex = 41;
             // 
             // searchYNUD
             // 
-            this.searchYNUD.Location = new System.Drawing.Point(341, 151);
-            this.searchYNUD.Maximum = new decimal(new int[] {
-            9999,
-            0,
-            0,
-            0});
-            this.searchYNUD.Name = "searchYNUD";
-            this.searchYNUD.Size = new System.Drawing.Size(57, 23);
-            this.searchYNUD.TabIndex = 40;
+            searchYNUD.Location = new Point(341, 151);
+            searchYNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            searchYNUD.Name = "searchYNUD";
+            searchYNUD.Size = new Size(57, 27);
+            searchYNUD.TabIndex = 40;
             // 
             // searchXNUD
             // 
-            this.searchXNUD.Location = new System.Drawing.Point(246, 150);
-            this.searchXNUD.Maximum = new decimal(new int[] {
-            9999,
-            0,
-            0,
-            0});
-            this.searchXNUD.Name = "searchXNUD";
-            this.searchXNUD.Size = new System.Drawing.Size(57, 23);
-            this.searchXNUD.TabIndex = 39;
+            searchXNUD.Location = new Point(246, 150);
+            searchXNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            searchXNUD.Name = "searchXNUD";
+            searchXNUD.Size = new Size(57, 27);
+            searchXNUD.TabIndex = 39;
             // 
             // targetHNUD
             // 
-            this.targetHNUD.Location = new System.Drawing.Point(138, 179);
-            this.targetHNUD.Maximum = new decimal(new int[] {
-            9999,
-            0,
-            0,
-            0});
-            this.targetHNUD.Name = "targetHNUD";
-            this.targetHNUD.Size = new System.Drawing.Size(57, 23);
-            this.targetHNUD.TabIndex = 38;
+            targetHNUD.Location = new Point(138, 179);
+            targetHNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            targetHNUD.Name = "targetHNUD";
+            targetHNUD.Size = new Size(57, 27);
+            targetHNUD.TabIndex = 38;
             // 
             // targetWNUD
             // 
-            this.targetWNUD.Location = new System.Drawing.Point(37, 179);
-            this.targetWNUD.Maximum = new decimal(new int[] {
-            9999,
-            0,
-            0,
-            0});
-            this.targetWNUD.Name = "targetWNUD";
-            this.targetWNUD.Size = new System.Drawing.Size(57, 23);
-            this.targetWNUD.TabIndex = 37;
+            targetWNUD.Location = new Point(37, 179);
+            targetWNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            targetWNUD.Name = "targetWNUD";
+            targetWNUD.Size = new Size(57, 27);
+            targetWNUD.TabIndex = 37;
             // 
             // targetYNUD
             // 
-            this.targetYNUD.Location = new System.Drawing.Point(138, 150);
-            this.targetYNUD.Maximum = new decimal(new int[] {
-            9999,
-            0,
-            0,
-            0});
-            this.targetYNUD.Name = "targetYNUD";
-            this.targetYNUD.Size = new System.Drawing.Size(57, 23);
-            this.targetYNUD.TabIndex = 36;
+            targetYNUD.Location = new Point(138, 150);
+            targetYNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            targetYNUD.Name = "targetYNUD";
+            targetYNUD.Size = new Size(57, 27);
+            targetYNUD.TabIndex = 36;
             // 
             // searchResultImg
             // 
-            this.searchResultImg.Location = new System.Drawing.Point(533, 89);
-            this.searchResultImg.Margin = new System.Windows.Forms.Padding(4);
-            this.searchResultImg.Name = "searchResultImg";
-            this.searchResultImg.Size = new System.Drawing.Size(120, 120);
-            this.searchResultImg.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.searchResultImg.TabIndex = 24;
-            this.searchResultImg.TabStop = false;
+            searchResultImg.Location = new Point(533, 89);
+            searchResultImg.Margin = new Padding(4);
+            searchResultImg.Name = "searchResultImg";
+            searchResultImg.Size = new Size(120, 120);
+            searchResultImg.SizeMode = PictureBoxSizeMode.Zoom;
+            searchResultImg.TabIndex = 24;
+            searchResultImg.TabStop = false;
             // 
             // targetXNUD
             // 
-            this.targetXNUD.Location = new System.Drawing.Point(37, 150);
-            this.targetXNUD.Maximum = new decimal(new int[] {
-            9999,
-            0,
-            0,
-            0});
-            this.targetXNUD.Name = "targetXNUD";
-            this.targetXNUD.Size = new System.Drawing.Size(57, 23);
-            this.targetXNUD.TabIndex = 35;
+            targetXNUD.Location = new Point(37, 150);
+            targetXNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
+            targetXNUD.Name = "targetXNUD";
+            targetXNUD.Size = new Size(57, 27);
+            targetXNUD.TabIndex = 35;
             // 
             // targetImg
             // 
-            this.targetImg.Location = new System.Drawing.Point(405, 89);
-            this.targetImg.Margin = new System.Windows.Forms.Padding(4);
-            this.targetImg.Name = "targetImg";
-            this.targetImg.Size = new System.Drawing.Size(120, 120);
-            this.targetImg.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.targetImg.TabIndex = 34;
-            this.targetImg.TabStop = false;
-            this.targetImg.DoubleClick += new System.EventHandler(this.targetImg_DoubleClick);
+            targetImg.Location = new Point(405, 89);
+            targetImg.Margin = new Padding(4);
+            targetImg.Name = "targetImg";
+            targetImg.Size = new Size(120, 120);
+            targetImg.SizeMode = PictureBoxSizeMode.Zoom;
+            targetImg.TabIndex = 34;
+            targetImg.TabStop = false;
+            targetImg.DoubleClick += targetImg_DoubleClick;
             // 
             // imgLabelNametxt
             // 
-            this.imgLabelNametxt.Location = new System.Drawing.Point(91, 23);
-            this.imgLabelNametxt.Margin = new System.Windows.Forms.Padding(4);
-            this.imgLabelNametxt.Name = "imgLabelNametxt";
-            this.imgLabelNametxt.Size = new System.Drawing.Size(133, 23);
-            this.imgLabelNametxt.TabIndex = 33;
-            this.imgLabelNametxt.Text = "5号路蛋屋主人";
+            imgLabelNametxt.Location = new Point(91, 23);
+            imgLabelNametxt.Margin = new Padding(4);
+            imgLabelNametxt.Name = "imgLabelNametxt";
+            imgLabelNametxt.Size = new Size(133, 27);
+            imgLabelNametxt.TabIndex = 33;
+            imgLabelNametxt.Text = "5号路蛋屋主人";
             // 
             // label8
             // 
-            this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(30, 25);
-            this.label8.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(47, 17);
-            this.label8.TabIndex = 32;
-            this.label8.Text = "标签名:";
+            label8.AutoSize = true;
+            label8.Location = new Point(30, 25);
+            label8.Margin = new Padding(4, 0, 4, 0);
+            label8.Name = "label8";
+            label8.Size = new Size(58, 20);
+            label8.TabIndex = 32;
+            label8.Text = "标签名:";
             // 
             // label23
             // 
-            this.label23.Location = new System.Drawing.Point(533, 24);
-            this.label23.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label23.Name = "label23";
-            this.label23.Size = new System.Drawing.Size(120, 53);
-            this.label23.TabIndex = 21;
-            this.label23.Text = "匹配度：100%耗时：100毫秒最大匹配度100%";
+            label23.Location = new Point(533, 24);
+            label23.Margin = new Padding(4, 0, 4, 0);
+            label23.Name = "label23";
+            label23.Size = new Size(120, 53);
+            label23.TabIndex = 21;
+            label23.Text = "匹配度：100%耗时：100毫秒最大匹配度100%";
             // 
             // lowestMatch
             // 
-            this.lowestMatch.Location = new System.Drawing.Point(112, 86);
-            this.lowestMatch.Margin = new System.Windows.Forms.Padding(4);
-            this.lowestMatch.Name = "lowestMatch";
-            this.lowestMatch.Size = new System.Drawing.Size(112, 23);
-            this.lowestMatch.TabIndex = 31;
-            this.lowestMatch.Text = "90.0";
+            lowestMatch.Location = new Point(112, 86);
+            lowestMatch.Margin = new Padding(4);
+            lowestMatch.Name = "lowestMatch";
+            lowestMatch.Size = new Size(112, 27);
+            lowestMatch.TabIndex = 31;
+            lowestMatch.Text = "90.0";
             // 
             // label6
             // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(6, 89);
-            this.label6.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(95, 17);
-            this.label6.TabIndex = 30;
-            this.label6.Text = "最低更新匹配度:";
+            label6.AutoSize = true;
+            label6.Location = new Point(6, 89);
+            label6.Margin = new Padding(4, 0, 4, 0);
+            label6.Name = "label6";
+            label6.Size = new Size(118, 20);
+            label6.TabIndex = 30;
+            label6.Text = "最低更新匹配度:";
             // 
             // label22
             // 
-            this.label22.AutoSize = true;
-            this.label22.Location = new System.Drawing.Point(216, 126);
-            this.label22.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label22.Name = "label22";
-            this.label22.Size = new System.Drawing.Size(59, 17);
-            this.label22.TabIndex = 29;
-            this.label22.Text = "搜索范围:";
+            label22.AutoSize = true;
+            label22.Location = new Point(216, 126);
+            label22.Margin = new Padding(4, 0, 4, 0);
+            label22.Name = "label22";
+            label22.Size = new Size(73, 20);
+            label22.TabIndex = 29;
+            label22.Text = "搜索范围:";
             // 
             // label21
             // 
-            this.label21.AutoSize = true;
-            this.label21.Location = new System.Drawing.Point(11, 126);
-            this.label21.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label21.Name = "label21";
-            this.label21.Size = new System.Drawing.Size(59, 17);
-            this.label21.TabIndex = 28;
-            this.label21.Text = "目标位置:";
+            label21.AutoSize = true;
+            label21.Location = new Point(11, 126);
+            label21.Margin = new Padding(4, 0, 4, 0);
+            label21.Name = "label21";
+            label21.Size = new Size(73, 20);
+            label21.TabIndex = 28;
+            label21.Text = "目标位置:";
             // 
             // label16
             // 
-            this.label16.AutoSize = true;
-            this.label16.Location = new System.Drawing.Point(11, 153);
-            this.label16.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label16.Name = "label16";
-            this.label16.Size = new System.Drawing.Size(19, 17);
-            this.label16.TabIndex = 26;
-            this.label16.Text = "X:";
+            label16.AutoSize = true;
+            label16.Location = new Point(11, 153);
+            label16.Margin = new Padding(4, 0, 4, 0);
+            label16.Name = "label16";
+            label16.Size = new Size(23, 20);
+            label16.TabIndex = 26;
+            label16.Text = "X:";
             // 
             // label17
             // 
-            this.label17.AutoSize = true;
-            this.label17.Location = new System.Drawing.Point(113, 153);
-            this.label17.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label17.Name = "label17";
-            this.label17.Size = new System.Drawing.Size(18, 17);
-            this.label17.TabIndex = 24;
-            this.label17.Text = "Y:";
+            label17.AutoSize = true;
+            label17.Location = new Point(113, 153);
+            label17.Margin = new Padding(4, 0, 4, 0);
+            label17.Name = "label17";
+            label17.Size = new Size(22, 20);
+            label17.TabIndex = 24;
+            label17.Text = "Y:";
             // 
             // label19
             // 
-            this.label19.AutoSize = true;
-            this.label19.Location = new System.Drawing.Point(7, 182);
-            this.label19.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label19.Name = "label19";
-            this.label19.Size = new System.Drawing.Size(23, 17);
-            this.label19.TabIndex = 22;
-            this.label19.Text = "宽:";
+            label19.AutoSize = true;
+            label19.Location = new Point(7, 182);
+            label19.Margin = new Padding(4, 0, 4, 0);
+            label19.Name = "label19";
+            label19.Size = new Size(28, 20);
+            label19.TabIndex = 22;
+            label19.Text = "宽:";
             // 
             // label20
             // 
-            this.label20.AutoSize = true;
-            this.label20.Location = new System.Drawing.Point(108, 182);
-            this.label20.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label20.Name = "label20";
-            this.label20.Size = new System.Drawing.Size(23, 17);
-            this.label20.TabIndex = 20;
-            this.label20.Text = "高:";
+            label20.AutoSize = true;
+            label20.Location = new Point(108, 182);
+            label20.Margin = new Padding(4, 0, 4, 0);
+            label20.Name = "label20";
+            label20.Size = new Size(28, 20);
+            label20.TabIndex = 20;
+            label20.Text = "高:";
             // 
             // label14
             // 
-            this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(220, 153);
-            this.label14.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label14.Name = "label14";
-            this.label14.Size = new System.Drawing.Size(19, 17);
-            this.label14.TabIndex = 18;
-            this.label14.Text = "X:";
+            label14.AutoSize = true;
+            label14.Location = new Point(220, 153);
+            label14.Margin = new Padding(4, 0, 4, 0);
+            label14.Name = "label14";
+            label14.Size = new Size(23, 20);
+            label14.TabIndex = 18;
+            label14.Text = "X:";
             // 
             // label15
             // 
-            this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(316, 154);
-            this.label15.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label15.Name = "label15";
-            this.label15.Size = new System.Drawing.Size(18, 17);
-            this.label15.TabIndex = 16;
-            this.label15.Text = "Y:";
+            label15.AutoSize = true;
+            label15.Location = new Point(316, 154);
+            label15.Margin = new Padding(4, 0, 4, 0);
+            label15.Name = "label15";
+            label15.Size = new Size(22, 20);
+            label15.TabIndex = 16;
+            label15.Text = "Y:";
             // 
             // label13
             // 
-            this.label13.AutoSize = true;
-            this.label13.Location = new System.Drawing.Point(216, 182);
-            this.label13.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label13.Name = "label13";
-            this.label13.Size = new System.Drawing.Size(23, 17);
-            this.label13.TabIndex = 14;
-            this.label13.Text = "宽:";
+            label13.AutoSize = true;
+            label13.Location = new Point(216, 182);
+            label13.Margin = new Padding(4, 0, 4, 0);
+            label13.Name = "label13";
+            label13.Size = new Size(28, 20);
+            label13.TabIndex = 14;
+            label13.Text = "宽:";
             // 
             // label18
             // 
-            this.label18.AutoSize = true;
-            this.label18.Location = new System.Drawing.Point(316, 183);
-            this.label18.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label18.Name = "label18";
-            this.label18.Size = new System.Drawing.Size(23, 17);
-            this.label18.TabIndex = 12;
-            this.label18.Text = "高:";
+            label18.AutoSize = true;
+            label18.Location = new Point(316, 183);
+            label18.Margin = new Padding(4, 0, 4, 0);
+            label18.Name = "label18";
+            label18.Size = new Size(28, 20);
+            label18.TabIndex = 12;
+            label18.Text = "高:";
             // 
             // label12
             // 
-            this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(18, 58);
-            this.label12.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(59, 17);
-            this.label12.TabIndex = 1;
-            this.label12.Text = "搜索方法:";
+            label12.AutoSize = true;
+            label12.Location = new Point(18, 58);
+            label12.Margin = new Padding(4, 0, 4, 0);
+            label12.Name = "label12";
+            label12.Size = new Size(73, 20);
+            label12.TabIndex = 1;
+            label12.Text = "搜索方法:";
             // 
             // searchMethodComBox
             // 
-            this.searchMethodComBox.FormattingEnabled = true;
-            this.searchMethodComBox.Location = new System.Drawing.Point(91, 54);
-            this.searchMethodComBox.Margin = new System.Windows.Forms.Padding(4);
-            this.searchMethodComBox.Name = "searchMethodComBox";
-            this.searchMethodComBox.Size = new System.Drawing.Size(133, 25);
-            this.searchMethodComBox.TabIndex = 0;
-            this.searchMethodComBox.Text = "选择搜索方法";
+            searchMethodComBox.FormattingEnabled = true;
+            searchMethodComBox.Location = new Point(91, 54);
+            searchMethodComBox.Margin = new Padding(4);
+            searchMethodComBox.Name = "searchMethodComBox";
+            searchMethodComBox.Size = new Size(133, 28);
+            searchMethodComBox.TabIndex = 0;
+            searchMethodComBox.Text = "选择搜索方法";
             // 
             // imgLableList
             // 
-            this.imgLableList.FormattingEnabled = true;
-            this.imgLableList.ItemHeight = 17;
-            this.imgLableList.Location = new System.Drawing.Point(759, 418);
-            this.imgLableList.Margin = new System.Windows.Forms.Padding(4);
-            this.imgLableList.Name = "imgLableList";
-            this.imgLableList.Size = new System.Drawing.Size(166, 327);
-            this.imgLableList.TabIndex = 19;
-            this.imgLableList.DoubleClick += new System.EventHandler(this.imgLableList_DoubleClick);
+            imgLableList.FormattingEnabled = true;
+            imgLableList.Location = new Point(759, 418);
+            imgLableList.Margin = new Padding(4);
+            imgLableList.Name = "imgLableList";
+            imgLableList.Size = new Size(166, 324);
+            imgLableList.TabIndex = 19;
+            imgLableList.DoubleClick += imgLableList_DoubleClick;
             // 
             // SaveTagBtn
             // 
-            this.SaveTagBtn.Location = new System.Drawing.Point(540, 487);
-            this.SaveTagBtn.Margin = new System.Windows.Forms.Padding(4);
-            this.SaveTagBtn.Name = "SaveTagBtn";
-            this.SaveTagBtn.Size = new System.Drawing.Size(79, 33);
-            this.SaveTagBtn.TabIndex = 20;
-            this.SaveTagBtn.Text = "保存标签";
-            this.SaveTagBtn.UseVisualStyleBackColor = true;
-            this.SaveTagBtn.Click += new System.EventHandler(this.SaveTagBtn_Click);
+            SaveTagBtn.Location = new Point(540, 487);
+            SaveTagBtn.Margin = new Padding(4);
+            SaveTagBtn.Name = "SaveTagBtn";
+            SaveTagBtn.Size = new Size(79, 33);
+            SaveTagBtn.TabIndex = 20;
+            SaveTagBtn.Text = "保存标签";
+            SaveTagBtn.UseVisualStyleBackColor = true;
+            SaveTagBtn.Click += SaveTagBtn_Click;
             // 
             // DynTestBtn
             // 
-            this.DynTestBtn.Location = new System.Drawing.Point(427, 487);
-            this.DynTestBtn.Margin = new System.Windows.Forms.Padding(4);
-            this.DynTestBtn.Name = "DynTestBtn";
-            this.DynTestBtn.Size = new System.Drawing.Size(112, 33);
-            this.DynTestBtn.TabIndex = 22;
-            this.DynTestBtn.Text = "动态测试";
-            this.DynTestBtn.UseVisualStyleBackColor = true;
-            this.DynTestBtn.Click += new System.EventHandler(this.DynTestBtn_Click);
+            DynTestBtn.Location = new Point(427, 487);
+            DynTestBtn.Margin = new Padding(4);
+            DynTestBtn.Name = "DynTestBtn";
+            DynTestBtn.Size = new Size(112, 33);
+            DynTestBtn.TabIndex = 22;
+            DynTestBtn.Text = "动态测试";
+            DynTestBtn.UseVisualStyleBackColor = true;
+            DynTestBtn.Click += DynTestBtn_Click;
             // 
             // timer1
             // 
-            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            timer1.Tick += timer1_Tick;
             // 
             // CaptureVideoHelp
             // 
-            this.CaptureVideoHelp.Cursor = System.Windows.Forms.Cursors.Arrow;
-            this.CaptureVideoHelp.Font = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.CaptureVideoHelp.Location = new System.Drawing.Point(933, 418);
-            this.CaptureVideoHelp.Margin = new System.Windows.Forms.Padding(4, 6, 4, 6);
-            this.CaptureVideoHelp.Multiline = true;
-            this.CaptureVideoHelp.Name = "CaptureVideoHelp";
-            this.CaptureVideoHelp.ReadOnly = true;
-            this.CaptureVideoHelp.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.CaptureVideoHelp.Size = new System.Drawing.Size(331, 327);
-            this.CaptureVideoHelp.TabIndex = 25;
+            CaptureVideoHelp.Font = new Font("宋体", 9F);
+            CaptureVideoHelp.Location = new Point(933, 418);
+            CaptureVideoHelp.Margin = new Padding(4, 6, 4, 6);
+            CaptureVideoHelp.Multiline = true;
+            CaptureVideoHelp.Name = "CaptureVideoHelp";
+            CaptureVideoHelp.ReadOnly = true;
+            CaptureVideoHelp.ScrollBars = ScrollBars.Vertical;
+            CaptureVideoHelp.Size = new Size(331, 327);
+            CaptureVideoHelp.TabIndex = 25;
             // 
             // openCapBtn
             // 
-            this.openCapBtn.Location = new System.Drawing.Point(627, 487);
-            this.openCapBtn.Margin = new System.Windows.Forms.Padding(4);
-            this.openCapBtn.Name = "openCapBtn";
-            this.openCapBtn.Size = new System.Drawing.Size(77, 33);
-            this.openCapBtn.TabIndex = 26;
-            this.openCapBtn.Text = "打开截图";
-            this.openCapBtn.UseVisualStyleBackColor = true;
-            this.openCapBtn.Click += new System.EventHandler(this.openCapBtn_Click);
+            openCapBtn.Location = new Point(627, 487);
+            openCapBtn.Margin = new Padding(4);
+            openCapBtn.Name = "openCapBtn";
+            openCapBtn.Size = new Size(77, 33);
+            openCapBtn.TabIndex = 26;
+            openCapBtn.Text = "打开截图";
+            openCapBtn.UseVisualStyleBackColor = true;
+            openCapBtn.Click += openCapBtn_Click;
             // 
             // ResolutionBtn
             // 
-            this.ResolutionBtn.Location = new System.Drawing.Point(755, 327);
-            this.ResolutionBtn.Margin = new System.Windows.Forms.Padding(4);
-            this.ResolutionBtn.Name = "ResolutionBtn";
-            this.ResolutionBtn.Size = new System.Drawing.Size(171, 33);
-            this.ResolutionBtn.TabIndex = 27;
-            this.ResolutionBtn.Text = "当前分辨率：1080P点击切换";
-            this.ResolutionBtn.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.ResolutionBtn.UseVisualStyleBackColor = true;
-            this.ResolutionBtn.Click += new System.EventHandler(this.ResolutionBtn_Click);
+            ResolutionBtn.Location = new Point(755, 327);
+            ResolutionBtn.Margin = new Padding(4);
+            ResolutionBtn.Name = "ResolutionBtn";
+            ResolutionBtn.Size = new Size(171, 33);
+            ResolutionBtn.TabIndex = 27;
+            ResolutionBtn.Text = "当前分辨率：1080P点击切换";
+            ResolutionBtn.TextAlign = ContentAlignment.MiddleLeft;
+            ResolutionBtn.UseVisualStyleBackColor = true;
+            ResolutionBtn.Click += ResolutionBtn_Click;
             // 
             // label2
             // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(219, 459);
-            this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(224, 17);
-            this.label2.TabIndex = 30;
-            this.label2.Text = "左键按住移动，滚轮缩放，右键按住圈选";
+            label2.AutoSize = true;
+            label2.Location = new Point(219, 459);
+            label2.Margin = new Padding(4, 0, 4, 0);
+            label2.Name = "label2";
+            label2.Size = new Size(279, 20);
+            label2.TabIndex = 30;
+            label2.Text = "左键按住移动，滚轮缩放，右键按住圈选";
             // 
             // monitorVisChk
             // 
-            this.monitorVisChk.AutoSize = true;
-            this.monitorVisChk.Checked = true;
-            this.monitorVisChk.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.monitorVisChk.Location = new System.Drawing.Point(1187, 327);
-            this.monitorVisChk.Margin = new System.Windows.Forms.Padding(4);
-            this.monitorVisChk.Name = "monitorVisChk";
-            this.monitorVisChk.Size = new System.Drawing.Size(87, 21);
-            this.monitorVisChk.TabIndex = 32;
-            this.monitorVisChk.Text = "监视器显示";
-            this.monitorVisChk.UseVisualStyleBackColor = true;
-            this.monitorVisChk.CheckedChanged += new System.EventHandler(this.monitorVisChk_CheckedChanged);
+            monitorVisChk.AutoSize = true;
+            monitorVisChk.Checked = true;
+            monitorVisChk.CheckState = CheckState.Checked;
+            monitorVisChk.Location = new Point(1187, 327);
+            monitorVisChk.Margin = new Padding(4);
+            monitorVisChk.Name = "monitorVisChk";
+            monitorVisChk.Size = new Size(106, 24);
+            monitorVisChk.TabIndex = 32;
+            monitorVisChk.Text = "监视器显示";
+            monitorVisChk.UseVisualStyleBackColor = true;
+            monitorVisChk.CheckedChanged += monitorVisChk_CheckedChanged;
             // 
             // VideoSourcePlayerMonitor
             // 
-            this.VideoSourcePlayerMonitor.BackColor = System.Drawing.SystemColors.ButtonShadow;
-            this.VideoSourcePlayerMonitor.Location = new System.Drawing.Point(756, 1);
-            this.VideoSourcePlayerMonitor.Margin = new System.Windows.Forms.Padding(4);
-            this.VideoSourcePlayerMonitor.Name = "VideoSourcePlayerMonitor";
-            this.VideoSourcePlayerMonitor.Size = new System.Drawing.Size(518, 318);
-            this.VideoSourcePlayerMonitor.TabIndex = 33;
-            this.VideoSourcePlayerMonitor.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseDoubleClick);
-            this.VideoSourcePlayerMonitor.MouseDown += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseDown);
-            this.VideoSourcePlayerMonitor.MouseMove += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseMove);
-            this.VideoSourcePlayerMonitor.MouseUp += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseUp);
-            this.VideoSourcePlayerMonitor.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.VideoSourcePlayerMonitor_MouseWheel);
-            this.VideoSourcePlayerMonitor.PreviewKeyDown += new System.Windows.Forms.PreviewKeyDownEventHandler(this.VideoSourcePlayerMonitor_PreviewKeyDown);
+            VideoSourcePlayerMonitor.BackColor = SystemColors.ButtonShadow;
+            VideoSourcePlayerMonitor.Location = new Point(756, 1);
+            VideoSourcePlayerMonitor.Margin = new Padding(4);
+            VideoSourcePlayerMonitor.Name = "VideoSourcePlayerMonitor";
+            VideoSourcePlayerMonitor.Size = new Size(518, 318);
+            VideoSourcePlayerMonitor.TabIndex = 33;
+            VideoSourcePlayerMonitor.MouseDoubleClick += VideoSourcePlayerMonitor_MouseDoubleClick;
+            VideoSourcePlayerMonitor.MouseDown += VideoSourcePlayerMonitor_MouseDown;
+            VideoSourcePlayerMonitor.MouseMove += VideoSourcePlayerMonitor_MouseMove;
+            VideoSourcePlayerMonitor.MouseUp += VideoSourcePlayerMonitor_MouseUp;
+            VideoSourcePlayerMonitor.MouseWheel += VideoSourcePlayerMonitor_MouseWheel;
+            VideoSourcePlayerMonitor.PreviewKeyDown += VideoSourcePlayerMonitor_PreviewKeyDown;
             // 
             // Snapshot
             // 
-            this.Snapshot.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.Snapshot.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
-            this.Snapshot.Location = new System.Drawing.Point(1, 1);
-            this.Snapshot.Margin = new System.Windows.Forms.Padding(4);
-            this.Snapshot.Name = "Snapshot";
-            this.Snapshot.Size = new System.Drawing.Size(746, 448);
-            this.Snapshot.TabIndex = 34;
-            this.Snapshot.MouseDown += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseDown);
-            this.Snapshot.MouseMove += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseMove);
-            this.Snapshot.MouseUp += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseUp);
-            this.Snapshot.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.Snapshot_MouseWheel);
+            Snapshot.BackColor = SystemColors.ControlDark;
+            Snapshot.BackgroundImageLayout = ImageLayout.Center;
+            Snapshot.Location = new Point(1, 1);
+            Snapshot.Margin = new Padding(4);
+            Snapshot.Name = "Snapshot";
+            Snapshot.Size = new Size(746, 448);
+            Snapshot.TabIndex = 34;
+            Snapshot.MouseDown += Snapshot_MouseDown;
+            Snapshot.MouseMove += Snapshot_MouseMove;
+            Snapshot.MouseUp += Snapshot_MouseUp;
+            Snapshot.MouseWheel += Snapshot_MouseWheel;
             // 
             // openFileDialog1
             // 
-            this.openFileDialog1.DefaultExt = "png";
-            this.openFileDialog1.FileName = "target";
-            this.openFileDialog1.Filter = "图片文件(*.jpg,*.gif,*.bmp,*.png)|*.jpg;*.gif;*.bmp;*.png";
+            openFileDialog1.DefaultExt = "png";
+            openFileDialog1.FileName = "target";
+            openFileDialog1.Filter = "图片文件(*.jpg,*.gif,*.bmp,*.png)|*.jpg;*.gif;*.bmp;*.png";
             // 
             // CaptureVideoForm
             // 
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
-            this.ClientSize = new System.Drawing.Size(1279, 747);
-            this.Controls.Add(this.Snapshot);
-            this.Controls.Add(this.VideoSourcePlayerMonitor);
-            this.Controls.Add(this.monitorVisChk);
-            this.Controls.Add(this.label2);
-            this.Controls.Add(this.ResolutionBtn);
-            this.Controls.Add(this.openCapBtn);
-            this.Controls.Add(this.CaptureVideoHelp);
-            this.Controls.Add(this.DynTestBtn);
-            this.Controls.Add(this.SaveTagBtn);
-            this.Controls.Add(this.imgLableList);
-            this.Controls.Add(this.groupBox1);
-            this.Controls.Add(this.targetBtn);
-            this.Controls.Add(this.searchTestBtn);
-            this.Controls.Add(this.rangeBtn);
-            this.Controls.Add(this.label4);
-            this.Controls.Add(this.captureBtn);
-            this.Controls.Add(this.label1);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Margin = new System.Windows.Forms.Padding(4);
-            this.MaximizeBox = false;
-            this.Name = "CaptureVideoForm";
-            this.Padding = new System.Windows.Forms.Padding(1);
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "搜图控制台";
-            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.CaptureVideo_FormClosed);
-            this.Load += new System.EventHandler(this.CaptureVideo_Load);
-            this.Resize += new System.EventHandler(this.CaptureVideoForm_Resize);
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.searchHNUD)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.searchWNUD)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.searchYNUD)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.searchXNUD)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetHNUD)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetWNUD)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetYNUD)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.searchResultImg)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetXNUD)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.targetImg)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            AutoScaleMode = AutoScaleMode.Inherit;
+            ClientSize = new Size(1279, 747);
+            Controls.Add(Snapshot);
+            Controls.Add(VideoSourcePlayerMonitor);
+            Controls.Add(monitorVisChk);
+            Controls.Add(label2);
+            Controls.Add(ResolutionBtn);
+            Controls.Add(openCapBtn);
+            Controls.Add(CaptureVideoHelp);
+            Controls.Add(DynTestBtn);
+            Controls.Add(SaveTagBtn);
+            Controls.Add(imgLableList);
+            Controls.Add(groupBox1);
+            Controls.Add(targetBtn);
+            Controls.Add(searchTestBtn);
+            Controls.Add(rangeBtn);
+            Controls.Add(label4);
+            Controls.Add(captureBtn);
+            Controls.Add(label1);
+            DoubleBuffered = true;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            Icon = (Icon)resources.GetObject("$this.Icon");
+            Margin = new Padding(4);
+            MaximizeBox = false;
+            Name = "CaptureVideoForm";
+            Padding = new Padding(1);
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "搜图控制台";
+            FormClosed += CaptureVideo_FormClosed;
+            Load += CaptureVideo_Load;
+            Resize += CaptureVideoForm_Resize;
+            groupBox1.ResumeLayout(false);
+            groupBox1.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)searchHNUD).EndInit();
+            ((System.ComponentModel.ISupportInitialize)searchWNUD).EndInit();
+            ((System.ComponentModel.ISupportInitialize)searchYNUD).EndInit();
+            ((System.ComponentModel.ISupportInitialize)searchXNUD).EndInit();
+            ((System.ComponentModel.ISupportInitialize)targetHNUD).EndInit();
+            ((System.ComponentModel.ISupportInitialize)targetWNUD).EndInit();
+            ((System.ComponentModel.ISupportInitialize)targetYNUD).EndInit();
+            ((System.ComponentModel.ISupportInitialize)searchResultImg).EndInit();
+            ((System.ComponentModel.ISupportInitialize)targetXNUD).EndInit();
+            ((System.ComponentModel.ISupportInitialize)targetImg).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
 
         }
 

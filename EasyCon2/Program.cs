@@ -6,20 +6,12 @@ namespace EasyCon2
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
-#if NET6_0_OR_GREATER
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
-#endif
-#if NETFRAMEWORK
-            // Init for .net framework
-            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(GlobalExceptionLogger);
 
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-#endif
             var version = Environment.Version;
             if (version.Major <6 && version.Build <=6)
             {

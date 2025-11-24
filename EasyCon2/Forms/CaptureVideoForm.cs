@@ -70,7 +70,7 @@ namespace EasyCon2.Forms
             InitializeComponent();
 
             deviceId = devId;
-            Debug.WriteLine($"device ID:{deviceId}");
+            Debug.WriteLine($"采集卡Id:{deviceId}");
             cvcap.CaptureCamera(VideoSourcePlayerMonitor, devId, typeId);
         }
 
@@ -115,6 +115,7 @@ namespace EasyCon2.Forms
 
         public void LoadImgLabels()
         {
+            Debug.WriteLine("load labels");
             if (!Directory.Exists(ImgDir))
             {
                 Directory.CreateDirectory(ImgDir);
@@ -129,11 +130,7 @@ namespace EasyCon2.Forms
             {
                 try
                 {
-                    var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(file));
-                    if (temp == null)
-                    {
-                        throw new Exception();
-                    }
+                    var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(file)) ?? throw new Exception();
                     temp.name = Path.GetFileNameWithoutExtension(file);
                     temp.Refresh(() => cvcap.GetImage());
                     imgLabels.Add(temp);

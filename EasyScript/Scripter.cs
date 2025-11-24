@@ -2,10 +2,10 @@
 
 public class Scripter
 {
-    readonly Dictionary<string, int> Constants = new();
-    readonly Dictionary<string, ExternalVariable> ExtVars = new();
+    readonly Dictionary<string, int> Constants = [];
+    readonly Dictionary<string, ExternalVariable> ExtVars = [];
 
-    List<Parsing.Statement> _statements = new();
+    List<Parsing.Statement> _statements = [];
 
     public bool HasKeyAction {
         get

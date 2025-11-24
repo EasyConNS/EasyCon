@@ -54,11 +54,21 @@ internal class Parser(Lexer lexer)
                 continue;
             }
 
+            var leadingTrivia = new List<string>();
+            while(Check(TokenType.CommentTrivia))
+            {
+                var trivia = Advance();
+                leadingTrivia.Add(trivia.Value);
+            }
+
             var statement = ParseStatement();
             if (statement != null)
             {
+                statement.LeadingTrivia.AddRange(leadingTrivia);
                 statements.Add(statement);
             }
+
+            // TODO trailing trivia
 
             // 消耗语句后的换行符
             if (Check(TokenType.NEWLINE))
@@ -140,18 +150,38 @@ internal class Parser(Lexer lexer)
 
     private Statement ParseSpecIdentStatement()
     {
-        var func = Advance();
-        var cur = Peek();
+        var func = Peek();
+        var cur = Peek(1);
+
+        string name;
+        var args = new List<Expression>();
+
+        if (Current.Type == TokenType.Integer)
+        {
+            name = "WAIT";
+            args.Add(ParsePrimary());
+        }
+        else
+        {
+            Advance();
+
+            name = func.Value;
+            if (func.Value.ToUpper() == "CALL")
+            {
+                name = cur.Value;
+            }
+            else
+            {
+                args.Add(ParsePrimary());
+            }
+        }
 
         while (!Check(TokenType.NEWLINE))
         {
             Advance();
         }
 
-        var name = func.Type == TokenType.Integer ? "WAIT" : cur.Value;
-        name = func.Value == "CALL" ? cur.Value : func.Value;
-
-        return new CallExpression(name, null)
+        return new CallExpression(name, args)
         {
             Line = func.Line,
             Column = func.Column
@@ -486,6 +516,15 @@ internal class Parser(Lexer lexer)
             bool isConstant = token.Type == TokenType.Const;
             bool isSpecial = token.Type == TokenType.ExtVariable;
             return new VariableExpression(token.Value, isConstant, isSpecial)
+            {
+                Line = token.Line,
+                Column = token.Column
+            };
+        }
+        else if (Match(TokenType.String))
+        {
+            var token = _tokens[_position - 1];
+            return new LiteralExpression(token.Value)
             {
                 Line = token.Line,
                 Column = token.Column
