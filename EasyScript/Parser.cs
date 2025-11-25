@@ -59,13 +59,13 @@ internal class Parser(Lexer lexer)
 
         while (!Check(TokenType.EOF))
         {
-            if (Check(TokenType.NEWLINE))
+            if (Check(TokenType.COMMENT) || Check(TokenType.NEWLINE))
             {
                 Advance();
                 continue;
             }
 
-            var statement = ParseStatement();
+            var statement = ParseMember();
             if (statement != null)
             {
                 statements.Add(statement);
@@ -78,7 +78,19 @@ internal class Parser(Lexer lexer)
         return statements;
     }
 
-    private Statement ParseStatement()
+    public Program ParseProgram()
+    {
+        return new Program(Parse());
+    }
+
+    private Statement ParseMember()
+    {
+        if(Current.Type == TokenType.FUNC)
+            return ParseFunctionDecl();
+        return ParseGlobalStatement();
+    }
+
+    private Statement ParseGlobalStatement()
     {
         if (Check(TokenType.CONST) || Check(TokenType.VAR))
         {
@@ -100,23 +112,17 @@ internal class Parser(Lexer lexer)
         {
             return ParseContinueStatement();
         }
-        else if (Check(TokenType.FUNC))
+        else if (Check(TokenType.RETURN))
         {
-            return ParseFunctionDecl();
+            return ParseReturnStatement();
         }
-        else if (Check(TokenType.ButtonKeyword))
+        else if (Check(TokenType.ButtonKeyword) || Check(TokenType.StickKeyword))
         {
             return ParseKeyStatement();
         }
         else if (Check(TokenType.INT) || Check(TokenType.IDENT))
         {
             return ParseSpecIdentStatement();
-        }
-        else if (Check(TokenType.COMMENT))
-        {
-            Console.WriteLine($"行{Current.Line}存在quan注释：{Current.Value}");
-            Advance();
-            return null;
         }
 
         throw new Exception($"语法错误:{Current.Type}  行{Current.Line}");
@@ -138,7 +144,7 @@ internal class Parser(Lexer lexer)
         }
         else
         {
-            throw new Exception($"不支持的操作符:{Current.Type}:L{Current.Line}");
+            throw new Exception($"不支持的操作符\"{Current.Type}\" 行{Current.Line}");
         }
 
         var value = ParseExpression();
@@ -158,19 +164,20 @@ internal class Parser(Lexer lexer)
         if (func.Type == TokenType.INT)
         {
             name = "WAIT";
-        }
-        else if(func.Value.ToLower() == "call")
-        {
+        }else{
             Advance();
-            func = Current;
-            name = func.Value;
+            if(func.Value.ToLower() == "call")
+            {
+                func = Advance();
+                name = func.Value;
+            }
         }
 
         var args = new List<Expression>();
 
-        while (!Check(TokenType.NEWLINE))
+        if (!Check(TokenType.NEWLINE))
         {
-            Advance();
+            args.Add(ParsePrimary());
         }
 
         return new CallExpression(name, args)
@@ -187,7 +194,7 @@ internal class Parser(Lexer lexer)
 
         Consume(TokenType.NEWLINE, "if条件语法不正确");
 
-        var thenBranch = new List<Statement>(); // ParseStatementsUntil(TokenType.ENDIF);
+        var thenBranch = new List<Statement>();
         while (!Check(TokenType.ELIF) && !Check(TokenType.ELSE) && !Check(TokenType.ENDIF) && !Check(TokenType.EOF))
         {
             if (Check(TokenType.NEWLINE))
@@ -195,11 +202,12 @@ internal class Parser(Lexer lexer)
                 Advance();
                 continue;
             }
-            thenBranch.Add(ParseStatement());
+            thenBranch.Add(ParseGlobalStatement());
             if (Check(TokenType.NEWLINE)) Advance();
         }
 
         // else if
+        List<ElseIfClause> elseif = [];
         while (Current.Type == TokenType.ELIF)
         {
             var elifToken = Consume(TokenType.ELIF, "elif语法不正确");
@@ -212,10 +220,10 @@ internal class Parser(Lexer lexer)
                     Advance();
                     continue;
                 }
-                elifBranch.Add(ParseStatement());
+                elifBranch.Add(ParseGlobalStatement());
                 if (Check(TokenType.NEWLINE)) Advance();
             }
-            Console.WriteLine($"{elifToken.Type} : {elifCond.Line}, {elifBranch.Count} ");
+            elseif.Add(new ElseIfClause(elifCond, elifBranch));
         }
 
         // else
@@ -231,7 +239,7 @@ internal class Parser(Lexer lexer)
                     Advance();
                     continue;
                 }
-                elseBranch.Add(ParseStatement());
+                elseBranch.Add(ParseGlobalStatement());
                 if (Check(TokenType.NEWLINE)) Advance();
             }
             elseClause = new(elseBranch);
@@ -239,7 +247,7 @@ internal class Parser(Lexer lexer)
 
         Consume(TokenType.ENDIF, "需要endif结尾");
 
-        return new IfStatement(condition, thenBranch, null, elseClause)
+        return new IfStatement(condition, thenBranch, elseif, elseClause)
         {
             Line = ifToken.Line,
             Column = ifToken.Column
@@ -266,7 +274,7 @@ internal class Parser(Lexer lexer)
 
         if (Check(TokenType.VAR) && Peek(1)?.Type == TokenType.ASSIGN)
         {
-            // 形式2: 范围循环 for $i = 1 to 10 step 2
+            // 形式2: 范围循环 for $i = 1 to 10
             var loopVar = Consume(TokenType.VAR, "需要初始变量").Value;
             Consume(TokenType.ASSIGN, "for语法不正确, 需要： '='");
             var start = ParseExpression();
@@ -292,7 +300,7 @@ internal class Parser(Lexer lexer)
         else
         {
             // 形式3: 计数循环 for 5
-            var loopCount = ParseExpression();
+            var loopCount = ParsePrimary();
             Consume(TokenType.NEWLINE, "需要换行");
             var body = ParseStatementsUntil(TokenType.NEXT);
             Consume(TokenType.NEXT, "for语法需要next结尾");
@@ -316,7 +324,7 @@ internal class Parser(Lexer lexer)
                 Advance();
                 continue;
             }
-            statements.Add(ParseStatement());
+            statements.Add(ParseGlobalStatement());
             if (Check(TokenType.NEWLINE)) Advance();
         }
 
@@ -326,7 +334,14 @@ internal class Parser(Lexer lexer)
     private BreakStatement ParseBreakStatement()
     {
         var breakToken = Consume(TokenType.BREAK, "需要break语句");
-        return new BreakStatement()
+
+        uint circle = 1;
+        if (!Check(TokenType.NEWLINE)) 
+        {
+            var value = Consume(TokenType.INT, "break跳出层数必须为数字");
+            circle = uint.Parse(value.Value);
+        }
+        return new BreakStatement(circle)
         {
             Line = breakToken.Line,
             Column = breakToken.Column
@@ -336,7 +351,14 @@ internal class Parser(Lexer lexer)
     private ContinueStatement ParseContinueStatement()
     {
         var breakToken = Consume(TokenType.CONTINUE, "需要continue语句");
-        return new ContinueStatement()
+
+        uint circle = 1;
+        if (!Check(TokenType.NEWLINE)) 
+        {
+            var value = Consume(TokenType.INT, "break跳出层数必须为数字");
+            circle = uint.Parse(value.Value);
+        }
+        return new ContinueStatement(circle)
         {
             Line = breakToken.Line,
             Column = breakToken.Column
@@ -345,22 +367,21 @@ internal class Parser(Lexer lexer)
 
     private FunctionDefinitionStatement ParseFunctionDecl()
     {
-        var functionToken = Consume(TokenType.FUNC, "Expected 'func'");
-        var functionName = Consume(TokenType.IDENT, "Expected function name").Value;
+        var functionToken = Consume(TokenType.FUNC, "需要func关键字");
+        var functionName = Consume(TokenType.IDENT, "错误定义的函数名").Value;
 
-        // Consume(TokenType.LeftParen, "Expected '(' after function name");
+        var parameters = new List<string>();
+        if (Check(TokenType.LeftParen))
+        {
+            Advance();
+            // do
+            // {
+            //     parameters.Add(Consume(TokenType.IDENT, "Expected parameter name").Value);
+            // } while (Match(TokenType.COMMA));
+            Consume(TokenType.RightParen, "参数列表需要')'结尾");
+        }
 
-        // var parameters = new List<string>();
-        // if (!Check(TokenType.RightParen))
-        // {
-        //     do
-        //     {
-        //         parameters.Add(Consume(TokenType.Identifier, "Expected parameter name").Value);
-        //     } while (Match(TokenType.Comma));
-        // }
-
-        // Consume(TokenType.RightParen, "Expected ')' after parameters");
-        Consume(TokenType.NEWLINE, "Expected newline after function signature");
+        Consume(TokenType.NEWLINE, "函数定义语法不正确, 需要换行");
 
         var body = new List<Statement>();
         while (!Check(TokenType.ENDFUNC) && !Check(TokenType.EOF))
@@ -370,11 +391,11 @@ internal class Parser(Lexer lexer)
                 Advance();
                 continue;
             }
-            body.Add(ParseStatement());
+            body.Add(ParseGlobalStatement());
             if (Check(TokenType.NEWLINE)) Advance();
         }
 
-        Consume(TokenType.ENDFUNC, "Expected 'endfunc'");
+        Consume(TokenType.ENDFUNC, "需要endfunc结尾");
 
         return new FunctionDefinitionStatement(functionName, null, body)
         {
@@ -385,10 +406,9 @@ internal class Parser(Lexer lexer)
 
     private ReturnStatement ParseReturnStatement()
     {
-        var returnToken = Consume(TokenType.RETURN, "Expected 'return'");
-        var value = ParseExpression();
+        var returnToken = Consume(TokenType.RETURN, "需要return语句");
 
-        return new ReturnStatement(value)
+        return new ReturnStatement(null)
         {
             Line = returnToken.Line,
             Column = returnToken.Column
@@ -397,12 +417,51 @@ internal class Parser(Lexer lexer)
 
     private Statement ParseKeyStatement()
     {
-        var keyToken = Consume(TokenType.ButtonKeyword, "未知的按键命令");
+        // 键位(+键位) [持续时间(ms)|DOWN|UP]
+        // LS|RS 方向|角度 [, 持续时间(ms)]
+        // LS|RS RESET
+        var keyToken = Advance();
 
-        while (!Check(TokenType.NEWLINE))
+        // TODO: 按键命令参数解析
+        if(keyToken.Type == TokenType.StickKeyword)
         {
-            Advance();
+            switch(Current.Type)
+            {
+                case TokenType.INT:
+                case TokenType.ButtonKeyword:
+                    Console.WriteLine("方向|角度");
+                    Advance();
+                    if(Check(TokenType.COMMA))
+                    {
+                        Advance();
+                        Consume(TokenType.INT, "摇杆语法异常报错");
+                        Console.WriteLine($"duration {Current.Value}");
+                    }else{
+                        Console.WriteLine("duration DEFAULT 50");
+                    }
+                    break;
+                case TokenType.ResetKeyword:
+                    Console.WriteLine($"{keyToken.Value} RESET");
+                    Consume(TokenType.ResetKeyword, "重置摇杆语法异常报错");
+                    break;
+            }
+        }else{
+            if(Check(TokenType.NEWLINE))
+            {
+                Console.WriteLine("button duration DEFAULT 50");
+            }
+            else if(Check(TokenType.INT))
+            {
+                Console.WriteLine("button duration");
+            }
+            else if(Check(TokenType.ButtonKeyword))
+            {
+                Console.WriteLine("button up and down");
+            }
+            else
+                throw new Exception($"不 {keyToken.Line}");
         }
+
         return new KeyStatement(keyToken.Value)
         {
             Line = keyToken.Line,
@@ -420,7 +479,6 @@ internal class Parser(Lexer lexer)
     private Expression ParseCondition()
     {
         return ParseComparison();
-        //return ParseLogicalOr();
     }
 
     private Expression ParseLogicalOr()
@@ -485,7 +543,7 @@ internal class Parser(Lexer lexer)
         {
             var op = Advance();
             var right = ParseMultiplication();
-            expression = new ConditionExpression(expression, op.Type, right)
+            expression = new BinaryExpression(expression, op.Type, right)
             {
                 Line = op.Line,
                 Column = op.Column
@@ -503,7 +561,7 @@ internal class Parser(Lexer lexer)
         {
             var op = Advance();
             var right = ParseUnary();
-            expression = new ConditionExpression(expression, op.Type, right)
+            expression = new BinaryExpression(expression, op.Type, right)
             {
                 Line = op.Line,
                 Column = op.Column
@@ -574,7 +632,7 @@ internal class Parser(Lexer lexer)
             };
         }
 
-        throw new Exception($"未识别的语法：\"{Peek().Value}, {Peek().Type}\" 行{Peek().Line}");
+        throw new Exception($"未识别的语法：\"{Peek().Value}\" 类型：{Peek().Type} 行{Peek().Line}");
     }
 }
 

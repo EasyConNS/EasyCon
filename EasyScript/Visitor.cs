@@ -2,12 +2,14 @@ namespace EasyScript;
 
 public interface IAstVisitor<T>
 {
+    T VisitProgram(Program ast);
     T VisitLiteral(LiteralExpression ast);
     T VisitVariable(VariableExpression ast);
     T VisitBinaryOp(BinaryExpression ast);
     T VisitCondition(ConditionExpression ast);
     T VisitAssignmentStat(AssignmentStatement ast);
     T VisitIfStat(IfStatement ast);
+    T VisitElseIfClause(ElseIfClause ast);
     T VisitElseClause(ElseClause ast);
     T VisitForStat(ForStatement ast);
     T VisitBreak(BreakStatement ast);
@@ -21,6 +23,11 @@ public interface IAstVisitor<T>
 public abstract class AstVisitor : IAstVisitor<ASTNode>
 {
     protected AstVisitor() { }
+
+    public virtual ASTNode VisitProgram(Program ast)
+    {
+        return ast; 
+    }
 
     public virtual ASTNode VisitLiteral(LiteralExpression ast)
     {
@@ -43,6 +50,10 @@ public abstract class AstVisitor : IAstVisitor<ASTNode>
         return ast;
     }
     public virtual ASTNode VisitIfStat(IfStatement ast)
+    {
+        return ast;
+    }
+    public virtual ASTNode VisitElseIfClause(ElseIfClause ast)
     {
         return ast;
     }

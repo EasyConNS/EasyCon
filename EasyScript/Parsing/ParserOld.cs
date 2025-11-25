@@ -128,19 +128,12 @@ partial class Parser
         try
         {
             var lex = new Lexer(text);
-            foreach (var t in lex.Tokenize())
-            {
-                Debug.Write(t);
-                if (t.Type == TokenType.NEWLINE)
-                {
-                    Debug.WriteLine($"L:{t.Line}");
-                }
-            }
-            //var np = new EasyScript.Parser(lex).Parse();
-            //foreach (var st in np)
-            //{
-            //    Debug.Write(st);
-            //}
+            var parser = new EasyScript.Parser(lex);
+            var visitor = new SimpleVisitor();
+
+            var ast = visitor.VisitProgram(parser.ParseProgram());
+
+            Debug.WriteLine(ast is Program ? "done debug parser" : "occured");
         }
         catch (Exception e) { Debug.WriteLine(e.Message); }
 #endif

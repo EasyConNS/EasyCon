@@ -3,6 +3,15 @@ namespace EasyScript;
 public class SimpleVisitor : AstVisitor
 {
     private string indent = "";
+
+    public override ASTNode VisitProgram(Program program)
+    {
+        foreach(var ast in program.Statements)
+        {
+            ast.Accept(this);
+        }
+        return program; 
+    }
     
     public override ASTNode VisitLiteral(LiteralExpression ast)
     {
@@ -19,13 +28,19 @@ public class SimpleVisitor : AstVisitor
     
    public override ASTNode VisitBinaryOp(BinaryExpression ast)
    {
-       Console.Write($"Binary: {ast.Operator}");
+       ast.Left.Accept(this);
+       Console.Write($" {ast.Operator} ");
+       ast.Right.Accept(this);
        return ast;
    }
 
    public override ASTNode VisitCondition(ConditionExpression ast)
    {
-       Console.Write($"Condition: {ast.Operator}");
+       Console.Write("(");
+       ast.Left.Accept(this);
+       Console.Write($" {ast.Operator} ");
+       ast.Right.Accept(this);
+       Console.WriteLine(")");
        return ast;
    }
 
@@ -41,18 +56,31 @@ public class SimpleVisitor : AstVisitor
     {
         indent += "  "; // Increase indentation for nested blocks
 
-        Console.Write("If(");
-        Console.Write(ast.Condition.Accept(this));
-        Console.WriteLine(")");
+        Console.Write("If");
+        ast.Condition.Accept(this);
         foreach(var statement in ast.ThenBranch)
         {
             statement.Accept(this);
         }
-        ast.ElseBranch?.Accept(this);
+        foreach(var statement in ast.ElseIfBranch)
+        {
+            statement.Accept(this);
+        }
+        ast.ElseClause?.Accept(this);
         Console.WriteLine("Endif");
 
         indent = indent.Substring(2);
 
+        return ast;
+    }
+    public override ASTNode VisitElseIfClause(ElseIfClause ast)
+    {
+        Console.Write("Else If");
+        ast.Condition.Accept(this);
+        foreach(var statement in ast.ElseIfBranch)
+        {
+            statement.Accept(this);
+        }
         return ast;
     }
     public override ASTNode VisitElseClause(ElseClause ast)
@@ -69,8 +97,14 @@ public class SimpleVisitor : AstVisitor
     public override ASTNode VisitForStat(ForStatement ast)
     {
         indent += "  "; // Increase indentation for nested blocks
+        if(ast.IsInfinite){
+            Console.WriteLine("For:");
+        }else if(ast.LoopCount != null){
+            Console.WriteLine($"For: {ast.LoopCount}");
+        }else{
+            Console.WriteLine($"For: {ast.LoopVariable} = {ast.StartValue} To {ast.EndValue}");
+        }
 
-        Console.WriteLine("For:");
         foreach(var statement in ast.Body)
         {
             statement.Accept(this);
@@ -83,12 +117,14 @@ public class SimpleVisitor : AstVisitor
 
     public override ASTNode VisitContinue(ContinueStatement ast)
     {
-        Console.WriteLine("Continue");
+        string circle = ast.Circle > 1 ? $" {ast.Circle}" : "";
+        Console.WriteLine($"CONTINIUE{circle}");
         return ast;
     }
     public override ASTNode VisitBreak(BreakStatement ast)
     {
-        Console.WriteLine("Break");
+        string circle = ast.Circle > 1 ? $" {ast.Circle}" : "";
+        Console.WriteLine($"BREAK{circle}");
         return ast;
     }
 
@@ -100,7 +136,7 @@ public class SimpleVisitor : AstVisitor
 
     public override ASTNode VisitCall(CallExpression ast)
     {
-        Console.Write($"Call: {ast.FunctionName} ");
+        Console.Write($"F:{ast.FunctionName} ");
         foreach(var arg in ast.Arguments)
         {
             arg.Accept(this);

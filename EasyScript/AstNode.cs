@@ -8,6 +8,16 @@ public abstract class ASTNode
     public abstract T Accept<T>(IAstVisitor<T> visitor);
 }
 
+public class Program(List<Statement> statements) : ASTNode
+{
+    public List<Statement> Statements = statements;
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitProgram(this);
+    }
+}
+
 // 表达式节点
 public abstract class Expression : ASTNode { }
 
@@ -136,20 +146,37 @@ public class IfStatement : Statement
     public Expression Condition { get; }
     public List<Statement> ThenBranch { get; }
 
-    public Tuple<Expression, List<Statement>> ElseIfBranch { get; }
-    public ElseClause? ElseBranch { get; }
+    public List<ElseIfClause> ElseIfBranch { get; }
+    public ElseClause? ElseClause { get; }
 
-    public IfStatement(Expression condition, List<Statement> thenBranch, Tuple<Expression, List<Statement>> elseIfBranch, ElseClause? elseBranch)
+    public IfStatement(Expression condition, List<Statement> thenBranch, List<ElseIfClause> elseIfBranch, ElseClause? elseClause)
     {
         Condition = condition;
         ThenBranch = thenBranch;
         ElseIfBranch = elseIfBranch;
-        ElseBranch = elseBranch;
+        ElseClause = elseClause;
     }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitIfStat(this);
+    }
+}
+
+public class ElseIfClause : Statement
+{
+    public Expression Condition { get; }
+    public List<Statement> ElseIfBranch { get; }
+
+    public ElseIfClause(Expression condition, List<Statement> elseIfBranch)
+    {
+        Condition = condition;
+        ElseIfBranch = elseIfBranch;
+    }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitElseIfClause(this);
     }
 }
 
@@ -175,12 +202,12 @@ public class ForStatement : Statement
     public VariableExpression StartValue { get; } // 起始值
     public VariableExpression EndValue { get; }   // 结束值
     public int StepValue { get; }  // 步长
-    public Expression LoopCount { get; }  // 循环次数（对于计数循环）
+    public Expression? LoopCount { get; }  // 循环次数（对于计数循环）
     public bool IsInfinite { get; }       // 是否无限循环
     public List<Statement> Body { get; }  // 循环体
 
     public ForStatement(string loopVariable, VariableExpression startValue, VariableExpression endValue,
-                      Expression loopCount, bool isInfinite,
+                      Expression? loopCount, bool isInfinite,
                       List<Statement> body, int stepValue = 1)
     {
         LoopVariable = loopVariable;
@@ -200,8 +227,8 @@ public class ForStatement : Statement
 // Break语句
 public class BreakStatement : Statement
 {
-    public int Circle { get; }
-    public BreakStatement(int circle = 1)
+    public uint Circle { get; }
+    public BreakStatement(uint circle = 1)
     {
         Circle = circle;
     }
@@ -214,8 +241,8 @@ public class BreakStatement : Statement
 // Continue语句
 public class ContinueStatement : Statement
 {
-    public int Circle { get; }
-    public ContinueStatement(int circle = 1)
+    public uint Circle { get; }
+    public ContinueStatement(uint circle = 1)
     {
         Circle = circle;
     }
@@ -289,7 +316,7 @@ public class KeyStatement : Statement
 {
     public string KeyName { get; }
 
-    public KeyStatement(string keyName)
+    public KeyStatement(string keyName, uint duration = 50)
     {
         KeyName = keyName;
     }

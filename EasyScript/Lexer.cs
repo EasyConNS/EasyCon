@@ -308,8 +308,16 @@ internal partial class Lexer(string input)
         }
         else if ((isAllUpper || isAllLower) && gamepadKeywords.Contains(word.ToUpper()))
         {
+            var ktype = TokenType.ButtonKeyword;
+            switch(word.ToUpper())
+            {
+                case "LS":
+                case "RS":
+                    ktype = TokenType.StickKeyword;
+                    break;
+            }
             // 手柄按键大写
-            AddToken(TokenType.ButtonKeyword, word.ToUpper());
+            AddToken(ktype, word.ToUpper());
         }
         else
         {
@@ -448,21 +456,21 @@ internal partial class Lexer(string input)
                     if (_position < _input.Length && _input[_position] == '=')
                     {
                         Advance();
-                        AddToken(TokenType.SHL_ASSIGN, ">>=");
+                        AddToken(TokenType.SHR_ASSIGN, ">>=");
                     }
                     else
                     {
-                        AddToken(TokenType.SHL_ASSIGN, ">>");
+                        AddToken(TokenType.SHR, ">>");
                     }
                 }
                 else if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.LEQ, ">=");
+                    AddToken(TokenType.GEQ, ">=");
                 }
                 else
                 {
-                    AddToken(TokenType.LESS, ">");
+                    AddToken(TokenType.GTR, ">");
                 }
                 break;
             case '<':
@@ -476,7 +484,7 @@ internal partial class Lexer(string input)
                     }
                     else
                     {
-                        AddToken(TokenType.SHL_ASSIGN, "<<");
+                        AddToken(TokenType.SHL, "<<");
                     }
                 }
                 else if (next == '=')
