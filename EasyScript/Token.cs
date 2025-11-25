@@ -8,78 +8,81 @@ public enum TokenType
     NEWLINE,
     //LineBreakTrivia,
     WhitespaceTrivia,
-    CommentTrivia, // #{XXX}
+    COMMENT, // #{XXX}
 
-    // Tokens
-    Integer,
-    //Decimal,
+    IDENT,
+    INT,
     Number,
-    String,
-    Const, // _XXX
-    Variable, // $XXX
-    ExtVariable, // @XXX
+    STRING,
+    CONST, // _XXX
+    VAR, // $XXX
+    EX_VAR, // @XXX
 
-    Assign, // =
-    Plus, // +
-    PlusAssign, // +=
-    Minus, // -
-    MinusAssign, // -=
-    Multiply, // *
-    MultiplyAssign, // *=
-    Divide, // /
-    DivideAssign, // /=
+    ASSIGN, // =
+    ADD, // +
+    SUB, // -
+    MUL, // *
+    DIV, // /
     SlashI, // \
-    SlashIAssign, // \=
-    Modulus, // %
-    ModulusAssign, // %=
+    MOD, // %
     BitAnd, // &
-    BitAndAssign, // &=
     BitOr, // |
-    BitOrAssign, // |=
-    BitXor, // ^
-    BitXorAssign, // ^=
-    BitNot, // ~
-    LeftShift, // <<
-    LeftShiftAssign, // <<=
-    RightShift, // >>
-    RightShiftAssign, // >>=
+    XOR, // ^
+    SHL, // <<
+    SHR, // >>
 
-    EqualEqual, // ==
-    NotEqual, // !=
-    LessThan, // <
-    LessThanEqual, // <=
-    GreaterThan, // >
-    GreaterThanEqual, // >=
+    ADD_ASSIGN, // +=
+    SUB_ASSIGN, // -=
+    MUL_ASSIGN, // *=
+    DIV_ASSIGN, // /=
+    SlashIAssign, // \=
+    MOD_ASSIGN, // %=
+    BitAnd_ASSIGN, // &=
+    BitOr_ASSIGN, // |=
+    XOR_ASSIGN, // ^=
+    SHL_ASSIGN, // <<=
+    SHR_ASSIGN, // >>=
+
+    BitNot, // ~
+
+    EQL, // ==
+    NEQ, // !=
+    LESS, // <
+    GTR, // >
+    LEQ, // <=
+    GEQ, // >=
+
     LogicAnd, // and
     LogicOr, // or
     LogicNot, // not
 
     //  Punctuation
     LeftParen, // (
+    LeftBracket, // 
+    COMMA, // ,
+    DOT, // .
+
     RightParen, // )
-    LeftBracket, // [
     RightBracket, // ]
-    ColonToken, // :
-    Comma, // ,
-    SemiToken, // ;
-    Dot, // .
+    COLON, // :
+    SEMICOLON, // ;
 
     // Keywords
-    Import, // IMPORT
-    As, // AS
-    If, // IF
-    Elif, // ELIF
-    Else, // ELSE
-    Endif, // ENDIF
-    For, // FOR
-    To, // TO
-    Step, // STEP
-    Break, // BREAK
-    Continue, // CONTINUE
-    Next, // NEXT
-    Func, // FUNC
-    Return, // RETURN
-    EndFunc, // ENDFUNC
+    IMPORT,
+    AS,
+    IF, 
+    ELIF,
+    ELSE, 
+    ENDIF,
+    FOR, 
+    TO,
+    STEP,
+    BREAK,
+    CONTINUE,
+    NEXT, 
+    FUNC,
+    RETURN,
+    ENDFUNC, 
     True, // TRUE
     False, // FALSE
 
@@ -89,9 +92,6 @@ public enum TokenType
     DirKeyword, // UP, DOWN
     StickKeyword, // RS, LS
     ButtonKeyword, // A,B,X,Y.L,R,ZL,ZR.LCLICK,RCLICK.HOME,CAPTURE,PLUS,MINUS
-
-    // Ident
-    Identifier,
 
     EOF
 }

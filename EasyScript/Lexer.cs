@@ -53,21 +53,21 @@ internal partial class Lexer(string input)
     // 关键字字典
     private static readonly Dictionary<string, TokenType> keywords = new()
     {
-            { "import", TokenType.Import },
-            { "if", TokenType.If },
-            { "elif", TokenType.Elif },
-            { "else", TokenType.Else },
-            { "endif", TokenType.Endif },
-            { "for", TokenType.For },
-            { "to", TokenType.To },
-            { "step", TokenType.Step },
-            { "break", TokenType.Break },
-            { "continue", TokenType.Continue },
-            { "next", TokenType.Next },
+            { "import", TokenType.IMPORT },
+            { "if", TokenType.IF },
+            { "elif", TokenType.ELIF },
+            { "else", TokenType.ELSE },
+            { "endif", TokenType.ENDIF },
+            { "for", TokenType.FOR },
+            { "to", TokenType.TO },
+            { "step", TokenType.STEP },
+            { "break", TokenType.BREAK },
+            { "continue", TokenType.CONTINUE },
+            { "next", TokenType.NEXT },
 
-            { "func", TokenType.Func },
-            { "endfunc", TokenType.EndFunc },
-            { "return", TokenType.Return },
+            { "func", TokenType.FUNC },
+            { "endfunc", TokenType.ENDFUNC },
+            { "return", TokenType.RETURN },
 
             { "true", TokenType.True },
             { "false", TokenType.False },
@@ -203,7 +203,7 @@ internal partial class Lexer(string input)
         }
 
         var comment = _input.Substring(start, _position - start);
-        AddToken(TokenType.CommentTrivia, comment);
+        AddToken(TokenType.COMMENT, comment);
     }
 
     private void ReadNumber()
@@ -219,13 +219,13 @@ internal partial class Lexer(string input)
         {
             if (!double.TryParse(number, out _))
             {
-                throw new Exception($"数字字面量格式不正确 在行：{_line}");
+                throw new Exception($"数字格式不正确:{number} 在行：{_line}");
             }
             AddToken(TokenType.Number, number);
         }
         else
         {
-            AddToken(TokenType.Integer, number);
+            AddToken(TokenType.INT, number);
         }
     }
 
@@ -248,7 +248,7 @@ internal partial class Lexer(string input)
             throw new Exception($"字符串没有结束引号 在行：{_line}");
         }
         Advance(); // 跳过结束的引号
-        AddToken(TokenType.String, sb.ToString());
+        AddToken(TokenType.STRING, sb.ToString());
     }
 
     private void ReadVariable()
@@ -272,13 +272,13 @@ internal partial class Lexer(string input)
         switch (firstChar)
         {
             case '_':
-                AddToken(TokenType.Const, identifier);
+                AddToken(TokenType.CONST, identifier);
                 break;
             case '$':
-                AddToken(TokenType.Variable, identifier);
+                AddToken(TokenType.VAR, identifier);
                 break;
             case '@':
-                AddToken(TokenType.ExtVariable, identifier);
+                AddToken(TokenType.EX_VAR, identifier);
                 break;
         }
     }
@@ -313,7 +313,7 @@ internal partial class Lexer(string input)
         }
         else
         {
-            AddToken(TokenType.Identifier, word);
+            AddToken(TokenType.IDENT, word);
         }
     }
 
@@ -328,55 +328,55 @@ internal partial class Lexer(string input)
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.EqualEqual, "==");
+                    AddToken(TokenType.EQL, "==");
                 }
                 else
                 {
-                    AddToken(TokenType.Assign, "=");
+                    AddToken(TokenType.ASSIGN, "=");
                 }
                 break;
             case '+':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.PlusAssign, "+=");
+                    AddToken(TokenType.ADD_ASSIGN, "+=");
                 }
                 else
                 {
-                    AddToken(TokenType.Plus, "+");
+                    AddToken(TokenType.ADD, "+");
                 }
                 break;
             case '-':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.MinusAssign, "-=");
+                    AddToken(TokenType.SUB_ASSIGN, "-=");
                 }
                 else
                 {
-                    AddToken(TokenType.Minus, "-");
+                    AddToken(TokenType.SUB, "-");
                 }
                 break;
             case '*':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.MultiplyAssign, "*=");
+                    AddToken(TokenType.MUL_ASSIGN, "*=");
                 }
                 else
                 {
-                    AddToken(TokenType.Multiply, "*");
+                    AddToken(TokenType.MUL, "*");
                 }
                 break;
             case '/':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.DivideAssign, "/=");
+                    AddToken(TokenType.DIV_ASSIGN, "/=");
                 }
                 else
                 {
-                    AddToken(TokenType.Divide, "/");
+                    AddToken(TokenType.DIV, "/");
                 }
                 break;
             case '\\':
@@ -394,29 +394,29 @@ internal partial class Lexer(string input)
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.ModulusAssign, "%=");
+                    AddToken(TokenType.MOD_ASSIGN, "%=");
                 }
                 else
                 {
-                    AddToken(TokenType.Modulus, "%");
+                    AddToken(TokenType.MOD, "%");
                 }
                 break;
             case '^':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.BitXorAssign, "^=");
+                    AddToken(TokenType.XOR_ASSIGN, "^=");
                 }
                 else
                 {
-                    AddToken(TokenType.BitXor, "^");
+                    AddToken(TokenType.XOR, "^");
                 }
                 break;
             case '&':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.BitAndAssign, "&=");
+                    AddToken(TokenType.BitAnd_ASSIGN, "&=");
                 }
                 else
                 {
@@ -427,7 +427,7 @@ internal partial class Lexer(string input)
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.BitOrAssign, "|=");
+                    AddToken(TokenType.BitOr_ASSIGN, "|=");
                 }
                 else
                 {
@@ -438,7 +438,7 @@ internal partial class Lexer(string input)
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.NotEqual, "!=");
+                    AddToken(TokenType.NEQ, "!=");
                 }
                 break;
             case '>':
@@ -448,21 +448,21 @@ internal partial class Lexer(string input)
                     if (_position < _input.Length && _input[_position] == '=')
                     {
                         Advance();
-                        AddToken(TokenType.LeftShiftAssign, ">>=");
+                        AddToken(TokenType.SHL_ASSIGN, ">>=");
                     }
                     else
                     {
-                        AddToken(TokenType.LeftShiftAssign, ">>");
+                        AddToken(TokenType.SHL_ASSIGN, ">>");
                     }
                 }
                 else if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.LessThanEqual, ">=");
+                    AddToken(TokenType.LEQ, ">=");
                 }
                 else
                 {
-                    AddToken(TokenType.LessThan, ">");
+                    AddToken(TokenType.LESS, ">");
                 }
                 break;
             case '<':
@@ -472,28 +472,28 @@ internal partial class Lexer(string input)
                     if (_position < _input.Length && _input[_position] == '=')
                     {
                         Advance();
-                        AddToken(TokenType.LeftShiftAssign, "<<=");
+                        AddToken(TokenType.SHL_ASSIGN, "<<=");
                     }
                     else
                     {
-                        AddToken(TokenType.LeftShiftAssign, "<<");
+                        AddToken(TokenType.SHL_ASSIGN, "<<");
                     }
                 }
                 else if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.LessThanEqual, "<=");
+                    AddToken(TokenType.LEQ, "<=");
                 }
                 else
                 {
-                    AddToken(TokenType.LessThan, "<");
+                    AddToken(TokenType.LESS, "<");
                 }
                 break;
             case '~':
                 AddToken(TokenType.BitNot, "~");
                 break;
             case ',':
-                AddToken(TokenType.Comma, ",");
+                AddToken(TokenType.COMMA, ",");
                 break;
             case '(':
                 AddToken(TokenType.LeftParen, "(");

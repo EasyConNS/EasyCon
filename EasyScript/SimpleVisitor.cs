@@ -2,6 +2,8 @@ namespace EasyScript;
 
 public class SimpleVisitor : AstVisitor
 {
+    private string indent = "";
+    
     public override ASTNode VisitLiteral(LiteralExpression ast)
     {
          Console.Write($"{ast.Value}");
@@ -17,30 +19,45 @@ public class SimpleVisitor : AstVisitor
     
    public override ASTNode VisitBinaryOp(BinaryExpression ast)
    {
-       Console.WriteLine($"Binary: {ast.Operator}");
+       Console.Write($"Binary: {ast.Operator}");
+       return ast;
+   }
+
+   public override ASTNode VisitCondition(ConditionExpression ast)
+   {
+       Console.Write($"Condition: {ast.Operator}");
        return ast;
    }
 
     public override ASTNode VisitAssignmentStat(AssignmentStatement ast)
     {
-        Console.WriteLine($"Assign: {ast.VariableName}");
+        Console.Write($"{ast.VariableName} {ast.AssignmentType} ");
+        ast.Value.Accept(this);
+        Console.WriteLine();
         return ast;
     }
 
     public override ASTNode VisitIfStat(IfStatement ast)
     {
-        Console.WriteLine("If:");
-        Console.WriteLine(ast.Condition.Accept(this));
+        indent += "  "; // Increase indentation for nested blocks
+
+        Console.Write("If(");
+        Console.Write(ast.Condition.Accept(this));
+        Console.WriteLine(")");
         foreach(var statement in ast.ThenBranch)
         {
             statement.Accept(this);
         }
         ast.ElseBranch?.Accept(this);
         Console.WriteLine("Endif");
+
+        indent = indent.Substring(2);
+
         return ast;
     }
     public override ASTNode VisitElseClause(ElseClause ast)
     {
+        if (ast.ElseBranch.Count == 0) return ast;
         Console.WriteLine("Else:");
         foreach(var statement in ast.ElseBranch)
         {
@@ -51,18 +68,33 @@ public class SimpleVisitor : AstVisitor
 
     public override ASTNode VisitForStat(ForStatement ast)
     {
+        indent += "  "; // Increase indentation for nested blocks
+
         Console.WriteLine("For:");
         foreach(var statement in ast.Body)
         {
             statement.Accept(this);
         }
         Console.WriteLine("Next");
+
+        indent = indent.Substring(2);
+        return ast;
+    }
+
+    public override ASTNode VisitContinue(ContinueStatement ast)
+    {
+        Console.WriteLine("Continue");
+        return ast;
+    }
+    public override ASTNode VisitBreak(BreakStatement ast)
+    {
+        Console.WriteLine("Break");
         return ast;
     }
 
     public override ASTNode VisitFunctionDefinition(FunctionDefinitionStatement ast)
     {
-        Console.WriteLine($"Function: {ast.FunctionName}");
+        Console.WriteLine($"Def Func: {ast.FunctionName}");
         return ast;
     }
 

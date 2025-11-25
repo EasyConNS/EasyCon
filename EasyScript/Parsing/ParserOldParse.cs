@@ -17,7 +17,7 @@ internal partial class Parser
         var lexer = new Lexer(text).Tokenize();
         if (lexer.Count != 3 + 2)
             return null;
-        if (lexer[0].Type == TokenType.Const && lexer[1].Type == TokenType.Assign && lexer[2].Type == TokenType.Integer)
+        if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN && lexer[2].Type == TokenType.INT)
         {
             var val = _formatter.GetInstant(lexer[2].Value);
             _formatter.SetConstantTable(lexer[0].Value, val.Val);
@@ -118,8 +118,8 @@ internal partial class Parser
 
         switch (tokens[0].Type)
         {
-            case TokenType.Break:
-                if (tokens[1].Type == TokenType.Const || tokens[1].Type == TokenType.Integer)
+            case TokenType.BREAK:
+                if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT)
                 {
                     return new Break(_formatter.GetInstant(tokens[1].Value, true));
                 }
@@ -128,8 +128,8 @@ internal partial class Parser
                     return new Break();
                 }
                 break;
-            case TokenType.Continue:
-                if (tokens[1].Type == TokenType.Const || tokens[1].Type == TokenType.Integer)
+            case TokenType.CONTINUE:
+                if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT)
                 {
                     return new Continue(_formatter.GetInstant(tokens[1].Value, true));
                 }
@@ -200,12 +200,12 @@ internal partial class Parser
         switch (first.Value.ToLower())
         {
             case "func":
-                return tokens[1].Type == TokenType.Identifier ? new Function(tokens[1].Value) : null;
+                return tokens[1].Type == TokenType.IDENT ? new Function(tokens[1].Value) : null;
             case "call":
-                return tokens[1].Type == TokenType.Identifier ? new CallStat(tokens[1].Value) : null;
+                return tokens[1].Type == TokenType.IDENT ? new CallStat(tokens[1].Value) : null;
             case "alert":
             case "print":
-                if (tokens[1].Type == TokenType.String)
+                if (tokens[1].Type == TokenType.STRING)
                 {
                     var contents = ParseContents(tokens[1].Value, out bool cancellinebreak);
                     if (first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
@@ -222,17 +222,17 @@ internal partial class Parser
                 }
                 break;
             case "time":
-                if (tokens[1].Type == TokenType.Variable)
+                if (tokens[1].Type == TokenType.VAR)
                     return new TimeStamp(FormatterUtil.GetRegEx(tokens[1].Value));
                 break;
             case "wait":
-                if (tokens[1].Type == TokenType.Const || tokens[1].Type == TokenType.Integer || tokens[1].Type == TokenType.Variable)
+                if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
                     return new Wait(_formatter.GetValueEx(tokens[1].Value));
                 }
                 break;
             case "amiibo":
-                if (tokens[1].Type == TokenType.Const || tokens[1].Type == TokenType.Integer || tokens[1].Type == TokenType.Variable)
+                if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
                     var amiiboidx = _formatter.GetValueEx(tokens[1].Value);
                     return new AmiiboChanger(amiiboidx);

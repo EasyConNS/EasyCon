@@ -21,6 +21,18 @@ internal class Parser(Lexer lexer)
     {
         var current = Current;
         _position++;
+        // advance next non-comment token
+        while(Current.Type == TokenType.COMMENT)
+        {
+            if(current.Line == Current.Line)
+            {
+                Console.WriteLine($"行{current.Line}存在注释：{Current.Value}");
+                Console.WriteLine($"leading token: {current.Type}");
+            }else{
+                Console.WriteLine($"行{Current.Line}存在quan注释：{Current.Value}");
+            }
+            _position++;
+        }
         return current;
     }
     private bool Check(TokenType type) => Current?.Type == type;
@@ -28,7 +40,6 @@ internal class Parser(Lexer lexer)
     {
         if (types.Any(Check))
         {
-            Advance();
             return true;
         }
         return false;
@@ -39,7 +50,7 @@ internal class Parser(Lexer lexer)
         if (Check(type))
             return Advance();
 
-        throw new Exception($"{message}:错误的 {Current.Value} L:{Peek()?.Line ?? 0}");
+        throw new Exception($"{message}:错误的 \"{Current.Value}\" 行{Peek()?.Line ?? 0}");
     }
 
     public List<Statement> Parse()
@@ -54,25 +65,14 @@ internal class Parser(Lexer lexer)
                 continue;
             }
 
-            var leadingTrivia = new List<string>();
-            while(Check(TokenType.CommentTrivia))
-            {
-                var trivia = Advance();
-                leadingTrivia.Add(trivia.Value);
-            }
-
             var statement = ParseStatement();
             if (statement != null)
             {
-                statement.LeadingTrivia.AddRange(leadingTrivia);
                 statements.Add(statement);
             }
 
             // 消耗语句后的换行符
-            if (Check(TokenType.NEWLINE))
-            {
-                Advance();
-            }
+            Consume(TokenType.NEWLINE, "未结束的语句");
         }
 
         return statements;
@@ -80,19 +80,27 @@ internal class Parser(Lexer lexer)
 
     private Statement ParseStatement()
     {
-        if (Check(TokenType.Const) || Check(TokenType.Variable))
+        if (Check(TokenType.CONST) || Check(TokenType.VAR))
         {
             return ParseAssignment();
         }
-        else if (Check(TokenType.If))
+        else if (Check(TokenType.IF))
         {
             return ParseIfStatement();
         }
-        else if (Check(TokenType.For))
+        else if (Check(TokenType.FOR))
         {
             return ParseForStatement();
         }
-        else if (Check(TokenType.Func))
+        else if (Check(TokenType.BREAK))
+        {
+            return ParseBreakStatement();
+        }
+        else if (Check(TokenType.CONTINUE))
+        {
+            return ParseContinueStatement();
+        }
+        else if (Check(TokenType.FUNC))
         {
             return ParseFunctionDecl();
         }
@@ -100,43 +108,33 @@ internal class Parser(Lexer lexer)
         {
             return ParseKeyStatement();
         }
-        else if (Check(TokenType.Integer))
+        else if (Check(TokenType.INT) || Check(TokenType.IDENT))
         {
             return ParseSpecIdentStatement();
         }
-        else if (Check(TokenType.Identifier))
+        else if (Check(TokenType.COMMENT))
         {
-            return ParseSpecIdentStatement();
+            Console.WriteLine($"行{Current.Line}存在quan注释：{Current.Value}");
+            Advance();
+            return null;
         }
 
-        if (Check(TokenType.CommentTrivia))
-        {
-            Advance();
-            return null;
-        }
-        if (Check(TokenType.CommentTrivia))
-        {
-            // TODO trailing trivia
-            Advance();
-            return null;
-        }
-        else
-            throw new Exception($"语法错误:{Current.Type}  行{Current.Line}");
+        throw new Exception($"语法错误:{Current.Type}  行{Current.Line}");
     }
 
     private AssignmentStatement ParseAssignment()
     {
         var variableToken = Advance();
         string variableName = variableToken.Value;
-        bool isConstant = variableToken.Type == TokenType.Const;
+        bool isConstant = variableToken.Type == TokenType.CONST;
 
         TokenType assignmentOp;
-        if (Match(TokenType.Assign, TokenType.PlusAssign, TokenType.MinusAssign,
-                 TokenType.MultiplyAssign, TokenType.DivideAssign, TokenType.SlashIAssign,
-                 TokenType.ModulusAssign, TokenType.BitXorAssign, TokenType.BitAndAssign, TokenType.BitOrAssign,
-                 TokenType.LeftShiftAssign, TokenType.RightShiftAssign))
+        if (Match(TokenType.ASSIGN, TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN,
+                 TokenType.MUL_ASSIGN, TokenType.DIV_ASSIGN, TokenType.SlashIAssign,
+                 TokenType.MOD_ASSIGN, TokenType.XOR_ASSIGN, TokenType.BitAnd_ASSIGN, TokenType.BitOr_ASSIGN,
+                 TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN))
         {
-            assignmentOp = _tokens[_position - 1].Type;
+            assignmentOp = Advance().Type;
         }
         else
         {
@@ -154,31 +152,21 @@ internal class Parser(Lexer lexer)
 
     private Statement ParseSpecIdentStatement()
     {
-        var func = Peek();
-        var cur = Peek(1);
+        var func = Current;
+        string name = func.Value;
 
-        string name;
-        var args = new List<Expression>();
-
-        if (Current.Type == TokenType.Integer)
+        if (func.Type == TokenType.INT)
         {
             name = "WAIT";
-            args.Add(ParsePrimary());
         }
-        else
+        else if(func.Value.ToLower() == "call")
         {
             Advance();
-
+            func = Current;
             name = func.Value;
-            if (func.Value.ToUpper() == "CALL")
-            {
-                name = cur.Value;
-            }
-            else
-            {
-                args.Add(ParsePrimary());
-            }
         }
+
+        var args = new List<Expression>();
 
         while (!Check(TokenType.NEWLINE))
         {
@@ -194,13 +182,13 @@ internal class Parser(Lexer lexer)
 
     private IfStatement ParseIfStatement()
     {
-        var ifToken = Consume(TokenType.If, "if语法不正确");
+        var ifToken = Consume(TokenType.IF, "if语法不正确");
         var condition = ParseCondition();
 
         Consume(TokenType.NEWLINE, "if条件语法不正确");
 
-        var thenBranch = new List<Statement>();
-        while (!Check(TokenType.Elif) && !Check(TokenType.Endif) && !Check(TokenType.EOF))
+        var thenBranch = new List<Statement>(); // ParseStatementsUntil(TokenType.ENDIF);
+        while (!Check(TokenType.ELIF) && !Check(TokenType.ELSE) && !Check(TokenType.ENDIF) && !Check(TokenType.EOF))
         {
             if (Check(TokenType.NEWLINE))
             {
@@ -211,20 +199,45 @@ internal class Parser(Lexer lexer)
             if (Check(TokenType.NEWLINE)) Advance();
         }
 
-        var elseBranch = new List<Statement>();
-        while (!Check(TokenType.Endif) && !Check(TokenType.EOF))
+        // else if
+        while (Current.Type == TokenType.ELIF)
         {
-            if (Check(TokenType.NEWLINE))
+            var elifToken = Consume(TokenType.ELIF, "elif语法不正确");
+            var elifCond = ParseCondition();
+            var elifBranch = new List<Statement>();
+            while (!Check(TokenType.ELSE) && !Check(TokenType.ENDIF) && !Check(TokenType.EOF))
             {
-                Advance();
-                continue;
+                if (Check(TokenType.NEWLINE))
+                {
+                    Advance();
+                    continue;
+                }
+                elifBranch.Add(ParseStatement());
+                if (Check(TokenType.NEWLINE)) Advance();
             }
-            elseBranch.Add(ParseStatement());
-            if (Check(TokenType.NEWLINE)) Advance();
+            Console.WriteLine($"{elifToken.Type} : {elifCond.Line}, {elifBranch.Count} ");
         }
-        ElseClause? elseClause = elseBranch.Count > 0 ? new ElseClause(elseBranch) : null;
 
-        Consume(TokenType.Endif, "需要endif结尾");
+        // else
+        ElseClause? elseClause = null;
+        if (Current.Type == TokenType.ELSE)
+        {
+            Advance();
+            var elseBranch = new List<Statement>();
+            while (!Check(TokenType.ENDIF) && !Check(TokenType.EOF))
+            {
+                if (Check(TokenType.NEWLINE))
+                {
+                    Advance();
+                    continue;
+                }
+                elseBranch.Add(ParseStatement());
+                if (Check(TokenType.NEWLINE)) Advance();
+            }
+            elseClause = new(elseBranch);
+        }
+
+        Consume(TokenType.ENDIF, "需要endif结尾");
 
         return new IfStatement(condition, thenBranch, null, elseClause)
         {
@@ -235,14 +248,14 @@ internal class Parser(Lexer lexer)
 
     private ForStatement ParseForStatement()
     {
-        var forToken = Consume(TokenType.For, "for语法不正确");
+        var forToken = Consume(TokenType.FOR, "for语法不正确");
 
         if (Check(TokenType.NEWLINE))
         {
             // 形式1: 无限循环
             Consume(TokenType.NEWLINE, "需要换行");
-            var body = ParseStatementsUntil(TokenType.Next);
-            Consume(TokenType.Next, "for语句需要next结尾");
+            var body = ParseStatementsUntil(TokenType.NEXT);
+            Consume(TokenType.NEXT, "for语句需要next结尾");
 
             return new ForStatement(null, null, null, null, true, body)
             {
@@ -251,24 +264,24 @@ internal class Parser(Lexer lexer)
             };
         }
 
-        if (Check(TokenType.Variable) && Peek(1)?.Type == TokenType.Assign)
+        if (Check(TokenType.VAR) && Peek(1)?.Type == TokenType.ASSIGN)
         {
             // 形式2: 范围循环 for $i = 1 to 10 step 2
-            var loopVar = Consume(TokenType.Variable, "需要初始变量").Value;
-            Consume(TokenType.Assign, "for语法不正确, 需要： '='");
+            var loopVar = Consume(TokenType.VAR, "需要初始变量").Value;
+            Consume(TokenType.ASSIGN, "for语法不正确, 需要： '='");
             var start = ParseExpression();
-            Consume(TokenType.To, "for语法不正确, 需要： 'TO'");
+            Consume(TokenType.TO, "for语法不正确, 需要： 'TO'");
             var end = ParseExpression();
 
             Expression step = null;
-            if (Match(TokenType.Step))
+            if (Match(TokenType.STEP))
             {
                 step = ParsePrimary();
             }
 
             Consume(TokenType.NEWLINE, "需要换行");
-            var body = ParseStatementsUntil(TokenType.Next);
-            Consume(TokenType.Next, "Expected 'next' after for loop body");
+            var body = ParseStatementsUntil(TokenType.NEXT);
+            Consume(TokenType.NEXT, "for语法需要next结尾");
 
             return new ForStatement(loopVar, (VariableExpression)start, (VariableExpression)end, null, false, body)
             {
@@ -281,8 +294,8 @@ internal class Parser(Lexer lexer)
             // 形式3: 计数循环 for 5
             var loopCount = ParseExpression();
             Consume(TokenType.NEWLINE, "需要换行");
-            var body = ParseStatementsUntil(TokenType.Next);
-            Consume(TokenType.Next, "Expected 'next' after for loop body");
+            var body = ParseStatementsUntil(TokenType.NEXT);
+            Consume(TokenType.NEXT, "for语法需要next结尾");
 
             return new ForStatement(null, null, null, loopCount, false, body)
             {
@@ -312,7 +325,7 @@ internal class Parser(Lexer lexer)
 
     private BreakStatement ParseBreakStatement()
     {
-        var breakToken = Consume(TokenType.Break, "需要break语句");
+        var breakToken = Consume(TokenType.BREAK, "需要break语句");
         return new BreakStatement()
         {
             Line = breakToken.Line,
@@ -322,7 +335,7 @@ internal class Parser(Lexer lexer)
 
     private ContinueStatement ParseContinueStatement()
     {
-        var breakToken = Consume(TokenType.Continue, "需要continue语句");
+        var breakToken = Consume(TokenType.CONTINUE, "需要continue语句");
         return new ContinueStatement()
         {
             Line = breakToken.Line,
@@ -332,8 +345,8 @@ internal class Parser(Lexer lexer)
 
     private FunctionDefinitionStatement ParseFunctionDecl()
     {
-        var functionToken = Consume(TokenType.Func, "Expected 'func'");
-        var functionName = Consume(TokenType.Identifier, "Expected function name").Value;
+        var functionToken = Consume(TokenType.FUNC, "Expected 'func'");
+        var functionName = Consume(TokenType.IDENT, "Expected function name").Value;
 
         // Consume(TokenType.LeftParen, "Expected '(' after function name");
 
@@ -350,7 +363,7 @@ internal class Parser(Lexer lexer)
         Consume(TokenType.NEWLINE, "Expected newline after function signature");
 
         var body = new List<Statement>();
-        while (!Check(TokenType.EndFunc) && !Check(TokenType.EOF))
+        while (!Check(TokenType.ENDFUNC) && !Check(TokenType.EOF))
         {
             if (Check(TokenType.NEWLINE))
             {
@@ -361,7 +374,7 @@ internal class Parser(Lexer lexer)
             if (Check(TokenType.NEWLINE)) Advance();
         }
 
-        Consume(TokenType.EndFunc, "Expected 'endfunc'");
+        Consume(TokenType.ENDFUNC, "Expected 'endfunc'");
 
         return new FunctionDefinitionStatement(functionName, null, body)
         {
@@ -372,7 +385,7 @@ internal class Parser(Lexer lexer)
 
     private ReturnStatement ParseReturnStatement()
     {
-        var returnToken = Consume(TokenType.Return, "Expected 'return'");
+        var returnToken = Consume(TokenType.RETURN, "Expected 'return'");
         var value = ParseExpression();
 
         return new ReturnStatement(value)
@@ -406,7 +419,8 @@ internal class Parser(Lexer lexer)
     // 条件表达式
     private Expression ParseCondition()
     {
-        return ParseLogicalOr();
+        return ParseComparison();
+        //return ParseLogicalOr();
     }
 
     private Expression ParseLogicalOr()
@@ -415,9 +429,13 @@ internal class Parser(Lexer lexer)
 
         while (Match(TokenType.LogicOr))
         {
-            var op = _tokens[_position - 1].Type;
+            var op = Advance();
             var right = ParseLogicalAnd();
-            expression = new BinaryExpression(expression, op, right);
+            expression = new ConditionExpression(expression, op.Type, right)
+            {
+                Line = op.Line,
+                Column = op.Column
+            };
         }
 
         return expression;
@@ -429,9 +447,13 @@ internal class Parser(Lexer lexer)
 
         while (Match(TokenType.LogicAnd))
         {
-            var op = _tokens[_position - 1].Type;
+            var op = Advance();
             var right = ParseComparison();
-            expression = new BinaryExpression(expression, op, right);
+            expression = new ConditionExpression(expression, op.Type, right)
+            {
+                Line = op.Line,
+                Column = op.Column
+            };
         }
 
         return expression;
@@ -441,11 +463,15 @@ internal class Parser(Lexer lexer)
     {
         var expression = ParseExpression();
 
-        while (Match(TokenType.EqualEqual, TokenType.NotEqual, TokenType.LessThan, TokenType.LessThanEqual, TokenType.GreaterThan, TokenType.GreaterThanEqual))
+        while (Match(TokenType.ASSIGN, TokenType.EQL, TokenType.NEQ, TokenType.LESS, TokenType.LEQ, TokenType.GTR, TokenType.GEQ))
         {
-            var op = _tokens[_position - 1].Type;
+            var op = Advance();
             var right = ParseExpression();
-            expression = new BinaryExpression(expression, op, right);
+            expression = new ConditionExpression(expression, op.Type, right)
+            {
+                Line = op.Line,
+                Column = op.Column
+            };
         }
 
         return expression;
@@ -455,11 +481,15 @@ internal class Parser(Lexer lexer)
     {
         var expression = ParseMultiplication();
 
-        while (Match(TokenType.Plus, TokenType.Minus))
+        while (Match(TokenType.ADD, TokenType.SUB))
         {
-            var op = _tokens[_position - 1].Type;
+            var op = Advance();
             var right = ParseMultiplication();
-            expression = new BinaryExpression(expression, op, right);
+            expression = new ConditionExpression(expression, op.Type, right)
+            {
+                Line = op.Line,
+                Column = op.Column
+            };
         }
 
         return expression;
@@ -469,11 +499,15 @@ internal class Parser(Lexer lexer)
     {
         var expression = ParseUnary();
 
-        while (Match(TokenType.Multiply, TokenType.Divide, TokenType.SlashI, TokenType.Modulus, TokenType.BitAnd, TokenType.BitXor))
+        while (Match(TokenType.MUL, TokenType.DIV, TokenType.SlashI, TokenType.MOD, TokenType.BitAnd, TokenType.XOR))
         {
-            var op = _tokens[_position - 1].Type;
+            var op = Advance();
             var right = ParseUnary();
-            expression = new BinaryExpression(expression, op, right);
+            expression = new ConditionExpression(expression, op.Type, right)
+            {
+                Line = op.Line,
+                Column = op.Column
+            };
         }
 
         return expression;
@@ -481,11 +515,15 @@ internal class Parser(Lexer lexer)
 
     private Expression ParseUnary()
     {
-        if (Match(TokenType.BitNot, TokenType.Minus))
+        if (Match(TokenType.BitNot, TokenType.SUB))
         {
-            var op = _tokens[_position - 1].Type;
+            var op = Advance();
             var right = ParseUnary();
-            return new BinaryExpression(new LiteralExpression(0), op, right);
+            return new BinaryExpression(new LiteralExpression(0), op.Type, right)
+            {
+                Line = op.Line,
+                Column = op.Column
+            };
         }
 
         return ParsePrimary();
@@ -493,15 +531,15 @@ internal class Parser(Lexer lexer)
 
     private Expression ParsePrimary()
     {
-        if (Match(TokenType.Integer))
+        if (Match(TokenType.INT))
         {
-            var token = _tokens[_position - 1];
+            var token = Advance();
             try
             {
-                var value = int.Parse(token.Value);
-                if (value < short.MinValue || value > short.MaxValue)
+                var value = uint.Parse(token.Value);
+                if (value < ushort.MinValue || value > ushort.MaxValue)
                 {
-                    throw new Exception($"整数超出范围({short.MinValue} 到 {short.MaxValue}):L{token.Line}");
+                    throw new Exception($"整数超出范围({ushort.MinValue} 到 {ushort.MaxValue}) 行{token.Line}");
                 }
                 return new LiteralExpression(value)
                 {
@@ -509,25 +547,26 @@ internal class Parser(Lexer lexer)
                     Column = token.Column
                 };
             }
-            catch (FormatException)
+            catch (Exception ex)
             {
-                throw new Exception($"错误的数组格式: {token.Value}:L{token.Line}");
+                Console.WriteLine(ex.Message);
+                throw new Exception($"错误的数字格式: {token.Value} 行{token.Line}");
             }
         }
-        else if (Match(TokenType.Const, TokenType.Variable, TokenType.ExtVariable))
+        else if (Match(TokenType.CONST, TokenType.VAR, TokenType.EX_VAR))
         {
-            var token = _tokens[_position - 1];
-            bool isConstant = token.Type == TokenType.Const;
-            bool isSpecial = token.Type == TokenType.ExtVariable;
+            var token = Advance();
+            bool isConstant = token.Type == TokenType.CONST;
+            bool isSpecial = token.Type == TokenType.EX_VAR;
             return new VariableExpression(token.Value, isConstant, isSpecial)
             {
                 Line = token.Line,
                 Column = token.Column
             };
         }
-        else if (Match(TokenType.String))
+        else if (Match(TokenType.STRING))
         {
-            var token = _tokens[_position - 1];
+            var token = Advance();
             return new LiteralExpression(token.Value)
             {
                 Line = token.Line,
@@ -535,7 +574,7 @@ internal class Parser(Lexer lexer)
             };
         }
 
-        throw new Exception($"未识别的语法{Peek().Type}:L{Peek().Line}");
+        throw new Exception($"未识别的语法：\"{Peek().Value}, {Peek().Type}\" 行{Peek().Line}");
     }
 }
 
