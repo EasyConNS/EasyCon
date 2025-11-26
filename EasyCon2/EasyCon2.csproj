@@ -21,7 +21,7 @@
     <PackageReference Include="OpenCvSharp4.Extensions" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="WebSocketSharp-netstandard" />
-    <!--<PackageReference Include="NLua" Version="1.6.0" />-->
+    <!--<PackageReference Include="NLua" />-->
   </ItemGroup>
 
   <ItemGroup>
