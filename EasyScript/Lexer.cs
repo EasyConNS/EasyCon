@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace EasyScript;
 
-internal partial class Lexer(string input)
+internal sealed partial class Lexer(string input)
 {
     private readonly string _input = Compat(input);
     private int _position = 0;

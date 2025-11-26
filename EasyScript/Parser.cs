@@ -2,7 +2,7 @@
 
 namespace EasyScript;
 
-internal class Parser(Lexer lexer)
+internal sealed class Parser(Lexer lexer)
 {
     private readonly List<Token> _tokens = lexer.Tokenize();
     private int _position = 0;
@@ -134,13 +134,13 @@ internal class Parser(Lexer lexer)
         string variableName = variableToken.Value;
         bool isConstant = variableToken.Type == TokenType.CONST;
 
-        TokenType assignmentOp;
+        Token assignmentOp;
         if (Match(TokenType.ASSIGN, TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN,
                  TokenType.MUL_ASSIGN, TokenType.DIV_ASSIGN, TokenType.SlashIAssign,
                  TokenType.MOD_ASSIGN, TokenType.XOR_ASSIGN, TokenType.BitAnd_ASSIGN, TokenType.BitOr_ASSIGN,
                  TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN))
         {
-            assignmentOp = Advance().Type;
+            assignmentOp = Advance();
         }
         else
         {
@@ -149,7 +149,7 @@ internal class Parser(Lexer lexer)
 
         var value = ParseExpression();
 
-        return new AssignmentStatement(variableName, isConstant, assignmentOp, value)
+        return new AssignmentStatement(variableToken, assignmentOp, value)
         {
             Line = variableToken.Line,
             Column = variableToken.Column
@@ -429,44 +429,63 @@ internal class Parser(Lexer lexer)
             {
                 case TokenType.INT:
                 case TokenType.ButtonKeyword:
-                    Console.WriteLine("方向|角度");
-                    Advance();
+                    var state = Advance();
+
                     if(Check(TokenType.COMMA))
                     {
                         Advance();
-                        Consume(TokenType.INT, "摇杆语法异常报错");
-                        Console.WriteLine($"duration {Current.Value}");
-                    }else{
-                        Console.WriteLine("duration DEFAULT 50");
+                        var duration = Consume(TokenType.INT, "摇杆语法不正确");
+                        return new StickStatement(keyToken.Value, state.Value, duration.Value)
+                        {
+                            Line = keyToken.Line,
+                            Column = keyToken.Column
+                        };
                     }
-                    break;
+                    else{
+                        return new StickStatement(keyToken.Value, state.Value)
+                        {
+                            Line = keyToken.Line,
+                            Column = keyToken.Column
+                        };
+                    }
                 case TokenType.ResetKeyword:
-                    Console.WriteLine($"{keyToken.Value} RESET");
-                    Consume(TokenType.ResetKeyword, "重置摇杆语法异常报错");
-                    break;
+                    var reset = Consume(TokenType.ResetKeyword, "摇杆语法不正确");
+                    return new StickStatement(keyToken.Value, reset.Value)
+                    {
+                        Line = keyToken.Line,
+                        Column = keyToken.Column
+                    };
             }
         }else{
             if(Check(TokenType.NEWLINE))
             {
-                Console.WriteLine("button duration DEFAULT 50");
+                return new ButtonStatement(keyToken.Value)
+                {
+                    Line = keyToken.Line,
+                    Column = keyToken.Column
+                };
             }
             else if(Check(TokenType.INT))
             {
-                Console.WriteLine("button duration");
+                var state = Advance();
+                return new ButtonStatement(keyToken.Value, state.Value)
+                {
+                    Line = keyToken.Line,
+                    Column = keyToken.Column
+                };
             }
             else if(Check(TokenType.ButtonKeyword))
             {
-                Console.WriteLine("button up and down");
+                var state = Advance();
+                var isDown = state.Value.ToUpper() == "DOWN";
+                return new ButtonStatement(keyToken.Value, isDown)
+                {
+                    Line = keyToken.Line,
+                    Column = keyToken.Column
+                };
             }
-            else
-                throw new Exception($"不 {keyToken.Line}");
         }
-
-        return new KeyStatement(keyToken.Value)
-        {
-            Line = keyToken.Line,
-            Column = keyToken.Column
-        };
+        throw new Exception($"按键语法不正确 {keyToken.Line}");
     }
 
     // 计算表达式

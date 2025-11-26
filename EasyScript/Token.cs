@@ -96,7 +96,7 @@ public enum TokenType
     EOF
 }
 
-internal class Token(TokenType type, string value, int line, int column)
+public sealed class Token(TokenType type, string value, int line, int column)
 {
     public TokenType Type { get; } = type;
     public string Value { get; } = value;

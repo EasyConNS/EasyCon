@@ -1,6 +1,6 @@
 namespace EasyScript;
 
-public class SimpleVisitor : AstVisitor
+public sealed class SimpleVisitor : AstVisitor
 {
     private string indent = "";
 
@@ -28,9 +28,12 @@ public class SimpleVisitor : AstVisitor
     
    public override ASTNode VisitBinaryOp(BinaryExpression ast)
    {
+       Console.Write("(");
        ast.Left.Accept(this);
        Console.Write($" {ast.Operator} ");
        ast.Right.Accept(this);
+       Console.Write(")");
+
        return ast;
    }
 

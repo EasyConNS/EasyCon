@@ -91,7 +91,21 @@ namespace EasyCon2.Forms
         {
             textBoxScript.ShowLineNumbers = true;
             var syntaxHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Encoding.UTF8.GetBytes(Resources.NX))), HighlightingManager.Instance);
-            textBoxScript.SyntaxHighlighting = syntaxHighlighting;
+#if DEBUG && false
+            // convert from old .xshd format to new format
+            XshdSyntaxDefinition xshd;
+            using (XmlTextReader reader = new XmlTextReader("input.xshd"))
+            {
+                xshd = HighlightingLoader.LoadXshd(reader);
+            }
+            using (XmlTextWriter writer = new XmlTextWriter("output.xshd", Encoding.UTF8))
+            {
+                writer.Formatting = Formatting.Indented;
+                new SaveXshdVisitor(writer).WriteDefinition(xshd);
+            }
+#endif
+
+                textBoxScript.SyntaxHighlighting = syntaxHighlighting;
             textBoxScript.DragEnter += new System.Windows.DragEventHandler(this.textBoxScript_DragEnter);
             textBoxScript.Drop += new System.Windows.DragEventHandler(this.textBoxScript_DragDrop);
             textBoxScript.TextChanged += new EventHandler(this.textBoxScript_TextChanged);

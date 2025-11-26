@@ -122,16 +122,17 @@ public abstract class Statement : ASTNode
 // 赋值语句
 public class AssignmentStatement : Statement
 {
-    public string VariableName { get; }
-    public bool IsConstant { get; }
-    public TokenType AssignmentType { get; }
+    public string VariableName => Variable.Value;
+    public TokenType AssignmentType => Assignment.Type;
     public Expression Value { get; }
 
-    public AssignmentStatement(string variableName, bool isConstant, TokenType assignmentType, Expression value)
+    private Token Variable { get; }
+    private Token Assignment { get; }
+
+    public AssignmentStatement(Token variable, Token assignment, Expression value)
     {
-        VariableName = variableName;
-        IsConstant = isConstant;
-        AssignmentType = assignmentType;
+        Variable = variable;
+        Assignment = assignment;
         Value = value;
     }
     public override T Accept<T>(IAstVisitor<T> visitor)
@@ -312,17 +313,56 @@ public class CallExpression : Statement
 }
 
 
-public class KeyStatement : Statement
+public abstract class KeyStatement : Statement
 {
     public string KeyName { get; }
+    public uint Duration { get; }
 
-    public KeyStatement(string keyName, uint duration = 50)
+    public KeyStatement(string keyName, uint duration)
     {
         KeyName = keyName;
+        Duration = duration;
     }
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitKey(this);
+    }
+}
+
+public class ButtonStatement : KeyStatement
+{
+    public bool IsDown { get; }
+    public bool IsUp => !IsDown;
+    public uint Duration { get; }
+
+    public ButtonStatement(string keyName, string duration) : base(keyName, 50)
+    {
+
+    }
+
+    public ButtonStatement(string keyName, uint duration = 50) : base(keyName, duration)
+    {
+
+    }
+
+    public ButtonStatement(string keyName, bool down) : base(keyName, 0)
+    {
+        IsDown = down;
+    }
+}
+
+public class StickStatement : KeyStatement
+{
+    public string State { get; }
+
+    public StickStatement(string keyName, string state, string duration) : base(keyName, 50)
+    {
+        State = state;
+    }
+
+    public StickStatement(string keyName, string state, uint duration = 50) : base(keyName, duration)
+    {
+        State = state;
     }
 }
