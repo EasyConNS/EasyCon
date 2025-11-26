@@ -128,13 +128,9 @@ namespace EasyCon2.Forms
             LoadImgLabels();
             UpdateImgListBox();
 
+            VideoMonitor.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             VideoMonitor.PaintEventHandler += new PaintEventHandler(MonitorPaint);
             Snapshot.PaintEventHandler += new PaintEventHandler(SnapshotPaint);
-
-            // resize
-            Xvalue = this.Width;
-            Yvalue = this.Height;
-            setTag(this);
         }
 
         public void LoadImgLabels()
@@ -270,6 +266,12 @@ namespace EasyCon2.Forms
                 // change to editor
                 this.FormBorderStyle = FormBorderStyle.Sizable;
                 this.VideoMonitor.Dock = DockStyle.None;
+
+                int formWidth = this.ClientSize.Width; // 获取窗体的宽度
+                int controlWidth = VideoMonitor.Width; // 获取控件的宽度
+                int xPosition = formWidth - controlWidth - 4; // 计算控件左边界的位置，使其右对齐
+                VideoMonitor.Location = new Point(xPosition, VideoMonitor.Location.Y);
+                this.VideoMonitor.Anchor = AnchorStyles.Top | AnchorStyles.Right;
                 monitorMode = MonitorMode.Editor;
                 this.Refresh();
             }
@@ -310,7 +312,6 @@ namespace EasyCon2.Forms
                 }
                 mouseOffset = new Point(offsetX, offsetY);
                 isMouseDown = true;
-                Debug.WriteLine("mouse down" + offsetX + " " + offsetY);
             }
         }
 
@@ -319,17 +320,16 @@ namespace EasyCon2.Forms
             if (e.Button == MouseButtons.Left)
             {
                 isMouseDown = false;
-                Debug.WriteLine("mouse up");
             }
         }
 
         private void VideoSourcePlayerMonitor_MouseMove(object sender, MouseEventArgs e)
         {
-            if (isMouseDown)
+            if (isMouseDown && monitorMode == MonitorMode.NoBorder)
             {
                 Point mouse = Control.MousePosition;
                 mouse.Offset(mouseOffset.X, mouseOffset.Y);
-                Debug.WriteLine("mouse move" + mouseOffset.X + " " + mouseOffset.Y);
+                Debug.WriteLine($"point({mouseOffset.X} , { mouseOffset.Y})");
                 this.Location = mouse;
             }
         }
@@ -358,7 +358,7 @@ namespace EasyCon2.Forms
                 newSize.Height = (int)(newSize.Height * monitorScale);
             }
 
-            Debug.WriteLine("new size:" + newSize.ToString());
+            Debug.WriteLine($"new size:{newSize}");
             monitorHorOrVerZoom = 0;
             this.Size = newSize;
         }
@@ -369,7 +369,6 @@ namespace EasyCon2.Forms
             {
                 SnapshotLMDP.X = e.X;
                 SnapshotLMDP.Y = e.Y;
-                //Debug.WriteLine("donw:"+e.X.ToString()+" "+e.Y.ToString());
                 SnapshotLMMing = true;
                 Snapshot.Focus();
             }
@@ -378,7 +377,6 @@ namespace EasyCon2.Forms
                 SnapshotRangeMDP.X = e.X;
                 SnapshotRangeMDP.Y = e.Y;
                 SnapshotRangeMove = true;
-                //Debug.WriteLine("donw:"+e.X.ToString()+" "+e.Y.ToString());
                 Snapshot.Focus();
             }
         }
@@ -418,7 +416,6 @@ namespace EasyCon2.Forms
         private void Snapshot_MouseWheel(object sender, MouseEventArgs e)
         {
             Snapshot.Focus();    //鼠标在picturebox上时才有焦点，此时可以缩放
-            //var newSize = new Size(this.Size.Width, this.Size.Height);
             snapshotScale.X += (e.Delta > 0) ? -0.1f : 0.1f;
             snapshotScale.Y += (e.Delta > 0) ? -0.1f : 0.1f;
 
@@ -467,11 +464,11 @@ namespace EasyCon2.Forms
                 }
                 max_matchDegree = Math.Max(matchDegree, max_matchDegree);
 
-                label23.Text = $"匹配度:{matchDegree:f1}%\n" + "耗时:" + sw.ElapsedMilliseconds + "毫秒\n" + $"最大匹配度:{max_matchDegree:f1}%";
+                matchRltlabel.Text = $"匹配度:{matchDegree:f1}%\n" + "耗时:" + sw.ElapsedMilliseconds + "毫秒\n" + $"最大匹配度:{max_matchDegree:f1}%";
             }
             else
             {
-                label23.Text = "无法找到目标";
+                matchRltlabel.Text = "无法找到目标";
             }
         }
 
@@ -771,63 +768,12 @@ namespace EasyCon2.Forms
             monitorTimer.Enabled = checkBox.Checked;
         }
 
-        #region resize funcs
-        public float Xvalue;
-        public float Yvalue;
-
-        private void setTag(Control cons)
-        {
-            foreach (Control con in cons.Controls)
-            {
-                con.Tag = con.Width + ":" + con.Height + ":" + con.Left + ":" + con.Top + ":" + con.Font.Size;
-                if (con.Controls.Count > 0)
-                    setTag(con);
-            }
-        }
 
         private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
         {
             deviceId = -1;
             cvcap.Release();
         }
-
-        private void CaptureVideoForm_Resize(object sender, EventArgs e)
-        {
-            float newx = (this.Width) / Xvalue;
-            float newy = this.Height / Yvalue;
-            setControls(newx, newy, this);
-        }
-
-        private void setControls(float newx, float newy, Control cons)
-        {
-            foreach (Control con in cons.Controls)
-            {
-                string[] mytag = con.Tag.ToString().Split(new char[] { ':' });
-                float a = Convert.ToSingle(mytag[0]) * newx;
-                con.Width = (int)a;
-                a = Convert.ToSingle(mytag[1]) * newy;
-                con.Height = (int)(a);
-                a = Convert.ToSingle(mytag[2]) * newx;
-                con.Left = (int)(a);
-                a = Convert.ToSingle(mytag[3]) * newy;
-                con.Top = (int)(a);
-                Single currentSize = Convert.ToSingle(mytag[4]) * newy;
-
-                //改变字体大小
-                con.Font = new Font(con.Font.Name, currentSize, con.Font.Style, con.Font.Unit);
-
-                if (con.Controls.Count > 0)
-                {
-                    try
-                    {
-                        setControls(newx, newy, con);
-                    }
-                    catch
-                    { }
-                }
-            }
-        }
-        #endregion
 
         private void monitorTimer_Tick(object sender, EventArgs e)
         {

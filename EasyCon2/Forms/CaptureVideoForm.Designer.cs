@@ -31,9 +31,9 @@
             components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CaptureVideoForm));
             reasultListBox = new ListBox();
-            label1 = new Label();
+            imgreadmelbl = new Label();
             captureBtn = new Button();
-            label4 = new Label();
+            readmelbl = new Label();
             rangeBtn = new Button();
             searchTestBtn = new Button();
             targetBtn = new Button();
@@ -49,21 +49,21 @@
             targetXNUD = new NumericUpDown();
             targetImg = new PictureBox();
             imgLabelNametxt = new TextBox();
-            label8 = new Label();
-            label23 = new Label();
+            imgnamelabel = new Label();
+            matchRltlabel = new Label();
             lowestMatch = new TextBox();
-            label6 = new Label();
-            label22 = new Label();
-            label21 = new Label();
-            label16 = new Label();
-            label17 = new Label();
-            label19 = new Label();
-            label20 = new Label();
-            label14 = new Label();
-            label15 = new Label();
-            label13 = new Label();
-            label18 = new Label();
-            label12 = new Label();
+            minmatchlabel = new Label();
+            searchlabel = new Label();
+            targetlabel = new Label();
+            xlbl = new Label();
+            ylbl = new Label();
+            wlbl = new Label();
+            heightlbl = new Label();
+            sxlbl = new Label();
+            sylbl = new Label();
+            swlbl = new Label();
+            sheightlbl = new Label();
+            srchmethodlabel = new Label();
             searchMethodComBox = new ComboBox();
             imgLableList = new ListBox();
             SaveTagBtn = new Button();
@@ -100,19 +100,21 @@
             reasultListBox.Size = new Size(119, 44);
             reasultListBox.TabIndex = 1;
             // 
-            // label1
+            // imgreadmelbl
             // 
-            label1.AutoSize = true;
-            label1.Location = new Point(756, 391);
-            label1.Margin = new Padding(4, 0, 4, 0);
-            label1.Name = "label1";
-            label1.Size = new Size(135, 20);
-            label1.TabIndex = 2;
-            label1.Text = "搜图标签-双击加载";
+            imgreadmelbl.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            imgreadmelbl.AutoSize = true;
+            imgreadmelbl.Location = new Point(760, 391);
+            imgreadmelbl.Margin = new Padding(4, 0, 4, 0);
+            imgreadmelbl.Name = "imgreadmelbl";
+            imgreadmelbl.Size = new Size(135, 20);
+            imgreadmelbl.TabIndex = 2;
+            imgreadmelbl.Text = "搜图标签-双击加载";
             // 
             // captureBtn
             // 
-            captureBtn.Location = new Point(35, 487);
+            captureBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            captureBtn.Location = new Point(18, 420);
             captureBtn.Margin = new Padding(4);
             captureBtn.Name = "captureBtn";
             captureBtn.Size = new Size(77, 33);
@@ -121,51 +123,56 @@
             captureBtn.UseVisualStyleBackColor = true;
             captureBtn.Click += captureBtn_Click;
             // 
-            // label4
+            // readmelbl
             // 
-            label4.AutoSize = true;
-            label4.Location = new Point(756, 364);
-            label4.Margin = new Padding(4, 0, 4, 0);
-            label4.Name = "label4";
-            label4.Size = new Size(527, 20);
-            label4.TabIndex = 7;
-            label4.Text = "双击切换放大/编辑模式，滚轮缩放，ctrl+滚轮水平缩放，shift+滚轮垂直缩放";
+            readmelbl.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            readmelbl.AutoSize = true;
+            readmelbl.Location = new Point(760, 364);
+            readmelbl.Margin = new Padding(4, 0, 4, 0);
+            readmelbl.Name = "readmelbl";
+            readmelbl.Size = new Size(527, 20);
+            readmelbl.TabIndex = 7;
+            readmelbl.Text = "双击切换放大/编辑模式，滚轮缩放，ctrl+滚轮水平缩放，shift+滚轮垂直缩放";
             // 
             // rangeBtn
             // 
-            rangeBtn.Location = new Point(119, 487);
+            rangeBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            rangeBtn.Location = new Point(102, 420);
             rangeBtn.Margin = new Padding(4);
             rangeBtn.Name = "rangeBtn";
             rangeBtn.Size = new Size(100, 33);
-            rangeBtn.TabIndex = 8;
+            rangeBtn.TabIndex = 6;
             rangeBtn.Text = "开始圈选(红)";
             rangeBtn.UseVisualStyleBackColor = true;
             rangeBtn.Click += rangeBtn_Click;
             // 
             // searchTestBtn
             // 
-            searchTestBtn.Location = new Point(334, 487);
+            searchTestBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            searchTestBtn.Location = new Point(317, 420);
             searchTestBtn.Margin = new Padding(4);
             searchTestBtn.Name = "searchTestBtn";
             searchTestBtn.Size = new Size(86, 33);
-            searchTestBtn.TabIndex = 9;
+            searchTestBtn.TabIndex = 8;
             searchTestBtn.Text = "搜索测试";
             searchTestBtn.UseVisualStyleBackColor = true;
             searchTestBtn.Click += searchTestBtn_Click;
             // 
             // targetBtn
             // 
-            targetBtn.Location = new Point(227, 487);
+            targetBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            targetBtn.Location = new Point(210, 420);
             targetBtn.Margin = new Padding(4);
             targetBtn.Name = "targetBtn";
             targetBtn.Size = new Size(100, 33);
-            targetBtn.TabIndex = 10;
+            targetBtn.TabIndex = 7;
             targetBtn.Text = "开始圈选(绿)";
             targetBtn.UseVisualStyleBackColor = true;
             targetBtn.Click += targetBtn_Click;
             // 
             // groupBox1
             // 
+            groupBox1.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             groupBox1.Controls.Add(searchHNUD);
             groupBox1.Controls.Add(searchWNUD);
             groupBox1.Controls.Add(searchYNUD);
@@ -177,24 +184,24 @@
             groupBox1.Controls.Add(targetXNUD);
             groupBox1.Controls.Add(targetImg);
             groupBox1.Controls.Add(imgLabelNametxt);
-            groupBox1.Controls.Add(label8);
-            groupBox1.Controls.Add(label23);
+            groupBox1.Controls.Add(imgnamelabel);
+            groupBox1.Controls.Add(matchRltlabel);
             groupBox1.Controls.Add(lowestMatch);
             groupBox1.Controls.Add(reasultListBox);
-            groupBox1.Controls.Add(label6);
-            groupBox1.Controls.Add(label22);
-            groupBox1.Controls.Add(label21);
-            groupBox1.Controls.Add(label16);
-            groupBox1.Controls.Add(label17);
-            groupBox1.Controls.Add(label19);
-            groupBox1.Controls.Add(label20);
-            groupBox1.Controls.Add(label14);
-            groupBox1.Controls.Add(label15);
-            groupBox1.Controls.Add(label13);
-            groupBox1.Controls.Add(label18);
-            groupBox1.Controls.Add(label12);
+            groupBox1.Controls.Add(minmatchlabel);
+            groupBox1.Controls.Add(searchlabel);
+            groupBox1.Controls.Add(targetlabel);
+            groupBox1.Controls.Add(xlbl);
+            groupBox1.Controls.Add(ylbl);
+            groupBox1.Controls.Add(wlbl);
+            groupBox1.Controls.Add(heightlbl);
+            groupBox1.Controls.Add(sxlbl);
+            groupBox1.Controls.Add(sylbl);
+            groupBox1.Controls.Add(swlbl);
+            groupBox1.Controls.Add(sheightlbl);
+            groupBox1.Controls.Add(srchmethodlabel);
             groupBox1.Controls.Add(searchMethodComBox);
-            groupBox1.Location = new Point(35, 531);
+            groupBox1.Location = new Point(18, 464);
             groupBox1.Margin = new Padding(4);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new Padding(4);
@@ -294,27 +301,27 @@
             imgLabelNametxt.Margin = new Padding(4);
             imgLabelNametxt.Name = "imgLabelNametxt";
             imgLabelNametxt.Size = new Size(133, 27);
-            imgLabelNametxt.TabIndex = 33;
+            imgLabelNametxt.TabIndex = 12;
             imgLabelNametxt.Text = "5号路蛋屋主人";
             // 
-            // label8
+            // imgnamelabel
             // 
-            label8.AutoSize = true;
-            label8.Location = new Point(30, 25);
-            label8.Margin = new Padding(4, 0, 4, 0);
-            label8.Name = "label8";
-            label8.Size = new Size(58, 20);
-            label8.TabIndex = 32;
-            label8.Text = "标签名:";
+            imgnamelabel.AutoSize = true;
+            imgnamelabel.Location = new Point(30, 25);
+            imgnamelabel.Margin = new Padding(4, 0, 4, 0);
+            imgnamelabel.Name = "imgnamelabel";
+            imgnamelabel.Size = new Size(58, 20);
+            imgnamelabel.TabIndex = 32;
+            imgnamelabel.Text = "标签名:";
             // 
-            // label23
+            // matchRltlabel
             // 
-            label23.Location = new Point(533, 24);
-            label23.Margin = new Padding(4, 0, 4, 0);
-            label23.Name = "label23";
-            label23.Size = new Size(120, 53);
-            label23.TabIndex = 21;
-            label23.Text = "匹配度：100%耗时：100毫秒最大匹配度100%";
+            matchRltlabel.Location = new Point(533, 24);
+            matchRltlabel.Margin = new Padding(4, 0, 4, 0);
+            matchRltlabel.Name = "matchRltlabel";
+            matchRltlabel.Size = new Size(120, 53);
+            matchRltlabel.TabIndex = 21;
+            matchRltlabel.Text = "匹配度：100%耗时：100毫秒最大匹配度100%";
             // 
             // lowestMatch
             // 
@@ -322,128 +329,128 @@
             lowestMatch.Margin = new Padding(4);
             lowestMatch.Name = "lowestMatch";
             lowestMatch.Size = new Size(112, 27);
-            lowestMatch.TabIndex = 31;
+            lowestMatch.TabIndex = 14;
             lowestMatch.Text = "90.0";
             // 
-            // label6
+            // minmatchlabel
             // 
-            label6.AutoSize = true;
-            label6.Location = new Point(6, 89);
-            label6.Margin = new Padding(4, 0, 4, 0);
-            label6.Name = "label6";
-            label6.Size = new Size(118, 20);
-            label6.TabIndex = 30;
-            label6.Text = "最低更新匹配度:";
+            minmatchlabel.AutoSize = true;
+            minmatchlabel.Location = new Point(6, 89);
+            minmatchlabel.Margin = new Padding(4, 0, 4, 0);
+            minmatchlabel.Name = "minmatchlabel";
+            minmatchlabel.Size = new Size(118, 20);
+            minmatchlabel.TabIndex = 30;
+            minmatchlabel.Text = "最低更新匹配度:";
             // 
-            // label22
+            // searchlabel
             // 
-            label22.AutoSize = true;
-            label22.Location = new Point(216, 126);
-            label22.Margin = new Padding(4, 0, 4, 0);
-            label22.Name = "label22";
-            label22.Size = new Size(73, 20);
-            label22.TabIndex = 29;
-            label22.Text = "搜索范围:";
+            searchlabel.AutoSize = true;
+            searchlabel.Location = new Point(216, 126);
+            searchlabel.Margin = new Padding(4, 0, 4, 0);
+            searchlabel.Name = "searchlabel";
+            searchlabel.Size = new Size(73, 20);
+            searchlabel.TabIndex = 29;
+            searchlabel.Text = "搜索范围:";
             // 
-            // label21
+            // targetlabel
             // 
-            label21.AutoSize = true;
-            label21.Location = new Point(11, 126);
-            label21.Margin = new Padding(4, 0, 4, 0);
-            label21.Name = "label21";
-            label21.Size = new Size(73, 20);
-            label21.TabIndex = 28;
-            label21.Text = "目标位置:";
+            targetlabel.AutoSize = true;
+            targetlabel.Location = new Point(11, 126);
+            targetlabel.Margin = new Padding(4, 0, 4, 0);
+            targetlabel.Name = "targetlabel";
+            targetlabel.Size = new Size(73, 20);
+            targetlabel.TabIndex = 28;
+            targetlabel.Text = "目标位置:";
             // 
-            // label16
+            // xlbl
             // 
-            label16.AutoSize = true;
-            label16.Location = new Point(11, 153);
-            label16.Margin = new Padding(4, 0, 4, 0);
-            label16.Name = "label16";
-            label16.Size = new Size(23, 20);
-            label16.TabIndex = 26;
-            label16.Text = "X:";
+            xlbl.AutoSize = true;
+            xlbl.Location = new Point(11, 153);
+            xlbl.Margin = new Padding(4, 0, 4, 0);
+            xlbl.Name = "xlbl";
+            xlbl.Size = new Size(23, 20);
+            xlbl.TabIndex = 26;
+            xlbl.Text = "X:";
             // 
-            // label17
+            // ylbl
             // 
-            label17.AutoSize = true;
-            label17.Location = new Point(113, 153);
-            label17.Margin = new Padding(4, 0, 4, 0);
-            label17.Name = "label17";
-            label17.Size = new Size(22, 20);
-            label17.TabIndex = 24;
-            label17.Text = "Y:";
+            ylbl.AutoSize = true;
+            ylbl.Location = new Point(113, 153);
+            ylbl.Margin = new Padding(4, 0, 4, 0);
+            ylbl.Name = "ylbl";
+            ylbl.Size = new Size(22, 20);
+            ylbl.TabIndex = 24;
+            ylbl.Text = "Y:";
             // 
-            // label19
+            // wlbl
             // 
-            label19.AutoSize = true;
-            label19.Location = new Point(7, 182);
-            label19.Margin = new Padding(4, 0, 4, 0);
-            label19.Name = "label19";
-            label19.Size = new Size(28, 20);
-            label19.TabIndex = 22;
-            label19.Text = "宽:";
+            wlbl.AutoSize = true;
+            wlbl.Location = new Point(7, 182);
+            wlbl.Margin = new Padding(4, 0, 4, 0);
+            wlbl.Name = "wlbl";
+            wlbl.Size = new Size(28, 20);
+            wlbl.TabIndex = 22;
+            wlbl.Text = "宽:";
             // 
-            // label20
+            // heightlbl
             // 
-            label20.AutoSize = true;
-            label20.Location = new Point(108, 182);
-            label20.Margin = new Padding(4, 0, 4, 0);
-            label20.Name = "label20";
-            label20.Size = new Size(28, 20);
-            label20.TabIndex = 20;
-            label20.Text = "高:";
+            heightlbl.AutoSize = true;
+            heightlbl.Location = new Point(108, 182);
+            heightlbl.Margin = new Padding(4, 0, 4, 0);
+            heightlbl.Name = "heightlbl";
+            heightlbl.Size = new Size(28, 20);
+            heightlbl.TabIndex = 20;
+            heightlbl.Text = "高:";
             // 
-            // label14
+            // sxlbl
             // 
-            label14.AutoSize = true;
-            label14.Location = new Point(220, 153);
-            label14.Margin = new Padding(4, 0, 4, 0);
-            label14.Name = "label14";
-            label14.Size = new Size(23, 20);
-            label14.TabIndex = 18;
-            label14.Text = "X:";
+            sxlbl.AutoSize = true;
+            sxlbl.Location = new Point(220, 153);
+            sxlbl.Margin = new Padding(4, 0, 4, 0);
+            sxlbl.Name = "sxlbl";
+            sxlbl.Size = new Size(23, 20);
+            sxlbl.TabIndex = 18;
+            sxlbl.Text = "X:";
             // 
-            // label15
+            // sylbl
             // 
-            label15.AutoSize = true;
-            label15.Location = new Point(316, 154);
-            label15.Margin = new Padding(4, 0, 4, 0);
-            label15.Name = "label15";
-            label15.Size = new Size(22, 20);
-            label15.TabIndex = 16;
-            label15.Text = "Y:";
+            sylbl.AutoSize = true;
+            sylbl.Location = new Point(316, 154);
+            sylbl.Margin = new Padding(4, 0, 4, 0);
+            sylbl.Name = "sylbl";
+            sylbl.Size = new Size(22, 20);
+            sylbl.TabIndex = 16;
+            sylbl.Text = "Y:";
             // 
-            // label13
+            // swlbl
             // 
-            label13.AutoSize = true;
-            label13.Location = new Point(216, 182);
-            label13.Margin = new Padding(4, 0, 4, 0);
-            label13.Name = "label13";
-            label13.Size = new Size(28, 20);
-            label13.TabIndex = 14;
-            label13.Text = "宽:";
+            swlbl.AutoSize = true;
+            swlbl.Location = new Point(216, 182);
+            swlbl.Margin = new Padding(4, 0, 4, 0);
+            swlbl.Name = "swlbl";
+            swlbl.Size = new Size(28, 20);
+            swlbl.TabIndex = 14;
+            swlbl.Text = "宽:";
             // 
-            // label18
+            // sheightlbl
             // 
-            label18.AutoSize = true;
-            label18.Location = new Point(316, 183);
-            label18.Margin = new Padding(4, 0, 4, 0);
-            label18.Name = "label18";
-            label18.Size = new Size(28, 20);
-            label18.TabIndex = 12;
-            label18.Text = "高:";
+            sheightlbl.AutoSize = true;
+            sheightlbl.Location = new Point(316, 183);
+            sheightlbl.Margin = new Padding(4, 0, 4, 0);
+            sheightlbl.Name = "sheightlbl";
+            sheightlbl.Size = new Size(28, 20);
+            sheightlbl.TabIndex = 12;
+            sheightlbl.Text = "高:";
             // 
-            // label12
+            // srchmethodlabel
             // 
-            label12.AutoSize = true;
-            label12.Location = new Point(18, 58);
-            label12.Margin = new Padding(4, 0, 4, 0);
-            label12.Name = "label12";
-            label12.Size = new Size(73, 20);
-            label12.TabIndex = 1;
-            label12.Text = "搜索方法:";
+            srchmethodlabel.AutoSize = true;
+            srchmethodlabel.Location = new Point(18, 58);
+            srchmethodlabel.Margin = new Padding(4, 0, 4, 0);
+            srchmethodlabel.Name = "srchmethodlabel";
+            srchmethodlabel.Size = new Size(73, 20);
+            srchmethodlabel.TabIndex = 1;
+            srchmethodlabel.Text = "搜索方法:";
             // 
             // searchMethodComBox
             // 
@@ -452,37 +459,40 @@
             searchMethodComBox.Margin = new Padding(4);
             searchMethodComBox.Name = "searchMethodComBox";
             searchMethodComBox.Size = new Size(133, 28);
-            searchMethodComBox.TabIndex = 0;
+            searchMethodComBox.TabIndex = 13;
             searchMethodComBox.Text = "选择搜索方法";
             // 
             // imgLableList
             // 
+            imgLableList.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
             imgLableList.FormattingEnabled = true;
-            imgLableList.Location = new Point(759, 418);
+            imgLableList.Location = new Point(763, 419);
             imgLableList.Margin = new Padding(4);
             imgLableList.Name = "imgLableList";
-            imgLableList.Size = new Size(166, 324);
+            imgLableList.Size = new Size(166, 244);
             imgLableList.TabIndex = 19;
             imgLableList.DoubleClick += imgLableList_DoubleClick;
             // 
             // SaveTagBtn
             // 
-            SaveTagBtn.Location = new Point(540, 487);
+            SaveTagBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            SaveTagBtn.Location = new Point(523, 420);
             SaveTagBtn.Margin = new Padding(4);
             SaveTagBtn.Name = "SaveTagBtn";
             SaveTagBtn.Size = new Size(79, 33);
-            SaveTagBtn.TabIndex = 20;
+            SaveTagBtn.TabIndex = 10;
             SaveTagBtn.Text = "保存标签";
             SaveTagBtn.UseVisualStyleBackColor = true;
             SaveTagBtn.Click += SaveTagBtn_Click;
             // 
             // DynTestBtn
             // 
-            DynTestBtn.Location = new Point(427, 487);
+            DynTestBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            DynTestBtn.Location = new Point(410, 420);
             DynTestBtn.Margin = new Padding(4);
             DynTestBtn.Name = "DynTestBtn";
             DynTestBtn.Size = new Size(112, 33);
-            DynTestBtn.TabIndex = 22;
+            DynTestBtn.TabIndex = 9;
             DynTestBtn.Text = "动态测试";
             DynTestBtn.UseVisualStyleBackColor = true;
             DynTestBtn.Click += DynTestBtn_Click;
@@ -493,34 +503,37 @@
             // 
             // CaptureVideoHelp
             // 
+            CaptureVideoHelp.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
             CaptureVideoHelp.Font = new Font("宋体", 9F);
-            CaptureVideoHelp.Location = new Point(933, 418);
+            CaptureVideoHelp.Location = new Point(937, 419);
             CaptureVideoHelp.Margin = new Padding(4, 6, 4, 6);
             CaptureVideoHelp.Multiline = true;
             CaptureVideoHelp.Name = "CaptureVideoHelp";
             CaptureVideoHelp.ReadOnly = true;
             CaptureVideoHelp.ScrollBars = ScrollBars.Vertical;
-            CaptureVideoHelp.Size = new Size(331, 327);
-            CaptureVideoHelp.TabIndex = 25;
+            CaptureVideoHelp.Size = new Size(331, 260);
+            CaptureVideoHelp.TabIndex = 20;
             // 
             // openCapBtn
             // 
-            openCapBtn.Location = new Point(627, 487);
+            openCapBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            openCapBtn.Location = new Point(610, 420);
             openCapBtn.Margin = new Padding(4);
             openCapBtn.Name = "openCapBtn";
             openCapBtn.Size = new Size(77, 33);
-            openCapBtn.TabIndex = 26;
+            openCapBtn.TabIndex = 11;
             openCapBtn.Text = "打开截图";
             openCapBtn.UseVisualStyleBackColor = true;
             openCapBtn.Click += openCapBtn_Click;
             // 
             // ResolutionBtn
             // 
-            ResolutionBtn.Location = new Point(755, 327);
+            ResolutionBtn.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            ResolutionBtn.Location = new Point(759, 327);
             ResolutionBtn.Margin = new Padding(4);
             ResolutionBtn.Name = "ResolutionBtn";
             ResolutionBtn.Size = new Size(171, 33);
-            ResolutionBtn.TabIndex = 27;
+            ResolutionBtn.TabIndex = 3;
             ResolutionBtn.Text = "当前分辨率：1080P点击切换";
             ResolutionBtn.TextAlign = ContentAlignment.MiddleLeft;
             ResolutionBtn.UseVisualStyleBackColor = true;
@@ -528,8 +541,9 @@
             // 
             // label2
             // 
+            label2.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             label2.AutoSize = true;
-            label2.Location = new Point(219, 459);
+            label2.Location = new Point(202, 391);
             label2.Margin = new Padding(4, 0, 4, 0);
             label2.Name = "label2";
             label2.Size = new Size(279, 20);
@@ -538,14 +552,15 @@
             // 
             // monitorVisChk
             // 
+            monitorVisChk.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             monitorVisChk.AutoSize = true;
             monitorVisChk.Checked = true;
             monitorVisChk.CheckState = CheckState.Checked;
-            monitorVisChk.Location = new Point(1187, 327);
+            monitorVisChk.Location = new Point(1184, 328);
             monitorVisChk.Margin = new Padding(4);
             monitorVisChk.Name = "monitorVisChk";
             monitorVisChk.Size = new Size(106, 24);
-            monitorVisChk.TabIndex = 32;
+            monitorVisChk.TabIndex = 4;
             monitorVisChk.Text = "监视器显示";
             monitorVisChk.UseVisualStyleBackColor = true;
             monitorVisChk.CheckedChanged += monitorVisChk_CheckedChanged;
@@ -553,11 +568,11 @@
             // VideoMonitor
             // 
             VideoMonitor.BackColor = SystemColors.ButtonShadow;
-            VideoMonitor.Location = new Point(756, 1);
+            VideoMonitor.Location = new Point(760, 1);
             VideoMonitor.Margin = new Padding(4);
             VideoMonitor.Name = "VideoMonitor";
             VideoMonitor.Size = new Size(518, 318);
-            VideoMonitor.TabIndex = 33;
+            VideoMonitor.TabIndex = 2;
             VideoMonitor.MouseDoubleClick += VideoSourcePlayerMonitor_MouseDoubleClick;
             VideoMonitor.MouseDown += VideoSourcePlayerMonitor_MouseDown;
             VideoMonitor.MouseMove += VideoSourcePlayerMonitor_MouseMove;
@@ -567,13 +582,14 @@
             // 
             // Snapshot
             // 
+            Snapshot.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             Snapshot.BackColor = SystemColors.ControlDark;
             Snapshot.BackgroundImageLayout = ImageLayout.Center;
             Snapshot.Location = new Point(1, 1);
             Snapshot.Margin = new Padding(4);
             Snapshot.Name = "Snapshot";
-            Snapshot.Size = new Size(746, 448);
-            Snapshot.TabIndex = 34;
+            Snapshot.Size = new Size(740, 370);
+            Snapshot.TabIndex = 1;
             Snapshot.MouseDown += Snapshot_MouseDown;
             Snapshot.MouseMove += Snapshot_MouseMove;
             Snapshot.MouseUp += Snapshot_MouseUp;
@@ -594,7 +610,7 @@
             // CaptureVideoForm
             // 
             AutoScaleMode = AutoScaleMode.Inherit;
-            ClientSize = new Size(1279, 747);
+            ClientSize = new Size(1283, 681);
             Controls.Add(Snapshot);
             Controls.Add(VideoMonitor);
             Controls.Add(monitorVisChk);
@@ -609,11 +625,10 @@
             Controls.Add(targetBtn);
             Controls.Add(searchTestBtn);
             Controls.Add(rangeBtn);
-            Controls.Add(label4);
+            Controls.Add(readmelbl);
             Controls.Add(captureBtn);
-            Controls.Add(label1);
+            Controls.Add(imgreadmelbl);
             DoubleBuffered = true;
-            FormBorderStyle = FormBorderStyle.FixedSingle;
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(4);
             MaximizeBox = false;
@@ -623,7 +638,6 @@
             Text = "搜图控制台";
             FormClosed += CaptureVideo_FormClosed;
             Load += CaptureVideo_Load;
-            Resize += CaptureVideoForm_Resize;
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)searchHNUD).EndInit();
@@ -643,33 +657,33 @@
 
         #endregion
         private System.Windows.Forms.ListBox reasultListBox;
-        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label imgreadmelbl;
         private System.Windows.Forms.Button captureBtn;
-        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.Label readmelbl;
         private System.Windows.Forms.Button rangeBtn;
         private System.Windows.Forms.Button searchTestBtn;
         private System.Windows.Forms.Button targetBtn;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.ListBox imgLableList;
         private System.Windows.Forms.Button SaveTagBtn;
-        private System.Windows.Forms.Label label22;
-        private System.Windows.Forms.Label label21;
-        private System.Windows.Forms.Label label16;
-        private System.Windows.Forms.Label label17;
-        private System.Windows.Forms.Label label19;
-        private System.Windows.Forms.Label label20;
-        private System.Windows.Forms.Label label14;
-        private System.Windows.Forms.Label label15;
-        private System.Windows.Forms.Label label13;
-        private System.Windows.Forms.Label label18;
-        private System.Windows.Forms.Label label12;
+        private System.Windows.Forms.Label searchlabel;
+        private System.Windows.Forms.Label targetlabel;
+        private System.Windows.Forms.Label xlbl;
+        private System.Windows.Forms.Label ylbl;
+        private System.Windows.Forms.Label wlbl;
+        private System.Windows.Forms.Label heightlbl;
+        private System.Windows.Forms.Label sxlbl;
+        private System.Windows.Forms.Label sylbl;
+        private System.Windows.Forms.Label swlbl;
+        private System.Windows.Forms.Label sheightlbl;
+        private System.Windows.Forms.Label srchmethodlabel;
         private System.Windows.Forms.ComboBox searchMethodComBox;
-        private System.Windows.Forms.Label label23;
+        private System.Windows.Forms.Label matchRltlabel;
         private System.Windows.Forms.Button DynTestBtn;
         private System.Windows.Forms.TextBox lowestMatch;
-        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Label minmatchlabel;
         private System.Windows.Forms.TextBox imgLabelNametxt;
-        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.Label imgnamelabel;
         private System.Windows.Forms.Timer searchTestTimer;
         private System.Windows.Forms.PictureBox searchResultImg;
         private System.Windows.Forms.PictureBox targetImg;

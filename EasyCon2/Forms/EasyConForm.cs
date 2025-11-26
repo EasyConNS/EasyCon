@@ -105,7 +105,7 @@ namespace EasyCon2.Forms
             }
 #endif
 
-                textBoxScript.SyntaxHighlighting = syntaxHighlighting;
+            textBoxScript.SyntaxHighlighting = syntaxHighlighting;
             textBoxScript.DragEnter += new System.Windows.DragEventHandler(this.textBoxScript_DragEnter);
             textBoxScript.Drop += new System.Windows.DragEventHandler(this.textBoxScript_DragDrop);
             textBoxScript.TextChanged += new EventHandler(this.textBoxScript_TextChanged);

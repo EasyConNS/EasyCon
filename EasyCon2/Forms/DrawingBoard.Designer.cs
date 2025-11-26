@@ -28,264 +28,287 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.loadPicButton = new System.Windows.Forms.Button();
-            this.startButton = new System.Windows.Forms.Button();
-            this.stopButton = new System.Windows.Forms.Button();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
-            this.tipLabel = new System.Windows.Forms.Label();
-            this.delayBox = new System.Windows.Forms.TextBox();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.durationBox = new System.Windows.Forms.TextBox();
-            this.label4 = new System.Windows.Forms.Label();
-            this.widthBox = new System.Windows.Forms.TextBox();
-            this.label5 = new System.Windows.Forms.Label();
-            this.heightBox = new System.Windows.Forms.TextBox();
-            this.reverseCheck = new System.Windows.Forms.CheckBox();
-            this.evaluateButton = new System.Windows.Forms.Button();
-            this.evaluateLabel = new System.Windows.Forms.Label();
-            this.label1 = new System.Windows.Forms.Label();
-            this.startPosY = new System.Windows.Forms.TextBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.startPosX = new System.Windows.Forms.TextBox();
-            this.label7 = new System.Windows.Forms.Label();
-            this.curPosLabel = new System.Windows.Forms.Label();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
-            this.SuspendLayout();
+            loadPicButton = new Button();
+            startButton = new Button();
+            stopButton = new Button();
+            pictureBox1 = new PictureBox();
+            tipLabel = new Label();
+            delayBox = new TextBox();
+            label2 = new Label();
+            label3 = new Label();
+            durationBox = new TextBox();
+            label4 = new Label();
+            widthBox = new TextBox();
+            label5 = new Label();
+            heightBox = new TextBox();
+            reverseCheck = new CheckBox();
+            evaluateButton = new Button();
+            evaluateLabel = new Label();
+            label1 = new Label();
+            startPosY = new TextBox();
+            label6 = new Label();
+            startPosX = new TextBox();
+            label7 = new Label();
+            curPosLabel = new Label();
+            ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
+            SuspendLayout();
             // 
             // loadPicButton
             // 
-            this.loadPicButton.Location = new System.Drawing.Point(14, 277);
-            this.loadPicButton.Name = "loadPicButton";
-            this.loadPicButton.Size = new System.Drawing.Size(97, 50);
-            this.loadPicButton.TabIndex = 0;
-            this.loadPicButton.Text = "加载图片";
-            this.loadPicButton.UseVisualStyleBackColor = true;
-            this.loadPicButton.Click += new System.EventHandler(this.loadPicButton_Click);
+            loadPicButton.Location = new Point(18, 326);
+            loadPicButton.Margin = new Padding(4, 4, 4, 4);
+            loadPicButton.Name = "loadPicButton";
+            loadPicButton.Size = new Size(125, 59);
+            loadPicButton.TabIndex = 0;
+            loadPicButton.Text = "加载图片";
+            loadPicButton.UseVisualStyleBackColor = true;
+            loadPicButton.Click += loadPicButton_Click;
             // 
             // startButton
             // 
-            this.startButton.Location = new System.Drawing.Point(476, 274);
-            this.startButton.Name = "startButton";
-            this.startButton.Size = new System.Drawing.Size(64, 53);
-            this.startButton.TabIndex = 1;
-            this.startButton.Text = "开始画图";
-            this.startButton.UseVisualStyleBackColor = true;
-            this.startButton.Click += new System.EventHandler(this.startButton_Click);
+            startButton.Location = new Point(612, 322);
+            startButton.Margin = new Padding(4, 4, 4, 4);
+            startButton.Name = "startButton";
+            startButton.Size = new Size(82, 62);
+            startButton.TabIndex = 1;
+            startButton.Text = "开始画图";
+            startButton.UseVisualStyleBackColor = true;
+            startButton.Click += startButton_Click;
             // 
             // stopButton
             // 
-            this.stopButton.Location = new System.Drawing.Point(546, 274);
-            this.stopButton.Name = "stopButton";
-            this.stopButton.Size = new System.Drawing.Size(43, 52);
-            this.stopButton.TabIndex = 2;
-            this.stopButton.Text = "停止";
-            this.stopButton.UseVisualStyleBackColor = true;
-            this.stopButton.Click += new System.EventHandler(this.stopButton_Click);
+            stopButton.Location = new Point(702, 322);
+            stopButton.Margin = new Padding(4, 4, 4, 4);
+            stopButton.Name = "stopButton";
+            stopButton.Size = new Size(55, 61);
+            stopButton.TabIndex = 2;
+            stopButton.Text = "停止";
+            stopButton.UseVisualStyleBackColor = true;
+            stopButton.Click += stopButton_Click;
             // 
             // pictureBox1
             // 
-            this.pictureBox1.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
-            this.pictureBox1.Location = new System.Drawing.Point(17, 12);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(640, 240);
-            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
-            this.pictureBox1.TabIndex = 3;
-            this.pictureBox1.TabStop = false;
-            this.pictureBox1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.pictureBox1_MouseDown);
+            pictureBox1.BorderStyle = BorderStyle.FixedSingle;
+            pictureBox1.Location = new Point(22, 14);
+            pictureBox1.Margin = new Padding(4, 4, 4, 4);
+            pictureBox1.Name = "pictureBox1";
+            pictureBox1.Size = new Size(822, 282);
+            pictureBox1.SizeMode = PictureBoxSizeMode.StretchImage;
+            pictureBox1.TabIndex = 3;
+            pictureBox1.TabStop = false;
+            pictureBox1.MouseDown += pictureBox1_MouseDown;
             // 
             // tipLabel
             // 
-            this.tipLabel.AutoEllipsis = true;
-            this.tipLabel.Location = new System.Drawing.Point(10, 343);
-            this.tipLabel.Name = "tipLabel";
-            this.tipLabel.Size = new System.Drawing.Size(586, 17);
-            this.tipLabel.TabIndex = 4;
-            this.tipLabel.Text = "开始前，请先进入画画页面，笔刷调整到最小，光标移动到左上角，绘制是从左上到右下";
+            tipLabel.AutoEllipsis = true;
+            tipLabel.Location = new Point(13, 404);
+            tipLabel.Margin = new Padding(4, 0, 4, 0);
+            tipLabel.Name = "tipLabel";
+            tipLabel.Size = new Size(753, 20);
+            tipLabel.TabIndex = 4;
+            tipLabel.Text = "开始前，请先进入画画页面，笔刷调整到最小，光标移动到左上角，绘制是从左上到右下";
             // 
             // delayBox
             // 
-            this.delayBox.Location = new System.Drawing.Point(426, 303);
-            this.delayBox.Name = "delayBox";
-            this.delayBox.Size = new System.Drawing.Size(44, 23);
-            this.delayBox.TabIndex = 5;
-            this.delayBox.Text = "45";
+            delayBox.Location = new Point(548, 356);
+            delayBox.Margin = new Padding(4, 4, 4, 4);
+            delayBox.Name = "delayBox";
+            delayBox.Size = new Size(55, 27);
+            delayBox.TabIndex = 5;
+            delayBox.Text = "45";
             // 
             // label2
             // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(388, 306);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(32, 17);
-            this.label2.TabIndex = 6;
-            this.label2.Text = "延迟";
+            label2.AutoSize = true;
+            label2.Location = new Point(499, 360);
+            label2.Margin = new Padding(4, 0, 4, 0);
+            label2.Name = "label2";
+            label2.Size = new Size(39, 20);
+            label2.TabIndex = 6;
+            label2.Text = "延迟";
             // 
             // label3
             // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(364, 277);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(56, 17);
-            this.label3.TabIndex = 8;
-            this.label3.Text = "按键持续";
+            label3.AutoSize = true;
+            label3.Location = new Point(468, 326);
+            label3.Margin = new Padding(4, 0, 4, 0);
+            label3.Name = "label3";
+            label3.Size = new Size(69, 20);
+            label3.TabIndex = 8;
+            label3.Text = "按键持续";
             // 
             // durationBox
             // 
-            this.durationBox.Location = new System.Drawing.Point(426, 274);
-            this.durationBox.Name = "durationBox";
-            this.durationBox.Size = new System.Drawing.Size(44, 23);
-            this.durationBox.TabIndex = 7;
-            this.durationBox.Text = "50";
+            durationBox.Location = new Point(548, 322);
+            durationBox.Margin = new Padding(4, 4, 4, 4);
+            durationBox.Name = "durationBox";
+            durationBox.Size = new Size(55, 27);
+            durationBox.TabIndex = 7;
+            durationBox.Text = "50";
             // 
             // label4
             // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(284, 277);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(32, 17);
-            this.label4.TabIndex = 12;
-            this.label4.Text = "列数";
+            label4.AutoSize = true;
+            label4.Location = new Point(365, 326);
+            label4.Margin = new Padding(4, 0, 4, 0);
+            label4.Name = "label4";
+            label4.Size = new Size(39, 20);
+            label4.TabIndex = 12;
+            label4.Text = "列数";
             // 
             // widthBox
             // 
-            this.widthBox.Location = new System.Drawing.Point(317, 274);
-            this.widthBox.Name = "widthBox";
-            this.widthBox.Size = new System.Drawing.Size(44, 23);
-            this.widthBox.TabIndex = 11;
-            this.widthBox.Text = "320";
+            widthBox.Location = new Point(408, 322);
+            widthBox.Margin = new Padding(4, 4, 4, 4);
+            widthBox.Name = "widthBox";
+            widthBox.Size = new Size(55, 27);
+            widthBox.TabIndex = 11;
+            widthBox.Text = "320";
             // 
             // label5
             // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(283, 306);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(32, 17);
-            this.label5.TabIndex = 10;
-            this.label5.Text = "行数";
+            label5.AutoSize = true;
+            label5.Location = new Point(364, 360);
+            label5.Margin = new Padding(4, 0, 4, 0);
+            label5.Name = "label5";
+            label5.Size = new Size(39, 20);
+            label5.TabIndex = 10;
+            label5.Text = "行数";
             // 
             // heightBox
             // 
-            this.heightBox.Location = new System.Drawing.Point(317, 303);
-            this.heightBox.Name = "heightBox";
-            this.heightBox.Size = new System.Drawing.Size(44, 23);
-            this.heightBox.TabIndex = 9;
-            this.heightBox.Text = "120";
+            heightBox.Location = new Point(408, 356);
+            heightBox.Margin = new Padding(4, 4, 4, 4);
+            heightBox.Name = "heightBox";
+            heightBox.Size = new Size(55, 27);
+            heightBox.TabIndex = 9;
+            heightBox.Text = "120";
             // 
             // reverseCheck
             // 
-            this.reverseCheck.AutoSize = true;
-            this.reverseCheck.Location = new System.Drawing.Point(117, 306);
-            this.reverseCheck.Name = "reverseCheck";
-            this.reverseCheck.Size = new System.Drawing.Size(75, 21);
-            this.reverseCheck.TabIndex = 13;
-            this.reverseCheck.Text = "反转黑白";
-            this.reverseCheck.UseVisualStyleBackColor = true;
+            reverseCheck.AutoSize = true;
+            reverseCheck.Location = new Point(150, 360);
+            reverseCheck.Margin = new Padding(4, 4, 4, 4);
+            reverseCheck.Name = "reverseCheck";
+            reverseCheck.Size = new Size(91, 24);
+            reverseCheck.TabIndex = 13;
+            reverseCheck.Text = "反转黑白";
+            reverseCheck.UseVisualStyleBackColor = true;
             // 
             // evaluateButton
             // 
-            this.evaluateButton.Location = new System.Drawing.Point(595, 274);
-            this.evaluateButton.Name = "evaluateButton";
-            this.evaluateButton.Size = new System.Drawing.Size(65, 52);
-            this.evaluateButton.TabIndex = 14;
-            this.evaluateButton.Text = "估算耗时";
-            this.evaluateButton.UseVisualStyleBackColor = true;
-            this.evaluateButton.Click += new System.EventHandler(this.evaluateButton_Click);
+            evaluateButton.Location = new Point(765, 322);
+            evaluateButton.Margin = new Padding(4, 4, 4, 4);
+            evaluateButton.Name = "evaluateButton";
+            evaluateButton.Size = new Size(84, 61);
+            evaluateButton.TabIndex = 14;
+            evaluateButton.Text = "估算耗时";
+            evaluateButton.UseVisualStyleBackColor = true;
+            evaluateButton.Click += evaluateButton_Click;
             // 
             // evaluateLabel
             // 
-            this.evaluateLabel.AutoSize = true;
-            this.evaluateLabel.Location = new System.Drawing.Point(553, 343);
-            this.evaluateLabel.Name = "evaluateLabel";
-            this.evaluateLabel.Size = new System.Drawing.Size(44, 17);
-            this.evaluateLabel.TabIndex = 15;
-            this.evaluateLabel.Text = "耗时：";
+            evaluateLabel.AutoSize = true;
+            evaluateLabel.Location = new Point(711, 404);
+            evaluateLabel.Margin = new Padding(4, 0, 4, 0);
+            evaluateLabel.Name = "evaluateLabel";
+            evaluateLabel.Size = new Size(54, 20);
+            evaluateLabel.TabIndex = 15;
+            evaluateLabel.Text = "耗时：";
             // 
             // label1
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(43, 255);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(324, 17);
-            this.label1.TabIndex = 19;
-            this.label1.Text = "（左上角0，0，右下角320，120）绘制起点        绘制大小";
+            label1.AutoSize = true;
+            label1.Location = new Point(55, 300);
+            label1.Margin = new Padding(4, 0, 4, 0);
+            label1.Name = "label1";
+            label1.Size = new Size(398, 20);
+            label1.TabIndex = 19;
+            label1.Text = "（左上角0，0，右下角320，120）绘制起点        绘制大小";
             // 
             // startPosY
             // 
-            this.startPosY.Location = new System.Drawing.Point(235, 304);
-            this.startPosY.Name = "startPosY";
-            this.startPosY.Size = new System.Drawing.Size(44, 23);
-            this.startPosY.TabIndex = 18;
-            this.startPosY.Text = "0";
+            startPosY.Location = new Point(302, 358);
+            startPosY.Margin = new Padding(4, 4, 4, 4);
+            startPosY.Name = "startPosY";
+            startPosY.Size = new Size(55, 27);
+            startPosY.TabIndex = 18;
+            startPosY.Text = "0";
             // 
             // label6
             // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(188, 280);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(44, 17);
-            this.label6.TabIndex = 17;
-            this.label6.Text = "起始列";
+            label6.AutoSize = true;
+            label6.Location = new Point(242, 329);
+            label6.Margin = new Padding(4, 0, 4, 0);
+            label6.Name = "label6";
+            label6.Size = new Size(54, 20);
+            label6.TabIndex = 17;
+            label6.Text = "起始列";
             // 
             // startPosX
             // 
-            this.startPosX.Location = new System.Drawing.Point(235, 277);
-            this.startPosX.Name = "startPosX";
-            this.startPosX.Size = new System.Drawing.Size(44, 23);
-            this.startPosX.TabIndex = 16;
-            this.startPosX.Text = "0";
+            startPosX.Location = new Point(302, 326);
+            startPosX.Margin = new Padding(4, 4, 4, 4);
+            startPosX.Name = "startPosX";
+            startPosX.Size = new Size(55, 27);
+            startPosX.TabIndex = 16;
+            startPosX.Text = "0";
             // 
             // label7
             // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(188, 307);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(44, 17);
-            this.label7.TabIndex = 20;
-            this.label7.Text = "起始行";
+            label7.AutoSize = true;
+            label7.Location = new Point(242, 361);
+            label7.Margin = new Padding(4, 0, 4, 0);
+            label7.Name = "label7";
+            label7.Size = new Size(54, 20);
+            label7.TabIndex = 20;
+            label7.Text = "起始行";
             // 
             // curPosLabel
             // 
-            this.curPosLabel.AutoSize = true;
-            this.curPosLabel.Location = new System.Drawing.Point(388, 254);
-            this.curPosLabel.Name = "curPosLabel";
-            this.curPosLabel.Size = new System.Drawing.Size(115, 17);
-            this.curPosLabel.TabIndex = 21;
-            this.curPosLabel.Text = "当前坐标：100，40";
+            curPosLabel.AutoSize = true;
+            curPosLabel.Location = new Point(499, 299);
+            curPosLabel.Margin = new Padding(4, 0, 4, 0);
+            curPosLabel.Name = "curPosLabel";
+            curPosLabel.Size = new Size(144, 20);
+            curPosLabel.TabIndex = 21;
+            curPosLabel.Text = "当前坐标：100，40";
             // 
             // DrawingBoard
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(674, 373);
-            this.Controls.Add(this.curPosLabel);
-            this.Controls.Add(this.label7);
-            this.Controls.Add(this.label1);
-            this.Controls.Add(this.startPosY);
-            this.Controls.Add(this.label6);
-            this.Controls.Add(this.startPosX);
-            this.Controls.Add(this.evaluateLabel);
-            this.Controls.Add(this.evaluateButton);
-            this.Controls.Add(this.reverseCheck);
-            this.Controls.Add(this.label4);
-            this.Controls.Add(this.widthBox);
-            this.Controls.Add(this.label5);
-            this.Controls.Add(this.heightBox);
-            this.Controls.Add(this.label3);
-            this.Controls.Add(this.durationBox);
-            this.Controls.Add(this.label2);
-            this.Controls.Add(this.delayBox);
-            this.Controls.Add(this.tipLabel);
-            this.Controls.Add(this.pictureBox1);
-            this.Controls.Add(this.stopButton);
-            this.Controls.Add(this.startButton);
-            this.Controls.Add(this.loadPicButton);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
-            this.Name = "DrawingBoard";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "画板";
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            AutoScaleDimensions = new SizeF(9F, 20F);
+            AutoScaleMode = AutoScaleMode.Font;
+            ClientSize = new Size(867, 439);
+            Controls.Add(curPosLabel);
+            Controls.Add(label7);
+            Controls.Add(label1);
+            Controls.Add(startPosY);
+            Controls.Add(label6);
+            Controls.Add(startPosX);
+            Controls.Add(evaluateLabel);
+            Controls.Add(evaluateButton);
+            Controls.Add(reverseCheck);
+            Controls.Add(label4);
+            Controls.Add(widthBox);
+            Controls.Add(label5);
+            Controls.Add(heightBox);
+            Controls.Add(label3);
+            Controls.Add(durationBox);
+            Controls.Add(label2);
+            Controls.Add(delayBox);
+            Controls.Add(tipLabel);
+            Controls.Add(pictureBox1);
+            Controls.Add(stopButton);
+            Controls.Add(startButton);
+            Controls.Add(loadPicButton);
+            FormBorderStyle = FormBorderStyle.FixedToolWindow;
+            Margin = new Padding(4, 4, 4, 4);
+            Name = "DrawingBoard";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "画板";
+            ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
+            ResumeLayout(false);
+            PerformLayout();
 
         }
 

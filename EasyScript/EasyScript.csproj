@@ -8,4 +8,8 @@
     <ProjectReference Include="..\EasyDevice\EasyDevice.csproj" />
   </ItemGroup>
 
+	<ItemGroup>
+		<!--<PackageReference Include="NLua" />-->
+	</ItemGroup>
+
 </Project>

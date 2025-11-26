@@ -18,10 +18,8 @@
   <ItemGroup>
     <PackageReference Include="AvalonEdit" />
     <PackageReference Include="JetBrains.Annotations" />
-    <PackageReference Include="OpenCvSharp4.Extensions" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="WebSocketSharp-netstandard" />
-    <!--<PackageReference Include="NLua" />-->
   </ItemGroup>
 
   <ItemGroup>
