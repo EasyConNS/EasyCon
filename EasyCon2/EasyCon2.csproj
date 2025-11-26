@@ -67,7 +67,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy &quot;$(ProjectDir)Amiibo\AmiiboImages&quot; &quot;$(TargetDir)Amiibo\AmiiboImages\&quot; /Y " />
+    <Exec Command="xcopy &quot;$(ProjectDir)Resources\AmiiboImages&quot; &quot;$(TargetDir)Amiibo\AmiiboImages\&quot; /Y " />
   </Target>
 
 </Project>

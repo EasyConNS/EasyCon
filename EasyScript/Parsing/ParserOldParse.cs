@@ -239,10 +239,6 @@ internal partial class Parser
                 }
                 break;
         }
-        if (text.Equals("PUSHALL", StringComparison.OrdinalIgnoreCase))
-            return new PushAll();
-        if (text.Equals("POPALL", StringComparison.OrdinalIgnoreCase))
-            return new PopAll();
 
         return null;
     }

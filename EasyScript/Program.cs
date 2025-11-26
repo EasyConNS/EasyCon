@@ -7,10 +7,7 @@ var lexer = new Lexer(text);
 var parser = new Parser(lexer);
 
 var visitor = new SimpleVisitor();
-foreach(var s in parser.Parse())
-{
-    visitor.Visit(s);
-}
+visitor.VisitProgram(parser.ParseProgram());
 
 Console.WriteLine("done");
 #endif

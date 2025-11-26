@@ -1,4 +1,4 @@
-﻿using EasyCon2.Capture;
+﻿using EasyCapture;
 using EasyCon2.Graphic;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
@@ -28,8 +28,25 @@ namespace EasyCon2.Forms
 
         static readonly string CapDir = Application.StartupPath + "\\Capture\\";
         static readonly string ImgDir = Application.StartupPath + "\\ImgLabel\\";
-        private static readonly List<ImgLabel> imgLabels = new();
-        private readonly ClasicCapture cvcap = new();
+        private static readonly List<ImgLabel> imgLabels = [];
+        private readonly OpenCVCapture cvcap = new();
+        private Point _curResolution = new(1920, 1080);
+
+        public Point CurResolution
+        {
+            get
+            {
+                return _curResolution;
+            }
+            set
+            {
+                if (_curResolution.X != value.X || _curResolution.Y != value.Y)
+                {
+                    _curResolution = value;
+                    cvcap.SetProperties(value.X, value.Y);
+                }
+            }
+        }
 
         private bool isMouseDown = false;
         private Point mouseOffset;
@@ -55,11 +72,11 @@ namespace EasyCon2.Forms
 
         private ImgLabel curImgLabel = new();
         private int deviceId = -1;
-        
+
         public ICollection<ImgLabel> LoadedLabels => imgLabels;
         public int DeviceID => deviceId;
         public int LoadedLabelCount => imgLabels.Count;
-        
+
         public CaptureVideoForm()
         {
             InitializeComponent();
@@ -71,7 +88,14 @@ namespace EasyCon2.Forms
 
             deviceId = devId;
             Debug.WriteLine($"采集卡Id:{deviceId}");
-            cvcap.CaptureCamera(VideoSourcePlayerMonitor, devId, typeId);
+
+            if (!cvcap.Open(devId, typeId))
+            {
+                cvcap.Release();
+                MessageBox.Show("当前采集卡已经被其他程序打开，请先关闭后再尝试");
+                Close();
+            }
+            cvcap.SetProperties(CurResolution.X, CurResolution.Y);
         }
 
         private void CaptureVideo_Load(object sender, EventArgs e)
@@ -100,11 +124,11 @@ namespace EasyCon2.Forms
 
             // load the imglabel
             curImgLabel.SetSource(() => cvcap.GetImage());
-            
+
             LoadImgLabels();
             UpdateImgListBox();
 
-            VideoSourcePlayerMonitor.PaintEventHandler += new PaintEventHandler(MonitorPaint);
+            VideoMonitor.PaintEventHandler += new PaintEventHandler(MonitorPaint);
             Snapshot.PaintEventHandler += new PaintEventHandler(SnapshotPaint);
 
             // resize
@@ -146,17 +170,16 @@ namespace EasyCon2.Forms
         {
             imgLableList.BeginUpdate();
             imgLableList.Items.Clear();
-            imgLableList.Items.AddRange(imgLabels.Select(i=>i.name).ToArray());
+            imgLableList.Items.AddRange(imgLabels.Select(i => i.name).ToArray());
             imgLableList.EndUpdate();
         }
 
         private void MonitorPaint(object sender, PaintEventArgs e)
         {
-            var resolution = cvcap.CurResolution;
             try
             {
-                using var newframe = cvcap.GetImage();
-                if (newframe == null) return;
+                using var newImg = cvcap.GetImage();
+                if (newImg == null) return;
                 var g = e.Graphics;
                 // Maximize performance
                 g.CompositingMode = CompositingMode.SourceOver;
@@ -167,14 +190,15 @@ namespace EasyCon2.Forms
 
                 g.InterpolationMode = InterpolationMode.NearestNeighbor;
                 // DrawImage() is toooooo SLOW, use DirectX instead PLZ!
-                g.DrawImage(newframe, new Rectangle(0, 0, VideoSourcePlayerMonitor.Width, VideoSourcePlayerMonitor.Height), new Rectangle(0, 0, resolution.X, resolution.Y), GraphicsUnit.Pixel);
+                var drawImg = newImg.Clone(new Rectangle(0, 0, newImg.Width, newImg.Height), newImg.PixelFormat);
+                g.DrawImage(drawImg, new Rectangle(0, 0, VideoMonitor.Width, VideoMonitor.Height), new Rectangle(0, 0, CurResolution.X, CurResolution.Y), GraphicsUnit.Pixel);
             }
             catch
             {
                 Debug.WriteLine("something wrong, beacause when closing but the render is paintting");
             }
         }
-        
+
         private void SnapshotPaint(object sender, PaintEventArgs e)
         {
             if (snapshot == null)
@@ -204,9 +228,8 @@ namespace EasyCon2.Forms
                     SnapshotRangeR.Width = (int)((SnapshotRangeMMP.X - SnapshotRangeMDP.X) * snapshotScale.X);
                     SnapshotRangeR.Height = (int)((SnapshotRangeMMP.Y - SnapshotRangeMDP.Y) * snapshotScale.Y);
 
-                    var resolution = cvcap.CurResolution;
-                    curImgLabel.RangeX = SnapshotRangeR.X + 2 - resolution.X;
-                    curImgLabel.RangeY = SnapshotRangeR.Y + 2 - resolution.Y;
+                    curImgLabel.RangeX = SnapshotRangeR.X + 2 - CurResolution.X;
+                    curImgLabel.RangeY = SnapshotRangeR.Y + 2 - CurResolution.Y;
                     curImgLabel.RangeWidth = SnapshotRangeR.Width - 3;
                     curImgLabel.RangeHeight = SnapshotRangeR.Height - 3;
                 }
@@ -222,9 +245,8 @@ namespace EasyCon2.Forms
                     SnapshotSearchObjR.Width = (int)((SnapshotRangeMMP.X - SnapshotRangeMDP.X) * snapshotScale.X);
                     SnapshotSearchObjR.Height = (int)((SnapshotRangeMMP.Y - SnapshotRangeMDP.Y) * snapshotScale.Y);
 
-                    var resolution = cvcap.CurResolution;
-                    curImgLabel.TargetX = SnapshotSearchObjR.X + 1 - resolution.X;
-                    curImgLabel.TargetY = SnapshotSearchObjR.Y + 1 - resolution.Y;
+                    curImgLabel.TargetX = SnapshotSearchObjR.X + 1 - CurResolution.X;
+                    curImgLabel.TargetY = SnapshotSearchObjR.Y + 1 - CurResolution.Y;
                     curImgLabel.TargetWidth = SnapshotSearchObjR.Width - 2;
                     curImgLabel.TargetHeight = SnapshotSearchObjR.Height - 2;
                 }
@@ -247,7 +269,7 @@ namespace EasyCon2.Forms
             {
                 // change to editor
                 this.FormBorderStyle = FormBorderStyle.Sizable;
-                this.VideoSourcePlayerMonitor.Dock = DockStyle.None;
+                this.VideoMonitor.Dock = DockStyle.None;
                 monitorMode = MonitorMode.Editor;
                 this.Refresh();
             }
@@ -255,9 +277,9 @@ namespace EasyCon2.Forms
             {
                 // change to noborder
                 this.FormBorderStyle = FormBorderStyle.None;
-                this.VideoSourcePlayerMonitor.Dock = DockStyle.Fill;
+                this.VideoMonitor.Dock = DockStyle.Fill;
                 monitorMode = MonitorMode.NoBorder;
-                this.VideoSourcePlayerMonitor.BringToFront();
+                this.VideoMonitor.BringToFront();
             }
         }
 
@@ -638,7 +660,7 @@ namespace EasyCon2.Forms
                 }
 
                 // 60 fps
-                timer1.Interval = (int)(1000.0 / 60.0);
+                searchTestTimer.Interval = (int)(1000.0 / 60.0);
 
                 // disable some funcs
                 captureBtn.Enabled = false;
@@ -646,12 +668,12 @@ namespace EasyCon2.Forms
                 searchTestBtn.Enabled = false;
                 targetBtn.Enabled = false;
 
-                timer1.Start();
+                searchTestTimer.Start();
                 DynTestBtn.Text = "动态测试ing";
             }
             else
             {
-                timer1.Stop();
+                searchTestTimer.Stop();
                 DynTestBtn.Text = "动态测试";
 
                 captureBtn.Enabled = true;
@@ -670,7 +692,7 @@ namespace EasyCon2.Forms
             openFileDialog1.FileName = string.Empty;
             if (openFileDialog1.ShowDialog() != DialogResult.OK)
                 return;
- 
+
             Debug.WriteLine(openFileDialog1.FileName);
 
             // get new target pic
@@ -685,11 +707,11 @@ namespace EasyCon2.Forms
 
         private void imgLableList_DoubleClick(object sender, EventArgs e)
         {
-            if (imgLableList.SelectedItem != null && imgLableList.SelectedItem.ToString()!= "")
+            if (imgLableList.SelectedItem != null && imgLableList.SelectedItem.ToString() != "")
             {
                 var items = imgLabels.Where(i => i.name == imgLableList.SelectedItem.ToString());
 
-                if(items.Count() == 1)
+                if (items.Count() == 1)
                 {
                     var item = items.First();
                     //Debug.WriteLine("find" + item.name);
@@ -704,14 +726,13 @@ namespace EasyCon2.Forms
                     if (targetImg.Image == null)
                         MessageBox.Show("没有搜索目标图片");
 
-                    var resolution = cvcap.CurResolution;
-                    SnapshotRangeR.X = curImgLabel.RangeX + resolution.X - 2;
-                    SnapshotRangeR.Y = curImgLabel.RangeY + resolution.Y - 2;
+                    SnapshotRangeR.X = curImgLabel.RangeX + CurResolution.X - 2;
+                    SnapshotRangeR.Y = curImgLabel.RangeY + CurResolution.Y - 2;
                     SnapshotRangeR.Width = curImgLabel.RangeWidth + 3;
                     SnapshotRangeR.Height = curImgLabel.RangeHeight + 3;
 
-                    SnapshotSearchObjR.X = curImgLabel.TargetX + resolution.X - 1;
-                    SnapshotSearchObjR.Y = curImgLabel.TargetY + resolution.Y - 1;
+                    SnapshotSearchObjR.X = curImgLabel.TargetX + CurResolution.X - 1;
+                    SnapshotSearchObjR.Y = curImgLabel.TargetY + CurResolution.Y - 1;
                     SnapshotSearchObjR.Width = curImgLabel.TargetWidth + 2;
                     SnapshotSearchObjR.Height = curImgLabel.TargetHeight + 2;
 
@@ -726,19 +747,19 @@ namespace EasyCon2.Forms
             if (ResolutionBtn.Text == "当前分辨率：1080P")
             {
                 // 720p
-                cvcap.CurResolution = new Point(1280, 720);
+                CurResolution = new Point(1280, 720);
                 ResolutionBtn.Text = "当前分辨率：720P";
             }
             else if (ResolutionBtn.Text == "当前分辨率：720P")
             {
                 // 480p
-                cvcap.CurResolution = new Point(640, 480);
+                CurResolution = new Point(640, 480);
                 ResolutionBtn.Text = "当前分辨率：480P";
             }
             else
             {
                 // 1080p
-                cvcap.CurResolution = new Point(1920, 1080);
+                CurResolution = new Point(1920, 1080);
                 ResolutionBtn.Text = "当前分辨率：1080P";
             }
         }
@@ -746,7 +767,8 @@ namespace EasyCon2.Forms
         private void monitorVisChk_CheckedChanged(object sender, EventArgs e)
         {
             var checkBox = (CheckBox)sender;
-            VideoSourcePlayerMonitor.Visible = checkBox.Checked;
+            VideoMonitor.Visible = checkBox.Checked;
+            monitorTimer.Enabled = checkBox.Checked;
         }
 
         #region resize funcs
@@ -766,7 +788,7 @@ namespace EasyCon2.Forms
         private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
         {
             deviceId = -1;
-            cvcap.Close();
+            cvcap.Release();
         }
 
         private void CaptureVideoForm_Resize(object sender, EventArgs e)
@@ -806,5 +828,10 @@ namespace EasyCon2.Forms
             }
         }
         #endregion
+
+        private void monitorTimer_Tick(object sender, EventArgs e)
+        {
+            VideoMonitor?.Invalidate();
+        }
     }
 }

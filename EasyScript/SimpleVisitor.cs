@@ -8,9 +8,22 @@ public sealed class SimpleVisitor : AstVisitor
     {
         foreach(var ast in program.Statements)
         {
+            if(ast.LeadingTrivia.Count > 0)
+            {
+                foreach(var trivia in ast.LeadingTrivia)
+                {
+                    trivia.Accept(this);
+                }
+            }
             ast.Accept(this);
         }
         return program; 
+    }
+
+    public override ASTNode VisitTrivia(TriviaNode ast)
+    {
+        Console.WriteLine(ast.Text);
+        return ast;
     }
     
     public override ASTNode VisitLiteral(LiteralExpression ast)
@@ -134,6 +147,10 @@ public sealed class SimpleVisitor : AstVisitor
     public override ASTNode VisitFunctionDefinition(FunctionDefinitionStatement ast)
     {
         Console.WriteLine($"Def Func: {ast.FunctionName}");
+        foreach(var statement in ast.Body)
+        {
+            statement.Accept(this);
+        }
         return ast;
     }
 

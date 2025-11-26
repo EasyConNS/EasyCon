@@ -44,7 +44,7 @@ namespace EasyScript.Statements
             if (RegDst is ValReg reg)
             {
                 if (reg.Index >= Processor.OfflineMaxRegisterCount)
-                    throw new Assembly.AssembleException(ErrorMessage.RegisterCountNotSupported);
+                    throw new Assembly.AssembleException(ErrorMessage.NotSupported);
                 assembler.Add(Assembly.Instructions.AsmMov.Create(reg.Index, ValueLeft));
                 if (OpMeta != null)
                 {

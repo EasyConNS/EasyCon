@@ -2,6 +2,7 @@ namespace EasyScript;
 
 public interface IAstVisitor<T>
 {
+    T VisitTrivia(TriviaNode ast);
     T VisitProgram(Program ast);
     T VisitLiteral(LiteralExpression ast);
     T VisitVariable(VariableExpression ast);
@@ -23,6 +24,11 @@ public interface IAstVisitor<T>
 public abstract class AstVisitor : IAstVisitor<ASTNode>
 {
     protected AstVisitor() { }
+
+    public virtual ASTNode VisitTrivia(TriviaNode ast)
+    {
+        return ast;
+    }
 
     public virtual ASTNode VisitProgram(Program ast)
     {

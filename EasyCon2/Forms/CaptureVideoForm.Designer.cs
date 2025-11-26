@@ -68,15 +68,16 @@
             imgLableList = new ListBox();
             SaveTagBtn = new Button();
             DynTestBtn = new Button();
-            timer1 = new System.Windows.Forms.Timer(components);
+            searchTestTimer = new System.Windows.Forms.Timer(components);
             CaptureVideoHelp = new TextBox();
             openCapBtn = new Button();
             ResolutionBtn = new Button();
             label2 = new Label();
             monitorVisChk = new CheckBox();
-            VideoSourcePlayerMonitor = new PaintControl();
+            VideoMonitor = new PaintControl();
             Snapshot = new PaintControl();
             openFileDialog1 = new OpenFileDialog();
+            monitorTimer = new System.Windows.Forms.Timer(components);
             groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)searchHNUD).BeginInit();
             ((System.ComponentModel.ISupportInitialize)searchWNUD).BeginInit();
@@ -486,9 +487,9 @@
             DynTestBtn.UseVisualStyleBackColor = true;
             DynTestBtn.Click += DynTestBtn_Click;
             // 
-            // timer1
+            // searchTestTimer
             // 
-            timer1.Tick += timer1_Tick;
+            searchTestTimer.Tick += timer1_Tick;
             // 
             // CaptureVideoHelp
             // 
@@ -549,20 +550,20 @@
             monitorVisChk.UseVisualStyleBackColor = true;
             monitorVisChk.CheckedChanged += monitorVisChk_CheckedChanged;
             // 
-            // VideoSourcePlayerMonitor
+            // VideoMonitor
             // 
-            VideoSourcePlayerMonitor.BackColor = SystemColors.ButtonShadow;
-            VideoSourcePlayerMonitor.Location = new Point(756, 1);
-            VideoSourcePlayerMonitor.Margin = new Padding(4);
-            VideoSourcePlayerMonitor.Name = "VideoSourcePlayerMonitor";
-            VideoSourcePlayerMonitor.Size = new Size(518, 318);
-            VideoSourcePlayerMonitor.TabIndex = 33;
-            VideoSourcePlayerMonitor.MouseDoubleClick += VideoSourcePlayerMonitor_MouseDoubleClick;
-            VideoSourcePlayerMonitor.MouseDown += VideoSourcePlayerMonitor_MouseDown;
-            VideoSourcePlayerMonitor.MouseMove += VideoSourcePlayerMonitor_MouseMove;
-            VideoSourcePlayerMonitor.MouseUp += VideoSourcePlayerMonitor_MouseUp;
-            VideoSourcePlayerMonitor.MouseWheel += VideoSourcePlayerMonitor_MouseWheel;
-            VideoSourcePlayerMonitor.PreviewKeyDown += VideoSourcePlayerMonitor_PreviewKeyDown;
+            VideoMonitor.BackColor = SystemColors.ButtonShadow;
+            VideoMonitor.Location = new Point(756, 1);
+            VideoMonitor.Margin = new Padding(4);
+            VideoMonitor.Name = "VideoMonitor";
+            VideoMonitor.Size = new Size(518, 318);
+            VideoMonitor.TabIndex = 33;
+            VideoMonitor.MouseDoubleClick += VideoSourcePlayerMonitor_MouseDoubleClick;
+            VideoMonitor.MouseDown += VideoSourcePlayerMonitor_MouseDown;
+            VideoMonitor.MouseMove += VideoSourcePlayerMonitor_MouseMove;
+            VideoMonitor.MouseUp += VideoSourcePlayerMonitor_MouseUp;
+            VideoMonitor.MouseWheel += VideoSourcePlayerMonitor_MouseWheel;
+            VideoMonitor.PreviewKeyDown += VideoSourcePlayerMonitor_PreviewKeyDown;
             // 
             // Snapshot
             // 
@@ -584,12 +585,18 @@
             openFileDialog1.FileName = "target";
             openFileDialog1.Filter = "图片文件(*.jpg,*.gif,*.bmp,*.png)|*.jpg;*.gif;*.bmp;*.png";
             // 
+            // monitorTimer
+            // 
+            monitorTimer.Enabled = true;
+            monitorTimer.Interval = 16;
+            monitorTimer.Tick += monitorTimer_Tick;
+            // 
             // CaptureVideoForm
             // 
             AutoScaleMode = AutoScaleMode.Inherit;
             ClientSize = new Size(1279, 747);
             Controls.Add(Snapshot);
-            Controls.Add(VideoSourcePlayerMonitor);
+            Controls.Add(VideoMonitor);
             Controls.Add(monitorVisChk);
             Controls.Add(label2);
             Controls.Add(ResolutionBtn);
@@ -663,7 +670,7 @@
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox imgLabelNametxt;
         private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.Timer searchTestTimer;
         private System.Windows.Forms.PictureBox searchResultImg;
         private System.Windows.Forms.PictureBox targetImg;
         private System.Windows.Forms.TextBox CaptureVideoHelp;
@@ -671,7 +678,7 @@
         private System.Windows.Forms.Button ResolutionBtn;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.CheckBox monitorVisChk;
-        private PaintControl VideoSourcePlayerMonitor;
+        private PaintControl VideoMonitor;
         private PaintControl Snapshot;
         private NumericUpDown targetXNUD;
         private NumericUpDown targetHNUD;
@@ -682,5 +689,6 @@
         private NumericUpDown searchYNUD;
         private NumericUpDown searchXNUD;
         private OpenFileDialog openFileDialog1;
+        private System.Windows.Forms.Timer monitorTimer;
     }
 }

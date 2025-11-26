@@ -2,16 +2,11 @@
 
 namespace EasyScript.Statements
 {
-    abstract class For : Parsing.Statement
+    abstract class For(ValBase count) : Parsing.Statement
     {
         public override int IndentNext => 1;
-        public readonly ValBase Count;
+        public readonly ValBase Count = count;
         public Next Next;
-
-        public For(ValBase count)
-        {
-            Count = count;
-        }
 
         protected virtual void Init(Processor processor)
         { }
@@ -50,7 +45,7 @@ namespace EasyScript.Statements
             return true;
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
             return $"FOR";
         }

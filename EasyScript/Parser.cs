@@ -7,6 +7,8 @@ internal sealed class Parser(Lexer lexer)
     private readonly List<Token> _tokens = lexer.Tokenize();
     private int _position = 0;
     private readonly Stack<int> _indentationStack = new();
+    private readonly List<TriviaNode> _leadingtrivias = [];
+    private readonly List<TriviaNode> _trailtrivias = [];
 
     private Token Peek(int offset = 0)
     {
@@ -19,21 +21,24 @@ internal sealed class Parser(Lexer lexer)
     private Token Current => Peek();
     private Token Advance()
     {
-        var current = Current;
+        var now = Current;
+        if(now.Type == TokenType.COMMENT)_leadingtrivias.Add(new TriviaNode(now));
+
         _position++;
+
         // advance next non-comment token
         while(Current.Type == TokenType.COMMENT)
         {
-            if(current.Line == Current.Line)
+            var comment = new TriviaNode(Current);
+            if(now.Line == Current.Line)
             {
-                Console.WriteLine($"行{current.Line}存在注释：{Current.Value}");
-                Console.WriteLine($"leading token: {current.Type}");
+                _trailtrivias.Add(comment);
             }else{
-                Console.WriteLine($"行{Current.Line}存在quan注释：{Current.Value}");
+                _leadingtrivias.Add(comment);
             }
             _position++;
         }
-        return current;
+        return now;
     }
     private bool Check(TokenType type) => Current?.Type == type;
     private bool Match(params TokenType[] types)
@@ -53,9 +58,18 @@ internal sealed class Parser(Lexer lexer)
         throw new Exception($"{message}:错误的 \"{Current.Value}\" 行{Peek()?.Line ?? 0}");
     }
 
-    public List<Statement> Parse()
+    public Program ParseProgram()
+    {
+        var members = ParseMembers();
+        return new Program(members);
+    }
+
+
+    private List<Statement> ParseMembers()
     {
         var statements = new List<Statement>();
+        _leadingtrivias.Clear();
+        _trailtrivias.Clear();
 
         while (!Check(TokenType.EOF))
         {
@@ -68,6 +82,16 @@ internal sealed class Parser(Lexer lexer)
             var statement = ParseMember();
             if (statement != null)
             {
+                if(_leadingtrivias.Count > 0)
+                {
+                    statement.LeadingTrivia.AddRange(_leadingtrivias);
+                    _leadingtrivias.Clear();
+                }
+                if(_trailtrivias.Count > 0)
+                {
+                    statement.TrailingTrivia.AddRange(_trailtrivias);
+                    _trailtrivias.Clear();
+                }
                 statements.Add(statement);
             }
 
@@ -76,11 +100,6 @@ internal sealed class Parser(Lexer lexer)
         }
 
         return statements;
-    }
-
-    public Program ParseProgram()
-    {
-        return new Program(Parse());
     }
 
     private Statement ParseMember()
@@ -291,7 +310,7 @@ internal sealed class Parser(Lexer lexer)
             var body = ParseStatementsUntil(TokenType.NEXT);
             Consume(TokenType.NEXT, "for语法需要next结尾");
 
-            return new ForStatement(loopVar, (VariableExpression)start, (VariableExpression)end, null, false, body)
+            return new ForStatement(loopVar, start, end, null, false, body)
             {
                 Line = forToken.Line,
                 Column = forToken.Column
@@ -626,7 +645,7 @@ internal sealed class Parser(Lexer lexer)
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                System.Diagnostics.Debug.WriteLine($"错误的数字格式: {ex.Message} 行{token.Line}");
                 throw new Exception($"错误的数字格式: {token.Value} 行{token.Line}");
             }
         }

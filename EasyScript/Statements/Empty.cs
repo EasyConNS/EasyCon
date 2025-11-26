@@ -11,7 +11,7 @@ class Empty : Parsing.Statement
         Text = text;
     }
 
-    protected override string _GetString(Formatter formatter)
+    protected override string _GetString(Formatter _)
     {
         return Text;
     }

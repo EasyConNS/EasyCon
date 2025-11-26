@@ -1,5 +1,9 @@
 ﻿using OpenCvSharp;
+using OpenCvSharp.Extensions;
 using System.Diagnostics;
+using System.Drawing;
+using System.Text.RegularExpressions;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace EasyCapture;
 
@@ -29,22 +33,26 @@ public class OpenCVCapture : IDisposable
         Debug.WriteLine(videoCapture.Get(VideoCaptureProperties.Fps));
     }
 
-    public Mat GetFrame()
+    private Mat GetMatFrame()
     {
         if (videoCapture.IsOpened())
         {
             return videoCapture.RetrieveMat();
-            //_image?.Dispose();
-            //_image = BitmapConverter.ToBitmap(_curMat);
-
-            //if (!m.Empty()) // should check empty
-            //{
-            //    m.ToBytes();
-            //    string strbaser64 = Convert.ToBase64String(m.ToBytes());
-            //}
         }
 
         return new Mat();
+    }
+
+    public Bitmap? GetImage() => GetFrame();
+
+    public Bitmap? GetFrame()
+    {
+        using var mat = GetMatFrame();
+        if (!mat.Empty())
+        {
+            return BitmapConverter.ToBitmap(mat);
+        }
+        return null;
     }
 
     public void Release()

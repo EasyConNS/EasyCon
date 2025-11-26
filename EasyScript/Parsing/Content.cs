@@ -17,12 +17,12 @@
             CodeText = codetext ?? text;
         }
 
-        public override string GetPrintString(Processor processor)
+        public override string GetPrintString(Processor _)
         {
             return Text;
         }
 
-        public override string GetCodeString(Formatter formatter)
+        public override string GetCodeString(Formatter _)
         {
             return CodeText;
         }

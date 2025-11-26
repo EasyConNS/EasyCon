@@ -127,13 +127,9 @@ partial class Parser
 #if DEBUG
         try
         {
-            var lex = new Lexer(text);
-            var parser = new EasyScript.Parser(lex);
-            var visitor = new SimpleVisitor();
+            var ast = new SimpleVisitor().VisitProgram(new EasyScript.Parser(new Lexer(text)).ParseProgram());
 
-            var ast = visitor.VisitProgram(parser.ParseProgram());
-
-            Debug.WriteLine(ast is Program ? "done debug parser" : "occured");
+            Debug.WriteLine(ast is Program ? "debug parser done" : "err occured");
         }
         catch (Exception e) { Debug.WriteLine(e.Message); }
 #endif

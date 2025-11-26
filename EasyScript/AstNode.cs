@@ -21,6 +21,24 @@ public class Program(List<Statement> statements) : ASTNode
 // 表达式节点
 public abstract class Expression : ASTNode { }
 
+public class TriviaNode : Expression
+{
+    public string Text => Kind.Value;
+    public int Line => Kind.Line;
+
+    private Token Kind { get; }
+
+    public TriviaNode(Token trivia)
+    {
+        Kind = trivia;
+    }
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitTrivia(this);
+    }
+}
+
 // 字面量表达式
 public class LiteralExpression : Expression
 {
@@ -115,8 +133,8 @@ public class ConditionExpression : Expression
 // 语句节点
 public abstract class Statement : ASTNode
 {
-    public List<string> LeadingTrivia = [];
-    public List<string> TrailingTrivia = [];
+    public readonly List<TriviaNode> LeadingTrivia = [];
+    public readonly List<TriviaNode> TrailingTrivia = [];
 }
 
 // 赋值语句
@@ -200,14 +218,14 @@ public class ElseClause : Statement
 public class ForStatement : Statement
 {
     public string LoopVariable { get; }  // 循环变量名（对于范围循环）
-    public VariableExpression StartValue { get; } // 起始值
-    public VariableExpression EndValue { get; }   // 结束值
+    public Expression StartValue { get; } // 起始值
+    public Expression EndValue { get; }   // 结束值
     public int StepValue { get; }  // 步长
     public Expression? LoopCount { get; }  // 循环次数（对于计数循环）
     public bool IsInfinite { get; }       // 是否无限循环
     public List<Statement> Body { get; }  // 循环体
 
-    public ForStatement(string loopVariable, VariableExpression startValue, VariableExpression endValue,
+    public ForStatement(string loopVariable, Expression startValue, Expression endValue,
                       Expression? loopCount, bool isInfinite,
                       List<Statement> body, int stepValue = 1)
     {

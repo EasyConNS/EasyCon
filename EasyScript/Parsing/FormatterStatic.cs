@@ -19,10 +19,10 @@ namespace EasyScript.Parsing
             text = text[1..];
             if (uint.TryParse(text, out var reg))
             {
-                if (reg >= Processor.RegisterCount)
-                    throw new ParseException($"寄存器取值范围0~{Processor.RegisterCount - 1}");
+                if (reg >= Processor.OfflineMaxRegisterCount)
+                    throw new ParseException($"寄存器变量取值范围：0~{Processor.OfflineMaxRegisterCount - 1}");
                 if (lhs && reg == 0)
-                    throw new ParseException(@"寄存器0为只读");
+                    throw new ParseException(@"寄存器变量编号0只读");
                 return new ValReg(reg);
             } else
             {

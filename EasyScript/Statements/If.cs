@@ -140,7 +140,7 @@ namespace EasyScript.Statements
                 processor.PC = If.EndIf.Address + 1;
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
             return "ELSE";
         }
@@ -158,10 +158,10 @@ namespace EasyScript.Statements
     {
         public override int IndentThis => -1;
 
-        public override void Exec(Processor processor)
+        public override void Exec(Processor _)
         { }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
             return "ENDIF";
         }

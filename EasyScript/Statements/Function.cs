@@ -64,7 +64,7 @@ namespace EasyScript.Statements
     {
         public override int IndentThis => -1;
         public string Label;
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
             return "ENDFUNC";
         }
