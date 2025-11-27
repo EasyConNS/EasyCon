@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(TFMS)</TargetFrameworks>    
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EasyCon.Capture\EasyCon.Capture.csproj" />
+    <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
+    <ProjectReference Include="..\EasyCon.Script2\EasyCon.Script2.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:EC.Avalonia.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="EC.Avalonia.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="EasyCon2">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs)-->
+        <vm:MainWindowViewModel/>
+		 设计时数据上下文 -->
+	</Design.DataContext>
+
+	<StackPanel Margin="10">
+		<!-- ComboBox 绑定 Items 和 SelectedItem -->
+		<ComboBox
+            ItemsSource="{Binding Items}"
+            SelectedItem="{Binding SelectedItem}"
+            Width="200"
+            Margin="0,10"/>
+
+		<!-- 可选：添加按钮刷新数据 -->
+		<Button
+            Content="刷新数据"
+            Command="{Binding RefreshCommand}"
+            Width="100"/>
+	</StackPanel>
+
+</Window>
