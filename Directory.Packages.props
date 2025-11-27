@@ -17,7 +17,7 @@
     <PackageVersion Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
     <PackageVersion Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" />
     <PackageVersion Include="OpenCvSharp4.WpfExtensions" Version="4.11.0.20250507" />
-    <PackageVersion Include="OpenCvSharp4_.runtime.ubuntu.20.04-x64" Version="4.10.0.20241108" />
+    <PackageVersion Include="OpenCvSharp4.official.runtime.linux-x64" Version="4.11.0.20250507" />
     <PackageVersion Include="SharpDX" Version="4.2.0" />
     <PackageVersion Include="SharpDX.DirectInput" Version="4.2.0" />
     <PackageVersion Include="WebSocketSharp-netstandard" Version="1.0.1" />

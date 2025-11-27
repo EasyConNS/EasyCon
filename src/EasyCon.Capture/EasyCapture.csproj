@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>$(TFMS)</TargetFramework>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 
@@ -9,7 +9,7 @@
 		<PackageReference Include="OpenCvSharp4" />
 		<PackageReference Include="OpenCvSharp4.Extensions" />
 		<PackageReference Condition="'$(OS)' == 'Windows_NT'" Include="OpenCvSharp4.runtime.win" />
-		<PackageReference Condition="'$(OS)' == 'Unix'" Include="OpenCvSharp4_.runtime.ubuntu.20.04-x64" />
+		<PackageReference Condition="'$(OS)' == 'Unix'" Include="OpenCvSharp4.official.runtime.linux-x64" />
 		<!--<PackageReference Include="Tesseract" />-->
 	</ItemGroup>
 
