@@ -1,4 +1,4 @@
-using ECDevice;
+using EasyDevice;
 using SharpDX.DirectInput;
 using System.Diagnostics;
 

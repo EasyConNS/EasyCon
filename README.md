@@ -35,16 +35,8 @@
 
 > https://github.com/EasyConNS/EasyMCU
 
-
-
 # 作者
 
 - [铃落](https://github.com/nukieberry)
 - [elmagnifico](https://github.com/elmagnificogi)
 - [ca1e(当前维护者)](https://github.com/ca1e)
-
-
-
-# 感谢
-
-> https://github.com/secile/UsbCamera
