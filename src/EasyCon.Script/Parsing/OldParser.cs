@@ -1,4 +1,6 @@
 ﻿using EasyScript.Statements;
+using EC.Script;
+using EC.Script.Syntax;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -127,9 +129,21 @@ partial class Parser
 #if DEBUG
         try
         {
-            var ast = new SimpleVisitor().VisitProgram(new EasyScript.Parser(new Lexer(text)).ParseProgram());
+            var syntaxTree = SyntaxTree.Parse(text);
 
-            Debug.WriteLine(ast is Program ? "debug parser done" : "err occured");
+            if (syntaxTree.Diagnostics.Length > 0)
+            {
+                foreach (var diagnostic in syntaxTree.Diagnostics)
+                {
+                    Debug.WriteLine(diagnostic);
+                }
+            }
+            else
+            {
+                var visitor = new SimpleVisitor();
+                var ast = visitor.VisitProgram(syntaxTree.Root);
+                Debug.WriteLine(ast is EC.Script.Ast.MainProgram ? "debug parser done" : "err occured");
+            }
         }
         catch (Exception e) { Debug.WriteLine(e.Message); }
 #endif

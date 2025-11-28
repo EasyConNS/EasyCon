@@ -262,10 +262,8 @@ public class BreakStatement : Statement
 // Continue语句
 public class ContinueStatement : Statement
 {
-    public uint Circle { get; }
-    public ContinueStatement(uint circle = 1)
+    public ContinueStatement()
     {
-        Circle = circle;
     }
     public override T Accept<T>(IAstVisitor<T> visitor)
     {

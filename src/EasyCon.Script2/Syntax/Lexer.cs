@@ -1,5 +1,4 @@
 using EC.Script.Text;
-using System.Collections.Immutable;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -530,7 +529,10 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 AddToken(TokenType.RightBracket, "]");
                 break;
             default:
-                throw new Exception($"无法识别的字符：'{current}' 在行：{_line}");
+                var span = new SourceSpan(_position, 1, _line);
+                var location = new TextLocation(_text, span);
+                _diagnostics.ReportBadCharacter(location, current);
+                break;
         }
     }
 

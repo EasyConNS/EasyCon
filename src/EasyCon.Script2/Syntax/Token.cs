@@ -96,7 +96,7 @@ public enum TokenType
     EOF
 }
 
-public sealed class Token(TokenType type, string value, int line, int column)
+public sealed record Token(TokenType type, string value, int line, int column)
 {
     public TokenType Type { get; } = type;
     public string Value { get; } = value;

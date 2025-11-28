@@ -31,7 +31,7 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 
     public void ReportBadCharacter(TextLocation location, char character)
     {
-        var message = $"Bad character input: '{character}'.";
+        var message = $"不识别的字符: '{character}'";
         Report(location, message);
     }
 
@@ -43,13 +43,13 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 
     public void ReportUnexpectedToken(TextLocation location, TokenType actualKind, TokenType expectedKind)
     {
-        var message = $"错误的 <{actualKind}>, 期望 <{expectedKind}>.";
+        var message = $"错误的 <{actualKind}>, 期望 <{expectedKind}>";
         Report(location, message);
     }
 
     public void ReportInvalidExpressionStatement(TextLocation location, TokenType actualKind)
     {
-        var message = $"Only assignment and call expressions can be used as a statement.";
+        var message = $"无效的表达式语句";
         Report(location, message);
     }
 }

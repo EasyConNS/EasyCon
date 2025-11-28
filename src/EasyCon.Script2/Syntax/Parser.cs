@@ -9,10 +9,9 @@ internal sealed class Parser
     private readonly DiagnosticBag _diagnostics = [];
     private readonly SyntaxTree _syntaxTree;
     private readonly SourceText _text;
-    private readonly List<Token> _tokens;
+    private readonly ImmutableArray<Token> _tokens;
 
     private int _position = 0;
-    private readonly Stack<int> _indentationStack = new();
     private readonly List<TriviaNode> _leadingtrivias = [];
     private readonly List<TriviaNode> _trailtrivias = [];
     
@@ -21,7 +20,7 @@ internal sealed class Parser
     public Parser(SyntaxTree syntaxTree)
     {
         var lexer = new Lexer(syntaxTree);
-        _tokens = lexer.Tokenize();
+        _tokens = lexer.Tokenize().ToImmutableArray();
         _syntaxTree = syntaxTree;
         _text = syntaxTree.Text;
         _diagnostics.AddRange(lexer.Diagnostics);
@@ -30,8 +29,8 @@ internal sealed class Parser
     private Token Peek(int offset = 0)
     {
         var index = _position + offset;
-        if (index >= _tokens.Count)
-            return _tokens[_tokens.Count - 1];
+        if (index >= _tokens.Length)
+            return _tokens[_tokens.Length - 1];
 
         return _tokens[index];
     }
@@ -73,11 +72,13 @@ internal sealed class Parser
 
         var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));
         _diagnostics.ReportUnexpectedToken(location, Current.Type, type);
-        return new Token(TokenType.BadToken, Current.Value, Current.Line, Current.Column);
+        throw new Exception(message+ $" 行{Current.Line}");
     }
 
     public MainProgram ParseProgram()
     {
+        if (_diagnostics.Count() > 0)
+            throw new Exception($"词法分析失败：{_diagnostics.First().Message}");
         var members = ParseMembers();
         return new MainProgram(members);
     }
@@ -129,11 +130,7 @@ internal sealed class Parser
 
     private Statement ParseGlobalStatement()
     {
-        if (Check(TokenType.CONST) || Check(TokenType.VAR))
-        {
-            return ParseAssignment();
-        }
-        else if (Check(TokenType.IF))
+        if (Check(TokenType.IF))
         {
             return ParseIfStatement();
         }
@@ -161,36 +158,40 @@ internal sealed class Parser
         {
             return ParseSpecIdentStatement();
         }
-
-        throw new Exception($"语法错误:{Current.Type}  行{Current.Line}");
+        return ParseAssignment();
     }
 
     private AssignmentStatement ParseAssignment()
     {
-        var variableToken = Advance();
-        string variableName = variableToken.Value;
-        bool isConstant = variableToken.Type == TokenType.CONST;
-
-        Token assignmentOp;
-        if (Match(TokenType.ASSIGN, TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN,
-                 TokenType.MUL_ASSIGN, TokenType.DIV_ASSIGN, TokenType.SlashIAssign,
-                 TokenType.MOD_ASSIGN, TokenType.XOR_ASSIGN, TokenType.BitAnd_ASSIGN, TokenType.BitOr_ASSIGN,
-                 TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN))
+        AssignmentStatement left = null;
+        if (Check(TokenType.CONST) || Check(TokenType.VAR))
         {
-            assignmentOp = Advance();
+            var variableToken = Advance();
+            string variableName = variableToken.Value;
+            bool isConstant = variableToken.Type == TokenType.CONST;
+
+            Token assignmentOp;
+            if (Match(TokenType.ASSIGN, TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN,
+                     TokenType.MUL_ASSIGN, TokenType.DIV_ASSIGN, TokenType.SlashIAssign,
+                     TokenType.MOD_ASSIGN, TokenType.XOR_ASSIGN, TokenType.BitAnd_ASSIGN, TokenType.BitOr_ASSIGN,
+                     TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN))
+            {
+                assignmentOp = Advance();
+            }
+            else
+            {
+                throw new Exception($"不支持的操作符\"{Current.Type}\" 行{Current.Line}");
+            }
+
+            var value = ParseExpression();
+
+            return new AssignmentStatement(variableToken, assignmentOp, value)
+            {
+                Line = variableToken.Line,
+                Column = variableToken.Column
+            };
         }
-        else
-        {
-            throw new Exception($"不支持的操作符\"{Current.Type}\" 行{Current.Line}");
-        }
-
-        var value = ParseExpression();
-
-        return new AssignmentStatement(variableToken, assignmentOp, value)
-        {
-            Line = variableToken.Line,
-            Column = variableToken.Column
-        };
+        return left;
     }
 
     private Statement ParseSpecIdentStatement()
@@ -226,7 +227,7 @@ internal sealed class Parser
 
     private IfStatement ParseIfStatement()
     {
-        var ifToken = Consume(TokenType.IF, "if语法不正确");
+        var ifToken = Advance();
         var condition = ParseCondition();
 
         Consume(TokenType.NEWLINE, "if条件语法不正确");
@@ -282,7 +283,7 @@ internal sealed class Parser
             elseClause = new(elseBranch);
         }
 
-        Consume(TokenType.ENDIF, "需要endif结尾");
+        Consume(TokenType.ENDIF, "if语句需要endif结尾");
 
         return new IfStatement(condition, thenBranch, elseif, elseClause)
         {
@@ -293,12 +294,12 @@ internal sealed class Parser
 
     private ForStatement ParseForStatement()
     {
-        var forToken = Consume(TokenType.FOR, "for语法不正确");
+        var forToken = Advance();
 
         if (Check(TokenType.NEWLINE))
         {
             // 形式1: 无限循环
-            Consume(TokenType.NEWLINE, "需要换行");
+            Consume(TokenType.NEWLINE, "for语法不正确");
             var body = ParseStatementsUntil(TokenType.NEXT);
             Consume(TokenType.NEXT, "for语句需要next结尾");
 
@@ -324,9 +325,9 @@ internal sealed class Parser
                 step = ParsePrimary();
             }
 
-            Consume(TokenType.NEWLINE, "需要换行");
+            Consume(TokenType.NEWLINE, "for语法不正确");
             var body = ParseStatementsUntil(TokenType.NEXT);
-            Consume(TokenType.NEXT, "for语法需要next结尾");
+            Consume(TokenType.NEXT, "for语句需要next结尾");
 
             return new ForStatement(loopVar, start, end, null, false, body)
             {
@@ -338,9 +339,9 @@ internal sealed class Parser
         {
             // 形式3: 计数循环 for 5
             var loopCount = ParsePrimary();
-            Consume(TokenType.NEWLINE, "需要换行");
+            Consume(TokenType.NEWLINE, "for语法不正确");
             var body = ParseStatementsUntil(TokenType.NEXT);
-            Consume(TokenType.NEXT, "for语法需要next结尾");
+            Consume(TokenType.NEXT, "for语句需要next结尾");
 
             return new ForStatement(null, null, null, loopCount, false, body)
             {
@@ -370,7 +371,7 @@ internal sealed class Parser
 
     private BreakStatement ParseBreakStatement()
     {
-        var breakToken = Consume(TokenType.BREAK, "需要break语句");
+        var breakToken = Advance();
 
         uint circle = 1;
         if (!Check(TokenType.NEWLINE)) 
@@ -387,25 +388,20 @@ internal sealed class Parser
 
     private ContinueStatement ParseContinueStatement()
     {
-        var breakToken = Consume(TokenType.CONTINUE, "需要continue语句");
+        var continueToken = Advance();
+        Consume(TokenType.NEWLINE, "continue语法不正确");
 
-        uint circle = 1;
-        if (!Check(TokenType.NEWLINE)) 
+        return new ContinueStatement()
         {
-            var value = Consume(TokenType.INT, "break跳出层数必须为数字");
-            circle = uint.Parse(value.Value);
-        }
-        return new ContinueStatement(circle)
-        {
-            Line = breakToken.Line,
-            Column = breakToken.Column
+            Line = continueToken.Line,
+            Column = continueToken.Column
         };
     }
 
     private FunctionDefinitionStatement ParseFunctionDecl()
     {
-        var functionToken = Consume(TokenType.FUNC, "需要func关键字");
-        var functionName = Consume(TokenType.IDENT, "错误定义的函数名").Value;
+        var functionToken = Advance();
+        var functionName = Consume(TokenType.IDENT, "定义函数需要函数名");
 
         var parameters = new List<string>();
         if (Check(TokenType.LeftParen))
@@ -434,7 +430,7 @@ internal sealed class Parser
 
         Consume(TokenType.ENDFUNC, "需要endfunc结尾");
 
-        return new FunctionDefinitionStatement(functionName, null, body)
+        return new FunctionDefinitionStatement(functionName.Value, null, body)
         {
             Line = functionToken.Line,
             Column = functionToken.Column
