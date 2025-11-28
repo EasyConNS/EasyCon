@@ -1,5 +1,4 @@
 using EC.Script;
-using EC.Script.Ast;
 using EC.Script.Syntax;
 
 var syntaxTree = SyntaxTree.Load("../../Script/test.txt");

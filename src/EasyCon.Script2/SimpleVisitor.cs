@@ -135,8 +135,7 @@ public sealed class SimpleVisitor : AstVisitor
 
     public override ASTNode VisitContinue(ContinueStatement ast)
     {
-        string circle = ast.Circle > 1 ? $" {ast.Circle}" : "";
-        Console.WriteLine($"CONTINIUE{circle}");
+        Console.WriteLine($"CONTINIUE");
         return ast;
     }
     public override ASTNode VisitBreak(BreakStatement ast)

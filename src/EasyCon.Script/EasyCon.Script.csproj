@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
+	  <ProjectReference Include="..\EasyCon.Script2\EasyCon.Script2.csproj" />
   </ItemGroup>
 
 	<ItemGroup>

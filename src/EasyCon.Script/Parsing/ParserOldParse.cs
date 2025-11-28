@@ -1,4 +1,5 @@
 ﻿using EasyScript.Statements;
+using EC.Script.Syntax;
 using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing;
@@ -14,8 +15,8 @@ internal partial class Parser
 
     private Statement? ParseConstantDecl(string text)
     {
-        var lexer = new Lexer(text).Tokenize();
-        if (lexer.Count != 3 + 2)
+        var lexer = SyntaxTree.ParseTokens(text);
+        if (lexer.Count() != 3 + 2)
             return null;
         if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN && lexer[2].Type == TokenType.INT)
         {
@@ -114,7 +115,7 @@ internal partial class Parser
 
     private Statement? ParseLoopCtrl(string text)
     {
-        var tokens = new Lexer(text).Tokenize().Take(2).ToList();
+        var tokens = SyntaxTree.ParseTokens(text).Take(2).ToList();
 
         switch (tokens[0].Type)
         {
@@ -195,7 +196,7 @@ internal partial class Parser
 
     private Statement? ParseNamedExpression(string text)
     {
-        var tokens = new Lexer(text).Tokenize();
+        var tokens = SyntaxTree.ParseTokens(text);
         var first = tokens.First()!;
         switch (first.Value.ToLower())
         {
