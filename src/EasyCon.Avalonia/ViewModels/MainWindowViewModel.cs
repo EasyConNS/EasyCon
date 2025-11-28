@@ -1,29 +1,25 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Drawing;
+using System.Windows.Input;
+using Avalonia.Media;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Windows.Input;
 
 namespace EC.Avalonia.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-#pragma warning disable CA1822 // Mark members as static
-    public string Greeting => "Welcome to EasyCon2!";
-    public ICommand RefreshCommand { get; }
-#pragma warning restore CA1822 // Mark members as static
+    [ObservableProperty]
+    public partial ObservableCollection<string> Items { get; set; }
 
     [ObservableProperty]
-    private ObservableCollection<string> _items;
-
-    [ObservableProperty]
-    private string? _selectedItem;
+    public partial string? SelectedItem { get; set; }
 
     public MainWindowViewModel()
     {
         Items = new ObservableCollection<string>(GetItems());
-        RefreshCommand = new RelayCommand(LoadItems);
     }
 
     private List<string> GetItems()
@@ -31,7 +27,8 @@ public partial class MainWindowViewModel : ViewModelBase
         return ECCore.GetCaptureSources();
     }
 
-    private void LoadItems()
+    [RelayCommand]
+    private void Refresh()
     {
         Items.Clear();
         foreach (var item in GetItems())
