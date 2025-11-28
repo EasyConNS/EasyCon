@@ -42,9 +42,9 @@
             ShowInTaskbar = false;
             TopMost = true;
             Load += FormController_Load;
-            MouseDown += FormController_MouseDown;
-            MouseMove += FormController_MouseMove;
-            MouseUp += FormController_MouseUp;
+            MouseDown += VPadForm_MouseDown;
+            MouseMove += VPadForm_MouseMove;
+            MouseUp += VPadForm_MouseUp;
             ResumeLayout(false);
 
         }

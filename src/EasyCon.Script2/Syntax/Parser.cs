@@ -1,14 +1,31 @@
-﻿#if true
+﻿using EC.Script.Text;
+using EC.Script.Ast;
+using System.Collections.Immutable;
 
-namespace EasyScript;
+namespace EC.Script.Syntax;
 
-internal sealed class Parser(Lexer lexer)
+internal sealed class Parser
 {
-    private readonly List<Token> _tokens = lexer.Tokenize();
+    private readonly DiagnosticBag _diagnostics = [];
+    private readonly SyntaxTree _syntaxTree;
+    private readonly SourceText _text;
+    private readonly List<Token> _tokens;
+
     private int _position = 0;
     private readonly Stack<int> _indentationStack = new();
     private readonly List<TriviaNode> _leadingtrivias = [];
     private readonly List<TriviaNode> _trailtrivias = [];
+    
+    public DiagnosticBag Diagnostics => _diagnostics;
+
+    public Parser(SyntaxTree syntaxTree)
+    {
+        var lexer = new Lexer(syntaxTree);
+        _tokens = lexer.Tokenize();
+        _syntaxTree = syntaxTree;
+        _text = syntaxTree.Text;
+        _diagnostics.AddRange(lexer.Diagnostics);
+    }
 
     private Token Peek(int offset = 0)
     {
@@ -49,19 +66,20 @@ internal sealed class Parser(Lexer lexer)
         }
         return false;
     }
-
     private Token Consume(TokenType type, string message)
     {
         if (Check(type))
             return Advance();
 
-        throw new Exception($"{message}:错误的 \"{Current.Value}\" 行{Peek()?.Line ?? 0}");
+        var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));
+        _diagnostics.ReportUnexpectedToken(location, Current.Type, type);
+        return new Token(TokenType.BadToken, Current.Value, Current.Line, Current.Column);
     }
 
-    public Program ParseProgram()
+    public MainProgram ParseProgram()
     {
         var members = ParseMembers();
-        return new Program(members);
+        return new MainProgram(members);
     }
 
 
@@ -111,7 +129,11 @@ internal sealed class Parser(Lexer lexer)
 
     private Statement ParseGlobalStatement()
     {
-        if (Check(TokenType.IF))
+        if (Check(TokenType.CONST) || Check(TokenType.VAR))
+        {
+            return ParseAssignment();
+        }
+        else if (Check(TokenType.IF))
         {
             return ParseIfStatement();
         }
@@ -139,15 +161,12 @@ internal sealed class Parser(Lexer lexer)
         {
             return ParseSpecIdentStatement();
         }
-        return ParseAssignment();
+
+        throw new Exception($"语法错误:{Current.Type}  行{Current.Line}");
     }
 
     private AssignmentStatement ParseAssignment()
     {
-        if (!Check(TokenType.CONST) && !Check(TokenType.VAR))
-        {
-            throw new Exception($"错误的语法 \"{Current.Value}\" 行{Current.Line}");
-        }
         var variableToken = Advance();
         string variableName = variableToken.Value;
         bool isConstant = variableToken.Type == TokenType.CONST;
@@ -669,8 +688,8 @@ internal sealed class Parser(Lexer lexer)
             };
         }
 
-        throw new Exception($"错误的表达式：\"{Peek().Value}\" 类型：{Peek().Type} 行{Peek().Line}");
+        var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));
+        _diagnostics.ReportInvalidExpressionStatement(location, Current.Type);
+        throw new Exception($"无效的表达式语句 行{Current.Line}");
     }
 }
-
-#endif

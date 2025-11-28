@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\EasyCon.Device\EasyDevice.csproj" />
+    <ProjectReference Include="..\src\EasyCon.Device\EasyCon.Device.csproj" />
   </ItemGroup>
 
 </Project>

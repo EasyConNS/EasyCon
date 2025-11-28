@@ -538,6 +538,11 @@ namespace EasyCon2.Forms
                 if (!CheckFirmwareVersion())
                     return;
             }
+            if (!NS.RemoteStop())
+            {
+                MessageBox.Show($"需要先停止烧录脚本运行，请点击<远程停止>按钮");
+                return;
+            }
 
             thd = new Thread(_RunScript);
             thd?.Start();
@@ -618,7 +623,7 @@ namespace EasyCon2.Forms
 
         private void ComPort_DropDown(object sender, EventArgs e)
         {
-            var ports = EasyDevice.ECDevice.GetPortNames();
+            var ports = ECDevice.GetPortNames();
             ComPort.Items.Clear();
             foreach (var portName in ports)
             {
@@ -641,7 +646,7 @@ namespace EasyCon2.Forms
             EnableConnBtn(false);
             StatusShowLog("尝试连接...");
 
-            var ports = port == "" ? EasyDevice.ECDevice.GetPortNames() : [port];
+            var ports = port == "" ? ECDevice.GetPortNames() : [port];
 
             await Task.Run(() =>
             {
@@ -654,7 +659,11 @@ namespace EasyCon2.Forms
                     {
                         StatusShowLog("连接成功");
                         SystemSounds.Beep.Play();
-                        ComPort.Text = portName;
+                        Invoke(() =>
+                        {
+
+                            ComPort.Text = portName;
+                        });
                         break;
                     }
                     // fix the internal thread cant quit safely,so wait 1s for next connect

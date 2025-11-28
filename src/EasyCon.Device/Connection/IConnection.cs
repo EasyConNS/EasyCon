@@ -1,6 +1,6 @@
 ﻿namespace EasyDevice.Connection;
 
-public delegate void BytesTransferedHandler(string connString, byte[] bytes);
+public delegate void BytesTransferedHandler(string comPort, byte[] bytes);
 public delegate void StatusChangedHandler(Status status);
 
 abstract class IConnection

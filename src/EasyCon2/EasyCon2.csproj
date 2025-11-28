@@ -23,10 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EasyCon.Capture\EasyCapture.csproj" />
-    <ProjectReference Include="..\EasyCon.Script\EasyScript.csproj" />
-    <ProjectReference Include="..\EasyCon.Device\EasyDevice.csproj" />
-    <ProjectReference Include="..\EasyCon.VPad\EasyVPad.csproj" />
+    <ProjectReference Include="..\EasyCon.Capture\EasyCon.Capture.csproj" />
+    <ProjectReference Include="..\EasyCon.Script\EasyCon.Script.csproj" />
+    <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
+    <ProjectReference Include="..\EasyCon.VPad\EasyCon.VPad.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="LibAmiibo">

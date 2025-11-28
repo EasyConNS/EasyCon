@@ -6,7 +6,7 @@ namespace EasyVPad;
 public delegate Bitmap GetJCImg(string name);
 public delegate SwitchReport GetReport();
 
-internal class JCPainter
+internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg getImg)
 {
     DateTime _starttime = DateTime.MinValue;
     readonly Brush _brushLightDefault = new SolidBrush(Color.FromArgb(50, Color.Black));
@@ -17,16 +17,9 @@ internal class JCPainter
     readonly Brush _brushButtonDown = new SolidBrush(Color.Lime);
     readonly Brush _brushButtonUp = new SolidBrush(Color.FromArgb(50, 50, 50));
 
-    readonly GetReport getReporter;
-    readonly IControllerAdapter script;
-    readonly GetJCImg getJCImg;
-
-    public JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg getImg)
-    {
-        getReporter = repoter.GetReport;
-        script = adapter;
-        getJCImg = getImg;
-    }
+    readonly GetReport getReporter = repoter.GetReport;
+    readonly IControllerAdapter script = adapter;
+    readonly GetJCImg getJCImg = getImg;
 
     public void OnPaint(Graphics g, Rectangle rectangle)
     {

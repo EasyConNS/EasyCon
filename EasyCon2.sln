@@ -3,19 +3,19 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.3.11206.111
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.Winform", "src\EasyCon.Winform\EasyCon2.csproj", "{53DD390A-7372-45C1-85C7-6CF070E0694F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon2", "src\EasyCon2\EasyCon2.csproj", "{53DD390A-7372-45C1-85C7-6CF070E0694F}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.Device", "src\EasyCon.Device\EasyDevice.csproj", "{3CA35B95-9764-4DD4-B5DE-1784E6FD7E51}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.Device", "src\EasyCon.Device\EasyCon.Device.csproj", "{3CA35B95-9764-4DD4-B5DE-1784E6FD7E51}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.VPad", "src\EasyCon.VPad\EasyVPad.csproj", "{5E89F088-E9CD-4390-8A78-7F3A391AC7B2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.VPad", "src\EasyCon.VPad\EasyCon.VPad.csproj", "{5E89F088-E9CD-4390-8A78-7F3A391AC7B2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.Script", "src\EasyCon.Script\EasyScript.csproj", "{FC55EBC4-FC1E-446B-A83B-7B4A5C3E0194}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.Script", "src\EasyCon.Script\EasyCon.Script.csproj", "{FC55EBC4-FC1E-446B-A83B-7B4A5C3E0194}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.Capture", "src\EasyCon.Capture\EasyCapture.csproj", "{2FD3997D-B64E-4B39-9EB7-24D279C3897B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.Script2", "src\EasyCon.Script2\EasyCon.Script2.csproj", "{27EE54A7-2CFB-4617-BF69-353EE8F85E53}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.Capture", "src\EasyCon.Capture\EasyCon.Capture.csproj", "{2FD3997D-B64E-4B39-9EB7-24D279C3897B}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DirectInput", "DirectInput\DirectInput.csproj", "{C4E877CF-D0B9-4659-9109-C37ED73D5FCB}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EasyCon.Tests", "src\EasyCon.Tests\EasyCon.Tests.csproj", "{9D757FA7-0F16-4434-8D34-3756B3AC68D6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{083BEF92-5E14-4170-979C-E1C1E11E4781}"
 	ProjectSection(SolutionItems) = preProject
@@ -53,10 +53,10 @@ Global
 		{C4E877CF-D0B9-4659-9109-C37ED73D5FCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4E877CF-D0B9-4659-9109-C37ED73D5FCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4E877CF-D0B9-4659-9109-C37ED73D5FCB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9D757FA7-0F16-4434-8D34-3756B3AC68D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27EE54A7-2CFB-4617-BF69-353EE8F85E53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27EE54A7-2CFB-4617-BF69-353EE8F85E53}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27EE54A7-2CFB-4617-BF69-353EE8F85E53}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27EE54A7-2CFB-4617-BF69-353EE8F85E53}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

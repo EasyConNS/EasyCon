@@ -1,9 +1,4 @@
 ﻿using EasyDevice;
-using System;
-using System.Drawing;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace EasyVPad
 {
@@ -125,7 +120,7 @@ namespace EasyVPad
             Top = (Screen.FromControl(this).WorkingArea.Height - Height) / 2;
         }
 
-        private void FormController_MouseDown(object sender, MouseEventArgs e)
+        private void VPadForm_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right)
             {
@@ -135,7 +130,7 @@ namespace EasyVPad
             }
         }
 
-        private void FormController_MouseUp(object sender, MouseEventArgs e)
+        private void VPadForm_MouseUp(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Right)
             {
@@ -149,7 +144,7 @@ namespace EasyVPad
                 ControllerEnabledLevel = 0;
         }
 
-        private void FormController_MouseMove(object sender, MouseEventArgs e)
+        private void VPadForm_MouseMove(object sender, MouseEventArgs e)
         {
             if (mouseDown)
             {

@@ -4,7 +4,7 @@ set projname="EasyCon2"
 
 cd src
 rmdir /s /q publish 
-cd EasyCon.Winform\
+cd EasyCon2\
 
 rmdir /s /q bin
 rmdir /s /q obj
@@ -18,7 +18,7 @@ ren EasyCon2.exe EasyCon.net8.0.%commitid%.exe
 cd ../
 xcopy ..\Firmware .\publish\Firmware\
 xcopy ..\Script .\publish\Script\
-xcopy .\EasyCon.Winform\Resources\AmiiboImages .\publish\Amiibo\AmiiboImages\
+xcopy .\EasyCon2\Resources\AmiiboImages .\publish\Amiibo\AmiiboImages\
 mkdir .\publish\ImgLabel\
 del .\publish\*.pdb
 pause

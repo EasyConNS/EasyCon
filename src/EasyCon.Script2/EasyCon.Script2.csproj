@@ -1,12 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>$(TFMS)</TargetFramework>
+    <TargetFrameworks>$(TFMS)</TargetFrameworks>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\EasyCon.Device\EasyDevice.csproj" />
-  </ItemGroup>
 
 	<ItemGroup>
 		<!--<PackageReference Include="NLua" />-->

@@ -60,8 +60,9 @@ public partial class NintendoSwitch
                             _keystrokes.Remove(ks.KeyCode);
                     }
                 }
-                var log = $"[Send {DateTime.Now:ss.fff}] { _report}";
-                System.Diagnostics.Debug.WriteLine(log);
+
+                System.Diagnostics.Debug.WriteLine($"[Send {DateTime.Now:ss.fff}] {_report}");
+
                 WriteReport(_report.GetBytes());
                 _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);
                 _ewh.Reset();
