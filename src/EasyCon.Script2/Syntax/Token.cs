@@ -1,4 +1,4 @@
-namespace EC.Script.Syntax;
+namespace EasyCon.Script2.Syntax;
 
 public enum TokenType
 {

@@ -2,7 +2,7 @@
 
 namespace EasyScript.Statements;
 
-class Print : Parsing.Statement
+class Print : Statement
 {
     private readonly Content[] Contents;
     private readonly bool CancelLineBreak;

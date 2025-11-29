@@ -50,9 +50,9 @@ namespace EasyScript.Statements
             RegDst = regdst;
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
-            return $"{MetaInfo.KeyWord} {RegDst.GetCodeText(formatter)}";
+            return $"{MetaInfo.KeyWord} {RegDst.GetCodeText()}";
         }
 
         public override void Exec(Processor processor)
@@ -115,9 +115,9 @@ namespace EasyScript.Statements
             RegSrc = regsrc;
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
-            return $"{RegDst.GetCodeText(formatter)} = {MetaInfo.Operator}{RegSrc.GetCodeText(formatter)}";
+            return $"{RegDst.GetCodeText()} = {MetaInfo.Operator}{RegSrc.GetCodeText()}";
         }
 
         public override void Exec(Processor processor)

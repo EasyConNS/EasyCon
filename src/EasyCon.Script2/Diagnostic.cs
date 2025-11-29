@@ -1,6 +1,6 @@
-﻿using EC.Script.Text;
+﻿using EasyCon.Script2.Text;
 
-namespace EC.Script;
+namespace EasyCon.Script2;
 
 public sealed class Diagnostic
 {

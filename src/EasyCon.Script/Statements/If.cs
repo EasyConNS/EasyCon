@@ -42,10 +42,10 @@ namespace EasyScript.Statements
             }
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
             var op = Operater.Operator == "=" ? "==" : Operater.Operator;
-            return $"IF {Left.GetCodeText(formatter)} {op} {Right.GetCodeText(formatter)}";
+            return $"IF {Left.GetCodeText()} {op} {Right.GetCodeText()}";
         }
 
         public override void Assemble(Assembly.Assembler assembler)
@@ -98,10 +98,10 @@ namespace EasyScript.Statements
             }   
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
             var op = Operater.Operator == "=" ? "==" : Operater.Operator;
-            return $"ELIF {Left.GetCodeText(formatter)} {op} {Right.GetCodeText(formatter)}";
+            return $"ELIF {Left.GetCodeText()} {op} {Right.GetCodeText()}";
         }
 
         public override void Assemble(Assembly.Assembler assembler)

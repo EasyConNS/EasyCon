@@ -1,8 +1,8 @@
-﻿using EC.Script.Text;
-using EC.Script.Syntax;
+﻿using EasyCon.Script2.Syntax;
 using System.Collections;
+using EasyCon.Script2.Text;
 
-namespace EC.Script;
+namespace EasyCon.Script2;
 
 internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 {

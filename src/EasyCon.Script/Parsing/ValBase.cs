@@ -10,7 +10,7 @@
             throw new InvalidOperationException();
         }
 
-        public abstract string GetCodeText(Formatter formatter);
+        public abstract string GetCodeText();
 
         public static implicit operator ValBase(int val)
         {
@@ -41,7 +41,7 @@
             return Val;
         }
 
-        public override string GetCodeText(Formatter formatter)
+        public override string GetCodeText()
         {
             return Text;
         }
@@ -83,34 +83,24 @@
             return processor.Register[this];
         }
 
-        public override string GetCodeText(Formatter formatter)
+        public override string GetCodeText()
         {
             return $"${Tag}";
         }
     }
 
     // 16-bit register Index variable
-    class ValReg : ValRegEx
+    class ValReg(uint reg) : ValRegEx(reg)
     {
-        public readonly uint Index;
-
-        public ValReg(uint reg) : base(reg)
-        {
-            Index = reg;
-        }
+        public readonly uint Index = reg;
     }
 
     // external variable 
-    class ValExtVar : ValVar
+    class ValExtVar(ExternalVariable var) : ValVar
     {
-        public readonly ExternalVariable Var;
+        public readonly ExternalVariable Var = var;
 
-        public ValExtVar(ExternalVariable var)
-        {
-            Var = var;
-        }
-
-        public override int Get(Processor processor)
+        public override int Get(Processor _)
         {
             return Var.Get();
         }
@@ -120,7 +110,7 @@
             Var.Set(value);
         }
 
-        public override string GetCodeText(Formatter formatter)
+        public override string GetCodeText()
         {
             return $"@{Var.Name}";
         }

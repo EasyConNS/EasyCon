@@ -1,4 +1,4 @@
-namespace EC.Script.Text;
+namespace EasyCon.Script2.Text;
 
 public sealed class TextLine
 {

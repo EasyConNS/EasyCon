@@ -1,6 +1,7 @@
-﻿using EC.Script.Syntax;
+﻿using EasyCon.Script2.Syntax;
+using System.Collections.Immutable;
 
-namespace EC.Script.Ast;
+namespace EasyCon.Script2.Ast;
 
 // AST节点基类
 public abstract class ASTNode
@@ -10,9 +11,9 @@ public abstract class ASTNode
     public abstract T Accept<T>(IAstVisitor<T> visitor);
 }
 
-public class MainProgram(List<Statement> statements) : ASTNode
+public class MainProgram(ImmutableArray<Statement> statements) : ASTNode
 {
-    public List<Statement> Statements = statements;
+    public ImmutableArray<Statement> Statements = statements;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -53,11 +54,11 @@ public class LiteralExpression : Expression
         {
             Value = strValue;
         }
-        else if (value is int intValue)
+        else if (value is uint intValue)
         {
-            if (intValue < short.MinValue || intValue > short.MaxValue)
+            if (intValue < ushort.MinValue || intValue > ushort.MaxValue)
             {
-                throw new Exception($"整数超出范围 ({short.MinValue} - {short.MaxValue})");
+                throw new Exception($"整数超出范围 ({ushort.MinValue} - {ushort.MaxValue})");
             }
             Value = (int)intValue;
         }

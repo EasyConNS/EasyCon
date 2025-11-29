@@ -1,5 +1,5 @@
 ﻿using EasyScript.Statements;
-using EC.Script.Syntax;
+using EasyCon.Script2.Syntax;
 using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing;

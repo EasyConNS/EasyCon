@@ -20,7 +20,7 @@ namespace EasyScript.Statements
             OnlyInstant = onlyInstant;
         }
     }
-    abstract class BinaryOp : Parsing.Statement
+    abstract class BinaryOp : Statement
     {
         protected class BinaryOpParser : IStatementParser
         {
@@ -51,9 +51,9 @@ namespace EasyScript.Statements
         }
 
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
-            return $"{RegDst.GetCodeText(formatter)} {MetaInfo.Operator}= {Value.GetCodeText(formatter)}";
+            return $"{RegDst.GetCodeText()} {MetaInfo.Operator}= {Value.GetCodeText()}";
         }
 
         public override void Exec(Processor processor)

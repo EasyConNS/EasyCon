@@ -1,8 +1,8 @@
-﻿using EC.Script.Text;
-using EC.Script.Ast;
+﻿using EasyCon.Script2.Text;
+using EasyCon.Script2.Ast;
 using System.Collections.Immutable;
 
-namespace EC.Script.Syntax;
+namespace EasyCon.Script2.Syntax;
 
 internal sealed class Parser
 {
@@ -84,9 +84,9 @@ internal sealed class Parser
     }
 
 
-    private List<Statement> ParseMembers()
+    private ImmutableArray<Statement> ParseMembers()
     {
-        var statements = new List<Statement>();
+        var statements = ImmutableArray.CreateBuilder<Statement>();
         _leadingtrivias.Clear();
         _trailtrivias.Clear();
 
@@ -118,7 +118,7 @@ internal sealed class Parser
             Consume(TokenType.NEWLINE, "未结束的语句");
         }
 
-        return statements;
+        return statements.ToImmutable();
     }
 
     private Statement ParseMember()

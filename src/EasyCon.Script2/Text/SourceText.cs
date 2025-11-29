@@ -1,7 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 
-namespace EC.Script.Text;
+namespace EasyCon.Script2.Text;
 
 public sealed class SourceText
 {

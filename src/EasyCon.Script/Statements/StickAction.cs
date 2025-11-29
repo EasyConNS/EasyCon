@@ -48,9 +48,9 @@ class StickPress : StickAction
         }
     }
 
-    protected override string _GetString(Formatter formatter)
+    protected override string _GetString(Formatter _)
     {
-        return $"{KeyName} {Direction},{Duration.GetCodeText(formatter)}";
+        return $"{KeyName} {Direction},{Duration.GetCodeText()}";
     }
 
     public override void Assemble(Assembly.Assembler assembler)

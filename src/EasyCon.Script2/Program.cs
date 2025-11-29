@@ -1,7 +1,7 @@
-using EC.Script;
-using EC.Script.Syntax;
+using EasyCon.Script2;
+using EasyCon.Script2.Syntax;
 
-var syntaxTree = SyntaxTree.Load("../../Script/test.txt");
+var syntaxTree = SyntaxTree.Parse("$a *= 1+2");
 
 if(syntaxTree.Diagnostics.Length > 0)
 {

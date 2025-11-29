@@ -13,9 +13,9 @@ namespace EasyScript.Statements
             _omitted = omitted;
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
-            return $"WAIT {Duration.GetCodeText(formatter)}";
+            return $"WAIT {Duration.GetCodeText()}";
         }
 
         public override void Exec(Processor processor)

@@ -42,9 +42,9 @@
             return processor.Register[Reg].ToString();
         }
 
-        public override string GetCodeString(Formatter formatter)
+        public override string GetCodeString(Formatter _)
         {
-            return Reg.GetCodeText(formatter);
+            return Reg.GetCodeText();
         }
     }
 }
