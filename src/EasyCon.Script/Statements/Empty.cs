@@ -2,23 +2,18 @@
 
 namespace EasyScript.Statements;
 
-class Empty : Parsing.Statement
+class Empty(string text = "") : Statement
 {
-    private readonly string Text;
-
-    public Empty(string text = "")
-    {
-        Text = text;
-    }
+    private readonly string Text = text;
 
     protected override string _GetString(Formatter _)
     {
         return Text;
     }
 
-    public override void Exec(Processor processor)
+    public override void Exec(Processor _)
     { }
 
-    public override void Assemble(Assembly.Assembler assembler)
+    public override void Assemble(Assembly.Assembler _)
     { }
 }

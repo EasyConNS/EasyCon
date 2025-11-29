@@ -46,9 +46,9 @@ class KeyPress : KeyAction
         }
     }
 
-    protected override string _GetString(Formatter formatter)
+    protected override string _GetString(Formatter _)
     {
-        return _omitted ? $"{NSKeys.GetName(Key)}" : $"{NSKeys.GetName(Key)} {Duration.GetCodeText(formatter)}";
+        return _omitted ? $"{NSKeys.GetName(Key)}" : $"{NSKeys.GetName(Key)} {Duration.GetCodeText()}";
     }
 
     public override void Assemble(Assembly.Assembler assembler)

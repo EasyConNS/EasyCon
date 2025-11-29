@@ -1,4 +1,4 @@
-namespace EC.Script.Ast;
+namespace EasyCon.Script2.Ast;
 
 public interface IAstVisitor<T>
 {

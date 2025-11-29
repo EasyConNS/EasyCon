@@ -2,27 +2,19 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
-    class Express : Parsing.Statement
+    class Express(ValRegEx regdst, ValBase valueLeft, Meta? op, ValBase? valueRight) : Parsing.Statement
     {
-        protected readonly ValRegEx RegDst;
-        protected readonly ValBase ValueLeft;
-        protected readonly Meta? OpMeta;
-        protected readonly ValBase? ValueRight;
+        protected readonly ValRegEx RegDst = regdst;
+        protected readonly ValBase ValueLeft = valueLeft;
+        protected readonly Meta? OpMeta = op;
+        protected readonly ValBase? ValueRight = valueRight;
 
-        public Express(ValRegEx regdst, ValBase valueLeft, Meta? op, ValBase? valueRight)
+        protected override string _GetString(Formatter _)
         {
-            RegDst = regdst;
-            ValueLeft = valueLeft;
-            OpMeta = op;
-            ValueRight = valueRight;
-        }
-
-        protected override string _GetString(Formatter formatter)
-        {
-            var expr = $"{RegDst.GetCodeText(formatter)} = {ValueLeft.GetCodeText(formatter)}";
+            var expr = $"{RegDst.GetCodeText()} = {ValueLeft.GetCodeText()}";
             if (ValueRight != null)
             {
-                expr += $" {OpMeta!.Operator} {ValueRight.GetCodeText(formatter)}";
+                expr += $" {OpMeta!.Operator} {ValueRight.GetCodeText()}";
             }
             return expr;
         }

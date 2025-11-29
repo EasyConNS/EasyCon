@@ -3,7 +3,8 @@ using NLua;
 using NLua.Exceptions;
 using System.Text;
 
-namespace EC.Script;
+namespace EasyCon.Script2;
+
 internal class ScriptTest
 {
     public static void ExecuteScript(string code)

@@ -1,8 +1,8 @@
-using EC.Script.Text;
+using EasyCon.Script2.Text;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace EC.Script.Syntax;
+namespace EasyCon.Script2.Syntax;
 
 internal sealed partial class Lexer(SyntaxTree syntaxTree)
 {

@@ -1,31 +1,26 @@
-﻿namespace EC.Script;
+﻿using EasyCon.Script2.Ast;
 
-#if false
+namespace EasyCon.Script2;
 
-public class Scope
+internal sealed class Scope(Scope? parent)
 {
-    private readonly Dictionary<string, RuntimeValue> _variables;
-    private readonly Dictionary<string, Function> _functions;
-    public Scope Parent { get; }
+    private readonly Dictionary<string, RuntimeValue> _variables = [];
+    private readonly Dictionary<string, Function1> _functions = [];
+    public Scope? Parent { get; } = parent;
 
-    public Scope(Scope parent = null)
+    public bool TryDeclareVariable(string name, RuntimeValue value)
     {
-        _variables = new Dictionary<string, RuntimeValue>();
-        _functions = new Dictionary<string, Function>();
-        Parent = parent;
+        if (_variables.ContainsKey(name)) return false;
+        _variables.Add(name, value);
+        return true;
     }
 
-    public void SetVariable(string name, RuntimeValue value)
+    public RuntimeValue? TryLookupVariable(string name)
     {
-        _variables[name] = value;
-    }
+        if (_variables.TryGetValue(name, out RuntimeValue? value))
+            return value;
 
-    public RuntimeValue GetVariable(string name)
-    {
-        if (_variables.ContainsKey(name))
-            return _variables[name];
-
-        return Parent?.GetVariable(name);
+        return Parent?.TryLookupVariable(name);
     }
 
     public bool HasVariable(string name)
@@ -33,17 +28,19 @@ public class Scope
         return _variables.ContainsKey(name) || (Parent?.HasVariable(name) == true);
     }
 
-    public void SetFunction(string name, Function function)
+    public bool TryDeclareFunction(string name, Function1 function)
     {
-        _functions[name] = function;
+        if (_functions.ContainsKey(name)) return false;
+        _functions.Add(name, function);
+        return true;
     }
 
-    public Function GetFunction(string name)
+    public Function1? TryLookupFunction(string name)
     {
-        if (_functions.ContainsKey(name))
-            return _functions[name];
+        if (_functions.TryGetValue(name, out Function1? value))
+            return value;
 
-        return Parent?.GetFunction(name);
+        return Parent?.TryLookupFunction(name);
     }
 }
 
@@ -76,13 +73,13 @@ public enum ValueType
 }
 
 // 函数定义
-public class Function
+public class Function1
 {
     public string Name { get; }
     public List<string> Parameters { get; }
     public List<Statement> Body { get; }
 
-    public Function(string name, List<string> parameters, List<Statement> body)
+    public Function1(string name, List<string> parameters, List<Statement> body)
     {
         Name = name;
         Parameters = parameters;
@@ -122,4 +119,3 @@ public struct FloatNumber
 
     public override string ToString() => _value.ToString("F2");
 }
-#endif

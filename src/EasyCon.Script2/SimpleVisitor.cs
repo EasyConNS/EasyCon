@@ -1,6 +1,6 @@
-using EC.Script.Ast;
+using EasyCon.Script2.Ast;
 
-namespace EC.Script;
+namespace EasyCon.Script2;
 
 public sealed class SimpleVisitor : AstVisitor
 {

@@ -1,8 +1,8 @@
-﻿using EC.Script.Text;
-using EC.Script.Ast;
+﻿using EasyCon.Script2.Ast;
+using EasyCon.Script2.Text;
 using System.Collections.Immutable;
 
-namespace EC.Script.Syntax;
+namespace EasyCon.Script2.Syntax;
 
 public sealed class SyntaxTree
 {

@@ -40,7 +40,7 @@ namespace EasyScript.Statements
             : base(0)
         { }
 
-        protected override bool Cond(Processor processor)
+        protected override bool Cond(Processor _)
         {
             return true;
         }
@@ -79,9 +79,9 @@ namespace EasyScript.Statements
             processor.LoopTime[this]++;
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
-            return $"FOR {Count.GetCodeText(formatter)}";
+            return $"FOR {Count.GetCodeText()}";
         }
 
         public override void Assemble(Assembly.Assembler assembler)
@@ -126,9 +126,9 @@ namespace EasyScript.Statements
             processor.Register[RegIter]++;
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
-            return $"FOR {RegIter.GetCodeText(formatter)} = {InitVal.GetCodeText(formatter)} TO {Count.GetCodeText(formatter)}";
+            return $"FOR {RegIter.GetCodeText()} = {InitVal.GetCodeText()} TO {Count.GetCodeText()}";
         }
 
         public override void Assemble(Assembly.Assembler assembler)
@@ -204,9 +204,9 @@ namespace EasyScript.Statements
             : base(level)
         { }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
-            return _omitted ? $"BREAK" : $"BREAK {Level.GetCodeText(formatter)}";
+            return _omitted ? $"BREAK" : $"BREAK {Level.GetCodeText()}";
         }
 
         public override void Exec(Processor processor)
@@ -233,9 +233,9 @@ namespace EasyScript.Statements
             : base(level)
         { }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString(Formatter _)
         {
-            return _omitted ? $"CONTINUE" : $"CONTINUE {Level.GetCodeText(formatter)}";
+            return _omitted ? $"CONTINUE" : $"CONTINUE {Level.GetCodeText()}";
         }
 
         public override void Exec(Processor processor)
