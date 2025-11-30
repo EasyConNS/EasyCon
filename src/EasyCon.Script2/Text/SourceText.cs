@@ -1,4 +1,4 @@
-﻿using System.Collections.Immutable;
+using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 
 namespace EasyCon.Script2.Text;
@@ -34,7 +34,7 @@ public sealed class SourceText
         foreach (var line in lines)
         {
             uint linecount = 0;
-            var curline = line.TrimStart().Trim();
+            var curline = line.Trim();
             AddLine(result, sourceText, curline, linecount++);
         }
         return result.ToImmutable();
