@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 
 namespace EasyScript.Assembly.Instructions;
 
@@ -149,9 +149,9 @@ class AsmMovCompressed : Instruction
 
     public static Instruction Create(uint regdst, Parsing.ValBase value)
     {
-        if (value is not Parsing.ValInstant)
+        if (value is not Parsing.ValInstant vi)
             return Failed.InvalidArgument;
-        var val = (value as Parsing.ValInstant).Val;
+        var val = vi.Val;
         if (val < -(1 << 6) || val >= 1 << 6)
             return Failed.OutOfRange;
         return new AsmMovCompressed
