@@ -1,4 +1,4 @@
-﻿using EasyScript.Statements;
+using EasyScript.Statements;
 using EasyCon.Script2.Syntax;
 using System.Text.RegularExpressions;
 

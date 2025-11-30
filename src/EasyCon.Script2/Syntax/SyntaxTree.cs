@@ -1,4 +1,4 @@
-﻿using EasyCon.Script2.Ast;
+using EasyCon.Script2.Ast;
 using EasyCon.Script2.Text;
 using System.Collections.Immutable;
 
@@ -75,8 +75,7 @@ public sealed class SyntaxTree
         {
             var l = new Lexer(st);
             tokens = l.Tokenize();
-            var parser = new Parser(st);
-            root = parser.ParseProgram();
+            root = null;
             d = l.Diagnostics.ToImmutableArray();
         }
 

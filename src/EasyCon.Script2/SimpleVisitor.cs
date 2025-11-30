@@ -64,8 +64,8 @@ public sealed class SimpleVisitor : AstVisitor
 
     public override ASTNode VisitAssignmentStat(AssignmentStatement ast)
     {
-        Console.Write($"{ast.VariableName} {ast.AssignmentType} ");
-        ast.Value.Accept(this);
+        Console.Write($"{ast.Variable} {ast.AssignmentType} ");
+        ast.Variable.Accept(this);
         Console.WriteLine();
         return ast;
     }
@@ -103,7 +103,7 @@ public sealed class SimpleVisitor : AstVisitor
     }
     public override ASTNode VisitElseClause(ElseClause ast)
     {
-        if (ast.ElseBranch.Count == 0) return ast;
+        if (ast.ElseBranch.Count() == 0) return ast;
         Console.WriteLine("Else:");
         foreach(var statement in ast.ElseBranch)
         {

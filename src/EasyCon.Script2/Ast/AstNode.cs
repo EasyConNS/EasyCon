@@ -1,4 +1,4 @@
-﻿using EasyCon.Script2.Syntax;
+using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script2.Ast;
@@ -11,7 +11,7 @@ public abstract class ASTNode
     public abstract T Accept<T>(IAstVisitor<T> visitor);
 }
 
-public class MainProgram(ImmutableArray<Statement> statements) : ASTNode
+public sealed class MainProgram(ImmutableArray<Statement> statements) : ASTNode
 {
     public ImmutableArray<Statement> Statements = statements;
 
@@ -24,17 +24,10 @@ public class MainProgram(ImmutableArray<Statement> statements) : ASTNode
 // 表达式节点
 public abstract class Expression : ASTNode { }
 
-public class TriviaNode : Expression
+public sealed class TriviaNode(Token trivia) : Expression
 {
-    public string Text => Kind.Value;
-    public int Line => Kind.Line;
-
-    private Token Kind { get; }
-
-    public TriviaNode(Token trivia)
-    {
-        Kind = trivia;
-    }
+    public string Text => trivia.Value;
+    public int Line => trivia.Line;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -43,7 +36,7 @@ public class TriviaNode : Expression
 }
 
 // 字面量表达式
-public class LiteralExpression : Expression
+public sealed class LiteralExpression : Expression
 {
     public object Value { get; }
 
@@ -60,7 +53,7 @@ public class LiteralExpression : Expression
             {
                 throw new Exception($"整数超出范围 ({ushort.MinValue} - {ushort.MaxValue})");
             }
-            Value = (int)intValue;
+            Value = (uint)intValue;
         }
         else
         {
@@ -75,18 +68,12 @@ public class LiteralExpression : Expression
 }
 
 // 变量表达式
-public class VariableExpression : Expression
+public sealed class VariableExpression(string name, bool isConstant, bool isSpecial) : Expression
 {
-    public string Name { get; }
-    public bool IsConstant { get; }
-    public bool IsSpecial { get; }
+    public string Name { get; } = name;
+    public bool IsConstant { get; } = isConstant;
+    public bool IsSpecial { get; } = isSpecial;
 
-    public VariableExpression(string name, bool isConstant, bool isSpecial)
-    {
-        Name = name;
-        IsConstant = isConstant;
-        IsSpecial = isSpecial;
-    }
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitVariable(this);
@@ -94,18 +81,11 @@ public class VariableExpression : Expression
 }
 
 // 二元运算表达式
-public class BinaryExpression : Expression
+public sealed class BinaryExpression(Expression left, TokenType op, Expression right) : Expression
 {
-    public Expression Left { get; }
-    public TokenType Operator { get; }
-    public Expression Right { get; }
-
-    public BinaryExpression(Expression left, TokenType op, Expression right)
-    {
-        Left = left;
-        Operator = op;
-        Right = right;
-    }
+    public Expression Left { get; } = left;
+    public TokenType Operator { get; } = op;
+    public Expression Right { get; } = right;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -114,18 +94,11 @@ public class BinaryExpression : Expression
 }
 
 // 条件表达式
-public class ConditionExpression : Expression
+public sealed class ConditionExpression(Expression left, TokenType op, Expression right) : Expression
 {
-    public Expression Left { get; }
-    public TokenType Operator { get; }
-    public Expression Right { get; }
-
-    public ConditionExpression(Expression left, TokenType op, Expression right)
-    {
-        Left = left;
-        Operator = op;
-        Right = right;
-    }
+    public Expression Left { get; } = left;
+    public TokenType Operator { get; } = op;
+    public Expression Right { get; } = right;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -141,21 +114,14 @@ public abstract class Statement : ASTNode
 }
 
 // 赋值语句
-public class AssignmentStatement : Statement
+public sealed class AssignmentStatement(VariableExpression? Variablee, Token assignment, Expression expression) : Statement
 {
-    public string VariableName => Variable.Value;
+    public VariableExpression Variable { get; } = Variablee!;
     public TokenType AssignmentType => Assignment.Type;
-    public Expression Value { get; }
+    public Expression Expression { get; } = expression;
 
-    private Token Variable { get; }
-    private Token Assignment { get; }
+    private Token Assignment { get; } = assignment;
 
-    public AssignmentStatement(Token variable, Token assignment, Expression value)
-    {
-        Variable = variable;
-        Assignment = assignment;
-        Value = value;
-    }
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitAssignmentStat(this);
@@ -163,21 +129,13 @@ public class AssignmentStatement : Statement
 }
 
 // If语句
-public class IfStatement : Statement
+public sealed class IfStatement(Expression condition, ImmutableArray<Statement> thenBranch, ImmutableArray<ElseIfClause> elseIfBranch, ElseClause? elseClause) : Statement
 {
-    public Expression Condition { get; }
-    public List<Statement> ThenBranch { get; }
+    public Expression Condition { get; } = condition;
+    public ImmutableArray<Statement> ThenBranch { get; } = thenBranch;
 
-    public List<ElseIfClause> ElseIfBranch { get; }
-    public ElseClause? ElseClause { get; }
-
-    public IfStatement(Expression condition, List<Statement> thenBranch, List<ElseIfClause> elseIfBranch, ElseClause? elseClause)
-    {
-        Condition = condition;
-        ThenBranch = thenBranch;
-        ElseIfBranch = elseIfBranch;
-        ElseClause = elseClause;
-    }
+    public ImmutableArray<ElseIfClause> ElseIfBranch { get; } = elseIfBranch;
+    public ElseClause? ElseClause { get; } = elseClause;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -185,16 +143,10 @@ public class IfStatement : Statement
     }
 }
 
-public class ElseIfClause : Statement
+public sealed class ElseIfClause(Expression condition, ImmutableArray<Statement> elseIfBranch) : Statement
 {
-    public Expression Condition { get; }
-    public List<Statement> ElseIfBranch { get; }
-
-    public ElseIfClause(Expression condition, List<Statement> elseIfBranch)
-    {
-        Condition = condition;
-        ElseIfBranch = elseIfBranch;
-    }
+    public Expression Condition { get; } = condition;
+    public ImmutableArray<Statement> ElseIfBranch { get; } = elseIfBranch;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -202,14 +154,9 @@ public class ElseIfClause : Statement
     }
 }
 
-public class ElseClause : Statement
+public sealed class ElseClause(ImmutableArray<Statement> elseBranch) : Statement
 {
-    public List<Statement> ElseBranch { get; }
-
-    public ElseClause(List<Statement> elseBranch)
-    {
-        ElseBranch = elseBranch;
-    }
+    public ImmutableArray<Statement> ElseBranch { get; } = elseBranch;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -218,28 +165,18 @@ public class ElseClause : Statement
 }
 
 // For语句
-public class ForStatement : Statement
+public sealed class ForStatement(string loopVariable, Expression startValue, Expression endValue,
+                  Expression? loopCount, bool isInfinite,
+                  ImmutableArray<Statement> body, int stepValue = 1) : Statement
 {
-    public string LoopVariable { get; }  // 循环变量名（对于范围循环）
-    public Expression StartValue { get; } // 起始值
-    public Expression EndValue { get; }   // 结束值
-    public int StepValue { get; }  // 步长
-    public Expression? LoopCount { get; }  // 循环次数（对于计数循环）
-    public bool IsInfinite { get; }       // 是否无限循环
-    public List<Statement> Body { get; }  // 循环体
+    public string LoopVariable { get; } = loopVariable;
+    public Expression StartValue { get; } = startValue;
+    public Expression EndValue { get; } = endValue;
+    public int StepValue { get; } = stepValue;
+    public Expression? LoopCount { get; } = loopCount;
+    public bool IsInfinite { get; } = isInfinite;
+    public ImmutableArray<Statement> Body { get; } = body;
 
-    public ForStatement(string loopVariable, Expression startValue, Expression endValue,
-                      Expression? loopCount, bool isInfinite,
-                      List<Statement> body, int stepValue = 1)
-    {
-        LoopVariable = loopVariable;
-        StartValue = startValue;
-        EndValue = endValue;
-        StepValue = stepValue;
-        LoopCount = loopCount;
-        IsInfinite = isInfinite;
-        Body = body;
-    }
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitForStat(this);
@@ -247,13 +184,10 @@ public class ForStatement : Statement
 }
 
 // Break语句
-public class BreakStatement : Statement
+public sealed class BreakStatement(uint circle = 1) : Statement
 {
-    public uint Circle { get; }
-    public BreakStatement(uint circle = 1)
-    {
-        Circle = circle;
-    }
+    public uint Circle { get; } = circle;
+
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitBreak(this);
@@ -261,11 +195,8 @@ public class BreakStatement : Statement
 }
 
 // Continue语句
-public class ContinueStatement : Statement
+public sealed class ContinueStatement : Statement
 {
-    public ContinueStatement()
-    {
-    }
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitContinue(this);
@@ -273,18 +204,12 @@ public class ContinueStatement : Statement
 }
 
 // 函数定义语句
-public class FunctionDefinitionStatement : Statement
+public sealed class FunctionDefinitionStatement(string functionName, List<string> parameters, ImmutableArray<Statement> body) : Statement
 {
-    public string FunctionName { get; }
-    public List<string> Parameters { get; }
-    public List<Statement> Body { get; }
+    public string FunctionName { get; } = functionName;
+    public List<string> Parameters { get; } = parameters;
+    public ImmutableArray<Statement> Body { get; } = body;
 
-    public FunctionDefinitionStatement(string functionName, List<string> parameters, List<Statement> body)
-    {
-        FunctionName = functionName;
-        Parameters = parameters;
-        Body = body;
-    }
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitFunctionDefinition(this);
@@ -292,14 +217,9 @@ public class FunctionDefinitionStatement : Statement
 }
 
 // Return语句
-public class ReturnStatement : Statement
+public sealed class ReturnStatement(Expression value) : Statement
 {
-    public Expression Value { get; }
-
-    public ReturnStatement(Expression value)
-    {
-        Value = value;
-    }
+    public Expression Value { get; } = value;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -309,22 +229,11 @@ public class ReturnStatement : Statement
 
 
 // 函数调用表达式
-public class CallExpression : Statement
+public sealed class CallExpression(string functionName, ImmutableArray<Expression> arguments) : Statement
 {
-    public string FunctionName { get; }
-    public List<Expression> Arguments { get; }
+    public string FunctionName { get; } = functionName;
+    public ImmutableArray<Expression> Arguments { get; } = arguments;
 
-    public CallExpression(string functionName)
-    {
-        FunctionName = functionName;
-        Arguments = [];
-    }
-
-    public CallExpression(string functionName, List<Expression> arguments)
-    {
-        FunctionName = functionName;
-        Arguments = arguments;
-    }
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitCall(this);
@@ -332,16 +241,10 @@ public class CallExpression : Statement
 }
 
 
-public abstract class KeyStatement : Statement
+public abstract class KeyStatement(string keyName, uint duration) : Statement
 {
-    public string KeyName { get; }
-    public uint Duration { get; }
-
-    public KeyStatement(string keyName, uint duration)
-    {
-        KeyName = keyName;
-        Duration = duration;
-    }
+    public string KeyName { get; } = keyName;
+    public uint Duration { get; } = duration;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -349,39 +252,15 @@ public abstract class KeyStatement : Statement
     }
 }
 
-public class ButtonStatement : KeyStatement
+public sealed class ButtonStatement(string keyName, uint duration = 50) : KeyStatement(keyName, duration) { }
+
+public sealed class ButtonStStatement(string keyName, bool isDown) :KeyStatement(keyName, 0)
 {
-    public bool IsDown { get; }
-    public bool IsUp => !IsDown;
-    public uint Duration { get; }
-
-    public ButtonStatement(string keyName, string duration) : base(keyName, 50)
-    {
-
-    }
-
-    public ButtonStatement(string keyName, uint duration = 50) : base(keyName, duration)
-    {
-
-    }
-
-    public ButtonStatement(string keyName, bool down) : base(keyName, 0)
-    {
-        IsDown = down;
-    }
+    public bool IsDown { get; } = isDown;
 }
 
-public class StickStatement : KeyStatement
+public sealed class StickStatement(string keyName, string state, bool reset, uint duration = 50) :KeyStatement(keyName, duration)
 {
-    public string State { get; }
-
-    public StickStatement(string keyName, string state, string duration) : base(keyName, 50)
-    {
-        State = state;
-    }
-
-    public StickStatement(string keyName, string state, uint duration = 50) : base(keyName, duration)
-    {
-        State = state;
-    }
+    public string Direction { get; } = state;
+    public bool IsReset { get; } = reset;
 }

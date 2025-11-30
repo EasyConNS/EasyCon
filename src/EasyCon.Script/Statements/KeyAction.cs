@@ -1,9 +1,9 @@
-﻿using EasyDevice;
+using EasyDevice;
 using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-abstract class KeyAction(string keyName) : Parsing.Statement
+abstract class KeyAction(string keyName) : Statement
 {
     protected readonly ECKey Key = NSKeys.Get(keyName);
 
