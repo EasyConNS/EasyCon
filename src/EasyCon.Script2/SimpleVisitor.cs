@@ -65,7 +65,7 @@ public sealed class SimpleVisitor : AstVisitor
     public override ASTNode VisitAssignmentStat(AssignmentStatement ast)
     {
         Console.Write($"{ast.Variable} {ast.AssignmentType} ");
-        ast.Variable.Accept(this);
+        ast.Expression.Accept(this);
         Console.WriteLine();
         return ast;
     }
@@ -75,8 +75,13 @@ public sealed class SimpleVisitor : AstVisitor
         indent += "  "; // Increase indentation for nested blocks
 
         Console.Write("If");
-        ast.Condition.Accept(this);
-        foreach(var statement in ast.ThenBranch)
+        if(ast.Condition is ConditionExpression cmp)
+            cmp.Accept(this);
+        else
+        {
+            throw new Exception("not support");
+        }
+        foreach (var statement in ast.ThenBranch)
         {
             statement.Accept(this);
         }
@@ -147,7 +152,7 @@ public sealed class SimpleVisitor : AstVisitor
 
     public override ASTNode VisitFunctionDefinition(FunctionDefinitionStatement ast)
     {
-        Console.WriteLine($"Def Func: {ast.FunctionName}");
+        Console.WriteLine($"Def Func: {ast.FunctionIdent.Value}");
         foreach(var statement in ast.Body)
         {
             statement.Accept(this);

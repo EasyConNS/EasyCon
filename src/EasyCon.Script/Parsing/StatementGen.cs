@@ -95,14 +95,24 @@ internal class StatementGen : AstVisitor
                 cfgStatement(constDecl);
             }
         }
-        return ast;
+        else
+        {
+            // assign
+        }
+
+            return ast;
     }
 
     public override ASTNode VisitIfStat(IfStatement ast)
     {
 
         Console.Write("If");
-        ast.Condition.Accept(this);
+        if (ast.Condition is ConditionExpression cmp)
+            cmp.Accept(this);
+        else
+        {
+            throw new Exception("not support");
+        }
         foreach (var statement in ast.ThenBranch)
         {
             statement.Accept(this);
@@ -177,7 +187,7 @@ internal class StatementGen : AstVisitor
 
     public override ASTNode VisitFunctionDefinition(FunctionDefinitionStatement ast)
     {
-        Console.WriteLine($"Def Func: {ast.FunctionName}");
+        Console.WriteLine($"Def Func: {ast.FunctionIdent.Value}");
         foreach (var statement in ast.Body)
         {
             statement.Accept(this);
@@ -187,16 +197,13 @@ internal class StatementGen : AstVisitor
 
     public override ASTNode VisitCall(CallExpression ast)
     {
-        switch(ast.FunctionName.ToUpper())
+        switch(ast.FunctionName.ToLower())
         {
-            case "WAIT":
+            case "wait":
                 var dur = ast.Arguments.First();
                 if(dur != null)
                     cfgStatement(new Wait(50, true));
-                else
-                {
-                    //
-                }
+
                  break;
         }
         return ast;
@@ -225,16 +232,27 @@ internal class StatementGen : AstVisitor
         {
             if (btn.IsDown)
             {
-                cfgStatement(new KeyDown(ast.KeyName));
+                cfgStatement(new KeyDown(btn.KeyName));
             }
             else
             {
-                cfgStatement(new KeyUp(ast.KeyName));
+                cfgStatement(new KeyUp(btn.KeyName));
             }
         }
         else if(ast is StickStatement st)
         {
-            //
+            if(st.IsReset)
+            {
+                cfgStatement(new StickUp(st.KeyName));
+            }
+            else if(st.Duration== 50)
+            {
+                cfgStatement(new StickDown(st.KeyName, st.Direction));
+            }
+            else
+            {
+                cfgStatement(new StickPress(st.KeyName, st.Direction, _formatter.GetValueEx($"{ast.Duration}")));
+            }
         }
 
         return ast;

@@ -1,9 +1,9 @@
-﻿using EasyDevice;
+using EasyDevice;
 using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-abstract class StickAction(string keyname, string direction) : Parsing.Statement
+abstract class StickAction(string keyname, string direction) : Statement
 {
     protected readonly string KeyName = keyname.ToUpper();
     protected readonly ECKey Key = NSKeys.GetKey(keyname, direction);

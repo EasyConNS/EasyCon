@@ -1,6 +1,7 @@
-using EasyCon.Script2.Text;
 using EasyCon.Script2.Ast;
+using EasyCon.Script2.Text;
 using System.Collections.Immutable;
+using System.Reflection.Metadata;
 
 namespace EasyCon.Script2.Syntax;
 
@@ -82,7 +83,8 @@ internal sealed class Parser
         if (_diagnostics.Count() > 0)
             throw new Exception($"词法分析失败：{_diagnostics.First().Message}");
         var members = ParseMembers();
-        return new MainProgram(members);
+        var eof = Consume(TokenType.EOF, "语法分析失败，错误的脚本结尾");
+        return new MainProgram(members, eof);
     }
 
 
@@ -117,7 +119,7 @@ internal sealed class Parser
             }
 
             // 消耗语句后的换行符
-            Consume(TokenType.NEWLINE, "未结束的语句");
+            Consume(TokenType.NEWLINE, "语句没有正确结束换行");
         }
 
         return statements.ToImmutable();
@@ -186,11 +188,7 @@ internal sealed class Parser
 
             var value = ParseExpression();
 
-            return new AssignmentStatement(variable, assignmentOp, value)
-            {
-                Line = variableToken.Line,
-                Column = variableToken.Column
-            };
+            return new AssignmentStatement(variableToken, variable, assignmentOp, value);
         }
         return left;
     }
@@ -209,8 +207,8 @@ internal sealed class Parser
             Advance();
             if (func.Value.ToLower() == "call")
             {
-                func = Advance();
-                name = func.Value;
+                var callFn = Advance();
+                name = callFn.Value;
             }
         }
 
@@ -221,11 +219,7 @@ internal sealed class Parser
             args.Add(ParsePrimary());
         }
 
-        return new CallExpression(name, args.ToImmutableArray())
-        {
-            Line = func.Line,
-            Column = func.Column
-        };
+        return new CallExpression(func, name, args.ToImmutableArray());
     }
 
     private IfStatement ParseIfStatement()
@@ -264,14 +258,14 @@ internal sealed class Parser
                 elifBranch.Add(ParseGlobalStatement());
                 if (Check(TokenType.NEWLINE)) Advance();
             }
-            elseif.Add(new ElseIfClause(elifCond, elifBranch.ToImmutableArray()));
+            elseif.Add(new ElseIfClause(elifToken, elifCond, elifBranch.ToImmutableArray()));
         }
 
         // else
         ElseClause? elseClause = null;
         if (Current.Type == TokenType.ELSE)
         {
-            Advance();
+            var elseToken = Advance();
             var elseBranch = new List<Statement>();
             while (!Check(TokenType.ENDIF) && !Check(TokenType.EOF))
             {
@@ -283,16 +277,12 @@ internal sealed class Parser
                 elseBranch.Add(ParseGlobalStatement());
                 if (Check(TokenType.NEWLINE)) Advance();
             }
-            elseClause = new(elseBranch.ToImmutableArray());
+            elseClause = new(elseToken, elseBranch.ToImmutableArray());
         }
 
         Consume(TokenType.ENDIF, "if语句需要endif结尾");
 
-        return new IfStatement(condition, thenBranch.ToImmutableArray(), elseif.ToImmutableArray(), elseClause)
-        {
-            Line = ifToken.Line,
-            Column = ifToken.Column
-        };
+        return new IfStatement(ifToken, condition, thenBranch.ToImmutableArray(), elseif.ToImmutableArray(), elseClause);
     }
 
     private ForStatement ParseForStatement()
@@ -306,17 +296,15 @@ internal sealed class Parser
             var body = ParseStatementsUntil(TokenType.NEXT);
             Consume(TokenType.NEXT, "for语句需要next结尾");
 
-            return new ForStatement(null, null, null, null, true, body.ToImmutableArray())
-            {
-                Line = forToken.Line,
-                Column = forToken.Column
-            };
+            return new ForStatement(forToken, null, null, null, null, true, body.ToImmutableArray());
         }
 
         if (Check(TokenType.VAR) && Peek(1)?.Type == TokenType.ASSIGN)
         {
             // 形式2: 范围循环 for $i = 1 to 10
-            var loopVar = Consume(TokenType.VAR, "需要初始变量").Value;
+            var loopVar = Consume(TokenType.VAR, "需要初始变量");
+            var initVar = new VariableExpression(loopVar, false, false);
+
             Consume(TokenType.ASSIGN, "for语法不正确, 需要： '='");
             var start = ParseExpression();
             Consume(TokenType.TO, "for语法不正确, 需要： 'TO'");
@@ -332,11 +320,7 @@ internal sealed class Parser
             var body = ParseStatementsUntil(TokenType.NEXT);
             Consume(TokenType.NEXT, "for语句需要next结尾");
 
-            return new ForStatement(loopVar, start, end, null, false, body.ToImmutableArray())
-            {
-                Line = forToken.Line,
-                Column = forToken.Column
-            };
+            return new ForStatement(forToken, initVar, start, end, null, false, body.ToImmutableArray());
         }
         else
         {
@@ -346,11 +330,7 @@ internal sealed class Parser
             var body = ParseStatementsUntil(TokenType.NEXT);
             Consume(TokenType.NEXT, "for语句需要next结尾");
 
-            return new ForStatement(null, null, null, loopCount, false, body.ToImmutableArray())
-            {
-                Line = forToken.Line,
-                Column = forToken.Column
-            };
+            return new ForStatement(forToken, null, null, null, loopCount, false, body.ToImmutableArray());
         }
     }
 
@@ -382,11 +362,7 @@ internal sealed class Parser
             var value = Consume(TokenType.INT, "break跳出层数必须为数字");
             circle = uint.Parse(value.Value);
         }
-        return new BreakStatement(circle)
-        {
-            Line = breakToken.Line,
-            Column = breakToken.Column
-        };
+        return new BreakStatement(breakToken, circle);
     }
 
     private ContinueStatement ParseContinueStatement()
@@ -394,11 +370,7 @@ internal sealed class Parser
         var continueToken = Advance();
         Consume(TokenType.NEWLINE, "continue语法不正确");
 
-        return new ContinueStatement()
-        {
-            Line = continueToken.Line,
-            Column = continueToken.Column
-        };
+        return new ContinueStatement(continueToken);
     }
 
     private FunctionDefinitionStatement ParseFunctionDecl()
@@ -433,24 +405,17 @@ internal sealed class Parser
 
         Consume(TokenType.ENDFUNC, "需要endfunc结尾");
 
-        return new FunctionDefinitionStatement(functionName.Value, null, body.ToImmutableArray())
-        {
-            Line = functionToken.Line,
-            Column = functionToken.Column
-        };
+        return new FunctionDefinitionStatement(functionToken, functionName, [], body.ToImmutableArray());
     }
 
     private ReturnStatement ParseReturnStatement()
     {
-        var returnToken = Consume(TokenType.RETURN, "需要return语句");
+        var returnToken = Consume(TokenType.RETURN, "错误的return语句");
 
-        return new ReturnStatement(null)
-        {
-            Line = returnToken.Line,
-            Column = returnToken.Column
-        };
+        return new ReturnStatement(returnToken, null);
     }
 
+    /* TODO */
     private Statement ParseKeyStatement()
     {
         // 键位(+键位) [持续时间(ms)|DOWN|UP]
@@ -458,7 +423,6 @@ internal sealed class Parser
         // LS|RS RESET
         var keyToken = Advance();
 
-        // TODO: 按键命令参数解析
         if (keyToken.Type == TokenType.StickKeyword)
         {
             switch (Current.Type)
@@ -472,58 +436,35 @@ internal sealed class Parser
                         Advance();
                         var duration = Consume(TokenType.INT, "摇杆语法不正确");
                         var value = uint.Parse(duration.Value);
-                        return new StickStatement(keyToken.Value, state.Value, false, value)
-                        {
-                            Line = keyToken.Line,
-                            Column = keyToken.Column
-                        };
+                        return new StickStatement(keyToken, state.Value, false, value);
                     }
                     else
                     {
-                        return new StickStatement(keyToken.Value, state.Value, false)
-                        {
-                            Line = keyToken.Line,
-                            Column = keyToken.Column
-                        };
+                        return new StickStatement(keyToken, state.Value, false);
                     }
                 case TokenType.ResetKeyword:
                     Consume(TokenType.ResetKeyword, "摇杆语法不正确");
-                    return new StickStatement(keyToken.Value, "", true)
-                    {
-                        Line = keyToken.Line,
-                        Column = keyToken.Column
-                    };
+                    return new StickStatement(keyToken, "", true);
             }
         }
         else
         {
             if (Check(TokenType.NEWLINE))
             {
-                return new ButtonStatement(keyToken.Value)
-                {
-                    Line = keyToken.Line,
-                    Column = keyToken.Column
-                };
+                return new ButtonStatement(keyToken);
             }
             else if (Check(TokenType.INT))
             {
                 var state = Advance();
                 var value = uint.Parse(state.Value);
-                return new ButtonStatement(keyToken.Value, value)
-                {
-                    Line = keyToken.Line,
-                    Column = keyToken.Column
-                };
+                return new ButtonStatement(keyToken, value)
+;
             }
             else if (Check(TokenType.ButtonKeyword))
             {
                 var state = Advance();
                 var isDown = state.Value.ToUpper() == "DOWN";
-                return new ButtonStStatement(keyToken.Value, isDown)
-                {
-                    Line = keyToken.Line,
-                    Column = keyToken.Column
-                };
+                return new ButtonStStatement(keyToken, isDown);
             }
         }
         throw new Exception($"按键语法不正确 {keyToken.Line}");
@@ -549,11 +490,7 @@ internal sealed class Parser
         {
             var op = Advance();
             var right = ParseLogicalAnd();
-            expression = new ConditionExpression(expression, op.Type, right)
-            {
-                Line = op.Line,
-                Column = op.Column
-            };
+            expression = new ConditionExpression(expression, op, right);
         }
 
         return expression;
@@ -567,11 +504,7 @@ internal sealed class Parser
         {
             var op = Advance();
             var right = ParseComparison();
-            expression = new ConditionExpression(expression, op.Type, right)
-            {
-                Line = op.Line,
-                Column = op.Column
-            };
+            expression = new ConditionExpression(expression, op, right);
         }
 
         return expression;
@@ -585,11 +518,7 @@ internal sealed class Parser
         {
             var op = Advance();
             var right = ParseExpression();
-            expression = new ConditionExpression(expression, op.Type, right)
-            {
-                Line = op.Line,
-                Column = op.Column
-            };
+            expression = new ConditionExpression(expression, op, right);
         }
 
         return expression;
@@ -603,11 +532,7 @@ internal sealed class Parser
         {
             var op = Advance();
             var right = ParseMultiplication();
-            expression = new BinaryExpression(expression, op.Type, right)
-            {
-                Line = op.Line,
-                Column = op.Column
-            };
+            expression = new BinaryExpression(expression, op, right);
         }
 
         return expression;
@@ -621,11 +546,7 @@ internal sealed class Parser
         {
             var op = Advance();
             var right = ParseUnary();
-            expression = new BinaryExpression(expression, op.Type, right)
-            {
-                Line = op.Line,
-                Column = op.Column
-            };
+            expression = new BinaryExpression(expression, op, right);
         }
 
         return expression;
@@ -637,11 +558,7 @@ internal sealed class Parser
         {
             var op = Advance();
             var right = ParseUnary();
-            return new BinaryExpression(new LiteralExpression(0), op.Type, right)
-            {
-                Line = op.Line,
-                Column = op.Column
-            };
+            return new UnaryExpression(op, right);
         }
 
         return ParsePrimary();
@@ -659,11 +576,7 @@ internal sealed class Parser
                 {
                     throw new Exception($"整数超出范围({ushort.MinValue} 到 {ushort.MaxValue}) 行{token.Line}");
                 }
-                return new LiteralExpression(value)
-                {
-                    Line = token.Line,
-                    Column = token.Column
-                };
+                return new LiteralExpression(token, value);
             }
             catch (Exception ex)
             {
@@ -676,20 +589,12 @@ internal sealed class Parser
             var token = Advance();
             bool isConstant = token.Type == TokenType.CONST;
             bool isSpecial = token.Type == TokenType.EX_VAR;
-            return new VariableExpression(token.Value, isConstant, isSpecial)
-            {
-                Line = token.Line,
-                Column = token.Column
-            };
+            return new VariableExpression(token, isConstant, isSpecial);
         }
         else if (Match(TokenType.STRING))
         {
             var token = Advance();
-            return new LiteralExpression(token.Value)
-            {
-                Line = token.Line,
-                Column = token.Column
-            };
+            return new LiteralExpression(token, token.Value);
         }
 
         var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));
