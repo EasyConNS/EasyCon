@@ -1,16 +1,15 @@
-﻿using EasyScript.Statements;
-using EasyCon.Script2;
+using EasyCon.Script.Parsing;
 using EasyCon.Script2.Ast;
 using EasyCon.Script2.Syntax;
-using System.Diagnostics;
+using EasyScript.Statements;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing;
 
-partial class Parser
+partial class Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
 {
-    readonly Formatter _formatter;
+    readonly Formatter _formatter = new Formatter(constants, extVars);
 
     static IEnumerable<Meta> OpList()
     {
@@ -32,11 +31,6 @@ partial class Parser
                     where assemblyType.GetField("Parser") != null
                     select assemblyType.GetField("Parser").GetValue(null) as IStatementParser;
         return types;
-    }
-
-    public Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
-    {
-        _formatter = new Formatter(constants, extVars);
     }
 
     private IEnumerable<ParserArgument> ParseLines(string text)
@@ -136,17 +130,16 @@ partial class Parser
             {
                 foreach (var diagnostic in syntaxTree.Diagnostics)
                 {
-                    Debug.WriteLine(diagnostic);
+                    System.Diagnostics.Debug.WriteLine(diagnostic);
                 }
             }
             else
             {
-                var visitor = new SimpleVisitor();
-                var ast = visitor.VisitProgram(syntaxTree.Root);
-                Debug.WriteLine(ast is MainProgram ? "debug parser done" : "err occured");
+                var visitor = new StatementGen(_formatter);
+                visitor.VisitProgram(syntaxTree.Root);
             }
         }
-        catch (Exception e) { Debug.WriteLine(e.Message); }
+        catch (Exception e) { System.Diagnostics.Debug.WriteLine(e.Message); }
 #endif
         foreach (var args in ParseLines(text))
         {
@@ -211,12 +204,12 @@ partial class Parser
                 if (loopstat.Level.Val > forcount)
                     throw new ParseException("循环层数不足", i);
             }
-            if (st is Statements.Next nextstat)
+            if (st is Next nextstat)
             {
                 if (_blocks.Count == 0)
                     throw new ParseException("多余的语句", i);
                 var last = _blocks.Peek();
-                if (last is Statements.For lastfor)
+                if (last is For lastfor)
                 {
                     _blocks.Pop();
                     nextstat.For = lastfor;
@@ -228,7 +221,7 @@ partial class Parser
                 }
             }
             // if/elif/elif/else/endif
-            if (st is Statements.ElseIf selif)
+            if (st is ElseIf selif)
             {
                 if (_blocks.Count == 0)
                     throw new ParseException("多余的语句", i);
@@ -294,12 +287,12 @@ partial class Parser
                 }
             }
             // function
-            if (st is Statements.ReturnStat rst)
+            if (st is ReturnStat rst)
             {
                 if (_blocks.Count == 0)
                     throw new ParseException("多余的语句", i);
                 var last = _blocks.Peek();
-                if (last is Statements.Function lastfunc)
+                if (last is Function lastfunc)
                 {
                     _blocks.Pop();
                     lastfunc.Ret = rst;

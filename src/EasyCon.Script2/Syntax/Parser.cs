@@ -1,4 +1,4 @@
-﻿using EasyCon.Script2.Text;
+using EasyCon.Script2.Text;
 using EasyCon.Script2.Ast;
 using System.Collections.Immutable;
 
@@ -14,7 +14,7 @@ internal sealed class Parser
     private int _position = 0;
     private readonly List<TriviaNode> _leadingtrivias = [];
     private readonly List<TriviaNode> _trailtrivias = [];
-    
+
     public DiagnosticBag Diagnostics => _diagnostics;
 
     public Parser(SyntaxTree syntaxTree)
@@ -38,18 +38,20 @@ internal sealed class Parser
     private Token Advance()
     {
         var now = Current;
-        if(now.Type == TokenType.COMMENT)_leadingtrivias.Add(new TriviaNode(now));
+        if (now.Type == TokenType.COMMENT) _leadingtrivias.Add(new TriviaNode(now));
 
         _position++;
 
         // advance next non-comment token
-        while(Current.Type == TokenType.COMMENT)
+        while (Current.Type == TokenType.COMMENT)
         {
             var comment = new TriviaNode(Current);
-            if(now.Line == Current.Line)
+            if (now.Line == Current.Line)
             {
                 _trailtrivias.Add(comment);
-            }else{
+            }
+            else
+            {
                 _leadingtrivias.Add(comment);
             }
             _position++;
@@ -72,7 +74,7 @@ internal sealed class Parser
 
         var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));
         _diagnostics.ReportUnexpectedToken(location, Current.Type, type);
-        throw new Exception(message+ $" 行{Current.Line}");
+        throw new Exception(message + $" 行{Current.Line}");
     }
 
     public MainProgram ParseProgram()
@@ -101,12 +103,12 @@ internal sealed class Parser
             var statement = ParseMember();
             if (statement != null)
             {
-                if(_leadingtrivias.Count > 0)
+                if (_leadingtrivias.Count > 0)
                 {
                     statement.LeadingTrivia.AddRange(_leadingtrivias);
                     _leadingtrivias.Clear();
                 }
-                if(_trailtrivias.Count > 0)
+                if (_trailtrivias.Count > 0)
                 {
                     statement.TrailingTrivia.AddRange(_trailtrivias);
                     _trailtrivias.Clear();
@@ -123,7 +125,7 @@ internal sealed class Parser
 
     private Statement ParseMember()
     {
-        if(Current.Type == TokenType.FUNC)
+        if (Current.Type == TokenType.FUNC)
             return ParseFunctionDecl();
         return ParseGlobalStatement();
     }
@@ -161,14 +163,13 @@ internal sealed class Parser
         return ParseAssignment();
     }
 
-    private AssignmentStatement ParseAssignment()
+    private AssignmentStatement? ParseAssignment()
     {
-        AssignmentStatement left = null;
+        AssignmentStatement? left = null;
         if (Check(TokenType.CONST) || Check(TokenType.VAR))
         {
-            var variableToken = Advance();
-            string variableName = variableToken.Value;
-            bool isConstant = variableToken.Type == TokenType.CONST;
+            var variableToken = Current;
+            var variable = ParsePrimary() as VariableExpression;
 
             Token assignmentOp;
             if (Match(TokenType.ASSIGN, TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN,
@@ -185,7 +186,7 @@ internal sealed class Parser
 
             var value = ParseExpression();
 
-            return new AssignmentStatement(variableToken, assignmentOp, value)
+            return new AssignmentStatement(variable, assignmentOp, value)
             {
                 Line = variableToken.Line,
                 Column = variableToken.Column
@@ -202,9 +203,11 @@ internal sealed class Parser
         if (func.Type == TokenType.INT)
         {
             name = "WAIT";
-        }else{
+        }
+        else
+        {
             Advance();
-            if(func.Value.ToLower() == "call")
+            if (func.Value.ToLower() == "call")
             {
                 func = Advance();
                 name = func.Value;
@@ -218,7 +221,7 @@ internal sealed class Parser
             args.Add(ParsePrimary());
         }
 
-        return new CallExpression(name, args)
+        return new CallExpression(name, args.ToImmutableArray())
         {
             Line = func.Line,
             Column = func.Column
@@ -261,7 +264,7 @@ internal sealed class Parser
                 elifBranch.Add(ParseGlobalStatement());
                 if (Check(TokenType.NEWLINE)) Advance();
             }
-            elseif.Add(new ElseIfClause(elifCond, elifBranch));
+            elseif.Add(new ElseIfClause(elifCond, elifBranch.ToImmutableArray()));
         }
 
         // else
@@ -280,12 +283,12 @@ internal sealed class Parser
                 elseBranch.Add(ParseGlobalStatement());
                 if (Check(TokenType.NEWLINE)) Advance();
             }
-            elseClause = new(elseBranch);
+            elseClause = new(elseBranch.ToImmutableArray());
         }
 
         Consume(TokenType.ENDIF, "if语句需要endif结尾");
 
-        return new IfStatement(condition, thenBranch, elseif, elseClause)
+        return new IfStatement(condition, thenBranch.ToImmutableArray(), elseif.ToImmutableArray(), elseClause)
         {
             Line = ifToken.Line,
             Column = ifToken.Column
@@ -303,7 +306,7 @@ internal sealed class Parser
             var body = ParseStatementsUntil(TokenType.NEXT);
             Consume(TokenType.NEXT, "for语句需要next结尾");
 
-            return new ForStatement(null, null, null, null, true, body)
+            return new ForStatement(null, null, null, null, true, body.ToImmutableArray())
             {
                 Line = forToken.Line,
                 Column = forToken.Column
@@ -329,7 +332,7 @@ internal sealed class Parser
             var body = ParseStatementsUntil(TokenType.NEXT);
             Consume(TokenType.NEXT, "for语句需要next结尾");
 
-            return new ForStatement(loopVar, start, end, null, false, body)
+            return new ForStatement(loopVar, start, end, null, false, body.ToImmutableArray())
             {
                 Line = forToken.Line,
                 Column = forToken.Column
@@ -343,7 +346,7 @@ internal sealed class Parser
             var body = ParseStatementsUntil(TokenType.NEXT);
             Consume(TokenType.NEXT, "for语句需要next结尾");
 
-            return new ForStatement(null, null, null, loopCount, false, body)
+            return new ForStatement(null, null, null, loopCount, false, body.ToImmutableArray())
             {
                 Line = forToken.Line,
                 Column = forToken.Column
@@ -374,7 +377,7 @@ internal sealed class Parser
         var breakToken = Advance();
 
         uint circle = 1;
-        if (!Check(TokenType.NEWLINE)) 
+        if (!Check(TokenType.NEWLINE))
         {
             var value = Consume(TokenType.INT, "break跳出层数必须为数字");
             circle = uint.Parse(value.Value);
@@ -430,7 +433,7 @@ internal sealed class Parser
 
         Consume(TokenType.ENDFUNC, "需要endfunc结尾");
 
-        return new FunctionDefinitionStatement(functionName.Value, null, body)
+        return new FunctionDefinitionStatement(functionName.Value, null, body.ToImmutableArray())
         {
             Line = functionToken.Line,
             Column = functionToken.Column
@@ -456,41 +459,45 @@ internal sealed class Parser
         var keyToken = Advance();
 
         // TODO: 按键命令参数解析
-        if(keyToken.Type == TokenType.StickKeyword)
+        if (keyToken.Type == TokenType.StickKeyword)
         {
-            switch(Current.Type)
+            switch (Current.Type)
             {
                 case TokenType.INT:
                 case TokenType.ButtonKeyword:
                     var state = Advance();
 
-                    if(Check(TokenType.COMMA))
+                    if (Check(TokenType.COMMA))
                     {
                         Advance();
                         var duration = Consume(TokenType.INT, "摇杆语法不正确");
-                        return new StickStatement(keyToken.Value, state.Value, duration.Value)
+                        var value = uint.Parse(duration.Value);
+                        return new StickStatement(keyToken.Value, state.Value, false, value)
                         {
                             Line = keyToken.Line,
                             Column = keyToken.Column
                         };
                     }
-                    else{
-                        return new StickStatement(keyToken.Value, state.Value)
+                    else
+                    {
+                        return new StickStatement(keyToken.Value, state.Value, false)
                         {
                             Line = keyToken.Line,
                             Column = keyToken.Column
                         };
                     }
                 case TokenType.ResetKeyword:
-                    var reset = Consume(TokenType.ResetKeyword, "摇杆语法不正确");
-                    return new StickStatement(keyToken.Value, reset.Value)
+                    Consume(TokenType.ResetKeyword, "摇杆语法不正确");
+                    return new StickStatement(keyToken.Value, "", true)
                     {
                         Line = keyToken.Line,
                         Column = keyToken.Column
                     };
             }
-        }else{
-            if(Check(TokenType.NEWLINE))
+        }
+        else
+        {
+            if (Check(TokenType.NEWLINE))
             {
                 return new ButtonStatement(keyToken.Value)
                 {
@@ -498,20 +505,21 @@ internal sealed class Parser
                     Column = keyToken.Column
                 };
             }
-            else if(Check(TokenType.INT))
+            else if (Check(TokenType.INT))
             {
                 var state = Advance();
-                return new ButtonStatement(keyToken.Value, state.Value)
+                var value = uint.Parse(state.Value);
+                return new ButtonStatement(keyToken.Value, value)
                 {
                     Line = keyToken.Line,
                     Column = keyToken.Column
                 };
             }
-            else if(Check(TokenType.ButtonKeyword))
+            else if (Check(TokenType.ButtonKeyword))
             {
                 var state = Advance();
                 var isDown = state.Value.ToUpper() == "DOWN";
-                return new ButtonStatement(keyToken.Value, isDown)
+                return new ButtonStStatement(keyToken.Value, isDown)
                 {
                     Line = keyToken.Line,
                     Column = keyToken.Column
