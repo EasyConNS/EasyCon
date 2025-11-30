@@ -105,9 +105,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 if (current == '\n')
                 {
-                    AddToken(TokenType.NEWLINE, "");
+                    AddToken(TokenType.NEWLINE, " ");
                     _line++;
-                    _column = 1;
+                    _column = 0;
                 }
                 Advance();
             }
@@ -192,12 +192,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     {
         while (_position < _input.Length && char.IsWhiteSpace(Current))
         {
-            if ("\u000D\u000A\u0085\u2028\u2029\r\n".IndexOf(Current) != -1)
+            if ("\u000D\u000A\u0085\u2028\u2029\r\n".Contains(Current))
             {
                 if(Current == '\r' && Lookahead == '\n')
                     _line++;
             }
-            _position++;
+            Advance();
         }
     }
 
