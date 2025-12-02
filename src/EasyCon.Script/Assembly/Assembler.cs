@@ -1,4 +1,6 @@
-﻿namespace EasyScript.Assembly;
+using System.Collections.Immutable;
+
+namespace EasyScript.Assembly;
 
 class Assembler
 {
@@ -31,7 +33,7 @@ class Assembler
         return _instructions.Last();
     }
 
-    public byte[] Assemble(List<Parsing.Statement> statements, bool autoRun)
+    public byte[] Assemble(ImmutableArray<Parsing.Statement> statements, bool autoRun)
     {
         // initialize
         _instructions.Clear();
@@ -44,7 +46,7 @@ class Assembler
         CallMapping.Clear();
 
         // compile into instructions
-        for (int i = 0; i < statements.Count; i++)
+        for (int i = 0; i < statements.Count(); i++)
         {
             try
             {

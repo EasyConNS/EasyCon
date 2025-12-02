@@ -1,5 +1,4 @@
-﻿using EasyDevice.Connection;
-using System.Diagnostics;
+using EasyDevice.Connection;
 
 namespace EasyDevice;
 
@@ -73,7 +72,7 @@ public partial class NintendoSwitch : IReporter
     {
         lock (this)
         {
-            PrintKey("Reset");
+            DebugKey("Reset");
             Signal();
             _keystrokes.Clear();
             _reset = true;
@@ -84,7 +83,7 @@ public partial class NintendoSwitch : IReporter
     {
         lock (this)
         {
-            PrintKey("Down", key);
+            DebugKey("Down", key);
             Signal();
             _keystrokes[key.KeyCode] = new KeyStroke(key);
             if (recordState == RecordState.RECORD_START)
@@ -98,7 +97,7 @@ public partial class NintendoSwitch : IReporter
     {
         lock (this)
         {
-            PrintKey("Up", key);
+            DebugKey("Up", key);
             Signal();
             _keystrokes[key.KeyCode] = new KeyStroke(key, true);
             if (recordState == RecordState.RECORD_START)
@@ -112,7 +111,7 @@ public partial class NintendoSwitch : IReporter
     {
         lock (this)
         {
-            PrintKey("Press", key);
+            DebugKey("Press", key);
             Signal();
             _keystrokes[key.KeyCode] = new KeyStroke(key, false, duration);
         }
@@ -148,23 +147,21 @@ public partial class NintendoSwitch : IReporter
             _hat &= ~dkey;
             if (_hat.GetHATFromDirection() == SwitchHAT.CENTER)
             {
-                Debug.WriteLine("_hat " + _hat.GetName());
-                Debug.WriteLine("dkey " + dkey.GetName());
                 Up(ECKeyUtil.HAT(dkey));
             }
             else
             {
-                Debug.WriteLine("_hat " + _hat.GetName());
-                Debug.WriteLine("dkey " + dkey.GetName());
                 Down(ECKeyUtil.HAT(_hat));
             }
         }
+        System.Diagnostics.Debug.WriteLine("_hat " + _hat.GetName());
+        System.Diagnostics.Debug.WriteLine("dkey " + dkey.GetName());
     }
     
-    private static void PrintKey(string str, ECKey key = null)
+    private void DebugKey(string str, ECKey key = null)
     {
-        str = str + " " + key?.Name ?? "";
-        Debug.WriteLine(str);
+        System.Diagnostics.Debug.WriteLine($"{str} {key?.Name ?? ""}");
+        Log($"{str} {key?.Name ?? ""}");
     }
 
     SwitchReport IReporter.GetReport()

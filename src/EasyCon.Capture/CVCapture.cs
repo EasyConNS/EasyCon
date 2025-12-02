@@ -1,4 +1,4 @@
-﻿using OpenCvSharp;
+using OpenCvSharp;
 using OpenCvSharp.Extensions;
 using System.Diagnostics;
 using System.Drawing;
@@ -11,10 +11,7 @@ public class OpenCVCapture : IDisposable
 {
     private readonly VideoCapture videoCapture = new();
 
-    public OpenCVCapture()
-    {
-
-    }
+    public bool IsOpened => videoCapture.IsOpened();
 
     public bool Open(int idx, int apiRefs = 0)
     {
@@ -42,8 +39,6 @@ public class OpenCVCapture : IDisposable
 
         return new Mat();
     }
-
-    public Bitmap? GetImage() => GetFrame();
 
     public Bitmap? GetFrame()
     {

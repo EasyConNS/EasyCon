@@ -1,3 +1,4 @@
+using EasyScript.Parsing;
 using EasyScript.Statements;
 
 namespace EasyScript;
@@ -15,12 +16,12 @@ class Processor(Dictionary<string, FunctionStmt> func)
     public Stack<For> LoopStack = new();
     public Dictionary<For, int> LoopTime = new();
     public Dictionary<For, int> LoopCount = new();
-    public RegisterFile Register = new();
 
-    public ExternTime et = new(DateTime.Now);
+    public readonly RegisterFile Register = new();
 
-    private Stack<int> CallStack = new();
+    private readonly Stack<int> CallStack = new();
     private readonly Dictionary<string, FunctionStmt> _funcTables = func;
+    private readonly ExternTime et = new(DateTime.Now);
 
     public void Call(string label)
     {
@@ -29,6 +30,11 @@ class Processor(Dictionary<string, FunctionStmt> func)
             PC = func.Address + 1;
         else
             throw new ScriptException("找不到调用函数", PC);
+    }
+
+    public void CurTime(ValRegEx var)
+    {
+        Register[var] = et.CurrTimestamp;
     }
 
     public void RetrunCall()
@@ -47,7 +53,7 @@ class RegisterFile
         set => _variables[tag] = value;
     }
 
-    public int this[Parsing.ValRegEx val]
+    public int this[ValRegEx val]
     {
         get => this[val.Tag];
 

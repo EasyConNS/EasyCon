@@ -1,4 +1,4 @@
-﻿namespace EasyDevice;
+namespace EasyDevice;
 
 public partial class NintendoSwitch
 {
@@ -62,6 +62,7 @@ public partial class NintendoSwitch
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[Send {DateTime.Now:ss.fff}] {_report}");
+                Log($"[Send {DateTime.Now:ss.fff}] {_report}");
 
                 WriteReport(_report.GetBytes());
                 _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);

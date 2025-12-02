@@ -1,11 +1,11 @@
-﻿using EasyCon.Script2.Ast;
+using EasyCon.Script2.Ast;
 
 namespace EasyCon.Script2;
 
 internal sealed class Scope(Scope? parent)
 {
     private readonly Dictionary<string, RuntimeValue> _variables = [];
-    private readonly Dictionary<string, Function1> _functions = [];
+    private readonly Dictionary<string, FunctionSymbol> _functions = [];
     public Scope? Parent { get; } = parent;
 
     public bool TryDeclareVariable(string name, RuntimeValue value)
@@ -28,16 +28,16 @@ internal sealed class Scope(Scope? parent)
         return _variables.ContainsKey(name) || (Parent?.HasVariable(name) == true);
     }
 
-    public bool TryDeclareFunction(string name, Function1 function)
+    public bool TryDeclareFunction(string name, FunctionSymbol function)
     {
         if (_functions.ContainsKey(name)) return false;
         _functions.Add(name, function);
         return true;
     }
 
-    public Function1? TryLookupFunction(string name)
+    public FunctionSymbol? TryLookupFunction(string name)
     {
-        if (_functions.TryGetValue(name, out Function1? value))
+        if (_functions.TryGetValue(name, out FunctionSymbol? value))
             return value;
 
         return Parent?.TryLookupFunction(name);
@@ -73,13 +73,13 @@ public enum ValueType
 }
 
 // 函数定义
-public class Function1
+public class FunctionSymbol
 {
     public string Name { get; }
     public List<string> Parameters { get; }
     public List<Statement> Body { get; }
 
-    public Function1(string name, List<string> parameters, List<Statement> body)
+    public FunctionSymbol(string name, List<string> parameters, List<Statement> body)
     {
         Name = name;
         Parameters = parameters;
