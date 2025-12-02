@@ -1,11 +1,36 @@
-﻿using OpenCvSharp;
+using OpenCvSharp;
+using OpenCvSharp.Dnn;
+using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace EasyCapture;
 
+interface ICapture
+{
+    ImmutableArray<string> GetCaptureCamera();
+}
+
 public sealed class ECCapture
 {
-    public static List<string> GetCaptureCamera() => DirectShow.GetFiltes(DirectShow.DsGuid.CLSID_VideoInputDeviceCategory);
+    public static ImmutableArray<string> GetCaptureCamera()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+           return DirectShow.GetFiltes(DirectShow.DsGuid.CLSID_VideoInputDeviceCategory);
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            throw new PlatformNotSupportedException();
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            return [];
+        }
+        else
+        {
+            return [];
+        }
+    }
 
     public static Dictionary<string, int> GetCaptureTypes() => getCaptureTypes();
 
