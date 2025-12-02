@@ -712,21 +712,22 @@ namespace EasyCon2.Forms
         private bool FileSave(bool saveAs = false)
         {
             Directory.CreateDirectory(ScriptPath);
-            if (!_fileEdited)
-                return false;
-            if (saveAs || _currentFile == "")
+            saveFileDialog1.Title = saveAs ? "另存为" : "保存";
+            saveFileDialog1.RestoreDirectory = true;
+            saveFileDialog1.InitialDirectory = Path.GetFullPath(ScriptPath);
+            saveFileDialog1.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+            saveFileDialog1.FileName = string.Empty;
+
+            var path = _currentFile;
+            if (saveAs || _currentFile=="")
             {
-                saveFileDialog1.Title = saveAs ? "另存为" : "保存";
-                saveFileDialog1.RestoreDirectory = true;
-                saveFileDialog1.InitialDirectory = Path.GetFullPath(ScriptPath);
-                saveFileDialog1.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
-                saveFileDialog1.FileName = string.Empty;
                 if (saveFileDialog1.ShowDialog() != DialogResult.OK)
                     return false;
-                _currentFile = saveFileDialog1.FileName;
+                path = saveFileDialog1.FileName;
             }
-            File.WriteAllText(_currentFile, textBoxScript.Text);
-            _fileEdited = false;
+            _currentFile = saveAs ? _currentFile : path;
+            File.WriteAllText(path, textBoxScript.Text);
+            _fileEdited = path != _currentFile;
             StatusShowLog("文件已保存");
             return true;
         }
