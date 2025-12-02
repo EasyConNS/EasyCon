@@ -719,7 +719,7 @@ namespace EasyCon2.Forms
             saveFileDialog1.FileName = string.Empty;
 
             var path = _currentFile;
-            if (saveAs || _currentFile=="")
+            if (saveAs || _currentFile == "")
             {
                 if (saveFileDialog1.ShowDialog() != DialogResult.OK)
                     return false;
@@ -1375,5 +1375,36 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             StatusShowLog($"环境变量设置成功：{oc}");
         }
         #endregion
+
+        private void 检查更新ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // Fetch latest release information.
+                    using var client = new HttpClient();
+                    client.Timeout = TimeSpan.FromSeconds(5);
+
+                    var data = await client.GetStringAsync("https://gitee.com/api/v5/repos/EasyConNS/EasyCon/tags");
+                    var ver = JsonSerializer.Deserialize<VerInfo[]>(data);
+                    if (ver == null)
+                        return;
+
+                    // Check if already up-to-date.
+                    var info = new VersionParser(ver, VER);
+                    var msg = info.IsNewVersion ? $"发现新版本{info.NewVer}，快去群文件里看看吧" : "暂时没有发现新版本";
+                    Invoke(() =>
+                    {
+                        MessageBox.Show(msg);
+                    });
+
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine($"update failed:{e.Message}");
+                }
+            });
+        }
     }
 }

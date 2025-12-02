@@ -1,4 +1,4 @@
-﻿namespace EasyCon2.Forms
+namespace EasyCon2.Forms
 {
     partial class EasyConForm
     {
@@ -99,6 +99,7 @@
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             statusStrip1 = new StatusStrip();
             textBoxScriptHelp = new TextBox();
+            检查更新ToolStripMenuItem = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             groupBox1.SuspendLayout();
             groupBox6.SuspendLayout();
@@ -343,7 +344,7 @@
             // 
             // 帮助ToolStripMenuItem
             // 
-            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 固件模式ToolStripMenuItem, 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, toolStripSeparator2, 项目源码ToolStripMenuItem, 关于ToolStripMenuItem });
+            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 固件模式ToolStripMenuItem, 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, toolStripSeparator2, 检查更新ToolStripMenuItem, 项目源码ToolStripMenuItem, 关于ToolStripMenuItem });
             帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
             帮助ToolStripMenuItem.Size = new Size(53, 24);
             帮助ToolStripMenuItem.Text = "帮助";
@@ -351,40 +352,40 @@
             // 固件模式ToolStripMenuItem
             // 
             固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
-            固件模式ToolStripMenuItem.Size = new Size(152, 26);
+            固件模式ToolStripMenuItem.Size = new Size(224, 26);
             固件模式ToolStripMenuItem.Text = "固件模式";
             固件模式ToolStripMenuItem.Click += 固件模式ToolStripMenuItem_Click;
             // 
             // 联机模式ToolStripMenuItem
             // 
             联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
-            联机模式ToolStripMenuItem.Size = new Size(152, 26);
+            联机模式ToolStripMenuItem.Size = new Size(224, 26);
             联机模式ToolStripMenuItem.Text = "联机模式";
             联机模式ToolStripMenuItem.Click += 联机模式ToolStripMenuItem_Click;
             // 
             // 烧录模式ToolStripMenuItem
             // 
             烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
-            烧录模式ToolStripMenuItem.Size = new Size(152, 26);
+            烧录模式ToolStripMenuItem.Size = new Size(224, 26);
             烧录模式ToolStripMenuItem.Text = "烧录模式";
             烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
             // 
             // toolStripSeparator2
             // 
             toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new Size(149, 6);
+            toolStripSeparator2.Size = new Size(221, 6);
             // 
             // 项目源码ToolStripMenuItem
             // 
             项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            项目源码ToolStripMenuItem.Size = new Size(152, 26);
+            项目源码ToolStripMenuItem.Size = new Size(224, 26);
             项目源码ToolStripMenuItem.Text = "项目源码";
             项目源码ToolStripMenuItem.Click += 项目源码ToolStripMenuItem_Click;
             // 
             // 关于ToolStripMenuItem
             // 
             关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            关于ToolStripMenuItem.Size = new Size(152, 26);
+            关于ToolStripMenuItem.Size = new Size(224, 26);
             关于ToolStripMenuItem.Text = "关于";
             关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
             // 
@@ -720,6 +721,13 @@
             textBoxScriptHelp.Size = new Size(312, 401);
             textBoxScriptHelp.TabIndex = 35;
             // 
+            // 检查更新ToolStripMenuItem
+            // 
+            检查更新ToolStripMenuItem.Name = "检查更新ToolStripMenuItem";
+            检查更新ToolStripMenuItem.Size = new Size(224, 26);
+            检查更新ToolStripMenuItem.Text = "检查更新";
+            检查更新ToolStripMenuItem.Click += 检查更新ToolStripMenuItem_Click;
+            // 
             // EasyConForm
             // 
             AutoScaleMode = AutoScaleMode.Inherit;
@@ -834,6 +842,7 @@
         private ToolStripMenuItem 联机模式ToolStripMenuItem;
         private ToolStripMenuItem 烧录模式ToolStripMenuItem;
         private ToolStripMenuItem 烧录自动运行ToolStripMenuItem;
+        private ToolStripMenuItem 检查更新ToolStripMenuItem;
     }
 }
 
