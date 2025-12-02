@@ -40,16 +40,30 @@ public sealed class SimpleVisitor : AstVisitor
         Console.Write($"{ast.Name}");
         return ast;
     }
-    
-   public override ASTNode VisitBinaryOp(BinaryExpression ast)
-   {
-       Console.Write("(");
-       ast.Left.Accept(this);
-       Console.Write($" {ast.Operator} ");
-       ast.Right.Accept(this);
-       Console.Write(")");
 
-       return ast;
+
+    public override ASTNode VisitIndexExpr(IndexExpression ast)
+    {
+        Console.Write($"[");
+        foreach(var item in ast.Items)
+        {
+            item.Accept(this);
+            Console.Write(", ");
+        }
+        Console.Write("]");
+
+        return ast;
+    }
+    
+    public override ASTNode VisitBinaryOp(BinaryExpression ast)
+    {
+        Console.Write("(");
+        ast.Left.Accept(this);
+        Console.Write($" {ast.Operator} ");
+       ast.Right.Accept(this);
+        Console.Write(")");
+
+        return ast;
    }
 
    public override ASTNode VisitCondition(ConditionExpression ast)

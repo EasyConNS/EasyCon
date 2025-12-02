@@ -1,4 +1,5 @@
 using EasyCon.Script2.Text;
+using System.Collections.Immutable;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -16,6 +17,8 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private int _column = 1;
     private readonly List<Token> _tokens = [];
 
+    private ImmutableArray<Token>.Builder _triviaBuilder = ImmutableArray.CreateBuilder<Token>();
+
     public DiagnosticBag Diagnostics => _diagnostics;
 
     private static string Compat(string text)
@@ -23,7 +26,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         var builder = new StringBuilder();
         foreach (var line in Regex.Split(text, "\r\n|\r|\n"))
         {
-            var _text = line.TrimStart();
+            var _text = line;
             var m = Regex.Match(_text, @"(\s*#.*)$");
             string comment = string.Empty;
             if (m.Success)
@@ -31,7 +34,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 comment = m.Groups[1].Value;
                 _text = _text[..^comment.Length];
             }
-            _text = _text.Trim();
 
             var mp = printRex().Match(_text);
             if (mp.Success)
@@ -105,7 +107,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 if (current == '\n')
                 {
-                    AddToken(TokenType.NEWLINE, " ");
+                    AddToken(TokenType.NEWLINE, " ", _position);
                     _line++;
                     _column = 0;
                 }
@@ -137,7 +139,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             }
         }
 
-        _tokens.Add(new Token(TokenType.EOF, "", _line, _column));
+        _tokens.Add(new Token(_text, TokenType.EOF, "", 0, 0));
         return _tokens;
     }
 
@@ -161,9 +163,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         return current;
     }
 
-    private void AddToken(TokenType type, string value)
+    private void AddToken(TokenType type, string value, int start)
     {
-        _tokens.Add(new Token(type, value, _line, _column - value.Length));
+        _tokens.Add(new Token(_text, type, value, _line, start));
     }
 
     // 检查是否为标识符起始字符
@@ -208,9 +210,10 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         {
             Advance();
         }
+        Advance();
 
         var comment = _input.Substring(start, _position - start);
-        AddToken(TokenType.COMMENT, comment);
+        AddToken(TokenType.COMMENT, comment, start);
     }
 
     private void ReadNumber()
@@ -231,11 +234,11 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 var location = new TextLocation(_text, span);
                 _diagnostics.ReportInvalidNumber(location, number);
             }
-            AddToken(TokenType.Number, number);
+            AddToken(TokenType.Number, number, start);
         }
         else
         {
-            AddToken(TokenType.INT, number);
+            AddToken(TokenType.INT, number, start);
         }
     }
 
@@ -261,7 +264,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             _diagnostics.ReportUnterminatedString(location);
         }
         Advance(); // 跳过结束的引号
-        AddToken(TokenType.STRING, sb.ToString());
+        AddToken(TokenType.STRING, sb.ToString(), start+1);
     }
 
     private void ReadVariable()
@@ -285,13 +288,13 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         switch (firstChar)
         {
             case '_':
-                AddToken(TokenType.CONST, identifier);
+                AddToken(TokenType.CONST, identifier, start);
                 break;
             case '$':
-                AddToken(TokenType.VAR, identifier);
+                AddToken(TokenType.VAR, identifier, start);
                 break;
             case '@':
-                AddToken(TokenType.EX_VAR, identifier);
+                AddToken(TokenType.EX_VAR, identifier, start);
                 break;
         }
     }
@@ -312,12 +315,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         if ((isAllUpper || isAllLower) && keywords.ContainsKey(word.ToLower()))
         {
             // 关键字默认大写
-            AddToken(keywords[word.ToLower()], word.ToUpper());
+            AddToken(keywords[word.ToLower()], word.ToUpper(), start);
         }
         else if ((isAllUpper || isAllLower) && logicwords.ContainsKey(word.ToLower()))
         {
             // and, or, not关键字小写
-            AddToken(logicwords[word.ToLower()], word.ToLower());
+            AddToken(logicwords[word.ToLower()], word.ToLower(), start);
         }
         else if ((isAllUpper || isAllLower) && gamepadKeywords.Contains(word.ToUpper()))
         {
@@ -330,16 +333,17 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     break;
             }
             // 手柄按键大写
-            AddToken(ktype, word.ToUpper());
+            AddToken(ktype, word.ToUpper(), start);
         }
         else
         {
-            AddToken(TokenType.IDENT, word);
+            AddToken(TokenType.IDENT, word, start);
         }
     }
 
     private void ReadOperatorOrSymbol()
     {
+        var start = _position;
         var current = Advance();
         var next = Peek();
 
@@ -349,117 +353,117 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.EQL, "==");
+                    AddToken(TokenType.EQL, "==", start);
                 }
                 else
                 {
-                    AddToken(TokenType.ASSIGN, "=");
+                    AddToken(TokenType.ASSIGN, "=", start);
                 }
                 break;
             case '+':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.ADD_ASSIGN, "+=");
+                    AddToken(TokenType.ADD_ASSIGN, "+=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.ADD, "+");
+                    AddToken(TokenType.ADD, "+", start);
                 }
                 break;
             case '-':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.SUB_ASSIGN, "-=");
+                    AddToken(TokenType.SUB_ASSIGN, "-=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.SUB, "-");
+                    AddToken(TokenType.SUB, "-", start);
                 }
                 break;
             case '*':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.MUL_ASSIGN, "*=");
+                    AddToken(TokenType.MUL_ASSIGN, "*=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.MUL, "*");
+                    AddToken(TokenType.MUL, "*", start);
                 }
                 break;
             case '/':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.DIV_ASSIGN, "/=");
+                    AddToken(TokenType.DIV_ASSIGN, "/=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.DIV, "/");
+                    AddToken(TokenType.DIV, "/", start);
                 }
                 break;
             case '\\':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.SlashIAssign, "\\=");
+                    AddToken(TokenType.SlashIAssign, "\\=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.SlashI, "\\");
+                    AddToken(TokenType.SlashI, "\\", start);
                 }
                 break;
             case '%':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.MOD_ASSIGN, "%=");
+                    AddToken(TokenType.MOD_ASSIGN, "%=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.MOD, "%");
+                    AddToken(TokenType.MOD, "%", start);
                 }
                 break;
             case '^':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.XOR_ASSIGN, "^=");
+                    AddToken(TokenType.XOR_ASSIGN, "^=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.XOR, "^");
+                    AddToken(TokenType.XOR, "^", start);
                 }
                 break;
             case '&':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.BitAnd_ASSIGN, "&=");
+                    AddToken(TokenType.BitAnd_ASSIGN, "&=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.BitAnd, "&");
+                    AddToken(TokenType.BitAnd, "&", start);
                 }
                 break;
             case '|':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.BitOr_ASSIGN, "|=");
+                    AddToken(TokenType.BitOr_ASSIGN, "|=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.BitOr, "|");
+                    AddToken(TokenType.BitOr, "|", start);
                 }
                 break;
             case '!':
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.NEQ, "!=");
+                    AddToken(TokenType.NEQ, "!=", start);
                 }
                 break;
             case '>':
@@ -469,21 +473,21 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     if (_position < _input.Length && _input[_position] == '=')
                     {
                         Advance();
-                        AddToken(TokenType.SHR_ASSIGN, ">>=");
+                        AddToken(TokenType.SHR_ASSIGN, ">>=", start);
                     }
                     else
                     {
-                        AddToken(TokenType.SHR, ">>");
+                        AddToken(TokenType.SHR, ">>", start);
                     }
                 }
                 else if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.GEQ, ">=");
+                    AddToken(TokenType.GEQ, ">=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.GTR, ">");
+                    AddToken(TokenType.GTR, ">", start);
                 }
                 break;
             case '<':
@@ -493,40 +497,40 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     if (_position < _input.Length && _input[_position] == '=')
                     {
                         Advance();
-                        AddToken(TokenType.SHL_ASSIGN, "<<=");
+                        AddToken(TokenType.SHL_ASSIGN, "<<=", start);
                     }
                     else
                     {
-                        AddToken(TokenType.SHL, "<<");
+                        AddToken(TokenType.SHL, "<<", start);
                     }
                 }
                 else if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.LEQ, "<=");
+                    AddToken(TokenType.LEQ, "<=", start);
                 }
                 else
                 {
-                    AddToken(TokenType.LESS, "<");
+                    AddToken(TokenType.LESS, "<", start);
                 }
                 break;
             case '~':
-                AddToken(TokenType.BitNot, "~");
+                AddToken(TokenType.BitNot, "~", start);
                 break;
             case ',':
-                AddToken(TokenType.COMMA, ",");
+                AddToken(TokenType.COMMA, ",", start);
                 break;
             case '(':
-                AddToken(TokenType.LeftParen, "(");
+                AddToken(TokenType.LeftParen, "(", start);
                 break;
             case ')':
-                AddToken(TokenType.RightParen, ")");
+                AddToken(TokenType.RightParen, ")", start);
                 break;
             case '[':
-                AddToken(TokenType.LeftBracket, "[");
+                AddToken(TokenType.LeftBracket, "[", start);
                 break;
             case ']':
-                AddToken(TokenType.RightBracket, "]");
+                AddToken(TokenType.RightBracket, "]", start);
                 break;
             default:
                 var span = new SourceSpan(_position, 1, _line);

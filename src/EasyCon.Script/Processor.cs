@@ -1,6 +1,8 @@
-﻿namespace EasyScript;
+using EasyScript.Statements;
 
-class Processor
+namespace EasyScript;
+
+class Processor(Dictionary<string, FunctionStmt> func)
 {
     public const uint OfflineMaxRegisterCount = 8;
 
@@ -10,13 +12,29 @@ class Processor
     public int PC = 0;
     public bool CancelLineBreak = false;
     public Stack<short> Stack = new();
-    public Stack<int> CallStack = new();
-    public Stack<Statements.For> LoopStack = new();
-    public Dictionary<Statements.For, int> LoopTime = new();
-    public Dictionary<Statements.For, int> LoopCount = new();
+    public Stack<For> LoopStack = new();
+    public Dictionary<For, int> LoopTime = new();
+    public Dictionary<For, int> LoopCount = new();
     public RegisterFile Register = new();
 
     public ExternTime et = new(DateTime.Now);
+
+    private Stack<int> CallStack = new();
+    private readonly Dictionary<string, FunctionStmt> _funcTables = func;
+
+    public void Call(string label)
+    {
+        CallStack.Push(PC);
+        if (_funcTables.TryGetValue(label, out FunctionStmt? func))
+            PC = func.Address + 1;
+        else
+            throw new ScriptException("找不到调用函数", PC);
+    }
+
+    public void RetrunCall()
+    {
+        PC = CallStack.Pop();
+    }
 }
 
 class RegisterFile
