@@ -1,14 +1,17 @@
+using System.Collections.Immutable;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using System.Runtime.Versioning;
 
 namespace EasyCapture;
 
+[SupportedOSPlatform("windows")]
 static class DirectShow
 {
     #region Function
 
     /// <summary>フィルタの一覧を取得する。</summary>
-    public static List<string> GetFiltes(Guid category)
+    public static ImmutableArray<string> GetFiltes(Guid category)
     {
         var result = new List<string>();
 
@@ -23,7 +26,7 @@ static class DirectShow
             return false; // 継続。
         });
 
-        return result;
+        return result.ToImmutableArray();
     }
 
     /// <summary>モニカを列挙する。</summary>
