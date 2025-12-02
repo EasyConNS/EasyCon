@@ -1,18 +1,23 @@
-﻿namespace EasyScript;
+using EasyScript.Statements;
+using EasyScript.Parsing;
+
+namespace EasyScript;
 
 public class Scripter
 {
     readonly Dictionary<string, int> Constants = [];
     readonly Dictionary<string, ExternalVariable> ExtVars = [];
 
-    List<Parsing.Statement> _statements = [];
+    List<Statement> _statements = [];
+
+    Dictionary<string, FunctionStmt> _funcTables = new ();
 
     public bool HasKeyAction {
         get
         {
             foreach(var stat in _statements)
             {
-                if (stat is Statements.KeyAction)
+                if (stat is KeyAction)
                 {
                     return true;
                 }
@@ -26,12 +31,13 @@ public class Scripter
         ExtVars.Clear();
         foreach (var ev in extVars)
             ExtVars[ev.Name] = ev;
-        _statements = new Parsing.Parser(Constants, ExtVars).Parse(code);
+        _statements = new Parser(Constants, ExtVars).Parse(code);
+        _statements.OfType<FunctionStmt>().ToList().ForEach(f => { _funcTables[f.Label] = f; });
     }
 
     public void Run(IOutputAdapter output, ICGamePad pad)
     {
-        var _processor = new Processor
+        var _processor = new Processor(_funcTables)
         {
             Output = output,
             GamePad = pad,
@@ -52,6 +58,14 @@ public class Scripter
 
     public byte[] Assemble(bool auto = true)
     {
+        // pair Call
+        _statements.OfType<CallStat>().ToList().ForEach(cst =>
+        {
+            if (_funcTables.TryGetValue(cst.Label, out FunctionStmt? value))
+                cst.Func = @value;
+            else
+                throw new ParseException("找不到调用的函数", cst.Address);
+        });
         return new Assembly.Assembler().Assemble(_statements, auto);
     }
 

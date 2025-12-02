@@ -8,7 +8,6 @@ public abstract class ASTNode(Token key)
 {
     private Token Key = key;
     public int Line => key.Line;
-    public int Column => key.Column;
     public abstract T Accept<T>(IAstVisitor<T> visitor);
 }
 
@@ -78,6 +77,16 @@ public sealed class VariableExpression(Token keyword, bool isConstant, bool isSp
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitVariable(this);
+    }
+}
+
+public sealed class IndexExpression(Token keyword, ImmutableArray<Expression> items, Token rb) : Expression(keyword)
+{
+    public ImmutableArray<Expression> Items { get; } = items;
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return visitor.VisitIndexExpr(this);
     }
 }
 

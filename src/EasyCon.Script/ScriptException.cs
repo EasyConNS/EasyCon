@@ -1,4 +1,4 @@
-﻿namespace EasyScript;
+namespace EasyScript;
 
 public class ScriptException : Exception
 {

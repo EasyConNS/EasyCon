@@ -1,4 +1,4 @@
-﻿using EasyCapture;
+using EasyCapture;
 using EasyCon2.Assist;
 using EasyCon2.Global;
 using EasyCon2.Properties;
@@ -537,11 +537,11 @@ namespace EasyCon2.Forms
                     return;
                 if (!CheckFirmwareVersion())
                     return;
-            }
-            if (!NS.RemoteStop())
-            {
-                MessageBox.Show($"需要先停止烧录脚本运行，请点击<远程停止>按钮");
-                return;
+                if (!NS.RemoteStop())
+                {
+                    MessageBox.Show($"需要先停止烧录脚本运行，请点击<远程停止>按钮");
+                    return;
+                }
             }
 
             thd = new Thread(_RunScript);

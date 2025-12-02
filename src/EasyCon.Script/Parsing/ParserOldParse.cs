@@ -201,7 +201,7 @@ internal partial class Parser
         switch (first.Value.ToLower())
         {
             case "func":
-                return tokens[1].Type == TokenType.IDENT ? new Function(tokens[1].Value) : null;
+                return tokens[1].Type == TokenType.IDENT ? new FunctionStmt(tokens[1].Value) : null;
             case "call":
                 return tokens[1].Type == TokenType.IDENT ? new CallStat(tokens[1].Value) : null;
             case "alert":

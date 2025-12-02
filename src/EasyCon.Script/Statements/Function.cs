@@ -1,14 +1,14 @@
-﻿using EasyScript.Parsing;
+using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
-    class Function : Parsing.Statement
+    class FunctionStmt : Statement
     {
         public override int IndentNext => 1;
         public readonly string Label;
         public ReturnStat Ret = null;
 
-        public Function(string lbl)
+        public FunctionStmt(string lbl)
         {
             Label = lbl;
         }
@@ -32,10 +32,10 @@ namespace EasyScript.Statements
         }
     }
 
-    class CallStat : Parsing.Statement
+    class CallStat : Statement
     {
         public readonly string Label;
-        public Function Func = null;
+        public FunctionStmt Func = null;
 
         public CallStat(string lbl)
         {
@@ -50,8 +50,7 @@ namespace EasyScript.Statements
 
         public override void Exec(Processor processor)
         {
-            processor.CallStack.Push(processor.PC);
-            processor.PC = Func.Address + 1;
+            processor.Call(Label);
         }
 
         protected override string _GetString(Formatter formatter)
@@ -60,7 +59,7 @@ namespace EasyScript.Statements
         }
     }
 
-    class ReturnStat : Parsing.Statement
+    class ReturnStat : Statement
     {
         public override int IndentThis => -1;
         public string Label;
@@ -71,7 +70,7 @@ namespace EasyScript.Statements
 
         public override void Exec(Processor processor)
         {
-            processor.PC = processor.CallStack.Pop();
+            processor.RetrunCall();
         }
 
         public override void Assemble(Assembly.Assembler assembler)

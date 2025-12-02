@@ -1,3 +1,6 @@
+using EasyCon.Script2.Text;
+using System.Collections.Immutable;
+
 namespace EasyCon.Script2.Syntax;
 
 public enum TokenType
@@ -58,7 +61,7 @@ public enum TokenType
 
     //  Punctuation
     LeftParen, // (
-    LeftBracket, // 
+    LeftBracket, // [
     COMMA, // ,
     DOT, // .
 
@@ -96,15 +99,20 @@ public enum TokenType
     EOF
 }
 
-public sealed record Token(TokenType type, string value, int line, int column)
+public sealed record Token(SourceText text, TokenType type, string value, int line, int start)
 {
     public TokenType Type { get; } = type;
     public string Value { get; } = value;
     public int Line { get; } = line;
-    public int Column { get; } = column;
+
+    public SourceText Text { get; } = text;
+    public SourceSpan Span => new(start, value.Length, line);
+
+    public readonly ImmutableArray<Token> LeadingTrivia = [];
+    public readonly ImmutableArray<Token> TrailingTrivia = [];
 
     public override string ToString()
     {
-        return $"T('{Value}':{Type}:L{Line}:C{Column})";
+        return $"T('{Value}':{Type})";
     }
 }

@@ -6,6 +6,7 @@ public interface IAstVisitor<T>
     T VisitProgram(MainProgram ast);
     T VisitLiteral(LiteralExpression ast);
     T VisitVariable(VariableExpression ast);
+    T VisitIndexExpr(IndexExpression ast);
     T VisitBinaryOp(BinaryExpression ast);
     T VisitCondition(ConditionExpression ast);
     T VisitAssignmentStat(AssignmentStatement ast);
@@ -40,6 +41,10 @@ public abstract class AstVisitor : IAstVisitor<ASTNode>
         return ast;
     }
     public virtual ASTNode VisitVariable(VariableExpression ast)
+    {
+        return ast;
+    }
+    public virtual ASTNode VisitIndexExpr(IndexExpression ast)
     {
         return ast;
     }
