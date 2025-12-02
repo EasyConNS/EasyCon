@@ -1,4 +1,4 @@
-﻿using EasyDevice.Connection;
+using EasyDevice.Connection;
 
 namespace EasyDevice;
 
@@ -200,8 +200,7 @@ public partial class NintendoSwitch
 
     public bool ChangeControllerColor(byte[] color)
     {
-        List<byte> list = new List<byte>();
-        list.AddRange(color);
+        List<byte> list = [.. color];
         var packet = list.ToArray();
         uint i = 0;
         uint len = 12;
@@ -226,7 +225,7 @@ public partial class NintendoSwitch
     public bool SaveAmiibo(byte index,byte[] amiibo)
     {
         const int PacketSize = 20;
-        List<byte> list = new(amiibo);
+        List<byte> list = [.. amiibo];
         for (int i = 0; i < list.Count; i += PacketSize)
         {
             int len = Math.Min(PacketSize, list.Count - i);

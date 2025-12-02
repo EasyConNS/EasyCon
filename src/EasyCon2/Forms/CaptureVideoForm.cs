@@ -1,4 +1,4 @@
-﻿using EasyCapture;
+using EasyCapture;
 using EasyCon2.Graphic;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
@@ -31,6 +31,8 @@ namespace EasyCon2.Forms
         private static readonly List<ImgLabel> imgLabels = [];
         private readonly OpenCVCapture cvcap = new();
         private Point _curResolution = new(1920, 1080);
+
+        public bool IsConnected => cvcap.IsOpened;
 
         public Point CurResolution
         {
@@ -123,7 +125,7 @@ namespace EasyCon2.Forms
             lowestMatch.DataBindings.Add("Text", curImgLabel, "matchDegree");
 
             // load the imglabel
-            curImgLabel.SetSource(() => cvcap.GetImage());
+            curImgLabel.SetSource(() => GetImage());
 
             LoadImgLabels();
             UpdateImgListBox();
@@ -152,7 +154,7 @@ namespace EasyCon2.Forms
                 {
                     var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(file)) ?? throw new Exception();
                     temp.name = Path.GetFileNameWithoutExtension(file);
-                    temp.Refresh(() => cvcap.GetImage());
+                    temp.Refresh(() => GetImage());
                     imgLabels.Add(temp);
                 }
                 catch
@@ -160,6 +162,14 @@ namespace EasyCon2.Forms
                     Debug.WriteLine("无法加载标签:", file);
                 }
             }
+        }
+
+        private Bitmap GetImage()
+        {
+            if (!IsConnected)
+                throw new Exception("请先连接采集卡再执行搜图");
+            var img = cvcap.GetFrame();
+            return img ?? throw new Exception("获取视频截图异常！");
         }
 
         private void UpdateImgListBox()
@@ -174,7 +184,7 @@ namespace EasyCon2.Forms
         {
             try
             {
-                using var newImg = cvcap.GetImage();
+                using var newImg = GetImage();
                 if (newImg == null) return;
                 var g = e.Graphics;
                 // Maximize performance
@@ -481,7 +491,7 @@ namespace EasyCon2.Forms
         {
             // get cur bmp
             ss?.Dispose();
-            ss = cvcap.GetImage();
+            ss = GetImage();
             ss.Save(CapDir + DateTime.Now.Ticks.ToString() + ".bmp", System.Drawing.Imaging.ImageFormat.Bmp);
 
             // need a 9 times of the real pic for display
@@ -594,7 +604,7 @@ namespace EasyCon2.Forms
             }
 
             // not find, add a new one
-            ImgLabel newone = new(() => cvcap.GetImage());
+            ImgLabel newone = new(() => GetImage());
             curImgLabel.name = imgLabelNametxt.Text;
 
             newone.Copy(curImgLabel);
@@ -713,7 +723,7 @@ namespace EasyCon2.Forms
                     var item = items.First();
                     //Debug.WriteLine("find" + item.name);
                     curImgLabel.Copy(item);
-                    curImgLabel.Refresh(() => cvcap.GetImage());
+                    curImgLabel.Refresh(() => GetImage());
 
                     // update ui
                     imgLabelNametxt.Text = curImgLabel.name;

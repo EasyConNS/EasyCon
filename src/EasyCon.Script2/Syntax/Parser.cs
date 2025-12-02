@@ -1,7 +1,6 @@
 using EasyCon.Script2.Ast;
 using EasyCon.Script2.Text;
 using System.Collections.Immutable;
-using System.Reflection.Metadata;
 
 namespace EasyCon.Script2.Syntax;
 

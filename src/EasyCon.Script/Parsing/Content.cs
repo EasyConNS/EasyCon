@@ -1,4 +1,4 @@
-﻿namespace EasyScript.Parsing
+namespace EasyScript.Parsing
 {
     abstract class Content
     {
@@ -6,16 +6,10 @@
         public abstract string GetCodeString(Formatter formatter);
     }
 
-    class TextContent : Content
+    class TextContent(string text, string codetext = null) : Content
     {
-        public readonly string Text;
-        public readonly string CodeText;
-
-        public TextContent(string text, string codetext = null)
-        {
-            Text = text;
-            CodeText = codetext ?? text;
-        }
+        public readonly string Text = text;
+        public readonly string CodeText = codetext ?? text;
 
         public override string GetPrintString(Processor _)
         {
@@ -28,14 +22,9 @@
         }
     }
 
-    class RegContent : Content
+    class RegContent(ValRegEx reg) : Content
     {
-        public readonly ValRegEx Reg;
-
-        public RegContent(ValRegEx reg)
-        {
-            Reg = reg;
-        }
+        public readonly ValRegEx Reg = reg;
 
         public override string GetPrintString(Processor processor)
         {

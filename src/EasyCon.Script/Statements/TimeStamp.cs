@@ -1,8 +1,8 @@
-﻿using EasyScript.Parsing;
+using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-class TimeStamp : Parsing.Statement
+class TimeStamp : Statement
 {
     private readonly ValRegEx RegDst;
 
@@ -13,7 +13,7 @@ class TimeStamp : Parsing.Statement
 
     public override void Exec(Processor processor)
     {
-        processor.Register[RegDst] = processor.et.CurrTimestamp;
+        processor.CurTime(RegDst);
     }
 
     public override void Assemble(Assembly.Assembler assembler)

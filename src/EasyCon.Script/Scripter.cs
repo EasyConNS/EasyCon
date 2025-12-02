@@ -1,5 +1,6 @@
-using EasyScript.Statements;
 using EasyScript.Parsing;
+using EasyScript.Statements;
+using System.Collections.Immutable;
 
 namespace EasyScript;
 
@@ -8,21 +9,14 @@ public class Scripter
     readonly Dictionary<string, int> Constants = [];
     readonly Dictionary<string, ExternalVariable> ExtVars = [];
 
-    List<Statement> _statements = [];
+    ImmutableArray<Statement> _statements = [];
 
-    Dictionary<string, FunctionStmt> _funcTables = new ();
+    Dictionary<string, FunctionStmt> _funcTables = [];
 
     public bool HasKeyAction {
         get
         {
-            foreach(var stat in _statements)
-            {
-                if (stat is KeyAction)
-                {
-                    return true;
-                }
-            }
-            return false;
+            return _statements.Select(s => s).OfType<KeyAction>().Any();
         }
     }
 
@@ -31,7 +25,7 @@ public class Scripter
         ExtVars.Clear();
         foreach (var ev in extVars)
             ExtVars[ev.Name] = ev;
-        _statements = new Parser(Constants, ExtVars).Parse(code);
+        _statements = new Parser(Constants, ExtVars).Parse(code).ToImmutableArray();
         _statements.OfType<FunctionStmt>().ToList().ForEach(f => { _funcTables[f.Label] = f; });
     }
 
@@ -42,7 +36,7 @@ public class Scripter
             Output = output,
             GamePad = pad,
         };
-        while (_processor.PC < _statements.Count)
+        while (_processor.PC < _statements.Count())
         {
             var cmd = _statements[_processor.PC];
             _processor.PC++;
@@ -52,7 +46,7 @@ public class Scripter
 
     public string ToCode()
     {
-        var formatter = new Parsing.Formatter(Constants, ExtVars);
+        var formatter = new Formatter(Constants, ExtVars);
         return string.Join(Environment.NewLine, _statements.Select(u => u.GetString(formatter)));
     }
 
@@ -71,7 +65,8 @@ public class Scripter
 
     public void Reset()
     {
-        _statements = new();
+        _statements = [];
+        _funcTables = [];
         ExtVars.Clear();
     }
 }
