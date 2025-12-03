@@ -2,8 +2,6 @@ using OpenCvSharp;
 using OpenCvSharp.Extensions;
 using System.Diagnostics;
 using System.Drawing;
-using System.Text.RegularExpressions;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace EasyCapture;
 
