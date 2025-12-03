@@ -43,7 +43,7 @@ internal sealed class Parser
         _position++;
 
         // advance next non-comment token
-        while (Current.Type == TokenType.COMMENT)
+        while (Check(TokenType.COMMENT))
         {
             var comment = new TriviaNode(Current);
             if (now.Line == Current.Line)
@@ -71,7 +71,7 @@ internal sealed class Parser
         return new Token(_text, TokenType.BadToken, "", 0, 0);
     }
 
-    private Token Match(TokenType type, string message){return Match(type);}
+    private Token Match(TokenType type, string message) { return Match(type); }
 
     private bool Checks(params TokenType[] types)
     {
@@ -91,11 +91,14 @@ internal sealed class Parser
     private ImmutableArray<Statement> ParseMembers()
     {
         var statements = ImmutableArray.CreateBuilder<Statement>();
+
         _leadingtrivias.Clear();
         _trailtrivias.Clear();
 
         while (!Check(TokenType.EOF))
         {
+            var startToken = Current;
+
             if (Check(TokenType.COMMENT) || Check(TokenType.NEWLINE))
             {
                 Advance();
@@ -106,10 +109,10 @@ internal sealed class Parser
             if (statement != null)
             {
                 statements.Add(statement);
-            }
 
-            // 消耗语句后的换行符
-            Match(TokenType.NEWLINE, "语句没有正确结束换行");
+                // 消耗语句后的换行符
+                Match(TokenType.NEWLINE, "语句没有正确结束换行");
+            }
         }
 
         return statements.ToImmutable();
@@ -117,47 +120,53 @@ internal sealed class Parser
 
     private Statement ParseMember()
     {
-        if (Current.Type == TokenType.FUNC)
+        if (Check(TokenType.FUNC))
             return ParseFunctionDecl();
         return ParseGlobalStatement();
     }
 
     private Statement ParseGlobalStatement()
     {
-        if (Check(TokenType.IF))
+        switch (Current.Type)
         {
-            return ParseIfStatement();
+            case TokenType.IF:
+                return ParseIfStatement();
+            case TokenType.FOR:
+                return ParseForStatement();
+            case TokenType.BREAK:
+                return ParseBreakStatement();
+            case TokenType.CONTINUE:
+                return ParseContinueStatement();
+            case TokenType.RETURN:
+                return ParseReturnStatement();
+            case TokenType.ButtonKeyword:
+            case TokenType.StickKeyword:
+                return ParseKeyStatement();
+            case TokenType.INT:
+            case TokenType.IDENT:
+                return ParseSpecIdentStatement();
+            default:
+                return ParseAssignment();
         }
-        else if (Check(TokenType.FOR))
-        {
-            return ParseForStatement();
-        }
-        else if (Check(TokenType.BREAK))
-        {
-            return ParseBreakStatement();
-        }
-        else if (Check(TokenType.CONTINUE))
-        {
-            return ParseContinueStatement();
-        }
-        else if (Check(TokenType.RETURN))
-        {
-            return ParseReturnStatement();
-        }
-        else if (Check(TokenType.ButtonKeyword) || Check(TokenType.StickKeyword))
-        {
-            return ParseKeyStatement();
-        }
-        else if (Check(TokenType.INT) || Check(TokenType.IDENT))
-        {
-            return ParseSpecIdentStatement();
-        }
-        return ParseAssignment();
     }
 
-    private AssignmentStatement? ParseAssignment()
+    private ImportStatement ParseImportDecl()
     {
-        AssignmentStatement? left = null;
+        var import = Advance();
+        if (Check(TokenType.STRING))
+        {
+            var name = "";
+            if (Check(TokenType.STRING)) name = Advance().Value;
+
+            var path = Match(TokenType.STRING);
+            return new ImportStatement(import, name, new LiteralExpression(path, path.value));
+        }
+        throw new Exception($"不支持的操作符\"{import.Type}\" 行{import.Line}");
+    }
+
+    private AssignmentStatement ParseAssignment()
+    {
+        AssignmentStatement left = null;
         if (Check(TokenType.CONST) || Check(TokenType.VAR))
         {
             var variableToken = Current;
@@ -233,7 +242,7 @@ internal sealed class Parser
 
         // else if
         List<ElseIfClause> elseif = [];
-        while (Current.Type == TokenType.ELIF)
+        while (Check(TokenType.ELIF))
         {
             var elifToken = Match(TokenType.ELIF, "elif语法不正确");
             var elifCond = ParseCondition();
@@ -253,7 +262,7 @@ internal sealed class Parser
 
         // else
         ElseClause? elseClause = null;
-        if (Current.Type == TokenType.ELSE)
+        if (Check(TokenType.ELSE))
         {
             var elseToken = Advance();
             var elseBranch = new List<Statement>();
@@ -412,9 +421,11 @@ internal sealed class Parser
         // 键位(+键位) [持续时间(ms)|DOWN|UP]
         // LS|RS 方向|角度 [, 持续时间(ms)]
         // LS|RS RESET
-        var keyToken = Advance();
+        List<Token> keyTokens = [];
+        var firstKey = Advance();
+        keyTokens.Add(firstKey);
 
-        if (keyToken.Type == TokenType.StickKeyword)
+        if (firstKey.Type == TokenType.StickKeyword)
         {
             switch (Current.Type)
             {
@@ -427,38 +438,44 @@ internal sealed class Parser
                         Advance();
                         var duration = Match(TokenType.INT, "摇杆语法不正确");
                         var value = uint.Parse(duration.Value);
-                        return new StickStatement(keyToken, state.Value, false, value);
+                        return new StickStatement([.. keyTokens], state.Value, false, value);
                     }
                     else
                     {
-                        return new StickStatement(keyToken, state.Value, false);
+                        return new StickStatement([.. keyTokens], state.Value, false);
                     }
                 case TokenType.ResetKeyword:
                     Match(TokenType.ResetKeyword, "摇杆语法不正确");
-                    return new StickStatement(keyToken, "", true);
+                    return new StickStatement([.. keyTokens], "", true);
             }
         }
         else
         {
+            while (Check(TokenType.ADD))
+            {
+                Match(TokenType.ADD);
+                var key = Match(TokenType.ButtonKeyword);
+                keyTokens.Add(key);
+            }
             if (Check(TokenType.NEWLINE))
             {
-                return new ButtonStatement(keyToken);
+                return new ButtonStatement([.. keyTokens]);
             }
             else if (Check(TokenType.INT))
             {
                 var state = Advance();
                 var value = uint.Parse(state.Value);
-                return new ButtonStatement(keyToken, value)
+                return new ButtonStatement([.. keyTokens], value)
 ;
             }
             else if (Check(TokenType.ButtonKeyword))
             {
                 var state = Advance();
                 var isDown = state.Value.ToUpper() == "DOWN";
-                return new ButtonStStatement(keyToken, isDown);
+                return new ButtonStStatement([.. keyTokens], isDown);
             }
         }
-        throw new Exception($"按键语法不正确 {keyToken.Line}");
+        throw new Exception($"按键语法不正确 {keyTokens.First().Line}");
     }
 
     // 计算表达式
@@ -564,7 +581,7 @@ internal sealed class Parser
         {
             do
             {
-                if(Check(TokenType.COMMA))Advance();
+                if (Check(TokenType.COMMA)) Advance();
 
                 items.Add(ParsePrimary());
             } while (Check(TokenType.COMMA));
