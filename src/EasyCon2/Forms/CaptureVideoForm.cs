@@ -784,7 +784,6 @@ namespace EasyCon2.Forms
         {
             var checkBox = (CheckBox)sender;
             VideoMonitor.Visible = checkBox.Checked;
-            monitorTimer.Enabled = checkBox.Checked;
         }
 
 
@@ -803,7 +802,7 @@ namespace EasyCon2.Forms
                     _image?.Dispose();
                     _image = cvcap.GetFrame();
 
-                    VideoMonitor?.Invalidate();
+                    if(monitorVisChk.Checked) VideoMonitor?.Invalidate();
                 }
                 finally
                 {
