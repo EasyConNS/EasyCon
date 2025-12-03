@@ -135,6 +135,18 @@ public abstract class Statement(Token key) : ASTNode(key)
     public readonly List<TriviaNode> TrailingTrivia = [];
 }
 
+public sealed class ImportStatement(Token imp, string name, LiteralExpression path) : Statement(imp)
+{
+    public string Name { get; } = name;
+    public LiteralExpression Path { get; } = path;
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        // return visitor.VisitKey(this);
+        throw new NotImplementedException();
+    }
+}
+
 // 赋值语句
 public sealed class AssignmentStatement(Token varToken, VariableExpression? Variablee, Token assignment, Expression expression) : Statement(varToken)
 {
@@ -263,11 +275,13 @@ public sealed class CallExpression(Token keyword, string functionName, Immutable
 }
 
 
-public abstract class KeyStatement(Token keyword, uint duration) : Statement(keyword)
+public abstract class KeyStatement(ImmutableArray<Token> keywords, uint duration) : Statement(keywords.First())
 {
     public uint Duration { get; } = duration;
 
-    public string KeyName { get; } = keyword.Value;
+    public ImmutableArray<Token> Keywords { get; } = keywords;
+
+    public string KeyName { get; } = string.Join("+", keywords);
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -275,14 +289,14 @@ public abstract class KeyStatement(Token keyword, uint duration) : Statement(key
     }
 }
 
-public sealed class ButtonStatement(Token keyword, uint duration = 50) : KeyStatement(keyword, duration) { }
+public sealed class ButtonStatement(ImmutableArray<Token> keywords, uint duration = 50) : KeyStatement(keywords, duration) { }
 
-public sealed class ButtonStStatement(Token keyword, bool isDown) : KeyStatement(keyword, 0)
+public sealed class ButtonStStatement(ImmutableArray<Token> keywords, bool isDown) : KeyStatement(keywords, 0)
 {
     public bool IsDown { get; } = isDown;
 }
 
-public sealed class StickStatement(Token keyword, string state, bool reset, uint duration = 50) : KeyStatement(keyword, duration)
+public sealed class StickStatement(ImmutableArray<Token> keywords, string state, bool reset, uint duration = 50) : KeyStatement(keywords, duration)
 {
     public string Direction { get; } = state;
     public bool IsReset { get; } = reset;
