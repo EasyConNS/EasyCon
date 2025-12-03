@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing
 {
@@ -7,9 +7,11 @@ namespace EasyScript.Parsing
         private readonly Dictionary<string, int> Constants = constants;
         private readonly Dictionary<string, ExternalVariable> ExtVars = extVars;
 
-        public void SetConstantTable(string key, int valu)
+        public bool TryDeclConstant(string key, string value)
         {
-            Constants[key] = valu;
+            if (Constants.ContainsKey(key)) return false;
+            Constants.Add(key, GetInstant(value).Val);
+            return true;
         }
         
         private ValExtVar GetExtVar(string text)

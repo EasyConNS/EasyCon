@@ -88,8 +88,7 @@ internal class StatementGen : AstVisitor
         {
             if(ast.Expression is LiteralExpression litExpression && litExpression.Value is uint uVal)
             {
-                var val = _formatter.GetInstant($"{uVal}");
-                _formatter.SetConstantTable(ast.Variable.Name, val.Val);
+                _formatter.TryDeclConstant(ast.Variable.Name, $"{uVal}");
 
                 var constDecl = new Empty($"{ast.Variable.Name} = {uVal}");
                 cfgStatement(constDecl);

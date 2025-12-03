@@ -1,4 +1,3 @@
-using EasyCon.Script.Parsing;
 using EasyCon.Script2.Ast;
 using EasyCon.Script2.Syntax;
 using EasyScript.Statements;
@@ -9,7 +8,7 @@ namespace EasyScript.Parsing;
 
 partial class Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
 {
-    readonly Formatter _formatter = new Formatter(constants, extVars);
+    readonly Formatter _formatter = new(constants, extVars);
 
     static IEnumerable<Meta> OpList()
     {
