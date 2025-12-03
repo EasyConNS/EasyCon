@@ -1,4 +1,4 @@
-﻿using EasyCapture;
+using EasyCapture;
 using JetBrains.Annotations;
 using System.ComponentModel;
 using System.IO;
@@ -281,6 +281,7 @@ public partial class ImgLabel : INotifyPropertyChanged
         {
             Directory.CreateDirectory(path);
         }
+        if (searchImg is null) return;
 
         ImgBase64 = this.ImageToBase64(searchImg);
 

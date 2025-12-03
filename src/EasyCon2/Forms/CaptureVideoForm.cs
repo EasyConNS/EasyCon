@@ -28,9 +28,13 @@ namespace EasyCon2.Forms
 
         static readonly string CapDir = Application.StartupPath + "\\Capture\\";
         static readonly string ImgDir = Application.StartupPath + "\\ImgLabel\\";
+
         private static readonly List<ImgLabel> imgLabels = [];
         private readonly OpenCVCapture cvcap = new();
         private Point _curResolution = new(1920, 1080);
+
+        private readonly object _lock = new();
+        private Bitmap _image;
 
         public bool IsConnected => cvcap.IsOpened;
 
@@ -168,8 +172,13 @@ namespace EasyCon2.Forms
         {
             if (!IsConnected)
                 throw new Exception("请先连接采集卡再执行搜图");
-            var img = cvcap.GetFrame();
-            return img ?? throw new Exception("获取视频截图异常！");
+            lock (_lock)
+            {
+                if (_image == null)
+                    return null;
+
+                return _image.Clone(new Rectangle(0, 0, _image.Width, _image.Height), _image.PixelFormat);
+            }
         }
 
         private void UpdateImgListBox()
@@ -787,7 +796,20 @@ namespace EasyCon2.Forms
 
         private void monitorTimer_Tick(object sender, EventArgs e)
         {
-            VideoMonitor?.Invalidate();
+            if (Monitor.TryEnter(_lock))
+            {
+                try
+                {
+                    _image?.Dispose();
+                    _image = cvcap.GetFrame();
+
+                    VideoMonitor?.Invalidate();
+                }
+                finally
+                {
+                    Monitor.Exit(_lock);
+                }
+            }
         }
     }
 }
