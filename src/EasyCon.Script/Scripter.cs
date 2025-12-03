@@ -22,6 +22,7 @@ public class Scripter
 
     public void Parse(string code, IEnumerable<ExternalVariable> extVars)
     {
+        Constants.Clear();
         ExtVars.Clear();
         foreach (var ev in extVars)
             ExtVars[ev.Name] = ev;

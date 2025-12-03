@@ -18,10 +18,9 @@ internal partial class Parser
         var lexer = SyntaxTree.ParseTokens(text);
         if (lexer.Count() != 3 + 2)
             return null;
-        if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN && lexer[2].Type == TokenType.INT)
+        if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN && (lexer[2].Type == TokenType.INT || lexer[2].Type == TokenType.CONST))
         {
-            var val = _formatter.GetInstant(lexer[2].Value);
-            _formatter.SetConstantTable(lexer[0].Value, val.Val);
+            _formatter.TryDeclConstant(lexer[0].Value, lexer[2].Value);
             return new Empty($"{lexer[0].Value} = {lexer[2].Value}");
         }
         return null;
