@@ -11,7 +11,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private readonly SyntaxTree _syntaxTree = syntaxTree;
     private readonly SourceText _text = syntaxTree.Text;
 
-    private readonly string _input = Compat(syntaxTree.Text.ToString());
+    private readonly string _input = Compat(syntaxTree.Text.Lines);
     private int _position = 0;
     private int _line = 1;
     private int _column = 1;
@@ -21,35 +21,35 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
-    private static string Compat(string text)
+    private static string Compat(ImmutableArray<TextLine> lines)
     {
         var builder = new StringBuilder();
-        foreach (var line in Regex.Split(text, "\r\n|\r|\n"))
+        foreach (var line in lines)
         {
-            var _text = line;
-            var m = Regex.Match(_text, @"(\s*#.*)$");
+            var _line = line.Text;
+            var m = Regex.Match(_line, @"(\s*#.*)$");
             string comment = string.Empty;
             if (m.Success)
             {
                 comment = m.Groups[1].Value;
-                _text = _text[..^comment.Length];
+                _line = _line[..^comment.Length];
             }
 
-            var mp = printRex().Match(_text);
+            var mp = printRex().Match(_line);
             if (mp.Success)
             {
                 builder.Append($"PRINT \"{mp.Groups[1].Value}\"");
             }
             else
             {
-                mp = alertRex().Match(_text);
+                mp = alertRex().Match(_line);
                 if (mp.Success)
                 {
                     builder.Append($"ALERT \"{mp.Groups[1].Value}\"");
                 }
                 else
                 {
-                    builder.Append(_text);
+                    builder.Append(_line);
                 }
             }
 
@@ -98,22 +98,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
     public List<Token> Tokenize()
     {
-        SkipWhitespace();
         while (_position < _input.Length)
         {
+            SkipWhitespace();
             var current = Current;
-
-            if (char.IsWhiteSpace(current))
-            {
-                if (current == '\n')
-                {
-                    AddToken(TokenType.NEWLINE, " ", _position);
-                    _line++;
-                    _column = 0;
-                }
-                Advance();
-            }
-            else if (current == '#')
+            if (current == '\0') break;
+            if (current == '#')
             {
                 ReadComment();
             }
@@ -197,7 +187,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             if ("\u000D\u000A\u0085\u2028\u2029\r\n".Contains(Current))
             {
                 if(Current == '\r' && Lookahead == '\n')
+                {
+                    AddToken(TokenType.NEWLINE, " ", _position);
+                    _position++;
                     _line++;
+                    _column = 0;
+                }
             }
             Advance();
         }
@@ -206,14 +201,26 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private void ReadComment()
     {
         var start = _position;
-        while (_position < _input.Length && (Current != '\n'))
-        {
-            Advance();
-        }
         Advance();
+        var done = false;
+
+        while (!done)
+        {
+            switch (Current)
+            {
+                case '\0':
+                case '\r':
+                case '\n':
+                    done = true;
+                    break;
+                default:
+                    Advance();
+                    break;
+            }
+        }
 
         var comment = _input.Substring(start, _position - start);
-        AddToken(TokenType.COMMENT, comment, start);
+        AddToken(TokenType.COMMENT, comment.Trim(), start);
     }
 
     private void ReadNumber()
