@@ -21,7 +21,7 @@ class TimeStamp : Statement
         throw new Assembly.AssembleException(ErrorMessage.NotSupported);
     }
 
-    protected override string _GetString(Formatter _)
+    protected override string _GetString()
     {
         return $"TIME {RegDst.GetCodeText()}";
     }

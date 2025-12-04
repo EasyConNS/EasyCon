@@ -1,8 +1,8 @@
-﻿using EasyScript.Parsing;
+using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
-    abstract class BranchOp : Parsing.Statement
+    abstract class BranchOp : Statement
     {
         public BranchOp? If;
         public BranchOp? Else;
@@ -42,7 +42,7 @@ namespace EasyScript.Statements
             }
         }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             var op = Operater.Operator == "=" ? "==" : Operater.Operator;
             return $"IF {Left.GetCodeText()} {op} {Right.GetCodeText()}";
@@ -98,7 +98,7 @@ namespace EasyScript.Statements
             }   
         }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             var op = Operater.Operator == "=" ? "==" : Operater.Operator;
             return $"ELIF {Left.GetCodeText()} {op} {Right.GetCodeText()}";
@@ -140,7 +140,7 @@ namespace EasyScript.Statements
                 processor.PC = If.EndIf.Address + 1;
         }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             return "ELSE";
         }
@@ -161,7 +161,7 @@ namespace EasyScript.Statements
         public override void Exec(Processor _)
         { }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             return "ENDIF";
         }

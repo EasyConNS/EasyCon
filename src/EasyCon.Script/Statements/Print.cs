@@ -1,4 +1,4 @@
-﻿using EasyScript.Parsing;
+using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
@@ -13,9 +13,9 @@ class Print : Statement
         CancelLineBreak = cancellinebreak;
     }
 
-    protected override string _GetString(Formatter formatter)
+    protected override string _GetString()
     {
-        return Contents.Length == 0 ? "PRINT" : $"PRINT {string.Join(" & ", Contents.Select(u => u.GetCodeString(formatter)))}";
+        return Contents.Length == 0 ? "PRINT" : $"PRINT {string.Join(" & ", Contents.Select(u => u.GetCodeString()))}";
     }
 
     public override void Exec(Processor processor)
@@ -28,7 +28,7 @@ class Print : Statement
     { }
 }
 
-class Alert : Parsing.Statement
+class Alert : Statement
 {
     protected readonly Content[] Contents;
 
@@ -37,9 +37,9 @@ class Alert : Parsing.Statement
         Contents = contents;
     }
 
-    protected override string _GetString(Formatter formatter)
+    protected override string _GetString()
     {
-        return Contents.Length == 0 ? "ALERT" : $"ALERT {string.Join(" & ", Contents.Select(u => u.GetCodeString(formatter)))}";
+        return Contents.Length == 0 ? "ALERT" : $"ALERT {string.Join(" & ", Contents.Select(u => u.GetCodeString()))}";
     }
 
     public override void Exec(Processor processor)

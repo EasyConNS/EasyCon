@@ -50,7 +50,7 @@ abstract class UnaryOp : Statement
         RegDst = regdst;
     }
 
-    protected override string _GetString(Formatter _)
+    protected override string _GetString()
     {
         return $"{MetaInfo.KeyWord} {RegDst.GetCodeText()}";
     }
@@ -99,7 +99,7 @@ abstract class UnaryOpEx : Statement
         RegSrc = regsrc;
     }
 
-    protected override string _GetString(Formatter _)
+    protected override string _GetString()
     {
         return $"{RegDst.GetCodeText()} = {MetaInfo.KeyWord}{RegSrc.GetCodeText()}";
     }

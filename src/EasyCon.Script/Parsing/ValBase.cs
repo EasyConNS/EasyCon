@@ -1,4 +1,4 @@
-﻿namespace EasyScript.Parsing
+namespace EasyScript.Parsing
 {
     // base of valuetype
     abstract class ValBase
@@ -107,7 +107,7 @@
 
         public override void Set(Processor processor, int value)
         {
-            Var.Set(value);
+            throw new InvalidOperationException();
         }
 
         public override string GetCodeText()

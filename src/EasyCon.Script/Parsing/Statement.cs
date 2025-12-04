@@ -1,4 +1,4 @@
-﻿namespace EasyScript.Parsing;
+namespace EasyScript.Parsing;
 
 abstract class Statement
 {
@@ -12,12 +12,12 @@ abstract class Statement
 
     public abstract void Assemble(Assembly.Assembler assembler);
 
-    public string GetString(Formatter formatter)
+    public string GetString()
     {
-        return $"{Indent}{_GetString(formatter)}{Comment}";
+        return $"{Indent}{_GetString()}{Comment}";
     }
 
-    protected abstract string _GetString(Formatter formatter);
+    protected abstract string _GetString();
 
     protected static class ErrorMessage
     {

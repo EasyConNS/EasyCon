@@ -46,7 +46,7 @@ class KeyPress : KeyAction
         }
     }
 
-    protected override string _GetString(Formatter _)
+    protected override string _GetString()
     {
         return _omitted ? $"{NSKeys.GetName(Key)}" : $"{NSKeys.GetName(Key)} {Duration.GetCodeText()}";
     }
@@ -96,7 +96,7 @@ class KeyDown(string key) : KeyAction(key)
         processor.GamePad.PressButtons(Key);
     }
 
-    protected override string _GetString(Formatter formatter)
+    protected override string _GetString()
     {
         return $"{NSKeys.GetName(Key)} DOWN";
     }
@@ -116,7 +116,7 @@ class KeyUp(string key) : KeyAction(key)
         processor.GamePad.ReleaseButtons(Key);
     }
 
-    protected override string _GetString(Formatter formatter)
+    protected override string _GetString()
     {
         return $"{NSKeys.GetName(Key)} UP";
     }

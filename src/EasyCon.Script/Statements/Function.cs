@@ -6,7 +6,7 @@ namespace EasyScript.Statements
     {
         public override int IndentNext => 1;
         public readonly string Label;
-        public ReturnStat Ret = null;
+        public EndFuncStat Ret = null;
 
         public FunctionStmt(string lbl)
         {
@@ -26,7 +26,7 @@ namespace EasyScript.Statements
             processor.PC = Ret.Address + 1;
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString()
         {
             return $"FUNC {Label}";
         }
@@ -53,17 +53,17 @@ namespace EasyScript.Statements
             processor.Call(Label);
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString()
         {
             return $"CALL {Label}";
         }
     }
 
-    class ReturnStat : Statement
+    class EndFuncStat : Statement
     {
         public override int IndentThis => -1;
         public string Label;
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             return "ENDFUNC";
         }
@@ -78,6 +78,25 @@ namespace EasyScript.Statements
             assembler.Add(Assembly.Instructions.AsmReturn.Create(0));
             assembler.Add(Assembly.Instructions.AsmEmpty.Create());
             assembler.FunctionMapping[this.Label].Target = assembler.Last();
+        }
+    }
+
+    class ReturnStat : Statement
+    {
+        public string Label;
+        protected override string _GetString()
+        {
+            return "RETURN";
+        }
+
+        public override void Exec(Processor processor)
+        {
+            processor.RetrunCall();
+        }
+
+        public override void Assemble(Assembly.Assembler assembler)
+        {
+            throw new Assembly.AssembleException(ErrorMessage.NotImplemented);
         }
     }
 }
