@@ -18,7 +18,7 @@ namespace EasyScript.Statements
 
         public override sealed void Exec(Processor processor)
         {
-            var liteScop = processor.LiteScope.Peek();
+            var liteScop = processor.GetScope();
             if (liteScop.LoopStack.Count == 0 || liteScop.LoopStack.Peek() != this)
             {
                 // entering
@@ -66,20 +66,20 @@ namespace EasyScript.Statements
 
         protected override void Init(Processor processor)
         {
-            var liteScop = processor.LiteScope.Peek();
+            var liteScop = processor.GetScope();
             liteScop.LoopTime[this] = 0;
             liteScop.LoopCount[this] = Count.Get(processor);
         }
 
         protected override bool Cond(Processor processor)
         {
-            var liteScop = processor.LiteScope.Peek();
+            var liteScop = processor.GetScope();
             return liteScop.LoopTime[this] < liteScop.LoopCount[this];
         }
 
         protected override void Step(Processor processor)
         {
-            var liteScop = processor.LiteScope.Peek();
+            var liteScop = processor.GetScope();
             liteScop.LoopTime[this]++;
         }
 
@@ -116,14 +116,14 @@ namespace EasyScript.Statements
 
         protected override void Init(Processor processor)
         {
-            var liteScop = processor.LiteScope.Peek();
+            var liteScop = processor.GetScope();
             processor.Register[RegIter] = InitVal.Get(processor);
             liteScop.LoopCount[this] = Count.Get(processor);
         }
 
         protected override bool Cond(Processor processor)
         {
-            var liteScop = processor.LiteScope.Peek();
+            var liteScop = processor.GetScope();
             return processor.Register[RegIter] < liteScop.LoopCount[this];
         }
 
@@ -217,7 +217,7 @@ namespace EasyScript.Statements
 
         public override void Exec(Processor processor)
         {
-            var liteScop = processor.LiteScope.Peek();
+            var liteScop = processor.GetScope();
             for (int i = 0; i < Level.Val - 1; i++)
                 liteScop.LoopStack.Pop();
             processor.PC = liteScop.LoopStack.Pop().Next.Address + 1;
@@ -247,7 +247,7 @@ namespace EasyScript.Statements
 
         public override void Exec(Processor processor)
         {
-            var liteScop = processor.LiteScope.Peek();
+            var liteScop = processor.GetScope();
             for (int i = 0; i < Level.Val - 1; i++)
                 liteScop.LoopStack.Pop();
             processor.PC = liteScop.LoopStack.Peek().Next.Address;
