@@ -78,7 +78,8 @@ public sealed class SimpleVisitor : AstVisitor
 
     public override ASTNode VisitAssignmentStat(AssignmentStatement ast)
     {
-        Console.Write($"{ast.Variable} {ast.AssignmentType} ");
+        ast.Variable.Accept(this);
+        Console.Write($"{ast.AssignmentType} ");
         ast.Expression.Accept(this);
         Console.WriteLine();
         return ast;

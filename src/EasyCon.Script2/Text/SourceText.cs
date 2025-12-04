@@ -30,7 +30,8 @@ public sealed class SourceText
     private static ImmutableArray<TextLine> ParseLines(SourceText sourceText, string text)
     {
         var result = ImmutableArray.CreateBuilder<TextLine>();
-        var lines = Regex.Split(text, @"[\u000D\u000A\u0085\u2028\u2029]|\r\n");
+        
+        var lines = text.Split(Environment.NewLine);
         foreach (var line in lines)
         {
             uint linecount = 0;

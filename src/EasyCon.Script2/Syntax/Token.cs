@@ -113,6 +113,6 @@ public sealed record Token(SourceText text, TokenType type, string value, int li
 
     public override string ToString()
     {
-        return $"T('{Value}':{Type})";
+        return $"T{Line}('{Value}':{Type})";
     }
 }
