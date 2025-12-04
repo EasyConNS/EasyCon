@@ -1,20 +1,15 @@
-﻿using EasyScript.Parsing;
+using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
-    class Wait : Parsing.Statement
+    class Wait(ValBase duration, bool omitted = false) : Statement
     {
-        protected readonly ValBase Duration;
-        protected bool _omitted;
-
-        public Wait(ValBase duration, bool omitted = false)
-        {
-            Duration = duration;
-            _omitted = omitted;
-        }
+        protected readonly ValBase Duration = duration;
+        protected bool _omitted = omitted;
 
         protected override string _GetString(Formatter _)
         {
+            if (omitted) return $"{Duration.GetCodeText()}";
             return $"WAIT {Duration.GetCodeText()}";
         }
 
