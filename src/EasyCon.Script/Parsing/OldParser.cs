@@ -102,9 +102,13 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
         {
             return new Next();
         }
-        else if (text.Equals("endfunc", StringComparison.OrdinalIgnoreCase))
+        else if (text.Equals("return", StringComparison.OrdinalIgnoreCase))
         {
             return new ReturnStat();
+        }
+        else if (text.Equals("endfunc", StringComparison.OrdinalIgnoreCase))
+        {
+            return new EndFuncStat();
         }
         else if (int.TryParse(text, out int duration))
             return new Wait(duration, true);
@@ -263,7 +267,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                         }
                     }
                     // function
-                    if (st is ReturnStat rst)
+                    if (st is EndFuncStat rst)
                     {
                         if (_blocks.Count == 0)
                             throw new ParseException("多余的语句", address);

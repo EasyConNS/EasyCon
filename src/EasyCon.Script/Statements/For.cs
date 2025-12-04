@@ -1,8 +1,8 @@
-﻿using EasyScript.Parsing;
+using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
-    abstract class For(ValBase count) : Parsing.Statement
+    abstract class For(ValBase count) : Statement
     {
         public override int IndentNext => 1;
         public readonly ValBase Count = count;
@@ -18,10 +18,11 @@ namespace EasyScript.Statements
 
         public override sealed void Exec(Processor processor)
         {
-            if (processor.LoopStack.Count == 0 || processor.LoopStack.Peek() != this)
+            var liteScop = processor.LiteScope.Peek();
+            if (liteScop.LoopStack.Count == 0 || liteScop.LoopStack.Peek() != this)
             {
                 // entering
-                processor.LoopStack.Push(this);
+                liteScop.LoopStack.Push(this);
                 Init(processor);
             }
             else
@@ -30,7 +31,7 @@ namespace EasyScript.Statements
                 Step(processor);
             }
             if (!Cond(processor))
-                processor.PC = processor.LoopStack.Pop().Next.Address + 1;
+                processor.PC = liteScop.LoopStack.Pop().Next.Address + 1;
         }
     }
 
@@ -45,7 +46,7 @@ namespace EasyScript.Statements
             return true;
         }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             return $"FOR";
         }
@@ -65,21 +66,24 @@ namespace EasyScript.Statements
 
         protected override void Init(Processor processor)
         {
-            processor.LoopTime[this] = 0;
-            processor.LoopCount[this] = Count.Get(processor);
+            var liteScop = processor.LiteScope.Peek();
+            liteScop.LoopTime[this] = 0;
+            liteScop.LoopCount[this] = Count.Get(processor);
         }
 
         protected override bool Cond(Processor processor)
         {
-            return processor.LoopTime[this] < processor.LoopCount[this];
+            var liteScop = processor.LiteScope.Peek();
+            return liteScop.LoopTime[this] < liteScop.LoopCount[this];
         }
 
         protected override void Step(Processor processor)
         {
-            processor.LoopTime[this]++;
+            var liteScop = processor.LiteScope.Peek();
+            liteScop.LoopTime[this]++;
         }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             return $"FOR {Count.GetCodeText()}";
         }
@@ -112,13 +116,15 @@ namespace EasyScript.Statements
 
         protected override void Init(Processor processor)
         {
+            var liteScop = processor.LiteScope.Peek();
             processor.Register[RegIter] = InitVal.Get(processor);
-            processor.LoopCount[this] = Count.Get(processor);
+            liteScop.LoopCount[this] = Count.Get(processor);
         }
 
         protected override bool Cond(Processor processor)
         {
-            return processor.Register[RegIter] < processor.LoopCount[this];
+            var liteScop = processor.LiteScope.Peek();
+            return processor.Register[RegIter] < liteScop.LoopCount[this];
         }
 
         protected override void Step(Processor processor)
@@ -126,7 +132,7 @@ namespace EasyScript.Statements
             processor.Register[RegIter]++;
         }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             return $"FOR {RegIter.GetCodeText()} = {InitVal.GetCodeText()} TO {Count.GetCodeText()}";
         }
@@ -152,12 +158,12 @@ namespace EasyScript.Statements
         }
     }
 
-    class Next : Parsing.Statement
+    class Next : Statement
     {
         public override int IndentThis => -1;
         public For For;
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString()
         {
             return $"NEXT";
         }
@@ -177,7 +183,7 @@ namespace EasyScript.Statements
         }
     }
 
-    abstract class LoopControl : Parsing.Statement
+    abstract class LoopControl : Statement
     {
         public readonly ValInstant Level;
         protected bool _omitted;
@@ -204,16 +210,17 @@ namespace EasyScript.Statements
             : base(level)
         { }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             return _omitted ? $"BREAK" : $"BREAK {Level.GetCodeText()}";
         }
 
         public override void Exec(Processor processor)
         {
+            var liteScop = processor.LiteScope.Peek();
             for (int i = 0; i < Level.Val - 1; i++)
-                processor.LoopStack.Pop();
-            processor.PC = processor.LoopStack.Pop().Next.Address + 1;
+                liteScop.LoopStack.Pop();
+            processor.PC = liteScop.LoopStack.Pop().Next.Address + 1;
         }
 
         public override void Assemble(Assembly.Assembler assembler)
@@ -233,16 +240,17 @@ namespace EasyScript.Statements
             : base(level)
         { }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             return _omitted ? $"CONTINUE" : $"CONTINUE {Level.GetCodeText()}";
         }
 
         public override void Exec(Processor processor)
         {
+            var liteScop = processor.LiteScope.Peek();
             for (int i = 0; i < Level.Val - 1; i++)
-                processor.LoopStack.Pop();
-            processor.PC = processor.LoopStack.Peek().Next.Address;
+                liteScop.LoopStack.Pop();
+            processor.PC = liteScop.LoopStack.Peek().Next.Address;
         }
 
         public override void Assemble(Assembly.Assembler assembler)

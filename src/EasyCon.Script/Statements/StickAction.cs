@@ -48,7 +48,7 @@ class StickPress : StickAction
         }
     }
 
-    protected override string _GetString(Formatter _)
+    protected override string _GetString()
     {
         return $"{KeyName} {Direction},{Duration.GetCodeText()}";
     }
@@ -100,7 +100,7 @@ class StickDown : StickAction
         processor.GamePad.PressButtons(Key);
     }
 
-    protected override string _GetString(Formatter formatter)
+    protected override string _GetString()
     {
         return $"{KeyName} {Direction}";
     }
@@ -124,7 +124,7 @@ class StickUp : StickAction
         processor.GamePad.ReleaseButtons(Key);
     }
 
-    protected override string _GetString(Formatter formatter)
+    protected override string _GetString()
     {
         return $"{KeyName} RESET";
     }

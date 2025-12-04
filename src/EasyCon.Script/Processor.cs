@@ -13,9 +13,8 @@ class Processor(Dictionary<string, FunctionStmt> func)
     public int PC = 0;
     public bool CancelLineBreak = false;
     public Stack<short> Stack = new();
-    public Stack<For> LoopStack = new();
-    public Dictionary<For, int> LoopTime = new();
-    public Dictionary<For, int> LoopCount = new();
+
+    public Stack<LiteScope> LiteScope = new();
 
     public readonly RegisterFile Register = new();
 
@@ -25,6 +24,7 @@ class Processor(Dictionary<string, FunctionStmt> func)
 
     public void Call(string label)
     {
+        LiteScope.Push(new LiteScope());
         CallStack.Push(PC);
         if (_funcTables.TryGetValue(label, out FunctionStmt? func))
             PC = func.Address + 1;
@@ -39,8 +39,22 @@ class Processor(Dictionary<string, FunctionStmt> func)
 
     public void RetrunCall()
     {
+        if(LiteScope.Count == 0)
+            throw new ScriptException("顶层环境不能退出", PC);
+        LiteScope.Pop();
         PC = CallStack.Pop();
     }
+}
+
+class LiteScope(LiteScope? parent = null)
+{
+    public LiteScope? Parent { get; }
+
+    private readonly RegisterFile Register = new();
+
+    public Stack<For> LoopStack = new();
+    public Dictionary<For, int> LoopTime = new();
+    public Dictionary<For, int> LoopCount = new();
 }
 
 class RegisterFile

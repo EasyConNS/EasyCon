@@ -47,8 +47,7 @@ public class Scripter
 
     public string ToCode()
     {
-        var formatter = new Formatter(Constants, ExtVars);
-        return string.Join(Environment.NewLine, _statements.Select(u => u.GetString(formatter)));
+        return string.Join(Environment.NewLine, _statements.Select(u => u.GetString()));
     }
 
     public byte[] Assemble(bool auto = true)

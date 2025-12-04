@@ -7,7 +7,7 @@ namespace EasyScript.Statements
         protected readonly ValBase Duration = duration;
         protected bool _omitted = omitted;
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             if (omitted) return $"{Duration.GetCodeText()}";
             return $"WAIT {Duration.GetCodeText()}";
@@ -20,13 +20,13 @@ namespace EasyScript.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            if (Duration is ValReg)
+            if (Duration is ValReg rd)
             {
-                assembler.Add(Assembly.Instructions.AsmStoreOp.Create((Duration as ValReg).Index));
+                assembler.Add(Assembly.Instructions.AsmStoreOp.Create(rd.Index));
                 assembler.Add(Assembly.Instructions.AsmWait.Create(0));
             }
-            else if (Duration is ValInstant)
-                assembler.Add(Assembly.Instructions.AsmWait.Create((Duration as ValInstant).Val));
+            else if (Duration is ValInstant id)
+                assembler.Add(Assembly.Instructions.AsmWait.Create(id.Val));
             else
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
         }

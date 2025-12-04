@@ -1,4 +1,4 @@
-﻿using EasyScript.Parsing;
+using EasyScript.Parsing;
 
 namespace EasyScript.Statements
 {
@@ -13,7 +13,7 @@ namespace EasyScript.Statements
             Mem = mem;
         }
 
-        protected override string _GetString(Formatter formatter)
+        protected override string _GetString()
         {
             return Mem ? $"SMEM {Value}" : $"SPRINT {Value}";
         }

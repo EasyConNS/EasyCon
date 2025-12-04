@@ -1,4 +1,4 @@
-﻿using EasyScript.Parsing;
+using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
@@ -6,7 +6,7 @@ class Empty(string text = "") : Statement
 {
     private readonly string Text = text;
 
-    protected override string _GetString(Formatter _)
+    protected override string _GetString()
     {
         return Text;
     }

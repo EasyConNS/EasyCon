@@ -3,7 +3,7 @@ namespace EasyScript.Parsing
     abstract class Content
     {
         public abstract string GetPrintString(Processor processor);
-        public abstract string GetCodeString(Formatter formatter);
+        public abstract string GetCodeString();
     }
 
     class TextContent(string text, string codetext = null) : Content
@@ -16,7 +16,7 @@ namespace EasyScript.Parsing
             return Text;
         }
 
-        public override string GetCodeString(Formatter _)
+        public override string GetCodeString()
         {
             return CodeText;
         }
@@ -31,7 +31,7 @@ namespace EasyScript.Parsing
             return processor.Register[Reg].ToString();
         }
 
-        public override string GetCodeString(Formatter _)
+        public override string GetCodeString()
         {
             return Reg.GetCodeText();
         }

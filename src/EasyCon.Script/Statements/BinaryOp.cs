@@ -51,7 +51,7 @@ abstract class BinaryOp : Statement
     }
 
 
-    protected override string _GetString(Formatter _)
+    protected override string _GetString()
     {
         return $"{RegDst.GetCodeText()} {MetaInfo.Operator}= {Value.GetCodeText()}";
     }

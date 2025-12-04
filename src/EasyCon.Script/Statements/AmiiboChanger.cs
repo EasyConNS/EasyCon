@@ -11,7 +11,7 @@ namespace EasyScript.Statements
             Index = value;
         }
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             return $"AMIIBO {Index.GetCodeText()}";
         }
@@ -27,9 +27,9 @@ namespace EasyScript.Statements
             processor.GamePad.ChangeAmiibo((uint)index);
         }
 
-        public override void Assemble(Assembly.Assembler assembler)
+        public override void Assemble(Assembly.Assembler _)
         {
-            assembler.Add(Assembly.Instructions.AsmAmiibo.Create(Index));
+            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
         }
     }
 }

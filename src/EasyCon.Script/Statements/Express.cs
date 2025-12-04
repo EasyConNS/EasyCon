@@ -9,7 +9,7 @@ namespace EasyScript.Statements
         protected readonly Meta? OpMeta = op;
         protected readonly ValBase? ValueRight = valueRight;
 
-        protected override string _GetString(Formatter _)
+        protected override string _GetString()
         {
             var expr = $"{RegDst.GetCodeText()} = {ValueLeft.GetCodeText()}";
             if (ValueRight != null)
