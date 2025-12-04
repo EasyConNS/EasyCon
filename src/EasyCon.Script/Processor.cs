@@ -13,14 +13,20 @@ class Processor(Dictionary<string, FunctionStmt> func)
     public int PC = 0;
     public bool CancelLineBreak = false;
     public Stack<short> Stack = new();
-
-    public Stack<LiteScope> LiteScope = new();
-
     public readonly RegisterFile Register = new();
 
+    private Stack<LiteScope> LiteScope = new();
     private readonly Stack<int> CallStack = new();
     private readonly Dictionary<string, FunctionStmt> _funcTables = func;
     private readonly ExternTime et = new(DateTime.Now);
+
+    public LiteScope GetScope()
+    {
+        if (LiteScope.Count == 0)
+            LiteScope.Push(new LiteScope());
+        var liteScop = LiteScope.Peek();
+        return liteScop;
+    }
 
     public void Call(string label)
     {
