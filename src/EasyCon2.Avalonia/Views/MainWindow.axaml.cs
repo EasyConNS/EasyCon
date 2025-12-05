@@ -4,7 +4,7 @@ using SukiUI;
 using SukiUI.Enums;
 using SukiUI.Models;
 
-namespace EC.Avalonia.Views;
+namespace EasyCon2.Avalonia.Views;
 
 public partial class MainWindow:SukiUI.Controls.SukiWindow
 {

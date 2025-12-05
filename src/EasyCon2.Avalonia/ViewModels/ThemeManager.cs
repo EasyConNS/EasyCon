@@ -1,5 +1,6 @@
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
+using EasyCon2.Avalonia.ViewModels;
 using SukiUI;
 using SukiUI.Enums;
 

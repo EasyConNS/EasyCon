@@ -1,8 +1,8 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="EC.Avalonia.App"
+             x:Class="EasyCon2.Avalonia.App"
              xmlns:sukiUi="clr-namespace:SukiUI;assembly=SukiUI"
-             xmlns:local="using:EC.Avalonia"
+             xmlns:local="using:EasyCon2.Avalonia"
              RequestedThemeVariant="Dark">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
