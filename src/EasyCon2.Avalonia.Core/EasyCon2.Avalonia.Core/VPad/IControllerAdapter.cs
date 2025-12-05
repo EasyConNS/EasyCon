@@ -1,6 +1,6 @@
 ﻿using Avalonia.Media;
 
-namespace EasyAvalonia.VPad;
+namespace EasyCon2.Avalonia.Core.VPad;
 
 public interface IControllerAdapter
 {

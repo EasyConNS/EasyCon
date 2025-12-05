@@ -1,9 +1,9 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using EC.Avalonia.ViewModels;
+using EasyCon2.Avalonia.ViewModels;
 
-namespace EC.Avalonia;
+namespace EasyCon2.Avalonia;
 
 public class ViewLocator : IDataTemplate
 {

@@ -1,0 +1,61 @@
+<suki:SukiWindow
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:EC.Avalonia.ViewModels"
+    xmlns:suki="https://github.com/kikipoulet/SukiUI"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    d:DesignWidth="800"
+    d:DesignHeight="450"
+    xmlns:objectModel="using:System.Collections.ObjectModel"
+    x:Class="EasyCon2.Avalonia.Views.MainWindow"
+    x:DataType="vm:MainWindowViewModel"
+    Icon="/Assets/avalonia-logo.ico"
+    Title="EasyCon2">
+    <suki:SukiSideMenu>
+        <suki:SukiSideMenu.HeaderContent>
+           <TextBlock Text="Header Content"/>
+        </suki:SukiSideMenu.HeaderContent>
+        <suki:SukiSideMenu.FooterContent>
+            <TextBlock Text="Footer Content"/>
+        </suki:SukiSideMenu.FooterContent>
+        <suki:SukiSideMenu.Items>
+            <suki:SukiSideMenuItem
+                Header="VPad">
+                <suki:SukiSideMenuItem.PageContent>
+                    <TextBlock
+                        Text="VPad"></TextBlock>
+                </suki:SukiSideMenuItem.PageContent>
+            </suki:SukiSideMenuItem>
+            <suki:SukiSideMenuItem
+                Header="Setting">
+                <suki:SukiSideMenuItem.PageContent>
+                    <suki:SettingsLayout>
+                        <suki:SettingsLayout.Items>
+                            <objectModel:ObservableCollection
+                                x:TypeArguments="suki:SettingsLayoutItem">
+                                <suki:SettingsLayoutItem
+                                    Header="Theme Color">
+                                    <suki:SettingsLayoutItem.Content>
+                                        <ComboBox
+                                            ItemsSource="{Binding Source={x:Static vm:ThemeManager.Instance},Path=ThemeColors}"
+                                            SelectedItem="{Binding Source={x:Static vm:ThemeManager.Instance},Path=ThemeColor}" />
+                                    </suki:SettingsLayoutItem.Content>
+                                </suki:SettingsLayoutItem>
+                                <suki:SettingsLayoutItem
+                                    Header="Dark Mode">
+                                    <suki:SettingsLayoutItem.Content>
+                                        <ComboBox
+                                            ItemsSource="{Binding Source={x:Static vm:ThemeManager.Instance},Path=ThemeVariants}"
+                                            SelectedItem="{Binding Source={x:Static vm:ThemeManager.Instance},Path=ThemeVariant}" />
+                                    </suki:SettingsLayoutItem.Content>
+                                </suki:SettingsLayoutItem>
+                            </objectModel:ObservableCollection>
+                        </suki:SettingsLayout.Items>
+                    </suki:SettingsLayout>
+                </suki:SukiSideMenuItem.PageContent>
+            </suki:SukiSideMenuItem>
+        </suki:SukiSideMenu.Items>
+    </suki:SukiSideMenu>
+</suki:SukiWindow>

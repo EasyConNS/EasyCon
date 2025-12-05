@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace EC.Avalonia;
+namespace EasyCon2.Avalonia;
 
 sealed class Program
 {

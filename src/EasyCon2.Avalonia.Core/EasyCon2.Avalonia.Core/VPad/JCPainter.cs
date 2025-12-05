@@ -2,7 +2,7 @@
 using Avalonia.Media;
 using EasyDevice;
 
-namespace EasyAvalonia.VPad;
+namespace EasyCon2.Avalonia.Core.VPad;
 
 public delegate IImage GetJCImg(string name);
 public delegate SwitchReport GetReport();
@@ -45,7 +45,7 @@ internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg
             if (_starttime == DateTime.MinValue)
                 _starttime = DateTime.Now;
             int n = (int)(DateTime.Now - _starttime).TotalMilliseconds / 150;
-            flashIndex = Math.Abs(3 - (n % 6));
+            flashIndex = Math.Abs(3 - n % 6);
         }
         else
         {
@@ -55,7 +55,7 @@ internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg
         for (int i = 0; i < 4; i++)
         {
             x = 47;
-            y = 32 + (10 * i);
+            y = 32 + 10 * i;
             w = 5;
             h = 5;
             if (i == flashIndex)
@@ -88,8 +88,8 @@ internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg
         p = 2;
         w = 15;
         h = 15;
-        x = x0 + ((w0 - w) * report.LX / SwitchStick.STICK_MAX);
-        y = y0 + ((h0 - h) * report.LY / SwitchStick.STICK_MAX);
+        x = x0 + (w0 - w) * report.LX / SwitchStick.STICK_MAX;
+        y = y0 + (h0 - h) * report.LY / SwitchStick.STICK_MAX;
         DrawEllipse(
             g,
             _pen,
@@ -98,8 +98,8 @@ internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg
                 : _brushStickAreaBGDown,
             x0 + p,
             y0 + p,
-            w0 - (p * 2),
-            h0 - (p * 2)
+            w0 - p * 2,
+            h0 - p * 2
         );
         DrawEllipse(
             g,
@@ -119,8 +119,8 @@ internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg
         p = 2;
         w = 15;
         h = 15;
-        x = x0 + ((w0 - w) * report.RX / SwitchStick.STICK_MAX);
-        y = y0 + ((h0 - h) * report.RY / SwitchStick.STICK_MAX);
+        x = x0 + (w0 - w) * report.RX / SwitchStick.STICK_MAX;
+        y = y0 + (h0 - h) * report.RY / SwitchStick.STICK_MAX;
         DrawEllipse(
             g,
             _pen,
@@ -129,8 +129,8 @@ internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg
                 : _brushStickAreaBGDown,
             x0 + p,
             y0 + p,
-            w0 - (p * 2),
-            h0 - (p * 2)
+            w0 - p * 2,
+            h0 - p * 2
         );
         DrawEllipse(
             g,

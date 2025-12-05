@@ -6,6 +6,7 @@ using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core;
+using EasyCon2.Avalonia.ViewModels;
 
 namespace EC.Avalonia.ViewModels;
 
