@@ -12,7 +12,6 @@ namespace EasyScript.Statements
 
     class If : BranchOp
     {
-        public override int IndentNext => 1;
         public readonly CompareOperator Operater;
         public readonly ValVar Left;
         public readonly ValBase Right;
@@ -68,8 +67,6 @@ namespace EasyScript.Statements
 
     class ElseIf : If
     {
-        public override int IndentThis => -1;
-
         public ElseIf(CompareOperator op, ValVar left, ValBase right) : base(op, left, right)
         { }
 
@@ -130,9 +127,6 @@ namespace EasyScript.Statements
 
     class Else : BranchOp
     {
-        public override int IndentThis => -1;
-        public override int IndentNext => 1;
-
         public override void Exec(Processor processor)
         {
             // end of if-block
@@ -156,8 +150,6 @@ namespace EasyScript.Statements
 
     class EndIf : BranchOp
     {
-        public override int IndentThis => -1;
-
         public override void Exec(Processor _)
         { }
 

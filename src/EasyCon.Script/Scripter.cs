@@ -1,6 +1,7 @@
 using EasyScript.Parsing;
 using EasyScript.Statements;
 using System.Collections.Immutable;
+using System.CodeDom.Compiler;
 
 namespace EasyScript;
 
@@ -47,19 +48,24 @@ public class Scripter
 
     public string ToCode()
     {
-        return string.Join(Environment.NewLine, _statements.Select(u => u.GetString()));
+        using (var writer = new StringWriter())
+        using(var printer = new IndentedTextWriter(writer, "  "))
+        {
+            _statements.ToList().ForEach(u => u.WriteTo(printer));
+            return writer.ToString();
+        }
     }
 
     public byte[] Assemble(bool auto = true)
     {
         // pair Call
-        _statements.OfType<CallStat>().ToList().ForEach(cst =>
-        {
-            if (_funcTables.TryGetValue(cst.Label, out FunctionStmt? value))
-                cst.Func = @value;
-            else
-                throw new ParseException("找不到调用的函数", cst.Address);
-        });
+        // _statements.OfType<CallStat>().ToList().ForEach(cst =>
+        // {
+        //     if (_funcTables.TryGetValue(cst.Label, out FunctionStmt? value))
+        //         cst.Func = @value;
+        //     else
+        //         throw new ParseException("找不到调用的函数", cst.Address);
+        // });
         return new Assembly.Assembler().Assemble(_statements, auto);
     }
 

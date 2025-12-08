@@ -9,7 +9,6 @@ internal class StatementGen : AstVisitor
 {
     readonly Formatter _formatter;
 
-    int indentnum = 0;
     int address = 0;
     List<EasyScript.Parsing.Statement>  stmts = new();
 
@@ -41,12 +40,9 @@ internal class StatementGen : AstVisitor
 
     private void cfgStatement(EasyScript.Parsing.Statement st)
     {
-        indentnum += st.IndentThis;
-        st.Indent = new string(' ', indentnum < 0 ? 0 : indentnum * 4);
         // update address
         st.Address = address;
         stmts.Add(st);
-        indentnum += st.IndentNext;
         address += 1;
     }
 

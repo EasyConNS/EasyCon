@@ -65,6 +65,7 @@ namespace EasyCon2.Forms
             联机模式ToolStripMenuItem = new ToolStripMenuItem();
             烧录模式ToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator2 = new ToolStripSeparator();
+            检查更新ToolStripMenuItem = new ToolStripMenuItem();
             项目源码ToolStripMenuItem = new ToolStripMenuItem();
             关于ToolStripMenuItem = new ToolStripMenuItem();
             groupBox1 = new GroupBox();
@@ -99,7 +100,6 @@ namespace EasyCon2.Forms
             toolStripStatusLabel1 = new ToolStripStatusLabel();
             statusStrip1 = new StatusStrip();
             textBoxScriptHelp = new TextBox();
-            检查更新ToolStripMenuItem = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             groupBox1.SuspendLayout();
             groupBox6.SuspendLayout();
@@ -352,40 +352,47 @@ namespace EasyCon2.Forms
             // 固件模式ToolStripMenuItem
             // 
             固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
-            固件模式ToolStripMenuItem.Size = new Size(224, 26);
+            固件模式ToolStripMenuItem.Size = new Size(152, 26);
             固件模式ToolStripMenuItem.Text = "固件模式";
             固件模式ToolStripMenuItem.Click += 固件模式ToolStripMenuItem_Click;
             // 
             // 联机模式ToolStripMenuItem
             // 
             联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
-            联机模式ToolStripMenuItem.Size = new Size(224, 26);
+            联机模式ToolStripMenuItem.Size = new Size(152, 26);
             联机模式ToolStripMenuItem.Text = "联机模式";
             联机模式ToolStripMenuItem.Click += 联机模式ToolStripMenuItem_Click;
             // 
             // 烧录模式ToolStripMenuItem
             // 
             烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
-            烧录模式ToolStripMenuItem.Size = new Size(224, 26);
+            烧录模式ToolStripMenuItem.Size = new Size(152, 26);
             烧录模式ToolStripMenuItem.Text = "烧录模式";
             烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
             // 
             // toolStripSeparator2
             // 
             toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new Size(221, 6);
+            toolStripSeparator2.Size = new Size(149, 6);
+            // 
+            // 检查更新ToolStripMenuItem
+            // 
+            检查更新ToolStripMenuItem.Name = "检查更新ToolStripMenuItem";
+            检查更新ToolStripMenuItem.Size = new Size(152, 26);
+            检查更新ToolStripMenuItem.Text = "检查更新";
+            检查更新ToolStripMenuItem.Click += 检查更新ToolStripMenuItem_Click;
             // 
             // 项目源码ToolStripMenuItem
             // 
             项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            项目源码ToolStripMenuItem.Size = new Size(224, 26);
+            项目源码ToolStripMenuItem.Size = new Size(152, 26);
             项目源码ToolStripMenuItem.Text = "项目源码";
             项目源码ToolStripMenuItem.Click += 项目源码ToolStripMenuItem_Click;
             // 
             // 关于ToolStripMenuItem
             // 
             关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            关于ToolStripMenuItem.Size = new Size(224, 26);
+            关于ToolStripMenuItem.Size = new Size(152, 26);
             关于ToolStripMenuItem.Text = "关于";
             关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
             // 
@@ -595,7 +602,7 @@ namespace EasyCon2.Forms
             groupBoxScript.Size = new Size(471, 615);
             groupBoxScript.TabIndex = 2;
             groupBoxScript.TabStop = false;
-            groupBoxScript.Text = "脚本";
+            groupBoxScript.Text = "未命名脚本";
             // 
             // elementHost1
             // 
@@ -720,13 +727,6 @@ namespace EasyCon2.Forms
             textBoxScriptHelp.ScrollBars = ScrollBars.Vertical;
             textBoxScriptHelp.Size = new Size(312, 401);
             textBoxScriptHelp.TabIndex = 35;
-            // 
-            // 检查更新ToolStripMenuItem
-            // 
-            检查更新ToolStripMenuItem.Name = "检查更新ToolStripMenuItem";
-            检查更新ToolStripMenuItem.Size = new Size(224, 26);
-            检查更新ToolStripMenuItem.Text = "检查更新";
-            检查更新ToolStripMenuItem.Click += 检查更新ToolStripMenuItem_Click;
             // 
             // EasyConForm
             // 

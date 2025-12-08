@@ -120,7 +120,6 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
 
     public List<Statement> Parse(string text)
     {
-        int indentnum = 0;
         int linnum = 0;
         int address = 0;
         var list = new List<Statement>();
@@ -155,13 +154,10 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                 var st = ParseStatement(args.Text);
                 if (st != null)
                 {
-                    indentnum += st.IndentThis;
-                    st.Indent = new string(' ', indentnum < 0 ? 0 : indentnum * 4);
                     st.Comment = args.Comment;
                     // update address
                     st.Address = address;
                     list.Add(st);
-                    indentnum += st.IndentNext;
 
                     if (st is For || (st is If && st is not ElseIf) || st is FunctionStmt)
                     {
@@ -305,6 +301,15 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
             }
             linnum++;
         }
+
+        // pair Call
+        list.OfType<CallStat>().ToList().ForEach(cst =>
+        {
+            if (_funcTables.TryGetValue(cst.Label, out FunctionStmt? value))
+                cst.Func = @value;
+            else
+                throw new ParseException($"找不到调用的函数\"{cst.Label}\"", cst.Address);
+        });
 
         if (_blocks.Count != 0)
             throw new ParseException("发现未结束的语句", _blocks.Peek().Address);

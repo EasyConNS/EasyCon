@@ -40,6 +40,9 @@ namespace EasyCon2.Forms
         private VControllerConfig _config;
         // 当前打开的脚本文件路径
         private string _currentFile = "";
+
+        private readonly string defaultName = "未命名脚本";
+        private string fileName => _currentFile == "" ? defaultName : Path.GetFileName(_currentFile);
         private bool _fileEdited = false;
 
         private readonly Queue<Tuple<RichTextBox, object, Color?>> _messages = new();
@@ -277,7 +280,7 @@ namespace EasyCon2.Forms
                         }
 
                         // script edited
-                        var strse = _fileEdited ? "脚本(已编辑)" : "脚本";
+                        var strse = _fileEdited ? $"{fileName}(已编辑)" : fileName;
                         if (groupBoxScript.Text != strse)
                             groupBoxScript.Text = strse;
                     });
@@ -724,10 +727,10 @@ namespace EasyCon2.Forms
                 if (saveFileDialog1.ShowDialog() != DialogResult.OK)
                     return false;
                 path = saveFileDialog1.FileName;
+                _currentFile = path;
             }
-            _currentFile = saveAs ? _currentFile : path;
             File.WriteAllText(path, textBoxScript.Text);
-            _fileEdited = path != _currentFile;
+            _fileEdited = false;
             StatusShowLog("文件已保存");
             return true;
         }

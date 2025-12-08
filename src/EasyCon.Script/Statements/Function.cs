@@ -4,7 +4,6 @@ namespace EasyScript.Statements
 {
     class FunctionStmt : Statement
     {
-        public override int IndentNext => 1;
         public readonly string Label;
         public EndFuncStat Ret = null;
 
@@ -61,7 +60,6 @@ namespace EasyScript.Statements
 
     class EndFuncStat : Statement
     {
-        public override int IndentThis => -1;
         public string Label;
         protected override string _GetString()
         {

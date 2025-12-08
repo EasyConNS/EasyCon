@@ -4,7 +4,6 @@ namespace EasyScript.Statements
 {
     abstract class For(ValBase count) : Statement
     {
-        public override int IndentNext => 1;
         public readonly ValBase Count = count;
         public Next Next;
 
@@ -160,7 +159,6 @@ namespace EasyScript.Statements
 
     class Next : Statement
     {
-        public override int IndentThis => -1;
         public For For;
 
         protected override string _GetString()
