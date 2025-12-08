@@ -85,7 +85,7 @@ class KeyPress : KeyAction
             }
         }
         else
-            throw new Assembly.AssembleException(ErrorMessage.NotImplemented);
+            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
     }
 }
 

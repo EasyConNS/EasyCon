@@ -85,7 +85,7 @@ class StickPress : StickAction
             }
         }
         else
-            throw new Assembly.AssembleException(ErrorMessage.NotImplemented);
+            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
     }
 }
 

@@ -34,7 +34,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
 
     private IEnumerable<ParserArgument> ParseLines(string text)
     {
-        var lines = Regex.Split(text, "\r\n|\r|\n");
+        var lines = Regex.Split(text.Trim(), "\r\n|\r|\n");
         foreach (var line in lines)
         {
             // get indent

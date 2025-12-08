@@ -14,7 +14,7 @@ abstract class Statement
 
     public string GetString()
     {
-        return $"{_GetString()} {Comment}";
+        return $"{_GetString()}{Comment}";
     }
 
     protected abstract string _GetString();
@@ -22,7 +22,6 @@ abstract class Statement
     protected static class ErrorMessage
     {
         public const string NotSupported = "脚本中存在仅支持联机模式的语句";
-        public const string NotImplemented = "类型未定义，这可能是一个bug，请汇报给作者";
     }
 }
 
@@ -48,7 +47,6 @@ internal static class BoundNodePrinter
         {
             writer.Indent++;
         }
-
         writer.WriteLine();
     }
 }

@@ -94,7 +94,7 @@ namespace EasyScript.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            throw new Assembly.AssembleException(ErrorMessage.NotImplemented);
+            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
         }
     }
 }
