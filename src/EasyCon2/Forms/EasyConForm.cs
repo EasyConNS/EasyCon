@@ -94,20 +94,6 @@ namespace EasyCon2.Forms
         {
             textBoxScript.ShowLineNumbers = true;
             var syntaxHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Encoding.UTF8.GetBytes(Resources.NX))), HighlightingManager.Instance);
-#if DEBUG && false
-            // convert from old .xshd format to new format
-            XshdSyntaxDefinition xshd;
-            using (XmlTextReader reader = new XmlTextReader("input.xshd"))
-            {
-                xshd = HighlightingLoader.LoadXshd(reader);
-            }
-            using (XmlTextWriter writer = new XmlTextWriter("output.xshd", Encoding.UTF8))
-            {
-                writer.Formatting = Formatting.Indented;
-                new SaveXshdVisitor(writer).WriteDefinition(xshd);
-            }
-#endif
-
             textBoxScript.SyntaxHighlighting = syntaxHighlighting;
             textBoxScript.DragEnter += new System.Windows.DragEventHandler(this.textBoxScript_DragEnter);
             textBoxScript.Drop += new System.Windows.DragEventHandler(this.textBoxScript_DragDrop);
@@ -697,8 +683,7 @@ namespace EasyCon2.Forms
             openFileDialog1.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
             openFileDialog1.FileName = string.Empty;
 
-            _currentFile = path;
-            if (_currentFile == "")
+            if (path == "")
             {
                 if (openFileDialog1.ShowDialog() != DialogResult.OK)
                     return false;
@@ -706,8 +691,12 @@ namespace EasyCon2.Forms
                     return false;
                 _currentFile = openFileDialog1.FileName;
             }
+            else
+            {
+                _currentFile = path;
+            }
 
-            textBoxScript.Text = File.ReadAllText(_currentFile);
+                textBoxScript.Text = File.ReadAllText(_currentFile);
             _fileEdited = false;
             return true;
         }
@@ -1091,6 +1080,8 @@ namespace EasyCon2.Forms
             {
                 var path = (string[])e.Data.GetData(DataFormats.FileDrop, false);
                 if (Path.GetExtension(path[0]) != ".txt") return;
+                if (!FileClose())
+                    return;
                 FileOpen(path[0]);
             }
             catch
