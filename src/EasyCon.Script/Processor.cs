@@ -12,9 +12,9 @@ class Processor(Dictionary<string, FunctionStmt> func)
 
     public int PC = 0;
     public bool CancelLineBreak = false;
-    public Stack<short> Stack = new();
     public readonly RegisterFile Register = new();
 
+    private Stack<short> Stack = new();
     private Stack<LiteScope> LiteScope = new();
     private readonly Stack<int> CallStack = new();
     private readonly Dictionary<string, FunctionStmt> _funcTables = func;
@@ -49,6 +49,18 @@ class Processor(Dictionary<string, FunctionStmt> func)
             throw new ScriptException("顶层环境不能退出", PC);
         LiteScope.Pop();
         PC = CallStack.Pop();
+    }
+
+    public void Push(short val)
+    {
+        Stack.Push(val);
+    }
+
+    public short Pop()
+    {
+        if (Stack.Count <= 0)
+            throw new ScriptException("栈为空，无法出栈", PC);
+        return Stack.Pop(); 
     }
 }
 

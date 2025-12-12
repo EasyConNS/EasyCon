@@ -305,9 +305,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
         // pair Call
         list.OfType<CallStat>().ToList().ForEach(cst =>
         {
-            if (_funcTables.TryGetValue(cst.Label, out FunctionStmt? value))
-                cst.Func = @value;
-            else
+            if (!_funcTables.TryGetValue(cst.Label, out FunctionStmt? value))
                 throw new ParseException($"找不到调用的函数\"{cst.Label}\"", cst.Address);
         });
 

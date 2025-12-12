@@ -1,5 +1,6 @@
 using System.CodeDom.Compiler;
 using EasyScript.Statements;
+using System.Collections.Immutable;
 
 namespace EasyScript.Parsing;
 
@@ -24,6 +25,16 @@ abstract class Statement
         public const string NotSupported = "脚本中存在仅支持联机模式的语句";
     }
 }
+
+//internal sealed class ScriptUnit(ImmutableArray<Statement> statements)
+//{
+//    public ImmutableArray<Statement> Statements = statements;
+//    public ImmutableDictionary<string, FuncDeclStatment> Functions = statements
+//        .OfType<FuncDeclStatment>()
+//        .ToImmutableDictionary(f => f.Label, f => f);
+
+//    public bool HaveKeyAction => Statements.OfType<KeyAction>().Any() && Statements.OfType<FuncDeclStatment>().SelectMany(st => st.Statements).OfType<KeyAction>().Any();
+//}
 
 internal static class BoundNodePrinter
 {

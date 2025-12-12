@@ -26,13 +26,6 @@ internal class StatementGen : AstVisitor
     {
         foreach (var ast in program.Statements)
         {
-            if (ast.LeadingTrivia.Count > 0)
-            {
-                foreach (var trivia in ast.LeadingTrivia)
-                {
-                    trivia.Accept(this);
-                }
-            }
             ast.Accept(this);
         }
         return program;
@@ -44,17 +37,6 @@ internal class StatementGen : AstVisitor
         st.Address = address;
         stmts.Add(st);
         address += 1;
-    }
-
-    public override ASTNode VisitTrivia(TriviaNode ast)
-    {
-        var trivia = new Empty
-        {
-            Comment = ast.Text
-        };
-        cfgStatement(trivia);
-
-        return ast;
     }
 
     public override ASTNode VisitBinaryOp(BinaryExpression ast)
@@ -150,9 +132,9 @@ internal class StatementGen : AstVisitor
         {
             Console.WriteLine("For:");
         }
-        else if (ast.LoopCount != null)
+        else if (ast.StartValue == null && ast.EndValue != null)
         {
-            Console.WriteLine($"For: {ast.LoopCount}");
+            Console.WriteLine($"For: {ast.EndValue}");
         }
         else
         {

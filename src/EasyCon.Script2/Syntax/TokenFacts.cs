@@ -52,4 +52,102 @@ public static class TokenFacts
                 return 0;
         }
     }
+
+    public static string? GetText(TokenType kind)
+    {
+        switch (kind)
+        {
+            // Operators
+            case TokenType.ASSIGN:
+                return "=";
+            case TokenType.ADD:
+                return "+";
+            case TokenType.SUB:
+                return "-";
+            case TokenType.MUL:
+                return "*";
+            case TokenType.DIV:
+                return "/";
+            case TokenType.SlashI:
+                return "\\";
+            case TokenType.MOD:
+                return "%";
+            case TokenType.BitAnd:
+                return "&";
+            case TokenType.BitOr:
+                return "|";
+            case TokenType.XOR:
+                return "^";
+            case TokenType.SHL:
+                return "<<";
+            case TokenType.SHR:
+                return ">>";
+                
+            case TokenType.ADD_ASSIGN:
+                return "+=";
+            case TokenType.SUB_ASSIGN:
+                return "-=";
+            case TokenType.MUL_ASSIGN:
+                return "*=";
+            case TokenType.DIV_ASSIGN:
+                return "/=";
+            case TokenType.SlashIAssign:
+                return "\\=";
+            case TokenType.MOD_ASSIGN:
+                return "%=";
+            case TokenType.BitAnd_ASSIGN:
+                return "&=";
+            case TokenType.BitOr_ASSIGN:
+                return "|=";
+            case TokenType.XOR_ASSIGN:
+                return "^=";
+            case TokenType.SHL_ASSIGN:
+                return "<<=";
+            case TokenType.SHR_ASSIGN:
+                return ">>=";
+
+            case TokenType.BitNot:
+                return "~";
+
+            case TokenType.EQL:
+                return "==";
+            case TokenType.NEQ:
+                return "!=";
+            case TokenType.LESS:
+                return "<";
+            case TokenType.GTR:
+                return ">";
+            case TokenType.LEQ:
+                return "<=";
+            case TokenType.GEQ:
+                return ">=";
+
+            case TokenType.LogicAnd:
+                return "and";
+            case TokenType.LogicOr:
+                return "or";
+            case TokenType.LogicNot:
+                return "not";
+
+            // Punctuation
+            case TokenType.LeftParen:
+                return "(";
+            case TokenType.LeftBracket:
+                return "[";
+            case TokenType.COMMA:
+                return ",";
+            case TokenType.DOT:
+                return ".";
+            case TokenType.RightParen:
+                return ")";
+            case TokenType.RightBracket:
+                return "]";
+            case TokenType.COLON:
+                return ":";
+            case TokenType.SEMICOLON:
+                return ";";
+            default:
+                return null;
+        }
+    }
 }

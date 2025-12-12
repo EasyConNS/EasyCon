@@ -6,19 +6,34 @@ namespace EasyCon.Script2.Ast;
 // AST节点基类
 public abstract class ASTNode(Token key)
 {
-    private Token Key = key;
+    public Token Key = key;
     public int Line => key.Line;
     public abstract T Accept<T>(IAstVisitor<T> visitor);
+
+    public readonly List<TriviaNode> LeadingTrivia = [];
+    public readonly List<TriviaNode> TrailingTrivia = [];
 }
 
-public sealed class MainProgram(ImmutableArray<Statement> statements, Token endOfFileToken) : ASTNode(endOfFileToken)
+public sealed class MainProgram(ImmutableArray<Member> statements, Token endOfFileToken) : ASTNode(endOfFileToken)
 {
-    public ImmutableArray<Statement> Statements = statements;
+    public ImmutableArray<Member> Statements = statements;
     public Token EndOfFileToken = endOfFileToken;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         return visitor.VisitProgram(this);
+    }
+}
+
+public abstract class Member(Token key) : ASTNode(key){}
+
+public sealed class GlobalStatement(Statement statement) : Member(statement.Key)
+{
+    public Statement Statement { get; } = statement;
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        return Statement.Accept(visitor);
     }
 }
 
@@ -131,8 +146,6 @@ public sealed class ConditionExpression(Expression left, Token op, Expression ri
 // 语句节点
 public abstract class Statement(Token key) : ASTNode(key)
 {
-    public readonly List<TriviaNode> LeadingTrivia = [];
-    public readonly List<TriviaNode> TrailingTrivia = [];
 }
 
 public sealed class ImportStatement(Token imp, string name, LiteralExpression path) : Statement(imp)
@@ -200,14 +213,13 @@ public sealed class ElseClause(Token keyword, ImmutableArray<Statement> elseBran
 
 // For语句
 public sealed class ForStatement(Token forToken, VariableExpression loopVariable, Expression startValue, Expression endValue,
-                  Expression? loopCount, bool isInfinite,
+                  bool isInfinite,
                   ImmutableArray<Statement> body, int stepValue = 1) : Statement(forToken)
 {
     public VariableExpression LoopVariable { get; } = loopVariable;
     public Expression StartValue { get; } = startValue;
-    public Expression EndValue { get; } = endValue;
+    public Expression EndValue { get; } = endValue;  // LoopCount if StartValue is null
     public int StepValue { get; } = stepValue;
-    public Expression? LoopCount { get; } = loopCount;
     public bool IsInfinite { get; } = isInfinite;
     public ImmutableArray<Statement> Body { get; } = body;
 
@@ -238,7 +250,7 @@ public sealed class ContinueStatement(Token keyword) : Statement(keyword)
 }
 
 // 函数定义语句
-public sealed class FunctionDefinitionStatement(Token keyword, Token ident, ImmutableArray<string> parameters, ImmutableArray<Statement> body) : Statement(keyword)
+public sealed class FunctionDefinitionStatement(Token keyword, Token ident, ImmutableArray<string> parameters, ImmutableArray<Statement> body) : Member(keyword)
 {
     public Token FunctionIdent { get; } = ident;
     public ImmutableArray<string> Parameters { get; } = parameters;

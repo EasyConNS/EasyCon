@@ -96,8 +96,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         "LS", "RS",
         "UP", "DOWN", "LEFT", "RIGHT"];
 
-    public List<Token> Tokenize()
+    public ImmutableArray<Token> Tokenize()
     {
+        _tokens.Clear();
         while (_position < _input.Length)
         {
             SkipWhitespace();
@@ -129,8 +130,40 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             }
         }
 
-        _tokens.Add(new Token(_text, TokenType.EOF, "", 0, 0));
-        return _tokens;
+        AddToken(TokenType.EOF, "", 0);
+        return TokenizeWithTrivia();
+    }
+
+    public ImmutableArray<Token> TokenizeWithTrivia()
+    {
+        List<Token> _puretokens = [];
+        _triviaBuilder.Clear();
+        foreach (var token in _tokens)
+        {
+            if(token.Type == TokenType.COMMENT)
+            {
+                _triviaBuilder.Add(token);
+            }
+            else if(token.Type == TokenType.NEWLINE && !_puretokens.Any())
+            {
+                _triviaBuilder.Add(token);
+            }
+            else
+            {
+                var newt = token;
+                if(_triviaBuilder.Any())
+                {
+                    newt = new Token(token.Text, token.Type, token.Value, token.Line, token.Span.Start)
+                    {
+                        LeadingTrivia = _triviaBuilder.ToImmutable(),
+                    };
+                    _triviaBuilder.Clear();
+                }
+                _puretokens.Add(newt);
+            }
+                
+        }
+        return _puretokens.ToImmutableArray();
     }
 
     private char Current => Peek();

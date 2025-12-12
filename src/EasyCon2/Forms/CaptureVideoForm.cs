@@ -107,10 +107,8 @@ namespace EasyCon2.Forms
         private void CaptureVideo_Load(object sender, EventArgs e)
         {
             CaptureVideoHelp.Text = Resources.capturedoc;
-            if (!Directory.Exists(CapDir))
-            {
-                Directory.CreateDirectory(CapDir);
-            }
+            Directory.CreateDirectory(CapDir);
+            Directory.CreateDirectory(ImgDir);
 
             foreach (var method in ImgLabelExt.GetAllSearchMethod())
             {
@@ -142,16 +140,9 @@ namespace EasyCon2.Forms
         public void LoadImgLabels()
         {
             Debug.WriteLine("load labels");
-            if (!Directory.Exists(ImgDir))
-            {
-                Directory.CreateDirectory(ImgDir);
-            }
 
             imgLabels.Clear();
-            if (!Directory.Exists(ImgDir))
-            {
-                Directory.CreateDirectory(ImgDir);
-            }
+
             foreach (var file in Directory.GetFiles(ImgDir, "*.IL"))
             {
                 try

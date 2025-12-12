@@ -689,6 +689,18 @@ namespace EasyCon2.Forms
             buttonKeyMapping.UseVisualStyleBackColor = true;
             buttonKeyMapping.Click += buttonKeyMapping_Click;
             // 
+            // openFileDialog1
+            // 
+            openFileDialog1.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+            openFileDialog1.RestoreDirectory = true;
+            openFileDialog1.Title = "打开";
+            // 
+            // saveFileDialog1
+            // 
+            saveFileDialog1.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+            saveFileDialog1.RestoreDirectory = true;
+            saveFileDialog1.Title = "另存为";
+            // 
             // groupBox4
             // 
             groupBox4.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;

@@ -108,8 +108,8 @@ public sealed record Token(SourceText text, TokenType type, string value, int li
     public SourceText Text { get; } = text;
     public SourceSpan Span => new(start, value.Length, line);
 
-    public readonly ImmutableArray<Token> LeadingTrivia = [];
-    public readonly ImmutableArray<Token> TrailingTrivia = [];
+    public ImmutableArray<Token> LeadingTrivia { get; init; } = [];
+    public ImmutableArray<Token> TrailingTrivia { get; init; } = [];
 
     public override string ToString()
     {

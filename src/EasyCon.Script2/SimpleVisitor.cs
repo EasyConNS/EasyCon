@@ -10,24 +10,11 @@ public sealed class SimpleVisitor : AstVisitor
     {
         foreach(var ast in program.Statements)
         {
-            if(ast.LeadingTrivia.Count > 0)
-            {
-                foreach(var trivia in ast.LeadingTrivia)
-                {
-                    trivia.Accept(this);
-                }
-            }
             ast.Accept(this);
         }
         return program; 
     }
 
-    public override ASTNode VisitTrivia(TriviaNode ast)
-    {
-        Console.WriteLine(ast.Text);
-        return ast;
-    }
-    
     public override ASTNode VisitLiteral(LiteralExpression ast)
     {
          Console.Write($"{ast.Value}");
@@ -137,8 +124,8 @@ public sealed class SimpleVisitor : AstVisitor
         indent += "  "; // Increase indentation for nested blocks
         if(ast.IsInfinite){
             Console.WriteLine("For:");
-        }else if(ast.LoopCount != null){
-            Console.WriteLine($"For: {ast.LoopCount}");
+        }else if(ast.StartValue==null && ast.EndValue != null){
+            Console.WriteLine($"For: {ast.EndValue}");
         }else{
             Console.WriteLine($"For: {ast.LoopVariable} = {ast.StartValue} To {ast.EndValue}");
         }

@@ -157,7 +157,7 @@ class Push : UnaryOp
 
     public override void Exec(Processor processor)
     {
-        processor.Stack.Push((short)processor.Register[RegDst]);
+        processor.Push((short)processor.Register[RegDst]);
     }
 }
 
@@ -173,9 +173,7 @@ class Pop : UnaryOp
 
     public override void Exec(Processor processor)
     {
-        if (processor.Stack.Count <= 0)
-            throw new ScriptException("栈为空，无法出栈", Address);
-        processor.Register[RegDst] = processor.Stack.Pop();
+        processor.Register[RegDst] = processor.Pop();
     }
 }
 

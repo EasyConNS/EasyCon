@@ -34,7 +34,6 @@ namespace EasyScript.Statements
     class CallStat : Statement
     {
         public readonly string Label;
-        public FunctionStmt Func = null;
 
         public CallStat(string lbl)
         {
@@ -81,7 +80,6 @@ namespace EasyScript.Statements
 
     class ReturnStat : Statement
     {
-        public string Label;
         protected override string _GetString()
         {
             return "RETURN";
@@ -94,7 +92,7 @@ namespace EasyScript.Statements
 
         public override void Assemble(Assembly.Assembler assembler)
         {
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            assembler.Add(Assembly.Instructions.AsmReturn.Create(0));
         }
     }
 }

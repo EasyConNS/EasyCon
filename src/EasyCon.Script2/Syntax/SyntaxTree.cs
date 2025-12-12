@@ -56,20 +56,14 @@ public sealed class SyntaxTree
         return ParseTokens(sourceText);
     }
 
-    public static ImmutableArray<Token> ParseTokens(string text, out ImmutableArray<Diagnostic> diagnostics)
-    {
-        var sourceText = SourceText.From(text);
-        return ParseTokens(sourceText, out diagnostics);
-    }
-
     public static ImmutableArray<Token> ParseTokens(SourceText text)
     {
         return ParseTokens(text, out _);
     }
 
-    public static ImmutableArray<Token> ParseTokens(SourceText text, out ImmutableArray<Diagnostic> diagnostics)
+    private static ImmutableArray<Token> ParseTokens(SourceText text, out ImmutableArray<Diagnostic> diagnostics)
     {
-        var tokens = new List<Token>();
+        var tokens = new ImmutableArray<Token>();
 
         void ParseTokens(SyntaxTree st, out MainProgram root, out ImmutableArray<Diagnostic> d)
         {
@@ -81,6 +75,6 @@ public sealed class SyntaxTree
 
         var syntaxTree = new SyntaxTree(text, ParseTokens);
         diagnostics = syntaxTree.Diagnostics.ToImmutableArray();
-        return tokens.ToImmutableArray();
+        return tokens;
     }
 }
