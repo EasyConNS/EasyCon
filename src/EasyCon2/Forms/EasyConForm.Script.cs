@@ -12,15 +12,8 @@ partial class EasyConForm
     private bool scriptRunning = false;
     private Thread thd;
 
-    private bool ScriptCompile()
+    private async Task<bool> ScriptCompile()
     {
-        //StatusShowLog("开始编译");
-        //await Task.Run(() =>
-        //{
-        //    Thread.Sleep(2000);
-        //    StatusShowLog("编译成功");
-        //});
-        //MessageBox.Show("OK");
         StatusShowLog("开始编译...");
         scriptCompiling = true;
         try
@@ -50,9 +43,9 @@ partial class EasyConForm
         }
     }
 
-    private void ScriptRun()
+    private async void ScriptRun()
     {
-        if (!ScriptCompile())
+        if (! await ScriptCompile())
             return;
         if (_program.HasKeyAction)
         {

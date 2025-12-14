@@ -6,8 +6,6 @@ namespace EasyScript.Parsing;
 
 internal partial class Parser
 {
-
-    #region 解析函数
     private static bool IsValidVariable(string variable)
     {
         return !string.IsNullOrEmpty(variable) && Regex.Match(variable, $"^{Formats.ValueEx}$", RegexOptions.IgnoreCase).Success;
@@ -20,8 +18,10 @@ internal partial class Parser
             return null;
         if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN && (lexer[2].Type == TokenType.INT || lexer[2].Type == TokenType.CONST))
         {
-            _formatter.TryDeclConstant(lexer[0].Value, lexer[2].Value);
-            return new Empty($"{lexer[0].Value} = {lexer[2].Value}");
+            if (_formatter.TryDeclConstant(lexer[0].Value, lexer[2].Value))
+                return new Empty($"{lexer[0].Value} = {lexer[2].Value}");
+            else
+                throw new ParseException($"重复定义的常量：{lexer[0].Value}");
         }
         return null;
     }
@@ -60,12 +60,12 @@ internal partial class Parser
 
                     if (IsValidVariable(var1) && IsValidVariable(var2))
                     {
-                        return new Statements.Express(des, _formatter.GetValueEx(var1), op, _formatter.GetValueEx(var2));
+                        return new ExpressionStmt(des, _formatter.GetValueEx(var1), op, _formatter.GetValueEx(var2));
                     }
                 }
                 else if (IsValidVariable(exprStr))
                 {
-                    return new Statements.Express(des, _formatter.GetValueEx(vR.Groups[1].Value), null, null);
+                    return new ExpressionStmt(des, _formatter.GetValueEx(vR.Groups[1].Value), null, null);
                 }
             }
         }
@@ -89,7 +89,7 @@ internal partial class Parser
         {
             var m = Regex.Match(text, $@"^if\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
-                return new If(op, _formatter.GetVar(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value));
+                return new IfStmt(op, _formatter.GetVar(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value));
             // else if
             m = Regex.Match(text, $@"^elif\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
@@ -129,11 +129,7 @@ internal partial class Parser
                 }
                 break;
             case TokenType.CONTINUE:
-                if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT)
-                {
-                    return new Continue(_formatter.GetInstant(tokens[1].Value, true));
-                }
-                else if (tokens[1].Type == TokenType.NEWLINE)
+                if (tokens[1].Type == TokenType.NEWLINE)
                 {
                     return new Continue();
                 }
@@ -215,7 +211,7 @@ internal partial class Parser
                 }
                 else if (tokens[1].Type == TokenType.NEWLINE)
                 {
-                    if (first.Value.ToLower() == "print")
+                    if (first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
                         return new Print([], false);
                     else
                         return new Alert([]);
@@ -294,6 +290,4 @@ internal partial class Parser
 #endif
         return null;
     }
-
-    #endregion
 }

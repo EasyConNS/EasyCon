@@ -4,7 +4,6 @@ using EasyCon2.Global;
 using EasyCon2.Properties;
 using EasyScript;
 using EasyScript.Assembly;
-using EasyScript.Parsing;
 using EasyDevice;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Highlighting;
@@ -536,9 +535,9 @@ namespace EasyCon2.Forms
             }
         }
 
-        private void 编译ToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void 编译ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (ScriptCompile())
+            if (await ScriptCompile())
             {
                 StatusShowLog("编译成功");
                 SystemSounds.Beep.Play();
@@ -623,7 +622,7 @@ namespace EasyCon2.Forms
             GenerateFirmware();
         }
 
-        private void buttonFlash_Click(object sender, EventArgs e)
+        private async void buttonFlash_Click(object sender, EventArgs e)
         {
             if (!SerialCheckConnect())
             {
@@ -635,7 +634,7 @@ namespace EasyCon2.Forms
                 return;
             }
 
-            if (!ScriptCompile())
+            if (!await ScriptCompile())
             {
                 return;
             }

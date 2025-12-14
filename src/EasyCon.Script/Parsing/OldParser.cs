@@ -159,7 +159,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                     st.Address = address;
                     list.Add(st);
 
-                    if (st is For || (st is If && st is not ElseIf) || st is FunctionStmt)
+                    if (st is ForStmt || (st is IfStmt && st is not ElseIf) || st is FunctionStmt)
                     {
                         _blocks.Push(st);
                         if (st is FunctionStmt fst)
@@ -175,7 +175,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                     if (st is LoopControl loopstat)
                     {
                         var forcount = (from forstate in _blocks
-                                        where forstate is Statements.For
+                                        where forstate is Statements.ForStmt
                                         select forstate).Count();
                         if (loopstat.Level.Val > forcount)
                             throw new ParseException("循环层数不足", address);
@@ -185,7 +185,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                         if (_blocks.Count == 0)
                             throw new ParseException("多余的语句", address);
                         var last = _blocks.Peek();
-                        if (last is For lastfor)
+                        if (last is ForStmt lastfor)
                         {
                             _blocks.Pop();
                             nextstat.For = lastfor;
@@ -202,7 +202,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                         if (_blocks.Count == 0)
                             throw new ParseException("多余的语句", address);
                         var last = _blocks.Peek();
-                        if (last is Statements.If lastif)
+                        if (last is Statements.IfStmt lastif)
                         {
                             if (lastif.Else != null)
                             {
@@ -224,7 +224,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                         if (_blocks.Count == 0)
                             throw new ParseException("多余的语句", address);
                         var last = _blocks.Peek();
-                        if (last is Statements.If lastif)
+                        if (last is Statements.IfStmt lastif)
                         {
                             if (lastif.Else != null)
                             {
@@ -243,7 +243,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                         if (_blocks.Count == 0)
                             throw new ParseException("多余的语句", address);
                         var last = _blocks.Peek();
-                        if (last is Statements.If lastif)
+                        if (last is Statements.IfStmt lastif)
                         {
                             _blocks.Pop();
                             lastif.EndIf = endifst;

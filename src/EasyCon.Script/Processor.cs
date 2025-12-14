@@ -70,9 +70,9 @@ class LiteScope(LiteScope? parent = null)
 
     private readonly RegisterFile Register = new();
 
-    public Stack<For> LoopStack = new();
-    public Dictionary<For, int> LoopTime = new();
-    public Dictionary<For, int> LoopCount = new();
+    public Stack<ForStmt> LoopStack = new();
+    public Dictionary<ForStmt, int> LoopTime = new();
+    public Dictionary<ForStmt, int> LoopCount = new();
 }
 
 class RegisterFile

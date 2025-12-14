@@ -8,9 +8,9 @@ namespace EasyCon2.Forms;
 partial class EasyConForm
 {
 
-    private bool GenerateFirmware()
+    private async Task<bool> GenerateFirmware()
     {
-        if (!ScriptCompile())
+        if (!await ScriptCompile())
             return false;
         try
         {

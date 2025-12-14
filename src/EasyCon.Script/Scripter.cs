@@ -17,7 +17,7 @@ public class Scripter
     public bool HasKeyAction {
         get
         {
-            return _statements.Select(s => s).OfType<KeyAction>().Any();
+            return _statements.OfType<KeyAction>().Any();
         }
     }
 
@@ -58,14 +58,6 @@ public class Scripter
 
     public byte[] Assemble(bool auto = true)
     {
-        // pair Call
-        // _statements.OfType<CallStat>().ToList().ForEach(cst =>
-        // {
-        //     if (_funcTables.TryGetValue(cst.Label, out FunctionStmt? value))
-        //         cst.Func = @value;
-        //     else
-        //         throw new ParseException("找不到调用的函数", cst.Address);
-        // });
         return new Assembly.Assembler().Assemble(_statements, auto);
     }
 

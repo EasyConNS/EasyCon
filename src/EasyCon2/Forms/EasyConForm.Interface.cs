@@ -7,8 +7,6 @@ namespace EasyCon2.Forms;
 
 partial class EasyConForm
 {
-
-    #region 脚本功能接口
     private bool _msgNewLine = true;
     private bool _msgFirstLine = true;
     private void Print(string message, Color? color, bool timestamp = true)
@@ -39,44 +37,36 @@ partial class EasyConForm
 
     public void Alert(string message)
     {
-        bool canPush = true;
-        try
+        Task.Run(() =>
         {
-            if (_config.AlertToken == "")
+            bool canPush = false;
+            try
             {
-                canPush = false;
-                //Print("pushplus推送Token为空");
-            }
-            else
-            {
-                var address = $"https://www.pushplus.plus/send/{_config.AlertToken}?content={message}&title=伊机控消息";
-                using var client = new HttpClient();
-                var result = client.GetAsync(address).Result.Content.ReadAsStringAsync().Result;
-                Print(result);
-                canPush = true;
-            }
+                if (_config.AlertToken != "")
+                {
+                    var address = $"https://www.pushplus.plus/send/{_config.AlertToken}?content={message}&title=伊机控消息";
+                    using var client = new HttpClient();
+                    var result = client.GetAsync(address).Result.Content.ReadAsStringAsync().Result;
+                    Print(result);
+                    canPush = true;
+                }
 
-            if (_config.ChannelToken == "")
-            {
-                canPush = false;
+                if (_config.ChannelToken != "")
+                {
+                    Notification notification = new(_config.ChannelToken, message);
+                    ws?.SendMsg(notification);
+                    canPush = true;
+                }
             }
-            else
+            catch (Exception e)
             {
-                Notification notification = new Notification(_config.ChannelToken, message);
-                ws.SendMsg(notification);
-                canPush = true;
+                Print($"推送失败:{e.Message}");
             }
-        }
-        catch (Exception e)
-        {
-            Print($"推送失败:{e.Message}");
-        }
-
-
-        if (canPush == false)
-        {
-            Print("推送Token为空");
-        }
+            if (!canPush)
+            {
+                Print("推送失败: 请配置推送Token");
+            }
+        });
     }
 
     void ICGamePad.ClickButtons(ECKey key, int duration)
@@ -96,8 +86,6 @@ partial class EasyConForm
 
     void ICGamePad.ChangeAmiibo(uint index)
     {
-        //Print($"切换Amiibo序号:{index}");
         NS.ChangeAmiiboIndex((byte)(index & 0x0F));
     }
-    #endregion
 }

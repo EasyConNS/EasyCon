@@ -54,7 +54,7 @@ internal static class BoundNodePrinter
 
         writer.Write(node.GetString());
 
-        if (node is For || node is FunctionStmt || node is If || node is ElseIf || node is Else)
+        if (node is ForStmt || node is FunctionStmt || node is IfStmt || node is ElseIf || node is Else)
         {
             writer.Indent++;
         }
