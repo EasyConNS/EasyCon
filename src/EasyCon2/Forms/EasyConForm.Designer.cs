@@ -38,6 +38,9 @@ namespace EasyCon2.Forms
             关闭ToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator1 = new ToolStripSeparator();
             退出ToolStripMenuItem = new ToolStripMenuItem();
+            編輯ToolStripMenuItem = new ToolStripMenuItem();
+            查找替換ToolStripMenuItem = new ToolStripMenuItem();
+            查找下一个ToolStripMenuItem = new ToolStripMenuItem();
             脚本ToolStripMenuItem = new ToolStripMenuItem();
             编译ToolStripMenuItem = new ToolStripMenuItem();
             执行ToolStripMenuItem = new ToolStripMenuItem();
@@ -86,6 +89,7 @@ namespace EasyCon2.Forms
             comboBoxBoardType = new ComboBox();
             buttonShowController = new Button();
             groupBoxScript = new GroupBox();
+            findPanel1 = new FindPanel();
             elementHost1 = new System.Windows.Forms.Integration.ElementHost();
             groupBox3 = new GroupBox();
             ComPort = new ComboBox();
@@ -114,7 +118,7 @@ namespace EasyCon2.Forms
             // 
             menuStrip1.Font = new Font("微软雅黑", 9F);
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 脚本ToolStripMenuItem, 搜图ToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 画图ToolStripMenuItem, 帮助ToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 編輯ToolStripMenuItem, 脚本ToolStripMenuItem, 搜图ToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 画图ToolStripMenuItem, 帮助ToolStripMenuItem });
             menuStrip1.Location = new Point(1, 1);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Padding = new Padding(7, 2, 0, 2);
@@ -183,6 +187,29 @@ namespace EasyCon2.Forms
             退出ToolStripMenuItem.Size = new Size(236, 26);
             退出ToolStripMenuItem.Text = "退出";
             退出ToolStripMenuItem.Click += 退出ToolStripMenuItem_Click;
+            // 
+            // 編輯ToolStripMenuItem
+            // 
+            編輯ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 查找替換ToolStripMenuItem, 查找下一个ToolStripMenuItem });
+            編輯ToolStripMenuItem.Name = "編輯ToolStripMenuItem";
+            編輯ToolStripMenuItem.Size = new Size(53, 24);
+            編輯ToolStripMenuItem.Text = "編輯";
+            // 
+            // 查找替換ToolStripMenuItem
+            // 
+            查找替換ToolStripMenuItem.Name = "查找替換ToolStripMenuItem";
+            查找替換ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.F;
+            查找替換ToolStripMenuItem.Size = new Size(206, 26);
+            查找替換ToolStripMenuItem.Text = "查找替換";
+            查找替換ToolStripMenuItem.Click += 查找替換ToolStripMenuItem_Click;
+            // 
+            // 查找下一个ToolStripMenuItem
+            // 
+            查找下一个ToolStripMenuItem.Name = "查找下一个ToolStripMenuItem";
+            查找下一个ToolStripMenuItem.ShortcutKeys = Keys.F3;
+            查找下一个ToolStripMenuItem.Size = new Size(206, 26);
+            查找下一个ToolStripMenuItem.Text = "查找下一个";
+            查找下一个ToolStripMenuItem.Click += 查找下一个ToolStripMenuItem_Click;
             // 
             // 脚本ToolStripMenuItem
             // 
@@ -594,6 +621,7 @@ namespace EasyCon2.Forms
             // groupBoxScript
             // 
             groupBoxScript.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            groupBoxScript.Controls.Add(findPanel1);
             groupBoxScript.Controls.Add(elementHost1);
             groupBoxScript.Location = new Point(327, 30);
             groupBoxScript.Margin = new Padding(3, 4, 3, 4);
@@ -603,6 +631,17 @@ namespace EasyCon2.Forms
             groupBoxScript.TabIndex = 2;
             groupBoxScript.TabStop = false;
             groupBoxScript.Text = "未命名脚本";
+            // 
+            // findPanel1
+            // 
+            findPanel1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            findPanel1.BorderStyle = BorderStyle.FixedSingle;
+            findPanel1.Location = new Point(245, 14);
+            findPanel1.Name = "findPanel1";
+            findPanel1.Size = new Size(211, 114);
+            findPanel1.TabIndex = 1;
+            findPanel1.Target = null;
+            findPanel1.Visible = false;
             // 
             // elementHost1
             // 
@@ -855,6 +894,10 @@ namespace EasyCon2.Forms
         private ToolStripMenuItem 烧录模式ToolStripMenuItem;
         private ToolStripMenuItem 烧录自动运行ToolStripMenuItem;
         private ToolStripMenuItem 检查更新ToolStripMenuItem;
+        private ToolStripMenuItem 編輯ToolStripMenuItem;
+        private ToolStripMenuItem 查找替換ToolStripMenuItem;
+        private ToolStripMenuItem 查找下一个ToolStripMenuItem;
+        private FindPanel findPanel1;
     }
 }
 

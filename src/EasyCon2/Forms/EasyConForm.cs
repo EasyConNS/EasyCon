@@ -70,6 +70,15 @@ namespace EasyCon2.Forms
 #endif
         }
 
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if(keyData == Keys.Escape)
+            {
+                findPanel1.Hide();
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
         protected override void WndProc(ref Message m)
         {
             switch (m.Msg)
@@ -446,7 +455,7 @@ namespace EasyCon2.Forms
 
             EnableConnBtn();
         }
-
+        #region 文件操作
         private bool FileOpen(string path = "")
         {
             Directory.CreateDirectory(ScriptPath);
@@ -469,7 +478,7 @@ namespace EasyCon2.Forms
                 _currentFile = path;
             }
 
-                textBoxScript.Text = File.ReadAllText(_currentFile);
+            textBoxScript.Text = File.ReadAllText(_currentFile);
             _fileEdited = false;
             return true;
         }
@@ -497,6 +506,11 @@ namespace EasyCon2.Forms
             return true;
         }
 
+        private void FindWord(string word)
+        {
+            textBoxScript.SelectedText = word;
+        }
+
         private bool FileClose()
         {
             if (_fileEdited)
@@ -516,7 +530,7 @@ namespace EasyCon2.Forms
             StatusShowLog("文件已关闭");
             return true;
         }
-
+        #endregion
         private void ShowControllerHelp()
         {
             MessageBox.Show("鼠标左键：启用/禁用\n鼠标右键：拖动移动位置，右键点击重置初始位置\n鼠标中键：禁用并隐藏\n\n（注意：在有脚本远程运行的情况下无法使用）", "关于虚拟手柄");
@@ -791,6 +805,20 @@ namespace EasyCon2.Forms
         private void 退出ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Close();
+        }
+
+        private void 查找替換ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if(textBoxScript.SelectedText.Length > 0)
+                findPanel1.Target = textBoxScript.SelectedText;
+            findPanel1.Show();
+        }
+
+        private void 查找下一个ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            findPanel1.Target = textBoxScript.SelectedText;
+            var findText = textBoxScript.SelectedText;
+            var index = textBoxScript.Text.IndexOf(findText);
         }
 
         private void DeviceTypeItem_Click(object sender, EventArgs e)

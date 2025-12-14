@@ -13,8 +13,8 @@
     <Project Path="src/EasyCon.Device/EasyCon.Device.csproj" />
     <Project Path="src/EasyCon.Script/EasyCon.Script.csproj" />
     <Project Path="src/EasyCon.Script2/EasyCon.Script2.csproj" />
-    <Project Path="src/EasyCon.VPad/EasyCon.VPad.csproj" />
   </Folder>
 
   <Project Path="src/EasyCon2/EasyCon2.csproj" />
+  <Project Path="src/EasyCon.VPad/EasyCon.VPad.csproj" />
 </Solution>

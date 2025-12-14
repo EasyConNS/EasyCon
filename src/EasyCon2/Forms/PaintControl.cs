@@ -1,19 +1,18 @@
-﻿namespace EasyCon2.Forms
+namespace EasyCon2.Forms;
+
+public class PaintControl : Control
 {
-    public class PaintControl : Control
+    public PaintEventHandler PaintEventHandler;
+
+    public PaintControl()
     {
-        public PaintEventHandler PaintEventHandler;
+        SetStyle(ControlStyles.UserPaint, true);
+        SetStyle(ControlStyles.AllPaintingInWmPaint, true); // 禁止擦除背景.
+        SetStyle(ControlStyles.DoubleBuffer, true); // 双缓冲
+    }
 
-        public PaintControl()
-        {
-            SetStyle(ControlStyles.UserPaint, true);
-            SetStyle(ControlStyles.AllPaintingInWmPaint, true); // 禁止擦除背景.
-            SetStyle(ControlStyles.DoubleBuffer, true); // 双缓冲
-        }
-
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            PaintEventHandler?.Invoke(null, e);
-        }
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        PaintEventHandler?.Invoke(null, e);
     }
 }

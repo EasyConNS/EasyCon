@@ -108,7 +108,6 @@ namespace EasyCon2.Forms
         {
             CaptureVideoHelp.Text = Resources.capturedoc;
             Directory.CreateDirectory(CapDir);
-            Directory.CreateDirectory(ImgDir);
 
             foreach (var method in ImgLabelExt.GetAllSearchMethod())
             {
@@ -139,6 +138,7 @@ namespace EasyCon2.Forms
 
         public void LoadImgLabels()
         {
+            Directory.CreateDirectory(ImgDir);
             Debug.WriteLine("load labels");
 
             imgLabels.Clear();
