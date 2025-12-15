@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Input;
@@ -23,7 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Items = new ObservableCollection<string>(GetItems());
     }
 
-    private List<string> GetItems()
+    private ImmutableArray<string> GetItems()
     {
         return ECCore.GetCaptureSources();
     }
