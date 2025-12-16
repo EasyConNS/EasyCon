@@ -129,7 +129,6 @@ internal sealed class Parser
         // 消耗语句后的换行符
         Match(TokenType.NEWLINE, "语句没有正确结束换行");
 
-
         // var trailingTrivia = new List<TriviaNode>(_trailtrivias);
         // _trailtrivias.Clear();
         
@@ -202,7 +201,7 @@ internal sealed class Parser
 
             Token assignmentOp;
             if (Checks(TokenType.ASSIGN, TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN,
-                     TokenType.MUL_ASSIGN, TokenType.DIV_ASSIGN, TokenType.SlashIAssign,
+                     TokenType.MUL_ASSIGN, TokenType.DIV_ASSIGN, TokenType.SlashI_ASSIGN,
                      TokenType.MOD_ASSIGN, TokenType.XOR_ASSIGN, TokenType.BitAnd_ASSIGN, TokenType.BitOr_ASSIGN,
                      TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN))
             {
@@ -266,7 +265,7 @@ internal sealed class Parser
             Match(TokenType.NEWLINE, "if条件语法不正确");
 
             var elifBranch = ParseStatementsUntil(TokenType.ELIF, TokenType.ELSE, TokenType.ENDIF);
-            elseif.Add(new(elifToken, elifCond, elifBranch.ToImmutableArray()));
+            elseif.Add(new(new IfCondition(elifToken, elifCond), elifBranch.ToImmutableArray()));
         }
 
         // else
@@ -276,12 +275,12 @@ internal sealed class Parser
             var elseToken = Advance();
             Match(TokenType.NEWLINE, "if条件语法不正确");
             var elseBranch = ParseStatementsUntil(TokenType.ENDIF);
-            elseClause = new(elseToken, elseBranch.ToImmutableArray());
+            elseClause = new(new ElseStatement(elseToken), elseBranch.ToImmutableArray());
         }
 
-        Match(TokenType.ENDIF, "if语句需要endif结尾");
+        var endif = Match(TokenType.ENDIF, "if语句需要endif结尾");
 
-        return new IfStatement(ifToken, condition, thenBranch.ToImmutableArray(), elseif.ToImmutableArray(), elseClause);
+        return new IfStatement(new IfCondition(ifToken, condition), thenBranch.ToImmutableArray(), elseif.ToImmutableArray(), elseClause, new EndifStatement(endif));
     }
 
     private ForStatement ParseForStatement()
@@ -299,8 +298,7 @@ internal sealed class Parser
             // 形式1: 无限循环
             infinite = true;
         }
-
-        if (Check(TokenType.VAR) && Peek(1)?.Type == TokenType.ASSIGN)
+        else if (Check(TokenType.VAR) && Peek(1)?.Type == TokenType.ASSIGN)
         {
             // 形式2: 范围循环 for $i = 1 to 10
             var loopVar = Match(TokenType.VAR, "需要初始变量");
@@ -327,9 +325,9 @@ internal sealed class Parser
         Match(TokenType.NEWLINE, "for语法不正确");
 
         var body = ParseStatementsUntil(TokenType.NEXT);
-        Match(TokenType.NEXT, "for语句需要next结尾");
+        var nextTok = Match(TokenType.NEXT, "for语句需要next结尾");
 
-        return new ForStatement(forToken, initVar, start, end, infinite, body.ToImmutableArray());
+        return new ForStatement(new ForExpr(forToken, initVar, start, end, infinite), body.ToImmutableArray(), new NextStatement(nextTok));
     }
 
     private List<Statement> ParseStatementsUntil(params TokenType[] endToken)
@@ -391,9 +389,9 @@ internal sealed class Parser
 
         var body = ParseStatementsUntil(TokenType.ENDFUNC);
 
-        Match(TokenType.ENDFUNC, "需要endfunc结尾");
+        var endFunc = Match(TokenType.ENDFUNC, "需要endfunc结尾");
 
-        return new FunctionDefinitionStatement(functionToken, functionName, [], body.ToImmutableArray());
+        return new FunctionDefinitionStatement(new FuncDeclare(functionToken, functionName), [], body.ToImmutableArray(), new EndFuncStatement(endFunc));
     }
 
     private ReturnStatement ParseReturnStatement()
@@ -619,6 +617,6 @@ internal sealed class Parser
 
         var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));
         _diagnostics.ReportInvalidExpressionStatement(location, Current.Type);
-        throw new Exception($"无效的表达式语句 行{Current.Line}");
+        throw new Exception($"无效的表达式语句 {Current.Type} 行{Current.Line}");
     }
 }

@@ -1,5 +1,4 @@
 using EasyCon.Script2.Text;
-using System.Collections.Immutable;
 
 namespace EasyCon.Script2.Syntax;
 
@@ -38,7 +37,7 @@ public enum TokenType
     SUB_ASSIGN, // -=
     MUL_ASSIGN, // *=
     DIV_ASSIGN, // /=
-    SlashIAssign, // \=
+    SlashI_ASSIGN, // \=
     MOD_ASSIGN, // %=
     BitAnd_ASSIGN, // &=
     BitOr_ASSIGN, // |=
@@ -107,9 +106,6 @@ public sealed record Token(SourceText text, TokenType type, string value, int li
 
     public SourceText Text { get; } = text;
     public SourceSpan Span => new(start, value.Length, line);
-
-    public ImmutableArray<Token> LeadingTrivia { get; init; } = [];
-    public ImmutableArray<Token> TrailingTrivia { get; init; } = [];
 
     public override string ToString()
     {

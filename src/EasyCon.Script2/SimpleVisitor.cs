@@ -77,12 +77,12 @@ public sealed class SimpleVisitor : AstVisitor
         indent += "  "; // Increase indentation for nested blocks
 
         Console.Write("If");
-        if(ast.Condition is ConditionExpression cmp)
-            cmp.Accept(this);
-        else
-        {
-            throw new Exception("not support");
-        }
+        //if(ast.Condition is ConditionExpression cmp)
+        //    cmp.Accept(this);
+        //else
+        //{
+            //throw new Exception("not support");
+        //}
         foreach (var statement in ast.ThenBranch)
         {
             statement.Accept(this);
@@ -122,13 +122,13 @@ public sealed class SimpleVisitor : AstVisitor
     public override ASTNode VisitForStat(ForStatement ast)
     {
         indent += "  "; // Increase indentation for nested blocks
-        if(ast.IsInfinite){
-            Console.WriteLine("For:");
-        }else if(ast.StartValue==null && ast.EndValue != null){
-            Console.WriteLine($"For: {ast.EndValue}");
-        }else{
-            Console.WriteLine($"For: {ast.LoopVariable} = {ast.StartValue} To {ast.EndValue}");
-        }
+        //if(ast.IsInfinite){
+        //    Console.WriteLine("For:");
+        //}else if(ast.StartValue==null && ast.EndValue != null){
+        //    Console.WriteLine($"For: {ast.EndValue}");
+        //}else{
+        //    Console.WriteLine($"For: {ast.LoopVariable} = {ast.StartValue} To {ast.EndValue}");
+        //}
 
         foreach(var statement in ast.Body)
         {
@@ -154,7 +154,7 @@ public sealed class SimpleVisitor : AstVisitor
 
     public override ASTNode VisitFunctionDefinition(FunctionDefinitionStatement ast)
     {
-        Console.WriteLine($"Def Func: {ast.FunctionIdent.Value}");
+        Console.WriteLine($"Def Func: {ast.FuncDecl.NameIdent.Value}");
         foreach(var statement in ast.Body)
         {
             statement.Accept(this);

@@ -1,6 +1,6 @@
 using EasyCapture;
 using EasyCon2.Assist;
-using EasyCon2.Global;
+using EasyCon2.Helper;
 using EasyCon2.Properties;
 using EasyScript;
 using EasyScript.Assembly;
@@ -17,6 +17,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
+using EasyCon2.Config;
 
 namespace EasyCon2.Forms
 {
@@ -108,6 +109,8 @@ namespace EasyCon2.Forms
             textBoxScript.TextChanged += new EventHandler(this.textBoxScript_TextChanged);
 
             elementHost1.Child = textBoxScript;
+
+            findPanel1.InitEditor(textBoxScript);
         }
 
         private void EasyConForm_Load(object sender, EventArgs e)
@@ -816,9 +819,18 @@ namespace EasyCon2.Forms
 
         private void 查找下一个ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            findPanel1.Target = textBoxScript.SelectedText;
-            var findText = textBoxScript.SelectedText;
-            var index = textBoxScript.Text.IndexOf(findText);
+            if (textBoxScript.SelectedText.Length > 0)
+                findPanel1.Target = textBoxScript.SelectedText;
+            var index = findPanel1.Find();
+
+            if (index == -1)
+            {
+                MessageBox.Show("到底了");
+                return;
+            }
+
+            textBoxScript.Select(index, findPanel1.Target.Length);
+            textBoxScript.ScrollToLine(textBoxScript.Document.GetLineByOffset(index).LineNumber);
         }
 
         private void DeviceTypeItem_Click(object sender, EventArgs e)

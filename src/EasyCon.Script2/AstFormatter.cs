@@ -154,28 +154,28 @@ public class AstFormatter : AstVisitor
         WriteLeadingTrivia(forStatement);
         _writer.Write("FOR ");
         
-        if (forStatement.IsInfinite)
-        {
-            // Infinite loop
-        }
-        else if (forStatement.StartValue == null && forStatement.EndValue != null)
-        {
-            // Counted loop
-            forStatement.EndValue.Accept(this);
-        }
-        else
-        {
-            // Range loop
-            _writer.Write($"{forStatement.LoopVariable.Name} = ");
-            forStatement.StartValue.Accept(this);
-            _writer.Write(" TO ");
-            forStatement.EndValue.Accept(this);
+        //if (forStatement.IsInfinite)
+        //{
+        //    // Infinite loop
+        //}
+        //else if (forStatement.StartValue == null && forStatement.EndValue != null)
+        //{
+        //    // Counted loop
+        //    forStatement.EndValue.Accept(this);
+        //}
+        //else
+        //{
+        //    // Range loop
+        //    _writer.Write($"{forStatement.LoopVariable.Name} = ");
+        //    forStatement.StartValue.Accept(this);
+        //    _writer.Write(" TO ");
+        //    forStatement.EndValue.Accept(this);
             
-            if (forStatement.StepValue != 1)
-            {
-                _writer.Write($" STEP {forStatement.StepValue}");
-            }
-        }
+        //    if (forStatement.StepValue != 1)
+        //    {
+        //        _writer.Write($" STEP {forStatement.StepValue}");
+        //    }
+        //}
         
         _writer.WriteLine();
         
@@ -220,7 +220,7 @@ public class AstFormatter : AstVisitor
     public override ASTNode VisitFunctionDefinition(FunctionDefinitionStatement functionDef)
     {
         WriteLeadingTrivia(functionDef);
-        _writer.Write($"FUNC {functionDef.FunctionIdent.Value}()");
+        _writer.Write($"FUNC {functionDef.FuncDecl.NameIdent.Value}()");
         _writer.WriteLine();
         
         _writer.Indent++;

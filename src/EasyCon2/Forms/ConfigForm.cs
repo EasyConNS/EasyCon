@@ -1,4 +1,4 @@
-﻿using EasyCon2.Global;
+using EasyCon2.Config;
 
 namespace EasyCon2.Forms
 {

@@ -17,8 +17,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private int _column = 1;
     private readonly List<Token> _tokens = [];
 
-    private ImmutableArray<Token>.Builder _triviaBuilder = ImmutableArray.CreateBuilder<Token>();
-
     public DiagnosticBag Diagnostics => _diagnostics;
 
     private static string Compat(ImmutableArray<TextLine> lines)
@@ -131,39 +129,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         }
 
         AddToken(TokenType.EOF, "", 0);
-        return TokenizeWithTrivia();
-    }
-
-    public ImmutableArray<Token> TokenizeWithTrivia()
-    {
-        List<Token> _puretokens = [];
-        _triviaBuilder.Clear();
-        foreach (var token in _tokens)
-        {
-            if(token.Type == TokenType.COMMENT)
-            {
-                _triviaBuilder.Add(token);
-            }
-            else if(token.Type == TokenType.NEWLINE && !_puretokens.Any())
-            {
-                _triviaBuilder.Add(token);
-            }
-            else
-            {
-                var newt = token;
-                if(_triviaBuilder.Any())
-                {
-                    newt = new Token(token.Text, token.Type, token.Value, token.Line, token.Span.Start)
-                    {
-                        LeadingTrivia = _triviaBuilder.ToImmutable(),
-                    };
-                    _triviaBuilder.Clear();
-                }
-                _puretokens.Add(newt);
-            }
-                
-        }
-        return _puretokens.ToImmutableArray();
+        return _tokens.ToImmutableArray();
     }
 
     private char Current => Peek();
@@ -448,7 +414,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 if (next == '=')
                 {
                     Advance();
-                    AddToken(TokenType.SlashIAssign, "\\=", start);
+                    AddToken(TokenType.SlashI_ASSIGN, "\\=", start);
                 }
                 else
                 {

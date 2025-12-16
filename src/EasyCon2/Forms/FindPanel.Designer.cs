@@ -33,9 +33,11 @@ namespace EasyCon2.Forms
             searchTBox = new TextBox();
             bindingSource1 = new BindingSource(components);
             replaceTBox = new TextBox();
+            bindingSource2 = new BindingSource(components);
             replaceBtn = new Button();
             closeBtn = new Button();
             ((System.ComponentModel.ISupportInitialize)bindingSource1).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)bindingSource2).BeginInit();
             SuspendLayout();
             // 
             // searchBtn
@@ -63,10 +65,16 @@ namespace EasyCon2.Forms
             // 
             // replaceTBox
             // 
+            replaceTBox.DataBindings.Add(new Binding("Text", bindingSource2, "Replaced", true));
             replaceTBox.Location = new Point(7, 75);
             replaceTBox.Name = "replaceTBox";
             replaceTBox.Size = new Size(153, 27);
             replaceTBox.TabIndex = 2;
+            // 
+            // bindingSource2
+            // 
+            bindingSource2.DataSource = this;
+            bindingSource2.Position = 0;
             // 
             // replaceBtn
             // 
@@ -103,6 +111,7 @@ namespace EasyCon2.Forms
             Name = "FindPanel";
             Size = new Size(245, 106);
             ((System.ComponentModel.ISupportInitialize)bindingSource1).EndInit();
+            ((System.ComponentModel.ISupportInitialize)bindingSource2).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -115,5 +124,6 @@ namespace EasyCon2.Forms
         private Button replaceBtn;
         private Button closeBtn;
         private BindingSource bindingSource1;
+        private BindingSource bindingSource2;
     }
 }

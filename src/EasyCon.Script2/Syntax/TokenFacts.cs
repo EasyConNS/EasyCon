@@ -91,7 +91,7 @@ public static class TokenFacts
                 return "*=";
             case TokenType.DIV_ASSIGN:
                 return "/=";
-            case TokenType.SlashIAssign:
+            case TokenType.SlashI_ASSIGN:
                 return "\\=";
             case TokenType.MOD_ASSIGN:
                 return "%=";
