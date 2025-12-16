@@ -25,6 +25,7 @@ namespace EasyCon2.Forms
     {
         private readonly Version VER = new(1, 53, 0);
         private readonly TextEditor textBoxScript = new();
+        private CodeCompletionController _completionController;
         internal readonly VPadForm virtController;
 
         public Color CurrentLight => Color.White;
@@ -110,7 +111,16 @@ namespace EasyCon2.Forms
 
             elementHost1.Child = textBoxScript;
 
+            var completionProvider = new EcpCompletionProvider();
+            completionProvider.GetImgLabel += getIL;
+            _completionController = new CodeCompletionController(textBoxScript, completionProvider);
+
             findPanel1.InitEditor(textBoxScript);
+        }
+
+        private IEnumerable<string> getIL()
+        {
+            return captureVideo.LoadedLabels.Select(il=>il.name);
         }
 
         private void EasyConForm_Load(object sender, EventArgs e)
