@@ -71,7 +71,7 @@
       <Word>RS</Word>
     </Keywords>
 
-    <!-- Digits -->
+    <!-- Digits
     <Rule foreground="DarkBlue">
       \b0[xX][0-9a-fA-F]+  # hex number
       |    \b
@@ -89,9 +89,8 @@
       \B[\%\&amp;]\w+
     </Rule>
 
-    <!-- Directives -->
     <Rule foreground="Orange">
       \B\*\w+
-    </Rule>
+    </Rule> -->
   </RuleSet>
 </SyntaxDefinition>

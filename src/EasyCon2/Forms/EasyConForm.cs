@@ -1,14 +1,16 @@
 using EasyCapture;
 using EasyCon2.Assist;
+using EasyCon2.Config;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
+using EasyDevice;
 using EasyScript;
 using EasyScript.Assembly;
-using EasyDevice;
+using EasyVPad;
 using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Folding;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
-using EasyVPad;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
@@ -17,7 +19,6 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml;
-using EasyCon2.Config;
 
 namespace EasyCon2.Forms
 {
@@ -100,6 +101,9 @@ namespace EasyCon2.Forms
             base.WndProc(ref m);
         }
 
+        private FoldingManager _foldingManager;
+        private CustomFoldingStrategy _foldingStrategy;
+
         private void InitEditor()
         {
             textBoxScript.ShowLineNumbers = true;
@@ -114,6 +118,10 @@ namespace EasyCon2.Forms
             var completionProvider = new EcpCompletionProvider();
             completionProvider.GetImgLabel += getIL;
             _completionController = new CodeCompletionController(textBoxScript, completionProvider);
+
+            _foldingManager = FoldingManager.Install(textBoxScript.TextArea);
+            _foldingStrategy = new CustomFoldingStrategy();
+            _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
 
             findPanel1.InitEditor(textBoxScript);
         }
@@ -582,6 +590,7 @@ namespace EasyCon2.Forms
 
         private void textBoxScript_TextChanged(object sender, EventArgs e)
         {
+            _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
             if (scriptCompiling)
                 return;
             if (scriptRunning)
