@@ -1,4 +1,4 @@
-﻿using EasyDevice;
+using EasyDevice;
 using System.IO;
 using System.Security.Cryptography;
 
@@ -73,10 +73,7 @@ public class Shadow
         for (int x = 0; x < PX; x++)
             for (int y = 0; y < PY; y++)
                 data[x, y] = image.GetPixel(x * PW, y * PH).Compare(Color.FromArgb(0, 0, 0)) > 0.95 ? 1 : 0;
-        using (var md5 = MD5.Create())
-        {
-            return md5.ComputeHash(DataToBytes(data));
-        }
+        return MD5.HashData(DataToBytes(data));
     }
 
     string BytesToString(byte[] bytes)
@@ -225,7 +222,7 @@ public class Shadow
     {
         if (_dict.ContainsKey(hash))
             return _dict[hash].ToArray();
-        return new Shadow[0];
+        return [];
     }
 
     public static Shadow[] Find(Shadow shadow)
@@ -247,7 +244,7 @@ public class Shadow
         List<Shadow> list = new List<Shadow>();
         foreach (var val in _dict.Values)
             list.AddRange(val);
-        return list.ToArray();
+        return [.. list];
     }
 
     public static KeyValuePair<string, Bitmap>[] GetCapturedShadows()

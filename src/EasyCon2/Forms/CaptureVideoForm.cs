@@ -5,7 +5,6 @@ using EasyCon2.Properties;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.IO;
-using System.Text.Json;
 
 namespace EasyCon2.Forms
 {
@@ -143,19 +142,10 @@ namespace EasyCon2.Forms
 
             imgLabels.Clear();
 
-            foreach (var file in Directory.GetFiles(ImgDir, "*.IL"))
+            foreach (var il in ImgLabelExt.LoadIL(ImgDir))
             {
-                try
-                {
-                    var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(file)) ?? throw new Exception();
-                    temp.name = Path.GetFileNameWithoutExtension(file);
-                    temp.Refresh(() => GetImage());
-                    imgLabels.Add(temp);
-                }
-                catch
-                {
-                    Debug.WriteLine("无法加载标签:", file);
-                }
+                il.Refresh(() => GetImage());
+                imgLabels.Add(il);
             }
         }
 
@@ -176,7 +166,7 @@ namespace EasyCon2.Forms
         {
             imgLableList.BeginUpdate();
             imgLableList.Items.Clear();
-            imgLableList.Items.AddRange(imgLabels.Select(i => i.name).ToArray());
+            imgLableList.Items.AddRange([.. imgLabels.Select(i => i.name)]);
             imgLableList.EndUpdate();
         }
 

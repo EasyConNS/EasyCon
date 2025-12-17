@@ -310,4 +310,11 @@ public partial class ImgLabel : INotifyPropertyChanged
     {
         getNewFrame = getnew;
     }
+
+    public static ImgLabel Load(string path)
+    {
+        var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception();
+        temp.name = Path.GetFileNameWithoutExtension(path);
+        return temp;
+    }
 }

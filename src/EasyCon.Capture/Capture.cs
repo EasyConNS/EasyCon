@@ -1,14 +1,8 @@
 using OpenCvSharp;
-using OpenCvSharp.Dnn;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace EasyCapture;
-
-interface ICapture
-{
-    ImmutableArray<string> GetCaptureCamera();
-}
 
 public sealed class ECCapture
 {

@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.IO;
 
@@ -5,16 +7,36 @@ namespace EasyCon2.Graphic;
 
 internal static class ImgLabelExt
 {
-    public static List<SearchMethod> GetAllSearchMethod()
+    public static IEnumerable<ImgLabel> LoadIL(string dir)
     {
-        var list = new List<SearchMethod>
+        var imgLabels = ImmutableArray.CreateBuilder<ImgLabel>();
+
+        foreach (var file in Directory.GetFiles(dir, "*.IL"))
         {
+            try
+            {
+                var il = ImgLabel.Load(file);
+                //il.Refresh(() => GetImage());
+                imgLabels.Add(il);
+            }
+            catch
+            {
+                Debug.WriteLine("无法加载标签:", file);
+            }
+        }
+        return imgLabels.ToImmutable();
+    }
+
+    public static IEnumerable<SearchMethod> GetAllSearchMethod()
+    {
+        return
+        [
             SearchMethod.SqDiffNormed,
             SearchMethod.CCorrNormed,
             SearchMethod.CCoeffNormed,
-            SearchMethod.EdgeDetectXY
-        };
-        return list;
+            //SearchMethod.EdgeDetectXY,
+            //SearchMethod.EdgeDetectLaplacian,
+        ];
     }
 
     public static string ImageToBase64(this ImgLabel self, Bitmap bmp)

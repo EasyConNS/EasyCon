@@ -1,92 +1,35 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Drawing;
+using System.Text;
 
 namespace EasyCapture;
 
 /// <summary>
-/// 表示图像处理的目标区域
-/// </summary>
-public struct ImageRegion
-{
-    [JsonPropertyName("x")]
-    public int X { get; set; }
-
-    [JsonPropertyName("y")]
-    public int Y { get; set; }
-
-    [JsonPropertyName("width")]
-    public int Width { get; set; }
-
-    [JsonPropertyName("height")]
-    public int Height { get; set; }
-
-    public ImageRegion(int x, int y, int width, int height)
-    {
-        X = x;
-        Y = y;
-        Width = width;
-        Height = height;
-    }
-}
-
-/// <summary>
-/// 图像处理类型枚举
-/// </summary>
-[JsonConverter(typeof(JsonStringEnumConverter))]
-public enum ProcessingType
-{
-    /// <summary> 灰度直方图对比 </summary>
-    [JsonPropertyName("histogram")]
-    GrayscaleHistogram,
-
-    /// <summary> 结构相似性指数 </summary>
-    [JsonPropertyName("ssim")]
-    SSIM,
-
-    /// <summary> 感知哈希 </summary>
-    [JsonPropertyName("phash")]
-    PerceptualHash,
-
-    /// <summary> 余弦相似度 </summary>
-    [JsonPropertyName("cosine")]
-    CosineSimilarity,
-
-    /// <summary> Jaccard相似系数 </summary>
-    [JsonPropertyName("jaccard")]
-    JaccardIndex,
-
-    /// <summary> 编辑距离 </summary>
-    [JsonPropertyName("levenshtein")]
-    LevenshteinDistance
-}
-
-/// <summary>
 /// 图像处理格式定义
 /// </summary>
-public class ImageProcessingFormat
+public class ImageLabelX
 {
     /// <summary>
     /// 目标区域坐标和尺寸
     /// </summary>
-    [JsonPropertyName("region")]
-    public ImageRegion TargetRegion { get; set; }
+    public Rectangle TargetRegion { get; set; }
+    /// <summary>
+    /// 搜索区域坐标和尺寸
+    /// </summary>
+    public Rectangle SearchRegion { get; set; }
 
     /// <summary>
     /// 图像数据（Base64编码）或OCR文本
     /// </summary>
-    [JsonPropertyName("data")]
-    public string TargetData { get; set; }
+    public string TargetData { get; set; } = string.Empty;
 
     /// <summary>
     /// 处理方式（根据数据类型自动选择）
     /// </summary>
-    [JsonPropertyName("method")]
-    public ProcessingType ProcessingMethod { get; set; }
+    public SearchMethod ProcessingMethod { get; set; } = SearchMethod.SqDiffNormed;
 
     /// <summary>
     /// 可接受的相似度阈值 (0-1)
     /// </summary>
-    [JsonPropertyName("threshold")]
     public double SimilarityThreshold
     {
         get => _similarityThreshold;
@@ -97,33 +40,15 @@ public class ImageProcessingFormat
     /// <summary>
     /// 检查当前处理方式是否适用于图像数据
     /// </summary>
-    public bool IsImageProcessingMethod()
-    {
-        return ProcessingMethod switch
-        {
-            ProcessingType.GrayscaleHistogram => true,
-            ProcessingType.SSIM => true,
-            ProcessingType.PerceptualHash => true,
-            _ => false
-        };
-    }
+    public bool IsImageProcessingMethod => (int)ProcessingMethod < 10;
 
     /// <summary>
     /// 检查当前处理方式是否适用于文本数据
     /// </summary>
-    public bool IsTextProcessingMethod()
-    {
-        return ProcessingMethod switch
-        {
-            ProcessingType.CosineSimilarity => true,
-            ProcessingType.JaccardIndex => true,
-            ProcessingType.LevenshteinDistance => true,
-            _ => false
-        };
-    }
+    public bool IsTextProcessingMethod => (int)ProcessingMethod > 10;
 
     /// <summary>
-    /// 验证配置的合理性
+    /// 验证标签合理性
     /// </summary>
     public bool Validate(out string errorMessage)
     {
@@ -140,13 +65,13 @@ public class ImageProcessingFormat
         }
 
         // 检查处理方式与数据类型的匹配
-        if (IsImageData && !IsImageProcessingMethod())
+        if (IsImageData && !IsImageProcessingMethod)
         {
             errorMessage = $"处理方式'{ProcessingMethod}'不适用于图像数据";
             return false;
         }
 
-        if (!IsImageData && !IsTextProcessingMethod())
+        if (!IsImageData && !IsTextProcessingMethod)
         {
             errorMessage = $"处理方式'{ProcessingMethod}'不适用于文本数据";
             return false;
@@ -155,61 +80,155 @@ public class ImageProcessingFormat
         errorMessage = string.Empty;
         return true;
     }
+    /// <summary>
+    /// 二进制文件魔数，用于标识文件格式
+    /// </summary>
+    private const uint FILE_MAGIC = 0x494C464D; // "ILFM" in hex (Image Label Format)
+    /// <summary>
+    /// 文件格式版本
+    /// </summary>
+    private const ushort FILE_VERSION = 0x0100; // Version 1.0
 
     /// <summary>
-    /// 保存配置到.il文件
+    /// 保存到.ILX文件
     /// </summary>
-    /// <param name="filePath">完整文件路径，自动添加.il后缀</param>
+    /// <param name="filePath">完整文件路径，自动添加.ILX后缀</param>
     public void SaveToFile(string filePath)
     {
-        // 确保文件后缀为.il
-        if (!filePath.EndsWith(".il", StringComparison.OrdinalIgnoreCase))
+        // 确保文件后缀为.ILX
+        if (!filePath.EndsWith(".ILX", StringComparison.OrdinalIgnoreCase))
         {
-            filePath += ".il";
+            filePath += ".ILX";
+        }
+        if(!Validate(out var msg))
+        {
+            throw new ArgumentException(msg);
         }
 
-        var options = new JsonSerializerOptions
+        using (var fileStream = new FileStream(filePath, FileMode.Create))
+        using (var writer = new BinaryWriter(fileStream, Encoding.UTF8))
         {
-            WriteIndented = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Converters = { new JsonStringEnumConverter() }
-        };
-
-        string json = JsonSerializer.Serialize(this, options);
-        File.WriteAllText(filePath, json);
+            // 写入文件头
+            writer.Write(FILE_MAGIC);           // 4字节：魔数
+            writer.Write(FILE_VERSION);         // 2字节：版本号
+            writer.Write((byte)(IsImageData ? 1 : 0)); // 1字节：数据类型标识 (1=图像, 0=文本)
+            writer.Write((byte)ProcessingMethod); // 1字节：处理方式
+            writer.Write(SimilarityThreshold);  // 8字节：阈值
+            
+            // 写入区域信息
+            TargetRegion.WriteToBinary(writer); // 16字节：x,y,width,height
+            SearchRegion.WriteToBinary(writer); // 16字节：搜索区域
+            
+            // 写入数据长度和数据
+            if (IsImageData)
+            {
+                // 对于图像数据，将Base64解码为原始字节
+                byte[] imageBytes = Convert.FromBase64String(TargetData);
+                writer.Write(imageBytes.Length); // 4字节：数据长度
+                writer.Write(imageBytes);       // N字节：图像数据
+            }
+            else
+            {
+                // 对于文本数据，直接编码为UTF8
+                byte[] textBytes = Encoding.UTF8.GetBytes(TargetData);
+                writer.Write(textBytes.Length); // 4字节：数据长度
+                writer.Write(textBytes);       // N字节：文本数据
+            }
+            
+            // 写入文件结束标记（可选，用于验证文件完整性）
+            writer.Write((byte)0xFF); // 1字节：结束符
+        }
     }
 
     /// <summary>
-    /// 从.il文件加载配置
+    /// 从.ILX文件加载
     /// </summary>
     /// <param name="filePath">完整文件路径</param>
-    public static ImageProcessingFormat LoadFromFile(string filePath)
+    public static ImageLabelX LoadFromFile(string filePath)
     {
         // 检查文件后缀
-        if (!filePath.EndsWith(".il", StringComparison.OrdinalIgnoreCase))
+        if (!filePath.EndsWith(".ILX", StringComparison.OrdinalIgnoreCase))
         {
-            throw new ArgumentException("仅支持.il格式文件", nameof(filePath));
+            throw new ArgumentException("仅支持.ILX格式文件", nameof(filePath));
         }
 
         if (!File.Exists(filePath))
         {
-            throw new FileNotFoundException("配置文件不存在", filePath);
+            throw new FileNotFoundException("标签文件不存在", filePath);
         }
 
-        string json = File.ReadAllText(filePath);
-        var options = new JsonSerializerOptions
+        using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+        using (var reader = new BinaryReader(fileStream, Encoding.UTF8))
         {
-            Converters = { new JsonStringEnumConverter() }
-        };
+            // 读取并验证文件头
+            uint magic = reader.ReadUInt32();
+            if (magic != FILE_MAGIC)
+            {
+                throw new InvalidDataException("无效的文件格式：魔数不匹配");
+            }
 
-        return JsonSerializer.Deserialize<ImageProcessingFormat>(json, options)
-               ?? throw new InvalidDataException("配置文件格式无效");
+            ushort version = reader.ReadUInt16();
+            if (version != FILE_VERSION)
+            {
+                throw new InvalidDataException($"不支持的版本号：{version >> 8}.{version & 0xFF}");
+            }
+
+            byte dataType = reader.ReadByte();    // 数据类型
+            SearchMethod method = (SearchMethod)reader.ReadByte(); // 处理方式
+            double threshold = reader.ReadDouble(); // 阈值
+            
+            // 读取区域信息
+            var region = RectangleFact.ReadFromBinary(reader);
+            var searchRegion = RectangleFact.ReadFromBinary(reader);
+            
+            // 读取数据长度和数据
+            int dataLength = reader.ReadInt32();
+            byte[] dataBytes = reader.ReadBytes(dataLength);
+            
+            // 验证数据长度
+            if (dataBytes.Length != dataLength)
+            {
+                throw new EndOfStreamException("文件数据不完整");
+            }
+            
+            // 验证结束标记
+            if (fileStream.Position < fileStream.Length)
+            {
+                byte endMagic = reader.ReadByte();
+                if (endMagic != 0xF1F)
+                {
+                    System.Diagnostics.Debug.WriteLine($"警告：文件结束标记不匹配，但继续处理...");
+                }
+            }
+
+            // 根据数据类型创建字符串
+            string targetData;
+            if (dataType == 1)
+            {
+                // 图像数据：将字节编码为Base64
+                targetData = Convert.ToBase64String(dataBytes);
+            }
+            else
+            {
+                // 文本数据：解码为UTF8字符串
+                targetData = Encoding.UTF8.GetString(dataBytes);
+            }
+
+            // 创建并返回对象
+            return new ImageLabelX
+            {
+                TargetRegion = region,
+                SearchRegion = searchRegion,
+                TargetData = targetData,
+                ProcessingMethod = method,
+                SimilarityThreshold = threshold
+            };
+        }
     }
 
     /// <summary>
     /// 检查是否为图像数据（Base64编码）
     /// </summary>
-    [JsonIgnore]
     public bool IsImageData => IsBase64String(TargetData);
 
     /// <summary>
@@ -230,5 +249,34 @@ public class ImageProcessingFormat
         {
             return false;
         }
+    }
+}
+/// <summary>
+/// 表示图像处理的目标区域
+/// </summary>
+static class RectangleFact
+{
+    /// <summary>
+    /// 将区域数据写入二进制流
+    /// </summary>
+    public static void WriteToBinary(this Rectangle rect, BinaryWriter writer)
+    {
+        writer.Write(rect.X);
+        writer.Write(rect.Y);
+        writer.Write(rect.Width);
+        writer.Write(rect.Height);
+    }
+
+    /// <summary>
+    /// 从二进制流读取区域数据
+    /// </summary>
+    public static Rectangle ReadFromBinary(BinaryReader reader)
+    {
+        return new Rectangle(
+            reader.ReadInt32(),
+            reader.ReadInt32(),
+            reader.ReadInt32(),
+            reader.ReadInt32()
+        );
     }
 }
