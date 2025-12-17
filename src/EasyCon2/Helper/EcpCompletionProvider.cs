@@ -13,8 +13,11 @@ internal class EcpCompletionProvider : ICompletionProvider
     private readonly List<string> _keywords = [
         "IF", "ELIF", "ELSE", "ENDIF",
         "FOR", "TO", "NEXT", "BREAK", "CONTINUE",
-        "FUNC", "ENDFUNC", "CALL",
-        "PRINT", "ALERT", "TIME", "WAIT"
+        "FUNC", "ENDFUNC", "CALL", "RETURN",
+        "PRINT", "ALERT", "TIME", "WAIT",
+        "PLUS", "MINUS", "HOME", "CAPTURE",
+        "LCLICK", "RCLICK",
+        "LEFT", "RIGHT", "UP", "DOWN"
         ];
     public async Task<IEnumerable<ICompletionData>> GetCompletions(ITextSource textSource, int offset, string cur)
     {

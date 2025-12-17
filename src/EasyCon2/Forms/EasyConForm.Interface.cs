@@ -1,6 +1,4 @@
 using EasyCon2.Assist;
-using EasyDevice;
-using EasyScript;
 using System.Net.Http;
 
 namespace EasyCon2.Forms;
@@ -67,25 +65,5 @@ partial class EasyConForm
                 Print("推送失败: 请配置推送Token");
             }
         });
-    }
-
-    void ICGamePad.ClickButtons(ECKey key, int duration)
-    {
-        NS.Press(key, duration);
-    }
-
-    void ICGamePad.PressButtons(ECKey key)
-    {
-        NS.Down(key);
-    }
-
-    void ICGamePad.ReleaseButtons(ECKey key)
-    {
-        NS.Up(key);
-    }
-
-    void ICGamePad.ChangeAmiibo(uint index)
-    {
-        NS.ChangeAmiiboIndex((byte)(index & 0x0F));
     }
 }

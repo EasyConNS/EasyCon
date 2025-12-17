@@ -1,4 +1,4 @@
-﻿using System.Drawing.Imaging;
+using System.Drawing.Imaging;
 using System.IO;
 
 namespace EasyCon2.Graphic;
@@ -11,7 +11,8 @@ internal static class ImgLabelExt
         {
             SearchMethod.SqDiffNormed,
             SearchMethod.CCorrNormed,
-            SearchMethod.CCoeffNormed
+            SearchMethod.CCoeffNormed,
+            SearchMethod.EdgeDetectXY
         };
         return list;
     }

@@ -202,7 +202,7 @@ public partial class ImgLabel : INotifyPropertyChanged
 
         sourcePic?.Dispose();
         Bitmap ss = getNewFrame();
-        sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
+        sourcePic = ss.Clone(_round, ss.PixelFormat);
         ss.Dispose();
 
         result = OpenCVSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, searchImg, searchMethod, out md);
@@ -227,19 +227,13 @@ public partial class ImgLabel : INotifyPropertyChanged
         double md = 0;
         sourcePic?.Dispose();
         Bitmap ss = getNewFrame();
-        sourcePic = ss.Clone(new Rectangle(RangeX, RangeY, RangeWidth, RangeHeight), ss.PixelFormat);
+        sourcePic = ss.Clone(_round, ss.PixelFormat);
         ss.Dispose();
 
         result = OpenCVSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, searchImg, searchMethod, out md);
         md *= 100;
 
         // update the search pic
-        //if (md >= _matchDegree)
-        //{
-        //    Debug.WriteLine("update img");
-        //    searchImg?.Dispose();
-        //    searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
-        //}
 
         return (int)md;
     }

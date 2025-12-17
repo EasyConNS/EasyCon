@@ -1,3 +1,4 @@
+using EasyCon2.Helper;
 using EasyScript;
 using EasyScript.Parsing;
 using System.Media;
@@ -78,7 +79,7 @@ partial class EasyConForm
                 StatusShowLog("开始运行");
             });
             Print("-- 开始运行 --", Color.Lime);
-            _program.Run(this, this);
+            _program.Run(this, new GamePadAdapter(NS));
             Print("-- 运行结束 --", Color.Lime);
             StatusShowLog("运行结束");
             SystemSounds.Beep.Play();

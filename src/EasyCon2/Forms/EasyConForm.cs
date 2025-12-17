@@ -22,7 +22,7 @@ using System.Xml;
 
 namespace EasyCon2.Forms
 {
-    public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter, ICGamePad
+    public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter
     {
         private readonly Version VER = new(1, 53, 0);
         private readonly TextEditor textBoxScript = new();
