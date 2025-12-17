@@ -75,7 +75,7 @@ namespace EasyCon2.Forms
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            if(keyData == Keys.Escape)
+            if (keyData == Keys.Escape)
             {
                 findPanel1.Hide();
             }
@@ -128,7 +128,7 @@ namespace EasyCon2.Forms
 
         private IEnumerable<string> getIL()
         {
-            return captureVideo.LoadedLabels.Select(il=>il.name);
+            return captureVideo.LoadedLabels.Select(il => il.name);
         }
 
         private void EasyConForm_Load(object sender, EventArgs e)
@@ -590,7 +590,8 @@ namespace EasyCon2.Forms
 
         private void textBoxScript_TextChanged(object sender, EventArgs e)
         {
-            _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
+            if(显示折叠ToolStripMenuItem.Checked)
+                _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
             if (scriptCompiling)
                 return;
             if (scriptRunning)
@@ -831,7 +832,7 @@ namespace EasyCon2.Forms
 
         private void 查找替換ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if(textBoxScript.SelectedText.Length > 0)
+            if (textBoxScript.SelectedText.Length > 0)
                 findPanel1.Target = textBoxScript.SelectedText;
             findPanel1.Show();
         }
@@ -1117,6 +1118,17 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
                     Debug.WriteLine($"update failed:{e.Message}");
                 }
             });
+        }
+
+        private void 显示折叠ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var menu = (ToolStripMenuItem)sender;
+            menu.Checked = !menu.Checked;
+            if (menu.Checked)
+                _foldingManager = FoldingManager.Install(textBoxScript.TextArea);
+            else
+                FoldingManager.Uninstall(_foldingManager);
+            _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
         }
     }
 }

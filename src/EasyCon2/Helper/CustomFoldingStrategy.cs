@@ -27,8 +27,7 @@ public class CustomFoldingStrategy
             // 检查是否是块开始
             foreach (var pair in blockPairs)
             {
-                if (trimmedLine.StartsWith(pair.Key + " ") ||
-                    trimmedLine == pair.Key)
+                if (trimmedLine.StartsWith(pair.Key))
                 {
                     startLines.Push((i, pair.Key));
                     break;
@@ -50,12 +49,12 @@ public class CustomFoldingStrategy
                     var endOffset = document.Lines[i].EndOffset;
 
                     // 跳过空行
-                    while (i + 1 < document.Lines.Count &&
-                           string.IsNullOrWhiteSpace(document.GetText(document.Lines[i + 1])))
-                    {
-                        i++;
-                        endOffset = document.Lines[i].EndOffset;
-                    }
+                    //while (i + 1 < document.Lines.Count &&
+                    //       string.IsNullOrWhiteSpace(document.GetText(document.Lines[i + 1])))
+                    //{
+                    //    i++;
+                    //    endOffset = document.Lines[i].EndOffset;
+                    //}
 
                     newFoldings.Add(new NewFolding
                     {
@@ -76,7 +75,7 @@ public class CustomFoldingStrategy
     private string GetFoldingName(TextDocument document, int lineNumber, string blockType)
     {
         var line = document.GetText(document.Lines[lineNumber]);
-        return $"{blockType.ToUpper()}: {line.Trim()}";
+        return $"{blockType.ToUpper()}: {line.Trim()[blockType.Length..]}";
     }
 
     public void UpdateFoldings(FoldingManager manager, TextDocument document)
