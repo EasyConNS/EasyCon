@@ -47,7 +47,7 @@ public class CodeCompletionController : IDisposable
         _editor.TextArea.TextEntered += OnTextEntered;
 
         // 键盘事件
-        _editor.TextArea.KeyDown += OnKeyDown;
+        //_editor.TextArea.KeyDown += OnKeyDown;
 
         // 失去焦点时关闭提示窗口
         _editor.LostFocus += (s, e) => CloseCompletionWindow();
@@ -66,7 +66,7 @@ public class CodeCompletionController : IDisposable
 
     private void OnTextEntering(object sender, TextCompositionEventArgs e)
     {
-        if (_completionWindow != null)
+        if (_completionWindow != null && Keyboard.Modifiers == ModifierKeys.None)
         {
             // 如果用户输入空格、换行等，关闭提示窗口
             if (e.Text == " " || e.Text == "\t" || e.Text == "\n" || e.Text == "\r")

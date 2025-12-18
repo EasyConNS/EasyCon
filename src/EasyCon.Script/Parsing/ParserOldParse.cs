@@ -193,6 +193,7 @@ internal partial class Parser
     {
         var tokens = SyntaxTree.ParseTokens(text);
         var first = tokens.First()!;
+        if(tokens.Count() > 2+2) return null;
         switch (first.Value.ToLower())
         {
             case "func":
@@ -201,25 +202,20 @@ internal partial class Parser
                 return tokens[1].Type == TokenType.IDENT ? new CallStat(tokens[1].Value) : null;
             case "alert":
             case "print":
-                if (tokens[1].Type == TokenType.STRING)
+                if (tokens[1].Type == TokenType.STRING && tokens[2].Type == TokenType.NEWLINE)
                 {
-                    var contents = ParseContents(tokens[1].Value, out bool cancellinebreak);
-                    if (first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
-                        return new Print(contents.ToArray(), cancellinebreak);
-                    else
-                        return new Alert(contents.ToArray());
+                    var contents = ParseContents(tokens[1].Value, out bool _);
+
+                    return new BuildinFunc(first.Value.ToUpper(), contents.ToArray());
                 }
                 else if (tokens[1].Type == TokenType.NEWLINE)
                 {
-                    if (first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
-                        return new Print([], false);
-                    else
-                        return new Alert([]);
+                    return new BuildinFunc(first.Value.ToUpper(), []);
                 }
                 break;
             case "time":
-                if (tokens[1].Type == TokenType.VAR)
-                    return new TimeStamp(FormatterUtil.GetRegEx(tokens[1].Value));
+                if (tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.NEWLINE)
+                    return new BuildinFunc("TIME", [new RegParam(FormatterUtil.GetRegEx(tokens[1].Value))]);
                 break;
             case "wait":
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
@@ -239,9 +235,9 @@ internal partial class Parser
         return null;
     }
 
-    private List<Content> ParseContents(string text, out bool cancellinebreak)
+    private List<Param> ParseContents(string text, out bool cancellinebreak)
     {
-        var contents = new List<Content>();
+        var contents = new List<Param>();
         cancellinebreak = false;
 
         var strs = text.Split('&');
@@ -250,29 +246,29 @@ internal partial class Parser
             var s = strs[i].Trim();
             if (i == strs.Length - 1 && s == "\\")
             {
-                contents.Add(new TextContent("", "\\"));
+                contents.Add(new TextParam("", s));
                 cancellinebreak = true;
                 continue;
             }
             if (s.Length == 0 && strs.Length > 1)
             {
-                contents.Add(new TextContent(" ", ""));
+                contents.Add(new TextParam(" ", ""));
                 continue;
             }
             var m = Regex.Match(s, Formats.RegisterEx_F);
             if (m.Success)
             {
-                contents.Add(new RegContent(FormatterUtil.GetRegEx(s)));
+                contents.Add(new RegParam(FormatterUtil.GetRegEx(s)));
                 continue;
             }
             m = Regex.Match(s, Formats.Constant_F);
             if (m.Success)
             {
                 var v = _formatter.GetConstant(s);
-                contents.Add(new TextContent(v.Val.ToString(), s));
+                contents.Add(new TextParam(v.Val.ToString(), s));
                 continue;
             }
-            contents.Add(new TextContent(s));
+            contents.Add(new TextParam(s));
         }
 
         return contents;

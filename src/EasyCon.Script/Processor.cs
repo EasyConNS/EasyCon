@@ -38,9 +38,49 @@ class Processor(Dictionary<string, FunctionStmt> func)
             throw new ScriptException("找不到调用函数", PC);
     }
 
-    public void CurTime(ValRegEx var)
+    public void BuildinCall(string fn, Param[] args)
     {
-        Register[var] = et.CurrTimestamp;
+        fn = fn.ToUpper();
+        if (fn == "TIME")
+        {
+            var ru = args[0] as RegParam;
+            Register[ru.Reg] = et.CurrTimestamp;
+        }
+        else if (fn == "PRINT")
+        {
+            var s = args.Select(
+                u => {
+                    return u switch
+                    {
+                        TextParam tu => tu.Text,
+                        RegParam ru => Register[ru.Reg].ToString(),
+                        _ => "",
+                    };
+                }
+            );
+            var cancelLineBreak = args.Last() switch
+            {
+                TextParam tu => tu.CodeText == "\\",
+                _ => false,
+            };
+
+            Output.Print(string.Join("", s), !CancelLineBreak);
+            CancelLineBreak = cancelLineBreak;
+        }
+        else if (fn == "ALERT")
+        {
+            var s = args.Select(
+                u => {
+                    return u switch
+                    {
+                        TextParam tu => tu.Text,
+                        RegParam ru => Register[ru.Reg].ToString(),
+                        _ => "",
+                    };
+                }
+            );
+            Output.Alert(string.Join("", s));
+        }
     }
 
     public void RetrunCall()

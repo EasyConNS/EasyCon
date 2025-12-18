@@ -40,12 +40,10 @@ namespace EasyCon2.Forms
         const string FirmwarePath = @"Firmware\";
 
         private VControllerConfig _config;
-        // 当前打开的脚本文件路径
-        private string _currentFile = "";
 
         private readonly string defaultName = "未命名脚本";
-        private string fileName => _currentFile == "" ? defaultName : Path.GetFileName(_currentFile);
-        private bool _fileEdited = false;
+        private string fileName => textBoxScript.Document.FileName == null ? defaultName : Path.GetFileName(textBoxScript.Document.FileName);
+        private bool _fileEdited => textBoxScript.IsModified;
 
         private readonly Queue<Tuple<RichTextBox, object, Color?>> _messages = new();
 
@@ -113,9 +111,7 @@ namespace EasyCon2.Forms
             textBoxScript.Drop += new System.Windows.DragEventHandler(this.textBoxScript_DragDrop);
             textBoxScript.TextChanged += new EventHandler(this.textBoxScript_TextChanged);
 
-            elementHost1.Child = textBoxScript;
-
-            var completionProvider = new EcpCompletionProvider();
+            var completionProvider = new EcpCompletionProvider(textBoxScript);
             completionProvider.GetImgLabel += getIL;
             _completionController = new CodeCompletionController(textBoxScript, completionProvider);
 
@@ -124,6 +120,8 @@ namespace EasyCon2.Forms
             _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
 
             findPanel1.InitEditor(textBoxScript);
+
+            elementHost1.Child = textBoxScript;
         }
 
         private IEnumerable<string> getIL()
@@ -486,6 +484,7 @@ namespace EasyCon2.Forms
             openFileDialog1.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
             openFileDialog1.FileName = string.Empty;
 
+            string _currentFile = path;
             if (path == "")
             {
                 if (openFileDialog1.ShowDialog() != DialogResult.OK)
@@ -494,13 +493,9 @@ namespace EasyCon2.Forms
                     return false;
                 _currentFile = openFileDialog1.FileName;
             }
-            else
-            {
-                _currentFile = path;
-            }
 
-            textBoxScript.Text = File.ReadAllText(_currentFile);
-            _fileEdited = false;
+            textBoxScript.Load(_currentFile);
+            textBoxScript.Document.FileName = _currentFile;
             return true;
         }
 
@@ -513,16 +508,14 @@ namespace EasyCon2.Forms
             saveFileDialog1.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
             saveFileDialog1.FileName = string.Empty;
 
-            var path = _currentFile;
-            if (saveAs || _currentFile == "")
+            var path = textBoxScript.Document.FileName;
+            if (saveAs || textBoxScript.Document.FileName == null)
             {
                 if (saveFileDialog1.ShowDialog() != DialogResult.OK)
                     return false;
-                path = saveFileDialog1.FileName;
-                _currentFile = path;
+                textBoxScript.Document.FileName = saveFileDialog1.FileName;
             }
-            File.WriteAllText(path, textBoxScript.Text);
-            _fileEdited = false;
+            textBoxScript.Save(path);
             StatusShowLog("文件已保存");
             return true;
         }
@@ -545,9 +538,8 @@ namespace EasyCon2.Forms
                         return false;
                 }
             }
-            _currentFile = "";
-            textBoxScript.Text = string.Empty;
-            _fileEdited = false;
+            textBoxScript.Document.FileName = null;
+            textBoxScript.Clear();
             StatusShowLog("文件已关闭");
             return true;
         }
@@ -590,13 +582,12 @@ namespace EasyCon2.Forms
 
         private void textBoxScript_TextChanged(object sender, EventArgs e)
         {
-            if(显示折叠ToolStripMenuItem.Checked)
+            if (显示折叠ToolStripMenuItem.Checked)
                 _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
             if (scriptCompiling)
                 return;
             if (scriptRunning)
                 return;
-            _fileEdited = true;
             _program.Reset();
         }
 
@@ -1125,10 +1116,17 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             var menu = (ToolStripMenuItem)sender;
             menu.Checked = !menu.Checked;
             if (menu.Checked)
-                _foldingManager = FoldingManager.Install(textBoxScript.TextArea);
+                _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
             else
-                FoldingManager.Uninstall(_foldingManager);
-            _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
+                _foldingManager.Clear();
+        }
+
+        private void 注释取消注释ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var line = textBoxScript.Document.GetLineByNumber(textBoxScript.TextArea.Caret.Line);
+            var text = textBoxScript.Document.GetText(line);
+            text = _program.ToggleComment(text);
+            textBoxScript.Document.Replace(line, text);
         }
     }
 }

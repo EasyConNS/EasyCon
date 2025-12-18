@@ -5,18 +5,18 @@
     <File Path="Directory.packages.props" />
   </Folder>
   <Folder Name="/Demo/">
-  <Project Path="DirectInput/DirectInput.csproj" />
-  <Project Path="ILViewer/ILViewer.csproj" />
+    <Project Path="DirectInput/DirectInput.csproj" />
+    <Project Path="ILViewer/ILViewer.csproj" />
   </Folder>
   <Folder Name="/Lib/">
     <Project Path="src/EasyCon.Capture/EasyCon.Capture.csproj" />
+    <Project Path="src/EasyCon.Core/EasyCon.Core.csproj" />
     <Project Path="src/EasyCon.Device/EasyCon.Device.csproj" />
     <Project Path="src/EasyCon.Script/EasyCon.Script.csproj" />
     <Project Path="src/EasyCon.Script2/EasyCon.Script2.csproj" />
-    <Project Path="src/EasyCon.Core/EasyCon.Core.csproj" />
     <Project Path="src/EasyCon2.Avalonia.Core/EasyCon2.Avalonia.Core.csproj" />
   </Folder>
-  <Project Path="src/EasyCon2/EasyCon2.csproj" />
   <Project Path="src/EasyCon.VPad/EasyCon.VPad.csproj" />
   <Project Path="src/EasyCon2.Avalonia/EasyCon2.Avalonia.csproj" />
+  <Project Path="src/EasyCon2/EasyCon2.csproj" />
 </Solution>

@@ -38,7 +38,7 @@ partial class EasyConForm
                 return false;
             }
             hexStr = HexWriter.WriteHex(hexStr, bytes, GetSelectedBoard().DataSize, GetSelectedBoard().Version);
-            string name = Path.GetFileNameWithoutExtension(_currentFile);
+            string name = Path.GetFileNameWithoutExtension(textBoxScript.Document.FileName);
             filename = filename.Replace(".", "+Script.");
             File.WriteAllText(filename, hexStr);
             StatusShowLog("固件生成完毕");

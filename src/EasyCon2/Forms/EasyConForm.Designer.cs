@@ -41,6 +41,7 @@ namespace EasyCon2.Forms
             編輯ToolStripMenuItem = new ToolStripMenuItem();
             查找替換ToolStripMenuItem = new ToolStripMenuItem();
             查找下一个ToolStripMenuItem = new ToolStripMenuItem();
+            注释取消注释ToolStripMenuItem = new ToolStripMenuItem();
             脚本ToolStripMenuItem = new ToolStripMenuItem();
             编译ToolStripMenuItem = new ToolStripMenuItem();
             执行ToolStripMenuItem = new ToolStripMenuItem();
@@ -191,7 +192,7 @@ namespace EasyCon2.Forms
             // 
             // 編輯ToolStripMenuItem
             // 
-            編輯ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 查找替換ToolStripMenuItem, 查找下一个ToolStripMenuItem });
+            編輯ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 查找替換ToolStripMenuItem, 查找下一个ToolStripMenuItem, 注释取消注释ToolStripMenuItem });
             編輯ToolStripMenuItem.Name = "編輯ToolStripMenuItem";
             編輯ToolStripMenuItem.Size = new Size(53, 24);
             編輯ToolStripMenuItem.Text = "編輯";
@@ -200,7 +201,7 @@ namespace EasyCon2.Forms
             // 
             查找替換ToolStripMenuItem.Name = "查找替換ToolStripMenuItem";
             查找替換ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.F;
-            查找替換ToolStripMenuItem.Size = new Size(206, 26);
+            查找替換ToolStripMenuItem.Size = new Size(244, 26);
             查找替換ToolStripMenuItem.Text = "查找替換";
             查找替換ToolStripMenuItem.Click += 查找替換ToolStripMenuItem_Click;
             // 
@@ -208,9 +209,17 @@ namespace EasyCon2.Forms
             // 
             查找下一个ToolStripMenuItem.Name = "查找下一个ToolStripMenuItem";
             查找下一个ToolStripMenuItem.ShortcutKeys = Keys.F3;
-            查找下一个ToolStripMenuItem.Size = new Size(206, 26);
+            查找下一个ToolStripMenuItem.Size = new Size(244, 26);
             查找下一个ToolStripMenuItem.Text = "查找下一个";
             查找下一个ToolStripMenuItem.Click += 查找下一个ToolStripMenuItem_Click;
+            // 
+            // 注释取消注释ToolStripMenuItem
+            // 
+            注释取消注释ToolStripMenuItem.Name = "注释取消注释ToolStripMenuItem";
+            注释取消注释ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.OemQuestion;
+            注释取消注释ToolStripMenuItem.Size = new Size(244, 26);
+            注释取消注释ToolStripMenuItem.Text = "注释/取消注释";
+            注释取消注释ToolStripMenuItem.Click += 注释取消注释ToolStripMenuItem_Click;
             // 
             // 脚本ToolStripMenuItem
             // 
@@ -279,21 +288,21 @@ namespace EasyCon2.Forms
             // 推送设置ToolStripMenuItem
             // 
             推送设置ToolStripMenuItem.Name = "推送设置ToolStripMenuItem";
-            推送设置ToolStripMenuItem.Size = new Size(224, 26);
+            推送设置ToolStripMenuItem.Size = new Size(212, 26);
             推送设置ToolStripMenuItem.Text = "推送设置";
             推送设置ToolStripMenuItem.Click += 推送设置ToolStripMenuItem_Click;
             // 
             // 显示调试信息ToolStripMenuItem
             // 
             显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            显示调试信息ToolStripMenuItem.Size = new Size(224, 26);
+            显示调试信息ToolStripMenuItem.Size = new Size(212, 26);
             显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             显示调试信息ToolStripMenuItem.Click += 显示调试信息ToolStripMenuItem_Click;
             // 
             // 串口延迟ToolStripMenuItem
             // 
             串口延迟ToolStripMenuItem.Name = "串口延迟ToolStripMenuItem";
-            串口延迟ToolStripMenuItem.Size = new Size(224, 26);
+            串口延迟ToolStripMenuItem.Size = new Size(212, 26);
             串口延迟ToolStripMenuItem.Text = "串口打开延迟";
             串口延迟ToolStripMenuItem.Click += openDelayToolStripMenuItem_Click;
             // 
@@ -302,14 +311,14 @@ namespace EasyCon2.Forms
             烧录自动运行ToolStripMenuItem.Checked = true;
             烧录自动运行ToolStripMenuItem.CheckState = CheckState.Checked;
             烧录自动运行ToolStripMenuItem.Name = "烧录自动运行ToolStripMenuItem";
-            烧录自动运行ToolStripMenuItem.Size = new Size(224, 26);
+            烧录自动运行ToolStripMenuItem.Size = new Size(212, 26);
             烧录自动运行ToolStripMenuItem.Text = "烧录自动运行";
             烧录自动运行ToolStripMenuItem.Click += 脚本自动运行ToolStripMenuItem_Click;
             // 
             // 频道远程ToolStripMenuItem
             // 
             频道远程ToolStripMenuItem.Name = "频道远程ToolStripMenuItem";
-            频道远程ToolStripMenuItem.Size = new Size(224, 26);
+            频道远程ToolStripMenuItem.Size = new Size(212, 26);
             频道远程ToolStripMenuItem.Text = "频道远程控制启动";
             频道远程ToolStripMenuItem.Click += 频道远程ToolStripMenuItem_Click;
             // 
@@ -318,7 +327,7 @@ namespace EasyCon2.Forms
             显示折叠ToolStripMenuItem.Checked = true;
             显示折叠ToolStripMenuItem.CheckState = CheckState.Checked;
             显示折叠ToolStripMenuItem.Name = "显示折叠ToolStripMenuItem";
-            显示折叠ToolStripMenuItem.Size = new Size(224, 26);
+            显示折叠ToolStripMenuItem.Size = new Size(212, 26);
             显示折叠ToolStripMenuItem.Text = "显示折叠";
             显示折叠ToolStripMenuItem.Click += 显示折叠ToolStripMenuItem_Click;
             // 
@@ -910,6 +919,7 @@ namespace EasyCon2.Forms
         private ToolStripMenuItem 查找下一个ToolStripMenuItem;
         private FindPanel findPanel1;
         private ToolStripMenuItem 显示折叠ToolStripMenuItem;
+        private ToolStripMenuItem 注释取消注释ToolStripMenuItem;
     }
 }
 

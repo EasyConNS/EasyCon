@@ -1,7 +1,8 @@
 using EasyScript.Parsing;
 using EasyScript.Statements;
-using System.Collections.Immutable;
 using System.CodeDom.Compiler;
+using System.Collections.Immutable;
+using System.Text.RegularExpressions;
 
 namespace EasyScript;
 
@@ -53,6 +54,41 @@ public class Scripter
         {
             _statements.ToList().ForEach(u => u.WriteTo(printer));
             return writer.ToString();
+        }
+    }
+
+    public string ToggleComment(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return input ?? string.Empty;
+
+        // 找到第一个非空白字符的位置
+        int firstNonWhitespaceIndex = -1;
+        for (int i = 0; i < input.Length; i++)
+        {
+            if (!char.IsWhiteSpace(input[i]))
+            {
+                firstNonWhitespaceIndex = i;
+                break;
+            }
+        }
+
+        // 如果全是空白字符，返回原字符串
+        if (firstNonWhitespaceIndex == -1)
+            return input;
+
+        // 检查第一个非空白字符是否是 #
+        bool startsWithHash = input[firstNonWhitespaceIndex] == '#';
+
+        if (startsWithHash)
+        {
+            // 删除第一个 # 字符
+            return input.Remove(firstNonWhitespaceIndex, 1);
+        }
+        else
+        {
+            // 在第一个非空白字符前插入 #
+            return input.Insert(firstNonWhitespaceIndex, "#");
         }
     }
 

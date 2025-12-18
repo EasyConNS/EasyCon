@@ -1,4 +1,5 @@
 using EasyCon2.Models;
+using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.CodeCompletion;
 using ICSharpCode.AvalonEdit.Document;
 
@@ -6,8 +7,9 @@ namespace EasyCon2.Helper;
 
 public delegate IEnumerable<string> GetImgLabel();
 
-internal class EcpCompletionProvider : ICompletionProvider
+internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvider
 {
+    private readonly TextEditor Editor = textEditor;
     public GetImgLabel GetImgLabel;
 
     private readonly List<string> _keywords = [
@@ -15,8 +17,9 @@ internal class EcpCompletionProvider : ICompletionProvider
         "FOR", "TO", "NEXT", "BREAK", "CONTINUE",
         "FUNC", "ENDFUNC", "CALL", "RETURN",
         "PRINT", "ALERT", "TIME", "WAIT",
+        "A", "B", "X", "Y","L", "R","ZL", "ZR",
         "PLUS", "MINUS", "HOME", "CAPTURE",
-        "LCLICK", "RCLICK",
+        "LS", "RS", "LCLICK", "RCLICK",
         "LEFT", "RIGHT", "UP", "DOWN"
         ];
     public async Task<IEnumerable<ICompletionData>> GetCompletions(ITextSource textSource, int offset, string cur)
@@ -42,7 +45,7 @@ internal class EcpCompletionProvider : ICompletionProvider
 
     private bool IsWordPart(char c)
     {
-        return char.IsLetterOrDigit(c) || c == '@' || c == '.';
+        return char.IsLetterOrDigit(c) || c == '@';
     }
 
     public string GetCurrentWord(TextDocument document, int offset)
