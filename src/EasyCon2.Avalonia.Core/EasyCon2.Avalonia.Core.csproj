@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFrameworks>$(TFMS)</TargetFrameworks>   
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>    
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
@@ -14,6 +13,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\EasyCon.Device\EasyCon.Device.csproj" />
+    <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
   </ItemGroup>
 </Project>

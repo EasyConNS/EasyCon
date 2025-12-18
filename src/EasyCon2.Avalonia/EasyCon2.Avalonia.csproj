@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFrameworks>$(TFMS)</TargetFrameworks>   
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -34,7 +33,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
-    <ProjectReference Include="..\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
+    <ProjectReference Include="..\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
