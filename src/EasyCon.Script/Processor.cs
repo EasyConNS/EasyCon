@@ -14,11 +14,11 @@ class Processor(Dictionary<string, FunctionStmt> func)
     public bool CancelLineBreak = false;
     public readonly RegisterFile Register = new();
 
-    private Stack<short> Stack = new();
     private Stack<LiteScope> LiteScope = new();
     private readonly Stack<int> CallStack = new();
     private readonly Dictionary<string, FunctionStmt> _funcTables = func;
     private readonly ExternTime et = new(DateTime.Now);
+    private Random _rand = new();
 
     public LiteScope GetScope()
     {
@@ -80,6 +80,10 @@ class Processor(Dictionary<string, FunctionStmt> func)
                 }
             );
             Output.Alert(string.Join("", s));
+        }else if(fn == "RAND")
+        {
+            var ru = args[0] as RegParam;
+            Register[ru.Reg] = _rand.Next(Register[ru.Reg] == 0 ? 100 : Register[ru.Reg]);
         }
     }
 
@@ -89,18 +93,6 @@ class Processor(Dictionary<string, FunctionStmt> func)
             throw new ScriptException("顶层环境不能退出", PC);
         LiteScope.Pop();
         PC = CallStack.Pop();
-    }
-
-    public void Push(short val)
-    {
-        Stack.Push(val);
-    }
-
-    public short Pop()
-    {
-        if (Stack.Count <= 0)
-            throw new ScriptException("栈为空，无法出栈", PC);
-        return Stack.Pop(); 
     }
 }
 
@@ -131,4 +123,18 @@ class RegisterFile
 
         set => this[val.Tag] = value;
     }
+}
+
+public class ExternTime
+{
+    private readonly long _TIME;
+
+    public ExternTime(DateTime t)
+    {
+        _TIME = t.Ticks;
+    }
+
+    public int CurrTimestamp => (int)GetTimestamp();
+
+    private long GetTimestamp() => (DateTime.Now.Ticks - _TIME) / 10_000;
 }

@@ -6,7 +6,7 @@ using System.Drawing.Imaging;
 
 namespace EasyCapture;
 
-public class OpenCVSearch : ECSearch
+public class OpenCVSearch
 {
     public static List<System.Drawing.Point> FindPic(int left, int top, int width, int height, Bitmap S_bmp, Bitmap srcBmp, SearchMethod method, out double matchDegree)
     {

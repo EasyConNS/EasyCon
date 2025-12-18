@@ -27,18 +27,6 @@ internal static class ImgLabelExt
         return imgLabels.ToImmutable();
     }
 
-    public static IEnumerable<SearchMethod> GetAllSearchMethod()
-    {
-        return
-        [
-            SearchMethod.SqDiffNormed,
-            SearchMethod.CCorrNormed,
-            SearchMethod.CCoeffNormed,
-            //SearchMethod.EdgeDetectXY,
-            //SearchMethod.EdgeDetectLaplacian,
-        ];
-    }
-
     public static string ImageToBase64(this ImgLabel self, Bitmap bmp)
     {
         try

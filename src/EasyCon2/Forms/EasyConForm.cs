@@ -24,7 +24,7 @@ namespace EasyCon2.Forms
 {
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter
     {
-        private readonly Version VER = new(1, 53, 0);
+        private readonly Version VER = new(1, 54, 0);
         private readonly TextEditor textBoxScript = new();
         private CodeCompletionController _completionController;
         internal readonly VPadForm virtController;
@@ -112,7 +112,7 @@ namespace EasyCon2.Forms
             textBoxScript.TextChanged += new EventHandler(this.textBoxScript_TextChanged);
 
             var completionProvider = new EcpCompletionProvider(textBoxScript);
-            completionProvider.GetImgLabel += getIL;
+            completionProvider.GetImgLabel += ()=> captureVideo.LoadedLabels.Select(il => il.name);
             _completionController = new CodeCompletionController(textBoxScript, completionProvider);
 
             _foldingManager = FoldingManager.Install(textBoxScript.TextArea);
@@ -122,11 +122,6 @@ namespace EasyCon2.Forms
             findPanel1.InitEditor(textBoxScript);
 
             elementHost1.Child = textBoxScript;
-        }
-
-        private IEnumerable<string> getIL()
-        {
-            return captureVideo.LoadedLabels.Select(il => il.name);
         }
 
         private void EasyConForm_Load(object sender, EventArgs e)
@@ -508,21 +503,16 @@ namespace EasyCon2.Forms
             saveFileDialog1.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
             saveFileDialog1.FileName = string.Empty;
 
-            var path = textBoxScript.Document.FileName;
             if (saveAs || textBoxScript.Document.FileName == null)
             {
                 if (saveFileDialog1.ShowDialog() != DialogResult.OK)
                     return false;
                 textBoxScript.Document.FileName = saveFileDialog1.FileName;
+
             }
-            textBoxScript.Save(path);
+            textBoxScript.Save(textBoxScript.Document.FileName);
             StatusShowLog("文件已保存");
             return true;
-        }
-
-        private void FindWord(string word)
-        {
-            textBoxScript.SelectedText = word;
         }
 
         private bool FileClose()
@@ -540,6 +530,7 @@ namespace EasyCon2.Forms
             }
             textBoxScript.Document.FileName = null;
             textBoxScript.Clear();
+            textBoxScript.IsModified = false;
             StatusShowLog("文件已关闭");
             return true;
         }

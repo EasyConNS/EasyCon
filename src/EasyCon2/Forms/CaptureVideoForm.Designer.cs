@@ -1,4 +1,4 @@
-﻿namespace EasyCon2.Forms
+namespace EasyCon2.Forms
 {
     partial class CaptureVideoForm
     {
@@ -30,7 +30,7 @@
         {
             components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CaptureVideoForm));
-            reasultListBox = new ListBox();
+            resultListBox = new ListBox();
             imgreadmelbl = new Label();
             captureBtn = new Button();
             readmelbl = new Label();
@@ -51,8 +51,6 @@
             imgLabelNametxt = new TextBox();
             imgnamelabel = new Label();
             matchRltlabel = new Label();
-            lowestMatch = new TextBox();
-            minmatchlabel = new Label();
             searchlabel = new Label();
             targetlabel = new Label();
             xlbl = new Label();
@@ -91,14 +89,14 @@
             ((System.ComponentModel.ISupportInitialize)targetImg).BeginInit();
             SuspendLayout();
             // 
-            // reasultListBox
+            // resultListBox
             // 
-            reasultListBox.FormattingEnabled = true;
-            reasultListBox.Location = new Point(405, 22);
-            reasultListBox.Margin = new Padding(4);
-            reasultListBox.Name = "reasultListBox";
-            reasultListBox.Size = new Size(119, 44);
-            reasultListBox.TabIndex = 1;
+            resultListBox.FormattingEnabled = true;
+            resultListBox.Location = new Point(405, 22);
+            resultListBox.Margin = new Padding(4);
+            resultListBox.Name = "resultListBox";
+            resultListBox.Size = new Size(119, 44);
+            resultListBox.TabIndex = 1;
             // 
             // imgreadmelbl
             // 
@@ -186,9 +184,7 @@
             groupBox1.Controls.Add(imgLabelNametxt);
             groupBox1.Controls.Add(imgnamelabel);
             groupBox1.Controls.Add(matchRltlabel);
-            groupBox1.Controls.Add(lowestMatch);
-            groupBox1.Controls.Add(reasultListBox);
-            groupBox1.Controls.Add(minmatchlabel);
+            groupBox1.Controls.Add(resultListBox);
             groupBox1.Controls.Add(searchlabel);
             groupBox1.Controls.Add(targetlabel);
             groupBox1.Controls.Add(xlbl);
@@ -297,17 +293,16 @@
             // 
             // imgLabelNametxt
             // 
-            imgLabelNametxt.Location = new Point(91, 23);
+            imgLabelNametxt.Location = new Point(97, 31);
             imgLabelNametxt.Margin = new Padding(4);
             imgLabelNametxt.Name = "imgLabelNametxt";
             imgLabelNametxt.Size = new Size(133, 27);
             imgLabelNametxt.TabIndex = 12;
-            imgLabelNametxt.Text = "5号路蛋屋主人";
             // 
             // imgnamelabel
             // 
             imgnamelabel.AutoSize = true;
-            imgnamelabel.Location = new Point(30, 25);
+            imgnamelabel.Location = new Point(36, 33);
             imgnamelabel.Margin = new Padding(4, 0, 4, 0);
             imgnamelabel.Name = "imgnamelabel";
             imgnamelabel.Size = new Size(58, 20);
@@ -322,25 +317,6 @@
             matchRltlabel.Size = new Size(120, 53);
             matchRltlabel.TabIndex = 21;
             matchRltlabel.Text = "匹配度：100%耗时：100毫秒最大匹配度100%";
-            // 
-            // lowestMatch
-            // 
-            lowestMatch.Location = new Point(112, 86);
-            lowestMatch.Margin = new Padding(4);
-            lowestMatch.Name = "lowestMatch";
-            lowestMatch.Size = new Size(112, 27);
-            lowestMatch.TabIndex = 14;
-            lowestMatch.Text = "90.0";
-            // 
-            // minmatchlabel
-            // 
-            minmatchlabel.AutoSize = true;
-            minmatchlabel.Location = new Point(6, 89);
-            minmatchlabel.Margin = new Padding(4, 0, 4, 0);
-            minmatchlabel.Name = "minmatchlabel";
-            minmatchlabel.Size = new Size(118, 20);
-            minmatchlabel.TabIndex = 30;
-            minmatchlabel.Text = "最低更新匹配度:";
             // 
             // searchlabel
             // 
@@ -445,7 +421,7 @@
             // srchmethodlabel
             // 
             srchmethodlabel.AutoSize = true;
-            srchmethodlabel.Location = new Point(18, 58);
+            srchmethodlabel.Location = new Point(24, 76);
             srchmethodlabel.Margin = new Padding(4, 0, 4, 0);
             srchmethodlabel.Name = "srchmethodlabel";
             srchmethodlabel.Size = new Size(73, 20);
@@ -455,7 +431,7 @@
             // searchMethodComBox
             // 
             searchMethodComBox.FormattingEnabled = true;
-            searchMethodComBox.Location = new Point(91, 54);
+            searchMethodComBox.Location = new Point(97, 72);
             searchMethodComBox.Margin = new Padding(4);
             searchMethodComBox.Name = "searchMethodComBox";
             searchMethodComBox.Size = new Size(133, 28);
@@ -578,7 +554,6 @@
             VideoMonitor.MouseMove += VideoSourcePlayerMonitor_MouseMove;
             VideoMonitor.MouseUp += VideoSourcePlayerMonitor_MouseUp;
             VideoMonitor.MouseWheel += VideoSourcePlayerMonitor_MouseWheel;
-            VideoMonitor.PreviewKeyDown += VideoSourcePlayerMonitor_PreviewKeyDown;
             // 
             // Snapshot
             // 
@@ -656,7 +631,7 @@
         }
 
         #endregion
-        private System.Windows.Forms.ListBox reasultListBox;
+        private System.Windows.Forms.ListBox resultListBox;
         private System.Windows.Forms.Label imgreadmelbl;
         private System.Windows.Forms.Button captureBtn;
         private System.Windows.Forms.Label readmelbl;
@@ -680,8 +655,6 @@
         private System.Windows.Forms.ComboBox searchMethodComBox;
         private System.Windows.Forms.Label matchRltlabel;
         private System.Windows.Forms.Button DynTestBtn;
-        private System.Windows.Forms.TextBox lowestMatch;
-        private System.Windows.Forms.Label minmatchlabel;
         private System.Windows.Forms.TextBox imgLabelNametxt;
         private System.Windows.Forms.Label imgnamelabel;
         private System.Windows.Forms.Timer searchTestTimer;

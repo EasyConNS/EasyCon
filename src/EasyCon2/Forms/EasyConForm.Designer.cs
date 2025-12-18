@@ -195,13 +195,13 @@ namespace EasyCon2.Forms
             編輯ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 查找替換ToolStripMenuItem, 查找下一个ToolStripMenuItem, 注释取消注释ToolStripMenuItem });
             編輯ToolStripMenuItem.Name = "編輯ToolStripMenuItem";
             編輯ToolStripMenuItem.Size = new Size(53, 24);
-            編輯ToolStripMenuItem.Text = "編輯";
+            編輯ToolStripMenuItem.Text = "编辑";
             // 
             // 查找替換ToolStripMenuItem
             // 
             查找替換ToolStripMenuItem.Name = "查找替換ToolStripMenuItem";
             查找替換ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.F;
-            查找替換ToolStripMenuItem.Size = new Size(244, 26);
+            查找替換ToolStripMenuItem.Size = new Size(335, 26);
             查找替換ToolStripMenuItem.Text = "查找替換";
             查找替換ToolStripMenuItem.Click += 查找替換ToolStripMenuItem_Click;
             // 
@@ -209,15 +209,15 @@ namespace EasyCon2.Forms
             // 
             查找下一个ToolStripMenuItem.Name = "查找下一个ToolStripMenuItem";
             查找下一个ToolStripMenuItem.ShortcutKeys = Keys.F3;
-            查找下一个ToolStripMenuItem.Size = new Size(244, 26);
+            查找下一个ToolStripMenuItem.Size = new Size(335, 26);
             查找下一个ToolStripMenuItem.Text = "查找下一个";
             查找下一个ToolStripMenuItem.Click += 查找下一个ToolStripMenuItem_Click;
             // 
             // 注释取消注释ToolStripMenuItem
             // 
             注释取消注释ToolStripMenuItem.Name = "注释取消注释ToolStripMenuItem";
-            注释取消注释ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.OemQuestion;
-            注释取消注释ToolStripMenuItem.Size = new Size(244, 26);
+            注释取消注释ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Oem2;
+            注释取消注释ToolStripMenuItem.Size = new Size(335, 26);
             注释取消注释ToolStripMenuItem.Text = "注释/取消注释";
             注释取消注释ToolStripMenuItem.Click += 注释取消注释ToolStripMenuItem_Click;
             // 

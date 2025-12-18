@@ -1,4 +1,5 @@
 using EasyCon2.Models;
+using EasyScript;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.CodeCompletion;
 using ICSharpCode.AvalonEdit.Document;
@@ -33,9 +34,18 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
             {
                 completions.Add(new EcpCompletionData($"@{name}"));
             }
-        }else if (char.IsLetter(cur[0]))
+        }else if (cur.StartsWith('_') || cur.StartsWith('$'))
         {
-            foreach (var item in _keywords.Where(ch => ch.StartsWith(cur, StringComparison.OrdinalIgnoreCase)))
+            var tok = Scripter.GetTokens(Editor.Text, cur);
+            foreach(var name in tok)
+            {
+                completions.Add(new EcpCompletionData(name));
+            }
+        }
+        else if (char.IsLetter(cur[0]))
+        {
+            var kw = _keywords.Where(ch => ch.StartsWith(cur, StringComparison.OrdinalIgnoreCase));
+            foreach (var item in kw)
             {
                 completions.Add(new EcpCompletionData(item));
             }
@@ -45,7 +55,7 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
 
     private bool IsWordPart(char c)
     {
-        return char.IsLetterOrDigit(c) || c == '@';
+        return char.IsLetterOrDigit(c) || "@$_".IndexOf(c) !=-1;
     }
 
     public string GetCurrentWord(TextDocument document, int offset)

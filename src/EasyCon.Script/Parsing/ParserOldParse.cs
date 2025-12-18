@@ -214,8 +214,9 @@ internal partial class Parser
                 }
                 break;
             case "time":
+            case "rand":
                 if (tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.NEWLINE)
-                    return new BuildinFunc("TIME", [new RegParam(FormatterUtil.GetRegEx(tokens[1].Value))]);
+                    return new BuildinFunc(first.Value.ToUpper(), [new RegParam(FormatterUtil.GetRegEx(tokens[1].Value))]);
                 break;
             case "wait":
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)

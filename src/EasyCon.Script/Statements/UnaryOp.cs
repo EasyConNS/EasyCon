@@ -24,56 +24,6 @@ abstract class UnaryOp : Statement
     protected class UnaryOpParser : IStatementParser
     {
         readonly MetaU _meta;
-        readonly bool _lhs;
-
-        public UnaryOpParser(MetaU meta, bool lhs = true)
-        {
-            _meta = meta;
-            _lhs = lhs;
-        }
-
-        public Parsing.Statement Parse(ParserArgument args)
-        {
-            var m = Regex.Match(args.Text, $@"^{_meta.KeyWord}\s+{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
-            
-            if (m.Success)
-                return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, _lhs)) as Parsing.Statement;
-            return null;
-        }
-    }
-
-    protected abstract MetaU MetaInfo { get; }
-    public readonly ValRegEx RegDst;
-
-    public UnaryOp(ValRegEx regdst)
-    {
-        RegDst = regdst;
-    }
-
-    protected override string _GetString()
-    {
-        return $"{MetaInfo.KeyWord} {RegDst.GetCodeText()}";
-    }
-
-    public override void Exec(Processor processor)
-    {
-        processor.Register[RegDst] = MetaInfo.Function(processor.Register[RegDst]);
-    }
-
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        if (RegDst is ValReg)
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, (RegDst as ValReg).Index));
-        else 
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-    }
-}
-
-abstract class UnaryOpEx : Statement
-{
-    protected class UnaryOpParser : IStatementParser
-    {
-        readonly MetaU _meta;
 
         public UnaryOpParser(MetaU meta)
         {
@@ -93,7 +43,7 @@ abstract class UnaryOpEx : Statement
     public readonly ValRegEx RegDst;
     public readonly ValRegEx RegSrc;
 
-    public UnaryOpEx(ValRegEx regdst, ValRegEx regsrc)
+    public UnaryOp(ValRegEx regdst, ValRegEx regsrc)
     {
         RegDst = regdst;
         RegSrc = regsrc;
@@ -123,79 +73,24 @@ abstract class UnaryOpEx : Statement
     }
 }
 
-class Not : UnaryOpEx
+class Not : UnaryOp
 {
     static readonly MetaU _Meta = new(typeof(Not), typeof(Assembly.Instructions.AsmNot), "~", a => ~a);
     protected override MetaU MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
-    public Not(ValReg regdst, ValReg regsrc)
+    public Not(ValRegEx regdst, ValRegEx regsrc)
         : base(regdst, regsrc)
     { }
 }
 
-class Negative : UnaryOpEx
+class Negative : UnaryOp
 {
     static readonly MetaU _Meta = new(typeof(Negative), typeof(Assembly.Instructions.AsmNegative), "-", a => -a);
     protected override MetaU MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
-    public Negative(ValReg regdst, ValReg regsrc)
+    public Negative(ValRegEx regdst, ValRegEx regsrc)
         : base(regdst, regsrc)
-    { }
-}
-
-class Push : UnaryOp
-{
-    static readonly MetaU _Meta = new(typeof(Push), typeof(Assembly.Instructions.AsmPush), "PUSH", null);
-    protected override MetaU MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new UnaryOpParser(_Meta, false);
-
-    public Push(ValReg regdst)
-        : base(regdst)
-    { }
-
-    public override void Exec(Processor processor)
-    {
-        processor.Push((short)processor.Register[RegDst]);
-    }
-}
-
-class Pop : UnaryOp
-{
-    static readonly MetaU _Meta = new(typeof(Pop), typeof(Assembly.Instructions.AsmPop), "POP", null);
-    protected override MetaU MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
-
-    public Pop(ValReg regdst)
-        : base(regdst)
-    { }
-
-    public override void Exec(Processor processor)
-    {
-        processor.Register[RegDst] = processor.Pop();
-    }
-}
-
-class Bool : UnaryOp
-{
-    static readonly MetaU _Meta = new(typeof(Bool), typeof(Assembly.Instructions.AsmBool), "BOOL", a => a == 0 ? 0 : 1);
-    protected override MetaU MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
-
-    public Bool(ValReg regdst)
-        : base(regdst)
-    { }
-}
-
-class Rand : UnaryOp
-{
-    static Random _rand = new();
-    static readonly MetaU _Meta = new(typeof(Rand), typeof(Assembly.Instructions.AsmRand), "RAND", a => _rand.Next(a));
-    protected override MetaU MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
-
-    public Rand(ValReg regdst)
-        : base(regdst)
     { }
 }

@@ -29,14 +29,15 @@ namespace EasyCon2.Forms
         static readonly string ImgDir = Application.StartupPath + "\\ImgLabel\\";
 
         private static readonly List<ImgLabel> imgLabels = [];
+        private ImgLabel curImgLabel = new();
+
+        private int deviceId = -1;
         private readonly OpenCVCapture cvcap = new();
-        private Point _curResolution = new(1920, 1080);
 
         private readonly object _lock = new();
         private Bitmap _image;
 
-        public bool IsConnected => cvcap.IsOpened;
-
+        private Point _curResolution = new(1920, 1080);
         public Point CurResolution
         {
             get
@@ -56,7 +57,6 @@ namespace EasyCon2.Forms
         private bool isMouseDown = false;
         private Point mouseOffset;
         private double monitorScale = 1.1;
-        private int monitorHorOrVerZoom = 0;
         private MonitorMode monitorMode = MonitorMode.Editor;
 
         private static Bitmap snapshot;
@@ -74,9 +74,6 @@ namespace EasyCon2.Forms
         private Rectangle SnapshotRangeR = new(0, 0, 0, 0);
         private Rectangle SnapshotSearchObjR = new(0, 0, 0, 0);
         private PointF snapshotScale;
-
-        private ImgLabel curImgLabel = new();
-        private int deviceId = -1;
 
         public ICollection<ImgLabel> LoadedLabels => imgLabels;
         public int DeviceID => deviceId;
@@ -108,12 +105,16 @@ namespace EasyCon2.Forms
             CaptureVideoHelp.Text = Resources.capturedoc;
             Directory.CreateDirectory(CapDir);
 
-            foreach (var method in ImgLabelExt.GetAllSearchMethod())
+            foreach (var method in ECSearch.GetEnableSearchMethods())
             {
                 searchMethodComBox.Items.Add(method.ToDescription());
             }
+            // load the imglabel
+            curImgLabel.name = "5号路蛋屋主人";
+            curImgLabel.SetSource(() => GetImage());
 
             // data binding
+            imgLabelNametxt.DataBindings.Add("Text", curImgLabel, "name");
             searchXNUD.DataBindings.Add("Value", curImgLabel, "RangeX");
             searchYNUD.DataBindings.Add("Value", curImgLabel, "RangeY");
             searchWNUD.DataBindings.Add("Value", curImgLabel, "RangeWidth");
@@ -122,10 +123,6 @@ namespace EasyCon2.Forms
             targetYNUD.DataBindings.Add("Value", curImgLabel, "TargetY");
             targetWNUD.DataBindings.Add("Value", curImgLabel, "TargetWidth");
             targetHNUD.DataBindings.Add("Value", curImgLabel, "TargetHeight");
-            lowestMatch.DataBindings.Add("Text", curImgLabel, "matchDegree");
-
-            // load the imglabel
-            curImgLabel.SetSource(() => GetImage());
 
             LoadImgLabels();
             UpdateImgListBox();
@@ -151,7 +148,7 @@ namespace EasyCon2.Forms
 
         private Bitmap GetImage()
         {
-            if (!IsConnected)
+            if (!cvcap.IsOpened)
                 throw new Exception("请先连接采集卡再执行搜图");
             lock (_lock)
             {
@@ -169,7 +166,7 @@ namespace EasyCon2.Forms
             imgLableList.Items.AddRange([.. imgLabels.Select(i => i.name)]);
             imgLableList.EndUpdate();
         }
-
+        #region 窗口功能
         private void MonitorPaint(object sender, PaintEventArgs e)
         {
             try
@@ -285,18 +282,6 @@ namespace EasyCon2.Forms
             }
         }
 
-        private void VideoSourcePlayerMonitor_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
-        {
-            if (e.Control)
-            {
-                monitorHorOrVerZoom = 1;
-            }
-            else if (e.Shift)
-            {
-                monitorHorOrVerZoom = 2;
-            }
-        }
-
         private void VideoSourcePlayerMonitor_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
@@ -344,22 +329,10 @@ namespace EasyCon2.Forms
 
             Debug.WriteLine(monitorScale.ToString() + " " + newSize.ToString());
 
-            if (monitorHorOrVerZoom == 1)
-            {
-                newSize.Height = (int)(newSize.Height * monitorScale);
-            }
-            else if (monitorHorOrVerZoom == 2)
-            {
-                newSize.Width = (int)(newSize.Width * monitorScale);
-            }
-            else
-            {
-                newSize.Width = (int)(newSize.Width * monitorScale);
-                newSize.Height = (int)(newSize.Height * monitorScale);
-            }
+            newSize.Width = (int)(newSize.Width * monitorScale);
+            newSize.Height = (int)(newSize.Height * monitorScale);
 
             Debug.WriteLine($"new size:{newSize}");
-            monitorHorOrVerZoom = 0;
             this.Size = newSize;
         }
 
@@ -426,8 +399,7 @@ namespace EasyCon2.Forms
             Debug.WriteLine("bmpscale:" + snapshotScale.ToString());
             Snapshot.Refresh();
         }
-
-        double max_matchDegree = 0;
+        #endregion
 
         private SearchMethod getSelectedMethod()
         {
@@ -448,13 +420,13 @@ namespace EasyCon2.Forms
             sw.Stop();
 
             // load the result
-            reasultListBox.Items.Clear();
+            double max_matchDegree = 0;
+            resultListBox.Items.Clear();
             if (list.Count > 0)
             {
-
                 for (int i = 0; i < list.Count; i++)
                 {
-                    reasultListBox.Items.Add(list[i].X.ToString() + "," + list[i].Y.ToString());
+                    resultListBox.Items.Add($"{list[i].X},{list[i].Y}");
 
                     var result = curImgLabel.getResultImg(i);
                     var g = searchResultImg.CreateGraphics();
@@ -464,7 +436,7 @@ namespace EasyCon2.Forms
                 }
                 max_matchDegree = Math.Max(matchDegree, max_matchDegree);
 
-                matchRltlabel.Text = $"匹配度:{matchDegree:f1}%\n" + "耗时:" + sw.ElapsedMilliseconds + "毫秒\n" + $"最大匹配度:{max_matchDegree:f1}%";
+                matchRltlabel.Text = $"匹配度:{matchDegree:f1}%\n耗时:{sw.ElapsedMilliseconds}毫秒\n最大匹配度:{max_matchDegree:f1}%";
             }
             else
             {
@@ -482,7 +454,7 @@ namespace EasyCon2.Forms
             // get cur bmp
             ss?.Dispose();
             ss = GetImage();
-            ss.Save(CapDir + DateTime.Now.Ticks.ToString() + ".bmp", System.Drawing.Imaging.ImageFormat.Bmp);
+            ss.Save($"{CapDir}{DateTime.Now.Ticks.ToString()}.bmp", System.Drawing.Imaging.ImageFormat.Bmp);
 
             // need a 9 times of the real pic for display
             snapshot?.Dispose();
@@ -531,7 +503,6 @@ namespace EasyCon2.Forms
 
         private void searchTestBtn_Click(object sender, EventArgs e)
         {
-            max_matchDegree = 0;
             targetImg.Image?.Dispose();
             targetImg.Image = curImgLabel.getSearchImg();
             if (targetImg.Image != null)
@@ -572,14 +543,13 @@ namespace EasyCon2.Forms
 
         private void SaveTagBtn_Click(object sender, EventArgs e)
         {
-            if (imgLabelNametxt.Text == "")
+            if (curImgLabel.name == "" || curImgLabel.ImgBase64 == null)
             {
                 MessageBox.Show("搜图标签为空无法保存");
                 return;
             }
 
             curImgLabel.searchMethod = getSelectedMethod();
-            curImgLabel.matchDegree = double.Parse(lowestMatch.Text);
 
             // save the imglabel to local
             for (int index = 0; index < imgLabels.Count; index++)
@@ -595,8 +565,6 @@ namespace EasyCon2.Forms
 
             // not find, add a new one
             ImgLabel newone = new(() => GetImage());
-            curImgLabel.name = imgLabelNametxt.Text;
-
             newone.Copy(curImgLabel);
             newone.Save();
 
@@ -645,7 +613,6 @@ namespace EasyCon2.Forms
         {
             if (DynTestBtn.Text == "动态测试")
             {
-                max_matchDegree = 0;
                 targetImg.Image?.Dispose();
                 targetImg.Image = curImgLabel.getSearchImg();
                 if (targetImg.Image != null)
@@ -716,9 +683,8 @@ namespace EasyCon2.Forms
                     curImgLabel.Refresh(() => GetImage());
 
                     // update ui
-                    imgLabelNametxt.Text = curImgLabel.name;
+                    imgLabelNametxt.Text = item.name;
                     searchMethodComBox.SelectedItem = curImgLabel.searchMethod.ToDescription();
-                    lowestMatch.Text = curImgLabel.matchDegree.ToString();
                     targetImg.Image = curImgLabel.getSearchImg();
                     if (targetImg.Image == null)
                         MessageBox.Show("没有搜索目标图片");

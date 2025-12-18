@@ -27,5 +27,10 @@ class BuildinFunc : Statement
     public override void Assemble(Assembly.Assembler assembler)
     {
         throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+
+        //if (RegDst is ValReg)
+        //    assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, (RegDst as ValReg).Index));
+        //else
+        //    throw new Assembly.AssembleException(ErrorMessage.NotSupported);
     }
 }

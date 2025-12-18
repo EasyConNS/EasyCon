@@ -25,8 +25,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
         var types = from domainAssembly in AppDomain.CurrentDomain.GetAssemblies()
                     from assemblyType in domainAssembly.GetTypes()
                     where assemblyType.IsSubclassOf(typeof(BinaryOp)) |
-                       assemblyType.IsSubclassOf(typeof(UnaryOp)) |
-                       assemblyType.IsSubclassOf(typeof(UnaryOpEx))
+                       assemblyType.IsSubclassOf(typeof(UnaryOp))
                     where assemblyType.GetField("Parser") != null
                     select assemblyType.GetField("Parser").GetValue(null) as IStatementParser;
         return types;

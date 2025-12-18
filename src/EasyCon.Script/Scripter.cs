@@ -1,8 +1,8 @@
+using EasyCon.Script2.Syntax;
 using EasyScript.Parsing;
 using EasyScript.Statements;
 using System.CodeDom.Compiler;
 using System.Collections.Immutable;
-using System.Text.RegularExpressions;
 
 namespace EasyScript;
 
@@ -30,6 +30,12 @@ public class Scripter
             ExtVars[ev.Name] = ev;
         _statements = new Parser(Constants, ExtVars).Parse(code).ToImmutableArray();
         _statements.OfType<FunctionStmt>().ToList().ForEach(f => { _funcTables[f.Label] = f; });
+    }
+
+    public static IEnumerable<string> GetTokens(string code, string pre)
+    {
+        var tokens = SyntaxTree.ParseTokens(code);
+        return tokens.Select(t => t.Value).Distinct().Where(s => s.StartsWith(pre));
     }
 
     public void Run(IOutputAdapter output, ICGamePad pad)

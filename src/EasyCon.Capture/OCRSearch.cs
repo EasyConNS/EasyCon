@@ -1,5 +1,7 @@
-﻿ namespace EasyCapture;
+ namespace EasyCapture;
 
-internal class OCRSearch : ECSearch
+abstract class AbstractSearch { }
+
+internal class OCRSearch : AbstractSearch
 {
 }
