@@ -31,7 +31,6 @@ public partial class ImgLabel : INotifyPropertyChanged
 
     private Rectangle _round = Rectangle.Empty;
     private Rectangle _target = Rectangle.Empty;
-    private double _matchDegree = 95.0;
     public int RangeX
     {
         get { return _round.X; }
@@ -160,27 +159,11 @@ public partial class ImgLabel : INotifyPropertyChanged
         }
     }
 
-    public double matchDegree
-    {
-        get { return _matchDegree; }
-        set
-        {
-            // do not trigger change event if values are the same
-            if (Equals(value, _matchDegree)) return;
-            _matchDegree = value < 0 ? 0 : value;
-
-            //===================
-            // Usage in the Source
-            //===================
-            OnPropertyChanged();
-        }
-    }
-
     public delegate Bitmap GetNewFrame();
 
     [NonSerialized]
     public GetNewFrame getNewFrame;
-   
+
     public ImgLabel()
     {
         sourcePic = null;
@@ -205,7 +188,14 @@ public partial class ImgLabel : INotifyPropertyChanged
         sourcePic = ss.Clone(_round, ss.PixelFormat);
         ss.Dispose();
 
-        result = OpenCVSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, searchImg, searchMethod, out md);
+        if (searchMethod == SearchMethod.TesserDetect)
+        {
+            result = ECSearch.FindOCR(ImgBase64, sourcePic, out md);
+        }
+        else
+        {
+            result = ECSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, searchImg, searchMethod, out md);
+        }
         md *= 100;
 
         // update the search pic
@@ -217,25 +207,6 @@ public partial class ImgLabel : INotifyPropertyChanged
         //}
 
         return result;
-    }
-
-    public int Search()
-    {
-        if (searchImg.Width > RangeWidth || searchImg.Height > RangeHeight)
-            throw new Exception("搜索图片大于搜索范围");
-
-        double md = 0;
-        sourcePic?.Dispose();
-        Bitmap ss = getNewFrame();
-        sourcePic = ss.Clone(_round, ss.PixelFormat);
-        ss.Dispose();
-
-        result = OpenCVSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, searchImg, searchMethod, out md);
-        md *= 100;
-
-        // update the search pic
-
-        return (int)md;
     }
 
     public Bitmap getResultImg(int index)
@@ -277,7 +248,7 @@ public partial class ImgLabel : INotifyPropertyChanged
         }
         if (searchImg is null) return;
 
-        ImgBase64 = this.ImageToBase64(searchImg);
+        //ImgBase64 = this.ImageToBase64(searchImg);
 
         File.WriteAllText(path + name + ".IL", JsonSerializer.Serialize(this));
     }
@@ -294,7 +265,6 @@ public partial class ImgLabel : INotifyPropertyChanged
         TargetWidth = il.TargetWidth;
         TargetHeight = il.TargetHeight;
         searchMethod = il.searchMethod;
-        matchDegree = il.matchDegree;
         ImgBase64 = il.ImgBase64;
         searchImg = il.getSearchImg();//Base64StringToImage(il.ImgBase64);
         getNewFrame = il.getNewFrame;

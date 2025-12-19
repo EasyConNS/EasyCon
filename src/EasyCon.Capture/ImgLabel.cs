@@ -47,6 +47,8 @@ public class ImageLabelX
     /// </summary>
     public bool IsTextProcessingMethod => (int)ProcessingMethod > 10;
 
+    public string LabelName { get; set; }
+
     /// <summary>
     /// 验证标签合理性
     /// </summary>
@@ -217,6 +219,7 @@ public class ImageLabelX
             // 创建并返回对象
             return new ImageLabelX
             {
+                LabelName = Path.GetFileNameWithoutExtension(filePath),
                 TargetRegion = region,
                 SearchRegion = searchRegion,
                 TargetData = targetData,

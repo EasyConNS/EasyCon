@@ -85,6 +85,10 @@ class Processor(Dictionary<string, FunctionStmt> func)
             var ru = args[0] as RegParam;
             Register[ru.Reg] = _rand.Next(Register[ru.Reg] == 0 ? 100 : Register[ru.Reg]);
         }
+        else
+        {
+            throw new ScriptException($"未实现的内建函数'{fn}'", PC);
+        }
     }
 
     public void RetrunCall()

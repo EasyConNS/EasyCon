@@ -9,7 +9,8 @@
 		<PackageReference Include="OpenCvSharp4.Extensions" />
 		<PackageReference Condition="'$(OS)' == 'Windows_NT'" Include="OpenCvSharp4.runtime.win" />
 		<PackageReference Condition="'$(OS)' == 'Unix'" Include="OpenCvSharp4.official.runtime.linux-x64" />
-		<!--<PackageReference Include="Tesseract" />-->
+		<PackageReference Include="Tesseract" />
+		<PackageReference Include="Tesseract.Drawing" />
 	</ItemGroup>
 
 </Project>

@@ -45,13 +45,49 @@ internal static class ImgLabelExt
             return "err!!" + ex.Message;
         }
     }
+    private static bool IsBase64String(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return false;
+        if (s.Length % 4 != 0) return false;
+
+        try
+        {
+            // 尝试转换验证
+            _ = Convert.FromBase64String(s);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     public static Bitmap Base64StringToImage(this ImgLabel self, string basestr)
     {
-        byte[] imageBytes = Convert.FromBase64String(basestr);
-        var ms = new MemoryStream(imageBytes, 0, imageBytes.Length);
-        ms.Write(imageBytes, 0, imageBytes.Length);
-        Image image = Image.FromStream(ms, true);
-        return (Bitmap)image;
+        if(IsBase64String(basestr))
+        {
+            byte[] imageBytes = Convert.FromBase64String(basestr);
+            using var ms = new MemoryStream(imageBytes, 0, imageBytes.Length);
+            ms.Write(imageBytes, 0, imageBytes.Length);
+            Image image = Image.FromStream(ms, true);
+            return (Bitmap)image;
+        }
+        else
+        {
+            var bitmap = new Bitmap(200,50);
+            using Graphics g = Graphics.FromImage(bitmap);
+            g.Clear(Color.White);
+
+            // 设置字体和颜色
+            var font = new Font("Arial", 12, FontStyle.Bold);
+            Brush textBrush = Brushes.Black;
+
+            // 设置字符串及其位置
+            var point = new PointF(5, 20); // 文本位置（x, y）
+
+            // 绘制文本
+            g.DrawString(basestr, font, textBrush, point);
+            return bitmap;
+        }
     }
 }

@@ -24,6 +24,7 @@
     <PackageVersion Include="SharpDX.DirectInput" Version="4.2.0" />
     <PackageVersion Include="WebSocketSharp-netstandard" Version="1.0.1" />
     <PackageVersion Include="Tesseract" Version="5.2.0" />
+	<PackageVersion Include="Tesseract.Drawing" Version="5.2.0" />
     <PackageVersion Include="NLua" Version="1.6.0" />
     <PackageVersion Include="Avalonia" Version="11.3.8" />
     <PackageVersion Include="Avalonia.Desktop" Version="11.3.8" />

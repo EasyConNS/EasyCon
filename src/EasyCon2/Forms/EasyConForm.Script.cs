@@ -23,7 +23,11 @@ partial class EasyConForm
             // 每个ExternalVariable对应一个图像标签，name为名字，get为用来获取结果的函数，set暂时没有语句支持所以先省略                
 
             _program.Parse(textBoxScript.Text, captureVideo.LoadedLabels.
-                Select(il => new ExternalVariable(il.name, () => il.Search()))
+                Select(il => new ExternalVariable(il.name, () =>
+                {
+                    il.Search(out var md);
+                    return (int)md;
+                }))
                 );
             textBoxScript.Text = _program.ToCode();
             textBoxScript.Select(0, 0);
