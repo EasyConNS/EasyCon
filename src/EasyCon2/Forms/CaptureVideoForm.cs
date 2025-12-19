@@ -416,7 +416,16 @@ namespace EasyCon2.Forms
 
             sw.Reset();
             sw.Start();
-            var list = curImgLabel.Search(out double matchDegree);
+            var list = new List<Point>();
+            double matchDegree = 0;
+            try
+            {
+                list = curImgLabel.Search(out matchDegree);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
             sw.Stop();
 
             // load the result

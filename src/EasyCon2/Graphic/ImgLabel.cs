@@ -190,7 +190,8 @@ public partial class ImgLabel : INotifyPropertyChanged
 
         if (searchMethod == SearchMethod.TesserDetect)
         {
-            result = ECSearch.FindOCR(ImgBase64, sourcePic, out md);
+            using var targetBmp = sourcePic.Clone(new Rectangle(TargetX - RangeX, TargetY - RangeY, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+            result = ECSearch.FindOCR(ImgBase64, targetBmp, out md);
         }
         else
         {

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 
@@ -23,6 +24,7 @@ public sealed class ECSearch
         using MemoryStream memoryStream = new MemoryStream();
         srcBmp.Save(memoryStream, ImageFormat.Bmp);
         matchDegree = OCRSearch.TesserDetect(memoryStream, out var resultTxt);
+        Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{matchDegree}");
         return [new Point(0,0)];
     }
 

@@ -6,7 +6,7 @@ abstract class AbstractSearch { }
 
 internal class OCRSearch : AbstractSearch
 {
-    const string tessdataPath = @"./Resources";
+    const string tessdataPath = @"./Tessdata";
     public static float TesserDetect(MemoryStream stream, out string result)
     {
         using var img = Pix.LoadFromMemory(stream.ToArray());
