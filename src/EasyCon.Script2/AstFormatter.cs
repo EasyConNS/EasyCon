@@ -1,7 +1,5 @@
 using System.CodeDom.Compiler;
-using System.IO;
 using EasyCon.Script2.Ast;
-using EasyCon.Script2.Syntax;
 using EasyCon.Script2.Binding;
 
 public class AstFormatter : AstVisitor

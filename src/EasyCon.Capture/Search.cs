@@ -6,6 +6,7 @@ namespace EasyCapture;
 
 public sealed class ECSearch
 {
+    public static ImgLabel LoadIL(string dir) => ILExt.Load(dir);
     public static IEnumerable<SearchMethod> GetEnableSearchMethods()
     {
         return

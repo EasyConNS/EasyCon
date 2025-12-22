@@ -1,3 +1,4 @@
+using EasyCon2.Graphic;
 using EasyCon2.Helper;
 using EasyScript;
 using EasyScript.Parsing;

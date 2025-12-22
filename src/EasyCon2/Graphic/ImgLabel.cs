@@ -1,23 +1,17 @@
 using EasyCapture;
 using JetBrains.Annotations;
+using System.Collections.Immutable;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
+using IL = EasyCapture.ImgLabel;
 
 namespace EasyCon2.Graphic;
 
 // for ui data binding
-public partial class ImgLabel : INotifyPropertyChanged
+public class ImgLabel(IL label) : INotifyPropertyChanged
 {
-    public string name { get; set; }
-    public SearchMethod searchMethod { get; set; }
-    public string ImgBase64 { get; set; }
-
-    private Bitmap searchImg;
-    private Bitmap sourcePic;
-    private Bitmap resultImg;
-    private List<Point> result = new();
     //======================================
     // Actual implementation
     //======================================
@@ -29,8 +23,27 @@ public partial class ImgLabel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    private Rectangle _round = Rectangle.Empty;
-    private Rectangle _target = Rectangle.Empty;
+    private string _name = label.name;
+    private Rectangle _round = new Rectangle(label.RangeX, label.RangeY, label.RangeWidth, label.RangeHeight);
+    private Rectangle _target = new Rectangle(label.TargetX, label.TargetY, label.TargetWidth, label.TargetHeight);
+    private IL res = label;
+
+    public SearchMethod searchMethod { get; set; } = label.searchMethod;
+
+    public string name
+    {
+        get { return _name; }
+        set
+        {
+            _name = value;
+
+            //===================
+            // Usage in the Source
+            //===================
+            OnPropertyChanged();
+        }
+    }
+
     public int RangeX
     {
         get { return _round.X; }
@@ -159,133 +172,65 @@ public partial class ImgLabel : INotifyPropertyChanged
         }
     }
 
-    public delegate Bitmap GetNewFrame();
+    public Bitmap GetSearchImg() => res.GetBitmap();
 
-    [NonSerialized]
-    public GetNewFrame getNewFrame;
+    //public Bitmap getResultImg(Point p)
+    //{
+    //    return sourcePic.Clone(new Rectangle(p.X, p.Y, searchImg.Width, searchImg.Height), sourcePic.PixelFormat);
+    //}
+}
 
-    public ImgLabel()
+public static class ILExt
+{
+    public static IEnumerable<ImgLabel> LoadIL(string dir)
     {
-        sourcePic = null;
-        searchImg = null;
-        searchMethod = SearchMethod.SqDiffNormed;
+        var imgLabels = ImmutableArray.CreateBuilder<ImgLabel>();
+
+        foreach (var file in Directory.GetFiles(dir, "*.IL"))
+        {
+            try
+            {
+                var il = ECSearch.LoadIL(file);
+                imgLabels.Add(new ImgLabel(il));
+            }
+            catch
+            {
+                Debug.WriteLine("无法加载标签:", file);
+            }
+        }
+        return imgLabels.ToImmutable();
     }
 
-    public ImgLabel(GetNewFrame getNewFrame)
+    public static List<Point> Search(this ImgLabel img, out double md)
     {
-        sourcePic = null;
-        searchImg = null;
-        searchMethod = SearchMethod.SqDiffNormed;
-    }
+        md = 1;
+        //if (searchImg.Width > RangeWidth || searchImg.Height > RangeHeight)
+        //    throw new Exception("搜索图片大于搜索范围");
 
-    public List<Point> Search(out double md)
-    {
-        if (searchImg.Width > RangeWidth || searchImg.Height > RangeHeight)
-            throw new Exception("搜索图片大于搜索范围");
+        //sourcePic?.Dispose();
+        //Bitmap ss = getNewFrame();
+        //sourcePic = ss.Clone(_round, ss.PixelFormat);
+        //ss.Dispose();
 
-        sourcePic?.Dispose();
-        Bitmap ss = getNewFrame();
-        sourcePic = ss.Clone(_round, ss.PixelFormat);
-        ss.Dispose();
-
-        if (searchMethod == SearchMethod.TesserDetect)
-        {
-            using var targetBmp = sourcePic.Clone(new Rectangle(TargetX - RangeX, TargetY - RangeY, TargetWidth, TargetHeight), sourcePic.PixelFormat);
-            result = ECSearch.FindOCR(ImgBase64, targetBmp, out md);
-        }
-        else
-        {
-            result = ECSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, searchImg, searchMethod, out md);
-        }
+        List<Point> result = new();
+        //if (searchMethod == SearchMethod.TesserDetect)
+        //{
+        //    using var targetBmp = sourcePic.Clone(new Rectangle(TargetX - RangeX, TargetY - RangeY, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+        //    result = ECSearch.FindOCR(ImgBase64, targetBmp, out md);
+        //}
+        //else
+        //{
+        //    result = ECSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, searchImg, searchMethod, out md);
+        //}
         md *= 100;
 
         // update the search pic
         //if (md >= _matchDegree)
         //{
-        //    searchImg?.Dispose();
         //    Debug.WriteLine("update img");
         //    searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
         //}
 
         return result;
-    }
-
-    public Bitmap getResultImg(int index)
-    {
-        if (index < result.Count())
-        {
-            resultImg?.Dispose();
-            resultImg = sourcePic.Clone(new Rectangle(result[index].X, result[index].Y, searchImg.Width, searchImg.Height), sourcePic.PixelFormat);
-            return resultImg;
-        }
-
-        return null;
-    }
-
-    public void setSearchImg(Bitmap bmp)
-    {
-        if (bmp != null)
-        {
-            searchImg?.Dispose();
-            searchImg = bmp;
-        }
-    }
-
-    public Bitmap getSearchImg()
-    {
-        if (searchImg != null)
-            return searchImg.Clone(new Rectangle(0, 0, searchImg.Width, searchImg.Height), searchImg.PixelFormat);
-        else
-            return null;
-    }
-
-    public void Save()
-    {
-        // save the imglabel to loc
-        string path = Application.StartupPath + "\\ImgLabel\\";
-        if (!Directory.Exists(path))
-        {
-            Directory.CreateDirectory(path);
-        }
-        if (searchImg is null) return;
-
-        //ImgBase64 = this.ImageToBase64(searchImg);
-
-        File.WriteAllText(path + name + ".IL", JsonSerializer.Serialize(this));
-    }
-
-    public void Copy(ImgLabel il)
-    {
-        name = il.name;
-        RangeX = il.RangeX;
-        RangeY = il.RangeY;
-        RangeWidth = il.RangeWidth;
-        RangeHeight = il.RangeHeight;
-        TargetX = il.TargetX;
-        TargetY = il.TargetY;
-        TargetWidth = il.TargetWidth;
-        TargetHeight = il.TargetHeight;
-        searchMethod = il.searchMethod;
-        ImgBase64 = il.ImgBase64;
-        searchImg = il.getSearchImg();//Base64StringToImage(il.ImgBase64);
-        getNewFrame = il.getNewFrame;
-    }
-
-    public void Refresh(GetNewFrame getnew)
-    {
-        searchImg = this.Base64StringToImage(ImgBase64);
-        getNewFrame = getnew;
-    }
-
-    public void SetSource(GetNewFrame getnew)
-    {
-        getNewFrame = getnew;
-    }
-
-    public static ImgLabel Load(string path)
-    {
-        var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception();
-        temp.name = Path.GetFileNameWithoutExtension(path);
-        return temp;
     }
 }

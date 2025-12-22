@@ -6,7 +6,6 @@
   </Folder>
   <Folder Name="/Demo/">
     <Project Path="DirectInput/DirectInput.csproj" />
-    <Project Path="ILViewer/ILViewer.csproj" />
   </Folder>
   <Folder Name="/Lib/">
     <Project Path="src/EasyCon.Capture/EasyCon.Capture.csproj" />

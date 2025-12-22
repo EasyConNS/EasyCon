@@ -102,7 +102,7 @@ namespace EasyCon2.Forms
             // 
             imgreadmelbl.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             imgreadmelbl.AutoSize = true;
-            imgreadmelbl.Location = new Point(760, 391);
+            imgreadmelbl.Location = new Point(760, 374);
             imgreadmelbl.Margin = new Padding(4, 0, 4, 0);
             imgreadmelbl.Name = "imgreadmelbl";
             imgreadmelbl.Size = new Size(135, 20);
@@ -125,12 +125,12 @@ namespace EasyCon2.Forms
             // 
             readmelbl.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             readmelbl.AutoSize = true;
-            readmelbl.Location = new Point(760, 364);
+            readmelbl.Location = new Point(938, 333);
             readmelbl.Margin = new Padding(4, 0, 4, 0);
             readmelbl.Name = "readmelbl";
-            readmelbl.Size = new Size(527, 20);
+            readmelbl.Size = new Size(240, 20);
             readmelbl.TabIndex = 7;
-            readmelbl.Text = "双击切换放大/编辑模式，滚轮缩放，ctrl+滚轮水平缩放，shift+滚轮垂直缩放";
+            readmelbl.Text = "双击切换放大/编辑模式，滚轮缩放";
             // 
             // rangeBtn
             // 
@@ -311,12 +311,12 @@ namespace EasyCon2.Forms
             // 
             // matchRltlabel
             // 
-            matchRltlabel.Location = new Point(533, 24);
+            matchRltlabel.Location = new Point(533, 22);
             matchRltlabel.Margin = new Padding(4, 0, 4, 0);
             matchRltlabel.Name = "matchRltlabel";
-            matchRltlabel.Size = new Size(120, 53);
+            matchRltlabel.Size = new Size(120, 63);
             matchRltlabel.TabIndex = 21;
-            matchRltlabel.Text = "匹配度：100%耗时：100毫秒最大匹配度100%";
+            matchRltlabel.Text = "匹配度：100%\r\n耗时：100毫秒\r\n最大匹配度100%";
             // 
             // searchlabel
             // 
@@ -442,10 +442,10 @@ namespace EasyCon2.Forms
             // 
             imgLableList.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
             imgLableList.FormattingEnabled = true;
-            imgLableList.Location = new Point(763, 419);
+            imgLableList.Location = new Point(763, 399);
             imgLableList.Margin = new Padding(4);
             imgLableList.Name = "imgLableList";
-            imgLableList.Size = new Size(166, 244);
+            imgLableList.Size = new Size(166, 264);
             imgLableList.TabIndex = 19;
             imgLableList.DoubleClick += imgLableList_DoubleClick;
             // 
@@ -481,13 +481,13 @@ namespace EasyCon2.Forms
             // 
             CaptureVideoHelp.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
             CaptureVideoHelp.Font = new Font("宋体", 9F);
-            CaptureVideoHelp.Location = new Point(937, 419);
+            CaptureVideoHelp.Location = new Point(937, 399);
             CaptureVideoHelp.Margin = new Padding(4, 6, 4, 6);
             CaptureVideoHelp.Multiline = true;
             CaptureVideoHelp.Name = "CaptureVideoHelp";
             CaptureVideoHelp.ReadOnly = true;
             CaptureVideoHelp.ScrollBars = ScrollBars.Vertical;
-            CaptureVideoHelp.Size = new Size(331, 260);
+            CaptureVideoHelp.Size = new Size(331, 280);
             CaptureVideoHelp.TabIndex = 20;
             // 
             // openCapBtn

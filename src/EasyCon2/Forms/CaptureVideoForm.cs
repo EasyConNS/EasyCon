@@ -28,8 +28,10 @@ namespace EasyCon2.Forms
         static readonly string CapDir = Application.StartupPath + "\\Capture\\";
         static readonly string ImgDir = Application.StartupPath + "\\ImgLabel\\";
 
-        private static readonly List<ImgLabel> imgLabels = [];
-        private ImgLabel curImgLabel = new();
+        public ICollection<Graphic.ImgLabel> LoadedLabels => imgLabels;
+        private static readonly List<Graphic.ImgLabel> imgLabels = [];
+        // TODO
+        private Graphic.ImgLabel curImgLabel = new(null);
 
         private int deviceId = -1;
         private readonly OpenCVCapture cvcap = new();
@@ -75,7 +77,6 @@ namespace EasyCon2.Forms
         private Rectangle SnapshotSearchObjR = new(0, 0, 0, 0);
         private PointF snapshotScale;
 
-        public ICollection<ImgLabel> LoadedLabels => imgLabels;
         public int DeviceID => deviceId;
         public int LoadedLabelCount => imgLabels.Count;
 
@@ -111,7 +112,6 @@ namespace EasyCon2.Forms
             }
             // load the imglabel
             curImgLabel.name = "5号路蛋屋主人";
-            curImgLabel.SetSource(() => GetImage());
 
             // data binding
             imgLabelNametxt.DataBindings.Add("Text", curImgLabel, "name");
@@ -139,9 +139,8 @@ namespace EasyCon2.Forms
 
             imgLabels.Clear();
 
-            foreach (var il in ImgLabelExt.LoadIL(ImgDir))
+            foreach (var il in ILExt.LoadIL(ImgDir))
             {
-                il.Refresh(() => GetImage());
                 imgLabels.Add(il);
             }
         }
@@ -437,7 +436,8 @@ namespace EasyCon2.Forms
                 {
                     resultListBox.Items.Add($"{list[i].X},{list[i].Y}");
 
-                    var result = curImgLabel.getResultImg(i);
+                    //var result = curImgLabel.getResultImg(list[i]);
+                    var result = new Bitmap(300,200);
                     var g = searchResultImg.CreateGraphics();
                     g.Clear(Color.FromArgb(240, 240, 240));
                     g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
@@ -512,8 +512,8 @@ namespace EasyCon2.Forms
 
         private void searchTestBtn_Click(object sender, EventArgs e)
         {
-            targetImg.Image?.Dispose();
-            targetImg.Image = curImgLabel.getSearchImg();
+            //targetImg.Image?.Dispose();
+            //targetImg.Image = curImgLabel.getSearchImg();
             if (targetImg.Image != null)
                 searchImg_test();
             else
@@ -535,8 +535,8 @@ namespace EasyCon2.Forms
 
                 Rectangle range = new(SnapshotSearchObjR.X + 1, SnapshotSearchObjR.Y + 1, SnapshotSearchObjR.Width - 2, SnapshotSearchObjR.Height - 2);
 
-                curImgLabel.setSearchImg(snapshot.Clone(range, snapshot.PixelFormat));
-                targetImg.Image = curImgLabel.getSearchImg();
+                //curImgLabel.setSearchImg(snapshot.Clone(range, snapshot.PixelFormat));
+                targetImg.Image = snapshot.Clone(range, snapshot.PixelFormat);
 
                 snapshotMode = SnapshotMode.NoAction;
                 targetBtn.Text = "开始圈选(绿)";
@@ -552,7 +552,7 @@ namespace EasyCon2.Forms
 
         private void SaveTagBtn_Click(object sender, EventArgs e)
         {
-            if (curImgLabel.name == "" || curImgLabel.ImgBase64 == null)
+            if (curImgLabel.name == "")
             {
                 MessageBox.Show("搜图标签为空无法保存");
                 return;
@@ -560,25 +560,28 @@ namespace EasyCon2.Forms
 
             curImgLabel.searchMethod = getSelectedMethod();
 
+
+            string path = Application.StartupPath + "\\ImgLabel\\";
+
             // save the imglabel to local
             for (int index = 0; index < imgLabels.Count; index++)
             {
                 // if the name exist,just overwrite it
                 if (imgLabels[index].name == imgLabelNametxt.Text)
                 {
-                    imgLabels[index].Copy(curImgLabel);
-                    imgLabels[index].Save();
+                    //imgLabels[index].Copy(curImgLabel);
+                    //imgLabels[index].Save(path);
                     return;
                 }
             }
 
             // not find, add a new one
-            ImgLabel newone = new(() => GetImage());
-            newone.Copy(curImgLabel);
-            newone.Save();
+            //ImgLabel newone = new();
+            //newone.Copy(curImgLabel);
+            //newone.Save(path);
 
-            // add to list and ui
-            imgLabels.Add(newone);
+            //// add to list and ui
+            //imgLabels.Add(newone);
             UpdateImgListBox();
         }
 
@@ -623,7 +626,7 @@ namespace EasyCon2.Forms
             if (DynTestBtn.Text == "动态测试")
             {
                 targetImg.Image?.Dispose();
-                targetImg.Image = curImgLabel.getSearchImg();
+                //targetImg.Image = curImgLabel.getSearchImg();
                 if (targetImg.Image != null)
                     searchImg_test();
                 else
@@ -671,46 +674,37 @@ namespace EasyCon2.Forms
             // get new target pic
             var tap = new Bitmap(openFileDialog1.FileName);
             // set new target
-            curImgLabel.setSearchImg(tap);
             curImgLabel.TargetHeight = tap.Height;
             curImgLabel.TargetWidth = tap.Width;
-            targetImg.Image = curImgLabel.getSearchImg();
-            tap?.Dispose();
+            targetImg.Image = tap;
         }
 
         private void imgLableList_DoubleClick(object sender, EventArgs e)
         {
             if (imgLableList.SelectedItem != null && imgLableList.SelectedItem.ToString() != "")
             {
-                var items = imgLabels.Where(i => i.name == imgLableList.SelectedItem.ToString());
+                var item = imgLabels[imgLableList.SelectedIndex];
+                //Debug.WriteLine($"select: {item.name}");
+                curImgLabel = item;
 
-                if (items.Count() == 1)
-                {
-                    var item = items.First();
-                    //Debug.WriteLine("find" + item.name);
-                    curImgLabel.Copy(item);
-                    curImgLabel.Refresh(() => GetImage());
+                // update ui
+                searchMethodComBox.SelectedItem = curImgLabel.searchMethod.ToDescription();
+                targetImg.Image = curImgLabel.GetSearchImg();
+                if (targetImg.Image == null)
+                    MessageBox.Show("没有搜索目标图片");
 
-                    // update ui
-                    imgLabelNametxt.Text = item.name;
-                    searchMethodComBox.SelectedItem = curImgLabel.searchMethod.ToDescription();
-                    targetImg.Image = curImgLabel.getSearchImg();
-                    if (targetImg.Image == null)
-                        MessageBox.Show("没有搜索目标图片");
+                SnapshotRangeR.X = curImgLabel.RangeX + CurResolution.X - 2;
+                SnapshotRangeR.Y = curImgLabel.RangeY + CurResolution.Y - 2;
+                SnapshotRangeR.Width = curImgLabel.RangeWidth + 3;
+                SnapshotRangeR.Height = curImgLabel.RangeHeight + 3;
 
-                    SnapshotRangeR.X = curImgLabel.RangeX + CurResolution.X - 2;
-                    SnapshotRangeR.Y = curImgLabel.RangeY + CurResolution.Y - 2;
-                    SnapshotRangeR.Width = curImgLabel.RangeWidth + 3;
-                    SnapshotRangeR.Height = curImgLabel.RangeHeight + 3;
+                SnapshotSearchObjR.X = curImgLabel.TargetX + CurResolution.X - 1;
+                SnapshotSearchObjR.Y = curImgLabel.TargetY + CurResolution.Y - 1;
+                SnapshotSearchObjR.Width = curImgLabel.TargetWidth + 2;
+                SnapshotSearchObjR.Height = curImgLabel.TargetHeight + 2;
 
-                    SnapshotSearchObjR.X = curImgLabel.TargetX + CurResolution.X - 1;
-                    SnapshotSearchObjR.Y = curImgLabel.TargetY + CurResolution.Y - 1;
-                    SnapshotSearchObjR.Width = curImgLabel.TargetWidth + 2;
-                    SnapshotSearchObjR.Height = curImgLabel.TargetHeight + 2;
-
-                    snapshotMode = SnapshotMode.Refresh;
-                    Snapshot.Refresh();
-                }
+                snapshotMode = SnapshotMode.Refresh;
+                Snapshot.Refresh();
             }
         }
 

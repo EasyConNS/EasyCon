@@ -346,42 +346,34 @@ internal class OpenCVSearch
         var maxLoc = new OpenCvSharp.Point(0, 0);
         double max = 0, min = 0;
         matchDegree = 0;
+        var tmplMatchMode = method switch
+        {
+            SearchMethod.SqDiff => TemplateMatchModes.SqDiff,
+            SearchMethod.SqDiffNormed => TemplateMatchModes.SqDiffNormed,
+            SearchMethod.CCorr => TemplateMatchModes.CCorr,
+            SearchMethod.CCorrNormed => TemplateMatchModes.CCorrNormed,
+            SearchMethod.CCoeff => TemplateMatchModes.CCoeff,
+            SearchMethod.CCoeffNormed => TemplateMatchModes.CCoeffNormed,
+            _ => TemplateMatchModes.CCoeffNormed,
+        };
+
+        Cv2.MatchTemplate(big, small, result, tmplMatchMode);
+        Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
+
+        Debug.WriteLine($"{method}[min:{min}, max:{max}]");
         switch (method)
         {
             case SearchMethod.SqDiff:
-                Cv2.MatchTemplate(big, small, result, TemplateMatchModes.SqDiff);
-                Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
-                Debug.WriteLine($"SqDiff:{min} {max}");
+                matchDegree = min;
                 break;
             case SearchMethod.SqDiffNormed:
-                Cv2.MatchTemplate(big, small, result, TemplateMatchModes.SqDiffNormed);
-                Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
                 matchDegree = (1 - min) / 1.0;
-                Debug.WriteLine($"SqDiffNormed:{min} {max}");
-                break;
-            case SearchMethod.CCorr:
-                // not good for our usage
-                Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCorr);
-                Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
-                Debug.WriteLine($"CCorr:{min} {max}");
                 break;
             case SearchMethod.CCorrNormed:
-                Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCorrNormed);
-                Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
-                Debug.WriteLine($"CCorrNormed:{min} {max}");
                 matchDegree = max / 1.0;
                 break;
-            case SearchMethod.CCoeff:
-                Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeff);
-                Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
-                Debug.WriteLine($"CCoeff:{min} {max}");
-                break;
             case SearchMethod.CCoeffNormed:
-            default:
-                Cv2.MatchTemplate(big, small, result, TemplateMatchModes.CCoeffNormed);
-                Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
                 matchDegree = (max + 1) / 2.0;
-                Debug.WriteLine($"CCoeffNormed:{min} {max}");
                 break;
         }
         // the sqD lower is good
