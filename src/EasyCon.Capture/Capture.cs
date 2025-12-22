@@ -20,15 +20,10 @@ public sealed class ECCapture
         {
             return [];
         }
-        else
-        {
-            return [];
-        }
+        return [];
     }
 
-    public static Dictionary<string, int> GetCaptureTypes() => getCaptureTypes();
-
-    private static Dictionary<string, int> getCaptureTypes()
+    public static Dictionary<string, int> GetCaptureTypes()
     {
         var captureTypes = new Dictionary<string, int>();
         var values = Enum.GetValues(typeof(VideoCaptureAPIs));

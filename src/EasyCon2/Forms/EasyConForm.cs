@@ -155,7 +155,7 @@ namespace EasyCon2.Forms
 
             InitCaptureTypes();
 
-            StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabelCount}");
+            StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabels.Count()}");
         }
 
         private void EasyConForm_FormClosing(object sender, FormClosingEventArgs e)

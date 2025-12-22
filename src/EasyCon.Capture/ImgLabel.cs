@@ -21,55 +21,21 @@ public record ImgLabel
     public int TargetHeight { get; set; } = 0;
 
     [JsonIgnore]
-    public string name { get; set; } = string.Empty;
+    public string name { get; set; } = "5号路蛋屋主人";
 
     private Rectangle _round => new(RangeX, RangeY, RangeWidth, RangeHeight);
     private Rectangle _target => new(TargetX, TargetY, TargetWidth, TargetHeight);
 
     public Bitmap GetBitmap()
     {
-        return this.Base64StringToImage(ImgBase64);
+        return Base64StringToImage(ImgBase64);
     }
-}
 
-static class ILExt
-{
-    public static ImgLabel Load(string path)
+    public void SetImage(Bitmap bitmap)
     {
-        var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception();
-        temp.name = Path.GetFileNameWithoutExtension(path);
-        return temp;
+        ImgBase64 = ImageToBase64(bitmap);
     }
 
-    public static void Save(this ImgLabel self, string path)
-    {
-        // save the imglabel to loc
-        if (!Directory.Exists(path))
-        {
-            Directory.CreateDirectory(path);
-        }
-
-        File.WriteAllText(path + self.name + ".IL", JsonSerializer.Serialize(self));
-    }
-
-    public static string ImageToBase64(this ImgLabel self, Bitmap bmp)
-    {
-        try
-        {
-            var ms = new MemoryStream();
-            bmp.Save(ms, ImageFormat.Bmp);
-            byte[] arr = new byte[ms.Length];
-            ms.Position = 0;
-            ms.Read(arr, 0, (int)ms.Length);
-            ms.Close();
-            string strbaser64 = Convert.ToBase64String(arr);
-            return strbaser64;
-        }
-        catch (Exception ex)
-        {
-            return "err!!" + ex.Message;
-        }
-    }
     private static bool IsBase64String(string s)
     {
         if (string.IsNullOrWhiteSpace(s)) return false;
@@ -87,7 +53,7 @@ static class ILExt
         }
     }
 
-    public static Bitmap Base64StringToImage(this ImgLabel self, string basestr)
+    private static Bitmap Base64StringToImage(string basestr)
     {
         if (IsBase64String(basestr))
         {
@@ -114,5 +80,90 @@ static class ILExt
             g.DrawString(basestr, font, textBrush, point);
             return bitmap;
         }
+    }
+
+    private static string ImageToBase64(Bitmap bmp)
+    {
+        try
+        {
+            var ms = new MemoryStream();
+            bmp.Save(ms, ImageFormat.Bmp);
+            byte[] arr = new byte[ms.Length];
+            ms.Position = 0;
+            ms.Read(arr, 0, (int)ms.Length);
+            ms.Close();
+            string strbaser64 = Convert.ToBase64String(arr);
+            return strbaser64;
+        }
+        catch (Exception ex)
+        {
+            return "err!!" + ex.Message;
+        }
+    }
+
+    public bool Valid()
+    {
+        if (ImgBase64.Length == 0) return false;
+        return true;
+    }
+
+    public delegate Bitmap GetNewFrame();
+    [NonSerialized]
+    public GetNewFrame GetFrame;
+    private Bitmap sourcePic;
+    public Bitmap GetResultImg(Point p)
+    {
+        return sourcePic.Clone(new Rectangle(p.X, p.Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+    }
+    public List<Point> Search(out double md)
+    {
+        if (TargetWidth > RangeWidth || TargetHeight > RangeHeight)
+            throw new Exception("搜索图片大于搜索范围");
+
+        using var ss = GetFrame();
+        sourcePic?.Dispose();
+        sourcePic = ss.Clone(_round, ss.PixelFormat);
+
+        List<Point> result = new();
+        if (searchMethod == SearchMethod.TesserDetect)
+        {
+            using var targetBmp = sourcePic.Clone(new Rectangle(TargetX - RangeX, TargetY - RangeY, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+            result = ECSearch.FindOCR(ImgBase64, targetBmp, out md);
+        }
+        else
+        {
+            result = ECSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, GetBitmap(), searchMethod, out md);
+        }
+        md *= 100;
+
+        // update the search pic
+        //if (md >= _matchDegree)
+        //{
+        //    Debug.WriteLine("update img");
+        //    searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+        //}
+
+        return result;
+    }
+
+    public static ImgLabel Load(string path)
+    {
+        var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception();
+        temp.name = Path.GetFileNameWithoutExtension(path);
+        return temp;
+    }
+}
+
+public static class ILExt
+{
+    public static void Save(this ImgLabel self, string path)
+    {
+        // save the imglabel to loc
+        if (!Directory.Exists(path))
+        {
+            Directory.CreateDirectory(path);
+        }
+
+        File.WriteAllText(path + self.name + ".IL", JsonSerializer.Serialize(self));
     }
 }

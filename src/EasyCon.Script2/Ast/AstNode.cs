@@ -198,7 +198,7 @@ public sealed class IfCondition(Token token, Expression condition) : Statement(t
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        throw new NotImplementedException();
+        return Condition.Accept(visitor);
     }
 }
 
@@ -329,7 +329,7 @@ public sealed class EndFuncStatement(Token keyword) : Statement(keyword)
 }
 
 // Return语句
-public sealed class ReturnStatement(Token keyword, Expression value) : Statement(keyword)
+public sealed class ReturnStatement(Token keyword, Expression value = null) : Statement(keyword)
 {
     public Expression Value { get; } = value;
 

@@ -139,6 +139,13 @@ internal sealed class Parser
         return node;
     }
 
+    private T ParseTokenStatement<T>(TokenType ttype, string msg) where T : Statement
+    {
+        var keyword = Match(ttype, msg);
+
+        return (T)Activator.CreateInstance(typeof(T), keyword);
+    }
+
     private Member ParseMember()
     {
         if (Check(TokenType.FUNC))
@@ -250,9 +257,7 @@ internal sealed class Parser
 
     private IfStatement ParseIfStatement()
     {
-        var ifToken = Advance();
-        var condition = ParseCondition();
-        Match(TokenType.NEWLINE, "if条件语法不正确");
+        var ifcond = WithTrivia(()=>ParseIfCondition());
 
         var thenBranch = ParseStatementsUntil(TokenType.ELIF, TokenType.ELSE, TokenType.ENDIF);
 
@@ -260,27 +265,32 @@ internal sealed class Parser
         List<ElseIfClause> elseif = [];
         while (Check(TokenType.ELIF))
         {
-            var elifToken = Advance();
-            var elifCond = ParseCondition();
-            Match(TokenType.NEWLINE, "if条件语法不正确");
+            var elifcond = WithTrivia(()=>ParseIfCondition());
 
             var elifBranch = ParseStatementsUntil(TokenType.ELIF, TokenType.ELSE, TokenType.ENDIF);
-            elseif.Add(new(new IfCondition(elifToken, elifCond), elifBranch.ToImmutableArray()));
+            elseif.Add(new(elifcond, elifBranch.ToImmutableArray()));
         }
 
         // else
         ElseClause? elseClause = null;
         if (Check(TokenType.ELSE))
         {
-            var elseToken = Advance();
-            Match(TokenType.NEWLINE, "if条件语法不正确");
+            var elsestmt = WithTrivia(()=>ParseTokenStatement<ElseStatement>(TokenType.ELSE, "else解析失败"));
+
             var elseBranch = ParseStatementsUntil(TokenType.ENDIF);
-            elseClause = new(new ElseStatement(elseToken), elseBranch.ToImmutableArray());
+            elseClause = new(elsestmt, elseBranch.ToImmutableArray());
         }
 
-        var endif = Match(TokenType.ENDIF, "if语句需要endif结尾");
+        var endif = ParseTokenStatement<EndifStatement>(TokenType.ENDIF, "if语句需要endif结尾");
 
-        return new IfStatement(new IfCondition(ifToken, condition), thenBranch.ToImmutableArray(), elseif.ToImmutableArray(), elseClause, new EndifStatement(endif));
+        return new IfStatement(ifcond, thenBranch.ToImmutableArray(), elseif.ToImmutableArray(), elseClause, endif);
+    }
+
+    private IfCondition ParseIfCondition()
+    {
+        var ifToken = Advance();
+        var condition = ParseCondition();
+        return new IfCondition(ifToken, condition);
     }
 
     private ForStatement ParseForStatement()
@@ -325,9 +335,9 @@ internal sealed class Parser
         Match(TokenType.NEWLINE, "for语法不正确");
 
         var body = ParseStatementsUntil(TokenType.NEXT);
-        var nextTok = Match(TokenType.NEXT, "for语句需要next结尾");
+        var nextTok = WithTrivia(()=>ParseTokenStatement<NextStatement>(TokenType.NEXT, "for语句需要next结尾"));
 
-        return new ForStatement(new ForExpr(forToken, initVar, start, end, infinite), body.ToImmutableArray(), new NextStatement(nextTok));
+        return new ForStatement(new ForExpr(forToken, initVar, start, end, infinite), body.ToImmutableArray(), nextTok);
     }
 
     private List<Statement> ParseStatementsUntil(params TokenType[] endToken)
@@ -341,7 +351,7 @@ internal sealed class Parser
                 Advance();
                 continue;
             }
-            statements.Add(ParseStatementInternal());
+            statements.Add(WithTrivia(()=>ParseStatementInternal()));
             if (Check(TokenType.NEWLINE)) Advance();
         }
 

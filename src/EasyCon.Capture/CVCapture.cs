@@ -28,7 +28,7 @@ public class OpenCVCapture : IDisposable
         Debug.WriteLine(videoCapture.Get(VideoCaptureProperties.Fps));
     }
 
-    private Mat GetMatFrame()
+    public Mat GetMatFrame()
     {
         if (videoCapture.IsOpened())
         {
@@ -36,16 +36,6 @@ public class OpenCVCapture : IDisposable
         }
 
         return new Mat();
-    }
-
-    public Bitmap? GetFrame()
-    {
-        using var mat = GetMatFrame();
-        if (!mat.Empty())
-        {
-            return BitmapConverter.ToBitmap(mat);
-        }
-        return null;
     }
 
     public void Release()

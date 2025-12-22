@@ -125,7 +125,7 @@ namespace EasyCon2.Forms
             // 
             readmelbl.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             readmelbl.AutoSize = true;
-            readmelbl.Location = new Point(938, 333);
+            readmelbl.Location = new Point(937, 361);
             readmelbl.Margin = new Padding(4, 0, 4, 0);
             readmelbl.Name = "readmelbl";
             readmelbl.Size = new Size(240, 20);
@@ -298,6 +298,7 @@ namespace EasyCon2.Forms
             imgLabelNametxt.Name = "imgLabelNametxt";
             imgLabelNametxt.Size = new Size(133, 27);
             imgLabelNametxt.TabIndex = 12;
+            imgLabelNametxt.Text = "5号路蛋屋主人";
             // 
             // imgnamelabel
             // 
@@ -430,13 +431,13 @@ namespace EasyCon2.Forms
             // 
             // searchMethodComBox
             // 
+            searchMethodComBox.DropDownStyle = ComboBoxStyle.DropDownList;
             searchMethodComBox.FormattingEnabled = true;
             searchMethodComBox.Location = new Point(97, 72);
             searchMethodComBox.Margin = new Padding(4);
             searchMethodComBox.Name = "searchMethodComBox";
             searchMethodComBox.Size = new Size(133, 28);
             searchMethodComBox.TabIndex = 13;
-            searchMethodComBox.Text = "选择搜索方法";
             // 
             // imgLableList
             // 
@@ -508,10 +509,9 @@ namespace EasyCon2.Forms
             ResolutionBtn.Location = new Point(759, 327);
             ResolutionBtn.Margin = new Padding(4);
             ResolutionBtn.Name = "ResolutionBtn";
-            ResolutionBtn.Size = new Size(171, 33);
+            ResolutionBtn.Size = new Size(221, 33);
             ResolutionBtn.TabIndex = 3;
             ResolutionBtn.Text = "当前分辨率：1080P点击切换";
-            ResolutionBtn.TextAlign = ContentAlignment.MiddleLeft;
             ResolutionBtn.UseVisualStyleBackColor = true;
             ResolutionBtn.Click += ResolutionBtn_Click;
             // 
@@ -575,6 +575,8 @@ namespace EasyCon2.Forms
             openFileDialog1.DefaultExt = "png";
             openFileDialog1.FileName = "target";
             openFileDialog1.Filter = "图片文件(*.jpg,*.gif,*.bmp,*.png)|*.jpg;*.gif;*.bmp;*.png";
+            openFileDialog1.RestoreDirectory = true;
+            openFileDialog1.Title = "打开";
             // 
             // monitorTimer
             // 
