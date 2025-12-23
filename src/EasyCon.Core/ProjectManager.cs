@@ -6,8 +6,8 @@ public sealed class ProjectManager : IDisposable
 {
     // 工程内容存储
     private string _mainSource = string.Empty;
-    private readonly Dictionary<string, string> _libFiles = new Dictionary<string, string>();
-    private readonly Dictionary<string, byte[]> _imageFiles = new Dictionary<string, byte[]>();
+    private readonly Dictionary<string, string> _libFiles = new();
+    private readonly Dictionary<string, byte[]> _imageFiles = new();
 
     // 文件路径管理
     private string _zipFilePath;

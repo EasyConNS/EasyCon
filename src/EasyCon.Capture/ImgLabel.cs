@@ -87,7 +87,7 @@ public record ImgLabel
         try
         {
             var ms = new MemoryStream();
-            bmp.Save(ms, ImageFormat.Bmp);
+            bmp.Save(ms, ImageFormat.Png);
             byte[] arr = new byte[ms.Length];
             ms.Position = 0;
             ms.Read(arr, 0, (int)ms.Length);
@@ -128,7 +128,7 @@ public record ImgLabel
         if (searchMethod == SearchMethod.TesserDetect)
         {
             using var targetBmp = sourcePic.Clone(new Rectangle(TargetX - RangeX, TargetY - RangeY, TargetWidth, TargetHeight), sourcePic.PixelFormat);
-            result = ECSearch.FindOCR(ImgBase64, targetBmp, out md);
+            result = ECSearch.FindOCR(ImgBase64, targetBmp,out var rlttxt, out md);
         }
         else
         {
@@ -164,6 +164,17 @@ public static class ILExt
             Directory.CreateDirectory(path);
         }
 
-        File.WriteAllText(path + self.name + ".IL", JsonSerializer.Serialize(self));
+        if(self.searchMethod.ILTxtType())
+        {
+            // 文字标签手动编辑
+            self.ImgBase64 = "";
+        }
+
+        File.WriteAllText($"{path}{self.name}.IL", JsonSerializer.Serialize(self));
+    }
+
+    private static bool ILTxtType(this SearchMethod method)
+    {
+        return method == SearchMethod.TesserDetect;
     }
 }

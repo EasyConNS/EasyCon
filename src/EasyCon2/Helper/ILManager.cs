@@ -173,6 +173,7 @@ internal class ILManager : INotifyPropertyChanged
 
     public void LoadImgLabels(string path)
     {
+        Directory.CreateDirectory(path);
         Labels.Clear();
 
         foreach (var file in Directory.GetFiles(path, "*.IL"))

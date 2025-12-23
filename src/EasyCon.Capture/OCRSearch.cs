@@ -7,10 +7,17 @@ abstract class AbstractSearch { }
 internal class OCRSearch : AbstractSearch
 {
     const string tessdataPath = @"./Tessdata";
-    public static float TesserDetect(MemoryStream stream, out string result)
+
+
+    /// <summary>
+    /// language: trained tessdata
+    /// enginMod: EngineMode.Default
+    /// pageSegMod: PageSegMode.SingleLine
+    /// </summary>
+    public static float TesserDetect(MemoryStream stream, out string result, string lang = "chi_sim")
     {
         using var img = Pix.LoadFromMemory(stream.ToArray());
-        return TesserDetect(img, out result);
+        return TesserDetect(img, out result, lang);
     }
 
     public static float TesserDetect(Pix img, out string result, string lang = "chi_sim")

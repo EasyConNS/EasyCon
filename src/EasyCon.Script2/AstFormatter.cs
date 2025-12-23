@@ -306,7 +306,7 @@ public class AstFormatter : AstVisitor
         }
     }
 
-        private void WriteLeadingTrivia(Member statement)
+    private void WriteLeadingTrivia(Member statement)
     {
         foreach (var trivia in statement.LeadingTrivia)
         {

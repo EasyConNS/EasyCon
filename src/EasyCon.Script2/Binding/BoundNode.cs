@@ -2,7 +2,7 @@ namespace EasyCon.Script2.Binding;
 
 internal abstract class BoundNode
 {
-    // public abstract BoundNodeKind Kind { get; }
+    public abstract BoundNodeKind Kind { get; }
 
     public override string ToString()
     {

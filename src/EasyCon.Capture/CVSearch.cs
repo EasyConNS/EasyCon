@@ -8,20 +8,20 @@ internal class OpenCVSearch : AbstractSearch
     private static Mat XYAvg(Mat src)
     {
         // 1. 转换为灰度图像
-        using Mat gray = new Mat();
+        using Mat gray = new();
         Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
 
         // 2. 计算x方向梯度
-        using Mat gradX = new Mat();
+        using Mat gradX = new();
         // ddepth: CV_16S避免溢出
         // dx=1, dy=0: 计算x方向梯度
         Cv2.Sobel(gray, gradX, MatType.CV_16S, 1, 0, -1);
         // 3. 计算y方向梯度
-        using Mat gradY = new Mat();
+        using Mat gradY = new();
         // dx=0, dy=1: 计算y方向梯度
         Cv2.Sobel(gray, gradY, MatType.CV_16S, 0, 1, -1);
         // 方法1：算术平均值 (Gx + Gy) / 2
-        using Mat result = new Mat();
+        using Mat result = new();
         Cv2.AddWeighted(gradX, 0.5, gradY, 0.5, 0, result);
 
         Mat result8U = new();
@@ -32,26 +32,26 @@ internal class OpenCVSearch : AbstractSearch
     private static Mat LaplacianEdge(Mat src)
     {
         // 1. 转换为灰度图像
-        using Mat gray = new Mat();
+        using Mat gray = new();
         Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
 
         // 1. 高斯模糊降噪（Laplacian对噪声敏感，必须先降噪）
-        using Mat blurred = new Mat();
-        Cv2.GaussianBlur(gray, blurred, new OpenCvSharp.Size(5, 5), 1.5);
+        using Mat blurred = new();
+        Cv2.GaussianBlur(gray, blurred, new Size(5, 5), 1.5);
 
         // 2. Laplacian边缘检测
-        using Mat laplacian = new Mat();
+        using Mat laplacian = new();
         // 参数说明：
         // ddepth: 输出图像深度，CV_16S避免溢出
         // ksize: 核大小，必须是正奇数
         Cv2.Laplacian(blurred, laplacian, MatType.CV_16S, 3);
 
         // 3. 转换为绝对值并缩放到8位
-        using Mat absLaplacian = new Mat();
+        using Mat absLaplacian = new();
         Cv2.ConvertScaleAbs(laplacian, absLaplacian);
 
         // 4. 二值化处理
-        using Mat edges = new Mat();
+        using Mat edges = new();
         // 方法1：简单阈值
         Cv2.Threshold(absLaplacian, edges, 30, 255, ThresholdTypes.Binary);
 

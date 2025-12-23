@@ -18,6 +18,7 @@ ren EasyCon2.exe EasyCon.net8.0.%commitid%.exe
 cd ../
 xcopy ..\Firmware .\publish\Firmware\
 xcopy ..\Script .\publish\Script\
+xcopy .\EasyCon.Capture\Resources\*.traineddata .\publish\Tessdata\
 xcopy .\EasyCon2\Resources\AmiiboImages .\publish\Amiibo\AmiiboImages\
 mkdir .\publish\ImgLabel\
 del .\publish\*.pdb

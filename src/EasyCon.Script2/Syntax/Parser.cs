@@ -401,7 +401,7 @@ internal sealed class Parser
 
         var endFunc = Match(TokenType.ENDFUNC, "需要endfunc结尾");
 
-        return new FunctionDefinitionStatement(new FuncDeclare(functionToken, functionName), [], body.ToImmutableArray(), new EndFuncStatement(endFunc));
+        return new FunctionDefinitionStatement(new FuncDeclare(functionToken, functionName, []), body.ToImmutableArray(), new EndFuncStatement(endFunc));
     }
 
     private ReturnStatement ParseReturnStatement()

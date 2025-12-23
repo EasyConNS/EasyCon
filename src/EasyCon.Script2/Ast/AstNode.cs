@@ -297,12 +297,10 @@ public sealed class ContinueStatement(Token keyword) : Statement(keyword)
 }
 
 // 函数定义语句
-public sealed class FunctionDefinitionStatement(FuncDeclare funcdecl, ImmutableArray<string> parameters, ImmutableArray<Statement> body, EndFuncStatement endfunc) : Member(funcdecl.Key)
+public sealed class FunctionDefinitionStatement(FuncDeclare funcdecl, ImmutableArray<Statement> body, EndFuncStatement endfunc) : Member(funcdecl.Key)
 {
     public FuncDeclare FuncDecl { get; } = funcdecl;
-    public ImmutableArray<string> Parameters { get; } = parameters;
     public ImmutableArray<Statement> Body { get; } = body;
-
     public EndFuncStatement EndFunc { get; } = endfunc;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
@@ -311,9 +309,11 @@ public sealed class FunctionDefinitionStatement(FuncDeclare funcdecl, ImmutableA
     }
 }
 
-public sealed class FuncDeclare(Token keyword, Token ident) : Statement(keyword)
+public sealed class FuncDeclare(Token keyword, Token ident, ImmutableArray<string> parameters) : Statement(keyword)
 {
     public Token NameIdent { get; } = ident;
+    public ImmutableArray<string> Parameters { get; } = parameters;
+
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         throw new NotImplementedException();

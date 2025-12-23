@@ -14,7 +14,7 @@ internal partial class Parser
     private Statement? ParseConstantDecl(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
-        if (lexer.Count() != 3 + 2)
+        if (lexer.Count() != 3 + 1)
             return null;
         if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN && (lexer[2].Type == TokenType.INT || lexer[2].Type == TokenType.CONST))
         {
@@ -25,6 +25,35 @@ internal partial class Parser
         }
         return null;
     }
+    
+    // private void ParseExpression(int parentPrecedence = 0)
+    // {
+    //     ExpressionSyntax left;
+    //     var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
+    //     if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
+    //     {
+    //         var operatorToken = NextToken();
+    //         var operand = ParseBinaryExpression(unaryOperatorPrecedence);
+    //         left = new UnaryExpressionSyntax(operatorToken, operand);
+    //     }
+    //     else
+    //     {
+    //         left = ParsePrimaryExpression();
+    //     }
+
+    //     while (true)
+    //     {
+    //         var precedence = Current.Type.GetBinaryOperatorPrecedence();
+    //         if (precedence == 0 || precedence <= parentPrecedence)
+    //             break;
+
+    //         var operatorToken = NextToken();
+    //         var right = ParseBinaryExpression(precedence);
+    //         left = new BinaryExpressionSyntax(left, operatorToken, right);
+    //     }
+
+    //     return left;
+    // }
 
     private Statement? ParseAssignment(string text)
     {
@@ -123,13 +152,13 @@ internal partial class Parser
                 {
                     return new Break(_formatter.GetInstant(tokens[1].Value, true));
                 }
-                else if (tokens[1].Type == TokenType.NEWLINE)
+                else if (tokens[1].Type == TokenType.EOF)
                 {
                     return new Break();
                 }
                 break;
             case TokenType.CONTINUE:
-                if (tokens[1].Type == TokenType.NEWLINE)
+                if (tokens[1].Type == TokenType.EOF)
                 {
                     return new Continue();
                 }
@@ -193,7 +222,7 @@ internal partial class Parser
     {
         var tokens = SyntaxTree.ParseTokens(text);
         var first = tokens.First()!;
-        if(tokens.Count() > 2+2) return null;
+        if(tokens.Count() > 2+1) return null;
         switch (first.Value.ToLower())
         {
             case "func":
@@ -202,20 +231,20 @@ internal partial class Parser
                 return tokens[1].Type == TokenType.IDENT ? new CallStat(tokens[1].Value) : null;
             case "alert":
             case "print":
-                if (tokens[1].Type == TokenType.STRING && tokens[2].Type == TokenType.NEWLINE)
+                if (tokens[1].Type == TokenType.STRING && tokens[2].Type == TokenType.EOF)
                 {
                     var contents = ParseContents(tokens[1].Value, out bool _);
 
                     return new BuildinFunc(first.Value.ToUpper(), contents.ToArray());
                 }
-                else if (tokens[1].Type == TokenType.NEWLINE)
+                else if (tokens[1].Type == TokenType.EOF)
                 {
                     return new BuildinFunc(first.Value.ToUpper(), []);
                 }
                 break;
             case "time":
             case "rand":
-                if (tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.NEWLINE)
+                if (tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.EOF)
                     return new BuildinFunc(first.Value.ToUpper(), [new RegParam(FormatterUtil.GetRegEx(tokens[1].Value))]);
                 break;
             case "wait":

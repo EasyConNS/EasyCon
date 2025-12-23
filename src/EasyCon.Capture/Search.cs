@@ -22,11 +22,11 @@ public sealed class ECSearch
         ];
     }
 
-    public static List<System.Drawing.Point> FindOCR(string text, Bitmap srcBmp, out double matchDegree)
+    public static List<System.Drawing.Point> FindOCR(string text, Bitmap srcBmp,out string resultTxt, out double matchDegree)
     {
         using MemoryStream memoryStream = new MemoryStream();
         srcBmp.Save(memoryStream, ImageFormat.Bmp);
-        var confidence = OCRSearch.TesserDetect(memoryStream, out var resultTxt);
+        var confidence = OCRSearch.TesserDetect(memoryStream, out resultTxt);
         Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{confidence}");
         // 计算编辑距离
         matchDegree = OCRSearch.StringMatchSimple(resultTxt, text);

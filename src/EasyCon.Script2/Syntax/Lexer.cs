@@ -52,7 +52,8 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             }
 
             builder.Append(comment);
-            builder.Append("\r\n");
+            if(lines.Length > 1)
+                builder.Append("\r\n");
         }
         return builder.ToString();
     }
@@ -128,7 +129,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             }
         }
 
-        AddToken(TokenType.EOF, "", 0);
+        AddToken(TokenType.EOF, "\0", 0);
         return _tokens.ToImmutableArray();
     }
 

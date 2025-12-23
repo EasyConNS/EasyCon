@@ -187,7 +187,7 @@ class Or : BinaryOp
 
 class Xor : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(Xor), typeof(Assembly.Instructions.AsmOr), "^", (a, b) => a ^ b);
+    static readonly Meta _Meta = new(typeof(Xor), typeof(Assembly.Instructions.AsmXor), "^", (a, b) => a ^ b);
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 

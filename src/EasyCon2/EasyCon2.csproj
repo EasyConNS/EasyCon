@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows7.0</TargetFramework>
     <Nullable>warnings</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
@@ -17,7 +16,6 @@
 
   <ItemGroup>
     <PackageReference Include="AvalonEdit" />
-    <PackageReference Include="JetBrains.Annotations" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="WebSocketSharp-netstandard" />
   </ItemGroup>

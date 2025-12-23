@@ -1,5 +1,11 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <DefaultTargetFramework>net8.0</DefaultTargetFramework>
+    <LtsTargetFramework>net8.0</LtsTargetFramework>
+	<UseWindowsForms Condition=" $(MSBuildProjectName.Contains('VPad')) or '$(MSBuildProjectName)' == 'EasyCon2' ">true</UseWindowsForms>
+    <TargetFramework Condition=" '$(UseWindowsForms)' == 'true' ">$(LtsTargetFramework)-windows7.0</TargetFramework>
+    <TargetFramework Condition=" '$(TargetFramework)' == '' and '$(TargetFrameworks)' == '' ">$(DefaultTargetFramework)</TargetFramework>
+    <Features>strict</Features>
+    <Version>1.54.0</Version>
   </PropertyGroup>
 </Project>
