@@ -60,7 +60,7 @@ internal class OpenCVSearch : AbstractSearch
         return result8U;
     }
 
-    public static List<System.Drawing.Point> EdgeDetect(int left, int top, int width, int height, Mat big, Mat small, SearchMethod method, out double matchDegree)
+    public static List<Point> EdgeDetect(int left, int top, int width, int height, Mat big, Mat small, SearchMethod method, out double matchDegree)
     {
         using var result = method == SearchMethod.EdgeDetectLaplacian? LaplacianEdge(small) : XYAvg(small);
         //using (new Window("结果1", result))
@@ -76,12 +76,12 @@ internal class OpenCVSearch : AbstractSearch
         return OpenCvFindPic(left, top, width, height, result2, result, SearchMethod.CCoeffNormed, out matchDegree);
     }
 
-    public static List<System.Drawing.Point> OpenCvFindPic(int left, int top, int width, int height, Mat big, Mat small, SearchMethod method, out double matchDegree)
+    public static List<Point> OpenCvFindPic(int left, int top, int width, int height, Mat big, Mat small, SearchMethod method, out double matchDegree)
     {
-        List<System.Drawing.Point> res = [];
+        List<Point> res = [];
         using var result = new Mat();
-        var minLoc = new OpenCvSharp.Point(0, 0);
-        var maxLoc = new OpenCvSharp.Point(0, 0);
+        var minLoc = new Point(0, 0);
+        var maxLoc = new Point(0, 0);
         double max = 0, min = 0;
         matchDegree = 0;
         var tmplMatchMode = method switch
@@ -102,26 +102,27 @@ internal class OpenCVSearch : AbstractSearch
         switch (method)
         {
             case SearchMethod.SqDiff:
-                matchDegree = min;
-                break;
             case SearchMethod.SqDiffNormed:
                 matchDegree = (1 - min) / 1.0;
                 break;
+            case SearchMethod.CCorr:
             case SearchMethod.CCorrNormed:
                 matchDegree = max / 1.0;
                 break;
+            case SearchMethod.CCoeff:
             case SearchMethod.CCoeffNormed:
+            default:
                 matchDegree = (max + 1) / 2.0;
                 break;
         }
         // the sqD lower is good
         if (method == SearchMethod.SqDiff || method == SearchMethod.SqDiffNormed)
         {
-            res.Add(new System.Drawing.Point(minLoc.X, minLoc.Y));
+            res.Add(new(minLoc.X, minLoc.Y));
         }
         else
         {
-            res.Add(new System.Drawing.Point(maxLoc.X, maxLoc.Y));
+            res.Add(new(maxLoc.X, maxLoc.Y));
         }
 
         return res;

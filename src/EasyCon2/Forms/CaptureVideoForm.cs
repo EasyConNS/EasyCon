@@ -172,11 +172,9 @@ namespace EasyCon2.Forms
                 g.CompositingQuality = CompositingQuality.HighSpeed;
                 g.InterpolationMode = InterpolationMode.NearestNeighbor;
                 g.SmoothingMode = SmoothingMode.None;
-
                 g.InterpolationMode = InterpolationMode.NearestNeighbor;
-                // DrawImage() is toooooo SLOW, use DirectX instead PLZ!
-                var drawImg = newImg.Clone(new Rectangle(0, 0, newImg.Width, newImg.Height), newImg.PixelFormat);
-                g.DrawImage(drawImg, new Rectangle(0, 0, VideoMonitor.Width, VideoMonitor.Height), new Rectangle(0, 0, CurResolution.X, CurResolution.Y), GraphicsUnit.Pixel);
+
+                g.DrawImage(newImg, new Rectangle(0, 0, VideoMonitor.Width, VideoMonitor.Height), new Rectangle(0, 0, CurResolution.X, CurResolution.Y), GraphicsUnit.Pixel);
             }
             catch
             {

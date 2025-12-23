@@ -54,7 +54,7 @@ public sealed class ECSearch
         //    P_Data = srcBmp.LockBits(new Rectangle(0, 0, P_Width, P_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
         //}
 
-        List<System.Drawing.Point> List = [];
+        List<OpenCvSharp.Point> result = [];
         switch (method)
         {
             case SearchMethod.SqDiff:
@@ -63,11 +63,11 @@ public sealed class ECSearch
             case SearchMethod.CCorrNormed:
             case SearchMethod.CCoeff:
             case SearchMethod.CCoeffNormed:
-                List = OpenCVSearch.OpenCvFindPic(left, top, width, height, big, src, method, out matchDegree);
+                result = OpenCVSearch.OpenCvFindPic(left, top, width, height, big, src, method, out matchDegree);
                 break;
             case SearchMethod.EdgeDetectXY:
             case SearchMethod.EdgeDetectLaplacian:
-                List = OpenCVSearch.EdgeDetect(left, top, width, height, big, src, method, out matchDegree);
+                result = OpenCVSearch.EdgeDetect(left, top, width, height, big, src, method, out matchDegree);
                 break;
             // case SearchMethod.StrictMatch:
             //     List = StrictMatch(left, top, width, height, S_Data, P_Data);
@@ -98,7 +98,7 @@ public sealed class ECSearch
         //    srcBmp.UnlockBits(P_Data);
         //}
 
-        return List;
+        return [.. result.Select(p=>new System.Drawing.Point(p.X, p.Y))];
     }
 
     #region 其他匹配算法
