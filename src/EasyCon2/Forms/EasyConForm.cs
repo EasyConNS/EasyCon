@@ -112,7 +112,7 @@ namespace EasyCon2.Forms
             textBoxScript.TextChanged += new EventHandler(this.textBoxScript_TextChanged);
 
             var completionProvider = new EcpCompletionProvider(textBoxScript);
-            completionProvider.GetImgLabel += ()=> captureVideo.LoadedLabels.Select(il => il.name);
+            completionProvider.GetImgLabel += () => captureVideo.LoadedLabels.Select(il => il.name);
             _completionController = new CodeCompletionController(textBoxScript, completionProvider);
 
             _foldingManager = FoldingManager.Install(textBoxScript.TextArea);
@@ -121,13 +121,12 @@ namespace EasyCon2.Forms
 
             findPanel1.InitEditor(textBoxScript);
 
-            elementHost1.Child = textBoxScript;
+            editorHost.Child = textBoxScript;
         }
 
         private void EasyConForm_Load(object sender, EventArgs e)
         {
             this.Text = $"伊机控 EasyCon v{VER}  QQ群:946057081";
-            textBoxScriptHelp.Text = Resources.scriptdoc;
             comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
             comboBoxBoardType.SelectedIndex = 0;
             RegisterKeys();
@@ -162,6 +161,7 @@ namespace EasyCon2.Forms
         {
             e.Cancel = !FileClose();
             captureVideo?.Close();
+            if (scriptRunning) ScriptStop();
         }
 
         private void InitCaptureTypes()
@@ -195,11 +195,19 @@ namespace EasyCon2.Forms
                 {
                     Invoke(delegate
                     {
-                        // run/stop button
-                        if (scriptRunning)
-                            buttonScriptRunStop.Text = "终止";
+                        if (!scriptRunning)
+                        {
+                            buttonScriptRunStop.Text = "运行脚本";
+                            buttonScriptRunStop.Image = Resources.start;
+                        }
                         else
-                            buttonScriptRunStop.Text = "运行";
+                        {
+                            buttonScriptRunStop.Text = "终止脚本";
+                            buttonScriptRunStop.Image = Resources.stop;
+                        }
+                        编译ToolStripMenuItem.Enabled = !scriptRunning;
+                        执行ToolStripMenuItem.Enabled = !scriptRunning;
+                        compileButton.Enabled = !scriptRunning;
                         // update record script to text
                         if (NS.recordState == RecordState.RECORD_START)
                         {
@@ -207,12 +215,20 @@ namespace EasyCon2.Forms
                             textBoxScript.Text = NS.GetRecordScript();
                             this.textBoxScript.ScrollToHome();
                         }
-
-                        // serial port status
-                        var status = NS.ConnectionStatus;
-                        if (status == Status.Connected)
+                        if(captureVideo.IsOpened)
                         {
-                            labelSerialStatus.Text = "已连接(稳定模式)";
+                            labelCaptureStatus.Text = "采集卡已连接";
+                            labelCaptureStatus.ForeColor = Color.Lime;
+                        }
+                        else
+                        {
+                            labelCaptureStatus.Text = "采集卡未连接";
+                            labelCaptureStatus.ForeColor = Color.White;
+                        }
+                        // serial port status
+                        if (NS.IsConnected())
+                        {
+                            labelSerialStatus.Text = "单片机已连接";
                             labelSerialStatus.ForeColor = Color.Lime;
                         }
                         else
@@ -288,9 +304,7 @@ namespace EasyCon2.Forms
                         }
 
                         // script edited
-                        var strse = _fileEdited ? $"{fileName}(已编辑)" : fileName;
-                        if (groupBoxScript.Text != strse)
-                            groupBoxScript.Text = strse;
+                        groupBoxScript.Text = _fileEdited ? $"{fileName}(已编辑)" : fileName;
                     });
                     Thread.Sleep(25);
                 }
@@ -473,20 +487,20 @@ namespace EasyCon2.Forms
         private bool FileOpen(string path = "")
         {
             Directory.CreateDirectory(ScriptPath);
-            openFileDialog1.Title = "打开";
-            openFileDialog1.RestoreDirectory = true;
-            openFileDialog1.InitialDirectory = Path.GetFullPath(ScriptPath);
-            openFileDialog1.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
-            openFileDialog1.FileName = string.Empty;
+            openFileDialog.Title = "打开";
+            openFileDialog.RestoreDirectory = true;
+            openFileDialog.InitialDirectory = Path.GetFullPath(ScriptPath);
+            openFileDialog.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+            openFileDialog.FileName = string.Empty;
 
             string _currentFile = path;
             if (path == "")
             {
-                if (openFileDialog1.ShowDialog() != DialogResult.OK)
+                if (openFileDialog.ShowDialog() != DialogResult.OK)
                     return false;
                 if (!FileClose())
                     return false;
-                _currentFile = openFileDialog1.FileName;
+                _currentFile = openFileDialog.FileName;
             }
 
             textBoxScript.Load(_currentFile);
@@ -497,17 +511,17 @@ namespace EasyCon2.Forms
         private bool FileSave(bool saveAs = false)
         {
             Directory.CreateDirectory(ScriptPath);
-            saveFileDialog1.Title = saveAs ? "另存为" : "保存";
-            saveFileDialog1.RestoreDirectory = true;
-            saveFileDialog1.InitialDirectory = Path.GetFullPath(ScriptPath);
-            saveFileDialog1.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
-            saveFileDialog1.FileName = string.Empty;
+            saveFileDialog.Title = saveAs ? "另存为" : "保存";
+            saveFileDialog.RestoreDirectory = true;
+            saveFileDialog.InitialDirectory = Path.GetFullPath(ScriptPath);
+            saveFileDialog.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+            saveFileDialog.FileName = string.Empty;
 
             if (saveAs || textBoxScript.Document.FileName == null)
             {
-                if (saveFileDialog1.ShowDialog() != DialogResult.OK)
+                if (saveFileDialog.ShowDialog() != DialogResult.OK)
                     return false;
-                textBoxScript.Document.FileName = saveFileDialog1.FileName;
+                textBoxScript.Document.FileName = saveFileDialog.FileName;
 
             }
             textBoxScript.Save(textBoxScript.Document.FileName);
@@ -553,22 +567,22 @@ namespace EasyCon2.Forms
             }
         }
 
-        private async void 编译ToolStripMenuItem_Click(object sender, EventArgs e)
+        private async void compileButton_Click(object sender, EventArgs e)
         {
             if (await ScriptCompile())
             {
                 StatusShowLog("编译成功");
                 SystemSounds.Beep.Play();
-                MessageBox.Show("编译成功！");
+                MessageBox.Show("编译成功！", "编译结果");
             }
         }
 
         private void 执行ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (!scriptRunning)
+            {
                 ScriptRun();
-            else
-                MessageBox.Show("已经在运行了！");
+            }
         }
 
         private void textBoxScript_TextChanged(object sender, EventArgs e)
@@ -589,7 +603,9 @@ namespace EasyCon2.Forms
                 ScriptRun();
             }
             else
+            {
                 ScriptStop();
+            }
         }
 
         private void EnableConnBtn(bool show = true)
@@ -624,16 +640,6 @@ namespace EasyCon2.Forms
         private void buttonControllerHelp_Click(object sender, EventArgs e)
         {
             ShowControllerHelp();
-        }
-
-        private void buttonCLS_Click(object sender, EventArgs e)
-        {
-            lock (_messages)
-            {
-                _messages.Enqueue(new Tuple<RichTextBox, object, Color?>(richTextBoxMessage, null, null));
-                _msgFirstLine = true;
-                _msgNewLine = true;
-            }
         }
 
         private void buttonGenerateFirmware_Click(object sender, EventArgs e)
@@ -868,6 +874,7 @@ namespace EasyCon2.Forms
 
             captureVideo = new CaptureVideoForm((int)(((ToolStripMenuItem)sender).Tag), dev_type);
             captureVideo.Show();
+            StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabels.Count()}");
         }
 
         private void 打开搜图ToolStripMenuItem_MouseHover(object sender, EventArgs e)
@@ -1069,7 +1076,6 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             var oc = Environment.GetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS");
             StatusShowLog($"环境变量设置成功：{oc}");
         }
-        #endregion
 
         private void 检查更新ToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -1119,5 +1125,21 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             text = _program.ToggleComment(text);
             textBoxScript.Document.Replace(line, text);
         }
+
+        private void 脚本语法ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            new ScriptHelp().Show();
+        }
+
+        private void 清屏ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            lock (_messages)
+            {
+                _messages.Enqueue(new Tuple<RichTextBox, object, Color?>(richTextBoxMessage, null, null));
+                _msgFirstLine = true;
+                _msgNewLine = true;
+            }
+        }
+        #endregion
     }
 }

@@ -28,8 +28,9 @@ namespace EasyCon2.Forms
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(EasyConForm));
-            menuStrip1 = new MenuStrip();
+            menuStrip = new MenuStrip();
             文件ToolStripMenuItem = new ToolStripMenuItem();
             新建ToolStripMenuItem = new ToolStripMenuItem();
             打开ToolStripMenuItem = new ToolStripMenuItem();
@@ -69,16 +70,16 @@ namespace EasyCon2.Forms
             固件模式ToolStripMenuItem = new ToolStripMenuItem();
             联机模式ToolStripMenuItem = new ToolStripMenuItem();
             烧录模式ToolStripMenuItem = new ToolStripMenuItem();
+            脚本语法ToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator2 = new ToolStripSeparator();
             检查更新ToolStripMenuItem = new ToolStripMenuItem();
             项目源码ToolStripMenuItem = new ToolStripMenuItem();
             关于ToolStripMenuItem = new ToolStripMenuItem();
             groupBox1 = new GroupBox();
-            buttonCLS = new Button();
             labelTimer = new Label();
             richTextBoxMessage = new RichTextBox();
-            buttonScriptRunStop = new Button();
-            groupBox6 = new GroupBox();
+            logMenuStrip = new ContextMenuStrip(components);
+            清屏ToolStripMenuItem = new ToolStripMenuItem();
             buttonRecordPause = new Button();
             buttonRecord = new Button();
             buttonFlashClear = new Button();
@@ -92,42 +93,51 @@ namespace EasyCon2.Forms
             buttonShowController = new Button();
             groupBoxScript = new GroupBox();
             findPanel1 = new FindPanel();
-            elementHost1 = new System.Windows.Forms.Integration.ElementHost();
+            editorHost = new System.Windows.Forms.Integration.ElementHost();
             groupBox3 = new GroupBox();
             ComPort = new ComboBox();
-            labelSerialStatus = new Label();
             buttonSerialPortConnect = new Button();
             buttonSerialPortSearch = new Button();
             buttonControllerHelp = new Button();
             buttonKeyMapping = new Button();
-            openFileDialog1 = new OpenFileDialog();
-            saveFileDialog1 = new SaveFileDialog();
+            openFileDialog = new OpenFileDialog();
+            saveFileDialog = new SaveFileDialog();
             groupBox4 = new GroupBox();
             toolStripStatusLabel1 = new ToolStripStatusLabel();
-            statusStrip1 = new StatusStrip();
-            textBoxScriptHelp = new TextBox();
-            menuStrip1.SuspendLayout();
+            statusStrip = new StatusStrip();
+            labelSerialStatus = new ToolStripStatusLabel();
+            toolStripStatusLabel3 = new ToolStripStatusLabel();
+            labelCaptureStatus = new ToolStripStatusLabel();
+            optPanel = new FlowLayoutPanel();
+            scriptPanel = new Panel();
+            toolStrip = new ToolStrip();
+            compileButton = new ToolStripButton();
+            buttonScriptRunStop = new ToolStripButton();
+            menuStrip.SuspendLayout();
             groupBox1.SuspendLayout();
-            groupBox6.SuspendLayout();
+            logMenuStrip.SuspendLayout();
             groupBox2.SuspendLayout();
             groupBoxScript.SuspendLayout();
             groupBox3.SuspendLayout();
             groupBox4.SuspendLayout();
-            statusStrip1.SuspendLayout();
+            statusStrip.SuspendLayout();
+            optPanel.SuspendLayout();
+            scriptPanel.SuspendLayout();
+            toolStrip.SuspendLayout();
             SuspendLayout();
             // 
-            // menuStrip1
+            // menuStrip
             // 
-            menuStrip1.Font = new Font("微软雅黑", 9F);
-            menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 編輯ToolStripMenuItem, 脚本ToolStripMenuItem, 搜图ToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 画图ToolStripMenuItem, 帮助ToolStripMenuItem });
-            menuStrip1.Location = new Point(1, 1);
-            menuStrip1.Name = "menuStrip1";
-            menuStrip1.Padding = new Padding(7, 2, 0, 2);
-            menuStrip1.RenderMode = ToolStripRenderMode.Professional;
-            menuStrip1.Size = new Size(1121, 28);
-            menuStrip1.TabIndex = 0;
-            menuStrip1.Text = "menuStrip1";
+            menuStrip.Font = new Font("微软雅黑", 9F);
+            menuStrip.ImageScalingSize = new Size(20, 20);
+            menuStrip.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 編輯ToolStripMenuItem, 脚本ToolStripMenuItem, 搜图ToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 画图ToolStripMenuItem, 帮助ToolStripMenuItem });
+            menuStrip.Location = new Point(1, 1);
+            menuStrip.Name = "menuStrip";
+            menuStrip.Padding = new Padding(7, 2, 0, 2);
+            menuStrip.RenderMode = ToolStripRenderMode.Professional;
+            menuStrip.Size = new Size(789, 28);
+            menuStrip.TabIndex = 0;
+            menuStrip.Text = "menuStrip1";
             // 
             // 文件ToolStripMenuItem
             // 
@@ -234,7 +244,7 @@ namespace EasyCon2.Forms
             编译ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.R;
             编译ToolStripMenuItem.Size = new Size(178, 26);
             编译ToolStripMenuItem.Text = "编译";
-            编译ToolStripMenuItem.Click += 编译ToolStripMenuItem_Click;
+            编译ToolStripMenuItem.Click += compileButton_Click;
             // 
             // 执行ToolStripMenuItem
             // 
@@ -390,7 +400,7 @@ namespace EasyCon2.Forms
             // 
             // 帮助ToolStripMenuItem
             // 
-            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 固件模式ToolStripMenuItem, 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, toolStripSeparator2, 检查更新ToolStripMenuItem, 项目源码ToolStripMenuItem, 关于ToolStripMenuItem });
+            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 固件模式ToolStripMenuItem, 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, 脚本语法ToolStripMenuItem, toolStripSeparator2, 检查更新ToolStripMenuItem, 项目源码ToolStripMenuItem, 关于ToolStripMenuItem });
             帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
             帮助ToolStripMenuItem.Size = new Size(53, 24);
             帮助ToolStripMenuItem.Text = "帮助";
@@ -415,6 +425,13 @@ namespace EasyCon2.Forms
             烧录模式ToolStripMenuItem.Size = new Size(152, 26);
             烧录模式ToolStripMenuItem.Text = "烧录模式";
             烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
+            // 
+            // 脚本语法ToolStripMenuItem
+            // 
+            脚本语法ToolStripMenuItem.Name = "脚本语法ToolStripMenuItem";
+            脚本语法ToolStripMenuItem.Size = new Size(152, 26);
+            脚本语法ToolStripMenuItem.Text = "脚本语法";
+            脚本语法ToolStripMenuItem.Click += 脚本语法ToolStripMenuItem_Click;
             // 
             // toolStripSeparator2
             // 
@@ -445,29 +462,16 @@ namespace EasyCon2.Forms
             // groupBox1
             // 
             groupBox1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
-            groupBox1.Controls.Add(buttonCLS);
             groupBox1.Controls.Add(labelTimer);
             groupBox1.Controls.Add(richTextBoxMessage);
-            groupBox1.Controls.Add(buttonScriptRunStop);
             groupBox1.Location = new Point(8, 30);
             groupBox1.Margin = new Padding(3, 4, 3, 4);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new Padding(3, 4, 3, 4);
-            groupBox1.Size = new Size(312, 453);
+            groupBox1.Size = new Size(226, 298);
             groupBox1.TabIndex = 1;
             groupBox1.TabStop = false;
-            groupBox1.Text = "日志";
-            // 
-            // buttonCLS
-            // 
-            buttonCLS.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            buttonCLS.Location = new Point(125, 400);
-            buttonCLS.Name = "buttonCLS";
-            buttonCLS.Size = new Size(46, 46);
-            buttonCLS.TabIndex = 36;
-            buttonCLS.Text = "清屏";
-            buttonCLS.UseVisualStyleBackColor = true;
-            buttonCLS.Click += buttonCLS_Click;
+            groupBox1.Text = "输出";
             // 
             // labelTimer
             // 
@@ -476,60 +480,48 @@ namespace EasyCon2.Forms
             labelTimer.BorderStyle = BorderStyle.Fixed3D;
             labelTimer.Font = new Font("Microsoft YaHei UI", 13F, FontStyle.Bold);
             labelTimer.ForeColor = Color.White;
-            labelTimer.Location = new Point(6, 400);
+            labelTimer.Location = new Point(6, 245);
             labelTimer.Name = "labelTimer";
-            labelTimer.Size = new Size(119, 46);
+            labelTimer.Size = new Size(210, 46);
             labelTimer.TabIndex = 35;
             labelTimer.Text = "00:00:00";
             labelTimer.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // richTextBoxMessage
             // 
-            richTextBoxMessage.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
+            richTextBoxMessage.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             richTextBoxMessage.BackColor = Color.FromArgb(64, 64, 64);
             richTextBoxMessage.BorderStyle = BorderStyle.FixedSingle;
+            richTextBoxMessage.ContextMenuStrip = logMenuStrip;
             richTextBoxMessage.ForeColor = Color.White;
             richTextBoxMessage.Location = new Point(6, 14);
             richTextBoxMessage.Name = "richTextBoxMessage";
             richTextBoxMessage.ReadOnly = true;
-            richTextBoxMessage.Size = new Size(302, 383);
+            richTextBoxMessage.Size = new Size(214, 228);
             richTextBoxMessage.TabIndex = 34;
             richTextBoxMessage.Text = "";
             richTextBoxMessage.WordWrap = false;
             // 
-            // buttonScriptRunStop
+            // logMenuStrip
             // 
-            buttonScriptRunStop.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            buttonScriptRunStop.Location = new Point(171, 400);
-            buttonScriptRunStop.Name = "buttonScriptRunStop";
-            buttonScriptRunStop.Size = new Size(136, 46);
-            buttonScriptRunStop.TabIndex = 4;
-            buttonScriptRunStop.Text = "运行";
-            buttonScriptRunStop.UseVisualStyleBackColor = true;
-            buttonScriptRunStop.Click += buttonScriptRunStop_Click;
+            logMenuStrip.ImageScalingSize = new Size(20, 20);
+            logMenuStrip.Items.AddRange(new ToolStripItem[] { 清屏ToolStripMenuItem });
+            logMenuStrip.Name = "logMenuStrip";
+            logMenuStrip.Size = new Size(109, 28);
             // 
-            // groupBox6
+            // 清屏ToolStripMenuItem
             // 
-            groupBox6.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            groupBox6.Controls.Add(buttonRecordPause);
-            groupBox6.Controls.Add(buttonRecord);
-            groupBox6.Controls.Add(buttonFlashClear);
-            groupBox6.Controls.Add(buttonFlash);
-            groupBox6.Controls.Add(buttonRemoteStop);
-            groupBox6.Controls.Add(buttonRemoteStart);
-            groupBox6.Location = new Point(804, 30);
-            groupBox6.Name = "groupBox6";
-            groupBox6.Size = new Size(312, 118);
-            groupBox6.TabIndex = 5;
-            groupBox6.TabStop = false;
-            groupBox6.Text = "选项";
+            清屏ToolStripMenuItem.Name = "清屏ToolStripMenuItem";
+            清屏ToolStripMenuItem.Size = new Size(108, 24);
+            清屏ToolStripMenuItem.Text = "清屏";
+            清屏ToolStripMenuItem.Click += 清屏ToolStripMenuItem_Click;
             // 
             // buttonRecordPause
             // 
             buttonRecordPause.Enabled = false;
-            buttonRecordPause.Location = new Point(210, 67);
+            buttonRecordPause.Location = new Point(91, 95);
             buttonRecordPause.Name = "buttonRecordPause";
-            buttonRecordPause.Size = new Size(96, 42);
+            buttonRecordPause.Size = new Size(82, 40);
             buttonRecordPause.TabIndex = 6;
             buttonRecordPause.Text = "暂停录制";
             buttonRecordPause.UseVisualStyleBackColor = true;
@@ -537,9 +529,9 @@ namespace EasyCon2.Forms
             // 
             // buttonRecord
             // 
-            buttonRecord.Location = new Point(210, 17);
+            buttonRecord.Location = new Point(3, 95);
             buttonRecord.Name = "buttonRecord";
-            buttonRecord.Size = new Size(96, 47);
+            buttonRecord.Size = new Size(82, 40);
             buttonRecord.TabIndex = 5;
             buttonRecord.Text = "录制脚本";
             buttonRecord.UseVisualStyleBackColor = true;
@@ -547,9 +539,9 @@ namespace EasyCon2.Forms
             // 
             // buttonFlashClear
             // 
-            buttonFlashClear.Location = new Point(6, 67);
+            buttonFlashClear.Location = new Point(91, 49);
             buttonFlashClear.Name = "buttonFlashClear";
-            buttonFlashClear.Size = new Size(96, 42);
+            buttonFlashClear.Size = new Size(82, 40);
             buttonFlashClear.TabIndex = 4;
             buttonFlashClear.Text = "清除烧录";
             buttonFlashClear.UseVisualStyleBackColor = true;
@@ -557,9 +549,9 @@ namespace EasyCon2.Forms
             // 
             // buttonFlash
             // 
-            buttonFlash.Location = new Point(6, 19);
+            buttonFlash.Location = new Point(3, 3);
             buttonFlash.Name = "buttonFlash";
-            buttonFlash.Size = new Size(96, 47);
+            buttonFlash.Size = new Size(82, 40);
             buttonFlash.TabIndex = 1;
             buttonFlash.Text = "编译烧录";
             buttonFlash.UseVisualStyleBackColor = true;
@@ -567,9 +559,9 @@ namespace EasyCon2.Forms
             // 
             // buttonRemoteStop
             // 
-            buttonRemoteStop.Location = new Point(108, 67);
+            buttonRemoteStop.Location = new Point(3, 49);
             buttonRemoteStop.Name = "buttonRemoteStop";
-            buttonRemoteStop.Size = new Size(96, 42);
+            buttonRemoteStop.Size = new Size(82, 40);
             buttonRemoteStop.TabIndex = 3;
             buttonRemoteStop.Text = "远程停止";
             buttonRemoteStop.UseVisualStyleBackColor = true;
@@ -577,9 +569,9 @@ namespace EasyCon2.Forms
             // 
             // buttonRemoteStart
             // 
-            buttonRemoteStart.Location = new Point(108, 17);
+            buttonRemoteStart.Location = new Point(91, 3);
             buttonRemoteStart.Name = "buttonRemoteStart";
-            buttonRemoteStart.Size = new Size(96, 47);
+            buttonRemoteStart.Size = new Size(82, 40);
             buttonRemoteStart.TabIndex = 2;
             buttonRemoteStart.Text = "远程运行";
             buttonRemoteStart.UseVisualStyleBackColor = true;
@@ -591,18 +583,18 @@ namespace EasyCon2.Forms
             groupBox2.Controls.Add(buttonGenerateFirmware);
             groupBox2.Controls.Add(textBoxFirmware);
             groupBox2.Controls.Add(comboBoxBoardType);
-            groupBox2.Location = new Point(804, 147);
+            groupBox2.Location = new Point(3, 259);
             groupBox2.Name = "groupBox2";
-            groupBox2.Size = new Size(312, 94);
+            groupBox2.Size = new Size(170, 136);
             groupBox2.TabIndex = 5;
             groupBox2.TabStop = false;
             groupBox2.Text = "固件";
             // 
             // buttonGenerateFirmware
             // 
-            buttonGenerateFirmware.Location = new Point(192, 21);
+            buttonGenerateFirmware.Location = new Point(12, 89);
             buttonGenerateFirmware.Name = "buttonGenerateFirmware";
-            buttonGenerateFirmware.Size = new Size(114, 52);
+            buttonGenerateFirmware.Size = new Size(149, 34);
             buttonGenerateFirmware.TabIndex = 0;
             buttonGenerateFirmware.Text = "生成固件";
             buttonGenerateFirmware.UseVisualStyleBackColor = true;
@@ -610,7 +602,7 @@ namespace EasyCon2.Forms
             // 
             // textBoxFirmware
             // 
-            textBoxFirmware.Location = new Point(19, 55);
+            textBoxFirmware.Location = new Point(12, 57);
             textBoxFirmware.Name = "textBoxFirmware";
             textBoxFirmware.ReadOnly = true;
             textBoxFirmware.Size = new Size(149, 26);
@@ -621,7 +613,7 @@ namespace EasyCon2.Forms
             // 
             comboBoxBoardType.DropDownStyle = ComboBoxStyle.DropDownList;
             comboBoxBoardType.FormattingEnabled = true;
-            comboBoxBoardType.Location = new Point(19, 21);
+            comboBoxBoardType.Location = new Point(12, 23);
             comboBoxBoardType.Name = "comboBoxBoardType";
             comboBoxBoardType.Size = new Size(149, 28);
             comboBoxBoardType.TabIndex = 5;
@@ -631,7 +623,7 @@ namespace EasyCon2.Forms
             // 
             buttonShowController.Location = new Point(6, 16);
             buttonShowController.Name = "buttonShowController";
-            buttonShowController.Size = new Size(112, 40);
+            buttonShowController.Size = new Size(107, 40);
             buttonShowController.TabIndex = 3;
             buttonShowController.Text = "虚拟手柄";
             buttonShowController.UseVisualStyleBackColor = true;
@@ -641,12 +633,12 @@ namespace EasyCon2.Forms
             // 
             groupBoxScript.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             groupBoxScript.Controls.Add(findPanel1);
-            groupBoxScript.Controls.Add(elementHost1);
-            groupBoxScript.Location = new Point(327, 30);
+            groupBoxScript.Controls.Add(editorHost);
+            groupBoxScript.Location = new Point(3, 29);
             groupBoxScript.Margin = new Padding(3, 4, 3, 4);
             groupBoxScript.Name = "groupBoxScript";
             groupBoxScript.Padding = new Padding(3, 4, 3, 4);
-            groupBoxScript.Size = new Size(471, 615);
+            groupBoxScript.Size = new Size(358, 367);
             groupBoxScript.TabIndex = 2;
             groupBoxScript.TabStop = false;
             groupBoxScript.Text = "未命名脚本";
@@ -654,34 +646,34 @@ namespace EasyCon2.Forms
             // findPanel1
             // 
             findPanel1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            findPanel1.BackColor = Color.Transparent;
             findPanel1.BorderStyle = BorderStyle.FixedSingle;
-            findPanel1.Location = new Point(245, 14);
+            findPanel1.Location = new Point(102, 17);
             findPanel1.Name = "findPanel1";
             findPanel1.Replaced = null;
-            findPanel1.Size = new Size(211, 114);
+            findPanel1.Size = new Size(250, 98);
             findPanel1.TabIndex = 1;
             findPanel1.Target = null;
             findPanel1.Visible = false;
             // 
-            // elementHost1
+            // editorHost
             // 
-            elementHost1.Dock = DockStyle.Fill;
-            elementHost1.Location = new Point(3, 23);
-            elementHost1.Name = "elementHost1";
-            elementHost1.Size = new Size(465, 588);
-            elementHost1.TabIndex = 0;
-            elementHost1.Text = "elementHost1";
+            editorHost.Dock = DockStyle.Fill;
+            editorHost.Location = new Point(3, 23);
+            editorHost.Name = "elementHost1";
+            editorHost.Size = new Size(352, 340);
+            editorHost.TabIndex = 0;
+            editorHost.Text = "elementHost1";
             // 
             // groupBox3
             // 
             groupBox3.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             groupBox3.Controls.Add(ComPort);
-            groupBox3.Controls.Add(labelSerialStatus);
             groupBox3.Controls.Add(buttonSerialPortConnect);
             groupBox3.Controls.Add(buttonSerialPortSearch);
-            groupBox3.Location = new Point(8, 482);
+            groupBox3.Location = new Point(8, 327);
             groupBox3.Name = "groupBox3";
-            groupBox3.Size = new Size(312, 95);
+            groupBox3.Size = new Size(226, 95);
             groupBox3.TabIndex = 4;
             groupBox3.TabStop = false;
             groupBox3.Text = "连接";
@@ -689,30 +681,18 @@ namespace EasyCon2.Forms
             // ComPort
             // 
             ComPort.FormattingEnabled = true;
-            ComPort.Location = new Point(177, 20);
+            ComPort.Location = new Point(12, 21);
             ComPort.Name = "ComPort";
             ComPort.Size = new Size(114, 28);
             ComPort.TabIndex = 34;
             ComPort.Text = "下拉选择串口";
             ComPort.DropDown += ComPort_DropDown;
             // 
-            // labelSerialStatus
-            // 
-            labelSerialStatus.BackColor = Color.DimGray;
-            labelSerialStatus.BorderStyle = BorderStyle.FixedSingle;
-            labelSerialStatus.ForeColor = SystemColors.ControlLight;
-            labelSerialStatus.Location = new Point(21, 18);
-            labelSerialStatus.Name = "labelSerialStatus";
-            labelSerialStatus.Size = new Size(150, 26);
-            labelSerialStatus.TabIndex = 31;
-            labelSerialStatus.Text = "单片机未连接";
-            labelSerialStatus.TextAlign = ContentAlignment.MiddleCenter;
-            // 
             // buttonSerialPortConnect
             // 
-            buttonSerialPortConnect.Location = new Point(177, 51);
+            buttonSerialPortConnect.Location = new Point(132, 20);
             buttonSerialPortConnect.Name = "buttonSerialPortConnect";
-            buttonSerialPortConnect.Size = new Size(114, 32);
+            buttonSerialPortConnect.Size = new Size(84, 32);
             buttonSerialPortConnect.TabIndex = 30;
             buttonSerialPortConnect.Text = "手动连接";
             buttonSerialPortConnect.UseVisualStyleBackColor = true;
@@ -720,9 +700,9 @@ namespace EasyCon2.Forms
             // 
             // buttonSerialPortSearch
             // 
-            buttonSerialPortSearch.Location = new Point(21, 51);
+            buttonSerialPortSearch.Location = new Point(12, 55);
             buttonSerialPortSearch.Name = "buttonSerialPortSearch";
-            buttonSerialPortSearch.Size = new Size(150, 32);
+            buttonSerialPortSearch.Size = new Size(204, 38);
             buttonSerialPortSearch.TabIndex = 29;
             buttonSerialPortSearch.Text = "自动连接(推荐)";
             buttonSerialPortSearch.UseVisualStyleBackColor = true;
@@ -730,9 +710,9 @@ namespace EasyCon2.Forms
             // 
             // buttonControllerHelp
             // 
-            buttonControllerHelp.Location = new Point(127, 16);
+            buttonControllerHelp.Location = new Point(119, 16);
             buttonControllerHelp.Name = "buttonControllerHelp";
-            buttonControllerHelp.Size = new Size(65, 40);
+            buttonControllerHelp.Size = new Size(43, 86);
             buttonControllerHelp.TabIndex = 33;
             buttonControllerHelp.Text = "帮助";
             buttonControllerHelp.UseVisualStyleBackColor = true;
@@ -740,25 +720,25 @@ namespace EasyCon2.Forms
             // 
             // buttonKeyMapping
             // 
-            buttonKeyMapping.Location = new Point(202, 16);
+            buttonKeyMapping.Location = new Point(6, 62);
             buttonKeyMapping.Name = "buttonKeyMapping";
-            buttonKeyMapping.Size = new Size(89, 40);
+            buttonKeyMapping.Size = new Size(107, 40);
             buttonKeyMapping.TabIndex = 4;
             buttonKeyMapping.Text = "按键映射";
             buttonKeyMapping.UseVisualStyleBackColor = true;
             buttonKeyMapping.Click += buttonKeyMapping_Click;
             // 
-            // openFileDialog1
+            // openFileDialog
             // 
-            openFileDialog1.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
-            openFileDialog1.RestoreDirectory = true;
-            openFileDialog1.Title = "打开";
+            openFileDialog.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+            openFileDialog.RestoreDirectory = true;
+            openFileDialog.Title = "打开";
             // 
-            // saveFileDialog1
+            // saveFileDialog
             // 
-            saveFileDialog1.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
-            saveFileDialog1.RestoreDirectory = true;
-            saveFileDialog1.Title = "另存为";
+            saveFileDialog.Filter = "文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+            saveFileDialog.RestoreDirectory = true;
+            saveFileDialog.Title = "另存为";
             // 
             // groupBox4
             // 
@@ -766,84 +746,156 @@ namespace EasyCon2.Forms
             groupBox4.Controls.Add(buttonShowController);
             groupBox4.Controls.Add(buttonControllerHelp);
             groupBox4.Controls.Add(buttonKeyMapping);
-            groupBox4.Location = new Point(8, 578);
+            groupBox4.Location = new Point(3, 141);
             groupBox4.Name = "groupBox4";
-            groupBox4.Size = new Size(312, 67);
+            groupBox4.Size = new Size(168, 112);
             groupBox4.TabIndex = 34;
             groupBox4.TabStop = false;
             groupBox4.Text = "手柄";
             // 
             // toolStripStatusLabel1
             // 
+            toolStripStatusLabel1.AutoSize = false;
             toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-            toolStripStatusLabel1.Size = new Size(0, 16);
+            toolStripStatusLabel1.Size = new Size(200, 20);
+            toolStripStatusLabel1.Text = "LOG";
             // 
-            // statusStrip1
+            // statusStrip
             // 
-            statusStrip1.ImageScalingSize = new Size(20, 20);
-            statusStrip1.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1 });
-            statusStrip1.Location = new Point(1, 649);
-            statusStrip1.Name = "statusStrip1";
-            statusStrip1.Size = new Size(1121, 22);
-            statusStrip1.TabIndex = 3;
-            statusStrip1.Text = "statusStrip1";
+            statusStrip.ImageScalingSize = new Size(20, 20);
+            statusStrip.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1, labelSerialStatus, toolStripStatusLabel3, labelCaptureStatus });
+            statusStrip.Location = new Point(1, 426);
+            statusStrip.Name = "statusStrip";
+            statusStrip.Size = new Size(789, 26);
+            statusStrip.TabIndex = 3;
+            statusStrip.Text = "statusStrip1";
             // 
-            // textBoxScriptHelp
+            // labelSerialStatus
             // 
-            textBoxScriptHelp.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
-            textBoxScriptHelp.Location = new Point(804, 240);
-            textBoxScriptHelp.Multiline = true;
-            textBoxScriptHelp.Name = "textBoxScriptHelp";
-            textBoxScriptHelp.ReadOnly = true;
-            textBoxScriptHelp.ScrollBars = ScrollBars.Vertical;
-            textBoxScriptHelp.Size = new Size(312, 401);
-            textBoxScriptHelp.TabIndex = 35;
+            labelSerialStatus.AutoSize = false;
+            labelSerialStatus.BackColor = Color.DimGray;
+            labelSerialStatus.ForeColor = SystemColors.ControlLight;
+            labelSerialStatus.Name = "labelSerialStatus";
+            labelSerialStatus.Size = new Size(120, 20);
+            labelSerialStatus.Text = "单片机未连接";
+            // 
+            // toolStripStatusLabel3
+            // 
+            toolStripStatusLabel3.AutoSize = false;
+            toolStripStatusLabel3.Name = "toolStripStatusLabel3";
+            toolStripStatusLabel3.Size = new Size(20, 20);
+            // 
+            // labelCaptureStatus
+            // 
+            labelCaptureStatus.AutoSize = false;
+            labelCaptureStatus.BackColor = SystemColors.ControlDarkDark;
+            labelCaptureStatus.ForeColor = SystemColors.ControlLight;
+            labelCaptureStatus.Name = "labelCaptureStatus";
+            labelCaptureStatus.Size = new Size(99, 20);
+            labelCaptureStatus.Text = "采集卡未连接";
+            // 
+            // optPanel
+            // 
+            optPanel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            optPanel.Controls.Add(buttonFlash);
+            optPanel.Controls.Add(buttonRemoteStart);
+            optPanel.Controls.Add(buttonRemoteStop);
+            optPanel.Controls.Add(buttonFlashClear);
+            optPanel.Controls.Add(buttonRecord);
+            optPanel.Controls.Add(buttonRecordPause);
+            optPanel.Controls.Add(groupBox4);
+            optPanel.Controls.Add(groupBox2);
+            optPanel.Location = new Point(610, 30);
+            optPanel.Name = "optPanel";
+            optPanel.Size = new Size(177, 419);
+            optPanel.TabIndex = 35;
+            // 
+            // scriptPanel
+            // 
+            scriptPanel.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            scriptPanel.Controls.Add(toolStrip);
+            scriptPanel.Controls.Add(groupBoxScript);
+            scriptPanel.Location = new Point(240, 33);
+            scriptPanel.Name = "scriptPanel";
+            scriptPanel.Size = new Size(364, 400);
+            scriptPanel.TabIndex = 36;
+            // 
+            // toolStrip
+            // 
+            toolStrip.ImageScalingSize = new Size(20, 20);
+            toolStrip.Items.AddRange(new ToolStripItem[] { compileButton, buttonScriptRunStop });
+            toolStrip.Location = new Point(0, 0);
+            toolStrip.Name = "toolStrip";
+            toolStrip.Size = new Size(364, 27);
+            toolStrip.TabIndex = 3;
+            toolStrip.Text = "toolStrip1";
+            // 
+            // compileButton
+            // 
+            compileButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            compileButton.Image = (Image)resources.GetObject("compileButton.Image");
+            compileButton.ImageTransparentColor = Color.Magenta;
+            compileButton.Name = "compileButton";
+            compileButton.Size = new Size(43, 24);
+            compileButton.Text = "编译";
+            compileButton.Click += compileButton_Click;
+            // 
+            // buttonScriptRunStop
+            // 
+            buttonScriptRunStop.Image = Properties.Resources.start;
+            buttonScriptRunStop.ImageTransparentColor = Color.Magenta;
+            buttonScriptRunStop.Name = "buttonScriptRunStop";
+            buttonScriptRunStop.Size = new Size(93, 24);
+            buttonScriptRunStop.Text = "运行脚本";
+            buttonScriptRunStop.Click += buttonScriptRunStop_Click;
             // 
             // EasyConForm
             // 
             AutoScaleMode = AutoScaleMode.Inherit;
-            ClientSize = new Size(1123, 672);
-            Controls.Add(textBoxScriptHelp);
-            Controls.Add(groupBox4);
+            ClientSize = new Size(791, 453);
+            Controls.Add(scriptPanel);
+            Controls.Add(optPanel);
             Controls.Add(groupBox3);
-            Controls.Add(groupBox6);
-            Controls.Add(groupBox2);
-            Controls.Add(statusStrip1);
-            Controls.Add(groupBoxScript);
+            Controls.Add(statusStrip);
             Controls.Add(groupBox1);
-            Controls.Add(menuStrip1);
+            Controls.Add(menuStrip);
             DoubleBuffered = true;
             Font = new Font("微软雅黑", 8.25F);
             Icon = (Icon)resources.GetObject("$this.Icon");
             KeyPreview = true;
-            MainMenuStrip = menuStrip1;
+            MainMenuStrip = menuStrip;
             Margin = new Padding(3, 4, 3, 4);
             MaximizeBox = false;
-            MinimumSize = new Size(800, 600);
+            MinimumSize = new Size(800, 500);
             Name = "EasyConForm";
             Padding = new Padding(1);
             StartPosition = FormStartPosition.CenterScreen;
             Text = "EasyCon";
             FormClosing += EasyConForm_FormClosing;
             Load += EasyConForm_Load;
-            menuStrip1.ResumeLayout(false);
-            menuStrip1.PerformLayout();
+            menuStrip.ResumeLayout(false);
+            menuStrip.PerformLayout();
             groupBox1.ResumeLayout(false);
-            groupBox6.ResumeLayout(false);
+            logMenuStrip.ResumeLayout(false);
             groupBox2.ResumeLayout(false);
             groupBox2.PerformLayout();
             groupBoxScript.ResumeLayout(false);
             groupBox3.ResumeLayout(false);
             groupBox4.ResumeLayout(false);
-            statusStrip1.ResumeLayout(false);
-            statusStrip1.PerformLayout();
+            statusStrip.ResumeLayout(false);
+            statusStrip.PerformLayout();
+            optPanel.ResumeLayout(false);
+            scriptPanel.ResumeLayout(false);
+            scriptPanel.PerformLayout();
+            toolStrip.ResumeLayout(false);
+            toolStrip.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
 
         #endregion
 
-        private System.Windows.Forms.MenuStrip menuStrip1;
+        private System.Windows.Forms.MenuStrip menuStrip;
         private System.Windows.Forms.ToolStripMenuItem 文件ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 脚本ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 帮助ToolStripMenuItem;
@@ -860,24 +912,20 @@ namespace EasyCon2.Forms
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBoxScript;
         private System.Windows.Forms.Button buttonShowController;
-        private System.Windows.Forms.Button buttonScriptRunStop;
         private System.Windows.Forms.Label labelTimer;
         private System.Windows.Forms.RichTextBox richTextBoxMessage;
         private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.Button buttonKeyMapping;
         private System.Windows.Forms.Button buttonSerialPortSearch;
         private System.Windows.Forms.Button buttonSerialPortConnect;
-        private System.Windows.Forms.Label labelSerialStatus;
-        private System.Windows.Forms.OpenFileDialog openFileDialog1;
-        private System.Windows.Forms.SaveFileDialog saveFileDialog1;
+        private System.Windows.Forms.OpenFileDialog openFileDialog;
+        private System.Windows.Forms.SaveFileDialog saveFileDialog;
         private System.Windows.Forms.Button buttonControllerHelp;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
-        private System.Windows.Forms.Button buttonCLS;
         private System.Windows.Forms.Button buttonGenerateFirmware;
         private System.Windows.Forms.Button buttonFlash;
         private System.Windows.Forms.Button buttonRemoteStop;
         private System.Windows.Forms.Button buttonRemoteStart;
-        private System.Windows.Forms.GroupBox groupBox6;
         private System.Windows.Forms.Button buttonFlashClear;
         private System.Windows.Forms.ToolStripMenuItem 项目源码ToolStripMenuItem;
         private System.Windows.Forms.ComboBox comboBoxBoardType;
@@ -890,13 +938,12 @@ namespace EasyCon2.Forms
         private System.Windows.Forms.ComboBox ComPort;
         private System.Windows.Forms.GroupBox groupBox4;
         private System.Windows.Forms.ToolStripStatusLabel toolStripStatusLabel1;
-        private System.Windows.Forms.StatusStrip statusStrip1;
+        private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripMenuItem 搜图说明ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 采集卡类型ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 设置ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 显示调试信息ToolStripMenuItem;
-        private System.Windows.Forms.Integration.ElementHost elementHost1;
-        private TextBox textBoxScriptHelp;
+        private System.Windows.Forms.Integration.ElementHost editorHost;
         private ToolStripMenuItem 推送设置ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙设备驱动配置ToolStripMenuItem;
@@ -920,6 +967,17 @@ namespace EasyCon2.Forms
         private FindPanel findPanel1;
         private ToolStripMenuItem 显示折叠ToolStripMenuItem;
         private ToolStripMenuItem 注释取消注释ToolStripMenuItem;
+        private ToolStripMenuItem 脚本语法ToolStripMenuItem;
+        private FlowLayoutPanel optPanel;
+        private Panel scriptPanel;
+        private ToolStrip toolStrip;
+        private ToolStripButton buttonScriptRunStop;
+        private ToolStripStatusLabel labelSerialStatus;
+        private ToolStripButton compileButton;
+        private ContextMenuStrip logMenuStrip;
+        private ToolStripMenuItem 清屏ToolStripMenuItem;
+        private ToolStripStatusLabel labelCaptureStatus;
+        private ToolStripStatusLabel toolStripStatusLabel3;
     }
 }
 

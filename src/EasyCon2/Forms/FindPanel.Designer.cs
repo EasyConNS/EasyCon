@@ -40,9 +40,9 @@ namespace EasyCon2.Forms
             // 
             // searchBtn
             // 
-            searchBtn.Location = new Point(166, 29);
+            searchBtn.Location = new Point(228, 30);
             searchBtn.Name = "searchBtn";
-            searchBtn.Size = new Size(72, 35);
+            searchBtn.Size = new Size(69, 35);
             searchBtn.TabIndex = 0;
             searchBtn.Text = "下一个";
             searchBtn.UseVisualStyleBackColor = true;
@@ -51,9 +51,9 @@ namespace EasyCon2.Forms
             // searchTBox
             // 
             searchTBox.DataBindings.Add(new Binding("Text", bindingSource1, "Target", true));
-            searchTBox.Location = new Point(7, 33);
+            searchTBox.Location = new Point(20, 34);
             searchTBox.Name = "searchTBox";
-            searchTBox.Size = new Size(153, 27);
+            searchTBox.Size = new Size(202, 27);
             searchTBox.TabIndex = 1;
             // 
             // bindingSource1
@@ -64,14 +64,14 @@ namespace EasyCon2.Forms
             // replaceTBox
             // 
             replaceTBox.DataBindings.Add(new Binding("Text", bindingSource1, "Replaced", true));
-            replaceTBox.Location = new Point(7, 75);
+            replaceTBox.Location = new Point(20, 75);
             replaceTBox.Name = "replaceTBox";
-            replaceTBox.Size = new Size(153, 27);
+            replaceTBox.Size = new Size(202, 27);
             replaceTBox.TabIndex = 2;
             // 
             // replaceBtn
             // 
-            replaceBtn.Location = new Point(169, 74);
+            replaceBtn.Location = new Point(228, 74);
             replaceBtn.Name = "replaceBtn";
             replaceBtn.Size = new Size(69, 29);
             replaceBtn.TabIndex = 3;
@@ -81,9 +81,10 @@ namespace EasyCon2.Forms
             // 
             // closeBtn
             // 
-            closeBtn.BackColor = SystemColors.Control;
-            closeBtn.FlatStyle = FlatStyle.System;
-            closeBtn.Location = new Point(219, -1);
+            closeBtn.BackColor = Color.Transparent;
+            closeBtn.FlatAppearance.BorderSize = 0;
+            closeBtn.FlatStyle = FlatStyle.Flat;
+            closeBtn.Location = new Point(278, -1);
             closeBtn.Name = "closeBtn";
             closeBtn.Size = new Size(27, 29);
             closeBtn.TabIndex = 4;
@@ -95,14 +96,14 @@ namespace EasyCon2.Forms
             // 
             AutoScaleDimensions = new SizeF(9F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
-            BorderStyle = BorderStyle.FixedSingle;
+            BackColor = SystemColors.Control;
             Controls.Add(closeBtn);
             Controls.Add(replaceBtn);
             Controls.Add(replaceTBox);
             Controls.Add(searchTBox);
             Controls.Add(searchBtn);
             Name = "FindPanel";
-            Size = new Size(245, 106);
+            Size = new Size(305, 107);
             ((System.ComponentModel.ISupportInitialize)bindingSource1).EndInit();
             ResumeLayout(false);
             PerformLayout();

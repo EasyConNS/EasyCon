@@ -13,6 +13,8 @@ public partial class FindPanel : UserControl
     public void InitEditor(TextEditor _editor)
     {
         editor = _editor;
+        Target = editor.SelectedText;
+        Replaced = string.Empty;
     }
 
     private TextEditor editor;
@@ -42,7 +44,7 @@ public partial class FindPanel : UserControl
 
     private void replaceBtn_Click(object sender, EventArgs e)
     {
-        if(editor.SelectedText == Target)
+        if (editor.SelectedText == Target)
         {
             editor.SelectedText = Replaced;
         }
@@ -50,6 +52,7 @@ public partial class FindPanel : UserControl
 
     public int Find()
     {
-        return editor.Text.IndexOf(Target, editor.SelectionStart+1); 
+        if (Target?.Length == 0) return -1;
+        return editor.Text.IndexOf(Target, editor.SelectionStart + 1);
     }
 }

@@ -50,6 +50,7 @@ public class Scripter
             var cmd = _statements[_processor.PC];
             _processor.PC++;
             cmd.Exec(_processor);
+            Thread.Sleep(1);
         }
     }
 

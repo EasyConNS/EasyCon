@@ -75,6 +75,7 @@ namespace EasyCon2.Forms
         private PointF snapshotScale;
 
         public int DeviceID => deviceId;
+        public bool IsOpened => cvcap.IsOpened;
 
         public IEnumerable<ImgLabel> LoadedLabels => ilManager.Labels.Select(il =>
         {

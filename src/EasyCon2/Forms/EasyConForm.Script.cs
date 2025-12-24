@@ -1,5 +1,6 @@
 using EasyCon2.Graphic;
 using EasyCon2.Helper;
+using EasyCon2.Properties;
 using EasyScript;
 using EasyScript.Parsing;
 using System.Media;
@@ -30,7 +31,7 @@ partial class EasyConForm
                     return (int)md;
                 }))
                 );
-            textBoxScript.Text = _program.ToCode();
+            textBoxScript.Text = _program.ToCode().Trim();
             textBoxScript.Select(0, 0);
             return true;
         }
@@ -66,6 +67,9 @@ partial class EasyConForm
             }
         }
 
+        virtController.ControllerEnabled = false;
+        StatusShowLog("开始运行");
+
         thd = new Thread(_RunScript);
         thd?.Start();
     }
@@ -78,11 +82,7 @@ partial class EasyConForm
         try
         {
             _startTime = DateTime.Now;
-            Invoke(delegate
-            {
-                virtController.ControllerEnabled = false;
-                StatusShowLog("开始运行");
-            });
+
             Print("-- 开始运行 --", Color.Lime);
             _program.Run(this, new GamePadAdapter(NS));
             Print("-- 运行结束 --", Color.Lime);
@@ -94,24 +94,6 @@ partial class EasyConForm
             Print("-- 运行终止 --", Color.Orange);
             StatusShowLog("运行终止");
             SystemSounds.Beep.Play();
-        }
-        catch (AggregateException ex)
-        {
-            Invoke(delegate
-            {
-                string str = "";
-                foreach (Exception ex1 in ex.InnerExceptions)
-                {
-                    if (ex1 is ParseException pex)
-                    {
-                        str += $"{pex.Message}: 行{pex.Index + 1}";
-                        ScriptSelectLine(pex.Index);
-                    }
-                }
-                SystemSounds.Hand.Play();
-                MessageBox.Show(str);
-                StatusShowLog(str);
-            });
         }
         catch (ScriptException ex)
         {
