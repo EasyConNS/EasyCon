@@ -210,7 +210,7 @@ class Break : LoopControl
 
     protected override string _GetString()
     {
-        return _omitted ? $"BREAK" : $"BREAK {Level.GetCodeText()}";
+        return _omitted || Level.Val == 1 ? $"BREAK" : $"BREAK {Level.GetCodeText()}";
     }
 
     public override void Exec(Processor processor)

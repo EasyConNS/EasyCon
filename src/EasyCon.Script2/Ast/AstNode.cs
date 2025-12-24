@@ -105,6 +105,16 @@ public sealed class IndexExpression(Token keyword, ImmutableArray<Expression> it
     }
 }
 
+public sealed class ParenthesizedExpression(Token left, Expression expr, Token right) : Expression(left)
+{
+    public Expression Expr { get; } = expr;
+
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 public sealed class UnaryExpression(Token op, Expression right) : Expression(op)
 {
     public TokenType Operator { get; } = op.Type;

@@ -6,97 +6,106 @@ namespace EasyScript.Parsing;
 
 internal partial class Parser
 {
-    private static bool IsValidVariable(string variable)
-    {
-        return !string.IsNullOrEmpty(variable) && Regex.Match(variable, $"^{Formats.ValueEx}$", RegexOptions.IgnoreCase).Success;
-    }
-
     private Statement? ParseConstantDecl(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
-        if (lexer.Count() != 3 + 1)
-            return null;
-        if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN && (lexer[2].Type == TokenType.INT || lexer[2].Type == TokenType.CONST))
+        if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN)
         {
-            if (_formatter.TryDeclConstant(lexer[0].Value, lexer[2].Value))
-                return new Empty($"{lexer[0].Value} = {lexer[2].Value}");
+            var eexp = ParseExpression([.. lexer.Skip(2)], false);
+            if (_formatter.TryDeclConstant(lexer[0].Value, eexp))
+                return new Empty($"{lexer[0].Value} = {eexp.GetCodeText()}");
             else
-                throw new ParseException($"重复定义的常量：{lexer[0].Value}");
+                throw new Exception($"重复定义的常量：{lexer[0].Value}");
         }
         return null;
     }
     
-    // private void ParseExpression(int parentPrecedence = 0)
-    // {
-    //     ExpressionSyntax left;
-    //     var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
-    //     if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
-    //     {
-    //         var operatorToken = NextToken();
-    //         var operand = ParseBinaryExpression(unaryOperatorPrecedence);
-    //         left = new UnaryExpressionSyntax(operatorToken, operand);
-    //     }
-    //     else
-    //     {
-    //         left = ParsePrimaryExpression();
-    //     }
+    private ValBase ParseExpression(List<Token> tokens, bool allowVar = true)
+    {
+        // 用于存储数字/变量的节点栈
+        Stack<ValBase> valueStack = new();
+        // 用于存储运算符的栈
+        Stack<Token> opStack = new();
+        // 主循环处理所有token
+        for (int i = 0; i < tokens.Count; i++)
+        {
+            Token token = tokens[i];
 
-    //     while (true)
-    //     {
-    //         var precedence = Current.Type.GetBinaryOperatorPrecedence();
-    //         if (precedence == 0 || precedence <= parentPrecedence)
-    //             break;
+            switch (token.Type)
+            {
+                case TokenType.VAR when allowVar:
+                case TokenType.INT:
+                case TokenType.CONST:
+                    valueStack.Push(_formatter.GetValueEx(token.Value));
+                    break;
+                case TokenType.LeftParen:
+                    opStack.Push(token);
+                    break;
 
-    //         var operatorToken = NextToken();
-    //         var right = ParseBinaryExpression(precedence);
-    //         left = new BinaryExpressionSyntax(left, operatorToken, right);
-    //     }
+                case TokenType.RightParen:
+                    // 处理到左括号为止的所有运算符
+                    while (opStack.Count > 0 && opStack.Peek().Type != TokenType.LeftParen)
+                    {
+                        ApplyOperator(opStack, valueStack, true);
+                    }
+                    // 弹出左括号
+                    if (opStack.Count > 0) opStack.Pop();
+                    break;
+                default:
+                    if(token.Type.GetBinaryOperatorPrecedence() > 3)
+                    {
+                        // 当栈顶运算符优先级不低于当前运算符时，先处理栈顶运算符
+                        while (opStack.Count > 0 && 
+                               opStack.Peek().Type.GetBinaryOperatorPrecedence() >= token.Type.GetBinaryOperatorPrecedence())
+                        {
+                            ApplyOperator(opStack, valueStack);
+                        }
+                        
+                        opStack.Push(token);
+                    }
+                    else if(token.Type == TokenType.EOF)break;
+                    else
+                    {
+                        throw new Exception($"不支持的运算符：{token.Value}");
+                    }
+                    break;
+            }
+        }
 
-    //     return left;
-    // }
+        // 处理剩余的运算符
+        while (opStack.Count > 0)
+        {
+            ApplyOperator(opStack, valueStack);
+        }
+
+        if(valueStack.Count != 1)
+        {
+            throw new Exception("表达式语法错误");
+        }
+        // 栈顶就是完整的表达式树
+        return valueStack.Pop();
+    }
+    // 应用运算符：从栈中弹出两个操作数和一个运算符，创建BinExpr
+    private static void ApplyOperator(Stack<Token> opStack, Stack<ValBase> valueStack, bool hasPr = false)
+    {
+        if (opStack.Count == 0 || valueStack.Count < 2)
+            throw new Exception("表达式语法错误");
+        string opStr = opStack.Pop().Value;
+        Meta? op = OpList().FirstOrDefault(o=> o.Operator == opStr);
+        ValBase right = valueStack.Pop();
+        ValBase left = valueStack.Pop();
+        valueStack.Push(new BinExpr(left, op, right, hasPr));
+    }
 
     private Statement? ParseAssignment(string text)
     {
-        var pre = Regex.Match(text, $@"^{Formats.RegisterEx}\s*=\s*(.*)$", RegexOptions.IgnoreCase);
-        if (pre.Success)
+        var lexer = SyntaxTree.ParseTokens(text);
+        if (lexer[0].Type == TokenType.VAR && lexer[1].Type == TokenType.ASSIGN)
         {
-            var des = FormatterUtil.GetRegEx(pre.Groups[1].Value, true);
-            string exprStr = Regex.Replace(pre.Groups[2].Value, @"\s+", "");
+            var des = FormatterUtil.GetRegEx(lexer[0].Value, true);
+            var eexp = ParseExpression([.. lexer.Skip(2)], false);
 
-            var vR = Regex.Match(exprStr, $@"^{Formats.ValueEx}");
-            if (vR.Success)
-            {
-                var vr = vR.Value;
-                // 尝试找到算术运算符
-                Meta? op = null;
-                int operatorIndex = -1;
-
-                foreach (var o in OpList())
-                {
-                    int index = exprStr.IndexOf(o.Operator, StringComparison.Ordinal);
-                    if (index > 0) // 运算符不能在开头
-                    {
-                        op = o;
-                        operatorIndex = index;
-                        break;
-                    }
-                }
-                if (op != null)
-                {
-                    // 有算术运算符的情况
-                    string var1 = exprStr.Substring(0, operatorIndex);
-                    string var2 = exprStr.Substring(operatorIndex + op.Operator.Length);
-
-                    if (IsValidVariable(var1) && IsValidVariable(var2))
-                    {
-                        return new ExpressionStmt(des, _formatter.GetValueEx(var1), op, _formatter.GetValueEx(var2));
-                    }
-                }
-                else if (IsValidVariable(exprStr))
-                {
-                    return new ExpressionStmt(des, _formatter.GetValueEx(vR.Groups[1].Value), null, null);
-                }
-            }
+            return new ExpressionStmt(des, eexp);
         }
 
         //aug assign

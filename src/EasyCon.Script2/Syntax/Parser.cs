@@ -60,7 +60,7 @@ internal sealed class Parser
     }
     private bool Check(TokenType type) => Current?.Type == type;
 
-    private Token Match(TokenType type)
+    private Token Match(TokenType type, string message = "")
     {
         if (Current.Type == type)
         {
@@ -68,10 +68,8 @@ internal sealed class Parser
         }
         var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));
         _diagnostics.ReportUnexpectedToken(location, Current.Type, type);
-        return new Token(_text, TokenType.BadToken, "", 0, 0);
+        return new Token(_text, TokenType.BadToken, message, 0, 0);
     }
-
-    private Token Match(TokenType type, string message) { return Match(type); }
 
     private bool Checks(params TokenType[] types)
     {
@@ -477,7 +475,36 @@ internal sealed class Parser
     // 计算表达式
     private Expression ParseExpression()
     {
-        return ParseAddition();
+        return ParseBinaryExpression();
+    }
+
+    private Expression ParseBinaryExpression(int parentPrecedence = 0)
+    {
+        Expression left;
+        var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
+        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
+        {
+            var operatorToken = Advance();
+            var operand = ParseBinaryExpression(unaryOperatorPrecedence);
+            left = new UnaryExpression(operatorToken, operand);
+        }
+        else
+        {
+            left = ParsePrimary();
+        }
+
+        while (true)
+        {
+            var precedence = Current.Type.GetBinaryOperatorPrecedence();
+            if (precedence == 0 || precedence <= parentPrecedence)
+                break;
+
+            var operatorToken = Advance();
+            var right = ParseBinaryExpression(precedence);
+            left = new BinaryExpression(left, operatorToken, right);
+        }
+
+        return left;
     }
 
     // 条件表达式
@@ -526,46 +553,6 @@ internal sealed class Parser
         }
 
         return expression;
-    }
-
-    private Expression ParseAddition()
-    {
-        var expression = ParseMultiplication();
-
-        while (Checks(TokenType.ADD, TokenType.SUB))
-        {
-            var op = Advance();
-            var right = ParseMultiplication();
-            expression = new BinaryExpression(expression, op, right);
-        }
-
-        return expression;
-    }
-
-    private Expression ParseMultiplication()
-    {
-        var expression = ParseUnary();
-
-        while (Checks(TokenType.MUL, TokenType.DIV, TokenType.SlashI, TokenType.MOD, TokenType.BitAnd, TokenType.XOR))
-        {
-            var op = Advance();
-            var right = ParseUnary();
-            expression = new BinaryExpression(expression, op, right);
-        }
-
-        return expression;
-    }
-
-    private Expression ParseUnary()
-    {
-        if (Checks(TokenType.BitNot, TokenType.SUB))
-        {
-            var op = Advance();
-            var right = ParseUnary();
-            return new UnaryExpression(op, right);
-        }
-
-        return ParsePrimary();
     }
 
     private Expression ParseIndexExpression()
@@ -623,6 +610,13 @@ internal sealed class Parser
         else if (Check(TokenType.LeftBracket))
         {
             return ParseIndexExpression();
+        }
+        else if (Check(TokenType.LeftParen))
+        {
+            var left = Advance();
+            var expression = ParseExpression();
+            var right = Match(TokenType.RightParen);
+            return new ParenthesizedExpression(left, expression, right);
         }
 
         var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));

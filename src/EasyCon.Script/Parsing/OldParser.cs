@@ -119,7 +119,6 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
 
     public List<Statement> Parse(string text)
     {
-        int linnum = 0;
         int address = 0;
         var list = new List<Statement>();
 
@@ -278,27 +277,27 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                             throw new ParseException("Endfunc需要对应的Func语句", address);
                         }
                     }
-
-
-
                     address += 1;
                 }
                 else
                 {
-                    throw new ParseException("格式错误", linnum);
+                    throw new Exception("格式错误");
                 }
             }
             catch (OverflowException)
             {
-                throw new ParseException("数值溢出", linnum);
+                throw new Exception("数值溢出");
             }
             catch (ParseException ex)
             {
-                Console.WriteLine($"{ex.Message}: 行{ex.Index + 1}");
-                ex.Index = linnum;
+                ex.Index = address;
                 throw;
             }
-            linnum++;
+            catch(Exception e)
+            {
+                Console.WriteLine($"{e.Message} 行：{address+1}");
+                throw new ParseException(e.Message, address);
+            }
         }
 
         // pair Call

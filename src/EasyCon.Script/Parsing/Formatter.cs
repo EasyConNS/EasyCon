@@ -7,10 +7,10 @@ class Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVa
     private readonly Dictionary<string, int> Constants = constants;
     private readonly Dictionary<string, ExternalVariable> ExtVars = extVars;
 
-    public bool TryDeclConstant(string key, string value)
+    public bool TryDeclConstant(string key, ValBase value)
     {
         if (Constants.ContainsKey(key)) return false;
-        Constants.Add(key, GetInstant(value).Val);
+        Constants.Add(key, value.Get(null));
         return true;
     }
     
@@ -34,10 +34,10 @@ class Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVa
     public ValInstant GetConstant(string text, bool zeroOrPos = false)
     {
         if (!Constants.ContainsKey(text))
-            throw new ParseException($"未定义的常量“{text}”");
+            throw new Exception($"未定义的常量“{text}”");
         int v = Constants[text];
         if (zeroOrPos && v < 0)
-            throw new ParseException($"不能使用负数");
+            throw new Exception("不能使用负数");
         return new ValInstant(v, text);
     }
 
@@ -47,9 +47,11 @@ class Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVa
             return GetConstant(text);
         else
         {
-            int v = int.Parse(text);
+            var ok = int.TryParse(text, out var v);
+            if (!ok)
+                throw new FormatException("无效的数字格式");
             if (zeroOrPos && v < 0)
-                throw new ParseException($"不能使用负数");
+                throw new Exception("不能使用负数");
             return v;
         }
     }
@@ -67,13 +69,6 @@ class Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVa
 class FormatterUtil
 {
     public static ValRegEx GetRegEx(string text, bool lhs = false)
-    {
-        if (Regex.Match(text, Formats.RegisterEx_F).Success)
-            return GetVars(text, lhs);
-        throw new FormatException();
-    }
-
-    private static ValRegEx GetVars(string text, bool lhs = false)
     {
         var m = Regex.Match(text, Formats.RegisterEx_F);
         if (!m.Success)
