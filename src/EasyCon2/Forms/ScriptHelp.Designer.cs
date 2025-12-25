@@ -48,7 +48,6 @@ namespace EasyCon2.Forms
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(468, 325);
             Controls.Add(textBox1);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "ScriptHelp";

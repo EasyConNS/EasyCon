@@ -539,7 +539,7 @@ namespace EasyCon2.Forms
             // 
             // buttonFlashClear
             // 
-            buttonFlashClear.Location = new Point(91, 49);
+            buttonFlashClear.Location = new Point(91, 3);
             buttonFlashClear.Name = "buttonFlashClear";
             buttonFlashClear.Size = new Size(82, 40);
             buttonFlashClear.TabIndex = 4;
@@ -559,7 +559,7 @@ namespace EasyCon2.Forms
             // 
             // buttonRemoteStop
             // 
-            buttonRemoteStop.Location = new Point(3, 49);
+            buttonRemoteStop.Location = new Point(91, 49);
             buttonRemoteStop.Name = "buttonRemoteStop";
             buttonRemoteStop.Size = new Size(82, 40);
             buttonRemoteStop.TabIndex = 3;
@@ -569,7 +569,7 @@ namespace EasyCon2.Forms
             // 
             // buttonRemoteStart
             // 
-            buttonRemoteStart.Location = new Point(91, 3);
+            buttonRemoteStart.Location = new Point(3, 49);
             buttonRemoteStart.Name = "buttonRemoteStart";
             buttonRemoteStart.Size = new Size(82, 40);
             buttonRemoteStart.TabIndex = 2;
@@ -583,7 +583,7 @@ namespace EasyCon2.Forms
             groupBox2.Controls.Add(buttonGenerateFirmware);
             groupBox2.Controls.Add(textBoxFirmware);
             groupBox2.Controls.Add(comboBoxBoardType);
-            groupBox2.Location = new Point(3, 259);
+            groupBox2.Location = new Point(3, 141);
             groupBox2.Name = "groupBox2";
             groupBox2.Size = new Size(170, 136);
             groupBox2.TabIndex = 5;
@@ -746,7 +746,7 @@ namespace EasyCon2.Forms
             groupBox4.Controls.Add(buttonShowController);
             groupBox4.Controls.Add(buttonControllerHelp);
             groupBox4.Controls.Add(buttonKeyMapping);
-            groupBox4.Location = new Point(3, 141);
+            groupBox4.Location = new Point(3, 283);
             groupBox4.Name = "groupBox4";
             groupBox4.Size = new Size(168, 112);
             groupBox4.TabIndex = 34;
@@ -798,13 +798,13 @@ namespace EasyCon2.Forms
             // 
             optPanel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             optPanel.Controls.Add(buttonFlash);
+            optPanel.Controls.Add(buttonFlashClear);
             optPanel.Controls.Add(buttonRemoteStart);
             optPanel.Controls.Add(buttonRemoteStop);
-            optPanel.Controls.Add(buttonFlashClear);
             optPanel.Controls.Add(buttonRecord);
             optPanel.Controls.Add(buttonRecordPause);
-            optPanel.Controls.Add(groupBox4);
             optPanel.Controls.Add(groupBox2);
+            optPanel.Controls.Add(groupBox4);
             optPanel.Location = new Point(610, 30);
             optPanel.Name = "optPanel";
             optPanel.Size = new Size(177, 419);

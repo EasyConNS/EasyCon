@@ -103,7 +103,7 @@ internal partial class Parser
         if (lexer[0].Type == TokenType.VAR && lexer[1].Type == TokenType.ASSIGN)
         {
             var des = FormatterUtil.GetRegEx(lexer[0].Value, true);
-            var eexp = ParseExpression([.. lexer.Skip(2)], false);
+            var eexp = ParseExpression([.. lexer.Skip(2)]);
 
             return new ExpressionStmt(des, eexp);
         }
@@ -152,7 +152,9 @@ internal partial class Parser
 
     private Statement? ParseLoopCtrl(string text)
     {
-        var tokens = SyntaxTree.ParseTokens(text).Take(2).ToList();
+        var tok = SyntaxTree.ParseTokens(text);
+        if(tok.Count() > 2+1) return null;
+        var tokens = tok.Take(2).ToList();
 
         switch (tokens[0].Type)
         {
@@ -269,6 +271,15 @@ internal partial class Parser
                     return new AmiiboChanger(amiiboidx);
                 }
                 break;
+#if DEBUG
+            case "sprint":
+            case "smem":
+                if(tokens[1].Type == TokenType.INT && tokens[2].Type == TokenType.EOF)
+                {
+                    return new SerialPrint(uint.Parse(tokens[1].Value), first.Value.Equals("smem", StringComparison.CurrentCultureIgnoreCase));
+                }
+                break;
+#endif
         }
 
         return null;
@@ -311,18 +322,5 @@ internal partial class Parser
         }
 
         return contents;
-    }
-
-    private Statement? ParseDebug(string text)
-    {
-#if DEBUG
-        var m = Regex.Match(text, @"^sprint\s+(\d+)$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new SerialPrint(uint.Parse(m.Groups[1].Value), false);
-        m = Regex.Match(text, @"^smem\s+(\d+)$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new SerialPrint(uint.Parse(m.Groups[1].Value), true);
-#endif
-        return null;
     }
 }

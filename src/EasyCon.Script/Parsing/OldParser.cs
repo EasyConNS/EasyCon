@@ -113,7 +113,7 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
             return new Wait(duration, true);
         else
         {
-            return ParseNamedExpression(text) ?? ParseKey(text) ?? ParseDebug(text);
+            return ParseNamedExpression(text) ?? ParseKey(text);
         }
     }
 

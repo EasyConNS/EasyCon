@@ -19,6 +19,24 @@ class BinExpr(ValBase left, Meta op, ValBase right, bool hasPr = false) : ValBas
         var exp = $"{ValueLeft.GetCodeText()} {OpMeta.Operator} {ValueRight.GetCodeText()}";
         return HasPr ? $"({exp})" : exp;
     }
+
+    public static ValBase Rewrite(ValBase expr)
+    {
+        if (expr is BinExpr br)
+        {
+            var left = Rewrite(br.ValueLeft);
+            var right = Rewrite(br.ValueRight);
+            if(left is ValInstant li && right is ValInstant ri)
+            {
+                return br.OpMeta.Function(li.Val, ri.Val);
+            }
+            else
+            {
+                return new BinExpr(left, br.OpMeta, right, br.HasPr);
+            }
+        }
+        return expr;
+    }
 }
 
 class ExpressionStmt(ValRegEx regdst, ValBase value) : Statement
@@ -33,7 +51,7 @@ class ExpressionStmt(ValRegEx regdst, ValBase value) : Statement
 
     public override void Exec(Processor processor)
     {
-        processor.Register[RegDst] = Value.Get(processor);
+        processor.Register[RegDst] = BinExpr.Rewrite(Value).Get(processor);
     }
 
     public override void Assemble(Assembly.Assembler assembler)
