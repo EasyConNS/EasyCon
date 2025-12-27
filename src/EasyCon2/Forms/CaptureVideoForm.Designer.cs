@@ -30,7 +30,6 @@ namespace EasyCon2.Forms
         {
             components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(CaptureVideoForm));
-            resultListBox = new ListBox();
             imgreadmelbl = new Label();
             captureBtn = new Button();
             readmelbl = new Label();
@@ -67,8 +66,6 @@ namespace EasyCon2.Forms
             SaveTagBtn = new Button();
             DynTestBtn = new Button();
             searchTestTimer = new System.Windows.Forms.Timer(components);
-            CaptureVideoHelp = new TextBox();
-            openCapBtn = new Button();
             ResolutionBtn = new Button();
             label2 = new Label();
             monitorVisChk = new CheckBox();
@@ -76,6 +73,8 @@ namespace EasyCon2.Forms
             Snapshot = new PaintControl();
             openFileDialog1 = new OpenFileDialog();
             monitorTimer = new System.Windows.Forms.Timer(components);
+            topMosChk = new CheckBox();
+            button1 = new Button();
             groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)searchHNUD).BeginInit();
             ((System.ComponentModel.ISupportInitialize)searchWNUD).BeginInit();
@@ -89,20 +88,11 @@ namespace EasyCon2.Forms
             ((System.ComponentModel.ISupportInitialize)targetImg).BeginInit();
             SuspendLayout();
             // 
-            // resultListBox
-            // 
-            resultListBox.FormattingEnabled = true;
-            resultListBox.Location = new Point(405, 22);
-            resultListBox.Margin = new Padding(4);
-            resultListBox.Name = "resultListBox";
-            resultListBox.Size = new Size(119, 44);
-            resultListBox.TabIndex = 1;
-            // 
             // imgreadmelbl
             // 
             imgreadmelbl.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             imgreadmelbl.AutoSize = true;
-            imgreadmelbl.Location = new Point(760, 374);
+            imgreadmelbl.Location = new Point(612, 374);
             imgreadmelbl.Margin = new Padding(4, 0, 4, 0);
             imgreadmelbl.Name = "imgreadmelbl";
             imgreadmelbl.Size = new Size(135, 20);
@@ -112,7 +102,7 @@ namespace EasyCon2.Forms
             // captureBtn
             // 
             captureBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            captureBtn.Location = new Point(18, 420);
+            captureBtn.Location = new Point(18, 393);
             captureBtn.Margin = new Padding(4);
             captureBtn.Name = "captureBtn";
             captureBtn.Size = new Size(77, 33);
@@ -125,7 +115,7 @@ namespace EasyCon2.Forms
             // 
             readmelbl.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             readmelbl.AutoSize = true;
-            readmelbl.Location = new Point(937, 361);
+            readmelbl.Location = new Point(789, 361);
             readmelbl.Margin = new Padding(4, 0, 4, 0);
             readmelbl.Name = "readmelbl";
             readmelbl.Size = new Size(240, 20);
@@ -135,19 +125,19 @@ namespace EasyCon2.Forms
             // rangeBtn
             // 
             rangeBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            rangeBtn.Location = new Point(102, 420);
+            rangeBtn.Location = new Point(102, 393);
             rangeBtn.Margin = new Padding(4);
             rangeBtn.Name = "rangeBtn";
             rangeBtn.Size = new Size(100, 33);
             rangeBtn.TabIndex = 6;
-            rangeBtn.Text = "开始圈选(红)";
+            rangeBtn.Text = "圈选范围";
             rangeBtn.UseVisualStyleBackColor = true;
             rangeBtn.Click += rangeBtn_Click;
             // 
             // searchTestBtn
             // 
             searchTestBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            searchTestBtn.Location = new Point(317, 420);
+            searchTestBtn.Location = new Point(317, 393);
             searchTestBtn.Margin = new Padding(4);
             searchTestBtn.Name = "searchTestBtn";
             searchTestBtn.Size = new Size(86, 33);
@@ -159,12 +149,12 @@ namespace EasyCon2.Forms
             // targetBtn
             // 
             targetBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            targetBtn.Location = new Point(210, 420);
+            targetBtn.Location = new Point(210, 393);
             targetBtn.Margin = new Padding(4);
             targetBtn.Name = "targetBtn";
             targetBtn.Size = new Size(100, 33);
             targetBtn.TabIndex = 7;
-            targetBtn.Text = "开始圈选(绿)";
+            targetBtn.Text = "圈选目标";
             targetBtn.UseVisualStyleBackColor = true;
             targetBtn.Click += targetBtn_Click;
             // 
@@ -184,7 +174,6 @@ namespace EasyCon2.Forms
             groupBox1.Controls.Add(imgLabelNametxt);
             groupBox1.Controls.Add(imgnamelabel);
             groupBox1.Controls.Add(matchRltlabel);
-            groupBox1.Controls.Add(resultListBox);
             groupBox1.Controls.Add(searchlabel);
             groupBox1.Controls.Add(targetlabel);
             groupBox1.Controls.Add(xlbl);
@@ -197,11 +186,11 @@ namespace EasyCon2.Forms
             groupBox1.Controls.Add(sheightlbl);
             groupBox1.Controls.Add(srchmethodlabel);
             groupBox1.Controls.Add(searchMethodComBox);
-            groupBox1.Location = new Point(18, 464);
+            groupBox1.Location = new Point(18, 437);
             groupBox1.Margin = new Padding(4);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new Padding(4);
-            groupBox1.Size = new Size(669, 214);
+            groupBox1.Size = new Size(584, 214);
             groupBox1.TabIndex = 18;
             groupBox1.TabStop = false;
             groupBox1.Text = "搜索参数";
@@ -264,7 +253,8 @@ namespace EasyCon2.Forms
             // 
             // searchResultImg
             // 
-            searchResultImg.Location = new Point(533, 89);
+            searchResultImg.BorderStyle = BorderStyle.FixedSingle;
+            searchResultImg.Location = new Point(443, 22);
             searchResultImg.Margin = new Padding(4);
             searchResultImg.Name = "searchResultImg";
             searchResultImg.Size = new Size(120, 120);
@@ -282,7 +272,8 @@ namespace EasyCon2.Forms
             // 
             // targetImg
             // 
-            targetImg.Location = new Point(405, 89);
+            targetImg.BorderStyle = BorderStyle.FixedSingle;
+            targetImg.Location = new Point(297, 22);
             targetImg.Margin = new Padding(4);
             targetImg.Name = "targetImg";
             targetImg.Size = new Size(120, 120);
@@ -312,10 +303,10 @@ namespace EasyCon2.Forms
             // 
             // matchRltlabel
             // 
-            matchRltlabel.Location = new Point(533, 22);
+            matchRltlabel.Location = new Point(443, 143);
             matchRltlabel.Margin = new Padding(4, 0, 4, 0);
             matchRltlabel.Name = "matchRltlabel";
-            matchRltlabel.Size = new Size(120, 63);
+            matchRltlabel.Size = new Size(133, 63);
             matchRltlabel.TabIndex = 21;
             matchRltlabel.Text = "匹配度：100%\r\n耗时：100毫秒\r\n最大匹配度100%";
             // 
@@ -443,17 +434,17 @@ namespace EasyCon2.Forms
             // 
             imgLableList.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
             imgLableList.FormattingEnabled = true;
-            imgLableList.Location = new Point(763, 399);
+            imgLableList.Location = new Point(615, 403);
             imgLableList.Margin = new Padding(4);
             imgLableList.Name = "imgLableList";
-            imgLableList.Size = new Size(166, 264);
+            imgLableList.Size = new Size(166, 244);
             imgLableList.TabIndex = 19;
             imgLableList.DoubleClick += imgLableList_DoubleClick;
             // 
             // SaveTagBtn
             // 
             SaveTagBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            SaveTagBtn.Location = new Point(523, 420);
+            SaveTagBtn.Location = new Point(522, 393);
             SaveTagBtn.Margin = new Padding(4);
             SaveTagBtn.Name = "SaveTagBtn";
             SaveTagBtn.Size = new Size(79, 33);
@@ -465,10 +456,10 @@ namespace EasyCon2.Forms
             // DynTestBtn
             // 
             DynTestBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            DynTestBtn.Location = new Point(410, 420);
+            DynTestBtn.Location = new Point(410, 393);
             DynTestBtn.Margin = new Padding(4);
             DynTestBtn.Name = "DynTestBtn";
-            DynTestBtn.Size = new Size(112, 33);
+            DynTestBtn.Size = new Size(105, 33);
             DynTestBtn.TabIndex = 9;
             DynTestBtn.Text = "动态测试";
             DynTestBtn.UseVisualStyleBackColor = true;
@@ -478,35 +469,10 @@ namespace EasyCon2.Forms
             // 
             searchTestTimer.Tick += timer1_Tick;
             // 
-            // CaptureVideoHelp
-            // 
-            CaptureVideoHelp.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Right;
-            CaptureVideoHelp.Font = new Font("宋体", 9F);
-            CaptureVideoHelp.Location = new Point(937, 399);
-            CaptureVideoHelp.Margin = new Padding(4, 6, 4, 6);
-            CaptureVideoHelp.Multiline = true;
-            CaptureVideoHelp.Name = "CaptureVideoHelp";
-            CaptureVideoHelp.ReadOnly = true;
-            CaptureVideoHelp.ScrollBars = ScrollBars.Vertical;
-            CaptureVideoHelp.Size = new Size(331, 280);
-            CaptureVideoHelp.TabIndex = 20;
-            // 
-            // openCapBtn
-            // 
-            openCapBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            openCapBtn.Location = new Point(610, 420);
-            openCapBtn.Margin = new Padding(4);
-            openCapBtn.Name = "openCapBtn";
-            openCapBtn.Size = new Size(77, 33);
-            openCapBtn.TabIndex = 11;
-            openCapBtn.Text = "打开截图";
-            openCapBtn.UseVisualStyleBackColor = true;
-            openCapBtn.Click += openCapBtn_Click;
-            // 
             // ResolutionBtn
             // 
             ResolutionBtn.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            ResolutionBtn.Location = new Point(759, 327);
+            ResolutionBtn.Location = new Point(611, 327);
             ResolutionBtn.Margin = new Padding(4);
             ResolutionBtn.Name = "ResolutionBtn";
             ResolutionBtn.Size = new Size(221, 33);
@@ -519,12 +485,12 @@ namespace EasyCon2.Forms
             // 
             label2.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
             label2.AutoSize = true;
-            label2.Location = new Point(202, 391);
+            label2.Location = new Point(29, 348);
             label2.Margin = new Padding(4, 0, 4, 0);
             label2.Name = "label2";
-            label2.Size = new Size(279, 20);
+            label2.Size = new Size(414, 20);
             label2.TabIndex = 30;
-            label2.Text = "左键按住移动，滚轮缩放，右键按住圈选";
+            label2.Text = "左键按住移动，滚轮缩放，右键按住圈选，双击载入截图文件";
             // 
             // monitorVisChk
             // 
@@ -532,7 +498,7 @@ namespace EasyCon2.Forms
             monitorVisChk.AutoSize = true;
             monitorVisChk.Checked = true;
             monitorVisChk.CheckState = CheckState.Checked;
-            monitorVisChk.Location = new Point(1184, 328);
+            monitorVisChk.Location = new Point(1033, 328);
             monitorVisChk.Margin = new Padding(4);
             monitorVisChk.Name = "monitorVisChk";
             monitorVisChk.Size = new Size(106, 24);
@@ -543,8 +509,9 @@ namespace EasyCon2.Forms
             // 
             // VideoMonitor
             // 
+            VideoMonitor.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             VideoMonitor.BackColor = SystemColors.ButtonShadow;
-            VideoMonitor.Location = new Point(760, 1);
+            VideoMonitor.Location = new Point(614, 1);
             VideoMonitor.Margin = new Padding(4);
             VideoMonitor.Name = "VideoMonitor";
             VideoMonitor.Size = new Size(518, 318);
@@ -563,8 +530,9 @@ namespace EasyCon2.Forms
             Snapshot.Location = new Point(1, 1);
             Snapshot.Margin = new Padding(4);
             Snapshot.Name = "Snapshot";
-            Snapshot.Size = new Size(740, 370);
+            Snapshot.Size = new Size(592, 343);
             Snapshot.TabIndex = 1;
+            Snapshot.DoubleClick += Snapshot_DoubleClick;
             Snapshot.MouseDown += Snapshot_MouseDown;
             Snapshot.MouseMove += Snapshot_MouseMove;
             Snapshot.MouseUp += Snapshot_MouseUp;
@@ -584,31 +552,56 @@ namespace EasyCon2.Forms
             monitorTimer.Interval = 16;
             monitorTimer.Tick += monitorTimer_Tick;
             // 
+            // topMosChk
+            // 
+            topMosChk.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            topMosChk.AutoSize = true;
+            topMosChk.Location = new Point(965, 328);
+            topMosChk.Name = "topMosChk";
+            topMosChk.Size = new Size(61, 24);
+            topMosChk.TabIndex = 31;
+            topMosChk.Text = "置顶";
+            topMosChk.UseVisualStyleBackColor = true;
+            topMosChk.CheckedChanged += checkBox1_CheckedChanged;
+            // 
+            // button1
+            // 
+            button1.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            button1.Location = new Point(515, 351);
+            button1.Name = "button1";
+            button1.Size = new Size(78, 29);
+            button1.TabIndex = 32;
+            button1.Text = "帮助说明";
+            button1.UseVisualStyleBackColor = true;
+            button1.Click += button1_Click;
+            // 
             // CaptureVideoForm
             // 
             AutoScaleMode = AutoScaleMode.Inherit;
-            ClientSize = new Size(1283, 681);
+            ClientSize = new Size(1135, 654);
+            Controls.Add(topMosChk);
             Controls.Add(Snapshot);
             Controls.Add(VideoMonitor);
             Controls.Add(monitorVisChk);
             Controls.Add(label2);
             Controls.Add(ResolutionBtn);
-            Controls.Add(openCapBtn);
-            Controls.Add(CaptureVideoHelp);
-            Controls.Add(DynTestBtn);
-            Controls.Add(SaveTagBtn);
             Controls.Add(imgLableList);
             Controls.Add(groupBox1);
+            Controls.Add(readmelbl);
+            Controls.Add(imgreadmelbl);
+            Controls.Add(DynTestBtn);
+            Controls.Add(SaveTagBtn);
             Controls.Add(targetBtn);
             Controls.Add(searchTestBtn);
             Controls.Add(rangeBtn);
-            Controls.Add(readmelbl);
             Controls.Add(captureBtn);
-            Controls.Add(imgreadmelbl);
+            Controls.Add(button1);
             DoubleBuffered = true;
+            HelpButton = true;
             Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(4);
             MaximizeBox = false;
+            MinimumSize = new Size(518, 318);
             Name = "CaptureVideoForm";
             Padding = new Padding(1);
             StartPosition = FormStartPosition.CenterScreen;
@@ -633,7 +626,6 @@ namespace EasyCon2.Forms
         }
 
         #endregion
-        private System.Windows.Forms.ListBox resultListBox;
         private System.Windows.Forms.Label imgreadmelbl;
         private System.Windows.Forms.Button captureBtn;
         private System.Windows.Forms.Label readmelbl;
@@ -662,8 +654,6 @@ namespace EasyCon2.Forms
         private System.Windows.Forms.Timer searchTestTimer;
         private System.Windows.Forms.PictureBox searchResultImg;
         private System.Windows.Forms.PictureBox targetImg;
-        private System.Windows.Forms.TextBox CaptureVideoHelp;
-        private System.Windows.Forms.Button openCapBtn;
         private System.Windows.Forms.Button ResolutionBtn;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.CheckBox monitorVisChk;
@@ -679,5 +669,7 @@ namespace EasyCon2.Forms
         private NumericUpDown searchXNUD;
         private OpenFileDialog openFileDialog1;
         private System.Windows.Forms.Timer monitorTimer;
+        private CheckBox topMosChk;
+        private Button button1;
     }
 }

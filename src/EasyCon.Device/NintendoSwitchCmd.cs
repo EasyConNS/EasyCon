@@ -36,6 +36,7 @@ public partial class NintendoSwitch
         clientCon = new TTLSerialClient(connStr,baudrate);
         clientCon.BytesSent += BytesSent;
         clientCon.BytesReceived += BytesReceived;
+        clientCon.StatusChanged += StatusChanged;
         clientCon.CPUOpt = need_cpu_opt;
         clientCon.OpenDelay = need_open_delay;
 
@@ -66,7 +67,6 @@ public partial class NintendoSwitch
     }
 
     public bool IsConnected() => clientCon?.CurrentStatus == Status.Connected;
-    public Status ConnectionStatus => clientCon?.CurrentStatus ?? Status.Connecting;
 
     void WriteReport(Span<byte> b)
     {

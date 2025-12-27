@@ -1,4 +1,4 @@
-namespace EasyCon2.Helper;
+namespace EasyCon2.Models;
 
 public class AmiiboInfo
 {

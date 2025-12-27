@@ -43,9 +43,8 @@ public sealed class ECSearch
         //int P_Height = srcBmp.Height;
         //BitmapData S_Data = null;
         //BitmapData P_Data = null;
-        //int similar = 10;
 
-        using Mat src = BitmapConverter.ToMat(srcBmp);
+        using Mat small = BitmapConverter.ToMat(srcBmp);
         using Mat big = BitmapConverter.ToMat(targetBmp);
 
         //if ((int)method > 5)
@@ -63,29 +62,29 @@ public sealed class ECSearch
             case SearchMethod.CCorrNormed:
             case SearchMethod.CCoeff:
             case SearchMethod.CCoeffNormed:
-                result = OpenCVSearch.OpenCvFindPic(left, top, width, height, big, src, method, out matchDegree);
+                result = OpenCVSearch.OpenCvFindPic(big, small, method, out matchDegree);
                 break;
             case SearchMethod.EdgeDetectXY:
             case SearchMethod.EdgeDetectLaplacian:
-                result = OpenCVSearch.EdgeDetect(left, top, width, height, big, src, method, out matchDegree);
+                result = OpenCVSearch.EdgeDetect(big, small, method, out matchDegree);
                 break;
             // case SearchMethod.StrictMatch:
-            //     List = StrictMatch(left, top, width, height, S_Data, P_Data);
-            //     matchDegree = 1;
-            //     break;
-            // case SearchMethod.StrictMatchRND:
-            //     List = StrictMatchRND(left, top, width, height, S_Data, P_Data);
-            //     matchDegree = 1;
-            //     break;
-            // case SearchMethod.OpacityDiff:
-            //     Color BackColor = srcBmp.GetPixel(0, 0); //背景色
-            //     List = OpacityDiff(left, top, width, height, S_Data, P_Data, GetPixelData(P_Data, BackColor), similar);
-            //     matchDegree = 1;
-            //     break;
-            // case SearchMethod.SimilarMatch:
-            //     List = SimilarMatch(left, top, width, height, S_Data, P_Data, similar);
-            //     matchDegree = 1;
-            //     break;
+            //    result = StrictMatch(left, top, width, height, S_Data, P_Data);
+            //    matchDegree = 1;
+            //    break;
+            //case SearchMethod.StrictMatchRND:
+            //    result = StrictMatchRND(left, top, width, height, S_Data, P_Data);
+            //    matchDegree = 1;
+            //    break;
+            //case SearchMethod.OpacityDiff:
+            //    Color BackColor = srcBmp.GetPixel(0, 0); //背景色
+            //    result = OpacityDiff(left, top, width, height, S_Data, P_Data, GetPixelData(P_Data, BackColor), similar = 10);
+            //    matchDegree = 1;
+            //    break;
+            //case SearchMethod.SimilarMatch:
+            //    result = SimilarMatch(left, top, width, height, S_Data, P_Data, similar = 10);
+            //    matchDegree = 1;
+            //    break;
             default:
                 // 不支持的匹配算法
                 matchDegree = 0;

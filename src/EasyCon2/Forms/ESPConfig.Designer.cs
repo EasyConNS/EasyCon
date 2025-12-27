@@ -1,6 +1,6 @@
-﻿namespace EasyCon2.Forms
+namespace EasyCon2.Forms
 {
-    partial class ControllerConfig
+    partial class ESPConfig
     {
         /// <summary>
         /// Required designer variable.
@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ControllerConfig));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ESPConfig));
             this.proButton = new System.Windows.Forms.RadioButton();
             this.jcrButton = new System.Windows.Forms.RadioButton();
             this.jclButton = new System.Windows.Forms.RadioButton();

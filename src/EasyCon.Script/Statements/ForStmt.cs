@@ -89,13 +89,12 @@ class For_Static : ForStmt
 
     public override void Assemble(Assembly.Assembler assembler)
     {
-        if (Count is ValReg)
+        if (Count is ValReg vr)
         {
-            assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)((Count as ValReg).Index << 4)));
+            if(vr.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)(vr.Reg << 4)));
             assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
         }
-        else if (Count is ValRegEx)
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
         assembler.Add(Assembly.Instructions.AsmFor.Create());
         assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
     }
@@ -103,10 +102,10 @@ class For_Static : ForStmt
 
 class For_Full : ForStmt
 {
-    public ValRegEx RegIter;
+    public ValReg RegIter;
     public ValBase InitVal;
 
-    public For_Full(ValRegEx regiter, ValBase initval, ValBase count)
+    public For_Full(ValReg regiter, ValBase initval, ValBase count)
         : base(count)
     {
         RegIter = regiter;
@@ -139,14 +138,14 @@ class For_Full : ForStmt
     public override void Assemble(Assembly.Assembler assembler)
     {
         if (RegIter is ValReg reg)
-            assembler.Add(Assembly.Instructions.AsmMov.Create(reg.Index, InitVal));
+            assembler.Add(Assembly.Instructions.AsmMov.Create(reg.Reg, InitVal));
         else 
             throw new Assembly.AssembleException(ErrorMessage.NotSupported);
         
         if (Count is ValReg countval)
         {
-            uint e_val = countval.Index;
-            e_val |= countval.Index << 4;
+            uint e_val = countval.Reg;
+            e_val |= countval.Reg << 4;
             assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)e_val));
             assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
             assembler.Add(Assembly.Instructions.AsmFor.Create());

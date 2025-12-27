@@ -137,11 +137,11 @@ internal sealed class Parser
         return node;
     }
 
-    private T ParseTokenStatement<T>(TokenType ttype, string msg) where T : Statement
+    private KeywordStatement ParseTokenStatement<T>(TokenType ttype, string msg) where T : Statement
     {
         var keyword = Match(ttype, msg);
 
-        return (T)Activator.CreateInstance(typeof(T), keyword);
+        return new KeywordStatement(keyword);
     }
 
     private Member ParseMember()
@@ -273,13 +273,13 @@ internal sealed class Parser
         ElseClause? elseClause = null;
         if (Check(TokenType.ELSE))
         {
-            var elsestmt = WithTrivia(()=>ParseTokenStatement<ElseStatement>(TokenType.ELSE, "else解析失败"));
+            var elsestmt = WithTrivia(()=>ParseTokenStatement<KeywordStatement>(TokenType.ELSE, "else解析失败"));
 
             var elseBranch = ParseStatementsUntil(TokenType.ENDIF);
             elseClause = new(elsestmt, elseBranch.ToImmutableArray());
         }
 
-        var endif = ParseTokenStatement<EndifStatement>(TokenType.ENDIF, "if语句需要endif结尾");
+        var endif = ParseTokenStatement<KeywordStatement>(TokenType.ENDIF, "if语句需要endif结尾");
 
         return new IfStatement(ifcond, thenBranch.ToImmutableArray(), elseif.ToImmutableArray(), elseClause, endif);
     }
@@ -333,7 +333,7 @@ internal sealed class Parser
         Match(TokenType.NEWLINE, "for语法不正确");
 
         var body = ParseStatementsUntil(TokenType.NEXT);
-        var nextTok = WithTrivia(()=>ParseTokenStatement<NextStatement>(TokenType.NEXT, "for语句需要next结尾"));
+        var nextTok = WithTrivia(()=>ParseTokenStatement<KeywordStatement>(TokenType.NEXT, "for语句需要next结尾"));
 
         return new ForStatement(new ForExpr(forToken, initVar, start, end, infinite), body.ToImmutableArray(), nextTok);
     }
@@ -399,7 +399,7 @@ internal sealed class Parser
 
         var endFunc = Match(TokenType.ENDFUNC, "需要endfunc结尾");
 
-        return new FunctionDefinitionStatement(new FuncDeclare(functionToken, functionName, []), body.ToImmutableArray(), new EndFuncStatement(endFunc));
+        return new FunctionDefinitionStatement(new FuncDeclare(functionToken, functionName, []), body.ToImmutableArray(), new KeywordStatement(endFunc));
     }
 
     private ReturnStatement ParseReturnStatement()

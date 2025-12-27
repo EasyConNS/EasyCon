@@ -18,9 +18,9 @@ class TextParam(string text, string codetext = null) : Param
     }
 }
 
-class RegParam(ValRegEx reg) : Param
+class RegParam(ValReg reg) : Param
 {
-    public readonly ValRegEx Reg = reg;
+    public readonly ValReg Reg = reg;
 
     public override string GetCodeText()
     {

@@ -17,7 +17,6 @@ using System.Media;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace EasyCon2.Forms
@@ -32,24 +31,21 @@ namespace EasyCon2.Forms
         public Color CurrentLight => Color.White;
         bool IControllerAdapter.IsRunning() => scriptRunning;
 
-        internal NintendoSwitch NS = new();
-        internal CaptureVideoForm captureVideo = new();
+        private NintendoSwitch NS = new();
+        private readonly Scripter _program = new();
+        private CaptureVideoForm captureVideo = new();
 
+        private QqAssist ws = new();
+
+        private ConfigState _config;
         const string ConfigPath = @"config.json";
         const string ScriptPath = @"Script\";
         const string FirmwarePath = @"Firmware\";
 
-        private VControllerConfig _config;
-
         private readonly string defaultName = "未命名脚本";
         private string fileName => textBoxScript.Document.FileName == null ? defaultName : Path.GetFileName(textBoxScript.Document.FileName);
-        private bool _fileEdited => textBoxScript.IsModified;
-
-        private readonly Queue<Tuple<RichTextBox, object, Color?>> _messages = new();
 
         private readonly List<ToolStripMenuItem> captureTypes = [];
-
-        private Web_Socket ws;
 
         public EasyConForm()
         {
@@ -59,16 +55,6 @@ namespace EasyCon2.Forms
 
             LoadConfig();
             captureVideo.LoadImgLabels();
-
-            频道远程ToolStripMenuItem.Checked = _config?.ChannelControl ?? false;
-            if (_config?.ChannelControl ?? false)
-            {
-                Start_WebSocket();
-            }
-
-#if DEBUG
-            蓝牙ToolStripMenuItem.Visible = true;
-#endif
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -132,26 +118,12 @@ namespace EasyCon2.Forms
             RegisterKeys();
             InitEditor();
 
+            InitEvent();
+
             // UI updating timer
             Task.Run(() => { UpdateUI(); });
 
-            // serial debug
-            NS.Log += (message) =>
-            {
-                if (显示调试信息ToolStripMenuItem.Checked)
-                    Print($"NS LOG >> {message}", null);
-            };
-            NS.BytesSent += (port, bytes) =>
-            {
-                if (显示调试信息ToolStripMenuItem.Checked)
-                    Print($"{port} >> {string.Join(" ", bytes.Select(b => b.ToString("X2")))}", null);
-            };
-            NS.BytesReceived += (port, bytes) =>
-            {
-                if (显示调试信息ToolStripMenuItem.Checked)
-                    Print($"{port} << {string.Join(" ", bytes.Select(b => b.ToString("X2")))}", null);
-            };
-
+            InitCaptureDevices();
             InitCaptureTypes();
 
             StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabels.Count()}");
@@ -161,7 +133,115 @@ namespace EasyCon2.Forms
         {
             e.Cancel = !FileClose();
             captureVideo?.Close();
-            if (scriptRunning) ScriptStop();
+        }
+
+        private void InitEvent()
+        {
+            ScriptRunningChanged += (bool isTunning) =>
+            {
+                Invoke(delegate
+                {
+                    if (!isTunning)
+                    {
+
+                        runStopBtn.Text = "运行脚本";
+                        runStopBtn.BackColor = Color.FromArgb(95, 46, 204, 113);
+
+                    }
+                    else
+                    {
+                        runStopBtn.Text = "终止脚本";
+                        runStopBtn.BackColor = Color.FromArgb(95, 231, 76, 60);
+                    }
+                    runStopBtn.Enabled = true;
+                    编译ToolStripMenuItem.Enabled = !isTunning;
+                    执行ToolStripMenuItem.Enabled = !isTunning;
+
+                    // timer label
+                    labelTimer.ForeColor = isTunning ? Color.Lime : Color.White;
+                });
+            };
+
+            // serial debug
+            NS.StatusChanged += (stat) =>
+            {
+                // serial port status
+                if (NS.IsConnected())
+                {
+                    labelSerialStatus.Text = "单片机已连接";
+                    labelSerialStatus.ForeColor = Color.Lime;
+                }
+                else
+                {
+                    labelSerialStatus.Text = "单片机未连接";
+                    labelSerialStatus.ForeColor = Color.White;
+                }
+            };
+            NS.Log += (message) =>
+            {
+                if (显示调试信息ToolStripMenuItem.Checked)
+                    logTxtBox.Print($"NS LOG >> {message}", null);
+            };
+            NS.BytesSent += (port, bytes) =>
+            {
+                if (显示调试信息ToolStripMenuItem.Checked)
+                    logTxtBox.Print($"{port} >> {string.Join(" ", bytes.Select(b => b.ToString("X2")))}", null);
+            };
+            NS.BytesReceived += (port, bytes) =>
+            {
+                if (显示调试信息ToolStripMenuItem.Checked)
+                    logTxtBox.Print($"{port} << {string.Join(" ", bytes.Select(b => b.ToString("X2")))}", null);
+            };
+        }
+
+        private void CaptureDeviceItem_Click(object sender, EventArgs e)
+        {
+            // tag = device id
+            if (captureVideo?.DeviceID == (int)(((ToolStripMenuItem)sender).Tag))
+            {
+                MessageBox.Show("相同采集卡已经打开了");
+                return;
+            }
+
+            int dev_type = 0;
+            foreach (var item in captureTypes)
+            {
+                if (item.Checked == true)
+                    dev_type = (int)item.Tag;
+            }
+
+            captureVideo = new CaptureVideoForm((int)(((ToolStripMenuItem)sender).Tag), dev_type);
+            captureVideo.Show();
+            StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabels.Count()}");
+        }
+
+        private void 打开搜图ToolStripMenuItem_MouseHover(object sender, EventArgs e)
+        {
+            InitCaptureDevices();
+        }
+
+        private void InitCaptureDevices()
+        {
+            var devs = EasyCon.Core.ECCore.GetCaptureSources();
+
+            打开搜图ToolStripMenuItem.DropDownItems.Clear();
+
+            var enumerable = devs.Select((d, i) =>
+            {
+                var item = new ToolStripMenuItem
+                {
+                    Checked = false,
+                    CheckState = CheckState.Unchecked,
+                    Size = new Size(180, 22),
+                    Name = "menuItem" + d ?? "?",
+                    Text = d ?? "?"
+                };
+                item.Click += new EventHandler(CaptureDeviceItem_Click);
+                item.Tag = i;
+                return item;
+            });
+
+            打开搜图ToolStripMenuItem.DropDownItems.AddRange(enumerable.ToArray());
         }
 
         private void InitCaptureTypes()
@@ -170,7 +250,7 @@ namespace EasyCon2.Forms
             var types = ECCapture.GetCaptureTypes();
 
             采集卡类型ToolStripMenuItem.DropDownItems.Clear();
-            foreach (var name in types.Keys)
+            foreach (var (name, value) in types)
             {
                 var item = new ToolStripMenuItem();
                 采集卡类型ToolStripMenuItem.DropDownItems.Add(item);
@@ -180,7 +260,7 @@ namespace EasyCon2.Forms
                 item.Size = new Size(180, 22);
                 item.Text = name;
                 item.Click += new EventHandler(this.DeviceTypeItem_Click);
-                item.Tag = types[name];
+                item.Tag = value;
                 if (name == _config.CaptureType)
                     item.Checked = true;
                 captureTypes.Add(item);
@@ -195,19 +275,6 @@ namespace EasyCon2.Forms
                 {
                     Invoke(delegate
                     {
-                        if (!scriptRunning)
-                        {
-                            buttonScriptRunStop.Text = "运行脚本";
-                            buttonScriptRunStop.Image = Resources.start;
-                        }
-                        else
-                        {
-                            buttonScriptRunStop.Text = "终止脚本";
-                            buttonScriptRunStop.Image = Resources.stop;
-                        }
-                        编译ToolStripMenuItem.Enabled = !scriptRunning;
-                        执行ToolStripMenuItem.Enabled = !scriptRunning;
-                        compileButton.Enabled = !scriptRunning;
                         // update record script to text
                         if (NS.recordState == RecordState.RECORD_START)
                         {
@@ -215,7 +282,7 @@ namespace EasyCon2.Forms
                             textBoxScript.Text = NS.GetRecordScript();
                             this.textBoxScript.ScrollToHome();
                         }
-                        if(captureVideo.IsOpened)
+                        if (captureVideo.IsOpened)
                         {
                             labelCaptureStatus.Text = "采集卡已连接";
                             labelCaptureStatus.ForeColor = Color.Lime;
@@ -225,86 +292,13 @@ namespace EasyCon2.Forms
                             labelCaptureStatus.Text = "采集卡未连接";
                             labelCaptureStatus.ForeColor = Color.White;
                         }
-                        // serial port status
-                        if (NS.IsConnected())
-                        {
-                            labelSerialStatus.Text = "单片机已连接";
-                            labelSerialStatus.ForeColor = Color.Lime;
-                        }
-                        else
-                        {
-                            labelSerialStatus.Text = "单片机未连接";
-                            labelSerialStatus.ForeColor = Color.White;
-                        }
 
                         // timer
-                        labelTimer.ForeColor = scriptRunning ? Color.Lime : Color.White;
                         if (_startTime != DateTime.MinValue)
                         {
                             var time = DateTime.Now - _startTime;
                             labelTimer.Text = time.ToString(@"hh\:mm\:ss");
                         }
-
-                        // message
-                        var boxes = new HashSet<RichTextBox>();
-                        string temp_msg = "";
-                        while (_messages.Count > 0)
-                        {
-                            Tuple<RichTextBox, object, Color?> tuple;
-                            lock (_messages)
-                            {
-                                tuple = _messages.Dequeue();
-                            }
-                            var box = tuple.Item1;
-                            var message = tuple.Item2;
-                            var color = tuple.Item3;
-                            if (!boxes.Contains(box))
-                            {
-                                box.SuspendLayout();
-                                boxes.Add(box);
-                            }
-                            if (message == null)
-                            {
-                                // cls
-                                box.Text = string.Empty;
-                                continue;
-                            }
-                            while (box.TextLength >= 1000000)
-                            {
-                                box.Select(0, box.GetFirstCharIndexFromLine(10));
-                                box.ReadOnly = false;
-                                box.SelectedText = string.Empty;
-                                box.ReadOnly = true;
-                            }
-                            box.SelectionStart = box.TextLength;
-                            box.SelectionLength = 0;
-                            box.SelectionColor = color ?? box.ForeColor;
-                            box.AppendText(message.ToString());
-                            Debug.WriteLine("-" + message.ToString());
-                            if (color == null && message.ToString() != "\r\n")
-                            {
-                                temp_msg += message.ToString();
-                                string msg = Regex.Replace(temp_msg, @"[\r\n]", "");
-                                if (msg != string.Empty)
-                                {
-                                    ws?.SendMsg(new LogResponse(_config.ChannelToken, msg));
-                                }
-                            }
-                            else
-                            {
-                                temp_msg = message.ToString();
-                            }
-
-                        }
-                        foreach (var box in boxes)
-                        {
-                            box.ScrollToCaret();
-                            box.ResumeLayout();
-                            box.Invalidate();
-                        }
-
-                        // script edited
-                        groupBoxScript.Text = _fileEdited ? $"{fileName}(已编辑)" : fileName;
                     });
                     Thread.Sleep(25);
                 }
@@ -319,15 +313,26 @@ namespace EasyCon2.Forms
         {
             try
             {
-                _config = JsonSerializer.Deserialize<VControllerConfig>(File.ReadAllText(ConfigPath));
+                _config = JsonSerializer.Deserialize<ConfigState>(File.ReadAllText(ConfigPath));
             }
             catch (Exception ex)
             {
                 if (ex is not FileNotFoundException)
                     MessageBox.Show("读取设置文件失败！");
-                _config = new VControllerConfig();
+                _config = new();
                 _config.SetDefault();
             }
+
+
+            频道远程ToolStripMenuItem.Checked = _config?.ChannelControl ?? false;
+            if (频道远程ToolStripMenuItem.Checked)
+            {
+                StartWebSocket();
+            }
+
+#if DEBUG
+            蓝牙ToolStripMenuItem.Visible = true;
+#endif
         }
 
         private void SaveConfig()
@@ -335,76 +340,9 @@ namespace EasyCon2.Forms
             File.WriteAllText(ConfigPath, JsonSerializer.Serialize(_config));
         }
 
-        private string GetFirmwareName(string corename)
-        {
-            var dir = new DirectoryInfo(FirmwarePath);
-            if (!dir.Exists)
-                return null;
-            var max = 0;
-            string filename = null;
-            foreach (var fi in dir.GetFiles())
-            {
-                var m = Regex.Match(fi.Name, $@"^{corename} v(\d+)\.hex$", RegexOptions.IgnoreCase);
-                if (m.Success)
-                {
-                    var ver = int.Parse(m.Groups[1].Value);
-                    if (ver > max)
-                    {
-                        max = ver;
-                        filename = fi.Name;
-                    }
-                }
-            }
-            return filename;
-        }
-
-        private Board GetSelectedBoard()
-        {
-            return comboBoxBoardType.SelectedItem as Board;
-        }
-
-        private void RegisterKey(Keys key, ECKey nskey)
-        {
-            virtController.RegisterKey(key, () => NS.Down(nskey), () => NS.Up(nskey));
-        }
-
         private void RegisterKeys()
         {
-            virtController.UnregisterAllKeys();
-
-            RegisterKey(_config.KeyMapping.A, ECKeyUtil.Button(SwitchButton.A));
-            RegisterKey(_config.KeyMapping.B, ECKeyUtil.Button(SwitchButton.B));
-            RegisterKey(_config.KeyMapping.X, ECKeyUtil.Button(SwitchButton.X));
-            RegisterKey(_config.KeyMapping.Y, ECKeyUtil.Button(SwitchButton.Y));
-            RegisterKey(_config.KeyMapping.L, ECKeyUtil.Button(SwitchButton.L));
-            RegisterKey(_config.KeyMapping.R, ECKeyUtil.Button(SwitchButton.R));
-            RegisterKey(_config.KeyMapping.ZL, ECKeyUtil.Button(SwitchButton.ZL));
-            RegisterKey(_config.KeyMapping.ZR, ECKeyUtil.Button(SwitchButton.ZR));
-            RegisterKey(_config.KeyMapping.Plus, ECKeyUtil.Button(SwitchButton.PLUS));
-            RegisterKey(_config.KeyMapping.Minus, ECKeyUtil.Button(SwitchButton.MINUS));
-            RegisterKey(_config.KeyMapping.Capture, ECKeyUtil.Button(SwitchButton.CAPTURE));
-            RegisterKey(_config.KeyMapping.Home, ECKeyUtil.Button(SwitchButton.HOME));
-            RegisterKey(_config.KeyMapping.LClick, ECKeyUtil.Button(SwitchButton.LCLICK));
-            RegisterKey(_config.KeyMapping.RClick, ECKeyUtil.Button(SwitchButton.RCLICK));
-
-            RegisterKey(_config.KeyMapping.UpRight, ECKeyUtil.HAT(SwitchHAT.TOP_RIGHT));
-            RegisterKey(_config.KeyMapping.DownRight, ECKeyUtil.HAT(SwitchHAT.BOTTOM_RIGHT));
-            RegisterKey(_config.KeyMapping.UpLeft, ECKeyUtil.HAT(SwitchHAT.TOP_LEFT));
-            RegisterKey(_config.KeyMapping.DownLeft, ECKeyUtil.HAT(SwitchHAT.BOTTOM_LEFT));
-
-            virtController.RegisterKey(_config.KeyMapping.Up, () => NS.HatDirection(DirectionKey.Up, true), () => NS.HatDirection(DirectionKey.Up, false));
-            virtController.RegisterKey(_config.KeyMapping.Down, () => NS.HatDirection(DirectionKey.Down, true), () => NS.HatDirection(DirectionKey.Down, false));
-            virtController.RegisterKey(_config.KeyMapping.Left, () => NS.HatDirection(DirectionKey.Left, true), () => NS.HatDirection(DirectionKey.Left, false));
-            virtController.RegisterKey(_config.KeyMapping.Right, () => NS.HatDirection(DirectionKey.Right, true), () => NS.HatDirection(DirectionKey.Right, false));
-
-            virtController.RegisterKey(_config.KeyMapping.LSUp, () => NS.LeftDirection(DirectionKey.Up, true), () => NS.LeftDirection(DirectionKey.Up, false));
-            virtController.RegisterKey(_config.KeyMapping.LSDown, () => NS.LeftDirection(DirectionKey.Down, true), () => NS.LeftDirection(DirectionKey.Down, false));
-            virtController.RegisterKey(_config.KeyMapping.LSLeft, () => NS.LeftDirection(DirectionKey.Left, true), () => NS.LeftDirection(DirectionKey.Left, false));
-            virtController.RegisterKey(_config.KeyMapping.LSRight, () => NS.LeftDirection(DirectionKey.Right, true), () => NS.LeftDirection(DirectionKey.Right, false));
-            virtController.RegisterKey(_config.KeyMapping.RSUp, () => NS.RightDirection(DirectionKey.Up, true), () => NS.RightDirection(DirectionKey.Up, false));
-            virtController.RegisterKey(_config.KeyMapping.RSDown, () => NS.RightDirection(DirectionKey.Down, true), () => NS.RightDirection(DirectionKey.Down, false));
-            virtController.RegisterKey(_config.KeyMapping.RSLeft, () => NS.RightDirection(DirectionKey.Left, true), () => NS.RightDirection(DirectionKey.Left, false));
-            virtController.RegisterKey(_config.KeyMapping.RSRight, () => NS.RightDirection(DirectionKey.Right, true), () => NS.RightDirection(DirectionKey.Right, false));
+            virtController.RegisterAllKeys(_config.KeyMapping);
         }
 
         private void StatusShowLog(string str)
@@ -418,6 +356,66 @@ namespace EasyCon2.Forms
         private void ScriptSelectLine(int index)
         {
             textBoxScript.ScrollToLine(index);
+        }
+
+        public void Print(string message, bool newline = true) =>
+            logTxtBox.Print(message, newline);
+
+        public void Alert(string message)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    var result = new EC.Core.PushPlusClient(_config.AlertToken).SendMessage(message).Result;
+                    Print(result);
+
+                    if (_config.ChannelToken != "")
+                    {
+                        ws?.SendNotify(message);
+                    }
+                    else
+                    {
+                        Print("推送失败: 请配置推送Token");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Print($"推送失败:{e.Message}");
+                }
+            });
+        }
+
+        bool WSRun = false;
+        private bool StartWebSocket()
+        {
+            try
+            {
+                ws.Connect();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"websocket connect failed:{ex.Message}");
+                return false;
+            }
+            Task task = Task.Run(() =>
+            {
+                WSRun = true;
+                while (WSRun)
+                {
+                    try
+                    {
+                        if (!ws.IsConnect) ws.Connect();
+                        Thread.Sleep(1000);
+                    }
+                    catch
+                    {
+                        ws.Connect();
+                        Debug.WriteLine("ws lost connection,retry");
+                    }
+                }
+            });
+            return true;
         }
 
         private void ComPort_DropDown(object sender, EventArgs e)
@@ -505,6 +503,7 @@ namespace EasyCon2.Forms
 
             textBoxScript.Load(_currentFile);
             textBoxScript.Document.FileName = _currentFile;
+            groupBoxScript.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
             return true;
         }
 
@@ -531,7 +530,7 @@ namespace EasyCon2.Forms
 
         private bool FileClose()
         {
-            if (_fileEdited)
+            if (textBoxScript.IsModified)
             {
                 var r = MessageBox.Show("文件已编辑，是否保存？", "", MessageBoxButtons.YesNoCancel);
                 if (r == DialogResult.Cancel)
@@ -545,13 +544,14 @@ namespace EasyCon2.Forms
             textBoxScript.Document.FileName = null;
             textBoxScript.Clear();
             textBoxScript.IsModified = false;
+            groupBoxScript.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
             StatusShowLog("文件已关闭");
             return true;
         }
         #endregion
         private void ShowControllerHelp()
         {
-            MessageBox.Show("鼠标左键：启用/禁用\n鼠标右键：拖动移动位置，右键点击重置初始位置\n鼠标中键：禁用并隐藏\n\n（注意：在有脚本远程运行的情况下无法使用）", "关于虚拟手柄");
+            new HelpTxtDialog("鼠标左键：启用/禁用\n鼠标右键：拖动移动位置，右键点击重置初始位置\n鼠标中键：禁用并隐藏\n\n（注意：在有脚本远程运行的情况下无法使用）", "关于虚拟手柄").Show();
         }
 
         private void buttonShowController_Click(object sender, EventArgs e)
@@ -587,17 +587,17 @@ namespace EasyCon2.Forms
 
         private void textBoxScript_TextChanged(object sender, EventArgs e)
         {
+            // script edited
+            groupBoxScript.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
+
             if (显示折叠ToolStripMenuItem.Checked)
                 _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
-            if (scriptCompiling)
-                return;
-            if (scriptRunning)
-                return;
-            _program.Reset();
+            ScriptReset();
         }
 
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
         {
+            runStopBtn.Enabled = false;
             if (!scriptRunning)
             {
                 ScriptRun();
@@ -606,6 +606,7 @@ namespace EasyCon2.Forms
             {
                 ScriptStop();
             }
+            runStopBtn.Enabled = true;
         }
 
         private void EnableConnBtn(bool show = true)
@@ -642,9 +643,11 @@ namespace EasyCon2.Forms
             ShowControllerHelp();
         }
 
-        private void buttonGenerateFirmware_Click(object sender, EventArgs e)
+        private async void buttonGenerateFirmware_Click(object sender, EventArgs e)
         {
-            GenerateFirmware();
+            genFwButton.Enabled = false;
+            await GenerateFirmware();
+            genFwButton.Enabled = true;
         }
 
         private async void buttonFlash_Click(object sender, EventArgs e)
@@ -719,11 +722,6 @@ namespace EasyCon2.Forms
                 SystemSounds.Beep.Play();
                 MessageBox.Show("清除完毕");
             }
-        }
-
-        private void comboBoxBoardType_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            textBoxFirmware.Text = $"{(comboBoxBoardType.SelectedItem as Board)?.CoreName}.hex";
         }
 
         private void buttonRecord_Click(object sender, EventArgs e)
@@ -856,50 +854,6 @@ namespace EasyCon2.Forms
             SaveConfig();
         }
 
-        private void CaptureDeviceItem_Click(object sender, EventArgs e)
-        {
-            // tag = device id
-            if (captureVideo?.DeviceID == (int)(((ToolStripMenuItem)sender).Tag))
-            {
-                MessageBox.Show("相同采集卡已经打开了");
-                return;
-            }
-
-            int dev_type = 0;
-            foreach (var item in captureTypes)
-            {
-                if (item.Checked == true)
-                    dev_type = (int)item.Tag;
-            }
-
-            captureVideo = new CaptureVideoForm((int)(((ToolStripMenuItem)sender).Tag), dev_type);
-            captureVideo.Show();
-            StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabels.Count()}");
-        }
-
-        private void 打开搜图ToolStripMenuItem_MouseHover(object sender, EventArgs e)
-        {
-            var openDevice = (ToolStripMenuItem)sender;
-            var devs = ECCapture.GetCaptureCamera();
-
-            openDevice.DropDownItems.Clear();
-            int tag = 0;
-
-            foreach (var d in devs)
-            {
-                var item = new ToolStripMenuItem();
-                openDevice.DropDownItems.Add(item);
-                item.Checked = false;
-                item.CheckState = CheckState.Unchecked;
-                item.Name = "menuItem" + d;
-                item.Size = new Size(180, 22);
-                item.Text = d;
-                item.Click += new EventHandler(CaptureDeviceItem_Click);
-                item.Tag = tag;
-                tag++;
-            }
-        }
-
         private void 搜图说明ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             MessageBox.Show("默认采集卡类型选择any，会自动选择合适的采集卡\n- 常见采集卡类型是DSHOW，MSMF，DC1394等\n- obs30+版本已支持内置虚拟摄像头，无需安装额外插件\n- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开\n- 如果遇到搜图卡顿问题可尝试点击一次<设置环境变量>菜单\n- 详细使用教程见群946057081文档", "采集卡");
@@ -969,68 +923,25 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             btform.ShowDialog();
         }
 
-        bool WSRun = false;
-        private bool Start_WebSocket()
-        {
-            try
-            {
-                ws = new Web_Socket();
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine("WesSocke timeout", ex);
-                return false;
-            }
-            Task task = Task.Run(() =>
-            {
-                WSRun = true;
-                while (WSRun)
-                {
-                    try
-                    {
-                        if (!ws.CheckConnect())
-                            ws.Reconnect();
-                        //ws.SendMsg("init");
-
-                        //LogResponse logResponse = new LogResponse(_config.ChannelToken, "log res");
-
-                        //Notification notification = new Notification(_config.ChannelToken, "notification");
-
-                        //ws.SendMsg(logResponse);
-                        //ws.SendMsg(notification);
-
-                        Thread.Sleep(1000);
-                    }
-                    catch
-                    {
-                        ws = new Web_Socket();
-                        Debug.WriteLine("ws lost connection,retry");
-                    }
-                }
-            });
-            return true;
-        }
-
         private void 频道远程ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var menu = (ToolStripMenuItem)sender;
             menu.Checked = !menu.Checked;
             if (menu.Checked)
             {
-                menu.Checked = Start_WebSocket();
-                _config.ChannelControl = true;
+                menu.Checked = StartWebSocket();
             }
             else
             {
                 WSRun = false;
-                _config.ChannelControl = false;
             }
+            _config.ChannelControl = menu.Checked;
             SaveConfig();
         }
 
         private void 手柄设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            using var controllerConfig = new ControllerConfig(NS);
+            using var controllerConfig = new ESPConfig(NS);
             controllerConfig.ShowDialog();
         }
 
@@ -1128,17 +1039,12 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
 
         private void 脚本语法ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            new ScriptHelp().Show();
+            new HelpTxtDialog(Resources.scriptdoc).Show();
         }
 
-        private void 清屏ToolStripMenuItem_Click(object sender, EventArgs e)
+        private void clsLogBtn_Click(object sender, EventArgs e)
         {
-            lock (_messages)
-            {
-                _messages.Enqueue(new Tuple<RichTextBox, object, Color?>(richTextBoxMessage, null, null));
-                _msgFirstLine = true;
-                _msgNewLine = true;
-            }
+            logTxtBox.ClearLog();
         }
         #endregion
     }

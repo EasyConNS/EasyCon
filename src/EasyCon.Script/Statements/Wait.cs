@@ -22,7 +22,7 @@ class Wait(ValBase duration, bool omitted = false) : Statement
     {
         if (Duration is ValReg rd)
         {
-            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(rd.Index));
+            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(rd.Reg));
             assembler.Add(Assembly.Instructions.AsmWait.Create(0));
         }
         else if (Duration is ValInstant id)

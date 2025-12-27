@@ -54,16 +54,13 @@ class KeyPress : KeyAction
     public override void Assemble(Assembly.Assembler assembler)
     {
         int keycode = Key.KeyCode;
-        if (Duration is ValRegEx)
+        if (Duration is ValReg reg)
         {
-            if (Duration is ValReg reg)
-            {
-                assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Index));
-                assembler.Add(Assembly.Instructions.AsmKey_Standard.Create(keycode, 0));
-                ReleasePrevious(assembler);
-                return;
-            }
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            if (reg.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Reg));
+            assembler.Add(Assembly.Instructions.AsmKey_Standard.Create(keycode, 0));
+            ReleasePrevious(assembler);
+            return;
         }
         else if (Duration is ValInstant dur)
         {

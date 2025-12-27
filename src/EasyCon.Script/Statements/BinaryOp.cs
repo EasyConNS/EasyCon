@@ -41,10 +41,10 @@ abstract class BinaryOp : Statement
     }
 
     protected abstract Meta MetaInfo { get; }
-    public readonly ValRegEx RegDst;
+    public readonly ValReg RegDst;
     public readonly ValBase Value;
 
-    public BinaryOp(ValRegEx regdst, ValBase value)
+    public BinaryOp(ValReg regdst, ValBase value)
     {
         RegDst = regdst;
         Value = value;
@@ -64,9 +64,10 @@ abstract class BinaryOp : Statement
     public override void Assemble(Assembly.Assembler assembler)
     {
         if(RegDst is ValReg dest)
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, dest.Index, Value));
-        else
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+        {
+            // TODO
+            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, dest.Reg, Value));
+        }
     }
 }
 
@@ -76,10 +77,9 @@ class Add : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public Add(ValRegEx regdst, ValBase value)
+    public Add(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
-
 }
 
 class Sub : BinaryOp
@@ -88,7 +88,7 @@ class Sub : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public Sub(ValRegEx regdst, ValBase value)
+    public Sub(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 
@@ -96,16 +96,16 @@ class Sub : BinaryOp
     {
         if (RegDst is ValReg dest)
         {
-            if (Value is ValInstant)
+            if (Value is ValInstant val)
             {
-                assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, -(Value as ValInstant).Val));
-                assembler.Add(Assembly.Instructions.AsmAdd.Create(dest.Index, new ValReg(Assembly.Assembler.IReg)));
+                assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, -val.Val));
+                assembler.Add(Assembly.Instructions.AsmAdd.Create(dest.Reg, new ValReg(Assembly.Assembler.IReg)));
             }
             else if (Value is ValReg)
             {
                 assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Value));
                 assembler.Add(Assembly.Instructions.AsmNegative.Create(Assembly.Assembler.IReg));
-                assembler.Add(Assembly.Instructions.AsmAdd.Create(dest.Index, new ValReg(Assembly.Assembler.IReg)));
+                assembler.Add(Assembly.Instructions.AsmAdd.Create(dest.Reg, new ValReg(Assembly.Assembler.IReg)));
             }else
                 throw new Assembly.AssembleException(ErrorMessage.NotSupported);
         }
@@ -120,7 +120,7 @@ class Mul : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public Mul(ValRegEx regdst, ValBase value)
+    public Mul(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 }
@@ -131,7 +131,7 @@ class Div : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public Div(ValRegEx regdst, ValBase value)
+    public Div(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 }
@@ -142,7 +142,7 @@ class RoundDiv : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public RoundDiv(ValRegEx regdst, ValBase value)
+    public RoundDiv(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 
@@ -158,7 +158,7 @@ class Mod : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public Mod(ValRegEx regdst, ValBase value)
+    public Mod(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 }
@@ -169,7 +169,7 @@ class And : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public And(ValRegEx regdst, ValBase value)
+    public And(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 }
@@ -180,7 +180,7 @@ class Or : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public Or(ValRegEx regdst, ValBase value)
+    public Or(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 }
@@ -191,7 +191,7 @@ class Xor : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public Xor(ValRegEx regdst, ValBase value)
+    public Xor(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 }
@@ -202,7 +202,7 @@ class ShiftLeft : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public ShiftLeft(ValRegEx regdst, ValBase value)
+    public ShiftLeft(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 }
@@ -213,7 +213,7 @@ class ShiftRight : BinaryOp
     protected override Meta MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
-    public ShiftRight(ValRegEx regdst, ValBase value)
+    public ShiftRight(ValReg regdst, ValBase value)
         : base(regdst, value)
     { }
 }

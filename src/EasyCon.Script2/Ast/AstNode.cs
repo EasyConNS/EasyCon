@@ -158,6 +158,14 @@ public abstract class Statement(Token key) : ASTNode(key)
 {
 }
 
+public sealed class KeywordStatement(Token keyword) : Statement(keyword)
+{
+    public override T Accept<T>(IAstVisitor<T> visitor)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 public sealed class ImportStatement(Token imp, string name, LiteralExpression path) : Statement(imp)
 {
     public string Name { get; } = name;
@@ -186,7 +194,7 @@ public sealed class AssignmentStatement(Token varToken, VariableExpression? Vari
 }
 
 // If语句
-public sealed class IfStatement(IfCondition condition, ImmutableArray<Statement> thenBranch, ImmutableArray<ElseIfClause> elseIfBranch, ElseClause? elseClause, EndifStatement endif) : Statement(condition.Key)
+public sealed class IfStatement(IfCondition condition, ImmutableArray<Statement> thenBranch, ImmutableArray<ElseIfClause> elseIfBranch, ElseClause? elseClause, KeywordStatement endif) : Statement(condition.Key)
 {
     public IfCondition Condition { get; } = condition;
     public ImmutableArray<Statement> ThenBranch { get; } = thenBranch;
@@ -194,7 +202,7 @@ public sealed class IfStatement(IfCondition condition, ImmutableArray<Statement>
     public ImmutableArray<ElseIfClause> ElseIfBranch { get; } = elseIfBranch;
     public ElseClause? ElseClause { get; } = elseClause;
 
-    public EndifStatement Endif { get; } = endif;
+    public KeywordStatement Endif { get; } = endif;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -212,14 +220,6 @@ public sealed class IfCondition(Token token, Expression condition) : Statement(t
     }
 }
 
-public sealed class EndifStatement(Token keyword) : Statement(keyword)
-{
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        throw new NotImplementedException();
-    }
-}
-
 public sealed class ElseIfClause(IfCondition condition, ImmutableArray<Statement> elseIfBranch) : Statement(condition.Key)
 {
     public IfCondition Condition { get; } = condition;
@@ -231,17 +231,9 @@ public sealed class ElseIfClause(IfCondition condition, ImmutableArray<Statement
     }
 }
 
-public sealed class ElseStatement(Token keyword) : Statement(keyword)
+public sealed class ElseClause(KeywordStatement elseStmt, ImmutableArray<Statement> elseBranch) : Statement(elseStmt.Key)
 {
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        throw new NotImplementedException();
-    }
-}
-
-public sealed class ElseClause(ElseStatement elseStmt, ImmutableArray<Statement> elseBranch) : Statement(elseStmt.Key)
-{
-    public ElseStatement Else { get; } = elseStmt;
+    public KeywordStatement Else { get; } = elseStmt;
     public ImmutableArray<Statement> ElseBranch { get; } = elseBranch;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
@@ -251,12 +243,12 @@ public sealed class ElseClause(ElseStatement elseStmt, ImmutableArray<Statement>
 }
 
 // For语句
-public sealed class ForStatement(ForExpr forExpr, ImmutableArray<Statement> body, NextStatement nextStmt) : Statement(forExpr.Key)
+public sealed class ForStatement(ForExpr forExpr, ImmutableArray<Statement> body, KeywordStatement nextStmt) : Statement(forExpr.Key)
 {
     public ForExpr ForExpr { get; } = forExpr;
     public ImmutableArray<Statement> Body { get; } = body;
 
-    public NextStatement NextStmt { get; } = nextStmt;
+    public KeywordStatement NextStmt { get; } = nextStmt;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -272,14 +264,6 @@ public sealed class ForExpr(Token forToken, VariableExpression loopVariable, Exp
     public Expression EndValue { get; } = endValue;  // LoopCount if StartValue is null
     public int StepValue { get; } = stepValue;
     public bool IsInfinite { get; } = isInfinite;
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        throw new NotImplementedException();
-    }
-}
-
-public sealed class NextStatement(Token keyword) : Statement(keyword)
-{
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         throw new NotImplementedException();
@@ -307,11 +291,11 @@ public sealed class ContinueStatement(Token keyword) : Statement(keyword)
 }
 
 // 函数定义语句
-public sealed class FunctionDefinitionStatement(FuncDeclare funcdecl, ImmutableArray<Statement> body, EndFuncStatement endfunc) : Member(funcdecl.Key)
+public sealed class FunctionDefinitionStatement(FuncDeclare funcdecl, ImmutableArray<Statement> body, KeywordStatement endfunc) : Member(funcdecl.Key)
 {
     public FuncDeclare FuncDecl { get; } = funcdecl;
     public ImmutableArray<Statement> Body { get; } = body;
-    public EndFuncStatement EndFunc { get; } = endfunc;
+    public KeywordStatement EndFunc { get; } = endfunc;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
@@ -324,14 +308,6 @@ public sealed class FuncDeclare(Token keyword, Token ident, ImmutableArray<strin
     public Token NameIdent { get; } = ident;
     public ImmutableArray<string> Parameters { get; } = parameters;
 
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        throw new NotImplementedException();
-    }
-}
-
-public sealed class EndFuncStatement(Token keyword) : Statement(keyword)
-{
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
         throw new NotImplementedException();

@@ -1,12 +1,10 @@
 using OpenCvSharp;
-using System.Collections.Immutable;
-using System.Diagnostics;
 
 namespace EasyCapture;
 
 public sealed class ECCapture
 {
-    public static ImmutableArray<string> GetCaptureCamera()
+    public static IEnumerable<string> GetCaptureCamera()
     {
         if (OperatingSystem.IsWindows())
         {
@@ -14,7 +12,7 @@ public sealed class ECCapture
         }
         else if (OperatingSystem.IsMacOS())
         {
-            throw new PlatformNotSupportedException();
+            return [];
         }
         else if (OperatingSystem.IsLinux())
         {
@@ -23,17 +21,14 @@ public sealed class ECCapture
         return [];
     }
 
-    public static Dictionary<string, int> GetCaptureTypes()
+    public static IEnumerable<(string, int)> GetCaptureTypes()
     {
         var captureTypes = new Dictionary<string, int>();
         var values = Enum.GetValues(typeof(VideoCaptureAPIs));
+
         foreach (var value in values)
         {
-            Debug.WriteLine(value + "--" + (int)value);//获取名称和值
-            if (captureTypes.ContainsKey(value.ToString()))
-                continue;
-            captureTypes.Add(value.ToString(), (int)value);
+            yield return(value.ToString(), (int)value);
         }
-        return captureTypes;
     }
 }

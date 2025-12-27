@@ -1,20 +1,18 @@
-using EasyCon2.Graphic;
 using EasyCon2.Helper;
-using EasyCon2.Properties;
 using EasyScript;
 using EasyScript.Parsing;
 using System.Media;
 
 namespace EasyCon2.Forms;
 
+delegate void ScriptStatuHandler(bool isRunning);
+
 partial class EasyConForm
 {
-
-    private readonly Scripter _program = new();
     private bool scriptCompiling = false;
     private bool scriptRunning = false;
     private Thread thd;
-
+    event ScriptStatuHandler ScriptRunningChanged;
     private async Task<bool> ScriptCompile()
     {
         StatusShowLog("开始编译...");
@@ -70,6 +68,8 @@ partial class EasyConForm
         virtController.ControllerEnabled = false;
         StatusShowLog("开始运行");
 
+        scriptRunning = true;
+        ScriptRunningChanged?.Invoke(true);
         thd = new Thread(_RunScript);
         thd?.Start();
     }
@@ -78,34 +78,33 @@ partial class EasyConForm
 
     private void _RunScript()
     {
-        scriptRunning = true;
         try
         {
             _startTime = DateTime.Now;
 
-            Print("-- 开始运行 --", Color.Lime);
+            logTxtBox.Print("-- 开始运行 --", Color.Lime);
             _program.Run(this, new GamePadAdapter(NS));
-            Print("-- 运行结束 --", Color.Lime);
+            logTxtBox.Print("-- 运行结束 --", Color.Lime);
             StatusShowLog("运行结束");
             SystemSounds.Beep.Play();
         }
         catch (ThreadInterruptedException)
         {
-            Print("-- 运行终止 --", Color.Orange);
+            logTxtBox.Print("-- 运行终止 --", Color.Orange);
             StatusShowLog("运行终止");
             SystemSounds.Beep.Play();
         }
         catch (ScriptException ex)
         {
-            Print($"[L{ex.Address}] " + ex.Message, Color.OrangeRed);
-            Print("-- 运行出错 --", Color.OrangeRed);
+            logTxtBox.Print($"[L{ex.Address}]：{ex.Message}", Color.OrangeRed);
+            logTxtBox.Print("-- 运行出错 --", Color.OrangeRed);
             StatusShowLog("运行出错");
             SystemSounds.Hand.Play();
         }
         catch (Exception exx)
         {
-            Print(exx.Message, Color.OrangeRed);
-            Print("-- 运行出错 --", Color.OrangeRed);
+            logTxtBox.Print(exx.Message, Color.OrangeRed);
+            logTxtBox.Print("-- 运行出错 --", Color.OrangeRed);
             StatusShowLog("运行出错");
             SystemSounds.Hand.Play();
         }
@@ -114,6 +113,7 @@ partial class EasyConForm
             NS.Reset();
             _startTime = DateTime.MinValue;
             scriptRunning = false;
+            ScriptRunningChanged?.Invoke(false);
         }
     }
 
@@ -125,4 +125,10 @@ partial class EasyConForm
         SystemSounds.Beep.Play();
     }
 
+    private void ScriptReset()
+    {
+        if (scriptCompiling || scriptRunning)
+            return;
+        _program.Reset();
+    }
 }

@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace EasyCapture;
 
-internal class OpenCVSearch : AbstractSearch
+internal static class OpenCVSearch
 {
     private static Mat XYAvg(Mat src)
     {
@@ -60,23 +60,15 @@ internal class OpenCVSearch : AbstractSearch
         return result8U;
     }
 
-    public static List<Point> EdgeDetect(int left, int top, int width, int height, Mat big, Mat small, SearchMethod method, out double matchDegree)
+    public static List<Point> EdgeDetect(Mat big, Mat small, SearchMethod method, out double matchDegree)
     {
         using var result = method == SearchMethod.EdgeDetectLaplacian? LaplacianEdge(small) : XYAvg(small);
-        //using (new Window("结果1", result))
-        //{
-        //    Cv2.WaitKey(0);
-        //}
         using var result2 = method == SearchMethod.EdgeDetectLaplacian ? LaplacianEdge(big) : XYAvg(big);
-        //using (new Window("结果2", result2))
-        //{
-        //    Cv2.WaitKey(0);
-        //}
 
-        return OpenCvFindPic(left, top, width, height, result2, result, SearchMethod.CCoeffNormed, out matchDegree);
+        return OpenCvFindPic(result2, result, SearchMethod.CCoeffNormed, out matchDegree);
     }
 
-    public static List<Point> OpenCvFindPic(int left, int top, int width, int height, Mat big, Mat small, SearchMethod method, out double matchDegree)
+    public static List<Point> OpenCvFindPic(Mat big, Mat small, SearchMethod method, out double matchDegree)
     {
         List<Point> res = [];
         using var result = new Mat();

@@ -1,7 +1,9 @@
+using EasyCon2.Helper;
 using EasyScript.Assembly;
 using EasyScript.Parsing;
 using System.IO;
 using System.Media;
+using System.Text.RegularExpressions;
 
 namespace EasyCon2.Forms;
 
@@ -62,6 +64,34 @@ partial class EasyConForm
             ScriptSelectLine(ex.Index);
             return false;
         }
+    }
+
+    private string GetFirmwareName(string corename)
+    {
+        var dir = new DirectoryInfo(FirmwarePath);
+        if (!dir.Exists)
+            return null;
+        var max = 0;
+        string filename = null;
+        foreach (var fi in dir.GetFiles())
+        {
+            var m = Regex.Match(fi.Name, $@"^{corename} v(\d+)\.hex$", RegexOptions.IgnoreCase);
+            if (m.Success)
+            {
+                var ver = int.Parse(m.Groups[1].Value);
+                if (ver > max)
+                {
+                    max = ver;
+                    filename = fi.Name;
+                }
+            }
+        }
+        return filename;
+    }
+
+    private Board GetSelectedBoard()
+    {
+        return comboBoxBoardType.SelectedItem as Board;
     }
 
     private bool CheckFirmwareVersion()

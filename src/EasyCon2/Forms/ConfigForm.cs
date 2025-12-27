@@ -4,10 +4,10 @@ namespace EasyCon2.Forms
 {
     public partial class ConfigForm : Form
     {
-        public VControllerConfig Config => _config;
-        private readonly VControllerConfig _config;
+        public ConfigState Config => _config;
+        private readonly ConfigState _config;
 
-        public ConfigForm(VControllerConfig cfg)
+        public ConfigForm(ConfigState cfg)
         {
             InitializeComponent();
 

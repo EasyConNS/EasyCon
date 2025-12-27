@@ -16,14 +16,13 @@
 
   <ItemGroup>
     <PackageReference Include="AvalonEdit" />
+    <PackageReference Include="DockPanelSuite" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="WebSocketSharp-netstandard" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EasyCon.Capture\EasyCon.Capture.csproj" />
-    <ProjectReference Include="..\EasyCon.Script\EasyCon.Script.csproj" />
-    <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
+	<ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
     <ProjectReference Include="..\EasyCon.VPad\EasyCon.VPad.csproj" />
   </ItemGroup>
   <ItemGroup>

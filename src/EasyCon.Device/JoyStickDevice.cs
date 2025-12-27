@@ -33,6 +33,7 @@ public partial class NintendoSwitch : IReporter
     public event LogHandler Log;
     public event BytesTransferedHandler BytesSent;
     public event BytesTransferedHandler BytesReceived;
+    public event StatusChangedHandler StatusChanged;
 
     private readonly OperationRecords operationRecords = new();
     public RecordState recordState = RecordState.RECORD_STOP;

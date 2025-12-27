@@ -24,7 +24,7 @@ class Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVa
         return new ValExtVar(value);
     }
 
-    public ValVar GetVar(string text)
+    public ValBase GetVar(string text)
     {
         if (Regex.Match(text, Formats.ExtVar_F).Success)
             return GetExtVar(text);
@@ -68,7 +68,7 @@ class Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVa
 
 class FormatterUtil
 {
-    public static ValRegEx GetRegEx(string text, bool lhs = false)
+    public static ValReg GetRegEx(string text, bool lhs = false)
     {
         var m = Regex.Match(text, Formats.RegisterEx_F);
         if (!m.Success)
@@ -82,7 +82,7 @@ class FormatterUtil
         }
         else
         {
-            return new ValRegEx(text);
+            return new ValReg(text);
         }
     }
 }

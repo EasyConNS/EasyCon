@@ -56,12 +56,11 @@ class StickPress : StickAction
     public override void Assemble(Assembly.Assembler assembler)
     {
         int keycode = Key.KeyCode;
-        int dindex = GetDirectionIndex(Key.StickX, Key.StickY);
-        if (Duration is ValRegEx)
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+        int dindex = GetDirectionIndex(Key.StickX, Key.StickY);   
         if (Duration is ValReg reg)
         {
-            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Index));
+            if(reg.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Reg));
             assembler.Add(Assembly.Instructions.AsmStick_Standard.Create(keycode, dindex, 0));
             ReleasePrevious(assembler);
         }

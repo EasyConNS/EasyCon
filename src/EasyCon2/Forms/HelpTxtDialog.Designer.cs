@@ -1,6 +1,6 @@
 namespace EasyCon2.Forms
 {
-    partial class ScriptHelp
+    partial class HelpTxtDialog
     {
         /// <summary>
         /// Required designer variable.
@@ -42,16 +42,17 @@ namespace EasyCon2.Forms
             textBox1.Size = new Size(468, 325);
             textBox1.TabIndex = 0;
             // 
-            // ScriptHelp
+            // HelpTxtDialog
             // 
             AutoScaleDimensions = new SizeF(9F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(468, 325);
             Controls.Add(textBox1);
+            FormBorderStyle = FormBorderStyle.SizableToolWindow;
             MaximizeBox = false;
             MinimizeBox = false;
-            Name = "ScriptHelp";
-            Text = "脚本语法帮助";
+            Name = "HelpTxtDialog";
+            Text = "帮助说明";
             ResumeLayout(false);
             PerformLayout();
         }

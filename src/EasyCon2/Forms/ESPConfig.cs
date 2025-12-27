@@ -1,4 +1,3 @@
-﻿using EasyCon2.Helper;
 using EasyCon2.Properties;
 using EasyDevice;
 using System.Diagnostics;
@@ -9,10 +8,11 @@ using System.Text.Json;
 using System.Security.Cryptography;
 using LibAmiibo.Data;
 using LibAmiibo.Data.Figurine;
+using EasyCon2.Models;
 
 namespace EasyCon2.Forms
 {
-    public partial class ControllerConfig : Form
+    public partial class ESPConfig : Form
     {
         ColorDialog colorDialog = new ColorDialog();
         internal NintendoSwitch NS;
@@ -21,7 +21,7 @@ namespace EasyCon2.Forms
         Dictionary<string,List<AmiiboInfo>> amiibosDict;
         AmiiboInfo amiibo;
 
-        public ControllerConfig(NintendoSwitch gamepad)
+        public ESPConfig(NintendoSwitch gamepad)
         {
             NS = gamepad;
             InitializeComponent();

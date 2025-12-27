@@ -1,7 +1,80 @@
-﻿using System.Diagnostics;
+using System;
+using System.Diagnostics;
 using System.IO.Ports;
+using static EasyDevice.Connection.SerialPortClient;
 
 namespace EasyDevice.Connection;
+
+internal class TTLv2SerialClient(string name, int port) : IConnection
+{
+    private SerialPortClient _serialPortClient = new(name, port);
+
+    public override event BytesTransferedHandler BytesSent;
+    public override event BytesTransferedHandler BytesReceived;
+    public override event StatusChangedHandler StatusChanged;
+
+    public override Status CurrentStatus
+    {
+        get => _serialPortClient.CurrentState switch
+        {
+            ConnectionState.Connected => Status.Connected,
+            ConnectionState.Connecting => Status.Connecting,
+            _ => Status.Error
+        }; protected set => throw new NotImplementedException();
+    }
+
+    public override void Connect()
+    {
+        _serialPortClient.SetHeartbeat([Command.Ready, Command.Ready, Command.Hello], (bs) => bs.Length == 1 && bs[0] == Reply.Hello);
+
+        _serialPortClient.DataReceived += (sender, args) =>
+        {
+            Debug.WriteLine($"[{_serialPortClient.ConnectPort}] --recv-- " +string.Join(" ", args.Data.Select(b => b.ToString("X2"))));
+            BytesReceived?.Invoke(_serialPortClient.ConnectPort, args.Data);
+        };
+        Task.Run(() => {
+            try
+            {
+                if (_serialPortClient.Open())
+                {
+                    bool check(byte[] bs) => bs.Length == 1 && bs[0] == Reply.Hello;
+                    var recv = _serialPortClient.SendCommand([Command.Ready, Command.Ready, Command.Hello]);
+
+                    Debug.WriteLine($"[{_serialPortClient.ConnectPort}] --recv-- " + string.Join(" ", recv.Select(b => b.ToString("X2"))));
+
+                    if (!check(recv))
+                    {
+                        _serialPortClient.Close();
+                    }
+                    StatusChanged?.Invoke(CurrentStatus);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+            finally
+            {
+                _serialPortClient.ConnectionStateChanged += (sender, args) =>
+                {
+                    StatusChanged?.Invoke(CurrentStatus);
+                };
+            }
+
+        });
+    }
+
+    public override void Disconnect()
+    {
+        _serialPortClient.Close();
+    }
+
+    public override void Write(params byte[] val)
+    {
+        BytesSent?.Invoke(_serialPortClient.ConnectPort, val);
+        _serialPortClient.SendCommand(val);
+    }
+}
 
 class TTLSerialClient : IConnection
 {
@@ -42,13 +115,13 @@ class TTLSerialClient : IConnection
         }
     }
 
-        public TTLSerialClient(string connStr, int port = 115200)
-        {
-            _connStr = connStr;
-            _port = port;
-        }
+    public TTLSerialClient(string connStr, int port = 115200)
+    {
+        _connStr = connStr;
+        _port = port;
+    }
 
-    public override void Connect(bool sayhello = true)
+    public override void Connect()
     {
         if (_t != null)
             return;
@@ -57,7 +130,7 @@ class TTLSerialClient : IConnection
 
         source = new CancellationTokenSource();
         var token = source.Token;
-        _t = Task.Run(()=>
+        _t = Task.Run(() =>
         {
             Loop();
         },
@@ -79,7 +152,7 @@ class TTLSerialClient : IConnection
             _sport.DiscardOutBuffer();
             var stream = _sport.BaseStream;
             // sleep for a mount of data get in when open port
-            if(OpenDelay)
+            if (OpenDelay)
                 Thread.Sleep(700);
             Debug.WriteLine("left byte:" + _sport.BytesToRead.ToString());
             _sport.DiscardInBuffer();
@@ -107,6 +180,7 @@ class TTLSerialClient : IConnection
                     {
                         // hello received
                         CurrentStatus = Status.Connected;
+                        StatusChanged?.Invoke(CurrentStatus);
                     }
                     BytesReceived?.Invoke(_connStr, _inBuffer.ToArray());
 #if DEBUG
@@ -137,6 +211,7 @@ class TTLSerialClient : IConnection
         catch (Exception)
         {
             CurrentStatus = Status.Error;
+            StatusChanged?.Invoke(CurrentStatus);
         }
         finally
         {

@@ -58,7 +58,7 @@ class Processor(Dictionary<string, FunctionStmt> func)
                     };
                 }
             );
-            var cancelLineBreak = args.Last() switch
+            var cancelLineBreak = args.LastOrDefault() switch
             {
                 TextParam tu => tu.CodeText == "\\",
                 _ => false,
@@ -121,7 +121,7 @@ class RegisterFile
         set => _variables[tag] = value;
     }
 
-    public int this[ValRegEx val]
+    public int this[ValReg val]
     {
         get => this[val.Tag];
 

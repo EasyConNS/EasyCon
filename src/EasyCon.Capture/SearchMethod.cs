@@ -14,10 +14,18 @@ public enum SearchMethod
     CCoeff = 4,
     [Description("标准相关系数匹配")]
     CCoeffNormed = 5,
+    [Description("严格匹配")]
+    StrictMatch = 6,
+    [Description("随机严格匹配")]
+    StrictMatchRND = 7,
+    [Description("透明度匹配")]
+    OpacityDiff = 8,
+    [Description("相似匹配")]
+    SimilarMatch = 9,
     [Description("XY平均值边缘检测")]
-    EdgeDetectXY = 6,
+    EdgeDetectXY = 11,
     [Description("拉普拉斯边缘检测")]
-    EdgeDetectLaplacian = 7,
+    EdgeDetectLaplacian = 12,
     [Description("OCR单行文本识别")]
     TesserDetect = 107,
 }

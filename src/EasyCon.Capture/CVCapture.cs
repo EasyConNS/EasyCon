@@ -1,7 +1,5 @@
 using OpenCvSharp;
-using OpenCvSharp.Extensions;
 using System.Diagnostics;
-using System.Drawing;
 
 namespace EasyCapture;
 

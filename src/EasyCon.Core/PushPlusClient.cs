@@ -1,28 +1,25 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Web;
 
 namespace EC.Core;
 
-internal class PushPlusClient(string token)
+public class PushPlusClient(string token)
 {
     private readonly string _token = token;
 
-    public string Print(string message)
+    public async Task<string> SendMessage(string content, string title = "伊机控消息")
     {
-        return Print(message, "伊机控消息");
-    }
+        if (_token == "") throw new ArgumentException("token配置为空");
 
-    public string Print(string message, string title)
-    {
         try
         {
-            message = HttpUtility.UrlEncode(message);
-            var address = $"https://www.pushplus.plus/send/{_token}?content={message}&title={title}";
+            content = HttpUtility.UrlEncode(content);
+            var address = $"https://www.pushplus.plus/send/{_token}?content={content}&title={title}";
             using var client = new HttpClient();
-            var result = client.GetAsync(address).Result.Content.ReadAsStringAsync().Result;
+            var result = await client.GetAsync(address).Result.Content.ReadAsStringAsync();
             Response? resp = JsonSerializer.Deserialize<Response>(result);
-            return $"{resp?.Message ?? "推送结果解析异常"}";
+            return $"{resp?.Message ?? $"推送结果解析异常：{result}"}";
         }
         catch (Exception ex)
         {

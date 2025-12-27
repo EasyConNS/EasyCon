@@ -57,25 +57,22 @@ class ValInstant : ValBase
     }
 }
 
-// variable, either register or external
-abstract class ValVar : ValBase
-{
-    public abstract override void Set(Processor processor, int value);
-}
-
 // register variable, either 16 or 32 bits
-class ValRegEx : ValVar
+class ValReg : ValBase
 {
     public readonly string Tag;
+    public readonly uint Reg;
 
-    public ValRegEx(string reg)
+    public ValReg(string tag)
     {
-        Tag = reg;
+        Tag = tag;
+        Reg = 0;
     }
 
-    public ValRegEx(uint reg)
+    public ValReg(uint reg)
     {
         Tag = reg.ToString();
+        Reg = reg;
     }
 
     public override void Set(Processor processor, int value)
@@ -94,25 +91,14 @@ class ValRegEx : ValVar
     }
 }
 
-// 16-bit register Index variable
-class ValReg(uint reg) : ValRegEx(reg)
-{
-    public readonly uint Index = reg;
-}
-
 // external variable 
-class ValExtVar(ExternalVariable var) : ValVar
+class ValExtVar(ExternalVariable var) : ValBase
 {
     public readonly ExternalVariable Var = var;
 
     public override int Get(Processor _)
     {
         return Var.Get();
-    }
-
-    public override void Set(Processor processor, int value)
-    {
-        throw new InvalidOperationException();
     }
 
     public override string GetCodeText()

@@ -1,7 +1,11 @@
+using EasyCon.Capture;
+using OpenCvSharp;
+using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Point = System.Drawing.Point;
 
 namespace EasyCapture;
 
@@ -26,9 +30,13 @@ public record ImgLabel
     private Rectangle _round => new(RangeX, RangeY, RangeWidth, RangeHeight);
     private Rectangle _target => new(TargetX, TargetY, TargetWidth, TargetHeight);
 
-    public Bitmap GetBitmap()
+    private Bitmap _image;
+
+    public Bitmap GetBitmap() => _image ??= Base64StringToImage(ImgBase64);
+
+    public void SetImage(Mat mat)
     {
-        return Base64StringToImage(ImgBase64);
+        ImgBase64 = Convert.ToBase64String(mat.ToPngBytes());
     }
 
     public void SetImage(Bitmap bitmap)
@@ -51,6 +59,12 @@ public record ImgLabel
         {
             return false;
         }
+    }
+
+    private static Mat Base64StringToImage(byte[] bytes)
+    {
+        bytes.ToMat();
+        return Cv2.ImDecode(bytes, ImreadModes.Color);
     }
 
     private static Bitmap Base64StringToImage(string basestr)
@@ -113,21 +127,25 @@ public record ImgLabel
     private Bitmap sourcePic;
     public Bitmap GetResultImg(Point p)
     {
-        return sourcePic.Clone(new Rectangle(p.X, p.Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+        return sourcePic?.Clone(new Rectangle(p.X, p.Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
     }
     public List<Point> Search(out double md)
     {
         if (TargetWidth > RangeWidth || TargetHeight > RangeHeight)
             throw new Exception("搜索图片大于搜索范围");
 
-        using var ss = GetFrame();
-        sourcePic?.Dispose();
-        sourcePic = ss.Clone(_round, ss.PixelFormat);
+        using var ss = GetFrame?.Invoke();
+        sourcePic ??= new(RangeWidth, RangeHeight);
+        using (var g = Graphics.FromImage(sourcePic))
+        // 从原始Bitmap中绘制裁剪区域到新的Bitmap对象
+        g.DrawImage(ss, new Rectangle(0, 0, RangeWidth, RangeHeight), _round, GraphicsUnit.Pixel);
 
         List<Point> result = new();
         if (searchMethod == SearchMethod.TesserDetect)
         {
-            using var targetBmp = sourcePic.Clone(new Rectangle(TargetX - RangeX, TargetY - RangeY, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+            using var targetBmp = new Bitmap(TargetWidth, TargetHeight);
+            using (var g = Graphics.FromImage(targetBmp))
+            g.DrawImage(ss, new Rectangle(0, 0, TargetWidth, TargetHeight), _target, GraphicsUnit.Pixel);
             result = ECSearch.FindOCR(ImgBase64, targetBmp,out var rlttxt, out md);
         }
         else

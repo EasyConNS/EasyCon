@@ -34,7 +34,7 @@ abstract class AsmBinaryOp<T> : Instruction
             var ins = new T
             {
                 RegDst = regdst,
-                RegSrc = valR.Index
+                RegSrc = valR.Reg
             };
             return ins;
         }

@@ -39,9 +39,9 @@ class BinExpr(ValBase left, Meta op, ValBase right, bool hasPr = false) : ValBas
     }
 }
 
-class ExpressionStmt(ValRegEx regdst, ValBase value) : Statement
+class ExpressionStmt(ValReg regdst, ValBase value) : Statement
 {
-    protected readonly ValRegEx RegDst = regdst;
+    protected readonly ValReg RegDst = regdst;
     protected readonly ValBase Value = value;
 
     protected override string _GetString()
@@ -51,7 +51,7 @@ class ExpressionStmt(ValRegEx regdst, ValBase value) : Statement
 
     public override void Exec(Processor processor)
     {
-        processor.Register[RegDst] = BinExpr.Rewrite(Value).Get(processor);
+        RegDst.Set(processor, BinExpr.Rewrite(Value).Get(processor));
     }
 
     public override void Assemble(Assembly.Assembler assembler)

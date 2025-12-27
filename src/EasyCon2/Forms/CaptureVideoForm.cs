@@ -1,5 +1,4 @@
 using EasyCapture;
-using EasyCon2.Graphic;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
 using OpenCvSharp.Extensions;
@@ -110,7 +109,6 @@ namespace EasyCon2.Forms
 
         private void CaptureVideo_Load(object sender, EventArgs e)
         {
-            CaptureVideoHelp.Text = Resources.capturedoc;
             Directory.CreateDirectory(CapDir);
             Directory.CreateDirectory(ImgDir);
 
@@ -123,7 +121,7 @@ namespace EasyCon2.Forms
 
         private void BindingData()
         {
-            searchMethodComBox.DataSource = ECSearch.GetEnableSearchMethods().Select(e => new
+            searchMethodComBox.DataSource = EasyCon.Core.ECCore.GetSearchMethods().Select(e => new
             {
                 Value = e,
                 Description = e.ToDescription()
@@ -181,6 +179,17 @@ namespace EasyCon2.Forms
             {
                 Debug.WriteLine("something wrong, beacause when closing but the render is paintting");
             }
+        }
+
+        private void Snapshot_DoubleClick(object sender, EventArgs e)
+        {
+            openFileDialog1.InitialDirectory = Path.GetFullPath(CapDir);
+            if (openFileDialog1.ShowDialog() != DialogResult.OK)
+                return;
+            Debug.WriteLine(openFileDialog1.FileName);
+
+            using var capture = new Bitmap(openFileDialog1.FileName);
+            showCap(capture);
         }
 
         private void SnapshotPaint(object sender, PaintEventArgs e)
@@ -305,7 +314,7 @@ namespace EasyCon2.Forms
             {
                 Point mouse = Control.MousePosition;
                 mouse.Offset(mouseOffset.X, mouseOffset.Y);
-                Debug.WriteLine($"point({mouseOffset.X} , { mouseOffset.Y})");
+                Debug.WriteLine($"point({mouseOffset.X} , {mouseOffset.Y})");
                 this.Location = mouse;
             }
         }
@@ -405,35 +414,34 @@ namespace EasyCon2.Forms
             {
                 ilManager.Current.GetFrame = GetImage;
                 list = ilManager.Current.Search(out matchDegree);
+                sw.Stop();
+
+                // load the result
+                double max_matchDegree = 0;
+                if (list.Count > 0)
+                {
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        Debug.WriteLine($"{list[i].X},{list[i].Y}");
+
+                        using var result = ilManager.Current.GetResultImg(list[i]);
+                        using var g = searchResultImg.CreateGraphics();
+                        g.Clear(Color.FromArgb(240, 240, 240));
+                        g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
+                    }
+                    max_matchDegree = Math.Max(matchDegree, max_matchDegree);
+
+                    matchRltlabel.Text = $"匹配度:{matchDegree:f1}%\n耗时:{sw.ElapsedMilliseconds}毫秒\n最大匹配度:{max_matchDegree:f1}%";
+                }
+                else
+                {
+                    matchRltlabel.Text = "无法找到目标";
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine(ex.Message);
-            }
-            sw.Stop();
-
-            // load the result
-            double max_matchDegree = 0;
-            resultListBox.Items.Clear();
-            if (list.Count > 0)
-            {
-                for (int i = 0; i < list.Count; i++)
-                {
-                    resultListBox.Items.Add($"{list[i].X},{list[i].Y}");
-
-                    var result = ilManager.Current.GetResultImg(list[i]);
-                    var g = searchResultImg.CreateGraphics();
-                    g.Clear(Color.FromArgb(240, 240, 240));
-                    g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
-                    g.Dispose();
-                }
-                max_matchDegree = Math.Max(matchDegree, max_matchDegree);
-
-                matchRltlabel.Text = $"匹配度:{matchDegree:f1}%\n耗时:{sw.ElapsedMilliseconds}毫秒\n最大匹配度:{max_matchDegree:f1}%";
-            }
-            else
-            {
-                matchRltlabel.Text = "无法找到目标";
+                matchRltlabel.Text = ex.Message;
             }
         }
 
@@ -489,7 +497,7 @@ namespace EasyCon2.Forms
                 }
 
                 snapshotMode = SnapshotMode.NoAction;
-                rangeBtn.Text = "开始圈选(红)";
+                rangeBtn.Text = "圈选范围";
                 targetBtn.Enabled = true;
             }
             else
@@ -528,7 +536,7 @@ namespace EasyCon2.Forms
                 targetImg.Image = ss;
 
                 snapshotMode = SnapshotMode.NoAction;
-                targetBtn.Text = "开始圈选(绿)";
+                targetBtn.Text = "圈选目标";
                 rangeBtn.Enabled = true;
             }
             else
@@ -550,17 +558,6 @@ namespace EasyCon2.Forms
             // save the imglabel to local
             ilManager.Current.Save(ImgDir);
             ilManager.LoadImgLabels(ImgDir);
-        }
-
-        private void openCapBtn_Click(object sender, EventArgs e)
-        {
-            openFileDialog1.InitialDirectory = Path.GetFullPath(CapDir);
-            if (openFileDialog1.ShowDialog() != DialogResult.OK)
-                return;
-            Debug.WriteLine(openFileDialog1.FileName);
-
-            using var capture = new Bitmap(openFileDialog1.FileName);
-            showCap(capture);
         }
 
         private void DynTestBtn_Click(object sender, EventArgs e)
@@ -703,6 +700,17 @@ namespace EasyCon2.Forms
                     Monitor.Exit(_lock);
                 }
             }
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+            var checkBox = (CheckBox)sender;
+            this.TopMost = checkBox.Checked;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            new HelpTxtDialog(Resources.capturedoc).Show();
         }
     }
 }

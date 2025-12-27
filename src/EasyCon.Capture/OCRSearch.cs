@@ -2,9 +2,7 @@ using Tesseract;
 
 namespace EasyCapture;
 
-abstract class AbstractSearch { }
-
-internal class OCRSearch : AbstractSearch
+internal static class OCRSearch
 {
     const string tessdataPath = @"./Tessdata";
 
@@ -14,20 +12,19 @@ internal class OCRSearch : AbstractSearch
     /// enginMod: EngineMode.Default
     /// pageSegMod: PageSegMode.SingleLine
     /// </summary>
-    public static float TesserDetect(MemoryStream stream, out string result, string lang = "chi_sim")
+    public static float TesserDetect(MemoryStream stream, out string result, string lang = "chi_sim", EngineMode engineMode = EngineMode.Default, PageSegMode pageSegMode = PageSegMode.SingleLine)
     {
         using var img = Pix.LoadFromMemory(stream.ToArray());
-        return TesserDetect(img, out result, lang);
+        return TesserDetect(img, out result, lang, engineMode, pageSegMode);
     }
 
-    public static float TesserDetect(Pix img, out string result, string lang = "chi_sim")
+    public static float TesserDetect(Pix img, out string result, string lang = "chi_sim", EngineMode engineMode = EngineMode.Default, PageSegMode pageSegMode = PageSegMode.SingleLine)
     {
-        using var engine = new TesseractEngine(tessdataPath, lang, EngineMode.Default);
-        using var page = engine.Process(img, PageSegMode.SingleLine);
+        using var engine = new TesseractEngine(tessdataPath, lang, engineMode);
+        using var page = engine.Process(img, pageSegMode);
         result = page.GetText();
         return page.GetMeanConfidence();
     }
-
 
     /// <summary>
     /// 简化的字符串匹配度计算，使用编辑距离方法

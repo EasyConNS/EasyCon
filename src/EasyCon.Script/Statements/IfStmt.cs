@@ -10,18 +10,11 @@ abstract class BranchOp : Statement
     public bool Passthrough = true;
 }
 
-class IfStmt : BranchOp
+class IfStmt(CompareOperator op, ValBase left, ValBase right) : BranchOp
 {
-    public readonly CompareOperator Operater;
-    public readonly ValVar Left;
-    public readonly ValBase Right;
-
-    public IfStmt(CompareOperator op, ValVar left, ValBase right)
-    {
-        Operater = op;
-        Left = left;
-        Right = right;
-    }
+    public readonly CompareOperator Operater = op;
+    public readonly ValBase Left = left;
+    public readonly ValBase Right = right;
 
     public override void Exec(Processor processor)
     {
@@ -54,22 +47,19 @@ class IfStmt : BranchOp
         if (Right is ValInstant)
         {
             assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
-            assembler.Add(Operater.Assemble(left.Index, Assembly.Assembler.IReg));
+            assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
         }
         else
         {
-            assembler.Add(Operater.Assemble(left.Index, (Right as ValReg).Index));
+            assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
         }
         assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
         assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
     }
 }
 
-class ElseIf : IfStmt
+class ElseIf(CompareOperator op, ValBase left, ValBase right) : IfStmt(op, left, right)
 {
-    public ElseIf(CompareOperator op, ValVar left, ValBase right) : base(op, left, right)
-    { }
-
     public override void Exec(Processor processor)
     {
         if(!If.Passthrough)
@@ -114,11 +104,11 @@ class ElseIf : IfStmt
         if (Right is ValInstant)
         {
             assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
-            assembler.Add(Operater.Assemble(left.Index, Assembly.Assembler.IReg));
+            assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
         }
         else
         {
-            assembler.Add(Operater.Assemble(left.Index, (Right as ValReg).Index));
+            assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
         }
         assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
         assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;

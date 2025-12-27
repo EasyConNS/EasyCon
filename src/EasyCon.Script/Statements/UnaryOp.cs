@@ -40,10 +40,10 @@ abstract class UnaryOp : Statement
     }
 
     protected abstract MetaU MetaInfo { get; }
-    public readonly ValRegEx RegDst;
-    public readonly ValRegEx RegSrc;
+    public readonly ValReg RegDst;
+    public readonly ValReg RegSrc;
 
-    public UnaryOp(ValRegEx regdst, ValRegEx regsrc)
+    public UnaryOp(ValReg regdst, ValReg regsrc)
     {
         RegDst = regdst;
         RegSrc = regsrc;
@@ -61,14 +61,11 @@ abstract class UnaryOp : Statement
 
     public override void Assemble(Assembly.Assembler assembler)
     {
-        if (RegDst is ValReg)
+        if (RegDst is ValReg val)
         {
-            var val = RegDst as ValReg;
-            assembler.Add(Assembly.Instructions.AsmMov.Create(val.Index, RegSrc));
-            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, val.Index));
-        }else
-        {
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            if(val.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+            assembler.Add(Assembly.Instructions.AsmMov.Create(val.Reg, RegSrc));
+            assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, val.Reg));
         }
     }
 }
@@ -79,7 +76,7 @@ class Not : UnaryOp
     protected override MetaU MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
-    public Not(ValRegEx regdst, ValRegEx regsrc)
+    public Not(ValReg regdst, ValReg regsrc)
         : base(regdst, regsrc)
     { }
 }
@@ -90,7 +87,7 @@ class Negative : UnaryOp
     protected override MetaU MetaInfo => _Meta;
     public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
-    public Negative(ValRegEx regdst, ValRegEx regsrc)
+    public Negative(ValReg regdst, ValReg regsrc)
         : base(regdst, regsrc)
     { }
 }

@@ -16,7 +16,20 @@ internal class ILManager : INotifyPropertyChanged
         get => _cur;
         set
         {
-            _cur = value;
+            _cur = new()
+            {
+               name = value.name,
+               searchMethod = value.searchMethod,
+               ImgBase64 = value.ImgBase64,
+               RangeX = value.RangeX,
+               RangeY = value.RangeY,
+               RangeHeight = value.RangeHeight,
+               RangeWidth = value.RangeWidth,
+               TargetX = value.TargetX,
+               TargetY = value.TargetY,
+               TargetHeight = value.TargetHeight,
+               TargetWidth = value.TargetWidth,
+            };
             OnPropertyChanged();
         }
     }
