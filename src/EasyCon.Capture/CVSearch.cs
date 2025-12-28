@@ -4,11 +4,24 @@ namespace EasyCon.Capture;
 
 internal static class OpenCVSearch
 {
+    private static Mat CvtGray(Mat src)
+    {
+        var gray = new Mat();
+        Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
+        return gray;
+    }
+
+    private static Mat Threshold(Mat src, double thr = 127, double maxval = 255)
+    {
+        var dest = new Mat();
+        Cv2.Threshold(src, dest, thr, maxval, ThresholdTypes.Binary);
+        return dest;
+    }
+
     private static Mat XYAvg(Mat src)
     {
         // 1. 转换为灰度图像
-        using Mat gray = new();
-        Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
+        using Mat gray = CvtGray(src);
 
         // 2. 计算x方向梯度
         using Mat gradX = new();
@@ -31,8 +44,7 @@ internal static class OpenCVSearch
     private static Mat LaplacianEdge(Mat src)
     {
         // 1. 转换为灰度图像
-        using Mat gray = new();
-        Cv2.CvtColor(src, gray, ColorConversionCodes.BGR2GRAY);
+        using Mat gray = CvtGray(src);
 
         // 1. 高斯模糊降噪（Laplacian对噪声敏感，必须先降噪）
         using Mat blurred = new();
@@ -50,13 +62,18 @@ internal static class OpenCVSearch
         Cv2.ConvertScaleAbs(laplacian, absLaplacian);
 
         // 4. 二值化处理
-        using Mat edges = new();
-        // 方法1：简单阈值
-        Cv2.Threshold(absLaplacian, edges, 30, 255, ThresholdTypes.Binary);
+        using Mat edges = Threshold(absLaplacian, 30);
 
         Mat result8U = new();
         edges.ConvertTo(result8U, MatType.CV_8UC3);
         return result8U;
+    }
+
+    private static Mat Canny(Mat src, double t1 = 50, double t2 = 200)
+    {
+        var dst = new Mat();
+        Cv2.Canny(src, dst, t1, t2);
+        return dst;
     }
 
     public static Mat EdgeDetect(Mat src, SearchMethod method)

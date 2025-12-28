@@ -354,37 +354,33 @@ class SerialPortClient : IDisposable
         try
         {
             // 发送心跳命令
-            if (_serialPort.IsOpen)
+            _serialPort.Write(_heartbeatCommand, 0, _heartbeatCommand.Length);
+
+            // 简单的心跳检测：检查是否有响应（可以更复杂，比如等待特定响应）
+            if (_serialPort.BytesToRead > 0)
             {
-                _serialPort.Write(_heartbeatCommand, 0, _heartbeatCommand.Length);
-
-                // 简单的心跳检测：检查是否有响应（可以更复杂，比如等待特定响应）
-                if (_serialPort.BytesToRead > 0)
+                // 读取心跳响应数据
+                byte[] buffer = new byte[_serialPort.BytesToRead];
+                _serialPort.Read(buffer, 0, buffer.Length);
+                //判断心跳行为
+                if (!HeartbeatCheckHandler?.Invoke(buffer) ?? false)
                 {
-                    // 读取心跳响应数据
-                    byte[] buffer = new byte[_serialPort.BytesToRead];
-                    _serialPort.Read(buffer, 0, buffer.Length);
-                    //判断心跳行为
-                    if (!HeartbeatCheckHandler?.Invoke(buffer) ?? false)
-                    {
-                        _heartbeatFailCount++;
-                        Debug.WriteLine($"心跳检测失败 {_heartbeatFailCount}/{_maxHeartbeatFailCount}");
+                    _heartbeatFailCount++;
+                    Debug.WriteLine($"心跳检测失败 {_heartbeatFailCount}/{_maxHeartbeatFailCount}");
 
-                        if (_heartbeatFailCount >= _maxHeartbeatFailCount)
-                        {
-                            HandleDeviceDisconnection("心跳检测失败，设备可能已断开");
-                            return;
-                        }
-
-                        HandleDeviceDisconnection("心跳检测失败，心跳字节不正确");
-                    }
-                    else
+                    if (_heartbeatFailCount >= _maxHeartbeatFailCount)
                     {
-                        // 有响应，重置失败计数
-                        _heartbeatFailCount = 0;
+                        HandleDeviceDisconnection("心跳检测失败，设备可能已断开");
+                        return;
                     }
+
+                    HandleDeviceDisconnection("心跳检测失败，心跳字节不正确");
                 }
-
+                else
+                {
+                    // 有响应，重置失败计数
+                    _heartbeatFailCount = 0;
+                }
             }
         }
         catch (Exception ex)

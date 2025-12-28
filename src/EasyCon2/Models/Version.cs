@@ -14,7 +14,7 @@ public class VersionParser(VerInfo[] version, Version cur)
     private readonly VerInfo _ver = version.Last();
     private readonly Version _cur = cur;
 
-    public Version NewVer =>_ver.Ver;
+    public Version NewVer => _ver.Ver;
 
     public bool IsNewVersion => _ver.Ver > _cur;
 }

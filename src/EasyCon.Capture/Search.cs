@@ -21,16 +21,18 @@ public sealed class ECSearch
         ];
     }
 
-    public static void FindOCR(string text, Mat srcBmp,out string resultTxt, out double matchDegree)
+    public static string FindOCR(string text, Mat srcBmp, out double matchDegree)
     {
         using MemoryStream memoryStream = new();
         memoryStream.Write(srcBmp.ToPngBytes());
-        var confidence = new OCRDetect().TesserDetect(memoryStream, out resultTxt);
-        Debug.WriteLine($"识别到的文本：{resultTxt.Trim()}, 匹配度:{confidence}");
-        Debug.WriteLine($"对比原始文本:{text}，对比对象：{resultTxt.Trim()}");
+        var resultTxt  = new OCRDetect().TesserDetect(memoryStream, out var confidence).Trim();
+        Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{confidence}");
+        Debug.WriteLine($"对比原始文本:{text}，对比对象：{resultTxt}");
         // 计算编辑距离
-        matchDegree = MatchFacts.StringMatchSimple(resultTxt.Trim(), text);
+        matchDegree = MatchFacts.StringMatchSimple(resultTxt, text);
+        // 置信度*编辑距离为最终相似度
         matchDegree *= confidence;
+        return resultTxt;
     }
 
     public static List<System.Drawing.Point> FindPic(Mat big, Mat small, SearchMethod method, out double matchDegree)

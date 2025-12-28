@@ -1,5 +1,3 @@
-﻿using System;
-
 namespace EasyCon2.Helper
 {
     public class MouseTranslation
@@ -95,11 +93,13 @@ namespace EasyCon2.Helper
             System.Drawing.Point translation = new System.Drawing.Point((int)(mc_delta.X + 128), (int)(mc_delta.Y + 128));
 
             // Delta Damping
-            if (mc_delta.X != 0) {
+            if (mc_delta.X != 0)
+            {
                 var dt_x = mc_delta_damping_origin.X * Math.Abs(mc_delta.X) / mc_delta.X;
                 mc_delta.X = (mc_delta.X - dt_x) * (mc_delta_damping.X + mc_delta_damping2.X * Math.Abs(Sigmoid_Tunable(mc_delta_damping_sigmoid_constant.X, mc_delta.X / mc_delta_max.X))) * 0.5 + dt_x;
             }
-            if (mc_delta.Y != 0) {
+            if (mc_delta.Y != 0)
+            {
                 var dt_y = mc_delta_damping_origin.Y * Math.Abs(mc_delta.Y) / mc_delta.Y;
                 mc_delta.Y = (mc_delta.Y - dt_y) * (mc_delta_damping.Y + mc_delta_damping2.Y * Math.Abs(Sigmoid_Tunable(mc_delta_damping_sigmoid_constant.Y, mc_delta.Y / mc_delta_max.Y))) * 0.5 + dt_y;
             }

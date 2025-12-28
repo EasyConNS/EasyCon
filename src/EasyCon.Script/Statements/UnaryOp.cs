@@ -21,24 +21,6 @@ class MetaU
 
 abstract class UnaryOp : Statement
 {
-    protected class UnaryOpParser : IStatementParser
-    {
-        readonly MetaU _meta;
-
-        public UnaryOpParser(MetaU meta)
-        {
-            _meta = meta;
-        }
-
-        public Parsing.Statement Parse(ParserArgument args)
-        {
-            var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\=\s*{_meta.KeyWord}\s*{Formats.RegisterEx}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, true), FormatterUtil.GetRegEx(m.Groups[2].Value, false)) as Parsing.Statement;
-            return null;
-        }
-    }
-
     protected abstract MetaU MetaInfo { get; }
     public readonly ValReg RegDst;
     public readonly ValReg RegSrc;
@@ -74,7 +56,6 @@ class Not : UnaryOp
 {
     static readonly MetaU _Meta = new(typeof(Not), typeof(Assembly.Instructions.AsmNot), "~", a => ~a);
     protected override MetaU MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
     public Not(ValReg regdst, ValReg regsrc)
         : base(regdst, regsrc)
@@ -85,7 +66,6 @@ class Negative : UnaryOp
 {
     static readonly MetaU _Meta = new(typeof(Negative), typeof(Assembly.Instructions.AsmNegative), "-", a => -a);
     protected override MetaU MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new UnaryOpParser(_Meta);
 
     public Negative(ValReg regdst, ValReg regsrc)
         : base(regdst, regsrc)

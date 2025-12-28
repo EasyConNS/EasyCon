@@ -8,11 +8,27 @@ public sealed class SimpleVisitor : AstVisitor
 
     public override ASTNode VisitProgram(MainProgram program)
     {
+        foreach (var member in program.Imports)
+        {
+            member.Accept(this);
+        }
         foreach(var ast in program.Statements)
         {
             ast.Accept(this);
         }
         return program; 
+    }
+
+    public override ASTNode VisitImport(ImportStatement ast)
+    {
+        Console.WriteLine($"Import: {ast.Path.Value} AS [{ast.Name}]");
+        return ast;
+    }
+
+    public override ASTNode VisitTrivia(TriviaNode ast)
+    {
+        Console.Write($"{ast.Text}");
+        return ast;
     }
 
     public override ASTNode VisitLiteral(LiteralExpression ast)

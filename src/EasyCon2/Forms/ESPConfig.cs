@@ -1,15 +1,15 @@
+using EasyCapture;
+using EasyCon2.Models;
 using EasyCon2.Properties;
 using EasyDevice;
+using LibAmiibo.Data;
+using LibAmiibo.Data.Figurine;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Security.Cryptography;
-using LibAmiibo.Data;
-using LibAmiibo.Data.Figurine;
-using EasyCon2.Models;
-using EasyCapture;
 
 namespace EasyCon2.Forms
 {
@@ -19,7 +19,7 @@ namespace EasyCon2.Forms
         internal NintendoSwitch NS;
         static readonly string AmiiboDir = Application.StartupPath + "Amiibo\\";
         List<AmiiboInfo> amiibos;
-        Dictionary<string,List<AmiiboInfo>> amiibosDict;
+        Dictionary<string, List<AmiiboInfo>> amiibosDict;
         AmiiboInfo amiibo;
 
         public ESPConfig(NintendoSwitch gamepad)
@@ -32,11 +32,11 @@ namespace EasyCon2.Forms
         {
             byte mode = 0;
 
-            if(proButton.Checked)
+            if (proButton.Checked)
                 mode = 3;
-            if(jcrButton.Checked)
+            if (jcrButton.Checked)
                 mode = 2;
-            if(jclButton.Checked)
+            if (jclButton.Checked)
                 mode = 1;
 
             if (!NS.IsConnected())
@@ -44,7 +44,7 @@ namespace EasyCon2.Forms
                 MessageBox.Show("串口未连接");
                 return;
             }
-                
+
             if (NS.ChangeControllerMode(mode))
             {
                 SystemSounds.Beep.Play();
@@ -102,7 +102,7 @@ namespace EasyCon2.Forms
 
             //Debug.WriteLine(AmiiboDir + selectAmiiboBox.SelectedItem);
 
-            if(saveIndexBox.SelectedIndex >=20)
+            if (saveIndexBox.SelectedIndex >= 20)
             {
                 MessageBox.Show("请选择存储位置");
                 return;
@@ -116,7 +116,7 @@ namespace EasyCon2.Forms
                     MessageBox.Show("用户名或者卡名过长");
                     return;
                 }
-                dataStream = new MemoryStream(CreateAmiibo(amiibo.head+amiibo.tail,nickBox.Text,usernameBox.Text));
+                dataStream = new MemoryStream(CreateAmiibo(amiibo.head + amiibo.tail, nickBox.Text, usernameBox.Text));
             }
             else
             {
@@ -168,7 +168,7 @@ namespace EasyCon2.Forms
             //}
 
             // refresh amiibo ,add to list
-            if(selectGameBox.SelectedItem?.ToString() == "自定义")
+            if (selectGameBox.SelectedItem?.ToString() == "自定义")
             {
                 selectAmiiboBox.Items.Clear();
                 DirectoryInfo directoryInfo = new DirectoryInfo(AmiiboDir);
@@ -186,19 +186,19 @@ namespace EasyCon2.Forms
         private void Color_Changed(object sender, EventArgs e)
         {
             Label ctrl = (Label)sender;
-            double[] hsv = {0,0,0};
+            double[] hsv = { 0, 0, 0 };
             if (colorDialog.ShowDialog() == DialogResult.OK)
             {
                 Debug.Print(colorDialog.Color.ToString());
 
                 HSVColorExt.ColorToHSV(colorDialog.Color, out hsv[0], out hsv[1], out hsv[2]);
-                Color rc = HSVColorExt.ColorFromHSV( (hsv[0]+180)%360,  hsv[1],  hsv[2]);
+                Color rc = HSVColorExt.ColorFromHSV((hsv[0] + 180) % 360, hsv[1], hsv[2]);
                 if (rc.ToArgb() == Color.Black.ToArgb())
                     rc = Color.White;
                 else if (rc.ToArgb() == Color.White.ToArgb())
                     rc = Color.Black;
 
-                Debug.WriteLine(hsv[0].ToString()+" "+hsv[1].ToString()+" "+hsv[2].ToString());
+                Debug.WriteLine(hsv[0].ToString() + " " + hsv[1].ToString() + " " + hsv[2].ToString());
                 ctrl.BackColor = colorDialog.Color;
                 ctrl.ForeColor = rc;
             }
@@ -207,7 +207,7 @@ namespace EasyCon2.Forms
         private void changeAmiibo_Click(object sender, EventArgs e)
         {
             byte index = (byte)amiiboIndexNum.Value;
-            if(index >= 20)
+            if (index >= 20)
             {
                 MessageBox.Show("当前序号不存在");
                 return;
@@ -236,9 +236,9 @@ namespace EasyCon2.Forms
             string str = System.Text.Encoding.UTF8.GetString(Resources.Amiibo);
             //Debug.WriteLine(str);
             amiibos = JsonSerializer.Deserialize<List<AmiiboInfo>>(str);
-            foreach(var am in amiibos)
+            foreach (var am in amiibos)
             {
-                if(!amiibosDict.ContainsKey(am.gameSeries))
+                if (!amiibosDict.ContainsKey(am.gameSeries))
                 {
                     amiibosDict[am.gameSeries] = new List<AmiiboInfo>();
                     selectGameBox.Items.Add(am.gameSeries);
@@ -254,7 +254,7 @@ namespace EasyCon2.Forms
         {
             FileStream fileStream;
             // show image
-            if (selectGameBox.SelectedItem.ToString()!="自定义")
+            if (selectGameBox.SelectedItem.ToString() != "自定义")
             {
                 amiibo = amiibosDict[selectGameBox.SelectedItem.ToString()][selectAmiiboBox.SelectedIndex];
             }
@@ -272,7 +272,7 @@ namespace EasyCon2.Forms
                 tail = tail.ToLower();
                 foreach (AmiiboInfo am in amiibos)
                 {
-                    if(am.head == head && am.tail == tail)
+                    if (am.head == head && am.tail == tail)
                     {
                         amiibo = am;
                         break;
@@ -288,7 +288,7 @@ namespace EasyCon2.Forms
                 Debug.WriteLine(imageName);
                 if (!File.Exists(AmiiboDir + "AmiiboImages\\" + imageName)) return;
                 amiiboView.Image = Image.FromFile(AmiiboDir + "AmiiboImages\\" + imageName);
-                nickBox.Text = amiibo.name.Replace(" ","");
+                nickBox.Text = amiibo.name.Replace(" ", "");
             }
         }
         private static byte[] CreateAmiibo(string id, string nick = "cale", string owner = "EasyCon")
@@ -310,7 +310,7 @@ namespace EasyCon2.Forms
         private void game_SelectionChangeCommitted(object sender, EventArgs e)
         {
             selectAmiiboBox.Items.Clear();
-            foreach(var am in amiibosDict[selectGameBox.SelectedItem.ToString()])
+            foreach (var am in amiibosDict[selectGameBox.SelectedItem.ToString()])
             {
                 selectAmiiboBox.Items.Add(am.name);
             }

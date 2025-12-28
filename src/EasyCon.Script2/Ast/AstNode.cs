@@ -14,8 +14,9 @@ public abstract class ASTNode(Token key)
     public readonly List<TriviaNode> TrailingTrivia = [];
 }
 
-public sealed class MainProgram(ImmutableArray<Member> statements, Token endOfFileToken) : ASTNode(endOfFileToken)
+public sealed class MainProgram(ImmutableArray<ImportStatement> importDecl, ImmutableArray<Member> statements, Token endOfFileToken) : ASTNode(endOfFileToken)
 {
+    public ImmutableArray<ImportStatement> Imports = importDecl;
     public ImmutableArray<Member> Statements = statements;
     public Token EndOfFileToken = endOfFileToken;
 
@@ -166,15 +167,14 @@ public sealed class KeywordStatement(Token keyword) : Statement(keyword)
     }
 }
 
-public sealed class ImportStatement(Token imp, string name, LiteralExpression path) : Statement(imp)
+public sealed class ImportStatement(Token imp, string name, LiteralExpression path) : Member(imp)
 {
     public string Name { get; } = name;
     public LiteralExpression Path { get; } = path;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        // return visitor.VisitKey(this);
-        throw new NotImplementedException();
+        return visitor.VisitImport(this);
     }
 }
 
@@ -303,10 +303,10 @@ public sealed class FunctionDefinitionStatement(FuncDeclare funcdecl, ImmutableA
     }
 }
 
-public sealed class FuncDeclare(Token keyword, Token ident, ImmutableArray<string> parameters) : Statement(keyword)
+public sealed class FuncDeclare(Token keyword, Token ident, ImmutableArray<VariableExpression> parameters) : Statement(keyword)
 {
     public Token NameIdent { get; } = ident;
-    public ImmutableArray<string> Parameters { get; } = parameters;
+    public ImmutableArray<VariableExpression> Parameters { get; } = parameters;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {

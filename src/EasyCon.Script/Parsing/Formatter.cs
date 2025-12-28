@@ -2,9 +2,10 @@ using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing;
 
-class Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
+class Formatter(Dictionary<string, ExternalVariable> extVars)
 {
-    private readonly Dictionary<string, int> Constants = constants;
+    private readonly Dictionary<string, int> Variables = [];
+    private readonly Dictionary<string, int> Constants = [];
     private readonly Dictionary<string, ExternalVariable> ExtVars = extVars;
 
     public bool TryDeclConstant(string key, ValBase value)
@@ -68,7 +69,7 @@ class Formatter(Dictionary<string, int> constants, Dictionary<string, ExternalVa
 
 class FormatterUtil
 {
-    public static ValReg GetRegEx(string text, bool lhs = false)
+    internal static ValReg GetRegEx(string text, bool lhs = false)
     {
         var m = Regex.Match(text, Formats.RegisterEx_F);
         if (!m.Success)

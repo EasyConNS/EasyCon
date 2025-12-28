@@ -33,7 +33,7 @@ public partial class NintendoSwitch
         }
 
         Disconnect();
-        clientCon = new TTLSerialClient(connStr,baudrate);
+        clientCon = new TTLv2SerialClient(connStr,baudrate);
         clientCon.BytesSent += BytesSent;
         clientCon.BytesReceived += BytesReceived;
         clientCon.StatusChanged += StatusChanged;
@@ -50,7 +50,7 @@ public partial class NintendoSwitch
         }
         if (result != ConnectResult.Success)
         {
-            clientCon.Disconnect();
+            clientCon?.Disconnect();
             clientCon = null;
             return result;
         }

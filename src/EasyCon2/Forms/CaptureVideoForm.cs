@@ -529,7 +529,7 @@ namespace EasyCon2.Forms
                 var ss = _snapshot.Clone(range, _snapshot.PixelFormat);
 
                 imglManager.Current.SetImage(ss);
-                targetImg.Image = imglManager.Current.GetBitmap();
+                targetImg.Image = imglManager.Current.GetImage();
 
                 snapshotMode = SnapshotMode.NoAction;
                 targetBtn.Text = "圈选目标";
@@ -561,7 +561,7 @@ namespace EasyCon2.Forms
             if (dyncTestBtn.Text == "动态测试")
             {
                 targetImg.Image?.Dispose();
-                targetImg.Image = imglManager.Current.GetBitmap();
+                targetImg.Image = imglManager.Current.GetImage();
                 if (targetImg.Image != null)
                     searchImg_test();
                 else
@@ -620,7 +620,7 @@ namespace EasyCon2.Forms
 
                 // update ui
                 imglManager.Name = item.Name;
-                targetImg.Image = imglManager.Current.GetBitmap();
+                targetImg.Image = imglManager.Current.GetImage();
 
                 if (targetImg.Image == null)
                     MessageBox.Show("没有搜索目标图片");

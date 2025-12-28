@@ -80,9 +80,11 @@ internal sealed class Parser
     {
         if (_diagnostics.Any())
             throw new Exception($"词法分析失败：{_diagnostics.First().Message}");
+
         var members = ParseMembers();
         var eof = Match(TokenType.EOF);
-        return new MainProgram(members, eof);
+        var imports = members.OfType<ImportStatement>().ToImmutableArray();
+        return new MainProgram(imports, members.Except(imports).ToImmutableArray(), eof);
     }
 
 
@@ -104,10 +106,8 @@ internal sealed class Parser
             }
 
             var statement = ParseMember();
-            if (statement != null)
-            {
-                statements.Add(statement);
-            }
+            statements.Add(statement);
+            if(startToken == Current)Advance();
         }
 
         return statements.ToImmutable();
@@ -123,7 +123,6 @@ internal sealed class Parser
 
         // 创建节点
         var node = factory();
-        if (node == null) return null;
         // 消耗语句后的换行符
         Match(TokenType.NEWLINE, "语句没有正确结束换行");
 
@@ -146,6 +145,8 @@ internal sealed class Parser
 
     private Member ParseMember()
     {
+        if (Check(TokenType.IMPORT))
+            return ParseImportDecl();
         if (Check(TokenType.FUNC))
             return ParseFunctionDecl();
         return ParseGlobalStatement();
@@ -184,21 +185,21 @@ internal sealed class Parser
 
     private ImportStatement ParseImportDecl()
     {
-        var import = Advance();
+        var import = Match(TokenType.IMPORT);
         if (Check(TokenType.STRING))
         {
-            var name = "";
-            if (Check(TokenType.STRING)) name = Advance().Value;
-
             var path = Match(TokenType.STRING);
+
+            var name = "";
+            if (Check(TokenType.IDENT)) name = Advance().Value;
+
             return new ImportStatement(import, name, new LiteralExpression(path, path.value));
         }
-        throw new Exception($"不支持的操作符\"{import.Type}\" 行{import.Line}");
+        throw new Exception($"导入语句错误\"{import.Type}\" 行{import.Line}");
     }
 
     private AssignmentStatement ParseAssignment()
     {
-        AssignmentStatement left = null;
         if (Check(TokenType.CONST) || Check(TokenType.VAR))
         {
             var variableToken = Current;
@@ -221,7 +222,7 @@ internal sealed class Parser
 
             return new AssignmentStatement(variableToken, variable, assignmentOp, value);
         }
-        throw new Exception($"不支持的操作符\"{Current.Type}\" 行{Current.Line}");
+        throw new Exception($"不支持的赋值操作\"{Current.Type}\" 行{Current.Line}");
     }
 
     private Statement ParseSpecIdentStatement()
@@ -338,9 +339,9 @@ internal sealed class Parser
         return new ForStatement(new ForExpr(forToken, initVar, start, end, infinite), body.ToImmutableArray(), nextTok);
     }
 
-    private List<Statement> ParseStatementsUntil(params TokenType[] endToken)
+    private ImmutableArray<Statement> ParseStatementsUntil(params TokenType[] endToken)
     {
-        var statements = new List<Statement>();
+        var statements = ImmutableArray.CreateBuilder<Statement>();
 
         while (!Checks(endToken) && !Check(TokenType.EOF))
         {
@@ -353,7 +354,7 @@ internal sealed class Parser
             if (Check(TokenType.NEWLINE)) Advance();
         }
 
-        return statements;
+        return statements.ToImmutable();
     }
 
     private BreakStatement ParseBreakStatement()
@@ -381,16 +382,13 @@ internal sealed class Parser
     {
         var functionToken = Advance();
         var functionName = Match(TokenType.IDENT, "定义函数需要函数名");
-
-        var parameters = new List<string>();
+        
+        var parameters = ImmutableArray<VariableExpression>.Empty;
         if (Check(TokenType.LeftParen))
         {
-            Advance();
-            // do
-            // {
-            //     parameters.Add(Match(TokenType.IDENT, "Expected parameter name").Value);
-            // } while (Match(TokenType.COMMA));
-            Match(TokenType.RightParen, "参数列表需要')'结尾");
+            var openParenthesisToken = Match(TokenType.LeftParen);
+            parameters = ParseParameterList();
+            var closeParenthesisToken = Match(TokenType.RightParen);
         }
 
         Match(TokenType.NEWLINE, "函数定义语法不正确, 需要换行");
@@ -399,7 +397,37 @@ internal sealed class Parser
 
         var endFunc = Match(TokenType.ENDFUNC, "需要endfunc结尾");
 
-        return new FunctionDefinitionStatement(new FuncDeclare(functionToken, functionName, []), body.ToImmutableArray(), new KeywordStatement(endFunc));
+        return new FunctionDefinitionStatement(new FuncDeclare(functionToken, functionName, parameters), body.ToImmutableArray(), new KeywordStatement(endFunc));
+    }
+
+    private ImmutableArray<VariableExpression> ParseParameterList()
+    {
+        var nodesAndSeparators = ImmutableArray.CreateBuilder<VariableExpression>();
+
+        var parseNextParameter = true;
+        while (parseNextParameter &&
+                Current.Type != TokenType.RightParen &&
+                Current.Type != TokenType.EOF)
+        {
+            var parameter = ParseParameter();
+            nodesAndSeparators.Add(parameter);
+
+            if (Check(TokenType.COMMA))
+            {
+                var comma = Advance();
+                // nodesAndSeparators.Add(comma);
+            }
+            else
+            {
+                parseNextParameter = false;
+            }
+        }
+        return nodesAndSeparators.ToImmutable();
+    }
+    private VariableExpression ParseParameter()
+    {
+        var identifier = Match(TokenType.VAR);
+        return new VariableExpression(identifier, false, false);
     }
 
     private ReturnStatement ParseReturnStatement()

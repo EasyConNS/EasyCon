@@ -40,60 +40,79 @@ class Processor(Dictionary<string, FunctionStmt> func)
 
     public void BuildinCall(string fn, Param[] args)
     {
-        fn = fn.ToUpper();
-        if (fn == "TIME")
+        switch (fn.ToUpper())
         {
-            var ru = args[0] as RegParam;
-            Register[ru.Reg] = et.CurrTimestamp;
-        }
-        else if (fn == "PRINT")
-        {
-            var s = args.Select(
-                u => {
-                    return u switch
-                    {
-                        TextParam tu => tu.Text,
-                        RegParam ru => Register[ru.Reg].ToString(),
-                        _ => "",
-                    };
+            case "TIME":
+                {
+                    var ru = args[0] as RegParam;
+                    Register[ru.Reg] = et.CurrTimestamp;
                 }
-            );
-            var cancelLineBreak = args.LastOrDefault() switch
-            {
-                TextParam tu => tu.CodeText == "\\",
-                _ => false,
-            };
+                break;
+            case "PRINT":
+                {
+                    var s = args.Select(u =>
+                    {
+                        return u switch
+                        {
 
-            Output.Print(string.Join("", s), !CancelLineBreak);
-            CancelLineBreak = cancelLineBreak;
-        }
-        else if (fn == "ALERT")
-        {
-            var s = args.Select(
-                u => {
-                    return u switch
+                            TextParam tu => tu.Text,
+                            RegParam ru => Register[ru.Reg].ToString(),
+                            _ => "",
+                        };
+                    });
+                    var cancelLineBreak = args.LastOrDefault() switch
                     {
-                        TextParam tu => tu.Text,
-                        RegParam ru => Register[ru.Reg].ToString(),
-                        _ => "",
+                        TextParam tu => tu.CodeText == "\\",
+                        _ => false,
                     };
+
+                    Output.Print(string.Join("", s), !CancelLineBreak);
+                    CancelLineBreak = cancelLineBreak;
                 }
-            );
-            Output.Alert(string.Join("", s));
-        }else if(fn == "RAND")
-        {
-            var ru = args[0] as RegParam;
-            Register[ru.Reg] = _rand.Next(Register[ru.Reg] == 0 ? 100 : Register[ru.Reg]);
-        }
-        else
-        {
-            throw new ScriptException($"未实现的内建函数'{fn}'", PC);
+                break;
+            case "ALERT":
+                {
+                    var s = args.Select(u =>
+                    {
+                        return u switch
+                        {
+                            TextParam tu => tu.Text,
+                            RegParam ru => Register[ru.Reg].ToString(),
+                            _ => "",
+                        };
+                    });
+                    Output.Alert(string.Join("", s));
+                }
+                break;
+            case "RAND":
+                {
+                    var ru = args[0] as RegParam;
+                    Register[ru.Reg] = _rand.Next(Register[ru.Reg] == 0 ? 100 : Register[ru.Reg]);
+                }
+                break;
+            case "BEEP":
+                {
+                    if (args.Any())
+                    {
+                        var rate = args[0] as LiterParam;
+                        var dur = args[1] as LiterParam;
+
+                        Console.Beep(rate.LITR.Get(this), dur.LITR.Get(this));
+                    }
+                    else
+                    {
+                        Console.Beep();
+                    }
+                }
+                break;
+            default:
+                throw new ScriptException($"未实现的内建函数'{fn}'", PC);
         }
     }
 
     public void RetrunCall()
     {
-        if(LiteScope.Count == 0)
+        if (LiteScope.Count == 0)
             throw new ScriptException("顶层环境不能退出", PC);
         LiteScope.Pop();
         PC = CallStack.Pop();
@@ -117,7 +136,7 @@ class RegisterFile
 
     public int this[string tag]
     {
-        get => _variables.ContainsKey(tag)? _variables[tag]:0;
+        get => _variables.ContainsKey(tag) ? _variables[tag] : 0;
         set => _variables[tag] = value;
     }
 

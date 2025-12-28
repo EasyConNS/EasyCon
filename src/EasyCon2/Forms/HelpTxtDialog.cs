@@ -1,5 +1,3 @@
-using LibAmiibo.Data.Settings.AppData;
-
 namespace EasyCon2.Forms
 {
     public partial class HelpTxtDialog : Form

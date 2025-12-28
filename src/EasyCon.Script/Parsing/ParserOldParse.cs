@@ -1,5 +1,5 @@
-using EasyScript.Statements;
 using EasyCon.Script2.Syntax;
+using EasyScript.Statements;
 using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing;
@@ -20,6 +20,21 @@ internal partial class Parser
         return null;
     }
     
+    private Statement? ParseUnary(ValReg dest, List<Token> tokens)
+    {
+        if(tokens.Count == 3 && tokens[0].Type.GetUnaryOperatorPrecedence() > 0 && tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.EOF)
+        {
+            // 一元运算符
+            return tokens[0].Type switch
+            {
+                TokenType.SUB => new Negative(dest, FormatterUtil.GetRegEx(tokens[1].Value)),
+                TokenType.BitNot => new Not(dest, FormatterUtil.GetRegEx(tokens[1].Value)),
+                _ => null
+            };
+        }
+        return null;
+    }
+
     private ValBase ParseExpression(List<Token> tokens, bool allowVar = true)
     {
         // 用于存储数字/变量的节点栈
@@ -95,30 +110,40 @@ internal partial class Parser
         Meta? op = OpList().FirstOrDefault(o=> o.Operator == opStr);
         ValBase right = valueStack.Pop();
         ValBase left = valueStack.Pop();
-        valueStack.Push(new BinExpr(left, op, right, hasPr));
+        valueStack.Push(new BinExpr(left, op!, right, hasPr));
     }
 
     private Statement? ParseAssignment(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
+        if(lexer.Count() < 3+1)return null;
         if (lexer[0].Type == TokenType.VAR && lexer[1].Type == TokenType.ASSIGN)
         {
             var des = FormatterUtil.GetRegEx(lexer[0].Value, true);
+
+            var sm = ParseUnary(des, [.. lexer.Skip(2)]);
+            if(sm!=null)
+            {
+                return sm;
+            }
             var eexp = ParseExpression([.. lexer.Skip(2)]);
 
             return new ExpressionStmt(des, eexp);
         }
 
         //aug assign
-        foreach (var p in AsmParser())
+        if (lexer[0].Type == TokenType.VAR && lexer[1].Type.OperatorIsAug())
         {
-            var st = p.Parse(new ParserArgument
+            if(lexer.Count() != 3+1)return null;
+            Meta? op = OpList().FirstOrDefault(o=> o.Operator+"=" == lexer[1].Value);
+            if(op.OnlyInstant)
             {
-                Text = text,
-                Formatter = _formatter,
-            });
-            if (st != null) return st;
+                if(lexer[2].Type != TokenType.INT && lexer[2].Type != TokenType.CONST)
+                    throw new Exception("Only Instant can be augmented.");
+            }
+            return Activator.CreateInstance(op.StatementType, FormatterUtil.GetRegEx(lexer[0].Value, true), _formatter.GetValueEx(lexer[2].Value)) as Parsing.Statement;
         }
+
         return null;
     }
 
@@ -230,12 +255,24 @@ internal partial class Parser
         return null;
     }
 
+    private static int namedArgs(string name)
+    {
+        return name switch
+        {
+            "beep" => 3,
+            "func" or "call" or "alert" or "print" or "time" or "rand" or "wait" or "amiibo" or "sprint" or "smem" => 1,
+            _ => 0,
+        };
+        ;
+    }
+
     private Statement? ParseNamedExpression(string text)
     {
         var tokens = SyntaxTree.ParseTokens(text);
         var first = tokens.First()!;
-        if(tokens.Count() > 2+1) return null;
-        switch (first.Value.ToLower())
+        var fname = first.Value.ToLower();
+        if (tokens.Count() > 2+ namedArgs(fname)) return null;
+        switch (fname)
         {
             case "func":
                 return tokens[1].Type == TokenType.IDENT ? new FunctionStmt(tokens[1].Value) : null;
@@ -248,6 +285,18 @@ internal partial class Parser
                     var contents = ParseContents(tokens[1].Value, out bool _);
 
                     return new BuildinFunc(first.Value.ToUpper(), contents.ToArray());
+                }
+                else if (tokens[1].Type == TokenType.EOF)
+                {
+                    return new BuildinFunc(first.Value.ToUpper(), []);
+                }
+                break;
+            case "beep":
+                if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT)
+                {
+                    if (tokens[2].Type == TokenType.CONST || tokens[2].Type == TokenType.INT)
+                        return new BuildinFunc(first.Value.ToUpper(), [new LiterParam(_formatter.GetValueEx(tokens[1].Value))
+                            ,new LiterParam(_formatter.GetValueEx(tokens[2].Value))]);
                 }
                 else if (tokens[1].Type == TokenType.EOF)
                 {
@@ -309,7 +358,14 @@ internal partial class Parser
             var m = Regex.Match(s, Formats.RegisterEx_F);
             if (m.Success)
             {
-                contents.Add(new RegParam(FormatterUtil.GetRegEx(s)));
+                var val = _formatter.GetValueEx(s);
+                if(val is ValReg reg)
+                    contents.Add(new RegParam(reg));
+                else
+                {
+                    // 未定义变量，特殊处理返回0
+                    contents.Add(new TextParam("0"));
+                }
                 continue;
             }
             m = Regex.Match(s, Formats.Constant_F);

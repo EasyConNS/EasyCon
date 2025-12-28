@@ -15,17 +15,17 @@ internal class OCRDetect(string lang = "chi_sim", EngineMode engineMode = Engine
     /// enginMod: EngineMode.Default
     /// pageSegMod: PageSegMode.SingleLine
     /// </summary>
-    public float TesserDetect(MemoryStream stream, out string result)
+    public string TesserDetect(MemoryStream stream, out float confidence)
     {
         using var img = Pix.LoadFromMemory(stream.ToArray());
-        return TesserDetect(img, out result);
+        return TesserDetect(img, out confidence);
     }
 
-    public float TesserDetect(Pix img, out string result)
+    public string TesserDetect(Pix img, out float confidence)
     {
         using var engine = new TesseractEngine(tessdataPath, lang, engineMode);
         using var page = engine.Process(img, pageSegMode);
-        result = page.GetText();
-        return page.GetMeanConfidence();
+        confidence = page.GetMeanConfidence();
+        return page.GetText();
     }
 }

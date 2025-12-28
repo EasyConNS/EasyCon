@@ -15,7 +15,7 @@ class BuildinFunc : Statement
 
     protected override string _GetString()
     {
-        var args = Params.Any() ? $" {string.Join(" & ", Params.Select(u => u.GetCodeText()))}" : "";
+        var args = Params.Any() ? $" {string.Join(Params.OfType<TextParam>().Any()? " & " : " ", Params.Select(u => u.GetCodeText()))}" : "";
         return $"{FnName}{args}";
     }
 

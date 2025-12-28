@@ -8,7 +8,6 @@ namespace EasyScript;
 
 public class Scripter
 {
-    readonly Dictionary<string, int> Constants = [];
     readonly Dictionary<string, ExternalVariable> ExtVars = [];
 
     ImmutableArray<Statement> _statements = [];
@@ -24,11 +23,10 @@ public class Scripter
 
     public void Parse(string code, IEnumerable<ExternalVariable> extVars)
     {
-        Constants.Clear();
         ExtVars.Clear();
         foreach (var ev in extVars)
             ExtVars[ev.Name] = ev;
-        _statements = new Parser(Constants, ExtVars).Parse(code).ToImmutableArray();
+        _statements = new Parser(ExtVars).Parse(code).ToImmutableArray();
         _statements.OfType<FunctionStmt>().ToList().ForEach(f => { _funcTables[f.Label] = f; });
     }
 

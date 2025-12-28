@@ -27,9 +27,22 @@ internal class TTLv2SerialClient(string name, int port) : IConnection
     {
         _serialPortClient.SetHeartbeat([Command.Ready, Command.Ready, Command.Hello], (bs) => bs.Length == 1 && bs[0] == Reply.Hello);
 
+        void checkopend(object sender, string message)
+        {
+            bool check(byte[] bs) => bs.Length == 1 && bs[0] == Reply.Hello;
+                var recv = _serialPortClient.SendCommand([Command.Ready, Command.Ready, Command.Hello]);
+
+                Console.WriteLine($"[{_serialPortClient.ConnectPort}] --recv-- " + string.Join(" ", recv.Select(b => b.ToString("X2"))));
+
+                if (!check(recv))
+                {
+                    _serialPortClient.Close();
+                    StatusChanged?.Invoke(Status.Error);
+                }
+        };
+        _serialPortClient.ConnectionOpened += checkopend;
         _serialPortClient.DataReceived += (sender, args) =>
         {
-            Debug.WriteLine($"[{_serialPortClient.ConnectPort}] --recv-- " +string.Join(" ", args.Data.Select(b => b.ToString("X2"))));
             BytesReceived?.Invoke(_serialPortClient.ConnectPort, args.Data);
         };
         Task.Run(() => {
@@ -37,30 +50,19 @@ internal class TTLv2SerialClient(string name, int port) : IConnection
             {
                 if (_serialPortClient.Open())
                 {
-                    bool check(byte[] bs) => bs.Length == 1 && bs[0] == Reply.Hello;
-                    var recv = _serialPortClient.SendCommand([Command.Ready, Command.Ready, Command.Hello]);
-
-                    Debug.WriteLine($"[{_serialPortClient.ConnectPort}] --recv-- " + string.Join(" ", recv.Select(b => b.ToString("X2"))));
-
-                    if (!check(recv))
-                    {
-                        _serialPortClient.Close();
-                    }
                     StatusChanged?.Invoke(CurrentStatus);
+                    _serialPortClient.ConnectionStateChanged += (sender, args) =>
+                    {
+                        StatusChanged?.Invoke(CurrentStatus);
+                    };
                 }
+                throw new Exception("连接失败");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex.Message);
+                Console.WriteLine(ex.Message);
+                StatusChanged?.Invoke(Status.Error);
             }
-            finally
-            {
-                _serialPortClient.ConnectionStateChanged += (sender, args) =>
-                {
-                    StatusChanged?.Invoke(CurrentStatus);
-                };
-            }
-
         });
     }
 

@@ -2,6 +2,7 @@ namespace EasyCon.Script2.Ast;
 
 public interface IAstVisitor<T>
 {
+    T VisitImport(ImportStatement ast);
     T VisitTrivia(TriviaNode ast);
     T VisitProgram(MainProgram ast);
     T VisitLiteral(LiteralExpression ast);
@@ -25,6 +26,11 @@ public interface IAstVisitor<T>
 public abstract class AstVisitor : IAstVisitor<ASTNode>
 {
     protected AstVisitor() { }
+
+    public virtual ASTNode VisitImport(ImportStatement ast)
+    {
+        return ast;
+    }
 
     public virtual ASTNode VisitTrivia(TriviaNode ast)
     {

@@ -55,7 +55,7 @@ public class CodeCompletionController : IDisposable
 
     private async void OnTextEntered(object sender, TextCompositionEventArgs e)
     {
-       var line =  _editor.TextArea.Document.GetLineByNumber(_editor.TextArea.Caret.Line);
+        var line = _editor.TextArea.Document.GetLineByNumber(_editor.TextArea.Caret.Line);
         if (_completionProvider.ShouldTriggerCompletion(e.Text[0],
             _editor.TextArea.Document.GetText(line.Offset, line.Length),
             _editor.TextArea.Caret.Column))

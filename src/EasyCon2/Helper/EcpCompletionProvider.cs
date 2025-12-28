@@ -27,17 +27,18 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
     {
         var completions = new List<ICompletionData>();
 
-        if(cur.StartsWith('@'))
+        if (cur.StartsWith('@'))
         {
-            var ilnames = GetImgLabel?.Invoke()?? [];
-            foreach(var name in ilnames)
+            var ilnames = GetImgLabel?.Invoke() ?? [];
+            foreach (var name in ilnames)
             {
                 completions.Add(new EcpCompletionData($"@{name}"));
             }
-        }else if (cur.StartsWith('_') || cur.StartsWith('$'))
+        }
+        else if (cur.StartsWith('_') || cur.StartsWith('$'))
         {
             var tok = Scripter.GetTokens(Editor.Text, cur);
-            foreach(var name in tok)
+            foreach (var name in tok)
             {
                 completions.Add(new EcpCompletionData(name));
             }
@@ -55,7 +56,7 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
 
     private bool IsWordPart(char c)
     {
-        return char.IsLetterOrDigit(c) || "@$_".IndexOf(c) !=-1;
+        return char.IsLetterOrDigit(c) || "@$_".IndexOf(c) != -1;
     }
 
     public string GetCurrentWord(TextDocument document, int offset)

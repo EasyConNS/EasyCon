@@ -1,4 +1,4 @@
-﻿using EasyDevice;
+using EasyDevice;
 
 namespace EasyCon2.Forms
 {
@@ -26,7 +26,7 @@ namespace EasyCon2.Forms
             int y_start = Pos.Y;
             int y_end = y;
             // move x
-            if (Pos.X >x)
+            if (Pos.X > x)
             {
                 x_start = x;
                 x_end = Pos.X;
@@ -137,7 +137,7 @@ namespace EasyCon2.Forms
             Action<bool> AsyncUIDelegate = delegate (bool n) { startButton.Enabled = n; };
             Pos = new Point(0, 0);
             Rows = new List<List<Forms.Line>>();
-            if(image == null)
+            if (image == null)
             {
                 startButton.Invoke(AsyncUIDelegate, new object[] { true });
                 MessageBox.Show("未加载图片");
@@ -165,14 +165,14 @@ namespace EasyCon2.Forms
             }
 
             // search line
-            for (int i = start_row; i < start_row+row; i++)
+            for (int i = start_row; i < start_row + row; i++)
             {
                 bool line_find = false;
                 List<Line> Lines = new List<Line>();
-                for (int j = start_col; j < start_col+col; j++)
+                for (int j = start_col; j < start_col + col; j++)
                 {
                     Color color = pic.GetPixel(j, i);
-                    if(reverse)
+                    if (reverse)
                     {
                         if (color.R + color.G + color.B > 255 * 3 / 2 && line_find == false)
                         {
@@ -217,13 +217,13 @@ namespace EasyCon2.Forms
                     }
                     Rows.Add(Lines);
                 }
-                    
+
             }
 
             foreach (List<Line> Lines in Rows)
             {
                 // search nearest line
-                if (Math.Abs(Pos.Y-Lines[0].start.Y) > Math.Abs(Pos.Y - Lines.Last().end.Y))
+                if (Math.Abs(Pos.Y - Lines[0].start.Y) > Math.Abs(Pos.Y - Lines.Last().end.Y))
                     Lines.Reverse();
 
                 // draw line
@@ -269,8 +269,8 @@ namespace EasyCon2.Forms
                 {
                     if (source.IsCancellationRequested)
                         return;
-                        //# and convert 255 vals to 0 to match logic in Joystick.c and invertColormap option
-                        if (direction == 0)
+                    //# and convert 255 vals to 0 to match logic in Joystick.c and invertColormap option
+                    if (direction == 0)
                     {
                         Color color = pic.GetPixel(j, i);
                         if (color.R + color.G + color.B < 255 * 3 / 2)
@@ -381,12 +381,12 @@ namespace EasyCon2.Forms
             bool reverse = reverseCheck.Checked;
             int point_num = 0;
 
-            if(start_row + row>120)
+            if (start_row + row > 120)
             {
                 row = 120 - start_row;
             }
 
-            if(start_col + col>320)
+            if (start_col + col > 320)
             {
                 col = 320 - start_col;
             }
@@ -483,14 +483,14 @@ namespace EasyCon2.Forms
                     }
                 }
             }
-            evaluateLabel.Text = "耗时：" + (point_num * (wait+ duration) / 1000.0 / 60.0).ToString("0.00") + "mins";
+            evaluateLabel.Text = "耗时：" + (point_num * (wait + duration) / 1000.0 / 60.0).ToString("0.00") + "mins";
         }
 
         private void pictureBox1_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
-                curPosLabel.Text="当前位置:"+(e.X/2).ToString()+","+(e.Y/2).ToString();
+                curPosLabel.Text = "当前位置:" + (e.X / 2).ToString() + "," + (e.Y / 2).ToString();
             }
         }
     }

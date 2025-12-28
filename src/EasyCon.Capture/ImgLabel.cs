@@ -29,14 +29,14 @@ public record ImgLabel
     internal Rect _round => new(RangeX, RangeY, RangeWidth, RangeHeight);
     internal Rect _target => new(TargetX, TargetY, TargetWidth, TargetHeight);
 
-    private Bitmap _image;
+    private Image _image;
 
-    public Bitmap GetBitmap() => _image ??= Base64StringToImage(ImgBase64);
+    public Image GetImage() => _image ??= Base64StringToImage(ImgBase64);
 
-    public void SetImage(Bitmap bitmap)
+    public void SetImage(Image img)
     {
         if (!searchMethod.IsImageMethod()) return;
-        ImgBase64 = ImageToBase64(bitmap);
+        ImgBase64 = ImageToBase64(img);
         _image = null;
     }
 
@@ -57,20 +57,26 @@ public record ImgLabel
         }
     }
 
-    private static Bitmap Base64StringToImage(string basestr)
+    private static Image Base64StringToImage(string basestr)
     {
         if (IsBase64String(basestr))
         {
             byte[] imageBytes = Convert.FromBase64String(basestr);
             using var ms = new MemoryStream(imageBytes, 0, imageBytes.Length);
             ms.Write(imageBytes, 0, imageBytes.Length);
-            Image image = Image.FromStream(ms, true);
-            return (Bitmap)image;
+            return Image.FromStream(ms, true);
         }
         else
         {
-            var bitmap = new Bitmap(200, 50);
-            using Graphics g = Graphics.FromImage(bitmap);
+            //using var txtMat = new Mat(200,200, MatType.CV_8UC3,Scalar.White);
+            ////using (new Window("结果1", txtMat))
+            ////{
+            ////    Cv2.WaitKey();
+            ////}
+            //txtMat.PutText(basestr, new(5,5), HersheyFonts.HersheyTriplex, 0.8, Scalar.Black);
+            //return BitmapConverter.ToBitmap(txtMat);
+            var txtImg = new Bitmap(200, 50);
+            using Graphics g = Graphics.FromImage(txtImg);
             g.Clear(Color.White);
 
             // 设置字体和颜色
@@ -82,11 +88,11 @@ public record ImgLabel
 
             // 绘制文本
             g.DrawString(basestr, font, textBrush, point);
-            return bitmap;
+            return txtImg;
         }
     }
 
-    private static string ImageToBase64(Bitmap bmp)
+    private static string ImageToBase64(Image bmp)
     {
         try
         {
@@ -107,7 +113,7 @@ public record ImgLabel
 
     public bool Valid()
     {
-        if (ImgBase64.Length == 0) return false;
+        if (ImgBase64.Length == 0 && searchMethod.IsImageMethod()) return false;
         return true;
     }
 
@@ -168,15 +174,15 @@ public static class ILExt
             {
 
                 using var target = new Mat(ss, self._target);
-                ECSearch.FindOCR(self.ImgBase64, target, out var rlttxt, out md);
+                var rlttxt = ECSearch.FindOCR(self.ImgBase64, target, out md);
                 result = [new Point(self.TargetX - self.RangeX, self.TargetY- self.RangeY)];
             }
             else
             {
 
                 byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
-                using var ms = imageBytes.ToMat();
-                result = ECSearch.FindPic(range, ms, self.searchMethod, out md);
+                using var target = imageBytes.ToMat();
+                result = ECSearch.FindPic(range, target, self.searchMethod, out md);
             }
             md *= 100;
 

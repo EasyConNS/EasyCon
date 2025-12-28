@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
@@ -22,24 +21,6 @@ public class Meta
 }
 abstract class BinaryOp : Statement
 {
-    protected class BinaryOpParser : IStatementParser
-    {
-        readonly Meta _meta;
-
-        public BinaryOpParser(Meta meta)
-        {
-            _meta = meta;
-        }
-
-        public Parsing.Statement Parse(ParserArgument args)
-        {
-            var m = Regex.Match(args.Text, $@"^{Formats.RegisterEx}\s*\{_meta.Operator}=\s*{(_meta.OnlyInstant ? Formats.Instant : Formats.ValueEx)}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return Activator.CreateInstance(_meta.StatementType, FormatterUtil.GetRegEx(m.Groups[1].Value, true), args.Formatter.GetValueEx(m.Groups[2].Value)) as Parsing.Statement;
-            return null;
-        }
-    }
-
     protected abstract Meta MetaInfo { get; }
     public readonly ValReg RegDst;
     public readonly ValBase Value;
@@ -75,7 +56,6 @@ class Add : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(Add), typeof(Assembly.Instructions.AsmAdd), "+", (a, b) => a + b);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public Add(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -86,7 +66,6 @@ class Sub : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(Sub), null, "-", (a, b) => a - b);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public Sub(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -118,7 +97,6 @@ class Mul : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(Mul), typeof(Assembly.Instructions.AsmMul), "*", (a, b) => a * b);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public Mul(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -129,7 +107,6 @@ class Div : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(Div), typeof(Assembly.Instructions.AsmDiv), "/", (a, b) => a / b);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public Div(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -140,7 +117,6 @@ class RoundDiv : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(RoundDiv), typeof(Assembly.Instructions.AsmDiv), @"\", (a, b) => (int)Math.Round((double)a / b) );
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public RoundDiv(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -156,7 +132,6 @@ class Mod : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(Mod), typeof(Assembly.Instructions.AsmMod), "%", (a, b) => a % b);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public Mod(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -167,7 +142,6 @@ class And : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(And), typeof(Assembly.Instructions.AsmAnd), "&", (a, b) => a & b);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public And(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -178,7 +152,6 @@ class Or : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(Or), typeof(Assembly.Instructions.AsmOr), "|", (a, b) => a | b);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public Or(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -189,7 +162,6 @@ class Xor : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(Xor), typeof(Assembly.Instructions.AsmXor), "^", (a, b) => a ^ b);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public Xor(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -200,7 +172,6 @@ class ShiftLeft : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(ShiftLeft), typeof(Assembly.Instructions.AsmShiftLeft), "<<", (a, b) => a << b, true);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public ShiftLeft(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -211,7 +182,6 @@ class ShiftRight : BinaryOp
 {
     static readonly Meta _Meta = new(typeof(ShiftRight), typeof(Assembly.Instructions.AsmShiftRight), ">>", (a, b) => a >> b, true);
     protected override Meta MetaInfo => _Meta;
-    public static readonly IStatementParser Parser = new BinaryOpParser(_Meta);
 
     public ShiftRight(ValReg regdst, ValBase value)
         : base(regdst, value)

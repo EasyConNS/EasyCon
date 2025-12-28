@@ -47,11 +47,11 @@ internal static class MatchFacts
         // the sqD lower is good
         if (method == SearchMethod.SqDiff || method == SearchMethod.SqDiffNormed)
         {
-            return new(minLoc.X, minLoc.Y);
+            return minLoc;
         }
         else
         {
-            return new(maxLoc.X, maxLoc.Y);
+            return maxLoc;
         }
     }
 

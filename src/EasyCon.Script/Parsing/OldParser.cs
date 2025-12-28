@@ -1,14 +1,12 @@
-using EasyCon.Script2.Ast;
-using EasyCon.Script2.Syntax;
 using EasyScript.Statements;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing;
 
-partial class Parser(Dictionary<string, int> constants, Dictionary<string, ExternalVariable> extVars)
+partial class Parser(Dictionary<string, ExternalVariable> extVars)
 {
-    readonly Formatter _formatter = new(constants, extVars);
+    readonly Formatter _formatter = new(extVars);
 
     static IEnumerable<Meta> OpList()
     {
@@ -17,17 +15,6 @@ partial class Parser(Dictionary<string, int> constants, Dictionary<string, Exter
                     where assemblyType.IsSubclassOf(typeof(BinaryOp))
                     where assemblyType.GetField("_Meta", BindingFlags.NonPublic | BindingFlags.Static) != null
                     select assemblyType.GetField("_Meta", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null) as Meta;
-        return types;
-    }
-
-    static IEnumerable<IStatementParser> AsmParser()
-    {
-        var types = from domainAssembly in AppDomain.CurrentDomain.GetAssemblies()
-                    from assemblyType in domainAssembly.GetTypes()
-                    where assemblyType.IsSubclassOf(typeof(BinaryOp)) |
-                       assemblyType.IsSubclassOf(typeof(UnaryOp))
-                    where assemblyType.GetField("Parser") != null
-                    select assemblyType.GetField("Parser").GetValue(null) as IStatementParser;
         return types;
     }
 

@@ -35,6 +35,7 @@ partial class EasyConForm
                 }))
                 );
             textBoxScript.Text = _program.ToCode().Trim();
+            scriptTitleLabel.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
             textBoxScript.Select(0, 0);
             return true;
         }
@@ -55,7 +56,7 @@ partial class EasyConForm
 
     private async void ScriptRun()
     {
-        if (! await ScriptCompile())
+        if (!await ScriptCompile())
             return;
         if (_program.HasKeyAction)
         {
@@ -91,7 +92,7 @@ partial class EasyConForm
             _program.Run(this, new GamePadAdapter(NS));
             logTxtBox.Print("-- 运行结束 --", Color.Lime);
             StatusShowLog("运行结束");
-            SystemSounds.Beep.Play();
+            //SystemSounds.Beep.Play();
         }
         catch (ThreadInterruptedException)
         {

@@ -13,9 +13,9 @@ namespace EasyCon2
             ApplicationConfiguration.Initialize();
 
             var version = Environment.Version;
-            if (version.Major <6 && version.Build <=6)
+            if (version.Major < 6 && version.Build <= 6)
             {
-                MessageBox.Show(".Net°æ±¾¹ýµÍ£¬ÇëÉý¼¶µ½×îÐÂ°æ");
+                MessageBox.Show(".Netç‰ˆæœ¬è¿‡ä½Žï¼Œè¯·å‡çº§åˆ°æœ€æ–°ç‰ˆ");
                 return;
             }
             Application.Run(new Forms.EasyConForm());
