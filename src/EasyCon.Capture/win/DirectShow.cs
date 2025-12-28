@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Versioning;
 
-namespace EasyCapture;
+namespace EasyCon.Capture.win;
 
 [SupportedOSPlatform("windows")]
 static class DirectShow

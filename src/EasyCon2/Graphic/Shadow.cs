@@ -7,7 +7,9 @@ namespace EasyCon2.Graphic;
 public class Shadow
 {
     const string ShadowPath = @"Data\Shadows.bin";
-    const string CapturedPath = ImageRes.ImagePath + @"CapturedShadows\";
+    public const string ImagePath = @"Image\";
+    const string CapturedPath = ImagePath + @"CapturedShadows\";
+    const string ImageExtension = ".png";
     public const int X = 220;
     public const int Y = 232;
     public const int PW = 8;
@@ -138,7 +140,7 @@ public class Shadow
 
     static string GetCapturedPath(string hash)
     {
-        return CapturedPath + hash + ImageRes.ImageExtension;
+        return CapturedPath + hash + ImageExtension;
     }
 
     public static void LoadCaptured()
@@ -147,7 +149,7 @@ public class Shadow
         if (!dir.Exists)
             return;
         foreach (var fi in dir.GetFiles())
-            if (fi.Extension == ImageRes.ImageExtension)
+            if (fi.Extension == ImageExtension)
             {
                 var hash = fi.Name.Substring(0, fi.Name.Length - fi.Extension.Length);
                 if (_dict.ContainsKey(hash))

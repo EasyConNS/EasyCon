@@ -1,4 +1,4 @@
-using EasyCapture;
+using EasyCon.Capture;
 
 namespace EasyCon.Core;
 

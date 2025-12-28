@@ -1,4 +1,4 @@
-﻿namespace EC.Core.Assist;
+namespace EasyCon.Core.Assist;
 
 public enum WS_Role
 {

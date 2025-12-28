@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using WebSocketSharp;
 
-namespace EasyCon2.Assist;
+namespace EasyCon2.Helper;
 
 public class QqAssist(string token = "")
 {

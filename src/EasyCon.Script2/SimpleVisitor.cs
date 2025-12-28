@@ -178,7 +178,7 @@ public sealed class SimpleVisitor : AstVisitor
         Console.WriteLine("Return");
         return ast;
     }
-    public override ASTNode VisitKey(KeyStatement ast)
+    public override ASTNode VisitKey(GamePadStatement ast)
     {
         Console.WriteLine($"Key: {ast.KeyName}");
         return ast;

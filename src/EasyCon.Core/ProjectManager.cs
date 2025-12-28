@@ -1,6 +1,6 @@
 using System.IO.Compression;
 
-namespace EC.Core;
+namespace EasyCon.Core;
 
 public sealed class ProjectManager : IDisposable
 {

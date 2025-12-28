@@ -1,9 +1,9 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 
-namespace EC.Core.Assist;
+namespace EasyCon.Core.Assist;
 
 public sealed class AssistClient
 {

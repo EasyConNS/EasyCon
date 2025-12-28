@@ -261,7 +261,7 @@ public class AstFormatter : AstVisitor
         return call;
     }
 
-    public override ASTNode VisitKey(KeyStatement keyStatement)
+    public override ASTNode VisitKey(GamePadStatement keyStatement)
     {
         WriteLeadingTrivia(keyStatement);
         _writer.Write(keyStatement.KeyName);

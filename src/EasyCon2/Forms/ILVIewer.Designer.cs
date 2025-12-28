@@ -51,6 +51,9 @@ namespace EasyCon2.Forms
             srchmethodlabel = new Label();
             searchMethodComBox = new ComboBox();
             targetImg = new PictureBox();
+            checkBox1 = new CheckBox();
+            checkBox2 = new CheckBox();
+            checkBox3 = new CheckBox();
             ((System.ComponentModel.ISupportInitialize)searchHNUD).BeginInit();
             ((System.ComponentModel.ISupportInitialize)searchWNUD).BeginInit();
             ((System.ComponentModel.ISupportInitialize)searchYNUD).BeginInit();
@@ -64,7 +67,7 @@ namespace EasyCon2.Forms
             // 
             // searchHNUD
             // 
-            searchHNUD.Location = new Point(343, 189);
+            searchHNUD.Location = new Point(337, 176);
             searchHNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
             searchHNUD.Name = "searchHNUD";
             searchHNUD.Size = new Size(57, 27);
@@ -72,7 +75,7 @@ namespace EasyCon2.Forms
             // 
             // searchWNUD
             // 
-            searchWNUD.Location = new Point(248, 188);
+            searchWNUD.Location = new Point(242, 175);
             searchWNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
             searchWNUD.Name = "searchWNUD";
             searchWNUD.Size = new Size(57, 27);
@@ -80,7 +83,7 @@ namespace EasyCon2.Forms
             // 
             // searchYNUD
             // 
-            searchYNUD.Location = new Point(343, 160);
+            searchYNUD.Location = new Point(337, 147);
             searchYNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
             searchYNUD.Name = "searchYNUD";
             searchYNUD.Size = new Size(57, 27);
@@ -88,7 +91,7 @@ namespace EasyCon2.Forms
             // 
             // searchXNUD
             // 
-            searchXNUD.Location = new Point(248, 159);
+            searchXNUD.Location = new Point(242, 146);
             searchXNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
             searchXNUD.Name = "searchXNUD";
             searchXNUD.Size = new Size(57, 27);
@@ -96,7 +99,7 @@ namespace EasyCon2.Forms
             // 
             // targetHNUD
             // 
-            targetHNUD.Location = new Point(140, 188);
+            targetHNUD.Location = new Point(134, 175);
             targetHNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
             targetHNUD.Name = "targetHNUD";
             targetHNUD.Size = new Size(57, 27);
@@ -104,7 +107,7 @@ namespace EasyCon2.Forms
             // 
             // targetWNUD
             // 
-            targetWNUD.Location = new Point(39, 188);
+            targetWNUD.Location = new Point(33, 175);
             targetWNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
             targetWNUD.Name = "targetWNUD";
             targetWNUD.Size = new Size(57, 27);
@@ -112,7 +115,7 @@ namespace EasyCon2.Forms
             // 
             // targetYNUD
             // 
-            targetYNUD.Location = new Point(140, 159);
+            targetYNUD.Location = new Point(134, 146);
             targetYNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
             targetYNUD.Name = "targetYNUD";
             targetYNUD.Size = new Size(57, 27);
@@ -120,7 +123,7 @@ namespace EasyCon2.Forms
             // 
             // targetXNUD
             // 
-            targetXNUD.Location = new Point(39, 159);
+            targetXNUD.Location = new Point(33, 146);
             targetXNUD.Maximum = new decimal(new int[] { 9999, 0, 0, 0 });
             targetXNUD.Name = "targetXNUD";
             targetXNUD.Size = new Size(57, 27);
@@ -128,8 +131,7 @@ namespace EasyCon2.Forms
             // 
             // imgLabelNametxt
             // 
-            imgLabelNametxt.Enabled = false;
-            imgLabelNametxt.Location = new Point(99, 32);
+            imgLabelNametxt.Location = new Point(93, 1);
             imgLabelNametxt.Margin = new Padding(4);
             imgLabelNametxt.Name = "imgLabelNametxt";
             imgLabelNametxt.Size = new Size(133, 27);
@@ -139,7 +141,7 @@ namespace EasyCon2.Forms
             // imgnamelabel
             // 
             imgnamelabel.AutoSize = true;
-            imgnamelabel.Location = new Point(38, 34);
+            imgnamelabel.Location = new Point(32, 3);
             imgnamelabel.Margin = new Padding(4, 0, 4, 0);
             imgnamelabel.Name = "imgnamelabel";
             imgnamelabel.Size = new Size(58, 20);
@@ -149,7 +151,7 @@ namespace EasyCon2.Forms
             // searchlabel
             // 
             searchlabel.AutoSize = true;
-            searchlabel.Location = new Point(218, 135);
+            searchlabel.Location = new Point(212, 122);
             searchlabel.Margin = new Padding(4, 0, 4, 0);
             searchlabel.Name = "searchlabel";
             searchlabel.Size = new Size(73, 20);
@@ -159,7 +161,7 @@ namespace EasyCon2.Forms
             // targetlabel
             // 
             targetlabel.AutoSize = true;
-            targetlabel.Location = new Point(13, 135);
+            targetlabel.Location = new Point(7, 122);
             targetlabel.Margin = new Padding(4, 0, 4, 0);
             targetlabel.Name = "targetlabel";
             targetlabel.Size = new Size(73, 20);
@@ -169,7 +171,7 @@ namespace EasyCon2.Forms
             // xlbl
             // 
             xlbl.AutoSize = true;
-            xlbl.Location = new Point(13, 162);
+            xlbl.Location = new Point(7, 149);
             xlbl.Margin = new Padding(4, 0, 4, 0);
             xlbl.Name = "xlbl";
             xlbl.Size = new Size(23, 20);
@@ -179,7 +181,7 @@ namespace EasyCon2.Forms
             // ylbl
             // 
             ylbl.AutoSize = true;
-            ylbl.Location = new Point(115, 162);
+            ylbl.Location = new Point(109, 149);
             ylbl.Margin = new Padding(4, 0, 4, 0);
             ylbl.Name = "ylbl";
             ylbl.Size = new Size(22, 20);
@@ -189,7 +191,7 @@ namespace EasyCon2.Forms
             // wlbl
             // 
             wlbl.AutoSize = true;
-            wlbl.Location = new Point(9, 191);
+            wlbl.Location = new Point(3, 178);
             wlbl.Margin = new Padding(4, 0, 4, 0);
             wlbl.Name = "wlbl";
             wlbl.Size = new Size(28, 20);
@@ -199,7 +201,7 @@ namespace EasyCon2.Forms
             // heightlbl
             // 
             heightlbl.AutoSize = true;
-            heightlbl.Location = new Point(110, 191);
+            heightlbl.Location = new Point(104, 178);
             heightlbl.Margin = new Padding(4, 0, 4, 0);
             heightlbl.Name = "heightlbl";
             heightlbl.Size = new Size(28, 20);
@@ -209,7 +211,7 @@ namespace EasyCon2.Forms
             // sxlbl
             // 
             sxlbl.AutoSize = true;
-            sxlbl.Location = new Point(222, 162);
+            sxlbl.Location = new Point(216, 149);
             sxlbl.Margin = new Padding(4, 0, 4, 0);
             sxlbl.Name = "sxlbl";
             sxlbl.Size = new Size(23, 20);
@@ -219,7 +221,7 @@ namespace EasyCon2.Forms
             // sylbl
             // 
             sylbl.AutoSize = true;
-            sylbl.Location = new Point(318, 163);
+            sylbl.Location = new Point(312, 150);
             sylbl.Margin = new Padding(4, 0, 4, 0);
             sylbl.Name = "sylbl";
             sylbl.Size = new Size(22, 20);
@@ -229,7 +231,7 @@ namespace EasyCon2.Forms
             // swlbl
             // 
             swlbl.AutoSize = true;
-            swlbl.Location = new Point(218, 191);
+            swlbl.Location = new Point(212, 178);
             swlbl.Margin = new Padding(4, 0, 4, 0);
             swlbl.Name = "swlbl";
             swlbl.Size = new Size(28, 20);
@@ -239,7 +241,7 @@ namespace EasyCon2.Forms
             // sheightlbl
             // 
             sheightlbl.AutoSize = true;
-            sheightlbl.Location = new Point(318, 192);
+            sheightlbl.Location = new Point(312, 179);
             sheightlbl.Margin = new Padding(4, 0, 4, 0);
             sheightlbl.Name = "sheightlbl";
             sheightlbl.Size = new Size(28, 20);
@@ -249,7 +251,7 @@ namespace EasyCon2.Forms
             // srchmethodlabel
             // 
             srchmethodlabel.AutoSize = true;
-            srchmethodlabel.Location = new Point(26, 78);
+            srchmethodlabel.Location = new Point(20, 39);
             srchmethodlabel.Margin = new Padding(4, 0, 4, 0);
             srchmethodlabel.Name = "srchmethodlabel";
             srchmethodlabel.Size = new Size(73, 20);
@@ -258,17 +260,18 @@ namespace EasyCon2.Forms
             // 
             // searchMethodComBox
             // 
+            searchMethodComBox.DropDownStyle = ComboBoxStyle.DropDownList;
             searchMethodComBox.FormattingEnabled = true;
-            searchMethodComBox.Location = new Point(99, 74);
+            searchMethodComBox.Location = new Point(93, 35);
             searchMethodComBox.Margin = new Padding(4);
             searchMethodComBox.Name = "searchMethodComBox";
             searchMethodComBox.Size = new Size(133, 28);
             searchMethodComBox.TabIndex = 46;
-            searchMethodComBox.Text = "选择搜索方法";
             // 
             // targetImg
             // 
-            targetImg.Location = new Point(280, 11);
+            targetImg.BorderStyle = BorderStyle.FixedSingle;
+            targetImg.Location = new Point(289, 3);
             targetImg.Margin = new Padding(4);
             targetImg.Name = "targetImg";
             targetImg.Size = new Size(120, 120);
@@ -276,10 +279,46 @@ namespace EasyCon2.Forms
             targetImg.TabIndex = 67;
             targetImg.TabStop = false;
             // 
+            // checkBox1
+            // 
+            checkBox1.AutoSize = true;
+            checkBox1.FlatStyle = FlatStyle.Flat;
+            checkBox1.Location = new Point(22, 81);
+            checkBox1.Name = "checkBox1";
+            checkBox1.Size = new Size(57, 24);
+            checkBox1.TabIndex = 68;
+            checkBox1.Text = "灰度";
+            checkBox1.UseVisualStyleBackColor = true;
+            // 
+            // checkBox2
+            // 
+            checkBox2.AutoSize = true;
+            checkBox2.FlatStyle = FlatStyle.Flat;
+            checkBox2.Location = new Point(85, 81);
+            checkBox2.Name = "checkBox2";
+            checkBox2.Size = new Size(87, 24);
+            checkBox2.TabIndex = 69;
+            checkBox2.Text = "高斯模糊";
+            checkBox2.UseVisualStyleBackColor = true;
+            // 
+            // checkBox3
+            // 
+            checkBox3.AutoSize = true;
+            checkBox3.FlatStyle = FlatStyle.Flat;
+            checkBox3.Location = new Point(178, 81);
+            checkBox3.Name = "checkBox3";
+            checkBox3.Size = new Size(72, 24);
+            checkBox3.TabIndex = 70;
+            checkBox3.Text = "二值化";
+            checkBox3.UseVisualStyleBackColor = true;
+            // 
             // ILVIewer
             // 
             AutoScaleDimensions = new SizeF(9F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
+            Controls.Add(checkBox3);
+            Controls.Add(checkBox2);
+            Controls.Add(checkBox1);
             Controls.Add(targetImg);
             Controls.Add(searchHNUD);
             Controls.Add(searchWNUD);
@@ -304,7 +343,7 @@ namespace EasyCon2.Forms
             Controls.Add(srchmethodlabel);
             Controls.Add(searchMethodComBox);
             Name = "ILVIewer";
-            Size = new Size(412, 225);
+            Size = new Size(415, 206);
             ((System.ComponentModel.ISupportInitialize)searchHNUD).EndInit();
             ((System.ComponentModel.ISupportInitialize)searchWNUD).EndInit();
             ((System.ComponentModel.ISupportInitialize)searchYNUD).EndInit();
@@ -343,5 +382,8 @@ namespace EasyCon2.Forms
         private Label srchmethodlabel;
         private ComboBox searchMethodComBox;
         private PictureBox targetImg;
+        private CheckBox checkBox1;
+        private CheckBox checkBox2;
+        private CheckBox checkBox3;
     }
 }

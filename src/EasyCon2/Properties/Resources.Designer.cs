@@ -75,9 +75,9 @@ namespace EasyCon2.Properties {
         ///
         ///第一步，先截图，截图放大区域，截图后按住左键平移截图，滚轮放大缩小图片
         ///
-        ///第二步，点击开始圈选(红)，右键圈选（这里圈选的是搜索范围），然后点击确定搜索范围
+        ///第二步，点击圈选范围（红框），右键移动圈选（这里圈选的是搜索范围），然后点击确定搜索范围
         ///
-        ///第三步，点击开始圈选(绿)，右键圈选（这里群选的是搜索目标），然后点击确定搜索目标
+        ///第三步，点击圈选目标（绿框)，右键移动圈选（这里圈选的是搜索目标），然后点击确定搜索目标
         ///
         ///第四步，点击搜索测试，查看是否能找到目标图片
         ///
@@ -101,8 +101,7 @@ namespace EasyCon2.Properties {
         ///        PRINT $2 &amp; 找到了
         ///    ENDIF
         ///
-        ///名词解释：
-        ///        /// [字符串的其余部分被截断]&quot;; 的本地化字符串。
+        ///名词 [字符串的其余部分被截断]&quot;; 的本地化字符串。
         /// </summary>
         internal static string capturedoc {
             get {
@@ -190,26 +189,6 @@ namespace EasyCon2.Properties {
         internal static string scriptdoc {
             get {
                 return ResourceManager.GetString("scriptdoc", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
-        /// </summary>
-        internal static System.Drawing.Bitmap start {
-            get {
-                object obj = ResourceManager.GetObject("start", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   查找 System.Drawing.Bitmap 类型的本地化资源。
-        /// </summary>
-        internal static System.Drawing.Bitmap stop {
-            get {
-                object obj = ResourceManager.GetObject("stop", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
             }
         }
         

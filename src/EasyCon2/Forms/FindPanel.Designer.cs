@@ -40,6 +40,8 @@ namespace EasyCon2.Forms
             // 
             // searchBtn
             // 
+            searchBtn.FlatAppearance.BorderSize = 0;
+            searchBtn.FlatStyle = FlatStyle.Flat;
             searchBtn.Location = new Point(228, 30);
             searchBtn.Name = "searchBtn";
             searchBtn.Size = new Size(69, 35);
@@ -71,6 +73,8 @@ namespace EasyCon2.Forms
             // 
             // replaceBtn
             // 
+            replaceBtn.FlatAppearance.BorderSize = 0;
+            replaceBtn.FlatStyle = FlatStyle.Flat;
             replaceBtn.Location = new Point(228, 74);
             replaceBtn.Name = "replaceBtn";
             replaceBtn.Size = new Size(69, 29);

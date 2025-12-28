@@ -9,12 +9,13 @@ using System.Security.Cryptography;
 using LibAmiibo.Data;
 using LibAmiibo.Data.Figurine;
 using EasyCon2.Models;
+using EasyCapture;
 
 namespace EasyCon2.Forms
 {
     public partial class ESPConfig : Form
     {
-        ColorDialog colorDialog = new ColorDialog();
+        ColorDialog colorDialog = new();
         internal NintendoSwitch NS;
         static readonly string AmiiboDir = Application.StartupPath + "Amiibo\\";
         List<AmiiboInfo> amiibos;
@@ -57,20 +58,21 @@ namespace EasyCon2.Forms
 
         private void setColor_Click(object sender, EventArgs e)
         {
-            byte[] color = new byte[12];
-            color[0] = bodyLabel.BackColor.R;
-            color[1] = bodyLabel.BackColor.G;
-            color[2] = bodyLabel.BackColor.B;
-            color[3] = buttonLabel.BackColor.R;
-            color[4] = buttonLabel.BackColor.G;
-            color[5] = buttonLabel.BackColor.B;
-            color[6] = gripLLabel.BackColor.R;
-            color[7] = gripLLabel.BackColor.G;
-            color[8] = gripLLabel.BackColor.B;
-            color[9] = gripRlabel.BackColor.R;
-            color[10] = gripRlabel.BackColor.G;
-            color[11] = gripRlabel.BackColor.B;
-
+            byte[] color =
+            [
+                bodyLabel.BackColor.R,
+                bodyLabel.BackColor.G,
+                bodyLabel.BackColor.B,
+                buttonLabel.BackColor.R,
+                buttonLabel.BackColor.G,
+                buttonLabel.BackColor.B,
+                gripLLabel.BackColor.R,
+                gripLLabel.BackColor.G,
+                gripLLabel.BackColor.B,
+                gripRlabel.BackColor.R,
+                gripRlabel.BackColor.G,
+                gripRlabel.BackColor.B,
+            ];
             if (!NS.IsConnected())
             {
                 MessageBox.Show("串口未连接");
@@ -181,118 +183,24 @@ namespace EasyCon2.Forms
             }
         }
 
-        public static void ColorToHSV(Color color, out double hue, out double saturation, out double value)
+        private void Color_Changed(object sender, EventArgs e)
         {
-            int max = Math.Max(color.R, Math.Max(color.G, color.B));
-            int min = Math.Min(color.R, Math.Min(color.G, color.B));
-
-            hue = color.GetHue();
-            saturation = (max == 0) ? 0 : 1d - (1d * min / max);
-            value = max / 255d;
-        }
-
-        public static Color ColorFromHSV(double hue, double saturation, double value)
-        {
-            int hi = Convert.ToInt32(Math.Floor(hue / 60)) % 6;
-            double f = hue / 60 - Math.Floor(hue / 60);
-
-            value = value * 255;
-            int v = Convert.ToInt32(value);
-            int p = Convert.ToInt32(value * (1 - saturation));
-            int q = Convert.ToInt32(value * (1 - f * saturation));
-            int t = Convert.ToInt32(value * (1 - (1 - f) * saturation));
-
-            if (hi == 0)
-                return Color.FromArgb(255, v, t, p);
-            else if (hi == 1)
-                return Color.FromArgb(255, q, v, p);
-            else if (hi == 2)
-                return Color.FromArgb(255, p, v, t);
-            else if (hi == 3)
-                return Color.FromArgb(255, p, q, v);
-            else if (hi == 4)
-                return Color.FromArgb(255, t, p, v);
-            else
-                return Color.FromArgb(255, v, p, q);
-        }
-
-        private void body_Click(object sender, EventArgs e)
-        {
+            Label ctrl = (Label)sender;
             double[] hsv = {0,0,0};
             if (colorDialog.ShowDialog() == DialogResult.OK)
             {
                 Debug.Print(colorDialog.Color.ToString());
-                
-                ColorToHSV(colorDialog.Color, out hsv[0], out hsv[1], out hsv[2]);
-                Color rc = ColorFromHSV( (hsv[0]+180)%360,  hsv[1],  hsv[2]);
+
+                HSVColorExt.ColorToHSV(colorDialog.Color, out hsv[0], out hsv[1], out hsv[2]);
+                Color rc = HSVColorExt.ColorFromHSV( (hsv[0]+180)%360,  hsv[1],  hsv[2]);
                 if (rc.ToArgb() == Color.Black.ToArgb())
                     rc = Color.White;
                 else if (rc.ToArgb() == Color.White.ToArgb())
                     rc = Color.Black;
 
                 Debug.WriteLine(hsv[0].ToString()+" "+hsv[1].ToString()+" "+hsv[2].ToString());
-                bodyLabel.BackColor = colorDialog.Color;
-                bodyLabel.ForeColor = rc;
-            }
-        }
-
-        private void gripl_Click(object sender, EventArgs e)
-        {
-            double[] hsv = { 0, 0, 0 };
-            if (colorDialog.ShowDialog() == DialogResult.OK)
-            {
-                Debug.Print(colorDialog.Color.ToString());
-
-                ColorToHSV(colorDialog.Color, out hsv[0], out hsv[1], out hsv[2]);
-                Color rc = ColorFromHSV((hsv[0] + 180) % 360, hsv[1], hsv[2]);
-                if (rc.ToArgb() == Color.Black.ToArgb())
-                    rc = Color.White;
-                else if (rc.ToArgb() == Color.White.ToArgb())
-                    rc = Color.Black;
-
-                Debug.WriteLine(hsv[0].ToString() + " " + hsv[1].ToString() + " " + hsv[2].ToString());
-                gripLLabel.BackColor = colorDialog.Color;
-                gripLLabel.ForeColor = rc;
-            }
-        }
-
-        private void button_Click(object sender, EventArgs e)
-        {
-            double[] hsv = { 0, 0, 0 };
-            if (colorDialog.ShowDialog() == DialogResult.OK)
-            {
-                Debug.Print(colorDialog.Color.ToString());
-
-                ColorToHSV(colorDialog.Color, out hsv[0], out hsv[1], out hsv[2]);
-                Color rc = ColorFromHSV((hsv[0] + 180) % 360, hsv[1], hsv[2]);
-                if (rc.ToArgb() == Color.Black.ToArgb())
-                    rc = Color.White;
-                else if (rc.ToArgb() == Color.White.ToArgb())
-                    rc = Color.Black;
-
-                Debug.WriteLine(hsv[0].ToString() + " " + hsv[1].ToString() + " " + hsv[2].ToString());
-                buttonLabel.BackColor = colorDialog.Color;
-                buttonLabel.ForeColor = rc;
-            }
-        }
-
-        private void gripr_Click(object sender, EventArgs e)
-        {
-            double[] hsv = { 0, 0, 0 };
-            if (colorDialog.ShowDialog() == DialogResult.OK)
-            {
-                Debug.Print(colorDialog.Color.ToString());
-
-                ColorToHSV(colorDialog.Color, out hsv[0], out hsv[1], out hsv[2]);
-                Color rc = ColorFromHSV((hsv[0] + 180) % 360, hsv[1], hsv[2]);
-                if (rc.ToArgb() == Color.Black.ToArgb())
-                    rc = Color.White;
-                else if (rc.ToArgb() == Color.White.ToArgb())
-                    rc = Color.Black;
-
-                Debug.WriteLine(hsv[0].ToString() + " " + hsv[1].ToString() + " " + hsv[2].ToString());
-                gripRlabel.BackColor = colorDialog.Color;
-                gripRlabel.ForeColor = rc;
+                ctrl.BackColor = colorDialog.Color;
+                ctrl.ForeColor = rc;
             }
         }
 

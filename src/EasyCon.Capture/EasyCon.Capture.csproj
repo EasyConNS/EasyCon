@@ -13,8 +13,9 @@
 		<PackageReference Include="Tesseract.Drawing" />
 	</ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy &quot;$(ProjectDir)Resources\*.traineddata&quot; &quot;$(TargetDir)Tessdata\&quot; /Y " />
-  </Target>
-
+	<ItemGroup>
+		<Content Include="Tessdata\*.traineddata" Pack="true" PackageCopyToOutput="true" PackagePath="Tessdata">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 </Project>

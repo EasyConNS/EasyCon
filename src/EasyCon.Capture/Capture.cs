@@ -1,6 +1,7 @@
+using EasyCon.Capture.win;
 using OpenCvSharp;
 
-namespace EasyCapture;
+namespace EasyCon.Capture;
 
 public sealed class ECCapture
 {

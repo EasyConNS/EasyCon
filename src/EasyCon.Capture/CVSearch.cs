@@ -1,7 +1,6 @@
 using OpenCvSharp;
-using System.Diagnostics;
 
-namespace EasyCapture;
+namespace EasyCon.Capture;
 
 internal static class OpenCVSearch
 {
@@ -60,63 +59,13 @@ internal static class OpenCVSearch
         return result8U;
     }
 
-    public static List<Point> EdgeDetect(Mat big, Mat small, SearchMethod method, out double matchDegree)
+    public static Mat EdgeDetect(Mat src, SearchMethod method)
     {
-        using var result = method == SearchMethod.EdgeDetectLaplacian? LaplacianEdge(small) : XYAvg(small);
-        using var result2 = method == SearchMethod.EdgeDetectLaplacian ? LaplacianEdge(big) : XYAvg(big);
-
-        return OpenCvFindPic(result2, result, SearchMethod.CCoeffNormed, out matchDegree);
-    }
-
-    public static List<Point> OpenCvFindPic(Mat big, Mat small, SearchMethod method, out double matchDegree)
-    {
-        List<Point> res = [];
-        using var result = new Mat();
-        var minLoc = new Point(0, 0);
-        var maxLoc = new Point(0, 0);
-        double max = 0, min = 0;
-        matchDegree = 0;
-        var tmplMatchMode = method switch
+        return method switch
         {
-            SearchMethod.SqDiff => TemplateMatchModes.SqDiff,
-            SearchMethod.SqDiffNormed => TemplateMatchModes.SqDiffNormed,
-            SearchMethod.CCorr => TemplateMatchModes.CCorr,
-            SearchMethod.CCorrNormed => TemplateMatchModes.CCorrNormed,
-            SearchMethod.CCoeff => TemplateMatchModes.CCoeff,
-            SearchMethod.CCoeffNormed => TemplateMatchModes.CCoeffNormed,
-            _ => TemplateMatchModes.CCoeffNormed,
+            SearchMethod.EdgeDetectXY => XYAvg(src),
+            SearchMethod.EdgeDetectLaplacian => LaplacianEdge(src),
+            _ => throw new NotImplementedException(),
         };
-
-        Cv2.MatchTemplate(big, small, result, tmplMatchMode);
-        Cv2.MinMaxLoc(result, out min, out max, out minLoc, out maxLoc);
-
-        Debug.WriteLine($"{method}[min:{min}, max:{max}]");
-        switch (method)
-        {
-            case SearchMethod.SqDiff:
-            case SearchMethod.SqDiffNormed:
-                matchDegree = (1 - min) / 1.0;
-                break;
-            case SearchMethod.CCorr:
-            case SearchMethod.CCorrNormed:
-                matchDegree = max / 1.0;
-                break;
-            case SearchMethod.CCoeff:
-            case SearchMethod.CCoeffNormed:
-            default:
-                matchDegree = (max + 1) / 2.0;
-                break;
-        }
-        // the sqD lower is good
-        if (method == SearchMethod.SqDiff || method == SearchMethod.SqDiffNormed)
-        {
-            res.Add(new(minLoc.X, minLoc.Y));
-        }
-        else
-        {
-            res.Add(new(maxLoc.X, maxLoc.Y));
-        }
-
-        return res;
     }
 }

@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Text;
 
-namespace EasyCapture;
+namespace EasyCon.Capture;
 
 /// <summary>
 /// 图像处理格式定义
@@ -40,12 +40,12 @@ public class ImageLabelX
     /// <summary>
     /// 检查当前处理方式是否适用于图像数据
     /// </summary>
-    public bool IsImageProcessingMethod => (int)ProcessingMethod < 10;
+    public bool IsImageProcessingMethod => ProcessingMethod.IsImageMethod();
 
     /// <summary>
     /// 检查当前处理方式是否适用于文本数据
     /// </summary>
-    public bool IsTextProcessingMethod => (int)ProcessingMethod > 10;
+    public bool IsTextProcessingMethod => !IsImageProcessingMethod;
 
     public string LabelName { get; set; }
 

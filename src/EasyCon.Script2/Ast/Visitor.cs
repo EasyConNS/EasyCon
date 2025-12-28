@@ -19,7 +19,7 @@ public interface IAstVisitor<T>
     T VisitFunctionDefinition(FunctionDefinitionStatement ast);
     T VisitReturn(ReturnStatement ast);
     T VisitCall(CallExpression ast);
-    T VisitKey(KeyStatement ast);
+    T VisitKey(GamePadStatement ast);
 }
 
 public abstract class AstVisitor : IAstVisitor<ASTNode>
@@ -96,7 +96,7 @@ public abstract class AstVisitor : IAstVisitor<ASTNode>
     {
         return ast;
     }
-    public virtual ASTNode VisitKey(KeyStatement ast)
+    public virtual ASTNode VisitKey(GamePadStatement ast)
     {
         return ast;
     }

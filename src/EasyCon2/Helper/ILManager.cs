@@ -1,4 +1,4 @@
-using EasyCapture;
+using EasyCon.Capture;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -9,7 +9,6 @@ namespace EasyCon2.Helper;
 internal class ILManager : INotifyPropertyChanged
 {
     private ImgLabel _cur = new();
-    public Bitmap GetBitmap() => _cur.GetBitmap();
 
     public ImgLabel Current
     {

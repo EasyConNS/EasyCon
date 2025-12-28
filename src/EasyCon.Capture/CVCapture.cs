@@ -1,17 +1,22 @@
 using OpenCvSharp;
 using System.Diagnostics;
 
-namespace EasyCapture;
+namespace EasyCon.Capture;
 
-public class OpenCVCapture : IDisposable
+public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureAPIs.ANY) : IDisposable
 {
     private readonly VideoCapture videoCapture = new();
+
+    private int deviceId = idx;
+    private VideoCaptureAPIs refs = apiRefs;
 
     public bool IsOpened => videoCapture.IsOpened();
 
     public bool Open(int idx, int apiRefs = 0)
     {
-        return videoCapture.Open(idx, (VideoCaptureAPIs)apiRefs);
+        deviceId = idx;
+        refs = (VideoCaptureAPIs)apiRefs;
+        return videoCapture.Open(deviceId, refs);
     }
 
     public void SetProperties(int x, int y)

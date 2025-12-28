@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Web;
 
-namespace EC.Core;
+namespace EasyCon.Core;
 
 public class PushPlusClient(string token)
 {

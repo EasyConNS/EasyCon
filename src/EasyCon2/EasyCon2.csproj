@@ -59,10 +59,16 @@
     <None Update="更新说明.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+	  <None Include="Resources\AmiiboImages\*">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
   </ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy &quot;$(ProjectDir)Resources\AmiiboImages&quot; &quot;$(TargetDir)Amiibo\AmiiboImages\&quot; /Y " />
+  <Target Name="PostBuild" BeforeTargets="PrepareForBuild">
+	  <ItemGroup>
+		  <AmiiboResourceFolder Include="Resources\AmiiboImages\*"></AmiiboResourceFolder>
+	  </ItemGroup>
+	  <Copy SourceFiles="@(AmiiboResourceFolder)" DestinationFolder="$(OutputPath)\Amiibo\AmiiboImages"></Copy>
   </Target>
 
 </Project>

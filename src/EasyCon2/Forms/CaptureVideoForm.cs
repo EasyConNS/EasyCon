@@ -1,4 +1,4 @@
-using EasyCapture;
+using EasyCon.Capture;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
 using OpenCvSharp.Extensions;
@@ -32,7 +32,7 @@ namespace EasyCon2.Forms
         private readonly OpenCVCapture cvcap = new();
 
         private readonly object _lock = new();
-        private ILManager ilManager = new();
+        private ILManager imglManager = new();
 
         private Point _curResolution = new(1920, 1080);
         public Point CurResolution
@@ -76,13 +76,9 @@ namespace EasyCon2.Forms
         public int DeviceID => deviceId;
         public bool IsOpened => cvcap.IsOpened;
 
-        public IEnumerable<ImgLabel> LoadedLabels => ilManager.Labels.Select(il =>
-        {
-            il.Current.GetFrame = GetImage;
-            return il.Current;
-        });
+        public IEnumerable<ImgLabel> LoadedLabels => imglManager.Labels.Select(il => il.Current);
 
-        public void LoadImgLabels() => ilManager.LoadImgLabels(ImgDir);
+        public void LoadImgLabels() => imglManager.LoadImgLabels(ImgDir);
 
         public CaptureVideoForm()
         {
@@ -112,7 +108,7 @@ namespace EasyCon2.Forms
             Directory.CreateDirectory(CapDir);
             Directory.CreateDirectory(ImgDir);
 
-            ilManager.LoadImgLabels(ImgDir);
+            imglManager.LoadImgLabels(ImgDir);
 
             VideoMonitor.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             VideoMonitor.PaintEventHandler += MonitorPaint;
@@ -129,22 +125,22 @@ namespace EasyCon2.Forms
             searchMethodComBox.ValueMember = "Value";
             searchMethodComBox.DisplayMember = "Description";
 
-            imgLabelNametxt.DataBindings.Add("Text", ilManager, "Name");
-            searchMethodComBox.DataBindings.Add("SelectedValue", ilManager, "SearchMethod");
-            searchXNUD.DataBindings.Add("Value", ilManager, "RangeX");
-            searchYNUD.DataBindings.Add("Value", ilManager, "RangeY");
-            searchWNUD.DataBindings.Add("Value", ilManager, "RangeWidth");
-            searchHNUD.DataBindings.Add("Value", ilManager, "RangeHeight");
-            targetXNUD.DataBindings.Add("Value", ilManager, "TargetX");
-            targetYNUD.DataBindings.Add("Value", ilManager, "TargetY");
-            targetWNUD.DataBindings.Add("Value", ilManager, "TargetWidth");
-            targetHNUD.DataBindings.Add("Value", ilManager, "TargetHeight");
+            imgLabelNametxt.DataBindings.Add("Text", imglManager, "Name");
+            searchMethodComBox.DataBindings.Add("SelectedValue", imglManager, "SearchMethod");
+            searchXNUD.DataBindings.Add("Value", imglManager, "RangeX");
+            searchYNUD.DataBindings.Add("Value", imglManager, "RangeY");
+            searchWNUD.DataBindings.Add("Value", imglManager, "RangeWidth");
+            searchHNUD.DataBindings.Add("Value", imglManager, "RangeHeight");
+            targetXNUD.DataBindings.Add("Value", imglManager, "TargetX");
+            targetYNUD.DataBindings.Add("Value", imglManager, "TargetY");
+            targetWNUD.DataBindings.Add("Value", imglManager, "TargetWidth");
+            targetHNUD.DataBindings.Add("Value", imglManager, "TargetHeight");
 
-            imgLableList.DataSource = ilManager.Labels;
+            imgLableList.DataSource = imglManager.Labels;
             imgLableList.DisplayMember = "Name";
         }
 
-        private Bitmap GetImage()
+        public Bitmap GetImage()
         {
             if (!cvcap.IsOpened)
                 throw new Exception("请先连接采集卡再执行搜图");
@@ -221,10 +217,10 @@ namespace EasyCon2.Forms
                     SnapshotRangeR.Width = (int)((SnapshotRangeMMP.X - SnapshotRangeMDP.X) * snapshotScale.X);
                     SnapshotRangeR.Height = (int)((SnapshotRangeMMP.Y - SnapshotRangeMDP.Y) * snapshotScale.Y);
 
-                    ilManager.RangeX = SnapshotRangeR.X + 2 - CurResolution.X;
-                    ilManager.RangeY = SnapshotRangeR.Y + 2 - CurResolution.Y;
-                    ilManager.RangeWidth = SnapshotRangeR.Width - 3;
-                    ilManager.RangeHeight = SnapshotRangeR.Height - 3;
+                    imglManager.RangeX = SnapshotRangeR.X + 2 - CurResolution.X;
+                    imglManager.RangeY = SnapshotRangeR.Y + 2 - CurResolution.Y;
+                    imglManager.RangeWidth = SnapshotRangeR.Width - 3;
+                    imglManager.RangeHeight = SnapshotRangeR.Height - 3;
                 }
 
                 // range rectangle
@@ -238,10 +234,10 @@ namespace EasyCon2.Forms
                     SnapshotSearchObjR.Width = (int)((SnapshotRangeMMP.X - SnapshotRangeMDP.X) * snapshotScale.X);
                     SnapshotSearchObjR.Height = (int)((SnapshotRangeMMP.Y - SnapshotRangeMDP.Y) * snapshotScale.Y);
 
-                    ilManager.TargetX = SnapshotSearchObjR.X + 1 - CurResolution.X;
-                    ilManager.TargetY = SnapshotSearchObjR.Y + 1 - CurResolution.Y;
-                    ilManager.TargetWidth = SnapshotSearchObjR.Width - 2;
-                    ilManager.TargetHeight = SnapshotSearchObjR.Height - 2;
+                    imglManager.TargetX = SnapshotSearchObjR.X + 1 - CurResolution.X;
+                    imglManager.TargetY = SnapshotSearchObjR.Y + 1 - CurResolution.Y;
+                    imglManager.TargetWidth = SnapshotSearchObjR.Width - 2;
+                    imglManager.TargetHeight = SnapshotSearchObjR.Height - 2;
                 }
 
                 // range rectangle
@@ -404,7 +400,7 @@ namespace EasyCon2.Forms
         private void searchImg_test()
         {
             Stopwatch sw = new();
-            Debug.WriteLine(ilManager.SearchMethod);
+            Debug.WriteLine($"搜索测试方法：{imglManager.SearchMethod}");
 
             sw.Reset();
             sw.Start();
@@ -412,8 +408,9 @@ namespace EasyCon2.Forms
             double matchDegree = 0;
             try
             {
-                ilManager.Current.GetFrame = GetImage;
-                list = ilManager.Current.Search(out matchDegree);
+                //ilManager.Current.GetFrame = GetImage;
+                using var ss = BitmapConverter.ToMat(GetImage());
+                list = imglManager.Current.Search(ss, out matchDegree);
                 sw.Stop();
 
                 // load the result
@@ -422,15 +419,14 @@ namespace EasyCon2.Forms
                 {
                     for (int i = 0; i < list.Count; i++)
                     {
-                        Debug.WriteLine($"{list[i].X},{list[i].Y}");
+                        Debug.WriteLine($"测试结果：{list[i].X},{list[i].Y}");
 
-                        using var result = ilManager.Current.GetResultImg(list[i]);
-                        using var g = searchResultImg.CreateGraphics();
-                        g.Clear(Color.FromArgb(240, 240, 240));
-                        g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
+                        searchResultImg.Image = ss.GetRange(list[i], imglManager.Current);
+                        //using var g = searchResultImg.CreateGraphics();
+                        //g.Clear(Color.FromArgb(240, 240, 240));
+                        //g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
                     }
                     max_matchDegree = Math.Max(matchDegree, max_matchDegree);
-
                     matchRltlabel.Text = $"匹配度:{matchDegree:f1}%\n耗时:{sw.ElapsedMilliseconds}毫秒\n最大匹配度:{max_matchDegree:f1}%";
                 }
                 else
@@ -440,7 +436,7 @@ namespace EasyCon2.Forms
             }
             catch (Exception ex)
             {
-                Debug.WriteLine(ex.Message);
+                Debug.WriteLine($"搜索测试异常：{ex.Message}");
                 matchRltlabel.Text = ex.Message;
             }
         }
@@ -532,8 +528,8 @@ namespace EasyCon2.Forms
                 Rectangle range = new(SnapshotSearchObjR.X + 1, SnapshotSearchObjR.Y + 1, SnapshotSearchObjR.Width - 2, SnapshotSearchObjR.Height - 2);
                 var ss = _snapshot.Clone(range, _snapshot.PixelFormat);
 
-                ilManager.Current.SetImage(ss);
-                targetImg.Image = ss;
+                imglManager.Current.SetImage(ss);
+                targetImg.Image = imglManager.Current.GetBitmap();
 
                 snapshotMode = SnapshotMode.NoAction;
                 targetBtn.Text = "圈选目标";
@@ -549,23 +545,23 @@ namespace EasyCon2.Forms
 
         private void SaveTagBtn_Click(object sender, EventArgs e)
         {
-            if (!ilManager.Current.Valid())
+            if (!imglManager.Current.Valid())
             {
                 MessageBox.Show("标签数据不完善无法保存");
                 return;
             }
 
             // save the imglabel to local
-            ilManager.Current.Save(ImgDir);
-            ilManager.LoadImgLabels(ImgDir);
+            imglManager.Current.Save(ImgDir);
+            imglManager.LoadImgLabels(ImgDir);
         }
 
         private void DynTestBtn_Click(object sender, EventArgs e)
         {
-            if (DynTestBtn.Text == "动态测试")
+            if (dyncTestBtn.Text == "动态测试")
             {
                 targetImg.Image?.Dispose();
-                targetImg.Image = ilManager.Current.GetBitmap();
+                targetImg.Image = imglManager.Current.GetBitmap();
                 if (targetImg.Image != null)
                     searchImg_test();
                 else
@@ -584,12 +580,12 @@ namespace EasyCon2.Forms
                 targetBtn.Enabled = false;
 
                 searchTestTimer.Start();
-                DynTestBtn.Text = "动态测试ing";
+                dyncTestBtn.Text = "动态测试ing";
             }
             else
             {
                 searchTestTimer.Stop();
-                DynTestBtn.Text = "动态测试";
+                dyncTestBtn.Text = "动态测试";
 
                 captureBtn.Enabled = true;
                 rangeBtn.Enabled = true;
@@ -609,8 +605,8 @@ namespace EasyCon2.Forms
             // get new target pic
             var tap = new Bitmap(openFileDialog1.FileName);
             // set new target
-            ilManager.TargetHeight = tap.Height;
-            ilManager.TargetWidth = tap.Width;
+            imglManager.TargetHeight = tap.Height;
+            imglManager.TargetWidth = tap.Width;
             targetImg.Image = tap;
         }
 
@@ -618,26 +614,26 @@ namespace EasyCon2.Forms
         {
             if (imgLableList.SelectedIndex != -1 && imgLableList.SelectedItem != null)
             {
-                var item = ilManager.Labels[imgLableList.SelectedIndex];
-                ilManager.Current = item.Current;
-                Debug.WriteLine($"select: {ilManager.Name}");
+                var item = imglManager.Labels[imgLableList.SelectedIndex];
+                imglManager.Current = item.Current;
+                Debug.WriteLine($"select: {imglManager.Name}");
 
                 // update ui
-                ilManager.Name = item.Name;
-                targetImg.Image = ilManager.GetBitmap();
+                imglManager.Name = item.Name;
+                targetImg.Image = imglManager.Current.GetBitmap();
 
                 if (targetImg.Image == null)
                     MessageBox.Show("没有搜索目标图片");
 
-                SnapshotRangeR.X = ilManager.RangeX + CurResolution.X - 2;
-                SnapshotRangeR.Y = ilManager.RangeY + CurResolution.Y - 2;
-                SnapshotRangeR.Width = ilManager.RangeWidth + 3;
-                SnapshotRangeR.Height = ilManager.RangeHeight + 3;
+                SnapshotRangeR.X = imglManager.RangeX + CurResolution.X - 2;
+                SnapshotRangeR.Y = imglManager.RangeY + CurResolution.Y - 2;
+                SnapshotRangeR.Width = imglManager.RangeWidth + 3;
+                SnapshotRangeR.Height = imglManager.RangeHeight + 3;
 
-                SnapshotSearchObjR.X = ilManager.TargetX + CurResolution.X - 1;
-                SnapshotSearchObjR.Y = ilManager.TargetY + CurResolution.Y - 1;
-                SnapshotSearchObjR.Width = ilManager.TargetWidth + 2;
-                SnapshotSearchObjR.Height = ilManager.TargetHeight + 2;
+                SnapshotSearchObjR.X = imglManager.TargetX + CurResolution.X - 1;
+                SnapshotSearchObjR.Y = imglManager.TargetY + CurResolution.Y - 1;
+                SnapshotSearchObjR.Width = imglManager.TargetWidth + 2;
+                SnapshotSearchObjR.Height = imglManager.TargetHeight + 2;
 
                 snapshotMode = SnapshotMode.Refresh;
                 Snapshot.Refresh();
@@ -711,6 +707,11 @@ namespace EasyCon2.Forms
         private void button1_Click(object sender, EventArgs e)
         {
             new HelpTxtDialog(Resources.capturedoc).Show();
+        }
+
+        private void matchRltlabel_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

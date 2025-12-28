@@ -29,3 +29,8 @@ public enum SearchMethod
     [Description("OCR单行文本识别")]
     TesserDetect = 107,
 }
+
+public static class SearchMethodExtension
+{
+    public static bool IsImageMethod(this SearchMethod method) => method <= SearchMethod.EdgeDetectLaplacian;
+}

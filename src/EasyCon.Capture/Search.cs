@@ -1,10 +1,9 @@
 using OpenCvSharp;
-using OpenCvSharp.Extensions;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-namespace EasyCapture;
+namespace EasyCon.Capture;
 
 public sealed class ECSearch
 {
@@ -22,21 +21,22 @@ public sealed class ECSearch
         ];
     }
 
-    public static List<System.Drawing.Point> FindOCR(string text, Bitmap srcBmp,out string resultTxt, out double matchDegree)
+    public static void FindOCR(string text, Mat srcBmp,out string resultTxt, out double matchDegree)
     {
-        using MemoryStream memoryStream = new MemoryStream();
-        srcBmp.Save(memoryStream, ImageFormat.Bmp);
-        var confidence = OCRSearch.TesserDetect(memoryStream, out resultTxt);
-        Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{confidence}");
+        using MemoryStream memoryStream = new();
+        memoryStream.Write(srcBmp.ToPngBytes());
+        var confidence = new OCRDetect().TesserDetect(memoryStream, out resultTxt);
+        Debug.WriteLine($"识别到的文本：{resultTxt.Trim()}, 匹配度:{confidence}");
+        Debug.WriteLine($"对比原始文本:{text}，对比对象：{resultTxt.Trim()}");
         // 计算编辑距离
-        matchDegree = OCRSearch.StringMatchSimple(resultTxt, text);
-        return [new System.Drawing.Point(0,0)];
+        matchDegree = MatchFacts.StringMatchSimple(resultTxt.Trim(), text);
+        matchDegree *= confidence;
     }
 
-    public static List<System.Drawing.Point> FindPic(int left, int top, int width, int height, Bitmap targetBmp, Bitmap srcBmp, SearchMethod method, out double matchDegree)
+    public static List<System.Drawing.Point> FindPic(Mat big, Mat small, SearchMethod method, out double matchDegree)
     {
-        if (targetBmp.PixelFormat != PixelFormat.Format24bppRgb) { throw new Exception("颜色格式只支持24位bmp"); }
-        if (srcBmp.PixelFormat != PixelFormat.Format24bppRgb) { throw new Exception("颜色格式只支持24位bmp"); }
+        //if (targetBmp.PixelFormat != PixelFormat.Format24bppRgb) { throw new Exception("颜色格式只支持24位bmp"); }
+        //if (srcBmp.PixelFormat != PixelFormat.Format24bppRgb) { throw new Exception("颜色格式只支持24位bmp"); }
         //int S_Width = S_bmp.Width;
         //int S_Height = S_bmp.Height;
         //int P_Width = srcBmp.Width;
@@ -44,16 +44,13 @@ public sealed class ECSearch
         //BitmapData S_Data = null;
         //BitmapData P_Data = null;
 
-        using Mat small = BitmapConverter.ToMat(srcBmp);
-        using Mat big = BitmapConverter.ToMat(targetBmp);
-
         //if ((int)method > 5)
         //{
         //    S_Data = S_bmp.LockBits(new Rectangle(0, 0, S_Width, S_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
         //    P_Data = srcBmp.LockBits(new Rectangle(0, 0, P_Width, P_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
         //}
 
-        List<OpenCvSharp.Point> result = [];
+        OpenCvSharp.Point result = new(-1,-1);
         switch (method)
         {
             case SearchMethod.SqDiff:
@@ -62,12 +59,16 @@ public sealed class ECSearch
             case SearchMethod.CCorrNormed:
             case SearchMethod.CCoeff:
             case SearchMethod.CCoeffNormed:
-                result = OpenCVSearch.OpenCvFindPic(big, small, method, out matchDegree);
+                result = MatchFacts.MatchTemplate(big, small, method, out matchDegree);
                 break;
             case SearchMethod.EdgeDetectXY:
             case SearchMethod.EdgeDetectLaplacian:
-                result = OpenCVSearch.EdgeDetect(big, small, method, out matchDegree);
-                break;
+                {
+                    using var bigResult = OpenCVSearch.EdgeDetect(big, method);
+                    using var smallResult = OpenCVSearch.EdgeDetect(small, method);
+                    result = MatchFacts.MatchTemplate(bigResult, smallResult, method, out matchDegree);
+                    break;
+                }
             // case SearchMethod.StrictMatch:
             //    result = StrictMatch(left, top, width, height, S_Data, P_Data);
             //    matchDegree = 1;
@@ -97,7 +98,7 @@ public sealed class ECSearch
         //    srcBmp.UnlockBits(P_Data);
         //}
 
-        return [.. result.Select(p=>new System.Drawing.Point(p.X, p.Y))];
+        return [new System.Drawing.Point(result.X, result.Y)];
     }
 
     #region 其他匹配算法

@@ -1,13 +1,12 @@
-using EasyCon.Capture;
 using OpenCvSharp;
-using System;
+using OpenCvSharp.Extensions;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Point = System.Drawing.Point;
 
-namespace EasyCapture;
+namespace EasyCon.Capture;
 
 public record ImgLabel
 {
@@ -27,21 +26,18 @@ public record ImgLabel
     [JsonIgnore]
     public string name { get; set; } = "5号路蛋屋主人";
 
-    private Rectangle _round => new(RangeX, RangeY, RangeWidth, RangeHeight);
-    private Rectangle _target => new(TargetX, TargetY, TargetWidth, TargetHeight);
+    internal Rect _round => new(RangeX, RangeY, RangeWidth, RangeHeight);
+    internal Rect _target => new(TargetX, TargetY, TargetWidth, TargetHeight);
 
     private Bitmap _image;
 
     public Bitmap GetBitmap() => _image ??= Base64StringToImage(ImgBase64);
 
-    public void SetImage(Mat mat)
-    {
-        ImgBase64 = Convert.ToBase64String(mat.ToPngBytes());
-    }
-
     public void SetImage(Bitmap bitmap)
     {
+        if (!searchMethod.IsImageMethod()) return;
         ImgBase64 = ImageToBase64(bitmap);
+        _image = null;
     }
 
     private static bool IsBase64String(string s)
@@ -59,12 +55,6 @@ public record ImgLabel
         {
             return false;
         }
-    }
-
-    private static Mat Base64StringToImage(byte[] bytes)
-    {
-        bytes.ToMat();
-        return Cv2.ImDecode(bytes, ImreadModes.Color);
     }
 
     private static Bitmap Base64StringToImage(string basestr)
@@ -121,49 +111,6 @@ public record ImgLabel
         return true;
     }
 
-    public delegate Bitmap GetNewFrame();
-    [NonSerialized]
-    public GetNewFrame GetFrame;
-    private Bitmap sourcePic;
-    public Bitmap GetResultImg(Point p)
-    {
-        return sourcePic?.Clone(new Rectangle(p.X, p.Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
-    }
-    public List<Point> Search(out double md)
-    {
-        if (TargetWidth > RangeWidth || TargetHeight > RangeHeight)
-            throw new Exception("搜索图片大于搜索范围");
-
-        using var ss = GetFrame?.Invoke();
-        sourcePic ??= new(RangeWidth, RangeHeight);
-        using (var g = Graphics.FromImage(sourcePic))
-        // 从原始Bitmap中绘制裁剪区域到新的Bitmap对象
-        g.DrawImage(ss, new Rectangle(0, 0, RangeWidth, RangeHeight), _round, GraphicsUnit.Pixel);
-
-        List<Point> result = new();
-        if (searchMethod == SearchMethod.TesserDetect)
-        {
-            using var targetBmp = new Bitmap(TargetWidth, TargetHeight);
-            using (var g = Graphics.FromImage(targetBmp))
-            g.DrawImage(ss, new Rectangle(0, 0, TargetWidth, TargetHeight), _target, GraphicsUnit.Pixel);
-            result = ECSearch.FindOCR(ImgBase64, targetBmp,out var rlttxt, out md);
-        }
-        else
-        {
-            result = ECSearch.FindPic(0, 0, TargetWidth, TargetHeight, sourcePic, GetBitmap(), searchMethod, out md);
-        }
-        md *= 100;
-
-        // update the search pic
-        //if (md >= _matchDegree)
-        //{
-        //    Debug.WriteLine("update img");
-        //    searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
-        //}
-
-        return result;
-    }
-
     public static ImgLabel Load(string path)
     {
         var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception();
@@ -174,6 +121,11 @@ public record ImgLabel
 
 public static class ILExt
 {
+    public static Bitmap GetRange(this Mat self, Point pos, ImgLabel img)
+    {
+        using var range = new Mat(self, new Rect(pos.X + img.RangeX, pos.Y + img.RangeY, img.TargetWidth, img.TargetHeight));
+        return BitmapConverter.ToBitmap(range);
+    }
     public static void Save(this ImgLabel self, string path)
     {
         // save the imglabel to loc
@@ -182,7 +134,7 @@ public static class ILExt
             Directory.CreateDirectory(path);
         }
 
-        if(self.searchMethod.ILTxtType())
+        if (self.searchMethod.ILTxtType())
         {
             // 文字标签手动编辑
             self.ImgBase64 = "";
@@ -194,5 +146,52 @@ public static class ILExt
     private static bool ILTxtType(this SearchMethod method)
     {
         return method == SearchMethod.TesserDetect;
+    }
+
+    public static List<Point> Search(this ImgLabel self, Mat ss, out double md)
+    {
+        if (self.TargetWidth > self.RangeWidth || self.TargetHeight > self.RangeHeight)
+            throw new Exception("搜索图片大于搜索范围");
+
+        try
+        {
+            // 从原始Bitmap中绘制裁剪区域到新的Bitmap对象
+            using var range = new Mat(ss, self._round);
+            //#if DEBUG
+            //using (new Window("结果1", range))
+            //{
+            //    Cv2.WaitKey();
+            //}
+            //#endif
+            List<Point> result = new();
+            if (self.searchMethod == SearchMethod.TesserDetect)
+            {
+
+                using var target = new Mat(ss, self._target);
+                ECSearch.FindOCR(self.ImgBase64, target, out var rlttxt, out md);
+                result = [new Point(self.TargetX - self.RangeX, self.TargetY- self.RangeY)];
+            }
+            else
+            {
+
+                byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
+                using var ms = imageBytes.ToMat();
+                result = ECSearch.FindPic(range, ms, self.searchMethod, out md);
+            }
+            md *= 100;
+
+            // update the search pic
+            //if (md >= _matchDegree)
+            //{
+            //    Debug.WriteLine("update img");
+            //    searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
+            //}
+
+            return result;
+        }
+        catch (OpenCVException ex)
+        {
+            throw new Exception($"搜图标签[{self.name}]执行异常：{ex.Message}");
+        }
     }
 }

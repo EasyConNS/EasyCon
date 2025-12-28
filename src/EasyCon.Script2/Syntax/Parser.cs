@@ -117,23 +117,23 @@ internal sealed class Parser
     {
         // 保存当前的注释状态
         var leadingTrivia = new List<TriviaNode>(_leadingtrivias);
-        
+
         // 清空现有的注释列表
         _leadingtrivias.Clear();
-        
+
         // 创建节点
         var node = factory();
-        if(node == null)return null;
+        if (node == null) return null;
         // 消耗语句后的换行符
         Match(TokenType.NEWLINE, "语句没有正确结束换行");
 
         // var trailingTrivia = new List<TriviaNode>(_trailtrivias);
         // _trailtrivias.Clear();
-        
+
         // 关联注释
         node.LeadingTrivia.AddRange(leadingTrivia);
         // node.TrailingTrivia.AddRange(trailingTrivia);
-        
+
         return node;
     }
 
@@ -153,7 +153,7 @@ internal sealed class Parser
 
     private Member ParseGlobalStatement()
     {
-        var stmt = WithTrivia(()=>ParseStatementInternal());
+        var stmt = WithTrivia(() => ParseStatementInternal());
         return new GlobalStatement(stmt);
     }
 
@@ -173,7 +173,7 @@ internal sealed class Parser
                 return ParseReturnStatement();
             case TokenType.ButtonKeyword:
             case TokenType.StickKeyword:
-                return ParseKeyStatement();
+                return ParsePadButtonStatement();
             case TokenType.INT:
             case TokenType.IDENT:
                 return ParseSpecIdentStatement();
@@ -255,7 +255,7 @@ internal sealed class Parser
 
     private IfStatement ParseIfStatement()
     {
-        var ifcond = WithTrivia(()=>ParseIfCondition());
+        var ifcond = WithTrivia(() => ParseIfCondition());
 
         var thenBranch = ParseStatementsUntil(TokenType.ELIF, TokenType.ELSE, TokenType.ENDIF);
 
@@ -263,7 +263,7 @@ internal sealed class Parser
         List<ElseIfClause> elseif = [];
         while (Check(TokenType.ELIF))
         {
-            var elifcond = WithTrivia(()=>ParseIfCondition());
+            var elifcond = WithTrivia(() => ParseIfCondition());
 
             var elifBranch = ParseStatementsUntil(TokenType.ELIF, TokenType.ELSE, TokenType.ENDIF);
             elseif.Add(new(elifcond, elifBranch.ToImmutableArray()));
@@ -273,7 +273,7 @@ internal sealed class Parser
         ElseClause? elseClause = null;
         if (Check(TokenType.ELSE))
         {
-            var elsestmt = WithTrivia(()=>ParseTokenStatement<KeywordStatement>(TokenType.ELSE, "else解析失败"));
+            var elsestmt = WithTrivia(() => ParseTokenStatement<KeywordStatement>(TokenType.ELSE, "else解析失败"));
 
             var elseBranch = ParseStatementsUntil(TokenType.ENDIF);
             elseClause = new(elsestmt, elseBranch.ToImmutableArray());
@@ -333,7 +333,7 @@ internal sealed class Parser
         Match(TokenType.NEWLINE, "for语法不正确");
 
         var body = ParseStatementsUntil(TokenType.NEXT);
-        var nextTok = WithTrivia(()=>ParseTokenStatement<KeywordStatement>(TokenType.NEXT, "for语句需要next结尾"));
+        var nextTok = WithTrivia(() => ParseTokenStatement<KeywordStatement>(TokenType.NEXT, "for语句需要next结尾"));
 
         return new ForStatement(new ForExpr(forToken, initVar, start, end, infinite), body.ToImmutableArray(), nextTok);
     }
@@ -349,7 +349,7 @@ internal sealed class Parser
                 Advance();
                 continue;
             }
-            statements.Add(WithTrivia(()=>ParseStatementInternal()));
+            statements.Add(WithTrivia(() => ParseStatementInternal()));
             if (Check(TokenType.NEWLINE)) Advance();
         }
 
@@ -409,8 +409,10 @@ internal sealed class Parser
         return new ReturnStatement(returnToken, null);
     }
 
-    /* TODO */
-    private Statement ParseKeyStatement()
+    /// <summary>
+    /// 解析手柄按键语句
+    /// </summary>
+    private Statement ParsePadButtonStatement()
     {
         // 键位(+键位) [持续时间(ms)|DOWN|UP]
         // LS|RS 方向|角度 [, 持续时间(ms)]
@@ -545,7 +547,7 @@ internal sealed class Parser
     {
         var expression = ParseExpression();
 
-        while (Checks(TokenType.ASSIGN, TokenType.EQL, TokenType.NEQ, TokenType.LESS, TokenType.LEQ, TokenType.GTR, TokenType.GEQ))
+        while (Checks(TokenType.EQL, TokenType.NEQ, TokenType.LESS, TokenType.LEQ, TokenType.GTR, TokenType.GEQ))
         {
             var op = Advance();
             var right = ParseExpression();
@@ -577,50 +579,42 @@ internal sealed class Parser
 
     private Expression ParsePrimary()
     {
-        if (Check(TokenType.INT))
+        switch (Current.Type)
         {
-            var token = Advance();
-            try
-            {
-                var value = uint.Parse(token.Value);
-                if (value < ushort.MinValue || value > ushort.MaxValue)
+            case TokenType.STRING:
+                var tokstr = Advance();
+                return new LiteralExpression(tokstr, tokstr.Value);
+            case TokenType.CONST:
+            case TokenType.VAR:
+            case TokenType.EX_VAR:
+                var token = Advance();
+                bool isConstant = token.Type == TokenType.CONST;
+                bool isSpecial = token.Type == TokenType.EX_VAR;
+                return new VariableExpression(token, isConstant, isSpecial);
+            case TokenType.LeftBracket:
+                return ParseIndexExpression();
+            case TokenType.LeftParen:
+                var left = Advance();
+                var expression = ParseExpression();
+                var right = Match(TokenType.RightParen);
+                return new ParenthesizedExpression(left, expression, right);
+            case TokenType.INT:
+            default:
+                var toknum = Advance();
+                try
                 {
-                    throw new Exception($"整数超出范围({ushort.MinValue} 到 {ushort.MaxValue}) 行{token.Line}");
+                    var value = uint.Parse(toknum.Value);
+                    if (value < ushort.MinValue || value > ushort.MaxValue)
+                    {
+                        throw new Exception($"整数超出范围({ushort.MinValue} 到 {ushort.MaxValue}) 行{toknum.Line}");
+                    }
+                    return new LiteralExpression(toknum, value);
                 }
-                return new LiteralExpression(token, value);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"错误的数字格式: {ex.Message} 行{token.Line}");
-                throw new Exception($"错误的数字格式: {token.Value} 行{token.Line}");
-            }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"错误的数字格式: {ex.Message} 行{toknum.Line}");
+                    throw new Exception($"错误的数字格式: {toknum.Value} 行{toknum.Line}");
+                }
         }
-        else if (Checks(TokenType.CONST, TokenType.VAR, TokenType.EX_VAR))
-        {
-            var token = Advance();
-            bool isConstant = token.Type == TokenType.CONST;
-            bool isSpecial = token.Type == TokenType.EX_VAR;
-            return new VariableExpression(token, isConstant, isSpecial);
-        }
-        else if (Check(TokenType.STRING))
-        {
-            var token = Advance();
-            return new LiteralExpression(token, token.Value);
-        }
-        else if (Check(TokenType.LeftBracket))
-        {
-            return ParseIndexExpression();
-        }
-        else if (Check(TokenType.LeftParen))
-        {
-            var left = Advance();
-            var expression = ParseExpression();
-            var right = Match(TokenType.RightParen);
-            return new ParenthesizedExpression(left, expression, right);
-        }
-
-        var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));
-        _diagnostics.ReportInvalidExpressionStatement(location, Current.Type);
-        throw new Exception($"无效的表达式语句 {Current.Type} 行{Current.Line}");
     }
 }

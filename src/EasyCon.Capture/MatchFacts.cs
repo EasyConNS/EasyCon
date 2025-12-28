@@ -1,29 +1,58 @@
-using Tesseract;
+using OpenCvSharp;
+using System.Diagnostics;
 
-namespace EasyCapture;
+namespace EasyCon.Capture;
 
-internal static class OCRSearch
+internal static class MatchFacts
 {
-    const string tessdataPath = @"./Tessdata";
-
-
     /// <summary>
-    /// language: trained tessdata
-    /// enginMod: EngineMode.Default
-    /// pageSegMod: PageSegMode.SingleLine
+    /// 简化的字符串匹配度计算，使用编辑距离方法
     /// </summary>
-    public static float TesserDetect(MemoryStream stream, out string result, string lang = "chi_sim", EngineMode engineMode = EngineMode.Default, PageSegMode pageSegMode = PageSegMode.SingleLine)
+    public static Point MatchTemplate(Mat big, Mat small, SearchMethod method, out double matchDegree)
     {
-        using var img = Pix.LoadFromMemory(stream.ToArray());
-        return TesserDetect(img, out result, lang, engineMode, pageSegMode);
-    }
+        matchDegree = 0;
+        var tmplMatchMode = method switch
+        {
+            SearchMethod.SqDiff => TemplateMatchModes.SqDiff,
+            SearchMethod.SqDiffNormed => TemplateMatchModes.SqDiffNormed,
+            SearchMethod.CCorr => TemplateMatchModes.CCorr,
+            SearchMethod.CCorrNormed => TemplateMatchModes.CCorrNormed,
+            SearchMethod.CCoeff => TemplateMatchModes.CCoeff,
+            SearchMethod.CCoeffNormed => TemplateMatchModes.CCoeffNormed,
+            _ => TemplateMatchModes.CCoeffNormed,
+        };
 
-    public static float TesserDetect(Pix img, out string result, string lang = "chi_sim", EngineMode engineMode = EngineMode.Default, PageSegMode pageSegMode = PageSegMode.SingleLine)
-    {
-        using var engine = new TesseractEngine(tessdataPath, lang, engineMode);
-        using var page = engine.Process(img, pageSegMode);
-        result = page.GetText();
-        return page.GetMeanConfidence();
+        using var result = new Mat();
+        Cv2.MatchTemplate(big, small, result, tmplMatchMode);
+        Cv2.MinMaxLoc(result, out double min, out double max, out var minLoc, out var maxLoc);
+
+        Debug.WriteLine($"{method}[min:{min:f1}, max:{max:f1}]");
+        switch (method)
+        {
+            case SearchMethod.SqDiff:
+            case SearchMethod.SqDiffNormed:
+                matchDegree = (1 - min) / 1.0;
+                break;
+            case SearchMethod.CCorr:
+            case SearchMethod.CCorrNormed:
+                matchDegree = max / 1.0;
+                break;
+            case SearchMethod.CCoeff:
+            case SearchMethod.CCoeffNormed:
+            default:
+                matchDegree = (max + 1) / 2.0;
+                break;
+        }
+
+        // the sqD lower is good
+        if (method == SearchMethod.SqDiff || method == SearchMethod.SqDiffNormed)
+        {
+            return new(minLoc.X, minLoc.Y);
+        }
+        else
+        {
+            return new(maxLoc.X, maxLoc.Y);
+        }
     }
 
     /// <summary>

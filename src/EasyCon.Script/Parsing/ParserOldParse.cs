@@ -34,6 +34,7 @@ internal partial class Parser
             switch (token.Type)
             {
                 case TokenType.VAR when allowVar:
+                case TokenType.EX_VAR:
                 case TokenType.INT:
                 case TokenType.CONST:
                     valueStack.Push(_formatter.GetValueEx(token.Value));

@@ -339,7 +339,7 @@ public sealed class CallExpression(Token keyword, string functionName, Immutable
 }
 
 
-public abstract class KeyStatement(ImmutableArray<Token> keywords, uint duration) : Statement(keywords.First())
+public abstract class GamePadStatement(ImmutableArray<Token> keywords, uint duration) : Statement(keywords.First())
 {
     public uint Duration { get; } = duration;
 
@@ -353,14 +353,14 @@ public abstract class KeyStatement(ImmutableArray<Token> keywords, uint duration
     }
 }
 
-public sealed class ButtonStatement(ImmutableArray<Token> keywords, uint duration = 50) : KeyStatement(keywords, duration) { }
+public sealed class ButtonStatement(ImmutableArray<Token> keywords, uint duration = 50) : GamePadStatement(keywords, duration) { }
 
-public sealed class ButtonStStatement(ImmutableArray<Token> keywords, bool isDown) : KeyStatement(keywords, 0)
+public sealed class ButtonStStatement(ImmutableArray<Token> keywords, bool isDown) : GamePadStatement(keywords, 0)
 {
     public bool IsDown { get; } = isDown;
 }
 
-public sealed class StickStatement(ImmutableArray<Token> keywords, string state, bool reset, uint duration = 50) : KeyStatement(keywords, duration)
+public sealed class StickStatement(ImmutableArray<Token> keywords, string state, bool reset, uint duration = 50) : GamePadStatement(keywords, duration)
 {
     public string Direction { get; } = state;
     public bool IsReset { get; } = reset;

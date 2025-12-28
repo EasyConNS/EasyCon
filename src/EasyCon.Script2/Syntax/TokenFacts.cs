@@ -8,6 +8,7 @@ public static class TokenFacts
         {
             case TokenType.SUB:
             case TokenType.BitNot:
+            //case TokenType.LogicNot:
                 return 6;
 
             default:

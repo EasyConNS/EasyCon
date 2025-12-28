@@ -1,5 +1,3 @@
-using EasyCapture;
-using EasyCon2.Assist;
 using EasyCon2.Config;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
@@ -88,6 +86,30 @@ namespace EasyCon2.Forms
         private FoldingManager _foldingManager;
         private CustomFoldingStrategy _foldingStrategy;
 
+        private void EasyConForm_Load(object sender, EventArgs e)
+        {
+            this.Text = $"伊机控 EasyCon v{VER}  QQ群:946057081";
+            comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
+            comboBoxBoardType.SelectedIndex = 0;
+            RegisterKeys();
+            InitEditor();
+            InitEvent();
+
+            // UI updating timer
+            Task.Run(() => { UpdateUI(); });
+
+            InitCaptureDevices();
+            InitCaptureTypes();
+
+            StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabels.Count()}");
+        }
+
+        private void EasyConForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            e.Cancel = !FileClose();
+            captureVideo?.Close();
+        }
+
         private void InitEditor()
         {
             textBoxScript.ShowLineNumbers = true;
@@ -108,31 +130,6 @@ namespace EasyCon2.Forms
             findPanel1.InitEditor(textBoxScript);
 
             editorHost.Child = textBoxScript;
-        }
-
-        private void EasyConForm_Load(object sender, EventArgs e)
-        {
-            this.Text = $"伊机控 EasyCon v{VER}  QQ群:946057081";
-            comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
-            comboBoxBoardType.SelectedIndex = 0;
-            RegisterKeys();
-            InitEditor();
-
-            InitEvent();
-
-            // UI updating timer
-            Task.Run(() => { UpdateUI(); });
-
-            InitCaptureDevices();
-            InitCaptureTypes();
-
-            StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabels.Count()}");
-        }
-
-        private void EasyConForm_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            e.Cancel = !FileClose();
-            captureVideo?.Close();
         }
 
         private void InitEvent()
@@ -247,7 +244,7 @@ namespace EasyCon2.Forms
         private void InitCaptureTypes()
         {
             // add capture types
-            var types = ECCapture.GetCaptureTypes();
+            var types = EasyCon.Core.ECCore.GetCaptureTypes();
 
             采集卡类型ToolStripMenuItem.DropDownItems.Clear();
             foreach (var (name, value) in types)
@@ -358,6 +355,11 @@ namespace EasyCon2.Forms
             textBoxScript.ScrollToLine(index);
         }
 
+        private Board GetSelectedBoard()
+        {
+            return comboBoxBoardType.SelectedItem as Board;
+        }
+
         public void Print(string message, bool newline = true) =>
             logTxtBox.Print(message, newline);
 
@@ -367,7 +369,7 @@ namespace EasyCon2.Forms
             {
                 try
                 {
-                    var result = new EC.Core.PushPlusClient(_config.AlertToken).SendMessage(message).Result;
+                    var result = new EasyCon.Core.PushPlusClient(_config.AlertToken).SendMessage(message).Result;
                     Print(result);
 
                     if (_config.ChannelToken != "")
@@ -503,7 +505,7 @@ namespace EasyCon2.Forms
 
             textBoxScript.Load(_currentFile);
             textBoxScript.Document.FileName = _currentFile;
-            groupBoxScript.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
+            scriptTitleLabel.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
             return true;
         }
 
@@ -544,14 +546,18 @@ namespace EasyCon2.Forms
             textBoxScript.Document.FileName = null;
             textBoxScript.Clear();
             textBoxScript.IsModified = false;
-            groupBoxScript.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
+            scriptTitleLabel.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
             StatusShowLog("文件已关闭");
             return true;
         }
         #endregion
         private void ShowControllerHelp()
         {
-            new HelpTxtDialog("鼠标左键：启用/禁用\n鼠标右键：拖动移动位置，右键点击重置初始位置\n鼠标中键：禁用并隐藏\n\n（注意：在有脚本远程运行的情况下无法使用）", "关于虚拟手柄").Show();
+            new HelpTxtDialog(@"鼠标左键：启用/禁用
+鼠标右键：拖动移动位置，右键点击重置初始位置
+鼠标中键：禁用并隐藏
+
+（注意：在有脚本远程运行的情况下无法使用）", "关于虚拟手柄").Show();
         }
 
         private void buttonShowController_Click(object sender, EventArgs e)
@@ -588,7 +594,7 @@ namespace EasyCon2.Forms
         private void textBoxScript_TextChanged(object sender, EventArgs e)
         {
             // script edited
-            groupBoxScript.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
+            scriptTitleLabel.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
 
             if (显示折叠ToolStripMenuItem.Checked)
                 _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
@@ -646,7 +652,7 @@ namespace EasyCon2.Forms
         private async void buttonGenerateFirmware_Click(object sender, EventArgs e)
         {
             genFwButton.Enabled = false;
-            await GenerateFirmware();
+            await GenerateFirmware(GetSelectedBoard());
             genFwButton.Enabled = true;
         }
 
@@ -657,7 +663,7 @@ namespace EasyCon2.Forms
                 return;
             }
 
-            if (!CheckFirmwareVersion())
+            if (!CheckFwVersion())
             {
                 return;
             }
@@ -666,7 +672,7 @@ namespace EasyCon2.Forms
             {
                 return;
             }
-            FlashScript();
+            ScriptFlash(GetSelectedBoard().DataSize);
         }
 
         private void buttonRemoteStart_Click(object sender, EventArgs e)
@@ -856,7 +862,12 @@ namespace EasyCon2.Forms
 
         private void 搜图说明ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("默认采集卡类型选择any，会自动选择合适的采集卡\n- 常见采集卡类型是DSHOW，MSMF，DC1394等\n- obs30+版本已支持内置虚拟摄像头，无需安装额外插件\n- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开\n- 如果遇到搜图卡顿问题可尝试点击一次<设置环境变量>菜单\n- 详细使用教程见群946057081文档", "采集卡");
+            MessageBox.Show(@"默认采集卡类型选择any，会自动选择合适的采集卡
+- 常见采集卡类型是DSHOW，MSMF，DC1394等
+- obs30+版本已支持内置虚拟摄像头，无需安装额外插件
+- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开
+- 如果遇到搜图卡顿问题可尝试点击一次<设置环境变量>菜单
+- 详细使用教程见群946057081文档", "采集卡");
         }
 
         private void 显示调试信息ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -874,17 +885,34 @@ namespace EasyCon2.Forms
 
         private void 联机模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("- 使用电脑控制单片机的模式\n- 可视化运行，一键切换脚本（即将实装）\n- 无需反复刷固件\n- 支持超长脚本\n- 可使用虚拟手柄，用键盘玩游戏\n\n详细使用教程见群946057081文档", "联机模式");
+            MessageBox.Show(@"- 使用电脑控制单片机的模式
+- 可视化运行，一键切换脚本（即将实装）
+- 无需反复刷固件
+- 支持超长脚本
+- 可使用虚拟手柄，用键盘玩游戏
+
+详细使用教程见群946057081文档", "联机模式");
         }
 
         private void 烧录模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("- 连线烧录后脱机运行的模式\n- 独立挂机，即插即用\n- 一键烧录，可控运行\n- 无需反复刷固件\n- 支持极限效率脚本\n\n详细使用教程见群946057081文档", "烧录模式");
+            MessageBox.Show(@"- 连线烧录后脱机运行的模式
+- 独立挂机，即插即用
+- 一键烧录，可控运行
+- 无需反复刷固件
+- 支持极限效率脚本
+
+详细使用教程见群946057081文档", "烧录模式");
         }
 
         private void 固件模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("- 生成固件后手动刷入单片机的模式\n- 独立挂机，即插即用\n- 支持极限效率脚本\n- 不需要任何额外配件\n\n详细使用教程见群946057081文档", "固件模式");
+            MessageBox.Show(@"- 生成固件后手动刷入单片机的模式
+- 独立挂机，即插即用
+- 支持极限效率脚本
+- 不需要任何额外配件
+
+详细使用教程见群946057081文档", "固件模式");
         }
 
         private void 关于ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1047,5 +1075,20 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             logTxtBox.ClearLog();
         }
         #endregion
+
+        private void clsLogBtn_MouseHover(object sender, EventArgs e)
+        {
+            // 创建the ToolTip 
+            ToolTip toolTip1 = new ToolTip();
+
+            // 设置显示样式
+            toolTip1.AutoPopDelay = 5000;//提示信息的可见时间
+            toolTip1.InitialDelay = 300;//事件触发多久后出现提示
+            toolTip1.ReshowDelay = 300;//指针从一个控件移向另一个控件时，经过多久才会显示下一个提示框
+            toolTip1.ShowAlways = true;//是否显示提示框
+
+            //  设置伴随的对象.
+            toolTip1.SetToolTip(this.clsLogBtn, "全部清除");
+        }
     }
 }

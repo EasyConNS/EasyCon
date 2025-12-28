@@ -64,7 +64,7 @@ namespace EasyCon2.Forms
             searchMethodComBox = new ComboBox();
             imgLableList = new ListBox();
             SaveTagBtn = new Button();
-            DynTestBtn = new Button();
+            dyncTestBtn = new Button();
             searchTestTimer = new System.Windows.Forms.Timer(components);
             ResolutionBtn = new Button();
             label2 = new Label();
@@ -453,17 +453,17 @@ namespace EasyCon2.Forms
             SaveTagBtn.UseVisualStyleBackColor = true;
             SaveTagBtn.Click += SaveTagBtn_Click;
             // 
-            // DynTestBtn
+            // dyncTestBtn
             // 
-            DynTestBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            DynTestBtn.Location = new Point(410, 393);
-            DynTestBtn.Margin = new Padding(4);
-            DynTestBtn.Name = "DynTestBtn";
-            DynTestBtn.Size = new Size(105, 33);
-            DynTestBtn.TabIndex = 9;
-            DynTestBtn.Text = "动态测试";
-            DynTestBtn.UseVisualStyleBackColor = true;
-            DynTestBtn.Click += DynTestBtn_Click;
+            dyncTestBtn.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
+            dyncTestBtn.Location = new Point(410, 393);
+            dyncTestBtn.Margin = new Padding(4);
+            dyncTestBtn.Name = "dyncTestBtn";
+            dyncTestBtn.Size = new Size(105, 33);
+            dyncTestBtn.TabIndex = 9;
+            dyncTestBtn.Text = "动态测试";
+            dyncTestBtn.UseVisualStyleBackColor = true;
+            dyncTestBtn.Click += DynTestBtn_Click;
             // 
             // searchTestTimer
             // 
@@ -567,6 +567,8 @@ namespace EasyCon2.Forms
             // button1
             // 
             button1.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            button1.FlatAppearance.BorderSize = 0;
+            button1.FlatStyle = FlatStyle.Flat;
             button1.Location = new Point(515, 351);
             button1.Name = "button1";
             button1.Size = new Size(78, 29);
@@ -589,7 +591,7 @@ namespace EasyCon2.Forms
             Controls.Add(groupBox1);
             Controls.Add(readmelbl);
             Controls.Add(imgreadmelbl);
-            Controls.Add(DynTestBtn);
+            Controls.Add(dyncTestBtn);
             Controls.Add(SaveTagBtn);
             Controls.Add(targetBtn);
             Controls.Add(searchTestBtn);
@@ -648,7 +650,7 @@ namespace EasyCon2.Forms
         private System.Windows.Forms.Label srchmethodlabel;
         private System.Windows.Forms.ComboBox searchMethodComBox;
         private System.Windows.Forms.Label matchRltlabel;
-        private System.Windows.Forms.Button DynTestBtn;
+        private System.Windows.Forms.Button dyncTestBtn;
         private System.Windows.Forms.TextBox imgLabelNametxt;
         private System.Windows.Forms.Label imgnamelabel;
         private System.Windows.Forms.Timer searchTestTimer;
