@@ -26,52 +26,6 @@ public class AstFormatter : AstVisitor
         return program;
     }
 
-    public override ASTNode VisitTrivia(TriviaNode trivia)
-    {
-        _writer.WriteLine(trivia.Text);
-        return trivia;
-    }
-
-    public override ASTNode VisitLiteral(LiteralExpression literal)
-    {
-        _writer.Write(literal.Value.ToString());
-        return literal;
-    }
-
-    public override ASTNode VisitVariable(VariableExpression variable)
-    {
-        _writer.Write(variable.Name);
-        return variable;
-    }
-
-    public override ASTNode VisitIndexExpr(IndexExpression indexExpr)
-    {
-        _writer.Write("[");
-        for (int i = 0; i < indexExpr.Items.Length; i++)
-        {
-            if (i > 0) _writer.Write(", ");
-            indexExpr.Items[i].Accept(this);
-        }
-        _writer.Write("]");
-        return indexExpr;
-    }
-
-    public override ASTNode VisitBinaryOp(BinaryExpression binary)
-    {
-        binary.Left.Accept(this);
-        _writer.Write($" {BoundNodePrinter.GetOperatorText(binary.Operator)} ");
-        binary.Right.Accept(this);
-        return binary;
-    }
-
-    public override ASTNode VisitCondition(ConditionExpression condition)
-    {
-        condition.Left.Accept(this);
-        _writer.Write($" {BoundNodePrinter.GetOperatorText(condition.Operator)} ");
-        condition.Right.Accept(this);
-        return condition;
-    }
-
     public override ASTNode VisitAssignmentStat(AssignmentStatement assignment)
     {
         WriteLeadingTrivia(assignment);

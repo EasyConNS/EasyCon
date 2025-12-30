@@ -6,7 +6,7 @@ public static class TokenFacts
     {
         return kind switch
         {
-            TokenType.SUB or TokenType.BitNot => 6,//case TokenType.LogicNot:
+            TokenType.SUB or TokenType.BitNot or TokenType.LogicNot => 6,
             _ => 0,
         };
     }
@@ -69,27 +69,45 @@ public static class TokenFacts
             TokenType.DOT => ".",
             TokenType.RightParen => ")",
             TokenType.RightBracket => "]",
+            TokenType.OpenBrace => "{",
+            TokenType.CloseBrace => "}",
             TokenType.COLON => ":",
             TokenType.SEMICOLON => ";",
             _ => null,
         };
     }
-
+    public static bool IsOperator(this TokenType kind)
+    {
+        return kind.GetBinaryOperatorPrecedence() > 3;
+    }
+    public static bool IsRelational(this TokenType kind)
+    {
+        return kind switch
+        {
+            TokenType.ASSIGN => true,
+            TokenType.EQL or TokenType.NEQ or TokenType.LESS or TokenType.LEQ or TokenType.GTR or TokenType.GEQ => true,
+            _ => false,
+        };
+    }
+    public static bool IsLogical(this TokenType kind)
+    {
+        return kind switch
+        {
+            TokenType.LogicAnd or TokenType.LogicOr or TokenType.LogicNot => true,
+            _ => false,
+        };
+    }
     public static bool OperatorIsAug(this TokenType kind)
     {
         return kind switch
         {
-            TokenType.ADD_ASSIGN => true,
-            TokenType.SUB_ASSIGN => true,
-            TokenType.MUL_ASSIGN => true,
-            TokenType.DIV_ASSIGN => true,
+            TokenType.ADD_ASSIGN or TokenType.SUB_ASSIGN => true,
+            TokenType.MUL_ASSIGN or TokenType.DIV_ASSIGN => true,
             TokenType.SlashI_ASSIGN => true,
             TokenType.MOD_ASSIGN => true,
-            TokenType.BitAnd_ASSIGN => true,
-            TokenType.BitOr_ASSIGN => true,
+            TokenType.BitAnd_ASSIGN or TokenType.BitOr_ASSIGN => true,
             TokenType.XOR_ASSIGN => true,
-            TokenType.SHL_ASSIGN => true,
-            TokenType.SHR_ASSIGN => true,
+            TokenType.SHL_ASSIGN or TokenType.SHR_ASSIGN => true,
             _ => false,
         };
     }

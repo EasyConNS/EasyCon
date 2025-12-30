@@ -2,34 +2,11 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-public class Meta
+abstract class BinaryOp(ValReg regdst, ValBase value) : Statement
 {
-    public readonly Type StatementType;
-    public readonly Type InstructionType;
-    public readonly string Operator;
-    public readonly Func<int, int, int> Function;
-    public readonly bool OnlyInstant;
-
-    public Meta(Type statementType, Type instructionType, string op, Func<int, int, int> function, bool onlyInstant = false)
-    {
-        StatementType = statementType;
-        InstructionType = instructionType;
-        Operator = op;
-        Function = function;
-        OnlyInstant = onlyInstant;
-    }
-}
-abstract class BinaryOp : Statement
-{
-    protected abstract Meta MetaInfo { get; }
-    public readonly ValReg RegDst;
-    public readonly ValBase Value;
-
-    public BinaryOp(ValReg regdst, ValBase value)
-    {
-        RegDst = regdst;
-        Value = value;
-    }
+    protected abstract MetaOperator MetaInfo { get; }
+    public readonly ValReg RegDst = regdst;
+    public readonly ValBase Value = value;
 
 
     protected override string _GetString()
@@ -54,8 +31,7 @@ abstract class BinaryOp : Statement
 
 class Add : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(Add), typeof(Assembly.Instructions.AsmAdd), "+", (a, b) => a + b);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.Add;
 
     public Add(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -64,8 +40,7 @@ class Add : BinaryOp
 
 class Sub : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(Sub), null, "-", (a, b) => a - b);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.Sub;
 
     public Sub(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -95,8 +70,7 @@ class Sub : BinaryOp
 
 class Mul : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(Mul), typeof(Assembly.Instructions.AsmMul), "*", (a, b) => a * b);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.Mul;
 
     public Mul(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -105,8 +79,7 @@ class Mul : BinaryOp
 
 class Div : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(Div), typeof(Assembly.Instructions.AsmDiv), "/", (a, b) => a / b);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.Div;
 
     public Div(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -115,8 +88,7 @@ class Div : BinaryOp
 
 class RoundDiv : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(RoundDiv), typeof(Assembly.Instructions.AsmDiv), @"\", (a, b) => (int)Math.Round((double)a / b) );
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.RoundDiv;
 
     public RoundDiv(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -130,8 +102,7 @@ class RoundDiv : BinaryOp
 
 class Mod : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(Mod), typeof(Assembly.Instructions.AsmMod), "%", (a, b) => a % b);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.Mod;
 
     public Mod(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -140,8 +111,7 @@ class Mod : BinaryOp
 
 class And : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(And), typeof(Assembly.Instructions.AsmAnd), "&", (a, b) => a & b);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.And;
 
     public And(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -150,8 +120,7 @@ class And : BinaryOp
 
 class Or : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(Or), typeof(Assembly.Instructions.AsmOr), "|", (a, b) => a | b);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.Or;
 
     public Or(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -160,8 +129,7 @@ class Or : BinaryOp
 
 class Xor : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(Xor), typeof(Assembly.Instructions.AsmXor), "^", (a, b) => a ^ b);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.Xor;
 
     public Xor(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -170,8 +138,7 @@ class Xor : BinaryOp
 
 class ShiftLeft : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(ShiftLeft), typeof(Assembly.Instructions.AsmShiftLeft), "<<", (a, b) => a << b, true);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.LShift;
 
     public ShiftLeft(ValReg regdst, ValBase value)
         : base(regdst, value)
@@ -180,8 +147,7 @@ class ShiftLeft : BinaryOp
 
 class ShiftRight : BinaryOp
 {
-    static readonly Meta _Meta = new(typeof(ShiftRight), typeof(Assembly.Instructions.AsmShiftRight), ">>", (a, b) => a >> b, true);
-    protected override Meta MetaInfo => _Meta;
+    protected override MetaOperator MetaInfo => MetaOperator.RShift;
 
     public ShiftRight(ValReg regdst, ValBase value)
         : base(regdst, value)

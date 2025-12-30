@@ -2,9 +2,26 @@ using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing;
 
+static class Formats
+{
+    const string _ident = @"[\d\p{L}_]+";
+    const string _Constant = @"_" + _ident;
+    const string _ExtVar = @"@" + _ident;
+    const string _Variable = @"\$" + _ident;
+    const string _Number = @"-?\d+";
+
+    public const string Constant_F = "^" + _Constant + "$";
+    public const string ExtVar_F = "(" + _ExtVar + ")";
+    public const string RegisterEx = "(" + _Variable + ")";
+    public const string RegisterEx_F = "^" + _Variable + "$";
+    public const string VariableEx = "(" + _Variable + "|" + _ExtVar + ")";
+    public const string VariableEx_F = "^" + _Variable + "|" + _ExtVar + "$";
+    public const string ValueEx = "(" + _Constant + "|" + _Variable + "|" + _ExtVar + "|" + _Number + ")";
+}
+
 class Formatter(Dictionary<string, ExternalVariable> extVars)
 {
-    private readonly Dictionary<string, int> Variables = [];
+    private readonly Dictionary<string, ValReg> Variables = [];
     private readonly Dictionary<string, int> Constants = [];
     private readonly Dictionary<string, ExternalVariable> ExtVars = extVars;
 
@@ -15,13 +32,37 @@ class Formatter(Dictionary<string, ExternalVariable> extVars)
         return true;
     }
     
+    public ValReg GetReg(string text, bool decl = false)
+    {
+        var m = Regex.Match(text, Formats.RegisterEx_F);
+        if (!m.Success)
+            throw new FormatException();
+        if (Variables.TryGetValue(text, out var regVar))
+        {
+            return regVar;
+        }
+        if(!decl)
+        {
+            throw new ParseException($"未定义的变量“{text}”");
+        }
+        var tag = text[1..];
+        var lhs = true;
+        if (uint.TryParse(tag, out var reg) && reg == 0 && lhs)
+        {
+            throw new ParseException(@"寄存器变量编号0暂无法使用");
+        }
+        var nv = new ValReg(tag);
+        Variables.Add(text, nv);
+        return nv;
+    }
+
     private ValExtVar GetExtVar(string text)
     {
         if (!text.StartsWith('@'))
             throw new FormatException();
         var name = text[1..];
         if (!ExtVars.TryGetValue(name, out ExternalVariable? value))
-            throw new ParseException($"找不到识图标签：“{text}");
+            throw new ParseException($"找不到识图标签“{text}”");
         return new ValExtVar(value);
     }
 
@@ -29,14 +70,13 @@ class Formatter(Dictionary<string, ExternalVariable> extVars)
     {
         if (Regex.Match(text, Formats.ExtVar_F).Success)
             return GetExtVar(text);
-        return FormatterUtil.GetRegEx(text);
+        return GetReg(text);
     }
 
     public ValInstant GetConstant(string text, bool zeroOrPos = false)
     {
-        if (!Constants.ContainsKey(text))
+        if (!Constants.TryGetValue(text, out int v))
             throw new Exception($"未定义的常量“{text}”");
-        int v = Constants[text];
         if (zeroOrPos && v < 0)
             throw new Exception("不能使用负数");
         return new ValInstant(v, text);
@@ -63,27 +103,5 @@ class Formatter(Dictionary<string, ExternalVariable> extVars)
             return GetVar(text);
         else
             return GetInstant(text);
-    }
-}
-
-
-class FormatterUtil
-{
-    internal static ValReg GetRegEx(string text, bool lhs = false)
-    {
-        var m = Regex.Match(text, Formats.RegisterEx_F);
-        if (!m.Success)
-            throw new FormatException();
-        text = text[1..];
-        if (uint.TryParse(text, out var reg) && reg < Processor.OfflineMaxRegisterCount)
-        {
-            if (lhs && reg == 0)
-                throw new ParseException(@"寄存器变量编号0只读");
-            return new ValReg(reg);
-        }
-        else
-        {
-            return new ValReg(text);
-        }
     }
 }

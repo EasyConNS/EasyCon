@@ -59,19 +59,21 @@ public enum TokenType
     LogicNot, // not
 
     //  Punctuation
-    LeftParen, // (
-    LeftBracket, // [
+    LeftParen, // ()
+    RightParen,
+    LeftBracket, // []
+    RightBracket,
+    OpenBrace, // {}
+    CloseBrace, 
     COMMA, // ,
     DOT, // .
-
-    RightParen, // )
-    RightBracket, // ]
     COLON, // :
     SEMICOLON, // ;
 
     // Keywords
-    IMPORT,
-    AS,
+    STRUCT, // struct
+    IMPORT, // import
+    AS, // as
     IF, 
     ELIF,
     ELSE, 
@@ -85,8 +87,8 @@ public enum TokenType
     FUNC,
     RETURN,
     ENDFUNC, 
-    True, // TRUE
-    False, // FALSE
+    TRUE, // true
+    FALSE, // false
 
     // Gamepad Keys
     ResetKeyword, // RESET

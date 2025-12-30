@@ -5,8 +5,6 @@ namespace EasyScript;
 
 class Processor(Dictionary<string, FunctionStmt> func)
 {
-    public const uint OfflineMaxRegisterCount = 8;
-
     public IOutputAdapter Output;
     public ICGamePad GamePad;
 
@@ -92,7 +90,7 @@ class Processor(Dictionary<string, FunctionStmt> func)
                 break;
             case "BEEP":
                 {
-                    if (args.Any())
+                    if (args.Length != 0)
                     {
                         var rate = args[0] as LiterParam;
                         var dur = args[1] as LiterParam;

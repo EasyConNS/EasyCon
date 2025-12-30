@@ -36,14 +36,14 @@ public class Scripter
         return tokens.Select(t => t.Value).Distinct().Where(s => s.StartsWith(pre));
     }
 
-    public void Run(IOutputAdapter output, ICGamePad pad)
+    public void Run(CancellationToken token, IOutputAdapter output, ICGamePad pad)
     {
         var _processor = new Processor(_funcTables)
         {
             Output = output,
             GamePad = pad,
         };
-        while (_processor.PC < _statements.Count())
+        while (!token.IsCancellationRequested && _processor.PC < _statements.Count())
         {
             var cmd = _statements[_processor.PC];
             _processor.PC++;

@@ -25,60 +25,6 @@ public sealed class SimpleVisitor : AstVisitor
         return ast;
     }
 
-    public override ASTNode VisitTrivia(TriviaNode ast)
-    {
-        Console.Write($"{ast.Text}");
-        return ast;
-    }
-
-    public override ASTNode VisitLiteral(LiteralExpression ast)
-    {
-         Console.Write($"{ast.Value}");
-         return ast;
-         
-    }
-    
-    public override ASTNode VisitVariable(VariableExpression ast)
-    {
-        Console.Write($"{ast.Name}");
-        return ast;
-    }
-
-
-    public override ASTNode VisitIndexExpr(IndexExpression ast)
-    {
-        Console.Write($"[");
-        foreach(var item in ast.Items)
-        {
-            item.Accept(this);
-            Console.Write(", ");
-        }
-        Console.Write("]");
-
-        return ast;
-    }
-    
-    public override ASTNode VisitBinaryOp(BinaryExpression ast)
-    {
-        Console.Write("(");
-        ast.Left.Accept(this);
-        Console.Write($" {ast.Operator} ");
-       ast.Right.Accept(this);
-        Console.Write(")");
-
-        return ast;
-   }
-
-   public override ASTNode VisitCondition(ConditionExpression ast)
-   {
-       Console.Write("(");
-       ast.Left.Accept(this);
-       Console.Write($" {ast.Operator} ");
-       ast.Right.Accept(this);
-       Console.WriteLine(")");
-       return ast;
-   }
-
     public override ASTNode VisitAssignmentStat(AssignmentStatement ast)
     {
         ast.Variable.Accept(this);

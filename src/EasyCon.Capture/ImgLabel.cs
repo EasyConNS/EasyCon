@@ -1,5 +1,4 @@
 using OpenCvSharp;
-using OpenCvSharp.Extensions;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text.Json;
@@ -127,11 +126,6 @@ public record ImgLabel
 
 public static class ILExt
 {
-    public static Bitmap GetRange(this Mat self, Point pos, ImgLabel img)
-    {
-        using var range = new Mat(self, new Rect(pos.X + img.RangeX, pos.Y + img.RangeY, img.TargetWidth, img.TargetHeight));
-        return BitmapConverter.ToBitmap(range);
-    }
     public static void Save(this ImgLabel self, string path)
     {
         // save the imglabel to loc

@@ -2,6 +2,28 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
+class ConditionExpression(CompareOperator op, ValBase left, ValBase right, bool hasPr = false)
+{
+    protected readonly ValBase Value1 = left;
+    protected readonly CompareOperator CmpOp = op;
+    protected readonly ValBase Value2 = right;
+    protected readonly bool HasPr = hasPr;
+    public bool Compare(Processor processor)
+    {
+        return CmpOp.Compare(Value1.Get(processor), Value2.Get(processor));
+    }
+
+    public string GetCodeText()
+    {
+
+        var op = CmpOp.Operator == "=" ? "==" : CmpOp.Operator;
+
+        var exp = $"{Value1.GetCodeText()} {op} {Value2.GetCodeText()}";
+        return HasPr ? $"({exp})" : exp;
+    }
+}
+
+
 abstract class BranchOp : Statement
 {
     public BranchOp? If;
@@ -10,16 +32,14 @@ abstract class BranchOp : Statement
     public bool Passthrough = true;
 }
 
-class IfStmt(CompareOperator op, ValBase left, ValBase right) : BranchOp
+class IfStmt(ConditionExpression conds) : BranchOp
 {
-    public readonly CompareOperator Operater = op;
-    public readonly ValBase Left = left;
-    public readonly ValBase Right = right;
+    public readonly ConditionExpression Condition = conds;
 
     public override void Exec(Processor processor)
     {
         Passthrough = true;
-        if (Operater.Compare(Left.Get(processor), Right.Get(processor)))
+        if (Condition.Compare(processor))
         {
             // do nothing
             Passthrough = false;
@@ -36,29 +56,29 @@ class IfStmt(CompareOperator op, ValBase left, ValBase right) : BranchOp
 
     protected override string _GetString()
     {
-        var op = Operater.Operator == "=" ? "==" : Operater.Operator;
-        return $"IF {Left.GetCodeText()} {op} {Right.GetCodeText()}";
+        return $"IF {Condition.GetCodeText()}";
     }
 
     public override void Assemble(Assembly.Assembler assembler)
     {
-        if (Left is not ValReg left)
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-        if (Right is ValInstant)
-        {
-            assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
-            assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
-        }
-        else
-        {
-            assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
-        }
-        assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
-        assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
+        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+        // if (Left is not ValReg left)
+        //     throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+        // if (Right is ValInstant)
+        // {
+        //     assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
+        //     assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
+        // }
+        // else
+        // {
+        //     assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
+        // }
+        // assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
+        // assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
     }
 }
 
-class ElseIf(CompareOperator op, ValBase left, ValBase right) : IfStmt(op, left, right)
+class ElseIf(ConditionExpression conds) : IfStmt(conds)
 {
     public override void Exec(Processor processor)
     {
@@ -69,7 +89,7 @@ class ElseIf(CompareOperator op, ValBase left, ValBase right) : IfStmt(op, left,
         else
         {
             Passthrough = true;
-            if (Operater.Compare(Left.Get(processor), Right.Get(processor)))
+            if (Condition.Compare(processor))
             {
                 // do nothing
                 Passthrough = false;
@@ -87,31 +107,30 @@ class ElseIf(CompareOperator op, ValBase left, ValBase right) : IfStmt(op, left,
 
     protected override string _GetString()
     {
-        var op = Operater.Operator == "=" ? "==" : Operater.Operator;
-        return $"ELIF {Left.GetCodeText()} {op} {Right.GetCodeText()}";
+        return $"ELIF {Condition.GetCodeText()}";
     }
 
     public override void Assemble(Assembly.Assembler assembler)
     {
-        // need test
-        assembler.Add(Assembly.Instructions.AsmBranch.Create());
-        assembler.ElseMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranch;
-        assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-        assembler.IfMapping[If].Target = assembler.Last();
+        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+        // assembler.Add(Assembly.Instructions.AsmBranch.Create());
+        // assembler.ElseMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranch;
+        // assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+        // assembler.IfMapping[If].Target = assembler.Last();
 
-        if (Left is not ValReg left)
-            throw new Assembly.AssembleException("外部变量仅限联机模式使用");
-        if (Right is ValInstant)
-        {
-            assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
-            assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
-        }
-        else
-        {
-            assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
-        }
-        assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
-        assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
+        // if (Left is not ValReg left)
+        //     throw new Assembly.AssembleException("外部变量仅限联机模式使用");
+        // if (Right is ValInstant)
+        // {
+        //     assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
+        //     assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
+        // }
+        // else
+        // {
+        //     assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
+        // }
+        // assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
+        // assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
     }
 }
 

@@ -8,7 +8,8 @@ public abstract class ASTNode(Token key)
 {
     public Token Key = key;
     public int Line => key.Line;
-    public abstract T Accept<T>(IAstVisitor<T> visitor);
+
+    public virtual T Accept<T>(IAstVisitor<T> visitor) {throw new NotImplementedException();}
 
     public readonly List<TriviaNode> LeadingTrivia = [];
     public readonly List<TriviaNode> TrailingTrivia = [];
@@ -44,11 +45,6 @@ public abstract class Expression(Token key) : ASTNode(key) { }
 public sealed class TriviaNode(Token trivia) : Expression(trivia)
 {
     public string Text => trivia.Value;
-
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitTrivia(this);
-    }
 }
 
 // 字面量表达式
@@ -76,11 +72,6 @@ public sealed class LiteralExpression : Expression
             Value = value;
         }
     }
-
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitLiteral(this);
-    }
 }
 
 // 变量表达式
@@ -89,43 +80,22 @@ public sealed class VariableExpression(Token keyword, bool isConstant, bool isSp
     public string Name { get; } = keyword.Value;
     public bool IsConstant { get; } = isConstant;
     public bool IsSpecial { get; } = isSpecial;
-
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitVariable(this);
-    }
 }
 
 public sealed class IndexExpression(Token keyword, ImmutableArray<Expression> items, Token rb) : Expression(keyword)
 {
     public ImmutableArray<Expression> Items { get; } = items;
-
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitIndexExpr(this);
-    }
 }
 
 public sealed class ParenthesizedExpression(Token left, Expression expr, Token right) : Expression(left)
 {
     public Expression Expr { get; } = expr;
-
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        throw new NotImplementedException();
-    }
 }
 
 public sealed class UnaryExpression(Token op, Expression right) : Expression(op)
 {
     public TokenType Operator { get; } = op.Type;
     public Expression Right { get; } = right;
-
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        //return visitor.VisitBinaryOp(this);
-        throw new NotImplementedException();
-    }
 }
 
 // 二元运算表达式
@@ -134,11 +104,6 @@ public sealed class BinaryExpression(Expression left, Token op, Expression right
     public Expression Left { get; } = left;
     public TokenType Operator { get; } = op.Type;
     public Expression Right { get; } = right;
-
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitBinaryOp(this);
-    }
 }
 
 // 条件表达式
@@ -147,25 +112,17 @@ public sealed class ConditionExpression(Expression left, Token op, Expression ri
     public Expression Left { get; } = left;
     public TokenType Operator { get; } = op.Type;
     public Expression Right { get; } = right;
+}
 
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        return visitor.VisitCondition(this);
-    }
+public sealed class NotConditionExpression(Token op, ConditionExpression condition) : Expression(op)
+{
+    public ConditionExpression Condition { get; } = condition;
 }
 
 // 语句节点
-public abstract class Statement(Token key) : ASTNode(key)
-{
-}
+public abstract class Statement(Token key) : ASTNode(key) { }
 
-public sealed class KeywordStatement(Token keyword) : Statement(keyword)
-{
-    public override T Accept<T>(IAstVisitor<T> visitor)
-    {
-        throw new NotImplementedException();
-    }
-}
+public sealed class KeywordStatement(Token keyword) : Statement(keyword) { }
 
 public sealed class ImportStatement(Token imp, string name, LiteralExpression path) : Member(imp)
 {

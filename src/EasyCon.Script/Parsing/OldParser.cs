@@ -1,5 +1,4 @@
 using EasyScript.Statements;
-using System.Reflection;
 using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing;
@@ -7,16 +6,6 @@ namespace EasyScript.Parsing;
 partial class Parser(Dictionary<string, ExternalVariable> extVars)
 {
     readonly Formatter _formatter = new(extVars);
-
-    static IEnumerable<Meta> OpList()
-    {
-        var types = from domainAssembly in AppDomain.CurrentDomain.GetAssemblies()
-                    from assemblyType in domainAssembly.GetTypes()
-                    where assemblyType.IsSubclassOf(typeof(BinaryOp))
-                    where assemblyType.GetField("_Meta", BindingFlags.NonPublic | BindingFlags.Static) != null
-                    select assemblyType.GetField("_Meta", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null) as Meta;
-        return types;
-    }
 
     private IEnumerable<ParserArgument> ParseLines(string text)
     {
@@ -60,13 +49,9 @@ partial class Parser(Dictionary<string, ExternalVariable> extVars)
         {
             return ParseAssignment(text);
         }
-        else if (text.StartsWith("if", StringComparison.OrdinalIgnoreCase))
+        else if (text.StartsWith("if", StringComparison.OrdinalIgnoreCase) || text.StartsWith("elif", StringComparison.OrdinalIgnoreCase))
         {
             return ParseIfelse(text);
-        }
-        else if (text.StartsWith("elif", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseIfelse(text, true);
         }
         else if (text.Equals("else", StringComparison.OrdinalIgnoreCase))
         {
@@ -91,6 +76,10 @@ partial class Parser(Dictionary<string, ExternalVariable> extVars)
         else if (text.Equals("return", StringComparison.OrdinalIgnoreCase))
         {
             return new ReturnStat();
+        }
+        else if (text.StartsWith("func", StringComparison.OrdinalIgnoreCase))
+        {
+            return ParseFuncDecl(text);
         }
         else if (text.Equals("endfunc", StringComparison.OrdinalIgnoreCase))
         {

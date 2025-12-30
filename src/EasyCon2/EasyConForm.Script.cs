@@ -15,7 +15,8 @@ partial class EasyConForm
 {
     private bool scriptCompiling = false;
     private bool scriptRunning = false;
-    private Thread thd;
+
+    CancellationTokenSource cts = new();
     event ScriptStatuHandler ScriptRunningChanged;
     private async Task<bool> ScriptCompile()
     {
@@ -76,8 +77,11 @@ partial class EasyConForm
 
         scriptRunning = true;
         ScriptRunningChanged?.Invoke(true);
-        thd = new Thread(_RunScript);
-        thd?.Start();
+
+        cts = new();
+        Task.Run(
+            _RunScript
+            );
     }
 
     private DateTime _startTime = DateTime.MinValue;
@@ -89,7 +93,7 @@ partial class EasyConForm
             _startTime = DateTime.Now;
 
             logTxtBox.Print("-- 开始运行 --", Color.Lime);
-            _program.Run(this, new GamePadAdapter(NS));
+            _program.Run(cts.Token, this, new GamePadAdapter(NS));
             logTxtBox.Print("-- 运行结束 --", Color.Lime);
             StatusShowLog("运行结束");
             //SystemSounds.Beep.Play();
@@ -125,7 +129,7 @@ partial class EasyConForm
 
     private void ScriptStop()
     {
-        thd?.Interrupt();
+        cts?.Cancel();
         scriptRunning = false;
         StatusShowLog("运行被终止");
         SystemSounds.Beep.Play();

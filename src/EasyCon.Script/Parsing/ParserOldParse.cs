@@ -6,7 +6,7 @@ namespace EasyScript.Parsing;
 
 internal partial class Parser
 {
-    private Statement? ParseConstantDecl(string text)
+    private Empty? ParseConstantDecl(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
         if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN)
@@ -14,21 +14,20 @@ internal partial class Parser
             var eexp = ParseExpression([.. lexer.Skip(2)], false);
             if (_formatter.TryDeclConstant(lexer[0].Value, eexp))
                 return new Empty($"{lexer[0].Value} = {eexp.GetCodeText()}");
-            else
-                throw new Exception($"重复定义的常量：{lexer[0].Value}");
+            throw new Exception($"重复定义的常量：{lexer[0].Value}");
         }
         return null;
     }
     
-    private Statement? ParseUnary(ValReg dest, List<Token> tokens)
+    private UnaryOp? ParseUnary(ValReg dest, List<Token> tokens)
     {
         if(tokens.Count == 3 && tokens[0].Type.GetUnaryOperatorPrecedence() > 0 && tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.EOF)
         {
             // 一元运算符
             return tokens[0].Type switch
             {
-                TokenType.SUB => new Negative(dest, FormatterUtil.GetRegEx(tokens[1].Value)),
-                TokenType.BitNot => new Not(dest, FormatterUtil.GetRegEx(tokens[1].Value)),
+                TokenType.SUB => new Negative(dest, _formatter.GetReg(tokens[1].Value)),
+                TokenType.BitNot => new Not(dest, _formatter.GetReg(tokens[1].Value)),
                 _ => null
             };
         }
@@ -79,6 +78,10 @@ internal partial class Parser
                         
                         opStack.Push(token);
                     }
+                    else if(token.Type.GetBinaryOperatorPrecedence() > 0)
+                    {
+                        // TODO compare
+                    }
                     else if(token.Type == TokenType.EOF)break;
                     else
                     {
@@ -107,7 +110,7 @@ internal partial class Parser
         if (opStack.Count == 0 || valueStack.Count < 2)
             throw new Exception("表达式语法错误");
         string opStr = opStack.Pop().Value;
-        Meta? op = OpList().FirstOrDefault(o=> o.Operator == opStr);
+        MetaOperator? op = MetaOperator.All.FirstOrDefault(o=> o.Operator == opStr);
         ValBase right = valueStack.Pop();
         ValBase left = valueStack.Pop();
         valueStack.Push(new BinExpr(left, op!, right, hasPr));
@@ -116,10 +119,10 @@ internal partial class Parser
     private Statement? ParseAssignment(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
-        if(lexer.Count() < 3+1)return null;
+        if(lexer.Length < 3+1)return null;
         if (lexer[0].Type == TokenType.VAR && lexer[1].Type == TokenType.ASSIGN)
         {
-            var des = FormatterUtil.GetRegEx(lexer[0].Value, true);
+            var des = _formatter.GetReg(lexer[0].Value, true);
 
             var sm = ParseUnary(des, [.. lexer.Skip(2)]);
             if(sm!=null)
@@ -135,29 +138,32 @@ internal partial class Parser
         if (lexer[0].Type == TokenType.VAR && lexer[1].Type.OperatorIsAug())
         {
             if(lexer.Count() != 3+1)return null;
-            Meta? op = OpList().FirstOrDefault(o=> o.Operator+"=" == lexer[1].Value);
+            var des = _formatter.GetReg(lexer[0].Value, true);
+            MetaOperator? op = MetaOperator.All.FirstOrDefault(o=> o.Operator+"=" == lexer[1].Value);
             if(op.OnlyInstant)
             {
                 if(lexer[2].Type != TokenType.INT && lexer[2].Type != TokenType.CONST)
                     throw new Exception("Only Instant can be augmented.");
             }
-            return Activator.CreateInstance(op.StatementType, FormatterUtil.GetRegEx(lexer[0].Value, true), _formatter.GetValueEx(lexer[2].Value)) as Parsing.Statement;
+            return Activator.CreateInstance(op.StatementType, des, _formatter.GetValueEx(lexer[2].Value)) as Parsing.Statement;
         }
 
         return null;
     }
 
-    private Statement? ParseIfelse(string text, bool elif = false)
+    private Statement? ParseIfelse(string text)
     {
+        var lexer = SyntaxTree.ParseTokens(text);
+        lexer.Skip(1);
         foreach (var op in CompareOperator.All)
         {
             var m = Regex.Match(text, $@"^if\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
-                return new IfStmt(op, _formatter.GetVar(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value));
+                return new IfStmt(new(op, _formatter.GetVar(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value)));
             // else if
             m = Regex.Match(text, $@"^elif\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
             if (m.Success)
-                return new ElseIf(op, _formatter.GetVar(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value));
+                return new ElseIf(new(op, _formatter.GetVar(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value)));
         }
 
         return null;
@@ -172,14 +178,14 @@ internal partial class Parser
             return new For_Static(_formatter.GetValueEx(m.Groups[1].Value));
         m = Regex.Match(text, $@"^for\s+{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}\s*to\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
         if (m.Success)
-            return new For_Full(FormatterUtil.GetRegEx(m.Groups[1].Value, true), _formatter.GetValueEx(m.Groups[2].Value), _formatter.GetValueEx(m.Groups[3].Value));
+            return new For_Full(_formatter.GetReg(m.Groups[1].Value, true), _formatter.GetValueEx(m.Groups[2].Value), _formatter.GetValueEx(m.Groups[3].Value));
         return null;
     }
 
     private Statement? ParseLoopCtrl(string text)
     {
         var tok = SyntaxTree.ParseTokens(text);
-        if(tok.Count() > 2+1) return null;
+        if(tok.Length > 2+1) return null;
         var tokens = tok.Take(2).ToList();
 
         switch (tokens[0].Type)
@@ -260,10 +266,22 @@ internal partial class Parser
         return name switch
         {
             "beep" => 3,
-            "func" or "call" or "alert" or "print" or "time" or "rand" or "wait" or "amiibo" or "sprint" or "smem" => 1,
+            "call" or "alert" or "print" or "time" or "rand" or "wait" or "amiibo" or "sprint" or "smem" => 1,
             _ => 0,
         };
         ;
+    }
+
+    private FunctionStmt? ParseFuncDecl(string text)
+    {
+        var tokens = SyntaxTree.ParseTokens(text);
+        if(tokens.Length == 3)
+        {
+            if(tokens[0].Type == TokenType.FUNC && tokens[1].Type == TokenType.IDENT && tokens[2].Type == TokenType.EOF)
+            return new FunctionStmt(tokens[1].Value);
+        }
+
+        return null;
     }
 
     private Statement? ParseNamedExpression(string text)
@@ -271,11 +289,9 @@ internal partial class Parser
         var tokens = SyntaxTree.ParseTokens(text);
         var first = tokens.First()!;
         var fname = first.Value.ToLower();
-        if (tokens.Count() > 2+ namedArgs(fname)) return null;
+        if (tokens.Length > 2+ namedArgs(fname)) return null;
         switch (fname)
         {
-            case "func":
-                return tokens[1].Type == TokenType.IDENT ? new FunctionStmt(tokens[1].Value) : null;
             case "call":
                 return tokens[1].Type == TokenType.IDENT ? new CallStat(tokens[1].Value) : null;
             case "alert":
@@ -306,7 +322,7 @@ internal partial class Parser
             case "time":
             case "rand":
                 if (tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.EOF)
-                    return new BuildinFunc(first.Value.ToUpper(), [new RegParam(FormatterUtil.GetRegEx(tokens[1].Value))]);
+                    return new BuildinFunc(first.Value.ToUpper(), [new RegParam(_formatter.GetReg(tokens[1].Value))]);
                 break;
             case "wait":
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)

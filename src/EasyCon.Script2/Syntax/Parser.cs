@@ -152,6 +152,10 @@ internal sealed class Parser
         return ParseGlobalStatement();
     }
 
+    /*
+    ** TODO:
+    STRUCT name{field1, field2}
+    */
     private Member ParseGlobalStatement()
     {
         var stmt = WithTrivia(() => ParseStatementInternal());
@@ -183,15 +187,16 @@ internal sealed class Parser
         }
     }
 
+    // IMPORT name "path"
     private ImportStatement ParseImportDecl()
     {
         var import = Match(TokenType.IMPORT);
-        if (Check(TokenType.STRING))
+        if (Checks(TokenType.STRING, TokenType.IDENT))
         {
-            var path = Match(TokenType.STRING);
-
             var name = "";
             if (Check(TokenType.IDENT)) name = Advance().Value;
+
+            var path = Match(TokenType.STRING);
 
             return new ImportStatement(import, name, new LiteralExpression(path, path.value));
         }
@@ -254,6 +259,15 @@ internal sealed class Parser
         return new CallExpression(func, name, args.ToImmutableArray());
     }
 
+    /*
+    IF 条件
+      语句
+    ELIF 条件
+      语句
+    ELSE
+      语句
+    ENDIF
+    */
     private IfStatement ParseIfStatement()
     {
         var ifcond = WithTrivia(() => ParseIfCondition());
@@ -292,6 +306,11 @@ internal sealed class Parser
         return new IfCondition(ifToken, condition);
     }
 
+    /*
+    FOR 变量 = 开始 to 结束 [step 步长]
+      语句
+    NEXT
+    */
     private ForStatement ParseForStatement()
     {
         var forToken = Advance();
@@ -540,7 +559,7 @@ internal sealed class Parser
     // 条件表达式
     private Expression ParseCondition()
     {
-        return ParseComparison();
+        return ParseLogicalOr();
     }
 
     private Expression ParseLogicalOr()
@@ -573,6 +592,7 @@ internal sealed class Parser
 
     private Expression ParseComparison()
     {
+        var notTok = Check(TokenType.LogicNot) ? Advance() : null;
         var expression = ParseExpression();
 
         while (Checks(TokenType.EQL, TokenType.NEQ, TokenType.LESS, TokenType.LEQ, TokenType.GTR, TokenType.GEQ))

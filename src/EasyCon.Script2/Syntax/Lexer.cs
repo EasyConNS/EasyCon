@@ -77,8 +77,8 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             { "endfunc", TokenType.ENDFUNC },
             { "return", TokenType.RETURN },
 
-            { "true", TokenType.True },
-            { "false", TokenType.False },
+            { "true", TokenType.TRUE },
+            { "false", TokenType.FALSE },
             { "reset", TokenType.ResetKeyword },
         };
     private static readonly Dictionary<string, TokenType> logicwords = new()
@@ -285,7 +285,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             Advance();
         }
 
-        while (_position < _input.Length && IsIdentifierChar(Peek()))
+        while (_position < _input.Length && IsIdentifierChar(Current))
         {
             Advance();
         }
@@ -538,6 +538,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 break;
             case ']':
                 AddToken(TokenType.RightBracket, "]", start);
+                break;
+            case '{':
+                AddToken(TokenType.OpenBrace, "{", start);
+                break;
+            case '}':
+                AddToken(TokenType.CloseBrace, "}", start);
                 break;
             default:
                 var span = new SourceSpan(_position, 1, _line);

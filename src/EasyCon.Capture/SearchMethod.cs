@@ -26,6 +26,8 @@ public enum SearchMethod
     EdgeDetectXY = 11,
     [Description("拉普拉斯边缘检测")]
     EdgeDetectLaplacian = 12,
+    [Description("Canny边缘检测")]
+    EdgeDetectCanny = 13,
     [Description("OCR单行文本识别")]
     TesserDetect = 107,
 }

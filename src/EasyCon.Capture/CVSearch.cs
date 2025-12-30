@@ -82,6 +82,7 @@ internal static class OpenCVSearch
         {
             SearchMethod.EdgeDetectXY => XYAvg(src),
             SearchMethod.EdgeDetectLaplacian => LaplacianEdge(src),
+            SearchMethod.EdgeDetectCanny => Canny(src),
             _ => throw new NotImplementedException(),
         };
     }

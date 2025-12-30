@@ -2,14 +2,8 @@ namespace EasyCon.Script2.Ast;
 
 public interface IAstVisitor<T>
 {
-    T VisitImport(ImportStatement ast);
-    T VisitTrivia(TriviaNode ast);
     T VisitProgram(MainProgram ast);
-    T VisitLiteral(LiteralExpression ast);
-    T VisitVariable(VariableExpression ast);
-    T VisitIndexExpr(IndexExpression ast);
-    T VisitBinaryOp(BinaryExpression ast);
-    T VisitCondition(ConditionExpression ast);
+    T VisitImport(ImportStatement ast);
     T VisitAssignmentStat(AssignmentStatement ast);
     T VisitIfStat(IfStatement ast);
     T VisitElseIfClause(ElseIfClause ast);
@@ -32,36 +26,11 @@ public abstract class AstVisitor : IAstVisitor<ASTNode>
         return ast;
     }
 
-    public virtual ASTNode VisitTrivia(TriviaNode ast)
-    {
-        return ast;
-    }
-
     public virtual ASTNode VisitProgram(MainProgram ast)
     {
         return ast; 
     }
 
-    public virtual ASTNode VisitLiteral(LiteralExpression ast)
-    {
-        return ast;
-    }
-    public virtual ASTNode VisitVariable(VariableExpression ast)
-    {
-        return ast;
-    }
-    public virtual ASTNode VisitIndexExpr(IndexExpression ast)
-    {
-        return ast;
-    }
-    public virtual ASTNode VisitBinaryOp(BinaryExpression ast)
-    {
-        return ast;
-    }
-    public virtual ASTNode VisitCondition(ConditionExpression ast)
-    {
-        return ast;
-    }
     public virtual ASTNode VisitAssignmentStat(AssignmentStatement ast)
     {
         return ast;
