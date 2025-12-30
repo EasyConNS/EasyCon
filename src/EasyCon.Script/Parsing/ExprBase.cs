@@ -1,7 +1,7 @@
 namespace EasyScript.Parsing;
 
 // base of valuetype
-abstract class ValBase
+abstract class ExprBase
 {
     public abstract int Get(Processor processor);
 
@@ -12,25 +12,25 @@ abstract class ValBase
 
     public abstract string GetCodeText();
 
-    public static implicit operator ValBase(int val)
+    public static implicit operator ExprBase(int val)
     {
-        return new ValInstant(val);
+        return new InstantExpr(val);
     }
 }
 
 // instant number, including constant
-class ValInstant : ValBase
+class InstantExpr : ExprBase
 {
     public readonly int Val;
     public readonly string Text;
 
-    public ValInstant(int val)
+    public InstantExpr(int val)
     {
         Val = val;
         Text = val.ToString();
     }
 
-    public ValInstant(int val, string text)
+    public InstantExpr(int val, string text)
     {
         Val = val;
         Text = text;
@@ -46,30 +46,30 @@ class ValInstant : ValBase
         return Text;
     }
 
-    public static implicit operator ValInstant(int val)
+    public static implicit operator InstantExpr(int val)
     {
-        return new ValInstant(val);
+        return new InstantExpr(val);
     }
 
-    public static implicit operator int(ValInstant v)
+    public static implicit operator int(InstantExpr v)
     {
         return v.Val;
     }
 }
 
 // register variable, either 16 or 32 bits
-class ValReg : ValBase
+class VariableExpr : ExprBase
 {
     public readonly string Tag;
     public readonly uint Reg;
 
-    public ValReg(string tag)
+    public VariableExpr(string tag)
     {
         Tag = tag;
         Reg = 0;
     }
 
-    public ValReg(uint reg)
+    public VariableExpr(uint reg)
     {
         Tag = reg.ToString();
         Reg = reg;
@@ -92,7 +92,7 @@ class ValReg : ValBase
 }
 
 // external variable 
-class ValExtVar(ExternalVariable var) : ValBase
+class ExtVarExpr(ExternalVariable var) : ExprBase
 {
     public readonly ExternalVariable Var = var;
 
@@ -107,11 +107,11 @@ class ValExtVar(ExternalVariable var) : ValBase
     }
 }
 
-class BinExpr(ValBase left, MetaOperator op, ValBase right, bool hasPr = false) : ValBase
+class BinaryExpression(ExprBase left, MetaOperator op, ExprBase right, bool hasPr = false) : ExprBase
 {
-    protected readonly ValBase ValueLeft = left;
+    protected readonly ExprBase ValueLeft = left;
     protected readonly MetaOperator OpMeta = op;
-    protected readonly ValBase ValueRight = right;
+    protected readonly ExprBase ValueRight = right;
 
     protected readonly bool HasPr = hasPr;
     public override int Get(Processor processor)
@@ -125,19 +125,19 @@ class BinExpr(ValBase left, MetaOperator op, ValBase right, bool hasPr = false) 
         return HasPr ? $"({exp})" : exp;
     }
 
-    public static ValBase Rewrite(ValBase expr)
+    public static ExprBase Rewrite(ExprBase expr)
     {
-        if (expr is BinExpr br)
+        if (expr is BinaryExpression br)
         {
             var left = Rewrite(br.ValueLeft);
             var right = Rewrite(br.ValueRight);
-            if(left is ValInstant li && right is ValInstant ri)
+            if(left is InstantExpr li && right is InstantExpr ri)
             {
                 return br.OpMeta.Function(li.Val, ri.Val);
             }
             else
             {
-                return new BinExpr(left, br.OpMeta, right, br.HasPr);
+                return new BinaryExpression(left, br.OpMeta, right, br.HasPr);
             }
         }
         return expr;

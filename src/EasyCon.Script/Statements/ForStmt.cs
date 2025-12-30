@@ -2,9 +2,10 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-abstract class ForStmt(ValBase count) : Statement
+abstract class ForStmt(ExprBase count) : Statement
 {
-    public readonly ValBase Count = count;
+    public readonly ExprBase Count = count;
+    [Obsolete]
     public Next Next;
 
     protected virtual void Init(Processor processor)
@@ -14,7 +15,6 @@ abstract class ForStmt(ValBase count) : Statement
 
     protected virtual void Step(Processor processor)
     { }
-
     public override sealed void Exec(Processor processor)
     {
         var liteScop = processor.GetScope();
@@ -40,26 +40,20 @@ class For_Infinite : ForStmt
         : base(0)
     { }
 
-    protected override bool Cond(Processor _)
-    {
-        return true;
-    }
+    protected override bool Cond(Processor _) => true;
 
-    protected override string _GetString()
-    {
-        return $"FOR";
-    }
+    protected override string _GetString() => "FOR";
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        assembler.Add(Assembly.Instructions.AsmFor.Create());
-        assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    assembler.Add(Assembly.Instructions.AsmFor.Create());
+    //    assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
+    //}
 }
 
 class For_Static : ForStmt
 {
-    public For_Static(ValBase count)
+    public For_Static(ExprBase count)
         : base(count)
     { }
 
@@ -87,25 +81,25 @@ class For_Static : ForStmt
         return $"FOR {Count.GetCodeText()}";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        if (Count is ValReg vr)
-        {
-            if(vr.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)(vr.Reg << 4)));
-            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
-        }
-        assembler.Add(Assembly.Instructions.AsmFor.Create());
-        assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    if (Count is VariableExpr vr)
+    //    {
+    //        if(vr.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //        assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)(vr.Reg << 4)));
+    //        assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
+    //    }
+    //    assembler.Add(Assembly.Instructions.AsmFor.Create());
+    //    assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
+    //}
 }
 
 class For_Full : ForStmt
 {
-    public ValReg RegIter;
-    public ValBase InitVal;
+    public VariableExpr RegIter;
+    public ExprBase InitVal;
 
-    public For_Full(ValReg regiter, ValBase initval, ValBase count)
+    public For_Full(VariableExpr regiter, ExprBase initval, ExprBase count)
         : base(count)
     {
         RegIter = regiter;
@@ -135,121 +129,102 @@ class For_Full : ForStmt
         return $"FOR {RegIter.GetCodeText()} = {InitVal.GetCodeText()} TO {Count.GetCodeText()}";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        if (RegIter is ValReg reg)
-            assembler.Add(Assembly.Instructions.AsmMov.Create(reg.Reg, InitVal));
-        else 
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    if (RegIter is VariableExpr reg)
+    //        assembler.Add(Assembly.Instructions.AsmMov.Create(reg.Reg, InitVal));
+    //    else 
+    //        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
         
-        if (Count is ValReg countval)
-        {
-            uint e_val = countval.Reg;
-            e_val |= countval.Reg << 4;
-            assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)e_val));
-            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
-            assembler.Add(Assembly.Instructions.AsmFor.Create());
-            assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
-        } 
-        else
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-    }
+    //    if (Count is VariableExpr countval)
+    //    {
+    //        uint e_val = countval.Reg;
+    //        e_val |= countval.Reg << 4;
+    //        assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)e_val));
+    //        assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
+    //        assembler.Add(Assembly.Instructions.AsmFor.Create());
+    //        assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
+    //    } 
+    //    else
+    //        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //}
 }
 
 class Next : Statement
 {
+    protected override string _GetString() => "NEXT";
+
+    [Obsolete]
     public ForStmt For;
-
-    protected override string _GetString()
-    {
-        return $"NEXT";
-    }
-
     public override void Exec(Processor processor)
     {
         processor.PC = For.Address;
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        int val = 0;
-        if (For.Count is ValInstant)
-            val = (For.Count as ValInstant).Val;
-        assembler.Add(Assembly.Instructions.AsmNext.Create(val));
-        assembler.ForMapping[For].Next = assembler.Last() as Assembly.Instructions.AsmNext;
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    int val = 0;
+    //    if (For.Count is InstantExpr)
+    //        val = (For.Count as InstantExpr).Val;
+    //    assembler.Add(Assembly.Instructions.AsmNext.Create(val));
+    //    assembler.ForMapping[For].Next = assembler.Last() as Assembly.Instructions.AsmNext;
+    //}
 }
 
-abstract class LoopControl : Statement
+abstract class LoopCtrl(InstantExpr level) : Statement
 {
-    public readonly ValInstant Level;
-    protected bool _omitted;
+    public readonly InstantExpr Level = level;
+}
 
-    public LoopControl()
-    {
-        Level = 1;
-        _omitted = true;
-    }
+class Break : LoopCtrl
+{
+    protected bool _omitted = true;
+    public Break() :base(1) { }
 
-    public LoopControl(ValInstant level)
+    public Break(InstantExpr level) :base(level)
     {
-        Level = level;
         _omitted = false;
     }
-}
-
-class Break : LoopControl
-{
-    public Break()
-    { }
-
-    public Break(ValInstant level)
-        : base(level)
-    { }
 
     protected override string _GetString()
     {
-        return _omitted || Level.Val == 1 ? $"BREAK" : $"BREAK {Level.GetCodeText()}";
+        return _omitted || Level.Val == 1 ? "BREAK" : $"BREAK {Level.GetCodeText()}";
     }
 
     public override void Exec(Processor processor)
     {
-        var liteScop = processor.GetScope();
-        for (int i = 0; i < Level.Val - 1; i++)
-            liteScop.LoopStack.Pop();
-        processor.PC = liteScop.LoopStack.Pop().Next.Address + 1;
+        //var liteScop = processor.GetScope();
+        //for (int i = 0; i < Level.Val - 1; i++)
+        //    liteScop.LoopStack.Pop();
+        //processor.PC = liteScop.LoopStack.Pop().Next.Address + 1;
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        if (Level.Val <= 0)
-            return;
-        assembler.Add(Assembly.Instructions.AsmBreak.Create(0, Level.Val - 1));
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    if (Level.Val <= 0)
+    //        return;
+    //    assembler.Add(Assembly.Instructions.AsmBreak.Create(0, Level.Val - 1));
+    //}
 }
 
-class Continue : LoopControl
+class Continue : LoopCtrl
 {
-    public Continue()
-    { }
+    public Continue() : base(1) { }
 
-    protected override string _GetString()
-    {
-        return _omitted ? $"CONTINUE" : $"CONTINUE {Level.GetCodeText()}";
-    }
+    protected override string _GetString() => "CONTINUE";
 
     public override void Exec(Processor processor)
     {
-        var liteScop = processor.GetScope();
-        for (int i = 0; i < Level.Val - 1; i++)
-            liteScop.LoopStack.Pop();
-        processor.PC = liteScop.LoopStack.Peek().Next.Address;
+        //var liteScop = processor.GetScope();
+        //for (int i = 0; i < Level.Val - 1; i++)
+        //    liteScop.LoopStack.Pop();
+        //processor.PC = liteScop.LoopStack.Peek().Next.Address;
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        if (Level.Val <= 0)
-            return;
-        assembler.Add(Assembly.Instructions.AsmContinue.Create(0, Level.Val - 1));
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    if (Level.Val <= 0)
+    //        return;
+    //    assembler.Add(Assembly.Instructions.AsmContinue.Create(0, Level.Val - 1));
+    //}
 }

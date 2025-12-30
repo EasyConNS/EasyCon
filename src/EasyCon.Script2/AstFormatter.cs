@@ -19,7 +19,7 @@ public class AstFormatter : AstVisitor
 
     public override ASTNode VisitProgram(MainProgram program)
     {
-        foreach (var statement in program.Statements)
+        foreach (var statement in program.Members)
         {
             statement.Accept(this);
         }
@@ -169,7 +169,7 @@ public class AstFormatter : AstVisitor
         return continueStatement;
     }
 
-    public override ASTNode VisitFunctionDefinition(FunctionDefinitionStatement functionDef)
+    public override ASTNode VisitFunctionDefinition(FunctionDeclarationStatement functionDef)
     {
         WriteLeadingTrivia(functionDef);
         _writer.Write($"FUNC {functionDef.FuncDecl.NameIdent.Value}()");

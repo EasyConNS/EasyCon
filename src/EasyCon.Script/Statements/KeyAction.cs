@@ -5,22 +5,22 @@ namespace EasyScript.Statements;
 
 abstract class KeyAction(string keyName) : Statement
 {
-    protected readonly ECKey Key = NSKeys.Get(keyName);
+    public readonly ECKey Key = NSKeys.Get(keyName);
 
-    protected virtual void ReleasePrevious(Assembly.Assembler assembler)
-    {
-        if (!assembler.KeyMapping.ContainsKey(Key.KeyCode))
-            return;
-        assembler.KeyMapping[Key.KeyCode].HoldUntil = assembler.Last();
-        assembler.KeyMapping.Remove(Key.KeyCode);
-    }
+    //protected virtual void ReleasePrevious(Assembly.Assembler assembler)
+    //{
+    //    if (!assembler.KeyMapping.ContainsKey(Key.KeyCode))
+    //        return;
+    //    assembler.KeyMapping[Key.KeyCode].HoldUntil = assembler.Last();
+    //    assembler.KeyMapping.Remove(Key.KeyCode);
+    //}
 }
 
 class KeyPress : KeyAction
 {
     public const int DefaultDuration = 50;
 
-    public readonly ValBase Duration;
+    public readonly ExprBase Duration;
     private readonly bool _omitted = false;
 
     public KeyPress(string key)
@@ -30,7 +30,7 @@ class KeyPress : KeyAction
         _omitted = true;
     }
 
-    public KeyPress(string key, ValBase duration)
+    public KeyPress(string key, ExprBase duration)
         : base(key)
     {
         Duration = duration;
@@ -51,39 +51,39 @@ class KeyPress : KeyAction
         return _omitted ? $"{NSKeys.GetName(Key)}" : $"{NSKeys.GetName(Key)} {Duration.GetCodeText()}";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        int keycode = Key.KeyCode;
-        if (Duration is ValReg reg)
-        {
-            if (reg.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Reg));
-            assembler.Add(Assembly.Instructions.AsmKey_Standard.Create(keycode, 0));
-            ReleasePrevious(assembler);
-            return;
-        }
-        else if (Duration is ValInstant dur)
-        {
-            int duration = dur.Val;
-            var ins = Assembly.Instructions.AsmKey_Standard.Create(keycode, duration);
-            if (ins.Success)
-            {
-                assembler.Add(ins);
-                ReleasePrevious(assembler);
-            }
-            else if (ins == Assembly.Instruction.Failed.OutOfRange)
-            {
-                assembler.Add(Assembly.Instructions.AsmKey_Hold.Create(keycode));
-                ReleasePrevious(assembler);
-                assembler.KeyMapping[keycode] = assembler.Last() as Assembly.Instructions.AsmKey_Hold;
-                assembler.Add(Assembly.Instructions.AsmWait.Create(duration));
-                assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-                ReleasePrevious(assembler);
-            }
-        }
-        else
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    int keycode = Key.KeyCode;
+    //    if (Duration is VariableExpr reg)
+    //    {
+    //        if (reg.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //        assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Reg));
+    //        assembler.Add(Assembly.Instructions.AsmKey_Standard.Create(keycode, 0));
+    //        ReleasePrevious(assembler);
+    //        return;
+    //    }
+    //    else if (Duration is InstantExpr dur)
+    //    {
+    //        int duration = dur.Val;
+    //        var ins = Assembly.Instructions.AsmKey_Standard.Create(keycode, duration);
+    //        if (ins.Success)
+    //        {
+    //            assembler.Add(ins);
+    //            ReleasePrevious(assembler);
+    //        }
+    //        else if (ins == Assembly.Instruction.Failed.OutOfRange)
+    //        {
+    //            assembler.Add(Assembly.Instructions.AsmKey_Hold.Create(keycode));
+    //            ReleasePrevious(assembler);
+    //            assembler.KeyMapping[keycode] = assembler.Last() as Assembly.Instructions.AsmKey_Hold;
+    //            assembler.Add(Assembly.Instructions.AsmWait.Create(duration));
+    //            assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+    //            ReleasePrevious(assembler);
+    //        }
+    //    }
+    //    else
+    //        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //}
 }
 
 class KeyDown(string key) : KeyAction(key)
@@ -98,12 +98,12 @@ class KeyDown(string key) : KeyAction(key)
         return $"{NSKeys.GetName(Key)} DOWN";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        assembler.Add(Assembly.Instructions.AsmKey_Hold.Create(Key.KeyCode));
-        ReleasePrevious(assembler);
-        assembler.KeyMapping[Key.KeyCode] = assembler.Last() as Assembly.Instructions.AsmKey_Hold;
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    assembler.Add(Assembly.Instructions.AsmKey_Hold.Create(Key.KeyCode));
+    //    ReleasePrevious(assembler);
+    //    assembler.KeyMapping[Key.KeyCode] = assembler.Last() as Assembly.Instructions.AsmKey_Hold;
+    //}
 }
 
 class KeyUp(string key) : KeyAction(key)
@@ -118,9 +118,9 @@ class KeyUp(string key) : KeyAction(key)
         return $"{NSKeys.GetName(Key)} UP";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-        ReleasePrevious(assembler);
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+    //    ReleasePrevious(assembler);
+    //}
 }

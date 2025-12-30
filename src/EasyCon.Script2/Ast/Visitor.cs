@@ -11,7 +11,7 @@ public interface IAstVisitor<T>
     T VisitForStat(ForStatement ast);
     T VisitBreak(BreakStatement ast);
     T VisitContinue(ContinueStatement ast);
-    T VisitFunctionDefinition(FunctionDefinitionStatement ast);
+    T VisitFunctionDefinition(FunctionDeclarationStatement ast);
     T VisitReturn(ReturnStatement ast);
     T VisitCall(CallExpression ast);
     T VisitKey(GamePadStatement ast);
@@ -59,7 +59,7 @@ public abstract class AstVisitor : IAstVisitor<ASTNode>
     {
         return ast;
     }
-    public virtual ASTNode VisitFunctionDefinition(FunctionDefinitionStatement ast)
+    public virtual ASTNode VisitFunctionDefinition(FunctionDeclarationStatement ast)
     {
         return ast;
     }

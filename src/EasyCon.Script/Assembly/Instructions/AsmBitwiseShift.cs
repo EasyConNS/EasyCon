@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 
 namespace EasyScript.Assembly.Instructions;
 
@@ -21,15 +21,15 @@ abstract class AsmBitwiseShift<T> : Instruction
         Op = (uint)(Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute).Operator;
     }
 
-    public static Instruction Create(uint regdst, Parsing.ValBase value)
+    public static Instruction Create(uint regdst, Parsing.ExprBase value)
     {
-        if (value is Parsing.ValReg)
+        if (value is Parsing.VariableExpr)
         {
             return Failed.InvalidArgument;
         }
-        else if (value is Parsing.ValInstant)
+        else if (value is Parsing.InstantExpr)
         {
-            var val = (value as Parsing.ValInstant).Val;
+            var val = (value as Parsing.InstantExpr).Val;
             if (val < 0 || val >= 1 << 4)
                 return Failed.OutOfRange;
             var ins = new AsmBinaryOpInstant<T>();

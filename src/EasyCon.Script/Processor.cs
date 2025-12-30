@@ -33,12 +33,18 @@ class Processor(Dictionary<string, FunctionStmt> func)
         if (_funcTables.TryGetValue(label, out FunctionStmt? func))
             PC = func.Address + 1;
         else
-            throw new ScriptException("找不到调用函数", PC);
+            throw new ScriptException($"找不到调用函数\"{label}\"", PC);
     }
 
     public void BuildinCall(string fn, Param[] args)
     {
-        switch (fn.ToUpper())
+        //if(!BuiltinFunctions.GetAll().Any(fs => 
+        //fs.Name.Equals(fn, StringComparison.CurrentCultureIgnoreCase) && 
+        //  fs.Parameters.Length == args.Length))
+        //{
+        //    throw new ScriptException($"内置函数{fn}参数个数不满足", PC);
+        //}
+        switch (fn)
         {
             case "TIME":
                 {
@@ -48,19 +54,24 @@ class Processor(Dictionary<string, FunctionStmt> func)
                 break;
             case "PRINT":
                 {
-                    var s = args.Select(u =>
+                    var s = args[0] switch
                     {
-                        return u switch
+                        TextVarParam tvu => string.Join("", tvu.Params.Select(u =>
                         {
-
-                            TextParam tu => tu.Text,
-                            RegParam ru => Register[ru.Reg].ToString(),
-                            _ => "",
-                        };
-                    });
+                            return u switch
+                            {
+                                TextParam tu => tu.Text,
+                                RegParam ru => Register[ru.Reg].ToString(),
+                                _ => "",
+                            };
+                        })),
+                        TextParam tu => tu.Text,
+                        RegParam ru => Register[ru.Reg].ToString(),
+                        _ => "",
+                    };
                     var cancelLineBreak = args.LastOrDefault() switch
                     {
-                        TextParam tu => tu.CodeText == "\\",
+                        TextParam tu => tu.Text == "\\",
                         _ => false,
                     };
 
@@ -90,17 +101,10 @@ class Processor(Dictionary<string, FunctionStmt> func)
                 break;
             case "BEEP":
                 {
-                    if (args.Length != 0)
-                    {
-                        var rate = args[0] as LiterParam;
-                        var dur = args[1] as LiterParam;
+                    var rate = args[0] as LiterParam;
+                    var dur = args[1] as LiterParam;
 
-                        Console.Beep(rate.LITR.Get(this), dur.LITR.Get(this));
-                    }
-                    else
-                    {
-                        Console.Beep();
-                    }
+                    Console.Beep(rate.LITR.Get(this), dur.LITR.Get(this));
                 }
                 break;
             default:
@@ -138,7 +142,7 @@ class RegisterFile
         set => _variables[tag] = value;
     }
 
-    public int this[ValReg val]
+    public int this[VariableExpr val]
     {
         get => this[val.Tag];
 
@@ -159,3 +163,15 @@ public class ExternTime
 
     private long GetTimestamp() => (DateTime.Now.Ticks - _TIME) / 10_000;
 }
+
+//static class BuiltinFunctions
+//{
+//    //    public static readonly FunctionSymbol Print = new("print", ImmutableArray.Create(new ParameterSymbol("text", TypeSymbol.Any, 0)), TypeSymbol.Void);
+//    //    public static readonly FunctionSymbol Input = new("input", ImmutableArray<ParameterSymbol>.Empty, TypeSymbol.String);
+//    //    public static readonly FunctionSymbol Rnd = new("rand", ImmutableArray.Create(new ParameterSymbol("max", TypeSymbol.Int, 0)), TypeSymbol.Int);
+
+//    internal static IEnumerable<FunctionSymbol> GetAll()
+//        => typeof(BuiltinFunctions).GetFields(BindingFlags.Public | BindingFlags.Static)
+//                                   .Where(f => f.FieldType == typeof(FunctionSymbol))
+//                                   .Select(f => (FunctionSymbol)f.GetValue(null)!);
+//}

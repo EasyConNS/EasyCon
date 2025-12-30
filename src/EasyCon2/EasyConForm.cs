@@ -113,8 +113,13 @@ namespace EasyCon2.Forms
         private void InitEditor()
         {
             textBoxScript.ShowLineNumbers = true;
-            var syntaxHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Encoding.UTF8.GetBytes(Resources.NX))), HighlightingManager.Instance);
-            textBoxScript.SyntaxHighlighting = syntaxHighlighting;
+            var syntaxHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.ecp)), HighlightingManager.Instance);
+            HighlightingManager.Instance.RegisterHighlighting("ECP", [".txt"], syntaxHighlighting);
+            var luaHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.lua)), HighlightingManager.Instance);
+            HighlightingManager.Instance.RegisterHighlighting("Lua", [".lua"], luaHighlighting);
+            var pyHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.Python_Mode)), HighlightingManager.Instance);
+            HighlightingManager.Instance.RegisterHighlighting("Python", [".py"], pyHighlighting);
+            textBoxScript.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("ECP");
             textBoxScript.DragEnter += new System.Windows.DragEventHandler(this.textBoxScript_DragEnter);
             textBoxScript.Drop += new System.Windows.DragEventHandler(this.textBoxScript_DragDrop);
             textBoxScript.TextChanged += new EventHandler(this.textBoxScript_TextChanged);
@@ -505,6 +510,14 @@ namespace EasyCon2.Forms
 
             textBoxScript.Load(_currentFile);
             textBoxScript.Document.FileName = _currentFile;
+            var hightligDefin = Path.GetExtension(_currentFile) switch
+            {
+                ".cs"=> "C#",
+                ".py" => "Python",
+                ".lua" => "Lua",
+                _ => "ECP",
+            };
+            textBoxScript.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition(hightligDefin);
             scriptTitleLabel.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
             return true;
         }
@@ -767,7 +780,6 @@ namespace EasyCon2.Forms
             try
             {
                 var path = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-                if (Path.GetExtension(path[0]) != ".txt") return;
                 if (!FileClose())
                     return;
                 FileOpen(path[0]);

@@ -1,3 +1,4 @@
+using EasyScript.Statements;
 using System.Collections.Immutable;
 
 namespace EasyScript.Assembly;
@@ -7,9 +8,9 @@ class Assembler
     public const uint IReg = 7;
 
     readonly List<Instruction> _instructions = new();
-    public readonly Dictionary<Statements.ForStmt, Instructions.AsmFor> ForMapping = new();
-    public readonly Dictionary<Statements.BranchOp, Instructions.AsmBranchFalse> IfMapping = new();
-    public readonly Dictionary<Statements.BranchOp, Instructions.AsmBranch> ElseMapping = new();
+    //public readonly Dictionary<Statements.ForStmt, Instructions.AsmFor> ForMapping = new();
+    //public readonly Dictionary<Statements.BranchOp, Instructions.AsmBranchFalse> IfMapping = new();
+    //public readonly Dictionary<Statements.BranchOp, Instructions.AsmBranch> ElseMapping = new();
     public readonly Dictionary<int, Instructions.AsmKey_Hold> KeyMapping = new();
     public readonly Dictionary<int, Instructions.AsmStick_Hold> StickMapping = new();
     public readonly Dictionary<string, Instructions.AsmBranch> FunctionMapping = new();
@@ -33,13 +34,13 @@ class Assembler
         return _instructions.Last();
     }
 
-    public byte[] Assemble(ImmutableArray<Parsing.Statement> statements, bool autoRun)
+    public byte[] Assemble(ImmutableArray<Statement> statements, bool autoRun)
     {
         // initialize
         _instructions.Clear();
-        ForMapping.Clear();
-        IfMapping.Clear();
-        ElseMapping.Clear();
+        //ForMapping.Clear();
+        //IfMapping.Clear();
+        //ElseMapping.Clear();
         KeyMapping.Clear();
         StickMapping.Clear();
         FunctionMapping.Clear();
@@ -50,7 +51,8 @@ class Assembler
         {
             try
             {
-                statements[i].Assemble(this);
+                //statements[i].Assemble(this);
+                throw new AssembleException("此版本暂不支持编译");
             }
             catch (AssembleException ex)
             {

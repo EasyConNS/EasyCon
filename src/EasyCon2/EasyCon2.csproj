@@ -16,7 +16,6 @@
 
   <ItemGroup>
     <PackageReference Include="AvalonEdit" />
-    <PackageReference Include="DockPanelSuite" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="WebSocketSharp-netstandard" />
   </ItemGroup>

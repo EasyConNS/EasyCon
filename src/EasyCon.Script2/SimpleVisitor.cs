@@ -12,7 +12,7 @@ public sealed class SimpleVisitor : AstVisitor
         {
             member.Accept(this);
         }
-        foreach(var ast in program.Statements)
+        foreach(var ast in program.Members)
         {
             ast.Accept(this);
         }
@@ -114,7 +114,7 @@ public sealed class SimpleVisitor : AstVisitor
         return ast;
     }
 
-    public override ASTNode VisitFunctionDefinition(FunctionDefinitionStatement ast)
+    public override ASTNode VisitFunctionDefinition(FunctionDeclarationStatement ast)
     {
         Console.WriteLine($"Def Func: {ast.FuncDecl.NameIdent.Value}");
         foreach(var statement in ast.Body)

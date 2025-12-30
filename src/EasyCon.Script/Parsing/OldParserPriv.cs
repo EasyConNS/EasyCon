@@ -19,7 +19,7 @@ internal partial class Parser
         return null;
     }
     
-    private UnaryOp? ParseUnary(ValReg dest, List<Token> tokens)
+    private UnaryOp? ParseUnary(VariableExpr dest, List<Token> tokens)
     {
         if(tokens.Count == 3 && tokens[0].Type.GetUnaryOperatorPrecedence() > 0 && tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.EOF)
         {
@@ -34,10 +34,10 @@ internal partial class Parser
         return null;
     }
 
-    private ValBase ParseExpression(List<Token> tokens, bool allowVar = true)
+    private ExprBase ParseExpression(List<Token> tokens, bool allowVar = true)
     {
         // 用于存储数字/变量的节点栈
-        Stack<ValBase> valueStack = new();
+        Stack<ExprBase> valueStack = new();
         // 用于存储运算符的栈
         Stack<Token> opStack = new();
         // 主循环处理所有token
@@ -105,15 +105,15 @@ internal partial class Parser
         return valueStack.Pop();
     }
     // 应用运算符：从栈中弹出两个操作数和一个运算符，创建BinExpr
-    private static void ApplyOperator(Stack<Token> opStack, Stack<ValBase> valueStack, bool hasPr = false)
+    private static void ApplyOperator(Stack<Token> opStack, Stack<ExprBase> valueStack, bool hasPr = false)
     {
         if (opStack.Count == 0 || valueStack.Count < 2)
             throw new Exception("表达式语法错误");
         string opStr = opStack.Pop().Value;
         MetaOperator? op = MetaOperator.All.FirstOrDefault(o=> o.Operator == opStr);
-        ValBase right = valueStack.Pop();
-        ValBase left = valueStack.Pop();
-        valueStack.Push(new BinExpr(left, op!, right, hasPr));
+        ExprBase right = valueStack.Pop();
+        ExprBase left = valueStack.Pop();
+        valueStack.Push(new BinaryExpression(left, op!, right, hasPr));
     }
 
     private Statement? ParseAssignment(string text)
@@ -145,7 +145,7 @@ internal partial class Parser
                 if(lexer[2].Type != TokenType.INT && lexer[2].Type != TokenType.CONST)
                     throw new Exception("Only Instant can be augmented.");
             }
-            return Activator.CreateInstance(op.StatementType, des, _formatter.GetValueEx(lexer[2].Value)) as Parsing.Statement;
+            return (Activator.CreateInstance(op.StatementType, des, _formatter.GetValueEx(lexer[2].Value)) as Statement);
         }
 
         return null;
@@ -184,15 +184,14 @@ internal partial class Parser
 
     private Statement? ParseLoopCtrl(string text)
     {
-        var tok = SyntaxTree.ParseTokens(text);
-        if(tok.Length > 2+1) return null;
-        var tokens = tok.Take(2).ToList();
-
+        var tokens = SyntaxTree.ParseTokens(text);
+        if(tokens.Length > 2+1) return null;
         switch (tokens[0].Type)
         {
             case TokenType.BREAK:
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT)
                 {
+                    if(tokens[2].Type != TokenType.EOF)return null;
                     return new Break(_formatter.GetInstant(tokens[1].Value, true));
                 }
                 else if (tokens[1].Type == TokenType.EOF)
@@ -261,17 +260,6 @@ internal partial class Parser
         return null;
     }
 
-    private static int namedArgs(string name)
-    {
-        return name switch
-        {
-            "beep" => 3,
-            "call" or "alert" or "print" or "time" or "rand" or "wait" or "amiibo" or "sprint" or "smem" => 1,
-            _ => 0,
-        };
-        ;
-    }
-
     private FunctionStmt? ParseFuncDecl(string text)
     {
         var tokens = SyntaxTree.ParseTokens(text);
@@ -287,43 +275,11 @@ internal partial class Parser
     private Statement? ParseNamedExpression(string text)
     {
         var tokens = SyntaxTree.ParseTokens(text);
+        if (tokens.Length < 2 + 1) return null;
         var first = tokens.First()!;
-        var fname = first.Value.ToLower();
-        if (tokens.Length > 2+ namedArgs(fname)) return null;
-        switch (fname)
+        if (first.Type != TokenType.IDENT) return null;
+        switch (first.Value.ToLower())
         {
-            case "call":
-                return tokens[1].Type == TokenType.IDENT ? new CallStat(tokens[1].Value) : null;
-            case "alert":
-            case "print":
-                if (tokens[1].Type == TokenType.STRING && tokens[2].Type == TokenType.EOF)
-                {
-                    var contents = ParseContents(tokens[1].Value, out bool _);
-
-                    return new BuildinFunc(first.Value.ToUpper(), contents.ToArray());
-                }
-                else if (tokens[1].Type == TokenType.EOF)
-                {
-                    return new BuildinFunc(first.Value.ToUpper(), []);
-                }
-                break;
-            case "beep":
-                if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT)
-                {
-                    if (tokens[2].Type == TokenType.CONST || tokens[2].Type == TokenType.INT)
-                        return new BuildinFunc(first.Value.ToUpper(), [new LiterParam(_formatter.GetValueEx(tokens[1].Value))
-                            ,new LiterParam(_formatter.GetValueEx(tokens[2].Value))]);
-                }
-                else if (tokens[1].Type == TokenType.EOF)
-                {
-                    return new BuildinFunc(first.Value.ToUpper(), []);
-                }
-                break;
-            case "time":
-            case "rand":
-                if (tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.EOF)
-                    return new BuildinFunc(first.Value.ToUpper(), [new RegParam(_formatter.GetReg(tokens[1].Value))]);
-                break;
             case "wait":
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
@@ -333,67 +289,85 @@ internal partial class Parser
             case "amiibo":
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
-                    var amiiboidx = _formatter.GetValueEx(tokens[1].Value);
-                    return new AmiiboChanger(amiiboidx);
+                    return new AmiiboChanger(_formatter.GetValueEx(tokens[1].Value));
                 }
                 break;
+            case "call":
+                return tokens[1].Type == TokenType.IDENT ? new CallStat(tokens[1].Value, [], false) : null;
 #if DEBUG
             case "sprint":
             case "smem":
                 if(tokens[1].Type == TokenType.INT && tokens[2].Type == TokenType.EOF)
                 {
-                    return new SerialPrint(uint.Parse(tokens[1].Value), first.Value.Equals("smem", StringComparison.CurrentCultureIgnoreCase));
+                    var ism = first.Value.Equals("smem", StringComparison.CurrentCultureIgnoreCase);
+                    return new SerialPrint(uint.Parse(tokens[1].Value), ism);
                 }
                 break;
 #endif
+            // 内置函数
+            default:
+                var args = tokens.Skip(1).ToArray();
+                var contents = ParseContents(args);
+                contents.Reverse();
+                return new CallStat(first.Value.ToUpper(), contents);
         }
-
         return null;
     }
 
-    private List<Param> ParseContents(string text, out bool cancellinebreak)
+    private Param[] ParseContents(IEnumerable<Token> toks)
     {
-        var contents = new List<Param>();
-        cancellinebreak = false;
+        Stack<Param> contents = [];
 
-        var strs = text.Split('&');
-        for (var i = 0; i < strs.Length; i++)
+        var combin = false;
+        foreach (var token in toks)
         {
-            var s = strs[i].Trim();
-            if (i == strs.Length - 1 && s == "\\")
+            Param cur = null;
+            switch (token.Type)
             {
-                contents.Add(new TextParam("", s));
-                cancellinebreak = true;
-                continue;
+                case TokenType.STRING:
+                    cur = new TextParam(token.Value);
+                    break;
+                case TokenType.BitAnd:
+                    combin = true;
+                    continue;
+                case TokenType.VAR:
+                    cur = new RegParam(_formatter.GetReg(token.Value));
+                    break;
+                case TokenType.CONST:
+                case TokenType.INT:
+                    cur = new LiterParam(_formatter.GetInstant(token.Value));
+                    break;
+                case TokenType.EOF:
+                    return contents.ToArray();
+                default:
+                    throw new Exception($"非法的参数：{token.Value}");
             }
-            if (s.Length == 0 && strs.Length > 1)
+            if (combin)
             {
-                contents.Add(new TextParam(" ", ""));
-                continue;
-            }
-            var m = Regex.Match(s, Formats.RegisterEx_F);
-            if (m.Success)
-            {
-                var val = _formatter.GetValueEx(s);
-                if(val is ValReg reg)
-                    contents.Add(new RegParam(reg));
+                if(contents.Count > 0)
+                {
+                    var prearg = contents.Pop();
+                    if(prearg is TextVarParam trpre)
+                    {
+                        trpre.Params.Add(cur);
+                        contents.Push(trpre);
+                    }
+                    else
+                    {
+                        contents.Push(new TextVarParam([prearg, cur]));
+                    }
+                    combin = false;
+                }
                 else
                 {
-                    // 未定义变量，特殊处理返回0
-                    contents.Add(new TextParam("0"));
+                    break;
                 }
-                continue;
             }
-            m = Regex.Match(s, Formats.Constant_F);
-            if (m.Success)
+            else
             {
-                var v = _formatter.GetConstant(s);
-                contents.Add(new TextParam(v.Val.ToString(), s));
-                continue;
+                contents.Push(cur!);
             }
-            contents.Add(new TextParam(s));
         }
-
-        return contents;
+        throw new Exception("参数语句格式错误");
     }
 }

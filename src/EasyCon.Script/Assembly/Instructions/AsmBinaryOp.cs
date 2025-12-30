@@ -27,9 +27,9 @@ abstract class AsmBinaryOp<T> : Instruction
         Op = (uint)(Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute).Operator;
     }
 
-    public static Instruction Create(uint regdst, Parsing.ValBase value)
+    public static Instruction Create(uint regdst, Parsing.ExprBase value)
     {
-        if (value is Parsing.ValReg valR)
+        if (value is Parsing.VariableExpr valR)
         {
             var ins = new T
             {
@@ -38,7 +38,7 @@ abstract class AsmBinaryOp<T> : Instruction
             };
             return ins;
         }
-        else if (value is Parsing.ValInstant valIns)
+        else if (value is Parsing.InstantExpr valIns)
         {
             var val = valIns.Val;
             if (val < -(1 << 15) || val >= 1 << 15)
@@ -105,7 +105,7 @@ class AsmBinaryOperatorAttribute : Attribute
 [AsmBinaryOperator(BinaryOperator.Mov)]
 class AsmMov : AsmBinaryOp<AsmMov>
 {
-    public static new Instruction Create(uint regdst, Parsing.ValBase value)
+    public static new Instruction Create(uint regdst, Parsing.ExprBase value)
     {
         var ins = AsmMovCompressed.Create(regdst, value);
         if (ins.Success)
@@ -147,9 +147,9 @@ class AsmMovCompressed : Instruction
     public uint RegDst;
     public int Value;
 
-    public static Instruction Create(uint regdst, Parsing.ValBase value)
+    public static Instruction Create(uint regdst, Parsing.ExprBase value)
     {
-        if (value is not Parsing.ValInstant vi)
+        if (value is not Parsing.InstantExpr vi)
             return Failed.InvalidArgument;
         var val = vi.Val;
         if (val < -(1 << 6) || val >= 1 << 6)

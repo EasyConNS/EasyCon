@@ -1,4 +1,4 @@
-﻿namespace EasyScript;
+namespace EasyScript;
 
 public class ExternalVariable
 {
@@ -15,7 +15,7 @@ public class ExternalVariable
     public ExternalVariable(string name, Getter get, Setter? set = null)
     {
         if (name == null || get == null)
-            throw new ArgumentNullException();
+            throw new ArgumentNullException(nameof(name));
         Name = name;
         Get = get;
         Set = set ?? _defaultSetter;

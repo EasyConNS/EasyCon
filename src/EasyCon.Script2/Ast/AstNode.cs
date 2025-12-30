@@ -15,10 +15,10 @@ public abstract class ASTNode(Token key)
     public readonly List<TriviaNode> TrailingTrivia = [];
 }
 
-public sealed class MainProgram(ImmutableArray<ImportStatement> importDecl, ImmutableArray<Member> statements, Token endOfFileToken) : ASTNode(endOfFileToken)
+public sealed class MainProgram(ImmutableArray<ImportStatement> importDecl, ImmutableArray<Member> members, Token endOfFileToken) : ASTNode(endOfFileToken)
 {
     public ImmutableArray<ImportStatement> Imports = importDecl;
-    public ImmutableArray<Member> Statements = statements;
+    public ImmutableArray<Member> Members = members;
     public Token EndOfFileToken = endOfFileToken;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
@@ -248,11 +248,12 @@ public sealed class ContinueStatement(Token keyword) : Statement(keyword)
 }
 
 // 函数定义语句
-public sealed class FunctionDefinitionStatement(FuncDeclare funcdecl, ImmutableArray<Statement> body, KeywordStatement endfunc) : Member(funcdecl.Key)
+public sealed class FunctionDeclarationStatement(FuncDeclare funcdecl, ImmutableArray<Statement> body, KeywordStatement endfunc) : Member(funcdecl.Key)
 {
     public FuncDeclare FuncDecl { get; } = funcdecl;
     public ImmutableArray<Statement> Body { get; } = body;
     public KeywordStatement EndFunc { get; } = endfunc;
+    public ImmutableArray<VariableExpression> Parameters => FuncDecl.Parameters;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {

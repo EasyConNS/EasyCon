@@ -146,10 +146,13 @@ namespace EasyCon2.Forms
                 throw new Exception("请先连接采集卡再执行搜图");
             lock (_lock)
             {
-                if (_image == null)
-                    return null;
-
-                return _image.Clone(new Rectangle(0, 0, _image.Width, _image.Height), _image.PixelFormat);
+                _image?.Dispose();
+                using var mat = cvcap.GetMatFrame();
+                if (!mat.Empty())
+                {
+                    _image = BitmapConverter.ToBitmap(mat);
+                }
+                return _image;
             }
         }
 
@@ -408,7 +411,6 @@ namespace EasyCon2.Forms
             double matchDegree = 0;
             try
             {
-                //ilManager.Current.GetFrame = GetImage;
                 using var ss = BitmapConverter.ToMat(GetImage());
                 list = imglManager.Current.Search(ss, out matchDegree);
                 sw.Stop();
@@ -420,7 +422,7 @@ namespace EasyCon2.Forms
                     for (int i = 0; i < list.Count; i++)
                     {
                         Debug.WriteLine($"测试结果：{list[i].X},{list[i].Y}");
-
+                        searchResultImg.Image?.Dispose();
                         searchResultImg.Image = ss.GetRange(list[i], imglManager.Current);
                         //using var g = searchResultImg.CreateGraphics();
                         //g.Clear(Color.FromArgb(240, 240, 240));
@@ -560,7 +562,6 @@ namespace EasyCon2.Forms
         {
             if (dyncTestBtn.Text == "动态测试")
             {
-                targetImg.Image?.Dispose();
                 targetImg.Image = imglManager.Current.GetImage();
                 if (targetImg.Image != null)
                     searchImg_test();
@@ -666,6 +667,7 @@ namespace EasyCon2.Forms
         {
             var checkBox = (CheckBox)sender;
             VideoMonitor.Visible = checkBox.Checked;
+            monitorTimer.Enabled = checkBox.Checked;
         }
 
 
@@ -681,15 +683,15 @@ namespace EasyCon2.Forms
             {
                 try
                 {
-                    _image?.Dispose();
-                    _image = null;
-                    using var mat = cvcap.GetMatFrame();
-                    if (!mat.Empty())
-                    {
-                        _image = BitmapConverter.ToBitmap(mat);
-                    }
+                    //_image?.Dispose();
+                    //_image = null;
+                    //using var mat = cvcap.GetMatFrame();
+                    //if (!mat.Empty())
+                    //{
+                    //    _image = BitmapConverter.ToBitmap(mat);
+                    //}
 
-                    if (monitorVisChk.Checked) VideoMonitor?.Invalidate();
+                    VideoMonitor?.Invalidate();
                 }
                 finally
                 {
@@ -707,11 +709,6 @@ namespace EasyCon2.Forms
         private void button1_Click(object sender, EventArgs e)
         {
             new HelpTxtDialog(Resources.capturedoc).Show();
-        }
-
-        private void matchRltlabel_Click(object sender, EventArgs e)
-        {
-
         }
     }
 }

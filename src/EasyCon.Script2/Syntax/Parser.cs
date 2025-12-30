@@ -397,7 +397,7 @@ internal sealed class Parser
         return new ContinueStatement(continueToken);
     }
 
-    private FunctionDefinitionStatement ParseFunctionDecl()
+    private FunctionDeclarationStatement ParseFunctionDecl()
     {
         var functionToken = Advance();
         var functionName = Match(TokenType.IDENT, "定义函数需要函数名");
@@ -416,7 +416,7 @@ internal sealed class Parser
 
         var endFunc = Match(TokenType.ENDFUNC, "需要endfunc结尾");
 
-        return new FunctionDefinitionStatement(new FuncDeclare(functionToken, functionName, parameters), body.ToImmutableArray(), new KeywordStatement(endFunc));
+        return new FunctionDeclarationStatement(new FuncDeclare(functionToken, functionName, parameters), body.ToImmutableArray(), new KeywordStatement(endFunc));
     }
 
     private ImmutableArray<VariableExpression> ParseParameterList()

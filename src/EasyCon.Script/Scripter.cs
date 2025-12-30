@@ -6,7 +6,7 @@ using System.Collections.Immutable;
 
 namespace EasyScript;
 
-public class Scripter
+public sealed class Scripter
 {
     readonly Dictionary<string, ExternalVariable> ExtVars = [];
 
@@ -14,19 +14,14 @@ public class Scripter
 
     Dictionary<string, FunctionStmt> _funcTables = [];
 
-    public bool HasKeyAction {
-        get
-        {
-            return _statements.OfType<KeyAction>().Any();
-        }
-    }
+    public bool HasKeyAction => _statements.OfType<KeyAction>().Any();
 
     public void Parse(string code, IEnumerable<ExternalVariable> extVars)
     {
         ExtVars.Clear();
         foreach (var ev in extVars)
             ExtVars[ev.Name] = ev;
-        _statements = new Parser(ExtVars).Parse(code).ToImmutableArray();
+        _statements = [.. new Parser(ExtVars).Parse(code)];
         _statements.OfType<FunctionStmt>().ToList().ForEach(f => { _funcTables[f.Label] = f; });
     }
 
@@ -54,12 +49,10 @@ public class Scripter
 
     public string ToCode()
     {
-        using (var writer = new StringWriter())
-        using(var printer = new IndentedTextWriter(writer, "  "))
-        {
-            _statements.ToList().ForEach(u => u.WriteTo(printer));
-            return writer.ToString();
-        }
+        using var writer = new StringWriter();
+        using var printer = new IndentedTextWriter(writer, "  ");
+        _statements.ToList().ForEach(u => u.WriteTo(printer));
+        return writer.ToString();
     }
 
     public string ToggleComment(string input)
@@ -108,4 +101,9 @@ public class Scripter
         _funcTables = [];
         ExtVars.Clear();
     }
+}
+
+public class ScriptException(string message, int address) : Exception(message)
+{
+    public int Address { get; private set; } = address;
 }

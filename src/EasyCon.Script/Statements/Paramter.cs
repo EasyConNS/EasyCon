@@ -7,31 +7,33 @@ abstract class Param
     public abstract string GetCodeText();
 }
 
-class TextParam(string text, string codetext = null) : Param
+class TextVarParam(List<Param> param) : Param
+{
+    public readonly List<Param> Params = param;
+
+    public override string GetCodeText()
+    {
+        return string.Join(" & ", Params.Select(u => u.GetCodeText()));
+    }
+}
+
+class TextParam(string text) : Param
 {
     public readonly string Text = text;
-    public readonly string CodeText = codetext ?? text;
 
-    public override string GetCodeText()
-    {
-        return CodeText;
-    }
+    public override string GetCodeText() => Text;
 }
 
-class LiterParam(ValBase litr) : Param
+class LiterParam(InstantExpr litr) : Param
 {
-    public readonly ValBase LITR = litr;
+    public readonly InstantExpr LITR = litr;
 
-    public override string GetCodeText()
-    {  return LITR.GetCodeText(); }
+    public override string GetCodeText() => LITR.GetCodeText();
 }
 
-class RegParam(ValReg reg) : Param
+class RegParam(VariableExpr reg) : Param
 {
-    public readonly ValReg Reg = reg;
+    public readonly VariableExpr Reg = reg;
 
-    public override string GetCodeText()
-    {
-        return Reg.GetCodeText();
-    }
+    public override string GetCodeText() => Reg.GetCodeText();
 }

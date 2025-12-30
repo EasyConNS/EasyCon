@@ -19,13 +19,23 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
+    #region 兼容适配代码
+    [GeneratedRegex(@"(\s*#.*)$")]
+    private static partial Regex lineRegex();
+
+    [GeneratedRegex(@"^\b(print|alert)\b\s+(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
+    private static partial Regex printRex();
+
+    [GeneratedRegex(@"^(_|\$)[\d\p{L}_]+$", RegexOptions.IgnoreCase, "zh-CN")]
+    private static partial Regex variableRex();
+
     private static string Compat(ImmutableArray<TextLine> lines)
     {
         var builder = new StringBuilder();
         foreach (var line in lines)
         {
             var _line = line.Text;
-            var m = Regex.Match(_line, @"(\s*#.*)$");
+            var m = lineRegex().Match(_line);
             string comment = string.Empty;
             if (m.Success)
             {
@@ -36,27 +46,29 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             var mp = printRex().Match(_line);
             if (mp.Success)
             {
-                builder.Append($"PRINT \"{mp.Groups[1].Value}\"");
+                var content = mp.Groups[2].Value;
+                var strs = content.Split('&');
+                builder.Append($"{mp.Groups[1].Value} ");
+                foreach (var str in strs)
+                {
+                    var s = str.Trim();
+                    if (!variableRex().Match(s).Success) s = $"\"{s}\"";
+                    builder.Append(s);
+                    if(str!=strs.Last())builder.Append('&');
+                }
             }
             else
             {
-                mp = alertRex().Match(_line);
-                if (mp.Success)
-                {
-                    builder.Append($"ALERT \"{mp.Groups[1].Value}\"");
-                }
-                else
-                {
-                    builder.Append(_line);
-                }
+                builder.Append(_line);
             }
 
             builder.Append(comment);
-            if(lines.Length > 1)
+            if (lines.Length > 1)
                 builder.Append("\r\n");
         }
         return builder.ToString();
     }
+    #endregion
 
     // 关键字字典
     private static readonly Dictionary<string, TokenType> keywords = new()
@@ -186,7 +198,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         {
             if ("\u000D\u000A\u0085\u2028\u2029\r\n".Contains(Current))
             {
-                if(Current == '\r' && Lookahead == '\n')
+                if (Current == '\r' && Lookahead == '\n')
                 {
                     AddToken(TokenType.NEWLINE, " ", _position);
                     _position++;
@@ -271,7 +283,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             _diagnostics.ReportUnterminatedString(location);
         }
         Advance(); // 跳过结束的引号
-        AddToken(TokenType.STRING, sb.ToString(), start+1);
+        AddToken(TokenType.STRING, sb.ToString(), start + 1);
     }
 
     private void ReadVariable()
@@ -332,7 +344,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         else if ((isAllUpper || isAllLower) && gamepadKeywords.Contains(word.ToUpper()))
         {
             var ktype = TokenType.ButtonKeyword;
-            switch(word.ToUpper())
+            switch (word.ToUpper())
             {
                 case "LS":
                 case "RS":
@@ -552,12 +564,4 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 break;
         }
     }
-
-    [GeneratedRegex(@"^print\s+(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
-    private static partial Regex printRex();
-
-
-    [GeneratedRegex(@"^alert\s+(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
-    private static partial Regex alertRex();
 }
- 

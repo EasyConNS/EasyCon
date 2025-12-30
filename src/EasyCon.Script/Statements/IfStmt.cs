@@ -2,11 +2,11 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-class ConditionExpression(CompareOperator op, ValBase left, ValBase right, bool hasPr = false)
+class ConditionExpression(CompareOperator op, ExprBase left, ExprBase right, bool hasPr = false)
 {
-    protected readonly ValBase Value1 = left;
+    protected readonly ExprBase Value1 = left;
     protected readonly CompareOperator CmpOp = op;
-    protected readonly ValBase Value2 = right;
+    protected readonly ExprBase Value2 = right;
     protected readonly bool HasPr = hasPr;
     public bool Compare(Processor processor)
     {
@@ -23,7 +23,7 @@ class ConditionExpression(CompareOperator op, ValBase left, ValBase right, bool 
     }
 }
 
-
+[Obsolete]
 abstract class BranchOp : Statement
 {
     public BranchOp? If;
@@ -59,30 +59,30 @@ class IfStmt(ConditionExpression conds) : BranchOp
         return $"IF {Condition.GetCodeText()}";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-        // if (Left is not ValReg left)
-        //     throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-        // if (Right is ValInstant)
-        // {
-        //     assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
-        //     assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
-        // }
-        // else
-        // {
-        //     assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
-        // }
-        // assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
-        // assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //    // if (Left is not ValReg left)
+    //    //     throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //    // if (Right is ValInstant)
+    //    // {
+    //    //     assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
+    //    //     assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
+    //    // }
+    //    // else
+    //    // {
+    //    //     assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
+    //    // }
+    //    // assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
+    //    // assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
+    //}
 }
 
 class ElseIf(ConditionExpression conds) : IfStmt(conds)
 {
     public override void Exec(Processor processor)
     {
-        if(!If.Passthrough)
+        if (!If.Passthrough)
         {
             processor.PC = If.EndIf.Address + 1;
         }
@@ -102,7 +102,7 @@ class ElseIf(ConditionExpression conds) : IfStmt(conds)
                 else
                     processor.PC = EndIf.Address + 1;
             }
-        }   
+        }
     }
 
     protected override string _GetString()
@@ -110,28 +110,28 @@ class ElseIf(ConditionExpression conds) : IfStmt(conds)
         return $"ELIF {Condition.GetCodeText()}";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-        // assembler.Add(Assembly.Instructions.AsmBranch.Create());
-        // assembler.ElseMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranch;
-        // assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-        // assembler.IfMapping[If].Target = assembler.Last();
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //    // assembler.Add(Assembly.Instructions.AsmBranch.Create());
+    //    // assembler.ElseMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranch;
+    //    // assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+    //    // assembler.IfMapping[If].Target = assembler.Last();
 
-        // if (Left is not ValReg left)
-        //     throw new Assembly.AssembleException("外部变量仅限联机模式使用");
-        // if (Right is ValInstant)
-        // {
-        //     assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
-        //     assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
-        // }
-        // else
-        // {
-        //     assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
-        // }
-        // assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
-        // assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
-    }
+    //    // if (Left is not ValReg left)
+    //    //     throw new Assembly.AssembleException("外部变量仅限联机模式使用");
+    //    // if (Right is ValInstant)
+    //    // {
+    //    //     assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, Right));
+    //    //     assembler.Add(Operater.Assemble(left.Reg, Assembly.Assembler.IReg));
+    //    // }
+    //    // else
+    //    // {
+    //    //     assembler.Add(Operater.Assemble(left.Reg, (Right as ValReg).Reg));
+    //    // }
+    //    // assembler.Add(Assembly.Instructions.AsmBranchFalse.Create());
+    //    // assembler.IfMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranchFalse;
+    //}
 }
 
 class Else : BranchOp
@@ -139,48 +139,41 @@ class Else : BranchOp
     public override void Exec(Processor processor)
     {
         // end of if-block
-        if(!If.Passthrough)
+        if (!If.Passthrough)
             processor.PC = If.EndIf.Address + 1;
     }
 
-    protected override string _GetString()
-    {
-        return "ELSE";
-    }
+    protected override string _GetString() => "ELSE";
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        assembler.Add(Assembly.Instructions.AsmBranch.Create());
-        assembler.ElseMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranch;
-        assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-        assembler.IfMapping[If].Target = assembler.Last();
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    assembler.Add(Assembly.Instructions.AsmBranch.Create());
+    //    assembler.ElseMapping[this] = assembler.Last() as Assembly.Instructions.AsmBranch;
+    //    assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+    //    assembler.IfMapping[If].Target = assembler.Last();
+    //}
 }
 
 class EndIf : BranchOp
 {
     public override void Exec(Processor _)
     { }
+    protected override string _GetString() => "ENDIF";
 
-    protected override string _GetString()
-    {
-        return "ENDIF";
-    }
-
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-        if (If.Else == null)
-            assembler.IfMapping[If].Target = assembler.Last();
-        else
-        {
-            assembler.ElseMapping[If.Else].Target = assembler.Last();
-            var @elif = If;
-            while (@elif is ElseIf)
-            {
-                assembler.ElseMapping[@elif].Target = assembler.Last();
-                @elif = @elif.If;
-            }
-        }
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+    //    if (If.Else == null)
+    //        assembler.IfMapping[If].Target = assembler.Last();
+    //    else
+    //    {
+    //        assembler.ElseMapping[If.Else].Target = assembler.Last();
+    //        var @elif = If;
+    //        while (@elif is ElseIf)
+    //        {
+    //            assembler.ElseMapping[@elif].Target = assembler.Last();
+    //            @elif = @elif.If;
+    //        }
+    //    }
+    //}
 }

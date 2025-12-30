@@ -166,14 +166,12 @@ public static class ILExt
             List<Point> result = new();
             if (self.searchMethod == SearchMethod.TesserDetect)
             {
-
                 using var target = new Mat(ss, self._target);
                 var rlttxt = ECSearch.FindOCR(self.ImgBase64, target, out md);
                 result = [new Point(self.TargetX - self.RangeX, self.TargetY- self.RangeY)];
             }
             else
             {
-
                 byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
                 using var target = imageBytes.ToMat();
                 result = ECSearch.FindPic(range, target, self.searchMethod, out md);

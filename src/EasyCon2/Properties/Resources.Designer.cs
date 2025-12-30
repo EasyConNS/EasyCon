@@ -132,6 +132,16 @@ namespace EasyCon2.Properties {
         /// <summary>
         ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
+        internal static byte[] ecp {
+            get {
+                object obj = ResourceManager.GetObject("ecp", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   查找 System.Byte[] 类型的本地化资源。
+        /// </summary>
         internal static byte[] lua {
             get {
                 object obj = ResourceManager.GetObject("lua", resourceCulture);
@@ -140,21 +150,12 @@ namespace EasyCon2.Properties {
         }
         
         /// <summary>
-        ///   查找类似 &lt;SyntaxDefinition name=&quot;ecp&quot;
-        ///        xmlns=&quot;http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008&quot;&gt;
-        ///  &lt;Color name=&quot;Comment&quot; foreground=&quot;Green&quot; /&gt;
-        ///  &lt;Color name=&quot;String&quot; foreground=&quot;Green&quot; /&gt;
-        ///  &lt;Color name=&quot;NumberLiteral&quot; foreground=&quot;#ff99cc99&quot;/&gt;
-        ///  &lt;Color name=&quot;Keywords&quot; fontWeight=&quot;bold&quot; foreground=&quot;Blue&quot; /&gt;
-        ///  &lt;Color name=&quot;Funcs&quot; fontWeight=&quot;bold&quot; foreground=&quot;LightBlue&quot; /&gt;
-        ///  &lt;Color name=&quot;GamePadKey&quot; fontWeight=&quot;bold&quot; foreground=&quot;Red&quot; /&gt;
-        ///
-        ///  &lt;RuleSet name=&quot;CommentMarkerSet&quot;&gt;
-        ///    &lt;Keywords fontWe [字符串的其余部分被截断]&quot;; 的本地化字符串。
+        ///   查找 System.Byte[] 类型的本地化资源。
         /// </summary>
-        internal static string NX {
+        internal static byte[] Python_Mode {
             get {
-                return ResourceManager.GetString("NX", resourceCulture);
+                object obj = ResourceManager.GetObject("Python-Mode", resourceCulture);
+                return ((byte[])(obj));
             }
         }
         

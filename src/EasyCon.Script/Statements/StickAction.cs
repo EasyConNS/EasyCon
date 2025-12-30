@@ -9,13 +9,13 @@ abstract class StickAction(string keyname, string direction) : Statement
     protected readonly ECKey Key = NSKeys.GetKey(keyname, direction);
     protected readonly string Direction = direction.ToUpper();
 
-    protected virtual void ReleasePrevious(Assembly.Assembler assembler)
-    {
-        if (!assembler.StickMapping.ContainsKey(Key.KeyCode))
-            return;
-        assembler.StickMapping[Key.KeyCode].HoldUntil = assembler.Last();
-        assembler.StickMapping.Remove(Key.KeyCode);
-    }
+    //protected virtual void ReleasePrevious(Assembly.Assembler assembler)
+    //{
+    //    if (!assembler.StickMapping.ContainsKey(Key.KeyCode))
+    //        return;
+    //    assembler.StickMapping[Key.KeyCode].HoldUntil = assembler.Last();
+    //    assembler.StickMapping.Remove(Key.KeyCode);
+    //}
 
 
     public static int GetDirectionIndex(int x, int y)
@@ -30,9 +30,9 @@ abstract class StickAction(string keyname, string direction) : Statement
 
 class StickPress : StickAction
 {
-    public readonly ValBase Duration;
+    public readonly ExprBase Duration;
 
-    public StickPress(string keyname, string direction, ValBase duration)
+    public StickPress(string keyname, string direction, ExprBase duration)
         : base(keyname, direction)
     {
         Duration = duration;
@@ -53,39 +53,39 @@ class StickPress : StickAction
         return $"{KeyName} {Direction},{Duration.GetCodeText()}";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        int keycode = Key.KeyCode;
-        int dindex = GetDirectionIndex(Key.StickX, Key.StickY);   
-        if (Duration is ValReg reg)
-        {
-            if(reg.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-            assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Reg));
-            assembler.Add(Assembly.Instructions.AsmStick_Standard.Create(keycode, dindex, 0));
-            ReleasePrevious(assembler);
-        }
-        else if (Duration is ValInstant dur)
-        {
-            int duration = dur.Val;
-            var ins = Assembly.Instructions.AsmStick_Standard.Create(keycode, dindex, duration);
-            if (ins.Success)
-            {
-                assembler.Add(ins);
-                ReleasePrevious(assembler);
-            }
-            else if (ins == Assembly.Instruction.Failed.OutOfRange)
-            {
-                assembler.Add(Assembly.Instructions.AsmStick_Hold.Create(keycode, dindex));
-                ReleasePrevious(assembler);
-                assembler.StickMapping[keycode] = assembler.Last() as Assembly.Instructions.AsmStick_Hold;
-                assembler.Add(Assembly.Instructions.AsmWait.Create(duration));
-                assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-                ReleasePrevious(assembler);
-            }
-        }
-        else
-            throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    int keycode = Key.KeyCode;
+    //    int dindex = GetDirectionIndex(Key.StickX, Key.StickY);   
+    //    if (Duration is VariableExpr reg)
+    //    {
+    //        if(reg.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //        assembler.Add(Assembly.Instructions.AsmStoreOp.Create(reg.Reg));
+    //        assembler.Add(Assembly.Instructions.AsmStick_Standard.Create(keycode, dindex, 0));
+    //        ReleasePrevious(assembler);
+    //    }
+    //    else if (Duration is InstantExpr dur)
+    //    {
+    //        int duration = dur.Val;
+    //        var ins = Assembly.Instructions.AsmStick_Standard.Create(keycode, dindex, duration);
+    //        if (ins.Success)
+    //        {
+    //            assembler.Add(ins);
+    //            ReleasePrevious(assembler);
+    //        }
+    //        else if (ins == Assembly.Instruction.Failed.OutOfRange)
+    //        {
+    //            assembler.Add(Assembly.Instructions.AsmStick_Hold.Create(keycode, dindex));
+    //            ReleasePrevious(assembler);
+    //            assembler.StickMapping[keycode] = assembler.Last() as Assembly.Instructions.AsmStick_Hold;
+    //            assembler.Add(Assembly.Instructions.AsmWait.Create(duration));
+    //            assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+    //            ReleasePrevious(assembler);
+    //        }
+    //    }
+    //    else
+    //        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
+    //}
 }
 
 class StickDown : StickAction
@@ -104,12 +104,12 @@ class StickDown : StickAction
         return $"{KeyName} {Direction}";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        assembler.Add(Assembly.Instructions.AsmStick_Hold.Create(Key.KeyCode, GetDirectionIndex(Key.StickX, Key.StickY)));
-        ReleasePrevious(assembler);
-        assembler.StickMapping[Key.KeyCode] = assembler.Last() as Assembly.Instructions.AsmStick_Hold;
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    assembler.Add(Assembly.Instructions.AsmStick_Hold.Create(Key.KeyCode, GetDirectionIndex(Key.StickX, Key.StickY)));
+    //    ReleasePrevious(assembler);
+    //    assembler.StickMapping[Key.KeyCode] = assembler.Last() as Assembly.Instructions.AsmStick_Hold;
+    //}
 }
 
 class StickUp : StickAction
@@ -128,9 +128,9 @@ class StickUp : StickAction
         return $"{KeyName} RESET";
     }
 
-    public override void Assemble(Assembly.Assembler assembler)
-    {
-        assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-        ReleasePrevious(assembler);
-    }
+    //public override void Assemble(Assembly.Assembler assembler)
+    //{
+    //    assembler.Add(Assembly.Instructions.AsmEmpty.Create());
+    //    ReleasePrevious(assembler);
+    //}
 }

@@ -21,18 +21,18 @@ static class Formats
 
 class Formatter(Dictionary<string, ExternalVariable> extVars)
 {
-    private readonly Dictionary<string, ValReg> Variables = [];
+    private readonly Dictionary<string, VariableExpr> Variables = [];
     private readonly Dictionary<string, int> Constants = [];
     private readonly Dictionary<string, ExternalVariable> ExtVars = extVars;
 
-    public bool TryDeclConstant(string key, ValBase value)
+    public bool TryDeclConstant(string key, ExprBase value)
     {
         if (Constants.ContainsKey(key)) return false;
         Constants.Add(key, value.Get(null));
         return true;
     }
     
-    public ValReg GetReg(string text, bool decl = false)
+    public VariableExpr GetReg(string text, bool decl = false)
     {
         var m = Regex.Match(text, Formats.RegisterEx_F);
         if (!m.Success)
@@ -51,38 +51,38 @@ class Formatter(Dictionary<string, ExternalVariable> extVars)
         {
             throw new ParseException(@"寄存器变量编号0暂无法使用");
         }
-        var nv = new ValReg(tag);
+        var nv = new VariableExpr(tag);
         Variables.Add(text, nv);
         return nv;
     }
 
-    private ValExtVar GetExtVar(string text)
+    private ExtVarExpr GetExtVar(string text)
     {
         if (!text.StartsWith('@'))
             throw new FormatException();
         var name = text[1..];
         if (!ExtVars.TryGetValue(name, out ExternalVariable? value))
             throw new ParseException($"找不到识图标签“{text}”");
-        return new ValExtVar(value);
+        return new ExtVarExpr(value);
     }
 
-    public ValBase GetVar(string text)
+    public ExprBase GetVar(string text)
     {
         if (Regex.Match(text, Formats.ExtVar_F).Success)
             return GetExtVar(text);
         return GetReg(text);
     }
 
-    public ValInstant GetConstant(string text, bool zeroOrPos = false)
+    public InstantExpr GetConstant(string text, bool zeroOrPos = false)
     {
         if (!Constants.TryGetValue(text, out int v))
             throw new Exception($"未定义的常量“{text}”");
         if (zeroOrPos && v < 0)
             throw new Exception("不能使用负数");
-        return new ValInstant(v, text);
+        return new InstantExpr(v, text);
     }
 
-    public ValInstant GetInstant(string text, bool zeroOrPos = false)
+    public InstantExpr GetInstant(string text, bool zeroOrPos = false)
     {
         if (Regex.Match(text, Formats.Constant_F).Success)
             return GetConstant(text);
@@ -97,7 +97,7 @@ class Formatter(Dictionary<string, ExternalVariable> extVars)
         }
     }
 
-    public ValBase GetValueEx(string text)
+    public ExprBase GetValueEx(string text)
     {
         if (Regex.Match(text, Formats.VariableEx_F).Success)
             return GetVar(text);

@@ -1,30 +1,55 @@
+using EasyCon.Script2.Ast;
 using System.CodeDom.Compiler;
-using EasyScript.Statements;
 using System.Collections.Immutable;
 
-namespace EasyScript.Parsing;
+namespace EasyScript.Statements;
 
 abstract class Statement
 {
     public int Address = -1;
-    public string Comment { get; set; }
+    public string Comment { get; set; } = string.Empty;
 
     public abstract void Exec(Processor processor);
 
-    public abstract void Assemble(Assembly.Assembler assembler);
+    protected abstract string _GetString();
 
     public string GetString()
     {
         return $"{_GetString()}{Comment}";
     }
+}
 
-    protected abstract string _GetString();
+class Empty(string text = "") : Statement
+{
+    private readonly string Text = text;
 
-    protected static class ErrorMessage
+    public override void Exec(Processor _) { }
+
+    protected override string _GetString()
     {
-        public const string NotSupported = "脚本中存在仅支持联机模式的语句";
+        return Text;
     }
 }
+
+class BlockStatement(string name, ImmutableArray<Statement> statements) :Statement
+{
+    public readonly string Name = name;
+    public readonly ImmutableArray<Statement> Statements = statements;
+
+    public override void Exec(Processor processor)
+    {
+        //throw new NotImplementedException();
+    }
+
+    protected override string _GetString()
+    {
+        using var writer = new StringWriter();
+        using var printer = new IndentedTextWriter(writer, "  ");
+        Statements.ToList().ForEach(u => u.WriteTo(printer));
+        return writer.ToString().Trim();
+    }
+}
+
 
 //internal sealed class ScriptUnit(ImmutableArray<Statement> statements)
 //{
@@ -47,7 +72,7 @@ internal static class BoundNodePrinter
     // }
     public static void WriteTo(this Statement node, IndentedTextWriter writer)
     {
-        if(node is ElseIf || node is Else || node is EndIf || node is Next || node is EndFuncStat)
+        if (node is ElseIf || node is Else || node is EndIf || node is Next || node is EndFuncStat)
         {
             writer.Indent--;
         }
