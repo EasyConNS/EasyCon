@@ -67,7 +67,7 @@ internal partial class Parser
                     if (opStack.Count > 0) opStack.Pop();
                     break;
                 default:
-                    if(token.Type.GetBinaryOperatorPrecedence() > 3)
+                    if(token.Type.GetBinaryOperatorPrecedence() > 0)
                     {
                         // 当栈顶运算符优先级不低于当前运算符时，先处理栈顶运算符
                         while (opStack.Count > 0 && 
@@ -77,10 +77,6 @@ internal partial class Parser
                         }
                         
                         opStack.Push(token);
-                    }
-                    else if(token.Type.GetBinaryOperatorPrecedence() > 0)
-                    {
-                        // TODO compare
                     }
                     else if(token.Type == TokenType.EOF)break;
                     else
@@ -111,9 +107,13 @@ internal partial class Parser
             throw new Exception("表达式语法错误");
         string opStr = opStack.Pop().Value;
         MetaOperator? op = MetaOperator.All.FirstOrDefault(o=> o.Operator == opStr);
+        CompareOperator? cmp = CompareOperator.All.FirstOrDefault(o => o.Operator == opStr);
         ExprBase right = valueStack.Pop();
         ExprBase left = valueStack.Pop();
-        valueStack.Push(new BinaryExpression(left, op!, right, hasPr));
+        if(op == null && cmp  == null) throw new Exception($"不支持的运算符：{opStr}");
+
+        ExprBase result = op != null ? new BinaryExpression(op!, left, right, hasPr) : new CmpExpression(cmp!, left, right, hasPr);
+        valueStack.Push(result);
     }
 
     private Statement? ParseAssignment(string text)
@@ -154,18 +154,21 @@ internal partial class Parser
     private Statement? ParseIfelse(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
-        lexer.Skip(1);
-        foreach (var op in CompareOperator.All)
+        if (lexer.Length < 3 + 1) return null;
+        if(lexer[0].Type == TokenType.IF || lexer[0].Type == TokenType.ELIF)
         {
-            var m = Regex.Match(text, $@"^if\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new IfStmt(new(op, _formatter.GetVar(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value)));
-            // else if
-            m = Regex.Match(text, $@"^elif\s+{Formats.VariableEx}\s*{op.Operator}\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-            if (m.Success)
-                return new ElseIf(new(op, _formatter.GetVar(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value)));
+            var eexp = ParseExpression([.. lexer.Skip(1)]);
+            if (eexp is CmpExpression expr)
+            {
+                switch (lexer[0].Type)
+                {
+                    case TokenType.IF:
+                        return new IfStmt(expr);
+                    case TokenType.ELIF:
+                        return new ElseIf(expr);
+                }
+            }
         }
-
         return null;
     }
 

@@ -1,4 +1,4 @@
-﻿namespace EasyScript.Parsing;
+namespace EasyScript.Parsing;
 
 class CompareOperator
 {

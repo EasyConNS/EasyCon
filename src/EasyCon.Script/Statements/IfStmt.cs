@@ -2,27 +2,6 @@ using EasyScript.Parsing;
 
 namespace EasyScript.Statements;
 
-class ConditionExpression(CompareOperator op, ExprBase left, ExprBase right, bool hasPr = false)
-{
-    protected readonly ExprBase Value1 = left;
-    protected readonly CompareOperator CmpOp = op;
-    protected readonly ExprBase Value2 = right;
-    protected readonly bool HasPr = hasPr;
-    public bool Compare(Processor processor)
-    {
-        return CmpOp.Compare(Value1.Get(processor), Value2.Get(processor));
-    }
-
-    public string GetCodeText()
-    {
-
-        var op = CmpOp.Operator == "=" ? "==" : CmpOp.Operator;
-
-        var exp = $"{Value1.GetCodeText()} {op} {Value2.GetCodeText()}";
-        return HasPr ? $"({exp})" : exp;
-    }
-}
-
 [Obsolete]
 abstract class BranchOp : Statement
 {
@@ -32,14 +11,14 @@ abstract class BranchOp : Statement
     public bool Passthrough = true;
 }
 
-class IfStmt(ConditionExpression conds) : BranchOp
+class IfStmt(CmpExpression conds) : BranchOp
 {
-    public readonly ConditionExpression Condition = conds;
+    public readonly CmpExpression Condition = conds;
 
     public override void Exec(Processor processor)
     {
         Passthrough = true;
-        if (Condition.Compare(processor))
+        if (Condition.Get(processor) == 1)
         {
             // do nothing
             Passthrough = false;
@@ -78,7 +57,7 @@ class IfStmt(ConditionExpression conds) : BranchOp
     //}
 }
 
-class ElseIf(ConditionExpression conds) : IfStmt(conds)
+class ElseIf(CmpExpression conds) : IfStmt(conds)
 {
     public override void Exec(Processor processor)
     {
@@ -89,7 +68,7 @@ class ElseIf(ConditionExpression conds) : IfStmt(conds)
         else
         {
             Passthrough = true;
-            if (Condition.Compare(processor))
+            if (Condition.Get(processor) == 1)
             {
                 // do nothing
                 Passthrough = false;

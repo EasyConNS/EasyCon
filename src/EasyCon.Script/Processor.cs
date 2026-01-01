@@ -62,11 +62,13 @@ class Processor(Dictionary<string, FunctionStmt> func)
                             {
                                 TextParam tu => tu.Text,
                                 RegParam ru => Register[ru.Reg].ToString(),
+                                LiterParam lu => lu.LITR.Get(null).ToString(),
                                 _ => "",
                             };
                         })),
                         TextParam tu => tu.Text,
                         RegParam ru => Register[ru.Reg].ToString(),
+                        LiterParam lu => lu.LITR.Get(null).ToString(),
                         _ => "",
                     };
                     var cancelLineBreak = args.LastOrDefault() switch
@@ -87,6 +89,7 @@ class Processor(Dictionary<string, FunctionStmt> func)
                         {
                             TextParam tu => tu.Text,
                             RegParam ru => Register[ru.Reg].ToString(),
+                            LiterParam lu => lu.LITR.Get(null).ToString(),
                             _ => "",
                         };
                     });

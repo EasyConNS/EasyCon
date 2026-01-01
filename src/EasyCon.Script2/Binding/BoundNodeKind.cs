@@ -1,11 +1,19 @@
 namespace EasyCon.Script2.Binding;
 
-enum BoundNodeKind
+public enum BoundNodeKind
 {
     Statement,
     BlockStatement,
     NopStatement,
     Expression,
+    KeyAction,
     CallExpression,
-    Literal
+    Goto,
+    ConditionGoto,
+    Return,
+    Literal,
+
+    If,
+    For,
+    Func
 }

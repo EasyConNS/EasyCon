@@ -156,7 +156,7 @@ internal sealed class Parser
     ** TODO:
     STRUCT name{field1, field2}
     */
-    private Member ParseGlobalStatement()
+    private GlobalStatement ParseGlobalStatement()
     {
         var stmt = WithTrivia(() => ParseStatementInternal());
         return new GlobalStatement(stmt);
@@ -164,27 +164,17 @@ internal sealed class Parser
 
     private Statement ParseStatementInternal()
     {
-        switch (Current.Type)
+        return Current.Type switch
         {
-            case TokenType.IF:
-                return ParseIfStatement();
-            case TokenType.FOR:
-                return ParseForStatement();
-            case TokenType.BREAK:
-                return ParseBreakStatement();
-            case TokenType.CONTINUE:
-                return ParseContinueStatement();
-            case TokenType.RETURN:
-                return ParseReturnStatement();
-            case TokenType.ButtonKeyword:
-            case TokenType.StickKeyword:
-                return ParsePadButtonStatement();
-            case TokenType.INT:
-            case TokenType.IDENT:
-                return ParseSpecIdentStatement();
-            default:
-                return ParseAssignment();
-        }
+            TokenType.IF => ParseIfStatement(),
+            TokenType.FOR => ParseForStatement(),
+            TokenType.BREAK => ParseBreakStatement(),
+            TokenType.CONTINUE => ParseContinueStatement(),
+            TokenType.RETURN => ParseReturnStatement(),
+            TokenType.ButtonKeyword or TokenType.StickKeyword => ParsePadButtonStatement(),
+            TokenType.INT or TokenType.IDENT => ParseSpecCallStatement(),
+            _ => ParseAssignment(),
+        };
     }
 
     // IMPORT name "path"
@@ -230,7 +220,7 @@ internal sealed class Parser
         throw new Exception($"不支持的赋值操作\"{Current.Type}\" 行{Current.Line}");
     }
 
-    private Statement ParseSpecIdentStatement()
+    private CallExpression ParseSpecCallStatement()
     {
         var func = Current;
         string name = func.Value;
@@ -249,25 +239,31 @@ internal sealed class Parser
             }
         }
 
-        var args = new List<Expression>();
+        var args = ImmutableArray<Expression>.Empty;
 
         if (!Check(TokenType.NEWLINE))
         {
-            args.Add(ParsePrimary());
+            args = ParseArguments();
         }
 
-        return new CallExpression(func, name, args.ToImmutableArray());
+        return new CallExpression(func, name, [.. args]);
     }
 
-    /*
-    IF 条件
-      语句
-    ELIF 条件
-      语句
-    ELSE
-      语句
-    ENDIF
-    */
+    private ImmutableArray<Expression> ParseArguments()
+    {
+        return [];
+    }
+
+    /// <summary>
+    // IF语句格式
+    //IF 条件
+    //  语句
+    //ELIF 条件
+    //  语句
+    //ELSE
+    //  语句
+    //ENDIF
+    /// </summary>
     private IfStatement ParseIfStatement()
     {
         var ifcond = WithTrivia(() => ParseIfCondition());
@@ -302,15 +298,18 @@ internal sealed class Parser
     private IfCondition ParseIfCondition()
     {
         var ifToken = Advance();
-        var condition = ParseCondition();
+        var condition = ParseExpression();
         return new IfCondition(ifToken, condition);
     }
 
-    /*
-    FOR 变量 = 开始 to 结束 [step 步长]
-      语句
-    NEXT
-    */
+    /// <summary>
+    // FOR语句格式
+    // FOR # 无限循环
+    // FOR 数字 # 固定次数循环
+    // FOR 变量 = 开始 to 结束 [step 步长]
+    //   语句
+    // NEXT
+    /// </summary>
     private ForStatement ParseForStatement()
     {
         var forToken = Advance();
@@ -458,12 +457,12 @@ internal sealed class Parser
 
     /// <summary>
     /// 解析手柄按键语句
+    // 键位(+键位) [持续时间(ms)|DOWN|UP]
+    // LS|RS 方向|角度 [, 持续时间(ms)]
+    // LS|RS RESET
     /// </summary>
     private Statement ParsePadButtonStatement()
     {
-        // 键位(+键位) [持续时间(ms)|DOWN|UP]
-        // LS|RS 方向|角度 [, 持续时间(ms)]
-        // LS|RS RESET
         List<Token> keyTokens = [];
         var firstKey = Advance();
         keyTokens.Add(firstKey);
@@ -521,12 +520,10 @@ internal sealed class Parser
         throw new Exception($"按键语法不正确 {keyTokens.First().Line}");
     }
 
-    // 计算表达式
     private Expression ParseExpression()
     {
         return ParseBinaryExpression();
     }
-
     private Expression ParseBinaryExpression(int parentPrecedence = 0)
     {
         Expression left;
@@ -556,59 +553,11 @@ internal sealed class Parser
         return left;
     }
 
-    // 条件表达式
-    private Expression ParseCondition()
-    {
-        return ParseLogicalOr();
-    }
-
-    private Expression ParseLogicalOr()
-    {
-        var expression = ParseLogicalAnd();
-
-        while (Check(TokenType.LogicOr))
-        {
-            var op = Advance();
-            var right = ParseLogicalAnd();
-            expression = new ConditionExpression(expression, op, right);
-        }
-
-        return expression;
-    }
-
-    private Expression ParseLogicalAnd()
-    {
-        var expression = ParseComparison();
-
-        while (Check(TokenType.LogicAnd))
-        {
-            var op = Advance();
-            var right = ParseComparison();
-            expression = new ConditionExpression(expression, op, right);
-        }
-
-        return expression;
-    }
-
-    private Expression ParseComparison()
-    {
-        var notTok = Check(TokenType.LogicNot) ? Advance() : null;
-        var expression = ParseExpression();
-
-        while (Checks(TokenType.EQL, TokenType.NEQ, TokenType.LESS, TokenType.LEQ, TokenType.GTR, TokenType.GEQ))
-        {
-            var op = Advance();
-            var right = ParseExpression();
-            expression = new ConditionExpression(expression, op, right);
-        }
-
-        return expression;
-    }
-
-    private Expression ParseIndexExpression()
+    // 索引表达式
+    private IndexExpression ParseIndexExpression()
     {
         var items = new List<Expression>();
-        var lb = Match(TokenType.LeftBracket, "参数列表需要'['");
+        var lb = Match(TokenType.LeftBracket, "索引列表需要'['");
 
         if (Checks(TokenType.INT, TokenType.CONST, TokenType.VAR))
         {
@@ -620,9 +569,9 @@ internal sealed class Parser
             } while (Check(TokenType.COMMA));
         }
 
-        var rb = Match(TokenType.RightBracket, "参数列表需要']'");
+        var rb = Match(TokenType.RightBracket, "索引列表需要']'");
 
-        return new IndexExpression(lb, items.ToImmutableArray(), rb);
+        return new IndexExpression(lb, [.. items], rb);
     }
 
     private Expression ParsePrimary()

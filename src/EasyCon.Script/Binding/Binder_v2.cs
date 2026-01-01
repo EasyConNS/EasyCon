@@ -3,9 +3,11 @@ using EasyCon.Script2.Symbols;
 using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script2.Binding;
+// see: https://github.com/terrajobst/minsk/blob/master/src/Minsk/CodeAnalysis/Binding/Binder.cs
+namespace EasyScript.Binding;
 
-internal sealed class Binder
+#if false
+internal sealed partial class Binder
 {
     private readonly DiagnosticBag _diagnostics = new DiagnosticBag();
 
@@ -130,4 +132,79 @@ internal sealed class Binder
                 throw new Exception($"Unexpected syntax {syntax}");
         }
     }
+    private BoundStatement BindLoopBody(Statement body, out BoundLabel breakLabel, out BoundLabel continueLabel)
+    {
+        _labelCounter++;
+        breakLabel = new BoundLabel($"break{_labelCounter}");
+        continueLabel = new BoundLabel($"continue{_labelCounter}");
+
+        _loopStack.Push((breakLabel, continueLabel));
+        var boundBody = BindStatement(body);
+        _loopStack.Pop();
+
+        return boundBody;
+    }
+
+    private BoundStatement BindBreakStatement(BreakStatementSyntax syntax)
+    {
+        if (_loopStack.Count == 0)
+        {
+            _diagnostics.ReportInvalidBreakOrContinue(syntax.Keyword.Location, syntax.Keyword.Text);
+            return BindErrorStatement(syntax);
+        }
+
+        var breakLabel = _loopStack.Peek().BreakLabel;
+        return new BoundGotoStatement(syntax, breakLabel);
+    }
+
+    private BoundStatement BindContinueStatement(ContinueStatementSyntax syntax)
+    {
+        if (_loopStack.Count == 0)
+        {
+            _diagnostics.ReportInvalidBreakOrContinue(syntax.Keyword.Location, syntax.Keyword.Text);
+            return BindErrorStatement(syntax);
+        }
+
+        var continueLabel = _loopStack.Peek().ContinueLabel;
+        return new BoundGotoStatement(syntax, continueLabel);
+    }
+
+    private BoundStatement BindReturnStatement(ReturnStatementSyntax syntax)
+    {
+        var expression = syntax.Expression == null ? null : BindExpression(syntax.Expression);
+
+        if (_function == null)
+        {
+            if (_isScript)
+            {
+                // Ignore because we allow both return with and without values.
+                if (expression == null)
+                    expression = new BoundLiteralExpression(syntax, "");
+            }
+            else if (expression != null)
+            {
+                // Main does not support return values.
+                _diagnostics.ReportInvalidReturnWithValueInGlobalStatements(syntax.Expression!.Location);
+            }
+        }
+        else
+        {
+            if (_function.Type == TypeSymbol.Void)
+            {
+                if (expression != null)
+                    _diagnostics.ReportInvalidReturnExpression(syntax.Expression!.Location, _function.Name);
+            }
+            else
+            {
+                if (expression == null)
+                    _diagnostics.ReportMissingReturnExpression(syntax.ReturnKeyword.Location, _function.Type);
+                else
+                    expression = BindConversion(syntax.Expression!.Location, expression, _function.Type);
+            }
+        }
+
+        return new BoundReturnStatement(syntax, expression);
+    }
+
 }
+#endif

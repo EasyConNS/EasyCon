@@ -107,7 +107,7 @@ class ExtVarExpr(ExternalVariable var) : ExprBase
     }
 }
 
-class BinaryExpression(ExprBase left, MetaOperator op, ExprBase right, bool hasPr = false) : ExprBase
+class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right, bool hasPr = false) : ExprBase
 {
     protected readonly ExprBase ValueLeft = left;
     protected readonly MetaOperator OpMeta = op;
@@ -137,9 +137,33 @@ class BinaryExpression(ExprBase left, MetaOperator op, ExprBase right, bool hasP
             }
             else
             {
-                return new BinaryExpression(left, br.OpMeta, right, br.HasPr);
+                return new BinaryExpression(br.OpMeta, left, right, br.HasPr);
             }
         }
         return expr;
+    }
+}
+
+
+class CmpExpression(CompareOperator op, ExprBase left, ExprBase right, bool hasPr = false) : ExprBase
+{
+    protected readonly ExprBase Value1 = left;
+    protected readonly CompareOperator CmpOp = op;
+    protected readonly ExprBase Value2 = right;
+    protected readonly bool HasPr = hasPr;
+
+    public override int Get(Processor processor)
+    {
+        var cond = CmpOp.Compare(Value1.Get(processor), Value2.Get(processor));
+        return cond ? 1 : 0;
+    }
+
+    public override string GetCodeText()
+    {
+
+        var op = CmpOp.Operator == "=" ? "==" : CmpOp.Operator;
+
+        var exp = $"{Value1.GetCodeText()} {op} {Value2.GetCodeText()}";
+        return HasPr ? $"({exp})" : exp;
     }
 }

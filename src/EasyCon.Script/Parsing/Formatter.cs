@@ -14,7 +14,6 @@ static class Formats
     public const string ExtVar_F = "(" + _ExtVar + ")";
     public const string RegisterEx = "(" + _Variable + ")";
     public const string RegisterEx_F = "^" + _Variable + "$";
-    public const string VariableEx = "(" + _Variable + "|" + _ExtVar + ")";
     public const string VariableEx_F = "^" + _Variable + "|" + _ExtVar + "$";
     public const string ValueEx = "(" + _Constant + "|" + _Variable + "|" + _ExtVar + "|" + _Number + ")";
 }
@@ -31,7 +30,7 @@ class Formatter(Dictionary<string, ExternalVariable> extVars)
         Constants.Add(key, value.Get(null));
         return true;
     }
-    
+
     public VariableExpr GetReg(string text, bool decl = false)
     {
         var m = Regex.Match(text, Formats.RegisterEx_F);

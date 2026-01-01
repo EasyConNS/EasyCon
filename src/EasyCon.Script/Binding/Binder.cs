@@ -1,13 +1,14 @@
 using EasyScript.Statements;
+using EasyCon.Script2.Binding;
 using System.Collections.Immutable;
 
 namespace EasyScript.Binding;
 
-internal sealed class Binder
+internal sealed partial class Binder
 {
     //private readonly FunctionSymbol? _function;
 
-    private Stack<(BoundLabel BreakLabel, BoundLabel ContinueLabel)> _loopStack = new Stack<(BoundLabel BreakLabel, BoundLabel ContinueLabel)>();
+    private Stack<(BoundLabel BreakLabel, BoundLabel ContinueLabel)> _loopStack = new();
     private int _labelCounter;
 
     private Binder()
