@@ -4,8 +4,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="pythonnet" />
-	<!--<PackageReference Include="NLua" />-->
   </ItemGroup>
 
 </Project>

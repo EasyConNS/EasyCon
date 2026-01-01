@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace EasyScript.Parsing;
 
-partial class Parser(Dictionary<string, ExternalVariable> extVars)
+partial class Parser(IEnumerable<ExternalVariable> extVars)
 {
     readonly Formatter _formatter = new(extVars);
 

@@ -1,9 +1,9 @@
-﻿#if lua
 using NLua;
 using NLua.Exceptions;
+using System.Diagnostics;
 using System.Text;
 
-namespace EasyScript;
+namespace EasyCon.Script.Runner;
 internal class ScriptTest
 {
     public static void ExecuteScript(string code)
@@ -24,7 +24,7 @@ internal class ScriptTest
         }
         catch (LuaScriptException ex)
         {
-            MessageBox.Show(ex.Message);
+            Debug.WriteLine(ex.Message, "luaScriptException");
         }
     }
 }
@@ -36,19 +36,16 @@ internal class TestObj
     {
         if (title == null)
         {
-
-            MessageBox.Show(txt.ToString());
+            Debug.WriteLine(txt.ToString());
         }
         else
         {
-            MessageBox.Show(txt.ToString(), title.ToString());
+            Debug.WriteLine(txt.ToString(), title.ToString());
         }
     }
 
     public static void StaticMsg(object txt)
     {
-        MessageBox.Show(txt.ToString());
+        Debug.WriteLine(txt.ToString(), "StaticMsg");
     }
-
 }
-#endif

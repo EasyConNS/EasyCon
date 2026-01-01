@@ -18,11 +18,11 @@ static class Formats
     public const string ValueEx = "(" + _Constant + "|" + _Variable + "|" + _ExtVar + "|" + _Number + ")";
 }
 
-class Formatter(Dictionary<string, ExternalVariable> extVars)
+class Formatter(IEnumerable<ExternalVariable> extVars)
 {
     private readonly Dictionary<string, VariableExpr> Variables = [];
     private readonly Dictionary<string, int> Constants = [];
-    private readonly Dictionary<string, ExternalVariable> ExtVars = extVars;
+    private readonly Dictionary<string, ExternalVariable> ExtVars = extVars.ToDictionary(ev => ev.Name, s => s);
 
     public bool TryDeclConstant(string key, ExprBase value)
     {

@@ -9,7 +9,8 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<!--<PackageReference Include="NLua" />-->
+		<PackageReference Include="pythonnet" />
+		<PackageReference Include="NLua" />
 	</ItemGroup>
 
 </Project>

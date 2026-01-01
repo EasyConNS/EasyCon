@@ -1,4 +1,3 @@
-using EasyCon.Script2.Ast;
 using System.CodeDom.Compiler;
 using System.Collections.Immutable;
 
@@ -30,26 +29,6 @@ class Empty(string text = "") : Statement
         return Text;
     }
 }
-
-class BlockStatement(string name, ImmutableArray<Statement> statements) :Statement
-{
-    public readonly string Name = name;
-    public readonly ImmutableArray<Statement> Statements = statements;
-
-    public override void Exec(Processor processor)
-    {
-        //throw new NotImplementedException();
-    }
-
-    protected override string _GetString()
-    {
-        using var writer = new StringWriter();
-        using var printer = new IndentedTextWriter(writer, "  ");
-        Statements.ToList().ForEach(u => u.WriteTo(printer));
-        return writer.ToString().Trim();
-    }
-}
-
 
 //internal sealed class ScriptUnit(ImmutableArray<Statement> statements)
 //{

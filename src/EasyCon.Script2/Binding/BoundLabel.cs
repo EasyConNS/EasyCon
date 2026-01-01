@@ -1,7 +1,6 @@
-using EasyCon.Script2.Binding;
-using EasyScript.Statements;
+using EasyCon.Script2.Ast;
 
-namespace EasyScript.Binding;
+namespace EasyCon.Script2.Binding;
 
 internal sealed class BoundLabel(string name)
 {

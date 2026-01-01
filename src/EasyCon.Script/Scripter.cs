@@ -8,8 +8,6 @@ namespace EasyScript;
 
 public sealed class Scripter
 {
-    readonly Dictionary<string, ExternalVariable> ExtVars = [];
-
     ImmutableArray<Statement> _statements = [];
 
     Dictionary<string, FunctionStmt> _funcTables = [];
@@ -18,10 +16,7 @@ public sealed class Scripter
 
     public void Parse(string code, IEnumerable<ExternalVariable> extVars)
     {
-        ExtVars.Clear();
-        foreach (var ev in extVars)
-            ExtVars[ev.Name] = ev;
-        _statements = [.. new Parser(ExtVars).Parse(code)];
+        _statements = [.. new Parser(extVars).Parse(code)];
         _statements.OfType<FunctionStmt>().ToList().ForEach(f => { _funcTables[f.Label] = f; });
     }
 
@@ -99,7 +94,6 @@ public sealed class Scripter
     {
         _statements = [];
         _funcTables = [];
-        ExtVars.Clear();
     }
 }
 
