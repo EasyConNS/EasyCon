@@ -1,11 +1,13 @@
 using EasyScript;
-using EasyScript.Statements;
-using System.Collections.Immutable;
 
 namespace EasyCon.Script.Runner;
 
 interface IRunner
 {
-    void Assemble(ImmutableArray<Statement> statements);
-    void Run(IOutputAdapter output, ICGamePad pad);
+    abstract bool HasKeyAction();
+
+    void Init(string code, IEnumerable<ExternalVariable> extVars);
+    void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token);
+
+    string ToCode();
 }

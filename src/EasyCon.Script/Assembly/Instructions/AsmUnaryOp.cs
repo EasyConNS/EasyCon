@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace EasyScript.Assembly.Instructions;
+namespace EasyCon.Script.Assembly.Instructions;
 
 abstract class AsmUnaryOp : Instruction
 {

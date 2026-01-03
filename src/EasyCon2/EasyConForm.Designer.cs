@@ -131,7 +131,7 @@ namespace EasyCon2.Forms
             menuStrip.Name = "menuStrip";
             menuStrip.Padding = new Padding(7, 2, 0, 2);
             menuStrip.RenderMode = ToolStripRenderMode.Professional;
-            menuStrip.Size = new Size(1055, 28);
+            menuStrip.Size = new Size(892, 28);
             menuStrip.TabIndex = 0;
             menuStrip.Text = "menuStrip1";
             // 
@@ -238,16 +238,16 @@ namespace EasyCon2.Forms
             // 
             编译ToolStripMenuItem.Name = "编译ToolStripMenuItem";
             编译ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.R;
-            编译ToolStripMenuItem.Size = new Size(178, 26);
-            编译ToolStripMenuItem.Text = "编译";
+            编译ToolStripMenuItem.Size = new Size(193, 26);
+            编译ToolStripMenuItem.Text = "格式化";
             编译ToolStripMenuItem.Click += compileButton_Click;
             // 
             // 执行ToolStripMenuItem
             // 
             执行ToolStripMenuItem.Name = "执行ToolStripMenuItem";
             执行ToolStripMenuItem.ShortcutKeys = Keys.F5;
-            执行ToolStripMenuItem.Size = new Size(178, 26);
-            执行ToolStripMenuItem.Text = "执行";
+            执行ToolStripMenuItem.Size = new Size(193, 26);
+            执行ToolStripMenuItem.Text = "运行";
             执行ToolStripMenuItem.Click += 执行ToolStripMenuItem_Click;
             // 
             // 搜图ToolStripMenuItem
@@ -462,7 +462,7 @@ namespace EasyCon2.Forms
             labelTimer.BorderStyle = BorderStyle.Fixed3D;
             labelTimer.Font = new Font("Microsoft YaHei UI", 13F, FontStyle.Bold);
             labelTimer.ForeColor = Color.White;
-            labelTimer.Location = new Point(3, 350);
+            labelTimer.Location = new Point(3, 423);
             labelTimer.Name = "labelTimer";
             labelTimer.Size = new Size(140, 53);
             labelTimer.TabIndex = 35;
@@ -479,7 +479,7 @@ namespace EasyCon2.Forms
             logTxtBox.Location = new Point(3, 24);
             logTxtBox.Name = "logTxtBox";
             logTxtBox.ReadOnly = true;
-            logTxtBox.Size = new Size(294, 326);
+            logTxtBox.Size = new Size(294, 399);
             logTxtBox.TabIndex = 34;
             logTxtBox.Text = "";
             logTxtBox.WordWrap = false;
@@ -493,7 +493,7 @@ namespace EasyCon2.Forms
             buttonRecordPause.Font = new Font("微软雅黑", 9F);
             buttonRecordPause.Location = new Point(3, 233);
             buttonRecordPause.Name = "buttonRecordPause";
-            buttonRecordPause.Size = new Size(143, 40);
+            buttonRecordPause.Size = new Size(102, 40);
             buttonRecordPause.TabIndex = 6;
             buttonRecordPause.Text = "暂停录制";
             buttonRecordPause.UseVisualStyleBackColor = true;
@@ -507,7 +507,7 @@ namespace EasyCon2.Forms
             buttonRecord.Font = new Font("微软雅黑", 9F);
             buttonRecord.Location = new Point(3, 187);
             buttonRecord.Name = "buttonRecord";
-            buttonRecord.Size = new Size(143, 40);
+            buttonRecord.Size = new Size(102, 40);
             buttonRecord.TabIndex = 5;
             buttonRecord.Text = "录制脚本";
             buttonRecord.UseVisualStyleBackColor = true;
@@ -521,7 +521,7 @@ namespace EasyCon2.Forms
             buttonFlashClear.Font = new Font("微软雅黑", 9F);
             buttonFlashClear.Location = new Point(3, 141);
             buttonFlashClear.Name = "buttonFlashClear";
-            buttonFlashClear.Size = new Size(143, 40);
+            buttonFlashClear.Size = new Size(102, 40);
             buttonFlashClear.TabIndex = 4;
             buttonFlashClear.Text = "清除烧录";
             buttonFlashClear.UseVisualStyleBackColor = true;
@@ -535,7 +535,7 @@ namespace EasyCon2.Forms
             buttonFlash.Font = new Font("微软雅黑", 9F);
             buttonFlash.Location = new Point(3, 95);
             buttonFlash.Name = "buttonFlash";
-            buttonFlash.Size = new Size(143, 40);
+            buttonFlash.Size = new Size(102, 40);
             buttonFlash.TabIndex = 1;
             buttonFlash.Text = "编译烧录";
             buttonFlash.UseVisualStyleBackColor = true;
@@ -549,7 +549,7 @@ namespace EasyCon2.Forms
             buttonRemoteStop.Font = new Font("微软雅黑", 9F);
             buttonRemoteStop.Location = new Point(3, 49);
             buttonRemoteStop.Name = "buttonRemoteStop";
-            buttonRemoteStop.Size = new Size(143, 40);
+            buttonRemoteStop.Size = new Size(102, 40);
             buttonRemoteStop.TabIndex = 3;
             buttonRemoteStop.Text = "远程停止";
             buttonRemoteStop.UseVisualStyleBackColor = true;
@@ -563,7 +563,7 @@ namespace EasyCon2.Forms
             buttonRemoteStart.Font = new Font("微软雅黑", 9F);
             buttonRemoteStart.Location = new Point(3, 3);
             buttonRemoteStart.Name = "buttonRemoteStart";
-            buttonRemoteStart.Size = new Size(143, 40);
+            buttonRemoteStart.Size = new Size(102, 40);
             buttonRemoteStart.TabIndex = 2;
             buttonRemoteStart.Text = "远程运行";
             buttonRemoteStart.UseVisualStyleBackColor = true;
@@ -576,7 +576,7 @@ namespace EasyCon2.Forms
             groupBox2.Controls.Add(comboBoxBoardType);
             groupBox2.Location = new Point(3, 279);
             groupBox2.Name = "groupBox2";
-            groupBox2.Size = new Size(143, 110);
+            groupBox2.Size = new Size(113, 110);
             groupBox2.TabIndex = 5;
             groupBox2.TabStop = false;
             groupBox2.Text = "固件";
@@ -589,7 +589,7 @@ namespace EasyCon2.Forms
             genFwButton.Font = new Font("微软雅黑", 9F);
             genFwButton.Location = new Point(8, 57);
             genFwButton.Name = "genFwButton";
-            genFwButton.Size = new Size(129, 34);
+            genFwButton.Size = new Size(94, 34);
             genFwButton.TabIndex = 0;
             genFwButton.Text = "生成";
             genFwButton.UseVisualStyleBackColor = true;
@@ -602,7 +602,7 @@ namespace EasyCon2.Forms
             comboBoxBoardType.FormattingEnabled = true;
             comboBoxBoardType.Location = new Point(8, 23);
             comboBoxBoardType.Name = "comboBoxBoardType";
-            comboBoxBoardType.Size = new Size(129, 28);
+            comboBoxBoardType.Size = new Size(94, 28);
             comboBoxBoardType.TabIndex = 5;
             // 
             // findPanel1
@@ -611,7 +611,7 @@ namespace EasyCon2.Forms
             findPanel1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             findPanel1.BackColor = Color.Transparent;
             findPanel1.BorderStyle = BorderStyle.FixedSingle;
-            findPanel1.Location = new Point(328, 17);
+            findPanel1.Location = new Point(184, 17);
             findPanel1.Name = "findPanel1";
             findPanel1.Replaced = null;
             findPanel1.Size = new Size(250, 98);
@@ -638,7 +638,7 @@ namespace EasyCon2.Forms
             editorHost.Dock = DockStyle.Fill;
             editorHost.Location = new Point(0, 0);
             editorHost.Name = "elementHost1";
-            editorHost.Size = new Size(592, 535);
+            editorHost.Size = new Size(448, 608);
             editorHost.TabIndex = 0;
             editorHost.Text = "elementHost1";
             // 
@@ -648,7 +648,7 @@ namespace EasyCon2.Forms
             groupBox3.Controls.Add(ComPort);
             groupBox3.Controls.Add(buttonSerialPortConnect);
             groupBox3.Controls.Add(buttonSerialPortSearch);
-            groupBox3.Location = new Point(7, 441);
+            groupBox3.Location = new Point(7, 514);
             groupBox3.Name = "groupBox3";
             groupBox3.Size = new Size(300, 95);
             groupBox3.TabIndex = 4;
@@ -740,7 +740,7 @@ namespace EasyCon2.Forms
             groupBox4.Controls.Add(buttonShowController);
             groupBox4.Controls.Add(buttonControllerHelp);
             groupBox4.Controls.Add(buttonKeyMapping);
-            groupBox4.Location = new Point(4, 526);
+            groupBox4.Location = new Point(4, 599);
             groupBox4.Name = "groupBox4";
             groupBox4.Size = new Size(303, 64);
             groupBox4.TabIndex = 34;
@@ -758,9 +758,9 @@ namespace EasyCon2.Forms
             // 
             statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1, toolStripStatusLabel2, labelSerialStatus, toolStripStatusLabel3, labelCaptureStatus });
-            statusStrip.Location = new Point(1, 593);
+            statusStrip.Location = new Point(1, 666);
             statusStrip.Name = "statusStrip";
-            statusStrip.Size = new Size(1055, 26);
+            statusStrip.Size = new Size(892, 26);
             statusStrip.TabIndex = 3;
             statusStrip.Text = "statusStrip1";
             // 
@@ -806,9 +806,9 @@ namespace EasyCon2.Forms
             optPanel.Controls.Add(buttonRecord);
             optPanel.Controls.Add(buttonRecordPause);
             optPanel.Controls.Add(groupBox2);
-            optPanel.Location = new Point(911, 32);
+            optPanel.Location = new Point(770, 61);
             optPanel.Name = "optPanel";
-            optPanel.Size = new Size(144, 422);
+            optPanel.Size = new Size(122, 414);
             optPanel.TabIndex = 35;
             // 
             // scriptPanel
@@ -817,7 +817,7 @@ namespace EasyCon2.Forms
             scriptPanel.Controls.Add(editorHost);
             scriptPanel.Location = new Point(0, 23);
             scriptPanel.Name = "scriptPanel";
-            scriptPanel.Size = new Size(592, 535);
+            scriptPanel.Size = new Size(448, 608);
             scriptPanel.TabIndex = 36;
             // 
             // logPanel
@@ -830,7 +830,7 @@ namespace EasyCon2.Forms
             logPanel.Controls.Add(labelTimer);
             logPanel.Location = new Point(7, 32);
             logPanel.Name = "logPanel";
-            logPanel.Size = new Size(300, 403);
+            logPanel.Size = new Size(300, 476);
             logPanel.TabIndex = 37;
             // 
             // logTitleLabel
@@ -868,7 +868,7 @@ namespace EasyCon2.Forms
             runStopBtn.FlatStyle = FlatStyle.Flat;
             runStopBtn.Font = new Font("微软雅黑", 12F, FontStyle.Bold);
             runStopBtn.ForeColor = Color.White;
-            runStopBtn.Location = new Point(140, 350);
+            runStopBtn.Location = new Point(140, 423);
             runStopBtn.Name = "runStopBtn";
             runStopBtn.Size = new Size(157, 53);
             runStopBtn.TabIndex = 37;
@@ -884,13 +884,13 @@ namespace EasyCon2.Forms
             scriptContainer.Controls.Add(scriptPanel);
             scriptContainer.Location = new Point(313, 32);
             scriptContainer.Name = "scriptContainer";
-            scriptContainer.Size = new Size(595, 558);
+            scriptContainer.Size = new Size(451, 631);
             scriptContainer.TabIndex = 38;
             // 
             // scriptTitleLabel
             // 
             scriptTitleLabel.AutoSize = true;
-            scriptTitleLabel.Location = new Point(0, 0);
+            scriptTitleLabel.Location = new Point(-3, 2);
             scriptTitleLabel.Name = "scriptTitleLabel";
             scriptTitleLabel.Size = new Size(79, 20);
             scriptTitleLabel.TabIndex = 0;
@@ -899,7 +899,7 @@ namespace EasyCon2.Forms
             // EasyConForm
             // 
             AutoScaleMode = AutoScaleMode.Inherit;
-            ClientSize = new Size(1057, 620);
+            ClientSize = new Size(894, 693);
             Controls.Add(scriptContainer);
             Controls.Add(groupBox4);
             Controls.Add(optPanel);

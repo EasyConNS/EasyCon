@@ -1,8 +1,8 @@
 using EasyCon.Capture;
+using EasyCon.Script;
 using EasyCon2.Helper;
-using EasyScript;
-using EasyScript.Assembly;
-using EasyScript.Parsing;
+using EasyCon.Script.Assembly;
+using EasyCon.Script.Parsing;
 using OpenCvSharp.Extensions;
 using System.IO;
 using System.Media;
@@ -27,7 +27,7 @@ partial class EasyConForm
             // 在这里根据图像处理窗口的情况，创建一个ExternalVariable的数组或List传给Parse函数
             // 每个ExternalVariable对应一个图像标签，name为名字，get为用来获取结果的函数，set暂时没有语句支持所以先省略                
 
-            _program.Parse(textBoxScript.Text, captureVideo.LoadedLabels.
+            _program.Parse(textEditor.Text, captureVideo.LoadedLabels.
                 Select(il => new ExternalVariable(il.name, () =>
                 {
                     using var ss = BitmapConverter.ToMat(captureVideo.GetImage());
@@ -35,9 +35,9 @@ partial class EasyConForm
                     return (int)md;
                 }))
                 );
-            textBoxScript.Text = _program.ToCode().Trim();
-            scriptTitleLabel.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
-            textBoxScript.Select(0, 0);
+            textEditor.Text = _program.ToCode().Trim();
+            scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
+            textEditor.Select(0, 0);
             return true;
         }
         catch (ParseException ex)
@@ -173,15 +173,13 @@ partial class EasyConForm
             StatusShowLog("固件生成失败");
             SystemSounds.Hand.Play();
             MessageBox.Show(ex.Message);
-            ScriptSelectLine(ex.Index);
             return false;
         }
-        catch (ParseException ex)
+        catch (Exception ex)
         {
             StatusShowLog("固件生成失败");
             SystemSounds.Hand.Play();
             MessageBox.Show("固件生成失败！" + ex.Message);
-            ScriptSelectLine(ex.Index);
             return false;
         }
     }

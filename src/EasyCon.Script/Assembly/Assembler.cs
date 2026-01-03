@@ -1,7 +1,7 @@
-using EasyScript.Statements;
+using EasyCon.Script.Parsing;
 using System.Collections.Immutable;
 
-namespace EasyScript.Assembly;
+namespace EasyCon.Script.Assembly;
 
 class Assembler
 {

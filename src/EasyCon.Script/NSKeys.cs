@@ -1,6 +1,6 @@
-﻿using EasyDevice;
+using EasyDevice;
 
-namespace EasyScript;
+namespace EasyCon.Script;
 
 static class NSKeys
 {
@@ -27,11 +27,6 @@ static class NSKeys
     {
         name = name.ToUpper();
         return _keyDict.GetValueOrDefault(name, null);
-    }
-
-    public static string GetName(ECKey key)
-    {
-        return _keyName.GetValueOrDefault(key, string.Empty);
     }
 
     public static ECKey GetKey(string keyname, string direction = "0")

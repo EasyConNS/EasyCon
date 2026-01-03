@@ -4,7 +4,8 @@ using System.Diagnostics;
 using System.Text;
 
 namespace EasyCon.Script.Runner;
-internal class ScriptTest
+
+class ScriptTest
 {
     public static void ExecuteScript(string code)
     {

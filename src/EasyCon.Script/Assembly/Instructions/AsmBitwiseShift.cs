@@ -1,6 +1,6 @@
-using System.IO;
+using EasyCon.Script.Parsing;
 
-namespace EasyScript.Assembly.Instructions;
+namespace EasyCon.Script.Assembly.Instructions;
 
 public enum BitwiseShiftOperator
 {
@@ -21,15 +21,15 @@ abstract class AsmBitwiseShift<T> : Instruction
         Op = (uint)(Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute).Operator;
     }
 
-    public static Instruction Create(uint regdst, Parsing.ExprBase value)
+    public static Instruction Create(uint regdst, ExprBase value)
     {
-        if (value is Parsing.VariableExpr)
+        if ((value is VariableExpr))
         {
             return Failed.InvalidArgument;
         }
-        else if (value is Parsing.InstantExpr)
+        else if ((value is InstantExpr))
         {
-            var val = (value as Parsing.InstantExpr).Val;
+            var val = ((value as InstantExpr)).Value;
             if (val < 0 || val >= 1 << 4)
                 return Failed.OutOfRange;
             var ins = new AsmBinaryOpInstant<T>();

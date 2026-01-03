@@ -1,10 +1,10 @@
-﻿using System.Text;
+using System.Text;
 
-namespace EasyScript.Assembly;
+namespace EasyCon.Script.Assembly;
 
 public static class HexWriter
 {
-    public static readonly byte[] EmptyAsm = new byte[] { 0xFF, 0xFF };
+    public static readonly byte[] EmptyAsm = [0xFF, 0xFF];
     public static string WriteHex(string hexStr, byte[] asmBytes, int size, int version)
     {
         if (asmBytes.Length > size)

@@ -1,77 +1,83 @@
 <SyntaxDefinition name="ecp"
         xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
-  <Color name="Comment" foreground="Green" />
-  <Color name="String" foreground="Green" />
-  <Color name="NumberLiteral" foreground="#ff99cc99"/>
-  <Color name="Keywords" fontWeight="bold" foreground="Blue" />
-  <Color name="Funcs" fontWeight="bold" foreground="LightBlue" />
-  <Color name="GamePadKey" fontWeight="bold" foreground="Red" />
+	<Color name="Comment" foreground="Green" />
+	<Color name="String" foreground="#fff99157" />
+	<Color name="NumberLiteral" foreground="#ff99cc99"/>
+	<Color name="Keywords" fontWeight="bold" foreground="Blue" />
+	<Color name="Funcs" fontWeight="bold" foreground="LightBlue" />
+	<Color name="GamePadKey" fontWeight="bold" foreground="Red" />
 
-  <RuleSet name="CommentMarkerSet">
-    <Keywords fontWeight="bold" foreground="#fff2777a">
-      <Word>TODO</Word>
-      <Word>FIXME</Word>
-    </Keywords>
-    <Keywords fontWeight="bold" foreground="#fff2777a">
-      <Word>HACK</Word>
-      <Word>UNDONE</Word>
-    </Keywords>
-  </RuleSet>
+	<RuleSet name="CommentMarkerSet">
+		<Keywords fontWeight="bold" foreground="#fff2777a">
+			<Word>TODO</Word>
+			<Word>FIXME</Word>
+		</Keywords>
+		<Keywords fontWeight="bold" foreground="#fff2777a">
+			<Word>HACK</Word>
+			<Word>UNDONE</Word>
+		</Keywords>
+	</RuleSet>
 
-  <!-- This is the main ruleset. -->
-  <RuleSet ignoreCase="true">
-    <Span color="Comment" begin="#" />
+	<!-- This is the main ruleset. -->
+	<RuleSet ignoreCase="true">
+		<Span color="Comment" begin="#" />
 
-    <Keywords color="Keywords">
-      <Word>FOR</Word>
-      <Word>TO</Word>
-      <Word>STEP</Word>
-      <Word>NEXT</Word>
-      <Word>BREAK</Word>
-      <Word>CONTINUE</Word>
-      <Word>IF</Word>
-      <Word>ELIF</Word>
-      <Word>ELSE</Word>
-      <Word>ENDIF</Word>
-      <Word>FUNC</Word>
-      <Word>RETURN</Word>
-      <Word>ENDFUNC</Word>
-      <Word>CALL</Word>
-    </Keywords>
+		<Span color="String">
+			<Begin>"</Begin>
+			<End>"</End>
+		</Span>
 
-    <Keywords color="Funcs">
-      <Word>RAND</Word>
-      <Word>TIME</Word>
-      <Word>PRINT</Word>
-      <Word>ALERT</Word>
-      <Word>WAIT</Word>
-      <Word>AMIIBO</Word>
-    </Keywords>
+		<Keywords color="Keywords">
+			<Word>IMPORT</Word>
+			<Word>FOR</Word>
+			<Word>TO</Word>
+			<Word>STEP</Word>
+			<Word>NEXT</Word>
+			<Word>BREAK</Word>
+			<Word>CONTINUE</Word>
+			<Word>IF</Word>
+			<Word>ELIF</Word>
+			<Word>ELSE</Word>
+			<Word>ENDIF</Word>
+			<Word>FUNC</Word>
+			<Word>RETURN</Word>
+			<Word>ENDFUNC</Word>
+			<Word>CALL</Word>
+		</Keywords>
 
-    <Keywords color="GamePadKey">
-      <Word>A</Word>
-      <Word>B</Word>
-      <Word>X</Word>
-      <Word>Y</Word>
-      <Word>L</Word>
-      <Word>R</Word>
-      <Word>ZL</Word>
-      <Word>ZR</Word>
-      <Word>PLUS</Word>
-      <Word>MINUS</Word>
-      <Word>LCLICK</Word>
-      <Word>RCLICK</Word>
-      <Word>HOME</Word>
-      <Word>CAPTURE</Word>
-      <Word>UP</Word>
-      <Word>DOWN</Word>
-      <Word>RIGHT</Word>
-      <Word>LEFT</Word>
-      <Word>LS</Word>
-      <Word>RS</Word>
-    </Keywords>
+		<Keywords color="Funcs">
+			<Word>RAND</Word>
+			<Word>TIME</Word>
+			<Word>PRINT</Word>
+			<Word>ALERT</Word>
+			<Word>WAIT</Word>
+			<Word>AMIIBO</Word>
+		</Keywords>
 
-    <!-- Digits
+		<Keywords color="GamePadKey">
+			<Word>A</Word>
+			<Word>B</Word>
+			<Word>X</Word>
+			<Word>Y</Word>
+			<Word>L</Word>
+			<Word>R</Word>
+			<Word>ZL</Word>
+			<Word>ZR</Word>
+			<Word>PLUS</Word>
+			<Word>MINUS</Word>
+			<Word>LCLICK</Word>
+			<Word>RCLICK</Word>
+			<Word>HOME</Word>
+			<Word>CAPTURE</Word>
+			<Word>UP</Word>
+			<Word>DOWN</Word>
+			<Word>RIGHT</Word>
+			<Word>LEFT</Word>
+			<Word>LS</Word>
+			<Word>RS</Word>
+		</Keywords>
+
+		<!-- Digits
     <Rule foreground="DarkBlue">
       \b0[xX][0-9a-fA-F]+  # hex number
       |    \b
@@ -92,5 +98,5 @@
     <Rule foreground="Orange">
       \B\*\w+
     </Rule> -->
-  </RuleSet>
+	</RuleSet>
 </SyntaxDefinition>

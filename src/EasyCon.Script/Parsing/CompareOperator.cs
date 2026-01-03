@@ -1,13 +1,15 @@
-namespace EasyScript.Parsing;
+using EasyCon.Script.Assembly;
+
+namespace EasyCon.Script.Parsing;
 
 class CompareOperator
 {
     public static readonly List<CompareOperator> All = new();
     public readonly string Operator;
     public readonly Func<int, int, bool> Compare;
-    public readonly Func<uint, uint, Assembly.Instruction> Assemble;
+    public readonly Func<uint, uint, Instruction> Assemble;
 
-    public CompareOperator(string op, Func<int, int, bool> compare, Func<uint, uint, Assembly.Instruction> assemble)
+    public CompareOperator(string op, Func<int, int, bool> compare, Func<uint, uint, Instruction> assemble)
     {
         Operator = op;
         Compare = compare;

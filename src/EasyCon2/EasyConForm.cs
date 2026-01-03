@@ -1,11 +1,14 @@
+using EasyCon.Script;
+using EasyCon.Script.Assembly;
+using EasyCon.Script.Runner;
 using EasyCon2.Config;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
 using EasyDevice;
 using EasyScript;
-using EasyScript.Assembly;
 using EasyVPad;
 using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Editing;
 using ICSharpCode.AvalonEdit.Folding;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
@@ -13,7 +16,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Media;
 using System.Net.Http;
-using System.Text;
 using System.Text.Json;
 using System.Xml;
 
@@ -22,7 +24,7 @@ namespace EasyCon2.Forms
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter
     {
         private readonly Version VER = new(1, 54, 0);
-        private readonly TextEditor textBoxScript = new();
+        private readonly TextEditor textEditor = new();
         private CodeCompletionController _completionController;
         internal readonly VPadForm virtController;
 
@@ -41,7 +43,7 @@ namespace EasyCon2.Forms
         const string FirmwarePath = @"Firmware\";
 
         private readonly string defaultName = "未命名脚本";
-        private string fileName => textBoxScript.Document.FileName == null ? defaultName : Path.GetFileName(textBoxScript.Document.FileName);
+        private string fileName => textEditor.Document.FileName == null ? defaultName : Path.GetFileName(textEditor.Document.FileName);
 
         private readonly List<ToolStripMenuItem> captureTypes = [];
 
@@ -98,6 +100,8 @@ namespace EasyCon2.Forms
             // UI updating timer
             Task.Run(() => { UpdateUI(); });
 
+            PyRunner.Init("D:\\AppData\\scoop\\apps\\python313\\current\\python313.dll");
+
             InitCaptureDevices();
             InitCaptureTypes();
 
@@ -112,29 +116,29 @@ namespace EasyCon2.Forms
 
         private void InitEditor()
         {
-            textBoxScript.ShowLineNumbers = true;
+            textEditor.ShowLineNumbers = true;
             var syntaxHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.ecp)), HighlightingManager.Instance);
             HighlightingManager.Instance.RegisterHighlighting("ECP", [".txt"], syntaxHighlighting);
             var luaHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.lua)), HighlightingManager.Instance);
             HighlightingManager.Instance.RegisterHighlighting("Lua", [".lua"], luaHighlighting);
             var pyHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.Python_Mode)), HighlightingManager.Instance);
             HighlightingManager.Instance.RegisterHighlighting("Python", [".py"], pyHighlighting);
-            textBoxScript.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("ECP");
-            textBoxScript.DragEnter += new System.Windows.DragEventHandler(this.textBoxScript_DragEnter);
-            textBoxScript.Drop += new System.Windows.DragEventHandler(this.textBoxScript_DragDrop);
-            textBoxScript.TextChanged += new EventHandler(this.textBoxScript_TextChanged);
+            textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("ECP");
+            textEditor.DragEnter += new System.Windows.DragEventHandler(this.textBoxScript_DragEnter);
+            textEditor.Drop += new System.Windows.DragEventHandler(this.textBoxScript_DragDrop);
+            textEditor.TextChanged += new EventHandler(this.textBoxScript_TextChanged);
 
-            var completionProvider = new EcpCompletionProvider(textBoxScript);
+            var completionProvider = new EcpCompletionProvider(textEditor);
             completionProvider.GetImgLabel += () => captureVideo.LoadedLabels.Select(il => il.name);
-            _completionController = new CodeCompletionController(textBoxScript, completionProvider);
+            _completionController = new CodeCompletionController(textEditor, completionProvider);
 
-            _foldingManager = FoldingManager.Install(textBoxScript.TextArea);
+            _foldingManager = FoldingManager.Install(textEditor.TextArea);
             _foldingStrategy = new CustomFoldingStrategy();
-            _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
+            _foldingStrategy.UpdateFoldings(_foldingManager, textEditor.Document);
 
-            findPanel1.InitEditor(textBoxScript);
+            findPanel1.InitEditor(textEditor);
 
-            editorHost.Child = textBoxScript;
+            editorHost.Child = textEditor;
         }
 
         private void InitEvent()
@@ -281,8 +285,8 @@ namespace EasyCon2.Forms
                         if (NS.recordState == RecordState.RECORD_START)
                         {
                             buttonRecord.Text = "停止录制";
-                            textBoxScript.Text = NS.GetRecordScript();
-                            this.textBoxScript.ScrollToHome();
+                            textEditor.Text = NS.GetRecordScript();
+                            this.textEditor.ScrollToHome();
                         }
                         if (captureVideo.IsOpened)
                         {
@@ -357,7 +361,7 @@ namespace EasyCon2.Forms
 
         private void ScriptSelectLine(int index)
         {
-            textBoxScript.ScrollToLine(index);
+            textEditor.ScrollToLine(index);
         }
 
         private Board GetSelectedBoard()
@@ -508,17 +512,17 @@ namespace EasyCon2.Forms
                 _currentFile = openFileDialog.FileName;
             }
 
-            textBoxScript.Load(_currentFile);
-            textBoxScript.Document.FileName = _currentFile;
+            textEditor.Load(_currentFile);
+            textEditor.Document.FileName = _currentFile;
             var hightligDefin = Path.GetExtension(_currentFile) switch
             {
-                ".cs"=> "C#",
+                ".cs" => "C#",
                 ".py" => "Python",
                 ".lua" => "Lua",
                 _ => "ECP",
             };
-            textBoxScript.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition(hightligDefin);
-            scriptTitleLabel.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
+            textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition(hightligDefin);
+            scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
             return true;
         }
 
@@ -531,21 +535,21 @@ namespace EasyCon2.Forms
             saveFileDialog.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
             saveFileDialog.FileName = string.Empty;
 
-            if (saveAs || textBoxScript.Document.FileName == null)
+            if (saveAs || textEditor.Document.FileName == null)
             {
                 if (saveFileDialog.ShowDialog() != DialogResult.OK)
                     return false;
-                textBoxScript.Document.FileName = saveFileDialog.FileName;
+                textEditor.Document.FileName = saveFileDialog.FileName;
 
             }
-            textBoxScript.Save(textBoxScript.Document.FileName);
+            textEditor.Save(textEditor.Document.FileName);
             StatusShowLog("文件已保存");
             return true;
         }
 
         private bool FileClose()
         {
-            if (textBoxScript.IsModified)
+            if (textEditor.IsModified)
             {
                 var r = MessageBox.Show("文件已编辑，是否保存？", "", MessageBoxButtons.YesNoCancel);
                 if (r == DialogResult.Cancel)
@@ -556,10 +560,10 @@ namespace EasyCon2.Forms
                         return false;
                 }
             }
-            textBoxScript.Document.FileName = null;
-            textBoxScript.Clear();
-            textBoxScript.IsModified = false;
-            scriptTitleLabel.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
+            textEditor.Document.FileName = null;
+            textEditor.Clear();
+            textEditor.IsModified = false;
+            scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
             StatusShowLog("文件已关闭");
             return true;
         }
@@ -607,10 +611,10 @@ namespace EasyCon2.Forms
         private void textBoxScript_TextChanged(object sender, EventArgs e)
         {
             // script edited
-            scriptTitleLabel.Text = textBoxScript.IsModified ? $"{fileName}(已编辑)" : fileName;
+            scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
 
             if (显示折叠ToolStripMenuItem.Checked)
-                _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
+                _foldingStrategy.UpdateFoldings(_foldingManager, textEditor.Document);
             ScriptReset();
         }
 
@@ -753,7 +757,7 @@ namespace EasyCon2.Forms
                 virtController.ControllerEnabled = true;
                 buttonRecord.Text = "停止录制";
                 buttonRecordPause.Enabled = true;
-                textBoxScript.IsEnabled = false;
+                textEditor.IsEnabled = false;
                 NS.StartRecord();
             }
             else
@@ -761,7 +765,7 @@ namespace EasyCon2.Forms
                 Debug.Write("stop");
                 buttonRecord.Text = "录制脚本";
                 buttonRecordPause.Enabled = false;
-                textBoxScript.IsEnabled = true;
+                textEditor.IsEnabled = true;
                 NS.StopRecord();
             }
         }
@@ -836,15 +840,15 @@ namespace EasyCon2.Forms
 
         private void 查找替換ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (textBoxScript.SelectedText.Length > 0)
-                findPanel1.Target = textBoxScript.SelectedText;
+            if (textEditor.SelectedText.Length > 0)
+                findPanel1.Target = textEditor.SelectedText;
             findPanel1.Show();
         }
 
         private void 查找下一个ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (textBoxScript.SelectedText.Length > 0)
-                findPanel1.Target = textBoxScript.SelectedText;
+            if (textEditor.SelectedText.Length > 0)
+                findPanel1.Target = textEditor.SelectedText;
             var index = findPanel1.Find();
 
             if (index == -1)
@@ -853,8 +857,8 @@ namespace EasyCon2.Forms
                 return;
             }
 
-            textBoxScript.Select(index, findPanel1.Target.Length);
-            textBoxScript.ScrollToLine(textBoxScript.Document.GetLineByOffset(index).LineNumber);
+            textEditor.Select(index, findPanel1.Target.Length);
+            textEditor.ScrollToLine(textEditor.Document.GetLineByOffset(index).LineNumber);
         }
 
         private void DeviceTypeItem_Click(object sender, EventArgs e)
@@ -1064,17 +1068,44 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             var menu = (ToolStripMenuItem)sender;
             menu.Checked = !menu.Checked;
             if (menu.Checked)
-                _foldingStrategy.UpdateFoldings(_foldingManager, textBoxScript.Document);
+                _foldingStrategy.UpdateFoldings(_foldingManager, textEditor.Document);
             else
                 _foldingManager.Clear();
         }
 
         private void 注释取消注释ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var line = textBoxScript.Document.GetLineByNumber(textBoxScript.TextArea.Caret.Line);
-            var text = textBoxScript.Document.GetText(line);
-            text = _program.ToggleComment(text);
-            textBoxScript.Document.Replace(line, text);
+            // 获取选择范围
+            int startOffset = textEditor.SelectionStart;
+            int endOffset = startOffset + textEditor.SelectionLength;
+
+            // 获取开始和结束行
+            var startLine = textEditor.Document.GetLineByOffset(startOffset);
+            var endLine = textEditor.Document.GetLineByOffset(endOffset);
+            Debug.WriteLine($"选择范围：{startLine.LineNumber}-{endLine.LineNumber}");
+
+
+            var docomment = false;
+            for (int lineNum = endLine.LineNumber; lineNum >= startLine.LineNumber; lineNum--)
+            {
+                var line = textEditor.Document.GetLineByNumber(lineNum);
+                if (Scripter.CanComment(textEditor.Document.GetText(line)))
+                {
+                    docomment = true;
+                    break;
+                }
+            }
+
+            using (textEditor.Document.RunUpdate())
+            {
+                for (int lineNum = endLine.LineNumber; lineNum >= startLine.LineNumber; lineNum--)
+                {
+                    var line = textEditor.Document.GetLineByNumber(lineNum);
+                    var text = textEditor.Document.GetText(line);
+                    text = Scripter.ToggleComment(text, docomment);
+                    textEditor.Document.Replace(line, text);
+                }
+            }
         }
 
         private void 脚本语法ToolStripMenuItem_Click(object sender, EventArgs e)

@@ -1,5 +1,4 @@
-using EasyScript.Assembly;
-using EasyScript.Parsing;
+using EasyCon.Script.Assembly;
 using System.IO;
 using System.Text.RegularExpressions;
 
@@ -36,7 +35,7 @@ public static class BoardExtension
         var filename = GetFirmwareName(board.CoreName);
         if (filename == null)
         {
-            throw new ParseException("未找到固件！请确认程序Firmware目录下是否有对应固件文件！", 0);
+            throw new Exception("未找到固件！请确认程序Firmware目录下是否有对应固件文件！");
         }
         var hexStr = File.ReadAllText(FirmwarePath + filename);
         hexStr = HexWriter.WriteHex(hexStr, bytes, board.DataSize, Board.Version);

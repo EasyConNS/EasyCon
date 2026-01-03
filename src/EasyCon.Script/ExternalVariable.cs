@@ -1,4 +1,4 @@
-namespace EasyScript;
+namespace EasyCon.Script;
 
 public class ExternalVariable
 {

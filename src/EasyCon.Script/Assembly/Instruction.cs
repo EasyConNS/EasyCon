@@ -1,4 +1,4 @@
-﻿namespace EasyScript.Assembly;
+namespace EasyCon.Script.Assembly;
 
 abstract class Instruction
 {

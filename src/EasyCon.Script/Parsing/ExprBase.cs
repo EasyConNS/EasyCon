@@ -1,15 +1,8 @@
-namespace EasyScript.Parsing;
+namespace EasyCon.Script.Parsing;
 
 // base of valuetype
 abstract class ExprBase
 {
-    public abstract int Get(Processor processor);
-
-    public virtual void Set(Processor processor, int value)
-    {
-        throw new InvalidOperationException();
-    }
-
     public abstract string GetCodeText();
 
     public static implicit operator ExprBase(int val)
@@ -18,28 +11,35 @@ abstract class ExprBase
     }
 }
 
+class LiteralExpr(string txt) : ExprBase
+{
+    public readonly string Text = txt;
+
+    public override string GetCodeText() => Text;
+}
+
 // instant number, including constant
 class InstantExpr : ExprBase
 {
-    public readonly int Val;
+    public readonly int Value;
     public readonly string Text;
 
     public InstantExpr(int val)
     {
-        Val = val;
+        Value = val;
         Text = val.ToString();
     }
 
     public InstantExpr(int val, string text)
     {
-        Val = val;
+        Value = val;
         Text = text;
     }
 
-    public override int Get(Processor _)
-    {
-        return Val;
-    }
+    //public override int Get(Processor _)
+    //{
+    //    return Val;
+    //}
 
     public override string GetCodeText()
     {
@@ -53,11 +53,10 @@ class InstantExpr : ExprBase
 
     public static implicit operator int(InstantExpr v)
     {
-        return v.Val;
+        return v.Value;
     }
 }
 
-// register variable, either 16 or 32 bits
 class VariableExpr : ExprBase
 {
     public readonly string Tag;
@@ -75,15 +74,15 @@ class VariableExpr : ExprBase
         Reg = reg;
     }
 
-    public override void Set(Processor processor, int value)
-    {
-        processor.Register[this] = value;
-    }
+    //public override void Set(Processor processor, int value)
+    //{
+    //    processor.Register[this] = value;
+    //}
 
-    public override int Get(Processor processor)
-    {
-        return processor.Register[this];
-    }
+    //public override int Get(Processor processor)
+    //{
+    //    return processor.Register[this];
+    //}
 
     public override string GetCodeText()
     {
@@ -91,15 +90,9 @@ class VariableExpr : ExprBase
     }
 }
 
-// external variable 
 class ExtVarExpr(ExternalVariable var) : ExprBase
 {
     public readonly ExternalVariable Var = var;
-
-    public override int Get(Processor _)
-    {
-        return Var.Get();
-    }
 
     public override string GetCodeText()
     {
@@ -114,10 +107,10 @@ class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right, bool hasP
     protected readonly ExprBase ValueRight = right;
 
     protected readonly bool HasPr = hasPr;
-    public override int Get(Processor processor)
-    {
-        return OpMeta.Function(ValueLeft.Get(processor), ValueRight.Get(processor));
-    }
+    //public override int Get(Processor processor)
+    //{
+    //    return OpMeta.Function(ValueLeft.Get(processor), ValueRight.Get(processor));
+    //}
 
     public override string GetCodeText()
     {
@@ -133,7 +126,7 @@ class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right, bool hasP
             var right = Rewrite(br.ValueRight);
             if(left is InstantExpr li && right is InstantExpr ri)
             {
-                return br.OpMeta.Function(li.Val, ri.Val);
+                return br.OpMeta.Function(li.Value, ri.Value);
             }
             else
             {
@@ -144,7 +137,6 @@ class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right, bool hasP
     }
 }
 
-
 class CmpExpression(CompareOperator op, ExprBase left, ExprBase right, bool hasPr = false) : ExprBase
 {
     protected readonly ExprBase Value1 = left;
@@ -152,15 +144,14 @@ class CmpExpression(CompareOperator op, ExprBase left, ExprBase right, bool hasP
     protected readonly ExprBase Value2 = right;
     protected readonly bool HasPr = hasPr;
 
-    public override int Get(Processor processor)
-    {
-        var cond = CmpOp.Compare(Value1.Get(processor), Value2.Get(processor));
-        return cond ? 1 : 0;
-    }
+    //public override int Get(Processor processor)
+    //{
+    //    var cond = CmpOp.Compare(Value1.Get(processor), Value2.Get(processor));
+    //    return cond ? 1 : 0;
+    //}
 
     public override string GetCodeText()
     {
-
         var op = CmpOp.Operator == "=" ? "==" : CmpOp.Operator;
 
         var exp = $"{Value1.GetCodeText()} {op} {Value2.GetCodeText()}";

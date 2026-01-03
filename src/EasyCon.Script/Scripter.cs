@@ -1,23 +1,18 @@
+using EasyCon.Script.Runner;
 using EasyCon.Script2.Syntax;
-using EasyScript.Parsing;
-using EasyScript.Statements;
-using System.CodeDom.Compiler;
-using System.Collections.Immutable;
+using EasyScript;
 
-namespace EasyScript;
+namespace EasyCon.Script;
 
 public sealed class Scripter
 {
-    ImmutableArray<Statement> _statements = [];
+    private IRunner runner = new EasyRunner();
 
-    Dictionary<string, FunctionStmt> _funcTables = [];
-
-    public bool HasKeyAction => _statements.OfType<KeyAction>().Any();
+    public bool HasKeyAction => runner.HasKeyAction();
 
     public void Parse(string code, IEnumerable<ExternalVariable> extVars)
     {
-        _statements = [.. new Parser(extVars).Parse(code)];
-        _statements.OfType<FunctionStmt>().ToList().ForEach(f => { _funcTables[f.Label] = f; });
+        runner.Init(code, extVars);
     }
 
     public static IEnumerable<string> GetTokens(string code, string pre)
@@ -28,29 +23,39 @@ public sealed class Scripter
 
     public void Run(CancellationToken token, IOutputAdapter output, ICGamePad pad)
     {
-        var _processor = new Processor(_funcTables)
-        {
-            Output = output,
-            GamePad = pad,
-        };
-        while (!token.IsCancellationRequested && _processor.PC < _statements.Count())
-        {
-            var cmd = _statements[_processor.PC];
-            _processor.PC++;
-            cmd.Exec(_processor);
-            Thread.Sleep(1); // opt cpu time
-        }
+        runner.Run(output, pad, token);
     }
 
     public string ToCode()
     {
-        using var writer = new StringWriter();
-        using var printer = new IndentedTextWriter(writer, "  ");
-        _statements.ToList().ForEach(u => u.WriteTo(printer));
-        return writer.ToString();
+        return runner.ToCode();
     }
 
-    public string ToggleComment(string input)
+    public static bool CanComment(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        // 找到第一个非空白字符的位置
+        int firstNonWhitespaceIndex = -1;
+        for (int i = 0; i < input.Length; i++)
+        {
+            if (!char.IsWhiteSpace(input[i]))
+            {
+                firstNonWhitespaceIndex = i;
+                break;
+            }
+        }
+
+        // 如果全是空白字符，返回原字符串
+        if (firstNonWhitespaceIndex == -1)
+            return false;
+
+        // 检查第一个非空白字符是否是 #
+        return input[firstNonWhitespaceIndex] != '#';
+    }
+
+    public static string ToggleComment(string input, bool comm)
     {
         if (string.IsNullOrWhiteSpace(input))
             return input ?? string.Empty;
@@ -70,30 +75,27 @@ public sealed class Scripter
         if (firstNonWhitespaceIndex == -1)
             return input;
 
-        // 检查第一个非空白字符是否是 #
-        bool startsWithHash = input[firstNonWhitespaceIndex] == '#';
-
-        if (startsWithHash)
+        if (comm)
         {
-            // 删除第一个 # 字符
-            return input.Remove(firstNonWhitespaceIndex, 1);
+            // 在第一个非空白字符前插入 #注释此行
+            return input.Insert(firstNonWhitespaceIndex, "#");
         }
         else
         {
-            // 在第一个非空白字符前插入 #
-            return input.Insert(firstNonWhitespaceIndex, "#");
+            // 删除第一个 # 字符，取消注释
+            return input.Remove(firstNonWhitespaceIndex, 1);
         }
     }
 
     public byte[] Assemble(bool auto = true)
     {
-        return new Assembly.Assembler().Assemble(_statements, auto);
+        //return new Assembly.Assembler().Assemble(_statements, auto);
+        return [];
     }
 
     public void Reset()
     {
-        _statements = [];
-        _funcTables = [];
+        runner = new EasyRunner();
     }
 }
 

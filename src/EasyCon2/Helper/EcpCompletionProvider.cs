@@ -1,5 +1,5 @@
+using EasyCon.Script;
 using EasyCon2.Models;
-using EasyScript;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.CodeCompletion;
 using ICSharpCode.AvalonEdit.Document;
@@ -14,6 +14,7 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
     public GetImgLabel GetImgLabel;
 
     private readonly List<string> _keywords = [
+        "IMPORT",
         "IF", "ELIF", "ELSE", "ENDIF",
         "FOR", "TO", "NEXT", "BREAK", "CONTINUE",
         "FUNC", "ENDFUNC", "CALL", "RETURN",
