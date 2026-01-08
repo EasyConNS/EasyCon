@@ -18,8 +18,6 @@ public static class TokenFacts
             TokenType.MUL or TokenType.DIV or TokenType.SlashI or TokenType.MOD or TokenType.BitAnd or TokenType.SHL or TokenType.SHR => 5,
             TokenType.ADD or TokenType.SUB or TokenType.BitOr or TokenType.XOR => 4,
             TokenType.EQL or TokenType.NEQ or TokenType.LESS or TokenType.LEQ or TokenType.GTR or TokenType.GEQ => 3,
-            // just for compatiable
-            TokenType.ASSIGN => 3,
             TokenType.LogicAnd => 2,
             TokenType.LogicOr => 1,
             _ => 0,
@@ -78,10 +76,7 @@ public static class TokenFacts
             _ => null,
         };
     }
-    public static bool IsOperator(this TokenType kind)
-    {
-        return kind.GetBinaryOperatorPrecedence() > 3;
-    }
+
     public static bool IsRelational(this TokenType kind)
     {
         return kind switch
@@ -91,14 +86,7 @@ public static class TokenFacts
             _ => false,
         };
     }
-    public static bool IsLogical(this TokenType kind)
-    {
-        return kind switch
-        {
-            TokenType.LogicAnd or TokenType.LogicOr or TokenType.LogicNot => true,
-            _ => false,
-        };
-    }
+
     public static bool OperatorIsAug(this TokenType kind)
     {
         return kind switch

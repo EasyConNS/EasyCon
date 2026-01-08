@@ -1,4 +1,5 @@
 using EasyCon.Script2.Syntax;
+using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 
 namespace EasyCon.Script.Parsing;
@@ -10,7 +11,10 @@ internal partial class Parser
         var lexer = SyntaxTree.ParseTokens(text);
         if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN)
         {
-            var eexp = ParseExpression([.. lexer.Skip(2)], false);
+            var pr = new ExprParser([.. lexer.Skip(2)], _formatter, allowVar: false);
+            var eexp = pr.ParseExpression();
+            if (pr.EOF(out _)) return null;
+
             if (_formatter.TryDeclConstant(lexer[0].Value, eexp))
                 return new ConstDeclStmt(lexer[0].Value, eexp.GetCodeText());
             throw new Exception($"重复定义的常量：{lexer[0].Value}");
@@ -32,7 +36,7 @@ internal partial class Parser
 
     private UnaryOp? ParseUnary(VariableExpr dest, List<Token> tokens)
     {
-        if(tokens.Count == 3 && tokens[0].Type.GetUnaryOperatorPrecedence() > 0 && tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.EOF)
+        if (tokens.Count == 3 && tokens[0].Type.GetUnaryOperatorPrecedence() > 0 && tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.EOF)
         {
             // 一元运算符
             return tokens[0].Type switch
@@ -45,117 +49,36 @@ internal partial class Parser
         return null;
     }
 
-    private ExprBase ParseExpression(List<Token> tokens, bool allowVar = true)
-    {
-        // 用于存储数字/变量的节点栈
-        Stack<ExprBase> valueStack = new();
-        // 用于存储运算符的栈
-        Stack<Token> opStack = new();
-        // 主循环处理所有token
-        for (int i = 0; i < tokens.Count; i++)
-        {
-            Token token = tokens[i];
-
-            switch (token.Type)
-            {
-                case TokenType.VAR when allowVar:
-                case TokenType.EX_VAR:
-                case TokenType.INT:
-                case TokenType.CONST:
-                    valueStack.Push(_formatter.GetValueEx(token));
-                    break;
-                case TokenType.LeftParen:
-                    opStack.Push(token);
-                    break;
-
-                case TokenType.RightParen:
-                    // 处理到左括号为止的所有运算符
-                    while (opStack.Count > 0 && opStack.Peek().Type != TokenType.LeftParen)
-                    {
-                        ApplyOperator(opStack, valueStack, true);
-                    }
-                    // 弹出左括号
-                    if (opStack.Count > 0) opStack.Pop();
-                    break;
-                default:
-                    if(token.Type.GetBinaryOperatorPrecedence() > 0)
-                    {
-                        // 当栈顶运算符优先级不低于当前运算符时，先处理栈顶运算符
-                        while (opStack.Count > 0 && 
-                               opStack.Peek().Type.GetBinaryOperatorPrecedence() >= token.Type.GetBinaryOperatorPrecedence())
-                        {
-                            ApplyOperator(opStack, valueStack);
-                        }
-                        
-                        opStack.Push(token);
-                    }
-                    else if(token.Type == TokenType.EOF)break;
-                    else
-                    {
-                        throw new Exception($"不支持的运算符：{token.Value}");
-                    }
-                    break;
-            }
-        }
-
-        // 处理剩余的运算符
-        while (opStack.Count > 0)
-        {
-            ApplyOperator(opStack, valueStack);
-        }
-
-        if(valueStack.Count != 1)
-        {
-            throw new Exception("表达式语法错误");
-        }
-        // 栈顶就是完整的表达式树
-        return valueStack.Pop();
-    }
-    // 应用运算符：从栈中弹出两个操作数和一个运算符，创建BinExpr
-    private static void ApplyOperator(Stack<Token> opStack, Stack<ExprBase> valueStack, bool hasPr = false)
-    {
-        if (opStack.Count == 0 || valueStack.Count < 2)
-            throw new Exception("表达式语法错误");
-        string opStr = opStack.Pop().Value;
-        MetaOperator? op = MetaOperator.All.FirstOrDefault(o=> o.Operator == opStr);
-        CompareOperator? cmp = CompareOperator.All.FirstOrDefault(o => o.Operator == opStr);
-        ExprBase right = valueStack.Pop();
-        ExprBase left = valueStack.Pop();
-        if(op == null && cmp  == null) throw new Exception($"不支持的运算符：{opStr}");
-
-        ExprBase result = op != null ? new BinaryExpression(op!, left, right, hasPr) : new CmpExpression(cmp!, left, right, hasPr);
-        valueStack.Push(result);
-    }
-
     private Statement? ParseAssignment(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
-        if(lexer.Length < 3+1)return null;
+        if (lexer.Length < 3 + 1) return null;
         if (lexer[0].Type == TokenType.VAR && lexer[1].Type == TokenType.ASSIGN)
         {
             var des = _formatter.GetVar(lexer[0].Value);
 
             var sm = ParseUnary(des, [.. lexer.Skip(2)]);
-            if(sm!=null)
+            if (sm != null)
             {
                 return sm;
             }
-            var eexp = ParseExpression([.. lexer.Skip(2)]);
-
+            var pr = new ExprParser([.. lexer.Skip(2)], _formatter);
+            var eexp = pr.ParseExpression();
+            if (pr.EOF(out _)) return null;
             return new AssignmentStmt(des, eexp);
         }
 
         //aug assign
         if (lexer[0].Type == TokenType.VAR && lexer[1].Type.OperatorIsAug())
         {
-            if(lexer.Count() != 3+1)return null;
+            if (lexer.Count() != 3 + 1) return null;
             var des = _formatter.GetVar(lexer[0].Value);
-            MetaOperator? op = MetaOperator.All.FirstOrDefault(o=> o.Operator+"=" == lexer[1].Value);
-            if(op == null) return null;
-            if(op.OnlyInstant)
+            MetaOperator? op = MetaOperator.All.FirstOrDefault(o => o.Operator + "=" == lexer[1].Value);
+            if (op == null) return null;
+            if (op.OnlyInstant)
             {
-                if(lexer[2].Type != TokenType.INT && lexer[2].Type != TokenType.CONST)
-                    throw new Exception("Only Instant can be augmented.");
+                if (lexer[2].Type != TokenType.INT && lexer[2].Type != TokenType.CONST)
+                    throw new Exception("只能使用常量或数字");
             }
             return new AssignmentStmt(des, _formatter.GetValueEx(lexer[2].Value), op);
         }
@@ -167,9 +90,11 @@ internal partial class Parser
     {
         var lexer = SyntaxTree.ParseTokens(text);
         if (lexer.Length < 3 + 1) return null;
-        if(lexer[0].Type == TokenType.IF || lexer[0].Type == TokenType.ELIF)
+        if (lexer[0].Type == TokenType.IF || lexer[0].Type == TokenType.ELIF)
         {
-            var eexp = ParseExpression([.. lexer.Skip(1)]);
+            var pr = new ExprParser([.. lexer.Skip(1)], _formatter);
+            var eexp = pr.ParseExpression();
+            if (pr.EOF(out _)) return null;
             if (eexp is CmpExpression expr)
             {
                 switch (lexer[0].Type)
@@ -200,13 +125,13 @@ internal partial class Parser
     private Statement? ParseLoopCtrl(string text)
     {
         var tokens = SyntaxTree.ParseTokens(text);
-        if(tokens.Length > 2+1) return null;
+        if (tokens.Length > 2 + 1) return null;
         switch (tokens[0].Type)
         {
             case TokenType.BREAK:
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT)
                 {
-                    if(tokens[2].Type != TokenType.EOF)return null;
+                    if (tokens[2].Type != TokenType.EOF) return null;
                     return new Break(_formatter.GetInstant(tokens[1].Value, true));
                 }
                 else if (tokens[1].Type == TokenType.EOF)
@@ -278,10 +203,10 @@ internal partial class Parser
     private FuncStmt? ParseFuncDecl(string text)
     {
         var tokens = SyntaxTree.ParseTokens(text);
-        if(tokens.Length == 3)
+        if (tokens.Length == 3)
         {
-            if(tokens[0].Type == TokenType.FUNC && tokens[1].Type == TokenType.IDENT && tokens[2].Type == TokenType.EOF)
-            return new FuncStmt(tokens[1].Value);
+            if (tokens[0].Type == TokenType.FUNC && tokens[1].Type == TokenType.IDENT && tokens[2].Type == TokenType.EOF)
+                return new FuncStmt(tokens[1].Value);
         }
 
         return null;
@@ -290,23 +215,25 @@ internal partial class Parser
     private Statement? ParseNamedExpression(string text)
     {
         var tokens = SyntaxTree.ParseTokens(text);
-        if (tokens.Length < 2 + 1) return null;
         var first = tokens.First()!;
         if (first.Type != TokenType.IDENT) return null;
         switch (first.Value.ToLower())
         {
             case "wait":
+                if (tokens.Length != 2 + 1) return null;
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
                     return new Wait(_formatter.GetValueEx(tokens[1].Value));
                 }
                 break;
             case "call":
+                if (tokens.Length != 2 + 1) return null;
                 return tokens[1].Type == TokenType.IDENT && tokens[2].Type == TokenType.EOF ? new CallStmt(tokens[1].Value, [], false) : null;
 #if DEBUG
             case "sprint":
             case "smem":
-                if(tokens[1].Type == TokenType.INT && tokens[2].Type == TokenType.EOF)
+                if (tokens.Length != 2 + 1) return null;
+                if (tokens[1].Type == TokenType.INT && tokens[2].Type == TokenType.EOF)
                 {
                     var ism = first.Value.Equals("smem", StringComparison.CurrentCultureIgnoreCase);
                     return new SerialPrint(uint.Parse(tokens[1].Value), ism);
@@ -315,64 +242,127 @@ internal partial class Parser
 #endif
             // 内置函数
             default:
-                var args = ParseArguments([.. tokens.Skip(1)]);
-                return new CallStmt(first.Value.ToUpper(), args);
+                ImmutableArray<Token> argtoks = [.. tokens.Skip(1)];
+                if(argtoks.Length == 1)return new CallStmt(first.Value.ToUpper(), []);
+                var args = new List<ExprBase>();
+                var pr = new ExprParser(argtoks, _formatter);
+                args.Add(pr.ParseExpression());
+                while (!pr.EOF(out var idx) && argtoks[idx].Type==TokenType.COMMA)
+                {
+                    idx++; // 跳过逗号
+                    argtoks = argtoks[idx..];
+                    pr = new ExprParser(argtoks, _formatter);
+                    args.Add(pr.ParseExpression());
+                }
+                if (!pr.EOF(out _)) return null;
+                return new CallStmt(first.Value.ToUpper(), [.. args]);
         }
         return null;
     }
+}
 
-    private ExprBase[] ParseArguments(List<Token> tokens)
+class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar = true)
+{
+    private readonly ImmutableArray<Token> _tokens = toks;
+    private int _position = 0;
+    readonly Formatter _formatter = formatter;
+    private Token Peek(int offset = 0)
     {
-        // 用于存储数字/变量的节点栈
-        Stack<ExprBase> valueStack = new();
-        // 用于存储运算符的栈
-        Stack<Token> opStack = new();
-        // 主循环处理所有token
-        int i = 0;
-        for (; i < tokens.Count; i++)
-        {
-            Token token = tokens[i];
+        var index = _position + offset;
+        if (index >= _tokens.Length)
+            return _tokens[_tokens.Length - 1];
 
-            switch (token.Type)
-            {
-                case TokenType.STRING:
-                case TokenType.VAR:
-                case TokenType.EX_VAR:
-                case TokenType.INT:
-                case TokenType.CONST:
-                    valueStack.Push(_formatter.GetValueEx(token));
-                    break;
-                default:
-                    if (token.Type.GetBinaryOperatorPrecedence() > 0)
+        return _tokens[index];
+    }
+    private Token Current => Peek();
+    private Token Advance()
+    {
+        var now = Current;
+        _position++;
+        return now;
+    }
+
+    public bool EOF(out int pos)
+    {
+        pos = _position;
+        return _position == _tokens.Length - 1;
+    }
+
+    private Token Match(TokenType type, string message = "")
+    {
+        if (Current.Type == type)
+        {
+            return Advance();
+        }
+        throw new Exception($"{Current.Type}");
+    }
+
+    public ExprBase ParseExpression(int parentPrecedence = 0)
+    {
+        ExprBase left;
+        var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
+        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
+        {
+            throw new Exception("不支持的语句");
+        }
+        else
+        {
+            left = ParsePrimary();
+        }
+
+        while (true)
+        {
+            var precedence = Current.Type.GetBinaryOperatorPrecedence();
+            if (precedence == 0 || precedence <= parentPrecedence)
+                break;
+
+            var opToken = Advance();
+            MetaOperator? op = MetaOperator.All.FirstOrDefault(o => o.Operator == opToken.Value);
+            CompareOperator? cmp = CompareOperator.All.FirstOrDefault(o => o.Operator == opToken.Value);
+            var right = ParseExpression(precedence);
+            left = op != null ? new BinaryExpression(op!, left, right) : new CmpExpression(cmp!, left, right);
+        }
+
+        return left;
+    }
+
+    private ExprBase ParsePrimary()
+    {
+        switch (Current.Type)
+        {
+            case TokenType.STRING:
+                var tokstr = Advance();
+                return _formatter.GetValueEx(tokstr);
+            case TokenType.CONST:
+            case TokenType.VAR when allowVar:
+            case TokenType.EX_VAR:
+                var token = Advance();
+                bool isConstant = token.Type == TokenType.CONST;
+                bool isSpecial = token.Type == TokenType.EX_VAR;
+                return _formatter.GetValueEx(token);
+            case TokenType.LeftParen:
+                var left = Advance();
+                var expression = ParseExpression();
+                var right = Match(TokenType.RightParen);
+                return new ParenthesizedExpression(expression);
+            case TokenType.INT:
+            default:
+                var toknum = Advance();
+                try
+                {
+                    var value = uint.Parse(toknum.Value);
+                    if (value < ushort.MinValue || value > ushort.MaxValue)
                     {
-                        // 当栈顶运算符优先级不低于当前运算符时，先处理栈顶运算符
-                        while (opStack.Count > 0 &&
-                               opStack.Peek().Type.GetBinaryOperatorPrecedence() >= token.Type.GetBinaryOperatorPrecedence())
-                        {
-                            ApplyOperator(opStack, valueStack);
-                        }
-
-                        opStack.Push(token);
+                        throw new Exception($"整数超出范围({ushort.MinValue} 到 {ushort.MaxValue}) 行{toknum.Line}");
                     }
-                    else if (token.Type == TokenType.EOF) break;
-                    else
-                    {
-                        throw new Exception($"不支持的运算符：{token.Value}");
-                    }
-                    break;
-            }
-        }
 
-        // 处理剩余的运算符
-        while (opStack.Count > 0)
-        {
-            ApplyOperator(opStack, valueStack);
+                    return _formatter.GetValueEx(toknum);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"错误的数字格式: {ex.Message} 行{toknum.Line}");
+                    throw new Exception($"错误的数字格式: {toknum.Value} 行{toknum.Line}");
+                }
         }
-        if(i<tokens.Count-1)
-        {
-            throw new Exception("参数格式不正确");
-        }
-
-        return [.. valueStack.Reverse()];
     }
 }

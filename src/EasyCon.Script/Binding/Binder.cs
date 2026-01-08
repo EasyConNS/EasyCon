@@ -70,25 +70,17 @@ internal sealed class Binder
 
     private BoundStmt BindStatement(Statement syntax)
     {
-        switch (syntax)
+        return syntax switch
         {
-            case IfBlock:
-                return BindIf((IfBlock)syntax);
-            case ForBlock:
-                return BindFor((ForBlock)syntax);
-            case AssignmentStmt:
-                return BindAssignStatement((AssignmentStmt)syntax);
-            case KeyAction:
-                return BindGamepadActionStatement((KeyAction)syntax);
-            case Break:
-                return BindBreakStatement((Break)syntax);
-            case Continue:
-                return BindContinueStatement((Continue)syntax);
-            case ReturnStmt:
-                return BindReturnStatement((ReturnStmt)syntax);
-            default:
-                throw new ParseException($"未知的语句", syntax.Address);
-        }
+            IfBlock => BindIf((IfBlock)syntax),
+            ForBlock => BindFor((ForBlock)syntax),
+            AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
+            KeyAction => BindGamepadActionStatement((KeyAction)syntax),
+            Break => BindBreakStatement((Break)syntax),
+            Continue => BindContinueStatement((Continue)syntax),
+            ReturnStmt => BindReturnStatement((ReturnStmt)syntax),
+            _ => throw new ParseException($"未知的语句", syntax.Address),
+        };
     }
     private BoundBlockStatement BindIf(IfBlock syntax)
     {
@@ -230,7 +222,17 @@ internal sealed class Binder
 
     private BoundExpr BindExpression(ExprBase syntax)
     {
-        throw new NotImplementedException();
+        return syntax switch
+        {
+            //LiteralExpr => LiteralExpr((IfBlock)syntax),
+            //InstantExpr => InstantExpr((ForBlock)syntax),
+            //VariableExpr => VariableExpr((AssignmentStmt)syntax),
+            //ExtVarExpr => ExtVarExpr((KeyAction)syntax),
+            //BinaryExpression bine => BinaryExpression((Break)syntax),
+            //CmpExpression cmpe => CmpExpression((Continue)syntax),
+            ParenthesizedExpression pre => BindExpression(pre.Expression),
+            _ => throw new Exception($"未知的语句"),
+        };
     }
 
     private VariableSymbol? BindVariableReference(string name)
@@ -239,13 +241,8 @@ internal sealed class Binder
         {
             case VariableSymbol variable:
                 return variable;
-
-            case null:
-                //_diagnostics.ReportUndefinedVariable(identifierToken.Location, name);
-                return null;
-
             default:
-                //_diagnostics.ReportNotAVariable(identifierToken.Location, name);
+                //_diagnostics.ReportUndefinedVariable(identifierToken.Location, name);
                 return null;
         }
     }

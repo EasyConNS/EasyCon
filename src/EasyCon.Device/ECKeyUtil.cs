@@ -1,10 +1,8 @@
-﻿using System;
-
 namespace EasyDevice;
 
 public static class ECKeyUtil
 {
-    const int HatMask = 0b00010000;
+    const int HatMask = 0b00010000; // 0x10
 
     static int Keycode(SwitchButton key)
     {

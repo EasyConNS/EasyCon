@@ -41,10 +41,7 @@ class InstantExpr : ExprBase
     //    return Val;
     //}
 
-    public override string GetCodeText()
-    {
-        return Text;
-    }
+    public override string GetCodeText() => Text;
 
     public static implicit operator InstantExpr(int val)
     {
@@ -84,29 +81,22 @@ class VariableExpr : ExprBase
     //    return processor.Register[this];
     //}
 
-    public override string GetCodeText()
-    {
-        return $"${Tag}";
-    }
+    public override string GetCodeText() => $"${Tag}";
 }
 
 class ExtVarExpr(ExternalVariable var) : ExprBase
 {
     public readonly ExternalVariable Var = var;
 
-    public override string GetCodeText()
-    {
-        return $"@{Var.Name}";
-    }
+    public override string GetCodeText() => $"@{Var.Name}";
 }
 
-class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right, bool hasPr = false) : ExprBase
+sealed class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right) : ExprBase
 {
     protected readonly ExprBase ValueLeft = left;
     protected readonly MetaOperator OpMeta = op;
     protected readonly ExprBase ValueRight = right;
 
-    protected readonly bool HasPr = hasPr;
     //public override int Get(Processor processor)
     //{
     //    return OpMeta.Function(ValueLeft.Get(processor), ValueRight.Get(processor));
@@ -114,8 +104,7 @@ class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right, bool hasP
 
     public override string GetCodeText()
     {
-        var exp = $"{ValueLeft.GetCodeText()} {OpMeta.Operator} {ValueRight.GetCodeText()}";
-        return HasPr ? $"({exp})" : exp;
+        return $"{ValueLeft.GetCodeText()} {OpMeta.Operator} {ValueRight.GetCodeText()}";
     }
 
     public static ExprBase Rewrite(ExprBase expr)
@@ -124,25 +113,24 @@ class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right, bool hasP
         {
             var left = Rewrite(br.ValueLeft);
             var right = Rewrite(br.ValueRight);
-            if(left is InstantExpr li && right is InstantExpr ri)
+            if (left is InstantExpr li && right is InstantExpr ri)
             {
                 return br.OpMeta.Function(li.Value, ri.Value);
             }
             else
             {
-                return new BinaryExpression(br.OpMeta, left, right, br.HasPr);
+                return new BinaryExpression(br.OpMeta, left, right);
             }
         }
         return expr;
     }
 }
 
-class CmpExpression(CompareOperator op, ExprBase left, ExprBase right, bool hasPr = false) : ExprBase
+sealed class CmpExpression(CompareOperator op, ExprBase left, ExprBase right) : ExprBase
 {
     protected readonly ExprBase Value1 = left;
     protected readonly CompareOperator CmpOp = op;
     protected readonly ExprBase Value2 = right;
-    protected readonly bool HasPr = hasPr;
 
     //public override int Get(Processor processor)
     //{
@@ -154,7 +142,12 @@ class CmpExpression(CompareOperator op, ExprBase left, ExprBase right, bool hasP
     {
         var op = CmpOp.Operator == "=" ? "==" : CmpOp.Operator;
 
-        var exp = $"{Value1.GetCodeText()} {op} {Value2.GetCodeText()}";
-        return HasPr ? $"({exp})" : exp;
+        return $"{Value1.GetCodeText()} {op} {Value2.GetCodeText()}";
     }
+}
+
+sealed class ParenthesizedExpression(ExprBase expression) : ExprBase
+{
+    public readonly ExprBase Expression = expression;
+    public override string GetCodeText() => $"({expression.GetCodeText()})";
 }

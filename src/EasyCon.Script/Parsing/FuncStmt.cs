@@ -103,6 +103,6 @@ class CallStmt(string fnName, ExprBase[] args, bool buildin = true) : Statement
     protected override string _GetString()
     {
         if (!_buildin) return $"CALL {FnName}";
-        return $"{FnName} {string.Join(" ", Args.Select(u => u.GetCodeText()))}".Trim();
+        return $"{FnName} {string.Join(" , ", Args.Select(u => u.GetCodeText()))}".Trim();
     }
 }
