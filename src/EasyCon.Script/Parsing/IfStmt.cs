@@ -23,9 +23,9 @@ internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statem
     }
 }
 
-class IfStmt(CmpExpression conds) : BranchOp
+class IfStmt(ExprBase conds) : BranchOp
 {
-    public readonly CmpExpression Condition = conds;
+    public readonly ExprBase Condition = conds;
 
     //public override void Exec(Processor processor)
     //{
@@ -69,7 +69,7 @@ class IfStmt(CmpExpression conds) : BranchOp
     //}
 }
 
-class ElseIf(CmpExpression conds) : IfStmt(conds)
+class ElseIf(ExprBase conds) : IfStmt(conds)
 {
     //public override void Exec(Processor processor)
     //{

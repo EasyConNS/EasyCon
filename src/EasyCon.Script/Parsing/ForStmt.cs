@@ -157,10 +157,6 @@ class Next : Statement
 
     [Obsolete]
     public ForStmt For;
-    //public override void Exec(Processor processor)
-    //{
-    //    processor.PC = For.Address;
-    //}
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{
@@ -179,26 +175,14 @@ abstract class LoopCtrl(InstantExpr level) : Statement
 
 class Break : LoopCtrl
 {
-    protected bool _omitted = true;
     public Break() :base(1) { }
 
-    public Break(InstantExpr level) :base(level)
-    {
-        _omitted = false;
-    }
+    public Break(InstantExpr level) :base(level) {}
 
     protected override string _GetString()
     {
-        return _omitted || Level.Value == 1 ? "BREAK" : $"BREAK {Level.GetCodeText()}";
+        return  Level.Value == 1 ? "BREAK" : $"BREAK {Level.GetCodeText()}";
     }
-
-    //public override void Exec(Processor processor)
-    //{
-    //    var liteScop = processor.GetScope();
-    //    for (int i = 0; i < Level.Value - 1; i++)
-    //        liteScop.LoopStack.Pop();
-    //    processor.PC = liteScop.LoopStack.Pop().Next.Address + 1;
-    //}
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{
@@ -213,14 +197,6 @@ class Continue : LoopCtrl
     public Continue() : base(1) { }
 
     protected override string _GetString() => "CONTINUE";
-
-    //public override void Exec(Processor processor)
-    //{
-    //    var liteScop = processor.GetScope();
-    //    for (int i = 0; i < Level.Value - 1; i++)
-    //        liteScop.LoopStack.Pop();
-    //    processor.PC = liteScop.LoopStack.Peek().Next.Address;
-    //}
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{

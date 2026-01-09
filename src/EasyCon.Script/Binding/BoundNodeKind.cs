@@ -20,5 +20,6 @@ public enum BoundNodeKind
 
     If,
     For,
+    While,
     Func
 }

@@ -6,7 +6,6 @@ namespace EasyCon.Script;
 
 internal sealed class Evaluator
 {
-
     private readonly BoundProgram _program;
     private readonly Dictionary<VariableSymbol, int> _globals = [];
     private readonly Stack<Dictionary<VariableSymbol, int>> _locals = new();
@@ -91,6 +90,7 @@ internal sealed class Evaluator
                 default:
                     throw new ScriptException($"Unexpected node", index);
             }
+            Thread.Sleep(1);
         }
         return _lastValue;
     }
@@ -111,8 +111,10 @@ internal sealed class Evaluator
 
     private void EvaluateCall(BoundCallStatement node)
     {
+        _locals.Push([]);
         var statement = _functions[node.Function];
         var result = EvaluateStatement(statement);
+        _locals.Pop();
 
         _lastValue = result;
     }

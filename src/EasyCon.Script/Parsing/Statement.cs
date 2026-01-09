@@ -24,7 +24,7 @@ class EmptyStmt : Statement
 
 sealed class ImportStmt(string path) : Statement
 {
-    private readonly string LibPath = path;
+    internal readonly string LibPath = path;
 
     protected override string _GetString() => $"IMPORT \"{LibPath}\"";
 }

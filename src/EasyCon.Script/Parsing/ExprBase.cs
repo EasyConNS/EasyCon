@@ -1,3 +1,5 @@
+using EasyCon.Script2.Syntax;
+
 namespace EasyCon.Script.Parsing;
 
 // base of valuetype
@@ -36,11 +38,6 @@ class InstantExpr : ExprBase
         Text = text;
     }
 
-    //public override int Get(Processor _)
-    //{
-    //    return Val;
-    //}
-
     public override string GetCodeText() => Text;
 
     public static implicit operator InstantExpr(int val)
@@ -71,16 +68,6 @@ class VariableExpr : ExprBase
         Reg = reg;
     }
 
-    //public override void Set(Processor processor, int value)
-    //{
-    //    processor.Register[this] = value;
-    //}
-
-    //public override int Get(Processor processor)
-    //{
-    //    return processor.Register[this];
-    //}
-
     public override string GetCodeText() => $"${Tag}";
 }
 
@@ -91,20 +78,15 @@ class ExtVarExpr(ExternalVariable var) : ExprBase
     public override string GetCodeText() => $"@{Var.Name}";
 }
 
-sealed class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right) : ExprBase
+sealed class BinaryExpression(Token op, ExprBase left, ExprBase right) : ExprBase
 {
-    protected readonly ExprBase ValueLeft = left;
-    protected readonly MetaOperator OpMeta = op;
-    protected readonly ExprBase ValueRight = right;
-
-    //public override int Get(Processor processor)
-    //{
-    //    return OpMeta.Function(ValueLeft.Get(processor), ValueRight.Get(processor));
-    //}
+    public readonly ExprBase ValueLeft = left;
+    public readonly Token Operator = op;
+    public readonly ExprBase ValueRight = right;
 
     public override string GetCodeText()
     {
-        return $"{ValueLeft.GetCodeText()} {OpMeta.Operator} {ValueRight.GetCodeText()}";
+        return $"{ValueLeft.GetCodeText()} {Operator} {ValueRight.GetCodeText()}";
     }
 
     public static ExprBase Rewrite(ExprBase expr)
@@ -113,36 +95,16 @@ sealed class BinaryExpression(MetaOperator op, ExprBase left, ExprBase right) : 
         {
             var left = Rewrite(br.ValueLeft);
             var right = Rewrite(br.ValueRight);
-            if (left is InstantExpr li && right is InstantExpr ri)
-            {
-                return br.OpMeta.Function(li.Value, ri.Value);
-            }
-            else
-            {
-                return new BinaryExpression(br.OpMeta, left, right);
-            }
+            //if (left is InstantExpr li && right is InstantExpr ri)
+            //{
+            //    return br.OpMeta.Function(li.Value, ri.Value);
+            //}
+            //else
+            //{
+            //    return new BinaryExpression(br.OpMeta, left, right);
+            //}
         }
         return expr;
-    }
-}
-
-sealed class CmpExpression(CompareOperator op, ExprBase left, ExprBase right) : ExprBase
-{
-    protected readonly ExprBase Value1 = left;
-    protected readonly CompareOperator CmpOp = op;
-    protected readonly ExprBase Value2 = right;
-
-    //public override int Get(Processor processor)
-    //{
-    //    var cond = CmpOp.Compare(Value1.Get(processor), Value2.Get(processor));
-    //    return cond ? 1 : 0;
-    //}
-
-    public override string GetCodeText()
-    {
-        var op = CmpOp.Operator == "=" ? "==" : CmpOp.Operator;
-
-        return $"{Value1.GetCodeText()} {op} {Value2.GetCodeText()}";
     }
 }
 

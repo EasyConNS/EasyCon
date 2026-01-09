@@ -4,7 +4,7 @@ namespace EasyCon.Script.Parsing;
 
 class CompareOperator
 {
-    public static readonly List<CompareOperator> All = new();
+    public static readonly List<CompareOperator> All = [];
     public readonly string Operator;
     public readonly Func<int, int, bool> Compare;
     public readonly Func<uint, uint, Instruction> Assemble;
@@ -17,7 +17,6 @@ class CompareOperator
         All.Add(this);
     }
 
-    public static readonly CompareOperator EqualOld = new("=", (v0, v1) => v0 == v1, (r0, r1) => Assembly.Instructions.AsmEqual.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));
     public static readonly CompareOperator Equal = new("==", (v0, v1) => v0 == v1, (r0, r1) => Assembly.Instructions.AsmEqual.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));
     public static readonly CompareOperator NotEqual = new("!=", (v0, v1) => v0 != v1, (r0, r1) => Assembly.Instructions.AsmNotEqual.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));
     public static readonly CompareOperator LessThan = new("<", (v0, v1) => v0 < v1, (r0, r1) => Assembly.Instructions.AsmLessThan.Create(Assembly.Instructions.AsmCompare.AssignType.Assign, r0, r1));

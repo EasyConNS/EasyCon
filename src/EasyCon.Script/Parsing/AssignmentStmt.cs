@@ -13,13 +13,13 @@ class AssignmentStmt(VariableExpr regdst, ExprBase value, MetaOperator? augop = 
     public readonly VariableExpr DestVariable = regdst;
     public readonly ExprBase Expression = value;
 
-    protected MetaOperator? MetaInfo = augop;
+    public readonly MetaOperator? AugOp = augop;
 
     protected override string _GetString()
     {
         var op = "=";
-        if( MetaInfo != null )
-            op = MetaInfo!.Operator+"=";
+        if( AugOp != null )
+            op = AugOp!.Operator+"=";
         return $"{DestVariable.GetCodeText()} {op} {Expression.GetCodeText()}";
     }
 

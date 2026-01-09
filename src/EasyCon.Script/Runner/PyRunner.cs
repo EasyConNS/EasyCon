@@ -7,6 +7,9 @@ namespace EasyCon.Script.Runner;
 public sealed class PyRunner : IRunner
 {
     private string Code = string.Empty;
+
+    bool IRunner.HasKeyAction => throw new NotImplementedException();
+
     public static void Init(string dllpath)
     {
         Runtime.PythonDLL = dllpath;

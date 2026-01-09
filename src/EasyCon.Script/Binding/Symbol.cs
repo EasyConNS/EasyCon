@@ -1,3 +1,5 @@
+using EasyCon.Script.Parsing;
+
 namespace EasyCon.Script.Binding;
 
 abstract class Symbol(string name)
@@ -5,22 +7,31 @@ abstract class Symbol(string name)
     public readonly string Name = name;
 }
 
-abstract class VariableSymbol(string name) : Symbol(name)
+public enum ValueType
 {
+    Void,
+    Int,
+    Bool,
+    String,
+}
+
+abstract class VariableSymbol(string name, bool isReadOnly, ValueType valueType) : Symbol(name)
+{
+    public readonly ValueType Type = valueType;
+    public readonly bool IsReadOnly = isReadOnly;
     internal object? Value { get; }
 }
 
-sealed class GlobalVariableSymbol(string name) : VariableSymbol(name)
+sealed class GlobalVariableSymbol(string name, bool isReadOnly, ValueType valueType) : VariableSymbol(name, isReadOnly, valueType)
 {
-    //
 }
 
-class LocalVariableSymbol(string name) : VariableSymbol(name)
+class LocalVariableSymbol(string name, bool isReadOnly, ValueType valueType) : VariableSymbol(name, isReadOnly, valueType)
 {
-    //
 }
 
-sealed class FunctionSymbol(string name, int paramters = 0) : Symbol(name)
+sealed class FunctionSymbol(string name, int paramters = 0, FuncDeclBlock? declaration = null) : Symbol(name)
 {
     public readonly int Paramters = paramters;
+    public readonly FuncDeclBlock? Declaration = declaration;
 }

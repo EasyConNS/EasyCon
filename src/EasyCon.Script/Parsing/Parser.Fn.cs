@@ -13,7 +13,7 @@ internal partial class Parser
         {
             var pr = new ExprParser([.. lexer.Skip(2)], _formatter, allowVar: false);
             var eexp = pr.ParseExpression();
-            if (pr.EOF(out _)) return null;
+            if (!pr.EOF(out _)) return null;
 
             if (_formatter.TryDeclConstant(lexer[0].Value, eexp))
                 return new ConstDeclStmt(lexer[0].Value, eexp.GetCodeText());
@@ -64,14 +64,14 @@ internal partial class Parser
             }
             var pr = new ExprParser([.. lexer.Skip(2)], _formatter);
             var eexp = pr.ParseExpression();
-            if (pr.EOF(out _)) return null;
+            if (!pr.EOF(out _)) return null;
             return new AssignmentStmt(des, eexp);
         }
 
         //aug assign
         if (lexer[0].Type == TokenType.VAR && lexer[1].Type.OperatorIsAug())
         {
-            if (lexer.Count() != 3 + 1) return null;
+            if (lexer.Length != 3 + 1) return null;
             var des = _formatter.GetVar(lexer[0].Value);
             MetaOperator? op = MetaOperator.All.FirstOrDefault(o => o.Operator + "=" == lexer[1].Value);
             if (op == null) return null;
@@ -93,17 +93,14 @@ internal partial class Parser
         if (lexer[0].Type == TokenType.IF || lexer[0].Type == TokenType.ELIF)
         {
             var pr = new ExprParser([.. lexer.Skip(1)], _formatter);
-            var eexp = pr.ParseExpression();
-            if (pr.EOF(out _)) return null;
-            if (eexp is CmpExpression expr)
+            var expr = pr.ParseExpression();
+            if (!pr.EOF(out _)) return null;
+            switch (lexer[0].Type)
             {
-                switch (lexer[0].Type)
-                {
-                    case TokenType.IF:
-                        return new IfStmt(expr);
-                    case TokenType.ELIF:
-                        return new ElseIf(expr);
-                }
+                case TokenType.IF:
+                    return new IfStmt(expr);
+                case TokenType.ELIF:
+                    return new ElseIf(expr);
             }
         }
         return null;
@@ -134,7 +131,8 @@ internal partial class Parser
                     if (tokens[2].Type != TokenType.EOF) return null;
                     return new Break(_formatter.GetInstant(tokens[1].Value, true));
                 }
-                else if (tokens[1].Type == TokenType.EOF)
+                else
+                    if (tokens[1].Type == TokenType.EOF)
                 {
                     return new Break();
                 }
@@ -203,13 +201,27 @@ internal partial class Parser
     private FuncStmt? ParseFuncDecl(string text)
     {
         var tokens = SyntaxTree.ParseTokens(text);
-        if (tokens.Length == 3)
+        if(tokens[0].Type == TokenType.FUNC)
         {
-            if (tokens[0].Type == TokenType.FUNC && tokens[1].Type == TokenType.IDENT && tokens[2].Type == TokenType.EOF)
+            if (tokens.Length > 2 && tokens[1].Type == TokenType.IDENT)
+            {
+                var pams = ParseParamter([.. tokens.Skip(2)]);
+                if (pams.Length > 0) throw new Exception("参数格式错误");
                 return new FuncStmt(tokens[1].Value);
+            }
         }
-
         return null;
+    }
+
+    private ImmutableArray<VariableExpr> ParseParamter(ImmutableArray<Token> toks)
+    {
+        if(toks.Length == 1 && toks[0].Type == TokenType.EOF)
+            return [];
+
+        var pr = new ExprParser(toks, _formatter);
+        var paramters = pr.ParseParameterList();
+        if (!pr.EOF(out _)) throw new Exception("参数解析失败");
+        return paramters;
     }
 
     private Statement? ParseNamedExpression(string text)
@@ -242,26 +254,24 @@ internal partial class Parser
 #endif
             // 内置函数
             default:
-                ImmutableArray<Token> argtoks = [.. tokens.Skip(1)];
-                if(argtoks.Length == 1)return new CallStmt(first.Value.ToUpper(), []);
-                var args = new List<ExprBase>();
-                var pr = new ExprParser(argtoks, _formatter);
-                args.Add(pr.ParseExpression());
-                while (!pr.EOF(out var idx) && argtoks[idx].Type==TokenType.COMMA)
-                {
-                    idx++; // 跳过逗号
-                    argtoks = argtoks[idx..];
-                    pr = new ExprParser(argtoks, _formatter);
-                    args.Add(pr.ParseExpression());
-                }
-                if (!pr.EOF(out _)) return null;
+                var args = ParseArguments([.. tokens.Skip(1)]);
                 return new CallStmt(first.Value.ToUpper(), [.. args]);
         }
         return null;
     }
+
+    private ImmutableArray<ExprBase> ParseArguments(ImmutableArray<Token> toks)
+    {
+        if(toks.Length == 1 && toks[0].Type == TokenType.EOF)
+            return [];
+        var pr = new ExprParser(toks, _formatter);
+        var args = pr.ParseArguments();
+        if (!pr.EOF(out _)) throw new Exception("参数解析失败");
+        return args;
+    }
 }
 
-class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar = true)
+class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar = true, bool allowStr = false)
 {
     private readonly ImmutableArray<Token> _tokens = toks;
     private int _position = 0;
@@ -294,7 +304,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         {
             return Advance();
         }
-        throw new Exception($"{Current.Type}");
+        throw new Exception($"{message} 但出现了<{Current.Type}>");
     }
 
     public ExprBase ParseExpression(int parentPrecedence = 0)
@@ -319,18 +329,70 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
             var opToken = Advance();
             MetaOperator? op = MetaOperator.All.FirstOrDefault(o => o.Operator == opToken.Value);
             CompareOperator? cmp = CompareOperator.All.FirstOrDefault(o => o.Operator == opToken.Value);
+            if (op == null && cmp == null)
+                throw new Exception($"不支持的运算符：{opToken.Value}");
             var right = ParseExpression(precedence);
-            left = op != null ? new BinaryExpression(op!, left, right) : new CmpExpression(cmp!, left, right);
+            left = new BinaryExpression(opToken, left, right);
         }
 
         return left;
+    }
+
+    public ImmutableArray<VariableExpr> ParseParameterList()
+    {
+        var nodesAndSeparators = ImmutableArray.CreateBuilder<VariableExpr>();
+
+        var openParenthesisToken = Match(TokenType.LeftParen);
+        var parseNextParameter = true;
+        while (parseNextParameter &&
+                Current.Type != TokenType.RightParen &&
+                Current.Type != TokenType.EOF)
+        {
+            var identifier = Match(TokenType.VAR, "函数参数只能是变量");
+            var parameter = _formatter.GetVar(identifier.Value);
+            nodesAndSeparators.Add(parameter);
+
+            if (Current.Type == TokenType.COMMA)
+            {
+                var comma = Advance();
+            }
+            else
+            {
+                parseNextParameter = false;
+            }
+        }
+        var closeParenthesisToken = Match(TokenType.RightParen);
+        return nodesAndSeparators.ToImmutable();
+    }
+
+    public ImmutableArray<ExprBase> ParseArguments()
+    {
+        var nodesAndSeparators = ImmutableArray.CreateBuilder<ExprBase>();
+        var parseNextArgument = true;
+        while (parseNextArgument &&
+                Current.Type != TokenType.RightParen &&
+                Current.Type != TokenType.EOF)
+        {
+            var expression = ParseExpression();
+            nodesAndSeparators.Add(expression);
+
+            if (Current.Type == TokenType.COMMA)
+            {
+                var comma = Advance();
+            }
+            else
+            {
+                parseNextArgument = false;
+            }
+        }
+        return nodesAndSeparators.ToImmutable();
     }
 
     private ExprBase ParsePrimary()
     {
         switch (Current.Type)
         {
-            case TokenType.STRING:
+            case TokenType.STRING when allowStr:
                 var tokstr = Advance();
                 return _formatter.GetValueEx(tokstr);
             case TokenType.CONST:
@@ -353,7 +415,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                     var value = uint.Parse(toknum.Value);
                     if (value < ushort.MinValue || value > ushort.MaxValue)
                     {
-                        throw new Exception($"整数超出范围({ushort.MinValue} 到 {ushort.MaxValue}) 行{toknum.Line}");
+                        throw new Exception($"整数超出范围({ushort.MinValue} 到 {ushort.MaxValue})");
                     }
 
                     return _formatter.GetValueEx(toknum);
@@ -361,7 +423,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"错误的数字格式: {ex.Message} 行{toknum.Line}");
-                    throw new Exception($"错误的数字格式: {toknum.Value} 行{toknum.Line}");
+                    throw new Exception($"非法的表达式: {toknum.Value}, {toknum.Type}");
                 }
         }
     }

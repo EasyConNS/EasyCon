@@ -2,7 +2,7 @@ namespace EasyCon.Script.Parsing;
 
 public class MetaOperator
 {
-    public static readonly List<MetaOperator> All = new();
+    public static readonly List<MetaOperator> All = [];
     public readonly Type InstructionType;
     public readonly string Operator;
     public readonly Func<int, int, int> Function;

@@ -8,7 +8,7 @@ public sealed class Scripter
 {
     private IRunner runner = new EasyRunner();
 
-    public bool HasKeyAction => runner.HasKeyAction();
+    public bool HasKeyAction => runner.HasKeyAction;
 
     public void Parse(string code, IEnumerable<ExternalVariable> extVars)
     {

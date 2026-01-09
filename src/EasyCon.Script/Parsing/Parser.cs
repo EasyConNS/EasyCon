@@ -1,4 +1,5 @@
 using EasyCon.Script.Binding;
+using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 
 namespace EasyCon.Script.Parsing;
@@ -92,7 +93,7 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
             return ParseNamedExpression(text) ?? ParseKey(text);
     }
 
-    public CompicationUnit Parse(string text)
+    public CompicationUnit ParseUnit(string text)
     {
         int address = 0;
 
@@ -214,6 +215,24 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
             throw new ParseException("语句块没有正确结束", unit.Peek().First().Address);
 
         return new CompicationUnit([.. result]);
+    }
+
+    public ImmutableArray<CompicationUnit> Parse(CompicationUnit prog)
+    {
+        var imports = prog.Members.OfType<ImportStmt>();
+        if(!imports.Any()) return [prog];
+        
+        var result = ImmutableArray.CreateBuilder<CompicationUnit>();
+        foreach(var imp in imports)
+        {
+            var newprog = ParseUnit(File.ReadAllText(imp.LibPath));
+            if(newprog.Members.OfType<ImportStmt>().Any()) 
+                throw new ParseException("不支持嵌套引用", imp.Address);
+           
+            result.Add(newprog);
+        }
+        result.Add(new CompicationUnit([.. prog.Members.Except(imports)]));
+        return result.ToImmutable();
     }
 }
 
