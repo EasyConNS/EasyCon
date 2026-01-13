@@ -137,3 +137,12 @@ internal sealed class Evaluator
         }
     }
 }
+
+class ExternTime(DateTime t)
+{
+    private readonly long _TIME = t.Ticks;
+
+    public int CurrTimestamp => (int)GetTimestamp();
+
+    private long GetTimestamp() => (DateTime.Now.Ticks - _TIME) / 10_000;
+}

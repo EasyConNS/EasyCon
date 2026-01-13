@@ -2,6 +2,13 @@ using EasyDevice.Connection;
 
 namespace EasyDevice;
 
+public enum Status
+{
+    Connecting,
+    Connected,
+    Error,
+}
+
 public partial class NintendoSwitch
 {
     private IConnection clientCon { get; set; }
@@ -70,6 +77,8 @@ public partial class NintendoSwitch
 
     void WriteReport(Span<byte> b)
     {
+        Log($"[Send {DateTime.Now:ss.fff}] {_report}");
+
         clientCon.Write(b.ToArray());
     }
 
@@ -263,11 +272,4 @@ public partial class NintendoSwitch
     {
         return SendSync(b => b == Reply.Ack, 200, Command.Ready, index, Command.ChangeAmiiboIndex);
     }
-}
-
-public enum Status
-{
-    Connecting,
-    Connected,
-    Error,
 }

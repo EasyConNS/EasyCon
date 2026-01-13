@@ -53,7 +53,9 @@ internal sealed class BoundBinaryOperator
         new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Bool),
         new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Bool),
 
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ValueType.String),
+        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.String),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ValueType.Int,ValueType.String, ValueType.String),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ValueType.String,ValueType.Int, ValueType.String),
         ];
     public static BoundBinaryOperator? Bind(TokenType kind, ValueType leftType, ValueType rightType)
     {

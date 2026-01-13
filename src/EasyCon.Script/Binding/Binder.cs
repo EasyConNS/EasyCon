@@ -301,6 +301,9 @@ internal sealed class Binder
 
     private BoundKeyActStatement BindGamepadActionStatement(KeyAction syntax)
     {
+        switch(syntax)
+        {
+        }
         throw new NotImplementedException();
     }
 

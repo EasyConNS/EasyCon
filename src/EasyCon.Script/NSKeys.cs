@@ -4,8 +4,8 @@ namespace EasyCon.Script;
 
 static class NSKeys
 {
-    static readonly Dictionary<string, ECKey> _keyDict = new();
-    static readonly Dictionary<ECKey, string> _keyName = new();
+    static readonly Dictionary<string, ECKey> _keyDict = [];
+    static readonly Dictionary<ECKey, string> _keyName = [];
 
     static NSKeys()
     {
@@ -23,7 +23,7 @@ static class NSKeys
             _keyName[pair.Value] = pair.Key;
     }
 
-    public static ECKey Get(string name)
+    public static ECKey? Get(string name)
     {
         name = name.ToUpper();
         return _keyDict.GetValueOrDefault(name, null);
@@ -31,7 +31,6 @@ static class NSKeys
 
     public static ECKey GetKey(string keyname, string direction = "0")
     {
-        var isSlow = keyname.EndsWith("SS", StringComparison.OrdinalIgnoreCase);
         if (int.TryParse(direction, out int degree))
         {
             if (keyname.StartsWith("LS", StringComparison.OrdinalIgnoreCase))
@@ -41,26 +40,20 @@ static class NSKeys
         }
         else
         {
-            var dk = GetDirection(direction);
+            var dk =  direction.ToUpper() switch
+            {
+                "UP" => DirectionKey.Up,
+                "DOWN" => DirectionKey.Down,
+                "LEFT" => DirectionKey.Left,
+                "RIGHT" => DirectionKey.Right,
+                _ => DirectionKey.None,
+            };
             if (dk == DirectionKey.None)
                 return null;
             if (keyname.StartsWith("LS", StringComparison.OrdinalIgnoreCase))
-                return ECKeyUtil.LStick(dk, isSlow);
+                return ECKeyUtil.LStick(dk);
             else
-                return ECKeyUtil.RStick(dk, isSlow);
+                return ECKeyUtil.RStick(dk);
         }
-    }
-
-    private static DirectionKey GetDirection(string direction)
-    {
-        direction = direction.ToUpper();
-        return direction switch
-        {
-            "UP" => DirectionKey.Up,
-            "DOWN" => DirectionKey.Down,
-            "LEFT" => DirectionKey.Left,
-            "RIGHT" => DirectionKey.Right,
-            _ => DirectionKey.None,
-        };
     }
 }

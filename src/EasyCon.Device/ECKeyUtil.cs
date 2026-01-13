@@ -44,9 +44,7 @@ public static class ECKeyUtil
         return new ECKey($"LStick({x},{y})",
             32,
             r => { r.LX = x; r.LY = y; },
-            r => { r.LX = SwitchStick.STICK_CENTER; r.LY = SwitchStick.STICK_CENTER; },
-            x,
-            y
+            r => { r.LX = SwitchStick.STICK_CENTER; r.LY = SwitchStick.STICK_CENTER; }
         );
     }
 
@@ -55,47 +53,56 @@ public static class ECKeyUtil
         return new ECKey($"RStick({x},{y})",
             33,
             r => { r.RX = x; r.RY = y; },
-            r => { r.RX = SwitchStick.STICK_CENTER; r.RY = SwitchStick.STICK_CENTER; },
-            x,
-            y
+            r => { r.RX = SwitchStick.STICK_CENTER; r.RY = SwitchStick.STICK_CENTER; }
         );
     }
 
-    static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, bool slow = false)
+    public static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, double degree = 1)
     {
+        degree = Math.Clamp(degree,0, 1);
+        double dx = 0, dy = 0;
         if (dkey.HasFlag(DirectionKey.Left) && !dkey.HasFlag(DirectionKey.Right))
-            x = slow ? SwitchStick.STICK_CENMIN : SwitchStick.STICK_MIN;
+            dx=-1;
         else if (!dkey.HasFlag(DirectionKey.Left) && dkey.HasFlag(DirectionKey.Right))
-            x = slow ? SwitchStick.STICK_CENMAX : SwitchStick.STICK_MAX;
-        else
-            x = SwitchStick.STICK_CENTER;
+            dx=1;
         if (dkey.HasFlag(DirectionKey.Up) && !dkey.HasFlag(DirectionKey.Down))
-            y = slow ? SwitchStick.STICK_CENMIN : SwitchStick.STICK_MIN;
+            dy = 1;
         else if (!dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
-            y = slow ? SwitchStick.STICK_CENMAX : SwitchStick.STICK_MAX;
-        else
-            y = SwitchStick.STICK_CENTER;
+            dy=-1;
+
+        dx *= degree;
+        dy *= degree;
+        x = (byte)((dx + 1) * SwitchStick.STICK_CENTER).Clamp(0, 255);
+        y = (byte)((-dy + 1) * SwitchStick.STICK_CENTER).Clamp(0, 255);
     }
 
     public static ECKey LStick(DirectionKey dkey, bool slow = false)
     {
-        GetXYFromDirection(dkey, out byte x, out byte y, slow);
+        GetXYFromDirection(dkey, out byte x, out byte y, 1);
         return LStick(x, y);
     }
 
     public static ECKey RStick(DirectionKey dkey, bool slow = false)
     {
-        GetXYFromDirection(dkey, out byte x, out byte y, slow);
+        GetXYFromDirection(dkey, out byte x, out byte y, 1);
         return RStick(x, y);
     }
 
-    static void GetXYFromDegree(double degree, out byte x, out byte y)
+    public static void GetXYFromDegree(double rdegree, out byte x, out byte y, double degree = 1)
     {
-        double radian = degree * Math.PI / 180;
-        double dy = Math.Round((Math.Tan(radian) * Math.Sign(Math.Cos(radian))).Clamp(-1, 1), 4);
-        double dx = radian == 0 ? 1 : Math.Round((1 / Math.Tan(radian) * Math.Sign(Math.Sin(radian))).Clamp(-1, 1), 4);
-        x = (byte)((dx + 1) / 2 * (SwitchStick.STICK_MAX - SwitchStick.STICK_MIN) + SwitchStick.STICK_MIN);
-        y = (byte)((-dy + 1) / 2 * (SwitchStick.STICK_MAX - SwitchStick.STICK_MIN) + SwitchStick.STICK_MIN);
+        degree = Math.Clamp(degree,0, 1);
+        double radian = rdegree * Math.PI / 180;
+        double dy = Math.Round(
+            (Math.Tan(radian) * Math.Sign(Math.Cos(radian)) ).Clamp(-1, 1)
+            , 4);
+        double dx = radian == 0 ? 1 : 
+        Math.Round(
+            (1 / Math.Tan(radian) * Math.Sign(Math.Sin(radian)) ).Clamp(-1, 1)
+        , 4);
+        dx *= degree;
+        dy *= degree;
+        x = (byte)((dx + 1) * SwitchStick.STICK_CENTER).Clamp(0, 255);
+        y = (byte)((-dy + 1) * SwitchStick.STICK_CENTER).Clamp(0, 255);
     }
 
     public static ECKey LStick(double degree)

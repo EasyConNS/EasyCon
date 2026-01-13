@@ -1,18 +1,13 @@
-﻿namespace EasyDevice;
+namespace EasyDevice;
 
 public class SwitchReport : ICloneable
 {
-    public ushort Button;
-    public byte HAT;
-    public byte LX;
-    public byte LY;
-    public byte RX;
-    public byte RY;
-
-    public SwitchReport()
-    {
-        Reset();
-    }
+    public ushort Button = 0;
+    public byte HAT = (byte)SwitchHAT.CENTER;
+    public byte LX = SwitchStick.STICK_CENTER;
+    public byte LY = SwitchStick.STICK_CENTER;
+    public byte RX = SwitchStick.STICK_CENTER;
+    public byte RY = SwitchStick.STICK_CENTER;
 
     public void Reset()
     {
@@ -53,8 +48,8 @@ public class SwitchReport : ICloneable
                 n &= (1 << bits) - 1;
             }
         }
-        packet[packet.Count - 1] |= 0x80;
-        return packet.ToArray();
+        packet[^1] |= 0x80;
+        return [.. packet];
     }
 
     public object Clone()
@@ -68,20 +63,5 @@ public class SwitchReport : ICloneable
             RX = RX,
             RY = RY,
         };
-    }
-
-    public override string ToString()
-    {
-        var list = new List<string>();
-        foreach (SwitchButton button in Enum.GetValues(typeof(SwitchButton)))
-            if ((Button & (ushort)button) != 0)
-                list.Add(button.GetName());
-        if (HAT != (byte)SwitchHAT.CENTER)
-            list.Add($"HAT.{((SwitchHAT)HAT).GetName()}");
-        if (LX != SwitchStick.STICK_CENTER || LY != SwitchStick.STICK_CENTER)
-            list.Add($"LS({LX},{LY})");
-        if (RX != SwitchStick.STICK_CENTER || RY != SwitchStick.STICK_CENTER)
-            list.Add($"RS({RX},{RY})");
-        return string.Join(" ", list);
     }
 }

@@ -6,6 +6,7 @@ public interface IReporter
 {
     SwitchReport GetReport();
 }
+
 public delegate void LogHandler(string s);
 public partial class NintendoSwitch : IReporter
 {

@@ -1,13 +1,11 @@
-﻿using System;
+using System;
 
 namespace EasyDevice;
 
 public static class SwitchStick
 {
     public const byte STICK_MIN = 0;
-    public const byte STICK_CENMIN = 64;
     public const byte STICK_CENTER = 128;
-    public const byte STICK_CENMAX = 192;
     public const byte STICK_MAX = 255;
 }
 

@@ -16,10 +16,8 @@ public partial class NintendoSwitch
     void Loop(CancellationToken token)
     {
         int sleep = 0;
-        while (true)
+        while (!token.IsCancellationRequested)
         {
-            if (token.IsCancellationRequested)
-                return;
             if (_keystrokes.Count == 0)
                 _ewh.WaitOne();
             else
@@ -62,7 +60,6 @@ public partial class NintendoSwitch
                 }
 
                 System.Diagnostics.Debug.WriteLine($"[Send {DateTime.Now:ss.fff}] {_report}");
-                Log($"[Send {DateTime.Now:ss.fff}] {_report}");
 
                 WriteReport(_report.GetBytes());
                 _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);
