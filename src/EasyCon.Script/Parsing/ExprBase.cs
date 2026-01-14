@@ -9,45 +9,24 @@ abstract class ExprBase
 
     public static implicit operator ExprBase(int val)
     {
-        return new InstantExpr(val);
+        return new LiteralExpr(val);
     }
 }
 
-class LiteralExpr(string txt) : ExprBase
+class LiteralExpr(object txt) : ExprBase
 {
-    public readonly string Text = txt;
+    public readonly object Value = txt;
 
-    public override string GetCodeText() => Text;
-}
+    public override string GetCodeText() => (string)Value;
 
-// instant number, including constant
-class InstantExpr : ExprBase
-{
-    public readonly int Value;
-    public readonly string Text;
-
-    public InstantExpr(int val)
+    public static implicit operator LiteralExpr(int val)
     {
-        Value = val;
-        Text = val.ToString();
+        return new LiteralExpr(val);
     }
 
-    public InstantExpr(int val, string text)
+    public static implicit operator int(LiteralExpr v)
     {
-        Value = val;
-        Text = text;
-    }
-
-    public override string GetCodeText() => Text;
-
-    public static implicit operator InstantExpr(int val)
-    {
-        return new InstantExpr(val);
-    }
-
-    public static implicit operator int(InstantExpr v)
-    {
-        return v.Value;
+        return (int)v.Value;
     }
 }
 
@@ -56,19 +35,23 @@ class VariableExpr : ExprBase
     public readonly string Tag;
     public readonly uint Reg;
 
-    public VariableExpr(string tag)
+    public readonly bool ReadOnly;
+
+    public VariableExpr(string tag, bool readOnly = false)
     {
         Tag = tag;
         Reg = 0;
+        ReadOnly = readOnly;
     }
 
-    public VariableExpr(uint reg)
+    public VariableExpr(uint reg, bool readOnly = false)
     {
         Tag = reg.ToString();
         Reg = reg;
+        ReadOnly = readOnly;
     }
 
-    public override string GetCodeText() => $"${Tag}";
+    public override string GetCodeText() => ReadOnly?"_":"$" +Tag;
 }
 
 class ExtVarExpr(ExternalVariable var) : ExprBase
@@ -86,25 +69,36 @@ sealed class BinaryExpression(Token op, ExprBase left, ExprBase right) : ExprBas
 
     public override string GetCodeText()
     {
-        return $"{ValueLeft.GetCodeText()} {Operator} {ValueRight.GetCodeText()}";
+        return $"{ValueLeft.GetCodeText()} {Operator.Value} {ValueRight.GetCodeText()}";
     }
 
-    public static ExprBase Rewrite(ExprBase expr)
+    // public static ExprBase Rewrite(ExprBase expr)
+    // {
+    //     if (expr is BinaryExpression br)
+    //     {
+    //         var left = Rewrite(br.ValueLeft);
+    //         var right = Rewrite(br.ValueRight);
+    //         if (left is InstantExpr li && right is InstantExpr ri)
+    //         {
+    //            return br.OpMeta.Function(li.Value, ri.Value);
+    //         }
+    //         else
+    //         {
+    //            return new BinaryExpression(br.OpMeta, left, right);
+    //         }
+    //     }
+    //     return expr;
+    // }
+}
+
+sealed class UnaryExpression(Token op, ExprBase operand) : ExprBase
+{
+    public readonly Token Operator = op;
+    public readonly ExprBase Operand = operand;
+
+    public override string GetCodeText()
     {
-        if (expr is BinaryExpression br)
-        {
-            var left = Rewrite(br.ValueLeft);
-            var right = Rewrite(br.ValueRight);
-            //if (left is InstantExpr li && right is InstantExpr ri)
-            //{
-            //    return br.OpMeta.Function(li.Value, ri.Value);
-            //}
-            //else
-            //{
-            //    return new BinaryExpression(br.OpMeta, left, right);
-            //}
-        }
-        return expr;
+        return $"{Operator.Value}{Operand.GetCodeText()}";
     }
 }
 

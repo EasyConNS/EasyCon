@@ -34,6 +34,21 @@ internal sealed class BoundVariableExpression(ExprBase syntax, VariableSymbol va
     public override ValueType Type => Variable.Type;
 }
 
+internal sealed class BoundExternalVariableExpression(ExtVarExpr syntax, ExternalVariable operand) : BoundExpr(syntax)
+{
+    public readonly ExternalVariable Label = operand;
+
+    public override ValueType Type => ValueType.Int;
+}
+
+internal sealed class BoundUnaryExpression(ExprBase syntax, BoundUnaryOperator op, BoundExpr operand) : BoundExpr(syntax)
+{
+    public readonly BoundExpr Operand = operand;
+    public readonly BoundUnaryOperator Op = op;
+
+    public override ValueType Type => Op.Type;
+}
+
 internal sealed class BoundBinaryExpression(ExprBase syntax, BoundExpr left, BoundBinaryOperator op, BoundExpr right) : BoundExpr(syntax)
 {
     public readonly BoundExpr Left = left;

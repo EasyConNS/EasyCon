@@ -115,7 +115,7 @@ public partial class NintendoSwitch : IReporter
         {
             DebugKey("Press", key);
             Signal();
-            _keystrokes[key.KeyCode] = new KeyStroke(key, false, duration);
+            _keystrokes[key.KeyCode] = new KeyStroke(key, duration: duration);
         }
     }
 

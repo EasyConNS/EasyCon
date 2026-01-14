@@ -38,9 +38,9 @@ abstract class AsmBinaryOp<T> : Instruction
             };
             return ins;
         }
-        else if (value is InstantExpr valIns)
+        else if (value is LiteralExpr valIns)
         {
-            var val = valIns.Value;
+            var val = (int)valIns.Value;
             if (val < -(1 << 15) || val >= 1 << 15)
                 return Failed.OutOfRange;
             var ins = new AsmBinaryOpInstant<T>
@@ -149,9 +149,9 @@ class AsmMovCompressed : Instruction
 
     public static Instruction Create(uint regdst, ExprBase value)
     {
-        if (value is not InstantExpr vi)
+        if (value is not LiteralExpr vi)
             return Failed.InvalidArgument;
-        var val = vi.Value;
+        var val = (int)vi.Value;
         if (val < -(1 << 6) || val >= 1 << 6)
             return Failed.OutOfRange;
         return new AsmMovCompressed

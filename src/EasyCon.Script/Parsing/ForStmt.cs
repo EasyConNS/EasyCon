@@ -168,20 +168,20 @@ class Next : Statement
     //}
 }
 
-abstract class LoopCtrl(InstantExpr level) : Statement
+abstract class LoopCtrl(ExprBase level) : Statement
 {
-    public readonly InstantExpr Level = level;
+    public readonly ExprBase Level = level;
 }
 
 class Break : LoopCtrl
 {
     public Break() :base(1) { }
 
-    public Break(InstantExpr level) :base(level) {}
+    public Break(ExprBase level) :base(level) {}
 
     protected override string _GetString()
     {
-        return  Level.Value == 1 ? "BREAK" : $"BREAK {Level.GetCodeText()}";
+        return  $"BREAK {Level.GetCodeText()}";
     }
 
     //public override void Assemble(Assembly.Assembler assembler)

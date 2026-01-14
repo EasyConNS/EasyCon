@@ -100,8 +100,8 @@ internal sealed class Binder
             {
                 IfBlock => BindIf((IfBlock)syntax),
                 ForBlock => BindFor((ForBlock)syntax),
+                ConstDeclStmt => throw new NotImplementedException(),
                 AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
-                UnaryOp => throw new NotImplementedException(),
                 KeyAction => BindGamepadActionStatement((KeyAction)syntax),
                 Break => BindBreakStatement((Break)syntax),
                 Continue => BindContinueStatement((Continue)syntax),
@@ -232,14 +232,14 @@ internal sealed class Binder
 
     private BoundGotoStatement BindBreakStatement(Break syntax)
     {
-        if (_loopStack.Count < syntax.Level.Value)
+        var level = (int)BindExpression(syntax.Level).ConstantValue;
+        if (_loopStack.Count < level)
         {
             throw new ParseException("循环层数不足", syntax.Address);
         }
-        if(syntax.Level.Value > 2) throw new ParseException("循环层数太多请优化", syntax.Address);
 
-        var breakLabel = _loopStack.ElementAt(syntax.Level.Value - 1).BreakLabel;
-        //var breakLabel = _loopStack.Peek().BreakLabel;
+        var breakLabel = _loopStack.ElementAt(level - 1).BreakLabel;
+        // var breakLabel = _loopStack.Peek().BreakLabel;
         return new BoundGotoStatement(syntax, breakLabel);
     }
 
@@ -311,10 +311,10 @@ internal sealed class Binder
     {
         return syntax switch
         {
-            LiteralExpr lite => new BoundLiteralExpression(lite, lite.Text),
-            InstantExpr inse => new BoundLiteralExpression(inse, inse.Value),
+            LiteralExpr lite => new BoundLiteralExpression(lite, lite.Value),
             VariableExpr => BindVarExpression((VariableExpr)syntax),
-            //ExtVarExpr => ExtVarExpr((ExtVarExpr)syntax),
+            ExtVarExpr exv => new BoundExternalVariableExpression(exv, exv.Var),
+            UnaryExpression => throw new NotImplementedException(),
             BinaryExpression => BindBinaryExpression((BinaryExpression)syntax),
             ParenthesizedExpression pre => BindExpression(pre.Expression),
             _ => throw new Exception($"未知的表达式"),

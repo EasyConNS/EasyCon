@@ -29,3 +29,21 @@ public class MetaOperator
     public static readonly MetaOperator LShift = new(typeof(Assembly.Instructions.AsmShiftLeft), "<<", (a, b) => a << b, true);
     public static readonly MetaOperator RShift = new(typeof(Assembly.Instructions.AsmShiftRight), ">>", (a, b) => a >> b, true);
 }
+public class UnaryOperator
+{
+    public static readonly List<UnaryOperator> All = new();
+    public readonly Type InstructionType;
+    public readonly string KeyWord;
+    public readonly Func<int, int> Function;
+
+    public UnaryOperator(Type instructionType, string keyword, Func<int, int> function)
+    {
+        InstructionType = instructionType;
+        KeyWord = keyword;
+        Function = function;
+        All.Add(this);
+    }
+
+    public static readonly UnaryOperator Not = new(typeof(Assembly.Instructions.AsmNot), "~", a => ~a);
+    public static readonly UnaryOperator Negative = new(typeof(Assembly.Instructions.AsmNegative), "-", a => -a);
+}

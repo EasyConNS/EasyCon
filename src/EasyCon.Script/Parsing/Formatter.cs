@@ -20,15 +20,15 @@ static class Formats
 
 class Formatter(IEnumerable<ExternalVariable> extVars)
 {
-    private readonly Dictionary<string, int> Constants = [];
+    // private readonly Dictionary<string, int> Constants = [];
     private readonly Dictionary<string, ExternalVariable> ExtVars = extVars.ToDictionary(ev => ev.Name, s => s);
 
-    public bool TryDeclConstant(string key, ExprBase value)
-    {
-        if (Constants.ContainsKey(key)) return false;
-        Constants.Add(key, (InstantExpr)BinaryExpression.Rewrite(value));
-        return true;
-    }
+    // public bool TryDeclConstant(string key, ExprBase value)
+    // {
+    //     if (Constants.ContainsKey(key)) return false;
+    //     Constants.Add(key, (InstantExpr)BinaryExpression.Rewrite(value));
+    //     return true;
+    // }
 
     public VariableExpr GetVar(string text)
     {
@@ -54,15 +54,11 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
         return new ExtVarExpr(value);
     }
 
-    public InstantExpr GetInstant(string text, bool zeroOrPos = false)
+    public ExprBase GetInstant(string text, bool zeroOrPos = false)
     {
         if (Regex.Match(text, Formats.Constant_F).Success)
         {
-            if (!Constants.TryGetValue(text, out int v))
-                throw new Exception($"未定义的常量“{text}”");
-            if (zeroOrPos && v < 0)
-                throw new Exception("不能使用负数");
-            return new InstantExpr(v, text);
+            return new VariableExpr(text, true);
         }
         else
         {

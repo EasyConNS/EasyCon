@@ -27,9 +27,9 @@ abstract class AsmBitwiseShift<T> : Instruction
         {
             return Failed.InvalidArgument;
         }
-        else if ((value is InstantExpr))
+        else if (value is LiteralExpr vli)
         {
-            var val = ((value as InstantExpr)).Value;
+            var val = (int)vli.Value;
             if (val < 0 || val >= 1 << 4)
                 return Failed.OutOfRange;
             var ins = new AsmBinaryOpInstant<T>();

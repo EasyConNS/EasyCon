@@ -15,9 +15,9 @@ internal partial class Parser
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
 
-            if (_formatter.TryDeclConstant(lexer[0].Value, eexp))
-                return new ConstDeclStmt(lexer[0].Value, eexp.GetCodeText());
-            throw new Exception($"重复定义的常量：{lexer[0].Value}");
+            // if (_formatter.TryDeclConstant(lexer[0].Value, eexp))
+            return new ConstDeclStmt(lexer[0].Value, eexp.GetCodeText());
+            // throw new Exception($"重复定义的常量：{lexer[0].Value}");
         }
         return null;
     }
@@ -33,22 +33,6 @@ internal partial class Parser
         return null;
     }
 
-
-    private UnaryOp? ParseUnary(VariableExpr dest, List<Token> tokens)
-    {
-        if (tokens.Count == 3 && tokens[0].Type.GetUnaryOperatorPrecedence() > 0 && tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.EOF)
-        {
-            // 一元运算符
-            return tokens[0].Type switch
-            {
-                TokenType.SUB => new Negative(dest, _formatter.GetVar(tokens[1].Value)),
-                TokenType.BitNot => new Not(dest, _formatter.GetVar(tokens[1].Value)),
-                _ => null
-            };
-        }
-        return null;
-    }
-
     private Statement? ParseAssignment(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
@@ -56,12 +40,6 @@ internal partial class Parser
         if (lexer[0].Type == TokenType.VAR && lexer[1].Type == TokenType.ASSIGN)
         {
             var des = _formatter.GetVar(lexer[0].Value);
-
-            var sm = ParseUnary(des, [.. lexer.Skip(2)]);
-            if (sm != null)
-            {
-                return sm;
-            }
             var pr = new ExprParser([.. lexer.Skip(2)], _formatter);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
@@ -313,7 +291,10 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
         if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
         {
-            throw new Exception("不支持的语句");
+            var opToken = Advance();
+            var op = UnaryOperator.All.FirstOrDefault(o => o.KeyWord == opToken.Value) ?? throw new Exception($"不支持的运算符：{opToken.Value}");
+            var operand = ParseExpression(unaryOperatorPrecedence);
+            left = new UnaryExpression(opToken, operand);
         }
         else
         {
