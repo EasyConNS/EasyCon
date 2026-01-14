@@ -17,7 +17,7 @@ class LiteralExpr(object txt) : ExprBase
 {
     public readonly object Value = txt;
 
-    public override string GetCodeText() => (string)Value;
+    public override string GetCodeText() => $"{Value}";
 
     public static implicit operator LiteralExpr(int val)
     {
@@ -51,7 +51,7 @@ class VariableExpr : ExprBase
         ReadOnly = readOnly;
     }
 
-    public override string GetCodeText() => ReadOnly?"_":"$" +Tag;
+    public override string GetCodeText() => Tag;
 }
 
 class ExtVarExpr(ExternalVariable var) : ExprBase

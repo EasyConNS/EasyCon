@@ -78,17 +78,6 @@ class CallStmt(string fnName, ExprBase[] args, bool buildin = true) : Statement
     //    assembler.Add(Assembly.Instructions.AsmCall.Create(callfunc));
     //}
 
-    //public override void Exec(Processor processor)
-    //{
-    //    if (!_buildin)
-    //    {
-    //        processor.Call(FnName);
-    //    }
-    //    else
-    //    {
-    //        processor.BuildinCall(FnName, [.. Args]);
-    //    }
-    //}
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{

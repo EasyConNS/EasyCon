@@ -20,28 +20,19 @@ static class Formats
 
 class Formatter(IEnumerable<ExternalVariable> extVars)
 {
-    // private readonly Dictionary<string, int> Constants = [];
     private readonly Dictionary<string, ExternalVariable> ExtVars = extVars.ToDictionary(ev => ev.Name, s => s);
-
-    // public bool TryDeclConstant(string key, ExprBase value)
-    // {
-    //     if (Constants.ContainsKey(key)) return false;
-    //     Constants.Add(key, (InstantExpr)BinaryExpression.Rewrite(value));
-    //     return true;
-    // }
 
     public VariableExpr GetVar(string text)
     {
         var m = Regex.Match(text, Formats.RegisterEx_F);
         if (!m.Success)
             throw new FormatException();
-        var tag = text[1..];
         var lhs = true;
-        if (uint.TryParse(tag, out var reg) && reg == 0 && lhs)
+        if (uint.TryParse(text[1..], out var reg) && reg == 0 && lhs)
         {
             throw new ParseException(@"寄存器变量编号0暂无法使用");
         }
-        return new VariableExpr(tag);
+        return new VariableExpr(text);
     }
 
     private ExtVarExpr GetExtVar(string text)

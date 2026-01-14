@@ -6,18 +6,17 @@ namespace EasyCon.Script.Parsing;
 
 internal partial class Parser
 {
-    private ConstDeclStmt? ParseConstantDecl(string text)
+    private AssignmentStmt? ParseConstantDecl(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
+        if (lexer.Length < 3 + 1) return null;
         if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN)
         {
+            var des = (VariableExpr)_formatter.GetInstant(lexer[0].Value);
             var pr = new ExprParser([.. lexer.Skip(2)], _formatter, allowVar: false);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
-
-            // if (_formatter.TryDeclConstant(lexer[0].Value, eexp))
-            return new ConstDeclStmt(lexer[0].Value, eexp.GetCodeText());
-            // throw new Exception($"重复定义的常量：{lexer[0].Value}");
+            return new AssignmentStmt(des, eexp);
         }
         return null;
     }
@@ -104,10 +103,10 @@ internal partial class Parser
         switch (tokens[0].Type)
         {
             case TokenType.BREAK:
-                if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT)
+                if (tokens[1].Type == TokenType.INT)
                 {
                     if (tokens[2].Type != TokenType.EOF) return null;
-                    return new Break(_formatter.GetInstant(tokens[1].Value, true));
+                    return new Break((LiteralExpr)_formatter.GetInstant(tokens[1].Value, true));
                 }
                 else
                     if (tokens[1].Type == TokenType.EOF)
@@ -242,7 +241,7 @@ internal partial class Parser
     {
         if(toks.Length == 1 && toks[0].Type == TokenType.EOF)
             return [];
-        var pr = new ExprParser(toks, _formatter);
+        var pr = new ExprParser(toks, _formatter, allowStr: true);
         var args = pr.ParseArguments();
         if (!pr.EOF(out _)) throw new Exception("参数解析失败");
         return args;
@@ -378,15 +377,13 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 return _formatter.GetValueEx(tokstr);
             case TokenType.CONST:
             case TokenType.VAR when allowVar:
-            case TokenType.EX_VAR:
+            case TokenType.EX_VAR when allowVar:
                 var token = Advance();
-                bool isConstant = token.Type == TokenType.CONST;
-                bool isSpecial = token.Type == TokenType.EX_VAR;
                 return _formatter.GetValueEx(token);
             case TokenType.LeftParen:
-                var left = Advance();
+                Advance();
                 var expression = ParseExpression();
-                var right = Match(TokenType.RightParen);
+                Match(TokenType.RightParen);
                 return new ParenthesizedExpression(expression);
             case TokenType.INT:
             default:
@@ -404,7 +401,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"错误的数字格式: {ex.Message} 行{toknum.Line}");
-                    throw new Exception($"非法的表达式: {toknum.Value}, {toknum.Type}");
+                    throw new Exception($"表达式不正确: {toknum.Value}");
                 }
         }
     }

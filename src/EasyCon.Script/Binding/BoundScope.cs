@@ -4,48 +4,47 @@ namespace EasyCon.Script.Binding;
 
 internal sealed class BoundScope(BoundScope? parent)
 {
-    private Dictionary<string, Symbol>? _symbols;
+    private readonly Dictionary<string, VariableSymbol> _var_symbols = [];
+    private readonly Dictionary<string, FunctionSymbol> _fn_symbols = [];
 
     public BoundScope? Parent { get; } = parent;
 
     public bool TryDeclareVariable(VariableSymbol variable)
-        => TryDeclareSymbol(variable);
-
-    public bool TryDeclareFunction(FunctionSymbol function)
-        => TryDeclareSymbol(function);
-
-    private bool TryDeclareSymbol<TSymbol>(TSymbol symbol)
-        where TSymbol : Symbol
     {
-        if (_symbols == null)
-            _symbols = [];
-        else if (_symbols.ContainsKey(symbol.Name))
+        if (_var_symbols.ContainsKey(variable.Name))
             return false;
 
-        _symbols.Add(symbol.Name, symbol);
+        _var_symbols.Add(variable.Name, variable);
         return true;
     }
 
-    public Symbol? TryLookupSymbol(string name)
+    public bool TryDeclareFunction(FunctionSymbol function)
     {
-        if (_symbols != null && _symbols.TryGetValue(name, out var symbol))
+        if (_fn_symbols.ContainsKey(function.Name))
+            return false;
+
+        _fn_symbols.Add(function.Name, function);
+        return true;
+    }
+
+    public VariableSymbol? TryLookupVar(string name)
+    {
+        if (_var_symbols.TryGetValue(name, out var symbol))
             return symbol;
 
-        return Parent?.TryLookupSymbol(name);
+        return Parent?.TryLookupVar(name);
+    }
+    public FunctionSymbol? TryLookupFunc(string name)
+    {
+        if (_fn_symbols.TryGetValue(name, out var symbol))
+            return symbol;
+
+        return Parent?.TryLookupFunc(name);
     }
 
     public ImmutableArray<VariableSymbol> GetDeclaredVariables()
-        => GetDeclaredSymbols<VariableSymbol>();
+        => [.. _var_symbols.Values];
 
     public ImmutableArray<FunctionSymbol> GetDeclaredFunctions()
-        => GetDeclaredSymbols<FunctionSymbol>();
-
-    private ImmutableArray<TSymbol> GetDeclaredSymbols<TSymbol>()
-        where TSymbol : Symbol
-    {
-        if (_symbols == null)
-            return [];
-
-        return [.. _symbols.Values.OfType<TSymbol>()];
-    }
+        => [.. _fn_symbols.Values];
 }

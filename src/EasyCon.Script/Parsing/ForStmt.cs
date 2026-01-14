@@ -14,8 +14,9 @@ internal sealed class ForBlock(ForStmt condition, ImmutableArray<Statement> stat
     }
 }
 
-abstract class ForStmt(ExprBase upper) : Statement
+abstract class ForStmt(ExprBase lower, ExprBase upper) : Statement
 {
+    public readonly ExprBase Lower = lower;
     public readonly ExprBase Upper = upper;
     [Obsolete]
     public Next Next;
@@ -49,7 +50,7 @@ abstract class ForStmt(ExprBase upper) : Statement
 class For_Infinite : ForStmt
 {
     public For_Infinite()
-        : base(0)
+        : base(0,0)
     { }
 
     //protected override bool Cond(Processor _) => true;
@@ -63,7 +64,7 @@ class For_Infinite : ForStmt
     //}
 }
 
-class For_Static(ExprBase count) : ForStmt(count)
+class For_Static(ExprBase count) : ForStmt(0, count)
 {
     //protected override void Init(Processor processor)
     //{
@@ -102,10 +103,9 @@ class For_Static(ExprBase count) : ForStmt(count)
     //}
 }
 
-class For_Full(VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(upper)
+class For_Full(VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(lower, upper)
 {
     public VariableExpr RegIter = regiter;
-    public ExprBase InitVal = lower;
 
     //protected override void Init(Processor processor)
     //{
@@ -127,7 +127,7 @@ class For_Full(VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(u
 
     protected override string _GetString()
     {
-        return $"FOR {RegIter.GetCodeText()} = {InitVal.GetCodeText()} TO {Upper.GetCodeText()}";
+        return $"FOR {RegIter.GetCodeText()} = {Lower.GetCodeText()} TO {Upper.GetCodeText()}";
     }
 
     //public override void Assemble(Assembly.Assembler assembler)
@@ -168,19 +168,20 @@ class Next : Statement
     //}
 }
 
-abstract class LoopCtrl(ExprBase level) : Statement
+abstract class LoopCtrl(LiteralExpr level) : Statement
 {
-    public readonly ExprBase Level = level;
+    public readonly LiteralExpr Level = level;
 }
 
 class Break : LoopCtrl
 {
     public Break() :base(1) { }
 
-    public Break(ExprBase level) :base(level) {}
+    public Break(LiteralExpr level) :base(level) {}
 
     protected override string _GetString()
     {
+        if ((int)Level.Value == 1) return "BREAK";
         return  $"BREAK {Level.GetCodeText()}";
     }
 

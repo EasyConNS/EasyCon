@@ -22,16 +22,12 @@ public sealed class EasyRunner : IRunner
 
     public void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token)
     {
-        var evaluator = new Evaluator(prog);
-        evaluator.Evaluate();
-        //var _processor = new Processor(_funcTables)
-        //{
-        //    Output = output,
-        //    GamePad = pad,
-        //};
-        while (!token.IsCancellationRequested)
+        var evaluator = new Evaluator(prog, token)
         {
-        }
+            Output = output,
+            GamePad = pad,
+        };
+        evaluator.Evaluate();
     }
 
     public string ToCode()

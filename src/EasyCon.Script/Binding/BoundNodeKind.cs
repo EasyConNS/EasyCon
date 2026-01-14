@@ -6,6 +6,7 @@ public enum BoundNodeKind
     BlockStatement,
     NopStatement,
     Expression,
+    CallExpression,
     KeyAction,
 
     Goto,
@@ -15,11 +16,10 @@ public enum BoundNodeKind
 
     Literal,
     Variable,
+    ExLabelVariable,
     BinaryExpression,
-    CallExpression,
+    UnaryExpression,
+    ConversionExpression,
 
-    If,
-    For,
     While,
-    Func
 }

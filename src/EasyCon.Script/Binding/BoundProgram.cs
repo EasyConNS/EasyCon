@@ -10,11 +10,15 @@ internal sealed class BoundProgram(FunctionSymbol main, ImmutableDictionary<Func
     public ImmutableDictionary<FunctionSymbol, BoundBlockStatement> Functions = functions;
 
     public bool KeyAction => Functions.Values.SelectMany(s=>s.Statements).OfType<BoundKeyActStatement>().ToList().Count != 0;
-} 
+}
 
-internal abstract class BoundStmt(Statement stmt)
+internal abstract class BoundNode
 {
     public abstract BoundNodeKind Kind { get; }
+}
+
+internal abstract class BoundStmt(Statement stmt) : BoundNode
+{
     public Statement Syntax = stmt;
 }
 

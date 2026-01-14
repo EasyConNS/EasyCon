@@ -1,4 +1,5 @@
 using EasyCon.Script.Parsing;
+using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;
 
@@ -30,8 +31,8 @@ class LocalVariableSymbol(string name, bool isReadOnly, ValueType valueType) : V
 {
 }
 
-sealed class FunctionSymbol(string name, int paramters = 0, FuncDeclBlock? declaration = null) : Symbol(name)
+sealed class FunctionSymbol(string name, ImmutableArray<ValueType> paramters, FuncDeclBlock? declaration = null) : Symbol(name)
 {
-    public readonly int Paramters = paramters;
+    public readonly ImmutableArray<ValueType> Paramters = paramters;
     public readonly FuncDeclBlock? Declaration = declaration;
 }

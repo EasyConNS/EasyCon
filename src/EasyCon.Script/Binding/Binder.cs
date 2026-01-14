@@ -69,7 +69,7 @@ internal sealed class Binder
             var statement = binder.BindStatement(globalStatement);
             statements.Add(statement);
         }
-        var main = new FunctionSymbol("$eval");
+        var main = new FunctionSymbol("$eval", []);
         var body = new BoundBlockStatement(null, statements.ToImmutable());
         var loweredBody = Lowerer.Flatten(body);
         functionBodies.Add(main, loweredBody);
@@ -78,7 +78,7 @@ internal sealed class Binder
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
     {
-        var function = new FunctionSymbol(syntax.Declare.Name);
+        var function = new FunctionSymbol(syntax.Declare.Name, []);
         _scope.TryDeclareFunction(function);
     }
 
@@ -100,14 +100,13 @@ internal sealed class Binder
             {
                 IfBlock => BindIf((IfBlock)syntax),
                 ForBlock => BindFor((ForBlock)syntax),
-                ConstDeclStmt => throw new NotImplementedException(),
                 AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
                 KeyAction => BindGamepadActionStatement((KeyAction)syntax),
                 Break => BindBreakStatement((Break)syntax),
                 Continue => BindContinueStatement((Continue)syntax),
                 ReturnStmt => new BoundReturnStatement(syntax),
                 CallStmt => BindCallStatement((CallStmt)syntax),
-                _ => throw new ParseException("未知的语句", syntax.Address),
+                _ => throw new Exception("未知的语句"),
             };
         }
         catch (Exception ex)
@@ -179,27 +178,57 @@ internal sealed class Binder
 
     private BoundBlockStatement BindFor(ForBlock syntax)
     {
-        BoundStmt lowerBound = null;// VariableDeclaration(node.Syntax, node.Variable, node.LowerBound);
-        BoundStmt upperBound = null; // ConstantDeclaration(node.Syntax, "upperBound", node.UpperBound);
+        var lowerBound = BindConversion(syntax.Condition.Lower, ValueType.Int);
+        var upperBound = BindConversion(syntax.Condition.Upper, ValueType.Int);
 
         _scope = new BoundScope(_scope);
+
+        var idxVar = syntax.Condition switch
+        {
+            For_Full ff => ff.RegIter,
+            For_Static => new VariableExpr("$tmp$"),
+            _ => null,
+        };
+        var variable = idxVar switch
+        {
+            VariableExpr v => BindVariableDeclaration(v, isReadOnly: true, ValueType.Int),
+            _ => null,
+        };
+
+        //var <= upperBound
+        BoundExpr condition = syntax.Condition switch
+        {
+            For_Full or For_Static => Less(syntax.Condition.Upper, BindVarExpression(idxVar), upperBound),
+            _ => new BoundLiteralExpression(syntax.Condition.Upper, true),
+        };
+
+        BoundStmt lowerBoundStmt = variable == null ? new BoundNop(syntax.Condition) :
+            VariableDeclaration(syntax.Condition, variable, lowerBound);
+        BoundStmt upperBoundStmt = variable == null ? new BoundNop(syntax.Condition) :
+            ConstantDeclaration(syntax.Condition, "upperBound", upperBound);
+
+        // var+=step
+        var step = 1;
+        BoundStmt stepStmt = variable == null ? new BoundNop(syntax.Condition) :
+            new BoundAssignStatement(syntax, variable, Add(syntax.Condition.Upper, BindVarExpression(idxVar), Literal(syntax.Condition.Upper, 1)));
+
         var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
         _scope = _scope.Parent!;
 
         var lowwhile = new BoundWhileStatement(syntax,
-             /*<var> <= upperBound*/new BoundBinaryExpression(null, null, null, null),
+             condition,
              Block(syntax,
                 body,
                 Label(syntax, continueLabel),
-                /*  <var> = <var> + <step>*/new BoundAssignStatement(syntax, null, null)
+                stepStmt
                 ),
              breakLabel,
              new BoundLabel($"label{++_labelCounter}")
              );
 
         return Block(syntax,
-            lowerBound,//      var <var> = <lower>
-            upperBound,//      let upperBound = <upper>
+            lowerBoundStmt,
+            upperBoundStmt,
             BindWhile(lowwhile)
              );
     }
@@ -232,10 +261,12 @@ internal sealed class Binder
 
     private BoundGotoStatement BindBreakStatement(Break syntax)
     {
-        var level = (int)BindExpression(syntax.Level).ConstantValue;
+        var levelExp = BindExpression(syntax.Level) as BoundLiteralExpression ?? throw new Exception("break层数必须是数字");
+        if (levelExp.Type != ValueType.Int) throw new Exception("break层数必须是数字");
+        var level = (int)levelExp.ConstantValue;
         if (_loopStack.Count < level)
         {
-            throw new ParseException("循环层数不足", syntax.Address);
+            throw new Exception("循环层数不足");
         }
 
         var breakLabel = _loopStack.ElementAt(level - 1).BreakLabel;
@@ -247,7 +278,7 @@ internal sealed class Binder
     {
         if (_loopStack.Count == 0)
         {
-            throw new ParseException("循环层数不足", syntax.Address);
+            throw new Exception("循环层数不足");
         }
 
         var continueLabel = _loopStack.Peek().ContinueLabel;
@@ -260,21 +291,25 @@ internal sealed class Binder
 
         if (syntax.AugOp != null)
         {
-            var desvar = _scope.TryLookupSymbol(syntax.DestVariable.Tag) ?? throw new ParseException($"未定义的变量 {syntax.DestVariable.Tag}", syntax.Address);
-            var vardesvar = desvar as VariableSymbol;
+            var desvar = BindVarExpression(syntax.DestVariable);
             var op = BoundBinaryOperator.Bind(syntax.AugOp.Operator);
-            boundexpr = new BoundBinaryExpression(syntax.Expression, new BoundVariableExpression(syntax.Expression, vardesvar!), op!, boundexpr);
+            boundexpr = new BoundBinaryExpression(syntax.Expression, desvar, op!, boundexpr);
         }
-        var variable = BindVariableDeclaration(syntax.DestVariable, false, boundexpr.Type);
+        var variable = BindVariableDeclaration(syntax.DestVariable, syntax.DestVariable.ReadOnly, boundexpr.Type);
 
-        if (variable.Type != boundexpr.Type) throw new ParseException("表达式和变量类型不匹配", syntax.Address);
+        if (variable.Type != boundexpr.Type) throw new Exception("表达式和变量类型不匹配");
 
         return new BoundAssignStatement(syntax, variable, boundexpr);
     }
 
     private VariableSymbol BindVariableDeclaration(VariableExpr syntax, bool isReadOnly, ValueType type)
     {
-        if (_scope.TryLookupSymbol(syntax.Tag) is VariableSymbol vvr) return vvr;
+        var vrr = _scope.TryLookupVar(syntax.Tag);
+        if (vrr is not null)
+        {
+            if (vrr.IsReadOnly) throw new Exception($"重复定义的常量：{syntax.Tag}");
+            return vrr;
+        }
         var variable = _function == null
                     ? (VariableSymbol)new GlobalVariableSymbol(syntax.Tag, isReadOnly, type)
                     : new LocalVariableSymbol(syntax.Tag, isReadOnly, type);
@@ -286,8 +321,7 @@ internal sealed class Binder
 
     private BoundCallStatement BindCallStatement(CallStmt syntax)
     {
-        var symbol = _scope.TryLookupSymbol(syntax.FnName) ?? throw new ParseException($"找不到调用函数 {syntax.FnName}", syntax.Address);
-        var function = symbol as FunctionSymbol;
+        var function = _scope.TryLookupFunc(syntax.FnName) ?? throw new Exception($"找不到调用函数 {syntax.FnName}");
         var boundArguments = ImmutableArray.CreateBuilder<BoundExpr>();
 
         foreach (var argument in syntax.Args)
@@ -295,13 +329,22 @@ internal sealed class Binder
             var boundArgument = BindExpression(argument);
             boundArguments.Add(boundArgument);
         }
-        if (function.Paramters != syntax.Args.Length) throw new ParseException($"函数调用参数不匹配 {syntax.FnName}", syntax.Address);
+        if (syntax.Args.Length != function.Paramters.Length) throw new Exception($"函数调用参数不匹配 {syntax.FnName}");
+        for (var i = 0; i < syntax.Args.Length; i++)
+        {
+            boundArguments[i] = BindConversion(boundArguments[i], function.Paramters[i]);
+        }
+
+        if (BuiltinFunctions.GetAll().Any(f => f == function) && boundArguments[0].Type == ValueType.Int)
+        {
+            var des = _scope.TryLookupVar(((VariableExpr)syntax.Args[0]).Tag);
+        }
         return new BoundCallStatement(syntax, function, boundArguments.ToImmutable());
     }
 
     private BoundKeyActStatement BindGamepadActionStatement(KeyAction syntax)
     {
-        switch(syntax)
+        switch (syntax)
         {
         }
         throw new NotImplementedException();
@@ -314,17 +357,45 @@ internal sealed class Binder
             LiteralExpr lite => new BoundLiteralExpression(lite, lite.Value),
             VariableExpr => BindVarExpression((VariableExpr)syntax),
             ExtVarExpr exv => new BoundExternalVariableExpression(exv, exv.Var),
-            UnaryExpression => throw new NotImplementedException(),
+            UnaryExpression => BindUnaryExpression((UnaryExpression)syntax),
             BinaryExpression => BindBinaryExpression((BinaryExpression)syntax),
             ParenthesizedExpression pre => BindExpression(pre.Expression),
             _ => throw new Exception($"未知的表达式"),
         };
     }
 
+    private BoundExpr BindConversion(BoundExpr expr, ValueType type)
+    {
+        if (type == ValueType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
+        if (expr.Type != type) throw new Exception("参数类型不匹配");
+        return expr;
+    }
+
+    private BoundExpr BindConversion(ExprBase syntax, ValueType type)
+    {
+        var expr = BindExpression(syntax);
+        if (expr.Type != type) throw new Exception("参数类型不匹配");
+        return expr;
+    }
+
     private BoundVariableExpression BindVarExpression(VariableExpr syntax)
     {
-        var variable = BindVariableReference(syntax.Tag) ?? throw new Exception($"找不到变量 {syntax.Tag}");
+        var variable = _scope.TryLookupVar(syntax.Tag) switch
+        {
+            VariableSymbol v => v,
+            _ => null,
+        } ?? throw new Exception($"找不到变量 {syntax.Tag}");
         return new BoundVariableExpression(syntax, variable);
+    }
+
+    private BoundUnaryExpression BindUnaryExpression(UnaryExpression syntax)
+    {
+        var boundOperand = BindExpression(syntax.Operand);
+
+        var boundOperator = BoundUnaryOperator.Bind(syntax.Operator.Type, boundOperand.Type)
+            ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}");
+
+        return new BoundUnaryExpression(syntax, boundOperator, boundOperand);
     }
 
     private BoundBinaryExpression BindBinaryExpression(BinaryExpression syntax)
@@ -335,14 +406,5 @@ internal sealed class Binder
         var boundOperator = BoundBinaryOperator.Bind(syntax.Operator.Type, boundLeft.Type, boundRight.Type)
             ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}");
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
-    }
-
-    private VariableSymbol? BindVariableReference(string name)
-    {
-        return _scope.TryLookupSymbol(name) switch
-        {
-            VariableSymbol variable => variable,
-            _ => null,
-        };
     }
 }

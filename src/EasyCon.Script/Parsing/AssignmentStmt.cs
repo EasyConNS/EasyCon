@@ -1,13 +1,5 @@
 namespace EasyCon.Script.Parsing;
 
-class ConstDeclStmt(string tag, string txt): Statement
-{
-    private readonly string Tag = tag;
-    private readonly string Text = txt;
-
-    protected override string _GetString() => $"{Tag} = {Text}";
-}
-
 class AssignmentStmt(VariableExpr regdst, ExprBase value, MetaOperator? augop = null) : Statement
 {
     public readonly VariableExpr DestVariable = regdst;

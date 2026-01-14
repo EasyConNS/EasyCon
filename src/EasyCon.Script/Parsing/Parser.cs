@@ -109,7 +109,7 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
 
         foreach (var item in BuiltinFunctions.GetAll())
         {
-            _funcTables.Add(item.Name, item.Paramters);
+            _funcTables.Add(item.Name, item.Paramters.Length);
         }
 
         foreach (var args in ParseLines(text))
@@ -123,7 +123,7 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
 
                 if(st is ImportStmt)
                 {
-                    if(unit.SelectMany(u=>u).Where(st=>st is not ImportStmt && st is not EmptyStmt).Any())
+                    if(unit.SelectMany(u=>u).Any(st=>st is not ImportStmt && st is not EmptyStmt))
                     {
                         throw new ParseException("导入只能在脚本开头");
                     }
@@ -207,7 +207,6 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
             }
             catch (Exception e)
             {
-                Console.WriteLine($"{e.Message} 行：{address + 1}");
                 throw new ParseException(e.Message, address);
             }
         }

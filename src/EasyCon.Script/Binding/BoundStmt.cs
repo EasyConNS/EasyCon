@@ -19,6 +19,11 @@ internal sealed class BoundAssignStatement(Statement syntax, VariableSymbol vari
     public readonly BoundExpr Expression = expression;
 }
 
+internal sealed class BoundNop(Statement syntax) : BoundStmt(syntax)
+{
+    public override BoundNodeKind Kind => BoundNodeKind.NopStatement;
+}
+
 internal sealed class BoundLabelStatement(Statement syntax, BoundLabel label) : BoundStmt(syntax)
 {
     public override BoundNodeKind Kind => BoundNodeKind.Label;
