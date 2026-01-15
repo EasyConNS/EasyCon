@@ -65,11 +65,11 @@ internal sealed class Evaluator
                 case NopStatement:
                     index++;
                     break;
-                case Expression:
+                case ExpressionStatement:
                     EvaluateAssignment((BoundAssignStatement)s);
                     index++;
                     break;
-                case CallExpression:
+                case CallStatement:
                     EvaluateCall((BoundCallStatement)s);
                     index++;
                     break;
@@ -96,7 +96,7 @@ internal sealed class Evaluator
                     var rs = (BoundReturnStatement)s;
                     return _lastValue;
                 default:
-                    throw new ScriptException($"Unexpected node", index);
+                    throw new ScriptException($"执行语句类型未知", index);
             }
             Thread.Sleep(1);
         }
@@ -111,7 +111,12 @@ internal sealed class Evaluator
         _lastValue = value;
         Assign(node.Variable, value);
     }
-
+    private void EvaluateCall(BoundCallStatement node)
+    {
+        var value = EvaluateCallExpression(node.Expression);
+  
+        _lastValue = value;
+    }
     public object EvaluateExpr(BoundExpr node)
     {
         if (node.ConstantValue != null)
@@ -130,6 +135,8 @@ internal sealed class Evaluator
                 return EvaluateBinaryExpression((BoundBinaryExpression)node);
             case ConversionExpression:
                 return EvaluateConversionExpression((BoundConversionExpression)node);
+            case CallExpression:
+                return EvaluateCallExpression((BoundCallExpression)node);
             default:
                 throw new Exception($"无法执行的表达式{node.Kind}");
         }
@@ -191,6 +198,27 @@ internal sealed class Evaluator
                     return (int)left + (int)right;
                 else
                     return $"{left}{right}";
+            case BoundBinaryOperatorKind.Subtraction:
+                return (int)left - (int)right;
+            case BoundBinaryOperatorKind.Multiplication:
+                return (int)left * (int)right;
+            case BoundBinaryOperatorKind.Division:
+                return (int)left / (int)right;
+            case BoundBinaryOperatorKind.Mod:
+                return (int)left % (int)right;
+            case BoundBinaryOperatorKind.RoundDiv:
+                return (int)Math.Round((double)left / (double)right);
+            case BoundBinaryOperatorKind.BitwiseAnd:
+                return (int)left & (int)right;
+            case BoundBinaryOperatorKind.BitwiseOr:
+                return (int)left | (int)right;
+            case BoundBinaryOperatorKind.BitwiseXor:
+                return (int)left ^ (int)right;
+            case BoundBinaryOperatorKind.BitLeftShift:
+                return (int)left << (int)right;
+            case BoundBinaryOperatorKind.BitRightShift:
+                return (int)left >> (int)right;
+
             case BoundBinaryOperatorKind.Equals:
                 return Equals(left, right);
             case BoundBinaryOperatorKind.NotEquals:
@@ -207,7 +235,7 @@ internal sealed class Evaluator
                 throw new Exception($"不支持的运算符{b.Op}");
         }
     }
-    private void EvaluateCall(BoundCallStatement node)
+    private object? EvaluateCallExpression(BoundCallExpression node)
     {
         if (BuiltinFunctions.GetAll().Any(f=>f==node.Function))
         {
@@ -229,11 +257,28 @@ internal sealed class Evaluator
 
             _lastValue = result;
         }
+        return _lastValue;
     }
 
-    private void EvaluateKeyAction(BoundKeyActStatement ndoe)
+    private void EvaluateKeyAction(BoundKeyActStatement node)
     {
-        throw new NotImplementedException();
+        if(node is BoundKeyPressStatement bps)
+        {
+            var dur = EvaluateExpr(bps.Duration);
+            GamePad.ClickButtons(bps.Act, (int)dur);
+            Thread.Sleep((int)dur);
+        }
+        else
+        {
+            if(node.Up)
+            {
+                GamePad.ReleaseButtons(node.Act);
+            }
+            else
+            {
+                GamePad.PressButtons(node.Act);
+            }
+        }
     }
 
     private void Assign(VariableSymbol variable, object value)
@@ -253,6 +298,9 @@ internal sealed class Evaluator
     {
         switch (fn.Name)
         {
+            case "WAIT":
+                Thread.Sleep((int)args[0]);
+                break;
             case "AMIIBO":
                 {
                     var index = (int)args[0];
@@ -282,17 +330,16 @@ internal sealed class Evaluator
                     Output.Alert(s.TrimEnd('\\'));
                 }
                 break;
-                case "RAND":
+            case "RAND":
                 {
                     var max = (int)args[0];
-                    _rand.Next(max == 0 ? 100 : max);
-                    _lastValue = max;
+                    _lastValue = _rand.Next(max == 0 ? 100 : max);
                 }
                 break;
             case "BEEP":
               {
                     var freq = (int)args[0];
-                    if(freq < 37 || freq > 32767) throw new Exception($"BEEP参数freq范围不争取(37~32767)");
+                    if(freq < 37 || freq > 32767) throw new Exception($"BEEP参数freq范围不正确(37~32767)");
                     Console.Beep(freq, (int)args[1]);
               }
               break;

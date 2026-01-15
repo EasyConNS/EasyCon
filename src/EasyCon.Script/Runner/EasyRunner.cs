@@ -9,7 +9,6 @@ public sealed class EasyRunner : IRunner
 {
     CompicationUnit unit;
     BoundProgram prog;
-    Dictionary<string, FuncStmt> _funcTables = [];
 
     public bool HasKeyAction => prog.KeyAction;
 

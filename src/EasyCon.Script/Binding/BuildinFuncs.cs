@@ -4,6 +4,7 @@ namespace EasyCon.Script.Binding;
 
 internal static class BuiltinFunctions
 {
+    public static readonly FunctionSymbol Wait = new("WAIT", [ValueType.Int]);
     public static readonly FunctionSymbol Print = new("PRINT", [ValueType.String]);
     public static readonly FunctionSymbol Alert = new("ALERT", [ValueType.String]);
     public static readonly FunctionSymbol Rand = new("RAND", [ValueType.Int]);

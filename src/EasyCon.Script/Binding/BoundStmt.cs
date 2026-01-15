@@ -1,5 +1,6 @@
 using EasyCon.Script.Parsing;
 using EasyCon.Script2.Binding;
+using EasyDevice;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;
@@ -14,7 +15,7 @@ internal sealed class BoundBlockStatement(Statement stmt, ImmutableArray<BoundSt
 
 internal sealed class BoundAssignStatement(Statement syntax, VariableSymbol variable, BoundExpr expression) :BoundStmt(syntax)
 {
-    public override BoundNodeKind Kind => BoundNodeKind.Expression;
+    public override BoundNodeKind Kind => BoundNodeKind.ExpressionStatement;
     public readonly VariableSymbol Variable = variable;
     public readonly BoundExpr Expression = expression;
 }
@@ -49,14 +50,22 @@ internal sealed class BoundReturnStatement(Statement syntax) : BoundStmt(syntax)
     public override BoundNodeKind Kind => BoundNodeKind.Return;
 }
 
-internal sealed class BoundCallStatement(Statement syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments) : BoundStmt(syntax)
+internal sealed class BoundCallStatement(Statement syntax, BoundCallExpression expression) : BoundStmt(syntax)
 {
-    public FunctionSymbol Function = function;
-    public ImmutableArray<BoundExpr> Arguments = arguments;
-    public override BoundNodeKind Kind => BoundNodeKind.CallExpression;
+    public BoundCallExpression Expression = expression;
+    public override BoundNodeKind Kind => BoundNodeKind.CallStatement;
 }
 
-internal sealed class BoundKeyActStatement(Statement syntax) : BoundStmt(syntax)
+internal class BoundKeyActStatement(Statement syntax, ECKey key, bool up = false) : BoundStmt(syntax)
 {
     public override BoundNodeKind Kind => BoundNodeKind.KeyAction;
+
+    public readonly ECKey Act = key;
+
+    public readonly bool Up = up;
+}
+
+internal sealed class BoundKeyPressStatement(Statement syntax, ECKey key, BoundExpr duration) : BoundKeyActStatement(syntax, key)
+{
+    public readonly BoundExpr Duration = duration;
 }

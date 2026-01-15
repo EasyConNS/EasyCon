@@ -224,7 +224,7 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
         var result = ImmutableArray.CreateBuilder<CompicationUnit>();
         foreach(var imp in imports)
         {
-            var newprog = ParseUnit(File.ReadAllText(imp.LibPath));
+            var newprog = ParseUnit(File.ReadAllText(LibPath+imp.LibPath));
             if(newprog.Members.OfType<ImportStmt>().Any()) 
                 throw new ParseException("不支持嵌套引用", imp.Address);
            

@@ -78,6 +78,7 @@ partial class EasyConForm
         scriptRunning = true;
         ScriptRunningChanged?.Invoke(true);
 
+        cts?.Cancel();
         cts = new();
         Task.Run(
             _RunScript

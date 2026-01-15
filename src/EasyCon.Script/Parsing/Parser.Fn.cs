@@ -6,6 +6,7 @@ namespace EasyCon.Script.Parsing;
 
 internal partial class Parser
 {
+    const string LibPath = "libs/";
     private AssignmentStmt? ParseConstantDecl(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
@@ -27,6 +28,10 @@ internal partial class Parser
         if (lexer.Length != 2 + 1) return null;
         if (lexer[0].Type == TokenType.IMPORT && lexer[1].Type == TokenType.STRING)
         {
+            if(!File.Exists(LibPath + lexer[1].Value))
+            {
+                throw new Exception($"文件不存在:{LibPath}{lexer[1].Value}");
+            }
             return new ImportStmt(lexer[1].Value);
         }
         return null;

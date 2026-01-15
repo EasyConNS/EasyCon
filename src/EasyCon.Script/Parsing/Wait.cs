@@ -2,7 +2,7 @@ namespace EasyCon.Script.Parsing;
 
 class Wait(ExprBase duration, bool omitted = false) : Statement
 {
-    protected readonly ExprBase Duration = duration;
+    public readonly ExprBase Duration = duration;
     protected bool _omitted = omitted;
 
     protected override string _GetString()

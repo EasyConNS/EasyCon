@@ -38,21 +38,6 @@ internal sealed class Binder
             binder.BindFuncDeclaration(function);
         }
 
-        foreach (var function in binder._scope.GetDeclaredFunctions())
-        {
-            var binderFn = new Binder(parentScope, function);
-            var fnstatements = ImmutableArray.CreateBuilder<BoundStmt>();
-            foreach (var fnStatement in function.Declaration!.Statements)
-            {
-                var statement = binderFn.BindStatement(fnStatement);
-                fnstatements.Add(statement);
-            }
-            var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
-            var fnloweredBody = Lowerer.Flatten(fnbody);
-
-            functionBodies.Add(function, fnloweredBody);
-        }
-
         var firstGlobalStatementPerSyntaxTree = syntaxs.Select(st => st.Members.Where(m => m is not FuncDeclBlock).FirstOrDefault())
                                                                 .Where(g => g != null)
                                                                 .ToArray();
@@ -69,6 +54,22 @@ internal sealed class Binder
             var statement = binder.BindStatement(globalStatement);
             statements.Add(statement);
         }
+
+        foreach (var function in binder._scope.GetDeclaredFunctions())
+        {
+            var binderFn = new Binder(binder._scope, function);
+            var fnstatements = ImmutableArray.CreateBuilder<BoundStmt>();
+            foreach (var fnStatement in function.Declaration!.Statements)
+            {
+                var statement = binderFn.BindStatement(fnStatement);
+                fnstatements.Add(statement);
+            }
+            var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
+            var fnloweredBody = Lowerer.Flatten(fnbody);
+
+            functionBodies.Add(function, fnloweredBody);
+        }
+
         var main = new FunctionSymbol("$eval", []);
         var body = new BoundBlockStatement(null, statements.ToImmutable());
         var loweredBody = Lowerer.Flatten(body);
@@ -78,7 +79,7 @@ internal sealed class Binder
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
     {
-        var function = new FunctionSymbol(syntax.Declare.Name, []);
+        var function = new FunctionSymbol(syntax.Declare.Name, [], syntax);
         _scope.TryDeclareFunction(function);
     }
 
@@ -98,15 +99,18 @@ internal sealed class Binder
         {
             return syntax switch
             {
+                EmptyStmt => new BoundNop(syntax),
                 IfBlock => BindIf((IfBlock)syntax),
                 ForBlock => BindFor((ForBlock)syntax),
                 AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
-                KeyAction => BindGamepadActionStatement((KeyAction)syntax),
                 Break => BindBreakStatement((Break)syntax),
                 Continue => BindContinueStatement((Continue)syntax),
                 ReturnStmt => new BoundReturnStatement(syntax),
                 CallStmt => BindCallStatement((CallStmt)syntax),
-                _ => throw new Exception("未知的语句"),
+                KeyAction => BindGamepadActionStatement((KeyAction)syntax),
+                Wait => BindWaitStatement((Wait)syntax),
+                SerialPrint => throw new NotImplementedException(),
+                _ => throw new Exception($"未知的语句类型{syntax}"),
             };
         }
         catch (Exception ex)
@@ -210,7 +214,7 @@ internal sealed class Binder
         // var+=step
         var step = 1;
         BoundStmt stepStmt = variable == null ? new BoundNop(syntax.Condition) :
-            new BoundAssignStatement(syntax, variable, Add(syntax.Condition.Upper, BindVarExpression(idxVar), Literal(syntax.Condition.Upper, 1)));
+            new BoundAssignStatement(syntax, variable, Add(syntax.Condition.Upper, BindVarExpression(idxVar), Literal(syntax.Condition.Upper, step)));
 
         var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
         _scope = _scope.Parent!;
@@ -319,11 +323,17 @@ internal sealed class Binder
         return variable;
     }
 
-    private BoundCallStatement BindCallStatement(CallStmt syntax)
+    private BoundStmt BindCallStatement(CallStmt syntax)
     {
         var function = _scope.TryLookupFunc(syntax.FnName) ?? throw new Exception($"找不到调用函数 {syntax.FnName}");
         var boundArguments = ImmutableArray.CreateBuilder<BoundExpr>();
 
+        // 特殊处理
+        if (BuiltinFunctions.GetAll().Any(f => f == function && f == BuiltinFunctions.Timestamp))
+        {
+            var des = BindVariableDeclaration((VariableExpr)syntax.Args[0], isReadOnly: false, ValueType.Int);
+            return new BoundAssignStatement(syntax, des, new BoundCallExpression(null, function, []));
+        }
         foreach (var argument in syntax.Args)
         {
             var boundArgument = BindExpression(argument);
@@ -335,19 +345,39 @@ internal sealed class Binder
             boundArguments[i] = BindConversion(boundArguments[i], function.Paramters[i]);
         }
 
-        if (BuiltinFunctions.GetAll().Any(f => f == function) && boundArguments[0].Type == ValueType.Int)
+        var expr = new BoundCallExpression(null, function, boundArguments.ToImmutable());
+        // 特殊处理
+        if (BuiltinFunctions.GetAll().Any(f => f == function && f == BuiltinFunctions.Rand))
         {
-            var des = _scope.TryLookupVar(((VariableExpr)syntax.Args[0]).Tag);
+            var des = BindVariableDeclaration((VariableExpr)syntax.Args[0], isReadOnly: false, ValueType.Int);
+            return new BoundAssignStatement(syntax, des, expr);
         }
-        return new BoundCallStatement(syntax, function, boundArguments.ToImmutable());
+        return new BoundCallStatement(syntax, expr);
+    }
+
+    private BoundCallStatement BindWaitStatement(Wait syntax)
+    {
+        var boundArgument = BindExpression(syntax.Duration);
+        boundArgument = BindConversion(boundArgument, ValueType.Int);
+
+        var expr = new BoundCallExpression(null, BuiltinFunctions.Wait, [boundArgument]);
+        return new BoundCallStatement(syntax, expr);
     }
 
     private BoundKeyActStatement BindGamepadActionStatement(KeyAction syntax)
     {
-        switch (syntax)
+        if(syntax is KeyPress kp)
         {
+            var dur = BindExpression(kp.Duration);
+            return new BoundKeyPressStatement(syntax, kp.Key, dur);
         }
-        throw new NotImplementedException();
+        if (syntax is StickPress sp)
+        {
+            var dur = BindExpression(sp.Duration);
+            return new BoundKeyPressStatement(syntax, sp.Key, dur);
+        }
+        var up = (syntax is KeyUp) || (syntax is StickUp);
+        return new BoundKeyActStatement(syntax, syntax.Key, up);
     }
 
     private BoundExpr BindExpression(ExprBase syntax)

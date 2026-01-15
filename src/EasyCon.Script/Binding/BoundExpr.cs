@@ -1,5 +1,6 @@
 using EasyCon.Script.Parsing;
 using EasyCon.Script2.Binding;
+using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;
 
@@ -71,4 +72,11 @@ internal sealed class BoundConversionExpression(ExprBase syntax, ValueType type,
 
     public override BoundNodeKind Kind => BoundNodeKind.ConversionExpression;
     public BoundExpr Expression = expr;
+}
+internal sealed class BoundCallExpression(ExprBase syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments) : BoundExpr(syntax)
+{
+    public override ValueType Type => ValueType.Int;
+    public FunctionSymbol Function = function;
+    public ImmutableArray<BoundExpr> Arguments = arguments;
+    public override BoundNodeKind Kind => BoundNodeKind.CallExpression;
 }
