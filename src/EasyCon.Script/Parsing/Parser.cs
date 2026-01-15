@@ -150,6 +150,7 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
                     if (unit.Count == 1) throw new ParseException("多余的语句");
                     var body = unit.Pop();
                     st = new ForBlock(lastfor, [.. body.Skip(1)], nst);
+                    st.Address = lastfor.Address;
                     result = unit.Peek();
                 }
                 else if (st is ElseIf)
@@ -179,17 +180,19 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
                     if (unit.Count == 1) throw new ParseException("多余的语句");
                     var body = unit.Pop();
                     st = new IfBlock(ifstart, [.. body.Skip(1)], eifst);
+                    st.Address = ifstart.Address;
                     result = unit.Peek();
                 }
                 else if (st is EndFuncStmt efnst)
                 {
-                    if (result.First() is not FuncStmt lastfor)
+                    if (result.First() is not FuncStmt funcdef)
                     {
                         throw new ParseException("ENDFUNC需要对应的Func语句", address);
                     }
                     if (unit.Count == 1) throw new ParseException("多余的语句");
                     var body = unit.Pop();
-                    st = new FuncDeclBlock(lastfor, [.. body.Skip(1)], efnst);
+                    st = new FuncDeclBlock(funcdef, [.. body.Skip(1)], efnst);
+                    st.Address = funcdef.Address;
                     result = unit.Peek();
                 }
 

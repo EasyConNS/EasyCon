@@ -4,8 +4,7 @@ namespace EasyCon.Script.Parsing;
 
 abstract class StickAction(string keyname, string direction) : KeyAction(keyname)
 {
-    protected new readonly string KeyName = keyname.ToUpper();
-    public new readonly ECKey Key = NSKeys.GetKey(keyname, direction);
+    public override ECKey Key => NSKeys.GetKey(keyname, direction);
     protected readonly string Direction = direction.ToUpper();
 
     //protected virtual void ReleasePrevious(Assembly.Assembler assembler)

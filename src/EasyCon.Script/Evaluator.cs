@@ -227,10 +227,6 @@ internal sealed class Evaluator
                 return (int)left < (int)right;
             case BoundBinaryOperatorKind.LessOrEquals:
                 return (int)left <= (int)right;
-            case BoundBinaryOperatorKind.Greater:
-                return (int)left > (int)right;
-            case BoundBinaryOperatorKind.GreaterOrEquals:
-                return (int)left >= (int)right;
             default:
                 throw new Exception($"不支持的运算符{b.Op}");
         }

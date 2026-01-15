@@ -4,8 +4,8 @@ namespace EasyCon.Script.Parsing;
 
 abstract class KeyAction(string keyname) : Statement
 {
-    protected readonly string KeyName = keyname.ToUpper();
-    public readonly ECKey Key = NSKeys.Get(keyname);
+    protected virtual string KeyName => keyname.ToUpper();
+    public virtual ECKey Key => NSKeys.Get(keyname);
 
     //protected virtual void ReleasePrevious(Assembly.Assembler assembler)
     //{

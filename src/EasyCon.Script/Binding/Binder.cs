@@ -95,28 +95,21 @@ internal sealed class Binder
 
     private BoundStmt BindStatement(Statement syntax)
     {
-        try
+        return syntax switch
         {
-            return syntax switch
-            {
-                EmptyStmt => new BoundNop(syntax),
-                IfBlock => BindIf((IfBlock)syntax),
-                ForBlock => BindFor((ForBlock)syntax),
-                AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
-                Break => BindBreakStatement((Break)syntax),
-                Continue => BindContinueStatement((Continue)syntax),
-                ReturnStmt => new BoundReturnStatement(syntax),
-                CallStmt => BindCallStatement((CallStmt)syntax),
-                KeyAction => BindGamepadActionStatement((KeyAction)syntax),
-                Wait => BindWaitStatement((Wait)syntax),
-                SerialPrint => throw new NotImplementedException(),
-                _ => throw new Exception($"未知的语句类型{syntax}"),
-            };
-        }
-        catch (Exception ex)
-        {
-            throw new ParseException(ex.Message, syntax.Address);
-        }
+            EmptyStmt => new BoundNop(syntax),
+            IfBlock => BindIf((IfBlock)syntax),
+            ForBlock => BindFor((ForBlock)syntax),
+            AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
+            Break => BindBreakStatement((Break)syntax),
+            Continue => BindContinueStatement((Continue)syntax),
+            ReturnStmt => new BoundReturnStatement(syntax),
+            CallStmt => BindCallStatement((CallStmt)syntax),
+            KeyAction => BindGamepadActionStatement((KeyAction)syntax),
+            Wait => BindWaitStatement((Wait)syntax),
+            SerialPrint => throw new NotImplementedException(),
+            _ => throw new Exception($"未知的语句类型{syntax}"),
+        };
     }
     private BoundBlockStatement BindIf(IfBlock syntax)
     {
@@ -190,12 +183,12 @@ internal sealed class Binder
         var idxVar = syntax.Condition switch
         {
             For_Full ff => ff.RegIter,
-            For_Static => new VariableExpr("$tmp$"),
+            For_Static => new VariableExpr(Guid.NewGuid().ToString(), true),
             _ => null,
         };
         var variable = idxVar switch
         {
-            VariableExpr v => BindVariableDeclaration(v, isReadOnly: true, ValueType.Int),
+            VariableExpr v => BindVariableDeclaration(v, isReadOnly: true, ValueType.Int, allowGlobal: false),
             _ => null,
         };
 
@@ -306,15 +299,15 @@ internal sealed class Binder
         return new BoundAssignStatement(syntax, variable, boundexpr);
     }
 
-    private VariableSymbol BindVariableDeclaration(VariableExpr syntax, bool isReadOnly, ValueType type)
+    private VariableSymbol BindVariableDeclaration(VariableExpr syntax, bool isReadOnly, ValueType type, bool allowGlobal = true)
     {
         var vrr = _scope.TryLookupVar(syntax.Tag);
         if (vrr is not null)
         {
-            if (vrr.IsReadOnly) throw new Exception($"重复定义的常量：{syntax.Tag}");
+            if (vrr.IsReadOnly) throw new Exception($"只读变量无法修改：{syntax.Tag}");
             return vrr;
         }
-        var variable = _function == null
+        var variable = _function == null || allowGlobal
                     ? (VariableSymbol)new GlobalVariableSymbol(syntax.Tag, isReadOnly, type)
                     : new LocalVariableSymbol(syntax.Tag, isReadOnly, type);
 
@@ -414,7 +407,7 @@ internal sealed class Binder
         {
             VariableSymbol v => v,
             _ => null,
-        } ?? throw new Exception($"找不到变量 {syntax.Tag}");
+        } ?? throw new ParseException($"找不到变量 {syntax.Tag}");
         return new BoundVariableExpression(syntax, variable);
     }
 
@@ -435,6 +428,9 @@ internal sealed class Binder
 
         var boundOperator = BoundBinaryOperator.Bind(syntax.Operator.Type, boundLeft.Type, boundRight.Type)
             ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}");
+
+        if(syntax.Operator.Type == Script2.Syntax.TokenType.GTR || syntax.Operator.Type == Script2.Syntax.TokenType.GEQ)
+            return new BoundBinaryExpression(syntax, boundRight, boundOperator, boundLeft);
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
     }
 }
