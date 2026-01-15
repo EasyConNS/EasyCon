@@ -8,7 +8,6 @@ using EasyDevice;
 using EasyScript;
 using EasyVPad;
 using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.Editing;
 using ICSharpCode.AvalonEdit.Folding;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
@@ -16,6 +15,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Media;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using System.Xml;
 
@@ -23,7 +23,7 @@ namespace EasyCon2.Forms
 {
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter
     {
-        private readonly Version VER = new(1, 54, 0);
+        private readonly Version VER = Assembly.GetExecutingAssembly().GetName().Version;
         private readonly TextEditor textEditor = new();
         private CodeCompletionController _completionController;
         internal readonly VPadForm virtController;
