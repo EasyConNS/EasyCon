@@ -18,6 +18,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Xml;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace EasyCon2.Forms
 {
@@ -100,8 +101,6 @@ namespace EasyCon2.Forms
             // UI updating timer
             Task.Run(() => { UpdateUI(); });
 
-            PyRunner.Init("D:\\AppData\\scoop\\apps\\python313\\current\\python313.dll");
-
             InitCaptureDevices();
             InitCaptureTypes();
 
@@ -118,7 +117,7 @@ namespace EasyCon2.Forms
         {
             textEditor.ShowLineNumbers = true;
             var syntaxHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.ecp)), HighlightingManager.Instance);
-            HighlightingManager.Instance.RegisterHighlighting("ECP", [".txt"], syntaxHighlighting);
+            HighlightingManager.Instance.RegisterHighlighting("ECP", [".txt", ".ecp"], syntaxHighlighting);
             var luaHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.lua)), HighlightingManager.Instance);
             HighlightingManager.Instance.RegisterHighlighting("Lua", [".lua"], luaHighlighting);
             var pyHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.Python_Mode)), HighlightingManager.Instance);
@@ -514,14 +513,7 @@ namespace EasyCon2.Forms
 
             textEditor.Load(_currentFile);
             textEditor.Document.FileName = _currentFile;
-            var hightligDefin = Path.GetExtension(_currentFile) switch
-            {
-                ".cs" => "C#",
-                ".py" => "Python",
-                ".lua" => "Lua",
-                _ => "ECP",
-            };
-            textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition(hightligDefin);
+            textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinitionByExtension(Path.GetExtension(_currentFile));
             scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
             return true;
         }
@@ -543,6 +535,7 @@ namespace EasyCon2.Forms
 
             }
             textEditor.Save(textEditor.Document.FileName);
+            textEditor.IsModified = false;
             StatusShowLog("文件已保存");
             return true;
         }
