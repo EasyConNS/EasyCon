@@ -28,7 +28,7 @@ internal partial class Parser
         if (lexer.Length != 2 + 1) return null;
         if (lexer[0].Type == TokenType.IMPORT && lexer[1].Type == TokenType.STRING)
         {
-            if(!File.Exists(LibPath + lexer[1].Value))
+            if (!File.Exists(LibPath + lexer[1].Value))
             {
                 throw new Exception($"文件不存在:{LibPath}{lexer[1].Value}");
             }
@@ -55,7 +55,7 @@ internal partial class Parser
         {
             if (lexer.Length != 3 + 1) return null;
             var des = _formatter.GetVar(lexer[0].Value);
-            MetaOperator? op = MetaOperator.All.FirstOrDefault(o => o.Operator + "=" == lexer[1].Value);
+            CompareOperator? op = CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == lexer[1].Value && o.InstructionType != null);
             if (op == null) return null;
             if (op.OnlyInstant)
             {
@@ -115,9 +115,9 @@ internal partial class Parser
                 }
                 else
                     if (tokens[1].Type == TokenType.EOF)
-                {
-                    return new Break();
-                }
+                    {
+                        return new Break();
+                    }
                 break;
             case TokenType.CONTINUE:
                 if (tokens[1].Type == TokenType.EOF)
@@ -183,7 +183,7 @@ internal partial class Parser
     private FuncStmt? ParseFuncDecl(string text)
     {
         var tokens = SyntaxTree.ParseTokens(text);
-        if(tokens[0].Type == TokenType.FUNC)
+        if (tokens[0].Type == TokenType.FUNC)
         {
             if (tokens.Length > 2 && tokens[1].Type == TokenType.IDENT)
             {
@@ -197,7 +197,7 @@ internal partial class Parser
 
     private ImmutableArray<VariableExpr> ParseParamter(ImmutableArray<Token> toks)
     {
-        if(toks.Length == 1 && toks[0].Type == TokenType.EOF)
+        if (toks.Length == 1 && toks[0].Type == TokenType.EOF)
             return [];
 
         var pr = new ExprParser(toks, _formatter);
@@ -244,7 +244,7 @@ internal partial class Parser
 
     private ImmutableArray<ExprBase> ParseArguments(ImmutableArray<Token> toks)
     {
-        if(toks.Length == 1 && toks[0].Type == TokenType.EOF)
+        if (toks.Length == 1 && toks[0].Type == TokenType.EOF)
             return [];
         var pr = new ExprParser(toks, _formatter, allowStr: true);
         var args = pr.ParseArguments();
@@ -312,10 +312,8 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 break;
 
             var opToken = Advance();
-            MetaOperator? op = MetaOperator.All.FirstOrDefault(o => o.Operator == opToken.Value);
-            CompareOperator? cmp = CompareOperator.All.FirstOrDefault(o => o.Operator == opToken.Value);
-            if (op == null && cmp == null)
-                throw new Exception($"不支持的运算符：{opToken.Value}");
+            CompareOperator? op = CompareOperator.All.FirstOrDefault(o => o.Operator == opToken.Value)
+                ?? throw new Exception($"不支持的运算符：{opToken.Value}");
             var right = ParseExpression(precedence);
             left = new BinaryExpression(opToken, left, right);
         }

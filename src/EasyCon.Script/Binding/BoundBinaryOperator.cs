@@ -10,52 +10,55 @@ internal sealed class BoundBinaryOperator
     public ValueType RightType { get; }
     public ValueType Type { get; }
 
-    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType type)
-    : this(syntaxKind, kind, type, type, type)
+    public readonly Func<object, object, object> Operate;
+
+    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType type, Func<object, object, object> operate)
+    : this(syntaxKind, kind, type, type, type, operate)
     {
     }
 
-    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType operandType, ValueType resultType)
-        : this(syntaxKind, kind, operandType, operandType, resultType)
+    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType operandType, ValueType resultType, Func<object, object, object> operate)
+        : this(syntaxKind, kind, operandType, operandType, resultType, operate)
     {
     }
 
-    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType leftType, ValueType rightType, ValueType resultType)
+    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType leftType, ValueType rightType, ValueType resultType, Func<object, object, object> operate)
     {
         TypeKind = syntaxKind;
         Kind = kind;
         LeftType = leftType;
         RightType = rightType;
         Type = resultType;
+        Operate = operate;
     }
 
     private static BoundBinaryOperator[] _operators = [
-        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.Int),
-        new(TokenType.SUB,BoundBinaryOperatorKind.Subtraction, ValueType.Int),
-        new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ValueType.Int),
-        new(TokenType.DIV,BoundBinaryOperatorKind.Division, ValueType.Int),
-        new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ValueType.Int),
-        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ValueType.Int),
+        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.Int, (a, b) => (int)a + (int)b),
+        new(TokenType.SUB,BoundBinaryOperatorKind.Subtraction, ValueType.Int, (a, b) => (int)a - (int)b),
+        new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ValueType.Int, (a, b) => (int)a * (int)b),
+        new(TokenType.DIV,BoundBinaryOperatorKind.Division, ValueType.Int, (a, b) => (int)a / (int)b),
+        new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ValueType.Int, (a, b) => (int)a % (int)b),
+        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ValueType.Int, (a, b) => (int)Math.Round((double)a / (int)b)),
 
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ValueType.Int),
-        new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ValueType.Int),
-        new(TokenType.XOR,BoundBinaryOperatorKind.BitwiseXor, ValueType.Int),
-        new(TokenType.SHL,BoundBinaryOperatorKind.BitLeftShift, ValueType.Int),
-        new(TokenType.SHR,BoundBinaryOperatorKind.BitRightShift, ValueType.Int),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ValueType.Int, (a, b) => (int)a & (int)b),
+        new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ValueType.Int, (a, b) => (int)a | (int)b),
+        new(TokenType.XOR,BoundBinaryOperatorKind.BitwiseXor, ValueType.Int, (a, b) => (int)a ^ (int)b),
+        new(TokenType.SHL,BoundBinaryOperatorKind.BitLeftShift, ValueType.Int, (a, b) => (int)a << (int)b),
+        new(TokenType.SHR,BoundBinaryOperatorKind.BitRightShift, ValueType.Int, (a, b) => (int)a >> (int)b),
 
-        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Int, ValueType.Bool),
-        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Int, ValueType.Bool),
-        new(TokenType.LESS,BoundBinaryOperatorKind.Less, ValueType.Int, ValueType.Bool),
-        new(TokenType.LEQ,BoundBinaryOperatorKind.LessOrEquals, ValueType.Int, ValueType.Bool),
-        new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ValueType.Int, ValueType.Bool),
-        new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ValueType.Int, ValueType.Bool),
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 == v1),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 != v1),
+        new(TokenType.LESS,BoundBinaryOperatorKind.Less, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 < (int)v1),
+        new(TokenType.LEQ,BoundBinaryOperatorKind.LessOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 <= (int)v1),
+        new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 > (int)v1),
+        new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 >= (int)v1),
 
-        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Bool),
-        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Bool),
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Bool, (v0, v1) => v0 == v1),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Bool, (v0, v1) => v0 != v1),
 
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String),
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.Int,ValueType.String, ValueType.String),
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String,ValueType.Int, ValueType.String),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.Int,ValueType.String, ValueType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String,ValueType.Int, ValueType.String, (v0, v1) => $"{v0}{v1}"),
         ];
     public static BoundBinaryOperator? Bind(TokenType kind, ValueType leftType, ValueType rightType)
     {

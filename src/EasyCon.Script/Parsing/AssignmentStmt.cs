@@ -1,11 +1,11 @@
 namespace EasyCon.Script.Parsing;
 
-class AssignmentStmt(VariableExpr regdst, ExprBase value, MetaOperator? augop = null) : Statement
+class AssignmentStmt(VariableExpr regdst, ExprBase value, CompareOperator? augop = null) : Statement
 {
     public readonly VariableExpr DestVariable = regdst;
     public readonly ExprBase Expression = value;
 
-    public readonly MetaOperator? AugOp = augop;
+    public readonly CompareOperator? AugOp = augop;
 
     protected override string _GetString()
     {

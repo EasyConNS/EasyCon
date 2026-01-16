@@ -421,13 +421,19 @@ internal sealed class Binder
         return new BoundUnaryExpression(syntax, boundOperator, boundOperand);
     }
 
-    private BoundBinaryExpression BindBinaryExpression(BinaryExpression syntax)
+    private BoundExpr BindBinaryExpression(BinaryExpression syntax)
     {
         var boundLeft = BindExpression(syntax.ValueLeft);
         var boundRight = BindExpression(syntax.ValueRight);
 
         var boundOperator = BoundBinaryOperator.Bind(syntax.Operator.Type, boundLeft.Type, boundRight.Type)
             ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}");
+
+        if( boundLeft.ConstantValue != null && boundRight.ConstantValue != null )
+        {
+            var COS = boundOperator.Operate(boundLeft.ConstantValue, boundRight.ConstantValue);
+            return new BoundLiteralExpression(syntax, COS);
+        }
 
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
     }
