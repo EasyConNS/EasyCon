@@ -71,7 +71,7 @@ internal partial class Parser
     private Statement? ParseIfelse(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
-        if (lexer.Length < 3 + 1) return null;
+        if (lexer.Length < 2 + 1) return null;
         if (lexer[0].Type == TokenType.IF || lexer[0].Type == TokenType.ELIF)
         {
             var pr = new ExprParser([.. lexer.Skip(1)], _formatter);

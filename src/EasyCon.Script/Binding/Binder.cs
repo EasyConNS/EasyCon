@@ -119,7 +119,7 @@ internal sealed class Binder
 
         var block = new List<BoundStmt>
         {
-            GotoFalse(syntax, nextLabel, BindExpression(syntax.Condition.Condition))
+            GotoFalse(syntax, nextLabel, BindConversion(syntax.Condition.Condition, ValueType.Bool))
         };
         static bool isCtrl(Statement st)
         {
@@ -139,7 +139,7 @@ internal sealed class Binder
         while (index < syntax.Statements.Length && syntax.Statements[index] is ElseIf elifCond)
         {
             var elifLabel = new BoundLabel($"ELIF_{_labelCounter}_{elifCount}");
-            block.Add(GotoFalse(syntax, elifLabel, BindExpression(elifCond.Condition)));
+            block.Add(GotoFalse(syntax, elifLabel, BindConversion(elifCond.Condition, ValueType.Bool)));
 
             index++;
             while (index < syntax.Statements.Length && !isCtrl(syntax.Statements[index]))
@@ -359,7 +359,7 @@ internal sealed class Binder
 
     private BoundKeyActStatement BindGamepadActionStatement(KeyAction syntax)
     {
-        if(syntax is KeyPress kp)
+        if (syntax is KeyPress kp)
         {
             var dur = BindExpression(kp.Duration);
             return new BoundKeyPressStatement(syntax, kp.Key, dur);
@@ -429,8 +429,6 @@ internal sealed class Binder
         var boundOperator = BoundBinaryOperator.Bind(syntax.Operator.Type, boundLeft.Type, boundRight.Type)
             ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}");
 
-        if(syntax.Operator.Type == Script2.Syntax.TokenType.GTR || syntax.Operator.Type == Script2.Syntax.TokenType.GEQ)
-            return new BoundBinaryExpression(syntax, boundRight, boundOperator, boundLeft);
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
     }
 }

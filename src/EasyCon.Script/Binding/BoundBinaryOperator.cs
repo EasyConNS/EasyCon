@@ -47,8 +47,8 @@ internal sealed class BoundBinaryOperator
         new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Int, ValueType.Bool),
         new(TokenType.LESS,BoundBinaryOperatorKind.Less, ValueType.Int, ValueType.Bool),
         new(TokenType.LEQ,BoundBinaryOperatorKind.LessOrEquals, ValueType.Int, ValueType.Bool),
-        new(TokenType.GTR,BoundBinaryOperatorKind.Less, ValueType.Int, ValueType.Bool),
-        new(TokenType.GEQ,BoundBinaryOperatorKind.LessOrEquals, ValueType.Int, ValueType.Bool),
+        new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ValueType.Int, ValueType.Bool),
+        new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ValueType.Int, ValueType.Bool),
 
         new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Bool),
         new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Bool),
@@ -108,4 +108,6 @@ internal enum BoundBinaryOperatorKind
     NotEquals,
     Less,
     LessOrEquals,
+    Greater,
+    GreaterOrEquals,
 }
