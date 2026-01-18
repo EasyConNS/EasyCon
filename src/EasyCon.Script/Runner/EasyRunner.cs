@@ -12,6 +12,11 @@ public sealed class EasyRunner : IRunner
 
     public bool HasKeyAction => prog.KeyAction;
 
+    public byte[] Assemble(bool auto = true)
+    {
+        return new Assembly.Assembler().Assemble(prog, auto);
+    }
+
     public void Init(string code, IEnumerable<ExternalVariable> extVars)
     {
         var parser = new Parser(extVars);

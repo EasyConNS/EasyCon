@@ -2,7 +2,7 @@ using EasyDevice;
 
 namespace EasyCon.Script.Parsing;
 
-abstract class StickAction(string keyname, string direction) : KeyAction(keyname)
+abstract class StickActionStmt(string keyname, string direction) : KeyActionStmt(keyname)
 {
     public override ECKey Key => NSKeys.GetKey(keyname, direction);
     protected readonly string Direction = direction.ToUpper();
@@ -26,7 +26,7 @@ abstract class StickAction(string keyname, string direction) : KeyAction(keyname
     }
 }
 
-class StickPress(string keyname, string direction, ExprBase duration) : StickAction(keyname, direction)
+class StickPress(string keyname, string direction, ExprBase duration) : StickActionStmt(keyname, direction)
 {
     public readonly ExprBase Duration = duration;
 
@@ -80,7 +80,7 @@ class StickPress(string keyname, string direction, ExprBase duration) : StickAct
     //}
 }
 
-class StickDown(string keyname, string direction) : StickAction(keyname, direction)
+class StickDown(string keyname, string direction) : StickActionStmt(keyname, direction)
 {
     //public override void Exec(Processor processor)
     //{
@@ -100,7 +100,7 @@ class StickDown(string keyname, string direction) : StickAction(keyname, directi
     //}
 }
 
-class StickUp(string keyname) : StickAction(keyname, "0")
+class StickUp(string keyname) : StickActionStmt(keyname, "0")
 {
 
     //public override void Exec(Processor processor)

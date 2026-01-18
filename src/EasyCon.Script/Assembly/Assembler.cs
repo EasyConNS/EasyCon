@@ -1,5 +1,5 @@
-using EasyCon.Script.Parsing;
-using System.Collections.Immutable;
+using EasyCon.Script.Binding;
+using static EasyCon.Script2.Binding.BoundNodeKind;
 
 namespace EasyCon.Script.Assembly;
 
@@ -7,14 +7,11 @@ class Assembler
 {
     public const uint IReg = 7;
 
-    readonly List<Instruction> _instructions = new();
-    //public readonly Dictionary<Statements.ForStmt, Instructions.AsmFor> ForMapping = new();
-    //public readonly Dictionary<Statements.BranchOp, Instructions.AsmBranchFalse> IfMapping = new();
-    //public readonly Dictionary<Statements.BranchOp, Instructions.AsmBranch> ElseMapping = new();
-    public readonly Dictionary<int, Instructions.AsmKey_Hold> KeyMapping = new();
-    public readonly Dictionary<int, Instructions.AsmStick_Hold> StickMapping = new();
-    public readonly Dictionary<string, Instructions.AsmBranch> FunctionMapping = new();
-    public readonly Dictionary<string, Instructions.AsmEmpty> CallMapping = new();
+    readonly List<Instruction> _instructions = [];
+    public readonly Dictionary<int, Instructions.AsmKey_Hold> KeyMapping = [];
+    public readonly Dictionary<int, Instructions.AsmStick_Hold> StickMapping = [];
+    public readonly Dictionary<string, Instructions.AsmBranch> FunctionMapping = [];
+    public readonly Dictionary<string, Instructions.AsmEmpty> CallMapping = [];
 
 
     static Instruction Assert(Instruction ins)
@@ -34,7 +31,43 @@ class Assembler
         return _instructions.Last();
     }
 
-    public byte[] Assemble(ImmutableArray<Statement> statements, bool autoRun)
+    private static void Assemble(TextWriter f, BoundBlockStatement body)
+    {
+        var index = 0;
+        while (index < body.Statements.Length)
+        {
+            var s = body.Statements[index];
+            switch (s.Kind)
+            {
+                case NopStatement:
+                    f.WriteLine("NOP");
+                    break;
+                case ExpressionStatement:
+                    f.WriteLine("EXP");
+                    break;
+                case KeyAction:
+                    f.WriteLine("KEY");
+                    break;
+                case Goto:
+                    f.WriteLine("GOTO");
+                    break;
+                case ConditionGoto:
+                    f.WriteLine("JGOTO");
+                    break;
+                case Label:
+                    f.WriteLine("LBL:");
+                    break;
+                case Return:
+                    f.WriteLine("RET");
+                    break;
+                default:
+                    f.WriteLine("UNK");
+                    break;
+            }
+        }
+    }
+
+    public byte[] Assemble(BoundProgram prog, bool autoRun)
     {
         // initialize
         _instructions.Clear();
@@ -47,20 +80,14 @@ class Assembler
         CallMapping.Clear();
 
         // compile into instructions
-        for (int i = 0; i < statements.Count(); i++)
+        using var f = new StringWriter();
+        foreach (var body in prog.Functions.Values)
         {
-            try
-            {
-                //statements[i].Assemble(this);
-                throw new AssembleException("此版本暂不支持编译");
-            }
-            catch (AssembleException ex)
-            {
-                ex.Index = i;
-                throw;
-            }
+            Assemble(f, body);
         }
+        File.WriteAllText("code.tmp", f.ToString());
 
+        throw new AssembleException("此版本暂不支持编译");
         // optimize
         var discarded = new HashSet<Instruction>();
         List<Instruction> list = new();

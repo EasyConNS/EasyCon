@@ -5,7 +5,7 @@ using System.Text;
 
 namespace EasyCon.Script.Runner;
 
-class ScriptTest
+class LuaRunner
 {
     public static void ExecuteScript(string code)
     {

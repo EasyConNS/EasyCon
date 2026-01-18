@@ -89,8 +89,7 @@ public sealed class Scripter
 
     public byte[] Assemble(bool auto = true)
     {
-        //return new Assembly.Assembler().Assemble(_statements, auto);
-        return [];
+        return runner.Assemble(auto);
     }
 
     public void Reset()

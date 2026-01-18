@@ -79,7 +79,7 @@ def setConsoleOut(writeCallback):
     {
         PythonEngine.Shutdown();
     }
-
+    public byte[] Assemble(bool auto = true) => [];
     public string ToCode() => Code;
 }
 

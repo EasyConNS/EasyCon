@@ -680,7 +680,7 @@ namespace EasyCon2.Forms
             {
                 return;
             }
-            ScriptFlash(GetSelectedBoard().DataSize);
+            await ScriptFlash(GetSelectedBoard().DataSize);
         }
 
         private void buttonRemoteStart_Click(object sender, EventArgs e)

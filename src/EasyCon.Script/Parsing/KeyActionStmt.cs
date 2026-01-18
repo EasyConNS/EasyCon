@@ -2,7 +2,7 @@ using EasyDevice;
 
 namespace EasyCon.Script.Parsing;
 
-abstract class KeyAction(string keyname) : Statement
+abstract class KeyActionStmt(string keyname) : Statement
 {
     protected virtual string KeyName => keyname.ToUpper();
     public virtual ECKey Key => NSKeys.Get(keyname);
@@ -16,7 +16,7 @@ abstract class KeyAction(string keyname) : Statement
     //}
 }
 
-class KeyPress : KeyAction
+class KeyPress : KeyActionStmt
 {
     public const int DefaultDuration = 50;
 
@@ -86,7 +86,7 @@ class KeyPress : KeyAction
     //}
 }
 
-class KeyDown(string key) : KeyAction(key)
+class KeyDown(string key) : KeyActionStmt(key)
 {
     //public override void Exec(Processor processor)
     //{
@@ -106,7 +106,7 @@ class KeyDown(string key) : KeyAction(key)
     //}
 }
 
-class KeyUp(string key) : KeyAction(key)
+class KeyUp(string key) : KeyActionStmt(key)
 {
     //public override void Exec(Processor processor)
     //{

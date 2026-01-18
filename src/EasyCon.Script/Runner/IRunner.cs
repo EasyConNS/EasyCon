@@ -10,4 +10,6 @@ interface IRunner
     void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token);
 
     string ToCode();
+
+    byte[] Assemble(bool auto = true);
 }

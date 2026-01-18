@@ -8,14 +8,11 @@ public struct HSVColor
     public double S { get; private set; }
     public double V { get; private set; }
 
-    Color _c;
-
     public HSVColor(Color c)
     {
-        _c = c;
-        var r = _c.R / 255.0;
-        var g = _c.G / 255.0;
-        var b = _c.B / 255.0;
+        var r = c.R / 255.0;
+        var g = c.G / 255.0;
+        var b = c.B / 255.0;
         var cmax = Math.Max(Math.Max(r, g), b);
         var cmin = Math.Min(Math.Min(r, g), b);
         var dt = cmax - cmin;

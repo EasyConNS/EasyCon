@@ -154,6 +154,12 @@ partial class EasyConForm
         return true;
     }
 
+    private async Task<byte[]> ScriptBuild()
+    {
+        var bytes = _program.Assemble(烧录自动运行ToolStripMenuItem.Checked);
+        return bytes ?? [];
+    }
+
     private async Task<bool> GenerateFirmware(Board board)
     {
         if (!await ScriptCompile())
@@ -161,7 +167,7 @@ partial class EasyConForm
         try
         {
             StatusShowLog("开始生成固件...");
-            var bytes = _program.Assemble(烧录自动运行ToolStripMenuItem.Checked);
+            var bytes = await ScriptBuild();
             var filename = board.GenerateFirmware(bytes);
             StatusShowLog("固件生成完毕");
             SystemSounds.Beep.Play();
@@ -184,13 +190,12 @@ partial class EasyConForm
         }
     }
 
-    private void ScriptFlash(int maxSize = 0)
+    private async void ScriptFlash(int maxSize = 0)
     {
         try
         {
             StatusShowLog("开始烧录...");
-            var bytes = _program.Assemble(烧录自动运行ToolStripMenuItem.Checked);
-            File.WriteAllBytes("temp.bin", bytes);
+            var bytes = await ScriptBuild();
             if (bytes.Length > maxSize)
             {
                 StatusShowLog("烧录失败");
@@ -214,15 +219,13 @@ partial class EasyConForm
             StatusShowLog("烧录失败");
             SystemSounds.Hand.Play();
             MessageBox.Show("烧录失败！" + ex.Message);
-            ScriptSelectLine(ex.Index);
             return;
         }
-        catch (ParseException ex)
+        catch (Exception ex)
         {
             StatusShowLog("烧录失败");
             SystemSounds.Hand.Play();
             MessageBox.Show("烧录失败！" + ex.Message);
-            ScriptSelectLine(ex.Index);
             return;
         }
     }

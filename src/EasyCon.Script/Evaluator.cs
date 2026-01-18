@@ -30,9 +30,7 @@ internal sealed class Evaluator
 
         foreach (var kv in _program.Functions)
         {
-            var function = kv.Key;
-            var body = kv.Value;
-            _functions.Add(function, body);
+            _functions.Add(kv.Key, kv.Value);
         }
     }
 

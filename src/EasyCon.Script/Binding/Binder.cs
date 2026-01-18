@@ -105,7 +105,7 @@ internal sealed class Binder
             Continue => BindContinueStatement((Continue)syntax),
             ReturnStmt => new BoundReturnStatement(syntax),
             CallStmt => BindCallStatement((CallStmt)syntax),
-            KeyAction => BindGamepadActionStatement((KeyAction)syntax),
+            KeyActionStmt => BindGamepadActionStatement((KeyActionStmt)syntax),
             Wait => BindWaitStatement((Wait)syntax),
             SerialPrint => throw new NotImplementedException(),
             _ => throw new Exception($"未知的语句类型{syntax}"),
@@ -356,7 +356,7 @@ internal sealed class Binder
         return new BoundExprStatement(syntax, expr);
     }
 
-    private BoundKeyActStatement BindGamepadActionStatement(KeyAction syntax)
+    private BoundKeyActStatement BindGamepadActionStatement(KeyActionStmt syntax)
     {
         if (syntax is KeyPress kp)
         {
