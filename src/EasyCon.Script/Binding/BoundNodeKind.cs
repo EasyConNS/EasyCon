@@ -6,7 +6,6 @@ public enum BoundNodeKind
     BlockStatement,
     NopStatement,
     ExpressionStatement,
-    CallStatement,
     KeyAction,
 
     Goto,
@@ -20,6 +19,7 @@ public enum BoundNodeKind
     BinaryExpression,
     UnaryExpression,
     ConversionExpression,
+    AssignmentExpression,
     CallExpression,
 
     While,

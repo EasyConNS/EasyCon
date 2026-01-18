@@ -280,6 +280,8 @@ namespace EasyCon2.Forms
                 {
                     Invoke(delegate
                     {
+                        // script edited
+                        scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
                         // update record script to text
                         if (NS.recordState == RecordState.RECORD_START)
                         {
@@ -512,9 +514,9 @@ namespace EasyCon2.Forms
             }
 
             textEditor.Load(_currentFile);
+            textEditor.IsModified = false;
             textEditor.Document.FileName = _currentFile;
             textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinitionByExtension(Path.GetExtension(_currentFile));
-            scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
             return true;
         }
 
@@ -556,7 +558,6 @@ namespace EasyCon2.Forms
             textEditor.Document.FileName = null;
             textEditor.Clear();
             textEditor.IsModified = false;
-            scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
             StatusShowLog("文件已关闭");
             return true;
         }
@@ -603,9 +604,6 @@ namespace EasyCon2.Forms
 
         private void textBoxScript_TextChanged(object sender, EventArgs e)
         {
-            // script edited
-            scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
-
             if (显示折叠ToolStripMenuItem.Checked)
                 _foldingStrategy.UpdateFoldings(_foldingManager, textEditor.Document);
             ScriptReset();

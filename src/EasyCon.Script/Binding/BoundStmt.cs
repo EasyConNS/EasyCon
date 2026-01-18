@@ -12,14 +12,6 @@ internal sealed class BoundBlockStatement(Statement stmt, ImmutableArray<BoundSt
     public override BoundNodeKind Kind => BoundNodeKind.BlockStatement;
 }
 
-
-internal sealed class BoundAssignStatement(Statement syntax, VariableSymbol variable, BoundExpr expression) :BoundStmt(syntax)
-{
-    public override BoundNodeKind Kind => BoundNodeKind.ExpressionStatement;
-    public readonly VariableSymbol Variable = variable;
-    public readonly BoundExpr Expression = expression;
-}
-
 internal sealed class BoundNop(Statement syntax) : BoundStmt(syntax)
 {
     public override BoundNodeKind Kind => BoundNodeKind.NopStatement;
@@ -50,10 +42,10 @@ internal sealed class BoundReturnStatement(Statement syntax) : BoundStmt(syntax)
     public override BoundNodeKind Kind => BoundNodeKind.Return;
 }
 
-internal sealed class BoundCallStatement(Statement syntax, BoundCallExpression expression) : BoundStmt(syntax)
+internal sealed class BoundExprStatement(Statement syntax, BoundExpr expression) : BoundStmt(syntax)
 {
-    public BoundCallExpression Expression = expression;
-    public override BoundNodeKind Kind => BoundNodeKind.CallStatement;
+    public BoundExpr Expression = expression;
+    public override BoundNodeKind Kind => BoundNodeKind.ExpressionStatement;
 }
 
 internal class BoundKeyActStatement(Statement syntax, ECKey key, bool up = false) : BoundStmt(syntax)

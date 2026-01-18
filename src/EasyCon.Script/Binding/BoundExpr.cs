@@ -52,7 +52,6 @@ internal sealed class BoundUnaryExpression(ExprBase syntax, BoundUnaryOperator o
 
     public override ValueType Type => Op.Type;
     public override BoundNodeKind Kind => BoundNodeKind.UnaryExpression;
-    public new object? ConstantValue = null;// ConstantFolding.Fold(op, operand);
 }
 
 internal sealed class BoundBinaryExpression(ExprBase syntax, BoundExpr left, BoundBinaryOperator op, BoundExpr right) : BoundExpr(syntax)
@@ -63,7 +62,6 @@ internal sealed class BoundBinaryExpression(ExprBase syntax, BoundExpr left, Bou
 
     public override ValueType Type => Op.Type;
     public override BoundNodeKind Kind => BoundNodeKind.BinaryExpression;
-    public new object? ConstantValue = null;// ConstantFolding.Fold(left, op, right);
 }
 
 internal sealed class BoundConversionExpression(ExprBase syntax, ValueType type, BoundExpr expr) : BoundExpr(syntax)
@@ -73,6 +71,15 @@ internal sealed class BoundConversionExpression(ExprBase syntax, ValueType type,
     public override BoundNodeKind Kind => BoundNodeKind.ConversionExpression;
     public BoundExpr Expression = expr;
 }
+
+internal sealed class BoundAssignExpression(ExprBase syntax, VariableSymbol variable, BoundExpr expr) :BoundExpr(syntax)
+{
+    public override ValueType Type => Expression.Type;
+    public readonly VariableSymbol Variable = variable;
+    public readonly BoundExpr Expression = expr;
+    public override BoundNodeKind Kind => BoundNodeKind.AssignmentExpression;
+}
+
 internal sealed class BoundCallExpression(ExprBase syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments) : BoundExpr(syntax)
 {
     public override ValueType Type => ValueType.Int;

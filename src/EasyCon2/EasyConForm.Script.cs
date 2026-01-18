@@ -36,7 +36,6 @@ partial class EasyConForm
                 }))
                 );
             textEditor.Text = _program.ToCode().Trim();
-            scriptTitleLabel.Text = textEditor.IsModified ? $"{fileName}(已编辑)" : fileName;
             textEditor.Select(0, 0);
             return true;
         }

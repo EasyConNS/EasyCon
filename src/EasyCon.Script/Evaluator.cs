@@ -66,11 +66,7 @@ internal sealed class Evaluator
                     index++;
                     break;
                 case ExpressionStatement:
-                    EvaluateAssignment((BoundAssignStatement)s);
-                    index++;
-                    break;
-                case CallStatement:
-                    EvaluateCall((BoundCallStatement)s);
+                    EvaluateExpressionStatement((BoundExprStatement)s);
                     index++;
                     break;
                 case KeyAction:
@@ -103,19 +99,9 @@ internal sealed class Evaluator
         return _lastValue;
     }
 
-    private void EvaluateAssignment(BoundAssignStatement node)
+    private void EvaluateExpressionStatement(BoundExprStatement node)
     {
-        var value = EvaluateExpr(node.Expression);
-        Debug.Assert(value != null);
-
-        _lastValue = value;
-        Assign(node.Variable, value);
-    }
-    private void EvaluateCall(BoundCallStatement node)
-    {
-        var value = EvaluateCallExpression(node.Expression);
-  
-        _lastValue = value;
+        _lastValue = EvaluateExpr(node.Expression);
     }
     public object EvaluateExpr(BoundExpr node)
     {
@@ -135,6 +121,8 @@ internal sealed class Evaluator
                 return EvaluateBinaryExpression((BoundBinaryExpression)node);
             case ConversionExpression:
                 return EvaluateConversionExpression((BoundConversionExpression)node);
+            case AssignmentExpression:
+                return EvaluateAssignmentExpression((BoundAssignExpression)node);
             case CallExpression:
                 return EvaluateCallExpression((BoundCallExpression)node);
             default:
@@ -235,6 +223,16 @@ internal sealed class Evaluator
                 throw new Exception($"不支持的运算符{b.Op}");
         }
     }
+
+    private object? EvaluateAssignmentExpression(BoundAssignExpression node)
+    {
+        var value = EvaluateExpr(node.Expression);
+        Debug.Assert(value != null);
+
+        Assign(node.Variable, value);
+        return value;
+    }
+
     private object? EvaluateCallExpression(BoundCallExpression node)
     {
         if (BuiltinFunctions.GetAll().Any(f=>f==node.Function))
@@ -246,7 +244,7 @@ internal sealed class Evaluator
                 Debug.Assert(value != null);
                 args.Add(value);
             }
-            EvaluteBuildin(node.Function, args.ToImmutable());
+            return EvaluteBuildin(node.Function, args.ToImmutable());
         }
         else
         {
@@ -255,9 +253,8 @@ internal sealed class Evaluator
             var result = EvaluateStatement(statement);
             _locals.Pop();
 
-            _lastValue = result;
+            return result;
         }
-        return _lastValue;
     }
 
     private void EvaluateKeyAction(BoundKeyActStatement node)
@@ -294,8 +291,9 @@ internal sealed class Evaluator
         }
     }
 
-    private void EvaluteBuildin(FunctionSymbol fn, ImmutableArray<object> args)
+    private object? EvaluteBuildin(FunctionSymbol fn, ImmutableArray<object> args)
     {
+        object? result = null;
         switch (fn.Name)
         {
             case "WAIT":
@@ -307,14 +305,14 @@ internal sealed class Evaluator
                     if (index > 9)
                     {
                         // value must between 0~9
-                        return;
+                        return result;
                     }
                     GamePad.ChangeAmiibo((uint)index);
                 }
                 break;
             case "TIME":
                 {
-                    _lastValue = et.CurrTimestamp;
+                    result = et.CurrTimestamp;
                 }
                 break;
             case "PRINT":
@@ -333,7 +331,7 @@ internal sealed class Evaluator
             case "RAND":
                 {
                     var max = (int)args[0];
-                    _lastValue = _rand.Next(max == 0 ? 100 : max);
+                    result = _rand.Next(max == 0 ? 100 : max);
                 }
                 break;
             case "BEEP":
@@ -344,6 +342,7 @@ internal sealed class Evaluator
               }
               break;
         }
+        return result;
     }
 }
 

@@ -6,14 +6,11 @@ public interface IAstVisitor<T>
     T VisitImport(ImportStatement ast);
     T VisitAssignmentStat(AssignmentStatement ast);
     T VisitIfStat(IfStatement ast);
-    T VisitElseIfClause(ElseIfClause ast);
-    T VisitElseClause(ElseClause ast);
     T VisitForStat(ForStatement ast);
     T VisitBreak(BreakStatement ast);
     T VisitContinue(ContinueStatement ast);
     T VisitFunctionDefinition(FunctionDeclarationStatement ast);
     T VisitReturn(ReturnStatement ast);
-    T VisitCall(CallExpression ast);
     T VisitKey(GamePadStatement ast);
 }
 
@@ -39,14 +36,6 @@ public abstract class AstVisitor : IAstVisitor<ASTNode>
     {
         return ast;
     }
-    public virtual ASTNode VisitElseIfClause(ElseIfClause ast)
-    {
-        return ast;
-    }
-    public virtual ASTNode VisitElseClause(ElseClause ast)
-    {
-        return ast;
-    }
     public virtual ASTNode VisitForStat(ForStatement ast)
     {
         return ast;
@@ -64,10 +53,6 @@ public abstract class AstVisitor : IAstVisitor<ASTNode>
         return ast;
     }
     public virtual ASTNode VisitReturn(ReturnStatement ast)
-    {
-        return ast;
-    }
-    public virtual ASTNode VisitCall(CallExpression ast)
     {
         return ast;
     }

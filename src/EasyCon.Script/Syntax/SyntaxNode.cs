@@ -183,7 +183,7 @@ public sealed class ElseIfClause(IfCondition condition, ImmutableArray<Statement
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        return visitor.VisitElseIfClause(this);
+        throw new NotImplementedException();
     }
 }
 
@@ -194,7 +194,7 @@ public sealed class ElseClause(KeywordStatement elseStmt, ImmutableArray<Stateme
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        return visitor.VisitElseClause(this);
+        throw new NotImplementedException();
     }
 }
 
@@ -291,7 +291,7 @@ public sealed class CallExpression(Token keyword, string functionName, Immutable
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {
-        return visitor.VisitCall(this);
+        throw new NotImplementedException();
     }
 }
 

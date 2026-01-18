@@ -852,7 +852,7 @@ namespace EasyCon2.Forms
             clsLogBtn.FlatStyle = FlatStyle.Flat;
             clsLogBtn.Location = new Point(270, 3);
             clsLogBtn.Name = "clsLogBtn";
-            clsLogBtn.Size = new Size(27, 19);
+            clsLogBtn.Size = new Size(20, 20);
             clsLogBtn.TabIndex = 38;
             clsLogBtn.UseVisualStyleBackColor = false;
             clsLogBtn.Click += clsLogBtn_Click;

@@ -41,28 +41,21 @@ internal partial class Parser
     {
         var lexer = SyntaxTree.ParseTokens(text);
         if (lexer.Length < 3 + 1) return null;
-        if (lexer[0].Type == TokenType.VAR && lexer[1].Type == TokenType.ASSIGN)
+        if (lexer[0].Type == TokenType.VAR)
         {
             var des = _formatter.GetVar(lexer[0].Value);
+            CompareOperator? op = null;
+            if(lexer[1].Type.OperatorIsAug())
+            {
+                //aug assign
+                op = CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == lexer[1].Value && o.InstructionType != null);
+                if (op == null) return null;
+            }
+
             var pr = new ExprParser([.. lexer.Skip(2)], _formatter);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
-            return new AssignmentStmt(des, eexp);
-        }
-
-        //aug assign
-        if (lexer[0].Type == TokenType.VAR && lexer[1].Type.OperatorIsAug())
-        {
-            if (lexer.Length != 3 + 1) return null;
-            var des = _formatter.GetVar(lexer[0].Value);
-            CompareOperator? op = CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == lexer[1].Value && o.InstructionType != null);
-            if (op == null) return null;
-            if (op.OnlyInstant)
-            {
-                if (lexer[2].Type != TokenType.INT && lexer[2].Type != TokenType.CONST)
-                    throw new Exception("只能使用常量或数字");
-            }
-            return new AssignmentStmt(des, _formatter.GetValueEx(lexer[2].Value), op);
+            return new AssignmentStmt(des, eexp, op);
         }
 
         return null;
