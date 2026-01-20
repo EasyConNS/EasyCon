@@ -190,7 +190,7 @@ partial class EasyConForm
         }
     }
 
-    private async void ScriptFlash(int maxSize = 0)
+    private async Task<bool> ScriptFlash(int maxSize = 0)
     {
         try
         {
@@ -201,32 +201,33 @@ partial class EasyConForm
                 StatusShowLog("烧录失败");
                 SystemSounds.Hand.Play();
                 MessageBox.Show("烧录失败！长度超出限制");
-                return;
+                return false;
             }
             if (!NS.Flash(bytes))
             {
                 StatusShowLog("烧录失败");
                 SystemSounds.Hand.Play();
                 MessageBox.Show("烧录失败！请检查设备连接后重试");
-                return;
+                return false;
             }
             StatusShowLog("烧录完毕");
             SystemSounds.Beep.Play();
             MessageBox.Show($"烧录完毕！已使用存储空间({bytes.Length}/{maxSize})");
+            return true;
         }
         catch (AssembleException ex)
         {
             StatusShowLog("烧录失败");
             SystemSounds.Hand.Play();
             MessageBox.Show("烧录失败！" + ex.Message);
-            return;
+            return false;
         }
         catch (Exception ex)
         {
             StatusShowLog("烧录失败");
             SystemSounds.Hand.Play();
             MessageBox.Show("烧录失败！" + ex.Message);
-            return;
+            return false;
         }
     }
 }
