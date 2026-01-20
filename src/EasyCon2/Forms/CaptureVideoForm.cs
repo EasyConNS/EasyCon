@@ -31,7 +31,7 @@ namespace EasyCon2.Forms
         private int deviceId = -1;
         private readonly OpenCVCapture cvcap = new();
 
-        private readonly object _lock = new();
+        private static volatile object _lock = new();
         private ILManager imglManager = new();
 
         private Point _curResolution = new(1920, 1080);
@@ -56,7 +56,6 @@ namespace EasyCon2.Forms
         private double monitorScale = 1.1;
         private MonitorMode monitorMode = MonitorMode.Editor;
 
-        private Bitmap _image;
         private static Bitmap _snapshot;
         private static Bitmap ss;
         private Point SnapshotLMDP = new();
@@ -146,14 +145,13 @@ namespace EasyCon2.Forms
                 throw new Exception("请先连接采集卡再执行搜图");
             lock (_lock)
             {
-                _image?.Dispose();
                 using var mat = cvcap.GetMatFrame();
                 if (!mat.Empty())
                 {
-                    _image = BitmapConverter.ToBitmap(mat);
+                    return BitmapConverter.ToBitmap(mat);
                 }
-                return _image;
             }
+            return null;
         }
 
         #region 窗口功能
@@ -476,7 +474,7 @@ namespace EasyCon2.Forms
         private void captureBtn_Click(object sender, EventArgs e)
         {
             using var capture = GetImage();
-            capture.Save($"{CapDir}{DateTime.Now.Ticks.ToString()}.png", System.Drawing.Imaging.ImageFormat.Png);
+            capture.Save($"{CapDir}{DateTime.Now.Ticks}.png", System.Drawing.Imaging.ImageFormat.Png);
 
             showCap(capture);
         }
@@ -683,14 +681,6 @@ namespace EasyCon2.Forms
             {
                 try
                 {
-                    //_image?.Dispose();
-                    //_image = null;
-                    //using var mat = cvcap.GetMatFrame();
-                    //if (!mat.Empty())
-                    //{
-                    //    _image = BitmapConverter.ToBitmap(mat);
-                    //}
-
                     VideoMonitor?.Invalidate();
                 }
                 finally

@@ -18,7 +18,6 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Xml;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace EasyCon2.Forms
 {
@@ -91,7 +90,7 @@ namespace EasyCon2.Forms
 
         private void EasyConForm_Load(object sender, EventArgs e)
         {
-            this.Text = $"伊机控 EasyCon v{VER}  QQ群:946057081";
+            this.Text = $"伊机控 EasyCon v{VER.Major}.{VER.Minor}.{VER.Build}  QQ群:946057081";
             comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
             comboBoxBoardType.SelectedIndex = 0;
             RegisterKeys();
@@ -441,14 +440,14 @@ namespace EasyCon2.Forms
             }
         }
 
-        private bool SerialCheckConnect()
-        {
-            if (NS.IsConnected())
-                return true;
-            var port = ComPort.Text.Equals("下拉选择串口") ? "" : ComPort.Text;
-            SerialSearchConnect(port);
-            return NS.IsConnected();
-        }
+        //private bool SerialCheckConnect()
+        //{
+        //    if (NS.IsConnected())
+        //        return true;
+        //    var port = ComPort.Text.Equals("下拉选择串口") ? "" : ComPort.Text;
+        //    SerialSearchConnect(port);
+        //    return NS.IsConnected();
+        //}
 
         private async void SerialSearchConnect(string port = "")
         {
@@ -573,7 +572,7 @@ namespace EasyCon2.Forms
 
         private void buttonShowController_Click(object sender, EventArgs e)
         {
-            if (!SerialCheckConnect())
+            if (!NS.IsConnected())
                 return;
             virtController.ControllerEnabled = true;
             if (_config.ShowControllerHelp)
@@ -666,7 +665,7 @@ namespace EasyCon2.Forms
 
         private async void buttonFlash_Click(object sender, EventArgs e)
         {
-            if (!SerialCheckConnect())
+            if (!NS.IsConnected())
             {
                 return;
             }
@@ -685,7 +684,7 @@ namespace EasyCon2.Forms
 
         private void buttonRemoteStart_Click(object sender, EventArgs e)
         {
-            if (!SerialCheckConnect())
+            if (!NS.IsConnected())
                 return;
             if (NS.RemoteStart())
             {
@@ -701,7 +700,7 @@ namespace EasyCon2.Forms
 
         private void buttonRemoteStop_Click(object sender, EventArgs e)
         {
-            if (!SerialCheckConnect())
+            if (!NS.IsConnected())
                 return;
             if (NS.RemoteStop())
             {
@@ -717,7 +716,7 @@ namespace EasyCon2.Forms
 
         private void buttonFlashClear_Click(object sender, EventArgs e)
         {
-            if (!SerialCheckConnect())
+            if (!NS.IsConnected())
             {
                 StatusShowLog("还未准备好烧录");
                 SystemSounds.Hand.Play();
@@ -743,7 +742,7 @@ namespace EasyCon2.Forms
             // if record.state = start
             if (NS.recordState == RecordState.RECORD_STOP)
             {
-                if (!SerialCheckConnect())
+                if (!NS.IsConnected())
                     return;
                 virtController.ControllerEnabled = true;
                 buttonRecord.Text = "停止录制";
@@ -982,7 +981,7 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
 
         private void 取消配对ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (!SerialCheckConnect())
+            if (!NS.IsConnected())
                 return;
             if (NS.UnPair())
             {

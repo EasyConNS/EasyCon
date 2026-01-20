@@ -37,6 +37,7 @@ partial class EasyConForm
                 );
             textEditor.Text = _program.ToCode().Trim();
             textEditor.Select(0, 0);
+            StatusShowLog("编译完成");
             return true;
         }
         catch (ParseException ex)
@@ -50,23 +51,26 @@ partial class EasyConForm
         finally
         {
             scriptCompiling = false;
-            StatusShowLog("编译完成");
         }
     }
 
     private async void ScriptRun()
     {
-        if (!await ScriptCompile())
+        var result = await ScriptCompile();
+        if (!result)
             return;
         if (_program.HasKeyAction)
         {
-            if (!SerialCheckConnect())
+            if (!NS.IsConnected())
+            {
+                MessageBox.Show("需要连接单片机才能运行脚本");
                 return;
+            }
             if (!CheckFwVersion())
                 return;
             if (!NS.RemoteStop())
             {
-                MessageBox.Show($"需要先停止烧录脚本运行，请点击<远程停止>按钮");
+                MessageBox.Show("需要先停止烧录脚本运行，请点击<远程停止>按钮");
                 return;
             }
         }
@@ -88,11 +92,10 @@ partial class EasyConForm
 
     private void _RunScript()
     {
+        _startTime = DateTime.Now;
+        logTxtBox.Print("-- 开始运行 --", Color.Lime);
         try
         {
-            _startTime = DateTime.Now;
-
-            logTxtBox.Print("-- 开始运行 --", Color.Lime);
             _program.Run(cts.Token, this, new GamePadAdapter(NS));
             logTxtBox.Print("-- 运行结束 --", Color.Lime);
             StatusShowLog("运行结束");
@@ -179,15 +182,14 @@ partial class EasyConForm
             StatusShowLog("固件生成失败");
             SystemSounds.Hand.Play();
             MessageBox.Show(ex.Message);
-            return false;
         }
         catch (Exception ex)
         {
             StatusShowLog("固件生成失败");
             SystemSounds.Hand.Play();
             MessageBox.Show("固件生成失败！" + ex.Message);
-            return false;
         }
+        return false;
     }
 
     private async Task<bool> ScriptFlash(int maxSize = 0)
@@ -198,36 +200,29 @@ partial class EasyConForm
             var bytes = await ScriptBuild();
             if (bytes.Length > maxSize)
             {
-                StatusShowLog("烧录失败");
-                SystemSounds.Hand.Play();
-                MessageBox.Show("烧录失败！长度超出限制");
-                return false;
+                throw new Exception("长度超出限制");
             }
-            if (!NS.Flash(bytes))
+            if (NS.Flash(bytes))
             {
-                StatusShowLog("烧录失败");
-                SystemSounds.Hand.Play();
-                MessageBox.Show("烧录失败！请检查设备连接后重试");
-                return false;
+                StatusShowLog("烧录完毕");
+                SystemSounds.Beep.Play();
+                MessageBox.Show($"烧录完毕！已使用存储空间({bytes.Length}/{maxSize})");
+                return true;
             }
-            StatusShowLog("烧录完毕");
-            SystemSounds.Beep.Play();
-            MessageBox.Show($"烧录完毕！已使用存储空间({bytes.Length}/{maxSize})");
-            return true;
+            throw new Exception("请检查设备连接后重试");
         }
         catch (AssembleException ex)
         {
             StatusShowLog("烧录失败");
             SystemSounds.Hand.Play();
-            MessageBox.Show("烧录失败！" + ex.Message);
-            return false;
+            MessageBox.Show("编译失败！" + ex.Message);
         }
         catch (Exception ex)
         {
             StatusShowLog("烧录失败");
             SystemSounds.Hand.Play();
             MessageBox.Show("烧录失败！" + ex.Message);
-            return false;
         }
+        return false;
     }
 }
