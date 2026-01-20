@@ -38,7 +38,7 @@ internal sealed class BoundBinaryOperator
         new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ValueType.Int, (a, b) => (int)a * (int)b),
         new(TokenType.DIV,BoundBinaryOperatorKind.Division, ValueType.Int, (a, b) => (int)a / (int)b),
         new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ValueType.Int, (a, b) => (int)a % (int)b),
-        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ValueType.Int, (a, b) => (int)Math.Round((double)a / (int)b)),
+        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ValueType.Int, (a, b) => (int)Math.Round((double)(int)a / (int)b)),
 
         new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ValueType.Int, (a, b) => (int)a & (int)b),
         new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ValueType.Int, (a, b) => (int)a | (int)b),

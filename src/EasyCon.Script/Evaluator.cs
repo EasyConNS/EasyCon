@@ -193,7 +193,7 @@ internal sealed class Evaluator
             case BoundBinaryOperatorKind.Mod:
                 return (int)left % (int)right;
             case BoundBinaryOperatorKind.RoundDiv:
-                return (int)Math.Round((double)left / (double)right);
+                return (int)Math.Round((double)(int)left / (int)right);
             case BoundBinaryOperatorKind.BitwiseAnd:
                 return (int)left & (int)right;
             case BoundBinaryOperatorKind.BitwiseOr:

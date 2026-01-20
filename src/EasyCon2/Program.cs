@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace EasyCon2
 {
     internal static class Program
@@ -18,7 +20,14 @@ namespace EasyCon2
                 MessageBox.Show(".Net版本过低，请升级到最新版");
                 return;
             }
-            Application.Run(new Forms.EasyConForm());
+            try
+            {
+                Application.Run(new Forms.EasyConForm());
+            }
+            catch (Exception ex)
+            {
+                File.WriteAllText("dump.log", ex.StackTrace);
+            }
         }
 
         private static void GlobalExceptionLogger(object sender, UnhandledExceptionEventArgs e)

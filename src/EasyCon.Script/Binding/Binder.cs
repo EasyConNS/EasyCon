@@ -1,4 +1,5 @@
 using EasyCon.Script.Parsing;
+using EasyCon.Script2;
 using System.Collections.Immutable;
 using static EasyCon.Script.Binding.BoundFactory;
 
@@ -6,6 +7,7 @@ namespace EasyCon.Script.Binding;
 
 internal sealed class Binder
 {
+    private readonly DiagnosticBag _diagnostics = [];
     private readonly FunctionSymbol? _function;
 
     private Stack<(BoundLabel BreakLabel, BoundLabel ContinueLabel)> _loopStack = new();
@@ -95,21 +97,29 @@ internal sealed class Binder
 
     private BoundStmt BindStatement(Statement syntax)
     {
-        return syntax switch
+        try
         {
-            EmptyStmt => new BoundNop(syntax),
-            IfBlock => BindIf((IfBlock)syntax),
-            ForBlock => BindFor((ForBlock)syntax),
-            AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
-            Break => BindBreakStatement((Break)syntax),
-            Continue => BindContinueStatement((Continue)syntax),
-            ReturnStmt => new BoundReturnStatement(syntax),
-            CallStmt => BindCallStatement((CallStmt)syntax),
-            KeyActionStmt => BindGamepadActionStatement((KeyActionStmt)syntax),
-            Wait => BindWaitStatement((Wait)syntax),
-            SerialPrint => throw new NotImplementedException(),
-            _ => throw new Exception($"未知的语句类型{syntax}"),
-        };
+            return syntax switch
+            {
+                EmptyStmt => new BoundNop(syntax),
+                IfBlock => BindIf((IfBlock)syntax),
+                ForBlock => BindFor((ForBlock)syntax),
+                AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
+                Break => BindBreakStatement((Break)syntax),
+                Continue => BindContinueStatement((Continue)syntax),
+                ReturnStmt => new BoundReturnStatement(syntax),
+                CallStmt => BindCallStatement((CallStmt)syntax),
+                KeyActionStmt => BindGamepadActionStatement((KeyActionStmt)syntax),
+                Wait => BindWaitStatement((Wait)syntax),
+                SerialPrint => throw new NotImplementedException(),
+                _ => throw new Exception($"未知的语句类型{syntax}"),
+            };
+        }
+        catch (Exception ex)
+        {
+            if (ex is ParseException) throw;
+            throw new ParseException(ex.Message, syntax.Address);
+        }
     }
     private BoundBlockStatement BindIf(IfBlock syntax)
     {

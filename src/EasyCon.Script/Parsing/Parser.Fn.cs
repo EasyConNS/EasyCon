@@ -122,7 +122,7 @@ internal partial class Parser
         return null;
     }
 
-    const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN";
+    const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN|DOWNLEFT|DOWNRIGHT|UPLEFT|UPRIGHT";
     private Statement? ParseKey(string text)
     {
         var m = Regex.Match(text, $"^({GPKey})$", RegexOptions.IgnoreCase);
