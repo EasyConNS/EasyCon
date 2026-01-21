@@ -1,3 +1,4 @@
+using EasyScript;
 using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
@@ -126,18 +127,18 @@ internal partial class Parser
     private Statement? ParseKey(string text)
     {
         var m = Regex.Match(text, $"^({GPKey})$", RegexOptions.IgnoreCase);
-        if (m.Success && (NSKeys.Get(m.Groups[1].Value)) != null)
+        if (m.Success && NSKeys.GetKey(m.Groups[1].Value) != GamePadKey.None)
             return new KeyPress(m.Groups[1].Value);
         m = Regex.Match(text, $@"^({GPKey})\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-        if (m.Success && (NSKeys.Get(m.Groups[1].Value)) != null)
+        if (m.Success && NSKeys.GetKey(m.Groups[1].Value) != GamePadKey.None)
             return new KeyPress(m.Groups[1].Value, _formatter.GetValueEx(m.Groups[2].Value));
         m = Regex.Match(text, $@"^({GPKey})\s+(up|down)$", RegexOptions.IgnoreCase);
-        if (m.Success && (NSKeys.Get(m.Groups[1].Value)) != null)
+        if (m.Success && NSKeys.GetKey(m.Groups[1].Value) != GamePadKey.None)
         {
             return m.Groups[2].Value.ToUpper() switch
             {
-                "UP" => new KeyUp(m.Groups[1].Value),
-                "DOWN" => new KeyDown(m.Groups[1].Value),
+                "UP" => new KeyAct(m.Groups[1].Value, true),
+                "DOWN" => new KeyAct(m.Groups[1].Value),
                 _ => null,
             };
         }
@@ -147,18 +148,17 @@ internal partial class Parser
         if (m.Success)
         {
             var keyname = m.Groups[1].Value;
-            if (NSKeys.GetKey(keyname) == null)
-                return null;
-            return new StickUp(keyname);
+            if (NSKeys.GetKey(keyname) == GamePadKey.None)return null;
+            return new StickAct(keyname, "RESET");
         }
         m = Regex.Match(text, @"^([lr]s)\s+([a-z0-9]+)$", RegexOptions.IgnoreCase);
         if (m.Success)
         {
             var keyname = m.Groups[1].Value;
             var direction = m.Groups[2].Value;
-            if (NSKeys.GetKey(keyname, direction) == null)
-                return null;
-            return new StickDown(keyname, direction);
+            if(NSKeys.GetKey(keyname) == GamePadKey.None)return null;
+            if (!NSKeys.CheckDirection(direction, out _))return null;
+            return new StickAct(keyname, direction);
         }
         m = Regex.Match(text, $@"^([lr]s)\s+([a-z0-9]+)\s*,\s*({Formats.ValueEx})$", RegexOptions.IgnoreCase);
         if (m.Success)
@@ -166,8 +166,8 @@ internal partial class Parser
             var keyname = m.Groups[1].Value;
             var direction = m.Groups[2].Value;
             var duration = m.Groups[3].Value;
-            if (NSKeys.GetKey(keyname, direction) == null)
-                return null;
+            if(NSKeys.GetKey(keyname) == GamePadKey.None)return null;
+            if (!NSKeys.CheckDirection(direction, out _)) return null;
             return new StickPress(keyname, direction, _formatter.GetValueEx(duration));
         }
         return null;

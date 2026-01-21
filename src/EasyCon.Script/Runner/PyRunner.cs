@@ -86,9 +86,9 @@ def setConsoleOut(writeCallback):
 class NSPad(ICGamePad pad)
 {
     private readonly ICGamePad pd = pad;
-    public void press(string key, int duration) => pd.ClickButtons(NSKeys.Get(key), duration);
-    public void down(string key) => pd.PressButtons(NSKeys.Get(key));
-    public void up(string key) => pd.ReleaseButtons(NSKeys.Get(key));
+    public void press(string key, int duration) => pd.ClickButtons(GamePadKey.None, duration);
+    public void down(string key) => pd.PressButtons(GamePadKey.None);
+    public void up(string key) => pd.ReleaseButtons(GamePadKey.None);
 
     public void ChangeAmiibo(uint index)=>pd.ChangeAmiibo(index);
 }

@@ -71,6 +71,10 @@ internal sealed class Evaluator
                     EvaluateKeyAction((BoundKeyActStatement)s);
                     index++;
                     break;
+                case StickAction:
+                    EvaluateStickKeyAction((BoundStickActStatement)s);
+                    index++;
+                    break;
                 case Goto:
                     var gs = (BoundGotoStatement)s;
                     index = labelToIndex[gs.Label];
@@ -273,6 +277,20 @@ internal sealed class Evaluator
             {
                 GamePad.PressButtons(node.Act);
             }
+        }
+    }
+
+    private void EvaluateStickKeyAction(BoundStickActStatement node)
+    {
+        if(node is BoundStickPressStatement bps)
+        {
+            var dur = EvaluateExpr(bps.Duration);
+            GamePad.ClickStick(bps.Act, bps.X, bps.Y, (int)dur);
+            Thread.Sleep((int)dur);
+        }
+        else
+        {
+            GamePad.SetStick(node.Act, node.X, node.Y);
         }
     }
 

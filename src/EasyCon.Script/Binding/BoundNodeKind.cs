@@ -7,6 +7,7 @@ public enum BoundNodeKind
     NopStatement,
     ExpressionStatement,
     KeyAction,
+    StickAction,
 
     Goto,
     ConditionGoto,

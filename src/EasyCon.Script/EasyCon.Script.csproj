@@ -3,10 +3,6 @@
   <PropertyGroup>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
-  </ItemGroup>
-
 	<ItemGroup>
 		<PackageReference Include="pythonnet" />
 		<PackageReference Include="NLua" />

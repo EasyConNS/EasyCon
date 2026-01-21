@@ -26,25 +26,14 @@ namespace EasyCon2
             }
             catch (Exception ex)
             {
-                File.WriteAllText("dump.log", ex.StackTrace);
-            }
-        }
-
-        private static void GlobalExceptionLogger(object sender, UnhandledExceptionEventArgs e)
-        {
-            try
-            {
-                var ex = e.ExceptionObject as Exception;
-                if (ex == null)
-                    return;
                 System.Text.StringBuilder builder = new System.Text.StringBuilder();
                 builder.AppendLine(DateTime.Now.ToString("[yyyy.M.d h:mm:ss.fff]"));
                 builder.AppendLine(ex.ToString());
+                builder.AppendLine(ex.StackTrace);
                 builder.AppendLine();
-                System.IO.File.AppendAllText("error.log", builder.ToString());
+                File.AppendAllText("dump.log", builder.ToString());
+                MessageBox.Show("程序崩溃了，快看看<dump.log>文件里都写了什么吧");
             }
-            catch
-            { }
         }
     }
 }

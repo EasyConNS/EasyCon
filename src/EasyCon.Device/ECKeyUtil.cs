@@ -39,7 +39,7 @@ public static class ECKeyUtil
         return HAT(dhat.GetHATFromDirection());
     }
 
-    static ECKey LStick(byte x, byte y)
+    public static ECKey LStick(byte x, byte y)
     {
         return new ECKey($"LStick({x},{y})",
             32,
@@ -48,7 +48,7 @@ public static class ECKeyUtil
         );
     }
 
-    static ECKey RStick(byte x, byte y)
+    public static ECKey RStick(byte x, byte y)
     {
         return new ECKey($"RStick({x},{y})",
             33,
@@ -72,48 +72,19 @@ public static class ECKeyUtil
 
         dx *= degree;
         dy *= degree;
-        x = (byte)((dx + 1) * SwitchStick.STICK_CENTER).Clamp(0, 255);
-        y = (byte)((-dy + 1) * SwitchStick.STICK_CENTER).Clamp(0, 255);
+        x = (byte)((dx + 1) * SwitchStick.STICK_CENTER).Clamp(0, SwitchStick.STICK_MAX);
+        y = (byte)((-dy + 1) * SwitchStick.STICK_CENTER).Clamp(0, SwitchStick.STICK_MAX);
     }
 
-    public static ECKey LStick(DirectionKey dkey, bool slow = false)
+    public static ECKey LStick(DirectionKey dkey, int degree = 1)
     {
-        GetXYFromDirection(dkey, out byte x, out byte y, 1);
+        GetXYFromDirection(dkey, out byte x, out byte y, degree);
         return LStick(x, y);
     }
 
-    public static ECKey RStick(DirectionKey dkey, bool slow = false)
+    public static ECKey RStick(DirectionKey dkey, int degree = 1)
     {
-        GetXYFromDirection(dkey, out byte x, out byte y, 1);
-        return RStick(x, y);
-    }
-
-    public static void GetXYFromDegree(double rdegree, out byte x, out byte y, double degree = 1)
-    {
-        degree = Math.Clamp(degree,0, 1);
-        double radian = rdegree * Math.PI / 180;
-        double dy = Math.Round(
-            (Math.Tan(radian) * Math.Sign(Math.Cos(radian)) ).Clamp(-1, 1)
-            , 4);
-        double dx = radian == 0 ? 1 : 
-        Math.Round(
-            (1 / Math.Tan(radian) * Math.Sign(Math.Sin(radian)) ).Clamp(-1, 1)
-        , 4);
-        dx *= degree;
-        dy *= degree;
-        x = (byte)((dx + 1) * SwitchStick.STICK_CENTER).Clamp(0, 255);
-        y = (byte)((-dy + 1) * SwitchStick.STICK_CENTER).Clamp(0, 255);
-    }
-
-    public static ECKey LStick(double degree)
-    {
-        GetXYFromDegree(degree, out byte x, out byte y);
-        return LStick(x, y);
-    }
-
-    public static ECKey RStick(double degree)
-    {
-        GetXYFromDegree(degree, out byte x, out byte y);
+        GetXYFromDirection(dkey, out byte x, out byte y, degree);
         return RStick(x, y);
     }
 }

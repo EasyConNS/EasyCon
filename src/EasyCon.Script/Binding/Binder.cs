@@ -366,20 +366,30 @@ internal sealed class Binder
         return new BoundExprStatement(syntax, expr);
     }
 
-    private BoundKeyActStatement BindGamepadActionStatement(KeyActionStmt syntax)
+    private BoundStmt BindGamepadActionStatement(KeyActionStmt syntax)
     {
-        if (syntax is KeyPress kp)
+        if(syntax is StickActionStmt st)
         {
-            var dur = BindExpression(kp.Duration);
-            return new BoundKeyPressStatement(syntax, kp.Key, dur);
+            NSKeys.GetXYFromDegree(st.Degree, out byte x, out byte y);
+            if (syntax is IDurationKey isk)
+            {
+                var dur = BindExpression(isk.Duration);
+                return new BoundStickPressStatement(syntax, syntax.Key, dur, x, y);
+            }
+            else
+            {
+                return new BoundStickActStatement(syntax, syntax.Key, x, y);
+            }
         }
-        if (syntax is StickPress sp)
+        if (syntax is IDurationKey ikp)
         {
-            var dur = BindExpression(sp.Duration);
-            return new BoundKeyPressStatement(syntax, sp.Key, dur);
+            var dur = BindExpression(ikp.Duration);
+            return new BoundKeyPressStatement(syntax, syntax.Key, dur);
         }
-        var up = (syntax is KeyUp) || (syntax is StickUp);
-        return new BoundKeyActStatement(syntax, syntax.Key, up);
+        else
+        {
+            return new BoundKeyActStatement(syntax, syntax.Key, syntax.Up);
+        }
     }
 
     private BoundExpr BindExpression(ExprBase syntax)
