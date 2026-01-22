@@ -22,7 +22,8 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
         "A", "B", "X", "Y","L", "R","ZL", "ZR",
         "PLUS", "MINUS", "HOME", "CAPTURE",
         "LS", "RS", "LCLICK", "RCLICK",
-        "LEFT", "RIGHT", "UP", "DOWN"
+        "LEFT", "RIGHT", "UP", "DOWN",
+        "UPLEFT", "UPRIGHT", "DOWNLEFT", "DOWNRIGHT"
         ];
     public async Task<IEnumerable<ICompletionData>> GetCompletions(ITextSource textSource, int offset, string cur)
     {

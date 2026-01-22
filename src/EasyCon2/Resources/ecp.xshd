@@ -70,9 +70,13 @@
 			<Word>HOME</Word>
 			<Word>CAPTURE</Word>
 			<Word>UP</Word>
-			<Word>DOWN</Word>
+			<Word>UPRIGHT</Word>
 			<Word>RIGHT</Word>
+			<Word>DOWNRIGHT</Word>
+			<Word>DOWN</Word>
+			<Word>DOWNLEFT</Word>
 			<Word>LEFT</Word>
+			<Word>UPLEFT</Word>
 			<Word>LS</Word>
 			<Word>RS</Word>
 		</Keywords>

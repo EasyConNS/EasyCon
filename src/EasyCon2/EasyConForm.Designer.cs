@@ -53,7 +53,6 @@ namespace EasyCon2.Forms
             设置ToolStripMenuItem = new ToolStripMenuItem();
             推送设置ToolStripMenuItem = new ToolStripMenuItem();
             显示调试信息ToolStripMenuItem = new ToolStripMenuItem();
-            串口延迟ToolStripMenuItem = new ToolStripMenuItem();
             烧录自动运行ToolStripMenuItem = new ToolStripMenuItem();
             频道远程ToolStripMenuItem = new ToolStripMenuItem();
             显示折叠ToolStripMenuItem = new ToolStripMenuItem();
@@ -75,7 +74,6 @@ namespace EasyCon2.Forms
             项目源码ToolStripMenuItem = new ToolStripMenuItem();
             关于ToolStripMenuItem = new ToolStripMenuItem();
             labelTimer = new Label();
-            logTxtBox = new RichLogBox();
             buttonRecordPause = new Button();
             buttonRecord = new Button();
             buttonFlashClear = new Button();
@@ -85,7 +83,6 @@ namespace EasyCon2.Forms
             groupBox2 = new GroupBox();
             genFwButton = new Button();
             comboBoxBoardType = new ComboBox();
-            findPanel1 = new FindPanel();
             buttonShowController = new Button();
             editorHost = new System.Windows.Forms.Integration.ElementHost();
             groupBox3 = new GroupBox();
@@ -286,7 +283,7 @@ namespace EasyCon2.Forms
             // 
             // 设置ToolStripMenuItem
             // 
-            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, 串口延迟ToolStripMenuItem, 烧录自动运行ToolStripMenuItem, 频道远程ToolStripMenuItem, 显示折叠ToolStripMenuItem });
+            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, 烧录自动运行ToolStripMenuItem, 频道远程ToolStripMenuItem, 显示折叠ToolStripMenuItem });
             设置ToolStripMenuItem.Name = "设置ToolStripMenuItem";
             设置ToolStripMenuItem.Size = new Size(53, 24);
             设置ToolStripMenuItem.Text = "设置";
@@ -294,37 +291,30 @@ namespace EasyCon2.Forms
             // 推送设置ToolStripMenuItem
             // 
             推送设置ToolStripMenuItem.Name = "推送设置ToolStripMenuItem";
-            推送设置ToolStripMenuItem.Size = new Size(212, 26);
+            推送设置ToolStripMenuItem.Size = new Size(224, 26);
             推送设置ToolStripMenuItem.Text = "推送设置";
             推送设置ToolStripMenuItem.Click += 推送设置ToolStripMenuItem_Click;
             // 
             // 显示调试信息ToolStripMenuItem
             // 
             显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            显示调试信息ToolStripMenuItem.Size = new Size(212, 26);
+            显示调试信息ToolStripMenuItem.Size = new Size(224, 26);
             显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             显示调试信息ToolStripMenuItem.Click += 显示调试信息ToolStripMenuItem_Click;
-            // 
-            // 串口延迟ToolStripMenuItem
-            // 
-            串口延迟ToolStripMenuItem.Name = "串口延迟ToolStripMenuItem";
-            串口延迟ToolStripMenuItem.Size = new Size(212, 26);
-            串口延迟ToolStripMenuItem.Text = "串口打开延迟";
-            串口延迟ToolStripMenuItem.Click += openDelayToolStripMenuItem_Click;
             // 
             // 烧录自动运行ToolStripMenuItem
             // 
             烧录自动运行ToolStripMenuItem.Checked = true;
             烧录自动运行ToolStripMenuItem.CheckState = CheckState.Checked;
             烧录自动运行ToolStripMenuItem.Name = "烧录自动运行ToolStripMenuItem";
-            烧录自动运行ToolStripMenuItem.Size = new Size(212, 26);
+            烧录自动运行ToolStripMenuItem.Size = new Size(224, 26);
             烧录自动运行ToolStripMenuItem.Text = "烧录自动运行";
             烧录自动运行ToolStripMenuItem.Click += 脚本自动运行ToolStripMenuItem_Click;
             // 
             // 频道远程ToolStripMenuItem
             // 
             频道远程ToolStripMenuItem.Name = "频道远程ToolStripMenuItem";
-            频道远程ToolStripMenuItem.Size = new Size(212, 26);
+            频道远程ToolStripMenuItem.Size = new Size(224, 26);
             频道远程ToolStripMenuItem.Text = "频道远程控制启动";
             频道远程ToolStripMenuItem.Click += 频道远程ToolStripMenuItem_Click;
             // 
@@ -333,7 +323,7 @@ namespace EasyCon2.Forms
             显示折叠ToolStripMenuItem.Checked = true;
             显示折叠ToolStripMenuItem.CheckState = CheckState.Checked;
             显示折叠ToolStripMenuItem.Name = "显示折叠ToolStripMenuItem";
-            显示折叠ToolStripMenuItem.Size = new Size(212, 26);
+            显示折叠ToolStripMenuItem.Size = new Size(224, 26);
             显示折叠ToolStripMenuItem.Text = "显示折叠";
             显示折叠ToolStripMenuItem.Click += 显示折叠ToolStripMenuItem_Click;
             // 
@@ -469,21 +459,6 @@ namespace EasyCon2.Forms
             labelTimer.Text = "00:00:00";
             labelTimer.TextAlign = ContentAlignment.MiddleCenter;
             // 
-            // logTxtBox
-            // 
-            logTxtBox.AccessibleName = "输出窗口";
-            logTxtBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            logTxtBox.BackColor = Color.FromArgb(64, 64, 64);
-            logTxtBox.BorderStyle = BorderStyle.FixedSingle;
-            logTxtBox.ForeColor = Color.White;
-            logTxtBox.Location = new Point(3, 24);
-            logTxtBox.Name = "logTxtBox";
-            logTxtBox.ReadOnly = true;
-            logTxtBox.Size = new Size(294, 399);
-            logTxtBox.TabIndex = 34;
-            logTxtBox.Text = "";
-            logTxtBox.WordWrap = false;
-            // 
             // buttonRecordPause
             // 
             buttonRecordPause.AccessibleName = "暂停录制脚本";
@@ -604,20 +579,6 @@ namespace EasyCon2.Forms
             comboBoxBoardType.Name = "comboBoxBoardType";
             comboBoxBoardType.Size = new Size(94, 28);
             comboBoxBoardType.TabIndex = 5;
-            // 
-            // findPanel1
-            // 
-            findPanel1.AccessibleName = "查找窗口";
-            findPanel1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            findPanel1.BackColor = Color.Transparent;
-            findPanel1.BorderStyle = BorderStyle.FixedSingle;
-            findPanel1.Location = new Point(184, 17);
-            findPanel1.Name = "findPanel1";
-            findPanel1.Replaced = null;
-            findPanel1.Size = new Size(250, 98);
-            findPanel1.TabIndex = 1;
-            findPanel1.Target = null;
-            findPanel1.Visible = false;
             // 
             // buttonShowController
             // 
@@ -826,7 +787,6 @@ namespace EasyCon2.Forms
             logPanel.Controls.Add(logTitleLabel);
             logPanel.Controls.Add(clsLogBtn);
             logPanel.Controls.Add(runStopBtn);
-            logPanel.Controls.Add(logTxtBox);
             logPanel.Controls.Add(labelTimer);
             logPanel.Location = new Point(7, 32);
             logPanel.Name = "logPanel";
@@ -879,7 +839,6 @@ namespace EasyCon2.Forms
             // scriptContainer
             // 
             scriptContainer.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            scriptContainer.Controls.Add(findPanel1);
             scriptContainer.Controls.Add(scriptTitleLabel);
             scriptContainer.Controls.Add(scriptPanel);
             scriptContainer.Location = new Point(313, 32);
@@ -995,7 +954,6 @@ namespace EasyCon2.Forms
         private ToolStripMenuItem 画图ToolStripMenuItem;
         private ToolStripMenuItem 喷射ToolStripMenuItem;
         private ToolStripMenuItem 自由画板鼠标代替摇杆ToolStripMenuItem;
-        private ToolStripMenuItem 串口延迟ToolStripMenuItem;
         private ToolStripMenuItem 设置环境变量ToolStripMenuItem;
         private ToolStripMenuItem 固件模式ToolStripMenuItem;
         private ToolStripMenuItem 联机模式ToolStripMenuItem;

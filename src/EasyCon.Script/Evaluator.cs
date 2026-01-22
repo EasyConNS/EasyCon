@@ -13,7 +13,9 @@ internal sealed class Evaluator
     private readonly Stack<Dictionary<VariableSymbol, object>> _locals = new();
     private readonly Dictionary<FunctionSymbol, BoundBlockStatement> _functions = [];
 
-    private readonly ExternTime et = new(DateTime.Now);
+    private readonly long _TIME = DateTime.Now.Ticks;
+    private int CurrTimestamp => (int) ((DateTime.Now.Ticks - _TIME) / 10_000);
+
     private readonly Random _rand = new();
     private bool CancelLineBreak = false;
     private CancellationToken _token;
@@ -105,7 +107,7 @@ internal sealed class Evaluator
     {
         _lastValue = EvaluateExpr(node.Expression);
     }
-    public object EvaluateExpr(BoundExpr node)
+    public object? EvaluateExpr(BoundExpr node)
     {
         if (node.ConstantValue != null)
             return node.ConstantValue;
@@ -163,15 +165,7 @@ internal sealed class Evaluator
 
         Debug.Assert(operand != null);
 
-        switch (u.Op.Kind)
-        {
-            case BoundUnaryOperatorKind.Subtraction:
-                return -(int)operand;
-            case BoundUnaryOperatorKind.BitwiseNot:
-                return ~(int)operand;
-            default:
-                throw new Exception($"不支持的运算符{u.Op}");
-        }
+        return u.Op.Operate(operand);
     }
 
     private object EvaluateBinaryExpression(BoundBinaryExpression b)
@@ -181,49 +175,7 @@ internal sealed class Evaluator
 
         Debug.Assert(left != null && right != null);
 
-        switch (b.Op.Kind)
-        {
-            case BoundBinaryOperatorKind.Addition:
-                if (b.Type == Binding.ValueType.Int)
-                    return (int)left + (int)right;
-                else
-                    return $"{left}{right}";
-            case BoundBinaryOperatorKind.Subtraction:
-                return (int)left - (int)right;
-            case BoundBinaryOperatorKind.Multiplication:
-                return (int)left * (int)right;
-            case BoundBinaryOperatorKind.Division:
-                return (int)left / (int)right;
-            case BoundBinaryOperatorKind.Mod:
-                return (int)left % (int)right;
-            case BoundBinaryOperatorKind.RoundDiv:
-                return (int)Math.Round((double)(int)left / (int)right);
-            case BoundBinaryOperatorKind.BitwiseAnd:
-                return (int)left & (int)right;
-            case BoundBinaryOperatorKind.BitwiseOr:
-                return (int)left | (int)right;
-            case BoundBinaryOperatorKind.BitwiseXor:
-                return (int)left ^ (int)right;
-            case BoundBinaryOperatorKind.BitLeftShift:
-                return (int)left << (int)right;
-            case BoundBinaryOperatorKind.BitRightShift:
-                return (int)left >> (int)right;
-
-            case BoundBinaryOperatorKind.Equals:
-                return Equals(left, right);
-            case BoundBinaryOperatorKind.NotEquals:
-                return !Equals(left, right);
-            case BoundBinaryOperatorKind.Less:
-                return (int)left < (int)right;
-            case BoundBinaryOperatorKind.LessOrEquals:
-                return (int)left <= (int)right;
-            case BoundBinaryOperatorKind.Greater:
-                return (int)left > (int)right;
-            case BoundBinaryOperatorKind.GreaterOrEquals:
-                return (int)left >= (int)right;
-            default:
-                throw new Exception($"不支持的运算符{b.Op}");
-        }
+        return b.Op.Operate(left, right);
     }
 
     private object? EvaluateAssignmentExpression(BoundAssignExpression node)
@@ -328,7 +280,7 @@ internal sealed class Evaluator
                 break;
             case "TIME":
                 {
-                    result = et.CurrTimestamp;
+                    result = CurrTimestamp;
                 }
                 break;
             case "PRINT":
@@ -360,13 +312,4 @@ internal sealed class Evaluator
         }
         return result;
     }
-}
-
-class ExternTime(DateTime t)
-{
-    private readonly long _TIME = t.Ticks;
-
-    public int CurrTimestamp => (int)GetTimestamp();
-
-    private long GetTimestamp() => (DateTime.Now.Ticks - _TIME) / 10_000;
 }

@@ -44,8 +44,6 @@ public partial class NintendoSwitch
         clientCon.BytesSent += BytesSent;
         clientCon.BytesReceived += BytesReceived;
         clientCon.StatusChanged += StatusChanged;
-        clientCon.CPUOpt = need_cpu_opt;
-        clientCon.OpenDelay = need_open_delay;
 
         clientCon.StatusChanged += statuschanged;
         clientCon.Connect();

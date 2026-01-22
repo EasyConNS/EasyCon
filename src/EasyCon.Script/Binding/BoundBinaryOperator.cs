@@ -53,8 +53,8 @@ internal sealed class BoundBinaryOperator
         new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 > (int)v1),
         new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 >= (int)v1),
 
-        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Bool, (v0, v1) => v0 == v1),
-        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Bool, (v0, v1) => v0 != v1),
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Bool, (v0, v1) => Equals(v0, v1)),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Bool, (v0, v1) => !Equals(v0, v1)),
 
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.Int,ValueType.String, ValueType.String, (v0, v1) => $"{v0}{v1}"),

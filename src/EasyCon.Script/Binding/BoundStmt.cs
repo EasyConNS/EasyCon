@@ -44,7 +44,7 @@ internal sealed class BoundReturnStatement(Statement syntax) : BoundStmt(syntax)
 
 internal sealed class BoundExprStatement(Statement syntax, BoundExpr expression) : BoundStmt(syntax)
 {
-    public BoundExpr Expression = expression;
+    public readonly BoundExpr Expression = expression;
     public override BoundNodeKind Kind => BoundNodeKind.ExpressionStatement;
 }
 

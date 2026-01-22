@@ -90,7 +90,7 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
         else if (int.TryParse(text, out int duration))
             return new Wait(duration, true);
         else
-            return ParseNamedExpression(text) ?? ParseKey(text);
+            return ParseKey(text) ?? ParseNamedExpression(text);
     }
 
     public CompicationUnit ParseUnit(string text)

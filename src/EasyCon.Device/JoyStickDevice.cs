@@ -28,8 +28,6 @@ public partial class NintendoSwitch : IReporter
     DirectionKey _leftStick = 0;
     DirectionKey _rightStick = 0;
     DirectionKey _hat = 0;
-    bool need_cpu_opt = true;
-    bool need_open_delay = false;
 
     public event LogHandler Log;
     public event BytesTransferedHandler BytesSent;
@@ -190,17 +188,5 @@ public partial class NintendoSwitch : IReporter
     public string GetRecordScript()
     {
         return operationRecords.ToScript();
-    }
-
-    public bool SetCpuOpt(bool enable)
-    {
-        need_cpu_opt = enable;
-        return need_cpu_opt;
-    }
-
-    public bool SetOpenDelay(bool enable)
-    {
-        need_open_delay = enable;
-        return need_open_delay;
     }
 }

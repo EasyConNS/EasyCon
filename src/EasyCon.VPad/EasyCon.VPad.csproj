@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <UseWindowsForms>true</UseWindowsForms>
+	<TargetFramework>net8.0-windows7.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>

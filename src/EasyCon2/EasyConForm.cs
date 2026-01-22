@@ -881,14 +881,6 @@ namespace EasyCon2.Forms
             显示调试信息ToolStripMenuItem.Checked = !显示调试信息ToolStripMenuItem.Checked;
         }
 
-        private void CPU优化设置ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            var menu = (ToolStripMenuItem)sender;
-            menu.Checked = !menu.Checked;
-            var rlt = NS.SetCpuOpt(menu.Checked);
-            StatusShowLog($"CPU优化已{(rlt ? "开启" : "关闭")}");
-        }
-
         private void 联机模式ToolStripMenuItem_Click(object sender, EventArgs e)
         {
             MessageBox.Show(@"- 使用电脑控制单片机的模式
@@ -999,14 +991,6 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
         {
             var board = new DrawingBoard(NS);
             board.Show();
-        }
-
-        private void openDelayToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            var menu = (ToolStripMenuItem)sender;
-            menu.Checked = !menu.Checked;
-            var rlt = NS.SetOpenDelay(menu.Checked);
-            StatusShowLog($"串口打开延迟已{(rlt ? "开启" : "关闭")}");
         }
 
         private void 自由画板鼠标代替摇杆ToolStripMenuItem_Click(object sender, EventArgs e)
