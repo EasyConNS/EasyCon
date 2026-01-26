@@ -14,7 +14,7 @@ internal partial class Parser
         if (lexer.Length < 3 + 1) return null;
         if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN)
         {
-            var des = (VariableExpr)_formatter.GetInstant(lexer[0].Value);
+            var des = (VariableExpr)_formatter.GetValueEx(lexer[0]);
             var pr = new ExprParser([.. lexer.Skip(2)], _formatter, allowVar: false);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
@@ -44,7 +44,7 @@ internal partial class Parser
         if (lexer.Length < 3 + 1) return null;
         if (lexer[0].Type == TokenType.VAR)
         {
-            var des = _formatter.GetVar(lexer[0].Value);
+            var des = (VariableExpr)_formatter.GetValueEx(lexer[0]);
             CompareOperator? op = null;
             if(lexer[1].Type.OperatorIsAug())
             {
@@ -84,6 +84,7 @@ internal partial class Parser
 
     private Statement? ParseFor(string text)
     {
+        //var tokens = SyntaxTree.ParseTokens(text);
         if (text.Equals("for", StringComparison.OrdinalIgnoreCase))
             return new For_Infinite();
         var m = Regex.Match(text, $@"^for\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
@@ -105,7 +106,7 @@ internal partial class Parser
                 if (tokens[1].Type == TokenType.INT)
                 {
                     if (tokens[2].Type != TokenType.EOF) return null;
-                    return new Break((LiteralExpr)_formatter.GetInstant(tokens[1].Value, true));
+                    return new Break((LiteralExpr)_formatter.GetValueEx(tokens[1]));
                 }
                 else
                     if (tokens[1].Type == TokenType.EOF)
@@ -325,7 +326,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 Current.Type != TokenType.EOF)
         {
             var identifier = Match(TokenType.VAR, "函数参数只能是变量");
-            var parameter = _formatter.GetVar(identifier.Value);
+            var parameter = (VariableExpr)_formatter.GetValueEx(identifier);
             nodesAndSeparators.Add(parameter);
 
             if (Current.Type == TokenType.COMMA)
@@ -369,8 +370,6 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         switch (Current.Type)
         {
             case TokenType.STRING when allowStr:
-                var tokstr = Advance();
-                return _formatter.GetValueEx(tokstr);
             case TokenType.CONST:
             case TokenType.VAR when allowVar:
             case TokenType.EX_VAR when allowVar:
@@ -384,21 +383,10 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
             case TokenType.INT:
             default:
                 var toknum = Advance();
-                try
-                {
-                    var value = uint.Parse(toknum.Value);
-                    if (value < ushort.MinValue || value > ushort.MaxValue)
-                    {
-                        throw new Exception($"整数超出范围({ushort.MinValue} 到 {ushort.MaxValue})");
-                    }
+                var ok = int.TryParse(toknum.Value, out _);
+                if (!ok) throw new Exception($"错误的数字格式: {toknum.Value}");
 
-                    return _formatter.GetValueEx(toknum);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"错误的数字格式: {ex.Message} 行{toknum.Line}");
-                    throw new Exception($"表达式不正确: {toknum.Value}");
-                }
+                return _formatter.GetValueEx(toknum);
         }
     }
 }

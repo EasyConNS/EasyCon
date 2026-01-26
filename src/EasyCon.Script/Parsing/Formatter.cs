@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace EasyCon.Script.Parsing;
 
@@ -45,7 +46,7 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
         return new ExtVarExpr(value);
     }
 
-    public ExprBase GetInstant(string text, bool zeroOrPos = false)
+    private ExprBase GetInstant(string text, bool zeroOrPos = false)
     {
         if (Regex.Match(text, Formats.Constant_F).Success)
         {
@@ -64,13 +65,24 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
 
     public ExprBase GetValueEx(Script2.Syntax.Token tok)
     {
-        if(tok.Type == EasyCon.Script2.Syntax.TokenType.STRING)
+        switch(tok.Type)
         {
-            return new LiteralExpr(tok.Value);
-        }
-        else
-        {
-            return GetValueEx(tok.Value);
+            case Script2.Syntax.TokenType.STRING:
+                return new LiteralExpr(tok.Value);
+            case Script2.Syntax.TokenType.INT:
+                {
+                    var ok = int.TryParse(tok.Value, out var v);
+                    if (!ok)throw new FormatException("无效的数字格式");
+                    return v;
+                }
+            case Script2.Syntax.TokenType.CONST:
+                return GetInstant(tok.Value);
+            case Script2.Syntax.TokenType.VAR:
+                return GetVar(tok.Value);
+            case Script2.Syntax.TokenType.EX_VAR:
+                return GetExtVar(tok.Value);
+            default:
+                throw new FormatException($"token类型不争取：{tok.Type}");
         }
     }
 
