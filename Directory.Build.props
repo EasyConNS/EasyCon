@@ -2,9 +2,9 @@
   <PropertyGroup>
     <DefaultTargetFramework>net8.0</DefaultTargetFramework>
     <LtsTargetFramework>net8.0</LtsTargetFramework>
-    <TargetFramework Condition=" '$(UseWindowsForms)' == 'true' ">$(LtsTargetFramework)-windows7.0</TargetFramework>
     <TargetFramework Condition=" '$(TargetFramework)' == '' and '$(TargetFrameworks)' == '' ">$(DefaultTargetFramework)</TargetFramework>
     <Features>strict</Features>
     <Version>1.55.0</Version>
+	<Authors>ca1e;elmagnifico;Nukieberry</Authors>
   </PropertyGroup>
 </Project>

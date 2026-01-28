@@ -252,59 +252,6 @@ namespace EasyCon2.Forms
             startButton.Invoke(AsyncUIDelegate, new object[] { true });
         }
 
-        // deprecated
-        private void draw_task()
-        {
-            Bitmap pic = new Bitmap(image);
-            wait = int.Parse(delayBox.Text);
-            duration = int.Parse(durationBox.Text);
-
-            int col = 320;//30 for test
-            int row = 120;
-
-            for (int i = 0; i < row; i++)
-            {
-                int direction = i % 2;
-                for (int j = 0; j < col; j++)
-                {
-                    if (source.IsCancellationRequested)
-                        return;
-                    //# and convert 255 vals to 0 to match logic in Joystick.c and invertColormap option
-                    if (direction == 0)
-                    {
-                        Color color = pic.GetPixel(j, i);
-                        if (color.R + color.G + color.B < 255 * 3 / 2)
-                        {
-                            NS.Press(a, duration);
-                            Thread.Sleep(wait);
-                            NS.Reset();
-                        }
-                        NS.Press(right, duration);
-                        Thread.Sleep(wait);
-                        NS.Reset();
-                    }
-
-                    if (direction == 1)
-                    {
-                        Color color = pic.GetPixel(col - 1 - j, i);
-                        if (color.R + color.G + color.B < 255 * 3 / 2)
-                        {
-                            NS.Press(a, duration);
-                            Thread.Sleep(wait);
-                            NS.Reset();
-                        }
-                        NS.Press(left, duration);
-                        Thread.Sleep(wait);
-                        NS.Reset();
-                    }
-                }
-                NS.Press(down, duration);
-                Thread.Sleep(wait);
-            }
-            NS.Reset();
-            startButton.Enabled = true;
-        }
-
         private void loadPicButton_Click(object sender, EventArgs e)
         {
             string filepath;

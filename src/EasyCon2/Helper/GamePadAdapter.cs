@@ -10,7 +10,9 @@ internal class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
 
     void ICGamePad.ClickButtons(GamePadKey key, int duration)
     {
-        NS.Press(key.ToECKey(), duration);
+        NS.Down(key.ToECKey());
+        Thread.Sleep(duration);
+        NS.Up(key.ToECKey());
     }
 
     void ICGamePad.PressButtons(GamePadKey key)
@@ -30,7 +32,9 @@ internal class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
 
     void ICGamePad.ClickStick(GamePadKey key, byte x, byte y, int duration)
     {
-        NS.Press(key.ToECKey(x, y), duration);
+        NS.Down(key.ToECKey(x, y));
+        Thread.Sleep(duration);
+        NS.Up(key.ToECKey(x, y));
     }
 
     void ICGamePad.SetStick(GamePadKey key, byte x, byte y)

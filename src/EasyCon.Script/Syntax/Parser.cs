@@ -172,7 +172,7 @@ internal sealed class Parser
             TokenType.RETURN => ParseReturnStatement(),
             TokenType.ButtonKeyword or TokenType.StickKeyword => ParsePadButtonStatement(),
             TokenType.INT or TokenType.IDENT => ParseSpecCallStatement(),
-            _ => ParseAssignment(),
+            _ => ParseExpressionStatement(),
         };
     }
 
@@ -189,34 +189,15 @@ internal sealed class Parser
 
             return new ImportStatement(import, name, new LiteralExpression(path, path.value));
         }
-        throw new Exception($"导入语句错误\"{import.Type}\" 行{import.Line}");
+        _diagnostics.ReportInvalidExpressionStatement(import.Location, Current.Type);
+        return new ImportStatement(import, "", new LiteralExpression(import, ""));
     }
 
-    private AssignmentStatement ParseAssignment()
+    private ExpressStatement ParseExpressionStatement()
     {
-        if (Check(TokenType.CONST) || Check(TokenType.VAR))
-        {
-            var variableToken = Current;
-            var variable = ParsePrimary() as VariableExpression;
+        var expr = ParseAssignmentExpression();
 
-            Token assignmentOp;
-            if (Checks(TokenType.ASSIGN, TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN,
-                     TokenType.MUL_ASSIGN, TokenType.DIV_ASSIGN, TokenType.SlashI_ASSIGN,
-                     TokenType.MOD_ASSIGN, TokenType.XOR_ASSIGN, TokenType.BitAnd_ASSIGN, TokenType.BitOr_ASSIGN,
-                     TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN))
-            {
-                assignmentOp = Advance();
-            }
-            else
-            {
-                throw new Exception($"不支持的操作符\"{Current.Type}\" 行{Current.Line}");
-            }
-
-            var value = ParseExpression();
-
-            return new AssignmentStatement(variableToken, variable, assignmentOp, value);
-        }
-        throw new Exception($"不支持的赋值操作\"{Current.Type}\" 行{Current.Line}");
+        return new ExpressStatement(expr.Key, expr);
     }
 
     private CallExpression ParseSpecCallStatement()
@@ -516,13 +497,35 @@ internal sealed class Parser
                 return new ButtonStStatement([.. keyTokens], isDown);
             }
         }
-        throw new Exception($"按键语法不正确 {keyTokens.First().Line}");
+        _diagnostics.ReportInvalidKeyActionStatement(firstKey.Location, firstKey.Type);
+        return new ButtonStStatement([], false);
     }
 
     private Expression ParseExpression()
     {
+        return ParseAssignmentExpression();
+    }
+
+    private Expression ParseAssignmentExpression()
+    {
+        if (Check(TokenType.CONST) || Check(TokenType.VAR))
+        {
+            var variableToken = Current;
+            var variable = ParsePrimary() as VariableExpression;
+
+            if (Checks(TokenType.ASSIGN, TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN,
+                     TokenType.MUL_ASSIGN, TokenType.DIV_ASSIGN, TokenType.SlashI_ASSIGN,
+                     TokenType.MOD_ASSIGN, TokenType.XOR_ASSIGN, TokenType.BitAnd_ASSIGN, TokenType.BitOr_ASSIGN,
+                     TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN))
+            {
+                var assignmentOp = Advance();
+                var value = ParseExpression();
+                return new AssignExpression(variableToken, variable, assignmentOp, value);
+            }
+        }
         return ParseBinaryExpression();
     }
+
     private Expression ParseBinaryExpression(int parentPrecedence = 0)
     {
         Expression left;
@@ -597,20 +600,9 @@ internal sealed class Parser
             case TokenType.INT:
             default:
                 var toknum = Advance();
-                try
-                {
-                    var value = uint.Parse(toknum.Value);
-                    if (value < ushort.MinValue || value > ushort.MaxValue)
-                    {
-                        throw new Exception($"整数超出范围({ushort.MinValue} 到 {ushort.MaxValue}) 行{toknum.Line}");
-                    }
-                    return new LiteralExpression(toknum, value);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"错误的数字格式: {ex.Message} 行{toknum.Line}");
-                    throw new Exception($"错误的数字格式: {toknum.Value} 行{toknum.Line}");
-                }
+                var ok = uint.TryParse(toknum.Value, out var intval);
+                if (!ok) _diagnostics.ReportInvalidNumber(toknum.Location, toknum.Value);
+                return new LiteralExpression(toknum, intval);
         }
     }
 }

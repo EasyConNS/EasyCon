@@ -40,14 +40,3 @@ public enum SwitchHAT
     TOP_LEFT = 0x07,
     CENTER = 0x08,
 }
-
-[Flags]
-public enum DirectionKey
-{
-    None = 0x0,
-    Up = 0x1,
-    Down = 0x2,
-    Left = 0x4,
-    Right = 0x8,
-}
-

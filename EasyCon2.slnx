@@ -14,6 +14,10 @@
     <Project Path="src/EasyCon.Script/EasyCon.Script.csproj" />
     <Project Path="src/EasyCon2.Avalonia.Core/EasyCon2.Avalonia.Core.csproj" />
   </Folder>
+  <Folder Name="/Common/">
+    <Project Path="src/EasyCon2.UI.Common/EasyCon2.UI.Common.csproj" />
+  </Folder>
+  <Project Path="src/EasyCon2.UI.WPF/EasyCon2.UI.WPF.csproj" Id="f40d95ea-545b-4ec0-a817-07bf26c9583e" />
   <Project Path="src/EasyCon.VPad/EasyCon.VPad.csproj" />
   <Project Path="src/EasyCon2.Avalonia/EasyCon2.Avalonia.csproj" />
   <Project Path="src/EasyCon2/EasyCon2.csproj" />

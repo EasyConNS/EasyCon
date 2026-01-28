@@ -6,7 +6,7 @@ namespace EasyCon.Script2.Syntax;
 public abstract class ASTNode(Token key)
 {
     public Token Key = key;
-    public int Line => key.Line;
+    public int Line => Key.Line;
 
     public virtual T Accept<T>(IAstVisitor<T> visitor) {throw new NotImplementedException();}
 
@@ -46,6 +46,15 @@ public sealed class TriviaNode(Token trivia) : Expression(trivia)
     public string Text => trivia.Value;
 }
 
+public sealed class AssignExpression(Token varToken, VariableExpression? Variablee, Token assignment, Expression expression) : Expression(varToken)
+{
+    public VariableExpression Variable { get; } = Variablee!;
+    public TokenType AssignmentType => Assignment.Type;
+    public Expression Expression { get; } = expression;
+
+    private Token Assignment { get; } = assignment;
+}
+
 // 字面量表达式
 public sealed class LiteralExpression : Expression
 {
@@ -58,18 +67,14 @@ public sealed class LiteralExpression : Expression
         {
             Value = strValue;
         }
+        else if (value is bool)
+            Value = (bool)value;
         else if (value is uint intValue)
         {
-            if (intValue < ushort.MinValue || intValue > ushort.MaxValue)
-            {
-                throw new Exception($"整数超出范围 ({ushort.MinValue} - {ushort.MaxValue})");
-            }
-            Value = (uint)intValue;
+            Value = intValue;
         }
         else
-        {
-            Value = value;
-        }
+            throw new Exception($"Unexpected literal '{value}' of type {value.GetType()}");
     }
 }
 
@@ -135,13 +140,9 @@ public sealed class ImportStatement(Token imp, string name, LiteralExpression pa
 }
 
 // 赋值语句
-public sealed class AssignmentStatement(Token varToken, VariableExpression? Variablee, Token assignment, Expression expression) : Statement(varToken)
+public sealed class ExpressStatement(Token varToken, Expression expression) : Statement(varToken)
 {
-    public VariableExpression Variable { get; } = Variablee!;
-    public TokenType AssignmentType => Assignment.Type;
     public Expression Expression { get; } = expression;
-
-    private Token Assignment { get; } = assignment;
 
     public override T Accept<T>(IAstVisitor<T> visitor)
     {

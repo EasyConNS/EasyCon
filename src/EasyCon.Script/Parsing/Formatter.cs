@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace EasyCon.Script.Parsing;
 
@@ -23,19 +22,6 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
 {
     private readonly Dictionary<string, ExternalVariable> ExtVars = extVars.ToDictionary(ev => ev.Name, s => s);
 
-    public VariableExpr GetVar(string text)
-    {
-        var m = Regex.Match(text, Formats.RegisterEx_F);
-        if (!m.Success)
-            throw new FormatException();
-        var lhs = true;
-        if (uint.TryParse(text[1..], out var reg) && reg == 0 && lhs)
-        {
-            throw new ParseException(@"寄存器变量编号0暂无法使用");
-        }
-        return new VariableExpr(text);
-    }
-
     private ExtVarExpr GetExtVar(string text)
     {
         if (!text.StartsWith('@'))
@@ -46,29 +32,12 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
         return new ExtVarExpr(value);
     }
 
-    private ExprBase GetInstant(string text, bool zeroOrPos = false)
-    {
-        if (Regex.Match(text, Formats.Constant_F).Success)
-        {
-            return new VariableExpr(text, true);
-        }
-        else
-        {
-            var ok = int.TryParse(text, out var v);
-            if (!ok)
-                throw new FormatException("无效的数字格式");
-            if (zeroOrPos && v < 0)
-                throw new Exception("不能使用负数");
-            return v;
-        }
-    }
-
     public ExprBase GetValueEx(Script2.Syntax.Token tok)
     {
         switch(tok.Type)
         {
             case Script2.Syntax.TokenType.STRING:
-                return new LiteralExpr(tok.Value);
+                return tok.Value;
             case Script2.Syntax.TokenType.INT:
                 {
                     var ok = int.TryParse(tok.Value, out var v);
@@ -76,9 +45,9 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
                     return v;
                 }
             case Script2.Syntax.TokenType.CONST:
-                return GetInstant(tok.Value);
+                return new VariableExpr(tok.Value, true);
             case Script2.Syntax.TokenType.VAR:
-                return GetVar(tok.Value);
+                return new VariableExpr(tok.Value);
             case Script2.Syntax.TokenType.EX_VAR:
                 return GetExtVar(tok.Value);
             default:
@@ -89,10 +58,19 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
     public ExprBase GetValueEx(string text)
     {
         if (Regex.Match(text, Formats.RegisterEx_F).Success)
-            return GetVar(text);
+            return new VariableExpr(text);
         if (Regex.Match(text, Formats.ExtVar_F).Success)
             return GetExtVar(text); 
+        else if (Regex.Match(text, Formats.Constant_F).Success)
+        {
+            return new VariableExpr(text, true);
+        }
         else
-            return GetInstant(text);
+        {
+            var ok = int.TryParse(text, out var v);
+            if (!ok)
+                throw new FormatException("无效的数字格式");
+            return v;
+        }
     }
 }

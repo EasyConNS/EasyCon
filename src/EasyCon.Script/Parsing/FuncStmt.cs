@@ -14,9 +14,10 @@ internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> 
     }
 }
 
-class FuncStmt(string name) : Statement
+class FuncStmt(string name, ImmutableArray<VariableExpr> paramters) : Statement
 {
     public readonly string Name = name;
+    public ImmutableArray<VariableExpr> Paramters = paramters;
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{
@@ -38,11 +39,6 @@ class EndFuncStmt : Statement
     public string Label;
     protected override string _GetString() => "ENDFUNC";
 
-    //public override void Exec(Processor processor)
-    //{
-    //    processor.RetrunCall();
-    //}
-
     //public override void Assemble(Assembly.Assembler assembler)
     //{
     //    assembler.Add(Assembly.Instructions.AsmReturn.Create(0));
@@ -54,11 +50,6 @@ class EndFuncStmt : Statement
 class ReturnStmt : Statement
 {
     protected override string _GetString() => "RETURN";
-
-    //public override void Exec(Processor processor)
-    //{
-    //    processor.RetrunCall();
-    //}
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{

@@ -82,17 +82,38 @@ internal partial class Parser
         return null;
     }
 
+    private static bool checkPrimary(TokenType type)
+    {
+        return type == TokenType.INT || type == TokenType.CONST ||type == TokenType.VAR;
+    }
+
     private Statement? ParseFor(string text)
     {
-        //var tokens = SyntaxTree.ParseTokens(text);
-        if (text.Equals("for", StringComparison.OrdinalIgnoreCase))
-            return new For_Infinite();
-        var m = Regex.Match(text, $@"^for\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new For_Static(_formatter.GetValueEx(m.Groups[1].Value));
-        m = Regex.Match(text, $@"^for\s+{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}\s*to\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-        if (m.Success)
-            return new For_Full(_formatter.GetVar(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value), _formatter.GetValueEx(m.Groups[3].Value));
+        var tokens = SyntaxTree.ParseTokens(text);
+        if (tokens[0].Type == TokenType.FOR)
+        {
+            if(tokens.Length == 1+1 && tokens[1].Type == TokenType.EOF)
+            {
+                return new For_Infinite();
+            }
+            if(tokens.Length == 2+1 && checkPrimary(tokens[1].Type))
+            {
+                return new For_Static(_formatter.GetValueEx(tokens[1]));
+            }
+            if(tokens.Length == 6+1)
+            {
+                if(tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.ASSIGN 
+                && checkPrimary(tokens[3].Type) 
+                && tokens[4].Type == TokenType.TO 
+                && checkPrimary(tokens[5].Type))
+                {
+                    return new For_Full((VariableExpr)_formatter.GetValueEx(tokens[1]), _formatter.GetValueEx(tokens[3]), _formatter.GetValueEx(tokens[5]));
+                }
+            }
+        }
+        // var m = Regex.Match(text, $@"^for\s+{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}\s*to\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
+        // if (m.Success)
+        //     return new For_Full((VariableExpr)_formatter.GetValueEx(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value), _formatter.GetValueEx(m.Groups[3].Value));
         return null;
     }
 
@@ -182,8 +203,7 @@ internal partial class Parser
             if (tokens.Length > 2 && tokens[1].Type == TokenType.IDENT)
             {
                 var pams = ParseParamter([.. tokens.Skip(2)]);
-                if (pams.Length > 0) throw new Exception("参数格式错误");
-                return new FuncStmt(tokens[1].Value);
+                return new FuncStmt(tokens[1].Value, pams);
             }
         }
         return null;
@@ -211,7 +231,7 @@ internal partial class Parser
                 if (tokens.Length != 2 + 1) return null;
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
-                    return new Wait(_formatter.GetValueEx(tokens[1].Value));
+                    return new Wait(_formatter.GetValueEx(tokens[1]));
                 }
                 break;
             case "call":
@@ -319,7 +339,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
     {
         var nodesAndSeparators = ImmutableArray.CreateBuilder<VariableExpr>();
 
-        var openParenthesisToken = Match(TokenType.LeftParen);
+        _ = Match(TokenType.LeftParen);
         var parseNextParameter = true;
         while (parseNextParameter &&
                 Current.Type != TokenType.RightParen &&
@@ -338,7 +358,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 parseNextParameter = false;
             }
         }
-        var closeParenthesisToken = Match(TokenType.RightParen);
+        _ = Match(TokenType.RightParen);
         return nodesAndSeparators.ToImmutable();
     }
 

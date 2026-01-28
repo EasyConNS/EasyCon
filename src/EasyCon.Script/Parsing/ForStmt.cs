@@ -18,8 +18,6 @@ abstract class ForStmt(ExprBase lower, ExprBase upper) : Statement
 {
     public readonly ExprBase Lower = lower;
     public readonly ExprBase Upper = upper;
-    [Obsolete]
-    public Next Next;
 
     //protected virtual void Init(Processor processor)
     //{ }
@@ -53,8 +51,6 @@ class For_Infinite : ForStmt
         : base(0,0)
     { }
 
-    //protected override bool Cond(Processor _) => true;
-
     protected override string _GetString() => "FOR";
 
     //public override void Assemble(Assembly.Assembler assembler)
@@ -66,25 +62,6 @@ class For_Infinite : ForStmt
 
 class For_Static(ExprBase count) : ForStmt(0, count)
 {
-    //protected override void Init(Processor processor)
-    //{
-    //    var liteScop = processor.GetScope();
-    //    liteScop.LoopTime[this] = 0;
-    //    liteScop.LoopCount[this] = Upper.Get(processor);
-    //}
-
-    //protected override bool Cond(Processor processor)
-    //{
-    //    var liteScop = processor.GetScope();
-    //    return liteScop.LoopTime[this] < liteScop.LoopCount[this];
-    //}
-
-    //protected override void Step(Processor processor)
-    //{
-    //    var liteScop = processor.GetScope();
-    //    liteScop.LoopTime[this]++;
-    //}
-
     protected override string _GetString()
     {
         return $"FOR {Upper.GetCodeText()}";
@@ -106,24 +83,6 @@ class For_Static(ExprBase count) : ForStmt(0, count)
 class For_Full(VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(lower, upper)
 {
     public VariableExpr RegIter = regiter;
-
-    //protected override void Init(Processor processor)
-    //{
-    //    var liteScop = processor.GetScope();
-    //    processor.Register[RegIter] = InitVal.Get(processor);
-    //    liteScop.LoopCount[this] = Upper.Get(processor);
-    //}
-
-    //protected override bool Cond(Processor processor)
-    //{
-    //    var liteScop = processor.GetScope();
-    //    return processor.Register[RegIter] < liteScop.LoopCount[this];
-    //}
-
-    //protected override void Step(Processor processor)
-    //{
-    //    processor.Register[RegIter]++;
-    //}
 
     protected override string _GetString()
     {
@@ -154,9 +113,6 @@ class For_Full(VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(l
 class Next : Statement
 {
     protected override string _GetString() => "NEXT";
-
-    [Obsolete]
-    public ForStmt For;
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{

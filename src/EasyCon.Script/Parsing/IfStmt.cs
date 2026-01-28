@@ -27,24 +27,6 @@ class IfStmt(ExprBase conds) : BranchOp
 {
     public readonly ExprBase Condition = conds;
 
-    //public override void Exec(Processor processor)
-    //{
-    //    Passthrough = true;
-    //    if (Condition.Get(processor) == 1)
-    //    {
-    //        // do nothing
-    //        Passthrough = false;
-    //    }
-    //    else
-    //    {
-    //        // jump
-    //        if (Else != null)
-    //            processor.PC = Else.Address;
-    //        else
-    //            processor.PC = EndIf.Address + 1;
-    //    }
-    //}
-
     protected override string _GetString()
     {
         return $"IF {Condition.GetCodeText()}";
@@ -71,31 +53,6 @@ class IfStmt(ExprBase conds) : BranchOp
 
 class ElseIf(ExprBase conds) : IfStmt(conds)
 {
-    //public override void Exec(Processor processor)
-    //{
-    //    if (!If.Passthrough)
-    //    {
-    //        processor.PC = If.EndIf.Address + 1;
-    //    }
-    //    else
-    //    {
-    //        Passthrough = true;
-    //        if (Condition.Get(processor) == 1)
-    //        {
-    //            // do nothing
-    //            Passthrough = false;
-    //        }
-    //        else
-    //        {
-    //            // jump
-    //            if (Else != null)
-    //                processor.PC = Else.Address;
-    //            else
-    //                processor.PC = EndIf.Address + 1;
-    //        }
-    //    }
-    //}
-
     protected override string _GetString()
     {
         return $"ELIF {Condition.GetCodeText()}";
@@ -127,13 +84,6 @@ class ElseIf(ExprBase conds) : IfStmt(conds)
 
 class Else : BranchOp
 {
-    //public override void Exec(Processor processor)
-    //{
-    //    // end of if-block
-    //    if (!If.Passthrough)
-    //        processor.PC = If.EndIf.Address + 1;
-    //}
-
     protected override string _GetString() => "ELSE";
 
     //public override void Assemble(Assembly.Assembler assembler)

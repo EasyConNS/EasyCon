@@ -4,7 +4,7 @@ public interface IAstVisitor<T>
 {
     T VisitProgram(MainProgram ast);
     T VisitImport(ImportStatement ast);
-    T VisitAssignmentStat(AssignmentStatement ast);
+    T VisitAssignmentStat(ExpressStatement ast);
     T VisitIfStat(IfStatement ast);
     T VisitForStat(ForStatement ast);
     T VisitBreak(BreakStatement ast);
@@ -28,7 +28,7 @@ public abstract class AstVisitor : IAstVisitor<ASTNode>
         return ast; 
     }
 
-    public virtual ASTNode VisitAssignmentStat(AssignmentStatement ast)
+    public virtual ASTNode VisitAssignmentStat(ExpressStatement ast)
     {
         return ast;
     }

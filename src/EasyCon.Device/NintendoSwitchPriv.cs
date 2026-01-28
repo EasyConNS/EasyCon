@@ -4,6 +4,8 @@ public partial class NintendoSwitch
 {
     const int MINIMAL_INTERVAL = 30;
 
+    readonly SwitchReport _report = new();
+
     DateTime _nextSendTime = DateTime.MinValue;
     private readonly EventWaitHandle _ewh = new(false, EventResetMode.ManualReset);
 

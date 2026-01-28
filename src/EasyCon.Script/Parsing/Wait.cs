@@ -11,11 +11,6 @@ class Wait(ExprBase duration, bool omitted = false) : Statement
         return $"WAIT {Duration.GetCodeText()}";
     }
 
-    //public override void Exec(Processor processor)
-    //{
-    //    Thread.Sleep(Duration.Get(processor));
-    //}
-
     //public override void Assemble(Assembly.Assembler assembler)
     //{
     //    if (Duration is VariableExpr rd)

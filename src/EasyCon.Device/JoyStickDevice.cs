@@ -19,7 +19,6 @@ public partial class NintendoSwitch : IReporter
         Error,
     }
 
-    readonly SwitchReport _report = new();
     readonly Dictionary<int, KeyStroke> _keystrokes = new();
 
     bool _reset = false;
@@ -107,16 +106,6 @@ public partial class NintendoSwitch : IReporter
         }
     }
 
-    public void Press(ECKey key, int duration)
-    {
-        lock (this)
-        {
-            DebugKey("Press", key);
-            Signal();
-            _keystrokes[key.KeyCode] = new KeyStroke(key, duration: duration);
-        }
-    }
-
     public void LeftDirection(DirectionKey dkey, bool down)
     {
         if (down)
@@ -160,7 +149,7 @@ public partial class NintendoSwitch : IReporter
     
     private void DebugKey(string str, ECKey key = null)
     {
-        System.Diagnostics.Debug.WriteLine($"{str} {key?.Name ?? ""}");
+        System.Diagnostics.Debug.WriteLine($"{str} {key?.Name ?? "??"}");
         Log($"{str} {key?.Name ?? ""}");
     }
 

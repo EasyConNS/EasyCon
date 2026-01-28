@@ -109,6 +109,8 @@ public sealed record Token(SourceText text, TokenType type, string value, int li
     public SourceText Text { get; } = text;
     public SourceSpan Span => new(start, value.Length, line);
 
+    public TextLocation Location => new(Text, Span);
+
     public override string ToString()
     {
         return $"T{Line}('{Value}':{Type})";

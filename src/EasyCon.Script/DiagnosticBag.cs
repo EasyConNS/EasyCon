@@ -49,7 +49,13 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 
     public void ReportInvalidExpressionStatement(TextLocation location, TokenType actualKind)
     {
-        var message = $"无效的表达式语句";
+        var message = $"无效的表达式语句 <{actualKind}>";
+        Report(location, message);
+    }
+
+    public void ReportInvalidKeyActionStatement(TextLocation location, TokenType actualKind)
+    {
+        var message = $"按键语法不正确 <{actualKind}>";
         Report(location, message);
     }
 }

@@ -11,6 +11,11 @@ abstract class ExprBase
     {
         return new LiteralExpr(val);
     }
+
+    public static implicit operator ExprBase(string val)
+    {
+        return new LiteralExpr(val);
+    }
 }
 
 class LiteralExpr(object txt) : ExprBase
@@ -24,10 +29,10 @@ class LiteralExpr(object txt) : ExprBase
         return new LiteralExpr(val);
     }
 
-    public static implicit operator int(LiteralExpr v)
-    {
-        return (int)v.Value;
-    }
+    // public static implicit operator int(LiteralExpr v)
+    // {
+    //     return (int)v.Value;
+    // }
 }
 
 class VariableExpr : ExprBase
@@ -71,24 +76,6 @@ sealed class BinaryExpression(Token op, ExprBase left, ExprBase right) : ExprBas
     {
         return $"{ValueLeft.GetCodeText()} {Operator.Value} {ValueRight.GetCodeText()}";
     }
-
-    // public static ExprBase Rewrite(ExprBase expr)
-    // {
-    //     if (expr is BinaryExpression br)
-    //     {
-    //         var left = Rewrite(br.ValueLeft);
-    //         var right = Rewrite(br.ValueRight);
-    //         if (left is InstantExpr li && right is InstantExpr ri)
-    //         {
-    //            return br.OpMeta.Function(li.Value, ri.Value);
-    //         }
-    //         else
-    //         {
-    //            return new BinaryExpression(br.OpMeta, left, right);
-    //         }
-    //     }
-    //     return expr;
-    // }
 }
 
 sealed class UnaryExpression(Token op, ExprBase operand) : ExprBase

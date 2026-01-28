@@ -15,11 +15,6 @@ class AssignmentStmt(VariableExpr regdst, ExprBase value, CompareOperator? augop
         return $"{DestVariable.GetCodeText()} {op} {Expression.GetCodeText()}";
     }
 
-    //public override void Exec(Processor processor)
-    //{
-    //    DestVariable.Set(processor, BinaryExpression.Rewrite(Expression).Get(processor));
-    //}
-
     //public override void Assemble(Assembly.Assembler assembler)
     //{
     //    if (RegDst is VariableExpr reg)

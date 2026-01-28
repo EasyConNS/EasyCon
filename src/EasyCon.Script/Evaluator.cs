@@ -21,8 +21,8 @@ internal sealed class Evaluator
     private CancellationToken _token;
     private object? _lastValue;
 
-    public IOutputAdapter Output;
-    public ICGamePad GamePad;
+    public IOutputAdapter? Output;
+    public ICGamePad? GamePad;
 
     public Evaluator(BoundProgram program, CancellationToken token)
     {
@@ -215,9 +215,8 @@ internal sealed class Evaluator
     {
         if(node is BoundKeyPressStatement bps)
         {
-            var dur = EvaluateExpr(bps.Duration);
-            GamePad.ClickButtons(bps.Act, (int)dur);
-            Thread.Sleep((int)dur);
+            var dur = (int)EvaluateExpr(bps.Duration);
+            GamePad.ClickButtons(bps.Act, dur);
         }
         else
         {
@@ -236,9 +235,8 @@ internal sealed class Evaluator
     {
         if(node is BoundStickPressStatement bps)
         {
-            var dur = EvaluateExpr(bps.Duration);
-            GamePad.ClickStick(bps.Act, bps.X, bps.Y, (int)dur);
-            Thread.Sleep((int)dur);
+            var dur = (int)EvaluateExpr(bps.Duration);
+            GamePad.ClickStick(bps.Act, bps.X, bps.Y, dur);
         }
         else
         {
