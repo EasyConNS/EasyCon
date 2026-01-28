@@ -33,9 +33,9 @@ internal sealed class BoundBinaryOperator
     }
 
     private static BoundBinaryOperator[] _operators = [
-        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.Int, (a, b) => (int)a + (int)b),
-        new(TokenType.SUB,BoundBinaryOperatorKind.Subtraction, ValueType.Int, (a, b) => (int)a - (int)b),
-        new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ValueType.Int, (a, b) => (int)a * (int)b),
+        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.Int, (a, b) => (int)((int)a + (int)b)),
+        new(TokenType.SUB,BoundBinaryOperatorKind.Subtraction, ValueType.Int, (a, b) => (int)((int)a - (int)b)),
+        new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ValueType.Int, (a, b) => (int)((int)a * (int)b)),
         new(TokenType.DIV,BoundBinaryOperatorKind.Division, ValueType.Int, (a, b) => (int)a / (int)b),
         new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ValueType.Int, (a, b) => (int)a % (int)b),
         new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ValueType.Int, (a, b) => (int)Math.Round((double)(int)a / (int)b)),
@@ -44,7 +44,7 @@ internal sealed class BoundBinaryOperator
         new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ValueType.Int, (a, b) => (int)a | (int)b),
         new(TokenType.XOR,BoundBinaryOperatorKind.BitwiseXor, ValueType.Int, (a, b) => (int)a ^ (int)b),
         new(TokenType.SHL,BoundBinaryOperatorKind.BitLeftShift, ValueType.Int, (a, b) => (int)a << (int)b),
-        new(TokenType.SHR,BoundBinaryOperatorKind.BitRightShift, ValueType.Int, (a, b) => (int)a >> (int)b),
+        new(TokenType.SHR,BoundBinaryOperatorKind.BitRightShift, ValueType.Int, (a, b) => (int)((int)a >> (int)b)),
 
         new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 == v1),
         new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 != v1),
