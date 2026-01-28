@@ -272,7 +272,7 @@ public sealed class FuncDeclare(Token keyword, Token ident, ImmutableArray<Varia
 }
 
 // Return语句
-public sealed class ReturnStatement(Token keyword, Expression value = null) : Statement(keyword)
+public sealed class ReturnStatement(Token keyword, Expression? value = null) : Statement(keyword)
 {
     public Expression Value { get; } = value;
 

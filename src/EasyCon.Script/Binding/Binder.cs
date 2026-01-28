@@ -22,7 +22,8 @@ internal sealed class Binder
 
         if (function != null)
         {
-            // try declare function paramters
+            foreach (var p in function.Paramters)
+                _scope.TryDeclareVariable(p);
         }
     }
 
@@ -72,7 +73,7 @@ internal sealed class Binder
             functionBodies.Add(function, fnloweredBody);
         }
 
-        var main = new FunctionSymbol("$eval", []);
+        var main = new FunctionSymbol("$eval", [], ValueType.Void);
         var body = new BoundBlockStatement(null, statements.ToImmutable());
         var loweredBody = Lowerer.Flatten(body);
         functionBodies.Add(main, loweredBody);
@@ -81,7 +82,7 @@ internal sealed class Binder
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
     {
-        var function = new FunctionSymbol(syntax.Declare.Name, [], syntax);
+        var function = new FunctionSymbol(syntax.Declare.Name, [], ValueType.Int, syntax);
         _scope.TryDeclareFunction(function);
     }
 
@@ -344,7 +345,7 @@ internal sealed class Binder
         if (syntax.Args.Length != function.Paramters.Length) throw new ParseException($"函数调用参数不匹配 {syntax.FnName}", syntax.Address);
         for (var i = 0; i < syntax.Args.Length; i++)
         {
-            boundArguments[i] = BindConversion(boundArguments[i], function.Paramters[i]);
+            boundArguments[i] = BindConversion(boundArguments[i], function.Paramters[i].Type);
         }
 
         BoundExpr expr = new BoundCallExpression(null, function, boundArguments.ToImmutable());
@@ -396,7 +397,7 @@ internal sealed class Binder
     {
         return syntax switch
         {
-            LiteralExpr lite => new BoundLiteralExpression(lite, lite.Value),
+            LiteralExpr => BindLiterExpression((LiteralExpr)syntax),
             VariableExpr => BindVarExpression((VariableExpr)syntax),
             ExtVarExpr exv => new BoundExternalVariableExpression(exv, exv.Var),
             UnaryExpression => BindUnaryExpression((UnaryExpression)syntax),
@@ -404,6 +405,11 @@ internal sealed class Binder
             ParenthesizedExpression pre => BindExpression(pre.Expression),
             _ => throw new Exception($"未知的表达式"),
         };
+    }
+
+    private BoundLiteralExpression BindLiterExpression(LiteralExpr syntax)
+    {
+        return new BoundLiteralExpression(syntax, syntax.Value);
     }
 
     private BoundExpr BindConversion(BoundExpr expr, ValueType type)

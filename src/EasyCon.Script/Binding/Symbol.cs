@@ -31,8 +31,14 @@ class LocalVariableSymbol(string name, bool isReadOnly, ValueType valueType) : V
 {
 }
 
-sealed class FunctionSymbol(string name, ImmutableArray<ValueType> paramters, FuncDeclBlock? declaration = null) : Symbol(name)
+sealed class ParamSymbol(string name, ValueType valueType, int ordinal = 0) : LocalVariableSymbol(name, true, valueType)
 {
-    public readonly ImmutableArray<ValueType> Paramters = paramters;
+    public int Ordinal { get; } = ordinal;
+}
+
+sealed class FunctionSymbol(string name, ImmutableArray<ParamSymbol> paramters, ValueType type, FuncDeclBlock? declaration = null) : Symbol(name)
+{
+    public readonly ImmutableArray<ParamSymbol> Paramters = paramters;
     public readonly FuncDeclBlock? Declaration = declaration;
+    public readonly ValueType Type = type;
 }
