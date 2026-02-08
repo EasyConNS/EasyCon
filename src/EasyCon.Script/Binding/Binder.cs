@@ -1,5 +1,6 @@
 using EasyCon.Script.Parsing;
 using EasyCon.Script2;
+using EasyCon.Script2.Symbols;
 using System.Collections.Immutable;
 using static EasyCon.Script.Binding.BoundFactory;
 
@@ -82,7 +83,27 @@ internal sealed class Binder
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
     {
-        var function = new FunctionSymbol(syntax.Declare.Name, [], ValueType.Int, syntax);
+        var parameters = ImmutableArray.CreateBuilder<ParamSymbol>();
+
+        var seenParameterNames = new HashSet<string>();
+
+        foreach (var parameterSyntax in syntax.Declare.Paramters)
+        {
+            var parameterName = parameterSyntax.Tag;
+            var parameterType = ValueType.Int;
+            if (!seenParameterNames.Add(parameterName))
+            {
+                throw new Exception($"重复定义的参数名 {parameterName}");
+                //_diagnostics.ReportParameterAlreadyDeclared(parameterSyntax.Location, parameterName);
+            }
+            else
+            {
+                var parameter = new ParamSymbol(parameterName, parameterType, parameters.Count);
+                parameters.Add(parameter);
+            }
+        }
+
+        var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), ValueType.Int, syntax);
         _scope.TryDeclareFunction(function);
     }
 
@@ -329,7 +350,6 @@ internal sealed class Binder
     private BoundExprStatement BindCallStatement(CallStmt syntax)
     {
         var function = _scope.TryLookupFunc(syntax.FnName) ?? throw new ParseException($"找不到调用函数 {syntax.FnName}", syntax.Address);
-        var boundArguments = ImmutableArray.CreateBuilder<BoundExpr>();
 
         // 特殊处理
         if (BuiltinFunctions.GetAll().Any(f => f == function && f == BuiltinFunctions.Timestamp))
@@ -337,18 +357,8 @@ internal sealed class Binder
             var des = BindVariableDeclaration((VariableExpr)syntax.Args[0], isReadOnly: false, ValueType.Int);
             return VariableDeclaration(syntax, des, new BoundCallExpression(null, function, []));
         }
-        foreach (var argument in syntax.Args)
-        {
-            var boundArgument = BindExpression(argument);
-            boundArguments.Add(boundArgument);
-        }
-        if (syntax.Args.Length != function.Paramters.Length) throw new ParseException($"函数调用参数不匹配 {syntax.FnName}", syntax.Address);
-        for (var i = 0; i < syntax.Args.Length; i++)
-        {
-            boundArguments[i] = BindConversion(boundArguments[i], function.Paramters[i].Type);
-        }
-
-        BoundExpr expr = new BoundCallExpression(null, function, boundArguments.ToImmutable());
+        // 绑定调用
+        var expr = BindCallExpression(null, syntax.FnName, [.. syntax.Args]);
         // 特殊处理
         if (BuiltinFunctions.GetAll().Any(f => f == function && f == BuiltinFunctions.Rand))
         {
@@ -403,6 +413,7 @@ internal sealed class Binder
             UnaryExpression => BindUnaryExpression((UnaryExpression)syntax),
             BinaryExpression => BindBinaryExpression((BinaryExpression)syntax),
             ParenthesizedExpression pre => BindExpression(pre.Expression),
+            Callv1Expression => BindCallExpression((Callv1Expression)syntax),
             _ => throw new Exception($"未知的表达式"),
         };
     }
@@ -462,4 +473,29 @@ internal sealed class Binder
 
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
     }
+
+    private BoundCallExpression BindCallExpression(Callv1Expression syntax, string fnName, ImmutableArray<ExprBase> Arguments)
+    {
+        var function = _scope.TryLookupFunc(fnName) ?? throw new Exception($"找不到调用函数 {fnName}");
+        var boundArguments = ImmutableArray.CreateBuilder<BoundExpr>();
+
+        foreach (var argument in Arguments)
+        {
+            var boundArgument = BindExpression(argument);
+            boundArguments.Add(boundArgument);
+        }
+        if (Arguments.Length != function.Paramters.Length) throw new Exception($"函数调用参数不匹配 {fnName}");
+        for (var i = 0; i < Arguments.Length; i++)
+        {
+            boundArguments[i] = BindConversion(boundArguments[i], function.Paramters[i].Type);
+        }
+
+        return new BoundCallExpression(syntax, function, boundArguments.ToImmutable());
+    }
+
+    private BoundCallExpression BindCallExpression(Callv1Expression syntax)
+    {
+        return BindCallExpression(syntax, syntax.Identifier.Value, syntax.Arguments);
+    }
+
 }

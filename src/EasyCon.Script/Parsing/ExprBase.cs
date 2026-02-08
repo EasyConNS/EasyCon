@@ -1,4 +1,5 @@
 using EasyCon.Script2.Syntax;
+using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
@@ -93,4 +94,13 @@ sealed class ParenthesizedExpression(ExprBase expression) : ExprBase
 {
     public readonly ExprBase Expression = expression;
     public override string GetCodeText() => $"({expression.GetCodeText()})";
+}
+
+sealed class Callv1Expression(Token identifier, Token lp, ImmutableArray<ExprBase> arguments, Token rp) : ExprBase
+{
+    public readonly Token Identifier = identifier;
+    public readonly Token Lp = lp;
+    public ImmutableArray<ExprBase> Arguments { get; } = arguments;
+    public readonly Token Rp = rp;
+    public override string GetCodeText() => $"{Identifier.Value}({string.Join(", ", Arguments.Select(arg => arg.GetCodeText()))})";
 }

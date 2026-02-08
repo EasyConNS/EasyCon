@@ -38,7 +38,7 @@ internal partial class Parser
         return null;
     }
 
-    private Statement? ParseAssignment(string text)
+    private AssignmentStmt? ParseAssignment(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
         if (lexer.Length < 3 + 1) return null;
@@ -385,6 +385,15 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         return nodesAndSeparators.ToImmutable();
     }
 
+    private ExprBase ParseCallExpression()
+    {
+        var identifier = Match(TokenType.IDENT);
+        var openParenthesisToken = Match(TokenType.LeftParen);
+        var arguments = ParseArguments();
+        var closeParenthesisToken = Match(TokenType.RightParen);
+        return new Callv1Expression(identifier, openParenthesisToken, arguments, closeParenthesisToken);
+    }
+
     private ExprBase ParsePrimary()
     {
         switch (Current.Type)
@@ -400,6 +409,8 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 var expression = ParseExpression();
                 Match(TokenType.RightParen);
                 return new ParenthesizedExpression(expression);
+            case TokenType.IDENT:
+                return ParseCallExpression();
             case TokenType.INT:
             default:
                 var toknum = Advance();

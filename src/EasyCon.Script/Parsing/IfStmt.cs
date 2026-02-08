@@ -2,15 +2,6 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
-[Obsolete]
-abstract class BranchOp : Statement
-{
-    public BranchOp? If;
-    public BranchOp? Else;
-    public EndIf EndIf;
-    public bool Passthrough = true;
-}
-
 internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statements, EndIf endif) : Statement
 {
     public readonly IfStmt Condition = condition;
@@ -23,7 +14,7 @@ internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statem
     }
 }
 
-class IfStmt(ExprBase conds) : BranchOp
+class IfStmt(ExprBase conds) : Statement
 {
     public readonly ExprBase Condition = conds;
 
@@ -82,7 +73,7 @@ class ElseIf(ExprBase conds) : IfStmt(conds)
     //}
 }
 
-class Else : BranchOp
+class Else : Statement
 {
     protected override string _GetString() => "ELSE";
 
@@ -95,7 +86,7 @@ class Else : BranchOp
     //}
 }
 
-class EndIf : BranchOp
+class EndIf : Statement
 {
     protected override string _GetString() => "ENDIF";
 

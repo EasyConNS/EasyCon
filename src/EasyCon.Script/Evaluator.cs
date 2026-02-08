@@ -202,7 +202,15 @@ internal sealed class Evaluator
         }
         else
         {
-            _locals.Push([]);
+            var locals = new Dictionary<VariableSymbol, object>();
+            for (int i = 0; i < node.Arguments.Length; i++)
+            {
+                var parameter = node.Function.Paramters[i];
+                var value = EvaluateExpr(node.Arguments[i]);
+                Debug.Assert(value != null);
+                locals.Add(parameter, value);
+            }
+            _locals.Push(locals);
             var statement = _functions[node.Function];
             var result = EvaluateStatement(statement);
             _locals.Pop();

@@ -29,14 +29,14 @@ class FuncStmt(string name, ImmutableArray<VariableExpr> paramters) : Statement
 
     protected override string _GetString()
     {
-        return $"FUNC {Name}";
+        var parm = string.Join(", ", Paramters.Select(arg => arg.GetCodeText()));
+        parm = Paramters.Length == 0 ? "" : $"({parm})";
+        return $"FUNC {Name}{parm}";
     }
 }
 
 class EndFuncStmt : Statement
 {
-    [Obsolete]
-    public string Label;
     protected override string _GetString() => "ENDFUNC";
 
     //public override void Assemble(Assembly.Assembler assembler)
