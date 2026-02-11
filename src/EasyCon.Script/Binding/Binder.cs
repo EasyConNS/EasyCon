@@ -291,12 +291,9 @@ internal sealed class Binder
 
     private BoundGotoStatement BindBreakStatement(Break syntax)
     {
-        var levelExp = BindConversion(syntax.Level, ValueType.Int) as BoundLiteralExpression;
-        var level = (int)levelExp.ConstantValue;
-        if (_loopStack.Count < level)
-        {
-            throw new ParseException("循环层数不足", syntax.Address);
-        }
+        var level = (int)syntax.Level;
+        if(level > 3)throw new ParseException("循环层数过多，请优化脚本", syntax.Address);
+        if (_loopStack.Count < level)throw new ParseException("循环层数不足", syntax.Address);
 
         var breakLabel = _loopStack.ElementAt(level - 1).BreakLabel;
         // var breakLabel = _loopStack.Peek().BreakLabel;
@@ -349,22 +346,9 @@ internal sealed class Binder
 
     private BoundExprStatement BindCallStatement(CallStmt syntax)
     {
-        var function = _scope.TryLookupFunc(syntax.FnName) ?? throw new ParseException($"找不到调用函数 {syntax.FnName}", syntax.Address);
-
-        // 特殊处理
-        if (BuiltinFunctions.GetAll().Any(f => f == function && f == BuiltinFunctions.Timestamp))
-        {
-            var des = BindVariableDeclaration((VariableExpr)syntax.Args[0], isReadOnly: false, ValueType.Int);
-            return VariableDeclaration(syntax, des, new BoundCallExpression(null, function, []));
-        }
         // 绑定调用
         var expr = BindCallExpression(null, syntax.FnName, [.. syntax.Args]);
-        // 特殊处理
-        if (BuiltinFunctions.GetAll().Any(f => f == function && f == BuiltinFunctions.Rand))
-        {
-            var des = BindVariableDeclaration((VariableExpr)syntax.Args[0], isReadOnly: false, ValueType.Int);
-            return VariableDeclaration(syntax, des, expr);
-        }
+
         return new BoundExprStatement(syntax, expr);
     }
 

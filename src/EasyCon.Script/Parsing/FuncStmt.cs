@@ -57,11 +57,10 @@ class ReturnStmt : Statement
     //}
 }
 
-class CallStmt(string fnName, ExprBase[] args, bool buildin = true) : Statement
+class CallStmt(string fnName, ExprBase[] args) : Statement
 {
     public readonly string FnName = fnName;
     public readonly ExprBase[] Args = args;
-    private readonly bool _buildin = buildin;
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{
@@ -82,7 +81,7 @@ class CallStmt(string fnName, ExprBase[] args, bool buildin = true) : Statement
 
     protected override string _GetString()
     {
-        if (!_buildin) return $"CALL {FnName}";
+        if (Args.Length == 0) return $"CALL {FnName}";
         return $"{FnName} {string.Join(" , ", Args.Select(u => u.GetCodeText()))}".Trim();
     }
 }

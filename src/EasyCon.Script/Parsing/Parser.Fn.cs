@@ -127,7 +127,8 @@ internal partial class Parser
                 if (tokens[1].Type == TokenType.INT)
                 {
                     if (tokens[2].Type != TokenType.EOF) return null;
-                    return new Break((LiteralExpr)_formatter.GetValueEx(tokens[1]));
+                    if(!uint.TryParse(tokens[1].Value, out var level))return null;
+                    return new Break(level);
                 }
                 else
                     if (tokens[1].Type == TokenType.EOF)
@@ -236,7 +237,7 @@ internal partial class Parser
                 break;
             case "call":
                 if (tokens.Length != 2 + 1) return null;
-                return tokens[1].Type == TokenType.IDENT && tokens[2].Type == TokenType.EOF ? new CallStmt(tokens[1].Value, [], false) : null;
+                return tokens[1].Type == TokenType.IDENT ? new CallStmt(tokens[1].Value, []) : null;
 #if DEBUG
             case "sprint":
             case "smem":
@@ -248,8 +249,8 @@ internal partial class Parser
                 }
                 break;
 #endif
-            // 内置函数
             default:
+                if (tokens.Length < 2 + 1) return null;
                 var args = ParseArguments([.. tokens.Skip(1)]);
                 return new CallStmt(first.Value.ToUpper(), [.. args]);
         }
@@ -385,6 +386,62 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         return nodesAndSeparators.ToImmutable();
     }
 
+    // [1,2,3]
+    private ExprBase ParseIndexDefExpression()
+    {
+        allowVar = false;
+        var lb = Match(TokenType.LeftBracket, "语法需要'['");
+        var nodesAndSeparators = ImmutableArray.CreateBuilder<ExprBase>();
+
+        var parseNext = true;
+        while (parseNext &&
+                Current.Type != TokenType.RightBracket &&
+                Current.Type != TokenType.EOF)
+        {
+            var expression = ParsePrimary();
+            nodesAndSeparators.Add(expression);
+
+            if (Current.Type == TokenType.COMMA)
+            {
+                var comma = Advance();
+            }
+            else
+            {
+                parseNext = false;
+            }
+        }
+
+        var rb = Match(TokenType.RightBracket, "语法需要']'");
+        return new Indexv1Expression(lb, [.. nodesAndSeparators], rb);
+    }
+
+    // [expr]
+    private ExprBase ParseIndexExpression()
+    {
+        
+        var lb = Match(TokenType.LeftBracket, "语法需要'['");
+
+        var expr = ParsePrimary();
+
+        var rb = Match(TokenType.RightBracket, "语法需要']'");
+
+        return null;
+    }
+
+    // [1..3]
+    private ExprBase ParseSliceExpression(Token variableToken)
+    {
+        var lb = Match(TokenType.LeftBracket, "语法需要'['");
+
+        var start = ParsePrimary();
+        Match(TokenType.DOT, "语法不正确");
+        Match(TokenType.DOT, "语法不正确");
+        var end = ParsePrimary();
+
+        var rb = Match(TokenType.RightBracket, "语法需要']'");
+        return new SliceExpression(_formatter.GetValueEx(variableToken), start, end);
+    }
+
     private ExprBase ParseCallExpression()
     {
         var identifier = Match(TokenType.IDENT);
@@ -403,7 +460,13 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
             case TokenType.VAR when allowVar:
             case TokenType.EX_VAR when allowVar:
                 var token = Advance();
+                if(token.Type == TokenType.VAR && Peek(1).Type == TokenType.LeftBracket)
+                {
+                    return ParseSliceExpression(token);
+                }
                 return _formatter.GetValueEx(token);
+            case TokenType.LeftBracket:
+                return ParseIndexDefExpression();
             case TokenType.LeftParen:
                 Advance();
                 var expression = ParseExpression();

@@ -96,6 +96,22 @@ sealed class ParenthesizedExpression(ExprBase expression) : ExprBase
     public override string GetCodeText() => $"({expression.GetCodeText()})";
 }
 
+sealed class Indexv1Expression(Token lb, ImmutableArray<ExprBase> index, Token rb) : ExprBase
+{
+    public readonly Token Lb = lb;
+    public ImmutableArray<ExprBase> Index { get; } = index;
+    public readonly Token Rb = rb;
+    public override string GetCodeText() => $"[{string.Join(", ", Index.Select(arg => arg.GetCodeText()))}]";
+}
+
+sealed class SliceExpression(ExprBase expression, ExprBase start, ExprBase end) : ExprBase
+{
+    public readonly ExprBase Expression = expression;
+    public readonly ExprBase Start = start;
+    public readonly ExprBase End = end;
+    public override string GetCodeText() => $"{Expression.GetCodeText()}[{Start.GetCodeText()}..{End.GetCodeText()}]";
+}
+
 sealed class Callv1Expression(Token identifier, Token lp, ImmutableArray<ExprBase> arguments, Token rp) : ExprBase
 {
     public readonly Token Identifier = identifier;

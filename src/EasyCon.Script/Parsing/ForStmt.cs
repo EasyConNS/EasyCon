@@ -124,21 +124,21 @@ class Next : Statement
     //}
 }
 
-abstract class LoopCtrl(LiteralExpr level) : Statement
+abstract class LoopCtrl(uint level) : Statement
 {
-    public readonly LiteralExpr Level = level;
+    public readonly uint Level = level;
 }
 
 class Break : LoopCtrl
 {
     public Break() :base(1) { }
 
-    public Break(LiteralExpr level) :base(level) {}
+    public Break(uint level) :base(level) {}
 
     protected override string _GetString()
     {
-        if ((int)Level.Value == 1) return "BREAK";
-        return  $"BREAK {Level.GetCodeText()}";
+        if (Level == 1) return "BREAK";
+        return  $"BREAK {Level}";
     }
 
     //public override void Assemble(Assembly.Assembler assembler)
