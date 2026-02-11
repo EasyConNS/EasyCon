@@ -126,6 +126,7 @@ internal sealed class Binder
                 EmptyStmt => new BoundNop(syntax),
                 IfBlock => BindIf((IfBlock)syntax),
                 ForBlock => BindFor((ForBlock)syntax),
+                WhileBlock => BindWhile((WhileBlock)syntax),
                 AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
                 Break => BindBreakStatement((Break)syntax),
                 Continue => BindContinueStatement((Continue)syntax),
@@ -143,6 +144,7 @@ internal sealed class Binder
             throw new ParseException(ex.Message, syntax.Address);
         }
     }
+    
     private BoundBlockStatement BindIf(IfBlock syntax)
     {
         _labelCounter++;
@@ -261,6 +263,23 @@ internal sealed class Binder
             upperBoundStmt,
             BindWhile(lowwhile)
              );
+    }
+
+    private BoundBlockStatement BindWhile(WhileBlock syntax)
+    {
+        _labelCounter++;
+        var bodyLabel = new BoundLabel($"BODY_{_labelCounter}");
+
+        var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
+
+        return Block(syntax,
+            Goto(syntax, continueLabel),
+            Label(syntax, bodyLabel),
+            body,
+            Label(syntax, continueLabel),
+            GotoTrue(syntax, bodyLabel, BindConversion(syntax.Condition.Condition, ValueType.Bool)),
+            Label(syntax, breakLabel)
+            );
     }
 
     private BoundBlockStatement BindWhile(BoundWhileStatement boundsyntax)

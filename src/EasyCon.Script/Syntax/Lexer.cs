@@ -78,6 +78,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             { "elif", TokenType.ELIF },
             { "else", TokenType.ELSE },
             { "endif", TokenType.ENDIF },
+            { "while", TokenType.WHILE },
             { "for", TokenType.FOR },
             { "to", TokenType.TO },
             { "step", TokenType.STEP },

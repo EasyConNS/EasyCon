@@ -78,6 +78,7 @@ public enum TokenType
     ELIF,
     ELSE, 
     ENDIF,
+    WHILE,
     FOR, 
     TO,
     STEP,
@@ -87,6 +88,7 @@ public enum TokenType
     FUNC,
     RETURN,
     ENDFUNC, 
+    END,
     TRUE, // true
     FALSE, // false
 

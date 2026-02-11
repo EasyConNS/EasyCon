@@ -17,6 +17,7 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
         "IMPORT",
         "IF", "ELIF", "ELSE", "ENDIF",
         "FOR", "TO", "NEXT", "BREAK", "CONTINUE",
+        "WHILE", "END",
         "FUNC", "ENDFUNC", "CALL", "RETURN",
         "PRINT", "ALERT", "TIME", "WAIT",
         "A", "B", "X", "Y","L", "R","ZL", "ZR",

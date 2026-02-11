@@ -2,11 +2,11 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
-internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> statements, EndFuncStmt end) : Statement
+internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement
 {
     public readonly FuncStmt Declare = declare;
     public ImmutableArray<Statement> Statements = statements;
-    public readonly EndFuncStmt End = end;
+    public readonly EndBlockStmt End = end;
 
     protected override string _GetString()
     {
@@ -35,7 +35,7 @@ class FuncStmt(string name, ImmutableArray<VariableExpr> paramters) : Statement
     }
 }
 
-class EndFuncStmt : Statement
+class EndFuncStmt : EndBlockStmt
 {
     protected override string _GetString() => "ENDFUNC";
 

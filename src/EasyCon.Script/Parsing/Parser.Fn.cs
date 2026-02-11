@@ -1,6 +1,7 @@
-using EasyScript;
 using EasyCon.Script2.Syntax;
+using EasyScript;
 using System.Collections.Immutable;
+using System.Diagnostics.Metrics;
 using System.Text.RegularExpressions;
 
 namespace EasyCon.Script.Parsing;
@@ -64,14 +65,14 @@ internal partial class Parser
 
     private Statement? ParseIfelse(string text)
     {
-        var lexer = SyntaxTree.ParseTokens(text);
-        if (lexer.Length < 2 + 1) return null;
-        if (lexer[0].Type == TokenType.IF || lexer[0].Type == TokenType.ELIF)
+        var tokens = SyntaxTree.ParseTokens(text);
+        if (tokens.Length < 2 + 1) return null;
+        if (tokens[0].Type == TokenType.IF || tokens[0].Type == TokenType.ELIF)
         {
-            var pr = new ExprParser([.. lexer.Skip(1)], _formatter);
+            var pr = new ExprParser([.. tokens.Skip(1)], _formatter);
             var expr = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
-            switch (lexer[0].Type)
+            switch (tokens[0].Type)
             {
                 case TokenType.IF:
                     return new IfStmt(expr);
@@ -111,9 +112,20 @@ internal partial class Parser
                 }
             }
         }
-        // var m = Regex.Match(text, $@"^for\s+{Formats.RegisterEx}\s*=\s*{Formats.ValueEx}\s*to\s*{Formats.ValueEx}$", RegexOptions.IgnoreCase);
-        // if (m.Success)
-        //     return new For_Full((VariableExpr)_formatter.GetValueEx(m.Groups[1].Value), _formatter.GetValueEx(m.Groups[2].Value), _formatter.GetValueEx(m.Groups[3].Value));
+        return null;
+    }
+
+    private WhileStmt? ParseWhile(string text)
+    {
+        var tokens = SyntaxTree.ParseTokens(text);
+        if (tokens.Length < 2 + 1) return null;
+        if (tokens[0].Type == TokenType.WHILE)
+        {
+            var pr = new ExprParser([.. tokens.Skip(1)], _formatter);
+            var expr = pr.ParseExpression();
+            if (!pr.EOF(out _)) return null;
+            return new WhileStmt(expr);
+        }
         return null;
     }
 

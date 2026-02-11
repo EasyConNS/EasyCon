@@ -22,6 +22,11 @@ class EmptyStmt : Statement
     protected override string _GetString() => "";
 }
 
+class EndBlockStmt : Statement
+{
+    protected override string _GetString() => "END";
+}
+
 sealed class ImportStmt(string path) : Statement
 {
     internal readonly string LibPath = path;
@@ -46,6 +51,10 @@ internal static class FormatPrinter
         {
             WriteForBlock(fb, writer);
         }
+        else if (node is WhileBlock whb)
+        {
+            WriteWhileBlock(whb, writer);
+        }
         else if (node is FuncDeclBlock fnb)
         {
             WriteFunctionBlock(fnb, writer);
@@ -69,6 +78,13 @@ internal static class FormatPrinter
             s.WriteTo(writer);
         node.End.WriteTo(writer);
     }
+    private static void WriteWhileBlock(WhileBlock node, IndentedTextWriter writer)
+    {
+        node.Condition.WriteTo(writer);
+        foreach (var s in node.Statements)
+            s.WriteTo(writer);
+        node.End.WriteTo(writer);
+    }
     private static void WriteFunctionBlock(FuncDeclBlock node, IndentedTextWriter writer)
     {
         node.Declare.WriteTo(writer);
@@ -78,14 +94,14 @@ internal static class FormatPrinter
     }
     private static void WriteStatementInternal(Statement node, IndentedTextWriter writer)
     {
-        if (node is ElseIf || node is Else || node is EndIf || node is Next || node is EndFuncStmt)
+        if (node is ElseIf || node is Else || node is EndBlockStmt)
         {
             writer.Indent--;
         }
 
         writer.Write(node.GetCodeText());
 
-        if (node is ForStmt || node is FuncStmt || node is IfStmt || node is Else)
+        if (node is ForStmt || node is FuncStmt || node is IfStmt || node is Else || node is WhileStmt)
         {
             writer.Indent++;
         }

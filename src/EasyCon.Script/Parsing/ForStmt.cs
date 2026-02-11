@@ -2,11 +2,11 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
-internal sealed class ForBlock(ForStmt condition, ImmutableArray<Statement> statements, Next end) : Statement
+internal sealed class ForBlock(ForStmt condition, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement
 {
     public readonly ForStmt Condition = condition;
     public ImmutableArray<Statement> Statements = statements;
-    public readonly Next End = end;
+    public readonly EndBlockStmt End = end;
 
     protected override string _GetString()
     {
@@ -110,7 +110,7 @@ class For_Full(VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(l
     //}
 }
 
-class Next : Statement
+class Next : EndBlockStmt
 {
     protected override string _GetString() => "NEXT";
 
@@ -122,6 +122,28 @@ class Next : Statement
     //    assembler.Add(Assembly.Instructions.AsmNext.Create(val));
     //    assembler.ForMapping[For].Next = assembler.Last() as Assembly.Instructions.AsmNext;
     //}
+}
+
+internal sealed class WhileBlock(WhileStmt condition, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement
+{
+    public readonly WhileStmt Condition = condition;
+    public ImmutableArray<Statement> Statements = statements;
+    public readonly EndBlockStmt End = end;
+
+    protected override string _GetString()
+    {
+        throw new NotImplementedException();
+    }
+}
+
+class WhileStmt(ExprBase conds) : Statement
+{
+    public readonly ExprBase Condition = conds;
+
+    protected override string _GetString()
+    {
+        return $"WHILE {Condition.GetCodeText()}";
+    }
 }
 
 abstract class LoopCtrl(uint level) : Statement

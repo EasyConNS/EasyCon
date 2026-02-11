@@ -70,6 +70,10 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
         {
             return new EndIf();
         }
+        else if (text.StartsWith("while", StringComparison.OrdinalIgnoreCase))
+        {
+            return ParseWhile(text);
+        }
         else if (text.StartsWith("for", StringComparison.OrdinalIgnoreCase))
         {
             return ParseFor(text);
@@ -87,6 +91,10 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
             return new EndFuncStmt();
         else if (text.Equals("return", StringComparison.OrdinalIgnoreCase))
             return new ReturnStmt();
+        else if (text.Equals("end", StringComparison.OrdinalIgnoreCase))
+        {
+            return new EndBlockStmt();
+        }
         else if (int.TryParse(text, out int duration))
             return new Wait(duration, true);
         else
@@ -128,7 +136,7 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
                         throw new ParseException("导入只能在脚本开头");
                     }
                 }
-                if (st is ForStmt || (st is IfStmt and not ElseIf) || st is FuncStmt)
+                if (st is ForStmt || (st is IfStmt and not ElseIf) || st is FuncStmt || st is WhileStmt)
                 {
                     if (st is FuncStmt fst)
                     {
@@ -149,8 +157,10 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
                     }
                     if (unit.Count == 1) throw new ParseException("多余的语句");
                     var body = unit.Pop();
-                    st = new ForBlock(lastfor, [.. body.Skip(1)], nst);
-                    st.Address = lastfor.Address;
+                    st = new ForBlock(lastfor, [.. body.Skip(1)], nst)
+                    {
+                        Address = lastfor.Address
+                    };
                     result = unit.Peek();
                 }
                 else if (st is ElseIf)
@@ -179,8 +189,10 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
                     }
                     if (unit.Count == 1) throw new ParseException("多余的语句");
                     var body = unit.Pop();
-                    st = new IfBlock(ifstart, [.. body.Skip(1)], eifst);
-                    st.Address = ifstart.Address;
+                    st = new IfBlock(ifstart, [.. body.Skip(1)], eifst)
+                    {
+                        Address = ifstart.Address
+                    };
                     result = unit.Peek();
                 }
                 else if (st is EndFuncStmt efnst)
@@ -191,11 +203,27 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
                     }
                     if (unit.Count == 1) throw new ParseException("多余的语句");
                     var body = unit.Pop();
-                    st = new FuncDeclBlock(funcdef, [.. body.Skip(1)], efnst);
-                    st.Address = funcdef.Address;
+                    st = new FuncDeclBlock(funcdef, [.. body.Skip(1)], efnst)
+                    {
+                        Address = funcdef.Address
+                    };
                     result = unit.Peek();
                 }
-
+                else if (st is EndBlockStmt comend)
+                {
+                    if (result.First() is not WhileStmt whilecond)
+                    {
+                        throw new ParseException("END需要对应结束WHILE语句", address);
+                    }
+                    if (unit.Count == 1) throw new ParseException("多余的语句");
+                    var body = unit.Pop();
+                    st = new WhileBlock(whilecond, [.. body.Skip(1)], comend)
+                    {
+                        Address = whilecond.Address
+                    };
+                    result = unit.Peek();
+                }
+                
                 result.Add(st);
                 address += 1;
             }

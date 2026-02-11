@@ -2,11 +2,11 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
-internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statements, EndIf endif) : Statement
+internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statements, EndBlockStmt endif) : Statement
 {
     public readonly IfStmt Condition = condition;
     public ImmutableArray<Statement> Statements = statements;
-    public readonly EndIf End = endif;
+    public readonly EndBlockStmt End = endif;
 
     protected override string _GetString()
     {
@@ -86,7 +86,7 @@ class Else : Statement
     //}
 }
 
-class EndIf : Statement
+class EndIf : EndBlockStmt
 {
     protected override string _GetString() => "ENDIF";
 
