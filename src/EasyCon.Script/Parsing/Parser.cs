@@ -149,20 +149,6 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
                     }
                     startblock();
                 }
-                else if (st is Next nst)
-                {
-                    if (result.First() is not ForStmt lastfor)
-                    {
-                        throw new ParseException("NEXT需要对应的For语句", address);
-                    }
-                    if (unit.Count == 1) throw new ParseException("多余的语句");
-                    var body = unit.Pop();
-                    st = new ForBlock(lastfor, [.. body.Skip(1)], nst)
-                    {
-                        Address = lastfor.Address
-                    };
-                    result = unit.Peek();
-                }
                 else if (st is ElseIf)
                 {
                     if (result.First() is not IfStmt)
@@ -181,45 +167,48 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
                     if (result.OfType<Else>().Any())
                         throw new ParseException("一个If只能对应一个Else", address);
                 }
-                else if (st is EndIf eifst)
+                else if (st is EndBlockStmt comend)
                 {
-                    if (result.First() is not IfStmt ifstart)
+                    if (unit.Count == 1) throw new ParseException("多余的结束语句");
+
+                    if (st is EndIf && result.First() is not IfStmt)
                     {
                         throw new ParseException("ENDIF需要对应的If语句", address);
                     }
-                    if (unit.Count == 1) throw new ParseException("多余的语句");
-                    var body = unit.Pop();
-                    st = new IfBlock(ifstart, [.. body.Skip(1)], eifst)
+                    else if (st is Next && result.First() is not ForStmt)
                     {
-                        Address = ifstart.Address
-                    };
-                    result = unit.Peek();
-                }
-                else if (st is EndFuncStmt efnst)
-                {
-                    if (result.First() is not FuncStmt funcdef)
+                        throw new ParseException("NEXT需要对应的For语句", address);
+                    }
+                    else if (st is EndFuncStmt && result.First() is not FuncStmt)
                     {
                         throw new ParseException("ENDFUNC需要对应的Func语句", address);
                     }
-                    if (unit.Count == 1) throw new ParseException("多余的语句");
-                    var body = unit.Pop();
-                    st = new FuncDeclBlock(funcdef, [.. body.Skip(1)], efnst)
+                    else if (result.First() is not StartBlockStmt whilecond)
                     {
-                        Address = funcdef.Address
-                    };
-                    result = unit.Peek();
-                }
-                else if (st is EndBlockStmt comend)
-                {
-                    if (result.First() is not WhileStmt whilecond)
-                    {
-                        throw new ParseException("END需要对应结束WHILE语句", address);
+                        throw new ParseException("END需要对应的语句开头", address);
                     }
-                    if (unit.Count == 1) throw new ParseException("多余的语句");
+
                     var body = unit.Pop();
-                    st = new WhileBlock(whilecond, [.. body.Skip(1)], comend)
+
+                    st = result.First() switch
                     {
-                        Address = whilecond.Address
+                        IfStmt ifstart => new IfBlock(ifstart, [.. body.Skip(1)], comend)
+                        {
+                            Address = ifstart.Address
+                        },
+                        ForStmt forstart => new ForBlock(forstart, [.. body.Skip(1)], comend)
+                        {
+                            Address = forstart.Address
+                        },
+                        WhileStmt whilecond => new WhileBlock(whilecond, [.. body.Skip(1)], comend)
+                        {
+                            Address = whilecond.Address
+                        },
+                        FuncStmt funcdef => new FuncDeclBlock(funcdef, [.. body.Skip(1)], comend)
+                        {
+                            Address = funcdef.Address
+                        },
+                        _ => throw new ParseException("语句块格式不正确", address),
                     };
                     result = unit.Peek();
                 }

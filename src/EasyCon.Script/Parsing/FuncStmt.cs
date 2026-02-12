@@ -14,7 +14,7 @@ internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> 
     }
 }
 
-class FuncStmt(string name, ImmutableArray<VariableExpr> paramters) : Statement
+class FuncStmt(string name, ImmutableArray<VariableExpr> paramters) : StartBlockStmt
 {
     public readonly string Name = name;
     public ImmutableArray<VariableExpr> Paramters = paramters;

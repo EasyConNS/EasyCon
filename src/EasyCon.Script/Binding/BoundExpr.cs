@@ -82,7 +82,7 @@ internal sealed class BoundAssignExpression(ExprBase syntax, VariableSymbol vari
 
 internal sealed class BoundCallExpression(ExprBase syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments) : BoundExpr(syntax)
 {
-    public override ValueType Type => ValueType.Int;
+    public override ValueType Type => Function.Type;
     public FunctionSymbol Function = function;
     public ImmutableArray<BoundExpr> Arguments = arguments;
     public override BoundNodeKind Kind => BoundNodeKind.CallExpression;

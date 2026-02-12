@@ -261,7 +261,7 @@ internal sealed class Binder
         return Block(syntax,
             lowerBoundStmt,
             upperBoundStmt,
-            BindWhile(lowwhile)
+            RewriteWhile(lowwhile)
              );
     }
 
@@ -282,7 +282,7 @@ internal sealed class Binder
             );
     }
 
-    private BoundBlockStatement BindWhile(BoundWhileStatement boundsyntax)
+    private BoundBlockStatement RewriteWhile(BoundWhileStatement boundsyntax)
     {
         var bodyLabel = new BoundLabel($"body{++_labelCounter}");
         var syntax = boundsyntax.Syntax;
@@ -340,6 +340,8 @@ internal sealed class Binder
             var op = BoundBinaryOperator.Bind(syntax.AugOp.Operator);
             boundexpr = new BoundBinaryExpression(syntax.Expression, desvar, op!, boundexpr);
         }
+
+        if(boundexpr.Type == ValueType.Void) throw new ParseException("空值表达式无法赋值", syntax.Address);
         var variable = BindVariableDeclaration(syntax.DestVariable, syntax.DestVariable.ReadOnly, boundexpr.Type);
 
         if (variable.Type != boundexpr.Type) throw new ParseException("表达式和变量类型不匹配", syntax.Address);

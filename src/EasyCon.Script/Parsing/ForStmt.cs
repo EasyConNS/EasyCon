@@ -14,7 +14,7 @@ internal sealed class ForBlock(ForStmt condition, ImmutableArray<Statement> stat
     }
 }
 
-abstract class ForStmt(ExprBase lower, ExprBase upper) : Statement
+abstract class ForStmt(ExprBase lower, ExprBase upper) : StartBlockStmt
 {
     public readonly ExprBase Lower = lower;
     public readonly ExprBase Upper = upper;
@@ -136,7 +136,7 @@ internal sealed class WhileBlock(WhileStmt condition, ImmutableArray<Statement> 
     }
 }
 
-class WhileStmt(ExprBase conds) : Statement
+class WhileStmt(ExprBase conds) : StartBlockStmt
 {
     public readonly ExprBase Condition = conds;
 

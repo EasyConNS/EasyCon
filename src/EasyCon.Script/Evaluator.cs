@@ -181,10 +181,11 @@ internal sealed class Evaluator
     private object? EvaluateAssignmentExpression(BoundAssignExpression node)
     {
         var value = EvaluateExpr(node.Expression);
+        value ??= "()";
         Debug.Assert(value != null);
 
         Assign(node.Variable, value);
-        return value;
+        return value is "()" ? null : value;
     }
 
     private object? EvaluateCallExpression(BoundCallExpression node)

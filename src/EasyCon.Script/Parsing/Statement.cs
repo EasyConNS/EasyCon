@@ -22,6 +22,9 @@ class EmptyStmt : Statement
     protected override string _GetString() => "";
 }
 
+abstract class StartBlockStmt : Statement
+{}
+
 class EndBlockStmt : Statement
 {
     protected override string _GetString() => "END";

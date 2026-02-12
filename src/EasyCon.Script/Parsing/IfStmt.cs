@@ -14,7 +14,7 @@ internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statem
     }
 }
 
-class IfStmt(ExprBase conds) : Statement
+class IfStmt(ExprBase conds) : StartBlockStmt
 {
     public readonly ExprBase Condition = conds;
 

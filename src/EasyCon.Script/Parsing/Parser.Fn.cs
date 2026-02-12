@@ -273,14 +273,14 @@ internal partial class Parser
     {
         if (toks.Length == 1 && toks[0].Type == TokenType.EOF)
             return [];
-        var pr = new ExprParser(toks, _formatter, allowStr: true);
+        var pr = new ExprParser(toks, _formatter);
         var args = pr.ParseArguments();
         if (!pr.EOF(out _)) throw new Exception("参数解析失败");
         return args;
     }
 }
 
-class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar = true, bool allowStr = false)
+class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar = true)
 {
     private readonly ImmutableArray<Token> _tokens = toks;
     private int _position = 0;
@@ -467,7 +467,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
     {
         switch (Current.Type)
         {
-            case TokenType.STRING when allowStr:
+            case TokenType.STRING:
             case TokenType.CONST:
             case TokenType.VAR when allowVar:
             case TokenType.EX_VAR when allowVar:
