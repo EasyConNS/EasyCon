@@ -56,7 +56,7 @@ internal sealed class Evaluator
                 labelToIndex.Add(l.Label, i + 1);
         }
         var index = 0;
-
+        var spin = new SpinWait();
         while (!_token.IsCancellationRequested && index < body.Statements.Length)
         {
             var s = body.Statements[index];
@@ -68,14 +68,17 @@ internal sealed class Evaluator
                 case ExpressionStatement:
                     EvaluateExpressionStatement((BoundExprStatement)s);
                     index++;
+                    spin.SpinOnce();
                     break;
                 case KeyAction:
                     EvaluateKeyAction((BoundKeyActStatement)s);
                     index++;
+                    spin.SpinOnce();
                     break;
                 case StickAction:
                     EvaluateStickKeyAction((BoundStickActStatement)s);
                     index++;
+                    spin.SpinOnce();
                     break;
                 case Goto:
                     var gs = (BoundGotoStatement)s;
@@ -98,7 +101,6 @@ internal sealed class Evaluator
                 default:
                     throw new ScriptException($"执行语句类型未知", index);
             }
-            Thread.Sleep(1);
         }
         return _lastValue;
     }
