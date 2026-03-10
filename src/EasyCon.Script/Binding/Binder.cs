@@ -1,6 +1,5 @@
 using EasyCon.Script.Parsing;
 using EasyCon.Script2;
-using EasyCon.Script2.Symbols;
 using System.Collections.Immutable;
 using static EasyCon.Script.Binding.BoundFactory;
 

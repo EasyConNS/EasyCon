@@ -1,7 +1,6 @@
 using EasyCon.Script2.Syntax;
 using EasyScript;
 using System.Collections.Immutable;
-using System.Diagnostics.Metrics;
 using System.Text.RegularExpressions;
 
 namespace EasyCon.Script.Parsing;
