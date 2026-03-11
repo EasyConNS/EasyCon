@@ -68,21 +68,19 @@ internal sealed class Evaluator
                 case ExpressionStatement:
                     EvaluateExpressionStatement((BoundExprStatement)s);
                     index++;
-                    spin.SpinOnce();
                     break;
                 case KeyAction:
                     EvaluateKeyAction((BoundKeyActStatement)s);
                     index++;
-                    spin.SpinOnce();
                     break;
                 case StickAction:
                     EvaluateStickKeyAction((BoundStickActStatement)s);
                     index++;
-                    spin.SpinOnce();
                     break;
                 case Goto:
                     var gs = (BoundGotoStatement)s;
                     index = labelToIndex[gs.Label];
+                    spin.SpinOnce();
                     break;
                 case ConditionGoto:
                     var cgs = (BoundConditionalGotoStatement)s;
@@ -91,6 +89,7 @@ internal sealed class Evaluator
                         index = labelToIndex[cgs.Label];
                     else
                         index++;
+                    spin.SpinOnce();
                     break;
                 case Label:
                     index++;

@@ -232,12 +232,10 @@ internal sealed class Binder
             For_Full or For_Static => Less(forCond.Upper, BindVarExpression(idxVar!), upperBound),
             _ => Literal(forCond.Upper, true),
         };
-
         BoundStmt lowerBoundStmt = variable == null ? Nop(syntax.Condition) :
             VariableDeclaration(syntax.Condition, variable, lowerBound);
         BoundStmt upperBoundStmt = variable == null ? Nop(syntax.Condition) :
             ConstantDeclaration(syntax.Condition, "upperBound", upperBound);
-
         // var+=step
         var step = Literal(forCond.Upper, 1);
         BoundStmt stepStmt = variable == null ? Nop(syntax.Condition) :
@@ -266,19 +264,15 @@ internal sealed class Binder
 
     private BoundBlockStatement BindWhile(WhileBlock syntax)
     {
-        _labelCounter++;
-        var bodyLabel = new BoundLabel($"BODY_{_labelCounter}");
-
         var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
 
-        return Block(syntax,
-            Goto(syntax, continueLabel),
-            Label(syntax, bodyLabel),
+        var lowwhile = new BoundWhileStatement(syntax,
+            BindConversion(syntax.Condition.Condition, ValueType.Bool),
             body,
-            Label(syntax, continueLabel),
-            GotoTrue(syntax, bodyLabel, BindConversion(syntax.Condition.Condition, ValueType.Bool)),
-            Label(syntax, breakLabel)
-            );
+            breakLabel,
+            continueLabel
+             );
+        return RewriteWhile(lowwhile);
     }
 
     private BoundBlockStatement RewriteWhile(BoundWhileStatement boundsyntax)

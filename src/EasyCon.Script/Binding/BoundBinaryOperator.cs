@@ -46,8 +46,8 @@ internal sealed class BoundBinaryOperator
         new(TokenType.SHL,BoundBinaryOperatorKind.BitLeftShift, ValueType.Int, (a, b) => (int)a << (int)b),
         new(TokenType.SHR,BoundBinaryOperatorKind.BitRightShift, ValueType.Int, (a, b) => (int)((int)a >> (int)b)),
 
-        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 == v1),
-        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 != v1),
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 == (int)v1),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 != (int)v1),
         new(TokenType.LESS,BoundBinaryOperatorKind.Less, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 < (int)v1),
         new(TokenType.LEQ,BoundBinaryOperatorKind.LessOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 <= (int)v1),
         new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 > (int)v1),
