@@ -29,13 +29,24 @@ public class CodeCompletionController : IDisposable
 {
     private readonly TextEditor _editor;
     private readonly ICompletionProvider _completionProvider;
+    private bool _enableAutoCompletion;
     private CompletionWindow _completionWindow;
     private bool _isDisposed;
 
-    public CodeCompletionController(TextEditor editor, ICompletionProvider completionProvider)
+    /// <summary>
+    /// 获取或设置是否启用代码自动补全功能
+    /// </summary>
+    public bool EnableAutoCompletion
+    {
+        get => _enableAutoCompletion;
+        set => _enableAutoCompletion = value;
+    }
+
+    public CodeCompletionController(TextEditor editor, ICompletionProvider completionProvider, bool enableAutoCompletion = true)
     {
         _editor = editor ?? throw new ArgumentNullException(nameof(editor));
         _completionProvider = completionProvider;
+        _enableAutoCompletion = enableAutoCompletion;
 
         SetupEventHandlers();
     }
@@ -55,6 +66,8 @@ public class CodeCompletionController : IDisposable
 
     private async void OnTextEntered(object sender, TextCompositionEventArgs e)
     {
+        if (!_enableAutoCompletion) return;
+
         var line = _editor.TextArea.Document.GetLineByNumber(_editor.TextArea.Caret.Line);
         if (_completionProvider.ShouldTriggerCompletion(e.Text[0],
             _editor.TextArea.Document.GetText(line.Offset, line.Length),

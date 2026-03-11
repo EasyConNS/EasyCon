@@ -35,6 +35,8 @@
 			<Word>NEXT</Word>
 			<Word>BREAK</Word>
 			<Word>CONTINUE</Word>
+			<Word>WHILE</Word>
+			<Word>END</Word>
 			<Word>IF</Word>
 			<Word>ELIF</Word>
 			<Word>ELSE</Word>
@@ -46,10 +48,13 @@
 		</Keywords>
 
 		<Keywords color="Funcs">
+			<Word>RAND</Word>
+			<Word>TIME</Word>
 			<Word>PRINT</Word>
 			<Word>ALERT</Word>
 			<Word>WAIT</Word>
 			<Word>AMIIBO</Word>
+			<Word>BEEP</Word>
 		</Keywords>
 
 		<Keywords color="GamePadKey">

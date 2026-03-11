@@ -82,6 +82,6 @@ class CallStmt(string fnName, ExprBase[] args) : Statement
     protected override string _GetString()
     {
         if (Args.Length == 0) return $"CALL {FnName}";
-        return $"{FnName} {string.Join(" , ", Args.Select(u => u.GetCodeText()))}".Trim();
+        return $"{FnName} {string.Join(", ", Args.Select(u => u.GetCodeText()))}".Trim();
     }
 }

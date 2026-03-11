@@ -6,6 +6,7 @@ using EasyCon.Script.Parsing;
 using OpenCvSharp.Extensions;
 using System.IO;
 using System.Media;
+using System.Text.RegularExpressions;
 
 namespace EasyCon2.Forms;
 
@@ -35,7 +36,11 @@ partial class EasyConForm
                     return (int)md;
                 }))
                 );
-            textEditor.Text = _program.ToCode().Trim();
+            
+            // 格式化代码并确保逗号后面总是有空格
+            var formattedCode = _program.ToCode().Trim();
+            formattedCode = Regex.Replace(formattedCode, ",(?! )", ", ");
+            textEditor.Text = formattedCode;
             textEditor.Select(0, 0);
             StatusShowLog("编译完成");
             return true;

@@ -77,16 +77,18 @@ public sealed class Scripter
 
         if (comm)
         {
-            // 在第一个非空白字符前插入 #注释此行
-            return input.Insert(firstNonWhitespaceIndex, "#");
+            // 在第一个非空白字符前插入 "# " 注释此行
+            return input.Insert(firstNonWhitespaceIndex, "# ");
         }
         else
         {
-            // 删除第一个 # 字符，取消注释
-            return input.Remove(firstNonWhitespaceIndex, 1);
+            // 删除第一个 # 字符，以及其后的0~1个空格
+            int removeCount = 1;
+            if (firstNonWhitespaceIndex + 1 < input.Length && input[firstNonWhitespaceIndex + 1] == ' ')
+                removeCount = 2;
+            return input.Remove(firstNonWhitespaceIndex, removeCount);
         }
     }
-
     public byte[] Assemble(bool auto = true)
     {
         return runner.Assemble(auto);

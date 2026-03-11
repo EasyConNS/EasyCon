@@ -97,6 +97,9 @@ namespace EasyCon2.Forms
             InitEditor();
             InitEvent();
 
+            // 初始化菜单项状态
+            代码自动补全ToolStripMenuItem.Checked = _config.EnableAutoCompletion;
+
             // UI updating timer
             Task.Run(() => { UpdateUI(); });
 
@@ -128,7 +131,7 @@ namespace EasyCon2.Forms
 
             var completionProvider = new EcpCompletionProvider(textEditor);
             completionProvider.GetImgLabel += () => captureVideo.LoadedLabels.Select(il => il.name);
-            _completionController = new CodeCompletionController(textEditor, completionProvider);
+            _completionController = new CodeCompletionController(textEditor, completionProvider, _config.EnableAutoCompletion);
 
             _foldingManager = FoldingManager.Install(textEditor.TextArea);
             _foldingStrategy = new CustomFoldingStrategy();
@@ -378,16 +381,22 @@ namespace EasyCon2.Forms
             {
                 try
                 {
-                    var result = new EasyCon.Core.PushPlusClient(_config.AlertToken).SendMessage(message).Result;
-                    Print(result);
-
-                    if (_config.ChannelToken != "")
+                    if (_config.EnableAlertToken)
                     {
-                        ws?.SendNotify(message);
+                        var result = new EasyCon.Core.PushPlusClient(_config.AlertToken).SendMessage(message).Result;
+                        Print(result);
                     }
-                    else
+
+                    if (_config.EnableChannelToken)
                     {
-                        Print("推送失败: 请配置推送Token");
+                        if (_config.ChannelToken != "")
+                        {
+                            ws?.SendNotify(message);
+                        }
+                        else
+                        {
+                            Print("推送失败: 请配置QQ频道Token");
+                        }
                     }
                 }
                 catch (Exception e)
@@ -941,6 +950,17 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
                 _config = form.Config;
                 SaveConfig();
             }
+        }
+
+        private void 代码自动补全ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var menu = (ToolStripMenuItem)sender;
+            // CheckOnClick已自动切换状态，直接读取当前值
+            _config.EnableAutoCompletion = menu.Checked;
+            SaveConfig();
+            
+            // 直接改变补全控制器的状态，无需重新初始化
+            _completionController.EnableAutoCompletion = _config.EnableAutoCompletion;
         }
 
         private void 设备驱动配置ToolStripMenuItem_Click(object sender, EventArgs e)
