@@ -228,7 +228,7 @@ internal partial class Parser
 
         var pr = new ExprParser(toks, _formatter);
         var paramters = pr.ParseParameterList();
-        if (!pr.EOF(out _)) throw new Exception("参数解析失败");
+        if (!pr.EOF(out _)) throw new Exception("函数定义参数格式不正确");
         return paramters;
     }
 
@@ -274,7 +274,7 @@ internal partial class Parser
             return [];
         var pr = new ExprParser(toks, _formatter);
         var args = pr.ParseArguments();
-        if (!pr.EOF(out _)) throw new Exception("参数解析失败");
+        if (!pr.EOF(out _)) throw new Exception("函数传参解析失败");
         return args;
     }
 }

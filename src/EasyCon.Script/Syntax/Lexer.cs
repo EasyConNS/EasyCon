@@ -49,12 +49,14 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 var content = mp.Groups[2].Value;
                 var strs = content.Split('&');
                 builder.Append($"{mp.Groups[1].Value} ");
+                int index = 0;
                 foreach (var str in strs)
                 {
                     var s = str.Trim();
                     if (!variableRex().Match(s).Success) s = $"\"{s}\"";
                     builder.Append(s);
-                    if(str!=strs.Last())builder.Append('&');
+                    if(index != strs.Length - 1) builder.Append('&');
+                    index++;
                 }
             }
             else
