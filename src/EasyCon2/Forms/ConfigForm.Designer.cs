@@ -33,6 +33,8 @@
             this.PPTokenBox = new System.Windows.Forms.TextBox();
             this.QQTokenBox = new System.Windows.Forms.TextBox();
             this.label2 = new System.Windows.Forms.Label();
+            this.PPCheckBox = new System.Windows.Forms.CheckBox();
+            this.QQCheckBox = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // button1
@@ -51,49 +53,71 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(60, 24);
+            this.label1.Location = new System.Drawing.Point(36, 25);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(112, 17);
             this.label1.TabIndex = 1;
-            this.label1.Text = "pushplus Token：";
+            this.label1.Text = "pushplus token (32位):";
+            // 
+            // PPCheckBox
+            //
+            this.PPCheckBox.AutoSize = true;
+            this.PPCheckBox.Location = new System.Drawing.Point(18, 28);
+            this.PPCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.PPCheckBox.Name = "PPCheckBox";
+            this.PPCheckBox.Size = new System.Drawing.Size(18, 17);
+            this.PPCheckBox.TabIndex = 5;
+            this.PPCheckBox.UseVisualStyleBackColor = true;
             // 
             // PPTokenBox
             // 
-            this.PPTokenBox.Location = new System.Drawing.Point(61, 48);
+            this.PPTokenBox.Location = new System.Drawing.Point(38, 48);
             this.PPTokenBox.Margin = new System.Windows.Forms.Padding(4);
             this.PPTokenBox.MaxLength = 256;
             this.PPTokenBox.Name = "PPTokenBox";
-            this.PPTokenBox.Size = new System.Drawing.Size(372, 23);
+            this.PPTokenBox.Size = new System.Drawing.Size(395, 23);
             this.PPTokenBox.TabIndex = 2;
-            // 
-            // QQTokenBox
-            // 
-            this.QQTokenBox.Location = new System.Drawing.Point(61, 103);
-            this.QQTokenBox.Margin = new System.Windows.Forms.Padding(4);
-            this.QQTokenBox.MaxLength = 256;
-            this.QQTokenBox.Name = "QQTokenBox";
-            this.QQTokenBox.Size = new System.Drawing.Size(372, 23);
-            this.QQTokenBox.TabIndex = 3;
             // 
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(60, 82);
+            this.label2.Location = new System.Drawing.Point(36, 80);
             this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(104, 17);
             this.label2.TabIndex = 4;
-            this.label2.Text = "QQ频道 Token：";
+            this.label2.Text = "QQ频道 token:";
+            // 
+            // QQCheckBox
+            // 
+            this.QQCheckBox.AutoSize = true;
+            this.QQCheckBox.Location = new System.Drawing.Point(18, 83);
+            this.QQCheckBox.Margin = new System.Windows.Forms.Padding(4);
+            this.QQCheckBox.Name = "QQCheckBox";
+            this.QQCheckBox.Size = new System.Drawing.Size(18, 17);
+            this.QQCheckBox.TabIndex = 6;
+            this.QQCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // QQTokenBox
+            // 
+            this.QQTokenBox.Location = new System.Drawing.Point(38, 103);
+            this.QQTokenBox.Margin = new System.Windows.Forms.Padding(4);
+            this.QQTokenBox.MaxLength = 256;
+            this.QQTokenBox.Name = "QQTokenBox";
+            this.QQTokenBox.Size = new System.Drawing.Size(395, 23);
+            this.QQTokenBox.TabIndex = 3;
             // 
             // ConfigForm
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Inherit;
             this.ClientSize = new System.Drawing.Size(463, 238);
-            this.Controls.Add(this.label2);
-            this.Controls.Add(this.QQTokenBox);
-            this.Controls.Add(this.PPTokenBox);
             this.Controls.Add(this.label1);
+            this.Controls.Add(this.PPTokenBox);
+            this.Controls.Add(this.PPCheckBox);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.QQCheckBox);
+            this.Controls.Add(this.QQTokenBox);
             this.Controls.Add(this.button1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Margin = new System.Windows.Forms.Padding(4);
@@ -101,7 +125,7 @@
             this.MinimizeBox = false;
             this.Name = "ConfigForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "配置参数";
+            this.Text = "配置推送token参数";
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -114,5 +138,7 @@
         private TextBox PPTokenBox;
         private TextBox QQTokenBox;
         private Label label2;
+        private CheckBox PPCheckBox;
+        private CheckBox QQCheckBox;
     }
 }

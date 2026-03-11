@@ -56,6 +56,7 @@ namespace EasyCon2.Forms
             烧录自动运行ToolStripMenuItem = new ToolStripMenuItem();
             频道远程ToolStripMenuItem = new ToolStripMenuItem();
             显示折叠ToolStripMenuItem = new ToolStripMenuItem();
+            代码自动补全ToolStripMenuItem = new ToolStripMenuItem();
             蓝牙ToolStripMenuItem = new ToolStripMenuItem();
             蓝牙设备驱动配置ToolStripMenuItem = new ToolStripMenuItem();
             eSP32ToolStripMenuItem = new ToolStripMenuItem();
@@ -221,6 +222,7 @@ namespace EasyCon2.Forms
             // 注释取消注释ToolStripMenuItem
             // 
             注释取消注释ToolStripMenuItem.Name = "注释取消注释ToolStripMenuItem";
+            注释取消注释ToolStripMenuItem.ShortcutKeyDisplayString = "Ctrl+/";
             注释取消注释ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Oem2;
             注释取消注释ToolStripMenuItem.Size = new Size(335, 26);
             注释取消注释ToolStripMenuItem.Text = "注释/取消注释";
@@ -285,7 +287,7 @@ namespace EasyCon2.Forms
             // 
             // 设置ToolStripMenuItem
             // 
-            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, 烧录自动运行ToolStripMenuItem, 频道远程ToolStripMenuItem, 显示折叠ToolStripMenuItem });
+            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, 烧录自动运行ToolStripMenuItem, 频道远程ToolStripMenuItem, 显示折叠ToolStripMenuItem, 代码自动补全ToolStripMenuItem });
             设置ToolStripMenuItem.Name = "设置ToolStripMenuItem";
             设置ToolStripMenuItem.Size = new Size(53, 24);
             设置ToolStripMenuItem.Text = "设置";
@@ -328,6 +330,15 @@ namespace EasyCon2.Forms
             显示折叠ToolStripMenuItem.Size = new Size(212, 26);
             显示折叠ToolStripMenuItem.Text = "显示折叠";
             显示折叠ToolStripMenuItem.Click += 显示折叠ToolStripMenuItem_Click;
+            // 
+            // 代码自动补全ToolStripMenuItem
+            // 
+            代码自动补全ToolStripMenuItem.Checked = true;
+            代码自动补全ToolStripMenuItem.CheckOnClick = true;
+            代码自动补全ToolStripMenuItem.Name = "代码自动补全ToolStripMenuItem";
+            代码自动补全ToolStripMenuItem.Size = new Size(212, 26);
+            代码自动补全ToolStripMenuItem.Text = "代码自动补全";
+            代码自动补全ToolStripMenuItem.Click += 代码自动补全ToolStripMenuItem_Click;
             // 
             // 蓝牙ToolStripMenuItem
             // 
@@ -633,6 +644,7 @@ namespace EasyCon2.Forms
             editorHost.Size = new Size(448, 608);
             editorHost.TabIndex = 0;
             editorHost.Text = "elementHost1";
+            editorHost.Font = new Font("Consolas", 9f); // 设置字体
             // 
             // groupBox3
             // 
@@ -978,6 +990,7 @@ namespace EasyCon2.Forms
         private System.Windows.Forms.ToolStripMenuItem 显示调试信息ToolStripMenuItem;
         private System.Windows.Forms.Integration.ElementHost editorHost;
         private ToolStripMenuItem 推送设置ToolStripMenuItem;
+        private ToolStripMenuItem 代码自动补全ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙设备驱动配置ToolStripMenuItem;
         private ToolStripMenuItem 频道远程ToolStripMenuItem;

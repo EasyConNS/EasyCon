@@ -20,11 +20,12 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
         "WHILE", "END",
         "FUNC", "ENDFUNC", "CALL", "RETURN",
         "PRINT", "ALERT", "TIME", "WAIT",
-        "A", "B", "X", "Y","L", "R","ZL", "ZR",
+        "A", "B", "X", "Y", "L", "R", "ZL", "ZR",
         "PLUS", "MINUS", "HOME", "CAPTURE",
         "LS", "RS", "LCLICK", "RCLICK",
         "LEFT", "RIGHT", "UP", "DOWN",
-        "UPLEFT", "UPRIGHT", "DOWNLEFT", "DOWNRIGHT"
+        "UPLEFT", "UPRIGHT", "DOWNLEFT", "DOWNRIGHT",
+        "RAND", "AMIIBO", "BEEP",
         ];
     public async Task<IEnumerable<ICompletionData>> GetCompletions(ITextSource textSource, int offset, string cur)
     {
