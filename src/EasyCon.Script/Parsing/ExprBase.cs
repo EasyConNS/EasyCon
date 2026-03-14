@@ -1,3 +1,4 @@
+using EasyCon.Script2.Binding;
 using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
@@ -23,7 +24,13 @@ class LiteralExpr(object txt) : ExprBase
 {
     public readonly object Value = txt;
 
-    public override string GetCodeText() => $"{Value}";
+    public override string GetCodeText()
+    {
+        if (Value is string)
+            return $"\"{Value}\"";
+        else
+            return $"{Value}";
+    }
 
     public static implicit operator LiteralExpr(int val)
     {
