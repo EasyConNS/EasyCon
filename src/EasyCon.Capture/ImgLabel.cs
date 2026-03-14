@@ -30,7 +30,7 @@ public record ImgLabel
 
     private Image _image;
 
-    public Image GetImage() => _image ??= Base64StringToImage(ImgBase64);
+    public Image GetImage() => _image ??= Base64StringToImage(ImgBase64, searchMethod);
 
     public void SetImage(Image img)
     {
@@ -56,9 +56,9 @@ public record ImgLabel
         }
     }
 
-    private static Image Base64StringToImage(string basestr)
+    private static Image Base64StringToImage(string basestr, SearchMethod method)
     {
-        if (IsBase64String(basestr))
+        if (IsBase64String(basestr) && method.IsImageMethod())
         {
             byte[] imageBytes = Convert.FromBase64String(basestr);
             using var ms = new MemoryStream(imageBytes, 0, imageBytes.Length);
