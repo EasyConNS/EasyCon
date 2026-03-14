@@ -12,6 +12,7 @@ internal sealed class Binder
 
     private Stack<(BoundLabel BreakLabel, BoundLabel ContinueLabel)> _loopStack = new();
     private int _labelCounter = 0;
+    private bool _needIL = false;
 
     private BoundScope _scope;
 
@@ -70,6 +71,7 @@ internal sealed class Binder
             var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
             var fnloweredBody = Lowerer.Flatten(fnbody);
 
+            if (binderFn._needIL) binder._needIL = true;
             functionBodies.Add(function, fnloweredBody);
         }
 
@@ -77,7 +79,7 @@ internal sealed class Binder
         var body = new BoundBlockStatement(null, statements.ToImmutable());
         var loweredBody = Lowerer.Flatten(body);
         functionBodies.Add(main, loweredBody);
-        return new BoundProgram(main, functionBodies.ToImmutable());
+        return new BoundProgram(main, binder._needIL, functionBodies.ToImmutable());
     }
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
@@ -407,13 +409,19 @@ internal sealed class Binder
         {
             LiteralExpr => BindLiterExpression((LiteralExpr)syntax),
             VariableExpr => BindVarExpression((VariableExpr)syntax),
-            ExtVarExpr exv => new BoundExternalVariableExpression(exv, exv.Var),
+            ExtVarExpr => BindExtraLabel((ExtVarExpr)syntax),
             UnaryExpression => BindUnaryExpression((UnaryExpression)syntax),
             BinaryExpression => BindBinaryExpression((BinaryExpression)syntax),
             ParenthesizedExpression pre => BindExpression(pre.Expression),
             Callv1Expression => BindCallExpression((Callv1Expression)syntax),
             _ => throw new Exception($"未知的表达式"),
         };
+    }
+
+    private BoundExternalVariableExpression BindExtraLabel(ExtVarExpr syntax)
+    {
+        _needIL = true;
+        return new BoundExternalVariableExpression(syntax, syntax.Var);
     }
 
     private BoundLiteralExpression BindLiterExpression(LiteralExpr syntax)

@@ -183,21 +183,31 @@ internal class ILManager : INotifyPropertyChanged
 
     public BindingList<ILViewModel> Labels = [];
 
-    public void LoadImgLabels(string path)
+    public void LoadImgLabels(params string[] paths)
     {
-        Directory.CreateDirectory(path);
         Labels.Clear();
+        var set = new HashSet<string>();
 
-        foreach (var file in Directory.GetFiles(path, "*.IL"))
+        foreach(var path in paths)
         {
-            try
+            if(!Directory.Exists(path))continue;
+
+            foreach (var file in Directory.GetFiles(path, "*.IL"))
             {
-                var il = ECSearch.LoadIL(file);
-                Labels.Add(new ILViewModel(il));
-            }
-            catch
-            {
-                Debug.WriteLine("无法加载标签:", file);
+                try
+                {
+                    var il = ECSearch.LoadIL(file);
+                    if (!set.Add(il.name))
+                    {
+                        Debug.WriteLine($"重复标签:{il.name}, 路径：{file}");
+                        continue;
+                    }
+                    Labels.Add(new ILViewModel(il));
+                }
+                catch
+                {
+                    Debug.WriteLine("无法加载标签:", file);
+                }
             }
         }
     }

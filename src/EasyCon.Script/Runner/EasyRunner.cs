@@ -11,6 +11,7 @@ public sealed class EasyRunner : IRunner
     BoundProgram prog;
 
     public bool HasKeyAction => prog.KeyAction;
+    public bool NeedILLoad => prog.NeedIL;
 
     public byte[] Assemble(bool auto = true)
     {

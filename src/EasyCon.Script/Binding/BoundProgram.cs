@@ -4,12 +4,13 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;
 
-internal sealed class BoundProgram(FunctionSymbol main, ImmutableDictionary<FunctionSymbol, BoundBlockStatement> functions)
+internal sealed class BoundProgram(FunctionSymbol main, bool needIL,  ImmutableDictionary<FunctionSymbol, BoundBlockStatement> functions)
 {
     public readonly FunctionSymbol MainFunction = main;
     public ImmutableDictionary<FunctionSymbol, BoundBlockStatement> Functions = functions;
 
     public bool KeyAction => Functions.Values.SelectMany(s=>s.Statements).OfType<BoundKeyActStatement>().ToList().Count != 0;
+    public bool NeedIL => needIL;
 }
 
 internal abstract class BoundNode
