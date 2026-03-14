@@ -119,12 +119,12 @@ namespace EasyCon2.Forms
         {
             textEditor.ShowLineNumbers = true;
             var syntaxHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.ecp)), HighlightingManager.Instance);
-            HighlightingManager.Instance.RegisterHighlighting("ECP", [".txt", ".ecp"], syntaxHighlighting);
+            HighlightingManager.Instance.RegisterHighlighting("ECScript", [".txt", ".ecs"], syntaxHighlighting);
             var luaHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.lua)), HighlightingManager.Instance);
             HighlightingManager.Instance.RegisterHighlighting("Lua", [".lua"], luaHighlighting);
             var pyHighlighting = HighlightingLoader.Load(XmlReader.Create(new MemoryStream(Resources.Python_Mode)), HighlightingManager.Instance);
             HighlightingManager.Instance.RegisterHighlighting("Python", [".py"], pyHighlighting);
-            textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("ECP");
+            textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("ECScript");
             textEditor.DragEnter += new System.Windows.DragEventHandler(this.textBoxScript_DragEnter);
             textEditor.Drop += new System.Windows.DragEventHandler(this.textBoxScript_DragDrop);
             textEditor.TextChanged += new EventHandler(this.textBoxScript_TextChanged);
@@ -508,7 +508,7 @@ namespace EasyCon2.Forms
             openFileDialog.Title = "打开";
             openFileDialog.RestoreDirectory = true;
             openFileDialog.InitialDirectory = Path.GetFullPath(ScriptPath);
-            openFileDialog.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+            openFileDialog.Filter = "文本文件 (*.txt)|*.txt|脚本文件 (*.ecs)|*.ecs";
             openFileDialog.FileName = string.Empty;
 
             string _currentFile = path;
@@ -534,7 +534,7 @@ namespace EasyCon2.Forms
             saveFileDialog.Title = saveAs ? "另存为" : "保存";
             saveFileDialog.RestoreDirectory = true;
             saveFileDialog.InitialDirectory = Path.GetFullPath(ScriptPath);
-            saveFileDialog.Filter = @"文本文件 (*.txt)|*.txt|所有文件 (*.*)|*.*";
+            saveFileDialog.Filter = "文本文件 (*.txt)|*.txt|脚本文件 (*.ecs)|*.ecs";
             saveFileDialog.FileName = string.Empty;
 
             if (saveAs || textEditor.Document.FileName == null)

@@ -1,0 +1,12 @@
+FUNC 循环搜图1
+  $v = 0
+  $v >>= 1
+
+  FOR 10000
+      A
+      1000
+      IF @ZA选择精灵 > 95
+          $v = 1
+      ENDIF
+  NEXT
+ENDFUNC
