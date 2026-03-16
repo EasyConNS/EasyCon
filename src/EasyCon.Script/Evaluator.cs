@@ -56,7 +56,6 @@ internal sealed class Evaluator
                 labelToIndex.Add(l.Label, i + 1);
         }
         var index = 0;
-        var spin = new SpinWait();
         while (!_token.IsCancellationRequested && index < body.Statements.Length)
         {
             var s = body.Statements[index];
@@ -80,7 +79,7 @@ internal sealed class Evaluator
                 case Goto:
                     var gs = (BoundGotoStatement)s;
                     index = labelToIndex[gs.Label];
-                    spin.SpinOnce();
+                    Thread.Yield();
                     break;
                 case ConditionGoto:
                     var cgs = (BoundConditionalGotoStatement)s;
@@ -89,7 +88,7 @@ internal sealed class Evaluator
                         index = labelToIndex[cgs.Label];
                     else
                         index++;
-                    spin.SpinOnce();
+                    Thread.Yield();
                     break;
                 case Label:
                     index++;

@@ -59,6 +59,8 @@ internal sealed class BoundBinaryOperator
         new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.Int,ValueType.String, ValueType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String,ValueType.Int, ValueType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String,ValueType.Bool, ValueType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.Bool,ValueType.String, ValueType.String, (v0, v1) => $"{v0}{v1}"),
         ];
     public static BoundBinaryOperator? Bind(TokenType kind, ValueType leftType, ValueType rightType)
     {
