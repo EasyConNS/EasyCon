@@ -69,7 +69,7 @@ internal sealed class Binder
                 fnstatements.Add(statement);
             }
             var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
-            var fnloweredBody = Lowerer.Flatten(fnbody);
+            var fnloweredBody = Lowerer.Lower(fnbody);
 
             if (binderFn._needIL) binder._needIL = true;
             functionBodies.Add(function, fnloweredBody);
@@ -77,7 +77,7 @@ internal sealed class Binder
 
         var main = new FunctionSymbol("$eval", [], ValueType.Void);
         var body = new BoundBlockStatement(null, statements.ToImmutable());
-        var loweredBody = Lowerer.Flatten(body);
+        var loweredBody = Lowerer.Lower(body);
         functionBodies.Add(main, loweredBody);
         return new BoundProgram(main, binder._needIL, functionBodies.ToImmutable());
     }
@@ -216,10 +216,10 @@ internal sealed class Binder
 
         _scope = new BoundScope(_scope);
 
-        var idxVar = syntax.Condition switch
+        var idxVar = forCond switch
         {
             For_Full ff => ff.RegIter,
-            For_Static => new VariableExpr(Guid.NewGuid().ToString(), true),
+            For_Static => new VariableExpr($"_tmpL${_labelCounter++}", true),
             _ => null,
         };
         var variable = idxVar switch
@@ -228,24 +228,47 @@ internal sealed class Binder
             _ => null,
         };
 
+        BoundStmt lowerBoundStmt = variable == null ? Nop(forCond) :
+            VariableDeclaration(forCond, variable, lowerBound);
+        BoundStmt upperBoundStmt = variable == null ? Nop(forCond) :
+            ConstantDeclaration(forCond, "_uppBound$", upperBound);
         //var <= upperBound
-        BoundExpr condition = syntax.Condition switch
+        switch(forCond.Upper)
         {
-            For_Full or For_Static => Less(forCond.Upper, BindVarExpression(idxVar!), upperBound),
+            case LiteralExpr litE:
+                upperBoundStmt = Nop(forCond);
+                break;
+            case VariableExpr varE:
+                upperBound = Variable(forCond.Upper, ((BoundAssignExpression)((BoundExprStatement)upperBoundStmt).Expression).Variable);
+                break;
+        }
+        BoundExpr condition = forCond switch
+        {
+            For_Full or For_Static => Less(forCond.Upper, Variable(forCond.Lower, variable), upperBound),
             _ => Literal(forCond.Upper, true),
         };
-        BoundStmt lowerBoundStmt = variable == null ? Nop(syntax.Condition) :
-            VariableDeclaration(syntax.Condition, variable, lowerBound);
-        BoundStmt upperBoundStmt = variable == null ? Nop(syntax.Condition) :
-            ConstantDeclaration(syntax.Condition, "upperBound", upperBound);
         // var+=step
         var step = Literal(forCond.Upper, 1);
-        BoundStmt stepStmt = variable == null ? Nop(syntax.Condition) :
-            VariableDeclaration(syntax, variable, Add(forCond.Upper, BindVarExpression(idxVar!), step));
+        BoundStmt stepStmt = variable == null ? Nop(forCond) :
+            VariableDeclaration(syntax, variable, Add(forCond.Upper, Variable(forCond.Lower, variable), step));
 
         var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
         _scope = _scope.Parent!;
-
+        // for <var> = <lower> to <upper>
+        //      <body>
+        //
+        // ---->
+        //
+        // {
+        //      var <var> = <lower>
+        //      let upperBound = <upper>
+        //      while (<var> <= upperBound)
+        //      {
+        //          <body>
+        //          continue:
+        //          <var> = <var> + 1
+        //      }
+        // }
         var lowwhile = new BoundWhileStatement(syntax,
              condition,
              Block(syntax,
@@ -279,6 +302,17 @@ internal sealed class Binder
 
     private BoundBlockStatement RewriteWhile(BoundWhileStatement boundsyntax)
     {
+        // while <condition>
+        //      <body>
+        //
+        // ----->
+        //
+        // goto continue
+        // body:
+        // <body>
+        // continue:
+        // gotoTrue <condition> body
+        // break:
         var bodyLabel = new BoundLabel($"body{++_labelCounter}");
         var syntax = boundsyntax.Syntax;
         return Block(syntax,
@@ -351,7 +385,7 @@ internal sealed class Binder
             if (vrr.IsReadOnly) throw new Exception($"只读变量无法修改：{syntax.Tag}");
             return vrr;
         }
-        var variable = _function == null || allowGlobal
+        var variable = _function == null && allowGlobal
                     ? (VariableSymbol)new GlobalVariableSymbol(syntax.Tag, isReadOnly, type)
                     : new LocalVariableSymbol(syntax.Tag, isReadOnly, type);
 

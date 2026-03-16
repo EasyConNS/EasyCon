@@ -54,7 +54,7 @@ internal partial class Parser
             if(lexer[1].Type.OperatorIsAug())
             {
                 //aug assign
-                op = CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == lexer[1].Value && o.InstructionType != null);
+                op = CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == lexer[1].Value);
                 if (op == null) return null;
             }
 

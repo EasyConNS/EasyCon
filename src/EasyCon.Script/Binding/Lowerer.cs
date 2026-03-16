@@ -4,7 +4,13 @@ namespace EasyCon.Script.Binding;
 
 internal sealed class Lowerer
 {
-    public static BoundBlockStatement Flatten(BoundStmt statement)
+    public static BoundBlockStatement Lower(BoundStmt statement)
+    {
+        // return Flatten(statement);
+        return RemoveDeadCode(Flatten(statement));
+    }
+
+    private static BoundBlockStatement Flatten(BoundStmt statement)
     {
         var builder = ImmutableArray.CreateBuilder<BoundStmt>();
         var stack = new Stack<BoundStmt>();
@@ -24,6 +30,22 @@ internal sealed class Lowerer
                 builder.Add(current);
             }
         }
+        return new BoundBlockStatement(statement.Syntax, builder.ToImmutable());
+    }
+
+    private static BoundBlockStatement RemoveDeadCode(BoundBlockStatement statement)
+    {
+        var controlFlow = ControlFlowGraph.Create(statement);
+        var reachableStatements = new HashSet<BoundStmt>(
+            controlFlow.Blocks.SelectMany(b => b.Statements));
+
+        var builder = statement.Statements.ToBuilder();
+        for (int i = builder.Count - 1; i >= 0; i--)
+        {
+            if (!reachableStatements.Contains(builder[i]))
+                builder.RemoveAt(i);
+        }
+
         return new BoundBlockStatement(statement.Syntax, builder.ToImmutable());
     }
 }

@@ -21,6 +21,7 @@ internal sealed class BoundUnaryOperator
     {
         new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ValueType.Int, a=> -(int)a),
         new(TokenType.BitNot, BoundUnaryOperatorKind.BitwiseNot, ValueType.Int, a=> ~(int)a),
+        new(TokenType.LogicNot, BoundUnaryOperatorKind.LogicNot, ValueType.Bool, a=> !(bool)a),
 
     };
 
@@ -38,4 +39,5 @@ internal enum BoundUnaryOperatorKind
 {
     Subtraction,
     BitwiseNot,
+    LogicNot,
 }

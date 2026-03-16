@@ -88,9 +88,7 @@ partial class EasyConForm
 
         cts?.Cancel();
         cts = new();
-        Task.Run(
-            _RunScript
-            );
+        Task.Run(()=> _RunScript(), cts.Token);
     }
 
     private DateTime _startTime = DateTime.MinValue;

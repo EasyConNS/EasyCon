@@ -1,4 +1,8 @@
+using EasyCon.Capture;
+using System.Diagnostics;
 using System.IO.Compression;
+using System.Reflection.Emit;
+using System.Reflection.PortableExecutable;
 
 namespace EasyCon.Core;
 
@@ -151,7 +155,7 @@ public sealed class ProjectManager : IDisposable
                 ValidateProjectStructure(archive);
 
                 // 加载main.txt
-                var mainEntry = archive.GetEntry("main.txt");
+                var mainEntry = archive.GetEntry("main.ecs");
                 using (var reader = new StreamReader(mainEntry.Open()))
                 {
                     _mainSource = reader.ReadToEnd();
@@ -182,6 +186,35 @@ public sealed class ProjectManager : IDisposable
         }
 
         _zipFilePath = zipFilePath;
+        _isModified = false;
+    }
+
+    public void LoadFromPath(string path)
+    {
+        if(!Path.Exists(path))
+            throw new FileNotFoundException("ZIP文件不存在", path);
+        ClearProject();
+
+        if(File.Exists(path + "/" + "main.ecs"))
+            _mainSource = File.ReadAllText(path + "/" + "main.ecs");
+
+        var libpath = path + "/lib/";
+        if (Path.Exists(libpath))
+        {
+            foreach (var file in Directory.GetFiles(libpath, "*.ecs"))
+            {
+                _libFiles[Path.GetFileName(file)] = File.ReadAllText(file);
+            }
+        }
+        if (Path.Exists(path + "/img/"))
+        {
+            foreach (var file in Directory.GetFiles(libpath, "*.IL"))
+            {
+                _imageFiles[Path.GetFileName(file)] = File.ReadAllBytes(file);
+            }
+        }
+
+        _zipFilePath = path;
         _isModified = false;
     }
 

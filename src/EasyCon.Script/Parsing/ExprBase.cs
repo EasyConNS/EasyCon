@@ -26,9 +26,9 @@ class LiteralExpr(object txt) : ExprBase
 
     public override string GetCodeText()
     {
-        if (Value is string)
-            return $"\"{Value}\"";
-        else
+        //if (Value is string)
+        //    return $"\"{Value}\"";
+        //else
             return $"{Value}";
     }
 
@@ -100,7 +100,7 @@ sealed class UnaryExpression(Token op, ExprBase operand) : ExprBase
 sealed class ParenthesizedExpression(ExprBase expression) : ExprBase
 {
     public readonly ExprBase Expression = expression;
-    public override string GetCodeText() => $"({expression.GetCodeText()})";
+    public override string GetCodeText() => $"({Expression.GetCodeText()})";
 }
 
 sealed class Indexv1Expression(Token lb, ImmutableArray<ExprBase> index, Token rb) : ExprBase

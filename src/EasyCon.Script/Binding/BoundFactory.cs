@@ -50,11 +50,27 @@ internal static class BoundFactory
     {
         return new BoundBinaryExpression(syntax, left, op, right);
     }
+    public static BoundUnaryExpression Not(ExprBase syntax, BoundExpr condition)
+    {
+        Debug.Assert(condition.Type == ValueType.Bool);
+
+        var op = BoundUnaryOperator.Bind(Script2.Syntax.TokenType.LogicNot, ValueType.Bool);
+        Debug.Assert(op != null);
+        return new BoundUnaryExpression(syntax, op, condition);
+    }
     public static BoundBinaryExpression Add(ExprBase syntax, BoundExpr left, BoundExpr right)
     => Binary(syntax, left, Script2.Syntax.TokenType.ADD, right);
     public static BoundBinaryExpression Less(ExprBase syntax, BoundExpr left, BoundExpr right)
     => Binary(syntax, left, Script2.Syntax.TokenType.LESS, right);
+    public static BoundVariableExpression Variable(ExprBase syntax, BoundAssignExpression variable)
+    {
+        return Variable(syntax, variable.Variable);
+    }
 
+    public static BoundVariableExpression Variable(ExprBase syntax, VariableSymbol variable)
+    {
+        return new BoundVariableExpression(syntax, variable);
+    }
     public static BoundLiteralExpression Literal(ExprBase syntax, object literal)
     {
         Debug.Assert(literal is string || literal is bool || literal is int);
