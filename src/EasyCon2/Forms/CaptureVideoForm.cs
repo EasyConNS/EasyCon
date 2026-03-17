@@ -32,7 +32,7 @@ namespace EasyCon2.Forms
         private readonly OpenCVCapture cvcap = new();
 
         private static volatile object _lock = new();
-        private ILManager imglManager = new();
+        private readonly ILManager imglManager = new();
 
         private Point _curResolution = new(1920, 1080);
         public Point CurResolution
@@ -106,8 +106,6 @@ namespace EasyCon2.Forms
         {
             Directory.CreateDirectory(CapDir);
             Directory.CreateDirectory(ImgDir);
-
-            imglManager.LoadImgLabels(ImgDir);
 
             VideoMonitor.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             VideoMonitor.PaintEventHandler += MonitorPaint;
@@ -553,7 +551,6 @@ namespace EasyCon2.Forms
 
             // save the imglabel to local
             imglManager.Current.Save(ImgDir);
-            imglManager.LoadImgLabels(ImgDir);
         }
 
         private void DynTestBtn_Click(object sender, EventArgs e)

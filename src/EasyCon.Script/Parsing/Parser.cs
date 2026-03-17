@@ -10,7 +10,7 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
     readonly Formatter _formatter = new(extVars);
     readonly SourceText _text  = srctxt;
 
-    string _filePath => Path.GetDirectoryName(_text.FileName);
+    string _filePath => Path.GetDirectoryName(_text.FileName)?? "";
     const string LibPath = "lib/";
 
     [GeneratedRegex("\r\n|\r|\n")]

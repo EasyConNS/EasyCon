@@ -1,0 +1,4 @@
+FUNC add
+    
+    PRINT add
+ENDFUNC

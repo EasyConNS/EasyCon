@@ -26,9 +26,9 @@ partial class EasyConForm
         try
         {
             // 在这里根据图像处理窗口的情况，创建一个ExternalVariable的数组或List传给Parse函数
-            // 每个ExternalVariable对应一个图像标签，name为名字，get为用来获取结果的函数，set暂时没有语句支持所以先省略                
-
-            _program.Parse(textEditor.Text, captureVideo.LoadedLabels.
+            // 每个ExternalVariable对应一个图像标签，name为名字，get为用来获取结果的函数，set暂时没有语句支持所以先省略
+            _program.Parse(textEditor.Text, textEditor.Document.FileName
+                , captureVideo.LoadedLabels.
                 Select(il => new ExternalVariable(il.name, () =>
                 {
                     using var ss = BitmapConverter.ToMat(captureVideo.GetImage());

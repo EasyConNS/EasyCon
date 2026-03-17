@@ -18,21 +18,18 @@ public sealed class EasyRunner : IRunner
     {
         return new Assembly.Assembler().Assemble(prog, auto);
     }
-
+    public void Init(string code, IEnumerable<ExternalVariable> extVars)
+    {
+        var sourceText = SourceText.From(code);
+        var parser = new Parser(sourceText, extVars);
+        prog = Binder.BindProgram(parser.Parse(out unit));
+    }
     public void Load(string fileName, IEnumerable<ExternalVariable> extVars)
     {
         var text = File.ReadAllText(fileName);
         var sourceText = SourceText.From(text, fileName);
         var parser = new Parser(sourceText, extVars);
         prog = Binder.BindProgram(parser.Parse(out unit));
-    }
-
-    public void Init(string code, IEnumerable<ExternalVariable> extVars)
-    {
-        var sourceText = SourceText.From(code);
-        var parser = new Parser(sourceText, extVars);
-        unit = parser.ParseUnit(code);
-        prog = Binder.BindProgram(parser.Parse(unit));
     }
 
     public void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token)

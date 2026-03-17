@@ -10,9 +10,13 @@ public sealed class Scripter
 
     public bool HasKeyAction => runner.HasKeyAction;
 
-    public void Parse(string code, IEnumerable<ExternalVariable> extVars)
+    public void Parse(string code, string fileName, IEnumerable<ExternalVariable> extVars)
     {
-        runner.Init(code, extVars);
+        if(fileName==null)
+            runner.Init(code, extVars);
+        else
+            runner.Load(fileName, extVars);
+
     }
 
     public static IEnumerable<string> GetTokens(string code, string pre)

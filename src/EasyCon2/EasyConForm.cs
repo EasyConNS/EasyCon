@@ -45,6 +45,8 @@ namespace EasyCon2.Forms
         private readonly string defaultName = "未命名脚本";
         private string fileName => textEditor.Document.FileName == null ? defaultName : Path.GetFileName(textEditor.Document.FileName);
 
+        private string curILPath => textEditor.Document.FileName == null ? "" : Path.Combine(Path.GetDirectoryName(textEditor.Document.FileName), "ImgLabel");
+
         private readonly List<ToolStripMenuItem> captureTypes = [];
 
         public EasyConForm()
@@ -54,8 +56,6 @@ namespace EasyCon2.Forms
             virtController = new VPadForm(this, this.NS);
 
             LoadConfig();
-            //var curpath = textEditor.Document.FileName == null ? "" : textEditor.Document.FileName + "\\ImgLabel\\";
-            captureVideo.LoadImgLabels();
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -219,6 +219,7 @@ namespace EasyCon2.Forms
             }
 
             captureVideo = new CaptureVideoForm((int)(((ToolStripMenuItem)sender).Tag), dev_type);
+            captureVideo.LoadImgLabels(curILPath);
             captureVideo.Show();
             StatusShowLog($"已加载搜图标签：{captureVideo.LoadedLabels.Count()}");
         }
@@ -526,6 +527,7 @@ namespace EasyCon2.Forms
             textEditor.IsModified = false;
             textEditor.Document.FileName = _currentFile;
             textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinitionByExtension(Path.GetExtension(_currentFile));
+            StatusShowLog("文件已打开");
             return true;
         }
 
