@@ -451,15 +451,6 @@ namespace EasyCon2.Forms
             }
         }
 
-        //private bool SerialCheckConnect()
-        //{
-        //    if (NS.IsConnected())
-        //        return true;
-        //    var port = ComPort.Text.Equals("下拉选择串口") ? "" : ComPort.Text;
-        //    SerialSearchConnect(port);
-        //    return NS.IsConnected();
-        //}
-
         private async void SerialSearchConnect(string port = "")
         {
             EnableConnBtn(false);
@@ -510,7 +501,7 @@ namespace EasyCon2.Forms
             openFileDialog.Title = "打开";
             openFileDialog.RestoreDirectory = true;
             openFileDialog.InitialDirectory = Path.GetFullPath(ScriptPath);
-            openFileDialog.Filter = "文本文件 (*.txt)|*.txt|脚本文件 (*.ecs)|*.ecs";
+            openFileDialog.Filter = "脚本文件 (*.txt，*.ecs)|*.txt;*.ecs|所有文件(*.*)|*.*";
             openFileDialog.FileName = string.Empty;
 
             string _currentFile = path;
@@ -537,8 +528,8 @@ namespace EasyCon2.Forms
             saveFileDialog.Title = saveAs ? "另存为" : "保存";
             saveFileDialog.RestoreDirectory = true;
             saveFileDialog.InitialDirectory = Path.GetFullPath(ScriptPath);
-            saveFileDialog.Filter = "文本文件 (*.txt)|*.txt|脚本文件 (*.ecs)|*.ecs";
-            saveFileDialog.FileName = string.Empty;
+            saveFileDialog.Filter = "脚本文件 (*.txt，*.ecs)|*.txt;*.ecs|所有文件(*.*)|*.*";
+            saveFileDialog.FileName = "未命名脚本.txt";
 
             if (saveAs || textEditor.Document.FileName == null)
             {
