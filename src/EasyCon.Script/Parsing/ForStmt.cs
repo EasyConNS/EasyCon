@@ -60,7 +60,7 @@ class For_Infinite : ForStmt
     //}
 }
 
-class For_Static(ExprBase count) : ForStmt(0, count)
+class For_Static(ExprBase count) : ForStmt(1, count)
 {
     protected override string _GetString()
     {

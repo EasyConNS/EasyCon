@@ -250,7 +250,7 @@ internal sealed class Binder
         }
         BoundExpr condition = forCond switch
         {
-            For_Full or For_Static => Less(forCond.Upper, Variable(forCond.Lower, variable), upperBound),
+            For_Full or For_Static => LessEqual(forCond.Upper, Variable(forCond.Lower, variable), upperBound),
             _ => Literal(forCond.Upper, true),
         };
         // var+=step
