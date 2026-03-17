@@ -23,7 +23,8 @@ namespace EasyCon2.Forms
 {
     public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter
     {
-        private readonly Version VER = Assembly.GetExecutingAssembly().GetName().Version;
+        private readonly string VER = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
         private readonly TextEditor textEditor = new();
         private CodeCompletionController _completionController;
         internal readonly VPadForm virtController;
@@ -91,7 +92,14 @@ namespace EasyCon2.Forms
 
         private void EasyConForm_Load(object sender, EventArgs e)
         {
-            this.Text = $"伊机控 EasyCon v{VER.Major}.{VER.Minor}.{VER.Build}  QQ群:946057081";
+            string displayVersion = VER;
+            int plusIndex = VER?.IndexOf('+') ?? -1;
+            if (plusIndex > 0)
+            {
+                displayVersion = VER.Substring(0, plusIndex);
+            }
+            this.Text = $"伊机控 EasyCon v{displayVersion}  QQ群:946057081";
+            
             comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
             comboBoxBoardType.SelectedIndex = 0;
             RegisterKeys();
@@ -1036,7 +1044,7 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
                         return;
 
                     // Check if already up-to-date.
-                    var info = new VersionParser(ver, VER);
+                    var info = new VersionParser(ver, Assembly.GetExecutingAssembly().GetName().Version);
                     var msg = info.IsNewVersion ? $"发现新版本{info.NewVer}，快去群文件里看看吧" : "暂时没有发现新版本";
                     Invoke(() =>
                     {

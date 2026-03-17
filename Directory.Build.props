@@ -4,7 +4,8 @@
     <LtsTargetFramework>net8.0</LtsTargetFramework>
     <TargetFramework Condition=" '$(TargetFramework)' == '' and '$(TargetFrameworks)' == '' ">$(DefaultTargetFramework)</TargetFramework>
     <Features>strict</Features>
-    <Version>1.55.1</Version>
+    <Version>1.56.0-beta</Version>
+	<QQGroup>946057081</QQGroup>
 	<Authors>ca1e;elmagnifico;Nukieberry</Authors>
   </PropertyGroup>
 </Project>
