@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using static EasyCon.Script2.Binding.BoundNodeKind;
 
 namespace EasyCon.Script.Binding;
 
@@ -23,7 +24,9 @@ internal sealed class Lowerer
             if (current is BoundBlockStatement block)
             {
                 foreach (var s in block.Statements.Reverse())
-                    stack.Push(s);
+                {
+                    if(s.Kind != NopStatement)stack.Push(s);
+                }
             }
             else
             {

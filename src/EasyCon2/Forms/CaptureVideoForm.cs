@@ -77,7 +77,7 @@ namespace EasyCon2.Forms
 
         public IEnumerable<ImgLabel> LoadedLabels => imglManager.Labels.Select(il => il.Current);
 
-        public void LoadImgLabels() => imglManager.LoadImgLabels(ImgDir);
+        public void LoadImgLabels(string curpath = "") => imglManager.LoadImgLabels([curpath, ImgDir]);
 
         public CaptureVideoForm()
         {

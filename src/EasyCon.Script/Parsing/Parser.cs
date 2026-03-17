@@ -1,12 +1,17 @@
 using EasyCon.Script.Binding;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
+using EasyCon.Script2.Text;
 
 namespace EasyCon.Script.Parsing;
 
-partial class Parser(IEnumerable<ExternalVariable> extVars)
+partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
 {
     readonly Formatter _formatter = new(extVars);
+    readonly SourceText _text  = srctxt;
+
+    string _filePath => Path.GetDirectoryName(_text.FileName);
+    const string LibPath = "lib/";
 
     [GeneratedRegex("\r\n|\r|\n")]
     private static partial Regex LineRegex();
@@ -99,6 +104,12 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
             return new Wait(duration, true);
         else
             return ParseKey(text) ?? ParseNamedExpression(text);
+    }
+
+    public ImmutableArray<CompicationUnit> Parse(out CompicationUnit unit)
+    {
+        unit = ParseUnit(_text.ToString());
+        return Parse(unit);
     }
 
     public CompicationUnit ParseUnit(string text)
@@ -244,7 +255,8 @@ partial class Parser(IEnumerable<ExternalVariable> extVars)
         var result = ImmutableArray.CreateBuilder<CompicationUnit>();
         foreach(var imp in imports)
         {
-            var newprog = ParseUnit(File.ReadAllText(LibPath+imp.LibPath));
+            Console.WriteLine($"正在加载库:{imp.FullFileName}");
+            var newprog = ParseUnit(File.ReadAllText(imp.FullFileName));
             if(newprog.Members.OfType<ImportStmt>().Any()) 
                 throw new ParseException("不支持嵌套引用", imp.Address);
            

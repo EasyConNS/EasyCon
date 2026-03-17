@@ -30,11 +30,13 @@ class EndBlockStmt : Statement
     protected override string _GetString() => "END";
 }
 
-sealed class ImportStmt(string path) : Statement
+sealed class ImportStmt(string name, string path = "") : Statement
 {
-    internal readonly string LibPath = path;
+    internal readonly string InitPath = path;
+    internal readonly string Lib = name;
 
-    protected override string _GetString() => $"IMPORT \"{LibPath}\"";
+    public string FullFileName => Path.Combine(InitPath, Lib);
+    protected override string _GetString() => $"IMPORT \"{Lib}\"";
 }
 
 sealed class CompicationUnit(ImmutableArray<Statement> members)

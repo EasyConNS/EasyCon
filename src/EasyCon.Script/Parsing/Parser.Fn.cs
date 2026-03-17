@@ -7,8 +7,6 @@ namespace EasyCon.Script.Parsing;
 
 internal partial class Parser
 {
-    const string LibPath = "lib/";
-    const string _libExtName = ".ecs";
     private AssignmentStmt? ParseConstantDecl(string text)
     {
         var lexer = SyntaxTree.ParseTokens(text);
@@ -30,15 +28,12 @@ internal partial class Parser
         if (lexer.Length != 2 + 1) return null;
         if (lexer[0].Type == TokenType.IMPORT && lexer[1].Type == TokenType.STRING)
         {
-            if (!File.Exists(LibPath + lexer[1].Value))
+            var libSrc = Path.Combine(_filePath, LibPath, lexer[1].Value);
+            if (!File.Exists(libSrc))
             {
-                throw new Exception($"文件不存在:{LibPath}{lexer[1].Value}");
+                throw new Exception($"文件不存在:{libSrc}");
             }
-            if(!Path.GetExtension(LibPath + lexer[1].Value).Equals(_libExtName, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new Exception($"引入脚本文件扩展名必须是{_libExtName}:{LibPath}{lexer[1].Value}");
-            }
-            return new ImportStmt(lexer[1].Value);
+            return new ImportStmt(lexer[1].Value, Path.Combine(_filePath, LibPath));
         }
         return null;
     }

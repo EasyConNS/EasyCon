@@ -54,6 +54,7 @@ namespace EasyCon2.Forms
             virtController = new VPadForm(this, this.NS);
 
             LoadConfig();
+            //var curpath = textEditor.Document.FileName == null ? "" : textEditor.Document.FileName + "\\ImgLabel\\";
             captureVideo.LoadImgLabels();
         }
 

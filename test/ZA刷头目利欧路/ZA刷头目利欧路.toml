@@ -1,0 +1,3 @@
+[core]
+port = COM22
+camera = 1

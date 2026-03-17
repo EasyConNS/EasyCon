@@ -12,7 +12,8 @@ internal sealed class Binder
 
     private Stack<(BoundLabel BreakLabel, BoundLabel ContinueLabel)> _loopStack = new();
     private int _labelCounter = 0;
-    private bool _needIL = false;
+
+    private readonly HashSet<string> _ilNames = [];
 
     private BoundScope _scope;
 
@@ -42,7 +43,7 @@ internal sealed class Binder
             binder.BindFuncDeclaration(function);
         }
 
-        var firstGlobalStatementPerSyntaxTree = syntaxs.Select(st => st.Members.Where(m => m is not FuncDeclBlock).FirstOrDefault())
+        var firstGlobalStatementPerSyntaxTree = syntaxs.Select(st => st.Members.Where(m => m is not FuncDeclBlock && m is not EmptyStmt).FirstOrDefault())
                                                                 .Where(g => g != null)
                                                                 .ToArray();
         if (firstGlobalStatementPerSyntaxTree.Length > 1)
@@ -71,7 +72,8 @@ internal sealed class Binder
             var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
             var fnloweredBody = Lowerer.Lower(fnbody);
 
-            if (binderFn._needIL) binder._needIL = true;
+            binder._ilNames.UnionWith(binderFn._ilNames);
+
             functionBodies.Add(function, fnloweredBody);
         }
 
@@ -79,7 +81,7 @@ internal sealed class Binder
         var body = new BoundBlockStatement(null, statements.ToImmutable());
         var loweredBody = Lowerer.Lower(body);
         functionBodies.Add(main, loweredBody);
-        return new BoundProgram(main, binder._needIL, functionBodies.ToImmutable());
+        return new BoundProgram(main, functionBodies.ToImmutable(), binder._ilNames.ToImmutableArray());
     }
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
@@ -124,7 +126,7 @@ internal sealed class Binder
         {
             return syntax switch
             {
-                EmptyStmt => new BoundNop(syntax),
+                EmptyStmt or ImportStmt => new BoundNop(syntax),
                 IfBlock => BindIf((IfBlock)syntax),
                 ForBlock => BindFor((ForBlock)syntax),
                 WhileBlock => BindWhile((WhileBlock)syntax),
@@ -210,6 +212,10 @@ internal sealed class Binder
 
     private BoundBlockStatement BindFor(ForBlock syntax)
     {
+        if (syntax.Statements.Length == 0)
+        {
+            return Block(syntax, []);
+        }
         var forCond = syntax.Condition;
         var lowerBound = BindConversion(forCond.Lower, ValueType.Int);
         var upperBound = BindConversion(forCond.Upper, ValueType.Int);
@@ -454,7 +460,7 @@ internal sealed class Binder
 
     private BoundExternalVariableExpression BindExtraLabel(ExtVarExpr syntax)
     {
-        _needIL = true;
+        _ilNames.Add(syntax.Var.Name);
         return new BoundExternalVariableExpression(syntax, syntax.Var);
     }
 
