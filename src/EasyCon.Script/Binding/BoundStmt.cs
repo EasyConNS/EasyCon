@@ -37,9 +37,10 @@ internal sealed class BoundConditionalGotoStatement(Statement syntax, BoundLabel
     public readonly bool JumpIfTrue = jumpIfTrue;
 }
 
-internal sealed class BoundReturnStatement(Statement syntax) : BoundStmt(syntax)
+internal sealed class BoundReturnStatement(Statement syntax, BoundExpr? expression) : BoundStmt(syntax)
 {
     public override BoundNodeKind Kind => BoundNodeKind.Return;
+    public readonly BoundExpr? Expression = expression;
 }
 
 internal sealed class BoundExprStatement(Statement syntax, BoundExpr expression) : BoundStmt(syntax)

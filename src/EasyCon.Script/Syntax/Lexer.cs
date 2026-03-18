@@ -595,6 +595,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             case '}':
                 AddToken(TokenType.CloseBrace, "}", start);
                 break;
+            case ':':
+                AddToken(TokenType.COLON, ":", start);
+                break;
+            case '.':
+                AddToken(TokenType.DOT, ".", start);
+                break;
             default:
                 var span = new SourceSpan(_position, 1, _line);
                 var location = new TextLocation(_text, span);

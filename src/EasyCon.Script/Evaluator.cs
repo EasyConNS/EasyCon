@@ -95,6 +95,10 @@ internal sealed class Evaluator
                     break;
                 case Return:
                     var rs = (BoundReturnStatement)s;
+                    if(rs.Expression != null)
+                    {
+                        _lastValue = EvaluateExpr(rs.Expression);
+                    }
                     return _lastValue;
                 default:
                     throw new ScriptException($"执行语句类型未知", index);

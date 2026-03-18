@@ -1,5 +1,6 @@
 using EasyCon.Script.Parsing;
 using EasyCon.Script2;
+using EasyCon.Script2.Symbols;
 using System.Collections.Immutable;
 using static EasyCon.Script.Binding.BoundFactory;
 
@@ -106,7 +107,8 @@ internal sealed class Binder
             }
         }
 
-        var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), ValueType.Int, syntax);
+        var type = BindTypeClause(syntax?.Declare.Type) ?? ValueType.Void;
+        var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), type, syntax);
         _scope.TryDeclareFunction(function);
     }
 
@@ -133,7 +135,7 @@ internal sealed class Binder
                 AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
                 Break => BindBreakStatement((Break)syntax),
                 Continue => BindContinueStatement((Continue)syntax),
-                ReturnStmt => new BoundReturnStatement(syntax),
+                ReturnStmt => BindReturnStatement((ReturnStmt)syntax),
                 CallStmt => BindCallStatement((CallStmt)syntax),
                 KeyActionStmt => BindGamepadActionStatement((KeyActionStmt)syntax),
                 Wait => BindWaitStatement((Wait)syntax),
@@ -361,6 +363,19 @@ internal sealed class Binder
         return new BoundGotoStatement(syntax, continueLabel);
     }
 
+    private BoundReturnStatement BindReturnStatement(ReturnStmt syntax)
+    {
+        var expression = syntax.Expression == null ? null : BindExpression(syntax.Expression);
+        if(_function != null)
+        {
+            if(_function.Type != ValueType.Void && expression == null)
+            {
+                throw new ParseException("函数必须有返回值", syntax.Address);
+            }
+        }
+        return new BoundReturnStatement(syntax, expression);
+    }
+
     private BoundExprStatement BindAssignStatement(AssignmentStmt syntax)
     {
         var boundexpr = BindExpression(syntax.Expression);
@@ -394,6 +409,23 @@ internal sealed class Binder
         _scope.TryDeclareVariable(variable);
 
         return variable;
+    }
+
+    private ValueType? BindTypeClause(TypeClauseSyntax syntax)
+    {
+        if (syntax == null) return null;
+        var type = LookupType(syntax.Identifier.Value) ?? throw new Exception($"未知类型：{syntax.Identifier.Text}");
+        return type;
+    }
+    private ValueType? LookupType(string name)
+    {
+        return name.ToUpper() switch
+        {
+            "BOOL" => (ValueType?)ValueType.Bool,
+            "INT" => (ValueType?)ValueType.Int,
+            "STR" => (ValueType?)ValueType.String,
+            _ => null,
+        };
     }
 
     private BoundExprStatement BindCallStatement(CallStmt syntax)

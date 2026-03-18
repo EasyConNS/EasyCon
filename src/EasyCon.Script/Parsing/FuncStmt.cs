@@ -1,3 +1,4 @@
+using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
@@ -14,10 +15,18 @@ internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> 
     }
 }
 
-class FuncStmt(string name, ImmutableArray<VariableExpr> paramters) : StartBlockStmt
+internal sealed class TypeClauseSyntax(Token colonToken, Token identifier)
 {
-    public readonly string Name = name;
+    public readonly Token Colon = colonToken;
+    public readonly Token Identifier = identifier;
+}
+
+class FuncStmt(Token identifier, ImmutableArray<VariableExpr> paramters, bool omitParn, TypeClauseSyntax? type) : StartBlockStmt
+{
+    public readonly Token Identifier = identifier;
+    public string Name => Identifier.Value;
     public ImmutableArray<VariableExpr> Paramters = paramters;
+    public readonly TypeClauseSyntax? Type = type;
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{
@@ -30,8 +39,11 @@ class FuncStmt(string name, ImmutableArray<VariableExpr> paramters) : StartBlock
     protected override string _GetString()
     {
         var parm = string.Join(", ", Paramters.Select(arg => arg.GetCodeText()));
-        parm = Paramters.Length == 0 ? "" : $"({parm})";
-        return $"FUNC {Name}{parm}";
+        parm = Paramters.Length == 0 && !omitParn ? "" : $"({parm})";
+        var type = "";
+        if (Type != null)
+            type = $": {Type.Identifier.Value.ToUpper()}";
+        return $"FUNC {Name}{parm}{type}";
     }
 }
 
@@ -47,9 +59,13 @@ class EndFuncStmt : EndBlockStmt
     //}
 }
 
-class ReturnStmt : Statement
+class ReturnStmt(ExprBase? expression = null) : Statement
 {
-    protected override string _GetString() => "RETURN";
+    public readonly ExprBase? Expression = expression;
+    protected override string _GetString()
+    {
+        return $"RETURN {Expression?.GetCodeText()}".TrimEnd();
+    }
 
     //public override void Assemble(Assembly.Assembler assembler)
     //{

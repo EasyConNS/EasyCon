@@ -62,6 +62,19 @@ internal partial class Parser
         return null;
     }
 
+    private ReturnStmt? ParseReturn(string text)
+    {
+        var toks = SyntaxTree.ParseTokens(text);
+        if (toks[0].Type == TokenType.RETURN)
+        {
+            var pr = new ExprParser([.. toks.Skip(1)], _formatter);
+            var eexp = pr.ParseOptional();
+            if (!pr.EOF(out _)) return null;
+            return new ReturnStmt(eexp);
+        }
+        return null;
+    }
+
     private Statement? ParseIfelse(string text)
     {
         var tokens = SyntaxTree.ParseTokens(text);
@@ -212,24 +225,12 @@ internal partial class Parser
         var tokens = SyntaxTree.ParseTokens(text);
         if (tokens[0].Type == TokenType.FUNC)
         {
-            if (tokens.Length > 2 && tokens[1].Type == TokenType.IDENT)
-            {
-                var pams = ParseParamter([.. tokens.Skip(2)]);
-                return new FuncStmt(tokens[1].Value, pams);
-            }
+            var pr = new ExprParser(tokens, _formatter);
+            var func = pr.ParseFunctionDecl();
+            //if (!pr.EOF(out _)) throw new Exception("函数定义参数格式不正确");
+            return func;
         }
         return null;
-    }
-
-    private ImmutableArray<VariableExpr> ParseParamter(ImmutableArray<Token> toks)
-    {
-        if (toks.Length == 1 && toks[0].Type == TokenType.EOF)
-            return [];
-
-        var pr = new ExprParser(toks, _formatter);
-        var paramters = pr.ParseParameterList();
-        if (!pr.EOF(out _)) throw new Exception("函数定义参数格式不正确");
-        return paramters;
     }
 
     private Statement? ParseNamedExpression(string text)
@@ -305,14 +306,20 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         pos = _position;
         return _position == _tokens.Length - 1;
     }
-
+    private bool Check(TokenType type) => Current?.Type == type;
     private Token Match(TokenType type, string message = "")
     {
         if (Current.Type == type)
         {
             return Advance();
         }
-        throw new Exception($"{message} 但出现了<{Current.Type}>");
+        throw new Exception($"{message} 意外的词法<{Current.Value}>");
+    }
+
+    public ExprBase? ParseOptional()
+    {
+        if (Current.Type == TokenType.EOF) return null;
+        return ParseExpression();
     }
 
     public ExprBase ParseExpression(int parentPrecedence = 0)
@@ -347,11 +354,30 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         return left;
     }
 
-    public ImmutableArray<VariableExpr> ParseParameterList()
+    public FuncStmt ParseFunctionDecl()
+    {
+        var functionToken = Advance();
+        var functionName = Match(TokenType.IDENT, "函数声明需要函数名");
+
+        var hasPar = false;
+        var parameters = ImmutableArray<VariableExpr>.Empty;
+        if (Check(TokenType.LeftParen))
+        {
+            Match(TokenType.LeftParen, "函数声明缺少左括号");
+            hasPar = true;
+            parameters = ParseParameterList();
+            Match(TokenType.RightParen, "函数声明缺少右括号");
+        }
+        var typeClause = ParseOptionalTypeClause();
+
+        Match(TokenType.EOF, "函数声明语法错误");
+        return new FuncStmt(functionName, parameters, hasPar, typeClause);
+    }
+
+    private ImmutableArray<VariableExpr> ParseParameterList()
     {
         var nodesAndSeparators = ImmutableArray.CreateBuilder<VariableExpr>();
 
-        _ = Match(TokenType.LeftParen);
         var parseNextParameter = true;
         while (parseNextParameter &&
                 Current.Type != TokenType.RightParen &&
@@ -370,8 +396,22 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 parseNextParameter = false;
             }
         }
-        _ = Match(TokenType.RightParen);
         return nodesAndSeparators.ToImmutable();
+    }
+
+    private TypeClauseSyntax? ParseOptionalTypeClause()
+    {
+        if (Current.Type != TokenType.COLON)
+            return null;
+
+        return ParseTypeClause();
+    }
+
+    private TypeClauseSyntax ParseTypeClause()
+    {
+        var colonToken = Match(TokenType.COLON);
+        var identifier = Match(TokenType.IDENT);
+        return new TypeClauseSyntax(colonToken, identifier);
     }
 
     public ImmutableArray<ExprBase> ParseArguments()

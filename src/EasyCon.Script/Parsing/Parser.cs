@@ -100,8 +100,8 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
             return ParseFuncDecl(text);
         else if (text.Equals("endfunc", StringComparison.OrdinalIgnoreCase))
             return new EndFuncStmt();
-        else if (text.Equals("return", StringComparison.OrdinalIgnoreCase))
-            return new ReturnStmt();
+        else if (text.StartsWith("return", StringComparison.OrdinalIgnoreCase))
+            return ParseReturn(text);
         else if (text.Equals("end", StringComparison.OrdinalIgnoreCase))
         {
             return new EndBlockStmt();
