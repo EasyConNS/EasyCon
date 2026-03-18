@@ -26,9 +26,9 @@ class LiteralExpr(object txt) : ExprBase
 
     public override string GetCodeText()
     {
-        //if (Value is string)
-        //    return $"\"{Value}\"";
-        //else
+        if (Value is string)
+           return $"\"{Value}\"";
+        else
             return $"{Value}";
     }
 

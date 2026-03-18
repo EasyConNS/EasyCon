@@ -23,7 +23,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     [GeneratedRegex(@"(\s*#.*)$")]
     private static partial Regex lineRegex();
 
-    [GeneratedRegex(@"^\b(print|alert)\b\s+(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
+    [GeneratedRegex(@"^\b(print|alert)\b\s*(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
     private static partial Regex printRex();
 
     [GeneratedRegex(@"^(_|\$)[\d\p{L}_]+$", RegexOptions.IgnoreCase, "zh-CN")]
@@ -53,7 +53,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 foreach (var str in strs)
                 {
                     var s = str.Trim();
-                    if (!variableRex().Match(s).Success) s = $"\"{s}\"";
+                    if (!variableRex().Match(s).Success && !(s.StartsWith("\"") && s.EndsWith("\""))) s = $"\"{s}\"";
                     builder.Append(s);
                     if(index != strs.Length - 1) builder.Append('&');
                     index++;

@@ -2,10 +2,12 @@
         xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
 	<Color name="Comment" foreground="Green" />
 	<Color name="String" foreground="#fff99157" />
-	<Color name="NumberLiteral" foreground="#ff99cc99"/>
+	<Color name="NumberLiteral" foreground="#ff9966ff"/>
 	<Color name="Keywords" fontWeight="bold" foreground="Blue" />
 	<Color name="Funcs" fontWeight="bold" foreground="LightBlue" />
 	<Color name="GamePadKey" fontWeight="bold" foreground="Red" />
+	<Color name="Variable" foreground="#ffcc6600" />
+	<Color name="Constant" foreground="#ff996633" />
 
 	<RuleSet name="CommentMarkerSet">
 		<Keywords fontWeight="bold" foreground="#fff2777a">
@@ -26,6 +28,13 @@
 			<Begin>"</Begin>
 			<End>"</End>
 		</Span>
+
+		<!-- 变量和常量必须在关键字之前匹配 -->
+		<Rule color="Variable">\$[\w]+</Rule>
+		<Rule color="Constant">_[\w]+</Rule>
+
+		<!-- 数字 -->
+		<Rule color="NumberLiteral">\b\d+(\.\d+)?([eE][+-]?\d+)?</Rule>
 
 		<Keywords color="Keywords">
 			<Word>IMPORT</Word>
