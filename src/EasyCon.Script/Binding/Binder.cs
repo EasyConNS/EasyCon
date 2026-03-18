@@ -212,10 +212,6 @@ internal sealed class Binder
 
     private BoundBlockStatement BindFor(ForBlock syntax)
     {
-        if (syntax.Statements.Length == 0)
-        {
-            return Block(syntax, []);
-        }
         var forCond = syntax.Condition;
         var lowerBound = BindConversion(forCond.Lower, ValueType.Int);
         var upperBound = BindConversion(forCond.Upper, ValueType.Int);

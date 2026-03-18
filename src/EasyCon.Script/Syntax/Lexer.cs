@@ -49,15 +49,21 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 var content = mp.Groups[2].Value;
                 var strs = content.Split('&');
                 builder.Append($"{mp.Groups[1].Value} ");
-                int index = 0;
-                foreach (var str in strs)
+
+                builder.Append(string.Join("&", strs.Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s=>
                 {
-                    var s = str.Trim();
-                    if (!variableRex().Match(s).Success) s = $"\"{s}\"";
-                    builder.Append(s);
-                    if(index != strs.Length - 1) builder.Append('&');
-                    index++;
-                }
+                    s = s.Trim();
+                    // 如果符合变量格式则直接返回
+                    if (variableRex().Match(s).Success) return s;
+                    // 如果既不是以双引号开头，也不是以双引号结尾，则添加
+                    if (!s.StartsWith("\"") && !s.EndsWith("\""))
+                    {
+                        // 先去除可能存在的内部引号，再统一添加前后引号
+                        return "\"" + s.Trim('"') + "\"";
+                    }
+                    return s;
+                }).ToList()));
             }
             else
             {
@@ -276,6 +282,35 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 break;
             }
+            if (Current == '\\') // 转义字符
+            {
+                if (_position >= _input.Length)
+                {
+                    break;
+                }
+
+                var escaped = Lookahead switch
+                {
+                    'n' => '\n',
+                    't' => '\t',
+                    'r' => '\r',
+                    '"' => '"',
+                    '\\' => '\\',
+                    // 可根据需要添加更多转义
+                    _ => '\0',
+                };
+                if(escaped != '\0')
+                {
+                    sb.Append(escaped);
+                    Advance();
+                    Advance();
+                    continue;
+                }else
+                {
+                    break;
+                }
+            }
+
             sb.Append(Advance());
         }
 

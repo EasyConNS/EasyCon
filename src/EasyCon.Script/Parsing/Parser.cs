@@ -18,6 +18,12 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
     [GeneratedRegex(@"(\s*#.*)$")]
     private static partial Regex CommentRegex();
 
+    public ImmutableArray<CompicationUnit> Parse(out CompicationUnit unit)
+    {
+        unit = ParseUnit(_text.ToString());
+        return Parse(unit);
+    }
+
     private IEnumerable<ParserArgument> ParseLines(string text)
     {
         var lines = LineRegex().Split(text.Trim());
@@ -106,13 +112,7 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
             return ParseKey(text) ?? ParseNamedExpression(text);
     }
 
-    public ImmutableArray<CompicationUnit> Parse(out CompicationUnit unit)
-    {
-        unit = ParseUnit(_text.ToString());
-        return Parse(unit);
-    }
-
-    public CompicationUnit ParseUnit(string text)
+    private CompicationUnit ParseUnit(string text)
     {
         int address = 0;
 
@@ -247,7 +247,7 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
         return new CompicationUnit([.. result]);
     }
 
-    public ImmutableArray<CompicationUnit> Parse(CompicationUnit prog)
+    private ImmutableArray<CompicationUnit> Parse(CompicationUnit prog)
     {
         var imports = prog.Members.OfType<ImportStmt>();
         if(!imports.Any()) return [prog];
