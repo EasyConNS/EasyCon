@@ -278,7 +278,7 @@ internal sealed class Parser
     private IfCondition ParseIfCondition()
     {
         var ifToken = Advance();
-        var condition = ParseExpression();
+        var condition = ParseExpression(true); // true 表示这是条件表达式，单等号视为双等号
         return new IfCondition(ifToken, condition);
     }
 
@@ -501,12 +501,12 @@ internal sealed class Parser
         return new ButtonStStatement([], false);
     }
 
-    private Expression ParseExpression()
+    private Expression ParseExpression(bool isCondition = false)
     {
-        return ParseAssignmentExpression();
+        return ParseAssignmentExpression(isCondition);
     }
 
-    private Expression ParseAssignmentExpression()
+    private Expression ParseAssignmentExpression(bool isCondition = false)
     {
         if (Check(TokenType.CONST) || Check(TokenType.VAR))
         {
@@ -519,21 +519,32 @@ internal sealed class Parser
                      TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN))
             {
                 var assignmentOp = Advance();
-                var value = ParseExpression();
-                return new AssignExpression(variableToken, variable, assignmentOp, value);
+
+                // 在条件表达式中（IF/ELIF/WHILE），将单等号(=)视为双等号(==)
+                // 此时仍然作为赋值表达式返回，由后续的 BinaryExpression 处理
+                if (isCondition && assignmentOp.Type == TokenType.ASSIGN)
+                {
+                    var rightExpr = ParseExpression(isCondition);
+                    // 创建等效于 == 的二元表达式
+                    var eqlToken = new Token(_text, TokenType.EQL, "==", assignmentOp.Line, assignmentOp.Span.Start);
+                    return new BinaryExpression(variable!, eqlToken, rightExpr);
+                }
+
+                var rightValue = ParseExpression(isCondition);
+                return new AssignExpression(variableToken, variable, assignmentOp, rightValue);
             }
         }
-        return ParseBinaryExpression();
+        return ParseBinaryExpression(0, isCondition);
     }
 
-    private Expression ParseBinaryExpression(int parentPrecedence = 0)
+    private Expression ParseBinaryExpression(int parentPrecedence = 0, bool isCondition = false)
     {
         Expression left;
         var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
         if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
         {
             var operatorToken = Advance();
-            var operand = ParseBinaryExpression(unaryOperatorPrecedence);
+            var operand = ParseBinaryExpression(unaryOperatorPrecedence, isCondition);
             left = new UnaryExpression(operatorToken, operand);
         }
         else
@@ -544,11 +555,25 @@ internal sealed class Parser
         while (true)
         {
             var precedence = Current.Type.GetBinaryOperatorPrecedence();
+
+            // 在条件表达式中，将单等号(=)视为双等号(==)
+            if (isCondition && Current.Type == TokenType.ASSIGN)
+            {
+                precedence = 3; // 给 ASSIGN 设置与 EQL 相同的优先级
+            }
+
             if (precedence == 0 || precedence <= parentPrecedence)
                 break;
 
             var operatorToken = Advance();
-            var right = ParseBinaryExpression(precedence);
+
+            // 在条件表达式中，将单等号(=)转换为双等号(==)
+            if (isCondition && operatorToken.Type == TokenType.ASSIGN)
+            {
+                operatorToken = new Token(_text, TokenType.EQL, "==", operatorToken.Line, operatorToken.Span.Start);
+            }
+
+            var right = ParseBinaryExpression(precedence, isCondition);
             left = new BinaryExpression(left, operatorToken, right);
         }
 

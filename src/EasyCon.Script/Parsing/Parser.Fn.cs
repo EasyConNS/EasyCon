@@ -68,8 +68,8 @@ internal partial class Parser
         if (tokens.Length < 2 + 1) return null;
         if (tokens[0].Type == TokenType.IF || tokens[0].Type == TokenType.ELIF)
         {
-            var pr = new ExprParser([.. tokens.Skip(1)], _formatter);
-            var expr = pr.ParseExpression();
+            var pr = new ExprParser([.. tokens.Skip(1)], _formatter, isCondition: true);
+            var expr = pr.ParseExpression(0, true);
             if (!pr.EOF(out _)) return null;
             switch (tokens[0].Type)
             {
@@ -120,8 +120,8 @@ internal partial class Parser
         if (tokens.Length < 2 + 1) return null;
         if (tokens[0].Type == TokenType.WHILE)
         {
-            var pr = new ExprParser([.. tokens.Skip(1)], _formatter);
-            var expr = pr.ParseExpression();
+            var pr = new ExprParser([.. tokens.Skip(1)], _formatter, isCondition: true);
+            var expr = pr.ParseExpression(0, true);
             if (!pr.EOF(out _)) return null;
             return new WhileStmt(expr);
         }
@@ -279,7 +279,7 @@ internal partial class Parser
     }
 }
 
-class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar = true)
+class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar = true, bool isCondition = false)
 {
     private readonly ImmutableArray<Token> _tokens = toks;
     private int _position = 0;
@@ -315,7 +315,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         throw new Exception($"{message} 但出现了<{Current.Type}>");
     }
 
-    public ExprBase ParseExpression(int parentPrecedence = 0)
+    public ExprBase ParseExpression(int parentPrecedence = 0, bool isCondition = false)
     {
         ExprBase left;
         var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
@@ -323,7 +323,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         {
             var opToken = Advance();
             var op = UnaryOperator.All.FirstOrDefault(o => o.KeyWord == opToken.Value) ?? throw new Exception($"不支持的运算符：{opToken.Value}");
-            var operand = ParseExpression(unaryOperatorPrecedence);
+            var operand = ParseExpression(unaryOperatorPrecedence, isCondition);
             left = new UnaryExpression(opToken, operand);
         }
         else
@@ -334,13 +334,27 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         while (true)
         {
             var precedence = Current.Type.GetBinaryOperatorPrecedence();
+
+            // 在条件表达式中，将单等号(=)视为双等号(==)，设置与 EQL 相同的优先级
+            if (isCondition && Current.Type == TokenType.ASSIGN)
+            {
+                precedence = 3; // 与 EQL 相同
+            }
+
             if (precedence == 0 || precedence <= parentPrecedence)
                 break;
 
             var opToken = Advance();
+
+            // 在条件表达式中，将单等号(=)转换为双等号(==)
+            if (isCondition && opToken.Type == TokenType.ASSIGN)
+            {
+                opToken = new Token(opToken.Text, TokenType.EQL, "==", opToken.Line, opToken.Span.Start);
+            }
+
             CompareOperator? op = CompareOperator.All.FirstOrDefault(o => o.Operator == opToken.Value)
                 ?? throw new Exception($"不支持的运算符：{opToken.Value}");
-            var right = ParseExpression(precedence);
+            var right = ParseExpression(precedence, isCondition);
             left = new BinaryExpression(opToken, left, right);
         }
 
