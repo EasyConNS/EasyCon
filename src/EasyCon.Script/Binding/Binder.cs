@@ -71,7 +71,10 @@ internal sealed class Binder
                 fnstatements.Add(statement);
             }
             var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
-            var fnloweredBody = Lowerer.Lower(fnbody);
+            var fnloweredBody = Lowerer.Lower(function, fnbody);
+
+            if (function.Type != ValueType.Void && !ControlFlowGraph.AllPathsReturn(fnloweredBody))
+                throw new ParseException("函数所有路径必须有返回值", function.Declaration!.Address);
 
             binder._ilNames.UnionWith(binderFn._ilNames);
 
@@ -80,7 +83,7 @@ internal sealed class Binder
 
         var main = new FunctionSymbol("$eval", [], ValueType.Void);
         var body = new BoundBlockStatement(null, statements.ToImmutable());
-        var loweredBody = Lowerer.Lower(body);
+        var loweredBody = Lowerer.Lower(main, body);
         functionBodies.Add(main, loweredBody);
         return new BoundProgram(main, functionBodies.ToImmutable(), binder._ilNames.ToImmutableArray());
     }
@@ -107,7 +110,7 @@ internal sealed class Binder
             }
         }
 
-        var type = BindTypeClause(syntax?.Declare.Type) ?? ValueType.Void;
+        var type = BindTypeClause(syntax?.Declare) ?? ValueType.Void;
         var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), type, syntax);
         _scope.TryDeclareFunction(function);
     }
@@ -232,8 +235,10 @@ internal sealed class Binder
             _ => null,
         };
 
+        //      var <var> = <lower>
         BoundStmt lowerBoundStmt = variable == null ? Nop(forCond) :
             VariableDeclaration(forCond, variable, lowerBound);
+        //      let upperBound = <upper>
         BoundStmt upperBoundStmt = variable == null ? Nop(forCond) :
             ConstantDeclaration(forCond, "_uppBound$", upperBound);
         //var <= upperBound
@@ -368,9 +373,21 @@ internal sealed class Binder
         var expression = syntax.Expression == null ? null : BindExpression(syntax.Expression);
         if(_function != null)
         {
-            if(_function.Type != ValueType.Void && expression == null)
+            // if(_function.Type != ValueType.Void && expression == null)
+            // {
+            //     throw new ParseException("函数必须有返回值", syntax.Address);
+            // }
+            if (_function.Type == ValueType.Void)
             {
-                throw new ParseException("函数必须有返回值", syntax.Address);
+                if (expression != null)
+                    throw new ParseException("函数返回类型不正确", syntax.Address);
+            }
+            else
+            {
+                if (expression == null)
+                    throw new ParseException("函数必须有返回值", syntax.Address);
+                else
+                    expression = BindConversion(expression, _function.Type);
             }
         }
         return new BoundReturnStatement(syntax, expression);
@@ -411,10 +428,10 @@ internal sealed class Binder
         return variable;
     }
 
-    private ValueType? BindTypeClause(TypeClauseSyntax syntax)
+    private ValueType? BindTypeClause(FuncStmt syntax)
     {
-        if (syntax == null) return null;
-        var type = LookupType(syntax.Identifier.Value) ?? throw new Exception($"未知类型：{syntax.Identifier.Text}");
+        if (syntax.Type == null) return null;
+        var type = LookupType(syntax.Type.Identifier.Value) ?? throw new ParseException($"未知类型：{syntax.Identifier.Text}", syntax.Address);
         return type;
     }
     private ValueType? LookupType(string name)
@@ -500,14 +517,14 @@ internal sealed class Binder
     private BoundExpr BindConversion(BoundExpr expr, ValueType type)
     {
         if (type == ValueType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
-        if (expr.Type != type) throw new Exception("参数类型不匹配");
+        if (expr.Type != type) throw new Exception("表达式类型不匹配");
         return expr;
     }
 
     private BoundExpr BindConversion(ExprBase syntax, ValueType type)
     {
         var expr = BindExpression(syntax);
-        if (expr.Type != type) throw new Exception("参数类型不匹配");
+        if (expr.Type != type) throw new Exception("表达式类型不匹配");
         return expr;
     }
 

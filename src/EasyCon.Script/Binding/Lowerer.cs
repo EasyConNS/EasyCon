@@ -5,13 +5,13 @@ namespace EasyCon.Script.Binding;
 
 internal sealed class Lowerer
 {
-    public static BoundBlockStatement Lower(BoundStmt statement)
+    public static BoundBlockStatement Lower(FunctionSymbol fn, BoundStmt statement)
     {
         // return Flatten(statement);
-        return RemoveDeadCode(Flatten(statement));
+        return RemoveDeadCode(Flatten(fn, statement));
     }
 
-    private static BoundBlockStatement Flatten(BoundStmt statement)
+    private static BoundBlockStatement Flatten(FunctionSymbol fn, BoundStmt statement)
     {
         var builder = ImmutableArray.CreateBuilder<BoundStmt>();
         var stack = new Stack<BoundStmt>();
@@ -33,7 +33,20 @@ internal sealed class Lowerer
                 builder.Add(current);
             }
         }
+        if (fn.Type == ValueType.Void)
+        {
+            if (builder.Count == 0 || CanFallThrough(builder.Last()))
+            {
+                builder.Add(new BoundReturnStatement(statement.Syntax, null));
+            }
+        }
         return new BoundBlockStatement(statement.Syntax, builder.ToImmutable());
+    }
+
+    private static bool CanFallThrough(BoundStmt boundStatement)
+    {
+        return boundStatement.Kind != Return &&
+                boundStatement.Kind != Goto;
     }
 
     private static BoundBlockStatement RemoveDeadCode(BoundBlockStatement statement)
