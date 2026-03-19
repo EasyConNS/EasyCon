@@ -40,9 +40,7 @@ class FuncStmt(Token identifier, ImmutableArray<VariableExpr> paramters, bool om
     {
         var parm = string.Join(", ", Paramters.Select(arg => arg.GetCodeText()));
         parm = Paramters.Length == 0 && !omitParn ? "" : $"({parm})";
-        var type = "";
-        if (Type != null)
-            type = $": {Type.Identifier.Value.ToUpper()}";
+        var type = Type == null ? "" : $": {Type.Identifier.Value.ToUpper()}";
         return $"FUNC {Name}{parm}{type}";
     }
 }

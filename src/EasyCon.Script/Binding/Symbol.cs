@@ -21,7 +21,7 @@ abstract class VariableSymbol(string name, bool isReadOnly, ValueType valueType)
 {
     public readonly ValueType Type = valueType;
     public readonly bool IsReadOnly = isReadOnly;
-    internal object? Value { get; }
+    internal object? Value;
 }
 
 sealed class GlobalVariableSymbol(string name, bool isReadOnly, ValueType valueType) : VariableSymbol(name, isReadOnly, valueType)

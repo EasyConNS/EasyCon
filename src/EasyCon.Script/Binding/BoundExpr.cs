@@ -30,11 +30,17 @@ internal sealed class BoundLiteralExpression : BoundExpr
     }
 }
 
-internal sealed class BoundVariableExpression(ExprBase syntax, VariableSymbol variable) : BoundExpr(syntax)
+internal sealed class BoundVariableExpression : BoundExpr
 {
-    public readonly VariableSymbol Variable = variable;
-    public override ValueType Type => Variable.Type;
+    public readonly VariableSymbol Variable;
+    public override ValueType Type { get; }
     public override BoundNodeKind Kind => BoundNodeKind.Variable;
+    public BoundVariableExpression(ExprBase syntax, VariableSymbol variable) : base(syntax)
+    {
+        Variable = variable;
+        Type = variable.Type;
+        ConstantValue = variable.Value;
+    }
 }
 
 internal sealed class BoundExternalVariableExpression(ExtVarExpr syntax, ExternalVariable operand) : BoundExpr(syntax)

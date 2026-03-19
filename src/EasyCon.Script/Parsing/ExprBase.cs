@@ -1,4 +1,3 @@
-using EasyCon.Script2.Binding;
 using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
@@ -36,11 +35,6 @@ class LiteralExpr(object txt) : ExprBase
     {
         return new LiteralExpr(val);
     }
-
-    // public static implicit operator int(LiteralExpr v)
-    // {
-    //     return (int)v.Value;
-    // }
 }
 
 class VariableExpr : ExprBase

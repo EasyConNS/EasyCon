@@ -1,7 +1,7 @@
 using EasyCon.Script.Parsing;
 using EasyCon.Script2;
-using EasyCon.Script2.Symbols;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using static EasyCon.Script.Binding.BoundFactory;
 
 namespace EasyCon.Script.Binding;
@@ -408,6 +408,8 @@ internal sealed class Binder
         var variable = BindVariableDeclaration(syntax.DestVariable, syntax.DestVariable.ReadOnly, boundexpr.Type);
 
         if (variable.Type != boundexpr.Type) throw new ParseException("表达式和变量类型不匹配", syntax.Address);
+        if(variable.IsReadOnly && boundexpr.ConstantValue == null) throw new ParseException("常量表达式不正确", syntax.Address);
+        if (variable.IsReadOnly) variable.Value = boundexpr.ConstantValue;
         return new BoundExprStatement(syntax, new BoundAssignExpression(syntax.Expression, variable, boundexpr));
     }
 
@@ -558,6 +560,7 @@ internal sealed class Binder
 
         if (boundLeft.ConstantValue != null && boundRight.ConstantValue != null)
         {
+            Debug.WriteLine($"~~{boundLeft.ConstantValue}, {boundRight.ConstantValue}");
             var COS = boundOperator.Operate(boundLeft.ConstantValue, boundRight.ConstantValue);
             return new BoundLiteralExpression(syntax, COS);
         }
