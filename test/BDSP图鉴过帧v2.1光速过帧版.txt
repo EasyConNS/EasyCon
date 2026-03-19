@@ -39,7 +39,7 @@ FUNC FAN
         WAIT 150
         PRINT 已过帧 & $1 & 次
         $2 += 1
-        IF $2 = 50
+        IF $2 == 50
             $2 = 0
             RS RESET
             LS RESET
