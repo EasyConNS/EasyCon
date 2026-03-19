@@ -21,11 +21,11 @@ internal sealed class TypeClauseSyntax(Token colonToken, Token identifier)
     public readonly Token Identifier = identifier;
 }
 
-class FuncStmt(Token identifier, ImmutableArray<VariableExpr> paramters, bool omitParn, TypeClauseSyntax? type) : StartBlockStmt
+class FuncStmt(Token identifier, ImmutableArray<ParameterSyntax> paramters, bool omitParn, TypeClauseSyntax? type) : StartBlockStmt
 {
     public readonly Token Identifier = identifier;
     public string Name => Identifier.Value;
-    public ImmutableArray<VariableExpr> Paramters = paramters;
+    public ImmutableArray<ParameterSyntax> Paramters = paramters;
     public readonly TypeClauseSyntax? Type = type;
 
     //public override void Assemble(Assembly.Assembler assembler)
@@ -38,11 +38,23 @@ class FuncStmt(Token identifier, ImmutableArray<VariableExpr> paramters, bool om
 
     protected override string _GetString()
     {
-        var parm = string.Join(", ", Paramters.Select(arg => arg.GetCodeText()));
+        var parm = string.Join(", ", Paramters.Select(arg => arg.ToString()));
         parm = Paramters.Length == 0 && !omitParn ? "" : $"({parm})";
         var type = Type == null ? "" : $": {Type.Identifier.Value.ToUpper()}";
         return $"FUNC {Name}{parm}{type}";
     }
+}
+
+internal sealed class ParameterSyntax(VariableExpr varExpr, TypeClauseSyntax? type)
+{
+    public readonly VariableExpr Identifier = varExpr;
+    public readonly TypeClauseSyntax? Type = type;
+
+    public override string ToString()
+    {
+        var type = Type == null ? "" : $": {Type.Identifier.Value.ToUpper()}";
+        return  Identifier.GetCodeText() + type;
+     }
 }
 
 class EndFuncStmt : EndBlockStmt

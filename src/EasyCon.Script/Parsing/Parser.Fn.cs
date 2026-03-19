@@ -360,7 +360,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         var functionName = Match(TokenType.IDENT, "函数声明需要函数名");
 
         var hasPar = false;
-        var parameters = ImmutableArray<VariableExpr>.Empty;
+        var parameters = ImmutableArray<ParameterSyntax>.Empty;
         if (Check(TokenType.LeftParen))
         {
             Match(TokenType.LeftParen, "函数声明缺少左括号");
@@ -374,17 +374,16 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         return new FuncStmt(functionName, parameters, hasPar, typeClause);
     }
 
-    private ImmutableArray<VariableExpr> ParseParameterList()
+    private ImmutableArray<ParameterSyntax> ParseParameterList()
     {
-        var nodesAndSeparators = ImmutableArray.CreateBuilder<VariableExpr>();
+        var nodesAndSeparators = ImmutableArray.CreateBuilder<ParameterSyntax>();
 
         var parseNextParameter = true;
         while (parseNextParameter &&
                 Current.Type != TokenType.RightParen &&
                 Current.Type != TokenType.EOF)
         {
-            var identifier = Match(TokenType.VAR, "函数参数只能是变量");
-            var parameter = (VariableExpr)_formatter.GetValueEx(identifier);
+            var parameter = ParseParameter();
             nodesAndSeparators.Add(parameter);
 
             if (Current.Type == TokenType.COMMA)
@@ -397,6 +396,13 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
             }
         }
         return nodesAndSeparators.ToImmutable();
+    }
+    private ParameterSyntax ParseParameter()
+    {
+        var identifier = Match(TokenType.VAR, "函数参数只能是变量");
+        var parameter = (VariableExpr)_formatter.GetValueEx(identifier);
+        var type = ParseOptionalTypeClause();
+        return new ParameterSyntax(parameter, type);
     }
 
     private TypeClauseSyntax? ParseOptionalTypeClause()

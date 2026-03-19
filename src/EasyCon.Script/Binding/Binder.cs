@@ -96,12 +96,11 @@ internal sealed class Binder
 
         foreach (var parameterSyntax in syntax.Declare.Paramters)
         {
-            var parameterName = parameterSyntax.Tag;
-            var parameterType = ValueType.Int;
+            var parameterName = parameterSyntax.Identifier.Tag;
+            var parameterType = BindTypeClause(syntax.Declare, parameterSyntax.Type)?? ValueType.Int;
             if (!seenParameterNames.Add(parameterName))
             {
                 throw new Exception($"重复定义的参数名 {parameterName}");
-                //_diagnostics.ReportParameterAlreadyDeclared(parameterSyntax.Location, parameterName);
             }
             else
             {
@@ -429,7 +428,12 @@ internal sealed class Binder
 
         return variable;
     }
-
+    private ValueType? BindTypeClause(FuncStmt syntax, TypeClauseSyntax? tcs)
+    {
+        if (tcs == null) return null;
+        var type = LookupType(tcs.Identifier.Value) ?? throw new ParseException($"未知类型：{tcs.Identifier.Text}", syntax.Address);
+        return type;
+    }
     private ValueType? BindTypeClause(FuncStmt syntax)
     {
         if (syntax.Type == null) return null;
@@ -442,7 +446,7 @@ internal sealed class Binder
         {
             "BOOL" => (ValueType?)ValueType.Bool,
             "INT" => (ValueType?)ValueType.Int,
-            "STR" => (ValueType?)ValueType.String,
+            "STRING" => (ValueType?)ValueType.String,
             _ => null,
         };
     }
