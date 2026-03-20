@@ -382,7 +382,7 @@ namespace EasyCon2.Forms
             return comboBoxBoardType.SelectedItem as Board;
         }
 
-        public void Print(string message, bool newline = true) =>
+        public async void Print(string message, bool newline = true) =>
             logTxtBox.Print(message, newline);
 
         public void Alert(string message)
