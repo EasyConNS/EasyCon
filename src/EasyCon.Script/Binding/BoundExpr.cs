@@ -15,16 +15,10 @@ internal sealed class BoundLiteralExpression : BoundExpr
 {
     public override ValueType Type { get; }
     public override BoundNodeKind Kind => BoundNodeKind.Literal;
-    public BoundLiteralExpression(ExprBase syntax, object value) : base( syntax)
+    public BoundLiteralExpression(ExprBase syntax, Value value) : base( syntax)
     {
-        if (value is bool)
-        {Type = ValueType.Bool; ConstantValue =(bool)value;}
-        else if (value is int)
-        {Type = ValueType.Int; ConstantValue = (int)value;}
-        else if (value is string)
-        {Type = ValueType.String; ConstantValue = (string)value;}
-        else
-            throw new Exception($"未知类型的数据 '{value}' 不支持类型 {value.GetType()}");
+        Type = value.Kind;
+        ConstantValue = value;
     }
 }
 

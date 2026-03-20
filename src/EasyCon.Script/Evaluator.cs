@@ -36,11 +36,11 @@ internal sealed class Evaluator
         }
     }
 
-    public object? Evaluate()
+    public Value Evaluate()
     {
         var function = _program.MainFunction;
         if (function == null)
-            return null;
+            return Value.Void;
 
         var body = _functions[function];
         return EvaluateStatement(body);

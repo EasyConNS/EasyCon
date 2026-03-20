@@ -60,6 +60,8 @@ internal static class BoundFactory
     }
     public static BoundBinaryExpression Add(ExprBase syntax, BoundExpr left, BoundExpr right)
     => Binary(syntax, left, Script2.Syntax.TokenType.ADD, right);
+    public static BoundBinaryExpression Less(ExprBase syntax, BoundExpr left, BoundExpr right)
+    => Binary(syntax, left, Script2.Syntax.TokenType.LESS, right);
     public static BoundBinaryExpression LessEqual(ExprBase syntax, BoundExpr left, BoundExpr right)
     => Binary(syntax, left, Script2.Syntax.TokenType.LEQ, right);
     public static BoundVariableExpression Variable(ExprBase syntax, BoundAssignExpression variable)
@@ -75,6 +77,6 @@ internal static class BoundFactory
     {
         Debug.Assert(literal is string || literal is bool || literal is int);
 
-        return new BoundLiteralExpression(syntax, literal);
+        return new BoundLiteralExpression(syntax, Value.From(literal));
     }
 }

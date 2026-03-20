@@ -8,16 +8,13 @@ namespace EasyCon.Script.Binding;
 /// </summary>
 public readonly struct Value : IEquatable<Value>, IComparable<Value>
 {
-    /// <summary>值的具体类型</summary>
-    public enum ValueKind { Int, Bool, String, Array, Void }
-
     /// <summary>当前值的类型</summary>
-    public ValueKind Kind { get; }
+    public ValueType Kind { get; }
 
     // 实际数据存储：int/bool 直接装箱，string 为字符串，array 为 Value[]
     private readonly object? _value;
 
-    private Value(object? value, ValueKind kind)
+    private Value(object? value, ValueType kind)
     {
         _value = value;
         Kind = kind;
@@ -29,25 +26,25 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         if (o == null) return Void;
         return o switch
         {
-            int i => new Value(i, ValueKind.Int),
-            bool b => new Value(b, ValueKind.Bool),
-            string s => new Value(s, ValueKind.String),
+            int i => new Value(i, ValueType.Int),
+            bool b => new Value(b, ValueType.Bool),
+            string s => new Value(s, ValueType.String),
             Value v => v,
-            Value[] array => new Value(array, ValueKind.Array),
-            _ => throw new ArgumentException($"Invalid value type.{o.GetType()}")
+            Value[] array => new Value(array, ValueType.Array),
+            _ => throw new ArgumentException($"未知类型的数据 '{o}' 不支持类型 {o?.GetType()}")
         };
     }
-    public static Value Void { get; } = new Value(null, ValueKind.Void);
-    public static implicit operator Value(int i) => new(i, ValueKind.Int);
-    public static implicit operator Value(bool b) => new(b, ValueKind.Bool);
-    public static implicit operator Value(string s) => new(s ?? throw new ArgumentNullException(nameof(s)), ValueKind.String);
+    public static Value Void { get; } = new Value(null, ValueType.Void);
+    public static implicit operator Value(int i) => new(i, ValueType.Int);
+    public static implicit operator Value(bool b) => new(b, ValueType.Bool);
+    public static implicit operator Value(string s) => new(s ?? throw new ArgumentNullException(nameof(s)), ValueType.String);
     public static implicit operator Value(Value[] array) =>
-        new(array?.ToArray() ?? throw new ArgumentNullException(nameof(array)), ValueKind.Array); // 存储副本以保证不可变性
+        new(array?.ToArray() ?? throw new ArgumentNullException(nameof(array)), ValueType.Array); // 存储副本以保证不可变性
 
     // 类型安全的取值方法（若类型不匹配则抛出异常）
-    public int AsInt() => Kind == ValueKind.Int ? (int)_value! : throw new InvalidOperationException("Value is not an int.");
-    public bool AsBool() => Kind == ValueKind.Bool ? (bool)_value! : throw new InvalidOperationException("Value is not a bool.");
-    public string AsString() => Kind == ValueKind.String ? (string)_value! : throw new InvalidOperationException("Value is not a string.");
+    public int AsInt() => Kind == ValueType.Int ? (int)_value! : throw new InvalidOperationException("Value is not an int.");
+    public bool AsBool() => Kind == ValueType.Bool ? (bool)_value! : throw new InvalidOperationException("Value is not a bool.");
+    public string AsString() => Kind == ValueType.String ? (string)_value! : throw new InvalidOperationException("Value is not a string.");
 
     /// <summary>获取字符串的文本元素长度或数组的长度。</summary>
     public int Length
@@ -56,9 +53,9 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         {
             return Kind switch
             {
-                ValueKind.String => new StringInfo(AsString()).LengthInTextElements,
-                ValueKind.Array => ((Value[])_value!).Length,
-                _ => throw new InvalidOperationException("Length not supported for this type.")
+                ValueType.String => new StringInfo(AsString()).LengthInTextElements,
+                ValueType.Array => ((Value[])_value!).Length,
+                _ => 0,
             };
         }
     }
@@ -70,8 +67,8 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         {
             return Kind switch
             {
-                ValueKind.String => GetStringElement(AsString(), index),
-                ValueKind.Array => ((Value[])_value!)[index],
+                ValueType.String => GetStringElement(AsString(), index),
+                ValueType.Array => ((Value[])_value!)[index],
                 _ => throw new InvalidOperationException("Indexing not supported for this type.")
             };
         }
@@ -83,22 +80,22 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         var si = new StringInfo(s);
         if (index < 0 || index >= si.LengthInTextElements)
             throw new IndexOutOfRangeException();
-        return new Value(si.SubstringByTextElements(index, 1), ValueKind.String);
+        return new Value(si.SubstringByTextElements(index, 1), ValueType.String);
     }
 
     public Value Concat(Value other)
     {
-        if (Kind != ValueKind.Array || other.Kind != ValueKind.Array)
+        if (Kind != ValueType.Array || other.Kind != ValueType.Array)
             throw new InvalidOperationException("Both values must be arrays to concatenate.");
 
-        return new Value(((Value[])_value!).Concat((Value[])other._value!), ValueKind.Array);
+        return new Value(((Value[])_value!).Concat((Value[])other._value!), ValueType.Array);
     }
 
     public Value Append(Value other)
     {
         return Kind switch
         {
-            ValueKind.Array => new Value(((Value[])_value!).Append(other).ToArray(), ValueKind.Array),
+            ValueType.Array => new Value(((Value[])_value!).Append(other).ToArray(), ValueType.Array),
             _ => throw new InvalidOperationException("Append not supported for this type.")
         };
     }
@@ -108,11 +105,11 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     {
         return Kind switch
         {
-            ValueKind.Int => AsInt() != 0,
-            ValueKind.Bool => AsBool(),
-            ValueKind.String => !string.IsNullOrEmpty(AsString()),
-            ValueKind.Array => ((Value[])_value!).Length > 0,
-            ValueKind.Void => false,
+            ValueType.Int => AsInt() != 0,
+            ValueType.Bool => AsBool(),
+            ValueType.String => !string.IsNullOrEmpty(AsString()),
+            ValueType.Array => ((Value[])_value!).Length > 0,
+            ValueType.Void => false,
             _ => false
         };
     }
@@ -123,11 +120,11 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         if (Kind != other.Kind) return false;
         return Kind switch
         {
-            ValueKind.Int => AsInt() == other.AsInt(),
-            ValueKind.Bool => AsBool() == other.AsBool(),
-            ValueKind.String => AsString() == other.AsString(),
-            ValueKind.Array => ((Value[])_value!).SequenceEqual((Value[])other._value!), // 直接比较内部数组，无需复制
-            ValueKind.Void => true, // 两个 void 相等
+            ValueType.Int => AsInt() == other.AsInt(),
+            ValueType.Bool => AsBool() == other.AsBool(),
+            ValueType.String => AsString() == other.AsString(),
+            ValueType.Array => ((Value[])_value!).SequenceEqual((Value[])other._value!), // 直接比较内部数组，无需复制
+            ValueType.Void => true, // 两个 void 相等
             _ => false
         };
     }
@@ -142,10 +139,10 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
             hash = hash * 31 + Kind.GetHashCode();
             switch (Kind)
             {
-                case ValueKind.Int: hash = hash * 31 + AsInt().GetHashCode(); break;
-                case ValueKind.Bool: hash = hash * 31 + AsBool().GetHashCode(); break;
-                case ValueKind.String: hash = hash * 31 + AsString().GetHashCode(); break;
-                case ValueKind.Array:
+                case ValueType.Int: hash = hash * 31 + AsInt().GetHashCode(); break;
+                case ValueType.Bool: hash = hash * 31 + AsBool().GetHashCode(); break;
+                case ValueType.String: hash = hash * 31 + AsString().GetHashCode(); break;
+                case ValueType.Array:
                     foreach (var v in (Value[])_value!)
                         hash = hash * 31 + v.GetHashCode();
                     break;
@@ -158,14 +155,12 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     public int CompareTo(Value other)
     {
         if (Kind != other.Kind)
-            throw new InvalidOperationException("Cannot compare values of different kinds.");
+            throw new InvalidOperationException($"Cannot compare values of different kinds {Kind} <=> {other.Kind}");
         return Kind switch
         {
-            ValueKind.Int => AsInt().CompareTo(other.AsInt()),
-            ValueKind.Bool => AsBool().CompareTo(other.AsBool()),   // true > false
-            ValueKind.String => string.Compare(AsString(), other.AsString(), StringComparison.Ordinal),
-            ValueKind.Array => throw new InvalidOperationException("Cannot compare arrays."),
-            _ => 0
+            ValueType.Int => AsInt().CompareTo(other.AsInt()),
+            ValueType.String => string.Compare(AsString(), other.AsString(), StringComparison.Ordinal),
+            _ => throw new InvalidOperationException($"Cannot compare {Kind} <=> {other.Kind}"),
         };
     }
 
@@ -181,7 +176,7 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     public static Value operator +(Value left, Value right)
     {
         // void 参与运算直接抛出异常
-        if (left.Kind == ValueKind.Void || right.Kind == ValueKind.Void)
+        if (left.Kind == ValueType.Void || right.Kind == ValueType.Void)
             throw new InvalidOperationException("Cannot perform '+' operation on void.");
 
         // 相同类型处理
@@ -189,16 +184,16 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         {
             return left.Kind switch
             {
-                ValueKind.Int => (Value)(left.AsInt() + right.AsInt()),
-                ValueKind.String => (Value)(left.AsString() + right.AsString()),
-                ValueKind.Array => left.Concat(right),
+                ValueType.Int => (Value)(left.AsInt() + right.AsInt()),
+                ValueType.String => (Value)(left.AsString() + right.AsString()),
+                ValueType.Array => left.Concat(right),
                 _ => throw new InvalidOperationException($"Operator '+' is not supported for {left.Kind}."),
             };
 
         }
 
         // 不同类型与 string 混合
-        if (left.Kind == ValueKind.String || right.Kind == ValueKind.String)
+        if (left.Kind == ValueType.String || right.Kind == ValueType.String)
         {
             return left.AsString() + right.AsString();
         }
@@ -211,10 +206,10 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     {
         return Kind switch
         {
-            ValueKind.Int => AsInt().ToString(),
-            ValueKind.Bool => AsBool().ToString(),
-            ValueKind.String => AsString(),
-            ValueKind.Array => "[" + string.Join(", ", ((Value[])_value!).Select(v => v.ToString())) + "]",
+            ValueType.Int => AsInt().ToString(),
+            ValueType.Bool => AsBool().ToString(),
+            ValueType.String => AsString(),
+            ValueType.Array => "[" + string.Join(", ", ((Value[])_value!).Select(v => v.ToString())) + "]",
             _ => base.ToString() ?? ""
         };
     }

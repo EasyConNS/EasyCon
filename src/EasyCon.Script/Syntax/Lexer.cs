@@ -26,6 +26,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     [GeneratedRegex(@"^\b(print|alert)\b\s+(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
     private static partial Regex printRex();
 
+    [GeneratedRegex(@"^\b(if)\b\s+(.*)(?<!=)=(?!=)(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
+    private static partial Regex ifRex();
+
     [GeneratedRegex(@"^(_|\$)[\d\p{L}_]+$", RegexOptions.IgnoreCase, "zh-CN")]
     private static partial Regex variableRex();
 
@@ -44,6 +47,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             }
 
             var mp = printRex().Match(_line);
+            var mif = ifRex().Match(_line);
             if (mp.Success)
             {
                 var content = mp.Groups[2].Value;
@@ -64,6 +68,11 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     }
                     return s;
                 }).ToList()));
+            }else if(mif.Success)
+            {
+                _line = _line.Replace("=", "==");
+                builder.Append(_line);
+                Console.WriteLine(_line);
             }
             else
             {

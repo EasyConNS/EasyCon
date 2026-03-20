@@ -520,7 +520,8 @@ internal sealed class Binder
 
     private BoundLiteralExpression BindLiterExpression(LiteralExpr syntax)
     {
-        return new BoundLiteralExpression(syntax, syntax.Value);
+        Value obj = Value.From(syntax.Value);
+        return new BoundLiteralExpression(syntax, obj);
     }
 
     private BoundIndexDeclxpression BindIndexExpression(IndexDefExpression syntax)

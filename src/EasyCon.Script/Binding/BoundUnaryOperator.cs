@@ -7,9 +7,9 @@ internal sealed class BoundUnaryOperator
     public TokenType TypeKind { get; }
     public BoundUnaryOperatorKind Kind { get; }
     public ValueType Type { get; }
-    public readonly Func<Value, object> Operate;
+    public readonly Func<Value, Value> Operate;
 
-    private BoundUnaryOperator(TokenType syntaxKind, BoundUnaryOperatorKind kind, ValueType resultType, Func<Value, object> operate)
+    private BoundUnaryOperator(TokenType syntaxKind, BoundUnaryOperatorKind kind, ValueType resultType, Func<Value, Value> operate)
     {
         TypeKind = syntaxKind;
         Kind = kind;
