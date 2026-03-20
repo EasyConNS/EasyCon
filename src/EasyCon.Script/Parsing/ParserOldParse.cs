@@ -227,6 +227,14 @@ internal partial class Parser
                     return new Wait(_formatter.GetValueEx(tokens[1].Value));
                 }
                 break;
+            case "rand":
+                if (tokens[1].Type == TokenType.VAR)
+                {
+                    var r = _formatter.GetValueEx(tokens[1].Value);
+                    if (r is not ValReg) return null;
+                    return new Rand((ValReg)r);
+                }
+                break;
             case "amiibo":
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
