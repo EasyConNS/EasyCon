@@ -11,7 +11,7 @@ public record ConfigState
     public string ChannelToken { get; set; } = string.Empty;
     public bool EnableAlertToken { get; set; } = false;
     public bool EnableChannelToken { get; set; } = false;
-    public bool EnableAutoCompletion { get; set; } = true;
+    public bool EnableAutoCompletion { get; set; } = false;
 
     public bool ChannelControl { get; set; } = false;
 
