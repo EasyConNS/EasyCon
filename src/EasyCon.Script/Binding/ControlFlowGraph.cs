@@ -1,9 +1,4 @@
-using System;
 using System.CodeDom.Compiler;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using static EasyCon.Script2.Binding.BoundNodeKind;
 
 namespace EasyCon.Script.Binding;
@@ -223,7 +218,7 @@ internal sealed class ControlFlowGraph
         {
             if (condition is BoundLiteralExpression l)
             {
-                if(l.ConstantValue != null && (bool)l.ConstantValue)
+                if(l.ConstantValue!= Value.Void && l.ConstantValue.ToBoolean())
                 {
                     condition = null;
                 }
@@ -257,7 +252,7 @@ internal sealed class ControlFlowGraph
         private BoundExpr Negate(BoundExpr condition)
         {
             var negated = BoundFactory.Not(condition.Syntax, condition);
-            if (negated.ConstantValue != null)
+            if (negated.ConstantValue != Value.Void)
                 return new BoundLiteralExpression(condition.Syntax, negated.ConstantValue);
 
             return negated;

@@ -8,7 +8,7 @@ internal abstract class BoundExpr(ExprBase expr) : BoundNode
 {
     public ExprBase Syntax = expr;
     public abstract ValueType Type { get; }
-    public object? ConstantValue = null;
+    public Value ConstantValue = Value.Void;
 }
 
 internal sealed class BoundLiteralExpression : BoundExpr
@@ -18,15 +18,13 @@ internal sealed class BoundLiteralExpression : BoundExpr
     public BoundLiteralExpression(ExprBase syntax, object value) : base( syntax)
     {
         if (value is bool)
-            Type = ValueType.Bool;
+        {Type = ValueType.Bool; ConstantValue =(bool)value;}
         else if (value is int)
-            Type = ValueType.Int;
+        {Type = ValueType.Int; ConstantValue = (int)value;}
         else if (value is string)
-            Type = ValueType.String;
+        {Type = ValueType.String; ConstantValue = (string)value;}
         else
-            throw new Exception($"Unexpected literal '{value}' of type {value.GetType()}");
-
-        ConstantValue = value;
+            throw new Exception($"未知类型的数据 '{value}' 不支持类型 {value.GetType()}");
     }
 }
 
@@ -39,8 +37,25 @@ internal sealed class BoundVariableExpression : BoundExpr
     {
         Variable = variable;
         Type = variable.Type;
-        ConstantValue = variable.Value;
+        ConstantValue = Value.From(variable.Value);
     }
+}
+
+internal sealed class BoundIndexVariableExpression(ExprBase syntax, BoundExpr variable, BoundExpr idx) : BoundExpr(syntax)
+{
+    public override ValueType Type => ValueType.Any;
+
+    public override BoundNodeKind Kind => BoundNodeKind.IndexVariable;
+    public readonly BoundExpr Variable = variable;
+    public readonly BoundExpr Index = idx;
+
+}
+
+internal sealed class BoundIndexDeclxpression(ExprBase syntax, ImmutableArray<BoundExpr> idx) : BoundExpr(syntax)
+{
+    public override ValueType Type => ValueType.Array;
+    public ImmutableArray<BoundExpr> Items = idx;
+    public override BoundNodeKind Kind => BoundNodeKind.IndexDecl;
 }
 
 internal sealed class BoundExternalVariableExpression(ExtVarExpr syntax, ExternalVariable operand) : BoundExpr(syntax)

@@ -469,20 +469,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         }
 
         var rb = Match(TokenType.RightBracket, "语法需要']'");
-        return new Indexv1Expression(lb, [.. nodesAndSeparators], rb);
-    }
-
-    // [expr]
-    private ExprBase ParseIndexExpression()
-    {
-        
-        var lb = Match(TokenType.LeftBracket, "语法需要'['");
-
-        var expr = ParsePrimary();
-
-        var rb = Match(TokenType.RightBracket, "语法需要']'");
-
-        return null;
+        return new IndexDefExpression(lb, [.. nodesAndSeparators], rb);
     }
 
     // [1..3]
@@ -491,11 +478,17 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         var lb = Match(TokenType.LeftBracket, "语法需要'['");
 
         var start = ParsePrimary();
-        Match(TokenType.DOT, "语法不正确");
-        Match(TokenType.DOT, "语法不正确");
+        // [expr]
+        if (Check(TokenType.RightBracket))
+        {
+            var rb = Match(TokenType.RightBracket, "语法需要']'");
+            return new IndexVisitExpression(_formatter.GetValueEx(variableToken), lb, start, rb);
+        }
+        Match(TokenType.DOT, "语法不正确[a..b]");
+        Match(TokenType.DOT, "语法不正确[a..b]");
         var end = ParsePrimary();
 
-        var rb = Match(TokenType.RightBracket, "语法需要']'");
+        Match(TokenType.RightBracket, "语法需要']'");
         return new SliceExpression(_formatter.GetValueEx(variableToken), start, end);
     }
 
@@ -517,7 +510,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
             case TokenType.VAR when allowVar:
             case TokenType.EX_VAR when allowVar:
                 var token = Advance();
-                if(token.Type == TokenType.VAR && Peek(1).Type == TokenType.LeftBracket)
+                if(token.Type == TokenType.VAR && Current.Type == TokenType.LeftBracket)
                 {
                     return ParseSliceExpression(token);
                 }

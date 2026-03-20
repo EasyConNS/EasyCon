@@ -15,7 +15,9 @@ public enum BoundNodeKind
     Return,
 
     Literal,
+    IndexDecl,
     Variable,
+    IndexVariable,
     ExLabelVariable,
     BinaryExpression,
     UnaryExpression,

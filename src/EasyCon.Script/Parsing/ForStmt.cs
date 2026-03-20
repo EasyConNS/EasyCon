@@ -80,6 +80,15 @@ class For_Static(ExprBase count) : ForStmt(1, count)
     //}
 }
 
+class For_Range(VariableExpr regiter, ExprBase iter): ForStmt(iter, 1)
+{
+    public VariableExpr RegIter = regiter;
+    protected override string _GetString()
+    {
+        return $"FOR {RegIter.GetCodeText()} = RANGE {Lower.GetCodeText()}";
+    }
+}
+
 class For_Full(VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(lower, upper)
 {
     public VariableExpr RegIter = regiter;

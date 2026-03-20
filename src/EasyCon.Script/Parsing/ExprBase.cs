@@ -8,15 +8,11 @@ abstract class ExprBase
 {
     public abstract string GetCodeText();
 
-    public static implicit operator ExprBase(int val)
-    {
-        return new LiteralExpr(val);
-    }
+    public static implicit operator ExprBase(int val) =>  new LiteralExpr(val);
 
-    public static implicit operator ExprBase(string val)
-    {
-        return new LiteralExpr(val);
-    }
+    public static implicit operator ExprBase(string val) => new LiteralExpr(val);
+
+    public static implicit operator ExprBase(bool val) => new LiteralExpr(val);
 }
 
 class LiteralExpr(object txt) : ExprBase
@@ -31,10 +27,9 @@ class LiteralExpr(object txt) : ExprBase
             return $"{Value}";
     }
 
-    public static implicit operator LiteralExpr(int val)
-    {
-        return new LiteralExpr(val);
-    }
+    public static implicit operator LiteralExpr(int val) => new(val);
+    public static implicit operator LiteralExpr(string val) => new(val);
+    public static implicit operator LiteralExpr(bool val) => new(val);
 }
 
 class VariableExpr : ExprBase
@@ -97,12 +92,21 @@ sealed class ParenthesizedExpression(ExprBase expression) : ExprBase
     public override string GetCodeText() => $"({Expression.GetCodeText()})";
 }
 
-sealed class Indexv1Expression(Token lb, ImmutableArray<ExprBase> index, Token rb) : ExprBase
+sealed class IndexDefExpression(Token lb, ImmutableArray<ExprBase> index, Token rb) : ExprBase
 {
     public readonly Token Lb = lb;
     public ImmutableArray<ExprBase> Index { get; } = index;
     public readonly Token Rb = rb;
     public override string GetCodeText() => $"[{string.Join(", ", Index.Select(arg => arg.GetCodeText()))}]";
+}
+
+sealed class IndexVisitExpression(ExprBase var, Token lb, ExprBase idxexpr, Token rb) : ExprBase
+{
+    public readonly ExprBase Var = var;
+    public readonly Token Lb = lb;
+    public ExprBase Index { get; } = idxexpr;
+    public readonly Token Rb = rb;
+    public override string GetCodeText() => $"{Var.GetCodeText}[{Index.GetCodeText()}]";
 }
 
 sealed class SliceExpression(ExprBase expression, ExprBase start, ExprBase end) : ExprBase

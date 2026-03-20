@@ -82,6 +82,7 @@ public enum TokenType
     FOR, 
     TO,
     STEP,
+    RANGE,
     BREAK,
     CONTINUE,
     NEXT, 

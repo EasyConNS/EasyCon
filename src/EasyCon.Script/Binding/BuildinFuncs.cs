@@ -13,7 +13,7 @@ internal static class BuiltinFunctions
     public static readonly FunctionSymbol Beep = new("BEEP", [new ParamSymbol("freq", ValueType.Int), new ParamSymbol("duration", ValueType.Int)], ValueType.Void);
 
     public static readonly FunctionSymbol Append = new("APPEND", [new ParamSymbol("array", ValueType.Array), new ParamSymbol("value", ValueType.Int)], ValueType.Array);
-    public static readonly FunctionSymbol Length = new("LEN", [new ParamSymbol("array", ValueType.Array)], ValueType.Int);
+    public static readonly FunctionSymbol Length = new("LEN", [new ParamSymbol("array", ValueType.Any)], ValueType.Int);
     internal static IEnumerable<FunctionSymbol> GetAll()
             => typeof(BuiltinFunctions).GetFields(BindingFlags.Public | BindingFlags.Static)
                                        .Where(f => f.FieldType == typeof(FunctionSymbol))

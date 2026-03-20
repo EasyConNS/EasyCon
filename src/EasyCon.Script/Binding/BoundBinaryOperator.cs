@@ -10,19 +10,19 @@ internal sealed class BoundBinaryOperator
     public ValueType RightType { get; }
     public ValueType Type { get; }
 
-    public readonly Func<object, object, object> Operate;
+    public readonly Func<Value, Value, object> Operate;
 
-    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType type, Func<object, object, object> operate)
+    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType type, Func<Value, Value, object> operate)
     : this(syntaxKind, kind, type, type, type, operate)
     {
     }
 
-    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType operandType, ValueType resultType, Func<object, object, object> operate)
+    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType operandType, ValueType resultType, Func<Value, Value, object> operate)
         : this(syntaxKind, kind, operandType, operandType, resultType, operate)
     {
     }
 
-    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType leftType, ValueType rightType, ValueType resultType, Func<object, object, object> operate)
+    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType leftType, ValueType rightType, ValueType resultType, Func<Value, Value, object> operate)
     {
         TypeKind = syntaxKind;
         Kind = kind;
@@ -33,28 +33,30 @@ internal sealed class BoundBinaryOperator
     }
 
     private static BoundBinaryOperator[] _operators = [
-        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.Int, (a, b) => (int)((int)a + (int)b)),
-        new(TokenType.SUB,BoundBinaryOperatorKind.Subtraction, ValueType.Int, (a, b) => (int)((int)a - (int)b)),
-        new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ValueType.Int, (a, b) => (int)((int)a * (int)b)),
-        new(TokenType.DIV,BoundBinaryOperatorKind.Division, ValueType.Int, (a, b) => (int)a / (int)b),
-        new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ValueType.Int, (a, b) => (int)a % (int)b),
-        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ValueType.Int, (a, b) => (int)Math.Round((double)(int)a / (int)b)),
+        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.Int, (a, b) => a.AsInt()+ b.AsInt()),
+        new(TokenType.SUB,BoundBinaryOperatorKind.Subtraction, ValueType.Int, (a, b) => a.AsInt() - b.AsInt()),
+        new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ValueType.Int, (a, b) => a.AsInt() * b.AsInt()),
+        new(TokenType.DIV,BoundBinaryOperatorKind.Division, ValueType.Int, (a, b) => a.AsInt() / b.AsInt()),
+        new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ValueType.Int, (a, b) => a.AsInt() % b.AsInt()),
+        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ValueType.Int, (a, b) => (int)Math.Round((double)a.AsInt() / b.AsInt())),
 
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ValueType.Int, (a, b) => (int)a & (int)b),
-        new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ValueType.Int, (a, b) => (int)a | (int)b),
-        new(TokenType.XOR,BoundBinaryOperatorKind.BitwiseXor, ValueType.Int, (a, b) => (int)a ^ (int)b),
-        new(TokenType.SHL,BoundBinaryOperatorKind.BitLeftShift, ValueType.Int, (a, b) => (int)a << (int)b),
-        new(TokenType.SHR,BoundBinaryOperatorKind.BitRightShift, ValueType.Int, (a, b) => (int)((int)a >> (int)b)),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ValueType.Int, (a, b) => a.AsInt() & b.AsInt()),
+        new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ValueType.Int, (a, b) => a.AsInt() | b.AsInt()),
+        new(TokenType.XOR,BoundBinaryOperatorKind.BitwiseXor, ValueType.Int, (a, b) => a.AsInt() ^ b.AsInt()),
+        new(TokenType.SHL,BoundBinaryOperatorKind.BitLeftShift, ValueType.Int, (a, b) => a.AsInt() << b.AsInt()),
+        new(TokenType.SHR,BoundBinaryOperatorKind.BitRightShift, ValueType.Int, (a, b) => a.AsInt() >> b.AsInt()),
 
-        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 == (int)v1),
-        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 != (int)v1),
-        new(TokenType.LESS,BoundBinaryOperatorKind.Less, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 < (int)v1),
-        new(TokenType.LEQ,BoundBinaryOperatorKind.LessOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 <= (int)v1),
-        new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 > (int)v1),
-        new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => (int)v0 >= (int)v1),
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 == v1),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 != v1),
+        new(TokenType.LESS,BoundBinaryOperatorKind.Less, ValueType.Int, ValueType.Bool, (v0, v1) => v0 < v1),
+        new(TokenType.LEQ,BoundBinaryOperatorKind.LessOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 <= v1),
+        new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ValueType.Int, ValueType.Bool, (v0, v1) => v0 > 1),
+        new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => v0 >= v1),
 
         new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Bool, (v0, v1) => Equals(v0, v1)),
         new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Bool, (v0, v1) => !Equals(v0, v1)),
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.String, ValueType.Bool, (v0, v1) => Equals(v0, v1)),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.String, ValueType.Bool, (v0, v1) => !Equals(v0, v1)),
         
         new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String, (v0, v1) => $"{v0}{v1}"),
@@ -62,6 +64,8 @@ internal sealed class BoundBinaryOperator
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String,ValueType.Int, ValueType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String,ValueType.Bool, ValueType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.Bool,ValueType.String, ValueType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.Array,ValueType.String, ValueType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String,ValueType.Array, ValueType.String, (v0, v1) => $"{v0}{v1}"),
         ];
     public static BoundBinaryOperator? Bind(TokenType kind, ValueType leftType, ValueType rightType)
     {

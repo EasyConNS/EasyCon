@@ -1,0 +1,12 @@
+﻿FUNC add($a, $b: INT): INT # 有返回值的函数必须标注返回类型
+    $c = $a + $b
+    RETURN $c
+ENDFUNC
+
+FUNC max($1, $2): INT # 参数默认类型为INT
+    IF $1 > $2
+        RETURN $1
+    ELSE
+        RETURN $2
+    ENDIF
+ENDFUNC

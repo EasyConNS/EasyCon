@@ -92,6 +92,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             { "step", TokenType.STEP },
             { "break", TokenType.BREAK },
             { "continue", TokenType.CONTINUE },
+            { "range", TokenType.RANGE },
             { "next", TokenType.NEXT },
 
             { "func", TokenType.FUNC },

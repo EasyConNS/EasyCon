@@ -9,8 +9,8 @@ namespace EasyCon.Script;
 internal sealed class Evaluator
 {
     private readonly BoundProgram _program;
-    private readonly Dictionary<VariableSymbol, object> _globals = [];
-    private readonly Stack<Dictionary<VariableSymbol, object>> _locals = new();
+    private readonly Dictionary<VariableSymbol, Value> _globals = [];
+    private readonly Stack<Dictionary<VariableSymbol, Value>> _locals = new();
     private readonly Dictionary<FunctionSymbol, BoundBlockStatement> _functions = [];
 
     private readonly long _TIME = DateTime.Now.Ticks;
@@ -19,7 +19,7 @@ internal sealed class Evaluator
     private readonly Random _rand = new();
     private bool CancelLineBreak = false;
     private CancellationToken _token;
-    private object? _lastValue;
+    private Value _lastValue;
 
     public IOutputAdapter? Output;
     public ICGamePad? GamePad;
@@ -46,7 +46,7 @@ internal sealed class Evaluator
         return EvaluateStatement(body);
     }
 
-    private object? EvaluateStatement(BoundBlockStatement body)
+    private Value EvaluateStatement(BoundBlockStatement body)
     {
         var labelToIndex = new Dictionary<BoundLabel, int>();
 
@@ -83,7 +83,7 @@ internal sealed class Evaluator
                     break;
                 case ConditionGoto:
                     var cgs = (BoundConditionalGotoStatement)s;
-                    var condition = (bool)EvaluateExpr(cgs.Condition)!;
+                    var condition = EvaluateExpr(cgs.Condition).AsBool();
                     if (condition == cgs.JumpIfTrue)
                         index = labelToIndex[cgs.Label];
                     else
@@ -111,15 +111,19 @@ internal sealed class Evaluator
     {
         _lastValue = EvaluateExpr(node.Expression);
     }
-    public object? EvaluateExpr(BoundExpr node)
+    public Value EvaluateExpr(BoundExpr node)
     {
-        if (node.ConstantValue != null)
+        if (node.ConstantValue != Value.Void)
             return node.ConstantValue;
 
         switch (node.Kind)
         {
             case Variable:
                 return EvaluateVariableExpression((BoundVariableExpression)node);
+            case IndexDecl:
+                return EvaluateIndexDeclExpression((BoundIndexDeclxpression)node);
+            case IndexVariable:
+                return EvaluateIndexVariableExpression((BoundIndexVariableExpression)node);
             case ExLabelVariable:
                 var imglabel = (BoundExternalVariableExpression)node;
                 return imglabel.Label.Get();
@@ -138,7 +142,7 @@ internal sealed class Evaluator
         }
     }
 
-    private object EvaluateVariableExpression(BoundVariableExpression v)
+    private Value EvaluateVariableExpression(BoundVariableExpression v)
     {
         if (v.Variable is GlobalVariableSymbol)
         {
@@ -150,7 +154,19 @@ internal sealed class Evaluator
             return locals[v.Variable];
         }
     }
-    private object? EvaluateConversionExpression(BoundConversionExpression node)
+
+    private Value EvaluateIndexDeclExpression(BoundIndexDeclxpression idx)
+    {
+        return idx.Items.Select(i=>EvaluateExpr(i)).ToArray();
+    }
+
+    private Value EvaluateIndexVariableExpression(BoundIndexVariableExpression idx)
+    {
+        var basevar = EvaluateExpr(idx.Variable);
+        return basevar[EvaluateExpr(idx.Index).AsInt()];
+    }
+
+    private Value EvaluateConversionExpression(BoundConversionExpression node)
     {
         var value = EvaluateExpr(node.Expression);
         if (node.Type == Binding.ValueType.Bool)
@@ -163,56 +179,55 @@ internal sealed class Evaluator
             throw new Exception($"无效的类型转换{node.Type}");
     }
 
-    private object EvaluateUnaryExpression(BoundUnaryExpression u)
+    private Value EvaluateUnaryExpression(BoundUnaryExpression u)
     {
         var operand = EvaluateExpr(u.Operand);
 
-        Debug.Assert(operand != null);
+        Debug.Assert(operand != Value.Void);
 
-        return u.Op.Operate(operand);
+        return Value.From(u.Op.Operate(operand));
     }
 
-    private object EvaluateBinaryExpression(BoundBinaryExpression b)
+    private Value EvaluateBinaryExpression(BoundBinaryExpression b)
     {
         var left = EvaluateExpr(b.Left);
         var right = EvaluateExpr(b.Right);
 
-        Debug.Assert(left != null && right != null);
+        Debug.Assert(left != Value.Void && right != Value.Void);
 
-        return b.Op.Operate(left, right);
+        return Value.From(b.Op.Operate(left, right));
     }
 
-    private object? EvaluateAssignmentExpression(BoundAssignExpression node)
+    private Value EvaluateAssignmentExpression(BoundAssignExpression node)
     {
         var value = EvaluateExpr(node.Expression);
-        value ??= "()";
-        Debug.Assert(value != null);
+        Debug.Assert(value != Value.Void);
 
         Assign(node.Variable, value);
-        return value is "()" ? null : value;
+        return value == Value.Void ? Value.Void : value;
     }
 
-    private object? EvaluateCallExpression(BoundCallExpression node)
+    private Value EvaluateCallExpression(BoundCallExpression node)
     {
         if (BuiltinFunctions.GetAll().Any(f=>f==node.Function))
         {
-            var args = ImmutableArray.CreateBuilder<object>();
+            var args = ImmutableArray.CreateBuilder<Value>();
             for (int i = 0; i < node.Arguments.Length; i++)
             {
                 var value = EvaluateExpr(node.Arguments[i]);
-                Debug.Assert(value != null);
+                Debug.Assert(value != Value.Void);
                 args.Add(value);
             }
             return EvaluteBuildin(node.Function, args.ToImmutable());
         }
         else
         {
-            var locals = new Dictionary<VariableSymbol, object>();
+            var locals = new Dictionary<VariableSymbol, Value>();
             for (int i = 0; i < node.Arguments.Length; i++)
             {
                 var parameter = node.Function.Paramters[i];
                 var value = EvaluateExpr(node.Arguments[i]);
-                Debug.Assert(value != null);
+                Debug.Assert(value != Value.Void);
                 locals.Add(parameter, value);
             }
             _locals.Push(locals);
@@ -228,7 +243,7 @@ internal sealed class Evaluator
     {
         if(node is BoundKeyPressStatement bps)
         {
-            var dur = (int)EvaluateExpr(bps.Duration);
+            var dur = EvaluateExpr(bps.Duration).AsInt();
             GamePad.ClickButtons(bps.Act, dur);
         }
         else
@@ -248,7 +263,7 @@ internal sealed class Evaluator
     {
         if(node is BoundStickPressStatement bps)
         {
-            var dur = (int)EvaluateExpr(bps.Duration);
+            var dur = EvaluateExpr(bps.Duration).AsInt();
             GamePad.ClickStick(bps.Act, bps.X, bps.Y, dur);
         }
         else
@@ -257,7 +272,7 @@ internal sealed class Evaluator
         }
     }
 
-    private void Assign(VariableSymbol variable, object value)
+    private void Assign(VariableSymbol variable, Value value)
     {
         if (variable is GlobalVariableSymbol)
         {
@@ -270,17 +285,17 @@ internal sealed class Evaluator
         }
     }
 
-    private object? EvaluteBuildin(FunctionSymbol fn, ImmutableArray<object> args)
+    private Value EvaluteBuildin(FunctionSymbol fn, ImmutableArray<Value> args)
     {
-        object? result = null;
+        Value result = Value.Void;
         switch (fn.Name)
         {
             case "WAIT":
-                Thread.Sleep((int)args[0]);
+                Thread.Sleep(args[0].AsInt());
                 break;
             case "AMIIBO":
                 {
-                    var index = (int)args[0];
+                    var index = args[0].AsInt();
                     if (index > 9)
                     {
                         // value must between 0~9
@@ -290,36 +305,40 @@ internal sealed class Evaluator
                 }
                 break;
             case "TIME":
-                {
-                    result = CurrTimestamp;
-                }
+                result = CurrTimestamp;
                 break;
             case "PRINT":
               {
-                    var s = (string)args[0];
+                    var s = args[0].AsString();
                     Output.Print(s.TrimEnd('\\'), !CancelLineBreak);
                     CancelLineBreak = s.EndsWith('\\'); // true不换行
               }
               break;
             case "ALERT":
                 {
-                    var s = (string)args[0];
+                    var s = args[0].AsString();
                     Output.Alert(s.TrimEnd('\\'));
                 }
                 break;
             case "RAND":
                 {
-                    var max = (int)args[0];
+                    var max = args[0].AsInt();
                     result = _rand.Next(max == 0 ? 100 : max);
                 }
                 break;
             case "BEEP":
               {
-                    var freq = (int)args[0];
+                    var freq = args[0].AsInt();
                     if(freq < 37 || freq > 32767) throw new Exception($"BEEP参数freq范围不正确(37~32767)");
-                    Console.Beep(freq, (int)args[1]);
+                    Console.Beep(freq, args[1].AsInt());
               }
               break;
+            case "LEN":
+                result = args[0].Length;
+                break;
+            case "APPEND":
+                result = args[0].Append(args[1]);
+                break;
         }
         return result;
     }

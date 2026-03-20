@@ -15,6 +15,7 @@ public enum ValueType
     Bool,
     String,
     Array,
+    Any,
 }
 
 abstract class VariableSymbol(string name, bool isReadOnly, ValueType valueType) : Symbol(name)

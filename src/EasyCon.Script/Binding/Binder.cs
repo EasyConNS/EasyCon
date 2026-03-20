@@ -407,7 +407,7 @@ internal sealed class Binder
         var variable = BindVariableDeclaration(syntax.DestVariable, syntax.DestVariable.ReadOnly, boundexpr.Type);
 
         if (variable.Type != boundexpr.Type) throw new ParseException("表达式和变量类型不匹配", syntax.Address);
-        if(variable.IsReadOnly && boundexpr.ConstantValue == null) throw new ParseException("常量表达式不正确", syntax.Address);
+        if(variable.IsReadOnly && boundexpr.ConstantValue == Value.Void) throw new ParseException("常量表达式不正确", syntax.Address);
         if (variable.IsReadOnly) variable.Value = boundexpr.ConstantValue;
         return new BoundExprStatement(syntax, new BoundAssignExpression(syntax.Expression, variable, boundexpr));
     }
@@ -505,6 +505,9 @@ internal sealed class Binder
             BinaryExpression => BindBinaryExpression((BinaryExpression)syntax),
             ParenthesizedExpression pre => BindExpression(pre.Expression),
             Callv1Expression => BindCallExpression((Callv1Expression)syntax),
+            IndexDefExpression => BindIndexExpression((IndexDefExpression)syntax),
+            IndexVisitExpression => BindIndexVisitExpression((IndexVisitExpression)syntax),
+            SliceExpression => throw new NotImplementedException(),
             _ => throw new Exception($"未知的表达式"),
         };
     }
@@ -520,8 +523,32 @@ internal sealed class Binder
         return new BoundLiteralExpression(syntax, syntax.Value);
     }
 
+    private BoundIndexDeclxpression BindIndexExpression(IndexDefExpression syntax)
+    {
+        var boundIndexs = ImmutableArray.CreateBuilder<BoundExpr>();
+
+        foreach (var index in syntax.Index)
+        {
+            var boundIndex = BindExpression(index);
+            boundIndexs.Add(boundIndex);
+        }
+        if (boundIndexs.Select(i=>i.Type).Distinct().Count() != 1) throw new Exception("数组成员类型必须一致");
+
+        return new BoundIndexDeclxpression(syntax, boundIndexs.ToImmutable());
+    }
+
+    private BoundIndexVariableExpression BindIndexVisitExpression(IndexVisitExpression syntax)
+    {
+        var basevar = BindExpression(syntax.Var);
+        if(basevar.Type != ValueType.Array && basevar.Type != ValueType.String) throw new Exception("索引访问只能用于数组或字符串");
+        var idx = BindExpression(syntax.Index);
+        if (idx.Type != ValueType.Int) throw new Exception("索引下标必须是数字类型");
+        return new BoundIndexVariableExpression(syntax, basevar, idx);
+    }
+
     private BoundExpr BindConversion(BoundExpr expr, ValueType type)
     {
+        if (type == ValueType.Any) return expr;
         if (type == ValueType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
         if (expr.Type != type) throw new Exception("表达式类型不匹配");
         return expr;
@@ -549,7 +576,7 @@ internal sealed class Binder
         var boundOperand = BindExpression(syntax.Operand);
 
         var boundOperator = BoundUnaryOperator.Bind(syntax.Operator.Type, boundOperand.Type)
-            ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}");
+            ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}对于类型 <{boundOperand.Type}>");
 
         return new BoundUnaryExpression(syntax, boundOperator, boundOperand);
     }
@@ -560,11 +587,10 @@ internal sealed class Binder
         var boundRight = BindExpression(syntax.ValueRight);
 
         var boundOperator = BoundBinaryOperator.Bind(syntax.Operator.Type, boundLeft.Type, boundRight.Type)
-            ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}");
+            ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}对于类型 <{boundLeft.Type}>和<{boundRight.Type}> ");
 
-        if (boundLeft.ConstantValue != null && boundRight.ConstantValue != null)
+        if (boundLeft.ConstantValue != Value.Void && boundRight.ConstantValue != Value.Void)
         {
-            Debug.WriteLine($"~~{boundLeft.ConstantValue}, {boundRight.ConstantValue}");
             var COS = boundOperator.Operate(boundLeft.ConstantValue, boundRight.ConstantValue);
             return new BoundLiteralExpression(syntax, COS);
         }
