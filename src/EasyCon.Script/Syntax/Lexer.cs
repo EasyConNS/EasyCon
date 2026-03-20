@@ -26,7 +26,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     [GeneratedRegex(@"^\b(print|alert)\b\s+(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
     private static partial Regex printRex();
 
-    [GeneratedRegex(@"^\b(if)\b\s+(.*)(?<!=)=(?!=)(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
+    [GeneratedRegex(@"^\b(if)\b\s+(.*)(?<![<=>!])=(?!=)(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
     private static partial Regex ifRex();
 
     [GeneratedRegex(@"^(_|\$)[\d\p{L}_]+$", RegexOptions.IgnoreCase, "zh-CN")]
