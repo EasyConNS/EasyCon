@@ -58,6 +58,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 .Select(s=>
                 {
                     s = s.Trim();
+                    if ((s == "\\") || (s == "\"\\\"")) return "\"\\\\\""; // 检测不换行符
                     // 如果符合变量格式则直接返回
                     if (variableRex().Match(s).Success) return s;
                     // 如果既不是以双引号开头，也不是以双引号结尾，则添加
