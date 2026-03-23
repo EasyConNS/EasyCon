@@ -75,7 +75,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 _line = _line.Replace("=", "==");
                 builder.Append(_line);
-                Console.WriteLine(_line);
             }
             else
             {

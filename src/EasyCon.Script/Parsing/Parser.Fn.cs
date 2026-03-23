@@ -7,9 +7,41 @@ namespace EasyCon.Script.Parsing;
 
 internal partial class Parser
 {
+    private Statement? ParseStatement(ImmutableArray<Token> toks)
+    {
+        if (toks.Length == 0 || (toks.Length == 1 && toks[0].Type == TokenType.EOF)) return new EmptyStmt();
+        var firstToken = toks[0];
+        if (firstToken.Type == TokenType.CONST) return ParseConstantDecl(toks);
+        else if (firstToken.Type == TokenType.VAR) return ParseAssignment(toks);
+        else if (firstToken.Type == TokenType.IMPORT) return ParseImport(toks);
+        else if (firstToken.Type == TokenType.IF || firstToken.Type == TokenType.ELIF)return ParseIfelse(toks);
+        else if (firstToken.Type == TokenType.ELSE) return new Else();
+        else if (firstToken.Type == TokenType.ENDIF) return new EndIf();
+        else if (firstToken.Type == TokenType.WHILE) return ParseWhile(toks);
+        else if (firstToken.Type == TokenType.FOR) return ParseFor(toks);
+        else if (firstToken.Type == TokenType.BREAK || firstToken.Type == TokenType.CONTINUE)return ParseLoopCtrl(toks);
+        else if (firstToken.Type == TokenType.NEXT) return new Next();
+        else if (firstToken.Type == TokenType.FUNC) return ParseFuncDecl(toks);
+        else if (firstToken.Type == TokenType.ENDFUNC) return new EndFuncStmt();
+        else if (firstToken.Type == TokenType.RETURN) return ParseReturn(toks);
+        else if (firstToken.Type == TokenType.END) return new EndBlockStmt();
+        else if (firstToken.Type == TokenType.INT)
+        {
+            if (int.TryParse(firstToken.Value, out int duration)) return new Wait(duration, true);
+        }
+        else if (firstToken.Type == TokenType.IDENT)
+        {
+            if(firstToken.Value.Equals("print", StringComparison.OrdinalIgnoreCase) || firstToken.Value.Equals("alert", StringComparison.OrdinalIgnoreCase))
+                return ParsePrintStmt(toks);
+        }
+        // Handle key statements
+        var curline = string.Join(" ", toks.TakeWhile(t => t.Type != TokenType.EOF).Select(t => t.Value));
+        return ParseKey(curline) ?? ParseNamedExpression(toks);
+    }
+
     private AssignmentStmt? ParseConstantDecl(ImmutableArray<Token> toks)
     {
-        if (toks.Length < 3 + 1) return null;
+        if (toks.Length < 3) return null;
         if (toks[0].Type == TokenType.CONST && toks[1].Type == TokenType.ASSIGN)
         {
             var des = (VariableExpr)_formatter.GetValueEx(toks[0]);
@@ -23,7 +55,7 @@ internal partial class Parser
 
     private ImportStmt? ParseImport(ImmutableArray<Token> toks)
     {
-        if (toks.Length != 2 + 1) return null;
+        if (toks.Length != 2) return null;
         if (toks[0].Type == TokenType.IMPORT && toks[1].Type == TokenType.STRING)
         {
             var libSrc = Path.Combine(_filePath, LibPath, toks[1].Value);
@@ -38,7 +70,7 @@ internal partial class Parser
 
     private AssignmentStmt? ParseAssignment(ImmutableArray<Token> toks)
     {
-        if (toks.Length < 3 + 1) return null;
+        if (toks.Length < 3) return null;
         if (toks[0].Type == TokenType.VAR)
         {
             var des = (VariableExpr)_formatter.GetValueEx(toks[0]);
@@ -61,10 +93,10 @@ internal partial class Parser
 
     private ReturnStmt? ParseReturn(ImmutableArray<Token> toks)
     {
-        if (toks[0].Type == TokenType.RETURN)
+        if (toks.Length > 1)
         {
             var pr = new ExprParser([.. toks.Skip(1)], _formatter);
-            var eexp = pr.ParseOptional();
+            var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
             return new ReturnStmt(eexp);
         }
@@ -73,7 +105,7 @@ internal partial class Parser
 
     private Statement? ParseIfelse(ImmutableArray<Token> tokens)
     {
-        if (tokens.Length < 2 + 1) return null;
+        if (tokens.Length < 2) return null;
         if (tokens[0].Type == TokenType.IF || tokens[0].Type == TokenType.ELIF)
         {
             var pr = new ExprParser([.. tokens.Skip(1)], _formatter);
@@ -99,15 +131,15 @@ internal partial class Parser
     {
         if (tokens[0].Type == TokenType.FOR)
         {
-            if(tokens.Length == 1+1 && tokens[1].Type == TokenType.EOF)
+            if(tokens.Length == 1)
             {
                 return new For_Infinite();
             }
-            if(tokens.Length == 2+1 && checkPrimary(tokens[1].Type))
+            if(tokens.Length == 2 && checkPrimary(tokens[1].Type))
             {
                 return new For_Static(_formatter.GetValueEx(tokens[1]));
             }
-            if(tokens.Length == 6+1)
+            if(tokens.Length == 6)
             {
                 if(tokens[1].Type == TokenType.VAR && tokens[2].Type == TokenType.ASSIGN 
                 && checkPrimary(tokens[3].Type) 
@@ -123,7 +155,7 @@ internal partial class Parser
 
     private WhileStmt? ParseWhile(ImmutableArray<Token> tokens)
     {
-        if (tokens.Length < 2 + 1) return null;
+        if (tokens.Length < 2) return null;
         if (tokens[0].Type == TokenType.WHILE)
         {
             var pr = new ExprParser([.. tokens.Skip(1)], _formatter);
@@ -136,24 +168,24 @@ internal partial class Parser
 
     private Statement? ParseLoopCtrl(ImmutableArray<Token> tokens)
     {
-        if (tokens.Length > 2 + 1) return null;
+        if (tokens.Length > 2) return null;
         switch (tokens[0].Type)
         {
             case TokenType.BREAK:
                 if (tokens[1].Type == TokenType.INT)
                 {
-                    if (tokens[2].Type != TokenType.EOF) return null;
+                    if (tokens.Length > 2) return null;
                     if(!uint.TryParse(tokens[1].Value, out var level))return null;
                     return new Break(level);
                 }
                 else
-                    if (tokens[1].Type == TokenType.EOF)
+                    if (tokens.Length > 1)
                     {
                         return new Break();
                     }
                 break;
             case TokenType.CONTINUE:
-                if (tokens[1].Type == TokenType.EOF)
+                if (tokens.Length > 1)
                 {
                     return new Continue();
                 }
@@ -230,20 +262,20 @@ internal partial class Parser
         switch (first.Value.ToLower())
         {
             case "wait":
-                if (tokens.Length != 2 + 1) return null;
+                if (tokens.Length != 2) return null;
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
                     return new Wait(_formatter.GetValueEx(tokens[1]));
                 }
                 break;
             case "call":
-                if (tokens.Length != 2 + 1) return null;
+                if (tokens.Length != 2) return null;
                 return tokens[1].Type == TokenType.IDENT ? new CallStmt(tokens[1].Value, []) : null;
 #if DEBUG
             case "sprint":
             case "smem":
-                if (tokens.Length != 2 + 1) return null;
-                if (tokens[1].Type == TokenType.INT && tokens[2].Type == TokenType.EOF)
+                if (tokens.Length != 2) return null;
+                if (tokens[1].Type == TokenType.INT)
                 {
                     var ism = first.Value.Equals("smem", StringComparison.CurrentCultureIgnoreCase);
                     return new SerialPrint(uint.Parse(tokens[1].Value), ism);
@@ -251,7 +283,7 @@ internal partial class Parser
                 break;
 #endif
             default:
-                if (tokens.Length < 2 + 1) return null;
+                if (tokens.Length < 2) return null;
                 var args = ParseArguments([.. tokens.Skip(1)]);
                 return new CallStmt(first.Value.ToUpper(), [.. args]);
         }
@@ -260,7 +292,7 @@ internal partial class Parser
 
     private ImmutableArray<ExprBase> ParseArguments(ImmutableArray<Token> toks)
     {
-        if (toks.Length == 1 && toks[0].Type == TokenType.EOF)
+        if (toks.Length == 0)
             return [];
         var pr = new ExprParser(toks, _formatter);
         var args = pr.ParseArguments();
@@ -269,11 +301,13 @@ internal partial class Parser
     }
 
     // print兼容语法特殊解析
-    private CallStmt ParsePrintStmt(string text)
+    private CallStmt ParsePrintStmt(ImmutableArray<Token> toks)
     {
-        var toks = SyntaxTree.ParseTokens("&");
-        var bitands = toks.Where(t => t.Type == TokenType.BitAnd);
-        var args = text[6..].Split('&').Select(t =>
+        var bitandtoks = SyntaxTree.ParseTokens("&");
+        var bitands = bitandtoks.Where(t => t.Type == TokenType.BitAnd);
+
+        var curline = string.Join(" ", toks.Skip(1).TakeWhile(t => t.Type != TokenType.EOF).Select(t => t.Value));
+        var args = curline.Split('&').Select(t =>
         {
             t = t.Trim();
             try
@@ -285,10 +319,9 @@ internal partial class Parser
                 return new LiteralExpr(t);
             }
         });
-        var a = text[..5].ToUpper();
         var bitand = bitands.Any() ? bitands.First() : null;
         var res = args.Aggregate((a,b)=> new BinaryExpression(bitand, a, b));
-        return new CallStmt(text[..5].ToUpper(), [res]);
+        return new CallStmt(toks.First().Value.ToUpper(), [res]);
     }
 }
 
@@ -316,7 +349,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
     public bool EOF(out int pos)
     {
         pos = _position;
-        return _position == _tokens.Length - 1;
+        return _position >= _tokens.Length;
     }
     private bool Check(TokenType type) => Current?.Type == type;
     private Token Match(TokenType type, string message = "")
@@ -325,13 +358,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         {
             return Advance();
         }
-        throw new Exception($"{message} 意外的词法<{Current.Value}>");
-    }
-
-    public ExprBase? ParseOptional()
-    {
-        if (Current.Type == TokenType.EOF) return null;
-        return ParseExpression();
+        throw new Exception($"{message} 需要<{type}>但是意外的<{Current.Value}>");
     }
 
     public ExprBase ParseExpression(int parentPrecedence = 0)
@@ -382,7 +409,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         }
         var typeClause = ParseOptionalTypeClause();
 
-        Match(TokenType.EOF, "函数声明语法错误");
+        if (_position < _tokens.Length) throw new Exception("函数声明语法错误");
         return new FuncStmt(functionName, parameters, hasPar, typeClause);
     }
 
@@ -393,7 +420,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         var parseNextParameter = true;
         while (parseNextParameter &&
                 Current.Type != TokenType.RightParen &&
-                Current.Type != TokenType.EOF)
+                _position != _tokens.Length)
         {
             var parameter = ParseParameter();
             nodesAndSeparators.Add(parameter);
@@ -438,7 +465,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         var parseNextArgument = true;
         while (parseNextArgument &&
                 Current.Type != TokenType.RightParen &&
-                Current.Type != TokenType.EOF)
+                _position != _tokens.Length)
         {
             var expression = ParseExpression();
             nodesAndSeparators.Add(expression);
@@ -465,7 +492,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         var parseNext = true;
         while (parseNext &&
                 Current.Type != TokenType.RightBracket &&
-                Current.Type != TokenType.EOF)
+                _position != _tokens.Length)
         {
             var expression = ParsePrimary();
             nodesAndSeparators.Add(expression);

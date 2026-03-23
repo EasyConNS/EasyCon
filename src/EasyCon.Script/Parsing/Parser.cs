@@ -14,78 +14,38 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
     string _filePath => Path.GetDirectoryName(_text.FileName) ?? "";
     const string LibPath = "lib/";
 
-    [GeneratedRegex("\r\n|\r|\n")]
-    private static partial Regex LineRegex();
-    [GeneratedRegex(@"(\s*#.*)$")]
-    private static partial Regex CommentRegex();
-
     public ImmutableArray<CompicationUnit> Parse(out CompicationUnit unit)
     {
         unit = ParseUnit(_text.ToString());
         return Parse(unit);
     }
 
-    private IEnumerable<ParserArgument> ParseLines(string text)
+    private static IEnumerable<ImmutableArray<Token>> GroupTokensByNewline(ImmutableArray<Token> allTokens)
     {
-        var lines = LineRegex().Split(text.Trim());
-        foreach (var line in lines)
+        var currentGroup = new List<Token>();
+        
+        foreach (var token in allTokens)
         {
-            // get indent
-            text = line.TrimStart();
-            var _text = text;
-            // get comment
-            var m = CommentRegex().Match(text);
-            string comment = string.Empty;
-            if (m.Success)
+            if (token.Type == TokenType.NEWLINE || token.Type == TokenType.EOF)
             {
-                comment = m.Groups[1].Value;
-                text = text[..^comment.Length];
+                if (currentGroup.Count > 0)
+                {
+                    yield return [.. currentGroup];
+                    currentGroup.Clear();
+                }
             }
             else
             {
-                text = text.Trim();
+                currentGroup.Add(token);
             }
-            yield return new ParserArgument
-            {
-                Text = text,
-                Comment = comment,
-            };
+        }
+        
+        // Add the last group if it's not empty
+        if (currentGroup.Count > 0)
+        {
+            yield return [.. currentGroup];
         }
     }
-
-    private Statement? ParseStatement(string text)
-    {
-        var toks = SyntaxTree.ParseTokens(text);
-        if (text.Length == 0) return new EmptyStmt();
-        if (text.StartsWith('_')) return ParseConstantDecl(toks);
-        else if (text.StartsWith('$')) return ParseAssignment(toks);
-        else if (text.StartsWith("import", StringComparison.OrdinalIgnoreCase)) return ParseImport(toks);
-        else if (text.StartsWith("if", StringComparison.OrdinalIgnoreCase)
-            || text.StartsWith("elif", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseIfelse(toks);
-        }
-        else if (text.Equals("else", StringComparison.OrdinalIgnoreCase)) return new Else();
-        else if (text.Equals("endif", StringComparison.OrdinalIgnoreCase)) return new EndIf();
-        else if (text.StartsWith("while", StringComparison.OrdinalIgnoreCase)) return ParseWhile(toks);
-        else if (text.StartsWith("for", StringComparison.OrdinalIgnoreCase)) return ParseFor(toks);
-        else if (text.StartsWith("break", StringComparison.OrdinalIgnoreCase)
-            || text.StartsWith("continue", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseLoopCtrl(toks);
-        }
-        else if (text.Equals("next", StringComparison.OrdinalIgnoreCase)) return new Next();
-        else if (text.StartsWith("func", StringComparison.OrdinalIgnoreCase)) return ParseFuncDecl(toks);
-        else if (text.Equals("endfunc", StringComparison.OrdinalIgnoreCase)) return new EndFuncStmt();
-        else if (text.StartsWith("return", StringComparison.OrdinalIgnoreCase)) return ParseReturn(toks);
-        else if (text.Equals("end", StringComparison.OrdinalIgnoreCase)) return new EndBlockStmt();
-        else if (int.TryParse(text, out int duration)) return new Wait(duration, true);
-        else if (printRex().Match(text).Success) return ParsePrintStmt(text);
-        else return ParseKey(text) ?? ParseNamedExpression(toks);
-    }
-
-    [GeneratedRegex(@"^\b(print|alert)\b\s+(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
-    private static partial Regex printRex();
 
     private CompicationUnit ParseUnit(string text)
     {
@@ -106,12 +66,55 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
             _funcTables.Add(item.Name, item.Paramters.Length);
         }
 
-        foreach (var args in ParseLines(text))
+        // Parse all tokens using SyntaxTree.ParseTokens
+        var allTokens = SyntaxTree.ParseTokens(text);
+        
+        // Group tokens by NEWLINE
+        var tokenGroups = GroupTokensByNewline(allTokens);
+        
+        // Process each group of tokens
+        foreach (var tokens in tokenGroups)
         {
             try
             {
-                var st = ParseStatement(args.Text) ?? throw new ParseException("格式错误");
-                st.Comment = args.Comment;
+                Statement? st = null;
+                
+                // If there's only one token and it's a comment, create a CommentStmt
+                if (tokens.Length == 1 && tokens[0].Type == TokenType.COMMENT)
+                {
+                    st = new EmptyStmt()
+                    {
+                        Comment = tokens[0].Value
+                    };
+                }
+                // If there are multiple tokens, only the last one can be a comment
+                else if (tokens.Length >= 1)
+                {
+                    var toks = tokens;
+                    var lastToken = tokens[^1];
+
+                    // Check if the last token is a comment
+                    if (lastToken.Type == TokenType.COMMENT)
+                    {
+                        // Remove the comment token for parsing the statement
+                        toks = toks[..^1];
+                    }
+                    
+                    // Parse the tokens directly
+                    st = ParseStatement(toks) ?? throw new ParseException("格式错误");
+                    
+                    // Set the comment if there was one
+                    if (lastToken.Type == TokenType.COMMENT)
+                    {
+                        st.Comment = lastToken.Value;
+                    }
+                }
+                // Handle empty lines
+                else
+                {
+                    st = new EmptyStmt();
+                }
+                
                 // update address
                 st.Address = address;
 
