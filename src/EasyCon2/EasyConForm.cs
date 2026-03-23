@@ -621,6 +621,10 @@ namespace EasyCon2.Forms
 
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
         {
+            if(textEditor.Document.FileName != null && textEditor.IsModified)
+            {
+                FileSave();
+            }
             runStopBtn.Enabled = false;
             if (!scriptRunning)
             {
