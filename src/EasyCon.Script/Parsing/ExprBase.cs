@@ -19,13 +19,7 @@ class LiteralExpr(object txt) : ExprBase
 {
     public readonly object Value = txt;
 
-    public override string GetCodeText()
-    {
-        if (Value is string)
-           return $"\"{Value}\"";
-        else
-            return $"{Value}";
-    }
+    public override string GetCodeText() => $"{Value}";
 
     public static implicit operator LiteralExpr(int val) => new(val);
     public static implicit operator LiteralExpr(string val) => new(val);
@@ -106,7 +100,7 @@ sealed class IndexVisitExpression(ExprBase var, Token lb, ExprBase idxexpr, Toke
     public readonly Token Lb = lb;
     public ExprBase Index { get; } = idxexpr;
     public readonly Token Rb = rb;
-    public override string GetCodeText() => $"{Var.GetCodeText}[{Index.GetCodeText()}]";
+    public override string GetCodeText() => $"{Var.GetCodeText()}[{Index.GetCodeText()}]";
 }
 
 sealed class SliceExpression(ExprBase expression, ExprBase start, ExprBase end) : ExprBase

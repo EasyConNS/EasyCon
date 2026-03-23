@@ -58,6 +58,8 @@ internal static class BoundFactory
         Debug.Assert(op != null);
         return new BoundUnaryExpression(syntax, op, condition);
     }
+    public static BoundBinaryExpression Concat(ExprBase syntax, BoundExpr left, BoundExpr right)
+    => Binary(syntax, left, Script2.Syntax.TokenType.BitAnd, right);
     public static BoundBinaryExpression Add(ExprBase syntax, BoundExpr left, BoundExpr right)
     => Binary(syntax, left, Script2.Syntax.TokenType.ADD, right);
     public static BoundBinaryExpression Less(ExprBase syntax, BoundExpr left, BoundExpr right)

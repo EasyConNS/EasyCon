@@ -1,16 +1,17 @@
 using EasyCon.Script.Binding;
+using EasyCon.Script2.Syntax;
+using EasyCon.Script2.Text;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
-using EasyCon.Script2.Text;
 
 namespace EasyCon.Script.Parsing;
 
 partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
 {
     readonly Formatter _formatter = new(extVars);
-    readonly SourceText _text  = srctxt;
+    readonly SourceText _text = srctxt;
 
-    string _filePath => Path.GetDirectoryName(_text.FileName)?? "";
+    string _filePath => Path.GetDirectoryName(_text.FileName) ?? "";
     const string LibPath = "lib/";
 
     [GeneratedRegex("\r\n|\r|\n")]
@@ -54,63 +55,37 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
 
     private Statement? ParseStatement(string text)
     {
-        if (text.Length == 0)
-            return new EmptyStmt();
-        if (text.StartsWith('_'))
-        {
-            return ParseConstantDecl(text);
-        }
-        else if (text.StartsWith('$'))
-        {
-            return ParseAssignment(text);
-        }
-        else if (text.StartsWith("import", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseImport(text);
-        }
+        var toks = SyntaxTree.ParseTokens(text);
+        if (text.Length == 0) return new EmptyStmt();
+        if (text.StartsWith('_')) return ParseConstantDecl(toks);
+        else if (text.StartsWith('$')) return ParseAssignment(toks);
+        else if (text.StartsWith("import", StringComparison.OrdinalIgnoreCase)) return ParseImport(toks);
         else if (text.StartsWith("if", StringComparison.OrdinalIgnoreCase)
             || text.StartsWith("elif", StringComparison.OrdinalIgnoreCase))
         {
-            return ParseIfelse(text);
+            return ParseIfelse(toks);
         }
-        else if (text.Equals("else", StringComparison.OrdinalIgnoreCase))
-        {
-            return new Else();
-        }
-        else if (text.Equals("endif", StringComparison.OrdinalIgnoreCase))
-        {
-            return new EndIf();
-        }
-        else if (text.StartsWith("while", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseWhile(text);
-        }
-        else if (text.StartsWith("for", StringComparison.OrdinalIgnoreCase))
-        {
-            return ParseFor(text);
-        }
+        else if (text.Equals("else", StringComparison.OrdinalIgnoreCase)) return new Else();
+        else if (text.Equals("endif", StringComparison.OrdinalIgnoreCase)) return new EndIf();
+        else if (text.StartsWith("while", StringComparison.OrdinalIgnoreCase)) return ParseWhile(toks);
+        else if (text.StartsWith("for", StringComparison.OrdinalIgnoreCase)) return ParseFor(toks);
         else if (text.StartsWith("break", StringComparison.OrdinalIgnoreCase)
             || text.StartsWith("continue", StringComparison.OrdinalIgnoreCase))
         {
-            return ParseLoopCtrl(text);
+            return ParseLoopCtrl(toks);
         }
-        else if (text.Equals("next", StringComparison.OrdinalIgnoreCase))
-            return new Next();
-        else if (text.StartsWith("func", StringComparison.OrdinalIgnoreCase))
-            return ParseFuncDecl(text);
-        else if (text.Equals("endfunc", StringComparison.OrdinalIgnoreCase))
-            return new EndFuncStmt();
-        else if (text.StartsWith("return", StringComparison.OrdinalIgnoreCase))
-            return ParseReturn(text);
-        else if (text.Equals("end", StringComparison.OrdinalIgnoreCase))
-        {
-            return new EndBlockStmt();
-        }
-        else if (int.TryParse(text, out int duration))
-            return new Wait(duration, true);
-        else
-            return ParseKey(text) ?? ParseNamedExpression(text);
+        else if (text.Equals("next", StringComparison.OrdinalIgnoreCase)) return new Next();
+        else if (text.StartsWith("func", StringComparison.OrdinalIgnoreCase)) return ParseFuncDecl(toks);
+        else if (text.Equals("endfunc", StringComparison.OrdinalIgnoreCase)) return new EndFuncStmt();
+        else if (text.StartsWith("return", StringComparison.OrdinalIgnoreCase)) return ParseReturn(toks);
+        else if (text.Equals("end", StringComparison.OrdinalIgnoreCase)) return new EndBlockStmt();
+        else if (int.TryParse(text, out int duration)) return new Wait(duration, true);
+        else if (printRex().Match(text).Success) return ParsePrintStmt(text);
+        else return ParseKey(text) ?? ParseNamedExpression(toks);
     }
+
+    [GeneratedRegex(@"^\b(print|alert)\b\s+(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
+    private static partial Regex printRex();
 
     private CompicationUnit ParseUnit(string text)
     {
@@ -140,9 +115,9 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
                 // update address
                 st.Address = address;
 
-                if(st is ImportStmt)
+                if (st is ImportStmt)
                 {
-                    if(unit.SelectMany(u=>u).Any(st=>st is not ImportStmt && st is not EmptyStmt))
+                    if (unit.SelectMany(u => u).Any(st => st is not ImportStmt && st is not EmptyStmt))
                     {
                         throw new ParseException("导入只能在脚本开头");
                     }
@@ -223,7 +198,7 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
                     };
                     result = unit.Peek();
                 }
-                
+
                 result.Add(st);
                 address += 1;
             }
@@ -250,16 +225,16 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
     private ImmutableArray<CompicationUnit> Parse(CompicationUnit prog)
     {
         var imports = prog.Members.OfType<ImportStmt>();
-        if(!imports.Any()) return [prog];
-        
+        if (!imports.Any()) return [prog];
+
         var result = ImmutableArray.CreateBuilder<CompicationUnit>();
-        foreach(var imp in imports)
+        foreach (var imp in imports)
         {
             Console.WriteLine($"正在加载库:{imp.FullFileName}");
             var newprog = ParseUnit(File.ReadAllText(imp.FullFileName));
-            if(newprog.Members.OfType<ImportStmt>().Any()) 
+            if (newprog.Members.OfType<ImportStmt>().Any())
                 throw new ParseException("不支持嵌套引用", imp.Address);
-           
+
             result.Add(newprog);
         }
         result.Add(new CompicationUnit([.. prog.Members.Except(imports)]));

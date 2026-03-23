@@ -7,14 +7,13 @@ namespace EasyCon.Script.Parsing;
 
 internal partial class Parser
 {
-    private AssignmentStmt? ParseConstantDecl(string text)
+    private AssignmentStmt? ParseConstantDecl(ImmutableArray<Token> toks)
     {
-        var lexer = SyntaxTree.ParseTokens(text);
-        if (lexer.Length < 3 + 1) return null;
-        if (lexer[0].Type == TokenType.CONST && lexer[1].Type == TokenType.ASSIGN)
+        if (toks.Length < 3 + 1) return null;
+        if (toks[0].Type == TokenType.CONST && toks[1].Type == TokenType.ASSIGN)
         {
-            var des = (VariableExpr)_formatter.GetValueEx(lexer[0]);
-            var pr = new ExprParser([.. lexer.Skip(2)], _formatter, allowVar: false);
+            var des = (VariableExpr)_formatter.GetValueEx(toks[0]);
+            var pr = new ExprParser([.. toks.Skip(2)], _formatter, allowVar: false);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
             return new AssignmentStmt(des, eexp);
@@ -22,38 +21,36 @@ internal partial class Parser
         return null;
     }
 
-    private ImportStmt? ParseImport(string text)
+    private ImportStmt? ParseImport(ImmutableArray<Token> toks)
     {
-        var lexer = SyntaxTree.ParseTokens(text);
-        if (lexer.Length != 2 + 1) return null;
-        if (lexer[0].Type == TokenType.IMPORT && lexer[1].Type == TokenType.STRING)
+        if (toks.Length != 2 + 1) return null;
+        if (toks[0].Type == TokenType.IMPORT && toks[1].Type == TokenType.STRING)
         {
-            var libSrc = Path.Combine(_filePath, LibPath, lexer[1].Value);
+            var libSrc = Path.Combine(_filePath, LibPath, toks[1].Value);
             if (!File.Exists(libSrc))
             {
                 throw new Exception($"文件不存在:{libSrc}");
             }
-            return new ImportStmt(lexer[1].Value, Path.Combine(_filePath, LibPath));
+            return new ImportStmt(toks[1].Value, Path.Combine(_filePath, LibPath));
         }
         return null;
     }
 
-    private AssignmentStmt? ParseAssignment(string text)
+    private AssignmentStmt? ParseAssignment(ImmutableArray<Token> toks)
     {
-        var lexer = SyntaxTree.ParseTokens(text);
-        if (lexer.Length < 3 + 1) return null;
-        if (lexer[0].Type == TokenType.VAR)
+        if (toks.Length < 3 + 1) return null;
+        if (toks[0].Type == TokenType.VAR)
         {
-            var des = (VariableExpr)_formatter.GetValueEx(lexer[0]);
+            var des = (VariableExpr)_formatter.GetValueEx(toks[0]);
             CompareOperator? op = null;
-            if(lexer[1].Type.OperatorIsAug())
+            if(toks[1].Type.OperatorIsAug())
             {
                 //aug assign
-                op = CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == lexer[1].Value);
+                op = CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == toks[1].Value);
                 if (op == null) return null;
             }
 
-            var pr = new ExprParser([.. lexer.Skip(2)], _formatter);
+            var pr = new ExprParser([.. toks.Skip(2)], _formatter);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
             return new AssignmentStmt(des, eexp, op);
@@ -62,9 +59,8 @@ internal partial class Parser
         return null;
     }
 
-    private ReturnStmt? ParseReturn(string text)
+    private ReturnStmt? ParseReturn(ImmutableArray<Token> toks)
     {
-        var toks = SyntaxTree.ParseTokens(text);
         if (toks[0].Type == TokenType.RETURN)
         {
             var pr = new ExprParser([.. toks.Skip(1)], _formatter);
@@ -75,9 +71,8 @@ internal partial class Parser
         return null;
     }
 
-    private Statement? ParseIfelse(string text)
+    private Statement? ParseIfelse(ImmutableArray<Token> tokens)
     {
-        var tokens = SyntaxTree.ParseTokens(text);
         if (tokens.Length < 2 + 1) return null;
         if (tokens[0].Type == TokenType.IF || tokens[0].Type == TokenType.ELIF)
         {
@@ -100,9 +95,8 @@ internal partial class Parser
         return type == TokenType.INT || type == TokenType.CONST ||type == TokenType.VAR;
     }
 
-    private Statement? ParseFor(string text)
+    private Statement? ParseFor(ImmutableArray<Token> tokens)
     {
-        var tokens = SyntaxTree.ParseTokens(text);
         if (tokens[0].Type == TokenType.FOR)
         {
             if(tokens.Length == 1+1 && tokens[1].Type == TokenType.EOF)
@@ -127,9 +121,8 @@ internal partial class Parser
         return null;
     }
 
-    private WhileStmt? ParseWhile(string text)
+    private WhileStmt? ParseWhile(ImmutableArray<Token> tokens)
     {
-        var tokens = SyntaxTree.ParseTokens(text);
         if (tokens.Length < 2 + 1) return null;
         if (tokens[0].Type == TokenType.WHILE)
         {
@@ -141,9 +134,8 @@ internal partial class Parser
         return null;
     }
 
-    private Statement? ParseLoopCtrl(string text)
+    private Statement? ParseLoopCtrl(ImmutableArray<Token> tokens)
     {
-        var tokens = SyntaxTree.ParseTokens(text);
         if (tokens.Length > 2 + 1) return null;
         switch (tokens[0].Type)
         {
@@ -220,22 +212,19 @@ internal partial class Parser
         return null;
     }
 
-    private FuncStmt? ParseFuncDecl(string text)
+    private FuncStmt? ParseFuncDecl(ImmutableArray<Token> tokens)
     {
-        var tokens = SyntaxTree.ParseTokens(text);
         if (tokens[0].Type == TokenType.FUNC)
         {
             var pr = new ExprParser(tokens, _formatter);
             var func = pr.ParseFunctionDecl();
-            //if (!pr.EOF(out _)) throw new Exception("函数定义参数格式不正确");
             return func;
         }
         return null;
     }
 
-    private Statement? ParseNamedExpression(string text)
+    private Statement? ParseNamedExpression(ImmutableArray<Token> tokens)
     {
-        var tokens = SyntaxTree.ParseTokens(text);
         var first = tokens.First()!;
         if (first.Type != TokenType.IDENT) return null;
         switch (first.Value.ToLower())
@@ -277,6 +266,29 @@ internal partial class Parser
         var args = pr.ParseArguments();
         if (!pr.EOF(out _)) throw new Exception("函数传参解析失败");
         return args;
+    }
+
+    // print兼容语法特殊解析
+    private CallStmt ParsePrintStmt(string text)
+    {
+        var toks = SyntaxTree.ParseTokens("&");
+        var bitands = toks.Where(t => t.Type == TokenType.BitAnd);
+        var args = text[6..].Split('&').Select(t =>
+        {
+            t = t.Trim();
+            try
+            {
+                return _formatter.GetValueEx(t);
+            }
+            catch (FormatException)
+            {
+                return new LiteralExpr(t);
+            }
+        });
+        var a = text[..5].ToUpper();
+        var bitand = bitands.Any() ? bitands.First() : null;
+        var res = args.Aggregate((a,b)=> new BinaryExpression(bitand, a, b));
+        return new CallStmt(text[..5].ToUpper(), [res]);
     }
 }
 

@@ -520,7 +520,15 @@ internal sealed class Binder
 
     private BoundLiteralExpression BindLiterExpression(LiteralExpr syntax)
     {
-        Value obj = Value.From(syntax.Value);
+        var val = syntax.Value;
+        if (syntax.Value is string input)
+        {
+            if (input.Length >= 2 && input[0] == '"' && input[^1] == '"')
+            {
+                val = input[1..^1];
+            }
+        }
+        Value obj = Value.From(val);
         return new BoundLiteralExpression(syntax, obj);
     }
 
@@ -609,6 +617,18 @@ internal sealed class Binder
             var boundArgument = BindExpression(argument);
             boundArguments.Add(boundArgument);
         }
+        // 特殊处理打印语句
+        if (BuiltinFunctions.GetAll().Any(f => f == function && (f == BuiltinFunctions.Print || f == BuiltinFunctions.Alert)))
+        {
+            if(Arguments.Length != 0)
+            {
+                var res = boundArguments.Aggregate((acc, x) => Concat(Arguments[0], acc, x));
+                boundArguments.Clear();
+                boundArguments.Add(res);
+                Arguments = [Arguments[0]];
+            }
+        }
+
         if (Arguments.Length != function.Paramters.Length) throw new Exception($"函数调用参数不匹配 {fnName}");
         for (var i = 0; i < Arguments.Length; i++)
         {

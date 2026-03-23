@@ -48,27 +48,30 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
             var mp = printRex().Match(_line);
             var mif = ifRex().Match(_line);
-            if (mp.Success)
-            {
-                var content = mp.Groups[2].Value;
-                var strs = content.Split('&');
-                builder.Append($"{mp.Groups[1].Value} ");
+            //if (mp.Success)
+            //{
+            //    var content = mp.Groups[2].Value;
+            //    var strs = content.Split('&');
+            //    builder.Append($"{mp.Groups[1].Value} ");
 
-                builder.Append(string.Join("&", strs.Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s=>
-                {
-                    s = s.Trim();
-                    // 如果符合变量格式则直接返回
-                    if (variableRex().Match(s).Success) return s;
-                    // 如果既不是以双引号开头，也不是以双引号结尾，则添加
-                    if (!s.StartsWith("\"") && !s.EndsWith("\""))
-                    {
-                        // 先去除可能存在的内部引号，再统一添加前后引号
-                        return "\"" + s.Trim('"') + "\"";
-                    }
-                    return s;
-                }).ToList()));
-            }else if(mif.Success)
+            //    builder.Append(string.Join("&", strs.Where(s => !string.IsNullOrWhiteSpace(s))
+            //    .Select(static s =>
+            //    {
+            //        s = s.Trim();
+            //        if ((s == "\\") || (s == "\"\\\"")) return "\"\\\\\""; // 检测不换行符
+            //        // 如果符合变量格式则直接返回
+            //        if (variableRex().Match(s).Success) return s;
+            //        // 如果既不是以双引号开头，也不是以双引号结尾，则添加
+            //        if (!s.StartsWith('"') && !s.EndsWith('"'))
+            //        {
+            //            // 先去除可能存在的内部引号，再统一添加前后引号
+            //            return "\"" + s.Trim('"') + "\"";
+            //        }
+            //        return s;
+            //    }).ToList()));
+            //}
+            //else
+                if (mif.Success)
             {
                 _line = _line.Replace("=", "==");
                 builder.Append(_line);
@@ -283,8 +286,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private void ReadString()
     {
         var start = _position;
-        Advance();
         var sb = new StringBuilder();
+
+        sb.Append(Advance()); // 开始的"
 
         while (_position < _input.Length && Current != '"')
         {
@@ -330,7 +334,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             var location = new TextLocation(_text, span);
             _diagnostics.ReportUnterminatedString(location);
         }
-        Advance(); // 跳过结束的引号
+        sb.Append(Advance()); // 结束的"
         AddToken(TokenType.STRING, sb.ToString(), start + 1);
     }
 

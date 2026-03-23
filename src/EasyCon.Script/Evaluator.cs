@@ -301,7 +301,7 @@ internal sealed class Evaluator
                         // value must between 0~9
                         return result;
                     }
-                    GamePad.ChangeAmiibo((uint)index);
+                    GamePad?.ChangeAmiibo((uint)index);
                 }
                 break;
             case "TIME":
@@ -310,14 +310,15 @@ internal sealed class Evaluator
             case "PRINT":
               {
                     var s = args[0].AsString();
-                    Output.Print(s.TrimEnd('\\'), !CancelLineBreak);
+                    var output = s.EndsWith('\\') ? s[..^1] : s;
+                    Output?.Print(output, !CancelLineBreak);
                     CancelLineBreak = s.EndsWith('\\'); // true不换行
               }
               break;
             case "ALERT":
                 {
                     var s = args[0].AsString();
-                    Output.Alert(s.TrimEnd('\\'));
+                    Output?.Alert(s.TrimEnd('\\'));
                 }
                 break;
             case "RAND":

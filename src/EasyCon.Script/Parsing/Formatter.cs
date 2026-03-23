@@ -12,9 +12,7 @@ static class Formats
 
     public const string Constant_F = "^" + _Constant + "$";
     public const string ExtVar_F = "(" + _ExtVar + ")";
-    public const string RegisterEx = "(" + _Variable + ")";
     public const string RegisterEx_F = "^" + _Variable + "$";
-    public const string VariableEx_F = "^" + _Variable + "|" + _ExtVar + "$";
     public const string ValueEx = "(" + _Constant + "|" + _Variable + "|" + _ExtVar + "|" + _Number + ")";
 }
 
@@ -51,7 +49,7 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
             case Script2.Syntax.TokenType.EX_VAR:
                 return GetExtVar(tok.Value);
             default:
-                throw new FormatException($"token类型不争取：{tok.Type}");
+                throw new FormatException($"token类型不正确：{tok.Type}");
         }
     }
 
@@ -62,9 +60,9 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
         if (Regex.Match(text, Formats.ExtVar_F).Success)
             return GetExtVar(text); 
         else if (Regex.Match(text, Formats.Constant_F).Success)
-        {
             return new VariableExpr(text, true);
-        }
+        else if(Regex.Match(text, "^^\"(?:[^\"\\\\]|\\\\.)*\"$").Success)
+            return new LiteralExpr(text);
         else
         {
             var ok = int.TryParse(text, out var v);
