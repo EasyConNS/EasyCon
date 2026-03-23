@@ -204,7 +204,7 @@ internal sealed class Evaluator
         Debug.Assert(value != Value.Void);
 
         Assign(node.Variable, value);
-        return value == Value.Void ? Value.Void : value;
+        return value;
     }
 
     private Value EvaluateCallExpression(BoundCallExpression node)
