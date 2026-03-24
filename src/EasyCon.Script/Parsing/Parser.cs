@@ -2,7 +2,6 @@ using EasyCon.Script.Binding;
 using EasyCon.Script2.Syntax;
 using EasyCon.Script2.Text;
 using System.Collections.Immutable;
-using System.Text.RegularExpressions;
 
 namespace EasyCon.Script.Parsing;
 
@@ -243,12 +242,6 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
         result.Add(new CompicationUnit([.. prog.Members.Except(imports)]));
         return result.ToImmutable();
     }
-}
-
-record ParserArgument
-{
-    public string Text { get; init; } = string.Empty;
-    public string Comment { get; init; } = string.Empty;
 }
 
 public class ParseException(string message, int index = -1) : Exception(message)

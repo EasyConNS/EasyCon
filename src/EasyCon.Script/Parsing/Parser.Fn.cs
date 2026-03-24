@@ -32,11 +32,14 @@ internal partial class Parser
         else if (firstToken.Type == TokenType.IDENT)
         {
             if(firstToken.Value.Equals("print", StringComparison.OrdinalIgnoreCase) || firstToken.Value.Equals("alert", StringComparison.OrdinalIgnoreCase))
-                return ParsePrintStmt(toks);
+            {
+                var curline = firstToken.Text.Lines[firstToken.Location.StartLine].Text;
+                return ParsePrintStmt(firstToken, curline);
+            }
         }
         // Handle key statements
-        var curline = string.Join(" ", toks.TakeWhile(t => t.Type != TokenType.EOF).Select(t => t.Value));
-        return ParseKey(curline) ?? ParseNamedExpression(toks);
+        var rawlinetext = firstToken.Text.Lines[firstToken.Location.StartLine].Text;
+        return ParseKey(rawlinetext) ?? ParseNamedExpression(toks);
     }
 
     private AssignmentStmt? ParseConstantDecl(ImmutableArray<Token> toks)
@@ -194,6 +197,12 @@ internal partial class Parser
         return null;
     }
 
+    /// <summary>
+    /// 解析手柄按键语句
+    // 键位(+键位) [持续时间(ms)|DOWN|UP]
+    // LS|RS 方向|角度 [, 持续时间(ms)]
+    // LS|RS RESET
+    /// </summary>
     const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN|DOWNLEFT|DOWNRIGHT|UPLEFT|UPRIGHT";
     private Statement? ParseKey(string text)
     {
@@ -301,13 +310,12 @@ internal partial class Parser
     }
 
     // print兼容语法特殊解析
-    private CallStmt ParsePrintStmt(ImmutableArray<Token> toks)
+    private CallStmt ParsePrintStmt(Token firstToken, string curline)
     {
         var bitandtoks = SyntaxTree.ParseTokens("&");
-        var bitands = bitandtoks.Where(t => t.Type == TokenType.BitAnd);
+        var bitand = bitandtoks[0];
 
-        var curline = string.Join(" ", toks.Skip(1).TakeWhile(t => t.Type != TokenType.EOF).Select(t => t.Value));
-        var args = curline.Split('&').Select(t =>
+        var args = curline[6..].Split('&').Select(t =>
         {
             t = t.Trim();
             try
@@ -319,9 +327,8 @@ internal partial class Parser
                 return new LiteralExpr(t);
             }
         });
-        var bitand = bitands.Any() ? bitands.First() : null;
-        var res = args.Aggregate((a,b)=> new BinaryExpression(bitand, a, b));
-        return new CallStmt(toks.First().Value.ToUpper(), [res]);
+        var res = args.Aggregate((a,b)=> new BinaryExpression(bitand!, a, b));
+        return new CallStmt(firstToken.Value.ToUpper(), [res]);
     }
 }
 
