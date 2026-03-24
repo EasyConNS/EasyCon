@@ -5,6 +5,7 @@ public enum BoundNodeKind
     Statement,
     BlockStatement,
     NopStatement,
+    VariableDeclaration,
     ExpressionStatement,
     KeyAction,
     StickAction,

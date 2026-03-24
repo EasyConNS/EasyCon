@@ -247,7 +247,7 @@ internal sealed class Binder
                 upperBoundStmt = Nop(forCond);
                 break;
             case VariableExpr varE:
-                upperBound = Variable(forCond.Upper, ((BoundAssignExpression)((BoundExprStatement)upperBoundStmt).Expression).Variable);
+                upperBound = Variable(forCond.Upper, ((BoundVariableDeclaration)upperBoundStmt).Variable);
                 break;
         }
         BoundExpr condition = forCond switch
@@ -392,12 +392,17 @@ internal sealed class Binder
         return new BoundReturnStatement(syntax, expression);
     }
 
-    private BoundExprStatement BindAssignStatement(AssignmentStmt syntax)
+    private BoundVariableDeclaration BindAssignStatement(AssignmentStmt syntax)
     {
         var boundexpr = BindExpression(syntax.Expression);
 
         if (syntax.AugOp != null)
         {
+            // a <op>= b
+            //
+            // ---->
+            //
+            // a = (a <op> b)
             var desvar = BindVarExpression(syntax.DestVariable);
             var op = BoundBinaryOperator.Bind(syntax.AugOp.Operator);
             boundexpr = new BoundBinaryExpression(syntax.Expression, desvar, op!, boundexpr);
@@ -409,7 +414,7 @@ internal sealed class Binder
         if (variable.Type != boundexpr.Type) throw new ParseException("表达式和变量类型不匹配", syntax.Address);
         if(variable.IsReadOnly && boundexpr.ConstantValue == Value.Void) throw new ParseException("常量表达式不正确", syntax.Address);
         if (variable.IsReadOnly) variable.Value = boundexpr.ConstantValue;
-        return new BoundExprStatement(syntax, new BoundAssignExpression(syntax.Expression, variable, boundexpr));
+        return new BoundVariableDeclaration(syntax, variable, boundexpr);
     }
 
     private VariableSymbol BindVariableDeclaration(VariableExpr syntax, bool isReadOnly, ValueType type, bool allowGlobal = true)

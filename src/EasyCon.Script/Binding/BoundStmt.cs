@@ -49,6 +49,13 @@ internal sealed class BoundExprStatement(Statement syntax, BoundExpr expression)
     public override BoundNodeKind Kind => BoundNodeKind.ExpressionStatement;
 }
 
+internal sealed class BoundVariableDeclaration(Statement syntax, VariableSymbol variable, BoundExpr expression) : BoundStmt(syntax)
+{
+    public readonly VariableSymbol Variable = variable;
+    public readonly BoundExpr Initializer = expression;
+    public override BoundNodeKind Kind => BoundNodeKind.VariableDeclaration;
+}
+
 internal class BoundKeyActStatement(Statement syntax, GamePadKey key, bool up = false) : BoundStmt(syntax)
 {
     public override BoundNodeKind Kind => BoundNodeKind.KeyAction;

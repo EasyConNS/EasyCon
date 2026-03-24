@@ -101,6 +101,7 @@ internal sealed class ControlFlowGraph
                     case NopStatement:
                     case KeyAction:
                     case StickAction:
+                    case VariableDeclaration:
                     case ExpressionStatement:
                         _statements.Add(statement);
                         break;
@@ -185,6 +186,7 @@ internal sealed class ControlFlowGraph
                             Connect(current, _end);
                             break;
                         case NopStatement:
+                        case VariableDeclaration:
                         case Label:
                         case KeyAction:
                         case StickAction:

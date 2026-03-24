@@ -27,17 +27,17 @@ internal static class BoundFactory
     {
         return new BoundNop(syntax); 
     }
-    public static BoundExprStatement VariableDeclaration(Statement syntax, VariableSymbol symbol, BoundExpr initializer)
+    public static BoundVariableDeclaration VariableDeclaration(Statement syntax, VariableSymbol symbol, BoundExpr initializer)
     {
-        return new BoundExprStatement(syntax, new BoundAssignExpression(initializer.Syntax, symbol, initializer));
+        return new BoundVariableDeclaration(syntax, symbol, initializer);
     }
-    public static BoundExprStatement ConstantDeclaration(Statement syntax, string name, BoundExpr initializer)
+    public static BoundVariableDeclaration ConstantDeclaration(Statement syntax, string name, BoundExpr initializer)
         => VariableDeclarationInternal(syntax, name, initializer, isReadOnly: true);
 
-    private static BoundExprStatement VariableDeclarationInternal(Statement syntax, string name, BoundExpr initializer, bool isReadOnly)
+    private static BoundVariableDeclaration VariableDeclarationInternal(Statement syntax, string name, BoundExpr initializer, bool isReadOnly)
     {
         var local = new LocalVariableSymbol(name, isReadOnly, initializer.Type);
-        return new BoundExprStatement(syntax, new BoundAssignExpression(initializer.Syntax, local, initializer));
+        return new BoundVariableDeclaration(syntax, local, initializer);
     }
 
     private static BoundBinaryExpression Binary(ExprBase syntax, BoundExpr left, Script2.Syntax.TokenType kind, BoundExpr right)
@@ -66,10 +66,6 @@ internal static class BoundFactory
     => Binary(syntax, left, Script2.Syntax.TokenType.LESS, right);
     public static BoundBinaryExpression LessEqual(ExprBase syntax, BoundExpr left, BoundExpr right)
     => Binary(syntax, left, Script2.Syntax.TokenType.LEQ, right);
-    public static BoundVariableExpression Variable(ExprBase syntax, BoundAssignExpression variable)
-    {
-        return Variable(syntax, variable.Variable);
-    }
 
     public static BoundVariableExpression Variable(ExprBase syntax, VariableSymbol variable)
     {

@@ -9,6 +9,49 @@ internal abstract class BoundExpr(ExprBase expr) : BoundNode
     public ExprBase Syntax = expr;
     public abstract ValueType Type { get; }
     public Value ConstantValue = Value.Void;
+
+    public List<string> GetReferencedVariables()
+    {
+        var variables = new List<string>();
+        CollectVariables(this, variables);
+        return variables;
+    }
+    private void CollectVariables(BoundNode node, List<string> variables)
+    {
+        if (node == null) return;
+        if (node is BoundVariableExpression varNode)
+        {
+            variables.Add(varNode.Variable.Name);
+        }
+        else if (node is BoundIndexVariableExpression idxVarNode)
+        {
+            // TODO
+        }
+        else if (node is BoundUnaryExpression unaryNode)
+        {
+            CollectVariables(unaryNode.Operand, variables);
+        }
+        else if (node is BoundBinaryExpression binOpNode)
+        {
+            CollectVariables(binOpNode.Left, variables);
+            CollectVariables(binOpNode.Right, variables);
+        }
+        else if (node is BoundConversionExpression convNode)
+        {
+            CollectVariables(convNode.Expression, variables);
+        }
+        else if (node is BoundCallExpression callNode)
+        {
+            foreach (var arg in callNode.Arguments)
+            {
+                CollectVariables(arg, variables);
+            }
+        }
+        else if (node is BoundAssignExpression assignNode)
+        {
+            CollectVariables(assignNode.Expression, variables);
+        }
+    }
 }
 
 internal sealed class BoundLiteralExpression : BoundExpr

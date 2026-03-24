@@ -64,6 +64,10 @@ internal sealed class Evaluator
                 case NopStatement:
                     index++;
                     break;
+                case VariableDeclaration:
+                    EvaluateVariableDeclaration((BoundVariableDeclaration)s);
+                    index++;
+                    break;
                 case ExpressionStatement:
                     EvaluateExpressionStatement((BoundExprStatement)s);
                     index++;
@@ -107,6 +111,15 @@ internal sealed class Evaluator
         return _lastValue;
     }
 
+    private void EvaluateVariableDeclaration(BoundVariableDeclaration node)
+    {
+        var value = EvaluateExpr(node.Initializer);
+        Debug.Assert(value != Value.Void);
+
+        _lastValue = value;
+        Assign(node.Variable, value);
+    }
+
     private void EvaluateExpressionStatement(BoundExprStatement node)
     {
         _lastValue = EvaluateExpr(node.Expression);
@@ -114,7 +127,7 @@ internal sealed class Evaluator
     public Value EvaluateExpr(BoundExpr node)
     {
         if (node.ConstantValue != Value.Void)
-            return node.ConstantValue;
+            return EvaluateConstantExpression(node);
 
         switch (node.Kind)
         {
@@ -140,6 +153,13 @@ internal sealed class Evaluator
             default:
                 throw new Exception($"无法执行的表达式{node.Kind}");
         }
+    }
+
+    private static Value EvaluateConstantExpression(BoundExpr n)
+    {
+        Debug.Assert(n.ConstantValue != Value.Void);
+
+        return n.ConstantValue;
     }
 
     private Value EvaluateVariableExpression(BoundVariableExpression v)
@@ -170,11 +190,11 @@ internal sealed class Evaluator
     {
         var value = EvaluateExpr(node.Expression);
         if (node.Type == Binding.ValueType.Bool)
-            return Convert.ToBoolean(value);
+            return value.ToBoolean();
         else if (node.Type == Binding.ValueType.Int)
             return Convert.ToInt32(value);
         else if (node.Type == Binding.ValueType.String)
-            return Convert.ToString(value);
+            return  value.ToString();
         else
             throw new Exception($"无效的类型转换{node.Type}");
     }
@@ -318,13 +338,14 @@ internal sealed class Evaluator
             case "ALERT":
                 {
                     var s = args[0].AsString();
-                    Output?.Alert(s.TrimEnd('\\'));
+                    var output = s.EndsWith('\\') ? s[..^1] : s;
+                    Output?.Alert(output);
                 }
                 break;
             case "RAND":
                 {
                     var max = args[0].AsInt();
-                    result = _rand.Next(max == 0 ? 100 : max);
+                    result = _rand.Next(max);
                 }
                 break;
             case "BEEP":
