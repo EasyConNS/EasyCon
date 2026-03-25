@@ -35,13 +35,13 @@ internal partial class Parser
             {
                 var curline = firstToken.Text.Lines[firstToken.Line-1].Text;
                 curline = curline.Contains('#') ? curline.Substring(0, curline.IndexOf('#')) : curline;
-                return ParsePrintStmt(firstToken, curline);
+                return ParsePrintStmt(firstToken, curline.Trim());
             }
         }
         // Handle key statements
         var fullline = firstToken.Text.Lines[firstToken.Line - 1].Text;
         fullline = fullline.Contains('#') ? fullline.Substring(0, fullline.IndexOf('#')) : fullline;
-        return ParseKey(fullline) ?? ParseNamedExpression(toks);
+        return ParseKey(fullline.Trim()) ?? ParseNamedExpression(toks);
     }
     [GeneratedRegex(@"(\s*#.*)$")]
     private static partial Regex CommentRegex();

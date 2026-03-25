@@ -111,8 +111,7 @@ internal sealed class Binder
             throw new ParseException("函数所有路径必须有返回值", function.Declaration!.Address);
 
         _ilNames.UnionWith(binderFn._ilNames);
-
-        functionBodies.Add(function, fnbody);
+        if(!functionBodies.ContainsKey(function))functionBodies.Add(function, fnbody);
     }
 
     private static BoundScope CreateRootScope()

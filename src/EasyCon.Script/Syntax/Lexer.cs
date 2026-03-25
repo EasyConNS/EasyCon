@@ -23,14 +23,8 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     [GeneratedRegex(@"(\s*#.*)$")]
     private static partial Regex lineRegex();
 
-    [GeneratedRegex(@"^\b(print|alert)\b\s+(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
-    private static partial Regex printRex();
-
     [GeneratedRegex(@"^\b(if)\b\s+(.*)(?<![<=>!])=(?!=)(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
     private static partial Regex ifRex();
-
-    [GeneratedRegex(@"^(_|\$)[\d\p{L}_]+$", RegexOptions.IgnoreCase, "zh-CN")]
-    private static partial Regex variableRex();
 
     private static string Compat(ImmutableArray<TextLine> lines)
     {
@@ -58,8 +52,8 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             }
 
             builder.Append(comment);
-            if (lines.Length > 1)
-                builder.Append('\n');
+            //if (lines.Length > 1)
+            builder.Append('\n');
         }
         return builder.ToString();
     }
