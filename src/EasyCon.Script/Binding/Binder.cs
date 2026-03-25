@@ -18,8 +18,6 @@ internal sealed class Binder
 
     private BoundScope _scope;
 
-    private readonly ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
-
     private Binder(BoundScope? parent, FunctionSymbol? function)
     {
         _scope = new BoundScope(parent);
@@ -36,6 +34,8 @@ internal sealed class Binder
     {
         var parentScope = CreateRootScope();
         var binder = new Binder(parentScope, function: null);
+
+        var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
 
         var functionDeclarations = syntaxs.SelectMany(st => st.Members).OfType<FuncDeclBlock>();
 
@@ -61,11 +61,31 @@ internal sealed class Binder
             statements.Add(statement);
         }
 
+        foreach (var function in binder._scope.GetDeclaredFunctions())
+        {
+            var binderFn = new Binder(binder._scope, function);
+            var fnstatements = ImmutableArray.CreateBuilder<BoundStmt>();
+            foreach (var fnStatement in function.Declaration!.Statements)
+            {
+                var statement = binderFn.BindStatement(fnStatement);
+                fnstatements.Add(statement);
+            }
+            var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
+            var fnloweredBody = Lowerer.Lower(function, fnbody);
+
+            if (function.Type != ValueType.Void && !ControlFlowGraph.AllPathsReturn(fnloweredBody))
+                throw new ParseException("函数所有路径必须有返回值", function.Declaration!.Address);
+
+            binder._ilNames.UnionWith(binderFn._ilNames);
+
+            functionBodies.Add(function, fnloweredBody);
+        }
+
         var main = new FunctionSymbol("$eval", [], ValueType.Void);
         var body = new BoundBlockStatement(null, statements.ToImmutable());
         var loweredBody = Lowerer.Lower(main, body);
-        binder.functionBodies.Add(main, loweredBody);
-        return new BoundProgram(main, binder.functionBodies.ToImmutable(), binder._ilNames.ToImmutableArray());
+        functionBodies.Add(main, loweredBody);
+        return new BoundProgram(main, functionBodies.ToImmutable(), binder._ilNames.ToImmutableArray());
     }
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
@@ -92,26 +112,6 @@ internal sealed class Binder
         var type = BindTypeClause(syntax?.Declare) ?? ValueType.Void;
         var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), type, syntax);
         _scope.TryDeclareFunction(function);
-    }
-
-    private void BindFunctionBody(FunctionSymbol function)
-    {
-        if(BuiltinFunctions.GetAll().Any(f => f == function))return;
-        var binderFn = new Binder(_scope, function);
-        var fnstatements = ImmutableArray.CreateBuilder<BoundStmt>();
-        foreach (var fnStatement in function.Declaration!.Statements)
-        {
-            var statement = binderFn.BindStatement(fnStatement);
-            fnstatements.Add(statement);
-        }
-        var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
-        var fnloweredBody = Lowerer.Lower(function, fnbody);
-
-        if (function.Type != ValueType.Void && !ControlFlowGraph.AllPathsReturn(fnloweredBody))
-            throw new ParseException("函数所有路径必须有返回值", function.Declaration!.Address);
-
-        _ilNames.UnionWith(binderFn._ilNames);
-        if(!functionBodies.ContainsKey(function))functionBodies.Add(function, fnbody);
     }
 
     private static BoundScope CreateRootScope()
@@ -615,9 +615,6 @@ internal sealed class Binder
     private BoundCallExpression BindCallExpression(Callv1Expression syntax, string fnName, ImmutableArray<ExprBase> Arguments)
     {
         var function = _scope.TryLookupFunc(fnName) ?? throw new Exception($"找不到调用函数 {fnName}");
-
-        BindFunctionBody(function);
-
         var boundArguments = ImmutableArray.CreateBuilder<BoundExpr>();
 
         foreach (var argument in Arguments)

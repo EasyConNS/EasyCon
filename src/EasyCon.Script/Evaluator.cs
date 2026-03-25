@@ -166,12 +166,12 @@ internal sealed class Evaluator
     {
         if (v.Variable is GlobalVariableSymbol)
         {
-            return _globals[v.Variable];
+            return _globals.ContainsKey(v.Variable)? _globals[v.Variable] : 0;
         }
         else
         {
             var locals = _locals.Peek();
-            return locals[v.Variable];
+            return locals.ContainsKey(v.Variable) ? locals[v.Variable] : 0;
         }
     }
 

@@ -7,7 +7,6 @@ internal sealed class Lowerer
 {
     public static BoundBlockStatement Lower(FunctionSymbol fn, BoundStmt statement)
     {
-        // return Flatten(statement);
         return RemoveDeadCode(Flatten(fn, statement));
     }
 
