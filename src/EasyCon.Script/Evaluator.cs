@@ -166,12 +166,12 @@ internal sealed class Evaluator
     {
         if (v.Variable is GlobalVariableSymbol)
         {
-            return _globals.ContainsKey(v.Variable)? _globals[v.Variable] : 0;
+            return _globals.TryGetValue(v.Variable, out Value value) ? value : 0;
         }
         else
         {
             var locals = _locals.Peek();
-            return locals.ContainsKey(v.Variable) ? locals[v.Variable] : 0;
+            return locals.TryGetValue(v.Variable, out Value value) ? value : 0;
         }
     }
 
@@ -183,7 +183,9 @@ internal sealed class Evaluator
     private Value EvaluateIndexVariableExpression(BoundIndexVariableExpression idx)
     {
         var basevar = EvaluateExpr(idx.Variable);
-        return basevar[EvaluateExpr(idx.Index).AsInt()];
+        var xiab = EvaluateExpr(idx.Index).AsInt();
+        if (xiab >= basevar.Length) throw new Exception($"数组下标越界");
+        return basevar[xiab];
     }
 
     private Value EvaluateConversionExpression(BoundConversionExpression node)
@@ -264,17 +266,17 @@ internal sealed class Evaluator
         if(node is BoundKeyPressStatement bps)
         {
             var dur = EvaluateExpr(bps.Duration).AsInt();
-            GamePad.ClickButtons(bps.Act, dur);
+            GamePad?.ClickButtons(bps.Act, dur);
         }
         else
         {
             if(node.Up)
             {
-                GamePad.ReleaseButtons(node.Act);
+                GamePad?.ReleaseButtons(node.Act);
             }
             else
             {
-                GamePad.PressButtons(node.Act);
+                GamePad?.PressButtons(node.Act);
             }
         }
     }
@@ -284,11 +286,11 @@ internal sealed class Evaluator
         if(node is BoundStickPressStatement bps)
         {
             var dur = EvaluateExpr(bps.Duration).AsInt();
-            GamePad.ClickStick(bps.Act, bps.X, bps.Y, dur);
+            GamePad?.ClickStick(bps.Act, bps.X, bps.Y, dur);
         }
         else
         {
-            GamePad.SetStick(node.Act, node.X, node.Y);
+            GamePad?.SetStick(node.Act, node.X, node.Y);
         }
     }
 

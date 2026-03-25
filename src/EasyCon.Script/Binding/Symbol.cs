@@ -27,12 +27,12 @@ abstract class VariableSymbol(string name, bool isReadOnly, ValueType valueType)
 
 sealed class GlobalVariableSymbol(string name, bool isReadOnly, ValueType valueType) : VariableSymbol(name, isReadOnly, valueType)
 {
-    public override string ToString() => $"GV({Name})";
+    public override string ToString() => $"GlobalVar({Name})";
 }
 
 class LocalVariableSymbol(string name, bool isReadOnly, ValueType valueType) : VariableSymbol(name, isReadOnly, valueType)
 {
-    public override string ToString() => $"LV({Name})";
+    public override string ToString() => $"LocalVar({Name})";
 }
 
 sealed class ParamSymbol(string name, ValueType valueType, int ordinal = 0) : LocalVariableSymbol(name, true, valueType)
