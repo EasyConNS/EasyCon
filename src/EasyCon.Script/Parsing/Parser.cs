@@ -25,14 +25,12 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
         
         foreach (var token in allTokens)
         {
-            if (token.Type == TokenType.NEWLINE || token.Type == TokenType.EOF)
+            if (token.Type == TokenType.NEWLINE)
             {
-                if (currentGroup.Count > 0)
-                {
-                    yield return [.. currentGroup];
-                    currentGroup.Clear();
-                }
+                yield return [.. currentGroup];
+                currentGroup.Clear();
             }
+            else if (token.Type == TokenType.EOF) break;
             else
             {
                 currentGroup.Add(token);

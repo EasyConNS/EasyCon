@@ -1,5 +1,20 @@
 namespace EasyScript;
 
+public sealed class CustomDelay
+{
+    private static int CurrTimestamp => (int) (DateTime.Now.Ticks / 10_000);
+    public static void Delay(int millisecondsTimeout)
+    {
+        var curtime = CurrTimestamp;
+        if (millisecondsTimeout > 50) Thread.Sleep(millisecondsTimeout - 40);
+        while(true)
+        {
+            if (CurrTimestamp - curtime >= millisecondsTimeout) break;
+            Thread.Yield();
+        }
+    }
+}
+
 public interface ICGamePad
 {
     void ClickButtons(GamePadKey key, int duration);

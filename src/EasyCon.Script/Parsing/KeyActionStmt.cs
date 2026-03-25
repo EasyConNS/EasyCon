@@ -44,16 +44,6 @@ class KeyPress : KeyActionStmt, IDurationKey
         Duration = duration;
     }
 
-    //public override void Exec(Processor processor)
-    //{
-    //    var duration = Duration.Get(processor);
-    //    if (duration > 0)
-    //    {
-    //        processor.GamePad.ClickButtons(Key, duration);
-    //        Thread.Sleep(duration);
-    //    }
-    //}
-
     protected override string _GetString()
     {
         return _omitted ? $"{KeyName}" : $"{KeyName} {Duration.GetCodeText()}";
@@ -159,16 +149,6 @@ abstract class StickActionStmt : KeyActionStmt
 class StickPress(string keyname, string direction, ExprBase duration) : StickActionStmt(keyname, direction), IDurationKey
 {
     public ExprBase Duration => duration;
-
-    //public override void Exec(Processor processor)
-    //{
-    //    var duration = Duration.Get(processor);
-    //    if (duration > 0)
-    //    {
-    //        processor.GamePad.ClickButtons(Key, duration);
-    //        Thread.Sleep(duration);
-    //    }
-    //}
 
     protected override string _GetString()
     {

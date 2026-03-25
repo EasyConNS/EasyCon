@@ -204,7 +204,7 @@ class TTLSerialClient : IConnection
                 }
 
                 // cpu optimization
-                Thread.Sleep(1);
+                Thread.Yield();
             }
         }
         catch (Exception)

@@ -352,6 +352,7 @@ internal sealed class Evaluator
             case "RAND":
                 {
                     var max = args[0].AsInt();
+                    max = max < 0 ? 0 : max;
                     result = _rand.Next(max);
                 }
                 break;
