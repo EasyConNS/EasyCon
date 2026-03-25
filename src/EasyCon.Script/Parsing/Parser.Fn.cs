@@ -34,13 +34,17 @@ internal partial class Parser
             if(firstToken.Value.Equals("print", StringComparison.OrdinalIgnoreCase) || firstToken.Value.Equals("alert", StringComparison.OrdinalIgnoreCase))
             {
                 var curline = firstToken.Text.Lines[firstToken.Line-1].Text;
+                curline = curline.Contains('#') ? curline.Substring(0, curline.IndexOf('#')) : curline;
                 return ParsePrintStmt(firstToken, curline);
             }
         }
         // Handle key statements
-        return ParseKey(firstToken.Text.Lines[firstToken.Line-1].Text) ?? ParseNamedExpression(toks);
+        var fullline = firstToken.Text.Lines[firstToken.Line - 1].Text;
+        fullline = fullline.Contains('#') ? fullline.Substring(0, fullline.IndexOf('#')) : fullline;
+        return ParseKey(fullline) ?? ParseNamedExpression(toks);
     }
-
+    [GeneratedRegex(@"(\s*#.*)$")]
+    private static partial Regex CommentRegex();
     private AssignmentStmt? ParseConstantDecl(ImmutableArray<Token> toks)
     {
         if (toks.Length < 3) return null;
