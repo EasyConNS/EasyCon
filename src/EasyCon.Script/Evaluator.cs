@@ -311,7 +311,14 @@ internal sealed class Evaluator
         switch (fn.Name)
         {
             case "WAIT":
-                Thread.Sleep(args[0].AsInt());
+                var ms = args[0].AsInt();
+                var curtime = CurrTimestamp;
+                if (ms > 50) Thread.Sleep(ms - 40);
+                while(true)
+                {
+                    if (CurrTimestamp - curtime >= ms) break;
+                    Thread.Yield();
+                }
                 break;
             case "AMIIBO":
                 {

@@ -29,19 +29,22 @@ public sealed class SourceText
     private static ImmutableArray<TextLine> ParseLines(SourceText sourceText, string text)
     {
         var result = ImmutableArray.CreateBuilder<TextLine>();
+
+        var lineStart = 0;
         
         var lines = text.Split(Environment.NewLine);
         foreach (var line in lines)
         {
-            uint linecount = 0;
+            int linecount = 0;
             var curline = line.Trim();
-            AddLine(result, sourceText, curline, linecount++);
+            AddLine(result, sourceText, curline, linecount++, lineStart);
+            lineStart += line.Length;
         }
         return result.ToImmutable();
     }
-    private static void AddLine(ImmutableArray<TextLine>.Builder result, SourceText sourceText, string text, uint index)
+    private static void AddLine(ImmutableArray<TextLine>.Builder result, SourceText sourceText, string text, int index, int start)
     {
-        var line = new TextLine {Text = text, Line = index };
+        var line = new TextLine {Text = text, Start = start};
         result.Add(line);
     }
 

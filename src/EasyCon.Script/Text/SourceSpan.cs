@@ -2,23 +2,25 @@ namespace EasyCon.Script2.Text;
 
 public record SourceSpan : IEquatable<SourceSpan>
 {
-    public SourceSpan(int start, int len, int row)
+    public SourceSpan(int start, int len)
     {
         Start = start;
         Length = len;
-        Line = row;
     }
 
     public int Start { get; internal set; }
     public int Length { get; internal set; }
-    public int Line { get; internal set; }
     public int End => Start + Length;
 
-    public static SourceSpan FromBounds(int start, int end, int row)
+    public static SourceSpan FromBounds(int start, int end)
     {
         var length = end - start;
-        return new SourceSpan(start, length, row);
+        return new SourceSpan(start, length);
     }
-
+    public bool OverlapsWith(SourceSpan span)
+    {
+        return Start < span.End &&
+                End > span.Start;
+    }
     public override string ToString() => $"{Start}..{End}";
 }

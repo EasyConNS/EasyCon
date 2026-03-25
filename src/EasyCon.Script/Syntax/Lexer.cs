@@ -83,7 +83,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
             builder.Append(comment);
             if (lines.Length > 1)
-                builder.Append("\r\n");
+                builder.Append('\n');
         }
         return builder.ToString();
     }
@@ -219,6 +219,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         {
             if ("\u000D\u000A\u0085\u2028\u2029\r\n".Contains(Current))
             {
+                if(Current == '\n')
+                {
+                    AddToken(TokenType.NEWLINE, " ", _position);
+                    _line++;
+                    _column = 0;
+                }
                 if (Current == '\r' && Lookahead == '\n')
                 {
                     AddToken(TokenType.NEWLINE, " ", _position);
@@ -270,7 +276,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         {
             if (!double.TryParse(number, out _))
             {
-                var span = new SourceSpan(start, length, _column);
+                var span = new SourceSpan(start, length);
                 var location = new TextLocation(_text, span);
                 _diagnostics.ReportInvalidNumber(location, number);
             }
@@ -329,7 +335,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
         if (Current != '"')
         {
-            var span = new SourceSpan(start, sb.ToString().Length, _column);
+            var span = new SourceSpan(start, sb.ToString().Length);
             var location = new TextLocation(_text, span);
             _diagnostics.ReportUnterminatedString(location);
         }
@@ -615,7 +621,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 AddToken(TokenType.DOT, ".", start);
                 break;
             default:
-                var span = new SourceSpan(_position, 1, _line);
+                var span = new SourceSpan(_position, 1);
                 var location = new TextLocation(_text, span);
                 _diagnostics.ReportBadCharacter(location, current);
                 break;

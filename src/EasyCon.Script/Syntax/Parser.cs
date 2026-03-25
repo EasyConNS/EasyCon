@@ -65,7 +65,7 @@ internal sealed class Parser
         {
             return Advance();
         }
-        var location = new TextLocation(_text, new SourceSpan(_position, 0, 0));
+        var location = new TextLocation(_text, new SourceSpan(_position, 0));
         _diagnostics.ReportUnexpectedToken(location, Current.Type, type);
         return new Token(_text, TokenType.BadToken, message, 0, 0);
     }
