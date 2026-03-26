@@ -110,7 +110,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 ReadComment();
             }
-            else if (char.IsDigit(current) || current == '.')
+            else if (char.IsDigit(current))
             {
                 ReadNumber();
             }
@@ -235,7 +235,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private void ReadNumber()
     {
         var start = _position;
-        while (_position < _input.Length && (char.IsDigit(Current) || Current == '.'))
+        while (_position < _input.Length && char.IsDigit(Current))
         {
             Advance();
         }

@@ -94,21 +94,21 @@ sealed class IndexDefExpression(Token lb, ImmutableArray<ExprBase> index, Token 
     public override string GetCodeText() => $"[{string.Join(", ", Index.Select(arg => arg.GetCodeText()))}]";
 }
 
-sealed class IndexVisitExpression(ExprBase var, Token lb, ExprBase idxexpr, Token rb) : ExprBase
+sealed class IndexVisitExpression(VariableExpr var, Token lb, ExprBase idxexpr, Token rb) : ExprBase
 {
-    public readonly ExprBase Var = var;
+    public readonly VariableExpr Var = var;
     public readonly Token Lb = lb;
     public ExprBase Index { get; } = idxexpr;
     public readonly Token Rb = rb;
     public override string GetCodeText() => $"{Var.GetCodeText()}[{Index.GetCodeText()}]";
 }
 
-sealed class SliceExpression(ExprBase expression, ExprBase start, ExprBase end) : ExprBase
+sealed class SliceExpression(VariableExpr var, ExprBase start, ExprBase end, bool ommitstart) : ExprBase
 {
-    public readonly ExprBase Expression = expression;
+    public readonly VariableExpr Var = var;
     public readonly ExprBase Start = start;
     public readonly ExprBase End = end;
-    public override string GetCodeText() => $"{Expression.GetCodeText()}[{Start.GetCodeText()}..{End.GetCodeText()}]";
+    public override string GetCodeText() => $"{Var.GetCodeText()}[{(ommitstart? "" : Start.GetCodeText())}:{End.GetCodeText()}]";
 }
 
 sealed class Callv1Expression(Token identifier, Token lp, ImmutableArray<ExprBase> arguments, Token rp) : ExprBase

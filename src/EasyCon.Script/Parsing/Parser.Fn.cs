@@ -1,3 +1,5 @@
+using EasyCon.Script.Binding;
+using EasyCon.Script2;
 using EasyCon.Script2.Syntax;
 using EasyScript;
 using System.Collections.Immutable;
@@ -474,6 +476,60 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         }
         return nodesAndSeparators.ToImmutable();
     }
+    
+    private Statement ParsePadButtonStatement()
+    {
+        List<Token> keyTokens = [];
+        var firstKey = Advance();
+        keyTokens.Add(firstKey);
+
+        if (firstKey.Type == TokenType.StickKeyword)
+        {
+            switch (Current.Type)
+            {
+                case TokenType.INT:
+                case TokenType.CONST:
+                case TokenType.VAR:
+                case TokenType.ButtonKeyword:
+                    var state = Advance();
+
+                    if (Check(TokenType.COMMA))
+                    {
+                        Advance();
+                        var duration = Match(TokenType.INT, "摇杆语法不正确");
+                        var value = uint.Parse(duration.Value);
+                        //return new StickStatement([.. keyTokens], state.Value, false, value);
+                    }
+                    else
+                    {
+                        //return new StickStatement([.. keyTokens], state.Value, false);
+                    }
+                    return null;
+                case TokenType.ResetKeyword:
+                    Match(TokenType.ResetKeyword, "摇杆语法不正确");
+                    return new StickAct(firstKey.Value, "RESET");
+            }
+        }
+        else
+        {
+            if (EOF(out _))
+            {
+                return new KeyPress(firstKey.Value);
+            }
+            else if (Check(TokenType.ButtonKeyword))
+            {
+                var state = Advance();
+                var isUp = state.Value.ToUpper() == "UP";
+                return new KeyAct(firstKey.Value, isUp);
+            }
+            else
+            {
+                var pars = ParsePrimary();
+                return new KeyPress(firstKey.Value, pars);
+            }
+        }
+        return null;
+    }
 
     // [1,2,3]
     private ExprBase ParseIndexDefExpression()
@@ -509,19 +565,19 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
     {
         var lb = Match(TokenType.LeftBracket, "语法需要'['");
 
-        var start = ParsePrimary();
+        var ommitstart = Check(TokenType.COLON);
+        var start = Check(TokenType.COLON) ? new LiteralExpr(0) : ParsePrimary();
         // [expr]
         if (Check(TokenType.RightBracket))
         {
             var rb = Match(TokenType.RightBracket, "语法需要']'");
-            return new IndexVisitExpression(_formatter.GetValueEx(variableToken), lb, start, rb);
+            return new IndexVisitExpression((VariableExpr)_formatter.GetValueEx(variableToken), lb, start, rb);
         }
-        Match(TokenType.DOT, "语法不正确[a..b]");
-        Match(TokenType.DOT, "语法不正确[a..b]");
-        var end = ParsePrimary();
+        Match(TokenType.COLON, "语法不正确[<start>:<end>]");
 
+        var end = Check(TokenType.RightBracket) ? new LiteralExpr("") : ParsePrimary();
         Match(TokenType.RightBracket, "语法需要']'");
-        return new SliceExpression(_formatter.GetValueEx(variableToken), start, end);
+        return new SliceExpression((VariableExpr)_formatter.GetValueEx(variableToken), start, end, ommitstart);
     }
 
     private ExprBase ParseCallExpression()

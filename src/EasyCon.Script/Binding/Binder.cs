@@ -151,7 +151,23 @@ internal sealed class Binder
             throw new ParseException(ex.Message, syntax.Address);
         }
     }
-    
+
+    private BoundStmt BindBlockStatement(Statement syntax, ImmutableArray<Statement> body)
+    {
+        var statements = ImmutableArray.CreateBuilder<BoundStmt>();
+        _scope = new BoundScope(_scope);
+
+        foreach (var statementSyntax in body)
+        {
+            var statement = BindStatement(statementSyntax);
+            statements.Add(statement);
+        }
+
+        _scope = _scope.Parent!;
+
+        return new BoundBlockStatement(syntax, statements.ToImmutable());
+    }
+
     private BoundBlockStatement BindIf(IfBlock syntax)
     {
         _labelCounter++;
@@ -168,11 +184,13 @@ internal sealed class Binder
             return false;
         }
         var index = 0;
+        _scope = new BoundScope(_scope);
         while (index < syntax.Statements.Length && !isCtrl(syntax.Statements[index]))
         {
             block.Add(BindStatement(syntax.Statements[index]));
             index++;
         }
+        _scope = _scope.Parent!;
         block.Add(Goto(syntax, endLabel));
         block.Add(Label(syntax, nextLabel));
         // 处理 elif 分支
@@ -183,11 +201,14 @@ internal sealed class Binder
             block.Add(GotoFalse(syntax, elifLabel, BindConversion(elifCond.Condition, ValueType.Bool)));
 
             index++;
+
+            _scope = new BoundScope(_scope);
             while (index < syntax.Statements.Length && !isCtrl(syntax.Statements[index]))
             {
                 block.Add(BindStatement(syntax.Statements[index]));
                 index++;
             }
+            _scope = _scope.Parent!;
 
             block.Add(Goto(syntax, endLabel));
             block.Add(Label(syntax, elifLabel));
@@ -197,11 +218,13 @@ internal sealed class Binder
         if (index < syntax.Statements.Length && syntax.Statements[index] is Else)
         {
             index++;
+            _scope = new BoundScope(_scope);
             while (index < syntax.Statements.Length && !isCtrl(syntax.Statements[index]))
             {
                 block.Add(BindStatement(syntax.Statements[index]));
                 index++;
             }
+            _scope = _scope.Parent!;
         }
 
         // 跳过 endif
@@ -372,10 +395,6 @@ internal sealed class Binder
         var expression = syntax.Expression == null ? null : BindExpression(syntax.Expression);
         if(_function != null)
         {
-            // if(_function.Type != ValueType.Void && expression == null)
-            // {
-            //     throw new ParseException("函数必须有返回值", syntax.Address);
-            // }
             if (_function.Type == ValueType.Void)
             {
                 if (expression != null)
@@ -452,6 +471,7 @@ internal sealed class Binder
             "BOOL" => (ValueType?)ValueType.Bool,
             "INT" => (ValueType?)ValueType.Int,
             "STRING" => (ValueType?)ValueType.String,
+            "ARRAY" => (ValueType?)ValueType.Array,
             _ => null,
         };
     }
@@ -512,7 +532,7 @@ internal sealed class Binder
             Callv1Expression => BindCallExpression((Callv1Expression)syntax),
             IndexDefExpression => BindIndexExpression((IndexDefExpression)syntax),
             IndexVisitExpression => BindIndexVisitExpression((IndexVisitExpression)syntax),
-            SliceExpression => throw new NotImplementedException(),
+            SliceExpression => BoundSliceExpression((SliceExpression)syntax),
             _ => throw new Exception($"未知的表达式"),
         };
     }
@@ -546,32 +566,43 @@ internal sealed class Binder
             var boundIndex = BindExpression(index);
             boundIndexs.Add(boundIndex);
         }
-        if (boundIndexs.Select(i=>i.Type).Distinct().Count() != 1) throw new Exception("数组成员类型必须一致");
+        if (boundIndexs.Select(i=>i.Type).Distinct().Count() > 1) throw new Exception("数组成员类型必须一致");
 
         return new BoundIndexDeclxpression(syntax, boundIndexs.ToImmutable());
     }
 
     private BoundIndexVariableExpression BindIndexVisitExpression(IndexVisitExpression syntax)
     {
-        var basevar = BindExpression(syntax.Var);
-        if(basevar.Type != ValueType.Array && basevar.Type != ValueType.String) throw new Exception("索引访问只能用于数组或字符串");
-        var idx = BindExpression(syntax.Index);
-        if (idx.Type != ValueType.Int) throw new Exception("索引下标必须是数字类型");
-        return new BoundIndexVariableExpression(syntax, basevar, idx);
+        var basevar = BindVarExpression(syntax.Var);
+        var variable = basevar.Variable;
+        if(variable.Type != ValueType.Array && variable.Type != ValueType.String) throw new Exception("索引访问只能用于数组或字符串");
+        var idx = BindConversion(syntax.Index, ValueType.Int, "索引下标必须是数字类型");
+        return new BoundIndexVariableExpression(syntax, variable, idx);
     }
 
-    private BoundExpr BindConversion(BoundExpr expr, ValueType type)
+    private BoundSliceExpression BoundSliceExpression(SliceExpression syntax)
+    {
+        var basevar = BindVarExpression(syntax.Var);
+        var variable = basevar.Variable;
+        if(variable.Type != ValueType.Array && variable.Type != ValueType.String) throw new Exception("索引访问只能用于数组或字符串");
+        var start = BindConversion(syntax.Start, ValueType.Int, "索引下标必须是数字类型");
+        var end = BindExpression(syntax.End);
+
+        return new BoundSliceExpression(syntax, variable, start, end);
+    }
+
+    private BoundExpr BindConversion(BoundExpr expr, ValueType type, string msg = "表达式类型不匹配")
     {
         if (type == ValueType.Any) return expr;
         if (type == ValueType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
-        if (expr.Type != type) throw new Exception("表达式类型不匹配");
+        if (expr.Type != type) throw new Exception(msg);
         return expr;
     }
 
-    private BoundExpr BindConversion(ExprBase syntax, ValueType type)
+    private BoundExpr BindConversion(ExprBase syntax, ValueType type, string msg = "表达式类型不匹配")
     {
         var expr = BindExpression(syntax);
-        if (expr.Type != type) throw new Exception("表达式类型不匹配");
+        if (expr.Type != type) throw new Exception(msg);
         return expr;
     }
 

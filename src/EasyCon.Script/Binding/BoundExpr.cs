@@ -78,14 +78,23 @@ internal sealed class BoundVariableExpression : BoundExpr
     }
 }
 
-internal sealed class BoundIndexVariableExpression(ExprBase syntax, BoundExpr variable, BoundExpr idx) : BoundExpr(syntax)
+internal sealed class BoundIndexVariableExpression(ExprBase syntax, VariableSymbol variable, BoundExpr idx) : BoundExpr(syntax)
 {
     public override ValueType Type => ValueType.Any;
 
     public override BoundNodeKind Kind => BoundNodeKind.IndexVariable;
-    public readonly BoundExpr Variable = variable;
+    public readonly VariableSymbol Variable = variable;
     public readonly BoundExpr Index = idx;
+}
 
+internal sealed class BoundSliceExpression(ExprBase syntax, VariableSymbol variable, BoundExpr st, BoundExpr end) : BoundExpr(syntax)
+{
+    public override ValueType Type => ValueType.Any;
+
+    public override BoundNodeKind Kind => BoundNodeKind.SliceVariable;
+    public readonly VariableSymbol Variable = variable;
+    public readonly BoundExpr Start = st;
+    public readonly BoundExpr End = end;
 }
 
 internal sealed class BoundIndexDeclxpression(ExprBase syntax, ImmutableArray<BoundExpr> idx) : BoundExpr(syntax)

@@ -137,6 +137,8 @@ internal sealed class Evaluator
                 return EvaluateIndexDeclExpression((BoundIndexDeclxpression)node);
             case IndexVariable:
                 return EvaluateIndexVariableExpression((BoundIndexVariableExpression)node);
+            case SliceVariable:
+                return EvaluateSliceExpression((BoundSliceExpression)node);
             case ExLabelVariable:
                 var imglabel = (BoundExternalVariableExpression)node;
                 return imglabel.Label.Get();
@@ -162,17 +164,22 @@ internal sealed class Evaluator
         return n.ConstantValue;
     }
 
-    private Value EvaluateVariableExpression(BoundVariableExpression v)
+    private Value GetValue(VariableSymbol v)
     {
-        if (v.Variable is GlobalVariableSymbol)
+        if (v is GlobalVariableSymbol)
         {
-            return _globals.TryGetValue(v.Variable, out Value value) ? value : 0;
+            return _globals.TryGetValue(v, out Value value) ? value : 0;
         }
         else
         {
             var locals = _locals.Peek();
-            return locals.TryGetValue(v.Variable, out Value value) ? value : 0;
-        }
+            return locals.TryGetValue(v, out Value value) ? value : 0;
+        } 
+    }
+
+    private Value EvaluateVariableExpression(BoundVariableExpression v)
+    {
+        return GetValue(v.Variable);
     }
 
     private Value EvaluateIndexDeclExpression(BoundIndexDeclxpression idx)
@@ -182,10 +189,21 @@ internal sealed class Evaluator
 
     private Value EvaluateIndexVariableExpression(BoundIndexVariableExpression idx)
     {
-        var basevar = EvaluateExpr(idx.Variable);
+        var basevar = GetValue(idx.Variable);
         var xiab = EvaluateExpr(idx.Index).AsInt();
         if (xiab >= basevar.Length) throw new Exception($"数组下标越界");
         return basevar[xiab];
+    }
+
+    private Value EvaluateSliceExpression(BoundSliceExpression slice)
+    {
+        var basevar = GetValue(slice.Variable);
+        var start = EvaluateExpr(slice.Start).AsInt();
+        var end = EvaluateExpr(slice.End);
+
+        var endidx = end.Kind == Binding.ValueType.Int ? end.AsInt() : basevar.Length;
+        if (start >= basevar.Length || endidx > basevar.Length || start > endidx) throw new Exception($"数组下标越界");
+        return basevar[start..endidx];
     }
 
     private Value EvaluateConversionExpression(BoundConversionExpression node)
@@ -314,12 +332,14 @@ internal sealed class Evaluator
         {
             case "WAIT":
                 var ms = args[0].AsInt();
-                var curtime = CurrTimestamp;
-                if (ms > 50) Thread.Sleep(ms - 40);
-                while(true)
+                switch(GamePad?.DelayMethod)
                 {
-                    if (CurrTimestamp - curtime >= ms) break;
-                    Thread.Yield();
+                    case DelayType.Normal:Thread.Sleep(ms); break;
+                    case DelayType.LowCPU: CustomDelay.AISleep(ms); break;
+                    case DelayType.HighResolution:
+                    default:
+                        CustomDelay.Delay(ms);
+                        break;
                 }
                 break;
             case "AMIIBO":

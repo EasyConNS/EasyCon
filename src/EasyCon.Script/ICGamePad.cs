@@ -1,22 +1,8 @@
 namespace EasyScript;
 
-public sealed class CustomDelay
-{
-    private static int CurrTimestamp => (int) (DateTime.Now.Ticks / 10_000);
-    public static void Delay(int millisecondsTimeout)
-    {
-        var curtime = CurrTimestamp;
-        if (millisecondsTimeout > 50) Thread.Sleep(millisecondsTimeout - 40);
-        while(true)
-        {
-            if (CurrTimestamp - curtime >= millisecondsTimeout) break;
-            Thread.Yield();
-        }
-    }
-}
-
 public interface ICGamePad
 {
+    abstract DelayType DelayMethod { get; }
     void ClickButtons(GamePadKey key, int duration);
     void PressButtons(GamePadKey key); 
     void ReleaseButtons(GamePadKey key);
@@ -52,4 +38,11 @@ public enum GamePadKey : uint
     TOP_LEFT = 23,
     LS = 32,
     RS = 33,
+}
+
+public enum DelayType : byte
+{
+    Normal,
+    LowCPU,
+    HighResolution,
 }

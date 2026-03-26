@@ -19,6 +19,7 @@ public enum BoundNodeKind
     IndexDecl,
     Variable,
     IndexVariable,
+    SliceVariable,
     ExLabelVariable,
     BinaryExpression,
     UnaryExpression,

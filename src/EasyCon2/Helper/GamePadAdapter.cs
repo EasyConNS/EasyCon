@@ -1,4 +1,5 @@
 using EasyCon.Core;
+using EasyCon.Script;
 using EasyDevice;
 using EasyScript;
 
@@ -8,10 +9,20 @@ internal class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
 {
     private NintendoSwitch NS = easyPad;
 
+    public DelayType DelayMethod => DelayType.HighResolution;
+
     void ICGamePad.ClickButtons(GamePadKey key, int duration)
     {
         NS.Down(key.ToECKey());
-        CustomDelay.Delay(duration);
+        switch (DelayMethod)
+        {
+            case DelayType.Normal: Thread.Sleep(duration); break;
+            case DelayType.LowCPU: CustomDelay.AISleep(duration); break;
+            case DelayType.HighResolution:
+            default:
+                CustomDelay.Delay(duration);
+                break;
+        }
         NS.Up(key.ToECKey());
     }
 
@@ -33,7 +44,15 @@ internal class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
     void ICGamePad.ClickStick(GamePadKey key, byte x, byte y, int duration)
     {
         NS.Down(key.ToECKey(x, y));
-        CustomDelay.Delay(duration);
+        switch (DelayMethod)
+        {
+            case DelayType.Normal: Thread.Sleep(duration); break;
+            case DelayType.LowCPU: CustomDelay.AISleep(duration); break;
+            case DelayType.HighResolution:
+            default:
+                CustomDelay.Delay(duration);
+                break;
+        }
         NS.Up(key.ToECKey(x, y));
     }
 

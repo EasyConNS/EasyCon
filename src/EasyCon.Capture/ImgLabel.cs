@@ -25,6 +25,9 @@ public record ImgLabel
     [JsonIgnore]
     public string name { get; set; } = "5号路蛋屋主人";
 
+    [JsonIgnore]
+    public string path { get; set; } = "";
+
     internal Rect _round => new(RangeX, RangeY, RangeWidth, RangeHeight);
     internal Rect _target => new(TargetX, TargetY, TargetWidth, TargetHeight);
 
@@ -120,6 +123,7 @@ public record ImgLabel
     {
         var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception();
         temp.name = Path.GetFileNameWithoutExtension(path);
+        temp.path = Path.GetDirectoryName(path)??string.Empty;
         return temp;
     }
 }
@@ -134,13 +138,17 @@ public static class ILExt
             Directory.CreateDirectory(path);
         }
 
+        if (self.path != "")
+        {
+            path = self.path;
+        }
         if (self.searchMethod.ILTxtType())
         {
             // 文字标签手动编辑
             self.ImgBase64 = "";
         }
 
-        File.WriteAllText($"{path}{self.name}.IL", JsonSerializer.Serialize(self));
+        File.WriteAllText($"{Path.Combine(path, self.name)}.IL", JsonSerializer.Serialize(self));
     }
 
     private static bool ILTxtType(this SearchMethod method)

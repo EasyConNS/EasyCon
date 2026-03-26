@@ -67,13 +67,24 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         {
             return Kind switch
             {
-                ValueType.String => GetStringElement(AsString(), index),
+                ValueType.String =>  GetStringElement(AsString(), index),
                 ValueType.Array => ((Value[])_value!)[index],
                 _ => throw new InvalidOperationException("Indexing not supported for this type.")
             };
         }
     }
-
+    public Value this[Range range]
+    {
+        get
+        {
+            return Kind switch
+            {
+                ValueType.String =>  AsString()[range],
+                ValueType.Array => ((Value[])_value!)[range],
+                _ => throw new InvalidOperationException("Indexing not supported for this type.")
+            };
+        }
+    }
     // 辅助方法：从字符串中获取指定位置的文本元素（返回字符串形式的 Value）
     private static Value GetStringElement(string s, int index)
     {
