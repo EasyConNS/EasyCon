@@ -65,7 +65,7 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
 
         // Parse all tokens using SyntaxTree.ParseTokens
         var allTokens = SyntaxTree.ParseTokens(text);
-        
+
         // Group tokens by NEWLINE
         var tokenGroups = GroupTokensByNewline(allTokens);
         

@@ -20,6 +20,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     public DiagnosticBag Diagnostics => _diagnostics;
 
     #region 兼容适配代码
+    private string parsingMode = "normal";
     [GeneratedRegex(@"(\s*#.*)$")]
     private static partial Regex lineRegex();
 
@@ -114,7 +115,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 ReadNumber();
             }
-            else if (current == '"')
+            else if (current == '"' || current == '\'')
             {
                 ReadString();
             }
@@ -132,7 +133,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             }
         }
 
-        AddToken(TokenType.EOF, "\0", 0);
+        AddToken(TokenType.EOF, "", _position);
         return _tokens.ToImmutableArray();
     }
 
@@ -191,13 +192,15 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 if(Current == '\n')
                 {
+                    if(parsingMode == "printMode")parsingMode = "normal";
                     AddToken(TokenType.NEWLINE, " ", _position);
                     _line++;
                     _column = 0;
                 }
                 if (Current == '\r' && Lookahead == '\n')
                 {
-                    AddToken(TokenType.NEWLINE, " ", _position);
+                    if(parsingMode == "printMode")parsingMode = "normal";
+                    AddToken(TokenType.NEWLINE, "  ", _position);
                     _position++;
                     _line++;
                     _column = 0;
@@ -263,9 +266,10 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         var start = _position;
         var sb = new StringBuilder();
 
-        sb.Append(Advance()); // 开始的"
+        var quote = Advance();
+        sb.Append(quote); // 开始的"
 
-        while (_position < _input.Length && Current != '"')
+        while (_position < _input.Length && Current != quote)
         {
             if (Current == '\n' || Current == '\r')
             {
@@ -283,6 +287,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     'n' => '\n',
                     't' => '\t',
                     'r' => '\r',
+                    '\'' => '\'',
                     '"' => '"',
                     '\\' => '\\',
                     // 可根据需要添加更多转义
@@ -303,14 +308,14 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             sb.Append(Advance());
         }
 
-        if (Current != '"')
+        if (Current != quote)
         {
             var span = new SourceSpan(start, sb.ToString().Length);
             var location = new TextLocation(_text, span);
             _diagnostics.ReportUnterminatedString(location);
         }
         sb.Append(Advance()); // 结束的"
-        AddToken(TokenType.STRING, sb.ToString(), start + 1);
+        AddToken(TokenType.STRING, sb.ToString(), start);
     }
 
     private void ReadVariable()
@@ -345,8 +350,24 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         }
     }
 
+    private void ReadPrintString()
+    {
+        var start = _position;
+        while (_position < _input.Length && Current != '&')
+        {
+            Advance();
+        }
+        var printStr = _input[start.._position].Trim();
+        AddToken(TokenType.STRING, printStr, start);
+    }
+
     private void ReadIdentifier()
     {
+        if(parsingMode == "printMode")
+        {
+            ReadPrintString();
+            return;
+        }
         var start = _position;
         while (_position < _input.Length && IsIdentifierChar(Current))
         {
@@ -383,6 +404,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         }
         else
         {
+            if(word.Equals("print", StringComparison.OrdinalIgnoreCase))parsingMode = "printMode";
             AddToken(TokenType.IDENT, word, start);
         }
     }
@@ -591,6 +613,11 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 AddToken(TokenType.DOT, ".", start);
                 break;
             default:
+            if(parsingMode == "printMode")
+            {
+                ReadPrintString();
+                break;
+            }
                 var span = new SourceSpan(_position, 1);
                 var location = new TextLocation(_text, span);
                 _diagnostics.ReportBadCharacter(location, current);

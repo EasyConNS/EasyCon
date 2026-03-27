@@ -37,7 +37,7 @@ internal partial class Parser
             {
                 var curline = firstToken.Text.Lines[firstToken.Line-1].Text;
                 curline = curline.Contains('#') ? curline.Substring(0, curline.IndexOf('#')) : curline;
-                return ParsePrintStmt(firstToken, curline.Trim());
+                return ParsePrintStmt(toks, curline.Trim());
             }
         }
         // Handle key statements
@@ -298,12 +298,13 @@ internal partial class Parser
     }
 
     // print兼容语法特殊解析
-    private CallStmt ParsePrintStmt(Token firstToken, string curline)
+    private CallStmt ParsePrintStmt(ImmutableArray<Token> toks, string curline)
     {
+        var firstToken = toks[0];
         var bitandtoks = SyntaxTree.ParseTokens("&");
         var bitand = bitandtoks[0];
 
-        var args = curline[6..].Split('&').Select(t =>
+        var args = curline[5..].Trim().Split('&').Select(t =>
         {
             t = t.Trim();
             try

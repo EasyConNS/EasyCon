@@ -548,9 +548,10 @@ internal sealed class Binder
         var val = syntax.Value;
         if (syntax.Value is string input)
         {
-            if (input.Length >= 2 && input[0] == '"' && input[^1] == '"')
+            if (input.Length >= 2 && input[0] == input[^1])
             {
-                val = input[1..^1];
+                if(input[0] == '"' || input[0] == '\'')
+                    val = input[1..^1];
             }
         }
         Value obj = Value.From(val);
