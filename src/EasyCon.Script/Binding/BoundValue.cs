@@ -104,6 +104,9 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
 
     public Value Append(Value other)
     {
+        // 需要相同类型才能加入数组
+        var itemType = ((Value[])_value!).FirstOrDefault(Void).Kind;
+        if (itemType != ValueType.Void && itemType != other.Kind) throw new InvalidOperationException("数组类型不一致");
         return Kind switch
         {
             ValueType.Array => new Value(((Value[])_value!).Append(other).ToArray(), ValueType.Array),

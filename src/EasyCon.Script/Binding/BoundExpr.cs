@@ -80,7 +80,7 @@ internal sealed class BoundVariableExpression : BoundExpr
 
 internal sealed class BoundIndexVariableExpression(ExprBase syntax, VariableSymbol variable, BoundExpr idx) : BoundExpr(syntax)
 {
-    public override ValueType Type => ValueType.Any;
+    public override ValueType Type => Variable.Type == ValueType.Array ? ValueType.Int : Variable.Type;
 
     public override BoundNodeKind Kind => BoundNodeKind.IndexVariable;
     public readonly VariableSymbol Variable = variable;
@@ -89,7 +89,7 @@ internal sealed class BoundIndexVariableExpression(ExprBase syntax, VariableSymb
 
 internal sealed class BoundSliceExpression(ExprBase syntax, VariableSymbol variable, BoundExpr st, BoundExpr end) : BoundExpr(syntax)
 {
-    public override ValueType Type => ValueType.Any;
+    public override ValueType Type => Variable.Type;
 
     public override BoundNodeKind Kind => BoundNodeKind.SliceVariable;
     public readonly VariableSymbol Variable = variable;

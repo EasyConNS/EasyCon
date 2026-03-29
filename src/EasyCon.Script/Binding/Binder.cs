@@ -471,7 +471,6 @@ internal sealed class Binder
             "BOOL" => (ValueType?)ValueType.Bool,
             "INT" => (ValueType?)ValueType.Int,
             "STRING" => (ValueType?)ValueType.String,
-            "ARRAY" => (ValueType?)ValueType.Array,
             _ => null,
         };
     }
