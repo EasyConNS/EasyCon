@@ -20,7 +20,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     public DiagnosticBag Diagnostics => _diagnostics;
 
     #region 兼容适配代码
-    private string parsingMode = "normal";
     [GeneratedRegex(@"(\s*#.*)$")]
     private static partial Regex lineRegex();
 
@@ -192,14 +191,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 if(Current == '\n')
                 {
-                    if(parsingMode == "printMode")parsingMode = "normal";
                     AddToken(TokenType.NEWLINE, " ", _position);
                     _line++;
                     _column = 0;
                 }
                 if (Current == '\r' && Lookahead == '\n')
                 {
-                    if(parsingMode == "printMode")parsingMode = "normal";
                     AddToken(TokenType.NEWLINE, "  ", _position);
                     _position++;
                     _line++;
@@ -363,11 +360,11 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
     private void ReadIdentifier()
     {
-        if(parsingMode == "printMode")
-        {
-            ReadPrintString();
-            return;
-        }
+        //if(parsingMode == "printMode")
+        //{
+        //    ReadPrintString();
+        //    return;
+        //}
         var start = _position;
         while (_position < _input.Length && IsIdentifierChar(Current))
         {
@@ -404,7 +401,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         }
         else
         {
-            if(word.Equals("print", StringComparison.OrdinalIgnoreCase))parsingMode = "printMode";
             AddToken(TokenType.IDENT, word, start);
         }
     }
@@ -613,11 +609,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 AddToken(TokenType.DOT, ".", start);
                 break;
             default:
-            if(parsingMode == "printMode")
-            {
-                ReadPrintString();
-                break;
-            }
                 var span = new SourceSpan(_position, 1);
                 var location = new TextLocation(_text, span);
                 _diagnostics.ReportBadCharacter(location, current);
