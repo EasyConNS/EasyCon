@@ -32,7 +32,7 @@ internal sealed class Lowerer
                 builder.Add(current);
             }
         }
-        if (fn.Type == ValueType.Void)
+        if (fn.ReturnType == ScriptType.Void)
         {
             if (builder.Count == 0 || CanFallThrough(builder.Last()))
             {
@@ -45,7 +45,7 @@ internal sealed class Lowerer
     private static bool CanFallThrough(BoundStmt boundStatement)
     {
         return boundStatement.Kind != Return &&
-                boundStatement.Kind != Goto;
+                boundStatement.Kind != GotoStatement;
     }
 
     private static BoundBlockStatement RemoveDeadCode(BoundBlockStatement statement)

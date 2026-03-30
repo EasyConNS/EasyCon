@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 
 namespace EasyCon.Script.Binding;
@@ -9,176 +10,145 @@ namespace EasyCon.Script.Binding;
 public readonly struct Value : IEquatable<Value>, IComparable<Value>
 {
     /// <summary>当前值的类型</summary>
-    public ValueType Kind { get; }
+    public ScriptType Type { get; }
 
     // 实际数据存储：int/bool 直接装箱，string 为字符串，array 为 Value[]
     private readonly object? _value;
+    // 预定义的泛型原型
+    private static readonly GenericDefinition ArrayDef = new("Array", 1);
 
-    private Value(object? value, ValueType kind)
+    private Value(object? value, ScriptType type)
     {
         _value = value;
-        Kind = kind;
+        Type = type;
     }
 
-    // 工厂方法
-    public static Value From(object? o) 
+    #region 工厂方法与转换
+    public static Value From(object? o)
     {
         if (o == null) return Void;
+        if (o is Value v) return v;
+
         return o switch
         {
-            int i => new Value(i, ValueType.Int),
-            bool b => new Value(b, ValueType.Bool),
-            string s => new Value(s, ValueType.String),
-            Value v => v,
-            Value[] array => new Value(array, ValueType.Array),
-            _ => throw new ArgumentException($"未知类型的数据 '{o}' 不支持类型 {o?.GetType()}")
+            int i => new Value(i, ScriptType.Int),
+            bool b => new Value(b, ScriptType.Bool),
+            string s => new Value(s, ScriptType.String),
+            IEnumerable<Value> list => CreateArray(
+                list.FirstOrDefault().Type ?? ScriptType.Int,
+                list
+            ),
+            // 处理数组：尝试获取第一个元素的类型作为数组的泛型参数
+            //Value[] array => new Value(
+            //    array,
+            //    array.Length > 0
+            //        ? ScriptType.ArrayDefinition.Bind(array[0].Type)
+            //        : ScriptType.ArrayDefinition.Bind(ScriptType.Int) // 空数组默认 int[]
+            //),
+            _ => throw new ArgumentException($"无法将类型 {o.GetType()} 转换为脚本 Value")
         };
     }
-    public static Value Void { get; } = new Value(null, ValueType.Void);
-    public static implicit operator Value(int i) => new(i, ValueType.Int);
-    public static implicit operator Value(bool b) => new(b, ValueType.Bool);
-    public static implicit operator Value(string s) => new(s ?? throw new ArgumentNullException(nameof(s)), ValueType.String);
-    public static implicit operator Value(Value[] array) =>
-        new(array?.ToArray() ?? throw new ArgumentNullException(nameof(array)), ValueType.Array); // 存储副本以保证不可变性
+    public static implicit operator Value(int v) => FromInt(v);
+    public static implicit operator Value(bool v) => FromBool(v);
+    public static implicit operator Value(string v) => FromString(v);
+    public static Value FromInt(int v) => new(v, ScriptType.Int);
+    public static Value FromBool(bool v) => new(v, ScriptType.Bool);
+    public static Value FromString(string v) => new(v, ScriptType.String);
 
-    // 类型安全的取值方法（若类型不匹配则抛出异常）
-    public int AsInt() => Kind == ValueType.Int ? (int)_value! : throw new InvalidOperationException("Value is not an int.");
-    public bool AsBool() => Kind == ValueType.Bool ? (bool)_value! : throw new InvalidOperationException("Value is not a bool.");
-    public string AsString() => Kind == ValueType.String ? (string)_value! : throw new InvalidOperationException("Value is not a string.");
+    public static Value Void => new(null, ScriptType.Void);
 
-    /// <summary>获取字符串的文本元素长度或数组的长度。</summary>
-    public int Length
+    /// <summary>
+    /// 创建强类型数组
+    /// </summary>
+    public static Value CreateArray(ScriptType elementType, IEnumerable<Value> elements)
     {
-        get
+        var list = elements.ToList();
+        foreach (var e in list)
         {
-            return Kind switch
-            {
-                ValueType.String => new StringInfo(AsString()).LengthInTextElements,
-                ValueType.Array => ((Value[])_value!).Length,
-                _ => 0,
-            };
+            if (!elementType.IsAssignableFrom(e.Type))
+                throw new InvalidOperationException($"元素类型 {e.Type} 与数组声明类型 {elementType} 不匹配");
         }
+        return new Value(list.ToImmutableList(), ArrayDef.Bind(elementType));
     }
 
-    /// <summary>下标索引器：字符串按文本元素索引返回单字符字符串，数组按索引返回元素。</summary>
+    public int AsInt() => Type.Equals(ScriptType.Int) ? (int)_value! : throw new InvalidCastException();
+    public bool AsBool() => Type.Equals(ScriptType.Bool) ? (bool)_value! : throw new InvalidCastException();
+    public string AsString() => Type.Equals(ScriptType.String) ? (string)_value! : throw new InvalidCastException();
+    public ImmutableList<Value> AsArray() => Type is GenericType { Definition.Name: "Array" } ? (ImmutableList<Value>)_value! : throw new InvalidCastException();
+
+    #endregion
+
+    #region 运算与索引
+
+    public int Length => Type switch
+    {
+        ScalarType s when s.Name == "string" => new StringInfo(AsString()).LengthInTextElements,
+        GenericType { Definition.Name: "Array" } => AsArray().Count,
+        _ => 0
+    };
+
     public Value this[int index]
     {
         get
         {
-            return Kind switch
+            if (Type.Equals(ScriptType.String))
             {
-                ValueType.String =>  GetStringElement(AsString(), index),
-                ValueType.Array => ((Value[])_value!)[index],
-                _ => throw new InvalidOperationException("Indexing not supported for this type.")
-            };
+                var si = new StringInfo(AsString());
+                return FromString(si.SubstringByTextElements(index, 1));
+            }
+            if (Type is GenericType { Definition.Name: "Array" })
+            {
+                return AsArray()[index];
+            }
+            throw new InvalidOperationException($"{Type} 不支持索引");
         }
     }
+
     public Value this[Range range]
     {
         get
         {
-            return Kind switch
+            if (Type.Equals(ScriptType.String))
             {
-                ValueType.String =>  AsString()[range],
-                ValueType.Array => ((Value[])_value!)[range],
-                _ => throw new InvalidOperationException("Indexing not supported for this type.")
-            };
+                // 注意：这里简单使用 C# string 切片，若需处理 Unicode 代理对，建议配合 StringInfo
+                return FromString(AsString()[range]);
+            }
+            if (IsArray)
+            {
+                var list = AsArray();
+                var (offset, length) = range.GetOffsetAndLength(list.Count);
+                return new Value(list.GetRange(offset, length), Type);
+            }
+            throw new InvalidOperationException($"{Type} does not support range slicing.");
         }
     }
-    // 辅助方法：从字符串中获取指定位置的文本元素（返回字符串形式的 Value）
-    private static Value GetStringElement(string s, int index)
-    {
-        var si = new StringInfo(s);
-        if (index < 0 || index >= si.LengthInTextElements)
-            throw new IndexOutOfRangeException();
-        return new Value(si.SubstringByTextElements(index, 1), ValueType.String);
-    }
+    #endregion
 
-    public Value Concat(Value other)
-    {
-        if (Kind != ValueType.Array || other.Kind != ValueType.Array)
-            throw new InvalidOperationException("Both values must be arrays to concatenate.");
+    #region 比较逻辑
 
-        return new Value(((Value[])_value!).Concat((Value[])other._value!), ValueType.Array);
-    }
-
-    public Value Append(Value other)
-    {
-        // 需要相同类型才能加入数组
-        var itemType = ((Value[])_value!).FirstOrDefault(Void).Kind;
-        if (itemType != ValueType.Void && itemType != other.Kind) throw new InvalidOperationException("数组类型不一致");
-        return Kind switch
-        {
-            ValueType.Array => new Value(((Value[])_value!).Append(other).ToArray(), ValueType.Array),
-            _ => throw new InvalidOperationException("Append not supported for this type.")
-        };
-    }
-
-    /// <summary>转换为布尔值，用于逻辑判断（int: 非0为真；bool: 自身；string: 非空为真；array: 非空为真）</summary>
-    public bool ToBoolean()
-    {
-        return Kind switch
-        {
-            ValueType.Int => AsInt() != 0,
-            ValueType.Bool => AsBool(),
-            ValueType.String => !string.IsNullOrEmpty(AsString()),
-            ValueType.Array => ((Value[])_value!).Length > 0,
-            ValueType.Void => false,
-            _ => false
-        };
-    }
-
-    // IEquatable<Value>
     public bool Equals(Value other)
     {
-        if (Kind != other.Kind) return false;
-        return Kind switch
+        if (!Type.Equals(other.Type)) return false;
+        return Type switch
         {
-            ValueType.Int => AsInt() == other.AsInt(),
-            ValueType.Bool => AsBool() == other.AsBool(),
-            ValueType.String => AsString() == other.AsString(),
-            ValueType.Array => ((Value[])_value!).SequenceEqual((Value[])other._value!), // 直接比较内部数组，无需复制
-            ValueType.Void => true, // 两个 void 相等
+            ScalarType => Equals(_value, other._value),
+            GenericType => AsArray().SequenceEqual(other.AsArray()),
+            VoidType => true,
             _ => false
         };
     }
 
-    public override bool Equals(object? obj) => obj is Value other && Equals(other);
-
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            int hash = 17;
-            hash = hash * 31 + Kind.GetHashCode();
-            switch (Kind)
-            {
-                case ValueType.Int: hash = hash * 31 + AsInt().GetHashCode(); break;
-                case ValueType.Bool: hash = hash * 31 + AsBool().GetHashCode(); break;
-                case ValueType.String: hash = hash * 31 + AsString().GetHashCode(); break;
-                case ValueType.Array:
-                    foreach (var v in (Value[])_value!)
-                        hash = hash * 31 + v.GetHashCode();
-                    break;
-            }
-            return hash;
-        }
-    }
-
-    // 有序比较（不同类型不能比较，数组不支持有序比较）
     public int CompareTo(Value other)
     {
-        if (Kind != other.Kind)
-            throw new InvalidOperationException($"Cannot compare values of different kinds {Kind} <=> {other.Kind}");
-        return Kind switch
-        {
-            ValueType.Int => AsInt().CompareTo(other.AsInt()),
-            ValueType.String => string.Compare(AsString(), other.AsString(), StringComparison.Ordinal),
-            _ => throw new InvalidOperationException($"Cannot compare {Kind} <=> {other.Kind}"),
-        };
+        if (!Type.Equals(other.Type)) throw new InvalidOperationException("不同类型无法比较");
+        if (Type.Equals(ScriptType.Int)) return AsInt().CompareTo(other.AsInt());
+        if (Type.Equals(ScriptType.String)) return string.Compare(AsString(), other.AsString(), StringComparison.Ordinal);
+        throw new InvalidOperationException($"{Type} Comparison not supported.");
     }
 
-    // 重载比较运算符
+    public override bool Equals(object? obj) => obj is Value v && Equals(v);
+    public override int GetHashCode() => HashCode.Combine(Type, _value);
+
     public static bool operator ==(Value left, Value right) => left.Equals(right);
     public static bool operator !=(Value left, Value right) => !left.Equals(right);
     public static bool operator <(Value left, Value right) => left.CompareTo(right) < 0;
@@ -186,165 +156,202 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     public static bool operator <=(Value left, Value right) => left.CompareTo(right) <= 0;
     public static bool operator >=(Value left, Value right) => left.CompareTo(right) >= 0;
 
+    #endregion
+
+    public override string ToString() => Type switch
+    {
+        GenericType { Definition.Name: "Array" } => $"[{string.Join(", ", AsArray())}]",
+        _ => _value?.ToString() ?? "void"
+    };
+    // 辅助属性：判断是否为 Array<T>
+    private bool IsArray => Type is GenericType { Definition.Name: "Array" };
+    private ScriptType? ElementType => IsArray ? ((GenericType)Type).TypeArguments[0] : null;
+    /// <summary>
+    /// 连接两个相同类型的数组
+    /// </summary>
+    public Value Concat(Value other)
+    {
+        if (!IsArray || !other.IsArray)
+            throw new InvalidOperationException("只有数组可以执行 Concat 操作。");
+
+        if (!Type.Equals(other.Type))
+            throw new InvalidOperationException($"无法连接不同类型的数组：{Type} 和 {other.Type}");
+
+        var newList = AsArray().AddRange(other.AsArray());
+        return new Value(newList, Type);
+    }
+
+    /// <summary>
+    /// 向数组末尾追加一个符合类型的元素
+    /// </summary>
+    public Value Append(Value item)
+    {
+        if (!IsArray)
+            throw new InvalidOperationException("只有数组可以执行 Append 操作。");
+
+        var targetType = ElementType!;
+        if (!targetType.IsAssignableFrom(item.Type))
+            throw new InvalidOperationException($"类型约束冲突：无法向 {Type} 追加 {item.Type} 类型的元素。");
+
+        var newList = AsArray().Add(item);
+        return new Value(newList, Type);
+    }
+
+    /// <summary>转换为布尔值，用于逻辑判断（int: 非0为真；bool: 自身；string: 非空为真；array: 非空为真）</summary>
+    public bool ToBoolean()
+    {
+        if (Type.Equals(ScriptType.Int)) return AsInt() != 0;
+        if (Type.Equals(ScriptType.Bool)) return AsBool();
+        if (Type.Equals(ScriptType.String)) return !string.IsNullOrEmpty(AsString());
+        if (IsArray) return AsArray().Count > 0;
+        return false;
+    }
+
     // 重载算数运算符
     public static Value operator +(Value left, Value right)
     {
-        // void 参与运算直接抛出异常
-        if (left.Kind == ValueType.Void || right.Kind == ValueType.Void)
+        // 1. 排除 void 类型参与运算
+        if (left.Type is VoidType || right.Type is VoidType)
             throw new InvalidOperationException("Cannot perform '+' operation on void.");
 
-        // 相同类型处理
-        if (left.Kind == right.Kind)
+        // 2. 相同类型处理
+        if (left.Type.Equals(right.Type))
         {
-            return left.Kind switch
+            // 处理基础标量类型
+            if (left.Type.Equals(ScriptType.Int))
             {
-                ValueType.Int => (Value)(left.AsInt() + right.AsInt()),
-                ValueType.String => (Value)(left.AsString() + right.AsString()),
-                ValueType.Array => left.Concat(right),
-                _ => throw new InvalidOperationException($"Operator '+' is not supported for {left.Kind}."),
-            };
+                return FromInt(left.AsInt() + right.AsInt());
+            }
 
+            if (left.Type.Equals(ScriptType.String))
+            {
+                return FromString(left.AsString() + right.AsString());
+            }
+
+            // 处理泛型数组拼接 (Array<T> + Array<T>)
+            if (left.IsArray)
+            {
+                return left.Concat(right);
+            }
         }
 
-        // 不同类型与 string 混合
-        if (left.Kind == ValueType.String || right.Kind == ValueType.String)
+        // 3. 混合类型处理：字符串拼接规则
+        // 只要有一侧是 string，则将另一侧转为字符串进行拼接
+        if (left.Type.Equals(ScriptType.String) || right.Type.Equals(ScriptType.String))
         {
-            return left.AsString() + right.AsString();
+            return FromString(left.ToString() + right.ToString());
         }
 
-        // 其他组合均不支持
-        throw new InvalidOperationException($"Cannot apply operator '+' to values of types {left.Kind} and {right.Kind}.");
-    }
-
-    public override string ToString()
-    {
-        return Kind switch
-        {
-            ValueType.Int => AsInt().ToString(),
-            ValueType.Bool => AsBool().ToString(),
-            ValueType.String => AsString(),
-            ValueType.Array => "[" + string.Join(", ", ((Value[])_value!).Select(v => v.ToString())) + "]",
-            _ => base.ToString() ?? ""
-        };
+        // 4. 其他不支持的组合
+        throw new InvalidOperationException($"Operator '+' is not supported between {left.Type} and {right.Type}.");
     }
 }
 
 #region 类型
-public abstract class ScriptType
+public abstract class ScriptType : IEquatable<ScriptType>
 {
     public abstract string Name { get; }
-    public abstract bool IsAssignableFrom(ScriptType other); // 用于类型兼容性检查
 
+    public override string ToString() => Name;
+    public abstract bool IsAssignableFrom(ScriptType other);
+
+    public abstract override int GetHashCode();
+
+    public abstract bool Equals(ScriptType? other);
+    public override bool Equals(object? obj) => obj is ScriptType other && Equals(other);
+
+    // 重载比较运算符
+    public static bool operator ==(ScriptType left, ScriptType right) => left.IsAssignableFrom(right);
+    public static bool operator !=(ScriptType left, ScriptType right) => !left.IsAssignableFrom(right);
+
+    // 基础标量类型
+    public static readonly ScalarType Int = new("int");
+    public static readonly ScalarType Bool = new("bool");
+    public static readonly ScalarType String = new("string");
     public static readonly VoidType Void = new();
-    public static readonly IntType Int = new();
-    public static readonly BoolType Bool = new();
-    public static readonly StringType String = new();
+
+    // 预定义泛型定义
+    public static readonly GenericDefinition ArrayDefinition = new("Array", 1);
+}
+
+/// <summary>
+/// 标量类型 (int, bool, string)
+/// </summary>
+public sealed class ScalarType(string name) : ScriptType
+{
+    public override string Name => name;
+    public override bool IsAssignableFrom(ScriptType other) => other is ScalarType s && s.Name == this.Name;
+    public override bool Equals(ScriptType? other) => other is ScalarType s && s.Name == this.Name;
+    public override int GetHashCode() => Name.GetHashCode();
 }
 
 public sealed class VoidType : ScriptType
 {
     public override string Name => "void";
-    public override bool IsAssignableFrom(ScriptType other) => false;
+    public override bool IsAssignableFrom(ScriptType other) => other is VoidType;
+    public override bool Equals(ScriptType? other) => other is VoidType;
+    public override int GetHashCode() => 0;
+}
+/// <summary>
+/// 泛型占位符 (如 T)
+/// </summary>
+public sealed class TypeParameter(string name) : ScriptType
+{
+    public override string Name => name;
+    public override bool IsAssignableFrom(ScriptType other) => Equals(other);
+    public override bool Equals(ScriptType? other) => other is TypeParameter tp && tp.Name == Name;
+    public override int GetHashCode() => Name.GetHashCode();
+}
+/// <summary>
+/// 泛型定义 (例如 List<T>)
+/// </summary>
+public sealed class GenericDefinition(string name, int typeParameterCount)
+{
+    public string Name { get; } = name;
+    public int TypeParameterCount { get; } = typeParameterCount;
+
+    /// <summary>
+    /// 使用具体参数实例化泛型
+    /// </summary>
+    public GenericType Bind(params ScriptType[] typeArguments)
+    {
+        if (typeArguments.Length != TypeParameterCount)
+            throw new ArgumentException($"泛型 {Name} 需要 {TypeParameterCount} 个参数，但提供了 {typeArguments.Length} 个。");
+        return new GenericType(this, typeArguments);
+    }
 }
 
-public class IntType : ScriptType
+/// <summary>
+/// 具体化的泛型类型 (例如 List<int>)
+/// </summary>
+public sealed class GenericType : ScriptType
 {
-    public override string Name => "int";
-    public override bool IsAssignableFrom(ScriptType other) => other is IntType;
-}
+    public GenericDefinition Definition { get; }
+    public ImmutableList<ScriptType> TypeArguments { get; }
 
-public class BoolType : ScriptType
-{
-    public override string Name => "bool";
-    public override bool IsAssignableFrom(ScriptType other) => other is BoolType;
-}
+    public GenericType(GenericDefinition definition, IEnumerable<ScriptType> typeArguments)
+    {
+        Definition = definition;
+        TypeArguments = typeArguments.ToImmutableList();
+    }
 
-public class StringType : ScriptType
-{
-    public override string Name => "string";
-    public override bool IsAssignableFrom(ScriptType other) => other is StringType;
-}
+    public override string Name => $"{Definition.Name}<{string.Join(", ", TypeArguments.Select(t => t.Name))}>";
 
-public class ArrayType : ScriptType
-{
-    public ScriptType ElementType { get; }
-    public ArrayType(ScriptType elementType) => ElementType = elementType;
-
-    public override string Name => $"{ElementType.Name}[]";
     public override bool IsAssignableFrom(ScriptType other)
     {
-        // 数组类型兼容：必须是同类型数组，且元素类型兼容（简单场景要求完全相同）
-        return other is ArrayType arr && ElementType.IsAssignableFrom(arr.ElementType);
+        if (other is not GenericType g) return false;
+        return Definition.Name == g.Definition.Name && TypeArguments.SequenceEqual(g.TypeArguments);
     }
-}
-#endregion
 
-#region 数值
-public abstract class ScriptValue
-{
-    public abstract ScriptType Type { get; }
-    public static ScriptValue Void { get; } = new VoidValue();
-}
+    public override bool Equals(ScriptType? other) =>
+        other is GenericType g && Definition.Name == g.Definition.Name && TypeArguments.SequenceEqual(g.TypeArguments);
 
-public sealed class VoidValue : ScriptValue
-{
-    public override ScriptType Type { get; } = new VoidType();
-}
-
-public class IntValue : ScriptValue
-{
-    public int Value { get; }
-    public override ScriptType Type { get; } = new IntType();
-
-    public IntValue(int value) => Value = value;
-}
-
-public class BoolValue : ScriptValue
-{
-    public bool Value { get; }
-    public override ScriptType Type { get; } = new BoolType();
-
-    public BoolValue(bool value) => Value = value;
-}
-
-public class StringValue : ScriptValue
-{
-    public string Value { get; }
-    public override ScriptType Type { get; } = new StringType();
-
-    public StringValue(string value) => Value = value;
-}
-
-public class ArrayValue : ScriptValue
-{
-    private readonly List<ScriptValue> _elements;
-    public override ScriptType Type { get; }
-
-    public ArrayValue(ScriptType elementType, IEnumerable<ScriptValue> elements)
+    public override int GetHashCode()
     {
-        Type = new ArrayType(elementType);
-        _elements = elements.ToList();
-
-        // 可选：检查每个元素类型是否与 elementType 匹配
-        foreach (var elem in _elements)
-        {
-            if (!elem.Type.IsAssignableFrom(elementType))
-                throw new ArgumentException($"数组元素类型必须为 {elementType.Name}");
-        }
+        var hash = new HashCode();
+        hash.Add(Definition.Name);
+        foreach (var arg in TypeArguments) hash.Add(arg);
+        return hash.ToHashCode();
     }
-
-    public ScriptValue this[int index]
-    {
-        get => _elements[index];
-        set
-        {
-            // 运行时检查赋值类型
-            if (!value.Type.IsAssignableFrom(((ArrayType)Type).ElementType))
-                throw new InvalidOperationException($"数组元素类型不匹配，需要 {((ArrayType)Type).ElementType.Name}");
-            _elements[index] = value;
-        }
-    }
-
-    public int Length => _elements.Count;
 }
 #endregion

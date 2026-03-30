@@ -10,8 +10,8 @@ public enum BoundNodeKind
     KeyAction,
     StickAction,
 
-    Goto,
-    ConditionGoto,
+    GotoStatement,
+    ConditionGotoStatement,
     Label,
     Return,
 

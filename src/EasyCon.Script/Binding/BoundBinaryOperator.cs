@@ -6,23 +6,23 @@ internal sealed class BoundBinaryOperator
 {
     public TokenType TypeKind { get; }
     public BoundBinaryOperatorKind Kind { get; }
-    public ValueType LeftType { get; }
-    public ValueType RightType { get; }
-    public ValueType Type { get; }
+    public ScriptType LeftType { get; }
+    public ScriptType RightType { get; }
+    public ScriptType Type { get; }
 
     public readonly Func<Value, Value, Value> Operate;
 
-    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType type, Func<Value, Value, Value> operate)
+    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ScriptType type, Func<Value, Value, Value> operate)
     : this(syntaxKind, kind, type, type, type, operate)
     {
     }
 
-    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType operandType, ValueType resultType, Func<Value, Value, Value> operate)
+    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ScriptType operandType, ScriptType resultType, Func<Value, Value, Value> operate)
         : this(syntaxKind, kind, operandType, operandType, resultType, operate)
     {
     }
 
-    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ValueType leftType, ValueType rightType, ValueType resultType, Func<Value, Value, Value> operate)
+    private BoundBinaryOperator(TokenType syntaxKind, BoundBinaryOperatorKind kind, ScriptType leftType, ScriptType rightType, ScriptType resultType, Func<Value, Value, Value> operate)
     {
         TypeKind = syntaxKind;
         Kind = kind;
@@ -33,42 +33,49 @@ internal sealed class BoundBinaryOperator
     }
 
     private static BoundBinaryOperator[] _operators = [
-        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.Int, (a, b) => a.AsInt()+ b.AsInt()),
-        new(TokenType.SUB,BoundBinaryOperatorKind.Subtraction, ValueType.Int, (a, b) => a.AsInt() - b.AsInt()),
-        new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ValueType.Int, (a, b) => a.AsInt() * b.AsInt()),
-        new(TokenType.DIV,BoundBinaryOperatorKind.Division, ValueType.Int, (a, b) => a.AsInt() / b.AsInt()),
-        new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ValueType.Int, (a, b) => a.AsInt() % b.AsInt()),
-        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ValueType.Int, (a, b) => (int)Math.Round((double)a.AsInt() / b.AsInt())),
+        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ScriptType.Int, (a, b) => a.AsInt()+ b.AsInt()),
+        new(TokenType.SUB,BoundBinaryOperatorKind.Subtraction, ScriptType.Int, (a, b) => a.AsInt() - b.AsInt()),
+        new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ScriptType.Int, (a, b) => a.AsInt() * b.AsInt()),
+        new(TokenType.DIV,BoundBinaryOperatorKind.Division, ScriptType.Int, (a, b) => a.AsInt() / b.AsInt()),
+        new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ScriptType.Int, (a, b) => a.AsInt() % b.AsInt()),
+        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ScriptType.Int, (a, b) => (int)Math.Round((double)a.AsInt() / b.AsInt())),
 
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ValueType.Int, (a, b) => a.AsInt() & b.AsInt()),
-        new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ValueType.Int, (a, b) => a.AsInt() | b.AsInt()),
-        new(TokenType.XOR,BoundBinaryOperatorKind.BitwiseXor, ValueType.Int, (a, b) => a.AsInt() ^ b.AsInt()),
-        new(TokenType.SHL,BoundBinaryOperatorKind.BitLeftShift, ValueType.Int, (a, b) => a.AsInt() << b.AsInt()),
-        new(TokenType.SHR,BoundBinaryOperatorKind.BitRightShift, ValueType.Int, (a, b) => a.AsInt() >> b.AsInt()),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ScriptType.Int, (a, b) => a.AsInt() & b.AsInt()),
+        new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ScriptType.Int, (a, b) => a.AsInt() | b.AsInt()),
+        new(TokenType.XOR,BoundBinaryOperatorKind.BitwiseXor, ScriptType.Int, (a, b) => a.AsInt() ^ b.AsInt()),
+        new(TokenType.SHL,BoundBinaryOperatorKind.BitLeftShift, ScriptType.Int, (a, b) => a.AsInt() << b.AsInt()),
+        new(TokenType.SHR,BoundBinaryOperatorKind.BitRightShift, ScriptType.Int, (a, b) => a.AsInt() >> b.AsInt()),
 
-        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Int, ValueType.Bool, (v0, v1) => v0.AsInt() == v1.AsInt()),
-        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Int, ValueType.Bool, (v0, v1) => v0.AsInt() != v1.AsInt()),
-        new(TokenType.LESS,BoundBinaryOperatorKind.Less, ValueType.Int, ValueType.Bool, (v0, v1) => v0.AsInt() < v1.AsInt()),
-        new(TokenType.LEQ,BoundBinaryOperatorKind.LessOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => v0.AsInt() <= v1.AsInt()),
-        new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ValueType.Int, ValueType.Bool, (v0, v1) => v0.AsInt() > v1.AsInt()),
-        new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ValueType.Int, ValueType.Bool, (v0, v1) => v0.AsInt() >= v1.AsInt()),
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ScriptType.Int, ScriptType.Bool, (v0, v1) => v0.AsInt() == v1.AsInt()),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ScriptType.Int, ScriptType.Bool, (v0, v1) => v0.AsInt() != v1.AsInt()),
+        new(TokenType.LESS,BoundBinaryOperatorKind.Less, ScriptType.Int, ScriptType.Bool, (v0, v1) => v0.AsInt() < v1.AsInt()),
+        new(TokenType.LEQ,BoundBinaryOperatorKind.LessOrEquals, ScriptType.Int, ScriptType.Bool, (v0, v1) => v0.AsInt() <= v1.AsInt()),
+        new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ScriptType.Int, ScriptType.Bool, (v0, v1) => v0.AsInt() > v1.AsInt()),
+        new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ScriptType.Int, ScriptType.Bool, (v0, v1) => v0.AsInt() >= v1.AsInt()),
 
-        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.Bool, (v0, v1) => Equals(v0, v1)),
-        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.Bool, (v0, v1) => !Equals(v0, v1)),
-        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ValueType.String, ValueType.Bool, (v0, v1) => Equals(v0, v1)),
-        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ValueType.String, ValueType.Bool, (v0, v1) => !Equals(v0, v1)),
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ScriptType.Bool, (v0, v1) => Equals(v0, v1)),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ScriptType.Bool, (v0, v1) => !Equals(v0, v1)),
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ScriptType.String, ScriptType.Bool, (v0, v1) => Equals(v0, v1)),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ScriptType.String, ScriptType.Bool, (v0, v1) => !Equals(v0, v1)),
         
-        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ValueType.String, (v0, v1) => $"{v0}{v1}"),
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String, (v0, v1) => $"{v0}{v1}"),
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.Any,ValueType.String, ValueType.String, (v0, v1) => $"{v0}{v1}"),
-        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ValueType.String,ValueType.Any, ValueType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.Int,ScriptType.String, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.String,ScriptType.Int, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.Bool,ScriptType.String, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.String,ScriptType.Bool, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
         ];
-    public static BoundBinaryOperator? Bind(TokenType kind, ValueType leftType, ValueType rightType)
+    public static BoundBinaryOperator? Bind(TokenType kind, ScriptType leftType, ScriptType rightType)
     {
         foreach (var op in _operators)
         {
-            if (op.TypeKind == kind && (op.LeftType == ValueType.Any || op.LeftType == leftType) && (op.RightType == ValueType.Any || op.RightType == rightType))
+            if (op.TypeKind == kind && op.LeftType == leftType && op.RightType == rightType)
                 return op;
+        }
+        // 泛型数组拼接支持: Array<T> + Array<T>
+        if (kind == TokenType.ADD && leftType is GenericType { Definition.Name: "Array" } && leftType.Equals(rightType))
+        {
+            return new BoundBinaryOperator(kind, BoundBinaryOperatorKind.Addition, leftType, leftType, leftType, (a, b) => a.Concat(b));
         }
         return null;
     }
@@ -77,19 +84,19 @@ internal sealed class BoundBinaryOperator
     {
         return op switch
         {
-            "+" => Bind(TokenType.ADD, ValueType.Int, ValueType.Int),
-            "-" => Bind(TokenType.SUB, ValueType.Int, ValueType.Int),
-            "*" => Bind(TokenType.MUL, ValueType.Int, ValueType.Int),
-            "/" => Bind(TokenType.DIV, ValueType.Int, ValueType.Int),
-            @"\" => Bind(TokenType.SlashI, ValueType.Int, ValueType.Int),
+            "+" => Bind(TokenType.ADD, ScriptType.Int, ScriptType.Int),
+            "-" => Bind(TokenType.SUB, ScriptType.Int, ScriptType.Int),
+            "*" => Bind(TokenType.MUL, ScriptType.Int, ScriptType.Int),
+            "/" => Bind(TokenType.DIV, ScriptType.Int, ScriptType.Int),
+            @"\" => Bind(TokenType.SlashI, ScriptType.Int, ScriptType.Int),
 
-            "%" => Bind(TokenType.MOD, ValueType.Int, ValueType.Int),
-            "&" => Bind(TokenType.BitAnd, ValueType.Int, ValueType.Int),
-            "|" => Bind(TokenType.BitOr, ValueType.Int, ValueType.Int),
-            "^" => Bind(TokenType.XOR, ValueType.Int, ValueType.Int),
+            "%" => Bind(TokenType.MOD, ScriptType.Int, ScriptType.Int),
+            "&" => Bind(TokenType.BitAnd, ScriptType.Int, ScriptType.Int),
+            "|" => Bind(TokenType.BitOr, ScriptType.Int, ScriptType.Int),
+            "^" => Bind(TokenType.XOR, ScriptType.Int, ScriptType.Int),
 
-            ">>" => Bind(TokenType.SlashI, ValueType.Int, ValueType.Int),
-            "<<" => Bind(TokenType.SlashI, ValueType.Int, ValueType.Int),
+            ">>" => Bind(TokenType.SlashI, ScriptType.Int, ScriptType.Int),
+            "<<" => Bind(TokenType.SlashI, ScriptType.Int, ScriptType.Int),
             _ => null,
         };
     }

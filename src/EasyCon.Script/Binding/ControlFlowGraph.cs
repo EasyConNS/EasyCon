@@ -92,8 +92,8 @@ internal sealed class ControlFlowGraph
                         StartBlock();
                         _statements.Add(statement);
                         break;
-                    case Goto:
-                    case ConditionGoto:
+                    case GotoStatement:
+                    case ConditionGotoStatement:
                     case Return:
                         _statements.Add(statement);
                         StartBlock();
@@ -167,12 +167,12 @@ internal sealed class ControlFlowGraph
                     var isLastStatementInBlock = statement == current.Statements.Last();
                     switch (statement.Kind)
                     {
-                        case Goto:
+                        case GotoStatement:
                             var gs = (BoundGotoStatement)statement;
                             var toBlock = _blockFromLabel[gs.Label];
                             Connect(current, toBlock);
                             break;
-                        case ConditionGoto:
+                        case ConditionGotoStatement:
                             var cgs = (BoundConditionalGotoStatement)statement;
                             var thenBlock = _blockFromLabel[cgs.Label];
                             var elseBlock = next;

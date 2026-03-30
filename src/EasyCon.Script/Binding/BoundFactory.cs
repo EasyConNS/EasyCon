@@ -52,9 +52,9 @@ internal static class BoundFactory
     }
     public static BoundUnaryExpression Not(ExprBase syntax, BoundExpr condition)
     {
-        Debug.Assert(condition.Type == ValueType.Bool);
+        Debug.Assert(condition.Type == ScriptType.Bool);
 
-        var op = BoundUnaryOperator.Bind(Script2.Syntax.TokenType.LogicNot, ValueType.Bool);
+        var op = BoundUnaryOperator.Bind(Script2.Syntax.TokenType.LogicNot, ScriptType.Bool);
         Debug.Assert(op != null);
         return new BoundUnaryExpression(syntax, op, condition);
     }

@@ -25,13 +25,13 @@ internal sealed class BoundLabelStatement(Statement syntax, BoundLabel label) : 
 
 internal sealed class BoundGotoStatement(Statement syntax, BoundLabel label) : BoundStmt(syntax)
 {
-    public override BoundNodeKind Kind => BoundNodeKind.Goto;
+    public override BoundNodeKind Kind => BoundNodeKind.GotoStatement;
     public readonly BoundLabel Label = label;
 }
 
 internal sealed class BoundConditionalGotoStatement(Statement syntax, BoundLabel label, BoundExpr condition, bool jumpIfTrue = true) : BoundStmt(syntax)
 {
-    public override BoundNodeKind Kind => BoundNodeKind.ConditionGoto;
+    public override BoundNodeKind Kind => BoundNodeKind.ConditionGotoStatement;
     public readonly BoundLabel Label = label;
     public readonly BoundExpr Condition = condition;
     public readonly bool JumpIfTrue = jumpIfTrue;

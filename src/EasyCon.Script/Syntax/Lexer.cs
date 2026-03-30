@@ -14,7 +14,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private readonly string _input = Compat(syntaxTree.Text.Lines);
     private int _position = 0;
     private int _line = 1;
-    private int _column = 1;
     private readonly List<Token> _tokens = [];
 
     public DiagnosticBag Diagnostics => _diagnostics;
@@ -133,7 +132,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         }
 
         AddToken(TokenType.EOF, "", _position);
-        return _tokens.ToImmutableArray();
+        return [.. _tokens];
     }
 
     private char Current => Peek();
@@ -151,7 +150,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         if (_position < _input.Length)
         {
             _position++;
-            _column++;
         }
         return current;
     }
@@ -193,14 +191,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 {
                     AddToken(TokenType.NEWLINE, " ", _position);
                     _line++;
-                    _column = 0;
-                }
-                if (Current == '\r' && Lookahead == '\n')
-                {
-                    AddToken(TokenType.NEWLINE, "  ", _position);
-                    _position++;
-                    _line++;
-                    _column = 0;
                 }
             }
             Advance();
@@ -228,7 +218,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             }
         }
 
-        var comment = _input.Substring(start, _position - start);
+        var comment = _input[start.._position];
         AddToken(TokenType.COMMENT, comment.Trim(), start);
     }
 
@@ -350,7 +340,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private void ReadPrintString()
     {
         var start = _position;
-        while (_position < _input.Length && Current != '&')
+        while (_position < _input.Length && Current != '\n')
         {
             Advance();
         }
@@ -360,11 +350,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
     private void ReadIdentifier()
     {
-        //if(parsingMode == "printMode")
-        //{
-        //    ReadPrintString();
-        //    return;
-        //}
         var start = _position;
         while (_position < _input.Length && IsIdentifierChar(Current))
         {

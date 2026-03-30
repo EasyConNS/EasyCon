@@ -6,10 +6,10 @@ internal sealed class BoundUnaryOperator
 {
     public TokenType TypeKind { get; }
     public BoundUnaryOperatorKind Kind { get; }
-    public ValueType Type { get; }
+    public ScriptType Type { get; }
     public readonly Func<Value, Value> Operate;
 
-    private BoundUnaryOperator(TokenType syntaxKind, BoundUnaryOperatorKind kind, ValueType resultType, Func<Value, Value> operate)
+    private BoundUnaryOperator(TokenType syntaxKind, BoundUnaryOperatorKind kind, ScriptType resultType, Func<Value, Value> operate)
     {
         TypeKind = syntaxKind;
         Kind = kind;
@@ -19,13 +19,13 @@ internal sealed class BoundUnaryOperator
 
     private static BoundUnaryOperator[] _operators =
     {
-        new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ValueType.Int, a=> -a.AsInt()),
-        new(TokenType.BitNot, BoundUnaryOperatorKind.BitwiseNot, ValueType.Int, a=> ~a.AsInt()),
-        new(TokenType.LogicNot, BoundUnaryOperatorKind.LogicNot, ValueType.Bool, a=> !a.AsBool()),
+        new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.Int, a=> -a.AsInt()),
+        new(TokenType.BitNot, BoundUnaryOperatorKind.BitwiseNot, ScriptType.Int, a=> ~a.AsInt()),
+        new(TokenType.LogicNot, BoundUnaryOperatorKind.LogicNot, ScriptType.Bool, a=> !a.AsBool()),
 
     };
 
-    public static BoundUnaryOperator? Bind(TokenType kind, ValueType operandType)
+    public static BoundUnaryOperator? Bind(TokenType kind, ScriptType operandType)
     {
         foreach (var op in _operators)
         {

@@ -25,7 +25,7 @@ internal sealed class Binder
 
         if (function != null)
         {
-            foreach (var p in function.Paramters)
+            foreach (var p in function.Parameters)
                 _scope.TryDeclareVariable(p);
         }
     }
@@ -73,15 +73,15 @@ internal sealed class Binder
             var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
             var fnloweredBody = Lowerer.Lower(function, fnbody);
 
-            if (function.Type != ValueType.Void && !ControlFlowGraph.AllPathsReturn(fnloweredBody))
-                throw new ParseException("函数所有路径必须有返回值", function.Declaration!.Address);
+            if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(fnloweredBody))
+                throw new ParseException("函数所有路径必须有返回值", function.Declaration.Address);
 
             binder._ilNames.UnionWith(binderFn._ilNames);
 
             functionBodies.Add(function, fnloweredBody);
         }
 
-        var main = new FunctionSymbol("$eval", [], ValueType.Void);
+        var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
         var body = new BoundBlockStatement(null, statements.ToImmutable());
         var loweredBody = Lowerer.Lower(main, body);
         functionBodies.Add(main, loweredBody);
@@ -97,7 +97,7 @@ internal sealed class Binder
         foreach (var parameterSyntax in syntax.Declare.Paramters)
         {
             var parameterName = parameterSyntax.Identifier.Tag;
-            var parameterType = BindTypeClause(syntax.Declare, parameterSyntax.Type)?? ValueType.Int;
+            var parameterType = BindTypeClause(syntax.Declare, parameterSyntax.Type)?? ScriptType.Int;
             if (!seenParameterNames.Add(parameterName))
             {
                 throw new Exception($"重复定义的参数名 {parameterName}");
@@ -109,8 +109,8 @@ internal sealed class Binder
             }
         }
 
-        var type = BindTypeClause(syntax?.Declare) ?? ValueType.Void;
-        var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), type, syntax);
+        var returnType = BindTypeClause(syntax?.Declare) ?? ScriptType.Void;
+        var function = new FunctionSymbol(syntax.Declare.Name, [], parameters.ToImmutable(), returnType, syntax);
         _scope.TryDeclareFunction(function);
     }
 
@@ -123,7 +123,68 @@ internal sealed class Binder
 
         return result;
     }
+    #region 核心泛型推导逻辑
 
+    private (ScriptType[] BoundParams, ScriptType BoundReturn) BindGenericFunction(FunctionSymbol function, ImmutableArray<BoundExpr> arguments)
+    {
+        // 1. 如果不是泛型函数，直接返回原签名
+        if (function.TypeParameters.IsEmpty)
+        {
+            return (function.Parameters.Select(p => p.Type).ToArray(), function.ReturnType);
+        }
+
+        // 2. 建立类型映射表 (例如 T -> int)
+        var substitution = new Dictionary<TypeParameter, ScriptType>();
+
+        for (int i = 0; i < function.Parameters.Length; i++)
+        {
+            InferTypeParameters(function.Parameters[i].Type, arguments[i].Type, substitution);
+        }
+
+        // 3. 验证推导完整性
+        foreach (var tp in function.TypeParameters)
+        {
+            if (!substitution.ContainsKey(tp))
+                throw new Exception($"无法为函数 {function.Name} 推导泛型参数 {tp.Name}");
+        }
+
+        // 4. 生成绑定后的具体类型
+        var boundParams = function.Parameters.Select(p => SubstituteType(p.Type, substitution)).ToArray();
+        var boundReturn = SubstituteType(function.ReturnType, substitution);
+
+        return (boundParams, boundReturn);
+    }
+
+    private void InferTypeParameters(ScriptType formal, ScriptType actual, Dictionary<TypeParameter, ScriptType> sub)
+    {
+        if (formal is TypeParameter tp)
+        {
+            if (sub.TryGetValue(tp, out var existing))
+            {
+                if (!existing.Equals(actual))
+                    throw new Exception($"泛型冲突：{tp.Name} 同时被推导为 {existing} 和 {actual}");
+            }
+            else sub[tp] = actual;
+        }
+        else if (formal is GenericType fGen && actual is GenericType aGen)
+        {
+            if (fGen.Definition.Name != aGen.Definition.Name) return;
+            for (int i = 0; i < fGen.TypeArguments.Count; i++)
+                InferTypeParameters(fGen.TypeArguments[i], aGen.TypeArguments[i], sub);
+        }
+    }
+
+    private ScriptType SubstituteType(ScriptType type, Dictionary<TypeParameter, ScriptType> sub)
+    {
+        if (type is TypeParameter tp) return sub.GetValueOrDefault(tp, type);
+        if (type is GenericType gt)
+        {
+            return gt.Definition.Bind(gt.TypeArguments.Select(t => SubstituteType(t, sub)).ToArray());
+        }
+        return type;
+    }
+
+    #endregion
     private BoundStmt BindStatement(Statement syntax)
     {
         try
@@ -176,7 +237,7 @@ internal sealed class Binder
 
         var block = new List<BoundStmt>
         {
-            GotoFalse(syntax, nextLabel, BindConversion(syntax.Condition.Condition, ValueType.Bool))
+            GotoFalse(syntax, nextLabel, BindConversion(syntax.Condition.Condition, ScriptType.Bool))
         };
         static bool isCtrl(Statement st)
         {
@@ -198,7 +259,7 @@ internal sealed class Binder
         while (index < syntax.Statements.Length && syntax.Statements[index] is ElseIf elifCond)
         {
             var elifLabel = new BoundLabel($"ELIF_{_labelCounter}_{elifCount}");
-            block.Add(GotoFalse(syntax, elifLabel, BindConversion(elifCond.Condition, ValueType.Bool)));
+            block.Add(GotoFalse(syntax, elifLabel, BindConversion(elifCond.Condition, ScriptType.Bool)));
 
             index++;
 
@@ -240,8 +301,8 @@ internal sealed class Binder
     private BoundBlockStatement BindFor(ForBlock syntax)
     {
         var forCond = syntax.Condition;
-        var lowerBound = BindConversion(forCond.Lower, ValueType.Int);
-        var upperBound = BindConversion(forCond.Upper, ValueType.Int);
+        var lowerBound = BindConversion(forCond.Lower, ScriptType.Int);
+        var upperBound = BindConversion(forCond.Upper, ScriptType.Int);
 
         _scope = new BoundScope(_scope);
 
@@ -253,7 +314,7 @@ internal sealed class Binder
         };
         var variable = idxVar switch
         {
-            VariableExpr v => BindVariableDeclaration(v, isReadOnly: true, ValueType.Int, allowGlobal: false),
+            VariableExpr v => BindVariableDeclaration(v, isReadOnly: true, ScriptType.Int, allowGlobal: false),
             _ => null,
         };
 
@@ -323,7 +384,7 @@ internal sealed class Binder
         var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
 
         var lowwhile = new BoundWhileStatement(syntax,
-            BindConversion(syntax.Condition.Condition, ValueType.Bool),
+            BindConversion(syntax.Condition.Condition, ScriptType.Bool),
             body,
             breakLabel,
             continueLabel
@@ -393,19 +454,21 @@ internal sealed class Binder
     private BoundReturnStatement BindReturnStatement(ReturnStmt syntax)
     {
         var expression = syntax.Expression == null ? null : BindExpression(syntax.Expression);
-        if(_function != null)
+
+        if (_function != null)
         {
-            if (_function.Type == ValueType.Void)
+            if (_function.ReturnType == ScriptType.Void)
             {
                 if (expression != null)
-                    throw new ParseException("函数返回类型不正确", syntax.Address);
+                    throw new ParseException($"函数 '{_function.Name}' 返回类型为 void，不应有返回值", syntax.Address);
             }
             else
             {
                 if (expression == null)
-                    throw new ParseException("函数必须有返回值", syntax.Address);
-                else
-                    expression = BindConversion(expression, _function.Type);
+                    throw new ParseException($"函数 '{_function.Name}' 必须返回类型为 {_function.ReturnType} 的值", syntax.Address);
+
+                // 关键修改：检查返回值是否与函数定义的返回类型兼容
+                expression = BindConversion(expression, _function.ReturnType, "返回值类型不匹配");
             }
         }
         return new BoundReturnStatement(syntax, expression);
@@ -426,17 +489,17 @@ internal sealed class Binder
             var op = BoundBinaryOperator.Bind(syntax.AugOp.Operator);
             boundexpr = new BoundBinaryExpression(syntax.Expression, desvar, op!, boundexpr);
         }
-
-        if(boundexpr.Type == ValueType.Void) throw new ParseException("空值表达式无法赋值", syntax.Address);
+        
+        if (boundexpr.Type == ScriptType.Void) throw new ParseException("空值表达式无法赋值", syntax.Address);
         var variable = BindVariableDeclaration(syntax.DestVariable, syntax.DestVariable.ReadOnly, boundexpr.Type);
 
-        if (variable.Type != boundexpr.Type) throw new ParseException("表达式和变量类型不匹配", syntax.Address);
-        if(variable.IsReadOnly && boundexpr.ConstantValue == Value.Void) throw new ParseException("常量表达式不正确", syntax.Address);
-        if (variable.IsReadOnly) variable.Value = boundexpr.ConstantValue;
+        if (!variable.Type.IsAssignableFrom(boundexpr.Type))
+            throw new ParseException($"类型不匹配：无法将 {boundexpr.Type} 赋值给 {variable.Type}", syntax.Address);
+
         return new BoundVariableDeclaration(syntax, variable, boundexpr);
     }
 
-    private VariableSymbol BindVariableDeclaration(VariableExpr syntax, bool isReadOnly, ValueType type, bool allowGlobal = true)
+    private VariableSymbol BindVariableDeclaration(VariableExpr syntax, bool isReadOnly, ScriptType type, bool allowGlobal = true)
     {
         var vrr = _scope.TryLookupVar(syntax.Tag);
         if (vrr is not null)
@@ -452,25 +515,32 @@ internal sealed class Binder
 
         return variable;
     }
-    private ValueType? BindTypeClause(FuncStmt syntax, TypeClauseSyntax? tcs)
+    private ScriptType? BindTypeClause(Statement syntax, TypeClauseSyntax? tcs)
     {
         if (tcs == null) return null;
-        var type = LookupType(tcs.Identifier.Value) ?? throw new ParseException($"未知类型：{tcs.Identifier.Text}", syntax.Address);
-        return type;
+        return LookupType(tcs.Identifier.Value) ?? throw new ParseException($"未知类型：{tcs.Identifier.Text}", syntax.Address);
     }
-    private ValueType? BindTypeClause(FuncStmt syntax)
+
+    private ScriptType? BindTypeClause(FuncStmt syntax)
     {
         if (syntax.Type == null) return null;
-        var type = LookupType(syntax.Type.Identifier.Value) ?? throw new ParseException($"未知类型：{syntax.Identifier.Text}", syntax.Address);
-        return type;
+        return LookupType(syntax.Type.Identifier.Value) ?? throw new ParseException($"未知类型：{syntax.Identifier.Text}", syntax.Address);
     }
-    private ValueType? LookupType(string name)
+
+    private ScriptType? LookupType(string name)
     {
-        return name.ToUpper() switch
+        var upper = name.ToUpper();
+        if (upper.EndsWith("[]"))
         {
-            "BOOL" => (ValueType?)ValueType.Bool,
-            "INT" => (ValueType?)ValueType.Int,
-            "STRING" => (ValueType?)ValueType.String,
+            var elem = LookupType(upper.Substring(0, upper.Length - 2));
+            return elem == null ? null : ScriptType.ArrayDefinition.Bind(elem);
+        }
+        return upper switch
+        {
+            "BOOL" => ScriptType.Bool,
+            "INT" => ScriptType.Int,
+            "STRING" => ScriptType.String,
+            "VOID" => ScriptType.Void,
             _ => null,
         };
     }
@@ -486,9 +556,9 @@ internal sealed class Binder
     private BoundExprStatement BindWaitStatement(Wait syntax)
     {
         var boundArgument = BindExpression(syntax.Duration);
-        boundArgument = BindConversion(boundArgument, ValueType.Int);
+        boundArgument = BindConversion(boundArgument, ScriptType.Int);
 
-        var expr = new BoundCallExpression(null, BuiltinFunctions.Wait, [boundArgument]);
+        var expr = new BoundCallExpression(null, BuiltinFunctions.Wait, [boundArgument], ScriptType.Void);
         return new BoundExprStatement(syntax, expr);
     }
 
@@ -566,40 +636,75 @@ internal sealed class Binder
             var boundIndex = BindExpression(index);
             boundIndexs.Add(boundIndex);
         }
-        if (boundIndexs.Select(i=>i.Type).Distinct().Count() > 1) throw new Exception("数组成员类型必须一致");
+        if (boundIndexs.Select(i=>i.Type).Distinct().Count() != 1) throw new Exception("数组成员类型必须一致");
 
         return new BoundIndexDeclxpression(syntax, boundIndexs.ToImmutable());
     }
 
     private BoundIndexVariableExpression BindIndexVisitExpression(IndexVisitExpression syntax)
     {
-        var basevar = BindVarExpression(syntax.Var);
-        var variable = basevar.Variable;
-        if(variable.Type != ValueType.Array && variable.Type != ValueType.String) throw new Exception("索引访问只能用于数组或字符串");
-        var idx = BindConversion(syntax.Index, ValueType.Int, "索引下标必须是数字类型");
-        return new BoundIndexVariableExpression(syntax, variable, idx);
+        var baseExpr = BindExpression(syntax.Var);
+
+        // 1. 类型校验：仅支持 字符串 或 泛型数组
+        bool isString = baseExpr.Type.Equals(ScriptType.String);
+        bool isArray = baseExpr.Type is GenericType { Definition.Name: "Array" };
+
+        if (!isString && !isArray)
+        {
+            throw new Exception($"类型 '{baseExpr.Type}' 不支持索引访问。");
+        }
+
+        // 2. 索引必须能转换为整数
+        var indexExpr = BindConversion(syntax.Index, ScriptType.Int, "数组索引必须是整数类型");
+
+        // 3. 确定结果类型
+        ScriptType resultType;
+        if (isString)
+        {
+            resultType = ScriptType.String;
+        }
+        else
+        {
+            // 从 Array<T> 中提取 T
+            var genericType = (GenericType)baseExpr.Type;
+            resultType = genericType.TypeArguments[0];
+        }
+
+        return new BoundIndexVariableExpression(syntax, baseExpr, indexExpr, resultType);
     }
 
     private BoundSliceExpression BoundSliceExpression(SliceExpression syntax)
     {
-        var basevar = BindVarExpression(syntax.Var);
-        var variable = basevar.Variable;
-        if(variable.Type != ValueType.Array && variable.Type != ValueType.String) throw new Exception("索引访问只能用于数组或字符串");
-        var start = BindConversion(syntax.Start, ValueType.Int, "索引下标必须是数字类型");
-        var end = BindExpression(syntax.End);
+        var baseExpr = BindExpression(syntax.Var);
 
-        return new BoundSliceExpression(syntax, variable, start, end);
+        // 1. 类型校验
+        bool isString = baseExpr.Type.Equals(ScriptType.String);
+        bool isArray = baseExpr.Type is GenericType { Definition.Name: "Array" };
+
+        if (!isString && !isArray)
+        {
+            throw new Exception($"类型 '{baseExpr.Type}' 不支持切片操作 (Range Slice)。");
+        }
+
+        // 2. 绑定起始和结束索引，并确保它们是整数
+        var startExpr = BindConversion(syntax.Start, ScriptType.Int, "切片起始位置必须是整数");
+        var endExpr = BindConversion(syntax.End, ScriptType.Int, "切片结束位置必须是整数");
+
+        // 3. 结果类型与基础表达式类型完全一致
+        // String -> String, Array<int> -> Array<int>
+        ScriptType resultType = baseExpr.Type;
+
+        return new BoundSliceExpression(syntax, baseExpr, startExpr, endExpr, resultType);
     }
 
-    private BoundExpr BindConversion(BoundExpr expr, ValueType type, string msg = "表达式类型不匹配")
+    private BoundExpr BindConversion(BoundExpr expr, ScriptType type, string msg = "表达式类型不匹配")
     {
-        if (type == ValueType.Any) return expr;
-        if (type == ValueType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
-        if (expr.Type != type) throw new Exception(msg);
-        return expr;
+        if (type.IsAssignableFrom(expr.Type)) return expr;
+        if (type == ScriptType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
+        throw new Exception($"{msg}: 无法将 {expr.Type} 转换为 {type}");
     }
 
-    private BoundExpr BindConversion(ExprBase syntax, ValueType type, string msg = "表达式类型不匹配")
+    private BoundExpr BindConversion(ExprBase syntax, ScriptType type, string msg = "表达式类型不匹配")
     {
         var expr = BindExpression(syntax);
         if (expr.Type != type) throw new Exception(msg);
@@ -646,32 +751,25 @@ internal sealed class Binder
     private BoundCallExpression BindCallExpression(Callv1Expression syntax, string fnName, ImmutableArray<ExprBase> Arguments)
     {
         var function = _scope.TryLookupFunc(fnName) ?? throw new Exception($"找不到调用函数 {fnName}");
-        var boundArguments = ImmutableArray.CreateBuilder<BoundExpr>();
 
-        foreach (var argument in Arguments)
-        {
-            var boundArgument = BindExpression(argument);
-            boundArguments.Add(boundArgument);
-        }
-        // 特殊处理打印语句
-        if (BuiltinFunctions.GetAll().Any(f => f == function && (f == BuiltinFunctions.Print || f == BuiltinFunctions.Alert)))
-        {
-            if(Arguments.Length != 0)
-            {
-                var res = boundArguments.Aggregate((acc, x) => Concat(Arguments[0], acc, x));
-                boundArguments.Clear();
-                boundArguments.Add(res);
-                Arguments = [Arguments[0]];
-            }
-        }
+        // 1. 先绑定实参表达式
+        var boundArgs = Arguments.Select(BindExpression).ToImmutableArray();
 
-        if (Arguments.Length != function.Paramters.Length) throw new Exception($"函数调用参数不匹配 {fnName}");
-        for (var i = 0; i < Arguments.Length; i++)
+        // 2. 检查参数数量
+        if (boundArgs.Length != function.Parameters.Length)
+            throw new Exception($"函数 {fnName} 参数数量不匹配");
+
+        // 3. 泛型绑定与实例化 [新逻辑]
+        var (instParams, instReturn) = BindGenericFunction(function, boundArgs);
+
+        // 4. 类型转换与最终参数确定
+        var finalArgs = ImmutableArray.CreateBuilder<BoundExpr>();
+        for (int i = 0; i < boundArgs.Length; i++)
         {
-            boundArguments[i] = BindConversion(boundArguments[i], function.Paramters[i].Type);
+            finalArgs.Add(BindConversion(boundArgs[i], instParams[i]));
         }
 
-        return new BoundCallExpression(syntax, function, boundArguments.ToImmutable());
+        return new BoundCallExpression(syntax, function, finalArgs.ToImmutable(), instReturn);
     }
 
     private BoundCallExpression BindCallExpression(Callv1Expression syntax)

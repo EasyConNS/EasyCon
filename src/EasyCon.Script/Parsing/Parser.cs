@@ -60,7 +60,7 @@ partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
 
         foreach (var item in BuiltinFunctions.GetAll())
         {
-            _funcTables.Add(item.Name, item.Paramters.Length);
+            _funcTables.Add(item.Name, item.Parameters.Length);
         }
 
         // Parse all tokens using SyntaxTree.ParseTokens

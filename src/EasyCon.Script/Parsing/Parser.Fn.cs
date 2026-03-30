@@ -556,6 +556,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 parseNext = false;
             }
         }
+        if(nodesAndSeparators.Count == 0) throw new Exception("索引定义语法错误");
 
         var rb = Match(TokenType.RightBracket, "语法需要']'");
         return new IndexDefExpression(lb, [.. nodesAndSeparators], rb);

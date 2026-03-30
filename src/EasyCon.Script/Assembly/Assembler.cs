@@ -48,10 +48,10 @@ class Assembler
                 case KeyAction:
                     f.WriteLine("KEY");
                     break;
-                case Goto:
+                case GotoStatement:
                     f.WriteLine("GOTO");
                     break;
-                case ConditionGoto:
+                case ConditionGotoStatement:
                     f.WriteLine("JGOTO");
                     break;
                 case Label:

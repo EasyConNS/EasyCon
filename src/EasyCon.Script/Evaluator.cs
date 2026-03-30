@@ -2,6 +2,7 @@ using EasyCon.Script.Binding;
 using EasyScript;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Xml.Linq;
 using static EasyCon.Script2.Binding.BoundNodeKind;
 
 namespace EasyCon.Script;
@@ -14,7 +15,7 @@ internal sealed class Evaluator
     private readonly Dictionary<FunctionSymbol, BoundBlockStatement> _functions = [];
 
     private readonly long _TIME = DateTime.Now.Ticks;
-    private int CurrTimestamp => (int) ((DateTime.Now.Ticks - _TIME) / 10_000);
+    private int CurrTimestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
 
     private readonly Random _rand = new();
     private bool CancelLineBreak = false;
@@ -59,7 +60,7 @@ internal sealed class Evaluator
         while (!_token.IsCancellationRequested && index < body.Statements.Length)
         {
             var s = body.Statements[index];
-            switch(s.Kind)
+            switch (s.Kind)
             {
                 case NopStatement:
                     index++;
@@ -80,14 +81,14 @@ internal sealed class Evaluator
                     EvaluateStickKeyAction((BoundStickActStatement)s);
                     index++;
                     break;
-                case Goto:
+                case GotoStatement:
                     var gs = (BoundGotoStatement)s;
                     index = labelToIndex[gs.Label];
                     Thread.Yield();
                     break;
-                case ConditionGoto:
+                case ConditionGotoStatement:
                     var cgs = (BoundConditionalGotoStatement)s;
-                    var condition = EvaluateExpr(cgs.Condition).AsBool();
+                    var condition = EvaluateExpression(cgs.Condition).AsBool();
                     if (condition == cgs.JumpIfTrue)
                         index = labelToIndex[cgs.Label];
                     else
@@ -99,9 +100,9 @@ internal sealed class Evaluator
                     break;
                 case Return:
                     var rs = (BoundReturnStatement)s;
-                    if(rs.Expression != null)
+                    if (rs.Expression != null)
                     {
-                        _lastValue = EvaluateExpr(rs.Expression);
+                        _lastValue = EvaluateExpression(rs.Expression);
                     }
                     return _lastValue;
                 default:
@@ -113,7 +114,7 @@ internal sealed class Evaluator
 
     private void EvaluateVariableDeclaration(BoundVariableDeclaration node)
     {
-        var value = EvaluateExpr(node.Initializer);
+        var value = EvaluateExpression(node.Initializer);
         Debug.Assert(value != Value.Void);
 
         _lastValue = value;
@@ -122,9 +123,9 @@ internal sealed class Evaluator
 
     private void EvaluateExpressionStatement(BoundExprStatement node)
     {
-        _lastValue = EvaluateExpr(node.Expression);
+        _lastValue = EvaluateExpression(node.Expression);
     }
-    public Value EvaluateExpr(BoundExpr node)
+    public Value EvaluateExpression(BoundExpr node)
     {
         if (node.ConstantValue != Value.Void)
             return EvaluateConstantExpression(node);
@@ -174,7 +175,7 @@ internal sealed class Evaluator
         {
             var locals = _locals.Peek();
             return locals.TryGetValue(v, out Value value) ? value : 0;
-        } 
+        }
     }
 
     private Value EvaluateVariableExpression(BoundVariableExpression v)
@@ -182,46 +183,49 @@ internal sealed class Evaluator
         return GetValue(v.Variable);
     }
 
-    private Value EvaluateIndexDeclExpression(BoundIndexDeclxpression idx)
+    private Value EvaluateIndexDeclExpression(BoundIndexDeclxpression decl)
     {
-        return idx.Items.Select(i=>EvaluateExpr(i)).ToArray();
+        var elements = decl.Items.Select(EvaluateExpression);
+        // 使用之前重构的 CreateArray 保持泛型正确
+        var elemType = ((GenericType)decl.Type).TypeArguments[0];
+        return Value.CreateArray(elemType, elements);
     }
 
-    private Value EvaluateIndexVariableExpression(BoundIndexVariableExpression idx)
+    private Value EvaluateIndexVariableExpression(BoundIndexVariableExpression idxExpr)
     {
-        var basevar = GetValue(idx.Variable);
-        var xiab = EvaluateExpr(idx.Index).AsInt();
-        if (xiab >= basevar.Length) throw new Exception($"数组下标越界");
-        return basevar[xiab];
+        var container = EvaluateExpression(idxExpr.BaseExpression);
+        var index = EvaluateExpression(idxExpr.Index).AsInt();
+        if (index >= container.Length) throw new Exception($"数组下标越界");
+        return container[index];
     }
 
-    private Value EvaluateSliceExpression(BoundSliceExpression slice)
+    private Value EvaluateSliceExpression(BoundSliceExpression sliceExpr)
     {
-        var basevar = GetValue(slice.Variable);
-        var start = EvaluateExpr(slice.Start).AsInt();
-        var end = EvaluateExpr(slice.End);
+        var target = EvaluateExpression(sliceExpr.BaseExpression);
+        var start = EvaluateExpression(sliceExpr.Start).AsInt();
+        var end = EvaluateExpression(sliceExpr.End);
 
-        var endidx = end.Kind == Binding.ValueType.Int ? end.AsInt() : basevar.Length;
-        if (start >= basevar.Length || endidx > basevar.Length || start > endidx) throw new Exception($"数组下标越界");
-        return basevar[start..endidx];
+        var endidx = end.Type == ScriptType.Int ? end.AsInt() : target.Length;
+        if (start >= target.Length || endidx > target.Length || start > endidx) throw new Exception($"数组下标越界");
+        return target[start..endidx];
     }
 
     private Value EvaluateConversionExpression(BoundConversionExpression node)
     {
-        var value = EvaluateExpr(node.Expression);
-        if (node.Type == Binding.ValueType.Bool)
+        var value = EvaluateExpression(node.Expression);
+        if (node.Type == ScriptType.Bool)
             return value.ToBoolean();
-        else if (node.Type == Binding.ValueType.Int)
+        else if (node.Type == ScriptType.Int)
             return Convert.ToInt32(value);
-        else if (node.Type == Binding.ValueType.String)
-            return  value.ToString();
+        else if (node.Type == ScriptType.String)
+            return value.ToString();
         else
             throw new Exception($"无效的类型转换{node.Type}");
     }
 
     private Value EvaluateUnaryExpression(BoundUnaryExpression u)
     {
-        var operand = EvaluateExpr(u.Operand);
+        var operand = EvaluateExpression(u.Operand);
 
         Debug.Assert(operand != Value.Void);
 
@@ -230,8 +234,8 @@ internal sealed class Evaluator
 
     private Value EvaluateBinaryExpression(BoundBinaryExpression b)
     {
-        var left = EvaluateExpr(b.Left);
-        var right = EvaluateExpr(b.Right);
+        var left = EvaluateExpression(b.Left);
+        var right = EvaluateExpression(b.Right);
 
         Debug.Assert(left != Value.Void && right != Value.Void);
 
@@ -240,7 +244,7 @@ internal sealed class Evaluator
 
     private Value EvaluateAssignmentExpression(BoundAssignExpression node)
     {
-        var value = EvaluateExpr(node.Expression);
+        var value = EvaluateExpression(node.Expression);
         Debug.Assert(value != Value.Void);
 
         Assign(node.Variable, value);
@@ -249,12 +253,12 @@ internal sealed class Evaluator
 
     private Value EvaluateCallExpression(BoundCallExpression node)
     {
-        if (BuiltinFunctions.GetAll().Any(f=>f==node.Function))
+        if (BuiltinFunctions.GetAll().Any(f => f == node.Function))
         {
             var args = ImmutableArray.CreateBuilder<Value>();
             for (int i = 0; i < node.Arguments.Length; i++)
             {
-                var value = EvaluateExpr(node.Arguments[i]);
+                var value = EvaluateExpression(node.Arguments[i]);
                 Debug.Assert(value != Value.Void);
                 args.Add(value);
             }
@@ -265,8 +269,8 @@ internal sealed class Evaluator
             var locals = new Dictionary<VariableSymbol, Value>();
             for (int i = 0; i < node.Arguments.Length; i++)
             {
-                var parameter = node.Function.Paramters[i];
-                var value = EvaluateExpr(node.Arguments[i]);
+                var parameter = node.Function.Parameters[i];
+                var value = EvaluateExpression(node.Arguments[i]);
                 Debug.Assert(value != Value.Void);
                 locals.Add(parameter, value);
             }
@@ -281,14 +285,14 @@ internal sealed class Evaluator
 
     private void EvaluateKeyAction(BoundKeyActStatement node)
     {
-        if(node is BoundKeyPressStatement bps)
+        if (node is BoundKeyPressStatement bps)
         {
-            var dur = EvaluateExpr(bps.Duration).AsInt();
+            var dur = EvaluateExpression(bps.Duration).AsInt();
             GamePad?.ClickButtons(bps.Act, dur);
         }
         else
         {
-            if(node.Up)
+            if (node.Up)
             {
                 GamePad?.ReleaseButtons(node.Act);
             }
@@ -301,9 +305,9 @@ internal sealed class Evaluator
 
     private void EvaluateStickKeyAction(BoundStickActStatement node)
     {
-        if(node is BoundStickPressStatement bps)
+        if (node is BoundStickPressStatement bps)
         {
-            var dur = EvaluateExpr(bps.Duration).AsInt();
+            var dur = EvaluateExpression(bps.Duration).AsInt();
             GamePad?.ClickStick(bps.Act, bps.X, bps.Y, dur);
         }
         else
@@ -332,9 +336,9 @@ internal sealed class Evaluator
         {
             case "WAIT":
                 var ms = args[0].AsInt();
-                switch(GamePad?.DelayMethod)
+                switch (GamePad?.DelayMethod)
                 {
-                    case DelayType.Normal:Thread.Sleep(ms); break;
+                    case DelayType.Normal: Thread.Sleep(ms); break;
                     case DelayType.LowCPU: CustomDelay.AISleep(ms); break;
                     case DelayType.HighResolution:
                     default:
@@ -357,13 +361,13 @@ internal sealed class Evaluator
                 result = CurrTimestamp;
                 break;
             case "PRINT":
-              {
+                {
                     var s = args[0].AsString();
                     var output = s.EndsWith('\\') ? s[..^1] : s;
                     Output?.Print(output, !CancelLineBreak);
                     CancelLineBreak = s.EndsWith('\\'); // true不换行
-              }
-              break;
+                }
+                break;
             case "ALERT":
                 {
                     var s = args[0].AsString();
@@ -379,12 +383,12 @@ internal sealed class Evaluator
                 }
                 break;
             case "BEEP":
-              {
+                {
                     var freq = args[0].AsInt();
-                    if(freq < 37 || freq > 32767) throw new Exception($"BEEP参数freq范围不正确(37~32767)");
+                    if (freq < 37 || freq > 32767) throw new Exception($"BEEP参数freq范围不正确(37~32767)");
                     Console.Beep(freq, args[1].AsInt());
-              }
-              break;
+                }
+                break;
             case "LEN":
                 result = args[0].Length;
                 break;

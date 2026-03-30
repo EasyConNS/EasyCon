@@ -29,6 +29,10 @@
 			<Begin>"</Begin>
 			<End>"</End>
 		</Span>
+		<Span color="String">
+			<Begin>'</Begin>
+			<End>'</End>
+		</Span>
 
 		<!-- 变量和常量必须在关键字之前匹配 -->
 		<Rule color="Variable">\$[\w]+</Rule>

@@ -1,5 +1,6 @@
 using EasyCon.Script.Parsing;
 using System.Collections.Immutable;
+using System.Xml.Linq;
 
 namespace EasyCon.Script.Binding;
 
@@ -8,41 +9,46 @@ abstract class Symbol(string name)
     public readonly string Name = name;
 }
 
-public enum ValueType
+abstract class VariableSymbol(string name, bool isReadOnly, ScriptType type) : Symbol(name)
 {
-    Void,
-    Int,
-    Bool,
-    String,
-    Array,
-    Any,
-}
-
-abstract class VariableSymbol(string name, bool isReadOnly, ValueType valueType) : Symbol(name)
-{
-    public readonly ValueType Type = valueType;
+    public readonly ScriptType Type = type;
     public readonly bool IsReadOnly = isReadOnly;
     internal object? Value;
 }
 
-sealed class GlobalVariableSymbol(string name, bool isReadOnly, ValueType valueType) : VariableSymbol(name, isReadOnly, valueType)
+sealed class GlobalVariableSymbol(string name, bool isReadOnly, ScriptType type) : VariableSymbol(name, isReadOnly, type)
 {
-    public override string ToString() => $"GlobalVar({Name})";
+    public override string ToString() => $"GlobalVar({Name}: {Type})";
 }
 
-class LocalVariableSymbol(string name, bool isReadOnly, ValueType valueType) : VariableSymbol(name, isReadOnly, valueType)
+class LocalVariableSymbol(string name, bool isReadOnly, ScriptType type) : VariableSymbol(name, isReadOnly, type)
 {
-    public override string ToString() => $"LocalVar({Name})";
+    public override string ToString() => $"LocalVar({Name}: {Type})";
 }
 
-sealed class ParamSymbol(string name, ValueType valueType, int ordinal = 0) : LocalVariableSymbol(name, true, valueType)
+sealed class ParamSymbol(string name, ScriptType type, int ordinal = 0) : LocalVariableSymbol(name, true, type)
 {
     public int Ordinal { get; } = ordinal;
 }
 
-sealed class FunctionSymbol(string name, ImmutableArray<ParamSymbol> paramters, ValueType type, FuncDeclBlock? declaration = null) : Symbol(name)
+/// <summary>
+/// 支持泛型的函数符号
+/// </summary>
+sealed class FunctionSymbol(
+    string name,
+    IEnumerable<TypeParameter> typeParameters,
+    IEnumerable<ParamSymbol> parameters,
+    ScriptType returnType,
+    FuncDeclBlock? declaration = null) : Symbol(name)
 {
-    public readonly ImmutableArray<ParamSymbol> Paramters = paramters;
+    public ImmutableArray<TypeParameter> TypeParameters { get; } = typeParameters.ToImmutableArray();
+    public ImmutableArray<ParamSymbol> Parameters { get; } = parameters.ToImmutableArray();
     public readonly FuncDeclBlock? Declaration = declaration;
-    public readonly ValueType Type = type;
+    public ScriptType ReturnType { get; } = returnType;
+
+    /// <summary>
+    /// 辅助构造：非泛型函数
+    /// </summary>
+    public static FunctionSymbol CreateNormal(string name, IEnumerable<ParamSymbol> parameters, ScriptType returnType)
+        => new(name, [], parameters, returnType);
 }
