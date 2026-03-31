@@ -187,7 +187,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         {
             if ("\u000D\u000A\u0085\u2028\u2029\r\n".Contains(Current))
             {
-                if(Current == '\n')
+                if (Current == '\n')
                 {
                     AddToken(TokenType.NEWLINE, " ", _position);
                     _line++;
@@ -280,13 +280,14 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     // 可根据需要添加更多转义
                     _ => '\0',
                 };
-                if(escaped != '\0')
+                if (escaped != '\0')
                 {
                     sb.Append(escaped);
                     Advance();
                     Advance();
                     continue;
-                }else
+                }
+                else
                 {
                     break;
                 }
@@ -337,15 +338,48 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         }
     }
 
-    private void ReadPrintString()
+    private void ReadPrintArguments()
     {
-        var start = _position;
-        while (_position < _input.Length && Current != '\n')
+        while (_position < _input.Length && Current != '\n' && Current != '\r')
         {
-            Advance();
+            // 1. 跳过空白，但不生成 NEWLINE Token（由 SkipWhitespace 统一处理或此处忽略）
+            if (char.IsWhiteSpace(Current))
+            {
+                Advance();
+                continue;
+            }
+
+            var start = _position;
+
+            // 2. 识别 & 符号
+            if (Current == '&')
+            {
+                AddToken(TokenType.BitAnd, "&", start); // 假设 & 对应 BitAnd，或根据你的定义修改
+                Advance();
+                continue;
+            }
+
+            // 3. 识别变量或常量 ($, _, @)
+            if (Current == '$' || Current == '_' || Current == '@')
+            {
+                ReadVariable();
+                continue;
+            }
+
+            // 4. 识别普通字符串（直到遇到下一个 & 或 换行）
+            var sb = new StringBuilder();
+            while (_position < _input.Length && Current != '&' && Current != '\n' && Current != '\r')
+            {
+                sb.Append(Advance());
+            }
+
+            var text = sb.ToString().Trim();
+            if (!string.IsNullOrEmpty(text))
+            {
+                // 注意：这里的位置指向字符串开始的地方
+                AddToken(TokenType.STRING, text, start);
+            }
         }
-        var printStr = _input[start.._position].Trim();
-        AddToken(TokenType.STRING, printStr, start);
     }
 
     private void ReadIdentifier()
@@ -387,6 +421,8 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         else
         {
             AddToken(TokenType.IDENT, word, start);
+            if(word.Equals("print", StringComparison.OrdinalIgnoreCase))
+                ReadPrintArguments();
         }
     }
 

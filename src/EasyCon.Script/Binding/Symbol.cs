@@ -1,6 +1,5 @@
 using EasyCon.Script.Parsing;
 using System.Collections.Immutable;
-using System.Xml.Linq;
 
 namespace EasyCon.Script.Binding;
 
@@ -26,9 +25,11 @@ class LocalVariableSymbol(string name, bool isReadOnly, ScriptType type) : Varia
     public override string ToString() => $"LocalVar({Name}: {Type})";
 }
 
-sealed class ParamSymbol(string name, ScriptType type, int ordinal = 0) : LocalVariableSymbol(name, true, type)
+sealed class ParamSymbol(string name, ScriptType type, int ordinal = 0, bool hasDefault = false, object? defaultValue = null) : LocalVariableSymbol(name, true, type)
 {
     public int Ordinal { get; } = ordinal;
+    public bool HasDefaultValue { get; } = hasDefault;
+    public object? DefaultValue { get; } = defaultValue;
 }
 
 /// <summary>
