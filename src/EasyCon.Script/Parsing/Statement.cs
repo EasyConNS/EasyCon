@@ -35,7 +35,7 @@ sealed class ImportStmt(Token syntax, Token model, string path = "") : Statement
 {
     internal readonly Token Model = model;
     internal readonly string InitPath = path;
-    internal string Lib => Model.Value;
+    internal string Lib => Model.STRTrimQ();
 
     public string FullFileName => Path.Combine(InitPath, Lib);
     protected override string _GetString() => $"IMPORT \"{Lib}\"";

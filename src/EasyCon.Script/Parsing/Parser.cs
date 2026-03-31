@@ -230,6 +230,22 @@ sealed partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> ext
     }
 }
 
+public static class TokExt
+{
+    public static string STRTrimQ(this Token tok)
+    {
+        if(tok.Type != TokenType.STRING) return tok.ToString();
+
+        var val = tok.Value;
+        if (val.Length >= 2 && val[0] == val[^1])
+        {
+            if (val[0] == '"' || val[0] == '\'')
+                return val[1..^1];
+        }
+        return val;
+    }
+}
+
 public class ParseException(string message, int index = -1) : Exception(message)
 {
     public int Index = index;

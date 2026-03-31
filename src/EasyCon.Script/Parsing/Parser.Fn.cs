@@ -66,7 +66,7 @@ internal partial class Parser
         if (toks.Length != 2) return null;
         if (toks[0].Type == TokenType.IMPORT && toks[1].Type == TokenType.STRING)
         {
-            var libSrc = Path.Combine(_filePath, LibPath, toks[1].Value);
+            var libSrc = Path.Combine(_filePath, LibPath, toks[1].STRTrimQ());
             if (!File.Exists(libSrc))
             {
                 throw new Exception($"文件不存在:{libSrc}");
