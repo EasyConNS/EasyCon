@@ -628,7 +628,6 @@ namespace EasyCon2.Forms
             runStopBtn.Enabled = false;
             if (!scriptRunning)
             {
-                cts?.Cancel();
                 ScriptRun();
             }
             else

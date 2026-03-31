@@ -1,6 +1,6 @@
 namespace EasyCon.Script.Parsing;
 
-class SerialPrint(uint value, bool mem) : Statement
+class SerialPrint(uint value, bool mem) : Statement(null!)
 {
     public readonly uint Value = value;
     public readonly bool Mem = mem;

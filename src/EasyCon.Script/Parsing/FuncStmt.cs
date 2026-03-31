@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
-internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement
+internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement(declare.Syntax)
 {
     public readonly FuncStmt Declare = declare;
     public ImmutableArray<Statement> Statements = statements;
@@ -21,7 +21,7 @@ internal sealed class TypeClauseSyntax(Token colonToken, Token identifier)
     public readonly Token Identifier = identifier;
 }
 
-class FuncStmt(Token identifier, ImmutableArray<ParameterSyntax> paramters, bool omitParn, TypeClauseSyntax? type) : StartBlockStmt
+class FuncStmt(Token identifier, ImmutableArray<ParameterSyntax> paramters, bool omitParn, TypeClauseSyntax? type) : StartBlockStmt(identifier)
 {
     public readonly Token Identifier = identifier;
     public string Name => Identifier.Value;
@@ -57,7 +57,7 @@ internal sealed class ParameterSyntax(VariableExpr varExpr, TypeClauseSyntax? ty
      }
 }
 
-class EndFuncStmt : EndBlockStmt
+class EndFuncStmt(Token syntax) : EndBlockStmt(syntax)
 {
     protected override string _GetString() => "ENDFUNC";
 
@@ -69,7 +69,7 @@ class EndFuncStmt : EndBlockStmt
     //}
 }
 
-class ReturnStmt(ExprBase? expression = null) : Statement
+class ReturnStmt(Token syntax, ExprBase? expression = null) : Statement(syntax)
 {
     public readonly ExprBase? Expression = expression;
     protected override string _GetString()
@@ -83,7 +83,7 @@ class ReturnStmt(ExprBase? expression = null) : Statement
     //}
 }
 
-class CallStmt(string fnName, ExprBase[] args) : Statement
+class CallStmt(Token syntax, string fnName, ExprBase[] args) : Statement(syntax)
 {
     public readonly string FnName = fnName;
     public readonly ExprBase[] Args = args;

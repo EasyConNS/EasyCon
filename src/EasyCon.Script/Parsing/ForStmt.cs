@@ -1,8 +1,9 @@
+using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
-internal sealed class ForBlock(ForStmt condition, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement
+internal sealed class ForBlock(ForStmt condition, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement(condition.Syntax)
 {
     public readonly ForStmt Condition = condition;
     public ImmutableArray<Statement> Statements = statements;
@@ -14,7 +15,7 @@ internal sealed class ForBlock(ForStmt condition, ImmutableArray<Statement> stat
     }
 }
 
-abstract class ForStmt(ExprBase lower, ExprBase upper) : StartBlockStmt
+abstract class ForStmt(Token syntax, ExprBase lower, ExprBase upper) : StartBlockStmt(syntax)
 {
     public readonly ExprBase Lower = lower;
     public readonly ExprBase Upper = upper;
@@ -47,8 +48,8 @@ abstract class ForStmt(ExprBase lower, ExprBase upper) : StartBlockStmt
 
 class For_Infinite : ForStmt
 {
-    public For_Infinite()
-        : base(0,0)
+    public For_Infinite(Token syntax)
+        : base(syntax, 0,0)
     { }
 
     protected override string _GetString() => "FOR";
@@ -60,7 +61,7 @@ class For_Infinite : ForStmt
     //}
 }
 
-class For_Static(ExprBase count) : ForStmt(1, count)
+class For_Static(Token syntax, ExprBase count) : ForStmt(syntax, 1, count)
 {
     protected override string _GetString()
     {
@@ -80,7 +81,7 @@ class For_Static(ExprBase count) : ForStmt(1, count)
     //}
 }
 
-class For_Range(VariableExpr regiter, ExprBase iter): ForStmt(iter, 1)
+class For_Range(Token syntax, VariableExpr regiter, ExprBase iter): ForStmt(syntax, iter, 1)
 {
     public VariableExpr RegIter = regiter;
     protected override string _GetString()
@@ -89,7 +90,7 @@ class For_Range(VariableExpr regiter, ExprBase iter): ForStmt(iter, 1)
     }
 }
 
-class For_Full(VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(lower, upper)
+class For_Full(Token syntax, VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(syntax, lower, upper)
 {
     public VariableExpr RegIter = regiter;
 
@@ -119,7 +120,7 @@ class For_Full(VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(l
     //}
 }
 
-class Next : EndBlockStmt
+class Next(Token syntax) : EndBlockStmt(syntax)
 {
     protected override string _GetString() => "NEXT";
 
@@ -133,7 +134,7 @@ class Next : EndBlockStmt
     //}
 }
 
-internal sealed class WhileBlock(WhileStmt condition, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement
+internal sealed class WhileBlock(WhileStmt condition, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement(condition.Syntax)
 {
     public readonly WhileStmt Condition = condition;
     public ImmutableArray<Statement> Statements = statements;
@@ -145,7 +146,7 @@ internal sealed class WhileBlock(WhileStmt condition, ImmutableArray<Statement> 
     }
 }
 
-class WhileStmt(ExprBase conds) : StartBlockStmt
+class WhileStmt(Token syntax, ExprBase conds) : StartBlockStmt(syntax)
 {
     public readonly ExprBase Condition = conds;
 
@@ -155,16 +156,16 @@ class WhileStmt(ExprBase conds) : StartBlockStmt
     }
 }
 
-abstract class LoopCtrl(uint level) : Statement
+abstract class LoopCtrl(Token syntax, uint level) : Statement(syntax)
 {
     public readonly uint Level = level;
 }
 
 class Break : LoopCtrl
 {
-    public Break() :base(1) { }
+    public Break(Token syntax) :base(syntax, 1) { }
 
-    public Break(uint level) :base(level) {}
+    public Break(Token syntax, uint level) :base(syntax, level) {}
 
     protected override string _GetString()
     {
@@ -182,7 +183,7 @@ class Break : LoopCtrl
 
 class Continue : LoopCtrl
 {
-    public Continue() : base(1) { }
+    public Continue(Token syntax) : base(syntax, 1) { }
 
     protected override string _GetString() => "CONTINUE";
 

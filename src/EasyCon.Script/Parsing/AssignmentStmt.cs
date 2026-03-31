@@ -1,6 +1,7 @@
+using EasyCon.Script2.Syntax;
 namespace EasyCon.Script.Parsing;
 
-class AssignmentStmt(VariableExpr regdst, ExprBase value, CompareOperator? augop = null) : Statement
+class AssignmentStmt(Token syntax, VariableExpr regdst, ExprBase value, CompareOperator? augop = null) : Statement(syntax)
 {
     public readonly VariableExpr DestVariable = regdst;
     public readonly ExprBase Expression = value;

@@ -5,7 +5,7 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
-partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
+sealed partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> extVars)
 {
     readonly Formatter _formatter = new(extVars);
     readonly SourceText _text = srctxt;

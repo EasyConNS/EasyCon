@@ -2,7 +2,7 @@ using EasyScript;
 
 namespace EasyCon.Script.Parsing;
 
-abstract class KeyActionStmt(string keyname, bool up = false) : Statement
+abstract class KeyActionStmt(string keyname, bool up = false) : Statement(null!)
 {
     protected virtual string KeyName => keyname.ToUpper();
     public virtual GamePadKey Key => NSKeys.GetKey(keyname);

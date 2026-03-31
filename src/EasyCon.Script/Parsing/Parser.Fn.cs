@@ -17,19 +17,19 @@ internal partial class Parser
         else if (firstToken.Type == TokenType.VAR) return ParseAssignment(toks);
         else if (firstToken.Type == TokenType.IMPORT) return ParseImport(toks);
         else if (firstToken.Type == TokenType.IF || firstToken.Type == TokenType.ELIF)return ParseIfelse(toks);
-        else if (firstToken.Type == TokenType.ELSE) return new Else();
-        else if (firstToken.Type == TokenType.ENDIF) return new EndIf();
+        else if (firstToken.Type == TokenType.ELSE) return new Else(firstToken);
+        else if (firstToken.Type == TokenType.ENDIF) return new EndIf(firstToken);
         else if (firstToken.Type == TokenType.WHILE) return ParseWhile(toks);
         else if (firstToken.Type == TokenType.FOR) return ParseFor(toks);
         else if (firstToken.Type == TokenType.BREAK || firstToken.Type == TokenType.CONTINUE)return ParseLoopCtrl(toks);
-        else if (firstToken.Type == TokenType.NEXT) return new Next();
+        else if (firstToken.Type == TokenType.NEXT) return new Next(firstToken);
         else if (firstToken.Type == TokenType.FUNC) return ParseFuncDecl(toks);
-        else if (firstToken.Type == TokenType.ENDFUNC) return new EndFuncStmt();
+        else if (firstToken.Type == TokenType.ENDFUNC) return new EndFuncStmt(firstToken);
         else if (firstToken.Type == TokenType.RETURN) return ParseReturn(toks);
-        else if (firstToken.Type == TokenType.END) return new EndBlockStmt();
+        else if (firstToken.Type == TokenType.END) return new EndBlockStmt(firstToken);
         else if (firstToken.Type == TokenType.INT)
         {
-            if (int.TryParse(firstToken.Value, out int duration)) return new Wait(duration, true);
+            if (int.TryParse(firstToken.Value, out int duration)) return new Wait(firstToken, duration, true);
         }
         else if (firstToken.Type == TokenType.IDENT)
         {
@@ -56,7 +56,7 @@ internal partial class Parser
             var pr = new ExprParser([.. toks.Skip(2)], _formatter, allowVar: false);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
-            return new AssignmentStmt(des, eexp);
+            return new AssignmentStmt(toks[0], des, eexp);
         }
         return null;
     }
@@ -71,7 +71,7 @@ internal partial class Parser
             {
                 throw new Exception($"文件不存在:{libSrc}");
             }
-            return new ImportStmt(toks[1].Value, Path.Combine(_filePath, LibPath));
+            return new ImportStmt(toks[0], toks[1], Path.Combine(_filePath, LibPath));
         }
         return null;
     }
@@ -92,7 +92,7 @@ internal partial class Parser
         var pr = new ExprParser([.. toks.Skip(2)], _formatter);
         var eexp = pr.ParseExpression();
         if (!pr.EOF(out _)) return null;
-        return new AssignmentStmt(des, eexp, op);
+        return new AssignmentStmt(toks[0], des, eexp, op);
     }
 
     private ReturnStmt? ParseReturn(ImmutableArray<Token> toks)
@@ -102,9 +102,9 @@ internal partial class Parser
             var pr = new ExprParser([.. toks.Skip(1)], _formatter);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
-            return new ReturnStmt(eexp);
+            return new ReturnStmt(toks[0], eexp);
         }
-        return new ReturnStmt();
+        return new ReturnStmt(toks[0]);
     }
 
     private Statement? ParseIfelse(ImmutableArray<Token> tokens)
@@ -118,9 +118,9 @@ internal partial class Parser
             switch (tokens[0].Type)
             {
                 case TokenType.IF:
-                    return new IfStmt(expr);
+                    return new IfStmt(tokens[0], expr);
                 case TokenType.ELIF:
-                    return new ElseIf(expr);
+                    return new ElseIf(tokens[0], expr);
             }
         }
         return null;
@@ -135,11 +135,11 @@ internal partial class Parser
     {
         if(tokens.Length == 1)
         {
-            return new For_Infinite();
+            return new For_Infinite(tokens[0]);
         }
         if(tokens.Length == 2 && checkPrimary(tokens[1].Type))
         {
-            return new For_Static(_formatter.GetValueEx(tokens[1]));
+            return new For_Static(tokens[0], _formatter.GetValueEx(tokens[1]));
         }
         if(tokens.Length == 6)
         {
@@ -148,7 +148,7 @@ internal partial class Parser
             && tokens[4].Type == TokenType.TO 
             && checkPrimary(tokens[5].Type))
             {
-                return new For_Full((VariableExpr)_formatter.GetValueEx(tokens[1]), _formatter.GetValueEx(tokens[3]), _formatter.GetValueEx(tokens[5]));
+                return new For_Full(tokens[0], (VariableExpr)_formatter.GetValueEx(tokens[1]), _formatter.GetValueEx(tokens[3]), _formatter.GetValueEx(tokens[5]));
             }
         }
         return null;
@@ -160,7 +160,7 @@ internal partial class Parser
         var pr = new ExprParser([.. tokens.Skip(1)], _formatter);
         var expr = pr.ParseExpression();
         if (!pr.EOF(out _)) return null;
-        return new WhileStmt(expr);
+        return new WhileStmt(tokens[0], expr);
     }
 
     private Statement? ParseLoopCtrl(ImmutableArray<Token> tokens)
@@ -173,18 +173,18 @@ internal partial class Parser
                 {
                     if (tokens.Length > 2) return null;
                     if(!uint.TryParse(tokens[1].Value, out var level))return null;
-                    return new Break(level);
+                    return new Break(tokens[0], level);
                 }
                 else
                     if (tokens.Length == 1)
                     {
-                        return new Break();
+                        return new Break(tokens[0]);
                     }
                 break;
             case TokenType.CONTINUE:
                 if (tokens.Length == 1)
                 {
-                    return new Continue();
+                    return new Continue(tokens[0]);
                 }
                 break;
         }
@@ -264,12 +264,12 @@ internal partial class Parser
                 if (tokens.Length != 2) return null;
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
-                    return new Wait(_formatter.GetValueEx(tokens[1]));
+                    return new Wait(first, _formatter.GetValueEx(tokens[1]));
                 }
                 break;
             case "call":
                 if (tokens.Length != 2) return null;
-                return tokens[1].Type == TokenType.IDENT ? new CallStmt(tokens[1].Value, []) : null;
+                return tokens[1].Type == TokenType.IDENT ? new CallStmt(first, tokens[1].Value, []) : null;
 #if DEBUG
             case "sprint":
             case "smem":
@@ -284,7 +284,7 @@ internal partial class Parser
             default:
                 if (tokens.Length < 2) return null;
                 var args = ParseArguments([.. tokens.Skip(1)]);
-                return new CallStmt(first.Value.ToUpper(), [.. args]);
+                return new CallStmt(first, first.Value.ToUpper(), [.. args]);
         }
         return null;
     }
@@ -317,7 +317,7 @@ internal partial class Parser
             }
         });
         var res = args.Aggregate((a,b)=> new BinaryExpression(bitand!, a, b));
-        return new CallStmt(firstToken.Value.ToUpper(), [res]);
+        return new CallStmt(firstToken, firstToken.Value.ToUpper(), [res]);
     }
 }
 

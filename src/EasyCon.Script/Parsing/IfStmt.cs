@@ -1,8 +1,9 @@
+using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
-internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statements, EndBlockStmt endif) : Statement
+internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statements, EndBlockStmt endif) : Statement(condition.Syntax)
 {
     public readonly IfStmt Condition = condition;
     public ImmutableArray<Statement> Statements = statements;
@@ -14,7 +15,7 @@ internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statem
     }
 }
 
-class IfStmt(ExprBase conds) : StartBlockStmt
+class IfStmt(Token syntax, ExprBase conds) : StartBlockStmt(syntax)
 {
     public readonly ExprBase Condition = conds;
 
@@ -42,7 +43,7 @@ class IfStmt(ExprBase conds) : StartBlockStmt
     //}
 }
 
-class ElseIf(ExprBase conds) : IfStmt(conds)
+class ElseIf(Token syntax, ExprBase conds) : IfStmt(syntax, conds)
 {
     protected override string _GetString()
     {
@@ -73,7 +74,7 @@ class ElseIf(ExprBase conds) : IfStmt(conds)
     //}
 }
 
-class Else : Statement
+class Else(Token syntax) : Statement(syntax)
 {
     protected override string _GetString() => "ELSE";
 
@@ -86,7 +87,7 @@ class Else : Statement
     //}
 }
 
-class EndIf : EndBlockStmt
+class EndIf(Token syntax) : EndBlockStmt(syntax)
 {
     protected override string _GetString() => "ENDIF";
 

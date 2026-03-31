@@ -540,7 +540,6 @@ internal sealed class Binder
             "BOOL" => ScriptType.Bool,
             "INT" => ScriptType.Int,
             "STRING" => ScriptType.String,
-            "VOID" => ScriptType.Void,
             _ => null,
         };
     }

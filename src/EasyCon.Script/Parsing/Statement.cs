@@ -1,10 +1,12 @@
+using EasyCon.Script2.Syntax;
 using System.CodeDom.Compiler;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script.Parsing;
 
-abstract class Statement
+abstract class Statement(Token syntax)
 {
+    public Token Syntax { get; } = syntax;
     public int Address = -1;
     public string Comment { get; set; } = string.Empty;
 
@@ -16,24 +18,24 @@ abstract class Statement
     }
 }
 
-class EmptyStmt : Statement
+class EmptyStmt() : Statement(null!)
 {
-
     protected override string _GetString() => "";
 }
 
-abstract class StartBlockStmt : Statement
+abstract class StartBlockStmt(Token syntax) : Statement(syntax)
 {}
 
-class EndBlockStmt : Statement
+class EndBlockStmt(Token syntax) : Statement(syntax)
 {
     protected override string _GetString() => "END";
 }
 
-sealed class ImportStmt(string name, string path = "") : Statement
+sealed class ImportStmt(Token syntax, Token model, string path = "") : Statement(syntax)
 {
+    internal readonly Token Model = model;
     internal readonly string InitPath = path;
-    internal readonly string Lib = name;
+    internal string Lib => Model.Value;
 
     public string FullFileName => Path.Combine(InitPath, Lib);
     protected override string _GetString() => $"IMPORT \"{Lib}\"";

@@ -1,6 +1,8 @@
+using EasyCon.Script2.Syntax;
+
 namespace EasyCon.Script.Parsing;
 
-class Wait(ExprBase duration, bool omitted = false) : Statement
+class Wait(Token syntax, ExprBase duration, bool omitted = false) : Statement(syntax)
 {
     public readonly ExprBase Duration = duration;
     protected bool _omitted = omitted;
