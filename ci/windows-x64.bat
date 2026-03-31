@@ -18,6 +18,7 @@ dotnet publish %projname%.csproj --nologo -c Release -r win-x64 -f net8.0-window
 cd ..\publish
 for /F %%i in ('git rev-parse --short HEAD') do ( set commitid=%%i)
 ren EasyCon2.exe %projname%.%commitid%.exe
+ren EasyCon2.CLI.exe ezcon.exe
 ren Resources Amiibo
 
 cd ../
