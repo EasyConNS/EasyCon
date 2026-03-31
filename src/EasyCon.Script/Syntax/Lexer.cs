@@ -422,7 +422,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         else
         {
             AddToken(TokenType.IDENT, word, start);
-            if(word.Equals("print", StringComparison.OrdinalIgnoreCase))
+            if(word.Equals("print", StringComparison.OrdinalIgnoreCase) || word.Equals("alert", StringComparison.OrdinalIgnoreCase))
                 ReadPrintArguments();
         }
     }
