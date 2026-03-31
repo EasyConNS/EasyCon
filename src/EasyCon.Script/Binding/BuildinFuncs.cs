@@ -25,7 +25,7 @@ internal static class BuiltinFunctions
     );
 
     // LEN<T>(container: Array<T>): int 
-    public static readonly FunctionSymbol Length = new("LEN", [T], [new("array", ScriptType.ArrayDefinition.Bind(T))], ScriptType.Int);
+    public static readonly FunctionSymbol Length = new("LEN", [T], [new("var", T)], ScriptType.Int);
 
     /// <summary>
     /// 获取所有内置函数符号

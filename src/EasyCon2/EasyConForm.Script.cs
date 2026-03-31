@@ -1,5 +1,6 @@
 using EasyCon.Capture;
 using EasyCon.Script;
+using EasyCon.Core;
 using EasyCon2.Helper;
 using EasyCon.Script.Assembly;
 using EasyCon.Script.Parsing;

@@ -83,7 +83,7 @@ class ReturnStmt(Token syntax, ExprBase? expression = null) : Statement(syntax)
     //}
 }
 
-class CallStmt(Token syntax, string fnName, ExprBase[] args) : Statement(syntax)
+class CallStmt(Token syntax, string fnName, ExprBase[] args, bool usecall = true) : Statement(syntax)
 {
     public readonly string FnName = fnName;
     public readonly ExprBase[] Args = args;
@@ -107,7 +107,7 @@ class CallStmt(Token syntax, string fnName, ExprBase[] args) : Statement(syntax)
 
     protected override string _GetString()
     {
-        if (Args.Length == 0) return $"CALL {FnName}";
+        if (Args.Length == 0 && usecall) return $"CALL {FnName}";
         return $"{FnName} {string.Join(", ", Args.Select(u => u.GetCodeText()))}".Trim();
     }
 }

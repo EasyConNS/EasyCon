@@ -1,6 +1,6 @@
-﻿namespace EasyDevice;
+namespace EasyDevice;
 
-public static class Command
+public static class EzDvCommand
 {
     public const byte Ready = 0xA5;
     public const byte Debug = 0x80;

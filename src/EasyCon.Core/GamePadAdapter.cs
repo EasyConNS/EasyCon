@@ -1,11 +1,10 @@
-using EasyCon.Core;
 using EasyCon.Script;
 using EasyDevice;
 using EasyScript;
 
-namespace EasyCon2.Helper;
+namespace EasyCon.Core;
 
-internal class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
+public class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
 {
     private NintendoSwitch NS = easyPad;
 

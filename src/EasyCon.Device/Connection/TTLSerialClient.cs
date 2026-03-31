@@ -25,12 +25,12 @@ internal class TTLv2SerialClient(string name, int port) : IConnection
 
     public override void Connect()
     {
-        _serialPortClient.SetHeartbeat([Command.Ready, Command.Ready, Command.Hello], (bs) => bs.Length == 1 && bs[0] == Reply.Hello);
+        _serialPortClient.SetHeartbeat([EzDvCommand.Ready, EzDvCommand.Ready, EzDvCommand.Hello], (bs) => bs.Length == 1 && bs[0] == Reply.Hello);
 
         void checkopend(object sender, string message)
         {
             bool check(byte[] bs) => bs.Length == 1 && bs[0] == Reply.Hello;
-                var recv = _serialPortClient.SendCommand([Command.Ready, Command.Ready, Command.Hello]);
+                var recv = _serialPortClient.SendCommand([EzDvCommand.Ready, EzDvCommand.Ready, EzDvCommand.Hello]);
 
                 Console.WriteLine($"[{_serialPortClient.ConnectPort}] --recv-- " + string.Join(" ", recv.Select(b => b.ToString("X2"))));
 
@@ -157,7 +157,7 @@ class TTLSerialClient : IConnection
             Debug.WriteLine("left byte:" + _sport.BytesToRead.ToString());
             _sport.DiscardInBuffer();
             // say hello
-            var hellobytes = new byte[] { Command.Ready, Command.Ready, Command.Hello };
+            var hellobytes = new byte[] { EzDvCommand.Ready, EzDvCommand.Ready, EzDvCommand.Hello };
             stream.Write(hellobytes, 0, hellobytes.Length);
             BytesSent?.Invoke(_connStr, hellobytes);
             var outBuffer = new List<byte>();

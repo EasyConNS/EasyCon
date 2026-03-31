@@ -11,12 +11,13 @@
     <PackageVersion Include="AvalonEdit" Version="6.3.1.120" />
     <PackageVersion Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
     <PackageVersion Include="AvaloniaEdit.TextMate" Version="11.3.0" />
+    <PackageVersion Include="System.CommandLine" Version="3.0.0-preview.2.26159.112" />
     <PackageVersion Include="System.IO.Ports" Version="10.0.1" />
     <PackageVersion Include="System.Management" Version="10.0.1" />
-	<PackageVersion Include="WPF-UI" Version="4.0.2" />
-	<PackageVersion Include="WPF-UI.DependencyInjection" Version="4.0.2" />
-	<PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.1" />
-	<PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0 "/>
+    <PackageVersion Include="WPF-UI" Version="4.0.2" />
+    <PackageVersion Include="WPF-UI.DependencyInjection" Version="4.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.1" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0 " />
     <PackageVersion Include="OpenCvSharp4" Version="4.11.0.20250507" />
     <PackageVersion Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
     <PackageVersion Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" />

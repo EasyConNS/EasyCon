@@ -118,7 +118,7 @@ public partial class NintendoSwitch
         {
             clientCon.BytesReceived += h;
             for (int i = 0; i < 3; i++)
-                clientCon.Write(Command.Ready, Command.Hello);
+                clientCon.Write(EzDvCommand.Ready, EzDvCommand.Hello);
             return ewh.WaitOne(50);
         }
         finally
@@ -140,12 +140,12 @@ public partial class NintendoSwitch
                 if (!SendSync(
                         b => b == Reply.FlashStart,
                         1000,
-                        Command.Ready,
+                        EzDvCommand.Ready,
                         (byte)(i & 0x7F),
                         (byte)(i >> 7),
                         (byte)(len & 0x7F),
                         (byte)(len >> 7),
-                        Command.Flash)
+                        EzDvCommand.Flash)
                     || !SendSync(
                         b => b == Reply.FlashEnd,
                         1000,
@@ -165,12 +165,12 @@ public partial class NintendoSwitch
 
     public bool RemoteStart()
     {
-        return SendSync(b => b == Reply.ScriptAck, 200, Command.Ready, Command.ScriptStart);
+        return SendSync(b => b == Reply.ScriptAck, 200, EzDvCommand.Ready, EzDvCommand.ScriptStart);
     }
 
     public bool RemoteStop()
     {
-        return SendSync(b => b == Reply.ScriptAck, 200, Command.Ready, Command.ScriptStop);
+        return SendSync(b => b == Reply.ScriptAck, 200, EzDvCommand.Ready, EzDvCommand.ScriptStop);
     }
 
     public int GetVersion()
@@ -185,24 +185,24 @@ public partial class NintendoSwitch
             }
             return false;
         }, 200,
-        Command.Ready,
-        Command.Version);
+        EzDvCommand.Ready,
+        EzDvCommand.Version);
         return ver;
     }
 
     public bool TriggerLED()
     {
-        return SendSync(b => b == 0, 200, Command.Ready, Command.LED);
+        return SendSync(b => b == 0, 200, EzDvCommand.Ready, EzDvCommand.LED);
     }
 
     public bool UnPair()
     {
-        return SendSync(b => b == Reply.Ack, 200, Command.Ready, Command.UnPair);
+        return SendSync(b => b == Reply.Ack, 200, EzDvCommand.Ready, EzDvCommand.UnPair);
     }
 
     public bool ChangeControllerMode(byte mode)
     {
-        return SendSync(b => b == Reply.Ack, 200, Command.Ready, mode,Command.ChangeControllerMode);
+        return SendSync(b => b == Reply.Ack, 200, EzDvCommand.Ready, mode,EzDvCommand.ChangeControllerMode);
     }
 
     public bool ChangeControllerColor(byte[] color)
@@ -215,12 +215,12 @@ public partial class NintendoSwitch
         ret = SendSync(
         b => b == Reply.Ack,
         1000,
-        Command.Ready,
+        EzDvCommand.Ready,
         (byte)(i & 0x7F),
         (byte)(i >> 7),
         (byte)(len & 0x7F),
         (byte)(len >> 7),
-        Command.ChangeControllerColor);
+        EzDvCommand.ChangeControllerColor);
 
         ret &= SendSync(
         b => b == Reply.Ack,
@@ -242,13 +242,13 @@ public partial class NintendoSwitch
                 if (!SendSync(
                         b => b == Reply.Ack,
                         1000,
-                        Command.Ready,
+                        EzDvCommand.Ready,
                         (byte)(i & 0x7F),
                         (byte)(i >> 7),
                         (byte)(len & 0x7F),
                         (byte)(len >> 7),
                         index,
-                        Command.SaveAmiibo)
+                        EzDvCommand.SaveAmiibo)
                     || !SendSync(
                         b => b == Reply.Ack,
                         1000,
@@ -268,6 +268,6 @@ public partial class NintendoSwitch
 
     public bool ChangeAmiiboIndex(byte index)
     {
-        return SendSync(b => b == Reply.Ack, 200, Command.Ready, index, Command.ChangeAmiiboIndex);
+        return SendSync(b => b == Reply.Ack, 200, EzDvCommand.Ready, index, EzDvCommand.ChangeAmiiboIndex);
     }
 }

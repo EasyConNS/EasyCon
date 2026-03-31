@@ -28,7 +28,7 @@ class EasyConPad
 
     public bool HandShake()
     {
-        var hellobytes = new byte[] { Command.Ready, Command.Hello };
+        var hellobytes = new byte[] { EzDvCommand.Ready, EzDvCommand.Hello };
         var buf = SendResponse(hellobytes);
         return buf == Reply.Hello;
     }
@@ -40,7 +40,7 @@ class EasyConPad
         for (int i = 0; i < list.Count; i += PacketSize)
         {
             int len = Math.Min(PacketSize, list.Count - i);
-            var header = new byte[] { Command.Ready, (byte)(i & 0x7F), (byte)(i >> 7), (byte)(len & 0x7F), (byte)(len >> 7), };
+            var header = new byte[] { EzDvCommand.Ready, (byte)(i & 0x7F), (byte)(i >> 7), (byte)(len & 0x7F), (byte)(len >> 7), };
             var packet = list.GetRange(i, len).ToArray();
 
             while (true)
@@ -67,28 +67,28 @@ class EasyConPad
 
     public bool StartScript()
     {
-        var sendbytes = new byte[] { Command.Ready, Command.ScriptStart };
+        var sendbytes = new byte[] { EzDvCommand.Ready, EzDvCommand.ScriptStart };
         var buf = SendResponse(sendbytes);
         return buf == Reply.ScriptAck;
     }
 
     public bool StopScript()
     {
-        var sendbytes = new byte[] { Command.Ready, Command.ScriptStop };
+        var sendbytes = new byte[] { EzDvCommand.Ready, EzDvCommand.ScriptStop };
         var buf = SendResponse(sendbytes);
         return buf == Reply.ScriptAck;
     }
 
     public byte GetVersion()
     {
-        var sendbytes = new byte[] { Command.Ready, Command.Version };
+        var sendbytes = new byte[] { EzDvCommand.Ready, EzDvCommand.Version };
         var buf = SendResponse(sendbytes);
         return buf;
     }
 
     public bool TriggerLED()
     {
-        var sendbytes = new byte[] { Command.Ready, Command.LED };
+        var sendbytes = new byte[] { EzDvCommand.Ready, EzDvCommand.LED };
         var buf = SendResponse(sendbytes);
         return buf == 0;
     }

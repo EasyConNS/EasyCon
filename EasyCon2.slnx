@@ -17,8 +17,9 @@
   <Folder Name="/Common/">
     <Project Path="src/EasyCon2.UI.Common/EasyCon2.UI.Common.csproj" />
   </Folder>
-  <Project Path="src/EasyCon2.UI.WPF/EasyCon2.UI.WPF.csproj" Id="f40d95ea-545b-4ec0-a817-07bf26c9583e" />
   <Project Path="src/EasyCon.VPad/EasyCon.VPad.csproj" />
   <Project Path="src/EasyCon2.Avalonia/EasyCon2.Avalonia.csproj" />
+  <Project Path="src/EasyCon2.CLI/EasyCon2.CLI.csproj" Id="a2867adb-139a-43d0-a421-9895222dcc7c" />
+  <Project Path="src/EasyCon2.UI.WPF/EasyCon2.UI.WPF.csproj" Id="f40d95ea-545b-4ec0-a817-07bf26c9583e" />
   <Project Path="src/EasyCon2/EasyCon2.csproj" />
 </Solution>

@@ -27,19 +27,19 @@ internal partial class Parser
         else if (firstToken.Type == TokenType.ENDFUNC) return new EndFuncStmt(firstToken);
         else if (firstToken.Type == TokenType.RETURN) return ParseReturn(toks);
         else if (firstToken.Type == TokenType.END) return new EndBlockStmt(firstToken);
-        else if (firstToken.Type == TokenType.INT)
+        else if (firstToken.Type == TokenType.INT && toks.Length == 1)
         {
             if (int.TryParse(firstToken.Value, out int duration)) return new Wait(firstToken, duration, true);
         }
-        else if (firstToken.Type == TokenType.IDENT)
-        {
-            if(firstToken.Value.Equals("print", StringComparison.OrdinalIgnoreCase) || firstToken.Value.Equals("alert", StringComparison.OrdinalIgnoreCase))
-            {
-                var curline = firstToken.Text.Lines[firstToken.Line-1].Text;
-                curline = curline.Contains('#') ? curline.Substring(0, curline.IndexOf('#')) : curline;
-                return ParsePrintStmt(toks, curline.Trim());
-            }
-        }
+        //else if (firstToken.Type == TokenType.IDENT)
+        //{
+        //    if(firstToken.Value.Equals("print", StringComparison.OrdinalIgnoreCase) || firstToken.Value.Equals("alert", StringComparison.OrdinalIgnoreCase))
+        //    {
+        //        var curline = firstToken.Text.Lines[firstToken.Line-1].Text;
+        //        curline = curline.Contains('#') ? curline.Substring(0, curline.IndexOf('#')) : curline;
+        //        return ParsePrintStmt(toks, curline.Trim());
+        //    }
+        //}
         // Handle key statements
         var fullline = firstToken.Text.Lines[firstToken.Line - 1].Text;
         fullline = fullline.Contains('#') ? fullline.Substring(0, fullline.IndexOf('#')) : fullline;
@@ -258,6 +258,9 @@ internal partial class Parser
         if (first.Type != TokenType.IDENT) return null;
         switch (first.Value.ToLower())
         {
+            case "print":
+                var outstr = ParseArguments([.. tokens.Skip(1)]);
+                return new CallStmt(first, first.Value.ToUpper(), [.. outstr], false);
             case "wait":
                 if (tokens.Length != 2) return null;
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
@@ -289,6 +292,7 @@ internal partial class Parser
 
     private ImmutableArray<ExprBase> ParseArguments(ImmutableArray<Token> toks)
     {
+        if (toks.Length == 0) return [];
         var pr = new ExprParser(toks, _formatter);
         var args = pr.ParseArguments();
         if (!pr.EOF(out _)) throw new Exception("函数传参解析失败");
