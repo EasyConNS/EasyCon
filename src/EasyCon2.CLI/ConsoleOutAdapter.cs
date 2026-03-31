@@ -1,15 +1,13 @@
+using EasyCon.Core;
 using EasyScript;
 using System.Drawing;
 
-class ConsoleOutAdapter : IOutputAdapter
+class ConsoleOutAdapter() : IOutputAdapter
 {
+    private ConfigState _config = ConfigMgr.Load();
+
     private bool _msgNewLine = true;
     private bool _msgFirstLine = true;
-
-    public void Alert(string message)
-    {
-        throw new NotImplementedException();
-    }
 
     public void Print(string message, bool newline = true)
     {
@@ -46,6 +44,38 @@ class ConsoleOutAdapter : IOutputAdapter
         }
         ColorfulConsole.Write(message, color ?? Color.White);
         _msgNewLine = true;
+    }
+
+    public void Alert(string message)
+    {
+        Task.Run(() =>
+        {
+            try
+            {
+                if (_config.EnableAlertToken)
+                {
+                    var result = new PushPlusClient(_config.AlertToken).SendMessage(message).Result;
+                    Print(result);
+                }
+
+                if (_config.EnableChannelToken)
+                {
+                    if (_config.ChannelToken != "")
+                    {
+                        Print("推送失败: QQ频道维护中。。。");
+                        //ws?.SendNotify(message);
+                    }
+                    else
+                    {
+                        Print("推送失败: 请配置QQ频道Token");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Print($"推送失败:{e.Message}");
+            }
+        }).Wait();
     }
 }
 

@@ -89,7 +89,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     Console.WriteLine("准备加载搜图标签...");
     Console.WriteLine($"标签（脚本）路径：{scriptBasePath}({ECCore.ImgDir}所在目录)");
-    var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath);
+    var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
     Console.WriteLine($"已加载标签：{label.Count()}/{total}, {(repeat > 0 ? $"重复标签：{repeat}" : "")}");
 
     outdap.Log("正在解析脚本...");

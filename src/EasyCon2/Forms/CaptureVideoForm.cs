@@ -25,8 +25,8 @@ namespace EasyCon2.Forms
             Refresh
         }
 
-        static readonly string CapDir = Application.StartupPath + "\\Capture\\";
-        static readonly string ImgDir = Application.StartupPath + "\\ImgLabel\\";
+        static readonly string CapDir = AppDomain.CurrentDomain.BaseDirectory + "\\Capture\\";
+        static readonly string ImgDir = AppDomain.CurrentDomain.BaseDirectory + "\\ImgLabel\\";
 
         private int deviceId = -1;
         private readonly OpenCVCapture cvcap = new();
