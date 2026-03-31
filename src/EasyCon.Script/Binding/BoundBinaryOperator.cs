@@ -67,6 +67,8 @@ internal sealed class BoundBinaryOperator
         ];
     public static BoundBinaryOperator? Bind(TokenType kind, ScriptType leftType, ScriptType rightType)
     {
+        if(kind.OperatorIsAug())
+            kind = kind.GetBinaryOperatorOfAssignmentOperator();
         foreach (var op in _operators)
         {
             if (op.TypeKind == kind && op.LeftType == leftType && op.RightType == rightType)
@@ -78,27 +80,6 @@ internal sealed class BoundBinaryOperator
             return new BoundBinaryOperator(kind, BoundBinaryOperatorKind.Addition, leftType, leftType, leftType, (a, b) => a.Concat(b));
         }
         return null;
-    }
-
-    public static BoundBinaryOperator? Bind(string op)
-    {
-        return op switch
-        {
-            "+" => Bind(TokenType.ADD, ScriptType.Int, ScriptType.Int),
-            "-" => Bind(TokenType.SUB, ScriptType.Int, ScriptType.Int),
-            "*" => Bind(TokenType.MUL, ScriptType.Int, ScriptType.Int),
-            "/" => Bind(TokenType.DIV, ScriptType.Int, ScriptType.Int),
-            @"\" => Bind(TokenType.SlashI, ScriptType.Int, ScriptType.Int),
-
-            "%" => Bind(TokenType.MOD, ScriptType.Int, ScriptType.Int),
-            "&" => Bind(TokenType.BitAnd, ScriptType.Int, ScriptType.Int),
-            "|" => Bind(TokenType.BitOr, ScriptType.Int, ScriptType.Int),
-            "^" => Bind(TokenType.XOR, ScriptType.Int, ScriptType.Int),
-
-            ">>" => Bind(TokenType.SlashI, ScriptType.Int, ScriptType.Int),
-            "<<" => Bind(TokenType.SlashI, ScriptType.Int, ScriptType.Int),
-            _ => null,
-        };
     }
 }
 

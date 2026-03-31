@@ -1,19 +1,15 @@
 using EasyCon.Script2.Syntax;
 namespace EasyCon.Script.Parsing;
 
-class AssignmentStmt(Token syntax, VariableExpr regdst, ExprBase value, CompareOperator? augop = null) : Statement(syntax)
+class AssignmentStmt(Token syntax, VariableExpr regdst, Token assignmentToken, ExprBase value) : Statement(syntax)
 {
     public readonly VariableExpr DestVariable = regdst;
+    public readonly Token AssignmentToken = assignmentToken;
     public readonly ExprBase Expression = value;
-
-    public readonly CompareOperator? AugOp = augop;
 
     protected override string _GetString()
     {
-        var op = "=";
-        if( AugOp != null )
-            op = AugOp!.Operator+"=";
-        return $"{DestVariable.GetCodeText()} {op} {Expression.GetCodeText()}";
+        return $"{DestVariable.GetCodeText()} {assignmentToken.Value} {Expression.GetCodeText()}";
     }
 
     //public override void Assemble(Assembly.Assembler assembler)

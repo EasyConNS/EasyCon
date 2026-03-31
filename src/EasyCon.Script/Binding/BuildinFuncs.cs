@@ -4,10 +4,10 @@ namespace EasyCon.Script.Binding;
 
 internal static class BuiltinFunctions
 {
-    public static readonly FunctionSymbol Wait = new("WAIT", [], [new("duration", ScriptType.Int)], ScriptType.Void);
+    public static readonly FunctionSymbol Wait = new("WAIT", [], [new("duration", ScriptType.Int, hasDefault: true, defaultValue: 50)], ScriptType.Void);
     public static readonly FunctionSymbol Print = new("PRINT", [], [new("message", ScriptType.String, hasDefault : true, defaultValue : "")], ScriptType.Void);
     public static readonly FunctionSymbol Alert = new("ALERT", [], [new("message", ScriptType.String)], ScriptType.Void);
-    public static readonly FunctionSymbol Rand = new("RAND", [], [new("max", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol Rand = new("RAND", [], [new("max", ScriptType.Int, hasDefault: true, defaultValue: 100)], ScriptType.Int);
     public static readonly FunctionSymbol Timestamp = new("TIME", [], [], ScriptType.Int);
     public static readonly FunctionSymbol Amiibo = new("AMIIBO", [], [new("index", ScriptType.Int)], ScriptType.Void);
     public static readonly FunctionSymbol Beep = new("BEEP", [], [new("freq", ScriptType.Int), new("duration", ScriptType.Int)], ScriptType.Void);

@@ -1,4 +1,3 @@
-using EasyCon.Script.Binding;
 using EasyCon.Script2.Syntax;
 using EasyCon.Script2.Text;
 using System.Collections.Immutable;
@@ -48,7 +47,6 @@ sealed partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> ext
     {
         int address = 0;
 
-        var _funcTables = new Dictionary<string, int>();
         var unit = new Stack<List<Statement>>();
         unit.Push([]);
         var result = unit.Peek();
@@ -56,11 +54,6 @@ sealed partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> ext
         {
             unit.Push([]);
             result = unit.Peek();
-        }
-
-        foreach (var item in BuiltinFunctions.GetAll())
-        {
-            _funcTables.Add(item.Name, item.Parameters.Length);
         }
 
         // Parse all tokens using SyntaxTree.ParseTokens
@@ -127,11 +120,6 @@ sealed partial class Parser(SourceText srctxt, IEnumerable<ExternalVariable> ext
                     if (st is FuncStmt fst)
                     {
                         if (unit.Count > 1) throw new ParseException("函数必须在顶层定义");
-                        if (_funcTables.ContainsKey(fst.Name))
-                        {
-                            throw new ParseException("重复定义的函数名", address);
-                        }
-                        _funcTables[fst.Name] = 0;
                     }
                     startblock();
                 }

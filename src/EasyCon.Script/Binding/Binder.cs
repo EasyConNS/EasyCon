@@ -91,22 +91,25 @@ internal sealed class Binder
     private void BindFuncDeclaration(FuncDeclBlock syntax)
     {
         var parameters = ImmutableArray.CreateBuilder<ParamSymbol>();
-
         var seenParameterNames = new HashSet<string>();
 
-        foreach (var parameterSyntax in syntax.Declare.Paramters)
+        for (int i = 0; i < syntax.Declare.Paramters.Length; i++)
         {
+            var parameterSyntax = syntax.Declare.Paramters[i];
             var parameterName = parameterSyntax.Identifier.Tag;
             var parameterType = BindTypeClause(syntax.Declare, parameterSyntax.Type)?? ScriptType.Int;
+
             if (!seenParameterNames.Add(parameterName))
-            {
-                throw new Exception($"重复定义的参数名 {parameterName}");
-            }
-            else
-            {
-                var parameter = new ParamSymbol(parameterName, parameterType, parameters.Count);
-                parameters.Add(parameter);
-            }
+                throw new ParseException($"重复定义的参数名 {parameterName}", syntax.Declare.Address);
+
+            // 检查是否是最后一个参数且带有默认值
+            bool isLast = i == syntax.Declare.Paramters.Length - 1;
+
+            // 如果不是最后一个参数却尝试定义默认值，抛出异常
+             //if (!isLast && parameterSyntax.) throw new ParseException("只有最后一个参数可以有默认值", syntax.Declare.Address);
+
+            var parameter = new ParamSymbol(parameterName, parameterType, parameters.Count);
+            parameters.Add(parameter);
         }
 
         var returnType = BindTypeClause(syntax?.Declare) ?? ScriptType.Void;
@@ -478,7 +481,7 @@ internal sealed class Binder
     {
         var boundexpr = BindExpression(syntax.Expression);
 
-        if (syntax.AugOp != null)
+        if (syntax.AssignmentToken.Value != "=")
         {
             // a <op>= b
             //
@@ -486,7 +489,8 @@ internal sealed class Binder
             //
             // a = (a <op> b)
             var desvar = BindVarExpression(syntax.DestVariable);
-            var op = BoundBinaryOperator.Bind(syntax.AugOp.Operator);
+            var op = BoundBinaryOperator.Bind(syntax.AssignmentToken.Type, desvar.Type, boundexpr.Type)
+                ?? throw new Exception($"不支持的运算符:{syntax.AssignmentToken.Value}对于类型 <{desvar.Type}>和<{boundexpr.Type}> ");
             boundexpr = new BoundBinaryExpression(syntax.Expression, desvar, op!, boundexpr);
         }
         
@@ -546,8 +550,13 @@ internal sealed class Binder
 
     private BoundExprStatement BindCallStatement(CallStmt syntax)
     {
+        var name = syntax.FnName;
+        if(BuiltinFunctions.GetAll().Select(f => f.Name).Contains(syntax.FnName.ToUpper()))
+        {
+            name = syntax.FnName.ToUpper();
+        }
         // 绑定调用
-        var expr = BindCallExpression(null, syntax.FnName, [.. syntax.Args]);
+        var expr = BindCallExpression(null, name, [.. syntax.Args]);
 
         return new BoundExprStatement(syntax, expr);
     }
@@ -755,17 +764,30 @@ internal sealed class Binder
         var boundArgs = Arguments.Select(BindExpression).ToImmutableArray();
 
         // 2. 检查参数数量
-        if (boundArgs.Length != function.Parameters.Length)
+        int minArgs = function.Parameters.Count(p => !p.HasDefaultValue);
+        int maxArgs = function.Parameters.Length;
+
+        if (boundArgs.Length < minArgs || boundArgs.Length > maxArgs)
             throw new Exception($"函数 {fnName} 参数数量不匹配");
 
-        // 3. 泛型绑定与实例化 [新逻辑]
+        // 3. 泛型绑定与实例化
         var (instParams, instReturn) = BindGenericFunction(function, boundArgs);
 
         // 4. 类型转换与最终参数确定
         var finalArgs = ImmutableArray.CreateBuilder<BoundExpr>();
-        for (int i = 0; i < boundArgs.Length; i++)
+        for (int i = 0; i < function.Parameters.Length; i++)
         {
-            finalArgs.Add(BindConversion(boundArgs[i], instParams[i]));
+            var param = function.Parameters[i];
+
+            if (i < boundArgs.Length)
+            {
+                finalArgs.Add(BindConversion(boundArgs[i], instParams[i]));
+            }
+            else if (param.HasDefaultValue)
+            {
+                // 补全默认值
+                finalArgs.Add(new BoundLiteralExpression(syntax!, Value.From(param.DefaultValue)));
+            }
         }
 
         return new BoundCallExpression(syntax, function, finalArgs.ToImmutable(), instReturn);

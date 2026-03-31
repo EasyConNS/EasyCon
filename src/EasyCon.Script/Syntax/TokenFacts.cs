@@ -101,4 +101,23 @@ public static class TokenFacts
             _ => false,
         };
     }
+    public static TokenType GetBinaryOperatorOfAssignmentOperator(this TokenType kind)
+    {
+        return kind switch
+        {
+            TokenType.ADD_ASSIGN => TokenType.ADD,
+            TokenType.SUB_ASSIGN => TokenType.SUB,
+            TokenType.MUL_ASSIGN => TokenType.MUL,
+            TokenType.DIV_ASSIGN => TokenType.DIV,
+            TokenType.SlashI_ASSIGN => TokenType.SlashI,
+            TokenType.MOD_ASSIGN => TokenType.MOD,
+            TokenType.BitAnd_ASSIGN => TokenType.BitAnd,
+            TokenType.BitOr_ASSIGN => TokenType.BitOr,
+            TokenType.XOR_ASSIGN => TokenType.XOR,
+            TokenType.SHL_ASSIGN => TokenType.SHL,
+            TokenType.SHR_ASSIGN => TokenType.SHR,
+            _ => TokenType.BadToken,
+        };
+
+    }
 }

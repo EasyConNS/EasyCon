@@ -56,7 +56,7 @@ internal partial class Parser
             var pr = new ExprParser([.. toks.Skip(2)], _formatter, allowVar: false);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
-            return new AssignmentStmt(toks[0], des, eexp);
+            return new AssignmentStmt(toks[0], des, toks[1], eexp);
         }
         return null;
     }
@@ -81,18 +81,16 @@ internal partial class Parser
         if (toks.Length < 3) return null;
 
         var des = (VariableExpr)_formatter.GetValueEx(toks[0]);
-        CompareOperator? op = null;
         if(toks[1].Type.OperatorIsAug())
         {
             //aug assign
-            op = CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == toks[1].Value);
-            if (op == null) return null;
+            if (CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == toks[1].Value) == null) return null;
         }
 
         var pr = new ExprParser([.. toks.Skip(2)], _formatter);
         var eexp = pr.ParseExpression();
         if (!pr.EOF(out _)) return null;
-        return new AssignmentStmt(toks[0], des, eexp, op);
+        return new AssignmentStmt(toks[0], des, toks[1], eexp);
     }
 
     private ReturnStmt? ParseReturn(ImmutableArray<Token> toks)
@@ -284,7 +282,7 @@ internal partial class Parser
             default:
                 if (tokens.Length < 2) return null;
                 var args = ParseArguments([.. tokens.Skip(1)]);
-                return new CallStmt(first, first.Value.ToUpper(), [.. args]);
+                return new CallStmt(first, first.Value, [.. args]);
         }
         return null;
     }
