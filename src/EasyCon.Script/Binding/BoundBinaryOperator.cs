@@ -57,7 +57,13 @@ internal sealed class BoundBinaryOperator
         new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ScriptType.Bool, (v0, v1) => !Equals(v0, v1)),
         new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ScriptType.String, ScriptType.Bool, (v0, v1) => Equals(v0, v1)),
         new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ScriptType.String, ScriptType.Bool, (v0, v1) => !Equals(v0, v1)),
-        
+        new(TokenType.LogicAnd, BoundBinaryOperatorKind.LogicalAnd,ScriptType.Bool, (v0, v1) => {
+            if(!v0.AsBool()) { return false; } return v1.AsBool();
+        }),
+        new(TokenType.LogicOr, BoundBinaryOperatorKind.LogicalOr,ScriptType.Bool, (v0, v1) => {
+            if(v0.AsBool()) { return true; } return v1.AsBool();
+        }),
+
         new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.Int,ScriptType.String, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
@@ -67,7 +73,7 @@ internal sealed class BoundBinaryOperator
         ];
     public static BoundBinaryOperator? Bind(TokenType kind, ScriptType leftType, ScriptType rightType)
     {
-        if(kind.OperatorIsAug())
+        if (kind.OperatorIsAug())
             kind = kind.GetBinaryOperatorOfAssignmentOperator();
         foreach (var op in _operators)
         {

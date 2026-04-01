@@ -26,32 +26,19 @@ class LiteralExpr(object txt) : ExprBase
     public static implicit operator LiteralExpr(bool val) => new(val);
 }
 
-class VariableExpr : ExprBase
+class VariableExpr(string tag, bool readOnly = false) : ExprBase
 {
-    public readonly string Tag;
-    public readonly uint Reg;
+    public readonly string Tag = tag;
+    public readonly uint Reg = 0;
 
-    public readonly bool ReadOnly;
-
-    public VariableExpr(string tag, bool readOnly = false)
-    {
-        Tag = tag;
-        Reg = 0;
-        ReadOnly = readOnly;
-    }
-
-    public VariableExpr(uint reg, bool readOnly = false)
-    {
-        Tag = reg.ToString();
-        Reg = reg;
-        ReadOnly = readOnly;
-    }
+    public readonly bool ReadOnly = readOnly;
 
     public override string GetCodeText() => Tag;
 }
 
 class ExtVarExpr(ExternalVariable var) : ExprBase
 {
+    //public readonly Token Identifier = item;
     public readonly ExternalVariable Var = var;
 
     public override string GetCodeText() => $"@{Var.Name}";
@@ -80,16 +67,18 @@ sealed class UnaryExpression(Token op, ExprBase operand) : ExprBase
     }
 }
 
-sealed class ParenthesizedExpression(ExprBase expression) : ExprBase
+sealed class ParenthesizedExpression(Token lp, ExprBase expression, Token rp) : ExprBase
 {
     public readonly ExprBase Expression = expression;
+    public readonly Token Lp = lp;
+    public readonly Token Rp = rp;
     public override string GetCodeText() => $"({Expression.GetCodeText()})";
 }
 
 sealed class IndexDefExpression(Token lb, ImmutableArray<ExprBase> index, Token rb) : ExprBase
 {
-    public readonly Token Lb = lb;
     public ImmutableArray<ExprBase> Index { get; } = index;
+    public readonly Token Lb = lb;
     public readonly Token Rb = rb;
     public override string GetCodeText() => $"[{string.Join(", ", Index.Select(arg => arg.GetCodeText()))}]";
 }

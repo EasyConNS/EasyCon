@@ -39,7 +39,7 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
             case Script2.Syntax.TokenType.INT:
                 {
                     var ok = int.TryParse(tok.Value, out var v);
-                    if (!ok)throw new FormatException("无效的数字格式");
+                    if (!ok)throw new FormatException($"数字格式解析错误：{tok.Value}");
                     return v;
                 }
             case Script2.Syntax.TokenType.CONST:

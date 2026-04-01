@@ -77,6 +77,15 @@ public static class TokenFacts
         };
     }
 
+    public static bool IsAssignOp(this TokenType kind)
+    {
+        return kind switch
+        {
+            TokenType.ASSIGN => true,
+            _ => false,
+        };
+    }
+
     public static bool IsRelational(this TokenType kind)
     {
         return kind switch

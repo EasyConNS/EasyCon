@@ -81,10 +81,9 @@ internal partial class Parser
         if (toks.Length < 3) return null;
 
         var des = (VariableExpr)_formatter.GetValueEx(toks[0]);
-        if(toks[1].Type.OperatorIsAug())
+        if(!toks[1].Type.OperatorIsAug() && toks[1].Type != TokenType.ASSIGN)
         {
-            //aug assign
-            if (CompareOperator.All.FirstOrDefault(o => o.Operator + "=" == toks[1].Value) == null) return null;
+            return null;
         }
 
         var pr = new ExprParser([.. toks.Skip(2)], _formatter);
@@ -366,7 +365,6 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
         {
             var opToken = Advance();
-            var op = UnaryOperator.All.FirstOrDefault(o => o.KeyWord == opToken.Value) ?? throw new Exception($"不支持的运算符：{opToken.Value}");
             var operand = ParseExpression(unaryOperatorPrecedence);
             left = new UnaryExpression(opToken, operand);
         }
@@ -382,8 +380,6 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 break;
 
             var opToken = Advance();
-            CompareOperator? op = CompareOperator.All.FirstOrDefault(o => o.Operator == opToken.Value)
-                ?? throw new Exception($"不支持的运算符：{opToken.Value}");
             var right = ParseExpression(precedence);
             left = new BinaryExpression(opToken, left, right);
         }
@@ -610,10 +606,10 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
             case TokenType.LeftBracket:
                 return ParseIndexDefExpression();
             case TokenType.LeftParen:
-                Advance();
+                var lp = Advance();
                 var expression = ParseExpression();
-                Match(TokenType.RightParen);
-                return new ParenthesizedExpression(expression);
+                var rp = Match(TokenType.RightParen);
+                return new ParenthesizedExpression(lp, expression, rp);
             case TokenType.IDENT:
                 return ParseCallExpression();
             case TokenType.INT:
