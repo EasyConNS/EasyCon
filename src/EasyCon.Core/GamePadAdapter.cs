@@ -6,7 +6,7 @@ namespace EasyCon.Core;
 
 public class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
 {
-    private NintendoSwitch NS = easyPad;
+    private readonly NintendoSwitch NS = easyPad;
 
     public DelayType DelayMethod => DelayType.HighResolution;
 

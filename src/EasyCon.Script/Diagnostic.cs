@@ -1,22 +1,37 @@
-﻿using EasyCon.Script2.Text;
+using EasyCon.Script.Text;
+using System.Collections.Immutable;
 
-namespace EasyCon.Script2;
+namespace EasyCon.Script;
 
 public sealed class Diagnostic
 {
     private Diagnostic(bool isError, TextLocation location, string message)
     {
+        IsError = isError;
         Location = location;
         Message = message;
     }
-
-    public TextLocation Location { get; init; }
-    public string Message { get; init; }
+    public bool IsError { get; }
+    public readonly TextLocation Location;
+    public readonly string Message;
 
     public override string ToString() => Message;
 
     public static Diagnostic Error(TextLocation location, string message)
     {
         return new Diagnostic(isError: true, location, message);
+    }
+}
+
+public static class DiagnosticExtensions
+{
+    public static bool HasErrors(this ImmutableArray<Diagnostic> diagnostics)
+    {
+        return diagnostics.Any(d => d.IsError);
+    }
+
+    public static bool HasErrors(this IEnumerable<Diagnostic> diagnostics)
+    {
+        return diagnostics.Any(d => d.IsError);
     }
 }

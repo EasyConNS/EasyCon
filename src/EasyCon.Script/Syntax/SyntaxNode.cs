@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using EasyCon.Script.Syntax;
 
 namespace EasyCon.Script2.Syntax;
 

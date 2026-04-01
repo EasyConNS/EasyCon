@@ -1,8 +1,7 @@
-using EasyCon.Script2.Syntax;
 using System.CodeDom.Compiler;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 abstract class Statement(Token syntax)
 {

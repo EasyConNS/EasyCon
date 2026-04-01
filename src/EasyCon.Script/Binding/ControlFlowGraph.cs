@@ -1,5 +1,6 @@
+using EasyCon.Script.Symbols;
 using System.CodeDom.Compiler;
-using static EasyCon.Script2.Binding.BoundNodeKind;
+using static EasyCon.Script.Binding.BoundNodeKind;
 
 namespace EasyCon.Script.Binding;
 

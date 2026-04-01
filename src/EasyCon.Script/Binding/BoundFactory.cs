@@ -1,4 +1,5 @@
-using EasyCon.Script.Parsing;
+using EasyCon.Script.Symbols;
+using EasyCon.Script.Syntax;
 using System.Diagnostics;
 namespace EasyCon.Script.Binding;
 
@@ -40,7 +41,7 @@ internal static class BoundFactory
         return new BoundVariableDeclaration(syntax, local, initializer);
     }
 
-    private static BoundBinaryExpression Binary(ExprBase syntax, BoundExpr left, Script2.Syntax.TokenType kind, BoundExpr right)
+    private static BoundBinaryExpression Binary(ExprBase syntax, BoundExpr left, TokenType kind, BoundExpr right)
     {
         var op = BoundBinaryOperator.Bind(kind, left.Type, right.Type)!;
         return Binary(syntax, left, op, right);
@@ -54,18 +55,18 @@ internal static class BoundFactory
     {
         Debug.Assert(condition.Type == ScriptType.Bool);
 
-        var op = BoundUnaryOperator.Bind(Script2.Syntax.TokenType.LogicNot, ScriptType.Bool);
+        var op = BoundUnaryOperator.Bind(TokenType.LogicNot, ScriptType.Bool);
         Debug.Assert(op != null);
         return new BoundUnaryExpression(syntax, op, condition);
     }
     public static BoundBinaryExpression Concat(ExprBase syntax, BoundExpr left, BoundExpr right)
-    => Binary(syntax, left, Script2.Syntax.TokenType.BitAnd, right);
+    => Binary(syntax, left, TokenType.BitAnd, right);
     public static BoundBinaryExpression Add(ExprBase syntax, BoundExpr left, BoundExpr right)
-    => Binary(syntax, left, Script2.Syntax.TokenType.ADD, right);
+    => Binary(syntax, left, TokenType.ADD, right);
     public static BoundBinaryExpression Less(ExprBase syntax, BoundExpr left, BoundExpr right)
-    => Binary(syntax, left, Script2.Syntax.TokenType.LESS, right);
+    => Binary(syntax, left, TokenType.LESS, right);
     public static BoundBinaryExpression LessEqual(ExprBase syntax, BoundExpr left, BoundExpr right)
-    => Binary(syntax, left, Script2.Syntax.TokenType.LEQ, right);
+    => Binary(syntax, left, TokenType.LEQ, right);
 
     public static BoundVariableExpression Variable(ExprBase syntax, VariableSymbol variable)
     {

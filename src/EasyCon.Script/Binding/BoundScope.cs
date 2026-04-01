@@ -1,3 +1,4 @@
+using EasyCon.Script.Symbols;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;

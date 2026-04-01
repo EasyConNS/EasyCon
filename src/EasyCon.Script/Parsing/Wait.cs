@@ -1,6 +1,4 @@
-using EasyCon.Script2.Syntax;
-
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 class Wait(Token syntax, ExprBase duration, bool omitted = false) : Statement(syntax)
 {

@@ -1,3 +1,4 @@
+using EasyCon.Script.Symbols;
 using System.Reflection;
 
 namespace EasyCon.Script.Binding;

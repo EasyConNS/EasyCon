@@ -1,4 +1,4 @@
-using EasyCon.Script.Parsing;
+using EasyCon.Script.Syntax;
 
 namespace EasyCon.Script.Assembly.Instructions;
 

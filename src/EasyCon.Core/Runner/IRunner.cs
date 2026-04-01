@@ -1,6 +1,7 @@
+using EasyCon.Script;
 using EasyScript;
 
-namespace EasyCon.Script.Runner;
+namespace EasyCon.Core.Runner;
 
 interface IRunner
 {

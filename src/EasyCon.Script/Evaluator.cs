@@ -1,11 +1,16 @@
 using EasyCon.Script.Binding;
-using EasyScript;
+using EasyCon.Script.Symbols;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Xml.Linq;
-using static EasyCon.Script2.Binding.BoundNodeKind;
+using EasyScript;
+using static EasyCon.Script.Binding.BoundNodeKind;
 
 namespace EasyCon.Script;
+
+public class ScriptException(string message, int address) : Exception(message)
+{
+    public int Address { get; private set; } = address;
+}
 
 internal sealed class Evaluator
 {
@@ -398,4 +403,10 @@ internal sealed class Evaluator
         }
         return result;
     }
+}
+
+public sealed class EvaluationResult(ImmutableArray<Diagnostic> diagnostics, Value value)
+{
+    public ImmutableArray<Diagnostic> Diagnostics { get; } = diagnostics;
+    public Value Result { get; } = value;
 }

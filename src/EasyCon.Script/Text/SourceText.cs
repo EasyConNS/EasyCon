@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace EasyCon.Script2.Text;
+namespace EasyCon.Script.Text;
 
 public sealed class SourceText
 {

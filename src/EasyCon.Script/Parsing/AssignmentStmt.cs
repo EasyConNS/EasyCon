@@ -1,5 +1,4 @@
-using EasyCon.Script2.Syntax;
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 class AssignmentStmt(Token syntax, VariableExpr regdst, Token assignmentToken, ExprBase value) : Statement(syntax)
 {

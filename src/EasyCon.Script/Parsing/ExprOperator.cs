@@ -1,6 +1,6 @@
 using EasyCon.Script.Assembly;
 
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 [Obsolete]
 class CompareOperator1

@@ -1,11 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-
-  </PropertyGroup>
-
   <ItemGroup>
 	  <PackageReference Include="OpenCvSharp4.Extensions" />
+	  
+	  <PackageReference Include="pythonnet" />
+	  <PackageReference Include="NLua" />
 	  
 	  <ProjectReference Include="..\EasyCon.Capture\EasyCon.Capture.csproj" />
 	  <ProjectReference Include="..\EasyCon.Script\EasyCon.Script.csproj" />

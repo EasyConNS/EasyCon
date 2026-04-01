@@ -1,4 +1,4 @@
-using EasyCon.Script2.Syntax;
+using EasyCon.Script.Syntax;
 using System.Diagnostics;
 
 namespace EasyCon.Script2.IO;

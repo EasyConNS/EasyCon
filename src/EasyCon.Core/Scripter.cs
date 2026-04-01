@@ -1,8 +1,9 @@
-using EasyCon.Script.Runner;
-using EasyCon.Script2.Syntax;
+using EasyCon.Core.Runner;
+using EasyCon.Script;
+using EasyCon.Script.Syntax;
 using EasyScript;
 
-namespace EasyCon.Script;
+namespace EasyCon.Core;
 
 public sealed class Scripter
 {
@@ -102,9 +103,4 @@ public sealed class Scripter
     {
         runner = new EasyRunner();
     }
-}
-
-public class ScriptException(string message, int address) : Exception(message)
-{
-    public int Address { get; private set; } = address;
 }

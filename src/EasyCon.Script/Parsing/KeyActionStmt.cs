@@ -1,6 +1,6 @@
 using EasyScript;
 
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 abstract class KeyActionStmt(string keyname, bool up = false) : Statement(null!)
 {

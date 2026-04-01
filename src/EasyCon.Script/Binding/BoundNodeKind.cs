@@ -1,4 +1,4 @@
-namespace EasyCon.Script2.Binding;
+namespace EasyCon.Script.Binding;
 
 public enum BoundNodeKind
 {

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 static class Formats
 {
@@ -30,23 +30,23 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
         return new ExtVarExpr(value);
     }
 
-    public ExprBase GetValueEx(Script2.Syntax.Token tok)
+    public ExprBase GetValueEx(Token tok)
     {
-        switch(tok.Type)
+        switch (tok.Type)
         {
-            case Script2.Syntax.TokenType.STRING:
+            case TokenType.STRING:
                 return tok.Value;
-            case Script2.Syntax.TokenType.INT:
+            case TokenType.INT:
                 {
                     var ok = int.TryParse(tok.Value, out var v);
-                    if (!ok)throw new FormatException($"数字格式解析错误：{tok.Value}");
+                    if (!ok) throw new FormatException($"数字格式解析错误：{tok.Value}");
                     return v;
                 }
-            case Script2.Syntax.TokenType.CONST:
+            case TokenType.CONST:
                 return new VariableExpr(tok.Value, true);
-            case Script2.Syntax.TokenType.VAR:
+            case TokenType.VAR:
                 return new VariableExpr(tok.Value);
-            case Script2.Syntax.TokenType.EX_VAR:
+            case TokenType.EX_VAR:
                 return GetExtVar(tok.Value);
             default:
                 throw new FormatException($"token类型不正确：{tok.Type}");
@@ -58,16 +58,15 @@ class Formatter(IEnumerable<ExternalVariable> extVars)
         if (Regex.Match(text, Formats.RegisterEx_F).Success)
             return new VariableExpr(text);
         if (Regex.Match(text, Formats.ExtVar_F).Success)
-            return GetExtVar(text); 
+            return GetExtVar(text);
         else if (Regex.Match(text, Formats.Constant_F).Success)
             return new VariableExpr(text, true);
-        else if(Regex.Match(text, "^^\"(?:[^\"\\\\]|\\\\.)*\"$").Success)
+        else if (Regex.Match(text, "^^\"(?:[^\"\\\\]|\\\\.)*\"$").Success)
             return new LiteralExpr(text);
         else
         {
             var ok = int.TryParse(text, out var v);
-            if (!ok)
-                throw new FormatException("无效的数字格式");
+            if (!ok) throw new FormatException("无效的数字格式");
             return v;
         }
     }

@@ -1,4 +1,4 @@
-namespace EasyCon.Script2.Text;
+namespace EasyCon.Script.Text;
 
 public record TextLocation
 {

@@ -13,8 +13,6 @@ public record ConfigState
     public bool EnableChannelToken { get; set; } = false;
     public bool EnableAutoCompletion { get; set; } = false;
 
-    public bool ChannelControl { get; set; } = false;
-
     public void SetDefault()
     {
         KeyMapping = new KeyMapping();

@@ -1,7 +1,6 @@
-using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 // base of valuetype
 abstract class ExprBase

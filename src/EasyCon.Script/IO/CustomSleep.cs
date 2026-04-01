@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-namespace EasyCon.Script;
 
 public sealed class CustomDelay
 {

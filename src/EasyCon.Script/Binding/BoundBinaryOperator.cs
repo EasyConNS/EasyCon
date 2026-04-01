@@ -1,4 +1,5 @@
-using EasyCon.Script2.Syntax;
+using EasyCon.Script.Symbols;
+using EasyCon.Script.Syntax;
 
 namespace EasyCon.Script.Binding;
 

@@ -1,4 +1,4 @@
-using EasyCon.Script;
+using EasyCon.Core;
 using EasyCon2.Models;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.CodeCompletion;

@@ -1,608 +1,264 @@
-using EasyCon.Script2.Text;
+using EasyCon.Script.Text;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script2.Syntax;
+namespace EasyCon.Script.Syntax;
 
-internal sealed class Parser
+internal sealed partial class Parser
 {
+    private Formatter _formatter { get; init; }
+    private readonly IEnumerable<ExternalVariable> _extVars;
     private readonly DiagnosticBag _diagnostics = [];
     private readonly SyntaxTree _syntaxTree;
     private readonly SourceText _text;
     private readonly ImmutableArray<Token> _tokens;
 
-    private int _position = 0;
-    private readonly List<TriviaNode> _leadingtrivias = [];
-    private readonly List<TriviaNode> _trailtrivias = [];
-
-    public DiagnosticBag Diagnostics => _diagnostics;
-
-    public Parser(SyntaxTree syntaxTree)
+    public Parser(SyntaxTree syntaxTree, IEnumerable<ExternalVariable> extVars)
     {
-        var lexer = new Lexer(syntaxTree);
-        _tokens = lexer.Tokenize();
+        _extVars = extVars;
+        _formatter = new(extVars);
         _syntaxTree = syntaxTree;
         _text = syntaxTree.Text;
+        var lexer = new Lexer(_syntaxTree);
+        _tokens = lexer.Tokenize();
         _diagnostics.AddRange(lexer.Diagnostics);
     }
 
-    private Token Peek(int offset = 0)
+    public DiagnosticBag Diagnostics => _diagnostics;
+
+    string _filePath => Path.GetDirectoryName(Path.GetFullPath(_text.FileName)) ?? "";
+    const string LibPath = "lib/";
+
+    public CompicationUnit ParseProgram()
     {
-        var index = _position + offset;
-        if (index >= _tokens.Length)
-            return _tokens[_tokens.Length - 1];
-
-        return _tokens[index];
-    }
-    private Token Current => Peek();
-    private Token Advance()
-    {
-        var now = Current;
-        if (now.Type == TokenType.COMMENT) _leadingtrivias.Add(new TriviaNode(now));
-
-        _position++;
-
-        // advance next non-comment token
-        while (Check(TokenType.COMMENT))
-        {
-            var comment = new TriviaNode(Current);
-            if (now.Line == Current.Line)
-            {
-                _trailtrivias.Add(comment);
-            }
-            else
-            {
-                _leadingtrivias.Add(comment);
-            }
-            _position++;
-        }
-        return now;
-    }
-    private bool Check(TokenType type) => Current?.Type == type;
-
-    private Token Match(TokenType type, string message = "")
-    {
-        if (Current.Type == type)
-        {
-            return Advance();
-        }
-        var location = new TextLocation(_text, new SourceSpan(_position, 0));
-        _diagnostics.ReportUnexpectedToken(location, Current.Type, type);
-        return new Token(_text, TokenType.BadToken, message, 0, 0);
+        return ParseUnit();
     }
 
-    private bool Checks(params TokenType[] types)
+    private static IEnumerable<ImmutableArray<Token>> GroupTokensByNewline(ImmutableArray<Token> allTokens)
     {
-        return types.Any(Check);
-    }
-
-    public MainProgram ParseProgram()
-    {
-        if (_diagnostics.Any())
-            throw new Exception($"词法分析失败：{_diagnostics.First().Message}");
-
-        var members = ParseMembers();
-        var eof = Match(TokenType.EOF);
-        var imports = members.OfType<ImportStatement>().ToImmutableArray();
-        return new MainProgram(imports, members.Except(imports).ToImmutableArray(), eof);
-    }
-
-
-    private ImmutableArray<Member> ParseMembers()
-    {
-        var statements = ImmutableArray.CreateBuilder<Member>();
-
-        _leadingtrivias.Clear();
-        _trailtrivias.Clear();
-
-        while (!Check(TokenType.EOF))
-        {
-            var startToken = Current;
-
-            if (Check(TokenType.COMMENT) || Check(TokenType.NEWLINE))
-            {
-                Advance();
-                continue;
-            }
-
-            var statement = ParseMember();
-            statements.Add(statement);
-            if(startToken == Current)Advance();
-        }
-
-        return statements.ToImmutable();
-    }
-
-    private T WithTrivia<T>(Func<T> factory) where T : Statement
-    {
-        // 保存当前的注释状态
-        var leadingTrivia = new List<TriviaNode>(_leadingtrivias);
-
-        // 清空现有的注释列表
-        _leadingtrivias.Clear();
-
-        // 创建节点
-        var node = factory();
-        // 消耗语句后的换行符
-        Match(TokenType.NEWLINE, "语句没有正确结束换行");
-
-        // var trailingTrivia = new List<TriviaNode>(_trailtrivias);
-        // _trailtrivias.Clear();
-
-        // 关联注释
-        node.LeadingTrivia.AddRange(leadingTrivia);
-        // node.TrailingTrivia.AddRange(trailingTrivia);
-
-        return node;
-    }
-
-    private KeywordStatement ParseTokenStatement<T>(TokenType ttype, string msg) where T : Statement
-    {
-        var keyword = Match(ttype, msg);
-
-        return new KeywordStatement(keyword);
-    }
-
-    private Member ParseMember()
-    {
-        if (Check(TokenType.IMPORT))
-            return ParseImportDecl();
-        if (Check(TokenType.FUNC))
-            return ParseFunctionDecl();
-        return ParseGlobalStatement();
-    }
-
-    /*
-    ** TODO:
-    STRUCT name{field1, field2}
-    */
-    private GlobalStatement ParseGlobalStatement()
-    {
-        var stmt = WithTrivia(() => ParseStatementInternal());
-        return new GlobalStatement(stmt);
-    }
-
-    private Statement ParseStatementInternal()
-    {
-        return Current.Type switch
-        {
-            TokenType.IF => ParseIfStatement(),
-            TokenType.FOR => ParseForStatement(),
-            TokenType.BREAK => ParseBreakStatement(),
-            TokenType.CONTINUE => ParseContinueStatement(),
-            TokenType.RETURN => ParseReturnStatement(),
-            TokenType.ButtonKeyword or TokenType.StickKeyword => ParsePadButtonStatement(),
-            TokenType.INT or TokenType.IDENT => ParseSpecCallStatement(),
-            _ => ParseExpressionStatement(),
-        };
-    }
-
-    // IMPORT name "path"
-    private ImportStatement ParseImportDecl()
-    {
-        var import = Match(TokenType.IMPORT);
-        if (Checks(TokenType.STRING, TokenType.IDENT))
-        {
-            var name = "";
-            if (Check(TokenType.IDENT)) name = Advance().Value;
-
-            var path = Match(TokenType.STRING);
-
-            return new ImportStatement(import, name, new LiteralExpression(path, path.value));
-        }
-        _diagnostics.ReportInvalidExpressionStatement(import.Location, Current.Type);
-        return new ImportStatement(import, "", new LiteralExpression(import, ""));
-    }
-
-    private ExpressStatement ParseExpressionStatement()
-    {
-        var expr = ParseAssignmentExpression();
-
-        return new ExpressStatement(expr.Key, expr);
-    }
-
-    private CallExpression ParseSpecCallStatement()
-    {
-        var func = Current;
-        string name = func.Value;
-
-        if (func.Type == TokenType.INT)
-        {
-            name = "WAIT";
-        }
-        else
-        {
-            Advance();
-            if (func.Value.ToLower() == "call")
-            {
-                var callFn = Advance();
-                name = callFn.Value;
-            }
-        }
-
-        var args = ImmutableArray<Expression>.Empty;
-
-        if (!Check(TokenType.NEWLINE))
-        {
-            args = ParseArguments();
-        }
-
-        return new CallExpression(func, name, [.. args]);
-    }
-
-    private ImmutableArray<Expression> ParseArguments()
-    {
-        return [];
-    }
-
-    /// <summary>
-    // IF语句格式
-    //IF 条件
-    //  语句
-    //ELIF 条件
-    //  语句
-    //ELSE
-    //  语句
-    //ENDIF
-    /// </summary>
-    private IfStatement ParseIfStatement()
-    {
-        var ifcond = WithTrivia(() => ParseIfCondition());
-
-        var thenBranch = ParseStatementsUntil(TokenType.ELIF, TokenType.ELSE, TokenType.ENDIF);
-
-        // else if
-        List<ElseIfClause> elseif = [];
-        while (Check(TokenType.ELIF))
-        {
-            var elifcond = WithTrivia(() => ParseIfCondition());
-
-            var elifBranch = ParseStatementsUntil(TokenType.ELIF, TokenType.ELSE, TokenType.ENDIF);
-            elseif.Add(new(elifcond, elifBranch.ToImmutableArray()));
-        }
-
-        // else
-        ElseClause? elseClause = null;
-        if (Check(TokenType.ELSE))
-        {
-            var elsestmt = WithTrivia(() => ParseTokenStatement<KeywordStatement>(TokenType.ELSE, "else解析失败"));
-
-            var elseBranch = ParseStatementsUntil(TokenType.ENDIF);
-            elseClause = new(elsestmt, elseBranch.ToImmutableArray());
-        }
-
-        var endif = ParseTokenStatement<KeywordStatement>(TokenType.ENDIF, "if语句需要endif结尾");
-
-        return new IfStatement(ifcond, thenBranch.ToImmutableArray(), elseif.ToImmutableArray(), elseClause, endif);
-    }
-
-    private IfCondition ParseIfCondition()
-    {
-        var ifToken = Advance();
-        var condition = ParseExpression();
-        return new IfCondition(ifToken, condition);
-    }
-
-    /// <summary>
-    // FOR语句格式
-    // FOR # 无限循环
-    // FOR 数字 # 固定次数循环
-    // FOR 变量 = 开始 to 结束 [step 步长]
-    //   语句
-    // NEXT
-    /// </summary>
-    private ForStatement ParseForStatement()
-    {
-        var forToken = Advance();
-
-        var infinite = false;
-
-        VariableExpression initVar = null;
-        Expression start = null;
-        Expression end = null;
-
-        if (Check(TokenType.NEWLINE))
-        {
-            // 形式1: 无限循环
-            infinite = true;
-        }
-        else if (Check(TokenType.VAR) && Peek(1)?.Type == TokenType.ASSIGN)
-        {
-            // 形式2: 范围循环 for $i = 1 to 10
-            var loopVar = Match(TokenType.VAR, "需要初始变量");
-            initVar = new VariableExpression(loopVar, false, false);
-
-            Match(TokenType.ASSIGN, "for语法不正确, 需要： '='");
-            start = ParsePrimary();
-            Match(TokenType.TO, "for语法不正确, 需要： 'TO'");
-            end = ParsePrimary();
-
-            Expression step = null;
-            if (Check(TokenType.STEP))
-            {
-                Advance();
-                step = ParsePrimary();
-            }
-        }
-        else
-        {
-            // 形式3: 计数循环 for 5
-            end = ParsePrimary();
-        }
-
-        Match(TokenType.NEWLINE, "for语法不正确");
-
-        var body = ParseStatementsUntil(TokenType.NEXT);
-        var nextTok = WithTrivia(() => ParseTokenStatement<KeywordStatement>(TokenType.NEXT, "for语句需要next结尾"));
-
-        return new ForStatement(new ForExpr(forToken, initVar, start, end, infinite), body.ToImmutableArray(), nextTok);
-    }
-
-    private ImmutableArray<Statement> ParseStatementsUntil(params TokenType[] endToken)
-    {
-        var statements = ImmutableArray.CreateBuilder<Statement>();
-
-        while (!Checks(endToken) && !Check(TokenType.EOF))
-        {
-            if (Check(TokenType.NEWLINE))
-            {
-                Advance();
-                continue;
-            }
-            statements.Add(WithTrivia(() => ParseStatementInternal()));
-            if (Check(TokenType.NEWLINE)) Advance();
-        }
-
-        return statements.ToImmutable();
-    }
-
-    private BreakStatement ParseBreakStatement()
-    {
-        var breakToken = Advance();
-
-        uint circle = 1;
-        if (!Check(TokenType.NEWLINE))
-        {
-            var value = Match(TokenType.INT, "break跳出层数必须为数字");
-            circle = uint.Parse(value.Value);
-        }
-        return new BreakStatement(breakToken, circle);
-    }
-
-    private ContinueStatement ParseContinueStatement()
-    {
-        var continueToken = Advance();
-        Match(TokenType.NEWLINE, "continue语法不正确");
-
-        return new ContinueStatement(continueToken);
-    }
-
-    private FunctionDeclarationStatement ParseFunctionDecl()
-    {
-        var functionToken = Advance();
-        var functionName = Match(TokenType.IDENT, "定义函数需要函数名");
+        var currentGroup = new List<Token>();
         
-        var parameters = ImmutableArray<VariableExpression>.Empty;
-        if (Check(TokenType.LeftParen))
+        foreach (var token in allTokens)
         {
-            var openParenthesisToken = Match(TokenType.LeftParen);
-            parameters = ParseParameterList();
-            var closeParenthesisToken = Match(TokenType.RightParen);
-        }
-
-        Match(TokenType.NEWLINE, "函数定义语法不正确, 需要换行");
-
-        var body = ParseStatementsUntil(TokenType.ENDFUNC);
-
-        var endFunc = Match(TokenType.ENDFUNC, "需要endfunc结尾");
-
-        return new FunctionDeclarationStatement(new FuncDeclare(functionToken, functionName, parameters), body.ToImmutableArray(), new KeywordStatement(endFunc));
-    }
-
-    private ImmutableArray<VariableExpression> ParseParameterList()
-    {
-        var nodesAndSeparators = ImmutableArray.CreateBuilder<VariableExpression>();
-
-        var parseNextParameter = true;
-        while (parseNextParameter &&
-                Current.Type != TokenType.RightParen &&
-                Current.Type != TokenType.EOF)
-        {
-            var parameter = ParseParameter();
-            nodesAndSeparators.Add(parameter);
-
-            if (Check(TokenType.COMMA))
+            if (token.Type == TokenType.NEWLINE)
             {
-                var comma = Advance();
-                // nodesAndSeparators.Add(comma);
+                yield return [.. currentGroup];
+                currentGroup.Clear();
             }
+            else if (token.Type == TokenType.EOF) break;
             else
             {
-                parseNextParameter = false;
+                currentGroup.Add(token);
             }
         }
-        return nodesAndSeparators.ToImmutable();
-    }
-    private VariableExpression ParseParameter()
-    {
-        var identifier = Match(TokenType.VAR);
-        return new VariableExpression(identifier, false, false);
-    }
-
-    private ReturnStatement ParseReturnStatement()
-    {
-        var returnToken = Match(TokenType.RETURN, "错误的return语句");
-
-        return new ReturnStatement(returnToken, null);
-    }
-
-    /// <summary>
-    /// 解析手柄按键语句
-    // 键位(+键位) [持续时间(ms)|DOWN|UP]
-    // LS|RS 方向|角度 [, 持续时间(ms)]
-    // LS|RS RESET
-    /// </summary>
-    private Statement ParsePadButtonStatement()
-    {
-        List<Token> keyTokens = [];
-        var firstKey = Advance();
-        keyTokens.Add(firstKey);
-
-        if (firstKey.Type == TokenType.StickKeyword)
+        
+        // Add the last group if it's not empty
+        if (currentGroup.Count > 0)
         {
-            switch (Current.Type)
-            {
-                case TokenType.INT:
-                case TokenType.ButtonKeyword:
-                    var state = Advance();
+            yield return [.. currentGroup];
+        }
+    }
 
-                    if (Check(TokenType.COMMA))
+    private CompicationUnit ParseUnit()
+    {
+        int address = 0;
+
+        var unit = new Stack<List<Statement>>();
+        unit.Push([]);
+        var result = unit.Peek();
+        void startblock()
+        {
+            unit.Push([]);
+            result = unit.Peek();
+        }
+
+        // Group tokens by NEWLINE
+        var tokenGroups = GroupTokensByNewline(_tokens);
+        
+        // Process each group of tokens
+        foreach (var tokens in tokenGroups)
+        {
+            try
+            {
+                Statement? st = null;
+                
+                // If there's only one token and it's a comment, create a CommentStmt
+                if (tokens.Length == 1 && tokens[0].Type == TokenType.COMMENT)
+                {
+                    st = new EmptyStmt()
                     {
-                        Advance();
-                        var duration = Match(TokenType.INT, "摇杆语法不正确");
-                        var value = uint.Parse(duration.Value);
-                        return new StickStatement([.. keyTokens], state.Value, false, value);
-                    }
-                    else
+                        Comment = tokens[0].Value
+                    };
+                }
+                // If there are multiple tokens, only the last one can be a comment
+                else if (tokens.Length >= 1)
+                {
+                    var toks = tokens;
+                    var lastToken = tokens[^1];
+
+                    // Check if the last token is a comment
+                    if (lastToken.Type == TokenType.COMMENT)
                     {
-                        return new StickStatement([.. keyTokens], state.Value, false);
+                        // Remove the comment token for parsing the statement
+                        toks = toks[..^1];
                     }
-                case TokenType.ResetKeyword:
-                    Match(TokenType.ResetKeyword, "摇杆语法不正确");
-                    return new StickStatement([.. keyTokens], "", true);
+                    
+                    // Parse the tokens directly
+                    st = ParseStatement(toks) ?? throw new ParseException("格式错误");
+                    
+                    // Set the comment if there was one
+                    if (lastToken.Type == TokenType.COMMENT)
+                    {
+                        st.Comment = lastToken.Value;
+                    }
+                }
+                // Handle empty lines
+                else
+                {
+                    st = new EmptyStmt();
+                }
+                
+                // update address
+                st.Address = address;
+
+                if (st is ImportStmt)
+                {
+                    if (unit.SelectMany(u => u).Any(st => st is not ImportStmt && st is not EmptyStmt))
+                    {
+                        throw new ParseException("导入只能在脚本开头");
+                    }
+                }
+                if (st is ForStmt || (st is IfStmt and not ElseIf) || st is FuncStmt || st is WhileStmt)
+                {
+                    if (st is FuncStmt fst)
+                    {
+                        if (unit.Count > 1) throw new ParseException("函数必须在顶层定义");
+                    }
+                    startblock();
+                }
+                else if (st is ElseIf)
+                {
+                    if (result.First() is not IfStmt)
+                    {
+                        throw new ParseException("ELIF需要对应的If语句", address);
+                    }
+                    if (result.OfType<Else>().Any())
+                        throw new ParseException("Else语句后不能再接Elif", address);
+                }
+                else if (st is Else)
+                {
+                    if (result.First() is not IfStmt)
+                    {
+                        throw new ParseException("ELSE需要对应的If语句", address);
+                    }
+                    if (result.OfType<Else>().Any())
+                        throw new ParseException("一个If只能对应一个Else", address);
+                }
+                else if (st is EndBlockStmt comend)
+                {
+                    if (unit.Count == 1) throw new ParseException("多余的结束语句");
+
+                    if (st is EndIf && result.First() is not IfStmt)
+                    {
+                        throw new ParseException("ENDIF需要对应的If语句", address);
+                    }
+                    else if (st is Next && result.First() is not ForStmt)
+                    {
+                        throw new ParseException("NEXT需要对应的For语句", address);
+                    }
+                    else if (st is EndFuncStmt && result.First() is not FuncStmt)
+                    {
+                        throw new ParseException("ENDFUNC需要对应的Func语句", address);
+                    }
+                    else if (result.First() is not StartBlockStmt whilecond)
+                    {
+                        throw new ParseException("END需要对应的语句开头", address);
+                    }
+
+                    var body = unit.Pop();
+
+                    st = result.First() switch
+                    {
+                        IfStmt ifstart => new IfBlock(ifstart, [.. body.Skip(1)], comend)
+                        {
+                            Address = ifstart.Address
+                        },
+                        ForStmt forstart => new ForBlock(forstart, [.. body.Skip(1)], comend)
+                        {
+                            Address = forstart.Address
+                        },
+                        WhileStmt whilecond => new WhileBlock(whilecond, [.. body.Skip(1)], comend)
+                        {
+                            Address = whilecond.Address
+                        },
+                        FuncStmt funcdef => new FuncDeclBlock(funcdef, [.. body.Skip(1)], comend)
+                        {
+                            Address = funcdef.Address
+                        },
+                        _ => throw new ParseException("语句块格式不正确", address),
+                    };
+                    result = unit.Peek();
+                }
+
+                result.Add(st);
+                address += 1;
+            }
+            catch (OverflowException)
+            {
+                throw new Exception("数值溢出");
+            }
+            catch (ParseException ex)
+            {
+                ex.Index = address;
+                throw;
+            }
+            catch (Exception e)
+            {
+                throw new ParseException(e.Message, address);
             }
         }
-        else
-        {
-            while (Check(TokenType.ADD))
-            {
-                Match(TokenType.ADD);
-                var key = Match(TokenType.ButtonKeyword);
-                keyTokens.Add(key);
-            }
-            if (Check(TokenType.NEWLINE))
-            {
-                return new ButtonStatement([.. keyTokens]);
-            }
-            else if (Check(TokenType.INT))
-            {
-                var state = Advance();
-                var value = uint.Parse(state.Value);
-                return new ButtonStatement([.. keyTokens], value)
-;
-            }
-            else if (Check(TokenType.ButtonKeyword))
-            {
-                var state = Advance();
-                var isDown = state.Value.ToUpper() == "DOWN";
-                return new ButtonStStatement([.. keyTokens], isDown);
-            }
-        }
-        _diagnostics.ReportInvalidKeyActionStatement(firstKey.Location, firstKey.Type);
-        return new ButtonStStatement([], false);
+        if (unit.Count > 1)
+            throw new ParseException("语句块没有正确结束", unit.Peek().First().Address);
+
+        return new CompicationUnit([.. result]);
     }
 
-    private Expression ParseExpression()
+    internal ImmutableArray<CompicationUnit> Flatten(CompicationUnit prog)
     {
-        return ParseAssignmentExpression();
-    }
+        var imports = prog.Members.OfType<ImportStmt>();
+        if (!imports.Any()) return [prog];
 
-    private Expression ParseAssignmentExpression()
+        var result = ImmutableArray.CreateBuilder<CompicationUnit>();
+        foreach (var imp in imports)
+        {
+            Console.WriteLine($"正在加载库:{imp.FullFileName}");
+            var newprog = SyntaxTree.Load(imp.FullFileName, _extVars);
+            if (newprog.Root.Members.OfType<ImportStmt>().Any())
+                throw new ParseException("不支持嵌套引用", imp.Address);
+
+            result.Add(newprog.Root);
+        }
+        result.Add(new CompicationUnit([.. prog.Members.Except(imports)]));
+        return result.ToImmutable();
+    }
+}
+
+public static class TokExt
+{
+    public static string STRTrimQ(this Token tok)
     {
-        if (Check(TokenType.CONST) || Check(TokenType.VAR))
-        {
-            var variableToken = Current;
-            var variable = ParsePrimary() as VariableExpression;
+        if(tok.Type != TokenType.STRING) return tok.ToString();
 
-            if (Checks(TokenType.ASSIGN, TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN,
-                     TokenType.MUL_ASSIGN, TokenType.DIV_ASSIGN, TokenType.SlashI_ASSIGN,
-                     TokenType.MOD_ASSIGN, TokenType.XOR_ASSIGN, TokenType.BitAnd_ASSIGN, TokenType.BitOr_ASSIGN,
-                     TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN))
-            {
-                var assignmentOp = Advance();
-                var value = ParseExpression();
-                return new AssignExpression(variableToken, variable, assignmentOp, value);
-            }
+        var val = tok.Value;
+        if (val.Length >= 2 && val[0] == val[^1])
+        {
+            if (val[0] == '"' || val[0] == '\'')
+                return val[1..^1];
         }
-        return ParseBinaryExpression();
+        return val;
     }
+}
 
-    private Expression ParseBinaryExpression(int parentPrecedence = 0)
-    {
-        Expression left;
-        var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
-        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
-        {
-            var operatorToken = Advance();
-            var operand = ParseBinaryExpression(unaryOperatorPrecedence);
-            left = new UnaryExpression(operatorToken, operand);
-        }
-        else
-        {
-            left = ParsePrimary();
-        }
-
-        while (true)
-        {
-            var precedence = Current.Type.GetBinaryOperatorPrecedence();
-            if (precedence == 0 || precedence <= parentPrecedence)
-                break;
-
-            var operatorToken = Advance();
-            var right = ParseBinaryExpression(precedence);
-            left = new BinaryExpression(left, operatorToken, right);
-        }
-
-        return left;
-    }
-
-    // 索引表达式
-    private IndexExpression ParseIndexExpression()
-    {
-        var items = new List<Expression>();
-        var lb = Match(TokenType.LeftBracket, "索引列表需要'['");
-
-        if (Checks(TokenType.INT, TokenType.CONST, TokenType.VAR))
-        {
-            do
-            {
-                if (Check(TokenType.COMMA)) Advance();
-
-                items.Add(ParsePrimary());
-            } while (Check(TokenType.COMMA));
-        }
-
-        var rb = Match(TokenType.RightBracket, "索引列表需要']'");
-
-        return new IndexExpression(lb, [.. items], rb);
-    }
-
-    private Expression ParsePrimary()
-    {
-        switch (Current.Type)
-        {
-            case TokenType.STRING:
-                var tokstr = Advance();
-                return new LiteralExpression(tokstr, tokstr.Value);
-            case TokenType.CONST:
-            case TokenType.VAR:
-            case TokenType.EX_VAR:
-                var token = Advance();
-                bool isConstant = token.Type == TokenType.CONST;
-                bool isSpecial = token.Type == TokenType.EX_VAR;
-                return new VariableExpression(token, isConstant, isSpecial);
-            case TokenType.LeftBracket:
-                return ParseIndexExpression();
-            case TokenType.LeftParen:
-                var left = Advance();
-                var expression = ParseExpression();
-                var right = Match(TokenType.RightParen);
-                return new ParenthesizedExpression(left, expression, right);
-            case TokenType.INT:
-            default:
-                var toknum = Advance();
-                var ok = uint.TryParse(toknum.Value, out var intval);
-                if (!ok) _diagnostics.ReportInvalidNumber(toknum.Location, toknum.Value);
-                return new LiteralExpression(toknum, intval);
-        }
-    }
+public class ParseException(string message, int index = -1) : Exception(message)
+{
+    public int Index = index;
 }

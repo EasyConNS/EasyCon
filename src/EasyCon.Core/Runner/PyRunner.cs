@@ -1,8 +1,9 @@
+using EasyCon.Script;
 using EasyScript;
 using Python.Runtime;
 using System.Text;
 
-namespace EasyCon.Script.Runner;
+namespace EasyCon.Core.Runner;
 
 public sealed class PyRunner : IRunner
 {

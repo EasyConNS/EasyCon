@@ -1,9 +1,9 @@
-using EasyCon.Script2.Text;
+using EasyCon.Script.Text;
 using System.Collections.Immutable;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace EasyCon.Script2.Syntax;
+namespace EasyCon.Script.Syntax;
 
 internal sealed partial class Lexer(SyntaxTree syntaxTree)
 {
@@ -93,7 +93,8 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
     // 按键关键字
     private static readonly List<string> gamepadKeywords = ["A", "B", "X", "Y", "L", "R", "ZL", "ZR",
-        "MINUS", "PLUS", "LCLICK", "RCLICK", "HOME", "CAPTURE",
+        "MINUS", "PLUS", "HOME", "CAPTURE",
+        "LCLICK", "RCLICK",
         "DUP", "DDOWN", "DLEFT", "DRIGHT",
         "LS", "RS",
         "UP", "DOWN", "LEFT", "RIGHT"];

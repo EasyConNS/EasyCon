@@ -1,7 +1,6 @@
-using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement(declare.Syntax)
 {

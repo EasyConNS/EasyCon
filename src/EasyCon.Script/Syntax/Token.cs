@@ -1,6 +1,6 @@
-using EasyCon.Script2.Text;
+using EasyCon.Script.Text;
 
-namespace EasyCon.Script2.Syntax;
+namespace EasyCon.Script.Syntax;
 
 public enum TokenType
 {

@@ -3,7 +3,7 @@ using NLua.Exceptions;
 using System.Diagnostics;
 using System.Text;
 
-namespace EasyCon.Script.Runner;
+namespace EasyCon.Core.Runner;
 
 class LuaRunner
 {

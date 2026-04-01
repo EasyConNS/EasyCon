@@ -1,7 +1,6 @@
-using EasyCon.Script.Parsing;
-using EasyCon.Script2;
+using EasyCon.Script.Symbols;
+using EasyCon.Script.Syntax;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using static EasyCon.Script.Binding.BoundFactory;
 
 namespace EasyCon.Script.Binding;
@@ -11,12 +10,12 @@ internal sealed class Binder
     private readonly DiagnosticBag _diagnostics = [];
     private readonly FunctionSymbol? _function;
 
-    private Stack<(BoundLabel BreakLabel, BoundLabel ContinueLabel)> _loopStack = new();
+    private readonly Stack<(BoundLabel BreakLabel, BoundLabel ContinueLabel)> _loopStack = new();
     private int _labelCounter = 0;
-
+    private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
 
-    private BoundScope _scope;
+    public DiagnosticBag Diagnostics => _diagnostics;
 
     private Binder(BoundScope? parent, FunctionSymbol? function)
     {
@@ -30,27 +29,28 @@ internal sealed class Binder
         }
     }
 
-    public static BoundProgram BindProgram(ImmutableArray<CompicationUnit> syntaxs)
+    public static BoundProgram BindProgram(SyntaxTree syntaxs)
     {
         var parentScope = CreateRootScope();
         var binder = new Binder(parentScope, function: null);
+        binder.Diagnostics.AddRange(syntaxs.Diagnostics);
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
 
-        var functionDeclarations = syntaxs.SelectMany(st => st.Members).OfType<FuncDeclBlock>();
+        var functionDeclarations = syntaxs.FlattenRoot.SelectMany(st => st.Members).OfType<FuncDeclBlock>();
 
         foreach (var function in functionDeclarations)
         {
             binder.BindFuncDeclaration(function);
         }
 
-        var firstGlobalStatementPerSyntaxTree = syntaxs.Select(st => st.Members.Where(m => m is not FuncDeclBlock && m is not EmptyStmt).FirstOrDefault())
+        var firstGlobalStatementPerSyntaxTree = syntaxs.FlattenRoot.Select(st => st.Members.Where(m => m is not FuncDeclBlock && m is not EmptyStmt).FirstOrDefault())
                                                                 .Where(g => g != null)
                                                                 .ToArray();
         if (firstGlobalStatementPerSyntaxTree.Length > 1)
             throw new ParseException("脚本主语句只能存在一个文件中", firstGlobalStatementPerSyntaxTree.First()!.Address);
 
-        var globalStatements = syntaxs.SelectMany(st => st.Members)
+        var globalStatements = syntaxs.FlattenRoot.SelectMany(st => st.Members)
                                               .Where(m => m is not FuncDeclBlock);
 
         var statements = ImmutableArray.CreateBuilder<BoundStmt>();

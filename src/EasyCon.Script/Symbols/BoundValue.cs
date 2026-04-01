@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using System.Globalization;
 
-namespace EasyCon.Script.Binding;
+namespace EasyCon.Script.Symbols;
 
 /// <summary>
 /// 表示一个动态值，可以是 int、bool、string 或一维数组（元素为 Value）。

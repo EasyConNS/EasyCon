@@ -1,6 +1,5 @@
-using EasyCon.Script;
+using EasyCon.Core;
 using EasyCon.Script.Assembly;
-using EasyCon.Script.Runner;
 using EasyCon2.Config;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
@@ -38,7 +37,7 @@ namespace EasyCon2.Forms
 
         private QqAssist ws = new();
 
-        private ConfigState _config;
+        private EasyCon2.Config.ConfigState _config;
         const string ConfigPath = @"config.json";
         const string ScriptPath = @"Script\";
         const string FirmwarePath = @"Firmware\";
@@ -332,7 +331,7 @@ namespace EasyCon2.Forms
         {
             try
             {
-                _config = JsonSerializer.Deserialize<ConfigState>(File.ReadAllText(ConfigPath));
+                _config = JsonSerializer.Deserialize<EasyCon2.Config.ConfigState>(File.ReadAllText(ConfigPath));
             }
             catch (Exception ex)
             {
@@ -343,7 +342,7 @@ namespace EasyCon2.Forms
             }
 
 
-            频道远程ToolStripMenuItem.Checked = _config?.ChannelControl ?? false;
+            频道远程ToolStripMenuItem.Checked = _config?.EnableChannelToken ?? false;
             if (频道远程ToolStripMenuItem.Checked)
             {
                 StartWebSocket();
@@ -987,7 +986,7 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             {
                 WSRun = false;
             }
-            _config.ChannelControl = menu.Checked;
+            _config.EnableChannelToken = menu.Checked;
             SaveConfig();
         }
 

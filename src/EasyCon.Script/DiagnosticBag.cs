@@ -1,8 +1,8 @@
-﻿using EasyCon.Script2.Syntax;
+using EasyCon.Script.Syntax;
 using System.Collections;
-using EasyCon.Script2.Text;
+using EasyCon.Script.Text;
 
-namespace EasyCon.Script2;
+namespace EasyCon.Script;
 
 internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 {

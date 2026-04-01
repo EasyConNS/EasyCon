@@ -1,7 +1,6 @@
-using EasyCon.Script2.Syntax;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 internal sealed class ForBlock(ForStmt condition, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement(condition.Syntax)
 {

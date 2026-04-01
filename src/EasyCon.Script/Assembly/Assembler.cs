@@ -1,5 +1,5 @@
 using EasyCon.Script.Binding;
-using static EasyCon.Script2.Binding.BoundNodeKind;
+using static EasyCon.Script.Binding.BoundNodeKind;
 
 namespace EasyCon.Script.Assembly;
 

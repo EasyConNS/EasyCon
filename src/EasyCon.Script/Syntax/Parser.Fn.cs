@@ -1,11 +1,8 @@
-using EasyCon.Script.Binding;
-using EasyCon.Script2;
-using EasyCon.Script2.Syntax;
 using EasyScript;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 internal partial class Parser
 {
@@ -34,11 +31,10 @@ internal partial class Parser
         else if (firstToken.Type == TokenType.IDENT)return ParseNamedExpression(toks);
         // Handle key statements
         var fullline = firstToken.Text.Lines[firstToken.Line - 1].Text;
-        fullline = fullline.Contains('#') ? fullline.Substring(0, fullline.IndexOf('#')) : fullline;
+        fullline = fullline.Contains('#') ? fullline[..fullline.IndexOf('#')] : fullline;
         return ParseKey(fullline.Trim());
     }
-    [GeneratedRegex(@"(\s*#.*)$")]
-    private static partial Regex CommentRegex();
+
     private AssignmentStmt? ParseConstantDecl(ImmutableArray<Token> toks)
     {
         if (toks.Length < 3) return null;
@@ -59,10 +55,9 @@ internal partial class Parser
         if (toks[0].Type == TokenType.IMPORT && toks[1].Type == TokenType.STRING)
         {
             var libSrc = Path.Combine(_filePath, LibPath, toks[1].STRTrimQ());
-            if (!File.Exists(libSrc))
-            {
-                throw new Exception($"文件不存在:{libSrc}");
-            }
+            libSrc = Path.GetFullPath(libSrc);
+            if (!libSrc.StartsWith(_filePath, StringComparison.OrdinalIgnoreCase)) throw new Exception($"库文件路径非法");
+            if (!File.Exists(libSrc)) throw new Exception($"文件不存在:{libSrc}");
             return new ImportStmt(toks[0], toks[1], Path.Combine(_filePath, LibPath));
         }
         return null;
@@ -287,29 +282,6 @@ internal partial class Parser
         var args = pr.ParseArguments();
         if (!pr.EOF(out _)) throw new Exception("函数传参解析失败");
         return args;
-    }
-
-    // print兼容语法特殊解析
-    private CallStmt ParsePrintStmt(ImmutableArray<Token> toks, string curline)
-    {
-        var firstToken = toks[0];
-        var bitandtoks = SyntaxTree.ParseTokens("&");
-        var bitand = bitandtoks[0];
-
-        var args = curline[5..].Trim().Split('&').Select(t =>
-        {
-            t = t.Trim();
-            try
-            {
-                return _formatter.GetValueEx(t);
-            }
-            catch (FormatException)
-            {
-                return new LiteralExpr(t);
-            }
-        });
-        var res = args.Aggregate((a,b)=> new BinaryExpression(bitand!, a, b));
-        return new CallStmt(firstToken, firstToken.Value.ToUpper(), [res]);
     }
 }
 
@@ -551,7 +523,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         return new IndexDefExpression(lb, [.. nodesAndSeparators], rb);
     }
 
-    // [1..3]
+    // [1:3]
     private ExprBase ParseSliceExpression(Token variableToken)
     {
         var lb = Match(TokenType.LeftBracket, "语法需要'['");

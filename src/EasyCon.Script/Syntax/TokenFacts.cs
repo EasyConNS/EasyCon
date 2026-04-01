@@ -1,4 +1,4 @@
-namespace EasyCon.Script2.Syntax;
+namespace EasyCon.Script.Syntax;
 
 public static class TokenFacts
 {

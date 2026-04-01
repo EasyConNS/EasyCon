@@ -2,15 +2,14 @@
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Script;
-using EasyCon.Script.Parsing;
-using EasyCon.Script.Runner;
+using EasyCon.Script.Syntax;
 using EasyDevice;
 using OpenCvSharp;
 using System.CommandLine;
+using EasyCon.Core.Runner;
 
 string defaultCOMPort = "COM22";
 
-OpenCVCapture cvcap = new();
 NintendoSwitch NS = new();
 EasyRunner runner = new();
 
@@ -92,12 +91,15 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
     Console.WriteLine($"已加载标签：{label.Count()}/{total}, {(repeat > 0 ? $"重复标签：{repeat}" : "")}");
 
+
+    OpenCVCapture cvcap = null;
     outdap.Log("正在解析脚本...");
     try
     {
         runner.Load(file, label.Select(il => new ExternalVariable(il.name, () =>
         {
-            il.Search(cvcap.GetMatFrame(), out var md);
+            if(cvcap == null) throw new Exception("采集卡初始化异常");
+            il.Search(cvcap!.GetMatFrame(), out var md);
             return (int)md;
         }))
         );
@@ -136,6 +138,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
 
     if(runner.NeedILLoad)
     {
+        cvcap = new();
         outdap.Log("准备打开采集卡...");
         if (!cvcap.Open(vId, (int)refs))
         {

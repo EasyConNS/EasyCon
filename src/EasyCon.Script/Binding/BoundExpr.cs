@@ -1,5 +1,5 @@
-using EasyCon.Script.Parsing;
-using EasyCon.Script2.Binding;
+using EasyCon.Script.Symbols;
+using EasyCon.Script.Syntax;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;

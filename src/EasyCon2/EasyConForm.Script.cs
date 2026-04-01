@@ -3,7 +3,7 @@ using EasyCon.Script;
 using EasyCon.Core;
 using EasyCon2.Helper;
 using EasyCon.Script.Assembly;
-using EasyCon.Script.Parsing;
+using EasyCon.Script.Syntax;
 using OpenCvSharp.Extensions;
 using System.IO;
 using System.Media;

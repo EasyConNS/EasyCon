@@ -1,4 +1,4 @@
-namespace EasyCon.Script.Parsing;
+namespace EasyCon.Script.Syntax;
 
 class SerialPrint(uint value, bool mem) : Statement(null!)
 {
