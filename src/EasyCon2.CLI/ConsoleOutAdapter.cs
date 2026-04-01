@@ -101,11 +101,12 @@ public static class ColorfulConsole
 public static class AnsiColors
 {
     public const string Reset = "\u001b[0m";
+    public const string White = Reset;
 
     // 前景色
     public const string Green = "\u001b[32m";
     public const string BrightGreen = "\u001b[92m";
-    public const string White = "\u001b[97m";
+    // public const string White = "\u001b[97m";
     public const string Gray = "\u001b[90m";
     public const string Red = "\u001b[31m";       // 标准红
     public const string Orange = "\u001b[38;5;208m";

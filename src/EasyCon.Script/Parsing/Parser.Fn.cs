@@ -17,33 +17,25 @@ internal partial class Parser
         else if (firstToken.Type == TokenType.VAR) return ParseAssignment(toks);
         else if (firstToken.Type == TokenType.IMPORT) return ParseImport(toks);
         else if (firstToken.Type == TokenType.IF || firstToken.Type == TokenType.ELIF)return ParseIfelse(toks);
-        else if (firstToken.Type == TokenType.ELSE) return new Else(firstToken);
-        else if (firstToken.Type == TokenType.ENDIF) return new EndIf(firstToken);
+        else if (firstToken.Type == TokenType.ELSE && toks.Length == 1) return new Else(firstToken);
+        else if (firstToken.Type == TokenType.ENDIF && toks.Length == 1) return new EndIf(firstToken);
         else if (firstToken.Type == TokenType.WHILE) return ParseWhile(toks);
         else if (firstToken.Type == TokenType.FOR) return ParseFor(toks);
         else if (firstToken.Type == TokenType.BREAK || firstToken.Type == TokenType.CONTINUE)return ParseLoopCtrl(toks);
-        else if (firstToken.Type == TokenType.NEXT) return new Next(firstToken);
+        else if (firstToken.Type == TokenType.NEXT && toks.Length == 1) return new Next(firstToken);
         else if (firstToken.Type == TokenType.FUNC) return ParseFuncDecl(toks);
-        else if (firstToken.Type == TokenType.ENDFUNC) return new EndFuncStmt(firstToken);
+        else if (firstToken.Type == TokenType.ENDFUNC && toks.Length == 1) return new EndFuncStmt(firstToken);
         else if (firstToken.Type == TokenType.RETURN) return ParseReturn(toks);
-        else if (firstToken.Type == TokenType.END) return new EndBlockStmt(firstToken);
+        else if (firstToken.Type == TokenType.END && toks.Length == 1) return new EndBlockStmt(firstToken);
         else if (firstToken.Type == TokenType.INT && toks.Length == 1)
         {
             if (int.TryParse(firstToken.Value, out int duration)) return new Wait(firstToken, duration, true);
         }
-        //else if (firstToken.Type == TokenType.IDENT)
-        //{
-        //    if(firstToken.Value.Equals("print", StringComparison.OrdinalIgnoreCase) || firstToken.Value.Equals("alert", StringComparison.OrdinalIgnoreCase))
-        //    {
-        //        var curline = firstToken.Text.Lines[firstToken.Line-1].Text;
-        //        curline = curline.Contains('#') ? curline.Substring(0, curline.IndexOf('#')) : curline;
-        //        return ParsePrintStmt(toks, curline.Trim());
-        //    }
-        //}
+        else if (firstToken.Type == TokenType.IDENT)return ParseNamedExpression(toks);
         // Handle key statements
         var fullline = firstToken.Text.Lines[firstToken.Line - 1].Text;
         fullline = fullline.Contains('#') ? fullline.Substring(0, fullline.IndexOf('#')) : fullline;
-        return ParseKey(fullline.Trim()) ?? ParseNamedExpression(toks);
+        return ParseKey(fullline.Trim());
     }
     [GeneratedRegex(@"(\s*#.*)$")]
     private static partial Regex CommentRegex();
@@ -254,7 +246,6 @@ internal partial class Parser
     private Statement? ParseNamedExpression(ImmutableArray<Token> tokens)
     {
         var first = tokens.First()!;
-        if (first.Type != TokenType.IDENT) return null;
         switch (first.Value.ToLower())
         {
             case "print":
