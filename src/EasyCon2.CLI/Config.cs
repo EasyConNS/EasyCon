@@ -14,7 +14,6 @@ static class ConfigMgr
         {
             Console.WriteLine($"配置文件加载失败： {ex.Message}");
         }
-        Console.WriteLine(_config.EnableAlertToken);
         return _config;
     }
 }

@@ -1,17 +1,25 @@
 {
   "name": "vscode-ecs",
-  "displayName": "EasyCon Script",
-  "description": "Syntax highlighting for EasyCon Script language",
-  "version": "0.1.0",
+  "displayName": "EasyCon for VS Code",
+  "description": "EasyCon伊机控vscode插件，纯AI打造",
+  "version": "0.0.1",
   "publisher": "easycon",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/EasyConNS/EasyCon"
+	},
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": ["Programming Languages"],
+  "main": "./extension.js",
+  "dependencies": {
+    "toml": "^3.0.0"
+  },
   "contributes": {
     "languages": [
       {
-        "id": "easycon.vscode-ecs",
+        "id": "easycon-script",
         "aliases": ["EasyCon Script"],
         "extensions": [".ecs"],
         "configuration": "./language-configuration.json"
@@ -19,9 +27,41 @@
     ],
     "grammars": [
       {
-        "language": "easycon.vscode-ecs",
+        "language": "easycon-script",
         "scopeName": "source.ecs",
         "path": "./syntaxes/ecs.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "easycon.runScript",
+        "title": "Run EasyCon Script",
+        "icon": "$(play)",
+				"category": "easycon",
+				"description": "执行easycon脚本"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "easycon.runScript",
+          "when": "resourceExtname == .ecs",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "easycon.runScript",
+          "when": "resourceExtname == .ecs",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "easycon.runScript",
+        "key": "f5",
+        "when": "resourceExtname == .ecs"
       }
     ]
   }

@@ -7,6 +7,10 @@ using EasyCon.Script.Syntax;
 using EasyDevice;
 using OpenCvSharp;
 using System.CommandLine;
+using System.Text;
+
+// 设置控制台输出编码为 UTF-8，解决中文乱码问题
+Console.OutputEncoding = Encoding.UTF8;
 
 string defaultCOMPort = "COM22";
 

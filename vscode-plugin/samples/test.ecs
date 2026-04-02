@@ -4,14 +4,15 @@
 # UNDONE: Not yet implemented
 
 # Variables
-$counter = 0
-$max = 100
-@capture_data
 _const_value = 42
+$counter = 1 + 1 / 3 - ($max - 1)
+$m_a_x = 100
+@识图精灵
 
 # Strings
 $str1 = "Hello World"
 $str2 = 'Single quoted'
+$arr = [1,2,3]
 
 # Keywords
 IMPORT "MATH.txt"
@@ -22,7 +23,7 @@ BREAK
 CONTINUE
 
 WHILE $counter < $max
-    $counter = $counter + 1
+    $counter += 1
 END
 
 IF $counter == 100 and @capture_data > 85
@@ -44,11 +45,11 @@ $a = my_function() / 2 - _const_value
 # Built-in functions
 RAND 100
 TIME
-PRINT "test"
+PRINT 完美！！！ & $CISHU
 ALERT "Warning"
-WAIT 1000
-AMIIBO
-BEEP
+WAIT 100
+AMIIBO 3
+BEEP 1000,781
 
 # Gamepad buttons
 A

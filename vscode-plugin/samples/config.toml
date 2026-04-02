@@ -1,0 +1,11 @@
+# EasyCon 脚本配置文件示例
+
+[core]
+# 控制设备端口 (对应 -p 参数)
+port = COM22
+
+# 视频采集设备索引 (对应 -d 参数)
+camera = 0
+
+# 采集类型: ANDROID|ANY|ARAVIS|DSHOW|MSMF 等 (对应 -vt 参数)
+videotype = ANY
