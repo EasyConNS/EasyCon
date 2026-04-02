@@ -6,9 +6,9 @@ interface IRunner
 {
     abstract bool HasKeyAction { get; }
 
-    void Init(string code, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters);
-    void Load(string fileName, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters);
-    void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token);
+    void Init(string code, IEnumerable<string> extVarNames);
+    void Load(string fileName, IEnumerable<string> extVarNames);
+    void Run(IOutputAdapter output, ICGamePad pad, Dictionary<string, Func<int>> externalGetters, CancellationToken token);
 
     string ToCode();
 

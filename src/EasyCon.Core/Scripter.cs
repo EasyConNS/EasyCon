@@ -8,14 +8,17 @@ public sealed class Scripter
 {
     private IRunner runner = new EasyRunner();
 
+    private Dictionary<string, Func<int>> _extVar = [];
+
     public bool HasKeyAction => runner.HasKeyAction;
 
     public void Parse(string code, string fileName, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
     {
-        if(fileName==null)
-            runner.Init(code, extVarNames, externalGetters);
+        _extVar = externalGetters;
+        if (fileName==null)
+            runner.Init(code, extVarNames);
         else
-            runner.Load(fileName, extVarNames, externalGetters);
+            runner.Load(fileName, extVarNames);
 
     }
 
@@ -27,7 +30,7 @@ public sealed class Scripter
 
     public void Run(CancellationToken token, IOutputAdapter output, ICGamePad pad)
     {
-        runner.Run(output, pad, token);
+        runner.Run(output, pad, _extVar, token);
     }
 
     public string ToCode()

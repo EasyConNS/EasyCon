@@ -31,7 +31,7 @@ internal sealed class Evaluator
     public IOutputAdapter? Output;
     public ICGamePad? GamePad;
 
-    public Evaluator(BoundProgram program, CancellationToken token, Dictionary<string, Func<int>> externalGetters)
+    public Evaluator(BoundProgram program, Dictionary<string, Func<int>> externalGetters, CancellationToken token)
     {
         _program = program;
         _token = token;

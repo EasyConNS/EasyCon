@@ -2,6 +2,7 @@ using EasyCon.Script.Binding;
 using EasyCon.Script.Syntax;
 using EasyScript;
 using System.CodeDom.Compiler;
+using System.Collections.Immutable;
 
 namespace EasyCon.Script;
 
@@ -37,11 +38,13 @@ public sealed class Compilation
         NeedIL = program.NeedIL;
     }
 
-    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad, CancellationToken token, Dictionary<string, Func<int>>? externalGetters = null)
+    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad,
+        Dictionary<string, Func<int>> externalGetters,
+        CancellationToken token)
     {
 
         var program = GetProgram();
-        var evaluator = new Evaluator(program, token, externalGetters ?? [])
+        var evaluator = new Evaluator(program, externalGetters ?? [], token)
         {
             GamePad = pad,
             Output = output,

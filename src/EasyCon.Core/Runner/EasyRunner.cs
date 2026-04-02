@@ -17,24 +17,22 @@ public sealed class EasyRunner : IRunner
         //return new Assembly.Assembler().Assemble(prog, auto);
         throw new NotImplementedException();
     }
-    public void Init(string code, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
+    public void Init(string code, IEnumerable<string> extVarNames)
     {
-        _externalGetters = externalGetters;
         var sourceText = SyntaxTree.Parse(code, extVarNames);
         compilation = Compilation.Create(sourceText);
         compilation.Compile();
     }
-    public void Load(string fileName, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
+    public void Load(string fileName, IEnumerable<string> extVarNames)
     {
-        _externalGetters = externalGetters;
         var sourceText = SyntaxTree.Load(fileName, extVarNames);
         compilation = Compilation.Create(sourceText);
         compilation.Compile();
     }
 
-    public void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token)
+    public void Run(IOutputAdapter output, ICGamePad pad, Dictionary<string, Func<int>> externalGetters, CancellationToken token)
     {
-        compilation?.Evaluate(output, pad, token, _externalGetters);
+        compilation?.Evaluate(output, pad, externalGetters, token);
     }
 
     public string ToCode()
