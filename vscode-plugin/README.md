@@ -1,51 +1,58 @@
-# EasyCon Script
+# EasyCon for VS Code
 
-VS Code extension providing syntax highlighting for EasyCon Script language.
+EasyCon 伊机控 VS Code 插件，为 `.ecs` 脚本文件提供语法高亮、注释切换和脚本执行等功能。
 
-## Features
+## 功能特性
 
-- Syntax highlighting for `.ecs` files
-- Support for:
-  - Comments (`#`) with TODO/FIXME/HACK/UNDONE markers
-  - Strings (single and double quoted)
-  - Variables (`$var`), capture variables (`@var`), constants (`_const`)
-  - Numeric literals (integers, decimals, scientific notation)
-  - Control flow keywords (IF, FOR, WHILE, FUNC, etc.)
-  - Built-in functions (RAND, TIME, PRINT, ALERT, WAIT, AMIIBO, BEEP)
-  - Gamepad button constants (A, B, X, Y, L, R, etc.)
-- Comment toggling (`Ctrl+/`)
-- Bracket matching and auto-closing
+### 语法高亮
 
-## Installation
+插件为 `.ecs` 文件提供完整的语法高亮支持，包括：
 
-### From source
+- **注释** — `#` 开头的行注释，支持 TODO/FIXME/HACK/UNDONE 标记
+- **字符串** — 单引号和双引号字符串
+- **变量** — `$var` 变量、`@var` 捕获变量、`_const` 常量
+- **数字** — 整数、小数、科学计数法
+- **关键字** — IF、FOR、WHILE、FUNC 等控制流关键字
+- **内置函数** — RAND、TIME、PRINT、ALERT、WAIT、AMIIBO、BEEP 等
+- **手柄按键** — A、B、X、Y、L、R 等游戏手柄按键常量
 
-1. Copy the `vscode-plugin` folder to your VS Code extensions directory:
-   - Windows: `%USERPROFILE%\.vscode\extensions\`
-   - macOS: `~/.vscode/extensions/`
-   - Linux: `~/.vscode/extensions/`
+### 注释切换
 
-2. Restart VS Code
+支持使用 `Ctrl+/` 快捷键快速切换行注释。
 
-### Using vsce (recommended)
+### 执行脚本
+
+支持在 VS Code 中直接运行 EasyCon 脚本，有以下三种方式：
+
+- 按 `F5` 快捷键
+- 点击编辑器标题栏的运行按钮 ▶
+- 右键编辑器选择「Run EasyCon Script」
+
+插件会自动读取脚本同目录下的 `config.toml` 配置文件，获取端口、视频采集设备等参数并传递给 `ezcon` 命令执行。
+
+状态栏会显示当前安装的 EasyCon 版本号。
+
+## 安装
+
+### 从源码安装
+
+将 `vscode-plugin` 文件夹重命名为`easycon.vscode-ecs-0.1.0`然后复制到 VS Code 扩展目录：
+
+- Windows: `%USERPROFILE%\.vscode\extensions\`
+- macOS/Linux: `~/.vscode/extensions/`
+
+
+然后重启 VS Code。
+
+### 使用 vsce 打包安装
 
 ```bash
 cd vscode-plugin
 npm install -g @vscode/vsce
 vsce package
-code --install-extension easycon-script-0.1.0.vsix
+code --install-extension easycon.vscode-ecs-0.0.1.vsix
 ```
 
-## Color Scheme
+## 前置条件
 
-| Element | Color |
-|---------|-------|
-| Comments | Green |
-| Strings | Orange |
-| Numbers | Purple |
-| Keywords | Blue (bold) |
-| Built-in Functions | Light Blue (bold) |
-| Gamepad Buttons | Red (bold) |
-| Variables | Orange |
-| Capture Variables | Purple-Orange |
-| Constants | Brown |
+使用脚本执行功能需要安装 EasyCon 命令行工具 `ezcon`，可通过设置环境变量 `EASYCON_ROOT` 指定其路径，或将 `ezcon` 添加到系统 PATH 中。

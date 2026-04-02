@@ -178,7 +178,7 @@ function updateVersionStatusBar(statusBarItem, showMessage = false) {
             statusBarItem.text = `$(package) EasyCon ${shortver}`;
             statusBarItem.tooltip = `EasyCon 版本: ${shortver}`;
             if (showMessage) {
-                vscode.window.showInformationMessage(`EasyCon 版本: \n${version}`);
+                vscode.window.showInformationMessage(`EasyCon 版本: ${version}`);
             }
         }
         statusBarItem.show();
