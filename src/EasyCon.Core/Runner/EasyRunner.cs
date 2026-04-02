@@ -22,12 +22,14 @@ public sealed class EasyRunner : IRunner
         _externalGetters = externalGetters;
         var sourceText = SyntaxTree.Parse(code, extVarNames);
         compilation = Compilation.Create(sourceText);
+        compilation.Compile();
     }
     public void Load(string fileName, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
     {
         _externalGetters = externalGetters;
         var sourceText = SyntaxTree.Load(fileName, extVarNames);
         compilation = Compilation.Create(sourceText);
+        compilation.Compile();
     }
 
     public void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token)

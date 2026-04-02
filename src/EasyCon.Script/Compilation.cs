@@ -30,12 +30,17 @@ public sealed class Compilation
         return Binder.BindProgram(SyntaxTrees);
     }
 
-    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad, CancellationToken token, Dictionary<string, Func<int>>? externalGetters = null)
+    public void Compile()
     {
         var program = GetProgram();
         KeyAction = program.KeyAction;
         NeedIL = program.NeedIL;
+    }
 
+    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad, CancellationToken token, Dictionary<string, Func<int>>? externalGetters = null)
+    {
+
+        var program = GetProgram();
         var evaluator = new Evaluator(program, token, externalGetters ?? [])
         {
             GamePad = pad,
