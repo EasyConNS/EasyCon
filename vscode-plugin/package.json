@@ -5,24 +5,27 @@
   "version": "0.0.1",
   "publisher": "easycon",
   "icon": "favicon.ico",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/EasyConNS/EasyCon"
-	},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EasyConNS/EasyCon"
+  },
   "engines": {
     "vscode": "^1.75.0"
   },
-  "categories": ["Programming Languages"],
+  "categories": [
+    "Programming Languages"
+  ],
   "main": "./extension.js",
-  "dependencies": {
-    "toml": "^3.0.0"
-  },
   "contributes": {
     "languages": [
       {
         "id": "easycon-script",
-        "aliases": ["EasyCon Script"],
-        "extensions": [".ecs"],
+        "aliases": [
+          "EasyCon Script"
+        ],
+        "extensions": [
+          ".ecs"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -38,8 +41,8 @@
         "command": "easycon.runScript",
         "title": "Run EasyCon Script",
         "icon": "$(play)",
-				"category": "easycon",
-				"description": "执行easycon脚本"
+        "category": "easycon",
+        "description": "执行easycon脚本"
       }
     ],
     "menus": {
