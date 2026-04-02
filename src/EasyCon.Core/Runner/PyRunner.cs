@@ -1,4 +1,3 @@
-using EasyCon.Script;
 using EasyScript;
 using Python.Runtime;
 using System.Text;
@@ -20,11 +19,11 @@ public sealed class PyRunner : IRunner
 
     public bool HasKeyAction() => true;
 
-    public void Load(string fileName, IEnumerable<ExternalVariable> extVars)
+    public void Load(string fileName, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
     {
         Code = File.ReadAllText(fileName);
     }
-    public void Init(string code, IEnumerable<ExternalVariable> extVars)
+    public void Init(string code, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
     {
         Code = code;
     }

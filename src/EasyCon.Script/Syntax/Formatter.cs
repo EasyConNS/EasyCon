@@ -16,18 +16,18 @@ static class Formats
     public const string ValueEx = "(" + _Constant + "|" + _Variable + "|" + _ExtVar + "|" + _Number + ")";
 }
 
-class Formatter(IEnumerable<ExternalVariable> extVars)
+class Formatter(IEnumerable<string> extVarNames)
 {
-    private readonly Dictionary<string, ExternalVariable> ExtVars = extVars.ToDictionary(ev => ev.Name, s => s);
+    private readonly HashSet<string> ExtVarNames = new(extVarNames);
 
     private ExtVarExpr GetExtVar(string text)
     {
         if (!text.StartsWith('@'))
             throw new FormatException();
         var name = text[1..];
-        if (!ExtVars.TryGetValue(name, out ExternalVariable? value))
+        if (!ExtVarNames.Contains(name))
             throw new ParseException($"找不到识图标签“{text}”");
-        return new ExtVarExpr(value);
+        return new ExtVarExpr(name);
     }
 
     public ExprBase GetValueEx(Token tok)

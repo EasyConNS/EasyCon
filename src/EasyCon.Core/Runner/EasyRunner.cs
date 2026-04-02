@@ -7,6 +7,7 @@ namespace EasyCon.Core.Runner;
 public sealed class EasyRunner : IRunner
 {
     Compilation? compilation;
+    Dictionary<string, Func<int>>? _externalGetters;
 
     public bool HasKeyAction => compilation?.KeyAction?? false;
     public bool NeedILLoad => compilation?.NeedIL ?? false;
@@ -16,20 +17,22 @@ public sealed class EasyRunner : IRunner
         //return new Assembly.Assembler().Assemble(prog, auto);
         throw new NotImplementedException();
     }
-    public void Init(string code, IEnumerable<ExternalVariable> extVars)
+    public void Init(string code, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
     {
-        var sourceText = SyntaxTree.Parse(code, extVars);
+        _externalGetters = externalGetters;
+        var sourceText = SyntaxTree.Parse(code, extVarNames);
         compilation = Compilation.Create(sourceText);
     }
-    public void Load(string fileName, IEnumerable<ExternalVariable> extVars)
+    public void Load(string fileName, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
     {
-        var sourceText = SyntaxTree.Load(fileName, extVars);
+        _externalGetters = externalGetters;
+        var sourceText = SyntaxTree.Load(fileName, extVarNames);
         compilation = Compilation.Create(sourceText);
     }
 
     public void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token)
     {
-        compilation?.Evaluate(output, pad, token);
+        compilation?.Evaluate(output, pad, token, _externalGetters);
     }
 
     public string ToCode()

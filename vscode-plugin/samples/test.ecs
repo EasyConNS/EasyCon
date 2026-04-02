@@ -1,0 +1,77 @@
+# This is a comment with TODO marker
+# FIXME: This needs attention
+# HACK: Quick workaround
+# UNDONE: Not yet implemented
+
+# Variables
+$counter = 0
+$max = 100
+@capture_data
+_const_value = 42
+
+# Strings
+$str1 = "Hello World"
+$str2 = 'Single quoted'
+
+# Keywords
+IMPORT "MATH.txt"
+FOR $i TO 10 STEP 1
+    PRINT $i
+NEXT
+BREAK
+CONTINUE
+
+WHILE $counter < $max
+    $counter = $counter + 1
+END
+
+IF $counter == 100 and @capture_data > 85
+    PRINT "Done"
+ELIF $counter > 50
+    PRINT "Half done"
+ELSE
+    PRINT "Working"
+ENDIF
+
+FUNC my_function
+    RETURN 0
+ENDFUNC
+
+CALL my_function
+
+$a = my_function() / 2 - _const_value
+
+# Built-in functions
+RAND 100
+TIME
+PRINT "test"
+ALERT "Warning"
+WAIT 1000
+AMIIBO
+BEEP
+
+# Gamepad buttons
+A
+B
+X
+Y
+L
+R
+ZL
+ZR
+PLUS
+MINUS
+LCLICK
+RCLICK
+HOME
+CAPTURE
+UP
+UPRIGHT
+RIGHT
+DOWNRIGHT
+DOWN
+DOWNLEFT
+LEFT
+UPLEFT
+LS
+RS

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "EasyCon Script",
+  "scopeName": "source.ecs",
+  "fileTypes": ["ecs"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#variables" },
+    { "include": "#operators" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#gamepad" },
+    { "include": "#support" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "begin": "(?i)(#)",
+          "end": "$",
+          "name": "comment.line.number-sign.ecs",
+          "beginCaptures": {
+            "1": { "name": "punctuation.definition.comment.ecs" }
+          },
+          "patterns": [
+            {
+              "match": "(?i)\\b(TODO|FIXME|HACK|UNDONE)\\b",
+              "name": "comment.line.number-sign.todo.bold.ecs markup.bold.ecs"
+            }
+          ]
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.ecs",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.ecs" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.ecs" }
+          }
+        },
+        {
+          "begin": "'",
+          "end": "'",
+          "name": "string.quoted.single.ecs",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.ecs" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.ecs" }
+          }
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "match": "(?i)\\$[\\w]+",
+          "name": "variable.other.ecs"
+        },
+        {
+          "match": "(?i)@[\\w]+",
+          "name": "variable.other.capture.ecs"
+        },
+        {
+          "match": "(?i)_\\w+",
+          "name": "constant.other.ecs"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "match": "(?i)\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?",
+          "name": "constant.numeric.ecs"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "match": "(?i)\\b(IMPORT|FOR|TO|STEP|NEXT|BREAK|CONTINUE|WHILE|END|IF|ELIF|ELSE|ENDIF|FUNC|RETURN|ENDFUNC|CALL)\\b",
+          "name": "keyword.control.ecs"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.c-pointer.ecs",
+          "match": "(?<=\\[)\\*c(?=\\])"
+        },
+        {
+          "name": "keyword.operator.comparison.ecs",
+          "match": "(\\b(and|or)\\b)|(==|!=|<=|>=|<|>)"
+        },
+        {
+          "name": "keyword.operator.arithmetic.ecs",
+          "match": "(-%?|\\+%?|\\*%?|/|%)=?"
+        },
+        {
+          "name": "keyword.operator.bitwise.ecs",
+          "match": "(<<%?|>>|!|~|&|\\^|\\|)=?"
+        },
+        {
+          "name": "keyword.operator.special.ecs",
+          "match": "(==|\\+\\+|\\*\\*|->)"
+        },
+        {
+          "name": "keyword.operator.assignment.ecs",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.question.ecs",
+          "match": "\\?"
+        }
+      ]
+    },
+    "gamepad": {
+      "patterns": [
+        {
+          "match": "(?i)\\b(A|B|X|Y|L|R|ZL|ZR|PLUS|MINUS|LCLICK|RCLICK|HOME|CAPTURE|UP|UPRIGHT|RIGHT|DOWNRIGHT|DOWN|DOWNLEFT|LEFT|UPLEFT|LS|RS)\\b",
+          "name": "constant.language.gamepad.ecs"
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "match": "(?i)\\b[a-zA-Z]\\w*\\b",
+          "name": "entity.name.function.ecs"
+        }
+      ]
+    },
+    "support": {
+      "patterns": [
+        {
+          "comment": "Built-in functions",
+          "match": "(?i)\\b(RAND|TIME|PRINT|ALERT|WAIT|AMIIBO|BEEP)\\b",
+          "name": "support.function.builtin.ecs"
+        }
+      ]
+    }
+  }
+}

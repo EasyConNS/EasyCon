@@ -1,5 +1,4 @@
 using EasyCon.Core.Runner;
-using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyScript;
 
@@ -11,12 +10,12 @@ public sealed class Scripter
 
     public bool HasKeyAction => runner.HasKeyAction;
 
-    public void Parse(string code, string fileName, IEnumerable<ExternalVariable> extVars)
+    public void Parse(string code, string fileName, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
     {
         if(fileName==null)
-            runner.Init(code, extVars);
+            runner.Init(code, extVarNames, externalGetters);
         else
-            runner.Load(fileName, extVars);
+            runner.Load(fileName, extVarNames, externalGetters);
 
     }
 

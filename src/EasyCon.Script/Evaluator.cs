@@ -18,6 +18,7 @@ internal sealed class Evaluator
     private readonly Dictionary<VariableSymbol, Value> _globals = [];
     private readonly Stack<Dictionary<VariableSymbol, Value>> _locals = new();
     private readonly Dictionary<FunctionSymbol, BoundBlockStatement> _functions = [];
+    private readonly Dictionary<string, Func<int>> _externalGetters = [];
 
     private readonly long _TIME = DateTime.Now.Ticks;
     private int CurrTimestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
@@ -30,10 +31,11 @@ internal sealed class Evaluator
     public IOutputAdapter? Output;
     public ICGamePad? GamePad;
 
-    public Evaluator(BoundProgram program, CancellationToken token)
+    public Evaluator(BoundProgram program, CancellationToken token, Dictionary<string, Func<int>> externalGetters)
     {
         _program = program;
         _token = token;
+        _externalGetters = externalGetters;
         _locals.Push([]);
 
         foreach (var kv in _program.Functions)
@@ -147,7 +149,9 @@ internal sealed class Evaluator
                 return EvaluateSliceExpression((BoundSliceExpression)node);
             case ExLabelVariable:
                 var imglabel = (BoundExternalVariableExpression)node;
-                return imglabel.Label.Get();
+                if (!_externalGetters.TryGetValue(imglabel.Name, out var getter))
+                    throw new Exception($"找不到外部变量 \"{imglabel.Name}\" 的getter");
+                return getter();
             case UnaryExpression:
                 return EvaluateUnaryExpression((BoundUnaryExpression)node);
             case BinaryExpression:

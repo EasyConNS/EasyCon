@@ -1,0 +1,28 @@
+{
+  "name": "vscode-ecs",
+  "displayName": "EasyCon Script",
+  "description": "Syntax highlighting for EasyCon Script language",
+  "version": "0.1.0",
+  "publisher": "easycon",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "easycon.vscode-ecs",
+        "aliases": ["EasyCon Script"],
+        "extensions": [".ecs"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "easycon.vscode-ecs",
+        "scopeName": "source.ecs",
+        "path": "./syntaxes/ecs.tmLanguage.json"
+      }
+    ]
+  }
+}

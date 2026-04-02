@@ -35,12 +35,11 @@ class VariableExpr(string tag, bool readOnly = false) : ExprBase
     public override string GetCodeText() => Tag;
 }
 
-class ExtVarExpr(ExternalVariable var) : ExprBase
+class ExtVarExpr(string name) : ExprBase
 {
-    //public readonly Token Identifier = item;
-    public readonly ExternalVariable Var = var;
+    public readonly string Name = name;
 
-    public override string GetCodeText() => $"@{Var.Name}";
+    public override string GetCodeText() => $"@{Name}";
 }
 
 sealed class BinaryExpression(Token op, ExprBase left, ExprBase right) : ExprBase

@@ -616,8 +616,8 @@ internal sealed class Binder
 
     private BoundExternalVariableExpression BindExtraLabel(ExtVarExpr syntax)
     {
-        _ilNames.Add(syntax.Var.Name);
-        return new BoundExternalVariableExpression(syntax, syntax.Var);
+        _ilNames.Add(syntax.Name);
+        return new BoundExternalVariableExpression(syntax, syntax.Name);
     }
 
     private BoundLiteralExpression BindLiterExpression(LiteralExpr syntax)

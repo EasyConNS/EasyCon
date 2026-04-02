@@ -2,11 +2,11 @@
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Script;
+using EasyCon.Core.Runner;
 using EasyCon.Script.Syntax;
 using EasyDevice;
 using OpenCvSharp;
 using System.CommandLine;
-using EasyCon.Core.Runner;
 
 string defaultCOMPort = "COM22";
 
@@ -21,6 +21,8 @@ Console.WriteLine("------------------------------------------");
 var rootCommand = new RootCommand("EasyCon CLI Runner");
 
 var runScriptCommand = new Command("run", "运行伊机控脚本");
+var runLuaCommand = new Command("runlua", "运行lua脚本");
+var portDevCommand = new Command("port", "单片机端口功能");
 
 #region 命令行参数解析
 var scriptOption = new Argument<string>("file")
@@ -96,13 +98,14 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     outdap.Log("正在解析脚本...");
     try
     {
-        runner.Load(file, label.Select(il => new ExternalVariable(il.name, () =>
+        var extVarNames = label.Select(il => il.name);
+        var externalGetters = label.ToDictionary(il => il.name, il => (Func<int>)(() =>
         {
             if(cvcap == null) throw new Exception("采集卡初始化异常");
             il.Search(cvcap!.GetMatFrame(), out var md);
             return (int)md;
-        }))
-        );
+        }));
+        runner.Load(file, extVarNames, externalGetters);
     }
     catch(ParseException ex)
     {
@@ -166,6 +169,41 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     }
 });
 
+#region 端口功能
+var portListOption = new Option<bool>("--list", "-l")
+{
+    Description = "列出所有端口"
+};
+portDevCommand.Options.Add(portListOption);
+
+portDevCommand.SetAction( async (parseResult, cancellationToken) =>
+{
+    var listport = parseResult.GetValue(portListOption);
+    ECCore.GetDeviceNames().ToList().ForEach(name =>
+    {
+        Console.WriteLine(name);
+    });
+});
+
+portDevCommand.Validators.Add(result =>
+{
+    if(!result.GetValue(portListOption))
+    {
+        result.AddError("请选择具体端口");
+    }
+});
+#endregion
+
+runLuaCommand.Arguments.Add(scriptOption);
+runLuaCommand.SetAction( async (parseResult, cancellationToken) =>
+{
+
+    string file = parseResult.GetValue(scriptOption)!;
+    LuaRunner.ExecuteFile(file);
+});
+
 rootCommand.Subcommands.Add(runScriptCommand);
+rootCommand.Subcommands.Add(runLuaCommand);
+rootCommand.Subcommands.Add(portDevCommand);
 return rootCommand.Parse(args).Invoke();
 

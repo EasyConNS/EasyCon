@@ -110,9 +110,9 @@ internal sealed class BoundIndexDeclxpression : BoundExpr
     }
 }
 
-internal sealed class BoundExternalVariableExpression(ExtVarExpr syntax, ExternalVariable operand) : BoundExpr(syntax)
+internal sealed class BoundExternalVariableExpression(ExtVarExpr syntax, string name) : BoundExpr(syntax)
 {
-    public readonly ExternalVariable Label = operand;
+    public readonly string Name = name;
 
     public override ScriptType Type => ScriptType.Int;
     public override BoundNodeKind Kind => BoundNodeKind.ExLabelVariable;
