@@ -2,7 +2,9 @@
 
 set projname="EasyCon2.CLI"
 
-cd ../src
+cd ..
+if not exist dist mkdir dist
+cd ./src
 rmdir /s /q publish 
 cd %projname%
 rmdir /s /q bin
@@ -27,4 +29,7 @@ xcopy ..\test\*.txt .\publish\Script\
 
 mkdir .\publish\ImgLabel\
 del .\publish\*.pdb
+
+robocopy ./publish/ ../dist/publish/ /move /e
+rmdir /s /q publish
 pause

@@ -2,7 +2,7 @@
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$pluginDir = $PSScriptRoot/../vscode-plugin
+$pluginDir = Join-Path -Path $PSScriptRoot -ChildPath "../vscode-plugin"
 $buildDir = Join-Path $pluginDir ".vsix-build"
 
 # 读取 package.json 获取插件信息
@@ -15,7 +15,9 @@ $publisher = $pkg.publisher
 $description = $pkg.description
 $engine = $pkg.engines.vscode
 
-$outFile = Join-Path $pluginDir "${id}-${version}.vsix"
+$distDir = Join-Path -Path $PSScriptRoot -ChildPath "../dist"
+if (-not (Test-Path $distDir)) { New-Item -ItemType Directory -Path $distDir | Out-Null }
+$outFile = Join-Path $distDir "${id}-${version}.vsix"
 
 Write-Host "正在打包插件: $id v$version ..."
 

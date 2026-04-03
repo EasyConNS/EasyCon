@@ -23,7 +23,9 @@ displayName=$(read_json package.json displayName)
 publisher=$(read_json package.json publisher)
 description=$(read_json package.json description)
 engine=$(read_json package.json engines.vscode)
-outFile="$pluginDir/${id}-${version}.vsix"
+distDir="$SCRIPT_DIR/../dist"
+mkdir -p "$distDir"
+outFile="$distDir/${id}-${version}.vsix"
 
 echo "正在打包插件: $id v$version ..."
 
