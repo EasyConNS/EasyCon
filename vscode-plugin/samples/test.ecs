@@ -5,26 +5,24 @@
 
 # Variables
 _const_value = 42
-$counter = 1 + 1 / 3 - ($max - 1)
+$counter = 1 + 1
 $m_a_x = 100
-@识图精灵
 
 # Strings
 $str1 = "Hello World"
 $str2 = 'Single quoted'
+# Array
 $arr = [1,2,3]
 
 # Keywords
 IMPORT "MATH.txt"
-FOR $i TO 10 STEP 1
+$i = 0
+FOR 5
+    $i+=1
     PRINT $i
 NEXT
 BREAK
 CONTINUE
-
-WHILE $counter < $max
-    $counter += 1
-END
 
 IF $counter == 100 and @capture_data > 85
     PRINT "Done"

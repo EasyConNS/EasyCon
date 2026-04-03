@@ -1,3 +1,4 @@
+using EasyCon.Script.Binding;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script.Syntax;
@@ -82,7 +83,7 @@ class ReturnStmt(Token syntax, ExprBase? expression = null) : Statement(syntax)
     //}
 }
 
-class CallStmt(Token syntax, string fnName, ExprBase[] args, bool usecall = true) : Statement(syntax)
+class CallStmt(Token syntax, string fnName, ExprBase[] args, CallType callType = CallType.CallStmt) : Statement(syntax)
 {
     public readonly string FnName = fnName;
     public readonly ExprBase[] Args = args;
@@ -106,7 +107,23 @@ class CallStmt(Token syntax, string fnName, ExprBase[] args, bool usecall = true
 
     protected override string _GetString()
     {
-        if (Args.Length == 0 && usecall) return $"CALL {FnName}";
-        return $"{FnName} {string.Join(", ", Args.Select(u => u.GetCodeText()))}".Trim();
+        var name = FnName;
+        if(BuiltinFunctions.GetAll().Select(f => f.Name).Contains(FnName.ToUpper()))
+        {
+            name = FnName.ToUpper();
+        }
+        return callType switch
+        {
+            CallType.CallStmt => $"CALL {name}",
+            _ => $"{name} {string.Join(", ", Args.Select(u => u.GetCodeText()))}".Trim(),
+        };
+
     }
+}
+
+enum CallType
+{
+    CallStmt,
+    CallStmtWithArgs,
+    CallExpression
 }

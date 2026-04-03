@@ -245,7 +245,7 @@ internal partial class Parser
         {
             case "print":
                 var outstr = ParseArguments([.. tokens.Skip(1)]);
-                return new CallStmt(first, first.Value.ToUpper(), [.. outstr], false);
+                return new CallStmt(first, first.Value.ToUpper(), [.. outstr], CallType.CallStmtWithArgs);
             case "wait":
                 if (tokens.Length != 2) return null;
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
@@ -270,7 +270,7 @@ internal partial class Parser
             default:
                 if (tokens.Length < 2) return null;
                 var args = ParseArguments([.. tokens.Skip(1)]);
-                return new CallStmt(first, first.Value, [.. args]);
+                return new CallStmt(first, first.Value, [.. args], CallType.CallStmtWithArgs);
         }
         return null;
     }

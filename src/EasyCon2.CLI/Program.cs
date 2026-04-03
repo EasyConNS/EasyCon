@@ -12,21 +12,27 @@ using System.Text;
 // 设置控制台输出编码为 UTF-8，解决中文乱码问题
 Console.OutputEncoding = Encoding.UTF8;
 
+bool isFormatCommand = args.Length > 0 && args[0] == "format";
+
 string defaultCOMPort = "COM22";
 
 NintendoSwitch NS = new();
 EasyRunner runner = new();
 
-Console.WriteLine("------------------------------------------");
-Console.WriteLine("----    EasyCon CLI Runner v0.0.1     ----");
-Console.WriteLine("---- 仅供内部测试，不代表最终发布表现 ----");
-Console.WriteLine("------------------------------------------");
+if (!isFormatCommand)
+{
+    Console.WriteLine("------------------------------------------");
+    Console.WriteLine("----    EasyCon CLI Runner v0.0.1     ----");
+    Console.WriteLine("---- 仅供内部测试，不代表最终发布表现 ----");
+    Console.WriteLine("------------------------------------------");
+}
 
 var rootCommand = new RootCommand("EasyCon CLI Runner");
 
 var runScriptCommand = new Command("run", "运行伊机控脚本");
 var runLuaCommand = new Command("runlua", "运行lua脚本");
 var portDevCommand = new Command("port", "单片机端口功能");
+var formatCommand = new Command("format", "格式化脚本");
 
 #region 命令行参数解析
 var scriptOption = new Argument<string>("file")
@@ -103,13 +109,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     try
     {
         var extVarNames = label.Select(il => il.name);
-        var externalGetters = label.ToDictionary(il => il.name, il => (Func<int>)(() =>
-        {
-            if(cvcap == null) throw new Exception("采集卡初始化异常");
-            il.Search(cvcap!.GetMatFrame(), out var md);
-            return (int)md;
-        }));
-        runner.Load(file, extVarNames, externalGetters);
+        runner.Load(file, extVarNames);
     }
     catch(ParseException ex)
     {
@@ -154,11 +154,17 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         }
         outdap.Info("采集卡打开成功.");
     }
-
+        var externalGetters = label.ToDictionary(il => il.name, il => (Func<int>)(() =>
+        {
+            if(cvcap == null) throw new Exception("采集卡初始化异常");
+            il.Search(cvcap!.GetMatFrame(), out var md);
+            return (int)md;
+        }));
     outdap.Info($"==>开始执行脚本：{file}");
+    
     try
     {
-        runner.Run(outdap, new GamePadAdapter(NS), cancellationToken);
+        runner.Run(outdap, new GamePadAdapter(NS), externalGetters, cancellationToken);
         outdap.Info("脚本运行完成");
     }
     catch (ScriptException ex)
@@ -206,8 +212,45 @@ runLuaCommand.SetAction( async (parseResult, cancellationToken) =>
     LuaRunner.ExecuteFile(file);
 });
 
+var formatOutputOption = new Option<string>("-o", "输出文件");
+
+formatCommand.Arguments.Add(scriptOption);
+formatCommand.Options.Add(formatOutputOption);
+formatCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    string file = parseResult.GetValue(scriptOption)!;
+    string? outputFile = parseResult.GetValue(formatOutputOption);
+
+    var scriptBasePath = Path.GetDirectoryName(file);
+    scriptBasePath = Path.GetFullPath(scriptBasePath);
+    var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
+
+    try
+    {
+        var extVarNames = label.Select(il => il.name);
+        runner.Load(file, extVarNames);
+        var formatted = runner.ToCode();
+        
+        if (!string.IsNullOrEmpty(outputFile))
+        {
+            File.WriteAllText(outputFile, formatted);
+        }
+        else
+        {
+            Console.Write(formatted);
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"格式化失败: {ex.Message}");
+        return 1;
+    }
+    return 0;
+});
+
 rootCommand.Subcommands.Add(runScriptCommand);
 rootCommand.Subcommands.Add(runLuaCommand);
 rootCommand.Subcommands.Add(portDevCommand);
+rootCommand.Subcommands.Add(formatCommand);
 return rootCommand.Parse(args).Invoke();
 

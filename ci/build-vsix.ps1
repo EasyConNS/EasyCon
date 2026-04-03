@@ -2,9 +2,8 @@
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$pluginDir = $PSScriptRoot
+$pluginDir = $PSScriptRoot/../vscode-plugin
 $buildDir = Join-Path $pluginDir ".vsix-build"
-$outFile = Join-Path $pluginDir "vscode-ecs-0.0.1.vsix"
 
 # 读取 package.json 获取插件信息
 $jsonContent = Get-Content (Join-Path $pluginDir "package.json") -Raw -Encoding UTF8
@@ -15,6 +14,8 @@ $displayName = $pkg.displayName
 $publisher = $pkg.publisher
 $description = $pkg.description
 $engine = $pkg.engines.vscode
+
+$outFile = Join-Path $pluginDir "${id}-${version}.vsix"
 
 Write-Host "正在打包插件: $id v$version ..."
 
@@ -69,7 +70,7 @@ $manifest = @"
 [IO.File]::WriteAllText((Join-Path $buildDir "extension.vsixmanifest"), $manifest, [Text.UTF8Encoding]::new($false))
 
 # 3. 复制插件文件到 extension/ 目录
-$filesToCopy = @("package.json", "extension.js", "language-configuration.json", "favicon.ico", "README.md")
+$filesToCopy = @("package.json", "language-configuration.json", "README.md")
 foreach ($f in $filesToCopy) {
     $src = Join-Path $pluginDir $f
     if (Test-Path $src) {
@@ -77,8 +78,16 @@ foreach ($f in $filesToCopy) {
     }
 }
 
+# 复制 src/ 目录
+$srcDir = Join-Path $pluginDir "src"
+if (Test-Path $srcDir) {
+    $destSrcDir = Join-Path $extDir "src"
+    New-Item -ItemType Directory -Path $destSrcDir -Force | Out-Null
+    Copy-Item (Join-Path $srcDir "extension.js") (Join-Path $destSrcDir "extension.js") -Force
+}
+
 # 复制子目录
-foreach ($d in @("syntaxes", "samples")) {
+foreach ($d in @("syntaxes", "samples", "images")) {
     $src = Join-Path $pluginDir $d
     if (Test-Path $src) {
         Copy-Item $src (Join-Path $extDir $d) -Recurse -Force

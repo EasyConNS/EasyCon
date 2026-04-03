@@ -4,7 +4,7 @@
   "description": "EasyCon伊机控vscode插件，纯AI打造",
   "version": "0.0.1",
   "publisher": "easycon",
-  "icon": "favicon.ico",
+  "icon": "images/favicon.ico",
   "repository": {
     "type": "git",
     "url": "https://github.com/EasyConNS/EasyCon"
@@ -15,7 +15,7 @@
   "categories": [
     "Programming Languages"
   ],
-  "main": "./extension.js",
+  "main": "src/extension.js",
   "contributes": {
     "languages": [
       {
