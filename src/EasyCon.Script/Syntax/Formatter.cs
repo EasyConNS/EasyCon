@@ -16,17 +16,13 @@ static class Formats
     public const string ValueEx = "(" + _Constant + "|" + _Variable + "|" + _ExtVar + "|" + _Number + ")";
 }
 
-class Formatter(IEnumerable<string> extVarNames)
+class Formatter
 {
-    private readonly HashSet<string> ExtVarNames = new(extVarNames);
-
     private ExtVarExpr GetExtVar(string text)
     {
         if (!text.StartsWith('@'))
             throw new FormatException();
         var name = text[1..];
-        if (!ExtVarNames.Contains(name))
-            throw new ParseException($"找不到识图标签“{text}”");
         return new ExtVarExpr(name);
     }
 

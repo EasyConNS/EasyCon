@@ -12,9 +12,10 @@ public sealed class Scripter
 
     public bool HasKeyAction => runner.HasKeyAction;
 
-    public void Parse(string code, string fileName, IEnumerable<string> extVarNames, Dictionary<string, Func<int>> externalGetters)
+    public void Parse(string code, string fileName, Dictionary<string, Func<int>> externalGetters)
     {
         _extVar = externalGetters;
+        var extVarNames = externalGetters.Select(v=>v.Key);
         if (fileName==null)
             runner.Init(code, extVarNames);
         else

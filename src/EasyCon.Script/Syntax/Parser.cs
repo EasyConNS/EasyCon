@@ -6,16 +6,14 @@ namespace EasyCon.Script.Syntax;
 internal sealed partial class Parser
 {
     private Formatter _formatter { get; init; }
-    private readonly IEnumerable<string> _extVarNames;
     private readonly DiagnosticBag _diagnostics = [];
     private readonly SyntaxTree _syntaxTree;
     private readonly SourceText _text;
     private readonly ImmutableArray<Token> _tokens;
 
-    public Parser(SyntaxTree syntaxTree, IEnumerable<string> extVarNames)
+    public Parser(SyntaxTree syntaxTree)
     {
-        _extVarNames = extVarNames;
-        _formatter = new(extVarNames);
+        _formatter = new();
         _syntaxTree = syntaxTree;
         _text = syntaxTree.Text;
         var lexer = new Lexer(_syntaxTree);
@@ -231,7 +229,7 @@ internal sealed partial class Parser
         foreach (var imp in imports)
         {
             Console.WriteLine($"正在加载库:{imp.FullFileName}");
-            var newprog = SyntaxTree.Load(imp.FullFileName, _extVarNames);
+            var newprog = SyntaxTree.Load(imp.FullFileName);
             if (newprog.Root.Members.OfType<ImportStmt>().Any())
                 throw new ParseException("不支持嵌套引用", imp.Address);
 

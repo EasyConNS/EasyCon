@@ -14,6 +14,7 @@ internal sealed class Binder
     private int _labelCounter = 0;
     private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
+    private HashSet<string> _validExternalVariables = [];
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
@@ -29,11 +30,17 @@ internal sealed class Binder
         }
     }
 
-    public static BoundProgram BindProgram(SyntaxTree syntaxs)
+    void SetValidExternalVariables(IEnumerable<string> validNames)
+    {
+        _validExternalVariables = [.. validNames];
+    }
+
+    public static BoundProgram BindProgram(SyntaxTree syntaxs, IEnumerable<string>? externalVariables = null)
     {
         var parentScope = CreateRootScope();
         var binder = new Binder(parentScope, function: null);
         binder.Diagnostics.AddRange(syntaxs.Diagnostics);
+        binder.SetValidExternalVariables(externalVariables ?? []);
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
 
@@ -616,8 +623,14 @@ internal sealed class Binder
 
     private BoundExternalVariableExpression BindExtraLabel(ExtVarExpr syntax)
     {
-        _ilNames.Add(syntax.Name);
-        return new BoundExternalVariableExpression(syntax, syntax.Name);
+        var name = syntax.Name;
+
+        // 在 binder 阶段验证外部变量名称
+        if (!_validExternalVariables.Contains(name))
+            throw new ParseException("找不到识图标签\"@" + name + "\"");
+
+        _ilNames.Add(name);
+        return new BoundExternalVariableExpression(syntax, name);
     }
 
     private BoundLiteralExpression BindLiterExpression(LiteralExpr syntax)

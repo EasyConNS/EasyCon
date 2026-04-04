@@ -5,8 +5,9 @@ namespace EasyCon.Script.Syntax;
 
 public sealed class SyntaxTree
 {
-    private delegate void ParseHandler(SyntaxTree syntaxTree, IEnumerable<string> extVarNames,
-                                           out CompicationUnit root, out ImmutableArray<CompicationUnit> flattenroot,
+    private delegate void ParseHandler(SyntaxTree syntaxTree,
+                                           out CompicationUnit root,
+                                           out ImmutableArray<CompicationUnit> flattenroot,
                                            out ImmutableArray<Diagnostic> diagnostics);
     public SourceText Text { get; init; }
 
@@ -15,41 +16,41 @@ public sealed class SyntaxTree
     internal CompicationUnit Root { get; init; }
     internal ImmutableArray<CompicationUnit> FlattenRoot { get; init; }
 
-    private SyntaxTree(SourceText text, IEnumerable<string> extVarNames, ParseHandler handler)
+    private SyntaxTree(SourceText text, ParseHandler handler)
     {
         Text = text;
 
-        handler(this, extVarNames, out var root, out var froot, out var diagnostics);
+        handler(this, out var root, out var froot, out var diagnostics);
 
         Diagnostics = diagnostics;
         Root = root;
         FlattenRoot = froot;
     }
 
-    public static SyntaxTree Load(string fileName, IEnumerable<string> extVarNames)
+    public static SyntaxTree Load(string fileName)
     {
         var text = File.ReadAllText(fileName);
         var sourceText = SourceText.From(text, fileName);
-        return Parse(sourceText, extVarNames);
+        return Parse(sourceText);
     }
 
-    private static void Parse(SyntaxTree syntaxTree, IEnumerable<string> extVarNames, out CompicationUnit root, out ImmutableArray<CompicationUnit> fullSyntax, out ImmutableArray<Diagnostic> diagnostics)
+    private static void Parse(SyntaxTree syntaxTree, out CompicationUnit root, out ImmutableArray<CompicationUnit> fullSyntax, out ImmutableArray<Diagnostic> diagnostics)
     {
-        var parser = new Parser(syntaxTree, extVarNames);
+        var parser = new Parser(syntaxTree);
         root = parser.ParseProgram();
         fullSyntax = parser.Flatten(root);
         diagnostics = [.. parser.Diagnostics];
     }
 
-    public static SyntaxTree Parse(string text, IEnumerable<string> extVarNames)
+    public static SyntaxTree Parse(string text)
     {
         var sourceText = SourceText.From(text);
-        return Parse(sourceText, extVarNames);
+        return Parse(sourceText);
     }
 
-    public static SyntaxTree Parse(SourceText text, IEnumerable<string> extVarNames)
+    public static SyntaxTree Parse(SourceText text)
     {
-        return new SyntaxTree(text, extVarNames, Parse);
+        return new SyntaxTree(text, Parse);
     }
 
     public static ImmutableArray<Token> ParseTokens(string text)
@@ -62,17 +63,17 @@ public sealed class SyntaxTree
     {
         var tokens = new ImmutableArray<Token>();
 
-        void ParseTokens(SyntaxTree st, IEnumerable<string> _, out CompicationUnit __, out ImmutableArray<CompicationUnit> ___, out ImmutableArray<Diagnostic> d)
+        void ParseTokens(SyntaxTree st, out CompicationUnit _, out ImmutableArray<CompicationUnit> __, out ImmutableArray<Diagnostic> d)
         {
-            __ = null;
-            ___ = default;
+            _ = null;
+            __ = default;
             d = default;
             var l = new Lexer(st);
             tokens = l.Tokenize();
             d = [.. l.Diagnostics];
         }
 
-        var syntaxTree = new SyntaxTree(text, [], ParseTokens);
+        var syntaxTree = new SyntaxTree(text, ParseTokens);
         diagnostics = syntaxTree.Diagnostics;
         return tokens;
     }

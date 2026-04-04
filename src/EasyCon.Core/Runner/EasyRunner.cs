@@ -19,15 +19,15 @@ public sealed class EasyRunner : IRunner
     }
     public void Init(string code, IEnumerable<string> extVarNames)
     {
-        var sourceText = SyntaxTree.Parse(code, extVarNames);
+        var sourceText = SyntaxTree.Parse(code);
         compilation = Compilation.Create(sourceText);
-        compilation.Compile();
+        compilation.Compile(extVarNames);
     }
     public void Load(string fileName, IEnumerable<string> extVarNames)
     {
-        var sourceText = SyntaxTree.Load(fileName, extVarNames);
+        var sourceText = SyntaxTree.Load(fileName);
         compilation = Compilation.Create(sourceText);
-        compilation.Compile();
+        compilation.Compile(extVarNames);
     }
 
     public void Run(IOutputAdapter output, ICGamePad pad, Dictionary<string, Func<int>> externalGetters, CancellationToken token)

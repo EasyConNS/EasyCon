@@ -26,14 +26,13 @@ partial class EasyConForm
         scriptCompiling = true;
         try
         {
-            var extVarNames = captureVideo.LoadedLabels.Select(il => il.name);
             var externalGetters = captureVideo.LoadedLabels.ToDictionary(il => il.name, il => (Func<int>)(() =>
             {
                 using var ss = BitmapConverter.ToMat(captureVideo.GetImage());
                 il.Search(ss, out var md);
                 return (int)md;
             }));
-            _program.Parse(textEditor.Text, textEditor.Document.FileName, extVarNames, externalGetters);
+            _program.Parse(textEditor.Text, textEditor.Document.FileName, externalGetters);
             
             // 格式化代码并确保逗号后面总是有空格
             var formattedCode = _program.ToCode().Trim();
