@@ -33,6 +33,22 @@ public partial class NintendoSwitch : IReporter
     public event BytesTransferedHandler BytesReceived;
     public event StatusChangedHandler StatusChanged;
 
+    // 处理接收到的数据
+    protected virtual void OnBytesReceived(string port, byte[] bytes)
+    {
+        BytesReceived?.Invoke(port, bytes);
+        
+        // 处理ESP32发送的心跳指令
+        foreach (var b in bytes)
+        {
+            if (b == EzDvCommand.Heartbeat)
+            {
+                // 发送心跳响应
+                clientCon?.Write(Reply.HeartbeatAck);
+            }
+        }
+    }
+
     private readonly OperationRecords operationRecords = new();
     public RecordState recordState = RecordState.RECORD_STOP;
 

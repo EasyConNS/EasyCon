@@ -42,7 +42,7 @@ public partial class NintendoSwitch
         Disconnect();
         clientCon = new TTLSerialClient(connStr,baudrate);
         clientCon.BytesSent += BytesSent;
-        clientCon.BytesReceived += BytesReceived;
+        clientCon.BytesReceived += OnBytesReceived;
         clientCon.StatusChanged += StatusChanged;
 
         clientCon.StatusChanged += statuschanged;
