@@ -2,23 +2,10 @@ using System.Text.RegularExpressions;
 
 namespace EasyCon.Script.Syntax;
 
-static class Formats
+static class Formatter
 {
-    const string _ident = @"[\d\p{L}_]+";
-    const string _Constant = @"_" + _ident;
-    const string _ExtVar = @"@" + _ident;
-    const string _Variable = @"\$" + _ident;
-    const string _Number = @"-?\d+";
-
-    public const string Constant_F = "^" + _Constant + "$";
-    public const string ExtVar_F = "(" + _ExtVar + ")";
-    public const string RegisterEx_F = "^" + _Variable + "$";
-    public const string ValueEx = "(" + _Constant + "|" + _Variable + "|" + _ExtVar + "|" + _Number + ")";
-}
-
-class Formatter
-{
-    private ExtVarExpr GetExtVar(string text)
+    public const string ValueEx = Formats.ValueEx;
+    private static ExtVarExpr GetExtVar(string text)
     {
         if (!text.StartsWith('@'))
             throw new FormatException();
@@ -26,7 +13,7 @@ class Formatter
         return new ExtVarExpr(name);
     }
 
-    public ExprBase GetValueEx(Token tok)
+    public static ExprBase GetValueEx(Token tok)
     {
         switch (tok.Type)
         {
@@ -49,7 +36,7 @@ class Formatter
         }
     }
 
-    public ExprBase GetValueEx(string text)
+    public static ExprBase GetValueEx(string text)
     {
         if (Regex.Match(text, Formats.RegisterEx_F).Success)
             return new VariableExpr(text);
@@ -65,5 +52,19 @@ class Formatter
             if (!ok) throw new FormatException("无效的数字格式");
             return v;
         }
+    }
+
+    static class Formats
+    {
+        const string _ident = @"[\d\p{L}_]+";
+        const string _Constant = @"_" + _ident;
+        const string _ExtVar = @"@" + _ident;
+        const string _Variable = @"\$" + _ident;
+        const string _Number = @"-?\d+";
+
+        public const string Constant_F = "^" + _Constant + "$";
+        public const string ExtVar_F = "(" + _ExtVar + ")";
+        public const string RegisterEx_F = "^" + _Variable + "$";
+        public const string ValueEx = "(" + _Constant + "|" + _Variable + "|" + _ExtVar + "|" + _Number + ")";
     }
 }

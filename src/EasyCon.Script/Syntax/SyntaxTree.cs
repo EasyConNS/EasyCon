@@ -9,6 +9,10 @@ public sealed class SyntaxTree
                                            out CompicationUnit root,
                                            out ImmutableArray<CompicationUnit> flattenroot,
                                            out ImmutableArray<Diagnostic> diagnostics);
+    #region 兼容性解析标记 // 默认不开启
+    public static bool LegacyIfEqualCompat = false;
+    #endregion
+
     public SourceText Text { get; init; }
 
     public ImmutableArray<Diagnostic> Diagnostics { get; init; }

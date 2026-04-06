@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EasyCon.Script2\EasyScript2.csproj" />
+    <ProjectReference Include="..\EasyCon.Script\EasyCon.Script.csproj" />
   </ItemGroup>
 
 </Project>

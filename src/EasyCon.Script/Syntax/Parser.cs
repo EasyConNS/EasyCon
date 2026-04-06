@@ -5,7 +5,6 @@ namespace EasyCon.Script.Syntax;
 
 internal sealed partial class Parser
 {
-    private Formatter _formatter { get; init; }
     private readonly DiagnosticBag _diagnostics = [];
     private readonly SyntaxTree _syntaxTree;
     private readonly SourceText _text;
@@ -13,7 +12,6 @@ internal sealed partial class Parser
 
     public Parser(SyntaxTree syntaxTree)
     {
-        _formatter = new();
         _syntaxTree = syntaxTree;
         _text = syntaxTree.Text;
         var lexer = new Lexer(_syntaxTree);
@@ -31,28 +29,37 @@ internal sealed partial class Parser
         return ParseUnit();
     }
 
-    private static IEnumerable<ImmutableArray<Token>> GroupTokensByNewline(ImmutableArray<Token> allTokens)
+    private static IEnumerable<ImmutableArray<Token>> GetTokenGroups(ImmutableArray<Token> allTokens)
     {
-        var currentGroup = new List<Token>();
-        
-        foreach (var token in allTokens)
+        int start = 0;
+        int length = 0;
+
+        for (int i = 0; i < allTokens.Length; i++)
         {
+            var token = allTokens[i];
             if (token.Type == TokenType.NEWLINE)
             {
-                yield return [.. currentGroup];
-                currentGroup.Clear();
+                
+                yield return allTokens.Slice(start, length);
+                
+                start = i + 1;
+                length = 0;
             }
-            else if (token.Type == TokenType.EOF) break;
+            else if (token.Type == TokenType.EOF)
+            {
+                break;
+            }
             else
             {
-                currentGroup.Add(token);
+                if (length == 0)
+                    start = i;
+                length++;
             }
         }
-        
-        // Add the last group if it's not empty
-        if (currentGroup.Count > 0)
+
+        if (length > 0)
         {
-            yield return [.. currentGroup];
+            yield return allTokens.Slice(start, length);
         }
     }
 
@@ -69,11 +76,7 @@ internal sealed partial class Parser
             result = unit.Peek();
         }
 
-        // Group tokens by NEWLINE
-        var tokenGroups = GroupTokensByNewline(_tokens);
-        
-        // Process each group of tokens
-        foreach (var tokens in tokenGroups)
+        foreach (var tokens in GetTokenGroups(_tokens))
         {
             try
             {
@@ -101,7 +104,7 @@ internal sealed partial class Parser
                     }
                     
                     // Parse the tokens directly
-                    st = ParseStatement(toks) ?? throw new ParseException("格式错误");
+                    st = ParseStatement(toks.ToImmutableArray()) ?? throw new ParseException("格式错误");
                     
                     // Set the comment if there was one
                     if (lastToken.Type == TokenType.COMMENT)

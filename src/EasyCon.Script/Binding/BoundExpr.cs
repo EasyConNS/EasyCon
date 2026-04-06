@@ -106,7 +106,7 @@ internal sealed class BoundIndexDeclxpression : BoundExpr
         Items = items;
         // 如果数组为空，默认可以是 Array<any> 或者报错，这里假设至少有一个元素
         var elementType = items.Length > 0 ? items[0].Type : ScriptType.Int;
-        Type = ScriptType.ArrayDefinition.Bind(elementType);
+        Type = ScriptType.Array.Bind(elementType);
     }
 }
 

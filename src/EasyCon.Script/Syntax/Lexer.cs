@@ -1,62 +1,28 @@
 using EasyCon.Script.Text;
 using System.Collections.Immutable;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace EasyCon.Script.Syntax;
 
 internal sealed partial class Lexer(SyntaxTree syntaxTree)
 {
-    private readonly DiagnosticBag _diagnostics = new();
+    private readonly DiagnosticBag _diagnostics = [];
     private readonly SyntaxTree _syntaxTree = syntaxTree;
     private readonly SourceText _text = syntaxTree.Text;
 
-    private readonly string _input = Compat(syntaxTree.Text.Lines);
+    private readonly string _input = syntaxTree.Text.ToString();
     private int _position = 0;
     private int _line = 1;
     private readonly List<Token> _tokens = [];
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
-    #region 兼容适配代码
-    [GeneratedRegex(@"(\s*#.*)$")]
-    private static partial Regex lineRegex();
+    private bool _expectEqualAfterIf = false;
 
-    [GeneratedRegex(@"^\b(if)\b\s+(.*)(?<![<=>!])=(?!=)(.*)$", RegexOptions.IgnoreCase, "zh-CN")]
-    private static partial Regex ifRex();
-
-    private static string Compat(ImmutableArray<TextLine> lines)
+    private void cleanFlags()
     {
-        var builder = new StringBuilder();
-        foreach (var line in lines)
-        {
-            var _line = line.Text;
-            var m = lineRegex().Match(_line);
-            string comment = string.Empty;
-            if (m.Success)
-            {
-                comment = m.Groups[1].Value;
-                _line = _line[..^comment.Length];
-            }
-
-            var mif = ifRex().Match(_line);
-            if (mif.Success)
-            {
-                _line = _line.Replace("=", "==");
-                builder.Append(_line);
-            }
-            else
-            {
-                builder.Append(_line);
-            }
-
-            builder.Append(comment);
-            //if (lines.Length > 1)
-            builder.Append('\n');
-        }
-        return builder.ToString();
+        _expectEqualAfterIf = false;
     }
-    #endregion
 
     // 关键字字典
     private static readonly Dictionary<string, TokenType> keywords = new()
@@ -192,6 +158,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 if (Current == '\n')
                 {
                     AddToken(TokenType.NEWLINE, " ", _position);
+                    cleanFlags();
                     _line++;
                 }
             }
@@ -246,6 +213,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         }
         else
         {
+            if(!int.TryParse(number, out _))
+            {
+                var span = new SourceSpan(start, length);
+                var location = new TextLocation(_text, span);
+                _diagnostics.ReportInvalidNumber(location, number);
+            }
             AddToken(TokenType.INT, number, start);
         }
     }
@@ -399,8 +372,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
         if ((isAllUpper || isAllLower) && keywords.ContainsKey(word.ToLower()))
         {
-            // 关键字默认大写
-            AddToken(keywords[word.ToLower()], word.ToUpper(), start);
+            var tokenType = keywords[word.ToLower()];
+            AddToken(tokenType, word.ToUpper(), start);
+            if (tokenType == TokenType.IF && SyntaxTree.LegacyIfEqualCompat)
+            {
+                _expectEqualAfterIf = true;
+            }
         }
         else if ((isAllUpper || isAllLower) && logicwords.ContainsKey(word.ToLower()))
         {
@@ -441,6 +418,11 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 {
                     Advance();
                     AddToken(TokenType.EQL, "==", start);
+                }
+                else if (_expectEqualAfterIf && SyntaxTree.LegacyIfEqualCompat)
+                {
+                    AddToken(TokenType.EQL, "=", start);
+                    _expectEqualAfterIf = false;
                 }
                 else
                 {

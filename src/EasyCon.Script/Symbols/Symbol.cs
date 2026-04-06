@@ -42,8 +42,8 @@ sealed class FunctionSymbol(
     ScriptType returnType,
     FuncDeclBlock? declaration = null) : Symbol(name)
 {
-    public ImmutableArray<TypeParameter> TypeParameters { get; } = typeParameters.ToImmutableArray();
-    public ImmutableArray<ParamSymbol> Parameters { get; } = parameters.ToImmutableArray();
+    public ImmutableArray<TypeParameter> TypeParameters { get; } = [.. typeParameters];
+    public ImmutableArray<ParamSymbol> Parameters { get; } = [.. parameters];
     public readonly FuncDeclBlock? Declaration = declaration;
     public ScriptType ReturnType { get; } = returnType;
 

@@ -179,7 +179,7 @@ internal sealed class Binder
         else if (formal is GenericType fGen && actual is GenericType aGen)
         {
             if (fGen.Definition.Name != aGen.Definition.Name) return;
-            for (int i = 0; i < fGen.TypeArguments.Count; i++)
+            for (int i = 0; i < fGen.TypeArguments.Length; i++)
                 InferTypeParameters(fGen.TypeArguments[i], aGen.TypeArguments[i], sub);
         }
     }
@@ -189,7 +189,7 @@ internal sealed class Binder
         if (type is TypeParameter tp) return sub.GetValueOrDefault(tp, type);
         if (type is GenericType gt)
         {
-            return gt.Definition.Bind(gt.TypeArguments.Select(t => SubstituteType(t, sub)).ToArray());
+            return gt.Definition.Bind([.. gt.TypeArguments.Select(t => SubstituteType(t, sub))]);
         }
         return type;
     }
@@ -544,7 +544,7 @@ internal sealed class Binder
         if (upper.EndsWith("[]"))
         {
             var elem = LookupType(upper.Substring(0, upper.Length - 2));
-            return elem == null ? null : ScriptType.ArrayDefinition.Bind(elem);
+            return elem == null ? null : ScriptType.Array.Bind(elem);
         }
         return upper switch
         {

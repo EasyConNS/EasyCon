@@ -40,8 +40,8 @@ internal partial class Parser
         if (toks.Length < 3) return null;
         if (toks[1].Type == TokenType.ASSIGN)
         {
-            var des = (VariableExpr)_formatter.GetValueEx(toks[0]);
-            var pr = new ExprParser([.. toks.Skip(2)], _formatter, allowVar: false);
+            var des = (VariableExpr)Formatter.GetValueEx(toks[0]);
+            var pr = new ExprParser([.. toks.Skip(2)]);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
             return new AssignmentStmt(toks[0], des, toks[1], eexp);
@@ -67,13 +67,13 @@ internal partial class Parser
     {
         if (toks.Length < 3) return null;
 
-        var des = (VariableExpr)_formatter.GetValueEx(toks[0]);
+        var des = (VariableExpr)Formatter.GetValueEx(toks[0]);
         if(!toks[1].Type.OperatorIsAug() && toks[1].Type != TokenType.ASSIGN)
         {
             return null;
         }
 
-        var pr = new ExprParser([.. toks.Skip(2)], _formatter);
+        var pr = new ExprParser([.. toks.Skip(2)]);
         var eexp = pr.ParseExpression();
         if (!pr.EOF(out _)) return null;
         return new AssignmentStmt(toks[0], des, toks[1], eexp);
@@ -83,7 +83,7 @@ internal partial class Parser
     {
         if (toks.Length > 1)
         {
-            var pr = new ExprParser([.. toks.Skip(1)], _formatter);
+            var pr = new ExprParser([.. toks.Skip(1)]);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
             return new ReturnStmt(toks[0], eexp);
@@ -96,7 +96,7 @@ internal partial class Parser
         if (tokens.Length < 2) return null;
         if (tokens[0].Type == TokenType.IF || tokens[0].Type == TokenType.ELIF)
         {
-            var pr = new ExprParser([.. tokens.Skip(1)], _formatter);
+            var pr = new ExprParser([.. tokens.Skip(1)]);
             var expr = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
             switch (tokens[0].Type)
@@ -123,7 +123,7 @@ internal partial class Parser
         }
         if(tokens.Length == 2 && checkPrimary(tokens[1].Type))
         {
-            return new For_Static(tokens[0], _formatter.GetValueEx(tokens[1]));
+            return new For_Static(tokens[0], Formatter.GetValueEx(tokens[1]));
         }
         if(tokens.Length == 6)
         {
@@ -132,7 +132,7 @@ internal partial class Parser
             && tokens[4].Type == TokenType.TO 
             && checkPrimary(tokens[5].Type))
             {
-                return new For_Full(tokens[0], (VariableExpr)_formatter.GetValueEx(tokens[1]), _formatter.GetValueEx(tokens[3]), _formatter.GetValueEx(tokens[5]));
+                return new For_Full(tokens[0], (VariableExpr)Formatter.GetValueEx(tokens[1]), Formatter.GetValueEx(tokens[3]), Formatter.GetValueEx(tokens[5]));
             }
         }
         return null;
@@ -141,7 +141,7 @@ internal partial class Parser
     private WhileStmt? ParseWhile(ImmutableArray<Token> tokens)
     {
         if (tokens.Length < 2) return null;
-        var pr = new ExprParser([.. tokens.Skip(1)], _formatter);
+        var pr = new ExprParser([.. tokens.Skip(1)]);
         var expr = pr.ParseExpression();
         if (!pr.EOF(out _)) return null;
         return new WhileStmt(tokens[0], expr);
@@ -187,9 +187,9 @@ internal partial class Parser
         var m = Regex.Match(text, $"^({GPKey})$", RegexOptions.IgnoreCase);
         if (m.Success && NSKeys.GetKey(m.Groups[1].Value) != GamePadKey.None)
             return new KeyPress(m.Groups[1].Value);
-        m = Regex.Match(text, $@"^({GPKey})\s+{Formats.ValueEx}$", RegexOptions.IgnoreCase);
+        m = Regex.Match(text, $@"^({GPKey})\s+{Formatter.ValueEx}$", RegexOptions.IgnoreCase);
         if (m.Success && NSKeys.GetKey(m.Groups[1].Value) != GamePadKey.None)
-            return new KeyPress(m.Groups[1].Value, _formatter.GetValueEx(m.Groups[2].Value));
+            return new KeyPress(m.Groups[1].Value, Formatter.GetValueEx(m.Groups[2].Value));
         m = Regex.Match(text, $@"^({GPKey})\s+(up|down)$", RegexOptions.IgnoreCase);
         if (m.Success && NSKeys.GetKey(m.Groups[1].Value) != GamePadKey.None)
         {
@@ -218,7 +218,7 @@ internal partial class Parser
             if (!NSKeys.CheckDirection(direction, out _))return null;
             return new StickAct(keyname, direction);
         }
-        m = Regex.Match(text, $@"^([lr]s)\s+([a-z0-9]+)\s*,\s*({Formats.ValueEx})$", RegexOptions.IgnoreCase);
+        m = Regex.Match(text, $@"^([lr]s)\s+([a-z0-9]+)\s*,\s*({Formatter.ValueEx})$", RegexOptions.IgnoreCase);
         if (m.Success)
         {
             var keyname = m.Groups[1].Value;
@@ -226,14 +226,14 @@ internal partial class Parser
             var duration = m.Groups[3].Value;
             if(NSKeys.GetKey(keyname) == GamePadKey.None)return null;
             if (!NSKeys.CheckDirection(direction, out _)) return null;
-            return new StickPress(keyname, direction, _formatter.GetValueEx(duration));
+            return new StickPress(keyname, direction, Formatter.GetValueEx(duration));
         }
         return null;
     }
 
     private FuncStmt? ParseFuncDecl(ImmutableArray<Token> tokens)
     {
-        var pr = new ExprParser(tokens, _formatter);
+        var pr = new ExprParser(tokens);
         var func = pr.ParseFunctionDecl();
         return func;
     }
@@ -250,7 +250,7 @@ internal partial class Parser
                 if (tokens.Length != 2) return null;
                 if (tokens[1].Type == TokenType.CONST || tokens[1].Type == TokenType.INT || tokens[1].Type == TokenType.VAR)
                 {
-                    return new Wait(first, _formatter.GetValueEx(tokens[1]));
+                    return new Wait(first, Formatter.GetValueEx(tokens[1]));
                 }
                 break;
             case "call":
@@ -278,23 +278,22 @@ internal partial class Parser
     private ImmutableArray<ExprBase> ParseArguments(ImmutableArray<Token> toks)
     {
         if (toks.Length == 0) return [];
-        var pr = new ExprParser(toks, _formatter);
+        var pr = new ExprParser(toks);
         var args = pr.ParseArguments();
         if (!pr.EOF(out _)) throw new Exception("函数传参解析失败");
         return args;
     }
 }
 
-class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar = true)
+class ExprParser(ImmutableArray<Token> toks)
 {
     private readonly ImmutableArray<Token> _tokens = toks;
     private int _position = 0;
-    readonly Formatter _formatter = formatter;
     private Token Peek(int offset = 0)
     {
         var index = _position + offset;
         if (index >= _tokens.Length)
-            return _tokens[_tokens.Length - 1];
+            return _tokens[^1];
 
         return _tokens[index];
     }
@@ -396,7 +395,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
     private ParameterSyntax ParseParameter()
     {
         var identifier = Match(TokenType.VAR, "函数参数只能是变量");
-        var parameter = (VariableExpr)_formatter.GetValueEx(identifier);
+        var parameter = (VariableExpr)Formatter.GetValueEx(identifier);
         var type = ParseOptionalTypeClause();
         return new ParameterSyntax(parameter, type);
     }
@@ -496,7 +495,6 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
     // [1,2,3]
     private ExprBase ParseIndexDefExpression()
     {
-        allowVar = false;
         var lb = Match(TokenType.LeftBracket, "语法需要'['");
         var nodesAndSeparators = ImmutableArray.CreateBuilder<ExprBase>();
 
@@ -534,13 +532,13 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         if (Check(TokenType.RightBracket))
         {
             var rb = Match(TokenType.RightBracket, "语法需要']'");
-            return new IndexVisitExpression((VariableExpr)_formatter.GetValueEx(variableToken), lb, start, rb);
+            return new IndexVisitExpression((VariableExpr)Formatter.GetValueEx(variableToken), lb, start, rb);
         }
         Match(TokenType.COLON, "语法不正确[<start>:<end>]");
 
         var end = Check(TokenType.RightBracket) ? new LiteralExpr("") : ParsePrimary();
         Match(TokenType.RightBracket, "语法需要']'");
-        return new SliceExpression((VariableExpr)_formatter.GetValueEx(variableToken), start, end, ommitstart);
+        return new SliceExpression((VariableExpr)Formatter.GetValueEx(variableToken), start, end, ommitstart);
     }
 
     private ExprBase ParseCallExpression()
@@ -558,14 +556,14 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
         {
             case TokenType.STRING:
             case TokenType.CONST:
-            case TokenType.VAR when allowVar:
-            case TokenType.EX_VAR when allowVar:
+            case TokenType.VAR:
+            case TokenType.EX_VAR:
                 var token = Advance();
                 if(token.Type == TokenType.VAR && Current.Type == TokenType.LeftBracket)
                 {
                     return ParseSliceExpression(token);
                 }
-                return _formatter.GetValueEx(token);
+                return Formatter.GetValueEx(token);
             case TokenType.LeftBracket:
                 return ParseIndexDefExpression();
             case TokenType.LeftParen:
@@ -581,7 +579,7 @@ class ExprParser(ImmutableArray<Token> toks, Formatter formatter, bool allowVar 
                 var ok = int.TryParse(toknum.Value, out _);
                 if (!ok) throw new Exception($"错误的数字格式: {toknum.Value}");
 
-                return _formatter.GetValueEx(toknum);
+                return Formatter.GetValueEx(toknum);
         }
     }
 }

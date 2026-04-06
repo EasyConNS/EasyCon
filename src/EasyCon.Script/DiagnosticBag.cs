@@ -17,7 +17,7 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         _diagnostics.AddRange(diagnostics);
     }
 
-    private void Report(TextLocation location, string message)
+    private void ReportError(TextLocation location, string message)
     {
         var diagnostic = Diagnostic.Error(location, message);
         _diagnostics.Add(diagnostic);
@@ -26,36 +26,36 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     public void ReportInvalidNumber(TextLocation location, string text)
     {
         var message = $"数字格式不正确: {text}";
-        Report(location, message);
+        ReportError(location, message);
     }
 
     public void ReportBadCharacter(TextLocation location, char character)
     {
         var message = $"不识别的字符: '{character}'";
-        Report(location, message);
+        ReportError(location, message);
     }
 
     public void ReportUnterminatedString(TextLocation location)
     {
         var message = "字符串没有结束引号";
-        Report(location, message);
+        ReportError(location, message);
     }
 
     public void ReportUnexpectedToken(TextLocation location, TokenType actualKind, TokenType expectedKind)
     {
         var message = $"错误的 <{actualKind}>, 期望 <{expectedKind}>";
-        Report(location, message);
+        ReportError(location, message);
     }
 
     public void ReportInvalidExpressionStatement(TextLocation location, TokenType actualKind)
     {
         var message = $"无效的表达式语句 <{actualKind}>";
-        Report(location, message);
+        ReportError(location, message);
     }
 
     public void ReportInvalidKeyActionStatement(TextLocation location, TokenType actualKind)
     {
         var message = $"按键语法不正确 <{actualKind}>";
-        Report(location, message);
+        ReportError(location, message);
     }
 }

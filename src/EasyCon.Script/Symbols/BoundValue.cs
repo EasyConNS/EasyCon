@@ -271,7 +271,7 @@ public abstract class ScriptType : IEquatable<ScriptType>
     public static readonly VoidType Void = new();
 
     // 预定义泛型定义
-    public static readonly GenericDefinition ArrayDefinition = new("Array", 1);
+    public static readonly GenericDefinition Array = new("Array", 1);
 }
 
 /// <summary>
@@ -324,16 +324,10 @@ public sealed class GenericDefinition(string name, int typeParameterCount)
 /// <summary>
 /// 具体化的泛型类型 (例如 List<int>)
 /// </summary>
-public sealed class GenericType : ScriptType
+public sealed class GenericType(GenericDefinition definition, IEnumerable<ScriptType> typeArguments) : ScriptType
 {
-    public GenericDefinition Definition { get; }
-    public ImmutableList<ScriptType> TypeArguments { get; }
-
-    public GenericType(GenericDefinition definition, IEnumerable<ScriptType> typeArguments)
-    {
-        Definition = definition;
-        TypeArguments = typeArguments.ToImmutableList();
-    }
+    public GenericDefinition Definition { get; } = definition;
+    public ImmutableArray<ScriptType> TypeArguments { get; } = [.. typeArguments];
 
     public override string Name => $"{Definition.Name}<{string.Join(", ", TypeArguments.Select(t => t.Name))}>";
 

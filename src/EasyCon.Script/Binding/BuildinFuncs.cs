@@ -19,10 +19,10 @@ internal static class BuiltinFunctions
     // APPEND<T>(array: Array<T>, value: T): Array<T>
     public static readonly FunctionSymbol Append = new("APPEND", [T],
         [
-            new("array", ScriptType.ArrayDefinition.Bind(T)),
+            new("array", ScriptType.Array.Bind(T)),
             new("value", T)
         ],
-        ScriptType.ArrayDefinition.Bind(T)
+        ScriptType.Array.Bind(T)
     );
 
     // LEN<T>(container: Array<T>): int 

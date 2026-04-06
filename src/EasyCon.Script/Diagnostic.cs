@@ -10,8 +10,10 @@ public sealed class Diagnostic
         IsError = isError;
         Location = location;
         Message = message;
+        IsWarning = !IsError;
     }
     public bool IsError { get; }
+    public bool IsWarning { get; }
     public readonly TextLocation Location;
     public readonly string Message;
 
@@ -20,6 +22,10 @@ public sealed class Diagnostic
     public static Diagnostic Error(TextLocation location, string message)
     {
         return new Diagnostic(isError: true, location, message);
+    }
+    public static Diagnostic Warning(TextLocation location, string message)
+    {
+        return new Diagnostic(isError: false, location, message);
     }
 }
 
