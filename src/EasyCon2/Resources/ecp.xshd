@@ -61,6 +61,8 @@
 			<Word>RETURN</Word>
 			<Word>ENDFUNC</Word>
 			<Word>CALL</Word>
+			<Word>and</Word>
+			<Word>or</Word>
 		</Keywords>
 
 		<Keywords color="Funcs">

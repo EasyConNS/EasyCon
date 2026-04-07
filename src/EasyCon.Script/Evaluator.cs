@@ -244,6 +244,8 @@ internal sealed class Evaluator
     private Value EvaluateBinaryExpression(BoundBinaryExpression b)
     {
         var left = EvaluateExpression(b.Left);
+        if (b.Op.Kind == BoundBinaryOperatorKind.LogicalAnd && !left.AsBool())return false;
+        if (b.Op.Kind == BoundBinaryOperatorKind.LogicalOr && left.AsBool())return true;
         var right = EvaluateExpression(b.Right);
 
         Debug.Assert(left != Value.Void && right != Value.Void);

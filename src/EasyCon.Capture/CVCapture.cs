@@ -21,14 +21,16 @@ public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureA
 
     public void SetProperties(int x, int y)
     {
+        videoCapture.Set(VideoCaptureProperties.FourCC, FourCC.MJPG);
+        videoCapture.Set(VideoCaptureProperties.Fps, 30);
         videoCapture.Set(VideoCaptureProperties.FrameWidth, x);
         videoCapture.Set(VideoCaptureProperties.FrameHeight, y);
-        videoCapture.Set(VideoCaptureProperties.Fps, 60);
 
-        Debug.WriteLine(videoCapture.Get(VideoCaptureProperties.Mode));
-        Debug.WriteLine(videoCapture.Get(VideoCaptureProperties.FourCC));
-        Debug.WriteLine(videoCapture.Get(VideoCaptureProperties.Backend));
-        Debug.WriteLine(videoCapture.Get(VideoCaptureProperties.Fps));
+        Debug.WriteLine($"Actual Width: {videoCapture.Get(VideoCaptureProperties.FrameWidth)}");
+        Debug.WriteLine($"Actual Height: {videoCapture.Get(VideoCaptureProperties.FrameHeight)}");
+        Debug.WriteLine($"FourCC: {videoCapture.Get(VideoCaptureProperties.FourCC)}");
+        Debug.WriteLine($"FPS: {videoCapture.Get(VideoCaptureProperties.Fps)}");
+        Debug.WriteLine($"Backend: {videoCapture.Get(VideoCaptureProperties.Backend)}");
     }
 
     public Mat GetMatFrame()

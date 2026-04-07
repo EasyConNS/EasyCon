@@ -24,11 +24,6 @@ internal sealed partial class Parser
     string _filePath => Path.GetDirectoryName(Path.GetFullPath(_text.FileName)) ?? "";
     const string LibPath = "lib/";
 
-    public CompicationUnit ParseProgram()
-    {
-        return ParseUnit();
-    }
-
     private static IEnumerable<ImmutableArray<Token>> GetTokenGroups(ImmutableArray<Token> allTokens)
     {
         int start = 0;
@@ -63,7 +58,7 @@ internal sealed partial class Parser
         }
     }
 
-    private CompicationUnit ParseUnit()
+    public CompicationUnit ParseProgram()
     {
         int address = 0;
 
