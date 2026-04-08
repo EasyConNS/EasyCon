@@ -56,6 +56,20 @@ internal sealed class BoundVariableDeclaration(Statement syntax, VariableSymbol 
     public override BoundNodeKind Kind => BoundNodeKind.VariableDeclaration;
 }
 
+internal sealed class BoundConstantDeclaration(Statement syntax, VariableSymbol constant, BoundExpr initializer) : BoundStmt(syntax)
+{
+    public override BoundNodeKind Kind => BoundNodeKind.ConstantDeclaration;
+    public VariableSymbol Constant { get; } = constant;
+    public BoundExpr Initializer { get; } = initializer;
+}
+
+internal sealed class BoundAssignmentStatement(Statement syntax, VariableSymbol variable, BoundExpr expression) : BoundStmt(syntax)
+{
+    public override BoundNodeKind Kind => BoundNodeKind.VariableAssignment;
+    public VariableSymbol Variable { get; } = variable;
+    public BoundExpr Expression { get; } = expression;
+}
+
 internal class BoundKeyActStatement(Statement syntax, GamePadKey key, bool up = false) : BoundStmt(syntax)
 {
     public override BoundNodeKind Kind => BoundNodeKind.KeyAction;

@@ -8,7 +8,7 @@ class AssignmentStmt(Token syntax, VariableExpr regdst, Token assignmentToken, E
 
     protected override string _GetString()
     {
-        return $"{DestVariable.GetCodeText()} {assignmentToken.Value} {Expression.GetCodeText()}";
+        return $"{DestVariable.GetCodeText()} {AssignmentToken.Value} {Expression.GetCodeText()}";
     }
 
     //public override void Assemble(Assembly.Assembler assembler)

@@ -26,7 +26,7 @@ static class Formatter
                     return v;
                 }
             case TokenType.CONST:
-                return new VariableExpr(tok.Value, true);
+                return new ConstVarExpr(tok.Value);
             case TokenType.VAR:
                 return new VariableExpr(tok.Value);
             case TokenType.EX_VAR:

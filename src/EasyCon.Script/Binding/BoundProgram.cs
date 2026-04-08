@@ -11,7 +11,7 @@ internal sealed class BoundProgram(FunctionSymbol main, ImmutableDictionary<Func
     public ImmutableArray<string> ILNames = imglabels;
 
     public bool KeyAction => Functions.Values.SelectMany(s=>s.Statements).OfType<BoundKeyActStatement>().ToList().Count != 0;
-    public bool NeedIL => imglabels.Any();
+    public bool NeedIL => ILNames.Any();
 }
 
 internal abstract class BoundNode

@@ -35,6 +35,8 @@ class VariableExpr(string tag, bool readOnly = false) : ExprBase
     public override string GetCodeText() => Tag;
 }
 
+class ConstVarExpr(string tag) : VariableExpr(tag, true) {}
+
 class ExtVarExpr(string name) : ExprBase
 {
     public readonly string Name = name;

@@ -202,10 +202,11 @@ internal sealed class Binder
             return syntax switch
             {
                 EmptyStmt or ImportStmt => new BoundNop(syntax),
+                ConstantDeclStmt => BindConstantDeclaration((ConstantDeclStmt)syntax),
+                AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
                 IfBlock => BindIf((IfBlock)syntax),
                 ForBlock => BindFor((ForBlock)syntax),
                 WhileBlock => BindWhile((WhileBlock)syntax),
-                AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
                 Break => BindBreakStatement((Break)syntax),
                 Continue => BindContinueStatement((Continue)syntax),
                 ReturnStmt => BindReturnStatement((ReturnStmt)syntax),
@@ -484,6 +485,27 @@ internal sealed class Binder
         return new BoundReturnStatement(syntax, expression);
     }
 
+    private BoundStmt BindConstantDeclaration(ConstantDeclStmt syntax)
+    {
+        var boundexpr = BindExpression(syntax.Expression);
+        if (boundexpr.ConstantValue == Value.Void) throw new ParseException("常量表达式不正确", syntax.Address);
+
+        // Check if constant already exists
+        var existingVar = _scope.TryLookupVar(syntax.Constant.Tag);
+        if (existingVar != null)
+        {
+            throw new ParseException($"常量 '{syntax.Constant.Tag}' 已经定义", syntax.Address);
+        }
+
+        // Constants are always read-only
+        var variable = LookupVariable(syntax.Constant, true, boundexpr.Type);
+
+        if (!variable.Type.IsAssignableFrom(boundexpr.Type))
+            throw new ParseException($"类型不匹配：无法将 {boundexpr.Type} 赋值给常量 {variable.Type}", syntax.Address);
+
+        return new BoundVariableDeclaration(syntax, variable, boundexpr);
+    }
+
     private BoundVariableDeclaration BindAssignStatement(AssignmentStmt syntax)
     {
         var boundexpr = BindExpression(syntax.Expression);
@@ -500,7 +522,7 @@ internal sealed class Binder
                 ?? throw new Exception($"不支持的运算符:{syntax.AssignmentToken.Value}对于类型 <{desvar.Type}>和<{boundexpr.Type}> ");
             boundexpr = new BoundBinaryExpression(syntax.Expression, desvar, op!, boundexpr);
         }
-        
+
         if (boundexpr.Type == ScriptType.Void) throw new ParseException("空值表达式无法赋值", syntax.Address);
         var variable = BindVariableDeclaration(syntax.DestVariable, syntax.DestVariable.ReadOnly, boundexpr.Type);
 
@@ -518,6 +540,11 @@ internal sealed class Binder
             if (vrr.IsReadOnly) throw new Exception($"只读变量无法修改：{syntax.Tag}");
             return vrr;
         }
+
+        return LookupVariable(syntax, isReadOnly, type, allowGlobal);
+    }
+    private VariableSymbol LookupVariable(VariableExpr syntax, bool isReadOnly, ScriptType type, bool allowGlobal = true)
+    {
         var variable = _function == null && allowGlobal
                     ? (VariableSymbol)new GlobalVariableSymbol(syntax.Tag, isReadOnly, type)
                     : new LocalVariableSymbol(syntax.Tag, isReadOnly, type);

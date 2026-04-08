@@ -35,7 +35,7 @@ internal partial class Parser
         return ParseKey(fullline.Trim());
     }
 
-    private AssignmentStmt? ParseConstantDecl(ImmutableArray<Token> toks)
+    private ConstantDeclStmt? ParseConstantDecl(ImmutableArray<Token> toks)
     {
         if (toks.Length < 3) return null;
         if (toks[1].Type == TokenType.ASSIGN)
@@ -44,7 +44,7 @@ internal partial class Parser
             var pr = new ExprParser([.. toks.Skip(2)]);
             var eexp = pr.ParseExpression();
             if (!pr.EOF(out _)) return null;
-            return new AssignmentStmt(toks[0], des, toks[1], eexp);
+            return new ConstantDeclStmt(toks[0], des, toks[1], eexp);
         }
         return null;
     }

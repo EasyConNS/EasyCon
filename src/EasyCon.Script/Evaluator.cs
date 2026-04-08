@@ -72,6 +72,7 @@ internal sealed class Evaluator
                 case NopStatement:
                     index++;
                     break;
+                case ConstantDeclaration:
                 case VariableDeclaration:
                     EvaluateVariableDeclaration((BoundVariableDeclaration)s);
                     index++;
