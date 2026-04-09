@@ -8,6 +8,7 @@ using EasyDevice;
 using OpenCvSharp;
 using System.CommandLine;
 using System.Text;
+using System.Collections.Immutable;
 
 // 设置控制台输出编码为 UTF-8，解决中文乱码问题
 Console.OutputEncoding = Encoding.UTF8;
@@ -108,8 +109,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     outdap.Log("正在解析脚本...");
     try
     {
-        var extVarNames = label.Select(il => il.name);
-        runner.Load(file, extVarNames);
+        runner.Load(file, [.. label.Select(il => il.name)]);
     }
     catch(ParseException ex)
     {
@@ -227,8 +227,7 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
 
     try
     {
-        var extVarNames = label.Select(il => il.name);
-        runner.Load(file, extVarNames);
+        runner.Load(file, [.. label.Select(il => il.name)]);
         var formatted = runner.ToCode();
         
         if (!string.IsNullOrEmpty(outputFile))

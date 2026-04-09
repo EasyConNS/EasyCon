@@ -25,13 +25,13 @@ public sealed class Compilation
     public Compilation? Previous { get; }
     public SyntaxTree SyntaxTrees { get; }
 
-    private BoundProgram GetProgram(IEnumerable<string>? extVars)
+    private BoundProgram GetProgram(ImmutableHashSet<string>? extVars)
     {
         var previous = Previous == null ? null : Previous.GetProgram(extVars);
         return Binder.BindProgram(SyntaxTrees, extVars);
     }
 
-    public void Compile(IEnumerable<string>? extVars)
+    public void Compile(ImmutableHashSet<string>? extVars)
     {
         var program = GetProgram(extVars);
         KeyAction = program.KeyAction;
@@ -43,7 +43,7 @@ public sealed class Compilation
         CancellationToken token)
     {
 
-        var program = GetProgram(externalGetters.Select(v=>v.Key));
+        var program = GetProgram([..externalGetters.Select(v=>v.Key)]);
         var evaluator = new Evaluator(program, externalGetters ?? [], token)
         {
             GamePad = pad,

@@ -7,6 +7,7 @@ internal sealed class BoundScope(BoundScope? parent)
 {
     private readonly Dictionary<string, VariableSymbol> _var_symbols = [];
     private readonly Dictionary<string, FunctionSymbol> _fn_symbols = [];
+    private ImmutableHashSet<string> _validExternalVariables = [];
 
     public BoundScope? Parent { get; } = parent;
 
@@ -41,6 +42,17 @@ internal sealed class BoundScope(BoundScope? parent)
             return symbol;
 
         return Parent?.TryLookupFunc(name);
+    }
+
+    public bool TryFindoutLabel(string name)
+    {
+        if (_validExternalVariables.Contains(name)) return true;
+        return Parent?.TryFindoutLabel(name) ?? false;
+    }
+
+    public void SetValidExternalVariables(ImmutableHashSet<string> validNames)
+    {
+        _validExternalVariables = validNames;
     }
 
     public ImmutableArray<VariableSymbol> GetDeclaredVariables()

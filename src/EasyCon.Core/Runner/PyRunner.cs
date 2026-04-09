@@ -1,5 +1,6 @@
 using EasyScript;
 using Python.Runtime;
+using System.Collections.Immutable;
 using System.Text;
 
 namespace EasyCon.Core.Runner;
@@ -19,11 +20,11 @@ public sealed class PyRunner : IRunner
 
     public bool HasKeyAction() => true;
 
-    public void Load(string fileName, IEnumerable<string> extVarNames)
+    public void Load(string fileName, ImmutableHashSet<string> extVarNames)
     {
         Code = File.ReadAllText(fileName);
     }
-    public void Init(string code, IEnumerable<string> extVarNames)
+    public void Init(string code, ImmutableHashSet<string> extVarNames)
     {
         Code = code;
     }

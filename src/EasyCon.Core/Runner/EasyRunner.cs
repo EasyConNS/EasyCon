@@ -1,6 +1,7 @@
 using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyScript;
+using System.Collections.Immutable;
 
 namespace EasyCon.Core.Runner;
 
@@ -17,13 +18,13 @@ public sealed class EasyRunner : IRunner
         //return new Assembly.Assembler().Assemble(prog, auto);
         throw new NotImplementedException();
     }
-    public void Init(string code, IEnumerable<string> extVarNames)
+    public void Init(string code, ImmutableHashSet<string> extVarNames)
     {
         var sourceText = SyntaxTree.Parse(code);
         compilation = Compilation.Create(sourceText);
         compilation.Compile(extVarNames);
     }
-    public void Load(string fileName, IEnumerable<string> extVarNames)
+    public void Load(string fileName, ImmutableHashSet<string> extVarNames)
     {
         var sourceText = SyntaxTree.Load(fileName);
         compilation = Compilation.Create(sourceText);

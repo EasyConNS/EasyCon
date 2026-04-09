@@ -1,6 +1,7 @@
 using EasyCon.Core.Runner;
 using EasyCon.Script.Syntax;
 using EasyScript;
+using System.Collections.Immutable;
 
 namespace EasyCon.Core;
 
@@ -15,7 +16,7 @@ public sealed class Scripter
     public void Parse(string code, string fileName, Dictionary<string, Func<int>> externalGetters)
     {
         _extVar = externalGetters;
-        var extVarNames = externalGetters.Select(v=>v.Key);
+        var extVarNames = externalGetters.Select(v=>v.Key).ToImmutableHashSet();
         if (fileName==null)
             runner.Init(code, extVarNames);
         else
