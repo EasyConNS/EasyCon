@@ -5,6 +5,7 @@ using EasyCon.Script;
 using EasyCon.Core.Runner;
 using EasyCon.Script.Syntax;
 using EasyDevice;
+using EasyScript;
 using OpenCvSharp;
 using System.CommandLine;
 using System.Text;
@@ -117,30 +118,39 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         return;
     }
 
+    bool isMock = COM.Equals("mock", StringComparison.OrdinalIgnoreCase);
+
     if (runner.HasKeyAction)
     {
-        outdap.Log("准备连接单片机...");
-        NS.Log += (message) =>
+        if (isMock)
         {
-            if (verbose)
-                outdap.Print($"NS LOG >> {message}");
-        };
-        NS.BytesSent += (port, bytes) =>
-        {
-            if (verbose)
-                outdap.Print($"{port} >> {string.Join(" ", bytes.Select(b => b.ToString("X2")))}");
-        };
-        NS.BytesReceived += (port, bytes) =>
-        {
-            if (verbose)
-                outdap.Print($"{port} << {string.Join(" ", bytes.Select(b => b.ToString("X2")))}");
-        };
-        if (NS.TryConnect(COM) != NintendoSwitch.ConnectResult.Success)
-        {
-            outdap.Error("单片机连接失败！！");
-            return;
+            outdap.Info("使用虚拟单片机(Mock)模式");
         }
-        outdap.Info("单片机连接成功.");
+        else
+        {
+            outdap.Log("准备连接单片机...");
+            NS.Log += (message) =>
+            {
+                if (verbose)
+                    outdap.Print($"NS LOG >> {message}");
+            };
+            NS.BytesSent += (port, bytes) =>
+            {
+                if (verbose)
+                    outdap.Print($"{port} >> {string.Join(" ", bytes.Select(b => b.ToString("X2")))}");
+            };
+            NS.BytesReceived += (port, bytes) =>
+            {
+                if (verbose)
+                    outdap.Print($"{port} << {string.Join(" ", bytes.Select(b => b.ToString("X2")))}");
+            };
+            if (NS.TryConnect(COM) != NintendoSwitch.ConnectResult.Success)
+            {
+                outdap.Error("单片机连接失败！！");
+                return;
+            }
+            outdap.Info("单片机连接成功.");
+        }
     }
 
     if(runner.NeedILLoad)
@@ -164,7 +174,8 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     
     try
     {
-        runner.Run(outdap, new GamePadAdapter(NS), externalGetters, cancellationToken);
+        ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
+        runner.Run(outdap, pad, externalGetters, cancellationToken);
         outdap.Info("脚本运行完成");
     }
     catch (ScriptException ex)

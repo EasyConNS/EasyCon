@@ -24,39 +24,30 @@ internal sealed partial class Parser
     string _filePath => Path.GetDirectoryName(Path.GetFullPath(_text.FileName)) ?? "";
     const string LibPath = "lib/";
 
-    private static IEnumerable<ImmutableArray<Token>> GetTokenGroups(ImmutableArray<Token> allTokens)
+    #region Token Cursor
+
+    // 当前行的 token 游标
+    private int _start;
+    private int _end;
+
+    /// <summary>
+    /// 当前行 token 分组的切片视图，直接索引访问无需计算偏移
+    /// </summary>
+    private ReadOnlySpan<Token> _grouptokens => _tokens.AsSpan()[_start.._end];
+
+    private bool CursorEOF => _position >= _grouptokens.Length;
+
+    /// <summary>
+    /// 设置当前行范围并重置游标到行首
+    /// </summary>
+    private void SetRange(int start, int end)
     {
-        int start = 0;
-        int length = 0;
-
-        for (int i = 0; i < allTokens.Length; i++)
-        {
-            var token = allTokens[i];
-            if (token.Type == TokenType.NEWLINE)
-            {
-                
-                yield return allTokens.Slice(start, length);
-                
-                start = i + 1;
-                length = 0;
-            }
-            else if (token.Type == TokenType.EOF)
-            {
-                break;
-            }
-            else
-            {
-                if (length == 0)
-                    start = i;
-                length++;
-            }
-        }
-
-        if (length > 0)
-        {
-            yield return allTokens.Slice(start, length);
-        }
+        _start = start;
+        _end = end;
+        _position = 0;
     }
+
+    #endregion
 
     public CompicationUnit ParseProgram()
     {
@@ -71,36 +62,36 @@ internal sealed partial class Parser
             result = unit.Peek();
         }
 
-        foreach (var tokens in GetTokenGroups(_tokens))
+        foreach (var (rangeStart, rangeEnd) in GetTokenRanges())
         {
+            SetRange(rangeStart, rangeEnd);
             try
             {
                 Statement? st = null;
-                
+
                 // If there's only one token and it's a comment, create a CommentStmt
-                if (tokens.Length == 1 && tokens[0].Type == TokenType.COMMENT)
+                if (_grouptokens.Length == 1 && Current.Type == TokenType.COMMENT)
                 {
                     st = new EmptyStmt()
                     {
-                        Comment = tokens[0].Value
+                        Comment = Current.Value
                     };
                 }
                 // If there are multiple tokens, only the last one can be a comment
-                else if (tokens.Length >= 1)
+                else if (_grouptokens.Length >= 1)
                 {
-                    var toks = tokens;
-                    var lastToken = tokens[^1];
+                    var lastToken = Peek(_grouptokens.Length - 1);
 
                     // Check if the last token is a comment
                     if (lastToken.Type == TokenType.COMMENT)
                     {
-                        // Remove the comment token for parsing the statement
-                        toks = toks[..^1];
+                        // Shrink range to exclude comment token
+                        _end--;
                     }
-                    
+
                     // Parse the tokens directly
-                    st = ParseStatement(toks.ToImmutableArray()) ?? throw new ParseException("格式错误");
-                    
+                    st = ParseStatement() ?? throw new ParseException("格式错误");
+
                     // Set the comment if there was one
                     if (lastToken.Type == TokenType.COMMENT)
                     {
@@ -112,7 +103,7 @@ internal sealed partial class Parser
                 {
                     st = new EmptyStmt();
                 }
-                
+
                 // update address
                 st.Address = address;
 
@@ -209,6 +200,7 @@ internal sealed partial class Parser
             }
             catch (Exception e)
             {
+                Console.WriteLine(e.StackTrace);
                 throw new ParseException(e.Message, address);
             }
         }
@@ -216,6 +208,41 @@ internal sealed partial class Parser
             throw new ParseException("语句块没有正确结束", unit.Peek().First().Address);
 
         return new CompicationUnit([.. result]);
+    }
+
+    /// <summary>
+    /// 遍历所有 token，按 NEWLINE 分组，返回每行在 _tokens 中的 (start, end) 范围
+    /// </summary>
+    private IEnumerable<(int start, int end)> GetTokenRanges()
+    {
+        int start = 0;
+        int length = 0;
+
+        for (int i = 0; i < _tokens.Length; i++)
+        {
+            var token = _tokens[i];
+            if (token.Type == TokenType.NEWLINE)
+            {
+                yield return (start, start + length);
+                start = i + 1;
+                length = 0;
+            }
+            else if (token.Type == TokenType.EOF)
+            {
+                break;
+            }
+            else
+            {
+                if (length == 0)
+                    start = i;
+                length++;
+            }
+        }
+
+        if (length > 0)
+        {
+            yield return (start, start + length);
+        }
     }
 
     internal ImmutableArray<CompicationUnit> Flatten(CompicationUnit prog)
