@@ -300,7 +300,7 @@ internal sealed class Evaluator
         if (node is BoundKeyPressStatement bps)
         {
             var dur = EvaluateExpression(bps.Duration).AsInt();
-            GamePad?.ClickButtons(bps.Act, dur);
+            GamePad?.ClickButtons(bps.Act, dur, _token);
         }
         else
         {
@@ -320,7 +320,7 @@ internal sealed class Evaluator
         if (node is BoundStickPressStatement bps)
         {
             var dur = EvaluateExpression(bps.Duration).AsInt();
-            GamePad?.ClickStick(bps.Act, bps.X, bps.Y, dur);
+            GamePad?.ClickStick(bps.Act, bps.X, bps.Y, dur, _token);
         }
         else
         {
@@ -354,7 +354,7 @@ internal sealed class Evaluator
                     case DelayType.LowCPU: CustomDelay.AISleep(ms); break;
                     case DelayType.HighResolution:
                     default:
-                        CustomDelay.Delay(ms);
+                        CustomDelay.Delay(ms, _token);
                         break;
                 }
                 break;

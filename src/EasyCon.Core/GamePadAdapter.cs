@@ -10,7 +10,7 @@ public class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
 
     public DelayType DelayMethod => DelayType.HighResolution;
 
-    void ICGamePad.ClickButtons(GamePadKey key, int duration)
+    void ICGamePad.ClickButtons(GamePadKey key, int duration, CancellationToken token)
     {
         NS.Down(key.ToECKey());
         switch (DelayMethod)
@@ -19,7 +19,7 @@ public class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
             case DelayType.LowCPU: CustomDelay.AISleep(duration); break;
             case DelayType.HighResolution:
             default:
-                CustomDelay.Delay(duration);
+                CustomDelay.Delay(duration, token);
                 break;
         }
         NS.Up(key.ToECKey());
@@ -40,7 +40,7 @@ public class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
         NS.ChangeAmiiboIndex((byte)(index & 0x0F));
     }
 
-    void ICGamePad.ClickStick(GamePadKey key, byte x, byte y, int duration)
+    void ICGamePad.ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token)
     {
         NS.Down(key.ToECKey(x, y));
         switch (DelayMethod)
@@ -49,7 +49,7 @@ public class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
             case DelayType.LowCPU: CustomDelay.AISleep(duration); break;
             case DelayType.HighResolution:
             default:
-                CustomDelay.Delay(duration);
+                CustomDelay.Delay(duration, token);
                 break;
         }
         NS.Up(key.ToECKey(x, y));

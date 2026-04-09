@@ -77,7 +77,7 @@ partial class EasyConForm
             }
         }
 
-        virtController.ControllerEnabled = false;
+        //virtController.ControllerEnabled = false;
         StatusShowLog("开始运行");
 
         scriptRunning = true;
@@ -103,7 +103,7 @@ partial class EasyConForm
             StatusShowLog("运行结束");
             //SystemSounds.Beep.Play();
         }
-        catch (ThreadInterruptedException)
+        catch (OperationCanceledException)
         {
             logTxtBox.Print("-- 运行终止 --", Color.Orange);
             StatusShowLog("运行终止");

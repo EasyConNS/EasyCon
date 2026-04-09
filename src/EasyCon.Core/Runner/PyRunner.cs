@@ -90,7 +90,7 @@ def setConsoleOut(writeCallback):
 class NSPad(ICGamePad pad)
 {
     private readonly ICGamePad pd = pad;
-    public void press(string key, int duration) => pd.ClickButtons(GamePadKey.None, duration);
+    public void press(string key, int duration) => pd.ClickButtons(GamePadKey.None, duration, new());
     public void down(string key) => pd.PressButtons(GamePadKey.None);
     public void up(string key) => pd.ReleaseButtons(GamePadKey.None);
 

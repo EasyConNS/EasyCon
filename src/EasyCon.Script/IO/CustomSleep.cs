@@ -5,11 +5,12 @@ public sealed class CustomDelay
 {
     private static int CurrTimestamp => (int)(DateTime.Now.Ticks / 10_000);
 
-    public static void Delay(int millisecondsTimeout)
+    public static void Delay(int millisecondsTimeout, CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
         var curtime = CurrTimestamp;
-        if (millisecondsTimeout >= 40) Thread.Sleep(millisecondsTimeout - 20);
-        while (true)
+        if (millisecondsTimeout >= 40) Task.Delay(millisecondsTimeout - 20, token).Wait(token);
+        while (!token.IsCancellationRequested)
         {
             if (CurrTimestamp - curtime >= millisecondsTimeout) break;
             Thread.Yield();
