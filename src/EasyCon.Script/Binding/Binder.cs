@@ -654,7 +654,7 @@ internal sealed class Binder
 
         // 在 binder 阶段验证外部变量名称
         if (!_validExternalVariables.Contains(name))
-            throw new ParseException("找不到识图标签\"@" + name + "\"");
+            throw new Exception("找不到识图标签\"@" + name + "\"");
 
         _ilNames.Add(name);
         return new BoundExternalVariableExpression(syntax, name);
