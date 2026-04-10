@@ -110,7 +110,7 @@ public sealed record Token(SourceText text, TokenType type, string value, int li
     public int Line { get; } = line;
 
     public SourceText Text { get; } = text;
-    public SourceSpan Span => new(start, Value.Length); // TODO:start不准确
+    public SourceSpan Span => new(start, Value.Length);
 
     public TextLocation Location => new(Text, Span);
 

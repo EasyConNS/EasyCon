@@ -10,7 +10,7 @@ public sealed class SyntaxTree
                                            out ImmutableArray<CompicationUnit> flattenroot,
                                            out ImmutableArray<Diagnostic> diagnostics);
     #region 兼容性解析标记 // 默认不开启
-    public static bool LegacyIfEqualCompat = false;
+    public static bool LegacyCompat = true;
     #endregion
 
     public SourceText Text { get; init; }

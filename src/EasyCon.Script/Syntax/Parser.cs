@@ -34,8 +34,35 @@ internal sealed partial class Parser
     /// 当前行 token 分组的切片视图，直接索引访问无需计算偏移
     /// </summary>
     private ReadOnlySpan<Token> _grouptokens => _tokens.AsSpan()[_start.._end];
+    private int _position = 0;
 
     private bool CursorEOF => _position >= _grouptokens.Length;
+
+    private Token Peek(int offset = 0)
+    {
+        var index = _position + offset;
+        if (index >= _grouptokens.Length)
+            return _grouptokens[^1];
+
+        return _grouptokens[index];
+    }
+    private Token Current => Peek();
+    private Token Advance()
+    {
+        var now = Current;
+        _position++;
+        return now;
+    }
+
+    private bool Check(TokenType type) => Current?.Type == type;
+    private Token Match(TokenType type, string message = "")
+    {
+        if (Current.Type == type)
+        {
+            return Advance();
+        }
+        throw new Exception($"{message} 需要<{type}>但是意外的<{Current.Value}>");
+    }
 
     /// <summary>
     /// 设置当前行范围并重置游标到行首
@@ -68,9 +95,10 @@ internal sealed partial class Parser
             try
             {
                 Statement? st = null;
-
+                if (_grouptokens.Length == 0) 
+                    st = new EmptyStmt();
                 // If there's only one token and it's a comment, create a CommentStmt
-                if (_grouptokens.Length == 1 && Current.Type == TokenType.COMMENT)
+                else if (_grouptokens.Length == 1 && Current.Type == TokenType.COMMENT)
                 {
                     st = new EmptyStmt()
                     {

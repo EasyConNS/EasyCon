@@ -6,40 +6,52 @@ namespace EasyCon.Script.Syntax;
 
 internal partial class Parser
 {
-    private int _position = 0;
-
-    #region Statement Dispatch
-
     private Statement? ParseStatement()
     {
-        if (_grouptokens.Length == 0 || (_grouptokens.Length == 1 && Current.Type == TokenType.EOF)) return new EmptyStmt();
-
-        if (Current.Type == TokenType.CONST) return ParseConstantDecl();
-        else if (Current.Type == TokenType.VAR) return ParseAssignment();
-        else if (Current.Type == TokenType.IMPORT) return ParseImport();
-        else if (Current.Type == TokenType.IF || Current.Type == TokenType.ELIF) return ParseIfelse();
-        else if (Current.Type == TokenType.ELSE && _grouptokens.Length == 1) return new Else(Current);
-        else if (Current.Type == TokenType.ENDIF && _grouptokens.Length == 1) return new EndIf(Current);
-        else if (Current.Type == TokenType.WHILE) return ParseWhile();
-        else if (Current.Type == TokenType.FOR) return ParseFor();
-        else if (Current.Type == TokenType.BREAK || Current.Type == TokenType.CONTINUE) return ParseLoopCtrl();
-        else if (Current.Type == TokenType.NEXT && _grouptokens.Length == 1) return new Next(Current);
-        else if (Current.Type == TokenType.FUNC) return ParseFuncDecl();
-        else if (Current.Type == TokenType.ENDFUNC && _grouptokens.Length == 1) return new EndFuncStmt(Current);
-        else if (Current.Type == TokenType.RETURN) return ParseReturn();
-        else if (Current.Type == TokenType.END && _grouptokens.Length == 1) return new EndBlockStmt(Current);
-        else if (Current.Type == TokenType.INT && _grouptokens.Length == 1)
+        switch (Current.Type)
         {
-            if (int.TryParse(Current.Value, out int duration)) return new Wait(Current, duration, true);
+            case TokenType.CONST:
+                return ParseConstantDecl();
+            case TokenType.VAR:
+                return ParseAssignment();
+            case TokenType.IMPORT:
+                return ParseImport();
+            case TokenType.IF:
+            case TokenType.ELIF:
+                return ParseIfelse();
+            case TokenType.ELSE when _grouptokens.Length == 1:
+                return new Else(Current);
+            case TokenType.ENDIF when _grouptokens.Length == 1:
+                return new EndIf(Current);
+            case TokenType.WHILE:
+                return ParseWhile();
+            case TokenType.FOR:
+                return ParseFor();
+            case TokenType.BREAK:
+            case TokenType.CONTINUE:
+                return ParseLoopCtrl();
+            case TokenType.NEXT when _grouptokens.Length == 1:
+                return new Next(Current);
+            case TokenType.FUNC:
+                return ParseFuncDecl();
+            case TokenType.ENDFUNC when _grouptokens.Length == 1:
+                return new EndFuncStmt(Current);
+            case TokenType.RETURN:
+                return ParseReturn();
+            case TokenType.END when _grouptokens.Length == 1:
+                return new EndBlockStmt(Current);
+            case TokenType.INT when _grouptokens.Length == 1:
+                if (int.TryParse(Current.Value, out int duration)) return new Wait(Current, duration, true);
+                break;
+            case TokenType.IDENT:
+                return ParseNamedExpression();
         }
-        else if (Current.Type == TokenType.IDENT) return ParseNamedExpression();
+
         // Handle key statements
         var fullline = Current.Text.Lines[Current.Line - 1].Text;
         fullline = fullline.Contains('#') ? fullline[..fullline.IndexOf('#')] : fullline;
         return ParseKey(fullline.Trim());
     }
-
-    #endregion
 
     #region Statement Parsers
 
@@ -55,25 +67,21 @@ internal partial class Parser
 
     private ImportStmt? ParseImport()
     {
-        if (_grouptokens.Length != 2) return null;
-        if (Peek(1).Type == TokenType.STRING)
-        {
-            var libSrc = Path.Combine(_filePath, LibPath, Peek(1).STRTrimQ());
-            libSrc = Path.GetFullPath(libSrc);
-            if (!libSrc.StartsWith(_filePath, StringComparison.OrdinalIgnoreCase)) throw new Exception($"库文件路径非法");
-            if (!File.Exists(libSrc)) throw new Exception($"文件不存在:{libSrc}");
-            return new ImportStmt(Current, Peek(1), Path.Combine(_filePath, LibPath));
-        }
-        return null;
+        var mod = Match(TokenType.STRING);
+        if (!CursorEOF) return null;
+        var libSrc = Path.GetFullPath(Path.Combine(_filePath, LibPath, mod.STRTrimQ()));
+        if (!libSrc.StartsWith(_filePath, StringComparison.OrdinalIgnoreCase)) throw new Exception($"库文件路径非法");
+        if (!File.Exists(libSrc)) throw new Exception($"文件不存在:{libSrc}");
+        return new ImportStmt(Current, Peek(1), Path.Combine(_filePath, LibPath));
     }
 
     private AssignmentStmt? ParseAssignment()
     {
         var destok = Advance();
         var des = (VariableExpr)Formatter.GetValueEx(destok);
-        if (!Current.Type.OperatorIsAug() && Current.Type != TokenType.ASSIGN)
+        if(!Check(TokenType.ASSIGN) && !Current.Type.OperatorIsAug())
         {
-            return null;
+            Match(TokenType.ASSIGN);
         }
         var op = Advance();
         var eexp = ParseExpression();
@@ -83,30 +91,23 @@ internal partial class Parser
 
     private ReturnStmt? ParseReturn()
     {
-        var returnTok = Advance();
-        if (!CursorEOF)
-        {
-            var eexp = ParseExpression();
-            if (!CursorEOF) return null;
-            return new ReturnStmt(returnTok, eexp);
-        }
-        return new ReturnStmt(returnTok);
+        var returnTok = Match(TokenType.RETURN);
+        var eexp = CursorEOF ? null : ParseExpression();
+        if (!CursorEOF) return null;
+        return new ReturnStmt(returnTok, eexp);
     }
 
     private Statement? ParseIfelse()
     {
         var iftok = Advance();
-        if (CursorEOF) return null;
         var expr = ParseExpression();
         if (!CursorEOF) return null;
-        switch (iftok.Type)
+        return iftok.Type switch
         {
-            case TokenType.IF:
-                return new IfStmt(iftok, expr);
-            case TokenType.ELIF:
-                return new ElseIf(iftok, expr);
-        }
-        return null;
+            TokenType.IF => new IfStmt(iftok, expr),
+            TokenType.ELIF => new ElseIf(iftok, expr),
+            _ => null,
+        };
     }
 
     private static bool CheckPrimary(TokenType type)
@@ -233,20 +234,18 @@ internal partial class Parser
         var first = Current;
         switch (first.Value.ToLower())
         {
-            case "print":
-                Advance();
-                var outstr = ParseArgumentList();
-                return new CallStmt(first, first.Value.ToUpper(), [.. outstr], CallType.CallStmtWithArgs);
             case "wait":
                 if (_grouptokens.Length != 2) return null;
-                if (Peek(1).Type == TokenType.CONST || Peek(1).Type == TokenType.INT || Peek(1).Type == TokenType.VAR)
+                if (CheckPrimary(Peek(1).Type))
                 {
                     return new Wait(first, Formatter.GetValueEx(Peek(1)));
                 }
                 break;
             case "call":
                 if (_grouptokens.Length != 2) return null;
-                return Peek(1).Type == TokenType.IDENT ? new CallStmt(first, Peek(1).Value, []) : null;
+                Advance();
+                var fnname = Match(TokenType.IDENT);
+                return  new CallStmt(first, Peek(1).Value, []);
 #if DEBUG
             case "sprint":
             case "smem":
@@ -259,20 +258,24 @@ internal partial class Parser
                 break;
 #endif
             default:
-                if (_grouptokens.Length < 2) return null;
                 Advance();
-                var args = ParseArgumentList();
+                if(SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    if(Check(TokenType.BitAnd))Advance();
+                    if(Peek(_grouptokens.Length - 1).Type == TokenType.BitAnd)
+                        // Shrink print expression exclude last & token
+                        _end--;
+                }
+                var args = ParseArguments();
+                if (args.Length == 0)
+                {
+                    if(!(SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase)))
+                        return null;
+                }
+                if (!CursorEOF) return null;
                 return new CallStmt(first, first.Value, [.. args], CallType.CallStmtWithArgs);
         }
         return null;
-    }
-
-    private ImmutableArray<ExprBase> ParseArgumentList()
-    {
-        if (CursorEOF) return [];
-        var args = ParseArguments();
-        if (!CursorEOF) throw new Exception("函数传参解析失败");
-        return args;
     }
 
     #endregion
@@ -310,6 +313,7 @@ internal partial class Parser
 
     private ExprBase ParsePrimary()
     {
+        Console.WriteLine($"prim：：：{Current}");
         switch (Current.Type)
         {
             case TokenType.STRING:
@@ -333,9 +337,8 @@ internal partial class Parser
                 return ParseCallExpression();
             case TokenType.INT:
             default:
-                var toknum = Advance();
-                if (!int.TryParse(toknum.Value, out _))
-                    throw new Exception($"错误的数字格式: {toknum.Value}");
+                var toknum = Match(TokenType.INT);
+                _ = int.TryParse(toknum.Value, out _);
                 return Formatter.GetValueEx(toknum);
         }
     }
@@ -468,30 +471,4 @@ internal partial class Parser
     }
 
     #endregion
-
-    private Token Peek(int offset = 0)
-    {
-        var index = _position + offset;
-        if (index >= _grouptokens.Length)
-            return _grouptokens[^1];
-
-        return _grouptokens[index];
-    }
-    private Token Current => Peek();
-    private Token Advance()
-    {
-        var now = Current;
-        _position++;
-        return now;
-    }
-
-    private bool Check(TokenType type) => Current?.Type == type;
-    private Token Match(TokenType type, string message = "")
-    {
-        if (Current.Type == type)
-        {
-            return Advance();
-        }
-        throw new Exception($"{message} 需要<{type}>但是意外的<{Current.Value}>");
-    }
 }

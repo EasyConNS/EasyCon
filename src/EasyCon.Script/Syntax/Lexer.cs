@@ -374,9 +374,10 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         {
             var tokenType = keywords[word.ToLower()];
             AddToken(tokenType, word.ToUpper(), start);
-            if (tokenType == TokenType.IF && SyntaxTree.LegacyIfEqualCompat)
+            if (SyntaxTree.LegacyCompat)
             {
-                _expectEqualAfterIf = true;
+                if(tokenType == TokenType.IF || tokenType == TokenType.ELIF)
+                    _expectEqualAfterIf = true;
             }
         }
         else if ((isAllUpper || isAllLower) && logicwords.ContainsKey(word.ToLower()))
@@ -419,9 +420,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     Advance();
                     AddToken(TokenType.EQL, "==", start);
                 }
-                else if (_expectEqualAfterIf && SyntaxTree.LegacyIfEqualCompat)
+                else if (_expectEqualAfterIf && SyntaxTree.LegacyCompat)
                 {
-                    AddToken(TokenType.EQL, "=", start);
+                    AddToken(TokenType.EQL, "==", start);
                     _expectEqualAfterIf = false;
                 }
                 else

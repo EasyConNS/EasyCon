@@ -39,7 +39,7 @@ internal sealed class BoundBinaryOperator
         new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ScriptType.Int, (a, b) => a.AsInt() * b.AsInt()),
         new(TokenType.DIV,BoundBinaryOperatorKind.Division, ScriptType.Int, (a, b) => a.AsInt() / b.AsInt()),
         new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ScriptType.Int, (a, b) => a.AsInt() % b.AsInt()),
-        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ScriptType.Int, (a, b) => (int)Math.Round((double)a.AsInt() / b.AsInt())),
+        new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ScriptType.Int, (a, b) => (int)Math.Round((double)a.AsInt() / b.AsInt(), MidpointRounding.AwayFromZero)),
 
         new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ScriptType.Int, (a, b) => a.AsInt() & b.AsInt()),
         new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ScriptType.Int, (a, b) => a.AsInt() | b.AsInt()),
