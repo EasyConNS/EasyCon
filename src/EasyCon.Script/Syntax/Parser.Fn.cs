@@ -313,7 +313,6 @@ internal partial class Parser
 
     private ExprBase ParsePrimary()
     {
-        Console.WriteLine($"prim：：：{Current}");
         switch (Current.Type)
         {
             case TokenType.STRING:

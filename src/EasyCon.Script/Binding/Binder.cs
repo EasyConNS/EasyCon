@@ -576,15 +576,37 @@ internal sealed class Binder
         };
     }
 
-    private BoundExprStatement BindCallStatement(CallStmt syntax)
+    private BoundStmt BindCallStatement(CallStmt syntax)
     {
         var name = syntax.FnName;
         if(BuiltinFunctions.GetAll().Select(f => f.Name).Contains(syntax.FnName.ToUpper()))
         {
             name = syntax.FnName.ToUpper();
         }
+        var function = _scope.TryLookupFunc(name) ?? throw new Exception($"找不到调用函数 {name}");
+
+        // 传统兼容模式
+        if (SyntaxTree.LegacyCompat && syntax.Args.Length == 1 && syntax.Args[0] is VariableExpr legacyVar)
+        {
+            // TIME <变量> 转换为 <变量> = TIME()
+            if (BuiltinFunctions.Timestamp == function)
+            {
+                var timeCallExpr = BindCallExpressionInternal(null, function, []);
+                var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
+                return new BoundVariableDeclaration(syntax, variable, timeCallExpr);
+            }
+
+            // RAND <变量> 转换为 <变量> = RAND(<变量>)
+            if (BuiltinFunctions.Rand == function)
+            {
+                var randCallExpr = BindCallExpressionInternal(null, function, [legacyVar]);
+                var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
+                return new BoundVariableDeclaration(syntax, variable, randCallExpr);
+            }
+        }
+
         // 绑定调用
-        var expr = BindCallExpression(null, name, [.. syntax.Args]);
+        var expr = BindCallExpressionInternal(null, function, [.. syntax.Args]);
 
         return new BoundExprStatement(syntax, expr);
     }
@@ -790,10 +812,8 @@ internal sealed class Binder
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
     }
 
-    private BoundCallExpression BindCallExpression(Callv1Expression syntax, string fnName, ImmutableArray<ExprBase> Arguments)
+    private BoundCallExpression BindCallExpressionInternal(Callv1Expression syntax, FunctionSymbol function, ImmutableArray<ExprBase> Arguments)
     {
-        var function = _scope.TryLookupFunc(fnName) ?? throw new Exception($"找不到调用函数 {fnName}");
-
         // 1. 先绑定实参表达式
         var boundArgs = Arguments.Select(BindExpression).ToImmutableArray();
 
@@ -802,7 +822,7 @@ internal sealed class Binder
         int maxArgs = function.Parameters.Length;
 
         if (boundArgs.Length < minArgs || boundArgs.Length > maxArgs)
-            throw new Exception($"函数 {fnName} 参数数量不匹配");
+            throw new Exception($"函数 {function.Name} 参数数量不匹配");
 
         // 3. 泛型绑定与实例化
         var (instParams, instReturn) = BindGenericFunction(function, boundArgs);
@@ -829,7 +849,9 @@ internal sealed class Binder
 
     private BoundCallExpression BindCallExpression(Callv1Expression syntax)
     {
-        return BindCallExpression(syntax, syntax.Identifier.Value, syntax.Arguments);
+        var function = _scope.TryLookupFunc(syntax.Identifier.Value) ?? throw new Exception($"找不到调用函数 {syntax.Identifier.Value}");
+
+        return BindCallExpressionInternal(syntax, function, syntax.Arguments);
     }
 
 }

@@ -184,7 +184,7 @@ internal sealed class Evaluator
         else
         {
             var locals = _locals.Peek();
-            return locals.TryGetValue(v, out Value value) ? value : 0;
+            return locals[v];
         }
     }
 
