@@ -620,14 +620,17 @@ namespace EasyCon2.Forms
 
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
         {
-            if(textEditor.Document.FileName != null && textEditor.IsModified)
-            {
-                FileSave();
-            }
             runStopBtn.Enabled = false;
             if (!scriptRunning)
             {
-                ScriptRun();
+                if (textEditor.Document.FileName != null && textEditor.IsModified)
+                {
+                    MessageBox.Show("您还没有保存脚本，请先保存后再运行");
+                }
+                else
+                {
+                    ScriptRun();
+                }
             }
             else
             {
