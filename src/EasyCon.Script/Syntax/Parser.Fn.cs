@@ -71,7 +71,7 @@ internal partial class Parser
         var mod = Match(TokenType.STRING);
         MatchEOF();
         var libSrc = Path.GetFullPath(Path.Combine(_filePath, LibPath, mod.STRTrimQ()));
-        if (!libSrc.StartsWith(_filePath, StringComparison.OrdinalIgnoreCase) && !File.Exists(libSrc))
+        if (!libSrc.StartsWith(_filePath, StringComparison.OrdinalIgnoreCase) || !File.Exists(libSrc))
             _diagnostics.ReportInvalidImport(mod.Location, mod);
         return new ImportStmt(keyword, mod, Path.Combine(_filePath, LibPath));
     }

@@ -7,7 +7,6 @@ using EasyCon.Script.Syntax;
 using OpenCvSharp.Extensions;
 using System.IO;
 using System.Media;
-using System.Text.RegularExpressions;
 
 namespace EasyCon2.Forms;
 
@@ -33,19 +32,12 @@ partial class EasyConForm
                 return (int)md;
             }));
             _program.Parse(textEditor.Text, textEditor.Document.FileName, externalGetters);
-            
-            // 格式化代码并确保逗号后面总是有空格
-            var formattedCode = _program.ToCode().Trim();
-            formattedCode = Regex.Replace(formattedCode, ",(?! )", ", ");
-            textEditor.Text = formattedCode;
-            textEditor.Select(0, 0);
+
             StatusShowLog("编译完成");
             return true;
         }
         catch (ParseException ex)
         {
-            SystemSounds.Hand.Play();
-            StatusShowLog("编译失败");
             ScriptSelectLine(ex.Index);
             MessageBox.Show($"{ex.Message}: 行{ex.Index + 1}");
             return false;

@@ -21,7 +21,9 @@ internal sealed partial class Parser
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
-    string _filePath => _text.FileName == null ? Path.GetDirectoryName(Path.GetFullPath(_text.FileName ?? "")) ?? "" : "";
+    string _fullPath => _text.FileName != "" ? Path.GetFullPath(_text.FileName) : AppDomain.CurrentDomain.BaseDirectory;
+
+    string _filePath => Path.GetDirectoryName(_fullPath) ?? "";
     const string LibPath = "lib/";
 
     #region Token Cursor

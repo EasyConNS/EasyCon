@@ -1,6 +1,5 @@
 using EasyCon.Core;
 using EasyCon.Script.Assembly;
-using EasyCon2.Config;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
 using EasyDevice;
@@ -16,6 +15,7 @@ using System.Media;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace EasyCon2.Forms
@@ -597,9 +597,18 @@ namespace EasyCon2.Forms
         {
             if (await ScriptCompile())
             {
-                StatusShowLog("编译成功");
                 SystemSounds.Beep.Play();
-                MessageBox.Show("编译成功！", "编译结果");
+
+                // 格式化代码并确保逗号后面总是有空格
+                var formattedCode = _program.ToCode().Trim();
+                formattedCode = Regex.Replace(formattedCode, ",(?! )", ", ");
+                textEditor.Text = formattedCode;
+                textEditor.Select(0, 0);
+            }
+            else
+            {
+                SystemSounds.Hand.Play();
+                StatusShowLog("编译失败");
             }
         }
 
