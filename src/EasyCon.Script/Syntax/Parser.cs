@@ -98,7 +98,7 @@ internal sealed partial class Parser
 
     public CompicationUnit ParseProgram()
     {
-        int address = 0;
+        int address = 1;
 
         var unit = new Stack<List<Statement>>();
         unit.Push([]);
@@ -138,7 +138,7 @@ internal sealed partial class Parser
                     }
 
                     // Parse the tokens directly
-                    st = ParseStatement() ?? throw new ParseException("格式错误");
+                    st = ParseStatement();
 
                     // Set the comment if there was one
                     if (lastToken.Type == TokenType.COMMENT)
@@ -166,7 +166,7 @@ internal sealed partial class Parser
                 {
                     if (st is FuncStmt fst)
                     {
-                        if (unit.Count > 1) throw new ParseException("函数必须在顶层定义");
+                        if (unit.Count > 1) throw new ParseException("函数必须在顶层定义", address);
                     }
                     startblock();
                 }
@@ -237,13 +237,9 @@ internal sealed partial class Parser
                 result.Add(st);
                 address += 1;
             }
-            catch (OverflowException)
+            catch(ParseException pe)
             {
-                throw new Exception("数值溢出");
-            }
-            catch (ParseException ex)
-            {
-                ex.Index = address;
+
                 throw;
             }
             catch (Exception e)

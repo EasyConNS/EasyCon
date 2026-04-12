@@ -114,7 +114,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     }
     catch(ParseException ex)
     {
-        outdap.Error($"!!编译失败!!{ex.Message}: 行{ex.Index + 1}");
+        outdap.Error($"!!编译失败!!{ex.Message}: 行{ex.Index}");
         return;
     }
 
@@ -184,8 +184,8 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     }
     catch (Exception exx)
     {
-        Console.WriteLine();
-        Console.WriteLine(exx.StackTrace);
+        Console.Error.WriteLine();
+        Console.Error.WriteLine(exx.StackTrace);
         outdap.Error($"!!意外错误!!{exx.Message}");
     }
 });
@@ -250,9 +250,9 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
             Console.Write(formatted);
         }
     }
-    catch (Exception ex)
+    catch (ParseException ex)
     {
-        Console.WriteLine($"格式化失败: {ex.Message}");
+        Console.Error.WriteLine($"line {ex.Index}: {ex.Message}");
         return 1;
     }
     return 0;

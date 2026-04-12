@@ -50,7 +50,7 @@ internal partial class Parser
         // Handle key statements
         var fullline = Current.Text.Lines[Current.Line - 1].Text;
         fullline = fullline.Contains('#') ? fullline[..fullline.IndexOf('#')] : fullline;
-        return ParseKey(fullline.Trim());
+        return ParseKey(fullline.Trim()) ?? ParseNamedExpression();
     }
 
     #region Statement Parsers
@@ -80,7 +80,7 @@ internal partial class Parser
     {
         var destok = Advance();
         var des = (VariableExpr)Formatter.GetValueEx(destok);
-        var op = Match(t=>t == TokenType.ASSIGN || t.OperatorIsAug());
+        var op = Match(t => t == TokenType.ASSIGN || t.OperatorIsAug());
         var eexp = ParseExpression();
         MatchEOF();
         return new AssignmentStmt(destok, des, op, eexp);
@@ -137,18 +137,18 @@ internal partial class Parser
 
     private Statement ParseLoopCtrl()
     {
-        if(Check(TokenType.BREAK))
+        if (Check(TokenType.BREAK))
         {
             var berk = Match(TokenType.BREAK);
             if (CursorEOF) return new Break(berk);
             var levelT = Match(TokenType.INT);
             MatchEOF();
-            if (!uint.TryParse(levelT.Value, out var level))_diagnostics.ReportInvalidNumber(levelT.Location, levelT.Value);
+            if (!uint.TryParse(levelT.Value, out var level)) _diagnostics.ReportInvalidNumber(levelT.Location, levelT.Value);
             return new Break(berk, level);
         }
         else
         {
-            var contT=Match(TokenType.CONTINUE);
+            var contT = Match(TokenType.CONTINUE);
             MatchEOF();
             return new Continue(contT);
         }
@@ -221,7 +221,7 @@ internal partial class Parser
             case "call":
                 var fnname = Match(TokenType.IDENT);
                 MatchEOF();
-                return  new CallStmt(first, fnname.Value, []);
+                return new CallStmt(first, fnname.Value, []);
 #if DEBUG
             case "sprint":
             case "smem":
@@ -231,15 +231,15 @@ internal partial class Parser
                 return new SerialPrint(uint.Parse(Peek(1).Value), ism);
 #endif
             default:
-                if(!SyntaxTree.LegacyCompat && CursorEOF)
+                if (CursorEOF)
                 {
                     _diagnostics.ReportInvalidExpressionStatement(first.Location);
                 }
                 var args = ParseArguments();
                 if (SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    if(Check(TokenType.BitAnd))Advance();
-                    if(Peek(_grouptokens.Length - 1).Type == TokenType.BitAnd)
+                    if (Check(TokenType.BitAnd)) Advance();
+                    if (Peek(_grouptokens.Length - 1).Type == TokenType.BitAnd)
                         // Shrink print expression exclude last & token
                         _end--;
                 }

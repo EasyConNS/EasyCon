@@ -36,9 +36,11 @@ const imgLabelWatchers = new Map();
 const funcNameCache = new Map();
 let imgLabelStatusBarItem = null;
 let outputChannel = vscode.window.createOutputChannel('EasyCon');
+const diagnosticCollection = vscode.languages.createDiagnosticCollection('easycon-script');
 
 function activate(context) {
     context.subscriptions.push(outputChannel);
+    context.subscriptions.push(diagnosticCollection); // 确保插件关闭时自动清理
     outputChannel.appendLine('EasyCon Script extension is now active!');
 
     initImgLabelCompletions();
@@ -462,16 +464,23 @@ function formatDocument(document) {
     
     const ezcon = getEzconPath();
     const cmd = `"${ezcon}" format "${filePath}"`;
-    
+
     exec(cmd, { cwd: path.dirname(filePath) }, (error, stdout, stderr) => {
+        // 每次开始前先清空旧的报错
+        diagnosticCollection.delete(document.uri);
         if (error) {
-            outputChannel.appendLine(`格式化失败: ${error.message}`);
+            const errorText = stderr || error.message;
+            outputChannel.appendLine(`检测到错误: ${errorText}`);
+            
+            // 调用上面写的解析函数，将错误推送到 Problems 面板
+            updateDiagnostics(document, errorText);
             return;
-        }
-        const formattedContent = stdout.trim();
-        if (!formattedContent) {
-            outputChannel.appendLine('格式化结果为空');
-            return;
+        }else{
+            const formattedContent = stdout.trim();
+            if (!formattedContent) {
+                outputChannel.appendLine('格式化结果为空');
+                return;
+            }
         }
         vscode.workspace.openTextDocument(document.uri).then(doc => {
             const edit = new vscode.WorkspaceEdit();
@@ -491,8 +500,14 @@ function runFormatCommand(filePath) {
         const cmd = `"${ezcon}" format "${filePath}"`;
         
         exec(cmd, { cwd: path.dirname(filePath) }, (error, stdout, stderr) => {
+            // 每次开始前先清空旧的报错
+            diagnosticCollection.delete(document.uri);
             if (error) {
-                outputChannel.appendLine(`格式化失败: ${error.message}`);
+                const errorText = stderr || error.message;
+                outputChannel.appendLine(`检测到错误: ${errorText}`);
+                
+                // 调用上面写的解析函数，将错误推送到 Problems 面板
+                updateDiagnostics(document, errorText);
                 reject(error);
                 return;
             }
@@ -505,6 +520,31 @@ function runFormatCommand(filePath) {
             resolve(formattedContent);
         });
     });
+}
+
+function updateDiagnostics(document, errorOutput) {
+    const diagnostics = [];
+    
+    // 假设报错格式为: Error at line (数字): (错误信息)
+    // 你需要根据 ezcon 实际的报错文本修改这个正则表达式
+    const errorRegex = /line\s+(\d+):\s+(.*)/gi; 
+    let match;
+
+    while ((match = errorRegex.exec(errorOutput)) !== null) {
+        const line = parseInt(match[1]) - 1; // VS Code 行号从 0 开始
+        const message = match[2];
+        
+        const range = new vscode.Range(line, 0, line, 100); // 选中整行
+        const diagnostic = new vscode.Diagnostic(
+            range,
+            message,
+            vscode.DiagnosticSeverity.Error
+        );
+        diagnostics.push(diagnostic);
+    }
+
+    // 将诊断信息关联到当前文档
+    diagnosticCollection.set(document.uri, diagnostics);
 }
 
 function deactivate() {

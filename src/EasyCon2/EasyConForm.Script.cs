@@ -39,7 +39,7 @@ partial class EasyConForm
         catch (ParseException ex)
         {
             ScriptSelectLine(ex.Index);
-            MessageBox.Show($"{ex.Message}: 行{ex.Index + 1}");
+            MessageBox.Show($"{ex.Message}: 行{ex.Index}");
             return false;
         }
         finally

@@ -32,7 +32,7 @@ static class Formatter
             case TokenType.EX_VAR:
                 return GetExtVar(tok.Value);
             default:
-                throw new FormatException($"token类型不正确：{tok.Type}");
+                throw new FormatException($"表达式类型不正确：{tok.Type}");
         }
     }
 

@@ -38,7 +38,7 @@ internal sealed class Binder
         if (binder.Diagnostics.Any())
         {
             var dig = binder.Diagnostics.First();
-            throw new ParseException(dig.Message, dig.Location.StartLine);
+            throw new ParseException(dig.Message, dig.Location.StartLine+1);
         }
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
