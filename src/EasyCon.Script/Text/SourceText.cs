@@ -1,4 +1,6 @@
+using System.Collections;
 using System.Collections.Immutable;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace EasyCon.Script.Text;
 
@@ -30,22 +32,52 @@ public sealed class SourceText
     {
         var result = ImmutableArray.CreateBuilder<TextLine>();
 
+        var position = 0;
         var lineStart = 0;
-        
-        var lines = text.Split(Environment.NewLine);
-        foreach (var line in lines)
+
+        while (position < text.Length)
         {
-            int linecount = 0;
-            var curline = line.Trim();
-            AddLine(result, sourceText, curline, linecount++, lineStart);
-            lineStart += line.Length;
+            var lineBreakWidth = GetLineBreakWidth(text, position);
+
+            if (lineBreakWidth == 0)
+            {
+                position++;
+            }
+            else
+            {
+                AddLine(result, sourceText, position, lineStart, lineBreakWidth);
+
+                position += lineBreakWidth;
+                lineStart = position;
+            }
         }
+
+        if (position >= lineStart)
+            AddLine(result, sourceText, position, lineStart, 0);
+
         return result.ToImmutable();
     }
-    private static void AddLine(ImmutableArray<TextLine>.Builder result, SourceText sourceText, string text, int index, int start)
+
+    private static void AddLine(ImmutableArray<TextLine>.Builder result, SourceText sourceText, int position, int lineStart, int lineBreakWidth)
     {
-        var line = new TextLine {Text = text, Start = start};
+        var lineLength = position - lineStart;
+        var lineLengthIncludingLineBreak = lineLength + lineBreakWidth;
+        var line = new TextLine { SrcText = sourceText, Start = lineStart,Length= lineLength, LengthIncludingLineBreak = lineLengthIncludingLineBreak };
         result.Add(line);
+    }
+
+    private static int GetLineBreakWidth(string text, int position)
+    {
+        var c = text[position];
+        var l = position + 1 >= text.Length ? '\0' : text[position + 1];
+
+        if (c == '\r' && l == '\n')
+            return 2;
+
+        if (c == '\r' || c == '\n')
+            return 1;
+
+        return 0;
     }
 
     public int GetLineIndex(int position)

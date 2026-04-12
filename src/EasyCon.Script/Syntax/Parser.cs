@@ -139,7 +139,6 @@ internal sealed partial class Parser
                 // Parse the tokens directly
                 try
                 {
-
                     st = ParseStatement();
                 }catch(FormatException e)
                 {
@@ -219,23 +218,11 @@ internal sealed partial class Parser
 
                 st = result.First() switch
                 {
-                    IfStmt ifstart => new IfBlock(ifstart, [.. body.Skip(1)], comend)
-                    {
-                        Address = ifstart.Address
-                    },
-                    ForStmt forstart => new ForBlock(forstart, [.. body.Skip(1)], comend)
-                    {
-                        Address = forstart.Address
-                    },
-                    WhileStmt whilecond => new WhileBlock(whilecond, [.. body.Skip(1)], comend)
-                    {
-                        Address = whilecond.Address
-                    },
-                    FuncStmt funcdef => new FuncDeclBlock(funcdef, [.. body.Skip(1)], comend)
-                    {
-                        Address = funcdef.Address
-                    },
-                    _ => throw new ParseException("语句块格式不正确", address),
+                    IfStmt ifstart => new IfBlock(ifstart, [.. body.Skip(1)], comend) { Address = ifstart.Address },
+                    ForStmt forstart => new ForBlock(forstart, [.. body.Skip(1)], comend) { Address = forstart.Address },
+                    WhileStmt w => new WhileBlock(w, [.. body.Skip(1)], comend) { Address = w.Address },
+                    FuncStmt funcdef => new FuncDeclBlock(funcdef, [.. body.Skip(1)], comend) { Address = funcdef.Address },
+                    _ => st // 保持原样
                 };
                 result = unit.Peek();
             }

@@ -34,7 +34,7 @@ internal sealed class Binder
         var parentScope = CreateRootScope();
         parentScope.SetValidExternalVariables(externalVariables ?? []);
         var binder = new Binder(parentScope, function: null);
-        if (syntaxs.Diagnostics.Any())
+        if (syntaxs.Diagnostics.HasErrors())
         {
             var dig = syntaxs.Diagnostics.First();
             throw new ParseException(dig.Message, dig.Location.StartLine+1);
@@ -88,7 +88,7 @@ internal sealed class Binder
             binder.Diagnostics.AddRange(binderFn.Diagnostics);
         }
 
-        if (binder.Diagnostics.Any())
+        if (binder.Diagnostics.HasErrors())
         {
             var dig = binder.Diagnostics.First();
             throw new ParseException(dig.Message, dig.Location.StartLine + 1);

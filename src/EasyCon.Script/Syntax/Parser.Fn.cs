@@ -41,16 +41,21 @@ internal partial class Parser
             case TokenType.END when _grouptokens.Length == 1:
                 return new EndBlockStmt(Current);
             case TokenType.INT when _grouptokens.Length == 1:
-                if (int.TryParse(Current.Value, out int duration)) return new Wait(Current, duration, true);
-                break;
+                //if (int.TryParse(Current.Value, out int duration)) 
+                var ok = int.TryParse(Current.Value, out var duration);
+                if (!ok) _diagnostics.ReportInvalidNumber(Current.Location, Current.Value);
+                return new Wait(Current, duration, true);
+            case TokenType.ButtonKeyword or TokenType.StickKeyword:
+                {
+                    // var fullline = Current.Text.Lines[Current.Line - 1].Text;
+                    // fullline = fullline.Contains('#') ? fullline[..fullline.IndexOf('#')] : fullline;
+                    // return ParseKey(fullline.Trim());
+                    return ParsePadButtonStatement();
+                }
             case TokenType.IDENT:
+            default:
                 return ParseNamedExpression();
         }
-
-        // Handle key statements
-        var fullline = Current.Text.Lines[Current.Line - 1].Text;
-        fullline = fullline.Contains('#') ? fullline[..fullline.IndexOf('#')] : fullline;
-        return ParseKey(fullline.Trim()) ?? ParseNamedExpression();
     }
 
     #region Statement Parsers
@@ -156,10 +161,65 @@ internal partial class Parser
 
     /// <summary>
     /// 解析手柄按键语句
-    // 键位(+键位) [持续时间(ms)|DOWN|UP]
+    // 键位码 [持续时间(ms)|DOWN|UP]
     // LS|RS 方向|角度 [, 持续时间(ms)]
     // LS|RS RESET
     /// </summary>
+private Statement ParsePadButtonStatement()
+    {
+        var firstKey = Advance();
+
+        if (firstKey.Type == TokenType.StickKeyword)
+        {
+            switch (Current.Type)
+            {
+                case TokenType.INT:
+                case TokenType.DirKeyword:
+                    var state = Advance();
+
+                    if (Check(TokenType.COMMA))
+                    {
+                        Advance();
+                        var duration = Match(type => type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR);
+                        MatchEOF();
+                        var value = int.Parse(duration.Value);
+                        return new StickPress(firstKey.Value, state.Value, Formatter.GetValueEx(duration));
+                    }
+                    else
+                    {
+                        MatchEOF();
+                        return new StickAct(firstKey.Value, state.Value);
+                    }
+                case TokenType.ResetKeyword:
+                    Advance();
+                    MatchEOF();
+                    return new StickAct(firstKey.Value, "RESET");
+            }
+        }
+        else
+        {
+            if (CursorEOF)
+            {
+                return new KeyPress(firstKey.Value);
+            }
+            else if (Check(TokenType.INT) || Check(TokenType.CONST) || Check(TokenType.VAR))
+            {
+                var state = Advance();
+                MatchEOF();
+                var value = int.Parse(state.Value);
+                return new KeyPress(firstKey.Value, value);
+            }
+            else
+            {
+                var state = Match(TokenType.ButtonKeyword);
+                MatchEOF();
+                var isUp = state.Value.Equals("UP", StringComparison.CurrentCultureIgnoreCase);
+                return new KeyAct(firstKey.Value, isUp);
+            }
+        }
+        _diagnostics.ReportInvalidKeyActionStatement(firstKey.Location, firstKey);
+        return new KeyAct(firstKey.Value);
+    }
     const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN|DOWNLEFT|DOWNRIGHT|UPLEFT|UPRIGHT";
     private Statement? ParseKey(string text)
     {
@@ -286,7 +346,11 @@ internal partial class Parser
         switch (Current.Type)
         {
             case TokenType.STRING:
+                var tokstr = Advance();
+                return new LiteralExpr(tokstr.Value);
             case TokenType.CONST:
+                var tokenct = Advance();
+                return new ConstVarExpr(tokenct.Value);
             case TokenType.VAR:
             case TokenType.EX_VAR:
                 var token = Advance();
@@ -306,9 +370,10 @@ internal partial class Parser
                 return ParseCallExpression();
             case TokenType.INT:
             default:
-                var toknum = Match(TokenType.INT);
-                _ = int.TryParse(toknum.Value, out _);
-                return Formatter.GetValueEx(toknum);
+                var toknum = Advance();
+                var ok = int.TryParse(toknum.Value, out var intval);
+                if (!ok) _diagnostics.ReportInvalidNumber(toknum.Location, toknum.Value);
+                return new LiteralExpr(intval);
         }
     }
 
@@ -350,9 +415,10 @@ internal partial class Parser
         // [expr]
         if (Check(TokenType.RightBracket))
         {
-            var rb = Match(TokenType.RightBracket, "语法需要']'");
+            var rb = Advance();
             return new IndexVisitExpression((VariableExpr)Formatter.GetValueEx(variableToken), lb, start, rb);
         }
+        // [start:end]
         Match(TokenType.COLON, "语法不正确[<start>:<end>]");
 
         var end = Check(TokenType.RightBracket) ? new LiteralExpr("") : ParsePrimary();
