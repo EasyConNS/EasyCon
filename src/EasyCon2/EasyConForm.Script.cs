@@ -29,7 +29,8 @@ partial class EasyConForm
             {
                 using var ss = BitmapConverter.ToMat(captureVideo.GetImage());
                 il.Search(ss, out var md);
-                return (int)md;
+                // 小数向上取整避免出现95.4>95为false的情况
+                return (int)Math.Ceiling(md);
             }));
             _program.Parse(textEditor.Text, textEditor.Document.FileName, externalGetters);
 

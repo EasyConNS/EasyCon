@@ -2,7 +2,7 @@
   "name": "vscode-ecs",
   "displayName": "EasyCon for VS Code",
   "description": "EasyCon伊机控vscode插件，纯AI打造",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "easycon",
   "icon": "images/favicon.ico",
   "repository": {
