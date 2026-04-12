@@ -75,12 +75,13 @@ internal sealed partial class Parser
         {
             return Advance();
         }
-        throw new Exception($"{message} 意外的 词元 <{Current.Value}>");
+        _diagnostics.ReportUnexpectedToken(Current.Location, Current, TokenType.ASSIGN);
+        return new(_text, TokenType.BadToken, "", Current.Line, Current.Span.Start);
     }
 
     private void MatchEOF()
     {
-        if (!CursorEOF) throw new Exception($"期望结束但多余的<{Current.Value}>");
+        if (!CursorEOF) _diagnostics.ReportInvalidEOF(Current.Location, Current);
     }
 
     /// <summary>

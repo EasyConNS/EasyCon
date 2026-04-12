@@ -6,7 +6,7 @@ namespace EasyCon.Script.Syntax;
 
 internal partial class Parser
 {
-    private Statement? ParseStatement()
+    private Statement ParseStatement()
     {
         switch (Current.Type)
         {
@@ -55,7 +55,7 @@ internal partial class Parser
 
     #region Statement Parsers
 
-    private ConstantDeclStmt? ParseConstantDecl()
+    private ConstantDeclStmt ParseConstantDecl()
     {
         var constvar = Advance();
         var des = (VariableExpr)Formatter.GetValueEx(constvar);
@@ -65,7 +65,7 @@ internal partial class Parser
         return new ConstantDeclStmt(constvar, des, op, eexp);
     }
 
-    private ImportStmt? ParseImport()
+    private ImportStmt ParseImport()
     {
         var keyword = Match(TokenType.IMPORT);
         var mod = Match(TokenType.STRING);
@@ -76,7 +76,7 @@ internal partial class Parser
         return new ImportStmt(keyword, mod, Path.Combine(_filePath, LibPath));
     }
 
-    private AssignmentStmt? ParseAssignment()
+    private AssignmentStmt ParseAssignment()
     {
         var destok = Advance();
         var des = (VariableExpr)Formatter.GetValueEx(destok);
@@ -86,7 +86,7 @@ internal partial class Parser
         return new AssignmentStmt(destok, des, op, eexp);
     }
 
-    private ReturnStmt? ParseReturn()
+    private ReturnStmt ParseReturn()
     {
         var returnTok = Match(TokenType.RETURN);
         var eexp = CursorEOF ? null : ParseExpression();
@@ -94,7 +94,7 @@ internal partial class Parser
         return new ReturnStmt(returnTok, eexp);
     }
 
-    private Statement? ParseIfelse()
+    private Statement ParseIfelse()
     {
         var iftok = Advance();
         var expr = ParseExpression();
@@ -102,72 +102,56 @@ internal partial class Parser
         return iftok.Type switch
         {
             TokenType.IF => new IfStmt(iftok, expr),
-            TokenType.ELIF => new ElseIf(iftok, expr),
-            _ => null,
+            _ => new ElseIf(iftok, expr),
         };
     }
 
-    private static bool CheckPrimary(TokenType type)
+    private Statement ParseFor()
     {
-        return type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR;
+        var forToken = Advance();
+        if (CursorEOF) // for next
+        {
+            return new For_Infinite(forToken);
+        }
+        var loopc = Match(type => type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR);
+        if (CursorEOF) // for count next
+        {
+            return new For_Static(forToken, Formatter.GetValueEx(loopc));
+        }
+        if (loopc.Type != TokenType.VAR)
+            _diagnostics.ReportUnexpectedToken(loopc.Location, loopc, TokenType.VAR);
+        Match(TokenType.ASSIGN);
+        var lower = Match(type => type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR);
+        Match(TokenType.TO);
+        var upper = Match(type => type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR);
+        return new For_Full(forToken, (VariableExpr)Formatter.GetValueEx(loopc), Formatter.GetValueEx(lower), Formatter.GetValueEx(upper));
     }
 
-    private Statement? ParseFor()
+    private WhileStmt ParseWhile()
     {
-        if (_grouptokens.Length == 1)
-        {
-            return new For_Infinite(Current);
-        }
-        if (_grouptokens.Length == 2 && CheckPrimary(Peek(1).Type))
-        {
-            return new For_Static(Current, Formatter.GetValueEx(Peek(1)));
-        }
-        if (_grouptokens.Length == 6)
-        {
-            if (Peek(1).Type == TokenType.VAR && Peek(2).Type == TokenType.ASSIGN
-            && CheckPrimary(Peek(3).Type)
-            && Peek(4).Type == TokenType.TO
-            && CheckPrimary(Peek(5).Type))
-            {
-                return new For_Full(Current, (VariableExpr)Formatter.GetValueEx(Peek(1)), Formatter.GetValueEx(Peek(3)), Formatter.GetValueEx(Peek(5)));
-            }
-        }
-        return null;
-    }
-
-    private WhileStmt? ParseWhile()
-    {
-        if (_grouptokens.Length < 2) return null;
         var start = Advance();
         var expr = ParseExpression();
         MatchEOF();
         return new WhileStmt(start, expr);
     }
 
-    private Statement? ParseLoopCtrl()
+    private Statement ParseLoopCtrl()
     {
-        if (_grouptokens.Length > 2) return null;
-        switch (Current.Type)
+        if(Check(TokenType.BREAK))
         {
-            case TokenType.BREAK:
-                if (_grouptokens.Length == 2 && Peek(1).Type == TokenType.INT)
-                {
-                    if (!uint.TryParse(Peek(1).Value, out var level)) return null;
-                    return new Break(Current, level);
-                }
-                else if (_grouptokens.Length == 1)
-                {
-                    return new Break(Current);
-                }
-                break;
-            case TokenType.CONTINUE:
-                if (_grouptokens.Length == 1)
-                {
-                    return new Continue(Current);
-                }
-                break;
+            var berk = Match(TokenType.BREAK);
+            if (CursorEOF) return new Break(berk);
+            var levelT = Match(TokenType.INT);
+            MatchEOF();
+            if (!uint.TryParse(levelT.Value, out var level))_diagnostics.ReportInvalidNumber(levelT.Location, levelT.Value);
+            return new Break(berk, level);
         }
-        return null;
+        else
+        {
+            var contT=Match(TokenType.CONTINUE);
+            MatchEOF();
+            return new Continue(contT);
+        }
     }
 
     /// <summary>
@@ -191,8 +175,7 @@ internal partial class Parser
             return m.Groups[2].Value.ToUpper() switch
             {
                 "UP" => new KeyAct(m.Groups[1].Value, true),
-                "DOWN" => new KeyAct(m.Groups[1].Value),
-                _ => null,
+                _ => new KeyAct(m.Groups[1].Value),
             };
         }
 
@@ -226,53 +209,43 @@ internal partial class Parser
         return null;
     }
 
-    private Statement? ParseNamedExpression()
+    private Statement ParseNamedExpression()
     {
-        var first = Current;
+        var first = Advance();
         switch (first.Value.ToLower())
         {
             case "wait":
-                if (_grouptokens.Length != 2) return null;
-                if (CheckPrimary(Peek(1).Type))
-                {
-                    return new Wait(first, Formatter.GetValueEx(Peek(1)));
-                }
-                break;
+                var durat = Match(type => type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR);
+                MatchEOF();
+                return new Wait(first, Formatter.GetValueEx(durat));
             case "call":
-                if (_grouptokens.Length != 2) return null;
-                Advance();
                 var fnname = Match(TokenType.IDENT);
-                return  new CallStmt(first, Peek(1).Value, []);
+                MatchEOF();
+                return  new CallStmt(first, fnname.Value, []);
 #if DEBUG
             case "sprint":
             case "smem":
-                if (_grouptokens.Length != 2) return null;
-                if (Peek(1).Type == TokenType.INT)
-                {
-                    var ism = first.Value.Equals("smem", StringComparison.CurrentCultureIgnoreCase);
-                    return new SerialPrint(uint.Parse(Peek(1).Value), ism);
-                }
-                break;
+                var idxreg = Match(TokenType.INT);
+                MatchEOF();
+                var ism = first.Value.Equals("smem", StringComparison.CurrentCultureIgnoreCase);
+                return new SerialPrint(uint.Parse(Peek(1).Value), ism);
 #endif
             default:
-                Advance();
-                if(SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
+                if(!SyntaxTree.LegacyCompat && CursorEOF)
+                {
+                    _diagnostics.ReportInvalidExpressionStatement(first.Location);
+                }
+                var args = ParseArguments();
+                if (SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
                 {
                     if(Check(TokenType.BitAnd))Advance();
                     if(Peek(_grouptokens.Length - 1).Type == TokenType.BitAnd)
                         // Shrink print expression exclude last & token
                         _end--;
                 }
-                var args = ParseArguments();
-                if (args.Length == 0)
-                {
-                    if(!(SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase)))
-                        return null;
-                }
                 MatchEOF();
                 return new CallStmt(first, first.Value, [.. args], CallType.CallStmtWithArgs);
         }
-        return null;
     }
 
     #endregion
@@ -406,7 +379,7 @@ internal partial class Parser
 
     #region Function Declaration Parsers
 
-    private FuncStmt? ParseFuncDecl()
+    private FuncStmt ParseFuncDecl()
     {
         var functionToken = Advance();
         var functionName = Match(TokenType.IDENT, "函数声明需要函数名");

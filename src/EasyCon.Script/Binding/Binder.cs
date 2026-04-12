@@ -442,8 +442,9 @@ internal sealed class Binder
     private BoundGotoStatement BindBreakStatement(Break syntax)
     {
         var level = (int)syntax.Level;
-        if(level > 3)throw new ParseException("循环层数过多，请优化脚本", syntax.Address);
-        if (_loopStack.Count < level)throw new ParseException("循环层数不足", syntax.Address);
+        if(level > 2)throw new ParseException("循环层数过多，请优化脚本", syntax.Address);
+        if (_loopStack.Count < level)
+            _diagnostics.ReportInvalidBreakOrContinue(syntax.Syntax.Location, syntax.Syntax);
 
         var breakLabel = _loopStack.ElementAt(level - 1).BreakLabel;
         // var breakLabel = _loopStack.Peek().BreakLabel;
@@ -454,7 +455,7 @@ internal sealed class Binder
     {
         if (_loopStack.Count == 0)
         {
-            throw new ParseException("循环层数不足", syntax.Address);
+            _diagnostics.ReportInvalidBreakOrContinue(syntax.Syntax.Location, syntax.Syntax);
         }
 
         var continueLabel = _loopStack.Peek().ContinueLabel;

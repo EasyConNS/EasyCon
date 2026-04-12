@@ -45,7 +45,6 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     {
         var message = $"需要<{expectedKind}>但是意外的<{actual.Value}>";
         ReportError(location, message);
-        throw new Exception($"需要<{expectedKind}>但是意外的<{actual.Value}>");
     }
 
     public void ReportInvalidImport(TextLocation location, Token modToken)
@@ -64,5 +63,16 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     {
         var message = $"按键语法不正确 <{actual}>";
         ReportError(location, message);
+    }
+    public void ReportInvalidEOF(TextLocation location, Token actual)
+    {
+        var message = $"期望结束但多余的<{actual.Value}>";
+        ReportError(location, message);
+    }
+    public void ReportInvalidBreakOrContinue(TextLocation location, Token keyword)
+    {
+        var message = $"跳出语句 <{keyword.Value}> 只能在循环中使用";
+        ReportError(location, message);
+        throw new Exception(message);
     }
 }
