@@ -42,6 +42,11 @@ public sealed class SyntaxTree
     {
         var parser = new Parser(syntaxTree);
         root = parser.ParseProgram();
+        if (parser.Diagnostics.HasErrors())
+        {
+            var dig = parser.Diagnostics.First();
+            throw new ParseException(dig.Message, dig.Location.StartLine);
+        }
         fullSyntax = parser.Flatten(root);
         diagnostics = [.. parser.Diagnostics];
     }

@@ -21,7 +21,7 @@ internal sealed partial class Parser
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
-    string _filePath => Path.GetDirectoryName(Path.GetFullPath(_text.FileName)) ?? "";
+    string _filePath => _text.FileName == null ? Path.GetDirectoryName(Path.GetFullPath(_text.FileName ?? "")) ?? "" : "";
     const string LibPath = "lib/";
 
     #region Token Cursor
@@ -61,7 +61,24 @@ internal sealed partial class Parser
         {
             return Advance();
         }
-        throw new Exception($"{message} 需要<{type}>但是意外的<{Current.Value}>");
+        _diagnostics.ReportUnexpectedToken(Current.Location, Current, type);
+        return new(_text, TokenType.BadToken, "", Current.Line, Current.Span.Start);
+    }
+
+    private delegate bool matchHandler(TokenType type);
+
+    private Token Match(matchHandler handle, string message = "")
+    {
+        if (handle(Current.Type))
+        {
+            return Advance();
+        }
+        throw new Exception($"{message} 意外的 词元 <{Current.Value}>");
+    }
+
+    private void MatchEOF()
+    {
+        if (!CursorEOF) throw new Exception($"期望结束但多余的<{Current.Value}>");
     }
 
     /// <summary>
@@ -95,7 +112,7 @@ internal sealed partial class Parser
             try
             {
                 Statement? st = null;
-                if (_grouptokens.Length == 0) 
+                if (_grouptokens.Length == 0)
                     st = new EmptyStmt();
                 // If there's only one token and it's a comment, create a CommentStmt
                 else if (_grouptokens.Length == 1 && Current.Type == TokenType.COMMENT)
@@ -297,7 +314,7 @@ public static class TokExt
 {
     public static string STRTrimQ(this Token tok)
     {
-        if(tok.Type != TokenType.STRING) return tok.ToString();
+        if (tok.Type != TokenType.STRING) return tok.ToString();
 
         var val = tok.Value;
         if (val.Length >= 2 && val[0] == val[^1])

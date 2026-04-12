@@ -35,6 +35,11 @@ internal sealed class Binder
         parentScope.SetValidExternalVariables(externalVariables ?? []);
         var binder = new Binder(parentScope, function: null);
         binder.Diagnostics.AddRange(syntaxs.Diagnostics);
+        if (binder.Diagnostics.Any())
+        {
+            var dig = binder.Diagnostics.First();
+            throw new ParseException(dig.Message, dig.Location.StartLine);
+        }
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
 

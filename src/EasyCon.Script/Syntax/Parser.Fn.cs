@@ -61,31 +61,28 @@ internal partial class Parser
         var des = (VariableExpr)Formatter.GetValueEx(constvar);
         var op = Match(TokenType.ASSIGN);
         var eexp = ParseExpression();
-        if (!CursorEOF) return null;
+        MatchEOF();
         return new ConstantDeclStmt(constvar, des, op, eexp);
     }
 
     private ImportStmt? ParseImport()
     {
+        var keyword = Match(TokenType.IMPORT);
         var mod = Match(TokenType.STRING);
-        if (!CursorEOF) return null;
+        MatchEOF();
         var libSrc = Path.GetFullPath(Path.Combine(_filePath, LibPath, mod.STRTrimQ()));
-        if (!libSrc.StartsWith(_filePath, StringComparison.OrdinalIgnoreCase)) throw new Exception($"库文件路径非法");
-        if (!File.Exists(libSrc)) throw new Exception($"文件不存在:{libSrc}");
-        return new ImportStmt(Current, Peek(1), Path.Combine(_filePath, LibPath));
+        if (!libSrc.StartsWith(_filePath, StringComparison.OrdinalIgnoreCase) && !File.Exists(libSrc))
+            _diagnostics.ReportInvalidImport(mod.Location, mod);
+        return new ImportStmt(keyword, mod, Path.Combine(_filePath, LibPath));
     }
 
     private AssignmentStmt? ParseAssignment()
     {
         var destok = Advance();
         var des = (VariableExpr)Formatter.GetValueEx(destok);
-        if(!Check(TokenType.ASSIGN) && !Current.Type.OperatorIsAug())
-        {
-            Match(TokenType.ASSIGN);
-        }
-        var op = Advance();
+        var op = Match(t=>t == TokenType.ASSIGN || t.OperatorIsAug());
         var eexp = ParseExpression();
-        if (!CursorEOF) return null;
+        MatchEOF();
         return new AssignmentStmt(destok, des, op, eexp);
     }
 
@@ -93,7 +90,7 @@ internal partial class Parser
     {
         var returnTok = Match(TokenType.RETURN);
         var eexp = CursorEOF ? null : ParseExpression();
-        if (!CursorEOF) return null;
+        MatchEOF();
         return new ReturnStmt(returnTok, eexp);
     }
 
@@ -101,7 +98,7 @@ internal partial class Parser
     {
         var iftok = Advance();
         var expr = ParseExpression();
-        if (!CursorEOF) return null;
+        MatchEOF();
         return iftok.Type switch
         {
             TokenType.IF => new IfStmt(iftok, expr),
@@ -143,7 +140,7 @@ internal partial class Parser
         if (_grouptokens.Length < 2) return null;
         var start = Advance();
         var expr = ParseExpression();
-        if (!CursorEOF) return null;
+        MatchEOF();
         return new WhileStmt(start, expr);
     }
 
@@ -272,7 +269,7 @@ internal partial class Parser
                     if(!(SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase)))
                         return null;
                 }
-                if (!CursorEOF) return null;
+                MatchEOF();
                 return new CallStmt(first, first.Value, [.. args], CallType.CallStmtWithArgs);
         }
         return null;
@@ -356,7 +353,6 @@ internal partial class Parser
     {
         var lb = Match(TokenType.LeftBracket, "语法需要'['");
         var items = ImmutableArray.CreateBuilder<ExprBase>();
-
         var parseNext = true;
         while (parseNext && !Check(TokenType.RightBracket) && !CursorEOF)
         {
@@ -366,9 +362,8 @@ internal partial class Parser
             else
                 parseNext = false;
         }
-        if (items.Count == 0) throw new Exception("索引定义语法错误");
-
         var rb = Match(TokenType.RightBracket, "语法需要']'");
+        if (items.Count == 0) _diagnostics.ReportInvalidExpressionStatement(rb.Location);
         return new IndexDefExpression(lb, [.. items], rb);
     }
 
@@ -420,14 +415,14 @@ internal partial class Parser
         var parameters = ImmutableArray<ParameterSyntax>.Empty;
         if (Check(TokenType.LeftParen))
         {
-            Match(TokenType.LeftParen, "函数声明缺少左括号");
+            Match(TokenType.LeftParen);
             hasPar = true;
             parameters = ParseParameterList();
             Match(TokenType.RightParen, "函数声明缺少右括号");
         }
         var typeClause = ParseOptionalTypeClause();
 
-        if (!CursorEOF) throw new Exception("函数声明语法错误");
+        MatchEOF();
         return new FuncStmt(functionName, parameters, hasPar, typeClause);
     }
 
