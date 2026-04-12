@@ -17,6 +17,12 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         _diagnostics.AddRange(diagnostics);
     }
 
+    private void ReportWarnning(TextLocation location, string message)
+    {
+        var diagnostic = Diagnostic.Warning(location, message);
+        _diagnostics.Add(diagnostic);
+    }
+
     private void ReportError(TextLocation location, string message)
     {
         var diagnostic = Diagnostic.Error(location, message);
@@ -69,10 +75,35 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         var message = $"期望结束但多余的<{actual.Value}>";
         ReportError(location, message);
     }
+
+    public void ReportTooMuchLoop(TextLocation location)
+    {
+        ReportWarnning(location, "循环层数过多，请优化脚本");
+    }
+
     public void ReportInvalidBreakOrContinue(TextLocation location, Token keyword)
     {
         var message = $"跳出语句 <{keyword.Value}> 只能在循环中使用";
         ReportError(location, message);
-        throw new Exception(message);
+    }
+
+    public void ReportBadStruct(TextLocation location, string message)
+    {
+        ReportError(location, message);
+    }
+
+    public void ReportOnlyOneFileCanHaveGlobalStatements(TextLocation location)
+    {
+        ReportError(location, "脚本主语句只能存在一个文件中");
+    }
+
+    public void ReportAllPathsMustReturn(TextLocation location)
+    {
+        ReportError(location, "函数所有路径必须有返回值");
+    }
+
+    public void ReportParameterAlreadyDeclared(TextLocation location, string paramName)
+    {
+        ReportError(location, $"重复定义的参数名: {paramName}");
     }
 }

@@ -34,10 +34,9 @@ internal sealed class Binder
         var parentScope = CreateRootScope();
         parentScope.SetValidExternalVariables(externalVariables ?? []);
         var binder = new Binder(parentScope, function: null);
-        binder.Diagnostics.AddRange(syntaxs.Diagnostics);
-        if (binder.Diagnostics.Any())
+        if (syntaxs.Diagnostics.Any())
         {
-            var dig = binder.Diagnostics.First();
+            var dig = syntaxs.Diagnostics.First();
             throw new ParseException(dig.Message, dig.Location.StartLine+1);
         }
 
@@ -54,7 +53,8 @@ internal sealed class Binder
                                                                 .Where(g => g != null)
                                                                 .ToArray();
         if (firstGlobalStatementPerSyntaxTree.Length > 1)
-            throw new ParseException("脚本主语句只能存在一个文件中", firstGlobalStatementPerSyntaxTree.First()!.Address);
+            foreach (var globalStatement in firstGlobalStatementPerSyntaxTree)
+                binder.Diagnostics.ReportOnlyOneFileCanHaveGlobalStatements(globalStatement.Location);
 
         var globalStatements = syntaxs.FlattenRoot.SelectMany(st => st.Members)
                                               .Where(m => m is not FuncDeclBlock);
@@ -80,11 +80,18 @@ internal sealed class Binder
             var fnloweredBody = Lowerer.Lower(function, fnbody);
 
             if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(fnloweredBody))
-                throw new ParseException("函数所有路径必须有返回值", function.Declaration.Address);
-
-            binder._ilNames.UnionWith(binderFn._ilNames);
+                binderFn.Diagnostics.ReportAllPathsMustReturn(function.Declaration.Declare.Location);
 
             functionBodies.Add(function, fnloweredBody);
+
+            binder._ilNames.UnionWith(binderFn._ilNames);
+            binder.Diagnostics.AddRange(binderFn.Diagnostics);
+        }
+
+        if (binder.Diagnostics.Any())
+        {
+            var dig = binder.Diagnostics.First();
+            throw new ParseException(dig.Message, dig.Location.StartLine + 1);
         }
 
         var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
@@ -105,14 +112,14 @@ internal sealed class Binder
             var parameterName = parameterSyntax.Identifier.Tag;
             var parameterType = BindTypeClause(syntax.Declare, parameterSyntax.Type)?? ScriptType.Int;
 
-            if (!seenParameterNames.Add(parameterName))
-                throw new ParseException($"重复定义的参数名 {parameterName}", syntax.Declare.Address);
+            if (!seenParameterNames.Add(parameterName)) 
+                _diagnostics.ReportParameterAlreadyDeclared(syntax.Declare.Location, parameterName);
 
             // 检查是否是最后一个参数且带有默认值
             bool isLast = i == syntax.Declare.Paramters.Length - 1;
 
             // 如果不是最后一个参数却尝试定义默认值，抛出异常
-             //if (!isLast && parameterSyntax.) throw new ParseException("只有最后一个参数可以有默认值", syntax.Declare.Address);
+            //if (!isLast && parameterSyntax.) throw new("只有最后一个参数可以有默认值");
 
             var parameter = new ParamSymbol(parameterName, parameterType, parameters.Count);
             parameters.Add(parameter);
@@ -198,7 +205,7 @@ internal sealed class Binder
     {
         try
         {
-            return syntax switch
+            var result = syntax switch
             {
                 EmptyStmt or ImportStmt => new BoundNop(syntax),
                 ConstantDeclStmt => BindConstantDeclaration((ConstantDeclStmt)syntax),
@@ -215,6 +222,14 @@ internal sealed class Binder
                 SerialPrint => throw new NotImplementedException(),
                 _ => throw new Exception($"未知的语句类型{syntax}"),
             };
+            if(result is BoundExprStatement es)
+            {
+                if(es.Expression is BoundErrorExpression)
+                {
+                    _diagnostics.ReportInvalidExpressionStatement(syntax.Location);
+                }
+            }
+            return result;
         }
         catch (Exception ex)
         {
@@ -237,6 +252,11 @@ internal sealed class Binder
         _scope = _scope.Parent!;
 
         return new BoundBlockStatement(syntax, statements.ToImmutable());
+    }
+
+    private BoundExprStatement BindErrorStatement(Statement syntax)
+    {
+        return new BoundExprStatement(syntax, new BoundErrorExpression(null));
     }
 
     private BoundBlockStatement BindIf(IfBlock syntax)
@@ -303,7 +323,6 @@ internal sealed class Binder
         {
             index++;
         }
-        if (index != syntax.Statements.Length) throw new ParseException("if语句解析错误", syntax.Condition.Address);
 
         return Block(syntax, [.. block, Label(syntax, endLabel)]);
     }
@@ -439,23 +458,27 @@ internal sealed class Binder
         return boundBody;
     }
 
-    private BoundGotoStatement BindBreakStatement(Break syntax)
+    private BoundStmt BindBreakStatement(Break syntax)
     {
         var level = (int)syntax.Level;
-        if(level > 2)throw new ParseException("循环层数过多，请优化脚本", syntax.Address);
+        if(level > 2)
+            _diagnostics.ReportTooMuchLoop(syntax.Syntax.Location);
         if (_loopStack.Count < level)
+        {
             _diagnostics.ReportInvalidBreakOrContinue(syntax.Syntax.Location, syntax.Syntax);
+            return BindErrorStatement(syntax);
+        }
 
         var breakLabel = _loopStack.ElementAt(level - 1).BreakLabel;
-        // var breakLabel = _loopStack.Peek().BreakLabel;
         return new BoundGotoStatement(syntax, breakLabel);
     }
 
-    private BoundGotoStatement BindContinueStatement(Continue syntax)
+    private BoundStmt BindContinueStatement(Continue syntax)
     {
         if (_loopStack.Count == 0)
         {
             _diagnostics.ReportInvalidBreakOrContinue(syntax.Syntax.Location, syntax.Syntax);
+            return BindErrorStatement(syntax);
         }
 
         var continueLabel = _loopStack.Peek().ContinueLabel;

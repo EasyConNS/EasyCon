@@ -211,7 +211,7 @@ internal partial class Parser
 
     private Statement ParseNamedExpression()
     {
-        var first = Advance();
+        var first = Match(TokenType.IDENT);
         switch (first.Value.ToLower())
         {
             case "wait":

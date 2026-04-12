@@ -54,6 +54,13 @@ internal abstract class BoundExpr(ExprBase expr) : BoundNode
     }
 }
 
+internal sealed class BoundErrorExpression(ExprBase expr) : BoundExpr(expr)
+{
+    public override ScriptType Type => throw new NotImplementedException();
+
+    public override BoundNodeKind Kind => throw new NotImplementedException();
+}
+
 internal sealed class BoundLiteralExpression : BoundExpr
 {
     public override ScriptType Type { get; }

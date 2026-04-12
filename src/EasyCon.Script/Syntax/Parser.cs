@@ -112,141 +112,137 @@ internal sealed partial class Parser
         foreach (var (rangeStart, rangeEnd) in GetTokenRanges())
         {
             SetRange(rangeStart, rangeEnd);
-            try
+
+            Statement? st = null;
+            if (_grouptokens.Length == 0)
+                st = new EmptyStmt();
+            // If there's only one token and it's a comment, create a CommentStmt
+            else if (_grouptokens.Length == 1 && Current.Type == TokenType.COMMENT)
             {
-                Statement? st = null;
-                if (_grouptokens.Length == 0)
-                    st = new EmptyStmt();
-                // If there's only one token and it's a comment, create a CommentStmt
-                else if (_grouptokens.Length == 1 && Current.Type == TokenType.COMMENT)
+                st = new EmptyStmt()
                 {
-                    st = new EmptyStmt()
-                    {
-                        Comment = Current.Value
-                    };
+                    Comment = Current.Value
+                };
+            }
+            // If there are multiple tokens, only the last one can be a comment
+            else if (_grouptokens.Length >= 1)
+            {
+                var lastToken = Peek(_grouptokens.Length - 1);
+
+                // Check if the last token is a comment
+                if (lastToken.Type == TokenType.COMMENT)
+                {
+                    // Shrink range to exclude comment token
+                    _end--;
                 }
-                // If there are multiple tokens, only the last one can be a comment
-                else if (_grouptokens.Length >= 1)
+
+                // Parse the tokens directly
+                try
                 {
-                    var lastToken = Peek(_grouptokens.Length - 1);
 
-                    // Check if the last token is a comment
-                    if (lastToken.Type == TokenType.COMMENT)
-                    {
-                        // Shrink range to exclude comment token
-                        _end--;
-                    }
-
-                    // Parse the tokens directly
                     st = ParseStatement();
-
-                    // Set the comment if there was one
-                    if (lastToken.Type == TokenType.COMMENT)
-                    {
-                        st.Comment = lastToken.Value;
-                    }
-                }
-                // Handle empty lines
-                else
+                }catch(FormatException e)
                 {
-                    st = new EmptyStmt();
+                    throw new ParseException($"表达式解析异常:{e.Message}", address);
                 }
 
-                // update address
-                st.Address = address;
-
-                if (st is ImportStmt)
+                // Set the comment if there was one
+                if (lastToken.Type == TokenType.COMMENT)
                 {
-                    if (unit.SelectMany(u => u).Any(st => st is not ImportStmt && st is not EmptyStmt))
-                    {
-                        throw new ParseException("导入只能在脚本开头");
-                    }
+                    st.Comment = lastToken.Value;
                 }
-                if (st is ForStmt || (st is IfStmt and not ElseIf) || st is FuncStmt || st is WhileStmt)
-                {
-                    if (st is FuncStmt fst)
-                    {
-                        if (unit.Count > 1) throw new ParseException("函数必须在顶层定义", address);
-                    }
-                    startblock();
-                }
-                else if (st is ElseIf)
-                {
-                    if (result.First() is not IfStmt)
-                    {
-                        throw new ParseException("ELIF需要对应的If语句", address);
-                    }
-                    if (result.OfType<Else>().Any())
-                        throw new ParseException("Else语句后不能再接Elif", address);
-                }
-                else if (st is Else)
-                {
-                    if (result.First() is not IfStmt)
-                    {
-                        throw new ParseException("ELSE需要对应的If语句", address);
-                    }
-                    if (result.OfType<Else>().Any())
-                        throw new ParseException("一个If只能对应一个Else", address);
-                }
-                else if (st is EndBlockStmt comend)
-                {
-                    if (unit.Count == 1) throw new ParseException("多余的结束语句");
-
-                    if (st is EndIf && result.First() is not IfStmt)
-                    {
-                        throw new ParseException("ENDIF需要对应的If语句", address);
-                    }
-                    else if (st is Next && result.First() is not ForStmt)
-                    {
-                        throw new ParseException("NEXT需要对应的For语句", address);
-                    }
-                    else if (st is EndFuncStmt && result.First() is not FuncStmt)
-                    {
-                        throw new ParseException("ENDFUNC需要对应的Func语句", address);
-                    }
-                    else if (result.First() is not StartBlockStmt whilecond)
-                    {
-                        throw new ParseException("END需要对应的语句开头", address);
-                    }
-
-                    var body = unit.Pop();
-
-                    st = result.First() switch
-                    {
-                        IfStmt ifstart => new IfBlock(ifstart, [.. body.Skip(1)], comend)
-                        {
-                            Address = ifstart.Address
-                        },
-                        ForStmt forstart => new ForBlock(forstart, [.. body.Skip(1)], comend)
-                        {
-                            Address = forstart.Address
-                        },
-                        WhileStmt whilecond => new WhileBlock(whilecond, [.. body.Skip(1)], comend)
-                        {
-                            Address = whilecond.Address
-                        },
-                        FuncStmt funcdef => new FuncDeclBlock(funcdef, [.. body.Skip(1)], comend)
-                        {
-                            Address = funcdef.Address
-                        },
-                        _ => throw new ParseException("语句块格式不正确", address),
-                    };
-                    result = unit.Peek();
-                }
-
-                result.Add(st);
-                address += 1;
             }
-            catch(ParseException pe)
+            // Handle empty lines
+            else
             {
+                st = new EmptyStmt();
+            }
 
-                throw;
-            }
-            catch (Exception e)
+            // update address
+            st.Address = address;
+
+            if (st is ImportStmt)
             {
-                Console.WriteLine(e.StackTrace);
-                throw new ParseException(e.Message, address);
+                if (unit.SelectMany(u => u).Any(st => st is not ImportStmt && st is not EmptyStmt))
+                {
+                    throw new ParseException("导入只能在脚本开头");
+                }
             }
+            if (st is ForStmt || (st is IfStmt and not ElseIf) || st is FuncStmt || st is WhileStmt)
+            {
+                if (st is FuncStmt fst)
+                {
+                    if (unit.Count > 1) throw new ParseException("函数必须在顶层定义", address);
+                }
+                startblock();
+            }
+            else if (st is ElseIf)
+            {
+                if (result.First() is not IfStmt)
+                {
+                    throw new ParseException("ELIF需要对应的If语句", address);
+                }
+                if (result.OfType<Else>().Any())
+                    throw new ParseException("Else语句后不能再接Elif", address);
+            }
+            else if (st is Else)
+            {
+                if (result.First() is not IfStmt)
+                {
+                    throw new ParseException("ELSE需要对应的If语句", address);
+                }
+                if (result.OfType<Else>().Any())
+                    throw new ParseException("一个If只能对应一个Else", address);
+            }
+            else if (st is EndBlockStmt comend)
+            {
+                if (unit.Count == 1) throw new ParseException("多余的结束语句");
+
+                if (st is EndIf && result.First() is not IfStmt)
+                {
+                    throw new ParseException("ENDIF需要对应的If语句", address);
+                }
+                else if (st is Next && result.First() is not ForStmt)
+                {
+                    throw new ParseException("NEXT需要对应的For语句", address);
+                }
+                else if (st is EndFuncStmt && result.First() is not FuncStmt)
+                {
+                    throw new ParseException("ENDFUNC需要对应的Func语句", address);
+                }
+                else if (result.First() is not StartBlockStmt whilecond)
+                {
+                    throw new ParseException("END需要对应的语句开头", address);
+                }
+
+                var body = unit.Pop();
+
+                st = result.First() switch
+                {
+                    IfStmt ifstart => new IfBlock(ifstart, [.. body.Skip(1)], comend)
+                    {
+                        Address = ifstart.Address
+                    },
+                    ForStmt forstart => new ForBlock(forstart, [.. body.Skip(1)], comend)
+                    {
+                        Address = forstart.Address
+                    },
+                    WhileStmt whilecond => new WhileBlock(whilecond, [.. body.Skip(1)], comend)
+                    {
+                        Address = whilecond.Address
+                    },
+                    FuncStmt funcdef => new FuncDeclBlock(funcdef, [.. body.Skip(1)], comend)
+                    {
+                        Address = funcdef.Address
+                    },
+                    _ => throw new ParseException("语句块格式不正确", address),
+                };
+                result = unit.Peek();
+            }
+
+            result.Add(st);
+            address += 1;
+
         }
         if (unit.Count > 1)
             throw new ParseException("语句块没有正确结束", unit.Peek().First().Address);
@@ -300,7 +296,7 @@ internal sealed partial class Parser
             Console.WriteLine($"正在加载库:{imp.FullFileName}");
             var newprog = SyntaxTree.Load(imp.FullFileName);
             if (newprog.Root.Members.OfType<ImportStmt>().Any())
-                throw new ParseException("不支持嵌套引用", imp.Address);
+                throw new Exception("不支持嵌套引用");
 
             result.Add(newprog.Root);
         }

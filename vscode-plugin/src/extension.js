@@ -11,6 +11,7 @@ const KEYWORDS = [
     'and', 'or', 'not'
 ];
 
+const projName = 'EasyCon';
 const IMG_LABEL = 'ImgLabel';
 const projcfg = 'config.toml';
 
@@ -35,7 +36,7 @@ const imgLabelCache = new Map();
 const imgLabelWatchers = new Map();
 const funcNameCache = new Map();
 let imgLabelStatusBarItem = null;
-let outputChannel = vscode.window.createOutputChannel('EasyCon');
+let outputChannel = vscode.window.createOutputChannel(projName);
 const diagnosticCollection = vscode.languages.createDiagnosticCollection('easycon-script');
 
 function activate(context) {
@@ -414,12 +415,12 @@ function buildArgs(config) {
 
 function executeScript(filePath) {
     if (!outputChannel) {
-        outputChannel = vscode.window.createOutputChannel('EasyCon');
+        outputChannel = vscode.window.createOutputChannel(projName);
     }
     outputChannel.show();
     outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] 执行脚本: ${path.basename(filePath)}`);
     
-    const terminal = vscode.window.activeTerminal || vscode.window.createTerminal('EasyCon');
+    const terminal = vscode.window.activeTerminal || vscode.window.createTerminal(projName);
     const ezcon = getEzconPath();
     const config = loadConfig(filePath);
     const args = buildArgs(config);
@@ -540,6 +541,7 @@ function updateDiagnostics(document, errorOutput) {
             message,
             vscode.DiagnosticSeverity.Error
         );
+        diagnostic.source = projName;
         diagnostics.push(diagnostic);
     }
 

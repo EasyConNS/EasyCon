@@ -5,13 +5,6 @@ namespace EasyCon.Script.Syntax;
 static class Formatter
 {
     public const string ValueEx = Formats.ValueEx;
-    private static ExtVarExpr GetExtVar(string text)
-    {
-        if (!text.StartsWith('@'))
-            throw new FormatException();
-        var name = text[1..];
-        return new ExtVarExpr(name);
-    }
 
     public static ExprBase GetValueEx(Token tok)
     {
@@ -20,28 +13,30 @@ static class Formatter
             case TokenType.STRING:
                 return tok.Value;
             case TokenType.INT:
-                {
-                    var ok = int.TryParse(tok.Value, out var v);
-                    if (!ok) throw new FormatException($"数字格式解析错误：{tok.Value}");
-                    return v;
-                }
+                return int.Parse(tok.Value);
             case TokenType.CONST:
                 return new ConstVarExpr(tok.Value);
             case TokenType.VAR:
                 return new VariableExpr(tok.Value);
             case TokenType.EX_VAR:
-                return GetExtVar(tok.Value);
+                {
+                    var name = tok.Value[1..];
+                    return new ExtVarExpr(name);
+                }
             default:
                 throw new FormatException($"表达式类型不正确：{tok.Type}");
         }
     }
 
-    public static ExprBase GetValueEx(string text)
+    public static ExprBase? GetValueEx(string text)
     {
         if (Regex.Match(text, Formats.RegisterEx_F).Success)
             return new VariableExpr(text);
         if (Regex.Match(text, Formats.ExtVar_F).Success)
-            return GetExtVar(text);
+        {
+            var name = text[1..];
+            return new ExtVarExpr(name);
+        }
         else if (Regex.Match(text, Formats.Constant_F).Success)
             return new VariableExpr(text, true);
         else if (Regex.Match(text, "^^\"(?:[^\"\\\\]|\\\\.)*\"$").Success)

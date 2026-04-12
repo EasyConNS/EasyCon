@@ -1,3 +1,4 @@
+using EasyCon.Script.Symbols;
 using EasyCon.Script.Text;
 using System.Collections.Immutable;
 using System.Text;
@@ -615,8 +616,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 AddToken(TokenType.DOT, ".", start);
                 break;
             default:
-                var span = new SourceSpan(_position, 1);
+                var span = new SourceSpan(start, 1);
                 var location = new TextLocation(_text, span);
+                AddToken(TokenType.BadToken, _input[start..start++], start);
                 _diagnostics.ReportBadCharacter(location, current);
                 break;
         }

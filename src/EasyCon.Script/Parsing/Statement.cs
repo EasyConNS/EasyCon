@@ -1,3 +1,4 @@
+using EasyCon.Script.Text;
 using System.CodeDom.Compiler;
 using System.Collections.Immutable;
 
@@ -8,6 +9,8 @@ abstract class Statement(Token syntax)
     public Token Syntax { get; } = syntax;
     public int Address = -1;
     public string Comment { get; set; } = string.Empty;
+
+    public TextLocation Location => Syntax.Location;
 
     protected abstract string _GetString();
 
