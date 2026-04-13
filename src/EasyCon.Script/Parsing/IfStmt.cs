@@ -4,6 +4,7 @@ namespace EasyCon.Script.Syntax;
 
 internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statements, EndBlockStmt endif) : Statement(condition.Syntax)
 {
+    public override StatementKind Kind => StatementKind.IfBlock;
     public readonly IfStmt Condition = condition;
     public ImmutableArray<Statement> Statements = statements;
     public readonly EndBlockStmt End = endif;
@@ -16,6 +17,7 @@ internal sealed class IfBlock(IfStmt condition, ImmutableArray<Statement> statem
 
 class IfStmt(Token syntax, ExprBase conds) : StartBlockStmt(syntax)
 {
+    public override StatementKind Kind => StatementKind.IfStmt;
     public readonly ExprBase Condition = conds;
 
     protected override string _GetString()
@@ -44,6 +46,7 @@ class IfStmt(Token syntax, ExprBase conds) : StartBlockStmt(syntax)
 
 class ElseIf(Token syntax, ExprBase conds) : IfStmt(syntax, conds)
 {
+    public override StatementKind Kind => StatementKind.ElseIf;
     protected override string _GetString()
     {
         return $"ELIF {Condition.GetCodeText()}";
@@ -75,6 +78,7 @@ class ElseIf(Token syntax, ExprBase conds) : IfStmt(syntax, conds)
 
 class Else(Token syntax) : Statement(syntax)
 {
+    public override StatementKind Kind => StatementKind.Else;
     protected override string _GetString() => "ELSE";
 
     //public override void Assemble(Assembly.Assembler assembler)
@@ -88,6 +92,7 @@ class Else(Token syntax) : Statement(syntax)
 
 class EndIf(Token syntax) : EndBlockStmt(syntax)
 {
+    public override StatementKind Kind => StatementKind.EndIf;
     protected override string _GetString() => "ENDIF";
 
     //public override void Assemble(Assembly.Assembler assembler)

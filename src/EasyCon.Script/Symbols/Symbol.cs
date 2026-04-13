@@ -47,6 +47,7 @@ sealed class FunctionSymbol(
     public readonly FuncDeclBlock? Declaration = declaration;
     public ScriptType ReturnType { get; } = returnType;
 
+    public override string ToString() => $"Func({Name}: {ReturnType})";
     /// <summary>
     /// 辅助构造：非泛型函数
     /// </summary>

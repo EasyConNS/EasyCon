@@ -4,11 +4,38 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Syntax;
 
+enum StatementKind
+{
+    CommonAction,
+    // Block statements
+    ForBlock,
+    WhileBlock,
+    IfBlock,
+    FuncDeclBlock,
+    // Statement keywords
+    ForStmt,
+    WhileStmt,
+    IfStmt,
+    ElseIf,
+    Else,
+    EndIf,
+    EndBlock,
+    FuncStmt,
+    EndFuncStmt,
+    Next,
+    Break,
+    Continue,
+    ReturnStmt,
+    Import,
+}
+
 abstract class Statement(Token syntax)
 {
     public Token Syntax { get; } = syntax;
     public int Address = -1;
     public string Comment { get; set; } = string.Empty;
+
+    public virtual StatementKind Kind => StatementKind.CommonAction;
 
     public TextLocation Location => Syntax.Location;
 
@@ -30,11 +57,13 @@ abstract class StartBlockStmt(Token syntax) : Statement(syntax)
 
 class EndBlockStmt(Token syntax) : Statement(syntax)
 {
+    public override StatementKind Kind => StatementKind.EndBlock;
     protected override string _GetString() => "END";
 }
 
 sealed class ImportStmt(Token syntax, Token model, string path = "") : Statement(syntax)
 {
+    public override StatementKind Kind => StatementKind.Import;
     internal readonly Token Model = model;
     internal readonly string InitPath = path;
     internal string Lib => Model.STRTrimQ();
@@ -52,21 +81,21 @@ internal static class FormatPrinter
 {
     public static void WriteTo(this Statement node, IndentedTextWriter writer)
     {
-        if (node is IfBlock block)
+        if (node.Kind == StatementKind.IfBlock)
         {
-            WriteIfBlock(block, writer);
+            WriteIfBlock((IfBlock)node, writer);
         }
-        else if (node is ForBlock fb)
+        else if (node.Kind == StatementKind.ForBlock)
         {
-            WriteForBlock(fb, writer);
+            WriteForBlock((ForBlock)node, writer);
         }
-        else if (node is WhileBlock whb)
+        else if (node.Kind == StatementKind.WhileBlock)
         {
-            WriteWhileBlock(whb, writer);
+            WriteWhileBlock((WhileBlock)node, writer);
         }
-        else if (node is FuncDeclBlock fnb)
+        else if (node.Kind == StatementKind.FuncDeclBlock)
         {
-            WriteFunctionBlock(fnb, writer);
+            WriteFunctionBlock((FuncDeclBlock)node, writer);
         }
         else
         {
@@ -103,14 +132,14 @@ internal static class FormatPrinter
     }
     private static void WriteStatementInternal(Statement node, IndentedTextWriter writer)
     {
-        if (node is ElseIf || node is Else || node is EndBlockStmt)
+        if (node.Kind == StatementKind.ElseIf || node.Kind == StatementKind.Else || node.Kind == StatementKind.EndBlock)
         {
             writer.Indent--;
         }
 
         writer.Write(node.GetCodeText());
 
-        if (node is ForStmt || node is FuncStmt || node is IfStmt || node is Else || node is WhileStmt)
+        if (node.Kind == StatementKind.ForStmt || node.Kind == StatementKind.FuncStmt || node.Kind == StatementKind.IfStmt || node.Kind == StatementKind.Else || node.Kind == StatementKind.WhileStmt)
         {
             writer.Indent++;
         }

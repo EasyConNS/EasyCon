@@ -5,6 +5,7 @@ namespace EasyCon.Script.Syntax;
 
 internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement(declare.Syntax)
 {
+    public override StatementKind Kind => StatementKind.FuncDeclBlock;
     public readonly FuncStmt Declare = declare;
     public ImmutableArray<Statement> Statements = statements;
     public readonly EndBlockStmt End = end;
@@ -23,6 +24,7 @@ internal sealed class TypeClauseSyntax(Token colonToken, Token identifier)
 
 class FuncStmt(Token identifier, ImmutableArray<ParameterSyntax> paramters, bool omitParn, TypeClauseSyntax? type) : StartBlockStmt(identifier)
 {
+    public override StatementKind Kind => StatementKind.FuncStmt;
     public readonly Token Identifier = identifier;
     public string Name => Identifier.Value;
     public ImmutableArray<ParameterSyntax> Paramters = paramters;
@@ -59,6 +61,7 @@ internal sealed class ParameterSyntax(VariableExpr varExpr, TypeClauseSyntax? ty
 
 class EndFuncStmt(Token syntax) : EndBlockStmt(syntax)
 {
+    public override StatementKind Kind => StatementKind.EndFuncStmt;
     protected override string _GetString() => "ENDFUNC";
 
     //public override void Assemble(Assembly.Assembler assembler)

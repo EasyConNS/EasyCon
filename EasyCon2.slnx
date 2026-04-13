@@ -4,6 +4,9 @@
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
   </Folder>
+  <Folder Name="/Test/">
+    <Project Path="src/EasyCon.Tests/EasyCon.Tests.csproj" />
+  </Folder>
   <Folder Name="/Demo/">
     <Project Path="tools/DirectInput/DirectInput.csproj" />
   </Folder>

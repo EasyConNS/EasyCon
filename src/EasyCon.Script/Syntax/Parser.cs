@@ -137,13 +137,7 @@ internal sealed partial class Parser
                 }
 
                 // Parse the tokens directly
-                try
-                {
-                    st = ParseStatement();
-                }catch(FormatException e)
-                {
-                    throw new ParseException($"表达式解析异常:{e.Message}", address);
-                }
+                st = ParseStatement();
 
                 // Set the comment if there was one
                 if (lastToken.Type == TokenType.COMMENT)
@@ -164,67 +158,107 @@ internal sealed partial class Parser
             {
                 if (unit.SelectMany(u => u).Any(st => st is not ImportStmt && st is not EmptyStmt))
                 {
-                    throw new ParseException("导入只能在脚本开头");
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "导入只能在脚本开头");
                 }
             }
-            if (st is ForStmt || (st is IfStmt and not ElseIf) || st is FuncStmt || st is WhileStmt)
+            if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.WhileStmt)
             {
-                if (st is FuncStmt fst)
+                if (st.Kind == StatementKind.FuncStmt)
                 {
-                    if (unit.Count > 1) throw new ParseException("函数必须在顶层定义", address);
+                    if (unit.Count > 1)
+                    {
+                        _diagnostics.ReportBadStruct(st.Syntax.Location, "函数必须在顶层定义");
+                        // 跳过函数定义，继续解析
+                        st = new EmptyStmt();
+                    }
                 }
-                startblock();
+                if (st is not EmptyStmt)
+                    startblock();
             }
-            else if (st is ElseIf)
+            else if (st.Kind == StatementKind.ElseIf)
             {
-                if (result.First() is not IfStmt)
+                if (result.First().Kind != StatementKind.IfStmt)
                 {
-                    throw new ParseException("ELIF需要对应的If语句", address);
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "ELIF需要对应的If语句");
+                    // 跳过 ELIF
+                    st = new EmptyStmt();
                 }
-                if (result.OfType<Else>().Any())
-                    throw new ParseException("Else语句后不能再接Elif", address);
-            }
-            else if (st is Else)
-            {
-                if (result.First() is not IfStmt)
+                else if (result.Any(s => s.Kind == StatementKind.Else))
                 {
-                    throw new ParseException("ELSE需要对应的If语句", address);
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "Else语句后不能再接Elif");
+                    // 跳过 ELIF
+                    st = new EmptyStmt();
                 }
-                if (result.OfType<Else>().Any())
-                    throw new ParseException("一个If只能对应一个Else", address);
             }
-            else if (st is EndBlockStmt comend)
+            else if (st.Kind == StatementKind.Else)
             {
-                if (unit.Count == 1) throw new ParseException("多余的结束语句");
+                if (result.First().Kind != StatementKind.IfStmt)
+                {
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "ELSE需要对应的If语句");
+                    // 跳过 ELSE
+                    st = new EmptyStmt();
+                }
+                else if (result.Any(s => s.Kind == StatementKind.Else))
+                {
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "一个If只能对应一个Else");
+                    // 跳过 ELSE
+                    st = new EmptyStmt();
+                }
+            }
+            else if (st.Kind == StatementKind.EndBlock || st.Kind == StatementKind.Next || st.Kind == StatementKind.EndIf || st.Kind == StatementKind.EndFuncStmt)
+            {
+                if (unit.Count == 1)
+                {
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "多余的结束语句");
+                    // 跳过多余的结束语句
+                    st = new EmptyStmt();
+                }
+                else
+                {
+                    var endStmt = st;
+                    bool validEnd = true;
 
-                if (st is EndIf && result.First() is not IfStmt)
-                {
-                    throw new ParseException("ENDIF需要对应的If语句", address);
-                }
-                else if (st is Next && result.First() is not ForStmt)
-                {
-                    throw new ParseException("NEXT需要对应的For语句", address);
-                }
-                else if (st is EndFuncStmt && result.First() is not FuncStmt)
-                {
-                    throw new ParseException("ENDFUNC需要对应的Func语句", address);
-                }
-                else if (result.First() is not StartBlockStmt whilecond)
-                {
-                    throw new ParseException("END需要对应的语句开头", address);
-                }
+                    if (endStmt.Kind == StatementKind.EndIf && result.First().Kind != StatementKind.IfStmt)
+                    {
+                        _diagnostics.ReportBadStruct(st.Syntax.Location, "ENDIF需要对应的If语句");
+                        validEnd = false;
+                    }
+                    else if (endStmt.Kind == StatementKind.Next && result.First().Kind != StatementKind.ForStmt)
+                    {
+                        _diagnostics.ReportBadStruct(st.Syntax.Location, "NEXT需要对应的For语句");
+                        validEnd = false;
+                    }
+                    else if (endStmt.Kind == StatementKind.EndFuncStmt && result.First().Kind != StatementKind.FuncStmt)
+                    {
+                        _diagnostics.ReportBadStruct(st.Syntax.Location, "ENDFUNC需要对应的Func语句");
+                        validEnd = false;
+                    }
+                    else if (result.First().Kind != StatementKind.IfStmt && result.First().Kind != StatementKind.ForStmt && result.First().Kind != StatementKind.WhileStmt && result.First().Kind != StatementKind.FuncStmt)
+                    {
+                        _diagnostics.ReportBadStruct(st.Syntax.Location, "END需要对应的语句开头");
+                        validEnd = false;
+                    }
 
-                var body = unit.Pop();
+                    if (validEnd)
+                    {
+                        var body = unit.Pop();
 
-                st = result.First() switch
-                {
-                    IfStmt ifstart => new IfBlock(ifstart, [.. body.Skip(1)], comend) { Address = ifstart.Address },
-                    ForStmt forstart => new ForBlock(forstart, [.. body.Skip(1)], comend) { Address = forstart.Address },
-                    WhileStmt w => new WhileBlock(w, [.. body.Skip(1)], comend) { Address = w.Address },
-                    FuncStmt funcdef => new FuncDeclBlock(funcdef, [.. body.Skip(1)], comend) { Address = funcdef.Address },
-                    _ => st // 保持原样
-                };
-                result = unit.Peek();
+                        st = result.First().Kind switch
+                        {
+                            StatementKind.IfStmt => new IfBlock((IfStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            StatementKind.ForStmt => new ForBlock((ForStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            StatementKind.WhileStmt => new WhileBlock((WhileStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            StatementKind.FuncStmt => new FuncDeclBlock((FuncStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            _ => st // 保持原样
+                        };
+                        result = unit.Peek();
+                    }
+                    else
+                    {
+                        // 跳过结束语句
+                        st = new EmptyStmt();
+                    }
+                }
             }
 
             result.Add(st);
@@ -232,7 +266,10 @@ internal sealed partial class Parser
 
         }
         if (unit.Count > 1)
-            throw new ParseException("语句块没有正确结束", unit.Peek().First().Address);
+        {
+            var first = unit.Peek().First();
+            _diagnostics.ReportBadStruct(first.Syntax.Location, "语句块没有正确结束");
+        }
 
         return new CompicationUnit([.. result]);
     }

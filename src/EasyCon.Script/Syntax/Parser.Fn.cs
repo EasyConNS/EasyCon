@@ -1,6 +1,5 @@
 using EasyScript;
 using System.Collections.Immutable;
-using System.Text.RegularExpressions;
 
 namespace EasyCon.Script.Syntax;
 
@@ -165,7 +164,7 @@ internal partial class Parser
     // LS|RS 方向|角度 [, 持续时间(ms)]
     // LS|RS RESET
     /// </summary>
-private Statement ParsePadButtonStatement()
+    private Statement ParsePadButtonStatement()
     {
         var firstKey = Advance();
 
@@ -174,7 +173,7 @@ private Statement ParsePadButtonStatement()
             switch (Current.Type)
             {
                 case TokenType.INT:
-                case TokenType.DirKeyword:
+                case TokenType.DirectionKeyword:
                     var state = Advance();
 
                     if (Check(TokenType.COMMA))
@@ -206,12 +205,11 @@ private Statement ParsePadButtonStatement()
             {
                 var state = Advance();
                 MatchEOF();
-                var value = int.Parse(state.Value);
-                return new KeyPress(firstKey.Value, value);
+                return new KeyPress(firstKey.Value, Formatter.GetValueEx(state));
             }
             else
             {
-                var state = Match(TokenType.ButtonKeyword);
+                var state = Match(TokenType.StateKeyword);
                 MatchEOF();
                 var isUp = state.Value.Equals("UP", StringComparison.CurrentCultureIgnoreCase);
                 return new KeyAct(firstKey.Value, isUp);
@@ -221,53 +219,6 @@ private Statement ParsePadButtonStatement()
         return new KeyAct(firstKey.Value);
     }
     const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN|DOWNLEFT|DOWNRIGHT|UPLEFT|UPRIGHT";
-    private Statement? ParseKey(string text)
-    {
-        var m = Regex.Match(text, $"^({GPKey})$", RegexOptions.IgnoreCase);
-        if (m.Success && NSKeys.GetKey(m.Groups[1].Value) != GamePadKey.None)
-            return new KeyPress(m.Groups[1].Value);
-        m = Regex.Match(text, $@"^({GPKey})\s+{Formatter.ValueEx}$", RegexOptions.IgnoreCase);
-        if (m.Success && NSKeys.GetKey(m.Groups[1].Value) != GamePadKey.None)
-            return new KeyPress(m.Groups[1].Value, Formatter.GetValueEx(m.Groups[2].Value));
-        m = Regex.Match(text, $@"^({GPKey})\s+(up|down)$", RegexOptions.IgnoreCase);
-        if (m.Success && NSKeys.GetKey(m.Groups[1].Value) != GamePadKey.None)
-        {
-            return m.Groups[2].Value.ToUpper() switch
-            {
-                "UP" => new KeyAct(m.Groups[1].Value, true),
-                _ => new KeyAct(m.Groups[1].Value),
-            };
-        }
-
-        // stick
-        m = Regex.Match(text, @"^([lr]s)\s+(reset)$", RegexOptions.IgnoreCase);
-        if (m.Success)
-        {
-            var keyname = m.Groups[1].Value;
-            if (NSKeys.GetKey(keyname) == GamePadKey.None) return null;
-            return new StickAct(keyname, "RESET");
-        }
-        m = Regex.Match(text, @"^([lr]s)\s+([a-z0-9]+)$", RegexOptions.IgnoreCase);
-        if (m.Success)
-        {
-            var keyname = m.Groups[1].Value;
-            var direction = m.Groups[2].Value;
-            if (NSKeys.GetKey(keyname) == GamePadKey.None) return null;
-            if (!NSKeys.CheckDirection(direction, out _)) return null;
-            return new StickAct(keyname, direction);
-        }
-        m = Regex.Match(text, $@"^([lr]s)\s+([a-z0-9]+)\s*,\s*({Formatter.ValueEx})$", RegexOptions.IgnoreCase);
-        if (m.Success)
-        {
-            var keyname = m.Groups[1].Value;
-            var direction = m.Groups[2].Value;
-            var duration = m.Groups[3].Value;
-            if (NSKeys.GetKey(keyname) == GamePadKey.None) return null;
-            if (!NSKeys.CheckDirection(direction, out _)) return null;
-            return new StickPress(keyname, direction, Formatter.GetValueEx(duration));
-        }
-        return null;
-    }
 
     private Statement ParseNamedExpression()
     {
