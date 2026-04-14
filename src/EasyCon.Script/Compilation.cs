@@ -1,4 +1,5 @@
 using EasyCon.Script.Binding;
+using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
 using System.CodeDom.Compiler;
@@ -31,11 +32,12 @@ public sealed class Compilation
         return Binder.BindProgram(SyntaxTrees, extVars);
     }
 
-    public void Compile(ImmutableHashSet<string>? extVars)
+    public ImmutableArray<Diagnostic> Compile(ImmutableHashSet<string>? extVars)
     {
         var program = GetProgram(extVars);
         KeyAction = program.KeyAction;
         NeedIL = program.NeedIL;
+        return program.Diagnostics;
     }
 
     public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad,
@@ -44,6 +46,8 @@ public sealed class Compilation
     {
 
         var program = GetProgram([..externalGetters.Select(v=>v.Key)]);
+        if (program.Diagnostics.HasErrors())
+            return new EvaluationResult(program.Diagnostics, Value.Void);
         var evaluator = new Evaluator(program, externalGetters ?? [], token)
         {
             GamePad = pad,
@@ -51,7 +55,7 @@ public sealed class Compilation
         };
         var value = evaluator.Evaluate();
 
-        return new EvaluationResult([], value);
+        return new EvaluationResult(program.Diagnostics, value);
     }
 
     public string FormatCode()

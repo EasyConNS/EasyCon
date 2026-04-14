@@ -1,63 +1,178 @@
-<suki:SukiWindow
-    xmlns="https://github.com/avaloniaui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:vm="using:EC.Avalonia.ViewModels"
-    xmlns:suki="https://github.com/kikipoulet/SukiUI"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:AvaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
-    mc:Ignorable="d"
-    d:DesignWidth="800"
-    d:DesignHeight="450"
-    xmlns:objectModel="using:System.Collections.ObjectModel"
-    x:Class="EasyCon2.Avalonia.Views.MainWindow"
-    x:DataType="vm:MainWindowViewModel"
-    Icon="/Assets/avalonia-logo.ico"
-    Title="EasyCon2">
-    <suki:SukiSideMenu>
-        <suki:SukiSideMenu.HeaderContent>
-           <TextBlock Text="Header Content"/>
-        </suki:SukiSideMenu.HeaderContent>
-        <suki:SukiSideMenu.FooterContent>
-            <TextBlock Text="Footer Content"/>
-        </suki:SukiSideMenu.FooterContent>
-        <suki:SukiSideMenu.Items>
-            <suki:SukiSideMenuItem
-                Header="VPad">
-                <suki:SukiSideMenuItem.PageContent>
-                   <AvaloniaEdit:TextEditor Text="Hello AvaloniaEdit!"
-                           ShowLineNumbers="True"
-                           FontFamily="Cascadia Code,Consolas,Menlo,Monospace"/>
-                </suki:SukiSideMenuItem.PageContent>
-            </suki:SukiSideMenuItem>
-            <suki:SukiSideMenuItem
-                Header="Setting">
-                <suki:SukiSideMenuItem.PageContent>
-                    <suki:SettingsLayout>
-                        <suki:SettingsLayout.Items>
-                            <objectModel:ObservableCollection
-                                x:TypeArguments="suki:SettingsLayoutItem">
-                                <suki:SettingsLayoutItem
-                                    Header="Theme Color">
-                                    <suki:SettingsLayoutItem.Content>
-                                        <ComboBox
-                                            ItemsSource="{Binding Source={x:Static vm:ThemeManager.Instance},Path=ThemeColors}"
-                                            SelectedItem="{Binding Source={x:Static vm:ThemeManager.Instance},Path=ThemeColor}" />
-                                    </suki:SettingsLayoutItem.Content>
-                                </suki:SettingsLayoutItem>
-                                <suki:SettingsLayoutItem
-                                    Header="Dark Mode">
-                                    <suki:SettingsLayoutItem.Content>
-                                        <ComboBox
-                                            ItemsSource="{Binding Source={x:Static vm:ThemeManager.Instance},Path=ThemeVariants}"
-                                            SelectedItem="{Binding Source={x:Static vm:ThemeManager.Instance},Path=ThemeVariant}" />
-                                    </suki:SettingsLayoutItem.Content>
-                                </suki:SettingsLayoutItem>
-                            </objectModel:ObservableCollection>
-                        </suki:SettingsLayout.Items>
-                    </suki:SettingsLayout>
-                </suki:SukiSideMenuItem.PageContent>
-            </suki:SukiSideMenuItem>
-        </suki:SukiSideMenu.Items>
-    </suki:SukiSideMenu>
-</suki:SukiWindow>
+<Window xmlns="https://github.com/avaloniaui"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:vm="using:EC.Avalonia.ViewModels"
+         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+         mc:Ignorable="d"
+         d:DesignWidth="1200"
+         d:DesignHeight="800"
+ x:Class="EasyCon2.Avalonia.Views.MainWindow"
+          x:DataType="vm:MainWindowViewModel"
+          Icon="/Assets/avalonia-logo.ico"
+          Title="EasyCon2"
+          Width="1200"
+          Height="800"
+          MinWidth="800"
+          MinHeight="600">
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- 顶部区域：脚本路径和打开按钮 -->
+        <Border Grid.Row="0" Padding="10">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0"
+                          Text="{Binding CurrentScriptPath}"
+                          VerticalAlignment="Center"
+                          Margin="0,0,10,0"
+                          TextTrimming="CharacterEllipsis"/>
+                <Button Grid.Column="1"
+                       Content="打开脚本"
+                       Command="{Binding OpenScriptCommand}"
+                       CommandParameter="{Binding $parent[Window]}"
+                       IsEnabled="{Binding !IsRunning}"
+                       MinWidth="100"
+                       HorizontalContentAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- 主内容区域 -->
+        <Grid Grid.Row="1" RowDefinitions="*,Auto">
+            <!-- 日志输出区 -->
+            <Grid Grid.Row="0">
+                <TextBox x:Name="LogTextBox"
+                        Text="{Binding LogOutput}"
+                        IsReadOnly="True"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        ScrollViewer.VerticalScrollBarVisibility="Auto"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        FontFamily="Consolas, Microsoft YaHei"
+                        FontSize="14"
+                        Padding="10"
+                        PointerEntered="LogBox_PointerEntered"
+                        PointerExited="LogBox_PointerExited"/>
+                <!-- 工具条覆盖层 -->
+                <Border HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="10"
+                        IsVisible="{Binding IsLogToolbarVisible}"
+                        Background="{DynamicResource ThemeControlFillColorDefaultBrush}"
+                        Padding="5"
+                        PointerEntered="LogBox_PointerEntered"
+                        PointerExited="LogBox_PointerExited">
+                    <Button Content="清屏"
+                           Command="{Binding ClearLogCommand}"
+                           Padding="10,5"
+                           HorizontalContentAlignment="Center"/>
+                </Border>
+            </Grid>
+
+            <!-- 底部模块连接器区域 -->
+            <Border Grid.Row="1"
+                   Padding="10">
+                <Grid ColumnDefinitions="*,*,*,*"
+                     HorizontalAlignment="Stretch">
+
+                    <!-- 第一个模块连接器 -->
+                    <Border Grid.Column="0"
+                           BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                           BorderThickness="1"
+                           Margin="5"
+                           Padding="10">
+                        <StackPanel Orientation="Vertical" Spacing="10">
+                            <ComboBox x:Name="SerialPortComboBox"
+                                      ItemsSource="{Binding SerialPortOptions}"
+                                      SelectedItem="{Binding SelectedSerialPort}"
+                                      HorizontalAlignment="Stretch"
+                                      DropDownOpened="SerialPortComboBox_DropDownOpened"/>
+                            <Button Content="{Binding NintendoSwitchButtonText}"
+                                   Command="{Binding ConnectNintendoSwitchCommand}"
+                                   IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                   HorizontalAlignment="Stretch"
+                                   HorizontalContentAlignment="Center"/>
+                            <TextBlock Text="{Binding NintendoSwitchStatus}"
+                                      HorizontalAlignment="Center"
+                                      Foreground="{DynamicResource ThemeForegroundColorDefaultBrush}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 第二个模块连接器 -->
+                    <Border Grid.Column="1"
+                           BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                           BorderThickness="1"
+                           Margin="5"
+                           Padding="10">
+                        <StackPanel Orientation="Vertical" Spacing="10">
+                            <ComboBox x:Name="CaptureSourceComboBox"
+                                      ItemsSource="{Binding CaptureSourceOptions}"
+                                      SelectedItem="{Binding SelectedCaptureSource}"
+                                      HorizontalAlignment="Stretch"
+                                      DropDownOpened="CaptureSourceComboBox_DropDownOpened"/>
+                            <Button Content="连接视频源"
+                                   Command="{Binding ConnectCaptureSourceCommand}"
+                                   IsEnabled="{Binding !IsConnectingCaptureSource}"
+                                   HorizontalAlignment="Stretch"
+                                   HorizontalContentAlignment="Center"/>
+                            <TextBlock Text="{Binding CaptureSourceStatus}"
+                                      HorizontalAlignment="Center"
+                                      Foreground="{DynamicResource ThemeForegroundColorDefaultBrush}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 第三个模块连接器 -->
+                    <Border Grid.Column="2"
+                           BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                           BorderThickness="1"
+                           Margin="5"
+                           Padding="10">
+                        <StackPanel Orientation="Vertical" Spacing="10">
+                            <ComboBox x:Name="ControlSourceComboBox"
+                                      ItemsSource="{Binding ControlSourceOptions}"
+                                      SelectedItem="{Binding SelectedControlSource}"
+                                      HorizontalAlignment="Stretch"
+                                      DropDownOpened="ControlSourceComboBox_DropDownOpened"/>
+                            <Grid ColumnDefinitions="*,*">
+                                <Button Grid.Column="0"
+                                        Content="连接手柄"
+                                        Command="{Binding OpenKeyMappingCommand}"
+                                        Margin="0,0,5,0"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"/>
+                                <Button Grid.Column="1"
+                                        Content="修改按键映射"
+                                        Command="{Binding OpenKeyMappingCommand}"
+                                        Margin="5,0,0,0"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"/>
+                            </Grid>
+                            <TextBlock Text="{Binding ControlSourceStatus}"
+                                      HorizontalAlignment="Center"
+                                      Foreground="{DynamicResource ThemeForegroundColorDefaultBrush}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 运行脚本按钮 -->
+                    <Border Grid.Column="3"
+                           Margin="5"
+                           Padding="10">
+                        <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="10">
+                            <TextBlock Text="{Binding RunTimeDisplay}"
+                                       FontSize="24"
+                                       FontWeight="Bold"
+                                       FontFamily="Consolas"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                            <Button Content="{Binding RunButtonText}"
+                                    Command="{Binding RunScriptCommand}"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

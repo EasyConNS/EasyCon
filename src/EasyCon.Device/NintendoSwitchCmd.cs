@@ -75,7 +75,7 @@ public partial class NintendoSwitch
 
     void WriteReport(Span<byte> b)
     {
-        Log($"[Send {DateTime.Now:ss.fff}] {_report}");
+        Log?.Invoke($"[Send {DateTime.Now:ss.fff}] {_report}");
 
         clientCon.Write(b.ToArray());
     }

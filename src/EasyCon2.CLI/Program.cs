@@ -108,13 +108,17 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
 
     OpenCVCapture? cvcap = null;
     outdap.Log("正在解析脚本...");
-    try
+    var diag = runner.Load(file, [.. label.Select(il => il.name)]);
+    
+    if(diag.HasErrors())
     {
-        runner.Load(file, [.. label.Select(il => il.name)]);
-    }
-    catch(ParseException ex)
-    {
-        outdap.Error($"!!编译失败!!{ex.Message}: 行{ex.Index}");
+        HashSet<int> errlist = [];
+        foreach (var d in diag)
+        {
+            if (!errlist.Add(d.Location.StartLine))
+                continue;
+            outdap.Error($"!!编译失败!!{d.Message}: 行{d.Location.StartLine+1}");
+        }    
         return;
     }
 
@@ -236,25 +240,25 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
 
-    try
+    var diag = runner.Load(file, [.. label.Select(il => il.name)]);
+
+    if(diag.HasErrors())
     {
-        runner.Load(file, [.. label.Select(il => il.name)]);
-        var formatted = runner.ToCode();
-        
-        if (!string.IsNullOrEmpty(outputFile))
+        foreach (var d in diag)
         {
-            File.WriteAllText(outputFile, formatted);
+            Console.Error.WriteLine($"line {d.Location.StartLine+1}: {d.Message}");
         }
-        else
-        {
-            Console.Write(formatted);
-        }
-    }
-    catch (ParseException ex)
-    {
-        Console.Error.WriteLine($"line {ex.Index}: {ex.Message}");
         return 1;
     }
+
+    var formatted = runner.ToCode();
+    
+    if (!string.IsNullOrEmpty(outputFile))
+    {
+        File.WriteAllText(outputFile, formatted);
+    }
+    Console.Write(formatted);
+
     return 0;
 });
 

@@ -17,17 +17,17 @@ public sealed class EasyRunner : IRunner
         //return new Assembly.Assembler().Assemble(prog, auto);
         throw new NotImplementedException();
     }
-    public void Init(string code, ImmutableHashSet<string> extVarNames)
+    public ImmutableArray<Diagnostic> Init(string code, ImmutableHashSet<string> extVarNames)
     {
         var sourceText = SyntaxTree.Parse(code);
         compilation = Compilation.Create(sourceText);
-        compilation.Compile(extVarNames);
+        return compilation.Compile(extVarNames);
     }
-    public void Load(string fileName, ImmutableHashSet<string> extVarNames)
+    public ImmutableArray<Diagnostic> Load(string fileName, ImmutableHashSet<string> extVarNames)
     {
         var sourceText = SyntaxTree.Load(fileName);
         compilation = Compilation.Create(sourceText);
-        compilation.Compile(extVarNames);
+        return compilation.Compile(extVarNames);
     }
 
     public void Run(IOutputAdapter output, ICGamePad pad, Dictionary<string, Func<int>> externalGetters, CancellationToken token)

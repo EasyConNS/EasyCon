@@ -311,6 +311,7 @@ internal sealed partial class Parser
 
     internal ImmutableArray<CompicationUnit> Flatten(CompicationUnit prog)
     {
+        if(Diagnostics.HasErrors()) return [prog];
         var imports = prog.Members.OfType<ImportStmt>();
         if (!imports.Any()) return [prog];
 
@@ -320,7 +321,7 @@ internal sealed partial class Parser
             Console.WriteLine($"正在加载库:{imp.FullFileName}");
             var newprog = SyntaxTree.Load(imp.FullFileName);
             if (newprog.Root.Members.OfType<ImportStmt>().Any())
-                throw new Exception("不支持嵌套引用");
+                _diagnostics.ReportBadStruct(imp.Location, "不支持嵌套引用");
 
             result.Add(newprog.Root);
         }

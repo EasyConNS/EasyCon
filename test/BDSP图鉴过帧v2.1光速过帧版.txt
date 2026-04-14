@@ -171,52 +171,52 @@ FUNC DIXIAB
     Y 100
 ENDFUNC
 
-IF $4 = 1
-    IF $3 = 1
+IF $4 == 1
+    IF $3 == 1
         CALL DISAHNGA
         CALL FAN
         CALL DISHANGB
     ENDIF
-    IF $3 = 2
+    IF $3 == 2
         CALL DISAHNGA
         CALL KAIGUAN
         CALL DISHANGB
     ENDIF
-    IF $3 = 3
+    IF $3 == 3
         CALL DISAHNGA
         CALL GUO
         CALL DISHANGB
     ENDIF
 ENDIF
-IF $4 = 2
-    IF $3 = 1
+IF $4 == 2
+    IF $3 == 1
         CALL DIXIAA
         CALL FAN
         CALL DIXIAB
     ENDIF
-    IF $3 = 2
+    IF $3 == 2
         CALL DIXIAA
         CALL KAIGUAN
         CALL DIXIAB
     ENDIF
-    IF $3 = 3
+    IF $3 == 3
         CALL DIXIAA
         CALL GUO
         CALL DIXIAB
     ENDIF
 ENDIF
-IF $4 = 3
-    IF $3 = 1
+IF $4 == 3
+    IF $3 == 1
         CALL DISAHNGA
         CALL FAN
         CALL YEWAI
     ENDIF
-    IF $3 = 2
+    IF $3 == 2
         CALL DISAHNGA
         CALL KAIGUAN
         CALL YEWAI
     ENDIF
-    IF $3 = 3
+    IF $3 == 3
         CALL DISAHNGA
         CALL GUO
         CALL YEWAI

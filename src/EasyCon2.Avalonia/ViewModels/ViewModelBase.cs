@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace EasyCon2.Avalonia.ViewModels;
+namespace EC.Avalonia.ViewModels;
 
 public class ViewModelBase : ObservableObject
 {

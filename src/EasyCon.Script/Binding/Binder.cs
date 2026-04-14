@@ -34,10 +34,10 @@ internal sealed class Binder
         var parentScope = CreateRootScope();
         parentScope.SetValidExternalVariables(externalVariables ?? []);
         var binder = new Binder(parentScope, function: null);
-        if (syntaxs.Diagnostics.HasErrors())
+        binder.Diagnostics.AddRange(syntaxs.Diagnostics);
+        if (binder.Diagnostics.HasErrors())
         {
-            var dig = syntaxs.Diagnostics.First();
-            throw new ParseException(dig.Message, dig.Location.StartLine+1);
+            return new BoundProgram(new("$error", [], [], ScriptType.Void), [..binder.Diagnostics], ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Empty, []);
         }
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
@@ -54,7 +54,7 @@ internal sealed class Binder
                                                                 .ToArray();
         if (firstGlobalStatementPerSyntaxTree.Length > 1)
             foreach (var globalStatement in firstGlobalStatementPerSyntaxTree)
-                binder.Diagnostics.ReportOnlyOneFileCanHaveGlobalStatements(globalStatement.Location);
+                binder.Diagnostics.ReportOnlyOneFileCanHaveGlobalStatements(globalStatement!.Location);
 
         var globalStatements = syntaxs.FlattenRoot.SelectMany(st => st.Members)
                                               .Where(m => m is not FuncDeclBlock);
@@ -90,15 +90,14 @@ internal sealed class Binder
 
         if (binder.Diagnostics.HasErrors())
         {
-            var dig = binder.Diagnostics.First();
-            throw new ParseException(dig.Message, dig.Location.StartLine + 1);
+            return new BoundProgram(new("$error", [], [], ScriptType.Void), [..binder.Diagnostics], ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Empty, []);
         }
 
         var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
         var body = new BoundBlockStatement(null, statements.ToImmutable());
         var loweredBody = Lowerer.Lower(main, body);
         functionBodies.Add(main, loweredBody);
-        return new BoundProgram(main, functionBodies.ToImmutable(), binder._ilNames.ToImmutableArray());
+        return new BoundProgram(main, [..binder._diagnostics], functionBodies.ToImmutable(), [.. binder._ilNames]);
     }
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
@@ -233,8 +232,8 @@ internal sealed class Binder
         }
         catch (Exception ex)
         {
-            if (ex is ParseException) throw;
-            throw new ParseException(ex.Message, syntax.Address);
+            _diagnostics.ReportBadStruct(syntax.Location, ex.Message);
+            return BindErrorStatement(syntax);
         }
     }
 
@@ -523,9 +522,6 @@ internal sealed class Binder
         // Constants are always read-only
         var variable = LookupVariable(syntax.Constant, true, boundexpr.Type);
 
-        if (!variable.Type.IsAssignableFrom(boundexpr.Type))
-            throw new ParseException($"类型不匹配：无法将 {boundexpr.Type} 赋值给常量 {variable.Type}", syntax.Address);
-
         return new BoundVariableDeclaration(syntax, variable, boundexpr);
     }
 
@@ -542,7 +538,7 @@ internal sealed class Binder
             // a = (a <op> b)
             var desvar = BindVarExpression(syntax.DestVariable);
             var op = BoundBinaryOperator.Bind(syntax.AssignmentToken.Type, desvar.Type, boundexpr.Type)
-                ?? throw new Exception($"不支持的运算符:{syntax.AssignmentToken.Value}对于类型 <{desvar.Type}>和<{boundexpr.Type}> ");
+                ?? throw new ParseException($"不支持的运算符:{syntax.AssignmentToken.Value}对于类型 <{desvar.Type}>和<{boundexpr.Type}>", syntax.Address);
             boundexpr = new BoundBinaryExpression(syntax.Expression, desvar, op!, boundexpr);
         }
 
@@ -550,7 +546,7 @@ internal sealed class Binder
         var variable = BindVariableDeclaration(syntax.DestVariable, syntax.DestVariable.ReadOnly, boundexpr.Type);
 
         if (!variable.Type.IsAssignableFrom(boundexpr.Type))
-            throw new ParseException($"类型不匹配：无法将 {boundexpr.Type} 赋值给 {variable.Type}", syntax.Address);
+            _diagnostics.ReportCannotConvert(syntax.Location, boundexpr.Type, variable.Type);
 
         return new BoundVariableDeclaration(syntax, variable, boundexpr);
     }
@@ -794,6 +790,7 @@ internal sealed class Binder
     {
         if (type.IsAssignableFrom(expr.Type)) return expr;
         if (type == ScriptType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
+        // _diagnostics.ReportCannotConvert(syntax.Location, boundexpr.Type, variable.Type);
         throw new Exception($"{msg}: 无法将 {expr.Type} 转换为 {type}");
     }
 

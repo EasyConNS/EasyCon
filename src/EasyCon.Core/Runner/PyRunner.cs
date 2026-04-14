@@ -1,3 +1,4 @@
+using EasyCon.Script;
 using EasyScript;
 using Python.Runtime;
 using System.Collections.Immutable;
@@ -20,13 +21,15 @@ public sealed class PyRunner : IRunner
 
     public bool HasKeyAction() => true;
 
-    public void Load(string fileName, ImmutableHashSet<string> extVarNames)
+    public ImmutableArray<Diagnostic> Load(string fileName, ImmutableHashSet<string> extVarNames)
     {
         Code = File.ReadAllText(fileName);
+        return [];
     }
-    public void Init(string code, ImmutableHashSet<string> extVarNames)
+    public ImmutableArray<Diagnostic> Init(string code, ImmutableHashSet<string> extVarNames)
     {
         Code = code;
+        return [];
     }
 
     public void Run(IOutputAdapter output, ICGamePad pad, Dictionary<string, Func<int>> externalGetters, CancellationToken token)

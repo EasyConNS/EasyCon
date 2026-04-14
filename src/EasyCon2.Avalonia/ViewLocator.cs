@@ -1,7 +1,7 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using EasyCon2.Avalonia.ViewModels;
+using EC.Avalonia.ViewModels;
 
 namespace EasyCon2.Avalonia;
 

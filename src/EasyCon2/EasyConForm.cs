@@ -449,7 +449,7 @@ namespace EasyCon2.Forms
 
         private void ComPort_DropDown(object sender, EventArgs e)
         {
-            var ports = ECDevice.GetPortNames();
+            var ports = ECCore.GetDeviceNames();
             ComPort.Items.Clear();
             foreach (var portName in ports)
             {
@@ -463,7 +463,7 @@ namespace EasyCon2.Forms
             EnableConnBtn(false);
             StatusShowLog("尝试连接...");
 
-            var ports = port == "" ? ECDevice.GetPortNames() : [port];
+            var ports = port == "" ? ECCore.GetDeviceNames() : [port];
 
             await Task.Run(() =>
             {

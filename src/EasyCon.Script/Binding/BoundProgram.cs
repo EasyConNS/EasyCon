@@ -4,10 +4,13 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;
 
-internal sealed class BoundProgram(FunctionSymbol main, ImmutableDictionary<FunctionSymbol, BoundBlockStatement> functions, ImmutableArray<string> imglabels)
+internal sealed class BoundProgram(FunctionSymbol main, 
+ImmutableArray<Diagnostic> diagnostics,
+ImmutableDictionary<FunctionSymbol, BoundBlockStatement> functions, ImmutableArray<string> imglabels)
 {
     public readonly FunctionSymbol MainFunction = main;
     public ImmutableDictionary<FunctionSymbol, BoundBlockStatement> Functions = functions;
+    public ImmutableArray<Diagnostic> Diagnostics = diagnostics;
     public ImmutableArray<string> ILNames = imglabels;
 
     public bool KeyAction => Functions.Values.SelectMany(s=>s.Statements).OfType<BoundKeyActStatement>().ToList().Count != 0;

@@ -1,8 +1,7 @@
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
-using EasyCon2.Avalonia.ViewModels;
-using SukiUI;
-using SukiUI.Enums;
+using EC.Avalonia.ViewModels;
+using System.Collections.Generic;
 
 namespace EC.Avalonia.ViewModels;
 
@@ -15,29 +14,29 @@ public sealed partial class ThemeManager : ViewModelBase
     public static ThemeManager Instance => _instance.Value;
 
     [ObservableProperty]
-    public partial SukiColor ThemeColor { get; set; }
-    public SukiColor[] ThemeColors { get; }
+    private string _themeColor = "Blue";
+    public string[] ThemeColors { get; } = { "Blue", "Orange", "Green", "Red" };
 
     [ObservableProperty]
-    public partial ThemeVariant ThemeVariant { get; set; }
-    public ThemeVariant[] ThemeVariants { get; }
+    private string _themeVariant = "Dark";
+    public string[] ThemeVariants { get; } = { "Light", "Dark" };
 
     private ThemeManager()
     {
-        SukiTheme thems = SukiTheme.GetInstance();
-        ThemeVariant = thems.ActiveBaseTheme;
-        ThemeVariants = [ThemeVariant.Default, ThemeVariant.Light, ThemeVariant.Dark];
-        ThemeColors = [SukiColor.Blue, SukiColor.Orange, SukiColor.Green, SukiColor.Red];
-        ThemeColor = thems.ThemeColor;
+        // 初始化默认主题
+        ThemeVariant = "Dark";
+        ThemeColor = "Blue";
     }
 
-    partial void OnThemeColorChanged(SukiColor value)
+    partial void OnThemeColorChanged(string value)
     {
-        SukiTheme.GetInstance().ChangeColorTheme(value);
+        // 在这里可以添加主题颜色变更的逻辑
+        // 但由于我们移除了SukiUI，这里暂时留空
     }
 
-    partial void OnThemeVariantChanged(ThemeVariant value)
+    partial void OnThemeVariantChanged(string value)
     {
-        SukiTheme.GetInstance().ChangeBaseTheme(value);
+        // 在这里可以添加主题变体变更的逻辑
+        // 但由于我们移除了SukiUI，这里暂时留空
     }
 }

@@ -17,7 +17,7 @@ public sealed class ECCapture
         }
         else if (OperatingSystem.IsLinux())
         {
-            return [];
+            return ["OBS Virtual Camera"];
         }
         return [];
     }

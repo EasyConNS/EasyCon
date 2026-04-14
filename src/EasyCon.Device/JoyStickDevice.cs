@@ -150,7 +150,7 @@ public partial class NintendoSwitch : IReporter
     private void DebugKey(string str, ECKey key = null)
     {
         System.Diagnostics.Debug.WriteLine($"{str} {key?.Name ?? "??"}");
-        Log($"{str} {key?.Name ?? ""}");
+        Log?.Invoke($"{str} {key?.Name ?? ""}");
     }
 
     SwitchReport IReporter.GetReport()

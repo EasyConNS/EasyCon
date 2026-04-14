@@ -1,3 +1,4 @@
+using EasyCon.Script;
 using EasyScript;
 using System.Collections.Immutable;
 
@@ -7,8 +8,8 @@ interface IRunner
 {
     abstract bool HasKeyAction { get; }
 
-    void Init(string code, ImmutableHashSet<string> extVarNames);
-    void Load(string fileName, ImmutableHashSet<string> extVarNames);
+    ImmutableArray<Diagnostic> Init(string code, ImmutableHashSet<string> extVarNames);
+    ImmutableArray<Diagnostic> Load(string fileName, ImmutableHashSet<string> extVarNames);
     void Run(IOutputAdapter output, ICGamePad pad, Dictionary<string, Func<int>> externalGetters, CancellationToken token);
 
     string ToCode();

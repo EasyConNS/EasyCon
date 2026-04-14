@@ -1,6 +1,7 @@
 using EasyCon.Script.Syntax;
 using System.Collections;
 using EasyCon.Script.Text;
+using EasyCon.Script.Symbols;
 
 namespace EasyCon.Script;
 
@@ -105,5 +106,11 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     public void ReportParameterAlreadyDeclared(TextLocation location, string paramName)
     {
         ReportError(location, $"重复定义的参数名: {paramName}");
+    }
+
+    public void ReportCannotConvert(TextLocation location, ScriptType fromType, ScriptType toType)
+    {
+        var message = $"类型不匹配：无法将 {fromType} 转换成 {toType}";
+        ReportError(location, message);
     }
 }

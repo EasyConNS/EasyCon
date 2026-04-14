@@ -65,7 +65,9 @@ public class ParserTests
             try
             {
                 var compilation = Compilation.Create(tree);
-                compilation.Compile([]);
+                var diag = compilation.Compile([]);
+                foreach(var d in diag)
+                    errors.Add(d.Message);
             }
             catch (Exception ex)
             {
