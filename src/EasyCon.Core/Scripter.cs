@@ -1,4 +1,5 @@
 using EasyCon.Core.Runner;
+using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyScript;
 using System.Collections.Immutable;
@@ -16,12 +17,17 @@ public sealed class Scripter
     public void Parse(string code, string fileName, Dictionary<string, Func<int>> externalGetters)
     {
         _extVar = externalGetters;
-        var extVarNames = externalGetters.Select(v=>v.Key).ToImmutableHashSet();
-        if (fileName==null)
-            runner.Init(code, extVarNames);
+        var extVarNames = externalGetters.Select(v => v.Key).ToImmutableHashSet();
+        ImmutableArray<Script.Diagnostic> diag = [];
+        if (fileName == null)
+            diag = runner.Init(code, extVarNames);
         else
-            runner.Load(fileName, extVarNames);
-
+            diag = runner.Load(fileName, extVarNames);
+        if (diag.HasErrors())
+        {
+            var d1 = diag.Where(d=>d.IsError).First();
+            throw new ParseException(d1!.Message, d1!.Location.StartLine + 1);
+        }
     }
 
     public static IEnumerable<string> GetTokens(string code, string pre)
