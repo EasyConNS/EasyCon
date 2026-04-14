@@ -7,7 +7,7 @@ namespace EasyCon.Core.Assist;
 
 public sealed class AssistClient
 {
-    private readonly ClientWebSocket ws;
+    private readonly ClientWebSocket ws = new();
     private readonly Uri _uri = new("ws://106.52.245.228:43963");
 
     public AssistClient()

@@ -182,41 +182,41 @@ internal partial class Parser
                         var duration = Match(type => type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR);
                         MatchEOF();
                         var value = int.Parse(duration.Value);
-                        return new StickPress(firstKey.Value, state.Value, Formatter.GetValueEx(duration));
+                        return new StickPress(firstKey, state.Value, Formatter.GetValueEx(duration));
                     }
                     else
                     {
                         MatchEOF();
-                        return new StickAct(firstKey.Value, state.Value);
+                        return new StickAct(firstKey, state.Value);
                     }
                 case TokenType.ResetKeyword:
                     Advance();
                     MatchEOF();
-                    return new StickAct(firstKey.Value, "RESET");
+                    return new StickAct(firstKey, "RESET");
             }
         }
         else
         {
             if (CursorEOF)
             {
-                return new KeyPress(firstKey.Value);
+                return new KeyPress(firstKey);
             }
             else if (Check(TokenType.INT) || Check(TokenType.CONST) || Check(TokenType.VAR))
             {
                 var state = Advance();
                 MatchEOF();
-                return new KeyPress(firstKey.Value, Formatter.GetValueEx(state));
+                return new KeyPress(firstKey, Formatter.GetValueEx(state));
             }
             else
             {
                 var state = Match(TokenType.StateKeyword);
                 MatchEOF();
                 var isUp = state.Value.Equals("UP", StringComparison.CurrentCultureIgnoreCase);
-                return new KeyAct(firstKey.Value, isUp);
+                return new KeyAct(firstKey, isUp);
             }
         }
         _diagnostics.ReportInvalidKeyActionStatement(firstKey.Location, firstKey);
-        return new KeyAct(firstKey.Value);
+        return new KeyAct(firstKey);
     }
     const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN|DOWNLEFT|DOWNRIGHT|UPLEFT|UPRIGHT";
 

@@ -3,7 +3,6 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <PublishAot>false</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>

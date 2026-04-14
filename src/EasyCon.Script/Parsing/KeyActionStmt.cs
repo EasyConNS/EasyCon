@@ -2,10 +2,10 @@ using EasyScript;
 
 namespace EasyCon.Script.Syntax;
 
-abstract class KeyActionStmt(string keyname, bool up = false) : Statement(null!)
+abstract class KeyActionStmt(Token syntax, bool up = false) : Statement(syntax)
 {
-    protected virtual string KeyName => keyname.ToUpper();
-    public virtual GamePadKey Key => NSKeys.GetKey(keyname);
+    protected virtual string KeyName => Syntax.Value.ToUpper();
+    public virtual GamePadKey Key => NSKeys.GetKey(KeyName);
 
     public virtual bool Up => up;
 
@@ -32,14 +32,14 @@ class KeyPress : KeyActionStmt, IDurationKey
     public ExprBase Duration { get; } = DefaultDuration;
     private readonly bool _omitted = false;
 
-    public KeyPress(string key)
-        : base(key)
+    public KeyPress(Token syntax)
+        : base(syntax)
     {
         _omitted = true;
     }
 
-    public KeyPress(string key, ExprBase duration)
-        : base(key)
+    public KeyPress(Token syntax, ExprBase duration)
+        : base(syntax)
     {
         Duration = duration;
     }
@@ -84,7 +84,7 @@ class KeyPress : KeyActionStmt, IDurationKey
     //}
 }
 
-class KeyAct(string key, bool up = false) : KeyActionStmt(key, up)
+class KeyAct(Token syntax, bool up = false) : KeyActionStmt(syntax, up)
 {
     //public override void Exec(Processor processor)
     //{
@@ -120,7 +120,7 @@ abstract class StickActionStmt : KeyActionStmt
     protected readonly string Direction;
     public readonly int Degree;
 
-    public StickActionStmt(string keyname, string direction) : base(keyname)
+    public StickActionStmt(Token syntax, string direction) : base(syntax)
     {
         Direction = direction;
         _= NSKeys.CheckDirection(Direction, out var degree);
@@ -146,7 +146,7 @@ abstract class StickActionStmt : KeyActionStmt
     // }
 }
 
-class StickPress(string keyname, string direction, ExprBase duration) : StickActionStmt(keyname, direction), IDurationKey
+class StickPress(Token syntax, string direction, ExprBase duration) : StickActionStmt(syntax, direction), IDurationKey
 {
     public ExprBase Duration => duration;
 
@@ -190,7 +190,7 @@ class StickPress(string keyname, string direction, ExprBase duration) : StickAct
     //}
 }
 
-class StickAct(string keyname, string direction) : StickActionStmt(keyname, direction)
+class StickAct(Token syntax, string direction) : StickActionStmt(syntax, direction)
 {
     //public override void Exec(Processor processor)
     //{

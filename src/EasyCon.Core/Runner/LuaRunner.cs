@@ -55,20 +55,20 @@ public sealed class LuaRunner
 internal class TestObj
 {
 
-    public void Msg(object txt, object? title = null)
+    public void Msg(string txt, string title = "")
     {
-        if (title == null)
+        if (title == "")
         {
-            Debug.WriteLine(txt.ToString());
+            Debug.WriteLine(txt);
         }
         else
         {
-            Debug.WriteLine(txt.ToString(), title.ToString());
+            Debug.WriteLine(txt, title);
         }
     }
 
-    public static void StaticMsg(object txt)
+    public static void StaticMsg(string txt)
     {
-        Debug.WriteLine(txt.ToString(), "StaticMsg");
+        Debug.WriteLine(txt, "StaticMsg");
     }
 }

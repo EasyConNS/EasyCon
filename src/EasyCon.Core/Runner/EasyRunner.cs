@@ -8,7 +8,6 @@ namespace EasyCon.Core.Runner;
 public sealed class EasyRunner : IRunner
 {
     Compilation? compilation;
-    Dictionary<string, Func<int>>? _externalGetters;
 
     public bool HasKeyAction => compilation?.KeyAction?? false;
     public bool NeedILLoad => compilation?.NeedIL ?? false;

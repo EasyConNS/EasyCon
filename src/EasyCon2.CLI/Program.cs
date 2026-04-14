@@ -98,7 +98,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
 
     Console.WriteLine($"准备执行脚本...  环境信息=>采集设备：{vId}[{refs}]  单片机端口：{COM}");
 
-    var scriptBasePath = Path.GetDirectoryName(file);
+    var scriptBasePath = Path.GetDirectoryName(file) ?? "";
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     Console.WriteLine("准备加载搜图标签...");
     Console.WriteLine($"标签（脚本）路径：{scriptBasePath}({ECCore.ImgDir}所在目录)");
@@ -106,7 +106,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     Console.WriteLine($"已加载标签：{label.Count()}/{total}, {(repeat > 0 ? $"重复标签：{repeat}" : "")}");
 
 
-    OpenCVCapture cvcap = null;
+    OpenCVCapture? cvcap = null;
     outdap.Log("正在解析脚本...");
     try
     {
@@ -232,7 +232,7 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
     string file = parseResult.GetValue(scriptOption)!;
     string? outputFile = parseResult.GetValue(formatOutputOption);
 
-    var scriptBasePath = Path.GetDirectoryName(file);
+    var scriptBasePath = Path.GetDirectoryName(file) ?? "";
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
 

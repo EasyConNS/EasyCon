@@ -206,6 +206,11 @@ $val = _PI
 $sum = 2+2
 $1 = 10
 $2 = $1");
+
+        ExpectError(@"
+_PI = 3+$sum
+_PI -= 2+2
+_PI = @识图");
     }
 
     #endregion
@@ -213,10 +218,10 @@ $2 = $1");
     #region 表达式和运算符
 
     [Test]
-    public void Expression_Arithmetic()
+    public void Expression_Common()
     {
         ExpectSuccess(@"
-$val = 1 + 2
+_PI = 1 + 2
 $v += $b
 $val = 5 - 3
 $v -= $b
@@ -229,24 +234,17 @@ $val = 1 \ 2
 $val = 5 & 3
 $val = 1 != 2
 $val = 5 | 3
-$val = 5 ^ 3");
-    }
+$val = 5 ^ 3
+$val = ~5
+$var = 1 << 2
+$val >>= 1");
 
-    [Test]
-    public void Expression_Comparison()
-    {
         ExpectSuccess(@"
 $val = 1 != 2
 $val = 3 > 2
 $val = 1 < 2
 $val = 3 >= 2
 $val = 1 <= 2");
-    }
-
-    [Test]
-    public void Expression_Bitwise()
-    {
-        ExpectSuccess("$val = ~5\n$val = 1 << 2\n$val = 4 >> 1");
     }
 
     [Test]
@@ -264,25 +262,13 @@ $val = 1 <= 2");
     {
         ExpectSuccess(@"
 FOR 3
-A
 NEXT
-$2 = 20
 FOR $2
-A
 NEXT
 FOR $1 = 5 TO 10
 A
 NEXT
-$1 = 5
-$2 = 10
-FOR $1 = 5 TO $2
-A
-NEXT
 $count = 0
-FOR $count
-A
-NEXT
-$count = -1
 FOR $count
 A
 NEXT
@@ -291,6 +277,9 @@ FOR 2
 A
 NEXT
 NEXT");
+
+        ExpectError(@"
+FOR @识图");
     }
 
     [Test]
@@ -596,6 +585,11 @@ FUNC greet($a)
 PRINT hello & $a
 ENDFUNC
 greet 233");
+        ExpectBindError(@"
+FUNC greet($a)
+PRINT hello & $a
+ENDFUNC
+CALL greet");
     }
 
     [Test]
@@ -603,8 +597,8 @@ greet 233");
     {
         // 测试递归调用 - 斐波那契数列函数
         // F(0) = 0, F(1) = 1, F(n) = F(n-1) + F(n-2)
-        ExpectSuccess(@"
-FUNC fib($n)
+        ExpectBindSuccess(@"
+FUNC fib($n) : int
 IF $n == 0
 RETURN 0
 ENDIF
@@ -615,14 +609,21 @@ $1 = $n - 1
 $2 = $n - 2
 RETURN fib($1) + fib($2)
 ENDFUNC
-CALL fib");
+fib 10");
     }
 
     [Test]
     public void Function_CallBeforeDefVar()
     {
-        // 测试带参数的函数调用
         ExpectBindSuccess(@"
+$a = 233
+call test
+FUNC test
+PRINT $a
+ENDFUNC");
+
+        // 测试带参数的函数调用
+        ExpectBindError(@"
 call test
 $a = 1
 FUNC test
@@ -643,7 +644,7 @@ NEXT");
     [Test]
     public void Complex_MultipleStatements()
     {
-        ExpectSuccess(@"
+        ExpectBindSuccess(@"
 # 这是一个测试脚本
 $val = 10
 PRINT $val

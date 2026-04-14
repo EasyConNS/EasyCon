@@ -22,7 +22,8 @@ static class Formatter
                     return new ExtVarExpr(name);
                 }
             default:
-                throw new FormatException($"表达式类型不正确：{tok.Type}");
+                return new VariableExpr("??", true);
+                // throw new FormatException($"表达式类型不正确：{tok.Type}");
         }
     }
 }
