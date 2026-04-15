@@ -109,7 +109,6 @@ public partial class MainWindow : Window
     }
     private void OnDragEnter(object? sender, DragEventArgs e)
     {
-        Console.WriteLine("DragEnter");
         // 仅接受文件拖放
         if (e.DataTransfer.Contains(DataFormat.File))
         {
@@ -130,25 +129,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void OnDrop(object? sender, DragEventArgs e)
+    private void OnDrop(object? sender, DragEventArgs e)
     {
         if (e.DataTransfer.Contains(DataFormat.File))
         {
             var files = e.DataTransfer.TryGetFiles();
             if (files is null) return;
 
-            foreach (var file in files)
+            if (DataContext is MainWindowViewModel vm)
             {
-                if (file is IStorageFile storageFile)
+                var file = files.FirstOrDefault();
+                if (file != null)
                 {
-                    // 读取文件路径或内容
-                    string path = storageFile.Path.LocalPath;
-                    
-                    // 打开文件流
-                    await using var stream = await storageFile.OpenReadAsync();
-                    // 处理文件...
-                    
-                    System.Diagnostics.Debug.WriteLine($"接收到文件: {path}");
+                    var path = file.Path.LocalPath;
+                    vm.OpenScriptFromPath(path);
                 }
             }
         }

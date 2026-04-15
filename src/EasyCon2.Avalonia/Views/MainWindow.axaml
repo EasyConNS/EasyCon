@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
          xmlns:vm="using:EC.Avalonia.ViewModels"
+         xmlns:conv="using:EC.Avalonia.Converters"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:dd="using:Avalonia.Input"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -19,6 +20,10 @@
         dd:DragDrop.DragEnter="OnDragEnter"
         dd:DragDrop.DragOver="OnDragOver"
         dd:DragDrop.Drop="OnDrop">
+
+    <Window.Resources>
+        <conv:BoolToGreenBrushConverter x:Key="BoolToGreenBrush" />
+    </Window.Resources>
 
     <Grid RowDefinitions="Auto,*">
         <!-- 顶部区域：脚本路径和打开按钮 -->
@@ -89,14 +94,26 @@
                                       SelectedItem="{Binding SelectedSerialPort}"
                                       HorizontalAlignment="Stretch"
                                       DropDownOpened="SerialPortComboBox_DropDownOpened"/>
-                            <Button Content="{Binding NintendoSwitchButtonText}"
-                                   Command="{Binding ConnectNintendoSwitchCommand}"
-                                   IsEnabled="{Binding !IsConnectingNintendoSwitch}"
-                                   HorizontalAlignment="Stretch"
-                                   HorizontalContentAlignment="Center"/>
+                            <Grid ColumnDefinitions="*,*">
+                                <Button Grid.Column="0"
+                                        Content="{Binding NintendoSwitchButtonText}"
+                                        Command="{Binding ConnectNintendoSwitchCommand}"
+                                        IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                        Margin="0,0,5,0"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"/>
+                                <Button Grid.Column="1"
+                                        Content="自动连接"
+                                        Command="{Binding AutoConnectNintendoSwitchCommand}"
+                                        IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                        Margin="5,0,0,0"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"/>
+                            </Grid>
                             <TextBlock Text="{Binding NintendoSwitchStatus}"
                                       HorizontalAlignment="Center"
-                                      Foreground="{DynamicResource ThemeForegroundColorDefaultBrush}"/>
+                                      FontWeight="Bold"
+                                      Foreground="{Binding IsNintendoSwitchConnected, Converter={StaticResource BoolToGreenBrush}}"/>
                         </StackPanel>
                     </Border>
 
@@ -112,14 +129,15 @@
                                       SelectedItem="{Binding SelectedCaptureSource}"
                                       HorizontalAlignment="Stretch"
                                       DropDownOpened="CaptureSourceComboBox_DropDownOpened"/>
-                            <Button Content="连接视频源"
+                            <Button Content="{Binding CaptureSourceButtonText}"
                                    Command="{Binding ConnectCaptureSourceCommand}"
                                    IsEnabled="{Binding !IsConnectingCaptureSource}"
                                    HorizontalAlignment="Stretch"
                                    HorizontalContentAlignment="Center"/>
                             <TextBlock Text="{Binding CaptureSourceStatus}"
                                       HorizontalAlignment="Center"
-                                      Foreground="{DynamicResource ThemeForegroundColorDefaultBrush}"/>
+                                      FontWeight="Bold"
+                                      Foreground="{Binding IsCaptureSourceConnected, Converter={StaticResource BoolToGreenBrush}}"/>
                         </StackPanel>
                     </Border>
 
@@ -151,6 +169,7 @@
                             </Grid>
                             <TextBlock Text="{Binding ControlSourceStatus}"
                                       HorizontalAlignment="Center"
+                                      FontWeight="Bold"
                                       Foreground="{DynamicResource ThemeForegroundColorDefaultBrush}"/>
                         </StackPanel>
                     </Border>

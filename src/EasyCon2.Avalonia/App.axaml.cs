@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using EasyCon2.Avalonia.Views;
 using EC.Avalonia.ViewModels;
+using EC.Avalonia.Services;
 
 namespace EasyCon2.Avalonia;
 
@@ -17,7 +18,11 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow { DataContext = new MainWindowViewModel() };
+            var logService = new LogService();
+            var deviceService = new DeviceService(logService);
+            var captureService = new CaptureService(logService);
+            var scriptService = new ScriptService(deviceService, captureService, logService);
+            desktop.MainWindow = new MainWindow { DataContext = new MainWindowViewModel(logService, deviceService, captureService, scriptService) };
         }
 
         base.OnFrameworkInitializationCompleted();
