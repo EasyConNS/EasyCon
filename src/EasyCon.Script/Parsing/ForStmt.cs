@@ -20,38 +20,10 @@ abstract class ForStmt(Token syntax, ExprBase lower, ExprBase upper) : StartBloc
     public override StatementKind Kind => StatementKind.ForStmt;
     public readonly ExprBase Lower = lower;
     public readonly ExprBase Upper = upper;
-
-    //protected virtual void Init(Processor processor)
-    //{ }
-
-    //protected abstract bool Cond(Processor processor);
-
-    //protected virtual void Step(Processor processor)
-    //{ }
-    //public override sealed void Exec(Processor processor)
-    //{
-    //    var liteScop = processor.GetScope();
-    //    if (liteScop.LoopStack.Count == 0 || liteScop.LoopStack.Peek() != this)
-    //    {
-    //        // entering
-    //        liteScop.LoopStack.Push(this);
-    //        Init(processor);
-    //    }
-    //    else
-    //    {
-    //        // looping
-    //        Step(processor);
-    //    }
-    //    if (!Cond(processor))
-    //        processor.PC = liteScop.LoopStack.Pop().Next.Address + 1;
-    //}
 }
 
-class For_Infinite : ForStmt
+class For_Infinite(Token syntax) : ForStmt(syntax, new LiteralExpr(syntax, 0), new LiteralExpr(syntax, 0))
 {
-    public For_Infinite(Token syntax)
-        : base(syntax, 0,0)
-    { }
 
     public override StatementKind Kind => StatementKind.ForStmt;
     protected override string _GetString() => "FOR";
@@ -63,7 +35,7 @@ class For_Infinite : ForStmt
     //}
 }
 
-class For_Static(Token syntax, ExprBase count) : ForStmt(syntax, 1, count)
+class For_Static(Token syntax, ExprBase count) : ForStmt(syntax, new LiteralExpr(syntax, 1), count)
 {
     public override StatementKind Kind => StatementKind.ForStmt;
     protected override string _GetString()
@@ -82,16 +54,6 @@ class For_Static(Token syntax, ExprBase count) : ForStmt(syntax, 1, count)
     //    assembler.Add(Assembly.Instructions.AsmFor.Create());
     //    assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
     //}
-}
-
-class For_Range(Token syntax, VariableExpr regiter, ExprBase iter): ForStmt(syntax, iter, 1)
-{
-    public override StatementKind Kind => StatementKind.ForStmt;
-    public VariableExpr RegIter = regiter;
-    protected override string _GetString()
-    {
-        return $"FOR {RegIter.GetCodeText()} = RANGE {Lower.GetCodeText()}";
-    }
 }
 
 class For_Full(Token syntax, VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(syntax, lower, upper)

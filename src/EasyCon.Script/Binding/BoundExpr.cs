@@ -4,9 +4,9 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;
 
-internal abstract class BoundExpr(ExprBase expr) : BoundNode
+internal abstract class BoundExpr(AstNode expr) : BoundNode
 {
-    public ExprBase Syntax = expr;
+    public AstNode Syntax = expr;
     public abstract ScriptType Type { get; }
     public Value ConstantValue = Value.Void;
 
@@ -54,7 +54,7 @@ internal abstract class BoundExpr(ExprBase expr) : BoundNode
     }
 }
 
-internal sealed class BoundErrorExpression(ExprBase expr) : BoundExpr(expr)
+internal sealed class BoundErrorExpression(AstNode expr) : BoundExpr(expr)
 {
     public override ScriptType Type => throw new NotImplementedException();
 
@@ -65,7 +65,7 @@ internal sealed class BoundLiteralExpression : BoundExpr
 {
     public override ScriptType Type { get; }
     public override BoundNodeKind Kind => BoundNodeKind.Literal;
-    public BoundLiteralExpression(ExprBase syntax, Value value) : base( syntax)
+    public BoundLiteralExpression(AstNode syntax, Value value) : base( syntax)
     {
         Type = value.Type;
         ConstantValue = value;
@@ -77,7 +77,7 @@ internal sealed class BoundVariableExpression : BoundExpr
     public readonly VariableSymbol Variable;
     public override ScriptType Type { get; }
     public override BoundNodeKind Kind => BoundNodeKind.Variable;
-    public BoundVariableExpression(ExprBase syntax, VariableSymbol variable) : base(syntax)
+    public BoundVariableExpression(AstNode syntax, VariableSymbol variable) : base(syntax)
     {
         Variable = variable;
         Type = variable.Type;
@@ -85,7 +85,7 @@ internal sealed class BoundVariableExpression : BoundExpr
     }
 }
 
-internal sealed class BoundIndexVariableExpression(ExprBase syntax, BoundExpr baseExpr, BoundExpr idx, ScriptType elementType) : BoundExpr(syntax)
+internal sealed class BoundIndexVariableExpression(AstNode syntax, BoundExpr baseExpr, BoundExpr idx, ScriptType elementType) : BoundExpr(syntax)
 {
     public override ScriptType Type { get; } = elementType;
     public override BoundNodeKind Kind => BoundNodeKind.IndexVariable;
@@ -93,7 +93,7 @@ internal sealed class BoundIndexVariableExpression(ExprBase syntax, BoundExpr ba
     public readonly BoundExpr Index = idx;
 }
 
-internal sealed class BoundSliceExpression(ExprBase syntax, BoundExpr baseExpr, BoundExpr st, BoundExpr end, ScriptType resultType) : BoundExpr(syntax)
+internal sealed class BoundSliceExpression(AstNode syntax, BoundExpr baseExpr, BoundExpr st, BoundExpr end, ScriptType resultType) : BoundExpr(syntax)
 {
     public override ScriptType Type { get; } = resultType;
     public override BoundNodeKind Kind => BoundNodeKind.SliceVariable;
@@ -108,7 +108,7 @@ internal sealed class BoundIndexDeclxpression : BoundExpr
     public readonly ImmutableArray<BoundExpr> Items;
     public override BoundNodeKind Kind => BoundNodeKind.IndexDecl;
 
-    public BoundIndexDeclxpression(ExprBase syntax, ImmutableArray<BoundExpr> items) : base(syntax)
+    public BoundIndexDeclxpression(AstNode syntax, ImmutableArray<BoundExpr> items) : base(syntax)
     {
         Items = items;
         // 如果数组为空，默认可以是 Array<any> 或者报错，这里假设至少有一个元素
@@ -125,7 +125,7 @@ internal sealed class BoundExternalVariableExpression(ExtVarExpr syntax, string 
     public override BoundNodeKind Kind => BoundNodeKind.ExLabelVariable;
 }
 
-internal sealed class BoundUnaryExpression(ExprBase syntax, BoundUnaryOperator op, BoundExpr operand) : BoundExpr(syntax)
+internal sealed class BoundUnaryExpression(AstNode syntax, BoundUnaryOperator op, BoundExpr operand) : BoundExpr(syntax)
 {
     public readonly BoundExpr Operand = operand;
     public readonly BoundUnaryOperator Op = op;
@@ -134,7 +134,7 @@ internal sealed class BoundUnaryExpression(ExprBase syntax, BoundUnaryOperator o
     public override BoundNodeKind Kind => BoundNodeKind.UnaryExpression;
 }
 
-internal sealed class BoundBinaryExpression(ExprBase syntax, BoundExpr left, BoundBinaryOperator op, BoundExpr right) : BoundExpr(syntax)
+internal sealed class BoundBinaryExpression(AstNode syntax, BoundExpr left, BoundBinaryOperator op, BoundExpr right) : BoundExpr(syntax)
 {
     public readonly BoundExpr Left = left;
     public readonly BoundExpr Right = right;
@@ -144,7 +144,7 @@ internal sealed class BoundBinaryExpression(ExprBase syntax, BoundExpr left, Bou
     public override BoundNodeKind Kind => BoundNodeKind.BinaryExpression;
 }
 
-internal sealed class BoundConversionExpression(ExprBase syntax, ScriptType type, BoundExpr expr) : BoundExpr(syntax)
+internal sealed class BoundConversionExpression(AstNode syntax, ScriptType type, BoundExpr expr) : BoundExpr(syntax)
 {
     public override ScriptType Type => type;
 
@@ -152,7 +152,7 @@ internal sealed class BoundConversionExpression(ExprBase syntax, ScriptType type
     public BoundExpr Expression = expr;
 }
 
-internal sealed class BoundAssignExpression(ExprBase syntax, VariableSymbol variable, BoundExpr expr) :BoundExpr(syntax)
+internal sealed class BoundAssignExpression(AstNode syntax, VariableSymbol variable, BoundExpr expr) :BoundExpr(syntax)
 {
     public override ScriptType Type => Expression.Type;
     public readonly VariableSymbol Variable = variable;
@@ -160,7 +160,7 @@ internal sealed class BoundAssignExpression(ExprBase syntax, VariableSymbol vari
     public override BoundNodeKind Kind => BoundNodeKind.AssignmentExpression;
 }
 
-internal sealed class BoundCallExpression(ExprBase syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments, ScriptType instantiatedType) : BoundExpr(syntax)
+internal sealed class BoundCallExpression(AstNode syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments, ScriptType instantiatedType) : BoundExpr(syntax)
 {
     public override ScriptType Type { get; } = instantiatedType;
     public readonly FunctionSymbol Function = function;

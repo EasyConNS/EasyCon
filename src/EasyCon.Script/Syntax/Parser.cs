@@ -64,7 +64,7 @@ internal sealed partial class Parser
             return Advance();
         }
         _diagnostics.ReportUnexpectedToken(Current.Location, Current, type);
-        return new(_text, TokenType.BadToken, "", Current.Line, Current.Span.Start);
+        return new(_text, TokenType.BadToken, "", Current.Span.Start);
     }
 
     private delegate bool matchHandler(TokenType type);
@@ -76,7 +76,7 @@ internal sealed partial class Parser
             return Advance();
         }
         _diagnostics.ReportUnexpectedToken(Current.Location, Current, TokenType.ASSIGN);
-        return new(_text, TokenType.BadToken, "", Current.Line, Current.Span.Start);
+        return new(_text, TokenType.BadToken, "", Current.Span.Start);
     }
 
     private void MatchEOF()

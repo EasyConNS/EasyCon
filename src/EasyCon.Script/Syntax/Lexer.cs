@@ -12,7 +12,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
     private readonly string _input = syntaxTree.Text.ToString();
     private int _position = 0;
-    private int _line = 1;
     private readonly List<Token> _tokens = [];
 
     public DiagnosticBag Diagnostics => _diagnostics;
@@ -132,7 +131,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
 
     private void AddToken(TokenType type, string value, int start)
     {
-        _tokens.Add(new Token(_text, type, value, _line, start));
+        _tokens.Add(new Token(_text, type, value, start));
     }
 
     // 检查是否为标识符起始字符
@@ -167,7 +166,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 {
                     AddToken(TokenType.NEWLINE, " ", _position);
                     cleanFlags();
-                    _line++;
                 }
             }
             Advance();

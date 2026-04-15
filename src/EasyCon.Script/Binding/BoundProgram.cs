@@ -22,9 +22,9 @@ internal abstract class BoundNode
     public abstract BoundNodeKind Kind { get; }
 }
 
-internal abstract class BoundStmt(Statement stmt) : BoundNode
+internal abstract class BoundStmt(AstNode stmt) : BoundNode
 {
-    public Statement Syntax = stmt;
+    public AstNode Syntax = stmt;
 }
 
 internal sealed class BoundLabel(string name)

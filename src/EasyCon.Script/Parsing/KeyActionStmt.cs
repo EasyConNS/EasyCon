@@ -29,13 +29,14 @@ class KeyPress : KeyActionStmt, IDurationKey
 {
     private const int DefaultDuration = 50;
 
-    public ExprBase Duration { get; } = DefaultDuration;
+    public ExprBase Duration { get; }
     private readonly bool _omitted = false;
 
     public KeyPress(Token syntax)
         : base(syntax)
     {
         _omitted = true;
+        Duration = new LiteralExpr(syntax, DefaultDuration);
     }
 
     public KeyPress(Token syntax, ExprBase duration)

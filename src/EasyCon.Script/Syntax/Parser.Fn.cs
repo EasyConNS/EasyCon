@@ -40,10 +40,9 @@ internal partial class Parser
             case TokenType.END when _grouptokens.Length == 1:
                 return new EndBlockStmt(Current);
             case TokenType.INT when _grouptokens.Length == 1:
-                //if (int.TryParse(Current.Value, out int duration)) 
                 var ok = int.TryParse(Current.Value, out var duration);
                 if (!ok) _diagnostics.ReportInvalidNumber(Current.Location, Current.Value);
-                return new Wait(Current, duration, true);
+                return new Wait(Current, new LiteralExpr(Current, duration), true);
             case TokenType.ButtonKeyword or TokenType.StickKeyword:
                 {
                     // var fullline = Current.Text.Lines[Current.Line - 1].Text;
@@ -297,11 +296,9 @@ internal partial class Parser
         switch (Current.Type)
         {
             case TokenType.STRING:
-                var tokstr = Advance();
-                return new LiteralExpr(tokstr.Value);
             case TokenType.CONST:
                 var tokenct = Advance();
-                return new ConstVarExpr(tokenct.Value);
+                return Formatter.GetValueEx(tokenct);
             case TokenType.VAR:
             case TokenType.EX_VAR:
                 var token = Advance();
@@ -324,7 +321,7 @@ internal partial class Parser
                 var toknum = Advance();
                 var ok = int.TryParse(toknum.Value, out var intval);
                 if (!ok) _diagnostics.ReportInvalidNumber(toknum.Location, toknum.Value);
-                return new LiteralExpr(intval);
+                return new LiteralExpr(toknum, intval);
         }
     }
 
@@ -362,19 +359,19 @@ internal partial class Parser
         var lb = Match(TokenType.LeftBracket, "语法需要'['");
 
         var ommitstart = Check(TokenType.COLON);
-        var start = Check(TokenType.COLON) ? new LiteralExpr(0) : ParsePrimary();
+        var start = Check(TokenType.COLON) ? new LiteralExpr(Current, 0) : ParsePrimary();
         // [expr]
         if (Check(TokenType.RightBracket))
         {
             var rb = Advance();
-            return new IndexVisitExpression((VariableExpr)Formatter.GetValueEx(variableToken), lb, start, rb);
+            return new IndexVisitExpression(variableToken, lb, start, rb);
         }
         // [start:end]
         Match(TokenType.COLON, "语法不正确[<start>:<end>]");
 
-        var end = Check(TokenType.RightBracket) ? new LiteralExpr("") : ParsePrimary();
+        var end = Check(TokenType.RightBracket) ? new LiteralExpr(Current, "") : ParsePrimary();
         Match(TokenType.RightBracket, "语法需要']'");
-        return new SliceExpression((VariableExpr)Formatter.GetValueEx(variableToken), start, end, ommitstart);
+        return new SliceExpression(variableToken, start, end, ommitstart);
     }
 
     private ImmutableArray<ExprBase> ParseArguments()

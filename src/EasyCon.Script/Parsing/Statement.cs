@@ -29,9 +29,8 @@ enum StatementKind
     Import,
 }
 
-abstract class Statement(Token syntax)
+abstract class Statement(Token syntax) : AstNode(syntax)
 {
-    public Token Syntax { get; } = syntax;
     public int Address = -1;
     public string Comment { get; set; } = string.Empty;
 

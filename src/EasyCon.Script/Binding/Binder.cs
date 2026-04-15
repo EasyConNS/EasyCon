@@ -94,7 +94,7 @@ internal sealed class Binder
         }
 
         var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
-        var body = new BoundBlockStatement(null, statements.ToImmutable());
+        var body = new BoundBlockStatement(main.Declaration, statements.ToImmutable());
         var loweredBody = Lowerer.Lower(main, body);
         functionBodies.Add(main, loweredBody);
         return new BoundProgram(main, [..binder._diagnostics], functionBodies.ToImmutable(), [.. binder._ilNames]);
@@ -337,7 +337,7 @@ internal sealed class Binder
         var idxVar = forCond switch
         {
             For_Full ff => ff.RegIter,
-            For_Static => new VariableExpr($"_tmpL${_labelCounter++}", true),
+            For_Static => new VariableExpr(new(syntax.Syntax.Text, TokenType.VAR, $"_tmpL${_labelCounter++}",0), true),
             _ => null,
         };
         var variable = idxVar switch
@@ -589,7 +589,7 @@ internal sealed class Binder
         var upper = name.ToUpper();
         if (upper.EndsWith("[]"))
         {
-            var elem = LookupType(upper.Substring(0, upper.Length - 2));
+            var elem = LookupType(upper[..^2]);
             return elem == null ? null : ScriptType.Array.Bind(elem);
         }
         return upper switch
@@ -616,7 +616,7 @@ internal sealed class Binder
             // TIME <变量> 转换为 <变量> = TIME()
             if (BuiltinFunctions.Timestamp == function)
             {
-                var timeCallExpr = BindCallExpressionInternal(null, function, []);
+                var timeCallExpr = BindCallExpressionInternal(syntax, function, []);
                 var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
                 return new BoundVariableDeclaration(syntax, variable, timeCallExpr);
             }
@@ -624,14 +624,14 @@ internal sealed class Binder
             // RAND <变量> 转换为 <变量> = RAND(<变量>)
             if (BuiltinFunctions.Rand == function)
             {
-                var randCallExpr = BindCallExpressionInternal(null, function, [legacyVar]);
+                var randCallExpr = BindCallExpressionInternal(syntax, function, [legacyVar]);
                 var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
                 return new BoundVariableDeclaration(syntax, variable, randCallExpr);
             }
         }
 
         // 绑定调用
-        var expr = BindCallExpressionInternal(null, function, [.. syntax.Args]);
+        var expr = BindCallExpressionInternal(syntax, function, [.. syntax.Args]);
 
         return new BoundExprStatement(syntax, expr);
     }
@@ -641,7 +641,7 @@ internal sealed class Binder
         var boundArgument = BindExpression(syntax.Duration);
         boundArgument = BindConversion(boundArgument, ScriptType.Int);
 
-        var expr = new BoundCallExpression(null, BuiltinFunctions.Wait, [boundArgument], ScriptType.Void);
+        var expr = new BoundCallExpression(syntax, BuiltinFunctions.Wait, [boundArgument], ScriptType.Void);
         return new BoundExprStatement(syntax, expr);
     }
 
@@ -676,7 +676,6 @@ internal sealed class Binder
         return syntax switch
         {
             LiteralExpr => BindLiterExpression((LiteralExpr)syntax),
-            VariableExpr => BindVarExpression((VariableExpr)syntax),
             ExtVarExpr => BindExtraLabel((ExtVarExpr)syntax),
             UnaryExpression => BindUnaryExpression((UnaryExpression)syntax),
             BinaryExpression => BindBinaryExpression((BinaryExpression)syntax),
@@ -685,6 +684,7 @@ internal sealed class Binder
             IndexDefExpression => BindIndexExpression((IndexDefExpression)syntax),
             IndexVisitExpression => BindIndexVisitExpression((IndexVisitExpression)syntax),
             SliceExpression => BoundSliceExpression((SliceExpression)syntax),
+            VariableExpr => BindVarExpression((VariableExpr)syntax),
             _ => throw new Exception($"未知的表达式"),
         };
     }
@@ -732,7 +732,7 @@ internal sealed class Binder
 
     private BoundIndexVariableExpression BindIndexVisitExpression(IndexVisitExpression syntax)
     {
-        var baseExpr = BindExpression(syntax.Var);
+        var baseExpr = BindVarExpression(syntax);
 
         // 1. 类型校验：仅支持 字符串 或 泛型数组
         bool isString = baseExpr.Type.Equals(ScriptType.String);
@@ -764,7 +764,7 @@ internal sealed class Binder
 
     private BoundSliceExpression BoundSliceExpression(SliceExpression syntax)
     {
-        var baseExpr = BindExpression(syntax.Var);
+        var baseExpr = BindVarExpression(syntax);
 
         // 1. 类型校验
         bool isString = baseExpr.Type.Equals(ScriptType.String);
@@ -838,7 +838,7 @@ internal sealed class Binder
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
     }
 
-    private BoundCallExpression BindCallExpressionInternal(Callv1Expression syntax, FunctionSymbol function, ImmutableArray<ExprBase> Arguments)
+    private BoundCallExpression BindCallExpressionInternal(AstNode syntax, FunctionSymbol function, ImmutableArray<ExprBase> Arguments)
     {
         // 1. 先绑定实参表达式
         var boundArgs = Arguments.Select(BindExpression).ToImmutableArray();

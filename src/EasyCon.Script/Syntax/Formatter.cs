@@ -9,20 +9,20 @@ static class Formatter
         switch (tok.Type)
         {
             case TokenType.STRING:
-                return tok.Value;
+                return new LiteralExpr(tok, tok.Value);
             case TokenType.INT:
-                return int.Parse(tok.Value);
+                return new LiteralExpr(tok, int.Parse(tok.Value));
             case TokenType.CONST:
-                return new ConstVarExpr(tok.Value);
+                return new ConstVarExpr(tok);
             case TokenType.VAR:
-                return new VariableExpr(tok.Value);
+                return new VariableExpr(tok);
             case TokenType.EX_VAR:
                 {
                     var name = tok.Value[1..];
-                    return new ExtVarExpr(name);
+                    return new ExtVarExpr(tok, name);
                 }
             default:
-                return new VariableExpr("??", true);
+                return new VariableExpr(tok, true);
                 // throw new FormatException($"表达式类型不正确：{tok.Type}");
         }
     }

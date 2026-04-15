@@ -104,11 +104,10 @@ public enum TokenType
     EOF
 }
 
-public sealed record Token(SourceText text, TokenType type, string value, int line, int start)
+public sealed record Token(SourceText text, TokenType type, string value, int start)
 {
     public TokenType Type { get; } = type;
     public string Value { get; } = value;
-    public int Line { get; } = line;
 
     public SourceText Text { get; } = text;
     public SourceSpan Span => new(start, Value.Length);
@@ -117,6 +116,6 @@ public sealed record Token(SourceText text, TokenType type, string value, int li
 
     public override string ToString()
     {
-        return $"T{Line}('{Value}':{Type})";
+        return $"T{Location.StartLine+1}('{Value}':{Type})";
     }
 }
