@@ -1,4 +1,3 @@
-using EasyScript;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script.Syntax;
@@ -349,7 +348,10 @@ internal partial class Parser
                 parseNext = false;
         }
         var rb = Match(TokenType.RightBracket, "语法需要']'");
-        if (items.Count == 0) _diagnostics.ReportInvalidExpressionStatement(rb.Location);
+        if (items.Count == 0)
+        {
+            // TODO
+        }
         return new IndexDefExpression(lb, [.. items], rb);
     }
 

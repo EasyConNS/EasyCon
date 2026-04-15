@@ -567,13 +567,12 @@ namespace EasyCon2.Forms
             // button1
             // 
             button1.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            button1.FlatAppearance.BorderSize = 0;
             button1.FlatStyle = FlatStyle.Flat;
-            button1.Location = new Point(515, 351);
+            button1.Location = new Point(866, 403);
             button1.Name = "button1";
-            button1.Size = new Size(78, 29);
+            button1.Size = new Size(203, 44);
             button1.TabIndex = 32;
-            button1.Text = "帮助说明";
+            button1.Text = "点击查看帮助说明";
             button1.UseVisualStyleBackColor = true;
             button1.Click += button1_Click;
             // 

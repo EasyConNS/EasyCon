@@ -74,7 +74,7 @@ internal sealed class ControlFlowGraph
             if (Condition == null)
                 return string.Empty;
 
-            return Condition.ToString();
+            return Condition!.ToString() ?? string.Empty;
         }
     }
 

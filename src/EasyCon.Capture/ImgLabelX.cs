@@ -47,7 +47,7 @@ public class ImageLabelX
     /// </summary>
     public bool IsTextProcessingMethod => !IsImageProcessingMethod;
 
-    public string LabelName { get; set; }
+    public string LabelName { get; set; } = string.Empty;
 
     /// <summary>
     /// 验证标签合理性

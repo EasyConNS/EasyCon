@@ -419,10 +419,8 @@ namespace EasyCon2.Forms
                     {
                         Debug.WriteLine($"测试结果：{list[i].X},{list[i].Y}");
                         searchResultImg.Image?.Dispose();
-                        searchResultImg.Image = ss.GetRange(list[i], imglManager.Current);
-                        //using var g = searchResultImg.CreateGraphics();
-                        //g.Clear(Color.FromArgb(240, 240, 240));
-                        //g.DrawImage(result, new Rectangle(0, 0, searchResultImg.Width, searchResultImg.Height), new Rectangle(0, 0, result.Width, result.Height), GraphicsUnit.Pixel);
+                        using var result = ss.GetRange(list[i], imglManager.Current);
+                        searchResultImg.Image = BitmapConverter.ToBitmap(result);
                     }
                     max_matchDegree = Math.Max(matchDegree, max_matchDegree);
                     matchRltlabel.Text = $"匹配度:{matchDegree:f1}%\n耗时:{sw.ElapsedMilliseconds}毫秒\n最大匹配度:{max_matchDegree:f1}%";

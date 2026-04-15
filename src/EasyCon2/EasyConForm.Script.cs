@@ -23,24 +23,30 @@ partial class EasyConForm
     {
         StatusShowLog("开始编译...");
         scriptCompiling = true;
+
+        var externalGetters = captureVideo.LoadedLabels.ToDictionary(il => il.name, il => (Func<int>)(() =>
+        {
+            using var ss = BitmapConverter.ToMat(captureVideo.GetImage());
+            il.Search(ss, out var md);
+            // 小数向上取整避免出现95.4>95为false的情况
+            return (int)Math.Ceiling(md);
+        }));
         try
         {
-            var externalGetters = captureVideo.LoadedLabels.ToDictionary(il => il.name, il => (Func<int>)(() =>
+            var diag = _program.Parse(textEditor.Text, textEditor.Document.FileName, externalGetters);
+            if (diag.HasErrors())
             {
-                using var ss = BitmapConverter.ToMat(captureVideo.GetImage());
-                il.Search(ss, out var md);
-                // 小数向上取整避免出现95.4>95为false的情况
-                return (int)Math.Ceiling(md);
-            }));
-            _program.Parse(textEditor.Text, textEditor.Document.FileName, externalGetters);
-
+                var d1 = diag.Where(d => d.IsError).First();
+                ScriptSelectLine(d1!.Location.StartLine);
+                MessageBox.Show($"行 {d1!.Location.StartLine + 1}： {d1!.Message}", "脚本编译出错");
+                return false;
+            }
             StatusShowLog("编译完成");
             return true;
         }
-        catch (ParseException ex)
+        catch (Exception ex)
         {
-            ScriptSelectLine(ex.Index);
-            MessageBox.Show($"{ex.Message}: 行{ex.Index}");
+            MessageBox.Show(ex.StackTrace,$"异常{ex.Message}");
             return false;
         }
         finally
@@ -91,7 +97,7 @@ partial class EasyConForm
         logTxtBox.Print("-- 开始运行 --", Color.Lime);
         try
         {
-            _program.Run(cts.Token, this, new GamePadAdapter(NS));
+            _program.Run(this, new GamePadAdapter(NS), cts.Token);
             logTxtBox.Print("-- 运行结束 --", Color.Lime);
             StatusShowLog("运行结束");
             //SystemSounds.Beep.Play();

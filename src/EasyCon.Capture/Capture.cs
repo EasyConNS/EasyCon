@@ -24,8 +24,7 @@ public sealed class ECCapture
 
     public static IEnumerable<(string, int)> GetCaptureTypes()
     {
-        var captureTypes = new Dictionary<string, int>();
-        var values = Enum.GetValues(typeof(VideoCaptureAPIs));
+        var values = Enum.GetValues<VideoCaptureAPIs>();
 
         foreach (var value in values)
         {

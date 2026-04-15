@@ -111,8 +111,8 @@ internal sealed class BoundIndexDeclxpression : BoundExpr
     public BoundIndexDeclxpression(AstNode syntax, ImmutableArray<BoundExpr> items) : base(syntax)
     {
         Items = items;
-        // 如果数组为空，默认可以是 Array<any> 或者报错，这里假设至少有一个元素
-        var elementType = items.Length > 0 ? items[0].Type : ScriptType.Int;
+        // 如果数组为空，默认元素类型INT
+        var elementType = items.Select(i => i.Type).FirstOrDefault(ScriptType.Int);
         Type = ScriptType.Array.Bind(elementType);
     }
 }

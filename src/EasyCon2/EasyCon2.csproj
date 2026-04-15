@@ -5,10 +5,11 @@
     <Nullable>warnings</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <UseWPF>true</UseWPF>
-	<TargetFramework>net8.0-windows7.0</TargetFramework>
+	<TargetFramework>net10.0-windows7.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>Resources\favicon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+	  <NoWarn>$(NoWarn);WFO1000</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="OpenCvSharp4.Extensions"/>
     <PackageReference Include="AvalonEdit" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="WebSocketSharp-netstandard" />

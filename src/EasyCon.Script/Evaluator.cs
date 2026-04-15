@@ -18,7 +18,7 @@ internal sealed class Evaluator
     private readonly Dictionary<VariableSymbol, Value> _globals = [];
     private readonly Stack<Dictionary<VariableSymbol, Value>> _locals = new();
     private readonly Dictionary<FunctionSymbol, BoundBlockStatement> _functions = [];
-    private readonly Dictionary<string, Func<int>> _externalGetters = [];
+    private readonly ImmutableDictionary<string, Func<int>> _externalGetters = [];
 
     private readonly long _TIME = DateTime.Now.Ticks;
     private int CurrTimestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
@@ -31,7 +31,7 @@ internal sealed class Evaluator
     public IOutputAdapter? Output;
     public ICGamePad? GamePad;
 
-    public Evaluator(BoundProgram program, Dictionary<string, Func<int>> externalGetters, CancellationToken token)
+    public Evaluator(BoundProgram program, ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token)
     {
         _program = program;
         _token = token;
@@ -399,8 +399,8 @@ internal sealed class Evaluator
                     var freq = args[0].AsInt();
                     if (freq < 37 || freq > 32767) throw new Exception($"BEEP参数freq范围不正确(37~32767)");
                     Console.Beep(freq, args[1].AsInt());
+                    break;
                 }
-                break;
             case "LEN":
                 result = args[0].Length;
                 break;

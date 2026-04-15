@@ -20,15 +20,6 @@ public abstract class Member(Token key) : AstNode(key){}
 // 表达式节点
 public abstract class Expression(Token key) : AstNode(key) { }
 
-public sealed class AssignExpression(Token varToken, VariableExpression? Variablee, Token assignment, Expression expression) : Expression(varToken)
-{
-    public VariableExpression Variable { get; } = Variablee!;
-    public TokenType AssignmentType => Assignment.Type;
-    public Expression Expression { get; } = expression;
-
-    private Token Assignment { get; } = assignment;
-}
-
 // 字面量表达式
 public sealed class LiteralExpression : Expression
 {
@@ -50,17 +41,4 @@ public sealed class LiteralExpression : Expression
         else
             throw new Exception($"Unexpected literal '{value}' of type {value.GetType()}");
     }
-}
-
-// 变量表达式
-public sealed class VariableExpression(Token keyword, bool isConstant, bool isSpecial) : Expression(keyword)
-{
-    public string Name { get; } = keyword.Value;
-    public bool IsConstant { get; } = isConstant;
-    public bool IsSpecial { get; } = isSpecial;
-}
-
-public sealed class IndexExpression(Token keyword, ImmutableArray<Expression> items, Token rb) : Expression(keyword)
-{
-    public ImmutableArray<Expression> Items { get; } = items;
 }

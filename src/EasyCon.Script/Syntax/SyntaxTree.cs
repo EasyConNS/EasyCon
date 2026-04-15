@@ -69,7 +69,7 @@ public sealed class SyntaxTree
 
         void ParseTokens(SyntaxTree st, out CompicationUnit _, out ImmutableArray<CompicationUnit> __, out ImmutableArray<Diagnostic> d)
         {
-            _ = null;
+            _ = new([]);
             __ = default;
             d = default;
             var l = new Lexer(st);

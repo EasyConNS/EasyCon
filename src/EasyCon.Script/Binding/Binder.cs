@@ -37,7 +37,7 @@ internal sealed class Binder
         binder.Diagnostics.AddRange(syntaxs.Diagnostics);
         if (binder.Diagnostics.HasErrors())
         {
-            return new BoundProgram(new("$error", [], [], ScriptType.Void), [..binder.Diagnostics], ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Empty, []);
+            return new BoundProgram(new("$error", [], [], ScriptType.Void), [..binder.Diagnostics], [], []);
         }
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
@@ -90,7 +90,7 @@ internal sealed class Binder
 
         if (binder.Diagnostics.HasErrors())
         {
-            return new BoundProgram(new("$error", [], [], ScriptType.Void), [..binder.Diagnostics], ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Empty, []);
+            return new BoundProgram(new("$error", [], [], ScriptType.Void), [..binder.Diagnostics], [], []);
         }
 
         var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
@@ -111,7 +111,7 @@ internal sealed class Binder
             var parameterName = parameterSyntax.Identifier.Tag;
             var parameterType = BindTypeClause(syntax.Declare, parameterSyntax.Type)?? ScriptType.Int;
 
-            if (!seenParameterNames.Add(parameterName)) 
+            if (!seenParameterNames.Add(parameterName))
                 _diagnostics.ReportParameterAlreadyDeclared(syntax.Declare.Location, parameterName);
 
             // 检查是否是最后一个参数且带有默认值
@@ -124,7 +124,7 @@ internal sealed class Binder
             parameters.Add(parameter);
         }
 
-        var returnType = BindTypeClause(syntax?.Declare) ?? ScriptType.Void;
+        var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
         var function = new FunctionSymbol(syntax.Declare.Name, [], parameters.ToImmutable(), returnType, syntax);
         _scope.TryDeclareFunction(function);
     }
@@ -140,7 +140,7 @@ internal sealed class Binder
     }
     #region 核心泛型推导逻辑
 
-    private (ScriptType[] BoundParams, ScriptType BoundReturn) BindGenericFunction(FunctionSymbol function, ImmutableArray<BoundExpr> arguments)
+    private (ScriptType[] BoundParams, ScriptType BoundReturn) BindGenericFunction(AstNode syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments)
     {
         // 1. 如果不是泛型函数，直接返回原签名
         if (function.TypeParameters.IsEmpty)
@@ -153,14 +153,17 @@ internal sealed class Binder
 
         for (int i = 0; i < function.Parameters.Length; i++)
         {
-            InferTypeParameters(function.Parameters[i].Type, arguments[i].Type, substitution);
+            InferTypeParameters(syntax, function.Parameters[i].Type, arguments[i].Type, substitution);
         }
 
         // 3. 验证推导完整性
         foreach (var tp in function.TypeParameters)
         {
             if (!substitution.ContainsKey(tp))
-                throw new Exception($"无法为函数 {function.Name} 推导泛型参数 {tp.Name}");
+            {
+                _diagnostics.ReportGenericTypeInferenceFailed(syntax.Syntax.Location, function.Name, tp.Name);
+                return ([ScriptType.Void], ScriptType.Void);
+            }
         }
 
         // 4. 生成绑定后的具体类型
@@ -170,14 +173,14 @@ internal sealed class Binder
         return (boundParams, boundReturn);
     }
 
-    private void InferTypeParameters(ScriptType formal, ScriptType actual, Dictionary<TypeParameter, ScriptType> sub)
+    private void InferTypeParameters(AstNode syntax, ScriptType formal, ScriptType actual, Dictionary<TypeParameter, ScriptType> sub)
     {
         if (formal is TypeParameter tp)
         {
             if (sub.TryGetValue(tp, out var existing))
             {
                 if (!existing.Equals(actual))
-                    throw new Exception($"泛型冲突：{tp.Name} 同时被推导为 {existing} 和 {actual}");
+                    _diagnostics.ReportGenericTypeConflict(syntax.Syntax.Location, tp.Name, existing, actual);
             }
             else sub[tp] = actual;
         }
@@ -185,7 +188,7 @@ internal sealed class Binder
         {
             if (fGen.Definition.Name != aGen.Definition.Name) return;
             for (int i = 0; i < fGen.TypeArguments.Length; i++)
-                InferTypeParameters(fGen.TypeArguments[i], aGen.TypeArguments[i], sub);
+                InferTypeParameters(syntax, fGen.TypeArguments[i], aGen.TypeArguments[i], sub);
         }
     }
 
@@ -253,21 +256,16 @@ internal sealed class Binder
         return new BoundBlockStatement(syntax, statements.ToImmutable());
     }
 
-    private BoundExprStatement BindErrorStatement(Statement syntax)
-    {
-        return new BoundExprStatement(syntax, new BoundErrorExpression(null));
-    }
+    private BoundExprStatement BindErrorStatement(Statement syntax) => new(syntax, new BoundErrorExpression(syntax));
 
     private BoundBlockStatement BindIf(IfBlock syntax)
     {
         _labelCounter++;
         var endLabel = new BoundLabel($"IfEnd_{_labelCounter}");
         var nextLabel = new BoundLabel($"NEXT_{_labelCounter}");
+        var block = ImmutableList.CreateBuilder<BoundStmt>();
 
-        var block = new List<BoundStmt>
-        {
-            GotoFalse(syntax, nextLabel, BindConversion(syntax.Condition.Condition, ScriptType.Bool))
-        };
+        block.Add(GotoFalse(syntax, nextLabel, BindConversion(syntax.Condition.Condition, ScriptType.Bool)));
         static bool isCtrl(Statement st)
         {
             if (st is ElseIf || st is Else || st is EndIf) return true;
@@ -364,7 +362,7 @@ internal sealed class Binder
         }
         BoundExpr condition = forCond switch
         {
-            For_Full or For_Static => LessEqual(forCond.Upper, Variable(forCond.Lower, variable), upperBound),
+            For_Full or For_Static => LessEqual(forCond.Upper, Variable(forCond.Lower, variable!), upperBound),
             _ => Literal(forCond.Upper, true),
         };
         // var+=step
@@ -493,15 +491,23 @@ internal sealed class Binder
             if (_function.ReturnType == ScriptType.Void)
             {
                 if (expression != null)
-                    throw new ParseException($"函数 '{_function.Name}' 返回类型为 void，不应有返回值", syntax.Address);
+                {
+                    _diagnostics.ReportVoidFunctionCannotReturn(syntax.Location, _function, expression.Type);
+                    expression = null;
+                }
             }
             else
             {
                 if (expression == null)
-                    throw new ParseException($"函数 '{_function.Name}' 必须返回类型为 {_function.ReturnType} 的值", syntax.Address);
-
-                // 关键修改：检查返回值是否与函数定义的返回类型兼容
-                expression = BindConversion(expression, _function.ReturnType, "返回值类型不匹配");
+                {
+                    _diagnostics.ReportFunctionMustReturnValue(syntax.Location, _function, _function.ReturnType);
+                    expression = new BoundErrorExpression(syntax);
+                }
+                else
+                {
+                    // 关键修改：检查返回值是否与函数定义的返回类型兼容
+                    expression = BindConversion(expression, _function.ReturnType, "返回值类型不匹配");
+                }
             }
         }
         return new BoundReturnStatement(syntax, expression);
@@ -510,13 +516,18 @@ internal sealed class Binder
     private BoundStmt BindConstantDeclaration(ConstantDeclStmt syntax)
     {
         var boundexpr = BindExpression(syntax.Expression);
-        if (boundexpr.ConstantValue == Value.Void) throw new ParseException("常量表达式不正确", syntax.Address);
+        if (boundexpr.ConstantValue == Value.Void)
+        {
+            _diagnostics.ReportInvalidConstantExpression(syntax.Location);
+            return BindErrorStatement(syntax);
+        }
 
         // Check if constant already exists
         var existingVar = _scope.TryLookupVar(syntax.Constant.Tag);
         if (existingVar != null)
         {
-            throw new ParseException($"常量 '{syntax.Constant.Tag}' 已经定义", syntax.Address);
+            _diagnostics.ReportConstantAlreadyDefined(syntax.Constant.Syntax);
+            return BindErrorStatement(syntax);
         }
 
         // Constants are always read-only
@@ -525,11 +536,11 @@ internal sealed class Binder
         return new BoundVariableDeclaration(syntax, variable, boundexpr);
     }
 
-    private BoundVariableDeclaration BindAssignStatement(AssignmentStmt syntax)
+    private BoundStmt BindAssignStatement(AssignmentStmt syntax)
     {
         var boundexpr = BindExpression(syntax.Expression);
 
-        if (syntax.AssignmentToken.Value != "=")
+        if (syntax.AssignmentToken.Type.OperatorIsAug())
         {
             // a <op>= b
             //
@@ -537,12 +548,20 @@ internal sealed class Binder
             //
             // a = (a <op> b)
             var desvar = BindVarExpression(syntax.DestVariable);
-            var op = BoundBinaryOperator.Bind(syntax.AssignmentToken.Type, desvar.Type, boundexpr.Type)
-                ?? throw new ParseException($"不支持的运算符:{syntax.AssignmentToken.Value}对于类型 <{desvar.Type}>和<{boundexpr.Type}>", syntax.Address);
+            var op = BoundBinaryOperator.Bind(syntax.AssignmentToken.Type, desvar.Type, boundexpr.Type);
+            if (op == null)
+            {
+                _diagnostics.ReportUnsupportedBinaryOperator(syntax.Location, syntax.AssignmentToken, desvar.Type, boundexpr.Type);
+                return BindErrorStatement(syntax);
+            }
             boundexpr = new BoundBinaryExpression(syntax.Expression, desvar, op!, boundexpr);
         }
 
-        if (boundexpr.Type == ScriptType.Void) throw new ParseException("空值表达式无法赋值", syntax.Address);
+        if (boundexpr.Type == ScriptType.Void)
+        {
+            _diagnostics.ReportVoidExpressionCannotAssign(syntax.Location);
+            return BindErrorStatement(syntax);
+        }
         var variable = BindVariableDeclaration(syntax.DestVariable, syntax.DestVariable.ReadOnly, boundexpr.Type);
 
         if (!variable.Type.IsAssignableFrom(boundexpr.Type))
@@ -556,7 +575,7 @@ internal sealed class Binder
         var vrr = _scope.TryLookupVar(syntax.Tag);
         if (vrr is not null)
         {
-            if (vrr.IsReadOnly) throw new Exception($"只读变量无法修改：{syntax.Tag}");
+            if (vrr.IsReadOnly) _diagnostics.ReportReadOnlyVariable(syntax.Syntax);
             return vrr;
         }
 
@@ -575,13 +594,13 @@ internal sealed class Binder
     private ScriptType? BindTypeClause(Statement syntax, TypeClauseSyntax? tcs)
     {
         if (tcs == null) return null;
-        return LookupType(tcs.Identifier.Value) ?? throw new ParseException($"未知类型：{tcs.Identifier.Text}", syntax.Address);
-    }
-
-    private ScriptType? BindTypeClause(FuncStmt syntax)
-    {
-        if (syntax.Type == null) return null;
-        return LookupType(syntax.Type.Identifier.Value) ?? throw new ParseException($"未知类型：{syntax.Identifier.Text}", syntax.Address);
+        var type = LookupType(tcs.Identifier.Value);
+        if (type is null)
+        {
+            _diagnostics.ReportUnknownType(syntax.Location, tcs.Identifier);
+            return null;
+        }
+        return type;
     }
 
     private ScriptType? LookupType(string name)
@@ -590,7 +609,8 @@ internal sealed class Binder
         if (upper.EndsWith("[]"))
         {
             var elem = LookupType(upper[..^2]);
-            return elem == null ? null : ScriptType.Array.Bind(elem);
+            if (elem is null) return null;
+            return ScriptType.Array.Bind(elem);
         }
         return upper switch
         {
@@ -608,7 +628,12 @@ internal sealed class Binder
         {
             name = syntax.FnName.ToUpper();
         }
-        var function = _scope.TryLookupFunc(name) ?? throw new Exception($"找不到调用函数 {name}");
+        var function = _scope.TryLookupFunc(name);
+        if (function == null)
+        {
+            _diagnostics.ReportFunctionNotFound(syntax.Location, name);
+            return BindErrorStatement(syntax);
+        }
 
         // 传统兼容模式
         if (SyntaxTree.LegacyCompat && syntax.Args.Length == 1 && syntax.Args[0] is VariableExpr legacyVar)
@@ -685,17 +710,26 @@ internal sealed class Binder
             IndexVisitExpression => BindIndexVisitExpression((IndexVisitExpression)syntax),
             SliceExpression => BoundSliceExpression((SliceExpression)syntax),
             VariableExpr => BindVarExpression((VariableExpr)syntax),
-            _ => throw new Exception($"未知的表达式"),
+            _ => ReportUnknownExprAndError(syntax),
         };
     }
 
-    private BoundExternalVariableExpression BindExtraLabel(ExtVarExpr syntax)
+    private BoundExpr ReportUnknownExprAndError(ExprBase syntax)
+    {
+        _diagnostics.ReportUnknownExpressionType(syntax.Syntax.Location);
+        return new BoundErrorExpression(syntax);
+    }
+
+    private BoundExpr BindExtraLabel(ExtVarExpr syntax)
     {
         var name = syntax.Name;
 
         // 在 binder 阶段验证外部变量名称
         if (!_scope.TryFindoutLabel(name))
-            throw new Exception("找不到识图标签\"@" + name + "\"");
+        {
+            _diagnostics.ReportImageLabelNotFound(syntax.Syntax.Location, name);
+            return new BoundErrorExpression(syntax);
+        }
 
         _ilNames.Add(name);
         return new BoundExternalVariableExpression(syntax, name);
@@ -716,8 +750,10 @@ internal sealed class Binder
         return new BoundLiteralExpression(syntax, obj);
     }
 
-    private BoundIndexDeclxpression BindIndexExpression(IndexDefExpression syntax)
+    private BoundExpr BindIndexExpression(IndexDefExpression syntax)
     {
+        if(syntax.Index.Length == 0)
+            return new BoundIndexDeclxpression(syntax, []);
         var boundIndexs = ImmutableArray.CreateBuilder<BoundExpr>();
 
         foreach (var index in syntax.Index)
@@ -725,12 +761,16 @@ internal sealed class Binder
             var boundIndex = BindExpression(index);
             boundIndexs.Add(boundIndex);
         }
-        if (boundIndexs.Select(i=>i.Type).Distinct().Count() != 1) throw new Exception("数组成员类型必须一致");
+        if (boundIndexs.Select(i=>i.Type).Distinct().Count() > 1)
+        {
+            _diagnostics.ReportArrayElementTypeMismatch(syntax.Syntax.Location);
+            return new BoundErrorExpression(syntax);
+        }
 
         return new BoundIndexDeclxpression(syntax, boundIndexs.ToImmutable());
     }
 
-    private BoundIndexVariableExpression BindIndexVisitExpression(IndexVisitExpression syntax)
+    private BoundExpr BindIndexVisitExpression(IndexVisitExpression syntax)
     {
         var baseExpr = BindVarExpression(syntax);
 
@@ -740,11 +780,12 @@ internal sealed class Binder
 
         if (!isString && !isArray)
         {
-            throw new Exception($"类型 '{baseExpr.Type}' 不支持索引访问。");
+            _diagnostics.ReportTypeDoesNotSupportIndexAccess(syntax.Syntax.Location, baseExpr.Type);
+            return new BoundErrorExpression(syntax);
         }
 
         // 2. 索引必须能转换为整数
-        var indexExpr = BindConversion(syntax.Index, ScriptType.Int, "数组索引必须是整数类型");
+        var indexExpr = BindConversion(syntax.Index, ScriptType.Int);
 
         // 3. 确定结果类型
         ScriptType resultType;
@@ -762,7 +803,7 @@ internal sealed class Binder
         return new BoundIndexVariableExpression(syntax, baseExpr, indexExpr, resultType);
     }
 
-    private BoundSliceExpression BoundSliceExpression(SliceExpression syntax)
+    private BoundExpr BoundSliceExpression(SliceExpression syntax)
     {
         var baseExpr = BindVarExpression(syntax);
 
@@ -772,12 +813,13 @@ internal sealed class Binder
 
         if (!isString && !isArray)
         {
-            throw new Exception($"类型 '{baseExpr.Type}' 不支持切片操作 (Range Slice)。");
+            _diagnostics.ReportTypeDoesNotSupportSlice(syntax.Syntax.Location, baseExpr.Type);
+            return new BoundErrorExpression(syntax);
         }
 
         // 2. 绑定起始和结束索引，并确保它们是整数
-        var startExpr = BindConversion(syntax.Start, ScriptType.Int, "切片起始位置必须是整数");
-        var endExpr = BindConversion(syntax.End, ScriptType.Int, "切片结束位置必须是整数");
+        var startExpr = BindConversion(syntax.Start, ScriptType.Int);
+        var endExpr = BindConversion(syntax.End, ScriptType.Int);
 
         // 3. 结果类型与基础表达式类型完全一致
         // String -> String, Array<int> -> Array<int>
@@ -790,33 +832,39 @@ internal sealed class Binder
     {
         if (type.IsAssignableFrom(expr.Type)) return expr;
         if (type == ScriptType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
-        // _diagnostics.ReportCannotConvert(syntax.Location, boundexpr.Type, variable.Type);
-        throw new Exception($"{msg}: 无法将 {expr.Type} 转换为 {type}");
+        _diagnostics.ReportCannotConvert(expr.Syntax.Syntax.Location, expr.Type, type);
+        return new BoundErrorExpression(expr.Syntax);
     }
 
-    private BoundExpr BindConversion(ExprBase syntax, ScriptType type, string msg = "表达式类型不匹配")
+    private BoundExpr BindConversion(ExprBase syntax, ScriptType type)
     {
         var expr = BindExpression(syntax);
-        if (expr.Type != type) throw new Exception(msg);
+        if (expr.Type != type)
+            _diagnostics.ReportCannotConvert(expr.Syntax.Syntax.Location, expr.Type, type);
         return expr;
     }
 
-    private BoundVariableExpression BindVarExpression(VariableExpr syntax)
+    private BoundExpr BindVarExpression(VariableExpr syntax)
     {
-        var variable = _scope.TryLookupVar(syntax.Tag) switch
+        var variable = _scope.TryLookupVar(syntax.Tag);
+        if (variable == null)
         {
-            VariableSymbol v => v,
-            _ => null,
-        } ?? throw new Exception($"找不到变量 {syntax.Tag}");
+            _diagnostics.ReportVariableNotFound(syntax.Syntax.Location, syntax.Tag);
+            return new BoundErrorExpression(syntax);
+        }
         return new BoundVariableExpression(syntax, variable);
     }
 
-    private BoundUnaryExpression BindUnaryExpression(UnaryExpression syntax)
+    private BoundExpr BindUnaryExpression(UnaryExpression syntax)
     {
         var boundOperand = BindExpression(syntax.Operand);
 
-        var boundOperator = BoundUnaryOperator.Bind(syntax.Operator.Type, boundOperand.Type)
-            ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}对于类型 <{boundOperand.Type}>");
+        var boundOperator = BoundUnaryOperator.Bind(syntax.Operator.Type, boundOperand.Type);
+        if (boundOperator == null)
+        {
+            _diagnostics.ReportUnsupportedUnaryOperator(syntax.Syntax.Location, syntax.Operator, boundOperand.Type);
+            return new BoundErrorExpression(syntax);
+        }
 
         return new BoundUnaryExpression(syntax, boundOperator, boundOperand);
     }
@@ -826,8 +874,12 @@ internal sealed class Binder
         var boundLeft = BindExpression(syntax.ValueLeft);
         var boundRight = BindExpression(syntax.ValueRight);
 
-        var boundOperator = BoundBinaryOperator.Bind(syntax.Operator.Type, boundLeft.Type, boundRight.Type)
-            ?? throw new Exception($"不支持的运算符:{syntax.Operator.Value}对于类型 <{boundLeft.Type}>和<{boundRight.Type}> ");
+        var boundOperator = BoundBinaryOperator.Bind(syntax.Operator.Type, boundLeft.Type, boundRight.Type);
+        if (boundOperator == null)
+        {
+            _diagnostics.ReportUnsupportedBinaryOperator(syntax.Syntax.Location, syntax.Operator, boundLeft.Type, boundRight.Type);
+            return new BoundErrorExpression(syntax);
+        }
 
         if (boundLeft.ConstantValue != Value.Void && boundRight.ConstantValue != Value.Void)
         {
@@ -838,7 +890,7 @@ internal sealed class Binder
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
     }
 
-    private BoundCallExpression BindCallExpressionInternal(AstNode syntax, FunctionSymbol function, ImmutableArray<ExprBase> Arguments)
+    private BoundExpr BindCallExpressionInternal(AstNode syntax, FunctionSymbol function, ImmutableArray<ExprBase> Arguments)
     {
         // 1. 先绑定实参表达式
         var boundArgs = Arguments.Select(BindExpression).ToImmutableArray();
@@ -848,10 +900,13 @@ internal sealed class Binder
         int maxArgs = function.Parameters.Length;
 
         if (boundArgs.Length < minArgs || boundArgs.Length > maxArgs)
-            throw new Exception($"函数 {function.Name} 参数数量不匹配");
+        {
+            _diagnostics.ReportFunctionArgumentCountMismatch(syntax.Syntax.Location, function);
+            return new BoundErrorExpression(syntax);
+        }
 
         // 3. 泛型绑定与实例化
-        var (instParams, instReturn) = BindGenericFunction(function, boundArgs);
+        var (instParams, instReturn) = BindGenericFunction(syntax, function, boundArgs);
 
         // 4. 类型转换与最终参数确定
         var finalArgs = ImmutableArray.CreateBuilder<BoundExpr>();
@@ -873,9 +928,14 @@ internal sealed class Binder
         return new BoundCallExpression(syntax, function, finalArgs.ToImmutable(), instReturn);
     }
 
-    private BoundCallExpression BindCallExpression(Callv1Expression syntax)
+    private BoundExpr BindCallExpression(Callv1Expression syntax)
     {
-        var function = _scope.TryLookupFunc(syntax.Identifier.Value) ?? throw new Exception($"找不到调用函数 {syntax.Identifier.Value}");
+        var function = _scope.TryLookupFunc(syntax.Identifier.Value);
+        if (function == null)
+        {
+            _diagnostics.ReportFunctionNotFound(syntax.Identifier.Location, syntax.Identifier.Value);
+            return new BoundErrorExpression(syntax);
+        }
 
         return BindCallExpressionInternal(syntax, function, syntax.Arguments);
     }

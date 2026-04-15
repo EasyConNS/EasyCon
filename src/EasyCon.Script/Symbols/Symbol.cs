@@ -12,7 +12,7 @@ abstract class VariableSymbol(string name, bool isReadOnly, ScriptType type) : S
 {
     public readonly ScriptType Type = type;
     public readonly bool IsReadOnly = isReadOnly;
-    internal object? Value;
+    internal object? Value = null;
 }
 
 sealed class GlobalVariableSymbol(string name, bool isReadOnly, ScriptType type) : VariableSymbol(name, isReadOnly, type)

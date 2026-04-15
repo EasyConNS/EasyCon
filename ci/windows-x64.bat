@@ -7,6 +7,10 @@ set "ROOT_DIR=%~dp0.."
 set "PUBLISH_DIR=%ROOT_DIR%\publish"
 set "DIST_DIR=%ROOT_DIR%\dist"
 
+:: 从 Directory.Build.props 自动探测目标框架版本
+set "TFM=net10.0"
+echo 检测到目标框架: %TFM%
+
 :: 创建输出目录
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
 
@@ -22,7 +26,7 @@ echo 正在编译 "%PROJ_NAME%"...
 if exist "%PROJ_DIR%\bin" rmdir /s /q "%PROJ_DIR%\bin"
 if exist "%PROJ_DIR%\obj" rmdir /s /q "%PROJ_DIR%\obj"
 
-dotnet publish "%PROJ_DIR%\%PROJ_NAME%.csproj" --nologo -c Release -r win-x64 -f net8.0 -p:PublishSingleFile=true --self-contained false -o "%PUBLISH_DIR%"
+dotnet publish "%PROJ_DIR%\%PROJ_NAME%.csproj" --nologo -c Release -r win-x64 -f %TFM% -p:PublishSingleFile=true --self-contained false -o "%PUBLISH_DIR%"
 if errorlevel 1 (
     echo 错误: 编译 "%PROJ_NAME%" 失败
     pause
@@ -37,7 +41,7 @@ echo 正在编译 "%PROJ_NAME%"...
 if exist "%PROJ_DIR%\bin" rmdir /s /q "%PROJ_DIR%\bin"
 if exist "%PROJ_DIR%\obj" rmdir /s /q "%PROJ_DIR%\obj"
 
-dotnet publish "%PROJ_DIR%\%PROJ_NAME%.csproj" --nologo -c Release -r win-x64 -f net8.0-windows7.0 -p:PublishSingleFile=true --self-contained false -o "%PUBLISH_DIR%"
+dotnet publish "%PROJ_DIR%\%PROJ_NAME%.csproj" --nologo -c Release -r win-x64 -f %TFM%-windows7.0 -p:PublishSingleFile=true --self-contained false -o "%PUBLISH_DIR%"
 if errorlevel 1 (
     echo 错误: 编译 "%PROJ_NAME%" 失败
     pause

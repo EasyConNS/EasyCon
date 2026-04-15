@@ -41,10 +41,9 @@ public sealed class Compilation
     }
 
     public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad,
-        Dictionary<string, Func<int>> externalGetters,
+        ImmutableDictionary<string, Func<int>> externalGetters,
         CancellationToken token)
     {
-
         var program = GetProgram([..externalGetters.Select(v=>v.Key)]);
         if (program.Diagnostics.HasErrors())
             return new EvaluationResult(program.Diagnostics, Value.Void);

@@ -1,4 +1,4 @@
-namespace ECScript.Tests;
+namespace EasyCon.Tests;
 
 static class PointerUtil
 {

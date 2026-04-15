@@ -149,39 +149,39 @@ public sealed class ProjectManager : IDisposable
             fileStream.CopyTo(memoryStream);
             memoryStream.Seek(0, SeekOrigin.Begin);
 
-            using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Read, true))
+            using var archive = new ZipArchive(memoryStream, ZipArchiveMode.Read, true);
+            // 验证ZIP结构
+            ValidateProjectStructure(archive);
+
+            // 加载main.txt
+            var mainEntry = archive.GetEntry("main.ecs");
+            if(mainEntry != null)
             {
-                // 验证ZIP结构
-                ValidateProjectStructure(archive);
+                using var reader = new StreamReader(mainEntry.Open());
+                _mainSource = reader.ReadToEnd();
+            }
 
-                // 加载main.txt
-                var mainEntry = archive.GetEntry("main.ecs");
-                using (var reader = new StreamReader(mainEntry.Open()))
+            // 加载lib目录下的txt文件
+            foreach (var entry in archive.Entries
+                .Where(e => e.FullName.StartsWith("lib/") && !e.FullName.EndsWith("/")))
+            {
+                using (var reader = new StreamReader(entry.Open()))
                 {
-                    _mainSource = reader.ReadToEnd();
+                    _libFiles[Path.GetFileName(entry.Name)] = reader.ReadToEnd();
+                }
+            }
+
+            // 加载img目录下的il文件
+            foreach (var entry in archive.Entries
+                .Where(e => e.FullName.StartsWith("img/") && !e.FullName.EndsWith("/")))
+            {
+                using (var entryStream = entry.Open())
+                using (var ms = new MemoryStream())
+                {
+                    entryStream.CopyTo(ms);
+                    _imageFiles[Path.GetFileName(entry.Name)] = ms.ToArray();
                 }
 
-                // 加载lib目录下的txt文件
-                foreach (var entry in archive.Entries
-                    .Where(e => e.FullName.StartsWith("lib/") && !e.FullName.EndsWith("/")))
-                {
-                    using (var reader = new StreamReader(entry.Open()))
-                    {
-                        _libFiles[Path.GetFileName(entry.Name)] = reader.ReadToEnd();
-                    }
-                }
-
-                // 加载img目录下的il文件
-                foreach (var entry in archive.Entries
-                    .Where(e => e.FullName.StartsWith("img/") && !e.FullName.EndsWith("/")))
-                {
-                    using (var entryStream = entry.Open())
-                    using (var ms = new MemoryStream())
-                    {
-                        entryStream.CopyTo(ms);
-                        _imageFiles[Path.GetFileName(entry.Name)] = ms.ToArray();
-                    }
-                }
             }
         }
 

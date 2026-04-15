@@ -7,7 +7,7 @@ namespace EasyCon.Core.Runner;
 
 public sealed class EasyRunner : IRunner
 {
-    Compilation? compilation;
+    Compilation compilation;
 
     public bool HasKeyAction => compilation?.KeyAction?? false;
     public bool NeedILLoad => compilation?.NeedIL ?? false;
@@ -32,7 +32,7 @@ public sealed class EasyRunner : IRunner
 
     public void Run(IOutputAdapter output, ICGamePad pad, Dictionary<string, Func<int>> externalGetters, CancellationToken token)
     {
-        compilation?.Evaluate(output, pad, externalGetters, token);
+        compilation?.Evaluate(output, pad, externalGetters.ToImmutableDictionary(), token);
     }
 
     public string ToCode()

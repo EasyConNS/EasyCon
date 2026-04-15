@@ -14,7 +14,7 @@ public sealed class Scripter
 
     public bool HasKeyAction => runner.HasKeyAction;
 
-    public void Parse(string code, string fileName, Dictionary<string, Func<int>> externalGetters)
+    public Diagnostic[] Parse(string code, string fileName, Dictionary<string, Func<int>> externalGetters)
     {
         _extVar = externalGetters;
         var extVarNames = externalGetters.Select(v => v.Key).ToImmutableHashSet();
@@ -23,11 +23,7 @@ public sealed class Scripter
             diag = runner.Init(code, extVarNames);
         else
             diag = runner.Load(fileName, extVarNames);
-        if (diag.HasErrors())
-        {
-            var d1 = diag.Where(d=>d.IsError).First();
-            throw new ParseException(d1!.Message, d1!.Location.StartLine + 1);
-        }
+        return [..diag];
     }
 
     public static IEnumerable<string> GetTokens(string code, string pre)
@@ -36,7 +32,7 @@ public sealed class Scripter
         return tokens.Select(t => t.Value).Distinct().Where(s => s.StartsWith(pre));
     }
 
-    public void Run(CancellationToken token, IOutputAdapter output, ICGamePad pad)
+    public void Run(IOutputAdapter output, ICGamePad pad, CancellationToken token)
     {
         runner.Run(output, pad, _extVar, token);
     }

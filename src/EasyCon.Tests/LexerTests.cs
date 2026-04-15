@@ -1,6 +1,6 @@
 using EasyCon.Script.Syntax;
 
-namespace ECScript.Tests;
+namespace EasyCon.Tests;
 
 [TestFixture]
 public class LexerTests

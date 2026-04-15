@@ -5,14 +5,13 @@ namespace EasyCon.Script.Binding;
 public class RegisterInfo
 {
     public int Index { get; set; }
-    public string VariableName { get; set; }
+    public string VariableName { get; set; } = string.Empty;
     public bool IsFree { get; set; }
     public int LastUse { get; set; }
     
     public RegisterInfo(int index)
     {
         Index = index;
-        VariableName = null;
         IsFree = true;
         LastUse = -1;
     }
@@ -186,7 +185,7 @@ class LinearScanRegisterAllocator
                 Console.WriteLine($"Freeing register R{reg.Index} (variable '{reg.VariableName}')");
                 reg.IsFree = true;
                 registerAssignment.Remove(reg.VariableName);
-                reg.VariableName = null;
+                reg.VariableName = string.Empty;
             }
         }
     }

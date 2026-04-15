@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using EC.Avalonia.ViewModels;
@@ -105,5 +106,51 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainWindowViewModel vm)
             vm.RefreshControlSourcesCommand.Execute(null);
+    }
+    private void OnDragEnter(object? sender, DragEventArgs e)
+    {
+        Console.WriteLine("DragEnter");
+        // 仅接受文件拖放
+        if (e.DataTransfer.Contains(DataFormat.File))
+        {
+            e.DragEffects = DragDropEffects.Copy;
+        }
+        else
+        {
+            e.DragEffects = DragDropEffects.None;
+        }
+    }
+
+    private void OnDragOver(object? sender, DragEventArgs e)
+    {
+        // 持续判断拖拽状态
+        if (e.DataTransfer.Contains(DataFormat.File))
+        {
+            e.DragEffects = DragDropEffects.Copy;
+        }
+    }
+
+    private async void OnDrop(object? sender, DragEventArgs e)
+    {
+        if (e.DataTransfer.Contains(DataFormat.File))
+        {
+            var files = e.DataTransfer.TryGetFiles();
+            if (files is null) return;
+
+            foreach (var file in files)
+            {
+                if (file is IStorageFile storageFile)
+                {
+                    // 读取文件路径或内容
+                    string path = storageFile.Path.LocalPath;
+                    
+                    // 打开文件流
+                    await using var stream = await storageFile.OpenReadAsync();
+                    // 处理文件...
+                    
+                    System.Diagnostics.Debug.WriteLine($"接收到文件: {path}");
+                }
+            }
+        }
     }
 }

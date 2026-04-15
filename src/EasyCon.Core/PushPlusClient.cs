@@ -18,7 +18,7 @@ public class PushPlusClient(string token)
             var address = $"https://www.pushplus.plus/send/{_token}?content={content}&title={title}";
             using var client = new HttpClient();
             var result = await client.GetAsync(address).Result.Content.ReadAsStringAsync();
-            Response? resp = JsonSerializer.Deserialize<Response>(result);
+            var resp = JsonSerializer.Deserialize<Response>(result);
             return $"{resp?.Message ?? $"推送结果解析异常：{result}"}";
         }
         catch (Exception ex)

@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Text;
 
-namespace ECScript.Tests;
+namespace EasyCon.Tests;
 
 static class ScriptUtil
 {

@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <DefaultTargetFramework>net8.0</DefaultTargetFramework>
-    <LtsTargetFramework>net8.0</LtsTargetFramework>
+    <DefaultTargetFramework>net10.0</DefaultTargetFramework>
+    <LtsTargetFramework>net10.0</LtsTargetFramework>
     <TargetFramework Condition=" '$(TargetFramework)' == '' and '$(TargetFrameworks)' == '' ">$(DefaultTargetFramework)</TargetFramework>
     <Features>strict</Features>
     <Version>1.6.1</Version>
