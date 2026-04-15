@@ -131,7 +131,7 @@ internal static class FormatPrinter
     }
     private static void WriteStatementInternal(Statement node, IndentedTextWriter writer)
     {
-        if (node.Kind == StatementKind.ElseIf || node.Kind == StatementKind.Else || node.Kind == StatementKind.EndBlock)
+        if (node.Kind == StatementKind.ElseIf || node.Kind == StatementKind.Else || node.Kind == StatementKind.EndIf || node.Kind == StatementKind.Next || node.Kind == StatementKind.EndFuncStmt)
         {
             writer.Indent--;
         }
