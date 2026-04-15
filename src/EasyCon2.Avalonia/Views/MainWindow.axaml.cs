@@ -1,18 +1,13 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using EC.Avalonia.ViewModels;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
 
 namespace EasyCon2.Avalonia.Views;
 
@@ -20,11 +15,21 @@ public partial class MainWindow : Window
 {
     private readonly string VER = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion;
+    private ScrollViewer? _logScrollViewer;
+
     public MainWindow()
     {
         InitializeComponent();
         SetTitleWithVersion();
         DataContextChanged += OnDataContextChanged;
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object? sender, RoutedEventArgs e)
+    {
+        var textBox = this.FindControl<TextBox>("LogTextBox");
+        if (textBox != null)
+            _logScrollViewer = GetScrollViewer(textBox);
     }
 
     private void SetTitleWithVersion()
@@ -48,19 +53,12 @@ public partial class MainWindow : Window
     {
         if (e.PropertyName == nameof(MainWindowViewModel.LogOutput))
         {
-            Dispatcher.UIThread.Post(async () =>
+            if (_logScrollViewer != null)
             {
-                var textBox = this.FindControl<TextBox>("LogTextBox");
-                if (textBox != null && textBox.IsAttachedToVisualTree())
-                {
-                    await Task.Delay(10);
-                    var scrollViewer = GetScrollViewer(textBox);
-                    if (scrollViewer != null)
-                    {
-                        scrollViewer.Offset = new global::Avalonia.Point(scrollViewer.Offset.X, Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height + 20));
-                    }
-                }
-            });
+                _logScrollViewer.Offset = new global::Avalonia.Point(
+                    _logScrollViewer.Offset.X,
+                    Math.Max(0, _logScrollViewer.Extent.Height - _logScrollViewer.Viewport.Height + 20));
+            }
         }
     }
 

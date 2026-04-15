@@ -52,8 +52,14 @@ public class ScriptService : IScriptService
 
                 if (_runner.HasKeyAction && !_deviceService.IsConnected)
                 {
-                    _logService.AddLog("错误: 脚本需要连接单片机");
-                    return;
+                    _logService.AddLog("脚本需要单片机，尝试自动连接...");
+                    var port = _deviceService.AutoConnect();
+                    if (port == null)
+                    {
+                        _logService.AddLog("错误: 自动连接单片机失败");
+                        return;
+                    }
+                    _logService.AddLog($"自动连接成功: {port}");
                 }
 
                 if (_runner.NeedILLoad && !_captureService.IsConnected)

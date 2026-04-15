@@ -7,7 +7,8 @@ public interface IDeviceService
     bool IsConnected { get; }
     event Action? ConnectionLost;
     string[] GetAvailablePorts();
-    NintendoSwitch.ConnectResult TryConnect(string port);
+    bool TryConnect(string port);
+    string? AutoConnect();
     void Disconnect();
     NintendoSwitch GetDevice();
 }

@@ -2,9 +2,10 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EasyDevice;
+using EasyCon2.Avalonia.Views;
 using EC.Avalonia.Services;
 using System.Collections.ObjectModel;
+using System.Text;
 using System.Windows.Input;
 using Window = Avalonia.Controls.Window;
 
@@ -16,6 +17,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IDeviceService _deviceService;
     private readonly ICaptureService _captureService;
     private readonly IScriptService _scriptService;
+    private readonly IControllerService _controllerService;
+    private readonly StringBuilder _logBuilder = new();
+    private const int MaxLogLength = 100_000;
 
     // 当前脚本路径
     [ObservableProperty]
@@ -73,6 +77,18 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _controlSourceStatus = "未连接";
 
+    [ObservableProperty]
+    private bool _isConnectingController = false;
+
+    [ObservableProperty]
+    private bool _isControllerConnected = false;
+
+    [ObservableProperty]
+    private string _controllerButtonText = "开启映射";
+
+    [ObservableProperty]
+    private bool _isEditKeyMappingEnabled = true;
+
     // 运行脚本相关属性
     [ObservableProperty]
     private bool _isRunning = false;
@@ -97,7 +113,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand ConnectNintendoSwitchCommand { get; }
     public ICommand AutoConnectNintendoSwitchCommand { get; }
     public ICommand ConnectCaptureSourceCommand { get; }
-    public ICommand OpenKeyMappingCommand { get; }
+    public ICommand ConnectControllerCommand { get; }
+    public ICommand EditKeyMappingCommand { get; }
     public ICommand RunScriptCommand { get; }
     public ICommand ClearLogCommand { get; }
 
@@ -106,20 +123,29 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand RefreshCaptureSourcesCommand { get; }
     public ICommand RefreshControlSourcesCommand { get; }
 
-    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService)
+    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService)
     {
         _logService = logService;
         _deviceService = deviceService;
         _captureService = captureService;
         _scriptService = scriptService;
+        _controllerService = controllerService;
 
-        // 订阅日志事件
+        // 订阅日志事件（LogService 已批量合并，此处每 100ms 最多触发一次）
         _logService.LogAppended += text =>
         {
             if (text == null)
+            {
+                _logBuilder.Clear();
                 LogOutput = "";
+            }
             else
-                LogOutput += text;
+            {
+                _logBuilder.Append(text);
+                if (_logBuilder.Length > MaxLogLength)
+                    _logBuilder.Remove(0, _logBuilder.Length - MaxLogLength / 2);
+                LogOutput = _logBuilder.ToString();
+            }
         };
 
         // 订阅设备外部断开事件
@@ -162,7 +188,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ConnectNintendoSwitchCommand = new RelayCommand(ConnectNintendoSwitch);
         AutoConnectNintendoSwitchCommand = new RelayCommand(AutoConnectNintendoSwitch);
         ConnectCaptureSourceCommand = new RelayCommand(ConnectCaptureSource);
-        OpenKeyMappingCommand = new RelayCommand(OpenKeyMapping);
+        ConnectControllerCommand = new RelayCommand(ConnectController);
+        EditKeyMappingCommand = new RelayCommand<Window>(EditKeyMapping);
         RunScriptCommand = new RelayCommand(RunScript);
         ClearLogCommand = new RelayCommand(ClearLog);
         RefreshSerialPortsCommand = new RelayCommand(RefreshSerialPorts);
@@ -182,7 +209,8 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         // 添加一些初始日志
-        LogOutput = "欢迎使用 EasyCon2!\n";
+        _logBuilder.Append("欢迎使用 EasyCon2!\n");
+        LogOutput = _logBuilder.ToString();
     }
 
     private void InitializeSampleData()
@@ -195,7 +223,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var captureSources = _captureService.GetAvailableSources();
         CaptureSourceOptions = new ObservableCollection<string>(captureSources);
 
-        ControlSourceOptions = new ObservableCollection<string> { "键盘", "Pro手柄" };
+        ControlSourceOptions = new ObservableCollection<string>(_controllerService.GetAvailableSources());
 
         SelectedSerialPort = SerialPortOptions.FirstOrDefault();
         SelectedCaptureSource = CaptureSourceOptions.FirstOrDefault();
@@ -227,7 +255,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void RefreshControlSources()
     {
         var oldSelected = SelectedControlSource;
-        ControlSourceOptions = new ObservableCollection<string> { "键盘", "Pro手柄" };
+        ControlSourceOptions = new ObservableCollection<string>(_controllerService.GetAvailableSources());
         SelectedControlSource = ControlSourceOptions.FirstOrDefault();
         if (oldSelected != null && ControlSourceOptions.Contains(oldSelected))
             SelectedControlSource = oldSelected;
@@ -279,12 +307,12 @@ public partial class MainWindowViewModel : ViewModelBase
             var port = SelectedSerialPort;
             Task.Run(() =>
             {
-                var result = _deviceService.TryConnect(port);
+                var ok = _deviceService.TryConnect(port);
 
                 Dispatcher.UIThread.Post(() =>
                 {
                     IsConnectingNintendoSwitch = false;
-                    if (result == NintendoSwitch.ConnectResult.Success)
+                    if (ok)
                     {
                         IsNintendoSwitchConnected = true;
                         NintendoSwitchStatus = $"已连接{port}";
@@ -294,7 +322,6 @@ public partial class MainWindowViewModel : ViewModelBase
                     else
                     {
                         NintendoSwitchStatus = "连接失败";
-                        _logService.AddLog($"单片机连接失败: {result}");
                     }
                 });
             });
@@ -311,38 +338,23 @@ public partial class MainWindowViewModel : ViewModelBase
 
         Task.Run(() =>
         {
-            var ports = _deviceService.GetAvailablePorts();
-            foreach (var port in ports)
-            {
-                Dispatcher.UIThread.Post(() =>
-                {
-                    NintendoSwitchStatus = $"尝试 {port}...";
-                });
-
-                var result = _deviceService.TryConnect(port);
-                if (result == NintendoSwitch.ConnectResult.Success)
-                {
-                    var connectedPort = port;
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        IsConnectingNintendoSwitch = false;
-                        IsNintendoSwitchConnected = true;
-                        SelectedSerialPort = connectedPort;
-                        NintendoSwitchStatus = $"已连接{connectedPort}";
-                        NintendoSwitchButtonText = "断开连接";
-                        _logService.AddLog($"自动连接成功: {connectedPort}");
-                    });
-                    return;
-                }
-
-                Thread.Sleep(1000);
-            }
-
+            var connectedPort = _deviceService.AutoConnect();
             Dispatcher.UIThread.Post(() =>
             {
                 IsConnectingNintendoSwitch = false;
-                NintendoSwitchStatus = "自动连接失败";
-                _logService.AddLog("自动连接失败，未找到可用设备");
+                if (connectedPort != null)
+                {
+                    IsNintendoSwitchConnected = true;
+                    SelectedSerialPort = connectedPort;
+                    NintendoSwitchStatus = $"已连接{connectedPort}";
+                    NintendoSwitchButtonText = "断开连接";
+                    _logService.AddLog($"自动连接成功: {connectedPort}");
+                }
+                else
+                {
+                    NintendoSwitchStatus = "自动连接失败";
+                    _logService.AddLog("自动连接失败，未找到可用设备");
+                }
             });
         });
     }
@@ -407,9 +419,63 @@ public partial class MainWindowViewModel : ViewModelBase
         _logService.AddLog($"打开了脚本文件: {CurrentScriptPath}");
     }
 
-    private void OpenKeyMapping()
+    private void ConnectController()
     {
-        _logService.AddLog($"打开按键映射配置: {SelectedControlSource}");
+        if (IsControllerConnected)
+        {
+            _controllerService.Disconnect();
+            IsControllerConnected = false;
+            ControlSourceStatus = "未连接";
+            ControllerButtonText = "开启映射";
+            UpdateEditKeyMappingEnabled();
+            _logService.AddLog("手柄已断开连接");
+            return;
+        }
+
+        IsConnectingController = true;
+        ControlSourceStatus = "连接中...";
+        _logService.AddLog($"正在连接手柄 ({SelectedControlSource})...");
+
+        var sourceName = SelectedControlSource ?? "";
+        Task.Run(() =>
+        {
+            var ok = _controllerService.TryConnect(sourceName);
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                IsConnectingController = false;
+                if (ok)
+                {
+                    IsControllerConnected = true;
+                    ControlSourceStatus = "已连接";
+                    ControllerButtonText = "断开手柄";
+                    UpdateEditKeyMappingEnabled();
+                    _logService.AddLog($"手柄 ({sourceName}) 连接成功");
+                }
+                else
+                {
+                    ControlSourceStatus = "连接失败";
+                    _logService.AddLog($"手柄 ({sourceName}) 连接失败");
+                }
+            });
+        });
+    }
+
+    private void EditKeyMapping(Window? window)
+    {
+        if (window == null) return;
+        var keyMappingWindow = new KeyMappingWindow();
+        keyMappingWindow.ShowDialog(window);
+    }
+
+    private void UpdateEditKeyMappingEnabled()
+    {
+        IsEditKeyMappingEnabled = SelectedControlSource == "键盘" && !IsControllerConnected;
+    }
+
+    partial void OnSelectedControlSourceChanged(string? value)
+    {
+        UpdateEditKeyMappingEnabled();
     }
 
     private void RunScript()

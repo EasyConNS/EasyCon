@@ -21,12 +21,16 @@ public class DeviceService : IDeviceService
 
     public string[] GetAvailablePorts() => ECCore.GetDeviceNames().ToArray();
 
-    public NintendoSwitch.ConnectResult TryConnect(string port)
+    public bool TryConnect(string port)
     {
         var result = _nintendoSwitch.TryConnect(port);
         if (result == NintendoSwitch.ConnectResult.Success)
+        {
             _isConnected = true;
-        return result;
+            return true;
+        }
+        _logService.AddLog($"单片机连接失败: {result}");
+        return false;
     }
 
     public void Disconnect()
@@ -36,6 +40,18 @@ public class DeviceService : IDeviceService
     }
 
     public NintendoSwitch GetDevice() => _nintendoSwitch;
+
+    public string? AutoConnect()
+    {
+        var ports = GetAvailablePorts();
+        foreach (var port in ports)
+        {
+            if (TryConnect(port))
+                return port;
+            Thread.Sleep(1000);
+        }
+        return null;
+    }
 
     private void OnStatusChanged(Status status)
     {

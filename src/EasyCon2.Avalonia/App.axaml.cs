@@ -21,8 +21,9 @@ public partial class App : Application
             var logService = new LogService();
             var deviceService = new DeviceService(logService);
             var captureService = new CaptureService(logService);
+            var controllerService = new ControllerService();
             var scriptService = new ScriptService(deviceService, captureService, logService);
-            desktop.MainWindow = new MainWindow { DataContext = new MainWindowViewModel(logService, deviceService, captureService, scriptService) };
+            desktop.MainWindow = new MainWindow { DataContext = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService) };
         }
 
         base.OnFrameworkInitializationCompleted();

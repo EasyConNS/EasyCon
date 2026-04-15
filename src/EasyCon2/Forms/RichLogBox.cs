@@ -1,93 +1,76 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
 
 namespace EasyCon2.Forms;
 
 internal class RichLogBox : RichTextBox
 {
     private readonly ConcurrentQueue<Tuple<object, Color?>> _messages = new();
+    private readonly AutoResetEvent _wake = new(false);
 
     private bool _msgNewLine = true;
     private bool _msgFirstLine = true;
+    private const int MaxTextLength = 500_000;
 
     public RichLogBox()
     {
-        HandleCreated += (s, arg) =>
+        IProgress<List<Tuple<object, Color?>>> progress = new Progress<List<Tuple<object, Color?>>>(batch =>
         {
-            //
-        };
-        IProgress<Tuple<object, Color?>> progress = new Progress<Tuple<object, Color?>>(tuple =>
-        {
-            var msg = tuple.Item1;
-            var color = tuple.Item2;
-
-            SelectionStart = TextLength;
-            SelectionLength = 0;
-            SelectionColor = color ?? ForeColor;
-            if (msg == null)
+            SuspendLayout();
+            try
             {
-                Text = string.Empty;
-            }
-            else
-            {
-                AppendText(msg.ToString());
-            }
+                foreach (var tuple in batch)
+                {
+                    var msg = tuple.Item1;
+                    var color = tuple.Item2;
 
-            ScrollToCaret();
-            //ResumeLayout();
-            //Invalidate();
+                    SelectionStart = TextLength;
+                    SelectionLength = 0;
+                    SelectionColor = color ?? ForeColor;
+
+                    if (msg == null)
+                    {
+                        Text = string.Empty;
+                    }
+                    else
+                    {
+                        AppendText(msg.ToString());
+                    }
+                }
+
+                // 截断：超过上限时删除前半部分
+                if (TextLength > MaxTextLength)
+                {
+                    SelectionStart = 0;
+                    SelectionLength = TextLength / 2;
+                    SelectedText = string.Empty;
+                }
+
+                ScrollToCaret();
+            }
+            finally
+            {
+                ResumeLayout();
+            }
         });
 
         Task.Run(() =>
         {
             while (true)
             {
+                _wake.WaitOne(100); // 有消息时立即唤醒，空闲时最多等 100ms
+
                 if (!IsHandleCreated) continue;
-                // Invoke or BeginInvoke?
-                //BeginInvoke(new Action(() =>
-                //{
-                //var once = false;
-                while (_messages.Count > 0)
+
+                var batch = new List<Tuple<object, Color?>>();
+                while (_messages.TryDequeue(out var tuple))
                 {
-                    if(!_messages.TryDequeue(out var tuple))
-                    {
-                        continue;
-                    }
-                    var message = tuple.Item1;
-                    var color = tuple.Item2;
-                    //if (!once)
-                    //{
-                    //    SuspendLayout();
-                    //    once = true;
-                    //}
-                    if (message == null)
-                    {
-                        // cls
-                        //Text = string.Empty;
-                        progress.Report(tuple);
-                        continue;
-                    }
-                    //while (TextLength >= 1000000)
-                    //{
-                    //    //this.Select(0, GetFirstCharIndexFromLine(10));
-                    //    ReadOnly = false;
-                    //    SelectedText = string.Empty;
-                    //    ReadOnly = true;
-                    //}
-                    progress.Report(tuple);
-                    Debug.WriteLine("-" + message.ToString());
+                    batch.Add(tuple);
                 }
 
-                //if (once)
-                //{
-                //    ScrollToCaret();
-                //    ResumeLayout();
-                //    Invalidate();
-                //}
-
-                //));
-
-                Thread.Sleep(25);
+                if (batch.Count > 0)
+                {
+                    progress.Report(batch);
+                }
             }
         });
     }
@@ -113,6 +96,7 @@ internal class RichLogBox : RichTextBox
             _messages.Enqueue(new(message, color));
             _msgNewLine = true;
         }
+        _wake.Set();
     }
 
     public void ClearLog()
@@ -123,5 +107,6 @@ internal class RichLogBox : RichTextBox
             _msgFirstLine = true;
             _msgNewLine = true;
         }
+        _wake.Set();
     }
 }

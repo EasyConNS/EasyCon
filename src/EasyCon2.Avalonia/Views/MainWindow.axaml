@@ -52,7 +52,7 @@
                         Text="{Binding LogOutput}"
                         IsReadOnly="True"
                         AcceptsReturn="True"
-                        TextWrapping="Wrap"
+                        TextWrapping="NoWrap"
                         ScrollViewer.VerticalScrollBarVisibility="Auto"
                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
                         FontFamily="Consolas, Microsoft YaHei"
@@ -155,14 +155,17 @@
                                       DropDownOpened="ControlSourceComboBox_DropDownOpened"/>
                             <Grid ColumnDefinitions="*,*">
                                 <Button Grid.Column="0"
-                                        Content="连接手柄"
-                                        Command="{Binding OpenKeyMappingCommand}"
+                                        Content="{Binding ControllerButtonText}"
+                                        Command="{Binding ConnectControllerCommand}"
+                                        IsEnabled="{Binding !IsConnectingController}"
                                         Margin="0,0,5,0"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Center"/>
                                 <Button Grid.Column="1"
                                         Content="修改按键映射"
-                                        Command="{Binding OpenKeyMappingCommand}"
+                                        Command="{Binding EditKeyMappingCommand}"
+                                        CommandParameter="{Binding $parent[Window]}"
+                                        IsEnabled="{Binding IsEditKeyMappingEnabled}"
                                         Margin="5,0,0,0"
                                         HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Center"/>
@@ -170,7 +173,7 @@
                             <TextBlock Text="{Binding ControlSourceStatus}"
                                       HorizontalAlignment="Center"
                                       FontWeight="Bold"
-                                      Foreground="{DynamicResource ThemeForegroundColorDefaultBrush}"/>
+                                      Foreground="{Binding IsControllerConnected, Converter={StaticResource BoolToGreenBrush}}"/>
                         </StackPanel>
                     </Border>
 
