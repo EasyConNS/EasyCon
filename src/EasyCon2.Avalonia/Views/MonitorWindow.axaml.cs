@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.ViewModels;
@@ -14,15 +15,21 @@ public partial class MonitorWindow : Window
     public MonitorWindow(ICaptureService captureService)
     {
         InitializeComponent();
-        this.DataContext = new MonitorWindowViewModel(captureService);
+        var vm = new MonitorWindowViewModel(captureService);
+        DataContext = vm;
 
-        // 窗口关闭时停止监视器
-        this.Closing += (s, e) =>
+        // 先设置 DPI，再启动监视，避免首帧渲染时 DPI 未初始化的问题
+        Opened += (s, e) =>
         {
-            if (DataContext is MonitorWindowViewModel vm)
-            {
-                vm.StopMonitoring();
-            }
+            var scaling = RenderScaling;
+            var dpi = new Vector(96 * scaling, 96 * scaling);
+            vm.SetRenderDpi(dpi);
+            vm.StartMonitoring();
+        };
+
+        Closing += (s, e) =>
+        {
+            vm.Close();
         };
     }
 }

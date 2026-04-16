@@ -68,17 +68,18 @@ public class ScriptService : IScriptService
                     return;
                 }
 
-                ICGamePad pad = new NullGamePad();
+                ICGamePad? pad = null;
                 if (_runner.HasKeyAction)
                     pad = new GamePadAdapter(_deviceService.GetDevice());
 
+                _captureService.SetCaptureProperties(1920, 1080);
+
                 var externalGetters = label.ToDictionary(il => il.name, il => (Func<int>)(() =>
                 {
-                    var capture = _captureService.GetCapture() ?? throw new Exception("采集卡未连接");
-                    il.Search(capture.GetMatFrame(), out var md);
+                    using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
+                    il.Search(mat, out var md);
                     return (int)md;
                 }));
-                _captureService.GetCapture()?.SetProperties(1920, 1080);
 
                 _runner.Run(_logService, pad, externalGetters, token);
                 _logService.AddLog("脚本运行完成");

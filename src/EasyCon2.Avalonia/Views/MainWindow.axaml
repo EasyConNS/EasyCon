@@ -2,8 +2,8 @@
          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
          xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
          xmlns:conv="using:EasyCon2.Avalonia.Converters"
+         xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-         xmlns:dd="using:Avalonia.Input"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          mc:Ignorable="d"
          d:DesignWidth="1200"
@@ -11,15 +11,12 @@
  x:Class="EasyCon2.Avalonia.Views.MainWindow"
           x:DataType="vm:MainWindowViewModel"
           Icon="/Assets/favicon.ico"
-          Title="EasyCon2"
+          Title="{Binding WindowTitle}"
           Width="1200"
           Height="800"
           MinWidth="800"
           MinHeight="600"
-        dd:DragDrop.AllowDrop="True"
-        dd:DragDrop.DragEnter="OnDragEnter"
-        dd:DragDrop.DragOver="OnDragOver"
-        dd:DragDrop.Drop="OnDrop">
+          behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
 
     <Window.Resources>
         <conv:BoolToGreenBrushConverter x:Key="BoolToGreenBrush" />
@@ -48,8 +45,7 @@
         <Grid Grid.Row="1" RowDefinitions="*,Auto">
             <!-- 日志输出区 -->
             <Grid Grid.Row="0">
-                <TextBox x:Name="LogTextBox"
-                        Text="{Binding LogOutput}"
+                <TextBox Text="{Binding LogOutput}"
                         IsReadOnly="True"
                         AcceptsReturn="True"
                         TextWrapping="NoWrap"
@@ -58,6 +54,7 @@
                         FontFamily="Consolas, Microsoft YaHei"
                         FontSize="14"
                         Padding="10"
+                        behaviors:AutoScrollBehavior.IsEnabled="True"
                         PointerEntered="LogBox_PointerEntered"
                         PointerExited="LogBox_PointerExited"/>
                 <!-- 工具条覆盖层 -->
@@ -89,11 +86,10 @@
                            Margin="5"
                            Padding="10">
                         <StackPanel Orientation="Vertical" Spacing="10">
-                            <ComboBox x:Name="SerialPortComboBox"
-                                      ItemsSource="{Binding SerialPortOptions}"
+                            <ComboBox ItemsSource="{Binding SerialPortOptions}"
                                       SelectedItem="{Binding SelectedSerialPort}"
                                       HorizontalAlignment="Stretch"
-                                      DropDownOpened="SerialPortComboBox_DropDownOpened"/>
+                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshSerialPortsCommand}"/>
                             <Grid ColumnDefinitions="*,*">
                                 <Button Grid.Column="0"
                                         Content="{Binding NintendoSwitchButtonText}"
@@ -124,11 +120,10 @@
                            Margin="5"
                            Padding="10">
                         <StackPanel Orientation="Vertical" Spacing="10">
-                            <ComboBox x:Name="CaptureSourceComboBox"
-                                      ItemsSource="{Binding CaptureSourceOptions}"
+                            <ComboBox ItemsSource="{Binding CaptureSourceOptions}"
                                       SelectedItem="{Binding SelectedCaptureSource}"
                                       HorizontalAlignment="Stretch"
-                                      DropDownOpened="CaptureSourceComboBox_DropDownOpened"/>
+                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
                             <Grid ColumnDefinitions="*,Auto">
                                 <Button Grid.Column="0"
                                         Content="{Binding CaptureSourceButtonText}"
@@ -160,11 +155,10 @@
                            Margin="5"
                            Padding="10">
                         <StackPanel Orientation="Vertical" Spacing="10">
-                            <ComboBox x:Name="ControlSourceComboBox"
-                                      ItemsSource="{Binding ControlSourceOptions}"
+                            <ComboBox ItemsSource="{Binding ControlSourceOptions}"
                                       SelectedItem="{Binding SelectedControlSource}"
                                       HorizontalAlignment="Stretch"
-                                      DropDownOpened="ControlSourceComboBox_DropDownOpened"/>
+                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshControlSourcesCommand}"/>
                             <Grid ColumnDefinitions="*,*">
                                 <Button Grid.Column="0"
                                         Content="{Binding ControllerButtonText}"

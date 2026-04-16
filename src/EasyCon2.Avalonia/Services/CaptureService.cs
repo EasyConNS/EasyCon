@@ -8,12 +8,24 @@ namespace EasyCon2.Avalonia.Services;
 public class CaptureService : ICaptureService
 {
     private readonly ILogService _logService;
+    private readonly object _captureLock = new();
     private readonly System.Timers.Timer _monitorTimer = new(1000);
     private readonly Dictionary<string, int> _sourceIndexMap = new();
     private OpenCVCapture? _capture;
 
-    public bool IsConnected => _capture?.IsOpened ?? false;
+    public bool IsConnected
+    {
+        get
+        {
+            lock (_captureLock)
+            {
+                return _capture?.IsOpened ?? false;
+            }
+        }
+    }
+
     public event Action? ConnectionLost;
+    public event Action? ConnectionRestored;
 
     public CaptureService(ILogService logService)
     {
@@ -21,14 +33,17 @@ public class CaptureService : ICaptureService
 
         _monitorTimer.Elapsed += (s, e) =>
         {
-            if (_capture == null || !_capture.IsOpened)
+            lock (_captureLock)
             {
-                Dispatcher.UIThread.Post(() =>
+                if (_capture == null || !_capture.IsOpened)
                 {
                     _monitorTimer.Stop();
-                    ConnectionLost?.Invoke();
-                    _logService.AddLog("视频源已从外部断开");
-                });
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        ConnectionLost?.Invoke();
+                        _logService.AddLog("视频源已从外部断开");
+                    });
+                }
             }
         };
     }
@@ -46,12 +61,15 @@ public class CaptureService : ICaptureService
     {
         int deviceId = _sourceIndexMap.TryGetValue(sourceName, out var idx) ? idx : 0;
 
-        _capture?.Dispose();
-        _capture = new OpenCVCapture();
-        if (!_capture.Open(deviceId, (int)VideoCaptureAPIs.ANY))
+        lock (_captureLock)
         {
-            _capture = null;
-            return false;
+            _capture?.Dispose();
+            _capture = new OpenCVCapture();
+            if (!_capture.Open(deviceId, (int)VideoCaptureAPIs.ANY))
+            {
+                _capture = null;
+                return false;
+            }
         }
 
         _monitorTimer.Start();
@@ -61,9 +79,39 @@ public class CaptureService : ICaptureService
     public void Disconnect()
     {
         _monitorTimer.Stop();
-        _capture?.Release();
-        _capture = null;
+        lock (_captureLock)
+        {
+            _capture?.Release();
+            _capture = null;
+        }
     }
 
-    public OpenCVCapture? GetCapture() => _capture;
+    /// <summary>
+    /// 线程安全地获取一帧图像。返回的是 Mat 的 Clone 副本，确保调用者拥有唯一的引用。
+    /// </summary>
+    public Mat? GetMatFrame()
+    {
+        lock (_captureLock)
+        {
+            if (_capture == null || !_capture.IsOpened)
+                return null;
+
+            var mat = _capture.GetMatFrame();
+            if (mat.Empty())
+            {
+                mat.Dispose();
+                return null;
+            }
+
+            return mat.Clone();
+        }
+    }
+
+    public void SetCaptureProperties(int width, int height)
+    {
+        lock (_captureLock)
+        {
+            _capture?.SetProperties(width, height);
+        }
+    }
 }

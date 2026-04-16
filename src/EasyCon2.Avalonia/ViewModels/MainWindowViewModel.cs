@@ -5,9 +5,11 @@ using CommunityToolkit.Mvvm.Input;
 using EasyCon2.Avalonia.Views;
 using EasyCon2.Avalonia.Services;
 using System.Collections.ObjectModel;
+using System.Reflection;
 using System.Text;
 using System.Windows.Input;
 using Window = Avalonia.Controls.Window;
+using WindowState = Avalonia.Controls.WindowState;
 
 namespace EasyCon2.Avalonia.ViewModels;
 
@@ -20,6 +22,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IControllerService _controllerService;
     private readonly StringBuilder _logBuilder = new();
     private const int MaxLogLength = 100_000;
+    private Window? _monitorWindow;
+
+    // 窗口标题（含版本号）
+    [ObservableProperty]
+    private string _windowTitle;
 
     // 当前脚本路径
     [ObservableProperty]
@@ -118,6 +125,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand RunScriptCommand { get; }
     public ICommand ClearLogCommand { get; }
     public ICommand OpenMonitorCommand { get; }
+    public ICommand DropFileCommand { get; }
 
     // 刷新数据源命令
     public ICommand RefreshSerialPortsCommand { get; }
@@ -126,6 +134,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService)
     {
+        // 窗口标题
+        var ver = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
+        var plusIdx = ver.IndexOf('+');
+        if (plusIdx > 0) ver = ver[..plusIdx];
+        WindowTitle = $"伊机控 EasyCon v{ver}  QQ群:946057081";
+
         _logService = logService;
         _deviceService = deviceService;
         _captureService = captureService;
@@ -197,6 +211,7 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshCaptureSourcesCommand = new RelayCommand(RefreshCaptureSources);
         RefreshControlSourcesCommand = new RelayCommand(RefreshControlSources);
         OpenMonitorCommand = new RelayCommand(OpenMonitor);
+        DropFileCommand = new RelayCommand<string>(DropFile);
 
         // 初始化示例数据
         InitializeSampleData();
@@ -421,6 +436,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _logService.AddLog($"打开了脚本文件: {CurrentScriptPath}");
     }
 
+    private void DropFile(string? path)
+    {
+        if (!string.IsNullOrEmpty(path))
+            OpenScriptFromPath(path);
+    }
+
     private void ConnectController()
     {
         if (IsControllerConnected)
@@ -508,6 +529,20 @@ public partial class MainWindowViewModel : ViewModelBase
         _logService.AddLog(message);
     }
 
+    /// <summary>
+    /// 主窗口关闭时调用，关闭所有子窗口。
+    /// </summary>
+    public void OnMainWindowClosing()
+    {
+        if (_monitorWindow != null)
+        {
+            if (_monitorWindow.DataContext is MonitorWindowViewModel vm)
+                vm.Close();
+            _monitorWindow.Close();
+            _monitorWindow = null;
+        }
+    }
+
     private void OpenMonitor()
     {
         if (!IsCaptureSourceConnected)
@@ -518,14 +553,27 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            var monitorWindow = new MonitorWindow(_captureService);
-            var viewModel = (MonitorWindowViewModel)monitorWindow.DataContext;
+            // 单例模式：如果监视器窗口已存在且未关闭，则激活到前台
+            if (_monitorWindow != null)
+            {
+                if (_monitorWindow.WindowState == WindowState.Minimized)
+                    _monitorWindow.WindowState = WindowState.Normal;
+                _monitorWindow.Activate();
+                return;
+            }
 
-            // 启动监视
-            viewModel.StartMonitoring();
+            _monitorWindow = new MonitorWindow(_captureService);
+
+            // 窗口关闭时清空引用
+            _monitorWindow.Closed += (s, e) =>
+            {
+                _monitorWindow = null;
+            };
 
             // 显示窗口（非模态，不影响主界面）
-            monitorWindow.Show();
+            // StartMonitoring 由 MonitorWindow 在 Opened 事件中自动调用，
+            // 确保 DPI 先初始化再渲染首帧
+            _monitorWindow.Show();
 
             _logService.AddLog("监视器窗口已打开");
         }

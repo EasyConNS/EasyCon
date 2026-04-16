@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
          xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
+         xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          mc:Ignorable="d"
@@ -13,14 +14,17 @@
          Height="600"
          WindowState="Normal"
          CanResize="True"
-         ShowInTaskbar="True">
+         ShowInTaskbar="True"
+         Icon="/Assets/CaptureVideo.ico">
 
     <Grid>
         <Image Source="{Binding CurrentFrame}"
                Stretch="Uniform"
                StretchDirection="Both"
                HorizontalAlignment="Stretch"
-               VerticalAlignment="Stretch"/>
+               VerticalAlignment="Stretch"
+               RenderOptions.BitmapInterpolationMode="HighQuality"
+               behaviors:VideoFrameBehavior.FrameIndex="{Binding FrameIndex}"/>
 
         <!-- 加载提示 -->
         <Border Background="#80000000"
