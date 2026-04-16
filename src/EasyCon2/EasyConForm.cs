@@ -242,18 +242,18 @@ namespace EasyCon2.Forms
 
             打开搜图ToolStripMenuItem.DropDownItems.Clear();
 
-            var enumerable = devs.Select((d, i) =>
+            var enumerable = devs.Select(d =>
             {
                 var item = new ToolStripMenuItem
                 {
                     Checked = false,
                     CheckState = CheckState.Unchecked,
                     Size = new Size(180, 22),
-                    Name = "menuItem" + d ?? "?",
-                    Text = d ?? "?"
+                    Name = "menuItem" + d.name,
+                    Text = d.name
                 };
                 item.Click += new EventHandler(CaptureDeviceItem_Click);
-                item.Tag = i;
+                item.Tag = d.index;
                 return item;
             });
 

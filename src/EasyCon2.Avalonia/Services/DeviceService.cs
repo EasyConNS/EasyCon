@@ -2,7 +2,7 @@ using Avalonia.Threading;
 using EasyCon.Core;
 using EasyDevice;
 
-namespace EC.Avalonia.Services;
+namespace EasyCon2.Avalonia.Services;
 
 public class DeviceService : IDeviceService
 {

@@ -1,4 +1,4 @@
-namespace EC.Avalonia.Services;
+namespace EasyCon2.Avalonia.Services;
 
 public class ControllerService : IControllerService
 {

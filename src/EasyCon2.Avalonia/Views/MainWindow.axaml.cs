@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
-using EC.Avalonia.ViewModels;
+using EasyCon2.Avalonia.ViewModels;
 using System;
 using System.ComponentModel;
 using System.Linq;

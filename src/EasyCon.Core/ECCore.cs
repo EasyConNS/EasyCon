@@ -6,7 +6,7 @@ namespace EasyCon.Core;
 public partial class ECCore
 {
     public const string ImgDir = "ImgLabel";
-    public static IEnumerable<string> GetCaptureSources() => ECCapture.GetCaptureCamera();
+    public static IEnumerable<(string name, int index)> GetCaptureSources() => ECCapture.GetCaptureCamera();
 
     public static IEnumerable<(string, int)> GetCaptureTypes() => ECCapture.GetCaptureTypes();
 

@@ -1,6 +1,6 @@
 using EasyScript;
 
-namespace EC.Avalonia.Services;
+namespace EasyCon2.Avalonia.Services;
 
 public class NullGamePad : ICGamePad
 {

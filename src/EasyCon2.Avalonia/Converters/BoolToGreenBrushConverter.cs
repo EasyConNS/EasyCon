@@ -4,7 +4,7 @@ using Avalonia.Media;
 using System;
 using System.Globalization;
 
-namespace EC.Avalonia.Converters;
+namespace EasyCon2.Avalonia.Converters;
 
 public class BoolToGreenBrushConverter : IValueConverter
 {

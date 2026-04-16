@@ -2,7 +2,7 @@ using Avalonia.Threading;
 using EasyScript;
 using System.Text;
 
-namespace EC.Avalonia.Services;
+namespace EasyCon2.Avalonia.Services;
 
 public class LogService : ILogService
 {

@@ -3,7 +3,7 @@ using EasyCon.Capture;
 using EasyCon.Core;
 using OpenCvSharp;
 
-namespace EC.Avalonia.Services;
+namespace EasyCon2.Avalonia.Services;
 
 public class CaptureService : ICaptureService
 {
@@ -37,9 +37,9 @@ public class CaptureService : ICaptureService
     {
         var sources = ECCore.GetCaptureSources().ToList();
         _sourceIndexMap.Clear();
-        foreach (var (name, index) in sources.Select((n, i) => (n, i)))
+        foreach (var (name, index) in sources)
             _sourceIndexMap[name] = index;
-        return sources.ToArray();
+        return sources.Select(x => x.name).ToArray();
     }
 
     public bool TryConnect(string sourceName)

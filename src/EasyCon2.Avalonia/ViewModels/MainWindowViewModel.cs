@@ -3,13 +3,13 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon2.Avalonia.Views;
-using EC.Avalonia.Services;
+using EasyCon2.Avalonia.Services;
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Windows.Input;
 using Window = Avalonia.Controls.Window;
 
-namespace EC.Avalonia.ViewModels;
+namespace EasyCon2.Avalonia.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
@@ -117,6 +117,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand EditKeyMappingCommand { get; }
     public ICommand RunScriptCommand { get; }
     public ICommand ClearLogCommand { get; }
+    public ICommand OpenMonitorCommand { get; }
 
     // 刷新数据源命令
     public ICommand RefreshSerialPortsCommand { get; }
@@ -195,6 +196,7 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshSerialPortsCommand = new RelayCommand(RefreshSerialPorts);
         RefreshCaptureSourcesCommand = new RelayCommand(RefreshCaptureSources);
         RefreshControlSourcesCommand = new RelayCommand(RefreshControlSources);
+        OpenMonitorCommand = new RelayCommand(OpenMonitor);
 
         // 初始化示例数据
         InitializeSampleData();
@@ -504,5 +506,32 @@ public partial class MainWindowViewModel : ViewModelBase
     public void AddLog(string message)
     {
         _logService.AddLog(message);
+    }
+
+    private void OpenMonitor()
+    {
+        if (!IsCaptureSourceConnected)
+        {
+            _logService.AddLog("请先连接视频源才能打开监视器");
+            return;
+        }
+
+        try
+        {
+            var monitorWindow = new MonitorWindow(_captureService);
+            var viewModel = (MonitorWindowViewModel)monitorWindow.DataContext;
+
+            // 启动监视
+            viewModel.StartMonitoring();
+
+            // 显示窗口（非模态，不影响主界面）
+            monitorWindow.Show();
+
+            _logService.AddLog("监视器窗口已打开");
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开监视器失败: {ex.Message}");
+        }
     }
 }

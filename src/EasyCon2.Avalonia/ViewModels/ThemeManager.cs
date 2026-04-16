@@ -1,9 +1,9 @@
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
-using EC.Avalonia.ViewModels;
+using EasyCon2.Avalonia.ViewModels;
 using System.Collections.Generic;
 
-namespace EC.Avalonia.ViewModels;
+namespace EasyCon2.Avalonia.ViewModels;
 
 public sealed partial class ThemeManager : ViewModelBase
 {

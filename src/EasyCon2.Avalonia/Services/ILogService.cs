@@ -1,6 +1,6 @@
 using EasyScript;
 
-namespace EC.Avalonia.Services;
+namespace EasyCon2.Avalonia.Services;
 
 public interface ILogService : IOutputAdapter
 {

@@ -1,0 +1,56 @@
+<Window xmlns="https://github.com/avaloniaui"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
+         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+         mc:Ignorable="d"
+         d:DesignWidth="800"
+         d:DesignHeight="600"
+         x:Class="EasyCon2.Avalonia.Views.MonitorWindow"
+         x:DataType="vm:MonitorWindowViewModel"
+         Title="监视器"
+         Width="800"
+         Height="600"
+         WindowState="Normal"
+         CanResize="True"
+         ShowInTaskbar="True">
+
+    <Grid>
+        <Image Source="{Binding CurrentFrame}"
+               Stretch="Uniform"
+               StretchDirection="Both"
+               HorizontalAlignment="Stretch"
+               VerticalAlignment="Stretch"/>
+
+        <!-- 加载提示 -->
+        <Border Background="#80000000"
+                IsVisible="{Binding IsLoading}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="20">
+            <StackPanel Spacing="10">
+                <TextBlock Text="正在加载视频..."
+                           FontSize="16"
+                           Foreground="White"
+                           HorizontalAlignment="Center"/>
+                <ProgressBar IsIndeterminate="True"
+                             Width="200"
+                             Height="4"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 错误提示 -->
+        <Border Background="#8B0000"
+                IsVisible="{Binding HasError}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="20">
+            <TextBlock Text="{Binding ErrorMessage}"
+                       FontSize="16"
+                       Foreground="White"
+                       TextWrapping="Wrap"
+                       MaxWidth="400"
+                       HorizontalAlignment="Center"/>
+        </Border>
+    </Grid>
+</Window>
