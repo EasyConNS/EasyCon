@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Resources\favicon.ico" />
+    <ProjectReference Include="..\EasyCon2.UI.Common\EasyCon2.UI.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +26,7 @@
   <ItemGroup>
 	<ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
     <ProjectReference Include="..\EasyCon.VPad\EasyCon.VPad.csproj" />
+    <ProjectReference Include="..\EasyCon2.UI.Common\EasyCon2.UI.Common.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="LibAmiibo">

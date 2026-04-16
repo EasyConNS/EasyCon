@@ -67,13 +67,6 @@ echo 正在复制额外文件...
 if exist "%ROOT_DIR%\fw" xcopy /e /y /q "%ROOT_DIR%\fw\*" "%PUBLISH_DIR%\Firmware\"
 if not exist "%PUBLISH_DIR%\Firmware" mkdir "%PUBLISH_DIR%\Firmware"
 
-:: 复制测试脚本文件
-if exist "%ROOT_DIR%\test\*.txt" xcopy /y /q "%ROOT_DIR%\test\*.txt" "%PUBLISH_DIR%\Script\"
-if not exist "%PUBLISH_DIR%\Script" mkdir "%PUBLISH_DIR%\Script"
-
-:: 创建ImgLabel目录
-if not exist "%PUBLISH_DIR%\ImgLabel" mkdir "%PUBLISH_DIR%\ImgLabel"
-
 :: 删除调试文件
 if exist "%PUBLISH_DIR%\*.pdb" del /q "%PUBLISH_DIR%\*.pdb"
 

@@ -10,7 +10,7 @@
          d:DesignHeight="800"
  x:Class="EasyCon2.Avalonia.Views.MainWindow"
           x:DataType="vm:MainWindowViewModel"
-          Icon="/Assets/avalonia-logo.ico"
+          Icon="/Assets/favicon.ico"
           Title="EasyCon2"
           Width="1200"
           Height="800"

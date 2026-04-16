@@ -10,6 +10,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\EasyCon2.UI.Common\EasyCon2.UI.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaXaml Remove="Models\**" />
     <Compile Remove="Models\**" />
     <EmbeddedResource Remove="Models\**" />

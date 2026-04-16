@@ -1,12 +1,14 @@
 #!/bin/bash
 
-# EasyCon2.CLI 发布脚本
+# EasyCon2 发布脚本
 # 支持 Linux、macOS、Windows (交叉编译)
+# 发布 CLI 和 Avalonia UI 项目
 
 set -e  # 遇到错误立即退出
 
 # 项目名称
-PROJ_NAME="EasyCon2.CLI"
+CLI_PROJ_NAME="EasyCon2.CLI"
+AVALONIA_PROJ_NAME="EasyCon2.Avalonia"
 
 # 检测操作系统
 detect_os() {
@@ -46,7 +48,8 @@ detect_framework() {
 # ========== 主流程 ==========
 
 echo "========================================="
-echo "  EasyCon2.CLI 发布脚本"
+echo "  EasyCon2 发布脚本"
+echo "  发布 CLI 和 Avalonia UI 项目"
 echo "========================================="
 
 # 检测环境
@@ -69,18 +72,25 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$SCRIPT_DIR/../src"
 DIST_DIR="$SCRIPT_DIR/../dist"
 PUBLISH_DIR="$SRC_DIR/publish"
-PROJ_DIR="$SRC_DIR/$PROJ_NAME"
+CLI_PROJ_DIR="$SRC_DIR/$CLI_PROJ_NAME"
+AVALONIA_PROJ_DIR="$SRC_DIR/$AVALONIA_PROJ_NAME"
+
+# ========== 发布 CLI 项目 ==========
+
+echo "========================================="
+echo "  [1/2] 正在发布 CLI 项目"
+echo "========================================="
 
 # 清理旧文件
 echo "正在清理旧文件..."
 cd "$SRC_DIR"
 rm -rf "$PUBLISH_DIR"
-rm -rf "$PROJ_DIR/bin"
-rm -rf "$PROJ_DIR/obj"
+rm -rf "$CLI_PROJ_DIR/bin"
+rm -rf "$CLI_PROJ_DIR/obj"
 
-# 编译项目
-echo "正在编译 $PROJ_NAME..."
-dotnet publish "$PROJ_DIR/$PROJ_NAME.csproj" \
+# 编译 CLI 项目
+echo "正在编译 $CLI_PROJ_NAME..."
+dotnet publish "$CLI_PROJ_DIR/$CLI_PROJ_NAME.csproj" \
     -c Release \
     -r "$RUNTIME" \
     -f "$FRAMEWORK" \
@@ -89,34 +99,78 @@ dotnet publish "$PROJ_DIR/$PROJ_NAME.csproj" \
     -o "$PUBLISH_DIR"
 
 if [ $? -ne 0 ]; then
-    echo "错误: 编译失败!"
+    echo "错误: CLI 编译失败!"
     exit 1
 fi
 
-echo "编译成功!"
+echo "CLI 编译成功!"
 
-# 重命名可执行文件
+# 重命名 CLI 可执行文件
 cd "$PUBLISH_DIR"
 
 # dotnet publish 生成的可执行文件名称就是项目名称
-if [ -f "$PROJ_NAME" ]; then
-    mv "$PROJ_NAME" "ezcon"
-    echo "  重命名: $PROJ_NAME -> ezcon"
+if [ -f "$CLI_PROJ_NAME" ]; then
+    mv "$CLI_PROJ_NAME" "ezcon"
+    echo "  重命名: $CLI_PROJ_NAME -> ezcon"
 else
-    echo "  警告: 未找到可执行文件 $PROJ_NAME"
+    echo "  警告: 未找到可执行文件 $CLI_PROJ_NAME"
     ls -la
 fi
 
+echo "CLI 发布完成!"
+
+# ========== 发布 Avalonia 项目 ==========
+
+echo ""
+echo "========================================="
+echo "  [2/2] 正在发布 Avalonia UI 项目"
+echo "========================================="
+
+# 只在 Linux 和 macOS 上发布 Avalonia 项目
+if [ "$OS" == "linux" ] || [ "$OS" == "osx" ]; then
+    # 清理 Avalonia 编译产物（不影响已发布的 CLI 文件）
+    echo "正在清理 Avalonia 编译产物..."
+    rm -rf "$AVALONIA_PROJ_DIR/bin"
+    rm -rf "$AVALONIA_PROJ_DIR/obj"
+
+    # 编译 Avalonia 项目到同一个发布目录
+    echo "正在编译 $AVALONIA_PROJ_NAME..."
+    dotnet publish "$AVALONIA_PROJ_DIR/$AVALONIA_PROJ_NAME.csproj" \
+        -c Release \
+        -r "$RUNTIME" \
+        -f "$FRAMEWORK" \
+        -p:PublishSingleFile=true \
+        --self-contained false \
+        -o "$PUBLISH_DIR"
+
+    if [ $? -ne 0 ]; then
+        echo "错误: Avalonia 编译失败!"
+        exit 1
+    fi
+
+    echo "Avalonia UI 编译成功!"
+else
+    echo "跳过 Avalonia 发布（仅支持 Linux 和 macOS 平台）"
+fi
+
+# ========== 复制到 dist 目录 ==========
+
+echo ""
+echo "========================================="
+echo "  正在复制到 dist 目录"
+echo "========================================="
+
 # 复制到 dist 目录
-echo "正在复制到 dist 文件夹..."
 mkdir -p "$DIST_DIR/publish"
 rsync -a --remove-source-files "$PUBLISH_DIR/" "$DIST_DIR/publish/"
 
 # 清理临时文件
 rm -rf "$PUBLISH_DIR"
 
+# ========== 完成 ==========
+
 echo ""
 echo "========================================="
-echo "  发布完成!"
+echo "  全部发布完成!"
 echo "  输出目录: $DIST_DIR/publish"
 echo "========================================="

@@ -167,6 +167,9 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
             return;
         }
         outdap.Info("采集卡打开成功.");
+
+        // 设置采集卡分辨率为1080p
+        cvcap.SetProperties(1920, 1080);
     }
         var externalGetters = label.ToDictionary(il => il.name, il => (Func<int>)(() =>
         {

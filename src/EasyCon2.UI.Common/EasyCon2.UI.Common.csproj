@@ -1,11 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Avalonia资源 -->
+    <AvaloniaResource Include="Resources\**\*" />
 
+    <!-- 嵌入式资源（用于WinForms） -->
+    <EmbeddedResource Include="Resources\Docs\*.txt" />
+    <EmbeddedResource Include="Resources\Scripts\*.xshd" />
+    <EmbeddedResource Include="Resources\Amiibo\Amiibo.json" />
+
+    <!-- Amiibo图片作为内容复制 -->
+    <Content Include="Resources\Amiibo\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

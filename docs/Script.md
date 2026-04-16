@@ -1,218 +1,859 @@
-## ecs脚本格式说明
+# 伊机控 ECS 脚本语言说明
 
->基于伊机控v1脚本格式发展而来，目的是在尽量兼容旧语法的基础上补充完善。
->v1脚本使用正则匹配每行脚本的格式，对脚本上下文支持不足，也不利于后续扩展。
->设计脚本规范后实现词法分析、语法分析、AST生成
+伊机控ECS脚本语言是基于现代编译器技术设计的自动化脚本语言，兼容v1脚本格式并进行了全面升级。
 
+## 语言特点
 
-脚本按行分隔，每行作为完整的表达式，无特殊字符结尾，但特殊流程如if,for等需要多行关键字配合组成脚本块。
+- **行式语法**: 脚本按行分隔，每行作为完整表达式
+- **块式结构**: if/for/func等支持多行代码块
+- **现代设计**: 完整的词法分析、语法分析、AST生成
+- **类型安全**: 支持整数、布尔、字符串、数组等数据类型
+- **扩展性强**: 支持FFI模块扩展
 
-关键字识别时使用全大写，格式化时统一输出大写
-and/or等操作符关键字全小写
-内置函数全大写（PRINT,ALERT,TIME,RANDBEEP,APPEND, LEN）
+## 编码规范
 
-## 程序语法
+- **关键字**: 全大写（IF、FOR、FUNC等）
+- **逻辑运算符**: 全小写（and、or、not）
+- **内置函数**: 全大写（PRINT、ALERT、TIME等）
+- **变量命名**: 区分大小写
 
-### 声明和赋值
+## 快速开始
 
-#### 声明
+### 注释
 
-常量
+使用 `#` 符号添加单行注释，注释从 `#` 开始到行尾。
 
-以"_"开头的为常量，必须先定义再使用。
-语法： _常量=<常量表达式>
-例：_测试时间=100，_sum = 1+1
-常量只能在等号左边出现一次
-
-普通变量
-
-`$`开头的为变量。
-语法： $变量=<表达式>
-例：$a=1， $test=233， $真=2>1 
-
-搜图变量
-
-`@`开头的为搜图变量，只能出现在赋值右侧(兼容)。例：$1=@闪光度(当前为搜图专属，返回对应搜图匹配度结果，不排除后期扩展)
-
-
-#### 数据类型
-
-整数：
-
-默认类型i32，长度4字节，范围-2,147,483,648 到 2,147,483,647（具体op实现可根据字面量大小自动缩减实际所用长度）
-
-数组：
-
-[整数(,整数)*]
-
-布尔：
-
-$a = 1>2
-print $a（打印：False）
-
-
-字符串：
-
-使用双引号`"`或单引号"'"包含的任意字符。
-例：$str1 = "内容1"， $str2 = 'abc'
-
-例：
-```
-$a = 1
-PRINT "产生了" & $a & "个对象。" # 使用&组合字符串和变量输出
-result>产生了1个对象。
+```ecs
+# 这是单行注释
+$a=1  # 也可以在代码后面添加注释
 ```
 
-#### 算数表达式
+### 输出函数
 
-+-*/\%^ 算数运算符
+#### PRINT - 控制台输出
 
-&|! >> << 位运算符
+```ecs
+# 输出文本
+PRINT "Hello World"
 
-#### 比较表达式
+# 输出变量
+$count = 10
+PRINT $count
 
-`> >= < <= == !=`组合的表达式
-
-#### 条件表达式
-
-`and or not`组合的比较表达式，注意`not`是单目运算，只放在比较表达式前
-
-#### 注释
-
-目前只支持单行注释
-
-`#`字符开始其后直到行尾全部为注释内容。例：$a=1 #定义变量a内容为1
-
-#### 按键
-
-- `A [50]`按下A键50ms，默认50ms(兼容)
-- `A+L+R+DDOWN [100]`同时按下多个按键
-- `HOME DOWN`(按住，需使用`HOME UP`松开)
-- `<LS|RS> <RESET|UP|DOWNN|LEFT|RIGHT> [duringtime]`按照方向推左右摇杆,持续时间省略则保持，直到RESET
-- `<LS|RS> <0-360>`按照角度推摇杆(兼容)
-
-### 流程控制
-
-#### 条件语句
-
-语法
-```
-if 条件表达式
-    代码块
-#elif 条件表达式（elif语句可选）
-    代码块
-#else（可选）
-    代码块
-endif
+# 使用 & 连接字符串和变量
+PRINT "总数: " & $count & "个对象"
+# 输出: 总数: 10个对象
 ```
 
-这里的条件表达式可以是一个比较表达式或判断表达式
+#### ALERT - 外部推送
 
-#### 循环语句
-
-语法
-```
-for #无限循环，需使用break跳出
-    代码块
-next
-```
-```
-for 数字 #变量/常量/数字，开始循环后改变变量值循环次数不变
-    代码块
-next
-```
-```
-for 变量 = 起始数字 to 结束数字 [step 步长]
-    代码块
-next
-```
-循环控制
-```
-    break <数字> #跳出循环，后接数字可指定跳出的层数，不能大于3层（可选）
-```
-```
-    continue #略过后续语句执行下一次循环
+```ecs
+# 发送推送通知
+ALERT "操作完成！"
+ALERT "已刷 " & $count & " 次闪光"
 ```
 
-### 函数
+### 按键基础
 
-定义语法
-```
-func 函数名(参数列表，以逗号分割):返回值 #参数列表是用`,`分割的变量。例：($a,$b,$c)。返回值支持INT,BOOL,STRING
-    代码块
-#return <表达式> # 如果函数有返回值需使用RETURN
-endfunc
-```
-当函数不含参数时可以省略()如：FUNC 返回1:INT
+#### 基本按键
 
-例：
-```
-func max($a,$b):INT
-    $c= $a
-    if $a != $b
-        $c= $b
-    endif
-return $c
-endfunc
+```ecs
+# 按键操作（默认延时50ms）
+A              # 按A键
+B              # 按B键
+X              # 按X键
+Y              # 按Y键
+L              # 按L键
+R              # 按R键
+ZL             # 按ZL键
+ZR             # 按ZR键
+HOME           # 按HOME键
+CAPTURE        # 按截屏键
+PLUS           # 按+键
+MINUS          # 按-键
+LCLICK         # 按下左摇杆
+RCLICK         # 按下右摇杆
 
-$result= max(1,2)
-PRINT "最大值为" & $result
-result>最大值为2
-```
-
-调用语法
-1.不需要返回值也没有参数的函数：
-CALL 函数名
-2.不需要返回值但是需要参数的函数：
-函数名<空格>参数1,参数2
-3.有返回值的函数
-$sum = add() #标准()语法调用
-
-### 规范
-
-#### 关键字
-
-import/as
-if/elif/else/endif
-for/to/step/next/break/continue
-func/return/endfunc
-and/or/not
-A、B、X、Y、L、R、ZL、ZR
-MINUS(-)、PLUS(+)、LCLICK(按左摇杆)、RCLICK(按右摇杆)、HOME(返回主页/游戏)、CAPTURE(截屏)
-DLEFT、DRIGHT、DUP、DDOWN(DPAD方向键)
-UP,DOWN,RIGHT,LEFT(摇杆方向别名)
-RESET(保留字)
-
-#### 运算符
-
-- 算数符号：+-*/(整除)%(取余数)\(舍入除)
-- 位运算符号：&(与)|(或)^(异或)<</>>(左移右移)
-- 单目运算符：~(取反)-(取负?)
-- 赋值：=
-- 比较：<、>、<=、>=、!=、==(双等比较)
-- 特殊符号：()[]{},;:
-
-#### 内置函数
-
-等待：按照关键字处理，但实现上应使用库来实现，与虚拟机实现分离
-```
-WAIT(数字) #脚本延时毫秒数，可选，默认50
+# 指定延时（毫秒）
+A 100          # 按A键100ms
+B 200          # 按B键200ms
 ```
 
-输出：#V1虚拟机兼容语法，无法使用通用语法解析，进行特殊处理
+#### 按键状态控制
+
+```ecs
+# 按住按键（需要手动松开）
+HOME DOWN      # 按住HOME键
+# 保持按住状态...
+HOME UP        # 松开HOME键
+```
+
+### 摇杆控制
+
+#### 摇杆基础
+
+```ecs
+# 左右摇杆
+LS UP          # 左摇杆向上推
+LS DOWN        # 左摇杆向下推
+LS LEFT        # 左摇杆向左推
+LS RIGHT       # 左摇杆向右推
+
+RS UP          # 右摇杆向上推
+RS DOWN        # 右摇杆向下推
+RS LEFT        # 右摇杆向左推
+RS RIGHT       # 右摇杆向右推
+
+# 重置摇杆（回中）
+LS RESET       # 左摇杆回中
+RS RESET       # 右摇杆回中
+```
+
+#### 摇杆方向
+
+```ecs
+# 十字方向键
+UP             # 上
+DOWN           # 下
+LEFT           # 左
+RIGHT          # 右
+UPLEFT         # 左上
+UPRIGHT        # 右上
+DOWNLEFT       # 左下
+DOWNRIGHT      # 右下
+```
+
+#### 摇杆角度
+
+```ecs
+# 角度控制（0-360度）
+LS 0           # 左摇杆向右（0度）
+LS 45          # 左摇杆右上方（45度）
+LS 90          # 左摇杆向上（90度）
+LS 180         # 左摇杆向左（180度）
+LS 270         # 左摇杆向下（270度）
+
+RS 45          # 右摇杆45度角
+RS 90          # 右摇杆90度角
+```
+
+#### 摇杆时序
+
+```ecs
+# 摇杆推到指定方向，延时后自动回中
+LS UP,100      # 左摇杆向上推100ms后回中
+RS 45,200      # 右摇杆45度角200ms后回中
+
+# 手动控制摇杆状态
+LS UP          # 推左摇杆向上
+WAIT 1000      # 保持1秒
+LS RESET       # 手动回中
+```
+
+### 条件判断 (IF)
+
+#### 基本语法
+
+```ecs
+# 简单条件
+IF $a > 0
+    PRINT "正数"
+ENDIF
+```
+
+#### IF-ELSE 结构
+
+```ecs
+IF $a > 0
+    PRINT "正数"
+ELSE
+    PRINT "负数或零"
+ENDIF
+```
+
+#### IF-ELIF-ELSE 结构
+
+```ecs
+IF $score >= 90
+    PRINT "优秀"
+ELIF $score >= 60
+    PRINT "及格"
+ELSE
+    PRINT "不及格"
+ENDIF
+```
+
+### 循环 (FOR)
+
+#### 计次循环
+
+```ecs
+# 重复执行指定次数
+FOR 10
+    A
+    WAIT 100
+NEXT
+```
+
+#### 范围循环
+
+```ecs
+# 指定变量和范围
+FOR $i = 1 TO 10
+    PRINT $i
+NEXT
+
+# 指定步长
+FOR $i = 0 TO 100 STEP 10
+    PRINT $i
+NEXT
+```
+
+#### 无限循环
+
+```ecs
+FOR
+    # 循环体
+    IF $condition
+        BREAK      # 跳出循环
+    ENDIF
+NEXT
+```
+
+#### 循环控制
+
+```ecs
+FOR 100
+    IF $skip
+        CONTINUE   # 跳过本次循环，继续下一次
+    ENDIF
+
+    IF $stop
+        BREAK      # 跳出循环
+    ENDIF
+NEXT
+```
+
+### 图像识别
+
+#### 基础图像识别
+
+```ecs
+# 图像识别语法：@图像名称
+$result = @目标图像
+
+# 获取匹配度（0-100）
+$confidence = @闪光特征
+PRINT "匹配度: " & $confidence
+```
+
+#### 条件判断
+
+```ecs
+# 根据图像识别结果做判断
+IF @目标图像 > 90
+    PRINT "找到目标！"
+    A
+    WAIT 100
+ELSE
+    PRINT "未找到目标"
+ENDIF
+```
+
+#### 识别阈值
+
+```ecs
+# 不同阈值的应用
+IF @图像 > 95
+    PRINT "严格匹配：高度确定"
+ELIF @图像 > 80
+    PRINT "正常匹配：比较确定"
+ELIF @图像 > 70
+    PRINT "宽松匹配：可能找到"
+ELSE
+    PRINT "未找到目标"
+ENDIF
+```
+
+## 基础语法
+
+### 变量声明
+
+#### 常量
+以 `_` 开头，必须先定义再使用，只能赋值一次。
+
+```ecs
+_测试时间=100
+_sum = 1+1
+_最大次数 = 50
+```
+
+#### 变量  
+以 `$` 开头，可重新赋值。
+
+```ecs
+$a=1
+$test=233
+$真=2>1
+$count = 0
+```
+
+#### 搜图变量
+以 `@` 开头，用于图像识别结果。
+
+```ecs
+$match = @闪光度
+$score = @目标图像
+```
+
+### 数据类型
+
+#### 整数
+默认32位有符号整数，范围：-2,147,483,648 到 2,147,483,647
+
+```ecs
+$number = 42
+$hex = 0xFF
+```
+
+#### 布尔值
+支持 `true` 和 `false` 关键字。
+
+```ecs
+$is_ready = true
+$isValid = false
+$result = 1>2    # false
+```
+
+#### 字符串
+支持双引号和单引号。
+
+```ecs
+$str1 = "内容1"
+$str2 = 'abc'
+$msg = "你好" & "世界"
+```
+
+#### 数组
+支持整数数组。
+
+```ecs
+$numbers = [1, 2, 3, 4, 5]
+$empty = []
+```
+
+### 字符串操作
+
+使用 `&` 运算符连接字符串和变量。
+
+```ecs
+$name = "伊机控"
+$version = "2.0"
+$message = "欢迎使用 " & $name & " v" & $version
+PRINT $message
+# 输出: 欢迎使用 伊机控 v2.0
+```
+
+## 表达式和运算符
+
+### 算术运算符
+
+```ecs
+$result = 10 + 5      # 加法: 15
+$result = 10 - 3      # 减法: 7
+$result = 6 * 7       # 乘法: 42
+$result = 20 / 4      # 除法: 5
+$result = 20 \ 3      # 整除: 6
+$result = 10 % 3      # 取余: 1
+$result = 2 ^ 8       # 幂运算: 256
+```
+
+### 位运算符
+
+```ecs
+$result = $a & $b     # 按位与
+$result = $a | $b     # 按位或
+$result = $a ^ $b     # 按位异或
+$result = ~$a         # 按位取反
+$result = $a << 2     # 左移
+$result = $a >> 2     # 右移
+```
+
+### 比较运算符
+
+```ecs
+$a > $b       # 大于
+$a >= $b      # 大于等于
+$a < $b       # 小于
+$a <= $b      # 小于等于
+$a == $b      # 等于
+$a != $b      # 不等于
+```
+
+### 逻辑运算符
+
+```ecs
+$result = $a and $b    # 逻辑与
+$result = $a or $b     # 逻辑或
+$result = not $a       # 逻辑非
+
+# 复杂条件
+IF ($score >= 60) and ($attendance >= 80)
+    PRINT "合格"
+ENDIF
+```
+
+### 赋值运算符
+
+```ecs
+$a = 10        # 基本赋值
+$a += 5        # 加法赋值: $a = $a + 5
+$a -= 3        # 减法赋值: $a = $a - 3
+$a *= 2        # 乘法赋值: $a = $a * 2
+$a /= 4        # 除法赋值: $a = $a / 4
+$a %= 3        # 取余赋值: $a = $a % 3
+```
+
+## 流程控制详解
+
+### 条件语句
+
+#### 嵌套条件
+
+```ecs
+IF $a > 0
+    IF $a < 100
+        PRINT "a在0-100之间"
+    ELSE
+        PRINT "a大于等于100"
+    ENDIF
+ELSE
+    PRINT "a小于等于0"
+ENDIF
+```
+
+#### 复杂条件
+
+```ecs
+# 多条件组合
+IF ($score >= 90) and ($attendance >= 80)
+    PRINT "优秀且出勤良好"
+ELIF ($score >= 60) or ($extra_credit > 0)
+    PRINT "及格或有加分"
+ELSE
+    PRINT "需要努力"
+ENDIF
+```
+
+### 循环语句
+
+#### 变量循环
+
+```ecs
+# 使用变量控制循环
+$count = 5
+FOR $count
+    PRINT "循环次数: " & $count
+    A
+    WAIT 100
+NEXT
+```
+
+#### 循环嵌套
+
+```ecs
+# 双层循环
+FOR $i = 1 TO 3
+    FOR $j = 1 TO 3
+        PRINT "i=" & $i & ", j=" & $j
+    NEXT
+NEXT
+
+# 跳出多层循环
+FOR $i = 1 TO 10
+    FOR $j = 1 TO 10
+        IF $emergency
+            BREAK 2    # 跳出2层循环
+        ENDIF
+    NEXT
+NEXT
+```
+
+#### 循环控制示例
+
+```ecs
+# 跳过特定次数
+FOR $i = 1 TO 10
+    IF $i == 5
+        CONTINUE    # 跳过第5次
+    ENDIF
+    PRINT "当前: " & $i
+NEXT
+
+# 条件跳出
+FOR 100
+    $found = @目标图像
+    IF $found > 90
+        PRINT "找到目标，停止循环"
+        BREAK
+    ENDIF
+    WAIT 500
+NEXT
+```
+
+## 函数定义和调用
+
+### 函数定义
+
+#### 无参数函数
+
+```ecs
+FUNC say_hello
+    PRINT "Hello!"
+ENDFUNC
+```
+
+#### 有参数函数
+
+```ecs
+FUNC greet($name)
+    PRINT "Hello, " & $name
+ENDFUNC
+```
+
+#### 带返回值函数
+
+```ecs
+FUNC add($a, $b):INT
+    RETURN $a + $b
+ENDFUNC
+
+FUNC is_positive($number):BOOL
+    IF $number > 0
+        RETURN true
+    ELSE
+        RETURN false
+    ENDIF
+ENDFUNC
+```
+
+### 函数调用
+
+```ecs
+# 调用无返回值函数
+CALL say_hello
+
+# 调用有参数函数
+greet "World"
+
+# 调用有返回值函数
+$result = add(10, 20)
+PRINT "结果: " & $result
+```
+
+### 实用函数示例
+
+```ecs
+# 安全等待函数
+FUNC safe_wait($ms:INT)
+    IF $ms > 0
+        WAIT $ms
+    ENDIF
+ENDFUNC
+
+# 最大值函数
+FUNC max($a:INT, $b:INT):INT
+    IF $a > $b
+        RETURN $a
+    ELSE
+        RETURN $b
+    ENDIF
+ENDFUNC
+```
+
+## 图像识别详解
+
+### 图像识别基础
+
+#### 识别语法
+
+```ecs
+# 基本识别
+$match = @图像名称
+
+# 直接在条件中使用
+IF @目标 > 90
+    PRINT "找到目标"
+ENDIF
+```
+
+#### 匹配度含义
+
+- **100**: 完全匹配
+- **90-99**: 高度匹配
+- **80-89**: 较好匹配
+- **70-79**: 一般匹配
+- **< 70**: 匹配度较低
+
+### 实用图像识别示例
+
+#### 等待图像出现
+
+```ecs
+# 等待特定图像出现，最多等待30秒
+$max_attempts = 30
+FOR $i = 1 TO $max_attempts
+    $match = @对话框确认
+    IF $match > 90
+        PRINT "对话框出现"
+        BREAK
+    ENDIF
+    WAIT 1000
+NEXT
+
+IF $i > $max_attempts
+    PRINT "超时：对话框未出现"
+ENDIF
+```
+
+#### 循环检测
+
+```ecs
+# 循环检测闪光宝可梦
+FOR 1000
+    $shiny = @闪光特征
+    IF $shiny > 95
+        ALERT "发现闪光！"
+        PRINT "闪光匹配度: " & $shiny
+        BREAK
+    ENDIF
+    
+    # 执行操作以继续寻找
+    A
+    WAIT 2000
+NEXT
+```
+
+#### 多阶段识别
+
+```ecs
+# 粗略定位 + 精确识别
+IF @大范围特征 > 75
+    PRINT "可能找到目标区域"
+    
+    # 在区域内精确识别
+    IF @精确特征 > 90
+        PRINT "确认找到目标"
+        A
+        WAIT 100
+    ELSE
+        PRINT "特征不匹配，继续寻找"
+    ENDIF
+ELSE
+    PRINT "未找到目标区域"
+ENDIF
+```
+
+#### 智能阈值
+
+```ecs
+# 根据环境调整阈值
+FUNC smart_search($image, $strict, $loose)
+    # 先用严格阈值
+    IF @$image > $strict
+        RETURN "高度确定"
+    ENDIF
+    
+    # 再用宽松阈值
+    IF @$image > $loose
+        RETURN "可能找到"
+    ENDIF
+    
+    RETURN "未找到"
+ENDFUNC
+
+$result = smart_search(@目标, 95, 80)
+PRINT $result
+```
+
+### 图像识别最佳实践
+
+#### 提高识别准确度
+
+```ecs
+# 1. 多次确认
+FOR 3
+    $match1 = @目标图像
+    WAIT 100
+    $match2 = @目标图像
+    WAIT 100
+    
+    IF ($match1 > 90) and ($match2 > 90)
+        PRINT "确认找到目标"
+        BREAK
+    ENDIF
+NEXT
+
+# 2. 稳定等待
+WAIT 2000    # 等待画面稳定
+$match = @目标图像
+IF $match > 90
+    PRINT "稳定识别成功"
+ENDIF
+
+# 3. 分阶段验证
+IF @粗略特征 > 80
+    WAIT 500     # 等待画面稳定
+    IF @精确特征 > 90
+        PRINT "两阶段验证成功"
+    ENDIF
+ENDIF
+```
+
+## 关键字和内置函数
+
+### 关键字列表
 
 ```
-PRINT(输出内容) #使用&组合的字符串或表达式
-ALERT(输出内容)
+# 控制流
+IF/ELIF/ELSE/ENDIF
+FOR/TO/STEP/NEXT/BREAK/CONTINUE
+FUNC/ENDFUNC/RETURN
+IMPORT/AS
+
+# 逻辑运算
+AND/OR/NOT
+
+# 手柄按键
+A/B/X/Y/L/R/ZL/ZR
+MINUS/PLUS/HOME/CAPTURE
+LCLICK/RCLICK
+UP/DOWN/LEFT/RIGHT
+RESET
+
+# 数据类型
+INT/BOOL/STRING
+TRUE/FALSE
 ```
 
-#### 库函数：#V1虚拟机遗留指令，后续更新计划由ffi实现类似功能
+### 内置函数
 
-随机数：
-$res = RAND(最大值) #随机返回0~最大值之间的一个数
+#### 系统函数
 
-获取时间：
-$t = TIME() # 返回脚本从开始到执行到此命令时的毫秒数
+```ecs
+WAIT 50               # 延时50ms（默认50ms）
+$t = TIME()           # 获取运行时间（毫秒）
+$r = RAND(100)        # 随机数0-100
+BEEP 1000, 200        # 蜂鸣器：频率1kHz，持续200ms
+```
 
-扩展：
->考虑使用ffi扩充脚本函数库功能，如XoroshiroRNG算法等
+#### 集合操作
+
+```ecs
+APPEND($array, $value) # 数组添加元素
+LEN($array)            # 获取数组长度
+
+$numbers = [1, 2, 3]
+$count = LEN($numbers)  # 结果: 3
+$new = APPEND($numbers, 4)  # 结果: [1, 2, 3, 4]
+```
+
+#### 扩展功能
+
+```ecs
+# Amiibo模拟（ESP32专属）
+AMIIBO $index         # 切换Amiibo槽位
+
+# 模块导入
+IMPORT "module.ecs"   # 导入模块（放在lib文件夹中）
+```
+
+## 实用示例
+
+### 基础自动化
+
+```ecs
+# 基础按键和延时
+A
+WAIT 100
+B
+L+R
+```
+
+### 智能脚本
+
+```ecs
+# 根据条件执行不同操作
+$is_ready = true
+IF $is_ready
+    A
+    WAIT 100
+ELSE
+    B
+ENDIF
+```
+
+### 循环操作
+
+```ecs
+# 重复执行操作
+FOR 10
+    A
+    WAIT 50
+NEXT
+```
+
+### 图像识别应用
+
+```ecs
+# 等待并检测图像
+FOR 30
+    $result = @目标图像
+    IF $result > 90
+        PRINT "找到目标"
+        A
+        BREAK
+    ENDIF
+    WAIT 1000
+NEXT
+```
+
+### 综合应用
+
+```ecs
+# 自动刷闪光脚本
+FUNC check_shiny
+    $match = @闪光特征
+    IF $match > 95
+        RETURN true
+    ELSE
+        RETURN false
+    ENDIF
+ENDFUNC
+
+FOR 100
+    # 遇到宝可梦
+    A
+    WAIT 2000
+    
+    # 检查是否闪光
+    IF check_shiny()
+        ALERT "发现闪光！"
+        BREAK
+    ENDIF
+    
+    # 重置
+    HOME
+    WAIT 1000
+NEXT
+```
+
+## 模块化扩展
+
+伊机控支持通过FFI接口扩展脚本功能，开发者可以：
+
+1. **创建模块**: 开发自定义功能模块
+2. **导入模块**: 使用 `IMPORT` 语句加载模块  
+3. **调用函数**: 模块函数与内置函数使用方式一致
+
+详细信息请参考 [模块系统文档](models.md)。
