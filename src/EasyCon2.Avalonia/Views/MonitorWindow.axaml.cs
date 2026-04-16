@@ -18,12 +18,8 @@ public partial class MonitorWindow : Window
         var vm = new MonitorWindowViewModel(captureService);
         DataContext = vm;
 
-        // 先设置 DPI，再启动监视，避免首帧渲染时 DPI 未初始化的问题
         Opened += (s, e) =>
         {
-            var scaling = RenderScaling;
-            var dpi = new Vector(96 * scaling, 96 * scaling);
-            vm.SetRenderDpi(dpi);
             vm.StartMonitoring();
         };
 

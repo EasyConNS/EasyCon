@@ -13,7 +13,6 @@ public partial class MonitorWindowViewModel : ObservableObject
     private readonly ICaptureService _captureService;
     private System.Timers.Timer? _updateTimer;
     private System.Timers.Timer? _reconnectCheckTimer;
-    private Vector _renderDpi = new(96, 96);
 
     [ObservableProperty]
     private bool _isLoading = false;
@@ -36,15 +35,6 @@ public partial class MonitorWindowViewModel : ObservableObject
     public MonitorWindowViewModel(ICaptureService captureService)
     {
         _captureService = captureService;
-    }
-
-    /// <summary>
-    /// 设置渲染 DPI，使 WriteableBitmap 与显示器实际 DPI 匹配，避免缩放模糊。
-    /// 由 View 层在窗口 Opened 事件中调用，在 StartMonitoring 之前调用。
-    /// </summary>
-    public void SetRenderDpi(Vector dpi)
-    {
-        _renderDpi = dpi;
     }
 
     public void StartMonitoring()
@@ -186,7 +176,7 @@ public partial class MonitorWindowViewModel : ObservableObject
             var srcStep = (int)bgra.Step();
 
             // 每帧创建独立的 WriteableBitmap，避免与渲染线程的并发访问问题
-            var bitmap = new WriteableBitmap(size, _renderDpi, PixelFormat.Bgra8888, AlphaFormat.Premul);
+            var bitmap = new WriteableBitmap(size, new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
 
             using (var fb = bitmap.Lock())
             {
