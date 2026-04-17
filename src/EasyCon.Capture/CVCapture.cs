@@ -37,15 +37,10 @@ public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureA
     {
         if (videoCapture.IsOpened())
         {
-            // 使用 Read() 而非 RetrieveMat()，因为 Read() 会自动执行 Grab() + Retrieve()
-            // RetrieveMat() 需要先调用 Grab() 才能正确工作
             var mat = new Mat();
-            if (videoCapture.Read(mat))
-            {
-                return mat;
-            }
-            mat.Dispose();
-            return new Mat();
+            // Read() 失败时 mat 本身就是空的，直接返回即可
+            videoCapture.Read(mat);
+            return mat;
         }
 
         return new Mat();
