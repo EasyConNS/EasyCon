@@ -21,11 +21,23 @@ public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureA
 
     public void SetProperties(int x, int y)
     {
-        videoCapture.Set(VideoCaptureProperties.FourCC, FourCC.MJPG);
-        videoCapture.Set(VideoCaptureProperties.Fps, 30);
+        SetResolution(x, y);
+        SetProperties();
+    }
+    public void SetResolution(int x, int y)
+    {
         videoCapture.Set(VideoCaptureProperties.FrameWidth, x);
         videoCapture.Set(VideoCaptureProperties.FrameHeight, y);
+    }
 
+    public void SetProperties()
+    {
+        videoCapture.Set(VideoCaptureProperties.FourCC, FourCC.MJPG);
+        videoCapture.Set(VideoCaptureProperties.Fps, 30);
+    }
+
+    public void GetProperties()
+    {
         Debug.WriteLine($"Actual Width: {videoCapture.Get(VideoCaptureProperties.FrameWidth)}");
         Debug.WriteLine($"Actual Height: {videoCapture.Get(VideoCaptureProperties.FrameHeight)}");
         Debug.WriteLine($"FourCC: {videoCapture.Get(VideoCaptureProperties.FourCC)}");

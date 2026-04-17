@@ -1,5 +1,8 @@
 using EasyCon.Capture.win;
+using FlashCap;
 using OpenCvSharp;
+using OpenCvSharp.Internal;
+using System.Diagnostics;
 
 namespace EasyCon.Capture;
 
@@ -12,37 +15,82 @@ public sealed class ECCapture
             var filters = DirectShow.GetFiltes(DirectShow.DsGuid.CLSID_VideoInputDeviceCategory);
             return filters.Select((name, index) => (name, index));
         }
+        var devices = new List<(string name, int index)>();
 
-        // 非Windows平台：通过循环尝试连接摄像头来检测可用设备
+        try
+        {
+            // 使用 FlashCap 扫描所有视频捕获设备
+            var captureDevices = new CaptureDevices();
+            var descriptors = captureDevices.EnumerateDescriptors().ToList();
+
+            for (int i = 0; i < descriptors.Count; i++)
+            {
+                var descriptor = descriptors[i];
+                string deviceName = descriptor.ToString(); // 设备名称，如 "Logicool Webcam C930e: DirectShow device"
+
+                // 尝试获取设备更多信息（第一个支持的分辨率）
+                try
+                {
+                    var characteristics = descriptor.Characteristics;
+                    if (characteristics.Length > 0)
+                    {
+                        var firstChar = characteristics[0];
+                        deviceName += $" ({firstChar.Width}x{firstChar.Height})";
+                    }
+                }
+                catch
+                {
+                    // 忽略获取详细信息时的错误
+                }
+
+                devices.Add((deviceName, i));
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"扫描摄像头设备失败: {ex.Message}");
+            // 降级到基础检测
+            return GetFallbackCaptureCamera();
+        }
+
+        return devices;
+    }
+
+    private static IEnumerable<(string name, int index)> GetFallbackCaptureCamera()
+    {
         var availableCameras = new List<(string name, int index)>();
 
         // 尝试检测前 10 个摄像头设备
         for (int i = 0; i < 10; i++)
         {
-            using var capture = new VideoCapture(i, VideoCaptureAPIs.ANY);
-            if (capture.IsOpened())
+            try
             {
-                // 获取摄像头名称（如果能获取到的话）
-                string cameraName = $"摄像头 {i}";
-
-                // 尝试获取一些摄像头信息
-                try
+                using var capture = new VideoCapture(i, VideoCaptureAPIs.ANY);
+                if (capture.IsOpened())
                 {
-                    double backendName = capture.Get(VideoCaptureProperties.Backend);
-                    double width = capture.Get(VideoCaptureProperties.FrameWidth);
-                    double height = capture.Get(VideoCaptureProperties.FrameHeight);
+                    string cameraName = $"摄像头 {i}";
 
-                    if (width > 0 && height > 0)
+                    try
                     {
-                        cameraName += $" ({width}x{height})";
-                    }
-                }
-                catch
-                {
-                    // 忽略获取信息时的错误
-                }
+                        double width = capture.Get(VideoCaptureProperties.FrameWidth);
+                        double height = capture.Get(VideoCaptureProperties.FrameHeight);
 
-                availableCameras.Add((cameraName, i));
+                        if (width > 0 && height > 0)
+                        {
+                            cameraName += $" ({width}x{height})";
+                        }
+                    }
+                    catch
+                    {
+                        // 忽略获取信息时的错误
+                    }
+
+                    availableCameras.Add((cameraName, i));
+                }
+            }
+            catch
+            {
+                // 继续尝试下一个设备
             }
         }
 
@@ -55,7 +103,7 @@ public sealed class ECCapture
 
         foreach (var value in values)
         {
-            yield return(value.ToString(), (int)value);
+            yield return (value.ToString(), (int)value);
         }
     }
 }

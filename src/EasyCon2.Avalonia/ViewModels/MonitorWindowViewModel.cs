@@ -46,9 +46,6 @@ public partial class MonitorWindowViewModel : ObservableObject
             IsLoading = true;
             StopReconnectCheckTimer();
 
-            // 设置采集分辨率为 1080p
-            _captureService.SetCaptureProperties(1920, 1080);
-
             _updateTimer = new System.Timers.Timer(33); // ~30fps
             _updateTimer.Elapsed += OnUpdateTimerElapsed;
             _updateTimer.Start();

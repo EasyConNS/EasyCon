@@ -6,6 +6,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="OpenCvSharp4" />
+		<PackageReference Include="FlashCap" />
+		<PackageReference Include="SixLabors.ImageSharp" />
 
 		<PackageReference Condition="'$(OS)' == 'Windows_NT'" Include="OpenCvSharp4.runtime.win" />
 		<PackageReference Condition="$([MSBuild]::IsOSPlatform('OSX'))" Include="OneWare.OpenCvSharp4.runtime.osx-arm64" />

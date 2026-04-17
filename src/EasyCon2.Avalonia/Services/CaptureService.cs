@@ -13,6 +13,8 @@ public class CaptureService : ICaptureService
     private readonly Dictionary<string, int> _sourceIndexMap = new();
     private OpenCVCapture? _capture;
 
+    private readonly Size resol = new(1920, 1080);
+
     public bool IsConnected
     {
         get
@@ -72,6 +74,9 @@ public class CaptureService : ICaptureService
             }
         }
 
+        _capture.SetResolution(resol.Width, resol.Height);
+        _capture.SetProperties();
+        _capture.GetProperties();
         _monitorTimer.Start();
         return true;
     }

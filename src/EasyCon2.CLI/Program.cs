@@ -34,6 +34,7 @@ var rootCommand = new RootCommand("EasyCon CLI Runner");
 var runScriptCommand = new Command("run", "运行伊机控脚本");
 var runLuaCommand = new Command("runlua", "运行lua脚本");
 var portDevCommand = new Command("port", "单片机端口功能");
+var videoCommand = new Command("video", "视频采集设备功能");
 var formatCommand = new Command("format", "格式化脚本");
 
 #region 命令行参数解析
@@ -217,7 +218,37 @@ portDevCommand.Validators.Add(result =>
 {
     if(!result.GetValue(portListOption))
     {
-        result.AddError("请选择具体端口");
+        result.AddError("请使用 --list 参数列出可用端口");
+    }
+});
+#endregion
+
+#region 视频设备功能
+var videoListOption = new Option<bool>("--list", "-l")
+{
+    Description = "列出所有可用的视频采集设备"
+};
+videoCommand.Options.Add(videoListOption);
+
+videoCommand.SetAction( async (parseResult, cancellationToken) =>
+{
+    var listDevices = parseResult.GetValue(videoListOption);
+    if (!listDevices)
+    {
+    }
+
+    ECCapture.GetCaptureCamera().ToList().ForEach( dev=>
+    {
+        Console.WriteLine($"[{dev.index}] {dev.name}");
+        // Console.WriteLine($"  [{index}] {name}");
+    });
+});
+
+videoCommand.Validators.Add(result =>
+{
+    if (!result.GetValue(videoListOption))
+    {
+        result.AddError("请使用 --list 参数列出可用设备");
     }
 });
 #endregion
@@ -268,6 +299,7 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
 rootCommand.Subcommands.Add(runScriptCommand);
 rootCommand.Subcommands.Add(runLuaCommand);
 rootCommand.Subcommands.Add(portDevCommand);
+rootCommand.Subcommands.Add(videoCommand);
 rootCommand.Subcommands.Add(formatCommand);
 return rootCommand.Parse(args).Invoke();
 
