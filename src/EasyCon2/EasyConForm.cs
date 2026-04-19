@@ -1,4 +1,5 @@
 using EasyCon.Core;
+using EasyCon.Core.Alert;
 using EasyCon.Script.Assembly;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
@@ -342,11 +343,7 @@ namespace EasyCon2.Forms
             }
 
 
-            频道远程ToolStripMenuItem.Checked = _config?.EnableChannelToken ?? false;
-            if (频道远程ToolStripMenuItem.Checked)
-            {
-                StartWebSocket();
-            }
+            频道远程ToolStripMenuItem.Checked = false;
 
 #if DEBUG
             蓝牙ToolStripMenuItem.Visible = true;
@@ -384,29 +381,16 @@ namespace EasyCon2.Forms
         public async void Print(string message, bool newline = true) =>
             logTxtBox.Print(message, newline);
 
+        private readonly AlertDispatcher _alertDispatcher = new("alert.json");
+
         public void Alert(string message)
         {
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 try
                 {
-                    if (_config.EnableAlertToken)
-                    {
-                        var result = new EasyCon.Core.PushPlusClient(_config.AlertToken).SendMessage(message).Result;
-                        Print(result);
-                    }
-
-                    if (_config.EnableChannelToken)
-                    {
-                        if (_config.ChannelToken != "")
-                        {
-                            ws?.SendNotify(message);
-                        }
-                        else
-                        {
-                            Print("推送失败: 请配置QQ频道Token");
-                        }
-                    }
+                    _alertDispatcher.OnResult += (_, result) => Print(result);
+                    await _alertDispatcher.DispatchAsync(message);
                 }
                 catch (Exception e)
                 {
@@ -988,18 +972,7 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
 
         private void 频道远程ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var menu = (ToolStripMenuItem)sender;
-            menu.Checked = !menu.Checked;
-            if (menu.Checked)
-            {
-                menu.Checked = StartWebSocket();
-            }
-            else
-            {
-                WSRun = false;
-            }
-            _config.EnableChannelToken = menu.Checked;
-            SaveConfig();
+            // WebSocket 远程功能已迁移，待重新实现
         }
 
         private void 手柄设置ToolStripMenuItem_Click(object sender, EventArgs e)

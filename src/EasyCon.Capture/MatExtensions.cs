@@ -1,6 +1,5 @@
 using OpenCvSharp;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -8,34 +7,11 @@ namespace EasyCon.Capture;
 
 internal static class MatExtensions
 {
-    // Mat 转 byte[]（JPEG格式）
-    public static byte[] ToJpegBytes(this Mat mat, int quality = 95)
-    {
-        if (mat == null || mat.Empty())
-            return Array.Empty<byte>();
-
-        try
-        {
-            using var image = MatToImageSharp(mat);
-            using var ms = new MemoryStream();
-            var encoder = new JpegEncoder
-            {
-                Quality = quality
-            };
-            image.Save(ms, encoder);
-            return ms.ToArray();
-        }
-        catch
-        {
-            return Array.Empty<byte>();
-        }
-    }
-
     // Mat 转 byte[]（PNG格式）
     public static byte[] ToPngBytes(this Mat mat, int compressionLevel = 6)
     {
         if (mat == null || mat.Empty())
-            return Array.Empty<byte>();
+            return [];
 
         try
         {
@@ -50,11 +26,11 @@ internal static class MatExtensions
         }
         catch
         {
-            return Array.Empty<byte>();
+            return [];
         }
     }
 
-    // byte[] 转 Mat（自动检测格式）
+    // byte[] 转 Mat（通过 ImageSharp 解码，自动检测格式）
     public static Mat ToMat(this byte[] bytes)
     {
         if (bytes == null || bytes.Length == 0)
@@ -71,70 +47,57 @@ internal static class MatExtensions
         }
     }
 
-    // 将 OpenCvSharp Mat 转换为 ImageSharp Image
-    // 注意：OpenCvSharp Mat 是 BGR 格式，需要转换为 RGB
+    // Mat -> ImageSharp Rgba32（BGR/灰度 -> RGBA）
     private static Image<Rgba32> MatToImageSharp(Mat mat)
     {
-        var image = new Image<Rgba32>(mat.Width, mat.Height);
-        
+        int w = mat.Width;
+        int h = mat.Height;
+        var image = new Image<Rgba32>(w, h);
+
         if (mat.Empty())
             return image;
 
-        // 如果是灰度图
-        if (mat.Channels() == 1)
+        int channels = mat.Channels();
+
+        if (channels == 1)
         {
-            using var grayMat = mat;
-            for (int y = 0; y < mat.Height; y++)
+            // 灰度 -> RGBA
+            unsafe
             {
-                for (int x = 0; x < mat.Width; x++)
+                byte* pSrc = (byte*)mat.Data;
+                int step = (int)mat.Step();
+                for (int y = 0; y < h; y++)
                 {
-                    byte gray = grayMat.Get<byte>(y, x);
-                    image[x, y] = new Rgba32(gray, gray, gray, 255);
-                }
-            }
-        }
-        // 如果是 BGR 图（3通道）
-        else if (mat.Channels() == 3)
-        {
-            using var rgbMat = new Mat();
-            Cv2.CvtColor(mat, rgbMat, ColorConversionCodes.BGR2RGBA);
-            
-            for (int y = 0; y < mat.Height; y++)
-            {
-                for (int x = 0; x < mat.Width; x++)
-                {
-                    var pixel = rgbMat.Get<Vec4b>(y, x);
-                    image[x, y] = new Rgba32(pixel[2], pixel[1], pixel[0], pixel[3]);
-                }
-            }
-        }
-        // 如果是 BGRA 图（4通道）
-        else if (mat.Channels() == 4)
-        {
-            using var rgbaMat = new Mat();
-            Cv2.CvtColor(mat, rgbaMat, ColorConversionCodes.BGRA2RGBA);
-            
-            for (int y = 0; y < mat.Height; y++)
-            {
-                for (int x = 0; x < mat.Width; x++)
-                {
-                    var pixel = rgbaMat.Get<Vec4b>(y, x);
-                    image[x, y] = new Rgba32(pixel[2], pixel[1], pixel[0], pixel[3]);
+                    byte* row = pSrc + y * step;
+                    for (int x = 0; x < w; x++)
+                    {
+                        byte g = row[x];
+                        image[x, y] = new Rgba32(g, g, g, 255);
+                    }
                 }
             }
         }
         else
         {
-            // 其他格式尝试直接转换
-            using var converted = new Mat();
-            Cv2.CvtColor(mat, converted, ColorConversionCodes.BGR2RGBA);
-            
-            for (int y = 0; y < mat.Height; y++)
+            // BGR/BGRA -> RGBA（统一转成4通道再提取）
+            using var rgba = new Mat();
+            if (channels == 4)
+                Cv2.CvtColor(mat, rgba, ColorConversionCodes.BGRA2RGBA);
+            else
+                Cv2.CvtColor(mat, rgba, ColorConversionCodes.BGR2RGBA);
+
+            unsafe
             {
-                for (int x = 0; x < mat.Width; x++)
+                byte* pSrc = (byte*)rgba.Data;
+                int step = (int)rgba.Step();
+                for (int y = 0; y < h; y++)
                 {
-                    var pixel = converted.Get<Vec4b>(y, x);
-                    image[x, y] = new Rgba32(pixel[2], pixel[1], pixel[0], pixel[3]);
+                    byte* row = pSrc + y * step;
+                    for (int x = 0; x < w; x++)
+                    {
+                        int off = x * 4;
+                        image[x, y] = new Rgba32(row[off], row[off + 1], row[off + 2], row[off + 3]);
+                    }
                 }
             }
         }
@@ -142,19 +105,29 @@ internal static class MatExtensions
         return image;
     }
 
-    // 将 ImageSharp Image 转换为 OpenCvSharp Mat
-    // ImageSharp 是 RGB 格式，需要转换为 BGR
+    // ImageSharp Rgba32 -> Mat（RGBA -> BGR）
     private static Mat ImageSharpToMat(Image<Rgba32> image)
     {
-        var mat = new Mat(image.Height, image.Width, MatType.CV_8UC3);
+        int w = image.Width;
+        int h = image.Height;
+        var mat = new Mat(h, w, MatType.CV_8UC3);
 
-        for (int y = 0; y < image.Height; y++)
+        unsafe
         {
-            for (int x = 0; x < image.Width; x++)
+            byte* pDst = (byte*)mat.Data;
+            int step = (int)mat.Step();
+
+            for (int y = 0; y < h; y++)
             {
-                var pixel = image[x, y];
-                // RGB -> BGR
-                mat.Set(y, x, new Vec3b(pixel.G, pixel.B, pixel.R));
+                byte* row = pDst + y * step;
+                for (int x = 0; x < w; x++)
+                {
+                    var pixel = image[x, y];
+                    int off = x * 3;
+                    row[off] = pixel.B;     // B
+                    row[off + 1] = pixel.G; // G
+                    row[off + 2] = pixel.R; // R
+                }
             }
         }
 

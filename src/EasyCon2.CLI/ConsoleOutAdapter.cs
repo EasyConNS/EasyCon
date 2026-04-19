@@ -1,10 +1,11 @@
 using EasyCon.Core;
+using EasyCon.Core.Alert;
 using EasyScript;
 using System.Drawing;
 
 class ConsoleOutAdapter() : IOutputAdapter
 {
-    private ConfigState _config = ConfigMgr.Load();
+    private readonly AlertDispatcher _dispatcher = new("alert.json");
 
     private bool _msgNewLine = true;
     private bool _msgFirstLine = true;
@@ -48,28 +49,12 @@ class ConsoleOutAdapter() : IOutputAdapter
 
     public void Alert(string message)
     {
-        Task.Run(() =>
+        Task.Run(async () =>
         {
             try
             {
-                if (_config.EnableAlertToken)
-                {
-                    var result = new PushPlusClient(_config.AlertToken).SendMessage(message).Result;
-                    Print(result);
-                }
-
-                if (_config.EnableChannelToken)
-                {
-                    if (_config.ChannelToken != "")
-                    {
-                        Print("推送失败: QQ频道维护中。。。");
-                        //ws?.SendNotify(message);
-                    }
-                    else
-                    {
-                        Print("推送失败: 请配置QQ频道Token");
-                    }
-                }
+                _dispatcher.OnResult += (_, result) => Print(result);
+                await _dispatcher.DispatchAsync(message);
             }
             catch (Exception e)
             {

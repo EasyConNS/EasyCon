@@ -33,24 +33,26 @@ $a=1  # 也可以在代码后面添加注释
 #### PRINT - 控制台输出
 
 ```ecs
-# 输出文本
+# 输出文本（引号可选）
+PRINT Hello World
 PRINT "Hello World"
 
 # 输出变量
 $count = 10
 PRINT $count
 
-# 使用 & 连接字符串和变量
-PRINT "总数: " & $count & "个对象"
+# 使用 & 连接文本和变量
+PRINT 总数: & $count & 个对象
 # 输出: 总数: 10个对象
 ```
 
 #### ALERT - 外部推送
 
 ```ecs
-# 发送推送通知
-ALERT "操作完成！"
-ALERT "已刷 " & $count & " 次闪光"
+# 发送推送通知（引号可选，变量用 & 连接）
+ALERT 操作完成！
+ALERT 已刷 & $count & 次闪光
+ALERT 你好 & $1
 ```
 
 ### 按键基础
