@@ -69,8 +69,12 @@ public static class ConfigManager
     {
       "name": "Bark",
       "enable": false,
-      "url": "https://api.day.app/{{token}}/{{title}}/{{content}}",
-      "token": ""
+      "url": "https://api.day.app/{{token}}/{{title}}/{{content}}?group={{group}}&icon={{icon}}",
+      "token": "",
+      "variables": {
+        "group": "伊机控",
+        "icon": "https://avatars.githubusercontent.com/u/107608104?s=48&v=4"
+      }
     },
     {
       "name": "自定义Webhook",
