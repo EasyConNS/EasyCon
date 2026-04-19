@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.Core.AlertConfig"
+             x:Class="EasyCon2.Avalonia.Core.AlertConfig.AlertConfigControl"
+             x:DataType="vm:AlertConfigViewModel">
+
+    <DockPanel Margin="16">
+        <!-- Bottom buttons -->
+        <StackPanel DockPanel.Dock="Bottom"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8"
+                    Margin="0,12,0,0">
+            <Button Content="添加配置"
+                    Command="{Binding AddItemCommand}"
+                    IsEnabled="{Binding CanAdd}"/>
+            <Button Content="用编辑器打开配置文件"
+                    Click="OnOpenFile"/>
+            <Button Content="保存"
+                    Click="OnSave"
+                    IsDefault="True"/>
+            <Button Content="取消"
+                    Click="OnCancel"
+                    IsCancel="True"/>
+        </StackPanel>
+
+        <!-- Hidden items hint -->
+        <Border DockPanel.Dock="Bottom"
+                IsVisible="{Binding HasHiddenItems}"
+                Background="{DynamicResource SystemControlHighlightAltRevealBackgroundBrush}"
+                CornerRadius="4"
+                Padding="8,4"
+                Margin="0,8,0,0">
+            <TextBlock>
+                <TextBlock.Text>
+                    <MultiBinding StringFormat="{}还有 {0} 条配置未显示">
+                        <Binding Path="HiddenCount"/>
+                    </MultiBinding>
+                </TextBlock.Text>
+            </TextBlock>
+        </Border>
+
+        <!-- Item list -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding VisibleItems}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:AlertItemViewModel">
+                        <vm:AlertItemView/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

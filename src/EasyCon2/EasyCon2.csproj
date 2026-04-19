@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia.Win32.Interoperability" />
     <PackageReference Include="OpenCvSharp4.Extensions" />
     <PackageReference Include="AvalonEdit" />
     <PackageReference Include="System.Management" />
@@ -27,6 +28,7 @@
 	<ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
     <ProjectReference Include="..\EasyCon.VPad\EasyCon.VPad.csproj" />
     <ProjectReference Include="..\EasyCon2.UI.Common\EasyCon2.UI.Common.csproj" />
+    <ProjectReference Include="..\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="LibAmiibo">

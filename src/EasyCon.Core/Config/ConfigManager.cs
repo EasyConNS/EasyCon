@@ -1,10 +1,15 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace EasyCon.Core.Config;
 
 public static class ConfigManager
 {
-    private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
     private static readonly JsonSerializerOptions _jsonReadOptions = new() { PropertyNameCaseInsensitive = true };
 
     public static ConfigState LoadConfig()
@@ -33,6 +38,11 @@ public static class ConfigManager
         if (!File.Exists(path))
             GenerateDefaultAlert(path);
         return Load<AlertConfig>(path, _jsonReadOptions);
+    }
+
+    public static void SaveAlert(AlertConfig config)
+    {
+        Save(AppPaths.AlertConfig, config);
     }
 
     private static T Load<T>(string path, JsonSerializerOptions? options = null) where T : new()

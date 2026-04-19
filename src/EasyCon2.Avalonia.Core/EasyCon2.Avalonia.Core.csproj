@@ -13,6 +13,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
+    <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
   </ItemGroup>
 </Project>

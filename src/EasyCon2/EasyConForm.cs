@@ -350,9 +350,6 @@ namespace EasyCon2.Forms
                 _keyMapping = new();
             }
 
-
-            频道远程ToolStripMenuItem.Checked = false;
-
 #if DEBUG
             蓝牙ToolStripMenuItem.Visible = true;
 #endif
@@ -390,7 +387,7 @@ namespace EasyCon2.Forms
         public async void Print(string message, bool newline = true) =>
             logTxtBox.Print(message, newline);
 
-        private readonly AlertDispatcher _alertDispatcher = new(ConfigManager.LoadAlert());
+        private AlertDispatcher _alertDispatcher = new(ConfigManager.LoadAlert());
 
         public void Alert(string message)
         {
@@ -954,12 +951,13 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
 
         private void 推送设置ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var form = new ConfigForm(_config);
-            if (form.ShowDialog() == DialogResult.OK)
-            {
-                _config = form.Config;
-                SaveConfig();
-            }
+            using var form = new AlertConfigForm(RefreshAlert);
+            form.ShowDialog(this);
+        }
+
+        public void RefreshAlert()
+        {
+            _alertDispatcher = new AlertDispatcher(ConfigManager.LoadAlert());
         }
 
         private void 代码自动补全ToolStripMenuItem_Click(object sender, EventArgs e)
@@ -977,11 +975,6 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
         {
             using var btform = new win32.BTDeviceForm();
             btform.ShowDialog();
-        }
-
-        private void 频道远程ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            // WebSocket 远程功能已迁移，待重新实现
         }
 
         private void 手柄设置ToolStripMenuItem_Click(object sender, EventArgs e)

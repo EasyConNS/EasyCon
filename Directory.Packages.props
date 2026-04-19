@@ -35,6 +35,7 @@
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.1" />
     <PackageVersion Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
     <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.0.1" />
+    <PackageVersion Include="Avalonia.Win32.Interoperability" Version="12.0.1" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
     <PackageVersion Include="SukiUI" Version="6.0.3" />
     <PackageVersion Include="coverlet.collector" Version="8.0.1" />
