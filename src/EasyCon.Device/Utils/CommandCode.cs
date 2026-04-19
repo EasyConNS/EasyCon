@@ -15,6 +15,7 @@ public static class EzDvCommand
     public const byte ChangeControllerColor = 0x89;
     public const byte SaveAmiibo = 0x90;
     public const byte ChangeAmiiboIndex = 0x91;
+    public const byte Heartbeat = 0x98;
 }
 
 public static class Reply
@@ -26,4 +27,5 @@ public static class Reply
     public const byte FlashStart = 0x81;
     public const byte FlashEnd = 0x82;
     public const byte ScriptAck = 0x83;
+    public const byte HeartbeatAck = 0x99;
 }
