@@ -1,11 +1,10 @@
-using EasyCon.Core;
-using EasyCon.Core.Alert;
+using EasyCon.Core.Config;
 using EasyScript;
 using System.Drawing;
 
 class ConsoleOutAdapter() : IOutputAdapter
 {
-    private readonly AlertDispatcher _dispatcher = new("alert.json");
+    private readonly AlertDispatcher _dispatcher = new(ConfigManager.LoadAlert());
 
     private bool _msgNewLine = true;
     private bool _msgFirstLine = true;

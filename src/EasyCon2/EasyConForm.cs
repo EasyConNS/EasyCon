@@ -1,5 +1,5 @@
 using EasyCon.Core;
-using EasyCon.Core.Alert;
+using EasyCon.Core.Config;
 using EasyCon.Script.Assembly;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
@@ -38,8 +38,8 @@ namespace EasyCon2.Forms
 
         private QqAssist ws = new();
 
-        private EasyCon2.Config.ConfigState _config;
-        const string ConfigPath = @"config.json";
+        private ConfigState _config;
+        private KeyMappingConfig _keyMapping;
         const string ScriptPath = @"Script\";
         const string FirmwarePath = @"Firmware\";
 
@@ -332,14 +332,22 @@ namespace EasyCon2.Forms
         {
             try
             {
-                _config = JsonSerializer.Deserialize<EasyCon2.Config.ConfigState>(File.ReadAllText(ConfigPath));
+                _config = ConfigManager.LoadConfig();
             }
             catch (Exception ex)
             {
                 if (ex is not FileNotFoundException)
                     MessageBox.Show("读取设置文件失败！");
                 _config = new();
-                _config.SetDefault();
+            }
+
+            try
+            {
+                _keyMapping = ConfigManager.LoadKeyMapping();
+            }
+            catch
+            {
+                _keyMapping = new();
             }
 
 
@@ -352,12 +360,13 @@ namespace EasyCon2.Forms
 
         private void SaveConfig()
         {
-            File.WriteAllText(ConfigPath, JsonSerializer.Serialize(_config));
+            ConfigManager.SaveConfig(_config);
+            ConfigManager.SaveKeyMapping(_keyMapping);
         }
 
         private void RegisterKeys()
         {
-            virtController.RegisterAllKeys(_config.KeyMapping);
+            virtController.RegisterAllKeys(_keyMapping);
         }
 
         private void StatusShowLog(string str)
@@ -381,7 +390,7 @@ namespace EasyCon2.Forms
         public async void Print(string message, bool newline = true) =>
             logTxtBox.Print(message, newline);
 
-        private readonly AlertDispatcher _alertDispatcher = new("alert.json");
+        private readonly AlertDispatcher _alertDispatcher = new(ConfigManager.LoadAlert());
 
         public void Alert(string message)
         {
@@ -650,11 +659,11 @@ namespace EasyCon2.Forms
 
         private void buttonKeyMapping_Click(object sender, EventArgs e)
         {
-            using (var formKeyMapping = new FormKeyMapping(_config.KeyMapping))
+            using (var formKeyMapping = new FormKeyMapping(_keyMapping))
             {
                 if (formKeyMapping.ShowDialog() == DialogResult.OK)
                 {
-                    _config.KeyMapping = formKeyMapping.KeyMapping;
+                    _keyMapping = formKeyMapping.KeyMapping;
                     SaveConfig();
                     RegisterKeys();
                 }

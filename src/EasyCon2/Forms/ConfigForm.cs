@@ -1,4 +1,4 @@
-using EasyCon2.Config;
+using EasyCon.Core.Config;
 
 namespace EasyCon2.Forms
 {

@@ -2,38 +2,19 @@ using System.Text;
 using System.Text.Json;
 using System.Web;
 
-namespace EasyCon.Core.Alert;
+namespace EasyCon.Core.Config;
 
 public class AlertDispatcher
 {
     private readonly List<AlertItem> _items;
     private readonly HttpClient _http;
 
-    public event EventHandler<string>? OnResult;
+    public event EventHandler<string> OnResult;
 
-    public AlertDispatcher(string configPath)
+    public AlertDispatcher(AlertConfig config)
     {
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-        _items = Load(configPath);
-    }
-
-    private static List<AlertItem> Load(string path)
-    {
-        if (!File.Exists(path)) return [];
-
-        try
-        {
-            var json = File.ReadAllText(path);
-            var config = JsonSerializer.Deserialize<List<AlertItem>>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-            return config ?? [];
-        }
-        catch
-        {
-            return [];
-        }
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(config.timeout) };
+        _items = config.alerts;
     }
 
     public async Task DispatchAsync(string content, string title = "伊机控消息")
@@ -46,17 +27,16 @@ public class AlertDispatcher
 
         foreach (var result in results)
         {
-            if (result != null)
-                OnResult?.Invoke(this, result);
+            OnResult?.Invoke(this, result);
         }
     }
 
-    private async Task<string?> SendAsync(AlertItem item, string content, string title)
+    private async Task<string> SendAsync(AlertItem item, string content, string title)
     {
         try
         {
             var url = ReplaceVariables(item.url, item.token, item.variables, content, title);
-            var method = item.method.ToUpperInvariant() == "POST" ? HttpMethod.Post : HttpMethod.Get;
+            var method = item.method.Equals("POST", StringComparison.OrdinalIgnoreCase) ? HttpMethod.Post : HttpMethod.Get;
 
             var request = new HttpRequestMessage(method, url);
 
@@ -68,7 +48,7 @@ public class AlertDispatcher
                 }
             }
 
-            if (method == HttpMethod.Post && item.body != null)
+            if (method == HttpMethod.Post && !string.IsNullOrEmpty(item.body))
             {
                 var body = ReplaceVariables(item.body, item.token, item.variables, content, title);
                 var contentType = "application/json";
@@ -102,16 +82,14 @@ public class AlertDispatcher
         }
     }
 
-    private static string ReplaceVariables(string template, string? token, Dictionary<string, string>? variables, string content, string title)
+    private static string ReplaceVariables(string template, string token, Dictionary<string, string> variables, string content, string title)
     {
         var result = template;
 
-        // 替换内置变量
         result = result.Replace("{{token}}", token ?? "");
         result = result.Replace("{{content}}", HttpUtility.UrlEncode(content));
         result = result.Replace("{{title}}", HttpUtility.UrlEncode(title));
 
-        // 替换自定义变量
         if (variables != null)
         {
             foreach (var (key, value) in variables)
@@ -121,40 +99,5 @@ public class AlertDispatcher
         }
 
         return result;
-    }
-
-    public static void GenerateDefault(string path)
-    {
-        if (File.Exists(path)) return;
-
-        var json = """
-[
-  {
-    "name": "PushPlus",
-    "enable": false,
-    "url": "https://www.pushplus.plus/send/{{token}}?content={{content}}&title={{title}}",
-    "token": ""
-  },
-  {
-    "name": "Bark",
-    "enable": false,
-    "url": "https://api.day.app/{{token}}/{{title}}/{{content}}",
-    "token": ""
-  },
-  {
-    "name": "自定义Webhook",
-    "enable": false,
-    "method": "POST",
-    "url": "https://example.com/webhook",
-    "token": "",
-    "headers": {
-      "Authorization": "Bearer {{token}}",
-      "Content-Type": "application/json"
-    },
-    "body": "{\"msg\":\"{{content}}\"}"
-  }
-]
-""";
-        File.WriteAllText(path, json);
     }
 }

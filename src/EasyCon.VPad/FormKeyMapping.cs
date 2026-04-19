@@ -1,3 +1,4 @@
+using EasyCon.Core.Config;
 using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
@@ -8,9 +9,9 @@ namespace EasyVPad
     {
         readonly Dictionary<CheckBox, string> _dict = new();
 
-        public KeyMapping KeyMapping { get; set; }
+        public KeyMappingConfig KeyMapping { get; set; }
 
-        public FormKeyMapping(KeyMapping mapping)
+        public FormKeyMapping(KeyMappingConfig mapping)
         {
             InitializeComponent();
 
@@ -54,8 +55,8 @@ namespace EasyVPad
         {
             foreach (var pair in _dict)
             {
-                var key = (Keys)(typeof(KeyMapping).GetProperty(pair.Value).GetValue(KeyMapping));
-                SetName(pair.Key, key);
+                var raw = (int)typeof(KeyMappingConfig).GetProperty(pair.Value).GetValue(KeyMapping);
+                SetName(pair.Key, (Keys)raw);
             }
         }
 
@@ -78,9 +79,7 @@ namespace EasyVPad
             {
                 if (key == Keys.Escape)
                     key = Keys.None;
-                object obj = KeyMapping;
-                typeof(KeyMapping).GetProperty(_dict[_currentBox]).SetValue(obj, key);
-                KeyMapping = (KeyMapping)obj;
+                typeof(KeyMappingConfig).GetProperty(_dict[_currentBox]).SetValue(KeyMapping, (int)key);
                 SetName(_currentBox, key);
                 Check(null);
             }
