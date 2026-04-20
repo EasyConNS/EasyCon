@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Themes.Fluent;
 
 namespace EasyCon2.Avalonia.Core;
 
@@ -9,11 +10,12 @@ public static class AvaloniaRuntime
     public static void EnsureInitialized()
     {
         if (_initialized) return;
-        AppBuilder.Configure<Application>()
+        var app = AppBuilder.Configure<Application>()
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace()
             .SetupWithoutStarting();
+        app.Instance.Styles.Add(new FluentTheme());
         _initialized = true;
     }
 }
