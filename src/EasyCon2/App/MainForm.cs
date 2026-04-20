@@ -683,6 +683,11 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
                 _vpadService.UpdateKeyMapping(_configService.KeyMapping);
                 _vpadService.Show();
             }
+            else
+            {
+                MessageBox.Show("请先绑定虚拟手柄");
+                return;
+            }
 
             btnRecord.Text = "停止录制";
             btnRecordPause.Enabled = true;

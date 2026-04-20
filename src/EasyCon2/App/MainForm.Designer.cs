@@ -245,7 +245,7 @@ partial class MainForm
         // 
         formatMenuItem.Name = "formatMenuItem";
         formatMenuItem.ShortcutKeys = Keys.Control | Keys.R;
-        formatMenuItem.Size = new Size(224, 26);
+        formatMenuItem.Size = new Size(193, 26);
         formatMenuItem.Text = "格式化";
         formatMenuItem.Click += formatBtn_Click;
         // 
@@ -253,7 +253,7 @@ partial class MainForm
         // 
         runMenuItem.Name = "runMenuItem";
         runMenuItem.ShortcutKeys = Keys.F5;
-        runMenuItem.Size = new Size(224, 26);
+        runMenuItem.Size = new Size(193, 26);
         runMenuItem.Text = "运行";
         runMenuItem.Click += runStopBtn_Click;
         // 
@@ -277,9 +277,9 @@ partial class MainForm
         setEnvVarMenuItem.Size = new Size(182, 26);
         setEnvVarMenuItem.Text = "设置环境变量";
         setEnvVarMenuItem.Click += setEnvVarMenuItem_Click;
-        //
+        // 
         // captureHelpMenuItem
-        //
+        // 
         captureHelpMenuItem.Name = "captureHelpMenuItem";
         captureHelpMenuItem.Size = new Size(182, 26);
         captureHelpMenuItem.Text = "搜图说明";
@@ -291,37 +291,37 @@ partial class MainForm
         helpMenu.Name = "helpMenu";
         helpMenu.Size = new Size(53, 24);
         helpMenu.Text = "帮助";
-        //
+        // 
         // menuItemFirmwareMode
-        //
+        // 
         menuItemFirmwareMode.Name = "menuItemFirmwareMode";
         menuItemFirmwareMode.Size = new Size(152, 26);
         menuItemFirmwareMode.Text = "固件模式";
         menuItemFirmwareMode.Click += menuItemFirmwareMode_Click;
-        //
+        // 
         // menuItemOnlineMode
-        //
+        // 
         menuItemOnlineMode.Name = "menuItemOnlineMode";
         menuItemOnlineMode.Size = new Size(152, 26);
         menuItemOnlineMode.Text = "联机模式";
         menuItemOnlineMode.Click += menuItemOnlineMode_Click;
-        //
+        // 
         // menuItemFlashMode
-        //
+        // 
         menuItemFlashMode.Name = "menuItemFlashMode";
         menuItemFlashMode.Size = new Size(152, 26);
         menuItemFlashMode.Text = "烧录模式";
         menuItemFlashMode.Click += menuItemFlashMode_Click;
-        //
+        // 
         // menuItemScriptSyntax
-        //
+        // 
         menuItemScriptSyntax.Name = "menuItemScriptSyntax";
         menuItemScriptSyntax.Size = new Size(152, 26);
         menuItemScriptSyntax.Text = "脚本语法";
         menuItemScriptSyntax.Click += menuItemScriptSyntax_Click;
-        //
+        // 
         // toolStripSeparator2
-        //
+        // 
         toolStripSeparator2.Name = "toolStripSeparator2";
         toolStripSeparator2.Size = new Size(149, 6);
         // 
@@ -399,7 +399,7 @@ partial class MainForm
         clsLogBtn.BackgroundImageLayout = ImageLayout.Stretch;
         clsLogBtn.FlatAppearance.BorderSize = 0;
         clsLogBtn.FlatStyle = FlatStyle.Flat;
-        clsLogBtn.Location = new Point(563, -4);
+        clsLogBtn.Location = new Point(564, 5);
         clsLogBtn.Name = "clsLogBtn";
         clsLogBtn.Size = new Size(30, 30);
         clsLogBtn.TabIndex = 39;
@@ -730,9 +730,9 @@ partial class MainForm
         btnESPConfig.Text = "ESP32设置";
         btnESPConfig.UseVisualStyleBackColor = false;
         btnESPConfig.Click += btnESPConfig_Click;
-        //
+        // 
         // btnUnpair
-        //
+        // 
         btnUnpair.BackColor = Color.FromArgb(235, 234, 229);
         btnUnpair.FlatAppearance.BorderSize = 0;
         btnUnpair.FlatStyle = FlatStyle.Flat;
@@ -913,7 +913,7 @@ partial class MainForm
         rightPanel.Location = new Point(3, 10);
         rightPanel.Name = "rightPanel";
         rightPanel.Padding = new Padding(4);
-        rightPanel.Size = new Size(243, 668);
+        rightPanel.Size = new Size(241, 668);
         rightPanel.TabIndex = 0;
         rightPanel.WrapContents = false;
         // 
