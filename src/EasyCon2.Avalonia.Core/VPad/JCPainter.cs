@@ -255,7 +255,7 @@ internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg
 
     private void DrawEllipse(DrawingContext g, Pen pen, Brush brush, int x, int y, int w, int h)
     {
-        g.DrawEllipse(brush, pen, new Point(x, y), w, h);
+        g.DrawEllipse(brush, pen, new Point(x + w / 2.0, y + h / 2.0), w / 2.0, h / 2.0);
     }
 
     private void DrawPath(DrawingContext g, Pen pen, Brush brush, Geometry path)

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 
-namespace EasyVPad
+namespace EasyCon2.Views
 {
     public partial class FormKeyMapping : Form
     {
@@ -114,7 +114,7 @@ namespace EasyVPad
         }
     }
 
-    static class Extensions
+    static class KeyMappingExtensions
     {
         public static string GetName(this Keys self)
         {

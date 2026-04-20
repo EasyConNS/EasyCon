@@ -6,9 +6,9 @@ using EasyCon2.App.Services;
 using EasyCon2.Forms;
 using EasyCon2.Helper;
 using EasyCon2.Properties;
+using EasyCon2.Views;
 using EasyDevice;
 using EasyScript;
-using EasyVPad;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Folding;
 using ICSharpCode.AvalonEdit.Highlighting;
@@ -21,6 +21,9 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Xml;
+using EasyCon2.Avalonia.Core.VPad;
+using AvaColor = Avalonia.Media.Color;
+using AvaColors = Avalonia.Media.Colors;
 
 namespace EasyCon2.App;
 
@@ -44,7 +47,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
     private CodeCompletionController? _completionController;
     private FoldingManager? _foldingManager;
     private CustomFoldingStrategy? _foldingStrategy;
-    private VPadForm? _virtController;
+    private VPadService? _vpadService;
 
     // Timer for UI updates
     private readonly System.Windows.Forms.Timer _uiTimer = new() { Interval = 200 };
@@ -58,7 +61,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
     static readonly Color ColorBgButton = Color.FromArgb(235, 234, 229); // #ebeae5
     static readonly Color ColorBgSurface = Color.FromArgb(230, 229, 224);// #e6e5e0
 
-    public Color CurrentLight => Color.White;
+    public AvaColor CurrentLight => AvaColors.White;
     bool IControllerAdapter.IsRunning() => _scriptService.IsRunning;
 
     public MainForm()
@@ -675,9 +678,11 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
                 return;
             }
 
-            _virtController?.RegisterAllKeys(_configService.KeyMapping);
-            if (_virtController != null)
-                _virtController.ControllerEnabled = true;
+            if (_vpadService != null)
+            {
+                _vpadService.UpdateKeyMapping(_configService.KeyMapping);
+                _vpadService.Show();
+            }
 
             btnRecord.Text = "停止录制";
             btnRecordPause.Enabled = true;
@@ -725,9 +730,9 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
             return;
         }
 
-        _virtController ??= new VPadForm(this, _deviceService.Device);
-        _virtController.ControllerEnabled = true;
-        _virtController.Show();
+        _vpadService ??= new VPadService(_deviceService.Device, this);
+        _vpadService.UpdateKeyMapping(_configService.KeyMapping);
+        _vpadService.Show();
     }
 
     private void btnKeyMapping_Click(object sender, EventArgs e)
@@ -736,7 +741,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         if (dlg.ShowDialog() == DialogResult.OK)
         {
             _configService.UpdateKeyMapping(dlg.KeyMapping);
-            _virtController?.RegisterAllKeys(_configService.KeyMapping);
+            _vpadService?.UpdateKeyMapping(_configService.KeyMapping);
         }
     }
 

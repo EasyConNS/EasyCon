@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vpad="clr-namespace:EasyCon2.Avalonia.Core.VPad"
+        x:Class="EasyCon2.Avalonia.Core.VPad.VPadOverlay"
+        x:DataType="vpad:VPadOverlay"
+        Title="VPad"
+        Width="100" Height="100"
+        SystemDecorations="None"
+        Topmost="True"
+        ShowInTaskbar="False"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        CanResize="False">
+</Window>

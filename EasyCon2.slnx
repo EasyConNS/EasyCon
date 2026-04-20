@@ -20,7 +20,6 @@
   <Folder Name="/Common/">
     <Project Path="src/EasyCon2.UI.Common/EasyCon2.UI.Common.csproj" />
   </Folder>
-  <Project Path="src/EasyCon.VPad/EasyCon.VPad.csproj" />
   <Project Path="src/EasyCon2.Avalonia/EasyCon2.Avalonia.csproj" />
   <Project Path="src/EasyCon2.CLI/EasyCon2.CLI.csproj" Id="a2867adb-139a-43d0-a421-9895222dcc7c" />
   <Project Path="src/EasyCon2/EasyCon2.csproj" />

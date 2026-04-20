@@ -1,4 +1,5 @@
 using System.IO;
+using EasyCon2.Avalonia.Core;
 
 namespace EasyCon2
 {
@@ -13,6 +14,7 @@ namespace EasyCon2
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
+            AvaloniaRuntime.EnsureInitialized();
 
             var version = Environment.Version;
             if (version.Major < 6 && version.Build <= 6)

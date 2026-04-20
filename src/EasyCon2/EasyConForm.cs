@@ -5,7 +5,6 @@ using EasyCon2.Helper;
 using EasyCon2.Properties;
 using EasyDevice;
 using EasyScript;
-using EasyVPad;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Folding;
 using ICSharpCode.AvalonEdit.Highlighting;
@@ -21,16 +20,14 @@ using System.Xml;
 
 namespace EasyCon2.Forms
 {
-    public partial class EasyConForm : Form, IControllerAdapter, IOutputAdapter
+    public partial class EasyConForm : Form, IOutputAdapter
     {
         private readonly string VER = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion;
         private readonly TextEditor textEditor = new();
         private CodeCompletionController _completionController;
-        internal readonly VPadForm virtController;
-
-        public Color CurrentLight => Color.White;
-        bool IControllerAdapter.IsRunning() => scriptRunning;
+        // [已弃用] VPad已迁移到Avalonia.Core，旧VPadForm已移除
+        // internal readonly VPadForm virtController;
 
         private NintendoSwitch NS = new();
         private readonly Scripter _program = new();
@@ -54,7 +51,7 @@ namespace EasyCon2.Forms
         {
             InitializeComponent();
 
-            virtController = new VPadForm(this, this.NS);
+            // [已弃用] virtController = new VPadForm(this, this.NS);
 
             LoadConfig();
         }
@@ -363,7 +360,7 @@ namespace EasyCon2.Forms
 
         private void RegisterKeys()
         {
-            virtController.RegisterAllKeys(_keyMapping);
+            // [已弃用] virtController.RegisterAllKeys(_keyMapping);
         }
 
         private void StatusShowLog(string str)
@@ -574,7 +571,7 @@ namespace EasyCon2.Forms
         {
             if (!NS.IsConnected())
                 return;
-            virtController.ControllerEnabled = true;
+            // [已弃用] virtController.ControllerEnabled = true;
             if (_config.ShowControllerHelp)
             {
                 ShowControllerHelp();
@@ -656,15 +653,16 @@ namespace EasyCon2.Forms
 
         private void buttonKeyMapping_Click(object sender, EventArgs e)
         {
-            using (var formKeyMapping = new FormKeyMapping(_keyMapping))
-            {
-                if (formKeyMapping.ShowDialog() == DialogResult.OK)
-                {
-                    _keyMapping = formKeyMapping.KeyMapping;
-                    SaveConfig();
-                    RegisterKeys();
-                }
-            }
+            // [已弃用] 按键映射窗口已迁移，EasyConForm不再支持此功能
+            // using (var formKeyMapping = new FormKeyMapping(_keyMapping))
+            // {
+            //     if (formKeyMapping.ShowDialog() == DialogResult.OK)
+            //     {
+            //         _keyMapping = formKeyMapping.KeyMapping;
+            //         SaveConfig();
+            //         RegisterKeys();
+            //     }
+            // }
         }
 
         private void buttonControllerHelp_Click(object sender, EventArgs e)
@@ -760,7 +758,7 @@ namespace EasyCon2.Forms
             {
                 if (!NS.IsConnected())
                     return;
-                virtController.ControllerEnabled = true;
+                // [已弃用] virtController.ControllerEnabled = true;
                 buttonRecord.Text = "停止录制";
                 buttonRecordPause.Enabled = true;
                 textEditor.IsEnabled = false;

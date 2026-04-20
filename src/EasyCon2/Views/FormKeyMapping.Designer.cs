@@ -1,16 +1,9 @@
-namespace EasyVPad
+namespace EasyCon2.Views
 {
     partial class FormKeyMapping
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -22,10 +15,6 @@ namespace EasyVPad
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormKeyMapping));
@@ -62,9 +51,9 @@ namespace EasyVPad
             checkBoxUpLeft = new CheckBox();
             checkBoxDownLeft = new CheckBox();
             SuspendLayout();
-            // 
+            //
             // checkBoxZL
-            // 
+            //
             checkBoxZL.Appearance = Appearance.Button;
             checkBoxZL.Location = new Point(280, 134);
             checkBoxZL.Margin = new Padding(5);
@@ -74,9 +63,9 @@ namespace EasyVPad
             checkBoxZL.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxZL.UseVisualStyleBackColor = true;
             checkBoxZL.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxL
-            // 
+            //
             checkBoxL.Appearance = Appearance.Button;
             checkBoxL.Location = new Point(280, 185);
             checkBoxL.Margin = new Padding(5);
@@ -86,9 +75,9 @@ namespace EasyVPad
             checkBoxL.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxL.UseVisualStyleBackColor = true;
             checkBoxL.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxR
-            // 
+            //
             checkBoxR.Appearance = Appearance.Button;
             checkBoxR.Location = new Point(643, 185);
             checkBoxR.Margin = new Padding(5);
@@ -98,9 +87,9 @@ namespace EasyVPad
             checkBoxR.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxR.UseVisualStyleBackColor = true;
             checkBoxR.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxZR
-            // 
+            //
             checkBoxZR.Appearance = Appearance.Button;
             checkBoxZR.Location = new Point(643, 134);
             checkBoxZR.Margin = new Padding(5);
@@ -110,9 +99,9 @@ namespace EasyVPad
             checkBoxZR.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxZR.UseVisualStyleBackColor = true;
             checkBoxZR.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxLSLeft
-            // 
+            //
             checkBoxLSLeft.Appearance = Appearance.Button;
             checkBoxLSLeft.Location = new Point(146, 292);
             checkBoxLSLeft.Margin = new Padding(5);
@@ -122,9 +111,9 @@ namespace EasyVPad
             checkBoxLSLeft.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxLSLeft.UseVisualStyleBackColor = true;
             checkBoxLSLeft.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxLSUp
-            // 
+            //
             checkBoxLSUp.Appearance = Appearance.Button;
             checkBoxLSUp.Location = new Point(218, 239);
             checkBoxLSUp.Margin = new Padding(5);
@@ -134,9 +123,9 @@ namespace EasyVPad
             checkBoxLSUp.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxLSUp.UseVisualStyleBackColor = true;
             checkBoxLSUp.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxLSRight
-            // 
+            //
             checkBoxLSRight.Appearance = Appearance.Button;
             checkBoxLSRight.Location = new Point(290, 292);
             checkBoxLSRight.Margin = new Padding(5);
@@ -146,9 +135,9 @@ namespace EasyVPad
             checkBoxLSRight.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxLSRight.UseVisualStyleBackColor = true;
             checkBoxLSRight.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxLSDown
-            // 
+            //
             checkBoxLSDown.Appearance = Appearance.Button;
             checkBoxLSDown.Location = new Point(218, 340);
             checkBoxLSDown.Margin = new Padding(5);
@@ -158,9 +147,9 @@ namespace EasyVPad
             checkBoxLSDown.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxLSDown.UseVisualStyleBackColor = true;
             checkBoxLSDown.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxRSDown
-            // 
+            //
             checkBoxRSDown.Appearance = Appearance.Button;
             checkBoxRSDown.Location = new Point(571, 459);
             checkBoxRSDown.Margin = new Padding(5);
@@ -170,9 +159,9 @@ namespace EasyVPad
             checkBoxRSDown.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxRSDown.UseVisualStyleBackColor = true;
             checkBoxRSDown.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxRSRight
-            // 
+            //
             checkBoxRSRight.Appearance = Appearance.Button;
             checkBoxRSRight.Location = new Point(643, 409);
             checkBoxRSRight.Margin = new Padding(5);
@@ -182,9 +171,9 @@ namespace EasyVPad
             checkBoxRSRight.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxRSRight.UseVisualStyleBackColor = true;
             checkBoxRSRight.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxRSLeft
-            // 
+            //
             checkBoxRSLeft.Appearance = Appearance.Button;
             checkBoxRSLeft.Location = new Point(499, 409);
             checkBoxRSLeft.Margin = new Padding(5);
@@ -194,9 +183,9 @@ namespace EasyVPad
             checkBoxRSLeft.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxRSLeft.UseVisualStyleBackColor = true;
             checkBoxRSLeft.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxRSUp
-            // 
+            //
             checkBoxRSUp.Appearance = Appearance.Button;
             checkBoxRSUp.Location = new Point(571, 357);
             checkBoxRSUp.Margin = new Padding(5);
@@ -206,9 +195,9 @@ namespace EasyVPad
             checkBoxRSUp.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxRSUp.UseVisualStyleBackColor = true;
             checkBoxRSUp.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxB
-            // 
+            //
             checkBoxB.Appearance = Appearance.Button;
             checkBoxB.Location = new Point(691, 340);
             checkBoxB.Margin = new Padding(5);
@@ -218,9 +207,9 @@ namespace EasyVPad
             checkBoxB.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxB.UseVisualStyleBackColor = true;
             checkBoxB.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxA
-            // 
+            //
             checkBoxA.Appearance = Appearance.Button;
             checkBoxA.Location = new Point(758, 292);
             checkBoxA.Margin = new Padding(5);
@@ -230,9 +219,9 @@ namespace EasyVPad
             checkBoxA.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxA.UseVisualStyleBackColor = true;
             checkBoxA.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxY
-            // 
+            //
             checkBoxY.Appearance = Appearance.Button;
             checkBoxY.Location = new Point(633, 292);
             checkBoxY.Margin = new Padding(5);
@@ -242,9 +231,9 @@ namespace EasyVPad
             checkBoxY.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxY.UseVisualStyleBackColor = true;
             checkBoxY.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxX
-            // 
+            //
             checkBoxX.Appearance = Appearance.Button;
             checkBoxX.Location = new Point(691, 250);
             checkBoxX.Margin = new Padding(5);
@@ -254,9 +243,9 @@ namespace EasyVPad
             checkBoxX.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxX.UseVisualStyleBackColor = true;
             checkBoxX.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxDown
-            // 
+            //
             checkBoxDown.Appearance = Appearance.Button;
             checkBoxDown.Location = new Point(352, 439);
             checkBoxDown.Margin = new Padding(5);
@@ -266,9 +255,9 @@ namespace EasyVPad
             checkBoxDown.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxDown.UseVisualStyleBackColor = true;
             checkBoxDown.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxRight
-            // 
+            //
             checkBoxRight.Appearance = Appearance.Button;
             checkBoxRight.Location = new Point(402, 395);
             checkBoxRight.Margin = new Padding(5);
@@ -278,9 +267,9 @@ namespace EasyVPad
             checkBoxRight.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxRight.UseVisualStyleBackColor = true;
             checkBoxRight.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxLeft
-            // 
+            //
             checkBoxLeft.Appearance = Appearance.Button;
             checkBoxLeft.Location = new Point(303, 395);
             checkBoxLeft.Margin = new Padding(5);
@@ -290,9 +279,9 @@ namespace EasyVPad
             checkBoxLeft.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxLeft.UseVisualStyleBackColor = true;
             checkBoxLeft.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxUp
-            // 
+            //
             checkBoxUp.Appearance = Appearance.Button;
             checkBoxUp.Location = new Point(352, 358);
             checkBoxUp.Margin = new Padding(5);
@@ -302,9 +291,9 @@ namespace EasyVPad
             checkBoxUp.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxUp.UseVisualStyleBackColor = true;
             checkBoxUp.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxPlus
-            // 
+            //
             checkBoxPlus.Appearance = Appearance.Button;
             checkBoxPlus.Location = new Point(571, 239);
             checkBoxPlus.Margin = new Padding(5);
@@ -314,9 +303,9 @@ namespace EasyVPad
             checkBoxPlus.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxPlus.UseVisualStyleBackColor = true;
             checkBoxPlus.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxMinus
-            // 
+            //
             checkBoxMinus.Appearance = Appearance.Button;
             checkBoxMinus.Location = new Point(365, 241);
             checkBoxMinus.Margin = new Padding(5);
@@ -326,9 +315,9 @@ namespace EasyVPad
             checkBoxMinus.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxMinus.UseVisualStyleBackColor = true;
             checkBoxMinus.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxCapture
-            // 
+            //
             checkBoxCapture.Appearance = Appearance.Button;
             checkBoxCapture.Location = new Point(417, 292);
             checkBoxCapture.Margin = new Padding(5);
@@ -338,9 +327,9 @@ namespace EasyVPad
             checkBoxCapture.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxCapture.UseVisualStyleBackColor = true;
             checkBoxCapture.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxHome
-            // 
+            //
             checkBoxHome.Appearance = Appearance.Button;
             checkBoxHome.Location = new Point(522, 292);
             checkBoxHome.Margin = new Padding(5);
@@ -350,9 +339,9 @@ namespace EasyVPad
             checkBoxHome.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxHome.UseVisualStyleBackColor = true;
             checkBoxHome.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // buttonOK
-            // 
+            //
             buttonOK.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             buttonOK.Location = new Point(239, 652);
             buttonOK.Margin = new Padding(5);
@@ -362,9 +351,9 @@ namespace EasyVPad
             buttonOK.Text = "确定";
             buttonOK.UseVisualStyleBackColor = true;
             buttonOK.Click += buttonOK_Click;
-            // 
+            //
             // buttonCancel
-            // 
+            //
             buttonCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             buttonCancel.Location = new Point(537, 652);
             buttonCancel.Margin = new Padding(5);
@@ -374,9 +363,9 @@ namespace EasyVPad
             buttonCancel.Text = "取消";
             buttonCancel.UseVisualStyleBackColor = true;
             buttonCancel.Click += buttonCancel_Click;
-            // 
+            //
             // checkBoxLClick
-            // 
+            //
             checkBoxLClick.Appearance = Appearance.Button;
             checkBoxLClick.Location = new Point(218, 292);
             checkBoxLClick.Margin = new Padding(5);
@@ -386,9 +375,9 @@ namespace EasyVPad
             checkBoxLClick.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxLClick.UseVisualStyleBackColor = true;
             checkBoxLClick.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxRClick
-            // 
+            //
             checkBoxRClick.Appearance = Appearance.Button;
             checkBoxRClick.Location = new Point(571, 409);
             checkBoxRClick.Margin = new Padding(5);
@@ -398,9 +387,9 @@ namespace EasyVPad
             checkBoxRClick.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxRClick.UseVisualStyleBackColor = true;
             checkBoxRClick.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxUpRight
-            // 
+            //
             checkBoxUpRight.Appearance = Appearance.Button;
             checkBoxUpRight.Location = new Point(402, 358);
             checkBoxUpRight.Margin = new Padding(5);
@@ -410,9 +399,9 @@ namespace EasyVPad
             checkBoxUpRight.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxUpRight.UseVisualStyleBackColor = true;
             checkBoxUpRight.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxDownRight
-            // 
+            //
             checkBoxDownRight.Appearance = Appearance.Button;
             checkBoxDownRight.Location = new Point(402, 439);
             checkBoxDownRight.Margin = new Padding(5);
@@ -422,9 +411,9 @@ namespace EasyVPad
             checkBoxDownRight.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxDownRight.UseVisualStyleBackColor = true;
             checkBoxDownRight.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxUpLeft
-            // 
+            //
             checkBoxUpLeft.Appearance = Appearance.Button;
             checkBoxUpLeft.Location = new Point(303, 358);
             checkBoxUpLeft.Margin = new Padding(5);
@@ -434,9 +423,9 @@ namespace EasyVPad
             checkBoxUpLeft.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxUpLeft.UseVisualStyleBackColor = true;
             checkBoxUpLeft.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // checkBoxDownLeft
-            // 
+            //
             checkBoxDownLeft.Appearance = Appearance.Button;
             checkBoxDownLeft.Location = new Point(303, 439);
             checkBoxDownLeft.Margin = new Padding(5);
@@ -446,9 +435,9 @@ namespace EasyVPad
             checkBoxDownLeft.TextAlign = ContentAlignment.MiddleCenter;
             checkBoxDownLeft.UseVisualStyleBackColor = true;
             checkBoxDownLeft.PreviewKeyDown += FormKeyMapping_PreviewKeyDown;
-            // 
+            //
             // FormKeyMapping
-            // 
+            //
             AutoScaleDimensions = new SizeF(9F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackgroundImage = (Image)resources.GetObject("$this.BackgroundImage");
