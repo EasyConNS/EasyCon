@@ -37,6 +37,7 @@ partial class MainForm
         captureMenu = new ToolStripMenuItem();
         captureTypeMenu = new ToolStripMenuItem();
         setEnvVarMenuItem = new ToolStripMenuItem();
+        captureHelpMenuItem = new ToolStripMenuItem();
         helpMenu = new ToolStripMenuItem();
         menuItemFirmwareMode = new ToolStripMenuItem();
         menuItemOnlineMode = new ToolStripMenuItem();
@@ -73,6 +74,7 @@ partial class MainForm
         btnDrawingBoard = new Button();
         btnBluetoothSetting = new Button();
         btnESPConfig = new Button();
+        btnUnpair = new Button();
         lblAbout = new Label();
         lblVersion = new Label();
         btnCheckUpdate = new Button();
@@ -257,7 +259,7 @@ partial class MainForm
         // 
         // captureMenu
         // 
-        captureMenu.DropDownItems.AddRange(new ToolStripItem[] { captureTypeMenu, setEnvVarMenuItem });
+        captureMenu.DropDownItems.AddRange(new ToolStripItem[] { captureTypeMenu, setEnvVarMenuItem, captureHelpMenuItem });
         captureMenu.Name = "captureMenu";
         captureMenu.Size = new Size(53, 24);
         captureMenu.Text = "搜图";
@@ -275,6 +277,13 @@ partial class MainForm
         setEnvVarMenuItem.Size = new Size(182, 26);
         setEnvVarMenuItem.Text = "设置环境变量";
         setEnvVarMenuItem.Click += setEnvVarMenuItem_Click;
+        //
+        // captureHelpMenuItem
+        //
+        captureHelpMenuItem.Name = "captureHelpMenuItem";
+        captureHelpMenuItem.Size = new Size(182, 26);
+        captureHelpMenuItem.Text = "搜图说明";
+        captureHelpMenuItem.Click += captureHelpMenuItem_Click;
         // 
         // helpMenu
         // 
@@ -545,6 +554,7 @@ partial class MainForm
         settingsPanel.Controls.Add(btnDrawingBoard);
         settingsPanel.Controls.Add(btnBluetoothSetting);
         settingsPanel.Controls.Add(btnESPConfig);
+        settingsPanel.Controls.Add(btnUnpair);
         settingsPanel.Controls.Add(lblAbout);
         settingsPanel.Controls.Add(lblVersion);
         settingsPanel.Controls.Add(btnCheckUpdate);
@@ -682,7 +692,7 @@ partial class MainForm
         btnDrawingBoard.FlatStyle = FlatStyle.Flat;
         btnDrawingBoard.Font = new Font("微软雅黑", 9F);
         btnDrawingBoard.ForeColor = Color.FromArgb(38, 37, 30);
-        btnDrawingBoard.Location = new Point(125, 249);
+        btnDrawingBoard.Location = new Point(19, 289);
         btnDrawingBoard.Name = "btnDrawingBoard";
         btnDrawingBoard.Size = new Size(85, 30);
         btnDrawingBoard.TabIndex = 10;
@@ -720,6 +730,21 @@ partial class MainForm
         btnESPConfig.Text = "ESP32设置";
         btnESPConfig.UseVisualStyleBackColor = false;
         btnESPConfig.Click += btnESPConfig_Click;
+        //
+        // btnUnpair
+        //
+        btnUnpair.BackColor = Color.FromArgb(235, 234, 229);
+        btnUnpair.FlatAppearance.BorderSize = 0;
+        btnUnpair.FlatStyle = FlatStyle.Flat;
+        btnUnpair.Font = new Font("微软雅黑", 9F);
+        btnUnpair.ForeColor = Color.FromArgb(38, 37, 30);
+        btnUnpair.Location = new Point(125, 249);
+        btnUnpair.Name = "btnUnpair";
+        btnUnpair.Size = new Size(100, 30);
+        btnUnpair.TabIndex = 17;
+        btnUnpair.Text = "取消蓝牙配对";
+        btnUnpair.UseVisualStyleBackColor = false;
+        btnUnpair.Click += btnUnpair_Click;
         // 
         // lblAbout
         // 
@@ -1257,6 +1282,7 @@ partial class MainForm
     private ToolStripMenuItem captureMenu;
     private ToolStripMenuItem captureTypeMenu;
     private ToolStripMenuItem setEnvVarMenuItem;
+    private ToolStripMenuItem captureHelpMenuItem;
     private ToolStripMenuItem helpMenu;
     private ToolStripMenuItem menuItemFirmwareMode;
     private ToolStripMenuItem menuItemOnlineMode;
@@ -1339,6 +1365,7 @@ partial class MainForm
     private Button btnDrawingBoard;
     private Button btnBluetoothSetting;
     private Button btnESPConfig;
+    private Button btnUnpair;
     private Label lblAbout;
     private Label lblVersion;
     private Button btnCheckUpdate;

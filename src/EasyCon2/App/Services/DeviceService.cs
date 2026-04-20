@@ -136,6 +136,8 @@ public class DeviceService
 
     public int GetVersion() => _ns.GetVersion();
 
+    public bool UnPair() => _ns.UnPair();
+
     // ---- 脚本录制 ----
 
     public void StartRecord() => _ns.StartRecord();

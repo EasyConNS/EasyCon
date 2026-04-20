@@ -1006,6 +1006,22 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         form.Show();
     }
 
+    private void btnUnpair_Click(object sender, EventArgs e)
+    {
+        if (!_deviceService.IsConnected)
+            return;
+        if (_deviceService.UnPair())
+        {
+            SystemSounds.Beep.Play();
+            StatusShow("取消配对成功");
+        }
+        else
+        {
+            SystemSounds.Hand.Play();
+            StatusShow("取消配对失败");
+        }
+    }
+
     #endregion
 
     #region Capture Menu (retained from old structure)
@@ -1038,6 +1054,16 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         Environment.SetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS", "0");
         var val = Environment.GetEnvironmentVariable("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS");
         StatusShow($"环境变量设置成功：{val}");
+    }
+
+    private void captureHelpMenuItem_Click(object sender, EventArgs e)
+    {
+        MessageBox.Show(@"默认采集卡类型选择any，会自动选择合适的采集卡
+- 常见采集卡类型是DSHOW，MSMF，DC1394等
+- obs30+版本已支持内置虚拟摄像头，无需安装额外插件
+- 如果出现黑屏、颜色不正确等情况，请切换其他采集卡类型，然后重新打开
+- 如果遇到搜图卡顿问题可尝试点击一次<设置环境变量>菜单
+- 详细使用教程见群946057081文档", "采集卡");
     }
 
     #endregion
