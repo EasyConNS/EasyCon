@@ -36,7 +36,8 @@ public partial class AlertConfigControl : UserControl
     private void OnOpenFile(object? sender, RoutedEventArgs e)
     {
         var path = AppPaths.AlertConfig;
-        if (File.Exists(path))
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        var dir = Path.GetDirectoryName(path);
+        if (dir != null && Directory.Exists(dir))
+            Process.Start(new ProcessStartInfo(dir) { UseShellExecute = true });
     }
 }

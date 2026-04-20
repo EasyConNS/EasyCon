@@ -22,7 +22,7 @@ namespace EasyCon2
             }
             try
             {
-                Application.Run(new Forms.EasyConForm());
+                Application.Run(new App.MainForm());
             }
             catch (Exception ex)
             {

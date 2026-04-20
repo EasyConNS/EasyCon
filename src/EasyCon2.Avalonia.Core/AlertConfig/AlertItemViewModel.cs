@@ -7,7 +7,7 @@ namespace EasyCon2.Avalonia.Core.AlertConfig;
 
 public partial class AlertItemViewModel : ObservableObject
 {
-    public static readonly string[] HttpMethods = ["GET", "POST", "PUT", "DELETE"];
+    public static readonly string[] HttpMethods = ["GET", "POST", "PUT", "HEAD", "OPTIONS"];
 
     private readonly AlertItem _item;
 

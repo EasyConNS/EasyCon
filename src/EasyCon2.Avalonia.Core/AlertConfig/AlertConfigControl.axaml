@@ -14,8 +14,15 @@
             <Button Content="添加配置"
                     Command="{Binding AddItemCommand}"
                     IsEnabled="{Binding CanAdd}"/>
-            <Button Content="用编辑器打开配置文件"
-                    Click="OnOpenFile"/>
+            <Button Background="Transparent"
+                    BorderThickness="0"
+                    Padding="4,2"
+                    Cursor="Hand"
+                    Click="OnOpenFile">
+                <TextBlock Text="打开配置文件目录"
+                           Foreground="{DynamicResource SystemControlHighlightAccentBrush}"
+                           TextDecorations="Underline"/>
+            </Button>
             <Button Content="保存"
                     Click="OnSave"
                     IsDefault="True"/>
