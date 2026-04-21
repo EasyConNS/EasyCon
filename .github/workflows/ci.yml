@@ -74,23 +74,17 @@ jobs:
       - name: 还原 NuGet 包
         run: dotnet restore
 
-      - name: 构建 EasyCon2 (Release)
-        run: dotnet build --no-restore --configuration Release
-
       - name: 运行 EasyCon 测试
-        run: dotnet test --no-build --configuration Release --verbosity normal
+        shell: cmd
+        run: ci\test.bat
 
       - name: 发布 EasyCon2
-        run: |
-          dotnet publish src/EasyCon2/EasyCon2.csproj `
-            --configuration Release `
-            -p:PublishSingleFile=true `
-            --output ./publish `
-            --self-contained false
+        shell: cmd
+        run: ci\windows-x64.bat
 
       - name: 上传 EasyCon2 产物
         uses: actions/upload-artifact@v6
         with:
           name: EasyCon2-${{ github.run_number }}
-          path: ./publish/
+          path: dist/publish/
           retention-days: 30

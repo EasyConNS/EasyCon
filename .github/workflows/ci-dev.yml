@@ -73,8 +73,6 @@ jobs:
       - name: 还原 NuGet 包
         run: dotnet restore
 
-      - name: 构建 EasyCon2 (Debug)
-        run: dotnet build --no-restore --configuration Debug
-
       - name: 运行 EasyCon 测试
-        run: dotnet test --no-build --configuration Debug --verbosity normal
+        shell: cmd
+        run: ci\test.bat Debug

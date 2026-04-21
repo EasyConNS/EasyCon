@@ -78,4 +78,4 @@ if exist "%PUBLISH_DIR%" rmdir /s /q "%PUBLISH_DIR%"
 
 echo 构建完成!
 echo 输出目录: "%DIST_DIR%\publish"
-pause
+if "%CI%"=="" pause
