@@ -45,7 +45,11 @@ public class VPadService
         {
             _overlay = new VPadOverlay(_gamepad, _adapter);
             _overlay.ToggleRequested += () => Active = !Active;
-            _overlay.HideRequested += () => Active = false;
+            _overlay.HideRequested += () =>
+            {
+                Active = false;
+                Dispatcher.UIThread.Post(() => _overlay.Hide());
+            };
             _overlay.Closed += (_, _) =>
             {
                 Active = false;
@@ -59,6 +63,21 @@ public class VPadService
     public void UpdateKeyMapping(KeyMappingConfig mapping)
     {
         _keyBinder.RegisterAllKeys(mapping, _gamepad);
+        RegisterEscapeKey();
+    }
+
+    private void RegisterEscapeKey()
+    {
+        const int VK_ESCAPE = 0x1B;
+        LowLevelKeyboard.GetInstance().RegisterKeyEvent(VK_ESCAPE,
+            () =>
+            {
+                if (!_active) return false;
+                Active = false;
+                Dispatcher.UIThread.Post(() => _overlay?.Hide());
+                return true;
+            },
+            () => false);
     }
 
     public void UnregisterAllKeys()

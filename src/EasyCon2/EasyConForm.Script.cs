@@ -76,7 +76,7 @@ partial class EasyConForm
             }
         }
 
-        //virtController.ControllerEnabled = false;
+        _vpadService?.UnregisterAllKeys();
         StatusShowLog("开始运行");
 
         scriptRunning = true;
