@@ -3,6 +3,7 @@ root = true
 
 # c# 文件
 [*.cs]
+dotnet_diagnostic.CA1416.severity = suggestion
 
 #### Core EditorConfig 选项 ####
 
