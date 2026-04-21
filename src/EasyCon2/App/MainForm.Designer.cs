@@ -395,7 +395,7 @@ partial class MainForm
         clsLogBtn.AccessibleName = "清除日志输出";
         clsLogBtn.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         clsLogBtn.BackColor = Color.Transparent;
-        clsLogBtn.BackgroundImage = Properties.Resources.clrlog;
+        clsLogBtn.BackgroundImage = ResourceHelper.Clrlog;
         clsLogBtn.BackgroundImageLayout = ImageLayout.Stretch;
         clsLogBtn.FlatAppearance.BorderSize = 0;
         clsLogBtn.FlatStyle = FlatStyle.Flat;

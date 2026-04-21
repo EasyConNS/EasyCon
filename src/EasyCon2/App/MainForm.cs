@@ -6,7 +6,7 @@ using EasyCon2.App.Services;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Forms;
 using EasyCon2.Helper;
-using EasyCon2.Properties;
+using Resources = EasyCon2.UI.Common.Properties.Resources;
 using EasyCon2.Views;
 using EasyDevice;
 using EasyScript;

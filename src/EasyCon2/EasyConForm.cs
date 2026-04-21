@@ -3,7 +3,7 @@ using EasyCon.Core.Config;
 using EasyCon.Script.Assembly;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Helper;
-using EasyCon2.Properties;
+using Resources = EasyCon2.UI.Common.Properties.Resources;
 using EasyCon2.Views;
 using EasyDevice;
 using EasyScript;

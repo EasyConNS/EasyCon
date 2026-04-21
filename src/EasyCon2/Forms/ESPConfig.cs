@@ -1,6 +1,6 @@
 using EasyCapture;
 using EasyCon2.Models;
-using EasyCon2.Properties;
+using Resources = EasyCon2.UI.Common.Properties.Resources;
 using EasyDevice;
 using LibAmiibo.Data;
 using LibAmiibo.Data.Figurine;

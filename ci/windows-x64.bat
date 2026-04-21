@@ -57,9 +57,6 @@ for /f %%i in ('git -C "%ROOT_DIR%" rev-parse --short HEAD') do set "COMMIT_ID=%
 if exist "%PUBLISH_DIR%\EasyCon2.exe" ren "%PUBLISH_DIR%\EasyCon2.exe" "EasyCon2.!COMMIT_ID!.exe"
 if exist "%PUBLISH_DIR%\EasyCon2.CLI.exe" ren "%PUBLISH_DIR%\EasyCon2.CLI.exe" "ezcon.exe"
 
-:: 重命名Resources目录为Amiibo
-if exist "%PUBLISH_DIR%\Resources" ren "%PUBLISH_DIR%\Resources" "Amiibo"
-
 :: ========== 复制额外文件 ==========
 echo 正在复制额外文件...
 
