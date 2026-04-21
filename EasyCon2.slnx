@@ -5,7 +5,7 @@
     <File Path="Directory.Packages.props" />
   </Folder>
   <Folder Name="/Test/">
-    <Project Path="src/EasyCon.Tests/EasyCon.Tests.csproj" />
+    <Project Path="test/EasyCon.Tests/EasyCon.Tests.csproj" />
   </Folder>
   <Folder Name="/Demo/">
     <Project Path="tools/DirectInput/DirectInput.csproj" />
