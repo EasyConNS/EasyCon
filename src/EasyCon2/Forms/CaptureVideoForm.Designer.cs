@@ -65,7 +65,6 @@ namespace EasyCon2.Forms
             imgLableList = new ListBox();
             SaveTagBtn = new Button();
             dyncTestBtn = new Button();
-            searchTestTimer = new System.Windows.Forms.Timer(components);
             ResolutionBtn = new Button();
             label2 = new Label();
             monitorVisChk = new CheckBox();
@@ -464,11 +463,7 @@ namespace EasyCon2.Forms
             dyncTestBtn.Text = "动态测试";
             dyncTestBtn.UseVisualStyleBackColor = true;
             dyncTestBtn.Click += DynTestBtn_Click;
-            // 
-            // searchTestTimer
-            // 
-            searchTestTimer.Tick += timer1_Tick;
-            // 
+            //
             // ResolutionBtn
             // 
             ResolutionBtn.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -652,7 +647,6 @@ namespace EasyCon2.Forms
         private System.Windows.Forms.Button dyncTestBtn;
         private System.Windows.Forms.TextBox imgLabelNametxt;
         private System.Windows.Forms.Label imgnamelabel;
-        private System.Windows.Forms.Timer searchTestTimer;
         private System.Windows.Forms.PictureBox searchResultImg;
         private System.Windows.Forms.PictureBox targetImg;
         private System.Windows.Forms.Button ResolutionBtn;
