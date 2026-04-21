@@ -124,7 +124,7 @@ abstract class StickActionStmt : KeyActionStmt
     public StickActionStmt(Token syntax, string direction) : base(syntax)
     {
         Direction = direction;
-        _= NSKeys.CheckDirection(Direction, out var degree);
+        _ = NSKeys.CheckDirection(Direction, out var degree);
         Degree = degree;
     }
 

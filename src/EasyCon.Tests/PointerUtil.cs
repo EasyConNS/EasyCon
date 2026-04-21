@@ -4,7 +4,7 @@ static class PointerUtil
 {
     public const ulong INVALID_PTR = 0;
 
-    public static ulong GetPointerAddress(string ptr, bool heaprealtive=true)
+    public static ulong GetPointerAddress(string ptr, bool heaprealtive = true)
     {
         if (string.IsNullOrWhiteSpace(ptr) || ptr.IndexOfAny(new[] { '-', '/', '*' }) != -1)
             return INVALID_PTR;

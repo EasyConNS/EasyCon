@@ -62,7 +62,7 @@ public sealed class SourceText
     {
         var lineLength = position - lineStart;
         var lineLengthIncludingLineBreak = lineLength + lineBreakWidth;
-        var line = new TextLine { SrcText = sourceText, Start = lineStart,Length= lineLength, LengthIncludingLineBreak = lineLengthIncludingLineBreak };
+        var line = new TextLine { SrcText = sourceText, Start = lineStart, Length = lineLength, LengthIncludingLineBreak = lineLengthIncludingLineBreak };
         result.Add(line);
     }
 

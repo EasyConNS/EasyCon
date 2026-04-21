@@ -20,7 +20,7 @@ public class Role
     public WS_Role role { get; set; }
     public String token { get; set; }
 
-    public Role(WS_Role role,string t)
+    public Role(WS_Role role, string t)
     {
         this.role = role;
         token = t;
@@ -36,9 +36,9 @@ public class WS_Message
 
 public class LogResponse : WS_Message
 {
-    public LogResponse(String token,String log)
+    public LogResponse(String token, String log)
     {
-        ws_Role = new Role(WS_Role.Client,token);
+        ws_Role = new Role(WS_Role.Client, token);
         ws_Event = WS_Event.LogRes;
         data = log;
     }
@@ -58,7 +58,7 @@ public class CommandReq : WS_Message
 {
     public CommandReq(String token, String msg)
     {
-        ws_Role = new Role(WS_Role.Client,"");
+        ws_Role = new Role(WS_Role.Client, "");
         ws_Event = WS_Event.CommandReq;
         data = msg;
     }

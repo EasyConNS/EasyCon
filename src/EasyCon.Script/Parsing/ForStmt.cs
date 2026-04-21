@@ -72,7 +72,7 @@ class For_Full(Token syntax, VariableExpr regiter, ExprBase lower, ExprBase uppe
     //        assembler.Add(Assembly.Instructions.AsmMov.Create(reg.Reg, InitVal));
     //    else 
     //        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-        
+
     //    if (Count is VariableExpr countval)
     //    {
     //        uint e_val = countval.Reg;
@@ -90,7 +90,7 @@ class For_Full(Token syntax, VariableExpr regiter, ExprBase lower, ExprBase uppe
 class Next(Token syntax) : EndBlockStmt(syntax)
 {
     public override StatementKind Kind => StatementKind.Next;
-    
+
     // 覆盖基类的 _GetString
     protected override string _GetString() => "NEXT";
 
@@ -134,15 +134,15 @@ abstract class LoopCtrl(Token syntax, uint level) : Statement(syntax)
 
 class Break : LoopCtrl
 {
-    public Break(Token syntax) :base(syntax, 1) { }
+    public Break(Token syntax) : base(syntax, 1) { }
 
-    public Break(Token syntax, uint level) :base(syntax, level) {}
+    public Break(Token syntax, uint level) : base(syntax, level) { }
 
     public override StatementKind Kind => StatementKind.Break;
     protected override string _GetString()
     {
         if (Level == 1) return "BREAK";
-        return  $"BREAK {Level}";
+        return $"BREAK {Level}";
     }
 
     //public override void Assemble(Assembly.Assembler assembler)

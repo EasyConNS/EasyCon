@@ -55,7 +55,7 @@ class EasyConPad
                     }
                 }
                 var handshake = HandShake();
-                if(!handshake)
+                if (!handshake)
                 {
                     return false;
                 }

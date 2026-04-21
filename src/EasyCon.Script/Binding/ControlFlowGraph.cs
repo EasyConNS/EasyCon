@@ -6,7 +6,7 @@ namespace EasyCon.Script.Binding;
 
 internal sealed class ControlFlowGraph
 {
-      private ControlFlowGraph(BasicBlock start, BasicBlock end, List<BasicBlock> blocks, List<BasicBlockBranch> branches)
+    private ControlFlowGraph(BasicBlock start, BasicBlock end, List<BasicBlock> blocks, List<BasicBlockBranch> branches)
     {
         Start = start;
         End = end;
@@ -221,7 +221,7 @@ internal sealed class ControlFlowGraph
         {
             if (condition is BoundLiteralExpression l)
             {
-                if(l.ConstantValue!= Value.Void && l.ConstantValue.ToBoolean())
+                if (l.ConstantValue != Value.Void && l.ConstantValue.ToBoolean())
                 {
                     condition = null;
                 }

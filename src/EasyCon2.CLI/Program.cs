@@ -1,15 +1,15 @@
 // See https://aka.ms/new-console-template for more information
 using EasyCon.Capture;
 using EasyCon.Core;
-using EasyCon.Script;
 using EasyCon.Core.Runner;
+using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyDevice;
 using EasyScript;
 using OpenCvSharp;
+using System.Collections.Immutable;
 using System.CommandLine;
 using System.Text;
-using System.Collections.Immutable;
 
 // 设置控制台输出编码为 UTF-8，解决中文乱码问题
 Console.OutputEncoding = Encoding.UTF8;
@@ -44,7 +44,7 @@ var scriptOption = new Argument<string>("file")
 };
 scriptOption.Validators.Add(result =>
 {
-    if(!File.Exists(result.GetValueOrDefault<string>()))
+    if (!File.Exists(result.GetValueOrDefault<string>()))
     {
         result.AddError("脚本文件不存在");
     }
@@ -91,7 +91,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     string file = parseResult.GetValue(scriptOption)!;
     var vId = parseResult.GetValue(deviceIdOption);
     var refs = parseResult.GetValue(deviceTypeOption);
-    string COM = parseResult.GetValue(portOption)?? defaultCOMPort;
+    string COM = parseResult.GetValue(portOption) ?? defaultCOMPort;
     bool verbose = parseResult.GetValue(verboseOption);
 
     // 输出接口
@@ -110,16 +110,16 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     OpenCVCapture? cvcap = null;
     outdap.Log("正在解析脚本...");
     var diag = runner.Load(file, [.. label.Select(il => il.name)]);
-    
-    if(diag.HasErrors())
+
+    if (diag.HasErrors())
     {
         HashSet<int> errlist = [];
         foreach (var d in diag)
         {
             if (!errlist.Add(d.Location.StartLine))
                 continue;
-            outdap.Error($"!!编译失败!!{d.Message}: 行{d.Location.StartLine+1}");
-        }    
+            outdap.Error($"!!编译失败!!{d.Message}: 行{d.Location.StartLine + 1}");
+        }
         return;
     }
 
@@ -158,7 +158,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         }
     }
 
-    if(runner.NeedILLoad)
+    if (runner.NeedILLoad)
     {
         cvcap = new();
         outdap.Log("准备打开采集卡...");
@@ -172,14 +172,14 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         // 设置采集卡分辨率为1080p
         cvcap.SetProperties(1920, 1080);
     }
-        var externalGetters = label.ToDictionary(il => il.name, il => (Func<int>)(() =>
-        {
-            if(cvcap == null) throw new Exception("采集卡初始化异常");
-            il.Search(cvcap!.GetMatFrame(), out var md);
-            return (int)md;
-        }));
+    var externalGetters = label.ToDictionary(il => il.name, il => (Func<int>)(() =>
+    {
+        if (cvcap == null) throw new Exception("采集卡初始化异常");
+        il.Search(cvcap!.GetMatFrame(), out var md);
+        return (int)md;
+    }));
     outdap.Info($"==>开始执行脚本：{file}");
-    
+
     try
     {
         ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
@@ -205,7 +205,7 @@ var portListOption = new Option<bool>("--list", "-l")
 };
 portDevCommand.Options.Add(portListOption);
 
-portDevCommand.SetAction( async (parseResult, cancellationToken) =>
+portDevCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     var listport = parseResult.GetValue(portListOption);
     ECCore.GetDeviceNames().ToList().ForEach(name =>
@@ -216,7 +216,7 @@ portDevCommand.SetAction( async (parseResult, cancellationToken) =>
 
 portDevCommand.Validators.Add(result =>
 {
-    if(!result.GetValue(portListOption))
+    if (!result.GetValue(portListOption))
     {
         result.AddError("请使用 --list 参数列出可用端口");
     }
@@ -230,14 +230,14 @@ var videoListOption = new Option<bool>("--list", "-l")
 };
 videoCommand.Options.Add(videoListOption);
 
-videoCommand.SetAction( async (parseResult, cancellationToken) =>
+videoCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     var listDevices = parseResult.GetValue(videoListOption);
     if (!listDevices)
     {
     }
 
-    ECCapture.GetCaptureCamera().ToList().ForEach( dev=>
+    ECCapture.GetCaptureCamera().ToList().ForEach(dev =>
     {
         Console.WriteLine($"[{dev.index}] {dev.name}");
         // Console.WriteLine($"  [{index}] {name}");
@@ -254,7 +254,7 @@ videoCommand.Validators.Add(result =>
 #endregion
 
 runLuaCommand.Arguments.Add(scriptOption);
-runLuaCommand.SetAction( async (parseResult, cancellationToken) =>
+runLuaCommand.SetAction(async (parseResult, cancellationToken) =>
 {
 
     string file = parseResult.GetValue(scriptOption)!;
@@ -276,17 +276,17 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
 
     var diag = runner.Load(file, [.. label.Select(il => il.name)]);
 
-    if(diag.HasErrors())
+    if (diag.HasErrors())
     {
         foreach (var d in diag)
         {
-            Console.Error.WriteLine($"line {d.Location.StartLine+1}: {d.Message}");
+            Console.Error.WriteLine($"line {d.Location.StartLine + 1}: {d.Message}");
         }
         return 1;
     }
 
     var formatted = runner.ToCode();
-    
+
     if (!string.IsNullOrEmpty(outputFile))
     {
         File.WriteAllText(outputFile, formatted);
@@ -302,4 +302,3 @@ rootCommand.Subcommands.Add(portDevCommand);
 rootCommand.Subcommands.Add(videoCommand);
 rootCommand.Subcommands.Add(formatCommand);
 return rootCommand.Parse(args).Invoke();
-

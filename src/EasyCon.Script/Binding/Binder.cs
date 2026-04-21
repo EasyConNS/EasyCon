@@ -37,7 +37,7 @@ internal sealed class Binder
         binder.Diagnostics.AddRange(syntaxs.Diagnostics);
         if (binder.Diagnostics.HasErrors())
         {
-            return new BoundProgram(new("$error", [], [], ScriptType.Void), [..binder.Diagnostics], [], []);
+            return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. binder.Diagnostics], [], []);
         }
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
@@ -90,14 +90,14 @@ internal sealed class Binder
 
         if (binder.Diagnostics.HasErrors())
         {
-            return new BoundProgram(new("$error", [], [], ScriptType.Void), [..binder.Diagnostics], [], []);
+            return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. binder.Diagnostics], [], []);
         }
 
         var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
         var body = new BoundBlockStatement(main.Declaration, statements.ToImmutable());
         var loweredBody = Lowerer.Lower(main, body);
         functionBodies.Add(main, loweredBody);
-        return new BoundProgram(main, [..binder._diagnostics], functionBodies.ToImmutable(), [.. binder._ilNames]);
+        return new BoundProgram(main, [.. binder._diagnostics], functionBodies.ToImmutable(), [.. binder._ilNames]);
     }
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
@@ -109,7 +109,7 @@ internal sealed class Binder
         {
             var parameterSyntax = syntax.Declare.Paramters[i];
             var parameterName = parameterSyntax.Identifier.Tag;
-            var parameterType = BindTypeClause(syntax.Declare, parameterSyntax.Type)?? ScriptType.Int;
+            var parameterType = BindTypeClause(syntax.Declare, parameterSyntax.Type) ?? ScriptType.Int;
 
             if (!seenParameterNames.Add(parameterName))
                 _diagnostics.ReportParameterAlreadyDeclared(syntax.Declare.Location, parameterName);
@@ -224,9 +224,9 @@ internal sealed class Binder
                 SerialPrint => throw new NotImplementedException(),
                 _ => throw new Exception($"未知的语句类型{syntax}"),
             };
-            if(result is BoundExprStatement es)
+            if (result is BoundExprStatement es)
             {
-                if(es.Expression is BoundErrorExpression)
+                if (es.Expression is BoundErrorExpression)
                 {
                     _diagnostics.ReportInvalidExpressionStatement(syntax.Location);
                 }
@@ -335,7 +335,7 @@ internal sealed class Binder
         var idxVar = forCond switch
         {
             For_Full ff => ff.RegIter,
-            For_Static => new VariableExpr(new(syntax.Syntax.Text, TokenType.VAR, $"_tmpL${_labelCounter++}",0), true),
+            For_Static => new VariableExpr(new(syntax.Syntax.Text, TokenType.VAR, $"_tmpL${_labelCounter++}", 0), true),
             _ => null,
         };
         var variable = idxVar switch
@@ -351,7 +351,7 @@ internal sealed class Binder
         BoundStmt upperBoundStmt = variable == null ? Nop(forCond) :
             ConstantDeclaration(forCond, "_uppBound$", upperBound);
         //var <= upperBound
-        switch(forCond.Upper)
+        switch (forCond.Upper)
         {
             case LiteralExpr litE:
                 upperBoundStmt = Nop(forCond);
@@ -458,7 +458,7 @@ internal sealed class Binder
     private BoundStmt BindBreakStatement(Break syntax)
     {
         var level = (int)syntax.Level;
-        if(level > 2)
+        if (level > 2)
             _diagnostics.ReportTooMuchLoop(syntax.Syntax.Location);
         if (_loopStack.Count < level)
         {
@@ -624,7 +624,7 @@ internal sealed class Binder
     private BoundStmt BindCallStatement(CallStmt syntax)
     {
         var name = syntax.FnName;
-        if(BuiltinFunctions.GetAll().Select(f => f.Name).Contains(syntax.FnName.ToUpper()))
+        if (BuiltinFunctions.GetAll().Select(f => f.Name).Contains(syntax.FnName.ToUpper()))
         {
             name = syntax.FnName.ToUpper();
         }
@@ -672,7 +672,7 @@ internal sealed class Binder
 
     private BoundStmt BindGamepadActionStatement(KeyActionStmt syntax)
     {
-        if(syntax is StickActionStmt st)
+        if (syntax is StickActionStmt st)
         {
             NSKeys.GetXYFromDegree(st.Degree, out byte x, out byte y);
             if (syntax is IDurationKey isk)
@@ -742,7 +742,7 @@ internal sealed class Binder
         {
             if (input.Length >= 2 && input[0] == input[^1])
             {
-                if(input[0] == '"' || input[0] == '\'')
+                if (input[0] == '"' || input[0] == '\'')
                     val = input[1..^1];
             }
         }
@@ -752,7 +752,7 @@ internal sealed class Binder
 
     private BoundExpr BindIndexExpression(IndexDefExpression syntax)
     {
-        if(syntax.Index.Length == 0)
+        if (syntax.Index.Length == 0)
             return new BoundIndexDeclxpression(syntax, []);
         var boundIndexs = ImmutableArray.CreateBuilder<BoundExpr>();
 
@@ -761,7 +761,7 @@ internal sealed class Binder
             var boundIndex = BindExpression(index);
             boundIndexs.Add(boundIndex);
         }
-        if (boundIndexs.Select(i=>i.Type).Distinct().Count() > 1)
+        if (boundIndexs.Select(i => i.Type).Distinct().Count() > 1)
         {
             _diagnostics.ReportArrayElementTypeMismatch(syntax.Syntax.Location);
             return new BoundErrorExpression(syntax);

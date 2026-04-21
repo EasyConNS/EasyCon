@@ -113,4 +113,3 @@ class CommandReq : WS_Message
         data = msg;
     }
 }
-

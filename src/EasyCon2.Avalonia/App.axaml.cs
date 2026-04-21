@@ -1,9 +1,9 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using EasyCon2.Avalonia.Views;
-using EasyCon2.Avalonia.ViewModels;
 using EasyCon2.Avalonia.Services;
+using EasyCon2.Avalonia.ViewModels;
+using EasyCon2.Avalonia.Views;
 
 namespace EasyCon2.Avalonia;
 

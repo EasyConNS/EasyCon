@@ -8,7 +8,7 @@ public class RegisterInfo
     public string VariableName { get; set; } = string.Empty;
     public bool IsFree { get; set; }
     public int LastUse { get; set; }
-    
+
     public RegisterInfo(int index)
     {
         Index = index;
@@ -25,7 +25,7 @@ class LinearScanRegisterAllocator
     private readonly Dictionary<string, int> variableLastUse;
     private readonly Dictionary<string, int> registerAssignment;
     private readonly Dictionary<string, int> variableFirstUse;
-    
+
     public LinearScanRegisterAllocator()
     {
         // 初始化8个寄存器 (0-7)
@@ -34,44 +34,44 @@ class LinearScanRegisterAllocator
         {
             registers.Add(new RegisterInfo(i));
         }
-        
+
         assignments = new List<BoundVariableDeclaration>();
         variableLastUse = new Dictionary<string, int>();
         registerAssignment = new Dictionary<string, int>();
         variableFirstUse = new Dictionary<string, int>();
     }
-    
+
     // 添加赋值语句
     public void AddAssignment(BoundStmt stmt)
     {
-        if(stmt is BoundVariableDeclaration assignment)
+        if (stmt is BoundVariableDeclaration assignment)
             assignments.Add(assignment);
         // else if (stmt)
     }
-    
+
     // 计算变量的最后使用位置
     private void ComputeVariableLastUse()
     {
         for (int i = 0; i < assignments.Count; i++)
         {
             var assignment = assignments[i];
-            
+
             // 更新赋值变量的最后使用位置
             variableLastUse[assignment.Variable.Name] = i;
-            
+
             // 更新表达式中变量的最后使用位置
             var referencedVars = assignment.Initializer.GetReferencedVariables();
             foreach (var varName in referencedVars)
             {
                 variableLastUse[varName] = i;
-                
+
                 // 记录首次使用位置
                 if (!variableFirstUse.ContainsKey(varName))
                 {
                     variableFirstUse[varName] = i;
                 }
             }
-            
+
             // 记录赋值变量的首次使用位置
             if (!variableFirstUse.ContainsKey(assignment.Variable.Name))
             {
@@ -79,7 +79,7 @@ class LinearScanRegisterAllocator
             }
         }
     }
-    
+
     // 查找空闲寄存器
     private int FindFreeRegister()
     {
@@ -92,13 +92,13 @@ class LinearScanRegisterAllocator
         }
         return -1; // 没有空闲寄存器
     }
-    
+
     // 查找最后使用最远的寄存器（用于溢出）
     private int FindRegisterToSpill(string newVariable, int currentPosition)
     {
         int farthestUse = -1;
         int registerToSpill = -1;
-        
+
         for (int i = 0; i < registers.Count; i++)
         {
             if (!registers[i].IsFree)
@@ -119,11 +119,11 @@ class LinearScanRegisterAllocator
                 }
             }
         }
-        
+
         // 如果所有寄存器中的变量都在当前之后使用，选择最后使用最远的
         return registerToSpill != -1 ? registerToSpill : 0;
     }
-    
+
     // 分配寄存器给变量
     private int AllocateRegisterForVariable(string variableName, int currentPosition)
     {
@@ -138,7 +138,7 @@ class LinearScanRegisterAllocator
             }
             return existingRegister;
         }
-        
+
         // 尝试查找空闲寄存器
         int freeRegister = FindFreeRegister();
         if (freeRegister != -1)
@@ -153,17 +153,17 @@ class LinearScanRegisterAllocator
             registerAssignment[variableName] = freeRegister;
             return freeRegister;
         }
-        
+
         // 没有空闲寄存器，需要溢出
         int registerToSpill = FindRegisterToSpill(variableName, currentPosition);
         var spilledReg = registers[registerToSpill];
         string spilledVariable = spilledReg.VariableName;
-        
+
         Console.WriteLine($"Spilling variable '{spilledVariable}' from register R{registerToSpill} for variable '{variableName}'");
-        
+
         // 移除溢出变量的寄存器分配
         registerAssignment.Remove(spilledVariable);
-        
+
         // 分配寄存器给新变量
         spilledReg.VariableName = variableName;
         if (variableLastUse.TryGetValue(variableName, out int newLastUse))
@@ -171,10 +171,10 @@ class LinearScanRegisterAllocator
             spilledReg.LastUse = newLastUse;
         }
         registerAssignment[variableName] = registerToSpill;
-        
+
         return registerToSpill;
     }
-    
+
     // 释放不再使用的寄存器
     private void FreeUnusedRegisters(int currentPosition)
     {
@@ -189,33 +189,33 @@ class LinearScanRegisterAllocator
             }
         }
     }
-    
+
     // 执行寄存器分配
     public void AllocateRegisters()
     {
         Console.WriteLine("Starting Linear Scan Register Allocation...");
         Console.WriteLine($"Total assignments: {assignments.Count}");
         Console.WriteLine();
-        
+
         // 计算变量的最后使用位置
         ComputeVariableLastUse();
-        
+
         Console.WriteLine("Variable last use positions:");
         foreach (var kvp in variableLastUse.OrderBy(k => k.Value))
         {
             Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
         }
         Console.WriteLine();
-        
+
         // 线性扫描每个赋值语句
         for (int i = 0; i < assignments.Count; i++)
         {
             var assignment = assignments[i];
             Console.WriteLine($"Processing assignment {i}: {assignment.Variable} = ...");
-            
+
             // 释放当前不再使用的寄存器
             FreeUnusedRegisters(i);
-            
+
             // 为表达式中引用的变量分配寄存器
             var referencedVars = assignment.Initializer.GetReferencedVariables();
             foreach (var varName in referencedVars)
@@ -223,14 +223,14 @@ class LinearScanRegisterAllocator
                 int regIndex = AllocateRegisterForVariable(varName, i);
                 Console.WriteLine($"  Variable '{varName}' in expression -> R{regIndex}");
             }
-            
+
             // 为被赋值的变量分配寄存器
             int assignReg = AllocateRegisterForVariable(assignment.Variable.Name, i);
             Console.WriteLine($"  Variable '{assignment.Variable}' being assigned -> R{assignReg}");
-            
+
             Console.WriteLine();
         }
-        
+
         // 输出最终分配结果
         Console.WriteLine("Final Register Allocation:");
         foreach (var reg in registers)
@@ -246,4 +246,3 @@ class LinearScanRegisterAllocator
         }
     }
 }
-

@@ -29,7 +29,7 @@ public sealed class LuaRunner
         }
     }
 
-        public static void ExecuteFile(string filename)
+    public static void ExecuteFile(string filename)
     {
         using var state = new Lua();
         state.State.Encoding = Encoding.UTF8;

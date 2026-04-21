@@ -64,7 +64,7 @@ public enum TokenType
     LeftBracket, // []
     RightBracket,
     OpenBrace, // {}
-    CloseBrace, 
+    CloseBrace,
     COMMA, // ,
     DOT, // .
     COLON, // :
@@ -74,21 +74,21 @@ public enum TokenType
     STRUCT, // struct
     IMPORT, // import
     AS, // as
-    IF, 
+    IF,
     ELIF,
-    ELSE, 
+    ELSE,
     ENDIF,
     WHILE,
-    FOR, 
+    FOR,
     TO,
     IN,
     STEP,
     BREAK,
     CONTINUE,
-    NEXT, 
+    NEXT,
     FUNC,
     RETURN,
-    ENDFUNC, 
+    ENDFUNC,
     END,
     TRUE, // true
     FALSE, // false
@@ -116,6 +116,6 @@ public sealed record Token(SourceText text, TokenType type, string value, int st
 
     public override string ToString()
     {
-        return $"T{Location.StartLine+1}('{Value}':{Type})";
+        return $"T{Location.StartLine + 1}('{Value}':{Type})";
     }
 }

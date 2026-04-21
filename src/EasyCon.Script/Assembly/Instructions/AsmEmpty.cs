@@ -25,7 +25,7 @@ class AsmLabel : Instruction
 
     public static Instruction Create(string lbl)
     {
-        return new AsmLabel() { Label  = lbl};
+        return new AsmLabel() { Label = lbl };
     }
 
     public override void WriteBytes(Stream stream)

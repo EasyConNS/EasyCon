@@ -65,7 +65,7 @@ internal sealed class BoundLiteralExpression : BoundExpr
 {
     public override ScriptType Type { get; }
     public override BoundNodeKind Kind => BoundNodeKind.Literal;
-    public BoundLiteralExpression(AstNode syntax, Value value) : base( syntax)
+    public BoundLiteralExpression(AstNode syntax, Value value) : base(syntax)
     {
         Type = value.Type;
         ConstantValue = value;
@@ -152,7 +152,7 @@ internal sealed class BoundConversionExpression(AstNode syntax, ScriptType type,
     public BoundExpr Expression = expr;
 }
 
-internal sealed class BoundAssignExpression(AstNode syntax, VariableSymbol variable, BoundExpr expr) :BoundExpr(syntax)
+internal sealed class BoundAssignExpression(AstNode syntax, VariableSymbol variable, BoundExpr expr) : BoundExpr(syntax)
 {
     public override ScriptType Type => Expression.Type;
     public readonly VariableSymbol Variable = variable;

@@ -25,7 +25,7 @@ internal sealed class Lowerer
             {
                 foreach (var s in block.Statements.Reverse())
                 {
-                    if(s.Kind != NopStatement)stack.Push(s);
+                    if (s.Kind != NopStatement) stack.Push(s);
                 }
             }
             else

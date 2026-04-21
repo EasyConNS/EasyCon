@@ -102,7 +102,7 @@ public class ImageLabelX
         {
             filePath += ".ILX";
         }
-        if(!Validate(out var msg))
+        if (!Validate(out var msg))
         {
             throw new ArgumentException(msg);
         }
@@ -116,18 +116,18 @@ public class ImageLabelX
             writer.Write((byte)(IsImageData ? 1 : 0)); // 1字节：数据类型标识 (1=图像, 0=文本)
             writer.Write((byte)ProcessingMethod); // 1字节：处理方式
             writer.Write(SimilarityThreshold);  // 8字节：阈值
-            
+
             // 写入区域信息
             TargetRegion.WriteToBinary(writer); // 16字节：x,y,width,height
             SearchRegion.WriteToBinary(writer); // 16字节：搜索区域
-            
+
             // 写入数据长度和数据
             // 对于图像数据，将Base64解码为原始字节
             // 对于文本数据，直接编码为UTF8
             byte[] dBytes = IsImageData ? Convert.FromBase64String(TargetData) : Encoding.UTF8.GetBytes(TargetData);
             writer.Write(dBytes.Length); // 4字节：数据长度
             writer.Write(dBytes);       // N字节：数据内容
-            
+
             // 写入文件结束标记（可选，用于验证文件完整性）
             writer.Write((byte)0xFF); // 1字节：结束符
         }
@@ -169,15 +169,15 @@ public class ImageLabelX
             byte dataType = reader.ReadByte();    // 数据类型
             SearchMethod method = (SearchMethod)reader.ReadByte(); // 处理方式
             double threshold = reader.ReadDouble(); // 阈值
-            
+
             // 读取区域信息
             var region = RectangleFact.ReadFromBinary(reader);
             var searchRegion = RectangleFact.ReadFromBinary(reader);
-            
+
             // 读取数据长度和数据
             int dataLength = reader.ReadInt32();
             byte[] dataBytes = reader.ReadBytes(dataLength);
-            
+
             // 验证数据长度
             if (dataBytes.Length != dataLength)
             {
@@ -186,7 +186,7 @@ public class ImageLabelX
 
             // TODO ExtraData 读取额外参数数据
             var exflag = reader.ReadByte();
-            if(exflag == 1) // 有额外参数
+            if (exflag == 1) // 有额外参数
             {
                 var exlen = reader.ReadByte();
                 var exdata = reader.ReadBytes(exlen);

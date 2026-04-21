@@ -13,7 +13,7 @@ public partial class NintendoSwitch
 {
     private IConnection clientCon { get; set; }
 
-    private ConnectResult _TryConnect(string connStr, int baudrate=115200)
+    private ConnectResult _TryConnect(string connStr, int baudrate = 115200)
     {
         if (connStr == "")
             return ConnectResult.InvalidArgument;
@@ -40,7 +40,7 @@ public partial class NintendoSwitch
         }
 
         Disconnect();
-        clientCon = new TTLSerialClient(connStr,baudrate);
+        clientCon = new TTLSerialClient(connStr, baudrate);
         clientCon.BytesSent += BytesSent;
         clientCon.BytesReceived += BytesReceived;
         clientCon.StatusChanged += StatusChanged;
@@ -202,7 +202,7 @@ public partial class NintendoSwitch
 
     public bool ChangeControllerMode(byte mode)
     {
-        return SendSync(b => b == Reply.Ack, 200, EzDvCommand.Ready, mode,EzDvCommand.ChangeControllerMode);
+        return SendSync(b => b == Reply.Ack, 200, EzDvCommand.Ready, mode, EzDvCommand.ChangeControllerMode);
     }
 
     public bool ChangeControllerColor(byte[] color)
@@ -229,7 +229,7 @@ public partial class NintendoSwitch
         return ret;
     }
 
-    public bool SaveAmiibo(byte index,byte[] amiibo)
+    public bool SaveAmiibo(byte index, byte[] amiibo)
     {
         const int PacketSize = 20;
         List<byte> list = [.. amiibo];

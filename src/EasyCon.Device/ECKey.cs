@@ -27,4 +27,3 @@ public enum DirectionKey
     Left = 0x4,
     Right = 0x8,
 }
-

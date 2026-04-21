@@ -1,7 +1,7 @@
-using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using EasyCon.Core.Config;
+using System.Diagnostics;
 
 namespace EasyCon2.Avalonia.Core.AlertConfig;
 

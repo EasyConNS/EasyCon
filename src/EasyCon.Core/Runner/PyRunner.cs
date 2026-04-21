@@ -38,7 +38,7 @@ public sealed class PyRunner : IRunner
         // Py.GIL()返回一个实现了IDisposable接口的GIL上下文，使用using语句可以确保在代码块执行完毕后正确释放GIL。
         using (Py.GIL())
         {
-            using(var printscope = Py.CreateScope())
+            using (var printscope = Py.CreateScope())
             {
                 // Define a Python class and function to capture stdout
                 printscope.Exec(@"
@@ -61,7 +61,7 @@ def setConsoleOut(writeCallback):
                 {
                     outbuf.Append(message);
                     count++;
-                    if(count == 2)
+                    if (count == 2)
                     {
                         var outmsg = outbuf.ToString();
                         output.Print(outmsg.Trim(), !linebreak);
@@ -98,5 +98,5 @@ class NSPad(ICGamePad pad)
     public void down(string key) => pd.PressButtons(GamePadKey.None);
     public void up(string key) => pd.ReleaseButtons(GamePadKey.None);
 
-    public void ChangeAmiibo(uint index)=>pd.ChangeAmiibo(index);
+    public void ChangeAmiibo(uint index) => pd.ChangeAmiibo(index);
 }

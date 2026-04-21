@@ -52,7 +52,7 @@ public partial class NintendoSwitch : IReporter
         else
         {
             Thread.Sleep(100);
-            result = _TryConnect(constr,9600);
+            result = _TryConnect(constr, 9600);
             if (result == ConnectResult.Success)
             {
                 source = new();
@@ -146,7 +146,7 @@ public partial class NintendoSwitch : IReporter
         System.Diagnostics.Debug.WriteLine("_hat " + _hat.GetName());
         System.Diagnostics.Debug.WriteLine("dkey " + dkey.GetName());
     }
-    
+
     private void DebugKey(string str, ECKey key = null)
     {
         System.Diagnostics.Debug.WriteLine($"{str} {key?.Name ?? "??"}");

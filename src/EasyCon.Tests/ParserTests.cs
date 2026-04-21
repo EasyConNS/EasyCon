@@ -67,7 +67,7 @@ public class ParserTests
             {
                 var compilation = Compilation.Create(tree);
                 var diag = compilation.Compile(exvar ?? []);
-                foreach(var d in diag)
+                foreach (var d in diag)
                     errors.Add(d.Message);
             }
             catch (Exception ex)
@@ -643,12 +643,12 @@ PRINT $a
 ENDFUNC");
 
         // 测试带参数的函数调用
-//        ExpectBindError(@"
-//call test
-//$a = 1
-//FUNC test
-//PRINT $a
-//ENDFUNC");
+        //        ExpectBindError(@"
+        //call test
+        //$a = 1
+        //FUNC test
+        //PRINT $a
+        //ENDFUNC");
     }
 
     #endregion

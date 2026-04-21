@@ -9,7 +9,7 @@ public sealed class EasyRunner : IRunner
 {
     Compilation compilation;
 
-    public bool HasKeyAction => compilation?.KeyAction?? false;
+    public bool HasKeyAction => compilation?.KeyAction ?? false;
     public bool NeedILLoad => compilation?.NeedIL ?? false;
 
     public byte[] Assemble(bool auto = true)
@@ -37,6 +37,6 @@ public sealed class EasyRunner : IRunner
 
     public string ToCode()
     {
-        return compilation?.FormatCode()??throw new ArgumentNullException("无代码");
+        return compilation?.FormatCode() ?? throw new ArgumentNullException("无代码");
     }
 }

@@ -1,7 +1,7 @@
-using EasyCon.Script.Syntax;
-using System.Collections;
-using EasyCon.Script.Text;
 using EasyCon.Script.Symbols;
+using EasyCon.Script.Syntax;
+using EasyCon.Script.Text;
+using System.Collections;
 
 namespace EasyCon.Script;
 

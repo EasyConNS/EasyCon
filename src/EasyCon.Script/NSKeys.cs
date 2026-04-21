@@ -45,7 +45,7 @@ static class NSKeys
         {
             return degree >= 0;
         }
-        switch(direction.ToUpper())
+        switch (direction.ToUpper())
         {
             case "UP": degree = 90; return true;
             case "DOWN": degree = 270; return true;
@@ -62,20 +62,20 @@ static class NSKeys
     public static void GetXYFromDegree(double rdegree, out byte x, out byte y, double degree = 1)
     {
         // -1 means RESET 
-        if(rdegree == -1)
+        if (rdegree == -1)
         {
             x = STICK_CENTER;
             y = STICK_CENTER;
             return;
         }
-        degree = Math.Clamp(degree,0, 1);
+        degree = Math.Clamp(degree, 0, 1);
         double radian = rdegree * Math.PI / 180;
         double dy = Math.Round(
-            (Math.Tan(radian) * Math.Sign(Math.Cos(radian)) ).Clamp(-1, 1)
+            (Math.Tan(radian) * Math.Sign(Math.Cos(radian))).Clamp(-1, 1)
             , 4);
-        double dx = radian == 0 ? 1 : 
+        double dx = radian == 0 ? 1 :
         Math.Round(
-            (1 / Math.Tan(radian) * Math.Sign(Math.Sin(radian)) ).Clamp(-1, 1)
+            (1 / Math.Tan(radian) * Math.Sign(Math.Sin(radian))).Clamp(-1, 1)
         , 4);
         dx *= degree;
         dy *= degree;

@@ -39,7 +39,7 @@ class ConsoleOutAdapter() : IOutputAdapter
             if (!_msgFirstLine)
                 Console.WriteLine();
             _msgFirstLine = false;
-            if(timestamp)
+            if (timestamp)
                 ColorfulConsole.Write(DateTime.Now.ToString("[HH:mm:ss.fff] "), Color.Gray);
         }
         ColorfulConsole.Write(message, color ?? Color.White);

@@ -6,16 +6,16 @@ namespace EasyCon.Script.Syntax;
 public abstract class AstNode(Token syntax)
 {
     public Token Syntax { get; } = syntax;
-    public int Line => Syntax.Location.StartLine+1;
+    public int Line => Syntax.Location.StartLine + 1;
 
-    public virtual T Accept<T>(IAstVisitor<T> visitor) {throw new NotImplementedException();}
+    public virtual T Accept<T>(IAstVisitor<T> visitor) { throw new NotImplementedException(); }
 
     // public readonly List<TriviaNode> LeadingTrivia = [];
     // public readonly List<TriviaNode> TrailingTrivia = [];
 }
 
 
-public abstract class Member(Token key) : AstNode(key){}
+public abstract class Member(Token key) : AstNode(key) { }
 
 // 表达式节点
 public abstract class Expression(Token key) : AstNode(key) { }

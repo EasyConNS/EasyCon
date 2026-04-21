@@ -1,6 +1,6 @@
-using System.Runtime.Versioning;
 using EasyCon.Core.Config;
 using EasyDevice;
+using System.Runtime.Versioning;
 
 namespace EasyCon2.Avalonia.Core.VPad;
 

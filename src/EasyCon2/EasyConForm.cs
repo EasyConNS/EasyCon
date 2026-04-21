@@ -96,7 +96,7 @@ namespace EasyCon2.Forms
                 displayVersion = VER.Substring(0, plusIndex);
             }
             this.Text = $"伊机控 EasyCon v{displayVersion}  QQ群:946057081";
-            
+
             comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
             comboBoxBoardType.SelectedIndex = 0;
             RegisterKeys();
@@ -964,7 +964,7 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             // CheckOnClick已自动切换状态，直接读取当前值
             _config.EnableAutoCompletion = menu.Checked;
             SaveConfig();
-            
+
             // 直接改变补全控制器的状态，无需重新初始化
             _completionController.EnableAutoCompletion = _config.EnableAutoCompletion;
         }

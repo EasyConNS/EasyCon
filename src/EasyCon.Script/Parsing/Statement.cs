@@ -52,7 +52,7 @@ class EmptyStmt() : Statement(null!)
 }
 
 abstract class StartBlockStmt(Token syntax) : Statement(syntax)
-{}
+{ }
 
 class EndBlockStmt(Token syntax) : Statement(syntax)
 {

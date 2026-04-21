@@ -155,7 +155,7 @@ public sealed class ProjectManager : IDisposable
 
             // 加载main.txt
             var mainEntry = archive.GetEntry("main.ecs");
-            if(mainEntry != null)
+            if (mainEntry != null)
             {
                 using var reader = new StreamReader(mainEntry.Open());
                 _mainSource = reader.ReadToEnd();
@@ -191,11 +191,11 @@ public sealed class ProjectManager : IDisposable
 
     public void LoadFromPath(string path)
     {
-        if(!Path.Exists(path))
+        if (!Path.Exists(path))
             throw new FileNotFoundException("ZIP文件不存在", path);
         ClearProject();
 
-        if(File.Exists(path + "/" + "main.ecs"))
+        if (File.Exists(path + "/" + "main.ecs"))
             _mainSource = File.ReadAllText(path + "/" + "main.ecs");
 
         var libpath = path + "/lib/";

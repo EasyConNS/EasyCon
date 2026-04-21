@@ -30,22 +30,24 @@ internal class TTLv2SerialClient(string name, int port) : IConnection
         void checkopend(object sender, string message)
         {
             bool check(byte[] bs) => bs.Length == 1 && bs[0] == Reply.Hello;
-                var recv = _serialPortClient.SendCommand([EzDvCommand.Ready, EzDvCommand.Ready, EzDvCommand.Hello]);
+            var recv = _serialPortClient.SendCommand([EzDvCommand.Ready, EzDvCommand.Ready, EzDvCommand.Hello]);
 
-                Console.WriteLine($"[{_serialPortClient.ConnectPort}] --recv-- " + string.Join(" ", recv.Select(b => b.ToString("X2"))));
+            Console.WriteLine($"[{_serialPortClient.ConnectPort}] --recv-- " + string.Join(" ", recv.Select(b => b.ToString("X2"))));
 
-                if (!check(recv))
-                {
-                    _serialPortClient.Close();
-                    StatusChanged?.Invoke(Status.Error);
-                }
-        };
+            if (!check(recv))
+            {
+                _serialPortClient.Close();
+                StatusChanged?.Invoke(Status.Error);
+            }
+        }
+        ;
         _serialPortClient.ConnectionOpened += checkopend;
         _serialPortClient.DataReceived += (sender, args) =>
         {
             BytesReceived?.Invoke(_serialPortClient.ConnectPort, args.Data);
         };
-        Task.Run(() => {
+        Task.Run(() =>
+        {
             try
             {
                 if (_serialPortClient.Open())

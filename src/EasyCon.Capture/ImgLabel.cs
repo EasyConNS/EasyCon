@@ -123,7 +123,7 @@ public record ImgLabel
     {
         var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception();
         temp.name = Path.GetFileNameWithoutExtension(path);
-        temp.path = Path.GetDirectoryName(path)??string.Empty;
+        temp.path = Path.GetDirectoryName(path) ?? string.Empty;
         return temp;
     }
 }
@@ -176,7 +176,7 @@ public static class ILExt
             {
                 using var target = new Mat(ss, self._target);
                 var rlttxt = ECSearch.FindOCR(self.ImgBase64, target, out md);
-                result = [new Point(self.TargetX - self.RangeX, self.TargetY- self.RangeY)];
+                result = [new Point(self.TargetX - self.RangeX, self.TargetY - self.RangeY)];
             }
             else
             {

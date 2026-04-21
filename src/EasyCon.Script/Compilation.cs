@@ -44,7 +44,7 @@ public sealed class Compilation
         ImmutableDictionary<string, Func<int>> externalGetters,
         CancellationToken token)
     {
-        var program = GetProgram([..externalGetters.Select(v=>v.Key)]);
+        var program = GetProgram([.. externalGetters.Select(v => v.Key)]);
         if (program.Diagnostics.HasErrors())
             return new EvaluationResult(program.Diagnostics, Value.Void);
         var evaluator = new Evaluator(program, externalGetters ?? [], token)

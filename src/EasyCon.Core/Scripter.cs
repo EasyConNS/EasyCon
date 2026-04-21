@@ -23,7 +23,7 @@ public sealed class Scripter
             diag = runner.Init(code, extVarNames);
         else
             diag = runner.Load(fileName, extVarNames);
-        return [..diag];
+        return [.. diag];
     }
 
     public static IEnumerable<string> GetTokens(string code, string pre)

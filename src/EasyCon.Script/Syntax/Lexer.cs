@@ -67,7 +67,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         "DOWNLEFT", "DOWNRIGHT", "UPLEFT", "UPRIGHT",
         "UP", "DOWN", "LEFT", "RIGHT"];
     private static readonly List<string> stickKeywords = ["LS", "RS"];
-    
+
     // 方向关键字
     private static readonly List<string> direcKeywords = ["UP", "DOWN", "LEFT", "RIGHT",
         "DOWNLEFT", "DOWNRIGHT", "UPLEFT", "UPRIGHT"];
@@ -219,7 +219,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         }
         else
         {
-            if(!int.TryParse(number, out _))
+            if (!int.TryParse(number, out _))
             {
                 var span = new SourceSpan(start, length);
                 var location = new TextLocation(_text, span);
@@ -382,7 +382,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             AddToken(tokenType, word.ToUpper(), start);
             if (SyntaxTree.LegacyCompat)
             {
-                if(tokenType == TokenType.IF || tokenType == TokenType.ELIF)
+                if (tokenType == TokenType.IF || tokenType == TokenType.ELIF)
                     _expectEqualAfterIf = true;
             }
         }
@@ -394,9 +394,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         else if ((isAllUpper || isAllLower) && gamepadKeywords.Contains(word.ToUpper()))
         {
             var ktype = TokenType.ButtonKeyword;
-            if(_expectUPDOWNAgterBtn)
+            if (_expectUPDOWNAgterBtn)
             {
-                switch(word.ToUpper())
+                switch (word.ToUpper())
                 {
                     case "UP":
                     case "DOWN":
@@ -409,9 +409,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 _expectUPDOWNAgterBtn = true;
             }
-            if(_expectDirectionAgterStick)
+            if (_expectDirectionAgterStick)
             {
-                if(direcKeywords.Contains(word.ToUpper()))
+                if (direcKeywords.Contains(word.ToUpper()))
                 {
                     ktype = TokenType.DirectionKeyword;
                 }
@@ -428,7 +428,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         else
         {
             AddToken(TokenType.IDENT, word, start);
-            if(word.Equals("print", StringComparison.OrdinalIgnoreCase) || word.Equals("alert", StringComparison.OrdinalIgnoreCase))
+            if (word.Equals("print", StringComparison.OrdinalIgnoreCase) || word.Equals("alert", StringComparison.OrdinalIgnoreCase))
                 ReadPrintArguments();
         }
     }

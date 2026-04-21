@@ -55,8 +55,8 @@ internal sealed class ParameterSyntax(VariableExpr varExpr, TypeClauseSyntax? ty
     public override string ToString()
     {
         var type = Type == null ? "" : $": {Type.Identifier.Value.ToUpper()}";
-        return  Identifier.GetCodeText() + type;
-     }
+        return Identifier.GetCodeText() + type;
+    }
 }
 
 class EndFuncStmt(Token syntax) : EndBlockStmt(syntax)
@@ -111,7 +111,7 @@ class CallStmt(Token syntax, string fnName, ExprBase[] args, CallType callType =
     protected override string _GetString()
     {
         var name = FnName;
-        if(BuiltinFunctions.GetAll().Select(f => f.Name).Contains(FnName.ToUpper()))
+        if (BuiltinFunctions.GetAll().Select(f => f.Name).Contains(FnName.ToUpper()))
         {
             name = FnName.ToUpper();
         }

@@ -311,7 +311,7 @@ internal sealed partial class Parser
 
     internal ImmutableArray<CompicationUnit> Flatten(CompicationUnit prog)
     {
-        if(Diagnostics.HasErrors()) return [prog];
+        if (Diagnostics.HasErrors()) return [prog];
         var imports = prog.Members.OfType<ImportStmt>();
         if (!imports.Any()) return [prog];
 

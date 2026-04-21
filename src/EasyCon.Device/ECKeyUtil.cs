@@ -59,16 +59,16 @@ public static class ECKeyUtil
 
     public static void GetXYFromDirection(DirectionKey dkey, out byte x, out byte y, double degree = 1)
     {
-        degree = Math.Clamp(degree,0, 1);
+        degree = Math.Clamp(degree, 0, 1);
         double dx = 0, dy = 0;
         if (dkey.HasFlag(DirectionKey.Left) && !dkey.HasFlag(DirectionKey.Right))
-            dx=-1;
+            dx = -1;
         else if (!dkey.HasFlag(DirectionKey.Left) && dkey.HasFlag(DirectionKey.Right))
-            dx=1;
+            dx = 1;
         if (dkey.HasFlag(DirectionKey.Up) && !dkey.HasFlag(DirectionKey.Down))
             dy = 1;
         else if (!dkey.HasFlag(DirectionKey.Up) && dkey.HasFlag(DirectionKey.Down))
-            dy=-1;
+            dy = -1;
 
         dx *= degree;
         dy *= degree;

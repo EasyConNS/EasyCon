@@ -1,9 +1,9 @@
 using EasyCon.Capture;
-using EasyCon.Script;
 using EasyCon.Core;
-using EasyCon2.Helper;
+using EasyCon.Script;
 using EasyCon.Script.Assembly;
 using EasyCon.Script.Syntax;
+using EasyCon2.Helper;
 using OpenCvSharp.Extensions;
 using System.IO;
 using System.Media;
@@ -46,7 +46,7 @@ partial class EasyConForm
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.StackTrace,$"异常{ex.Message}");
+            MessageBox.Show(ex.StackTrace, $"异常{ex.Message}");
             return false;
         }
         finally

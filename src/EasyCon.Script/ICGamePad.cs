@@ -4,7 +4,7 @@ public interface ICGamePad
 {
     abstract DelayType DelayMethod { get; }
     void ClickButtons(GamePadKey key, int duration, CancellationToken token);
-    void PressButtons(GamePadKey key); 
+    void PressButtons(GamePadKey key);
     void ReleaseButtons(GamePadKey key);
     void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token);
     void SetStick(GamePadKey key, byte x, byte y);

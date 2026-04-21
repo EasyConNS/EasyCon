@@ -25,7 +25,7 @@ public sealed class ECSearch
     {
         using MemoryStream memoryStream = new();
         memoryStream.Write(srcBmp.ToPngBytes());
-        var resultTxt  = new OCRDetect().TesserDetect(memoryStream, out var confidence).Trim();
+        var resultTxt = new OCRDetect().TesserDetect(memoryStream, out var confidence).Trim();
         Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{confidence}");
         Debug.WriteLine($"对比原始文本:{text}，对比对象：{resultTxt}");
         // 计算编辑距离
@@ -52,7 +52,7 @@ public sealed class ECSearch
         //    P_Data = srcBmp.LockBits(new Rectangle(0, 0, P_Width, P_Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
         //}
 
-        OpenCvSharp.Point result = new(-1,-1);
+        OpenCvSharp.Point result = new(-1, -1);
         switch (method)
         {
             case SearchMethod.SqDiff:

@@ -188,9 +188,9 @@ internal class ILManager : INotifyPropertyChanged
         Labels.Clear();
         var set = new HashSet<string>();
 
-        foreach(var path in paths)
+        foreach (var path in paths)
         {
-            if(!Directory.Exists(path))continue;
+            if (!Directory.Exists(path)) continue;
 
             foreach (var file in Directory.GetFiles(path, "*.IL"))
             {

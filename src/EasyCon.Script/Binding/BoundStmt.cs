@@ -1,7 +1,7 @@
-using EasyCon.Script.Syntax;
-using System.Collections.Immutable;
-using EasyScript;
 using EasyCon.Script.Symbols;
+using EasyCon.Script.Syntax;
+using EasyScript;
+using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;
 

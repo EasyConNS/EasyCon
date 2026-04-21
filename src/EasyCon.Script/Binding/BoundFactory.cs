@@ -26,7 +26,7 @@ internal static class BoundFactory
     }
     public static BoundNop Nop(AstNode syntax)
     {
-        return new BoundNop(syntax); 
+        return new BoundNop(syntax);
     }
     public static BoundVariableDeclaration VariableDeclaration(AstNode syntax, VariableSymbol symbol, BoundExpr initializer)
     {

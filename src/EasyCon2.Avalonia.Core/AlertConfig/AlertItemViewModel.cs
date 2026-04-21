@@ -1,7 +1,7 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Config;
+using System.Collections.ObjectModel;
 
 namespace EasyCon2.Avalonia.Core.AlertConfig;
 

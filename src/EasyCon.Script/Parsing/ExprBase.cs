@@ -33,7 +33,7 @@ class VariableExpr(Token tag, bool readOnly = false) : ExprBase(tag)
     public override string GetCodeText() => Tag;
 }
 
-sealed class ConstVarExpr(Token tag) : VariableExpr(tag, true) {}
+sealed class ConstVarExpr(Token tag) : VariableExpr(tag, true) { }
 
 sealed class ExtVarExpr(Token tag, string name) : ExprBase(tag)
 {
@@ -93,7 +93,7 @@ sealed class SliceExpression(Token var, ExprBase start, ExprBase end, bool ommit
 {
     public readonly ExprBase Start = start;
     public readonly ExprBase End = end;
-    public override string GetCodeText() => $"{Tag}[{(ommitstart? "" : Start.GetCodeText())}:{End.GetCodeText()}]";
+    public override string GetCodeText() => $"{Tag}[{(ommitstart ? "" : Start.GetCodeText())}:{End.GetCodeText()}]";
 }
 
 sealed class Callv1Expression(Token identifier, Token lp, ImmutableArray<ExprBase> arguments, Token rp) : ExprBase(identifier)
