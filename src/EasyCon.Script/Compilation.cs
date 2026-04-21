@@ -26,10 +26,10 @@ public sealed class Compilation
     public Compilation? Previous { get; }
     public SyntaxTree SyntaxTrees { get; }
 
-    private BoundProgram GetProgram(ImmutableHashSet<string>? extVars)
+    private BoundProgram GetProgram(ImmutableHashSet<string>? extVars, ImmutableArray<ForeignFunction> foreignFunctions = default)
     {
         var previous = Previous == null ? null : Previous.GetProgram(extVars);
-        return Binder.BindProgram(SyntaxTrees, extVars);
+        return Binder.BindProgram(SyntaxTrees, extVars, foreignFunctions);
     }
 
     public ImmutableArray<Diagnostic> Compile(ImmutableHashSet<string>? extVars)
@@ -44,10 +44,18 @@ public sealed class Compilation
         ImmutableDictionary<string, Func<int>> externalGetters,
         CancellationToken token)
     {
-        var program = GetProgram([.. externalGetters.Select(v => v.Key)]);
+        return Evaluate(output, pad, externalGetters, token, default);
+    }
+
+    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad,
+        ImmutableDictionary<string, Func<int>> externalGetters,
+        CancellationToken token,
+        ImmutableArray<ForeignFunction> foreignFunctions)
+    {
+        var program = GetProgram([.. externalGetters.Select(v => v.Key)], foreignFunctions);
         if (program.Diagnostics.HasErrors())
             return new EvaluationResult(program.Diagnostics, Value.Void);
-        var evaluator = new Evaluator(program, externalGetters ?? [], token)
+        var evaluator = new Evaluator(program, externalGetters ?? [], token, foreignFunctions)
         {
             GamePad = pad,
             Output = output,

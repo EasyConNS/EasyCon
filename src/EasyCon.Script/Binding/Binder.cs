@@ -29,15 +29,15 @@ internal sealed class Binder
         }
     }
 
-    public static BoundProgram BindProgram(SyntaxTree syntaxs, ImmutableHashSet<string>? externalVariables = null)
+    public static BoundProgram BindProgram(SyntaxTree syntaxs, ImmutableHashSet<string>? externalVariables = null, ImmutableArray<ForeignFunction> foreignFunctions = default)
     {
-        var parentScope = CreateRootScope();
+        var (parentScope, ffiSymbols) = CreateRootScope(foreignFunctions);
         parentScope.SetValidExternalVariables(externalVariables ?? []);
         var binder = new Binder(parentScope, function: null);
         binder.Diagnostics.AddRange(syntaxs.Diagnostics);
         if (binder.Diagnostics.HasErrors())
         {
-            return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. binder.Diagnostics], [], []);
+            return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. binder.Diagnostics], [], [], ffiSymbols);
         }
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
@@ -90,14 +90,14 @@ internal sealed class Binder
 
         if (binder.Diagnostics.HasErrors())
         {
-            return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. binder.Diagnostics], [], []);
+            return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. binder.Diagnostics], [], [], ffiSymbols);
         }
 
         var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
         var body = new BoundBlockStatement(main.Declaration, statements.ToImmutable());
         var loweredBody = Lowerer.Lower(main, body);
         functionBodies.Add(main, loweredBody);
-        return new BoundProgram(main, [.. binder._diagnostics], functionBodies.ToImmutable(), [.. binder._ilNames]);
+        return new BoundProgram(main, [.. binder._diagnostics], functionBodies.ToImmutable(), [.. binder._ilNames], ffiSymbols);
     }
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
@@ -129,14 +129,27 @@ internal sealed class Binder
         _scope.TryDeclareFunction(function);
     }
 
-    private static BoundScope CreateRootScope()
+    private static (BoundScope Scope, ImmutableDictionary<string, FunctionSymbol> FfiSymbols) CreateRootScope(ImmutableArray<ForeignFunction> foreignFunctions = default)
     {
         var result = new BoundScope(null);
+        var ffiSymbols = ImmutableDictionary.CreateBuilder<string, FunctionSymbol>();
 
         foreach (var f in BuiltinFunctions.GetAll())
             result.TryDeclareFunction(f);
 
-        return result;
+        // 注册 FFI 函数符号
+        if (!foreignFunctions.IsDefault)
+        {
+            foreach (var ff in foreignFunctions)
+            {
+                var parameters = ff.Parameters.Select((p, i) => new ParamSymbol(p.Name, p.Type, i)).ToImmutableArray();
+                var function = new FunctionSymbol(ff.Name, [], parameters, ff.ReturnType);
+                result.TryDeclareFunction(function);
+                ffiSymbols[ff.Name] = function;
+            }
+        }
+
+        return (result, ffiSymbols.ToImmutable());
     }
     #region 核心泛型推导逻辑
 

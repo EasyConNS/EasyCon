@@ -1,5 +1,4 @@
 using EasyCon.Script.Symbols;
-using System.Reflection;
 
 namespace EasyCon.Script.Binding;
 
@@ -29,10 +28,13 @@ internal static class BuiltinFunctions
     public static readonly FunctionSymbol Length = new("LEN", [T], [new("var", T)], ScriptType.Int);
 
     /// <summary>
+    /// 所有内置函数符号的静态缓存，避免每次反射枚举
+    /// </summary>
+    private static readonly FunctionSymbol[] All =
+        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Append, Length];
+
+    /// <summary>
     /// 获取所有内置函数符号
     /// </summary>
-    internal static IEnumerable<FunctionSymbol> GetAll()
-        => typeof(BuiltinFunctions).GetFields(BindingFlags.Public | BindingFlags.Static)
-                                   .Where(f => f.FieldType == typeof(FunctionSymbol))
-                                   .Select(f => (FunctionSymbol)f.GetValue(null)!);
+    internal static IReadOnlyList<FunctionSymbol> GetAll() => All;
 }

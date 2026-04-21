@@ -35,12 +35,12 @@
 #### 3. script模块 (required)
 - **功能**: 脚本语言解析和执行
 - **实现**: `EasyCon.Script` 项目
-- **接口**: `IScriptService`, `IRunner`
+- **接口**: `IOutputAdapter`, `ICGamePad`, `Compilation`, `Evaluator`
 - **特性**:
-  - 完整编译器实现
-  - 虚拟机执行引擎
-  - 多语言支持
-  - 调试接口
+  - SourceText→Lexer→Parser→Binder→Evaluator 编译管线
+  - 绑定器进行类型检查和作用域分析
+  - 单片机字节码生成（Assembler）
+  - 控制流图和寄存器分配优化
 
 #### 4. vpad模块 (optional)
 - **功能**: 虚拟手柄UI和按键映射
