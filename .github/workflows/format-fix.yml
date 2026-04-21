@@ -1,0 +1,56 @@
+name: Auto Fix Format
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**/*.md'
+      - 'LICENSE'
+      - 'README*'
+      - 'CHANGELOG*'
+
+jobs:
+  format-fix:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Run dotnet format
+        run: dotnet format --verbosity diagnostic
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          $changed = git diff --exit-code
+          if (-not $?) {
+            echo "changed=true" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "changed=false" >> $env:GITHUB_OUTPUT
+          }
+          exit 0
+
+      - name: Commit and push fixes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "style: auto-fix dotnet format [skip ci]"
+          git push
