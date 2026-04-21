@@ -64,7 +64,21 @@ jobs:
         run: dotnet restore
 
       - name: Check Formatting
-        run: dotnet format --verify-no-changes --verbosity diagnostic
+        run: dotnet format --verbosity diagnostic
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          git diff --quiet || echo "changed=true" >> $env:GITHUB_OUTPUT
+
+      - name: Commit and push fixes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "style: auto-fix dotnet format"
+          git push
 
   build-and-test:
 
@@ -96,12 +110,13 @@ jobs:
     # Restore the application to populate the obj folder with RuntimeIdentifiers
     - name: Restore the application
       run: dotnet restore
+    # Debug 模式编译更快，适合开发分支快速反馈
+    - name: Build(Debug)
+      run: dotnet build --no-restore --configuration Debug
     # Execute all unit tests in the solution
     - name: Execute unit tests
       run: dotnet test --no-build --configuration Debug --verbosity normal
 
-    - name: Build(Debug)
-      run: dotnet build --no-restore --configuration Debug
 
     # # Decode the base 64 encoded pfx and save the Signing_Certificate
     # - name: Decode the pfx
