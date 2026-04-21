@@ -1,0 +1,118 @@
+name: CI (Main)
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**/*.md'
+      - 'LICENSE'
+      - 'README*'
+      - 'CHANGELOG*'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**/*.md'
+      - 'LICENSE'
+      - 'README*'
+      - 'CHANGELOG*'
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  # ========================================
+  # 1. 代码格式检查（阻断性）
+  # ========================================
+  format:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Check Formatting
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+
+  # ========================================
+  # 2. 构建 + 测试 (Release)
+  # ========================================
+  build-and-test:
+    runs-on: windows-latest
+    needs: format
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --verbosity normal --logger "console;verbosity=detailed"
+
+      - name: Publish Verification
+        run: dotnet publish --no-build --configuration Release --self-contained false
+        
+      - name: Publish
+        run: |
+          dotnet publish src/EasyCon2/EasyCon2.csproj `
+            --configuration Release `
+            -p:PublishSingleFile=true `
+            --output ./publish `
+            --self-contained false
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: myapp-${{ github.run_number }}
+          path: ./publish/
+          retention-days: 30
+  #     - name: Upload Test Results
+  #       if: always()
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: test-results-main
+  #         path: '**/TestResults/'
+
+  # # ========================================
+  # # 3. 依赖漏洞审计（阻断性）
+  # # ========================================
+  # audit:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Setup .NET
+  #       uses: actions/setup-dotnet@v4
+  #       with:
+  #         dotnet-version: ${{ env.DOTNET_VERSION }}
+
+  #     - name: Restore
+  #       run: dotnet restore
+
+  #     - name: Audit Packages
+  #       shell: pwsh
+  #       run: |
+  #         $output = dotnet list package --vulnerable --include-transitive 2>&1
+  #         Write-Host $output
+  #         if ($output -match "has the following vulnerable packages") { 
+  #           exit 1 
+  #         }
