@@ -262,7 +262,7 @@ internal partial class Parser
     {
         ExprBase left;
         var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
-        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
+        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence && !CursorEOF)
         {
             var opToken = Advance();
             var operand = ParseExpression(unaryOperatorPrecedence);
