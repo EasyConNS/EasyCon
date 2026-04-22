@@ -33,7 +33,7 @@ partial class EasyConForm
         }));
         try
         {
-            var diag = _program.Parse(textEditor.Text, textEditor.Document.FileName, externalGetters);
+            var diag = _program.Parse(scriptEditor.Text, scriptEditor.FileName, externalGetters);
             if (diag.HasErrors())
             {
                 var d1 = diag.Where(d => d.IsError).First();
@@ -76,7 +76,7 @@ partial class EasyConForm
             }
         }
 
-        _vpadService?.UnregisterAllKeys();
+        _vpadService?.Deactivate();
         StatusShowLog("开始运行");
 
         scriptRunning = true;

@@ -22,6 +22,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia.AvaloniaEdit" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaResource Include="VPad\Resources\*.png" />
+    <EmbeddedResource Include="Resources\Scripts\*.xshd" />
   </ItemGroup>
 </Project>

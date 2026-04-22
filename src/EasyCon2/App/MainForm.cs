@@ -3,6 +3,7 @@ using EasyCon.Core.Config;
 using EasyCon.Script.Assembly;
 using EasyCon2.App.Models;
 using EasyCon2.App.Services;
+using EasyCon2.Avalonia.Core.Editor;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Forms;
 using EasyCon2.Helper;
@@ -10,10 +11,8 @@ using Resources = EasyCon2.UI.Common.Properties.Resources;
 using EasyCon2.Views;
 using EasyDevice;
 using EasyScript;
-using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.Folding;
-using ICSharpCode.AvalonEdit.Highlighting;
-using ICSharpCode.AvalonEdit.Highlighting.Xshd;
+using AvaloniaEdit.Folding;
+using AvaloniaEdit.Highlighting;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -21,7 +20,6 @@ using System.Media;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
-using System.Xml;
 using AvaColor = Avalonia.Media.Color;
 using AvaColors = Avalonia.Media.Colors;
 
@@ -43,8 +41,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
     private readonly AppState _state = new();
 
     // Editor
-    private readonly TextEditor _textEditor = new();
-    private CodeCompletionController? _completionController;
+    private ScriptEditorControl _textEditor;
     private FoldingManager? _foldingManager;
     private CustomFoldingStrategy? _foldingStrategy;
     private VPadService? _vpadService;
@@ -80,45 +77,28 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
     private void InitEditor()
     {
-        _textEditor.ShowLineNumbers = true;
-
-        // Syntax highlighting
-        var ecpHighlighting = HighlightingLoader.Load(
-            XmlReader.Create(new MemoryStream(Resources.ecp)),
-            HighlightingManager.Instance);
-        HighlightingManager.Instance.RegisterHighlighting("ECScript", [".txt", ".ecs"], ecpHighlighting);
-
-        var luaHighlighting = HighlightingLoader.Load(
-            XmlReader.Create(new MemoryStream(Resources.lua)),
-            HighlightingManager.Instance);
-        HighlightingManager.Instance.RegisterHighlighting("Lua", [".lua"], luaHighlighting);
-
-        var pyHighlighting = HighlightingLoader.Load(
-            XmlReader.Create(new MemoryStream(Resources.Python_Mode)),
-            HighlightingManager.Instance);
-        HighlightingManager.Instance.RegisterHighlighting("Python", [".py"], pyHighlighting);
-
-        _textEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("ECScript");
-        _textEditor.DragEnter += TextEditor_DragEnter;
-        _textEditor.Drop += TextEditor_DragDrop;
-        _textEditor.TextChanged += TextEditor_TextChanged;
-
-        // Code completion
-        var completionProvider = new EcpCompletionProvider(_textEditor);
-        completionProvider.GetImgLabel += () => _captureService.LoadedLabels.Select(il => il.name);
-        _completionController = new CodeCompletionController(
-            _textEditor, completionProvider, _configService.Config.EnableAutoCompletion);
+        _textEditor = ScriptEditorHost.CreateControl();
+        _textEditor.EditorTextChanged += TextEditor_TextChanged;
+        _textEditor.FileDropped += (path) =>
+        {
+            try
+            {
+                if (!FileClose()) return;
+                FileOpen(path);
+            }
+            catch
+            {
+                MessageBox.Show("打开失败了，原因未知", "打开脚本");
+            }
+        };
 
         // Folding
         _foldingManager = FoldingManager.Install(_textEditor.TextArea);
         _foldingStrategy = new CustomFoldingStrategy();
-        _foldingStrategy.UpdateFoldings(_foldingManager, _textEditor.Document);
+        _foldingStrategy.UpdateFoldings(_foldingManager, _textEditor.TextDocument);
 
-        // Find panel
-        findPanel1.InitEditor(_textEditor);
-
-        // Host AvalonEdit in ElementHost
-        editorHost.Child = _textEditor;
+        // Host in Avalonia control host
+        editorHost.Content = _textEditor;
     }
 
     private void InitServices()
@@ -289,7 +269,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
             // Compile first
             var externalGetters = _captureService.BuildExternalGetters();
             var (success, errorLine, error) = _scriptService.Compile(
-                _textEditor.Text, _textEditor.Document.FileName, externalGetters);
+                _textEditor.Text, _textEditor.TextDocument.FileName, externalGetters);
 
             if (!success)
             {
@@ -322,6 +302,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
             _state.ScriptStartTime = DateTime.Now;
             _state.ScriptRunning = true;
+            _vpadService?.Deactivate();
 
             var pad = new GamePadAdapter(_deviceService.Device);
             _scriptService.Run(this, pad);
@@ -340,7 +321,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
     {
         var externalGetters = _captureService.BuildExternalGetters();
         var (success, formatted, errorLine, error) = _scriptService.Format(
-            _textEditor.Text, _textEditor.Document.FileName, externalGetters);
+            _textEditor.Text, _textEditor.TextDocument.FileName, externalGetters);
 
         if (success)
         {
@@ -555,7 +536,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         // Compile
         var externalGetters = _captureService.BuildExternalGetters();
         var (success, errorLine, error) = _scriptService.Compile(
-            _textEditor.Text, _textEditor.Document.FileName, externalGetters);
+            _textEditor.Text, _textEditor.TextDocument.FileName, externalGetters);
         if (!success)
         {
             MessageBox.Show(errorLine != null ? $"{errorLine}：{error}" : error, "编译出错");
@@ -631,7 +612,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         // Compile
         var externalGetters = _captureService.BuildExternalGetters();
         var (success, errorLine, error) = _scriptService.Compile(
-            _textEditor.Text, _textEditor.Document.FileName, externalGetters);
+            _textEditor.Text, _textEditor.TextDocument.FileName, externalGetters);
         if (!success)
         {
             MessageBox.Show(errorLine != null ? $"{errorLine}：{error}" : error, "编译出错");
@@ -813,9 +794,8 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
         _textEditor.Load(filePath);
         _textEditor.IsModified = false;
-        _textEditor.Document.FileName = filePath;
-        _textEditor.SyntaxHighlighting = HighlightingManager.Instance
-            .GetDefinitionByExtension(Path.GetExtension(filePath));
+        _textEditor.FileName = filePath;
+        _textEditor.SyntaxHighlighting = EcsHighlightingLoader.GetByExtension(Path.GetExtension(filePath));
         _state.CurrentFilePath = filePath;
         _state.IsModified = false;
         StatusShow("文件已打开");
@@ -836,7 +816,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
             if (dlg.ShowDialog() != DialogResult.OK)
                 return false;
             _state.CurrentFilePath = dlg.FileName;
-            _textEditor.Document.FileName = dlg.FileName;
+            _textEditor.FileName = dlg.FileName;
         }
 
         _textEditor.Save(_state.CurrentFilePath);
@@ -856,39 +836,18 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         }
         _state.CurrentFilePath = null;
         _state.IsModified = false;
-        _textEditor.Document.FileName = null;
+        _textEditor.FileName = null;
         _textEditor.Clear();
         _textEditor.IsModified = false;
         StatusShow("文件已关闭");
         return true;
     }
 
-    private void TextEditor_DragEnter(object? sender, System.Windows.DragEventArgs e)
-    {
-        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop)
-            ? System.Windows.DragDropEffects.All
-            : System.Windows.DragDropEffects.None;
-    }
-
-    private void TextEditor_DragDrop(object? sender, System.Windows.DragEventArgs e)
-    {
-        try
-        {
-            var path = (string[])e.Data.GetData(DataFormats.FileDrop, false);
-            if (!FileClose()) return;
-            FileOpen(path[0]);
-        }
-        catch
-        {
-            MessageBox.Show("打开失败了，原因未知", "打开脚本");
-        }
-    }
-
     private void TextEditor_TextChanged(object? sender, EventArgs e)
     {
         _state.IsModified = _textEditor.IsModified;
         if (_configService.Config.EnableAutoCompletion)
-            _foldingStrategy?.UpdateFoldings(_foldingManager!, _textEditor.Document);
+            _foldingStrategy?.UpdateFoldings(_foldingManager!, _textEditor.TextDocument);
         _scriptService.Reset();
     }
 
@@ -898,52 +857,41 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
     private void menuItemFindReplace_Click(object sender, EventArgs e)
     {
-        if (_textEditor.SelectedText.Length > 0)
-            findPanel1.Target = _textEditor.SelectedText;
-        findPanel1.Show();
-        findPanel1.BringToFront();
+        _textEditor.OpenSearchPanel();
     }
 
     private void menuItemFindNext_Click(object sender, EventArgs e)
     {
-        if (_textEditor.SelectedText.Length > 0)
-            findPanel1.Target = _textEditor.SelectedText;
-        var index = findPanel1.Find();
-        if (index == -1)
-        {
-            MessageBox.Show("到底了");
-            return;
-        }
-        _textEditor.Select(index, findPanel1.Target!.Length);
-        _textEditor.ScrollToLine(_textEditor.Document.GetLineByOffset(index).LineNumber);
+        // SearchPanel 内部处理 F3 快捷键
     }
 
     private void menuItemToggleComment_Click(object sender, EventArgs e)
     {
         int startOffset = _textEditor.SelectionStart;
         int endOffset = startOffset + _textEditor.SelectionLength;
-        var startLine = _textEditor.Document.GetLineByOffset(startOffset);
-        var endLine = _textEditor.Document.GetLineByOffset(endOffset);
+        var doc = _textEditor.TextDocument;
+        var startLine = doc.GetLineByOffset(startOffset);
+        var endLine = doc.GetLineByOffset(endOffset);
 
         var docomment = false;
         for (int lineNum = endLine.LineNumber; lineNum >= startLine.LineNumber; lineNum--)
         {
-            var line = _textEditor.Document.GetLineByNumber(lineNum);
-            if (Scripter.CanComment(_textEditor.Document.GetText(line)))
+            var line = doc.GetLineByNumber(lineNum);
+            if (Scripter.CanComment(doc.GetText(line)))
             {
                 docomment = true;
                 break;
             }
         }
 
-        using (_textEditor.Document.RunUpdate())
+        using (doc.RunUpdate())
         {
             for (int lineNum = endLine.LineNumber; lineNum >= startLine.LineNumber; lineNum--)
             {
-                var line = _textEditor.Document.GetLineByNumber(lineNum);
-                var text = _textEditor.Document.GetText(line);
+                var line = doc.GetLineByNumber(lineNum);
+                var text = doc.GetText(line);
                 text = Scripter.ToggleComment(text, docomment);
-                _textEditor.Document.Replace(line, text);
+                doc.Replace(line, text);
             }
         }
     }
@@ -956,8 +904,6 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
     {
         _configService.Config.EnableAutoCompletion = chkAutoCompletion.Checked;
         _configService.Save();
-        if (_completionController != null)
-            _completionController.EnableAutoCompletion = chkAutoCompletion.Checked;
     }
 
     private void chkFolding_CheckedChanged(object sender, EventArgs e)
@@ -965,7 +911,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         _configService.Config.ShowControllerHelp = chkFolding.Checked;
         _configService.Save();
         if (chkFolding.Checked)
-            _foldingStrategy?.UpdateFoldings(_foldingManager!, _textEditor.Document);
+            _foldingStrategy?.UpdateFoldings(_foldingManager!, _textEditor.TextDocument);
         else
             _foldingManager?.Clear();
     }
@@ -1183,11 +1129,11 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
     #region Form Lifecycle
 
-    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    protected override bool ProcessDialogKey(Keys keyData)
     {
-        if (keyData == Keys.Escape)
-            findPanel1.Hide();
-        return base.ProcessCmdKey(ref msg, keyData);
+        if (editorHost.ContainsFocus)
+            return false;
+        return base.ProcessDialogKey(keyData);
     }
 
     private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
