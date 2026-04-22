@@ -1,3 +1,5 @@
+using Avalonia.Win32.Interoperability;
+
 namespace EasyCon2.Forms
 {
     partial class EasyConForm
@@ -84,9 +86,8 @@ namespace EasyCon2.Forms
             groupBox2 = new GroupBox();
             genFwButton = new Button();
             comboBoxBoardType = new ComboBox();
-            findPanel1 = new FindPanel();
             buttonShowController = new Button();
-            editorHost = new System.Windows.Forms.Integration.ElementHost();
+            editorHost = new WinFormsAvaloniaControlHost();
             groupBox3 = new GroupBox();
             ComPort = new ComboBox();
             buttonSerialPortConnect = new Button();
@@ -601,20 +602,7 @@ namespace EasyCon2.Forms
             comboBoxBoardType.Size = new Size(94, 28);
             comboBoxBoardType.TabIndex = 5;
             // 
-            // findPanel1
-            // 
-            findPanel1.AccessibleName = "查找窗口";
-            findPanel1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            findPanel1.BackColor = Color.Transparent;
-            findPanel1.BorderStyle = BorderStyle.FixedSingle;
-            findPanel1.Location = new Point(184, 17);
-            findPanel1.Name = "findPanel1";
-            findPanel1.Replaced = null;
-            findPanel1.Size = new Size(250, 98);
-            findPanel1.TabIndex = 1;
-            findPanel1.Target = null;
-            findPanel1.Visible = false;
-            // 
+            //
             // buttonShowController
             // 
             buttonShowController.AccessibleName = "打开虚拟手柄";
@@ -876,7 +864,6 @@ namespace EasyCon2.Forms
             // scriptContainer
             // 
             scriptContainer.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            scriptContainer.Controls.Add(findPanel1);
             scriptContainer.Controls.Add(scriptTitleLabel);
             scriptContainer.Controls.Add(scriptPanel);
             scriptContainer.Location = new Point(313, 32);
@@ -981,7 +968,7 @@ namespace EasyCon2.Forms
         private System.Windows.Forms.ToolStripMenuItem 采集卡类型ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 设置ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem 显示调试信息ToolStripMenuItem;
-        private System.Windows.Forms.Integration.ElementHost editorHost;
+        private WinFormsAvaloniaControlHost editorHost;
         private ToolStripMenuItem 推送设置ToolStripMenuItem;
         private ToolStripMenuItem 代码自动补全ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙ToolStripMenuItem;
@@ -1001,7 +988,6 @@ namespace EasyCon2.Forms
         private ToolStripMenuItem 編輯ToolStripMenuItem;
         private ToolStripMenuItem 查找替換ToolStripMenuItem;
         private ToolStripMenuItem 查找下一个ToolStripMenuItem;
-        private FindPanel findPanel1;
         private ToolStripMenuItem 显示折叠ToolStripMenuItem;
         private ToolStripMenuItem 注释取消注释ToolStripMenuItem;
         private ToolStripMenuItem 脚本语法ToolStripMenuItem;

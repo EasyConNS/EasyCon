@@ -1,41 +1,33 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <Nullable>warnings</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
-    <UseWPF>true</UseWPF>
 	<TargetFramework>net10.0-windows7.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>..\EasyCon2.UI.Common\Resources\Icons\favicon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 	  <NoWarn>$(NoWarn);WFO1000</NoWarn>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Avalonia.Win32.Interoperability" />
     <PackageReference Include="OpenCvSharp4.Extensions" />
-    <PackageReference Include="AvalonEdit" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="WebSocketSharp-netstandard" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
     <ProjectReference Include="..\EasyCon2.UI.Common\EasyCon2.UI.Common.csproj" />
     <ProjectReference Include="..\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <Reference Include="LibAmiibo">
       <HintPath>.\deps\libamiibo.dll</HintPath>
     </Reference>
   </ItemGroup>
-
   <ItemGroup>
     <None Update="更新说明.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
 </Project>

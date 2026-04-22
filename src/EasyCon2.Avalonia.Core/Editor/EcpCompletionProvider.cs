@@ -1,19 +1,24 @@
+using AvaloniaEdit;
+using AvaloniaEdit.CodeCompletion;
+using AvaloniaEdit.Document;
 using EasyCon.Core;
-using EasyCon2.Models;
-using ICSharpCode.AvalonEdit;
-using ICSharpCode.AvalonEdit.CodeCompletion;
-using ICSharpCode.AvalonEdit.Document;
 
-namespace EasyCon2.Helper;
+namespace EasyCon2.Avalonia.Core.Editor;
 
-public delegate IEnumerable<string> GetImgLabel();
+public interface ICompletionProvider
+{
+    Task<IEnumerable<ICompletionData>> GetCompletions(ITextSource textSource, int offset, string cur);
+    bool ShouldTriggerCompletion(char triggerChar, string currentLineText, int caretIndex);
+    string GetCurrentWord(TextDocument document, int offset);
+}
 
 internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvider
 {
     private readonly TextEditor Editor = textEditor;
-    public GetImgLabel GetImgLabel;
+    public Func<IEnumerable<string>> GetImgLabel;
 
-    private readonly List<string> _keywords = [
+    private readonly List<string> _keywords =
+    [
         "IMPORT",
         "IF", "ELIF", "ELSE", "ENDIF",
         "FOR", "TO", "NEXT", "BREAK", "CONTINUE",
@@ -26,8 +31,9 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
         "LEFT", "RIGHT", "UP", "DOWN",
         "UPLEFT", "UPRIGHT", "DOWNLEFT", "DOWNRIGHT",
         "RAND", "AMIIBO", "BEEP",
-        ];
-    public async Task<IEnumerable<ICompletionData>> GetCompletions(ITextSource textSource, int offset, string cur)
+    ];
+
+    public Task<IEnumerable<ICompletionData>> GetCompletions(ITextSource textSource, int offset, string cur)
     {
         var completions = new List<ICompletionData>();
 
@@ -35,43 +41,33 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
         {
             var ilnames = GetImgLabel?.Invoke() ?? [];
             foreach (var name in ilnames)
-            {
                 completions.Add(new EcpCompletionData($"@{name}"));
-            }
         }
         else if (cur.StartsWith('_') || cur.StartsWith('$'))
         {
             var tok = Scripter.GetTokens(Editor.Text, cur);
             foreach (var name in tok)
-            {
                 completions.Add(new EcpCompletionData(name));
-            }
         }
-        else if (char.IsLetter(cur[0]))
+        else if (cur.Length > 0 && char.IsLetter(cur[0]))
         {
             var kw = _keywords.Where(ch => ch.StartsWith(cur, StringComparison.OrdinalIgnoreCase));
             foreach (var item in kw)
-            {
                 completions.Add(new EcpCompletionData(item));
-            }
         }
-        return completions;
-    }
 
-    private bool IsWordPart(char c)
-    {
-        return char.IsLetterOrDigit(c) || "@$_".IndexOf(c) != -1;
+        return Task.FromResult<IEnumerable<ICompletionData>>(completions);
     }
 
     public string GetCurrentWord(TextDocument document, int offset)
     {
         int start = offset;
         while (start > 0 && IsWordPart(document.GetCharAt(start - 1)))
-        {
             start--;
-        }
         return document.GetText(start, offset - start);
     }
 
     public bool ShouldTriggerCompletion(char triggerChar, string currentLineText, int caretIndex) => true;
+
+    private static bool IsWordPart(char c) => char.IsLetterOrDigit(c) || "@$_".IndexOf(c) != -1;
 }

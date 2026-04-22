@@ -80,8 +80,5 @@ public class VPadService
             () => false);
     }
 
-    public void UnregisterAllKeys()
-    {
-        _keyBinder.UnregisterAllKeys();
-    }
+    public void Deactivate() => Active = false;
 }
