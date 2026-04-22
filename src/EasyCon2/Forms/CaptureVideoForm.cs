@@ -1,11 +1,11 @@
 using EasyCon.Capture;
 using EasyCon2.Helper;
-using Resources = EasyCon2.UI.Common.Properties.Resources;
 using OpenCvSharp.Extensions;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.IO;
 using Mat = OpenCvSharp.Mat;
+using Resources = EasyCon2.UI.Common.Properties.Resources;
 
 namespace EasyCon2.Forms
 {

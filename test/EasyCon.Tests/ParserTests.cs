@@ -511,6 +511,212 @@ $val = 10 @
 
     #endregion
 
+    #region 表达式解析健壮性测试
+
+    // === 正常表达式 ===
+
+    [Test]
+    public void Expr_SimpleBinary()
+    {
+        ExpectSuccess("$v = 1 + 2");
+        ExpectSuccess("$v = 3 - 4");
+        ExpectSuccess("$v = 5 * 6");
+        ExpectSuccess("$v = 8 / 2");
+        ExpectSuccess("$v = 10 % 3");
+        ExpectSuccess("$v = 1 \\ 2");
+    }
+
+    [Test]
+    public void Expr_BinaryWithVariables()
+    {
+        ExpectSuccess("$v = $a + $b");
+        ExpectSuccess("$v = $a * $b - $c");
+        ExpectSuccess("$v = $a + $b * $c");  // 优先级: * > +
+    }
+
+    [Test]
+    public void Expr_ComparisonOperators()
+    {
+        ExpectSuccess("$v = 1 == 2");
+        ExpectSuccess("$v = 1 != 2");
+        ExpectSuccess("$v = 3 > 2");
+        ExpectSuccess("$v = 1 < 2");
+        ExpectSuccess("$v = 3 >= 2");
+        ExpectSuccess("$v = 1 <= 2");
+    }
+
+    [Test]
+    public void Expr_LogicalOperators()
+    {
+        ExpectSuccess("$v = 1 and 0");
+        ExpectSuccess("$v = 1 or 0");
+        ExpectSuccess("$v = not 0");
+    }
+
+    [Test]
+    public void Expr_BitwiseOperators()
+    {
+        ExpectSuccess("$v = 5 & 3");
+        ExpectSuccess("$v = 5 | 3");
+        ExpectSuccess("$v = 5 ^ 3");
+        ExpectSuccess("$v = ~5");
+        ExpectSuccess("$v = 1 << 2");
+        ExpectSuccess("$v = 4 >> 1");
+    }
+
+    [Test]
+    public void Expr_UnaryMinus()
+    {
+        ExpectSuccess("$v = -1");
+        ExpectSuccess("$v = -$a");
+        ExpectSuccess("$v = -($a + $b)");
+    }
+
+    [Test]
+    public void Expr_Parenthesized()
+    {
+        ExpectSuccess("$v = (1 + 2)");
+        ExpectSuccess("$v = (1 + 2) * 3");
+        ExpectSuccess("$v = ((1 + 2) * (3 - 4))");
+    }
+
+    [Test]
+    public void Expr_NestedBinary()
+    {
+        ExpectSuccess("$v = 1 + 2 + 3");
+        ExpectSuccess("$v = 1 + 2 * 3 - 4 / 2");
+        ExpectSuccess("$v = 1 == 2 and 3 > 0");
+    }
+
+    [Test]
+    public void Expr_ComplexPrecedence()
+    {
+        // 完整优先级链: or < and < 比较 < +/-/|/^ < */\%&<</>> < 一元
+        ExpectSuccess("$v = 1 + 2 * 3 and 4 == 5");
+        ExpectSuccess("$v = (1 + 2) * (3 - 4) or $a > $b");
+    }
+
+    [Test]
+    public void Expr_WithConstant()
+    {
+        ExpectSuccess("_PI = 3\n$v = _PI + 1");
+        ExpectSuccess("$v = _PI * 2");
+    }
+
+    [Test]
+    public void Expr_WithFunctionCall()
+    {
+        ExpectSuccess("$v = RAND(10)");
+        ExpectSuccess("$v = RAND($max) + 1");
+        ExpectSuccess("$v = TIME()");
+    }
+
+    // === 错误表达式（不完整 binary expression）===
+
+    [Test]
+    public void Expr_Error_TrailingOperator()
+    {
+        // 操作符后没有右操作数
+        ExpectError("$v = 1 +");
+        ExpectError("$v = 1 -");
+        ExpectError("$v = 1 *");
+        ExpectError("$v = 1 /");
+        ExpectError("$v = 1 %");
+    }
+
+    [Test]
+    public void Expr_Error_MultipleTrailingOperators()
+    {
+        // 连续操作符
+        ExpectError("$v = 1 + *");
+        ExpectError("$v = 1 + -");
+        ExpectError("$v = 1 * /");
+    }
+
+    [Test]
+    public void Expr_Error_OnlyOperator()
+    {
+        // 只有一个操作符
+        ExpectError("+$v");
+        ExpectError("-");  // 只有一个减号
+    }
+
+    [Test]
+    public void Expr_Error_TrailingComparison()
+    {
+        ExpectError("$v = 1 ==");
+        ExpectError("$v = 1 !=");
+        ExpectError("$v = 1 >");
+        ExpectError("$v = 1 <");
+    }
+
+    [Test]
+    public void Expr_Error_TrailingLogical()
+    {
+        ExpectError("$v = 1 and");
+        ExpectError("$v = 1 or");
+    }
+
+    [Test]
+    public void Expr_Error_TrailingBitwise()
+    {
+        ExpectError("$v = 1 &");
+        ExpectError("$v = 1 |");
+        ExpectError("$v = 1 ^");
+        ExpectError("$v = 1 <<");
+        ExpectError("$v = 1 >>");
+    }
+
+    [Test]
+    public void Expr_Error_UnmatchedParen()
+    {
+        ExpectError("$v = (1 + 2");
+        // 右括号不匹配在 parser 里可能和左括号路径不同
+    }
+
+    [Test]
+    public void Expr_Error_EmptyParens()
+    {
+        // 空括号不应该是合法表达式（除非是函数调用）
+        // 具体行为取决于 ParsePrimary 对 LeftParen 的处理
+    }
+
+    [Test]
+    public void Expr_Error_BinaryInIfCondition()
+    {
+        // IF 中的表达式也需要健壮
+        ExpectError("IF $a +\nA\nENDIF");
+        ExpectError("IF $a ==\nA\nENDIF");
+        ExpectError("IF $a >\nA\nENDIF");
+    }
+
+    [Test]
+    public void Expr_Error_BinaryInForRange()
+    {
+        // FOR 中的表达式
+        ExpectError("FOR $a = 1 +\nNEXT");
+    }
+
+    [Test]
+    public void Expr_Error_ComplexTrailing()
+    {
+        // 更复杂的未完成表达式
+        ExpectError("$v = (1 + 2) *");
+        ExpectError("$v = 1 + 2 *");
+        ExpectError("$v = $a + $b *");
+    }
+
+    [Test]
+    public void Expr_Error_AugmentedAssignmentTrailing()
+    {
+        // 复合赋值后没有右操作数
+        ExpectError("$v += ");
+        ExpectError("$v -= ");
+        ExpectError("$v *= ");
+    }
+
+    #endregion
+
     #region 综合场景测试
 
     [Test]
