@@ -229,4 +229,13 @@ public class LexerTests
         var tokens = SyntaxTree.ParseTokens("$x = 10");
         Assert.That(tokens[1].Type, Is.EqualTo(TokenType.ASSIGN));
     }
+
+    [Test]
+    public void Tokenize_PrintString()
+    {
+        var tokens = SyntaxTree.ParseTokens("print 识别到| 累计： & $count &");
+        Assert.That(tokens.Length, Is.EqualTo(6));
+        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.STRING));
+        Assert.That(tokens[4].Type, Is.EqualTo(TokenType.BitAnd));
+    }
 }

@@ -79,12 +79,14 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 
     public void ReportTooMuchLoop(TextLocation location)
     {
-        ReportWarnning(location, "循环层数过多，请优化脚本");
+        var message = "循环层数过多，请优化脚本";
+        ReportWarnning(location, message);
+        ReportError(location, message);
     }
 
     public void ReportInvalidBreakOrContinue(TextLocation location, Token keyword)
     {
-        var message = $"跳出语句 <{keyword.Value}> 只能在循环中使用";
+        var message = $"跳出语句 <{keyword.Value}> 循环层数不足";
         ReportError(location, message);
     }
 

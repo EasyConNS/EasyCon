@@ -248,9 +248,6 @@ internal partial class Parser
                 if (SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
                 {
                     if (Check(TokenType.BitAnd)) Advance();
-                    if (Peek(_grouptokens.Length - 1).Type == TokenType.BitAnd)
-                        // Shrink print expression exclude last & token
-                        _end--;
                 }
                 MatchEOF();
                 return new CallStmt(first, first.Value, [.. args], CallType.CallStmtWithArgs);
@@ -276,7 +273,7 @@ internal partial class Parser
             left = ParsePrimary();
         }
 
-        while (true)
+        while (true && !CursorEOF)
         {
             var precedence = Current.Type.GetBinaryOperatorPrecedence();
             if (precedence == 0 || precedence <= parentPrecedence)

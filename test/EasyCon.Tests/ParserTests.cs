@@ -265,6 +265,10 @@ $val = 3 > 2
 $val = 1 < 2
 $val = 3 >= 2
 $val = 1 <= 2");
+
+
+        ExpectError(@"
+_PI = 3+4+");
     }
 
     [Test]
@@ -537,6 +541,12 @@ A
 NEXT
 ENDFUNC
 CALL loop");
+    }
+
+    [Test]
+    public void Invalid_print()
+    {
+        ExpectError(@"print 识别到| 累计： & $count &");
     }
 
     #region 函数定义和调用测试

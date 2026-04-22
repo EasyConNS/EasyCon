@@ -64,6 +64,7 @@ internal sealed partial class Parser
             return Advance();
         }
         _diagnostics.ReportUnexpectedToken(Current.Location, Current, type);
+        Advance();
         return new(_text, TokenType.BadToken, "", Current.Span.Start);
     }
 

@@ -2,24 +2,24 @@ namespace EasyCon.Core.Config;
 
 public record KeyMappingConfig
 {
-    public int A { get; set; } = 89;       // Keys.Y
-    public int B { get; set; } = 85;       // Keys.U
+    public int A { get; set; } = 76;       // Keys.L
+    public int B { get; set; } = 75;       // Keys.K
     public int X { get; set; } = 73;       // Keys.I
-    public int Y { get; set; } = 72;       // Keys.H
-    public int L { get; set; } = 71;       // Keys.G
-    public int R { get; set; } = 84;       // Keys.T
-    public int ZL { get; set; } = 70;      // Keys.F
-    public int ZR { get; set; } = 82;      // Keys.R
-    public int Plus { get; set; } = 75;    // Keys.K
-    public int Minus { get; set; } = 74;   // Keys.J
+    public int Y { get; set; } = 74;       // Keys.J
+    public int L { get; set; } = 85;       // Keys.U
+    public int R { get; set; } = 79;       // Keys.O
+    public int ZL { get; set; } = 81;      // Keys.Q
+    public int ZR { get; set; } = 69;      // Keys.E
+    public int Plus { get; set; } = 107;   // Numpad Add
+    public int Minus { get; set; } = 109;  // Numpad Subtract
     public int Capture { get; set; } = 90; // Keys.Z
     public int Home { get; set; } = 67;    // Keys.C
     public int LClick { get; set; } = 81;  // Keys.Q
     public int RClick { get; set; } = 69;  // Keys.E
-    public int Up { get; set; } = 0;       // Keys.None
-    public int Down { get; set; } = 0;
-    public int Left { get; set; } = 0;
-    public int Right { get; set; } = 0;
+    public int Up { get; set; } = 38;      // Keys.Up
+    public int Down { get; set; } = 40;    // Keys.Down
+    public int Left { get; set; } = 37;    // Keys.Left
+    public int Right { get; set; } = 39;   // Keys.Right
     public int UpRight { get; set; } = 0;
     public int DownRight { get; set; } = 0;
     public int UpLeft { get; set; } = 0;
