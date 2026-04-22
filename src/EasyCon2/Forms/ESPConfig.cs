@@ -1,6 +1,5 @@
 using EasyCapture;
 using EasyCon2.Models;
-using Resources = EasyCon2.UI.Common.Properties.Resources;
 using EasyDevice;
 using LibAmiibo.Data;
 using LibAmiibo.Data.Figurine;
@@ -10,6 +9,7 @@ using System.Media;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Resources = EasyCon2.UI.Common.Properties.Resources;
 
 namespace EasyCon2.Forms
 {

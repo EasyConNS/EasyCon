@@ -1,7 +1,7 @@
-using System.Reflection;
-using System.Xml;
 using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Highlighting.Xshd;
+using System.Reflection;
+using System.Xml;
 
 namespace EasyCon2.Avalonia.Core.Editor;
 

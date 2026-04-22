@@ -1,3 +1,5 @@
+using AvaloniaEdit.Folding;
+using AvaloniaEdit.Highlighting;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon.Script.Assembly;
@@ -7,12 +9,9 @@ using EasyCon2.Avalonia.Core.Editor;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Forms;
 using EasyCon2.Helper;
-using Resources = EasyCon2.UI.Common.Properties.Resources;
 using EasyCon2.Views;
 using EasyDevice;
 using EasyScript;
-using AvaloniaEdit.Folding;
-using AvaloniaEdit.Highlighting;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -22,6 +21,7 @@ using System.Reflection;
 using System.Text.Json;
 using AvaColor = Avalonia.Media.Color;
 using AvaColors = Avalonia.Media.Colors;
+using Resources = EasyCon2.UI.Common.Properties.Resources;
 
 namespace EasyCon2.App;
 
