@@ -141,6 +141,9 @@ namespace EasyCon2.Forms
             _foldingStrategy = new CustomFoldingStrategy();
             _foldingStrategy.UpdateFoldings(_foldingManager, scriptEditor.TextDocument);
 
+            scriptEditor.SetImgLabelProvider(() => captureVideo.LoadedLabels.Select(il => il.name));
+            scriptEditor.EnableAutoCompletion = _config.EnableAutoCompletion;
+
             editorHost.Content = scriptEditor;
         }
 
@@ -926,6 +929,7 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
         {
             var menu = (ToolStripMenuItem)sender;
             _config.EnableAutoCompletion = menu.Checked;
+            scriptEditor.EnableAutoCompletion = menu.Checked;
             SaveConfig();
         }
 

@@ -97,6 +97,10 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         _foldingStrategy = new CustomFoldingStrategy();
         _foldingStrategy.UpdateFoldings(_foldingManager, _textEditor.TextDocument);
 
+        // Completion
+        _textEditor.SetImgLabelProvider(() => _captureService.LoadedLabels.Select(il => il.name));
+        _textEditor.EnableAutoCompletion = _configService.Config.EnableAutoCompletion;
+
         // Host in Avalonia control host
         editorHost.Content = _textEditor;
     }
@@ -903,6 +907,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
     private void chkAutoCompletion_CheckedChanged(object sender, EventArgs e)
     {
         _configService.Config.EnableAutoCompletion = chkAutoCompletion.Checked;
+        _textEditor.EnableAutoCompletion = chkAutoCompletion.Checked;
         _configService.Save();
     }
 

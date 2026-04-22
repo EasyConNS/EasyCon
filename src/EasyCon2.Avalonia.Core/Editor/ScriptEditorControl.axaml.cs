@@ -11,11 +11,19 @@ public partial class ScriptEditorControl : UserControl
 {
     private readonly TextEditor _editor;
     private readonly SearchPanel _searchPanel;
+    private CodeCompletionController _completionController;
+    private EcpCompletionProvider _completionProvider;
 
     public event EventHandler? EditorTextChanged;
     public event Action<string>? FileDropped;
 
     public TextEditor TextEditor => _editor;
+
+    public bool EnableAutoCompletion
+    {
+        get => _completionController?.EnableAutoCompletion ?? false;
+        set { if (_completionController != null) _completionController.EnableAutoCompletion = value; }
+    }
 
     public string Text
     {
@@ -63,6 +71,18 @@ public partial class ScriptEditorControl : UserControl
 
         SetupDragDrop();
         _searchPanel = SearchPanel.Install(_editor);
+        InitCompletion();
+    }
+
+    private void InitCompletion()
+    {
+        _completionProvider = new EcpCompletionProvider(_editor);
+        _completionController = new CodeCompletionController(_editor, _completionProvider);
+    }
+
+    public void SetImgLabelProvider(Func<IEnumerable<string>> provider)
+    {
+        _completionProvider.GetImgLabel = provider;
     }
 
     public void OpenSearchPanel() => _searchPanel.Open();
