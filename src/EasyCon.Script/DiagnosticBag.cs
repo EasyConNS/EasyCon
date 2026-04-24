@@ -56,7 +56,7 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 
     public void ReportInvalidImport(TextLocation location, Token modToken)
     {
-        var message = $"导入库不存在 <{modToken.Value}>";
+        var message = $"导入库不存在 ：{modToken.Value}";
         ReportError(location, message);
     }
 
@@ -68,12 +68,12 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 
     public void ReportInvalidKeyActionStatement(TextLocation location, Token actual)
     {
-        var message = $"按键语法不正确 <{actual}>";
+        var message = $"按键语法不正确 ：{actual}";
         ReportError(location, message);
     }
     public void ReportInvalidEOF(TextLocation location, Token actual)
     {
-        var message = $"期望结束但多余的<{actual.Value}>";
+        var message = $"期望结束但多余的 ：{actual.Value}";
         ReportError(location, message);
     }
 
@@ -86,7 +86,7 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 
     public void ReportInvalidBreakOrContinue(TextLocation location, Token keyword)
     {
-        var message = $"跳出语句 <{keyword.Value}> 循环层数不足";
+        var message = $"跳出语句 {keyword.Value} 循环层数不足";
         ReportError(location, message);
     }
 
@@ -193,12 +193,12 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 
     public void ReportTypeDoesNotSupportIndexAccess(TextLocation location, ScriptType type)
     {
-        ReportError(location, $"类型 '{type}' 不支持索引访问");
+        ReportError(location, $"类型 <{type}> 不支持索引访问");
     }
 
     public void ReportTypeDoesNotSupportSlice(TextLocation location, ScriptType type)
     {
-        ReportError(location, $"类型 '{type}' 不支持切片操作");
+        ReportError(location, $"类型 <{type}> 不支持切片操作");
     }
 
     public void ReportVariableNotFound(TextLocation location, string varName)

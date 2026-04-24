@@ -139,7 +139,7 @@ namespace EasyCon2.App
             menuStrip.Name = "menuStrip";
             menuStrip.Padding = new Padding(7, 2, 0, 2);
             menuStrip.RenderMode = ToolStripRenderMode.Professional;
-            menuStrip.Size = new Size(1194, 28);
+            menuStrip.Size = new Size(1138, 28);
             menuStrip.TabIndex = 0;
             menuStrip.Text = "menuStrip1";
             // 
@@ -461,9 +461,9 @@ namespace EasyCon2.App
             labelTimer.BorderStyle = BorderStyle.Fixed3D;
             labelTimer.Font = new Font("Microsoft YaHei UI", 13F, FontStyle.Bold);
             labelTimer.ForeColor = Color.White;
-            labelTimer.Location = new Point(3, 674);
+            labelTimer.Location = new Point(3, 575);
             labelTimer.Name = "labelTimer";
-            labelTimer.Size = new Size(282, 53);
+            labelTimer.Size = new Size(238, 68);
             labelTimer.TabIndex = 35;
             labelTimer.Text = "00:00:00";
             labelTimer.TextAlign = ContentAlignment.MiddleCenter;
@@ -478,7 +478,7 @@ namespace EasyCon2.App
             logTxtBox.Location = new Point(3, 24);
             logTxtBox.Name = "logTxtBox";
             logTxtBox.ReadOnly = true;
-            logTxtBox.Size = new Size(474, 650);
+            logTxtBox.Size = new Size(474, 551);
             logTxtBox.TabIndex = 34;
             logTxtBox.Text = "";
             logTxtBox.WordWrap = false;
@@ -491,9 +491,9 @@ namespace EasyCon2.App
             buttonRecordPause.FlatAppearance.BorderSize = 0;
             buttonRecordPause.FlatStyle = FlatStyle.Flat;
             buttonRecordPause.Font = new Font("微软雅黑", 9F);
-            buttonRecordPause.Location = new Point(265, 55);
+            buttonRecordPause.Location = new Point(247, 73);
             buttonRecordPause.Name = "buttonRecordPause";
-            buttonRecordPause.Size = new Size(126, 47);
+            buttonRecordPause.Size = new Size(116, 59);
             buttonRecordPause.TabIndex = 6;
             buttonRecordPause.Text = "暂停录制";
             buttonRecordPause.UseVisualStyleBackColor = true;
@@ -507,9 +507,9 @@ namespace EasyCon2.App
             buttonRecord.FlatAppearance.BorderSize = 0;
             buttonRecord.FlatStyle = FlatStyle.Flat;
             buttonRecord.Font = new Font("微软雅黑", 9F);
-            buttonRecord.Location = new Point(3, 55);
+            buttonRecord.Location = new Point(9, 73);
             buttonRecord.Name = "buttonRecord";
-            buttonRecord.Size = new Size(256, 47);
+            buttonRecord.Size = new Size(232, 59);
             buttonRecord.TabIndex = 5;
             buttonRecord.Text = "录制脚本";
             buttonRecord.UseVisualStyleBackColor = true;
@@ -614,9 +614,9 @@ namespace EasyCon2.App
             buttonShowController.FlatAppearance.BorderSize = 0;
             buttonShowController.FlatStyle = FlatStyle.Flat;
             buttonShowController.Font = new Font("微软雅黑", 9F);
-            buttonShowController.Location = new Point(3, 3);
+            buttonShowController.Location = new Point(9, 9);
             buttonShowController.Name = "buttonShowController";
-            buttonShowController.Size = new Size(125, 46);
+            buttonShowController.Size = new Size(113, 58);
             buttonShowController.TabIndex = 3;
             buttonShowController.Text = "虚拟手柄";
             buttonShowController.UseVisualStyleBackColor = true;
@@ -628,7 +628,7 @@ namespace EasyCon2.App
             editorHost.Font = new Font("Consolas", 9F);
             editorHost.Location = new Point(0, 23);
             editorHost.Name = "editorHost";
-            editorHost.Size = new Size(567, 722);
+            editorHost.Size = new Size(511, 620);
             editorHost.TabIndex = 0;
             editorHost.Text = "elementHost1";
             // 
@@ -637,9 +637,9 @@ namespace EasyCon2.App
             ComPort.AccessibleName = "选择串口";
             ComPort.Dock = DockStyle.Fill;
             ComPort.FormattingEnabled = true;
-            ComPort.Location = new Point(3, 3);
+            ComPort.Location = new Point(9, 73);
             ComPort.Name = "ComPort";
-            ComPort.Size = new Size(189, 28);
+            ComPort.Size = new Size(173, 28);
             ComPort.TabIndex = 34;
             ComPort.Text = "下拉选择串口";
             ComPort.DropDown += ComPort_DropDown;
@@ -647,14 +647,13 @@ namespace EasyCon2.App
             // buttonSerialPortConnect
             // 
             buttonSerialPortConnect.AccessibleName = "手动连接串口";
-            tblSerialPort.SetColumnSpan(buttonSerialPortConnect, 2);
             buttonSerialPortConnect.Dock = DockStyle.Fill;
             buttonSerialPortConnect.FlatAppearance.BorderSize = 0;
             buttonSerialPortConnect.FlatStyle = FlatStyle.Flat;
             buttonSerialPortConnect.Font = new Font("微软雅黑", 9F);
-            buttonSerialPortConnect.Location = new Point(3, 55);
+            buttonSerialPortConnect.Location = new Point(188, 73);
             buttonSerialPortConnect.Name = "buttonSerialPortConnect";
-            buttonSerialPortConnect.Size = new Size(385, 47);
+            buttonSerialPortConnect.Size = new Size(174, 59);
             buttonSerialPortConnect.TabIndex = 30;
             buttonSerialPortConnect.Text = "手动连接";
             buttonSerialPortConnect.UseVisualStyleBackColor = true;
@@ -663,13 +662,14 @@ namespace EasyCon2.App
             // buttonSerialPortSearch
             // 
             buttonSerialPortSearch.AccessibleName = "自动连接串口";
+            tblSerialPort.SetColumnSpan(buttonSerialPortSearch, 2);
             buttonSerialPortSearch.Dock = DockStyle.Fill;
             buttonSerialPortSearch.FlatAppearance.BorderSize = 0;
             buttonSerialPortSearch.FlatStyle = FlatStyle.Flat;
             buttonSerialPortSearch.Font = new Font("微软雅黑", 9F);
-            buttonSerialPortSearch.Location = new Point(198, 3);
+            buttonSerialPortSearch.Location = new Point(9, 9);
             buttonSerialPortSearch.Name = "buttonSerialPortSearch";
-            buttonSerialPortSearch.Size = new Size(190, 46);
+            buttonSerialPortSearch.Size = new Size(353, 58);
             buttonSerialPortSearch.TabIndex = 29;
             buttonSerialPortSearch.Text = "自动连接(推荐)";
             buttonSerialPortSearch.UseVisualStyleBackColor = true;
@@ -682,9 +682,9 @@ namespace EasyCon2.App
             buttonControllerHelp.FlatAppearance.BorderSize = 0;
             buttonControllerHelp.FlatStyle = FlatStyle.Flat;
             buttonControllerHelp.Font = new Font("微软雅黑", 9F);
-            buttonControllerHelp.Location = new Point(265, 3);
+            buttonControllerHelp.Location = new Point(247, 9);
             buttonControllerHelp.Name = "buttonControllerHelp";
-            buttonControllerHelp.Size = new Size(126, 46);
+            buttonControllerHelp.Size = new Size(116, 58);
             buttonControllerHelp.TabIndex = 33;
             buttonControllerHelp.Text = "帮助";
             buttonControllerHelp.UseVisualStyleBackColor = true;
@@ -697,9 +697,9 @@ namespace EasyCon2.App
             buttonKeyMapping.FlatAppearance.BorderSize = 0;
             buttonKeyMapping.FlatStyle = FlatStyle.Flat;
             buttonKeyMapping.Font = new Font("微软雅黑", 9F);
-            buttonKeyMapping.Location = new Point(134, 3);
+            buttonKeyMapping.Location = new Point(128, 9);
             buttonKeyMapping.Name = "buttonKeyMapping";
-            buttonKeyMapping.Size = new Size(125, 46);
+            buttonKeyMapping.Size = new Size(113, 58);
             buttonKeyMapping.TabIndex = 4;
             buttonKeyMapping.Text = "按键映射";
             buttonKeyMapping.UseVisualStyleBackColor = true;
@@ -728,9 +728,9 @@ namespace EasyCon2.App
             // 
             statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1, toolStripStatusLabel2, labelSerialStatus, toolStripStatusLabel3, labelCaptureStatus });
-            statusStrip.Location = new Point(1, 917);
+            statusStrip.Location = new Point(1, 849);
             statusStrip.Name = "statusStrip";
-            statusStrip.Size = new Size(1194, 26);
+            statusStrip.Size = new Size(1138, 26);
             statusStrip.TabIndex = 3;
             statusStrip.Text = "statusStrip1";
             // 
@@ -774,9 +774,9 @@ namespace EasyCon2.App
             optPanel.Controls.Add(buttonFlash);
             optPanel.Controls.Add(buttonFlashClear);
             optPanel.Controls.Add(grpFirmware);
-            optPanel.Location = new Point(1072, 32);
+            optPanel.Location = new Point(1016, 155);
             optPanel.Name = "optPanel";
-            optPanel.Size = new Size(122, 745);
+            optPanel.Size = new Size(122, 523);
             optPanel.TabIndex = 35;
             // 
             // logPanel
@@ -789,7 +789,7 @@ namespace EasyCon2.App
             logPanel.Controls.Add(labelTimer);
             logPanel.Location = new Point(7, 32);
             logPanel.Name = "logPanel";
-            logPanel.Size = new Size(480, 745);
+            logPanel.Size = new Size(480, 646);
             logPanel.TabIndex = 37;
             // 
             // logTitleLabel
@@ -809,7 +809,7 @@ namespace EasyCon2.App
             clsLogBtn.BackgroundImageLayout = ImageLayout.Stretch;
             clsLogBtn.FlatAppearance.BorderSize = 0;
             clsLogBtn.FlatStyle = FlatStyle.Flat;
-            clsLogBtn.Location = new Point(311, 3);
+            clsLogBtn.Location = new Point(454, 3);
             clsLogBtn.Name = "clsLogBtn";
             clsLogBtn.Size = new Size(20, 20);
             clsLogBtn.TabIndex = 38;
@@ -827,9 +827,9 @@ namespace EasyCon2.App
             runStopBtn.FlatStyle = FlatStyle.Flat;
             runStopBtn.Font = new Font("微软雅黑", 12F, FontStyle.Bold);
             runStopBtn.ForeColor = Color.White;
-            runStopBtn.Location = new Point(291, 674);
+            runStopBtn.Location = new Point(247, 575);
             runStopBtn.Name = "runStopBtn";
-            runStopBtn.Size = new Size(186, 53);
+            runStopBtn.Size = new Size(230, 68);
             runStopBtn.TabIndex = 37;
             runStopBtn.Text = "运行脚本";
             runStopBtn.UseVisualStyleBackColor = false;
@@ -842,7 +842,7 @@ namespace EasyCon2.App
             scriptContainer.Controls.Add(editorHost);
             scriptContainer.Location = new Point(496, 32);
             scriptContainer.Name = "scriptContainer";
-            scriptContainer.Size = new Size(570, 745);
+            scriptContainer.Size = new Size(514, 646);
             scriptContainer.TabIndex = 38;
             // 
             // scriptTitleLabel
@@ -867,12 +867,12 @@ namespace EasyCon2.App
             bottomPanel.Controls.Add(lblTitleController, 2, 0);
             bottomPanel.Controls.Add(tblController, 2, 1);
             bottomPanel.Dock = DockStyle.Bottom;
-            bottomPanel.Location = new Point(1, 787);
+            bottomPanel.Location = new Point(1, 681);
             bottomPanel.Name = "bottomPanel";
             bottomPanel.RowCount = 2;
             bottomPanel.RowStyles.Add(new RowStyle());
             bottomPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            bottomPanel.Size = new Size(1194, 130);
+            bottomPanel.Size = new Size(1138, 168);
             bottomPanel.TabIndex = 39;
             // 
             // lblTitleSerial
@@ -882,25 +882,28 @@ namespace EasyCon2.App
             lblTitleSerial.Font = new Font("微软雅黑", 9F, FontStyle.Bold);
             lblTitleSerial.Location = new Point(3, 0);
             lblTitleSerial.Name = "lblTitleSerial";
-            lblTitleSerial.Size = new Size(391, 19);
+            lblTitleSerial.Size = new Size(373, 19);
             lblTitleSerial.TabIndex = 0;
             lblTitleSerial.Text = "串口连接";
             // 
             // tblSerialPort
             // 
+            tblSerialPort.BackColor = Color.FromArgb(230, 229, 224);
             tblSerialPort.ColumnCount = 2;
             tblSerialPort.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblSerialPort.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tblSerialPort.Controls.Add(ComPort, 0, 0);
-            tblSerialPort.Controls.Add(buttonSerialPortSearch, 1, 0);
-            tblSerialPort.Controls.Add(buttonSerialPortConnect, 0, 1);
+            tblSerialPort.Controls.Add(buttonSerialPortSearch, 0, 0);
+            tblSerialPort.Controls.Add(ComPort, 0, 1);
+            tblSerialPort.Controls.Add(buttonSerialPortConnect, 1, 1);
             tblSerialPort.Dock = DockStyle.Fill;
-            tblSerialPort.Location = new Point(3, 22);
+            tblSerialPort.Location = new Point(4, 23);
+            tblSerialPort.Margin = new Padding(4);
             tblSerialPort.Name = "tblSerialPort";
+            tblSerialPort.Padding = new Padding(6);
             tblSerialPort.RowCount = 2;
             tblSerialPort.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             tblSerialPort.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tblSerialPort.Size = new Size(391, 105);
+            tblSerialPort.Size = new Size(371, 141);
             tblSerialPort.TabIndex = 0;
             // 
             // lblTitleVideo
@@ -908,14 +911,15 @@ namespace EasyCon2.App
             lblTitleVideo.AutoSize = true;
             lblTitleVideo.Dock = DockStyle.Fill;
             lblTitleVideo.Font = new Font("微软雅黑", 9F, FontStyle.Bold);
-            lblTitleVideo.Location = new Point(400, 0);
+            lblTitleVideo.Location = new Point(382, 0);
             lblTitleVideo.Name = "lblTitleVideo";
-            lblTitleVideo.Size = new Size(391, 19);
+            lblTitleVideo.Size = new Size(373, 19);
             lblTitleVideo.TabIndex = 0;
             lblTitleVideo.Text = "视频源";
             // 
             // tblVideoSource
             // 
+            tblVideoSource.BackColor = Color.FromArgb(230, 229, 224);
             tblVideoSource.ColumnCount = 2;
             tblVideoSource.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tblVideoSource.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -923,12 +927,14 @@ namespace EasyCon2.App
             tblVideoSource.Controls.Add(btnCaptureToggle, 0, 1);
             tblVideoSource.Controls.Add(btnOpenCaptureConsole, 1, 1);
             tblVideoSource.Dock = DockStyle.Fill;
-            tblVideoSource.Location = new Point(400, 22);
+            tblVideoSource.Location = new Point(383, 23);
+            tblVideoSource.Margin = new Padding(4);
             tblVideoSource.Name = "tblVideoSource";
+            tblVideoSource.Padding = new Padding(6);
             tblVideoSource.RowCount = 2;
             tblVideoSource.RowStyles.Add(new RowStyle());
             tblVideoSource.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            tblVideoSource.Size = new Size(391, 105);
+            tblVideoSource.Size = new Size(371, 141);
             tblVideoSource.TabIndex = 0;
             // 
             // comboVideoSource
@@ -938,9 +944,9 @@ namespace EasyCon2.App
             comboVideoSource.Dock = DockStyle.Fill;
             comboVideoSource.DropDownStyle = ComboBoxStyle.DropDownList;
             comboVideoSource.FormattingEnabled = true;
-            comboVideoSource.Location = new Point(3, 3);
+            comboVideoSource.Location = new Point(9, 9);
             comboVideoSource.Name = "comboVideoSource";
-            comboVideoSource.Size = new Size(385, 28);
+            comboVideoSource.Size = new Size(353, 28);
             comboVideoSource.TabIndex = 0;
             comboVideoSource.DropDown += comboVideoSource_DropDown;
             // 
@@ -951,9 +957,9 @@ namespace EasyCon2.App
             btnCaptureToggle.FlatAppearance.BorderSize = 0;
             btnCaptureToggle.FlatStyle = FlatStyle.Flat;
             btnCaptureToggle.Font = new Font("微软雅黑", 9F);
-            btnCaptureToggle.Location = new Point(3, 37);
+            btnCaptureToggle.Location = new Point(9, 43);
             btnCaptureToggle.Name = "btnCaptureToggle";
-            btnCaptureToggle.Size = new Size(189, 65);
+            btnCaptureToggle.Size = new Size(173, 89);
             btnCaptureToggle.TabIndex = 1;
             btnCaptureToggle.Text = "连接视频源";
             btnCaptureToggle.UseVisualStyleBackColor = true;
@@ -966,9 +972,9 @@ namespace EasyCon2.App
             btnOpenCaptureConsole.FlatAppearance.BorderSize = 0;
             btnOpenCaptureConsole.FlatStyle = FlatStyle.Flat;
             btnOpenCaptureConsole.Font = new Font("微软雅黑", 9F);
-            btnOpenCaptureConsole.Location = new Point(198, 37);
+            btnOpenCaptureConsole.Location = new Point(188, 43);
             btnOpenCaptureConsole.Name = "btnOpenCaptureConsole";
-            btnOpenCaptureConsole.Size = new Size(190, 65);
+            btnOpenCaptureConsole.Size = new Size(174, 89);
             btnOpenCaptureConsole.TabIndex = 2;
             btnOpenCaptureConsole.Text = "搜图控制台";
             btnOpenCaptureConsole.UseVisualStyleBackColor = true;
@@ -979,14 +985,15 @@ namespace EasyCon2.App
             lblTitleController.AutoSize = true;
             lblTitleController.Dock = DockStyle.Fill;
             lblTitleController.Font = new Font("微软雅黑", 9F, FontStyle.Bold);
-            lblTitleController.Location = new Point(797, 0);
+            lblTitleController.Location = new Point(761, 0);
             lblTitleController.Name = "lblTitleController";
-            lblTitleController.Size = new Size(394, 19);
+            lblTitleController.Size = new Size(374, 19);
             lblTitleController.TabIndex = 0;
             lblTitleController.Text = "虚拟手柄";
             // 
             // tblController
             // 
+            tblController.BackColor = Color.FromArgb(230, 229, 224);
             tblController.ColumnCount = 3;
             tblController.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
             tblController.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
@@ -997,12 +1004,14 @@ namespace EasyCon2.App
             tblController.Controls.Add(buttonRecord, 0, 1);
             tblController.Controls.Add(buttonRecordPause, 2, 1);
             tblController.Dock = DockStyle.Fill;
-            tblController.Location = new Point(797, 22);
+            tblController.Location = new Point(762, 23);
+            tblController.Margin = new Padding(4);
             tblController.Name = "tblController";
+            tblController.Padding = new Padding(6);
             tblController.RowCount = 2;
             tblController.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             tblController.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            tblController.Size = new Size(394, 105);
+            tblController.Size = new Size(372, 141);
             tblController.TabIndex = 0;
             // 
             // EasyConForm
@@ -1010,7 +1019,7 @@ namespace EasyCon2.App
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(242, 241, 237);
-            ClientSize = new Size(1196, 944);
+            ClientSize = new Size(1140, 876);
             Controls.Add(bottomPanel);
             Controls.Add(scriptContainer);
             Controls.Add(optPanel);
