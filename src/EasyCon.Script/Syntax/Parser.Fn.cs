@@ -44,9 +44,6 @@ internal partial class Parser
                 return new Wait(Current, new LiteralExpr(Current, duration), true);
             case TokenType.ButtonKeyword or TokenType.StickKeyword:
                 {
-                    // var fullline = Current.Text.Lines[Current.Line - 1].Text;
-                    // fullline = fullline.Contains('#') ? fullline[..fullline.IndexOf('#')] : fullline;
-                    // return ParseKey(fullline.Trim());
                     return ParsePadButtonStatement();
                 }
             case TokenType.IDENT:

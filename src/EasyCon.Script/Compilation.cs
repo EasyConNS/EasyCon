@@ -12,23 +12,42 @@ public sealed class Compilation
     public bool KeyAction { get; private set; } = false;
     public bool NeedIL { get; private set; } = false;
 
-    private Compilation(bool isScript, Compilation? previous, SyntaxTree syntaxTrees)
+    private Compilation(ImmutableArray<SyntaxTree> syntaxTrees)
     {
-        IsScript = isScript;
-        Previous = previous;
         SyntaxTrees = syntaxTrees;
     }
-    public static Compilation Create(SyntaxTree syntaxTrees)
+
+    public ImmutableArray<SyntaxTree> SyntaxTrees { get; }
+
+    public static Compilation Create(SyntaxTree mainTree)
     {
-        return new Compilation(isScript: false, previous: null, syntaxTrees);
+        var trees = ImmutableArray.CreateBuilder<SyntaxTree>();
+
+        // 自动加载 lib 目录下的脚本
+        var fileName = mainTree.Text.FileName;
+        if (!string.IsNullOrEmpty(fileName))
+        {
+            var dir = Path.GetDirectoryName(Path.GetFullPath(fileName));
+            if (dir != null)
+            {
+                var libDir = Path.Combine(dir, "lib");
+                if (Directory.Exists(libDir))
+                {
+                    foreach (var libFile in Directory.GetFiles(libDir, "*.ecs"))
+                    {
+                        Console.WriteLine($"正在加载库:{libFile}");
+                        trees.Add(SyntaxTree.Load(libFile, isLib: true));
+                    }
+                }
+            }
+        }
+
+        trees.Add(mainTree);
+        return new Compilation(trees.ToImmutable());
     }
-    public bool IsScript { get; }
-    public Compilation? Previous { get; }
-    public SyntaxTree SyntaxTrees { get; }
 
     private BoundProgram GetProgram(ImmutableHashSet<string>? extVars, ImmutableArray<ForeignFunction> foreignFunctions = default)
     {
-        var previous = Previous == null ? null : Previous.GetProgram(extVars);
         return Binder.BindProgram(SyntaxTrees, extVars, foreignFunctions);
     }
 
@@ -67,9 +86,10 @@ public sealed class Compilation
 
     public string FormatCode()
     {
+        var mainTree = SyntaxTrees.FirstOrDefault(t => !t.IsLib) ?? SyntaxTrees[0];
         using var writer = new StringWriter();
         using var printer = new IndentedTextWriter(writer, "    ");
-        foreach (var statement in SyntaxTrees.Root.Members)
+        foreach (var statement in mainTree.Root.Members)
         {
             statement.WriteTo(printer);
         }

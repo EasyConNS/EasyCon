@@ -22,7 +22,6 @@ internal sealed partial class Parser
     public DiagnosticBag Diagnostics => _diagnostics;
 
     string _fullPath => _text.FileName != "" ? Path.GetFullPath(_text.FileName) : AppDomain.CurrentDomain.BaseDirectory;
-
     string _filePath => Path.GetDirectoryName(_fullPath) ?? "";
     const string LibPath = "lib/";
 
@@ -272,6 +271,17 @@ internal sealed partial class Parser
             _diagnostics.ReportBadStruct(first.Syntax.Location, "语句块没有正确结束");
         }
 
+        // lib 脚本后置校验：顶层只允许变量定义、常量定义和函数定义
+        if (_syntaxTree.IsLib)
+        {
+            foreach (var st in result)
+            {
+                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or AssignmentStmt)
+                    continue;
+                _diagnostics.ReportBadStruct(st.Syntax.Location, "库脚本只允许变量定义、常量定义和函数定义");
+            }
+        }
+
         return new CompicationUnit([.. result]);
     }
 
@@ -310,25 +320,6 @@ internal sealed partial class Parser
         }
     }
 
-    internal ImmutableArray<CompicationUnit> Flatten(CompicationUnit prog)
-    {
-        if (Diagnostics.HasErrors()) return [prog];
-        var imports = prog.Members.OfType<ImportStmt>();
-        if (!imports.Any()) return [prog];
-
-        var result = ImmutableArray.CreateBuilder<CompicationUnit>();
-        foreach (var imp in imports)
-        {
-            Console.WriteLine($"正在加载库:{imp.FullFileName}");
-            var newprog = SyntaxTree.Load(imp.FullFileName);
-            if (newprog.Root.Members.OfType<ImportStmt>().Any())
-                _diagnostics.ReportBadStruct(imp.Location, "不支持嵌套引用");
-
-            result.Add(newprog.Root);
-        }
-        result.Add(new CompicationUnit([.. prog.Members.Except(imports)]));
-        return result.ToImmutable();
-    }
 }
 
 public static class TokExt

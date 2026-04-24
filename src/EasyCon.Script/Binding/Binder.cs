@@ -29,75 +29,109 @@ internal sealed class Binder
         }
     }
 
-    public static BoundProgram BindProgram(SyntaxTree syntaxs, ImmutableHashSet<string>? externalVariables = null, ImmutableArray<ForeignFunction> foreignFunctions = default)
+    public static BoundProgram BindProgram(ImmutableArray<SyntaxTree> syntaxTrees, ImmutableHashSet<string>? externalVariables = default, ImmutableArray<ForeignFunction> foreignFunctions = default)
     {
         var (parentScope, ffiSymbols) = CreateRootScope(foreignFunctions);
         parentScope.SetValidExternalVariables(externalVariables ?? []);
-        var binder = new Binder(parentScope, function: null);
-        binder.Diagnostics.AddRange(syntaxs.Diagnostics);
-        if (binder.Diagnostics.HasErrors())
-        {
-            return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. binder.Diagnostics], [], [], ffiSymbols);
-        }
+
+        // 收集所有诊断
+        var diagnostics = new DiagnosticBag();
+        foreach (var tree in syntaxTrees)
+            diagnostics.AddRange(tree.Diagnostics);
+        if (diagnostics.HasErrors())
+            return ErrorProgram(diagnostics, ffiSymbols);
+
+        var libTrees = syntaxTrees.Where(t => t.IsLib).ToList();
+        var mainTrees = syntaxTrees.Where(t => !t.IsLib).ToList();
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
+        var ilNames = new HashSet<string>();
 
-        var functionDeclarations = syntaxs.FlattenRoot.SelectMany(st => st.Members).OfType<FuncDeclBlock>();
+        // --- Phase 1: lib 绑定（独立作用域，无法访问主脚本全局变量）---
+        var libBinder = new Binder(new BoundScope(parentScope), function: null);
+        foreach (var func in libTrees.SelectMany(t => t.Root.Members).OfType<FuncDeclBlock>())
+            libBinder.BindFuncDeclaration(func);
 
-        foreach (var function in functionDeclarations)
+        var libGlobalStmts = new List<BoundStmt>();
+        foreach (var stmt in libTrees.SelectMany(t => t.Root.Members).Where(m => m is not FuncDeclBlock))
+            libGlobalStmts.Add(libBinder.BindStatement(stmt));
+
+        var libFunctions = libBinder._scope.GetDeclaredFunctions().ToHashSet();
+
+        // 绑定 lib 函数体
+        foreach (var function in libFunctions)
         {
-            binder.BindFuncDeclaration(function);
+            var (body, binderFn) = BindFunctionBody(function, libBinder._scope);
+            if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(body))
+                binderFn.Diagnostics.ReportAllPathsMustReturn(function.Declaration!.Declare.Location);
+            functionBodies.Add(function, body);
+            ilNames.UnionWith(binderFn._ilNames);
+            diagnostics.AddRange(binderFn.Diagnostics);
         }
 
-        var firstGlobalStatementPerSyntaxTree = syntaxs.FlattenRoot.Select(st => st.Members.Where(m => m is not FuncDeclBlock && m is not EmptyStmt).FirstOrDefault())
-                                                                .Where(g => g != null)
-                                                                .ToArray();
-        if (firstGlobalStatementPerSyntaxTree.Length > 1)
-            foreach (var globalStatement in firstGlobalStatementPerSyntaxTree)
-                binder.Diagnostics.ReportOnlyOneFileCanHaveGlobalStatements(globalStatement!.Location);
+        // --- Phase 2: 主脚本绑定 ---
+        var mainBinder = new Binder(new BoundScope(parentScope), function: null);
 
-        var globalStatements = syntaxs.FlattenRoot.SelectMany(st => st.Members)
-                                              .Where(m => m is not FuncDeclBlock);
+        // 将 lib 函数注册到主作用域（使主脚本可以调用 lib 函数）
+        foreach (var fn in libFunctions)
+            mainBinder._scope.TryDeclareFunction(fn);
 
-        var statements = ImmutableArray.CreateBuilder<BoundStmt>();
+        foreach (var func in mainTrees.SelectMany(t => t.Root.Members).OfType<FuncDeclBlock>())
+            mainBinder.BindFuncDeclaration(func);
 
-        foreach (var globalStatement in globalStatements)
+        // 主脚本全局语句检查
+        var firstGlobalPerTree = mainTrees
+            .Select(t => t.Root.Members.FirstOrDefault(m => m is not FuncDeclBlock && m is not EmptyStmt && m is not ImportStmt))
+            .Where(g => g != null)
+            .ToArray();
+        if (firstGlobalPerTree.Length > 1)
+            foreach (var g in firstGlobalPerTree)
+                diagnostics.ReportOnlyOneFileCanHaveGlobalStatements(g!.Location);
+
+        var mainGlobalStmts = new List<BoundStmt>();
+        foreach (var stmt in mainTrees.SelectMany(t => t.Root.Members).Where(m => m is not FuncDeclBlock))
+            mainGlobalStmts.Add(mainBinder.BindStatement(stmt));
+
+        // 绑定主脚本函数体
+        foreach (var function in mainBinder._scope.GetDeclaredFunctions())
         {
-            var statement = binder.BindStatement(globalStatement);
-            statements.Add(statement);
+            if (libFunctions.Contains(function)) continue;
+            var (body, binderFn) = BindFunctionBody(function, mainBinder._scope);
+            if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(body))
+                binderFn.Diagnostics.ReportAllPathsMustReturn(function.Declaration!.Declare.Location);
+            functionBodies.Add(function, body);
+            ilNames.UnionWith(binderFn._ilNames);
+            diagnostics.AddRange(binderFn.Diagnostics);
         }
 
-        foreach (var function in binder._scope.GetDeclaredFunctions())
-        {
-            var binderFn = new Binder(binder._scope, function);
-            var fnstatements = ImmutableArray.CreateBuilder<BoundStmt>();
-            foreach (var fnStatement in function.Declaration!.Statements)
-            {
-                var statement = binderFn.BindStatement(fnStatement);
-                fnstatements.Add(statement);
-            }
-            var fnbody = new BoundBlockStatement(function.Declaration, fnstatements.ToImmutable());
-            var fnloweredBody = Lowerer.Lower(function, fnbody);
+        diagnostics.AddRange(libBinder.Diagnostics);
+        diagnostics.AddRange(mainBinder.Diagnostics);
 
-            if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(fnloweredBody))
-                binderFn.Diagnostics.ReportAllPathsMustReturn(function.Declaration.Declare.Location);
+        if (diagnostics.HasErrors())
+            return ErrorProgram(diagnostics, ffiSymbols);
 
-            functionBodies.Add(function, fnloweredBody);
-
-            binder._ilNames.UnionWith(binderFn._ilNames);
-            binder.Diagnostics.AddRange(binderFn.Diagnostics);
-        }
-
-        if (binder.Diagnostics.HasErrors())
-        {
-            return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. binder.Diagnostics], [], [], ffiSymbols);
-        }
-
+        // --- Phase 3: 构建 $eval 主函数 ---
+        var allGlobalStmts = libGlobalStmts.Concat(mainGlobalStmts);
         var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
-        var body = new BoundBlockStatement(main.Declaration, statements.ToImmutable());
-        var loweredBody = Lowerer.Lower(main, body);
-        functionBodies.Add(main, loweredBody);
-        return new BoundProgram(main, [.. binder._diagnostics], functionBodies.ToImmutable(), [.. binder._ilNames], ffiSymbols);
+        var evalBody = new BoundBlockStatement(main.Declaration!, [.. allGlobalStmts]);
+        functionBodies.Add(main, Lowerer.Lower(main, evalBody));
+
+        return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), [.. ilNames], ffiSymbols);
+    }
+
+    private static (BoundBlockStatement Body, Binder Binder) BindFunctionBody(FunctionSymbol function, BoundScope scope)
+    {
+        var binderFn = new Binder(scope, function);
+        var stmts = ImmutableArray.CreateBuilder<BoundStmt>();
+        foreach (var stmt in function.Declaration!.Statements)
+            stmts.Add(binderFn.BindStatement(stmt));
+        var body = new BoundBlockStatement(function.Declaration!, stmts.ToImmutable());
+        return (Lowerer.Lower(function, body), binderFn);
+    }
+
+    private static BoundProgram ErrorProgram(DiagnosticBag diagnostics, ImmutableDictionary<string, FunctionSymbol> ffiSymbols)
+    {
+        return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. diagnostics], [], [], ffiSymbols);
     }
 
     private void BindFuncDeclaration(FuncDeclBlock syntax)
