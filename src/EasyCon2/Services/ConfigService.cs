@@ -1,7 +1,7 @@
 using EasyCon.Core.Config;
 using System.IO;
 
-namespace EasyCon2.App.Services;
+namespace EasyCon2.Services;
 
 public class ConfigService
 {

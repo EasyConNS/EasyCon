@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace EasyCon2.App.Models;
+namespace EasyCon2.Models;
 
 public class AppState
 {

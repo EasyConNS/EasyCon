@@ -7,5 +7,7 @@
                              ShowLineNumbers="True"
                              FontFamily="Consolas"
                              FontSize="14"
-                             WordWrap="False" />
+                             WordWrap="False"
+                             Background="#FAFAF7"
+                             Foreground="#26251E" />
 </UserControl>

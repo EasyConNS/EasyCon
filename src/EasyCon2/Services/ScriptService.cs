@@ -4,7 +4,7 @@ using EasyCon.Script;
 using EasyScript;
 using System.Drawing;
 
-namespace EasyCon2.App.Services;
+namespace EasyCon2.Services;
 
 public class ScriptService
 {

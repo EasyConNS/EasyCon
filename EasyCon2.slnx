@@ -4,6 +4,17 @@
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
   </Folder>
+  <Folder Name="/Docs/">
+    <File Path="src/EasyCon2/更新说明.txt" />
+  </Folder>
+  <Folder Name="/Markdown/">
+    <File Path="README.md" />
+    <File Path="DESIGN.md" />
+    <File Path="docs/README.md" />
+    <File Path="docs/GETTING_STARTED.md" />
+    <File Path="docs/MODULE_DESIGN.md" />
+    <File Path="docs/DESIGN_DOCUMENT.md" />
+  </Folder>
   <Folder Name="/Test/">
     <Project Path="test/EasyCon.Tests/EasyCon.Tests.csproj" />
   </Folder>

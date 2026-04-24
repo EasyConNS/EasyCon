@@ -4,7 +4,7 @@ using EasyCon2.Forms;
 using OpenCvSharp.Extensions;
 using System.Drawing;
 
-namespace EasyCon2.App.Services;
+namespace EasyCon2.Services;
 
 public class CaptureService
 {

@@ -2,7 +2,7 @@ using EasyCon.Core;
 using EasyDevice;
 using System.Media;
 
-namespace EasyCon2.App.Services;
+namespace EasyCon2.Services;
 
 public class DeviceService
 {
