@@ -63,9 +63,6 @@ namespace EasyCon2.Forms
             eSP32ToolStripMenuItem = new ToolStripMenuItem();
             手柄设置ToolStripMenuItem = new ToolStripMenuItem();
             取消配对ToolStripMenuItem = new ToolStripMenuItem();
-            画图ToolStripMenuItem = new ToolStripMenuItem();
-            喷射ToolStripMenuItem = new ToolStripMenuItem();
-            自由画板鼠标代替摇杆ToolStripMenuItem = new ToolStripMenuItem();
             帮助ToolStripMenuItem = new ToolStripMenuItem();
             固件模式ToolStripMenuItem = new ToolStripMenuItem();
             联机模式ToolStripMenuItem = new ToolStripMenuItem();
@@ -75,6 +72,9 @@ namespace EasyCon2.Forms
             检查更新ToolStripMenuItem = new ToolStripMenuItem();
             项目源码ToolStripMenuItem = new ToolStripMenuItem();
             关于ToolStripMenuItem = new ToolStripMenuItem();
+            画图ToolStripMenuItem = new ToolStripMenuItem();
+            喷射ToolStripMenuItem = new ToolStripMenuItem();
+            自由画板鼠标代替摇杆ToolStripMenuItem = new ToolStripMenuItem();
             labelTimer = new Label();
             logTxtBox = new RichLogBox();
             buttonRecordPause = new Button();
@@ -126,12 +126,12 @@ namespace EasyCon2.Forms
             // 
             menuStrip.Font = new Font("微软雅黑", 9F);
             menuStrip.ImageScalingSize = new Size(20, 20);
-            menuStrip.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 編輯ToolStripMenuItem, 脚本ToolStripMenuItem, 搜图ToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 帮助ToolStripMenuItem, 画图ToolStripMenuItem });
+            menuStrip.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem, 編輯ToolStripMenuItem, 脚本ToolStripMenuItem, 搜图ToolStripMenuItem, 设置ToolStripMenuItem, 蓝牙ToolStripMenuItem, eSP32ToolStripMenuItem, 画图ToolStripMenuItem, 帮助ToolStripMenuItem });
             menuStrip.Location = new Point(1, 1);
             menuStrip.Name = "menuStrip";
             menuStrip.Padding = new Padding(7, 2, 0, 2);
             menuStrip.RenderMode = ToolStripRenderMode.Professional;
-            menuStrip.Size = new Size(892, 28);
+            menuStrip.Size = new Size(906, 28);
             menuStrip.TabIndex = 0;
             menuStrip.Text = "menuStrip1";
             // 
@@ -239,7 +239,7 @@ namespace EasyCon2.Forms
             // 
             编译ToolStripMenuItem.Name = "编译ToolStripMenuItem";
             编译ToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.R;
-            编译ToolStripMenuItem.Size = new Size(224, 26);
+            编译ToolStripMenuItem.Size = new Size(193, 26);
             编译ToolStripMenuItem.Text = "格式化";
             编译ToolStripMenuItem.Click += compileButton_Click;
             // 
@@ -247,7 +247,7 @@ namespace EasyCon2.Forms
             // 
             执行ToolStripMenuItem.Name = "执行ToolStripMenuItem";
             执行ToolStripMenuItem.ShortcutKeys = Keys.F5;
-            执行ToolStripMenuItem.Size = new Size(224, 26);
+            执行ToolStripMenuItem.Size = new Size(193, 26);
             执行ToolStripMenuItem.Text = "运行";
             执行ToolStripMenuItem.Click += 执行ToolStripMenuItem_Click;
             // 
@@ -261,27 +261,27 @@ namespace EasyCon2.Forms
             // 采集卡类型ToolStripMenuItem
             // 
             采集卡类型ToolStripMenuItem.Name = "采集卡类型ToolStripMenuItem";
-            采集卡类型ToolStripMenuItem.Size = new Size(224, 26);
+            采集卡类型ToolStripMenuItem.Size = new Size(182, 26);
             采集卡类型ToolStripMenuItem.Text = "采集卡类型";
             // 
             // 打开搜图ToolStripMenuItem
             // 
             打开搜图ToolStripMenuItem.Name = "打开搜图ToolStripMenuItem";
-            打开搜图ToolStripMenuItem.Size = new Size(224, 26);
+            打开搜图ToolStripMenuItem.Size = new Size(182, 26);
             打开搜图ToolStripMenuItem.Text = "打开搜图";
             打开搜图ToolStripMenuItem.MouseHover += 打开搜图ToolStripMenuItem_MouseHover;
             // 
             // 搜图说明ToolStripMenuItem
             // 
             搜图说明ToolStripMenuItem.Name = "搜图说明ToolStripMenuItem";
-            搜图说明ToolStripMenuItem.Size = new Size(224, 26);
+            搜图说明ToolStripMenuItem.Size = new Size(182, 26);
             搜图说明ToolStripMenuItem.Text = "搜图说明";
             搜图说明ToolStripMenuItem.Click += 搜图说明ToolStripMenuItem_Click;
             // 
             // 设置环境变量ToolStripMenuItem
             // 
             设置环境变量ToolStripMenuItem.Name = "设置环境变量ToolStripMenuItem";
-            设置环境变量ToolStripMenuItem.Size = new Size(224, 26);
+            设置环境变量ToolStripMenuItem.Size = new Size(182, 26);
             设置环境变量ToolStripMenuItem.Text = "设置环境变量";
             设置环境变量ToolStripMenuItem.Click += 设置环境变量ToolStripMenuItem_Click;
             // 
@@ -295,14 +295,14 @@ namespace EasyCon2.Forms
             // 推送设置ToolStripMenuItem
             // 
             推送设置ToolStripMenuItem.Name = "推送设置ToolStripMenuItem";
-            推送设置ToolStripMenuItem.Size = new Size(224, 26);
+            推送设置ToolStripMenuItem.Size = new Size(182, 26);
             推送设置ToolStripMenuItem.Text = "推送设置";
             推送设置ToolStripMenuItem.Click += 推送设置ToolStripMenuItem_Click;
             // 
             // 显示调试信息ToolStripMenuItem
             // 
             显示调试信息ToolStripMenuItem.Name = "显示调试信息ToolStripMenuItem";
-            显示调试信息ToolStripMenuItem.Size = new Size(224, 26);
+            显示调试信息ToolStripMenuItem.Size = new Size(182, 26);
             显示调试信息ToolStripMenuItem.Text = "显示调试信息";
             显示调试信息ToolStripMenuItem.Click += 显示调试信息ToolStripMenuItem_Click;
             // 
@@ -311,7 +311,7 @@ namespace EasyCon2.Forms
             烧录自动运行ToolStripMenuItem.Checked = true;
             烧录自动运行ToolStripMenuItem.CheckState = CheckState.Checked;
             烧录自动运行ToolStripMenuItem.Name = "烧录自动运行ToolStripMenuItem";
-            烧录自动运行ToolStripMenuItem.Size = new Size(224, 26);
+            烧录自动运行ToolStripMenuItem.Size = new Size(182, 26);
             烧录自动运行ToolStripMenuItem.Text = "烧录自动运行";
             烧录自动运行ToolStripMenuItem.Click += 脚本自动运行ToolStripMenuItem_Click;
             // 
@@ -320,7 +320,7 @@ namespace EasyCon2.Forms
             显示折叠ToolStripMenuItem.Checked = true;
             显示折叠ToolStripMenuItem.CheckState = CheckState.Checked;
             显示折叠ToolStripMenuItem.Name = "显示折叠ToolStripMenuItem";
-            显示折叠ToolStripMenuItem.Size = new Size(224, 26);
+            显示折叠ToolStripMenuItem.Size = new Size(182, 26);
             显示折叠ToolStripMenuItem.Text = "显示折叠";
             显示折叠ToolStripMenuItem.Click += 显示折叠ToolStripMenuItem_Click;
             // 
@@ -330,7 +330,7 @@ namespace EasyCon2.Forms
             代码自动补全ToolStripMenuItem.CheckOnClick = true;
             代码自动补全ToolStripMenuItem.CheckState = CheckState.Checked;
             代码自动补全ToolStripMenuItem.Name = "代码自动补全ToolStripMenuItem";
-            代码自动补全ToolStripMenuItem.Size = new Size(224, 26);
+            代码自动补全ToolStripMenuItem.Size = new Size(182, 26);
             代码自动补全ToolStripMenuItem.Text = "代码自动补全";
             代码自动补全ToolStripMenuItem.Click += 代码自动补全ToolStripMenuItem_Click;
             // 
@@ -345,7 +345,7 @@ namespace EasyCon2.Forms
             // 蓝牙设备驱动配置ToolStripMenuItem
             // 
             蓝牙设备驱动配置ToolStripMenuItem.Name = "蓝牙设备驱动配置ToolStripMenuItem";
-            蓝牙设备驱动配置ToolStripMenuItem.Size = new Size(224, 26);
+            蓝牙设备驱动配置ToolStripMenuItem.Size = new Size(182, 26);
             蓝牙设备驱动配置ToolStripMenuItem.Text = "设备驱动配置";
             蓝牙设备驱动配置ToolStripMenuItem.Click += 设备驱动配置ToolStripMenuItem_Click;
             // 
@@ -359,16 +359,77 @@ namespace EasyCon2.Forms
             // 手柄设置ToolStripMenuItem
             // 
             手柄设置ToolStripMenuItem.Name = "手柄设置ToolStripMenuItem";
-            手柄设置ToolStripMenuItem.Size = new Size(224, 26);
+            手柄设置ToolStripMenuItem.Size = new Size(152, 26);
             手柄设置ToolStripMenuItem.Text = "手柄设置";
             手柄设置ToolStripMenuItem.Click += 手柄设置ToolStripMenuItem_Click;
             // 
             // 取消配对ToolStripMenuItem
             // 
             取消配对ToolStripMenuItem.Name = "取消配对ToolStripMenuItem";
-            取消配对ToolStripMenuItem.Size = new Size(224, 26);
+            取消配对ToolStripMenuItem.Size = new Size(152, 26);
             取消配对ToolStripMenuItem.Text = "取消配对";
             取消配对ToolStripMenuItem.Click += 取消配对ToolStripMenuItem_Click;
+            // 
+            // 帮助ToolStripMenuItem
+            // 
+            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 固件模式ToolStripMenuItem, 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, 脚本语法ToolStripMenuItem, toolStripSeparator2, 检查更新ToolStripMenuItem, 项目源码ToolStripMenuItem, 关于ToolStripMenuItem });
+            帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
+            帮助ToolStripMenuItem.Size = new Size(53, 24);
+            帮助ToolStripMenuItem.Text = "帮助";
+            // 
+            // 固件模式ToolStripMenuItem
+            // 
+            固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
+            固件模式ToolStripMenuItem.Size = new Size(152, 26);
+            固件模式ToolStripMenuItem.Text = "固件模式";
+            固件模式ToolStripMenuItem.Click += 固件模式ToolStripMenuItem_Click;
+            // 
+            // 联机模式ToolStripMenuItem
+            // 
+            联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
+            联机模式ToolStripMenuItem.Size = new Size(152, 26);
+            联机模式ToolStripMenuItem.Text = "联机模式";
+            联机模式ToolStripMenuItem.Click += 联机模式ToolStripMenuItem_Click;
+            // 
+            // 烧录模式ToolStripMenuItem
+            // 
+            烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
+            烧录模式ToolStripMenuItem.Size = new Size(152, 26);
+            烧录模式ToolStripMenuItem.Text = "烧录模式";
+            烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
+            // 
+            // 脚本语法ToolStripMenuItem
+            // 
+            脚本语法ToolStripMenuItem.Name = "脚本语法ToolStripMenuItem";
+            脚本语法ToolStripMenuItem.Size = new Size(152, 26);
+            脚本语法ToolStripMenuItem.Text = "脚本语法";
+            脚本语法ToolStripMenuItem.Click += 脚本语法ToolStripMenuItem_Click;
+            // 
+            // toolStripSeparator2
+            // 
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new Size(149, 6);
+            // 
+            // 检查更新ToolStripMenuItem
+            // 
+            检查更新ToolStripMenuItem.Name = "检查更新ToolStripMenuItem";
+            检查更新ToolStripMenuItem.Size = new Size(152, 26);
+            检查更新ToolStripMenuItem.Text = "检查更新";
+            检查更新ToolStripMenuItem.Click += 检查更新ToolStripMenuItem_Click;
+            // 
+            // 项目源码ToolStripMenuItem
+            // 
+            项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
+            项目源码ToolStripMenuItem.Size = new Size(152, 26);
+            项目源码ToolStripMenuItem.Text = "项目源码";
+            项目源码ToolStripMenuItem.Click += 项目源码ToolStripMenuItem_Click;
+            // 
+            // 关于ToolStripMenuItem
+            // 
+            关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
+            关于ToolStripMenuItem.Size = new Size(152, 26);
+            关于ToolStripMenuItem.Text = "关于";
+            关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
             // 
             // 画图ToolStripMenuItem
             // 
@@ -391,67 +452,6 @@ namespace EasyCon2.Forms
             自由画板鼠标代替摇杆ToolStripMenuItem.Text = "自由画板（鼠标代替摇杆）";
             自由画板鼠标代替摇杆ToolStripMenuItem.Click += 自由画板鼠标代替摇杆ToolStripMenuItem_Click;
             // 
-            // 帮助ToolStripMenuItem
-            // 
-            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 固件模式ToolStripMenuItem, 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, 脚本语法ToolStripMenuItem, toolStripSeparator2, 检查更新ToolStripMenuItem, 项目源码ToolStripMenuItem, 关于ToolStripMenuItem });
-            帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
-            帮助ToolStripMenuItem.Size = new Size(53, 24);
-            帮助ToolStripMenuItem.Text = "帮助";
-            // 
-            // 固件模式ToolStripMenuItem
-            // 
-            固件模式ToolStripMenuItem.Name = "固件模式ToolStripMenuItem";
-            固件模式ToolStripMenuItem.Size = new Size(224, 26);
-            固件模式ToolStripMenuItem.Text = "固件模式";
-            固件模式ToolStripMenuItem.Click += 固件模式ToolStripMenuItem_Click;
-            // 
-            // 联机模式ToolStripMenuItem
-            // 
-            联机模式ToolStripMenuItem.Name = "联机模式ToolStripMenuItem";
-            联机模式ToolStripMenuItem.Size = new Size(224, 26);
-            联机模式ToolStripMenuItem.Text = "联机模式";
-            联机模式ToolStripMenuItem.Click += 联机模式ToolStripMenuItem_Click;
-            // 
-            // 烧录模式ToolStripMenuItem
-            // 
-            烧录模式ToolStripMenuItem.Name = "烧录模式ToolStripMenuItem";
-            烧录模式ToolStripMenuItem.Size = new Size(224, 26);
-            烧录模式ToolStripMenuItem.Text = "烧录模式";
-            烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
-            // 
-            // 脚本语法ToolStripMenuItem
-            // 
-            脚本语法ToolStripMenuItem.Name = "脚本语法ToolStripMenuItem";
-            脚本语法ToolStripMenuItem.Size = new Size(224, 26);
-            脚本语法ToolStripMenuItem.Text = "脚本语法";
-            脚本语法ToolStripMenuItem.Click += 脚本语法ToolStripMenuItem_Click;
-            // 
-            // toolStripSeparator2
-            // 
-            toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new Size(221, 6);
-            // 
-            // 检查更新ToolStripMenuItem
-            // 
-            检查更新ToolStripMenuItem.Name = "检查更新ToolStripMenuItem";
-            检查更新ToolStripMenuItem.Size = new Size(224, 26);
-            检查更新ToolStripMenuItem.Text = "检查更新";
-            检查更新ToolStripMenuItem.Click += 检查更新ToolStripMenuItem_Click;
-            // 
-            // 项目源码ToolStripMenuItem
-            // 
-            项目源码ToolStripMenuItem.Name = "项目源码ToolStripMenuItem";
-            项目源码ToolStripMenuItem.Size = new Size(224, 26);
-            项目源码ToolStripMenuItem.Text = "项目源码";
-            项目源码ToolStripMenuItem.Click += 项目源码ToolStripMenuItem_Click;
-            // 
-            // 关于ToolStripMenuItem
-            // 
-            关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            关于ToolStripMenuItem.Size = new Size(224, 26);
-            关于ToolStripMenuItem.Text = "关于";
-            关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
-            // 
             // labelTimer
             // 
             labelTimer.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
@@ -459,9 +459,9 @@ namespace EasyCon2.Forms
             labelTimer.BorderStyle = BorderStyle.Fixed3D;
             labelTimer.Font = new Font("Microsoft YaHei UI", 13F, FontStyle.Bold);
             labelTimer.ForeColor = Color.White;
-            labelTimer.Location = new Point(3, 423);
+            labelTimer.Location = new Point(3, 389);
             labelTimer.Name = "labelTimer";
-            labelTimer.Size = new Size(140, 53);
+            labelTimer.Size = new Size(156, 53);
             labelTimer.TabIndex = 35;
             labelTimer.Text = "00:00:00";
             labelTimer.TextAlign = ContentAlignment.MiddleCenter;
@@ -476,7 +476,7 @@ namespace EasyCon2.Forms
             logTxtBox.Location = new Point(3, 24);
             logTxtBox.Name = "logTxtBox";
             logTxtBox.ReadOnly = true;
-            logTxtBox.Size = new Size(294, 399);
+            logTxtBox.Size = new Size(332, 365);
             logTxtBox.TabIndex = 34;
             logTxtBox.Text = "";
             logTxtBox.WordWrap = false;
@@ -602,7 +602,6 @@ namespace EasyCon2.Forms
             comboBoxBoardType.Size = new Size(94, 28);
             comboBoxBoardType.TabIndex = 5;
             // 
-            //
             // buttonShowController
             // 
             buttonShowController.AccessibleName = "打开虚拟手柄";
@@ -622,8 +621,8 @@ namespace EasyCon2.Forms
             editorHost.Dock = DockStyle.Fill;
             editorHost.Font = new Font("Consolas", 9F);
             editorHost.Location = new Point(0, 0);
-            editorHost.Name = "elementHost1";
-            editorHost.Size = new Size(448, 608);
+            editorHost.Name = "editorHost";
+            editorHost.Size = new Size(424, 574);
             editorHost.TabIndex = 0;
             editorHost.Text = "elementHost1";
             // 
@@ -633,9 +632,9 @@ namespace EasyCon2.Forms
             groupBox3.Controls.Add(ComPort);
             groupBox3.Controls.Add(buttonSerialPortConnect);
             groupBox3.Controls.Add(buttonSerialPortSearch);
-            groupBox3.Location = new Point(7, 514);
+            groupBox3.Location = new Point(7, 480);
             groupBox3.Name = "groupBox3";
-            groupBox3.Size = new Size(300, 95);
+            groupBox3.Size = new Size(335, 95);
             groupBox3.TabIndex = 4;
             groupBox3.TabStop = false;
             groupBox3.Text = "连接";
@@ -646,7 +645,7 @@ namespace EasyCon2.Forms
             ComPort.FormattingEnabled = true;
             ComPort.Location = new Point(15, 18);
             ComPort.Name = "ComPort";
-            ComPort.Size = new Size(119, 28);
+            ComPort.Size = new Size(135, 28);
             ComPort.TabIndex = 34;
             ComPort.Text = "下拉选择串口";
             ComPort.DropDown += ComPort_DropDown;
@@ -659,7 +658,7 @@ namespace EasyCon2.Forms
             buttonSerialPortConnect.Font = new Font("微软雅黑", 9F);
             buttonSerialPortConnect.Location = new Point(15, 52);
             buttonSerialPortConnect.Name = "buttonSerialPortConnect";
-            buttonSerialPortConnect.Size = new Size(119, 32);
+            buttonSerialPortConnect.Size = new Size(135, 32);
             buttonSerialPortConnect.TabIndex = 30;
             buttonSerialPortConnect.Text = "手动连接";
             buttonSerialPortConnect.UseVisualStyleBackColor = true;
@@ -671,9 +670,9 @@ namespace EasyCon2.Forms
             buttonSerialPortSearch.FlatAppearance.BorderSize = 0;
             buttonSerialPortSearch.FlatStyle = FlatStyle.Flat;
             buttonSerialPortSearch.Font = new Font("微软雅黑", 9F);
-            buttonSerialPortSearch.Location = new Point(140, 18);
+            buttonSerialPortSearch.Location = new Point(193, 25);
             buttonSerialPortSearch.Name = "buttonSerialPortSearch";
-            buttonSerialPortSearch.Size = new Size(148, 66);
+            buttonSerialPortSearch.Size = new Size(118, 48);
             buttonSerialPortSearch.TabIndex = 29;
             buttonSerialPortSearch.Text = "自动连接(推荐)";
             buttonSerialPortSearch.UseVisualStyleBackColor = true;
@@ -725,9 +724,9 @@ namespace EasyCon2.Forms
             groupBox4.Controls.Add(buttonShowController);
             groupBox4.Controls.Add(buttonControllerHelp);
             groupBox4.Controls.Add(buttonKeyMapping);
-            groupBox4.Location = new Point(4, 599);
+            groupBox4.Location = new Point(4, 565);
             groupBox4.Name = "groupBox4";
-            groupBox4.Size = new Size(303, 64);
+            groupBox4.Size = new Size(341, 64);
             groupBox4.TabIndex = 34;
             groupBox4.TabStop = false;
             groupBox4.Text = "手柄";
@@ -743,9 +742,9 @@ namespace EasyCon2.Forms
             // 
             statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1, toolStripStatusLabel2, labelSerialStatus, toolStripStatusLabel3, labelCaptureStatus });
-            statusStrip.Location = new Point(1, 666);
+            statusStrip.Location = new Point(1, 632);
             statusStrip.Name = "statusStrip";
-            statusStrip.Size = new Size(892, 26);
+            statusStrip.Size = new Size(906, 26);
             statusStrip.TabIndex = 3;
             statusStrip.Text = "statusStrip1";
             // 
@@ -791,7 +790,7 @@ namespace EasyCon2.Forms
             optPanel.Controls.Add(buttonRecord);
             optPanel.Controls.Add(buttonRecordPause);
             optPanel.Controls.Add(groupBox2);
-            optPanel.Location = new Point(770, 61);
+            optPanel.Location = new Point(784, 61);
             optPanel.Name = "optPanel";
             optPanel.Size = new Size(122, 414);
             optPanel.TabIndex = 35;
@@ -802,7 +801,7 @@ namespace EasyCon2.Forms
             scriptPanel.Controls.Add(editorHost);
             scriptPanel.Location = new Point(0, 23);
             scriptPanel.Name = "scriptPanel";
-            scriptPanel.Size = new Size(448, 608);
+            scriptPanel.Size = new Size(424, 574);
             scriptPanel.TabIndex = 36;
             // 
             // logPanel
@@ -815,7 +814,7 @@ namespace EasyCon2.Forms
             logPanel.Controls.Add(labelTimer);
             logPanel.Location = new Point(7, 32);
             logPanel.Name = "logPanel";
-            logPanel.Size = new Size(300, 476);
+            logPanel.Size = new Size(338, 442);
             logPanel.TabIndex = 37;
             // 
             // logTitleLabel
@@ -831,7 +830,7 @@ namespace EasyCon2.Forms
             // 
             clsLogBtn.AccessibleName = "清除日志输出";
             clsLogBtn.BackColor = Color.Transparent;
-            clsLogBtn.BackgroundImage = ResourceHelper.Clrlog;
+            clsLogBtn.BackgroundImage = (Image)resources.GetObject("clsLogBtn.BackgroundImage");
             clsLogBtn.BackgroundImageLayout = ImageLayout.Stretch;
             clsLogBtn.FlatAppearance.BorderSize = 0;
             clsLogBtn.FlatStyle = FlatStyle.Flat;
@@ -853,9 +852,9 @@ namespace EasyCon2.Forms
             runStopBtn.FlatStyle = FlatStyle.Flat;
             runStopBtn.Font = new Font("微软雅黑", 12F, FontStyle.Bold);
             runStopBtn.ForeColor = Color.White;
-            runStopBtn.Location = new Point(140, 423);
+            runStopBtn.Location = new Point(156, 389);
             runStopBtn.Name = "runStopBtn";
-            runStopBtn.Size = new Size(157, 53);
+            runStopBtn.Size = new Size(179, 53);
             runStopBtn.TabIndex = 37;
             runStopBtn.Text = "运行脚本";
             runStopBtn.UseVisualStyleBackColor = false;
@@ -866,9 +865,9 @@ namespace EasyCon2.Forms
             scriptContainer.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             scriptContainer.Controls.Add(scriptTitleLabel);
             scriptContainer.Controls.Add(scriptPanel);
-            scriptContainer.Location = new Point(313, 32);
+            scriptContainer.Location = new Point(351, 32);
             scriptContainer.Name = "scriptContainer";
-            scriptContainer.Size = new Size(451, 631);
+            scriptContainer.Size = new Size(427, 597);
             scriptContainer.TabIndex = 38;
             // 
             // scriptTitleLabel
@@ -883,7 +882,7 @@ namespace EasyCon2.Forms
             // EasyConForm
             // 
             AutoScaleMode = AutoScaleMode.Inherit;
-            ClientSize = new Size(894, 693);
+            ClientSize = new Size(908, 659);
             Controls.Add(scriptContainer);
             Controls.Add(groupBox4);
             Controls.Add(optPanel);

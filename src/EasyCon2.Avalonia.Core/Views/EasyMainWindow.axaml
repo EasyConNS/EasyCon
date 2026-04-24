@@ -1,0 +1,228 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.Core.ViewModels"
+             xmlns:editor="using:EasyCon2.Avalonia.Core.Editor"
+             x:Class="EasyCon2.Avalonia.Core.Views.EasyMainWindow"
+             x:DataType="vm:EasyMainWindowViewModel"
+             Margin="1">
+
+    <UserControl.Styles>
+        <Style Selector="ListBox.log-list">
+            <Setter Property="Background" Value="#404040"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#999"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+        </Style>
+        <Style Selector="ListBox.log-list ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ListBox.log-list ListBoxItem:pointerover /template/ Border#BackgroundPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="ListBox.log-list ListBoxItem:selected /template/ Border#BackgroundPresenter">
+            <Setter Property="Background" Value="#333"/>
+        </Style>
+        <Style Selector="ListBox.log-list ListBoxItem:focus /template/ Border#BackgroundPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+        <!-- Top Menu Bar -->
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="文件">
+                <MenuItem Header="新建" InputGesture="Ctrl+N" Command="{Binding FileNewCommand}" />
+                <MenuItem Header="打开" InputGesture="Ctrl+O" Command="{Binding FileOpenCommand}" />
+                <MenuItem Header="保存" InputGesture="Ctrl+S" Command="{Binding FileSaveCommand}" />
+                <MenuItem Header="另存为" InputGesture="Ctrl+Shift+S" Command="{Binding FileSaveAsCommand}" />
+                <MenuItem Header="关闭" InputGesture="Ctrl+W" Command="{Binding FileCloseCommand}" />
+                <Separator />
+                <MenuItem Header="退出" InputGesture="Ctrl+Q" Command="{Binding ExitCommand}" />
+            </MenuItem>
+            <MenuItem Header="编辑">
+                <MenuItem Header="查找替换" InputGesture="Ctrl+F" Command="{Binding OpenSearchCommand}" />
+                <MenuItem Header="查找下一个" InputGesture="F3" Command="{Binding FindNextCommand}" />
+                <MenuItem Header="注释/取消注释" InputGesture="Ctrl+OemQuestion" Command="{Binding ToggleCommentCommand}" />
+            </MenuItem>
+            <MenuItem Header="脚本">
+                <MenuItem Header="格式化" InputGesture="Ctrl+R" Command="{Binding CompileCommand}" />
+                <MenuItem Header="运行" InputGesture="F5" Command="{Binding ScriptRunCommand}" />
+            </MenuItem>
+            <MenuItem Header="搜图" x:Name="MenuCapture">
+                <MenuItem Header="采集卡类型" x:Name="MenuCaptureTypes" />
+                <MenuItem Header="搜图说明" />
+                <MenuItem Header="设置环境变量" />
+            </MenuItem>
+            <MenuItem Header="设置">
+                <MenuItem Header="推送设置" Command="{Binding ShowAlertConfigCommand}" />
+                <MenuItem Header="显示调试信息" IsChecked="{Binding ShowDebugInfo}" />
+                <MenuItem Header="烧录自动运行" IsChecked="{Binding FlashAutoRun}" />
+                <MenuItem Header="显示折叠" IsChecked="{Binding ShowFolding}" />
+                <MenuItem Header="代码自动补全" IsChecked="{Binding EnableAutoCompletion}" />
+            </MenuItem>
+            <MenuItem Header="蓝牙" IsVisible="False">
+                <MenuItem Header="设备驱动配置" />
+            </MenuItem>
+            <MenuItem Header="ESP32">
+                <MenuItem Header="手柄设置" />
+                <MenuItem Header="取消配对" />
+            </MenuItem>
+			<MenuItem Header="画图">
+				<MenuItem Header="喷射战士" />
+				<MenuItem Header="自由画板（鼠标代替摇杆）" />
+			</MenuItem>
+			<MenuItem Header="帮助">
+				<MenuItem Header="固件模式" />
+				<MenuItem Header="联机模式" />
+				<MenuItem Header="烧录模式" />
+				<MenuItem Header="脚本语法" />
+				<Separator />
+				<MenuItem Header="检查更新" Command="{Binding CheckUpdateCommand}" />
+				<MenuItem Header="项目源码" x:Name="MenuProjectSource" />
+				<MenuItem Header="关于" Command="{Binding ShowAboutCommand}" />
+			</MenuItem>
+        </Menu>
+
+        <!-- Bottom Status Bar -->
+        <Border DockPanel.Dock="Bottom" Background="#F0F0F0" Height="26" Padding="4,2">
+            <DockPanel>
+                <TextBlock Text="{Binding StatusText}" Width="200" VerticalAlignment="Center" />
+                <Border Background="{Binding SerialStatusColor}" CornerRadius="2" Padding="6,2" DockPanel.Dock="Right">
+                    <TextBlock Text="{Binding SerialStatus}" Foreground="White" FontSize="11" VerticalAlignment="Center" />
+                </Border>
+                <Border Background="{Binding CaptureStatusColor}" CornerRadius="2" Padding="6,2" Margin="0,0,4,0" DockPanel.Dock="Right">
+                    <TextBlock Text="{Binding CaptureStatus}" Foreground="White" FontSize="11" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Width="20" />
+            </DockPanel>
+        </Border>
+
+        <!-- Bottom 3-column control panel -->
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,*,*" Height="160" Margin="4,0,4,4">
+            <!-- Column 0: Serial Port Connection -->
+            <Border Grid.Column="0" BorderBrush="#999" BorderThickness="1" CornerRadius="3" Padding="6" Margin="0,0,2,0">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="连接" FontWeight="Bold" />
+                    <ComboBox ItemsSource="{Binding SerialPorts}" SelectedItem="{Binding SelectedSerialPort}"
+                              HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="*,*">
+                        <Button Grid.Column="0" Content="手动连接" Padding="4,6" Margin="0,0,2,0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Command="{Binding ManualConnectCommand}" />
+                        <Button Grid.Column="1" Content="自动连接" Padding="4,6" Margin="2,0,0,0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Command="{Binding AutoConnectCommand}" />
+                    </Grid>
+                    <TextBlock Text="{Binding SerialStatus}" HorizontalAlignment="Center" FontWeight="Bold"
+                               Foreground="{Binding SerialStatusColor}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Column 1: Video Source -->
+            <Border Grid.Column="1" BorderBrush="#999" BorderThickness="1" CornerRadius="3" Padding="6" Margin="2,0,2,0">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="视频源" FontWeight="Bold" />
+                    <ComboBox ItemsSource="{Binding CaptureSourceOptions}" SelectedItem="{Binding SelectedCaptureSource}"
+                              HorizontalAlignment="Stretch" />
+                    <Grid ColumnDefinitions="*,*">
+                        <Button Grid.Column="0" Content="{Binding CaptureSourceButtonText}" Padding="4,6" Margin="0,0,2,0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Command="{Binding ConnectCaptureSourceCommand}" />
+                        <Button Grid.Column="1" Content="搜图控制台" Padding="4,6" Margin="2,0,0,0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Command="{Binding OpenCaptureConsoleCommand}" />
+                    </Grid>
+                    <TextBlock Text="{Binding CaptureSourceStatusText}" HorizontalAlignment="Center" FontWeight="Bold"
+                               Foreground="{Binding CaptureStatusColor}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Column 2: Controller + Record -->
+            <Border Grid.Column="2" BorderBrush="#999" BorderThickness="1" CornerRadius="3" Padding="6" Margin="2,0,0,0">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="手柄" FontWeight="Bold" />
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button Content="虚拟手柄" Padding="8,6" />
+                        <Button Content="按键映射" Padding="8,6" />
+                        <Button Content="帮助" Padding="8,6" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button Content="{Binding RecordButtonText}" Padding="8,6" />
+                        <Button Content="暂停录制" Padding="8,6"
+                                IsEnabled="{Binding CanPauseRecord}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Right: Operation Panel (record buttons removed) -->
+        <StackPanel DockPanel.Dock="Right" Width="122" VerticalAlignment="Top" Margin="2" Spacing="2">
+            <Button Content="远程运行" Padding="4,8" HorizontalAlignment="Stretch"
+                    Command="{Binding RemoteStartCommand}" />
+            <Button Content="远程停止" Padding="4,8" HorizontalAlignment="Stretch"
+                    Command="{Binding RemoteStopCommand}" />
+            <Button Content="编译烧录" Padding="4,8" HorizontalAlignment="Stretch"
+                    Command="{Binding FlashCommand}" />
+            <Button Content="清除烧录" Padding="4,8" HorizontalAlignment="Stretch"
+                    Command="{Binding FlashClearCommand}" />
+            <Border BorderBrush="#999" BorderThickness="1" CornerRadius="3" Padding="4">
+                <StackPanel>
+                    <TextBlock Text="固件" FontWeight="Bold" Margin="0,0,0,4" />
+                    <ComboBox ItemsSource="{Binding SupportedBoards}"
+                              SelectedIndex="{Binding SelectedBoardIndex}"
+                              HorizontalAlignment="Stretch" />
+                    <Button Content="生成" Margin="0,4,0,0" Padding="4,6" HorizontalAlignment="Stretch"
+                            Command="{Binding GenerateFirmwareCommand}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- Left: Log Panel -->
+        <Border DockPanel.Dock="Left" BorderBrush="#999" BorderThickness="1" CornerRadius="3" Margin="4,2,0,2" Width="300" VerticalAlignment="Stretch">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="4,2">
+                    <TextBlock Text="输出" FontWeight="Bold" VerticalAlignment="Center" />
+                    <Button Content="x" DockPanel.Dock="Right" Width="20" Height="20"
+                            Command="{Binding ClearLogCommand}" FontSize="10" Padding="0"
+                            HorizontalAlignment="Right" />
+                </DockPanel>
+
+                <DockPanel DockPanel.Dock="Bottom" Margin="2">
+                    <Border Background="Black" CornerRadius="2" Padding="4" Width="140">
+                        <TextBlock Text="{Binding TimerText}" Foreground="{Binding TimerForeground}"
+                                   HorizontalAlignment="Center" FontWeight="Bold" FontSize="13" />
+                    </Border>
+                    <Button Content="{Binding RunButtonText}" DockPanel.Dock="Right"
+                            Command="{Binding RunStopScriptCommand}"
+                            IsEnabled="{Binding CanRun}"
+                            Background="{Binding RunButtonColor}"
+                            Foreground="White" FontWeight="Bold" FontSize="12"
+                            HorizontalContentAlignment="Center"
+                            HorizontalAlignment="Stretch" Padding="4,8" />
+                </DockPanel>
+
+                <ListBox x:Name="LogListBox" ItemsSource="{Binding LogEntries}"
+                         Classes="log-list"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         SelectionMode="Toggle">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:LogEntry">
+                            <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
+                                       TextWrapping="NoWrap" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Center: Script Editor -->
+        <DockPanel Margin="2">
+            <TextBlock Text="{Binding ScriptTitle}" DockPanel.Dock="Top" Margin="2" />
+            <editor:ScriptEditorControl x:Name="ScriptEditor" />
+        </DockPanel>
+    </DockPanel>
+</UserControl>

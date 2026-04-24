@@ -4,6 +4,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Search;
+using EasyCon.Core;
 
 namespace EasyCon2.Avalonia.Core.Editor;
 
@@ -86,6 +87,40 @@ public partial class ScriptEditorControl : UserControl
     }
 
     public void OpenSearchPanel() => _searchPanel.Open();
+
+    public void FindNext() => _searchPanel.Open();
+
+    public void ToggleComment()
+    {
+        int startOffset = _editor.SelectionStart;
+        int endOffset = startOffset + _editor.SelectionLength;
+
+        var doc = _editor.Document;
+        var startLine = doc.GetLineByOffset(startOffset);
+        var endLine = doc.GetLineByOffset(endOffset);
+
+        var docomment = false;
+        for (int lineNum = endLine.LineNumber; lineNum >= startLine.LineNumber; lineNum--)
+        {
+            var line = doc.GetLineByNumber(lineNum);
+            if (Scripter.CanComment(doc.GetText(line)))
+            {
+                docomment = true;
+                break;
+            }
+        }
+
+        using (doc.RunUpdate())
+        {
+            for (int lineNum = endLine.LineNumber; lineNum >= startLine.LineNumber; lineNum--)
+            {
+                var line = doc.GetLineByNumber(lineNum);
+                var text = doc.GetText(line);
+                text = Scripter.ToggleComment(text, docomment);
+                doc.Replace(line, text);
+            }
+        }
+    }
 
     private void SetupDragDrop()
     {

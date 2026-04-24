@@ -27,6 +27,8 @@ namespace EasyCon2
                 var exeName = Path.GetFileNameWithoutExtension(Application.ExecutablePath);
                 if (exeName.EndsWith("lite", StringComparison.OrdinalIgnoreCase))
                     Application.Run(new App.MainForm());
+                //else if (exeName.EndsWith("classic", StringComparison.OrdinalIgnoreCase))
+                //    Application.Run(new Forms.EasyConFormAvalonia());
                 else
                     Application.Run(new Forms.EasyConForm());
             }
