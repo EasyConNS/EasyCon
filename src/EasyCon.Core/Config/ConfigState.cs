@@ -7,4 +7,5 @@ public record ConfigState
     public bool EnableAutoCompletion { get; set; } = false;
     public bool AutoRunAfterFlash { get; set; } = false;
     public bool AutoSaveLog { get; set; } = false;
+    public bool DarkMode { get; set; } = false;
 }

@@ -43,14 +43,8 @@ public class CaptureService
     {
         try
         {
-            _captureForm?.Close();
+            _captureForm?.ForceClose();
             _captureForm = new CaptureVideoForm(deviceId, captureType);
-            _captureForm.FormClosing += (s, e) =>
-            {
-                // 隐藏窗口而非关闭，保持视频源连接
-                e.Cancel = true;
-                ((Form)s!).Hide();
-            };
             _captureForm.LoadImgLabels(imgLabelPath);
             StatusChanged?.Invoke($"已加载搜图标签：{LoadedLabels.Count()}");
             LabelsLoaded?.Invoke(LoadedLabels.Count());
@@ -69,7 +63,7 @@ public class CaptureService
     /// </summary>
     public void Disconnect()
     {
-        _captureForm?.Close();
+        _captureForm?.ForceClose();
         _captureForm = null;
         ConnectionStateChanged?.Invoke(false);
         StatusChanged?.Invoke("视频源已断开");

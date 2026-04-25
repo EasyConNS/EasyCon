@@ -1,5 +1,6 @@
 using EasyCon.Capture;
 using EasyCon2.Helper;
+using EasyCon2.Theme;
 using OpenCvSharp.Extensions;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
@@ -82,14 +83,18 @@ namespace EasyCon2.Forms
 
         public void LoadImgLabels(string curpath = "") => imglManager.LoadImgLabels([curpath, ImgDir]);
 
+        private bool _forceClose;
+
         public CaptureVideoForm()
         {
             InitializeComponent();
+            ThemeManager.ThemeChanged += OnThemeChanged;
         }
 
         public CaptureVideoForm(int devId, int typeId)
         {
             InitializeComponent();
+            ThemeManager.ThemeChanged += OnThemeChanged;
 
             deviceId = devId;
             Debug.WriteLine($"采集卡Id:{deviceId}");
@@ -105,8 +110,37 @@ namespace EasyCon2.Forms
             BindingData();
         }
 
+        public void ApplyTheme()
+        {
+            BackColor = ThemeManager.PageBackground;
+            ForeColor = ThemeManager.TextPrimary;
+            groupBox1.ForeColor = ThemeManager.TextPrimary;
+        }
+
+        public void ForceClose()
+        {
+            _forceClose = true;
+            Close();
+        }
+
+        private void OnThemeChanged(bool isDark) => ApplyTheme();
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (!_forceClose)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+            ThemeManager.ThemeChanged -= OnThemeChanged;
+            base.OnFormClosing(e);
+        }
+
         private void CaptureVideo_Load(object sender, EventArgs e)
         {
+            ApplyTheme();
+
             Directory.CreateDirectory(CapDir);
             Directory.CreateDirectory(ImgDir);
 

@@ -11,6 +11,7 @@ using EasyCon2.Forms.win32;
 using EasyCon2.Helper;
 using EasyCon2.Models;
 using EasyCon2.Services;
+using EasyCon2.Theme;
 using EasyCon2.Views;
 using EasyDevice;
 using EasyScript;
@@ -55,15 +56,6 @@ namespace EasyCon2.App
         private QqAssist ws = new();
         private AlertDispatcher _alertDispatcher;
 
-        // Theme colors (Cursor warm light)
-        static readonly Color ColorSuccess = Color.FromArgb(31, 138, 101);   // #1f8a65
-        static readonly Color ColorAccent = Color.FromArgb(245, 78, 0);      // #f54e00
-        static readonly Color ColorError = Color.FromArgb(207, 45, 86);      // #cf2d56
-        static readonly Color ColorFgDark = Color.FromArgb(38, 37, 30);      // #26251e
-        static readonly Color ColorFgMuted = Color.FromArgb(140, 139, 132);  // #8c8b84
-        static readonly Color ColorBgButton = Color.FromArgb(235, 234, 229); // #ebeae5
-        static readonly Color ColorBgSurface = Color.FromArgb(230, 229, 224);// #e6e5e0
-
         const string FirmwarePath = @"Firmware\";
 
         private readonly string defaultName = "未命名脚本";
@@ -80,6 +72,7 @@ namespace EasyCon2.App
         {
             InitializeComponent();
             _configService.Load();
+            ThemeManager.Init(_configService.Config.DarkMode);
             _alertDispatcher = new AlertDispatcher(ConfigManager.LoadAlert());
         }
 
@@ -124,9 +117,19 @@ namespace EasyCon2.App
             comboBoxBoardType.Items.AddRange(Board.SupportedBoards);
             comboBoxBoardType.SelectedIndex = 0;
             InitTheme();
+            ApplyTheme();
             InitEditor();
             InitServices();
             InitTimer();
+
+            ThemeManager.ThemeChanged += isDark =>
+            {
+                Post(() =>
+                {
+                    ApplyTheme();
+                    scriptEditor.IsDarkTheme = isDark;
+                });
+            };
 
             comboInputMode.Items.Add("键盘");
             comboInputMode.SelectedIndex = 0;
@@ -134,6 +137,7 @@ namespace EasyCon2.App
 
             // 初始化菜单项状态
             代码自动补全ToolStripMenuItem.Checked = _configService.Config.EnableAutoCompletion;
+            深色模式ToolStripMenuItem.Checked = _configService.Config.DarkMode;
 
 #if DEBUG
             蓝牙ToolStripMenuItem.Visible = true;
@@ -180,11 +184,11 @@ namespace EasyCon2.App
                     _state.ScriptRunning = running;
                     if (!running) _state.ScriptStartTime = DateTime.MinValue;
                     runStopBtn.Text = running ? "终止脚本" : "运行脚本";
-                    runStopBtn.BackColor = running ? ColorError : ColorSuccess;
+                    runStopBtn.BackColor = running ? ThemeManager.Error : ThemeManager.Success;
                     runStopBtn.Enabled = true;
                     编译ToolStripMenuItem.Enabled = !running;
                     执行ToolStripMenuItem.Enabled = !running;
-                    labelTimer.ForeColor = running ? ColorSuccess : Color.White;
+                    labelTimer.ForeColor = running ? ThemeManager.Success : ThemeManager.WhiteOrLight;
                 });
 
             _scriptService.LogOutput += (msg, color) =>
@@ -203,7 +207,7 @@ namespace EasyCon2.App
                 Post(() =>
                 {
                     labelSerialStatus.Text = connected ? "单片机已连接" : "单片机未连接";
-                    labelSerialStatus.ForeColor = connected ? ColorSuccess : ColorFgDark;
+                    labelSerialStatus.ForeColor = connected ? ThemeManager.Success : ThemeManager.TextPrimary;
                 });
 
             _deviceService.Log += msg =>
@@ -216,7 +220,7 @@ namespace EasyCon2.App
                 Post(() =>
                 {
                     labelCaptureStatus.Text = connected ? "采集卡已连接" : "采集卡未连接";
-                    labelCaptureStatus.ForeColor = connected ? ColorSuccess : ColorFgDark;
+                    labelCaptureStatus.ForeColor = connected ? ThemeManager.Success : ThemeManager.TextPrimary;
                     btnCaptureToggle.Text = connected ? "断开视频源" : "连接视频源";
                 });
 
@@ -1257,10 +1261,78 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
 
         private void InitTheme()
         {
-            var renderer = new ToolStripProfessionalRenderer(new WarmMenuColors());
+            var colors = ThemeManager.IsDark
+                ? (ProfessionalColorTable)new DarkMenuColors()
+                : new WarmMenuColors();
+            var renderer = new ToolStripProfessionalRenderer(colors);
             renderer.RoundedEdges = false;
             menuStrip.Renderer = renderer;
             statusStrip.Renderer = renderer;
+        }
+
+        private void ApplyTheme()
+        {
+            SuspendLayout();
+
+            BackColor = ThemeManager.PageBackground;
+            ForeColor = ThemeManager.TextPrimary;
+
+            // Always-dark surfaces
+            logTxtBox.BackColor = ThemeManager.DarkSurfaceBackground;
+            logTxtBox.ForeColor = ThemeManager.DarkSurfaceText;
+            labelTimer.BackColor = ThemeManager.DarkSurfaceBackground;
+
+            // Status labels
+            labelSerialStatus.BackColor = ThemeManager.SurfaceBackground;
+            labelCaptureStatus.BackColor = ThemeManager.SurfaceBackground;
+
+            // Table layout panels
+            tblSerialPort.BackColor = ThemeManager.SurfaceBackground;
+            tblVideoSource.BackColor = ThemeManager.SurfaceBackground;
+            tblController.BackColor = ThemeManager.SurfaceBackground;
+
+            // Run button
+            runStopBtn.BackColor = ThemeManager.Success;
+            runStopBtn.ForeColor = ThemeManager.WhiteOrLight;
+
+            // ComboBoxes
+            var comboBg = ThemeManager.IsDark ? ThemeManager.SurfaceBackground : SystemColors.Window;
+            var comboFg = ThemeManager.IsDark ? ThemeManager.TextPrimary : SystemColors.WindowText;
+            ComPort.BackColor = comboBg;
+            ComPort.ForeColor = comboFg;
+            comboVideoSource.BackColor = comboBg;
+            comboVideoSource.ForeColor = comboFg;
+            comboInputMode.BackColor = comboBg;
+            comboInputMode.ForeColor = comboFg;
+            comboBoxBoardType.BackColor = comboBg;
+            comboBoxBoardType.ForeColor = comboFg;
+
+            InitTheme();
+
+            // Set ForeColor on all menu/status items
+            var menuTextColor = ThemeManager.IsDark ? ThemeManager.TextPrimary : SystemColors.ControlText;
+            SetItemsForeColor(menuStrip.Items, menuTextColor);
+            SetItemsForeColor(statusStrip.Items, menuTextColor);
+
+            ResumeLayout();
+        }
+
+        private static void SetItemsForeColor(ToolStripItemCollection items, Color color)
+        {
+            foreach (ToolStripItem item in items)
+            {
+                item.ForeColor = color;
+                if (item is ToolStripMenuItem menuItem)
+                    SetItemsForeColor(menuItem.DropDownItems, color);
+            }
+        }
+
+        private void 深色模式ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var menu = (ToolStripMenuItem)sender;
+            _configService.Config.DarkMode = menu.Checked;
+            _configService.Save();
+            ThemeManager.Toggle(menu.Checked);
         }
 
         private class WarmMenuColors : ProfessionalColorTable

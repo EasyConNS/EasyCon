@@ -58,6 +58,7 @@ namespace EasyCon2.App
             烧录自动运行ToolStripMenuItem = new ToolStripMenuItem();
             显示折叠ToolStripMenuItem = new ToolStripMenuItem();
             代码自动补全ToolStripMenuItem = new ToolStripMenuItem();
+            深色模式ToolStripMenuItem = new ToolStripMenuItem();
             蓝牙ToolStripMenuItem = new ToolStripMenuItem();
             蓝牙设备驱动配置ToolStripMenuItem = new ToolStripMenuItem();
             eSP32ToolStripMenuItem = new ToolStripMenuItem();
@@ -290,7 +291,7 @@ namespace EasyCon2.App
             // 
             // 设置ToolStripMenuItem
             // 
-            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, 烧录自动运行ToolStripMenuItem, 显示折叠ToolStripMenuItem, 代码自动补全ToolStripMenuItem });
+            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, 烧录自动运行ToolStripMenuItem, 显示折叠ToolStripMenuItem, 代码自动补全ToolStripMenuItem, 深色模式ToolStripMenuItem });
             设置ToolStripMenuItem.Name = "设置ToolStripMenuItem";
             设置ToolStripMenuItem.Size = new Size(53, 24);
             设置ToolStripMenuItem.Text = "设置";
@@ -336,7 +337,15 @@ namespace EasyCon2.App
             代码自动补全ToolStripMenuItem.Size = new Size(182, 26);
             代码自动补全ToolStripMenuItem.Text = "代码自动补全";
             代码自动补全ToolStripMenuItem.Click += 代码自动补全ToolStripMenuItem_Click;
-            // 
+            //
+            // 深色模式ToolStripMenuItem
+            //
+            深色模式ToolStripMenuItem.CheckOnClick = true;
+            深色模式ToolStripMenuItem.Name = "深色模式ToolStripMenuItem";
+            深色模式ToolStripMenuItem.Size = new Size(182, 26);
+            深色模式ToolStripMenuItem.Text = "深色模式";
+            深色模式ToolStripMenuItem.Click += 深色模式ToolStripMenuItem_Click;
+            //
             // 蓝牙ToolStripMenuItem
             // 
             蓝牙ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 蓝牙设备驱动配置ToolStripMenuItem });
@@ -1126,6 +1135,7 @@ namespace EasyCon2.App
         private WinFormsAvaloniaControlHost editorHost;
         private ToolStripMenuItem 推送设置ToolStripMenuItem;
         private ToolStripMenuItem 代码自动补全ToolStripMenuItem;
+        private ToolStripMenuItem 深色模式ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙设备驱动配置ToolStripMenuItem;
         private ToolStripMenuItem eSP32ToolStripMenuItem;

@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Highlighting;
@@ -19,6 +20,19 @@ public partial class ScriptEditorControl : UserControl
     public event Action<string>? FileDropped;
 
     public TextEditor TextEditor => _editor;
+
+    private bool _isDarkTheme;
+
+    public bool IsDarkTheme
+    {
+        get => _isDarkTheme;
+        set
+        {
+            if (_isDarkTheme == value) return;
+            _isDarkTheme = value;
+            ApplyThemeColors();
+        }
+    }
 
     public bool EnableAutoCompletion
     {
@@ -57,7 +71,18 @@ public partial class ScriptEditorControl : UserControl
     public IHighlightingDefinition? SyntaxHighlighting
     {
         get => _editor.SyntaxHighlighting;
-        set => _editor.SyntaxHighlighting = value;
+        set
+        {
+            if (_isDarkTheme && value != null && !value.Name.EndsWith("-Dark"))
+            {
+                var dark = EcsHighlightingLoader.GetByName(value.Name + "-Dark");
+                _editor.SyntaxHighlighting = dark ?? value;
+            }
+            else
+            {
+                _editor.SyntaxHighlighting = value;
+            }
+        }
     }
 
     public int SelectionStart => _editor.SelectionStart;
@@ -163,4 +188,39 @@ public partial class ScriptEditorControl : UserControl
     public IDocument Document => _editor.Document;
     public TextDocument TextDocument => _editor.Document;
     public AvaloniaEdit.Editing.TextArea TextArea => _editor.TextArea;
+
+    private void ApplyThemeColors()
+    {
+        if (_isDarkTheme)
+        {
+            _editor.Background = new SolidColorBrush(
+                Color.FromRgb(20, 20, 19));   // #141413
+            _editor.Foreground = new SolidColorBrush(
+                Color.FromRgb(250, 249, 245)); // #faf9f5
+
+            var current = _editor.SyntaxHighlighting;
+            if (current != null && !current.Name.EndsWith("-Dark"))
+            {
+                var darkHighlighting = EcsHighlightingLoader.GetByName(current.Name + "-Dark");
+                if (darkHighlighting != null)
+                    _editor.SyntaxHighlighting = darkHighlighting;
+            }
+        }
+        else
+        {
+            _editor.Background = new SolidColorBrush(
+                Color.FromRgb(250, 250, 247)); // #FAFAF7
+            _editor.Foreground = new SolidColorBrush(
+                Color.FromRgb(38, 37, 30));    // #26251E
+
+            var current = _editor.SyntaxHighlighting;
+            if (current != null && current.Name.EndsWith("-Dark"))
+            {
+                var lightName = current.Name[..^5]; // strip "-Dark"
+                var lightHighlighting = EcsHighlightingLoader.GetByName(lightName);
+                if (lightHighlighting != null)
+                    _editor.SyntaxHighlighting = lightHighlighting;
+            }
+        }
+    }
 }

@@ -21,6 +21,8 @@ public static class EcsHighlightingLoader
             "Lua", [".lua"]);
         RegisterFromResource(asm, "EasyCon2.Avalonia.Core.Resources.Scripts.Python-Mode.xshd",
             "Python", [".py"]);
+        RegisterFromResource(asm, "EasyCon2.Avalonia.Core.Resources.Scripts.ecp-dark.xshd",
+            "ECScript-Dark", []);
 
         _registered = true;
     }

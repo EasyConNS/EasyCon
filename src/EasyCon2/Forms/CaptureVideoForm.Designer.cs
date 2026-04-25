@@ -107,7 +107,7 @@ namespace EasyCon2.Forms
             captureBtn.Size = new Size(77, 33);
             captureBtn.TabIndex = 5;
             captureBtn.Text = "截图";
-            captureBtn.UseVisualStyleBackColor = true;
+            captureBtn.FlatStyle = FlatStyle.Flat;
             captureBtn.Click += captureBtn_Click;
             // 
             // readmelbl
@@ -130,7 +130,7 @@ namespace EasyCon2.Forms
             rangeBtn.Size = new Size(100, 33);
             rangeBtn.TabIndex = 6;
             rangeBtn.Text = "圈选范围";
-            rangeBtn.UseVisualStyleBackColor = true;
+            rangeBtn.FlatStyle = FlatStyle.Flat;
             rangeBtn.Click += rangeBtn_Click;
             // 
             // searchTestBtn
@@ -142,7 +142,7 @@ namespace EasyCon2.Forms
             searchTestBtn.Size = new Size(86, 33);
             searchTestBtn.TabIndex = 8;
             searchTestBtn.Text = "搜索测试";
-            searchTestBtn.UseVisualStyleBackColor = true;
+            searchTestBtn.FlatStyle = FlatStyle.Flat;
             searchTestBtn.Click += searchTestBtn_Click;
             // 
             // targetBtn
@@ -154,7 +154,7 @@ namespace EasyCon2.Forms
             targetBtn.Size = new Size(100, 33);
             targetBtn.TabIndex = 7;
             targetBtn.Text = "圈选目标";
-            targetBtn.UseVisualStyleBackColor = true;
+            targetBtn.FlatStyle = FlatStyle.Flat;
             targetBtn.Click += targetBtn_Click;
             // 
             // groupBox1
@@ -449,7 +449,7 @@ namespace EasyCon2.Forms
             SaveTagBtn.Size = new Size(79, 33);
             SaveTagBtn.TabIndex = 10;
             SaveTagBtn.Text = "保存标签";
-            SaveTagBtn.UseVisualStyleBackColor = true;
+            SaveTagBtn.FlatStyle = FlatStyle.Flat;
             SaveTagBtn.Click += SaveTagBtn_Click;
             // 
             // dyncTestBtn
@@ -461,7 +461,7 @@ namespace EasyCon2.Forms
             dyncTestBtn.Size = new Size(105, 33);
             dyncTestBtn.TabIndex = 9;
             dyncTestBtn.Text = "动态测试";
-            dyncTestBtn.UseVisualStyleBackColor = true;
+            dyncTestBtn.FlatStyle = FlatStyle.Flat;
             dyncTestBtn.Click += DynTestBtn_Click;
             //
             // ResolutionBtn
@@ -473,7 +473,7 @@ namespace EasyCon2.Forms
             ResolutionBtn.Size = new Size(221, 33);
             ResolutionBtn.TabIndex = 3;
             ResolutionBtn.Text = "当前分辨率：1080P点击切换";
-            ResolutionBtn.UseVisualStyleBackColor = true;
+            ResolutionBtn.FlatStyle = FlatStyle.Flat;
             ResolutionBtn.Click += ResolutionBtn_Click;
             // 
             // label2
@@ -568,7 +568,7 @@ namespace EasyCon2.Forms
             button1.Size = new Size(203, 44);
             button1.TabIndex = 32;
             button1.Text = "点击查看帮助说明";
-            button1.UseVisualStyleBackColor = true;
+            button1.FlatStyle = FlatStyle.Flat;
             button1.Click += button1_Click;
             // 
             // CaptureVideoForm
