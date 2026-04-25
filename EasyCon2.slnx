@@ -17,6 +17,7 @@
   </Folder>
   <Folder Name="/Test/">
     <Project Path="test/EasyCon.Tests/EasyCon.Tests.csproj" />
+    <Project Path="test/EasyCon.WinInput.Tests/EasyCon.WinInput.Tests.csproj" />
   </Folder>
   <Folder Name="/Demo/">
     <Project Path="tools/DirectInput/DirectInput.csproj" />

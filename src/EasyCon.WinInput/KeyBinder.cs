@@ -82,4 +82,9 @@ public class KeyBinder
     {
         LowLevelKeyboard.GetInstance().UnregisterKeyEventAll();
     }
+
+    public void RegisterEscapeKey(Func<bool> keydown, Func<bool> keyup)
+    {
+        LowLevelKeyboard.GetInstance().RegisterKeyEvent(0x1B, keydown, keyup);
+    }
 }

@@ -13,7 +13,7 @@ public class GamepadInputBinder : IInputBinder
     private readonly int _deviceIndex;
     private readonly NintendoSwitch _ns;
     private readonly GamepadMappingConfig _config;
-    private bool _enabled;
+    private volatile bool _enabled;
 
     public GamepadInputBinder(GamepadManager manager, int deviceIndex, NintendoSwitch ns, GamepadMappingConfig config)
     {
@@ -37,6 +37,8 @@ public class GamepadInputBinder : IInputBinder
     public void SetEnabled(bool enabled) => _enabled = enabled;
 
     public void UpdateKeyMapping(KeyMappingConfig mapping) { }
+
+    public void RegisterEscapeKey(Func<bool> keydown, Func<bool> keyup) { }
 
     private void OnStateChanged(GamepadDevice device, GamepadState state)
     {

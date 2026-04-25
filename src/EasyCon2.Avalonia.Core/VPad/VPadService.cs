@@ -12,6 +12,8 @@ public class VPadService
     private readonly NintendoSwitch _gamepad;
     private readonly IControllerAdapter _adapter;
     private bool _active;
+    private Func<bool>? _escKeyDown;
+    private Func<bool>? _escKeyUp;
 
     public VPadService(NintendoSwitch gamepad, IControllerAdapter adapter)
     {
@@ -67,11 +69,20 @@ public class VPadService
         _binder = binder;
         _binder.Start();
         if (_active) _binder.SetEnabled(true);
+        if (_escKeyDown != null)
+            _binder.RegisterEscapeKey(_escKeyDown, _escKeyUp!);
     }
 
     public void UpdateKeyMapping(KeyMappingConfig mapping)
     {
         _binder?.UpdateKeyMapping(mapping);
+    }
+
+    public void RegisterEscapeKey(Func<bool> keydown, Func<bool> keyup)
+    {
+        _escKeyDown = keydown;
+        _escKeyUp = keyup;
+        _binder?.RegisterEscapeKey(keydown, keyup);
     }
 
     public void HideOverlay()

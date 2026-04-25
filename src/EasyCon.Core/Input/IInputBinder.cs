@@ -9,4 +9,5 @@ public interface IInputBinder
     void Stop();
     void SetEnabled(bool enabled);
     void UpdateKeyMapping(KeyMappingConfig mapping);
+    void RegisterEscapeKey(Func<bool> keydown, Func<bool> keyup);
 }

@@ -507,8 +507,6 @@ namespace EasyCon2.App
             var idx = comboInputMode.SelectedIndex;
             buttonKeyMapping.Enabled = idx == 0;
             buttonRecord.Enabled = idx == 0;
-
-            //if (_vpadService == null || _deviceService.Device == null) return;
         }
 
         private void InitGamepadManager()
@@ -572,20 +570,7 @@ namespace EasyCon2.App
             _vpadService.Show();
 
             // Register Escape key to hide overlay
-            RegisterEscapeHook();
-
-            if (_configService.Config.ShowControllerHelp)
-            {
-                ShowControllerHelp();
-                _configService.Config.ShowControllerHelp = false;
-                _configService.Save();
-            }
-        }
-
-        private void RegisterEscapeHook()
-        {
-            const int VK_ESCAPE = 0x1B;
-            LowLevelKeyboard.GetInstance().RegisterKeyEvent(VK_ESCAPE,
+            _vpadService.RegisterEscapeKey(
                 () =>
                 {
                     if (_vpadService is not { IsActive: true }) return false;
@@ -595,6 +580,13 @@ namespace EasyCon2.App
                     return true;
                 },
                 () => false);
+
+            if (_configService.Config.ShowControllerHelp)
+            {
+                ShowControllerHelp();
+                _configService.Config.ShowControllerHelp = false;
+                _configService.Save();
+            }
         }
 
         private void buttonKeyMapping_Click(object sender, EventArgs e)
@@ -615,7 +607,16 @@ namespace EasyCon2.App
         private void RegisterKeys()
         {
             _vpadService?.UpdateKeyMapping(_configService.KeyMapping);
-            RegisterEscapeHook();
+            _vpadService?.RegisterEscapeKey(
+                () =>
+                {
+                    if (_vpadService is not { IsActive: true }) return false;
+
+                    buttonShowController.Text = "连接";
+                    _vpadService.HideOverlay();
+                    return true;
+                },
+                () => false);
         }
 
         #endregion

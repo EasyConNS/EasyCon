@@ -26,4 +26,7 @@ public class KeyboardInputBinder : IInputBinder
         _mapping = mapping;
         _keyBinder.RegisterAllKeys(_mapping, _ns);
     }
+
+    public void RegisterEscapeKey(Func<bool> keydown, Func<bool> keyup)
+        => _keyBinder.RegisterEscapeKey(keydown, keyup);
 }

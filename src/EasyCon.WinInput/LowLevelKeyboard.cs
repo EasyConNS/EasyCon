@@ -5,7 +5,7 @@ using System.Runtime.Versioning;
 namespace EasyCon.WinInput;
 
 [SupportedOSPlatform("windows")]
-public class LowLevelKeyboard
+class LowLevelKeyboard
 {
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
