@@ -3,6 +3,7 @@ using AvaloniaEdit.Highlighting;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon.Script.Assembly;
+using EasyCon.WinInput;
 using EasyCon2.Avalonia.Core.Editor;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Forms;
@@ -13,6 +14,7 @@ using EasyCon2.Services;
 using EasyCon2.Views;
 using EasyDevice;
 using EasyScript;
+using GamepadApi;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
@@ -41,6 +43,8 @@ namespace EasyCon2.App
         // Editor
         private ScriptEditorControl scriptEditor;
         private VPadService? _vpadService;
+        private GamepadManager? _gamepadManager;
+        private GamepadMappingConfig _gamepadMappingConfig = new();
         private FoldingManager? _foldingManager;
         private CustomFoldingStrategy? _foldingStrategy;
 
@@ -123,7 +127,10 @@ namespace EasyCon2.App
             InitEditor();
             InitServices();
             InitTimer();
-            RegisterKeys();
+
+            comboInputMode.Items.Add("键盘");
+            comboInputMode.SelectedIndex = 0;
+            InitGamepadManager();
 
             // 初始化菜单项状态
             代码自动补全ToolStripMenuItem.Checked = _configService.Config.EnableAutoCompletion;
@@ -495,6 +502,42 @@ namespace EasyCon2.App
 （注意：在有脚本远程运行的情况下无法使用）", "关于虚拟手柄").Show();
         }
 
+        private void comboInputMode_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            var idx = comboInputMode.SelectedIndex;
+            buttonKeyMapping.Enabled = idx == 0;
+            buttonRecord.Enabled = idx == 0;
+        }
+
+        private void InitGamepadManager()
+        {
+            if (_gamepadManager != null) return;
+            _gamepadManager = new GamepadManager();
+            _gamepadManager.DeviceConnected += _ => RefreshInputModeList();
+            _gamepadManager.DeviceDisconnected += _ => RefreshInputModeList();
+            _gamepadManager.Start();
+        }
+
+        private void RefreshInputModeList()
+        {
+            if (!IsHandleCreated) return;
+            BeginInvoke(() =>
+            {
+                var selected = comboInputMode.SelectedIndex;
+                comboInputMode.Items.Clear();
+                comboInputMode.Items.Add("键盘");
+                if (_gamepadManager != null)
+                {
+                    foreach (var d in _gamepadManager.GetConnectedDevices())
+                        comboInputMode.Items.Add($"手柄 {d.Index}");
+                }
+                if (selected >= 0 && selected < comboInputMode.Items.Count)
+                    comboInputMode.SelectedIndex = selected;
+                else
+                    comboInputMode.SelectedIndex = 0;
+            });
+        }
+
         private void buttonShowController_Click(object sender, EventArgs e)
         {
             if (!_deviceService.IsConnected)
@@ -504,8 +547,39 @@ namespace EasyCon2.App
             }
 
             _vpadService ??= new VPadService(_deviceService.Device, this);
-            _vpadService.UpdateKeyMapping(_configService.KeyMapping);
+
+            if (_vpadService.IsActive)
+            {
+                buttonShowController.Text = "连接";
+                _vpadService.HideOverlay();
+                return;
+            }
+
+            var idx = comboInputMode.SelectedIndex;
+            if (idx == 0)
+            {
+                _vpadService.SwitchInput(new KeyboardInputBinder(_deviceService.Device, _configService.KeyMapping));
+            }
+            else if (idx > 0 && _gamepadManager != null)
+            {
+                var gIdx = idx - 1;
+                var binder = new GamepadInputBinder(_gamepadManager, gIdx, _deviceService.Device, _gamepadMappingConfig);
+                _vpadService.SwitchInput(binder);
+            }
+            buttonShowController.Text = "断开";
             _vpadService.Show();
+
+            // Register Escape key to hide overlay
+            _vpadService.RegisterEscapeKey(
+                () =>
+                {
+                    if (_vpadService is not { IsActive: true }) return false;
+
+                    buttonShowController.Text = "连接";
+                    _vpadService.HideOverlay();
+                    return true;
+                },
+                () => false);
 
             if (_configService.Config.ShowControllerHelp)
             {
@@ -533,6 +607,16 @@ namespace EasyCon2.App
         private void RegisterKeys()
         {
             _vpadService?.UpdateKeyMapping(_configService.KeyMapping);
+            _vpadService?.RegisterEscapeKey(
+                () =>
+                {
+                    if (_vpadService is not { IsActive: true }) return false;
+
+                    buttonShowController.Text = "连接";
+                    _vpadService.HideOverlay();
+                    return true;
+                },
+                () => false);
         }
 
         #endregion
@@ -833,7 +917,7 @@ namespace EasyCon2.App
                     return;
                 if (_vpadService != null)
                 {
-                    _vpadService.UpdateKeyMapping(_configService.KeyMapping);
+                    RegisterKeys();
                     _vpadService.Show();
                 }
                 buttonRecord.Text = "停止录制";

@@ -1,8 +1,9 @@
 using EasyCon.Core.Config;
+using EasyCon.Core.Input;
 using EasyDevice;
 using System.Runtime.Versioning;
 
-namespace EasyCon2.Avalonia.Core.VPad;
+namespace EasyCon.WinInput;
 
 [SupportedOSPlatform("windows")]
 public class KeyBinder
@@ -80,5 +81,10 @@ public class KeyBinder
     public void UnregisterAllKeys()
     {
         LowLevelKeyboard.GetInstance().UnregisterKeyEventAll();
+    }
+
+    public void RegisterEscapeKey(Func<bool> keydown, Func<bool> keyup)
+    {
+        LowLevelKeyboard.GetInstance().RegisterKeyEvent(0x1B, keydown, keyup);
     }
 }

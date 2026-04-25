@@ -93,6 +93,7 @@ namespace EasyCon2.App
             buttonSerialPortSearch = new Button();
             buttonControllerHelp = new Button();
             buttonKeyMapping = new Button();
+            comboInputMode = new ComboBox();
             openFileDialog = new OpenFileDialog();
             saveFileDialog = new SaveFileDialog();
             toolStripStatusLabel1 = new ToolStripStatusLabel();
@@ -498,9 +499,9 @@ namespace EasyCon2.App
             buttonRecordPause.FlatAppearance.BorderSize = 0;
             buttonRecordPause.FlatStyle = FlatStyle.Flat;
             buttonRecordPause.Font = new Font("微软雅黑", 9F);
-            buttonRecordPause.Location = new Point(247, 73);
+            buttonRecordPause.Location = new Point(189, 91);
             buttonRecordPause.Name = "buttonRecordPause";
-            buttonRecordPause.Size = new Size(116, 59);
+            buttonRecordPause.Size = new Size(174, 41);
             buttonRecordPause.TabIndex = 6;
             buttonRecordPause.Text = "暂停录制";
             buttonRecordPause.UseVisualStyleBackColor = true;
@@ -509,14 +510,13 @@ namespace EasyCon2.App
             // buttonRecord
             // 
             buttonRecord.AccessibleName = "录制脚本";
-            tblController.SetColumnSpan(buttonRecord, 2);
             buttonRecord.Dock = DockStyle.Fill;
             buttonRecord.FlatAppearance.BorderSize = 0;
             buttonRecord.FlatStyle = FlatStyle.Flat;
             buttonRecord.Font = new Font("微软雅黑", 9F);
-            buttonRecord.Location = new Point(9, 73);
+            buttonRecord.Location = new Point(9, 91);
             buttonRecord.Name = "buttonRecord";
-            buttonRecord.Size = new Size(232, 59);
+            buttonRecord.Size = new Size(174, 41);
             buttonRecord.TabIndex = 5;
             buttonRecord.Text = "录制脚本";
             buttonRecord.UseVisualStyleBackColor = true;
@@ -621,11 +621,11 @@ namespace EasyCon2.App
             buttonShowController.FlatAppearance.BorderSize = 0;
             buttonShowController.FlatStyle = FlatStyle.Flat;
             buttonShowController.Font = new Font("微软雅黑", 9F);
-            buttonShowController.Location = new Point(9, 9);
+            buttonShowController.Location = new Point(189, 9);
             buttonShowController.Name = "buttonShowController";
-            buttonShowController.Size = new Size(113, 58);
+            buttonShowController.Size = new Size(174, 30);
             buttonShowController.TabIndex = 3;
-            buttonShowController.Text = "虚拟手柄";
+            buttonShowController.Text = "连接";
             buttonShowController.UseVisualStyleBackColor = true;
             buttonShowController.Click += buttonShowController_Click;
             // 
@@ -689,9 +689,9 @@ namespace EasyCon2.App
             buttonControllerHelp.FlatAppearance.BorderSize = 0;
             buttonControllerHelp.FlatStyle = FlatStyle.Flat;
             buttonControllerHelp.Font = new Font("微软雅黑", 9F);
-            buttonControllerHelp.Location = new Point(247, 9);
+            buttonControllerHelp.Location = new Point(189, 45);
             buttonControllerHelp.Name = "buttonControllerHelp";
-            buttonControllerHelp.Size = new Size(116, 58);
+            buttonControllerHelp.Size = new Size(174, 40);
             buttonControllerHelp.TabIndex = 33;
             buttonControllerHelp.Text = "帮助";
             buttonControllerHelp.UseVisualStyleBackColor = true;
@@ -704,13 +704,24 @@ namespace EasyCon2.App
             buttonKeyMapping.FlatAppearance.BorderSize = 0;
             buttonKeyMapping.FlatStyle = FlatStyle.Flat;
             buttonKeyMapping.Font = new Font("微软雅黑", 9F);
-            buttonKeyMapping.Location = new Point(128, 9);
+            buttonKeyMapping.Location = new Point(9, 45);
             buttonKeyMapping.Name = "buttonKeyMapping";
-            buttonKeyMapping.Size = new Size(113, 58);
+            buttonKeyMapping.Size = new Size(174, 40);
             buttonKeyMapping.TabIndex = 4;
             buttonKeyMapping.Text = "按键映射";
             buttonKeyMapping.UseVisualStyleBackColor = true;
             buttonKeyMapping.Click += buttonKeyMapping_Click;
+            // 
+            // comboInputMode
+            // 
+            comboInputMode.AccessibleName = "输入模式";
+            comboInputMode.Dock = DockStyle.Fill;
+            comboInputMode.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboInputMode.Location = new Point(9, 9);
+            comboInputMode.Name = "comboInputMode";
+            comboInputMode.Size = new Size(174, 28);
+            comboInputMode.TabIndex = 7;
+            comboInputMode.SelectedIndexChanged += comboInputMode_SelectedIndexChanged;
             // 
             // openFileDialog
             // 
@@ -1002,21 +1013,22 @@ namespace EasyCon2.App
             // tblController
             // 
             tblController.BackColor = Color.FromArgb(230, 229, 224);
-            tblController.ColumnCount = 3;
-            tblController.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
-            tblController.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
-            tblController.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33334F));
-            tblController.Controls.Add(buttonShowController, 0, 0);
-            tblController.Controls.Add(buttonKeyMapping, 1, 0);
-            tblController.Controls.Add(buttonControllerHelp, 2, 0);
-            tblController.Controls.Add(buttonRecord, 0, 1);
-            tblController.Controls.Add(buttonRecordPause, 2, 1);
+            tblController.ColumnCount = 2;
+            tblController.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblController.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            tblController.Controls.Add(comboInputMode, 0, 0);
+            tblController.Controls.Add(buttonShowController, 1, 0);
+            tblController.Controls.Add(buttonKeyMapping, 0, 1);
+            tblController.Controls.Add(buttonControllerHelp, 1, 1);
+            tblController.Controls.Add(buttonRecord, 0, 2);
+            tblController.Controls.Add(buttonRecordPause, 1, 2);
             tblController.Dock = DockStyle.Fill;
             tblController.Location = new Point(762, 23);
             tblController.Margin = new Padding(4);
             tblController.Name = "tblController";
             tblController.Padding = new Padding(6);
-            tblController.RowCount = 2;
+            tblController.RowCount = 3;
+            tblController.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             tblController.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             tblController.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             tblController.Size = new Size(372, 141);
@@ -1154,5 +1166,6 @@ namespace EasyCon2.App
         private ComboBox comboVideoSource;
         private Button btnCaptureToggle;
         private Button btnOpenCaptureConsole;
+        private ComboBox comboInputMode;
     }
 }
