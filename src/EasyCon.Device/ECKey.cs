@@ -9,7 +9,7 @@ public sealed class ECKey(string name, int keyCode, Action<SwitchReport> down, A
 }
 
 
-public class KeyStroke(ECKey key, bool up = false, int duration = 0, DateTime time = default)
+public class KeyStroke(ECKey key, bool up = false, int duration = 0)
 {
     public readonly ECKey Key = key;
     public int KeyCode => Key.KeyCode;

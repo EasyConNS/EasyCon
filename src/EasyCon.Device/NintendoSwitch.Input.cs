@@ -8,7 +8,7 @@ public interface IReporter
 }
 
 public delegate void LogHandler(string s);
-public partial class NintendoSwitch : IReporter
+public partial class NintendoSwitch : IReporter, IDisposable
 {
     public enum ConnectResult
     {
@@ -19,10 +19,12 @@ public partial class NintendoSwitch : IReporter
         Error,
     }
 
+    private readonly object _lock = new();
     readonly Dictionary<int, KeyStroke> _keystrokes = new();
 
     bool _reset = false;
     CancellationTokenSource source = new();
+    bool _disposed;
 
     DirectionKey _leftStick = 0;
     DirectionKey _rightStick = 0;
@@ -34,7 +36,7 @@ public partial class NintendoSwitch : IReporter
     public event StatusChangedHandler StatusChanged;
 
     private readonly OperationRecords operationRecords = new();
-    public RecordState recordState = RecordState.RECORD_STOP;
+    public RecordState RecordState { get; set; } = RecordState.RECORD_STOP;
 
     public ConnectResult TryConnect(string constr)
     {
@@ -42,12 +44,7 @@ public partial class NintendoSwitch : IReporter
 
         if (result == ConnectResult.Success)
         {
-            source = new();
-            Task.Run(() =>
-            {
-                Loop(source.Token);
-            },
-            source.Token);
+            StartLoop();
         }
         else
         {
@@ -55,21 +52,22 @@ public partial class NintendoSwitch : IReporter
             result = _TryConnect(constr, 9600);
             if (result == ConnectResult.Success)
             {
-                source = new();
-                Task.Run(() =>
-                {
-                    Loop(source.Token);
-                },
-                source.Token);
+                StartLoop();
             }
         }
 
         return result;
     }
 
+    private void StartLoop()
+    {
+        source = new CancellationTokenSource();
+        Task.Run(() => Loop(source.Token), source.Token);
+    }
+
     public void Reset()
     {
-        lock (this)
+        lock (_lock)
         {
             DebugKey("Reset");
             Signal();
@@ -80,12 +78,12 @@ public partial class NintendoSwitch : IReporter
 
     public void Down(ECKey key)
     {
-        lock (this)
+        lock (_lock)
         {
             DebugKey("Down", key);
             Signal();
             _keystrokes[key.KeyCode] = new KeyStroke(key);
-            if (recordState == RecordState.RECORD_START)
+            if (RecordState == RecordState.RECORD_START)
             {
                 operationRecords.AddRecord(_keystrokes[key.KeyCode]);
             }
@@ -94,12 +92,12 @@ public partial class NintendoSwitch : IReporter
 
     public void Up(ECKey key)
     {
-        lock (this)
+        lock (_lock)
         {
             DebugKey("Up", key);
             Signal();
             _keystrokes[key.KeyCode] = new KeyStroke(key, true);
-            if (recordState == RecordState.RECORD_START)
+            if (RecordState == RecordState.RECORD_START)
             {
                 operationRecords.AddRecord(_keystrokes[key.KeyCode]);
             }
@@ -169,22 +167,30 @@ public partial class NintendoSwitch : IReporter
 
     public void StartRecord()
     {
-        recordState = RecordState.RECORD_START;
+        RecordState = RecordState.RECORD_START;
         operationRecords.Clear();
     }
 
     public void StopRecord()
     {
-        recordState = RecordState.RECORD_STOP;
+        RecordState = RecordState.RECORD_STOP;
     }
 
     public void PauseRecord()
     {
-        recordState = RecordState.RECORD_PAUSE;
+        RecordState = RecordState.RECORD_PAUSE;
     }
 
     public string GetRecordScript()
     {
         return operationRecords.ToScript();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        Disconnect();
+        _ewh?.Dispose();
     }
 }

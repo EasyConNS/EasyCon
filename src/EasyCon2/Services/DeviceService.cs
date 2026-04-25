@@ -21,7 +21,7 @@ public class DeviceService
     public NintendoSwitch Device => _ns;
     public bool DebugLogEnabled { get; set; }
 
-    public RecordState RecordState => _ns.recordState;
+    public RecordState RecordState => _ns.RecordState;
 
     public DeviceService()
     {

@@ -42,7 +42,7 @@ public partial class NintendoSwitch
             if (DateTime.Now < _nextSendTime)
                 Thread.Sleep((int)(_nextSendTime - DateTime.Now).TotalMilliseconds);
             sleep = int.MaxValue;
-            lock (this)
+            lock (_lock)
             {
                 if (_reset)
                 {
@@ -67,7 +67,7 @@ public partial class NintendoSwitch
                         ks.Key.Down(_report);
                         if (ks.Duration > 0)
                         {
-                            _keystrokes[ks.KeyCode] = new KeyStroke(ks.Key, true, 0, DateTime.Now + TimeSpan.FromMilliseconds(ks.Duration));
+                            _keystrokes[ks.KeyCode] = new KeyStroke(ks.Key, true, 0);
                             if (ks.Duration < sleep)
                                 sleep = ks.Duration;
                         }
