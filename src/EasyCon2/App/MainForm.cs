@@ -3,6 +3,7 @@ using AvaloniaEdit.Highlighting;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon.Script.Assembly;
+using EasyCon.WinInput;
 using EasyCon2.Avalonia.Core.Editor;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyCon2.Forms;
@@ -665,7 +666,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
             if (_vpadService != null)
             {
-                _vpadService.UpdateKeyMapping(_configService.KeyMapping);
+                _vpadService.SwitchInput(new KeyboardInputBinder(_deviceService.Device, _configService.KeyMapping));
                 _vpadService.Show();
             }
             else
@@ -721,7 +722,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         }
 
         _vpadService ??= new VPadService(_deviceService.Device, this);
-        _vpadService.UpdateKeyMapping(_configService.KeyMapping);
+        _vpadService.SwitchInput(new KeyboardInputBinder(_deviceService.Device, _configService.KeyMapping));
         _vpadService.Show();
     }
 

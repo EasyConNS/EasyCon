@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
     <ProjectReference Include="..\EasyCon2.UI.Common\EasyCon2.UI.Common.csproj" />
+    <ProjectReference Include="..\EasyCon.WinInput\EasyCon.WinInput.csproj" />
     <ProjectReference Include="..\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
   </ItemGroup>
   <ItemGroup>

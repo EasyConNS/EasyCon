@@ -1,15 +1,14 @@
 using Avalonia.Threading;
 using EasyCon.Core.Config;
+using EasyCon.Core.Input;
 using EasyDevice;
-using System.Runtime.Versioning;
 
 namespace EasyCon2.Avalonia.Core.VPad;
 
-[SupportedOSPlatform("windows")]
 public class VPadService
 {
     private VPadOverlay? _overlay;
-    private readonly KeyBinder _keyBinder = new();
+    private IInputBinder? _binder;
     private readonly NintendoSwitch _gamepad;
     private readonly IControllerAdapter _adapter;
     private bool _active;
@@ -20,13 +19,15 @@ public class VPadService
         _adapter = adapter;
     }
 
+    public bool IsActive => _active;
+
     private bool Active
     {
         get => _active;
         set
         {
             _active = value;
-            _keyBinder.ControllerEnabled = value;
+            _binder?.SetEnabled(value);
             if (_overlay != null)
                 Dispatcher.UIThread.Post(() => _overlay.IsActive = value);
         }
@@ -60,25 +61,28 @@ public class VPadService
         });
     }
 
+    public void SwitchInput(IInputBinder binder)
+    {
+        _binder?.Stop();
+        _binder = binder;
+        _binder.Start();
+        if (_active) _binder.SetEnabled(true);
+    }
+
     public void UpdateKeyMapping(KeyMappingConfig mapping)
     {
-        _keyBinder.RegisterAllKeys(mapping, _gamepad);
-        RegisterEscapeKey();
+        _binder?.UpdateKeyMapping(mapping);
     }
 
-    private void RegisterEscapeKey()
+    public void HideOverlay()
     {
-        const int VK_ESCAPE = 0x1B;
-        LowLevelKeyboard.GetInstance().RegisterKeyEvent(VK_ESCAPE,
-            () =>
-            {
-                if (!_active) return false;
-                Active = false;
-                Dispatcher.UIThread.Post(() => _overlay?.Hide());
-                return true;
-            },
-            () => false);
+        Active = false;
+        Dispatcher.UIThread.Post(() => _overlay?.Hide());
     }
 
-    public void Deactivate() => Active = false;
+    public void Deactivate()
+    {
+        if (Active)
+            Active = false;
+    }
 }

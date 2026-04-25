@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
-namespace EasyCon2.Avalonia.Core.VPad;
+namespace EasyCon.WinInput;
 
 [SupportedOSPlatform("windows")]
-internal class LowLevelKeyboard
+public class LowLevelKeyboard
 {
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);

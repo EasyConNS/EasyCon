@@ -13,6 +13,8 @@
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
+.claude/
+**.md
 
 # Build results
 [Dd]ebug/
@@ -341,3 +343,5 @@ ASALocalRun/
 healthchecksdb
 /ExternalResources
 dist/
+# Added by code-review-graph
+.code-review-graph/

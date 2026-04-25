@@ -20,6 +20,7 @@
   </Folder>
   <Folder Name="/Demo/">
     <Project Path="tools/DirectInput/DirectInput.csproj" />
+    <Project Path="tools/GamepadApiDemo/GamepadApiDemo.csproj" />
   </Folder>
   <Folder Name="/Lib/">
     <Project Path="src/EasyCon.Capture/EasyCon.Capture.csproj" />
@@ -27,6 +28,7 @@
     <Project Path="src/EasyCon.Device/EasyCon.Device.csproj" />
     <Project Path="src/EasyCon.Script/EasyCon.Script.csproj" />
     <Project Path="src/EasyCon2.Avalonia.Core/EasyCon2.Avalonia.Core.csproj" />
+    <Project Path="src/EasyCon.WinInput/EasyCon.WinInput.csproj" />
   </Folder>
   <Folder Name="/Common/">
     <Project Path="src/EasyCon2.UI.Common/EasyCon2.UI.Common.csproj" />

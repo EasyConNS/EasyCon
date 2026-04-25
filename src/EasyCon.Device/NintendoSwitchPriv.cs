@@ -9,6 +9,21 @@ public partial class NintendoSwitch
     DateTime _nextSendTime = DateTime.MinValue;
     private readonly EventWaitHandle _ewh = new(false, EventResetMode.ManualReset);
 
+    public void ApplyReport(SwitchReport report)
+    {
+        lock (this)
+        {
+            _keystrokes.Clear();
+            _report.Button = report.Button;
+            _report.HAT = report.HAT;
+            _report.LX = report.LX;
+            _report.LY = report.LY;
+            _report.RX = report.RX;
+            _report.RY = report.RY;
+            Signal();
+        }
+    }
+
     void Signal()
     {
         if (this.IsConnected())
