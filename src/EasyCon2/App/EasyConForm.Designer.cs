@@ -70,11 +70,11 @@ namespace EasyCon2.App
             固件模式ToolStripMenuItem = new ToolStripMenuItem();
             联机模式ToolStripMenuItem = new ToolStripMenuItem();
             烧录模式ToolStripMenuItem = new ToolStripMenuItem();
-            脚本语法ToolStripMenuItem = new ToolStripMenuItem();
             toolStripSeparator2 = new ToolStripSeparator();
             检查更新ToolStripMenuItem = new ToolStripMenuItem();
             项目源码ToolStripMenuItem = new ToolStripMenuItem();
             关于ToolStripMenuItem = new ToolStripMenuItem();
+            buttonScriptHelp = new Button();
             labelTimer = new Label();
             logTxtBox = new RichLogBox();
             buttonRecordPause = new Button();
@@ -395,7 +395,7 @@ namespace EasyCon2.App
             // 
             // 帮助ToolStripMenuItem
             // 
-            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 固件模式ToolStripMenuItem, 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, 脚本语法ToolStripMenuItem, toolStripSeparator2, 检查更新ToolStripMenuItem, 项目源码ToolStripMenuItem, 关于ToolStripMenuItem });
+            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 固件模式ToolStripMenuItem, 联机模式ToolStripMenuItem, 烧录模式ToolStripMenuItem, toolStripSeparator2, 检查更新ToolStripMenuItem, 项目源码ToolStripMenuItem, 关于ToolStripMenuItem });
             帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
             帮助ToolStripMenuItem.Size = new Size(53, 24);
             帮助ToolStripMenuItem.Text = "帮助";
@@ -420,13 +420,6 @@ namespace EasyCon2.App
             烧录模式ToolStripMenuItem.Size = new Size(152, 26);
             烧录模式ToolStripMenuItem.Text = "烧录模式";
             烧录模式ToolStripMenuItem.Click += 烧录模式ToolStripMenuItem_Click;
-            // 
-            // 脚本语法ToolStripMenuItem
-            // 
-            脚本语法ToolStripMenuItem.Name = "脚本语法ToolStripMenuItem";
-            脚本语法ToolStripMenuItem.Size = new Size(152, 26);
-            脚本语法ToolStripMenuItem.Text = "脚本语法";
-            脚本语法ToolStripMenuItem.Click += 脚本语法ToolStripMenuItem_Click;
             // 
             // toolStripSeparator2
             // 
@@ -454,6 +447,20 @@ namespace EasyCon2.App
             关于ToolStripMenuItem.Text = "关于";
             关于ToolStripMenuItem.Click += 关于ToolStripMenuItem_Click;
             // 
+            // buttonScriptHelp
+            // 
+            buttonScriptHelp.AccessibleName = "脚本语法帮助";
+            buttonScriptHelp.FlatAppearance.BorderSize = 1;
+            buttonScriptHelp.FlatStyle = FlatStyle.Flat;
+            buttonScriptHelp.Font = new Font("微软雅黑", 9F);
+            buttonScriptHelp.Location = new Point(3, 303);
+            buttonScriptHelp.Name = "buttonScriptHelp";
+            buttonScriptHelp.Size = new Size(102, 40);
+            buttonScriptHelp.TabIndex = 6;
+            buttonScriptHelp.Text = "脚本语法";
+            buttonScriptHelp.UseVisualStyleBackColor = true;
+            buttonScriptHelp.Click += 脚本语法ToolStripMenuItem_Click;
+            // 
             // labelTimer
             // 
             labelTimer.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
@@ -461,7 +468,7 @@ namespace EasyCon2.App
             labelTimer.BorderStyle = BorderStyle.Fixed3D;
             labelTimer.Font = new Font("Microsoft YaHei UI", 13F, FontStyle.Bold);
             labelTimer.ForeColor = Color.White;
-            labelTimer.Location = new Point(3, 575);
+            labelTimer.Location = new Point(3, 470);
             labelTimer.Name = "labelTimer";
             labelTimer.Size = new Size(238, 68);
             labelTimer.TabIndex = 35;
@@ -478,7 +485,7 @@ namespace EasyCon2.App
             logTxtBox.Location = new Point(3, 24);
             logTxtBox.Name = "logTxtBox";
             logTxtBox.ReadOnly = true;
-            logTxtBox.Size = new Size(474, 551);
+            logTxtBox.Size = new Size(474, 446);
             logTxtBox.TabIndex = 34;
             logTxtBox.Text = "";
             logTxtBox.WordWrap = false;
@@ -628,7 +635,7 @@ namespace EasyCon2.App
             editorHost.Font = new Font("Consolas", 9F);
             editorHost.Location = new Point(0, 23);
             editorHost.Name = "editorHost";
-            editorHost.Size = new Size(511, 620);
+            editorHost.Size = new Size(511, 515);
             editorHost.TabIndex = 0;
             editorHost.Text = "elementHost1";
             // 
@@ -728,7 +735,7 @@ namespace EasyCon2.App
             // 
             statusStrip.ImageScalingSize = new Size(20, 20);
             statusStrip.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1, toolStripStatusLabel2, labelSerialStatus, toolStripStatusLabel3, labelCaptureStatus });
-            statusStrip.Location = new Point(1, 849);
+            statusStrip.Location = new Point(1, 744);
             statusStrip.Name = "statusStrip";
             statusStrip.Size = new Size(1138, 26);
             statusStrip.TabIndex = 3;
@@ -774,9 +781,10 @@ namespace EasyCon2.App
             optPanel.Controls.Add(buttonFlash);
             optPanel.Controls.Add(buttonFlashClear);
             optPanel.Controls.Add(grpFirmware);
+            optPanel.Controls.Add(buttonScriptHelp);
             optPanel.Location = new Point(1016, 155);
             optPanel.Name = "optPanel";
-            optPanel.Size = new Size(122, 523);
+            optPanel.Size = new Size(122, 418);
             optPanel.TabIndex = 35;
             // 
             // logPanel
@@ -789,7 +797,7 @@ namespace EasyCon2.App
             logPanel.Controls.Add(labelTimer);
             logPanel.Location = new Point(7, 32);
             logPanel.Name = "logPanel";
-            logPanel.Size = new Size(480, 646);
+            logPanel.Size = new Size(480, 541);
             logPanel.TabIndex = 37;
             // 
             // logTitleLabel
@@ -827,7 +835,7 @@ namespace EasyCon2.App
             runStopBtn.FlatStyle = FlatStyle.Flat;
             runStopBtn.Font = new Font("微软雅黑", 12F, FontStyle.Bold);
             runStopBtn.ForeColor = Color.White;
-            runStopBtn.Location = new Point(247, 575);
+            runStopBtn.Location = new Point(247, 470);
             runStopBtn.Name = "runStopBtn";
             runStopBtn.Size = new Size(230, 68);
             runStopBtn.TabIndex = 37;
@@ -842,7 +850,7 @@ namespace EasyCon2.App
             scriptContainer.Controls.Add(editorHost);
             scriptContainer.Location = new Point(496, 32);
             scriptContainer.Name = "scriptContainer";
-            scriptContainer.Size = new Size(514, 646);
+            scriptContainer.Size = new Size(514, 541);
             scriptContainer.TabIndex = 38;
             // 
             // scriptTitleLabel
@@ -867,7 +875,7 @@ namespace EasyCon2.App
             bottomPanel.Controls.Add(lblTitleController, 2, 0);
             bottomPanel.Controls.Add(tblController, 2, 1);
             bottomPanel.Dock = DockStyle.Bottom;
-            bottomPanel.Location = new Point(1, 681);
+            bottomPanel.Location = new Point(1, 576);
             bottomPanel.Name = "bottomPanel";
             bottomPanel.RowCount = 2;
             bottomPanel.RowStyles.Add(new RowStyle());
@@ -1019,7 +1027,7 @@ namespace EasyCon2.App
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(242, 241, 237);
-            ClientSize = new Size(1140, 876);
+            ClientSize = new Size(1140, 771);
             Controls.Add(bottomPanel);
             Controls.Add(scriptContainer);
             Controls.Add(optPanel);
@@ -1089,6 +1097,7 @@ namespace EasyCon2.App
         private System.Windows.Forms.Button buttonRemoteStop;
         private System.Windows.Forms.Button buttonRemoteStart;
         private System.Windows.Forms.Button buttonFlashClear;
+        private System.Windows.Forms.Button buttonScriptHelp;
         private System.Windows.Forms.ToolStripMenuItem 项目源码ToolStripMenuItem;
         private System.Windows.Forms.ComboBox comboBoxBoardType;
         private System.Windows.Forms.GroupBox grpFirmware;
@@ -1124,7 +1133,6 @@ namespace EasyCon2.App
         private ToolStripMenuItem 查找下一个ToolStripMenuItem;
         private ToolStripMenuItem 显示折叠ToolStripMenuItem;
         private ToolStripMenuItem 注释取消注释ToolStripMenuItem;
-        private ToolStripMenuItem 脚本语法ToolStripMenuItem;
         private FlowLayoutPanel optPanel;
         private ToolStripStatusLabel labelSerialStatus;
         private ToolStripStatusLabel labelCaptureStatus;

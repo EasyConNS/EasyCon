@@ -60,7 +60,6 @@ namespace EasyCon2.App
         static readonly Color ColorBgButton = Color.FromArgb(235, 234, 229); // #ebeae5
         static readonly Color ColorBgSurface = Color.FromArgb(230, 229, 224);// #e6e5e0
 
-        const string ScriptPath = @"Script\";
         const string FirmwarePath = @"Firmware\";
 
         private readonly string defaultName = "未命名脚本";
@@ -394,7 +393,12 @@ namespace EasyCon2.App
             }
             else
             {
-                MessageBox.Show("找不到设备！请确认：\n1.已经为单片机烧好固件\n2.已经连好TTL线（详细使用教程见群946057081文档）\n3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁\n4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）\n5.以上步骤都完成后重启程序再试");
+                MessageBox.Show(@"找不到设备！请确认：
+1.已经为单片机烧好固件
+2.已经连好TTL线（详细使用教程见群946057081文档）
+3.以上两步操作正确的话，点击搜索时单片机上的TX灯会闪烁
+4.如果用的是CH340G，换一下帽子让3v3与S1相连（默认可能是5V与S1相连）
+5.以上步骤都完成后重启程序再试", "连接失败");
             }
             EnableConnBtn();
         }
@@ -402,10 +406,11 @@ namespace EasyCon2.App
         private async void buttonSerialPortConnect_Click(object sender, EventArgs e)
         {
             EnableConnBtn(false);
-            var (success, error) = await _deviceService.ManualConnectAsync(ComPort.Text);
+            var success = await _deviceService.ManualConnectAsync(ComPort.Text);
             if (!success)
             {
-                MessageBox.Show(error);
+                MessageBox.Show($@"连接失败！端口 {ComPort.Text} 不存在、无法使用或已被占用。
+请在设备管理器确认 TTL 所在串口正确识别。关闭其他占用USB的程序，并重启软件再试。", "连接失败");
             }
             EnableConnBtn();
         }
@@ -416,10 +421,8 @@ namespace EasyCon2.App
 
         private bool FileOpen(string path = "")
         {
-            Directory.CreateDirectory(ScriptPath);
             openFileDialog.Title = "打开";
             openFileDialog.RestoreDirectory = true;
-            openFileDialog.InitialDirectory = Path.GetFullPath(ScriptPath);
             openFileDialog.Filter = "脚本文件 (*.txt，*.ecs)|*.txt;*.ecs|所有文件(*.*)|*.*";
             openFileDialog.FileName = string.Empty;
 
@@ -443,10 +446,8 @@ namespace EasyCon2.App
 
         private bool FileSave(bool saveAs = false)
         {
-            Directory.CreateDirectory(ScriptPath);
             saveFileDialog.Title = saveAs ? "另存为" : "保存";
             saveFileDialog.RestoreDirectory = true;
-            saveFileDialog.InitialDirectory = Path.GetFullPath(ScriptPath);
             saveFileDialog.Filter = "脚本文件 (*.txt，*.ecs)|*.txt;*.ecs|所有文件(*.*)|*.*";
             saveFileDialog.FileName = "未命名脚本.txt";
 
@@ -576,7 +577,7 @@ namespace EasyCon2.App
             {
                 if (!_deviceService.IsConnected)
                 {
-                    MessageBox.Show("需要连接单片机才能运行脚本");
+                    MessageBox.Show("需要连接单片机才能运行脚本", "执行脚本");
                     return;
                 }
                 if (!CheckFwVersion())

@@ -52,7 +52,7 @@ public class DeviceService
     /// <summary>
     /// 获取可用串口列表
     /// </summary>
-    public string[] GetPortNames() => ECCore.GetDeviceNames().ToArray();
+    public string[] GetPortNames() => [.. ECCore.GetDeviceNames()];
 
     /// <summary>
     /// 自动搜索并连接设备
@@ -62,6 +62,7 @@ public class DeviceService
         var ports = GetPortNames();
         string? connectedPort = null;
         bool success = false;
+        StatusChanged?.Invoke("尝试连接...");
 
         await Task.Run(() =>
         {
@@ -100,7 +101,7 @@ public class DeviceService
     /// <summary>
     /// 手动连接指定端口
     /// </summary>
-    public async Task<(bool success, string? error)> ManualConnectAsync(string port)
+    public async Task<bool> ManualConnectAsync(string port)
     {
         var result = await Task.Run(() => _ns.TryConnect(port));
 
@@ -109,12 +110,12 @@ public class DeviceService
             StatusChanged?.Invoke("连接成功");
             SystemSounds.Beep.Play();
             ConnectionStateChanged?.Invoke(true);
-            return (true, null);
+            return true;
         }
 
         StatusChanged?.Invoke("连接失败");
         SystemSounds.Hand.Play();
-        return (false, $"连接失败！端口 {port} 不存在、无法使用或已被占用。\n请在设备管理器确认 TTL 所在串口正确识别。");
+        return false;
     }
 
     /// <summary>

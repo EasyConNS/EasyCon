@@ -392,12 +392,12 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
         _ = Task.Run(async () =>
         {
-            var (success, error) = await _deviceService.ManualConnectAsync(port);
-
+            var success = await _deviceService.ManualConnectAsync(port);
             Post(() =>
             {
-                if (!success && error != null)
-                    MessageBox.Show(error);
+                if (!success)
+                    MessageBox.Show($@"连接失败！端口 {port} 不存在、无法使用或已被占用。
+请在设备管理器确认 TTL 所在串口正确识别。关闭其他占用USB的程序，并重启软件再试。", "连接失败");
                 EnableConnBtn();
             });
         });
