@@ -68,6 +68,7 @@ partial class MainForm
         chkDebugLog = new CheckBox();
         lblRunSettings = new Label();
         chkAutoRunAfterFlash = new CheckBox();
+        chkHighResolutionTiming = new CheckBox();
         lblNotifySettings = new Label();
         btnAlertConfig = new Button();
         chkAutoSaveLog = new CheckBox();
@@ -546,6 +547,7 @@ partial class MainForm
         settingsPanel.Controls.Add(chkDebugLog);
         settingsPanel.Controls.Add(lblRunSettings);
         settingsPanel.Controls.Add(chkAutoRunAfterFlash);
+        settingsPanel.Controls.Add(chkHighResolutionTiming);
         settingsPanel.Controls.Add(lblNotifySettings);
         settingsPanel.Controls.Add(btnAlertConfig);
         settingsPanel.Controls.Add(chkAutoSaveLog);
@@ -634,13 +636,25 @@ partial class MainForm
         chkAutoRunAfterFlash.TabIndex = 5;
         chkAutoRunAfterFlash.Text = "烧录后自动运行";
         chkAutoRunAfterFlash.CheckedChanged += chkAutoRunAfterFlash_CheckedChanged;
+        //
+        // chkHighResolutionTiming
+        //
+        chkHighResolutionTiming.AutoSize = true;
+        chkHighResolutionTiming.Font = new Font("微软雅黑", 9F);
+        chkHighResolutionTiming.ForeColor = Color.FromArgb(38, 37, 30);
+        chkHighResolutionTiming.Location = new Point(199, 109);
+        chkHighResolutionTiming.Name = "chkHighResolutionTiming";
+        chkHighResolutionTiming.Size = new Size(100, 24);
+        chkHighResolutionTiming.TabIndex = 5;
+        chkHighResolutionTiming.Text = "高精度模式";
+        chkHighResolutionTiming.CheckedChanged += chkHighResolutionTiming_CheckedChanged;
         // 
         // lblNotifySettings
         // 
         lblNotifySettings.AutoSize = true;
         lblNotifySettings.Font = new Font("微软雅黑", 11F, FontStyle.Bold);
         lblNotifySettings.ForeColor = Color.FromArgb(38, 37, 30);
-        lblNotifySettings.Location = new Point(199, 119);
+        lblNotifySettings.Location = new Point(199, 149);
         lblNotifySettings.Name = "lblNotifySettings";
         lblNotifySettings.Size = new Size(88, 26);
         lblNotifySettings.TabIndex = 6;
@@ -653,7 +667,7 @@ partial class MainForm
         btnAlertConfig.FlatStyle = FlatStyle.Flat;
         btnAlertConfig.Font = new Font("微软雅黑", 9F);
         btnAlertConfig.ForeColor = Color.FromArgb(38, 37, 30);
-        btnAlertConfig.Location = new Point(199, 159);
+        btnAlertConfig.Location = new Point(199, 189);
         btnAlertConfig.Name = "btnAlertConfig";
         btnAlertConfig.Size = new Size(85, 30);
         btnAlertConfig.TabIndex = 7;
@@ -666,7 +680,7 @@ partial class MainForm
         chkAutoSaveLog.AutoSize = true;
         chkAutoSaveLog.Font = new Font("微软雅黑", 9F);
         chkAutoSaveLog.ForeColor = Color.FromArgb(38, 37, 30);
-        chkAutoSaveLog.Location = new Point(289, 164);
+        chkAutoSaveLog.Location = new Point(289, 194);
         chkAutoSaveLog.Name = "chkAutoSaveLog";
         chkAutoSaveLog.Size = new Size(121, 24);
         chkAutoSaveLog.TabIndex = 8;
@@ -1344,6 +1358,7 @@ partial class MainForm
     private Label lblNotifySettings;
     private Button btnAlertConfig;
     private CheckBox chkAutoSaveLog;
+    private CheckBox chkHighResolutionTiming;
     private Label lblToolSettings;
     private Button btnDrawingBoard;
     private Button btnBluetoothSetting;

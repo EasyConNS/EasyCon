@@ -315,7 +315,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
             _state.ScriptRunning = true;
             _vpadService?.Deactivate();
 
-            var pad = new GamePadAdapter(_deviceService.Device);
+            var pad = new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming);
             _scriptService.Run(this, pad);
         }
         else
@@ -939,6 +939,12 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         _configService.Save();
     }
 
+    private void chkHighResolutionTiming_CheckedChanged(object sender, EventArgs e)
+    {
+        _configService.Config.HighResolutionTiming = chkHighResolutionTiming.Checked;
+        _configService.Save();
+    }
+
     private void btnAlertConfig_Click(object sender, EventArgs e)
     {
         using var dlg = new AlertConfigForm();
@@ -1169,6 +1175,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         chkFolding.Checked = _configService.Config.ShowControllerHelp;
         chkDebugLog.Checked = _deviceService.DebugLogEnabled;
         chkAutoRunAfterFlash.Checked = _configService.Config.AutoRunAfterFlash;
+        chkHighResolutionTiming.Checked = _configService.Config.HighResolutionTiming;
 
         // Version label & title
         string displayVer = _version;

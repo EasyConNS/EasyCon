@@ -138,6 +138,7 @@ namespace EasyCon2.App
             // 初始化菜单项状态
             代码自动补全ToolStripMenuItem.Checked = _configService.Config.EnableAutoCompletion;
             深色模式ToolStripMenuItem.Checked = _configService.Config.DarkMode;
+            高精度模式ToolStripMenuItem.Checked = _configService.Config.HighResolutionTiming;
 
 #if DEBUG
             蓝牙ToolStripMenuItem.Visible = true;
@@ -685,7 +686,7 @@ namespace EasyCon2.App
 
             _vpadService?.Deactivate();
             _state.ScriptStartTime = DateTime.Now;
-            _scriptService.Run(this, new GamePadAdapter(_deviceService.Device));
+            _scriptService.Run(this, new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming));
         }
 
         private bool CheckFwVersion()
@@ -1339,6 +1340,13 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             _configService.Config.DarkMode = menu.Checked;
             _configService.Save();
             ThemeManager.Toggle(menu.Checked);
+        }
+
+        private void 高精度模式ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var menu = (ToolStripMenuItem)sender;
+            _configService.Config.HighResolutionTiming = menu.Checked;
+            _configService.Save();
         }
 
         private class WarmMenuColors : ProfessionalColorTable

@@ -59,6 +59,7 @@ namespace EasyCon2.App
             显示折叠ToolStripMenuItem = new ToolStripMenuItem();
             代码自动补全ToolStripMenuItem = new ToolStripMenuItem();
             深色模式ToolStripMenuItem = new ToolStripMenuItem();
+            高精度模式ToolStripMenuItem = new ToolStripMenuItem();
             蓝牙ToolStripMenuItem = new ToolStripMenuItem();
             蓝牙设备驱动配置ToolStripMenuItem = new ToolStripMenuItem();
             eSP32ToolStripMenuItem = new ToolStripMenuItem();
@@ -291,7 +292,7 @@ namespace EasyCon2.App
             // 
             // 设置ToolStripMenuItem
             // 
-            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, 烧录自动运行ToolStripMenuItem, 显示折叠ToolStripMenuItem, 代码自动补全ToolStripMenuItem, 深色模式ToolStripMenuItem });
+            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 推送设置ToolStripMenuItem, 显示调试信息ToolStripMenuItem, 烧录自动运行ToolStripMenuItem, 显示折叠ToolStripMenuItem, 代码自动补全ToolStripMenuItem, 深色模式ToolStripMenuItem, 高精度模式ToolStripMenuItem });
             设置ToolStripMenuItem.Name = "设置ToolStripMenuItem";
             设置ToolStripMenuItem.Size = new Size(53, 24);
             设置ToolStripMenuItem.Text = "设置";
@@ -345,6 +346,14 @@ namespace EasyCon2.App
             深色模式ToolStripMenuItem.Size = new Size(182, 26);
             深色模式ToolStripMenuItem.Text = "深色模式";
             深色模式ToolStripMenuItem.Click += 深色模式ToolStripMenuItem_Click;
+            //
+            // 高精度模式ToolStripMenuItem
+            //
+            高精度模式ToolStripMenuItem.CheckOnClick = true;
+            高精度模式ToolStripMenuItem.Name = "高精度模式ToolStripMenuItem";
+            高精度模式ToolStripMenuItem.Size = new Size(182, 26);
+            高精度模式ToolStripMenuItem.Text = "高精度模式";
+            高精度模式ToolStripMenuItem.Click += 高精度模式ToolStripMenuItem_Click;
             // 
             // 蓝牙ToolStripMenuItem
             // 
@@ -1136,6 +1145,7 @@ namespace EasyCon2.App
         private ToolStripMenuItem 推送设置ToolStripMenuItem;
         private ToolStripMenuItem 代码自动补全ToolStripMenuItem;
         private ToolStripMenuItem 深色模式ToolStripMenuItem;
+        private ToolStripMenuItem 高精度模式ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙ToolStripMenuItem;
         private ToolStripMenuItem 蓝牙设备驱动配置ToolStripMenuItem;
         private ToolStripMenuItem eSP32ToolStripMenuItem;
