@@ -11,11 +11,11 @@ internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg
 {
     private DateTime _starttime = DateTime.MinValue;
     private static readonly Color _gray50 = Color.FromRgb(50, 50, 50);
-    private readonly Brush _brushLightDefault = new SolidColorBrush(Colors.Black, 50 / 255);
+    private readonly Brush _brushLightDefault = new SolidColorBrush(Colors.Black, 130.0 / 255.0);
     private readonly Brush _brushStickBG = new SolidColorBrush(_gray50);
     private readonly Brush _brushStickBGDown = new SolidColorBrush(Colors.Lime);
-    private readonly Brush _brushStickAreaBG = new SolidColorBrush(Colors.Black, 50 / 255);
-    private readonly Brush _brushStickAreaBGDown = new SolidColorBrush(Colors.Lime, 200 / 255);
+    private readonly Brush _brushStickAreaBG = new SolidColorBrush(Colors.Black, 50.0 / 255.0);
+    private readonly Brush _brushStickAreaBGDown = new SolidColorBrush(Colors.Lime, 200.0 / 255.0);
     private readonly Brush _brushButtonDown = new SolidColorBrush(Colors.Lime);
     private readonly Brush _brushButtonUp = new SolidColorBrush(_gray50);
 
@@ -67,7 +67,7 @@ internal class JCPainter(IReporter repoter, IControllerAdapter adapter, GetJCImg
                 DrawRectangle(
                     g,
                     _pen,
-                    new SolidColorBrush(adapter.CurrentLight, 50 / 255),
+                    new SolidColorBrush(adapter.CurrentLight, 130.0 / 255.0),
                     x,
                     y,
                     w,

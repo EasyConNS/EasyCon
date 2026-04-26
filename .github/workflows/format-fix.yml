@@ -11,6 +11,10 @@ on:
       - 'README*'
       - 'CHANGELOG*'
 
+concurrency:
+  group: format-fix-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   format-fix:
     runs-on: windows-latest
@@ -18,23 +22,20 @@ jobs:
       contents: write
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore
-        run: dotnet restore
-
-      - name: Run dotnet format
+      - name: 自动修复代码格式
         run: dotnet format --verbosity diagnostic
 
-      - name: Check for changes
+      - name: 检查格式变更
         id: verify-changed-files
         run: |
           $changed = git diff --exit-code
@@ -45,7 +46,7 @@ jobs:
           }
           exit 0
 
-      - name: Commit and push fixes
+      - name: 提交并推送格式修复
         if: steps.verify-changed-files.outputs.changed == 'true'
         shell: pwsh
         run: |

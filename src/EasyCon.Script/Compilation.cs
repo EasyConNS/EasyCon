@@ -12,24 +12,43 @@ public sealed class Compilation
     public bool KeyAction { get; private set; } = false;
     public bool NeedIL { get; private set; } = false;
 
-    private Compilation(bool isScript, Compilation? previous, SyntaxTree syntaxTrees)
+    private Compilation(ImmutableArray<SyntaxTree> syntaxTrees)
     {
-        IsScript = isScript;
-        Previous = previous;
         SyntaxTrees = syntaxTrees;
     }
-    public static Compilation Create(SyntaxTree syntaxTrees)
-    {
-        return new Compilation(isScript: false, previous: null, syntaxTrees);
-    }
-    public bool IsScript { get; }
-    public Compilation? Previous { get; }
-    public SyntaxTree SyntaxTrees { get; }
 
-    private BoundProgram GetProgram(ImmutableHashSet<string>? extVars)
+    public ImmutableArray<SyntaxTree> SyntaxTrees { get; }
+
+    public static Compilation Create(SyntaxTree mainTree)
     {
-        var previous = Previous == null ? null : Previous.GetProgram(extVars);
-        return Binder.BindProgram(SyntaxTrees, extVars);
+        var trees = ImmutableArray.CreateBuilder<SyntaxTree>();
+
+        // 自动加载 lib 目录下的脚本
+        var fileName = mainTree.Text.FileName;
+        if (!string.IsNullOrEmpty(fileName))
+        {
+            var dir = Path.GetDirectoryName(Path.GetFullPath(fileName));
+            if (dir != null)
+            {
+                var libDir = Path.Combine(dir, "lib");
+                if (Directory.Exists(libDir))
+                {
+                    foreach (var libFile in Directory.GetFiles(libDir, "*.ecs"))
+                    {
+                        Console.WriteLine($"正在加载库:{libFile}");
+                        trees.Add(SyntaxTree.Load(libFile, isLib: true));
+                    }
+                }
+            }
+        }
+
+        trees.Add(mainTree);
+        return new Compilation(trees.ToImmutable());
+    }
+
+    private BoundProgram GetProgram(ImmutableHashSet<string>? extVars, ImmutableArray<ForeignFunction> foreignFunctions = default)
+    {
+        return Binder.BindProgram(SyntaxTrees, extVars, foreignFunctions);
     }
 
     public ImmutableArray<Diagnostic> Compile(ImmutableHashSet<string>? extVars)
@@ -44,10 +63,18 @@ public sealed class Compilation
         ImmutableDictionary<string, Func<int>> externalGetters,
         CancellationToken token)
     {
-        var program = GetProgram([.. externalGetters.Select(v => v.Key)]);
+        return Evaluate(output, pad, externalGetters, token, default);
+    }
+
+    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad,
+        ImmutableDictionary<string, Func<int>> externalGetters,
+        CancellationToken token,
+        ImmutableArray<ForeignFunction> foreignFunctions)
+    {
+        var program = GetProgram([.. externalGetters.Select(v => v.Key)], foreignFunctions);
         if (program.Diagnostics.HasErrors())
             return new EvaluationResult(program.Diagnostics, Value.Void);
-        var evaluator = new Evaluator(program, externalGetters ?? [], token)
+        var evaluator = new Evaluator(program, externalGetters ?? [], token, foreignFunctions)
         {
             GamePad = pad,
             Output = output,
@@ -59,9 +86,10 @@ public sealed class Compilation
 
     public string FormatCode()
     {
+        var mainTree = SyntaxTrees.FirstOrDefault(t => !t.IsLib) ?? SyntaxTrees[0];
         using var writer = new StringWriter();
         using var printer = new IndentedTextWriter(writer, "    ");
-        foreach (var statement in SyntaxTrees.Root.Members)
+        foreach (var statement in mainTree.Root.Members)
         {
             statement.WriteTo(printer);
         }

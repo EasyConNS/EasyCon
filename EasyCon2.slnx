@@ -4,11 +4,24 @@
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
   </Folder>
+  <Folder Name="/Docs/">
+    <File Path="src/EasyCon2/更新说明.txt" />
+  </Folder>
+  <Folder Name="/Markdown/">
+    <File Path="README.md" />
+    <File Path="DESIGN.md" />
+    <File Path="docs/README.md" />
+    <File Path="docs/GETTING_STARTED.md" />
+    <File Path="docs/MODULE_DESIGN.md" />
+    <File Path="docs/DESIGN_DOCUMENT.md" />
+  </Folder>
   <Folder Name="/Test/">
     <Project Path="test/EasyCon.Tests/EasyCon.Tests.csproj" />
+    <Project Path="test/EasyCon.WinInput.Tests/EasyCon.WinInput.Tests.csproj" />
   </Folder>
   <Folder Name="/Demo/">
     <Project Path="tools/DirectInput/DirectInput.csproj" />
+    <Project Path="tools/GamepadApiDemo/GamepadApiDemo.csproj" />
   </Folder>
   <Folder Name="/Lib/">
     <Project Path="src/EasyCon.Capture/EasyCon.Capture.csproj" />
@@ -16,6 +29,7 @@
     <Project Path="src/EasyCon.Device/EasyCon.Device.csproj" />
     <Project Path="src/EasyCon.Script/EasyCon.Script.csproj" />
     <Project Path="src/EasyCon2.Avalonia.Core/EasyCon2.Avalonia.Core.csproj" />
+    <Project Path="src/EasyCon.WinInput/EasyCon.WinInput.csproj" />
   </Folder>
   <Folder Name="/Common/">
     <Project Path="src/EasyCon2.UI.Common/EasyCon2.UI.Common.csproj" />

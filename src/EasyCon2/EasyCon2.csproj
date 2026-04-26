@@ -1,66 +1,34 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <Nullable>warnings</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
-    <UseWPF>true</UseWPF>
 	<TargetFramework>net10.0-windows7.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <ApplicationIcon>Resources\favicon.ico</ApplicationIcon>
+    <ApplicationIcon>..\EasyCon2.UI.Common\Resources\Icons\favicon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 	  <NoWarn>$(NoWarn);WFO1000</NoWarn>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Avalonia.Win32.Interoperability" />
     <PackageReference Include="OpenCvSharp4.Extensions" />
-    <PackageReference Include="AvalonEdit" />
     <PackageReference Include="System.Management" />
     <PackageReference Include="WebSocketSharp-netstandard" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
     <ProjectReference Include="..\EasyCon2.UI.Common\EasyCon2.UI.Common.csproj" />
+    <ProjectReference Include="..\EasyCon.WinInput\EasyCon.WinInput.csproj" />
     <ProjectReference Include="..\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <Reference Include="LibAmiibo">
       <HintPath>.\deps\libamiibo.dll</HintPath>
     </Reference>
   </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
-
   <ItemGroup>
     <None Update="更新说明.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-	  <None Include="Resources\AmiiboImages\*">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
   </ItemGroup>
-
-  <Target Name="PostBuild" BeforeTargets="PrepareForBuild">
-	  <ItemGroup>
-		  <AmiiboResourceFolder Include="Resources\AmiiboImages\*"></AmiiboResourceFolder>
-	  </ItemGroup>
-	  <Copy SourceFiles="@(AmiiboResourceFolder)" DestinationFolder="$(OutputPath)\Amiibo\AmiiboImages"></Copy>
-  </Target>
-
 </Project>

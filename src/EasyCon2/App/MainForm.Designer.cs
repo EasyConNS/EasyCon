@@ -1,3 +1,4 @@
+using Avalonia.Win32.Interoperability;
 using EasyCon2.Forms;
 
 namespace EasyCon2.App;
@@ -47,7 +48,7 @@ partial class MainForm
         menuItemAbout = new ToolStripMenuItem();
         mainSplit = new SplitContainer();
         contentPanel = new Panel();
-        editorHost = new System.Windows.Forms.Integration.ElementHost();
+        editorHost = new WinFormsAvaloniaControlHost();
         logPanel = new Panel();
         clsLogBtn = new Button();
         logTxtBox = new RichLogBox();
@@ -80,7 +81,6 @@ partial class MainForm
         btnCheckUpdate = new Button();
         btnSource = new Button();
         scriptTitleLabel = new Label();
-        findPanel1 = new FindPanel();
         sideBar = new Panel();
         btnPageLog = new Button();
         btnPageEditor = new Button();
@@ -361,7 +361,6 @@ partial class MainForm
         contentPanel.Controls.Add(burnPanel);
         contentPanel.Controls.Add(settingsPanel);
         contentPanel.Controls.Add(scriptTitleLabel);
-        contentPanel.Controls.Add(findPanel1);
         contentPanel.Dock = DockStyle.Fill;
         contentPanel.Location = new Point(40, 0);
         contentPanel.Name = "contentPanel";
@@ -395,7 +394,7 @@ partial class MainForm
         clsLogBtn.AccessibleName = "清除日志输出";
         clsLogBtn.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         clsLogBtn.BackColor = Color.Transparent;
-        clsLogBtn.BackgroundImage = Properties.Resources.clrlog;
+        clsLogBtn.BackgroundImage = ResourceHelper.Clrlog;
         clsLogBtn.BackgroundImageLayout = ImageLayout.Stretch;
         clsLogBtn.FlatAppearance.BorderSize = 0;
         clsLogBtn.FlatStyle = FlatStyle.Flat;
@@ -812,20 +811,7 @@ partial class MainForm
         scriptTitleLabel.Text = "未命名脚本";
         scriptTitleLabel.TextAlign = ContentAlignment.MiddleLeft;
         scriptTitleLabel.Visible = false;
-        // 
-        // findPanel1
-        // 
-        findPanel1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        findPanel1.BackColor = Color.Transparent;
-        findPanel1.BorderStyle = BorderStyle.FixedSingle;
-        findPanel1.Location = new Point(349, 17);
-        findPanel1.Name = "findPanel1";
-        findPanel1.Replaced = null;
-        findPanel1.Size = new Size(250, 98);
-        findPanel1.TabIndex = 2;
-        findPanel1.Target = null;
-        findPanel1.Visible = false;
-        // 
+        //
         // sideBar
         // 
         sideBar.BackColor = Color.FromArgb(230, 229, 224);
@@ -1292,7 +1278,7 @@ partial class MainForm
     private ToolStripMenuItem menuItemAbout;
 
     // Editor
-    private System.Windows.Forms.Integration.ElementHost editorHost;
+    private WinFormsAvaloniaControlHost editorHost;
     private Label scriptTitleLabel;
 
     // Sidebar
@@ -1338,9 +1324,6 @@ partial class MainForm
     // Log
     private RichLogBox logTxtBox;
     private Button clsLogBtn;
-
-    // Find
-    private FindPanel findPanel1;
 
     // Status
     private StatusStrip statusStrip;

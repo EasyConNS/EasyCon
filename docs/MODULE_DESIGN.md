@@ -241,311 +241,237 @@ public class ImgLabelManager
 ## 3. Script模块详细设计
 
 ### 3.1 模块概述
-Script模块实现ECS脚本的解析和执行，采用编译器设计原理实现完整的脚本语言支持。
+Script模块实现ECS脚本的解析和执行，采用编译器设计原理实现完整的脚本语言支持。编译管线为 `SourceText → Lexer → Parser → Binder → Evaluator`，另有 `Assembly/` 用于生成单片机字节码。
 
-### 3.2 脚本语言语法
+### 3.2 目录结构
 
-#### EBNF语法定义
 ```
-main       ::= { decl | stmt }
-decl       ::= importdecl | constdecl | arrdecl | funcdecl
-stmt       ::= assignment | augassign | ifstmt | forstmt | callstmt | keyaction | stickaction
-constdecl  ::= const '=' expr
-assignment ::= suffexpr '=' expr
-suffexpr   ::= var | indexvar
-expr       ::= expr binop expr | unop expr | primary
-primary    ::= number | string | bool | parenexpr | funccall
-```
-
-### 3.3 词法分析器
-
-#### Lexer类
-```csharp
-public class Lexer
-{
-    public Lexer(string source);
-    public IEnumerable<Token> Lex();
-    
-    private Token ReadNextToken();
-    private char Peek(int offset = 0);
-    private void Advance();
-    private bool IsAtEnd();
-}
-
-public enum TokenType
-{
-    // 关键字
-    If, Else, For, While, Func, Return, Import, Const,
-    // 运算符
-    Plus, Minus, Star, Slash, Percent,
-    Equal, EqualEqual, BangEqual, Less, LessEqual, Greater, GreaterEqual,
-    And, Or, Not,
-    // 标识符和字面量
-    Identifier, Number, String,
-    // 分隔符
-    LeftParen, RightParen, LeftBrace, RightBrace,
-    LeftBracket, RightBracket, Semicolon, Comma,
-    // 特殊
-    EOF, Error
-}
-
-public class Token
-{
-    public TokenType Type { get; }
-    public string Lexeme { get; }
-    public object? Literal { get; }
-    public int Line { get; }
-    public int Column { get; }
-}
-```
-
-### 3.4 语法分析器
-
-#### Parser类
-```csharp
-public class Parser
-{
-    public Parser(IEnumerable<Token> tokens);
-    public ProgramNode Parse();
-    
-    private ProgramNode ParseProgram();
-    private StatementNode ParseStatement();
-    private ExpressionNode ParseExpression();
-    private DeclarationNode ParseDeclaration();
-    
-    // 错误处理
-    public List<ParseError> Errors { get; }
-    private Token Advance();
-    private Token Peek();
-    private bool Check(TokenType type);
-    private bool Match(TokenType type);
-}
-
-public abstract class SyntaxNode
-{
-    public SyntaxKind Kind { get; }
-    public TextSpan Span { get; }
-}
-
-public enum SyntaxKind
-{
-    Program, 
-    Statement, 
-    Expression, 
-    Declaration,
-    // 具体语句类型
-    IfStatement, ForStatement, WhileStatement,
-    AssignmentStatement, ExpressionStatement,
-    // 表达式类型
-    BinaryExpression, UnaryExpression, LiteralExpression,
-    IdentifierExpression, CallExpression,
-    // 声明类型
-    FunctionDeclaration, VariableDeclaration, ConstantDeclaration
-}
+EasyCon.Script/
+├── Text/                    # 源文本处理
+│   ├── SourceText.cs        # 源文本表示
+│   ├── TextLine.cs          # 文本行
+│   ├── SourceSpan.cs        # 文本范围
+│   └── TextLocation.cs      # 文本位置
+├── Syntax/                  # 词法分析与语法分析
+│   ├── Lexer.cs             # 词法分析器（partial）
+│   ├── Parser.cs            # 语法分析器（partial）
+│   ├── Parser.Fn.cs         # 函数解析（Parser partial）
+│   ├── SyntaxTree.cs        # 语法树
+│   ├── SyntaxNode.cs        # 语法节点基类
+│   ├── Token.cs             # Token与TokenType定义
+│   ├── TokenFacts.cs        # 关键字与Token查询
+│   ├── Visitor.cs           # 访问者模式
+│   └── Formatter.cs         # 代码格式化
+├── Parsing/                 # 语法节点定义
+│   ├── Statement.cs         # 语句基类
+│   ├── ExprBase.cs          # 表达式基类
+│   ├── IfStmt.cs            # if语句
+│   ├── ForStmt.cs           # for循环
+│   ├── FuncStmt.cs          # 函数声明
+│   ├── AssignmentStmt.cs    # 赋值语句
+│   ├── ConstantDeclStmt.cs  # 常量声明
+│   ├── KeyActionStmt.cs     # 按键动作
+│   ├── SerialPrint.cs       # 串口打印
+│   └── Wait.cs              # 等待指令
+├── Binding/                 # 绑定层（语义分析）
+│   ├── Binder.cs            # 绑定器（类型检查+作用域）
+│   ├── BoundProgram.cs      # 绑定后的程序
+│   ├── BoundScope.cs        # 作用域管理
+│   ├── BoundExpr.cs         # 绑定表达式节点
+│   ├── BoundStmt.cs         # 绑定语句节点
+│   ├── BoundFactory.cs      # 绑定节点工厂
+│   ├── BoundNodeKind.cs     # 绑定节点类型枚举
+│   ├── BoundNodePrinter.cs  # 绑定树打印
+│   ├── BoundBinaryOperator.cs  # 二元运算符
+│   ├── BoundUnaryOperator.cs   # 一元运算符
+│   ├── BuildinFuncs.cs      # 内建函数
+│   ├── ControlFlowGraph.cs  # 控制流图
+│   ├── LinearScanRegisterAllocator.cs  # 寄存器分配
+│   └── Lowerer.cs           # IR降低/优化
+├── Symbols/                 # 符号系统
+│   ├── Symbol.cs            # 符号层次（Symbol→VariableSymbol→Global/Local/Param, FunctionSymbol）
+│   └── BoundValue.cs        # 运行时值类型（Value, ScriptType）
+├── Assembly/                # 单片机字节码生成
+│   ├── Assembler.cs         # 汇编器
+│   ├── HexWriter.cs         # HEX格式写入
+│   ├── Instruction.cs       # 指令基类
+│   └── Instructions/        # 各指令实现（AsmKey, AsmStick, AsmFor等）
+├── IO/                      # IO辅助
+│   ├── CustomSleep.cs       # 高精度延时
+│   └── TextWriterExtensions.cs  # 文本输出扩展
+├── Compilation.cs           # 编译入口
+├── Evaluator.cs             # 树解释执行器
+├── Diagnostic.cs            # 诊断信息
+├── DiagnosticBag.cs         # 诊断集合
+├── IOutputAdapter.cs        # 输出适配器接口
+├── ICGamePad.cs             # 手柄控制接口+GamePadKey枚举
+└── NSKeys.cs                # NS按键定义
 ```
 
-### 3.5 抽象语法树
-
-#### AST节点定义
-```csharp
-public abstract class AstNode
-{
-    public AstNodeType NodeType { get; }
-    public TextSpan Location { get; }
-    public IEnumerable<AstNode> Children { get; }
-    
-    public T Accept<T>(IAstVisitor<T> visitor);
-    public void Accept(IAstVisitor visitor);
-}
-
-public interface IAstVisitor<T>
-{
-    T VisitProgramNode(ProgramNode node);
-    T VisitIfStatementNode(IfStatementNode node);
-    T VisitForStatementNode(ForStatementNode node);
-    T VisitBinaryExpressionNode(BinaryExpressionNode node);
-    // 其他访问方法...
-}
-
-public class ProgramNode : AstNode
-{
-    public List<DeclarationNode> Declarations { get; }
-    public List<StatementNode> Statements { get; }
-}
-
-public class IfStatementNode : AstNode
-{
-    public ExpressionNode Condition { get; }
-    public StatementNode ThenClause { get; }
-    public StatementNode? ElseClause { get; }
-}
-
-public class BinaryExpressionNode : AstNode
-{
-    public ExpressionNode Left { get; }
-    public ExpressionNode Right { get; }
-    public BinaryOperator Operator { get; }
-}
-```
-
-### 3.6 语义分析器
-
-#### SemanticAnalyzer类
-```csharp
-public class SemanticAnalyzer
-{
-    public SemanticAnalyzer(DiagnosticBag diagnostics);
-    public AnalyzedProgram Analyze(ProgramNode syntax);
-    
-    private SymbolTable CreateSymbolTable();
-    private void AnalyzeDeclaration(DeclarationNode declaration);
-    private void AnalyzeStatement(StatementNode statement);
-    private TypeCheckResult AnalyzeExpression(ExpressionNode expression);
-}
-
-public class DiagnosticBag
-{
-    public IEnumerable<Diagnostic> Diagnostics { get; }
-    public void ReportDiagnostic(Diagnostic diagnostic);
-    public bool HasErrors { get; }
-}
-
-public class Diagnostic
-{
-    public DiagnosticSeverity Severity { get; }
-    public string Message { get; }
-    public TextSpan Location { get; }
-    public DiagnosticCode Code { get; }
-}
-```
-
-### 3.7 编译器
+### 3.3 编译管线
 
 #### Compilation类
 ```csharp
-public class Compilation
+public sealed class Compilation
 {
-    public Compilation(string sourceCode);
-    public Compilation(SyntaxTree syntaxTree);
-    
-    public Compilation Emit();
-    public Evaluation GetEvaluator();
-    
+    public static Compilation Create(SyntaxTree syntaxTrees);
+    public ImmutableArray<Diagnostic> Compile(ImmutableHashSet<string>? extVars);
+    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad,
+        ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token);
+}
+```
+
+**管线流程**: `SourceText` → `Lexer.Tokenize()` → `Parser` → `SyntaxTree` → `Binder.BindProgram()` → `BoundProgram` → `Evaluator`
+
+### 3.4 词法分析器
+
+#### Lexer类（Syntax/Lexer.cs）
+```csharp
+internal sealed partial class Lexer(SyntaxTree syntaxTree)
+{
+    public DiagnosticBag Diagnostics { get; }
+    public ImmutableArray<Token> Tokenize();
+}
+```
+
+#### TokenType枚举（Syntax/Token.cs）
+```csharp
+public enum TokenType
+{
+    BadToken,
+    // 空白与注释
+    NEWLINE, WhitespaceTrivia, COMMENT,
+    // 标识符与字面量
+    IDENT, INT, Number, STRING,
+    // 特殊变量
+    CONST,    // _XXX
+    VAR,      // $XXX
+    EX_VAR,   // @XXX
+    // 算术运算符
+    ASSIGN, ADD, SUB, MUL, DIV, SlashI, MOD,
+    // 位运算符
+    BitAnd, BitOr, XOR, SHL, SHR, BitNot,
+    // 复合赋值
+    ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN,
+    SlashI_ASSIGN, MOD_ASSIGN, BitAnd_ASSIGN, BitOr_ASSIGN,
+    XOR_ASSIGN, SHL_ASSIGN, SHR_ASSIGN,
+    // 比较运算符
+    EQL, NEQ, LSS, GTR, LEQ, GEQ,
+    // 逻辑运算符
+    AND, OR, NOT,
+    // 分隔符
+    LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET,
+    COMMA, COLON, SEMICOLON,
+    // 关键字
+    IF, ELSE, FOR, WHILE, FUNC, RETURN, BREAK, CONTINUE,
+    // 特殊
+    EOF
+}
+```
+
+### 3.5 语法分析器
+
+#### Parser类（Syntax/Parser.cs）
+```csharp
+internal sealed partial class Parser
+{
+    public Parser(SyntaxTree syntaxTree);
     public DiagnosticBag Diagnostics { get; }
 }
-
-public class Evaluator
-{
-    public Evaluator(Compilation compilation);
-    public object? Evaluate();
-    public object? EvaluateFunction(string name, object?[] arguments);
-    
-    private object? EvaluateStatement(StatementNode statement);
-    private object? EvaluateExpression(ExpressionNode expression);
-    
-    // 执行上下文
-    private Dictionary<string, object?> _variables = new();
-    private Dictionary<string, FunctionDelegate> _functions = new();
-    private readonly Stack<CallFrame> _callStack = new();
-}
 ```
 
-### 3.8 虚拟机设计
+Parser为partial类，函数解析逻辑在 `Parser.Fn.cs` 中。解析结果为 `SyntaxTree`，其根节点为 `CompicationUnit`。
 
-#### VM (Virtual Machine)
+### 3.6 绑定器
+
+#### Binder类（Binding/Binder.cs）
 ```csharp
-public class VM
+internal sealed class Binder
 {
-    private readonly Instruction[] _instructions;
-    private readonly Stack<object?> _stack = new();
-    private readonly Dictionary<string, object?> _globals = new();
-    private int _ip; // Instruction Pointer
-    
-    public VM(Chunk chunk);
-    public void Interpret();
-    public object? Run();
-    
-    // 指令执行
-    private void ExecuteInstruction(Instruction instruction);
-    private void Push(object? value);
-    private object? Pop();
-    private object? Peek(int distance = 0);
-}
-
-public enum OpCode
-{
-    // 常量和变量操作
-    LoadConstant, LoadLocal, StoreLocal, LoadGlobal, StoreGlobal,
-    // 算术运算
-    Add, Sub, Mul, Div, Mod, Negate,
-    // 比较运算
-    Equal, NotEqual, Less, Greater, LessEqual, GreaterEqual,
-    // 逻辑运算
-    Not, And, Or,
-    // 控制流
-    Jump, JumpIfFalse, JumpIfTrue, Loop, Call, Return,
-    // 特殊操作
-    Print, Input, Delay
+    public static BoundProgram BindProgram(SyntaxTree syntaxTree, ImmutableHashSet<string>? extVars);
+    public DiagnosticBag Diagnostics { get; }
 }
 ```
 
-### 3.9 绑定器
+Binder将语法树绑定到类型化的Bound树，同时完成：
+- **类型检查**: 确保表达式类型一致
+- **作用域管理**: 通过 `BoundScope` 管理变量作用域
+- **符号解析**: 解析变量、函数引用到 `Symbol` 对象
 
-#### Binder类
+#### Lowerer（Binding/Lowerer.cs）
+将高级绑定节点降低为更基础的IR，包含优化逻辑。
+
+#### ControlFlowGraph（Binding/ControlFlowGraph.cs）
+构建控制流图，用于分析和优化。
+
+#### LinearScanRegisterAllocator（Binding/LinearScanRegisterAllocator.cs）
+线性扫描寄存器分配器，为单片机字节码生成优化寄存器使用。
+
+### 3.7 符号系统
+
+#### Symbol层次（Symbols/Symbol.cs）
 ```csharp
-public class Binder
+abstract class Symbol(string name)
 {
-    public BoundProgram BindProgram(ProgramNode program);
-    private BoundStatement BindStatement(StatementNode statement);
-    private BoundExpression BindExpression(ExpressionNode expression);
-    
-    // 作用域管理
-    private readonly Stack<BoundScope> _scopes = new();
-    private void EnterScope();
-    private void ExitScope();
-    private bool TryLookupVariable(string name, out VariableSymbol variable);
+    public readonly string Name;
 }
 
-public abstract class BoundNode
+abstract class VariableSymbol(string name, bool isReadOnly, ScriptType type) : Symbol(name)
 {
-    public BoundNodeKind Kind { get; }
-    public Type Type { get; }
+    public readonly ScriptType Type;
+    public readonly bool IsReadOnly;
 }
 
-public class BoundBinaryExpression : BoundExpression
+sealed class GlobalVariableSymbol : VariableSymbol
+class LocalVariableSymbol : VariableSymbol
+sealed class ParamSymbol : LocalVariableSymbol
+sealed class FunctionSymbol : Symbol
+```
+
+### 3.8 执行器
+
+#### Evaluator类
+```csharp
+internal sealed class Evaluator
 {
-    public BoundExpression Left { get; }
-    public BoundExpression Right { get; }
-    public BoundBinaryOperator Operator { get; }
+    private readonly BoundProgram _program;
+    private readonly Dictionary<VariableSymbol, Value> _globals;
+    private readonly Stack<Dictionary<VariableSymbol, Value>> _locals;
+    private readonly Dictionary<FunctionSymbol, BoundBlockStatement> _functions;
 }
 ```
 
-### 3.10 输出适配器
+Evaluator直接遍历绑定树（BoundProgram）执行脚本，不经过虚拟机/字节码中间层。
+
+### 3.9 输出接口
 
 #### IOutputAdapter接口
 ```csharp
 public interface IOutputAdapter
 {
-    void SendKeyPress(NSKeys key);
-    void SendKeyRelease(NSKeys key);
-    void SendStickCommand(StickType stick, float x, float y);
-    void Delay(int milliseconds);
-    void Log(string message);
-}
-
-public enum NSKeys
-{
-    A, B, X, Y, L, R, ZL, ZR,
-    Plus, Minus, Home, Capture,
-    Up, Down, Left, Right,
-    LStick, RStick
-}
-
-public enum StickType
-{
-    LeftStick, RightStick
+    void Print(string message, bool newline);
+    void Alert(string message);
 }
 ```
+
+#### ICGamePad接口
+```csharp
+public interface ICGamePad
+{
+    abstract DelayType DelayMethod { get; }
+    void ClickButtons(GamePadKey key, int duration, CancellationToken token);
+    void PressButtons(GamePadKey key);
+    void ReleaseButtons(GamePadKey key);
+    void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token);
+    void SetStick(GamePadKey key, byte x, byte y);
+    void ChangeAmiibo(uint index);
+}
+```
+
+### 3.10 单片机字节码生成
+
+#### Assembler（Assembly/Assembler.cs）
+将绑定后的程序转换为单片机可执行的字节码，通过 `HexWriter` 输出HEX格式文件。`Instructions/` 目录包含各指令的汇编实现（AsmKey、AsmStick、AsmFor等）。
 
 ---
 

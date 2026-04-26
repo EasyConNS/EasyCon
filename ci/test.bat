@@ -3,10 +3,11 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 set "ROOT_DIR=%~dp0.."
-set "TFM=net10.0"
+set "CONFIG=%1"
+if "%CONFIG%"=="" set "CONFIG=Release"
 
-echo Running tests...
-dotnet test "%ROOT_DIR%\EasyCon2.slnx" --nologo -c Release -f %TFM%
+echo Running tests (%CONFIG%)...
+dotnet test "%ROOT_DIR%\EasyCon2.slnx" --nologo -c %CONFIG%
 if errorlevel 1 (
     echo ERROR: Tests failed
     pause
@@ -14,4 +15,4 @@ if errorlevel 1 (
 )
 
 echo All tests passed!
-pause
+if "%CI%"=="" pause

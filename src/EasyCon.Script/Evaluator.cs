@@ -12,7 +12,7 @@ public class ScriptException(string message, int address) : Exception(message)
     public int Address { get; private set; } = address;
 }
 
-internal sealed class Evaluator
+internal sealed class Evaluator : IEvalContext
 {
     private readonly BoundProgram _program;
     private readonly Dictionary<VariableSymbol, Value> _globals = [];
@@ -24,14 +24,22 @@ internal sealed class Evaluator
     private int CurrTimestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
 
     private readonly Random _rand = new();
-    private bool CancelLineBreak = false;
+    private bool _cancelLineBreak = false;
     private CancellationToken _token;
     private Value _lastValue;
 
-    public IOutputAdapter? Output;
-    public ICGamePad? GamePad;
+    private readonly Dictionary<FunctionSymbol, ICallable> _callables = [];
 
-    public Evaluator(BoundProgram program, ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token)
+    public IOutputAdapter? Output { get; set; }
+    public ICGamePad? GamePad { get; set; }
+
+    // IEvalContext
+    ICGamePad? IEvalContext.GamePad => GamePad;
+    IOutputAdapter? IEvalContext.Output => Output;
+    Random IEvalContext.Rand => _rand;
+    bool IEvalContext.CancelLineBreak { get => _cancelLineBreak; set => _cancelLineBreak = value; }
+
+    public Evaluator(BoundProgram program, ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token, ImmutableArray<ForeignFunction> foreignFunctions = default)
     {
         _program = program;
         _token = token;
@@ -41,6 +49,48 @@ internal sealed class Evaluator
         foreach (var kv in _program.Functions)
         {
             _functions.Add(kv.Key, kv.Value);
+        }
+
+        RegisterCallables(foreignFunctions);
+    }
+
+    private void RegisterCallables(ImmutableArray<ForeignFunction> foreignFunctions)
+    {
+        // 注册内置函数 callable
+        foreach (var (symbol, callable) in BuiltinCallable.GetAll(() => CurrTimestamp))
+        {
+            _callables[symbol] = callable;
+        }
+
+        // 注册用户函数 callable
+        foreach (var fn in _functions.Keys)
+        {
+            if (!_callables.ContainsKey(fn))
+            {
+                _callables[fn] = new DelegateCallable((args, ctx, tk) =>
+                {
+                    var locals = new Dictionary<VariableSymbol, Value>();
+                    for (int i = 0; i < args.Length; i++)
+                        locals.Add(fn.Parameters[i], args[i]);
+                    ctx.PushLocals(locals);
+                    var result = ctx.EvaluateFunctionBody(fn);
+                    ctx.PopLocals();
+                    return result;
+                });
+            }
+        }
+
+        // 注册 FFI 函数 callable
+        if (!foreignFunctions.IsDefault)
+        {
+            foreach (var ff in foreignFunctions)
+            {
+                if (_program.FFISymbols.TryGetValue(ff.Name, out var symbol))
+                {
+                    var capturedInvoke = ff.Invoke;
+                    _callables[symbol] = new DelegateCallable((args, ctx, tk) => capturedInvoke(args));
+                }
+            }
         }
     }
 
@@ -196,7 +246,6 @@ internal sealed class Evaluator
     private Value EvaluateIndexDeclExpression(BoundIndexDeclxpression decl)
     {
         var elements = decl.Items.Select(EvaluateExpression);
-        // 使用之前重构的 CreateArray 保持泛型正确
         var elemType = ((GenericType)decl.Type).TypeArguments[0];
         return Value.CreateArray(elemType, elements);
     }
@@ -265,34 +314,15 @@ internal sealed class Evaluator
 
     private Value EvaluateCallExpression(BoundCallExpression node)
     {
-        if (BuiltinFunctions.GetAll().Any(f => f == node.Function))
+        var args = ImmutableArray.CreateBuilder<Value>();
+        for (int i = 0; i < node.Arguments.Length; i++)
         {
-            var args = ImmutableArray.CreateBuilder<Value>();
-            for (int i = 0; i < node.Arguments.Length; i++)
-            {
-                var value = EvaluateExpression(node.Arguments[i]);
-                Debug.Assert(value != Value.Void);
-                args.Add(value);
-            }
-            return EvaluteBuildin(node.Function, args.ToImmutable());
+            var value = EvaluateExpression(node.Arguments[i]);
+            Debug.Assert(value != Value.Void);
+            args.Add(value);
         }
-        else
-        {
-            var locals = new Dictionary<VariableSymbol, Value>();
-            for (int i = 0; i < node.Arguments.Length; i++)
-            {
-                var parameter = node.Function.Parameters[i];
-                var value = EvaluateExpression(node.Arguments[i]);
-                Debug.Assert(value != Value.Void);
-                locals.Add(parameter, value);
-            }
-            _locals.Push(locals);
-            var statement = _functions[node.Function];
-            var result = EvaluateStatement(statement);
-            _locals.Pop();
-
-            return result;
-        }
+        var callable = _callables[node.Function];
+        return callable.Invoke(args.ToImmutable(), this, _token);
     }
 
     private void EvaluateKeyAction(BoundKeyActStatement node)
@@ -341,74 +371,13 @@ internal sealed class Evaluator
         }
     }
 
-    private Value EvaluteBuildin(FunctionSymbol fn, ImmutableArray<Value> args)
+    // IEvalContext 方法
+    public void PushLocals(Dictionary<VariableSymbol, Value> locals) => _locals.Push(locals);
+    public void PopLocals() => _locals.Pop();
+    public Value EvaluateFunctionBody(FunctionSymbol function)
     {
-        Value result = Value.Void;
-        switch (fn.Name)
-        {
-            case "WAIT":
-                var ms = args[0].AsInt();
-                switch (GamePad?.DelayMethod)
-                {
-                    case DelayType.Normal: Thread.Sleep(ms); break;
-                    case DelayType.LowCPU: CustomDelay.AISleep(ms); break;
-                    case DelayType.HighResolution:
-                    default:
-                        CustomDelay.Delay(ms, _token);
-                        break;
-                }
-                break;
-            case "AMIIBO":
-                {
-                    var index = args[0].AsInt();
-                    if (index > 9)
-                    {
-                        // value must between 0~9
-                        return result;
-                    }
-                    GamePad?.ChangeAmiibo((uint)index);
-                }
-                break;
-            case "TIME":
-                result = CurrTimestamp;
-                break;
-            case "PRINT":
-                {
-                    var s = args[0].AsString();
-                    var output = s.EndsWith('\\') ? s[..^1] : s;
-                    Output?.Print(output, !CancelLineBreak);
-                    CancelLineBreak = s.EndsWith('\\'); // true不换行
-                }
-                break;
-            case "ALERT":
-                {
-                    var s = args[0].AsString();
-                    var output = s.EndsWith('\\') ? s[..^1] : s;
-                    Output?.Alert(output);
-                }
-                break;
-            case "RAND":
-                {
-                    var max = args[0].AsInt();
-                    max = max < 0 ? 0 : max;
-                    result = _rand.Next(max);
-                }
-                break;
-            case "BEEP":
-                {
-                    var freq = args[0].AsInt();
-                    if (freq < 37 || freq > 32767) throw new Exception($"BEEP参数freq范围不正确(37~32767)");
-                    Console.Beep(freq, args[1].AsInt());
-                    break;
-                }
-            case "LEN":
-                result = args[0].Length;
-                break;
-            case "APPEND":
-                result = args[0].Append(args[1]);
-                break;
-        }
-        return result;
+        var body = _functions[function];
+        return EvaluateStatement(body);
     }
 }
 

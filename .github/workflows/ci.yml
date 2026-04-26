@@ -20,6 +20,14 @@ on:
       - 'README*'
       - 'CHANGELOG*'
 
+concurrency:
+  group: ci-main-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: write
+
 env:
   DOTNET_VERSION: '10.0.x'
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -32,17 +40,14 @@ jobs:
   format:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore
-        run: dotnet restore
-
-      - name: Check Formatting
+      - name: 检查代码格式
         run: dotnet format --verify-no-changes --verbosity diagnostic
 
   # ========================================
@@ -52,67 +57,34 @@ jobs:
     runs-on: windows-latest
     needs: format
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore
+      - name: 缓存 NuGet 包
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: 还原 NuGet 包
         run: dotnet restore
 
-      - name: Build (Release)
-        run: dotnet build --no-restore --configuration Release
+      - name: 运行 EasyCon 测试
+        shell: cmd
+        run: ci\test.bat
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal --logger "console;verbosity=detailed"
+      - name: 发布 EasyCon2
+        shell: cmd
+        run: ci\windows-x64.bat
 
-      - name: Publish Verification
-        run: dotnet publish --no-build --configuration Release --self-contained false
-        
-      - name: Publish
-        run: |
-          dotnet publish src/EasyCon2/EasyCon2.csproj `
-            --configuration Release `
-            -p:PublishSingleFile=true `
-            --output ./publish `
-            --self-contained false
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+      - name: 上传 EasyCon2 产物
+        uses: actions/upload-artifact@v6
         with:
-          name: myapp-${{ github.run_number }}
-          path: ./publish/
+          name: EasyCon2-${{ github.run_number }}
+          path: dist/publish/
           retention-days: 30
-  #     - name: Upload Test Results
-  #       if: always()
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: test-results-main
-  #         path: '**/TestResults/'
-
-  # # ========================================
-  # # 3. 依赖漏洞审计（阻断性）
-  # # ========================================
-  # audit:
-  #   runs-on: windows-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-
-  #     - name: Setup .NET
-  #       uses: actions/setup-dotnet@v4
-  #       with:
-  #         dotnet-version: ${{ env.DOTNET_VERSION }}
-
-  #     - name: Restore
-  #       run: dotnet restore
-
-  #     - name: Audit Packages
-  #       shell: pwsh
-  #       run: |
-  #         $output = dotnet list package --vulnerable --include-transitive 2>&1
-  #         Write-Host $output
-  #         if ($output -match "has the following vulnerable packages") { 
-  #           exit 1 
-  #         }

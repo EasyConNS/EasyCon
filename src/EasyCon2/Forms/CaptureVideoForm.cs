@@ -1,10 +1,12 @@
 using EasyCon.Capture;
 using EasyCon2.Helper;
-using EasyCon2.Properties;
+using EasyCon2.Theme;
 using OpenCvSharp.Extensions;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.IO;
+using Mat = OpenCvSharp.Mat;
+using Resources = EasyCon2.UI.Common.Properties.Resources;
 
 namespace EasyCon2.Forms
 {
@@ -33,6 +35,8 @@ namespace EasyCon2.Forms
 
         private static volatile object _lock = new();
         private readonly ILManager imglManager = new();
+        private Bitmap _monitorFrame;
+        private bool _isDynamicTesting;
 
         private Point _curResolution = new(1920, 1080);
         public Point CurResolution
@@ -79,14 +83,18 @@ namespace EasyCon2.Forms
 
         public void LoadImgLabels(string curpath = "") => imglManager.LoadImgLabels([curpath, ImgDir]);
 
+        private bool _forceClose;
+
         public CaptureVideoForm()
         {
             InitializeComponent();
+            ThemeManager.ThemeChanged += OnThemeChanged;
         }
 
         public CaptureVideoForm(int devId, int typeId)
         {
             InitializeComponent();
+            ThemeManager.ThemeChanged += OnThemeChanged;
 
             deviceId = devId;
             Debug.WriteLine($"采集卡Id:{deviceId}");
@@ -102,8 +110,37 @@ namespace EasyCon2.Forms
             BindingData();
         }
 
+        public void ApplyTheme()
+        {
+            BackColor = ThemeManager.PageBackground;
+            ForeColor = ThemeManager.TextPrimary;
+            groupBox1.ForeColor = ThemeManager.TextPrimary;
+        }
+
+        public void ForceClose()
+        {
+            _forceClose = true;
+            Close();
+        }
+
+        private void OnThemeChanged(bool isDark) => ApplyTheme();
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (!_forceClose)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+            ThemeManager.ThemeChanged -= OnThemeChanged;
+            base.OnFormClosing(e);
+        }
+
         private void CaptureVideo_Load(object sender, EventArgs e)
         {
+            ApplyTheme();
+
             Directory.CreateDirectory(CapDir);
             Directory.CreateDirectory(ImgDir);
 
@@ -155,10 +192,9 @@ namespace EasyCon2.Forms
         #region 窗口功能
         private void MonitorPaint(object sender, PaintEventArgs e)
         {
+            if (_monitorFrame == null) return;
             try
             {
-                using var newImg = GetImage();
-                if (newImg == null) return;
                 var g = e.Graphics;
                 // Maximize performance
                 g.CompositingMode = CompositingMode.SourceOver;
@@ -168,7 +204,7 @@ namespace EasyCon2.Forms
                 g.SmoothingMode = SmoothingMode.None;
                 g.InterpolationMode = InterpolationMode.NearestNeighbor;
 
-                g.DrawImage(newImg, new Rectangle(0, 0, VideoMonitor.Width, VideoMonitor.Height), new Rectangle(0, 0, CurResolution.X, CurResolution.Y), GraphicsUnit.Pixel);
+                g.DrawImage(_monitorFrame, new Rectangle(0, 0, VideoMonitor.Width, VideoMonitor.Height), new Rectangle(0, 0, CurResolution.X, CurResolution.Y), GraphicsUnit.Pixel);
             }
             catch
             {
@@ -398,6 +434,24 @@ namespace EasyCon2.Forms
 
         private void searchImg_test()
         {
+            Mat frame;
+            lock (_lock)
+            {
+                frame = cvcap.GetMatFrame();
+            }
+            if (frame.Empty())
+            {
+                frame.Dispose();
+                return;
+            }
+            using (frame)
+            {
+                ExecuteSearch(frame);
+            }
+        }
+
+        private void ExecuteSearch(Mat ss)
+        {
             Stopwatch sw = new();
             Debug.WriteLine($"搜索测试方法：{imglManager.SearchMethod}");
 
@@ -407,11 +461,9 @@ namespace EasyCon2.Forms
             double matchDegree = 0;
             try
             {
-                using var ss = BitmapConverter.ToMat(GetImage());
                 list = imglManager.Current.Search(ss, out matchDegree);
                 sw.Stop();
 
-                // load the result
                 double max_matchDegree = 0;
                 if (list.Count > 0)
                 {
@@ -460,11 +512,6 @@ namespace EasyCon2.Forms
 
             // show it
             Snapshot.Refresh();
-        }
-
-        private void timer1_Tick(object sender, EventArgs e)
-        {
-            searchImg_test();
         }
 
         private void captureBtn_Click(object sender, EventArgs e)
@@ -553,7 +600,7 @@ namespace EasyCon2.Forms
 
         private void DynTestBtn_Click(object sender, EventArgs e)
         {
-            if (dyncTestBtn.Text == "动态测试")
+            if (!_isDynamicTesting)
             {
                 targetImg.Image = imglManager.Current.GetImage();
                 if (targetImg.Image != null)
@@ -564,21 +611,20 @@ namespace EasyCon2.Forms
                     return;
                 }
 
-                // 60 fps
-                searchTestTimer.Interval = (int)(1000.0 / 60.0);
-
                 // disable some funcs
                 captureBtn.Enabled = false;
                 rangeBtn.Enabled = false;
                 searchTestBtn.Enabled = false;
                 targetBtn.Enabled = false;
 
-                searchTestTimer.Start();
+                _isDynamicTesting = true;
+                UpdateCaptureTimer();
                 dyncTestBtn.Text = "动态测试ing";
             }
             else
             {
-                searchTestTimer.Stop();
+                _isDynamicTesting = false;
+                UpdateCaptureTimer();
                 dyncTestBtn.Text = "动态测试";
 
                 captureBtn.Enabled = true;
@@ -658,29 +704,47 @@ namespace EasyCon2.Forms
 
         private void monitorVisChk_CheckedChanged(object sender, EventArgs e)
         {
-            var checkBox = (CheckBox)sender;
-            VideoMonitor.Visible = checkBox.Checked;
-            monitorTimer.Enabled = checkBox.Checked;
+            VideoMonitor.Visible = ((CheckBox)sender).Checked;
+            UpdateCaptureTimer();
         }
 
 
         private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
         {
+            _monitorFrame?.Dispose();
             deviceId = -1;
             cvcap.Release();
         }
 
+        private void UpdateCaptureTimer()
+        {
+            monitorTimer.Enabled = VideoMonitor.Visible || _isDynamicTesting;
+        }
+
         private void monitorTimer_Tick(object sender, EventArgs e)
         {
-            if (Monitor.TryEnter(_lock))
+            Mat frame;
+            lock (_lock)
             {
-                try
+                frame = cvcap.GetMatFrame();
+            }
+            if (frame.Empty())
+            {
+                frame.Dispose();
+                return;
+            }
+            using (frame)
+            {
+                if (VideoMonitor.Visible)
                 {
-                    VideoMonitor?.Invalidate();
+                    _monitorFrame?.Dispose();
+                    _monitorFrame = BitmapConverter.ToBitmap(frame);
+                    VideoMonitor.Invalidate();
                 }
-                finally
+
+                if (_isDynamicTesting)
                 {
-                    Monitor.Exit(_lock);
+                    ExecuteSearch(frame);
                 }
             }
         }

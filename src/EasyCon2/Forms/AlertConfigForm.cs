@@ -3,16 +3,11 @@ using EasyCon2.Avalonia.Core.AlertConfig;
 
 namespace EasyCon2.Forms;
 
-public class AlertConfigForm : Form
+public partial class AlertConfigForm : Form
 {
     public AlertConfigForm(Action? onSave = null)
     {
-        Text = "推送配置";
-        Size = new Size(560, 640);
-        MinimumSize = new Size(420, 400);
-        StartPosition = FormStartPosition.CenterParent;
-        MaximizeBox = false;
-        MinimizeBox = false;
+        InitializeComponent();
 
         var host = new WinFormsAvaloniaControlHost
         {

@@ -44,9 +44,6 @@ internal partial class Parser
                 return new Wait(Current, new LiteralExpr(Current, duration), true);
             case TokenType.ButtonKeyword or TokenType.StickKeyword:
                 {
-                    // var fullline = Current.Text.Lines[Current.Line - 1].Text;
-                    // fullline = fullline.Contains('#') ? fullline[..fullline.IndexOf('#')] : fullline;
-                    // return ParseKey(fullline.Trim());
                     return ParsePadButtonStatement();
                 }
             case TokenType.IDENT:
@@ -248,9 +245,6 @@ internal partial class Parser
                 if (SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
                 {
                     if (Check(TokenType.BitAnd)) Advance();
-                    if (Peek(_grouptokens.Length - 1).Type == TokenType.BitAnd)
-                        // Shrink print expression exclude last & token
-                        _end--;
                 }
                 MatchEOF();
                 return new CallStmt(first, first.Value, [.. args], CallType.CallStmtWithArgs);
@@ -265,7 +259,7 @@ internal partial class Parser
     {
         ExprBase left;
         var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
-        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence)
+        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence && !CursorEOF)
         {
             var opToken = Advance();
             var operand = ParseExpression(unaryOperatorPrecedence);
@@ -276,7 +270,7 @@ internal partial class Parser
             left = ParsePrimary();
         }
 
-        while (true)
+        while (true && !CursorEOF)
         {
             var precedence = Current.Type.GetBinaryOperatorPrecedence();
             if (precedence == 0 || precedence <= parentPrecedence)
