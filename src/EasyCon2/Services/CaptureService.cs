@@ -16,9 +16,6 @@ public class CaptureService
     /// <summary>状态栏消息</summary>
     public event Action<string>? StatusChanged;
 
-    /// <summary>标签加载完成</summary>
-    public event Action<int>? LabelsLoaded;
-
     public bool IsConnected => _captureForm?.IsOpened ?? false;
 
     public IEnumerable<ImgLabel> LoadedLabels =>
@@ -36,6 +33,11 @@ public class CaptureService
     public static IEnumerable<(string name, int value)> GetCaptureTypes()
         => ECCore.GetCaptureTypes();
 
+    public void LoadImgLabels(string imgLabelPath)
+    {
+        _captureForm?.LoadImgLabels(imgLabelPath);
+        StatusChanged?.Invoke($"已加载搜图标签：{LoadedLabels.Count()}");
+    }
     /// <summary>
     /// 连接视频源
     /// </summary>
@@ -57,9 +59,7 @@ public class CaptureService
             _cvcap.SetProperties(1920, 1080);
 
             _captureForm = new CaptureVideoForm(_cvcap, _frameLock);
-            _captureForm.LoadImgLabels(imgLabelPath);
-            StatusChanged?.Invoke($"已加载搜图标签：{LoadedLabels.Count()}");
-            LabelsLoaded?.Invoke(LoadedLabels.Count());
+            LoadImgLabels(imgLabelPath);
             ConnectionStateChanged?.Invoke(true);
             return true;
         }

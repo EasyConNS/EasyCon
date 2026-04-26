@@ -146,9 +146,6 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
         _captureService.StatusChanged += msg =>
             Post(() => toolStripStatusLabel1.Text = msg);
-
-        _captureService.LabelsLoaded += count =>
-            Post(() => toolStripStatusLabel1.Text = $"已加载搜图标签：{count}");
     }
 
     private void InitTimer()

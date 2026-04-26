@@ -13,6 +13,7 @@ internal sealed class Binder
 
     private readonly Stack<(BoundLabel BreakLabel, BoundLabel ContinueLabel)> _loopStack = new();
     private int _labelCounter = 0;
+    const int _max_allow_level = 3;
     private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
 
@@ -554,7 +555,7 @@ internal sealed class Binder
     private BoundStmt BindBreakStatement(Break syntax)
     {
         var level = (int)syntax.Level;
-        if (level > 2)
+        if (level > _max_allow_level)
             _diagnostics.ReportTooMuchLoop(syntax.Syntax.Location);
         if (_loopStack.Count < level)
         {

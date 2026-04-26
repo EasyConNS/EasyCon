@@ -233,9 +233,6 @@ namespace EasyCon2.App
 
             _captureService.StatusChanged += msg =>
                 Post(() => toolStripStatusLabel1.Text = msg);
-
-            _captureService.LabelsLoaded += count =>
-                Post(() => toolStripStatusLabel1.Text = $"已加载搜图标签：{count}");
         }
 
         private void InitTimer()
@@ -459,6 +456,7 @@ namespace EasyCon2.App
             scriptEditor.FileName = _currentFile;
             scriptEditor.SyntaxHighlighting = EcsHighlightingLoader.GetByExtension(Path.GetExtension(_currentFile));
             StatusShowLog("文件已打开");
+            _captureService.LoadImgLabels(curILPath);
             return true;
         }
 
