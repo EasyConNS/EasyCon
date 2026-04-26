@@ -337,15 +337,15 @@ namespace EasyCon2.App
             代码自动补全ToolStripMenuItem.Size = new Size(182, 26);
             代码自动补全ToolStripMenuItem.Text = "代码自动补全";
             代码自动补全ToolStripMenuItem.Click += 代码自动补全ToolStripMenuItem_Click;
-            //
+            // 
             // 深色模式ToolStripMenuItem
-            //
+            // 
             深色模式ToolStripMenuItem.CheckOnClick = true;
             深色模式ToolStripMenuItem.Name = "深色模式ToolStripMenuItem";
             深色模式ToolStripMenuItem.Size = new Size(182, 26);
             深色模式ToolStripMenuItem.Text = "深色模式";
             深色模式ToolStripMenuItem.Click += 深色模式ToolStripMenuItem_Click;
-            //
+            // 
             // 蓝牙ToolStripMenuItem
             // 
             蓝牙ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 蓝牙设备驱动配置ToolStripMenuItem });
@@ -465,7 +465,7 @@ namespace EasyCon2.App
             buttonScriptHelp.Font = new Font("微软雅黑", 9F);
             buttonScriptHelp.Location = new Point(3, 303);
             buttonScriptHelp.Name = "buttonScriptHelp";
-            buttonScriptHelp.Size = new Size(102, 40);
+            buttonScriptHelp.Size = new Size(113, 40);
             buttonScriptHelp.TabIndex = 6;
             buttonScriptHelp.Text = "脚本语法";
             buttonScriptHelp.UseVisualStyleBackColor = true;
@@ -663,13 +663,13 @@ namespace EasyCon2.App
             // buttonSerialPortConnect
             // 
             buttonSerialPortConnect.AccessibleName = "手动连接串口";
-            buttonSerialPortConnect.Dock = DockStyle.Fill;
+            buttonSerialPortConnect.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             buttonSerialPortConnect.FlatAppearance.BorderSize = 0;
             buttonSerialPortConnect.FlatStyle = FlatStyle.Flat;
             buttonSerialPortConnect.Font = new Font("微软雅黑", 9F);
             buttonSerialPortConnect.Location = new Point(188, 73);
             buttonSerialPortConnect.Name = "buttonSerialPortConnect";
-            buttonSerialPortConnect.Size = new Size(174, 59);
+            buttonSerialPortConnect.Size = new Size(174, 28);
             buttonSerialPortConnect.TabIndex = 30;
             buttonSerialPortConnect.Text = "手动连接";
             buttonSerialPortConnect.UseVisualStyleBackColor = true;

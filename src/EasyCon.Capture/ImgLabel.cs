@@ -132,15 +132,14 @@ public static class ILExt
 {
     public static void Save(this ImgLabel self, string path)
     {
+        if (self.path != "")
+        {
+            path = self.path;
+        }
         // save the imglabel to loc
         if (!Directory.Exists(path))
         {
             Directory.CreateDirectory(path);
-        }
-
-        if (self.path != "")
-        {
-            path = self.path;
         }
         if (self.searchMethod.ILTxtType())
         {

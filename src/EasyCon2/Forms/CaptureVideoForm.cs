@@ -1,4 +1,5 @@
 using EasyCon.Capture;
+using EasyCon.Core.Config;
 using EasyCon2.Helper;
 using EasyCon2.Theme;
 using OpenCvSharp.Extensions;
@@ -27,14 +28,11 @@ namespace EasyCon2.Forms
             Refresh
         }
 
-        static readonly string CapDir = AppDomain.CurrentDomain.BaseDirectory + "\\Capture\\";
         static readonly string ImgDir = AppDomain.CurrentDomain.BaseDirectory + "\\ImgLabel\\";
 
-        private int deviceId = -1;
-        private readonly OpenCVCapture cvcap = new();
-
-        private static volatile object _lock = new();
+        private readonly OpenCVCapture _cvcap;
         private readonly ILManager imglManager = new();
+        private readonly object _frameLock;
         private Bitmap _monitorFrame;
         private bool _isDynamicTesting;
 
@@ -50,7 +48,7 @@ namespace EasyCon2.Forms
                 if (_curResolution.X != value.X || _curResolution.Y != value.Y)
                 {
                     _curResolution = value;
-                    cvcap.SetProperties(value.X, value.Y);
+                    _cvcap.SetProperties(value.X, value.Y);
                 }
             }
         }
@@ -76,8 +74,7 @@ namespace EasyCon2.Forms
         private Rectangle SnapshotSearchObjR = new(0, 0, 0, 0);
         private PointF snapshotScale;
 
-        public int DeviceID => deviceId;
-        public bool IsOpened => cvcap.IsOpened;
+        public bool IsOpened => _cvcap.IsOpened;
 
         public IEnumerable<ImgLabel> LoadedLabels => imglManager.Labels.Select(il => il.Current);
 
@@ -91,21 +88,13 @@ namespace EasyCon2.Forms
             ThemeManager.ThemeChanged += OnThemeChanged;
         }
 
-        public CaptureVideoForm(int devId, int typeId)
+        internal CaptureVideoForm(OpenCVCapture cvcap, object frameLock)
         {
             InitializeComponent();
             ThemeManager.ThemeChanged += OnThemeChanged;
 
-            deviceId = devId;
-            Debug.WriteLine($"采集卡Id:{deviceId}");
-
-            if (!cvcap.Open(devId, typeId))
-            {
-                cvcap.Release();
-                MessageBox.Show("当前采集卡已经被其他程序打开，请先关闭后再尝试");
-                Close();
-            }
-            cvcap.SetProperties(CurResolution.X, CurResolution.Y);
+            _cvcap = cvcap;
+            _frameLock = frameLock;
 
             BindingData();
         }
@@ -141,7 +130,6 @@ namespace EasyCon2.Forms
         {
             ApplyTheme();
 
-            Directory.CreateDirectory(CapDir);
             Directory.CreateDirectory(ImgDir);
 
             VideoMonitor.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -174,13 +162,13 @@ namespace EasyCon2.Forms
             imgLableList.DisplayMember = "Name";
         }
 
-        public Bitmap GetImage()
+        private Bitmap GetImage()
         {
-            if (!cvcap.IsOpened)
+            if (!_cvcap.IsOpened)
                 throw new Exception("请先连接采集卡再执行搜图");
-            lock (_lock)
+            lock (_frameLock)
             {
-                using var mat = cvcap.GetMatFrame();
+                using var mat = _cvcap.GetMatFrame();
                 if (!mat.Empty())
                 {
                     return BitmapConverter.ToBitmap(mat);
@@ -214,7 +202,7 @@ namespace EasyCon2.Forms
 
         private void Snapshot_DoubleClick(object sender, EventArgs e)
         {
-            openFileDialog1.InitialDirectory = Path.GetFullPath(CapDir);
+            openFileDialog1.InitialDirectory = Path.GetFullPath(AppPaths.CaptureCacheDir);
             if (openFileDialog1.ShowDialog() != DialogResult.OK)
                 return;
             Debug.WriteLine(openFileDialog1.FileName);
@@ -435,9 +423,9 @@ namespace EasyCon2.Forms
         private void searchImg_test()
         {
             Mat frame;
-            lock (_lock)
+            lock (_frameLock)
             {
-                frame = cvcap.GetMatFrame();
+                frame = _cvcap.GetMatFrame();
             }
             if (frame.Empty())
             {
@@ -517,7 +505,8 @@ namespace EasyCon2.Forms
         private void captureBtn_Click(object sender, EventArgs e)
         {
             using var capture = GetImage();
-            capture.Save($"{CapDir}{DateTime.Now.Ticks}.png", System.Drawing.Imaging.ImageFormat.Png);
+            var ts = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+            capture.Save(Path.Combine(AppPaths.CaptureCacheDir, $"capture_{ts}_{capture.Width}x{capture.Height}.png"), System.Drawing.Imaging.ImageFormat.Png);
 
             showCap(capture);
         }
@@ -712,8 +701,6 @@ namespace EasyCon2.Forms
         private void CaptureVideo_FormClosed(object sender, FormClosedEventArgs e)
         {
             _monitorFrame?.Dispose();
-            deviceId = -1;
-            cvcap.Release();
         }
 
         private void UpdateCaptureTimer()
@@ -724,9 +711,9 @@ namespace EasyCon2.Forms
         private void monitorTimer_Tick(object sender, EventArgs e)
         {
             Mat frame;
-            lock (_lock)
+            lock (_frameLock)
             {
-                frame = cvcap.GetMatFrame();
+                frame = _cvcap.GetMatFrame();
             }
             if (frame.Empty())
             {

@@ -1,14 +1,14 @@
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon2.Forms;
-using OpenCvSharp.Extensions;
-using System.Drawing;
 
 namespace EasyCon2.Services;
 
 public class CaptureService
 {
     private CaptureVideoForm? _captureForm;
+    private OpenCVCapture? _cvcap;
+    private readonly object _frameLock = new();
 
     /// <summary>连接状态变化</summary>
     public event Action<bool>? ConnectionStateChanged;
@@ -44,7 +44,19 @@ public class CaptureService
         try
         {
             _captureForm?.ForceClose();
-            _captureForm = new CaptureVideoForm(deviceId, captureType);
+            _cvcap?.Release();
+
+            _cvcap = new OpenCVCapture();
+            if (!_cvcap.Open(deviceId, captureType))
+            {
+                _cvcap.Release();
+                _cvcap = null;
+                StatusChanged?.Invoke("当前采集卡已经被其他程序打开，请先关闭后再尝试");
+                return false;
+            }
+            _cvcap.SetProperties(1920, 1080);
+
+            _captureForm = new CaptureVideoForm(_cvcap, _frameLock);
             _captureForm.LoadImgLabels(imgLabelPath);
             StatusChanged?.Invoke($"已加载搜图标签：{LoadedLabels.Count()}");
             LabelsLoaded?.Invoke(LoadedLabels.Count());
@@ -64,6 +76,8 @@ public class CaptureService
     public void Disconnect()
     {
         _captureForm?.ForceClose();
+        _cvcap?.Release();
+        _cvcap = null;
         _captureForm = null;
         ConnectionStateChanged?.Invoke(false);
         StatusChanged?.Invoke("视频源已断开");
@@ -87,30 +101,27 @@ public class CaptureService
     }
 
     /// <summary>
-    /// 获取当前帧
-    /// </summary>
-    public Bitmap? GetCurrentFrame()
-    {
-        return _captureForm?.GetImage();
-    }
-
-    /// <summary>
     /// 构建图像搜索外部变量字典（供脚本编译使用）
     /// </summary>
     public Dictionary<string, Func<int>> BuildExternalGetters()
     {
-        if (_captureForm == null)
+        if (_captureForm == null || _cvcap == null)
             return [];
+
+        var cap = _cvcap;
+        var frameLock = _frameLock;
 
         return _captureForm.LoadedLabels.ToDictionary(
             il => il.name,
             il => (Func<int>)(() =>
             {
-                var bmp = GetCurrentFrame();
-                if (bmp == null) return 0;
-                using var mat = BitmapConverter.ToMat(bmp);
-                il.Search(mat, out var md);
-                return (int)Math.Ceiling(md);
+                lock (frameLock)
+                {
+                    using var mat = cap.GetMatFrame();
+                    if (mat.Empty()) return 0;
+                    il.Search(mat, out var md);
+                    return (int)Math.Ceiling(md);
+                }
             }));
     }
 }
