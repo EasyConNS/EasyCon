@@ -8,4 +8,5 @@ public record ConfigState
     public bool AutoRunAfterFlash { get; set; } = false;
     public bool AutoSaveLog { get; set; } = false;
     public bool DarkMode { get; set; } = false;
+    public double EditorFontSize { get; set; } = 14;
 }

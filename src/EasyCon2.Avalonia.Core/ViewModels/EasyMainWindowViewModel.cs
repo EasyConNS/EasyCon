@@ -140,6 +140,9 @@ public partial class EasyMainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _enableAutoCompletion;
 
+    [ObservableProperty]
+    private double _editorFontSize = 14;
+
     #endregion
 
     public EasyMainWindowViewModel(
@@ -168,6 +171,7 @@ public partial class EasyMainWindowViewModel : ObservableObject
         WindowTitle = $"伊机控 EasyCon v{ver}  QQ群:946057081";
 
         _enableAutoCompletion = _configService.Config.EnableAutoCompletion;
+        _editorFontSize = _configService.Config.EditorFontSize;
 
         SubscribeEvents();
         InitCaptureTypes();
@@ -235,6 +239,11 @@ public partial class EasyMainWindowViewModel : ObservableObject
     partial void OnEnableAutoCompletionChanged(bool value)
     {
         _configService.UpdateConfig(c => c.EnableAutoCompletion = value);
+    }
+
+    partial void OnEditorFontSizeChanged(double value)
+    {
+        _configService.UpdateConfig(c => c.EditorFontSize = value);
     }
 
     partial void OnShowDebugInfoChanged(bool value)

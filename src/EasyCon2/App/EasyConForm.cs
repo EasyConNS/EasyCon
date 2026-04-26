@@ -170,6 +170,12 @@ namespace EasyCon2.App
 
             scriptEditor.SetImgLabelProvider(() => _captureService.LoadedLabels.Select(il => il.name));
             scriptEditor.EnableAutoCompletion = _configService.Config.EnableAutoCompletion;
+            scriptEditor.SetFontSize(_configService.Config.EditorFontSize);
+            scriptEditor.FontSizeChanged += size =>
+            {
+                _configService.Config.EditorFontSize = size;
+                _configService.Save();
+            };
 
             editorHost.Content = scriptEditor;
         }

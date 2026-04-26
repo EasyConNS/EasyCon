@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
@@ -11,6 +12,9 @@ namespace EasyCon2.Avalonia.Core.Editor;
 
 public partial class ScriptEditorControl : UserControl
 {
+    private const double MinFontSize = 8;
+    private const double MaxFontSize = 36;
+
     private readonly TextEditor _editor;
     private readonly SearchPanel _searchPanel;
     private CodeCompletionController _completionController;
@@ -18,6 +22,7 @@ public partial class ScriptEditorControl : UserControl
 
     public event EventHandler? EditorTextChanged;
     public event Action<string>? FileDropped;
+    public event Action<double>? FontSizeChanged;
 
     public TextEditor TextEditor => _editor;
 
@@ -98,12 +103,32 @@ public partial class ScriptEditorControl : UserControl
         SetupDragDrop();
         _searchPanel = SearchPanel.Install(_editor);
         InitCompletion();
+
+        _editor.AddHandler(PointerWheelChangedEvent, OnEditorPointerWheelChanged, RoutingStrategies.Tunnel);
+    }
+
+    public void SetFontSize(double size)
+    {
+        _editor.FontSize = Math.Clamp(size, MinFontSize, MaxFontSize);
     }
 
     private void InitCompletion()
     {
         _completionProvider = new EcpCompletionProvider(_editor);
         _completionController = new CodeCompletionController(_editor, _completionProvider);
+    }
+
+    private void OnEditorPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control)) return;
+
+        var newSize = _editor.FontSize + (e.Delta.Y > 0 ? 1 : -1);
+        newSize = Math.Clamp(newSize, MinFontSize, MaxFontSize);
+        if (Math.Abs(newSize - _editor.FontSize) < 0.01) return;
+
+        _editor.FontSize = newSize;
+        FontSizeChanged?.Invoke(newSize);
+        e.Handled = true;
     }
 
     public void SetImgLabelProvider(Func<IEnumerable<string>> provider)

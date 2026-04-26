@@ -54,6 +54,11 @@ public partial class EasyMainWindow : UserControl
         };
 
         _editor.EnableAutoCompletion = _vm.EnableAutoCompletion;
+        _editor.SetFontSize(_vm.EditorFontSize);
+        _editor.FontSizeChanged += size =>
+        {
+            _vm.EditorFontSize = size;
+        };
 
         // Propagate EnableAutoCompletion changes to editor
         _vm.PropertyChanged += (s, args) =>

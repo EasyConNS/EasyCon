@@ -101,6 +101,12 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         // Completion
         _textEditor.SetImgLabelProvider(() => _captureService.LoadedLabels.Select(il => il.name));
         _textEditor.EnableAutoCompletion = _configService.Config.EnableAutoCompletion;
+        _textEditor.SetFontSize(_configService.Config.EditorFontSize);
+        _textEditor.FontSizeChanged += size =>
+        {
+            _configService.Config.EditorFontSize = size;
+            _configService.Save();
+        };
 
         // Host in Avalonia control host
         editorHost.Content = _textEditor;
