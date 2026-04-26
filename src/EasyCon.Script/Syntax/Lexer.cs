@@ -52,6 +52,8 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             { "true", TokenType.TRUE },
             { "false", TokenType.FALSE },
             { "reset", TokenType.ResetKeyword },
+            { "extern", TokenType.EXTERN },
+            { "from", TokenType.FROM },
         };
     private static readonly Dictionary<string, TokenType> logicwords = new()
     {
@@ -203,6 +205,16 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         while (_position < _input.Length && char.IsDigit(Current))
         {
             Advance();
+        }
+
+        // 处理小数点（如 1.5）
+        if (_position < _input.Length && Current == '.' && _position + 1 < _input.Length && char.IsDigit(Lookahead))
+        {
+            Advance(); // consume '.'
+            while (_position < _input.Length && char.IsDigit(Current))
+            {
+                Advance();
+            }
         }
 
         var length = _position - start;

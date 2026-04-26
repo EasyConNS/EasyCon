@@ -86,6 +86,10 @@
     "keywords": {
       "patterns": [
         {
+          "match": "(?i)\\b(EXTERN|FROM)\\b",
+          "name": "keyword.other.extern.ecs"
+        },
+        {
           "match": "(?i)\\b(ENDFUNC)\\b",
           "name": "storage.function.declaration.ecs"
         },
@@ -107,7 +111,7 @@
               "name": "keyword.control.ecs"
             },
             {
-              "match": "(?i)\\b(INT|BOOL|STRING)\\b",
+              "match": "(?i)\\b(INT|BOOL|STRING|PTR|DOUBLE|VOID)\\b",
               "name": "storage.type.ecs"
             }
           ]
@@ -125,7 +129,7 @@
           "name": "keyword.control.conditional.ecs"
         },
         {
-          "match": "(?i)\\b(INT|BOOL|STRING)\\b",
+          "match": "(?i)\\b(INT|BOOL|STRING|PTR|DOUBLE|VOID)\\b",
           "name": "storage.type.ecs"
         }
       ]

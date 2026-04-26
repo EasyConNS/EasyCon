@@ -40,12 +40,14 @@ sealed class FunctionSymbol(
     IEnumerable<TypeParameter> typeParameters,
     IEnumerable<ParamSymbol> parameters,
     ScriptType returnType,
-    FuncDeclBlock? declaration = null) : Symbol(name)
+    FuncDeclBlock? declaration = null,
+    string libraryName = "internal") : Symbol(name)
 {
     public ImmutableArray<TypeParameter> TypeParameters { get; } = [.. typeParameters];
     public ImmutableArray<ParamSymbol> Parameters { get; } = [.. parameters];
     public readonly FuncDeclBlock? Declaration = declaration;
     public ScriptType ReturnType { get; } = returnType;
+    public readonly string LibraryName = libraryName;
 
     public override string ToString() => $"Func({Name}: {ReturnType})";
     /// <summary>

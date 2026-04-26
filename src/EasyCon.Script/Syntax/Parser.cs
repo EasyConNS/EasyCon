@@ -161,6 +161,14 @@ internal sealed partial class Parser
                     _diagnostics.ReportBadStruct(st.Syntax.Location, "导入只能在脚本开头");
                 }
             }
+            if (st.Kind == StatementKind.ExternFuncDeclaration)
+            {
+                if (unit.Count > 1)
+                {
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "EXTERN 声明必须在顶层");
+                    st = new EmptyStmt();
+                }
+            }
             if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.WhileStmt)
             {
                 if (st.Kind == StatementKind.FuncStmt)
@@ -276,7 +284,7 @@ internal sealed partial class Parser
         {
             foreach (var st in result)
             {
-                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or AssignmentStmt)
+                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or AssignmentStmt or ExternFuncStmt)
                     continue;
                 _diagnostics.ReportBadStruct(st.Syntax.Location, "库脚本只允许变量定义、常量定义和函数定义");
             }

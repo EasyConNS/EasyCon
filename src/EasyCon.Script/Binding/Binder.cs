@@ -1,6 +1,7 @@
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using System.Collections.Immutable;
+using System.Linq;
 using static EasyCon.Script.Binding.BoundFactory;
 
 namespace EasyCon.Script.Binding;
@@ -29,9 +30,9 @@ internal sealed class Binder
         }
     }
 
-    public static BoundProgram BindProgram(ImmutableArray<SyntaxTree> syntaxTrees, ImmutableHashSet<string>? externalVariables = default, ImmutableArray<ForeignFunction> foreignFunctions = default)
+    public static BoundProgram BindProgram(ImmutableArray<SyntaxTree> syntaxTrees, ImmutableHashSet<string>? externalVariables = default)
     {
-        var (parentScope, ffiSymbols) = CreateRootScope(foreignFunctions);
+        var parentScope = CreateRootScope();
         parentScope.SetValidExternalVariables(externalVariables ?? []);
 
         // 收集所有诊断
@@ -39,27 +40,43 @@ internal sealed class Binder
         foreach (var tree in syntaxTrees)
             diagnostics.AddRange(tree.Diagnostics);
         if (diagnostics.HasErrors())
-            return ErrorProgram(diagnostics, ffiSymbols);
+            return ErrorProgram(diagnostics);
 
         var libTrees = syntaxTrees.Where(t => t.IsLib).ToList();
         var mainTrees = syntaxTrees.Where(t => !t.IsLib).ToList();
 
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
+        var externFunctions = ImmutableArray.CreateBuilder<FunctionSymbol>();
         var ilNames = new HashSet<string>();
 
         // --- Phase 1: lib 绑定（独立作用域，无法访问主脚本全局变量）---
         var libBinder = new Binder(new BoundScope(parentScope), function: null);
-        foreach (var func in libTrees.SelectMany(t => t.Root.Members).OfType<FuncDeclBlock>())
-            libBinder.BindFuncDeclaration(func);
-
+        var libUserFunctions = new List<FunctionSymbol>();
         var libGlobalStmts = new List<BoundStmt>();
-        foreach (var stmt in libTrees.SelectMany(t => t.Root.Members).Where(m => m is not FuncDeclBlock))
-            libGlobalStmts.Add(libBinder.BindStatement(stmt));
+        var libMembers = libTrees.SelectMany(t => t.Root.Members);
 
-        var libFunctions = libBinder._scope.GetDeclaredFunctions().ToHashSet();
+        // 第 1 遍：所有声明（函数 + EXTERN），确保前向引用可用
+        foreach (var member in libMembers)
+        {
+            switch (member)
+            {
+                case FuncDeclBlock func:
+                    libUserFunctions.Add(libBinder.BindFuncDeclaration(func));
+                    break;
+                case ExternFuncStmt ext:
+                    externFunctions.Add(libBinder.BindExternDeclaration(ext));
+                    break;
+            }
+        }
 
-        // 绑定 lib 函数体
-        foreach (var function in libFunctions)
+        // 第 2 遍：全局语句
+        foreach (var member in libMembers)
+        {
+            if (member is not FuncDeclBlock and not ExternFuncStmt)
+                libGlobalStmts.Add(libBinder.BindStatement(member));
+        }
+
+        foreach (var function in libUserFunctions)
         {
             var (body, binderFn) = BindFunctionBody(function, libBinder._scope);
             if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(body))
@@ -73,29 +90,47 @@ internal sealed class Binder
         var mainBinder = new Binder(new BoundScope(parentScope), function: null);
 
         // 将 lib 函数注册到主作用域（使主脚本可以调用 lib 函数）
-        foreach (var fn in libFunctions)
+        foreach (var fn in libUserFunctions)
+            mainBinder._scope.TryDeclareFunction(fn);
+        foreach (var fn in externFunctions)
             mainBinder._scope.TryDeclareFunction(fn);
 
-        foreach (var func in mainTrees.SelectMany(t => t.Root.Members).OfType<FuncDeclBlock>())
-            mainBinder.BindFuncDeclaration(func);
+        var mainUserFunctions = new List<FunctionSymbol>();
+        var mainGlobalStmts = new List<BoundStmt>();
+        var mainMembers = mainTrees.SelectMany(t => t.Root.Members);
+
+        // 第 1 遍：所有声明
+        foreach (var member in mainMembers)
+        {
+            switch (member)
+            {
+                case FuncDeclBlock func:
+                    mainUserFunctions.Add(mainBinder.BindFuncDeclaration(func));
+                    break;
+                case ExternFuncStmt ext:
+                    externFunctions.Add(mainBinder.BindExternDeclaration(ext));
+                    break;
+            }
+        }
 
         // 主脚本全局语句检查
         var firstGlobalPerTree = mainTrees
-            .Select(t => t.Root.Members.FirstOrDefault(m => m is not FuncDeclBlock && m is not EmptyStmt && m is not ImportStmt))
+            .Select(t => t.Root.Members.FirstOrDefault(m => m is not FuncDeclBlock && m is not EmptyStmt && m is not ImportStmt && m is not ExternFuncStmt))
             .Where(g => g != null)
             .ToArray();
         if (firstGlobalPerTree.Length > 1)
             foreach (var g in firstGlobalPerTree)
                 diagnostics.ReportOnlyOneFileCanHaveGlobalStatements(g!.Location);
 
-        var mainGlobalStmts = new List<BoundStmt>();
-        foreach (var stmt in mainTrees.SelectMany(t => t.Root.Members).Where(m => m is not FuncDeclBlock))
-            mainGlobalStmts.Add(mainBinder.BindStatement(stmt));
-
-        // 绑定主脚本函数体
-        foreach (var function in mainBinder._scope.GetDeclaredFunctions())
+        // 第 2 遍：全局语句
+        foreach (var member in mainMembers)
         {
-            if (libFunctions.Contains(function)) continue;
+            if (member is not FuncDeclBlock and not ExternFuncStmt)
+                mainGlobalStmts.Add(mainBinder.BindStatement(member));
+        }
+
+        foreach (var function in mainUserFunctions)
+        {
             var (body, binderFn) = BindFunctionBody(function, mainBinder._scope);
             if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(body))
                 binderFn.Diagnostics.ReportAllPathsMustReturn(function.Declaration!.Declare.Location);
@@ -108,7 +143,7 @@ internal sealed class Binder
         diagnostics.AddRange(mainBinder.Diagnostics);
 
         if (diagnostics.HasErrors())
-            return ErrorProgram(diagnostics, ffiSymbols);
+            return ErrorProgram(diagnostics);
 
         // --- Phase 3: 构建 $eval 主函数 ---
         var allGlobalStmts = libGlobalStmts.Concat(mainGlobalStmts);
@@ -116,7 +151,7 @@ internal sealed class Binder
         var evalBody = new BoundBlockStatement(main.Declaration!, [.. allGlobalStmts]);
         functionBodies.Add(main, Lowerer.Lower(main, evalBody));
 
-        return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), [.. ilNames], ffiSymbols);
+        return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), externFunctions.ToImmutable(), [.. ilNames]);
     }
 
     private static (BoundBlockStatement Body, Binder Binder) BindFunctionBody(FunctionSymbol function, BoundScope scope)
@@ -129,12 +164,12 @@ internal sealed class Binder
         return (Lowerer.Lower(function, body), binderFn);
     }
 
-    private static BoundProgram ErrorProgram(DiagnosticBag diagnostics, ImmutableDictionary<string, FunctionSymbol> ffiSymbols)
+    private static BoundProgram ErrorProgram(DiagnosticBag diagnostics)
     {
-        return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. diagnostics], [], [], ffiSymbols);
+        return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. diagnostics], [], [], []);
     }
 
-    private void BindFuncDeclaration(FuncDeclBlock syntax)
+    private FunctionSymbol BindFuncDeclaration(FuncDeclBlock syntax)
     {
         var parameters = ImmutableArray.CreateBuilder<ParamSymbol>();
         var seenParameterNames = new HashSet<string>();
@@ -160,30 +195,44 @@ internal sealed class Binder
 
         var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
         var function = new FunctionSymbol(syntax.Declare.Name, [], parameters.ToImmutable(), returnType, syntax);
-        _scope.TryDeclareFunction(function);
+        if (!_scope.TryDeclareFunction(function))
+            _diagnostics.ReportFunctionAlreadyDeclared(syntax.Declare.Location, syntax.Declare.Name);
+        return function;
     }
 
-    private static (BoundScope Scope, ImmutableDictionary<string, FunctionSymbol> FfiSymbols) CreateRootScope(ImmutableArray<ForeignFunction> foreignFunctions = default)
+    private FunctionSymbol BindExternDeclaration(ExternFuncStmt syntax)
+    {
+        var parameters = ImmutableArray.CreateBuilder<ParamSymbol>();
+        var seenParameterNames = new HashSet<string>();
+
+        for (int i = 0; i < syntax.Parameters.Length; i++)
+        {
+            var parameterSyntax = syntax.Parameters[i];
+            var parameterName = parameterSyntax.Identifier.Tag;
+            var parameterType = BindTypeClause(syntax, parameterSyntax.Type) ?? ScriptType.Int;
+
+            if (!seenParameterNames.Add(parameterName))
+                _diagnostics.ReportParameterAlreadyDeclared(syntax.Location, parameterName);
+
+            var parameter = new ParamSymbol(parameterName, parameterType, parameters.Count);
+            parameters.Add(parameter);
+        }
+
+        var returnType = BindTypeClause(syntax, syntax.ReturnType) ?? ScriptType.Void;
+        var function = new FunctionSymbol(syntax.Name, [], parameters.ToImmutable(), returnType, libraryName: syntax.Library);
+        if (!_scope.TryDeclareFunction(function))
+            _diagnostics.ReportFunctionAlreadyDeclared(syntax.Location, syntax.Name);
+        return function;
+    }
+
+    private static BoundScope CreateRootScope()
     {
         var result = new BoundScope(null);
-        var ffiSymbols = ImmutableDictionary.CreateBuilder<string, FunctionSymbol>();
 
         foreach (var f in BuiltinFunctions.GetAll())
             result.TryDeclareFunction(f);
 
-        // 注册 FFI 函数符号
-        if (!foreignFunctions.IsDefault)
-        {
-            foreach (var ff in foreignFunctions)
-            {
-                var parameters = ff.Parameters.Select((p, i) => new ParamSymbol(p.Name, p.Type, i)).ToImmutableArray();
-                var function = new FunctionSymbol(ff.Name, [], parameters, ff.ReturnType);
-                result.TryDeclareFunction(function);
-                ffiSymbols[ff.Name] = function;
-            }
-        }
-
-        return (result, ffiSymbols.ToImmutable());
+        return result;
     }
     #region 核心泛型推导逻辑
 
@@ -664,6 +713,9 @@ internal sealed class Binder
             "BOOL" => ScriptType.Bool,
             "INT" => ScriptType.Int,
             "STRING" => ScriptType.String,
+            "PTR" => ScriptType.Ptr,
+            "DOUBLE" => ScriptType.Double,
+            "VOID" => ScriptType.Void,
             _ => null,
         };
     }

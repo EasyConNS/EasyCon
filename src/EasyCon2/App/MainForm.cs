@@ -2,7 +2,7 @@ using AvaloniaEdit.Folding;
 using AvaloniaEdit.Highlighting;
 using EasyCon.Core;
 using EasyCon.Core.Config;
-using EasyCon.Script.Assembly;
+using EasyCon.Script.Asm;
 using EasyCon.WinInput;
 using EasyCon2.Avalonia.Core.Editor;
 using EasyCon2.Avalonia.Core.VPad;

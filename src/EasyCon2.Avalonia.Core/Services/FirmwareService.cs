@@ -1,5 +1,5 @@
 using EasyCon.Core.Services;
-using EasyCon.Script.Assembly;
+using EasyCon.Script.Asm;
 using System.Diagnostics;
 using System.IO;
 

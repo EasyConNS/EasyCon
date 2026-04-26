@@ -25,7 +25,7 @@ internal class RichLogBox : RichTextBox
 
                     SelectionStart = TextLength;
                     SelectionLength = 0;
-                    SelectionColor = color ?? ForeColor;
+                    SelectionColor = color ?? Color.White;
 
                     if (msg == null)
                     {

@@ -57,6 +57,8 @@
 			<Word>FUNC</Word>
 			<Word>RETURN</Word>
 			<Word>ENDFUNC</Word>
+			<Word>EXTERN</Word>
+			<Word>FROM</Word>
 			<Word>CALL</Word>
 			<Word>and</Word>
 			<Word>or</Word>

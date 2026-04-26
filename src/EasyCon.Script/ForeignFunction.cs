@@ -7,7 +7,7 @@ namespace EasyCon.Script;
 /// FFI（外部函数接口）注册描述符。
 /// 用于向脚本引擎注册宿主端提供的函数。
 /// </summary>
-public readonly struct ForeignFunction
+internal readonly struct ForeignFunction
 {
     /// <summary>函数名称（脚本中通过此名称调用）</summary>
     public required string Name { get; init; }

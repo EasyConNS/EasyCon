@@ -30,6 +30,8 @@ internal partial class Parser
                 return ParseLoopCtrl();
             case TokenType.NEXT when _grouptokens.Length == 1:
                 return new Next(Current);
+            case TokenType.EXTERN:
+                return ParseExternFunc();
             case TokenType.FUNC:
                 return ParseFuncDecl();
             case TokenType.ENDFUNC when _grouptokens.Length == 1:
@@ -310,11 +312,19 @@ internal partial class Parser
             case TokenType.IDENT:
                 return ParseCallExpression();
             case TokenType.INT:
-            default:
                 var toknum = Advance();
                 var ok = int.TryParse(toknum.Value, out var intval);
                 if (!ok) _diagnostics.ReportInvalidNumber(toknum.Location, toknum.Value);
                 return new LiteralExpr(toknum, intval);
+            case TokenType.Number:
+                var tokdbl = Advance();
+                var okd = double.TryParse(tokdbl.Value, out var dblval);
+                if (!okd) _diagnostics.ReportInvalidNumber(tokdbl.Location, tokdbl.Value);
+                return new LiteralExpr(tokdbl, dblval);
+            default:
+                var tokdef = Advance();
+                _diagnostics.ReportUnexpectedToken(tokdef.Location, tokdef, TokenType.INT);
+                return new LiteralExpr(tokdef, 0);
         }
     }
 
@@ -445,6 +455,34 @@ internal partial class Parser
         var colonToken = Match(TokenType.COLON);
         var identifier = Match(TokenType.IDENT);
         return new TypeClauseSyntax(colonToken, identifier);
+    }
+
+    private ExternFuncStmt ParseExternFunc()
+    {
+        var externToken = Advance(); // consume EXTERN
+
+        // Expect FUNC keyword
+        var funcToken = Match(TokenType.FUNC, "EXTERN 后需要 FUNC 关键字");
+
+        // Function name
+        var functionName = Match(TokenType.IDENT, "EXTERN FUNC 需要函数名");
+
+        // Parameter list (parentheses required)
+        Match(TokenType.LeftParen, "EXTERN FUNC 声明需要左括号");
+        var parameters = ParseParameterList();
+        Match(TokenType.RightParen, "EXTERN FUNC 声明缺少右括号");
+
+        // Return type (required)
+        var returnType = ParseTypeClause();
+
+        // FROM keyword
+        var fromToken = Match(TokenType.FROM, "EXTERN FUNC 声明需要 FROM 关键字");
+
+        // Library path string
+        var libraryPath = Match(TokenType.STRING, "FROM 后需要库路径字符串");
+
+        MatchEOF();
+        return new ExternFuncStmt(externToken, functionName, parameters, returnType, fromToken, libraryPath);
     }
 
     #endregion

@@ -770,6 +770,25 @@ AMIIBO $index         # 切换Amiibo槽位
 IMPORT "module.ecs"   # 导入模块（放在lib文件夹中）
 ```
 
+#### 外部函数调用（FFI）
+
+```ecs
+# 声明原生 DLL 函数
+EXTERN FUNC Sleep($ms:INT):VOID FROM "kernel32.dll"
+EXTERN FUNC GetForegroundWindow():PTR FROM "user32.dll"
+EXTERN FUNC MessageBoxW($hwnd:PTR, $text:STRING, $caption:STRING, $flags:INT):INT FROM "user32.dll"
+EXTERN FUNC sqrt($x:DOUBLE):DOUBLE FROM "msvcrt.dll"
+
+# 调用方式与普通函数一致
+$hwnd = GetForegroundWindow()
+MessageBoxW $hwnd, "Hello", "Title", 0
+$x = sqrt(2.0)
+```
+
+**支持类型：** INT、BOOL、STRING、VOID、PTR（指针）、DOUBLE（双精度浮点）
+
+**注意：** 调用原生函数存在崩溃风险，请确保参数正确。
+
 ## 实用示例
 
 ### 基础自动化

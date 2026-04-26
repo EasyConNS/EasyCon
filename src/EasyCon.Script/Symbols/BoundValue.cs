@@ -34,6 +34,8 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
             int i => new Value(i, ScriptType.Int),
             bool b => new Value(b, ScriptType.Bool),
             string s => new Value(s, ScriptType.String),
+            double d => new Value(d, ScriptType.Double),
+            long l => new Value(l, ScriptType.Ptr),
             IEnumerable<Value> list => CreateArray(
                 list.FirstOrDefault().Type ?? ScriptType.Int,
                 list
@@ -51,11 +53,15 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     public static implicit operator Value(int v) => FromInt(v);
     public static implicit operator Value(bool v) => FromBool(v);
     public static implicit operator Value(string v) => FromString(v);
+    public static implicit operator Value(double v) => new(v, ScriptType.Double);
+    public static implicit operator Value(long v) => new(v, ScriptType.Ptr);
     public static Value FromInt(int v) => new(v, ScriptType.Int);
     public static Value FromBool(bool v) => new(v, ScriptType.Bool);
     public static Value FromString(string v) => new(v, ScriptType.String);
 
     public static Value Void => new(null, ScriptType.Void);
+    public static Value FromDouble(double v) => new(v, ScriptType.Double);
+    public static Value FromPtr(long v) => new(v, ScriptType.Ptr);
 
     /// <summary>
     /// 创建强类型数组
@@ -75,6 +81,8 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     public bool AsBool() => Type.Equals(ScriptType.Bool) ? (bool)_value! : throw new InvalidCastException();
     public string AsString() => Type.Equals(ScriptType.String) ? (string)_value! : throw new InvalidCastException();
     public ImmutableList<Value> AsArray() => Type is GenericType { Definition.Name: "Array" } ? (ImmutableList<Value>)_value! : throw new InvalidCastException();
+    public double AsDouble() => Type.Equals(ScriptType.Double) ? (double)_value! : throw new InvalidCastException();
+    public long AsPtr() => Type.Equals(ScriptType.Ptr) ? (long)_value! : throw new InvalidCastException();
 
     #endregion
 
@@ -143,6 +151,7 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         if (!Type.Equals(other.Type)) throw new InvalidOperationException("不同类型无法比较");
         if (Type.Equals(ScriptType.Int)) return AsInt().CompareTo(other.AsInt());
         if (Type.Equals(ScriptType.String)) return string.Compare(AsString(), other.AsString(), StringComparison.Ordinal);
+        if (Type.Equals(ScriptType.Double)) return AsDouble().CompareTo(other.AsDouble());
         throw new InvalidOperationException($"类型不支持比较 <{Type}>与<{other.Type}>");
     }
 
@@ -161,7 +170,12 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     public override string ToString() => Type switch
     {
         GenericType { Definition.Name: "Array" } => $"[{string.Join(", ", AsArray())}]",
-        _ => _value?.ToString() ?? "void"
+        _ => _value switch
+        {
+            double d => d.ToString("G"),
+            long l => $"0x{l:X}",
+            _ => _value?.ToString() ?? "void"
+        }
     };
     // 辅助属性：判断是否为 Array<T>
     private bool IsArray => Type is GenericType { Definition.Name: "Array" };
@@ -204,6 +218,8 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         if (Type.Equals(ScriptType.Bool)) return AsBool();
         if (Type.Equals(ScriptType.String)) return !string.IsNullOrEmpty(AsString());
         if (IsArray) return AsArray().Count > 0;
+        if (Type.Equals(ScriptType.Double)) return AsDouble() != 0.0;
+        if (Type.Equals(ScriptType.Ptr)) return AsPtr() != 0;
         return false;
     }
 
@@ -223,6 +239,11 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
                 return FromInt(left.AsInt() + right.AsInt());
             }
 
+            if (left.Type.Equals(ScriptType.Double))
+            {
+                return FromDouble(left.AsDouble() + right.AsDouble());
+            }
+
             if (left.Type.Equals(ScriptType.String))
             {
                 return FromString(left.AsString() + right.AsString());
@@ -235,15 +256,37 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
             }
         }
 
-        // 3. 混合类型处理：字符串拼接规则
+        // 3. 混合类型处理：double 与 int 互相提升
+        if (left.Type.Equals(ScriptType.Double) && right.Type.Equals(ScriptType.Int))
+            return FromDouble(left.AsDouble() + right.AsInt());
+        if (left.Type.Equals(ScriptType.Int) && right.Type.Equals(ScriptType.Double))
+            return FromDouble(left.AsInt() + right.AsDouble());
+
+        // 4. 混合类型处理：字符串拼接规则
         // 只要有一侧是 string，则将另一侧转为字符串进行拼接
         if (left.Type.Equals(ScriptType.String) || right.Type.Equals(ScriptType.String))
         {
             return FromString(left.ToString() + right.ToString());
         }
 
-        // 4. 其他不支持的组合
+        // 5. 其他不支持的组合
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '+'");
+    }
+
+
+    public static Value operator &(Value left, Value right)
+    {
+        // 1. 排除 void 类型参与运算
+        if (left.Type is VoidType || right.Type is VoidType)
+            throw new InvalidOperationException("空类型不支持运算");
+        // 2. 混合类型处理：字符串拼接规则
+        // 只要有一侧是 string，则将另一侧转为字符串进行拼接
+        if (left.Type.Equals(ScriptType.String) || right.Type.Equals(ScriptType.String))
+        {
+            return FromString(left.ToString() + right.ToString());
+        }
+        // 3. 其他不支持的组合
+        throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '&'");
     }
 }
 
@@ -269,6 +312,8 @@ public abstract class ScriptType : IEquatable<ScriptType>
     public static readonly ScalarType Bool = new("bool");
     public static readonly ScalarType String = new("string");
     public static readonly VoidType Void = new();
+    public static readonly ScalarType Ptr = new("ptr");
+    public static readonly ScalarType Double = new("double");
 
     // 预定义泛型定义
     public static readonly GenericDefinition Array = new("Array", 1);

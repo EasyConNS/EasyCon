@@ -1,4 +1,4 @@
-using EasyCon.Script.Assembly;
+using EasyCon.Script.Asm;
 using System.IO;
 using System.Text.RegularExpressions;
 

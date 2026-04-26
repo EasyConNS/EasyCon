@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace EasyCon.Script.Assembly;
+namespace EasyCon.Script.Asm;
 
 public static class HexWriter
 {

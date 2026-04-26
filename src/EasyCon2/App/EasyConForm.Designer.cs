@@ -346,9 +346,9 @@ namespace EasyCon2.App
             深色模式ToolStripMenuItem.Size = new Size(182, 26);
             深色模式ToolStripMenuItem.Text = "深色模式";
             深色模式ToolStripMenuItem.Click += 深色模式ToolStripMenuItem_Click;
-            //
+            // 
             // 高精度模式ToolStripMenuItem
-            //
+            // 
             高精度模式ToolStripMenuItem.CheckOnClick = true;
             高精度模式ToolStripMenuItem.Name = "高精度模式ToolStripMenuItem";
             高精度模式ToolStripMenuItem.Size = new Size(182, 26);

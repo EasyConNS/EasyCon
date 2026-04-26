@@ -1,6 +1,6 @@
 using EasyCon.Script.Syntax;
 
-namespace EasyCon.Script.Assembly.Instructions;
+namespace EasyCon.Script.Asm.Instructions;
 
 public enum BitwiseShiftOperator
 {

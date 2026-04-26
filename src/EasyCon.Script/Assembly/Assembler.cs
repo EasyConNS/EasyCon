@@ -1,7 +1,7 @@
 using EasyCon.Script.Binding;
 using static EasyCon.Script.Binding.BoundNodeKind;
 
-namespace EasyCon.Script.Assembly;
+namespace EasyCon.Script.Asm;
 
 class Assembler
 {

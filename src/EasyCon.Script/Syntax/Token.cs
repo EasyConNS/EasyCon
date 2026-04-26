@@ -89,6 +89,8 @@ public enum TokenType
     FUNC,
     RETURN,
     ENDFUNC,
+    EXTERN,
+    FROM,
     END,
     TRUE, // true
     FALSE, // false

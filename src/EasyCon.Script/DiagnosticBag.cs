@@ -210,4 +210,9 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     {
         ReportError(location, $"函数 {fn.Name} 参数数量不匹配");
     }
+
+    public void ReportFunctionAlreadyDeclared(TextLocation location, string functionName)
+    {
+        ReportError(location, $"重复定义的函数: {functionName}");
+    }
 }

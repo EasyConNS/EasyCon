@@ -1,4 +1,4 @@
-namespace EasyCon.Script.Assembly.Instructions;
+namespace EasyCon.Script.Asm.Instructions;
 
 abstract class AsmStick : Instruction
 {

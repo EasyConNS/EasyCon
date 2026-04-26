@@ -2,7 +2,6 @@ using EasyCon.Script;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
-using System.Collections.Immutable;
 
 namespace EasyCon.Tests;
 
@@ -28,13 +27,11 @@ internal sealed class MockOutputAdapter : IOutputAdapter
 [TestFixture]
 public class EvaluatorTests
 {
-    private static (EvaluationResult Result, MockOutputAdapter Output) Eval(
-        string code,
-        ImmutableArray<ForeignFunction> ffi = default)
+    private static (EvaluationResult Result, MockOutputAdapter Output) Eval(string code)
     {
         var output = new MockOutputAdapter();
         var compilation = Compilation.Create(SyntaxTree.Parse(code));
-        var result = compilation.Evaluate(output, null, [], new CancellationTokenSource().Token, ffi);
+        var result = compilation.Evaluate(output, null, [], new CancellationTokenSource().Token);
         return (result, output);
     }
 
@@ -138,82 +135,284 @@ CALL greet");
 
     #endregion
 
-    #region FFI 函数
+    #region EXTERN 解析测试
 
     [Test]
-    public void FFI_SimpleCall()
+    public void Extern_Parse_SimpleDecl()
     {
-        var ffi = new ForeignFunction
-        {
-            Name = "DOUBLE",
-            Parameters = [("x", ScriptType.Int)],
-            ReturnType = ScriptType.Int,
-            Invoke = args => args[0].AsInt() * 2,
-        };
-        var (result, _) = Eval("$r = DOUBLE(7)", [ffi]);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(14));
-    }
-
-    [Test]
-    public void FFI_MultipleArgs()
-    {
-        var ffi = new ForeignFunction
-        {
-            Name = "MUL",
-            Parameters = [("a", ScriptType.Int), ("b", ScriptType.Int)],
-            ReturnType = ScriptType.Int,
-            Invoke = args => args[0].AsInt() * args[1].AsInt(),
-        };
-        var (result, _) = Eval("$r = MUL(6, 7)", [ffi]);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(42));
-    }
-
-    [Test]
-    public void FFI_StatementCall()
-    {
-        var ffi = new ForeignFunction
-        {
-            Name = "LOG",
-            Parameters = [("msg", ScriptType.String)],
-            ReturnType = ScriptType.Void,
-            Invoke = args => Value.Void,
-        };
-        var (result, _) = Eval("LOG \"test\"", [ffi]);
+        var code = @"EXTERN FUNC Sleep($ms:INT):VOID FROM ""kernel32.dll""";
+        var (result, _) = Eval(code);
         Assert.That(result.Diagnostics.HasErrors(), Is.False);
     }
 
     [Test]
-    public void FFI_MixedWithUserFunc()
+    public void Extern_Parse_MultipleParams()
     {
-        var ffi = new ForeignFunction
-        {
-            Name = "DOUBLE",
-            Parameters = [("x", ScriptType.Int)],
-            ReturnType = ScriptType.Int,
-            Invoke = args => args[0].AsInt() * 2,
-        };
-        var (result, _) = Eval(@"
-FUNC add($a, $b) : int
-    RETURN $a + $b
-ENDFUNC
-$r = DOUBLE(add(3, 4))", [ffi]);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(14));
+        var code = @"EXTERN FUNC MessageBoxW($hwnd:PTR, $text:STRING, $caption:STRING, $flags:INT):INT FROM ""user32.dll""";
+        var (result, _) = Eval(code);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
     }
 
     [Test]
-    public void FFI_AndBuiltinTogether()
+    public void Extern_Parse_NoParams()
     {
-        var ffi = new ForeignFunction
-        {
-            Name = "CLAMP",
-            Parameters = [("val", ScriptType.Int), ("max", ScriptType.Int)],
-            ReturnType = ScriptType.Int,
-            Invoke = args => Math.Min(args[0].AsInt(), args[1].AsInt()),
-        };
-        // RAND(100) + CLAMP 应该正常工作
-        var (result, _) = Eval("$rand_val = RAND(100)\n$r = CLAMP($rand_val, 50)", [ffi]);
-        Assert.That(result.Result.AsInt(), Is.InRange(0, 50));
+        var code = @"EXTERN FUNC GetForegroundWindow():PTR FROM ""user32.dll""";
+        var (result, _) = Eval(code);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
     }
+
+    [Test]
+    public void Extern_Parse_DoubleType()
+    {
+        var code = @"EXTERN FUNC sqrt($x:DOUBLE):DOUBLE FROM ""msvcrt.dll""";
+        var (result, _) = Eval(code);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
+    }
+
+    [Test]
+    public void Extern_Parse_DuplicateName_Error()
+    {
+        var code = @"
+EXTERN FUNC foo($x:INT):INT FROM ""a.dll""
+EXTERN FUNC foo($y:INT):INT FROM ""b.dll""
+";
+        var (result, _) = Eval(code);
+        Assert.That(result.Diagnostics.HasErrors(), Is.True);
+    }
+
+    #endregion
+
+    #region 类型间操作测试
+
+    #region INT 与 INT
+
+    [Test]
+    public void Op_IntAdd() => Assert.That(Eval("$r = 3 + 5").Result.Result.AsInt(), Is.EqualTo(8));
+
+    [Test]
+    public void Op_IntSub() => Assert.That(Eval("$r = 10 - 4").Result.Result.AsInt(), Is.EqualTo(6));
+
+    [Test]
+    public void Op_IntMul() => Assert.That(Eval("$r = 3 * 7").Result.Result.AsInt(), Is.EqualTo(21));
+
+    [Test]
+    public void Op_IntDiv() => Assert.That(Eval("$r = 17 / 5").Result.Result.AsInt(), Is.EqualTo(3));
+
+    [Test]
+    public void Op_IntMod() => Assert.That(Eval("$r = 17 % 5").Result.Result.AsInt(), Is.EqualTo(2));
+
+    [Test]
+    public void Op_IntEql() => Assert.That(Eval("$r = 3 == 3").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_IntNeq() => Assert.That(Eval("$r = 3 != 4").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_IntLess() => Assert.That(Eval("$r = 2 < 5").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_IntGreater() => Assert.That(Eval("$r = 7 > 3").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_IntLeq() => Assert.That(Eval("$r = 5 <= 5").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_IntGeq() => Assert.That(Eval("$r = 5 >= 4").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_IntBitAnd() => Assert.That(Eval("$r = 12 & 10").Result.Result.AsInt(), Is.EqualTo(8));
+
+    [Test]
+    public void Op_IntBitOr() => Assert.That(Eval("$r = 12 | 10").Result.Result.AsInt(), Is.EqualTo(14));
+
+    [Test]
+    public void Op_IntBitXor() => Assert.That(Eval("$r = 12 ^ 10").Result.Result.AsInt(), Is.EqualTo(6));
+
+    [Test]
+    public void Op_IntShl() => Assert.That(Eval("$r = 1 << 4").Result.Result.AsInt(), Is.EqualTo(16));
+
+    [Test]
+    public void Op_IntShr() => Assert.That(Eval("$r = 16 >> 2").Result.Result.AsInt(), Is.EqualTo(4));
+
+    #endregion
+
+    #region DOUBLE 与 DOUBLE
+
+    [Test]
+    public void Op_DoubleAdd() => Assert.That(Eval("$r = 1.5 + 2.5").Result.Result.AsDouble(), Is.EqualTo(4.0));
+
+    [Test]
+    public void Op_DoubleSub() => Assert.That(Eval("$r = 5.5 - 2.0").Result.Result.AsDouble(), Is.EqualTo(3.5));
+
+    [Test]
+    public void Op_DoubleMul() => Assert.That(Eval("$r = 2.5 * 4.0").Result.Result.AsDouble(), Is.EqualTo(10.0));
+
+    [Test]
+    public void Op_DoubleDiv() => Assert.That(Eval("$r = 7.0 / 2.0").Result.Result.AsDouble(), Is.EqualTo(3.5));
+
+    [Test]
+    public void Op_DoubleViaVariable()
+    {
+        var (result, _) = Eval(@"$a = 3.0
+$b = 4.0
+$r = $a * $a + $b * $b");
+        Assert.That(result.Result.AsDouble(), Is.EqualTo(25.0));
+    }
+
+    #endregion
+
+    #region INT 与 DOUBLE 混合 (通过 Value operator+)
+
+    [Test]
+    public void Op_IntPlusDouble()
+    {
+        var a = Value.FromInt(3);
+        var b = Value.FromDouble(1.5);
+        var result = a + b;
+        Assert.That(result.Type, Is.EqualTo(ScriptType.Double));
+        Assert.That(result.AsDouble(), Is.EqualTo(4.5));
+    }
+
+    [Test]
+    public void Op_DoublePlusInt()
+    {
+        var a = Value.FromDouble(2.5);
+        var b = Value.FromInt(3);
+        var result = a + b;
+        Assert.That(result.Type, Is.EqualTo(ScriptType.Double));
+        Assert.That(result.AsDouble(), Is.EqualTo(5.5));
+    }
+
+    #endregion
+
+    #region BOOL 操作
+
+    [Test]
+    public void Op_BoolEql() => Assert.That(Eval("$r = (1 == 1) == (1 == 1)").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_BoolNeq() => Assert.That(Eval("$r = (1 == 1) != (1 == 0)").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_BoolAnd() => Assert.That(Eval("$r = (1 == 1) and (1 == 0)").Result.Result.AsBool(), Is.False);
+
+    [Test]
+    public void Op_BoolOr() => Assert.That(Eval("$r = (1 == 1) or (1 == 0)").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_BoolShortCircuitAnd()
+    {
+        Assert.That(Eval("$r = (1 == 0) and (1 == 1)").Result.Result.AsBool(), Is.False);
+    }
+
+    [Test]
+    public void Op_BoolShortCircuitOr()
+    {
+        Assert.That(Eval("$r = (1 == 1) or (1 == 0)").Result.Result.AsBool(), Is.True);
+    }
+
+    #endregion
+
+    #region STRING 操作
+
+    [Test]
+    public void Op_StringConcat() => Assert.That(Eval("$r = \"hello\" + \" world\"").Result.Result.AsString(), Is.EqualTo("hello world"));
+
+    [Test]
+    public void Op_StringEql() => Assert.That(Eval("$r = \"abc\" == \"abc\"").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_StringNeq() => Assert.That(Eval("$r = \"abc\" != \"def\"").Result.Result.AsBool(), Is.True);
+
+    #endregion
+
+    #region PTR 操作
+
+    [Test]
+    public void Op_PtrEqual()
+    {
+        var a = Value.FromPtr(0);
+        var b = Value.FromPtr(0);
+        Assert.That(a == b, Is.True);
+    }
+
+    [Test]
+    public void Op_PtrNotEqual()
+    {
+        var a = Value.FromPtr(0);
+        var b = Value.FromPtr(42);
+        Assert.That(a != b, Is.True);
+    }
+
+    [Test]
+    public void Op_PtrNullIsZero()
+    {
+        var p = Value.FromPtr(0);
+        Assert.That(p.AsPtr(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Op_PtrFromLong()
+    {
+        var p = Value.FromPtr(0xDEADBEEF);
+        Assert.That(p.AsPtr(), Is.EqualTo(0xDEADBEEF));
+    }
+
+    #endregion
+
+    #region 类型转换
+
+    [Test]
+    public void Op_IntToBool_True() => Assert.That(Eval("$r = not (1 == 0)").Result.Result.AsBool(), Is.True);
+
+    [Test]
+    public void Op_IntToBool_False() => Assert.That(Eval("$r = not (1 == 1)").Result.Result.AsBool(), Is.False);
+
+    [Test]
+    public void Op_DoubleToBool_NonZero()
+    {
+        var v = Value.FromDouble(3.14);
+        Assert.That(v.ToBoolean(), Is.True);
+    }
+
+    [Test]
+    public void Op_DoubleToBool_Zero()
+    {
+        var v = Value.FromDouble(0.0);
+        Assert.That(v.ToBoolean(), Is.False);
+    }
+
+    [Test]
+    public void Op_PtrToBool_NonZero()
+    {
+        var v = Value.FromPtr(42);
+        Assert.That(v.ToBoolean(), Is.True);
+    }
+
+    [Test]
+    public void Op_PtrToBool_Zero()
+    {
+        var v = Value.FromPtr(0);
+        Assert.That(v.ToBoolean(), Is.False);
+    }
+
+    [Test]
+    public void Op_ImplicitDoubleFromDouble()
+    {
+        Value v = 3.14;
+        Assert.That(v.Type, Is.EqualTo(ScriptType.Double));
+        Assert.That(v.AsDouble(), Is.EqualTo(3.14));
+    }
+
+    [Test]
+    public void Op_ImplicitPtrFromLong()
+    {
+        Value v = 123L;
+        Assert.That(v.Type, Is.EqualTo(ScriptType.Ptr));
+        Assert.That(v.AsPtr(), Is.EqualTo(123));
+    }
+
+    #endregion
 
     #endregion
 }

@@ -41,6 +41,11 @@ internal sealed class BoundBinaryOperator
         new(TokenType.MOD,BoundBinaryOperatorKind.Mod, ScriptType.Int, (a, b) => a.AsInt() % b.AsInt()),
         new(TokenType.SlashI,BoundBinaryOperatorKind.RoundDiv, ScriptType.Int, (a, b) => (int)Math.Round((double)a.AsInt() / b.AsInt(), MidpointRounding.AwayFromZero)),
 
+        new(TokenType.ADD,BoundBinaryOperatorKind.Addition, ScriptType.Double, (a, b) => a.AsDouble() + b.AsDouble()),
+        new(TokenType.SUB,BoundBinaryOperatorKind.Subtraction, ScriptType.Double, (a, b) => a.AsDouble() - b.AsDouble()),
+        new(TokenType.MUL,BoundBinaryOperatorKind.Multiplication, ScriptType.Double, (a, b) => a.AsDouble() * b.AsDouble()),
+        new(TokenType.DIV,BoundBinaryOperatorKind.Division, ScriptType.Double, (a, b) => a.AsDouble() / b.AsDouble()),
+
         new(TokenType.BitAnd,BoundBinaryOperatorKind.BitwiseAnd, ScriptType.Int, (a, b) => a.AsInt() & b.AsInt()),
         new(TokenType.BitOr,BoundBinaryOperatorKind.BitwiseOr, ScriptType.Int, (a, b) => a.AsInt() | b.AsInt()),
         new(TokenType.XOR,BoundBinaryOperatorKind.BitwiseXor, ScriptType.Int, (a, b) => a.AsInt() ^ b.AsInt()),

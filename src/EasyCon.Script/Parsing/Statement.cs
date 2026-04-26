@@ -27,6 +27,7 @@ enum StatementKind
     Continue,
     ReturnStmt,
     Import,
+    ExternFuncDeclaration,
 }
 
 abstract class Statement(Token syntax) : AstNode(syntax)

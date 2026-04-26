@@ -12,7 +12,7 @@ public class ScriptException(string message, int address) : Exception(message)
     public int Address { get; private set; } = address;
 }
 
-internal sealed class Evaluator : IEvalContext
+internal sealed class Evaluator : IEvalContext, IDisposable
 {
     private readonly BoundProgram _program;
     private readonly Dictionary<VariableSymbol, Value> _globals = [];
@@ -39,7 +39,9 @@ internal sealed class Evaluator : IEvalContext
     Random IEvalContext.Rand => _rand;
     bool IEvalContext.CancelLineBreak { get => _cancelLineBreak; set => _cancelLineBreak = value; }
 
-    public Evaluator(BoundProgram program, ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token, ImmutableArray<ForeignFunction> foreignFunctions = default)
+    private NativeLoader? _nativeLoader;
+
+    public Evaluator(BoundProgram program, ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token)
     {
         _program = program;
         _token = token;
@@ -51,10 +53,10 @@ internal sealed class Evaluator : IEvalContext
             _functions.Add(kv.Key, kv.Value);
         }
 
-        RegisterCallables(foreignFunctions);
+        RegisterCallables();
     }
 
-    private void RegisterCallables(ImmutableArray<ForeignFunction> foreignFunctions)
+    private void RegisterCallables()
     {
         // 注册内置函数 callable
         foreach (var (symbol, callable) in BuiltinCallable.GetAll(() => CurrTimestamp))
@@ -62,34 +64,32 @@ internal sealed class Evaluator : IEvalContext
             _callables[symbol] = callable;
         }
 
-        // 注册用户函数 callable
+        // 注册用户函数 callable（_functions 中仅含用户函数 + $eval）
         foreach (var fn in _functions.Keys)
         {
-            if (!_callables.ContainsKey(fn))
+            if (_callables.ContainsKey(fn)) continue;
+            _callables[fn] = new DelegateCallable((args, ctx, tk) =>
             {
-                _callables[fn] = new DelegateCallable((args, ctx, tk) =>
-                {
-                    var locals = new Dictionary<VariableSymbol, Value>();
-                    for (int i = 0; i < args.Length; i++)
-                        locals.Add(fn.Parameters[i], args[i]);
-                    ctx.PushLocals(locals);
-                    var result = ctx.EvaluateFunctionBody(fn);
-                    ctx.PopLocals();
-                    return result;
-                });
-            }
+                var locals = new Dictionary<VariableSymbol, Value>();
+                for (int i = 0; i < args.Length; i++)
+                    locals.Add(fn.Parameters[i], args[i]);
+                ctx.PushLocals(locals);
+                var result = ctx.EvaluateFunctionBody(fn);
+                ctx.PopLocals();
+                return result;
+            });
         }
 
-        // 注册 FFI 函数 callable
-        if (!foreignFunctions.IsDefault)
+        // 注册 EXTERN 函数（从独立列表获取，不再过滤 _functions.Keys）
+        if (!_program.ExternFunctions.IsEmpty)
         {
-            foreach (var ff in foreignFunctions)
+            _nativeLoader = new NativeLoader();
+            var externFuncs = _nativeLoader.LoadExternFunctions(_program.ExternFunctions);
+            foreach (var ff in externFuncs)
             {
-                if (_program.FFISymbols.TryGetValue(ff.Name, out var symbol))
-                {
-                    var capturedInvoke = ff.Invoke;
-                    _callables[symbol] = new DelegateCallable((args, ctx, tk) => capturedInvoke(args));
-                }
+                var symbol = _program.ExternFunctions.First(s => s.Name == ff.Name);
+                var capturedInvoke = ff.Invoke;
+                _callables[symbol] = new DelegateCallable((args, ctx, tk) => capturedInvoke(args));
             }
         }
     }
@@ -378,6 +378,11 @@ internal sealed class Evaluator : IEvalContext
     {
         var body = _functions[function];
         return EvaluateStatement(body);
+    }
+
+    public void Dispose()
+    {
+        _nativeLoader?.Dispose();
     }
 }
 
