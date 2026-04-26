@@ -172,7 +172,8 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         GenericType { Definition.Name: "Array" } => $"[{string.Join(", ", AsArray())}]",
         _ => _value switch
         {
-            double d => d.ToString("G"),
+            double d => d.ToString("0.##"),
+            bool b => b ? "true" : "false",
             long l => $"0x{l:X}",
             _ => _value?.ToString() ?? "void"
         }
