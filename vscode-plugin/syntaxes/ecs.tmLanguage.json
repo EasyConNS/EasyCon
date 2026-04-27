@@ -31,7 +31,7 @@
           "patterns": [
             {
               "match": "(?i)\\b(TODO|FIXME|HACK|UNDONE)\\b",
-              "name": "markup.bold.ecs"
+              "name": "comment.line.number-sign.todo.bold.ecs markup.bold.ecs"
             }
           ]
         }

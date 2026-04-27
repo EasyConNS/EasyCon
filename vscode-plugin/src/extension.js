@@ -72,18 +72,17 @@ function startLspClient(context) {
                 transport: TransportKind.stdio,
             };
         } else {
-            serverOptions = {
-                command: 'python',
-                args: ['-m', 'easycon_script_lsp'],
-                options: {
-                    cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
-                },
-            };
+            outputChannel.appendLine('[EasyCon] 未找到语言服务器，语言智能功能将不可用。请将 ECS LSP 二进制文件放入 bin/ 目录或通过 easycon.languageServer.path 配置指定路径。');
+            vscode.window.showWarningMessage('EasyCon 语言服务器未找到，语言智能功能将不可用');
+            return;
         }
     }
 
     const clientOptions = {
-        documentSelector: [{ scheme: 'file', language: 'easycon-script' }],
+        documentSelector: [
+            { scheme: 'file', language: 'easycon-script' },
+            { scheme: 'untitled', language: 'easycon-script' },
+        ],
         synchronize: {
             fileEvents: vscode.workspace.createFileSystemWatcher('**/*.ecs'),
         },
@@ -98,7 +97,10 @@ function startLspClient(context) {
     );
 
     context.subscriptions.push(lspClient);
-    lspClient.start();
+    lspClient.start().catch(err => {
+        outputChannel.appendLine(`[EasyCon] 语言服务器启动失败: ${err.message || err}`);
+        vscode.window.showErrorMessage(`EasyCon 语言服务器启动失败: ${err.message || err}`);
+    });
 }
 
 // --------------------------------------------------------------------------- //
@@ -123,7 +125,7 @@ function activate(context) {
     vscode.workspace.onDidSaveTextDocument((document) => {
         if (document.languageId === 'easycon-script') {
             const formatOnSave = vscode.workspace.getConfiguration('editor', document.uri).get('formatOnSave');
-            if (!formatOnSave) {
+            if (formatOnSave) {
                 vscode.commands.executeCommand('editor.action.formatDocument');
             }
         }
