@@ -2,6 +2,7 @@ const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
+const { LanguageClient, TransportKind } = require('vscode-languageclient/node');
 
 const KEYWORDS = [
     'IMPORT',
@@ -34,69 +35,143 @@ const SEARCH_METHOD_MAP = {
 
 const imgLabelCache = new Map();
 const imgLabelWatchers = new Map();
-const funcNameCache = new Map();
 let imgLabelStatusBarItem = null;
 let outputChannel = vscode.window.createOutputChannel(projName);
-const diagnosticCollection = vscode.languages.createDiagnosticCollection('easycon-script');
+let lspClient = null;
+
+// --------------------------------------------------------------------------- //
+//  LSP client
+// --------------------------------------------------------------------------- //
+
+function getBundledServerPath(context) {
+    const platform = process.platform;
+    const binaryName = platform === 'win32' ? 'ecs-lsp.exe' : 'ecs-lsp';
+    const bundled = path.join(context.extensionPath, 'bin', binaryName);
+    if (fs.existsSync(bundled)) {
+        return bundled;
+    }
+    return undefined;
+}
+
+function startLspClient(context) {
+    const config = vscode.workspace.getConfiguration('easycon');
+    const customPath = config.get('languageServer.path', '');
+
+    let serverOptions;
+
+    if (customPath) {
+        serverOptions = {
+            command: customPath,
+            transport: TransportKind.stdio,
+        };
+    } else {
+        const bundled = getBundledServerPath(context);
+        if (bundled) {
+            serverOptions = {
+                command: bundled,
+                transport: TransportKind.stdio,
+            };
+        } else {
+            serverOptions = {
+                command: 'python',
+                args: ['-m', 'easycon_script_lsp'],
+                options: {
+                    cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+                },
+            };
+        }
+    }
+
+    const clientOptions = {
+        documentSelector: [{ scheme: 'file', language: 'easycon-script' }],
+        synchronize: {
+            fileEvents: vscode.workspace.createFileSystemWatcher('**/*.ecs'),
+        },
+        outputChannel: vscode.window.createOutputChannel('EasyCon Script LSP'),
+    };
+
+    lspClient = new LanguageClient(
+        'ecs-lsp',
+        'EasyCon Script Language Server',
+        serverOptions,
+        clientOptions
+    );
+
+    context.subscriptions.push(lspClient);
+    lspClient.start();
+}
+
+// --------------------------------------------------------------------------- //
+//  Activation
+// --------------------------------------------------------------------------- //
 
 function activate(context) {
     context.subscriptions.push(outputChannel);
-    context.subscriptions.push(diagnosticCollection); // 确保插件关闭时自动清理
     outputChannel.appendLine('EasyCon Script extension is now active!');
 
+    // Start LSP client
+    startLspClient(context);
+
+    // ImgLabel initialization
     initImgLabelCompletions();
 
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
         initImgLabelCompletions();
     });
 
-    vscode.workspace.onDidChangeTextDocument((event) => {
-        if (event.document.languageId === 'easycon-script') {
-            funcNameCache.set(event.document.uri.toString(), collectFuncNames(event.document));
-        }
-    });
-
+    // Format on save via LSP
     vscode.workspace.onDidSaveTextDocument((document) => {
         if (document.languageId === 'easycon-script') {
-            formatDocument(document);
+            const formatOnSave = vscode.workspace.getConfiguration('editor', document.uri).get('formatOnSave');
+            if (!formatOnSave) {
+                vscode.commands.executeCommand('editor.action.formatDocument');
+            }
         }
     });
 
+    // Status bar: version
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBarItem.command = 'easycon.showVersion';
     context.subscriptions.push(statusBarItem);
     updateVersionStatusBar(statusBarItem);
 
+    // Status bar: ImgLabel count
     imgLabelStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 90);
     imgLabelStatusBarItem.command = 'easycon.refreshImgLabel';
     context.subscriptions.push(imgLabelStatusBarItem);
     updateImgLabelStatusBar(imgLabelStatusBarItem);
 
+    // Command: refresh ImgLabel
     let refreshImgLabel = vscode.commands.registerCommand('easycon.refreshImgLabel', () => {
         imgLabelCache.clear();
         initImgLabelCompletions();
     });
     context.subscriptions.push(refreshImgLabel);
 
+    // Command: show version
     let showVersion = vscode.commands.registerCommand('easycon.showVersion', () => {
         updateVersionStatusBar(statusBarItem, true);
     });
     context.subscriptions.push(showVersion);
 
+    // Command: format document
     let formatDocumentCmd = vscode.commands.registerCommand('easycon.formatDocument', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) return;
         const document = editor.document;
         if (document.languageId !== 'easycon-script') return;
-        
+
         if (document.isDirty) {
-            document.save().then(() => formatDocument(document));
+            document.save().then(() => {
+                vscode.commands.executeCommand('editor.action.formatDocument');
+            });
         } else {
-            formatDocument(document);
+            vscode.commands.executeCommand('editor.action.formatDocument');
         }
     });
     context.subscriptions.push(formatDocumentCmd);
 
+    // Command: run script
     let runScript = vscode.commands.registerCommand('easycon.runScript', () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -113,46 +188,27 @@ function activate(context) {
     });
     context.subscriptions.push(runScript);
 
+    // ImgLabel completion provider (@ trigger only)
     context.subscriptions.push(vscode.languages.registerCompletionItemProvider('easycon-script', {
         provideCompletionItems(document, position) {
             const line = document.lineAt(position.line).text;
             const textBefore = line.substring(0, position.character);
             const completionItems = [];
 
-            if (textBefore.endsWith('$')) {
-                const variables = extractVariables(document);
-                variables.forEach(v => {
-                    const varName = v.substring(1);
-                    const item = new vscode.CompletionItem(varName, vscode.CompletionItemKind.Variable);
-                    item.insertText = varName;
-                    completionItems.push(item);
-                });
-            } else if (textBefore.endsWith('_')) {
-                const constants = extractConstants(document);
-                constants.forEach(c => {
-                    const item = new vscode.CompletionItem(c, vscode.CompletionItemKind.Constant);
-                    item.insertText = c;
-                    completionItems.push(item);
-                });
-            } else if (textBefore.endsWith('@')) {
+            if (textBefore.endsWith('@')) {
                 const imgLabels = getImgLabelCompletions(document);
                 imgLabels.forEach(c => {
                     const item = new vscode.CompletionItem(c, vscode.CompletionItemKind.Reference);
                     item.insertText = c;
                     completionItems.push(item);
                 });
-            } else {
-                KEYWORDS.forEach(kw => {
-                    const item = new vscode.CompletionItem(kw, vscode.CompletionItemKind.Keyword);
-                    item.insertText = kw;
-                    completionItems.push(item);
-                });
             }
 
             return completionItems;
         }
-    }, '$', '_', '@'));
+    }, '@'));
 
+    // ImgLabel hover provider
     context.subscriptions.push(vscode.languages.registerHoverProvider('easycon-script', {
         provideHover(document, position) {
             const line = document.lineAt(position.line).text;
@@ -182,100 +238,11 @@ function activate(context) {
             }
         }
     }));
-
-    function collectFuncNames(document) {
-        const names = new Map();
-        for (let i = 0; i < document.lineCount; i++) {
-            const lineText = document.lineAt(i).text;
-            const match = lineText.match(/^\s*FUNC\s+([\w\u4e00-\u9fff]+)/i);
-            if (match) {
-                names.set(match[1], i);
-            }
-        }
-        return names;
-    }
-
-    context.subscriptions.push(vscode.languages.registerDefinitionProvider('easycon-script', {
-        provideDefinition(document, position, token) {
-            const wordRange = document.getWordRangeAtPosition(position, /[\$_]?[\w\u4e00-\u9fff]+/);
-            if (!wordRange) return null;
-            
-            const word = document.getText(wordRange);
-            
-            const isVar = word.startsWith('$');
-            const isConst = word.startsWith('_');
-            
-            if (isVar || isConst) {
-                const name = word.substring(1);
-                for (let i = 0; i < document.lineCount; i++) {
-                    const lineText = document.lineAt(i).text;
-                    const match = lineText.match(new RegExp(`^\\s*${isVar ? '\\$' : '_'}${name}\\s*=`));
-                    if (match) {
-                        const range = new vscode.Range(i, 0, i, lineText.length);
-                        return new vscode.Location(document.uri, range);
-                    }
-                }
-                return null;
-            }
-            
-            const uriKey = document.uri.toString();
-            let funcMap = funcNameCache.get(uriKey);
-            if (!funcMap) {
-                funcMap = collectFuncNames(document);
-                funcNameCache.set(uriKey, funcMap);
-            }
-            const funcName = word;
-            if (funcMap.has(funcName)) {
-                const lineNum = funcMap.get(funcName);
-                const lineText = document.lineAt(lineNum).text;
-                const range = new vscode.Range(lineNum, 0, lineNum, lineText.length);
-                return new vscode.Location(document.uri, range);
-            }
-            return null;
-        }
-    }));
-
-    context.subscriptions.push(vscode.languages.registerDocumentFormattingEditProvider('easycon-script', {
-        provideDocumentFormattingEdits(document) {
-            return new Promise((resolve, reject) => {
-                const filePath = document.uri.fsPath;
-                runFormatCommand(filePath).then(formattedContent => {
-                    if (!formattedContent) {
-                        resolve([]);
-                        return;
-                    }
-                    const fullRange = new vscode.Range(0, 0, document.lineCount, 0);
-                    const edit = new vscode.TextEdit(fullRange, formattedContent);
-                    resolve([edit]);
-                }).catch(reject);
-            });
-        }
-    }));
 }
 
-function extractVariables(document) {
-    const variables = new Set();
-    for (let i = 0; i < document.lineCount; i++) {
-        const line = document.lineAt(i).text;
-        const match = line.match(/\$([\w\u4e00-\u9fff]+)/g);
-        if (match) {
-            match.forEach(m => variables.add(m));
-        }
-    }
-    return Array.from(variables);
-}
-
-function extractConstants(document) {
-    const constants = new Set();
-    for (let i = 0; i < document.lineCount; i++) {
-        const line = document.lineAt(i).text;
-        const match = line.match(/_([\w\u4e00-\u9fff]+)/g);
-        if (match) {
-            match.forEach(m => constants.add(m));
-        }
-    }
-    return Array.from(constants);
-}
+// --------------------------------------------------------------------------- //
+//  ImgLabel functions
+// --------------------------------------------------------------------------- //
 
 function getImgLabelCompletions(document) {
     const scriptDir = path.dirname(document.uri.fsPath);
@@ -353,6 +320,10 @@ function updateImgLabelStatusBarAll() {
     imgLabelStatusBarItem.show();
 }
 
+// --------------------------------------------------------------------------- //
+//  Script execution / config
+// --------------------------------------------------------------------------- //
+
 function getEzconPath() {
     const ezconRoot = process.env.EASYCON_ROOT;
     if (ezconRoot) {
@@ -419,7 +390,7 @@ function executeScript(filePath) {
     }
     outputChannel.show();
     outputChannel.appendLine(`[${new Date().toLocaleTimeString()}] 执行脚本: ${path.basename(filePath)}`);
-    
+
     const terminal = vscode.window.activeTerminal || vscode.window.createTerminal(projName);
     const ezcon = getEzconPath();
     const config = loadConfig(filePath);
@@ -430,6 +401,10 @@ function executeScript(filePath) {
     outputChannel.appendLine(`执行命令: ${cmd}`);
     terminal.sendText(cmd);
 }
+
+// --------------------------------------------------------------------------- //
+//  Status bar
+// --------------------------------------------------------------------------- //
 
 function updateVersionStatusBar(statusBarItem, showMessage = false) {
     exec(`${getEzconPath()} --version`, (error, stdout) => {
@@ -459,95 +434,9 @@ function updateImgLabelStatusBar(statusBarItem) {
     statusBarItem.show();
 }
 
-function formatDocument(document) {
-    const filePath = document.uri.fsPath;
-    outputChannel.appendLine(`格式化: ${path.basename(filePath)}`);
-    
-    const ezcon = getEzconPath();
-    const cmd = `"${ezcon}" format "${filePath}"`;
-
-    exec(cmd, { cwd: path.dirname(filePath) }, (error, stdout, stderr) => {
-        // 每次开始前先清空旧的报错
-        diagnosticCollection.delete(document.uri);
-        if (error) {
-            const errorText = stderr || error.message;
-            outputChannel.appendLine(`检测到错误: ${errorText}`);
-            
-            // 调用上面写的解析函数，将错误推送到 Problems 面板
-            updateDiagnostics(document, errorText);
-            return;
-        }else{
-            const formattedContent = stdout.trim();
-            if (!formattedContent) {
-                outputChannel.appendLine('格式化结果为空');
-                return;
-            }
-        }
-        vscode.workspace.openTextDocument(document.uri).then(doc => {
-            const edit = new vscode.WorkspaceEdit();
-            const fullRange = new vscode.Range(0, 0, doc.lineCount, 0);
-            edit.replace(document.uri, fullRange, formattedContent);
-            vscode.workspace.applyEdit(edit).then(() => {
-                doc.save();
-                outputChannel.appendLine('格式化完成');
-            });
-        });
-    });
-}
-
-function runFormatCommand(filePath) {
-    return new Promise((resolve, reject) => {
-        const ezcon = getEzconPath();
-        const cmd = `"${ezcon}" format "${filePath}"`;
-        
-        exec(cmd, { cwd: path.dirname(filePath) }, (error, stdout, stderr) => {
-            // 每次开始前先清空旧的报错
-            diagnosticCollection.delete(document.uri);
-            if (error) {
-                const errorText = stderr || error.message;
-                outputChannel.appendLine(`检测到错误: ${errorText}`);
-                
-                // 调用上面写的解析函数，将错误推送到 Problems 面板
-                updateDiagnostics(document, errorText);
-                reject(error);
-                return;
-            }
-            const formattedContent = stdout.trim();
-            if (!formattedContent) {
-                outputChannel.appendLine('格式化结果为空');
-                resolve('');
-                return;
-            }
-            resolve(formattedContent);
-        });
-    });
-}
-
-function updateDiagnostics(document, errorOutput) {
-    const diagnostics = [];
-    
-    // 假设报错格式为: Error at line (数字): (错误信息)
-    // 你需要根据 ezcon 实际的报错文本修改这个正则表达式
-    const errorRegex = /line\s+(\d+):\s+(.*)/gi; 
-    let match;
-
-    while ((match = errorRegex.exec(errorOutput)) !== null) {
-        const line = parseInt(match[1]) - 1; // VS Code 行号从 0 开始
-        const message = match[2];
-        
-        const range = new vscode.Range(line, 0, line, 100); // 选中整行
-        const diagnostic = new vscode.Diagnostic(
-            range,
-            message,
-            vscode.DiagnosticSeverity.Error
-        );
-        diagnostic.source = projName;
-        diagnostics.push(diagnostic);
-    }
-
-    // 将诊断信息关联到当前文档
-    diagnosticCollection.set(document.uri, diagnostics);
-}
+// --------------------------------------------------------------------------- //
+//  Deactivation
+// --------------------------------------------------------------------------- //
 
 function deactivate() {
     imgLabelWatchers.forEach(watcher => {
@@ -555,6 +444,10 @@ function deactivate() {
     });
     imgLabelWatchers.clear();
     imgLabelCache.clear();
+
+    if (lspClient) {
+        return lspClient.stop();
+    }
 }
 
 module.exports = { activate, deactivate };
