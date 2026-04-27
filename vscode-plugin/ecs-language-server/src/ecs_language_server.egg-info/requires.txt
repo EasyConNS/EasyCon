@@ -1,0 +1,6 @@
+lark>=1.1.0
+pygls>=2.1.0
+lsprotocol>=2025.0.0
+
+[dev]
+pytest>=7.0

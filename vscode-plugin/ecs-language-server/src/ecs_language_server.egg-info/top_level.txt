@@ -1,0 +1,2 @@
+easycon_grammar
+easycon_script_lsp

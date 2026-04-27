@@ -1,0 +1,2 @@
+[console_scripts]
+ecs-lsp = easycon_script_lsp.server:main

@@ -1,0 +1,247 @@
+// EasyCon Python (ECP) Grammar for Lark
+// Based on EasyCon.Script C# implementation
+
+?start: program
+
+program: line*
+
+line: statement [comment] _NL
+    | comment _NL
+    | _NL
+
+statement: import_stmt
+         | extern_func_decl
+         | const_decl
+         | var_decl
+         | assignment
+         | func_decl
+         | return_stmt
+         | call_stmt
+         | wait_stmt
+         | key_action
+         | stick_action
+         | func_stmt
+         | beep_stmt
+         | amiibo_stmt
+         | if_open
+         | elif_open
+         | else_open
+         | endif_stmt
+         | for_open
+         | next_stmt
+         | while_open
+         | end_stmt
+         | break_stmt
+         | continue_stmt
+
+// Import
+import_stmt: IMPORT_KW STRING
+
+// Constant declaration: _MAX = 100
+const_decl: CONST "=" expression
+
+// Variable declaration: $x = 10
+var_decl: VAR "=" expression
+
+// Assignment with optional compound operator
+assignment: assign_target ASSIGN_OP expression
+
+assign_target: VAR | EX_VAR | index_expr | slice_expr
+
+ASSIGN_OP: "=" | "+=" | "-=" | "*=" | "/=" | "\\=" | "%=" | "&=" | "|=" | "^=" | "<<=" | ">>="
+
+// Function declaration line
+func_decl: FUNC_KW IDENT "(" [param_list] ")" [":" type_name]
+         | FUNC_KW IDENT [":" type_name]
+param_list: param ("," param)*
+param: VAR [":" type_name]
+type_name: IDENT
+
+// External function declaration: EXTERN FUNC name(params):ret_type FROM "lib"
+extern_func_decl: EXTERN_KW FUNC_KW IDENT "(" [extern_param_list] ")" ":" type_name FROM_KW STRING
+
+extern_param_list: extern_param ("," extern_param)*
+
+extern_param: VAR [":" type_name]
+
+// Return
+return_stmt: RETURN_KW [expression]
+
+// Call statement: CALL funcname
+call_stmt: CALL_KW IDENT
+
+// Wait: WAIT 100  or  100 (omitted)
+wait_stmt: WAIT_KW expression
+         | INT   -> wait_omitted
+
+// Function call statement (like PRINT, ALERT, or user-defined)
+func_stmt: IDENT expression*
+
+// Key actions: A, A 100, A DOWN, A UP
+// D-pad directions as buttons: UP, DOWN 100, LEFT
+key_action: BUTTON_KEY [key_mod]
+          | DIRECTION_KEY [key_mod]  -> dir_action
+key_mod: expression
+        | "DOWN" -> key_down
+        | "UP"   -> key_up
+
+// Stick actions: LS UP, LS UP,100, LS 90, RS 45,200, LS RESET
+stick_action: STICK_KEY stick_mod
+stick_mod: stick_direction COMMA expression  -> stick_direction_duration
+          | stick_direction
+          | RESET_KW
+stick_direction: DIRECTION_KEY | INT
+COMMA: ","
+
+// Block control statements (simplified: parser builds blocks in post-processing)
+if_open: IF_KW expression
+elif_open: ELIF_KW expression
+else_open: ELSE_KW
+endif_stmt: ENDIF_KW
+
+for_open: FOR_KW [for_iter]
+for_iter: INT [STEP_KW step_bound]
+         | VAR [STEP_KW step_bound]
+         | CONST [STEP_KW step_bound]
+         | VAR "=" loop_bound TO_KW loop_bound [STEP_KW step_bound]
+step_bound: INT | CONST | VAR
+loop_bound: INT | CONST | VAR
+
+next_stmt: NEXT_KW
+
+while_open: WHILE_KW expression
+end_stmt: END_KW | ENDFUNC_KW
+
+// Loop control
+break_stmt: BREAK_KW [INT]
+continue_stmt: CONTINUE_KW
+
+// Builtin function statements
+beep_stmt: BEEP_KW expression "," expression
+amiibo_stmt: AMIIBO_KW expression
+
+// Comment token on a line
+comment: COMMENT
+
+// Expressions
+?expression: or_expr
+
+?or_expr: and_expr
+        | or_expr "or" and_expr    -> bin_or
+
+?and_expr: eq_expr
+         | and_expr "and" eq_expr  -> bin_and
+
+?eq_expr: rel_expr
+        | eq_expr "==" rel_expr   -> bin_eq
+        | eq_expr "=" rel_expr    -> bin_eq
+        | eq_expr "!=" rel_expr   -> bin_ne
+
+?rel_expr: add_expr
+         | rel_expr "<" add_expr   -> bin_lt
+         | rel_expr "<=" add_expr  -> bin_le
+         | rel_expr ">" add_expr   -> bin_gt
+         | rel_expr ">=" add_expr  -> bin_ge
+
+?add_expr: mul_expr
+         | add_expr "+" mul_expr   -> bin_add
+         | add_expr "-" mul_expr   -> bin_sub
+
+?mul_expr: unary_expr
+         | mul_expr "*" unary_expr -> bin_mul
+         | mul_expr "/" unary_expr -> bin_div
+         | mul_expr "\\" unary_expr -> bin_idiv
+         | mul_expr "%" unary_expr -> bin_mod
+         | mul_expr "&" unary_expr -> bin_bitand
+         | mul_expr "|" unary_expr -> bin_bitor
+         | mul_expr "^" unary_expr -> bin_xor
+         | mul_expr "<<" unary_expr -> bin_shl
+         | mul_expr ">>" unary_expr -> bin_shr
+
+?unary_expr: primary
+           | "-" unary_expr        -> neg
+           | "~" unary_expr        -> bitnot
+           | "not" unary_expr      -> lnot
+
+?primary: INT
+        | NUMBER
+        | STRING
+        | TRUE_KW -> bool_true
+        | FALSE_KW -> bool_false
+        | CONST
+        | VAR
+        | EX_VAR
+        | IDENT
+        | "(" expression ")" -> paren_expr
+        | array_def
+        | func_call
+        | index_expr
+        | slice_expr
+
+array_def: "[" [expression ("," expression)*] "]"
+
+func_call: IDENT "(" [expression ("," expression)*] ")"
+
+index_expr: VAR "[" expression "]"
+
+slice_expr: VAR "[" [expression] ":" expression "]"
+
+// Tokens
+_INT: /-?\d+/
+_NUMBER: /-?\d+\.\d+/
+_STRING: /"([^"\\]|\\.)*"/ | /'([^'\\]|\\.)*'/
+_CONST: /_[a-zA-Z_\u4e00-\u9fa5][a-zA-Z0-9_\u4e00-\u9fa5]*/
+_VAR: /\$\$?[a-zA-Z0-9_\u4e00-\u9fa5][a-zA-Z0-9_\u4e00-\u9fa5]*/
+_EX_VAR: /@[a-zA-Z_\u4e00-\u9fa5][a-zA-Z0-9_\u4e00-\u9fa5]*/
+_IDENT: /[a-zA-Z_\u4e00-\u9fa5][a-zA-Z0-9_\u4e00-\u9fa5！]*/
+_COMMENT: /#[^\r\n]*/
+
+%import common.WS_INLINE
+%ignore WS_INLINE
+
+_NL: /\r?\n/
+
+// Terminal aliases for Lark tree
+INT: _INT
+NUMBER: _NUMBER
+STRING: _STRING
+CONST: _CONST
+VAR: _VAR
+EX_VAR: _EX_VAR
+IDENT: _IDENT
+COMMENT: _COMMENT
+
+// Script keywords (must be before IDENT and BUTTON_KEY in lexer priority)
+IMPORT_KW.3: "IMPORT"
+IF_KW.3: "IF"
+ELIF_KW.3: "ELIF"
+ELSE_KW.3: "ELSE"
+ENDIF_KW.3: "ENDIF"
+WHILE_KW.3: "WHILE"
+FOR_KW.3: "FOR"
+TO_KW.3: "TO"
+IN_KW.3: "IN"
+STEP_KW.3: "STEP"
+BREAK_KW.3: "BREAK"
+CONTINUE_KW.3: "CONTINUE"
+NEXT_KW.3: "NEXT"
+FUNC_KW.3: "FUNC"
+RETURN_KW.3: "RETURN"
+ENDFUNC_KW.3: "ENDFUNC"
+END_KW.3: "END"
+TRUE_KW.3: "TRUE"
+FALSE_KW.3: "FALSE"
+RESET_KW.3: "RESET"
+WAIT_KW.3: "WAIT"
+CALL_KW.3: "CALL"
+EXTERN_KW.3: "EXTERN"
+FROM_KW.3: "FROM"
+BEEP_KW.3: "BEEP"
+AMIIBO_KW.3: "AMIIBO"
+
+// Gamepad keywords (must be before IDENT in lexer priority)
+// Direction words (UP/DOWN/LEFT/RIGHT) are only in DIRECTION_KEY, not BUTTON_KEY,
+// to avoid token ambiguity. D-pad presses use the dir_action rule in key_action.
+BUTTON_KEY.2: /LCLICK|RCLICK|CAPTURE|MINUS|HOME|PLUS|ZL|ZR|L|R|A|B|X|Y/i
+STICK_KEY.2: /LS|RS/i
+DIRECTION_KEY.2: /DOWNLEFT|DOWNRIGHT|UPLEFT|UPRIGHT|UP|DOWN|LEFT|RIGHT/i
