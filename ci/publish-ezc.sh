@@ -152,6 +152,11 @@ if [ "$OS" == "linux" ] || [ "$OS" == "osx" ]; then
 else
     echo "跳过 Avalonia 发布（仅支持 Linux 和 macOS 平台）"
 fi
+# 删除调试文件
+if [ -d "$PUBLISH_DIR" ]; then
+    rm -f "$PUBLISH_DIR"/*.pdb 2>/dev/null || true
+    echo "已删除 pdb 调试文件"
+fi
 
 # ========== 复制到 dist 目录 ==========
 
