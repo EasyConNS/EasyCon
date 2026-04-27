@@ -2,7 +2,7 @@
   "name": "vscode-ecs",
   "displayName": "EasyCon for VS Code",
   "description": "EasyCon伊机控vscode插件，纯AI打造",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "easycon",
   "icon": "images/favicon.ico",
   "repository": {
@@ -10,12 +10,18 @@
     "url": "https://github.com/EasyConNS/EasyCon"
   },
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.82.0"
   },
   "categories": [
     "Programming Languages"
   ],
+  "activationEvents": [
+    "onLanguage:easycon-script"
+  ],
   "main": "src/extension.js",
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
   "contributes": {
     "languages": [
       {
@@ -67,6 +73,17 @@
         "key": "f5",
         "when": "resourceExtname == .ecs"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "EasyCon Script",
+      "properties": {
+        "easycon.languageServer.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the ecs-lsp executable. Leave empty to use 'python -m easycon_script_lsp'."
+        }
+      }
+    }
   }
 }
