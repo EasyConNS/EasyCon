@@ -17,12 +17,22 @@ internal sealed class Binder
     private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
 
+    private readonly ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? _lazyFunctionBodies;
+    private readonly DiagnosticBag? _programDiagnostics;
+    private readonly HashSet<FunctionSymbol>? _bindingFunctions;
+
     public DiagnosticBag Diagnostics => _diagnostics;
 
-    private Binder(BoundScope? parent, FunctionSymbol? function)
+    private Binder(BoundScope? parent, FunctionSymbol? function,
+        ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? lazyFunctionBodies = null,
+        DiagnosticBag? programDiagnostics = null,
+        HashSet<FunctionSymbol>? bindingFunctions = null)
     {
         _scope = new BoundScope(parent);
         _function = function;
+        _lazyFunctionBodies = lazyFunctionBodies;
+        _programDiagnostics = programDiagnostics;
+        _bindingFunctions = bindingFunctions;
 
         if (function != null)
         {
@@ -88,7 +98,9 @@ internal sealed class Binder
         }
 
         // --- Phase 2: 主脚本绑定 ---
-        var mainBinder = new Binder(new BoundScope(parentScope), function: null);
+        var bindingFunctions = new HashSet<FunctionSymbol>();
+        var mainBinder = new Binder(new BoundScope(parentScope), function: null,
+            functionBodies, diagnostics, bindingFunctions);
 
         // 将 lib 函数注册到主作用域（使主脚本可以调用 lib 函数）
         foreach (var fn in libUserFunctions)
@@ -123,22 +135,15 @@ internal sealed class Binder
             foreach (var g in firstGlobalPerTree)
                 diagnostics.ReportOnlyOneFileCanHaveGlobalStatements(g!.Location);
 
-        // 第 2 遍：全局语句
+        // 第 2 遍：全局语句（函数体在调用时按需绑定）
         foreach (var member in mainMembers)
         {
             if (member is not FuncDeclBlock and not ExternFuncStmt)
                 mainGlobalStmts.Add(mainBinder.BindStatement(member));
         }
 
-        foreach (var function in mainUserFunctions)
-        {
-            var (body, binderFn) = BindFunctionBody(function, mainBinder._scope);
-            if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(body))
-                binderFn.Diagnostics.ReportAllPathsMustReturn(function.Declaration!.Declare.Location);
-            functionBodies.Add(function, body);
-            ilNames.UnionWith(binderFn._ilNames);
-            diagnostics.AddRange(binderFn.Diagnostics);
-        }
+        // 收集主绑定器中的 image labels（包含懒绑定的函数体中的标签）
+        ilNames.UnionWith(mainBinder._ilNames);
 
         diagnostics.AddRange(libBinder.Diagnostics);
         diagnostics.AddRange(mainBinder.Diagnostics);
@@ -155,14 +160,33 @@ internal sealed class Binder
         return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), externFunctions.ToImmutable(), [.. ilNames]);
     }
 
-    private static (BoundBlockStatement Body, Binder Binder) BindFunctionBody(FunctionSymbol function, BoundScope scope)
+    private static (BoundBlockStatement Body, Binder Binder) BindFunctionBody(
+        FunctionSymbol function, BoundScope scope,
+        ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? lazyFunctionBodies = null,
+        DiagnosticBag? programDiagnostics = null,
+        HashSet<FunctionSymbol>? bindingFunctions = null)
     {
-        var binderFn = new Binder(scope, function);
+        var binderFn = new Binder(scope, function, lazyFunctionBodies, programDiagnostics, bindingFunctions);
         var stmts = ImmutableArray.CreateBuilder<BoundStmt>();
         foreach (var stmt in function.Declaration!.Statements)
             stmts.Add(binderFn.BindStatement(stmt));
         var body = new BoundBlockStatement(function.Declaration!, stmts.ToImmutable());
         return (Lowerer.Lower(function, body), binderFn);
+    }
+
+    private void EnsureFunctionBodyBound(FunctionSymbol function)
+    {
+        if (function.Declaration == null) return;
+        if (_lazyFunctionBodies == null) return;
+        if (_lazyFunctionBodies.ContainsKey(function)) return;
+        if (_bindingFunctions != null && !_bindingFunctions.Add(function)) return;
+
+        var (body, binderFn) = BindFunctionBody(function, _scope, _lazyFunctionBodies, _programDiagnostics, _bindingFunctions);
+        if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(body))
+            binderFn.Diagnostics.ReportAllPathsMustReturn(function.Declaration!.Declare.Location);
+        _lazyFunctionBodies.Add(function, body);
+        _ilNames.UnionWith(binderFn._ilNames);
+        _programDiagnostics?.AddRange(binderFn.Diagnostics);
     }
 
     private static BoundProgram ErrorProgram(DiagnosticBag diagnostics)
@@ -196,6 +220,14 @@ internal sealed class Binder
 
         var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
         var function = new FunctionSymbol(syntax.Declare.Name, [], parameters.ToImmutable(), returnType, syntax);
+
+        // builtin 名称保护：用户函数禁止使用 builtin 名称
+        if (BuiltinFunctions.GetAll().Any(b => b.Name == syntax.Declare.Name.ToUpper()))
+        {
+            _diagnostics.ReportFunctionAlreadyDeclared(syntax.Declare.Location, syntax.Declare.Name);
+            return function;
+        }
+
         if (!_scope.TryDeclareFunction(function))
             _diagnostics.ReportFunctionAlreadyDeclared(syntax.Declare.Location, syntax.Declare.Name);
         return function;
@@ -221,6 +253,14 @@ internal sealed class Binder
 
         var returnType = BindTypeClause(syntax, syntax.ReturnType) ?? ScriptType.Void;
         var function = new FunctionSymbol(syntax.Name, [], parameters.ToImmutable(), returnType, libraryName: syntax.Library);
+
+        // builtin 名称保护
+        if (BuiltinFunctions.GetAll().Any(b => b.Name == syntax.Name.ToUpper()))
+        {
+            _diagnostics.ReportFunctionAlreadyDeclared(syntax.Location, syntax.Name);
+            return function;
+        }
+
         if (!_scope.TryDeclareFunction(function))
             _diagnostics.ReportFunctionAlreadyDeclared(syntax.Location, syntax.Name);
         return function;
@@ -728,36 +768,45 @@ internal sealed class Binder
         {
             name = syntax.FnName.ToUpper();
         }
-        var function = _scope.TryLookupFunc(name);
-        if (function == null)
+
+        var candidates = _scope.TryLookupFuncs(name);
+        if (candidates.IsEmpty)
         {
             _diagnostics.ReportFunctionNotFound(syntax.Location, name);
             return BindErrorStatement(syntax);
         }
 
-        // 传统兼容模式
+        // 传统兼容模式（仅对 builtin 单候选时走旧路径）
         if (SyntaxTree.LegacyCompat && syntax.Args.Length == 1 && syntax.Args[0] is VariableExpr legacyVar)
         {
-            // TIME <变量> 转换为 <变量> = TIME()
-            if (BuiltinFunctions.Timestamp == function)
+            var builtinFunc = candidates.FirstOrDefault(c => BuiltinFunctions.GetAll().Contains(c));
+            if (builtinFunc != null)
             {
-                var timeCallExpr = BindCallExpressionInternal(syntax, function, []);
-                var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
-                return new BoundVariableDeclaration(syntax, variable, timeCallExpr);
-            }
-
-            // RAND <变量> 转换为 <变量> = RAND(<变量>)
-            if (BuiltinFunctions.Rand == function)
-            {
-                var randCallExpr = BindCallExpressionInternal(syntax, function, [legacyVar]);
-                var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
-                return new BoundVariableDeclaration(syntax, variable, randCallExpr);
+                if (BuiltinFunctions.Timestamp == builtinFunc)
+                {
+                    var timeCallExpr = BindCallExpressionInternal(syntax, builtinFunc, []);
+                    var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
+                    return new BoundVariableDeclaration(syntax, variable, timeCallExpr);
+                }
+                if (BuiltinFunctions.Rand == builtinFunc)
+                {
+                    var randCallExpr = BindCallExpressionInternal(syntax, builtinFunc, [legacyVar]);
+                    var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
+                    return new BoundVariableDeclaration(syntax, variable, randCallExpr);
+                }
             }
         }
 
-        // 绑定调用
-        var expr = BindCallExpressionInternal(syntax, function, [.. syntax.Args]);
+        // 绑定实参表达式（重载解析需要知道实参类型）
+        var boundArgs = syntax.Args.Select(BindExpression).ToImmutableArray();
+        var function = ResolveOverload(syntax, name, candidates, boundArgs);
+        if (function == null)
+            return BindErrorStatement(syntax);
 
+        EnsureFunctionBodyBound(function);
+
+        // 用已确定的函数做类型转换
+        var expr = BuildCallWithTypeConversion(syntax, function, boundArgs);
         return new BoundExprStatement(syntax, expr);
     }
 
@@ -1005,10 +1054,19 @@ internal sealed class Binder
             return new BoundErrorExpression(syntax);
         }
 
-        // 3. 泛型绑定与实例化
+        // 3. 用已绑定的实参做泛型推导和类型转换
+        return BuildCallWithTypeConversion(syntax, function, boundArgs);
+    }
+
+    /// <summary>
+    /// 从已绑定的实参出发，做泛型推导和类型转换，生成最终的 BoundCallExpression。
+    /// </summary>
+    private BoundExpr BuildCallWithTypeConversion(AstNode syntax, FunctionSymbol function, ImmutableArray<BoundExpr> boundArgs)
+    {
+        // 泛型绑定与实例化
         var (instParams, instReturn) = BindGenericFunction(syntax, function, boundArgs);
 
-        // 4. 类型转换与最终参数确定
+        // 类型转换与最终参数确定
         var finalArgs = ImmutableArray.CreateBuilder<BoundExpr>();
         for (int i = 0; i < function.Parameters.Length; i++)
         {
@@ -1028,16 +1086,136 @@ internal sealed class Binder
         return new BoundCallExpression(syntax, function, finalArgs.ToImmutable(), instReturn);
     }
 
+    /// <summary>
+    /// 重载解析：从同名候选函数中选出与实参类型最匹配的一个。
+    /// </summary>
+    private FunctionSymbol? ResolveOverload(AstNode syntax, string name, ImmutableArray<FunctionSymbol> candidates, ImmutableArray<BoundExpr> boundArgs)
+    {
+        // 单候选：仍需检查参数数量
+        if (candidates.Length == 1)
+        {
+            var c = candidates[0];
+            if (!MatchesArgCount(c, boundArgs.Length))
+            {
+                _diagnostics.ReportFunctionArgumentCountMismatch(syntax.Syntax.Location, c);
+                return null;
+            }
+            return c;
+        }
+
+        FunctionSymbol? best = null;
+        int bestScore = -1;
+        bool ambiguous = false;
+
+        foreach (var candidate in candidates)
+        {
+            int minArgs = candidate.Parameters.Count(p => !p.HasDefaultValue);
+            int maxArgs = candidate.Parameters.Length;
+
+            // 参数数量筛选
+            if (boundArgs.Length < minArgs || boundArgs.Length > maxArgs)
+                continue;
+
+            // 逐参数打分
+            int score = 0;
+            bool eliminated = false;
+            for (int i = 0; i < boundArgs.Length && i < candidate.Parameters.Length; i++)
+            {
+                var paramType = candidate.Parameters[i].Type;
+                var argType = boundArgs[i].Type;
+
+                if (paramType is TypeParameter || ContainsTypeParameter(paramType))
+                {
+                    // 泛型参数可匹配任何类型
+                    score += 1;
+                }
+                else if (paramType.IsAssignableFrom(argType))
+                {
+                    // 精确类型匹配
+                    score += 2;
+                }
+                else if (argType != ScriptType.String && paramType == ScriptType.String)
+                {
+                    // 隐式转换到 string
+                    score += 0;
+                }
+                else
+                {
+                    eliminated = true;
+                    break;
+                }
+            }
+
+            if (eliminated) continue;
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                best = candidate;
+                ambiguous = false;
+            }
+            else if (score == bestScore)
+            {
+                ambiguous = true;
+            }
+        }
+
+        if (best == null)
+        {
+            _diagnostics.ReportNoMatchingOverload(syntax.Syntax.Location, name,
+                [.. boundArgs.Select(a => a.Type)]);
+            return null;
+        }
+
+        if (ambiguous)
+        {
+            _diagnostics.ReportAmbiguousCall(syntax.Syntax.Location, name,
+                [.. candidates.Where(c => MatchesArgCount(c, boundArgs.Length))]);
+            return null;
+        }
+
+        return best;
+    }
+
+    private static bool ContainsTypeParameter(ScriptType type)
+    {
+        if (type is TypeParameter) return true;
+        if (type is GenericType gt)
+            return gt.TypeArguments.Any(ContainsTypeParameter);
+        return false;
+    }
+
+    private static bool MatchesArgCount(FunctionSymbol fn, int argCount)
+    {
+        int minArgs = fn.Parameters.Count(p => !p.HasDefaultValue);
+        int maxArgs = fn.Parameters.Length;
+        return argCount >= minArgs && argCount <= maxArgs;
+    }
+
     private BoundExpr BindCallExpression(Callv1Expression syntax)
     {
-        var function = _scope.TryLookupFunc(syntax.Identifier.Value);
-        if (function == null)
+        var candidates = _scope.TryLookupFuncs(syntax.Identifier.Value);
+        if (candidates.IsEmpty)
         {
             _diagnostics.ReportFunctionNotFound(syntax.Identifier.Location, syntax.Identifier.Value);
             return new BoundErrorExpression(syntax);
         }
 
-        return BindCallExpressionInternal(syntax, function, syntax.Arguments);
+        if (candidates.Length == 1)
+        {
+            EnsureFunctionBodyBound(candidates[0]);
+            return BindCallExpressionInternal(syntax, candidates[0], syntax.Arguments);
+        }
+
+        // 多候选：先绑实参，再做重载解析
+        var boundArgs = syntax.Arguments.Select(BindExpression).ToImmutableArray();
+        var function = ResolveOverload(syntax, syntax.Identifier.Value, candidates, boundArgs);
+        if (function == null)
+            return new BoundErrorExpression(syntax);
+
+        EnsureFunctionBodyBound(function);
+
+        return BuildCallWithTypeConversion(syntax, function, boundArgs);
     }
 
 }

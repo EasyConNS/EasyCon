@@ -299,6 +299,12 @@ public abstract class ScriptType : IEquatable<ScriptType>
     public override string ToString() => Name;
     public abstract bool IsAssignableFrom(ScriptType other);
 
+    /// <summary>
+    /// 判断两个类型是否在签名层面存在重叠（用于重载冲突检测）。
+    /// TypeParameter 视为可匹配任何类型。
+    /// </summary>
+    public virtual bool TypeOverlaps(ScriptType other) => false;
+
     public abstract override int GetHashCode();
 
     public abstract bool Equals(ScriptType? other);
@@ -327,6 +333,12 @@ public sealed class ScalarType(string name) : ScriptType
 {
     public override string Name => name;
     public override bool IsAssignableFrom(ScriptType other) => other is ScalarType s && s.Name == this.Name;
+    public override bool TypeOverlaps(ScriptType other) => other switch
+    {
+        TypeParameter => true,
+        ScalarType s => s.Name == Name,
+        _ => false
+    };
     public override bool Equals(ScriptType? other) => other is ScalarType s && s.Name == this.Name;
     public override int GetHashCode() => Name.GetHashCode();
 }
@@ -335,6 +347,7 @@ public sealed class VoidType : ScriptType
 {
     public override string Name => "void";
     public override bool IsAssignableFrom(ScriptType other) => other is VoidType;
+    public override bool TypeOverlaps(ScriptType other) => other is VoidType;
     public override bool Equals(ScriptType? other) => other is VoidType;
     public override int GetHashCode() => 0;
 }
@@ -345,6 +358,7 @@ public sealed class TypeParameter(string name) : ScriptType
 {
     public override string Name => name;
     public override bool IsAssignableFrom(ScriptType other) => Equals(other);
+    public override bool TypeOverlaps(ScriptType other) => true;
     public override bool Equals(ScriptType? other) => other is TypeParameter tp && tp.Name == Name;
     public override int GetHashCode() => Name.GetHashCode();
 }
@@ -382,6 +396,15 @@ public sealed class GenericType(GenericDefinition definition, IEnumerable<Script
         if (other is not GenericType g) return false;
         return Definition.Name == g.Definition.Name && TypeArguments.SequenceEqual(g.TypeArguments);
     }
+
+    public override bool TypeOverlaps(ScriptType other) => other switch
+    {
+        TypeParameter => true,
+        GenericType g when g.Definition.Name != Definition.Name => false,
+        GenericType g => TypeArguments.Length == g.TypeArguments.Length
+            && TypeArguments.Zip(g.TypeArguments).All(pair => pair.First.TypeOverlaps(pair.Second)),
+        _ => false
+    };
 
     public override bool Equals(ScriptType? other) =>
         other is GenericType g && Definition.Name == g.Definition.Name && TypeArguments.SequenceEqual(g.TypeArguments);

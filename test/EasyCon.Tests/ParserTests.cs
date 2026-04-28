@@ -869,6 +869,73 @@ ENDFUNC");
 
     #endregion
 
+    #region 函数重载测试
+
+    [Test]
+    public void Overload_DifferentParamTypes_ShouldSucceed()
+    {
+        // 同名函数，参数类型不同 → 允许
+        ExpectBindSuccess(@"
+FUNC test($x:int):void
+    PRINT $x
+ENDFUNC
+
+FUNC test($s:string):void
+    PRINT $s
+ENDFUNC
+
+test 42
+test ""hello""
+");
+    }
+
+    [Test]
+    public void Overload_SameSignature_ShouldError()
+    {
+        // 同名同签名 → 报重复错误
+        ExpectBindError(@"
+FUNC foo($x:int):void
+    PRINT $x
+ENDFUNC
+
+FUNC foo($y:int):void
+    PRINT $y
+ENDFUNC
+", "重复定义的函数");
+    }
+
+    [Test]
+    public void Overload_DifferentParamCount_ShouldSucceed()
+    {
+        // 同名函数，参数数量不同 → 允许
+        ExpectBindSuccess(@"
+FUNC bar($x:int):void
+    PRINT $x
+ENDFUNC
+
+FUNC bar($x:int, $y:int):void
+    $r = $x + $y
+    PRINT $r
+ENDFUNC
+
+bar 42
+bar 1, 2
+");
+    }
+
+    [Test]
+    public void Overload_BuiltinName_ShouldError()
+    {
+        // 用户函数禁止使用 builtin 名称
+        ExpectBindError(@"
+FUNC WAIT($n:int):void
+    PRINT $n
+ENDFUNC
+", "重复定义的函数");
+    }
+
+    #endregion
+
     [Test]
     public void Complex_AmiiboSwitch()
     {

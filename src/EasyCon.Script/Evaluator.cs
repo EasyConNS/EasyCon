@@ -87,7 +87,11 @@ internal sealed class Evaluator : IEvalContext, IDisposable
             var externFuncs = _nativeLoader.LoadExternFunctions(_program.ExternFunctions);
             foreach (var ff in externFuncs)
             {
-                var symbol = _program.ExternFunctions.First(s => s.Name == ff.Name);
+                // 按名称和参数签名精确匹配（支持同名重载的 EXTERN 函数）
+                var symbol = _program.ExternFunctions.First(s =>
+                    s.Name == ff.Name &&
+                    s.Parameters.Length == ff.Parameters.Length &&
+                    s.Parameters.Select(p => p.Type.Name).SequenceEqual(ff.Parameters.Select(p => p.Type.Name)));
                 var capturedInvoke = ff.Invoke;
                 _callables[symbol] = new DelegateCallable((args, ctx, tk) => capturedInvoke(args));
             }

@@ -215,4 +215,17 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     {
         ReportError(location, $"重复定义的函数: {functionName}");
     }
+
+    public void ReportAmbiguousCall(TextLocation location, string functionName, FunctionSymbol[] candidates)
+    {
+        var sigs = string.Join(", ", candidates.Select(c =>
+            $"{c.Name}({string.Join(", ", c.Parameters.Select(p => p.Type.Name))})"));
+        ReportError(location, $"函数调用 '{functionName}' 存在歧义，匹配的重载: {sigs}");
+    }
+
+    public void ReportNoMatchingOverload(TextLocation location, string functionName, ScriptType[] argTypes)
+    {
+        var args = string.Join(", ", argTypes.Select(t => t.Name));
+        ReportError(location, $"找不到匹配的函数 '{functionName}'，参数类型: ({args})");
+    }
 }

@@ -138,6 +138,7 @@ CALL greet");
     #region EXTERN 解析测试
 
     [Test]
+    [Platform("Win")]
     public void Extern_Parse_SimpleDecl()
     {
         var code = @"EXTERN FUNC Sleep($ms:INT):VOID FROM ""kernel32.dll""";
@@ -146,6 +147,7 @@ CALL greet");
     }
 
     [Test]
+    [Platform("Win")]
     public void Extern_Parse_MultipleParams()
     {
         var code = @"EXTERN FUNC MessageBoxW($hwnd:PTR, $text:STRING, $caption:STRING, $flags:INT):INT FROM ""user32.dll""";
@@ -154,6 +156,7 @@ CALL greet");
     }
 
     [Test]
+    [Platform("Win")]
     public void Extern_Parse_NoParams()
     {
         var code = @"EXTERN FUNC GetForegroundWindow():PTR FROM ""user32.dll""";
@@ -162,6 +165,7 @@ CALL greet");
     }
 
     [Test]
+    [Platform("Win")]
     public void Extern_Parse_DoubleType()
     {
         var code = @"EXTERN FUNC sqrt($x:DOUBLE):DOUBLE FROM ""msvcrt.dll""";
@@ -170,6 +174,7 @@ CALL greet");
     }
 
     [Test]
+    [Platform("Win")]
     public void Extern_Parse_DuplicateName_Error()
     {
         var code = @"

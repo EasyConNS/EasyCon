@@ -55,4 +55,20 @@ sealed class FunctionSymbol(
     /// </summary>
     public static FunctionSymbol CreateNormal(string name, IEnumerable<ParamSymbol> parameters, ScriptType returnType)
         => new(name, [], parameters, returnType);
+
+    /// <summary>
+    /// 判断两个函数签名是否冲突（参数数量相同且每个位置的类型重叠）。
+    /// 泛型参数（TypeParameter）可匹配任何类型。
+    /// </summary>
+    public bool IsSignatureConflict(FunctionSymbol other)
+    {
+        if (Parameters.Length != other.Parameters.Length)
+            return false;
+        for (int i = 0; i < Parameters.Length; i++)
+        {
+            if (!Parameters[i].Type.TypeOverlaps(other.Parameters[i].Type))
+                return false;
+        }
+        return true;
+    }
 }
