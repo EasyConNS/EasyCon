@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.AvaloniaEdit" />
+    <PackageReference Include="OmniSharp.Extensions.LanguageClient" />
   </ItemGroup>
 
   <ItemGroup>

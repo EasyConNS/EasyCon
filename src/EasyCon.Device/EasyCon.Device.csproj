@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <LangVersion>13.0</LangVersion>
+    <Description>可编程模拟手柄控制器协议</Description>
   </PropertyGroup>
 
   <ItemGroup>
