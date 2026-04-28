@@ -53,8 +53,8 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     public static implicit operator Value(int v) => FromInt(v);
     public static implicit operator Value(bool v) => FromBool(v);
     public static implicit operator Value(string v) => FromString(v);
-    public static implicit operator Value(double v) => new(v, ScriptType.Double);
-    public static implicit operator Value(long v) => new(v, ScriptType.Ptr);
+    public static implicit operator Value(double v) => FromDouble(v);
+    public static implicit operator Value(long v) => FromPtr(v);
     public static Value FromInt(int v) => new(v, ScriptType.Int);
     public static Value FromBool(bool v) => new(v, ScriptType.Bool);
     public static Value FromString(string v) => new(v, ScriptType.String);
@@ -78,10 +78,13 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     }
 
     public int AsInt() => Type.Equals(ScriptType.Int) ? (int)_value! : throw new InvalidCastException();
+    public int ToInt() => Type.Equals(ScriptType.Bool) ? AsBool()? 1 : 0 : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <int>");
+
     public bool AsBool() => Type.Equals(ScriptType.Bool) ? (bool)_value! : throw new InvalidCastException();
     public string AsString() => Type.Equals(ScriptType.String) ? (string)_value! : throw new InvalidCastException();
     public ImmutableList<Value> AsArray() => Type is GenericType { Definition.Name: "Array" } ? (ImmutableList<Value>)_value! : throw new InvalidCastException();
     public double AsDouble() => Type.Equals(ScriptType.Double) ? (double)_value! : throw new InvalidCastException();
+    public double ToDouble() => Type.Equals(ScriptType.Int) ? (double)(int)_value! : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <double>");
     public long AsPtr() => Type.Equals(ScriptType.Ptr) ? (long)_value! : throw new InvalidCastException();
 
     #endregion
@@ -172,7 +175,7 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
         GenericType { Definition.Name: "Array" } => $"[{string.Join(", ", AsArray())}]",
         _ => _value switch
         {
-            double d => d.ToString("0.##"),
+            double d => d.ToString("0.###"),
             bool b => b ? "true" : "false",
             long l => $"0x{l:X}",
             _ => _value?.ToString() ?? "void"

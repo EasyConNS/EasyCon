@@ -185,6 +185,45 @@ EXTERN FUNC foo($y:INT):INT FROM ""b.dll""
         Assert.That(result.Diagnostics.HasErrors(), Is.True);
     }
 
+    [Test]
+    [Platform("Win")]
+    public void Extern_Parse_AsClause()
+    {
+        var code = @"EXTERN FUNC mysqrt($x:DOUBLE):DOUBLE AS ""sqrt"" FROM ""msvcrt.dll""";
+        var (result, _) = Eval(code);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
+    }
+
+    [Test]
+    [Platform("Win")]
+    public void Extern_Parse_AsClause_NoParams()
+    {
+        var code = @"EXTERN FUNC randval():INT AS ""rand"" FROM ""msvcrt.dll""";
+        var (result, _) = Eval(code);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
+    }
+
+    [Test]
+    [Platform("Win")]
+    public void Extern_Parse_AsClause_DifferentNameSameExport_ShouldSucceed()
+    {
+        var code = @"
+EXTERN FUNC sqrt1($x:DOUBLE):DOUBLE AS ""sqrt"" FROM ""msvcrt.dll""
+EXTERN FUNC sqrt2($x:DOUBLE):DOUBLE AS ""sqrt"" FROM ""msvcrt.dll""
+";
+        var (result, _) = Eval(code);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
+    }
+
+    [Test]
+    [Platform("Win")]
+    public void Extern_Parse_WithoutAsClause_StillValid()
+    {
+        var code = @"EXTERN FUNC sqrt($x:DOUBLE):DOUBLE FROM ""msvcrt.dll""";
+        var (result, _) = Eval(code);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
+    }
+
     #endregion
 
     #region 类型间操作测试

@@ -252,7 +252,7 @@ internal sealed class Binder
         }
 
         var returnType = BindTypeClause(syntax, syntax.ReturnType) ?? ScriptType.Void;
-        var function = new FunctionSymbol(syntax.Name, [], parameters.ToImmutable(), returnType, libraryName: syntax.Library);
+        var function = new FunctionSymbol(syntax.Name, [], parameters.ToImmutable(), returnType, libraryName: syntax.Library, externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
 
         // builtin 名称保护
         if (BuiltinFunctions.GetAll().Any(b => b.Name == syntax.Name.ToUpper()))
@@ -643,7 +643,7 @@ internal sealed class Binder
                 else
                 {
                     // 关键修改：检查返回值是否与函数定义的返回类型兼容
-                    expression = BindConversion(expression, _function.ReturnType, "返回值类型不匹配");
+                    expression = BindConversion(expression, _function.ReturnType);
                 }
             }
         }
@@ -977,10 +977,11 @@ internal sealed class Binder
         return new BoundSliceExpression(syntax, baseExpr, startExpr, endExpr, resultType);
     }
 
-    private BoundExpr BindConversion(BoundExpr expr, ScriptType type, string msg = "表达式类型不匹配")
+    private BoundExpr BindConversion(BoundExpr expr, ScriptType type)
     {
         if (type.IsAssignableFrom(expr.Type)) return expr;
         if (type == ScriptType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
+        if (type == ScriptType.Double && expr.Type.Equals(ScriptType.Int)) return new BoundConversionExpression(expr.Syntax, type, expr);
         _diagnostics.ReportCannotConvert(expr.Syntax.Syntax.Location, expr.Type, type);
         return new BoundErrorExpression(expr.Syntax);
     }

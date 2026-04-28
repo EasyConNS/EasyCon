@@ -475,6 +475,15 @@ internal partial class Parser
         // Return type (required)
         var returnType = ParseTypeClause();
 
+        // Optional: AS "export_name"
+        Token? asToken = null;
+        Token? exportName = null;
+        if (Current.Type == TokenType.AS)
+        {
+            asToken = Advance();
+            exportName = Match(TokenType.STRING, "AS 后需要导出函数名字符串");
+        }
+
         // FROM keyword
         var fromToken = Match(TokenType.FROM, "EXTERN FUNC 声明需要 FROM 关键字");
 
@@ -482,7 +491,7 @@ internal partial class Parser
         var libraryPath = Match(TokenType.STRING, "FROM 后需要库路径字符串");
 
         MatchEOF();
-        return new ExternFuncStmt(externToken, functionName, parameters, returnType, fromToken, libraryPath);
+        return new ExternFuncStmt(externToken, functionName, parameters, returnType, fromToken, libraryPath, asToken, exportName);
     }
 
     #endregion

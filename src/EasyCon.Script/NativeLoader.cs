@@ -47,11 +47,11 @@ internal sealed class NativeLoader : IDisposable
                 IntPtr funcPtr;
                 try
                 {
-                    funcPtr = NativeLibrary.GetExport(handle, symbol.Name);
+                    funcPtr = NativeLibrary.GetExport(handle, symbol.ExternalName);
                 }
                 catch (Exception ex)
                 {
-                    throw new ScriptException($"在 \"{libName}\" 中未找到导出函数 \"{symbol.Name}\": {ex.Message}", 0);
+                    throw new ScriptException($"在 \"{libName}\" 中未找到导出函数 \"{symbol.ExternalName}\": {ex.Message}", 0);
                 }
 
                 result.Add(CreateThunk(symbol, funcPtr));

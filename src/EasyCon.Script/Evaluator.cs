@@ -279,7 +279,9 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         if (node.Type == ScriptType.Bool)
             return value.ToBoolean();
         else if (node.Type == ScriptType.Int)
-            return Convert.ToInt32(value);
+            return value.ToInt();
+        else if (node.Type == ScriptType.Double)
+            return value.ToDouble();
         else if (node.Type == ScriptType.String)
             return value.ToString();
         else
