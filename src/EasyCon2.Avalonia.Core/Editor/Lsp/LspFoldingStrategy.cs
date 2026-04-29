@@ -23,7 +23,7 @@ public class LspFoldingStrategy
         if (!_lspService.IsConnected || _lspService.DocumentManager.DocumentUri == null)
             return [];
 
-        var result = await _lspService.RequestDocumentSymbol(new DocumentSymbolParams
+        var result = await _lspService.RequestDocumentSymbolAsync(new DocumentSymbolParams
         {
             TextDocument = new TextDocumentIdentifier
             {

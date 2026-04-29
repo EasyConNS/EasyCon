@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using OmniSharp.Extensions.LanguageServer.Client;
 using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Client;
@@ -6,6 +5,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.General;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using System.Diagnostics;
 using ServerCapabilities = OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities.ServerCapabilities;
 
 namespace EasyCon2.Avalonia.Core.Editor.Lsp;
@@ -39,16 +39,16 @@ public class LspClientService : IDisposable
     public async Task InitializeAsync(string filePath)
     {
         _filePath = filePath;
-        await TryConnect();
+        await TryConnectAsync();
     }
 
-    private async Task TryConnect()
+    private async Task TryConnectAsync()
     {
         lock (_lock) { if (_disposed) return; }
 
         try
         {
-            await StartAndInitialize();
+            await StartAndInitializeAsync();
             Connected?.Invoke();
         }
         catch (Exception ex)
@@ -59,7 +59,7 @@ public class LspClientService : IDisposable
         }
     }
 
-    private async Task StartAndInitialize()
+    private async Task StartAndInitializeAsync()
     {
         _process = new Process
         {
@@ -151,7 +151,7 @@ public class LspClientService : IDisposable
         Debug.WriteLine("[LSP] Process exited unexpectedly");
     }
 
-    public async Task<IEnumerable<CompletionItem>?> RequestCompletion(CompletionParams parameters)
+    public async Task<IEnumerable<CompletionItem>?> RequestCompletionAsync(CompletionParams parameters)
     {
         ILanguageClient? client;
         lock (_lock) client = _isInitialized ? _client : null;
@@ -161,7 +161,7 @@ public class LspClientService : IDisposable
         catch (Exception ex) { Debug.WriteLine($"[LSP] Completion failed: {ex.Message}"); return null; }
     }
 
-    public async Task<Hover?> RequestHover(HoverParams parameters)
+    public async Task<Hover?> RequestHoverAsync(HoverParams parameters)
     {
         ILanguageClient? client;
         lock (_lock) client = _isInitialized ? _client : null;
@@ -171,7 +171,7 @@ public class LspClientService : IDisposable
         catch (Exception ex) { Debug.WriteLine($"[LSP] Hover failed: {ex.Message}"); return null; }
     }
 
-    public async Task<LocationOrLocationLinks?> RequestDefinition(DefinitionParams parameters)
+    public async Task<LocationOrLocationLinks?> RequestDefinitionAsync(DefinitionParams parameters)
     {
         ILanguageClient? client;
         lock (_lock) client = _isInitialized ? _client : null;
@@ -181,7 +181,7 @@ public class LspClientService : IDisposable
         catch (Exception ex) { Debug.WriteLine($"[LSP] Definition failed: {ex.Message}"); return null; }
     }
 
-    public async Task<IEnumerable<SymbolInformationOrDocumentSymbol>?> RequestDocumentSymbol(
+    public async Task<IEnumerable<SymbolInformationOrDocumentSymbol>?> RequestDocumentSymbolAsync(
         DocumentSymbolParams parameters)
     {
         ILanguageClient? client;
@@ -192,7 +192,7 @@ public class LspClientService : IDisposable
         catch (Exception ex) { Debug.WriteLine($"[LSP] DocumentSymbol failed: {ex.Message}"); return null; }
     }
 
-    public async Task<SemanticTokens?> RequestSemanticTokens(SemanticTokensParams parameters)
+    public async Task<SemanticTokens?> RequestSemanticTokensAsync(SemanticTokensParams parameters)
     {
         ILanguageClient? client;
         lock (_lock) client = _isInitialized ? _client : null;

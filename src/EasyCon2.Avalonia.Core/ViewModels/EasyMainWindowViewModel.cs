@@ -381,7 +381,7 @@ public partial class EasyMainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task Compile()
+    private async Task CompileAsync()
     {
         if (await _scriptService.Compile(_fileService.GetText(), _fileService.CurrentFileName))
         {
@@ -394,7 +394,7 @@ public partial class EasyMainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task ScriptRun()
+    private async Task ScriptRunAsync()
     {
         if (!IsRunning)
             _scriptService.Run();
@@ -419,7 +419,7 @@ public partial class EasyMainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task Flash()
+    private async Task FlashAsync()
     {
         if (!_deviceService.IsConnected) return;
         if (_deviceService.GetVersion() < 0x45)
@@ -433,7 +433,7 @@ public partial class EasyMainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task FlashClear()
+    private async Task FlashClearAsync()
     {
         if (!_deviceService.IsConnected)
         {
@@ -444,7 +444,7 @@ public partial class EasyMainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task GenerateFirmware()
+    private async Task GenerateFirmwareAsync()
     {
         await _firmwareService.GenerateFirmware(SelectedBoardIndex, _fileService.GetText(), _fileService.CurrentFileName);
     }
@@ -555,7 +555,7 @@ public partial class EasyMainWindowViewModel : ObservableObject
     private void ClearLog() => _logService.Clear();
 
     [RelayCommand]
-    private async Task CheckUpdate()
+    private async Task CheckUpdateAsync()
     {
         var msg = await _configService.CheckForUpdate();
         if (msg != null) _dialogService.ShowMessage(msg, "检查更新");

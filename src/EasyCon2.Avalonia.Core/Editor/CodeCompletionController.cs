@@ -31,7 +31,7 @@ internal class CodeCompletionController : IDisposable
         _editor.LostFocus += (_, _) => CloseCompletionWindow();
     }
 
-    private async void OnTextEntered(object sender, TextInputEventArgs e)
+    private async Task OnTextEntered(object sender, TextInputEventArgs e)
     {
         if (!_enableAutoCompletion || string.IsNullOrEmpty(e.Text)) return;
 
@@ -40,7 +40,7 @@ internal class CodeCompletionController : IDisposable
             _editor.TextArea.Document.GetText(line.Offset, line.Length),
             _editor.TextArea.Caret.Column))
         {
-            await ShowCompletionWindow();
+            await ShowCompletionWindowAsync();
         }
     }
 
@@ -55,7 +55,7 @@ internal class CodeCompletionController : IDisposable
         if (e.Key == Key.Space && e.KeyModifiers.HasFlag(KeyModifiers.Control))
         {
             e.Handled = true;
-            _ = ShowCompletionWindow();
+            _ = ShowCompletionWindowAsync();
         }
         else if (e.Key == Key.Escape && _completionWindow != null)
         {
@@ -64,7 +64,7 @@ internal class CodeCompletionController : IDisposable
         }
     }
 
-    private async Task ShowCompletionWindow()
+    private async Task ShowCompletionWindowAsync()
     {
         CloseCompletionWindow();
 
@@ -75,7 +75,7 @@ internal class CodeCompletionController : IDisposable
                 _editor.TextArea.Caret.Offset
             );
 
-            var completions = await _completionProvider.GetCompletions(
+            var completions = await _completionProvider.GetCompletionsAsync(
                 _editor.Document,
                 _editor.TextArea.Caret.Offset,
                 currentWord);

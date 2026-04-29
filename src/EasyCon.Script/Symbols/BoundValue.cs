@@ -78,7 +78,7 @@ public readonly struct Value : IEquatable<Value>, IComparable<Value>
     }
 
     public int AsInt() => Type.Equals(ScriptType.Int) ? (int)_value! : throw new InvalidCastException();
-    public int ToInt() => Type.Equals(ScriptType.Bool) ? AsBool()? 1 : 0 : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <int>");
+    public int ToInt() => Type.Equals(ScriptType.Bool) ? AsBool() ? 1 : 0 : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <int>");
 
     public bool AsBool() => Type.Equals(ScriptType.Bool) ? (bool)_value! : throw new InvalidCastException();
     public string AsString() => Type.Equals(ScriptType.String) ? (string)_value! : throw new InvalidCastException();

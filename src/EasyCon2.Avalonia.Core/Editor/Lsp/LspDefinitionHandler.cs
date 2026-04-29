@@ -30,7 +30,7 @@ public class LspDefinitionHandler : IDisposable
             _editor.Cursor = null;
     }
 
-    private async void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private async Task OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) || !_lspService.IsConnected ||
             _lspService.DocumentManager.DocumentUri == null)
@@ -43,7 +43,7 @@ public class LspDefinitionHandler : IDisposable
         int line = pos.Value.Line;
         int col = pos.Value.Column;
 
-        var result = await _lspService.RequestDefinition(new DefinitionParams
+        var result = await _lspService.RequestDefinitionAsync(new DefinitionParams
         {
             TextDocument = new TextDocumentIdentifier
             {

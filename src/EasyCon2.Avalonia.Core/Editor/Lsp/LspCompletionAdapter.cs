@@ -1,6 +1,6 @@
 using AvaloniaEdit.CodeCompletion;
-using AvTextDocument = AvaloniaEdit.Document.TextDocument;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using AvTextDocument = AvaloniaEdit.Document.TextDocument;
 
 namespace EasyCon2.Avalonia.Core.Editor.Lsp;
 
@@ -13,7 +13,7 @@ internal class LspCompletionAdapter : ICompletionProvider
         _lspService = lspService;
     }
 
-    public async Task<IEnumerable<ICompletionData>> GetCompletions(
+    public async Task<IEnumerable<ICompletionData>> GetCompletionsAsync(
         AvaloniaEdit.Document.ITextSource textSource, int offset, string cur)
     {
         if (!_lspService.IsConnected || _lspService.DocumentManager.DocumentUri == null)
@@ -29,7 +29,7 @@ internal class LspCompletionAdapter : ICompletionProvider
             Context = new CompletionContext { TriggerKind = CompletionTriggerKind.Invoked }
         };
 
-        var result = await _lspService.RequestCompletion(parameters);
+        var result = await _lspService.RequestCompletionAsync(parameters);
         if (result == null) return [];
 
         return result.Select(item => new LspCompletionData(item));

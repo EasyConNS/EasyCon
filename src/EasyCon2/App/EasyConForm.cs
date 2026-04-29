@@ -292,7 +292,7 @@ namespace EasyCon2.App
 
         #region IOutputAdapter / IControllerAdapter
 
-        public async void Print(string message, bool newline = true) =>
+        public async Task Print(string message, bool newline = true) =>
             logTxtBox.Print(message, newline);
 
         public void Alert(string message)
@@ -398,7 +398,7 @@ namespace EasyCon2.App
             }
         }
 
-        private async void buttonSerialPortSearch_Click(object sender, EventArgs e)
+        private async Task buttonSerialPortSearch_Click(object sender, EventArgs e)
         {
             EnableConnBtn(false);
             var (success, connectedPort) = await _deviceService.AutoConnectAsync();
@@ -418,7 +418,7 @@ namespace EasyCon2.App
             EnableConnBtn();
         }
 
-        private async void buttonSerialPortConnect_Click(object sender, EventArgs e)
+        private async Task buttonSerialPortConnect_Click(object sender, EventArgs e)
         {
             EnableConnBtn(false);
             var success = await _deviceService.ManualConnectAsync(ComPort.Text);
@@ -842,7 +842,7 @@ namespace EasyCon2.App
             runStopBtn.Enabled = true;
         }
 
-        private async void buttonGenerateFirmware_Click(object sender, EventArgs e)
+        private async Task buttonGenerateFirmware_Click(object sender, EventArgs e)
         {
             genFwButton.Enabled = false;
             GenerateFirmware(GetSelectedBoard());

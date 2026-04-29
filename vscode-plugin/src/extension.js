@@ -45,10 +45,9 @@ let lspClient = null;
 
 function getBundledServerPath(context) {
     const platform = process.platform;
-    const binaryName = platform === 'win32' ? 'ecs-lsp.exe' : 'ecs-lsp';
-    const bundled = path.join(context.extensionPath, 'bin', binaryName);
-    if (fs.existsSync(bundled)) {
-        return bundled;
+    const binaryName = getEzconPath();
+    if (fs.existsSync(binaryName)) {
+        return binaryName;
     }
     return undefined;
 }
@@ -64,15 +63,17 @@ function startLspClient(context) {
             command: customPath,
             transport: TransportKind.stdio,
         };
-    } else {
-        const bundled = getBundledServerPath(context);
-        if (bundled) {
+    } else { 
+        const binaryName = getEzconPath();
+        if (fs.existsSync(binaryName)) {
             serverOptions = {
-                command: bundled,
+                command: binaryName,
+                args: ['lsp'],
                 transport: TransportKind.stdio,
             };
-        } else {
-            outputChannel.appendLine('[EasyCon] 未找到语言服务器，语言智能功能将不可用。请将 ECS LSP 二进制文件放入 bin/ 目录或通过 easycon.languageServer.path 配置指定路径。');
+        }
+        else {
+            outputChannel.appendLine('[EasyCon] 未找到语言服务器，语言智能功能将不可用。');
             vscode.window.showWarningMessage('EasyCon 语言服务器未找到，语言智能功能将不可用');
             return;
         }
@@ -327,11 +328,11 @@ function updateImgLabelStatusBarAll() {
 // --------------------------------------------------------------------------- //
 
 function getEzconPath() {
+    const suffix = process.platform === 'win32' ? '.exe' : '';
+    const binary = 'ezcon' + suffix;
     const ezconRoot = process.env.EASYCON_ROOT;
     if (ezconRoot) {
-        return process.platform === 'win32'
-            ? `${ezconRoot}/ezcon.exe`
-            : `${ezconRoot}/ezcon`;
+        return path.join(ezconRoot, binary);
     }
     return 'ezcon';
 }
