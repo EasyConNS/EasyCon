@@ -1,3 +1,4 @@
+using EasyCon.Script.Runtime;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -22,6 +23,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     private const byte TAG_DOUBLE = 4;
     private const byte TAG_PTR = 5;
     private const byte TAG_ARRAY = 6;
+    private const byte TAG_STRUCT = 7;
 
     [FieldOffset(0)] private readonly byte _tag;
     [FieldOffset(4)] private int _intVal;                // ┐ 也用于 bool (0/1)
@@ -55,6 +57,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         TAG_DOUBLE => ScriptType.Double,
         TAG_PTR => ScriptType.Ptr,
         TAG_ARRAY => ArrayDef.Bind(_arrayElemType!),
+        TAG_STRUCT => new StructType((EcsStructDef)_refVal!),
         _ => ScriptType.Void
     };
 
@@ -76,6 +79,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
                 list.FirstOrDefault().Type ?? ScriptType.Int,
                 list
             ),
+            EcsStruct es => FromStruct(es),
             _ => throw new ArgumentException($"无法将类型 {o.GetType()} 转换为脚本 Value")
         };
     }
@@ -105,6 +109,19 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     }
 
     public static Value Void => new(TAG_VOID, 0, null, null);
+
+    public static Value FromStruct(EcsStruct v) => new(TAG_STRUCT, 0, v, null);
+    public EcsStruct AsStruct() => _tag == TAG_STRUCT ? (EcsStruct)_refVal! : throw new InvalidCastException();
+    internal bool TryGetStructPtr(out IntPtr ptr)
+    {
+        if (_tag == TAG_STRUCT && _refVal is EcsStruct s)
+        {
+            ptr = s.NativePtr;
+            return true;
+        }
+        ptr = default;
+        return false;
+    }
 
     /// <summary>
     /// 创建强类型数组
@@ -192,6 +209,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
             TAG_DOUBLE => _doubleVal == other._doubleVal,
             TAG_PTR => _longVal == other._longVal,
             TAG_ARRAY => ((ImmutableList<Value>)_refVal!).SequenceEqual((ImmutableList<Value>)other._refVal!),
+            TAG_STRUCT => ReferenceEquals(_refVal, other._refVal),
             _ => false
         };
     }
@@ -228,6 +246,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         TAG_PTR => $"0x{_longVal:X}",
         TAG_STRING => (string)_refVal!,
         TAG_INT => _intVal.ToString(),
+        TAG_STRUCT => $"struct:{((EcsStruct)_refVal!).Definition.Name}",
         _ => "void"
     };
 
@@ -275,6 +294,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         TAG_ARRAY => ((ImmutableList<Value>)_refVal!).Count > 0,
         TAG_DOUBLE => _doubleVal != 0.0,
         TAG_PTR => _longVal != 0,
+        TAG_STRUCT => _refVal != null,
         _ => false
     };
 
@@ -532,5 +552,24 @@ public sealed class GenericType(GenericDefinition definition, IEnumerable<Script
         foreach (var arg in TypeArguments) hash.Add(arg);
         return hash.ToHashCode();
     }
+}
+
+public sealed class StructType : ScriptType
+{
+    public EcsStructDef Definition { get; }
+    public override string Name => Definition.Name;
+
+    public StructType(EcsStructDef def) { Definition = def; }
+
+    public override bool IsAssignableFrom(ScriptType other) =>
+        other is StructType s && s.Definition == Definition;
+
+    public override bool TypeOverlaps(ScriptType other) =>
+        other is TypeParameter || (other is StructType s && s.Definition == Definition);
+
+    public override bool Equals(ScriptType? other) =>
+        other is StructType s && s.Definition == Definition;
+
+    public override int GetHashCode() => Definition.Name.GetHashCode();
 }
 #endregion

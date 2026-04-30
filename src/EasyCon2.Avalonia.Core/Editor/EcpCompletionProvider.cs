@@ -15,7 +15,9 @@ public interface ICompletionProvider
 internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvider
 {
     private readonly TextEditor Editor = textEditor;
-    public Func<IEnumerable<string>> GetImgLabel;
+#pragma warning disable CS0649
+    public Func<IEnumerable<string>>? GetImgLabel;
+#pragma warning restore CS0649
 
     private readonly List<string> _keywords =
     [

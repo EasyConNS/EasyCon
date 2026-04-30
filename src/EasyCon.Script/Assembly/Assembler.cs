@@ -88,6 +88,7 @@ class Assembler
         File.WriteAllText("code.tmp", f.ToString());
 
         throw new AssembleException("此版本暂不支持编译");
+#pragma warning disable CS0162
         // optimize
         var discarded = new HashSet<Instruction>();
         List<Instruction> list = new();

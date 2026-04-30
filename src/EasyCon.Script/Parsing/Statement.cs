@@ -28,6 +28,10 @@ enum StatementKind
     ReturnStmt,
     Import,
     ExternFuncDeclaration,
+    StructStmt,
+    StructField,
+    StructDeclBlock,
+    FieldAssign,
 }
 
 abstract class Statement(Token syntax) : AstNode(syntax)

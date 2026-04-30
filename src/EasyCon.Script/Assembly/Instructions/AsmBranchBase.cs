@@ -11,9 +11,9 @@ abstract class AsmBranchBase : Instruction
     }
 
     public uint Code;
-    public Instruction Target;
+    public Instruction? Target;
 
-    protected static Instruction Create<T>(BranchType code, Instruction target = null)
+    protected static Instruction Create<T>(BranchType code, Instruction? target = null)
         where T : AsmBranchBase, new()
     {
         var ins = new T
@@ -38,7 +38,7 @@ abstract class AsmBranchBase : Instruction
 
 class AsmBranch : AsmBranchBase
 {
-    public static Instruction Create(Instruction target = null)
+    public static Instruction Create(Instruction? target = null)
     {
         return Create<AsmBranch>(BranchType.Force, target);
     }
@@ -46,7 +46,7 @@ class AsmBranch : AsmBranchBase
 
 class AsmBranchTrue : AsmBranchBase
 {
-    public static Instruction Create(Instruction target = null)
+    public static Instruction Create(Instruction? target = null)
     {
         return Create<AsmBranchTrue>(BranchType.JmpTrue, target);
     }
@@ -54,7 +54,7 @@ class AsmBranchTrue : AsmBranchBase
 
 class AsmBranchFalse : AsmBranchBase
 {
-    public static Instruction Create(Instruction target = null)
+    public static Instruction Create(Instruction? target = null)
     {
         return Create<AsmBranchFalse>(BranchType.JmpFalse, target);
     }
@@ -63,7 +63,7 @@ class AsmBranchFalse : AsmBranchBase
 class AsmCall : AsmBranchBase
 {
     public readonly string lbl;
-    public static Instruction Create(Instruction target = null)
+    public static Instruction Create(Instruction? target = null)
     {
         return Create<AsmCall>(BranchType.Call, target);
     }

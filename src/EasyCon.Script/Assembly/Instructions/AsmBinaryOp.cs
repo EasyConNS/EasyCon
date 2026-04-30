@@ -24,7 +24,7 @@ abstract class AsmBinaryOp<T> : Instruction
 
     public AsmBinaryOp()
     {
-        Op = (uint)(Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute).Operator;
+        Op = (uint)((Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute)!).Operator;
     }
 
     public static Instruction Create(uint regdst, ExprBase value)
@@ -75,7 +75,7 @@ class AsmBinaryOpInstant<T> : Instruction
 
     public AsmBinaryOpInstant()
     {
-        Op = (uint)(Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute).Operator;
+        Op = (uint)((Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute)!).Operator;
     }
 
     public override void WriteBytes(Stream stream)

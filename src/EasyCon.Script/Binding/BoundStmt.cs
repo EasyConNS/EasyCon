@@ -1,3 +1,4 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
@@ -114,4 +115,12 @@ internal class BoundStickActStatement(AstNode syntax, GamePadKey key, byte x, by
 internal sealed class BoundStickPressStatement(AstNode syntax, GamePadKey key, BoundExpr duration, byte x, byte y, int degree = 1) : BoundStickActStatement(syntax, key, x, y, degree)
 {
     public readonly BoundExpr Duration = duration;
+}
+
+internal sealed class BoundFieldAssignStatement(AstNode syntax, BoundExpr target, EcsFieldDef field, BoundExpr value) : BoundStmt(syntax)
+{
+    public override BoundNodeKind Kind => BoundNodeKind.FieldAssignment;
+    public readonly BoundExpr Target = target;
+    public readonly EcsFieldDef Field = field;
+    public readonly BoundExpr Value = value;
 }

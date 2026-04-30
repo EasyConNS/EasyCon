@@ -67,7 +67,7 @@ class IntelHex
     public byte[] Data { get; private set; }
     public byte Checksum { get; private set; }
 
-    public static IntelHex Parse(string line)
+    public static IntelHex? Parse(string line)
     {
         try
         {

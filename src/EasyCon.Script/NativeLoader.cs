@@ -1,4 +1,6 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Symbols;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -6,112 +8,120 @@ using System.Runtime.InteropServices;
 
 namespace EasyCon.Script;
 
-internal sealed class NativeLoader : IDisposable
+internal sealed class NativeLoader
 {
-    private readonly Dictionary<string, IntPtr> _loadedLibs = [];
-    private bool _disposed;
-    private readonly ModuleBuilder _moduleBuilder;
-    private int _typeIndex;
+    private static readonly ConcurrentDictionary<string, IntPtr> s_loadedLibs = new();
+    private static readonly ConcurrentDictionary<(string Lib, string Func), IntPtr> s_funcPtrCache = new();
+    private static readonly ConcurrentDictionary<DelegateSignature, Type> s_delegateTypeCache = new();
+    private static readonly ModuleBuilder s_moduleBuilder;
+    private static int s_typeIndex;
 
-    public NativeLoader()
+    static NativeLoader()
     {
         var assembly = AssemblyBuilder.DefineDynamicAssembly(
             new AssemblyName("NativeLoaderAssembly"),
             AssemblyBuilderAccess.Run);
-        _moduleBuilder = assembly.DefineDynamicModule("NativeLoaderModule");
+        s_moduleBuilder = assembly.DefineDynamicModule("NativeLoaderModule");
     }
 
-    public ImmutableArray<ForeignFunction> LoadExternFunctions(
+    public ImmutableArray<(FunctionSymbol Symbol, LazyNativeCallable Callable)> RegisterExternFunctions(
         ImmutableArray<FunctionSymbol> externSymbols)
     {
-        var result = ImmutableArray.CreateBuilder<ForeignFunction>();
-
-        foreach (var group in externSymbols.GroupBy(s => s.LibraryName))
-        {
-            var libName = group.Key;
-            if (!_loadedLibs.TryGetValue(libName, out var handle))
-            {
-                try
-                {
-                    handle = NativeLibrary.Load(libName);
-                }
-                catch (Exception ex)
-                {
-                    throw new ScriptException($"无法加载库 \"{libName}\": {ex.Message}", 0);
-                }
-                _loadedLibs[libName] = handle;
-            }
-
-            foreach (var symbol in group)
-            {
-                IntPtr funcPtr;
-                try
-                {
-                    funcPtr = NativeLibrary.GetExport(handle, symbol.ExternalName);
-                }
-                catch (Exception ex)
-                {
-                    throw new ScriptException($"在 \"{libName}\" 中未找到导出函数 \"{symbol.ExternalName}\": {ex.Message}", 0);
-                }
-
-                result.Add(CreateThunk(symbol, funcPtr));
-            }
-        }
-
+        var result = ImmutableArray.CreateBuilder<(FunctionSymbol, LazyNativeCallable)>(externSymbols.Length);
+        foreach (var symbol in externSymbols)
+            result.Add((symbol, new LazyNativeCallable(symbol, this)));
         return result.ToImmutable();
     }
 
-    private ForeignFunction CreateThunk(FunctionSymbol symbol, IntPtr funcPtr)
+    internal ICallable ResolveFunction(FunctionSymbol symbol)
+    {
+        var libName = symbol.LibraryName;
+        var handle = s_loadedLibs.GetOrAdd(libName, name =>
+        {
+            try { return NativeLibrary.Load(name); }
+            catch (Exception ex)
+            {
+                throw new ScriptException($"无法加载库 \"{name}\": {ex.Message}", 0);
+            }
+        });
+
+        var funcPtr = s_funcPtrCache.GetOrAdd((libName, symbol.ExternalName), _ =>
+        {
+            try { return NativeLibrary.GetExport(handle, symbol.ExternalName); }
+            catch (Exception ex)
+            {
+                throw new ScriptException($"在 \"{libName}\" 中未找到导出函数 \"{symbol.ExternalName}\": {ex.Message}", 0);
+            }
+        });
+
+        return CreateCallable(symbol, funcPtr);
+    }
+
+    private ICallable CreateCallable(FunctionSymbol symbol, IntPtr funcPtr)
     {
         var paramTypes = symbol.Parameters.Select(p => p.Type).ToArray();
         var returnType = symbol.ReturnType;
         var nativeParamTypes = paramTypes.Select(GetNativeType).ToArray();
         var nativeReturnType = GetNativeReturnType(returnType);
 
-        var delegateType = DefineDelegateType(nativeParamTypes, nativeReturnType);
+        var sig = new DelegateSignature(nativeParamTypes, nativeReturnType);
+        var delegateType = s_delegateTypeCache.GetOrAdd(sig,
+            _ => DefineDelegateType(nativeParamTypes, nativeReturnType));
+
         var dlg = Marshal.GetDelegateForFunctionPointer(funcPtr, delegateType);
-        var invokeMethod = delegateType.GetMethod("Invoke")!;
 
-        Func<ImmutableArray<Value>, Value> thunk = args =>
+        // 预计算哪些参数需要释放非托管字符串
+        var stringParamIndices = paramTypes
+            .Select((t, i) => t.Equals(ScriptType.String) ? i : -1)
+            .Where(i => i >= 0)
+            .ToArray();
+        var hasStringParams = stringParamIndices.Length > 0;
+
+        Func<ImmutableArray<Value>, Value> thunk;
+        if (hasStringParams)
         {
-            var nativeArgs = new object?[paramTypes.Length];
-
-            for (int i = 0; i < paramTypes.Length; i++)
-                nativeArgs[i] = MarshalValue(args[i], paramTypes[i]);
-
-            try
+            thunk = args =>
             {
-                var result = invokeMethod.Invoke(dlg, nativeArgs);
-                return UnmarshalReturnValue(result, returnType);
-            }
-            finally
-            {
+                var nativeArgs = new object?[paramTypes.Length];
                 for (int i = 0; i < paramTypes.Length; i++)
-                {
-                    if (paramTypes[i].Equals(ScriptType.String) && nativeArgs[i] is IntPtr ptrArg)
-                        Marshal.FreeHGlobal(ptrArg);
-                }
-            }
-        };
+                    nativeArgs[i] = MarshalValue(args[i], paramTypes[i]);
 
-        return new ForeignFunction
+                try
+                {
+                    return UnmarshalReturnValue(dlg.DynamicInvoke(nativeArgs), returnType);
+                }
+                finally
+                {
+                    foreach (var i in stringParamIndices)
+                    {
+                        if (nativeArgs[i] is IntPtr ptrArg)
+                            Marshal.FreeHGlobal(ptrArg);
+                    }
+                }
+            };
+        }
+        else
         {
-            Name = symbol.Name,
-            Parameters = symbol.Parameters
-                .Select((p, i) => (p.Name, p.Type))
-                .ToArray(),
-            ReturnType = returnType,
-            Invoke = thunk,
-        };
+            thunk = args =>
+            {
+                var nativeArgs = new object?[paramTypes.Length];
+                for (int i = 0; i < paramTypes.Length; i++)
+                    nativeArgs[i] = MarshalValue(args[i], paramTypes[i]);
+                return UnmarshalReturnValue(dlg.DynamicInvoke(nativeArgs), returnType);
+            };
+        }
+
+        return new DelegateCallable((args, _, _) =>
+            thunk(ImmutableArray.Create(args.ToArray())));
     }
 
     /// <summary>
     /// 动态定义委托类型，标注 Cdecl 调用约定，兼容各平台 C 函数
     /// </summary>
-    private Type DefineDelegateType(Type[] paramTypes, Type returnType)
+    private static Type DefineDelegateType(Type[] paramTypes, Type returnType)
     {
-        var typeName = $"NativeDelegate_{_typeIndex++}";
-        var typeBuilder = _moduleBuilder.DefineType(typeName,
+        var typeName = $"NativeDelegate_{Interlocked.Increment(ref s_typeIndex)}";
+        var typeBuilder = s_moduleBuilder.DefineType(typeName,
             TypeAttributes.Sealed | TypeAttributes.Public,
             typeof(MulticastDelegate));
 
@@ -134,21 +144,10 @@ internal sealed class NativeLoader : IDisposable
             returnType, paramTypes);
         invoke.SetImplementationFlags(MethodImplAttributes.Runtime | MethodImplAttributes.Managed);
 
-        // BeginInvoke
-        var beginInvoke = typeBuilder.DefineMethod("BeginInvoke",
-            MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual,
-            typeof(IAsyncResult),
-            [.. paramTypes, typeof(AsyncCallback), typeof(object)]);
-        beginInvoke.SetImplementationFlags(MethodImplAttributes.Runtime | MethodImplAttributes.Managed);
-
-        // EndInvoke
-        var endInvoke = typeBuilder.DefineMethod("EndInvoke",
-            MethodAttributes.Public | MethodAttributes.HideBySig | MethodAttributes.NewSlot | MethodAttributes.Virtual,
-            returnType, [typeof(IAsyncResult)]);
-        endInvoke.SetImplementationFlags(MethodImplAttributes.Runtime | MethodImplAttributes.Managed);
-
         return typeBuilder.CreateType()!;
     }
+
+    private readonly record struct DelegateSignature(Type[] ParamTypes, Type ReturnType);
 
     #region Marshal
 
@@ -161,7 +160,12 @@ internal sealed class NativeLoader : IDisposable
         if (targetType.Equals(ScriptType.String))
             return MarshalStringToNative(value.AsString());
         if (targetType.Equals(ScriptType.Ptr))
+        {
+            // struct instance → pass native pointer directly
+            if (value.TryGetStructPtr(out var structPtr))
+                return structPtr;
             return new IntPtr(value.AsPtr());
+        }
         return null;
     }
 
@@ -210,14 +214,5 @@ internal sealed class NativeLoader : IDisposable
 
     #endregion
 
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        foreach (var handle in _loadedLibs.Values)
-        {
-            try { NativeLibrary.Free(handle); } catch { }
-        }
-        _loadedLibs.Clear();
-    }
+    // 库句柄和函数指针为进程级静态缓存，进程退出时由 OS 回收，无需手动释放
 }

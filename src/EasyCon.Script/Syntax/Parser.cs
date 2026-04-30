@@ -169,14 +169,14 @@ internal sealed partial class Parser
                     st = new EmptyStmt();
                 }
             }
-            if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.WhileStmt)
+            if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.WhileStmt || st.Kind == StatementKind.StructStmt)
             {
-                if (st.Kind == StatementKind.FuncStmt)
+                if (st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.StructStmt)
                 {
                     if (unit.Count > 1)
                     {
-                        _diagnostics.ReportBadStruct(st.Syntax.Location, "函数必须在顶层定义");
-                        // 跳过函数定义，继续解析
+                        var msg = st.Kind == StatementKind.FuncStmt ? "函数必须在顶层定义" : "STRUCT 必须在顶层定义";
+                        _diagnostics.ReportBadStruct(st.Syntax.Location, msg);
                         st = new EmptyStmt();
                     }
                 }
@@ -255,7 +255,7 @@ internal sealed partial class Parser
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "ENDFUNC需要对应的Func语句");
                         validEnd = false;
                     }
-                    else if (result.First().Kind != StatementKind.IfStmt && result.First().Kind != StatementKind.ForStmt && result.First().Kind != StatementKind.WhileStmt && result.First().Kind != StatementKind.FuncStmt)
+                    else if (result.First().Kind != StatementKind.IfStmt && result.First().Kind != StatementKind.ForStmt && result.First().Kind != StatementKind.WhileStmt && result.First().Kind != StatementKind.FuncStmt && result.First().Kind != StatementKind.StructStmt)
                     {
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "END需要对应的语句开头");
                         validEnd = false;
@@ -271,6 +271,7 @@ internal sealed partial class Parser
                             StatementKind.ForStmt => new ForBlock((ForStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
                             StatementKind.WhileStmt => new WhileBlock((WhileStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
                             StatementKind.FuncStmt => new FuncDeclBlock((FuncStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            StatementKind.StructStmt => new StructDeclBlock((StructStmt)result.First(), body.Skip(1).OfType<StructFieldStmt>().ToImmutableArray(), (EndBlockStmt)endStmt) { Address = result.First().Address },
                             _ => st // 保持原样
                         };
                         result = unit.Peek();
@@ -298,7 +299,7 @@ internal sealed partial class Parser
         {
             foreach (var st in result)
             {
-                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or AssignmentStmt or ExternFuncStmt)
+                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or AssignmentStmt or ExternFuncStmt or StructDeclBlock)
                     continue;
                 _diagnostics.ReportBadStruct(st.Syntax.Location, "库脚本只允许变量定义、常量定义和函数定义");
             }

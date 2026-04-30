@@ -4,6 +4,8 @@ root = true
 # c# 文件
 [*.cs]
 dotnet_diagnostic.CA1416.severity = suggestion
+# 事件处理器需要 async void，不要改为 async Task
+dotnet_diagnostic.VSTHRD110.severity = none
 
 #### Core EditorConfig 选项 ####
 

@@ -1,3 +1,4 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using System.Collections.Immutable;
@@ -166,4 +167,19 @@ internal sealed class BoundCallExpression(AstNode syntax, FunctionSymbol functio
     public readonly FunctionSymbol Function = function;
     public readonly ImmutableArray<BoundExpr> Arguments = arguments;
     public override BoundNodeKind Kind => BoundNodeKind.CallExpression;
+}
+
+internal sealed class BoundStructInitExpression(AstNode syntax, EcsStructDef def) : BoundExpr(syntax)
+{
+    public override ScriptType Type { get; } = new StructType(def);
+    public readonly EcsStructDef Definition = def;
+    public override BoundNodeKind Kind => BoundNodeKind.StructInit;
+}
+
+internal sealed class BoundFieldAccessExpression(AstNode syntax, BoundExpr target, EcsFieldDef field, ScriptType resultType) : BoundExpr(syntax)
+{
+    public override ScriptType Type { get; } = resultType;
+    public readonly BoundExpr Target = target;
+    public readonly EcsFieldDef Field = field;
+    public override BoundNodeKind Kind => BoundNodeKind.FieldAccess;
 }

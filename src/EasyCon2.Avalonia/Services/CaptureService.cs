@@ -27,7 +27,9 @@ public class CaptureService : ICaptureService
     }
 
     public event Action? ConnectionLost;
+#pragma warning disable CS0067
     public event Action? ConnectionRestored;
+#pragma warning restore CS0067
 
     public CaptureService(ILogService logService)
     {

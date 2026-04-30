@@ -11,9 +11,11 @@ internal partial class Parser
             case TokenType.CONST:
                 return ParseConstantDecl();
             case TokenType.VAR:
-                return ParseAssignment();
+                return ParseVarOrFieldAssign();
             case TokenType.IMPORT:
                 return ParseImport();
+            case TokenType.STRUCT:
+                return ParseStructDecl();
             case TokenType.IF:
             case TokenType.ELIF:
                 return ParseIfelse();
@@ -85,6 +87,83 @@ internal partial class Parser
         var eexp = ParseExpression();
         MatchEOF();
         return new AssignmentStmt(destok, des, op, eexp);
+    }
+
+    private Statement ParseVarOrFieldAssign()
+    {
+        var destok = Advance();
+
+        // Check for struct field: $name:TYPE (field declaration inside STRUCT block)
+        if (Check(TokenType.COLON))
+        {
+            var colon = Advance();
+            var typeToken = Match(TokenType.IDENT);
+            var typeName = typeToken.Value;
+            var arrayCount = 1;
+            if (Check(TokenType.LeftBracket))
+            {
+                Advance();
+                var countToken = Match(TokenType.INT);
+                arrayCount = int.Parse(countToken.Value);
+                Match(TokenType.RightBracket);
+            }
+            MatchEOF();
+            return new StructFieldStmt(destok, destok.Value, typeName, arrayCount);
+        }
+
+        // Check for field assignment: $var.field = expr
+        if (Check(TokenType.DOT))
+        {
+            return ParseFieldAssign(destok);
+        }
+
+        // Regular assignment: $var = expr
+        var des = (VariableExpr)Formatter.GetValueEx(destok);
+        var op = Match(t => t == TokenType.ASSIGN || t.OperatorIsAug());
+        var eexp = ParseExpression();
+        MatchEOF();
+        return new AssignmentStmt(destok, des, op, eexp);
+    }
+
+    private FieldAssignStmt ParseFieldAssign(Token varToken)
+    {
+        var target = (VariableExpr)Formatter.GetValueEx(varToken);
+        ExprBase targetExpr = target;
+
+        // Parse chained field access: $var.field1.field2...
+        while (Check(TokenType.DOT))
+        {
+            Advance();
+            var fieldToken = Match(TokenType.IDENT);
+
+            // If next is DOT or ASSIGN/aug-assign, continue chain or end
+            if (Check(TokenType.DOT))
+            {
+                targetExpr = new FieldAccessExpr(fieldToken, targetExpr, fieldToken.Value);
+            }
+            else
+            {
+                var op = Match(t => t == TokenType.ASSIGN || t.OperatorIsAug());
+                var eexp = ParseExpression();
+                MatchEOF();
+                return new FieldAssignStmt(varToken, targetExpr, fieldToken, op, eexp);
+            }
+        }
+
+        // Should not reach here, but handle gracefully
+        _diagnostics.ReportUnexpectedToken(varToken.Location, varToken, TokenType.ASSIGN);
+        var fallbackOp = Match(TokenType.ASSIGN);
+        var fallbackExpr = ParseExpression();
+        MatchEOF();
+        return new FieldAssignStmt(varToken, targetExpr, varToken, fallbackOp, fallbackExpr);
+    }
+
+    private StructStmt ParseStructDecl()
+    {
+        var structToken = Advance(); // consume STRUCT
+        var nameToken = Match(TokenType.IDENT);
+        MatchEOF();
+        return new StructStmt(structToken, nameToken.Value);
     }
 
     private ReturnStmt ParseReturn()
@@ -301,16 +380,33 @@ internal partial class Parser
                 {
                     return ParseSliceExpression(token);
                 }
-                return Formatter.GetValueEx(token);
+                var varExpr = Formatter.GetValueEx(token);
+                // Check for field access: $var.field
+                if (Check(TokenType.DOT))
+                {
+                    return ParseFieldAccessChain(varExpr);
+                }
+                return varExpr;
             case TokenType.LeftBracket:
                 return ParseIndexDefExpression();
             case TokenType.LeftParen:
                 var lp = Advance();
                 var expression = ParseExpression();
                 var rp = Match(TokenType.RightParen);
-                return new ParenthesizedExpression(lp, expression, rp);
+                var parenExpr = new ParenthesizedExpression(lp, expression, rp);
+                if (Check(TokenType.DOT))
+                    return ParseFieldAccessChain(parenExpr);
+                return parenExpr;
             case TokenType.IDENT:
-                return ParseCallExpression();
+                // Check for struct init: TypeName{}
+                if (Peek(1).Type == TokenType.OpenBrace)
+                {
+                    return ParseStructInit();
+                }
+                var callExpr = ParseCallExpression();
+                if (Check(TokenType.DOT))
+                    return ParseFieldAccessChain(callExpr);
+                return callExpr;
             case TokenType.INT:
                 var toknum = Advance();
                 var ok = int.TryParse(toknum.Value, out var intval);
@@ -326,6 +422,25 @@ internal partial class Parser
                 _diagnostics.ReportUnexpectedToken(tokdef.Location, tokdef, TokenType.INT);
                 return new LiteralExpr(tokdef, 0);
         }
+    }
+
+    private ExprBase ParseStructInit()
+    {
+        var nameToken = Match(TokenType.IDENT);
+        Match(TokenType.OpenBrace);
+        Match(TokenType.CloseBrace);
+        return new StructInitExpr(nameToken, nameToken.Value);
+    }
+
+    private ExprBase ParseFieldAccessChain(ExprBase target)
+    {
+        while (Check(TokenType.DOT))
+        {
+            Advance();
+            var fieldToken = Match(TokenType.IDENT);
+            target = new FieldAccessExpr(fieldToken, target, fieldToken.Value);
+        }
+        return target;
     }
 
     private ExprBase ParseCallExpression()
@@ -491,7 +606,7 @@ internal partial class Parser
         var libraryPath = Match(TokenType.STRING, "FROM 后需要库路径字符串");
 
         MatchEOF();
-        return new ExternFuncStmt(externToken, functionName, parameters, returnType, fromToken, libraryPath, asToken, exportName);
+        return new ExternFuncStmt(externToken, functionName, parameters, returnType!, fromToken, libraryPath, asToken, exportName);
     }
 
     #endregion

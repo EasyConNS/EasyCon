@@ -4,6 +4,8 @@ using EasyCon.Script.Text;
 using EmmyLua.LanguageServer.Framework.Protocol.Model;
 using System.Collections.Concurrent;
 
+#nullable enable
+
 namespace EasyCon.Lsp;
 
 internal sealed class DocumentManager

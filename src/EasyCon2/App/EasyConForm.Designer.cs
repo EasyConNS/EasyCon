@@ -469,7 +469,6 @@ namespace EasyCon2.App
             // buttonScriptHelp
             // 
             buttonScriptHelp.AccessibleName = "脚本语法帮助";
-            buttonScriptHelp.FlatAppearance.BorderSize = 1;
             buttonScriptHelp.FlatStyle = FlatStyle.Flat;
             buttonScriptHelp.Font = new Font("微软雅黑", 9F);
             buttonScriptHelp.Location = new Point(3, 303);

@@ -1,3 +1,4 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using System.Collections.Immutable;
@@ -16,6 +17,8 @@ internal sealed class Binder
     const int _max_allow_level = 3;
     private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
+
+    private readonly Dictionary<string, EcsStructDef> _structDefs = new();
 
     private readonly ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? _lazyFunctionBodies;
     private readonly DiagnosticBag? _programDiagnostics;
@@ -66,7 +69,7 @@ internal sealed class Binder
         var libGlobalStmts = new List<BoundStmt>();
         var libMembers = libTrees.SelectMany(t => t.Root.Members);
 
-        // 第 1 遍：所有声明（函数 + EXTERN），确保前向引用可用
+        // 第 1 遍：所有声明（函数 + EXTERN + STRUCT），确保前向引用可用
         foreach (var member in libMembers)
         {
             switch (member)
@@ -77,13 +80,16 @@ internal sealed class Binder
                 case ExternFuncStmt ext:
                     externFunctions.Add(libBinder.BindExternDeclaration(ext));
                     break;
+                case StructDeclBlock structDecl:
+                    libBinder.BindStructDeclaration(structDecl);
+                    break;
             }
         }
 
         // 第 2 遍：全局语句
         foreach (var member in libMembers)
         {
-            if (member is not FuncDeclBlock and not ExternFuncStmt)
+            if (member is not FuncDeclBlock and not ExternFuncStmt and not StructDeclBlock)
                 libGlobalStmts.Add(libBinder.BindStatement(member));
         }
 
@@ -123,12 +129,15 @@ internal sealed class Binder
                 case ExternFuncStmt ext:
                     externFunctions.Add(mainBinder.BindExternDeclaration(ext));
                     break;
+                case StructDeclBlock structDecl:
+                    mainBinder.BindStructDeclaration(structDecl);
+                    break;
             }
         }
 
         // 主脚本全局语句检查
         var firstGlobalPerTree = mainTrees
-            .Select(t => t.Root.Members.FirstOrDefault(m => m is not FuncDeclBlock && m is not EmptyStmt && m is not ImportStmt && m is not ExternFuncStmt))
+            .Select(t => t.Root.Members.FirstOrDefault(m => m is not FuncDeclBlock && m is not EmptyStmt && m is not ImportStmt && m is not ExternFuncStmt && m is not StructDeclBlock))
             .Where(g => g != null)
             .ToArray();
         if (firstGlobalPerTree.Length > 1)
@@ -138,7 +147,7 @@ internal sealed class Binder
         // 第 2 遍：全局语句（函数体在调用时按需绑定）
         foreach (var member in mainMembers)
         {
-            if (member is not FuncDeclBlock and not ExternFuncStmt)
+            if (member is not FuncDeclBlock and not ExternFuncStmt and not StructDeclBlock)
                 mainGlobalStmts.Add(mainBinder.BindStatement(member));
         }
 
@@ -159,7 +168,12 @@ internal sealed class Binder
         AllocateLocalSlots(main, loweredEval);
         functionBodies.Add(main, loweredEval);
 
-        return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), externFunctions.ToImmutable(), [.. ilNames]);
+        // 合并 struct 定义
+        var allStructDefs = libBinder._structDefs
+            .Concat(mainBinder._structDefs)
+            .ToImmutableDictionary(kv => kv.Key, kv => kv.Value);
+
+        return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), externFunctions.ToImmutable(), [.. ilNames], allStructDefs);
     }
 
     private static (BoundBlockStatement Body, Binder Binder) BindFunctionBody(
@@ -226,7 +240,7 @@ internal sealed class Binder
 
     private static BoundProgram ErrorProgram(DiagnosticBag diagnostics)
     {
-        return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. diagnostics], [], [], []);
+        return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. diagnostics], [], [], [], []);
     }
 
     private FunctionSymbol BindFuncDeclaration(FuncDeclBlock syntax)
@@ -303,6 +317,52 @@ internal sealed class Binder
         if (!_scope.TryDeclareFunction(function))
             _diagnostics.ReportFunctionAlreadyDeclared(syntax.Location, syntax.Name);
         return function;
+    }
+
+    private void BindStructDeclaration(StructDeclBlock syntax)
+    {
+        if (_structDefs.ContainsKey(syntax.Header.Name))
+        {
+            _diagnostics.ReportBadStruct(syntax.Location, $"结构体 {syntax.Header.Name} 已定义");
+            return;
+        }
+
+        var def = new EcsStructDef { Name = syntax.Header.Name };
+
+        foreach (var field in syntax.Fields)
+        {
+            var fieldType = ResolveFieldType(field.TypeName);
+            if (fieldType == null)
+            {
+                _diagnostics.ReportBadStruct(field.Location, $"未知字段类型 {field.TypeName}");
+                continue;
+            }
+
+            var fieldDef = new EcsFieldDef
+            {
+                Name = field.Name,
+                Type = fieldType.Value,
+                ArrayCount = field.ArrayCount,
+                StructDef = fieldType.Value == EcsFieldType.Struct ? _structDefs.GetValueOrDefault(field.TypeName) : null
+            };
+            def.Fields.Add(fieldDef);
+        }
+
+        StructLayout.Calculate(def);
+        _structDefs[syntax.Header.Name] = def;
+    }
+
+    private EcsFieldType? ResolveFieldType(string typeName)
+    {
+        return typeName.ToUpper() switch
+        {
+            "INT" => EcsFieldType.Int,
+            "BOOL" => EcsFieldType.Bool,
+            "PTR" => EcsFieldType.Ptr,
+            "DOUBLE" => EcsFieldType.Double,
+            "STRING" => EcsFieldType.String,
+            _ => _structDefs.ContainsKey(typeName) ? EcsFieldType.Struct : null
+        };
     }
 
     private static BoundScope CreateRootScope()
@@ -385,9 +445,10 @@ internal sealed class Binder
         {
             var result = syntax switch
             {
-                EmptyStmt or ImportStmt => new BoundNop(syntax),
+                EmptyStmt or ImportStmt or StructDeclBlock => new BoundNop(syntax),
                 ConstantDeclStmt => BindConstantDeclaration((ConstantDeclStmt)syntax),
                 AssignmentStmt => BindAssignStatement((AssignmentStmt)syntax),
+                FieldAssignStmt => BindFieldAssignStatement((FieldAssignStmt)syntax),
                 IfBlock => BindIf((IfBlock)syntax),
                 ForBlock => BindFor((ForBlock)syntax),
                 WhileBlock => BindWhile((WhileBlock)syntax),
@@ -808,7 +869,7 @@ internal sealed class Binder
             "STRING" => ScriptType.String,
             "PTR" => ScriptType.Ptr,
             "DOUBLE" => ScriptType.Double,
-            _ => null,
+            _ => _structDefs.TryGetValue(name, out var def) ? new StructType(def) : null,
         };
     }
 
@@ -910,6 +971,8 @@ internal sealed class Binder
             IndexVisitExpression => BindIndexVisitExpression((IndexVisitExpression)syntax),
             SliceExpression => BoundSliceExpression((SliceExpression)syntax),
             VariableExpr => BindVarExpression((VariableExpr)syntax),
+            StructInitExpr => BindStructInitExpression((StructInitExpr)syntax),
+            FieldAccessExpr => BindFieldAccessExpression((FieldAccessExpr)syntax),
             _ => ReportUnknownExprAndError(syntax),
         };
     }
@@ -1054,6 +1117,94 @@ internal sealed class Binder
             return new BoundErrorExpression(syntax);
         }
         return new BoundVariableExpression(syntax, variable);
+    }
+
+    private BoundExpr BindStructInitExpression(StructInitExpr syntax)
+    {
+        if (!_structDefs.TryGetValue(syntax.TypeName, out var def))
+        {
+            _diagnostics.ReportBadStruct(syntax.Syntax.Location, $"未知结构体类型 {syntax.TypeName}");
+            return new BoundErrorExpression(syntax);
+        }
+        return new BoundStructInitExpression(syntax, def);
+    }
+
+    private BoundExpr BindFieldAccessExpression(FieldAccessExpr syntax)
+    {
+        var boundTarget = BindExpression(syntax.Target);
+
+        if (boundTarget.Type is not StructType structType)
+        {
+            _diagnostics.ReportBadStruct(syntax.Syntax.Location, $"类型 {boundTarget.Type} 不支持字段访问");
+            return new BoundErrorExpression(syntax);
+        }
+
+        var field = structType.Definition.Fields.FirstOrDefault(f => f.Name == syntax.FieldName);
+        if (field == null)
+        {
+            _diagnostics.ReportBadStruct(syntax.Syntax.Location, $"结构体 {structType.Name} 没有字段 {syntax.FieldName}");
+            return new BoundErrorExpression(syntax);
+        }
+
+        ScriptType resultType = field.Type switch
+        {
+            EcsFieldType.Int => ScriptType.Int,
+            EcsFieldType.Bool => ScriptType.Bool,
+            EcsFieldType.Ptr => ScriptType.Ptr,
+            EcsFieldType.Double => ScriptType.Double,
+            EcsFieldType.String => ScriptType.String,
+            EcsFieldType.Struct => new StructType(field.StructDef!),
+            _ => ScriptType.Int
+        };
+
+        return new BoundFieldAccessExpression(syntax, boundTarget, field, resultType);
+    }
+
+    private BoundStmt BindFieldAssignStatement(FieldAssignStmt syntax)
+    {
+        var boundTarget = BindExpression(syntax.Target);
+
+        if (boundTarget.Type is not StructType structType)
+        {
+            _diagnostics.ReportBadStruct(syntax.Location, $"类型 {boundTarget.Type} 不支持字段赋值");
+            return BindErrorStatement(syntax);
+        }
+
+        var field = structType.Definition.Fields.FirstOrDefault(f => f.Name == syntax.FieldName);
+        if (field == null)
+        {
+            _diagnostics.ReportBadStruct(syntax.Location, $"结构体 {structType.Name} 没有字段 {syntax.FieldName}");
+            return BindErrorStatement(syntax);
+        }
+
+        ScriptType fieldType = field.Type switch
+        {
+            EcsFieldType.Int => ScriptType.Int,
+            EcsFieldType.Bool => ScriptType.Bool,
+            EcsFieldType.Ptr => ScriptType.Ptr,
+            EcsFieldType.Double => ScriptType.Double,
+            EcsFieldType.String => ScriptType.String,
+            EcsFieldType.Struct => new StructType(field.StructDef!),
+            _ => ScriptType.Int
+        };
+
+        var boundValue = BindExpression(syntax.Expression);
+
+        if (syntax.AssignmentToken.Type != TokenType.ASSIGN)
+        {
+            // Augmented assignment: field op= value → field = field op value
+            var fieldRead = new BoundFieldAccessExpression(syntax, boundTarget, field, fieldType);
+            var op = BoundBinaryOperator.Bind(syntax.AssignmentToken.Type, fieldType, boundValue.Type);
+            if (op == null)
+            {
+                _diagnostics.ReportUnsupportedBinaryOperator(syntax.Location, syntax.AssignmentToken, fieldType, boundValue.Type);
+                return BindErrorStatement(syntax);
+            }
+            boundValue = new BoundBinaryExpression(syntax.Expression, fieldRead, op, boundValue);
+        }
+
+        boundValue = BindConversion(boundValue, fieldType);
+        return new BoundFieldAssignStatement(syntax, boundTarget, field, boundValue);
     }
 
     private BoundExpr BindUnaryExpression(UnaryExpression syntax)

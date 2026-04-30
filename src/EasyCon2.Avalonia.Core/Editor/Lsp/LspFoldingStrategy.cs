@@ -37,7 +37,7 @@ public class LspFoldingStrategy
         foreach (var item in result)
         {
             if (item.IsDocumentSymbol)
-                CollectFoldings(item.DocumentSymbol, document, foldings);
+                CollectFoldings(item.DocumentSymbol!, document, foldings);
         }
 
         foldings.Sort((a, b) => a.StartOffset.CompareTo(b.StartOffset));

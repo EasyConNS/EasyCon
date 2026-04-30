@@ -24,7 +24,7 @@ class AsmWait_Standard : AsmWait
     public const int Unit = 10;
     public int Duration;
 
-    public static Instruction Create(int duration)
+    public new static Instruction Create(int duration)
     {
         Scale(ref duration, Unit);
         if (duration >= 1 << 10)
@@ -51,7 +51,7 @@ class AsmWait_Extended : AsmWait
 
     public override int ByteCount => 4;
 
-    public static Instruction Create(int duration)
+    public new static Instruction Create(int duration)
     {
         Scale(ref duration, Unit);
         if (duration >= 1 << 25)
@@ -76,7 +76,7 @@ class AsmWait_HighPrecision : AsmWait
     public override int RealDuration => Duration;
     public int Duration;
 
-    public static Instruction Create(int duration)
+    public new static Instruction Create(int duration)
     {
         if (duration >= 1 << 9)
             return Failed.OutOfRange;

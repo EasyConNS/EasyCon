@@ -104,3 +104,16 @@ sealed class Callv1Expression(Token identifier, Token lp, ImmutableArray<ExprBas
     public readonly Token Rp = rp;
     public override string GetCodeText() => $"{Identifier.Value}({string.Join(", ", Arguments.Select(arg => arg.GetCodeText()))})";
 }
+
+sealed class StructInitExpr(Token syntax, string typeName) : ExprBase(syntax)
+{
+    public readonly string TypeName = typeName;
+    public override string GetCodeText() => $"{TypeName}{{}}";
+}
+
+sealed class FieldAccessExpr(Token syntax, ExprBase target, string fieldName) : ExprBase(syntax)
+{
+    public readonly ExprBase Target = target;
+    public readonly string FieldName = fieldName;
+    public override string GetCodeText() => $"{Target.GetCodeText()}.{FieldName}";
+}

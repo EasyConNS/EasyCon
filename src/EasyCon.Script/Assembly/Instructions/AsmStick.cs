@@ -39,7 +39,7 @@ class AsmStick_Standard : AsmStick
 
 class AsmStick_Hold : AsmStick
 {
-    public Instruction HoldUntil;
+    public Instruction? HoldUntil;
 
     public static Instruction Create(int keycode, int dindex)
     {

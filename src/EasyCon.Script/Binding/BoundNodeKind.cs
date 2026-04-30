@@ -29,5 +29,9 @@ public enum BoundNodeKind
     AssignmentExpression,
     CallExpression,
 
+    StructInit,
+    FieldAccess,
+    FieldAssignment,
+
     While,
 }

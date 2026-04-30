@@ -613,13 +613,234 @@ RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
 
     #endregion
 
+    #region STRUCT — 声明与初始化
+
+    [Test]
+    public void Struct_DeclareAndInit()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Point
+    $x:INT
+    $y:INT
+END
+$p = Point{}
+RETURN $p").AsStruct(), Is.Not.Null);
+    }
+
+    [Test]
+    public void Struct_FieldReadWrite()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Point
+    $x:INT
+    $y:INT
+END
+$p = Point{}
+$p.x = 10
+$p.y = 20
+RETURN $p.x + $p.y").AsInt(), Is.EqualTo(30));
+    }
+
+    [Test]
+    public void Struct_FieldAugmentedAssign()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Counter
+    $val:INT
+END
+$c = Counter{}
+$c.val = 5
+$c.val += 3
+RETURN $c.val").AsInt(), Is.EqualTo(8));
+    }
+
+    [Test]
+    public void Struct_MultipleFieldTypes()
+    {
+        var result = Eval(@"
+STRUCT Mixed
+    $a:INT
+    $b:DOUBLE
+    $c:STRING
+END
+$m = Mixed{}
+$m.a = 42
+$m.b = 3.14
+$m.c = ""hello""
+PRINT $m.c & "" "" & $m.a");
+        Assert.That(result.Result.Diagnostics.HasErrors(), Is.False);
+        Assert.That(result.Output.Printed[0], Does.Contain("hello 42"));
+    }
+
+    [Test]
+    public void Struct_MultipleInstances()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Point
+    $x:INT
+    $y:INT
+END
+$p1 = Point{}
+$p2 = Point{}
+$p1.x = 1
+$p2.x = 2
+RETURN $p1.x + $p2.x").AsInt(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Struct_DefaultZero()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Point
+    $x:INT
+    $y:INT
+END
+$p = Point{}
+RETURN $p.x").AsInt(), Is.EqualTo(0));
+    }
+
+    #endregion
+
+    #region STRUCT — 嵌套结构体
+
+    [Test]
+    public void Struct_NestedAccess()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Inner
+    $val:INT
+END
+STRUCT Outer
+    $a:INT
+    $inner:Inner
+END
+$o = Outer{}
+$o.a = 1
+$o.inner.val = 42
+RETURN $o.inner.val").AsInt(), Is.EqualTo(42));
+    }
+
+    [Test]
+    public void Struct_NestedIndependent()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Inner
+    $val:INT
+END
+STRUCT Outer
+    $inner:Inner
+END
+$o1 = Outer{}
+$o2 = Outer{}
+$o1.inner.val = 10
+$o2.inner.val = 20
+RETURN $o1.inner.val + $o2.inner.val").AsInt(), Is.EqualTo(30));
+    }
+
+    #endregion
+
+    #region STRUCT — 数组字段
+
+    [Test]
+    public void Struct_ArrayField()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Arr
+    $data:INT[4]
+END
+$a = Arr{}
+$a.data[0] = 10
+$a.data[1] = 20
+$a.data[2] = 30
+$a.data[3] = 40
+RETURN $a.data[0] + $a.data[3]").AsInt(), Is.EqualTo(50));
+    }
+
+    #endregion
+
+    #region STRUCT — 错误情况
+
+    [Test]
+    public void Struct_UndefinedType_Error()
+    {
+        var (result, _) = Eval("$p = UnknownStruct{}");
+        Assert.That(result.Diagnostics.HasErrors(), Is.True);
+    }
+
+    [Test]
+    public void Struct_UndefinedField_Error()
+    {
+        var (result, _) = Eval(@"
+STRUCT Point
+    $x:INT
+END
+$p = Point{}
+$p.z = 10");
+        Assert.That(result.Diagnostics.HasErrors(), Is.True);
+    }
+
+    [Test]
+    public void Struct_DuplicateDefinition_Error()
+    {
+        var (result, _) = Eval(@"
+STRUCT Foo
+    $x:INT
+END
+STRUCT Foo
+    $y:INT
+END");
+        Assert.That(result.Diagnostics.HasErrors(), Is.True);
+    }
+
+    [Test]
+    public void Struct_NonStructFieldAccess_Error()
+    {
+        var (result, _) = Eval("$x = 10\n$x.field = 5");
+        Assert.That(result.Diagnostics.HasErrors(), Is.True);
+    }
+
+    [Test]
+    public void Struct_FieldTypeMismatch_Error()
+    {
+        // Assigning string to int field should fail at binder level
+        var (result, _) = Eval(@"
+STRUCT Foo
+    $x:INT
+END
+$f = Foo{}
+$f.x = ""hello""");
+        Assert.That(result.Diagnostics.HasErrors(), Is.True);
+    }
+
+    #endregion
+
+    #region STRUCT — 函数参数
+
+    [Test]
+    public void Struct_PassToFunction()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Point
+    $x:INT
+    $y:INT
+END
+FUNC getX($p) : int
+    RETURN $p.x
+ENDFUNC
+$p = Point{}
+$p.x = 99
+RETURN getX($p)").AsInt(), Is.EqualTo(99));
+    }
+
+    #endregion
+
     #region EXTERN（仅 Windows）
 
     [Test]
     [Platform("Win")]
     public void Extern_Declaration()
     {
-        var code = @"EXTERN FUNC Sleep($ms:INT):VOID FROM ""kernel32.dll""";
+        var code = @"EXTERN FUNC Sleep($ms:INT) FROM ""kernel32.dll""";
         var (result, _) = Eval(code);
         Assert.That(result.Diagnostics.HasErrors(), Is.False);
     }

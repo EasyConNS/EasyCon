@@ -219,10 +219,6 @@ public partial class ScriptEditorControl : UserControl
         e.Handled = true;
     }
 
-    public void SetImgLabelProvider(Func<IEnumerable<string>> provider)
-    {
-    }
-
     public void OpenSearchPanel() => _searchPanel.Open();
     public void FindNext() => _searchPanel.Open();
 

@@ -14,13 +14,13 @@ internal sealed class ExternFuncStmt(Token externToken, Token identifier, Immuta
     public readonly Token FromToken = fromToken;
     public readonly Token LibraryPath = libraryPath;
     public string Library => LibraryPath.STRTrimQ();
-    public string ExportName => exportName != null ? exportName.STRTrimQ() : Name;
+    public string ExportName => ExportNameToken != null ? ExportNameToken.STRTrimQ() : Name;
 
     protected override string _GetString()
     {
         var parm = string.Join(", ", Parameters.Select(p => p.ToString()));
         parm = Parameters.Length == 0 ? "()" : $"({parm})";
-        var asPart = exportName != null ? $" AS \"{ExportName}\"" : "";
+        var asPart = ExportNameToken != null ? $" AS \"{ExportName}\"" : "";
         return $"EXTERN FUNC {Name}{parm}:{ReturnType.Identifier.Value.ToUpper()}{asPart} FROM \"{Library}\"";
     }
 }

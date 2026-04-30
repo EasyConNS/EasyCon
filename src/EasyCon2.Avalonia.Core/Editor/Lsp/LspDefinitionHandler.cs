@@ -58,17 +58,18 @@ public class LspDefinitionHandler : IDisposable
 
         foreach (var item in result)
         {
-            if (item.IsLocation && item.Location != null)
+            if (item.IsLocation)
             {
-                targetLocation = item.Location;
+                targetLocation = item.Location!;
                 break;
             }
-            if (item.IsLocationLink && item.LocationLink != null)
+            if (item.IsLocationLink)
             {
+                var link = item.LocationLink!;
                 targetLocation = new Location
                 {
-                    Uri = item.LocationLink.TargetUri,
-                    Range = item.LocationLink.TargetSelectionRange
+                    Uri = link.TargetUri,
+                    Range = link.TargetSelectionRange
                 };
                 break;
             }

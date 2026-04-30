@@ -55,6 +55,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             { "extern", TokenType.EXTERN },
             { "as", TokenType.AS },
             { "from", TokenType.FROM },
+            { "struct", TokenType.STRUCT },
         };
     private static readonly Dictionary<string, TokenType> logicwords = new()
     {

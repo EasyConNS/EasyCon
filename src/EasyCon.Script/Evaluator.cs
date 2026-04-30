@@ -1,4 +1,5 @@
 using EasyCon.Script.Binding;
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyScript;
 using System.Buffers;
@@ -33,6 +34,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private Value[]? _tailCallArgsBuffer;
 
     private readonly Dictionary<FunctionSymbol, ICallable> _callables = [];
+    private readonly List<EcsStruct> _structInstances = [];
 
     public IOutputAdapter? Output { get; set; }
     public ICGamePad? GamePad { get; set; }
@@ -42,8 +44,6 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     IOutputAdapter? IEvalContext.Output => Output;
     Random IEvalContext.Rand => _rand;
     bool IEvalContext.CancelLineBreak { get => _cancelLineBreak; set => _cancelLineBreak = value; }
-
-    private NativeLoader? _nativeLoader;
 
     public Evaluator(BoundProgram program, ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token)
     {
@@ -98,23 +98,12 @@ internal sealed class Evaluator : IEvalContext, IDisposable
             });
         }
 
-        // 注册 EXTERN 函数（从独立列表获取，不再过滤 _functions.Keys）
+        // 注册 EXTERN 函数（懒加载：首次调用时才解析库和函数地址）
         if (!_program.ExternFunctions.IsEmpty)
         {
-            _nativeLoader = new NativeLoader();
-            var externFuncs = _nativeLoader.LoadExternFunctions(_program.ExternFunctions);
-            foreach (var ff in externFuncs)
-            {
-                // 按名称和参数签名精确匹配（支持同名重载的 EXTERN 函数）
-                var symbol = _program.ExternFunctions.First(s =>
-                    s.Name == ff.Name &&
-                    s.Parameters.Length == ff.Parameters.Length &&
-                    s.Parameters.Select(p => p.Type.Name).SequenceEqual(ff.Parameters.Select(p => p.Type.Name)));
-                var capturedInvoke = ff.Invoke;
-                // EXTERN 函数签名仍为 ImmutableArray，此处做 span→array 兼容转换
-                _callables[symbol] = new DelegateCallable((args, ctx, tk) =>
-                    capturedInvoke(ImmutableArray.Create(args.ToArray())));
-            }
+            var loader = new NativeLoader();
+            foreach (var (symbol, callable) in loader.RegisterExternFunctions(_program.ExternFunctions))
+                _callables[symbol] = callable;
         }
     }
 
@@ -226,6 +215,10 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                         _lastValue = EvaluateExpression(rs.Expression);
                     }
                     return _lastValue;
+                case BoundNodeKind.FieldAssignment:
+                    EvaluateFieldAssignment((BoundFieldAssignStatement)s);
+                    index++;
+                    break;
                 default:
                     throw new ScriptException($"执行语句类型未知", index);
             }
@@ -285,6 +278,10 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                 return EvaluateAssignmentExpression((BoundAssignExpression)node);
             case CallExpression:
                 return EvaluateCallExpression((BoundCallExpression)node);
+            case BoundNodeKind.StructInit:
+                return EvaluateStructInitExpression((BoundStructInitExpression)node);
+            case BoundNodeKind.FieldAccess:
+                return EvaluateFieldAccessExpression((BoundFieldAccessExpression)node);
             default:
                 throw new Exception($"无法执行的表达式{node.Kind}");
         }
@@ -536,9 +533,60 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         }
     }
 
+    private Value EvaluateStructInitExpression(BoundStructInitExpression node)
+    {
+        var instance = new EcsStruct(node.Definition);
+        _structInstances.Add(instance);
+        return Value.FromStruct(instance);
+    }
+
+    private Value EvaluateFieldAccessExpression(BoundFieldAccessExpression node)
+    {
+        var targetVal = EvaluateExpression(node.Target);
+        var instance = targetVal.AsStruct();
+
+        if (node.Field.Type == Runtime.EcsFieldType.Struct)
+        {
+            var nested = instance.GetNested(node.Field);
+            return Value.FromStruct(nested);
+        }
+
+        return node.Field.Type switch
+        {
+            Runtime.EcsFieldType.Int => Value.FromInt((int)instance.GetField(node.Field)),
+            Runtime.EcsFieldType.Bool => Value.FromBool((bool)instance.GetField(node.Field)),
+            Runtime.EcsFieldType.Ptr => Value.FromPtr(((IntPtr)instance.GetField(node.Field)).ToInt64()),
+            Runtime.EcsFieldType.Double => Value.FromDouble((double)instance.GetField(node.Field)),
+            Runtime.EcsFieldType.String => Value.FromString((string)instance.GetField(node.Field)),
+            _ => Value.Void
+        };
+    }
+
+    private void EvaluateFieldAssignment(BoundFieldAssignStatement node)
+    {
+        var targetVal = EvaluateExpression(node.Target);
+        var valueVal = EvaluateExpression(node.Value);
+        var instance = targetVal.AsStruct();
+
+        object fieldValue = node.Field.Type switch
+        {
+            Runtime.EcsFieldType.Int => valueVal.AsInt(),
+            Runtime.EcsFieldType.Bool => valueVal.AsBool(),
+            Runtime.EcsFieldType.Ptr => new IntPtr(valueVal.AsPtr()),
+            Runtime.EcsFieldType.Double => valueVal.AsDouble(),
+            Runtime.EcsFieldType.String => valueVal.AsString(),
+            Runtime.EcsFieldType.Struct => valueVal.AsStruct(),
+            _ => valueVal.AsInt()
+        };
+
+        instance.SetField(node.Field, fieldValue);
+    }
+
     public void Dispose()
     {
-        _nativeLoader?.Dispose();
+        foreach (var s in _structInstances)
+            s.Dispose();
+        _structInstances.Clear();
     }
 
     private static void CollectGlobalVars(BoundBlockStatement body, List<VariableSymbol> list, HashSet<VariableSymbol> seen)

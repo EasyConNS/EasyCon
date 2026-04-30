@@ -99,7 +99,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         _foldingStrategy.UpdateFoldings(_foldingManager, _textEditor.TextDocument);
 
         // Completion
-        _textEditor.SetImgLabelProvider(() => _captureService.LoadedLabels.Select(il => il.name));
+        // _textEditor.SetImgLabelProvider(() => _captureService.LoadedLabels.Select(il => il.name));
         _textEditor.EnableAutoCompletion = _configService.Config.EnableAutoCompletion;
         _textEditor.SetFontSize(_configService.Config.EditorFontSize);
         _textEditor.FontSizeChanged += size =>

@@ -169,7 +169,7 @@ namespace EasyCon2.App
             _foldingStrategy = new CustomFoldingStrategy();
             _foldingStrategy.UpdateFoldings(_foldingManager, scriptEditor.TextDocument);
 
-            scriptEditor.SetImgLabelProvider(() => _captureService.LoadedLabels.Select(il => il.name));
+            // scriptEditor.SetImgLabelProvider(() => _captureService.LoadedLabels.Select(il => il.name));
             scriptEditor.EnableAutoCompletion = _configService.Config.EnableAutoCompletion;
             scriptEditor.SetFontSize(_configService.Config.EditorFontSize);
             scriptEditor.FontSizeChanged += size =>
@@ -293,7 +293,7 @@ namespace EasyCon2.App
         #region IOutputAdapter / IControllerAdapter
 
         public void Print(string message, bool newline = true) =>
-            logTxtBox.Print(message, newline: newline);
+            logTxtBox.Print(message, newline);
 
         public void Alert(string message)
         {
