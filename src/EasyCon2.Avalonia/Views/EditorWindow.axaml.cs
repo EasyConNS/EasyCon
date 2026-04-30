@@ -20,7 +20,12 @@ public partial class EditorWindow : Window
         Title = $"编辑器 - {filePath}";
 
         Loaded += (_, _) => InitializeEditor(filePath);
-        Closing += (_, _) => Editor.Cleanup();
+        Closing += async (_, _) =>
+        {
+            Editor.Cleanup();
+            if (_lspService != null)
+                await _lspService.DisposeAsync();
+        };
     }
 
     private void InitializeEditor(string filePath)

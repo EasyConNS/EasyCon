@@ -11,7 +11,7 @@ using ServerCapabilities = OmniSharp.Extensions.LanguageServer.Protocol.Server.C
 
 namespace EasyCon2.Avalonia.Core.Editor.Lsp;
 
-public class LspClientService : IDisposable
+public class LspClientService : IDisposable, IAsyncDisposable
 {
     private readonly object _lock = new();
     private ILanguageClient? _client;
@@ -39,21 +39,22 @@ public class LspClientService : IDisposable
         _documentManager = new LspDocumentManager(this);
     }
 
-    public async Task InitializeAsync(string filePath)
+    public async Task InitializeAsync(string filePath, CancellationToken ct = default)
     {
         _filePath = filePath;
-        await TryConnectAsync();
+        await TryConnectAsync(ct);
     }
 
-    private async Task TryConnectAsync()
+    private async Task TryConnectAsync(CancellationToken ct)
     {
         lock (_lock) { if (_disposed) return; }
 
         try
         {
-            await StartAndInitializeAsync();
+            await StartAndInitializeAsync(ct);
             Connected?.Invoke();
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             Debug.WriteLine($"[LSP] Connection failed: {ex.Message}");
@@ -62,7 +63,7 @@ public class LspClientService : IDisposable
         }
     }
 
-    private async Task StartAndInitializeAsync()
+    private async Task StartAndInitializeAsync(CancellationToken ct)
     {
         var pipeName = $"ecs-lsp-{Guid.NewGuid():N}";
 
@@ -131,7 +132,7 @@ public class LspClientService : IDisposable
             });
         });
 
-        await _client.Initialize(CancellationToken.None);
+        await _client.Initialize(ct);
 
         if (_client is LanguageClient lc)
             ServerCapabilities = lc.ServerSettings?.Capabilities;
@@ -139,54 +140,54 @@ public class LspClientService : IDisposable
         lock (_lock) _isInitialized = true;
     }
 
-    public async Task<IEnumerable<CompletionItem>?> RequestCompletionAsync(CompletionParams parameters)
+    public async Task<IEnumerable<CompletionItem>?> RequestCompletionAsync(CompletionParams parameters, CancellationToken ct = default)
     {
         ILanguageClient? client;
         lock (_lock) client = _isInitialized ? _client : null;
         if (client == null) return null;
 
-        try { return await client.RequestCompletion(parameters, CancellationToken.None); }
+        try { return await client.RequestCompletion(parameters, ct); }
         catch (Exception ex) { Debug.WriteLine($"[LSP] Completion failed: {ex.Message}"); return null; }
     }
 
-    public async Task<Hover?> RequestHoverAsync(HoverParams parameters)
+    public async Task<Hover?> RequestHoverAsync(HoverParams parameters, CancellationToken ct = default)
     {
         ILanguageClient? client;
         lock (_lock) client = _isInitialized ? _client : null;
         if (client == null) return null;
 
-        try { return await client.RequestHover(parameters, CancellationToken.None); }
+        try { return await client.RequestHover(parameters, ct); }
         catch (Exception ex) { Debug.WriteLine($"[LSP] Hover failed: {ex.Message}"); return null; }
     }
 
-    public async Task<LocationOrLocationLinks?> RequestDefinitionAsync(DefinitionParams parameters)
+    public async Task<LocationOrLocationLinks?> RequestDefinitionAsync(DefinitionParams parameters, CancellationToken ct = default)
     {
         ILanguageClient? client;
         lock (_lock) client = _isInitialized ? _client : null;
         if (client == null) return null;
 
-        try { return await client.RequestDefinition(parameters, CancellationToken.None); }
+        try { return await client.RequestDefinition(parameters, ct); }
         catch (Exception ex) { Debug.WriteLine($"[LSP] Definition failed: {ex.Message}"); return null; }
     }
 
     public async Task<IEnumerable<SymbolInformationOrDocumentSymbol>?> RequestDocumentSymbolAsync(
-        DocumentSymbolParams parameters)
+        DocumentSymbolParams parameters, CancellationToken ct = default)
     {
         ILanguageClient? client;
         lock (_lock) client = _isInitialized ? _client : null;
         if (client == null) return null;
 
-        try { return await client.RequestDocumentSymbol(parameters); }
+        try { return await client.RequestDocumentSymbol(parameters, ct); }
         catch (Exception ex) { Debug.WriteLine($"[LSP] DocumentSymbol failed: {ex.Message}"); return null; }
     }
 
-    public async Task<SemanticTokens?> RequestSemanticTokensAsync(SemanticTokensParams parameters)
+    public async Task<SemanticTokens?> RequestSemanticTokensAsync(SemanticTokensParams parameters, CancellationToken ct = default)
     {
         ILanguageClient? client;
         lock (_lock) client = _isInitialized ? _client : null;
         if (client == null) return null;
 
-        try { return await client.RequestSemanticTokensFull(parameters, CancellationToken.None); }
+        try { return await client.RequestSemanticTokensFull(parameters, ct); }
         catch (Exception ex) { Debug.WriteLine($"[LSP] SemanticTokens failed: {ex.Message}"); return null; }
     }
 
@@ -232,9 +233,12 @@ public class LspClientService : IDisposable
             try
             {
                 var shutdown = client.Shutdown();
-                await Task.WhenAny(shutdown, Task.Delay(2000));
-                client.SendExit();
-                await Task.Delay(500);
+                var completed = await Task.WhenAny(shutdown, Task.Delay(2000));
+                if (completed == shutdown)
+                {
+                    client.SendExit();
+                    await Task.Delay(500);
+                }
             }
             catch (Exception ex)
             {
@@ -269,6 +273,16 @@ public class LspClientService : IDisposable
                 _serverPipe = null;
             }
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        lock (_lock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+        }
+        await ShutdownAsync();
     }
 
     public void Dispose()

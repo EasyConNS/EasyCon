@@ -2,11 +2,14 @@ using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyCon.Script.Text;
 using EmmyLua.LanguageServer.Framework.Protocol.Model;
+using System.Collections.Concurrent;
 
 namespace EasyCon.Lsp;
 
 internal sealed class DocumentManager
 {
+    private const int MaxDocuments = 64;
+
     private sealed class DocumentState
     {
         public DocumentUri Uri { get; init; } = new(new Uri("file://"));
@@ -15,11 +18,16 @@ internal sealed class DocumentManager
         public SourceText? SourceText => SyntaxTree?.Text;
     }
 
-    private readonly Dictionary<string, DocumentState> _documents = [];
+    private readonly ConcurrentDictionary<string, DocumentState> _documents = new();
 
     public void OpenDocument(DocumentUri uri, string source)
     {
         var key = uri.UnescapeUri;
+        if (_documents.Count >= MaxDocuments && !_documents.ContainsKey(key))
+        {
+            var oldest = _documents.Keys.FirstOrDefault();
+            if (oldest != null) _documents.TryRemove(oldest, out _);
+        }
         var tree = SyntaxTree.Parse(source);
         _documents[key] = new() { Uri = uri, Source = source, SyntaxTree = tree };
     }
@@ -33,7 +41,7 @@ internal sealed class DocumentManager
 
     public void CloseDocument(DocumentUri uri)
     {
-        _documents.Remove(uri.UnescapeUri);
+        _documents.TryRemove(uri.UnescapeUri, out _);
     }
 
     public SyntaxTree? GetSyntaxTree(DocumentUri uri)

@@ -327,7 +327,13 @@ lspCommand.SetAction(async (parseResult, cancellationToken) =>
     if (tcp != null)
     {
         var parts = tcp.Split(':');
-        var (host, port) = parts.Length == 2 ? (parts[0], int.Parse(parts[1])) : ("127.0.0.1", int.Parse(parts[0]));
+        var portStr = parts.Length == 2 ? parts[1] : parts[0];
+        var host = parts.Length == 2 ? parts[0] : "127.0.0.1";
+        if (!int.TryParse(portStr, out var port) || port is < 1 or > 65535)
+        {
+            Console.Error.WriteLine($"错误: 无效的端口号 '{portStr}'，范围 1-65535");
+            return;
+        }
         await EcsLanguageServer.RunTcpAsync(host, port);
     }
     else
