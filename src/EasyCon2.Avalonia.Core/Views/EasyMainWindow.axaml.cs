@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using AvaloniaEdit.Folding;
 using EasyCon2.Avalonia.Core.Editor;
+using EasyCon2.Avalonia.Core.Editor.Lsp;
 using EasyCon2.Avalonia.Core.ViewModels;
 using System.Collections.Specialized;
 
@@ -15,6 +16,9 @@ public partial class EasyMainWindow : UserControl
     private ScriptEditorControl? _editor;
     private FoldingManager? _foldingManager;
     private CustomFoldingStrategy? _foldingStrategy;
+    private LspClientService? _lspService;
+    private LspFoldingStrategy? _lspFoldingStrategy;
+    private bool _lspFoldingWired;
 
     public EasyMainWindow()
     {
@@ -30,6 +34,9 @@ public partial class EasyMainWindow : UserControl
 
         _editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
         if (_editor == null) return;
+
+        // Initialize LSP if not already attached (XAML-declared editor path)
+        InitializeLsp();
 
         // Wire editor access to FileService
         _vm.FileService.SetEditorAccess(
@@ -75,22 +82,26 @@ public partial class EasyMainWindow : UserControl
         // Folding setup
         _foldingManager = FoldingManager.Install(_editor.TextArea);
         _foldingStrategy = new CustomFoldingStrategy();
+
+        // Wire LSP folding (delayed until LSP connects)
+        TryWireLspFolding();
+
         if (_vm.ShowFolding)
-            _foldingStrategy.UpdateFoldings(_foldingManager, _editor.TextDocument);
+            UpdateAllFoldings();
 
         _vm.ShowFoldingChanged += show =>
         {
-            if (_foldingManager == null || _foldingStrategy == null) return;
+            if (_foldingManager == null) return;
             if (show)
-                _foldingStrategy.UpdateFoldings(_foldingManager, _editor.TextDocument);
+                UpdateAllFoldings();
             else
                 _foldingManager.Clear();
         };
 
         _editor.EditorTextChanged += (_, _) =>
         {
-            if (_vm.ShowFolding && _foldingManager != null && _foldingStrategy != null)
-                _foldingStrategy.UpdateFoldings(_foldingManager, _editor.TextDocument);
+            if (_vm.ShowFolding && _foldingManager != null)
+                UpdateAllFoldings();
         };
 
         // Auto-scroll log on new entries
@@ -107,6 +118,58 @@ public partial class EasyMainWindow : UserControl
             _vm.OnUITick();
         };
         _uiTimer.Start();
+    }
+
+    private void InitializeLsp()
+    {
+        if (_editor == null) return;
+
+        EcsHighlightingLoader.RegisterAll();
+
+        if (_editor.SyntaxHighlighting == null)
+            _editor.SyntaxHighlighting = EcsHighlightingLoader.GetByName("ECScript");
+
+        if (_editor.LspService != null) return;
+
+        _lspService = new LspClientService();
+        _editor.AttachLsp(_lspService);
+        _ = _lspService.InitializeAsync("untitled.ecs");
+    }
+
+    private void TryWireLspFolding()
+    {
+        if (_lspFoldingWired || _editor == null) return;
+
+        var lspService = _editor.LspService;
+        if (lspService == null) return;
+
+        if (lspService.IsConnected)
+        {
+            _lspFoldingStrategy = new LspFoldingStrategy(lspService);
+            _lspFoldingWired = true;
+        }
+        else
+        {
+            lspService.Connected += OnLspConnectedForFolding;
+        }
+    }
+
+    private void OnLspConnectedForFolding()
+    {
+        if (_editor?.LspService == null) return;
+        _lspFoldingStrategy = new LspFoldingStrategy(_editor.LspService);
+        _lspFoldingWired = true;
+        _editor.LspService.Connected -= OnLspConnectedForFolding;
+    }
+
+    private void UpdateAllFoldings()
+    {
+        if (_foldingManager == null || _editor == null) return;
+
+        _foldingStrategy?.UpdateFoldings(_foldingManager, _editor.TextDocument);
+
+        if (_lspFoldingStrategy != null)
+            _ = _lspFoldingStrategy.UpdateFoldingsAsync(_foldingManager, _editor.TextDocument);
     }
 
     private void OnLogEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)

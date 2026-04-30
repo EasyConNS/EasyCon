@@ -47,5 +47,7 @@
     <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
     <PackageVersion Include="FlashCap" Version="1.11.0" />
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageVersion Include="OmniSharp.Extensions.LanguageClient" Version="0.19.9" />
+    <PackageVersion Include="EmmyLua.LanguageServer.Framework" Version="0.9.2" />
   </ItemGroup>
 </Project>

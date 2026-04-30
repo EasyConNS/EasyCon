@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -11,7 +11,9 @@
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
+    <ProjectReference Include="..\EasyCon.Lsp\EasyCon.Lsp.csproj" />
+  </ItemGroup>
+
 </Project>

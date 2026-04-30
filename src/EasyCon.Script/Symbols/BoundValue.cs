@@ -120,7 +120,6 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         return new Value(TAG_ARRAY, 0, list.ToImmutableList(), elementType);
     }
 
-
     public int AsInt() => _tag == TAG_INT ? _intVal : throw new InvalidCastException();
     public int ToInt() => _tag == TAG_DOUBLE ? AsBool() ? 1 : 0 : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <int>");
 

@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
+    <ProjectReference Include="..\EasyCon.Lsp\EasyCon.Lsp.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,6 +24,7 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.AvaloniaEdit" />
+    <PackageReference Include="OmniSharp.Extensions.LanguageClient" />
   </ItemGroup>
 
   <ItemGroup>

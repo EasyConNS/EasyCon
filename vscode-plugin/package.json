@@ -81,7 +81,7 @@
         "easycon.languageServer.path": {
           "type": "string",
           "default": "",
-          "description": "Path to the ecs-lsp executable. Leave empty to use 'python -m easycon_script_lsp'."
+          "description": "Path to the ecs-lsp executable. Leave empty to use 'ezcon lsp'."
         }
       }
     }

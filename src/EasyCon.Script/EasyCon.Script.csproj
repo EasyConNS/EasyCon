@@ -1,3 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>ecs脚本引擎实现库</Description>
+  </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="EasyCon.Lsp" />
+    <InternalsVisibleTo Include="EasyCon.Lsp.Tests" />
+  </ItemGroup>
 </Project>

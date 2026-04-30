@@ -2,6 +2,7 @@
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
+using EasyCon.Lsp;
 using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyDevice;
@@ -15,13 +16,14 @@ using System.Text;
 Console.OutputEncoding = Encoding.UTF8;
 
 bool isFormatCommand = args.Length > 0 && args[0] == "format";
+bool isLspCommand = args.Length > 0 && args[0] == "lsp";
 
 string defaultCOMPort = "COM22";
 
 NintendoSwitch NS = new();
 EasyRunner runner = new();
 
-if (!isFormatCommand)
+if (!isFormatCommand && !isLspCommand)
 {
     Console.WriteLine("------------------------------------------");
     Console.WriteLine("----    EasyCon CLI Runner v0.0.1     ----");
@@ -301,4 +303,44 @@ rootCommand.Subcommands.Add(runLuaCommand);
 rootCommand.Subcommands.Add(portDevCommand);
 rootCommand.Subcommands.Add(videoCommand);
 rootCommand.Subcommands.Add(formatCommand);
+
+var lspCommand = new Command("lsp", "启动 ECS 语言服务端");
+var stdioOption = new Option<bool>("--stdio")
+{
+    Description = "使用 stdio 通信（默认）"
+};
+var tcpOption = new Option<string?>("--tcp")
+{
+    Description = "使用 TCP 通信，格式: [host:]port"
+};
+lspCommand.Options.Add(stdioOption);
+lspCommand.Options.Add(tcpOption);
+lspCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    var useStdio = parseResult.GetValue(stdioOption);
+    var tcp = parseResult.GetValue(tcpOption);
+    if (useStdio && tcp != null)
+    {
+        Console.Error.WriteLine("错误: --stdio 和 --tcp 不能同时指定");
+        return;
+    }
+    if (tcp != null)
+    {
+        var parts = tcp.Split(':');
+        var portStr = parts.Length == 2 ? parts[1] : parts[0];
+        var host = parts.Length == 2 ? parts[0] : "127.0.0.1";
+        if (!int.TryParse(portStr, out var port) || port is < 1 or > 65535)
+        {
+            Console.Error.WriteLine($"错误: 无效的端口号 '{portStr}'，范围 1-65535");
+            return;
+        }
+        await EcsLanguageServer.RunTcpAsync(host, port);
+    }
+    else
+    {
+        await EcsLanguageServer.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput());
+    }
+});
+rootCommand.Subcommands.Add(lspCommand);
+
 return rootCommand.Parse(args).Invoke();

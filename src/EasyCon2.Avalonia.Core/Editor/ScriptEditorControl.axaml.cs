@@ -2,11 +2,14 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Search;
 using EasyCon.Core;
+using EasyCon2.Avalonia.Core.Editor.Lsp;
+using System.Diagnostics;
 
 namespace EasyCon2.Avalonia.Core.Editor;
 
@@ -17,8 +20,15 @@ public partial class ScriptEditorControl : UserControl
 
     private readonly TextEditor _editor;
     private readonly SearchPanel _searchPanel;
-    private CodeCompletionController _completionController;
-    private EcpCompletionProvider _completionProvider;
+    private CodeCompletionController? _completionController;
+
+    private LspClientService? _lspService;
+    private LspCompletionAdapter? _lspCompletionAdapter;
+    private LspHoverHandler? _lspHoverHandler;
+    private LspDefinitionHandler? _lspDefinitionHandler;
+    private DispatcherTimer? _lspChangeThrottle;
+    private bool _lspDocumentOpened;
+    private bool _disposed;
 
     public event EventHandler? EditorTextChanged;
     public event Action<string>? FileDropped;
@@ -48,7 +58,11 @@ public partial class ScriptEditorControl : UserControl
     public string Text
     {
         get => _editor.Text;
-        set => _editor.Text = value;
+        set
+        {
+            _editor.Text = value;
+            TryOpenLspDocument();
+        }
     }
 
     public bool IsModified
@@ -98,13 +112,29 @@ public partial class ScriptEditorControl : UserControl
     {
         InitializeComponent();
         _editor = this.FindControl<TextEditor>("Editor")!;
-        _editor.TextChanged += (_, _) => EditorTextChanged?.Invoke(this, EventArgs.Empty);
+        _editor.TextChanged += OnTextChanged;
 
         SetupDragDrop();
         _searchPanel = SearchPanel.Install(_editor);
-        InitCompletion();
 
         _editor.AddHandler(PointerWheelChangedEvent, OnEditorPointerWheelChanged, RoutingStrategies.Tunnel);
+    }
+
+    private void OnTextChanged(object? sender, EventArgs e)
+    {
+        EditorTextChanged?.Invoke(this, EventArgs.Empty);
+
+        if (!_lspDocumentOpened)
+        {
+            TryOpenLspDocument();
+            return;
+        }
+
+        if (_lspChangeThrottle != null)
+        {
+            _lspChangeThrottle.Stop();
+            _lspChangeThrottle.Start();
+        }
     }
 
     public void SetFontSize(double size)
@@ -112,10 +142,68 @@ public partial class ScriptEditorControl : UserControl
         _editor.FontSize = Math.Clamp(size, MinFontSize, MaxFontSize);
     }
 
-    private void InitCompletion()
+    public void AttachLsp(LspClientService lspService)
     {
-        _completionProvider = new EcpCompletionProvider(_editor);
-        _completionController = new CodeCompletionController(_editor, _completionProvider);
+        if (_disposed) return;
+
+        _lspService = lspService;
+        _lspService.Connected += OnLspConnected;
+        _lspService.ConnectionFailed += OnLspConnectionFailed;
+
+        _lspChangeThrottle = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _lspChangeThrottle.Tick += OnLspChangeThrottleTick;
+    }
+
+    private void OnLspConnected()
+    {
+        if (_disposed || _lspService == null) return;
+
+        try
+        {
+            _lspCompletionAdapter = new LspCompletionAdapter(_lspService);
+            _completionController = new CodeCompletionController(_editor, _lspCompletionAdapter);
+
+            _lspHoverHandler = new LspHoverHandler(_editor, _lspService);
+            _lspDefinitionHandler = new LspDefinitionHandler(_editor, _lspService);
+
+            TryOpenLspDocument();
+            UpdateImgLabels();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[LSP] OnLspConnected error: {ex.Message}");
+        }
+    }
+
+    private void OnLspConnectionFailed(string message)
+    {
+        if (_disposed) return;
+        Debug.WriteLine($"[LSP] Connection failed: {message}");
+    }
+
+    private void TryOpenLspDocument()
+    {
+        if (_lspService == null || !_lspService.IsConnected || _lspDocumentOpened)
+            return;
+
+        var path = FileName;
+        if (string.IsNullOrEmpty(path) && string.IsNullOrEmpty(_editor.Text))
+            return;
+
+        if (string.IsNullOrEmpty(path))
+            path = "untitled.ecs";
+
+        _lspService.DocumentManager.OpenDocument(path, _editor.Text);
+        _lspDocumentOpened = true;
+    }
+
+    private void OnLspChangeThrottleTick(object? sender, EventArgs e)
+    {
+        _lspChangeThrottle?.Stop();
+        if (_lspService?.IsConnected != true || !_lspDocumentOpened)
+            return;
+
+        _lspService.DocumentManager.UpdateDocument(_editor.Text);
     }
 
     private void OnEditorPointerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -133,11 +221,9 @@ public partial class ScriptEditorControl : UserControl
 
     public void SetImgLabelProvider(Func<IEnumerable<string>> provider)
     {
-        _completionProvider.GetImgLabel = provider;
     }
 
     public void OpenSearchPanel() => _searchPanel.Open();
-
     public void FindNext() => _searchPanel.Open();
 
     public void ToggleComment()
@@ -194,18 +280,60 @@ public partial class ScriptEditorControl : UserControl
             FileDropped?.Invoke(path);
     }
 
+    private void UpdateImgLabels()
+    {
+        if (_lspCompletionAdapter == null) return;
+
+        var filePath = FileName;
+        if (string.IsNullOrEmpty(filePath))
+        {
+            _lspCompletionAdapter.UpdateImgLabels([]);
+            return;
+        }
+
+        var scriptDir = Path.GetDirectoryName(filePath);
+        if (scriptDir == null || !Directory.Exists(Path.Combine(scriptDir, "ImgLabel")))
+        {
+            _lspCompletionAdapter.UpdateImgLabels([]);
+            return;
+        }
+
+        try
+        {
+            var (labels, _, _) = ECCore.LoadImgLabels(scriptDir, AppDomain.CurrentDomain.BaseDirectory);
+            _lspCompletionAdapter.UpdateImgLabels(labels.Select(il => il.name));
+        }
+        catch
+        {
+            _lspCompletionAdapter.UpdateImgLabels([]);
+        }
+    }
+
     public void Load(string path)
     {
         using var stream = File.OpenRead(path);
         _editor.Load(stream);
         FileName = path;
+        TryOpenLspDocument();
+        UpdateImgLabels();
     }
+
     public void Save(string path)
     {
         using var stream = File.Create(path);
         _editor.Save(stream);
     }
-    public void Clear() => _editor.Clear();
+
+    public void Clear()
+    {
+        _editor.Clear();
+        if (_lspDocumentOpened)
+        {
+            _lspService?.DocumentManager.CloseDocument();
+            _lspDocumentOpened = false;
+        }
+    }
+
     public void ScrollToLine(int line) => _editor.ScrollToLine(line);
     public void ScrollToHome() => _editor.ScrollToHome();
     public void Select(int offset, int length) => _editor.Select(offset, length);
@@ -214,14 +342,16 @@ public partial class ScriptEditorControl : UserControl
     public TextDocument TextDocument => _editor.Document;
     public AvaloniaEdit.Editing.TextArea TextArea => _editor.TextArea;
 
+    public LspClientService? LspService => _lspService;
+
     private void ApplyThemeColors()
     {
         if (_isDarkTheme)
         {
             _editor.Background = new SolidColorBrush(
-                Color.FromRgb(20, 20, 19));   // #141413
+                Color.FromRgb(20, 20, 19));
             _editor.Foreground = new SolidColorBrush(
-                Color.FromRgb(250, 249, 245)); // #faf9f5
+                Color.FromRgb(250, 249, 245));
 
             var current = _editor.SyntaxHighlighting;
             if (current != null && !current.Name.EndsWith("-Dark"))
@@ -234,18 +364,37 @@ public partial class ScriptEditorControl : UserControl
         else
         {
             _editor.Background = new SolidColorBrush(
-                Color.FromRgb(250, 250, 247)); // #FAFAF7
+                Color.FromRgb(250, 250, 247));
             _editor.Foreground = new SolidColorBrush(
-                Color.FromRgb(38, 37, 30));    // #26251E
+                Color.FromRgb(38, 37, 30));
 
             var current = _editor.SyntaxHighlighting;
             if (current != null && current.Name.EndsWith("-Dark"))
             {
-                var lightName = current.Name[..^5]; // strip "-Dark"
+                var lightName = current.Name[..^5];
                 var lightHighlighting = EcsHighlightingLoader.GetByName(lightName);
                 if (lightHighlighting != null)
                     _editor.SyntaxHighlighting = lightHighlighting;
             }
         }
+
+    }
+
+    public void Cleanup()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        _lspChangeThrottle?.Stop();
+
+        if (_lspService != null)
+        {
+            _lspService.Connected -= OnLspConnected;
+            _lspService.ConnectionFailed -= OnLspConnectionFailed;
+        }
+
+        _lspHoverHandler?.Dispose();
+        _lspDefinitionHandler?.Dispose();
+        _completionController?.Dispose();
     }
 }
