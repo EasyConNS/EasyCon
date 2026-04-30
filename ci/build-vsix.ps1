@@ -96,54 +96,22 @@ foreach ($d in @("syntaxes", "samples", "images")) {
     }
 }
 
+# 复制 node_modules（vscode-languageclient 等）
+$nmSrc = Join-Path $pluginDir "node_modules"
+if (Test-Path $nmSrc) {
+    $destNm = Join-Path $extDir "node_modules"
+    Copy-Item $nmSrc $destNm -Recurse -Force
+}
+
 # 4. 打包为 .vsix（ZIP 格式）
 if (Test-Path $outFile) { Remove-Item $outFile -Force }
 
-# 使用 .NET 压缩 API（pwsh 已内置加载程序集）
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-
-function Add-DirToZip($zipWriter, $sourceDir, $basePath) {
-    foreach ($item in Get-ChildItem $sourceDir) {
-        $relPath = "$basePath/$($item.Name)"
-        if ($item.PSIsContainer) {
-            Add-DirToZip $zipWriter $item.FullName $relPath
-        } else {
-            $entry = $zipWriter.CreateEntry($relPath)
-            $entryStream = $entry.Open()
-            $fileStream = [IO.File]::OpenRead($item.FullName)
-            try {
-                $fileStream.CopyTo($entryStream)
-            }
-            finally {
-                $fileStream.Close()
-                $entryStream.Close()
-            }
-        }
-    }
-}
-
-$zip = [IO.Compression.ZipFile]::Open($outFile, [IO.Compression.ZipArchiveMode]::Create)
-try {
-    # [Content_Types].xml
-    $e = $zip.CreateEntry("[Content_Types].xml")
-    $s = $e.Open()
-    $bytes = [IO.File]::ReadAllBytes((Join-Path $buildDir "[Content_Types].xml"))
-    $s.Write($bytes, 0, $bytes.Length)
-    $s.Close()
-
-    # extension.vsixmanifest
-    $e = $zip.CreateEntry("extension.vsixmanifest")
-    $s = $e.Open()
-    $bytes = [IO.File]::ReadAllBytes((Join-Path $buildDir "extension.vsixmanifest"))
-    $s.Write($bytes, 0, $bytes.Length)
-    $s.Close()
-
-    # extension/ 目录
-    Add-DirToZip $zip $extDir "extension"
-}
-finally {
-    $zip.Dispose()
-}
+# Compress-Archive 只支持 .zip 扩展名，先输出 zip 再重命名
+$tempZip = Join-Path $distDir "${id}-${version}.zip"
+if (Test-Path $tempZip) { Remove-Item $tempZip -Force }
+$items = @(Get-ChildItem $buildDir | ForEach-Object { $_.FullName })
+Compress-Archive -LiteralPath $items -DestinationPath $tempZip -CompressionLevel Optimal
+Move-Item $tempZip $outFile -Force
 
 # 5. 清理构建目录
 Remove-Item $buildDir -Recurse -Force
