@@ -22,10 +22,12 @@ sealed class GlobalVariableSymbol(string name, bool isReadOnly, ScriptType type)
 
 class LocalVariableSymbol(string name, bool isReadOnly, ScriptType type) : VariableSymbol(name, isReadOnly, type)
 {
-    public override string ToString() => $"LocalVar({Name}: {Type})";
+    /// <summary>在函数帧 Value[] 中的索引，由 Binder 分配</summary>
+    public int SlotIndex { get; set; } = -1;
+    public override string ToString() => $"LocalVar({Name}: {Type}, Slot={SlotIndex})";
 }
 
-sealed class ParamSymbol(string name, ScriptType type, int ordinal = 0, bool hasDefault = false, object? defaultValue = null) : LocalVariableSymbol(name, true, type)
+sealed class ParamSymbol(string name, ScriptType type, int ordinal = 0, bool hasDefault = false, object? defaultValue = null) : LocalVariableSymbol(name, false, type)
 {
     public int Ordinal { get; } = ordinal;
     public bool HasDefaultValue { get; } = hasDefault;
@@ -50,6 +52,9 @@ sealed class FunctionSymbol(
     public ScriptType ReturnType { get; } = returnType;
     public readonly string LibraryName = libraryName;
     public string ExternalName => externalName ?? Name;
+
+    /// <summary>函数局部变量帧大小（含参数），由 Binder 在绑定完成后设置</summary>
+    public int LocalSlotCount { get; set; }
 
     public override string ToString() => $"Func({Name}: {ReturnType})";
     /// <summary>

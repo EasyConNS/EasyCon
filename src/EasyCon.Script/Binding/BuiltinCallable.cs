@@ -9,22 +9,14 @@ namespace EasyCon.Script.Binding;
 /// </summary>
 internal static class BuiltinCallable
 {
-    public static Value ImplWait(ImmutableArray<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplWait(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var ms = args[0].AsInt();
-        switch (ctx.GamePad?.DelayMethod)
-        {
-            case DelayType.Normal: Thread.Sleep(ms); break;
-            case DelayType.LowCPU: CustomDelay.AISleep(ms); break;
-            case DelayType.HighResolution:
-            default:
-                CustomDelay.Delay(ms, token);
-                break;
-        }
+        CustomDelay.Delay(ms, token);
         return Value.Void;
     }
 
-    public static Value ImplPrint(ImmutableArray<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplPrint(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var s = args[0].AsString();
         var output = s.EndsWith('\\') ? s[..^1] : s;
@@ -33,7 +25,7 @@ internal static class BuiltinCallable
         return Value.Void;
     }
 
-    public static Value ImplAlert(ImmutableArray<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplAlert(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var s = args[0].AsString();
         var output = s.EndsWith('\\') ? s[..^1] : s;
@@ -41,21 +33,21 @@ internal static class BuiltinCallable
         return Value.Void;
     }
 
-    public static Value ImplRand(ImmutableArray<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplRand(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var max = args[0].AsInt();
         max = max < 0 ? 0 : max;
         return ctx.Rand.Next(max);
     }
 
-    public static Value ImplTimestamp(ImmutableArray<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplTimestamp(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         // Timestamp 通过 Evaluator 的 _TIME 字段计算，需要特殊处理
         // 由 Evaluator 在注册时通过闭包捕获
         throw new InvalidOperationException("Timestamp 应通过闭包注册");
     }
 
-    public static Value ImplAmiibo(ImmutableArray<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplAmiibo(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var index = args[0].AsInt();
         if (index > 9) return Value.Void;
@@ -63,7 +55,7 @@ internal static class BuiltinCallable
         return Value.Void;
     }
 
-    public static Value ImplBeep(ImmutableArray<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplBeep(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var freq = args[0].AsInt();
         if (freq < 37 || freq > 32767) throw new Exception("BEEP参数freq范围不正确(37~32767)");
@@ -71,12 +63,12 @@ internal static class BuiltinCallable
         return Value.Void;
     }
 
-    public static Value ImplLength(ImmutableArray<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplLength(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         return args[0].Length;
     }
 
-    public static Value ImplAppend(ImmutableArray<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplAppend(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         return args[0].Append(args[1]);
     }

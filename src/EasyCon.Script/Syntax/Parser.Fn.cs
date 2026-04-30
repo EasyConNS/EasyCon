@@ -472,8 +472,8 @@ internal partial class Parser
         var parameters = ParseParameterList();
         Match(TokenType.RightParen, "EXTERN FUNC 声明缺少右括号");
 
-        // Return type (required)
-        var returnType = ParseTypeClause();
+        // Return type (optional)
+        var returnType = ParseOptionalTypeClause();
 
         // Optional: AS "export_name"
         Token? asToken = null;

@@ -59,6 +59,13 @@ internal sealed class BoundBinaryOperator
         new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ScriptType.Int, ScriptType.Bool, (v0, v1) => v0.AsInt() > v1.AsInt()),
         new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ScriptType.Int, ScriptType.Bool, (v0, v1) => v0.AsInt() >= v1.AsInt()),
 
+        new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ScriptType.Double, ScriptType.Bool, (v0, v1) => v0.AsDouble() == v1.AsDouble()),
+        new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ScriptType.Double, ScriptType.Bool, (v0, v1) => v0.AsDouble() != v1.AsDouble()),
+        new(TokenType.LESS,BoundBinaryOperatorKind.Less, ScriptType.Double, ScriptType.Bool, (v0, v1) => v0.AsDouble() < v1.AsDouble()),
+        new(TokenType.LEQ,BoundBinaryOperatorKind.LessOrEquals, ScriptType.Double, ScriptType.Bool, (v0, v1) => v0.AsDouble() <= v1.AsDouble()),
+        new(TokenType.GTR,BoundBinaryOperatorKind.Greater, ScriptType.Double, ScriptType.Bool, (v0, v1) => v0.AsDouble() > v1.AsDouble()),
+        new(TokenType.GEQ,BoundBinaryOperatorKind.GreaterOrEquals, ScriptType.Double, ScriptType.Bool, (v0, v1) => v0.AsDouble() >= v1.AsDouble()),
+
         new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ScriptType.Bool, (v0, v1) => Equals(v0, v1)),
         new(TokenType.NEQ,BoundBinaryOperatorKind.NotEquals, ScriptType.Bool, (v0, v1) => !Equals(v0, v1)),
         new(TokenType.EQL,BoundBinaryOperatorKind.Equals, ScriptType.String, ScriptType.Bool, (v0, v1) => Equals(v0, v1)),
@@ -74,6 +81,8 @@ internal sealed class BoundBinaryOperator
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.Int,ScriptType.String, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.String,ScriptType.Int, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.Double,ScriptType.String, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
+        new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.String,ScriptType.Double, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.Bool,ScriptType.String, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
         new(TokenType.BitAnd,BoundBinaryOperatorKind.Addition, ScriptType.String,ScriptType.Bool, ScriptType.String, (v0, v1) => $"{v0}{v1}"),
         ];

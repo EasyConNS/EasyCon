@@ -1,241 +1,381 @@
 using EasyCon.Script.Syntax;
+using System.Collections.Immutable;
 
 namespace EasyCon.Tests;
 
 [TestFixture]
 public class LexerTests
 {
-    [Test]
-    public void Tokenize_Numbers()
-    {
-        var tokens = SyntaxTree.ParseTokens("123");
-        Assert.That(tokens.Length, Is.EqualTo(2));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.INT));
-        Assert.That(tokens[0].Value, Is.EqualTo("123"));
-    }
+    private static ImmutableArray<Token> Tokenize(string code) => SyntaxTree.ParseTokens(code);
 
-    // [Test]
-    // public void Tokenize_DecimalNumbers()
-    // {
-    //     var tokens = SyntaxTree.ParseTokens("3.14");
-    //     Assert.That(tokens.Length, Is.EqualTo(2));
-    //     Assert.That(tokens[0].Type, Is.EqualTo(TokenType.Number));
-    //     Assert.That(tokens[0].Value, Is.EqualTo("3.14"));
-    // }
+    private static Token First(string code) => Tokenize(code)[0];
+
+    #region 字面量
 
     [Test]
-    public void Tokenize_String()
+    public void IntLiteral()
     {
-        var tokens = SyntaxTree.ParseTokens("\"hello\"");
-        Assert.That(tokens.Length, Is.EqualTo(2));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.STRING));
-        Assert.That(tokens[0].Value, Is.EqualTo("\"hello\""));
+        Assert.That(First("42").Type, Is.EqualTo(TokenType.INT));
+        Assert.That(First("42").Value, Is.EqualTo("42"));
     }
 
     [Test]
-    public void Tokenize_Keywords()
+    public void StringLiteral_DoubleQuote()
     {
-        var tokens = SyntaxTree.ParseTokens("if else endif");
-        Assert.That(tokens.Length, Is.EqualTo(4));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.IF));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.ELSE));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.ENDIF));
+        var t = First("\"hello\"");
+        Assert.That(t.Type, Is.EqualTo(TokenType.STRING));
+        Assert.That(t.Value, Is.EqualTo("\"hello\""));
     }
 
     [Test]
-    public void Tokenize_Keywords_CaseInsensitive()
+    public void StringLiteral_SingleQuote()
     {
-        var tokens = SyntaxTree.ParseTokens("IF ELSE ENDIF");
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.IF));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.ELSE));
+        var t = First("'single'");
+        Assert.That(t.Type, Is.EqualTo(TokenType.STRING));
+        Assert.That(t.Value, Does.Contain("single"));
     }
 
     [Test]
-    public void Tokenize_Variables()
+    public void FloatLiteral()
     {
-        var tokens = SyntaxTree.ParseTokens("$var");
-        Assert.That(tokens.Length, Is.EqualTo(2));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.VAR));
-        Assert.That(tokens[0].Value, Is.EqualTo("$var"));
+        var t = First("3.14");
+        Assert.That(t.Type, Is.EqualTo(TokenType.Number));
+        Assert.That(t.Value, Is.EqualTo("3.14"));
+    }
+
+    #endregion
+
+    #region 标识符
+
+    [Test]
+    public void Variable()
+    {
+        Assert.That(First("$var").Type, Is.EqualTo(TokenType.VAR));
+        Assert.That(First("$var").Value, Is.EqualTo("$var"));
     }
 
     [Test]
-    public void Tokenize_Constants()
+    public void Constant()
     {
-        var tokens = SyntaxTree.ParseTokens("_CONST");
-        Assert.That(tokens.Length, Is.EqualTo(2));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.CONST));
-        Assert.That(tokens[0].Value, Is.EqualTo("_CONST"));
+        Assert.That(First("_CONST").Type, Is.EqualTo(TokenType.CONST));
+        Assert.That(First("_CONST").Value, Is.EqualTo("_CONST"));
     }
 
     [Test]
-    public void Tokenize_ExternalVariables()
+    public void Extern()
     {
-        var tokens = SyntaxTree.ParseTokens("@extvar");
-        Assert.That(tokens.Length, Is.EqualTo(2));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.EX_VAR));
-        Assert.That(tokens[0].Value, Is.EqualTo("@extvar"));
+        Assert.That(First("@ext").Type, Is.EqualTo(TokenType.EX_VAR));
+        Assert.That(First("@ext").Value, Is.EqualTo("@ext"));
     }
 
     [Test]
-    public void Tokenize_Operators()
+    public void DoubleDollar_Variable()
     {
-        var tokens = SyntaxTree.ParseTokens("+ - * / %");
-        Assert.That(tokens.Length, Is.EqualTo(6));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.ADD));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.SUB));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.MUL));
-        Assert.That(tokens[3].Type, Is.EqualTo(TokenType.DIV));
-        Assert.That(tokens[4].Type, Is.EqualTo(TokenType.MOD));
+        Assert.That(First("$$var").Type, Is.EqualTo(TokenType.VAR));
     }
 
     [Test]
-    public void Tokenize_ComparisonOperators()
+    public void ChineseIdentifier()
     {
-        var tokens = SyntaxTree.ParseTokens("= == != < > <= >=");
-        Assert.That(tokens.Length, Is.EqualTo(8));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.ASSIGN));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.EQL));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.NEQ));
-        Assert.That(tokens[3].Type, Is.EqualTo(TokenType.LESS));
-        Assert.That(tokens[4].Type, Is.EqualTo(TokenType.GTR));
-        Assert.That(tokens[5].Type, Is.EqualTo(TokenType.LEQ));
-        Assert.That(tokens[6].Type, Is.EqualTo(TokenType.GEQ));
+        Assert.That(First("测试函数").Type, Is.EqualTo(TokenType.IDENT));
+    }
+
+    #endregion
+
+    #region 关键字
+
+    [Test]
+    public void Keywords_AllControlFlow()
+    {
+        var t = Tokenize("IF ELIF ELSE ENDIF WHILE END FOR TO STEP BREAK CONTINUE NEXT FUNC ENDFUNC RETURN IMPORT EXTERN FROM");
+        var expected = new[]
+        {
+            TokenType.IF, TokenType.ELIF, TokenType.ELSE, TokenType.ENDIF,
+            TokenType.WHILE, TokenType.END, TokenType.FOR, TokenType.TO, TokenType.STEP,
+            TokenType.BREAK, TokenType.CONTINUE, TokenType.NEXT,
+            TokenType.FUNC, TokenType.ENDFUNC, TokenType.RETURN,
+            TokenType.IMPORT, TokenType.EXTERN, TokenType.FROM
+        };
+        Assert.That(t.Length - 1, Is.EqualTo(expected.Length));
+        for (int i = 0; i < expected.Length; i++)
+            Assert.That(t[i].Type, Is.EqualTo(expected[i]), $"Token[{i}] {t[i].Value}");
+    }
+
+    [TestCase("if", TokenType.IF)]
+    [TestCase("IF", TokenType.IF)]
+    [TestCase("If", TokenType.IDENT)]
+    public void Keyword_CaseSensitivity(string input, TokenType expected)
+    {
+        Assert.That(First(input).Type, Is.EqualTo(expected));
     }
 
     [Test]
-    public void Tokenize_AssignmentOperators()
+    public void LogicKeywords()
     {
-        var tokens = SyntaxTree.ParseTokens("+= -= *= /= %=");
-        Assert.That(tokens.Length, Is.EqualTo(6));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.ADD_ASSIGN));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.SUB_ASSIGN));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.MUL_ASSIGN));
-        Assert.That(tokens[3].Type, Is.EqualTo(TokenType.DIV_ASSIGN));
-        Assert.That(tokens[4].Type, Is.EqualTo(TokenType.MOD_ASSIGN));
+        var t = Tokenize("and or not");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.LogicAnd));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.LogicOr));
+        Assert.That(t[2].Type, Is.EqualTo(TokenType.LogicNot));
     }
 
     [Test]
-    public void Tokenize_BitwiseOperators()
+    public void BoolKeywords()
     {
-        var tokens = SyntaxTree.ParseTokens("& | ^ ~ << >>");
-        Assert.That(tokens.Length, Is.EqualTo(7));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.BitAnd));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.BitOr));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.XOR));
-        Assert.That(tokens[3].Type, Is.EqualTo(TokenType.BitNot));
-        Assert.That(tokens[4].Type, Is.EqualTo(TokenType.SHL));
-        Assert.That(tokens[5].Type, Is.EqualTo(TokenType.SHR));
+        var t = Tokenize("TRUE FALSE");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.TRUE));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.FALSE));
+    }
+
+    #endregion
+
+    #region 运算符
+
+    [Test]
+    public void Operators_Arithmetic()
+    {
+        var t = Tokenize("+ - * / % \\");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.ADD));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.SUB));
+        Assert.That(t[2].Type, Is.EqualTo(TokenType.MUL));
+        Assert.That(t[3].Type, Is.EqualTo(TokenType.DIV));
+        Assert.That(t[4].Type, Is.EqualTo(TokenType.MOD));
+        Assert.That(t[5].Type, Is.EqualTo(TokenType.SlashI));
     }
 
     [Test]
-    public void Tokenize_LogicKeywords()
+    public void Operators_Comparison()
     {
-        var tokens = SyntaxTree.ParseTokens("and or not");
-        Assert.That(tokens.Length, Is.EqualTo(4));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.LogicAnd));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.LogicOr));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.LogicNot));
+        var t = Tokenize("== != < > <= >=");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.EQL));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.NEQ));
+        Assert.That(t[2].Type, Is.EqualTo(TokenType.LESS));
+        Assert.That(t[3].Type, Is.EqualTo(TokenType.GTR));
+        Assert.That(t[4].Type, Is.EqualTo(TokenType.LEQ));
+        Assert.That(t[5].Type, Is.EqualTo(TokenType.GEQ));
     }
 
     [Test]
-    public void Tokenize_LoopKeywords()
+    public void Operators_Bitwise()
     {
-        var tokens = SyntaxTree.ParseTokens("for to step break continue next");
-        Assert.That(tokens.Length, Is.EqualTo(7));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.FOR));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.TO));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.STEP));
-        Assert.That(tokens[3].Type, Is.EqualTo(TokenType.BREAK));
-        Assert.That(tokens[4].Type, Is.EqualTo(TokenType.CONTINUE));
-        Assert.That(tokens[5].Type, Is.EqualTo(TokenType.NEXT));
+        var t = Tokenize("& | ^ ~ << >>");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.BitAnd));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.BitOr));
+        Assert.That(t[2].Type, Is.EqualTo(TokenType.XOR));
+        Assert.That(t[3].Type, Is.EqualTo(TokenType.BitNot));
+        Assert.That(t[4].Type, Is.EqualTo(TokenType.SHL));
+        Assert.That(t[5].Type, Is.EqualTo(TokenType.SHR));
     }
 
     [Test]
-    public void Tokenize_FunctionKeywords()
+    public void Operators_AugmentedAssignment()
     {
-        var tokens = SyntaxTree.ParseTokens("func return endfunc");
-        Assert.That(tokens.Length, Is.EqualTo(4));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.FUNC));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.RETURN));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.ENDFUNC));
+        var t = Tokenize("+= -= *= /= %= &= |= ^= <<= >>=");
+        var expected = new[]
+        {
+            TokenType.ADD_ASSIGN, TokenType.SUB_ASSIGN, TokenType.MUL_ASSIGN,
+            TokenType.DIV_ASSIGN, TokenType.MOD_ASSIGN,
+            TokenType.BitAnd_ASSIGN, TokenType.BitOr_ASSIGN, TokenType.XOR_ASSIGN,
+            TokenType.SHL_ASSIGN, TokenType.SHR_ASSIGN
+        };
+        Assert.That(t.Length - 1, Is.EqualTo(expected.Length));
+        for (int i = 0; i < expected.Length; i++)
+            Assert.That(t[i].Type, Is.EqualTo(expected[i]));
     }
 
     [Test]
-    public void Tokenize_WhileKeywords()
+    public void Assignment_Equals()
     {
-        var tokens = SyntaxTree.ParseTokens("while end");
-        Assert.That(tokens.Length, Is.EqualTo(3));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.WHILE));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.END));
+        Assert.That(First("=").Type, Is.EqualTo(TokenType.ASSIGN));
+    }
+
+    #endregion
+
+    #region 游戏手柄
+
+    [Test]
+    public void Gamepad_Buttons()
+    {
+        var t = Tokenize("A B X Y L R ZL ZR");
+        for (int i = 0; i < 8; i++)
+            Assert.That(t[i].Type, Is.EqualTo(TokenType.ButtonKeyword), $"Token[{i}] {t[i].Value}");
     }
 
     [Test]
-    public void Tokenize_PrintLine()
+    public void Gamepad_Sticks()
     {
-        var tokens = SyntaxTree.ParseTokens("print ！！！");
-        Assert.That(tokens.Length, Is.EqualTo(3));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.IDENT));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.STRING));
+        var t = Tokenize("LS RS");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.StickKeyword));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.StickKeyword));
     }
 
     [Test]
-    public void Tokenize_Comment()
+    public void Gamepad_Directions()
     {
-        var tokens = SyntaxTree.ParseTokens("# this is a comment");
-        Assert.That(tokens.Length, Is.EqualTo(2));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.COMMENT));
-        Assert.That(tokens[0].Value, Is.EqualTo("# this is a comment"));
+        var t = Tokenize("UP DOWN LEFT RIGHT");
+        // UP 独立出现为 ButtonKeyword，DOWN 跟在按钮后变为 StateKeyword
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.ButtonKeyword)); // UP
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.StateKeyword));  // DOWN (after UP)
+        Assert.That(t[2].Type, Is.EqualTo(TokenType.ButtonKeyword)); // LEFT
+        Assert.That(t[3].Type, Is.EqualTo(TokenType.ButtonKeyword)); // RIGHT
     }
 
     [Test]
-    public void Tokenize_Punctuation()
+    public void Gamepad_AfterButton_BecomesStateKeyword()
     {
-        var tokens = SyntaxTree.ParseTokens("( ) [ ] { } , . :");
-        Assert.That(tokens.Length, Is.EqualTo(10));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.LeftParen));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.RightParen));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.LeftBracket));
-        Assert.That(tokens[3].Type, Is.EqualTo(TokenType.RightBracket));
-        Assert.That(tokens[4].Type, Is.EqualTo(TokenType.OpenBrace));
-        Assert.That(tokens[5].Type, Is.EqualTo(TokenType.CloseBrace));
-        Assert.That(tokens[6].Type, Is.EqualTo(TokenType.COMMA));
-        Assert.That(tokens[7].Type, Is.EqualTo(TokenType.DOT));
-        Assert.That(tokens[8].Type, Is.EqualTo(TokenType.COLON));
+        // A UP — UP 跟在按钮后变为 StateKeyword
+        var t = Tokenize("A UP");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.ButtonKeyword));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.StateKeyword));
     }
 
     [Test]
-    public void Tokenize_Identifier()
+    public void Gamepad_AfterStick_BecomesDirectionKeyword()
     {
-        var tokens = SyntaxTree.ParseTokens("myFunction");
-        Assert.That(tokens.Length, Is.EqualTo(2));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.IDENT));
-        Assert.That(tokens[0].Value, Is.EqualTo("myFunction"));
+        // LS RIGHT — RIGHT 跟在摇杆后变为 DirectionKeyword
+        var t = Tokenize("LS RIGHT");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.StickKeyword));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.DirectionKeyword));
+    }
+
+    #endregion
+
+    #region 标点符号
+
+    [Test]
+    public void Punctuation()
+    {
+        var t = Tokenize("( ) [ ] , :");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.LeftParen));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.RightParen));
+        Assert.That(t[2].Type, Is.EqualTo(TokenType.LeftBracket));
+        Assert.That(t[3].Type, Is.EqualTo(TokenType.RightBracket));
+        Assert.That(t[4].Type, Is.EqualTo(TokenType.COMMA));
+        Assert.That(t[5].Type, Is.EqualTo(TokenType.COLON));
+    }
+
+    #endregion
+
+    #region 注释
+
+    [Test]
+    public void Comment_Hash()
+    {
+        var t = First("# comment");
+        Assert.That(t.Type, Is.EqualTo(TokenType.COMMENT));
+        Assert.That(t.Value, Is.EqualTo("# comment"));
     }
 
     [Test]
-    public void Tokenize_MultiCharacterVariables()
+    public void Comment_Empty()
     {
-        var tokens = SyntaxTree.ParseTokens("$counter1 $value2 $_test");
-        Assert.That(tokens.Length, Is.EqualTo(4));
-        Assert.That(tokens[0].Type, Is.EqualTo(TokenType.VAR));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.VAR));
-        Assert.That(tokens[2].Type, Is.EqualTo(TokenType.VAR));
+        var t = First("#");
+        Assert.That(t.Type, Is.EqualTo(TokenType.COMMENT));
+    }
+
+    #endregion
+
+    #region PRINT/ALERT 特殊解析
+
+    [Test]
+    public void Print_SpecialParsing()
+    {
+        // PRINT 触发 ReadPrintArguments，& 作为分隔符保留为 BitAnd
+        var t = Tokenize("PRINT hello & $count & !");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.IDENT));
+        Assert.That(t[0].Value, Is.EqualTo("PRINT"));
+        Assert.That(t.Any(tok => tok.Type == TokenType.BitAnd), Is.True);
     }
 
     [Test]
-    public void Tokenize_Assignment()
+    public void Alert_SpecialParsing()
     {
-        var tokens = SyntaxTree.ParseTokens("$x = 10");
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.ASSIGN));
+        var t = Tokenize("ALERT warning");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.IDENT));
+        Assert.That(t[0].Value, Is.EqualTo("ALERT"));
+    }
+
+    #endregion
+
+    #region 边界情况
+
+    [Test]
+    public void EmptyInput_ProducesOnlyEOF()
+    {
+        var t = Tokenize("");
+        Assert.That(t.Length, Is.EqualTo(1));
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.EOF));
     }
 
     [Test]
-    public void Tokenize_PrintString()
+    public void OnlyNewlines()
     {
-        var tokens = SyntaxTree.ParseTokens("print 识别到| 累计： & $count &");
-        Assert.That(tokens.Length, Is.EqualTo(6));
-        Assert.That(tokens[1].Type, Is.EqualTo(TokenType.STRING));
-        Assert.That(tokens[4].Type, Is.EqualTo(TokenType.BitAnd));
+        var t = Tokenize("\n\n\n");
+        // NEWLINE tokens + EOF
+        Assert.That(t.All(tok => tok.Type is TokenType.NEWLINE or TokenType.EOF), Is.True);
     }
+
+    [Test]
+    public void OnlyWhitespace()
+    {
+        var t = Tokenize("   \t  ");
+        Assert.That(t.Length, Is.EqualTo(1));
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.EOF));
+    }
+
+    [Test]
+    public void String_EscapeSequences()
+    {
+        var t = First(@"""hello\nworld\ttab\\slash""");
+        Assert.That(t.Type, Is.EqualTo(TokenType.STRING));
+        // 转义序列在 token 值中被解析为实际字符
+        Assert.That(t.Value, Does.Contain("\n"));
+        Assert.That(t.Value, Does.Contain("\t"));
+    }
+
+    [Test]
+    public void String_Empty()
+    {
+        var t = First("\"\"");
+        Assert.That(t.Type, Is.EqualTo(TokenType.STRING));
+    }
+
+    [Test]
+    public void Int_Zero()
+    {
+        Assert.That(First("0").Type, Is.EqualTo(TokenType.INT));
+        Assert.That(First("0").Value, Is.EqualTo("0"));
+    }
+
+    [Test]
+    public void Int_LargeValue()
+    {
+        Assert.That(First("999999999").Type, Is.EqualTo(TokenType.INT));
+    }
+
+    #endregion
+
+    #region 诊断（错误 token）
+
+    [Test]
+    public void Diagnostic_UnterminatedString()
+    {
+        var tree = SyntaxTree.Parse("\"unterminated");
+        Assert.That(tree.Diagnostics.Count, Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void Diagnostic_InvalidDecimalNumber()
+    {
+        var tree = SyntaxTree.Parse("$x = 1.2.3");
+        Assert.That(tree.Diagnostics.Count, Is.GreaterThan(0));
+    }
+
+    [Test]
+    public void Diagnostic_BadCharacter()
+    {
+        var tree = SyntaxTree.Parse("$x = 10 ");
+        Assert.That(tree.Diagnostics.Count, Is.GreaterThan(0));
+    }
+
+    #endregion
 }

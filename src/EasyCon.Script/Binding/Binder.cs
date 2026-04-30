@@ -155,7 +155,9 @@ internal sealed class Binder
         var allGlobalStmts = libGlobalStmts.Concat(mainGlobalStmts);
         var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
         var evalBody = new BoundBlockStatement(main.Declaration!, [.. allGlobalStmts]);
-        functionBodies.Add(main, Lowerer.Lower(main, evalBody));
+        var loweredEval = Lowerer.Lower(main, evalBody);
+        AllocateLocalSlots(main, loweredEval);
+        functionBodies.Add(main, loweredEval);
 
         return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), externFunctions.ToImmutable(), [.. ilNames]);
     }
@@ -171,7 +173,40 @@ internal sealed class Binder
         foreach (var stmt in function.Declaration!.Statements)
             stmts.Add(binderFn.BindStatement(stmt));
         var body = new BoundBlockStatement(function.Declaration!, stmts.ToImmutable());
-        return (Lowerer.Lower(function, body), binderFn);
+        var lowered = Lowerer.Lower(function, body);
+        AllocateLocalSlots(function, lowered);
+        return (lowered, binderFn);
+    }
+
+    /// <summary>
+    /// 为函数体中所有未分配 slot 的局部变量分配索引。
+    /// 参数 slot 已在 BindFuncDeclaration 中分配（0..N-1），
+    /// 局部变量从 N 开始连续分配。递归扫描嵌套块。
+    /// </summary>
+    private static void AllocateLocalSlots(FunctionSymbol function, BoundBlockStatement body)
+    {
+        int nextSlot = function.LocalSlotCount;
+        AllocateSlotsRecursive(body, ref nextSlot);
+        function.LocalSlotCount = nextSlot;
+    }
+
+    // Lowerer.Flatten 保证输出为单一扁平块，递归分支实际不会触发；
+    // 保留递归写法作为防御性设计，若未来 Lowerer 行为变更仍可正确处理。
+    private static void AllocateSlotsRecursive(BoundBlockStatement body, ref int nextSlot)
+    {
+        foreach (var stmt in body.Statements)
+        {
+            switch (stmt)
+            {
+                case BoundVariableDeclaration vd
+                    when vd.Variable is LocalVariableSymbol local && local.SlotIndex < 0:
+                    local.SlotIndex = nextSlot++;
+                    break;
+                case BoundBlockStatement inner:
+                    AllocateSlotsRecursive(inner, ref nextSlot);
+                    break;
+            }
+        }
     }
 
     private void EnsureFunctionBodyBound(FunctionSymbol function)
@@ -215,11 +250,13 @@ internal sealed class Binder
             //if (!isLast && parameterSyntax.) throw new("只有最后一个参数可以有默认值");
 
             var parameter = new ParamSymbol(parameterName, parameterType, parameters.Count);
+            parameter.SlotIndex = parameters.Count; // 参数 slot 从 0 开始
             parameters.Add(parameter);
         }
 
         var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
         var function = new FunctionSymbol(syntax.Declare.Name, [], parameters.ToImmutable(), returnType, syntax);
+        function.LocalSlotCount = parameters.Count; // 初始帧大小 = 参数数量
 
         // builtin 名称保护：用户函数禁止使用 builtin 名称
         if (BuiltinFunctions.GetAll().Any(b => b.Name == syntax.Declare.Name.ToUpper()))
@@ -248,11 +285,13 @@ internal sealed class Binder
                 _diagnostics.ReportParameterAlreadyDeclared(syntax.Location, parameterName);
 
             var parameter = new ParamSymbol(parameterName, parameterType, parameters.Count);
+            parameter.SlotIndex = parameters.Count;
             parameters.Add(parameter);
         }
 
         var returnType = BindTypeClause(syntax, syntax.ReturnType) ?? ScriptType.Void;
         var function = new FunctionSymbol(syntax.Name, [], parameters.ToImmutable(), returnType, libraryName: syntax.Library, externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
+        function.LocalSlotCount = parameters.Count;
 
         // builtin 名称保护
         if (BuiltinFunctions.GetAll().Any(b => b.Name == syntax.Name.ToUpper()))
@@ -647,7 +686,17 @@ internal sealed class Binder
                 }
             }
         }
-        return new BoundReturnStatement(syntax, expression);
+
+        var returnStatement = new BoundReturnStatement(syntax, expression);
+
+        // 尾递归检测：检查返回表达式是否为对当前函数的调用
+        if (_function != null && expression is BoundCallExpression callExpr && callExpr.Function == _function)
+        {
+            returnStatement.IsTailCall = true;
+            returnStatement.TailCallFunction = _function;
+        }
+
+        return returnStatement;
     }
 
     private BoundStmt BindConstantDeclaration(ConstantDeclStmt syntax)
@@ -667,10 +716,13 @@ internal sealed class Binder
             return BindErrorStatement(syntax);
         }
 
-        // Constants are always read-only
         var variable = LookupVariable(syntax.Constant, true, boundexpr.Type);
 
-        return new BoundVariableDeclaration(syntax, variable, boundexpr);
+        // 将常量值写入 symbol，后续引用通过 BoundVariableExpression.ConstantValue 自动内联
+        variable.Value = boundexpr.ConstantValue;
+
+        // 声明本身消除，运行时不再执行赋值
+        return new BoundNop(syntax);
     }
 
     private BoundStmt BindAssignStatement(AssignmentStmt syntax)
@@ -756,7 +808,6 @@ internal sealed class Binder
             "STRING" => ScriptType.String,
             "PTR" => ScriptType.Ptr,
             "DOUBLE" => ScriptType.Double,
-            "VOID" => ScriptType.Void,
             _ => null,
         };
     }
