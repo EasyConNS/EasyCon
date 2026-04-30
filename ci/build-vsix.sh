@@ -91,6 +91,10 @@ for d in syntaxes samples images; do
     fi
 done
 
+if [ -d "$pluginDir/node_modules" ]; then
+    cp -r "$pluginDir/node_modules" "$extDir/node_modules"
+fi
+
 rm -f "$outFile"
 
 cd "$buildDir"
