@@ -1,7 +1,7 @@
 using AvaloniaEdit.CodeCompletion;
+using EasyCon2.Avalonia.Core.Editor;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using AvTextDocument = AvaloniaEdit.Document.TextDocument;
-using EasyCon2.Avalonia.Core.Editor;
 
 namespace EasyCon2.Avalonia.Core.Editor.Lsp;
 
