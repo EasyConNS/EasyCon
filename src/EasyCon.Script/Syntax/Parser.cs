@@ -185,6 +185,11 @@ internal sealed partial class Parser
             }
             else if (st.Kind == StatementKind.ElseIf)
             {
+                if (result.Count == 0)
+                {
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "ELIF需要对应的If语句");
+                    continue;
+                }
                 if (result.First().Kind != StatementKind.IfStmt)
                 {
                     _diagnostics.ReportBadStruct(st.Syntax.Location, "ELIF需要对应的If语句");
@@ -200,6 +205,11 @@ internal sealed partial class Parser
             }
             else if (st.Kind == StatementKind.Else)
             {
+                if (result.Count == 0)
+                {
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "ELSE需要对应的If语句");
+                    continue;
+                }
                 if (result.First().Kind != StatementKind.IfStmt)
                 {
                     _diagnostics.ReportBadStruct(st.Syntax.Location, "ELSE需要对应的If语句");
@@ -225,8 +235,12 @@ internal sealed partial class Parser
                 {
                     var endStmt = st;
                     bool validEnd = true;
-
-                    if (endStmt.Kind == StatementKind.EndIf && result.First().Kind != StatementKind.IfStmt)
+                    if (result.Count == 0)
+                    {
+                        _diagnostics.ReportBadStruct(st.Syntax.Location, "END需要对应的语句开头");
+                        validEnd = false;
+                    }
+                    else if (endStmt.Kind == StatementKind.EndIf && result.First().Kind != StatementKind.IfStmt)
                     {
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "ENDIF需要对应的If语句");
                         validEnd = false;

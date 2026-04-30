@@ -1,6 +1,5 @@
 using EasyCon.Script.Symbols;
 using EasyScript;
-using System.Collections.Immutable;
 
 namespace EasyCon.Script.Binding;
 
@@ -9,7 +8,7 @@ namespace EasyCon.Script.Binding;
 /// </summary>
 internal interface ICallable
 {
-    Value Invoke(ImmutableArray<Value> args, IEvalContext context, CancellationToken token);
+    Value Invoke(ReadOnlySpan<Value> args, IEvalContext context, CancellationToken token);
 }
 
 /// <summary>
@@ -22,16 +21,16 @@ internal interface IEvalContext
     Random Rand { get; }
     bool CancelLineBreak { get; set; }
 
-    void PushLocals(Dictionary<VariableSymbol, Value> locals);
-    void PopLocals();
     Value EvaluateFunctionBody(FunctionSymbol function);
 }
 
 /// <summary>
 /// 基于委托的通用 ICallable 实现。
 /// </summary>
-internal sealed class DelegateCallable(Func<ImmutableArray<Value>, IEvalContext, CancellationToken, Value> impl) : ICallable
+internal delegate Value CallableDelegate(ReadOnlySpan<Value> args, IEvalContext context, CancellationToken token);
+
+internal sealed class DelegateCallable(CallableDelegate impl) : ICallable
 {
-    public Value Invoke(ImmutableArray<Value> args, IEvalContext context, CancellationToken token)
+    public Value Invoke(ReadOnlySpan<Value> args, IEvalContext context, CancellationToken token)
         => impl(args, context, token);
 }

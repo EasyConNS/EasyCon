@@ -10,6 +10,20 @@ internal sealed class BoundBlockStatement(AstNode stmt, ImmutableArray<BoundStmt
     public ImmutableArray<BoundStmt> Statements = statements;
 
     public override BoundNodeKind Kind => BoundNodeKind.BlockStatement;
+
+    private Dictionary<BoundLabel, int>? _labelIndex;
+    public Dictionary<BoundLabel, int> LabelIndex => _labelIndex ??= BuildLabelIndex();
+
+    private Dictionary<BoundLabel, int> BuildLabelIndex()
+    {
+        var result = new Dictionary<BoundLabel, int>();
+        for (var i = 0; i < Statements.Length; i++)
+        {
+            if (Statements[i] is BoundLabelStatement l)
+                result.Add(l.Label, i + 1);
+        }
+        return result;
+    }
 }
 
 internal sealed class BoundNop(AstNode syntax) : BoundStmt(syntax)
@@ -41,6 +55,10 @@ internal sealed class BoundReturnStatement(AstNode syntax, BoundExpr? expression
 {
     public override BoundNodeKind Kind => BoundNodeKind.Return;
     public readonly BoundExpr? Expression = expression;
+
+    // 尾递归优化标记
+    public bool IsTailCall { get; set; } = false;
+    public FunctionSymbol? TailCallFunction { get; set; } = null;
 }
 
 internal sealed class BoundExprStatement(AstNode syntax, BoundExpr expression) : BoundStmt(syntax)

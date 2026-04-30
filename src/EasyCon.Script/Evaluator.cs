@@ -1,6 +1,7 @@
 using EasyCon.Script.Binding;
 using EasyCon.Script.Symbols;
 using EasyScript;
+using System.Buffers;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using static EasyCon.Script.Binding.BoundNodeKind;
@@ -15,8 +16,9 @@ public class ScriptException(string message, int address) : Exception(message)
 internal sealed class Evaluator : IEvalContext, IDisposable
 {
     private readonly BoundProgram _program;
-    private readonly Dictionary<VariableSymbol, Value> _globals = [];
-    private readonly Stack<Dictionary<VariableSymbol, Value>> _locals = new();
+    private readonly Value[] _globalValues;
+    private readonly Dictionary<VariableSymbol, int> _globalIndex;
+    private readonly Stack<Value[]> _localFrames = new();
     private readonly Dictionary<FunctionSymbol, BoundBlockStatement> _functions = [];
     private readonly ImmutableDictionary<string, Func<int>> _externalGetters = [];
 
@@ -27,6 +29,8 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private bool _cancelLineBreak = false;
     private CancellationToken _token;
     private Value _lastValue;
+    private int _yieldCounter;
+    private Value[]? _tailCallArgsBuffer;
 
     private readonly Dictionary<FunctionSymbol, ICallable> _callables = [];
 
@@ -46,12 +50,24 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         _program = program;
         _token = token;
         _externalGetters = externalGetters;
-        _locals.Push([]);
+        _localFrames.Push([]);
 
         foreach (var kv in _program.Functions)
         {
             _functions.Add(kv.Key, kv.Value);
         }
+
+        // 扫描所有函数体，递归收集全局变量并建立索引映射
+        var globalVarList = new List<VariableSymbol>();
+        var seen = new HashSet<VariableSymbol>();
+        foreach (var body in _functions.Values)
+            CollectGlobalVars(body, globalVarList, seen);
+        _globalValues = new Value[globalVarList.Count];
+        for (int i = 0; i < _globalValues.Length; i++)
+            _globalValues[i] = 0; // 默认值为 0
+        _globalIndex = new Dictionary<VariableSymbol, int>(globalVarList.Count);
+        for (int i = 0; i < globalVarList.Count; i++)
+            _globalIndex[globalVarList[i]] = i;
 
         RegisterCallables();
     }
@@ -70,13 +86,15 @@ internal sealed class Evaluator : IEvalContext, IDisposable
             if (_callables.ContainsKey(fn)) continue;
             _callables[fn] = new DelegateCallable((args, ctx, tk) =>
             {
-                var locals = new Dictionary<VariableSymbol, Value>();
-                for (int i = 0; i < args.Length; i++)
-                    locals.Add(fn.Parameters[i], args[i]);
-                ctx.PushLocals(locals);
-                var result = ctx.EvaluateFunctionBody(fn);
-                ctx.PopLocals();
-                return result;
+                if (ctx is Evaluator evaluator)
+                {
+                    return evaluator.EvaluateFunctionBodyWithTailRecursion(fn, args, tk);
+                }
+                else
+                {
+                    // fallback（不应在正常流程中到达）
+                    return ctx.EvaluateFunctionBody(fn);
+                }
             });
         }
 
@@ -93,7 +111,9 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                     s.Parameters.Length == ff.Parameters.Length &&
                     s.Parameters.Select(p => p.Type.Name).SequenceEqual(ff.Parameters.Select(p => p.Type.Name)));
                 var capturedInvoke = ff.Invoke;
-                _callables[symbol] = new DelegateCallable((args, ctx, tk) => capturedInvoke(args));
+                // EXTERN 函数签名仍为 ImmutableArray，此处做 span→array 兼容转换
+                _callables[symbol] = new DelegateCallable((args, ctx, tk) =>
+                    capturedInvoke(ImmutableArray.Create(args.ToArray())));
             }
         }
     }
@@ -105,18 +125,41 @@ internal sealed class Evaluator : IEvalContext, IDisposable
             return Value.Void;
 
         var body = _functions[function];
-        return EvaluateStatement(body);
+        PushFrame(function.LocalSlotCount);
+        try
+        {
+            return EvaluateStatement(body);
+        }
+        finally
+        {
+            PopFrame();
+        }
     }
 
     private Value EvaluateStatement(BoundBlockStatement body)
     {
-        var labelToIndex = new Dictionary<BoundLabel, int>();
+        return EvaluateStatementCore(body, null, out _, out _);
+    }
 
-        for (var i = 0; i < body.Statements.Length; i++)
-        {
-            if (body.Statements[i] is BoundLabelStatement l)
-                labelToIndex.Add(l.Label, i + 1);
-        }
+    private Value EvaluateStatement(
+        BoundBlockStatement body,
+        FunctionSymbol tailRecursionTarget,
+        out bool isTailCall,
+        out ImmutableArray<Value> tailCallArgs)
+    {
+        return EvaluateStatementCore(body, tailRecursionTarget, out isTailCall, out tailCallArgs);
+    }
+
+    private Value EvaluateStatementCore(
+        BoundBlockStatement body,
+        FunctionSymbol? tailRecursionTarget,
+        out bool isTailCall,
+        out ImmutableArray<Value> tailCallArgs)
+    {
+        isTailCall = false;
+        tailCallArgs = ImmutableArray<Value>.Empty;
+
+        var labelToIndex = body.LabelIndex;
         var index = 0;
         while (!_token.IsCancellationRequested && index < body.Statements.Length)
         {
@@ -146,7 +189,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                 case GotoStatement:
                     var gs = (BoundGotoStatement)s;
                     index = labelToIndex[gs.Label];
-                    Thread.Yield();
+                    YieldIfDue();
                     break;
                 case ConditionGotoStatement:
                     var cgs = (BoundConditionalGotoStatement)s;
@@ -155,7 +198,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                         index = labelToIndex[cgs.Label];
                     else
                         index++;
-                    Thread.Yield();
+                    YieldIfDue();
                     break;
                 case Label:
                     index++;
@@ -164,6 +207,22 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                     var rs = (BoundReturnStatement)s;
                     if (rs.Expression != null)
                     {
+                        if (tailRecursionTarget != null
+                            && rs.IsTailCall
+                            && rs.TailCallFunction == tailRecursionTarget)
+                        {
+                            var callExpr = (BoundCallExpression)rs.Expression;
+                            var argLen = callExpr.Arguments.Length;
+                            var buf = _tailCallArgsBuffer ??= new Value[argLen];
+                            for (int i = 0; i < argLen; i++)
+                            {
+                                buf[i] = EvaluateExpression(callExpr.Arguments[i]);
+                                Debug.Assert(buf[i] != Value.Void);
+                            }
+                            isTailCall = true;
+                            tailCallArgs = ImmutableArray.Create(buf, 0, argLen);
+                            return Value.Void;
+                        }
                         _lastValue = EvaluateExpression(rs.Expression);
                     }
                     return _lastValue;
@@ -172,6 +231,15 @@ internal sealed class Evaluator : IEvalContext, IDisposable
             }
         }
         return _lastValue;
+    }
+
+    private void YieldIfDue()
+    {
+        if (++_yieldCounter >= 1000)
+        {
+            _yieldCounter = 0;
+            Thread.Yield();
+        }
     }
 
     private void EvaluateVariableDeclaration(BoundVariableDeclaration node)
@@ -232,14 +300,10 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private Value GetValue(VariableSymbol v)
     {
         if (v is GlobalVariableSymbol)
-        {
-            return _globals.TryGetValue(v, out Value value) ? value : 0;
-        }
-        else
-        {
-            var locals = _locals.Peek();
-            return locals[v];
-        }
+            return _globalValues[_globalIndex[v]];
+        var slot = ((LocalVariableSymbol)v).SlotIndex;
+        Debug.Assert(slot >= 0, "局部变量未分配 slot");
+        return _localFrames.Peek()[slot];
     }
 
     private Value EvaluateVariableExpression(BoundVariableExpression v)
@@ -306,6 +370,34 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
         Debug.Assert(left != Value.Void && right != Value.Void);
 
+        // INT 快速路径：直接整数运算，跳过委托间接调用
+        if (left.Tag == 1 && right.Tag == 1) // TAG_INT
+        {
+            var l = left.AsInt();
+            var r = right.AsInt();
+            return b.Op.Kind switch
+            {
+                BoundBinaryOperatorKind.Addition => Value.FromInt(l + r),
+                BoundBinaryOperatorKind.Subtraction => Value.FromInt(l - r),
+                BoundBinaryOperatorKind.Multiplication => Value.FromInt(l * r),
+                BoundBinaryOperatorKind.Division => r == 0 ? throw new DivideByZeroException("整数除零") : Value.FromInt(l / r),
+                BoundBinaryOperatorKind.Mod => r == 0 ? throw new DivideByZeroException("整数除零") : Value.FromInt(l % r),
+                BoundBinaryOperatorKind.BitwiseAnd => Value.FromInt(l & r),
+                BoundBinaryOperatorKind.BitwiseOr => Value.FromInt(l | r),
+                BoundBinaryOperatorKind.BitwiseXor => Value.FromInt(l ^ r),
+                BoundBinaryOperatorKind.BitLeftShift => Value.FromInt(l << r),
+                BoundBinaryOperatorKind.BitRightShift => Value.FromInt(l >> r),
+                BoundBinaryOperatorKind.Equals => Value.FromBool(l == r),
+                BoundBinaryOperatorKind.NotEquals => Value.FromBool(l != r),
+                BoundBinaryOperatorKind.Less => Value.FromBool(l < r),
+                BoundBinaryOperatorKind.LessOrEquals => Value.FromBool(l <= r),
+                BoundBinaryOperatorKind.Greater => Value.FromBool(l > r),
+                BoundBinaryOperatorKind.GreaterOrEquals => Value.FromBool(l >= r),
+                _ => Value.From(b.Op.Operate(left, right)),
+            };
+        }
+
+        // 慢速路径：double/bool/string/混合类型走委托
         return Value.From(b.Op.Operate(left, right));
     }
 
@@ -320,15 +412,32 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
     private Value EvaluateCallExpression(BoundCallExpression node)
     {
-        var args = ImmutableArray.CreateBuilder<Value>();
-        for (int i = 0; i < node.Arguments.Length; i++)
+        var argCount = node.Arguments.Length;
+        if (argCount == 0)
         {
-            var value = EvaluateExpression(node.Arguments[i]);
-            Debug.Assert(value != Value.Void);
-            args.Add(value);
+            var callable = _callables[node.Function];
+            return callable.Invoke(ReadOnlySpan<Value>.Empty, this, _token);
         }
-        var callable = _callables[node.Function];
-        return callable.Invoke(args.ToImmutable(), this, _token);
+
+        Value[]? rented = null;
+        var args = argCount <= 8
+            ? (rented = ArrayPool<Value>.Shared.Rent(argCount))
+            : new Value[argCount];
+        try
+        {
+            for (int i = 0; i < argCount; i++)
+            {
+                args[i] = EvaluateExpression(node.Arguments[i]);
+                Debug.Assert(args[i] != Value.Void);
+            }
+            var callable = _callables[node.Function];
+            return callable.Invoke(args.AsSpan(0, argCount), this, _token);
+        }
+        finally
+        {
+            if (rented != null)
+                ArrayPool<Value>.Shared.Return(rented);
+        }
     }
 
     private void EvaluateKeyAction(BoundKeyActStatement node)
@@ -367,28 +476,86 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private void Assign(VariableSymbol variable, Value value)
     {
         if (variable is GlobalVariableSymbol)
-        {
-            _globals[variable] = value;
-        }
+            _globalValues[_globalIndex[variable]] = value;
         else
         {
-            var locals = _locals.Peek();
-            locals[variable] = value;
+            var slot = ((LocalVariableSymbol)variable).SlotIndex;
+            Debug.Assert(slot >= 0, "局部变量未分配 slot");
+            _localFrames.Peek()[slot] = value;
         }
     }
 
     // IEvalContext 方法
-    public void PushLocals(Dictionary<VariableSymbol, Value> locals) => _locals.Push(locals);
-    public void PopLocals() => _locals.Pop();
     public Value EvaluateFunctionBody(FunctionSymbol function)
     {
         var body = _functions[function];
         return EvaluateStatement(body);
     }
 
+    // 内部帧管理（尾递归使用）
+    private void PushFrame(int slotCount) => _localFrames.Push(new Value[slotCount]);
+    private void PopFrame() => _localFrames.Pop();
+
+    /// <summary>
+    /// 使用尾递归优化执行函数体
+    /// </summary>
+    public Value EvaluateFunctionBodyWithTailRecursion(FunctionSymbol function, ReadOnlySpan<Value> args, CancellationToken token)
+    {
+        var body = _functions[function];
+        var frame = new Value[function.LocalSlotCount];
+        for (int i = 0; i < args.Length; i++)
+            frame[function.Parameters[i].SlotIndex] = args[i];
+
+        int iterationCount = 0;
+        while (true)
+        {
+            if (token.IsCancellationRequested)
+                throw new OperationCanceledException(token);
+
+            _localFrames.Push(frame);
+
+            try
+            {
+                var result = EvaluateStatement(body, function, out bool isTailCall, out ImmutableArray<Value> newArgs);
+
+                if (!isTailCall)
+                    return result;
+
+                // 复用 frame 数组，避免每次迭代分配新对象
+                for (int i = 0; i < newArgs.Length; i++)
+                    frame[function.Parameters[i].SlotIndex] = newArgs[i];
+
+                iterationCount++;
+                if (iterationCount > 100000)
+                    throw new ScriptException("尾递归优化检测到可能的无限循环", 0);
+            }
+            finally
+            {
+                _localFrames.Pop();
+            }
+        }
+    }
+
     public void Dispose()
     {
         _nativeLoader?.Dispose();
+    }
+
+    private static void CollectGlobalVars(BoundBlockStatement body, List<VariableSymbol> list, HashSet<VariableSymbol> seen)
+    {
+        foreach (var stmt in body.Statements)
+        {
+            switch (stmt)
+            {
+                case BoundVariableDeclaration vd
+                    when vd.Variable is GlobalVariableSymbol && seen.Add(vd.Variable):
+                    list.Add(vd.Variable);
+                    break;
+                case BoundBlockStatement inner:
+                    CollectGlobalVars(inner, list, seen);
+                    break;
+            }
+        }
     }
 }
 
