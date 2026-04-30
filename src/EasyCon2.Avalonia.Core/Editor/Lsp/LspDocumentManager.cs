@@ -1,3 +1,4 @@
+using OmniSharp.Extensions.LanguageServer.Protocol;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
 namespace EasyCon2.Avalonia.Core.Editor.Lsp;
@@ -17,7 +18,7 @@ public class LspDocumentManager
 
     public void OpenDocument(string filePath, string text)
     {
-        DocumentUri = new Uri(filePath).AbsoluteUri;
+        DocumentUri = OmniSharp.Extensions.LanguageServer.Protocol.DocumentUri.FromFileSystemPath(filePath).ToString();
         _version = 1;
 
         _client.SendDidOpen(new DidOpenTextDocumentParams

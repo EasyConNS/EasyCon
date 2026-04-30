@@ -6,7 +6,7 @@ internal static class SourceHelper
     {
         if (character < 0 || character > lineText.Length) return "";
         var start = character;
-        if (start == lineText.Length) start--;
+        if (start == lineText.Length && start > 0) start--;
         while (start > 0 && IsWordChar(lineText[start - 1])) start--;
         var end = start;
         while (end < lineText.Length && IsWordChar(lineText[end])) end++;

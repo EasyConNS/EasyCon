@@ -25,13 +25,20 @@
     <Grid RowDefinitions="Auto,*">
         <!-- 顶部区域：脚本路径和打开按钮 -->
         <Border Grid.Row="0" Padding="10">
-            <Grid ColumnDefinitions="*,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Grid.Column="0"
                           Text="{Binding CurrentScriptPath}"
                           VerticalAlignment="Center"
                           Margin="0,0,10,0"
                           TextTrimming="CharacterEllipsis"/>
                 <Button Grid.Column="1"
+                       Content="编辑"
+                       Command="{Binding OpenEditorCommand}"
+                       IsEnabled="{Binding !IsRunning}"
+                       MinWidth="80"
+                       Margin="0,0,5,0"
+                       HorizontalContentAlignment="Center"/>
+                <Button Grid.Column="2"
                        Content="打开脚本"
                        Command="{Binding OpenScriptCommand}"
                        CommandParameter="{Binding $parent[Window]}"

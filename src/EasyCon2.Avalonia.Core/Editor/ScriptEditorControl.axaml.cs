@@ -9,6 +9,7 @@ using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Search;
 using EasyCon.Core;
 using EasyCon2.Avalonia.Core.Editor.Lsp;
+using System.Diagnostics;
 
 namespace EasyCon2.Avalonia.Core.Editor;
 
@@ -123,7 +124,13 @@ public partial class ScriptEditorControl : UserControl
     {
         EditorTextChanged?.Invoke(this, EventArgs.Empty);
 
-        if (_lspDocumentOpened && _lspChangeThrottle != null)
+        if (!_lspDocumentOpened)
+        {
+            TryOpenLspDocument();
+            return;
+        }
+
+        if (_lspChangeThrottle != null)
         {
             _lspChangeThrottle.Stop();
             _lspChangeThrottle.Start();
@@ -151,18 +158,27 @@ public partial class ScriptEditorControl : UserControl
     {
         if (_disposed || _lspService == null) return;
 
-        _lspCompletionAdapter = new LspCompletionAdapter(_lspService);
-        _completionController = new CodeCompletionController(_editor, _lspCompletionAdapter);
+        try
+        {
+            _lspCompletionAdapter = new LspCompletionAdapter(_lspService);
+            _completionController = new CodeCompletionController(_editor, _lspCompletionAdapter);
 
-        _lspHoverHandler = new LspHoverHandler(_editor, _lspService);
-        _lspDefinitionHandler = new LspDefinitionHandler(_editor, _lspService);
+            _lspHoverHandler = new LspHoverHandler(_editor, _lspService);
+            _lspDefinitionHandler = new LspDefinitionHandler(_editor, _lspService);
 
-        TryOpenLspDocument();
+            TryOpenLspDocument();
+            UpdateImgLabels();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[LSP] OnLspConnected error: {ex.Message}");
+        }
     }
 
     private void OnLspConnectionFailed(string message)
     {
         if (_disposed) return;
+        Debug.WriteLine($"[LSP] Connection failed: {message}");
     }
 
     private void TryOpenLspDocument()
@@ -264,12 +280,42 @@ public partial class ScriptEditorControl : UserControl
             FileDropped?.Invoke(path);
     }
 
+    private void UpdateImgLabels()
+    {
+        if (_lspCompletionAdapter == null) return;
+
+        var filePath = FileName;
+        if (string.IsNullOrEmpty(filePath))
+        {
+            _lspCompletionAdapter.UpdateImgLabels([]);
+            return;
+        }
+
+        var scriptDir = Path.GetDirectoryName(filePath);
+        if (scriptDir == null || !Directory.Exists(Path.Combine(scriptDir, "ImgLabel")))
+        {
+            _lspCompletionAdapter.UpdateImgLabels([]);
+            return;
+        }
+
+        try
+        {
+            var (labels, _, _) = ECCore.LoadImgLabels(scriptDir, AppDomain.CurrentDomain.BaseDirectory);
+            _lspCompletionAdapter.UpdateImgLabels(labels.Select(il => il.name));
+        }
+        catch
+        {
+            _lspCompletionAdapter.UpdateImgLabels([]);
+        }
+    }
+
     public void Load(string path)
     {
         using var stream = File.OpenRead(path);
         _editor.Load(stream);
         FileName = path;
         TryOpenLspDocument();
+        UpdateImgLabels();
     }
 
     public void Save(string path)

@@ -75,7 +75,7 @@ internal class RichLogBox : RichTextBox
         });
     }
 
-    public async Task Print(string message, bool newline = true, bool timestamp = true)
+    public async void Print(string message, bool newline = true, bool timestamp = true)
     {
         _msgNewLine = _msgNewLine && newline;
         Print(message, null, timestamp);

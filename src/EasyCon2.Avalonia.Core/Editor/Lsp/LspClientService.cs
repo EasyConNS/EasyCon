@@ -6,6 +6,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.General;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using System.Diagnostics;
+using System.IO.Pipes;
 using ServerCapabilities = OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities.ServerCapabilities;
 
 namespace EasyCon2.Avalonia.Core.Editor.Lsp;
@@ -13,12 +14,14 @@ namespace EasyCon2.Avalonia.Core.Editor.Lsp;
 public class LspClientService : IDisposable
 {
     private readonly object _lock = new();
-    private Process? _process;
     private ILanguageClient? _client;
     private readonly LspDocumentManager _documentManager;
     private bool _disposed;
     private bool _isInitialized;
     private string? _filePath;
+    private Task? _serverTask;
+    private NamedPipeServerStream? _serverPipe;
+    private NamedPipeClientStream? _clientPipe;
 
     public bool IsConnected
     {
@@ -55,36 +58,33 @@ public class LspClientService : IDisposable
         {
             Debug.WriteLine($"[LSP] Connection failed: {ex.Message}");
             ConnectionFailed?.Invoke($"LSP 服务启动失败: {ex.Message}");
-            CleanupProcess();
+            Cleanup();
         }
     }
 
     private async Task StartAndInitializeAsync()
     {
-        _process = new Process
+        var pipeName = $"ecs-lsp-{Guid.NewGuid():N}";
+
+        _serverPipe = new NamedPipeServerStream(pipeName, PipeDirection.InOut, 1,
+            PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+
+        _serverTask = Task.Run(async () =>
         {
-            StartInfo = new ProcessStartInfo
+            try
             {
-                FileName = "python",
-                Arguments = "-m easycon_script_lsp --stdio",
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            },
-            EnableRaisingEvents = true
-        };
+                await _serverPipe.WaitForConnectionAsync();
+                await EasyCon.Lsp.EcsLanguageServer.RunAsync(_serverPipe, _serverPipe);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[LSP] Server exited: {ex.Message}");
+            }
+        });
 
-        _process.Exited += OnProcessExited;
-        _process.ErrorDataReceived += (_, e) =>
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-                Debug.WriteLine($"[LSP stderr] {e.Data}");
-        };
-
-        _process.Start();
-        _process.BeginErrorReadLine();
+        _clientPipe = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut,
+            PipeOptions.Asynchronous);
+        await _clientPipe.ConnectAsync();
 
         DocumentUri? rootUri = null;
         if (_filePath != null)
@@ -92,8 +92,8 @@ public class LspClientService : IDisposable
 
         _client = LanguageClient.Create(options =>
         {
-            options.WithInput(_process.StandardOutput.BaseStream)
-                   .WithOutput(_process.StandardInput.BaseStream);
+            options.WithInput(_clientPipe)
+                   .WithOutput(_clientPipe);
 
             if (rootUri != null)
                 options.WithRootUri(rootUri);
@@ -137,18 +137,6 @@ public class LspClientService : IDisposable
             ServerCapabilities = lc.ServerSettings?.Capabilities;
 
         lock (_lock) _isInitialized = true;
-        Debug.WriteLine("[LSP] Connected and initialized");
-    }
-
-    private void OnProcessExited(object? sender, EventArgs e)
-    {
-        lock (_lock)
-        {
-            _isInitialized = false;
-            if (_disposed) return;
-        }
-
-        Debug.WriteLine("[LSP] Process exited unexpectedly");
     }
 
     public async Task<IEnumerable<CompletionItem>?> RequestCompletionAsync(CompletionParams parameters)
@@ -255,26 +243,32 @@ public class LspClientService : IDisposable
             client.Dispose();
         }
 
-        CleanupProcess();
+        Cleanup();
+
+        if (_serverTask != null)
+        {
+            try { await Task.WhenAny(_serverTask, Task.Delay(2000)); }
+            catch { }
+            _serverTask = null;
+        }
     }
 
-    private void CleanupProcess()
+    private void Cleanup()
     {
-        Process? proc;
         lock (_lock)
         {
-            proc = _process;
-            _process = null;
-        }
+            if (_clientPipe != null)
+            {
+                try { _clientPipe.Close(); } catch { }
+                _clientPipe = null;
+            }
 
-        if (proc == null) return;
-        try
-        {
-            proc.Exited -= OnProcessExited;
-            if (!proc.HasExited) proc.Kill();
+            if (_serverPipe != null)
+            {
+                try { _serverPipe.Close(); } catch { }
+                _serverPipe = null;
+            }
         }
-        catch (Exception ex) { Debug.WriteLine($"[LSP] Cleanup error: {ex.Message}"); }
-        finally { proc.Dispose(); }
     }
 
     public void Dispose()

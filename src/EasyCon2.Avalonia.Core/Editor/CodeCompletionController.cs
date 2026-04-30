@@ -31,7 +31,7 @@ internal class CodeCompletionController : IDisposable
         _editor.LostFocus += (_, _) => CloseCompletionWindow();
     }
 
-    private async Task OnTextEntered(object sender, TextInputEventArgs e)
+    private async void OnTextEntered(object sender, TextInputEventArgs e)
     {
         if (!_enableAutoCompletion || string.IsNullOrEmpty(e.Text)) return;
 
@@ -119,6 +119,9 @@ internal class CodeCompletionController : IDisposable
         if (!_isDisposed)
         {
             CloseCompletionWindow();
+            _editor.TextArea.TextEntering -= OnTextEntering;
+            _editor.TextArea.TextEntered -= OnTextEntered;
+            _editor.TextArea.KeyDown -= OnKeyDown;
             _isDisposed = true;
         }
     }

@@ -260,7 +260,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
     #region Script Operations
 
-    private async Task runStopBtn_Click(object sender, EventArgs e)
+    private async void runStopBtn_Click(object sender, EventArgs e)
     {
         runStopBtn.Enabled = false;
 
@@ -325,7 +325,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         }
     }
 
-    private async Task formatBtn_Click(object sender, EventArgs e)
+    private async void formatBtn_Click(object sender, EventArgs e)
     {
         var externalGetters = _captureService.BuildExternalGetters();
         var (success, formatted, errorLine, error) = _scriptService.Format(

@@ -7,7 +7,7 @@ namespace EasyCon2.Avalonia.Core.Editor;
 
 public interface ICompletionProvider
 {
-    Task<IEnumerable<ICompletionData>> GetCompletionsAsync(ITextSource textSource, int offset, string cur);
+    Task<IEnumerable<ICompletionData>> GetCompletionsAsync(TextDocument document, int offset, string cur);
     bool ShouldTriggerCompletion(char triggerChar, string currentLineText, int caretIndex);
     string GetCurrentWord(TextDocument document, int offset);
 }
@@ -33,7 +33,7 @@ internal class EcpCompletionProvider(TextEditor textEditor) : ICompletionProvide
         "RAND", "AMIIBO", "BEEP",
     ];
 
-    public Task<IEnumerable<ICompletionData>> GetCompletionsAsync(ITextSource textSource, int offset, string cur)
+    public Task<IEnumerable<ICompletionData>> GetCompletionsAsync(TextDocument document, int offset, string cur)
     {
         var completions = new List<ICompletionData>();
 

@@ -1,21 +1,36 @@
 using AvaloniaEdit.CodeCompletion;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using AvTextDocument = AvaloniaEdit.Document.TextDocument;
+using EasyCon2.Avalonia.Core.Editor;
 
 namespace EasyCon2.Avalonia.Core.Editor.Lsp;
 
 internal class LspCompletionAdapter : ICompletionProvider
 {
     private readonly LspClientService _lspService;
+    private List<string> _imgLabels = [];
 
     public LspCompletionAdapter(LspClientService lspService)
     {
         _lspService = lspService;
     }
 
-    public async Task<IEnumerable<ICompletionData>> GetCompletionsAsync(
-        AvaloniaEdit.Document.ITextSource textSource, int offset, string cur)
+    public void UpdateImgLabels(IEnumerable<string> labels)
     {
+        _imgLabels = [.. labels];
+    }
+
+    public async Task<IEnumerable<ICompletionData>> GetCompletionsAsync(
+        AvTextDocument document, int offset, string cur)
+    {
+        if (cur.StartsWith('@'))
+        {
+            var prefix = cur[1..];
+            return _imgLabels
+                .Where(name => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .Select(name => new EcpCompletionData($"@{name}"));
+        }
+
         if (!_lspService.IsConnected || _lspService.DocumentManager.DocumentUri == null)
             return [];
 
@@ -25,7 +40,7 @@ internal class LspCompletionAdapter : ICompletionProvider
             {
                 Uri = _lspService.DocumentManager.DocumentUri
             },
-            Position = OffsetToPosition(textSource, offset),
+            Position = GetPosition(document, offset),
             Context = new CompletionContext { TriggerKind = CompletionTriggerKind.Invoked }
         };
 
@@ -54,17 +69,5 @@ internal class LspCompletionAdapter : ICompletionProvider
     {
         var loc = document.GetLocation(offset);
         return new Position(loc.Line - 1, loc.Column - 1);
-    }
-
-    private static Position OffsetToPosition(AvaloniaEdit.Document.ITextSource text, int offset)
-    {
-        int line = 0, col = 0;
-        int count = text.TextLength;
-        for (int i = 0; i < offset && i < count; i++)
-        {
-            if (text.GetCharAt(i) == '\n') { line++; col = 0; }
-            else col++;
-        }
-        return new Position(line, col);
     }
 }

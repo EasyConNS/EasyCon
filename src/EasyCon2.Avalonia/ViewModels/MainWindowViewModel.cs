@@ -23,6 +23,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly StringBuilder _logBuilder = new();
     private const int MaxLogLength = 100_000;
     private Window? _monitorWindow;
+    private Window? _editorWindow;
 
     // 窗口标题（含版本号）
     [ObservableProperty]
@@ -115,6 +116,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // 打开脚本命令
     public ICommand OpenScriptCommand { get; }
+    public ICommand OpenEditorCommand { get; }
 
     // 连接模块命令
     public ICommand ConnectNintendoSwitchCommand { get; }
@@ -200,6 +202,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // 初始化命令
         OpenScriptCommand = new RelayCommand<Window>(OpenScript);
+        OpenEditorCommand = new RelayCommand(OpenEditor, CanOpenEditor);
         ConnectNintendoSwitchCommand = new RelayCommand(ConnectNintendoSwitch);
         AutoConnectNintendoSwitchCommand = new RelayCommand(AutoConnectNintendoSwitch);
         ConnectCaptureSourceCommand = new RelayCommand(ConnectCaptureSource);
@@ -278,7 +281,7 @@ public partial class MainWindowViewModel : ViewModelBase
             SelectedControlSource = oldSelected;
     }
 
-    private async Task OpenScript(Window? window)
+    private async void OpenScript(Window? window)
     {
         if (window == null)
             return;
@@ -430,6 +433,33 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private bool CanOpenEditor()
+    {
+        return !string.IsNullOrEmpty(CurrentScriptPath) && CurrentScriptPath != "未选择脚本";
+    }
+
+    private void OpenEditor()
+    {
+        if (!CanOpenEditor()) return;
+
+        if (_editorWindow != null)
+        {
+            if (_editorWindow.WindowState == WindowState.Minimized)
+                _editorWindow.WindowState = WindowState.Normal;
+            _editorWindow.Activate();
+            return;
+        }
+
+        _editorWindow = new EditorWindow(CurrentScriptPath);
+        _editorWindow.Closed += (_, _) => _editorWindow = null;
+        _editorWindow.Show();
+    }
+
+    partial void OnCurrentScriptPathChanged(string value)
+    {
+        (OpenEditorCommand as RelayCommand)?.NotifyCanExecuteChanged();
+    }
+
     public void OpenScriptFromPath(string path)
     {
         CurrentScriptPath = path;
@@ -534,6 +564,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public void OnMainWindowClosing()
     {
+        if (_editorWindow != null)
+        {
+            _editorWindow.Close();
+            _editorWindow = null;
+        }
+
         if (_monitorWindow != null)
         {
             if (_monitorWindow.DataContext is MonitorWindowViewModel vm)
