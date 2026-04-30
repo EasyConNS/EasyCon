@@ -97,7 +97,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
                    .WithOutput(_clientPipe);
 
             if (rootUri != null)
-                options.WithRootUri(rootUri);
+                options.WithRootUri(rootUri!);
 
             options.WithClientCapabilities(new ClientCapabilities
             {

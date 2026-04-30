@@ -15,7 +15,7 @@ public partial class VPadOverlay : Window
     public event Action? ToggleRequested;
     public event Action? HideRequested;
 
-    public bool IsActive
+    public new bool IsActive
     {
         set
         {

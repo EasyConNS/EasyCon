@@ -281,7 +281,7 @@ public partial class MainWindowViewModel : ViewModelBase
             SelectedControlSource = oldSelected;
     }
 
-    private async Task OpenScript(Window? window)
+    private async void OpenScript(Window? window)
     {
         if (window == null)
             return;
