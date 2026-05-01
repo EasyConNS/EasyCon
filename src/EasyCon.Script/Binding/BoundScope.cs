@@ -1,3 +1,4 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using System.Collections.Immutable;
 
@@ -7,9 +8,39 @@ internal sealed class BoundScope(BoundScope? parent)
 {
     private readonly Dictionary<string, VariableSymbol> _var_symbols = [];
     private readonly Dictionary<string, List<FunctionSymbol>> _fn_symbols = [];
+    private readonly Dictionary<string, EcsStructDef> _structDefs = [];
     private ImmutableHashSet<string> _validExternalVariables = [];
 
     public BoundScope? Parent { get; } = parent;
+
+    public bool TryDeclareStruct(string name, EcsStructDef def)
+    {
+        if (_structDefs.ContainsKey(name))
+            return false;
+        _structDefs[name] = def;
+        return true;
+    }
+
+    public EcsStructDef? TryLookupStruct(string name)
+    {
+        if (_structDefs.TryGetValue(name, out var def))
+            return def;
+        return Parent?.TryLookupStruct(name);
+    }
+
+    public ImmutableDictionary<string, EcsStructDef> CollectAllStructDefs()
+    {
+        var result = new Dictionary<string, EcsStructDef>();
+        CollectStructDefs(result);
+        return result.ToImmutableDictionary();
+    }
+
+    private void CollectStructDefs(Dictionary<string, EcsStructDef> result)
+    {
+        foreach (var kv in _structDefs)
+            result.TryAdd(kv.Key, kv.Value);
+        Parent?.CollectStructDefs(result);
+    }
 
     public bool TryDeclareVariable(VariableSymbol variable)
     {

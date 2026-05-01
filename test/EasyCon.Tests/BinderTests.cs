@@ -272,8 +272,8 @@ ENDFUNC", "重复定义的函数");
     [Test]
     public void TypeCheck_MixedTypes_Error()
     {
-        // int 和 double 不支持混合运算
-        ExpectError("$r = 1 + 2.5", "不支持");
+        // int 和 string 不支持 * 混合运算（只有 + 和 & 支持字符串隐式转换）
+        ExpectError("$r = 1 * \"a\"", "不支持");
     }
 
     #endregion

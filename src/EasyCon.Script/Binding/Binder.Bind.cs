@@ -469,7 +469,9 @@ internal sealed partial class Binder
         }
         var variable = BindVariableDeclaration(varTarget, varTarget.ReadOnly, boundexpr.Type);
 
-        if (!variable.Type.IsAssignableFrom(boundexpr.Type))
+        if (variable.Type is StructType && boundexpr.Type.Equals(ScriptType.Ptr))
+            boundexpr = new BoundConversionExpression(syntax, variable.Type, boundexpr);
+        else if (!variable.Type.IsAssignableFrom(boundexpr.Type))
             _diagnostics.ReportCannotConvert(syntax.Location, boundexpr.Type, variable.Type);
 
         return new BoundVariableDeclaration(syntax, variable, boundexpr);
@@ -637,8 +639,11 @@ internal sealed partial class Binder
     private BoundExpr BindConversion(BoundExpr expr, ScriptType type)
     {
         if (type.IsAssignableFrom(expr.Type)) return expr;
-        if (type == ScriptType.String) return new BoundConversionExpression(expr.Syntax, type, expr);
-        if (type == ScriptType.Double && expr.Type.Equals(ScriptType.Int)) return new BoundConversionExpression(expr.Syntax, type, expr);
+        if (type == ScriptType.String
+            || type == ScriptType.Double
+            || (type == ScriptType.Ptr && expr.Type is StructType)
+            || (type is StructType && expr.Type.Equals(ScriptType.Ptr)))
+            return new BoundConversionExpression(expr.Syntax, type, expr);
         _diagnostics.ReportCannotConvert(expr.Syntax.Syntax.Location, expr.Type, type);
         return new BoundErrorExpression(expr.Syntax);
     }
@@ -664,7 +669,7 @@ internal sealed partial class Binder
 
     private BoundExpr BindStructInitExpression(StructInitExpr syntax)
     {
-        if (!_structDefs.TryGetValue(syntax.TypeName, out var def))
+        if (_scope.TryLookupStruct(syntax.TypeName) is not { } def)
         {
             _diagnostics.ReportBadStruct(syntax.Syntax.Location, $"未知结构体类型 {syntax.TypeName}");
             return new BoundErrorExpression(syntax);
@@ -712,8 +717,32 @@ internal sealed partial class Binder
 
         if (boundLeft.ConstantValue != Value.Void && boundRight.ConstantValue != Value.Void)
         {
-            var COS = boundOperator.Operate(boundLeft.ConstantValue, boundRight.ConstantValue);
-            return new BoundLiteralExpression(syntax, COS);
+            var l = boundLeft.ConstantValue;
+            var r = boundRight.ConstantValue;
+            var result = boundOperator.Kind switch
+            {
+                BoundBinaryOperatorKind.Addition => l + r,
+                BoundBinaryOperatorKind.Subtraction => l - r,
+                BoundBinaryOperatorKind.Multiplication => l * r,
+                BoundBinaryOperatorKind.Division => l / r,
+                BoundBinaryOperatorKind.Mod => l % r,
+                BoundBinaryOperatorKind.RoundDiv => l.RoundDiv(r),
+                BoundBinaryOperatorKind.BitwiseAnd => l & r,
+                BoundBinaryOperatorKind.BitwiseOr => l | r,
+                BoundBinaryOperatorKind.BitwiseXor => l ^ r,
+                BoundBinaryOperatorKind.BitLeftShift => l << r,
+                BoundBinaryOperatorKind.BitRightShift => l >> r,
+                BoundBinaryOperatorKind.Equals => Value.FromBool(l.Equals(r)),
+                BoundBinaryOperatorKind.NotEquals => Value.FromBool(!l.Equals(r)),
+                BoundBinaryOperatorKind.Less => Value.FromBool(l < r),
+                BoundBinaryOperatorKind.LessOrEquals => Value.FromBool(l <= r),
+                BoundBinaryOperatorKind.Greater => Value.FromBool(l > r),
+                BoundBinaryOperatorKind.GreaterOrEquals => Value.FromBool(l >= r),
+                BoundBinaryOperatorKind.LogicalAnd => Value.FromBool(l.AsBool() && r.AsBool()),
+                BoundBinaryOperatorKind.LogicalOr => Value.FromBool(l.AsBool() || r.AsBool()),
+                _ => throw new InvalidOperationException($"不支持的常量运算: {boundOperator.Kind}")
+            };
+            return new BoundLiteralExpression(syntax, result);
         }
 
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);

@@ -106,6 +106,26 @@ internal sealed class EcsDocumentSymbolHandler(DocumentManager docManager) : Doc
                     Range = BlockRangeFromTokens(wb.Condition.Syntax, wb.End.Syntax),
                     SelectionRange = TokenRange(wb.Condition.Syntax),
                 };
+            case StructDeclBlock sb:
+                var structSymbol = new DocumentSymbol
+                {
+                    Name = sb.Header.Name,
+                    Kind = SymbolKind.Struct,
+                    Range = BlockRange(sb, sb.End),
+                    SelectionRange = TokenRange(sb.Syntax),
+                    Children = [],
+                };
+                foreach (var field in sb.Fields)
+                {
+                    structSymbol.Children!.Add(new()
+                    {
+                        Name = $"${field.Name}",
+                        Kind = SymbolKind.Field,
+                        Range = TokenRange(field.Syntax),
+                        SelectionRange = TokenRange(field.Syntax),
+                    });
+                }
+                return structSymbol;
             default:
                 return null;
         }

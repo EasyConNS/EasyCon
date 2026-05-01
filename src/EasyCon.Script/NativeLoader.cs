@@ -1,7 +1,9 @@
 using EasyCon.Script.Binding;
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
@@ -16,6 +18,7 @@ internal sealed class NativeLoader
     private static readonly ModuleBuilder s_moduleBuilder;
     private static int s_typeIndex;
 
+    [RequiresDynamicCode("Calls System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly(AssemblyName, AssemblyBuilderAccess)")]
     static NativeLoader()
     {
         var assembly = AssemblyBuilder.DefineDynamicAssembly(
@@ -57,6 +60,7 @@ internal sealed class NativeLoader
         return CreateCallable(symbol, funcPtr);
     }
 
+    [RequiresDynamicCode("Calls System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer(nint, Type)")]
     private ICallable CreateCallable(FunctionSymbol symbol, IntPtr funcPtr)
     {
         var paramTypes = symbol.Parameters.Select(p => p.Type).ToArray();
@@ -118,6 +122,7 @@ internal sealed class NativeLoader
     /// <summary>
     /// 动态定义委托类型，标注 Cdecl 调用约定，兼容各平台 C 函数
     /// </summary>
+    [RequiresUnreferencedCode("Calls System.Reflection.Emit.ModuleBuilder.DefineType(String, TypeAttributes, Type)")]
     private static Type DefineDelegateType(Type[] paramTypes, Type returnType)
     {
         var typeName = $"NativeDelegate_{Interlocked.Increment(ref s_typeIndex)}";
@@ -166,6 +171,12 @@ internal sealed class NativeLoader
                 return structPtr;
             return new IntPtr(value.AsPtr());
         }
+        if (targetType is StructType)
+        {
+            if (value.TryGetStructPtr(out var structPtr))
+                return structPtr;
+            return new IntPtr(value.AsPtr());
+        }
         return null;
     }
 
@@ -181,6 +192,11 @@ internal sealed class NativeLoader
             return Value.FromDouble(Convert.ToDouble(result));
         if (returnType.Equals(ScriptType.Ptr))
             return Value.FromPtr(((IntPtr)result!).ToInt64());
+        if (returnType is StructType st)
+        {
+            var instance = new EcsStruct(st.Definition, (IntPtr)result!);
+            return Value.FromStruct(instance);
+        }
         return Value.Void;
     }
 
@@ -201,6 +217,8 @@ internal sealed class NativeLoader
         if (type.Equals(ScriptType.String))
             return typeof(IntPtr);
         if (type.Equals(ScriptType.Ptr))
+            return typeof(IntPtr);
+        if (type is StructType)
             return typeof(IntPtr);
         return typeof(void);
     }

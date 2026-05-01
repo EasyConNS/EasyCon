@@ -36,10 +36,28 @@ internal static class HoverProvider
         }
 
         // Check AST symbols
-        foreach (var sym in SymbolCollector.CollectSymbols(root))
+        var symbols = SymbolCollector.CollectSymbols(root);
+        foreach (var sym in symbols)
         {
-            if (string.Equals(word, sym.Name, sym.Kind is "constant" or "parameter" or "variable" ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(word, sym.Name, sym.Kind is "constant" or "parameter" or "variable" or "field" ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase))
             {
+                // 对于结构体，显示更详细的字段信息
+                if (sym.Kind == "struct")
+                {
+                    var fields = symbols.Where(s => s.Kind == "field").ToList();
+                    var fieldList = fields.Count > 0
+                        ? "\n\n**字段:**\n" + string.Join("\n", fields.Select(f => $"- `{f.Name}`"))
+                        : "";
+                    return new()
+                    {
+                        Contents = new()
+                        {
+                            Kind = MarkupKind.Markdown,
+                            Value = $"**struct** `{sym.Name}` — 第 {sym.Line} 行{fieldList}",
+                        },
+                    };
+                }
+
                 return new()
                 {
                     Contents = new()

@@ -102,6 +102,8 @@ internal static class CompletionProvider
                         "constant" => CompletionItemKind.Constant,
                         "function" => CompletionItemKind.Function,
                         "parameter" => CompletionItemKind.Variable,
+                        "struct" => CompletionItemKind.Struct,
+                        "field" => CompletionItemKind.Field,
                         _ => CompletionItemKind.Variable,
                     },
                     Detail = sym.Kind,

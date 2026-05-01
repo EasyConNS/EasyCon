@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace EasyCon.Script.Asm;
 
 abstract class Instruction
@@ -78,7 +80,7 @@ abstract class Instruction
         public static readonly Failed NotImplemented = new("类型未定义，这可能是一个bug，请汇报给作者");
     }
 
-    public static Instruction CreateInstance(Type type, params object[] args)
+    public static Instruction CreateInstance([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicMethods)] Type type, params object[] args)
     {
         return type.GetMethod("Create", System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public).Invoke(null, args) as Instruction;
     }

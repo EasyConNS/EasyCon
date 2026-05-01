@@ -341,14 +341,26 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         var value = EvaluateExpression(node.Expression);
         if (node.Type == ScriptType.Bool)
             return value.ToBoolean();
-        else if (node.Type == ScriptType.Int)
+        if (node.Type == ScriptType.Int)
             return value.ToInt();
-        else if (node.Type == ScriptType.Double)
+        if (node.Type == ScriptType.Double)
             return value.ToDouble();
-        else if (node.Type == ScriptType.String)
+        if (node.Type == ScriptType.String)
             return value.ToString();
-        else
-            throw new Exception($"无效的类型转换{node.Type}");
+        if (node.Type == ScriptType.Ptr)
+        {
+            if (value.TryGetStructPtr(out var ptr))
+                return Value.FromPtr(ptr.ToInt64());
+            return Value.FromPtr(value.AsInt());
+        }
+        if (node.Type is StructType st)
+        {
+            var sourcePtr = new IntPtr(value.AsPtr());
+            var instance = new EcsStruct(st.Definition, sourcePtr);
+            _structInstances.Add(instance);
+            return Value.FromStruct(instance);
+        }
+        throw new Exception($"无效的类型转换{node.Type}");
     }
 
     private Value EvaluateUnaryExpression(BoundUnaryExpression u)
@@ -369,35 +381,29 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
         Debug.Assert(left != Value.Void && right != Value.Void);
 
-        // INT 快速路径：直接整数运算，跳过委托间接调用
-        if (left.Tag == 1 && right.Tag == 1) // TAG_INT
+        return b.Op.Kind switch
         {
-            var l = left.AsInt();
-            var r = right.AsInt();
-            return b.Op.Kind switch
-            {
-                BoundBinaryOperatorKind.Addition => Value.FromInt(l + r),
-                BoundBinaryOperatorKind.Subtraction => Value.FromInt(l - r),
-                BoundBinaryOperatorKind.Multiplication => Value.FromInt(l * r),
-                BoundBinaryOperatorKind.Division => r == 0 ? throw new DivideByZeroException("整数除零") : Value.FromInt(l / r),
-                BoundBinaryOperatorKind.Mod => r == 0 ? throw new DivideByZeroException("整数除零") : Value.FromInt(l % r),
-                BoundBinaryOperatorKind.BitwiseAnd => Value.FromInt(l & r),
-                BoundBinaryOperatorKind.BitwiseOr => Value.FromInt(l | r),
-                BoundBinaryOperatorKind.BitwiseXor => Value.FromInt(l ^ r),
-                BoundBinaryOperatorKind.BitLeftShift => Value.FromInt(l << r),
-                BoundBinaryOperatorKind.BitRightShift => Value.FromInt(l >> r),
-                BoundBinaryOperatorKind.Equals => Value.FromBool(l == r),
-                BoundBinaryOperatorKind.NotEquals => Value.FromBool(l != r),
-                BoundBinaryOperatorKind.Less => Value.FromBool(l < r),
-                BoundBinaryOperatorKind.LessOrEquals => Value.FromBool(l <= r),
-                BoundBinaryOperatorKind.Greater => Value.FromBool(l > r),
-                BoundBinaryOperatorKind.GreaterOrEquals => Value.FromBool(l >= r),
-                _ => Value.From(b.Op.Operate(left, right)),
-            };
-        }
-
-        // 慢速路径：double/bool/string/混合类型走委托
-        return Value.From(b.Op.Operate(left, right));
+            BoundBinaryOperatorKind.Addition => left + right,
+            BoundBinaryOperatorKind.Subtraction => left - right,
+            BoundBinaryOperatorKind.Multiplication => left * right,
+            BoundBinaryOperatorKind.Division => left / right,
+            BoundBinaryOperatorKind.Mod => left % right,
+            BoundBinaryOperatorKind.RoundDiv => left.RoundDiv(right),
+            BoundBinaryOperatorKind.BitwiseAnd => left & right,
+            BoundBinaryOperatorKind.BitwiseOr => left | right,
+            BoundBinaryOperatorKind.BitwiseXor => left ^ right,
+            BoundBinaryOperatorKind.BitLeftShift => left << right,
+            BoundBinaryOperatorKind.BitRightShift => left >> right,
+            BoundBinaryOperatorKind.Equals => Value.FromBool(left.Equals(right)),
+            BoundBinaryOperatorKind.NotEquals => Value.FromBool(!left.Equals(right)),
+            BoundBinaryOperatorKind.Less => Value.FromBool(left < right),
+            BoundBinaryOperatorKind.LessOrEquals => Value.FromBool(left <= right),
+            BoundBinaryOperatorKind.Greater => Value.FromBool(left > right),
+            BoundBinaryOperatorKind.GreaterOrEquals => Value.FromBool(left >= right),
+            BoundBinaryOperatorKind.LogicalAnd => Value.FromBool(left.AsBool() && right.AsBool()),
+            BoundBinaryOperatorKind.LogicalOr => Value.FromBool(left.AsBool() || right.AsBool()),
+            _ => throw new InvalidOperationException($"不支持的运算: {b.Op.Kind}")
+        };
     }
 
     private Value EvaluateCallExpression(BoundCallExpression node)
@@ -406,7 +412,9 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         if (argCount == 0)
         {
             var callable = _callables[node.Function];
-            return callable.Invoke(ReadOnlySpan<Value>.Empty, this, _token);
+            var result = callable.Invoke(ReadOnlySpan<Value>.Empty, this, _token);
+            if (result.Type is StructType) _structInstances.Add(result.AsStruct());
+            return result;
         }
 
         Value[]? rented = null;
@@ -421,7 +429,9 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                 Debug.Assert(args[i] != Value.Void);
             }
             var callable = _callables[node.Function];
-            return callable.Invoke(args.AsSpan(0, argCount), this, _token);
+            var result = callable.Invoke(args.AsSpan(0, argCount), this, _token);
+            if (result.Type is StructType) _structInstances.Add(result.AsStruct());
+            return result;
         }
         finally
         {

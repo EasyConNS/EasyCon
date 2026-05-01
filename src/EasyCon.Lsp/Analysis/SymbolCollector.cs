@@ -48,6 +48,11 @@ internal static class SymbolCollector
                 foreach (var s in wb.Statements)
                     CollectFromStatement(s, symbols);
                 break;
+            case StructDeclBlock sb:
+                symbols.Add(new(sb.Header.Name, "struct", sb.Line, CharOffset(sb.Syntax)));
+                foreach (var field in sb.Fields)
+                    symbols.Add(new($"${field.Name}", "field", field.Line, CharOffset(field.Syntax)));
+                break;
         }
     }
 

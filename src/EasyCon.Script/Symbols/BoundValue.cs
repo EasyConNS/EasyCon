@@ -199,7 +199,14 @@ public struct Value : IEquatable<Value>, IComparable<Value>
 
     public bool Equals(Value other)
     {
-        if (_tag != other._tag) return false;
+        if (_tag != other._tag)
+        {
+            if (_tag == TAG_INT && other._tag == TAG_PTR)
+                return (long)_intVal == other._longVal;
+            if (_tag == TAG_PTR && other._tag == TAG_INT)
+                return _longVal == (long)other._intVal;
+            return false;
+        }
         return _tag switch
         {
             TAG_VOID => true,
@@ -216,12 +223,20 @@ public struct Value : IEquatable<Value>, IComparable<Value>
 
     public int CompareTo(Value other)
     {
-        if (_tag != other._tag) throw new InvalidOperationException("不同类型无法比较");
+        if (_tag != other._tag)
+        {
+            if (_tag == TAG_INT && other._tag == TAG_PTR)
+                return ((long)_intVal).CompareTo(other._longVal);
+            if (_tag == TAG_PTR && other._tag == TAG_INT)
+                return _longVal.CompareTo((long)other._intVal);
+            throw new InvalidOperationException("不同类型无法比较");
+        }
         return _tag switch
         {
             TAG_INT => _intVal.CompareTo(other._intVal),
             TAG_STRING => string.Compare((string)_refVal!, (string)other._refVal!, StringComparison.Ordinal),
             TAG_DOUBLE => _doubleVal.CompareTo(other._doubleVal),
+            TAG_PTR => _longVal.CompareTo(other._longVal),
             _ => throw new InvalidOperationException($"类型不支持比较 <{Type}>与<{other.Type}>")
         };
     }
@@ -442,6 +457,30 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         if (left._tag == TAG_INT && right._tag == TAG_INT)
             return FromInt(left._intVal ^ right._intVal);
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '^'");
+    }
+
+    public static Value operator <<(Value left, Value right)
+    {
+        if (left._tag == TAG_INT && right._tag == TAG_INT)
+            return FromInt(left._intVal << right._intVal);
+        throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '<<'");
+    }
+
+    public static Value operator >>(Value left, Value right)
+    {
+        if (left._tag == TAG_INT && right._tag == TAG_INT)
+            return FromInt(left._intVal >> right._intVal);
+        throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '>>'");
+    }
+
+    public Value RoundDiv(Value right)
+    {
+        if (_tag == TAG_INT && right._tag == TAG_INT)
+        {
+            if (right._intVal == 0) throw new DivideByZeroException("整数除零");
+            return FromInt((int)Math.Round((double)_intVal / right._intVal, MidpointRounding.AwayFromZero));
+        }
+        throw new InvalidOperationException($"在 {Type} 和 {right.Type} 之间不支持四舍五入除法");
     }
 }
 

@@ -86,14 +86,27 @@ public sealed class EcsStruct : IDisposable
         _ownsMemory = ownsMemory;
     }
 
-    public void SetField(EcsFieldDef f, object value)
+    public EcsStruct(EcsStructDef def, IntPtr sourcePtr)
     {
-        IntPtr p = _ptr + f.Offset;
+        _def = def;
+        _ownsMemory = true;
+        _ptr = Marshal.AllocHGlobal(def.Size);
+        ZeroMemory(_ptr, def.Size);
+        if (sourcePtr != IntPtr.Zero)
+            SafeCopy(_ptr, sourcePtr, def.Size);
+    }
+
+    public void SetField(EcsFieldDef f, object value) => SetFieldElement(f, 0, value);
+
+    public void SetFieldElement(EcsFieldDef f, int index, object value)
+    {
+        int elemSize = f.Size / f.ArrayCount;
+        IntPtr p = _ptr + f.Offset + index * elemSize;
 
         if (f.Type == EcsFieldType.Struct)
         {
             var src = (EcsStruct)value;
-            SafeCopy(p, src.NativePtr, f.Size);
+            SafeCopy(p, src.NativePtr, f.StructDef!.Size);
             return;
         }
 
@@ -106,14 +119,17 @@ public sealed class EcsStruct : IDisposable
                 Marshal.WriteInt64(p, BitConverter.DoubleToInt64Bits(Convert.ToDouble(value)));
                 break;
             case EcsFieldType.String:
-                Marshal.WriteIntPtr(p, Marshal.StringToHGlobalUni((string)value));
+                Marshal.WriteIntPtr(p, MarshalStringToNative((string)value));
                 break;
         }
     }
 
-    public object GetField(EcsFieldDef f)
+    public object GetField(EcsFieldDef f) => GetFieldElement(f, 0);
+
+    public object GetFieldElement(EcsFieldDef f, int index)
     {
-        IntPtr p = _ptr + f.Offset;
+        int elemSize = f.Size / f.ArrayCount;
+        IntPtr p = _ptr + f.Offset + index * elemSize;
 
         return f.Type switch
         {
@@ -121,14 +137,23 @@ public sealed class EcsStruct : IDisposable
             EcsFieldType.Bool => Marshal.ReadInt32(p) != 0,
             EcsFieldType.Ptr => Marshal.ReadIntPtr(p),
             EcsFieldType.Double => BitConverter.Int64BitsToDouble(Marshal.ReadInt64(p)),
-            EcsFieldType.String => Marshal.PtrToStringUni(Marshal.ReadIntPtr(p)),
+            EcsFieldType.String => PtrToString(Marshal.ReadIntPtr(p)),
             _ => throw new NotSupportedException()
         };
     }
 
-    public EcsStruct GetNested(EcsFieldDef f)
+    public EcsStruct GetNested(EcsFieldDef f, int index = 0)
     {
-        return new EcsStruct(f.StructDef!, _ptr + f.Offset, ownsMemory: false);
+        int elemSize = f.Size / f.ArrayCount;
+        return new EcsStruct(f.StructDef!, _ptr + f.Offset + index * elemSize, ownsMemory: false);
+    }
+
+    public object[] GetFieldAsArray(EcsFieldDef f)
+    {
+        var result = new object[f.ArrayCount];
+        for (int i = 0; i < f.ArrayCount; i++)
+            result[i] = GetFieldElement(f, i);
+        return result;
     }
 
     EcsFieldDef GetField(string name) =>
@@ -163,4 +188,15 @@ public sealed class EcsStruct : IDisposable
         for (int i = (count / 8) * 8; i < count; i++)
             Marshal.WriteByte(dst + i, Marshal.ReadByte(src + i));
     }
+
+    static IntPtr MarshalStringToNative(string value) =>
+        RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? Marshal.StringToHGlobalUni(value)
+            : Marshal.StringToHGlobalAnsi(value);
+
+    static string PtrToString(IntPtr ptr) =>
+        ptr == IntPtr.Zero ? string.Empty
+        : RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+            ? Marshal.PtrToStringUni(ptr)!
+            : Marshal.PtrToStringAnsi(ptr)!;
 }

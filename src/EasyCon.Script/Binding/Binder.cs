@@ -18,8 +18,6 @@ internal sealed partial class Binder
     private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
 
-    private readonly Dictionary<string, EcsStructDef> _structDefs = new();
-
     private readonly ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? _lazyFunctionBodies;
     private readonly DiagnosticBag? _programDiagnostics;
     private readonly HashSet<FunctionSymbol>? _bindingFunctions;
@@ -113,6 +111,9 @@ internal sealed partial class Binder
             mainBinder._scope.TryDeclareFunction(fn);
         foreach (var fn in externFunctions)
             mainBinder._scope.TryDeclareFunction(fn);
+        // 将 lib 结构体注册到主作用域
+        foreach (var kv in libBinder._scope.CollectAllStructDefs())
+            mainBinder._scope.TryDeclareStruct(kv.Key, kv.Value);
 
         var mainUserFunctions = new List<FunctionSymbol>();
         var mainGlobalStmts = new List<BoundStmt>();
@@ -169,9 +170,7 @@ internal sealed partial class Binder
         functionBodies.Add(main, loweredEval);
 
         // 合并 struct 定义
-        var allStructDefs = libBinder._structDefs
-            .Concat(mainBinder._structDefs)
-            .ToImmutableDictionary(kv => kv.Key, kv => kv.Value);
+        var allStructDefs = mainBinder._scope.CollectAllStructDefs();
 
         return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), externFunctions.ToImmutable(), [.. ilNames], allStructDefs);
     }
@@ -321,7 +320,7 @@ internal sealed partial class Binder
 
     private void BindStructDeclaration(StructDeclBlock syntax)
     {
-        if (_structDefs.ContainsKey(syntax.Header.Name))
+        if (_scope.TryLookupStruct(syntax.Header.Name) != null)
         {
             _diagnostics.ReportBadStruct(syntax.Location, $"结构体 {syntax.Header.Name} 已定义");
             return;
@@ -343,13 +342,13 @@ internal sealed partial class Binder
                 Name = field.Name[1..], // 去掉前缀 $
                 Type = fieldType.Value,
                 ArrayCount = field.ArrayCount,
-                StructDef = fieldType.Value == EcsFieldType.Struct ? _structDefs.GetValueOrDefault(field.TypeName) : null
+                StructDef = fieldType.Value == EcsFieldType.Struct ? _scope.TryLookupStruct(field.TypeName) : null
             };
             def.Fields.Add(fieldDef);
         }
 
         StructLayout.Calculate(def);
-        _structDefs[syntax.Header.Name] = def;
+        _scope.TryDeclareStruct(syntax.Header.Name, def);
     }
 
     private EcsFieldType? ResolveFieldType(string typeName)
@@ -361,7 +360,7 @@ internal sealed partial class Binder
             "PTR" => EcsFieldType.Ptr,
             "DOUBLE" => EcsFieldType.Double,
             "STRING" => EcsFieldType.String,
-            _ => _structDefs.ContainsKey(typeName) ? EcsFieldType.Struct : null
+            _ => _scope.TryLookupStruct(typeName) != null ? EcsFieldType.Struct : null
         };
     }
 
@@ -478,7 +477,7 @@ internal sealed partial class Binder
             "STRING" => ScriptType.String,
             "PTR" => ScriptType.Ptr,
             "DOUBLE" => ScriptType.Double,
-            _ => _structDefs.TryGetValue(name, out var def) ? new StructType(def) : null,
+            _ => _scope.TryLookupStruct(name) is { } def ? new StructType(def) : null,
         };
     }
 

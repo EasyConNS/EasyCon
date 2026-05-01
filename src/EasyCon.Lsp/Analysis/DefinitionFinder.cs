@@ -18,7 +18,10 @@ internal static class DefinitionFinder
             return FindConstant(root, word);
         if (word.StartsWith("@"))
             return null;
-        return FindFunction(root, word);
+        // 先查找函数，如果没找到再查找结构体
+        var funcResult = FindFunction(root, word);
+        if (funcResult != null) return funcResult;
+        return FindStruct(root, word);
     }
 
     private static DocumentRange? FindVariable(CompicationUnit root, string name)
@@ -97,6 +100,16 @@ internal static class DefinitionFinder
                 case ExternFuncStmt ef when string.Equals(ef.Name, name, StringComparison.OrdinalIgnoreCase):
                     return TokenRange(ef.Identifier);
             }
+        }
+        return null;
+    }
+
+    private static DocumentRange? FindStruct(CompicationUnit root, string name)
+    {
+        foreach (var stmt in root.Members)
+        {
+            if (stmt is StructDeclBlock sb && string.Equals(sb.Header.Name, name, StringComparison.OrdinalIgnoreCase))
+                return TokenRange(sb.Syntax);
         }
         return null;
     }

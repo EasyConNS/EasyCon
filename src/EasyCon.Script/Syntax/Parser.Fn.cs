@@ -106,7 +106,7 @@ internal partial class Parser
             {
                 Advance();
                 var countToken = Match(TokenType.INT);
-                arrayCount = int.Parse(countToken.Value);
+                _ = int.TryParse(countToken.Value, out arrayCount);
                 Match(TokenType.RightBracket);
             }
             MatchEOF();

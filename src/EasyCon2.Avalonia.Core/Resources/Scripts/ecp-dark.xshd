@@ -54,6 +54,7 @@
 			<Word>ELIF</Word>
 			<Word>ELSE</Word>
 			<Word>ENDIF</Word>
+			<Word>STRUCT</Word>
 			<Word>FUNC</Word>
 			<Word>RETURN</Word>
 			<Word>ENDFUNC</Word>
