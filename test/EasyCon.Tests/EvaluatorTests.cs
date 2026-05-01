@@ -433,6 +433,29 @@ $b = APPEND($a, 30)
 RETURN $b[2]").AsInt(), Is.EqualTo(30));
     }
 
+    [Test]
+    public void Array_ElementAssign()
+    {
+        Assert.That(EvalValue("$a = [10, 20, 30]\n$a[1] = 99\nRETURN $a[1]").AsInt(), Is.EqualTo(99));
+    }
+
+    [Test]
+    public void Array_ElementAssign_MultipleIndices()
+    {
+        Assert.That(EvalValue(@"
+$a = [1, 2, 3]
+$a[0] = 10
+$a[1] = 20
+$a[2] = 30
+RETURN $a[0] + $a[1] + $a[2]").AsInt(), Is.EqualTo(60));
+    }
+
+    [Test]
+    public void Array_ElementAugmentedAssign()
+    {
+        Assert.That(EvalValue("$a = [10, 20, 30]\n$a[1] += 5\nRETURN $a[1]").AsInt(), Is.EqualTo(25));
+    }
+
     #endregion
 
     #region 复合赋值
@@ -454,6 +477,13 @@ RETURN $b[2]").AsInt(), Is.EqualTo(30));
         Assert.That(EvalValue("$v = 12\n$v |= 10\nRETURN $v").AsInt(), Is.EqualTo(14));
         Assert.That(EvalValue("$v = 1\n$v <<= 4\nRETURN $v").AsInt(), Is.EqualTo(16));
         Assert.That(EvalValue("$v = 16\n$v >>= 2\nRETURN $v").AsInt(), Is.EqualTo(4));
+    }
+
+    [Test]
+    public void DiscardAssign()
+    {
+        // _ = expr evaluates but discards the result
+        Assert.That(EvalValue("$v = 1\n_ = $v + 1\nRETURN $v").AsInt(), Is.EqualTo(1));
     }
 
     #endregion

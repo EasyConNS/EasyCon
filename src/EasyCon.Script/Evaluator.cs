@@ -219,6 +219,10 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                     EvaluateFieldAssignment((BoundFieldAssignStatement)s);
                     index++;
                     break;
+                case BoundNodeKind.IndexAssignment:
+                    EvaluateIndexAssignment((BoundIndexAssignStatement)s);
+                    index++;
+                    break;
                 default:
                     throw new ScriptException($"执行语句类型未知", index);
             }
@@ -274,8 +278,6 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                 return EvaluateBinaryExpression((BoundBinaryExpression)node);
             case ConversionExpression:
                 return EvaluateConversionExpression((BoundConversionExpression)node);
-            case AssignmentExpression:
-                return EvaluateAssignmentExpression((BoundAssignExpression)node);
             case CallExpression:
                 return EvaluateCallExpression((BoundCallExpression)node);
             case BoundNodeKind.StructInit:
@@ -396,15 +398,6 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
         // 慢速路径：double/bool/string/混合类型走委托
         return Value.From(b.Op.Operate(left, right));
-    }
-
-    private Value EvaluateAssignmentExpression(BoundAssignExpression node)
-    {
-        var value = EvaluateExpression(node.Expression);
-        Debug.Assert(value != Value.Void);
-
-        Assign(node.Variable, value);
-        return value;
     }
 
     private Value EvaluateCallExpression(BoundCallExpression node)
@@ -580,6 +573,25 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         };
 
         instance.SetField(node.Field, fieldValue);
+    }
+
+    private void EvaluateIndexAssignment(BoundIndexAssignStatement node)
+    {
+        var containerVal = EvaluateExpression(node.Container);
+        var indexVal = EvaluateExpression(node.Index).AsInt();
+        var valueVal = EvaluateExpression(node.Value);
+
+        var newArray = containerVal.SetIndex(indexVal, valueVal);
+
+        // 写回变量槽：找到持有该数组的变量并更新
+        if (node.Container is BoundVariableExpression varExpr)
+        {
+            Assign(varExpr.Variable, newArray);
+        }
+        else
+        {
+            throw new InvalidOperationException("数组赋值目标必须是变量");
+        }
     }
 
     public void Dispose()

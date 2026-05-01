@@ -48,10 +48,6 @@ internal abstract class BoundExpr(AstNode expr) : BoundNode
                 CollectVariables(arg, variables);
             }
         }
-        else if (node is BoundAssignExpression assignNode)
-        {
-            CollectVariables(assignNode.Expression, variables);
-        }
     }
 }
 
@@ -151,14 +147,6 @@ internal sealed class BoundConversionExpression(AstNode syntax, ScriptType type,
 
     public override BoundNodeKind Kind => BoundNodeKind.ConversionExpression;
     public BoundExpr Expression = expr;
-}
-
-internal sealed class BoundAssignExpression(AstNode syntax, VariableSymbol variable, BoundExpr expr) : BoundExpr(syntax)
-{
-    public override ScriptType Type => Expression.Type;
-    public readonly VariableSymbol Variable = variable;
-    public readonly BoundExpr Expression = expr;
-    public override BoundNodeKind Kind => BoundNodeKind.AssignmentExpression;
 }
 
 internal sealed class BoundCallExpression(AstNode syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments, ScriptType instantiatedType) : BoundExpr(syntax)

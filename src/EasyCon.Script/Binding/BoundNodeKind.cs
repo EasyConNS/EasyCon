@@ -7,7 +7,6 @@ public enum BoundNodeKind
     NopStatement,
     ConstantDeclaration,
     VariableDeclaration,
-    VariableAssignment,
     ExpressionStatement,
     KeyAction,
     StickAction,
@@ -26,12 +25,12 @@ public enum BoundNodeKind
     BinaryExpression,
     UnaryExpression,
     ConversionExpression,
-    AssignmentExpression,
     CallExpression,
 
     StructInit,
     FieldAccess,
     FieldAssignment,
+    IndexAssignment,
 
     While,
 }

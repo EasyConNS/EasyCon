@@ -270,6 +270,24 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     }
 
     /// <summary>
+    /// 返回一个新数组，其中指定索引处的元素被替换为新值（copy-on-write）
+    /// </summary>
+    public Value SetIndex(int index, Value newValue)
+    {
+        if (_tag != TAG_ARRAY)
+            throw new InvalidOperationException("只有数组支持元素赋值");
+
+        var list = (ImmutableList<Value>)_refVal!;
+        if (index < 0 || index >= list.Count)
+            throw new IndexOutOfRangeException($"索引 {index} 超出数组范围 [0, {list.Count})");
+
+        if (!_arrayElemType!.IsAssignableFrom(newValue.Type))
+            throw new InvalidOperationException($"类型约束冲突：无法将 {newValue.Type} 赋值给 {_arrayElemType} 类型的数组元素");
+
+        return new Value(TAG_ARRAY, 0, list.SetItem(index, newValue), _arrayElemType);
+    }
+
+    /// <summary>
     /// 向数组末尾追加一个符合类型的元素
     /// </summary>
     public Value Append(Value item)

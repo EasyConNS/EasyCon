@@ -81,19 +81,19 @@ sealed class IndexDefExpression(Token lb, ImmutableArray<ExprBase> index, Token 
     public override string GetCodeText() => $"[{string.Join(", ", Index.Select(arg => arg.GetCodeText()))}]";
 }
 
-sealed class IndexVisitExpression(Token var, Token lb, ExprBase idxexpr, Token rb) : VariableExpr(var)
+sealed class IndexVisitExpression(Token syntax, ExprBase baseExpr, ExprBase idxexpr) : ExprBase(syntax)
 {
-    public readonly Token Lb = lb;
+    public readonly ExprBase Base = baseExpr;
     public ExprBase Index { get; } = idxexpr;
-    public readonly Token Rb = rb;
-    public override string GetCodeText() => $"{Tag}[{Index.GetCodeText()}]";
+    public override string GetCodeText() => $"{Base.GetCodeText()}[{Index.GetCodeText()}]";
 }
 
-sealed class SliceExpression(Token var, ExprBase start, ExprBase end, bool ommitstart) : VariableExpr(var)
+sealed class SliceExpression(Token syntax, ExprBase baseExpr, ExprBase start, ExprBase end, bool ommitstart) : ExprBase(syntax)
 {
+    public readonly ExprBase Base = baseExpr;
     public readonly ExprBase Start = start;
     public readonly ExprBase End = end;
-    public override string GetCodeText() => $"{Tag}[{(ommitstart ? "" : Start.GetCodeText())}:{End.GetCodeText()}]";
+    public override string GetCodeText() => $"{Base.GetCodeText()}[{(ommitstart ? "" : Start.GetCodeText())}:{End.GetCodeText()}]";
 }
 
 sealed class Callv1Expression(Token identifier, Token lp, ImmutableArray<ExprBase> arguments, Token rp) : ExprBase(identifier)
@@ -116,4 +116,9 @@ sealed class FieldAccessExpr(Token syntax, ExprBase target, string fieldName) : 
     public readonly ExprBase Target = target;
     public readonly string FieldName = fieldName;
     public override string GetCodeText() => $"{Target.GetCodeText()}.{FieldName}";
+}
+
+sealed class DiscardExpr(Token syntax) : ExprBase(syntax)
+{
+    public override string GetCodeText() => "_";
 }

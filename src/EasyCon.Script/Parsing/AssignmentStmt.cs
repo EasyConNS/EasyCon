@@ -1,14 +1,14 @@
 namespace EasyCon.Script.Syntax;
 
-class AssignmentStmt(Token syntax, VariableExpr regdst, Token assignmentToken, ExprBase value) : Statement(syntax)
+class AssignmentStmt(Token syntax, ExprBase target, Token assignmentToken, ExprBase value) : Statement(syntax)
 {
-    public readonly VariableExpr DestVariable = regdst;
+    public readonly ExprBase Target = target;
     public readonly Token AssignmentToken = assignmentToken;
     public readonly ExprBase Expression = value;
 
     protected override string _GetString()
     {
-        return $"{DestVariable.GetCodeText()} {AssignmentToken.Value} {Expression.GetCodeText()}";
+        return $"{Target.GetCodeText()} {AssignmentToken.Value} {Expression.GetCodeText()}";
     }
 
     //public override void Assemble(Assembly.Assembler assembler)

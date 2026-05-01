@@ -792,5 +792,39 @@ ENDIF
         ExpectError("$val = 10 @", "多余的");
     }
 
+    #region 赋值目标
+
+    [Test]
+    public void Assign_ArrayIndex()
+    {
+        ExpectParse("$arr[0] = 10");
+    }
+
+    [Test]
+    public void Assign_ArrayIndex_Augmented()
+    {
+        ExpectParse("$arr[0] += 5");
+    }
+
+    [Test]
+    public void Assign_FieldAccess()
+    {
+        ExpectParse("$obj.field = 10");
+    }
+
+    [Test]
+    public void Assign_ChainedFieldIndex()
+    {
+        ExpectParse("$obj.arr[0] = 10");
+    }
+
+    [Test]
+    public void Assign_Discard()
+    {
+        ExpectParse("_ = 42");
+    }
+
+    #endregion
+
     #endregion
 }

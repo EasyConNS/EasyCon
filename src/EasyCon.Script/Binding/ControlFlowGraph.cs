@@ -105,6 +105,7 @@ internal sealed class ControlFlowGraph
                     case VariableDeclaration:
                     case ExpressionStatement:
                     case FieldAssignment:
+                    case IndexAssignment:
                         _statements.Add(statement);
                         break;
                     default:
@@ -194,6 +195,7 @@ internal sealed class ControlFlowGraph
                         case StickAction:
                         case ExpressionStatement:
                         case FieldAssignment:
+                        case IndexAssignment:
                             if (isLastStatementInBlock)
                                 Connect(current, next);
                             break;

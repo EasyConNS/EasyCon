@@ -9,9 +9,9 @@ internal partial class Parser
         switch (Current.Type)
         {
             case TokenType.CONST:
-                return ParseConstantDecl();
+                return ParseConstantOrDiscard();
             case TokenType.VAR:
-                return ParseVarOrFieldAssign();
+                return ParseAssignmentOrDecl();
             case TokenType.IMPORT:
                 return ParseImport();
             case TokenType.STRUCT:
@@ -58,14 +58,26 @@ internal partial class Parser
 
     #region Statement Parsers
 
-    private ConstantDeclStmt ParseConstantDecl()
+    private Statement ParseConstantOrDiscard()
     {
-        var constvar = Advance();
-        var des = (VariableExpr)Formatter.GetValueEx(constvar);
-        var op = Match(TokenType.ASSIGN);
-        var eexp = ParseExpression();
+        var token = Advance();
+
+        // _ = expr → discard assignment
+        if (token.Value == "_")
+        {
+            var target = new DiscardExpr(token);
+            var op = Match(t => t == TokenType.ASSIGN || t.OperatorIsAug());
+            var eexp = ParseExpression();
+            MatchEOF();
+            return new AssignmentStmt(token, target, op, eexp);
+        }
+
+        // _NAME = expr → constant declaration
+        var des = (VariableExpr)Formatter.GetValueEx(token);
+        var assignOp = Match(TokenType.ASSIGN);
+        var expr = ParseExpression();
         MatchEOF();
-        return new ConstantDeclStmt(constvar, des, op, eexp);
+        return new ConstantDeclStmt(token, des, assignOp, expr);
     }
 
     private ImportStmt ParseImport()
@@ -79,17 +91,7 @@ internal partial class Parser
         return new ImportStmt(keyword, mod, Path.Combine(_filePath, LibPath));
     }
 
-    private AssignmentStmt ParseAssignment()
-    {
-        var destok = Advance();
-        var des = (VariableExpr)Formatter.GetValueEx(destok);
-        var op = Match(t => t == TokenType.ASSIGN || t.OperatorIsAug());
-        var eexp = ParseExpression();
-        MatchEOF();
-        return new AssignmentStmt(destok, des, op, eexp);
-    }
-
-    private Statement ParseVarOrFieldAssign()
+    private Statement ParseAssignmentOrDecl()
     {
         var destok = Advance();
 
@@ -111,51 +113,41 @@ internal partial class Parser
             return new StructFieldStmt(destok, destok.Value, typeName, arrayCount);
         }
 
-        // Check for field assignment: $var.field = expr
-        if (Check(TokenType.DOT))
-        {
-            return ParseFieldAssign(destok);
-        }
-
-        // Regular assignment: $var = expr
-        var des = (VariableExpr)Formatter.GetValueEx(destok);
+        // Parse unified LHS target: $var, $var[i], $var.field, $var.field[i].field2, ...
+        var target = ParseLhsTarget(destok);
         var op = Match(t => t == TokenType.ASSIGN || t.OperatorIsAug());
         var eexp = ParseExpression();
         MatchEOF();
-        return new AssignmentStmt(destok, des, op, eexp);
+        return new AssignmentStmt(destok, target, op, eexp);
     }
 
-    private FieldAssignStmt ParseFieldAssign(Token varToken)
+    /// <summary>
+    /// 解析赋值左侧目标表达式：$var, $var[i], $var.field, $var.field[i].field2, ...
+    /// </summary>
+    private ExprBase ParseLhsTarget(Token varToken)
     {
-        var target = (VariableExpr)Formatter.GetValueEx(varToken);
-        ExprBase targetExpr = target;
+        ExprBase target = Formatter.GetValueEx(varToken);
 
-        // Parse chained field access: $var.field1.field2...
-        while (Check(TokenType.DOT) && !CursorEOF)
+        // 循环处理后缀: [expr] 和 .ident
+        while (!CursorEOF)
         {
-            Advance();
-            var fieldToken = Match(TokenType.IDENT);
-
-            // If next is DOT or ASSIGN/aug-assign, continue chain or end
-            if (Check(TokenType.DOT))
+            if (Check(TokenType.LeftBracket))
             {
-                targetExpr = new FieldAccessExpr(fieldToken, targetExpr, fieldToken.Value);
+                // $var[expr] or $var[start:end] or $var.field[expr]
+                target = ParseSliceExpression(target);
+            }
+            else if (Check(TokenType.DOT))
+            {
+                // $var.field or $var.field1.field2...
+                target = ParseFieldAccessChain(target);
             }
             else
             {
-                var op = Match(t => t == TokenType.ASSIGN || t.OperatorIsAug());
-                var eexp = ParseExpression();
-                MatchEOF();
-                return new FieldAssignStmt(varToken, targetExpr, fieldToken, op, eexp);
+                break;
             }
         }
 
-        // Should not reach here, but handle gracefully
-        _diagnostics.ReportUnexpectedToken(varToken.Location, varToken, TokenType.ASSIGN);
-        var fallbackOp = Match(TokenType.ASSIGN);
-        var fallbackExpr = ParseExpression();
-        MatchEOF();
-        return new FieldAssignStmt(varToken, targetExpr, varToken, fallbackOp, fallbackExpr);
+        return target;
     }
 
     private StructStmt ParseStructDecl()
@@ -376,11 +368,11 @@ internal partial class Parser
             case TokenType.VAR:
             case TokenType.EX_VAR:
                 var token = Advance();
+                var varExpr = Formatter.GetValueEx(token);
                 if (token.Type == TokenType.VAR && Check(TokenType.LeftBracket))
                 {
-                    return ParseSliceExpression(token);
+                    return ParseSliceExpression(varExpr);
                 }
-                var varExpr = Formatter.GetValueEx(token);
                 // Check for field access: $var.field
                 if (Check(TokenType.DOT))
                 {
@@ -474,10 +466,10 @@ internal partial class Parser
         return new IndexDefExpression(lb, [.. items], rb);
     }
 
-    // $var[expr] or $var[start:end]
-    private ExprBase ParseSliceExpression(Token variableToken)
+    // baseExpr[expr] or baseExpr[start:end]
+    private ExprBase ParseSliceExpression(ExprBase baseExpr)
     {
-        var lb = Match(TokenType.LeftBracket, "语法需要'['");
+        var lb = Match(TokenType.LeftBracket, "语法需要'[");
 
         var ommitstart = Check(TokenType.COLON);
         var start = Check(TokenType.COLON) ? new LiteralExpr(Current, 0) : ParsePrimary();
@@ -485,14 +477,14 @@ internal partial class Parser
         if (Check(TokenType.RightBracket))
         {
             var rb = Advance();
-            return new IndexVisitExpression(variableToken, lb, start, rb);
+            return new IndexVisitExpression(lb, baseExpr, start);
         }
         // [start:end]
         Match(TokenType.COLON, "语法不正确[<start>:<end>]");
 
         var end = Check(TokenType.RightBracket) ? new LiteralExpr(Current, "") : ParsePrimary();
         Match(TokenType.RightBracket, "语法需要']'");
-        return new SliceExpression(variableToken, start, end, ommitstart);
+        return new SliceExpression(lb, baseExpr, start, end, ommitstart);
     }
 
     private ImmutableArray<ExprBase> ParseArguments()

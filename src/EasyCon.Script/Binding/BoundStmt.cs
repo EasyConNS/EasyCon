@@ -82,13 +82,6 @@ internal sealed class BoundConstantDeclaration(AstNode syntax, VariableSymbol co
     public BoundExpr Initializer { get; } = initializer;
 }
 
-internal sealed class BoundAssignmentStatement(AstNode syntax, VariableSymbol variable, BoundExpr expression) : BoundStmt(syntax)
-{
-    public override BoundNodeKind Kind => BoundNodeKind.VariableAssignment;
-    public VariableSymbol Variable { get; } = variable;
-    public BoundExpr Expression { get; } = expression;
-}
-
 internal class BoundKeyActStatement(AstNode syntax, GamePadKey key, bool up = false) : BoundStmt(syntax)
 {
     public override BoundNodeKind Kind => BoundNodeKind.KeyAction;
@@ -122,5 +115,13 @@ internal sealed class BoundFieldAssignStatement(AstNode syntax, BoundExpr target
     public override BoundNodeKind Kind => BoundNodeKind.FieldAssignment;
     public readonly BoundExpr Target = target;
     public readonly EcsFieldDef Field = field;
+    public readonly BoundExpr Value = value;
+}
+
+internal sealed class BoundIndexAssignStatement(AstNode syntax, BoundExpr container, BoundExpr index, BoundExpr value) : BoundStmt(syntax)
+{
+    public override BoundNodeKind Kind => BoundNodeKind.IndexAssignment;
+    public readonly BoundExpr Container = container;
+    public readonly BoundExpr Index = index;
     public readonly BoundExpr Value = value;
 }
