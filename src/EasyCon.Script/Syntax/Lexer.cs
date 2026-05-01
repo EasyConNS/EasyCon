@@ -19,6 +19,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private bool _expectEqualAfterIf = false;
     private bool _expectDirectionAgterStick = false;
     private bool _expectUPDOWNAgterBtn = false;
+    private bool _expectIdent = false;
 
     private void cleanFlags()
     {
@@ -405,6 +406,11 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             // and, or, not关键字小写
             AddToken(logicwords[word.ToLower()], word.ToLower(), start);
         }
+        else if (_expectIdent)
+        {
+            AddToken(TokenType.IDENT, word, start);
+            _expectIdent = false;
+        }
         else if ((isAllUpper || isAllLower) && gamepadKeywords.Contains(word.ToUpper()))
         {
             var ktype = TokenType.ButtonKeyword;
@@ -654,6 +660,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 break;
             case '.':
                 AddToken(TokenType.DOT, ".", start);
+                _expectIdent = true;
                 break;
             default:
                 var span = new SourceSpan(start, 1);

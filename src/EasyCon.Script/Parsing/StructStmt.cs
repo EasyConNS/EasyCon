@@ -30,9 +30,6 @@ class StructDeclBlock(StructStmt header, ImmutableArray<StructFieldStmt> fields,
 
     protected override string _GetString()
     {
-        var lines = new List<string> { Header.GetCodeText() };
-        foreach (var f in Fields) lines.Add(f.GetCodeText());
-        lines.Add(End.GetCodeText());
-        return string.Join("\n", lines);
+        throw new NotImplementedException();
     }
 }

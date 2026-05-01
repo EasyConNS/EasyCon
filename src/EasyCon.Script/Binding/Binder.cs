@@ -340,7 +340,7 @@ internal sealed class Binder
 
             var fieldDef = new EcsFieldDef
             {
-                Name = field.Name,
+                Name = field.Name[1..], // 去掉前缀 $
                 Type = fieldType.Value,
                 ArrayCount = field.ArrayCount,
                 StructDef = fieldType.Value == EcsFieldType.Struct ? _structDefs.GetValueOrDefault(field.TypeName) : null

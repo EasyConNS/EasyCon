@@ -131,7 +131,7 @@ internal partial class Parser
         ExprBase targetExpr = target;
 
         // Parse chained field access: $var.field1.field2...
-        while (Check(TokenType.DOT))
+        while (Check(TokenType.DOT) && !CursorEOF)
         {
             Advance();
             var fieldToken = Match(TokenType.IDENT);
@@ -434,7 +434,7 @@ internal partial class Parser
 
     private ExprBase ParseFieldAccessChain(ExprBase target)
     {
-        while (Check(TokenType.DOT))
+        while (Check(TokenType.DOT) && !CursorEOF)
         {
             Advance();
             var fieldToken = Match(TokenType.IDENT);
