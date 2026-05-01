@@ -35,7 +35,7 @@ internal static class DefinitionFinder
     {
         switch (stmt)
         {
-            case AssignmentStmt a when a.DestVariable.Tag == name:
+            case AssignmentStmt a when a.Target is VariableExpr v && v.Tag == name:
                 return StmtRange(a);
             case FuncDeclBlock fb:
                 foreach (var p in fb.Declare.Paramters)

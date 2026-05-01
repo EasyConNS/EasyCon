@@ -22,8 +22,8 @@ internal static class SymbolCollector
             case ConstantDeclStmt c:
                 symbols.Add(new(c.Constant.Tag, "constant", c.Line, CharOffset(c.Constant.Syntax)));
                 break;
-            case AssignmentStmt a:
-                symbols.Add(new(a.DestVariable.Tag, "variable", a.Line, CharOffset(a.DestVariable.Syntax)));
+            case AssignmentStmt a when a.Target is VariableExpr v:
+                symbols.Add(new(v.Tag, "variable", a.Line, CharOffset(v.Syntax)));
                 break;
             case FuncDeclBlock fb:
                 var f = fb.Declare;

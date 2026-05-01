@@ -45,13 +45,13 @@ internal sealed class EcsDocumentSymbolHandler(DocumentManager docManager) : Doc
                     Range = StmtRange(c),
                     SelectionRange = TokenRange(c.Constant.Syntax),
                 };
-            case AssignmentStmt a:
+            case AssignmentStmt a when a.Target is VariableExpr v:
                 return new()
                 {
-                    Name = a.DestVariable.Tag,
+                    Name = v.Tag,
                     Kind = SymbolKind.Variable,
                     Range = StmtRange(a),
-                    SelectionRange = TokenRange(a.DestVariable.Syntax),
+                    SelectionRange = TokenRange(v.Syntax),
                 };
             case FuncDeclBlock fb:
                 var funcSymbol = new DocumentSymbol

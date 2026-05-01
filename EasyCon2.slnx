@@ -21,8 +21,6 @@
     <Project Path="test/EasyCon.Lsp.Tests/EasyCon.Lsp.Tests.csproj" />
   </Folder>
   <Folder Name="/Demo/">
-    <Project Path="tools/DirectInput/DirectInput.csproj" />
-    <Project Path="tools/GamepadApiDemo/GamepadApiDemo.csproj" />
   </Folder>
   <Folder Name="/Lib/">
     <Project Path="src/EasyCon.Capture/EasyCon.Capture.csproj" />
