@@ -12,17 +12,7 @@ public class GamePadAdapter(NintendoSwitch easyPad, bool highResolution = false)
 
     void ICGamePad.ClickButtons(GamePadKey key, int duration, CancellationToken token)
     {
-        NS.Down(key.ToECKey());
-        switch (DelayMethod)
-        {
-            case DelayType.Normal: Thread.Sleep(duration); break;
-            case DelayType.LowCPU: CustomDelay.AISleep(duration); break;
-            case DelayType.HighResolution:
-            default:
-                CustomDelay.Delay(duration, token);
-                break;
-        }
-        NS.Up(key.ToECKey());
+        NS.Press(key.ToECKey(), duration);
     }
 
     void ICGamePad.PressButtons(GamePadKey key)
@@ -42,17 +32,7 @@ public class GamePadAdapter(NintendoSwitch easyPad, bool highResolution = false)
 
     void ICGamePad.ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token)
     {
-        NS.Down(key.ToECKey(x, y));
-        switch (DelayMethod)
-        {
-            case DelayType.Normal: Thread.Sleep(duration); break;
-            case DelayType.LowCPU: CustomDelay.AISleep(duration); break;
-            case DelayType.HighResolution:
-            default:
-                CustomDelay.Delay(duration, token);
-                break;
-        }
-        NS.Up(key.ToECKey(x, y));
+        NS.Press(key.ToECKey(x, y), duration);
     }
 
     void ICGamePad.SetStick(GamePadKey key, byte x, byte y)
