@@ -1,6 +1,7 @@
 using EasyCon.Script.Symbols;
 using EasyScript;
 using System.Collections.Immutable;
+using System.Text;
 
 namespace EasyCon.Script.Binding;
 
@@ -73,6 +74,24 @@ internal static class BuiltinCallable
         return args[0].Append(args[1]);
     }
 
+    public static Value ImplString(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        var array = args[0].AsArray();
+        var bytes = new byte[array.Count];
+        for (int i = 0; i < array.Count; i++)
+            bytes[i] = array[i].AsByte();
+        return Encoding.UTF8.GetString(bytes);
+    }
+
+    public static Value ImplStringW(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        var array = args[0].AsArray();
+        var bytes = new byte[array.Count];
+        for (int i = 0; i < array.Count; i++)
+            bytes[i] = array[i].AsByte();
+        return Encoding.Unicode.GetString(bytes);
+    }
+
     /// <summary>
     /// 获取所有内置函数及其对应的 Callable。
     /// Timestamp 需要额外的 timestampFactory 闭包参数。
@@ -90,6 +109,8 @@ internal static class BuiltinCallable
             (BuiltinFunctions.Beep, new DelegateCallable(ImplBeep)),
             (BuiltinFunctions.Length, new DelegateCallable(ImplLength)),
             (BuiltinFunctions.Append, new DelegateCallable(ImplAppend)),
+            (BuiltinFunctions.Str, new DelegateCallable(ImplString)),
+            (BuiltinFunctions.StrW, new DelegateCallable(ImplStringW)),
         ];
     }
 }

@@ -10,15 +10,13 @@ class StructStmt(Token syntax, string name) : StartBlockStmt(syntax)
     protected override string _GetString() => $"STRUCT {Name}";
 }
 
-class StructFieldStmt(Token syntax, string name, string typeName, int arrayCount = 1) : Statement(syntax)
+class StructFieldStmt(Token syntax, string name, string typeName) : Statement(syntax)
 {
     public override StatementKind Kind => StatementKind.StructField;
     public readonly string Name = name;
     public readonly string TypeName = typeName;
-    public readonly int ArrayCount = arrayCount;
 
-    protected override string _GetString()
-        => ArrayCount > 1 ? $"    ${Name}:{TypeName}[{ArrayCount}]" : $"    ${Name}:{TypeName}";
+    protected override string _GetString() => $"    ${Name}:{TypeName}";
 }
 
 class StructDeclBlock(StructStmt header, ImmutableArray<StructFieldStmt> fields, EndBlockStmt end) : Statement(header.Syntax)

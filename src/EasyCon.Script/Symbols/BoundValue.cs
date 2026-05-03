@@ -17,23 +17,23 @@ public struct Value : IEquatable<Value>, IComparable<Value>
 {
     // Tag 字节：标识当前存储的类型
     private const byte TAG_VOID = 0;
-    private const byte TAG_INT = 1;
-    private const byte TAG_BOOL = 2;
-    private const byte TAG_STRING = 3;
-    private const byte TAG_DOUBLE = 4;
-    private const byte TAG_PTR = 5;
-    private const byte TAG_ARRAY = 6;
-    private const byte TAG_STRUCT = 7;
+    private const byte TAG_BOOL = 1;
+    private const byte TAG_BYTE = 2;
+    private const byte TAG_INT32 = 3;
+    private const byte TAG_UINT32 = 4;
+    private const byte TAG_UINT64 = 5;
+    private const byte TAG_FLOAT64 = 6;
+    private const byte TAG_STRING = 7;
+    private const byte TAG_ARRAY = 9;
+    private const byte TAG_PTR = 10;
+    private const byte TAG_STRUCT = 12;
 
     [FieldOffset(0)] private readonly byte _tag;
-    [FieldOffset(4)] private int _intVal;                // ┐ 也用于 bool (0/1)
-    [FieldOffset(4)] private double _doubleVal;          // ├ 三者互斥，共享偏移
+    [FieldOffset(4)] private int _int32Val;              // ┐ 也用于 bool (0/1)
+    [FieldOffset(4)] private double f64Val;              // ├ 几者互斥，共享偏移
     [FieldOffset(4)] private long _longVal;              // ┘
     [FieldOffset(16)] private readonly object? _refVal;   // 8B 对齐（offset 12 有 4B padding）
     [FieldOffset(24)] private readonly ScriptType? _arrayElemType;
-
-    // 内部访问器：供 Evaluator 热路径使用，避免经过 Type 属性
-    internal byte Tag => _tag;
 
     // 预定义的泛型原型
     private static readonly GenericDefinition ArrayDef = new("Array", 1);
@@ -42,7 +42,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     private Value(byte tag, int intVal, object? refVal, ScriptType? arrayElemType)
     {
         _tag = tag;
-        _intVal = intVal;
+        _int32Val = intVal;
         _refVal = refVal;
         _arrayElemType = arrayElemType;
     }
@@ -51,10 +51,13 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     public ScriptType Type => _tag switch
     {
         TAG_VOID => ScriptType.Void,
-        TAG_INT => ScriptType.Int,
         TAG_BOOL => ScriptType.Bool,
+        TAG_BYTE => ScriptType.Byte,
+        TAG_INT32 => ScriptType.Int,
+        TAG_UINT32 => ScriptType.UInt,
+        TAG_UINT64 => ScriptType.UInt64,
+        TAG_FLOAT64 => ScriptType.Double,
         TAG_STRING => ScriptType.String,
-        TAG_DOUBLE => ScriptType.Double,
         TAG_PTR => ScriptType.Ptr,
         TAG_ARRAY => ArrayDef.Bind(_arrayElemType!),
         TAG_STRUCT => new StructType((EcsStructDef)_refVal!),
@@ -72,9 +75,12 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         {
             int i => FromInt(i),
             bool b => FromBool(b),
+            byte b => FromByte(b),
             string s => FromString(s),
             double d => FromDouble(d),
             long l => FromPtr(l),
+            uint ui => FromUInt(ui),
+            ulong ul => FromUInt64(ul),
             IEnumerable<Value> list => CreateArray(
                 list.FirstOrDefault().Type ?? ScriptType.Int,
                 list
@@ -89,15 +95,25 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     public static implicit operator Value(string v) => FromString(v);
     public static implicit operator Value(double v) => FromDouble(v);
     public static implicit operator Value(long v) => FromPtr(v);
+    public static implicit operator Value(uint v) => FromUInt(v);
+    public static implicit operator Value(ulong v) => FromUInt64(v);
 
-    public static Value FromInt(int v) => new(TAG_INT, v, null, null);
     public static Value FromBool(bool v) => new(TAG_BOOL, v ? 1 : 0, null, null);
+    public static Value FromByte(byte v) => new(TAG_BYTE, v, null, null);
+    public static Value FromInt(int v) => new(TAG_INT32, v, null, null);
+    public static Value FromUInt(uint v) => new(TAG_UINT32, unchecked((int)v), null, null);
+    public static Value FromUInt64(ulong v)
+    {
+        var val = new Value(TAG_UINT64, 0, null, null);
+        val._longVal = (long)v;
+        return val;
+    }
     public static Value FromString(string v) => new(TAG_STRING, 0, v, null);
 
     public static Value FromDouble(double v)
     {
-        var val = new Value(TAG_DOUBLE, 0, null, null);
-        val._doubleVal = v;
+        var val = new Value(TAG_FLOAT64, 0, null, null);
+        val.f64Val = v;
         return val;
     }
 
@@ -137,15 +153,18 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         return new Value(TAG_ARRAY, 0, list.ToImmutableList(), elementType);
     }
 
-    public int AsInt() => _tag == TAG_INT ? _intVal : throw new InvalidCastException();
-    public int ToInt() => _tag == TAG_DOUBLE ? AsBool() ? 1 : 0 : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <int>");
+    public readonly int AsInt() => _tag == TAG_INT32 ? _int32Val : throw new InvalidCastException();
+    public int ToInt() => _tag == TAG_FLOAT64 ? AsBool() ? 1 : 0 : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <int>");
 
-    public bool AsBool() => _tag == TAG_BOOL ? _intVal != 0 : throw new InvalidCastException();
-    public string AsString() => _tag == TAG_STRING ? (string)_refVal! : throw new InvalidCastException();
+    public readonly bool AsBool() => _tag == TAG_BOOL ? _int32Val != 0 : throw new InvalidCastException();
+    public readonly string AsString() => _tag == TAG_STRING ? (string)_refVal! : throw new InvalidCastException();
     public ImmutableList<Value> AsArray() => _tag == TAG_ARRAY ? (ImmutableList<Value>)_refVal! : throw new InvalidCastException();
-    public double AsDouble() => _tag == TAG_DOUBLE ? _doubleVal : throw new InvalidCastException();
-    public double ToDouble() => _tag == TAG_INT ? (double)_intVal : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <double>");
-    public long AsPtr() => _tag == TAG_PTR ? _longVal : throw new InvalidCastException();
+    public readonly double AsDouble() => _tag == TAG_FLOAT64 ? f64Val : throw new InvalidCastException();
+    public double ToDouble() => _tag == TAG_INT32 ? (double)_int32Val : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <double>");
+    public readonly long AsPtr() => _tag == TAG_PTR ? _longVal : throw new InvalidCastException();
+    public readonly uint AsUInt() => _tag == TAG_UINT32 ? unchecked((uint)_int32Val) : throw new InvalidCastException();
+    public readonly ulong AsUInt64() => _tag == TAG_UINT64 ? (ulong)_longVal : throw new InvalidCastException();
+    public readonly byte AsByte() => _tag == TAG_BYTE ? (byte)_int32Val : throw new InvalidCastException();
 
     #endregion
 
@@ -201,19 +220,38 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     {
         if (_tag != other._tag)
         {
-            if (_tag == TAG_INT && other._tag == TAG_PTR)
-                return (long)_intVal == other._longVal;
-            if (_tag == TAG_PTR && other._tag == TAG_INT)
-                return _longVal == (long)other._intVal;
+            if (_tag == TAG_INT32 && other._tag == TAG_PTR)
+                return (long)_int32Val == other._longVal;
+            if (_tag == TAG_PTR && other._tag == TAG_INT32)
+                return _longVal == (long)other._int32Val;
+            if (_tag == TAG_BYTE && other._tag == TAG_INT32)
+                return _int32Val == other._int32Val;
+            if (_tag == TAG_INT32 && other._tag == TAG_BYTE)
+                return _int32Val == other._int32Val;
+            if (_tag == TAG_UINT32 && other._tag == TAG_INT32)
+                return (uint)_int32Val == (uint)other._int32Val;
+            if (_tag == TAG_INT32 && other._tag == TAG_UINT32)
+                return (uint)_int32Val == (uint)other._int32Val;
+            if (_tag == TAG_UINT32 && other._tag == TAG_UINT64)
+                return (ulong)(uint)_int32Val == (ulong)other._longVal;
+            if (_tag == TAG_UINT64 && other._tag == TAG_UINT32)
+                return (ulong)_longVal == (ulong)(uint)other._int32Val;
+            if (_tag == TAG_UINT64 && other._tag == TAG_INT32)
+                return (ulong)_longVal == (ulong)(long)other._int32Val;
+            if (_tag == TAG_INT32 && other._tag == TAG_UINT64)
+                return (ulong)(long)_int32Val == (ulong)other._longVal;
             return false;
         }
         return _tag switch
         {
             TAG_VOID => true,
-            TAG_INT => _intVal == other._intVal,
-            TAG_BOOL => _intVal == other._intVal,
+            TAG_INT32 => _int32Val == other._int32Val,
+            TAG_BYTE => _int32Val == other._int32Val,
+            TAG_BOOL => _int32Val == other._int32Val,
+            TAG_UINT32 => _int32Val == other._int32Val,
+            TAG_UINT64 => _longVal == other._longVal,
             TAG_STRING => string.Equals((string)_refVal!, (string)other._refVal!, StringComparison.Ordinal),
-            TAG_DOUBLE => _doubleVal == other._doubleVal,
+            TAG_FLOAT64 => f64Val == other.f64Val,
             TAG_PTR => _longVal == other._longVal,
             TAG_ARRAY => ((ImmutableList<Value>)_refVal!).SequenceEqual((ImmutableList<Value>)other._refVal!),
             TAG_STRUCT => ReferenceEquals(_refVal, other._refVal),
@@ -225,24 +263,43 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     {
         if (_tag != other._tag)
         {
-            if (_tag == TAG_INT && other._tag == TAG_PTR)
-                return ((long)_intVal).CompareTo(other._longVal);
-            if (_tag == TAG_PTR && other._tag == TAG_INT)
-                return _longVal.CompareTo((long)other._intVal);
+            if (_tag == TAG_INT32 && other._tag == TAG_PTR)
+                return ((long)_int32Val).CompareTo(other._longVal);
+            if (_tag == TAG_PTR && other._tag == TAG_INT32)
+                return _longVal.CompareTo((long)other._int32Val);
+            if (_tag == TAG_BYTE && other._tag == TAG_INT32)
+                return _int32Val.CompareTo(other._int32Val);
+            if (_tag == TAG_INT32 && other._tag == TAG_BYTE)
+                return _int32Val.CompareTo(other._int32Val);
+            if (_tag == TAG_UINT32 && other._tag == TAG_INT32)
+                return ((uint)_int32Val).CompareTo((uint)other._int32Val);
+            if (_tag == TAG_INT32 && other._tag == TAG_UINT32)
+                return ((uint)_int32Val).CompareTo((uint)other._int32Val);
+            if (_tag == TAG_UINT32 && other._tag == TAG_UINT64)
+                return ((ulong)(uint)_int32Val).CompareTo((ulong)other._longVal);
+            if (_tag == TAG_UINT64 && other._tag == TAG_UINT32)
+                return ((ulong)_longVal).CompareTo((ulong)(uint)other._int32Val);
+            if (_tag == TAG_UINT64 && other._tag == TAG_INT32)
+                return ((ulong)_longVal).CompareTo((ulong)(long)other._int32Val);
+            if (_tag == TAG_INT32 && other._tag == TAG_UINT64)
+                return ((ulong)(long)_int32Val).CompareTo((ulong)other._longVal);
             throw new InvalidOperationException("不同类型无法比较");
         }
         return _tag switch
         {
-            TAG_INT => _intVal.CompareTo(other._intVal),
+            TAG_INT32 => _int32Val.CompareTo(other._int32Val),
+            TAG_BYTE => _int32Val.CompareTo(other._int32Val),
+            TAG_UINT32 => ((uint)_int32Val).CompareTo((uint)other._int32Val),
+            TAG_UINT64 => ((ulong)_longVal).CompareTo((ulong)other._longVal),
             TAG_STRING => string.Compare((string)_refVal!, (string)other._refVal!, StringComparison.Ordinal),
-            TAG_DOUBLE => _doubleVal.CompareTo(other._doubleVal),
+            TAG_FLOAT64 => f64Val.CompareTo(other.f64Val),
             TAG_PTR => _longVal.CompareTo(other._longVal),
             _ => throw new InvalidOperationException($"类型不支持比较 <{Type}>与<{other.Type}>")
         };
     }
 
     public override bool Equals(object? obj) => obj is Value v && Equals(v);
-    public override int GetHashCode() => HashCode.Combine(_tag, _intVal, _doubleVal, _longVal);
+    public override int GetHashCode() => HashCode.Combine(_tag, _int32Val, f64Val, _longVal);
 
     public static bool operator ==(Value left, Value right) => left.Equals(right);
     public static bool operator !=(Value left, Value right) => !left.Equals(right);
@@ -256,11 +313,14 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     public override string ToString() => _tag switch
     {
         TAG_ARRAY => $"[{string.Join(", ", (ImmutableList<Value>)_refVal!)}]",
-        TAG_DOUBLE => _doubleVal.ToString(),
-        TAG_BOOL => _intVal != 0 ? "true" : "false",
+        TAG_FLOAT64 => f64Val.ToString(),
+        TAG_BOOL => _int32Val != 0 ? "true" : "false",
         TAG_PTR => $"0x{_longVal:X}",
         TAG_STRING => (string)_refVal!,
-        TAG_INT => _intVal.ToString(),
+        TAG_BYTE => _int32Val.ToString(),
+        TAG_UINT32 => unchecked((uint)_int32Val).ToString(),
+        TAG_UINT64 => ((ulong)_longVal).ToString(),
+        TAG_INT32 => _int32Val.ToString(),
         TAG_STRUCT => $"struct:{((EcsStruct)_refVal!).Definition.Name}",
         _ => "void"
     };
@@ -321,11 +381,14 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     /// <summary>转换为布尔值，用于逻辑判断（int: 非0为真；bool: 自身；string: 非空为真；array: 非空为真）</summary>
     public bool ToBoolean() => _tag switch
     {
-        TAG_INT => _intVal != 0,
-        TAG_BOOL => _intVal != 0,
+        TAG_INT32 => _int32Val != 0,
+        TAG_BOOL => _int32Val != 0,
+        TAG_BYTE => _int32Val != 0,
+        TAG_UINT32 => _int32Val != 0,
+        TAG_UINT64 => _longVal != 0,
         TAG_STRING => !string.IsNullOrEmpty((string)_refVal!),
         TAG_ARRAY => ((ImmutableList<Value>)_refVal!).Count > 0,
-        TAG_DOUBLE => _doubleVal != 0.0,
+        TAG_FLOAT64 => f64Val != 0.0,
         TAG_PTR => _longVal != 0,
         TAG_STRUCT => _refVal != null,
         _ => false
@@ -341,11 +404,20 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         // 2. 相同类型处理
         if (left._tag == right._tag)
         {
-            if (left._tag == TAG_INT)
-                return FromInt(left._intVal + right._intVal);
+            if (left._tag == TAG_INT32)
+                return FromInt(left._int32Val + right._int32Val);
 
-            if (left._tag == TAG_DOUBLE)
-                return FromDouble(left._doubleVal + right._doubleVal);
+            if (left._tag == TAG_BYTE)
+                return FromByte((byte)(left._int32Val + right._int32Val));
+
+            if (left._tag == TAG_UINT32)
+                return FromUInt(unchecked((uint)left._int32Val + (uint)right._int32Val));
+
+            if (left._tag == TAG_UINT64)
+                return FromUInt64((ulong)left._longVal + (ulong)right._longVal);
+
+            if (left._tag == TAG_FLOAT64)
+                return FromDouble(left.f64Val + right.f64Val);
 
             if (left._tag == TAG_STRING)
                 return FromString((string)left._refVal! + (string)right._refVal!);
@@ -355,13 +427,39 @@ public struct Value : IEquatable<Value>, IComparable<Value>
                 return left.Concat(right);
         }
 
-        // 3. 混合类型处理：double 与 int 互相提升
-        if (left._tag == TAG_DOUBLE && right._tag == TAG_INT)
-            return FromDouble(left._doubleVal + right._intVal);
-        if (left._tag == TAG_INT && right._tag == TAG_DOUBLE)
-            return FromDouble(left._intVal + right._doubleVal);
+        // 3. 混合类型处理：byte 与 int/uint32
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+            return FromByte((byte)(left._int32Val + right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val + right._int32Val));
 
-        // 4. 混合类型处理：字符串拼接规则
+        // 4. 混合类型处理：uint32 与 int/byte
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+            return FromUInt(unchecked((uint)left._int32Val + (uint)right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val + (uint)right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_BYTE)
+            return FromUInt(unchecked((uint)left._int32Val + (uint)right._int32Val));
+        if (left._tag == TAG_BYTE && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val + (uint)right._int32Val));
+
+        // 5. 混合类型处理：uint64 与 int/uint32
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+            return FromUInt64((ulong)left._longVal + (ulong)(long)right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)(long)left._int32Val + (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT32)
+            return FromUInt64((ulong)left._longVal + (uint)right._int32Val);
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT64)
+            return FromUInt64((uint)left._int32Val + (ulong)right._longVal);
+
+        // 6. 混合类型处理：double 与 int 互相提升
+        if (left._tag == TAG_FLOAT64 && right._tag == TAG_INT32)
+            return FromDouble(left.f64Val + right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_FLOAT64)
+            return FromDouble(left._int32Val + right.f64Val);
+
+        // 7. 混合类型处理：字符串拼接规则
         // 只要有一侧是 string，则将另一侧转为字符串进行拼接
         if (left._tag == TAG_STRING || right._tag == TAG_STRING)
         {
@@ -376,14 +474,36 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     {
         if (left._tag == TAG_VOID || right._tag == TAG_VOID)
             throw new InvalidOperationException("空类型不支持运算");
-        if (left._tag == TAG_INT && right._tag == TAG_INT)
-            return FromInt(left._intVal - right._intVal);
-        if (left._tag == TAG_DOUBLE && right._tag == TAG_DOUBLE)
-            return FromDouble(left._doubleVal - right._doubleVal);
-        if (left._tag == TAG_DOUBLE && right._tag == TAG_INT)
-            return FromDouble(left._doubleVal - right._intVal);
-        if (left._tag == TAG_INT && right._tag == TAG_DOUBLE)
-            return FromDouble(left._intVal - right._doubleVal);
+        if (left._tag == TAG_INT32 && right._tag == TAG_INT32)
+            return FromInt(left._int32Val - right._int32Val);
+        if (left._tag == TAG_BYTE && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val - right._int32Val));
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+            return FromByte((byte)(left._int32Val - right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val - right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val - (uint)right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+            return FromUInt(unchecked((uint)left._int32Val - (uint)right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val - (uint)right._int32Val));
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)left._longVal - (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+            return FromUInt64((ulong)left._longVal - (ulong)(long)right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)(long)left._int32Val - (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT32)
+            return FromUInt64((ulong)left._longVal - (uint)right._int32Val);
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT64)
+            return FromUInt64((uint)left._int32Val - (ulong)right._longVal);
+        if (left._tag == TAG_FLOAT64 && right._tag == TAG_FLOAT64)
+            return FromDouble(left.f64Val - right.f64Val);
+        if (left._tag == TAG_FLOAT64 && right._tag == TAG_INT32)
+            return FromDouble(left.f64Val - right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_FLOAT64)
+            return FromDouble(left._int32Val - right.f64Val);
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '-'");
     }
 
@@ -391,14 +511,36 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     {
         if (left._tag == TAG_VOID || right._tag == TAG_VOID)
             throw new InvalidOperationException("空类型不支持运算");
-        if (left._tag == TAG_INT && right._tag == TAG_INT)
-            return FromInt(left._intVal * right._intVal);
-        if (left._tag == TAG_DOUBLE && right._tag == TAG_DOUBLE)
-            return FromDouble(left._doubleVal * right._doubleVal);
-        if (left._tag == TAG_DOUBLE && right._tag == TAG_INT)
-            return FromDouble(left._doubleVal * right._intVal);
-        if (left._tag == TAG_INT && right._tag == TAG_DOUBLE)
-            return FromDouble(left._intVal * right._doubleVal);
+        if (left._tag == TAG_INT32 && right._tag == TAG_INT32)
+            return FromInt(left._int32Val * right._int32Val);
+        if (left._tag == TAG_BYTE && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val * right._int32Val));
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+            return FromByte((byte)(left._int32Val * right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val * right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val * (uint)right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+            return FromUInt(unchecked((uint)left._int32Val * (uint)right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val * (uint)right._int32Val));
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)left._longVal * (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+            return FromUInt64((ulong)left._longVal * (ulong)(long)right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)(long)left._int32Val * (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT32)
+            return FromUInt64((ulong)left._longVal * (uint)right._int32Val);
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT64)
+            return FromUInt64((uint)left._int32Val * (ulong)right._longVal);
+        if (left._tag == TAG_FLOAT64 && right._tag == TAG_FLOAT64)
+            return FromDouble(left.f64Val * right.f64Val);
+        if (left._tag == TAG_FLOAT64 && right._tag == TAG_INT32)
+            return FromDouble(left.f64Val * right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_FLOAT64)
+            return FromDouble(left._int32Val * right.f64Val);
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '*'");
     }
 
@@ -406,26 +548,136 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     {
         if (left._tag == TAG_VOID || right._tag == TAG_VOID)
             throw new InvalidOperationException("空类型不支持运算");
-        if (left._tag == TAG_INT && right._tag == TAG_INT)
+        if (left._tag == TAG_INT32 && right._tag == TAG_INT32)
         {
-            if (right._intVal == 0) throw new DivideByZeroException("整数除零");
-            return FromInt(left._intVal / right._intVal);
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromInt(left._int32Val / right._int32Val);
         }
-        if (left._tag == TAG_DOUBLE && right._tag == TAG_DOUBLE)
-            return FromDouble(left._doubleVal / right._doubleVal);
-        if (left._tag == TAG_DOUBLE && right._tag == TAG_INT)
-            return FromDouble(left._doubleVal / right._intVal);
-        if (left._tag == TAG_INT && right._tag == TAG_DOUBLE)
-            return FromDouble(left._intVal / right._doubleVal);
+        if (left._tag == TAG_BYTE && right._tag == TAG_BYTE)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromByte((byte)(left._int32Val / right._int32Val));
+        }
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromByte((byte)(left._int32Val / right._int32Val));
+        }
+        if (left._tag == TAG_INT32 && right._tag == TAG_BYTE)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromByte((byte)(left._int32Val / right._int32Val));
+        }
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt(unchecked((uint)left._int32Val / (uint)right._int32Val));
+        }
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt(unchecked((uint)left._int32Val / (uint)right._int32Val));
+        }
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt(unchecked((uint)left._int32Val / (uint)right._int32Val));
+        }
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT64)
+        {
+            if (right._longVal == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((ulong)left._longVal / (ulong)right._longVal);
+        }
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((ulong)left._longVal / (ulong)(long)right._int32Val);
+        }
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT64)
+        {
+            if (right._longVal == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((ulong)(long)left._int32Val / (ulong)right._longVal);
+        }
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((ulong)left._longVal / (uint)right._int32Val);
+        }
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT64)
+        {
+            if (right._longVal == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((uint)left._int32Val / (ulong)right._longVal);
+        }
+        if (left._tag == TAG_FLOAT64 && right._tag == TAG_FLOAT64)
+            return FromDouble(left.f64Val / right.f64Val);
+        if (left._tag == TAG_FLOAT64 && right._tag == TAG_INT32)
+            return FromDouble(left.f64Val / right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_FLOAT64)
+            return FromDouble(left._int32Val / right.f64Val);
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '/'");
     }
 
     public static Value operator %(Value left, Value right)
     {
-        if (left._tag == TAG_INT && right._tag == TAG_INT)
+        if (left._tag == TAG_INT32 && right._tag == TAG_INT32)
         {
-            if (right._intVal == 0) throw new DivideByZeroException("整数除零");
-            return FromInt(left._intVal % right._intVal);
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromInt(left._int32Val % right._int32Val);
+        }
+        if (left._tag == TAG_BYTE && right._tag == TAG_BYTE)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromByte((byte)(left._int32Val % right._int32Val));
+        }
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromByte((byte)(left._int32Val % right._int32Val));
+        }
+        if (left._tag == TAG_INT32 && right._tag == TAG_BYTE)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromByte((byte)(left._int32Val % right._int32Val));
+        }
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt(unchecked((uint)left._int32Val % (uint)right._int32Val));
+        }
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt(unchecked((uint)left._int32Val % (uint)right._int32Val));
+        }
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt(unchecked((uint)left._int32Val % (uint)right._int32Val));
+        }
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT64)
+        {
+            if (right._longVal == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((ulong)left._longVal % (ulong)right._longVal);
+        }
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((ulong)left._longVal % (ulong)(long)right._int32Val);
+        }
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT64)
+        {
+            if (right._longVal == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((ulong)(long)left._int32Val % (ulong)right._longVal);
+        }
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((ulong)left._longVal % (uint)right._int32Val);
+        }
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT64)
+        {
+            if (right._longVal == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((uint)left._int32Val % (ulong)right._longVal);
         }
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '%'");
     }
@@ -436,8 +688,33 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         if (left._tag == TAG_VOID || right._tag == TAG_VOID)
             throw new InvalidOperationException("空类型不支持运算");
         // 2. 整数按位与
-        if (left._tag == TAG_INT && right._tag == TAG_INT)
-            return FromInt(left._intVal & right._intVal);
+        if (left._tag == TAG_INT32 && right._tag == TAG_INT32)
+            return FromInt(left._int32Val & right._int32Val);
+        // byte 按位与
+        if (left._tag == TAG_BYTE && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val & right._int32Val));
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+            return FromByte((byte)(left._int32Val & right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val & right._int32Val));
+        // uint32 按位与
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val & (uint)right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+            return FromUInt(unchecked((uint)left._int32Val & (uint)right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val & (uint)right._int32Val));
+        // uint64 按位与
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)left._longVal & (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+            return FromUInt64((ulong)left._longVal & (ulong)(long)right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)(long)left._int32Val & (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT32)
+            return FromUInt64((ulong)left._longVal & (uint)right._int32Val);
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT64)
+            return FromUInt64((uint)left._int32Val & (ulong)right._longVal);
         // 3. 字符串拼接规则
         if (left._tag == TAG_STRING || right._tag == TAG_STRING)
             return FromString(left.ToString() + right.ToString());
@@ -447,38 +724,109 @@ public struct Value : IEquatable<Value>, IComparable<Value>
 
     public static Value operator |(Value left, Value right)
     {
-        if (left._tag == TAG_INT && right._tag == TAG_INT)
-            return FromInt(left._intVal | right._intVal);
+        if (left._tag == TAG_INT32 && right._tag == TAG_INT32)
+            return FromInt(left._int32Val | right._int32Val);
+        if (left._tag == TAG_BYTE && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val | right._int32Val));
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+            return FromByte((byte)(left._int32Val | right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val | right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val | (uint)right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+            return FromUInt(unchecked((uint)left._int32Val | (uint)right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val | (uint)right._int32Val));
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)left._longVal | (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+            return FromUInt64((ulong)left._longVal | (ulong)(long)right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)(long)left._int32Val | (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT32)
+            return FromUInt64((ulong)left._longVal | (uint)right._int32Val);
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT64)
+            return FromUInt64((uint)left._int32Val | (ulong)right._longVal);
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '|'");
     }
 
     public static Value operator ^(Value left, Value right)
     {
-        if (left._tag == TAG_INT && right._tag == TAG_INT)
-            return FromInt(left._intVal ^ right._intVal);
+        if (left._tag == TAG_INT32 && right._tag == TAG_INT32)
+            return FromInt(left._int32Val ^ right._int32Val);
+        if (left._tag == TAG_BYTE && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val ^ right._int32Val));
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+            return FromByte((byte)(left._int32Val ^ right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_BYTE)
+            return FromByte((byte)(left._int32Val ^ right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val ^ (uint)right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+            return FromUInt(unchecked((uint)left._int32Val ^ (uint)right._int32Val));
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT32)
+            return FromUInt(unchecked((uint)left._int32Val ^ (uint)right._int32Val));
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)left._longVal ^ (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+            return FromUInt64((ulong)left._longVal ^ (ulong)(long)right._int32Val);
+        if (left._tag == TAG_INT32 && right._tag == TAG_UINT64)
+            return FromUInt64((ulong)(long)left._int32Val ^ (ulong)right._longVal);
+        if (left._tag == TAG_UINT64 && right._tag == TAG_UINT32)
+            return FromUInt64((ulong)left._longVal ^ (uint)right._int32Val);
+        if (left._tag == TAG_UINT32 && right._tag == TAG_UINT64)
+            return FromUInt64((uint)left._int32Val ^ (ulong)right._longVal);
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '^'");
     }
 
     public static Value operator <<(Value left, Value right)
     {
-        if (left._tag == TAG_INT && right._tag == TAG_INT)
-            return FromInt(left._intVal << right._intVal);
+        if (left._tag == TAG_INT32 && right._tag == TAG_INT32)
+            return FromInt(left._int32Val << right._int32Val);
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+            return FromByte((byte)(left._int32Val << right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+            return FromUInt(unchecked((uint)left._int32Val << right._int32Val));
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+            return FromUInt64((ulong)left._longVal << right._int32Val);
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '<<'");
     }
 
     public static Value operator >>(Value left, Value right)
     {
-        if (left._tag == TAG_INT && right._tag == TAG_INT)
-            return FromInt(left._intVal >> right._intVal);
+        if (left._tag == TAG_INT32 && right._tag == TAG_INT32)
+            return FromInt(left._int32Val >> right._int32Val);
+        if (left._tag == TAG_BYTE && right._tag == TAG_INT32)
+            return FromByte((byte)(left._int32Val >> right._int32Val));
+        if (left._tag == TAG_UINT32 && right._tag == TAG_INT32)
+            return FromUInt(unchecked((uint)left._int32Val >> right._int32Val));
+        if (left._tag == TAG_UINT64 && right._tag == TAG_INT32)
+            return FromUInt64((ulong)left._longVal >> right._int32Val);
         throw new InvalidOperationException($"在 {left.Type} 和 {right.Type} 之间不支持操作 '>>'");
     }
 
     public Value RoundDiv(Value right)
     {
-        if (_tag == TAG_INT && right._tag == TAG_INT)
+        if (_tag == TAG_INT32 && right._tag == TAG_INT32)
         {
-            if (right._intVal == 0) throw new DivideByZeroException("整数除零");
-            return FromInt((int)Math.Round((double)_intVal / right._intVal, MidpointRounding.AwayFromZero));
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromInt((int)Math.Round((double)_int32Val / right._int32Val, MidpointRounding.AwayFromZero));
+        }
+        if (_tag == TAG_BYTE && right._tag == TAG_BYTE)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromByte((byte)Math.Round((double)_int32Val / right._int32Val, MidpointRounding.AwayFromZero));
+        }
+        if (_tag == TAG_UINT32 && right._tag == TAG_UINT32)
+        {
+            if (right._int32Val == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt(unchecked((uint)Math.Round((double)(uint)_int32Val / (uint)right._int32Val, MidpointRounding.AwayFromZero)));
+        }
+        if (_tag == TAG_UINT64 && right._tag == TAG_UINT64)
+        {
+            if (right._longVal == 0) throw new DivideByZeroException("整数除零");
+            return FromUInt64((ulong)Math.Round((double)(ulong)_longVal / (ulong)right._longVal, MidpointRounding.AwayFromZero));
         }
         throw new InvalidOperationException($"在 {Type} 和 {right.Type} 之间不支持四舍五入除法");
     }
@@ -508,12 +856,15 @@ public abstract class ScriptType : IEquatable<ScriptType>
     public static bool operator !=(ScriptType left, ScriptType right) => !left.IsAssignableFrom(right);
 
     // 基础标量类型
-    public static readonly ScalarType Int = new("int");
-    public static readonly ScalarType Bool = new("bool");
-    public static readonly ScalarType String = new("string");
     public static readonly VoidType Void = new();
-    public static readonly ScalarType Ptr = new("ptr");
+    public static readonly ScalarType Bool = new("bool");
+    public static readonly ScalarType Byte = new("byte");
+    public static readonly ScalarType Int = new("int");
+    public static readonly ScalarType UInt = new("uint");
+    public static readonly ScalarType UInt64 = new("uint64");
     public static readonly ScalarType Double = new("double");
+    public static readonly ScalarType String = new("string");
+    public static readonly ScalarType Ptr = new("ptr");
 
     // 预定义泛型定义
     public static readonly GenericDefinition Array = new("Array", 1);
@@ -628,5 +979,30 @@ public sealed class StructType : ScriptType
         other is StructType s && s.Definition == Definition;
 
     public override int GetHashCode() => Definition.Name.GetHashCode();
+}
+
+public sealed class FixedArrayType : ScriptType
+{
+    public ScriptType ElementType { get; }
+    public int Count { get; }
+
+    public FixedArrayType(ScriptType elementType, int count)
+    {
+        ElementType = elementType;
+        Count = count;
+    }
+
+    public override string Name => $"{ElementType.Name}[{Count}]";
+
+    public override bool IsAssignableFrom(ScriptType other) =>
+        other is FixedArrayType a && ElementType.Equals(a.ElementType) && Count == a.Count;
+
+    public override bool TypeOverlaps(ScriptType other) =>
+        other is TypeParameter || (other is FixedArrayType a && ElementType.TypeOverlaps(a.ElementType) && Count == a.Count);
+
+    public override bool Equals(ScriptType? other) =>
+        other is FixedArrayType a && ElementType.Equals(a.ElementType) && Count == a.Count;
+
+    public override int GetHashCode() => HashCode.Combine(ElementType, Count);
 }
 #endregion

@@ -118,6 +118,15 @@ internal sealed class BoundFieldAssignStatement(AstNode syntax, BoundExpr target
     public readonly BoundExpr Value = value;
 }
 
+internal sealed class BoundFieldIndexAssignStatement(AstNode syntax, BoundExpr target, EcsFieldDef field, BoundExpr index, BoundExpr value) : BoundStmt(syntax)
+{
+    public override BoundNodeKind Kind => BoundNodeKind.FieldIndexAssignment;
+    public readonly BoundExpr Target = target;
+    public readonly EcsFieldDef Field = field;
+    public readonly BoundExpr Index = index;
+    public readonly BoundExpr Value = value;
+}
+
 internal sealed class BoundIndexAssignStatement(AstNode syntax, BoundExpr container, BoundExpr index, BoundExpr value) : BoundStmt(syntax)
 {
     public override BoundNodeKind Kind => BoundNodeKind.IndexAssignment;

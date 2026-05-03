@@ -24,14 +24,20 @@ internal static class BuiltinFunctions
         ScriptType.Array.Bind(T)
     );
 
-    // LEN<T>(container: Array<T>): int 
+    // LEN<T>(container: Array<T>): int
     public static readonly FunctionSymbol Length = new("LEN", [T], [new("var", T)], ScriptType.Int);
+
+    // STRING(array: Array<byte>): string
+    public static readonly FunctionSymbol Str = new("STRING", [], [new("array", ScriptType.Array.Bind(ScriptType.Byte))], ScriptType.String);
+
+    // STRINGW(array: Array<byte>): string
+    public static readonly FunctionSymbol StrW = new("STRINGW", [], [new("array", ScriptType.Array.Bind(ScriptType.Byte))], ScriptType.String);
 
     /// <summary>
     /// 所有内置函数符号的静态缓存，避免每次反射枚举
     /// </summary>
     private static readonly FunctionSymbol[] All =
-        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Append, Length];
+        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Append, Length, Str, StrW];
 
     /// <summary>
     /// 获取所有内置函数符号

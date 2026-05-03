@@ -2,6 +2,7 @@ using EasyCon.Script;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
+using System.Linq;
 
 namespace EasyCon.Tests;
 
@@ -772,20 +773,47 @@ RETURN $o1.inner.val + $o2.inner.val").AsInt(), Is.EqualTo(30));
 
     #region STRUCT — 数组字段
 
-//     [Test]
-//     public void Struct_ArrayField()
-//     {
-//         Assert.That(EvalValue(@"
-// STRUCT Arr
-//     $data:INT[4]
-// END
-// $a = Arr{}
-// $a.data[0] = 10
-// $a.data[1] = 20
-// $a.data[2] = 30
-// $a.data[3] = 40
-// RETURN $a.data[0] + $a.data[3]").AsInt(), Is.EqualTo(50));
-//     }
+    [Test]
+    public void Struct_ArrayField_ReadWrite()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Arr
+    $data:int[4]
+END
+$a = Arr{}
+$a.data[0] = 10
+$a.data[1] = 20
+$a.data[2] = 30
+$a.data[3] = 40
+RETURN $a.data[0] + $a.data[3]").AsInt(), Is.EqualTo(50));
+    }
+
+    [Test]
+    public void Struct_ArrayField_ReadAsArray()
+    {
+        Assert.That(EvalValue(@"
+STRUCT Arr
+    $data:uint[3]
+END
+$a = Arr{}
+$a.data[0] = 7
+$a.data[1] = 8
+$a.data[2] = 9
+$arr = $a.data
+RETURN LEN($arr)").AsInt(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Struct_ArrayField_WholeAssign_Error()
+    {
+        var (result, _) = Eval(@"
+STRUCT Arr
+    $data:int[2]
+END
+$a = Arr{}
+$a.data = 5");
+        Assert.That(result.Diagnostics.HasErrors(), Is.True);
+    }
 
     #endregion
 

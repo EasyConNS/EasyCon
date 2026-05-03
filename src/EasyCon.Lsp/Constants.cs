@@ -25,9 +25,11 @@ internal static class Constants
         ("BEEP", "BEEP freq, duration", "发出蜂鸣声"),
         ("APPEND", "APPEND array, value", "向数组末尾添加元素"),
         ("LEN", "LEN var", "获取数组长度"),
+        ("STRING", "STRING array", "将byte数组转换为UTF-8字符串"),
+        ("STRINGW", "STRINGW array", "将byte数组转换为UTF-16字符串（宽字符，2字节一字）"),
     ];
 
-    public static readonly string[] FfiTypes = ["INT", "BOOL", "STRING", "VOID", "PTR", "DOUBLE"];
+    public static readonly string[] FfiTypes = ["INT", "BOOL", "STRING", "VOID", "PTR", "DOUBLE", "BYTE", "UINT", "UINT64"];
 
     public static readonly string[] GamepadKeys =
     [

@@ -68,6 +68,28 @@ internal sealed class BoundBinaryOperator
         else if (right.Equals(ScriptType.Int) && left.Equals(ScriptType.Double))
             right = ScriptType.Double;
 
+        // int/uint32 → uint64（所有运算符，优先于 uint32）
+        if (left.Equals(ScriptType.Int) && right.Equals(ScriptType.UInt64))
+            left = ScriptType.UInt64;
+        else if (right.Equals(ScriptType.Int) && left.Equals(ScriptType.UInt64))
+            right = ScriptType.UInt64;
+        else if (left.Equals(ScriptType.UInt) && right.Equals(ScriptType.UInt64))
+            left = ScriptType.UInt64;
+        else if (right.Equals(ScriptType.UInt) && left.Equals(ScriptType.UInt64))
+            right = ScriptType.UInt64;
+
+        // int → uint32（所有运算符）
+        if (left.Equals(ScriptType.Int) && right.Equals(ScriptType.UInt))
+            left = ScriptType.UInt;
+        else if (right.Equals(ScriptType.Int) && left.Equals(ScriptType.UInt))
+            right = ScriptType.UInt;
+
+        // int → byte（所有运算符）
+        if (left.Equals(ScriptType.Int) && right.Equals(ScriptType.Byte))
+            left = ScriptType.Byte;
+        else if (right.Equals(ScriptType.Int) && left.Equals(ScriptType.Byte))
+            right = ScriptType.Byte;
+
         // int → ptr（仅比较）
         if (IsComparison(kind))
         {
@@ -90,18 +112,21 @@ internal sealed class BoundBinaryOperator
         if ((kind == TokenType.ADD || kind == TokenType.BitAnd) && left.Equals(ScriptType.String))
             return true;
 
-        if (IsBitwise(kind)) return left.Equals(ScriptType.Int);
+        if (IsBitwise(kind))
+            return left.Equals(ScriptType.Int) || left.Equals(ScriptType.UInt) || left.Equals(ScriptType.UInt64) || left.Equals(ScriptType.Byte);
 
         if (kind == TokenType.MOD || kind == TokenType.SlashI)
-            return left.Equals(ScriptType.Int);
+            return left.Equals(ScriptType.Int) || left.Equals(ScriptType.UInt) || left.Equals(ScriptType.UInt64) || left.Equals(ScriptType.Byte);
 
         if (IsArithmetic(kind))
-            return left.Equals(ScriptType.Int) || left.Equals(ScriptType.Double);
+            return left.Equals(ScriptType.Int) || left.Equals(ScriptType.Double)
+                || left.Equals(ScriptType.UInt) || left.Equals(ScriptType.UInt64) || left.Equals(ScriptType.Byte);
 
         if (IsComparison(kind))
             return left.Equals(ScriptType.Int) || left.Equals(ScriptType.Double) ||
                    left.Equals(ScriptType.Ptr) || left.Equals(ScriptType.Bool) ||
-                   left.Equals(ScriptType.String);
+                   left.Equals(ScriptType.String) || left.Equals(ScriptType.UInt) ||
+                   left.Equals(ScriptType.UInt64) || left.Equals(ScriptType.Byte);
 
         return false;
     }

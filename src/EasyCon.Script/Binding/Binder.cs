@@ -330,7 +330,7 @@ internal sealed partial class Binder
 
         foreach (var field in syntax.Fields)
         {
-            var fieldType = ResolveFieldType(field.TypeName);
+            var fieldType = LookupType(field.TypeName);
             if (fieldType == null)
             {
                 _diagnostics.ReportBadStruct(field.Location, $"未知字段类型 {field.TypeName}");
@@ -339,29 +339,14 @@ internal sealed partial class Binder
 
             var fieldDef = new EcsFieldDef
             {
-                Name = field.Name[1..], // 去掉前缀 $
-                Type = fieldType.Value,
-                ArrayCount = field.ArrayCount,
-                StructDef = fieldType.Value == EcsFieldType.Struct ? _scope.TryLookupStruct(field.TypeName) : null
+                Name = field.Name[1..],
+                FieldType = fieldType,
             };
             def.Fields.Add(fieldDef);
         }
 
         StructLayout.Calculate(def);
         _scope.TryDeclareStruct(syntax.Header.Name, def);
-    }
-
-    private EcsFieldType? ResolveFieldType(string typeName)
-    {
-        return typeName.ToUpper() switch
-        {
-            "INT" => EcsFieldType.Int,
-            "BOOL" => EcsFieldType.Bool,
-            "PTR" => EcsFieldType.Ptr,
-            "DOUBLE" => EcsFieldType.Double,
-            "STRING" => EcsFieldType.String,
-            _ => _scope.TryLookupStruct(typeName) != null ? EcsFieldType.Struct : null
-        };
     }
 
     private static BoundScope CreateRootScope()
@@ -374,17 +359,6 @@ internal sealed partial class Binder
         return result;
     }
     #region 辅助方法
-
-    private static ScriptType FieldTypeToScriptType(EcsFieldDef field) => field.Type switch
-    {
-        EcsFieldType.Int => ScriptType.Int,
-        EcsFieldType.Bool => ScriptType.Bool,
-        EcsFieldType.Ptr => ScriptType.Ptr,
-        EcsFieldType.Double => ScriptType.Double,
-        EcsFieldType.String => ScriptType.String,
-        EcsFieldType.Struct => new StructType(field.StructDef!),
-        _ => ScriptType.Int
-    };
 
     private (StructType structType, EcsFieldDef field)? TryResolveStructField(BoundExpr target, string fieldName, TextLocation loc)
     {
@@ -464,16 +438,28 @@ internal sealed partial class Binder
     private ScriptType? LookupType(string name)
     {
         var upper = name.ToUpper();
-        if (upper.EndsWith("[]"))
+        if (upper.EndsWith(']'))
         {
-            var elem = LookupType(upper[..^2]);
-            if (elem is null) return null;
-            return ScriptType.Array.Bind(elem);
+            var openBracket = upper.LastIndexOf('[');
+            if (openBracket > 0)
+            {
+                var inner = upper[(openBracket + 1)..^1];
+                var baseName = name[..openBracket];
+                var elem = LookupType(baseName);
+                if (elem is null) return null;
+                if (inner.Length == 0)
+                    return ScriptType.Array.Bind(elem);
+                if (int.TryParse(inner, out var count))
+                    return new FixedArrayType(elem, count);
+            }
         }
         return upper switch
         {
             "BOOL" => ScriptType.Bool,
+            "BYTE" => ScriptType.Byte,
             "INT" => ScriptType.Int,
+            "UINT" => ScriptType.UInt,
+            "UINT64" => ScriptType.UInt64,
             "STRING" => ScriptType.String,
             "PTR" => ScriptType.Ptr,
             "DOUBLE" => ScriptType.Double,

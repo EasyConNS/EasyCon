@@ -485,7 +485,13 @@ internal sealed partial class Binder
         if (resolved is null) return BindErrorStatement(syntax);
         var (structType, field) = resolved.Value;
 
-        var fieldType = FieldTypeToScriptType(field);
+        if (field.FieldType is FixedArrayType)
+        {
+            _diagnostics.ReportBadStruct(syntax.Location, $"数组字段 {field.Name} 不支持整体赋值，请使用 {field.Name}[index] 逐元素赋值");
+            return BindErrorStatement(syntax);
+        }
+
+        var fieldType = field.FieldType;
         var boundValue = BindExpression(syntax.Expression);
 
         var desugared = DesugarAugmentedAssign(syntax, () => new BoundFieldAccessExpression(syntax, boundTarget, field, fieldType), fieldType, boundValue);
@@ -498,7 +504,25 @@ internal sealed partial class Binder
     private BoundStmt BindIndexAssign(AssignmentStmt syntax, IndexVisitExpression indexTarget)
     {
         var boundContainer = BindExpression(indexTarget.Base);
-        var boundIndex = BindConversion(BindExpression(indexTarget.Index), ScriptType.Int);
+
+        // struct field array element assignment: $var.field[i] = expr
+        if (boundContainer is BoundFieldAccessExpression fieldAccess && fieldAccess.Field.FieldType is FixedArrayType fat)
+        {
+            var field = fieldAccess.Field;
+            var boundIndex = BindConversion(BindExpression(indexTarget.Index), ScriptType.Int);
+            var boundValue = BindExpression(syntax.Expression);
+
+            var elemType = fat.ElementType;
+            var desugared = DesugarAugmentedAssign(syntax,
+                () => new BoundFieldIndexAccessExpression(syntax, fieldAccess.Target, field, boundIndex, elemType),
+                elemType, boundValue);
+            if (desugared is not null) boundValue = desugared;
+
+            boundValue = BindConversion(boundValue, elemType);
+            return new BoundFieldIndexAssignStatement(syntax, fieldAccess.Target, field, boundIndex, boundValue);
+        }
+
+        var boundIndex2 = BindConversion(BindExpression(indexTarget.Index), ScriptType.Int);
 
         var (isString, isArray) = CheckIndexSupport(boundContainer.Type);
         if (!isString && !isArray)
@@ -513,14 +537,14 @@ internal sealed partial class Binder
             return BindErrorStatement(syntax);
         }
 
-        var elemType = ((GenericType)boundContainer.Type).TypeArguments[0];
-        var boundValue = BindExpression(syntax.Expression);
+        var arrayElemType = ((GenericType)boundContainer.Type).TypeArguments[0];
+        var boundValue2 = BindExpression(syntax.Expression);
 
-        var desugared = DesugarAugmentedAssign(syntax, () => new BoundIndexVariableExpression(syntax, boundContainer, boundIndex, elemType), elemType, boundValue);
-        if (desugared is not null) boundValue = desugared;
+        var desugared2 = DesugarAugmentedAssign(syntax, () => new BoundIndexVariableExpression(syntax, boundContainer, boundIndex2, arrayElemType), arrayElemType, boundValue2);
+        if (desugared2 is not null) boundValue2 = desugared2;
 
-        boundValue = BindConversion(boundValue, elemType);
-        return new BoundIndexAssignStatement(syntax, boundContainer, boundIndex, boundValue);
+        boundValue2 = BindConversion(boundValue2, arrayElemType);
+        return new BoundIndexAssignStatement(syntax, boundContainer, boundIndex2, boundValue2);
     }
 
     private BoundExpr BindExpression(ExprBase syntax)
@@ -603,6 +627,13 @@ internal sealed partial class Binder
     {
         var baseExpr = BindExpression(syntax.Base);
 
+        // struct field array element access: $var.field[i]
+        if (baseExpr is BoundFieldAccessExpression fieldAccess && fieldAccess.Field.FieldType is FixedArrayType fat)
+        {
+            var indexExpr = BindConversion(BindExpression(syntax.Index), ScriptType.Int);
+            return new BoundFieldIndexAccessExpression(syntax, fieldAccess.Target, fieldAccess.Field, indexExpr, fat.ElementType);
+        }
+
         var (isString, isArray) = CheckIndexSupport(baseExpr.Type);
         if (!isString && !isArray)
         {
@@ -610,13 +641,13 @@ internal sealed partial class Binder
             return new BoundErrorExpression(syntax);
         }
 
-        var indexExpr = BindConversion(syntax.Index, ScriptType.Int);
+        var indexExpr2 = BindConversion(syntax.Index, ScriptType.Int);
 
-        ScriptType resultType = isString
+        ScriptType resultType2 = isString
             ? ScriptType.String
             : ((GenericType)baseExpr.Type).TypeArguments[0];
 
-        return new BoundIndexVariableExpression(syntax, baseExpr, indexExpr, resultType);
+        return new BoundIndexVariableExpression(syntax, baseExpr, indexExpr2, resultType2);
     }
 
     private BoundExpr BindSliceExpression(SliceExpression syntax)
@@ -642,7 +673,11 @@ internal sealed partial class Binder
         if (type == ScriptType.String
             || type == ScriptType.Double
             || (type == ScriptType.Ptr && expr.Type is StructType)
-            || (type is StructType && expr.Type.Equals(ScriptType.Ptr)))
+            || (type is StructType && expr.Type.Equals(ScriptType.Ptr))
+            || (type.Equals(ScriptType.UInt) && expr.Type.Equals(ScriptType.Int))
+            || (type.Equals(ScriptType.UInt64) && expr.Type.Equals(ScriptType.Int))
+            || (type.Equals(ScriptType.UInt64) && expr.Type.Equals(ScriptType.UInt))
+            || (type.Equals(ScriptType.Byte) && expr.Type.Equals(ScriptType.Int)))
             return new BoundConversionExpression(expr.Syntax, type, expr);
         _diagnostics.ReportCannotConvert(expr.Syntax.Syntax.Location, expr.Type, type);
         return new BoundErrorExpression(expr.Syntax);
@@ -685,7 +720,9 @@ internal sealed partial class Binder
         if (resolved is null) return new BoundErrorExpression(syntax);
         var (_, field) = resolved.Value;
 
-        var resultType = FieldTypeToScriptType(field);
+        var resultType = field.FieldType is FixedArrayType fat
+            ? ScriptType.Array.Bind(fat.ElementType)
+            : field.FieldType;
         return new BoundFieldAccessExpression(syntax, boundTarget, field, resultType);
     }
 

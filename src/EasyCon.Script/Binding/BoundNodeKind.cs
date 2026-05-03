@@ -30,6 +30,8 @@ public enum BoundNodeKind
     StructInit,
     FieldAccess,
     FieldAssignment,
+    FieldIndexAccess,
+    FieldIndexAssignment,
     IndexAssignment,
 
     While,

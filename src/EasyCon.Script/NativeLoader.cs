@@ -36,6 +36,7 @@ internal sealed class NativeLoader
         return result.ToImmutable();
     }
 
+    [RequiresDynamicCode("Calls EasyCon.Script.NativeLoader.CreateCallable(FunctionSymbol, nint)")]
     internal ICallable ResolveFunction(FunctionSymbol symbol)
     {
         var libName = symbol.LibraryName;
@@ -160,6 +161,10 @@ internal sealed class NativeLoader
     {
         if (targetType.Equals(ScriptType.Int) || targetType.Equals(ScriptType.Bool))
             return value.AsInt();
+        if (targetType.Equals(ScriptType.UInt))
+            return value.AsUInt();
+        if (targetType.Equals(ScriptType.UInt64))
+            return value.AsUInt64();
         if (targetType.Equals(ScriptType.Double))
             return value.AsDouble();
         if (targetType.Equals(ScriptType.String))
@@ -188,6 +193,10 @@ internal sealed class NativeLoader
             return Value.FromInt(Convert.ToInt32(result));
         if (returnType.Equals(ScriptType.Bool))
             return Value.FromBool(Convert.ToInt32(result) != 0);
+        if (returnType.Equals(ScriptType.UInt))
+            return Value.FromUInt(Convert.ToUInt32(result));
+        if (returnType.Equals(ScriptType.UInt64))
+            return Value.FromUInt64(Convert.ToUInt64(result));
         if (returnType.Equals(ScriptType.Double))
             return Value.FromDouble(Convert.ToDouble(result));
         if (returnType.Equals(ScriptType.Ptr))
@@ -212,6 +221,8 @@ internal sealed class NativeLoader
     {
         if (type.Equals(ScriptType.Int) || type.Equals(ScriptType.Bool))
             return typeof(int);
+        if (type.Equals(ScriptType.UInt))
+            return typeof(ulong);
         if (type.Equals(ScriptType.Double))
             return typeof(double);
         if (type.Equals(ScriptType.String))

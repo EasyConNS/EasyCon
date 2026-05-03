@@ -1,18 +1,15 @@
+using EasyCon.Script.Symbols;
 using System.Runtime.InteropServices;
 
 namespace EasyCon.Script.Runtime;
 
-public enum EcsFieldType { Int, Bool, Ptr, Double, String, Struct }
-
 public class EcsFieldDef
 {
     public string Name;
-    public EcsFieldType Type;
+    public ScriptType FieldType;
     public int Offset;
     public int Size;
     public int Alignment;
-    public int ArrayCount = 1;
-    public EcsStructDef? StructDef;
 }
 
 public class EcsStructDef
@@ -23,6 +20,26 @@ public class EcsStructDef
     public int Alignment;
 }
 
+internal static class TypeLayout
+{
+    internal static int GetNativeSize(ScriptType type) => type switch
+    {
+        _ when type.Equals(ScriptType.Byte) => 1,
+        _ when type.Equals(ScriptType.Bool) => 4,
+        _ when type.Equals(ScriptType.Int) => 4,
+        _ when type.Equals(ScriptType.UInt) => 4,
+        _ when type.Equals(ScriptType.UInt64) => 8,
+        _ when type.Equals(ScriptType.Double) => 8,
+        _ when type.Equals(ScriptType.String) => IntPtr.Size,
+        _ when type.Equals(ScriptType.Ptr) => IntPtr.Size,
+        StructType s => s.Definition.Size,
+        FixedArrayType a => GetNativeSize(a.ElementType) * a.Count,
+        _ => 4
+    };
+
+    internal static ScriptType GetElementType(ScriptType type) => type is FixedArrayType a ? a.ElementType : type;
+}
+
 public static class StructLayout
 {
     public static void Calculate(EcsStructDef def)
@@ -31,24 +48,14 @@ public static class StructLayout
 
         foreach (var f in def.Fields)
         {
-            int elemSize = f.Type switch
-            {
-                EcsFieldType.Int => 4,
-                EcsFieldType.Bool => 4,
-                EcsFieldType.Ptr => IntPtr.Size,
-                EcsFieldType.Double => 8,
-                EcsFieldType.String => IntPtr.Size,
-                EcsFieldType.Struct => f.StructDef!.Size,
-                _ => 4
-            };
-            int align = f.Type == EcsFieldType.Struct
-                ? f.StructDef!.Alignment
-                : elemSize;
+            var baseType = TypeLayout.GetElementType(f.FieldType);
+            int elemSize = TypeLayout.GetNativeSize(baseType);
+            int align = baseType is StructType s ? s.Definition.Alignment : elemSize;
 
             offset = AlignUp(offset, align);
 
             f.Offset = offset;
-            f.Size = elemSize * f.ArrayCount;
+            f.Size = TypeLayout.GetNativeSize(f.FieldType);
             f.Alignment = align;
 
             offset += f.Size;
@@ -100,58 +107,61 @@ public sealed class EcsStruct : IDisposable
 
     public void SetFieldElement(EcsFieldDef f, int index, object value)
     {
-        int elemSize = f.Size / f.ArrayCount;
+        var elemType = TypeLayout.GetElementType(f.FieldType);
+        int elemSize = TypeLayout.GetNativeSize(elemType);
         IntPtr p = _ptr + f.Offset + index * elemSize;
 
-        if (f.Type == EcsFieldType.Struct)
+        if (elemType is StructType st)
         {
             var src = (EcsStruct)value;
-            SafeCopy(p, src.NativePtr, f.StructDef!.Size);
+            SafeCopy(p, src.NativePtr, st.Definition.Size);
             return;
         }
 
-        switch (f.Type)
-        {
-            case EcsFieldType.Int: Marshal.WriteInt32(p, Convert.ToInt32(value)); break;
-            case EcsFieldType.Bool: Marshal.WriteInt32(p, Convert.ToBoolean(value) ? 1 : 0); break;
-            case EcsFieldType.Ptr: Marshal.WriteIntPtr(p, (IntPtr)value); break;
-            case EcsFieldType.Double:
-                Marshal.WriteInt64(p, BitConverter.DoubleToInt64Bits(Convert.ToDouble(value)));
-                break;
-            case EcsFieldType.String:
-                Marshal.WriteIntPtr(p, MarshalStringToNative((string)value));
-                break;
-        }
+        if (elemType.Equals(ScriptType.Byte)) Marshal.WriteByte(p, Convert.ToByte(value));
+        else if (elemType.Equals(ScriptType.Int)) Marshal.WriteInt32(p, Convert.ToInt32(value));
+        else if (elemType.Equals(ScriptType.Bool)) Marshal.WriteInt32(p, Convert.ToBoolean(value) ? 1 : 0);
+        else if (elemType.Equals(ScriptType.UInt)) Marshal.WriteInt32(p, unchecked((int)Convert.ToUInt32(value)));
+        else if (elemType.Equals(ScriptType.UInt64)) Marshal.WriteInt64(p, (long)Convert.ToUInt64(value));
+        else if (elemType.Equals(ScriptType.Ptr)) Marshal.WriteIntPtr(p, (IntPtr)value);
+        else if (elemType.Equals(ScriptType.Double))
+            Marshal.WriteInt64(p, BitConverter.DoubleToInt64Bits(Convert.ToDouble(value)));
+        else if (elemType.Equals(ScriptType.String))
+            Marshal.WriteIntPtr(p, MarshalStringToNative((string)value));
     }
 
     public object GetField(EcsFieldDef f) => GetFieldElement(f, 0);
 
     public object GetFieldElement(EcsFieldDef f, int index)
     {
-        int elemSize = f.Size / f.ArrayCount;
+        var elemType = TypeLayout.GetElementType(f.FieldType);
+        int elemSize = TypeLayout.GetNativeSize(elemType);
         IntPtr p = _ptr + f.Offset + index * elemSize;
 
-        return f.Type switch
-        {
-            EcsFieldType.Int => Marshal.ReadInt32(p),
-            EcsFieldType.Bool => Marshal.ReadInt32(p) != 0,
-            EcsFieldType.Ptr => Marshal.ReadIntPtr(p),
-            EcsFieldType.Double => BitConverter.Int64BitsToDouble(Marshal.ReadInt64(p)),
-            EcsFieldType.String => PtrToString(Marshal.ReadIntPtr(p)),
-            _ => throw new NotSupportedException()
-        };
+        if (elemType.Equals(ScriptType.Byte)) return Marshal.ReadByte(p);
+        if (elemType.Equals(ScriptType.Int)) return Marshal.ReadInt32(p);
+        if (elemType.Equals(ScriptType.Bool)) return Marshal.ReadInt32(p) != 0;
+        if (elemType.Equals(ScriptType.UInt)) return unchecked((uint)Marshal.ReadInt32(p));
+        if (elemType.Equals(ScriptType.UInt64)) return (ulong)Marshal.ReadInt64(p);
+        if (elemType.Equals(ScriptType.Ptr)) return Marshal.ReadIntPtr(p);
+        if (elemType.Equals(ScriptType.Double)) return BitConverter.Int64BitsToDouble(Marshal.ReadInt64(p));
+        if (elemType.Equals(ScriptType.String)) return PtrToString(Marshal.ReadIntPtr(p));
+        throw new NotSupportedException($"不支持的字段类型: {elemType}");
     }
 
     public EcsStruct GetNested(EcsFieldDef f, int index = 0)
     {
-        int elemSize = f.Size / f.ArrayCount;
-        return new EcsStruct(f.StructDef!, _ptr + f.Offset + index * elemSize, ownsMemory: false);
+        var elemType = TypeLayout.GetElementType(f.FieldType);
+        int elemSize = TypeLayout.GetNativeSize(elemType);
+        return new EcsStruct(((StructType)elemType).Definition, _ptr + f.Offset + index * elemSize, ownsMemory: false);
     }
 
     public object[] GetFieldAsArray(EcsFieldDef f)
     {
-        var result = new object[f.ArrayCount];
-        for (int i = 0; i < f.ArrayCount; i++)
+        if (f.FieldType is not FixedArrayType fat)
+            return [GetFieldElement(f, 0)];
+        var result = new object[fat.Count];
+        for (int i = 0; i < fat.Count; i++)
             result[i] = GetFieldElement(f, i);
         return result;
     }

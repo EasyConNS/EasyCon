@@ -101,16 +101,15 @@ internal partial class Parser
             var colon = Advance();
             var typeToken = Match(TokenType.IDENT);
             var typeName = typeToken.Value;
-            var arrayCount = 1;
             if (Check(TokenType.LeftBracket))
             {
                 Advance();
                 var countToken = Match(TokenType.INT);
-                _ = int.TryParse(countToken.Value, out arrayCount);
                 Match(TokenType.RightBracket);
+                typeName = typeName + "[" + countToken.Value + "]";
             }
             MatchEOF();
-            return new StructFieldStmt(destok, destok.Value, typeName, arrayCount);
+            return new StructFieldStmt(destok, destok.Value, typeName);
         }
 
         // Parse unified LHS target: $var, $var[i], $var.field, $var.field[i].field2, ...
@@ -369,14 +368,20 @@ internal partial class Parser
             case TokenType.EX_VAR:
                 var token = Advance();
                 var varExpr = Formatter.GetValueEx(token);
+                // $var[expr] or $var[start:end]
                 if (token.Type == TokenType.VAR && Check(TokenType.LeftBracket))
                 {
-                    return ParseSliceExpression(varExpr);
+                    varExpr = ParseSliceExpression(varExpr);
                 }
-                // Check for field access: $var.field
+                // $var.field or $var.field1.field2...
                 if (Check(TokenType.DOT))
                 {
-                    return ParseFieldAccessChain(varExpr);
+                    varExpr = ParseFieldAccessChain(varExpr);
+                }
+                // $var.field[expr] — index on field access result
+                if (Check(TokenType.LeftBracket))
+                {
+                    varExpr = ParseSliceExpression(varExpr);
                 }
                 return varExpr;
             case TokenType.LeftBracket:
@@ -385,19 +390,28 @@ internal partial class Parser
                 var lp = Advance();
                 var expression = ParseExpression();
                 var rp = Match(TokenType.RightParen);
-                var parenExpr = new ParenthesizedExpression(lp, expression, rp);
+                ExprBase parenExpr = new ParenthesizedExpression(lp, expression, rp);
                 if (Check(TokenType.DOT))
-                    return ParseFieldAccessChain(parenExpr);
+                    parenExpr = ParseFieldAccessChain(parenExpr);
+                if (Check(TokenType.LeftBracket))
+                    parenExpr = ParseSliceExpression(parenExpr);
                 return parenExpr;
             case TokenType.IDENT:
                 // Check for struct init: TypeName{}
                 if (Peek(1).Type == TokenType.OpenBrace)
                 {
-                    return ParseStructInit();
+                    ExprBase init = ParseStructInit();
+                    if (Check(TokenType.DOT))
+                        init = ParseFieldAccessChain(init);
+                    if (Check(TokenType.LeftBracket))
+                        init = ParseSliceExpression(init);
+                    return init;
                 }
-                var callExpr = ParseCallExpression();
+                ExprBase callExpr = ParseCallExpression();
                 if (Check(TokenType.DOT))
-                    return ParseFieldAccessChain(callExpr);
+                    callExpr = ParseFieldAccessChain(callExpr);
+                if (Check(TokenType.LeftBracket))
+                    callExpr = ParseSliceExpression(callExpr);
                 return callExpr;
             case TokenType.INT:
                 var toknum = Advance();

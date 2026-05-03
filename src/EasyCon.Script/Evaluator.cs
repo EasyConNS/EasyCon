@@ -219,6 +219,10 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                     EvaluateFieldAssignment((BoundFieldAssignStatement)s);
                     index++;
                     break;
+                case BoundNodeKind.FieldIndexAssignment:
+                    EvaluateFieldIndexAssignment((BoundFieldIndexAssignStatement)s);
+                    index++;
+                    break;
                 case BoundNodeKind.IndexAssignment:
                     EvaluateIndexAssignment((BoundIndexAssignStatement)s);
                     index++;
@@ -280,10 +284,12 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                 return EvaluateConversionExpression((BoundConversionExpression)node);
             case CallExpression:
                 return EvaluateCallExpression((BoundCallExpression)node);
-            case BoundNodeKind.StructInit:
+            case StructInit:
                 return EvaluateStructInitExpression((BoundStructInitExpression)node);
-            case BoundNodeKind.FieldAccess:
+            case FieldAccess:
                 return EvaluateFieldAccessExpression((BoundFieldAccessExpression)node);
+            case FieldIndexAccess:
+                return EvaluateFieldIndexAccessExpression((BoundFieldIndexAccessExpression)node);
             default:
                 throw new Exception($"无法执行的表达式{node.Kind}");
         }
@@ -345,6 +351,16 @@ internal sealed class Evaluator : IEvalContext, IDisposable
             return value.ToInt();
         if (node.Type == ScriptType.Double)
             return value.ToDouble();
+        if (node.Type == ScriptType.UInt)
+            return Value.FromUInt(unchecked((uint)value.AsInt()));
+        if (node.Type == ScriptType.UInt64)
+        {
+            if (value.Type.Equals(ScriptType.UInt))
+                return Value.FromUInt64(value.AsUInt());
+            return Value.FromUInt64((ulong)(long)value.AsInt());
+        }
+        if (node.Type == ScriptType.Byte)
+            return Value.FromByte((byte)value.AsInt());
         if (node.Type == ScriptType.String)
             return value.ToString();
         if (node.Type == ScriptType.Ptr)
@@ -548,21 +564,25 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         var targetVal = EvaluateExpression(node.Target);
         var instance = targetVal.AsStruct();
 
-        if (node.Field.Type == Runtime.EcsFieldType.Struct)
+        if (node.Field.FieldType is FixedArrayType fat)
+        {
+            var elemType = fat.ElementType;
+            var items = new Value[fat.Count];
+            for (int i = 0; i < fat.Count; i++)
+            {
+                var raw = instance.GetFieldElement(node.Field, i);
+                items[i] = RawToValue(raw, elemType);
+            }
+            return Value.CreateArray(elemType, items);
+        }
+
+        if (node.Field.FieldType is StructType)
         {
             var nested = instance.GetNested(node.Field);
             return Value.FromStruct(nested);
         }
 
-        return node.Field.Type switch
-        {
-            Runtime.EcsFieldType.Int => Value.FromInt((int)instance.GetField(node.Field)),
-            Runtime.EcsFieldType.Bool => Value.FromBool((bool)instance.GetField(node.Field)),
-            Runtime.EcsFieldType.Ptr => Value.FromPtr(((IntPtr)instance.GetField(node.Field)).ToInt64()),
-            Runtime.EcsFieldType.Double => Value.FromDouble((double)instance.GetField(node.Field)),
-            Runtime.EcsFieldType.String => Value.FromString((string)instance.GetField(node.Field)),
-            _ => Value.Void
-        };
+        return RawToValue(instance.GetField(node.Field), node.Field.FieldType);
     }
 
     private void EvaluateFieldAssignment(BoundFieldAssignStatement node)
@@ -571,18 +591,63 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         var valueVal = EvaluateExpression(node.Value);
         var instance = targetVal.AsStruct();
 
-        object fieldValue = node.Field.Type switch
-        {
-            Runtime.EcsFieldType.Int => valueVal.AsInt(),
-            Runtime.EcsFieldType.Bool => valueVal.AsBool(),
-            Runtime.EcsFieldType.Ptr => new IntPtr(valueVal.AsPtr()),
-            Runtime.EcsFieldType.Double => valueVal.AsDouble(),
-            Runtime.EcsFieldType.String => valueVal.AsString(),
-            Runtime.EcsFieldType.Struct => valueVal.AsStruct(),
-            _ => valueVal.AsInt()
-        };
+        var ft = node.Field.FieldType;
+        object fieldValue;
+
+        if (ft.Equals(ScriptType.Byte)) fieldValue = valueVal.AsByte();
+        else if (ft.Equals(ScriptType.Int)) fieldValue = valueVal.AsInt();
+        else if (ft.Equals(ScriptType.Bool)) fieldValue = valueVal.AsBool();
+        else if (ft.Equals(ScriptType.UInt)) fieldValue = valueVal.AsUInt();
+        else if (ft.Equals(ScriptType.UInt64)) fieldValue = valueVal.AsUInt64();
+        else if (ft.Equals(ScriptType.Ptr)) fieldValue = new IntPtr(valueVal.AsPtr());
+        else if (ft.Equals(ScriptType.Double)) fieldValue = valueVal.AsDouble();
+        else if (ft.Equals(ScriptType.String)) fieldValue = valueVal.AsString();
+        else if (ft is StructType) fieldValue = valueVal.AsStruct();
+        else fieldValue = valueVal.AsInt();
 
         instance.SetField(node.Field, fieldValue);
+    }
+
+    private Value EvaluateFieldIndexAccessExpression(BoundFieldIndexAccessExpression node)
+    {
+        var targetVal = EvaluateExpression(node.Target);
+        var instance = targetVal.AsStruct();
+        var index = EvaluateExpression(node.Index).AsInt();
+        var field = node.Field;
+        var elemType = node.Type; // already resolved to element type by binder
+
+        if (elemType is StructType)
+        {
+            var nested = instance.GetNested(field, index);
+            return Value.FromStruct(nested);
+        }
+
+        var raw = instance.GetFieldElement(field, index);
+        return RawToValue(raw, elemType);
+    }
+
+    private void EvaluateFieldIndexAssignment(BoundFieldIndexAssignStatement node)
+    {
+        var targetVal = EvaluateExpression(node.Target);
+        var valueVal = EvaluateExpression(node.Value);
+        var index = EvaluateExpression(node.Index).AsInt();
+        var instance = targetVal.AsStruct();
+
+        var elemType = TypeLayout.GetElementType(node.Field.FieldType);
+        object fieldValue;
+
+        if (elemType.Equals(ScriptType.Byte)) fieldValue = valueVal.AsByte();
+        else if (elemType.Equals(ScriptType.Int)) fieldValue = valueVal.AsInt();
+        else if (elemType.Equals(ScriptType.Bool)) fieldValue = valueVal.AsBool();
+        else if (elemType.Equals(ScriptType.UInt)) fieldValue = valueVal.AsUInt();
+        else if (elemType.Equals(ScriptType.UInt64)) fieldValue = valueVal.AsUInt64();
+        else if (elemType.Equals(ScriptType.Ptr)) fieldValue = new IntPtr(valueVal.AsPtr());
+        else if (elemType.Equals(ScriptType.Double)) fieldValue = valueVal.AsDouble();
+        else if (elemType.Equals(ScriptType.String)) fieldValue = valueVal.AsString();
+        else if (elemType is StructType) fieldValue = valueVal.AsStruct();
+        else fieldValue = valueVal.AsInt();
+
+        instance.SetFieldElement(node.Field, index, fieldValue);
     }
 
     private void EvaluateIndexAssignment(BoundIndexAssignStatement node)
@@ -602,6 +667,20 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         {
             throw new InvalidOperationException("数组赋值目标必须是变量");
         }
+    }
+
+    private static Value RawToValue(object raw, ScriptType type)
+    {
+        if (type.Equals(ScriptType.Byte)) return Value.FromByte((byte)raw);
+        if (type.Equals(ScriptType.Int)) return Value.FromInt((int)raw);
+        if (type.Equals(ScriptType.Bool)) return Value.FromBool((bool)raw);
+        if (type.Equals(ScriptType.UInt)) return Value.FromUInt((uint)raw);
+        if (type.Equals(ScriptType.UInt64)) return Value.FromUInt64((ulong)raw);
+        if (type.Equals(ScriptType.Ptr)) return Value.FromPtr(((IntPtr)raw).ToInt64());
+        if (type.Equals(ScriptType.Double)) return Value.FromDouble((double)raw);
+        if (type.Equals(ScriptType.String)) return Value.FromString((string)raw);
+        if (type is StructType) return Value.FromStruct((EcsStruct)raw);
+        return Value.Void;
     }
 
     public void Dispose()

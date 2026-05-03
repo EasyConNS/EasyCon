@@ -171,3 +171,12 @@ internal sealed class BoundFieldAccessExpression(AstNode syntax, BoundExpr targe
     public readonly EcsFieldDef Field = field;
     public override BoundNodeKind Kind => BoundNodeKind.FieldAccess;
 }
+
+internal sealed class BoundFieldIndexAccessExpression(AstNode syntax, BoundExpr target, EcsFieldDef field, BoundExpr index, ScriptType resultType) : BoundExpr(syntax)
+{
+    public override ScriptType Type { get; } = resultType;
+    public readonly BoundExpr Target = target;
+    public readonly EcsFieldDef Field = field;
+    public readonly BoundExpr Index = index;
+    public override BoundNodeKind Kind => BoundNodeKind.FieldIndexAccess;
+}
