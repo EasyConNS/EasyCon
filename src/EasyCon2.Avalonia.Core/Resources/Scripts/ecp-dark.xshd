@@ -49,6 +49,7 @@
 			<Word>BREAK</Word>
 			<Word>CONTINUE</Word>
 			<Word>WHILE</Word>
+				<Word>UNTIL</Word>
 			<Word>END</Word>
 			<Word>IF</Word>
 			<Word>ELIF</Word>

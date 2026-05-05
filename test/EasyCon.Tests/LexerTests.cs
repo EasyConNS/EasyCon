@@ -87,11 +87,11 @@ public class LexerTests
     [Test]
     public void Keywords_AllControlFlow()
     {
-        var t = Tokenize("IF ELIF ELSE ENDIF WHILE END FOR TO STEP BREAK CONTINUE NEXT FUNC ENDFUNC RETURN IMPORT EXTERN FROM");
+        var t = Tokenize("IF ELIF ELSE ENDIF WHILE UNTIL END FOR TO STEP BREAK CONTINUE NEXT FUNC ENDFUNC RETURN IMPORT EXTERN FROM");
         var expected = new[]
         {
             TokenType.IF, TokenType.ELIF, TokenType.ELSE, TokenType.ENDIF,
-            TokenType.WHILE, TokenType.END, TokenType.FOR, TokenType.TO, TokenType.STEP,
+            TokenType.WHILE, TokenType.UNTIL, TokenType.END, TokenType.FOR, TokenType.TO, TokenType.STEP,
             TokenType.BREAK, TokenType.CONTINUE, TokenType.NEXT,
             TokenType.FUNC, TokenType.ENDFUNC, TokenType.RETURN,
             TokenType.IMPORT, TokenType.EXTERN, TokenType.FROM

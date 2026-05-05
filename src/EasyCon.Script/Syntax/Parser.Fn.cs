@@ -25,6 +25,8 @@ internal partial class Parser
                 return new EndIf(Current);
             case TokenType.WHILE:
                 return ParseWhile();
+            case TokenType.UNTIL:
+                return ParseUntil();
             case TokenType.FOR:
                 return ParseFor();
             case TokenType.BREAK:
@@ -204,6 +206,14 @@ internal partial class Parser
         var expr = ParseExpression();
         MatchEOF();
         return new WhileStmt(start, expr);
+    }
+
+    private UntilStmt ParseUntil()
+    {
+        var start = Advance();
+        var expr = ParseExpression();
+        MatchEOF();
+        return new UntilStmt(start, expr);
     }
 
     private Statement ParseLoopCtrl()

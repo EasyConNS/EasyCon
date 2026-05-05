@@ -79,6 +79,7 @@ public enum TokenType
     ELSE,
     ENDIF,
     WHILE,
+    UNTIL,
     FOR,
     TO,
     IN,

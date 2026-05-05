@@ -127,6 +127,29 @@ class WhileStmt(Token syntax, ExprBase conds) : StartBlockStmt(syntax)
     }
 }
 
+internal sealed class UntilBlock(UntilStmt condition, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement(condition.Syntax)
+{
+    public override StatementKind Kind => StatementKind.UntilBlock;
+    public readonly UntilStmt Condition = condition;
+    public ImmutableArray<Statement> Statements = statements;
+    public readonly EndBlockStmt End = end;
+
+    protected override string _GetString()
+    {
+        throw new NotImplementedException();
+    }
+}
+
+class UntilStmt(Token syntax, ExprBase conds) : StartBlockStmt(syntax)
+{
+    public override StatementKind Kind => StatementKind.UntilStmt;
+    public readonly ExprBase Condition = conds;
+    protected override string _GetString()
+    {
+        return $"UNTIL {Condition.GetCodeText()}";
+    }
+}
+
 abstract class LoopCtrl(Token syntax, uint level) : Statement(syntax)
 {
     public readonly uint Level = level;

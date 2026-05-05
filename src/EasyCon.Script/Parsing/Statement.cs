@@ -10,11 +10,13 @@ enum StatementKind
     // Block statements
     ForBlock,
     WhileBlock,
+    UntilBlock,
     IfBlock,
     FuncDeclBlock,
     // Statement keywords
     ForStmt,
     WhileStmt,
+    UntilStmt,
     IfStmt,
     ElseIf,
     Else,
@@ -97,6 +99,10 @@ internal static class FormatPrinter
         {
             WriteWhileBlock((WhileBlock)node, writer);
         }
+        else if (node.Kind == StatementKind.UntilBlock)
+        {
+            WriteUntilBlock((UntilBlock)node, writer);
+        }
         else if (node.Kind == StatementKind.FuncDeclBlock)
         {
             WriteFunctionBlock((FuncDeclBlock)node, writer);
@@ -127,6 +133,13 @@ internal static class FormatPrinter
             s.WriteTo(writer);
         node.End.WriteTo(writer);
     }
+    private static void WriteUntilBlock(UntilBlock node, IndentedTextWriter writer)
+    {
+        node.Condition.WriteTo(writer);
+        foreach (var s in node.Statements)
+            s.WriteTo(writer);
+        node.End.WriteTo(writer);
+    }
     private static void WriteFunctionBlock(FuncDeclBlock node, IndentedTextWriter writer)
     {
         node.Declare.WriteTo(writer);
@@ -136,14 +149,14 @@ internal static class FormatPrinter
     }
     private static void WriteStatementInternal(Statement node, IndentedTextWriter writer)
     {
-        if (node.Kind == StatementKind.ElseIf || node.Kind == StatementKind.Else || node.Kind == StatementKind.EndIf || node.Kind == StatementKind.Next || node.Kind == StatementKind.EndFuncStmt)
+        if (node.Kind == StatementKind.EndBlock || node.Kind == StatementKind.ElseIf || node.Kind == StatementKind.Else || node.Kind == StatementKind.EndIf || node.Kind == StatementKind.Next || node.Kind == StatementKind.EndFuncStmt)
         {
             writer.Indent--;
         }
 
         writer.Write(node.GetCodeText());
 
-        if (node.Kind == StatementKind.ForStmt || node.Kind == StatementKind.FuncStmt || node.Kind == StatementKind.IfStmt || node.Kind == StatementKind.Else || node.Kind == StatementKind.WhileStmt)
+        if (node.Kind == StatementKind.ForStmt || node.Kind == StatementKind.FuncStmt || node.Kind == StatementKind.IfStmt || node.Kind == StatementKind.Else || node.Kind == StatementKind.WhileStmt || node.Kind == StatementKind.UntilStmt)
         {
             writer.Indent++;
         }

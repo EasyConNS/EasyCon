@@ -366,6 +366,12 @@ ENDFUNC", "重复定义的函数");
         ExpectBind("$i = 0\nWHILE $i < 10\n$i += 1\nEND");
     }
 
+    [Test]
+    public void TypeCheck_UntilCondition()
+    {
+        ExpectBind("$i = 0\nUNTIL $i >= 10\n$i += 1\nEND");
+    }
+
     #endregion
 
     #region 类型检查 — 复合赋值

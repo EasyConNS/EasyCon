@@ -88,6 +88,7 @@ internal sealed partial class Binder
                 IfBlock => BindIf((IfBlock)syntax),
                 ForBlock => BindFor((ForBlock)syntax),
                 WhileBlock => BindWhile((WhileBlock)syntax),
+                UntilBlock => BindUntil((UntilBlock)syntax),
                 Break => BindBreakStatement((Break)syntax),
                 Continue => BindContinueStatement((Continue)syntax),
                 ReturnStmt => BindReturnStatement((ReturnStmt)syntax),
@@ -288,6 +289,29 @@ internal sealed partial class Binder
             breakLabel,
             continueLabel
              );
+        return RewriteWhile(lowwhile);
+    }
+
+    private BoundBlockStatement BindUntil(UntilBlock syntax)
+    {
+        var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
+
+        // UNTIL <cond> ... END  =>  WHILE TRUE { IF <cond> THEN BREAK; <body> }
+        var boundCondition = BindConversion(syntax.Condition.Condition, ScriptType.Bool);
+        var skipBreakLabel = new BoundLabel($"skipBreak{++_labelCounter}");
+        var newBody = Block(syntax,
+            GotoFalse(syntax.Condition, skipBreakLabel, boundCondition),
+            Goto(syntax.Condition, breakLabel),
+            Label(syntax.Condition, skipBreakLabel),
+            body
+        );
+
+        var lowwhile = new BoundWhileStatement(syntax,
+            new BoundLiteralExpression(syntax, Value.FromBool(true)),
+            newBody,
+            breakLabel,
+            continueLabel
+        );
         return RewriteWhile(lowwhile);
     }
 

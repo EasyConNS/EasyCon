@@ -481,6 +481,22 @@ CAPTURE");
 
     #endregion
 
+    #region 循环 UNTIL
+
+    [Test]
+    public void Until_Basic()
+    {
+        ExpectParse("UNTIL $i >= 10\n$i += 1\nEND");
+    }
+
+    [Test]
+    public void Until_Nested()
+    {
+        ExpectParse("UNTIL $a >= 5\nUNTIL $b >= 3\nA\nEND\nEND");
+    }
+
+    #endregion
+
     #region 循环控制 BREAK / CONTINUE
 
     [Test]
@@ -664,6 +680,12 @@ ENDIF
     public void Error_MismatchedWhile_MissingEnd()
     {
         ExpectError("WHILE $i < 5\nA", "没有正确结束");
+    }
+
+    [Test]
+    public void Error_MismatchedUntil_MissingEnd()
+    {
+        ExpectError("UNTIL $i >= 5\nA", "没有正确结束");
     }
 
     [Test]

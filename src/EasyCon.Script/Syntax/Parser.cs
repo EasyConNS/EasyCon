@@ -169,7 +169,7 @@ internal sealed partial class Parser
                     st = new EmptyStmt();
                 }
             }
-            if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.WhileStmt || st.Kind == StatementKind.StructStmt)
+            if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.WhileStmt || st.Kind == StatementKind.UntilStmt || st.Kind == StatementKind.StructStmt)
             {
                 if (st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.StructStmt)
                 {
@@ -255,7 +255,7 @@ internal sealed partial class Parser
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "ENDFUNC需要对应的Func语句");
                         validEnd = false;
                     }
-                    else if (result.First().Kind != StatementKind.IfStmt && result.First().Kind != StatementKind.ForStmt && result.First().Kind != StatementKind.WhileStmt && result.First().Kind != StatementKind.FuncStmt && result.First().Kind != StatementKind.StructStmt)
+                    else if (result.First().Kind != StatementKind.IfStmt && result.First().Kind != StatementKind.ForStmt && result.First().Kind != StatementKind.WhileStmt && result.First().Kind != StatementKind.UntilStmt && result.First().Kind != StatementKind.FuncStmt && result.First().Kind != StatementKind.StructStmt)
                     {
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "END需要对应的语句开头");
                         validEnd = false;
@@ -270,6 +270,7 @@ internal sealed partial class Parser
                             StatementKind.IfStmt => new IfBlock((IfStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
                             StatementKind.ForStmt => new ForBlock((ForStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
                             StatementKind.WhileStmt => new WhileBlock((WhileStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            StatementKind.UntilStmt => new UntilBlock((UntilStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
                             StatementKind.FuncStmt => new FuncDeclBlock((FuncStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
                             StatementKind.StructStmt => new StructDeclBlock((StructStmt)result.First(), body.Skip(1).OfType<StructFieldStmt>().ToImmutableArray(), (EndBlockStmt)endStmt) { Address = result.First().Address },
                             _ => st // 保持原样

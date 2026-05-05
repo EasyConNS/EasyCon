@@ -189,6 +189,35 @@ RETURN $c").AsInt(), Is.EqualTo(0));
 
     #endregion
 
+    #region 控制流 — UNTIL
+
+    [Test]
+    public void Until_Basic()
+    {
+        Assert.That(EvalValue(@"
+$i = 0
+$s = 0
+UNTIL $i >= 5
+    $s = $s + $i
+    $i = $i + 1
+END
+RETURN $s").AsInt(), Is.EqualTo(10));
+    }
+
+    [Test]
+    public void Until_ConditionTrueImmediately()
+    {
+        Assert.That(EvalValue(@"
+$i = 10
+$c = 0
+UNTIL $i >= 5
+    $c = $c + 1
+END
+RETURN $c").AsInt(), Is.EqualTo(0));
+    }
+
+    #endregion
+
     #region 控制流 — BREAK / CONTINUE
 
     [Test]
