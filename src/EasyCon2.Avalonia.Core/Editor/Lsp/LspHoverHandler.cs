@@ -42,10 +42,14 @@ public class LspHoverHandler : IDisposable
         ToolTip.SetTip(_editor.TextArea, null);
     }
 
-    private async void OnHoverTimerTick(object? sender, EventArgs e)
+    private void OnHoverTimerTick(object? sender, EventArgs e)
     {
         _hoverTimer.Stop();
+        _ = HoverAsync();
+    }
 
+    private async Task HoverAsync()
+    {
         if (!_lspService.IsConnected || _lspService.DocumentManager.DocumentUri == null)
             return;
 

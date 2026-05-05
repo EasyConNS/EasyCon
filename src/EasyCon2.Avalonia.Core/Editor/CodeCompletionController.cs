@@ -31,7 +31,7 @@ internal class CodeCompletionController : IDisposable
         _editor.LostFocus += (_, _) => CloseCompletionWindow();
     }
 
-    private async void OnTextEntered(object sender, TextInputEventArgs e)
+    private void OnTextEntered(object sender, TextInputEventArgs e)
     {
         if (!_enableAutoCompletion || string.IsNullOrEmpty(e.Text)) return;
 
@@ -40,7 +40,7 @@ internal class CodeCompletionController : IDisposable
             _editor.TextArea.Document.GetText(line.Offset, line.Length),
             _editor.TextArea.Caret.Column))
         {
-            await ShowCompletionWindowAsync();
+            _ = ShowCompletionWindowAsync();
         }
     }
 

@@ -201,7 +201,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         // 初始化命令
-        OpenScriptCommand = new RelayCommand<Window>(OpenScript);
+        OpenScriptCommand = new AsyncRelayCommand<Window>(OpenScriptAsync);
         OpenEditorCommand = new RelayCommand(OpenEditor, CanOpenEditor);
         ConnectNintendoSwitchCommand = new RelayCommand(ConnectNintendoSwitch);
         AutoConnectNintendoSwitchCommand = new RelayCommand(AutoConnectNintendoSwitch);
@@ -281,7 +281,7 @@ public partial class MainWindowViewModel : ViewModelBase
             SelectedControlSource = oldSelected;
     }
 
-    private async void OpenScript(Window? window)
+    private async Task OpenScriptAsync(Window? window)
     {
         if (window == null)
             return;

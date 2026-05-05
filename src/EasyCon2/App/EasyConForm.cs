@@ -398,9 +398,14 @@ namespace EasyCon2.App
             }
         }
 
-        private async void buttonSerialPortSearch_Click(object sender, EventArgs e)
+        private void buttonSerialPortSearch_Click(object sender, EventArgs e)
         {
             EnableConnBtn(false);
+            _ = SearchSerialPortAsync();
+        }
+
+        private async Task SearchSerialPortAsync()
+        {
             var (success, connectedPort) = await _deviceService.AutoConnectAsync();
             if (success)
             {
@@ -418,9 +423,14 @@ namespace EasyCon2.App
             EnableConnBtn();
         }
 
-        private async void buttonSerialPortConnect_Click(object sender, EventArgs e)
+        private void buttonSerialPortConnect_Click(object sender, EventArgs e)
         {
             EnableConnBtn(false);
+            _ = ConnectSerialPortAsync();
+        }
+
+        private async Task ConnectSerialPortAsync()
+        {
             var success = await _deviceService.ManualConnectAsync(ComPort.Text);
             if (!success)
             {
@@ -842,7 +852,7 @@ namespace EasyCon2.App
             runStopBtn.Enabled = true;
         }
 
-        private async void buttonGenerateFirmware_Click(object sender, EventArgs e)
+        private void buttonGenerateFirmware_Click(object sender, EventArgs e)
         {
             genFwButton.Enabled = false;
             GenerateFirmware(GetSelectedBoard());
