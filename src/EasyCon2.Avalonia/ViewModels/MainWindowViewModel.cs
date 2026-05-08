@@ -209,6 +209,25 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         };
 
+        // 订阅手柄热插拔事件
+        _controllerService.AvailableSourcesChanged += () =>
+        {
+            Dispatcher.UIThread.Post(RefreshControlSources);
+        };
+
+        // 订阅控制器外部断开事件（VPad 中键/ESC 退出）
+        _controllerService.Disconnected += () =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                IsControllerConnected = false;
+                ControlSourceStatus = "未连接";
+                ControllerButtonText = "开启映射";
+                UpdateEditKeyMappingEnabled();
+                _logService.AddLog("手柄已断开连接");
+            });
+        };
+
         // 初始化命令
         OpenScriptCommand = new AsyncRelayCommand<Window>(OpenScriptAsync);
         OpenEditorCommand = new RelayCommand(OpenEditor, CanOpenEditor);
@@ -536,12 +555,13 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (IsControllerConnected)
         {
-            _controllerService.Disconnect();
-            IsControllerConnected = false;
-            ControlSourceStatus = "未连接";
-            ControllerButtonText = "开启映射";
-            UpdateEditKeyMappingEnabled();
-            _logService.AddLog("手柄已断开连接");
+            DisconnectController();
+            return;
+        }
+
+        if (!IsNintendoSwitchConnected)
+        {
+            _logService.AddLog("请先连接单片机");
             return;
         }
 
@@ -572,6 +592,16 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             });
         });
+    }
+
+    private void DisconnectController()
+    {
+        _controllerService.Disconnect();
+        IsControllerConnected = false;
+        ControlSourceStatus = "未连接";
+        ControllerButtonText = "开启映射";
+        UpdateEditKeyMappingEnabled();
+        _logService.AddLog("手柄已断开连接");
     }
 
     private void EditKeyMapping(Window? window)
@@ -638,5 +668,8 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         MonitorView = null;
+
+        // 释放控制器资源（SDL3 事件循环等）
+        _controllerService.Dispose();
     }
 }

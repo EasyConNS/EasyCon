@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>SDL3 跨平台输入绑定（键盘 + 游戏手柄）</Description>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ppy.SDL3-CS" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
+    <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
+  </ItemGroup>
+
+</Project>

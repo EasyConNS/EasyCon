@@ -21,9 +21,12 @@ public partial class App : Application
             var logService = new LogService();
             var deviceService = new DeviceService(logService);
             var captureService = new CaptureService(logService);
-            var controllerService = new ControllerService();
             var scriptService = new ScriptService(deviceService, captureService, logService);
-            desktop.MainWindow = new MainWindow { DataContext = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService) };
+            var controllerService = new ControllerService(deviceService.GetDevice(), scriptService);
+            var mainWindow = new MainWindow { DataContext = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService) };
+            controllerService.SetOwnerWindow(mainWindow);
+            desktop.MainWindow = mainWindow;
+            desktop.Exit += (_, _) => controllerService.Dispose();
         }
 
         base.OnFrameworkInitializationCompleted();
