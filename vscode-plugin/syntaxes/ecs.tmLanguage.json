@@ -166,7 +166,7 @@
           "name": "keyword.control.flow.ecs"
         },
         {
-          "match": "(?i)\\b(FOR|WHILE|END|NEXT)\\b",
+          "match": "(?i)\\b(FOR|WHILE|UNTIL|END|NEXT)\\b",
           "name": "keyword.control.repeat.ecs"
         },
         {

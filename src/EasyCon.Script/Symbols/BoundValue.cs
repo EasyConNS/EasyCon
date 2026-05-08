@@ -154,7 +154,13 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     }
 
     public readonly int AsInt() => _tag == TAG_INT32 ? _int32Val : throw new InvalidCastException();
-    public int ToInt() => _tag == TAG_FLOAT64 ? AsBool() ? 1 : 0 : throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <int>");
+    public int ToInt() => _tag switch
+    {
+        TAG_INT32 => _int32Val,
+        TAG_FLOAT64 => (int)f64Val,
+        TAG_BOOL => _int32Val != 0 ? 1 : 0,
+        _ => throw new InvalidCastException($"类型 {Type.Name} 无法转换为 <int>")
+    };
 
     public readonly bool AsBool() => _tag == TAG_BOOL ? _int32Val != 0 : throw new InvalidCastException();
     public readonly string AsString() => _tag == TAG_STRING ? (string)_refVal! : throw new InvalidCastException();
@@ -172,7 +178,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
 
     public int Length => _tag switch
     {
-        TAG_STRING => ((string)_refVal!).Length,
+        TAG_STRING => new StringInfo(((string)_refVal!)).LengthInTextElements,
         TAG_ARRAY => ((ImmutableList<Value>)_refVal!).Count,
         _ => 0
     };
@@ -240,6 +246,11 @@ public struct Value : IEquatable<Value>, IComparable<Value>
                 return (ulong)_longVal == (ulong)(long)other._int32Val;
             if (_tag == TAG_INT32 && other._tag == TAG_UINT64)
                 return (ulong)(long)_int32Val == (ulong)other._longVal;
+            // 添加 int 和 double 之间的比较支持
+            if (_tag == TAG_INT32 && other._tag == TAG_FLOAT64)
+                return (double)_int32Val == other.f64Val;
+            if (_tag == TAG_FLOAT64 && other._tag == TAG_INT32)
+                return f64Val == (double)other._int32Val;
             return false;
         }
         return _tag switch
@@ -283,6 +294,11 @@ public struct Value : IEquatable<Value>, IComparable<Value>
                 return ((ulong)_longVal).CompareTo((ulong)(long)other._int32Val);
             if (_tag == TAG_INT32 && other._tag == TAG_UINT64)
                 return ((ulong)(long)_int32Val).CompareTo((ulong)other._longVal);
+            // 添加 int 和 double 之间的比较支持
+            if (_tag == TAG_INT32 && other._tag == TAG_FLOAT64)
+                return ((double)_int32Val).CompareTo(other.f64Val);
+            if (_tag == TAG_FLOAT64 && other._tag == TAG_INT32)
+                return f64Val.CompareTo((double)other._int32Val);
             throw new InvalidOperationException("不同类型无法比较");
         }
         return _tag switch

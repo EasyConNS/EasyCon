@@ -24,8 +24,6 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private readonly ImmutableDictionary<string, Func<int>> _externalGetters = [];
 
     private readonly long _TIME = DateTime.Now.Ticks;
-    private int CurrTimestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
-
     private readonly Random _rand = new();
     private bool _cancelLineBreak = false;
     private CancellationToken _token;
@@ -43,6 +41,8 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     ICGamePad? IEvalContext.GamePad => GamePad;
     IOutputAdapter? IEvalContext.Output => Output;
     Random IEvalContext.Rand => _rand;
+    int IEvalContext.Timestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
+
     bool IEvalContext.CancelLineBreak { get => _cancelLineBreak; set => _cancelLineBreak = value; }
 
     public Evaluator(BoundProgram program, ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token)
@@ -75,7 +75,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private void RegisterCallables()
     {
         // 注册内置函数 callable
-        foreach (var (symbol, callable) in BuiltinCallable.GetAll(() => CurrTimestamp))
+        foreach (var (symbol, callable) in BuiltinCallable.GetAll())
         {
             _callables[symbol] = callable;
         }

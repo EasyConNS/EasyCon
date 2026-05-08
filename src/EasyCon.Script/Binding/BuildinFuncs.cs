@@ -28,16 +28,14 @@ internal static class BuiltinFunctions
     public static readonly FunctionSymbol Length = new("LEN", [T], [new("var", T)], ScriptType.Int);
 
     // STRING(array: Array<byte>): string
-    public static readonly FunctionSymbol Str = new("STRING", [], [new("array", ScriptType.Array.Bind(ScriptType.Byte))], ScriptType.String);
-
-    // STRINGW(array: Array<byte>): string
-    public static readonly FunctionSymbol StrW = new("STRINGW", [], [new("array", ScriptType.Array.Bind(ScriptType.Byte))], ScriptType.String);
+    // type: string = "utf8", "unicode"
+    public static readonly FunctionSymbol Str = new("STRING", [], [new("array", ScriptType.Array.Bind(ScriptType.Byte)), new("type", ScriptType.String, hasDefault: true, defaultValue: "utf8")], ScriptType.String);
 
     /// <summary>
     /// 所有内置函数符号的静态缓存，避免每次反射枚举
     /// </summary>
     private static readonly FunctionSymbol[] All =
-        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Append, Length, Str, StrW];
+        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Append, Length, Str];
 
     /// <summary>
     /// 获取所有内置函数符号

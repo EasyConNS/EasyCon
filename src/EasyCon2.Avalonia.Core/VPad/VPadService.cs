@@ -22,6 +22,7 @@ public class VPadService
     }
 
     public bool IsActive => _active;
+    public event Action? Exited;
 
     private bool Active
     {
@@ -48,11 +49,7 @@ public class VPadService
         {
             _overlay = new VPadOverlay(_gamepad, _adapter);
             _overlay.ToggleRequested += () => Active = !Active;
-            _overlay.HideRequested += () =>
-            {
-                Active = false;
-                Dispatcher.UIThread.Post(() => _overlay.Hide());
-            };
+            _overlay.HideRequested += Exit;
             _overlay.Closed += (_, _) =>
             {
                 Active = false;
@@ -85,10 +82,11 @@ public class VPadService
         _binder?.RegisterEscapeKey(keydown, keyup);
     }
 
-    public void HideOverlay()
+    public void Exit()
     {
         Active = false;
         Dispatcher.UIThread.Post(() => _overlay?.Hide());
+        Exited?.Invoke();
     }
 
     public void Deactivate()

@@ -321,6 +321,20 @@ public class ValueTests
     }
 
     [Test]
+    public void Equals_IntDouble_EqualValues()
+    {
+        Assert.That(Value.FromInt(3) == Value.FromDouble(3.0), Is.True);
+        Assert.That(Value.FromDouble(3.0) == Value.FromInt(3), Is.True);
+    }
+
+    [Test]
+    public void Equals_IntDouble_DifferentValues()
+    {
+        Assert.That(Value.FromInt(3) == Value.FromDouble(4.0), Is.False);
+        Assert.That(Value.FromDouble(4.0) == Value.FromInt(3), Is.False);
+    }
+
+    [Test]
     public void Equals_StringCaseSensitive()
     {
         Assert.That(Value.FromString("abc") == Value.FromString("abc"), Is.True);
@@ -358,6 +372,27 @@ public class ValueTests
     }
 
     [Test]
+    public void CompareTo_IntDouble_EqualValues()
+    {
+        Assert.That(Value.FromInt(3).CompareTo(Value.FromDouble(3.0)), Is.EqualTo(0));
+        Assert.That(Value.FromDouble(3.0).CompareTo(Value.FromInt(3)), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void CompareTo_IntDouble_LessThan()
+    {
+        Assert.That(Value.FromInt(3).CompareTo(Value.FromDouble(4.0)), Is.LessThan(0));
+        Assert.That(Value.FromDouble(3.0).CompareTo(Value.FromInt(4)), Is.LessThan(0));
+    }
+
+    [Test]
+    public void CompareTo_IntDouble_GreaterThan()
+    {
+        Assert.That(Value.FromInt(5).CompareTo(Value.FromDouble(4.0)), Is.GreaterThan(0));
+        Assert.That(Value.FromDouble(5.0).CompareTo(Value.FromInt(4)), Is.GreaterThan(0));
+    }
+
+    [Test]
     public void CompareTo_DifferentTypes_Throws()
     {
         Assert.Throws<InvalidOperationException>(() => Value.FromInt(1).CompareTo(Value.FromString("1")));
@@ -376,6 +411,26 @@ public class ValueTests
         Assert.That(Value.FromInt(5) > Value.FromInt(3), Is.True);
         Assert.That(Value.FromInt(5) <= Value.FromInt(5), Is.True);
         Assert.That(Value.FromInt(5) >= Value.FromInt(4), Is.True);
+    }
+
+    [Test]
+    public void RelationalOperators_IntDouble()
+    {
+        // 小于比较
+        Assert.That(Value.FromInt(3) < Value.FromDouble(5.0), Is.True);
+        Assert.That(Value.FromDouble(3.0) < Value.FromInt(5), Is.True);
+        
+        // 大于比较
+        Assert.That(Value.FromInt(5) > Value.FromDouble(3.0), Is.True);
+        Assert.That(Value.FromDouble(5.0) > Value.FromInt(3), Is.True);
+        
+        // 小于等于比较
+        Assert.That(Value.FromInt(5) <= Value.FromDouble(5.0), Is.True);
+        Assert.That(Value.FromDouble(5.0) <= Value.FromInt(5), Is.True);
+        
+        // 大于等于比较
+        Assert.That(Value.FromInt(5) >= Value.FromDouble(4.0), Is.True);
+        Assert.That(Value.FromDouble(5.0) >= Value.FromInt(4), Is.True);
     }
 
     #endregion

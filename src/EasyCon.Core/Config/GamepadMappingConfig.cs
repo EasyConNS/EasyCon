@@ -1,4 +1,4 @@
-namespace EasyCon.WinInput;
+namespace EasyCon.Core.Config;
 
 public record GamepadMappingConfig
 {

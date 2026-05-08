@@ -166,7 +166,7 @@ internal sealed partial class Binder
         var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
         var evalBody = new BoundBlockStatement(main.Declaration!, [.. allGlobalStmts]);
         var loweredEval = Lowerer.Lower(main, evalBody);
-        AllocateLocalSlots(main, loweredEval);
+        LifecycleAnalyzer.AllocateLocalSlots(main, loweredEval);
         functionBodies.Add(main, loweredEval);
 
         // 合并 struct 定义
@@ -187,39 +187,8 @@ internal sealed partial class Binder
             stmts.Add(binderFn.BindStatement(stmt));
         var body = new BoundBlockStatement(function.Declaration!, stmts.ToImmutable());
         var lowered = Lowerer.Lower(function, body);
-        AllocateLocalSlots(function, lowered);
+        LifecycleAnalyzer.AllocateLocalSlots(function, lowered);
         return (lowered, binderFn);
-    }
-
-    /// <summary>
-    /// 为函数体中所有未分配 slot 的局部变量分配索引。
-    /// 参数 slot 已在 BindFuncDeclaration 中分配（0..N-1），
-    /// 局部变量从 N 开始连续分配。递归扫描嵌套块。
-    /// </summary>
-    private static void AllocateLocalSlots(FunctionSymbol function, BoundBlockStatement body)
-    {
-        int nextSlot = function.LocalSlotCount;
-        AllocateSlotsRecursive(body, ref nextSlot);
-        function.LocalSlotCount = nextSlot;
-    }
-
-    // Lowerer.Flatten 保证输出为单一扁平块，递归分支实际不会触发；
-    // 保留递归写法作为防御性设计，若未来 Lowerer 行为变更仍可正确处理。
-    private static void AllocateSlotsRecursive(BoundBlockStatement body, ref int nextSlot)
-    {
-        foreach (var stmt in body.Statements)
-        {
-            switch (stmt)
-            {
-                case BoundVariableDeclaration vd
-                    when vd.Variable is LocalVariableSymbol local && local.SlotIndex < 0:
-                    local.SlotIndex = nextSlot++;
-                    break;
-                case BoundBlockStatement inner:
-                    AllocateSlotsRecursive(inner, ref nextSlot);
-                    break;
-            }
-        }
     }
 
     private void EnsureFunctionBodyBound(FunctionSymbol function)
@@ -331,7 +300,7 @@ internal sealed partial class Binder
         foreach (var field in syntax.Fields)
         {
             var fieldType = LookupType(field.TypeName);
-            if (fieldType == null)
+            if (fieldType is null)
             {
                 _diagnostics.ReportBadStruct(field.Location, $"未知字段类型 {field.TypeName}");
                 continue;

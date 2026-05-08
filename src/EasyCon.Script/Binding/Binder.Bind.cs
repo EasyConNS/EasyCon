@@ -1,9 +1,6 @@
-using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
-using EasyCon.Script.Text;
 using System.Collections.Immutable;
-using System.Linq;
 using static EasyCon.Script.Binding.BoundFactory;
 
 namespace EasyCon.Script.Binding;
@@ -132,70 +129,57 @@ internal sealed partial class Binder
 
     private BoundExprStatement BindErrorStatement(Statement syntax) => new(syntax, new BoundErrorExpression(syntax));
 
-    private BoundBlockStatement BindIf(IfBlock syntax)
+    private BoundIfStatement BindIf(IfBlock syntax)
     {
-        _labelCounter++;
-        var endLabel = new BoundLabel($"IfEnd_{_labelCounter}");
-        var nextLabel = new BoundLabel($"NEXT_{_labelCounter}");
-        var block = ImmutableList.CreateBuilder<BoundStmt>();
+        var condition = BindConversion(syntax.Condition.Condition, ScriptType.Bool);
+        static bool isCtrl(Statement st) => st is ElseIf or Else or EndIf;
 
-        block.Add(GotoFalse(syntax, nextLabel, BindConversion(syntax.Condition.Condition, ScriptType.Bool)));
-        static bool isCtrl(Statement st)
-        {
-            if (st is ElseIf || st is Else || st is EndIf) return true;
-            return false;
-        }
+        // IF body
         var index = 0;
         _scope = new BoundScope(_scope);
+        var bodyStmts = ImmutableArray.CreateBuilder<BoundStmt>();
         while (index < syntax.Statements.Length && !isCtrl(syntax.Statements[index]))
         {
-            block.Add(BindStatement(syntax.Statements[index]));
+            bodyStmts.Add(BindStatement(syntax.Statements[index]));
             index++;
         }
         _scope = _scope.Parent!;
-        block.Add(Goto(syntax, endLabel));
-        block.Add(Label(syntax, nextLabel));
-        // 处理 elif 分支
-        int elifCount = 0;
+        var body = new BoundBlockStatement(syntax, bodyStmts.ToImmutable());
+
+        // ELSEIF branches
+        var elseIfs = ImmutableArray.CreateBuilder<(BoundExpr Condition, BoundBlockStatement Body)>();
         while (index < syntax.Statements.Length && syntax.Statements[index] is ElseIf elifCond)
         {
-            var elifLabel = new BoundLabel($"ELIF_{_labelCounter}_{elifCount}");
-            block.Add(GotoFalse(syntax, elifLabel, BindConversion(elifCond.Condition, ScriptType.Bool)));
-
+            var elifCondition = BindConversion(elifCond.Condition, ScriptType.Bool);
             index++;
-
             _scope = new BoundScope(_scope);
+            var elifStmts = ImmutableArray.CreateBuilder<BoundStmt>();
             while (index < syntax.Statements.Length && !isCtrl(syntax.Statements[index]))
             {
-                block.Add(BindStatement(syntax.Statements[index]));
+                elifStmts.Add(BindStatement(syntax.Statements[index]));
                 index++;
             }
             _scope = _scope.Parent!;
-
-            block.Add(Goto(syntax, endLabel));
-            block.Add(Label(syntax, elifLabel));
-            elifCount++;
+            elseIfs.Add((elifCondition, new BoundBlockStatement(syntax, elifStmts.ToImmutable())));
         }
-        // 处理 else 分支
+
+        // ELSE branch
+        BoundBlockStatement? elseBody = null;
         if (index < syntax.Statements.Length && syntax.Statements[index] is Else)
         {
             index++;
             _scope = new BoundScope(_scope);
+            var elseStmts = ImmutableArray.CreateBuilder<BoundStmt>();
             while (index < syntax.Statements.Length && !isCtrl(syntax.Statements[index]))
             {
-                block.Add(BindStatement(syntax.Statements[index]));
+                elseStmts.Add(BindStatement(syntax.Statements[index]));
                 index++;
             }
             _scope = _scope.Parent!;
+            elseBody = new BoundBlockStatement(syntax, elseStmts.ToImmutable());
         }
 
-        // 跳过 endif
-        if (index < syntax.Statements.Length && syntax.Statements[index] is EndIf)
-        {
-            index++;
-        }
-
-        return Block(syntax, [.. block, Label(syntax, endLabel)]);
+        return new BoundIfStatement(syntax, condition, body, elseIfs.ToImmutable(), elseBody);
     }
 
     private BoundBlockStatement BindFor(ForBlock syntax)
@@ -275,24 +259,23 @@ internal sealed partial class Binder
         return Block(syntax,
             lowerBoundStmt,
             upperBoundStmt,
-            RewriteWhile(lowwhile)
+            lowwhile
              );
     }
 
-    private BoundBlockStatement BindWhile(WhileBlock syntax)
+    private BoundWhileStatement BindWhile(WhileBlock syntax)
     {
         var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
 
-        var lowwhile = new BoundWhileStatement(syntax,
+        return new BoundWhileStatement(syntax,
             BindConversion(syntax.Condition.Condition, ScriptType.Bool),
             body,
             breakLabel,
             continueLabel
              );
-        return RewriteWhile(lowwhile);
     }
 
-    private BoundBlockStatement BindUntil(UntilBlock syntax)
+    private BoundWhileStatement BindUntil(UntilBlock syntax)
     {
         var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
 
@@ -306,37 +289,12 @@ internal sealed partial class Binder
             body
         );
 
-        var lowwhile = new BoundWhileStatement(syntax,
+        return new BoundWhileStatement(syntax,
             new BoundLiteralExpression(syntax, Value.FromBool(true)),
             newBody,
             breakLabel,
             continueLabel
         );
-        return RewriteWhile(lowwhile);
-    }
-
-    private BoundBlockStatement RewriteWhile(BoundWhileStatement boundsyntax)
-    {
-        // while <condition>
-        //      <body>
-        //
-        // ----->
-        //
-        // goto continue
-        // body:
-        // <body>
-        // continue:
-        // gotoTrue <condition> body
-        // break:
-        var bodyLabel = new BoundLabel($"body{++_labelCounter}");
-        var syntax = boundsyntax.Syntax;
-        return Block(syntax,
-                Goto(syntax, boundsyntax.ContinueLabel),
-                Label(syntax, bodyLabel),
-                boundsyntax.Body,
-                Label(syntax, boundsyntax.ContinueLabel),
-                GotoTrue(syntax, bodyLabel, boundsyntax.Condition),
-                Label(syntax, boundsyntax.BreakLabel));
     }
 
     private BoundBlockStatement BindLoopBody(Statement syntax, ImmutableArray<Statement> body, out BoundLabel breakLabel, out BoundLabel continueLabel)

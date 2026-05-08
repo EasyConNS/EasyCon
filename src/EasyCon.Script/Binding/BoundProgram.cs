@@ -47,3 +47,17 @@ internal sealed class BoundWhileStatement(Statement syntax, BoundExpr condition,
     public readonly BoundLabel BreakLabel = breakLabel;
     public readonly BoundLabel ContinueLabel = continueLabel;
 }
+
+internal sealed class BoundIfStatement(
+    AstNode syntax,
+    BoundExpr condition,
+    BoundBlockStatement body,
+    ImmutableArray<(BoundExpr Condition, BoundBlockStatement Body)> elseIfs,
+    BoundBlockStatement? elseBody) : BoundStmt(syntax)
+{
+    public override BoundNodeKind Kind => BoundNodeKind.IfStatement;
+    public readonly BoundExpr Condition = condition;
+    public readonly BoundBlockStatement Body = body;
+    public readonly ImmutableArray<(BoundExpr Condition, BoundBlockStatement Body)> ElseIfs = elseIfs;
+    public readonly BoundBlockStatement? ElseBody = elseBody;
+}

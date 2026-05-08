@@ -35,4 +35,5 @@ public enum BoundNodeKind
     IndexAssignment,
 
     While,
+    IfStatement,
 }

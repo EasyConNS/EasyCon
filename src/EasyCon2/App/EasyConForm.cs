@@ -570,7 +570,7 @@ namespace EasyCon2.App
             if (_vpadService.IsActive)
             {
                 buttonShowController.Text = "连接";
-                _vpadService.HideOverlay();
+                _vpadService.Exit();
                 return;
             }
 
@@ -586,6 +586,7 @@ namespace EasyCon2.App
                 _vpadService.SwitchInput(binder);
             }
             buttonShowController.Text = "断开";
+            _vpadService.Exited += () => buttonShowController.Text = "连接";
             _vpadService.Show();
 
             // Register Escape key to hide overlay
@@ -593,9 +594,7 @@ namespace EasyCon2.App
                 () =>
                 {
                     if (_vpadService is not { IsActive: true }) return false;
-
-                    buttonShowController.Text = "连接";
-                    _vpadService.HideOverlay();
+                    _vpadService.Exit();
                     return true;
                 },
                 () => false);
@@ -630,9 +629,7 @@ namespace EasyCon2.App
                 () =>
                 {
                     if (_vpadService is not { IsActive: true }) return false;
-
-                    buttonShowController.Text = "连接";
-                    _vpadService.HideOverlay();
+                    _vpadService.Exit();
                     return true;
                 },
                 () => false);

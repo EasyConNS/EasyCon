@@ -43,9 +43,7 @@ internal static class BuiltinCallable
 
     public static Value ImplTimestamp(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
-        // Timestamp 通过 Evaluator 的 _TIME 字段计算，需要特殊处理
-        // 由 Evaluator 在注册时通过闭包捕获
-        throw new InvalidOperationException("Timestamp 应通过闭包注册");
+        return ctx.Timestamp;
     }
 
     public static Value ImplAmiibo(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
@@ -80,23 +78,18 @@ internal static class BuiltinCallable
         var bytes = new byte[array.Count];
         for (int i = 0; i < array.Count; i++)
             bytes[i] = array[i].AsByte();
-        return Encoding.UTF8.GetString(bytes);
-    }
-
-    public static Value ImplStringW(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var array = args[0].AsArray();
-        var bytes = new byte[array.Count];
-        for (int i = 0; i < array.Count; i++)
-            bytes[i] = array[i].AsByte();
-        return Encoding.Unicode.GetString(bytes);
+        return args[1].AsString() switch
+        {
+            "unicode" => Encoding.Unicode.GetString(bytes),
+            "utf8" or _ => Encoding.UTF8.GetString(bytes)
+        };
     }
 
     /// <summary>
     /// 获取所有内置函数及其对应的 Callable。
     /// Timestamp 需要额外的 timestampFactory 闭包参数。
     /// </summary>
-    public static ImmutableArray<(FunctionSymbol Symbol, ICallable Callable)> GetAll(Func<int> timestampFactory)
+    public static ImmutableArray<(FunctionSymbol Symbol, ICallable Callable)> GetAll()
     {
         return
         [
@@ -104,13 +97,12 @@ internal static class BuiltinCallable
             (BuiltinFunctions.Print, new DelegateCallable(ImplPrint)),
             (BuiltinFunctions.Alert, new DelegateCallable(ImplAlert)),
             (BuiltinFunctions.Rand, new DelegateCallable(ImplRand)),
-            (BuiltinFunctions.Timestamp, new DelegateCallable((args, ctx, token) => timestampFactory())),
+            (BuiltinFunctions.Timestamp, new DelegateCallable(ImplTimestamp)),
             (BuiltinFunctions.Amiibo, new DelegateCallable(ImplAmiibo)),
             (BuiltinFunctions.Beep, new DelegateCallable(ImplBeep)),
             (BuiltinFunctions.Length, new DelegateCallable(ImplLength)),
             (BuiltinFunctions.Append, new DelegateCallable(ImplAppend)),
             (BuiltinFunctions.Str, new DelegateCallable(ImplString)),
-            (BuiltinFunctions.StrW, new DelegateCallable(ImplStringW)),
         ];
     }
 }
