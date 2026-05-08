@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,8 +23,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IControllerService _controllerService;
     private readonly StringBuilder _logBuilder = new();
     private const int MaxLogLength = 100_000;
-    private Window? _monitorWindow;
     private Window? _editorWindow;
+    private MonitorViewModel? _monitorViewModel;
 
     // 窗口标题（含版本号）
     [ObservableProperty]
@@ -110,15 +111,21 @@ public partial class MainWindowViewModel : ViewModelBase
     private System.Timers.Timer _runTimer = new System.Timers.Timer(500);
     private DateTime _runStartTime;
 
+    // 监视器可见性
+    [ObservableProperty]
+    private bool _isMonitorVisible = true;
+
+    // 监视器视图
+    [ObservableProperty]
+    private MonitorView? _monitorView;
+
     // 日志工具条相关属性
     [ObservableProperty]
     private bool _isLogToolbarVisible = false;
 
-    // 打开脚本命令
+    // 连接模块命令
     public ICommand OpenScriptCommand { get; }
     public ICommand OpenEditorCommand { get; }
-
-    // 连接模块命令
     public ICommand ConnectNintendoSwitchCommand { get; }
     public ICommand AutoConnectNintendoSwitchCommand { get; }
     public ICommand ConnectCaptureSourceCommand { get; }
@@ -126,7 +133,6 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand EditKeyMappingCommand { get; }
     public ICommand RunScriptCommand { get; }
     public ICommand ClearLogCommand { get; }
-    public ICommand OpenMonitorCommand { get; }
     public ICommand DropFileCommand { get; }
 
     // 刷新数据源命令
@@ -147,6 +153,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _captureService = captureService;
         _scriptService = scriptService;
         _controllerService = controllerService;
+
+        // 初始化监视器视图
+        InitializeMonitorView();
 
         // 订阅日志事件（LogService 已批量合并，此处每 100ms 最多触发一次）
         _logService.LogAppended += text =>
@@ -213,7 +222,6 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshSerialPortsCommand = new RelayCommand(RefreshSerialPorts);
         RefreshCaptureSourcesCommand = new RelayCommand(RefreshCaptureSources);
         RefreshControlSourcesCommand = new RelayCommand(RefreshControlSources);
-        OpenMonitorCommand = new RelayCommand(OpenMonitor);
         DropFileCommand = new RelayCommand<string>(DropFile);
 
         // 初始化示例数据
@@ -231,6 +239,26 @@ public partial class MainWindowViewModel : ViewModelBase
         // 添加一些初始日志
         _logBuilder.Append("欢迎使用 EasyCon2!\n");
         LogOutput = _logBuilder.ToString();
+    }
+
+    private void InitializeMonitorView()
+    {
+        try
+        {
+            // 创建监视器视图和视图模型
+            _monitorViewModel = new MonitorViewModel(_captureService);
+
+            var monitorView = new MonitorView();
+            monitorView.DataContext = _monitorViewModel;
+            MonitorView = monitorView;
+
+            // 监视器默认可见
+            IsMonitorVisible = true;
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"初始化监视器失败: {ex.Message}");
+        }
     }
 
     private void InitializeSampleData()
@@ -412,6 +440,9 @@ public partial class MainWindowViewModel : ViewModelBase
                             CaptureSourceStatus = "已连接";
                             CaptureSourceButtonText = "关闭视频源";
                             _logService.AddLog($"视频源 ({sourceName}) 已连接");
+
+                            // 自动显示监视器
+                            ShowMonitor();
                         }
                         else
                         {
@@ -430,6 +461,35 @@ public partial class MainWindowViewModel : ViewModelBase
                     });
                 }
             });
+        }
+    }
+
+    private void ShowMonitor()
+    {
+        try
+        {
+            // 创建监视器视图和视图模型（如果尚未创建）
+            if (_monitorViewModel == null)
+            {
+                _monitorViewModel = new MonitorViewModel(_captureService);
+            }
+
+            if (MonitorView == null)
+            {
+                var monitorView = new MonitorView();
+                monitorView.DataContext = _monitorViewModel;
+                MonitorView = monitorView;
+            }
+
+            // 显示监视器
+            IsMonitorVisible = true;
+
+            // 启动监视
+            _monitorViewModel.StartMonitoring();
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"显示监视器失败: {ex.Message}");
         }
     }
 
@@ -560,7 +620,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 主窗口关闭时调用，关闭所有子窗口。
+    /// 主窗口关闭时调用，关闭所有子窗口和监视器。
     /// </summary>
     public void OnMainWindowClosing()
     {
@@ -570,52 +630,13 @@ public partial class MainWindowViewModel : ViewModelBase
             _editorWindow = null;
         }
 
-        if (_monitorWindow != null)
+        // 关闭嵌入式监视器
+        if (_monitorViewModel != null)
         {
-            if (_monitorWindow.DataContext is MonitorWindowViewModel vm)
-                vm.Close();
-            _monitorWindow.Close();
-            _monitorWindow = null;
-        }
-    }
-
-    private void OpenMonitor()
-    {
-        if (!IsCaptureSourceConnected)
-        {
-            _logService.AddLog("请先连接视频源才能打开监视器");
-            return;
+            _monitorViewModel.Close();
+            _monitorViewModel = null;
         }
 
-        try
-        {
-            // 单例模式：如果监视器窗口已存在且未关闭，则激活到前台
-            if (_monitorWindow != null)
-            {
-                if (_monitorWindow.WindowState == WindowState.Minimized)
-                    _monitorWindow.WindowState = WindowState.Normal;
-                _monitorWindow.Activate();
-                return;
-            }
-
-            _monitorWindow = new MonitorWindow(_captureService);
-
-            // 窗口关闭时清空引用
-            _monitorWindow.Closed += (s, e) =>
-            {
-                _monitorWindow = null;
-            };
-
-            // 显示窗口（非模态，不影响主界面）
-            // StartMonitoring 由 MonitorWindow 在 Opened 事件中自动调用，
-            // 确保 DPI 先初始化再渲染首帧
-            _monitorWindow.Show();
-
-            _logService.AddLog("监视器窗口已打开");
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"打开监视器失败: {ex.Message}");
-        }
+        MonitorView = null;
     }
 }

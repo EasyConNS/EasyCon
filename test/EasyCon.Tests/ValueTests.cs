@@ -419,15 +419,15 @@ public class ValueTests
         // 小于比较
         Assert.That(Value.FromInt(3) < Value.FromDouble(5.0), Is.True);
         Assert.That(Value.FromDouble(3.0) < Value.FromInt(5), Is.True);
-        
+
         // 大于比较
         Assert.That(Value.FromInt(5) > Value.FromDouble(3.0), Is.True);
         Assert.That(Value.FromDouble(5.0) > Value.FromInt(3), Is.True);
-        
+
         // 小于等于比较
         Assert.That(Value.FromInt(5) <= Value.FromDouble(5.0), Is.True);
         Assert.That(Value.FromDouble(5.0) <= Value.FromInt(5), Is.True);
-        
+
         // 大于等于比较
         Assert.That(Value.FromInt(5) >= Value.FromDouble(4.0), Is.True);
         Assert.That(Value.FromDouble(5.0) >= Value.FromInt(4), Is.True);

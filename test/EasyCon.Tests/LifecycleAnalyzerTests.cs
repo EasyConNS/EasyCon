@@ -122,7 +122,7 @@ FUNC test()
     $c = 3  # This variable will not be executed, but will be declared
     $d = $c + 1
 ENDFUNC";
-        
+
         ExpectBind(code);
     }
 
@@ -137,7 +137,7 @@ FUNC test()
     $c = 3  # Not overlapping with $a, $b (although after return, but declared in the same scope)
     $d = $c + 1
 ENDFUNC";
-        
+
         ExpectBind(code);
     }
 }

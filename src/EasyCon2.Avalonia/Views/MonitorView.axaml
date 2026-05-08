@@ -1,23 +1,11 @@
-<Window xmlns="https://github.com/avaloniaui"
-         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-         xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
-         xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
-         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-         mc:Ignorable="d"
-         d:DesignWidth="800"
-         d:DesignHeight="600"
-         x:Class="EasyCon2.Avalonia.Views.MonitorWindow"
-         x:DataType="vm:MonitorWindowViewModel"
-         Title="监视器"
-         Width="800"
-         Height="600"
-         WindowState="Normal"
-         CanResize="True"
-         ShowInTaskbar="True"
-         Icon="/Assets/CaptureVideo.ico">
-
-    <Grid>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
+             xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
+             x:Class="EasyCon2.Avalonia.Views.MonitorView"
+             x:DataType="vm:MonitorViewModel">
+    <Border BorderBrush="#FF333333" BorderThickness="2">
+        <Grid>
         <Image Source="{Binding CurrentFrame}"
                Stretch="Uniform"
                StretchDirection="Both"
@@ -57,4 +45,5 @@
                        HorizontalAlignment="Center"/>
         </Border>
     </Grid>
-</Window>
+</Border>
+</UserControl>

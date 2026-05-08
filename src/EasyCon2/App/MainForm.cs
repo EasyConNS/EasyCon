@@ -1121,7 +1121,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
     #region IOutputAdapter
 
     public void Print(string message, bool newline = true) =>
-        logTxtBox.Print(message, newline);
+        logTxtBox.PrintAsync(message, newline);
 
     public void Alert(string message)
     {

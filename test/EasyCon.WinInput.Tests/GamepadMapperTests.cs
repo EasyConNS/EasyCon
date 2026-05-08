@@ -1,3 +1,4 @@
+using EasyCon.Core.Config;
 using EasyCon.WinInput;
 using EasyDevice;
 using GamepadApi;

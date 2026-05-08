@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
@@ -8,7 +9,7 @@ using OpenCvSharp;
 
 namespace EasyCon2.Avalonia.ViewModels;
 
-public partial class MonitorWindowViewModel : ObservableObject
+public partial class MonitorViewModel : ObservableObject
 {
     private readonly ICaptureService _captureService;
     private System.Timers.Timer? _updateTimer;
@@ -32,9 +33,12 @@ public partial class MonitorWindowViewModel : ObservableObject
     [ObservableProperty]
     private int _frameIndex;
 
-    public MonitorWindowViewModel(ICaptureService captureService)
+    public MonitorViewModel(ICaptureService captureService)
     {
         _captureService = captureService;
+        // 初始化时默认显示未连接错误
+        HasError = true;
+        ErrorMessage = "视频源未连接";
     }
 
     public void StartMonitoring()

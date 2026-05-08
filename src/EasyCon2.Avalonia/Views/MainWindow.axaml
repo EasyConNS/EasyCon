@@ -50,34 +50,42 @@
 
         <!-- 主内容区域 -->
         <Grid Grid.Row="1" RowDefinitions="*,Auto">
-            <!-- 日志输出区 -->
-            <Grid Grid.Row="0">
-                <TextBox Text="{Binding LogOutput}"
-                        IsReadOnly="True"
-                        AcceptsReturn="True"
-                        TextWrapping="NoWrap"
-                        ScrollViewer.VerticalScrollBarVisibility="Auto"
-                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                        FontFamily="Consolas, Microsoft YaHei"
-                        FontSize="14"
-                        Padding="10"
-                        behaviors:AutoScrollBehavior.IsEnabled="True"
-                        PointerEntered="LogBox_PointerEntered"
-                        PointerExited="LogBox_PointerExited"/>
-                <!-- 工具条覆盖层 -->
-                <Border HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Margin="10"
-                        IsVisible="{Binding IsLogToolbarVisible}"
-                        Background="{DynamicResource ThemeControlFillColorDefaultBrush}"
-                        Padding="5"
-                        PointerEntered="LogBox_PointerEntered"
-                        PointerExited="LogBox_PointerExited">
-                    <Button Content="清屏"
-                           Command="{Binding ClearLogCommand}"
-                           Padding="10,5"
-                           HorizontalContentAlignment="Center"/>
-                </Border>
+            <!-- 日志输出区和监视器区 -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,*">
+                <!-- 日志输出区 -->
+                <Grid Grid.Column="0">
+                    <TextBox Text="{Binding LogOutput}"
+                            IsReadOnly="True"
+                            AcceptsReturn="True"
+                            TextWrapping="NoWrap"
+                            ScrollViewer.VerticalScrollBarVisibility="Auto"
+                            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                            FontFamily="Consolas, Microsoft YaHei"
+                            FontSize="14"
+                            Padding="10"
+                            behaviors:AutoScrollBehavior.IsEnabled="True"
+                            PointerEntered="LogBox_PointerEntered"
+                            PointerExited="LogBox_PointerExited"/>
+                    <!-- 工具条覆盖层 -->
+                    <Border HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Margin="10"
+                            IsVisible="{Binding IsLogToolbarVisible}"
+                            Background="{DynamicResource ThemeControlFillColorDefaultBrush}"
+                            Padding="5"
+                            PointerEntered="LogBox_PointerEntered"
+                            PointerExited="LogBox_PointerExited">
+                        <Button Content="清屏"
+                               Command="{Binding ClearLogCommand}"
+                               Padding="10,5"
+                               HorizontalContentAlignment="Center"/>
+                    </Border>
+                </Grid>
+
+                <!-- 监视器区 -->
+                <Grid Grid.Column="1" IsVisible="{Binding IsMonitorVisible}">
+                    <ContentControl Content="{Binding MonitorView}" />
+                </Grid>
             </Grid>
 
             <!-- 底部模块连接器区域 -->
@@ -131,23 +139,12 @@
                                       SelectedItem="{Binding SelectedCaptureSource}"
                                       HorizontalAlignment="Stretch"
                                       behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Button Grid.Column="0"
-                                        Content="{Binding CaptureSourceButtonText}"
-                                        Command="{Binding ConnectCaptureSourceCommand}"
-                                        IsEnabled="{Binding !IsConnectingCaptureSource}"
-                                        Margin="0,0,5,0"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"/>
-                                <Button Grid.Column="1"
-                                        Content="监视器"
-                                        Command="{Binding OpenMonitorCommand}"
-                                        IsEnabled="{Binding IsCaptureSourceConnected}"
-                                        Margin="5,0,0,0"
-                                        MinWidth="80"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"/>
-                            </Grid>
+                            <Button Grid.Column="0"
+                                    Content="{Binding CaptureSourceButtonText}"
+                                    Command="{Binding ConnectCaptureSourceCommand}"
+                                    IsEnabled="{Binding !IsConnectingCaptureSource}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
                             <TextBlock Text="{Binding CaptureSourceStatus}"
                                       HorizontalAlignment="Center"
                                       FontWeight="Bold"

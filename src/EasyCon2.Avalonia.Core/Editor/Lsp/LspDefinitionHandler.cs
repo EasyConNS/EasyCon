@@ -30,7 +30,12 @@ public class LspDefinitionHandler : IDisposable
             _editor.Cursor = null;
     }
 
-    private async Task OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _ = OnPointerPressedAsync(sender, e);
+    }
+
+    private async Task OnPointerPressedAsync(object? sender, PointerPressedEventArgs e)
     {
         if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) || !_lspService.IsConnected ||
             _lspService.DocumentManager.DocumentUri == null)
