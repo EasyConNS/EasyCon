@@ -629,6 +629,30 @@ public class ValueTests
         Assert.That(b.AsArray().Count, Is.EqualTo(2));
     }
 
+    [Test]
+    public void Contains_String()
+    {
+        var s = Value.FromString("hello");
+        Assert.That(s.Contains(Value.FromString("ell")), Is.True);
+        Assert.That(s.Contains(Value.FromString("ELL")), Is.False);
+        Assert.That(s.Contains(Value.FromString("")), Is.True);
+    }
+
+    [Test]
+    public void Contains_Array()
+    {
+        var a = Value.CreateArray(ScriptType.Int, [Value.FromInt(1), Value.FromInt(2)]);
+        Assert.That(a.Contains(Value.FromInt(2)), Is.True);
+        Assert.That(a.Contains(Value.FromInt(3)), Is.False);
+        Assert.That(a.Contains(Value.FromString("2")), Is.False);
+    }
+
+    [Test]
+    public void Contains_NonContainer_Throws()
+    {
+        Assert.Throws<InvalidOperationException>(() => Value.FromInt(1).Contains(Value.FromInt(1)));
+    }
+
     #endregion
 
     #region ToString

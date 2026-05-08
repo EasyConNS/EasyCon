@@ -37,6 +37,9 @@ internal sealed class BoundBinaryOperator
         if (kind.OperatorIsAug())
             kind = kind.GetBinaryOperatorOfAssignmentOperator();
 
+        if (kind == TokenType.IN)
+            return BindInOperator(kind, leftType, rightType);
+
         // 泛型数组拼接支持: Array<T> + Array<T>
         if (kind == TokenType.ADD && leftType is GenericType { Definition.Name: "Array" } && leftType.Equals(rightType))
             return new BoundBinaryOperator(kind, BoundBinaryOperatorKind.Addition, leftType, rightType, leftType);
@@ -49,10 +52,28 @@ internal sealed class BoundBinaryOperator
             return null;
 
         var resultType = GetResultType(kind, convLeft);
-        if (resultType == null) return null;
+        if (resultType is null) return null;
 
         var opKind = GetOperatorKind(kind);
         return new BoundBinaryOperator(kind, opKind, convLeft, convRight, resultType);
+    }
+
+    private static BoundBinaryOperator? BindInOperator(TokenType kind, ScriptType leftType, ScriptType rightType)
+    {
+        if (rightType.Equals(ScriptType.String))
+        {
+            return leftType.Equals(ScriptType.String)
+                ? new BoundBinaryOperator(kind, BoundBinaryOperatorKind.In, leftType, rightType, ScriptType.Bool)
+                : null;
+        }
+
+        if (rightType is GenericType { Definition.Name: "Array" } arrayType &&
+            arrayType.TypeArguments[0].Equals(leftType))
+        {
+            return new BoundBinaryOperator(kind, BoundBinaryOperatorKind.In, leftType, rightType, ScriptType.Bool);
+        }
+
+        return null;
     }
 
     private static (ScriptType Left, ScriptType Right) ApplyImplicitConversion(TokenType kind, ScriptType left, ScriptType right)
@@ -152,6 +173,7 @@ internal sealed class BoundBinaryOperator
         TokenType.LEQ => BoundBinaryOperatorKind.LessOrEquals,
         TokenType.GTR => BoundBinaryOperatorKind.Greater,
         TokenType.GEQ => BoundBinaryOperatorKind.GreaterOrEquals,
+        TokenType.IN => BoundBinaryOperatorKind.In,
         TokenType.BitAnd => BoundBinaryOperatorKind.BitwiseAnd,
         TokenType.BitOr => BoundBinaryOperatorKind.BitwiseOr,
         TokenType.XOR => BoundBinaryOperatorKind.BitwiseXor,
@@ -184,4 +206,5 @@ internal enum BoundBinaryOperatorKind
     LessOrEquals,
     Greater,
     GreaterOrEquals,
+    In,
 }

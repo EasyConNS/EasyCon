@@ -257,6 +257,8 @@ CAPTURE");
         ExpectParse("$v = 1 < 2");
         ExpectParse("$v = 3 >= 2");
         ExpectParse("$v = 1 <= 2");
+        ExpectParse("$v = \"bc\" in \"abcd\"");
+        ExpectParse("$v = 2 in [1, 2, 3]");
     }
 
     [Test]
@@ -307,6 +309,7 @@ CAPTURE");
     public void Precedence_AndBelowComparison()
     {
         ExpectParse("$v = 1 > 0 and 2 < 3");
+        ExpectParse("$v = \"bc\" in \"abcd\" and 1 == 1");
     }
 
     [Test]

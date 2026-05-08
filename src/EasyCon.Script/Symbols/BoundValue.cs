@@ -218,6 +218,22 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         }
     }
 
+    public bool Contains(Value item)
+    {
+        if (_tag == TAG_STRING && item._tag == TAG_STRING)
+            return ((string)_refVal!).Contains((string)item._refVal!, StringComparison.Ordinal);
+
+        if (_tag == TAG_ARRAY)
+        {
+            if (!_arrayElemType!.Equals(item.Type))
+                return false;
+
+            return ((ImmutableList<Value>)_refVal!).Any(v => v.Equals(item));
+        }
+
+        throw new InvalidOperationException($"{Type} 不支持包含运算");
+    }
+
     #endregion
 
     #region 比较逻辑

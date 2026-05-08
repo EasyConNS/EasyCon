@@ -757,6 +757,7 @@ internal sealed partial class Binder
                 BoundBinaryOperatorKind.LessOrEquals => Value.FromBool(l <= r),
                 BoundBinaryOperatorKind.Greater => Value.FromBool(l > r),
                 BoundBinaryOperatorKind.GreaterOrEquals => Value.FromBool(l >= r),
+                BoundBinaryOperatorKind.In => Value.FromBool(r.Contains(l)),
                 BoundBinaryOperatorKind.LogicalAnd => Value.FromBool(l.AsBool() && r.AsBool()),
                 BoundBinaryOperatorKind.LogicalOr => Value.FromBool(l.AsBool() || r.AsBool()),
                 _ => throw new InvalidOperationException($"不支持的常量运算: {boundOperator.Kind}")

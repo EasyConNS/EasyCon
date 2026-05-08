@@ -417,6 +417,14 @@ RETURN $x").AsInt(), Is.EqualTo(999));
         Assert.That(EvalValue("RETURN LEN(\"hello\")").AsInt(), Is.EqualTo(5));
     }
 
+    [Test]
+    public void String_InOperator()
+    {
+        Assert.That(EvalValue("RETURN \"ell\" in \"hello\"").AsBool(), Is.True);
+        Assert.That(EvalValue("RETURN \"ELL\" in \"hello\"").AsBool(), Is.False);
+        Assert.That(EvalValue("RETURN \"\" in \"hello\"").AsBool(), Is.True);
+    }
+
     #endregion
 
     #region 数组操作
@@ -451,6 +459,14 @@ RETURN $x").AsInt(), Is.EqualTo(999));
     public void Array_Concat()
     {
         Assert.That(EvalValue("$a = [1, 2]\n$b = [3, 4]\n$c = $a + $b\nRETURN LEN($c)").AsInt(), Is.EqualTo(4));
+    }
+
+    [Test]
+    public void Array_InOperator()
+    {
+        Assert.That(EvalValue("RETURN 1 in [1, 2, 3]").AsBool(), Is.True);
+        Assert.That(EvalValue("RETURN 4 in [1, 2, 3]").AsBool(), Is.False);
+        Assert.That(EvalValue("RETURN 1 in []").AsBool(), Is.False);
     }
 
     [Test]

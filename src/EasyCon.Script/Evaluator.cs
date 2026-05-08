@@ -416,6 +416,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
             BoundBinaryOperatorKind.LessOrEquals => Value.FromBool(left <= right),
             BoundBinaryOperatorKind.Greater => Value.FromBool(left > right),
             BoundBinaryOperatorKind.GreaterOrEquals => Value.FromBool(left >= right),
+            BoundBinaryOperatorKind.In => Value.FromBool(right.Contains(left)),
             BoundBinaryOperatorKind.LogicalAnd => Value.FromBool(left.AsBool() && right.AsBool()),
             BoundBinaryOperatorKind.LogicalOr => Value.FromBool(left.AsBool() || right.AsBool()),
             _ => throw new InvalidOperationException($"不支持的运算: {b.Op.Kind}")

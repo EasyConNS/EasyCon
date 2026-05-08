@@ -182,7 +182,7 @@
           "name": "storage.type.ecs"
         },
         {
-          "match": "(?i)\\b(IMPORT|TO|IN|STEP|TRUE|FALSE|RESET|WAIT|CALL)\\b",
+          "match": "(?i)\\b(IMPORT|TO|STEP|TRUE|FALSE|RESET|WAIT|CALL)\\b",
           "name": "keyword.control.ecs"
         }
       ]
@@ -219,7 +219,7 @@
         },
         {
           "name": "keyword.operator.comparison.ecs",
-          "match": "(\\b(and|or)\\b)|(==|!=|<=|>=|<|>)"
+          "match": "(?i)\\b(and|or|in)\\b|(==|!=|<=|>=|<|>)"
         },
         {
           "name": "keyword.operator.arithmetic.ecs",

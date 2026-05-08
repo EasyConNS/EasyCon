@@ -309,6 +309,22 @@ ENDFUNC", "重复定义的函数");
         ExpectBind("$r = 1.5 >= 0.5");
     }
 
+    [Test]
+    public void TypeCheck_InOperator()
+    {
+        ExpectBind("$r = \"bc\" in \"abcd\"");
+        ExpectBind("$r = 1 in [1, 2, 3]");
+        ExpectBind("$r = \"b\" in [\"a\", \"b\", \"c\"]");
+    }
+
+    [Test]
+    public void TypeCheck_InOperator_InvalidTypes()
+    {
+        ExpectError("$r = 1 in \"123\"", "不支持");
+        ExpectError("$r = \"1\" in [1, 2, 3]", "不支持");
+        ExpectError("$r = 1 in 2", "不支持");
+    }
+
     #endregion
 
     #region 类型检查 — 逻辑运算
