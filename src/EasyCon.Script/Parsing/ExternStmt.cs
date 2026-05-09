@@ -21,6 +21,6 @@ internal sealed class ExternFuncStmt(Token externToken, Token identifier, Immuta
         var parm = string.Join(", ", Parameters.Select(p => p.ToString()));
         parm = Parameters.Length == 0 ? "()" : $"({parm})";
         var asPart = ExportNameToken != null ? $" AS \"{ExportName}\"" : "";
-        return $"EXTERN FUNC {Name}{parm}:{ReturnType.Identifier.Value.ToUpper()}{asPart} FROM \"{Library}\"";
+        return $"EXTERN FUNC {Name}{parm}:{ReturnType.TypeName.ToUpper()}{asPart} FROM \"{Library}\"";
     }
 }

@@ -537,6 +537,19 @@ CAPTURE");
     }
 
     [Test]
+    public void Func_WithArrayParameterAndReturnType()
+    {
+        ExpectParse("FUNC first($items:STRING[]):STRING\nRETURN $items[0]\nENDFUNC");
+        ExpectParse("FUNC copy($items:STRING[]):STRING[]\nRETURN $items\nENDFUNC");
+    }
+
+    [Test]
+    public void Func_FixedLengthArrayParameter_NotSupported()
+    {
+        ExpectError("FUNC first($items:STRING[4]):STRING\nRETURN $items[0]\nENDFUNC");
+    }
+
+    [Test]
     public void Func_ChineseName()
     {
         ExpectParse("FUNC 测试函数\nA\nENDFUNC");

@@ -316,6 +316,34 @@ RETURN $r").AsInt(), Is.EqualTo(16));
     #region 函数 — 递归
 
     [Test]
+    public void Function_StringArrayParameter()
+    {
+        Assert.That(EvalValue(@"
+FUNC find($items:STRING[], $text:STRING):STRING
+    $n = LEN($items) - 1
+    FOR $i = 0 TO $n
+        $item = $items[$i]
+        IF $item IN $text
+            RETURN $item
+        ENDIF
+    NEXT
+    RETURN """"
+ENDFUNC
+RETURN find([""alpha"", ""beta"", ""gamma""], ""wild beta appears"")").AsString(), Is.EqualTo("beta"));
+    }
+
+    [Test]
+    public void Function_StringArrayReturnType()
+    {
+        Assert.That(EvalValue(@"
+FUNC copy($items:STRING[]):STRING[]
+    RETURN $items
+ENDFUNC
+$copied = copy([""alpha"", ""beta""])
+RETURN $copied[1]").AsString(), Is.EqualTo("beta"));
+    }
+
+    [Test]
     public void Function_Recursion_Fibonacci()
     {
         Assert.That(EvalValue(@"

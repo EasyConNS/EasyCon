@@ -16,10 +16,12 @@ internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> 
     }
 }
 
-internal sealed class TypeClauseSyntax(Token colonToken, Token identifier)
+internal sealed class TypeClauseSyntax(Token colonToken, Token identifier, bool isArray = false)
 {
     public readonly Token Colon = colonToken;
     public readonly Token Identifier = identifier;
+    public readonly bool IsArray = isArray;
+    public string TypeName => IsArray ? Identifier.Value + "[]" : Identifier.Value;
 }
 
 class FuncStmt(Token identifier, ImmutableArray<ParameterSyntax> paramters, bool omitParn, TypeClauseSyntax? type) : StartBlockStmt(identifier)
@@ -42,7 +44,7 @@ class FuncStmt(Token identifier, ImmutableArray<ParameterSyntax> paramters, bool
     {
         var parm = string.Join(", ", Paramters.Select(arg => arg.ToString()));
         parm = Paramters.Length == 0 && !omitParn ? "" : $"({parm})";
-        var type = Type == null ? "" : $": {Type.Identifier.Value.ToUpper()}";
+        var type = Type == null ? "" : $": {Type.TypeName.ToUpper()}";
         return $"FUNC {Name}{parm}{type}";
     }
 }
@@ -54,7 +56,7 @@ internal sealed class ParameterSyntax(VariableExpr varExpr, TypeClauseSyntax? ty
 
     public override string ToString()
     {
-        var type = Type == null ? "" : $": {Type.Identifier.Value.ToUpper()}";
+        var type = Type == null ? "" : $": {Type.TypeName.ToUpper()}";
         return Identifier.GetCodeText() + type;
     }
 }

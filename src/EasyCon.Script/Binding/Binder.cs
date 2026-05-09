@@ -395,7 +395,7 @@ internal sealed partial class Binder
     private ScriptType? BindTypeClause(Statement syntax, TypeClauseSyntax? tcs)
     {
         if (tcs == null) return null;
-        var type = LookupType(tcs.Identifier.Value);
+        var type = LookupType(tcs.TypeName);
         if (type is null)
         {
             _diagnostics.ReportUnknownType(syntax.Location, tcs.Identifier);

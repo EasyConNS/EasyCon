@@ -245,6 +245,33 @@ ENDFUNC", "重复定义的函数");
     #region 类型检查 — 算术运算
 
     [Test]
+    public void UserFunction_StringArrayParameter()
+    {
+        ExpectBind(@"
+FUNC find($items:STRING[], $text:STRING):STRING
+    $n = LEN($items) - 1
+    FOR $i = 0 TO $n
+        $item = $items[$i]
+        IF $item IN $text
+            RETURN $item
+        ENDIF
+    NEXT
+    RETURN """"
+ENDFUNC
+$r = find([""alpha"", ""beta""], ""has beta"")");
+    }
+
+    [Test]
+    public void UserFunction_StringArrayParameter_TypeMismatch_Error()
+    {
+        ExpectError(@"
+FUNC first($items:STRING[]):STRING
+    RETURN $items[0]
+ENDFUNC
+$r = first([1, 2, 3])", "无法");
+    }
+
+    [Test]
     public void TypeCheck_IntArithmetic()
     {
         ExpectBind("$r = 1 + 2");

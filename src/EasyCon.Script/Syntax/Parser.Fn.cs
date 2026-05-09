@@ -585,7 +585,14 @@ internal partial class Parser
     {
         var colonToken = Match(TokenType.COLON);
         var identifier = Match(TokenType.IDENT);
-        return new TypeClauseSyntax(colonToken, identifier);
+        var isArray = false;
+        if (Check(TokenType.LeftBracket))
+        {
+            Advance();
+            Match(TokenType.RightBracket, "数组类型标注需要右方括号");
+            isArray = true;
+        }
+        return new TypeClauseSyntax(colonToken, identifier, isArray);
     }
 
     private ExternFuncStmt ParseExternFunc()
