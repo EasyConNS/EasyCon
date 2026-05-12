@@ -1,14 +1,16 @@
 namespace EasyCon.Script.Syntax;
 
-class AssignmentStmt(Token syntax, ExprBase target, Token assignmentToken, ExprBase value) : Statement(syntax)
+class AssignmentStmt(Token syntax, ExprBase target, Token assignmentToken, ExprBase value, TypeClauseSyntax? typeClause = null) : Statement(syntax)
 {
     public readonly ExprBase Target = target;
     public readonly Token AssignmentToken = assignmentToken;
     public readonly ExprBase Expression = value;
+    public readonly TypeClauseSyntax? TypeClause = typeClause;
 
     protected override string _GetString()
     {
-        return $"{Target.GetCodeText()} {AssignmentToken.Value} {Expression.GetCodeText()}";
+        var typePart = TypeClause != null ? $": {TypeClause.TypeName.ToUpper()}" : "";
+        return $"{Target.GetCodeText()}{typePart} {AssignmentToken.Value} {Expression.GetCodeText()}";
     }
 
     //public override void Assemble(Assembly.Assembler assembler)

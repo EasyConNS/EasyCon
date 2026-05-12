@@ -115,16 +115,23 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isMonitorVisible = true;
 
+    // 日志工具条可见性
+    [ObservableProperty]
+    private bool _isLogToolbarVisible = false;
+
     // 监视器视图
     [ObservableProperty]
     private MonitorView? _monitorView;
 
-    // 日志工具条相关属性
+    // 固件类型列表
     [ObservableProperty]
-    private bool _isLogToolbarVisible = false;
+    private ObservableCollection<string> _firmwareOptions = new() { "leonardo" };
 
-    // 连接模块命令
     public ICommand OpenScriptCommand { get; }
+    [ObservableProperty]
+    private string _selectedFirmware = "leonardo";
+
+    // 远程控制模块属性
     public ICommand OpenEditorCommand { get; }
     public ICommand ConnectNintendoSwitchCommand { get; }
     public ICommand AutoConnectNintendoSwitchCommand { get; }
@@ -134,6 +141,14 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand RunScriptCommand { get; }
     public ICommand ClearLogCommand { get; }
     public ICommand DropFileCommand { get; }
+    public ICommand RemoteRunCommand { get; }
+    public ICommand RemoteStopCommand { get; }
+    public ICommand CompileFlashCommand { get; }
+    public ICommand ClearFlashCommand { get; }
+    public ICommand GenerateFirmwareCommand { get; }
+    public ICommand StartRecordCommand { get; }
+    public ICommand StopRecordCommand { get; }
+    public ICommand ShowMonitorCommand { get; }
 
     // 刷新数据源命令
     public ICommand RefreshSerialPortsCommand { get; }
@@ -242,6 +257,14 @@ public partial class MainWindowViewModel : ViewModelBase
         RefreshCaptureSourcesCommand = new RelayCommand(RefreshCaptureSources);
         RefreshControlSourcesCommand = new RelayCommand(RefreshControlSources);
         DropFileCommand = new RelayCommand<string>(DropFile);
+        RemoteRunCommand = new RelayCommand(RemoteRun);
+        RemoteStopCommand = new RelayCommand(RemoteStop);
+        CompileFlashCommand = new RelayCommand(CompileFlash);
+        ClearFlashCommand = new RelayCommand(ClearFlash);
+        GenerateFirmwareCommand = new RelayCommand(GenerateFirmware);
+        StartRecordCommand = new RelayCommand(StartRecord);
+        StopRecordCommand = new RelayCommand(StopRecord);
+        ShowMonitorCommand = new RelayCommand(ShowMonitor);
 
         // 初始化示例数据
         InitializeSampleData();
@@ -671,5 +694,72 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // 释放控制器资源（SDL3 事件循环等）
         _controllerService.Dispose();
+    }
+
+    private void RemoteRun()
+    {
+        if (!IsNintendoSwitchConnected)
+        {
+            _logService.AddLog("请先连接单片机");
+            return;
+        }
+        _logService.AddLog("执行远程运行命令");
+        // TODO: 实现远程运行逻辑
+    }
+
+    private void RemoteStop()
+    {
+        if (!IsNintendoSwitchConnected)
+        {
+            _logService.AddLog("请先连接单片机");
+            return;
+        }
+        _logService.AddLog("执行远程停止命令");
+        // TODO: 实现远程停止逻辑
+    }
+
+    private void CompileFlash()
+    {
+        if (!IsNintendoSwitchConnected)
+        {
+            _logService.AddLog("请先连接单片机");
+            return;
+        }
+        _logService.AddLog("执行编译烧录命令");
+        // TODO: 实现编译烧录逻辑
+    }
+
+    private void ClearFlash()
+    {
+        if (!IsNintendoSwitchConnected)
+        {
+            _logService.AddLog("请先连接单片机");
+            return;
+        }
+        _logService.AddLog("执行清除烧录命令");
+        // TODO: 实现清除烧录逻辑
+    }
+
+    private void GenerateFirmware()
+    {
+        if (!IsNintendoSwitchConnected)
+        {
+            _logService.AddLog("请先连接单片机");
+            return;
+        }
+        _logService.AddLog($"生成固件: {SelectedFirmware}");
+        // TODO: 实现固件生成逻辑
+    }
+
+    private void StartRecord()
+    {
+        _logService.AddLog("开始录制脚本");
+        // TODO: 实现录制逻辑
+    }
+
+    private void StopRecord()
+    {
+        _logService.AddLog("停止录制");
+        // TODO: 实现停止录制逻辑
     }
 }

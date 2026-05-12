@@ -106,7 +106,6 @@ public class ScriptService : IScriptService
 
     public void Stop()
     {
-        _logService.AddLog("正在停止脚本...");
         _cts?.Cancel();
     }
 }

@@ -1,7 +1,11 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using AvaloniaEdit.Folding;
 using EasyCon2.Avalonia.Core.Editor;
 using EasyCon2.Avalonia.Core.Editor.Lsp;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 
 namespace EasyCon2.Avalonia.Views;
 
@@ -10,6 +14,7 @@ public partial class EditorWindow : Window
     private LspClientService? _lspService;
     private FoldingManager? _foldingManager;
     private CustomFoldingStrategy? _foldingStrategy;
+    private readonly string _filePath;
 
     public EditorWindow() : this("untitled.ecs") { }
 
@@ -17,15 +22,62 @@ public partial class EditorWindow : Window
     {
         InitializeComponent();
 
+        _filePath = filePath;
         Title = $"编辑器 - {filePath}";
 
+        KeyDown += OnKeyDown;
         Loaded += (_, _) => InitializeEditor(filePath);
-        Closing += async (_, _) =>
+        Closing += OnClosing;
+    }
+
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.S)
         {
-            Editor.Cleanup();
-            if (_lspService != null)
-                await _lspService.DisposeAsync();
-        };
+            SaveFile();
+            e.Handled = true;
+        }
+    }
+
+    private void SaveMenuItem_Click(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        SaveFile();
+    }
+
+    private async Task OnClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (Editor.IsModified)
+        {
+            var box = MessageBoxManager.GetMessageBoxStandard("保存提示", "文件已修改，是否保存？",
+                ButtonEnum.YesNoCancel);
+            var result = await box.ShowAsync();
+
+            if (result == ButtonResult.Cancel)
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            if (result == ButtonResult.Yes)
+                SaveFile();
+        }
+
+        Editor.Cleanup();
+        if (_lspService != null)
+            await _lspService.DisposeAsync();
+    }
+
+    private void SaveFile()
+    {
+        try
+        {
+            Editor.Save(_filePath);
+            Editor.IsModified = false;
+        }
+        catch (Exception ex)
+        {
+            // TODO: show error dialog
+        }
     }
 
     private void InitializeEditor(string filePath)

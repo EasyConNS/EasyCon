@@ -215,6 +215,96 @@ CAPTURE");
 
     #endregion
 
+    #region 变量赋值类型标注
+
+    [Test]
+    public void Variable_AssignmentWithTypeAnnotation()
+    {
+        ExpectParse("$x:int = 10");
+        ExpectParse("$y:string = \"hello\"");
+        ExpectParse("$z:double = 3.14");
+    }
+
+    [Test]
+    public void Variable_AssignmentWithTypeAnnotationAndAugmentedAssign()
+    {
+        ExpectParse("$v:int = 0\n$v += 1");
+    }
+
+    [Test]
+    public void Variable_AssignmentWithTypeAnnotation_FieldAccess_Error()
+    {
+        // 字段访问不支持类型标注
+        ExpectError("$obj.field:int = 10");
+    }
+
+    [Test]
+    public void Variable_AssignmentWithTypeAnnotation_ArrayIndex_Error()
+    {
+        // 数组索引不支持类型标注
+        ExpectError("$arr[0]:int = 10");
+    }
+
+    [Test]
+    public void Variable_AssignmentWithArrayTypeAnnotation_Error()
+    {
+        // 变量赋值不支持定长数组类型标注
+        ExpectError("$x:int[10] = [1,2,3,4,5,6,7,8,9,10]");
+    }
+
+    [Test]
+    public void Error_TypedAssignment_MissingValue()
+    {
+        ExpectError("$var:int =");
+    }
+
+    [Test]
+    public void Error_TypedAssignment_AugmentedMissingValue()
+    {
+        ExpectError("$var:int += ");
+    }
+
+    [Test]
+    public void Error_TypeAnnotation_MissingTypeName()
+    {
+        // 冒号后缺类型名
+        ExpectError("$var: = 1");
+    }
+
+    [Test]
+    public void Error_TypeAnnotation_EmptyAfterColon()
+    {
+        ExpectError("$var:");
+    }
+
+    [Test]
+    public void Error_ArrayTypeAnnotation_NonIntegerSize()
+    {
+        // 数组大小必须是整数
+        ExpectError("$var:int[abc]");
+    }
+
+    [Test]
+    public void Error_ArrayTypeAnnotation_EmptyBrackets()
+    {
+        ExpectError("$var:int[]");
+    }
+
+    [Test]
+    public void Error_PlainAssignment_MissingValue()
+    {
+        ExpectError("$var = ");
+    }
+
+    [Test]
+    public void Error_PlainAssignment_NoOperator()
+    {
+        // 只有变量没有赋值操作符
+        ExpectError("$var");
+    }
+
+    #endregion
+
     #region 表达式 — 字面量和标识符
 
     [Test]

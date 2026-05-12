@@ -3,6 +3,7 @@
          xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
          xmlns:conv="using:EasyCon2.Avalonia.Converters"
          xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
+         xmlns:controls="using:EasyCon2.Avalonia.Controls"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          mc:Ignorable="d"
@@ -20,6 +21,7 @@
 
     <Window.Resources>
         <conv:BoolToGreenBrushConverter x:Key="BoolToGreenBrush" />
+        <conv:BoolToRunColorConverter x:Key="BoolToRunColor" />
     </Window.Resources>
 
     <Grid RowDefinitions="Auto,*">
@@ -51,7 +53,7 @@
         <!-- 主内容区域 -->
         <Grid Grid.Row="1" RowDefinitions="*,Auto">
             <!-- 日志输出区和监视器区 -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,*">
+            <Grid Grid.Row="0" ColumnDefinitions="*,*,Auto">
                 <!-- 日志输出区 -->
                 <Grid Grid.Column="0">
                     <TextBox Text="{Binding LogOutput}"
@@ -83,15 +85,72 @@
                 </Grid>
 
                 <!-- 监视器区 -->
-                <Grid Grid.Column="1" IsVisible="{Binding IsMonitorVisible}">
+                <Grid Grid.Column="1">
                     <ContentControl Content="{Binding MonitorView}" />
                 </Grid>
+
+                <!-- 右侧工具面板 -->
+                <Border Grid.Column="2"
+                        Width="160"
+                        BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                        BorderThickness="1,0,0,0"
+                        Margin="0,150,5,5"
+                        Padding="8">
+                    <StackPanel Orientation="Vertical" Spacing="8">
+                        <!-- 远程操作按钮 -->
+                        <Button Content="远程运行"
+                                Command="{Binding RemoteRunCommand}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="8,6"/>
+                        <Button Content="远程停止"
+                                Command="{Binding RemoteStopCommand}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="8,6"/>
+                        <Button Content="编译烧录"
+                                Command="{Binding CompileFlashCommand}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="8,6"/>
+                        <Button Content="清除烧录"
+                                Command="{Binding ClearFlashCommand}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="8,6"/>
+
+                        <!-- 固件区域 -->
+                        <Border BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                                BorderThickness="1"
+                                Padding="6"
+                                CornerRadius="4">
+                            <StackPanel Orientation="Vertical" Spacing="6">
+                                <ComboBox ItemsSource="{Binding FirmwareOptions}"
+                                          SelectedItem="{Binding SelectedFirmware}"
+                                          HorizontalAlignment="Stretch"/>
+                                <Button Content="生成"
+                                        Command="{Binding GenerateFirmwareCommand}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"
+                                        Padding="8,5"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 脚本语法说明 -->
+                        <Button Content="脚本语法说明"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="8,6"
+                                BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                                BorderThickness="1"/>
+                    </StackPanel>
+                </Border>
             </Grid>
 
             <!-- 底部模块连接器区域 -->
             <Border Grid.Row="1"
                    Padding="10">
-                <Grid ColumnDefinitions="*,*,*,*"
+                <Grid ColumnDefinitions="*,*,*,*,*"
                      HorizontalAlignment="Stretch">
 
                     <!-- 第一个模块连接器 -->
@@ -135,10 +194,19 @@
                            Margin="5"
                            Padding="10">
                         <StackPanel Orientation="Vertical" Spacing="10">
-                            <ComboBox ItemsSource="{Binding CaptureSourceOptions}"
-                                      SelectedItem="{Binding SelectedCaptureSource}"
-                                      HorizontalAlignment="Stretch"
-                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <ComboBox Grid.Column="0"
+                                          ItemsSource="{Binding CaptureSourceOptions}"
+                                          SelectedItem="{Binding SelectedCaptureSource}"
+                                          HorizontalAlignment="Stretch"
+                                          behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
+                                <Button Grid.Column="1"
+                                        Content="监视器"
+                                        Command="{Binding ShowMonitorCommand}"
+                                        Margin="5,0,0,0"
+                                        Padding="8,4"
+                                        VerticalAlignment="Center"/>
+                            </Grid>
                             <Button Grid.Column="0"
                                     Content="{Binding CaptureSourceButtonText}"
                                     Command="{Binding ConnectCaptureSourceCommand}"
@@ -187,8 +255,29 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 运行脚本按钮 -->
+                    <!-- 脚本录制模块 -->
                     <Border Grid.Column="3"
+                           BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                           BorderThickness="1"
+                           Margin="5"
+                           Padding="10">
+                        <StackPanel Orientation="Vertical" Spacing="10">
+                            <TextBlock Text="脚本录制"
+                                      HorizontalAlignment="Center"
+                                      FontWeight="Bold"/>
+                            <Button Content="录制脚本"
+                                    Command="{Binding StartRecordCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                            <Button Content="停止录制"
+                                    Command="{Binding StopRecordCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 运行脚本按钮 -->
+                    <Border Grid.Column="4"
                            Margin="5"
                            Padding="10">
                         <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="10">
@@ -202,6 +291,8 @@
                                     Command="{Binding RunScriptCommand}"
                                     FontSize="18"
                                     FontWeight="Bold"
+                                    Foreground="White"
+                                    Background="{Binding IsRunning, Converter={StaticResource BoolToRunColor}}"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"

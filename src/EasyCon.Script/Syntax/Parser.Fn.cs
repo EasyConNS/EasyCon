@@ -96,30 +96,40 @@ internal partial class Parser
     private Statement ParseAssignmentOrDecl()
     {
         var destok = Advance();
+        TypeClauseSyntax? typeClause = null;
 
-        // Check for struct field: $name:TYPE (field declaration inside STRUCT block)
+        // Type annotation: $var:TYPE
         if (Check(TokenType.COLON))
         {
             var colon = Advance();
             var typeToken = Match(TokenType.IDENT);
-            var typeName = typeToken.Value;
+
+            // Array struct field: $name:TYPE[NUM]
             if (Check(TokenType.LeftBracket))
             {
                 Advance();
                 var countToken = Match(TokenType.INT);
                 Match(TokenType.RightBracket);
-                typeName = typeName + "[" + countToken.Value + "]";
+                MatchEOF();
+                return new StructFieldStmt(destok, destok.Value, typeToken.Value + "[" + countToken.Value + "]");
             }
-            MatchEOF();
-            return new StructFieldStmt(destok, destok.Value, typeName);
+
+            // Plain struct field: $name:TYPE (no assignment follows)
+            if (!Check(TokenType.ASSIGN) && !Current.Type.OperatorIsAug())
+            {
+                MatchEOF();
+                return new StructFieldStmt(destok, destok.Value, typeToken.Value);
+            }
+
+            typeClause = new TypeClauseSyntax(colon, typeToken, false);
         }
 
-        // Parse unified LHS target: $var, $var[i], $var.field, $var.field[i].field2, ...
+        // Assignment (typed or untyped)
         var target = ParseLhsTarget(destok);
         var op = Match(t => t == TokenType.ASSIGN || t.OperatorIsAug());
-        var eexp = ParseExpression();
+        var expr = ParseExpression();
         MatchEOF();
-        return new AssignmentStmt(destok, target, op, eexp);
+        return new AssignmentStmt(destok, target, op, expr, typeClause);
     }
 
     /// <summary>
@@ -177,6 +187,7 @@ internal partial class Parser
             TokenType.IF => new IfStmt(iftok, expr),
             _ => new ElseIf(iftok, expr),
         };
+
     }
 
     private Statement ParseFor()

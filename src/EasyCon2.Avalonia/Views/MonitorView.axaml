@@ -4,7 +4,7 @@
              xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
              x:Class="EasyCon2.Avalonia.Views.MonitorView"
              x:DataType="vm:MonitorViewModel">
-    <Border BorderBrush="#FF333333" BorderThickness="2">
+    <Border BorderBrush="#FF333333" BorderThickness="2" Background="#FF1E1E1E">
         <Grid>
         <Image Source="{Binding CurrentFrame}"
                Stretch="Uniform"
@@ -32,8 +32,7 @@
         </Border>
 
         <!-- 错误提示 -->
-        <Border Background="#8B0000"
-                IsVisible="{Binding HasError}"
+        <Border IsVisible="{Binding HasError}"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Padding="20">

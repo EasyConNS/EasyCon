@@ -9,5 +9,12 @@
         MinHeight="400"
         Icon="/Assets/favicon.ico">
 
-    <editor:ScriptEditorControl x:Name="Editor" />
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="文件">
+                <MenuItem Header="保存" InputGesture="Ctrl+S" Click="SaveMenuItem_Click"/>
+            </MenuItem>
+        </Menu>
+        <editor:ScriptEditorControl x:Name="Editor" />
+    </DockPanel>
 </Window>
