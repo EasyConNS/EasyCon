@@ -44,27 +44,36 @@ public partial class EditorWindow : Window
         SaveFile();
     }
 
-    private async Task OnClosing(object? sender, WindowClosingEventArgs e)
+    private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
         if (Editor.IsModified)
         {
-            var box = MessageBoxManager.GetMessageBoxStandard("保存提示", "文件已修改，是否保存？",
-                ButtonEnum.YesNoCancel);
-            var result = await box.ShowAsync();
-
-            if (result == ButtonResult.Cancel)
-            {
-                e.Cancel = true;
-                return;
-            }
-
-            if (result == ButtonResult.Yes)
-                SaveFile();
+            e.Cancel = true;
+            _ = ConfirmCloseAsync();
+            return;
         }
+
+        Editor.Cleanup();
+        _ = _lspService?.DisposeAsync();
+    }
+
+    private async Task ConfirmCloseAsync()
+    {
+        var box = MessageBoxManager.GetMessageBoxStandard("保存提示", "文件已修改，是否保存？",
+            ButtonEnum.YesNoCancel);
+        var result = await box.ShowAsync();
+
+        if (result == ButtonResult.Cancel)
+            return;
+
+        if (result == ButtonResult.Yes)
+            SaveFile();
 
         Editor.Cleanup();
         if (_lspService != null)
             await _lspService.DisposeAsync();
+
+        Close();
     }
 
     private void SaveFile()
