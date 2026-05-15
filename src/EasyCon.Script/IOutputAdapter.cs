@@ -6,3 +6,8 @@ public interface IOutputAdapter
 
     void Alert(string message);
 }
+
+public interface IImageAdapter
+{
+    string OCR(int x, int y, int width, int height);
+}

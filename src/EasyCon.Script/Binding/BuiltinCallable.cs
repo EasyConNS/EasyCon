@@ -41,7 +41,7 @@ internal static class BuiltinCallable
         return ctx.Rand.Next(max);
     }
 
-    public static Value ImplTimestamp(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplTimestamp(ReadOnlySpan<Value> _, IEvalContext ctx, CancellationToken token)
     {
         return ctx.Timestamp;
     }
@@ -62,6 +62,28 @@ internal static class BuiltinCallable
         return Value.Void;
     }
 
+    public static Value ImplOcr(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        var result = ctx.Image?.OCR(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt());
+        return Value.FromString(result);
+    }
+
+    public static Value ImplJq(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        // JQ implementation placeholder
+        throw new NotImplementedException("function not implemented");
+    }
+
+    public static Value ImplConvertInt(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        return args[0].ToInt();
+    }
+
+    public static Value ImplConvertString(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        return args[0].ToString();
+    }
+
     public static Value ImplLength(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         return args[0].Length;
@@ -72,7 +94,7 @@ internal static class BuiltinCallable
         return args[0].Append(args[1]);
     }
 
-    public static Value ImplString(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplStrEncode(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var array = args[0].AsArray();
         var bytes = new byte[array.Count];
@@ -100,9 +122,13 @@ internal static class BuiltinCallable
             (BuiltinFunctions.Timestamp, new DelegateCallable(ImplTimestamp)),
             (BuiltinFunctions.Amiibo, new DelegateCallable(ImplAmiibo)),
             (BuiltinFunctions.Beep, new DelegateCallable(ImplBeep)),
+            (BuiltinFunctions.Ocr, new DelegateCallable(ImplOcr)),
             (BuiltinFunctions.Length, new DelegateCallable(ImplLength)),
             (BuiltinFunctions.Append, new DelegateCallable(ImplAppend)),
-            (BuiltinFunctions.Str, new DelegateCallable(ImplString)),
+            (BuiltinFunctions.StrEncode, new DelegateCallable(ImplStrEncode)),
+            (BuiltinFunctions.Jq, new DelegateCallable(ImplJq)),
+            (BuiltinFunctions.IntConvert, new DelegateCallable(ImplConvertInt)),
+            (BuiltinFunctions.StrConvert, new DelegateCallable(ImplConvertString)),
         ];
     }
 }

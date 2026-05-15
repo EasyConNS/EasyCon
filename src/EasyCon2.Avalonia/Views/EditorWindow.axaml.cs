@@ -72,7 +72,7 @@ public partial class EditorWindow : Window
         Editor.Cleanup();
         if (_lspService != null)
             await _lspService.DisposeAsync();
-
+        Closing -= OnClosing;
         Close();
     }
 
