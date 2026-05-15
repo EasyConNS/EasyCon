@@ -149,17 +149,34 @@ internal static class FormatPrinter
     }
     private static void WriteStatementInternal(Statement node, IndentedTextWriter writer)
     {
-        if (node.Kind == StatementKind.EndBlock || node.Kind == StatementKind.ElseIf || node.Kind == StatementKind.Else || node.Kind == StatementKind.EndIf || node.Kind == StatementKind.Next || node.Kind == StatementKind.EndFuncStmt)
+        if (ClosesCurrentIndent(node.Kind))
         {
             writer.Indent--;
         }
 
         writer.Write(node.GetCodeText());
 
-        if (node.Kind == StatementKind.ForStmt || node.Kind == StatementKind.FuncStmt || node.Kind == StatementKind.IfStmt || node.Kind == StatementKind.Else || node.Kind == StatementKind.WhileStmt || node.Kind == StatementKind.UntilStmt)
+        if (OpensChildIndent(node.Kind))
         {
             writer.Indent++;
         }
         writer.WriteLine();
     }
+
+    private static bool ClosesCurrentIndent(StatementKind kind) =>
+        kind is StatementKind.EndBlock
+            or StatementKind.ElseIf
+            or StatementKind.Else
+            or StatementKind.EndIf
+            or StatementKind.Next
+            or StatementKind.EndFuncStmt;
+
+    private static bool OpensChildIndent(StatementKind kind) =>
+        kind is StatementKind.ForStmt
+            or StatementKind.FuncStmt
+            or StatementKind.IfStmt
+            or StatementKind.ElseIf
+            or StatementKind.Else
+            or StatementKind.WhileStmt
+            or StatementKind.UntilStmt;
 }
