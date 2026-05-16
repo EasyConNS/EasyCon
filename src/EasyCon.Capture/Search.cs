@@ -15,6 +15,7 @@ public sealed class ECSearch
             SearchMethod.SqDiffNormed,
             SearchMethod.CCorrNormed,
             SearchMethod.CCoeffNormed,
+            SearchMethod.MaskedSqDiffNormed,
             SearchMethod.EdgeDetectXY,
             SearchMethod.EdgeDetectLaplacian,
             SearchMethod.TesserDetect,

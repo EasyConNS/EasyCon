@@ -179,9 +179,25 @@ public static class ILExt
             }
             else
             {
-                byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
-                using var target = imageBytes.ToMat();
-                result = ECSearch.FindPic(range, target, self.searchMethod, out md);
+                if (self.searchMethod == SearchMethod.MaskedSqDiffNormed)
+                {
+                    byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
+                    using var targetRGBA = Cv2.ImDecode(imageBytes, ImreadModes.Unchanged);
+                    if (targetRGBA.Channels() != 4)
+                        throw new Exception("Masked matching requires RGBA image");
+                    Cv2.Split(targetRGBA, out var channels);
+                    using var bgr = new Mat();
+                    Cv2.Merge([channels[0], channels[1], channels[2]], bgr);
+                    using var mask = channels[3];
+                    var pt = MatchFacts.MatchTemplateMasked(range, bgr, mask, out md);
+                    result = [new Point(pt.X, pt.Y)];
+                }
+                else
+                {
+                    byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
+                    using var target = imageBytes.ToMat();
+                    result = ECSearch.FindPic(range, target, self.searchMethod, out md);
+                }
             }
             md *= 100;
 
