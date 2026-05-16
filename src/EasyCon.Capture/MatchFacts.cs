@@ -8,6 +8,16 @@ internal static class MatchFacts
     /// <summary>
     /// 简化的字符串匹配度计算，使用编辑距离方法
     /// </summary>
+    public static Point MatchTemplateMasked(Mat big, Mat small, Mat mask, out double matchDegree)
+    {
+        matchDegree = 0;
+        using var result = new Mat();
+        Cv2.MatchTemplate(big, small, result, TemplateMatchModes.SqDiffNormed, mask);
+        Cv2.MinMaxLoc(result, out double min, out double max, out var minLoc, out var maxLoc);
+        matchDegree = (1 - min) / 1.0;
+        return minLoc;
+    }
+
     public static Point MatchTemplate(Mat big, Mat small, SearchMethod method, out double matchDegree)
     {
         matchDegree = 0;
