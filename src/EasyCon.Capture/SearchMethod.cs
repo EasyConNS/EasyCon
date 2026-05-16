@@ -36,5 +36,5 @@ public enum SearchMethod
 
 public static class SearchMethodExtension
 {
-    public static bool IsImageMethod(this SearchMethod method) => method <= SearchMethod.EdgeDetectLaplacian || method == SearchMethod.MaskedSqDiffNormed;
+    public static bool IsImageMethod(this SearchMethod method) => method < SearchMethod.TesserDetect;
 }
