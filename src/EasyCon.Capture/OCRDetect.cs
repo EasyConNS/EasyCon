@@ -26,6 +26,6 @@ public sealed class OCRDetect
         using var engine = new TesseractEngine(tessdataPath, lang, EngineMode.Default);
         using var page = engine.Process(img, PageSegMode.SingleLine);
         confidence = page.GetMeanConfidence();
-        return page.GetText();
+        return page.GetText().Trim('\n');
     }
 }

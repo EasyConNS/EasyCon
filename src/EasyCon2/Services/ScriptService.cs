@@ -76,7 +76,7 @@ public class ScriptService
     /// <summary>
     /// 运行脚本（需要先 Compile 或 Format）
     /// </summary>
-    public void Run(IOutputAdapter output, ICGamePad pad, IImageAdapter iimg)
+    public void Run(IOutputAdapter output, ICGamePad pad, OcrDelegate? ocr)
     {
         if (IsRunning) return;
 
@@ -92,7 +92,7 @@ public class ScriptService
         {
             try
             {
-                _runner.Run(output, pad, iimg, _extVar, _cts.Token);
+                _runner.Run(output, pad, ocr, _extVar, _cts.Token);
                 LogOutput?.Invoke("-- 运行结束 --", Color.Lime);
                 StatusChanged?.Invoke("运行结束");
             }

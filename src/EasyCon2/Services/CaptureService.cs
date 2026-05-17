@@ -1,6 +1,7 @@
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon2.Forms;
+using OpenCvSharp;
 
 namespace EasyCon2.Services;
 
@@ -123,5 +124,19 @@ public class CaptureService
                     return (int)Math.Ceiling(md);
                 }
             }));
+    }
+
+    /// <summary>
+    /// 线程安全地获取一帧图像副本，供 OCR 等用途使用。
+    /// </summary>
+    public Mat? GetFrame()
+    {
+        lock (_frameLock)
+        {
+            if (_cvcap == null || !_cvcap.IsOpened) return null;
+            var mat = _cvcap.GetMatFrame();
+            if (mat.Empty()) { mat.Dispose(); return null; }
+            return mat.Clone();
+        }
     }
 }

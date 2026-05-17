@@ -18,7 +18,7 @@ internal interface IEvalContext
 {
     ICGamePad? GamePad { get; }
     IOutputAdapter? Output { get; }
-    IImageAdapter? Image { get; }
+    OcrDelegate? Ocr { get; }
     Random Rand { get; }
     int Timestamp { get; }
     bool CancelLineBreak { get; set; }

@@ -691,7 +691,7 @@ namespace EasyCon2.App
 
             _vpadService?.Deactivate();
             _state.ScriptStartTime = DateTime.Now;
-            _scriptService.Run(this, new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming), new OCRAdapter());
+            _scriptService.Run(this, new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming), OcrDelegateFactory.Create(_captureService.GetFrame));
         }
 
         private bool CheckFwVersion()

@@ -37,12 +37,12 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     public IOutputAdapter? Output { get; set; }
     public ICGamePad? GamePad { get; set; }
 
-    public IImageAdapter? ImageAdapter { get; set; }
+    public OcrDelegate? Ocr { get; set; }
 
     // IEvalContext
     ICGamePad? IEvalContext.GamePad => GamePad;
     IOutputAdapter? IEvalContext.Output => Output;
-    IImageAdapter? IEvalContext.Image => ImageAdapter;
+    OcrDelegate? IEvalContext.Ocr => Ocr;
     Random IEvalContext.Rand => _rand;
     int IEvalContext.Timestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
 

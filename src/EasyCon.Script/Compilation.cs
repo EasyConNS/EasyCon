@@ -78,7 +78,7 @@ public sealed class Compilation
         return program.Diagnostics;
     }
 
-    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad? pad, IImageAdapter img,
+    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad? pad, OcrDelegate? ocr,
         ImmutableDictionary<string, Func<int>> externalGetters,
         CancellationToken token)
     {
@@ -89,7 +89,7 @@ public sealed class Compilation
         {
             GamePad = pad,
             Output = output,
-            ImageAdapter = img,
+            Ocr = ocr,
         };
         var value = evaluator.Evaluate();
 
