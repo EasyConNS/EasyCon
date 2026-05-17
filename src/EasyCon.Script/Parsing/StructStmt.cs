@@ -4,7 +4,7 @@ namespace EasyCon.Script.Syntax;
 
 class StructStmt(Token syntax, string name) : StartBlockStmt(syntax)
 {
-    public override StatementKind Kind => StatementKind.StructStmt;
+    public override StatementKind Kind => StatementKind.StructDecl;
     public readonly string Name = name;
 
     protected override string _GetString() => $"STRUCT {Name}";

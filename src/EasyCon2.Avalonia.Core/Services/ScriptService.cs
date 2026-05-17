@@ -1,8 +1,9 @@
 using EasyCon.Core;
+using EasyCon.Core.Runner;
 using EasyCon.Core.Services;
 using EasyCon.Script;
-using EasyCon.Script.Syntax;
 using EasyScript;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
@@ -12,13 +13,12 @@ public class ScriptService : IScriptService
 {
     private readonly ILogService _logService;
     private readonly IDeviceService _deviceService;
-    private readonly Scripter _program = new();
+    private readonly EasyRunner _runner = new();
+    private Dictionary<string, Func<int>> _externalGetters = [];
     private CancellationTokenSource _cts = new();
     private bool _scriptCompiling;
     private bool _scriptRunning;
     private DateTime _startTime = DateTime.MinValue;
-
-    private Dictionary<string, Func<int>>? _externalGetters;
 
     public bool IsRunning => _scriptRunning;
     public bool IsCompiling => _scriptCompiling;
@@ -26,7 +26,6 @@ public class ScriptService : IScriptService
     public event Action<string, string>? LogPrint;
 
     public DateTime StartTime => _startTime;
-    public Scripter Program => _program;
 
     public ScriptService(ILogService logService, IDeviceService deviceService)
     {
@@ -46,7 +45,10 @@ public class ScriptService : IScriptService
 
         try
         {
-            var diag = _program.Parse(scriptText, fileName, _externalGetters ?? new());
+            var extVarNames = _externalGetters.Select(v => v.Key).ToImmutableHashSet();
+            ImmutableArray<Diagnostic> diag = fileName == null
+                ? _runner.Init(scriptText, extVarNames)
+                : _runner.Load(fileName, extVarNames);
             if (diag.HasErrors())
             {
                 var d1 = diag.Where(d => d.IsError).First();
@@ -83,7 +85,7 @@ public class ScriptService : IScriptService
             LogPrint?.Invoke("-- 开始运行 --", "Lime");
             try
             {
-                _program.Run(_logService, _deviceService.CreateGamePadAdapter(), _cts.Token);
+                _runner.Run(_logService, _deviceService.CreateGamePadAdapter(), null, _externalGetters, _cts.Token);
                 LogPrint?.Invoke("-- 运行结束 --", "Lime");
                 _logService.AddLog("运行结束");
             }
@@ -125,23 +127,16 @@ public class ScriptService : IScriptService
         System.Diagnostics.Debug.WriteLine("[Beep]");
     }
 
-    public void Reset()
-    {
-        if (_scriptCompiling || _scriptRunning)
-            return;
-        _program.Reset();
-    }
-
     public string GetFormattedCode()
     {
-        var formattedCode = _program.ToCode().Trim();
+        var formattedCode = _runner.ToCode().Trim();
         formattedCode = Regex.Replace(formattedCode, ",(?! )", ", ");
         return formattedCode;
     }
 
     public async Task<byte[]> Build(bool autoRun)
     {
-        var bytes = _program.Assemble(autoRun);
+        var bytes = _runner.Assemble(autoRun);
         return bytes ?? [];
     }
 

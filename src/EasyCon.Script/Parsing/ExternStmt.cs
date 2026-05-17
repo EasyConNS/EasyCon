@@ -4,7 +4,7 @@ namespace EasyCon.Script.Syntax;
 
 internal sealed class ExternFuncStmt(Token externToken, Token identifier, ImmutableArray<ParameterSyntax> parameters, TypeClauseSyntax returnType, Token fromToken, Token libraryPath, Token? asToken = null, Token? exportName = null) : Statement(externToken)
 {
-    public override StatementKind Kind => StatementKind.ExternFuncDeclaration;
+    public override StatementKind Kind => StatementKind.ExternFuncDecl;
     public readonly Token Identifier = identifier;
     public string Name => Identifier.Value;
     public readonly ImmutableArray<ParameterSyntax> Parameters = parameters;

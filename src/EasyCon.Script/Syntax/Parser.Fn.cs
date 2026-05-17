@@ -75,7 +75,7 @@ internal partial class Parser
         }
 
         // _NAME = expr → constant declaration
-        var des = (VariableExpr)Formatter.GetValueEx(token);
+        var des = (ConstVarExpr)Formatter.GetValueEx(token);
         var assignOp = Match(TokenType.ASSIGN);
         var expr = ParseExpression();
         MatchEOF();
@@ -134,23 +134,28 @@ internal partial class Parser
 
     /// <summary>
     /// 解析赋值左侧目标表达式：$var, $var[i], $var.field, $var.field[i].field2, ...
+    /// 只接受索引访问（无切片），不接受数组定义、括号、结构体初始化等右值表达式。
     /// </summary>
-    private ExprBase ParseLhsTarget(Token varToken)
+    private TargetExpr ParseLhsTarget(Token varToken)
     {
-        ExprBase target = Formatter.GetValueEx(varToken);
+        var target = (TargetExpr)new VariableExpr(varToken);
 
-        // 循环处理后缀: [expr] 和 .ident
         while (!CursorEOF)
         {
             if (Check(TokenType.LeftBracket))
             {
-                // $var[expr] or $var[start:end] or $var.field[expr]
-                target = ParseSliceExpression(target);
+                var lb = Advance();
+                var index = ParseExpression();
+                if (Check(TokenType.COLON))
+                    _diagnostics.ReportUnexpectedToken(Current.Location, Current, TokenType.RightBracket);
+                var rb = Match(TokenType.RightBracket);
+                target = new IndexVisitExpression(lb, target, index);
             }
             else if (Check(TokenType.DOT))
             {
-                // $var.field or $var.field1.field2...
-                target = ParseFieldAccessChain(target);
+                Advance();
+                var fieldToken = Match(TokenType.IDENT);
+                target = new FieldAccessExpr(fieldToken, target, fieldToken.Value);
             }
             else
             {
@@ -348,9 +353,9 @@ internal partial class Parser
 
     #region Expression Parsers
 
-    private ExprBase ParseExpression(int parentPrecedence = 0)
+    private BaseExpr ParseExpression(int parentPrecedence = 0)
     {
-        ExprBase left;
+        BaseExpr left;
         var unaryOperatorPrecedence = Current.Type.GetUnaryOperatorPrecedence();
         if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence && !CursorEOF)
         {
@@ -377,63 +382,34 @@ internal partial class Parser
         return left;
     }
 
-    private ExprBase ParsePrimary()
+    private BaseExpr ParsePrimary()
     {
+        BaseExpr primary;
         switch (Current.Type)
         {
             case TokenType.STRING:
             case TokenType.CONST:
                 var tokenct = Advance();
-                return Formatter.GetValueEx(tokenct);
+                primary = Formatter.GetValueEx(tokenct);
+                return primary;
             case TokenType.VAR:
             case TokenType.EX_VAR:
                 var token = Advance();
-                var varExpr = Formatter.GetValueEx(token);
-                // $var[expr] or $var[start:end]
-                if (token.Type == TokenType.VAR && Check(TokenType.LeftBracket))
-                {
-                    varExpr = ParseSliceExpression(varExpr);
-                }
-                // $var.field or $var.field1.field2...
-                if (Check(TokenType.DOT))
-                {
-                    varExpr = ParseFieldAccessChain(varExpr);
-                }
-                // $var.field[expr] — index on field access result
-                if (Check(TokenType.LeftBracket))
-                {
-                    varExpr = ParseSliceExpression(varExpr);
-                }
-                return varExpr;
+                primary = Formatter.GetValueEx(token);
+                return ParsePostfixChain(primary);
             case TokenType.LeftBracket:
-                return ParseIndexDefExpression();
+                primary = ParseIndexDefExpression();
+                return ParsePostfixChain(primary);
             case TokenType.LeftParen:
                 var lp = Advance();
                 var expression = ParseExpression();
                 var rp = Match(TokenType.RightParen);
-                ExprBase parenExpr = new ParenthesizedExpression(lp, expression, rp);
-                if (Check(TokenType.DOT))
-                    parenExpr = ParseFieldAccessChain(parenExpr);
-                if (Check(TokenType.LeftBracket))
-                    parenExpr = ParseSliceExpression(parenExpr);
-                return parenExpr;
+                return ParsePostfixChain(new ParenthesizedExpression(lp, expression, rp));
             case TokenType.IDENT:
-                // Check for struct init: TypeName{}
-                if (Peek(1).Type == TokenType.OpenBrace)
-                {
-                    ExprBase init = ParseStructInit();
-                    if (Check(TokenType.DOT))
-                        init = ParseFieldAccessChain(init);
-                    if (Check(TokenType.LeftBracket))
-                        init = ParseSliceExpression(init);
-                    return init;
-                }
-                ExprBase callExpr = ParseCallExpression();
-                if (Check(TokenType.DOT))
-                    callExpr = ParseFieldAccessChain(callExpr);
-                if (Check(TokenType.LeftBracket))
-                    callExpr = ParseSliceExpression(callExpr);
-                return callExpr;
+                primary = Peek(1).Type == TokenType.OpenBrace
+                    ? ParseStructInit()
+                    : ParseCallExpression();
+                return ParsePostfixChain(primary);
             case TokenType.INT:
                 var toknum = Advance();
                 var ok = int.TryParse(toknum.Value, out var intval);
@@ -451,7 +427,29 @@ internal partial class Parser
         }
     }
 
-    private ExprBase ParseStructInit()
+    /// <summary>
+    /// 解析后缀链：.field 和 [expr/start:end] 的任意组合。
+    /// 适用于右值表达式（ParsePrimary 中的所有分支）。
+    /// </summary>
+    private BaseExpr ParsePostfixChain(BaseExpr expr)
+    {
+        while (!CursorEOF)
+        {
+            if (Check(TokenType.LeftBracket))
+                expr = ParseSliceExpression(expr);
+            else if (Check(TokenType.DOT))
+            {
+                Advance();
+                var fieldToken = Match(TokenType.IDENT);
+                expr = new FieldAccessExpr(fieldToken, expr, fieldToken.Value);
+            }
+            else
+                break;
+        }
+        return expr;
+    }
+
+    private BaseExpr ParseStructInit()
     {
         var nameToken = Match(TokenType.IDENT);
         Match(TokenType.OpenBrace);
@@ -459,18 +457,7 @@ internal partial class Parser
         return new StructInitExpr(nameToken, nameToken.Value);
     }
 
-    private ExprBase ParseFieldAccessChain(ExprBase target)
-    {
-        while (Check(TokenType.DOT) && !CursorEOF)
-        {
-            Advance();
-            var fieldToken = Match(TokenType.IDENT);
-            target = new FieldAccessExpr(fieldToken, target, fieldToken.Value);
-        }
-        return target;
-    }
-
-    private ExprBase ParseCallExpression()
+    private BaseExpr ParseCallExpression()
     {
         var identifier = Match(TokenType.IDENT);
         var openParen = Match(TokenType.LeftParen);
@@ -480,10 +467,10 @@ internal partial class Parser
     }
 
     // [1,2,3]
-    private ExprBase ParseIndexDefExpression()
+    private BaseExpr ParseIndexDefExpression()
     {
         var lb = Match(TokenType.LeftBracket, "语法需要'['");
-        var items = ImmutableArray.CreateBuilder<ExprBase>();
+        var items = ImmutableArray.CreateBuilder<BaseExpr>();
         var parseNext = true;
         while (parseNext && !Check(TokenType.RightBracket) && !CursorEOF)
         {
@@ -502,7 +489,7 @@ internal partial class Parser
     }
 
     // baseExpr[expr] or baseExpr[start:end]
-    private ExprBase ParseSliceExpression(ExprBase baseExpr)
+    private BaseExpr ParseSliceExpression(BaseExpr baseExpr)
     {
         var lb = Match(TokenType.LeftBracket, "语法需要'[");
 
@@ -522,9 +509,9 @@ internal partial class Parser
         return new SliceExpression(lb, baseExpr, start, end, ommitstart);
     }
 
-    private ImmutableArray<ExprBase> ParseArguments()
+    private ImmutableArray<BaseExpr> ParseArguments()
     {
-        var args = ImmutableArray.CreateBuilder<ExprBase>();
+        var args = ImmutableArray.CreateBuilder<BaseExpr>();
         var parseNext = true;
         while (parseNext && !Check(TokenType.RightParen) && !CursorEOF)
         {

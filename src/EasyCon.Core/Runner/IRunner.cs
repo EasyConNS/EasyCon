@@ -4,13 +4,13 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Core.Runner;
 
-interface IRunner
+public interface IRunner
 {
     abstract bool HasKeyAction { get; }
 
     ImmutableArray<Diagnostic> Init(string code, ImmutableHashSet<string> extVarNames);
     ImmutableArray<Diagnostic> Load(string fileName, ImmutableHashSet<string> extVarNames);
-    void Run(IOutputAdapter output, ICGamePad pad, Dictionary<string, Func<int>> externalGetters, CancellationToken token);
+    void Run(IOutputAdapter output, ICGamePad pad, IImageAdapter img, Dictionary<string, Func<int>> externalGetters, CancellationToken token);
 
     string ToCode();
 

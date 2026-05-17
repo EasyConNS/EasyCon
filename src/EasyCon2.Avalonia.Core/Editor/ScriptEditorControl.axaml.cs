@@ -235,7 +235,7 @@ public partial class ScriptEditorControl : UserControl
         for (int lineNum = endLine.LineNumber; lineNum >= startLine.LineNumber; lineNum--)
         {
             var line = doc.GetLineByNumber(lineNum);
-            if (Scripter.CanComment(doc.GetText(line)))
+            if (doc.GetText(line).CanComment())
             {
                 docomment = true;
                 break;
@@ -248,7 +248,7 @@ public partial class ScriptEditorControl : UserControl
             {
                 var line = doc.GetLineByNumber(lineNum);
                 var text = doc.GetText(line);
-                text = Scripter.ToggleComment(text, docomment);
+                text = text.ToggleComment(docomment);
                 doc.Replace(line, text);
             }
         }

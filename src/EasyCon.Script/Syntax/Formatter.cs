@@ -4,7 +4,7 @@ namespace EasyCon.Script.Syntax;
 
 static class Formatter
 {
-    public static ExprBase GetValueEx(Token tok)
+    public static BaseExpr GetValueEx(Token tok)
     {
         switch (tok.Type)
         {

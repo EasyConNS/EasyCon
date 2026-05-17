@@ -64,7 +64,7 @@ internal static class BuiltinCallable
 
     public static Value ImplOcr(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
-        var result = ctx.Image?.OCR(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt());
+        var result = ctx.Image?.OCR(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[3].AsString()) ?? "OCR NOT SUPPORT";
         return Value.FromString(result);
     }
 
@@ -126,7 +126,6 @@ internal static class BuiltinCallable
             (BuiltinFunctions.Length, new DelegateCallable(ImplLength)),
             (BuiltinFunctions.Append, new DelegateCallable(ImplAppend)),
             (BuiltinFunctions.StrEncode, new DelegateCallable(ImplStrEncode)),
-            (BuiltinFunctions.Jq, new DelegateCallable(ImplJq)),
             (BuiltinFunctions.IntConvert, new DelegateCallable(ImplConvertInt)),
             (BuiltinFunctions.StrConvert, new DelegateCallable(ImplConvertString)),
         ];

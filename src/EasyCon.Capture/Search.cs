@@ -26,7 +26,7 @@ public sealed class ECSearch
     {
         using MemoryStream memoryStream = new();
         memoryStream.Write(srcBmp.ToPngBytes());
-        var resultTxt = new OCRDetect().TesserDetect(memoryStream, out var confidence).Trim();
+        var resultTxt = OCRDetect.TesserDetect(memoryStream, out var confidence).Trim();
         Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{confidence}");
         Debug.WriteLine($"对比原始文本:{text}，对比对象：{resultTxt}");
         // 计算编辑距离

@@ -422,6 +422,16 @@ internal sealed partial class Binder
 
         return variable;
     }
+    private VariableSymbol LookupVariable(ConstVarExpr syntax, bool isReadOnly, ScriptType type, bool allowGlobal = true)
+    {
+        var variable = _function == null && allowGlobal
+                    ? (VariableSymbol)new GlobalVariableSymbol(syntax.Tag, isReadOnly, type)
+                    : new LocalVariableSymbol(syntax.Tag, isReadOnly, type);
+
+        _scope.TryDeclareVariable(variable);
+
+        return variable;
+    }
     private ScriptType? BindTypeClause(Statement syntax, TypeClauseSyntax? tcs)
     {
         if (tcs == null) return null;

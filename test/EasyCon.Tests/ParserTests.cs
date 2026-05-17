@@ -488,6 +488,12 @@ CAPTURE");
     }
 
     [Test]
+    public void Lvalue_SliceIsError()
+    {
+        ExpectError("$a[1:3] = 5");
+    }
+
+    [Test]
     public void String_Index()
     {
         ExpectParse("$s = \"abc\"\n$r = $s[1]");

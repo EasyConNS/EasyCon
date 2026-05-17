@@ -30,9 +30,9 @@ public sealed class EasyRunner : IRunner
         return compilation.Compile(extVarNames);
     }
 
-    public void Run(IOutputAdapter output, ICGamePad pad, Dictionary<string, Func<int>> externalGetters, CancellationToken token)
+    public void Run(IOutputAdapter output, ICGamePad pad, IImageAdapter img, Dictionary<string, Func<int>> externalGetters, CancellationToken token)
     {
-        compilation?.Evaluate(output, pad, externalGetters.ToImmutableDictionary(), token);
+        compilation?.Evaluate(output, pad, img, externalGetters.ToImmutableDictionary(), token);
     }
 
     public string ToCode()

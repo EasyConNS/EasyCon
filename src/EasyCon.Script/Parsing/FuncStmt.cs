@@ -26,19 +26,11 @@ internal sealed class TypeClauseSyntax(Token colonToken, Token identifier, bool 
 
 class FuncStmt(Token identifier, ImmutableArray<ParameterSyntax> paramters, bool omitParn, TypeClauseSyntax? type) : StartBlockStmt(identifier)
 {
-    public override StatementKind Kind => StatementKind.FuncStmt;
+    public override StatementKind Kind => StatementKind.FuncDecl;
     public readonly Token Identifier = identifier;
     public string Name => Identifier.Value;
     public ImmutableArray<ParameterSyntax> Paramters = paramters;
     public readonly TypeClauseSyntax? Type = type;
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    assembler.Add(Assembly.Instructions.AsmBranch.Create());
-    //    assembler.FunctionMapping[Label] = assembler.Last() as Assembly.Instructions.AsmBranch;
-    //    assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-    //    assembler.CallMapping[Label] = assembler.Last() as Assembly.Instructions.AsmEmpty;
-    //}
 
     protected override string _GetString()
     {
@@ -65,50 +57,21 @@ class EndFuncStmt(Token syntax) : EndBlockStmt(syntax)
 {
     public override StatementKind Kind => StatementKind.EndFuncStmt;
     protected override string _GetString() => "ENDFUNC";
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    assembler.Add(Assembly.Instructions.AsmReturn.Create(0));
-    //    assembler.Add(Assembly.Instructions.AsmEmpty.Create());
-    //    assembler.FunctionMapping[this.Label].Target = assembler.Last();
-    //}
 }
 
-class ReturnStmt(Token syntax, ExprBase? expression = null) : Statement(syntax)
+class ReturnStmt(Token syntax, BaseExpr? expression = null) : Statement(syntax)
 {
-    public readonly ExprBase? Expression = expression;
+    public readonly BaseExpr? Expression = expression;
     protected override string _GetString()
     {
         return $"RETURN {Expression?.GetCodeText()}".TrimEnd();
     }
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    assembler.Add(Assembly.Instructions.AsmReturn.Create(0));
-    //}
 }
 
-class CallStmt(Token syntax, string fnName, ExprBase[] args, CallType callType = CallType.CallStmt) : Statement(syntax)
+class CallStmt(Token syntax, string fnName, BaseExpr[] args, CallType callType = CallType.CallStmt) : Statement(syntax)
 {
     public readonly string FnName = fnName;
-    public readonly ExprBase[] Args = args;
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    var callfunc = assembler.CallMapping.GetValueOrDefault(Label, null);
-    //    assembler.Add(Assembly.Instructions.AsmCall.Create(callfunc));
-    //}
-
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-
-    //    //if (RegDst is ValReg)
-    //    //    assembler.Add(Assembly.Instruction.CreateInstance(MetaInfo.InstructionType, (RegDst as ValReg).Index));
-    //    //else
-    //    //    throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-    //}
+    public readonly BaseExpr[] Args = args;
 
     protected override string _GetString()
     {

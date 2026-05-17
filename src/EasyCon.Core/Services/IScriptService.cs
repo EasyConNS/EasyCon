@@ -10,7 +10,6 @@ public interface IScriptService
     Task<bool> Compile(string scriptText, string? fileName);
     void Run();
     void Stop();
-    void Reset();
     string GetFormattedCode();
     Task<byte[]> Build(bool autoRun);
 }

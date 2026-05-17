@@ -691,7 +691,7 @@ namespace EasyCon2.App
 
             _vpadService?.Deactivate();
             _state.ScriptStartTime = DateTime.Now;
-            _scriptService.Run(this, new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming));
+            _scriptService.Run(this, new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming), new OCRAdapter());
         }
 
         private bool CheckFwVersion()
@@ -825,7 +825,6 @@ namespace EasyCon2.App
         {
             if (显示折叠ToolStripMenuItem.Checked && _foldingStrategy != null && _foldingManager != null)
                 _foldingStrategy.UpdateFoldings(_foldingManager, scriptEditor.TextDocument);
-            _scriptService.Reset();
         }
 
         private void buttonScriptRunStop_Click(object sender, EventArgs e)
@@ -1206,7 +1205,7 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
             for (int lineNum = endLine.LineNumber; lineNum >= startLine.LineNumber; lineNum--)
             {
                 var line = doc.GetLineByNumber(lineNum);
-                if (Scripter.CanComment(doc.GetText(line)))
+                if (doc.GetText(line).CanComment())
                 {
                     docomment = true;
                     break;
@@ -1219,7 +1218,7 @@ Copyright © 2025. 卡尔(ca1e)", "关于");
                 {
                     var line = doc.GetLineByNumber(lineNum);
                     var text = doc.GetText(line);
-                    text = Scripter.ToggleComment(text, docomment);
+                    text = text.ToggleComment(docomment);
                     doc.Replace(line, text);
                 }
             }

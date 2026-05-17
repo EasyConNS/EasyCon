@@ -8,8 +8,8 @@ public sealed class SyntaxTree
     private delegate void ParseHandler(SyntaxTree syntaxTree,
                                            out CompicationUnit root,
                                            out ImmutableArray<Diagnostic> diagnostics);
-    #region 兼容性解析标记 // 默认不开启
-    public static bool LegacyCompat = false;
+    #region 兼容性解析标记
+    public static bool LegacyCompat = true;
     #endregion
 
     public SourceText Text { get; init; }

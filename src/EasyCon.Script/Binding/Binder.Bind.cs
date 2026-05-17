@@ -406,35 +406,20 @@ internal sealed partial class Binder
 
     private BoundStmt BindAssignStatement(AssignmentStmt syntax)
     {
-        var target = syntax.Target;
-
-        // Discard: _ = expr → evaluate for side effects, don't store
-        if (target is DiscardExpr)
+        switch (syntax.Target)
         {
-            var discardExpr = BindExpression(syntax.Expression);
-            return new BoundExprStatement(syntax, discardExpr);
+            case DiscardExpr:
+                return new BoundExprStatement(syntax, BindExpression(syntax.Expression));
+            case VariableExpr varTarget:
+                return BindVariableAssign(syntax, varTarget);
+            case FieldAccessExpr fieldTarget:
+                return BindFieldAssign(syntax, fieldTarget);
+            case IndexVisitExpression indexTarget:
+                return BindIndexAssign(syntax, indexTarget);
+            default:
+                _diagnostics.ReportUnexpectedToken(syntax.Location, syntax.Target.Syntax, TokenType.VAR);
+                return BindErrorStatement(syntax);
         }
-
-        // Variable: $var = expr
-        if (target is VariableExpr varTarget)
-        {
-            return BindVariableAssign(syntax, varTarget);
-        }
-
-        // Field access: $var.field = expr
-        if (target is FieldAccessExpr fieldTarget)
-        {
-            return BindFieldAssign(syntax, fieldTarget);
-        }
-
-        // Index access: $var[i] = expr
-        if (target is IndexVisitExpression indexTarget)
-        {
-            return BindIndexAssign(syntax, indexTarget);
-        }
-
-        _diagnostics.ReportUnexpectedToken(syntax.Location, syntax.Target.Syntax, TokenType.VAR);
-        return BindErrorStatement(syntax);
     }
 
     private BoundStmt BindVariableAssign(AssignmentStmt syntax, VariableExpr varTarget)
@@ -529,27 +514,28 @@ internal sealed partial class Binder
         return new BoundIndexAssignStatement(syntax, boundContainer, boundIndex2, boundValue2);
     }
 
-    private BoundExpr BindExpression(ExprBase syntax)
+    private BoundExpr BindExpression(BaseExpr syntax)
     {
         return syntax switch
         {
-            LiteralExpr => BindLiterExpression((LiteralExpr)syntax),
-            ExtVarExpr => BindExtraLabel((ExtVarExpr)syntax),
-            UnaryExpression => BindUnaryExpression((UnaryExpression)syntax),
-            BinaryExpression => BindBinaryExpression((BinaryExpression)syntax),
+            LiteralExpr lit => BindLiterExpression(lit),
+            ExtVarExpr ext => BindExtraLabel(ext),
+            UnaryExpression unary => BindUnaryExpression(unary),
+            BinaryExpression binary => BindBinaryExpression(binary),
             ParenthesizedExpression pre => BindExpression(pre.Expression),
-            Callv1Expression => BindCallExpression((Callv1Expression)syntax),
-            IndexDefExpression => BindIndexExpression((IndexDefExpression)syntax),
-            IndexVisitExpression => BindIndexVisitExpression((IndexVisitExpression)syntax),
-            SliceExpression => BindSliceExpression((SliceExpression)syntax),
-            VariableExpr => BindVarExpression((VariableExpr)syntax),
-            StructInitExpr => BindStructInitExpression((StructInitExpr)syntax),
-            FieldAccessExpr => BindFieldAccessExpression((FieldAccessExpr)syntax),
+            Callv1Expression call => BindCallExpression(call),
+            IndexDefExpression idxDef => BindIndexExpression(idxDef),
+            IndexVisitExpression idxVisit => BindIndexVisitExpression(idxVisit),
+            SliceExpression slice => BindSliceExpression(slice),
+            VariableExpr var => BindVarExpression(var),
+            ConstVarExpr c => BindVarExpression_ByTag(c.Syntax, c.Tag),
+            StructInitExpr init => BindStructInitExpression(init),
+            FieldAccessExpr field => BindFieldAccessExpression(field),
             _ => ReportUnknownExprAndError(syntax),
         };
     }
 
-    private BoundExpr ReportUnknownExprAndError(ExprBase syntax)
+    private BoundExpr ReportUnknownExprAndError(BaseExpr syntax)
     {
         _diagnostics.ReportUnknownExpressionType(syntax.Syntax.Location);
         return new BoundErrorExpression(syntax);
@@ -665,7 +651,7 @@ internal sealed partial class Binder
         return new BoundErrorExpression(expr.Syntax);
     }
 
-    private BoundExpr BindConversion(ExprBase syntax, ScriptType type)
+    private BoundExpr BindConversion(BaseExpr syntax, ScriptType type)
     {
         var expr = BindExpression(syntax);
         if (expr.Type != type)
@@ -675,13 +661,18 @@ internal sealed partial class Binder
 
     private BoundExpr BindVarExpression(VariableExpr syntax)
     {
-        var variable = _scope.TryLookupVar(syntax.Tag);
+        return BindVarExpression_ByTag(syntax.Syntax, syntax.Tag, syntax);
+    }
+
+    private BoundExpr BindVarExpression_ByTag(Token syntaxToken, string tag, BaseExpr? originalExpr = null)
+    {
+        var variable = _scope.TryLookupVar(tag);
         if (variable == null)
         {
-            _diagnostics.ReportVariableNotFound(syntax.Syntax.Location, syntax.Tag);
-            return new BoundErrorExpression(syntax);
+            _diagnostics.ReportVariableNotFound(syntaxToken.Location, tag);
+            return new BoundErrorExpression(originalExpr ?? new VariableExpr(syntaxToken));
         }
-        return new BoundVariableExpression(syntax, variable);
+        return new BoundVariableExpression(originalExpr ?? new VariableExpr(syntaxToken), variable);
     }
 
     private BoundExpr BindStructInitExpression(StructInitExpr syntax)
@@ -768,7 +759,7 @@ internal sealed partial class Binder
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
     }
 
-    private BoundExpr BindCallExpressionInternal(AstNode syntax, FunctionSymbol function, ImmutableArray<ExprBase> Arguments)
+    private BoundExpr BindCallExpressionInternal(AstNode syntax, FunctionSymbol function, ImmutableArray<BaseExpr> Arguments)
     {
         // 1. 先绑定实参表达式
         var boundArgs = Arguments.Select(BindExpression).ToImmutableArray();

@@ -1,8 +1,8 @@
 namespace EasyCon.Script.Syntax;
 
-class Wait(Token syntax, ExprBase duration, bool omitted = false) : Statement(syntax)
+class Wait(Token syntax, BaseExpr duration, bool omitted = false) : Statement(syntax)
 {
-    public readonly ExprBase Duration = duration;
+    public readonly BaseExpr Duration = duration;
     protected bool _omitted = omitted;
 
     protected override string _GetString()

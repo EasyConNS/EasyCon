@@ -313,7 +313,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
             _vpadService?.Deactivate();
 
             var pad = new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming);
-            _scriptService.Run(this, pad);
+            _scriptService.Run(this, pad, null);
         }
         else
         {
@@ -856,7 +856,6 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         _state.IsModified = _textEditor.IsModified;
         if (_configService.Config.EnableAutoCompletion)
             _foldingStrategy?.UpdateFoldings(_foldingManager!, _textEditor.TextDocument);
-        _scriptService.Reset();
     }
 
     #endregion
@@ -885,7 +884,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         for (int lineNum = endLine.LineNumber; lineNum >= startLine.LineNumber; lineNum--)
         {
             var line = doc.GetLineByNumber(lineNum);
-            if (Scripter.CanComment(doc.GetText(line)))
+            if (doc.GetText(line).CanComment())
             {
                 docomment = true;
                 break;
@@ -898,7 +897,7 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
             {
                 var line = doc.GetLineByNumber(lineNum);
                 var text = doc.GetText(line);
-                text = Scripter.ToggleComment(text, docomment);
+                text = text.ToggleComment(docomment);
                 doc.Replace(line, text);
             }
         }

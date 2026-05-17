@@ -2,13 +2,15 @@ using EasyCon.Core;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
 using EasyScript;
+using System.Collections.Immutable;
 using System.Drawing;
 
 namespace EasyCon2.Services;
 
 public class ScriptService
 {
-    private readonly Scripter _scripter = new();
+    private readonly EasyRunner _runner = new();
+    private Dictionary<string, Func<int>> _extVar = [];
     private CancellationTokenSource _cts = new();
 
     /// <summary>脚本运行状态变化</summary>
@@ -30,7 +32,11 @@ public class ScriptService
     {
         try
         {
-            var diag = _scripter.Parse(code, fileName, externalGetters);
+            _extVar = externalGetters;
+            var extVarNames = externalGetters.Select(v => v.Key).ToImmutableHashSet();
+            ImmutableArray<Diagnostic> diag = fileName == null
+                ? _runner.Init(code, extVarNames)
+                : _runner.Load(fileName, extVarNames);
             if (diag.Any(d => d.IsError))
             {
                 var err = diag.First(d => d.IsError);
@@ -56,7 +62,7 @@ public class ScriptService
 
         try
         {
-            var formatted = _scripter.ToCode().Trim();
+            var formatted = _runner.ToCode().Trim();
             // 确保逗号后面有空格
             formatted = System.Text.RegularExpressions.Regex.Replace(formatted, @",(?! )", ", ");
             return (true, formatted, null, null);
@@ -70,7 +76,7 @@ public class ScriptService
     /// <summary>
     /// 运行脚本（需要先 Compile 或 Format）
     /// </summary>
-    public void Run(IOutputAdapter output, ICGamePad pad)
+    public void Run(IOutputAdapter output, ICGamePad pad, IImageAdapter iimg)
     {
         if (IsRunning) return;
 
@@ -86,7 +92,7 @@ public class ScriptService
         {
             try
             {
-                _scripter.Run(output, pad, _cts.Token);
+                _runner.Run(output, pad, iimg, _extVar, _cts.Token);
                 LogOutput?.Invoke("-- 运行结束 --", Color.Lime);
                 StatusChanged?.Invoke("运行结束");
             }
@@ -125,22 +131,13 @@ public class ScriptService
     }
 
     /// <summary>
-    /// 重置脚本引擎
-    /// </summary>
-    public void Reset()
-    {
-        if (IsRunning) return;
-        _scripter.Reset();
-    }
-
-    /// <summary>
     /// 编译为字节码（供烧录和固件生成使用，需先 Compile）
     /// </summary>
     public byte[]? Assemble(bool autoRun = true)
     {
         try
         {
-            return _scripter.Assemble(autoRun);
+            return _runner.Assemble(autoRun);
         }
         catch
         {
@@ -148,5 +145,5 @@ public class ScriptService
         }
     }
 
-    public bool HasKeyAction => _scripter.HasKeyAction;
+    public bool HasKeyAction => _runner.HasKeyAction;
 }

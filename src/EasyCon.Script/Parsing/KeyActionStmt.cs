@@ -22,14 +22,14 @@ abstract class KeyActionStmt(Token syntax, bool up = false) : Statement(syntax)
 
 interface IDurationKey
 {
-    public ExprBase Duration { get; }
+    public BaseExpr Duration { get; }
 }
 
 class KeyPress : KeyActionStmt, IDurationKey
 {
     private const int DefaultDuration = 50;
 
-    public ExprBase Duration { get; }
+    public BaseExpr Duration { get; }
     private readonly bool _omitted = false;
 
     public KeyPress(Token syntax)
@@ -39,7 +39,7 @@ class KeyPress : KeyActionStmt, IDurationKey
         Duration = new LiteralExpr(syntax, DefaultDuration);
     }
 
-    public KeyPress(Token syntax, ExprBase duration)
+    public KeyPress(Token syntax, BaseExpr duration)
         : base(syntax)
     {
         Duration = duration;
@@ -147,9 +147,9 @@ abstract class StickActionStmt : KeyActionStmt
     // }
 }
 
-class StickPress(Token syntax, string direction, ExprBase duration) : StickActionStmt(syntax, direction), IDurationKey
+class StickPress(Token syntax, string direction, BaseExpr duration) : StickActionStmt(syntax, direction), IDurationKey
 {
-    public ExprBase Duration => duration;
+    public BaseExpr Duration => duration;
 
     protected override string _GetString()
     {

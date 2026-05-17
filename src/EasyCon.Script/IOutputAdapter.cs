@@ -1,4 +1,4 @@
-﻿namespace EasyScript;
+namespace EasyScript;
 
 public interface IOutputAdapter
 {
@@ -9,5 +9,5 @@ public interface IOutputAdapter
 
 public interface IImageAdapter
 {
-    string OCR(int x, int y, int width, int height);
+    string OCR(int x, int y, int width, int height, string lang);
 }

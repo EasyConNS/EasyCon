@@ -21,7 +21,7 @@ abstract class AsmBitwiseShift<T> : Instruction
         Op = (uint)((Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute)!).Operator;
     }
 
-    public static Instruction Create(uint regdst, ExprBase value)
+    public static Instruction Create(uint regdst, BaseExpr value)
     {
         if ((value is VariableExpr))
         {

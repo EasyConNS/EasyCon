@@ -161,7 +161,7 @@ internal sealed partial class Parser
                     _diagnostics.ReportBadStruct(st.Syntax.Location, "导入只能在脚本开头");
                 }
             }
-            if (st.Kind == StatementKind.ExternFuncDeclaration)
+            if (st.Kind == StatementKind.ExternFuncDecl)
             {
                 if (unit.Count > 1)
                 {
@@ -169,13 +169,13 @@ internal sealed partial class Parser
                     st = new EmptyStmt();
                 }
             }
-            if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.WhileStmt || st.Kind == StatementKind.UntilStmt || st.Kind == StatementKind.StructStmt)
+            if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncDecl || st.Kind == StatementKind.WhileStmt || st.Kind == StatementKind.UntilStmt || st.Kind == StatementKind.StructDecl)
             {
-                if (st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.StructStmt)
+                if (st.Kind == StatementKind.FuncDecl || st.Kind == StatementKind.StructDecl)
                 {
                     if (unit.Count > 1)
                     {
-                        var msg = st.Kind == StatementKind.FuncStmt ? "函数必须在顶层定义" : "STRUCT 必须在顶层定义";
+                        var msg = st.Kind == StatementKind.FuncDecl ? "函数必须在顶层定义" : "STRUCT 必须在顶层定义";
                         _diagnostics.ReportBadStruct(st.Syntax.Location, msg);
                         st = new EmptyStmt();
                     }
@@ -250,12 +250,12 @@ internal sealed partial class Parser
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "NEXT需要对应的For语句");
                         validEnd = false;
                     }
-                    else if (endStmt.Kind == StatementKind.EndFuncStmt && result.First().Kind != StatementKind.FuncStmt)
+                    else if (endStmt.Kind == StatementKind.EndFuncStmt && result.First().Kind != StatementKind.FuncDecl)
                     {
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "ENDFUNC需要对应的Func语句");
                         validEnd = false;
                     }
-                    else if (result.First().Kind != StatementKind.IfStmt && result.First().Kind != StatementKind.ForStmt && result.First().Kind != StatementKind.WhileStmt && result.First().Kind != StatementKind.UntilStmt && result.First().Kind != StatementKind.FuncStmt && result.First().Kind != StatementKind.StructStmt)
+                    else if (result.First().Kind != StatementKind.IfStmt && result.First().Kind != StatementKind.ForStmt && result.First().Kind != StatementKind.WhileStmt && result.First().Kind != StatementKind.UntilStmt && result.First().Kind != StatementKind.FuncDecl && result.First().Kind != StatementKind.StructDecl)
                     {
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "END需要对应的语句开头");
                         validEnd = false;
@@ -271,8 +271,8 @@ internal sealed partial class Parser
                             StatementKind.ForStmt => new ForBlock((ForStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
                             StatementKind.WhileStmt => new WhileBlock((WhileStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
                             StatementKind.UntilStmt => new UntilBlock((UntilStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.FuncStmt => new FuncDeclBlock((FuncStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.StructStmt => new StructDeclBlock((StructStmt)result.First(), body.Skip(1).OfType<StructFieldStmt>().ToImmutableArray(), (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            StatementKind.FuncDecl => new FuncDeclBlock((FuncStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            StatementKind.StructDecl => new StructDeclBlock((StructStmt)result.First(), body.Skip(1).OfType<StructFieldStmt>().ToImmutableArray(), (EndBlockStmt)endStmt) { Address = result.First().Address },
                             _ => st // 保持原样
                         };
                         result = unit.Peek();

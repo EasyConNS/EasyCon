@@ -15,11 +15,11 @@ internal sealed class ForBlock(ForStmt condition, ImmutableArray<Statement> stat
     }
 }
 
-abstract class ForStmt(Token syntax, ExprBase lower, ExprBase upper) : StartBlockStmt(syntax)
+abstract class ForStmt(Token syntax, BaseExpr lower, BaseExpr upper) : StartBlockStmt(syntax)
 {
     public override StatementKind Kind => StatementKind.ForStmt;
-    public readonly ExprBase Lower = lower;
-    public readonly ExprBase Upper = upper;
+    public readonly BaseExpr Lower = lower;
+    public readonly BaseExpr Upper = upper;
 }
 
 class For_Infinite(Token syntax) : ForStmt(syntax, new LiteralExpr(syntax, 0), new LiteralExpr(syntax, 0))
@@ -27,36 +27,18 @@ class For_Infinite(Token syntax) : ForStmt(syntax, new LiteralExpr(syntax, 0), n
 
     public override StatementKind Kind => StatementKind.ForStmt;
     protected override string _GetString() => "FOR";
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    assembler.Add(Assembly.Instructions.AsmFor.Create());
-    //    assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
-    //}
 }
 
-class For_Static(Token syntax, ExprBase count) : ForStmt(syntax, new LiteralExpr(syntax, 1), count)
+class For_Static(Token syntax, BaseExpr count) : ForStmt(syntax, new LiteralExpr(syntax, 1), count)
 {
     public override StatementKind Kind => StatementKind.ForStmt;
     protected override string _GetString()
     {
         return $"FOR {Upper.GetCodeText()}";
     }
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    if (Count is VariableExpr vr)
-    //    {
-    //        if(vr.Reg == 0)throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-    //        assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)(vr.Reg << 4)));
-    //        assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
-    //    }
-    //    assembler.Add(Assembly.Instructions.AsmFor.Create());
-    //    assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
-    //}
 }
 
-class For_Full(Token syntax, VariableExpr regiter, ExprBase lower, ExprBase upper) : ForStmt(syntax, lower, upper)
+class For_Full(Token syntax, VariableExpr regiter, BaseExpr lower, BaseExpr upper) : ForStmt(syntax, lower, upper)
 {
     public override StatementKind Kind => StatementKind.ForStmt;
     public VariableExpr RegIter = regiter;
@@ -65,26 +47,6 @@ class For_Full(Token syntax, VariableExpr regiter, ExprBase lower, ExprBase uppe
     {
         return $"FOR {RegIter.GetCodeText()} = {Lower.GetCodeText()} TO {Upper.GetCodeText()}";
     }
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    if (RegIter is VariableExpr reg)
-    //        assembler.Add(Assembly.Instructions.AsmMov.Create(reg.Reg, InitVal));
-    //    else 
-    //        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-
-    //    if (Count is VariableExpr countval)
-    //    {
-    //        uint e_val = countval.Reg;
-    //        e_val |= countval.Reg << 4;
-    //        assembler.Add(Assembly.Instructions.AsmMov.Create(Assembly.Assembler.IReg, (int)e_val));
-    //        assembler.Add(Assembly.Instructions.AsmStoreOp.Create(Assembly.Assembler.IReg));
-    //        assembler.Add(Assembly.Instructions.AsmFor.Create());
-    //        assembler.ForMapping[this] = assembler.Last() as Assembly.Instructions.AsmFor;
-    //    } 
-    //    else
-    //        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-    //}
 }
 
 class Next(Token syntax) : EndBlockStmt(syntax)
@@ -93,15 +55,6 @@ class Next(Token syntax) : EndBlockStmt(syntax)
 
     // 覆盖基类的 _GetString
     protected override string _GetString() => "NEXT";
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    int val = 0;
-    //    if (For.Count is InstantExpr)
-    //        val = (For.Count as InstantExpr).Val;
-    //    assembler.Add(Assembly.Instructions.AsmNext.Create(val));
-    //    assembler.ForMapping[For].Next = assembler.Last() as Assembly.Instructions.AsmNext;
-    //}
 }
 
 internal sealed class WhileBlock(WhileStmt condition, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement(condition.Syntax)
@@ -117,10 +70,10 @@ internal sealed class WhileBlock(WhileStmt condition, ImmutableArray<Statement> 
     }
 }
 
-class WhileStmt(Token syntax, ExprBase conds) : StartBlockStmt(syntax)
+class WhileStmt(Token syntax, BaseExpr conds) : StartBlockStmt(syntax)
 {
     public override StatementKind Kind => StatementKind.WhileStmt;
-    public readonly ExprBase Condition = conds;
+    public readonly BaseExpr Condition = conds;
     protected override string _GetString()
     {
         return $"WHILE {Condition.GetCodeText()}";
@@ -140,10 +93,10 @@ internal sealed class UntilBlock(UntilStmt condition, ImmutableArray<Statement> 
     }
 }
 
-class UntilStmt(Token syntax, ExprBase conds) : StartBlockStmt(syntax)
+class UntilStmt(Token syntax, BaseExpr conds) : StartBlockStmt(syntax)
 {
     public override StatementKind Kind => StatementKind.UntilStmt;
-    public readonly ExprBase Condition = conds;
+    public readonly BaseExpr Condition = conds;
     protected override string _GetString()
     {
         return $"UNTIL {Condition.GetCodeText()}";
@@ -167,13 +120,6 @@ class Break : LoopCtrl
         if (Level == 1) return "BREAK";
         return $"BREAK {Level}";
     }
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    if (Level.Val <= 0)
-    //        return;
-    //    assembler.Add(Assembly.Instructions.AsmBreak.Create(0, Level.Val - 1));
-    //}
 }
 
 class Continue : LoopCtrl
@@ -182,11 +128,4 @@ class Continue : LoopCtrl
 
     public override StatementKind Kind => StatementKind.Continue;
     protected override string _GetString() => "CONTINUE";
-
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    if (Level.Val <= 0)
-    //        return;
-    //    assembler.Add(Assembly.Instructions.AsmContinue.Create(0, Level.Val - 1));
-    //}
 }

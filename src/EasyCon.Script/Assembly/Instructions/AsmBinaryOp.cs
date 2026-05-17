@@ -27,7 +27,7 @@ abstract class AsmBinaryOp<T> : Instruction
         Op = (uint)((Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute)!).Operator;
     }
 
-    public static Instruction Create(uint regdst, ExprBase value)
+    public static Instruction Create(uint regdst, BaseExpr value)
     {
         if (value is VariableExpr valR)
         {
@@ -105,7 +105,7 @@ class AsmBinaryOperatorAttribute : Attribute
 [AsmBinaryOperator(BinaryOperator.Mov)]
 class AsmMov : AsmBinaryOp<AsmMov>
 {
-    public static new Instruction Create(uint regdst, ExprBase value)
+    public static new Instruction Create(uint regdst, BaseExpr value)
     {
         var ins = AsmMovCompressed.Create(regdst, value);
         if (ins.Success)
@@ -147,7 +147,7 @@ class AsmMovCompressed : Instruction
     public uint RegDst;
     public int Value;
 
-    public static Instruction Create(uint regdst, ExprBase value)
+    public static Instruction Create(uint regdst, BaseExpr value)
     {
         if (value is not LiteralExpr vi)
             return Failed.InvalidArgument;

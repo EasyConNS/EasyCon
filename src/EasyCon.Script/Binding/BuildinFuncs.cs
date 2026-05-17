@@ -11,7 +11,7 @@ internal static class BuiltinFunctions
     public static readonly FunctionSymbol Timestamp = new("TIME", [], [], ScriptType.Int);
     public static readonly FunctionSymbol Amiibo = new("AMIIBO", [], [new("index", ScriptType.Int)], ScriptType.Void);
     public static readonly FunctionSymbol Beep = new("BEEP", [], [new("freq", ScriptType.Int), new("duration", ScriptType.Int)], ScriptType.Void);
-    public static readonly FunctionSymbol Ocr = new("OCR", [], [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
+    public static readonly FunctionSymbol Ocr = new("OCR", [], [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int), new("lang", ScriptType.String, hasDefault: true, defaultValue: "chi_sim")], ScriptType.String);
 
     // --- 泛型集合操作 ---
     private static readonly TypeParameter T = new("T");
@@ -36,13 +36,13 @@ internal static class BuiltinFunctions
     public static readonly FunctionSymbol IntConvert = new("INT", [T], [new("var", T)], ScriptType.Int);
 
     // JQ<T>(json: string, query: string): T
-    public static readonly FunctionSymbol Jq = new("JQ", [T], [new("json", ScriptType.String), new("query", ScriptType.String)], T);
+    //public static readonly FunctionSymbol Jq = new("JQ", [T], [new("json", ScriptType.String), new("query", ScriptType.String)], T);
 
     /// <summary>
     /// 所有内置函数符号的静态缓存，避免每次反射枚举
     /// </summary>
     private static readonly FunctionSymbol[] All =
-        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Ocr, Append, Length, StrEncode, Jq, StrConvert, IntConvert];
+        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Ocr, Append, Length, StrEncode, StrConvert, IntConvert];
 
     /// <summary>
     /// 获取所有内置函数符号

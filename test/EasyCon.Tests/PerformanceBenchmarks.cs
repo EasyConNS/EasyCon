@@ -35,14 +35,14 @@ public class PerformanceBenchmarks
         for (int i = 0; i < WarmupIterations; i++)
         {
             using var warmupCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            compilation.Evaluate(new MockOutputAdapter(), null, [], warmupCts.Token);
+            compilation.Evaluate(new MockOutputAdapter(), null, null, [], warmupCts.Token);
         }
 
         // 正式测量
         var output = new MockOutputAdapter();
         var sw = Stopwatch.StartNew();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-        var result = compilation.Evaluate(output, null, [], cts.Token);
+        var result = compilation.Evaluate(output, null, null, [], cts.Token);
         sw.Stop();
 
         // 编译/运行错误时立即报告

@@ -4,7 +4,7 @@ using EasyScript;
 
 namespace EasyCon.Core;
 
-public class GamePadAdapter(NintendoSwitch easyPad, bool highResolution = false) : ICGamePad
+public sealed class GamePadAdapter(NintendoSwitch easyPad, bool highResolution = false) : ICGamePad
 {
     private readonly NintendoSwitch NS = easyPad;
 

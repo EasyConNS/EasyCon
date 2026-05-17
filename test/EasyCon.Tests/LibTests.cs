@@ -84,7 +84,7 @@ public class LibTests
             return (null!, false, errors);
 
         var result = compilation.Evaluate(
-            new MockOutputAdapter(), null,
+            new MockOutputAdapter(), null, null,
             extGetters ?? [],
             new CancellationTokenSource().Token);
         return (result, !result.Diagnostics.HasErrors(), []);
@@ -301,7 +301,7 @@ ENDFUNC
         Assert.That(success, Is.True, string.Join("; ", errors));
 
         var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
+            new MockOutputAdapter(), null, null, [],
             new CancellationTokenSource().Token);
         Assert.That(result.Result.AsInt(), Is.EqualTo(15));
     }
@@ -325,7 +325,7 @@ $r = incCounter()
         Assert.That(success, Is.True, string.Join("; ", errors));
 
         var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
+            new MockOutputAdapter(), null, null, [],
             new CancellationTokenSource().Token);
         Assert.That(result.Result.AsInt(), Is.EqualTo(2));
     }
@@ -347,7 +347,7 @@ ENDFUNC
         Assert.That(success, Is.True, string.Join("; ", errors));
 
         var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
+            new MockOutputAdapter(), null, null, [],
             new CancellationTokenSource().Token);
         Assert.That(result.Result.AsInt(), Is.EqualTo(25));
     }
@@ -371,7 +371,7 @@ ENDFUNC
         Assert.That(success, Is.True, string.Join("; ", errors));
 
         var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
+            new MockOutputAdapter(), null, null, [],
             new CancellationTokenSource().Token);
         Assert.That(result.Result.AsInt(), Is.EqualTo(12));
     }
@@ -394,7 +394,7 @@ ENDFUNC
         Assert.That(success, Is.True, string.Join("; ", errors));
 
         var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
+            new MockOutputAdapter(), null, null, [],
             new CancellationTokenSource().Token);
         Assert.That(result.Result.AsInt(), Is.EqualTo(30));
     }
@@ -416,7 +416,7 @@ ENDFUNC
         Assert.That(success, Is.True, string.Join("; ", errors));
 
         var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
+            new MockOutputAdapter(), null, null, [],
             new CancellationTokenSource().Token);
         Assert.That(result.Result.AsInt(), Is.EqualTo(55));
     }
@@ -479,7 +479,7 @@ ENDFUNC
         Assert.That(success, Is.True, string.Join("; ", errors));
 
         var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
+            new MockOutputAdapter(), null, null, [],
             new CancellationTokenSource().Token);
         Assert.That(result.Result.AsInt(), Is.InRange(0, 99));
     }

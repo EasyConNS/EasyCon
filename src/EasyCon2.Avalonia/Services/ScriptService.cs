@@ -81,7 +81,7 @@ public class ScriptService : IScriptService
                     return (int)md;
                 }));
 
-                _runner.Run(_logService, pad, externalGetters, token);
+                _runner.Run(_logService, pad, null, externalGetters, token);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)

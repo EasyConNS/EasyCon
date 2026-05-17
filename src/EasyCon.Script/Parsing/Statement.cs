@@ -6,6 +6,7 @@ namespace EasyCon.Script.Syntax;
 
 enum StatementKind
 {
+    // key action
     CommonAction,
     // Block statements
     ForBlock,
@@ -13,26 +14,26 @@ enum StatementKind
     UntilBlock,
     IfBlock,
     FuncDeclBlock,
+    StructDeclBlock,
     // Statement keywords
-    ForStmt,
-    WhileStmt,
-    UntilStmt,
+    Import,
+    FuncDecl,
+    EndFuncStmt,
+    ReturnStmt,
     IfStmt,
     ElseIf,
     Else,
     EndIf,
-    EndBlock,
-    FuncStmt,
-    EndFuncStmt,
+    ForStmt,
     Next,
     Break,
     Continue,
-    ReturnStmt,
-    Import,
-    ExternFuncDeclaration,
-    StructStmt,
+    WhileStmt,
+    UntilStmt,
+    EndBlock,
+    ExternFuncDecl,
+    StructDecl,
     StructField,
-    StructDeclBlock,
     FieldAssign,
 }
 
@@ -173,7 +174,7 @@ internal static class FormatPrinter
 
     private static bool OpensChildIndent(StatementKind kind) =>
         kind is StatementKind.ForStmt
-            or StatementKind.FuncStmt
+            or StatementKind.FuncDecl
             or StatementKind.IfStmt
             or StatementKind.ElseIf
             or StatementKind.Else
