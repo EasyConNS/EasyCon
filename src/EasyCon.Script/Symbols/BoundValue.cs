@@ -27,6 +27,8 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     private const byte TAG_ARRAY = 9;
     private const byte TAG_PTR = 10;
     private const byte TAG_STRUCT = 12;
+    private const byte TAG_IMAGE = 13; // 内置图像数据格式，识图标签专用
+    private const byte TAG_MAX = 15; // 预留 0-15 的 tag 范围，最高位保留用于扩展
 
     [FieldOffset(0)] private readonly byte _tag;
     [FieldOffset(4)] private int _int32Val;              // ┐ 也用于 bool (0/1)
@@ -61,6 +63,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         TAG_PTR => ScriptType.Ptr,
         TAG_ARRAY => ArrayDef.Bind(_arrayElemType!),
         TAG_STRUCT => new StructType((EcsStructDef)_refVal!),
+        TAG_IMAGE => ScriptType.Image,
         _ => ScriptType.Void
     };
 
@@ -889,6 +892,7 @@ public abstract class ScriptType : IEquatable<ScriptType>
 
     // 基础标量类型
     public static readonly VoidType Void = new();
+    public static readonly ImageType Image = new();
     public static readonly ScalarType Bool = new("bool");
     public static readonly ScalarType Byte = new("byte");
     public static readonly ScalarType Int = new("int");
@@ -925,6 +929,15 @@ public sealed class VoidType : ScriptType
     public override bool IsAssignableFrom(ScriptType other) => other is VoidType;
     public override bool TypeOverlaps(ScriptType other) => other is VoidType;
     public override bool Equals(ScriptType? other) => other is VoidType;
+    public override int GetHashCode() => 0;
+}
+
+public sealed class ImageType : ScriptType
+{
+    public override string Name => "image";
+    public override bool IsAssignableFrom(ScriptType other) => other == Int;
+    public override bool TypeOverlaps(ScriptType other) => other is ImageType || other is TypeParameter;
+    public override bool Equals(ScriptType? other) => other is ImageType;
     public override int GetHashCode() => 0;
 }
 /// <summary>
