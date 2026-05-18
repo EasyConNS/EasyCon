@@ -4,7 +4,7 @@ namespace EasyCon.Capture;
 
 public sealed class OCRDetect
 {
-    const string tessdataPath = @"./Tessdata";
+    static readonly string tessdataPath = AppDomain.CurrentDomain.BaseDirectory + "\\Tessdata\\";
 
     //private readonly string lang = language;
     //private readonly EngineMode egMode = engineMode;

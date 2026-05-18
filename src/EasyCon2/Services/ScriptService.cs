@@ -40,7 +40,7 @@ public class ScriptService
             if (diag.Any(d => d.IsError))
             {
                 var err = diag.First(d => d.IsError);
-                return (false, $"行 {err.Location.StartLine + 1}", err.Message);
+                return (false, $"行 {err.Location.StartLine + 1}", err.Message+$"\n在({err.FileName})");
             }
             return (true, null, null);
         }
@@ -94,27 +94,26 @@ public class ScriptService
             {
                 _runner.Run(output, pad, ocr, _extVar, _cts.Token);
                 LogOutput?.Invoke("-- 运行结束 --", Color.Lime);
-                StatusChanged?.Invoke("运行结束");
             }
             catch (OperationCanceledException)
             {
                 LogOutput?.Invoke("-- 运行终止 --", Color.Orange);
-                StatusChanged?.Invoke("运行终止");
             }
             catch (ScriptException ex)
             {
                 LogOutput?.Invoke($"[L{ex.Address}]：{ex.Message}", Color.OrangeRed);
                 LogOutput?.Invoke("-- 运行出错 --", Color.OrangeRed);
-                StatusChanged?.Invoke("运行出错");
             }
             catch (Exception ex)
             {
+                File.WriteAllText("trace.log", ex.StackTrace + "\n" + ex.InnerException?.StackTrace);
                 LogOutput?.Invoke(ex.Message, Color.OrangeRed);
                 LogOutput?.Invoke("-- 运行出错 --", Color.OrangeRed);
-                StatusChanged?.Invoke("运行出错");
             }
             finally
             {
+                pad.Reset();
+                StatusChanged?.Invoke("运行结束");
                 IsRunning = false;
                 RunningStateChanged?.Invoke(false);
             }

@@ -46,4 +46,9 @@ public sealed class GamePadAdapter(NintendoSwitch easyPad, bool highResolution =
             NS.Down(key.ToECKey(x, y));
         }
     }
+
+    void ICGamePad.Reset()
+    {
+        NS.Reset();
+    }
 }

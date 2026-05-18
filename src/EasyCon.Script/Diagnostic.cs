@@ -17,6 +17,8 @@ public sealed class Diagnostic
     public readonly TextLocation Location;
     public readonly string Message;
 
+    public string FileName => Location.FileName;
+
     public override string ToString() => Message;
 
     public static Diagnostic Error(TextLocation location, string message)
