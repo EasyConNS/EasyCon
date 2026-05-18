@@ -105,15 +105,6 @@ public partial class NintendoSwitch : IReporter
             }
         }
     }
-    public void Press(ECKey key, int duration)
-    {
-        lock (this)
-        {
-            DebugKey("Press", key);
-            Signal();
-            _keystrokes[key.KeyCode] = new KeyStroke(key, false, duration);
-        }
-    }
 
     public void LeftDirection(DirectionKey dkey, bool down)
     {
