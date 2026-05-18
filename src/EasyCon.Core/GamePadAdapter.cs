@@ -4,7 +4,7 @@ using EasyScript;
 
 namespace EasyCon.Core;
 
-public sealed class GamePadAdapter(NintendoSwitch easyPad, bool highResolution = false) : ICGamePad
+public class GamePadAdapter(NintendoSwitch easyPad, bool highResolution = false) : ICGamePad
 {
     private readonly NintendoSwitch NS = easyPad;
 
@@ -45,10 +45,5 @@ public sealed class GamePadAdapter(NintendoSwitch easyPad, bool highResolution =
         {
             NS.Down(key.ToECKey(x, y));
         }
-    }
-
-    void ICGamePad.Reset()
-    {
-        NS.Reset();
     }
 }

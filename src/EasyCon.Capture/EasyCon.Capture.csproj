@@ -12,9 +12,9 @@
 		<PackageReference Condition="'$(OS)' == 'Windows_NT'" Include="OpenCvSharp4.runtime.win" />
 		<PackageReference Condition="$([MSBuild]::IsOSPlatform('OSX'))" Include="OneWare.OpenCvSharp4.runtime.osx-arm64" />
 		<PackageReference Condition="'$(OS)' == 'Unix' AND !$([MSBuild]::IsOSPlatform('OSX'))" Include="OpenCvSharp4.official.runtime.linux-x64" />
+		<PackageReference Include="System.Drawing.Common" />
 
-		<PackageReference Include="Tesseract" />
-		<PackageReference Include="Tesseract.Drawing" />
+		<PackageReference Include="TesseractOCR" />
 	</ItemGroup>
 
 	<ItemGroup>
