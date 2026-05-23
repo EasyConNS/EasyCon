@@ -39,6 +39,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
     public OcrDelegate? Ocr { get; set; }
     public FrameDelegate? Frame { get; set; }
+    public RoiDelegate? Roi { get; set; }
     public LabelMatchDelegate? LabelMatch { get; set; }
 
     // IEvalContext
@@ -46,6 +47,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     IOutputAdapter? IEvalContext.Output => Output;
     OcrDelegate? IEvalContext.Ocr => Ocr;
     FrameDelegate? IEvalContext.Frame => Frame;
+    RoiDelegate? IEvalContext.Roi => Roi;
     LabelMatchDelegate? IEvalContext.LabelMatch => LabelMatch;
     Random IEvalContext.Rand => _rand;
     int IEvalContext.Timestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);

@@ -30,6 +30,7 @@ internal static class BuiltinFunctions
     public static readonly FunctionSymbol Pixel = new("PIXEL", [], [new("x", ScriptType.Int), new("y", ScriptType.Int)], new StructType(PixelStructDef));
     public static readonly FunctionSymbol Frame = new("FRAME", [], [], ScriptType.String);
     public static readonly FunctionSymbol FrameRoi = new("FRAME", [], [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
+    public static readonly FunctionSymbol ImageRoi = new("ROI", [], [new("image", ScriptType.String), new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
 
     // --- 泛型集合操作 ---
     private static readonly TypeParameter T = new("T");
@@ -60,7 +61,7 @@ internal static class BuiltinFunctions
     /// 所有内置函数符号的静态缓存，避免每次反射枚举
     /// </summary>
     private static readonly FunctionSymbol[] All =
-        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Ocr, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Pixel, Frame, FrameRoi];
+        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Ocr, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Pixel, Frame, FrameRoi, ImageRoi];
 
     /// <summary>
     /// 获取所有内置函数符号

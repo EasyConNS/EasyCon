@@ -216,7 +216,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     try
     {
         ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
-        runner.Run(outdap, pad, null, frameDelegate, labelMatchDelegate, labelNames, cancellationToken);
+        runner.Run(outdap, pad, null, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, cancellationToken);
         outdap.Info("脚本运行完成");
     }
     catch (ScriptException ex)

@@ -1,3 +1,4 @@
+using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
@@ -96,7 +97,7 @@ public class ScriptService
         {
             try
             {
-                _runner.Run(output, pad, ocr, _frameDelegate, _labelMatchDelegate, _labelNames, _cts.Token);
+                _runner.Run(output, pad, ocr, _frameDelegate, MatExtensions.CropBase64, _labelMatchDelegate, _labelNames, _cts.Token);
                 LogOutput?.Invoke("-- 运行结束 --", Color.Lime);
             }
             catch (OperationCanceledException)

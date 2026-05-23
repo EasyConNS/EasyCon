@@ -20,6 +20,7 @@ internal interface IEvalContext
     IOutputAdapter? Output { get; }
     OcrDelegate? Ocr { get; }
     FrameDelegate? Frame { get; }
+    RoiDelegate? Roi { get; }
     LabelMatchDelegate? LabelMatch { get; }
     Random Rand { get; }
     int Timestamp { get; }

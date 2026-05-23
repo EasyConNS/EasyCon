@@ -92,7 +92,7 @@ public class ScriptService : IScriptService
                     return (int)md;
                 };
 
-                _runner.Run(_logService, pad, OcrDelegateFactory.Create(() => _captureService.GetMatFrame()), frameDelegate, labelMatchDelegate, labelNames, token);
+                _runner.Run(_logService, pad, OcrDelegateFactory.Create(() => _captureService.GetMatFrame()), frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)

@@ -10,7 +10,7 @@ public interface IRunner
 
     ImmutableArray<Diagnostic> Init(string code, ImmutableHashSet<string> extVarNames);
     ImmutableArray<Diagnostic> Load(string fileName, ImmutableHashSet<string> extVarNames);
-    void Run(IOutputAdapter output, ICGamePad pad, OcrDelegate? ocr, FrameDelegate? frameProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token);
+    void Run(IOutputAdapter output, ICGamePad pad, OcrDelegate? ocr, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token);
 
     string ToCode();
 

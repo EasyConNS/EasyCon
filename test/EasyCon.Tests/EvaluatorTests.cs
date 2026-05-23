@@ -35,7 +35,7 @@ public class EvaluatorTests
     {
         var output = new MockOutputAdapter();
         var compilation = Compilation.Create(SyntaxTree.Parse(code));
-        var result = compilation.Evaluate(output, null, null, null, null, null, new CancellationTokenSource().Token);
+        var result = compilation.Evaluate(output, null, null, null, null, null, null, new CancellationTokenSource().Token);
         return (result, output);
     }
 
@@ -663,7 +663,7 @@ PRINT ""found "" & $count & "" "" & $label");
     {
         var tree = SyntaxTree.Parse("$r = $undefined");
         var compilation = Compilation.Create(tree);
-        var result = compilation.Evaluate(new MockOutputAdapter(), null, null, null, null, null, CancellationToken.None);
+        var result = compilation.Evaluate(new MockOutputAdapter(), null, null, null, null, null, null, CancellationToken.None);
         Assert.That(result.Diagnostics.HasErrors(), Is.True);
     }
 

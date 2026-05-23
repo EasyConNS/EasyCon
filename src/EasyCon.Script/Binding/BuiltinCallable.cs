@@ -182,6 +182,12 @@ internal static class BuiltinCallable
         var base64 = ctx.Frame?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt());
         return Value.FromString(base64 ?? "!!ERR!!");
     }
+    public static Value ImplImageRoi(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        var image = args[0].AsString();
+        var result = ctx.Roi?.Invoke(image, args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt());
+        return Value.FromString(result ?? "!!ERR!!");
+    }
     /// <summary>
     /// 获取所有内置函数及其对应的 Callable。
     /// Timestamp 需要额外的 timestampFactory 闭包参数。
@@ -208,6 +214,7 @@ internal static class BuiltinCallable
             (BuiltinFunctions.Pixel, new DelegateCallable(ImplPixel)),
             (BuiltinFunctions.Frame, new DelegateCallable(ImplFrame)),
             (BuiltinFunctions.FrameRoi, new DelegateCallable(ImplFrameROI)),
+            (BuiltinFunctions.ImageRoi, new DelegateCallable(ImplImageRoi)),
         ];
     }
 }

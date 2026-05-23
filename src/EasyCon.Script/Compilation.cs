@@ -79,7 +79,7 @@ public sealed class Compilation
     }
 
     public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad? pad, OcrDelegate? ocr,
-        FrameDelegate? frameProvider, LabelMatchDelegate? labelMatch,
+        FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch,
         ImmutableHashSet<string>? labelNames,
         CancellationToken token)
     {
@@ -92,6 +92,7 @@ public sealed class Compilation
             Output = output,
             Ocr = ocr,
             Frame = frameProvider,
+            Roi = roiProvider,
             LabelMatch = labelMatch,
         };
         var value = evaluator.Evaluate();
