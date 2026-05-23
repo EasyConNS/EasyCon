@@ -24,6 +24,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly StringBuilder _logBuilder = new();
     private const int MaxLogLength = 100_000;
     private Window? _editorWindow;
+    private Window? _tagEditorWindow;
     private MonitorViewModel? _monitorViewModel;
 
     // 窗口标题（含版本号）
@@ -149,6 +150,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand StartRecordCommand { get; }
     public ICommand StopRecordCommand { get; }
     public ICommand ShowMonitorCommand { get; }
+    public ICommand OpenTagEditorCommand { get; }
 
     // 刷新数据源命令
     public ICommand RefreshSerialPortsCommand { get; }
@@ -265,6 +267,7 @@ public partial class MainWindowViewModel : ViewModelBase
         StartRecordCommand = new RelayCommand(StartRecord);
         StopRecordCommand = new RelayCommand(StopRecord);
         ShowMonitorCommand = new RelayCommand(ShowMonitor);
+        OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
 
         // 初始化示例数据
         InitializeSampleData();
@@ -557,6 +560,21 @@ public partial class MainWindowViewModel : ViewModelBase
         _editorWindow.Show();
     }
 
+    private void OpenTagEditor()
+    {
+        if (_tagEditorWindow != null)
+        {
+            if (_tagEditorWindow.WindowState == WindowState.Minimized)
+                _tagEditorWindow.WindowState = WindowState.Normal;
+            _tagEditorWindow.Activate();
+            return;
+        }
+
+        _tagEditorWindow = new TagEditorWindow();
+        _tagEditorWindow.Closed += (_, _) => _tagEditorWindow = null;
+        _tagEditorWindow.Show();
+    }
+
     partial void OnCurrentScriptPathChanged(string value)
     {
         (OpenEditorCommand as RelayCommand)?.NotifyCanExecuteChanged();
@@ -681,6 +699,12 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _editorWindow.Close();
             _editorWindow = null;
+        }
+
+        if (_tagEditorWindow != null)
+        {
+            _tagEditorWindow.Close();
+            _tagEditorWindow = null;
         }
 
         // 关闭嵌入式监视器

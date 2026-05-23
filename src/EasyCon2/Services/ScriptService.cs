@@ -10,7 +10,9 @@ namespace EasyCon2.Services;
 public class ScriptService
 {
     private readonly EasyRunner _runner = new();
-    private Dictionary<string, Func<int>> _extVar = [];
+    private FrameDelegate? _frameDelegate;
+    private LabelMatchDelegate? _labelMatchDelegate;
+    private ImmutableHashSet<string>? _labelNames;
     private CancellationTokenSource _cts = new();
 
     /// <summary>脚本运行状态变化</summary>
@@ -28,12 +30,14 @@ public class ScriptService
     /// 编译脚本
     /// </summary>
     public (bool success, string? errorLine, string? errorMessage) Compile(
-        string code, string? fileName, Dictionary<string, Func<int>> externalGetters)
+        string code, string? fileName, FrameDelegate? frameDelegate, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames)
     {
         try
         {
-            _extVar = externalGetters;
-            var extVarNames = externalGetters.Select(v => v.Key).ToImmutableHashSet();
+            _frameDelegate = frameDelegate;
+            _labelMatchDelegate = labelMatch;
+            _labelNames = labelNames;
+            var extVarNames = labelNames ?? [];
             ImmutableArray<Diagnostic> diag = fileName == null
                 ? _runner.Init(code, extVarNames)
                 : _runner.Load(fileName, extVarNames);
@@ -54,9 +58,9 @@ public class ScriptService
     /// 格式化脚本（编译后返回格式化代码）
     /// </summary>
     public (bool success, string? formattedCode, string? errorLine, string? errorMessage) Format(
-        string code, string? fileName, Dictionary<string, Func<int>> externalGetters)
+        string code, string? fileName, FrameDelegate? frameDelegate, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames)
     {
-        var (success, errorLine, errorMessage) = Compile(code, fileName, externalGetters);
+        var (success, errorLine, errorMessage) = Compile(code, fileName, frameDelegate, labelMatch, labelNames);
         if (!success)
             return (false, null, errorLine, errorMessage);
 
@@ -92,7 +96,7 @@ public class ScriptService
         {
             try
             {
-                _runner.Run(output, pad, ocr, _extVar, _cts.Token);
+                _runner.Run(output, pad, ocr, _frameDelegate, _labelMatchDelegate, _labelNames, _cts.Token);
                 LogOutput?.Invoke("-- 运行结束 --", Color.Lime);
             }
             catch (OperationCanceledException)

@@ -3,7 +3,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Point = System.Drawing.Point;
 
 namespace EasyCon.Capture;
 
@@ -21,6 +20,11 @@ public record ImgLabel
     public int TargetY { get; set; } = 0;
     public int TargetWidth { get; set; } = 0;
     public int TargetHeight { get; set; } = 0;
+
+    public bool UseGrayscale { get; set; } = false;
+    public bool UseBinary { get; set; } = false;
+    public bool UseGaussianBlur { get; set; } = false;
+    public bool UseOther { get; set; } = false;
 
     [JsonIgnore]
     public string name { get; set; } = "5号路蛋屋主人";
@@ -153,66 +157,5 @@ public static class ILExt
     private static bool ILTxtType(this SearchMethod method)
     {
         return method == SearchMethod.TesserDetect;
-    }
-
-    public static List<Point> Search(this ImgLabel self, Mat ss, out double md)
-    {
-        if (self.TargetWidth > self.RangeWidth || self.TargetHeight > self.RangeHeight)
-            throw new Exception("搜索图片大于搜索范围");
-
-        try
-        {
-            // 从原始Bitmap中绘制裁剪区域到新的Bitmap对象
-            using var range = new Mat(ss, self._round);
-            //#if DEBUG
-            //using (new Window("结果1", range))
-            //{
-            //    Cv2.WaitKey();
-            //}
-            //#endif
-            List<Point> result = new();
-            if (self.searchMethod == SearchMethod.TesserDetect)
-            {
-                using var target = new Mat(ss, self._target);
-                var rlttxt = ECSearch.FindOCR(self.ImgBase64, target, out md);
-                result = [new Point(self.TargetX - self.RangeX, self.TargetY - self.RangeY)];
-            }
-            else
-            {
-                if (self.searchMethod == SearchMethod.MaskedSqDiffNormed)
-                {
-                    byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
-                    using var targetRGBA = Cv2.ImDecode(imageBytes, ImreadModes.Unchanged);
-                    if (targetRGBA.Channels() != 4)
-                        throw new Exception("Masked matching requires RGBA image");
-                    Cv2.Split(targetRGBA, out var channels);
-                    using var bgr = new Mat();
-                    Cv2.Merge([channels[0], channels[1], channels[2]], bgr);
-                    using var mask = channels[3];
-                    var pt = MatchFacts.MatchTemplateMasked(range, bgr, mask, out md);
-                    result = [new Point(pt.X, pt.Y)];
-                }
-                else
-                {
-                    byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
-                    using var target = imageBytes.ToMat();
-                    result = ECSearch.FindPic(range, target, self.searchMethod, out md);
-                }
-            }
-            md *= 100;
-
-            // update the search pic
-            //if (md >= _matchDegree)
-            //{
-            //    Debug.WriteLine("update img");
-            //    searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
-            //}
-
-            return result;
-        }
-        catch (OpenCVException ex)
-        {
-            throw new Exception($"搜图标签[{self.name}]执行异常：{ex.Message}");
-        }
     }
 }

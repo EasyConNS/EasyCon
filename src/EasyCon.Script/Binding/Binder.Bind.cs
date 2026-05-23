@@ -241,6 +241,7 @@ internal sealed partial class Binder
         //      while (<var> <= upperBound)
         //      {
         //          <body>
+        //          if (<var> == upperBound) break;
         //          continue:
         //          <var> = <var> + 1
         //      }
@@ -249,6 +250,10 @@ internal sealed partial class Binder
              condition,
              Block(syntax,
                 body,
+                GotoTrue(syntax, breakLabel, new BoundBinaryExpression(syntax,
+                    Variable(forCond.Lower, variable!),
+                    BoundBinaryOperator.Bind(TokenType.EQL, ScriptType.Int, ScriptType.Int)!,
+                    upperBound)),
                 Label(syntax, continueLabel),
                 stepStmt
                 ),
@@ -380,6 +385,13 @@ internal sealed partial class Binder
 
     private BoundStmt BindConstantDeclaration(ConstantDeclStmt syntax)
     {
+        // 特殊常量不能被赋值
+        if (Formatter.IsSpecialConst(syntax.Constant.Tag))
+        {
+            _diagnostics.ReportCannotAssignToSpecialConstant(syntax.Constant.Syntax);
+            return BindErrorStatement(syntax);
+        }
+
         var boundexpr = BindExpression(syntax.Expression);
         if (boundexpr.ConstantValue == Value.Void)
         {
@@ -519,7 +531,7 @@ internal sealed partial class Binder
         return syntax switch
         {
             LiteralExpr lit => BindLiterExpression(lit),
-            ExtVarExpr ext => BindExtraLabel(ext),
+            RuntimeValueExpr rv => BindRuntimeValue(rv),
             UnaryExpression unary => BindUnaryExpression(unary),
             BinaryExpression binary => BindBinaryExpression(binary),
             ParenthesizedExpression pre => BindExpression(pre.Expression),
@@ -541,19 +553,21 @@ internal sealed partial class Binder
         return new BoundErrorExpression(syntax);
     }
 
-    private BoundExpr BindExtraLabel(ExtVarExpr syntax)
+    private BoundExpr BindRuntimeValue(RuntimeValueExpr syntax)
     {
-        var name = syntax.Name;
+        // 特殊常量（__TIME__ 等）
+        if (Formatter.IsSpecialConst(syntax.Name))
+            return new BoundRuntimeValueExpression(syntax, syntax.Name, Formatter.SpecialConsts[syntax.Name]);
 
-        // 在 binder 阶段验证外部变量名称
-        if (!_scope.TryFindoutLabel(name))
+        // 外部变量（@label）
+        if (!_scope.TryFindoutLabel(syntax.Name))
         {
-            _diagnostics.ReportImageLabelNotFound(syntax.Syntax.Location, name);
+            _diagnostics.ReportImageLabelNotFound(syntax.Syntax.Location, syntax.Name);
             return new BoundErrorExpression(syntax);
         }
 
-        _ilNames.Add(name);
-        return new BoundExternalVariableExpression(syntax, name);
+        _ilNames.Add(syntax.Name);
+        return new BoundRuntimeValueExpression(syntax, syntax.Name, ScriptType.Int);
     }
 
     private BoundLiteralExpression BindLiterExpression(LiteralExpr syntax)

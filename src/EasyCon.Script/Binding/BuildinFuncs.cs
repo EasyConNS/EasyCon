@@ -1,9 +1,23 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 
 namespace EasyCon.Script.Binding;
 
 internal static class BuiltinFunctions
 {
+    // 内置 Pixel struct
+    internal static readonly EcsStructDef PixelStructDef = CreatePixelDef();
+    private static EcsStructDef CreatePixelDef()
+    {
+        var def = new EcsStructDef { Name = "Pixel" };
+        def.Fields.Add(new EcsFieldDef { Name = "R", FieldType = ScriptType.Int });
+        def.Fields.Add(new EcsFieldDef { Name = "G", FieldType = ScriptType.Int });
+        def.Fields.Add(new EcsFieldDef { Name = "B", FieldType = ScriptType.Int });
+        def.Fields.Add(new EcsFieldDef { Name = "A", FieldType = ScriptType.Int });
+        StructLayout.Calculate(def);
+        return def;
+    }
+
     public static readonly FunctionSymbol Wait = new("WAIT", [], [new("duration", ScriptType.Int, hasDefault: true, defaultValue: 50)], ScriptType.Void);
     public static readonly FunctionSymbol Print = new("PRINT", [], [new("message", ScriptType.String, hasDefault: true, defaultValue: "")], ScriptType.Void);
     public static readonly FunctionSymbol Alert = new("ALERT", [], [new("message", ScriptType.String)], ScriptType.Void);
@@ -12,6 +26,10 @@ internal static class BuiltinFunctions
     public static readonly FunctionSymbol Amiibo = new("AMIIBO", [], [new("index", ScriptType.Int)], ScriptType.Void);
     public static readonly FunctionSymbol Beep = new("BEEP", [], [new("freq", ScriptType.Int), new("duration", ScriptType.Int)], ScriptType.Void);
     public static readonly FunctionSymbol Ocr = new("OCR", [], [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int), new("lang", ScriptType.String, hasDefault: true, defaultValue: "chi_sim")], ScriptType.String);
+    public static readonly FunctionSymbol Env = new("ENV", [], [new("name", ScriptType.String)], ScriptType.String);
+    public static readonly FunctionSymbol Pixel = new("PIXEL", [], [new("x", ScriptType.Int), new("y", ScriptType.Int)], new StructType(PixelStructDef));
+    public static readonly FunctionSymbol Frame = new("FRAME", [], [], ScriptType.String);
+    public static readonly FunctionSymbol FrameRoi = new("FRAME", [], [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
 
     // --- 泛型集合操作 ---
     private static readonly TypeParameter T = new("T");
@@ -36,13 +54,13 @@ internal static class BuiltinFunctions
     public static readonly FunctionSymbol IntConvert = new("INT", [T], [new("var", T)], ScriptType.Int);
 
     // JQ<T>(json: string, query: string): T
-    //public static readonly FunctionSymbol Jq = new("JQ", [T], [new("json", ScriptType.String), new("query", ScriptType.String)], T);
+    public static readonly FunctionSymbol Jq = new("JQ", [T], [new("json", ScriptType.String), new("query", ScriptType.String)], T);
 
     /// <summary>
     /// 所有内置函数符号的静态缓存，避免每次反射枚举
     /// </summary>
     private static readonly FunctionSymbol[] All =
-        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Ocr, Append, Length, StrEncode, StrConvert, IntConvert];
+        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Ocr, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Pixel, Frame, FrameRoi];
 
     /// <summary>
     /// 获取所有内置函数符号

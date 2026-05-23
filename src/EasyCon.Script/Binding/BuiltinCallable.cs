@@ -1,7 +1,9 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyScript;
 using System.Collections.Immutable;
 using System.Text;
+using System.Text.Json;
 
 namespace EasyCon.Script.Binding;
 
@@ -70,8 +72,46 @@ internal static class BuiltinCallable
 
     public static Value ImplJq(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
-        // JQ implementation placeholder
-        throw new NotImplementedException("function not implemented");
+        var json = JsonDocument.Parse(args[0].AsString()).RootElement;
+        var query = args[1].AsString();
+
+        var current = json;
+        var i = 0;
+        while (i < query.Length)
+        {
+            if (query[i] == '.')
+            {
+                i++;
+                var start = i;
+                while (i < query.Length && query[i] != '.' && query[i] != '[')
+                    i++;
+                current = current.GetProperty(query[start..i]);
+            }
+            else if (query[i] == '[')
+            {
+                i++;
+                var start = i;
+                while (query[i] != ']')
+                    i++;
+                current = current[int.Parse(query[start..i])];
+                i++;
+            }
+            else
+            {
+                i++;
+            }
+        }
+
+        return current.ValueKind switch
+        {
+            JsonValueKind.Number => current.GetInt32(),
+            JsonValueKind.String => Value.FromString(current.GetString()!),
+            JsonValueKind.True => Value.FromBool(true),
+            JsonValueKind.False => Value.FromBool(false),
+            JsonValueKind.Array => Value.CreateArray(ScriptType.Int,
+                current.EnumerateArray().Select(e => (Value)e.GetInt32())),
+            _ => Value.FromString(current.GetRawText()),
+        };
     }
 
     public static Value ImplConvertInt(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
@@ -107,6 +147,41 @@ internal static class BuiltinCallable
         };
     }
 
+    public static Value ImplEnv(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        return Environment.GetEnvironmentVariable(args[0].AsString()) ?? "";
+    }
+
+    public static Value ImplPixel(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        var frame = ctx.Frame?.Invoke(-1,-1,-1,-1);
+        if (frame == null) throw new Exception("无法获取帧数据");
+        dynamic img = frame;
+        int x = args[0].AsInt();
+        int y = args[1].AsInt();
+        int width = (int)img.Width;
+        int height = (int)img.Height;
+        if (x < 0 || x >= width || y < 0 || y >= height)
+            throw new Exception($"像素坐标越界 ({x}, {y})，帧大小 {width}x{height}");
+        dynamic pixel = img[x, y];
+        var instance = new EcsStruct(BuiltinFunctions.PixelStructDef);
+        instance.SetField(instance.Definition.Fields[0], (int)(byte)pixel.R);
+        instance.SetField(instance.Definition.Fields[1], (int)(byte)pixel.G);
+        instance.SetField(instance.Definition.Fields[2], (int)(byte)pixel.B);
+        instance.SetField(instance.Definition.Fields[3], (int)(byte)pixel.A);
+        return Value.FromStruct(instance);
+    }
+
+    public static Value ImplFrame(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        var base64 = ctx.Frame?.Invoke(-1, -1, -1, -1);
+        return Value.FromString(base64 ?? "!!ERR!!");
+    }
+    public static Value ImplFrameROI(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        var base64 = ctx.Frame?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt());
+        return Value.FromString(base64 ?? "!!ERR!!");
+    }
     /// <summary>
     /// 获取所有内置函数及其对应的 Callable。
     /// Timestamp 需要额外的 timestampFactory 闭包参数。
@@ -123,11 +198,16 @@ internal static class BuiltinCallable
             (BuiltinFunctions.Amiibo, new DelegateCallable(ImplAmiibo)),
             (BuiltinFunctions.Beep, new DelegateCallable(ImplBeep)),
             (BuiltinFunctions.Ocr, new DelegateCallable(ImplOcr)),
+            (BuiltinFunctions.Env, new DelegateCallable(ImplEnv)),
             (BuiltinFunctions.Length, new DelegateCallable(ImplLength)),
             (BuiltinFunctions.Append, new DelegateCallable(ImplAppend)),
             (BuiltinFunctions.StrEncode, new DelegateCallable(ImplStrEncode)),
             (BuiltinFunctions.IntConvert, new DelegateCallable(ImplConvertInt)),
             (BuiltinFunctions.StrConvert, new DelegateCallable(ImplConvertString)),
+            (BuiltinFunctions.Jq, new DelegateCallable(ImplJq)),
+            (BuiltinFunctions.Pixel, new DelegateCallable(ImplPixel)),
+            (BuiltinFunctions.Frame, new DelegateCallable(ImplFrame)),
+            (BuiltinFunctions.FrameRoi, new DelegateCallable(ImplFrameROI)),
         ];
     }
 }

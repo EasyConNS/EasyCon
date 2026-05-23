@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.Core.TagEditor"
+             xmlns:cvt="using:EasyCon2.Avalonia.Core.Converters"
+             x:Class="EasyCon2.Avalonia.Core.TagEditor.TagEditorView"
+             x:DataType="vm:TagEditorViewModel">
+
+    <UserControl.Resources>
+        <cvt:SearchMethodDescriptionConverter x:Key="SearchMethodDesc"/>
+    </UserControl.Resources>
+
+    <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+            BorderThickness="1"
+            CornerRadius="4"
+            Padding="8">
+
+        <Grid RowDefinitions="*,Auto" RowSpacing="8">
+
+            <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+                    BorderThickness="1"
+                    CornerRadius="2"
+                    ClipToBounds="True">
+                <Image Source="{Binding SourceImage}"
+                       Stretch="Uniform"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+            </Border>
+
+            <StackPanel Grid.Row="1" Spacing="4" Margin="0,4,0,4">
+
+                <!-- 标签名 + 搜索方法 -->
+                <StackPanel Orientation="Horizontal" Spacing="16">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="标签名:" VerticalAlignment="Center" Width="56"/>
+                        <TextBox Text="{Binding LabelName}" MinWidth="120"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="搜索方法:" VerticalAlignment="Center" Width="64"/>
+                        <ComboBox SelectedItem="{Binding SearchMethod}"
+                                  ItemsSource="{x:Static vm:TagEditorViewModel.SearchMethods}"
+                                  MinWidth="140">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Converter={StaticResource SearchMethodDesc}}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- 预处理选项 -->
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <CheckBox Content="灰度" IsChecked="{Binding UseGrayscale}"/>
+                        <CheckBox Content="二值" IsChecked="{Binding UseBinary}"/>
+                        <CheckBox Content="高斯模糊" IsChecked="{Binding UseGaussianBlur}"/>
+                        <CheckBox Content="其他" IsChecked="{Binding UseOther}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <Grid ColumnDefinitions="*,*,Auto,Auto"
+                      ColumnSpacing="16">
+
+                    <!-- 目标位置 -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="目标位置:" FontWeight="SemiBold"/>
+                        <Grid ColumnDefinitions="24,120,24,120">
+                            <TextBlock Text="X:" VerticalAlignment="Center"/>
+                            <NumericUpDown Grid.Column="1" Value="{Binding TargetX}"
+                                           Minimum="0" Maximum="9999"/>
+                            <TextBlock Grid.Column="2" Text="Y:" VerticalAlignment="Center"/>
+                            <NumericUpDown Grid.Column="3" Value="{Binding TargetY}"
+                                           Minimum="0" Maximum="9999"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="24,120,24,120">
+                            <TextBlock Text="宽:" VerticalAlignment="Center"/>
+                            <NumericUpDown Grid.Column="1" Value="{Binding TargetWidth}"
+                                           Minimum="0" Maximum="9999"/>
+                            <TextBlock Grid.Column="2" Text="高:" VerticalAlignment="Center"/>
+                            <NumericUpDown Grid.Column="3" Value="{Binding TargetHeight}"
+                                           Minimum="0" Maximum="9999"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- 搜索范围 -->
+                    <StackPanel Grid.Column="1" Spacing="4">
+                        <TextBlock Text="搜索范围:" FontWeight="SemiBold"/>
+                        <Grid ColumnDefinitions="24,120,24,120">
+                            <TextBlock Text="X:" VerticalAlignment="Center"/>
+                            <NumericUpDown Grid.Column="1" Value="{Binding RangeX}"
+                                           Minimum="0" Maximum="9999"/>
+                            <TextBlock Grid.Column="2" Text="Y:" VerticalAlignment="Center"/>
+                            <NumericUpDown Grid.Column="3" Value="{Binding RangeY}"
+                                           Minimum="0" Maximum="9999"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="24,120,24,120">
+                            <TextBlock Text="宽:" VerticalAlignment="Center"/>
+                            <NumericUpDown Grid.Column="1" Value="{Binding RangeWidth}"
+                                           Minimum="0" Maximum="9999"/>
+                            <TextBlock Grid.Column="2" Text="高:" VerticalAlignment="Center"/>
+                            <NumericUpDown Grid.Column="3" Value="{Binding RangeHeight}"
+                                           Minimum="0" Maximum="9999"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- 目标图 preview -->
+                    <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="目标图" HorizontalAlignment="Center" FontSize="11"/>
+                        <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+                                BorderThickness="1"
+                                Width="120" Height="80"
+                                ClipToBounds="True">
+                            <Image Source="{Binding TargetImage}"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- 结果图 preview -->
+                    <StackPanel Grid.Column="3" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="结果图" HorizontalAlignment="Center" FontSize="11"/>
+                        <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+                                BorderThickness="1"
+                                Width="120" Height="80"
+                                ClipToBounds="True">
+                            <Image Source="{Binding RangePreviewImage}"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

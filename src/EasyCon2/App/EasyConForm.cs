@@ -16,6 +16,7 @@ using EasyCon2.Views;
 using EasyDevice;
 using EasyScript;
 using GamepadApi;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
@@ -641,9 +642,11 @@ namespace EasyCon2.App
 
         private bool ScriptCompile()
         {
-            var externalGetters = _captureService.BuildExternalGetters();
+            var frameDelegate = _captureService.BuildFrameDelegate();
+            var labelMatchDelegate = _captureService.BuildLabelMatchDelegate();
+            var labelNames = _captureService.GetLabelNames();
             var (success, errorLine, error) = _scriptService.Compile(
-                scriptEditor.Text, scriptEditor.FileName, externalGetters);
+                scriptEditor.Text, scriptEditor.FileName, frameDelegate, labelMatchDelegate, labelNames);
 
             if (!success)
             {
@@ -660,9 +663,11 @@ namespace EasyCon2.App
 
         private void ScriptRun()
         {
-            var externalGetters = _captureService.BuildExternalGetters();
+            var frameDelegate = _captureService.BuildFrameDelegate();
+            var labelMatchDelegate = _captureService.BuildLabelMatchDelegate();
+            var labelNames = _captureService.GetLabelNames();
             var (success, errorLine, error) = _scriptService.Compile(
-                scriptEditor.Text, scriptEditor.FileName, externalGetters);
+                scriptEditor.Text, scriptEditor.FileName, frameDelegate, labelMatchDelegate, labelNames);
 
             if (!success)
             {
@@ -792,9 +797,11 @@ namespace EasyCon2.App
 
         private void compileButton_Click(object sender, EventArgs e)
         {
-            var externalGetters = _captureService.BuildExternalGetters();
+            var frameDelegate = _captureService.BuildFrameDelegate();
+            var labelMatchDelegate = _captureService.BuildLabelMatchDelegate();
+            var labelNames = _captureService.GetLabelNames();
             var (success, formattedCode, errorLine, error) = _scriptService.Format(
-                scriptEditor.Text, scriptEditor.FileName, externalGetters);
+                scriptEditor.Text, scriptEditor.FileName, frameDelegate, labelMatchDelegate, labelNames);
 
             if (success)
             {

@@ -26,6 +26,7 @@ public enum BoundNodeKind
     UnaryExpression,
     ConversionExpression,
     CallExpression,
+    RuntimeValue,
 
     StructInit,
     FieldAccess,

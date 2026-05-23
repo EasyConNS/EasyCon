@@ -352,6 +352,8 @@ internal sealed partial class Binder
     {
         var result = new BoundScope(null);
 
+        result.TryDeclareStruct("Pixel", BuiltinFunctions.PixelStructDef);
+
         foreach (var f in BuiltinFunctions.GetAll())
             result.TryDeclareFunction(f);
 

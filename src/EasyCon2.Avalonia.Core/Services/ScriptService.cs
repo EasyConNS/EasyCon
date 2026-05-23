@@ -14,7 +14,9 @@ public class ScriptService : IScriptService
     private readonly ILogService _logService;
     private readonly IDeviceService _deviceService;
     private readonly EasyRunner _runner = new();
-    private Dictionary<string, Func<int>> _externalGetters = [];
+    private FrameDelegate? _frameDelegate;
+    private LabelMatchDelegate? _labelMatchDelegate;
+    private ImmutableHashSet<string>? _labelNames;
     private CancellationTokenSource _cts = new();
     private bool _scriptCompiling;
     private bool _scriptRunning;
@@ -33,9 +35,11 @@ public class ScriptService : IScriptService
         _deviceService = deviceService;
     }
 
-    public void SetExternalGetters(Dictionary<string, Func<int>> getters)
+    public void SetFrameProviders(FrameDelegate? frame, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? names)
     {
-        _externalGetters = getters;
+        _frameDelegate = frame;
+        _labelMatchDelegate = labelMatch;
+        _labelNames = names;
     }
 
     public async Task<bool> Compile(string scriptText, string? fileName)
@@ -45,7 +49,7 @@ public class ScriptService : IScriptService
 
         try
         {
-            var extVarNames = _externalGetters.Select(v => v.Key).ToImmutableHashSet();
+            var extVarNames = _labelNames ?? [];
             ImmutableArray<Diagnostic> diag = fileName == null
                 ? _runner.Init(scriptText, extVarNames)
                 : _runner.Load(fileName, extVarNames);
@@ -85,7 +89,7 @@ public class ScriptService : IScriptService
             LogPrint?.Invoke("-- 开始运行 --", "Lime");
             try
             {
-                _runner.Run(_logService, _deviceService.CreateGamePadAdapter(), null, _externalGetters, _cts.Token);
+                _runner.Run(_logService, _deviceService.CreateGamePadAdapter(), null, _frameDelegate, _labelMatchDelegate, _labelNames, _cts.Token);
                 LogPrint?.Invoke("-- 运行结束 --", "Lime");
                 _logService.AddLog("运行结束");
             }

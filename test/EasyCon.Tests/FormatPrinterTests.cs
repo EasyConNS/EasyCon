@@ -32,6 +32,26 @@ ENDIF
         Assert.That(Format(code), Is.EqualTo(Normalize(expected)));
     }
 
+    [Test]
+    public void Format_VariableFor_IndentsBranchBodies()
+    {
+        var code = """
+IF @你好>95
+ENDIF
+for $i = 0 to 5
+next
+""";
+
+        var expected = """
+IF @你好 > 95
+ENDIF
+FOR $i = 0 TO 5
+NEXT
+""";
+
+        Assert.That(Format(code), Is.EqualTo(Normalize(expected)));
+    }
+
     private static string Format(string code)
     {
         var tree = SyntaxTree.Parse(code);

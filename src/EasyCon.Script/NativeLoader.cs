@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace EasyCon.Script;
 
@@ -199,6 +200,11 @@ internal sealed class NativeLoader
             return Value.FromUInt64(Convert.ToUInt64(result));
         if (returnType.Equals(ScriptType.Double))
             return Value.FromDouble(Convert.ToDouble(result));
+        if (returnType.Equals(ScriptType.String))
+        {
+            if((IntPtr)result==0) return "<EMPTY>";
+            return Marshal.PtrToStringUTF8((IntPtr)result!) ?? "<EMPTY>";
+        }  
         if (returnType.Equals(ScriptType.Ptr))
             return Value.FromPtr(((IntPtr)result!).ToInt64());
         if (returnType is StructType st)
@@ -212,10 +218,11 @@ internal sealed class NativeLoader
     /// <summary>
     /// 将字符串按平台编码分配到非托管内存：Windows 用 UTF-16，Linux/macOS 用 ANSI（.NET 上映射为 UTF-8）
     /// </summary>
-    private static IntPtr MarshalStringToNative(string value) =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? Marshal.StringToHGlobalUni(value)
-            : Marshal.StringToHGlobalAnsi(value);
+    private static IntPtr MarshalStringToNative(string value)
+    {
+        if (value == null) return IntPtr.Zero;
+        return Marshal.StringToCoTaskMemUTF8(value);
+    }
 
     private static Type GetNativeType(ScriptType type)
     {

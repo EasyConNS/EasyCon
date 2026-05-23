@@ -35,7 +35,7 @@ public class EvaluatorTests
     {
         var output = new MockOutputAdapter();
         var compilation = Compilation.Create(SyntaxTree.Parse(code));
-        var result = compilation.Evaluate(output, null, null, [], new CancellationTokenSource().Token);
+        var result = compilation.Evaluate(output, null, null, null, null, null, new CancellationTokenSource().Token);
         return (result, output);
     }
 
@@ -156,6 +156,27 @@ FOR $i = 1 TO 3
     NEXT
 NEXT
 RETURN $total").AsInt(), Is.EqualTo(9));
+    }
+
+    [Test]
+    public void For_IteratorEqualsUpperBound_AfterLoop()
+    {
+        Assert.That(EvalValue(@"
+$i = 0
+FOR $i = 1 TO 5
+NEXT
+RETURN $i").AsInt(), Is.EqualTo(5));
+    }
+
+    [Test]
+    public void For_IteratorEqualsUpperBound_VariableBound()
+    {
+        Assert.That(EvalValue(@"
+$i = 0
+$limit = 10
+FOR $i = 1 TO $limit
+NEXT
+RETURN $i").AsInt(), Is.EqualTo(10));
     }
 
     #endregion
@@ -642,7 +663,7 @@ PRINT ""found "" & $count & "" "" & $label");
     {
         var tree = SyntaxTree.Parse("$r = $undefined");
         var compilation = Compilation.Create(tree);
-        var result = compilation.Evaluate(new MockOutputAdapter(), null, null, [], CancellationToken.None);
+        var result = compilation.Evaluate(new MockOutputAdapter(), null, null, null, null, null, CancellationToken.None);
         Assert.That(result.Diagnostics.HasErrors(), Is.True);
     }
 

@@ -98,8 +98,6 @@ internal sealed partial class Parser
 
     public CompicationUnit ParseProgram()
     {
-        int address = 1;
-
         var unit = new Stack<List<Statement>>();
         unit.Push([]);
         var result = unit.Peek();
@@ -150,9 +148,6 @@ internal sealed partial class Parser
             {
                 st = new EmptyStmt();
             }
-
-            // update address
-            st.Address = address;
 
             if (st is ImportStmt)
             {
@@ -267,12 +262,12 @@ internal sealed partial class Parser
 
                         st = result.First().Kind switch
                         {
-                            StatementKind.IfStmt => new IfBlock((IfStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.ForStmt => new ForBlock((ForStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.WhileStmt => new WhileBlock((WhileStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.UntilStmt => new UntilBlock((UntilStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.FuncDecl => new FuncDeclBlock((FuncStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.StructDecl => new StructDeclBlock((StructStmt)result.First(), body.Skip(1).OfType<StructFieldStmt>().ToImmutableArray(), (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            StatementKind.IfStmt => new IfBlock((IfStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.ForStmt => new ForBlock((ForStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.WhileStmt => new WhileBlock((WhileStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.UntilStmt => new UntilBlock((UntilStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.FuncDecl => new FuncDeclBlock((FuncStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.StructDecl => new StructDeclBlock((StructStmt)result.First(), body.Skip(1).OfType<StructFieldStmt>().ToImmutableArray(), (EndBlockStmt)endStmt),
                             _ => st // 保持原样
                         };
                         result = unit.Peek();
@@ -286,8 +281,6 @@ internal sealed partial class Parser
             }
 
             result.Add(st);
-            address += 1;
-
         }
         if (unit.Count > 1)
         {
@@ -343,7 +336,6 @@ internal sealed partial class Parser
             yield return (start, start + length);
         }
     }
-
 }
 
 public static class TokExt

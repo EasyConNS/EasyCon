@@ -146,6 +146,11 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         ReportError(constantToken.Location, $"重复定义的常量 '{constantToken.Value}'");
     }
 
+    public void ReportCannotAssignToSpecialConstant(Token constantToken)
+    {
+        ReportError(constantToken.Location, $"特殊常量 '{constantToken.Value}' 不能被赋值");
+    }
+
     public void ReportUnsupportedBinaryOperator(TextLocation location, Token opToken, ScriptType leftType, ScriptType rightType)
     {
         ReportError(location, $"不支持的运算符:{opToken.Value}对于类型 <{leftType}>和<{rightType}>");

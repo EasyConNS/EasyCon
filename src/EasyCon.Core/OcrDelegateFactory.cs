@@ -21,8 +21,7 @@ public static class OcrDelegateFactory
             if (w == 0 || h == 0) return "OCR ARGS ERR!";
 
             using var roi = new Mat(frame, new Rect(x, y, w, h));
-            Cv2.ImEncode(".png", roi, out var bytes);
-            using var ms = new MemoryStream(bytes);
+            using var ms = new MemoryStream(roi.ToPngBytes());
             return OCRDetect.TesserDetect(ms, out _, lang);
         };
     }

@@ -1,7 +1,10 @@
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon2.Forms;
+using EasyScript;
 using OpenCvSharp;
+using System.Collections.Immutable;
+using System.Windows.Controls;
 
 namespace EasyCon2.Services;
 
@@ -124,6 +127,58 @@ public class CaptureService
                     return (int)Math.Ceiling(md);
                 }
             }));
+    }
+
+    public FrameDelegate? BuildFrameDelegate()
+    {
+        if (_captureForm == null || _cvcap == null) return null;
+        var cap = _cvcap;
+        var frameLock = _frameLock;
+        return (x, y, w, h) =>
+        {
+            lock (frameLock)
+            {
+                using var frame = cap.GetMatFrame();
+                if (frame.Empty()) return null;
+                if (x >=0 &&  y >=0 && w >=0 && h >=0)
+                {
+                    x = Math.Clamp(x, 0, frame.Width);
+                    y = Math.Clamp(y, 0, frame.Height);
+                    w = Math.Clamp(w, 0, frame.Width - x);
+                    h = Math.Clamp(h, 0, frame.Height - y);
+
+                    using var roi = new Mat(frame, new Rect(x, y, w, h));
+                    if (w == 0 || h == 0) return null;
+                    return Convert.ToBase64String(roi.ToPngBytes());
+                }
+                return Convert.ToBase64String(frame.ToPngBytes());
+            }
+        };
+    }
+
+    public LabelMatchDelegate? BuildLabelMatchDelegate()
+    {
+        if (_captureForm == null || _cvcap == null) return null;
+        var labels = _captureForm.LoadedLabels.ToDictionary(il => il.name);
+        var cap = _cvcap;
+        var frameLock = _frameLock;
+        return labelName =>
+        {
+            if (!labels.TryGetValue(labelName, out var il)) return 0;
+            lock (frameLock)
+            {
+                using var mat = cap.GetMatFrame();
+                if (mat.Empty()) return 0;
+                il.Search(mat, out var md);
+                return (int)Math.Ceiling(md);
+            }
+        };
+    }
+
+    public ImmutableHashSet<string> GetLabelNames()
+    {
+        if (_captureForm == null) return [];
+        return _captureForm.LoadedLabels.Select(il => il.name).ToImmutableHashSet();
     }
 
     /// <summary>

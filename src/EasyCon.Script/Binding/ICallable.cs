@@ -19,6 +19,8 @@ internal interface IEvalContext
     ICGamePad? GamePad { get; }
     IOutputAdapter? Output { get; }
     OcrDelegate? Ocr { get; }
+    FrameDelegate? Frame { get; }
+    LabelMatchDelegate? LabelMatch { get; }
     Random Rand { get; }
     int Timestamp { get; }
     bool CancelLineBreak { get; set; }

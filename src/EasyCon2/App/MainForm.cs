@@ -13,6 +13,7 @@ using EasyCon2.Services;
 using EasyCon2.Views;
 using EasyDevice;
 using EasyScript;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -275,9 +276,11 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
             }
 
             // Compile first
-            var externalGetters = _captureService.BuildExternalGetters();
+            var frameDelegate = _captureService.BuildFrameDelegate();
+            var labelMatchDelegate = _captureService.BuildLabelMatchDelegate();
+            var labelNames = _captureService.GetLabelNames();
             var (success, errorLine, error) = _scriptService.Compile(
-                _textEditor.Text, _textEditor.TextDocument.FileName, externalGetters);
+                _textEditor.Text, _textEditor.TextDocument.FileName, frameDelegate, labelMatchDelegate, labelNames);
 
             if (!success)
             {
@@ -327,9 +330,11 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
 
     private void formatBtn_Click(object sender, EventArgs e)
     {
-        var externalGetters = _captureService.BuildExternalGetters();
+        var frameDelegate = _captureService.BuildFrameDelegate();
+        var labelMatchDelegate = _captureService.BuildLabelMatchDelegate();
+        var labelNames = _captureService.GetLabelNames();
         var (success, formatted, errorLine, error) = _scriptService.Format(
-            _textEditor.Text, _textEditor.TextDocument.FileName, externalGetters);
+            _textEditor.Text, _textEditor.TextDocument.FileName, frameDelegate, labelMatchDelegate, labelNames);
 
         if (success)
         {
@@ -542,9 +547,11 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         }
 
         // Compile
-        var externalGetters = _captureService.BuildExternalGetters();
+        var frameDelegate = _captureService.BuildFrameDelegate();
+        var labelMatchDelegate = _captureService.BuildLabelMatchDelegate();
+        var labelNames = _captureService.GetLabelNames();
         var (success, errorLine, error) = _scriptService.Compile(
-            _textEditor.Text, _textEditor.TextDocument.FileName, externalGetters);
+            _textEditor.Text, _textEditor.TextDocument.FileName, frameDelegate, labelMatchDelegate, labelNames);
         if (!success)
         {
             MessageBox.Show(errorLine != null ? $"{errorLine}：{error}" : error, "编译出错");
@@ -618,9 +625,11 @@ public partial class MainForm : Form, IOutputAdapter, IControllerAdapter
         }
 
         // Compile
-        var externalGetters = _captureService.BuildExternalGetters();
+        var frameDelegate = _captureService.BuildFrameDelegate();
+        var labelMatchDelegate = _captureService.BuildLabelMatchDelegate();
+        var labelNames = _captureService.GetLabelNames();
         var (success, errorLine, error) = _scriptService.Compile(
-            _textEditor.Text, _textEditor.TextDocument.FileName, externalGetters);
+            _textEditor.Text, _textEditor.TextDocument.FileName, frameDelegate, labelMatchDelegate, labelNames);
         if (!success)
         {
             MessageBox.Show(errorLine != null ? $"{errorLine}：{error}" : error, "编译出错");

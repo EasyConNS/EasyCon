@@ -68,7 +68,7 @@ internal partial class Parser
         if (token.Value == "_")
         {
             var target = new DiscardExpr(token);
-            var op = Match(t => t == TokenType.ASSIGN || t.OperatorIsAug());
+            var op = Match(TokenType.ASSIGN);
             var eexp = ParseExpression();
             MatchEOF();
             return new AssignmentStmt(token, target, op, eexp);
@@ -155,7 +155,7 @@ internal partial class Parser
             {
                 Advance();
                 var fieldToken = Match(TokenType.IDENT);
-                target = new FieldAccessExpr(fieldToken, target, fieldToken.Value);
+                target = new FieldAccessExpr(fieldToken, target);
             }
             else
             {
@@ -441,7 +441,7 @@ internal partial class Parser
             {
                 Advance();
                 var fieldToken = Match(TokenType.IDENT);
-                expr = new FieldAccessExpr(fieldToken, expr, fieldToken.Value);
+                expr = new FieldAccessExpr(fieldToken, expr);
             }
             else
                 break;
@@ -452,9 +452,9 @@ internal partial class Parser
     private BaseExpr ParseStructInit()
     {
         var nameToken = Match(TokenType.IDENT);
-        Match(TokenType.OpenBrace);
-        Match(TokenType.CloseBrace);
-        return new StructInitExpr(nameToken, nameToken.Value);
+        var lb = Match(TokenType.OpenBrace);
+        var rb = Match(TokenType.CloseBrace);
+        return new StructInitExpr(nameToken, lb, rb);
     }
 
     private BaseExpr ParseCallExpression()

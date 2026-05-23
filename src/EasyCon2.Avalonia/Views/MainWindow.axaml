@@ -207,12 +207,20 @@
                                         Padding="8,4"
                                         VerticalAlignment="Center"/>
                             </Grid>
-                            <Button Grid.Column="0"
-                                    Content="{Binding CaptureSourceButtonText}"
-                                    Command="{Binding ConnectCaptureSourceCommand}"
-                                    IsEnabled="{Binding !IsConnectingCaptureSource}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Button Grid.Column="0"
+                                        Content="{Binding CaptureSourceButtonText}"
+                                        Command="{Binding ConnectCaptureSourceCommand}"
+                                        IsEnabled="{Binding !IsConnectingCaptureSource}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"/>
+                                <Button Grid.Column="1"
+                                        Content="编辑标签"
+                                        Command="{Binding OpenTagEditorCommand}"
+                                        Margin="5,0,0,0"
+                                        Padding="8,4"
+                                        VerticalAlignment="Center"/>
+                            </Grid>
                             <TextBlock Text="{Binding CaptureSourceStatus}"
                                       HorizontalAlignment="Center"
                                       FontWeight="Bold"

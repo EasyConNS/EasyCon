@@ -3,6 +3,7 @@ using EasyCon.Core;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
 using EasyScript;
+using System.Collections.Immutable;
 
 namespace EasyCon2.Avalonia.Services;
 
@@ -74,14 +75,24 @@ public class ScriptService : IScriptService
 
                 _captureService.SetCaptureProperties(1920, 1080);
 
-                var externalGetters = label.ToDictionary(il => il.name, il => (Func<int>)(() =>
+                var labelDict = label.ToDictionary(il => il.name);
+                ImmutableHashSet<string>? labelNames = [.. labelDict.Keys];
+
+                FrameDelegate? frameDelegate = () =>
                 {
+                    using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
+                    return Convert.ToBase64String(mat.ToPngBytes());
+                };
+
+                LabelMatchDelegate? labelMatchDelegate = lblName =>
+                {
+                    if (!labelDict.TryGetValue(lblName, out var il)) return 0;
                     using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
                     il.Search(mat, out var md);
                     return (int)md;
-                }));
+                };
 
-                _runner.Run(_logService, pad, OcrDelegateFactory.Create(() => _captureService.GetMatFrame()), externalGetters, token);
+                _runner.Run(_logService, pad, OcrDelegateFactory.Create(() => _captureService.GetMatFrame()), frameDelegate, labelMatchDelegate, labelNames, token);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)

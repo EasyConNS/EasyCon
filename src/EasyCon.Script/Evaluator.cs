@@ -21,7 +21,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private readonly Dictionary<VariableSymbol, int> _globalIndex;
     private readonly Stack<Value[]> _localFrames = new();
     private readonly Dictionary<FunctionSymbol, BoundBlockStatement> _functions = [];
-    private readonly ImmutableDictionary<string, Func<int>> _externalGetters = [];
+    private readonly Dictionary<string, Func<Value>> _runtimeValueGetters = [];
 
     private readonly long _TIME = DateTime.Now.Ticks;
     private readonly Random _rand = new();
@@ -38,21 +38,24 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     public ICGamePad? GamePad { get; set; }
 
     public OcrDelegate? Ocr { get; set; }
+    public FrameDelegate? Frame { get; set; }
+    public LabelMatchDelegate? LabelMatch { get; set; }
 
     // IEvalContext
     ICGamePad? IEvalContext.GamePad => GamePad;
     IOutputAdapter? IEvalContext.Output => Output;
     OcrDelegate? IEvalContext.Ocr => Ocr;
+    FrameDelegate? IEvalContext.Frame => Frame;
+    LabelMatchDelegate? IEvalContext.LabelMatch => LabelMatch;
     Random IEvalContext.Rand => _rand;
     int IEvalContext.Timestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
 
     bool IEvalContext.CancelLineBreak { get => _cancelLineBreak; set => _cancelLineBreak = value; }
 
-    public Evaluator(BoundProgram program, ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token)
+    public Evaluator(BoundProgram program, CancellationToken token)
     {
         _program = program;
         _token = token;
-        _externalGetters = externalGetters;
         _localFrames.Push([]);
 
         foreach (var kv in _program.Functions)
@@ -73,6 +76,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
             _globalIndex[globalVarList[i]] = i;
 
         RegisterCallables();
+        RegisterRuntimeValueGetters();
     }
 
     private void RegisterCallables()
@@ -108,6 +112,12 @@ internal sealed class Evaluator : IEvalContext, IDisposable
             foreach (var (symbol, callable) in loader.RegisterExternFunctions(_program.ExternFunctions))
                 _callables[symbol] = callable;
         }
+    }
+
+    private void RegisterRuntimeValueGetters()
+    {
+        // 内置特殊常量 getter
+        _runtimeValueGetters["__TIME__"] = () => ((IEvalContext)this).Timestamp;
     }
 
     public Value Evaluate()
@@ -274,11 +284,11 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                 return EvaluateIndexVariableExpression((BoundIndexVariableExpression)node);
             case SliceVariable:
                 return EvaluateSliceExpression((BoundSliceExpression)node);
-            case ExLabelVariable:
-                var imglabel = (BoundExternalVariableExpression)node;
-                if (!_externalGetters.TryGetValue(imglabel.Name, out var getter))
-                    throw new Exception($"找不到外部变量 \"{imglabel.Name}\" 的getter");
-                return getter();
+            case RuntimeValue:
+                var rv = (BoundRuntimeValueExpression)node;
+                if (_runtimeValueGetters.TryGetValue(rv.Name, out var rvGetter))
+                    return rvGetter();
+                throw new Exception($"找不到运行时变量 \"{rv.Name}\" 的getter");
             case UnaryExpression:
                 return EvaluateUnaryExpression((BoundUnaryExpression)node);
             case BinaryExpression:

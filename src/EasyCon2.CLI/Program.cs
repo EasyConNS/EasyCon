@@ -174,18 +174,38 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         // 设置采集卡分辨率为1080p
         cvcap.SetProperties(1920, 1080);
     }
-    var externalGetters = label.ToDictionary(il => il.name, il => (Func<int>)(() =>
+    FrameDelegate? frameDelegate = null;
+    LabelMatchDelegate? labelMatchDelegate = null;
+    ImmutableHashSet<string>? labelNames = null;
+
+    if (cvcap != null && label.Count() > 0)
     {
-        if (cvcap == null) throw new Exception("采集卡初始化异常");
-        il.Search(cvcap!.GetMatFrame(), out var md);
-        return (int)md;
-    }));
+        var cap = cvcap;
+        var labelDict = label.ToDictionary(il => il.name);
+        labelNames = [.. labelDict.Keys];
+
+        frameDelegate = () =>
+        {
+            using var mat = cap.GetMatFrame();
+            if (mat.Empty()) return null;
+            return Convert.ToBase64String(mat.ToPngBytes());
+        };
+
+        labelMatchDelegate = lblName =>
+        {
+            if (!labelDict.TryGetValue(lblName, out var il)) return 0;
+            using var mat = cap.GetMatFrame();
+            if (mat.Empty()) return 0;
+            il.Search(mat, out var md);
+            return (int)Math.Ceiling(md);
+        };
+    }
     outdap.Info($"==>开始执行脚本：{file}");
 
     try
     {
         ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
-        runner.Run(outdap, pad, null, externalGetters, cancellationToken);
+        runner.Run(outdap, pad, null, frameDelegate, labelMatchDelegate, labelNames, cancellationToken);
         outdap.Info("脚本运行完成");
     }
     catch (ScriptException ex)

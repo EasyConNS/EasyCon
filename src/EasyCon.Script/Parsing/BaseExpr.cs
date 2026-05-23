@@ -37,11 +37,11 @@ sealed class ConstVarExpr(Token tag) : BaseExpr(tag)
     public override string GetCodeText() => Tag;
 }
 
-sealed class ExtVarExpr(Token tag, string name) : BaseExpr(tag)
+sealed class RuntimeValueExpr(Token tag, string name) : BaseExpr(tag)
 {
     public readonly string Name = name;
 
-    public override string GetCodeText() => $"@{Name}";
+    public override string GetCodeText() => tag.Value;
 }
 
 sealed class BinaryExpression(Token op, BaseExpr left, BaseExpr right) : BaseExpr(op)
@@ -112,17 +112,19 @@ sealed class Callv1Expression(Token identifier, Token lp, ImmutableArray<BaseExp
 }
 
 // 结构体定义表达式 ：右值
-sealed class StructInitExpr(Token syntax, string typeName) : BaseExpr(syntax)
+sealed class StructInitExpr(Token syntax, Token lb, Token rb) : BaseExpr(syntax)
 {
-    public readonly string TypeName = typeName;
+    public readonly Token Lb = lb;
+    public readonly Token Rb = rb;
+    public string TypeName => Syntax.Value;
     public override string GetCodeText() => $"{TypeName}{{}}";
 }
 
 // 属性访问表达式
-sealed class FieldAccessExpr(Token syntax, BaseExpr target, string fieldName) : TargetExpr(syntax)
+sealed class FieldAccessExpr(Token syntax, BaseExpr target) : TargetExpr(syntax)
 {
     public readonly BaseExpr Target = target;
-    public readonly string FieldName = fieldName;
+    public string FieldName => Syntax.Value;
     public override string GetCodeText() => $"{Target.GetCodeText()}.{FieldName}";
 }
 

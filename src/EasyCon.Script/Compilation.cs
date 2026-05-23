@@ -79,17 +79,20 @@ public sealed class Compilation
     }
 
     public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad? pad, OcrDelegate? ocr,
-        ImmutableDictionary<string, Func<int>> externalGetters,
+        FrameDelegate? frameProvider, LabelMatchDelegate? labelMatch,
+        ImmutableHashSet<string>? labelNames,
         CancellationToken token)
     {
-        var program = GetProgram([.. externalGetters.Select(v => v.Key)]);
+        var program = GetProgram(labelNames ?? []);
         if (program.Diagnostics.HasErrors())
             return new EvaluationResult(program.Diagnostics, Value.Void);
-        using var evaluator = new Evaluator(program, externalGetters ?? [], token)
+        using var evaluator = new Evaluator(program, token)
         {
             GamePad = pad,
             Output = output,
             Ocr = ocr,
+            Frame = frameProvider,
+            LabelMatch = labelMatch,
         };
         var value = evaluator.Evaluate();
 

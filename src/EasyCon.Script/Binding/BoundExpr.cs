@@ -58,6 +58,7 @@ internal sealed class BoundErrorExpression(AstNode expr) : BoundExpr(expr)
     public override BoundNodeKind Kind => throw new NotImplementedException();
 }
 
+
 internal sealed class BoundLiteralExpression : BoundExpr
 {
     public override ScriptType Type { get; }
@@ -114,12 +115,11 @@ internal sealed class BoundIndexDeclxpression : BoundExpr
     }
 }
 
-internal sealed class BoundExternalVariableExpression(ExtVarExpr syntax, string name) : BoundExpr(syntax)
+internal sealed class BoundRuntimeValueExpression(AstNode syntax, string name, ScriptType type) : BoundExpr(syntax)
 {
     public readonly string Name = name;
-
-    public override ScriptType Type => ScriptType.Int;
-    public override BoundNodeKind Kind => BoundNodeKind.ExLabelVariable;
+    public override ScriptType Type { get; } = type;
+    public override BoundNodeKind Kind => BoundNodeKind.RuntimeValue;
 }
 
 internal sealed class BoundUnaryExpression(AstNode syntax, BoundUnaryOperator op, BoundExpr operand) : BoundExpr(syntax)

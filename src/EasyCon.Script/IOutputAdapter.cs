@@ -8,3 +8,5 @@ public interface IOutputAdapter
 }
 
 public delegate string OcrDelegate(int x, int y, int width, int height, string lang);
+public delegate string? FrameDelegate(int x, int y, int width, int height);
+public delegate int LabelMatchDelegate(string labelName);

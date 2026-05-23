@@ -5,7 +5,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace EasyCon.Capture;
 
-internal static class MatExtensions
+public static class MatExtensions
 {
     // Mat 转 byte[]（PNG格式）
     public static byte[] ToPngBytes(this Mat mat, int compressionLevel = 6)
@@ -48,7 +48,7 @@ internal static class MatExtensions
     }
 
     // Mat -> ImageSharp Rgba32（BGR/灰度 -> RGBA）
-    private static Image<Rgba32> MatToImageSharp(Mat mat)
+    public static Image<Rgba32> MatToImageSharp(Mat mat)
     {
         int w = mat.Width;
         int h = mat.Height;
@@ -106,7 +106,7 @@ internal static class MatExtensions
     }
 
     // ImageSharp Rgba32 -> Mat（RGBA -> BGR）
-    private static Mat ImageSharpToMat(Image<Rgba32> image)
+    public static Mat ImageSharpToMat(Image<Rgba32> image)
     {
         int w = image.Width;
         int h = image.Height;
