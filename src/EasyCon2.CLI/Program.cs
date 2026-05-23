@@ -184,10 +184,21 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         var labelDict = label.ToDictionary(il => il.name);
         labelNames = [.. labelDict.Keys];
 
-        frameDelegate = () =>
+        frameDelegate = (x,y,w,h) =>
         {
             using var mat = cap.GetMatFrame();
             if (mat.Empty()) return null;
+            if (x >= 0 && y >= 0 && w >= 0 && h >= 0)
+            {
+                x = Math.Clamp(x, 0, mat.Width);
+                y = Math.Clamp(y, 0, mat.Height);
+                w = Math.Clamp(w, 0, mat.Width - x);
+                h = Math.Clamp(h, 0, mat.Height - y);
+
+                using var roi = new Mat(mat, new Rect(x, y, w, h));
+                if (w == 0 || h == 0) return null;
+                return Convert.ToBase64String(roi.ToPngBytes());
+            }
             return Convert.ToBase64String(mat.ToPngBytes());
         };
 
