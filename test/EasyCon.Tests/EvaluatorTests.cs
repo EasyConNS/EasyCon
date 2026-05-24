@@ -181,6 +181,43 @@ RETURN $i").AsInt(), Is.EqualTo(10));
 
     #endregion
 
+    #region 控制流 — FOR infinite
+
+    [Test]
+    public void ForInfinite_WithBreak()
+    {
+        Assert.That(EvalValue(@"
+$c = 0
+FOR
+    IF $c >= 5
+        BREAK
+    ENDIF
+    $c = $c + 1
+NEXT
+RETURN $c").AsInt(), Is.EqualTo(5));
+    }
+
+    [Test]
+    public void ForInfinite_WithContinue()
+    {
+        Assert.That(EvalValue(@"
+$s = 0
+$c = 0
+FOR
+    $c = $c + 1
+    IF $c >= 10
+        BREAK
+    ENDIF
+    IF $c % 2 == 0
+        CONTINUE
+    ENDIF
+    $s = $s + $c
+NEXT
+RETURN $s").AsInt(), Is.EqualTo(25));
+    }
+
+    #endregion
+
     #region 控制流 — WHILE
 
     [Test]

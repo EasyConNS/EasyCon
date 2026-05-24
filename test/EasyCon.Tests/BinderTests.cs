@@ -562,4 +562,44 @@ ENDFUNC");
     }
 
     #endregion
+
+    #region FOR infinite
+
+    [Test]
+    public void ForInfinite_Binds()
+    {
+        ExpectBind(@"FOR
+    $x = 1
+NEXT");
+    }
+
+    [Test]
+    public void ForInfinite_WithBreak()
+    {
+        ExpectBind(@"FOR
+    BREAK
+NEXT");
+    }
+
+    [Test]
+    public void ForInfinite_WithContinue()
+    {
+        ExpectBind(@"FOR
+    CONTINUE
+NEXT");
+    }
+
+    [Test]
+    public void ForInfinite_WithBreakAndContinue()
+    {
+        ExpectBind(@"$i = 0
+FOR
+    IF $i >= 5
+        BREAK
+    ENDIF
+    $i += 1
+NEXT");
+    }
+
+    #endregion
 }

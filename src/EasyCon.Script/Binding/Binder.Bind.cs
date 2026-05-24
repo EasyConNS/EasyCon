@@ -246,14 +246,16 @@ internal sealed partial class Binder
         //          <var> = <var> + 1
         //      }
         // }
+        BoundStmt breakIfEnd = variable == null ? Nop(syntax) :
+            GotoTrue(syntax, breakLabel, new BoundBinaryExpression(syntax,
+                    Variable(forCond.Lower, variable),
+                    BoundBinaryOperator.Bind(TokenType.EQL, ScriptType.Int, ScriptType.Int)!,
+                    upperBound));
         var lowwhile = new BoundWhileStatement(syntax,
              condition,
              Block(syntax,
                 body,
-                GotoTrue(syntax, breakLabel, new BoundBinaryExpression(syntax,
-                    Variable(forCond.Lower, variable!),
-                    BoundBinaryOperator.Bind(TokenType.EQL, ScriptType.Int, ScriptType.Int)!,
-                    upperBound)),
+                breakIfEnd,
                 Label(syntax, continueLabel),
                 stepStmt
                 ),

@@ -3,6 +3,7 @@ using EasyCon.Core;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
 using EasyScript;
+using OpenCvSharp;
 using System.Collections.Immutable;
 
 namespace EasyCon2.Avalonia.Services;
@@ -78,9 +79,21 @@ public class ScriptService : IScriptService
                 var labelDict = label.ToDictionary(il => il.name);
                 ImmutableHashSet<string>? labelNames = [.. labelDict.Keys];
 
-                FrameDelegate? frameDelegate = () =>
+                FrameDelegate? frameDelegate = (x,y,w,h) =>
                 {
                     using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
+                    if (mat.Empty()) return null;
+                    if (x >= 0 && y >= 0 && w >= 0 && h >= 0)
+                    {
+                        x = Math.Clamp(x, 0, mat.Width);
+                        y = Math.Clamp(y, 0, mat.Height);
+                        w = Math.Clamp(w, 0, mat.Width - x);
+                        h = Math.Clamp(h, 0, mat.Height - y);
+
+                        using var roi = new Mat(mat, new Rect(x, y, w, h));
+                        if (w == 0 || h == 0) return null;
+                        return Convert.ToBase64String(roi.ToPngBytes());
+                    }
                     return Convert.ToBase64String(mat.ToPngBytes());
                 };
 
