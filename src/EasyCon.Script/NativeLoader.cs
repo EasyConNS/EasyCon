@@ -202,8 +202,8 @@ internal sealed class NativeLoader
             return Value.FromDouble(Convert.ToDouble(result));
         if (returnType.Equals(ScriptType.String))
         {
-            if((IntPtr)result==0) return "<EMPTY>";
-            return Marshal.PtrToStringUTF8((IntPtr)result!) ?? "<EMPTY>";
+            if ((IntPtr)result == 0) return string.Empty;
+            return Marshal.PtrToStringUTF8((IntPtr)result!) ?? string.Empty;
         }  
         if (returnType.Equals(ScriptType.Ptr))
             return Value.FromPtr(((IntPtr)result!).ToInt64());
