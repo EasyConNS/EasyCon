@@ -327,9 +327,18 @@ public class LexerTests
     {
         var t = First(@"""hello\nworld\ttab\\slash""");
         Assert.That(t.Type, Is.EqualTo(TokenType.STRING));
-        // 转义序列在 token 值中被解析为实际字符
-        Assert.That(t.Value, Does.Contain("\n"));
-        Assert.That(t.Value, Does.Contain("\t"));
+        // lexer preserves escape sequences literally (no quotes in value)
+        Assert.That(t.Value, Does.Contain(@"\n"));
+        Assert.That(t.Value, Does.Contain(@"\t"));
+        Assert.That(t.Value, Does.Contain(@"\\"));
+    }
+
+    [Test]
+    public void String_EscapedQuote()
+    {
+        var t = First(@"""say \""hi\"" here""");
+        Assert.That(t.Type, Is.EqualTo(TokenType.STRING));
+        Assert.That(t.Value, Is.EqualTo(@"""say \""hi\"" here"""));
     }
 
     [Test]
@@ -337,6 +346,7 @@ public class LexerTests
     {
         var t = First("\"\"");
         Assert.That(t.Type, Is.EqualTo(TokenType.STRING));
+        Assert.That(t.Value, Is.EqualTo("\"\""));
     }
 
     [Test]

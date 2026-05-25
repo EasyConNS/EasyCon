@@ -274,7 +274,6 @@ internal partial class Parser
                         Advance();
                         var duration = Match(type => type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR);
                         MatchEOF();
-                        var value = int.Parse(duration.Value);
                         return new StickPress(firstKey, state.Value, Formatter.GetValueEx(duration));
                     }
                     else

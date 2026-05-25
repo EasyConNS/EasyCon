@@ -8,6 +8,7 @@ static class Formatter
     internal static readonly Dictionary<string, ScriptType> SpecialConsts = new()
     {
         ["__TIME__"] = ScriptType.Int,
+        ["__FILE__"] = ScriptType.String,
     };
 
     internal static bool IsSpecialConst(string name) => SpecialConsts.ContainsKey(name);

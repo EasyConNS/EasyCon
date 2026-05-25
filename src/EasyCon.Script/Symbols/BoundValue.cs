@@ -244,6 +244,11 @@ public struct Value : IEquatable<Value>, IComparable<Value>
 
     public bool Equals(Value other)
     {
+        // PTR 与 INT 互相比较：允许 $handle == 0
+        if ((_tag == TAG_PTR && other._tag == TAG_INT32) ||
+            (_tag == TAG_INT32 && other._tag == TAG_PTR))
+            return (_tag == TAG_PTR ? _longVal : _int32Val) == (other._tag == TAG_PTR ? other._longVal : other._int32Val);
+
         if (_tag != other._tag) return false;
         return _tag switch
         {
@@ -264,6 +269,15 @@ public struct Value : IEquatable<Value>, IComparable<Value>
 
     public int CompareTo(Value other)
     {
+        // PTR 与 INT 互相比较
+        if ((_tag == TAG_PTR && other._tag == TAG_INT32) ||
+            (_tag == TAG_INT32 && other._tag == TAG_PTR))
+        {
+            var a = _tag == TAG_PTR ? _longVal : _int32Val;
+            var b = other._tag == TAG_PTR ? other._longVal : other._int32Val;
+            return a.CompareTo(b);
+        }
+
         if (_tag != other._tag)
             throw new InvalidOperationException($"不同类型无法比较: {Type} 与 {other.Type}");
 

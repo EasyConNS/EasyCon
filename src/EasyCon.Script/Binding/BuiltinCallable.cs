@@ -72,46 +72,53 @@ internal static class BuiltinCallable
 
     public static Value ImplJq(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
-        var json = JsonDocument.Parse(args[0].AsString()).RootElement;
-        var query = args[1].AsString();
-
-        var current = json;
-        var i = 0;
-        while (i < query.Length)
+        try
         {
-            if (query[i] == '.')
+            var json = JsonDocument.Parse(args[0].AsString()).RootElement;
+            var query = args[1].AsString();
+
+            var current = json;
+            var i = 0;
+            while (i < query.Length)
             {
-                i++;
-                var start = i;
-                while (i < query.Length && query[i] != '.' && query[i] != '[')
+                if (query[i] == '.')
+                {
                     i++;
-                current = current.GetProperty(query[start..i]);
-            }
-            else if (query[i] == '[')
-            {
-                i++;
-                var start = i;
-                while (query[i] != ']')
+                    var start = i;
+                    while (i < query.Length && query[i] != '.' && query[i] != '[')
+                        i++;
+                    current = current.GetProperty(query[start..i]);
+                }
+                else if (query[i] == '[')
+                {
                     i++;
-                current = current[int.Parse(query[start..i])];
-                i++;
+                    var start = i;
+                    while (query[i] != ']')
+                        i++;
+                    current = current[int.Parse(query[start..i])];
+                    i++;
+                }
+                else
+                {
+                    i++;
+                }
             }
-            else
+
+            return current.ValueKind switch
             {
-                i++;
-            }
+                JsonValueKind.Number => current.GetInt32(),
+                JsonValueKind.String => Value.FromString(current.GetString()!),
+                JsonValueKind.True => Value.FromBool(true),
+                JsonValueKind.False => Value.FromBool(false),
+                JsonValueKind.Array => Value.CreateArray(ScriptType.Int,
+                    current.EnumerateArray().Select(e => (Value)e.GetInt32())),
+                _ => Value.FromString(current.GetRawText()),
+            };
         }
-
-        return current.ValueKind switch
+        catch
         {
-            JsonValueKind.Number => current.GetInt32(),
-            JsonValueKind.String => Value.FromString(current.GetString()!),
-            JsonValueKind.True => Value.FromBool(true),
-            JsonValueKind.False => Value.FromBool(false),
-            JsonValueKind.Array => Value.CreateArray(ScriptType.Int,
-                current.EnumerateArray().Select(e => (Value)e.GetInt32())),
-            _ => Value.FromString(current.GetRawText()),
-        };
+            return Value.FromString("");
+        }
     }
 
     public static Value ImplConvertInt(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)

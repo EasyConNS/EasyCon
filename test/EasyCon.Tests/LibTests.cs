@@ -485,4 +485,80 @@ ENDFUNC
     }
 
     #endregion
+
+    #region import 语句加载 lib
+
+    [Test]
+    public void Import_LoadsLibFile()
+    {
+        WriteLib("math.ecs", @"
+FUNC triple($x) : int
+    RETURN $x * 3
+ENDFUNC
+");
+        var mainPath = WriteMain(@"IMPORT ""math.ecs""
+$r = triple(7)");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = compilation.Evaluate(
+            new MockOutputAdapter(), null, null, null, null, null, null,
+            new CancellationTokenSource().Token);
+        Assert.That(result.Result.AsInt(), Is.EqualTo(21));
+    }
+
+    [Test]
+    public void Import_MultipleImports()
+    {
+        WriteLib("a.ecs", @"
+FUNC add($a, $b) : int
+    RETURN $a + $b
+ENDFUNC
+");
+        WriteLib("b.ecs", @"
+FUNC mul($a, $b) : int
+    RETURN $a * $b
+ENDFUNC
+");
+        var mainPath = WriteMain(@"IMPORT ""a.ecs""
+IMPORT ""b.ecs""
+$r = add(mul(3, 4), 5)");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = compilation.Evaluate(
+            new MockOutputAdapter(), null, null, null, null, null, null,
+            new CancellationTokenSource().Token);
+        Assert.That(result.Result.AsInt(), Is.EqualTo(17));
+    }
+
+    [Test]
+    public void Import_AndAutoLoad_Coexist()
+    {
+        WriteLib("a.ecs", @"
+FUNC add($a, $b) : int
+    RETURN $a + $b
+ENDFUNC
+");
+        WriteLib("b.ecs", @"
+FUNC mul($a, $b) : int
+    RETURN $a * $b
+ENDFUNC
+");
+        // 只 import a.ecs，b.ecs 通过自动加载
+        var mainPath = WriteMain(@"IMPORT ""a.ecs""
+$r = add(mul(3, 4), 1)");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = compilation.Evaluate(
+            new MockOutputAdapter(), null, null, null, null, null, null,
+            new CancellationTokenSource().Token);
+        Assert.That(result.Result.AsInt(), Is.EqualTo(13));
+    }
+
+    #endregion
 }

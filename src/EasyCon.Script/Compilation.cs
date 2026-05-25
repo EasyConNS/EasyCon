@@ -26,8 +26,20 @@ public sealed class Compilation
     public static Compilation Create(SyntaxTree mainTree)
     {
         var trees = ImmutableArray.CreateBuilder<SyntaxTree>();
+        var loadedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // 自动加载 lib 目录下的脚本（带缓存）
+        // 从 import 语句加载指定的 lib 文件
+        foreach (var member in mainTree.Root.Members)
+        {
+            if (member is ImportStmt import)
+            {
+                var libPath = Path.GetFullPath(Path.Combine(import.InitPath, import.Lib));
+                if (File.Exists(libPath) && loadedPaths.Add(libPath))
+                    trees.Add(LoadLibWithCache(libPath));
+            }
+        }
+
+        // 自动加载 lib 目录下的其余脚本（带缓存）
         var fileName = mainTree.Text.FileName;
         if (!string.IsNullOrEmpty(fileName))
         {
@@ -39,7 +51,8 @@ public sealed class Compilation
                 {
                     foreach (var libFile in Directory.GetFiles(libDir, "*.ecs"))
                     {
-                        trees.Add(LoadLibWithCache(libFile));
+                        if (loadedPaths.Add(Path.GetFullPath(libFile)))
+                            trees.Add(LoadLibWithCache(libFile));
                     }
                 }
             }

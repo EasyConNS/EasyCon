@@ -524,6 +524,13 @@ internal sealed partial class Binder
 
     private BoundExpr BindRuntimeValue(RuntimeValueExpr syntax)
     {
+        // __FILE__ 编译期常量：返回当前脚本所在目录
+        if (syntax.Name == "__FILE__")
+        {
+            var dir = Path.GetDirectoryName(syntax.Syntax.Location.FileName) ?? "";
+            return new BoundLiteralExpression(syntax, Value.FromString(dir));
+        }
+
         // 特殊常量（__TIME__ 等）
         if (Formatter.IsSpecialConst(syntax.Name))
             return new BoundRuntimeValueExpression(syntax, syntax.Name, Formatter.SpecialConsts[syntax.Name]);
@@ -547,11 +554,37 @@ internal sealed partial class Binder
             if (input.Length >= 2 && input[0] == input[^1])
             {
                 if (input[0] == '"' || input[0] == '\'')
-                    val = input[1..^1];
+                    val = ProcessEscapeSequences(input.AsSpan()[1..^1]);
             }
         }
         Value obj = Value.From(val);
         return new BoundLiteralExpression(syntax, obj);
+    }
+
+    private static string ProcessEscapeSequences(ReadOnlySpan<char> s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '\\' && i + 1 < s.Length)
+            {
+                sb.Append(s[++i] switch
+                {
+                    'n' => '\n',
+                    'r' => '\r',
+                    't' => '\t',
+                    '\\' => '\\',
+                    '\'' => '\'',
+                    '"' => '"',
+                    var c => c,
+                });
+            }
+            else
+            {
+                sb.Append(s[i]);
+            }
+        }
+        return sb.ToString();
     }
 
     private BoundExpr BindIndexExpression(IndexDefExpression syntax)

@@ -52,6 +52,27 @@ NEXT
         Assert.That(Format(code), Is.EqualTo(Normalize(expected)));
     }
 
+    [Test]
+    public void Format_StringLiteral_RoundTrips()
+    {
+        var code = "$s = \"hello\"";
+        Assert.That(Format(code), Is.EqualTo("$s = \"hello\""));
+    }
+
+    [Test]
+    public void Format_StringWithEscape_RoundTrips()
+    {
+        var code = "$s = \"hello\\nworld\"";
+        Assert.That(Format(code), Is.EqualTo("$s = \"hello\\nworld\""));
+    }
+
+    [Test]
+    public void Format_StringWithEscapedQuote_RoundTrips()
+    {
+        var code = "$s = \"say \\\"hi\\\" here\"";
+        Assert.That(Format(code), Is.EqualTo("$s = \"say \\\"hi\\\" here\""));
+    }
+
     private static string Format(string code)
     {
         var tree = SyntaxTree.Parse(code);

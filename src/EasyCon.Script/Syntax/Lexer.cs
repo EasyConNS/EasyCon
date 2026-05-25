@@ -259,37 +259,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 break;
             }
-            if (Current == '\\') // 转义字符
+            if (Current == '\\' && _position + 1 < _input.Length)
             {
-                if (_position >= _input.Length)
-                {
-                    break;
-                }
-
-                var escaped = Lookahead switch
-                {
-                    'n' => '\n',
-                    't' => '\t',
-                    'r' => '\r',
-                    '\'' => '\'',
-                    '"' => '"',
-                    '\\' => '\\',
-                    // 可根据需要添加更多转义
-                    _ => '\0',
-                };
-                if (escaped != '\0')
-                {
-                    sb.Append(escaped);
-                    Advance();
-                    Advance();
-                    continue;
-                }
-                else
-                {
-                    break;
-                }
+                sb.Append(Advance()); // \
+                sb.Append(Advance()); // next char
+                continue;
             }
-
             sb.Append(Advance());
         }
 
