@@ -7,68 +7,35 @@ namespace EasyCon.Script.Binding;
 
 internal sealed partial class Binder
 {
-    #region 核心泛型推导逻辑
+    #region 多态内置函数类型解析
 
-    private (ScriptType[] BoundParams, ScriptType BoundReturn) BindGenericFunction(AstNode syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments)
+    private (ScriptType[] ParamTypes, ScriptType ReturnType) ResolveCallTypes(FunctionSymbol function, ImmutableArray<BoundExpr> arguments)
     {
-        // 1. 如果不是泛型函数，直接返回原签名
-        if (function.TypeParameters.IsEmpty)
+        var paramTypes = new ScriptType[arguments.Length];
+        for (int i = 0; i < arguments.Length && i < function.Parameters.Length; i++)
         {
-            return (function.Parameters.Select(p => p.Type).ToArray(), function.ReturnType);
+            paramTypes[i] = function.Parameters[i].Type.Equals(ScriptType.Any)
+                ? arguments[i].Type
+                : function.Parameters[i].Type;
         }
 
-        // 2. 建立类型映射表 (例如 T -> int)
-        var substitution = new Dictionary<TypeParameter, ScriptType>();
-
-        for (int i = 0; i < function.Parameters.Length; i++)
+        // APPEND 特殊处理：返回类型 = 第一个参数的数组类型，第二个参数必须匹配元素类型
+        if (function.Name == "APPEND" && arguments.Length >= 2 && arguments[0].Type is ArrayType at)
         {
-            InferTypeParameters(syntax, function.Parameters[i].Type, arguments[i].Type, substitution);
+            paramTypes[0] = arguments[0].Type;
+            paramTypes[1] = at.ElementType;
+            return (paramTypes, arguments[0].Type);
         }
 
-        // 3. 验证推导完整性
-        foreach (var tp in function.TypeParameters)
-        {
-            if (!substitution.ContainsKey(tp))
-            {
-                _diagnostics.ReportGenericTypeInferenceFailed(syntax.Syntax.Location, function.Name, tp.Name);
-                return ([ScriptType.Void], ScriptType.Void);
-            }
-        }
+        // JQ 特殊处理：返回类型 = string（默认）
+        if (function.Name == "JQ")
+            return (paramTypes, ScriptType.String);
 
-        // 4. 生成绑定后的具体类型
-        var boundParams = function.Parameters.Select(p => SubstituteType(p.Type, substitution)).ToArray();
-        var boundReturn = SubstituteType(function.ReturnType, substitution);
+        var returnType = function.ReturnType.Equals(ScriptType.Any)
+            ? arguments[0].Type
+            : function.ReturnType;
 
-        return (boundParams, boundReturn);
-    }
-
-    private void InferTypeParameters(AstNode syntax, ScriptType formal, ScriptType actual, Dictionary<TypeParameter, ScriptType> sub)
-    {
-        if (formal is TypeParameter tp)
-        {
-            if (sub.TryGetValue(tp, out var existing))
-            {
-                if (!existing.Equals(actual))
-                    _diagnostics.ReportGenericTypeConflict(syntax.Syntax.Location, tp.Name, existing, actual);
-            }
-            else sub[tp] = actual;
-        }
-        else if (formal is GenericType fGen && actual is GenericType aGen)
-        {
-            if (fGen.Definition.Name != aGen.Definition.Name) return;
-            for (int i = 0; i < fGen.TypeArguments.Length; i++)
-                InferTypeParameters(syntax, fGen.TypeArguments[i], aGen.TypeArguments[i], sub);
-        }
-    }
-
-    private ScriptType SubstituteType(ScriptType type, Dictionary<TypeParameter, ScriptType> sub)
-    {
-        if (type is TypeParameter tp) return sub.GetValueOrDefault(tp, type);
-        if (type is GenericType gt)
-        {
-            return gt.Definition.Bind([.. gt.TypeArguments.Select(t => SubstituteType(t, sub))]);
-        }
-        return type;
+        return (paramTypes, returnType);
     }
 
     #endregion
@@ -518,7 +485,7 @@ internal sealed partial class Binder
             return BindErrorStatement(syntax);
         }
 
-        var arrayElemType = ((GenericType)boundContainer.Type).TypeArguments[0];
+        var arrayElemType = ((ArrayType)boundContainer.Type).ElementType;
         var boundValue2 = BindExpression(syntax.Expression);
 
         var desugared2 = DesugarAugmentedAssign(syntax, () => new BoundIndexVariableExpression(syntax, boundContainer, boundIndex2, arrayElemType), arrayElemType, boundValue2);
@@ -629,7 +596,7 @@ internal sealed partial class Binder
 
         ScriptType resultType2 = isString
             ? ScriptType.String
-            : ((GenericType)baseExpr.Type).TypeArguments[0];
+            : ((ArrayType)baseExpr.Type).ElementType;
 
         return new BoundIndexVariableExpression(syntax, baseExpr, indexExpr2, resultType2);
     }
@@ -646,7 +613,9 @@ internal sealed partial class Binder
         }
 
         var startExpr = BindConversion(syntax.Start, ScriptType.Int);
-        var endExpr = BindConversion(syntax.End, ScriptType.Int);
+        var endExpr = syntax.End is LiteralExpr { Value: "" }
+            ? BindExpression(syntax.End)
+            : BindConversion(syntax.End, ScriptType.Int);
 
         return new BoundSliceExpression(syntax, baseExpr, startExpr, endExpr, baseExpr.Type);
     }
@@ -710,7 +679,7 @@ internal sealed partial class Binder
         var (_, field) = resolved.Value;
 
         var resultType = field.FieldType is FixedArrayType fat
-            ? ScriptType.Array.Bind(fat.ElementType)
+            ? ScriptType.ArrayOf(fat.ElementType)
             : field.FieldType;
         return new BoundFieldAccessExpression(syntax, boundTarget, field, resultType);
     }
@@ -745,6 +714,9 @@ internal sealed partial class Binder
         {
             var l = boundLeft.ConstantValue;
             var r = boundRight.ConstantValue;
+            // 常量折叠时，操作数可能尚未经过隐式转换，需要先对齐到运算符的类型
+            l = FoldConvert(l, boundOperator.LeftType);
+            r = FoldConvert(r, boundOperator.RightType);
             var result = boundOperator.Kind switch
             {
                 BoundBinaryOperatorKind.Addition => l + r,
@@ -775,6 +747,17 @@ internal sealed partial class Binder
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
     }
 
+    private static Value FoldConvert(Value v, ScriptType targetType)
+    {
+        if (v.Type.Equals(targetType)) return v;
+        if (targetType.Equals(ScriptType.Double)) return Value.FromDouble(v.AsInt());
+        if (targetType.Equals(ScriptType.UInt)) return Value.FromUInt(unchecked((uint)v.AsInt()));
+        if (targetType.Equals(ScriptType.UInt64)) return Value.FromUInt64((ulong)v.AsInt());
+        if (targetType.Equals(ScriptType.Byte)) return Value.FromByte((byte)v.AsInt());
+        if (targetType.Equals(ScriptType.Ptr)) return Value.FromPtr((long)v.AsInt());
+        return v;
+    }
+
     private BoundExpr BindCallExpressionInternal(AstNode syntax, FunctionSymbol function, ImmutableArray<BaseExpr> Arguments)
     {
         // 1. 先绑定实参表达式
@@ -799,8 +782,8 @@ internal sealed partial class Binder
     /// </summary>
     private BoundExpr BuildCallWithTypeConversion(AstNode syntax, FunctionSymbol function, ImmutableArray<BoundExpr> boundArgs)
     {
-        // 泛型绑定与实例化
-        var (instParams, instReturn) = BindGenericFunction(syntax, function, boundArgs);
+        // 解析多态类型
+        var (instParams, instReturn) = ResolveCallTypes(function, boundArgs);
 
         // 类型转换与最终参数确定
         var finalArgs = ImmutableArray.CreateBuilder<BoundExpr>();
@@ -860,9 +843,9 @@ internal sealed partial class Binder
                 var paramType = candidate.Parameters[i].Type;
                 var argType = boundArgs[i].Type;
 
-                if (paramType is TypeParameter || ContainsTypeParameter(paramType))
+                if (paramType.Equals(ScriptType.Any))
                 {
-                    // 泛型参数可匹配任何类型
+                    // 多态参数可匹配任何类型
                     score += 1;
                 }
                 else if (paramType.IsAssignableFrom(argType))
@@ -911,14 +894,6 @@ internal sealed partial class Binder
         }
 
         return best;
-    }
-
-    private static bool ContainsTypeParameter(ScriptType type)
-    {
-        if (type is TypeParameter) return true;
-        if (type is GenericType gt)
-            return gt.TypeArguments.Any(ContainsTypeParameter);
-        return false;
     }
 
     private static bool MatchesArgCount(FunctionSymbol fn, int argCount)

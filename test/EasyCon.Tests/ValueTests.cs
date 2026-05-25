@@ -54,10 +54,11 @@ public class ValueTests
     }
 
     [Test]
-    public void CreateArray_TypeIsGenericArray()
+    public void CreateArray_TypeIsArray()
     {
         var arr = Value.CreateArray(ScriptType.Int, [Value.FromInt(1), Value.FromInt(2)]);
-        Assert.That(arr.Type.Name, Is.EqualTo("Array<int>"));
+        Assert.That(arr.Type, Is.InstanceOf<ArrayType>());
+        Assert.That(((ArrayType)arr.Type).ElementType, Is.EqualTo(ScriptType.Int));
     }
 
     [Test]
@@ -133,18 +134,15 @@ public class ValueTests
     }
 
     [Test]
-    public void Add_IntDouble_PromotesToDouble()
+    public void Add_IntDouble_Throws_RuntimeNoPromotion()
     {
-        var r = Value.FromInt(3) + Value.FromDouble(1.5);
-        Assert.That(r.Type, Is.EqualTo(ScriptType.Double));
-        Assert.That(r.AsDouble(), Is.EqualTo(4.5));
+        Assert.Throws<InvalidOperationException>(() => _ = Value.FromInt(3) + Value.FromDouble(1.5));
     }
 
     [Test]
-    public void Add_DoubleInt_PromotesToDouble()
+    public void Add_DoubleInt_Throws_RuntimeNoPromotion()
     {
-        var r = Value.FromDouble(1.5) + Value.FromInt(3);
-        Assert.That(r.AsDouble(), Is.EqualTo(4.5));
+        Assert.Throws<InvalidOperationException>(() => _ = Value.FromDouble(1.5) + Value.FromInt(3));
     }
 
     [Test]
@@ -160,7 +158,7 @@ public class ValueTests
         var a = Value.CreateArray(ScriptType.Int, [Value.FromInt(1), Value.FromInt(2)]);
         var b = Value.CreateArray(ScriptType.Int, [Value.FromInt(3)]);
         var r = a + b;
-        Assert.That(r.AsArray().Count, Is.EqualTo(3));
+        Assert.That(r.AsArray().Length, Is.EqualTo(3));
     }
 
     [Test]
@@ -189,9 +187,9 @@ public class ValueTests
     }
 
     [Test]
-    public void Sub_IntDouble()
+    public void Sub_IntDouble_Throws_RuntimeNoPromotion()
     {
-        Assert.That((Value.FromInt(5) - Value.FromDouble(1.5)).AsDouble(), Is.EqualTo(3.5));
+        Assert.Throws<InvalidOperationException>(() => _ = Value.FromInt(5) - Value.FromDouble(1.5));
     }
 
     [Test]
@@ -213,9 +211,9 @@ public class ValueTests
     }
 
     [Test]
-    public void Mul_IntDouble()
+    public void Mul_IntDouble_Throws_RuntimeNoPromotion()
     {
-        Assert.That((Value.FromInt(3) * Value.FromDouble(2.0)).AsDouble(), Is.EqualTo(6.0));
+        Assert.Throws<InvalidOperationException>(() => _ = Value.FromInt(3) * Value.FromDouble(2.0));
     }
 
     [Test]
@@ -321,17 +319,10 @@ public class ValueTests
     }
 
     [Test]
-    public void Equals_IntDouble_EqualValues()
+    public void Equals_IntDouble_DifferentTypes_ReturnsFalse()
     {
-        Assert.That(Value.FromInt(3) == Value.FromDouble(3.0), Is.True);
-        Assert.That(Value.FromDouble(3.0) == Value.FromInt(3), Is.True);
-    }
-
-    [Test]
-    public void Equals_IntDouble_DifferentValues()
-    {
-        Assert.That(Value.FromInt(3) == Value.FromDouble(4.0), Is.False);
-        Assert.That(Value.FromDouble(4.0) == Value.FromInt(3), Is.False);
+        Assert.That(Value.FromInt(3) == Value.FromDouble(3.0), Is.False);
+        Assert.That(Value.FromDouble(3.0) == Value.FromInt(3), Is.False);
     }
 
     [Test]
@@ -372,24 +363,9 @@ public class ValueTests
     }
 
     [Test]
-    public void CompareTo_IntDouble_EqualValues()
+    public void CompareTo_IntDouble_DifferentTypes_Throws()
     {
-        Assert.That(Value.FromInt(3).CompareTo(Value.FromDouble(3.0)), Is.EqualTo(0));
-        Assert.That(Value.FromDouble(3.0).CompareTo(Value.FromInt(3)), Is.EqualTo(0));
-    }
-
-    [Test]
-    public void CompareTo_IntDouble_LessThan()
-    {
-        Assert.That(Value.FromInt(3).CompareTo(Value.FromDouble(4.0)), Is.LessThan(0));
-        Assert.That(Value.FromDouble(3.0).CompareTo(Value.FromInt(4)), Is.LessThan(0));
-    }
-
-    [Test]
-    public void CompareTo_IntDouble_GreaterThan()
-    {
-        Assert.That(Value.FromInt(5).CompareTo(Value.FromDouble(4.0)), Is.GreaterThan(0));
-        Assert.That(Value.FromDouble(5.0).CompareTo(Value.FromInt(4)), Is.GreaterThan(0));
+        Assert.Throws<InvalidOperationException>(() => Value.FromInt(3).CompareTo(Value.FromDouble(3.0)));
     }
 
     [Test]
@@ -414,23 +390,9 @@ public class ValueTests
     }
 
     [Test]
-    public void RelationalOperators_IntDouble()
+    public void RelationalOperators_IntDouble_Throws()
     {
-        // 小于比较
-        Assert.That(Value.FromInt(3) < Value.FromDouble(5.0), Is.True);
-        Assert.That(Value.FromDouble(3.0) < Value.FromInt(5), Is.True);
-
-        // 大于比较
-        Assert.That(Value.FromInt(5) > Value.FromDouble(3.0), Is.True);
-        Assert.That(Value.FromDouble(5.0) > Value.FromInt(3), Is.True);
-
-        // 小于等于比较
-        Assert.That(Value.FromInt(5) <= Value.FromDouble(5.0), Is.True);
-        Assert.That(Value.FromDouble(5.0) <= Value.FromInt(5), Is.True);
-
-        // 大于等于比较
-        Assert.That(Value.FromInt(5) >= Value.FromDouble(4.0), Is.True);
-        Assert.That(Value.FromDouble(5.0) >= Value.FromInt(4), Is.True);
+        Assert.Throws<InvalidOperationException>(() => _ = Value.FromInt(3) < Value.FromDouble(5.0));
     }
 
     #endregion
@@ -535,7 +497,7 @@ public class ValueTests
         var a = Value.CreateArray(ScriptType.Int,
             [Value.FromInt(1), Value.FromInt(2), Value.FromInt(3), Value.FromInt(4), Value.FromInt(5)]);
         var r = a[1..3];
-        Assert.That(r.AsArray().Count, Is.EqualTo(2));
+        Assert.That(r.AsArray().Length, Is.EqualTo(2));
         Assert.That(r.AsArray()[0].AsInt(), Is.EqualTo(2));
         Assert.That(r.AsArray()[1].AsInt(), Is.EqualTo(3));
     }
@@ -581,7 +543,7 @@ public class ValueTests
         var a = Value.CreateArray(ScriptType.Int, [Value.FromInt(1)]);
         var b = Value.CreateArray(ScriptType.Int, [Value.FromInt(2), Value.FromInt(3)]);
         var r = a.Concat(b);
-        Assert.That(r.AsArray().Count, Is.EqualTo(3));
+        Assert.That(r.AsArray().Length, Is.EqualTo(3));
     }
 
     [Test]
@@ -603,7 +565,7 @@ public class ValueTests
     {
         var a = Value.CreateArray(ScriptType.Int, [Value.FromInt(1), Value.FromInt(2)]);
         var r = a.Append(Value.FromInt(3));
-        Assert.That(r.AsArray().Count, Is.EqualTo(3));
+        Assert.That(r.AsArray().Length, Is.EqualTo(3));
         Assert.That(r.AsArray()[2].AsInt(), Is.EqualTo(3));
     }
 
@@ -625,8 +587,8 @@ public class ValueTests
     {
         var a = Value.CreateArray(ScriptType.Int, [Value.FromInt(1)]);
         var b = a.Append(Value.FromInt(2));
-        Assert.That(a.AsArray().Count, Is.EqualTo(1));
-        Assert.That(b.AsArray().Count, Is.EqualTo(2));
+        Assert.That(a.AsArray().Length, Is.EqualTo(1));
+        Assert.That(b.AsArray().Length, Is.EqualTo(2));
     }
 
     [Test]
@@ -727,7 +689,7 @@ public class ValueTests
         var a = Value.CreateArray(ScriptType.Int, []);
         var b = Value.CreateArray(ScriptType.Int, [Value.FromInt(1)]);
         var r = a + b;
-        Assert.That(r.AsArray().Count, Is.EqualTo(1));
+        Assert.That(r.AsArray().Length, Is.EqualTo(1));
     }
 
     #endregion

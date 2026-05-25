@@ -3,8 +3,8 @@ using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyScript;
 using System.Buffers;
-using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using static EasyCon.Script.Binding.BoundNodeKind;
 
 namespace EasyCon.Script;
@@ -17,11 +17,17 @@ public class ScriptException(string message, int address) : Exception(message)
 internal sealed class Evaluator : IEvalContext, IDisposable
 {
     private readonly BoundProgram _program;
-    private readonly Value[] _globalValues;
-    private readonly Dictionary<VariableSymbol, int> _globalIndex;
-    private readonly Stack<Value[]> _localFrames = new();
+    private readonly RuntimeHeap _heap = new();
+    private readonly Stack<EvalFrame> _localFrames = new();
     private readonly Dictionary<FunctionSymbol, BoundBlockStatement> _functions = [];
     private readonly Dictionary<string, Func<Value>> _runtimeValueGetters = [];
+
+    // 类型化全局存储
+    private int[] _globalInts = [];
+    private long[] _globalLongs = [];
+    private double[] _globalDoubles = [];
+    private int[] _globalHandles = [];
+    private readonly Dictionary<VariableSymbol, SlotDesc> _globalSlots = [];
 
     private readonly long _TIME = DateTime.Now.Ticks;
     private readonly Random _rand = new();
@@ -32,7 +38,6 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private Value[]? _tailCallArgsBuffer;
 
     private readonly Dictionary<FunctionSymbol, ICallable> _callables = [];
-    private readonly List<EcsStruct> _structInstances = [];
 
     public IOutputAdapter? Output { get; set; }
     public ICGamePad? GamePad { get; set; }
@@ -58,24 +63,35 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     {
         _program = program;
         _token = token;
-        _localFrames.Push([]);
+        _localFrames.Push(new EvalFrame(0, 0, 0, 0));
 
         foreach (var kv in _program.Functions)
-        {
             _functions.Add(kv.Key, kv.Value);
-        }
 
-        // 扫描所有函数体，递归收集全局变量并建立索引映射
+        // 扫描所有函数体，递归收集全局变量并建立类型化索引映射
         var globalVarList = new List<VariableSymbol>();
         var seen = new HashSet<VariableSymbol>();
         foreach (var body in _functions.Values)
             CollectGlobalVars(body, globalVarList, seen);
-        _globalValues = new Value[globalVarList.Count];
-        for (int i = 0; i < _globalValues.Length; i++)
-            _globalValues[i] = 0; // 默认值为 0
-        _globalIndex = new Dictionary<VariableSymbol, int>(globalVarList.Count);
-        for (int i = 0; i < globalVarList.Count; i++)
-            _globalIndex[globalVarList[i]] = i;
+
+        int intIdx = 0, longIdx = 0, doubleIdx = 0, handleIdx = 0;
+        foreach (var gv in globalVarList)
+        {
+            var cat = GetSlotCategory(gv.Type);
+            var idx = cat switch
+            {
+                SlotCategory.Int => intIdx++,
+                SlotCategory.Long => longIdx++,
+                SlotCategory.Double => doubleIdx++,
+                SlotCategory.Handle => handleIdx++,
+                _ => intIdx++
+            };
+            _globalSlots[gv] = new SlotDesc(cat, idx);
+        }
+        _globalInts = new int[intIdx];
+        _globalLongs = new long[longIdx];
+        _globalDoubles = new double[doubleIdx];
+        _globalHandles = new int[handleIdx];
 
         RegisterCallables();
         RegisterRuntimeValueGetters();
@@ -83,31 +99,21 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
     private void RegisterCallables()
     {
-        // 注册内置函数 callable
         foreach (var (symbol, callable) in BuiltinCallable.GetAll())
-        {
             _callables[symbol] = callable;
-        }
 
-        // 注册用户函数 callable（_functions 中仅含用户函数 + $eval）
         foreach (var fn in _functions.Keys)
         {
             if (_callables.ContainsKey(fn)) continue;
             _callables[fn] = new DelegateCallable((args, ctx, tk) =>
             {
                 if (ctx is Evaluator evaluator)
-                {
                     return evaluator.EvaluateFunctionBodyWithTailRecursion(fn, args, tk);
-                }
                 else
-                {
-                    // fallback（不应在正常流程中到达）
                     return ctx.EvaluateFunctionBody(fn);
-                }
             });
         }
 
-        // 注册 EXTERN 函数（懒加载：首次调用时才解析库和函数地址）
         if (!_program.ExternFunctions.IsEmpty)
         {
             var loader = new NativeLoader();
@@ -118,18 +124,16 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
     private void RegisterRuntimeValueGetters()
     {
-        // 内置特殊常量 getter
         _runtimeValueGetters["__TIME__"] = () => ((IEvalContext)this).Timestamp;
     }
 
     public Value Evaluate()
     {
         var function = _program.MainFunction;
-        if (function == null)
-            return Value.Void;
+        if (function == null) return Value.Void;
 
         var body = _functions[function];
-        PushFrame(function.LocalSlotCount);
+        PushFrame(function);
         try
         {
             return EvaluateStatement(body);
@@ -149,7 +153,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         BoundBlockStatement body,
         FunctionSymbol tailRecursionTarget,
         out bool isTailCall,
-        out ImmutableArray<Value> tailCallArgs)
+        out System.Collections.Immutable.ImmutableArray<Value> tailCallArgs)
     {
         return EvaluateStatementCore(body, tailRecursionTarget, out isTailCall, out tailCallArgs);
     }
@@ -158,10 +162,10 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         BoundBlockStatement body,
         FunctionSymbol? tailRecursionTarget,
         out bool isTailCall,
-        out ImmutableArray<Value> tailCallArgs)
+        out System.Collections.Immutable.ImmutableArray<Value> tailCallArgs)
     {
         isTailCall = false;
-        tailCallArgs = ImmutableArray<Value>.Empty;
+        tailCallArgs = System.Collections.Immutable.ImmutableArray<Value>.Empty;
 
         var labelToIndex = body.LabelIndex;
         var index = 0;
@@ -224,7 +228,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                                 Debug.Assert(buf[i] != Value.Void);
                             }
                             isTailCall = true;
-                            tailCallArgs = ImmutableArray.Create(buf, 0, argLen);
+                            tailCallArgs = System.Collections.Immutable.ImmutableArray.Create(buf, 0, argLen);
                             return Value.Void;
                         }
                         _lastValue = EvaluateExpression(rs.Expression);
@@ -271,6 +275,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     {
         _lastValue = EvaluateExpression(node.Expression);
     }
+
     public Value EvaluateExpression(BoundExpr node)
     {
         if (node.ConstantValue != Value.Void)
@@ -313,18 +318,162 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private static Value EvaluateConstantExpression(BoundExpr n)
     {
         Debug.Assert(n.ConstantValue != Value.Void);
-
         return n.ConstantValue;
+    }
+
+    #region 类型化 Slot 读写
+
+    private static SlotCategory GetSlotCategory(ScriptType type)
+    {
+        if (type.Equals(ScriptType.Bool) || type.Equals(ScriptType.Byte) ||
+            type.Equals(ScriptType.Int) || type.Equals(ScriptType.UInt))
+            return SlotCategory.Int;
+        if (type.Equals(ScriptType.UInt64) || type.Equals(ScriptType.Ptr))
+            return SlotCategory.Long;
+        if (type.Equals(ScriptType.Double))
+            return SlotCategory.Double;
+        return SlotCategory.Handle;
     }
 
     private Value GetValue(VariableSymbol v)
     {
         if (v is GlobalVariableSymbol)
-            return _globalValues[_globalIndex[v]];
-        var slot = ((LocalVariableSymbol)v).SlotIndex;
-        Debug.Assert(slot >= 0, "局部变量未分配 slot");
-        return _localFrames.Peek()[slot];
+        {
+            var desc = _globalSlots[v];
+            return ReadGlobalSlot(desc, v.Type);
+        }
+        var local = (LocalVariableSymbol)v;
+        var frame = _localFrames.Peek();
+        return ReadSlot(local.Slot, frame, v.Type);
     }
+
+    private Value ReadSlot(SlotDesc desc, EvalFrame frame, ScriptType type) => desc.Category switch
+    {
+        SlotCategory.Int => ReadIntSlot(frame.Ints[desc.Index], type),
+        SlotCategory.Long => ReadLongSlot(frame.Longs[desc.Index], type),
+        SlotCategory.Double => Value.FromDouble(frame.Doubles[desc.Index]),
+        SlotCategory.Handle => _heap.Deref(frame.Handles[desc.Index], type),
+        _ => Value.Void
+    };
+
+    private Value ReadGlobalSlot(SlotDesc desc, ScriptType type) => desc.Category switch
+    {
+        SlotCategory.Int => ReadIntSlot(_globalInts[desc.Index], type),
+        SlotCategory.Long => ReadLongSlot(_globalLongs[desc.Index], type),
+        SlotCategory.Double => Value.FromDouble(_globalDoubles[desc.Index]),
+        SlotCategory.Handle => _heap.Deref(_globalHandles[desc.Index], type),
+        _ => Value.Void
+    };
+
+    private static Value ReadIntSlot(int val, ScriptType type)
+    {
+        if (type.Equals(ScriptType.Bool)) return Value.FromBool(val != 0);
+        if (type.Equals(ScriptType.Byte)) return Value.FromByte((byte)val);
+        if (type.Equals(ScriptType.UInt)) return Value.FromUInt(unchecked((uint)val));
+        return Value.FromInt(val);
+    }
+
+    private static Value ReadLongSlot(long val, ScriptType type)
+    {
+        if (type.Equals(ScriptType.UInt64)) return Value.FromUInt64((ulong)val);
+        return Value.FromPtr(val);
+    }
+
+    private void Assign(VariableSymbol variable, Value value)
+    {
+        if (variable is GlobalVariableSymbol)
+        {
+            var desc = _globalSlots[variable];
+            WriteGlobalSlot(desc, variable.Type, value);
+            return;
+        }
+        var local = (LocalVariableSymbol)variable;
+        var frame = _localFrames.Peek();
+        WriteSlot(local.Slot, frame, variable.Type, value);
+    }
+
+    private void WriteSlot(SlotDesc desc, EvalFrame frame, ScriptType type, Value value)
+    {
+        switch (desc.Category)
+        {
+            case SlotCategory.Int:
+                frame.Ints[desc.Index] = WriteIntSlot(type, value);
+                break;
+            case SlotCategory.Long:
+                frame.Longs[desc.Index] = type.Equals(ScriptType.UInt64)
+                    ? (long)value.AsUInt64()
+                    : value.AsPtr();
+                break;
+            case SlotCategory.Double:
+                frame.Doubles[desc.Index] = value.AsDouble();
+                break;
+            case SlotCategory.Handle:
+                if (frame.Handles[desc.Index] != 0)
+                    _heap.Free(frame.Handles[desc.Index]);
+                frame.Handles[desc.Index] = StoreHandle(type, value);
+                break;
+        }
+    }
+
+    private void WriteGlobalSlot(SlotDesc desc, ScriptType type, Value value)
+    {
+        switch (desc.Category)
+        {
+            case SlotCategory.Int:
+                _globalInts[desc.Index] = WriteIntSlot(type, value);
+                break;
+            case SlotCategory.Long:
+                _globalLongs[desc.Index] = type.Equals(ScriptType.UInt64)
+                    ? (long)value.AsUInt64()
+                    : value.AsPtr();
+                break;
+            case SlotCategory.Double:
+                _globalDoubles[desc.Index] = value.AsDouble();
+                break;
+            case SlotCategory.Handle:
+                if (_globalHandles[desc.Index] != 0)
+                    _heap.Free(_globalHandles[desc.Index]);
+                _globalHandles[desc.Index] = StoreHandle(type, value);
+                break;
+        }
+    }
+
+    private static int WriteIntSlot(ScriptType type, Value value)
+    {
+        if (type.Equals(ScriptType.Bool)) return value.AsBool() ? 1 : 0;
+        if (type.Equals(ScriptType.Byte)) return value.AsByte();
+        if (type.Equals(ScriptType.UInt)) return unchecked((int)value.AsUInt());
+        return value.AsInt();
+    }
+
+    private int StoreHandle(ScriptType type, Value value)
+    {
+        if (type.Equals(ScriptType.String))
+            return _heap.StoreString(value.AsString());
+        if (type is ArrayType)
+            return _heap.StoreArray(value.AsArray().Clone());
+        if (type is StructType)
+        {
+            var src = value.AsStruct();
+            var clone = new EcsStruct(src.Definition, src.NativePtr);
+            return _heap.StoreStruct(clone);
+        }
+        throw new InvalidOperationException($"不支持 handle 存储: {type}");
+    }
+
+    private int GetHandle(VariableSymbol variable)
+    {
+        if (variable is GlobalVariableSymbol)
+        {
+            var desc = _globalSlots[variable];
+            return desc.Category == SlotCategory.Handle ? _globalHandles[desc.Index] : 0;
+        }
+        var local = (LocalVariableSymbol)variable;
+        var frame = _localFrames.Peek();
+        return local.Slot.Category == SlotCategory.Handle ? frame.Handles[local.Slot.Index] : 0;
+    }
+
+    #endregion
 
     private Value EvaluateVariableExpression(BoundVariableExpression v)
     {
@@ -334,7 +483,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private Value EvaluateIndexDeclExpression(BoundIndexDeclxpression decl)
     {
         var elements = decl.Items.Select(EvaluateExpression);
-        var elemType = ((GenericType)decl.Type).TypeArguments[0];
+        var elemType = ((ArrayType)decl.Type).ElementType;
         return Value.CreateArray(elemType, elements);
     }
 
@@ -388,7 +537,6 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         {
             var sourcePtr = new IntPtr(value.AsPtr());
             var instance = new EcsStruct(st.Definition, sourcePtr);
-            _structInstances.Add(instance);
             return Value.FromStruct(instance);
         }
         throw new Exception($"无效的类型转换{node.Type}");
@@ -397,9 +545,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private Value EvaluateUnaryExpression(BoundUnaryExpression u)
     {
         var operand = EvaluateExpression(u.Operand);
-
         Debug.Assert(operand != Value.Void);
-
         return Value.From(u.Op.Operate(operand));
     }
 
@@ -444,9 +590,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         if (argCount == 0)
         {
             var callable = _callables[node.Function];
-            var result = callable.Invoke(ReadOnlySpan<Value>.Empty, this, _token);
-            if (result.Type is StructType) _structInstances.Add(result.AsStruct());
-            return result;
+            return callable.Invoke(ReadOnlySpan<Value>.Empty, this, _token);
         }
 
         Value[]? rented = null;
@@ -461,9 +605,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                 Debug.Assert(args[i] != Value.Void);
             }
             var callable = _callables[node.Function];
-            var result = callable.Invoke(args.AsSpan(0, argCount), this, _token);
-            if (result.Type is StructType) _structInstances.Add(result.AsStruct());
-            return result;
+            return callable.Invoke(args.AsSpan(0, argCount), this, _token);
         }
         finally
         {
@@ -482,13 +624,9 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         else
         {
             if (node.Up)
-            {
                 GamePad?.ReleaseButtons(node.Act);
-            }
             else
-            {
                 GamePad?.PressButtons(node.Act);
-            }
         }
     }
 
@@ -505,18 +643,6 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         }
     }
 
-    private void Assign(VariableSymbol variable, Value value)
-    {
-        if (variable is GlobalVariableSymbol)
-            _globalValues[_globalIndex[variable]] = value;
-        else
-        {
-            var slot = ((LocalVariableSymbol)variable).SlotIndex;
-            Debug.Assert(slot >= 0, "局部变量未分配 slot");
-            _localFrames.Peek()[slot] = value;
-        }
-    }
-
     // IEvalContext 方法
     public Value EvaluateFunctionBody(FunctionSymbol function)
     {
@@ -524,9 +650,17 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         return EvaluateStatement(body);
     }
 
-    // 内部帧管理（尾递归使用）
-    private void PushFrame(int slotCount) => _localFrames.Push(new Value[slotCount]);
-    private void PopFrame() => _localFrames.Pop();
+    private void PushFrame(FunctionSymbol function)
+    {
+        var layout = function.Layout;
+        _localFrames.Push(new EvalFrame(layout.IntSlots, layout.LongSlots, layout.DoubleSlots, layout.HandleSlots));
+    }
+
+    private void PopFrame()
+    {
+        var frame = _localFrames.Pop();
+        _heap.FreeAll(frame.Handles);
+    }
 
     /// <summary>
     /// 使用尾递归优化执行函数体
@@ -534,9 +668,14 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     public Value EvaluateFunctionBodyWithTailRecursion(FunctionSymbol function, ReadOnlySpan<Value> args, CancellationToken token)
     {
         var body = _functions[function];
-        var frame = new Value[function.LocalSlotCount];
+        var layout = function.Layout;
+        var frame = new EvalFrame(layout.IntSlots, layout.LongSlots, layout.DoubleSlots, layout.HandleSlots);
+
         for (int i = 0; i < args.Length; i++)
-            frame[function.Parameters[i].SlotIndex] = args[i];
+        {
+            var param = function.Parameters[i];
+            WriteSlot(param.Slot, frame, param.Type, args[i]);
+        }
 
         int iterationCount = 0;
         while (true)
@@ -548,14 +687,20 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
             try
             {
-                var result = EvaluateStatement(body, function, out bool isTailCall, out ImmutableArray<Value> newArgs);
+                var result = EvaluateStatement(body, function, out bool isTailCall, out System.Collections.Immutable.ImmutableArray<Value> newArgs);
 
                 if (!isTailCall)
                     return result;
 
-                // 复用 frame 数组，避免每次迭代分配新对象
+                // 释放旧 handle，写入新参数
+                _heap.FreeAll(frame.Handles);
+                Array.Clear(frame.Handles);
+
                 for (int i = 0; i < newArgs.Length; i++)
-                    frame[function.Parameters[i].SlotIndex] = newArgs[i];
+                {
+                    var param = function.Parameters[i];
+                    WriteSlot(param.Slot, frame, param.Type, newArgs[i]);
+                }
 
                 iterationCount++;
                 if (iterationCount > 100000)
@@ -571,7 +716,6 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     private Value EvaluateStructInitExpression(BoundStructInitExpression node)
     {
         var instance = new EcsStruct(node.Definition);
-        _structInstances.Add(instance);
         return Value.FromStruct(instance);
     }
 
@@ -601,6 +745,24 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         return RawToValue(instance.GetField(node.Field), node.Field.FieldType);
     }
 
+    private Value EvaluateFieldIndexAccessExpression(BoundFieldIndexAccessExpression node)
+    {
+        var targetVal = EvaluateExpression(node.Target);
+        var instance = targetVal.AsStruct();
+        var index = EvaluateExpression(node.Index).AsInt();
+        var field = node.Field;
+        var elemType = node.Type;
+
+        if (elemType is StructType)
+        {
+            var nested = instance.GetNested(field, index);
+            return Value.FromStruct(nested);
+        }
+
+        var raw = instance.GetFieldElement(field, index);
+        return RawToValue(raw, elemType);
+    }
+
     private void EvaluateFieldAssignment(BoundFieldAssignStatement node)
     {
         var targetVal = EvaluateExpression(node.Target);
@@ -622,24 +784,6 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         else fieldValue = valueVal.AsInt();
 
         instance.SetField(node.Field, fieldValue);
-    }
-
-    private Value EvaluateFieldIndexAccessExpression(BoundFieldIndexAccessExpression node)
-    {
-        var targetVal = EvaluateExpression(node.Target);
-        var instance = targetVal.AsStruct();
-        var index = EvaluateExpression(node.Index).AsInt();
-        var field = node.Field;
-        var elemType = node.Type; // already resolved to element type by binder
-
-        if (elemType is StructType)
-        {
-            var nested = instance.GetNested(field, index);
-            return Value.FromStruct(nested);
-        }
-
-        var raw = instance.GetFieldElement(field, index);
-        return RawToValue(raw, elemType);
     }
 
     private void EvaluateFieldIndexAssignment(BoundFieldIndexAssignStatement node)
@@ -672,17 +816,20 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         var indexVal = EvaluateExpression(node.Index).AsInt();
         var valueVal = EvaluateExpression(node.Value);
 
-        var newArray = containerVal.SetIndex(indexVal, valueVal);
-
-        // 写回变量槽：找到持有该数组的变量并更新
+        // 原地修改：直接通过 handle 修改数组，不需要写回
         if (node.Container is BoundVariableExpression varExpr)
         {
-            Assign(varExpr.Variable, newArray);
+            var handle = GetHandle(varExpr.Variable);
+            if (handle != 0)
+            {
+                var array = _heap.GetArray(handle);
+                array.SetItem(indexVal, valueVal);
+                return;
+            }
         }
-        else
-        {
-            throw new InvalidOperationException("数组赋值目标必须是变量");
-        }
+
+        // fallback（非 handle 路径，如 struct 字段中的数组等）
+        containerVal.SetIndex(indexVal, valueVal);
     }
 
     private static Value RawToValue(object raw, ScriptType type)
@@ -701,9 +848,14 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
     public void Dispose()
     {
-        foreach (var s in _structInstances)
-            s.Dispose();
-        _structInstances.Clear();
+        // 释放全局 handle
+        _heap.FreeAll(_globalHandles);
+        // 释放帧 handle（如果还有未弹出的帧）
+        foreach (var frame in _localFrames)
+            _heap.FreeAll(frame.Handles);
+        _localFrames.Clear();
+        // 释放堆中所有剩余数据
+        _heap.FreeAll();
     }
 
     private static void CollectGlobalVars(BoundBlockStatement body, List<VariableSymbol> list, HashSet<VariableSymbol> seen)
@@ -724,8 +876,8 @@ internal sealed class Evaluator : IEvalContext, IDisposable
     }
 }
 
-public sealed class EvaluationResult(ImmutableArray<Diagnostic> diagnostics, Value value)
+public sealed class EvaluationResult(System.Collections.Immutable.ImmutableArray<Diagnostic> diagnostics, Value value)
 {
-    public ImmutableArray<Diagnostic> Diagnostics { get; } = diagnostics;
+    public System.Collections.Immutable.ImmutableArray<Diagnostic> Diagnostics { get; } = diagnostics;
     public Value Result { get; } = value;
 }

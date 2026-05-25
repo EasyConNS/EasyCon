@@ -184,7 +184,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         var labelDict = label.ToDictionary(il => il.name);
         labelNames = [.. labelDict.Keys];
 
-        frameDelegate = (x,y,w,h) =>
+        frameDelegate = (x, y, w, h) =>
         {
             using var mat = cap.GetMatFrame();
             if (mat.Empty()) return null;

@@ -69,8 +69,17 @@ internal sealed class BoundScope(BoundScope? parent)
 
         foreach (var existing in list)
         {
-            if (function.IsSignatureConflict(existing))
-                return false;
+            if (existing.Parameters.Length != function.Parameters.Length) continue;
+            bool conflict = true;
+            for (int i = 0; i < existing.Parameters.Length; i++)
+            {
+                if (!existing.Parameters[i].Type.Equals(function.Parameters[i].Type))
+                {
+                    conflict = false;
+                    break;
+                }
+            }
+            if (conflict) return false;
         }
 
         list.Add(function);

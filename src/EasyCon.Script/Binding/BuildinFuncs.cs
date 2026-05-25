@@ -18,44 +18,51 @@ internal static class BuiltinFunctions
         return def;
     }
 
-    public static readonly FunctionSymbol Wait = new("WAIT", [], [new("duration", ScriptType.Int, hasDefault: true, defaultValue: 50)], ScriptType.Void);
-    public static readonly FunctionSymbol Print = new("PRINT", [], [new("message", ScriptType.String, hasDefault: true, defaultValue: "")], ScriptType.Void);
-    public static readonly FunctionSymbol Alert = new("ALERT", [], [new("message", ScriptType.String)], ScriptType.Void);
-    public static readonly FunctionSymbol Rand = new("RAND", [], [new("max", ScriptType.Int, hasDefault: true, defaultValue: 100)], ScriptType.Int);
-    public static readonly FunctionSymbol Timestamp = new("TIME", [], [], ScriptType.Int);
-    public static readonly FunctionSymbol Amiibo = new("AMIIBO", [], [new("index", ScriptType.Int)], ScriptType.Void);
-    public static readonly FunctionSymbol Beep = new("BEEP", [], [new("freq", ScriptType.Int), new("duration", ScriptType.Int)], ScriptType.Void);
-    public static readonly FunctionSymbol Ocr = new("OCR", [], [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int), new("lang", ScriptType.String, hasDefault: true, defaultValue: "chi_sim")], ScriptType.String);
-    public static readonly FunctionSymbol Env = new("ENV", [], [new("name", ScriptType.String)], ScriptType.String);
-    public static readonly FunctionSymbol Pixel = new("PIXEL", [], [new("x", ScriptType.Int), new("y", ScriptType.Int)], new StructType(PixelStructDef));
-    public static readonly FunctionSymbol Frame = new("FRAME", [], [], ScriptType.String);
-    public static readonly FunctionSymbol FrameRoi = new("FRAME", [], [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
-    public static readonly FunctionSymbol ImageRoi = new("ROI", [], [new("image", ScriptType.String), new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
+    public static readonly FunctionSymbol Wait = new("WAIT", [new("duration", ScriptType.Int, hasDefault: true, defaultValue: 50)], ScriptType.Void);
+    public static readonly FunctionSymbol Print = new("PRINT", [new("message", ScriptType.String, hasDefault: true, defaultValue: "")], ScriptType.Void);
+    public static readonly FunctionSymbol Alert = new("ALERT", [new("message", ScriptType.String)], ScriptType.Void);
+    public static readonly FunctionSymbol Rand = new("RAND", [new("max", ScriptType.Int, hasDefault: true, defaultValue: 100)], ScriptType.Int);
+    public static readonly FunctionSymbol Timestamp = new("TIME", [], ScriptType.Int);
+    public static readonly FunctionSymbol Amiibo = new("AMIIBO", [new("index", ScriptType.Int)], ScriptType.Void);
+    public static readonly FunctionSymbol Beep = new("BEEP", [new("freq", ScriptType.Int), new("duration", ScriptType.Int)], ScriptType.Void);
+    public static readonly FunctionSymbol Ocr = new("OCR", [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int), new("lang", ScriptType.String, hasDefault: true, defaultValue: "chi_sim")], ScriptType.String);
+    public static readonly FunctionSymbol Env = new("ENV", [new("name", ScriptType.String)], ScriptType.String);
+    public static readonly FunctionSymbol Pixel = new("PIXEL", [new("x", ScriptType.Int), new("y", ScriptType.Int)], new StructType(PixelStructDef));
+    public static readonly FunctionSymbol Frame = new("FRAME", [], ScriptType.String);
+    public static readonly FunctionSymbol FrameRoi = new("FRAME", [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
+    public static readonly FunctionSymbol ImageRoi = new("ROI", [new("image", ScriptType.String), new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
 
-    // --- 泛型集合操作 ---
-    private static readonly TypeParameter T = new("T");
+    // --- 多态集合操作（参数类型用 Any 占位，由 binder 在调用点解析具体类型）---
 
-    // APPEND<T>(array: Array<T>, value: T): Array<T>
-    public static readonly FunctionSymbol Append = new("APPEND", [T],
-        [
-            new("array", ScriptType.Array.Bind(T)),
-            new("value", T)
-        ],
-        ScriptType.Array.Bind(T)
-    );
+    // APPEND(array, value): array
+    public static readonly FunctionSymbol Append = new("APPEND",
+        [new("array", ScriptType.Any), new("value", ScriptType.Any)],
+        ScriptType.Any);
 
-    // LEN<T>(container: Array<T>): int
-    public static readonly FunctionSymbol Length = new("LEN", [T], [new("var", T)], ScriptType.Int);
+    // LEN(var): int
+    public static readonly FunctionSymbol Length = new("LEN",
+        [new("var", ScriptType.Any)],
+        ScriptType.Int);
 
     // ENCODE(array: Array<byte>): string
-    // type: string = "utf8", "unicode"
-    public static readonly FunctionSymbol StrEncode = new("ENCODE", [], [new("array", ScriptType.Array.Bind(ScriptType.Byte)), new("type", ScriptType.String, hasDefault: true, defaultValue: "utf8")], ScriptType.String);
-    public static readonly FunctionSymbol StrConvert = new("STRING", [T], [new("var", T)], ScriptType.String);
-    // INT<T>(var: T): int
-    public static readonly FunctionSymbol IntConvert = new("INT", [T], [new("var", T)], ScriptType.Int);
+    public static readonly FunctionSymbol StrEncode = new("ENCODE",
+        [new("array", ScriptType.ArrayOf(ScriptType.Byte)), new("type", ScriptType.String, hasDefault: true, defaultValue: "utf8")],
+        ScriptType.String);
 
-    // JQ<T>(json: string, query: string): T
-    public static readonly FunctionSymbol Jq = new("JQ", [T], [new("json", ScriptType.String), new("query", ScriptType.String)], T);
+    // STRING(var): string
+    public static readonly FunctionSymbol StrConvert = new("STRING",
+        [new("var", ScriptType.Any)],
+        ScriptType.String);
+
+    // INT(var): int
+    public static readonly FunctionSymbol IntConvert = new("INT",
+        [new("var", ScriptType.Any)],
+        ScriptType.Int);
+
+    // JQ(json, query): any
+    public static readonly FunctionSymbol Jq = new("JQ",
+        [new("json", ScriptType.String), new("query", ScriptType.String)],
+        ScriptType.Any);
 
     /// <summary>
     /// 所有内置函数符号的静态缓存，避免每次反射枚举

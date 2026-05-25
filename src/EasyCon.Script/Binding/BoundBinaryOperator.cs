@@ -40,8 +40,8 @@ internal sealed class BoundBinaryOperator
         if (kind == TokenType.IN)
             return BindInOperator(kind, leftType, rightType);
 
-        // 泛型数组拼接支持: Array<T> + Array<T>
-        if (kind == TokenType.ADD && leftType is GenericType { Definition.Name: "Array" } && leftType.Equals(rightType))
+        // 数组拼接支持: Array<T> + Array<T>
+        if (kind == TokenType.ADD && leftType is ArrayType && leftType.Equals(rightType))
             return new BoundBinaryOperator(kind, BoundBinaryOperatorKind.Addition, leftType, rightType, leftType);
 
         // 隐式转换
@@ -67,8 +67,8 @@ internal sealed class BoundBinaryOperator
                 : null;
         }
 
-        if (rightType is GenericType { Definition.Name: "Array" } arrayType &&
-            arrayType.TypeArguments[0].Equals(leftType))
+        if (rightType is ArrayType arrayType &&
+            arrayType.ElementType.Equals(leftType))
         {
             return new BoundBinaryOperator(kind, BoundBinaryOperatorKind.In, leftType, rightType, ScriptType.Bool);
         }

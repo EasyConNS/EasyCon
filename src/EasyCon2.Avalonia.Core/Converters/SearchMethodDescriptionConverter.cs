@@ -1,7 +1,7 @@
-using System.ComponentModel;
-using System.Globalization;
 using Avalonia.Data.Converters;
 using EasyCon.Capture;
+using System.ComponentModel;
+using System.Globalization;
 
 namespace EasyCon2.Avalonia.Core.Converters;
 

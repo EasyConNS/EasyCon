@@ -111,7 +111,7 @@ internal sealed class BoundIndexDeclxpression : BoundExpr
         Items = items;
         // 如果数组为空，默认元素类型INT
         var elementType = items.Select(i => i.Type).FirstOrDefault(ScriptType.Int);
-        Type = ScriptType.Array.Bind(elementType);
+        Type = ScriptType.ArrayOf(elementType);
     }
 }
 

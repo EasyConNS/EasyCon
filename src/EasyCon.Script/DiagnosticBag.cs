@@ -116,16 +116,6 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         ReportError(location, message);
     }
 
-    public void ReportGenericTypeInferenceFailed(TextLocation location, string functionName, string typeName)
-    {
-        ReportError(location, $"无法为函数 {functionName} 推导泛型参数 {typeName}");
-    }
-
-    public void ReportGenericTypeConflict(TextLocation location, string typeName, ScriptType existingType, ScriptType actualType)
-    {
-        ReportError(location, $"泛型冲突：{typeName} 同时被推导为 {existingType} 和 {actualType}");
-    }
-
     public void ReportVoidFunctionCannotReturn(TextLocation location, FunctionSymbol function, ScriptType type)
     {
         ReportError(location, $"函数 '{function.Name}' 返回类型为 void，不应有返回值");

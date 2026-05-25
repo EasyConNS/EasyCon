@@ -204,7 +204,7 @@ internal sealed class NativeLoader
         {
             if ((IntPtr)result == 0) return string.Empty;
             return Marshal.PtrToStringUTF8((IntPtr)result!) ?? string.Empty;
-        }  
+        }
         if (returnType.Equals(ScriptType.Ptr))
             return Value.FromPtr(((IntPtr)result!).ToInt64());
         if (returnType is StructType st)

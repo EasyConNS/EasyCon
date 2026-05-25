@@ -137,8 +137,8 @@ internal static class BuiltinCallable
     public static Value ImplStrEncode(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var array = args[0].AsArray();
-        var bytes = new byte[array.Count];
-        for (int i = 0; i < array.Count; i++)
+        var bytes = new byte[array.Length];
+        for (int i = 0; i < array.Length; i++)
             bytes[i] = array[i].AsByte();
         return args[1].AsString() switch
         {
@@ -154,7 +154,7 @@ internal static class BuiltinCallable
 
     public static Value ImplPixel(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
-        var frame = ctx.Frame?.Invoke(-1,-1,-1,-1);
+        var frame = ctx.Frame?.Invoke(-1, -1, -1, -1);
         if (frame == null) throw new Exception("无法获取帧数据");
         dynamic img = frame;
         int x = args[0].AsInt();

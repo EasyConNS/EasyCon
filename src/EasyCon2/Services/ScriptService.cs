@@ -45,7 +45,7 @@ public class ScriptService
             if (diag.Any(d => d.IsError))
             {
                 var err = diag.First(d => d.IsError);
-                return (false, $"行 {err.Location.StartLine + 1}", err.Message+$"\n在({err.FileName})");
+                return (false, $"行 {err.Location.StartLine + 1}", err.Message + $"\n在({err.FileName})");
             }
             return (true, null, null);
         }

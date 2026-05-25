@@ -140,7 +140,7 @@ public class CaptureService
             {
                 using var frame = cap.GetMatFrame();
                 if (frame.Empty()) return null;
-                if (x >=0 &&  y >=0 && w >=0 && h >=0)
+                if (x >= 0 && y >= 0 && w >= 0 && h >= 0)
                 {
                     x = Math.Clamp(x, 0, frame.Width);
                     y = Math.Clamp(y, 0, frame.Height);

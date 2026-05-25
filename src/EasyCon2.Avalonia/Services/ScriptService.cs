@@ -79,7 +79,7 @@ public class ScriptService : IScriptService
                 var labelDict = label.ToDictionary(il => il.name);
                 ImmutableHashSet<string>? labelNames = [.. labelDict.Keys];
 
-                FrameDelegate? frameDelegate = (x,y,w,h) =>
+                FrameDelegate? frameDelegate = (x, y, w, h) =>
                 {
                     using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
                     if (mat.Empty()) return null;

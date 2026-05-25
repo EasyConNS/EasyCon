@@ -163,7 +163,7 @@ internal sealed partial class Binder
 
         // --- Phase 3: 构建 $eval 主函数 ---
         var allGlobalStmts = libGlobalStmts.Concat(mainGlobalStmts);
-        var main = new FunctionSymbol("$eval", [], [], ScriptType.Void);
+        var main = new FunctionSymbol("$eval", [], ScriptType.Void);
         var evalBody = new BoundBlockStatement(main.Declaration!, [.. allGlobalStmts]);
         var loweredEval = Lowerer.Lower(main, evalBody);
         AllocateLocalSlots(main, loweredEval);
@@ -192,18 +192,25 @@ internal sealed partial class Binder
     }
     /// <summary>
     /// 为函数体中所有未分配 slot 的局部变量分配索引。
-    /// 参数 slot 已在 BindFuncDeclaration 中分配（0..N-1），
-    /// 局部变量从 N 开始连续分配。递归扫描嵌套块。
+    /// 同时为所有参数和局部变量分配类型化 SlotDesc，并计算 FrameLayout。
     /// </summary>
     private static void AllocateLocalSlots(FunctionSymbol function, BoundBlockStatement body)
     {
         int nextSlot = function.LocalSlotCount;
         AllocateSlotsRecursive(body, ref nextSlot);
         function.LocalSlotCount = nextSlot;
+
+        // 分配 SlotDesc 并计算 FrameLayout
+        int intIdx = 0, longIdx = 0, doubleIdx = 0, handleIdx = 0;
+
+        foreach (var p in function.Parameters)
+            AssignSlotDesc(p, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+
+        AssignSlotDescsRecursive(body, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+
+        function.Layout = new FrameLayout(intIdx, longIdx, doubleIdx, handleIdx);
     }
 
-    // Lowerer.Flatten 保证输出为单一扁平块，递归分支实际不会触发；
-    // 保留递归写法作为防御性设计，若未来 Lowerer 行为变更仍可正确处理。
     private static void AllocateSlotsRecursive(BoundBlockStatement body, ref int nextSlot)
     {
         foreach (var stmt in body.Statements)
@@ -219,6 +226,48 @@ internal sealed partial class Binder
                     break;
             }
         }
+    }
+
+    private static void AssignSlotDesc(LocalVariableSymbol local, ref int intIdx, ref int longIdx, ref int doubleIdx, ref int handleIdx)
+    {
+        var cat = GetSlotCategory(local.Type);
+        local.Slot = new SlotDesc(cat, cat switch
+        {
+            SlotCategory.Int => intIdx++,
+            SlotCategory.Long => longIdx++,
+            SlotCategory.Double => doubleIdx++,
+            SlotCategory.Handle => handleIdx++,
+            _ => intIdx++
+        });
+    }
+
+    private static void AssignSlotDescsRecursive(BoundBlockStatement body, ref int intIdx, ref int longIdx, ref int doubleIdx, ref int handleIdx)
+    {
+        foreach (var stmt in body.Statements)
+        {
+            switch (stmt)
+            {
+                case BoundVariableDeclaration vd
+                    when vd.Variable is LocalVariableSymbol local:
+                    AssignSlotDesc(local, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                    break;
+                case BoundBlockStatement inner:
+                    AssignSlotDescsRecursive(inner, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                    break;
+            }
+        }
+    }
+
+    private static SlotCategory GetSlotCategory(ScriptType type)
+    {
+        if (type.Equals(ScriptType.Bool) || type.Equals(ScriptType.Byte) ||
+            type.Equals(ScriptType.Int) || type.Equals(ScriptType.UInt))
+            return SlotCategory.Int;
+        if (type.Equals(ScriptType.UInt64) || type.Equals(ScriptType.Ptr))
+            return SlotCategory.Long;
+        if (type.Equals(ScriptType.Double))
+            return SlotCategory.Double;
+        return SlotCategory.Handle;
     }
 
     private void EnsureFunctionBodyBound(FunctionSymbol function)
@@ -238,7 +287,7 @@ internal sealed partial class Binder
 
     private static BoundProgram ErrorProgram(DiagnosticBag diagnostics)
     {
-        return new BoundProgram(new("$error", [], [], ScriptType.Void), [.. diagnostics], [], [], [], []);
+        return new BoundProgram(new("$error", [], ScriptType.Void), [.. diagnostics], [], [], [], []);
     }
 
     private FunctionSymbol BindFuncDeclaration(FuncDeclBlock syntax)
@@ -267,7 +316,7 @@ internal sealed partial class Binder
         }
 
         var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
-        var function = new FunctionSymbol(syntax.Declare.Name, [], parameters.ToImmutable(), returnType, syntax);
+        var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), returnType, syntax);
         function.LocalSlotCount = parameters.Count; // 初始帧大小 = 参数数量
 
         // builtin 名称保护：用户函数禁止使用 builtin 名称
@@ -302,7 +351,7 @@ internal sealed partial class Binder
         }
 
         var returnType = BindTypeClause(syntax, syntax.ReturnType) ?? ScriptType.Void;
-        var function = new FunctionSymbol(syntax.Name, [], parameters.ToImmutable(), returnType, libraryName: syntax.Library, externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
+        var function = new FunctionSymbol(syntax.Name, parameters.ToImmutable(), returnType, libraryName: syntax.Library, externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
         function.LocalSlotCount = parameters.Count;
 
         // builtin 名称保护
@@ -382,7 +431,7 @@ internal sealed partial class Binder
     private static (bool isString, bool isArray) CheckIndexSupport(ScriptType type)
     {
         bool isString = type.Equals(ScriptType.String);
-        bool isArray = type is GenericType { Definition.Name: "Array" };
+        bool isArray = type is ArrayType;
         return (isString, isArray);
     }
 
@@ -392,13 +441,15 @@ internal sealed partial class Binder
             return null;
 
         var readExpr = readCurrent();
-        var op = BoundBinaryOperator.Bind(syntax.AssignmentToken.Type, targetType, rhs.Type);
+        var op = BoundBinaryOperator.Bind(syntax.AssignmentToken.Type, readExpr.Type, rhs.Type);
         if (op == null)
         {
             _diagnostics.ReportUnsupportedBinaryOperator(syntax.Location, syntax.AssignmentToken, targetType, rhs.Type);
             return null;
         }
-        return new BoundBinaryExpression(syntax.Expression, readExpr, op, rhs);
+        var convertedLeft = BindConversion(readExpr, op.LeftType);
+        var convertedRight = BindConversion(rhs, op.RightType);
+        return new BoundBinaryExpression(syntax.Expression, convertedLeft, op, convertedRight);
     }
 
     #endregion
@@ -459,7 +510,7 @@ internal sealed partial class Binder
                 var elem = LookupType(baseName);
                 if (elem is null) return null;
                 if (inner.Length == 0)
-                    return ScriptType.Array.Bind(elem);
+                    return ScriptType.ArrayOf(elem);
                 if (int.TryParse(inner, out var count))
                     return new FixedArrayType(elem, count);
             }

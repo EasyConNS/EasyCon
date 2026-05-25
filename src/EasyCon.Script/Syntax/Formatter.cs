@@ -1,5 +1,5 @@
-using System.Text.RegularExpressions;
 using EasyCon.Script.Symbols;
+using System.Text.RegularExpressions;
 
 namespace EasyCon.Script.Syntax;
 

@@ -531,7 +531,7 @@ RETURN $x").AsInt(), Is.EqualTo(999));
     public void Array_Slice()
     {
         var v = EvalValue("$a = [1, 2, 3, 4, 5]\nRETURN $a[1:3]");
-        Assert.That(v.AsArray().Count, Is.EqualTo(2));
+        Assert.That(v.AsArray().Length, Is.EqualTo(2));
         Assert.That(v.AsArray()[0].AsInt(), Is.EqualTo(2));
     }
 
@@ -667,6 +667,127 @@ PRINT ""found "" & $count & "" "" & $label");
         Assert.That(o.Printed[0], Does.Contain("found 42 items"));
     }
 
+    [Test]
+    public void Builtin_PRINT_Array()
+    {
+        var (_, o) = Eval(@"$a = [1, 2, 3]
+PRINT $a");
+        Assert.That(o.Printed[0], Does.Contain("[1, 2, 3]"));
+    }
+
+    [Test]
+    public void Builtin_PRINT_StringConcatArray()
+    {
+        var (_, o) = Eval(@"$a = [10, 20]
+PRINT ""items: "" & $a");
+        Assert.That(o.Printed[0], Does.Contain("items: [10, 20]"));
+    }
+
+    [Test]
+    public void String_AmpersandConcat()
+    {
+        var (_, o) = Eval(@"$s = ""hello"" & "" "" & ""world""
+PRINT $s");
+        Assert.That(o.Printed[0], Does.Contain("hello world"));
+    }
+
+    [Test]
+    public void String_AmpersandConcatWithInt()
+    {
+        var (_, o) = Eval(@"$n = 42
+PRINT ""value: "" & $n");
+        Assert.That(o.Printed[0], Does.Contain("value: 42"));
+    }
+
+    [Test]
+    public void Array_StringArray()
+    {
+        var v = EvalValue(@"$a = [""x"", ""y"", ""z""]
+RETURN $a[1]");
+        Assert.That(v.AsString(), Is.EqualTo("y"));
+    }
+
+    [Test]
+    public void Array_DoubleArray()
+    {
+        var v = EvalValue(@"$a = [1.1, 2.2, 3.3]
+RETURN $a[0]");
+        Assert.That(v.AsDouble(), Is.EqualTo(1.1));
+    }
+
+    [Test]
+    public void Array_PrintStringArray()
+    {
+        var (_, o) = Eval(@"$a = [""alpha"", ""beta""]
+PRINT $a");
+        Assert.That(o.Printed[0], Does.Contain("[alpha, beta]"));
+    }
+
+    [Test]
+    public void Array_ConcatStringArray()
+    {
+        var v = EvalValue(@"$a = [""a"", ""b""]
+$b = [""c""]
+$c = $a + $b
+RETURN LEN($c)");
+        Assert.That(v.AsInt(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Array_AppendString()
+    {
+        var v = EvalValue(@"$a = [""hello""]
+$b = APPEND($a, ""world"")
+RETURN $b[1]");
+        Assert.That(v.AsString(), Is.EqualTo("world"));
+    }
+
+    [Test]
+    public void Array_ContainsString()
+    {
+        Assert.That(EvalValue("RETURN \"beta\" in [\"alpha\", \"beta\", \"gamma\"]").AsBool(), Is.True);
+        Assert.That(EvalValue("RETURN \"delta\" in [\"alpha\", \"beta\"]").AsBool(), Is.False);
+    }
+
+    [Test]
+    public void Array_SliceStringArray()
+    {
+        var v = EvalValue(@"$a = [""a"", ""b"", ""c"", ""d""]
+RETURN $a[1:3]");
+        Assert.That(v.AsArray().Length, Is.EqualTo(2));
+        Assert.That(v.AsArray()[0].AsString(), Is.EqualTo("b"));
+        Assert.That(v.AsArray()[1].AsString(), Is.EqualTo("c"));
+    }
+
+    [Test]
+    public void Array_ElementAssignString()
+    {
+        var v = EvalValue(@"$a = [""x"", ""y"", ""z""]
+$a[1] = ""Y""
+RETURN $a[1]");
+        Assert.That(v.AsString(), Is.EqualTo("Y"));
+    }
+
+    [Test]
+    public void Array_SliceOmitEnd()
+    {
+        var v = EvalValue(@"$a = [10, 20, 30, 40]
+RETURN $a[2:]");
+        Assert.That(v.AsArray().Length, Is.EqualTo(2));
+        Assert.That(v.AsArray()[0].AsInt(), Is.EqualTo(30));
+        Assert.That(v.AsArray()[1].AsInt(), Is.EqualTo(40));
+    }
+
+    [Test]
+    public void Array_SliceOmitEnd_StringArray()
+    {
+        var v = EvalValue(@"$r = [""a"", ""b"", ""c""]
+RETURN $r[1:]");
+        Assert.That(v.AsArray().Length, Is.EqualTo(2));
+        Assert.That(v.AsArray()[0].AsString(), Is.EqualTo("b"));
+        Assert.That(v.AsArray()[1].AsString(), Is.EqualTo("c"));
+    }
+
     #endregion
 
     #region 运行时错误
@@ -720,6 +841,54 @@ PRINT ""found "" & $count & "" "" & $label");
     {
         var (_, o) = Eval("PRINT \"value: \" & 42");
         Assert.That(o.Printed[0], Does.Contain("value: 42"));
+    }
+
+    [Test]
+    public void DoubleDivInt_CompoundAssign()
+    {
+        var (result, output) = Eval("$r = 15.0 / 2\n$r /= 3\nRETURN $r");
+        if (result.Diagnostics.Length > 0)
+            Assert.Fail(string.Join("\n", result.Diagnostics.Select(d => d.Message)));
+        Assert.That(result.Result.AsDouble(), Is.EqualTo(2.5));
+    }
+
+    [Test]
+    public void MixedType_DoubleDivInt()
+    {
+        // 3.5 / 2 → 1.75
+        Assert.That(EvalValue("$r = 3.5 / 2\nRETURN $r").AsDouble(), Is.EqualTo(1.75));
+    }
+
+    [Test]
+    public void MixedType_IntAddDouble()
+    {
+        // 3 + 1.5 → 4.5
+        Assert.That(EvalValue("$r = 3 + 1.5\nRETURN $r").AsDouble(), Is.EqualTo(4.5));
+    }
+
+    [Test]
+    public void MixedType_IntCompareDouble()
+    {
+        // 5 > 3.0 → true, 3 < 4.0 → true, 5 <= 5.0 → true
+        Assert.That(EvalValue("RETURN 5 > 3.0").AsBool(), Is.True);
+        Assert.That(EvalValue("RETURN 3 < 4.0").AsBool(), Is.True);
+        Assert.That(EvalValue("RETURN 5 <= 5.0").AsBool(), Is.True);
+        Assert.That(EvalValue("RETURN 3 == 3.0").AsBool(), Is.True);
+    }
+
+    [Test]
+    public void IntDivision_ThenCompoundAssign()
+    {
+        // 15/2 = 7, 7/3 = 2
+        Assert.That(EvalValue("$r = 15 / 2\n$r /= 3\nRETURN $r").AsInt(), Is.EqualTo(2));
+    }
+
+    [Test]
+    public void MixedType_ConstantFolding()
+    {
+        // 常量折叠：3 + 1.5 在绑定时求值
+        Assert.That(EvalValue("RETURN 3 + 1.5").AsDouble(), Is.EqualTo(4.5));
+        Assert.That(EvalValue("RETURN 3.5 / 2").AsDouble(), Is.EqualTo(1.75));
     }
 
     #endregion
