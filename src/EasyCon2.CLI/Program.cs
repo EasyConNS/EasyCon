@@ -177,46 +177,31 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     FrameDelegate? frameDelegate = null;
     LabelMatchDelegate? labelMatchDelegate = null;
     ImmutableHashSet<string>? labelNames = null;
+    OcrDelegate? ocrDelegate = null;
 
     if (cvcap != null && label.Count() > 0)
     {
-        var cap = cvcap;
         var labelDict = label.ToDictionary(il => il.name);
         labelNames = [.. labelDict.Keys];
 
-        frameDelegate = (x, y, w, h) =>
-        {
-            using var mat = cap.GetMatFrame();
-            if (mat.Empty()) return null;
-            if (x >= 0 && y >= 0 && w >= 0 && h >= 0)
-            {
-                x = Math.Clamp(x, 0, mat.Width);
-                y = Math.Clamp(y, 0, mat.Height);
-                w = Math.Clamp(w, 0, mat.Width - x);
-                h = Math.Clamp(h, 0, mat.Height - y);
-
-                using var roi = new Mat(mat, new Rect(x, y, w, h));
-                if (w == 0 || h == 0) return null;
-                return Convert.ToBase64String(roi.ToPngBytes());
-            }
-            return Convert.ToBase64String(mat.ToPngBytes());
-        };
+        frameDelegate = FrameDelegateFactory.CreateFrame(() => cvcap.GetMatFrame());
 
         labelMatchDelegate = lblName =>
         {
             if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-            using var mat = cap.GetMatFrame();
+            using var mat = cvcap.GetMatFrame();
             if (mat.Empty()) return 0;
             il.Search(mat, out var md);
             return (int)Math.Ceiling(md);
         };
+        ocrDelegate = OcrDelegateFactory.Create(()=>cvcap.GetMatFrame());
     }
     outdap.Info($"==>开始执行脚本：{file}");
 
     try
     {
         ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
-        runner.Run(outdap, pad, null, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, cancellationToken);
+        runner.Run(outdap, pad, ocrDelegate, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, cancellationToken);
         outdap.Info("脚本运行完成");
     }
     catch (ScriptException ex)

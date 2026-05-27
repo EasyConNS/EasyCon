@@ -178,6 +178,19 @@ public struct Value : IEquatable<Value>, IComparable<Value>
 
     #endregion
 
+    public object? ToObject() => _tag switch
+    {
+        TAG_BOOL => _int32Val != 0,
+        TAG_BYTE => (byte)_int32Val,
+        TAG_INT32 => _int32Val,
+        TAG_UINT32 => unchecked((uint)_int32Val),
+        TAG_UINT64 => (ulong)_longVal,
+        TAG_FLOAT64 => f64Val,
+        TAG_STRING => (string?)_refVal,
+        TAG_PTR => _longVal,
+        _ => null
+    };
+
     #region 运算与索引
 
     public int Length => _tag switch
@@ -704,9 +717,15 @@ public sealed class AnyType : ScriptType
 public sealed class ArrayType : ScriptType
 {
     public ScriptType ElementType { get; }
-    public override string Name => $"{ElementType.Name}[]";
+    /// <summary>数组长度，0表示动态长度</summary>
+    public int Count { get; }
+    public override string Name => Count > 0 ? $"{ElementType.Name}[{Count}]" : $"{ElementType.Name}[]";
 
-    public ArrayType(ScriptType elementType) { ElementType = elementType; }
+    public ArrayType(ScriptType elementType, int count = 0)
+    {
+        ElementType = elementType;
+        Count = count;
+    }
 
     public override bool IsAssignableFrom(ScriptType other) =>
         other is ArrayType a && ElementType.Equals(a.ElementType);
@@ -731,27 +750,5 @@ public sealed class StructType : ScriptType
         other is StructType s && s.Definition == Definition;
 
     public override int GetHashCode() => Definition.Name.GetHashCode();
-}
-
-public sealed class FixedArrayType : ScriptType
-{
-    public ScriptType ElementType { get; }
-    public int Count { get; }
-
-    public FixedArrayType(ScriptType elementType, int count)
-    {
-        ElementType = elementType;
-        Count = count;
-    }
-
-    public override string Name => $"{ElementType.Name}[{Count}]";
-
-    public override bool IsAssignableFrom(ScriptType other) =>
-        other is FixedArrayType a && ElementType.Equals(a.ElementType) && Count == a.Count;
-
-    public override bool Equals(ScriptType? other) =>
-        other is FixedArrayType a && ElementType.Equals(a.ElementType) && Count == a.Count;
-
-    public override int GetHashCode() => HashCode.Combine(ElementType, Count);
 }
 #endregion

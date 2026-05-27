@@ -48,7 +48,7 @@ internal partial class Parser
                 var ok = int.TryParse(Current.Value, out var duration);
                 if (!ok) _diagnostics.ReportInvalidNumber(Current.Location, Current.Value);
                 return new Wait(Current, new LiteralExpr(Current, duration), true);
-            case TokenType.ButtonKeyword or TokenType.StickKeyword:
+            case TokenType.ButtonKeyword or TokenType.StickKeyword or TokenType.DirectionKeyword:
                 {
                     return ParsePadButtonStatement();
                 }
@@ -104,24 +104,48 @@ internal partial class Parser
             var colon = Advance();
             var typeToken = Match(TokenType.IDENT);
 
-            // Array struct field: $name:TYPE[NUM]
+            // Array type annotation: $var:TYPE[] or $var:TYPE[NUM]
             if (Check(TokenType.LeftBracket))
             {
                 Advance();
-                var countToken = Match(TokenType.INT);
-                Match(TokenType.RightBracket);
-                MatchEOF();
-                return new StructFieldStmt(destok, destok.Value, typeToken.Value + "[" + countToken.Value + "]");
+                // Check if it's dynamic length: $var:TYPE[]
+                if (Check(TokenType.RightBracket))
+                {
+                    // Dynamic length array: $var:TYPE[] - only for variables, not struct fields
+                    Advance();
+                    // If followed by =, it's a variable definition
+                    if (Check(TokenType.ASSIGN) || Current.Type.OperatorIsAug())
+                    {
+                        // Variable: $a:int[] = [1,2,3]
+                        typeClause = new TypeClauseSyntax(colon, typeToken, true);
+                    }
+                    else
+                    {
+                        // Struct field with dynamic length is not allowed
+                        _diagnostics.ReportUnexpectedToken(Current.Location, Current, TokenType.INT);
+                        return new StructFieldStmt(destok, destok.Value, typeToken.Value + "[]");
+                    }
+                }
+                else
+                {
+                    // Fixed length array: $var:TYPE[NUM] - only for struct fields
+                    var countToken = Match(TokenType.INT);
+                    Match(TokenType.RightBracket);
+                    MatchEOF();
+                    return new StructFieldStmt(destok, destok.Value, typeToken.Value + "[" + countToken.Value + "]");
+                }
             }
-
-            // Plain struct field: $name:TYPE (no assignment follows)
-            if (!Check(TokenType.ASSIGN) && !Current.Type.OperatorIsAug())
+            else if (!Check(TokenType.ASSIGN) && !Current.Type.OperatorIsAug())
             {
+                // Plain struct field: $name:TYPE (no assignment follows)
                 MatchEOF();
                 return new StructFieldStmt(destok, destok.Value, typeToken.Value);
             }
-
-            typeClause = new TypeClauseSyntax(colon, typeToken, false);
+            else
+            {
+                // Variable with type: $a:int = 1
+                typeClause = new TypeClauseSyntax(colon, typeToken, false);
+            }
         }
 
         // Assignment (typed or untyped)
@@ -301,16 +325,17 @@ internal partial class Parser
             }
             else
             {
-                var state = Match(TokenType.StateKeyword);
+                var state = Match(TokenType.DirectionKeyword);
                 MatchEOF();
                 var isUp = state.Value.Equals("UP", StringComparison.CurrentCultureIgnoreCase);
+                var isDown = state.Value.Equals("DOWN", StringComparison.CurrentCultureIgnoreCase);
+                if(!isUp && !isDown) _diagnostics.ReportInvalidKeyActionStatement(state.Location, state);
                 return new KeyAct(firstKey, isUp);
             }
         }
         _diagnostics.ReportInvalidKeyActionStatement(firstKey.Location, firstKey);
         return new KeyAct(firstKey);
     }
-    const string GPKey = "[ABXYLR]|Z[LR]|[LR]CLICK|HOME|CAPTURE|PLUS|MINUS|LEFT|RIGHT|UP|DOWN|DOWNLEFT|DOWNRIGHT|UPLEFT|UPRIGHT";
 
     private Statement ParseNamedExpression()
     {

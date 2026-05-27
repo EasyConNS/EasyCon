@@ -64,11 +64,19 @@ internal static class BuiltinFunctions
         [new("json", ScriptType.String), new("query", ScriptType.String)],
         ScriptType.Any);
 
+    // 需要 IL（采集卡）能力的内置函数
+    private static readonly HashSet<FunctionSymbol> CaptureRequiringFunctions = [Ocr, Frame, FrameRoi, ImageRoi];
+
+    // 占位 IL 名称，用于标记脚本需要采集卡能力
+    public const string CapturePlaceholder = "__capture__";
+
+    public static bool RequiresCapture(FunctionSymbol fn) => CaptureRequiringFunctions.Contains(fn);
+
     /// <summary>
     /// 所有内置函数符号的静态缓存，避免每次反射枚举
     /// </summary>
     private static readonly FunctionSymbol[] All =
-        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Ocr, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Pixel, Frame, FrameRoi, ImageRoi];
+        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Ocr, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Frame, FrameRoi, ImageRoi];
 
     /// <summary>
     /// 获取所有内置函数符号

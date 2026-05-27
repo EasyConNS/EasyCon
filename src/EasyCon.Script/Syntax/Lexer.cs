@@ -17,15 +17,11 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     public DiagnosticBag Diagnostics => _diagnostics;
 
     private bool _expectEqualAfterIf = false;
-    private bool _expectDirectionAgterStick = false;
-    private bool _expectUPDOWNAgterBtn = false;
     private bool _expectIdent = false;
 
     private void cleanFlags()
     {
         _expectEqualAfterIf = false;
-        _expectUPDOWNAgterBtn = false;
-        _expectDirectionAgterStick = false;
     }
 
     // 关键字字典
@@ -69,15 +65,13 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     // 按键关键字
     private static readonly List<string> gamepadKeywords = ["A", "B", "X", "Y", "L", "R", "ZL", "ZR",
         "MINUS", "PLUS", "HOME", "CAPTURE",
-        "LCLICK", "RCLICK",
-        "DOWNLEFT", "DOWNRIGHT", "UPLEFT", "UPRIGHT",
-        "UP", "DOWN", "LEFT", "RIGHT"];
+        "LCLICK", "RCLICK"];
     private static readonly List<string> stickKeywords = ["LS", "RS"];
 
     // 方向关键字
     private static readonly List<string> direcKeywords = ["UP", "DOWN", "LEFT", "RIGHT",
         "DOWNLEFT", "DOWNRIGHT", "UPLEFT", "UPRIGHT"];
-    private static readonly List<string> statKeywords = ["UP", "DOWN"];
+
     public ImmutableArray<Token> Tokenize()
     {
         _tokens.Clear();
@@ -389,37 +383,18 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         }
         else if ((isAllUpper || isAllLower) && gamepadKeywords.Contains(word.ToUpper()))
         {
-            var ktype = TokenType.ButtonKeyword;
-            if (_expectUPDOWNAgterBtn)
-            {
-                switch (word.ToUpper())
-                {
-                    case "UP":
-                    case "DOWN":
-                        ktype = TokenType.StateKeyword;
-                        break;
-                }
-                _expectUPDOWNAgterBtn = false;
-            }
-            else
-            {
-                _expectUPDOWNAgterBtn = true;
-            }
-            if (_expectDirectionAgterStick)
-            {
-                if (direcKeywords.Contains(word.ToUpper()))
-                {
-                    ktype = TokenType.DirectionKeyword;
-                }
-                _expectDirectionAgterStick = false;
-            }
             // 手柄按键大写
-            AddToken(ktype, word.ToUpper(), start);
+            AddToken(TokenType.ButtonKeyword, word.ToUpper(), start);
         }
         else if ((isAllUpper || isAllLower) && stickKeywords.Contains(word.ToUpper()))
         {
-            _expectDirectionAgterStick = true;
+            // 摇杆关键字
             AddToken(TokenType.StickKeyword, word.ToUpper(), start);
+        }
+        else if ((isAllUpper || isAllLower) && direcKeywords.Contains(word.ToUpper()))
+        {
+            // 方向关键字
+            AddToken(TokenType.DirectionKeyword, word.ToUpper(), start);
         }
         else
         {
@@ -445,7 +420,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 }
                 else if (_expectEqualAfterIf && SyntaxTree.LegacyCompat)
                 {
-                    AddToken(TokenType.EQL, "==", start);
+                    AddToken(TokenType.EQL, "=", start);
                     _expectEqualAfterIf = false;
                 }
                 else

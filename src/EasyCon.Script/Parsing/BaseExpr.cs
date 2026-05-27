@@ -52,7 +52,8 @@ sealed class BinaryExpression(Token op, BaseExpr left, BaseExpr right) : BaseExp
 
     public override string GetCodeText()
     {
-        return $"{ValueLeft.GetCodeText()} {Operator.Value} {ValueRight.GetCodeText()}";
+        var op = Operator.Type == TokenType.EQL ? "==" : Operator.Value;
+        return $"{ValueLeft.GetCodeText()} {op} {ValueRight.GetCodeText()}";
     }
 }
 

@@ -227,7 +227,7 @@ internal sealed class ControlFlowGraph
         {
             if (condition is BoundLiteralExpression l)
             {
-                if (l.ConstantValue != Value.Void && l.ConstantValue.ToBoolean())
+                if (l.ConstantValue != null && (bool)l.ConstantValue)
                 {
                     condition = null;
                 }
@@ -261,8 +261,8 @@ internal sealed class ControlFlowGraph
         private BoundExpr Negate(BoundExpr condition)
         {
             var negated = BoundFactory.Not(condition.Syntax, condition);
-            if (negated.ConstantValue != Value.Void)
-                return new BoundLiteralExpression(condition.Syntax, negated.ConstantValue);
+            if (negated.ConstantValue != null)
+                return new BoundLiteralExpression(condition.Syntax, negated.ConstantValue, negated.Type);
 
             return negated;
         }

@@ -278,7 +278,7 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
     public Value EvaluateExpression(BoundExpr node)
     {
-        if (node.ConstantValue != Value.Void)
+        if (node.ConstantValue != null)
             return EvaluateConstantExpression(node);
 
         switch (node.Kind)
@@ -317,8 +317,8 @@ internal sealed class Evaluator : IEvalContext, IDisposable
 
     private static Value EvaluateConstantExpression(BoundExpr n)
     {
-        Debug.Assert(n.ConstantValue != Value.Void);
-        return n.ConstantValue;
+        Debug.Assert(n.ConstantValue != null);
+        return Value.From(n.ConstantValue);
     }
 
     #region 类型化 Slot 读写
@@ -724,11 +724,12 @@ internal sealed class Evaluator : IEvalContext, IDisposable
         var targetVal = EvaluateExpression(node.Target);
         var instance = targetVal.AsStruct();
 
-        if (node.Field.FieldType is FixedArrayType fat)
+        if (node.Field.FieldType is ArrayType arrType)
         {
-            var elemType = fat.ElementType;
-            var items = new Value[fat.Count];
-            for (int i = 0; i < fat.Count; i++)
+            var elemType = arrType.ElementType;
+            var count = arrType.Count;
+            var items = new Value[count];
+            for (int i = 0; i < count; i++)
             {
                 var raw = instance.GetFieldElement(node.Field, i);
                 items[i] = RawToValue(raw, elemType);

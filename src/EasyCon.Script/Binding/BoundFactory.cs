@@ -75,7 +75,13 @@ internal static class BoundFactory
     public static BoundLiteralExpression Literal(AstNode syntax, object literal)
     {
         Debug.Assert(literal is string || literal is bool || literal is int);
-
-        return new BoundLiteralExpression(syntax, Value.From(literal));
+        var type = literal switch
+        {
+            int => ScriptType.Int,
+            bool => ScriptType.Bool,
+            string => ScriptType.String,
+            _ => throw new UnreachableException()
+        };
+        return new BoundLiteralExpression(syntax, literal, type);
     }
 }

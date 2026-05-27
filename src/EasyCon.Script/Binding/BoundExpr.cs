@@ -9,7 +9,7 @@ internal abstract class BoundExpr(AstNode expr) : BoundNode
 {
     public AstNode Syntax = expr;
     public abstract ScriptType Type { get; }
-    public Value ConstantValue = Value.Void;
+    public object? ConstantValue = null;
 
     public List<string> GetReferencedVariables()
     {
@@ -61,11 +61,12 @@ internal sealed class BoundErrorExpression(AstNode expr) : BoundExpr(expr)
 
 internal sealed class BoundLiteralExpression : BoundExpr
 {
-    public override ScriptType Type { get; }
+    public readonly ScriptType LiteralType;
+    public override ScriptType Type => LiteralType;
     public override BoundNodeKind Kind => BoundNodeKind.Literal;
-    public BoundLiteralExpression(AstNode syntax, Value value) : base(syntax)
+    public BoundLiteralExpression(AstNode syntax, object? value, ScriptType type) : base(syntax)
     {
-        Type = value.Type;
+        LiteralType = type;
         ConstantValue = value;
     }
 }
@@ -79,7 +80,7 @@ internal sealed class BoundVariableExpression : BoundExpr
     {
         Variable = variable;
         Type = variable.Type;
-        ConstantValue = Value.From(variable.Value);
+        ConstantValue = variable.Value;
     }
 }
 

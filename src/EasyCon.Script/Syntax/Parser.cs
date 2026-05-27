@@ -113,7 +113,7 @@ internal sealed partial class Parser
 
             Statement? st = null;
             if (_grouptokens.Length == 0)
-                st = new EmptyStmt();
+                st = Statement.Empty;
             // If there's only one token and it's a comment, create a CommentStmt
             else if (_grouptokens.Length == 1 && Current.Type == TokenType.COMMENT)
             {
@@ -146,7 +146,7 @@ internal sealed partial class Parser
             // Handle empty lines
             else
             {
-                st = new EmptyStmt();
+                st = Statement.Empty;
             }
 
             if (st is ImportStmt)
@@ -288,14 +288,15 @@ internal sealed partial class Parser
             _diagnostics.ReportBadStruct(first.Syntax.Location, "语句块没有正确结束");
         }
 
-        // lib 脚本后置校验：顶层只允许变量定义、常量定义和函数定义
+        // lib 脚本后置校验：顶层只允许函数定义、结构体定义、常量定义和外部函数声明
         if (_syntaxTree.IsLib)
         {
             foreach (var st in result)
             {
-                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or AssignmentStmt or ExternFuncStmt or StructDeclBlock)
+                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or StructDeclBlock or ExternFuncStmt)
                     continue;
-                _diagnostics.ReportBadStruct(st.Syntax.Location, "库脚本只允许变量定义、常量定义和函数定义");
+                _diagnostics.ReportBadStruct(st.Syntax.Location, "库脚本只允许函数定义、结构体定义、常量定义和外部函数声明");
+                break;
             }
         }
 

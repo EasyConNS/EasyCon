@@ -484,29 +484,16 @@ $r = first([1, 2, 3])", "无法");
     [Test]
     public void Lib_AllowsDefinitions()
     {
-        // 库脚本允许变量、常量、函数定义
-        var tree = SyntaxTree.Parse("$x = 10\n_CONST = 5\nFUNC f\nA\nENDFUNC", isLib: true);
+        // 库脚本允许常量和函数定义
+        var tree = SyntaxTree.Parse("_CONST = 5\nFUNC f\nA\nENDFUNC", isLib: true);
         Assert.That(tree.Diagnostics.HasErrors(), Is.False);
     }
 
     [Test]
-    public void Lib_ForbidsControlFlow()
+    public void Lib_ForbidsVariableAssignment()
     {
-        var tree = SyntaxTree.Parse("IF $x == 1\nA\nENDIF", isLib: true);
-        Assert.That(tree.Diagnostics.HasErrors(), Is.True);
-    }
-
-    [Test]
-    public void Lib_ForbidsWait()
-    {
-        var tree = SyntaxTree.Parse("WAIT 100", isLib: true);
-        Assert.That(tree.Diagnostics.HasErrors(), Is.True);
-    }
-
-    [Test]
-    public void Lib_ForbidsKeyPress()
-    {
-        var tree = SyntaxTree.Parse("A", isLib: true);
+        // 库脚本禁止变量赋值
+        var tree = SyntaxTree.Parse("$x = 10", isLib: true);
         Assert.That(tree.Diagnostics.HasErrors(), Is.True);
     }
 

@@ -1115,6 +1115,50 @@ $a.data = 5");
         Assert.That(result.Diagnostics.HasErrors(), Is.True);
     }
 
+    [Test]
+    public void Array_Variable_DynamicLength()
+    {
+        // 变量定义: 只支持动态长度 int[]
+        var (result, _) = Eval(@"
+$a:int[] = [1, 2, 3]
+RETURN LEN($a)");
+        Assert.That(result.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
+        Assert.That(result.Result.AsInt(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Array_Variable_Assign_SameType()
+    {
+        // 数组变量赋值: 相同元素类型即可赋值
+        var (result, _) = Eval(@"
+$a:int[] = [1, 2, 3]
+$b:int[] = [4, 5, 6]
+$a = $b
+RETURN LEN($a)");
+        Assert.That(result.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
+        Assert.That(result.Result.AsInt(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Struct_ArrayField_FixedLength()
+    {
+        // 结构体字段: 只支持固定长度 int[3]
+        var (result, _) = Eval(@"
+STRUCT Test
+    $data:int[3]
+END
+$a = Test{}
+$a.data[0] = 1
+$a.data[1] = 2
+$a.data[2] = 3
+RETURN LEN($a.data)");
+        Assert.That(result.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
+        Assert.That(result.Result.AsInt(), Is.EqualTo(3));
+    }
+
     #endregion
 
     #region STRUCT — 错误情况

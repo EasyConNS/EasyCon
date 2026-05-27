@@ -30,11 +30,22 @@ public partial class EditorWindow : Window
         Closing += OnClosing;
     }
 
+    private void UpdateTitle(bool isModified)
+    {
+        Title = isModified ? $"编辑器 * {_filePath}" : $"编辑器 - {_filePath}";
+    }
+
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.S)
         {
             SaveFile();
+            e.Handled = true;
+        }
+        else if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.Oem2)
+        {
+            // Ctrl+/ - 注释/取消注释
+            Editor.ToggleComment();
             e.Handled = true;
         }
     }
@@ -82,6 +93,7 @@ public partial class EditorWindow : Window
         {
             Editor.Save(_filePath);
             Editor.IsModified = false;
+            UpdateTitle(false);
         }
         catch (Exception ex)
         {
@@ -105,6 +117,7 @@ public partial class EditorWindow : Window
         {
             if (_foldingManager != null)
                 _foldingStrategy?.UpdateFoldings(_foldingManager, Editor.TextDocument);
+            UpdateTitle(Editor.IsModified);
         };
 
         if (File.Exists(filePath))

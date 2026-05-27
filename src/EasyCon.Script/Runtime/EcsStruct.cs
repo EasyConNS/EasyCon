@@ -33,11 +33,11 @@ internal static class TypeLayout
         _ when type.Equals(ScriptType.String) => IntPtr.Size,
         _ when type.Equals(ScriptType.Ptr) => IntPtr.Size,
         StructType s => s.Definition.Size,
-        FixedArrayType a => GetNativeSize(a.ElementType) * a.Count,
+        ArrayType a => a.Count > 0 ? GetNativeSize(a.ElementType) * a.Count : IntPtr.Size,
         _ => 4
     };
 
-    internal static ScriptType GetElementType(ScriptType type) => type is FixedArrayType a ? a.ElementType : type;
+    internal static ScriptType GetElementType(ScriptType type) => type is ArrayType a ? a.ElementType : type;
 }
 
 public static class StructLayout
@@ -158,10 +158,11 @@ public sealed class EcsStruct : IDisposable
 
     public object[] GetFieldAsArray(EcsFieldDef f)
     {
-        if (f.FieldType is not FixedArrayType fat)
+        if (f.FieldType is not ArrayType arrType || arrType.Count <= 0)
             return [GetFieldElement(f, 0)];
-        var result = new object[fat.Count];
-        for (int i = 0; i < fat.Count; i++)
+        var count = arrType.Count;
+        var result = new object[count];
+        for (int i = 0; i < count; i++)
             result[i] = GetFieldElement(f, i);
         return result;
     }

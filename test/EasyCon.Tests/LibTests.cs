@@ -150,16 +150,6 @@ ENDFUNC
     #region 库脚本解析限制
 
     [Test]
-    public void LibParse_VariableDef_Succeeds()
-    {
-        WriteLib("vars.ecs", "$count = 10");
-        var mainPath = WriteMain("$x = 1");
-        var (_, success, errors) = CompileFile(mainPath);
-
-        Assert.That(success, Is.True, string.Join("; ", errors));
-    }
-
-    [Test]
     public void LibParse_ConstantDef_Succeeds()
     {
         WriteLib("const.ecs", "_MAX = 100");
@@ -188,14 +178,14 @@ ENDFUNC
     {
         WriteLib("bad.ecs", @"
 IF 1
-    $x = 1
+    _x = 1
 ENDIF
 ");
         var mainPath = WriteMain("$x = 1");
         var (_, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
+        Assert.That(errors, Has.Some.Contains("库脚本只允许函数定义、结构体定义、常量定义和外部函数声明"));
     }
 
     [Test]
@@ -206,7 +196,7 @@ ENDIF
         var (_, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
+        Assert.That(errors, Has.Some.Contains("库脚本只允许函数定义、结构体定义、常量定义和外部函数声明"));
     }
 
     [Test]
@@ -217,7 +207,7 @@ ENDIF
         var (_, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
+        Assert.That(errors, Has.Some.Contains("库脚本只允许函数定义、结构体定义、常量定义和外部函数声明"));
     }
 
     [Test]
@@ -228,7 +218,7 @@ ENDIF
         var (_, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
+        Assert.That(errors, Has.Some.Contains("库脚本只允许函数定义、结构体定义、常量定义和外部函数声明"));
     }
 
     [Test]
@@ -239,7 +229,7 @@ ENDIF
         var (_, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
+        Assert.That(errors, Has.Some.Contains("库脚本只允许函数定义、结构体定义、常量定义和外部函数声明"));
     }
 
     #endregion
@@ -284,10 +274,10 @@ $r = leak()
 
     #endregion
 
-    #region 作用域隔离 - lib 可以访问自身变量和常量
+    #region 作用域隔离 - lib 可以访问自身常量
 
     [Test]
-    public void LibScope_CanAccessLibOwnGlobal()
+    public void LibScope_CanAccessLibOwnConstant()
     {
         WriteLib("lib1.ecs", @"
 _offset = 10
@@ -306,29 +296,7 @@ ENDFUNC
         Assert.That(result.Result.AsInt(), Is.EqualTo(15));
     }
 
-    [Test]
-    public void LibScope_CanAccessLibVariable()
-    {
-        WriteLib("lib1.ecs", @"
-$counter = 0
-FUNC incCounter : int
-    $counter = $counter + 1
-    RETURN $counter
-ENDFUNC
-");
-        var mainPath = WriteMain(@"
-$a = incCounter()
-$r = incCounter()
-");
-        var (compilation, success, errors) = CompileFile(mainPath);
-
-        Assert.That(success, Is.True, string.Join("; ", errors));
-
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(2));
-    }
+    #endregion
 
     [Test]
     public void LibScope_LibFuncCanCallOtherLibFunc()
@@ -376,8 +344,6 @@ ENDFUNC
         Assert.That(result.Result.AsInt(), Is.EqualTo(12));
     }
 
-    #endregion
-
     #region 主脚本调用 lib 函数
 
     [Test]
@@ -422,25 +388,13 @@ ENDFUNC
     }
 
     [Test]
-    public void MainCannotAccess_LibVariable()
-    {
-        WriteLib("lib1.ecs", "$libVar = 100");
-        var mainPath = WriteMain("$r = $libVar");
-        var (_, success, errors) = CompileFile(mainPath);
-
-        Assert.That(success, Is.False, "main script should not access lib variables");
-        Assert.That(errors, Has.Some.Contains("找不到变量"));
-    }
-
-    [Test]
-    public void MainCannotAccess_LibConstant()
+    public void MainCanAccess_LibConstant()
     {
         WriteLib("lib1.ecs", "_LIB_CONST = 100");
         var mainPath = WriteMain("$r = _LIB_CONST");
-        var (_, success, errors) = CompileFile(mainPath);
+        var (compilation, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.False, "main script should not access lib constants");
-        Assert.That(errors, Has.Some.Contains("找不到变量"));
+        Assert.That(success, Is.True, string.Join("; ", errors));
     }
 
     #endregion

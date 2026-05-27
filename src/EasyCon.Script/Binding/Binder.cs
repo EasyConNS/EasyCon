@@ -114,6 +114,9 @@ internal sealed partial class Binder
         // 将 lib 结构体注册到主作用域
         foreach (var kv in libBinder._scope.CollectAllStructDefs())
             mainBinder._scope.TryDeclareStruct(kv.Key, kv.Value);
+        // 将 lib 常量注册到主作用域（默认导入主程序作用域）
+        foreach (var constant in libBinder._scope.GetDeclaredVariables())
+            mainBinder._scope.TryDeclareVariable(constant);
 
         var mainUserFunctions = new List<FunctionSymbol>();
         var mainGlobalStmts = new List<BoundStmt>();
@@ -509,10 +512,8 @@ internal sealed partial class Binder
                 var baseName = name[..openBracket];
                 var elem = LookupType(baseName);
                 if (elem is null) return null;
-                if (inner.Length == 0)
-                    return ScriptType.ArrayOf(elem);
-                if (int.TryParse(inner, out var count))
-                    return new FixedArrayType(elem, count);
+                var count = int.TryParse(inner, out var c) ? c : 0;
+                return new ArrayType(elem, count);
             }
         }
         return upper switch

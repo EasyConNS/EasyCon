@@ -264,7 +264,7 @@ internal sealed partial class Binder
         );
 
         return new BoundWhileStatement(syntax,
-            new BoundLiteralExpression(syntax, Value.FromBool(true)),
+            new BoundLiteralExpression(syntax, true, ScriptType.Bool),
             newBody,
             breakLabel,
             continueLabel
@@ -362,7 +362,7 @@ internal sealed partial class Binder
         }
 
         var boundexpr = BindExpression(syntax.Expression);
-        if (boundexpr.ConstantValue == Value.Void)
+        if (boundexpr.ConstantValue == null)
         {
             _diagnostics.ReportInvalidConstantExpression(syntax.Location);
             return BindErrorStatement(syntax);
@@ -433,7 +433,7 @@ internal sealed partial class Binder
         if (resolved is null) return BindErrorStatement(syntax);
         var (structType, field) = resolved.Value;
 
-        if (field.FieldType is FixedArrayType)
+        if (field.FieldType is ArrayType)
         {
             _diagnostics.ReportBadStruct(syntax.Location, $"数组字段 {field.Name} 不支持整体赋值，请使用 {field.Name}[index] 逐元素赋值");
             return BindErrorStatement(syntax);
@@ -454,13 +454,13 @@ internal sealed partial class Binder
         var boundContainer = BindExpression(indexTarget.Base);
 
         // struct field array element assignment: $var.field[i] = expr
-        if (boundContainer is BoundFieldAccessExpression fieldAccess && fieldAccess.Field.FieldType is FixedArrayType fat)
+        if (boundContainer is BoundFieldAccessExpression fieldAccess && fieldAccess.Field.FieldType is ArrayType arrType)
         {
             var field = fieldAccess.Field;
             var boundIndex = BindConversion(BindExpression(indexTarget.Index), ScriptType.Int);
             var boundValue = BindExpression(syntax.Expression);
 
-            var elemType = fat.ElementType;
+            var elemType = arrType.ElementType;
             var desugared = DesugarAugmentedAssign(syntax,
                 () => new BoundFieldIndexAccessExpression(syntax, fieldAccess.Target, field, boundIndex, elemType),
                 elemType, boundValue);
@@ -528,7 +528,7 @@ internal sealed partial class Binder
         if (syntax.Name == "__FILE__")
         {
             var dir = Path.GetDirectoryName(syntax.Syntax.Location.FileName) ?? "";
-            return new BoundLiteralExpression(syntax, Value.FromString(dir));
+            return new BoundLiteralExpression(syntax, Value.FromString(dir), ScriptType.String);
         }
 
         // 特殊常量（__TIME__ 等）
@@ -558,7 +558,7 @@ internal sealed partial class Binder
             }
         }
         Value obj = Value.From(val);
-        return new BoundLiteralExpression(syntax, obj);
+        return new BoundLiteralExpression(syntax, val, obj.Type);
     }
 
     private static string ProcessEscapeSequences(ReadOnlySpan<char> s)
@@ -612,10 +612,10 @@ internal sealed partial class Binder
         var baseExpr = BindExpression(syntax.Base);
 
         // struct field array element access: $var.field[i]
-        if (baseExpr is BoundFieldAccessExpression fieldAccess && fieldAccess.Field.FieldType is FixedArrayType fat)
+        if (baseExpr is BoundFieldAccessExpression fieldAccess && fieldAccess.Field.FieldType is ArrayType arrType)
         {
             var indexExpr = BindConversion(BindExpression(syntax.Index), ScriptType.Int);
-            return new BoundFieldIndexAccessExpression(syntax, fieldAccess.Target, fieldAccess.Field, indexExpr, fat.ElementType);
+            return new BoundFieldIndexAccessExpression(syntax, fieldAccess.Target, fieldAccess.Field, indexExpr, arrType.ElementType);
         }
 
         var (isString, isArray) = CheckIndexSupport(baseExpr.Type);
@@ -711,8 +711,8 @@ internal sealed partial class Binder
         if (resolved is null) return new BoundErrorExpression(syntax);
         var (_, field) = resolved.Value;
 
-        var resultType = field.FieldType is FixedArrayType fat
-            ? ScriptType.ArrayOf(fat.ElementType)
+        var resultType = field.FieldType is ArrayType arrType
+            ? ScriptType.ArrayOf(arrType.ElementType)
             : field.FieldType;
         return new BoundFieldAccessExpression(syntax, boundTarget, field, resultType);
     }
@@ -743,10 +743,10 @@ internal sealed partial class Binder
             return new BoundErrorExpression(syntax);
         }
 
-        if (boundLeft.ConstantValue != Value.Void && boundRight.ConstantValue != Value.Void)
+        if (boundLeft.ConstantValue != null && boundRight.ConstantValue != null)
         {
-            var l = boundLeft.ConstantValue;
-            var r = boundRight.ConstantValue;
+            var l = Value.From(boundLeft.ConstantValue);
+            var r = Value.From(boundRight.ConstantValue);
             // 常量折叠时，操作数可能尚未经过隐式转换，需要先对齐到运算符的类型
             l = FoldConvert(l, boundOperator.LeftType);
             r = FoldConvert(r, boundOperator.RightType);
@@ -774,7 +774,7 @@ internal sealed partial class Binder
                 BoundBinaryOperatorKind.LogicalOr => Value.FromBool(l.AsBool() || r.AsBool()),
                 _ => throw new InvalidOperationException($"不支持的常量运算: {boundOperator.Kind}")
             };
-            return new BoundLiteralExpression(syntax, result);
+            return new BoundLiteralExpression(syntax, result.ToObject(), result.Type);
         }
 
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
@@ -815,6 +815,9 @@ internal sealed partial class Binder
     /// </summary>
     private BoundExpr BuildCallWithTypeConversion(AstNode syntax, FunctionSymbol function, ImmutableArray<BoundExpr> boundArgs)
     {
+        if (BuiltinFunctions.RequiresCapture(function))
+            _ilNames.Add(BuiltinFunctions.CapturePlaceholder);
+
         // 解析多态类型
         var (instParams, instReturn) = ResolveCallTypes(function, boundArgs);
 
@@ -831,7 +834,7 @@ internal sealed partial class Binder
             else if (param.HasDefaultValue)
             {
                 // 补全默认值
-                finalArgs.Add(new BoundLiteralExpression(syntax!, Value.From(param.DefaultValue)));
+                finalArgs.Add(new BoundLiteralExpression(syntax!, param.DefaultValue, param.Type));
             }
         }
 

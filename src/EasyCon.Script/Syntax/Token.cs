@@ -99,10 +99,8 @@ public enum TokenType
     // Gamepad Keys
     ResetKeyword, // RESET
     StickKeyword, // RS, LS
-    ButtonKeyword, // A,B,X,Y.L,R,ZL,ZR.LCLICK,RCLICK.HOME,CAPTURE,PLUS,MINUS
-    StateKeyword, // 特殊处理的UP/DOWN关键字, 需要特殊处理表示抬起按下
-    DirectionKeyword, // 特殊处理的方向关键字
-    // UP, DOWN，RIGHT, LEFT, DOWNLEFT, DOWNRIGHT, UPLEFT, UPRIGHT 需要特殊处理，既表示DPAD，也表示方向
+    ButtonKeyword, // (不含DPad) A,B,X,Y.L,R,ZL,ZR.LCLICK,RCLICK.HOME,CAPTURE,PLUS,MINUS
+    DirectionKeyword, // 8个方向 UP, DOWN，RIGHT, LEFT, DOWNLEFT, DOWNRIGHT, UPLEFT, UPRIGHT
 
     EOF
 }

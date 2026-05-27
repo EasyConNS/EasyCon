@@ -66,7 +66,7 @@ internal static class BuiltinCallable
 
     public static Value ImplOcr(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
-        var result = ctx.Ocr?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsString()) ?? "OCR NOT SUPPORT";
+        var result = ctx.Ocr?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsString()) ?? "ERR!!OCR NOT SUPPORT";
         return Value.FromString(result);
     }
 
@@ -159,41 +159,41 @@ internal static class BuiltinCallable
         return Environment.GetEnvironmentVariable(args[0].AsString()) ?? "";
     }
 
-    public static Value ImplPixel(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var frame = ctx.Frame?.Invoke(-1, -1, -1, -1);
-        if (frame == null) throw new Exception("无法获取帧数据");
-        dynamic img = frame;
-        int x = args[0].AsInt();
-        int y = args[1].AsInt();
-        int width = (int)img.Width;
-        int height = (int)img.Height;
-        if (x < 0 || x >= width || y < 0 || y >= height)
-            throw new Exception($"像素坐标越界 ({x}, {y})，帧大小 {width}x{height}");
-        dynamic pixel = img[x, y];
-        var instance = new EcsStruct(BuiltinFunctions.PixelStructDef);
-        instance.SetField(instance.Definition.Fields[0], (int)(byte)pixel.R);
-        instance.SetField(instance.Definition.Fields[1], (int)(byte)pixel.G);
-        instance.SetField(instance.Definition.Fields[2], (int)(byte)pixel.B);
-        instance.SetField(instance.Definition.Fields[3], (int)(byte)pixel.A);
-        return Value.FromStruct(instance);
-    }
+    // public static Value ImplPixel(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    // {
+    //     var frame = ctx.Frame?.Invoke(-1, -1, -1, -1);
+    //     if (frame == null) throw new Exception("无法获取帧数据");
+    //     dynamic img = frame;
+    //     int x = args[0].AsInt();
+    //     int y = args[1].AsInt();
+    //     int width = (int)img.Width;
+    //     int height = (int)img.Height;
+    //     if (x < 0 || x >= width || y < 0 || y >= height)
+    //         throw new Exception($"像素坐标越界 ({x}, {y})，帧大小 {width}x{height}");
+    //     dynamic pixel = img[x, y];
+    //     var instance = new EcsStruct(BuiltinFunctions.PixelStructDef);
+    //     instance.SetField(instance.Definition.Fields[0], (int)(byte)pixel.R);
+    //     instance.SetField(instance.Definition.Fields[1], (int)(byte)pixel.G);
+    //     instance.SetField(instance.Definition.Fields[2], (int)(byte)pixel.B);
+    //     instance.SetField(instance.Definition.Fields[3], (int)(byte)pixel.A);
+    //     return Value.FromStruct(instance);
+    // }
 
     public static Value ImplFrame(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var base64 = ctx.Frame?.Invoke(-1, -1, -1, -1);
-        return Value.FromString(base64 ?? "!!ERR!!");
+        return Value.FromString(base64 ?? "ERR!!FRAME NOT SUPPORT");
     }
     public static Value ImplFrameROI(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var base64 = ctx.Frame?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt());
-        return Value.FromString(base64 ?? "!!ERR!!");
+        return Value.FromString(base64 ?? "ERR!!ROIFRAME NOT SUPPORT");
     }
     public static Value ImplImageRoi(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var image = args[0].AsString();
         var result = ctx.Roi?.Invoke(image, args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt());
-        return Value.FromString(result ?? "!!ERR!!");
+        return Value.FromString(result ?? "ERR!!ROI NOT SUPPORT");
     }
     /// <summary>
     /// 获取所有内置函数及其对应的 Callable。
@@ -218,7 +218,7 @@ internal static class BuiltinCallable
             (BuiltinFunctions.IntConvert, new DelegateCallable(ImplConvertInt)),
             (BuiltinFunctions.StrConvert, new DelegateCallable(ImplConvertString)),
             (BuiltinFunctions.Jq, new DelegateCallable(ImplJq)),
-            (BuiltinFunctions.Pixel, new DelegateCallable(ImplPixel)),
+            // (BuiltinFunctions.Pixel, new DelegateCallable(ImplPixel)),
             (BuiltinFunctions.Frame, new DelegateCallable(ImplFrame)),
             (BuiltinFunctions.FrameRoi, new DelegateCallable(ImplFrameROI)),
             (BuiltinFunctions.ImageRoi, new DelegateCallable(ImplImageRoi)),

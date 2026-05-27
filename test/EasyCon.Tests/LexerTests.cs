@@ -211,21 +211,25 @@ public class LexerTests
     [Test]
     public void Gamepad_Directions()
     {
-        var t = Tokenize("UP DOWN LEFT RIGHT");
-        // UP 独立出现为 ButtonKeyword，DOWN 跟在按钮后变为 StateKeyword
-        Assert.That(t[0].Type, Is.EqualTo(TokenType.ButtonKeyword)); // UP
-        Assert.That(t[1].Type, Is.EqualTo(TokenType.StateKeyword));  // DOWN (after UP)
-        Assert.That(t[2].Type, Is.EqualTo(TokenType.ButtonKeyword)); // LEFT
-        Assert.That(t[3].Type, Is.EqualTo(TokenType.ButtonKeyword)); // RIGHT
+        // 方向关键字：UP, DOWN, LEFT, RIGHT, UPLEFT, UPRIGHT, DOWNLEFT, DOWNRIGHT
+        var t = Tokenize("UP DOWN LEFT RIGHT UPLEFT UPRIGHT DOWNLEFT DOWNRIGHT");
+        Assert.That(t[0].Type, Is.EqualTo(TokenType.DirectionKeyword)); // UP
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.DirectionKeyword)); // DOWN
+        Assert.That(t[2].Type, Is.EqualTo(TokenType.DirectionKeyword)); // LEFT
+        Assert.That(t[3].Type, Is.EqualTo(TokenType.DirectionKeyword)); // RIGHT
+        Assert.That(t[4].Type, Is.EqualTo(TokenType.DirectionKeyword)); // UPLEFT
+        Assert.That(t[5].Type, Is.EqualTo(TokenType.DirectionKeyword)); // UPRIGHT
+        Assert.That(t[6].Type, Is.EqualTo(TokenType.DirectionKeyword)); // DOWNLEFT
+        Assert.That(t[7].Type, Is.EqualTo(TokenType.DirectionKeyword)); // DOWNRIGHT
     }
 
     [Test]
-    public void Gamepad_AfterButton_BecomesStateKeyword()
+    public void Gamepad_AfterButton_FollowedByDirection()
     {
-        // A UP — UP 跟在按钮后变为 StateKeyword
+        // A UP — UP 跟在按钮后作为方向/状态
         var t = Tokenize("A UP");
         Assert.That(t[0].Type, Is.EqualTo(TokenType.ButtonKeyword));
-        Assert.That(t[1].Type, Is.EqualTo(TokenType.StateKeyword));
+        Assert.That(t[1].Type, Is.EqualTo(TokenType.DirectionKeyword));
     }
 
     [Test]

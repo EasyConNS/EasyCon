@@ -285,9 +285,13 @@ CAPTURE");
     }
 
     [Test]
-    public void Error_ArrayTypeAnnotation_EmptyBrackets()
+    public void Error_StructField_DynamicLengthArray()
     {
-        ExpectError("$var:int[]");
+        // 结构体字段不支持动态长度数组，只支持固定长度
+        ExpectError(@"
+STRUCT Test
+    $data:int[]
+END");
     }
 
     [Test]

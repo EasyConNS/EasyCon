@@ -25,19 +25,18 @@ public class PerformanceBenchmarks
     private const int BenchmarkIterations = 5;
 
     /// <summary>
-    /// 编译 + 执行脚本，返回执行耗时(ms)和 PRINT 输出
+    /// 编译脚本，返回编译后的 Compilation 对象
     /// </summary>
-    private static (double Ms, string[] Output) RunScript(string code)
+    private static Compilation Compile(string code)
     {
-        var compilation = Compilation.Create(SyntaxTree.Parse(code));
+        return Compilation.Create(SyntaxTree.Parse(code));
+    }
 
-        // 预热（编译 + JIT）
-        for (int i = 0; i < WarmupIterations; i++)
-        {
-            using var warmupCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            compilation.Evaluate(new MockOutputAdapter(), null, null, null, null, null, null, warmupCts.Token);
-        }
-
+    /// <summary>
+    /// 执行编译后的脚本，返回执行耗时(ms)和 PRINT 输出
+    /// </summary>
+    private static (double Ms, string[] Output) RunScript(Compilation compilation)
+    {
         // 正式测量
         var output = new MockOutputAdapter();
         var sw = Stopwatch.StartNew();
@@ -63,12 +62,14 @@ public class PerformanceBenchmarks
     /// </summary>
     private static (double MedianMs, string[] Output) Benchmark(string code)
     {
+        var compilation = Compile(code);
+
         var times = new List<double>();
         string[]? lastOutput = null;
 
         for (int i = 0; i < BenchmarkIterations; i++)
         {
-            var (ms, output) = RunScript(code);
+            var (ms, output) = RunScript(compilation);
             times.Add(ms);
             lastOutput = output;
         }
