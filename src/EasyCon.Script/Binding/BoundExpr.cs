@@ -110,7 +110,6 @@ internal sealed class BoundIndexDeclxpression : BoundExpr
     public BoundIndexDeclxpression(AstNode syntax, ImmutableArray<BoundExpr> items) : base(syntax)
     {
         Items = items;
-        // 如果数组为空，默认元素类型INT
         var elementType = items.Select(i => i.Type).FirstOrDefault(ScriptType.Int);
         Type = ScriptType.ArrayOf(elementType);
     }
@@ -121,6 +120,13 @@ internal sealed class BoundRuntimeValueExpression(AstNode syntax, string name, S
     public readonly string Name = name;
     public override ScriptType Type { get; } = type;
     public override BoundNodeKind Kind => BoundNodeKind.RuntimeValue;
+}
+
+internal sealed class BoundImageLabelExpression(AstNode syntax, string name) : BoundExpr(syntax)
+{
+    public readonly string Name = name;
+    public override ScriptType Type => ScriptType.Int;
+    public override BoundNodeKind Kind => BoundNodeKind.ExLabelVariable;
 }
 
 internal sealed class BoundUnaryExpression(AstNode syntax, BoundUnaryOperator op, BoundExpr operand) : BoundExpr(syntax)

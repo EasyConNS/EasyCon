@@ -118,4 +118,17 @@ internal sealed class BoundScope(BoundScope? parent)
 
     public ImmutableArray<FunctionSymbol> GetDeclaredFunctions()
         => [.. _fn_symbols.Values.SelectMany(list => list)];
+
+    /// <summary>
+    /// 从另一个作用域导入所有符号（函数、变量、结构体）到当前作用域。
+    /// </summary>
+    public void ImportFrom(BoundScope source)
+    {
+        foreach (var fn in source.GetDeclaredFunctions())
+            TryDeclareFunction(fn);
+        foreach (var v in source.GetDeclaredVariables())
+            TryDeclareVariable(v);
+        foreach (var kv in source.CollectAllStructDefs())
+            TryDeclareStruct(kv.Key, kv.Value);
+    }
 }

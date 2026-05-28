@@ -2,6 +2,7 @@ using EasyCon.Script;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace EasyCon.Tests;
@@ -36,6 +37,15 @@ public class EvaluatorTests
         var output = new MockOutputAdapter();
         var compilation = Compilation.Create(SyntaxTree.Parse(code));
         var result = compilation.Evaluate(output, null, null, null, null, null, null, new CancellationTokenSource().Token);
+        return (result, output);
+    }
+
+    private static (EvaluationResult Result, MockOutputAdapter Output) EvalWithLabel(
+        string code, LabelMatchDelegate labelMatch, ImmutableHashSet<string> labelNames)
+    {
+        var output = new MockOutputAdapter();
+        var compilation = Compilation.Create(SyntaxTree.Parse(code));
+        var result = compilation.Evaluate(output, null, null, null, null, labelMatch, labelNames, new CancellationTokenSource().Token);
         return (result, output);
     }
 
@@ -807,7 +817,12 @@ RETURN $r[1:]");
     [Test]
     public void Error_ArrayIndexOutOfBounds()
     {
-        Assert.Throws<Exception>(() => EvalValue("$a = [1, 2]\nRETURN $a[5]"));
+        // 编译期数组越界检查：常量索引越界应产生编译错误
+        var tree = SyntaxTree.Parse("$a = [1, 2]\nRETURN $a[5]");
+        var compilation = Compilation.Create(tree);
+        var diagnostics = compilation.Compile(null);
+        Assert.That(diagnostics.HasErrors(), Is.True);
+        Assert.That(diagnostics.Any(d => d.Message.Contains("索引越界")), Is.True);
     }
 
     [Test]
@@ -940,6 +955,134 @@ FUNC double($n) : int
     RETURN $n * 2
 ENDFUNC
 RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
+    }
+
+    #endregion
+
+    #region 运行时常量 — __TIME__ / __FILE__
+
+    [Test]
+    public void RuntimeConst_TIME_AsExpression()
+    {
+        // __TIME__ 作为独立表达式求值
+        var (result, _) = Eval("$t = __TIME__\nRETURN $t");
+        Assert.That(result.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
+        Assert.That(result.Result.AsInt(), Is.GreaterThanOrEqualTo(0));
+    }
+
+    [Test]
+    public void RuntimeConst_TIME_InComparison()
+    {
+        var (result, _) = Eval("RETURN __TIME__ >= 0");
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
+        Assert.That(result.Result.AsBool(), Is.True);
+    }
+
+    [Test]
+    public void RuntimeConst_FILE_FoldsToDirectory()
+    {
+        // __FILE__ 在解析阶段折叠为源文件所在目录
+        var tempDir = Path.Combine(Path.GetTempPath(), $"EasyConTest_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        try
+        {
+            var filePath = Path.Combine(tempDir, "test.ecs");
+            File.WriteAllText(filePath, "RETURN __FILE__");
+
+            var tree = SyntaxTree.Load(filePath);
+            var compilation = Compilation.Create(tree);
+            var output = new MockOutputAdapter();
+            var result = compilation.Evaluate(output, null, null, null, null, null, null, new CancellationTokenSource().Token);
+
+            Assert.That(result.Diagnostics.HasErrors(), Is.False,
+                $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
+            Assert.That(result.Result.AsString(), Is.EqualTo(tempDir));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
+    #endregion
+
+    #region 图像标签 — @label 独立求值
+
+    [Test]
+    public void ImageLabel_Standalone_EvaluatesViaLabelMatch()
+    {
+        // @label 作为独立表达式通过 LabelMatch 求值
+        LabelMatchDelegate matcher = name => name switch
+        {
+            "myLabel" => 42,
+            _ => 0,
+        };
+        var labelNames = ImmutableHashSet.Create("myLabel");
+
+        var (result, _) = EvalWithLabel("RETURN @myLabel", matcher, labelNames);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
+        Assert.That(result.Result.AsInt(), Is.EqualTo(42));
+    }
+
+    [Test]
+    public void ImageLabel_InComparison()
+    {
+        LabelMatchDelegate matcher = name => 100;
+        var labelNames = ImmutableHashSet.Create("target");
+
+        var (result, _) = EvalWithLabel("RETURN @target > 95", matcher, labelNames);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
+        Assert.That(result.Result.AsBool(), Is.True);
+    }
+
+    [Test]
+    public void ImageLabel_InIfCondition()
+    {
+        LabelMatchDelegate matcher = name => 50;
+        var labelNames = ImmutableHashSet.Create("icon");
+
+        var (result, _) = EvalWithLabel(@"
+$r = 0
+IF @icon > 30
+    $r = 1
+ENDIF
+RETURN $r", matcher, labelNames);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
+        Assert.That(result.Result.AsInt(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void ImageLabel_AssignedToVariable()
+    {
+        LabelMatchDelegate matcher = name => 77;
+        var labelNames = ImmutableHashSet.Create("btn");
+
+        var (result, _) = EvalWithLabel("$v = @btn\nRETURN $v + 1", matcher, labelNames);
+        Assert.That(result.Diagnostics.HasErrors(), Is.False);
+        Assert.That(result.Result.AsInt(), Is.EqualTo(78));
+    }
+
+    [Test]
+    public void ImageLabel_LabelMatchNotInitialized_Throws()
+    {
+        // 绑定通过（标签已声明）但运行时 LabelMatch 为 null → 抛异常
+        var labelNames = ImmutableHashSet.Create("myLabel");
+        var output = new MockOutputAdapter();
+        var compilation = Compilation.Create(SyntaxTree.Parse("RETURN @myLabel"));
+
+        Assert.Throws<Exception>(() =>
+            compilation.Evaluate(output, null, null, null, null, null, labelNames, new CancellationTokenSource().Token));
+    }
+
+    [Test]
+    public void ImageLabel_Undeclared_BindError()
+    {
+        // 未在 labelNames 中声明的标签应在绑定阶段报错
+        var (result, _) = EvalWithLabel("RETURN @unknown", _ => 0, ImmutableHashSet<string>.Empty);
+        Assert.That(result.Diagnostics.HasErrors(), Is.True);
+        Assert.That(result.Diagnostics.Any(d => d.Message.Contains("找不到")), Is.True);
     }
 
     #endregion

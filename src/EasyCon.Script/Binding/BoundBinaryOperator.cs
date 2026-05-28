@@ -76,42 +76,41 @@ internal sealed class BoundBinaryOperator
         return null;
     }
 
+    /// <summary>
+    /// 数值类型等级，用于隐式提升。等级越高越优先。-1 表示非数值类型。
+    /// byte(0) &lt; int(1) &lt; uint(2) &lt; uint64(3) &lt; double(4)
+    /// </summary>
+    private static int GetTypeRank(ScriptType type)
+    {
+        if (type.Equals(ScriptType.Byte)) return 0;
+        if (type.Equals(ScriptType.Int)) return 1;
+        if (type.Equals(ScriptType.UInt)) return 2;
+        if (type.Equals(ScriptType.UInt64)) return 3;
+        if (type.Equals(ScriptType.Double)) return 4;
+        return -1;
+    }
+
     private static (ScriptType Left, ScriptType Right) ApplyImplicitConversion(TokenType kind, ScriptType left, ScriptType right)
     {
-        // String 拼接: & 和 + 与任意类型
+        // String 拼接: & 和 + 遇到字符串时双侧提升为 string
         if ((kind == TokenType.BitAnd || kind == TokenType.ADD) &&
             (left.Equals(ScriptType.String) || right.Equals(ScriptType.String)))
             return (ScriptType.String, ScriptType.String);
 
-        // int → double
-        if (left.Equals(ScriptType.Int) && right.Equals(ScriptType.Double))
-            left = ScriptType.Double;
-        else if (right.Equals(ScriptType.Int) && left.Equals(ScriptType.Double))
-            right = ScriptType.Double;
+        int leftRank = GetTypeRank(left);
+        int rightRank = GetTypeRank(right);
 
-        // int/uint32 → uint64（所有运算符，优先于 uint32）
-        if (left.Equals(ScriptType.Int) && right.Equals(ScriptType.UInt64))
-            left = ScriptType.UInt64;
-        else if (right.Equals(ScriptType.Int) && left.Equals(ScriptType.UInt64))
-            right = ScriptType.UInt64;
-        else if (left.Equals(ScriptType.UInt) && right.Equals(ScriptType.UInt64))
-            left = ScriptType.UInt64;
-        else if (right.Equals(ScriptType.UInt) && left.Equals(ScriptType.UInt64))
-            right = ScriptType.UInt64;
+        // 双方均为数值类型：低等级提升到高等级
+        if (leftRank >= 0 && rightRank >= 0)
+        {
+            if (leftRank < rightRank)
+                left = right;
+            else if (rightRank < leftRank)
+                right = left;
+            return (left, right);
+        }
 
-        // int → uint32（所有运算符）
-        if (left.Equals(ScriptType.Int) && right.Equals(ScriptType.UInt))
-            left = ScriptType.UInt;
-        else if (right.Equals(ScriptType.Int) && left.Equals(ScriptType.UInt))
-            right = ScriptType.UInt;
-
-        // int → byte（所有运算符）
-        if (left.Equals(ScriptType.Int) && right.Equals(ScriptType.Byte))
-            left = ScriptType.Byte;
-        else if (right.Equals(ScriptType.Int) && left.Equals(ScriptType.Byte))
-            right = ScriptType.Byte;
-
-        // int → ptr（仅比较）
+        // 比较运算: ptr 与 int 互转
         if (IsComparison(kind))
         {
             if (left.Equals(ScriptType.Int) && right.Equals(ScriptType.Ptr))

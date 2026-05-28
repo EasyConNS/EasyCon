@@ -329,7 +329,7 @@ internal partial class Parser
                 MatchEOF();
                 var isUp = state.Value.Equals("UP", StringComparison.CurrentCultureIgnoreCase);
                 var isDown = state.Value.Equals("DOWN", StringComparison.CurrentCultureIgnoreCase);
-                if(!isUp && !isDown) _diagnostics.ReportInvalidKeyActionStatement(state.Location, state);
+                if (!isUp && !isDown) _diagnostics.ReportInvalidKeyActionStatement(state.Location, state);
                 return new KeyAct(firstKey, isUp);
             }
         }

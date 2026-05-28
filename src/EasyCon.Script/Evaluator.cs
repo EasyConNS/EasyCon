@@ -296,6 +296,11 @@ internal sealed class Evaluator : IEvalContext, IDisposable
                 if (_runtimeValueGetters.TryGetValue(rv.Name, out var rvGetter))
                     return rvGetter();
                 throw new Exception($"找不到运行时变量 \"{rv.Name}\" 的getter");
+            case ExLabelVariable:
+                var il = (BoundImageLabelExpression)node;
+                if (LabelMatch is not { } matcher)
+                    throw new Exception("图像标签匹配器未初始化");
+                return matcher(il.Name);
             case UnaryExpression:
                 return EvaluateUnaryExpression((BoundUnaryExpression)node);
             case BinaryExpression:

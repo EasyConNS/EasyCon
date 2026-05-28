@@ -44,6 +44,14 @@ sealed class RuntimeValueExpr(Token tag, string name) : BaseExpr(tag)
     public override string GetCodeText() => tag.Value;
 }
 
+// 图像标签表达式 @labelName
+sealed class ImageLabelExpr(Token tag, string name) : BaseExpr(tag)
+{
+    public readonly string Name = name;
+
+    public override string GetCodeText() => tag.Value;
+}
+
 sealed class BinaryExpression(Token op, BaseExpr left, BaseExpr right) : BaseExpr(op)
 {
     public readonly BaseExpr ValueLeft = left;
