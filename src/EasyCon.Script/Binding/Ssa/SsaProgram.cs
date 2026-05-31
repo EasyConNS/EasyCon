@@ -7,7 +7,7 @@ namespace EasyCon.Script.Binding.Ssa;
 /// <summary>
 /// SSA 形式的函数体。
 /// </summary>
-sealed class SsaFunction
+public sealed class SsaFunction
 {
     public readonly FunctionSymbol Symbol;
     public readonly List<SsaBlock> Blocks = new();
@@ -21,7 +21,7 @@ sealed class SsaFunction
 /// <summary>
 /// SSA 形式的完整程序。
 /// </summary>
-sealed class SsaProgram
+public sealed class SsaProgram
 {
     public required SsaFunction? MainFunction { get; init; }
     public required ImmutableDictionary<FunctionSymbol, SsaFunction> Functions { get; init; }

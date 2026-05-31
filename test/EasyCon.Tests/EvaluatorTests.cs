@@ -1,4 +1,6 @@
+using EasyCon.Core.Runner;
 using EasyCon.Script;
+using EasyCon.Script.Binding.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
@@ -32,24 +34,37 @@ internal sealed class MockOutputAdapter : IOutputAdapter
 [TestFixture]
 public class EvaluatorTests
 {
-    private static (EvaluationResult Result, MockOutputAdapter Output) Eval(string code)
+    private static (CompileResult CompileResult, Value Result, MockOutputAdapter Output) CompileAndEval(
+        string code, LabelMatchDelegate? labelMatch = null, ImmutableHashSet<string>? labelNames = null)
     {
         var output = new MockOutputAdapter();
         var compilation = Compilation.Create(SyntaxTree.Parse(code));
-        var result = compilation.Evaluate(output, null, null, null, null, null, null, new CancellationTokenSource().Token);
-        return (result, output);
+        var result = compilation.Compile(labelNames);
+        if (result.Program == null)
+            return (result, Value.Void, output);
+        using var evaluator = new SsaEvaluator(result.Program, new CancellationTokenSource().Token)
+        {
+            Output = output,
+            LabelMatch = labelMatch,
+        };
+        var value = evaluator.Evaluate();
+        return (result, value, output);
     }
 
-    private static (EvaluationResult Result, MockOutputAdapter Output) EvalWithLabel(
+    private static (CompileResult Result, MockOutputAdapter Output) Eval(string code)
+    {
+        var (cr, value, output) = CompileAndEval(code);
+        return (cr, output);
+    }
+
+    private static (CompileResult Result, MockOutputAdapter Output) EvalWithLabel(
         string code, LabelMatchDelegate labelMatch, ImmutableHashSet<string> labelNames)
     {
-        var output = new MockOutputAdapter();
-        var compilation = Compilation.Create(SyntaxTree.Parse(code));
-        var result = compilation.Evaluate(output, null, null, null, null, labelMatch, labelNames, new CancellationTokenSource().Token);
-        return (result, output);
+        var (cr, value, output) = CompileAndEval(code, labelMatch, labelNames);
+        return (cr, output);
     }
 
-    private static Value EvalValue(string code) => Eval(code).Result.Result;
+    private static Value EvalValue(string code) => CompileAndEval(code).Result;
 
     #region 执行基本路径
 
@@ -878,7 +893,7 @@ RETURN $r[1:]");
     {
         var tree = SyntaxTree.Parse("$r = $undefined");
         var compilation = Compilation.Create(tree);
-        var result = compilation.Evaluate(new MockOutputAdapter(), null, null, null, null, null, null, CancellationToken.None);
+        var result = compilation.Compile(null);
         Assert.That(result.Diagnostics.HasErrors(), Is.True);
     }
 
@@ -903,10 +918,8 @@ RETURN $r[1:]");
     [Test]
     public void DoubleDivInt_CompoundAssign()
     {
-        var (result, output) = Eval("$r = 15.0 / 2\n$r /= 3\nRETURN $r");
-        if (result.Diagnostics.Length > 0)
-            Assert.Fail(string.Join("\n", result.Diagnostics.Select(d => d.Message)));
-        Assert.That(result.Result.AsDouble(), Is.EqualTo(2.5));
+        var (_, value, output) = CompileAndEval("$r = 15.0 / 2\n$r /= 3\nRETURN $r");
+        Assert.That(value.AsDouble(), Is.EqualTo(2.5));
     }
 
     [Test]
@@ -1007,18 +1020,17 @@ RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
     public void RuntimeConst_TIME_AsExpression()
     {
         // __TIME__ 作为独立表达式求值
-        var (result, _) = Eval("$t = __TIME__\nRETURN $t");
-        Assert.That(result.Diagnostics.HasErrors(), Is.False,
-            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
-        Assert.That(result.Result.AsInt(), Is.GreaterThanOrEqualTo(0));
+        var (compileResult, value, _) = CompileAndEval("$t = __TIME__\nRETURN $t");
+        Assert.That(compileResult.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
+        Assert.That(value.AsInt(), Is.GreaterThanOrEqualTo(0));
     }
 
     [Test]
     public void RuntimeConst_TIME_InComparison()
     {
-        var (result, _) = Eval("RETURN __TIME__ >= 0");
-        Assert.That(result.Diagnostics.HasErrors(), Is.False);
-        Assert.That(result.Result.AsBool(), Is.True);
+        var (_, value, _) = CompileAndEval("RETURN __TIME__ >= 0");
+        Assert.That(value.AsBool(), Is.True);
     }
 
     [Test]
@@ -1034,12 +1046,16 @@ RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
 
             var tree = SyntaxTree.Load(filePath);
             var compilation = Compilation.Create(tree);
-            var output = new MockOutputAdapter();
-            var result = compilation.Evaluate(output, null, null, null, null, null, null, new CancellationTokenSource().Token);
+            var compileResult = compilation.Compile(null);
 
-            Assert.That(result.Diagnostics.HasErrors(), Is.False,
-                $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
-            Assert.That(result.Result.AsString(), Is.EqualTo(tempDir));
+            Assert.That(compileResult.Diagnostics.HasErrors(), Is.False,
+                $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
+
+            var output = new MockOutputAdapter();
+            using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { Output = output };
+            var value = evaluator.Evaluate();
+
+            Assert.That(value.AsString(), Is.EqualTo(tempDir));
         }
         finally
         {
@@ -1062,10 +1078,10 @@ RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
         };
         var labelNames = ImmutableHashSet.Create("myLabel");
 
-        var (result, _) = EvalWithLabel("RETURN @myLabel", matcher, labelNames);
-        Assert.That(result.Diagnostics.HasErrors(), Is.False,
-            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
-        Assert.That(result.Result.AsInt(), Is.EqualTo(42));
+        var (compileResult, value, _) = CompileAndEval("RETURN @myLabel", matcher, labelNames);
+        Assert.That(compileResult.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
+        Assert.That(value.AsInt(), Is.EqualTo(42));
     }
 
     [Test]
@@ -1074,9 +1090,8 @@ RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
         LabelMatchDelegate matcher = name => 100;
         var labelNames = ImmutableHashSet.Create("target");
 
-        var (result, _) = EvalWithLabel("RETURN @target > 95", matcher, labelNames);
-        Assert.That(result.Diagnostics.HasErrors(), Is.False);
-        Assert.That(result.Result.AsBool(), Is.True);
+        var (_, value, _) = CompileAndEval("RETURN @target > 95", matcher, labelNames);
+        Assert.That(value.AsBool(), Is.True);
     }
 
     [Test]
@@ -1085,14 +1100,13 @@ RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
         LabelMatchDelegate matcher = name => 50;
         var labelNames = ImmutableHashSet.Create("icon");
 
-        var (result, _) = EvalWithLabel(@"
+        var (_, value, _) = CompileAndEval(@"
 $r = 0
 IF @icon > 30
     $r = 1
 ENDIF
 RETURN $r", matcher, labelNames);
-        Assert.That(result.Diagnostics.HasErrors(), Is.False);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(1));
+        Assert.That(value.AsInt(), Is.EqualTo(1));
     }
 
     [Test]
@@ -1101,9 +1115,8 @@ RETURN $r", matcher, labelNames);
         LabelMatchDelegate matcher = name => 77;
         var labelNames = ImmutableHashSet.Create("btn");
 
-        var (result, _) = EvalWithLabel("$v = @btn\nRETURN $v + 1", matcher, labelNames);
-        Assert.That(result.Diagnostics.HasErrors(), Is.False);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(78));
+        var (_, value, _) = CompileAndEval("$v = @btn\nRETURN $v + 1", matcher, labelNames);
+        Assert.That(value.AsInt(), Is.EqualTo(78));
     }
 
     [Test]
@@ -1113,9 +1126,11 @@ RETURN $r", matcher, labelNames);
         var labelNames = ImmutableHashSet.Create("myLabel");
         var output = new MockOutputAdapter();
         var compilation = Compilation.Create(SyntaxTree.Parse("RETURN @myLabel"));
+        var compileResult = compilation.Compile(labelNames);
 
-        Assert.Throws<Exception>(() =>
-            compilation.Evaluate(output, null, null, null, null, null, labelNames, new CancellationTokenSource().Token));
+        Assert.That(compileResult.Diagnostics.HasErrors(), Is.False);
+        using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { Output = output };
+        Assert.Throws<Exception>(() => evaluator.Evaluate());
     }
 
     [Test]
@@ -1173,7 +1188,7 @@ RETURN $c.val").AsInt(), Is.EqualTo(8));
     [Test]
     public void Struct_MultipleFieldTypes()
     {
-        var result = Eval(@"
+        var result = CompileAndEval(@"
 STRUCT Mixed
     $a:INT
     $b:DOUBLE
@@ -1185,7 +1200,7 @@ $m.b = 3.14
 $m.c = ""hello""
 $result = $m.c & "" "" & $m.a
 PRINT $result");
-        Assert.That(result.Result.Diagnostics.HasErrors(), Is.False);
+        Assert.That(result.CompileResult.Diagnostics.HasErrors(), Is.False);
         Assert.That(result.Output.Printed[0], Does.Contain("hello 42"));
     }
 
@@ -1304,33 +1319,33 @@ $a.data = 5");
     public void Array_Variable_DynamicLength()
     {
         // 变量定义: 只支持动态长度 int[]
-        var (result, _) = Eval(@"
+        var (compileResult, value, _) = CompileAndEval(@"
 $a:int[] = [1, 2, 3]
 RETURN LEN($a)");
-        Assert.That(result.Diagnostics.HasErrors(), Is.False,
-            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
-        Assert.That(result.Result.AsInt(), Is.EqualTo(3));
+        Assert.That(compileResult.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
+        Assert.That(value.AsInt(), Is.EqualTo(3));
     }
 
     [Test]
     public void Array_Variable_Assign_SameType()
     {
         // 数组变量赋值: 相同元素类型即可赋值
-        var (result, _) = Eval(@"
+        var (compileResult, value, _) = CompileAndEval(@"
 $a:int[] = [1, 2, 3]
 $b:int[] = [4, 5, 6]
 $a = $b
 RETURN LEN($a)");
-        Assert.That(result.Diagnostics.HasErrors(), Is.False,
-            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
-        Assert.That(result.Result.AsInt(), Is.EqualTo(3));
+        Assert.That(compileResult.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
+        Assert.That(value.AsInt(), Is.EqualTo(3));
     }
 
     [Test]
     public void Struct_ArrayField_FixedLength()
     {
         // 结构体字段: 只支持固定长度 int[3]
-        var (result, _) = Eval(@"
+        var (compileResult, value, _) = CompileAndEval(@"
 STRUCT Test
     $data:int[3]
 END
@@ -1339,9 +1354,9 @@ $a.data[0] = 1
 $a.data[1] = 2
 $a.data[2] = 3
 RETURN LEN($a.data)");
-        Assert.That(result.Diagnostics.HasErrors(), Is.False,
-            $"Expected no errors, got: {string.Join(", ", result.Diagnostics.Select(d => d.Message))}");
-        Assert.That(result.Result.AsInt(), Is.EqualTo(3));
+        Assert.That(compileResult.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
+        Assert.That(value.AsInt(), Is.EqualTo(3));
     }
 
     #endregion

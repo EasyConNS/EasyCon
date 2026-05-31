@@ -1,4 +1,5 @@
 using EasyCon.Script;
+using EasyCon.Script.Binding.Ssa;
 using EasyCon.Script.Syntax;
 using EasyScript;
 using System.Collections.Immutable;
@@ -7,10 +8,11 @@ namespace EasyCon.Core.Runner;
 
 public sealed class EasyRunner : IRunner
 {
-    Compilation compilation;
+    Compilation? compilation;
+    CompileResult? _result;
 
-    public bool HasKeyAction => compilation?.KeyAction ?? false;
-    public bool NeedILLoad => compilation?.NeedIL ?? false;
+    public bool HasKeyAction => _result?.KeyAction ?? false;
+    public bool NeedILLoad => _result?.NeedIL ?? false;
 
     public byte[] Assemble(bool auto = true)
     {
@@ -21,18 +23,31 @@ public sealed class EasyRunner : IRunner
     {
         var sourceText = SyntaxTree.Parse(code);
         compilation = Compilation.Create(sourceText);
-        return compilation.Compile(extVarNames);
+        _result = compilation.Compile(extVarNames);
+        return _result.Diagnostics;
     }
     public ImmutableArray<Diagnostic> Load(string fileName, ImmutableHashSet<string> extVarNames)
     {
         var sourceText = SyntaxTree.Load(fileName);
         compilation = Compilation.Create(sourceText);
-        return compilation.Compile(extVarNames);
+        _result = compilation.Compile(extVarNames);
+        return _result.Diagnostics;
     }
 
     public void Run(IOutputAdapter output, ICGamePad pad, OcrDelegate? ocr, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token)
     {
-        compilation?.Evaluate(output, pad, ocr, frameProvider, roiProvider, labelMatch, labelNames, token);
+        if (_result?.Program == null) return;
+
+        using var evaluator = new SsaEvaluator(_result.Program, token)
+        {
+            GamePad = pad,
+            Output = output,
+            Ocr = ocr,
+            Frame = frameProvider,
+            Roi = roiProvider,
+            LabelMatch = labelMatch,
+        };
+        evaluator.Evaluate();
     }
 
     public string ToCode()

@@ -184,17 +184,17 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         var labelDict = label.ToDictionary(il => il.name);
         labelNames = [.. labelDict.Keys];
 
-        frameDelegate = FrameDelegateFactory.CreateFrame(() => cvcap.GetMatFrame());
+        frameDelegate = FrameDelegateFactory.CreateFrame(() => cvcap.GetFreshFrame());
 
         labelMatchDelegate = lblName =>
         {
             if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-            using var mat = cvcap.GetMatFrame();
+            using var mat = cvcap.GetFreshFrame();
             if (mat.Empty()) return 0;
             il.Search(mat, out var md);
             return (int)Math.Ceiling(md);
         };
-        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetMatFrame());
+        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetFreshFrame());
     }
     outdap.Info($"==>开始执行脚本：{file}");
 

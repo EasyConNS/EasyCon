@@ -58,6 +58,24 @@ public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureA
         return new Mat();
     }
 
+    /// <summary>
+    /// 保证获取一帧新数据：双次 Grab 消费缓冲区旧帧，再 Retrieve 解码新帧。
+    /// 调用开销约为 GetMatFrame 的两倍，仅在需要帧新鲜度保证时使用（如脚本执行）。
+    /// </summary>
+    public Mat GetFreshFrame()
+    {
+        if (videoCapture.IsOpened())
+        {
+            videoCapture.Grab();  // 丢弃缓冲区当前帧（可能是旧帧）
+            videoCapture.Grab();  // 等待硬件产出新帧
+            var mat = new Mat();
+            videoCapture.Retrieve(mat);
+            return mat;
+        }
+
+        return new Mat();
+    }
+
     public void Release()
     {
         videoCapture.Release();

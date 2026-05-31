@@ -121,7 +121,7 @@ public class CaptureService
             {
                 lock (frameLock)
                 {
-                    using var mat = cap.GetMatFrame();
+                    using var mat = cap.GetFreshFrame();
                     if (mat.Empty()) return 0;
                     il.Search(mat, out var md);
                     return (int)Math.Ceiling(md);
@@ -138,7 +138,7 @@ public class CaptureService
         {
             lock (frameLock)
             {
-                using var frame = cap.GetMatFrame();
+                using var frame = cap.GetFreshFrame();
                 if (frame.Empty()) return null;
                 if (x >= 0 && y >= 0 && w >= 0 && h >= 0)
                 {
@@ -167,7 +167,7 @@ public class CaptureService
             if (!labels.TryGetValue(labelName, out var il)) return 0;
             lock (frameLock)
             {
-                using var mat = cap.GetMatFrame();
+                using var mat = cap.GetFreshFrame();
                 if (mat.Empty()) return 0;
                 il.Search(mat, out var md);
                 return (int)Math.Ceiling(md);

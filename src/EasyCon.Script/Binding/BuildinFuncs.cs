@@ -3,7 +3,7 @@ using EasyCon.Script.Symbols;
 
 namespace EasyCon.Script.Binding;
 
-internal static class BuiltinFunctions
+public static class BuiltinFunctions
 {
     // 内置 Pixel struct
     internal static readonly EcsStructDef PixelStructDef = CreatePixelDef();

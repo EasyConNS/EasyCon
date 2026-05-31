@@ -8,7 +8,7 @@ namespace EasyCon.Script.Binding.Ssa;
 /// 三地址码形式：Result = Op(Arg0, Arg1)。
 /// 常量载荷使用显式布局避免值类型装箱；字符串通过独立字段存储（引用类型无装箱）。
 /// </summary>
-sealed class SsaValue
+public sealed class SsaValue
 {
     public readonly int Id;
     public SsaOp Op;
@@ -62,7 +62,7 @@ sealed class SsaValue
 /// 字符串常量通过 SsaValue.ConstString 单独存储（引用类型无装箱开销）。
 /// </summary>
 [StructLayout(LayoutKind.Explicit)]
-struct ConstPayload
+public struct ConstPayload
 {
     [FieldOffset(0)] private int _intVal;      // int / uint (reinterpret) / bool (0/1) / byte
     [FieldOffset(0)] private double _doubleVal; // double

@@ -1134,16 +1134,3 @@ sealed class SsaCodeGenerator
         _ => throw new InvalidOperationException($"未映射的转换: {from} → {to}")
     };
 }
-
-/// <summary>
-/// 用于在 SsaValue.Aux 中存储 GamePadKey 的适配符号。
-/// </summary>
-sealed class GamePadKeySymbol(GamePadKey key) : Symbol(key.ToString())
-{
-    public readonly GamePadKey Key = key;
-}
-
-/// <summary>
-/// 用于在 SsaValue.Aux 中存储运行时值名称的适配符号。
-/// </summary>
-sealed class RuntimeValueNameSymbol(string name) : Symbol(name);

@@ -119,11 +119,28 @@ namespace EasyCon2.Forms
             if (!_forceClose)
             {
                 e.Cancel = true;
+                // 隐藏时停止动态测试和监控定时器，避免后台空转抢锁
+                if (_isDynamicTesting)
+                {
+                    _isDynamicTesting = false;
+                    dyncTestBtn.Text = "动态测试";
+                    captureBtn.Enabled = true;
+                    rangeBtn.Enabled = true;
+                    searchTestBtn.Enabled = true;
+                    targetBtn.Enabled = true;
+                }
+                UpdateCaptureTimer();
                 Hide();
                 return;
             }
             ThemeManager.ThemeChanged -= OnThemeChanged;
             base.OnFormClosing(e);
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            UpdateCaptureTimer();
         }
 
         private void CaptureVideo_Load(object sender, EventArgs e)

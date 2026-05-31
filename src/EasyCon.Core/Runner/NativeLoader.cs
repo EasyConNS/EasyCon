@@ -1,3 +1,4 @@
+using EasyCon.Script;
 using EasyCon.Script.Binding;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
@@ -9,7 +10,7 @@ using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace EasyCon.Script;
+namespace EasyCon.Core.Runner;
 
 internal sealed class NativeLoader
 {
@@ -37,7 +38,7 @@ internal sealed class NativeLoader
         return result.ToImmutable();
     }
 
-    [RequiresDynamicCode("Calls EasyCon.Script.NativeLoader.CreateCallable(FunctionSymbol, nint)")]
+    [RequiresDynamicCode("Calls EasyCon.Core.Runner.NativeLoader.CreateCallable(FunctionSymbol, nint)")]
     internal ICallable ResolveFunction(FunctionSymbol symbol)
     {
         var libName = symbol.LibraryName;

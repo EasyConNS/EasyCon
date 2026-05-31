@@ -5,7 +5,7 @@ namespace EasyCon.Script.Binding.Ssa;
 /// Phis 在块开头，Instructions 在 Phi 之后。
 /// 出口由 BranchCondition/TrueSuccessor/FalseSuccessor/JumpTarget/IsReturn 互斥决定。
 /// </summary>
-sealed class SsaBlock
+public sealed class SsaBlock
 {
     public readonly int Id;
     public readonly List<SsaValue> Phis = new();

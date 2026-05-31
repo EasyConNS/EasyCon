@@ -1,4 +1,4 @@
-namespace EasyCon.Script.Runtime;
+namespace EasyCon.Core.Runner;
 
 /// <summary>
 /// 类型化执行帧，按类别存储变量，替代 Value[]。

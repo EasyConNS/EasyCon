@@ -21,7 +21,7 @@ public class BinderTests
             {
                 var compilation = Compilation.Create(tree);
                 var diag = compilation.Compile(exvar ?? []);
-                foreach (var d in diag)
+                foreach (var d in diag.Diagnostics)
                     errors.Add(d.Message);
             }
             catch (Exception ex)

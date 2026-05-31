@@ -1,3 +1,4 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyScript;
@@ -5,7 +6,7 @@ using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 
-namespace EasyCon.Script.Binding;
+namespace EasyCon.Core.Runner;
 
 /// <summary>
 /// 内置函数 Callable 实现。每个静态方法对应一个内置函数的执行逻辑。

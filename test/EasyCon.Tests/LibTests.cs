@@ -1,4 +1,7 @@
+using EasyCon.Core.Runner;
 using EasyCon.Script;
+using EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
 using System.Collections.Immutable;
@@ -44,6 +47,15 @@ public class LibTests
         return path;
     }
 
+    private static Value EvalCompilation(Compilation compilation)
+    {
+        var compileResult = compilation.Compile(null);
+        if (compileResult.Program == null)
+            throw new Exception($"编译错误: {string.Join("; ", compileResult.Diagnostics.Where(d => d.IsError).Select(d => d.Message))}");
+        using var evaluator = new SsaEvaluator(compileResult.Program, new CancellationTokenSource().Token) { Output = new MockOutputAdapter() };
+        return evaluator.Evaluate();
+    }
+
     private static (Compilation Compilation, bool Success, List<string> Errors) CompileFile(string filePath)
     {
         var tree = SyntaxTree.Load(filePath);
@@ -53,8 +65,8 @@ public class LibTests
             try
             {
                 var compilation = Compilation.Create(tree);
-                var diag = compilation.Compile([]);
-                foreach (var d in diag)
+                var compileResult = compilation.Compile([]);
+                foreach (var d in compileResult.Diagnostics)
                     errors.Add(d.Message);
                 if (errors.Count == 0)
                     return (compilation, true, errors);
@@ -67,27 +79,26 @@ public class LibTests
         return (null!, false, errors);
     }
 
-    private static (EvaluationResult Result, bool Success, List<string> Errors) RunFile(
+    private static (Value Result, bool Success, List<string> Errors) RunFile(
         string filePath,
         ImmutableDictionary<string, Func<int>>? extGetters = null)
     {
         var tree = SyntaxTree.Load(filePath);
         var errors = tree.Diagnostics.Where(d => d.IsError).Select(d => d.Message).ToList();
         if (errors.Count > 0)
-            return (null!, false, errors);
+            return (Value.Void, false, errors);
 
         var compilation = Compilation.Create(tree);
-        var diag = compilation.Compile([]);
-        foreach (var d in diag)
+        var compileResult = compilation.Compile([]);
+        foreach (var d in compileResult.Diagnostics)
             errors.Add(d.Message);
         if (errors.Count > 0)
-            return (null!, false, errors);
+            return (Value.Void, false, errors);
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null,
-            null, null, null, null,
-            new CancellationTokenSource().Token);
-        return (result, !result.Diagnostics.HasErrors(), []);
+        var output = new MockOutputAdapter();
+        using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { Output = output };
+        var value = evaluator.Evaluate();
+        return (value, !compileResult.Diagnostics.HasErrors(), []);
     }
 
     #region 自动加载
@@ -290,10 +301,8 @@ ENDFUNC
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(15));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(15));
     }
 
     #endregion
@@ -314,10 +323,8 @@ ENDFUNC
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(25));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(25));
     }
 
     [Test]
@@ -338,10 +345,8 @@ ENDFUNC
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(12));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(12));
     }
 
     #region 主脚本调用 lib 函数
@@ -359,10 +364,8 @@ ENDFUNC
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(30));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(30));
     }
 
     [Test]
@@ -381,10 +384,8 @@ ENDFUNC
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(55));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(55));
     }
 
     [Test]
@@ -432,10 +433,8 @@ ENDFUNC
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.InRange(0, 99));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.InRange(0, 99));
     }
 
     #endregion
@@ -456,10 +455,8 @@ $r = triple(7)");
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(21));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(21));
     }
 
     [Test]
@@ -482,10 +479,8 @@ $r = add(mul(3, 4), 5)");
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(17));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(17));
     }
 
     [Test]
@@ -508,10 +503,8 @@ $r = add(mul(3, 4), 1)");
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, null, null, null, null, null,
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(13));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(13));
     }
 
     #endregion

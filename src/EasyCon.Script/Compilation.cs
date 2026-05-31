@@ -14,17 +14,28 @@ public class ScriptException(string message, int address = 0) : Exception(messag
     public int Address { get; private set; } = address;
 }
 
-public sealed class EvaluationResult(ImmutableArray<Diagnostic> diagnostics, Value value)
+/// <summary>
+/// 编译结果：包含诊断信息和优化后的 SSA IR。
+/// 当存在编译错误时 Program 为 null。
+/// </summary>
+public sealed class CompileResult
 {
-    public ImmutableArray<Diagnostic> Diagnostics { get; } = diagnostics;
-    public Value Result { get; } = value;
+    public ImmutableArray<Diagnostic> Diagnostics { get; }
+    public SsaProgram? Program { get; }
+    public bool KeyAction { get; }
+    public bool NeedIL { get; }
+
+    internal CompileResult(ImmutableArray<Diagnostic> diagnostics, SsaProgram? program, bool keyAction, bool needIL)
+    {
+        Diagnostics = diagnostics;
+        Program = program;
+        KeyAction = keyAction;
+        NeedIL = needIL;
+    }
 }
 
 public sealed class Compilation
 {
-    public bool KeyAction { get; private set; } = false;
-    public bool NeedIL { get; private set; } = false;
-
     private Compilation(ImmutableArray<SyntaxTree> syntaxTrees)
     {
         SyntaxTrees = syntaxTrees;
@@ -94,44 +105,24 @@ public sealed class Compilation
     /// </summary>
     public static void ClearLibCache() => _libCache.Clear();
 
-    private BoundProgram GetProgram(ImmutableHashSet<string>? extVars)
+    /// <summary>
+    /// 完整编译管线：Bind → SSA 生成 → SSA 优化。
+    /// 编译错误时返回 Program=null 的 CompileResult。
+    /// </summary>
+    public CompileResult Compile(ImmutableHashSet<string>? extVars)
     {
-        return Binder.BindProgram(SyntaxTrees, extVars);
-    }
+        var bound = Binder.BindProgram(SyntaxTrees, extVars);
+        var keyAction = bound.KeyAction;
+        var needIL = bound.NeedIL;
 
-    public ImmutableArray<Diagnostic> Compile(ImmutableHashSet<string>? extVars)
-    {
-        var program = GetProgram(extVars);
-        KeyAction = program.KeyAction;
-        NeedIL = program.NeedIL;
-        return program.Diagnostics;
-    }
+        if (bound.Diagnostics.HasErrors())
+            return new CompileResult(bound.Diagnostics, null, keyAction, needIL);
 
-    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad? pad, OcrDelegate? ocr,
-        FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch,
-        ImmutableHashSet<string>? labelNames,
-        CancellationToken token)
-    {
-        var program = GetProgram(labelNames ?? []);
-        if (program.Diagnostics.HasErrors())
-            return new EvaluationResult(program.Diagnostics, Value.Void);
-
-        // Bound → SSA
-        var ssaProgram = SsaProgramBuilder.Build(program);
+        // Bound → SSA → Optimize
+        var ssaProgram = SsaProgramBuilder.Build(bound);
         SsaOptimizer.Optimize(ssaProgram);
 
-        using var evaluator = new SsaEvaluator(ssaProgram, token)
-        {
-            GamePad = pad,
-            Output = output,
-            Ocr = ocr,
-            Frame = frameProvider,
-            Roi = roiProvider,
-            LabelMatch = labelMatch,
-        };
-        var value = evaluator.Evaluate();
-
-        return new EvaluationResult(ssaProgram.Diagnostics, value);
+        return new CompileResult(ssaProgram.Diagnostics, ssaProgram, keyAction, needIL);
     }
 
     public string FormatCode()

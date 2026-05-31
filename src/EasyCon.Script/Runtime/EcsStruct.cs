@@ -20,9 +20,9 @@ public class EcsStructDef
     public int Alignment;
 }
 
-internal static class TypeLayout
+public static class TypeLayout
 {
-    internal static int GetNativeSize(ScriptType type) => type switch
+    public static int GetNativeSize(ScriptType type) => type switch
     {
         _ when type.Equals(ScriptType.Byte) => 1,
         _ when type.Equals(ScriptType.Bool) => 4,
@@ -37,7 +37,7 @@ internal static class TypeLayout
         _ => 4
     };
 
-    internal static ScriptType GetElementType(ScriptType type) => type is ArrayType a ? a.ElementType : type;
+    public static ScriptType GetElementType(ScriptType type) => type is ArrayType a ? a.ElementType : type;
 }
 
 public static class StructLayout

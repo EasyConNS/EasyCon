@@ -19,7 +19,7 @@ public class LifecycleAnalyzerTests
             try
             {
                 var compilation = Compilation.Create(tree);
-                var diag = compilation.Compile([]);
+                var diag = compilation.Compile([]).Diagnostics;
                 foreach (var d in diag)
                     errors.Add(d.Message);
             }

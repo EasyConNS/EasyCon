@@ -1,3 +1,4 @@
+using EasyCon.Script;
 using EasyCon.Script.Binding;
 using EasyCon.Script.Binding.Ssa;
 using EasyCon.Script.Runtime;
@@ -7,13 +8,13 @@ using System.Buffers;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
-namespace EasyCon.Script;
+namespace EasyCon.Core.Runner;
 
 /// <summary>
 /// 消费 SSA IR 的执行器。
 /// 直接遍历 SsaBlock + SsaValue，无需 Bound 树的递归表达式求值。
 /// </summary>
-internal sealed class SsaEvaluator : IEvalContext, IDisposable
+public sealed class SsaEvaluator : IEvalContext, IDisposable
 {
     private readonly SsaProgram _program;
     private readonly RuntimeHeap _heap = new();
@@ -786,7 +787,7 @@ internal sealed class SsaEvaluator : IEvalContext, IDisposable
         return matcher(name);
     }
 
-    // ============ 槽位读写（复用现有逻辑） ============
+    // ============ 槽位读写 ============
 
     private static SlotCategory GetSlotCategory(ScriptType type)
     {
@@ -818,7 +819,6 @@ internal sealed class SsaEvaluator : IEvalContext, IDisposable
         _ => Value.Void
     };
 
-    // Handle 类型的局部读取需要通过堆
     private Value ReadLocalHandle(SlotDesc desc, EvalFrame frame, ScriptType type)
     {
         return _heap.Deref(frame.Handles[desc.Index], type);
@@ -863,12 +863,9 @@ internal sealed class SsaEvaluator : IEvalContext, IDisposable
 
     private void WriteToSlot(SsaValue val, Value value, EvalFrame frame)
     {
-        // Phi 节点的结果需要写入对应的槽位
-        // 使用 val 的 Type 来确定槽位类别
         var desc = val.Slot;
         if (desc.Index < 0)
         {
-            // 尚未分配槽位（如短路求值的临时Phi），跳过写入
             return;
         }
         var cat = GetSlotCategory(val.Type);

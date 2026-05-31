@@ -1,4 +1,6 @@
+using EasyCon.Core.Runner;
 using EasyCon.Script;
+using EasyCon.Script.Binding.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
@@ -37,22 +39,23 @@ public class PerformanceBenchmarks
     /// </summary>
     private static (double Ms, string[] Output) RunScript(Compilation compilation)
     {
+        var compileResult = compilation.Compile(null);
+        if (compileResult.Program == null)
+        {
+            var errors = compileResult.Diagnostics
+                .Where(d => d.IsError)
+                .Select(d => d.Message)
+                .ToList();
+            Assert.Fail($"脚本编译错误: {string.Join("; ", errors)}");
+        }
+
         // 正式测量
         var output = new MockOutputAdapter();
         var sw = Stopwatch.StartNew();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-        var result = compilation.Evaluate(output, null, null, null, null, null, null, cts.Token);
+        using var evaluator = new SsaEvaluator(compileResult.Program, cts.Token) { Output = output };
+        evaluator.Evaluate();
         sw.Stop();
-
-        // 编译/运行错误时立即报告
-        if (output.Printed.Count == 0 && result.Diagnostics.Length > 0)
-        {
-            var errors = result.Diagnostics
-                .Where(d => d.IsError)
-                .Select(d => d.Message)
-                .ToList();
-            Assert.Fail($"脚本编译/运行错误: {string.Join("; ", errors)}");
-        }
 
         return (sw.Elapsed.TotalMilliseconds, output.Printed.ToArray());
     }

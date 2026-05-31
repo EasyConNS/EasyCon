@@ -29,7 +29,7 @@ internal sealed partial class Binder
         }
 
         var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
-        var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), returnType, syntax);
+        var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), returnType) { Declaration = syntax };
         function.LocalSlotCount = parameters.Count;
 
         if (BuiltinFunctions.GetAll().Any(b => b.Name == syntax.Declare.Name.ToUpper()))

@@ -1,7 +1,7 @@
 using EasyCon.Script.Symbols;
 using EasyScript;
 
-namespace EasyCon.Script.Binding;
+namespace EasyCon.Core.Runner;
 
 /// <summary>
 /// 统一可调用接口。内置函数、用户函数、FFI 函数均通过此接口执行。

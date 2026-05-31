@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using EasyCon.Core.Runner;
 using EasyCon.Script;
+using EasyCon.Script.Binding.Ssa;
 using EasyCon.Script.Syntax;
 using EasyScript;
 
@@ -18,13 +20,16 @@ var comp = Compilation.Create(mainTree);
 Console.WriteLine($"Compilation.Create: {sw.ElapsedMilliseconds}ms");
 
 sw.Restart();
-var compileDiags = comp.Compile(null);
+var compileResult = comp.Compile(null);
 Console.WriteLine($"Compile: {sw.ElapsedMilliseconds}ms");
 
 sw.Restart();
-var result = comp.Evaluate(output, null, [], CancellationToken.None);
+using (var evaluator = new SsaEvaluator(compileResult.Program!, CancellationToken.None) { Output = output })
+{
+    evaluator.Evaluate();
+}
 Console.WriteLine($"Evaluate: {sw.ElapsedMilliseconds}ms");
-Console.WriteLine($"Diagnostics: {result.Diagnostics.Length}");
+Console.WriteLine($"Diagnostics: {compileResult.Diagnostics.Length}");
 
 // Second run - with cache
 Console.WriteLine("\n--- Second run ---");
@@ -33,11 +38,14 @@ var comp2 = Compilation.Create(mainTree);
 Console.WriteLine($"Compilation.Create: {sw.ElapsedMilliseconds}ms");
 
 sw.Restart();
-comp2.Compile(null);
+var compileResult2 = comp2.Compile(null);
 Console.WriteLine($"Compile: {sw.ElapsedMilliseconds}ms");
 
 sw.Restart();
-var result2 = comp2.Evaluate(output, null, [], CancellationToken.None);
+using (var evaluator2 = new SsaEvaluator(compileResult2.Program!, CancellationToken.None) { Output = output })
+{
+    evaluator2.Evaluate();
+}
 Console.WriteLine($"Evaluate: {sw.ElapsedMilliseconds}ms");
 
 // 10 iterations
@@ -46,7 +54,9 @@ sw.Restart();
 for (int i = 0; i < 10; i++)
 {
     var c = Compilation.Create(mainTree);
-    c.Evaluate(output, null, [], CancellationToken.None);
+    var cr = c.Compile(null);
+    using var e = new SsaEvaluator(cr.Program!, CancellationToken.None) { Output = output };
+    e.Evaluate();
 }
 Console.WriteLine($"10 iterations: {sw.ElapsedMilliseconds}ms  avg={sw.ElapsedMilliseconds/10}ms");
 

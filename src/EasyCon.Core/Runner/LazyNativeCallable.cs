@@ -2,7 +2,7 @@ using EasyCon.Script.Binding;
 using EasyCon.Script.Symbols;
 using EasyScript;
 
-namespace EasyCon.Script;
+namespace EasyCon.Core.Runner;
 
 /// <summary>
 /// 懒加载的外部函数 callable。首次调用时才加载库并解析函数地址，后续调用直接委托。

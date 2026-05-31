@@ -129,7 +129,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
 
     public static Value FromStruct(EcsStruct v) => new(TAG_STRUCT, 0, v, null);
     public EcsStruct AsStruct() => _tag == TAG_STRUCT ? (EcsStruct)_refVal! : throw new InvalidCastException();
-    internal bool TryGetStructPtr(out IntPtr ptr)
+    public bool TryGetStructPtr(out IntPtr ptr)
     {
         if (_tag == TAG_STRUCT && _refVal is EcsStruct s)
         {
@@ -154,7 +154,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
     /// <summary>
     /// 从已有的 ScriptArray 构建 Value（跳过元素验证，用于 RuntimeHeap 内部）
     /// </summary>
-    internal static Value FromArray(ScriptArray array, ScriptType elementType) =>
+    public static Value FromArray(ScriptArray array, ScriptType elementType) =>
         new(TAG_ARRAY, 0, array, elementType);
 
     public readonly int AsInt() => _tag == TAG_INT32 ? _int32Val : throw new InvalidCastException();

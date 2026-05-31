@@ -1,6 +1,7 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 
-namespace EasyCon.Script.Runtime;
+namespace EasyCon.Core.Runner;
 
 /// <summary>
 /// Handle-based 运行时堆，管理 string、ScriptArray、EcsStruct 的生命周期。
