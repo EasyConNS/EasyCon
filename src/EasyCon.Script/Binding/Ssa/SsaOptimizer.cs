@@ -17,11 +17,11 @@ static class SsaOptimizer
             OptimizeFunction(func);
     }
 
-    private static void OptimizeFunction(SsaFunction func)
+    internal static void OptimizeFunction(SsaFunction func)
     {
         bool changed;
         int iterations = 0;
-        const int MaxIterations = 20;
+        const int MaxIterations = 5;
         do
         {
             changed = false;
@@ -36,7 +36,7 @@ static class SsaOptimizer
 
     // ============ 代数化简 ============
 
-    private static bool AlgebraicSimplify(SsaFunction func)
+    internal static bool AlgebraicSimplify(SsaFunction func)
     {
         var replacements = new List<(SsaValue inst, SsaValue replacement)>();
         bool changed = false;
@@ -226,7 +226,7 @@ static class SsaOptimizer
 
     // ============ 常量折叠 ============
 
-    private static bool FoldConstants(SsaFunction func)
+    internal static bool FoldConstants(SsaFunction func)
     {
         bool changed = false;
         foreach (var block in func.Blocks)
@@ -365,7 +365,7 @@ static class SsaOptimizer
 
     // ============ 拷贝传播 ============
 
-    private static bool PropagateCopies(SsaFunction func)
+    internal static bool PropagateCopies(SsaFunction func)
     {
         bool changed = false;
         foreach (var block in func.Blocks)
@@ -409,7 +409,7 @@ static class SsaOptimizer
 
     // ============ 全局 CSE ============
 
-    private static bool EliminateCommonSubexpressions(SsaFunction func)
+    internal static bool EliminateCommonSubexpressions(SsaFunction func)
     {
         ComputeRpo(func);
         bool changed = false;
@@ -527,7 +527,7 @@ static class SsaOptimizer
 
     // ============ 死代码消除 ============
 
-    private static bool EliminateDeadCode(SsaFunction func)
+    internal static bool EliminateDeadCode(SsaFunction func)
     {
         // 迭代消除：删除一条死指令可能使其操作数也变成死代码
         bool changed = false;
@@ -580,7 +580,7 @@ static class SsaOptimizer
 
     // ============ 不可达块删除 ============
 
-    private static bool RemoveUnreachableBlocks(SsaFunction func)
+    internal static bool RemoveUnreachableBlocks(SsaFunction func)
     {
         var reachable = new HashSet<SsaBlock>();
         var stack = new Stack<SsaBlock>();

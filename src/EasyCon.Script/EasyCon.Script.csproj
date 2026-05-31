@@ -8,5 +8,6 @@
     <InternalsVisibleTo Include="EasyCon.Lsp" />
     <InternalsVisibleTo Include="EasyCon.Lsp.Tests" />
     <InternalsVisibleTo Include="BenchTest" />
+    <InternalsVisibleTo Include="EasyCon.Tests" />
   </ItemGroup>
 </Project>
