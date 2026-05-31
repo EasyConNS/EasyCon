@@ -223,14 +223,4 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         var args = string.Join(", ", argTypes.Select(t => t.Name));
         ReportError(location, $"找不到匹配的函数 '{functionName}'，参数类型: ({args})");
     }
-
-    public void ReportArrayIndexOutOfBounds(TextLocation location, int index, int length)
-    {
-        ReportError(location, $"数组索引越界：索引 {index} 超出数组长度 {length} 的范围");
-    }
-
-    public void ReportArrayIndexNegative(TextLocation location, int index)
-    {
-        ReportError(location, $"数组索引不能为负数：{index}");
-    }
 }

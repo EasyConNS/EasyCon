@@ -194,7 +194,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
             il.Search(mat, out var md);
             return (int)Math.Ceiling(md);
         };
-        ocrDelegate = OcrDelegateFactory.Create(()=>cvcap.GetMatFrame());
+        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetMatFrame());
     }
     outdap.Info($"==>开始执行脚本：{file}");
 

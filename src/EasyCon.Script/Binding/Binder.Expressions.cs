@@ -115,12 +115,6 @@ internal sealed partial class Binder
     {
         var baseExpr = BindExpression(syntax.Base);
 
-        if (baseExpr is BoundFieldAccessExpression fieldAccess && fieldAccess.Field.FieldType is ArrayType arrType)
-        {
-            var indexExpr = BindConversion(BindExpression(syntax.Index), ScriptType.Int);
-            return new BoundFieldIndexAccessExpression(syntax, fieldAccess.Target, fieldAccess.Field, indexExpr, arrType.ElementType);
-        }
-
         var (isString, isArray) = CheckIndexSupport(baseExpr.Type);
         if (!isString && !isArray)
         {
@@ -128,18 +122,11 @@ internal sealed partial class Binder
             return new BoundErrorExpression(syntax);
         }
 
-        var indexExpr2 = BindConversion(syntax.Index, ScriptType.Int);
-
-        // 编译期数组越界检查
-        if (baseExpr is BoundVariableExpression bve
-            && _arrayLengths.TryGetValue(bve.Variable.Name, out var knownLen))
-            CheckArrayBounds(syntax.Syntax.Location, indexExpr2, knownLen);
-
-        ScriptType resultType2 = isString
+        var indexExpr = BindConversion(syntax.Index, ScriptType.Int);
+        ScriptType resultType = isString
             ? ScriptType.String
             : ((ArrayType)baseExpr.Type).ElementType;
-
-        return new BoundIndexVariableExpression(syntax, baseExpr, indexExpr2, resultType2);
+        return new BoundIndexVariableExpression(syntax, baseExpr, indexExpr, resultType);
     }
 
     private BoundExpr BindSliceExpression(SliceExpression syntax)
@@ -263,51 +250,10 @@ internal sealed partial class Binder
             return new BoundErrorExpression(syntax);
         }
 
-        if (boundLeft.ConstantValue != null && boundRight.ConstantValue != null)
-        {
-            var l = Value.From(boundLeft.ConstantValue);
-            var r = Value.From(boundRight.ConstantValue);
-            l = FoldConvert(l, boundOperator.LeftType);
-            r = FoldConvert(r, boundOperator.RightType);
-            var result = boundOperator.Kind switch
-            {
-                BoundBinaryOperatorKind.Addition => l + r,
-                BoundBinaryOperatorKind.Subtraction => l - r,
-                BoundBinaryOperatorKind.Multiplication => l * r,
-                BoundBinaryOperatorKind.Division => l / r,
-                BoundBinaryOperatorKind.Mod => l % r,
-                BoundBinaryOperatorKind.RoundDiv => l.RoundDiv(r),
-                BoundBinaryOperatorKind.BitwiseAnd => l & r,
-                BoundBinaryOperatorKind.BitwiseOr => l | r,
-                BoundBinaryOperatorKind.BitwiseXor => l ^ r,
-                BoundBinaryOperatorKind.BitLeftShift => l << r,
-                BoundBinaryOperatorKind.BitRightShift => l >> r,
-                BoundBinaryOperatorKind.Equals => Value.FromBool(l.Equals(r)),
-                BoundBinaryOperatorKind.NotEquals => Value.FromBool(!l.Equals(r)),
-                BoundBinaryOperatorKind.Less => Value.FromBool(l < r),
-                BoundBinaryOperatorKind.LessOrEquals => Value.FromBool(l <= r),
-                BoundBinaryOperatorKind.Greater => Value.FromBool(l > r),
-                BoundBinaryOperatorKind.GreaterOrEquals => Value.FromBool(l >= r),
-                BoundBinaryOperatorKind.In => Value.FromBool(r.Contains(l)),
-                BoundBinaryOperatorKind.LogicalAnd => Value.FromBool(l.AsBool() && r.AsBool()),
-                BoundBinaryOperatorKind.LogicalOr => Value.FromBool(l.AsBool() || r.AsBool()),
-                _ => throw new InvalidOperationException($"不支持的常量运算: {boundOperator.Kind}")
-            };
-            return new BoundLiteralExpression(syntax, result.ToObject(), result.Type);
-        }
+        boundLeft = BindConversion(boundLeft, boundOperator.LeftType);
+        boundRight = BindConversion(boundRight, boundOperator.RightType);
 
         return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
-    }
-
-    private static Value FoldConvert(Value v, ScriptType targetType)
-    {
-        if (v.Type.Equals(targetType)) return v;
-        if (targetType.Equals(ScriptType.Double)) return Value.FromDouble(v.AsInt());
-        if (targetType.Equals(ScriptType.UInt)) return Value.FromUInt(unchecked((uint)v.AsInt()));
-        if (targetType.Equals(ScriptType.UInt64)) return Value.FromUInt64((ulong)v.AsInt());
-        if (targetType.Equals(ScriptType.Byte)) return Value.FromByte((byte)v.AsInt());
-        if (targetType.Equals(ScriptType.Ptr)) return Value.FromPtr((long)v.AsInt());
-        return v;
     }
 
     #endregion

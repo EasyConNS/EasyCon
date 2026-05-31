@@ -10,45 +10,6 @@ internal abstract class BoundExpr(AstNode expr) : BoundNode
     public AstNode Syntax = expr;
     public abstract ScriptType Type { get; }
     public object? ConstantValue = null;
-
-    public List<string> GetReferencedVariables()
-    {
-        var variables = new List<string>();
-        CollectVariables(this, variables);
-        return variables;
-    }
-    private void CollectVariables(BoundNode node, List<string> variables)
-    {
-        if (node == null) return;
-        if (node is BoundVariableExpression varNode)
-        {
-            variables.Add(varNode.Variable.Name);
-        }
-        else if (node is BoundIndexVariableExpression idxVarNode)
-        {
-            // TODO
-        }
-        else if (node is BoundUnaryExpression unaryNode)
-        {
-            CollectVariables(unaryNode.Operand, variables);
-        }
-        else if (node is BoundBinaryExpression binOpNode)
-        {
-            CollectVariables(binOpNode.Left, variables);
-            CollectVariables(binOpNode.Right, variables);
-        }
-        else if (node is BoundConversionExpression convNode)
-        {
-            CollectVariables(convNode.Expression, variables);
-        }
-        else if (node is BoundCallExpression callNode)
-        {
-            foreach (var arg in callNode.Arguments)
-            {
-                CollectVariables(arg, variables);
-            }
-        }
-    }
 }
 
 internal sealed class BoundErrorExpression(AstNode expr) : BoundExpr(expr)
@@ -146,6 +107,7 @@ internal sealed class BoundBinaryExpression(AstNode syntax, BoundExpr left, Boun
 
     public override ScriptType Type => Op.Type;
     public override BoundNodeKind Kind => BoundNodeKind.BinaryExpression;
+
 }
 
 internal sealed class BoundConversionExpression(AstNode syntax, ScriptType type, BoundExpr expr) : BoundExpr(syntax)
@@ -177,13 +139,4 @@ internal sealed class BoundFieldAccessExpression(AstNode syntax, BoundExpr targe
     public readonly BoundExpr Target = target;
     public readonly EcsFieldDef Field = field;
     public override BoundNodeKind Kind => BoundNodeKind.FieldAccess;
-}
-
-internal sealed class BoundFieldIndexAccessExpression(AstNode syntax, BoundExpr target, EcsFieldDef field, BoundExpr index, ScriptType resultType) : BoundExpr(syntax)
-{
-    public override ScriptType Type { get; } = resultType;
-    public readonly BoundExpr Target = target;
-    public readonly EcsFieldDef Field = field;
-    public readonly BoundExpr Index = index;
-    public override BoundNodeKind Kind => BoundNodeKind.FieldIndexAccess;
 }

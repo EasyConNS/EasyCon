@@ -42,16 +42,5 @@ internal sealed partial class Binder
         return new BoundErrorExpression(syntax);
     }
 
-    private void CheckArrayBounds(TextLocation location, BoundExpr indexExpr, int arrayCount)
-    {
-        if (indexExpr.ConstantValue is int idx)
-        {
-            if (idx < 0)
-                _diagnostics.ReportArrayIndexNegative(location, idx);
-            else if (idx >= arrayCount)
-                _diagnostics.ReportArrayIndexOutOfBounds(location, idx, arrayCount);
-        }
-    }
-
     #endregion
 }

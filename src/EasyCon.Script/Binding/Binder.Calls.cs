@@ -212,20 +212,22 @@ internal sealed partial class Binder
         if (SyntaxTree.LegacyCompat && syntax.Args.Length == 1 && syntax.Args[0] is VariableExpr legacyVar)
         {
             var builtinFunc = candidates.FirstOrDefault(c => BuiltinFunctions.GetAll().Contains(c));
-            if (builtinFunc != null)
+            // TIME 支持库函数匹配（builtin 或 stdlib 均可）
+            var timeFunc = builtinFunc == null
+                ? candidates.FirstOrDefault(c => c.Name == "TIME" && c.Parameters.Length == 0)
+                : null;
+            if (BuiltinFunctions.Rand == builtinFunc)
             {
-                if (BuiltinFunctions.Timestamp == builtinFunc)
-                {
-                    var timeCallExpr = BindCallExpressionInternal(syntax, builtinFunc, []);
-                    var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
-                    return new BoundVariableDeclaration(syntax, variable, timeCallExpr);
-                }
-                if (BuiltinFunctions.Rand == builtinFunc)
-                {
-                    var randCallExpr = BindCallExpressionInternal(syntax, builtinFunc, [legacyVar]);
-                    var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
-                    return new BoundVariableDeclaration(syntax, variable, randCallExpr);
-                }
+                var randCallExpr = BindCallExpressionInternal(syntax, builtinFunc, [legacyVar]);
+                var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
+                return new BoundVariableDeclaration(syntax, variable, randCallExpr);
+            }
+            var timeTarget = builtinFunc?.Name == "TIME" ? builtinFunc : timeFunc;
+            if (timeTarget != null)
+            {
+                var timeCallExpr = BindCallExpressionInternal(syntax, timeTarget, []);
+                var variable = BindVariableDeclaration(legacyVar, false, ScriptType.Int);
+                return new BoundVariableDeclaration(syntax, variable, timeCallExpr);
             }
         }
 

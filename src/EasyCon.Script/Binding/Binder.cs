@@ -15,8 +15,6 @@ internal sealed partial class Binder
     private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
 
-    private readonly Dictionary<string, int> _arrayLengths = [];
-
     private readonly ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? _lazyFunctionBodies;
     private readonly DiagnosticBag? _programDiagnostics;
     private readonly HashSet<FunctionSymbol>? _bindingFunctions;
@@ -60,7 +58,12 @@ internal sealed partial class Binder
         var ilNames = new HashSet<string>();
 
         // --- Phase 1: lib 绑定 ---
-        var libBinder = new Binder(new BoundScope(parentScope), function: null);
+        // 创建 lib-only scope：在 root scope 和 lib scope 之间插入洞函数
+        var libOnlyScope = new BoundScope(parentScope);
+        foreach (var hole in BuiltinFunctions.GetCaptureHoles())
+            libOnlyScope.TryDeclareFunction(hole);
+
+        var libBinder = new Binder(new BoundScope(libOnlyScope), function: null);
         var libUserFunctions = new List<FunctionSymbol>();
         var libGlobalStmts = new List<BoundStmt>();
         var libMembers = libTrees.SelectMany(t => t.Root.Members);
@@ -154,9 +157,7 @@ internal sealed partial class Binder
         var allGlobalStmts = libGlobalStmts.Concat(mainGlobalStmts);
         var main = new FunctionSymbol("$eval", [], ScriptType.Void);
         var evalBody = new BoundBlockStatement(main.Declaration!, [.. allGlobalStmts]);
-        var loweredEval = Lowerer.Lower(main, evalBody);
-        AllocateLocalSlots(main, loweredEval);
-        functionBodies.Add(main, loweredEval);
+        functionBodies.Add(main, evalBody);
 
         var allStructDefs = mainBinder._scope.CollectAllStructDefs();
 
@@ -177,9 +178,7 @@ internal sealed partial class Binder
         foreach (var stmt in function.Declaration!.Statements)
             stmts.Add(binderFn.BindStatement(stmt));
         var body = new BoundBlockStatement(function.Declaration!, stmts.ToImmutable());
-        var lowered = Lowerer.Lower(function, body);
-        AllocateLocalSlots(function, lowered);
-        return (lowered, binderFn);
+        return (body, binderFn);
     }
 
     private void EnsureFunctionBodyBound(FunctionSymbol function)

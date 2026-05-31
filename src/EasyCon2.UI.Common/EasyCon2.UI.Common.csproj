@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Avalonia资源 -->
-    <AvaloniaResource Include="Resources\**\*" />
+    <!-- Avalonia资源（排除Amiibo图片） -->
+    <AvaloniaResource Include="Resources\**\*" Exclude="Resources\Amiibo\*.jpg" />
 
     <!-- 强类型资源 -->
     <EmbeddedResource Update="Properties\Resources.resx">
@@ -21,11 +21,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
 
-    <!-- Amiibo图片作为内容复制到Amiibo\AmiiboImages\ -->
-    <Content Include="Resources\Amiibo\*.jpg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>Amiibo\AmiiboImages\%(Filename)%(Extension)</Link>
-    </Content>
   </ItemGroup>
 
 </Project>

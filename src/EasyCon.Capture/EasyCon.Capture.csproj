@@ -17,9 +17,4 @@
 		<PackageReference Include="TesseractOCR" />
 	</ItemGroup>
 
-	<ItemGroup>
-		<Content Include="Tessdata\*.traineddata" Pack="true" PackageCopyToOutput="true" PackagePath="Tessdata">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
-	</ItemGroup>
 </Project>

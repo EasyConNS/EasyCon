@@ -1,4 +1,5 @@
 using EasyCon.Script.Binding;
+using EasyCon.Script.Binding.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
@@ -7,6 +8,17 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 
 namespace EasyCon.Script;
+
+public class ScriptException(string message, int address = 0) : Exception(message)
+{
+    public int Address { get; private set; } = address;
+}
+
+public sealed class EvaluationResult(ImmutableArray<Diagnostic> diagnostics, Value value)
+{
+    public ImmutableArray<Diagnostic> Diagnostics { get; } = diagnostics;
+    public Value Result { get; } = value;
+}
 
 public sealed class Compilation
 {
@@ -27,6 +39,10 @@ public sealed class Compilation
     {
         var trees = ImmutableArray.CreateBuilder<SyntaxTree>();
         var loadedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // 预加载内嵌标准库（最先加载，确保 Phase 1 binding）
+        trees.Add(StdLib.GetStdTree());
+        trees.Add(StdLib.GetVisionTree());
 
         // 从 import 语句加载指定的 lib 文件
         foreach (var member in mainTree.Root.Members)
@@ -99,7 +115,12 @@ public sealed class Compilation
         var program = GetProgram(labelNames ?? []);
         if (program.Diagnostics.HasErrors())
             return new EvaluationResult(program.Diagnostics, Value.Void);
-        using var evaluator = new Evaluator(program, token)
+
+        // Bound → SSA
+        var ssaProgram = SsaProgramBuilder.Build(program);
+        SsaOptimizer.Optimize(ssaProgram);
+
+        using var evaluator = new SsaEvaluator(ssaProgram, token)
         {
             GamePad = pad,
             Output = output,
@@ -110,7 +131,7 @@ public sealed class Compilation
         };
         var value = evaluator.Evaluate();
 
-        return new EvaluationResult(program.Diagnostics, value);
+        return new EvaluationResult(ssaProgram.Diagnostics, value);
     }
 
     public string FormatCode()

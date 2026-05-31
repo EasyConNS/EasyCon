@@ -415,11 +415,27 @@ internal partial class Parser
             case TokenType.CONST:
                 var tokenct = Advance();
                 primary = Formatter.GetValueEx(tokenct);
-                return primary;
+                // 常量/运行时变量后跟 ( → 函数调用（如 __CAPTURE__(args)）
+                if (Check(TokenType.LeftParen))
+                {
+                    var openParen = Match(TokenType.LeftParen);
+                    var arguments = ParseArguments();
+                    var closeParen = Match(TokenType.RightParen);
+                    primary = new Callv1Expression(tokenct, openParen, arguments, closeParen);
+                }
+                return ParsePostfixChain(primary);
             case TokenType.VAR:
             case TokenType.EX_VAR:
                 var token = Advance();
                 primary = Formatter.GetValueEx(token);
+                // 变量后跟 ( → 函数调用（如 $fn(args)）
+                if (Check(TokenType.LeftParen))
+                {
+                    var openParen = Match(TokenType.LeftParen);
+                    var arguments = ParseArguments();
+                    var closeParen = Match(TokenType.RightParen);
+                    primary = new Callv1Expression(token, openParen, arguments, closeParen);
+                }
                 return ParsePostfixChain(primary);
             case TokenType.LeftBracket:
                 primary = ParseIndexDefExpression();

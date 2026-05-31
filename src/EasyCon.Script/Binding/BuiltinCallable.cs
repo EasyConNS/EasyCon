@@ -43,11 +43,6 @@ internal static class BuiltinCallable
         return ctx.Rand.Next(max);
     }
 
-    public static Value ImplTimestamp(ReadOnlySpan<Value> _, IEvalContext ctx, CancellationToken token)
-    {
-        return ctx.Timestamp;
-    }
-
     public static Value ImplAmiibo(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var index = args[0].AsInt();
@@ -62,12 +57,6 @@ internal static class BuiltinCallable
         if (freq < 37 || freq > 32767) throw new Exception("BEEP参数freq范围不正确(37~32767)");
         Console.Beep(freq, args[1].AsInt());
         return Value.Void;
-    }
-
-    public static Value ImplOcr(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var result = ctx.Ocr?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsString()) ?? "ERR!!OCR NOT SUPPORT";
-        return Value.FromString(result);
     }
 
     public static Value ImplJq(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
@@ -121,26 +110,6 @@ internal static class BuiltinCallable
         }
     }
 
-    public static Value ImplConvertInt(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        return args[0].ToInt();
-    }
-
-    public static Value ImplConvertString(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        return args[0].ToString();
-    }
-
-    public static Value ImplLength(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        return args[0].Length;
-    }
-
-    public static Value ImplAppend(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        return args[0].Append(args[1]);
-    }
-
     public static Value ImplStrEncode(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var array = args[0].AsArray();
@@ -159,45 +128,29 @@ internal static class BuiltinCallable
         return Environment.GetEnvironmentVariable(args[0].AsString()) ?? "";
     }
 
-    // public static Value ImplPixel(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    // {
-    //     var frame = ctx.Frame?.Invoke(-1, -1, -1, -1);
-    //     if (frame == null) throw new Exception("无法获取帧数据");
-    //     dynamic img = frame;
-    //     int x = args[0].AsInt();
-    //     int y = args[1].AsInt();
-    //     int width = (int)img.Width;
-    //     int height = (int)img.Height;
-    //     if (x < 0 || x >= width || y < 0 || y >= height)
-    //         throw new Exception($"像素坐标越界 ({x}, {y})，帧大小 {width}x{height}");
-    //     dynamic pixel = img[x, y];
-    //     var instance = new EcsStruct(BuiltinFunctions.PixelStructDef);
-    //     instance.SetField(instance.Definition.Fields[0], (int)(byte)pixel.R);
-    //     instance.SetField(instance.Definition.Fields[1], (int)(byte)pixel.G);
-    //     instance.SetField(instance.Definition.Fields[2], (int)(byte)pixel.B);
-    //     instance.SetField(instance.Definition.Fields[3], (int)(byte)pixel.A);
-    //     return Value.FromStruct(instance);
-    // }
+    // --- 采集卡洞函数 ---
 
-    public static Value ImplFrame(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplCaptureHole(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
-        var base64 = ctx.Frame?.Invoke(-1, -1, -1, -1);
-        return Value.FromString(base64 ?? "ERR!!FRAME NOT SUPPORT");
+        var result = ctx.Frame?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt());
+        return Value.FromString(result ?? "ERR!!FRAME NOT SUPPORT");
     }
-    public static Value ImplFrameROI(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+
+    public static Value ImplOcrHole(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
-        var base64 = ctx.Frame?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt());
-        return Value.FromString(base64 ?? "ERR!!ROIFRAME NOT SUPPORT");
+        var result = ctx.Ocr?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsString());
+        return Value.FromString(result ?? "ERR!!OCR NOT SUPPORT");
     }
-    public static Value ImplImageRoi(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+
+    public static Value ImplRoiHole(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var image = args[0].AsString();
         var result = ctx.Roi?.Invoke(image, args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt());
         return Value.FromString(result ?? "ERR!!ROI NOT SUPPORT");
     }
+
     /// <summary>
-    /// 获取所有内置函数及其对应的 Callable。
-    /// Timestamp 需要额外的 timestampFactory 闭包参数。
+    /// 获取所有保留内置函数及其对应的 Callable。
     /// </summary>
     public static ImmutableArray<(FunctionSymbol Symbol, ICallable Callable)> GetAll()
     {
@@ -207,21 +160,24 @@ internal static class BuiltinCallable
             (BuiltinFunctions.Print, new DelegateCallable(ImplPrint)),
             (BuiltinFunctions.Alert, new DelegateCallable(ImplAlert)),
             (BuiltinFunctions.Rand, new DelegateCallable(ImplRand)),
-            (BuiltinFunctions.Timestamp, new DelegateCallable(ImplTimestamp)),
             (BuiltinFunctions.Amiibo, new DelegateCallable(ImplAmiibo)),
             (BuiltinFunctions.Beep, new DelegateCallable(ImplBeep)),
-            (BuiltinFunctions.Ocr, new DelegateCallable(ImplOcr)),
             (BuiltinFunctions.Env, new DelegateCallable(ImplEnv)),
-            (BuiltinFunctions.Length, new DelegateCallable(ImplLength)),
-            (BuiltinFunctions.Append, new DelegateCallable(ImplAppend)),
             (BuiltinFunctions.StrEncode, new DelegateCallable(ImplStrEncode)),
-            (BuiltinFunctions.IntConvert, new DelegateCallable(ImplConvertInt)),
-            (BuiltinFunctions.StrConvert, new DelegateCallable(ImplConvertString)),
             (BuiltinFunctions.Jq, new DelegateCallable(ImplJq)),
-            // (BuiltinFunctions.Pixel, new DelegateCallable(ImplPixel)),
-            (BuiltinFunctions.Frame, new DelegateCallable(ImplFrame)),
-            (BuiltinFunctions.FrameRoi, new DelegateCallable(ImplFrameROI)),
-            (BuiltinFunctions.ImageRoi, new DelegateCallable(ImplImageRoi)),
+        ];
+    }
+
+    /// <summary>
+    /// 获取采集卡洞函数的 Callable 映射。
+    /// </summary>
+    public static ImmutableArray<(FunctionSymbol Symbol, ICallable Callable)> GetCaptureHoleCallables()
+    {
+        return
+        [
+            (BuiltinFunctions.CaptureHole, new DelegateCallable(ImplCaptureHole)),
+            (BuiltinFunctions.OcrHole, new DelegateCallable(ImplOcrHole)),
+            (BuiltinFunctions.RoiHole, new DelegateCallable(ImplRoiHole)),
         ];
     }
 }

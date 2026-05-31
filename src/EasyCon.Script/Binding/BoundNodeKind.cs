@@ -5,7 +5,6 @@ public enum BoundNodeKind
     Statement,
     BlockStatement,
     NopStatement,
-    ConstantDeclaration,
     VariableDeclaration,
     ExpressionStatement,
     KeyAction,
@@ -31,10 +30,10 @@ public enum BoundNodeKind
     StructInit,
     FieldAccess,
     FieldAssignment,
-    FieldIndexAccess,
-    FieldIndexAssignment,
     IndexAssignment,
 
     While,
+    ForStatement,
+    UntilStatement,
     IfStatement,
 }

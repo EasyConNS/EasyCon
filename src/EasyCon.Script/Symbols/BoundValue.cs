@@ -61,7 +61,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         TAG_STRING => ScriptType.String,
         TAG_PTR => ScriptType.Ptr,
         TAG_ARRAY => ScriptType.ArrayOf(_arrayElemType!),
-        TAG_STRUCT => new StructType((EcsStructDef)_refVal!),
+        TAG_STRUCT => new StructType(((EcsStruct)_refVal!).Definition),
         _ => ScriptType.Void
     };
 
@@ -388,6 +388,20 @@ public struct Value : IEquatable<Value>, IComparable<Value>
             throw new InvalidOperationException($"类型约束冲突：无法将 {newValue.Type} 赋值给 {_arrayElemType} 类型的数组元素");
 
         arr.SetItem(index, newValue);
+    }
+
+    public object ToRawObject(ScriptType type)
+    {
+        if (type.Equals(ScriptType.Byte)) return AsByte();
+        if (type.Equals(ScriptType.Int)) return AsInt();
+        if (type.Equals(ScriptType.Bool)) return AsBool();
+        if (type.Equals(ScriptType.UInt)) return AsUInt();
+        if (type.Equals(ScriptType.UInt64)) return AsUInt64();
+        if (type.Equals(ScriptType.Ptr)) return new IntPtr(AsPtr());
+        if (type.Equals(ScriptType.Double)) return AsDouble();
+        if (type.Equals(ScriptType.String)) return AsString();
+        if (type is StructType) return AsStruct();
+        return AsInt();
     }
 
     /// <summary>

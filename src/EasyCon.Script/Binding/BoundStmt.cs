@@ -11,20 +11,6 @@ internal sealed class BoundBlockStatement(AstNode stmt, ImmutableArray<BoundStmt
     public ImmutableArray<BoundStmt> Statements = statements;
 
     public override BoundNodeKind Kind => BoundNodeKind.BlockStatement;
-
-    private Dictionary<BoundLabel, int>? _labelIndex;
-    public Dictionary<BoundLabel, int> LabelIndex => _labelIndex ??= BuildLabelIndex();
-
-    private Dictionary<BoundLabel, int> BuildLabelIndex()
-    {
-        var result = new Dictionary<BoundLabel, int>();
-        for (var i = 0; i < Statements.Length; i++)
-        {
-            if (Statements[i] is BoundLabelStatement l)
-                result.Add(l.Label, i + 1);
-        }
-        return result;
-    }
 }
 
 internal sealed class BoundNop(AstNode syntax) : BoundStmt(syntax)
@@ -56,10 +42,6 @@ internal sealed class BoundReturnStatement(AstNode syntax, BoundExpr? expression
 {
     public override BoundNodeKind Kind => BoundNodeKind.Return;
     public readonly BoundExpr? Expression = expression;
-
-    // 尾递归优化标记
-    public bool IsTailCall { get; set; } = false;
-    public FunctionSymbol? TailCallFunction { get; set; } = null;
 }
 
 internal sealed class BoundExprStatement(AstNode syntax, BoundExpr expression) : BoundStmt(syntax)
@@ -73,13 +55,6 @@ internal sealed class BoundVariableDeclaration(AstNode syntax, VariableSymbol va
     public readonly VariableSymbol Variable = variable;
     public readonly BoundExpr Initializer = expression;
     public override BoundNodeKind Kind => BoundNodeKind.VariableDeclaration;
-}
-
-internal sealed class BoundConstantDeclaration(AstNode syntax, VariableSymbol constant, BoundExpr initializer) : BoundStmt(syntax)
-{
-    public override BoundNodeKind Kind => BoundNodeKind.ConstantDeclaration;
-    public VariableSymbol Constant { get; } = constant;
-    public BoundExpr Initializer { get; } = initializer;
 }
 
 internal class BoundKeyActStatement(AstNode syntax, GamePadKey key, bool up = false) : BoundStmt(syntax)
@@ -115,15 +90,6 @@ internal sealed class BoundFieldAssignStatement(AstNode syntax, BoundExpr target
     public override BoundNodeKind Kind => BoundNodeKind.FieldAssignment;
     public readonly BoundExpr Target = target;
     public readonly EcsFieldDef Field = field;
-    public readonly BoundExpr Value = value;
-}
-
-internal sealed class BoundFieldIndexAssignStatement(AstNode syntax, BoundExpr target, EcsFieldDef field, BoundExpr index, BoundExpr value) : BoundStmt(syntax)
-{
-    public override BoundNodeKind Kind => BoundNodeKind.FieldIndexAssignment;
-    public readonly BoundExpr Target = target;
-    public readonly EcsFieldDef Field = field;
-    public readonly BoundExpr Index = index;
     public readonly BoundExpr Value = value;
 }
 

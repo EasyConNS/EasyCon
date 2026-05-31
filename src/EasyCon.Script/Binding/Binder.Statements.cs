@@ -1,3 +1,4 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using System.Collections.Immutable;
@@ -119,73 +120,42 @@ internal sealed partial class Binder
         return new BoundIfStatement(syntax, condition, body, elseIfs.ToImmutable(), elseBody);
     }
 
-    private BoundBlockStatement BindFor(ForBlock syntax)
+    private BoundStmt BindFor(ForBlock syntax)
     {
         var forCond = syntax.Condition;
-        var lowerBound = BindConversion(forCond.Lower, ScriptType.Int);
-        var upperBound = BindConversion(forCond.Upper, ScriptType.Int);
+        var kind = forCond switch
+        {
+            For_Infinite => ForKind.Infinite,
+            For_Static => ForKind.Static,
+            For_Full => ForKind.Full,
+            _ => ForKind.Infinite
+        };
+
+        VariableSymbol? variable = null;
+        BoundExpr? lowerBound = null;
+        BoundExpr? upperBound = null;
 
         _scope = new BoundScope(_scope);
 
-        var idxVar = forCond switch
+        if (kind == ForKind.Full || kind == ForKind.Static)
         {
-            For_Full ff => ff.RegIter,
-            For_Static => new VariableExpr(new(syntax.Syntax.Text, TokenType.VAR, $"_tmpL${_labelCounter++}", 0), true),
-            _ => null,
-        };
-        var variable = idxVar switch
-        {
-            VariableExpr v => BindVariableDeclaration(v, isReadOnly: true, ScriptType.Int, allowGlobal: false),
-            _ => null,
-        };
+            lowerBound = BindConversion(forCond.Lower, ScriptType.Int);
+            upperBound = BindConversion(forCond.Upper, ScriptType.Int);
 
-        BoundStmt lowerBoundStmt = variable == null ? Nop(forCond) :
-            VariableDeclaration(forCond, variable, lowerBound);
-        BoundStmt upperBoundStmt = variable == null ? Nop(forCond) :
-            ConstantDeclaration(forCond, "_uppBound$", upperBound);
-        switch (forCond.Upper)
-        {
-            case LiteralExpr litE:
-                upperBoundStmt = Nop(forCond);
-                break;
-            case VariableExpr varE:
-                upperBound = Variable(forCond.Upper, ((BoundVariableDeclaration)upperBoundStmt).Variable);
-                break;
+            var idxVar = forCond switch
+            {
+                For_Full ff => ff.RegIter,
+                For_Static => new VariableExpr(new(syntax.Syntax.Text, TokenType.VAR, $"_tmpL${_labelCounter++}", 0), true),
+                _ => null
+            };
+            if (idxVar != null)
+                variable = BindVariableDeclaration(idxVar, isReadOnly: true, ScriptType.Int, allowGlobal: false);
         }
-        BoundExpr condition = forCond switch
-        {
-            For_Full or For_Static => LessEqual(forCond.Upper, Variable(forCond.Lower, variable!), upperBound),
-            _ => Literal(forCond.Upper, true),
-        };
-        var step = Literal(forCond.Upper, 1);
-        BoundStmt stepStmt = variable == null ? Nop(forCond) :
-            VariableDeclaration(syntax, variable, Add(forCond.Upper, Variable(forCond.Lower, variable), step));
 
         var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
         _scope = _scope.Parent!;
 
-        BoundStmt breakIfEnd = variable == null ? Nop(syntax) :
-            GotoTrue(syntax, breakLabel, new BoundBinaryExpression(syntax,
-                    Variable(forCond.Lower, variable),
-                    BoundBinaryOperator.Bind(TokenType.EQL, ScriptType.Int, ScriptType.Int)!,
-                    upperBound));
-        var lowwhile = new BoundWhileStatement(syntax,
-             condition,
-             Block(syntax,
-                body,
-                breakIfEnd,
-                Label(syntax, continueLabel),
-                stepStmt
-                ),
-             breakLabel,
-             new BoundLabel($"label{++_labelCounter}")
-             );
-
-        return Block(syntax,
-            lowerBoundStmt,
-            upperBoundStmt,
-            lowwhile
-             );
+        return new BoundForStatement(syntax, kind, variable, lowerBound, upperBound, body, breakLabel, continueLabel);
     }
 
     private BoundWhileStatement BindWhile(WhileBlock syntax)
@@ -200,25 +170,11 @@ internal sealed partial class Binder
              );
     }
 
-    private BoundWhileStatement BindUntil(UntilBlock syntax)
+    private BoundUntilStatement BindUntil(UntilBlock syntax)
     {
         var body = BindLoopBody(syntax, syntax.Statements, out var breakLabel, out var continueLabel);
-
         var boundCondition = BindConversion(syntax.Condition.Condition, ScriptType.Bool);
-        var skipBreakLabel = new BoundLabel($"skipBreak{++_labelCounter}");
-        var newBody = Block(syntax,
-            GotoFalse(syntax.Condition, skipBreakLabel, boundCondition),
-            Goto(syntax.Condition, breakLabel),
-            Label(syntax.Condition, skipBreakLabel),
-            body
-        );
-
-        return new BoundWhileStatement(syntax,
-            new BoundLiteralExpression(syntax, true, ScriptType.Bool),
-            newBody,
-            breakLabel,
-            continueLabel
-        );
+        return new BoundUntilStatement(syntax, boundCondition, body, breakLabel, continueLabel);
     }
 
     private BoundBlockStatement BindLoopBody(Statement syntax, ImmutableArray<Statement> body, out BoundLabel breakLabel, out BoundLabel continueLabel)
@@ -289,15 +245,7 @@ internal sealed partial class Binder
             }
         }
 
-        var returnStatement = new BoundReturnStatement(syntax, expression);
-
-        if (_function != null && expression is BoundCallExpression callExpr && callExpr.Function == _function)
-        {
-            returnStatement.IsTailCall = true;
-            returnStatement.TailCallFunction = _function;
-        }
-
-        return returnStatement;
+        return new BoundReturnStatement(syntax, expression);
     }
 
     #endregion
@@ -313,7 +261,8 @@ internal sealed partial class Binder
         }
 
         var boundexpr = BindExpression(syntax.Expression);
-        if (boundexpr.ConstantValue == null)
+        var constVal = TryEvaluateConstant(boundexpr);
+        if (constVal == null)
         {
             _diagnostics.ReportInvalidConstantExpression(syntax.Location);
             return BindErrorStatement(syntax);
@@ -328,9 +277,80 @@ internal sealed partial class Binder
 
         var variable = LookupVariable(syntax.Constant, true, boundexpr.Type);
 
-        variable.Value = boundexpr.ConstantValue;
+        variable.Value = constVal;
 
         return new BoundNop(syntax);
+    }
+
+    /// <summary>
+    /// 尝试编译期求值表达式（仅用于 CONST 声明验证）。
+    /// 递归求值字面量、只读常量变量、二元运算，返回计算结果或 null。
+    /// </summary>
+    private static object? TryEvaluateConstant(BoundExpr expr)
+    {
+        switch (expr)
+        {
+            case BoundLiteralExpression lit:
+                return lit.ConstantValue;
+
+            case BoundVariableExpression var:
+                return var.Variable is { IsReadOnly: true, Value: not null } ? var.Variable.Value : null;
+
+            case BoundBinaryExpression bin:
+                var left = TryEvaluateConstant(bin.Left);
+                var right = TryEvaluateConstant(bin.Right);
+                if (left == null || right == null) return null;
+                return EvaluateBinaryConstant(left, bin.Op, right);
+
+            default:
+                return expr.ConstantValue;
+        }
+    }
+
+    private static object? EvaluateBinaryConstant(object left, BoundBinaryOperator op, object right)
+    {
+        var l = Value.From(left);
+        var r = Value.From(right);
+
+        l = FoldConvertConstant(l, op.LeftType);
+        r = FoldConvertConstant(r, op.RightType);
+
+        var result = op.Kind switch
+        {
+            BoundBinaryOperatorKind.Addition => l + r,
+            BoundBinaryOperatorKind.Subtraction => l - r,
+            BoundBinaryOperatorKind.Multiplication => l * r,
+            BoundBinaryOperatorKind.Division => l / r,
+            BoundBinaryOperatorKind.Mod => l % r,
+            BoundBinaryOperatorKind.RoundDiv => l.RoundDiv(r),
+            BoundBinaryOperatorKind.BitwiseAnd => l & r,
+            BoundBinaryOperatorKind.BitwiseOr => l | r,
+            BoundBinaryOperatorKind.BitwiseXor => l ^ r,
+            BoundBinaryOperatorKind.BitLeftShift => l << r,
+            BoundBinaryOperatorKind.BitRightShift => l >> r,
+            BoundBinaryOperatorKind.Equals => Value.FromBool(l.Equals(r)),
+            BoundBinaryOperatorKind.NotEquals => Value.FromBool(!l.Equals(r)),
+            BoundBinaryOperatorKind.Less => Value.FromBool(l < r),
+            BoundBinaryOperatorKind.LessOrEquals => Value.FromBool(l <= r),
+            BoundBinaryOperatorKind.Greater => Value.FromBool(l > r),
+            BoundBinaryOperatorKind.GreaterOrEquals => Value.FromBool(l >= r),
+            BoundBinaryOperatorKind.In => Value.FromBool(r.Contains(l)),
+            BoundBinaryOperatorKind.LogicalAnd => Value.FromBool(l.AsBool() && r.AsBool()),
+            BoundBinaryOperatorKind.LogicalOr => Value.FromBool(l.AsBool() || r.AsBool()),
+            _ => (Value?)null
+        };
+        return result?.ToObject();
+    }
+
+    private static Value FoldConvertConstant(Value v, ScriptType targetType)
+    {
+        if (v.Type.Equals(targetType)) return v;
+        if (targetType.Equals(ScriptType.Double)) return Value.FromDouble(v.AsInt());
+        if (targetType.Equals(ScriptType.UInt)) return Value.FromUInt(unchecked((uint)v.AsInt()));
+        if (targetType.Equals(ScriptType.UInt64)) return Value.FromUInt64((ulong)v.AsInt());
+        if (targetType.Equals(ScriptType.Byte)) return Value.FromByte((byte)v.AsInt());
+        if (targetType.Equals(ScriptType.Ptr)) return Value.FromPtr((long)v.AsInt());
+        return v;
     }
 
     private BoundStmt BindAssignStatement(AssignmentStmt syntax)
@@ -370,17 +390,6 @@ internal sealed partial class Binder
         else if (!variable.Type.IsAssignableFrom(boundexpr.Type))
             _diagnostics.ReportCannotConvert(syntax.Location, boundexpr.Type, variable.Type);
 
-        // 追踪已知长度的数组变量（从数组字面量初始化时）
-        if (boundexpr is BoundIndexDeclxpression idxDecl && idxDecl.Items.Length > 0)
-            _arrayLengths[varTarget.Tag] = idxDecl.Items.Length;
-
-        // APPEND 调用使追踪长度 +1
-        if (boundexpr is BoundCallExpression { Function.Name: "APPEND" }
-            && _arrayLengths.TryGetValue(varTarget.Tag, out var prevLen))
-        {
-            _arrayLengths[varTarget.Tag] = prevLen + 1;
-        }
-
         return new BoundVariableDeclaration(syntax, variable, boundexpr);
     }
 
@@ -411,24 +420,7 @@ internal sealed partial class Binder
     private BoundStmt BindIndexAssign(AssignmentStmt syntax, IndexVisitExpression indexTarget)
     {
         var boundContainer = BindExpression(indexTarget.Base);
-
-        if (boundContainer is BoundFieldAccessExpression fieldAccess && fieldAccess.Field.FieldType is ArrayType arrType)
-        {
-            var field = fieldAccess.Field;
-            var boundIndex = BindConversion(BindExpression(indexTarget.Index), ScriptType.Int);
-            var boundValue = BindExpression(syntax.Expression);
-
-            var elemType = arrType.ElementType;
-            var desugared = DesugarAugmentedAssign(syntax,
-                () => new BoundFieldIndexAccessExpression(syntax, fieldAccess.Target, field, boundIndex, elemType),
-                elemType, boundValue);
-            if (desugared is not null) boundValue = desugared;
-
-            boundValue = BindConversion(boundValue, elemType);
-            return new BoundFieldIndexAssignStatement(syntax, fieldAccess.Target, field, boundIndex, boundValue);
-        }
-
-        var boundIndex2 = BindConversion(BindExpression(indexTarget.Index), ScriptType.Int);
+        var boundIndex = BindConversion(BindExpression(indexTarget.Index), ScriptType.Int);
 
         var (isString, isArray) = CheckIndexSupport(boundContainer.Type);
         if (!isString && !isArray)
@@ -437,11 +429,6 @@ internal sealed partial class Binder
             return BindErrorStatement(syntax);
         }
 
-        // 编译期数组越界检查
-        if (boundContainer is BoundVariableExpression bve2
-            && _arrayLengths.TryGetValue(bve2.Variable.Name, out var knownLen2))
-            CheckArrayBounds(syntax.Location, boundIndex2, knownLen2);
-
         if (isString)
         {
             _diagnostics.ReportBadStruct(syntax.Location, "字符串不支持元素赋值");
@@ -449,13 +436,13 @@ internal sealed partial class Binder
         }
 
         var arrayElemType = ((ArrayType)boundContainer.Type).ElementType;
-        var boundValue2 = BindExpression(syntax.Expression);
+        var boundValue = BindExpression(syntax.Expression);
 
-        var desugared2 = DesugarAugmentedAssign(syntax, () => new BoundIndexVariableExpression(syntax, boundContainer, boundIndex2, arrayElemType), arrayElemType, boundValue2);
-        if (desugared2 is not null) boundValue2 = desugared2;
+        var desugared = DesugarAugmentedAssign(syntax, () => new BoundIndexVariableExpression(syntax, boundContainer, boundIndex, arrayElemType), arrayElemType, boundValue);
+        if (desugared is not null) boundValue = desugared;
 
-        boundValue2 = BindConversion(boundValue2, arrayElemType);
-        return new BoundIndexAssignStatement(syntax, boundContainer, boundIndex2, boundValue2);
+        boundValue = BindConversion(boundValue, arrayElemType);
+        return new BoundIndexAssignStatement(syntax, boundContainer, boundIndex, boundValue);
     }
 
     private BoundExpr? DesugarAugmentedAssign(AssignmentStmt syntax, Func<BoundExpr> readCurrent, ScriptType targetType, BoundExpr rhs)

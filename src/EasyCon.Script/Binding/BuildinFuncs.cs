@@ -18,68 +18,76 @@ internal static class BuiltinFunctions
         return def;
     }
 
+    // --- 保留内置（注册 callable + root scope）---
+
     public static readonly FunctionSymbol Wait = new("WAIT", [new("duration", ScriptType.Int, hasDefault: true, defaultValue: 50)], ScriptType.Void);
     public static readonly FunctionSymbol Print = new("PRINT", [new("message", ScriptType.String, hasDefault: true, defaultValue: "")], ScriptType.Void);
     public static readonly FunctionSymbol Alert = new("ALERT", [new("message", ScriptType.String)], ScriptType.Void);
     public static readonly FunctionSymbol Rand = new("RAND", [new("max", ScriptType.Int, hasDefault: true, defaultValue: 100)], ScriptType.Int);
-    public static readonly FunctionSymbol Timestamp = new("TIME", [], ScriptType.Int);
     public static readonly FunctionSymbol Amiibo = new("AMIIBO", [new("index", ScriptType.Int)], ScriptType.Void);
     public static readonly FunctionSymbol Beep = new("BEEP", [new("freq", ScriptType.Int), new("duration", ScriptType.Int)], ScriptType.Void);
-    public static readonly FunctionSymbol Ocr = new("OCR", [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int), new("lang", ScriptType.String, hasDefault: true, defaultValue: "chi_sim")], ScriptType.String);
     public static readonly FunctionSymbol Env = new("ENV", [new("name", ScriptType.String)], ScriptType.String);
-    public static readonly FunctionSymbol Pixel = new("PIXEL", [new("x", ScriptType.Int), new("y", ScriptType.Int)], new StructType(PixelStructDef));
-    public static readonly FunctionSymbol Frame = new("FRAME", [], ScriptType.String);
-    public static readonly FunctionSymbol FrameRoi = new("FRAME", [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
-    public static readonly FunctionSymbol ImageRoi = new("ROI", [new("image", ScriptType.String), new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)], ScriptType.String);
-
-    // --- 多态集合操作（参数类型用 Any 占位，由 binder 在调用点解析具体类型）---
-
-    // APPEND(array, value): array
-    public static readonly FunctionSymbol Append = new("APPEND",
-        [new("array", ScriptType.Any), new("value", ScriptType.Any)],
-        ScriptType.Any);
-
-    // LEN(var): int
-    public static readonly FunctionSymbol Length = new("LEN",
-        [new("var", ScriptType.Any)],
-        ScriptType.Int);
-
-    // ENCODE(array: Array<byte>): string
     public static readonly FunctionSymbol StrEncode = new("ENCODE",
         [new("array", ScriptType.ArrayOf(ScriptType.Byte)), new("type", ScriptType.String, hasDefault: true, defaultValue: "utf8")],
         ScriptType.String);
-
-    // STRING(var): string
-    public static readonly FunctionSymbol StrConvert = new("STRING",
-        [new("var", ScriptType.Any)],
-        ScriptType.String);
-
-    // INT(var): int
-    public static readonly FunctionSymbol IntConvert = new("INT",
-        [new("var", ScriptType.Any)],
-        ScriptType.Int);
-
-    // JQ(json, query): any
     public static readonly FunctionSymbol Jq = new("JQ",
         [new("json", ScriptType.String), new("query", ScriptType.String)],
         ScriptType.Any);
 
-    // 需要 IL（采集卡）能力的内置函数
-    private static readonly HashSet<FunctionSymbol> CaptureRequiringFunctions = [Ocr, Frame, FrameRoi, ImageRoi];
+    // --- 编译器内联伪函数（保留符号供 binder，不注册 callable）---
 
-    // 占位 IL 名称，用于标记脚本需要采集卡能力
+    public static readonly FunctionSymbol Append = new("APPEND",
+        [new("array", ScriptType.Any), new("value", ScriptType.Any)],
+        ScriptType.Any);
+    public static readonly FunctionSymbol Length = new("LEN",
+        [new("var", ScriptType.Any)],
+        ScriptType.Int);
+    public static readonly FunctionSymbol StrConvert = new("STRING",
+        [new("var", ScriptType.Any)],
+        ScriptType.String);
+    public static readonly FunctionSymbol IntConvert = new("INT",
+        [new("var", ScriptType.Any)],
+        ScriptType.Int);
+
+    // --- 采集卡打洞函数（lib-only scope 可见，不放入 root scope）---
+
+    public static readonly FunctionSymbol CaptureHole = new("__CAPTURE__",
+        [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)],
+        ScriptType.String);
+    public static readonly FunctionSymbol OcrHole = new("__OCR__",
+        [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int), new("lang", ScriptType.String)],
+        ScriptType.String);
+    public static readonly FunctionSymbol RoiHole = new("__ROI__",
+        [new("image", ScriptType.String), new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)],
+        ScriptType.String);
+
+    // --- 内联伪函数判断 ---
+
+    private static readonly HashSet<FunctionSymbol> IntrinsicFunctions = [Append, Length, StrConvert, IntConvert, Wait, CaptureHole, OcrHole, RoiHole];
+    public static bool IsIntrinsic(FunctionSymbol fn) => IntrinsicFunctions.Contains(fn);
+
+    // --- 采集卡能力追踪 ---
+
+    private static readonly HashSet<FunctionSymbol> CaptureRequiringFunctions = [CaptureHole, OcrHole, RoiHole];
     public const string CapturePlaceholder = "__capture__";
-
     public static bool RequiresCapture(FunctionSymbol fn) => CaptureRequiringFunctions.Contains(fn);
 
-    /// <summary>
-    /// 所有内置函数符号的静态缓存，避免每次反射枚举
-    /// </summary>
-    private static readonly FunctionSymbol[] All =
-        [Wait, Print, Alert, Rand, Timestamp, Amiibo, Beep, Ocr, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Frame, FrameRoi, ImageRoi];
+    // --- 注册到 root scope 的函数列表 ---
 
-    /// <summary>
-    /// 获取所有内置函数符号
-    /// </summary>
+    private static readonly FunctionSymbol[] All =
+        [Wait, Print, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq];
+
     internal static IReadOnlyList<FunctionSymbol> GetAll() => All;
+
+    // --- 注册 callable 的函数列表（不含内联伪函数）---
+
+    private static readonly FunctionSymbol[] Callables =
+        [Wait, Print, Alert, Rand, Amiibo, Beep, Env, StrEncode, Jq];
+
+    internal static IReadOnlyList<FunctionSymbol> GetCallables() => Callables;
+
+    // --- 采集卡洞函数列表（注册到 lib-only scope + callable）---
+
+    private static readonly FunctionSymbol[] CaptureHoles = [CaptureHole, OcrHole, RoiHole];
+    internal static IReadOnlyList<FunctionSymbol> GetCaptureHoles() => CaptureHoles;
 }

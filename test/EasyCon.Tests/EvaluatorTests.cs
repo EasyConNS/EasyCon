@@ -437,6 +437,47 @@ ENDFUNC
 RETURN sum(50000, 0)").AsInt(), Is.EqualTo(1250025000));
     }
 
+    [Test]
+    public void Function_TailRecursion_ThreeParams()
+    {
+        Assert.That(EvalValue(@"
+FUNC f($a, $b, $c) : int
+    IF $a == 0
+        RETURN $b + $c
+    ENDIF
+    RETURN f($a - 1, $b + 1, $c + 2)
+ENDFUNC
+RETURN f(10000, 0, 0)").AsInt(), Is.EqualTo(30000));
+    }
+
+    [Test]
+    public void Function_TailRecursion_GlobalMutation()
+    {
+        Assert.That(EvalValue(@"
+$counter = 0
+FUNC count($n) : int
+    $counter = $counter + 1
+    IF $n == 0
+        RETURN $counter
+    ENDIF
+    RETURN count($n - 1)
+ENDFUNC
+RETURN count(1000)").AsInt(), Is.EqualTo(1001));
+    }
+
+    [Test]
+    public void Function_TailRecursion_StringParam()
+    {
+        Assert.That(EvalValue(@"
+FUNC build($n, $s:STRING) : string
+    IF $n == 0
+        RETURN $s
+    ENDIF
+    RETURN build($n - 1, $s + ""x"")
+ENDFUNC
+RETURN LEN(build(500, """"))").AsInt(), Is.EqualTo(500));
+    }
+
     #endregion
 
     #region 函数 — 重载决议
@@ -817,12 +858,13 @@ RETURN $r[1:]");
     [Test]
     public void Error_ArrayIndexOutOfBounds()
     {
-        // 编译期数组越界检查：常量索引越界应产生编译错误
-        var tree = SyntaxTree.Parse("$a = [1, 2]\nRETURN $a[5]");
-        var compilation = Compilation.Create(tree);
-        var diagnostics = compilation.Compile(null);
-        Assert.That(diagnostics.HasErrors(), Is.True);
-        Assert.That(diagnostics.Any(d => d.Message.Contains("索引越界")), Is.True);
+        Assert.Throws<Exception>(() => EvalValue("$a = [1, 2]\nRETURN $a[5]"));
+    }
+
+    [Test]
+    public void Error_ArrayNegativeIndex()
+    {
+        Assert.Throws<Exception>(() => EvalValue("$a = [1, 2]\n$i = 0 - 1\nRETURN $a[$i]"));
     }
 
     [Test]
