@@ -38,6 +38,9 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     // SSA 值缓存：SsaValue.Id → 运行时结果
     private Value[] _valueCache = [];
 
+    // 预计算的常量值：SSA 常量不依赖控制流，构造时一次性计算，每次创建新 cache 时拷贝进去
+    private Value[] _constantCache = [];
+
     private readonly long _TIME = DateTime.Now.Ticks;
     private readonly Random _rand = new();
     private bool _cancelLineBreak = false;
@@ -99,13 +102,22 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         RegisterCallables();
         RegisterRuntimeValueGetters();
 
-        // 预分配 valueCache
+        // 预分配 valueCache，预计算所有常量
         int maxId = 0;
         foreach (var func in _functions.Values)
             foreach (var block in func.Blocks)
                 foreach (var val in block.Instructions.Concat(block.Phis))
                     if (val.Id > maxId) maxId = val.Id;
         _valueCache = new Value[maxId + 1];
+
+        // 预计算常量：SSA 常量不依赖控制流，总是可用
+        _constantCache = new Value[maxId + 1];
+        foreach (var func in _functions.Values)
+            foreach (var block in func.Blocks)
+                foreach (var val in block.Instructions)
+                    if (val.IsConstant)
+                        _constantCache[val.Id] = EvaluateConstant(val);
+        Array.Copy(_constantCache, _valueCache, _constantCache.Length);
     }
 
     private void RegisterCallables()
@@ -436,6 +448,24 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             _ => throw new InvalidOperationException($"未实现的 SsaOp: {val.Op}")
         };
     }
+
+    // ============ 常量预计算 ============
+
+    /// <summary>
+    /// 预计算 SSA 常量值。常量不依赖控制流，无需帧和上下文即可求值。
+    /// </summary>
+    private static Value EvaluateConstant(SsaValue val) => val.Op switch
+    {
+        SsaOp.ConstBool => Value.FromBool(val.Const.GetBool()),
+        SsaOp.ConstByte => Value.FromByte(val.Const.GetByte()),
+        SsaOp.ConstInt => Value.FromInt(val.Const.GetInt()),
+        SsaOp.ConstUInt => Value.FromUInt(val.Const.GetUInt()),
+        SsaOp.ConstUInt64 => Value.FromUInt64(val.Const.GetUInt64()),
+        SsaOp.ConstDouble => Value.FromDouble(val.Const.GetDouble()),
+        SsaOp.ConstString => Value.FromString(val.ConstString ?? ""),
+        SsaOp.ConstPtr => Value.FromPtr(val.Const.GetPtr()),
+        _ => Value.Void
+    };
 
     // ============ 值缓存访问器 ============
 
@@ -975,6 +1005,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
         var callerCache = _valueCache;
         var funcCache = new Value[callerCache.Length];
+        Array.Copy(_constantCache, funcCache, _constantCache.Length);
         _valueCache = funcCache;
 
         try
@@ -1007,6 +1038,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                     WriteSlot(parameters[i].Slot, frame, parameters[i].Type, _tailCallArgs[i]);
                 // 创建新 cache 避免残留
                 funcCache = new Value[callerCache.Length];
+                Array.Copy(_constantCache, funcCache, _constantCache.Length);
                 _valueCache = funcCache;
             }
         }

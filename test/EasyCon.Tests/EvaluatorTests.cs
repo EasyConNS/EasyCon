@@ -493,6 +493,111 @@ ENDFUNC
 RETURN LEN(build(500, """"))").AsInt(), Is.EqualTo(500));
     }
 
+    [Test]
+    public void Function_Recursion_NonTail_WithLocalVar()
+    {
+        // 非尾递归：递归结果存入局部变量后再运算
+        // 此模式曾因 DeduplicateConstants 跨块合并常量导致求值器崩溃
+        Assert.That(EvalValue(@"
+FUNC recursive($n):INT
+    IF $n == 0
+        RETURN 1
+    ENDIF
+    $temp = recursive($n - 1)
+    RETURN $temp + 1
+ENDFUNC
+RETURN recursive(5)").AsInt(), Is.EqualTo(6));
+    }
+
+    [Test]
+    public void Function_Recursion_NonTail_DirectReturn()
+    {
+        // 非尾递归：递归结果直接参与运算后返回（无局部变量）
+        Assert.That(EvalValue(@"
+FUNC recursive($n):INT
+    IF $n == 0
+        RETURN 1
+    ENDIF
+    RETURN recursive($n - 1) + 1
+ENDFUNC
+RETURN recursive(5)").AsInt(), Is.EqualTo(6));
+    }
+
+    [Test]
+    public void Function_Recursion_VoidNoArgs()
+    {
+        // 无参数 void 递归（CALL 语句调用）
+        Assert.That(EvalValue(@"
+$count = 0
+$depth = 0
+$max_depth = 5
+FUNC solve()
+    IF $depth == $max_depth
+        $count += 1
+        RETURN
+    ENDIF
+    $depth += 1
+    CALL solve
+    $depth -= 1
+ENDFUNC
+CALL solve
+RETURN $count").AsInt(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Function_Recursion_NestedBranchConstants()
+    {
+        // 嵌套 IF 中多层分支使用相同常量，验证跨块常量去重安全
+        Assert.That(EvalValue(@"
+FUNC f($x):INT
+    IF $x >= 3
+        IF $x >= 5
+            RETURN 10
+        ENDIF
+        RETURN 10
+    ENDIF
+    RETURN 10
+ENDFUNC
+RETURN f(1) + f(3) + f(7)").AsInt(), Is.EqualTo(30));
+    }
+
+    [Test]
+    public void Function_Recursion_MutualConstantDedup()
+    {
+        // 多个分支中都有相同常量，验证常量去重后求值器仍正确
+        Assert.That(EvalValue(@"
+FUNC test($x):INT
+    IF $x == 0
+        RETURN 42
+    ENDIF
+    IF $x == 1
+        RETURN 42
+    ENDIF
+    RETURN 42
+ENDFUNC
+RETURN test(2)").AsInt(), Is.EqualTo(42));
+    }
+
+    [Test]
+    public void Function_Recursion_DeepNesting_DifferentConstants()
+    {
+        // 深层嵌套 IF，每层使用不同常量
+        Assert.That(EvalValue(@"
+FUNC f($x):INT
+    IF $x > 10
+        RETURN 100
+    ENDIF
+    IF $x > 5
+        RETURN 50
+    ENDIF
+    IF $x > 0
+        RETURN 10
+    ENDIF
+    RETURN 0
+ENDFUNC
+RETURN f(7)").AsInt(), Is.EqualTo(50));
+    }
+
     #endregion
 
     #region 函数 — 重载决议

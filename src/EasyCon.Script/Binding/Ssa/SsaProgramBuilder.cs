@@ -41,7 +41,8 @@ static class SsaProgramBuilder
         // 构建 extern 函数列表（保持原样，SsaEvaluator 直接使用 ICallable）
         var externFunctions = bound.ExternFunctions;
 
-        return new SsaProgram
+        // 先用一个临时 SsaProgram 供分析器遍历
+        var tempProgram = new SsaProgram
         {
             MainFunction = main,
             Functions = functions.ToImmutable(),
@@ -51,6 +52,22 @@ static class SsaProgramBuilder
             ILNames = bound.ILNames,
             KeyAction = bound.KeyAction,
             NeedIL = bound.NeedIL,
+        };
+
+        // 调用图可达性分析：精准判断是否真的需要采集卡
+        // （BoundProgram.NeedIL 是乐观假设，标准库 VisionSource 会让它永远为 true）
+        var (needCapture, filteredILNames) = CaptureAnalyzer.Analyze(tempProgram, bound.ILNames);
+
+        return new SsaProgram
+        {
+            MainFunction = main,
+            Functions = functions.ToImmutable(),
+            ExternFunctions = externFunctions,
+            Diagnostics = bound.Diagnostics,
+            StructDefinitions = bound.StructDefinitions,
+            ILNames = filteredILNames,
+            KeyAction = bound.KeyAction,
+            NeedIL = needCapture,
         };
     }
 

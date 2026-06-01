@@ -114,6 +114,7 @@ public sealed class Compilation
     {
         var bound = Binder.BindProgram(SyntaxTrees, extVars);
         var keyAction = bound.KeyAction;
+        // 编译失败时回退到 BoundProgram 的乐观假设；成功路径下用 SSA 调用图分析的精确结果覆盖
         var needIL = bound.NeedIL;
 
         if (bound.Diagnostics.HasErrors())
@@ -123,7 +124,8 @@ public sealed class Compilation
         var ssaProgram = SsaProgramBuilder.Build(bound);
         SsaOptimizer.Optimize(ssaProgram);
 
-        return new CompileResult(ssaProgram.Diagnostics, ssaProgram, keyAction, needIL);
+        // SSA 阶段已经做了调用图可达性分析，这里采用精确结果
+        return new CompileResult(ssaProgram.Diagnostics, ssaProgram, keyAction, ssaProgram.NeedIL);
     }
 
     public string FormatCode()

@@ -867,6 +867,7 @@ static class SsaConstantPropagation
 
     /// <summary>
     /// 同一函数内，相同值的常量只保留一份，后续引用全部替换为第一份。
+    /// 安全：求值器预计算所有常量并缓存，常量不依赖控制流，跨块引用始终可用。
     /// </summary>
     internal static bool DeduplicateConstants(SsaFunction func)
     {
