@@ -156,7 +156,7 @@ public class SsaOptimizerTests
         var add = Bin(entry, SsaOp.AddInt, x, zero, ScriptType.Int);
         Ret(entry, add);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(add.Uses, Is.EqualTo(0));
     }
@@ -173,7 +173,7 @@ public class SsaOptimizerTests
         var add = Bin(entry, SsaOp.AddDouble, x, zero, ScriptType.Double);
         Ret(entry, add);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(add.Uses, Is.EqualTo(0));
     }
@@ -188,7 +188,7 @@ public class SsaOptimizerTests
         var sub = Bin(entry, SsaOp.SubInt, x, zero, ScriptType.Int);
         Ret(entry, sub);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(sub.Uses, Is.EqualTo(0));
     }
@@ -203,7 +203,7 @@ public class SsaOptimizerTests
         var mul = Bin(entry, SsaOp.MulInt, x, one, ScriptType.Int);
         Ret(entry, mul);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(mul.Uses, Is.EqualTo(0));
     }
@@ -218,7 +218,7 @@ public class SsaOptimizerTests
         var mul = Bin(entry, SsaOp.MulInt, x, zero, ScriptType.Int);
         Ret(entry, mul);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(mul.Op, Is.EqualTo(SsaOp.ConstInt));
         Assert.That(mul.Const.GetInt(), Is.EqualTo(0));
@@ -234,7 +234,7 @@ public class SsaOptimizerTests
         var div = Bin(entry, SsaOp.DivInt, x, one, ScriptType.Int);
         Ret(entry, div);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(div.Uses, Is.EqualTo(0));
     }
@@ -249,7 +249,7 @@ public class SsaOptimizerTests
         var and = Bin(entry, SsaOp.AndInt, x, zero, ScriptType.Int);
         Ret(entry, and);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(and.Op, Is.EqualTo(SsaOp.ConstInt));
         Assert.That(and.Const.GetInt(), Is.EqualTo(0));
@@ -265,7 +265,7 @@ public class SsaOptimizerTests
         var or = Bin(entry, SsaOp.OrInt, x, zero, ScriptType.Int);
         Ret(entry, or);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(or.Uses, Is.EqualTo(0));
     }
@@ -280,7 +280,7 @@ public class SsaOptimizerTests
         var xor = Bin(entry, SsaOp.XorInt, x, zero, ScriptType.Int);
         Ret(entry, xor);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(xor.Uses, Is.EqualTo(0));
     }
@@ -299,7 +299,7 @@ public class SsaOptimizerTests
         var eq = Bin(entry, SsaOp.EqInt, load1, load1, ScriptType.Bool);
         Ret(entry, eq);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(eq.Op, Is.EqualTo(SsaOp.ConstBool));
         Assert.That(eq.Const.GetBool(), Is.True);
@@ -315,7 +315,7 @@ public class SsaOptimizerTests
         var neq = Bin(entry, SsaOp.NeqInt, load, load, ScriptType.Bool);
         Ret(entry, neq);
 
-        SsaOptimizer.AlgebraicSimplify(func);
+        SsaConstantPropagation.AlgebraicSimplify(func);
 
         Assert.That(neq.Op, Is.EqualTo(SsaOp.ConstBool));
         Assert.That(neq.Const.GetBool(), Is.False);
@@ -335,7 +335,7 @@ public class SsaOptimizerTests
         var add = Bin(entry, SsaOp.AddInt, a, b, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(add.Op, Is.EqualTo(SsaOp.ConstInt));
         Assert.That(add.Const.GetInt(), Is.EqualTo(7));
@@ -351,7 +351,7 @@ public class SsaOptimizerTests
         var sub = Bin(entry, SsaOp.SubInt, a, b, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(sub.Const.GetInt(), Is.EqualTo(7));
     }
@@ -366,7 +366,7 @@ public class SsaOptimizerTests
         var mul = Bin(entry, SsaOp.MulInt, a, b, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(mul.Const.GetInt(), Is.EqualTo(12));
     }
@@ -381,7 +381,7 @@ public class SsaOptimizerTests
         var div = Bin(entry, SsaOp.DivInt, a, b, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         // 除零不折叠，保持原样
         Assert.That(div.Op, Is.EqualTo(SsaOp.DivInt));
@@ -397,7 +397,7 @@ public class SsaOptimizerTests
         var add = Bin(entry, SsaOp.AddDouble, a, b, ScriptType.Double);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(add.Op, Is.EqualTo(SsaOp.ConstDouble));
         Assert.That(add.Const.GetDouble(), Is.EqualTo(4.0));
@@ -413,7 +413,7 @@ public class SsaOptimizerTests
         var lt = Bin(entry, SsaOp.LtInt, a, b, ScriptType.Bool);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(lt.Op, Is.EqualTo(SsaOp.ConstBool));
         Assert.That(lt.Const.GetBool(), Is.True);
@@ -428,7 +428,7 @@ public class SsaOptimizerTests
         var not = Un(entry, SsaOp.LogicNot, b, ScriptType.Bool);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(not.Op, Is.EqualTo(SsaOp.ConstBool));
         Assert.That(not.Const.GetBool(), Is.False);
@@ -443,7 +443,7 @@ public class SsaOptimizerTests
         var not = Un(entry, SsaOp.NotInt, v, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(not.Op, Is.EqualTo(SsaOp.ConstInt));
         Assert.That(not.Const.GetInt(), Is.EqualTo(~0xFF));
@@ -458,7 +458,7 @@ public class SsaOptimizerTests
         var conv = Un(entry, SsaOp.ConvBoolToInt, b, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(conv.Op, Is.EqualTo(SsaOp.ConstInt));
         Assert.That(conv.Const.GetInt(), Is.EqualTo(1));
@@ -473,7 +473,7 @@ public class SsaOptimizerTests
         var conv = Un(entry, SsaOp.ConvIntToDouble, v, ScriptType.Double);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(conv.Op, Is.EqualTo(SsaOp.ConstDouble));
         Assert.That(conv.Const.GetDouble(), Is.EqualTo(42.0));
@@ -488,7 +488,7 @@ public class SsaOptimizerTests
         var conv = Un(entry, SsaOp.ConvDoubleToInt, v, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.FoldConstants(func);
+        SsaConstantPropagation.FoldConstants(func);
 
         Assert.That(conv.Op, Is.EqualTo(SsaOp.ConstInt));
         Assert.That(conv.Const.GetInt(), Is.EqualTo(3));
@@ -509,7 +509,7 @@ public class SsaOptimizerTests
         var load = LoadL(entry, sym);
         Ret(entry);
 
-        SsaOptimizer.PropagateCopies(func);
+        SsaRedundancyElimination.PropagateCopies(func);
 
         // Load 应被删除
         Assert.That(entry.Instructions, Does.Not.Contain(load));
@@ -528,7 +528,7 @@ public class SsaOptimizerTests
         var load = LoadL(entry, sym);
         Ret(entry);
 
-        SsaOptimizer.PropagateCopies(func);
+        SsaRedundancyElimination.PropagateCopies(func);
 
         // Call 清除已知映射，Load 不应被消除
         Assert.That(entry.Instructions, Does.Contain(load));
@@ -549,7 +549,7 @@ public class SsaOptimizerTests
         var add2 = Bin(entry, SsaOp.AddInt, a, b, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.EliminateCommonSubexpressions(func);
+        SsaRedundancyElimination.EliminateCommonSubexpressions(func);
 
         // 第二个相同表达式应被消除
         Assert.That(entry.Instructions, Does.Not.Contain(add2));
@@ -566,7 +566,7 @@ public class SsaOptimizerTests
         var call2 = Call(entry, fn);
         Ret(entry);
 
-        SsaOptimizer.EliminateCommonSubexpressions(func);
+        SsaRedundancyElimination.EliminateCommonSubexpressions(func);
 
         // 有副作用的指令不应被 CSE
         Assert.That(entry.Instructions, Does.Contain(call1));
@@ -605,7 +605,7 @@ public class SsaOptimizerTests
 
         Ret(merge);
 
-        SsaOptimizer.EliminateCommonSubexpressions(func);
+        SsaRedundancyElimination.EliminateCommonSubexpressions(func);
 
         // 两个分支中的表达式 key 相同（Op, Arg0Id, Arg1Id 都一致）
         // RPO: entry(3) < left(2) < right(1) < merge(0)
@@ -637,7 +637,7 @@ public class SsaOptimizerTests
         var add = Bin(entry, SsaOp.AddInt, a, b, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.EliminateDeadCode(func);
+        SsaDeadCodeElimination.EliminateDeadCode(func);
 
         Assert.That(entry.Instructions, Does.Not.Contain(add));
     }
@@ -653,7 +653,7 @@ public class SsaOptimizerTests
         // Return 引用 add → Uses > 0
         Ret(entry, add);
 
-        SsaOptimizer.EliminateDeadCode(func);
+        SsaDeadCodeElimination.EliminateDeadCode(func);
 
         Assert.That(entry.Instructions, Does.Contain(add));
     }
@@ -669,24 +669,24 @@ public class SsaOptimizerTests
         var store = StoreL(entry, sym, val);
         Ret(entry);
 
-        SsaOptimizer.EliminateDeadCode(func);
+        SsaDeadCodeElimination.EliminateDeadCode(func);
 
         Assert.That(entry.Instructions, Does.Contain(store));
     }
 
     [Test]
-    public void DCE_LoadLocal_KeptEvenIfUnused()
+    public void DCE_LoadLocal_Unused_Removed()
     {
         var func = CreateFunction();
         var entry = Block(func);
         var sym = new LocalVariableSymbol("$x", false, ScriptType.Int);
-        // LoadLocal Uses == 0，但有 _lastValue 语义依赖，不可删
+        // LoadLocal Uses == 0，无副作用 → 可删除
         var load = LoadL(entry, sym);
         Ret(entry);
 
-        SsaOptimizer.EliminateDeadCode(func);
+        SsaDeadCodeElimination.EliminateDeadCode(func);
 
-        Assert.That(entry.Instructions, Does.Contain(load));
+        Assert.That(entry.Instructions, Does.Not.Contain(load));
     }
 
     [Test]
@@ -701,7 +701,7 @@ public class SsaOptimizerTests
         var add2 = Bin(entry, SsaOp.AddInt, add1, b, ScriptType.Int);
         Ret(entry);
 
-        SsaOptimizer.EliminateDeadCode(func);
+        SsaDeadCodeElimination.EliminateDeadCode(func);
 
         Assert.That(entry.Instructions, Does.Not.Contain(add1));
         Assert.That(entry.Instructions, Does.Not.Contain(add2));
@@ -723,7 +723,7 @@ public class SsaOptimizerTests
         // dead 没有来自任何可达块的边
         Ret(reachable);
 
-        SsaOptimizer.RemoveUnreachableBlocks(func);
+        SsaCfgSimplification.RemoveUnreachableBlocks(func);
 
         Assert.That(func.Blocks, Does.Not.Contain(dead));
         Assert.That(func.Blocks, Does.Contain(entry));
@@ -740,7 +740,7 @@ public class SsaOptimizerTests
         Branch(entry, next);
         Ret(next);
 
-        SsaOptimizer.RemoveUnreachableBlocks(func);
+        SsaCfgSimplification.RemoveUnreachableBlocks(func);
 
         Assert.That(func.Blocks.Count, Is.EqualTo(2));
     }
@@ -758,7 +758,7 @@ public class SsaOptimizerTests
         block2.Predecessors.Add(dead);
         Ret(block2);
 
-        SsaOptimizer.RemoveUnreachableBlocks(func);
+        SsaCfgSimplification.RemoveUnreachableBlocks(func);
 
         // dead 被删除后，block2 的 Predecessors 应清理
         Assert.That(block2.Predecessors, Does.Not.Contain(dead));

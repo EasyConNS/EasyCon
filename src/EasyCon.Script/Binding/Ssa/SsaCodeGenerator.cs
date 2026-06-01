@@ -13,6 +13,7 @@ namespace EasyCon.Script.Binding.Ssa;
 sealed class SsaCodeGenerator
 {
     private readonly FunctionSymbol _function;
+    private readonly ImmutableHashSet<FunctionSymbol> _externFunctions;
     private readonly Dictionary<VariableSymbol, SsaValue> _defs = new();
     private readonly Dictionary<BoundLabel, SsaBlock> _labelBlocks = new();
     private readonly List<SsaBlock> _blocks = new();
@@ -24,9 +25,12 @@ sealed class SsaCodeGenerator
     public int NextValueId => _nextValueId;
     public int NextBlockId => _nextBlockId;
 
-    public SsaCodeGenerator(FunctionSymbol function, AstNode emptySyntax, int startValueId = 0, int startBlockId = 0)
+    public SsaCodeGenerator(FunctionSymbol function, AstNode emptySyntax,
+        int startValueId = 0, int startBlockId = 0,
+        ImmutableHashSet<FunctionSymbol>? externFunctions = null)
     {
         _function = function;
+        _externFunctions = externFunctions ?? ImmutableHashSet<FunctionSymbol>.Empty;
         _emptySyntax = emptySyntax;
         _nextValueId = startValueId;
         _nextBlockId = startBlockId;
@@ -817,9 +821,10 @@ sealed class SsaCodeGenerator
         foreach (var arg in call.Arguments)
             args.Add(EmitExpression(arg));
 
-        // 第一个参数放入 Arg0
+        // 第一个参数放入 Arg0（外部函数走 Call，其余走 StaticCall）
         var firstArg = args.Count > 0 ? args[0] : null;
-        var result = NewValue(SsaOp.Call, call.Type, firstArg, aux: call.Function);
+        var op = _externFunctions.Contains(call.Function) ? SsaOp.Call : SsaOp.StaticCall;
+        var result = NewValue(op, call.Type, firstArg, aux: call.Function);
 
         // 多余参数存入 ExtraArgs
         if (args.Count > 1)

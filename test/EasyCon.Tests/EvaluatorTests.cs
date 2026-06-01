@@ -77,8 +77,8 @@ public class EvaluatorTests
     [Test]
     public void LastStatement_Value()
     {
-        // 无 RETURN 时取最后一条表达式语句的值
-        Assert.That(EvalValue("$v = 99").AsInt(), Is.EqualTo(99));
+        // 显式 RETURN 返回表达式值
+        Assert.That(EvalValue("$v = 99\nRETURN $v").AsInt(), Is.EqualTo(99));
     }
 
     #endregion
@@ -548,7 +548,7 @@ RETURN $x").AsInt(), Is.EqualTo(999));
     [Test]
     public void String_Concatenation()
     {
-        Assert.That(EvalValue("$r = \"hello\" + \" world\"").AsString(), Is.EqualTo("hello world"));
+        Assert.That(EvalValue("$r = \"hello\" + \" world\"\nRETURN $r").AsString(), Is.EqualTo("hello world"));
     }
 
     [Test]
@@ -691,14 +691,14 @@ RETURN $a[0] + $a[1] + $a[2]").AsInt(), Is.EqualTo(60));
     [Test]
     public void Builtin_RAND_Range()
     {
-        var v = EvalValue("$r = RAND(10)");
+        var v = EvalValue("$r = RAND(10)\nRETURN $r");
         Assert.That(v.AsInt(), Is.InRange(0, 9));
     }
 
     [Test]
     public void Builtin_TIME_NonNegative()
     {
-        Assert.That(EvalValue("$t = TIME()").AsInt(), Is.GreaterThanOrEqualTo(0));
+        Assert.That(EvalValue("$t = TIME()\nRETURN $t").AsInt(), Is.GreaterThanOrEqualTo(0));
     }
 
     [Test]

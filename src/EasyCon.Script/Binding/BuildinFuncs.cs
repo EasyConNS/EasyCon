@@ -79,6 +79,11 @@ public static class BuiltinFunctions
 
     internal static IReadOnlyList<FunctionSymbol> GetAll() => All;
 
+    // --- 内置函数判断（不修改脚本全局变量） ---
+
+    private static readonly HashSet<FunctionSymbol> BuiltinSet = [.. All];
+    public static bool IsBuiltin(FunctionSymbol fn) => BuiltinSet.Contains(fn);
+
     // --- 注册 callable 的函数列表（不含内联伪函数）---
 
     private static readonly FunctionSymbol[] Callables =

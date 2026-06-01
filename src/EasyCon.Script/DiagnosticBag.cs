@@ -156,6 +156,16 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         ReportError(location, "空值表达式无法赋值");
     }
 
+    public void ReportGlobalVariableConflictsWithLib(TextLocation location, string varName)
+    {
+        ReportError(location, $"全局变量 '{varName}' 与库文件中的全局变量冲突");
+    }
+
+    public void ReportLibGlobalVariableMustBeConstant(TextLocation location, string varName)
+    {
+        ReportError(location, $"库全局变量 '{varName}' 的初始值必须是常量表达式");
+    }
+
     public void ReportReadOnlyVariable(Token variableToken)
     {
         ReportError(variableToken.Location, $"只读变量无法修改：{variableToken.Value}");

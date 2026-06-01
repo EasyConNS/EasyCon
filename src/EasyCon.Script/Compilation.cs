@@ -6,6 +6,7 @@ using EasyScript;
 using System.CodeDom.Compiler;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace EasyCon.Script;
 
@@ -135,5 +136,23 @@ public sealed class Compilation
             statement.WriteTo(printer);
         }
         return writer.ToString().Trim();
+    }
+
+    /// <summary>
+    /// 编译并以人类可读格式输出 SSA IR。
+    /// </summary>
+    /// <param name="extVars">外部变量名集合</param>
+    /// <param name="beforeOptimize">true 时输出优化前的原始 SSA</param>
+    public string DumpIr(ImmutableHashSet<string>? extVars, bool beforeOptimize = false)
+    {
+        var bound = Binder.BindProgram(SyntaxTrees, extVars);
+        if (bound.Diagnostics.HasErrors())
+            return string.Join("\n", bound.Diagnostics.Select(d => $"error: {d.Message}"));
+
+        var ssaProgram = SsaProgramBuilder.Build(bound);
+        if (!beforeOptimize)
+            SsaOptimizer.Optimize(ssaProgram);
+
+        return SsaPrinter.Dump(ssaProgram);
     }
 }

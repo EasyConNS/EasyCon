@@ -49,10 +49,11 @@ public sealed class SsaValue
     }
 
     public bool IsConstant => Op is >= SsaOp.ConstBool and <= SsaOp.ConstPtr;
-    public bool HasSideEffect => Op is SsaOp.Call or SsaOp.KeyPress or SsaOp.KeyAction
+    public bool HasSideEffect => Op is SsaOp.Call or SsaOp.StaticCall or SsaOp.KeyPress or SsaOp.KeyAction
         or SsaOp.StickAction or SsaOp.StickPress or SsaOp.Wait
         or SsaOp.StoreLocal or SsaOp.StoreGlobal or SsaOp.StoreField
-        or SsaOp.StoreIndex or SsaOp.StoreFieldIndex or SsaOp.Return;
+        or SsaOp.StoreIndex or SsaOp.StoreFieldIndex or SsaOp.Return
+        or SsaOp.ImageLabel or SsaOp.Capture or SsaOp.Ocr or SsaOp.Roi;
 
     public override string ToString() => $"v{Id}:{Op}({Type})";
 }

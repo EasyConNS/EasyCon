@@ -21,6 +21,8 @@ public record struct FrameLayout(int IntSlots, int LongSlots, int DoubleSlots, i
 public abstract class Symbol(string name)
 {
     public readonly string Name = name;
+
+    public override string ToString() => $"Symbol({Name})";
 }
 
 public abstract class VariableSymbol(string name, bool isReadOnly, ScriptType type) : Symbol(name)

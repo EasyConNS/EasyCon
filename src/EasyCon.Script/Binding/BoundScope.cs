@@ -120,15 +120,22 @@ internal sealed class BoundScope(BoundScope? parent)
         => [.. _fn_symbols.Values.SelectMany(list => list)];
 
     /// <summary>
-    /// 从另一个作用域导入所有符号（函数、变量、结构体）到当前作用域。
+    /// 从另一个作用域导入符号到当前作用域。
     /// </summary>
-    public void ImportFrom(BoundScope source)
+    public void ImportFrom(BoundScope source, bool includeVariables = true)
     {
         foreach (var fn in source.GetDeclaredFunctions())
             TryDeclareFunction(fn);
-        foreach (var v in source.GetDeclaredVariables())
-            TryDeclareVariable(v);
+        if (includeVariables)
+            foreach (var v in source.GetDeclaredVariables())
+                TryDeclareVariable(v);
         foreach (var kv in source.CollectAllStructDefs())
             TryDeclareStruct(kv.Key, kv.Value);
     }
+
+    /// <summary>
+    /// 获取当前作用域声明的变量名集合（不含父作用域）。
+    /// </summary>
+    public ImmutableHashSet<string> GetDeclaredVariableNames()
+        => [.. _var_symbols.Keys];
 }

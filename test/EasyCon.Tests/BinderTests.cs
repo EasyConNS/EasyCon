@@ -490,11 +490,11 @@ $r = first([1, 2, 3])", "无法");
     }
 
     [Test]
-    public void Lib_ForbidsVariableAssignment()
+    public void Lib_AllowsVariableAssignmentWithConstantInit()
     {
-        // 库脚本禁止变量赋值
+        // 库脚本允许带常量初始值的变量声明
         var tree = SyntaxTree.Parse("$x = 10", isLib: true);
-        Assert.That(tree.Diagnostics.HasErrors(), Is.True);
+        Assert.That(tree.Diagnostics.HasErrors(), Is.False);
     }
 
     #endregion

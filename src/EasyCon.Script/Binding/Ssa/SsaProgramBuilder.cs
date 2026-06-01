@@ -15,13 +15,14 @@ static class SsaProgramBuilder
         var functions = ImmutableDictionary.CreateBuilder<FunctionSymbol, SsaFunction>();
         int globalValueId = 0;
         int globalBlockId = 0;
+        var externSet = bound.ExternFunctions.ToImmutableHashSet();
 
         // 转换所有函数（包括 lib 函数）
         foreach (var (sym, body) in bound.Functions)
         {
             AllocateLocalSlots(sym, body);
 
-            var gen = new SsaCodeGenerator(sym, body.Syntax, globalValueId, globalBlockId);
+            var gen = new SsaCodeGenerator(sym, body.Syntax, globalValueId, globalBlockId, externSet);
             var ssaFunc = gen.Generate(body);
             ssaFunc.Layout = sym.Layout;
             functions[sym] = ssaFunc;

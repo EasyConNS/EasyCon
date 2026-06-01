@@ -293,7 +293,7 @@ internal sealed partial class Parser
         {
             foreach (var st in result)
             {
-                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or StructDeclBlock or ExternFuncStmt)
+                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or StructDeclBlock or ExternFuncStmt or AssignmentStmt)
                     continue;
                 _diagnostics.ReportBadStruct(st.Syntax.Location, "库脚本只允许函数定义、结构体定义、常量定义和外部函数声明");
                 break;

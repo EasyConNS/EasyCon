@@ -296,7 +296,7 @@ FUNC addOffset($x) : int
     RETURN $x + _offset
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = addOffset(5)");
+        var mainPath = WriteMain("$r = addOffset(5)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -318,7 +318,7 @@ FUNC sumSquares($a, $b) : int
     RETURN square($a) + square($b)
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = sumSquares(3, 4)");
+        var mainPath = WriteMain("$r = sumSquares(3, 4)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -340,7 +340,7 @@ FUNC quad($x) : int
     RETURN double(double($x))
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = quad(3)");
+        var mainPath = WriteMain("$r = quad(3)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -359,7 +359,7 @@ FUNC add($a, $b) : int
     RETURN $a + $b
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = add(10, 20)");
+        var mainPath = WriteMain("$r = add(10, 20)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -379,7 +379,7 @@ FUNC fib($n) : int
     RETURN fib($n - 1) + fib($n - 2)
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = fib(10)");
+        var mainPath = WriteMain("$r = fib(10)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -389,13 +389,145 @@ ENDFUNC
     }
 
     [Test]
-    public void MainCanAccess_LibConstant()
+    public void LibGlobal_NotAccessibleFromMain()
     {
-        WriteLib("lib1.ecs", "_LIB_CONST = 100");
-        var mainPath = WriteMain("$r = _LIB_CONST");
+        // main 引用 lib 全局变量 → 编译错误（变量不可见）
+        WriteLib("lib1.ecs", "_data = 42");
+        var mainPath = WriteMain("$r = _data");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.False);
+        Assert.That(errors, Has.Some.Contains("找不到变量"));
+    }
+
+    [Test]
+    public void LibGlobal_SameNameMainGlobal_Conflict()
+    {
+        // main 声明与 lib 同名全局变量 → 编译错误
+        WriteLib("lib1.ecs", "_offset = 10");
+        var mainPath = WriteMain("_offset = 20");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.False);
+        Assert.That(errors, Has.Some.Contains("冲突"));
+    }
+
+    [Test]
+    public void LibGlobal_LibFuncCanAccessOwnGlobal()
+    {
+        // lib 函数访问 lib 自身全局变量（回归）
+        WriteLib("lib1.ecs", @"
+_offset = 10
+FUNC addOffset($x) : int
+    RETURN $x + _offset
+ENDFUNC
+");
+        var mainPath = WriteMain("$r = addOffset(5)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(15));
+    }
+
+    [Test]
+    public void LibGlobal_MainFuncLocalCanShadowName()
+    {
+        // main 函数内声明与 lib 全局同名的局部变量 → 允许
+        WriteLib("lib1.ecs", @"
+_data = 99
+FUNC getLibData() : int
+    RETURN _data
+ENDFUNC
+");
+        var mainPath = WriteMain(@"
+FUNC mainFunc() : int
+    $data = 1
+    RETURN $data
+ENDFUNC
+$r = mainFunc()
+RETURN $r");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void LibGlobal_VarIsolation()
+    {
+        // lib 中 $counter 是可变全局变量，lib 函数可读写，main 不可见
+        WriteLib("lib1.ecs", @"
+$counter = 0
+FUNC increment() : int
+    $counter = $counter + 1
+    RETURN $counter
+ENDFUNC
+FUNC getCounter() : int
+    RETURN $counter
+ENDFUNC
+");
+        var mainPath = WriteMain(@"
+$r = increment()
+$r = increment()
+$r = getCounter()
+RETURN $r");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(2));
+    }
+
+    [Test]
+    public void LibGlobal_VarConflictWithMain()
+    {
+        // main 声明与 lib 同名 $ 全局变量 → 编译错误
+        WriteLib("lib1.ecs", "$total = 0");
+        var mainPath = WriteMain("$total = 10");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.False);
+        Assert.That(errors, Has.Some.Contains("冲突"));
+    }
+
+    [Test]
+    public void LibGlobal_VarNotAccessibleFromMain()
+    {
+        // main 引用 lib $ 全局变量 → 编译错误（变量不可见）
+        WriteLib("lib1.ecs", "$count = 5");
+        var mainPath = WriteMain("$r = $count");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.False);
+        Assert.That(errors, Has.Some.Contains("找不到变量"));
+    }
+
+    [Test]
+    public void LibGlobal_VarMustBeConstantInit()
+    {
+        // lib 全局变量初始化必须用常量表达式
+        WriteLib("lib1.ecs", "$val = 1 + 2\nFUNC get() : int\n RETURN $val\nENDFUNC");
+        var mainPath = WriteMain("RETURN get()");
+        var (_, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+    }
+
+    [Test]
+    public void LibGlobal_VarNonConstantInit_Error()
+    {
+        // lib 全局变量不能用函数调用等非常量表达式初始化
+        WriteLib("lib1.ecs", "$v = RAND(10)");
+        var mainPath = WriteMain("RETURN 0");
+        var (_, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.False);
+        Assert.That(errors, Has.Some.Contains("常量表达式"));
     }
 
     #endregion
@@ -428,7 +560,7 @@ FUNC myRand : int
     RETURN RAND(100)
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = myRand()");
+        var mainPath = WriteMain("$r = myRand()\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -450,7 +582,8 @@ FUNC triple($x) : int
 ENDFUNC
 ");
         var mainPath = WriteMain(@"IMPORT ""math.ecs""
-$r = triple(7)");
+$r = triple(7)
+RETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -474,7 +607,8 @@ ENDFUNC
 ");
         var mainPath = WriteMain(@"IMPORT ""a.ecs""
 IMPORT ""b.ecs""
-$r = add(mul(3, 4), 5)");
+$r = add(mul(3, 4), 5)
+RETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -498,7 +632,8 @@ ENDFUNC
 ");
         // 只 import a.ecs，b.ecs 通过自动加载
         var mainPath = WriteMain(@"IMPORT ""a.ecs""
-$r = add(mul(3, 4), 1)");
+$r = add(mul(3, 4), 1)
+RETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));

@@ -17,6 +17,8 @@ internal sealed partial class Binder
     const int _max_allow_level = 3;
     private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
+    private readonly ImmutableHashSet<string>? _libGlobalNames;
+    private readonly bool _isLibBinder;
 
     private readonly ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? _lazyFunctionBodies;
     private readonly DiagnosticBag? _programDiagnostics;
@@ -27,13 +29,17 @@ internal sealed partial class Binder
     private Binder(BoundScope? parent, FunctionSymbol? function,
         ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? lazyFunctionBodies = null,
         DiagnosticBag? programDiagnostics = null,
-        HashSet<FunctionSymbol>? bindingFunctions = null)
+        HashSet<FunctionSymbol>? bindingFunctions = null,
+        ImmutableHashSet<string>? libGlobalNames = null,
+        bool isLibBinder = false)
     {
         _scope = new BoundScope(parent);
         _function = function;
         _lazyFunctionBodies = lazyFunctionBodies;
         _programDiagnostics = programDiagnostics;
         _bindingFunctions = bindingFunctions;
+        _libGlobalNames = libGlobalNames;
+        _isLibBinder = isLibBinder;
 
         if (function != null)
         {
@@ -66,7 +72,8 @@ internal sealed partial class Binder
         foreach (var hole in BuiltinFunctions.GetCaptureHoles())
             libOnlyScope.TryDeclareFunction(hole);
 
-        var libBinder = new Binder(new BoundScope(libOnlyScope), function: null);
+        var libBinder = new Binder(new BoundScope(libOnlyScope), function: null,
+            isLibBinder: true);
         var libUserFunctions = new List<FunctionSymbol>();
         var libGlobalStmts = new List<BoundStmt>();
         var libMembers = libTrees.SelectMany(t => t.Root.Members);
@@ -106,13 +113,16 @@ internal sealed partial class Binder
         var libModule = new ModuleSymbol("lib", isLib: true);
         var mainModule = new ModuleSymbol("main", isLib: false);
 
+        // 收集 lib 全局变量名（用于 main 声明冲突检测）
+        var libGlobalNames = libBinder._scope.GetDeclaredVariableNames();
+
         // --- Phase 2: 主脚本绑定 ---
         var bindingFunctions = new HashSet<FunctionSymbol>();
         var mainBinder = new Binder(new BoundScope(parentScope), function: null,
-            functionBodies, diagnostics, bindingFunctions);
+            functionBodies, diagnostics, bindingFunctions, libGlobalNames);
 
-        // 将 lib 符号导入到主作用域
-        mainBinder._scope.ImportFrom(libBinder._scope);
+        // 将 lib 符号导入到主作用域（不导入变量，保持隔离）
+        mainBinder._scope.ImportFrom(libBinder._scope, includeVariables: false);
 
         var mainUserFunctions = new List<FunctionSymbol>();
         var mainGlobalStmts = new List<BoundStmt>();

@@ -58,7 +58,8 @@ public enum SsaOp : byte
     Return,         // Arg0=返回值（可 null）
 
     // ---- 调用 ----
-    Call,           // AuxSymbol=FunctionSymbol, Arg0=第一个参数
+    Call,           // 外部函数调用：AuxSymbol=FunctionSymbol, Arg0=第一个参数
+    StaticCall,     // 静态调用（内置+用户定义）：AuxSymbol=FunctionSymbol, Arg0=第一个参数
 
     // ---- 复合数据 ----
     ArrayInit,      // 创建数组，AuxSymbol=元素类型

@@ -15,7 +15,7 @@ namespace EasyCon.Tests;
 ///   A. 循环吞吐量（Thread.Yield 计数化）
 ///   B. labelIndex 缓存 + 函数调用开销
 ///   C. ArrayPool 消除参数分配
-///   D. 尾递归 Dictionary 复用
+///   D. 尾递归优化（跳帧复用 + Value[] 缓存）
 ///   E. 全局变量数组化读写
 ///   F. 字符串操作消除 StringInfo
 ///   G. 综合场景：素数筛
@@ -172,14 +172,15 @@ PRINT $sum
     }
 
     // ============================================================
-    // D. 尾递归 — Dictionary 复用
+    // D. 尾递归 — 跳帧复用 + Value[] 缓存
     // ============================================================
 
     [Test]
     public void Benchmark_TailRecursion_Reuse()
     {
         // 尾递归求和：sum(50000, 0) = 50000*50001/2 = 1250025000
-        // Dictionary 复用：每次迭代 Clear() 而非 new Dictionary()
+        // 跳帧复用：同一 EvalFrame 在 while(true) 中反复使用，避免递归栈溢出
+        // Value[] 缓存：每次迭代 new Value[] 替换 _valueCache，避免残留旧值
         var code = @"
 FUNC sum($n, $acc) : int
     IF $n == 0
@@ -196,7 +197,7 @@ PRINT $r
         var result = ParseIntOutput(output);
         Assert.That(result, Is.EqualTo(1250025000), "正确性：50000 的累加和");
 
-        Console.WriteLine($"[D] 尾递归 50000 层: {ms:F1}ms (Dictionary 复用)");
+        Console.WriteLine($"[D] 尾递归 50000 层: {ms:F1}ms (跳帧复用 + Value[] 缓存)");
     }
 
     // ============================================================

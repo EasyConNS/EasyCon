@@ -375,6 +375,12 @@ internal sealed partial class Binder
     {
         var boundexpr = BindExpression(syntax.Expression);
 
+        // lib 全局变量赋值：右侧必须是常量表达式
+        if (_isLibBinder && _function == null && TryEvaluateConstant(boundexpr) == null)
+        {
+            _diagnostics.ReportLibGlobalVariableMustBeConstant(syntax.Location, varTarget.Tag);
+        }
+
         var desugared = DesugarAugmentedAssign(syntax, () => BindVarExpression(varTarget), boundexpr.Type, boundexpr);
         if (desugared is not null) boundexpr = desugared;
 

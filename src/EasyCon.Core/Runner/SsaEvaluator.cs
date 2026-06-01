@@ -42,7 +42,6 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private readonly Random _rand = new();
     private bool _cancelLineBreak = false;
     private CancellationToken _token;
-    private Value _lastValue;
     private int _yieldCounter;
 
     // IEvalContext
@@ -188,8 +187,8 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 {
                     var inst = current.Instructions[i];
 
-                    // 尾调用前截：Call 紧跟 Return，且目标是当前函数 → 跳过实际调用，直接更新帧
-                    if (inst.Op == SsaOp.Call && inst.Aux is FunctionSymbol called
+                    // 尾调用前截：Call/StaticCall 紧跟 Return，且目标是当前函数 → 跳过实际调用，直接更新帧
+                    if (inst.Op is SsaOp.Call or SsaOp.StaticCall && inst.Aux is FunctionSymbol called
                         && called == func.Symbol
                         && i + 1 < instCount
                         && current.Instructions[i + 1].Op == SsaOp.Return
@@ -210,19 +209,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                         return Value.Void;
                     }
 
-                    // LoadLocal/LoadGlobal 需要每次重新读取帧（循环头可能重新执行，帧已被 body 更新）
-                    if (inst.Op is SsaOp.LoadLocal or SsaOp.LoadGlobal)
-                    {
-                        _valueCache[inst.Id] = ExecuteValue(inst, frame);
-                    }
-                    else
-                    {
-                        var result = ExecuteValue(inst, frame);
-                        _valueCache[inst.Id] = result;
-                        // 跟踪最后一个非 Void 指令结果（供无参 Return 使用）
-                        if (result.Type != ScriptType.Void)
-                            _lastValue = result;
-                    }
+                    _valueCache[inst.Id] = ExecuteValue(inst, frame);
                 }
 
                 // 3. 跳转
@@ -230,11 +217,10 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
                 if (current.IsReturn)
                 {
-                    // 找到最后一个 Return 指令的值
                     for (int i = current.Instructions.Count - 1; i >= 0; i--)
                         if (current.Instructions[i].Op == SsaOp.Return)
                             return _valueCache[current.Instructions[i].Id];
-                    return _lastValue;
+                    return Value.Void;
                 }
 
                 if (current.BranchCondition != null)
@@ -411,7 +397,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             SsaOp.Return => HandleReturn(val),
 
             // ---- 调用 ----
-            SsaOp.Call => ExecuteCall(val),
+            SsaOp.Call or SsaOp.StaticCall => ExecuteCall(val),
 
             // ---- 复合数据 ----
             SsaOp.ArrayInit => ExecuteArrayInit(val),
@@ -524,7 +510,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             }
         }
 
-        return val.Arg0 != null ? _valueCache[val.Arg0.Id] : _lastValue;
+        return val.Arg0 != null ? _valueCache[val.Arg0.Id] : Value.Void;
     }
 
     private Value ExecuteCall(SsaValue val)

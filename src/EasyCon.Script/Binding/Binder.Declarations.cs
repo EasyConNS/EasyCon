@@ -126,23 +126,39 @@ internal sealed partial class Binder
 
     private VariableSymbol LookupVariable(VariableExpr syntax, bool isReadOnly, ScriptType type, bool allowGlobal = true)
     {
-        var variable = _function == null && allowGlobal
-                    ? (VariableSymbol)new GlobalVariableSymbol(syntax.Tag, isReadOnly, type)
-                    : new LocalVariableSymbol(syntax.Tag, isReadOnly, type);
+        if (_function == null && allowGlobal)
+        {
+            if (_libGlobalNames != null && _libGlobalNames.Contains(syntax.Tag))
+            {
+                _diagnostics.ReportGlobalVariableConflictsWithLib(syntax.Syntax.Location, syntax.Tag);
+                return new GlobalVariableSymbol(syntax.Tag, isReadOnly, type);
+            }
+            var gvar = new GlobalVariableSymbol(syntax.Tag, isReadOnly, type);
+            _scope.TryDeclareVariable(gvar);
+            return gvar;
+        }
 
+        var variable = new LocalVariableSymbol(syntax.Tag, isReadOnly, type);
         _scope.TryDeclareVariable(variable);
-
         return variable;
     }
 
     private VariableSymbol LookupVariable(ConstVarExpr syntax, bool isReadOnly, ScriptType type, bool allowGlobal = true)
     {
-        var variable = _function == null && allowGlobal
-                    ? (VariableSymbol)new GlobalVariableSymbol(syntax.Tag, isReadOnly, type)
-                    : new LocalVariableSymbol(syntax.Tag, isReadOnly, type);
+        if (_function == null && allowGlobal)
+        {
+            if (_libGlobalNames != null && _libGlobalNames.Contains(syntax.Tag))
+            {
+                _diagnostics.ReportGlobalVariableConflictsWithLib(syntax.Syntax.Location, syntax.Tag);
+                return new GlobalVariableSymbol(syntax.Tag, isReadOnly, type);
+            }
+            var gvar = new GlobalVariableSymbol(syntax.Tag, isReadOnly, type);
+            _scope.TryDeclareVariable(gvar);
+            return gvar;
+        }
 
+        var variable = new LocalVariableSymbol(syntax.Tag, isReadOnly, type);
         _scope.TryDeclareVariable(variable);
-
         return variable;
     }
 
