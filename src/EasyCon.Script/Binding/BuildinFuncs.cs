@@ -32,7 +32,7 @@ public static class BuiltinFunctions
         ScriptType.String);
     public static readonly FunctionSymbol Jq = new("JQ",
         [new("json", ScriptType.String), new("query", ScriptType.String)],
-        ScriptType.Any);
+        ScriptType.String);
 
     // --- 编译器内联伪函数（保留符号供 binder，不注册 callable）---
 

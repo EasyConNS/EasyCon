@@ -94,16 +94,15 @@ internal static class BuiltinCallable
                 }
             }
 
-            return current.ValueKind switch
+            return Value.FromString(current.ValueKind switch
             {
-                JsonValueKind.Number => current.GetInt32(),
-                JsonValueKind.String => Value.FromString(current.GetString()!),
-                JsonValueKind.True => Value.FromBool(true),
-                JsonValueKind.False => Value.FromBool(false),
-                JsonValueKind.Array => Value.CreateArray(ScriptType.Int,
-                    current.EnumerateArray().Select(e => (Value)e.GetInt32())),
-                _ => Value.FromString(current.GetRawText()),
-            };
+                JsonValueKind.Number => current.GetRawText(),
+                JsonValueKind.String => current.GetString()!,
+                JsonValueKind.True => "true",
+                JsonValueKind.False => "false",
+                JsonValueKind.Array => current.GetRawText(),
+                _ => current.GetRawText(),
+            });
         }
         catch
         {
