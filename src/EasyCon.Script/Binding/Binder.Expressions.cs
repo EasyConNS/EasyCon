@@ -19,6 +19,7 @@ internal sealed partial class Binder
             BinaryExpression binary => BindBinaryExpression(binary),
             ParenthesizedExpression pre => BindExpression(pre.Expression),
             Callv1Expression call => BindCallExpression(call),
+            NamespaceCallExpr nsCall => BindNamespaceCallExpression(nsCall),
             IndexDefExpression idxDef => BindIndexExpression(idxDef),
             IndexVisitExpression idxVisit => BindIndexVisitExpression(idxVisit),
             SliceExpression slice => BindSliceExpression(slice),

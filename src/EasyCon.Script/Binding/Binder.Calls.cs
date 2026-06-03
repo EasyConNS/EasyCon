@@ -242,5 +242,38 @@ internal sealed partial class Binder
         return new BoundExprStatement(syntax, expr);
     }
 
+    private BoundExpr BindNamespaceCallExpression(NamespaceCallExpr syntax)
+    {
+        var nsName = syntax.Namespace.Value;
+        var funcName = syntax.Member.Value;
+
+        // 查找命名空间
+        var ns = _scope.TryLookupNamespace(nsName);
+        if (ns == null)
+        {
+            _diagnostics.ReportNamespaceNotFound(syntax.Namespace.Location, nsName);
+            return new BoundErrorExpression(syntax);
+        }
+
+        // 在命名空间中查找函数
+        var candidates = ns.GetFunctions(funcName);
+        if (candidates.IsEmpty)
+        {
+            _diagnostics.ReportFunctionNotFoundInNamespace(syntax.Member.Location, funcName, nsName);
+            return new BoundErrorExpression(syntax);
+        }
+
+        // 绑定参数
+        var boundArgs = syntax.Arguments.Select(BindExpression).ToImmutableArray();
+
+        // 重载解析
+        var function = ResolveOverload(syntax, funcName, candidates, boundArgs);
+        if (function == null)
+            return new BoundErrorExpression(syntax);
+
+        EnsureFunctionBodyBound(function);
+        return BuildCallWithTypeConversion(syntax, function, boundArgs);
+    }
+
     #endregion
 }

@@ -17,7 +17,7 @@ internal interface ICallable
 internal interface IEvalContext
 {
     ICGamePad? GamePad { get; }
-    IOutputAdapter? Output { get; }
+    IIoAdapter? IoAdapter { get; }
     OcrDelegate? Ocr { get; }
     FrameDelegate? Frame { get; }
     RoiDelegate? Roi { get; }

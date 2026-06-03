@@ -43,8 +43,19 @@ sealed class ImportStmt(Token syntax, Token model, string path = "") : Statement
     internal readonly string InitPath = path;
     internal string Lib => Model.STRTrimQ();
 
+    // 新增：命名空间别名（可选）
+    public Token? Alias { get; init; }
+
+    // 新增：是否导入到全局
+    public bool IsGlobal => Alias == null;
+
+    // 新增：命名空间名称
+    public string NamespaceName => Alias?.Value ?? "global";
+
     public string FullFileName => Path.Combine(InitPath, Lib);
-    protected override string _GetString() => $"IMPORT \"{Lib}\"";
+    protected override string _GetString() => Alias != null
+        ? $"IMPORT \"{Lib}\" AS {Alias.Value}"
+        : $"IMPORT \"{Lib}\"";
 }
 
 sealed class CompicationUnit(ImmutableArray<Statement> members)

@@ -1,8 +1,9 @@
 using EasyCon.Core.Config;
 using EasyScript;
+using System;
 using System.Drawing;
 
-class ConsoleOutAdapter() : IOutputAdapter
+class ConsoleOutAdapter : IIoAdapter
 {
     private readonly AlertDispatcher _dispatcher = new(ConfigManager.LoadAlert());
 
@@ -12,27 +13,30 @@ class ConsoleOutAdapter() : IOutputAdapter
     public void Print(string message, bool newline = true)
     {
         _msgNewLine = _msgNewLine && newline;
-        Print(message, null);
+        PrintInternal(message, null);
     }
+
     public void Info(string message, bool timestamp = false)
     {
-        Print(message, Color.Green, timestamp);
+        PrintInternal(message, Color.Green, timestamp);
     }
+
     public void Log(string message, bool timestamp = false)
     {
-        Print(message, Color.White, timestamp);
+        PrintInternal(message, Color.White, timestamp);
     }
+
     public void Warn(string message, bool timestamp = false)
     {
-        Print(message, Color.Orange, timestamp);
+        PrintInternal(message, Color.Orange, timestamp);
     }
 
     public void Error(string message, bool timestamp = false)
     {
-        Print(message, Color.Red, timestamp);
+        PrintInternal(message, Color.Red, timestamp);
     }
 
-    private void Print(string message, Color? color, bool timestamp = true)
+    private void PrintInternal(string message, Color? color, bool timestamp = true)
     {
         if (_msgNewLine)
         {
@@ -60,6 +64,32 @@ class ConsoleOutAdapter() : IOutputAdapter
                 Print($"推送失败:{e.Message}");
             }
         }).Wait();
+    }
+
+    public string ReadLine()
+    {
+        try
+        {
+            return Console.ReadLine() ?? "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    public bool TryReadLine(out string line)
+    {
+        try
+        {
+            line = Console.ReadLine() ?? "";
+            return true;
+        }
+        catch
+        {
+            line = "";
+            return false;
+        }
     }
 }
 

@@ -33,6 +33,7 @@ public static class BuiltinFunctions
     public static readonly FunctionSymbol Jq = new("JQ",
         [new("json", ScriptType.String), new("query", ScriptType.String)],
         ScriptType.String);
+    public static readonly FunctionSymbol Input = new("INPUT", [new("prompt", ScriptType.String, hasDefault: true, defaultValue: "")], ScriptType.String);
 
     // --- 编译器内联伪函数（保留符号供 binder，不注册 callable）---
 
@@ -63,7 +64,7 @@ public static class BuiltinFunctions
 
     // --- 内联伪函数判断 ---
 
-    private static readonly HashSet<FunctionSymbol> IntrinsicFunctions = [Append, Length, StrConvert, IntConvert, Wait, CaptureHole, OcrHole, RoiHole];
+    private static readonly HashSet<FunctionSymbol> IntrinsicFunctions = [Append, Length, StrConvert, IntConvert, Wait, CaptureHole, OcrHole, RoiHole, Rand];
     public static bool IsIntrinsic(FunctionSymbol fn) => IntrinsicFunctions.Contains(fn);
 
     // --- 采集卡能力追踪 ---
@@ -75,7 +76,7 @@ public static class BuiltinFunctions
     // --- 注册到 root scope 的函数列表 ---
 
     private static readonly FunctionSymbol[] All =
-        [Wait, Print, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq];
+        [Wait, Print, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Input];
 
     internal static IReadOnlyList<FunctionSymbol> GetAll() => All;
 
@@ -83,13 +84,6 @@ public static class BuiltinFunctions
 
     private static readonly HashSet<FunctionSymbol> BuiltinSet = [.. All];
     public static bool IsBuiltin(FunctionSymbol fn) => BuiltinSet.Contains(fn);
-
-    // --- 注册 callable 的函数列表（不含内联伪函数）---
-
-    private static readonly FunctionSymbol[] Callables =
-        [Wait, Print, Alert, Rand, Amiibo, Beep, Env, StrEncode, Jq];
-
-    internal static IReadOnlyList<FunctionSymbol> GetCallables() => Callables;
 
     // --- 采集卡洞函数列表（注册到 lib-only scope + callable）---
 

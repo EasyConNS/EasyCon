@@ -30,7 +30,7 @@ using Resources = EasyCon2.UI.Common.Properties.Resources;
 
 namespace EasyCon2.App
 {
-    public partial class EasyConForm : Form, IOutputAdapter, IControllerAdapter
+    public partial class EasyConForm : Form, IIoAdapter, IControllerAdapter
     {
         private readonly string VER = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion;
@@ -311,6 +311,9 @@ namespace EasyCon2.App
                 }
             });
         }
+
+        public string ReadLine() => throw new NotImplementedException();
+        public bool TryReadLine(out string line) => throw new NotImplementedException();
 
         #endregion
 

@@ -142,3 +142,15 @@ sealed class DiscardExpr(Token syntax) : TargetExpr(syntax)
 {
     public override string GetCodeText() => "_";
 }
+
+// 用于解析 namespace.func() 形式的表达式
+sealed class NamespaceCallExpr(Token ns, Token member, Token lp, ImmutableArray<BaseExpr> arguments, Token rp) : BaseExpr(ns)
+{
+    public Token Namespace { get; } = ns;      // 命名空间标识符
+    public Token Member { get; } = member;     // 成员名称（函数名）
+    public Token Lp { get; } = lp;
+    public ImmutableArray<BaseExpr> Arguments { get; } = arguments;
+    public Token Rp { get; } = rp;
+
+    public override string GetCodeText() => $"{Namespace.Value}.{Member.Value}({string.Join(", ", Arguments.Select(arg => arg.GetCodeText()))})";
+}

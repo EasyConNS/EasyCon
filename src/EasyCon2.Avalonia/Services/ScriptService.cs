@@ -81,7 +81,7 @@ public class ScriptService : IScriptService
 
                 FrameDelegate? frameDelegate = (x, y, w, h) =>
                 {
-                    using var mat = _captureService.GetFreshFrame() ?? throw new Exception("采集卡未连接");
+                    using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
                     if (mat.Empty()) return null;
                     if (x >= 0 && y >= 0 && w >= 0 && h >= 0)
                     {
@@ -100,12 +100,12 @@ public class ScriptService : IScriptService
                 LabelMatchDelegate? labelMatchDelegate = lblName =>
                 {
                     if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-                    using var mat = _captureService.GetFreshFrame() ?? throw new Exception("采集卡未连接");
+                    using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
                     il.Search(mat, out var md);
                     return (int)md;
                 };
 
-                _runner.Run(_logService, pad, OcrDelegateFactory.Create(() => _captureService.GetFreshFrame()), frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token);
+                _runner.Run(_logService, pad, OcrDelegateFactory.Create(() => _captureService.GetMatFrame()), frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)

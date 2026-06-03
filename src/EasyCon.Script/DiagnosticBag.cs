@@ -233,4 +233,24 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         var args = string.Join(", ", argTypes.Select(t => t.Name));
         ReportError(location, $"找不到匹配的函数 '{functionName}'，参数类型: ({args})");
     }
+
+    public void ReportNamespaceNotFound(TextLocation location, string name)
+    {
+        ReportError(location, $"命名空间 '{name}' 不存在");
+    }
+
+    public void ReportFunctionNotFoundInNamespace(TextLocation location, string funcName, string nsName)
+    {
+        ReportError(location, $"命名空间 '{nsName}' 中不存在函数 '{funcName}'");
+    }
+
+    public void ReportNamespaceAlreadyDeclared(TextLocation location, string name)
+    {
+        ReportError(location, $"命名空间 '{name}' 已声明");
+    }
+
+    public void ReportNamespaceConflictsWithFunction(TextLocation location, string name)
+    {
+        ReportError(location, $"命名空间 '{name}' 与已声明的函数名冲突");
+    }
 }

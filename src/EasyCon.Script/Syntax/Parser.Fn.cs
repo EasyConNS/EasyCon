@@ -86,11 +86,25 @@ internal partial class Parser
     {
         var keyword = Match(TokenType.IMPORT);
         var mod = Match(TokenType.STRING);
+
+        // 解析可选的 AS 'alias' 子句
+        Token? alias = null;
+        if (Check(TokenType.AS))
+        {
+            Advance();
+            alias = Match(TokenType.IDENT);
+        }
+
         MatchEOF();
         var libSrc = Path.GetFullPath(Path.Combine(_filePath, LibPath, mod.STRTrimQ()));
         if (!libSrc.StartsWith(_filePath, StringComparison.OrdinalIgnoreCase) || !File.Exists(libSrc))
             _diagnostics.ReportInvalidImport(mod.Location, mod);
-        return new ImportStmt(keyword, mod, Path.Combine(_filePath, LibPath));
+
+        // 使用对象初始化器设置Alias属性
+        return new ImportStmt(keyword, mod, Path.Combine(_filePath, LibPath))
+        {
+            Alias = alias
+        };
     }
 
     private Statement ParseAssignmentOrDecl()
@@ -500,6 +514,20 @@ internal partial class Parser
     private BaseExpr ParseCallExpression()
     {
         var identifier = Match(TokenType.IDENT);
+
+        // 检查是否是命名空间调用: name.func()
+        if (Check(TokenType.DOT))
+        {
+            Advance();
+            var member = Match(TokenType.IDENT);
+            var openParenToken = Match(TokenType.LeftParen);
+            var argumentsList = ParseArguments();
+            var closeParenToken = Match(TokenType.RightParen);
+
+            // 创建命名空间调用表达式
+            return new NamespaceCallExpr(identifier, member, openParenToken, argumentsList, closeParenToken);
+        }
+
         var openParen = Match(TokenType.LeftParen);
         var arguments = ParseArguments();
         var closeParen = Match(TokenType.RightParen);

@@ -85,6 +85,7 @@ public enum SsaOp : byte
     StickAction,
     StickPress,     // Arg0=duration
     Wait,           // Arg0=duration
+    Rand,           // Arg0=max, 返回 [0, max) 随机整数
 
     // ---- 采集卡打洞函数 ----
     Capture,        // Arg0=x, ExtraArgs=[y, w, h]

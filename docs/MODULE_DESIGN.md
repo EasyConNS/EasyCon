@@ -316,7 +316,7 @@ public sealed class Compilation
 {
     public static Compilation Create(SyntaxTree syntaxTrees);
     public ImmutableArray<Diagnostic> Compile(ImmutableHashSet<string>? extVars);
-    public EvaluationResult Evaluate(IOutputAdapter output, ICGamePad pad,
+    public EvaluationResult Evaluate(IIoAdapter ioAdapter, ICGamePad pad,
         ImmutableDictionary<string, Func<int>> externalGetters, CancellationToken token);
 }
 ```
@@ -445,12 +445,17 @@ Evaluator直接遍历绑定树（BoundProgram）执行脚本，不经过虚拟�
 
 ### 3.9 输出接口
 
-#### IOutputAdapter接口
+#### IIoAdapter接口
 ```csharp
-public interface IOutputAdapter
+public interface IIoAdapter
 {
+    // 输出方法
     void Print(string message, bool newline);
     void Alert(string message);
+    
+    // 输入方法
+    string ReadLine();
+    bool TryReadLine(out string line);
 }
 ```
 

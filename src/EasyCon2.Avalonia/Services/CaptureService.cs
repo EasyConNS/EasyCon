@@ -114,27 +114,6 @@ public class CaptureService : ICaptureService
         }
     }
 
-    /// <summary>
-    /// 保证获取一帧新数据：双次 Grab 消费缓冲区旧帧，再 Retrieve 解码新帧。
-    /// </summary>
-    public Mat? GetFreshFrame()
-    {
-        lock (_captureLock)
-        {
-            if (_capture == null || !_capture.IsOpened)
-                return null;
-
-            var mat = _capture.GetFreshFrame();
-            if (mat.Empty())
-            {
-                mat.Dispose();
-                return null;
-            }
-
-            return mat.Clone();
-        }
-    }
-
     public void SetCaptureProperties(int width, int height)
     {
         lock (_captureLock)

@@ -52,7 +52,7 @@ public class LibTests
         var compileResult = compilation.Compile(null);
         if (compileResult.Program == null)
             throw new Exception($"编译错误: {string.Join("; ", compileResult.Diagnostics.Where(d => d.IsError).Select(d => d.Message))}");
-        using var evaluator = new SsaEvaluator(compileResult.Program, new CancellationTokenSource().Token) { Output = new MockOutputAdapter() };
+        using var evaluator = new SsaEvaluator(compileResult.Program, new CancellationTokenSource().Token) { IoAdapter = new MockOutputAdapter() };
         return evaluator.Evaluate();
     }
 
@@ -96,7 +96,7 @@ public class LibTests
             return (Value.Void, false, errors);
 
         var output = new MockOutputAdapter();
-        using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { Output = output };
+        using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { IoAdapter = output };
         var value = evaluator.Evaluate();
         return (value, !compileResult.Diagnostics.HasErrors(), []);
     }

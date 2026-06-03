@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using EasyCon.Core.Services;
+using EasyScript;
 
 namespace EasyCon2.Avalonia.Core.Services;
 
@@ -26,6 +27,16 @@ public class LogService : ILogService
     {
         var text = $"[{DateTime.Now:HH:mm:ss}] [ALERT] {message}\n";
         lock (_lock) { _entries.Add((text, "Orange")); }
+    }
+
+    public string ReadLine()
+    {
+        throw new NotImplementedException("ReadLine is not implemented in LogService");
+    }
+
+    public bool TryReadLine(out string line)
+    {
+        throw new NotImplementedException("TryReadLine is not implemented in LogService");
     }
 
     public void AddLog(string message, string? color = null)

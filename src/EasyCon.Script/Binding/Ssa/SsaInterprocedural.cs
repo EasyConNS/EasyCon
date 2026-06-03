@@ -340,13 +340,12 @@ static class SsaInterprocedural
             }
         }
 
-        if (newArgs.Count == 0) return false;
-
         // 就地替换 Call 为 intrinsic（保持 Arg0/Arg1/ExtraArgs 与 EmitIntrinsic 一致）
         callInst.Op = mapping.Op;
         callInst.Type = mapping.Type;
-        callInst.Aux = null;
-        callInst.Arg0 = newArgs[0];
+        // 有值参数时清除旧 Aux（FunctionSymbol）；无值参数时保留 callee 的 Aux（如 RuntimeValueNameSymbol）
+        callInst.Aux = newArgs.Count > 0 ? null : intrinsicCall.Aux;
+        callInst.Arg0 = newArgs.Count > 0 ? newArgs[0] : null;
         callInst.Arg1 = newArgs.Count > 1 ? newArgs[1] : null;
         callInst.ExtraArgs = newArgs.Count > 2 ? newArgs.GetRange(2, newArgs.Count - 2) : null;
 

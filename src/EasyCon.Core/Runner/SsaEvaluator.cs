@@ -48,7 +48,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private int _yieldCounter;
 
     // IEvalContext
-    public IOutputAdapter? Output { get; set; }
+    public IIoAdapter? IoAdapter { get; set; }
     public ICGamePad? GamePad { get; set; }
     public OcrDelegate? Ocr { get; set; }
     public FrameDelegate? Frame { get; set; }
@@ -56,7 +56,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     public LabelMatchDelegate? LabelMatch { get; set; }
 
     ICGamePad? IEvalContext.GamePad => GamePad;
-    IOutputAdapter? IEvalContext.Output => Output;
+    IIoAdapter? IEvalContext.IoAdapter => IoAdapter;
     OcrDelegate? IEvalContext.Ocr => Ocr;
     FrameDelegate? IEvalContext.Frame => Frame;
     RoiDelegate? IEvalContext.Roi => Roi;
@@ -434,6 +434,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             SsaOp.StickAction => ExecuteStickAction(val),
             SsaOp.StickPress => ExecuteStickPress(val),
             SsaOp.Wait => ExecuteWait(val),
+            SsaOp.Rand => Value.FromInt(_rand.Next(V0i(val))),
 
             // ---- 采集卡打洞函数 ----
             SsaOp.Capture => ExecuteCapture(val),

@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace EasyCon.Tests;
 
-internal sealed class MockOutputAdapter : IOutputAdapter
+internal sealed class MockOutputAdapter : IIoAdapter
 {
     public List<string> Printed { get; } = [];
     public List<string> Alerted { get; } = [];
@@ -22,6 +22,14 @@ internal sealed class MockOutputAdapter : IOutputAdapter
     public void Alert(string message)
     {
         Alerted.Add(message);
+    }
+
+    public string ReadLine() => "";
+
+    public bool TryReadLine(out string line)
+    {
+        line = "";
+        return true;
     }
 }
 
@@ -44,7 +52,7 @@ public class EvaluatorTests
             return (result, Value.Void, output);
         using var evaluator = new SsaEvaluator(result.Program, new CancellationTokenSource().Token)
         {
-            Output = output,
+            IoAdapter = output,
             LabelMatch = labelMatch,
         };
         var value = evaluator.Evaluate();
@@ -1157,7 +1165,7 @@ RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
                 $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
 
             var output = new MockOutputAdapter();
-            using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { Output = output };
+            using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { IoAdapter = output };
             var value = evaluator.Evaluate();
 
             Assert.That(value.AsString(), Is.EqualTo(tempDir));
@@ -1234,7 +1242,7 @@ RETURN $r", matcher, labelNames);
         var compileResult = compilation.Compile(labelNames);
 
         Assert.That(compileResult.Diagnostics.HasErrors(), Is.False);
-        using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { Output = output };
+        using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { IoAdapter = output };
         Assert.Throws<Exception>(() => evaluator.Evaluate());
     }
 

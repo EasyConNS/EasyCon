@@ -38,7 +38,6 @@ var runLuaCommand = new Command("runlua", "运行lua脚本");
 var portDevCommand = new Command("port", "单片机端口功能");
 var videoCommand = new Command("video", "视频采集设备功能");
 var formatCommand = new Command("format", "格式化脚本");
-var irCommand = new Command("ir", "打印 SSA IR（中间表示）");
 
 #region 命令行参数解析
 var scriptOption = new Argument<string>("file")
@@ -185,17 +184,17 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         var labelDict = label.ToDictionary(il => il.name);
         labelNames = [.. labelDict.Keys];
 
-        frameDelegate = FrameDelegateFactory.CreateFrame(() => cvcap.GetFreshFrame());
+        frameDelegate = FrameDelegateFactory.CreateFrame(() => cvcap.GetMatFrame());
 
         labelMatchDelegate = lblName =>
         {
             if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-            using var mat = cvcap.GetFreshFrame();
+            using var mat = cvcap.GetMatFrame();
             if (mat.Empty()) return 0;
             il.Search(mat, out var md);
             return (int)Math.Ceiling(md);
         };
-        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetFreshFrame());
+        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetMatFrame());
     }
     outdap.Info($"==>开始执行脚本：{file}");
 
@@ -315,42 +314,11 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
     return 0;
 });
 
-var irOptimizeOption = new Option<bool>("--raw")
-{
-    Description = "输出优化前的原始 SSA IR"
-};
-irCommand.Arguments.Add(scriptOption);
-irCommand.Options.Add(irOptimizeOption);
-irCommand.SetAction(async (parseResult, cancellationToken) =>
-{
-    string file = parseResult.GetValue(scriptOption)!;
-    bool raw = parseResult.GetValue(irOptimizeOption);
-
-    var scriptBasePath = Path.GetDirectoryName(file) ?? "";
-    scriptBasePath = Path.GetFullPath(scriptBasePath);
-    var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
-
-    var diag = runner.Load(file, [.. label.Select(il => il.name)]);
-
-    if (diag.HasErrors())
-    {
-        foreach (var d in diag)
-        {
-            Console.Error.WriteLine($"line {d.Location.StartLine + 1}: {d.Message}");
-        }
-        return 1;
-    }
-
-    Console.Write(runner.DumpIr(beforeOptimize: raw));
-    return 0;
-});
-
 rootCommand.Subcommands.Add(runScriptCommand);
 rootCommand.Subcommands.Add(runLuaCommand);
 rootCommand.Subcommands.Add(portDevCommand);
 rootCommand.Subcommands.Add(videoCommand);
 rootCommand.Subcommands.Add(formatCommand);
-rootCommand.Subcommands.Add(irCommand);
 
 var lspCommand = new Command("lsp", "启动 ECS 语言服务端");
 var stdioOption = new Option<bool>("--stdio")

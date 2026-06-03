@@ -9,9 +9,15 @@ internal sealed class BoundScope(BoundScope? parent)
     private readonly Dictionary<string, VariableSymbol> _var_symbols = [];
     private readonly Dictionary<string, List<FunctionSymbol>> _fn_symbols = [];
     private readonly Dictionary<string, EcsStructDef> _structDefs = [];
+    private readonly Dictionary<string, NamespaceSymbol> _namespaces = []; // 新增：命名空间映射
     private ImmutableHashSet<string> _validExternalVariables = [];
 
     public BoundScope? Parent { get; } = parent;
+
+    /// <summary>
+    /// 当前作用域关联的命名空间（如果有）
+    /// </summary>
+    public NamespaceSymbol? Namespace { get; init; }
 
     public bool TryDeclareStruct(string name, EcsStructDef def)
     {
@@ -100,6 +106,27 @@ internal sealed class BoundScope(BoundScope? parent)
             return [.. list];
 
         return Parent?.TryLookupFuncs(name) ?? [];
+    }
+
+    /// <summary>
+    /// 查找命名空间
+    /// </summary>
+    public NamespaceSymbol? TryLookupNamespace(string name)
+    {
+        // 在当前作用域中查找命名空间
+        if (_namespaces.TryGetValue(name, out var ns))
+            return ns;
+
+        // 在父作用域中查找命名空间
+        return Parent?.TryLookupNamespace(name);
+    }
+
+    /// <summary>
+    /// 声明命名空间
+    /// </summary>
+    public bool TryDeclareNamespace(NamespaceSymbol ns)
+    {
+        return _namespaces.TryAdd(ns.Name, ns);
     }
 
     public bool TryFindoutLabel(string name)

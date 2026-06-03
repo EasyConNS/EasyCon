@@ -10,7 +10,8 @@ ImmutableArray<Diagnostic> diagnostics,
 ImmutableDictionary<FunctionSymbol, BoundBlockStatement> functions,
 ImmutableArray<FunctionSymbol> externFunctions,
 ImmutableArray<string> imglabels,
-ImmutableDictionary<string, EcsStructDef> structDefinitions)
+ImmutableDictionary<string, EcsStructDef> structDefinitions,
+ImmutableDictionary<string, NamespaceSymbol> namespaces) // 新增参数
 {
     public readonly FunctionSymbol MainFunction = main;
     public ImmutableDictionary<FunctionSymbol, BoundBlockStatement> Functions = functions;
@@ -18,6 +19,7 @@ ImmutableDictionary<string, EcsStructDef> structDefinitions)
     public ImmutableArray<Diagnostic> Diagnostics = diagnostics;
     public ImmutableArray<string> ILNames = imglabels;
     public readonly ImmutableDictionary<string, EcsStructDef> StructDefinitions = structDefinitions;
+    public readonly ImmutableDictionary<string, NamespaceSymbol> Namespaces = namespaces; // 新增：命名空间映射
 
     /// <summary>模块符号列表（lib 模块 + 主模块），由 BindProgram 填充</summary>
     public ImmutableArray<ModuleSymbol>? Modules { get; init; }

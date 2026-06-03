@@ -24,7 +24,7 @@ var compileResult = comp.Compile(null);
 Console.WriteLine($"Compile: {sw.ElapsedMilliseconds}ms");
 
 sw.Restart();
-using (var evaluator = new SsaEvaluator(compileResult.Program!, CancellationToken.None) { Output = output })
+using (var evaluator = new SsaEvaluator(compileResult.Program!, CancellationToken.None) { IoAdapter = output })
 {
     evaluator.Evaluate();
 }
@@ -42,7 +42,7 @@ var compileResult2 = comp2.Compile(null);
 Console.WriteLine($"Compile: {sw.ElapsedMilliseconds}ms");
 
 sw.Restart();
-using (var evaluator2 = new SsaEvaluator(compileResult2.Program!, CancellationToken.None) { Output = output })
+using (var evaluator2 = new SsaEvaluator(compileResult2.Program!, CancellationToken.None) { IoAdapter = output })
 {
     evaluator2.Evaluate();
 }
@@ -55,13 +55,15 @@ for (int i = 0; i < 10; i++)
 {
     var c = Compilation.Create(mainTree);
     var cr = c.Compile(null);
-    using var e = new SsaEvaluator(cr.Program!, CancellationToken.None) { Output = output };
+    using var e = new SsaEvaluator(cr.Program!, CancellationToken.None) { IoAdapter = output };
     e.Evaluate();
 }
 Console.WriteLine($"10 iterations: {sw.ElapsedMilliseconds}ms  avg={sw.ElapsedMilliseconds/10}ms");
 
-class MockOutput : IOutputAdapter
+class MockOutput : IIoAdapter
 {
     public void Print(string message, bool newline) { }
     public void Alert(string message) { }
+    public string ReadLine() => "";
+    public bool TryReadLine(out string line) { line = ""; return true; }
 }

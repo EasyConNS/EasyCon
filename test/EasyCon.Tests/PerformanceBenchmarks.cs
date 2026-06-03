@@ -53,7 +53,7 @@ public class PerformanceBenchmarks
         var output = new MockOutputAdapter();
         var sw = Stopwatch.StartNew();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-        using var evaluator = new SsaEvaluator(compileResult.Program, cts.Token) { Output = output };
+        using var evaluator = new SsaEvaluator(compileResult.Program, cts.Token) { IoAdapter = output };
         evaluator.Evaluate();
         sw.Stop();
 

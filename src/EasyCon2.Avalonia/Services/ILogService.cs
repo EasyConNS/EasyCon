@@ -2,7 +2,7 @@ using EasyScript;
 
 namespace EasyCon2.Avalonia.Services;
 
-public interface ILogService : IOutputAdapter
+public interface ILogService : IIoAdapter
 {
     event Action<string>? LogAppended;
     void Clear();

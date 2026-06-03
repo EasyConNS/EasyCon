@@ -30,7 +30,7 @@ Script模块实现自研ECS脚本语言的完整编译管线和运行时。管�
 ## 输出接口
 
 脚本通过两个接口与外部交互：
-- **IOutputAdapter** — 文本输出（Print/Alert），用于脚本 `print` 和 `alert` 指令
+- **IIoAdapter** — 文本输入输出（Print/Alert/ReadLine），用于脚本 `print`、`alert` 和 `input` 指令
 - **ICGamePad** — 手柄控制（按键点击/释放、摇杆、Amiibo），用于按键和摇杆指令
 
 ## 诊断系统

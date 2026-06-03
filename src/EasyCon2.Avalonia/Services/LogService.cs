@@ -29,6 +29,16 @@ public class LogService : ILogService
         Append(text);
     }
 
+    public string ReadLine()
+    {
+        throw new NotImplementedException("ReadLine is not implemented in LogService");
+    }
+
+    public bool TryReadLine(out string line)
+    {
+        throw new NotImplementedException("TryReadLine is not implemented in LogService");
+    }
+
     public void AddLog(string message)
     {
         var text = $"[{DateTime.Now:HH:mm:ss}] {message}\n";

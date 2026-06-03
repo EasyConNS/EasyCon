@@ -16,10 +16,6 @@ public interface ICaptureService
     /// </summary>
     Mat? GetMatFrame();
     /// <summary>
-    /// 保证获取一帧新数据（双次 Grab）。仅在脚本执行等需要帧新鲜度保证时使用。
-    /// </summary>
-    Mat? GetFreshFrame();
-    /// <summary>
     /// 设置采集参数（分辨率等）。
     /// </summary>
     void SetCaptureProperties(int width, int height);

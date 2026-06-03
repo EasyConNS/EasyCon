@@ -13,35 +13,33 @@ namespace EasyCon.Core.Runner;
 /// </summary>
 internal static class BuiltinCallable
 {
-    public static Value ImplWait(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var ms = args[0].AsInt();
-        CustomDelay.Delay(ms, token);
-        return Value.Void;
-    }
-
     public static Value ImplPrint(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var s = args[0].AsString();
         var output = s.EndsWith('\\') ? s[..^1] : s;
-        ctx.Output?.Print(output, !ctx.CancelLineBreak);
+        ctx.IoAdapter?.Print(output, !ctx.CancelLineBreak);
         ctx.CancelLineBreak = s.EndsWith('\\');
         return Value.Void;
+    }
+
+    public static Value ImplInput(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        var prompt = args[0].AsString();
+        if (!string.IsNullOrEmpty(prompt))
+        {
+            ctx.IoAdapter?.Print(prompt, false);
+        }
+
+        var input = ctx.IoAdapter?.ReadLine() ?? "";
+        return Value.FromString(input);
     }
 
     public static Value ImplAlert(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
     {
         var s = args[0].AsString();
         var output = s.EndsWith('\\') ? s[..^1] : s;
-        ctx.Output?.Alert(output);
+        ctx.IoAdapter?.Alert(output);
         return Value.Void;
-    }
-
-    public static Value ImplRand(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var max = args[0].AsInt();
-        max = max < 0 ? 0 : max;
-        return ctx.Rand.Next(max);
     }
 
     public static Value ImplAmiibo(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
@@ -156,15 +154,14 @@ internal static class BuiltinCallable
     {
         return
         [
-            (BuiltinFunctions.Wait, new DelegateCallable(ImplWait)),
             (BuiltinFunctions.Print, new DelegateCallable(ImplPrint)),
             (BuiltinFunctions.Alert, new DelegateCallable(ImplAlert)),
-            (BuiltinFunctions.Rand, new DelegateCallable(ImplRand)),
             (BuiltinFunctions.Amiibo, new DelegateCallable(ImplAmiibo)),
             (BuiltinFunctions.Beep, new DelegateCallable(ImplBeep)),
             (BuiltinFunctions.Env, new DelegateCallable(ImplEnv)),
             (BuiltinFunctions.StrEncode, new DelegateCallable(ImplStrEncode)),
             (BuiltinFunctions.Jq, new DelegateCallable(ImplJq)),
+            (BuiltinFunctions.Input, new DelegateCallable(ImplInput)),
         ];
     }
 

@@ -158,6 +158,7 @@ static class SsaConstantPropagation
             or SsaOp.StoreField or SsaOp.StoreIndex or SsaOp.StoreFieldIndex
             or SsaOp.Return or SsaOp.Nop
             or SsaOp.Capture or SsaOp.Ocr or SsaOp.Roi
+            or SsaOp.Rand
             or SsaOp.RuntimeValue or SsaOp.ImageLabel
             or SsaOp.ArrayInit or SsaOp.LoadIndex or SsaOp.LoadField or SsaOp.LoadFieldIndex
             or SsaOp.Slice or SsaOp.ArrayLen or SsaOp.Contains or SsaOp.ArrayAppend

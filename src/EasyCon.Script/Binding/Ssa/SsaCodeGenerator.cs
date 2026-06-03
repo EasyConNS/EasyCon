@@ -869,6 +869,11 @@ sealed class SsaCodeGenerator
             var dur = EmitExpression(call.Arguments[0]);
             return EmitAndAdd(SsaOp.Wait, ScriptType.Void, dur);
         }
+        if (fn == BuiltinFunctions.Rand)
+        {
+            var max = EmitExpression(call.Arguments[0]);
+            return EmitAndAdd(SsaOp.Rand, ScriptType.Int, max);
+        }
         if (fn == BuiltinFunctions.CaptureHole)
         {
             var x = EmitExpression(call.Arguments[0]);

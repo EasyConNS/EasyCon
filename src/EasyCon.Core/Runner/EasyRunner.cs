@@ -35,14 +35,14 @@ public sealed class EasyRunner : IRunner
         return _result.Diagnostics;
     }
 
-    public void Run(IOutputAdapter output, ICGamePad pad, OcrDelegate? ocr, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token)
+    public void Run(IIoAdapter ioAdapter, ICGamePad pad, OcrDelegate? ocr, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token)
     {
         if (_result?.Program == null) return;
 
         using var evaluator = new SsaEvaluator(_result.Program, token)
         {
             GamePad = pad,
-            Output = output,
+            IoAdapter = ioAdapter,
             Ocr = ocr,
             Frame = frameProvider,
             Roi = roiProvider,
