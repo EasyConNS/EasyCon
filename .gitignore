@@ -12,6 +12,7 @@
 *.userosscache
 *.sln.docstates
 *.lscache
+src/EasyCon2.UI.Common/Resources/Amiibo/AmiiboImages/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

@@ -143,6 +143,11 @@
                                 Padding="8,6"
                                 BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
                                 BorderThickness="1"/>
+                        <Button Content="手柄设置"
+                                Command="{Binding OpenESPConfigCommand}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Padding="8,6"/>
                     </StackPanel>
                 </Border>
             </Grid>

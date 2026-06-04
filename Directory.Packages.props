@@ -33,12 +33,12 @@
     <PackageVersion Include="WebSocketSharp-netstandard" Version="1.0.1" />
     <PackageVersion Include="NLua" Version="1.7.8" />
     <PackageVersion Include="pythonnet" Version="3.0.5" />
-    <PackageVersion Include="Avalonia" Version="12.0.1" />
-    <PackageVersion Include="Avalonia.Desktop" Version="12.0.1" />
-    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.1" />
+    <PackageVersion Include="Avalonia" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.4" />
     <PackageVersion Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
-    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.0.1" />
-    <PackageVersion Include="Avalonia.Win32.Interoperability" Version="12.0.1" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Win32.Interoperability" Version="12.0.4" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
     <PackageVersion Include="MessageBox.Avalonia" Version="12.0.0" />
     <PackageVersion Include="SukiUI" Version="6.0.3" />

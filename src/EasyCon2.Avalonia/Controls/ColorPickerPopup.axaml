@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="EasyCon2.Avalonia.Controls.ColorPickerPopup"
+        Title="选择颜色"
+        Width="260"
+        Height="280"
+        WindowStartupLocation="CenterOwner">
+
+    <StackPanel Margin="16" Spacing="12">
+        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="8">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="R" VerticalAlignment="Center" Width="20"/>
+            <Slider Grid.Row="0" Grid.Column="1" Name="SliderR" Minimum="0" Maximum="255" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="G" VerticalAlignment="Center" Width="20"/>
+            <Slider Grid.Row="1" Grid.Column="1" Name="SliderG" Minimum="0" Maximum="255" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="B" VerticalAlignment="Center" Width="20"/>
+            <Slider Grid.Row="2" Grid.Column="1" Name="SliderB" Minimum="0" Maximum="255" />
+        </Grid>
+
+        <Border Name="Preview" Height="40" CornerRadius="6"
+                BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                BorderThickness="1"/>
+
+        <TextBox Name="HexBox" IsReadOnly="True" HorizontalAlignment="Center" Width="120" TextAlignment="Center"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
+            <Button Content="确定" Click="OnOk" Width="80" HorizontalContentAlignment="Center"/>
+            <Button Content="取消" Click="OnCancel" Width="80" HorizontalContentAlignment="Center"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

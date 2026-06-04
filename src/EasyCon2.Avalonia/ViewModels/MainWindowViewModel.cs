@@ -25,6 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private const int MaxLogLength = 100_000;
     private Window? _editorWindow;
     private Window? _tagEditorWindow;
+    private Window? _espConfigWindow;
     private MonitorViewModel? _monitorViewModel;
 
     // 窗口标题（含版本号）
@@ -151,6 +152,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand StopRecordCommand { get; }
     public ICommand ShowMonitorCommand { get; }
     public ICommand OpenTagEditorCommand { get; }
+    public ICommand OpenESPConfigCommand { get; }
 
     // 刷新数据源命令
     public ICommand RefreshSerialPortsCommand { get; }
@@ -268,6 +270,7 @@ public partial class MainWindowViewModel : ViewModelBase
         StopRecordCommand = new RelayCommand(StopRecord);
         ShowMonitorCommand = new RelayCommand(ShowMonitor);
         OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
+        OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
 
         // 初始化示例数据
         InitializeSampleData();
@@ -575,6 +578,29 @@ public partial class MainWindowViewModel : ViewModelBase
         _tagEditorWindow.Show();
     }
 
+    private void OpenESPConfig()
+    {
+        if (_espConfigWindow != null)
+        {
+            if (_espConfigWindow.WindowState == WindowState.Minimized)
+                _espConfigWindow.WindowState = WindowState.Normal;
+            _espConfigWindow.Activate();
+            return;
+        }
+
+        try
+        {
+            var vm = new ViewModels.ESPConfigViewModel(_deviceService, _logService);
+            _espConfigWindow = new ESPConfigWindow { DataContext = vm };
+            _espConfigWindow.Closed += (_, _) => _espConfigWindow = null;
+            _espConfigWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开手柄设置失败: {ex.Message}\n{ex.StackTrace}");
+        }
+    }
+
     partial void OnCurrentScriptPathChanged(string value)
     {
         (OpenEditorCommand as RelayCommand)?.NotifyCanExecuteChanged();
@@ -705,6 +731,12 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _tagEditorWindow.Close();
             _tagEditorWindow = null;
+        }
+
+        if (_espConfigWindow != null)
+        {
+            _espConfigWindow.Close();
+            _espConfigWindow = null;
         }
 
         // 关闭嵌入式监视器
