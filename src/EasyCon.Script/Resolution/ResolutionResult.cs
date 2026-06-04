@@ -9,17 +9,22 @@ namespace EasyCon.Script.Resolution;
 /// </summary>
 internal sealed class ResolutionResult
 {
-    public static readonly ResolutionResult Empty = new([], null, ImmutableDictionary<string, BoundScope>.Empty, new DiagnosticBag());
+    public static readonly ResolutionResult Empty = new([], null,
+        ImmutableDictionary<string, BoundScope>.Empty,
+        ImmutableDictionary<string, SyntaxTree>.Empty,
+        new DiagnosticBag());
 
     public ResolutionResult(
         ImmutableArray<SyntaxTree> trees,
         BoundScope? globalScope,
         ImmutableDictionary<string, BoundScope> moduleScopes,
+        ImmutableDictionary<string, SyntaxTree> aliasedTrees,
         DiagnosticBag diagnostics)
     {
         Trees = trees;
         GlobalScope = globalScope;
         ModuleScopes = moduleScopes;
+        AliasedTrees = aliasedTrees;
         Diagnostics = diagnostics;
     }
 
@@ -31,6 +36,9 @@ internal sealed class ResolutionResult
 
     /// <summary>命名空间模块作用域：alias → 包含该模块符号的 BoundScope（Phase 2 填充）。</summary>
     public ImmutableDictionary<string, BoundScope> ModuleScopes { get; }
+
+    /// <summary>带别名的 import 映射：alias → SyntaxTree。这些模块的符号只能通过命名空间限定访问。</summary>
+    public ImmutableDictionary<string, SyntaxTree> AliasedTrees { get; }
 
     /// <summary>Resolution 阶段产生的诊断信息。</summary>
     public DiagnosticBag Diagnostics { get; }

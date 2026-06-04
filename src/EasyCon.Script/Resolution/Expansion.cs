@@ -1,1 +1,0 @@
-namespace EasyCon.Script.Resolution;

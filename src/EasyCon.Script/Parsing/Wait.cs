@@ -11,16 +11,4 @@ class Wait(Token syntax, BaseExpr duration, bool omitted = false) : Statement(sy
         return $"WAIT {Duration.GetCodeText()}";
     }
 
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    if (Duration is VariableExpr rd)
-    //    {
-    //        assembler.Add(Assembly.Instructions.AsmStoreOp.Create(rd.Reg));
-    //        assembler.Add(Assembly.Instructions.AsmWait.Create(0));
-    //    }
-    //    else if (Duration is InstantExpr id)
-    //        assembler.Add(Assembly.Instructions.AsmWait.Create(id.Val));
-    //    else
-    //        throw new Assembly.AssembleException(ErrorMessage.NotSupported);
-    //}
 }

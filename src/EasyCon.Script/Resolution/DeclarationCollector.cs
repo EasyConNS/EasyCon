@@ -28,9 +28,21 @@ internal sealed class DeclarationCollector
         // 构建根作用域：builtin 函数 + Pixel 结构体
         var globalScope = CreateRootScope();
 
-        // 第一遍：所有树的声明收集到 GlobalScope（包括 aliased tree 的声明，供类型解析）
+        // 收集 aliased trees 的文件路径集合，用于过滤
+        var aliasedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tree in aliasedTrees.Values)
+        {
+            if (!string.IsNullOrEmpty(tree.Text.FileName))
+                aliasedPaths.Add(Path.GetFullPath(tree.Text.FileName));
+        }
+
+        // 第一遍：非 aliased 树的声明收集到 GlobalScope
+        // aliased 树的符号只能通过命名空间限定访问，不进入全局作用域
         foreach (var tree in trees)
         {
+            var treePath = tree.Text.FileName;
+            if (!string.IsNullOrEmpty(treePath) && aliasedPaths.Contains(Path.GetFullPath(treePath)))
+                continue;
             CollectDeclarations(tree, globalScope);
         }
 

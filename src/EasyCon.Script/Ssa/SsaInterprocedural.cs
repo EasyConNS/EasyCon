@@ -2,6 +2,7 @@ using EasyCon.Script.Binding;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace EasyCon.Script.Ssa;
 
@@ -108,14 +109,32 @@ static class SsaInterprocedural
             CollectUsedStructs(at.ElementType, used);
     }
 
-    // ============ Trivial 函数内联 ============
+    // ============ Single-block 函数内联 ============
 
     /// <summary>
-    /// 内联 trivial 函数：单基本块 + 仅 Return（可能有前置 LoadLocal）。
-    /// 模式：[LoadLocal...] → Return
+    /// 全局 ID 计数器，用于内联时分配新的 SsaValue ID，避免与 caller 的 ID 冲突。
+    /// 在 InlineTrivialFunctions 入口处从程序最大 ID 初始化。
+    /// </summary>
+    private static int _globalInlineIdCounter;
+
+    /// <summary>
+    /// 内联单基本块函数：将 callee 的指令克隆（带全新 ID）到 caller 的调用点，
+    /// 参数引用替换为实参，Return 替换为返回值。
+    /// 支持任意单块叶子函数（算术、比较、类型转换等），不限于 LoadLocal+Return。
     /// </summary>
     internal static bool InlineTrivialFunctions(SsaProgram program, SsaFunction caller)
     {
+        // 初始化 ID 计数器为程序最大 ID + 1
+        if (_globalInlineIdCounter == 0)
+        {
+            int maxId = 0;
+            foreach (var func in program.Functions.Values)
+                foreach (var block in func.Blocks)
+                    foreach (var val in block.Instructions.Concat(block.Phis))
+                        if (val.Id > maxId) maxId = val.Id;
+            _globalInlineIdCounter = maxId + 1;
+        }
+
         bool changed = false;
 
         foreach (var block in caller.Blocks)
@@ -129,7 +148,7 @@ static class SsaInterprocedural
                 if (!program.Functions.TryGetValue(fs, out var callee))
                     continue;
 
-                if (!IsTrivialFunction(callee))
+                if (!IsInlineableSingleBlockFunction(callee))
                     continue;
 
                 // 收集调用参数
@@ -137,7 +156,7 @@ static class SsaInterprocedural
                 if (inst.Arg0 != null) callArgs.Add(inst.Arg0);
                 if (inst.ExtraArgs != null) callArgs.AddRange(inst.ExtraArgs);
 
-                if (TryInlineTrivial(callee, caller, callArgs, inst, block, i))
+                if (TryInlineSingleBlock(callee, caller, callArgs, inst, block, i))
                 {
                     changed = true;
                     i--; // 内联后当前索引被删除，需要重新检查
@@ -148,10 +167,10 @@ static class SsaInterprocedural
     }
 
     /// <summary>
-    /// 判断是否是 trivial 函数。
-    /// 条件：单基本块、仅 LoadLocal + Return。
+    /// 判断是否可内联的单块叶子函数。
+    /// 条件：单基本块 + 无副作用指令（除 Return）+ 有 Return + 无 Call（叶子函数）。
     /// </summary>
-    private static bool IsTrivialFunction(SsaFunction func)
+    private static bool IsInlineableSingleBlockFunction(SsaFunction func)
     {
         if (func.Blocks.Count != 1)
             return false;
@@ -166,7 +185,9 @@ static class SsaInterprocedural
                 hasReturn = true;
                 continue;
             }
-            if (inst.Op != SsaOp.LoadLocal && inst.Op != SsaOp.Nop)
+            if (inst.HasSideEffect)
+                return false;
+            if (inst.Op is SsaOp.Call or SsaOp.StaticCall)
                 return false;
         }
 
@@ -174,10 +195,11 @@ static class SsaInterprocedural
     }
 
     /// <summary>
-    /// 尝试内联 trivial 函数。
-    /// 成功时删除 Call 指令，将返回值替换到 Call 的使用处。
+    /// 尝试内联单块函数。
+    /// 将 callee 的非参数、非 Return 指令克隆（新 ID）到 caller，
+    /// 参数 LoadLocal 替换为实参，Return 的返回值替换 Call 的所有使用。
     /// </summary>
-    private static bool TryInlineTrivial(
+    private static bool TryInlineSingleBlock(
         SsaFunction callee,
         SsaFunction caller,
         List<SsaValue> callArgs,
@@ -188,14 +210,17 @@ static class SsaInterprocedural
         var calleeBlock = callee.Entry;
 
         // 构建参数映射：ParamSymbol → 实参
-        var paramMap = new Dictionary<ParamSymbol, SsaValue>();
+        var paramMap = new Dictionary<VariableSymbol, SsaValue>();
         foreach (var param in callee.Symbol.Parameters)
         {
             if (param.Ordinal < callArgs.Count)
                 paramMap[param] = callArgs[param.Ordinal];
         }
 
-        // 找到 Return 指令
+        // 值映射：callee 的 SsaValue → caller 中对应的 SsaValue
+        var valueMap = new Dictionary<SsaValue, SsaValue>();
+
+        // 找到返回值和 Return 指令
         SsaValue? returnInst = null;
         foreach (var inst in calleeBlock.Instructions)
         {
@@ -205,29 +230,90 @@ static class SsaInterprocedural
                 break;
             }
         }
-
         if (returnInst == null || returnInst.Arg0 == null)
-            return false; // void 返回或无返回值
+            return false;
 
-        // 解析返回值：可能是 LoadLocal，直接替换为对应的实参
-        SsaValue? retValue = null;
-        if (returnInst.Arg0.Op == SsaOp.LoadLocal && returnInst.Arg0.Aux is ParamSymbol ps)
+        // 第一遍：映射参数的 LoadLocal → 实参
+        foreach (var inst in calleeBlock.Instructions)
         {
-            if (paramMap.TryGetValue(ps, out var argValue))
-                retValue = argValue;
+            if (inst.Op == SsaOp.LoadLocal && inst.Aux is VariableSymbol vs && paramMap.TryGetValue(vs, out var arg))
+                valueMap[inst] = arg;
         }
 
-        if (retValue == null)
-            return false; // 无法解析
+        // 第二遍：克隆非参数、非 Return 指令到 caller block（新 ID 避免冲突）
+        int insertIndex = callIndex;
+        foreach (var inst in calleeBlock.Instructions)
+        {
+            if (inst.Op == SsaOp.Return)
+                continue;
+            if (valueMap.ContainsKey(inst))
+                continue; // 参数 LoadLocal 已映射，跳过
 
-        // 删除 Call 指令，替换所有使用
+            var cloned = CloneWithFreshId(inst, valueMap, callerBlock);
+            valueMap[inst] = cloned;
+
+            callerBlock.Instructions.Insert(insertIndex, cloned);
+            insertIndex++;
+            callIndex++; // Call 指令的位置后移
+        }
+
+        // 解析返回值
+        var retValue = ResolveOperand(returnInst.Arg0, valueMap);
+        if (retValue == null)
+            return false;
+
+        // 删除 Call 指令
         SsaOptimizer.DecrementUses(callInst);
         callerBlock.Instructions.RemoveAt(callIndex);
 
+        // 替换所有使用
         SsaOptimizer.ReplaceAllUsesInFunction(caller, callInst, retValue);
         retValue.Uses += callInst.Uses;
 
         return true;
+    }
+
+    /// <summary>
+    /// 克隆 SsaValue，分配全新 ID，替换操作数为 valueMap 中的映射值。
+    /// </summary>
+    private static SsaValue CloneWithFreshId(SsaValue original, Dictionary<SsaValue, SsaValue> valueMap, SsaBlock targetBlock)
+    {
+        int newId = Interlocked.Increment(ref _globalInlineIdCounter);
+        var cloned = new SsaValue(newId, original.Op, original.Type)
+        {
+            Block = targetBlock,
+            Slot = original.Slot,
+            Const = original.Const,
+            ConstString = original.ConstString,
+            Aux = original.Aux,
+        };
+
+        cloned.Arg0 = ResolveOperand(original.Arg0, valueMap);
+        cloned.Arg1 = ResolveOperand(original.Arg1, valueMap);
+
+        if (original.ExtraArgs != null)
+        {
+            cloned.ExtraArgs = new List<SsaValue>();
+            foreach (var arg in original.ExtraArgs)
+            {
+                var resolved = ResolveOperand(arg, valueMap);
+                if (resolved != null) cloned.ExtraArgs.Add(resolved);
+            }
+        }
+
+        // 更新 Uses
+        if (cloned.Arg0 != null) cloned.Arg0.Uses++;
+        if (cloned.Arg1 != null) cloned.Arg1.Uses++;
+        if (cloned.ExtraArgs != null)
+            foreach (var a in cloned.ExtraArgs) a.Uses++;
+
+        return cloned;
+    }
+
+    private static SsaValue? ResolveOperand(SsaValue? operand, Dictionary<SsaValue, SsaValue> valueMap)
+    {
+        if (operand == null) return null;
+        return valueMap.TryGetValue(operand, out var mapped) ? mapped : operand;
     }
 
     // ============ stdlib 包装函数内联 ============

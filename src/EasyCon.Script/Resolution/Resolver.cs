@@ -24,13 +24,15 @@ internal sealed class Resolver
 
         // 有致命错误时跳过声明收集
         if (diagnostics.HasErrors())
-            return new ResolutionResult(trees, null, ImmutableDictionary<string, Binding.BoundScope>.Empty, diagnostics);
+            return new ResolutionResult(trees, null,
+                ImmutableDictionary<string, Binding.BoundScope>.Empty,
+                aliasedTrees, diagnostics);
 
         // Phase 2: 收集顶层声明 → GlobalScope + ModuleScopes
         var collector = new DeclarationCollector();
         var (globalScope, moduleScopes, _, declDiags) = collector.Collect(trees, aliasedTrees);
         diagnostics.AddRange(declDiags);
 
-        return new ResolutionResult(trees, globalScope, moduleScopes, diagnostics);
+        return new ResolutionResult(trees, globalScope, moduleScopes, aliasedTrees, diagnostics);
     }
 }

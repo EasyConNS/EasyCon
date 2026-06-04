@@ -138,10 +138,37 @@ internal sealed partial class Binder
         // --- Phase 2: 主脚本绑定（惰性绑定函数体） ---
         var bindingFunctions = new HashSet<FunctionSymbol>();
 
-        // 将 lib 函数导入到主 scope（使 main 能调用 lib 函数）
+        // 收集 aliased import 的文件路径集合（这些模块的函数只能通过命名空间限定访问）
+        var aliasedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (resolution.AliasedTrees != null)
+        {
+            foreach (var tree in resolution.AliasedTrees.Values)
+            {
+                if (!string.IsNullOrEmpty(tree.Text.FileName))
+                    aliasedPaths.Add(Path.GetFullPath(tree.Text.FileName));
+            }
+        }
+
+        // 构建 aliased 函数声明集合，用于过滤
+        var aliasedFuncDecls = new HashSet<FuncDeclBlock>();
+        foreach (var libTree in libTrees)
+        {
+            var treePath = libTree.Text.FileName;
+            if (!string.IsNullOrEmpty(treePath) && aliasedPaths.Contains(Path.GetFullPath(treePath)))
+            {
+                foreach (var member in libTree.Root.Members)
+                    if (member is FuncDeclBlock func)
+                        aliasedFuncDecls.Add(func);
+            }
+        }
+
+        // 将非 aliased 的 lib 函数导入到主 scope（aliased 模块的函数只能通过 ns.func() 访问）
         var mainBindingScope = new BoundScope(parentScope);
         foreach (var function in libUserFunctions)
-            mainBindingScope.TryDeclareFunction(function);
+        {
+            if (function.Declaration == null || !aliasedFuncDecls.Contains(function.Declaration))
+                mainBindingScope.TryDeclareFunction(function);
+        }
 
         var mainBinder = new Binder(mainBindingScope, function: null,
             functionBodies, diagnostics, bindingFunctions,
@@ -208,7 +235,9 @@ internal sealed partial class Binder
     public static BoundProgram BindProgram(ImmutableArray<SyntaxTree> syntaxTrees, ImmutableHashSet<string>? externalVariables = default)
     {
         var resolution = new Resolution.ResolutionResult(syntaxTrees, null,
-            System.Collections.Immutable.ImmutableDictionary<string, BoundScope>.Empty, new DiagnosticBag());
+            System.Collections.Immutable.ImmutableDictionary<string, BoundScope>.Empty,
+            System.Collections.Immutable.ImmutableDictionary<string, SyntaxTree>.Empty,
+            new DiagnosticBag());
         return BindProgram(resolution, externalVariables);
     }
 

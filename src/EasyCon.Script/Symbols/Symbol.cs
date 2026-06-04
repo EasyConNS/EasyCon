@@ -60,7 +60,7 @@ public sealed class FunctionSymbol(
     IEnumerable<ParamSymbol> parameters,
     ScriptType returnType,
     string libraryName = "internal",
-    string? externalName = null) : Symbol(name)
+    string? externalName = null) : Symbol(name), IEquatable<FunctionSymbol>
 {
     public ImmutableArray<ParamSymbol> Parameters { get; } = [.. parameters];
     internal FuncDeclBlock? Declaration { get; init; }
@@ -75,4 +75,38 @@ public sealed class FunctionSymbol(
     public FrameLayout Layout { get; set; }
 
     public override string ToString() => $"Func({Name}: {ReturnType})";
+
+    // ---- 基于函数签名的值相等（解决 DeclarationCollector / Binder 双实例问题） ----
+
+    public bool Equals(FunctionSymbol? other)
+    {
+        if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
+        if (Name != other.Name || !ReturnType.Equals(other.ReturnType))
+            return false;
+        if (Parameters.Length != other.Parameters.Length)
+            return false;
+        for (int i = 0; i < Parameters.Length; i++)
+        {
+            if (!Parameters[i].Type.Equals(other.Parameters[i].Type))
+                return false;
+        }
+        return true;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as FunctionSymbol);
+
+    public override int GetHashCode()
+    {
+        var h = new HashCode();
+        h.Add(Name);
+        h.Add(ReturnType);
+        h.Add(Parameters.Length);
+        foreach (var p in Parameters)
+            h.Add(p.Type);
+        return h.ToHashCode();
+    }
+
+    public static bool operator ==(FunctionSymbol? left, FunctionSymbol? right) => Equals(left, right);
+    public static bool operator !=(FunctionSymbol? left, FunctionSymbol? right) => !Equals(left, right);
 }

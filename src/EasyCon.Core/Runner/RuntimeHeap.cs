@@ -82,6 +82,26 @@ internal sealed class RuntimeHeap
             : throw new InvalidOperationException($"无效结构体 handle: {handle}");
 
     /// <summary>
+    /// 根据 handle + 类型还原为原始对象（string/ScriptArray/EcsStruct），供类型化缓存使用
+    /// </summary>
+    public object? DerefObject(int handle, ScriptType type)
+    {
+        if (handle == 0)
+        {
+            if (type.Equals(ScriptType.String)) return string.Empty;
+            return null;
+        }
+
+        return _tags[handle] switch
+        {
+            TAG_STRING => _strings[handle] ?? string.Empty,
+            TAG_ARRAY => _arrays[handle],
+            TAG_STRUCT => _structs[handle],
+            _ => null
+        };
+    }
+
+    /// <summary>
     /// 根据 handle + 类型还原为 Value
     /// </summary>
     public Value Deref(int handle, ScriptType type)

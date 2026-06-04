@@ -10,8 +10,4 @@ class SerialPrint(uint value, bool mem) : Statement(null!)
         return Mem ? $"SMEM {Value}" : $"SPRINT {Value}";
     }
 
-    //public override void Assemble(Assembly.Assembler assembler)
-    //{
-    //    assembler.Add(Assembly.Instructions.AsmSerialPrint.Create(Mem ? 1u : 0, Value));
-    //}
 }

@@ -83,12 +83,15 @@ sealed class SsaCodeGenerator
         return block;
     }
 
-    private void SwitchToBlock(SsaBlock block)
+    private void SwitchToBlock(SsaBlock block, bool fromConditionalBranch = false)
     {
         _currentBlock = block;
-        // 进入新块时清除 defs，强制后续变量引用发出新的 LoadLocal/LoadGlobal
-        // 这确保循环头在每次迭代时重新读取变量的最新值
-        _defs.Clear();
+        // 多前驱块（如循环头从回边进入、IF-ELSE 合流）必须清空 defs 强制重新加载。
+        // 条件分支目标（如循环体、IF-THEN）也必须清空 defs，因为 defs 可能包含
+        // 来自前一次迭代或来自不同控制流路径的 stale 值。
+        // 仅在无条件跳转到单前驱块时保留 defs（线性序列优化）。
+        if (block.Predecessors.Count > 1 || fromConditionalBranch)
+            _defs.Clear();
     }
 
     private static bool NeedsTerminator(SsaBlock block)
@@ -240,8 +243,8 @@ sealed class SsaCodeGenerator
         thenBlock.Predecessors.Add(_currentBlock);
         _currentBlock.FalseSuccessor.Predecessors.Add(_currentBlock);
 
-        // Then 分支
-        SwitchToBlock(thenBlock);
+        // Then 分支（条件分支目标，清空 defs）
+        SwitchToBlock(thenBlock, fromConditionalBranch: true);
         EmitStatements(ifStmt.Body.Statements);
         if (NeedsTerminator(_currentBlock))
         {
@@ -252,7 +255,7 @@ sealed class SsaCodeGenerator
         // ElseIfs + Else
         if (elseBlock != null)
         {
-            SwitchToBlock(elseBlock);
+            SwitchToBlock(elseBlock, fromConditionalBranch: true);
             // 处理 ElseIfs 链
             if (!ifStmt.ElseIfs.IsDefaultOrEmpty)
             {
@@ -269,7 +272,7 @@ sealed class SsaCodeGenerator
                     elifThen.Predecessors.Add(_currentBlock);
                     elifEnd.Predecessors.Add(_currentBlock);
 
-                    SwitchToBlock(elifThen);
+                    SwitchToBlock(elifThen, fromConditionalBranch: true);
                     EmitStatements(elifBody.Statements);
                     if (NeedsTerminator(_currentBlock))
                     {
@@ -319,8 +322,8 @@ sealed class SsaCodeGenerator
         bodyBlock.Predecessors.Add(_currentBlock);
         endBlock.Predecessors.Add(_currentBlock);
 
-        // bodyBlock：循环体
-        SwitchToBlock(bodyBlock);
+        // bodyBlock：循环体（条件分支目标，清空 defs）
+        SwitchToBlock(bodyBlock, fromConditionalBranch: true);
         EmitStatements(whileStmt.Body.Statements);
         if (NeedsTerminator(_currentBlock))
         {
@@ -359,8 +362,8 @@ sealed class SsaCodeGenerator
             bodyBlock.Predecessors.Add(_currentBlock);
             endBlock.Predecessors.Add(_currentBlock);
 
-            // body
-            SwitchToBlock(bodyBlock);
+            // body（条件分支目标，清空 defs）
+            SwitchToBlock(bodyBlock, fromConditionalBranch: true);
             EmitStatements(forStmt.Body.Statements);
 
             if (NeedsTerminator(_currentBlock))
@@ -408,8 +411,8 @@ sealed class SsaCodeGenerator
             bodyBlock.Predecessors.Add(_currentBlock);
             endBlock.Predecessors.Add(_currentBlock);
 
-            // body: 用户代码
-            SwitchToBlock(bodyBlock);
+            // body: 用户代码（条件分支目标，清空 defs）
+            SwitchToBlock(bodyBlock, fromConditionalBranch: true);
             EmitStatements(forStmt.Body.Statements);
 
             // body 落空 → postBodyCheck: 检查是否需要increment
@@ -470,8 +473,8 @@ sealed class SsaCodeGenerator
         endBlock.Predecessors.Add(_currentBlock);
         bodyBlock.Predecessors.Add(_currentBlock);
 
-        // bodyBlock: 循环体 → 跳回 header
-        SwitchToBlock(bodyBlock);
+        // bodyBlock: 循环体（条件分支目标，清空 defs） → 跳回 header
+        SwitchToBlock(bodyBlock, fromConditionalBranch: true);
         EmitStatements(untilStmt.Body.Statements);
         if (NeedsTerminator(_currentBlock))
         {
@@ -511,7 +514,7 @@ sealed class SsaCodeGenerator
         }
         target.Predecessors.Add(_currentBlock);
         fallThrough.Predecessors.Add(_currentBlock);
-        SwitchToBlock(fallThrough);
+        SwitchToBlock(fallThrough, fromConditionalBranch: true);
     }
 
     private void EmitLabel(BoundLabel label)
@@ -722,7 +725,8 @@ sealed class SsaCodeGenerator
         AddInst(falseVal);
 
         // evalRight: 求值 right
-        SwitchToBlock(evalRight);
+        // evalRight（条件分支目标，清空 defs）
+        SwitchToBlock(evalRight, fromConditionalBranch: true);
         var rightVal = EmitExpression(rightExpr);
         _currentBlock.JumpTarget = endBlock;
         endBlock.Predecessors.Add(_currentBlock);
@@ -753,7 +757,8 @@ sealed class SsaCodeGenerator
         trueVal.Block = _currentBlock;
         AddInst(trueVal);
 
-        SwitchToBlock(evalRight);
+        // evalRight（条件分支目标，清空 defs）
+        SwitchToBlock(evalRight, fromConditionalBranch: true);
         var rightVal = EmitExpression(rightExpr);
         _currentBlock.JumpTarget = endBlock;
         endBlock.Predecessors.Add(_currentBlock);
