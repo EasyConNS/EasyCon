@@ -3,7 +3,7 @@ using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// 过程间 pass：不可达函数消除 + trivial 函数内联。

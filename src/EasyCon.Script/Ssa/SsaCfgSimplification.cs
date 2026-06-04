@@ -1,4 +1,5 @@
-namespace EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Binding;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// CFG 简化 pass：基本块合并 + 不可达块删除。

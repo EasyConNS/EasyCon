@@ -1,4 +1,5 @@
-namespace EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Binding;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// 基本块：CFG 节点。

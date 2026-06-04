@@ -1,10 +1,11 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// 将 Bound IR 转换为 SSA IR。

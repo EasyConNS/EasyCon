@@ -171,6 +171,10 @@ internal sealed partial class Binder
 
     private BoundExpr BindCallExpression(Callv1Expression syntax)
     {
+        // 命名空间限定调用：lib.func()
+        if (syntax is Syntax.NamespaceCallExpr nsCall)
+            return BindNamespaceCallExpression(nsCall);
+
         var candidates = _scope.TryLookupFuncs(syntax.Identifier.Value);
         if (candidates.IsEmpty)
         {
@@ -194,8 +198,37 @@ internal sealed partial class Binder
         return BuildCallWithTypeConversion(syntax, function, boundArgs);
     }
 
+    private BoundExpr BindNamespaceCallExpression(Syntax.NamespaceCallExpr syntax)
+    {
+        var nsName = syntax.Namespace.Value;
+        if (_resolution?.ModuleScopes == null || !_resolution.ModuleScopes.TryGetValue(nsName, out var moduleScope))
+        {
+            _diagnostics.ReportNamespaceNotFound(syntax.Namespace.Location, nsName);
+            return new BoundErrorExpression(syntax);
+        }
+
+        var candidates = moduleScope.TryLookupFuncs(syntax.Identifier.Value);
+        if (candidates.IsEmpty)
+        {
+            _diagnostics.ReportFunctionNotFoundInNamespace(syntax.Identifier.Location, syntax.Identifier.Value, nsName);
+            return new BoundErrorExpression(syntax);
+        }
+
+        var boundArgs = syntax.Arguments.Select(BindExpression).ToImmutableArray();
+        var function = ResolveOverload(syntax, syntax.Identifier.Value, candidates, boundArgs);
+        if (function == null)
+            return new BoundErrorExpression(syntax);
+
+        EnsureFunctionBodyBound(function);
+        return BuildCallWithTypeConversion(syntax, function, boundArgs);
+    }
+
     private BoundStmt BindCallStatement(CallStmt syntax)
     {
+        // 命名空间限定调用：lib.func(args)
+        if (syntax.Namespace != null)
+            return BindNamespaceCallStatement(syntax);
+
         var name = syntax.FnName;
         if (BuiltinFunctions.GetAll().Select(f => f.Name).Contains(syntax.FnName.ToUpper()))
         {
@@ -242,37 +275,30 @@ internal sealed partial class Binder
         return new BoundExprStatement(syntax, expr);
     }
 
-    private BoundExpr BindNamespaceCallExpression(NamespaceCallExpr syntax)
+    private BoundStmt BindNamespaceCallStatement(CallStmt syntax)
     {
-        var nsName = syntax.Namespace.Value;
-        var funcName = syntax.Member.Value;
-
-        // 查找命名空间
-        var ns = _scope.TryLookupNamespace(nsName);
-        if (ns == null)
+        var nsName = syntax.Namespace!.Value;
+        if (_resolution?.ModuleScopes == null || !_resolution.ModuleScopes.TryGetValue(nsName, out var moduleScope))
         {
             _diagnostics.ReportNamespaceNotFound(syntax.Namespace.Location, nsName);
-            return new BoundErrorExpression(syntax);
+            return BindErrorStatement(syntax);
         }
 
-        // 在命名空间中查找函数
-        var candidates = ns.GetFunctions(funcName);
+        var candidates = moduleScope.TryLookupFuncs(syntax.FnName);
         if (candidates.IsEmpty)
         {
-            _diagnostics.ReportFunctionNotFoundInNamespace(syntax.Member.Location, funcName, nsName);
-            return new BoundErrorExpression(syntax);
+            _diagnostics.ReportFunctionNotFoundInNamespace(syntax.Location, syntax.FnName, nsName);
+            return BindErrorStatement(syntax);
         }
 
-        // 绑定参数
-        var boundArgs = syntax.Arguments.Select(BindExpression).ToImmutableArray();
-
-        // 重载解析
-        var function = ResolveOverload(syntax, funcName, candidates, boundArgs);
+        var boundArgs = syntax.Args.Select(BindExpression).ToImmutableArray();
+        var function = ResolveOverload(syntax, syntax.FnName, candidates, boundArgs);
         if (function == null)
-            return new BoundErrorExpression(syntax);
+            return BindErrorStatement(syntax);
 
         EnsureFunctionBodyBound(function);
-        return BuildCallWithTypeConversion(syntax, function, boundArgs);
+        var expr = BuildCallWithTypeConversion(syntax, function, boundArgs);
+        return new BoundExprStatement(syntax, expr);
     }
 
     #endregion

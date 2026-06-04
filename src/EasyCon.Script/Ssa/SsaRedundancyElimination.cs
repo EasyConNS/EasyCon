@@ -1,6 +1,7 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Symbols;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// 冗余消除 pass：拷贝传播 + 全局 CSE。

@@ -1,8 +1,9 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// SSA 形式的函数体。

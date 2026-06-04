@@ -1,21 +1,14 @@
 using EasyCon.Script.Binding;
-using EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Resolution;
+using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
 using System.CodeDom.Compiler;
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
 
 namespace EasyCon.Script;
-
-public enum LibLoadType
-{
-    NamespaceImport,  // 显式命名空间导入: IMPORT "file" AS namespace
-    GlobalImport,     // 显式全局导入: IMPORT "file"
-    AutoLoad          // 自动加载
-}
 
 public class ScriptException(string message, int address = 0) : Exception(message)
 {
@@ -44,121 +37,23 @@ public sealed class CompileResult
 
 public sealed class Compilation
 {
-    private Compilation(ImmutableArray<SyntaxTree> syntaxTrees)
+    private Compilation(ResolutionResult result)
     {
-        SyntaxTrees = syntaxTrees;
+        Result = result;
+        SyntaxTrees = result.Trees;
     }
+
+    /// <summary>Resolution 阶段的完整产出。</summary>
+    internal ResolutionResult Result { get; }
 
     public ImmutableArray<SyntaxTree> SyntaxTrees { get; }
 
-    // lib 文件加载信息：key = 文件路径（规范化），value = 加载方式
-    internal Dictionary<string, LibLoadType> _libLoadInfo = new Dictionary<string, LibLoadType>(StringComparer.OrdinalIgnoreCase);
-
-    // lib 文件缓存：key = 文件路径，value = (最后修改时间, 解析结果)
-    private static readonly ConcurrentDictionary<string, (DateTime LastWriteTimeUtc, SyntaxTree Tree)> _libCache = new();
-
     public static Compilation Create(SyntaxTree mainTree)
     {
-        var trees = ImmutableArray.CreateBuilder<SyntaxTree>();
-        var loadedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        // 跟踪lib文件的加载方式：显式命名空间导入、显式全局导入、自动加载
-        var libLoadInfo = new Dictionary<string, LibLoadType>(StringComparer.OrdinalIgnoreCase);
-
-        // 预加载内嵌标准库（最先加载，确保 Phase 1 binding）
-        trees.Add(StdLib.GetStdTree());
-        trees.Add(StdLib.GetVisionTree());
-
-        // 从 import 语句加载指定的 lib 文件
-        foreach (var member in mainTree.Root.Members)
-        {
-            if (member is ImportStmt import)
-            {
-                var libPath = Path.GetFullPath(Path.Combine(import.InitPath, import.Lib));
-                if (File.Exists(libPath) && loadedPaths.Add(libPath))
-                {
-                    if (TryLoadLib(libPath, out var libTree))
-                    {
-                        trees.Add(libTree);
-                        // 记录加载方式
-                        var loadType = import.Alias != null ? LibLoadType.NamespaceImport : LibLoadType.GlobalImport;
-                        libLoadInfo[libPath] = loadType;
-                    }
-                }
-            }
-        }
-
-        // 自动加载 lib 目录下的其余脚本（跳过解析异常的文件）
-        var fileName = mainTree.Text.FileName;
-        if (!string.IsNullOrEmpty(fileName))
-        {
-            var dir = Path.GetDirectoryName(Path.GetFullPath(fileName));
-            if (dir != null)
-            {
-                var libDir = Path.Combine(dir, "lib");
-                if (Directory.Exists(libDir))
-                {
-                    foreach (var libFile in Directory.GetFiles(libDir, "*.ecs"))
-                    {
-                        var fullPath = Path.GetFullPath(libFile);
-                        if (loadedPaths.Add(fullPath))
-                        {
-                            // 自动加载时跳过解析异常的文件
-                            if (TryLoadLib(fullPath, out var libTree))
-                            {
-                                trees.Add(libTree);
-                                libLoadInfo[fullPath] = LibLoadType.AutoLoad;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        trees.Add(mainTree);
-        var compilation = new Compilation(trees.ToImmutable());
-        // 将加载信息附加到compilation对象上，供绑定阶段使用
-        compilation._libLoadInfo = libLoadInfo;
-        return compilation;
+        var resolver = new Resolver();
+        var result = resolver.Resolve(mainTree);
+        return new Compilation(result);
     }
-
-    /// <summary>
-    /// 尝试加载 lib 文件。解析异常或 IO 错误时返回 false（静默跳过）。
-    /// </summary>
-    private static bool TryLoadLib(string filePath, out SyntaxTree tree)
-    {
-        tree = null!;
-        try
-        {
-            var loaded = LoadLibWithCache(filePath);
-            // 如果 lib 文件有解析错误，跳过该文件
-            if (loaded.Diagnostics.HasErrors())
-                return false;
-            tree = loaded;
-            return true;
-        }
-        catch (Exception)
-        {
-            // IO 异常、编码错误等，静默跳过
-            return false;
-        }
-    }
-
-    private static SyntaxTree LoadLibWithCache(string filePath)
-    {
-        var lastWrite = File.GetLastWriteTimeUtc(filePath);
-        if (_libCache.TryGetValue(filePath, out var cached) && cached.LastWriteTimeUtc == lastWrite)
-            return cached.Tree;
-
-        var tree = SyntaxTree.Load(filePath, isLib: true);
-        _libCache[filePath] = (lastWrite, tree);
-        return tree;
-    }
-
-    /// <summary>
-    /// 清除 lib 缓存（文件被外部修改后可调用）
-    /// </summary>
-    public static void ClearLibCache() => _libCache.Clear();
 
     /// <summary>
     /// 完整编译管线：Bind → SSA 生成 → SSA 优化。
@@ -166,7 +61,7 @@ public sealed class Compilation
     /// </summary>
     public CompileResult Compile(ImmutableHashSet<string>? extVars)
     {
-        var bound = Binder.BindProgram(SyntaxTrees, extVars, _libLoadInfo);
+        var bound = Binder.BindProgram(Result, extVars);
         var keyAction = bound.KeyAction;
         // 编译失败时回退到 BoundProgram 的乐观假设；成功路径下用 SSA 调用图分析的精确结果覆盖
         var needIL = bound.NeedIL;
@@ -196,11 +91,12 @@ public sealed class Compilation
 
     /// <summary>
     /// 编译并以人类可读格式输出 SSA IR。
+    /// </summary>
     /// <param name="extVars">外部变量名集合</param>
     /// <param name="beforeOptimize">true 时输出优化前的原始 SSA</param>
     public string DumpIr(ImmutableHashSet<string>? extVars, bool beforeOptimize = false)
     {
-        var bound = Binder.BindProgram(SyntaxTrees, extVars, _libLoadInfo);
+        var bound = Binder.BindProgram(Result, extVars);
         if (bound.Diagnostics.HasErrors())
             return string.Join("\n", bound.Diagnostics.Select(d => $"error: {d.Message}"));
 

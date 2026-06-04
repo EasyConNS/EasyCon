@@ -1,5 +1,5 @@
 using EasyCon.Script;
-using EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Ssa;
 using EasyCon.Script.Syntax;
 using EasyScript;
 using System.Collections.Immutable;

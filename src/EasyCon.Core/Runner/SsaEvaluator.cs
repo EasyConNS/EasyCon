@@ -1,7 +1,7 @@
 using EasyCon.Script;
 using EasyCon.Script.Binding;
-using EasyCon.Script.Binding.Ssa;
 using EasyCon.Script.Runtime;
+using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyScript;
 using System.Buffers;

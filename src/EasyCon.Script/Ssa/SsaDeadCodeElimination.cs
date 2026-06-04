@@ -1,4 +1,5 @@
-namespace EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Binding;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// 死代码消除 pass：删除 Uses==0 且无副作用的指令。

@@ -9,15 +9,9 @@ internal sealed class BoundScope(BoundScope? parent)
     private readonly Dictionary<string, VariableSymbol> _var_symbols = [];
     private readonly Dictionary<string, List<FunctionSymbol>> _fn_symbols = [];
     private readonly Dictionary<string, EcsStructDef> _structDefs = [];
-    private readonly Dictionary<string, NamespaceSymbol> _namespaces = []; // 新增：命名空间映射
     private ImmutableHashSet<string> _validExternalVariables = [];
 
     public BoundScope? Parent { get; } = parent;
-
-    /// <summary>
-    /// 当前作用域关联的命名空间（如果有）
-    /// </summary>
-    public NamespaceSymbol? Namespace { get; init; }
 
     public bool TryDeclareStruct(string name, EcsStructDef def)
     {
@@ -65,6 +59,9 @@ internal sealed class BoundScope(BoundScope? parent)
         return Parent?.TryLookupVar(name);
     }
 
+    /// <summary>返回当前 scope 中声明的变量名（不含父 scope）。</summary>
+    public IEnumerable<string> GetDeclaredVariableNames() => _var_symbols.Keys;
+
     public bool TryDeclareFunction(FunctionSymbol function)
     {
         if (!_fn_symbols.TryGetValue(function.Name, out var list))
@@ -108,27 +105,6 @@ internal sealed class BoundScope(BoundScope? parent)
         return Parent?.TryLookupFuncs(name) ?? [];
     }
 
-    /// <summary>
-    /// 查找命名空间
-    /// </summary>
-    public NamespaceSymbol? TryLookupNamespace(string name)
-    {
-        // 在当前作用域中查找命名空间
-        if (_namespaces.TryGetValue(name, out var ns))
-            return ns;
-
-        // 在父作用域中查找命名空间
-        return Parent?.TryLookupNamespace(name);
-    }
-
-    /// <summary>
-    /// 声明命名空间
-    /// </summary>
-    public bool TryDeclareNamespace(NamespaceSymbol ns)
-    {
-        return _namespaces.TryAdd(ns.Name, ns);
-    }
-
     public bool TryFindoutLabel(string name)
     {
         if (_validExternalVariables.Contains(name)) return true;
@@ -139,30 +115,4 @@ internal sealed class BoundScope(BoundScope? parent)
     {
         _validExternalVariables = validNames;
     }
-
-    public ImmutableArray<VariableSymbol> GetDeclaredVariables()
-        => [.. _var_symbols.Values];
-
-    public ImmutableArray<FunctionSymbol> GetDeclaredFunctions()
-        => [.. _fn_symbols.Values.SelectMany(list => list)];
-
-    /// <summary>
-    /// 从另一个作用域导入符号到当前作用域。
-    /// </summary>
-    public void ImportFrom(BoundScope source, bool includeVariables = true)
-    {
-        foreach (var fn in source.GetDeclaredFunctions())
-            TryDeclareFunction(fn);
-        if (includeVariables)
-            foreach (var v in source.GetDeclaredVariables())
-                TryDeclareVariable(v);
-        foreach (var kv in source.CollectAllStructDefs())
-            TryDeclareStruct(kv.Key, kv.Value);
-    }
-
-    /// <summary>
-    /// 获取当前作用域声明的变量名集合（不含父作用域）。
-    /// </summary>
-    public ImmutableHashSet<string> GetDeclaredVariableNames()
-        => [.. _var_symbols.Keys];
 }

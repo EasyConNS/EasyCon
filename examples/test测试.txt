@@ -1,0 +1,5 @@
+$a = JQ('{"name":"john"}', ".name")
+$b = JQ('{"age":30}', ".age")
+
+PRINT $a
+PRINT $b

@@ -1,7 +1,8 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Symbols;
 using System.Runtime.InteropServices;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// SSA 值：每个计算产生一个且仅一个 SsaValue。

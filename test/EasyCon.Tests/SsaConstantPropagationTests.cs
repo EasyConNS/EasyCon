@@ -1,4 +1,4 @@
-using EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 
 namespace EasyCon.Tests;

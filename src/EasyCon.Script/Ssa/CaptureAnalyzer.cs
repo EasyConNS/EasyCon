@@ -1,7 +1,8 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Symbols;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// 基于 SSA 调用图的采集卡需求分析。

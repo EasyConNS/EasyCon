@@ -354,6 +354,20 @@ internal partial class Parser
     private Statement ParseNamedExpression()
     {
         var first = Match(TokenType.IDENT);
+
+        // 命名空间调用：IDENT.IDENT(args)
+        if (Check(TokenType.DOT))
+        {
+            Advance();
+            var funcName = Match(TokenType.IDENT);
+            var args = ParseArguments();
+            MatchEOF();
+            return new CallStmt(first, funcName.Value, [.. args], CallType.CallStmtWithArgs)
+            {
+                Namespace = first
+            };
+        }
+
         switch (first.Value.ToLower())
         {
             case "wait":

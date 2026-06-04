@@ -1,6 +1,6 @@
 using EasyCon.Core.Runner;
 using EasyCon.Script;
-using EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;

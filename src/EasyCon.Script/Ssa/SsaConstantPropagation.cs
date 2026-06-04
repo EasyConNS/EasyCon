@@ -1,7 +1,8 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Symbols;
 using System.Diagnostics;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// 稀疏条件常量传播（SCCP）：Wegman-Zadeck 算法。

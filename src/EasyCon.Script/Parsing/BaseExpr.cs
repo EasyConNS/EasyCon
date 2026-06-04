@@ -111,7 +111,7 @@ sealed class SliceExpression(Token syntax, BaseExpr baseExpr, BaseExpr start, Ba
     public override string GetCodeText() => $"{Base.GetCodeText()}[{(ommitstart ? "" : Start.GetCodeText())}:{End.GetCodeText()}]";
 }
 
-sealed class Callv1Expression(Token identifier, Token lp, ImmutableArray<BaseExpr> arguments, Token rp) : BaseExpr(identifier)
+class Callv1Expression(Token identifier, Token lp, ImmutableArray<BaseExpr> arguments, Token rp) : BaseExpr(identifier)
 {
     public readonly Token Identifier = identifier;
     public readonly Token Lp = lp;
@@ -144,13 +144,9 @@ sealed class DiscardExpr(Token syntax) : TargetExpr(syntax)
 }
 
 // 用于解析 namespace.func() 形式的表达式
-sealed class NamespaceCallExpr(Token ns, Token member, Token lp, ImmutableArray<BaseExpr> arguments, Token rp) : BaseExpr(ns)
+sealed class NamespaceCallExpr(Token ns, Token identifier, Token lp, ImmutableArray<BaseExpr> arguments, Token rp) : Callv1Expression(identifier, lp, arguments, rp)
 {
     public Token Namespace { get; } = ns;      // 命名空间标识符
-    public Token Member { get; } = member;     // 成员名称（函数名）
-    public Token Lp { get; } = lp;
-    public ImmutableArray<BaseExpr> Arguments { get; } = arguments;
-    public Token Rp { get; } = rp;
 
-    public override string GetCodeText() => $"{Namespace.Value}.{Member.Value}({string.Join(", ", Arguments.Select(arg => arg.GetCodeText()))})";
+    public override string GetCodeText() => $"{Namespace.Value}.{Identifier.Value}({string.Join(", ", Arguments.Select(arg => arg.GetCodeText()))})";
 }

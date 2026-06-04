@@ -4,7 +4,7 @@ using EasyCon.Script.Symbols;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// SSA IR 优化 pass 驱动器。

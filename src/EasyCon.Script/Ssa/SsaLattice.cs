@@ -1,6 +1,7 @@
+using EasyCon.Script.Binding;
 using System.Runtime.InteropServices;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// SCCP 格标签：Top（未求值）、Const（已知常量）、Bottom（非常量/过度定义）。

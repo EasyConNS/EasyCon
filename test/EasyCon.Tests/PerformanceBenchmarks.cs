@@ -1,6 +1,6 @@
 using EasyCon.Core.Runner;
 using EasyCon.Script;
-using EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
@@ -23,23 +23,13 @@ namespace EasyCon.Tests;
 [TestFixture]
 public class PerformanceBenchmarks
 {
-    private const int WarmupIterations = 2;
     private const int BenchmarkIterations = 5;
-
-    /// <summary>
-    /// 编译脚本，返回编译后的 Compilation 对象
-    /// </summary>
-    private static Compilation Compile(string code)
-    {
-        return Compilation.Create(SyntaxTree.Parse(code));
-    }
 
     /// <summary>
     /// 执行编译后的脚本，返回执行耗时(ms)和 PRINT 输出
     /// </summary>
-    private static (double Ms, string[] Output) RunScript(Compilation compilation)
+    private static (double Ms, string[] Output) RunScript(CompileResult compileResult)
     {
-        var compileResult = compilation.Compile(null);
         if (compileResult.Program == null)
         {
             var errors = compileResult.Diagnostics
@@ -65,7 +55,7 @@ public class PerformanceBenchmarks
     /// </summary>
     private static (double MedianMs, string[] Output) Benchmark(string code)
     {
-        var compilation = Compile(code);
+        var compilation = Compilation.Create(SyntaxTree.Parse(code)).Compile(null);
 
         var times = new List<double>();
         string[]? lastOutput = null;

@@ -1,8 +1,9 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using System.Collections.Immutable;
 
-namespace EasyCon.Script.Binding.Ssa;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// 将 BoundProgram 转换为 SsaProgram。

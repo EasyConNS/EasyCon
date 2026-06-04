@@ -156,14 +156,14 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         ReportError(location, "空值表达式无法赋值");
     }
 
-    public void ReportGlobalVariableConflictsWithLib(TextLocation location, string varName)
-    {
-        ReportError(location, $"全局变量 '{varName}' 与库文件中的全局变量冲突");
-    }
-
     public void ReportLibGlobalVariableMustBeConstant(TextLocation location, string varName)
     {
         ReportError(location, $"库全局变量 '{varName}' 的初始值必须是常量表达式");
+    }
+
+    public void ReportGlobalVariableConflictsWithLib(TextLocation location, string varName)
+    {
+        ReportError(location, $"全局变量 '{varName}' 与库脚本变量冲突");
     }
 
     public void ReportReadOnlyVariable(Token variableToken)
@@ -244,13 +244,18 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         ReportError(location, $"命名空间 '{nsName}' 中不存在函数 '{funcName}'");
     }
 
-    public void ReportNamespaceAlreadyDeclared(TextLocation location, string name)
-    {
-        ReportError(location, $"命名空间 '{name}' 已声明");
-    }
-
     public void ReportNamespaceConflictsWithFunction(TextLocation location, string name)
     {
         ReportError(location, $"命名空间 '{name}' 与已声明的函数名冲突");
+    }
+
+    public void ReportCircularImport(TextLocation location, string path)
+    {
+        ReportError(location, $"循环导入: {Path.GetFileName(path)}");
+    }
+
+    public void ReportImportFileNotFound(TextLocation location, string path)
+    {
+        ReportError(location, $"导入文件不存在: {path}");
     }
 }

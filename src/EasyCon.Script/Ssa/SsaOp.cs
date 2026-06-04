@@ -1,4 +1,5 @@
-namespace EasyCon.Script.Binding.Ssa;
+using EasyCon.Script.Binding;
+namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// SSA 操作码：类型特化，每个操作的输入输出类型在编译期确定。

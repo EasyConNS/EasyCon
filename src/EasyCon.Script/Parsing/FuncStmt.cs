@@ -73,10 +73,16 @@ class CallStmt(Token syntax, string fnName, BaseExpr[] args, CallType callType =
     public readonly string FnName = fnName;
     public readonly BaseExpr[] Args = args;
 
+    /// <summary>命名空间限定符（可选）。有值时为 lib.func() 形式。</summary>
+    public Token? Namespace { get; init; }
+
+    /// <summary>完整限定名：有 namespace 时为 "lib.func"，否则为 "func"。</summary>
+    public string QualifiedName => Namespace != null ? $"{Namespace.Value}.{FnName}" : FnName;
+
     protected override string _GetString()
     {
-        var name = FnName;
-        if (BuiltinFunctions.GetAll().Select(f => f.Name).Contains(FnName.ToUpper()))
+        var name = QualifiedName;
+        if (Namespace == null && BuiltinFunctions.GetAll().Select(f => f.Name).Contains(FnName.ToUpper()))
         {
             name = FnName.ToUpper();
         }
