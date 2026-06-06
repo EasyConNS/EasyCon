@@ -129,20 +129,26 @@
             </Grid>
         </Grid>
 
-        <!-- 下部模块操作区：保持不变 -->
+        <!-- 下部模块操作区 -->
         <Border Grid.Row="1"
                Padding="10"
                BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
                BorderThickness="0,1,0,0">
-            <Grid ColumnDefinitions="*,*,*,*,*"
+            <Grid ColumnDefinitions="*,*,*,*"
                  HorizontalAlignment="Stretch">
 
-                <!-- 第一个模块连接器：单片机 -->
-                <Border Grid.Column="0"
-                       BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
-                       BorderThickness="1"
-                       Margin="5"
-                       Padding="10">
+                <!-- 第一个模块：单片机连接 -->
+                <GroupBox Grid.Column="0"
+                          Margin="5"
+                          Padding="10">
+                    <GroupBox.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="单片机连接" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding NintendoSwitchStatus}"
+                                       FontWeight="Bold"
+                                       Foreground="{Binding IsNintendoSwitchConnected, Converter={StaticResource BoolToGreenBrush}}"/>
+                        </StackPanel>
+                    </GroupBox.Header>
                     <StackPanel Orientation="Vertical" Spacing="10">
                         <ComboBox ItemsSource="{Binding SerialPortOptions}"
                                   SelectedItem="{Binding SelectedSerialPort}"
@@ -164,74 +170,77 @@
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"/>
                         </Grid>
-                        <TextBlock Text="{Binding NintendoSwitchStatus}"
-                                  HorizontalAlignment="Center"
-                                  FontWeight="Bold"
-                                  Foreground="{Binding IsNintendoSwitchConnected, Converter={StaticResource BoolToGreenBrush}}"/>
                     </StackPanel>
-                </Border>
+                </GroupBox>
 
-                <!-- 第二个模块连接器：视频源 -->
-                <Border Grid.Column="1"
-                       BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
-                       BorderThickness="1"
-                       Margin="5"
-                       Padding="10">
+                <!-- 第二个模块：视频源 -->
+                <GroupBox Grid.Column="1"
+                          Margin="5"
+                          Padding="10">
+                    <GroupBox.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="视频源" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding CaptureSourceStatus}"
+                                       FontWeight="Bold"
+                                       Foreground="{Binding IsCaptureSourceConnected, Converter={StaticResource BoolToGreenBrush}}"/>
+                        </StackPanel>
+                    </GroupBox.Header>
                     <StackPanel Orientation="Vertical" Spacing="10">
+                        <ComboBox ItemsSource="{Binding CaptureSourceOptions}"
+                                  SelectedItem="{Binding SelectedCaptureSource}"
+                                  HorizontalAlignment="Stretch"
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
+                        <Button Content="{Binding CaptureSourceButtonText}"
+                                Command="{Binding ConnectCaptureSourceCommand}"
+                                IsEnabled="{Binding !IsConnectingCaptureSource}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- 第三个模块：虚拟手柄 -->
+                <GroupBox Grid.Column="2"
+                          Margin="5"
+                          Padding="10">
+                    <GroupBox.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="虚拟手柄" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding ControlSourceStatus}"
+                                       FontWeight="Bold"
+                                       Foreground="{Binding IsControllerConnected, Converter={StaticResource BoolToGreenBrush}}"/>
+                        </StackPanel>
+                    </GroupBox.Header>
+                    <StackPanel Orientation="Vertical" Spacing="10">
+                        <!-- 第一排：下拉框 + 开启映射按钮 -->
                         <Grid ColumnDefinitions="*,Auto">
                             <ComboBox Grid.Column="0"
-                                      ItemsSource="{Binding CaptureSourceOptions}"
-                                      SelectedItem="{Binding SelectedCaptureSource}"
+                                      ItemsSource="{Binding ControlSourceOptions}"
+                                      SelectedItem="{Binding SelectedControlSource}"
                                       HorizontalAlignment="Stretch"
-                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
+                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshControlSourcesCommand}"/>
                             <Button Grid.Column="1"
-                                    Content="监视器"
-                                    Command="{Binding ShowMonitorCommand}"
-                                    Margin="5,0,0,0"
-                                    Padding="8,4"
-                                    VerticalAlignment="Center"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="*,Auto">
-                            <Button Grid.Column="0"
-                                    Content="{Binding CaptureSourceButtonText}"
-                                    Command="{Binding ConnectCaptureSourceCommand}"
-                                    IsEnabled="{Binding !IsConnectingCaptureSource}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"/>
-                            <Button Grid.Column="1"
-                                    Content="编辑标签"
-                                    Command="{Binding OpenTagEditorCommand}"
-                                    Margin="5,0,0,0"
-                                    Padding="8,4"
-                                    VerticalAlignment="Center"/>
-                        </Grid>
-                        <TextBlock Text="{Binding CaptureSourceStatus}"
-                                  HorizontalAlignment="Center"
-                                  FontWeight="Bold"
-                                  Foreground="{Binding IsCaptureSourceConnected, Converter={StaticResource BoolToGreenBrush}}"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- 第三个模块连接器：手柄 -->
-                <Border Grid.Column="2"
-                       BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
-                       BorderThickness="1"
-                       Margin="5"
-                       Padding="10">
-                    <StackPanel Orientation="Vertical" Spacing="10">
-                        <ComboBox ItemsSource="{Binding ControlSourceOptions}"
-                                  SelectedItem="{Binding SelectedControlSource}"
-                                  HorizontalAlignment="Stretch"
-                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshControlSourcesCommand}"/>
-                        <Grid ColumnDefinitions="*,*">
-                            <Button Grid.Column="0"
                                     Content="{Binding ControllerButtonText}"
                                     Command="{Binding ConnectControllerCommand}"
                                     IsEnabled="{Binding !IsConnectingController}"
+                                    Margin="5,0,0,0"
+                                    Padding="8,4"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
+                        <!-- 第二排：录制脚本 + 停止录制 + 修改按键映射 -->
+                        <Grid ColumnDefinitions="*,*,*">
+                            <Button Grid.Column="0"
+                                    Content="录制脚本"
+                                    Command="{Binding StartRecordCommand}"
                                     Margin="0,0,5,0"
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"/>
                             <Button Grid.Column="1"
+                                    Content="停止录制"
+                                    Command="{Binding StopRecordCommand}"
+                                    Margin="5,0,5,0"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                            <Button Grid.Column="2"
                                     Content="修改按键映射"
                                     Command="{Binding EditKeyMappingCommand}"
                                     CommandParameter="{Binding $parent[Window]}"
@@ -240,36 +249,11 @@
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"/>
                         </Grid>
-                        <TextBlock Text="{Binding ControlSourceStatus}"
-                                  HorizontalAlignment="Center"
-                                  FontWeight="Bold"
-                                  Foreground="{Binding IsControllerConnected, Converter={StaticResource BoolToGreenBrush}}"/>
                     </StackPanel>
-                </Border>
+                </GroupBox>
 
-                <!-- 脚本录制模块 -->
+                <!-- 运行脚本按钮（不变） -->
                 <Border Grid.Column="3"
-                       BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
-                       BorderThickness="1"
-                       Margin="5"
-                       Padding="10">
-                    <StackPanel Orientation="Vertical" Spacing="10">
-                        <TextBlock Text="脚本录制"
-                                  HorizontalAlignment="Center"
-                                  FontWeight="Bold"/>
-                        <Button Content="录制脚本"
-                                Command="{Binding StartRecordCommand}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"/>
-                        <Button Content="停止录制"
-                                Command="{Binding StopRecordCommand}"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- 运行脚本按钮 -->
-                <Border Grid.Column="4"
                        Margin="5"
                        Padding="10">
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="10">
