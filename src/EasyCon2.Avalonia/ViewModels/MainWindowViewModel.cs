@@ -1,8 +1,11 @@
 using Avalonia.Controls;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EasyCon.Core;
+using EasyCon2.Avalonia.Core.TagEditor;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Views;
 using System.Collections.ObjectModel;
@@ -23,10 +26,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IControllerService _controllerService;
     private readonly StringBuilder _logBuilder = new();
     private const int MaxLogLength = 100_000;
-    private Window? _editorWindow;
-    private Window? _tagEditorWindow;
     private Window? _espConfigWindow;
     private MonitorViewModel? _monitorViewModel;
+    private readonly FileTreeViewModel _fileTreeViewModel;
 
     // 窗口标题（含版本号）
     [ObservableProperty]
@@ -117,6 +119,17 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isMonitorVisible = true;
 
+    // 监视器工具条可见性（鼠标悬停）
+    [ObservableProperty]
+    private bool _isMonitorToolbarVisible = false;
+
+    // 监视器暂停状态
+    [ObservableProperty]
+    private bool _isMonitorPaused = false;
+
+    // 监视器暂停按钮文本
+    public string MonitorPauseButtonText => IsMonitorPaused ? "继续" : "暂停";
+
     // 日志工具条可见性
     [ObservableProperty]
     private bool _isLogToolbarVisible = false;
@@ -124,6 +137,37 @@ public partial class MainWindowViewModel : ViewModelBase
     // 监视器视图
     [ObservableProperty]
     private MonitorView? _monitorView;
+
+    // 文件树视图
+    [ObservableProperty]
+    private FileTreeView? _fileTreeView;
+
+    // 编辑器标签页索引（0=文本编辑, 1=标签编辑）
+    [ObservableProperty]
+    private int _selectedEditorTab = 0;
+
+    // 标签编辑器 ViewModel
+    [ObservableProperty]
+    private TagEditorViewModel? _tagEditorViewModel;
+
+    // 脚本路径显示文本（超30字符中间省略）
+    public string ScriptDisplayPath
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(CurrentScriptPath) || CurrentScriptPath == "未选择脚本")
+                return "未命名脚本";
+            if (CurrentScriptPath.Length <= 30)
+                return CurrentScriptPath;
+            var fileName = Path.GetFileName(CurrentScriptPath);
+            var dir = Path.GetDirectoryName(CurrentScriptPath) ?? "";
+            // 计算可容纳的前缀长度：30 - "...\" - fileName
+            var available = 30 - fileName.Length - 4; // 4 = "...\"
+            if (available > 3 && dir.Length > available)
+                return dir[..available] + "..." + Path.DirectorySeparatorChar + fileName;
+            return "..." + Path.DirectorySeparatorChar + fileName;
+        }
+    }
 
     // 固件类型列表
     [ObservableProperty]
@@ -133,7 +177,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _selectedFirmware = "leonardo";
 
-    // 远程控制模块属性
+    // 远程控制模块属性（命令保留，UI已隐藏）
     public ICommand OpenEditorCommand { get; }
     public ICommand ConnectNintendoSwitchCommand { get; }
     public ICommand AutoConnectNintendoSwitchCommand { get; }
@@ -153,6 +197,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand ShowMonitorCommand { get; }
     public ICommand OpenTagEditorCommand { get; }
     public ICommand OpenESPConfigCommand { get; }
+    public ICommand ToggleMonitorPauseCommand { get; }
 
     // 刷新数据源命令
     public ICommand RefreshSerialPortsCommand { get; }
@@ -172,6 +217,13 @@ public partial class MainWindowViewModel : ViewModelBase
         _captureService = captureService;
         _scriptService = scriptService;
         _controllerService = controllerService;
+
+        // 初始化文件树
+        _fileTreeViewModel = new FileTreeViewModel();
+        _fileTreeViewModel.FileActivated += OnFileTreeFileActivated;
+        _fileTreeViewModel.OpenProjectRequested += OnOpenProjectRequested;
+        var fileTreeView = new FileTreeView { DataContext = _fileTreeViewModel };
+        FileTreeView = fileTreeView;
 
         // 初始化监视器视图
         InitializeMonitorView();
@@ -271,6 +323,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ShowMonitorCommand = new RelayCommand(ShowMonitor);
         OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
+        ToggleMonitorPauseCommand = new RelayCommand(ToggleMonitorPause);
 
         // 初始化示例数据
         InitializeSampleData();
@@ -287,6 +340,65 @@ public partial class MainWindowViewModel : ViewModelBase
         // 添加一些初始日志
         _logBuilder.Append("欢迎使用 EasyCon2!\n");
         LogOutput = _logBuilder.ToString();
+    }
+
+    private void OnOpenProjectRequested()
+    {
+        OpenFolderDialogRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// 由 MainWindow 调用：用户选择了项目目录后加载文件树。
+    /// </summary>
+    public void OpenProjectFromDirectory(string directoryPath)
+    {
+        _fileTreeViewModel.LoadDirectory(directoryPath);
+        _logService.AddLog($"已打开项目: {directoryPath}");
+    }
+
+    private void OnFileTreeFileActivated(string filePath)
+    {
+        // 双击文件时不更新目录，只在右侧标签页打开内容
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
+        switch (ext)
+        {
+            case ".txt":
+            case ".ecs":
+                CurrentScriptPath = filePath;
+                SelectedEditorTab = 0;
+                InitializeEmbeddedEditor(filePath);
+                break;
+            case ".il":
+                SelectedEditorTab = 1;
+                try
+                {
+                    var label = ECCore.LoadIL(filePath);
+                    var tagVm = new TagEditorViewModel(label);
+
+                    // 将 System.Drawing.Image 转换为 Avalonia IImage 绑定到目标图
+                    var sdImage = label.GetImage();
+                    if (sdImage != null)
+                    {
+                        using var ms = new MemoryStream();
+                        sdImage.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                        ms.Position = 0;
+                        tagVm.TargetImage = new Bitmap(ms);
+                    }
+
+                    TagEditorViewModel = tagVm;
+                }
+                catch (Exception ex)
+                {
+                    _logService.AddLog($"加载标签文件失败: {ex.Message}");
+                }
+                break;
+            default:
+                // 未知扩展名默认文本编辑器打开
+                CurrentScriptPath = filePath;
+                SelectedEditorTab = 0;
+                InitializeEmbeddedEditor(filePath);
+                break;
+        }
     }
 
     private void InitializeMonitorView()
@@ -377,9 +489,39 @@ public partial class MainWindowViewModel : ViewModelBase
         if (files.Count > 0)
         {
             var file = files[0];
-            CurrentScriptPath = file.Path.LocalPath;
-            _logService.AddLog($"打开了脚本文件: {CurrentScriptPath}");
+            OpenScriptFromPath(file.Path.LocalPath);
         }
+    }
+
+    /// <summary>
+    /// 从路径打开脚本，加载文件树并初始化内嵌编辑器。
+    /// </summary>
+    public void OpenScriptFromPath(string path)
+    {
+        CurrentScriptPath = path;
+        SelectedEditorTab = 0;
+
+        // 更新文件树到脚本所在目录
+        var dir = Path.GetDirectoryName(path);
+        _fileTreeViewModel.LoadDirectory(dir);
+
+        // 初始化内嵌编辑器
+        InitializeEmbeddedEditor(path);
+    }
+
+    /// <summary>
+    /// 请求主窗口初始化内嵌编辑器。由 MainWindow 调用。
+    /// </summary>
+    public event Action<string>? EmbeddedEditorInitializeRequested;
+
+    /// <summary>
+    /// 请求主窗口弹出打开项目目录对话框。
+    /// </summary>
+    public event Action? OpenFolderDialogRequested;
+
+    private void InitializeEmbeddedEditor(string filePath)
+    {
+        EmbeddedEditorInitializeRequested?.Invoke(filePath);
     }
 
     private void ConnectNintendoSwitch()
@@ -549,33 +691,19 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OpenEditor()
     {
         if (!CanOpenEditor()) return;
-
-        if (_editorWindow != null)
-        {
-            if (_editorWindow.WindowState == WindowState.Minimized)
-                _editorWindow.WindowState = WindowState.Normal;
-            _editorWindow.Activate();
-            return;
-        }
-
-        _editorWindow = new EditorWindow(CurrentScriptPath);
-        _editorWindow.Closed += (_, _) => _editorWindow = null;
-        _editorWindow.Show();
+        SelectedEditorTab = 0;
+        InitializeEmbeddedEditor(CurrentScriptPath);
     }
 
     private void OpenTagEditor()
     {
-        if (_tagEditorWindow != null)
-        {
-            if (_tagEditorWindow.WindowState == WindowState.Minimized)
-                _tagEditorWindow.WindowState = WindowState.Normal;
-            _tagEditorWindow.Activate();
-            return;
-        }
+        // 切换到标签编辑标签页
+        SelectedEditorTab = 1;
+    }
 
-        _tagEditorWindow = new TagEditorWindow();
-        _tagEditorWindow.Closed += (_, _) => _tagEditorWindow = null;
-        _tagEditorWindow.Show();
+    private void ToggleMonitorPause()
+    {
+        IsMonitorPaused = !IsMonitorPaused;
     }
 
     private void OpenESPConfig()
@@ -604,12 +732,17 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnCurrentScriptPathChanged(string value)
     {
         (OpenEditorCommand as RelayCommand)?.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ScriptDisplayPath));
     }
 
-    public void OpenScriptFromPath(string path)
+    partial void OnIsMonitorPausedChanged(bool value)
     {
-        CurrentScriptPath = path;
-        _logService.AddLog($"打开了脚本文件: {CurrentScriptPath}");
+        OnPropertyChanged(nameof(MonitorPauseButtonText));
+        if (_monitorViewModel == null) return;
+        if (value)
+            _monitorViewModel.StopMonitoring();
+        else
+            _monitorViewModel.StartMonitoring();
     }
 
     private void DropFile(string? path)
@@ -721,18 +854,6 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public void OnMainWindowClosing()
     {
-        if (_editorWindow != null)
-        {
-            _editorWindow.Close();
-            _editorWindow = null;
-        }
-
-        if (_tagEditorWindow != null)
-        {
-            _tagEditorWindow.Close();
-            _tagEditorWindow = null;
-        }
-
         if (_espConfigWindow != null)
         {
             _espConfigWindow.Close();

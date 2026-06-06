@@ -125,7 +125,7 @@ public record ImgLabel
 
     public static ImgLabel Load(string path)
     {
-        var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception();
+        var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception("标签解析失败");
         temp.name = Path.GetFileNameWithoutExtension(path);
         temp.path = Path.GetDirectoryName(path) ?? string.Empty;
         return temp;

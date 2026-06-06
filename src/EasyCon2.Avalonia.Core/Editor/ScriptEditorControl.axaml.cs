@@ -181,6 +181,11 @@ public partial class ScriptEditorControl : UserControl
         Debug.WriteLine($"[LSP] Connection failed: {message}");
     }
 
+    private static readonly HashSet<string> LspSupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".ecs", ".txt"
+    };
+
     private void TryOpenLspDocument()
     {
         if (_lspService == null || !_lspService.IsConnected || _lspDocumentOpened)
@@ -192,6 +197,11 @@ public partial class ScriptEditorControl : UserControl
 
         if (string.IsNullOrEmpty(path))
             path = "untitled.ecs";
+
+        // LSP 仅响应 ecs/txt 文件
+        var ext = System.IO.Path.GetExtension(path);
+        if (!LspSupportedExtensions.Contains(ext))
+            return;
 
         _lspService.DocumentManager.OpenDocument(path, _editor.Text);
         _lspDocumentOpened = true;

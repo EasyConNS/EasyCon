@@ -1,5 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Platform.Storage;
+using AvaloniaEdit.Folding;
+using EasyCon2.Avalonia.Core.Editor;
+using EasyCon2.Avalonia.Core.Editor.Lsp;
 using EasyCon2.Avalonia.ViewModels;
 using System.ComponentModel;
 
@@ -7,16 +11,132 @@ namespace EasyCon2.Avalonia.Views;
 
 public partial class MainWindow : Window
 {
+    private bool _editorInitialized;
+    private LspClientService? _lspService;
+    private FoldingManager? _foldingManager;
+    private CustomFoldingStrategy? _foldingStrategy;
+
     public MainWindow()
     {
         InitializeComponent();
         Closing += OnClosing;
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.EmbeddedEditorInitializeRequested += OnEmbeddedEditorInitializeRequested;
+            vm.OpenFolderDialogRequested += OnOpenFolderDialogRequested;
+        }
+    }
+
+    private void OnEmbeddedEditorInitializeRequested(string filePath)
+    {
+        LoadFileInEditor(filePath);
+    }
+
+    private async void OnOpenFolderDialogRequested()
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "打开项目目录",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0 && DataContext is MainWindowViewModel vm)
+        {
+            var path = folders[0].Path.LocalPath;
+            vm.OpenProjectFromDirectory(path);
+        }
+    }
+
+    /// <summary>
+    /// 一次性初始化编辑器基础设施（LSP、折叠、语法高亮）。
+    /// 仅在首次调用时执行，后续调用跳过。
+    /// </summary>
+    private void EnsureEditorInitialized()
+    {
+        if (_editorInitialized) return;
+        _editorInitialized = true;
+
+        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
+        if (editor == null) return;
+
+        EcsHighlightingLoader.RegisterAll();
+        editor.SyntaxHighlighting = EcsHighlightingLoader.GetByName("ECScript");
+
+        _lspService = new LspClientService();
+        editor.AttachLsp(_lspService);
+
+        _foldingManager = FoldingManager.Install(editor.TextArea);
+        _foldingStrategy = new CustomFoldingStrategy();
+
+        editor.EditorTextChanged += (_, _) =>
+        {
+            if (_foldingManager != null)
+                _foldingStrategy?.UpdateFoldings(_foldingManager, editor.TextDocument);
+        };
+    }
+
+    private static readonly HashSet<string> LspSupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".ecs", ".txt"
+    };
+
+    /// <summary>
+    /// 在编辑器中加载指定文件。首次调用会初始化 LSP 和折叠管理器。
+    /// 切换文件时先关闭旧 LSP 文档再加载新文件。
+    /// LSP 仅对 ecs/txt 文件初始化。
+    /// </summary>
+    private void LoadFileInEditor(string filePath)
+    {
+        EnsureEditorInitialized();
+
+        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
+        if (editor == null) return;
+
+        var ext = Path.GetExtension(filePath);
+
+        // 仅对 ecs/txt 文件初始化 LSP 连接
+        if (_lspService != null && !_lspService.IsConnected && LspSupportedExtensions.Contains(ext))
+        {
+            _ = _lspService.InitializeAsync(filePath);
+        }
+
+        // 关闭旧 LSP 文档，防止文档叠加
+        editor.Clear();
+
+        if (File.Exists(filePath))
+            editor.Load(filePath);
+    }
+
+    /// <summary>
+    /// 保存当前编辑器内容。
+    /// </summary>
+    public void SaveCurrentEditor(string filePath)
+    {
+        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
+        if (editor == null) return;
+        editor.Save(filePath);
+        editor.IsModified = false;
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
         if (DataContext is MainWindowViewModel vm)
+        {
+            vm.EmbeddedEditorInitializeRequested -= OnEmbeddedEditorInitializeRequested;
+            vm.OpenFolderDialogRequested -= OnOpenFolderDialogRequested;
             vm.OnMainWindowClosing();
+        }
+
+        // 清理编辑器资源
+        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
+        editor?.Cleanup();
+        if (_lspService != null)
+            _ = _lspService.DisposeAsync();
     }
 
     // 日志区工具条指针进出 —— 纯 UI 逻辑，保留在 code-behind
@@ -30,5 +150,18 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainWindowViewModel vm)
             vm.IsLogToolbarVisible = false;
+    }
+
+    // 监视器工具条指针进出
+    private void MonitorArea_PointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.IsMonitorToolbarVisible = true;
+    }
+
+    private void MonitorArea_PointerExited(object? sender, PointerEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.IsMonitorToolbarVisible = false;
     }
 }

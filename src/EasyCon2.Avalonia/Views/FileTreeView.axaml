@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
+             x:Class="EasyCon2.Avalonia.Views.FileTreeView"
+             x:DataType="vm:FileTreeViewModel">
+
+    <Grid>
+        <!-- 文件列表 -->
+        <ListBox x:Name="FileList"
+                 ItemsSource="{Binding FlatItems}"
+                 SelectedItem="{Binding SelectedFlatItem}"
+                 Tapped="OnItemTapped"
+                 DoubleTapped="OnItemDoubleTapped"
+                 IsVisible="{Binding HasLoadedDirectory}">
+            <ListBox.Styles>
+                <!-- 去掉 ListBoxItem 默认内边距，让目录背景铺满 -->
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Margin" Value="0"/>
+                </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:FileTreeDisplayItem">
+                    <Grid>
+                        <!-- 目录项：深色背景 -->
+                        <Border Padding="{Binding IndentPadding}"
+                                Background="{DynamicResource ThemeControlHighlightLowBrush}"
+                                IsVisible="{Binding IsDirectory}"
+                                CornerRadius="3"
+                                Margin="2,1">
+                            <TextBlock Text="{Binding Name}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Opacity="0.85"/>
+                        </Border>
+                        <!-- 文件项：无特殊背景，空白缩进 -->
+                        <Border Padding="{Binding IndentPadding}"
+                                IsVisible="{Binding !IsDirectory}"
+                                Margin="2,1">
+                            <TextBlock Text="{Binding Name}"
+                                       FontSize="13"/>
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- 空状态：沉浸式打开项目按钮 -->
+        <Border IsVisible="{Binding !HasLoadedDirectory}"
+                Background="{DynamicResource ThemeControlHighlightLowBrush}"
+                CornerRadius="6"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="24,16">
+            <Button Content="打开项目"
+                    Command="{Binding OpenProjectCommand}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    FontSize="14"
+                    Padding="20,10"
+                    Cursor="Hand"/>
+        </Border>
+    </Grid>
+</UserControl>
