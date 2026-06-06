@@ -1,4 +1,4 @@
-using EasyCon.Capture;
+﻿using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
@@ -81,7 +81,7 @@ public class ScriptService
     /// <summary>
     /// 运行脚本（需要先 Compile 或 Format）
     /// </summary>
-    public void Run(IIoAdapter ioAdapter, ICGamePad pad, OcrDelegate? ocr)
+    public void Run(IIoAdapter ioAdapter, ICGamePad pad, OcrDelegate? ocr, OcrInitDelegate? ocrInit, Func<int> ocrConf)
     {
         if (IsRunning) return;
 
@@ -97,7 +97,7 @@ public class ScriptService
         {
             try
             {
-                _runner.Run(ioAdapter, pad, ocr, _frameDelegate, MatExtensions.CropBase64, _labelMatchDelegate, _labelNames, _cts.Token);
+                _runner.Run(ioAdapter, pad, ocr, ocrInit, ocrConf, _frameDelegate, MatExtensions.CropBase64, _labelMatchDelegate, _labelNames, _cts.Token);
                 LogOutput?.Invoke("-- 运行结束 --", Color.Lime);
             }
             catch (OperationCanceledException)

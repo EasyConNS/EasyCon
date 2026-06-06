@@ -64,6 +64,8 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     public FrameDelegate? Frame { get; set; }
     public RoiDelegate? Roi { get; set; }
     public LabelMatchDelegate? LabelMatch { get; set; }
+    public OcrInitDelegate? OcrInit { get; set; }
+    public Func<int> OcrConf { get; set; } = () => 0;
 
     ICGamePad? IEvalContext.GamePad => GamePad;
     IIoAdapter? IEvalContext.IoAdapter => IoAdapter;
@@ -71,6 +73,8 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     FrameDelegate? IEvalContext.Frame => Frame;
     RoiDelegate? IEvalContext.Roi => Roi;
     LabelMatchDelegate? IEvalContext.LabelMatch => LabelMatch;
+    OcrInitDelegate? IEvalContext.OcrInit => OcrInit;
+    Func<int> IEvalContext.OcrConf => OcrConf;
     Random IEvalContext.Rand => _rand;
     int IEvalContext.Timestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
     bool IEvalContext.CancelLineBreak { get => _cancelLineBreak; set => _cancelLineBreak = value; }
@@ -167,6 +171,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private void RegisterRuntimeValueGetters()
     {
         _runtimeValueGetters["__TIME__"] = () => ((IEvalContext)this).Timestamp;
+        _runtimeValueGetters["__APP__"] = () => Value.FromString(AppDomain.CurrentDomain.BaseDirectory);
     }
 
     public Value Evaluate()
@@ -470,6 +475,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             case SsaOp.ConvUIntToUInt64: _longCache[val.Id] = (uint)_intCache[val.Arg0!.Id]; break;
             case SsaOp.ConvUInt64ToPtr: _longCache[val.Id] = _longCache[val.Arg0!.Id]; break;     // bit-preserving
             case SsaOp.ConvPtrToInt: _intCache[val.Id] = (int)_longCache[val.Arg0!.Id]; break;
+            case SsaOp.ConvIntToPtr: _longCache[val.Id] = _intCache[val.Arg0!.Id]; break;
             case SsaOp.ConvDoubleToInt: _intCache[val.Id] = (int)_doubleCache[val.Arg0!.Id]; break;
             case SsaOp.ConvUInt64ToInt: _intCache[val.Id] = unchecked((int)(ulong)_longCache[val.Arg0!.Id]); break;
             case SsaOp.ConvToString:
@@ -563,6 +569,11 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 break;
             case SsaOp.Rand:
                 _intCache[val.Id] = _rand.Next(_intCache[val.Arg0!.Id]);
+                break;
+
+            // ---- OCR 引擎初始化 ----
+            case SsaOp.OcrInit:
+                ExecuteOcrInitToCache(val);
                 break;
 
             // ---- 采集卡打洞函数 ----
@@ -1154,6 +1165,17 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         var h = _intCache[extras[1].Id];
         var result = Frame?.Invoke(x, y, w, h);
         _objCache[val.Id] = result ?? "ERR!!FRAME NOT SUPPORT";
+    }
+
+    private void ExecuteOcrInitToCache(SsaValue val)
+    {
+        var lang = CoerceString(val.Arg0!.Id);
+        var dataPath = CoerceString(val.Arg1!.Id);
+        var extras = val.ExtraArgs!;
+        var engineMode = CoerceString(extras[0].Id);
+        var psmode = CoerceString(extras[1].Id);
+        var result = OcrInit?.Invoke(lang, dataPath, engineMode, psmode);
+        _intCache[val.Id] = result == true ? 1 : 0;
     }
 
     private void ExecuteOcrToCache(SsaValue val)

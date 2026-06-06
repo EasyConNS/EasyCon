@@ -162,7 +162,8 @@ internal sealed partial class Binder
             || (type.Equals(ScriptType.UInt) && expr.Type.Equals(ScriptType.Int))
             || (type.Equals(ScriptType.UInt64) && expr.Type.Equals(ScriptType.Int))
             || (type.Equals(ScriptType.UInt64) && expr.Type.Equals(ScriptType.UInt))
-            || (type.Equals(ScriptType.Byte) && expr.Type.Equals(ScriptType.Int)))
+            || (type.Equals(ScriptType.Byte) && expr.Type.Equals(ScriptType.Int))
+            || (type.Equals(ScriptType.Ptr) && expr.Type.Equals(ScriptType.Int)))
             return new BoundConversionExpression(expr.Syntax, type, expr);
         _diagnostics.ReportCannotConvert(expr.Syntax.Syntax.Location, expr.Type, type);
         return new BoundErrorExpression(expr.Syntax);

@@ -161,11 +161,6 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         ReportError(location, $"库全局变量 '{varName}' 的初始值必须是常量表达式");
     }
 
-    public void ReportGlobalVariableConflictsWithLib(TextLocation location, string varName)
-    {
-        ReportError(location, $"全局变量 '{varName}' 与库脚本变量冲突");
-    }
-
     public void ReportReadOnlyVariable(Token variableToken)
     {
         ReportError(variableToken.Location, $"只读变量无法修改：{variableToken.Value}");

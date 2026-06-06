@@ -316,7 +316,7 @@ public partial class MainForm : Form, IIoAdapter, IControllerAdapter
             _vpadService?.Deactivate();
 
             var pad = new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming);
-            _scriptService.Run(this, pad, null);
+            _scriptService.Run(this, pad, null, null, () => 0);
         }
         else
         {

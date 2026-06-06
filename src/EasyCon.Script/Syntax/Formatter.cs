@@ -9,6 +9,7 @@ static class Formatter
     internal static readonly Dictionary<string, ScriptType> SpecialConsts = new()
     {
         ["__TIME__"] = ScriptType.Int,
+        ["__APP__"] = ScriptType.String,
     };
 
     // 编译期常量：解析阶段直接折叠为字面量
@@ -43,7 +44,7 @@ static class Formatter
     {
         var value = tok.Value switch
         {
-            "__FILE__" => Path.GetDirectoryName(tok.Location.FileName) ?? "",
+            "__FILE__" => Path.GetDirectoryName(Path.GetFullPath(tok.Location.FileName) ?? "") ?? "",
             _ => ""
         };
         return new LiteralExpr(tok, value);

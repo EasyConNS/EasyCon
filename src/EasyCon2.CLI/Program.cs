@@ -1,4 +1,4 @@
-// See https://aka.ms/new-console-template for more information
+﻿// See https://aka.ms/new-console-template for more information
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
@@ -113,6 +113,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     OpenCVCapture? cvcap = null;
     outdap.Log("正在解析脚本...");
     var diag = runner.Load(file, [.. label.Select(il => il.name)]);
+    Console.WriteLine(runner.Timing?.ToReport());
 
     if (diag.HasErrors())
     {
@@ -179,6 +180,8 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     LabelMatchDelegate? labelMatchDelegate = null;
     ImmutableHashSet<string>? labelNames = null;
     OcrDelegate? ocrDelegate = null;
+    OcrInitDelegate? ocrInit = null;
+    Func<int> ocrConf = () => 0;
 
     if (cvcap != null && label.Count() > 0)
     {
@@ -192,17 +195,21 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
             if (!labelDict.TryGetValue(lblName, out var il)) return 0;
             using var mat = cvcap.GetMatFrame();
             if (mat.Empty()) return 0;
-            il.Search(mat, out var md);
+            il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
             return (int)Math.Ceiling(md);
         };
-        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetMatFrame());
+        var ocrCache = new EasyCon.Capture.OcrEngineCache();
+        ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
+        ocrConf = () => ocrCache.LastConfidence;
+        var fallbackDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata";
+        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetMatFrame(), ocrCache, fallbackDataPath);
     }
-    outdap.Info($"==>开始执行脚本：{file}");
+    outdap.Info($"==>开始执行脚本：{file}\n");
 
     try
     {
         ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
-        runner.Run(outdap, pad, ocrDelegate, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, cancellationToken);
+        runner.Run(outdap, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, cancellationToken);
         outdap.Info("脚本运行完成");
     }
     catch (ScriptException ex)

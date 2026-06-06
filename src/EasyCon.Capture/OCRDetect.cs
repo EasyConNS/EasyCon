@@ -1,31 +1,49 @@
-using TesseractOCR;
+﻿using TesseractOCR;
 using TesseractOCR.Enums;
 
 namespace EasyCon.Capture;
 
 public sealed class OCRDetect
 {
-    static readonly string tessdataPath = AppDomain.CurrentDomain.BaseDirectory + "\\Tessdata\\";
-
-    //private readonly string lang = language;
-    //private readonly EngineMode egMode = engineMode;
-    //private readonly PageSegMode psMode = pageSegMode;
-
     /// <summary>
-    /// language: trained tessdata
-    /// enginMod: EngineMode.Default
-    /// pageSegMod: PageSegMode.SingleLine
+    /// 使用外部传入的 Engine 实例执行 OCR（不创建不释放 Engine）。
     /// </summary>
-    public static string TesserDetect(MemoryStream stream, out float confidence, string lang = "chi_sim")
+    public static string TesserDetect(Engine engine, TesseractOCR.Pix.Image img, PageSegMode psm, out float confidence)
     {
-        using var img = TesseractOCR.Pix.Image.LoadFromMemory(stream.ToArray());
-        return TesserDetect(img, out confidence, lang);
+        using var page = engine.Process(img, psm);
+        confidence = page.MeanConfidence;
+        return page.Text.Trim('\n');
     }
 
-    public static string TesserDetect(TesseractOCR.Pix.Image img, out float confidence, string lang)
+    /// <summary>
+    /// 按需创建 Engine 执行 OCR（per-call 模式，用于未缓存的情况）。
+    /// </summary>
+    public static string TesserDetect(MemoryStream stream, out float confidence, string lang, string dataPath, string engineMode = "DEFAULT", string psmode = "SINGLE_LINE")
     {
-        using var engine = new Engine(tessdataPath, lang, EngineMode.Default);
-        using var page = engine.Process(img, PageSegMode.SingleLine);
+        using var img = TesseractOCR.Pix.Image.LoadFromMemory(stream.ToArray());
+        return TesserDetect(img, out confidence, lang, dataPath, engineMode, psmode);
+    }
+
+    /// <summary>
+    /// 按需创建 Engine 执行 OCR（从 Pix.Image）。
+    /// </summary>
+    public static string TesserDetect(TesseractOCR.Pix.Image img, out float confidence, string lang, string dataPath, string engineMode = "DEFAULT", string psmode = "SINGLE_LINE")
+    {
+        var em = engineMode.ToUpperInvariant() switch
+        {
+            "LSTM_ONLY" => EngineMode.LstmOnly,
+            "LEGACY_ONLY" => EngineMode.TesseractOnly,
+            _ => EngineMode.Default,
+        };
+        var psm = psmode.ToUpperInvariant() switch
+        {
+            "AUTO" => PageSegMode.Auto,
+            "BLOCK" => PageSegMode.SingleBlock,
+            _ => PageSegMode.SingleLine,
+        };
+
+        using var engine = new Engine(dataPath, lang, em);
+        using var page = engine.Process(img, psm);
         confidence = page.MeanConfidence;
         return page.Text.Trim('\n');
     }

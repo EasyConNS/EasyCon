@@ -296,6 +296,11 @@ internal sealed partial class Binder
             case BoundVariableExpression var:
                 return var.Variable is { IsReadOnly: true, Value: not null } ? var.Variable.Value : null;
 
+            case BoundUnaryExpression unary:
+                var operand = TryEvaluateConstant(unary.Operand);
+                if (operand == null) return null;
+                return unary.Op.Operate(Value.From(operand));
+
             case BoundBinaryExpression bin:
                 var left = TryEvaluateConstant(bin.Left);
                 var right = TryEvaluateConstant(bin.Right);
@@ -375,10 +380,12 @@ internal sealed partial class Binder
     {
         var boundexpr = BindExpression(syntax.Expression);
 
-        // lib 全局变量赋值：右侧必须是常量表达式
-        if (_isLibBinder && _function == null && TryEvaluateConstant(boundexpr) == null)
+        // lib 全局变量赋值：右侧不能是函数调用
+        if (_isLibBinder && _function == null)
         {
-            _diagnostics.ReportLibGlobalVariableMustBeConstant(syntax.Location, varTarget.Tag);
+            if (syntax.AssignmentToken.Type.OperatorIsAug() || boundexpr.Kind == BoundNodeKind.CallExpression)
+                _diagnostics.ReportLibGlobalVariableMustBeConstant(syntax.Location, varTarget.Tag);
+            // return BindErrorStatement(syntax);
         }
 
         var desugared = DesugarAugmentedAssign(syntax, () => BindVarExpression(varTarget), boundexpr.Type, boundexpr);

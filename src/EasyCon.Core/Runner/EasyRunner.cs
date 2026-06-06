@@ -1,8 +1,10 @@
-using EasyCon.Script;
+﻿using EasyCon.Script;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Syntax;
+using EasyCon.Script.Text;
 using EasyScript;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 
 namespace EasyCon.Core.Runner;
@@ -14,6 +16,7 @@ public sealed class EasyRunner : IRunner
 
     public bool HasKeyAction => _result?.KeyAction ?? false;
     public bool NeedILLoad => _result?.NeedIL ?? false;
+    public CompilationTiming? Timing => _result?.Timing;
 
     public byte[] Assemble(bool auto = true)
     {
@@ -22,20 +25,35 @@ public sealed class EasyRunner : IRunner
     }
     public ImmutableArray<Diagnostic> Init(string code, ImmutableHashSet<string> extVarNames)
     {
+        var timing = new CompilationTiming();
+        var sw = Stopwatch.StartNew();
+
         var sourceText = SyntaxTree.Parse(code);
-        compilation = Compilation.Create(sourceText);
+        timing.LexingAndParsing = sw.Elapsed;
+
+        compilation = Compilation.Create(sourceText, timing);
         _result = compilation.Compile(extVarNames);
         return _result.Diagnostics;
     }
     public ImmutableArray<Diagnostic> Load(string fileName, ImmutableHashSet<string> extVarNames)
     {
-        var sourceText = SyntaxTree.Load(fileName);
-        compilation = Compilation.Create(sourceText);
+        var timing = new CompilationTiming();
+        var sw = Stopwatch.StartNew();
+
+        var text = File.ReadAllText(fileName);
+        var sourceText = SourceText.From(text, fileName);
+        timing.FileLoad = sw.Elapsed;
+
+        sw.Restart();
+        var syntaxTree = SyntaxTree.Parse(sourceText);
+        timing.LexingAndParsing = sw.Elapsed;
+
+        compilation = Compilation.Create(syntaxTree, timing);
         _result = compilation.Compile(extVarNames);
         return _result.Diagnostics;
     }
 
-    public void Run(IIoAdapter ioAdapter, ICGamePad pad, OcrDelegate? ocr, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token)
+    public void Run(IIoAdapter ioAdapter, ICGamePad pad, OcrDelegate? ocr, OcrInitDelegate? ocrInit, Func<int> ocrConf, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token)
     {
         if (_result?.Program == null) return;
 
@@ -44,6 +62,8 @@ public sealed class EasyRunner : IRunner
             GamePad = pad,
             IoAdapter = ioAdapter,
             Ocr = ocr,
+            OcrInit = ocrInit,
+            OcrConf = ocrConf,
             Frame = frameProvider,
             Roi = roiProvider,
             LabelMatch = labelMatch,

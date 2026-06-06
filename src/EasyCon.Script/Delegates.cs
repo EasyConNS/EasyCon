@@ -12,6 +12,16 @@ namespace EasyScript;
 public delegate string OcrDelegate(int x, int y, int width, int height, string lang);
 
 /// &lt;summary&gt;
+/// OCR引擎初始化委托，用于预创建并缓存 Tesseract 引擎。
+/// &lt;/summary&gt;
+/// &lt;param name="lang"&gt;OCR语言&lt;/param&gt;
+/// &lt;param name="dataPath"&gt;tessdata 目录绝对路径&lt;/param&gt;
+/// &lt;param name="engineMode"&gt;引擎模式：DEFAULT / LSTM_ONLY / LEGACY_ONLY&lt;/param&gt;
+/// &lt;param name="psmode"&gt;页面分割模式：SINGLE_LINE / AUTO / BLOCK 等&lt;/param&gt;
+/// &lt;returns&gt;是否初始化成功&lt;/returns&gt;
+public delegate bool OcrInitDelegate(string lang, string dataPath, string engineMode, string psmode);
+
+/// &lt;summary&gt;
 /// 帧委托，用于获取指定区域的图像数据。
 /// &lt;/summary&gt;
 /// &lt;param name="x"&gt;区域左上角X坐标&lt;/param&gt;

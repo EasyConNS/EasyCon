@@ -401,15 +401,16 @@ ENDFUNC
     }
 
     [Test]
-    public void LibGlobal_SameNameMainGlobal_Conflict()
+    public void LibGlobal_SameNameMainGlobal_NoConflict()
     {
-        // main 声明与 lib 同名全局变量 → 编译错误
+        // main 声明与 lib 同名全局变量 → 不冲突（lib 变量不暴露）
         WriteLib("lib1.ecs", "_offset = 10");
-        var mainPath = WriteMain("_offset = 20");
+        var mainPath = WriteMain("_offset = 20\nRETURN _offset");
         var (compilation, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("冲突"));
+        Assert.That(success, Is.True, string.Join("; ", errors));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(20));
     }
 
     [Test]
@@ -484,15 +485,16 @@ RETURN $r");
     }
 
     [Test]
-    public void LibGlobal_VarConflictWithMain()
+    public void LibGlobal_VarNoConflictWithMain()
     {
-        // main 声明与 lib 同名 $ 全局变量 → 编译错误
+        // main 声明与 lib 同名 $ 全局变量 → 不冲突（lib 变量不暴露）
         WriteLib("lib1.ecs", "$total = 0");
-        var mainPath = WriteMain("$total = 10");
+        var mainPath = WriteMain("$total = 10\nRETURN $total");
         var (compilation, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("冲突"));
+        Assert.That(success, Is.True, string.Join("; ", errors));
+        var result = EvalCompilation(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(10));
     }
 
     [Test]

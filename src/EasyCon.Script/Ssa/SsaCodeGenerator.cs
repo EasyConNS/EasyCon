@@ -918,6 +918,18 @@ sealed class SsaCodeGenerator
             AddInst(v);
             return v;
         }
+        if (fn == BuiltinFunctions.OcrInitHole)
+        {
+            var lang = EmitExpression(call.Arguments[0]);
+            var dataPath = EmitExpression(call.Arguments[1]);
+            var engineMode = EmitExpression(call.Arguments[2]);
+            var psmode = EmitExpression(call.Arguments[3]);
+            var v = NewValue(SsaOp.OcrInit, ScriptType.Bool, lang, dataPath);
+            v.ExtraArgs = new List<SsaValue> { engineMode, psmode };
+            AddExtraUses(v.ExtraArgs);
+            AddInst(v);
+            return v;
+        }
         throw new InvalidOperationException($"未知内联函数: {fn.Name}");
     }
 
@@ -1140,7 +1152,7 @@ sealed class SsaCodeGenerator
         _ when to.Equals(ScriptType.Byte) && from.Equals(ScriptType.Int) => SsaOp.ConvIntToByte,
         _ when to.Equals(ScriptType.String) => SsaOp.ConvToString,
         _ when to.Equals(ScriptType.Ptr) && from.Equals(ScriptType.UInt64) => SsaOp.ConvUInt64ToPtr,
-        _ when to.Equals(ScriptType.Ptr) && from.Equals(ScriptType.Int) => SsaOp.ConvUInt64ToPtr,
+        _ when to.Equals(ScriptType.Ptr) && from.Equals(ScriptType.Int) => SsaOp.ConvIntToPtr,
         _ when to.Equals(ScriptType.Int) && from.Equals(ScriptType.Ptr) => SsaOp.ConvPtrToInt,
         _ when to.Equals(ScriptType.Int) && from.Equals(ScriptType.Double) => SsaOp.ConvDoubleToInt,
         _ when to.Equals(ScriptType.UInt64) && from.Equals(ScriptType.UInt64) => SsaOp.Nop,

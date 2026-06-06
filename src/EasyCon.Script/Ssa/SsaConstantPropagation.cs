@@ -31,7 +31,8 @@ static class SsaConstantPropagation
         HashSet<(SsaBlock from, SsaBlock to)> executableEdges)
     {
         // 预构建 def-use map：value → 使用它的指令列表
-        var useMap = BuildUseMap(func);
+        // 以及 BranchCondition 反查表：value → 使用它作为分支条件的 block 列表
+        var useMap = BuildUseMap(func, out var branchCondMap);
 
         // 初始化所有值为 Top
         foreach (var block in func.Blocks)
@@ -72,7 +73,7 @@ static class SsaConstantPropagation
             while (ssaWorklist.Count > 0)
             {
                 var val = ssaWorklist.Dequeue();
-                ProcessSsaEdge(val, func, lattice, reachableBlocks, executableEdges, blockWorklist, ssaWorklist, useMap);
+                ProcessSsaEdge(val, func, lattice, reachableBlocks, executableEdges, blockWorklist, ssaWorklist, useMap, branchCondMap);
             }
         }
     }
@@ -257,7 +258,8 @@ static class SsaConstantPropagation
         HashSet<(SsaBlock from, SsaBlock to)> executableEdges,
         Queue<SsaBlock> blockWorklist,
         Queue<SsaValue> ssaWorklist,
-        Dictionary<SsaValue, List<SsaValue>> useMap)
+        Dictionary<SsaValue, List<SsaValue>> useMap,
+        Dictionary<SsaValue, List<SsaBlock>> branchCondMap)
     {
         if (!useMap.TryGetValue(changedVal, out var users))
             return;
@@ -280,11 +282,13 @@ static class SsaConstantPropagation
         }
 
         // 如果 changedVal 是某个块的 BranchCondition，需要重新处理终结指令
-        foreach (var block in func.Blocks)
+        // 使用反查表 O(1) 而非遍历全部 block O(N)
+        if (branchCondMap.TryGetValue(changedVal, out var condBlocks))
         {
-            if (block.BranchCondition == changedVal && reachableBlocks.Contains(block))
+            foreach (var block in condBlocks)
             {
-                ProcessTerminator(block, lattice, reachableBlocks, executableEdges, blockWorklist);
+                if (reachableBlocks.Contains(block))
+                    ProcessTerminator(block, lattice, reachableBlocks, executableEdges, blockWorklist);
             }
         }
     }
@@ -314,9 +318,10 @@ static class SsaConstantPropagation
     /// <summary>
     /// 构建 def-use map：value → 直接使用该 value 的所有指令列表。
     /// </summary>
-    private static Dictionary<SsaValue, List<SsaValue>> BuildUseMap(SsaFunction func)
+    private static Dictionary<SsaValue, List<SsaValue>> BuildUseMap(SsaFunction func, out Dictionary<SsaValue, List<SsaBlock>> branchCondMap)
     {
         var useMap = new Dictionary<SsaValue, List<SsaValue>>();
+        branchCondMap = new Dictionary<SsaValue, List<SsaBlock>>();
 
         foreach (var block in func.Blocks)
         {
@@ -342,12 +347,15 @@ static class SsaConstantPropagation
                 }
             }
 
-            // BranchCondition 使用了条件值
+            // BranchCondition 反查表：value → 使用它作为分支条件的 block
             if (block.BranchCondition != null)
             {
-                // BranchCondition 不是一个指令，但它引用的值需要触发终结重评估
-                // 将 BranchCondition 的使用者关联到所属块来处理
-                // (ProcessSsaEdge 中单独检查 BranchCondition)
+                if (!branchCondMap.TryGetValue(block.BranchCondition, out var list))
+                {
+                    list = new List<SsaBlock>();
+                    branchCondMap[block.BranchCondition] = list;
+                }
+                list.Add(block);
             }
         }
 
@@ -508,6 +516,7 @@ static class SsaConstantPropagation
     private static bool SimplifyPhis(SsaFunction func, Dictionary<SsaValue, LatticeValue> lattice)
     {
         bool changed = false;
+        var replacements = new Dictionary<SsaValue, SsaValue>();
 
         foreach (var block in func.Blocks)
         {
@@ -532,17 +541,12 @@ static class SsaConstantPropagation
                 if (!allSame)
                     continue;
 
-                // 用 firstArg 替换 phi 的所有使用
-                SsaOptimizer.ReplaceAllUsesInFunction(func, phi, firstArg);
-                firstArg.Uses += phi.Uses;
-                phi.Uses = 0;
+                // 记录延迟替换
+                replacements[phi] = firstArg;
 
-                // 释放 phi 的 ExtraArgs 引用（除了 firstArg 因为我们已转移了 Uses）
+                // 释放 phi 的 ExtraArgs 引用
                 foreach (var arg in phi.ExtraArgs)
-                {
-                    if (arg != firstArg)
-                        arg.Uses--;
-                }
+                    arg.Uses--;
                 phi.ExtraArgs.Clear();
 
                 // 从 Phis 列表移除
@@ -550,6 +554,10 @@ static class SsaConstantPropagation
                 changed = true;
             }
         }
+
+        // 一遍扫描应用所有替换
+        if (replacements.Count > 0)
+            SsaOptimizer.ApplyReplaceMap(func, replacements);
 
         return changed;
     }
@@ -731,14 +739,19 @@ static class SsaConstantPropagation
             }
         }
 
-        // 应用替换：将所有对 inst 的使用替换为 replacement
-        foreach (var (inst, replacement) in replacements)
+        // 应用替换：批量收集到 map，一遍扫描统一应用
+        if (replacements.Count > 0)
         {
-            SsaOptimizer.ReplaceAllUsesInFunction(func, inst, replacement);
-            // 释放 inst 的操作数引用
-            SsaOptimizer.ReleaseOperands(inst);
-            inst.Uses = 0;
-            changed = true;
+            var replaceMap = new Dictionary<SsaValue, SsaValue>();
+            foreach (var (inst, replacement) in replacements)
+            {
+                replaceMap[inst] = replacement;
+                // 释放 inst 的操作数引用
+                SsaOptimizer.ReleaseOperands(inst);
+                inst.Uses = 0;
+                changed = true;
+            }
+            SsaOptimizer.ApplyReplaceMap(func, replaceMap);
         }
 
         return changed;
@@ -876,6 +889,8 @@ static class SsaConstantPropagation
         bool changed = false;
         // key = (SsaOp, 值哈希/字符串)，value = 首次出现的 SsaValue
         var seen = new Dictionary<ConstKey, SsaValue>();
+        var replacements = new Dictionary<SsaValue, SsaValue>();
+        var toRemove = new List<(SsaBlock block, int index)>();
 
         foreach (var block in func.Blocks)
         {
@@ -887,12 +902,9 @@ static class SsaConstantPropagation
                 var key = ConstKey.From(inst);
                 if (seen.TryGetValue(key, out var original))
                 {
-                    // 用已有的常量替换当前重复常量
-                    SsaOptimizer.ReplaceAllUsesInFunction(func, inst, original);
-                    original.Uses += inst.Uses;
-                    inst.Uses = 0;
-                    block.Instructions.RemoveAt(i);
-                    i--;
+                    // 记录延迟替换
+                    replacements[inst] = original;
+                    toRemove.Add((block, i));
                     changed = true;
                 }
                 else
@@ -901,6 +913,17 @@ static class SsaConstantPropagation
                 }
             }
         }
+
+        // 一遍扫描应用所有替换
+        if (replacements.Count > 0)
+        {
+            SsaOptimizer.ApplyReplaceMap(func, replacements);
+
+            // 从指令列表中移除重复常量（反向删除避免索引错位）
+            for (int i = toRemove.Count - 1; i >= 0; i--)
+                toRemove[i].block.Instructions.RemoveAt(toRemove[i].index);
+        }
+
         return changed;
     }
 

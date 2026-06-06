@@ -1,12 +1,25 @@
 using EasyCon.Capture;
 using EasyScript;
 using OpenCvSharp;
+using TesseractOCR.Enums;
 
 namespace EasyCon.Core;
 
 public static class OcrDelegateFactory
 {
-    public static OcrDelegate Create(Func<Mat> frameProvider)
+    /// <summary>
+    /// 创建 OcrInitDelegate：初始化并缓存 Tesseract 引擎。
+    /// </summary>
+    public static OcrInitDelegate CreateInit(OcrEngineCache cache)
+    {
+        return (lang, dataPath, engineMode, psmode) =>
+            cache.Init(lang, dataPath, engineMode, psmode);
+    }
+
+    /// <summary>
+    /// 创建 OcrDelegate：优先复用缓存引擎，未命中时 per-call 兜底。
+    /// </summary>
+    public static OcrDelegate Create(Func<Mat> frameProvider, OcrEngineCache cache, string fallbackDataPath)
     {
         return (x, y, w, h, lang) =>
         {
@@ -22,7 +35,21 @@ public static class OcrDelegateFactory
 
             using var roi = new Mat(frame, new Rect(x, y, w, h));
             using var ms = new MemoryStream(roi.ToPngBytes());
-            return OCRDetect.TesserDetect(ms, out _, lang);
+            using var img = TesseractOCR.Pix.Image.LoadFromMemory(ms.ToArray());
+
+            // 优先查缓存
+            var cached = cache.TryGet(lang);
+            if (cached != null)
+            {
+                var text = OCRDetect.TesserDetect(cached.Value.Engine, img, cached.Value.Psm, out var conf);
+                cache.LastConfidence = (int)(conf * 100);
+                return text;
+            }
+
+            // Per-call 兜底
+            var fallbackText = OCRDetect.TesserDetect(img, out var fallbackConf, lang, fallbackDataPath);
+            cache.LastConfidence = (int)(fallbackConf * 100);
+            return fallbackText;
         };
     }
 }

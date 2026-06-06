@@ -123,7 +123,7 @@ public class CaptureService
                 {
                     using var mat = cap.GetMatFrame();
                     if (mat.Empty()) return 0;
-                    il.Search(mat, out var md);
+                    il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
                     return (int)Math.Ceiling(md);
                 }
             }));
@@ -169,7 +169,7 @@ public class CaptureService
             {
                 using var mat = cap.GetMatFrame();
                 if (mat.Empty()) return 0;
-                il.Search(mat, out var md);
+                il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
                 return (int)Math.Ceiling(md);
             }
         };

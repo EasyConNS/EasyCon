@@ -132,6 +132,23 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private void AddToken(TokenType type, string value, int start)
     {
         _tokens.Add(new Token(_text, type, value, start));
+
+        // PRINT/ALERT 只在行首触发特殊参数解析
+        if (type == TokenType.IDENT &&
+            (value.Equals("print", StringComparison.OrdinalIgnoreCase) || value.Equals("alert", StringComparison.OrdinalIgnoreCase)) &&
+            IsLineStart())
+        {
+            ReadPrintArguments();
+        }
+    }
+
+    /// <summary>判断刚添加的 token 是否是当前行的第一个有效 token</summary>
+    private bool IsLineStart()
+    {
+        // tokens 中倒数第二个是前一个 token（最后一个是我们刚加的）
+        if (_tokens.Count < 2) return true;
+        var prev = _tokens[_tokens.Count - 2];
+        return prev.Type == TokenType.NEWLINE;
     }
 
     // 检查是否为标识符起始字符
@@ -320,7 +337,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             // 2. 识别 & 符号
             if (Current == '&')
             {
-                AddToken(TokenType.BitAnd, "&", start); // 假设 & 对应 BitAnd，或根据你的定义修改
+                AddToken(TokenType.BitAnd, "&", start);
                 Advance();
                 continue;
             }
@@ -399,8 +416,6 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         else
         {
             AddToken(TokenType.IDENT, word, start);
-            if (word.Equals("print", StringComparison.OrdinalIgnoreCase) || word.Equals("alert", StringComparison.OrdinalIgnoreCase))
-                ReadPrintArguments();
         }
     }
 

@@ -5,19 +5,6 @@ namespace EasyCon.Script.Binding;
 
 public static class BuiltinFunctions
 {
-    // 内置 Pixel struct
-    internal static readonly EcsStructDef PixelStructDef = CreatePixelDef();
-    private static EcsStructDef CreatePixelDef()
-    {
-        var def = new EcsStructDef { Name = "Pixel" };
-        def.Fields.Add(new EcsFieldDef { Name = "R", FieldType = ScriptType.Int });
-        def.Fields.Add(new EcsFieldDef { Name = "G", FieldType = ScriptType.Int });
-        def.Fields.Add(new EcsFieldDef { Name = "B", FieldType = ScriptType.Int });
-        def.Fields.Add(new EcsFieldDef { Name = "A", FieldType = ScriptType.Int });
-        StructLayout.Calculate(def);
-        return def;
-    }
-
     // --- 保留内置（注册 callable + root scope）---
 
     public static readonly FunctionSymbol Wait = new("WAIT", [new("duration", ScriptType.Int, hasDefault: true, defaultValue: 50)], ScriptType.Void);
@@ -33,7 +20,19 @@ public static class BuiltinFunctions
     public static readonly FunctionSymbol Jq = new("JQ",
         [new("json", ScriptType.String), new("query", ScriptType.String)],
         ScriptType.String);
-    public static readonly FunctionSymbol Input = new("INPUT", [new("prompt", ScriptType.String, hasDefault: true, defaultValue: "")], ScriptType.String);
+
+    // --- 文件 IO（低级句柄） ---
+    public static readonly FunctionSymbol FOpen = new("FOPEN", [new("path", ScriptType.String), new("mode", ScriptType.String)], ScriptType.Ptr);
+    public static readonly FunctionSymbol FRead = new("FREAD", [new("handle", ScriptType.Ptr), new("count", ScriptType.Int)], ScriptType.String);
+    public static readonly FunctionSymbol FWrite = new("FWRITE", [new("handle", ScriptType.Ptr), new("data", ScriptType.String)], ScriptType.Int);
+    public static readonly FunctionSymbol FClose = new("FCLOSE", [new("handle", ScriptType.Ptr)], ScriptType.Void);
+    public static readonly FunctionSymbol FEof = new("FEOF", [new("handle", ScriptType.Ptr)], ScriptType.Bool);
+
+    // --- 文件 IO（高级便捷） ---
+    public static readonly FunctionSymbol ReadFile = new("READFILE", [new("path", ScriptType.String)], ScriptType.String);
+    public static readonly FunctionSymbol WriteFile = new("WRITEFILE", [new("path", ScriptType.String), new("data", ScriptType.String)], ScriptType.Void);
+    public static readonly FunctionSymbol AppendFile = new("APPENDFILE", [new("path", ScriptType.String), new("data", ScriptType.String)], ScriptType.Void);
+    public static readonly FunctionSymbol FileExists = new("FILE_EXISTS", [new("path", ScriptType.String)], ScriptType.Bool);
 
     // --- 编译器内联伪函数（保留符号供 binder，不注册 callable）---
 
@@ -50,6 +49,9 @@ public static class BuiltinFunctions
         [new("var", ScriptType.Any)],
         ScriptType.Int);
 
+    // --- OCR 置信度查询（普通 callable，注册到 root scope）---
+    public static readonly FunctionSymbol OcrConf = new("OCR_CONF", [], ScriptType.Int);
+
     // --- 采集卡打洞函数（lib-only scope 可见，不放入 root scope）---
 
     public static readonly FunctionSymbol CaptureHole = new("__CAPTURE__",
@@ -61,22 +63,26 @@ public static class BuiltinFunctions
     public static readonly FunctionSymbol RoiHole = new("__ROI__",
         [new("image", ScriptType.String), new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)],
         ScriptType.String);
+    public static readonly FunctionSymbol OcrInitHole = new("__OCR_INIT__",
+        [new("lang", ScriptType.String), new("dataPath", ScriptType.String), new("engineMode", ScriptType.String), new("psmode", ScriptType.String)],
+        ScriptType.Bool);
 
     // --- 内联伪函数判断 ---
 
-    private static readonly HashSet<FunctionSymbol> IntrinsicFunctions = [Append, Length, StrConvert, IntConvert, Wait, CaptureHole, OcrHole, RoiHole, Rand];
+    private static readonly HashSet<FunctionSymbol> IntrinsicFunctions = [Append, Length, StrConvert, IntConvert, Wait, CaptureHole, OcrHole, RoiHole, OcrInitHole, Rand];
     public static bool IsIntrinsic(FunctionSymbol fn) => IntrinsicFunctions.Contains(fn);
 
     // --- 采集卡能力追踪 ---
 
-    private static readonly HashSet<FunctionSymbol> CaptureRequiringFunctions = [CaptureHole, OcrHole, RoiHole];
+    private static readonly HashSet<FunctionSymbol> CaptureRequiringFunctions = [CaptureHole, OcrHole, RoiHole, OcrInitHole];
     public const string CapturePlaceholder = "__capture__";
     public static bool RequiresCapture(FunctionSymbol fn) => CaptureRequiringFunctions.Contains(fn);
 
     // --- 注册到 root scope 的函数列表 ---
 
     private static readonly FunctionSymbol[] All =
-        [Wait, Print, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Input];
+        [Wait, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, OcrConf,
+         FOpen, FRead, FWrite, FClose, FEof, ReadFile, WriteFile, AppendFile, FileExists];
 
     internal static IReadOnlyList<FunctionSymbol> GetAll() => All;
 
@@ -84,6 +90,6 @@ public static class BuiltinFunctions
 
     // --- 采集卡洞函数列表（注册到 lib-only scope + callable）---
 
-    private static readonly FunctionSymbol[] CaptureHoles = [CaptureHole, OcrHole, RoiHole];
+    private static readonly FunctionSymbol[] CaptureHoles = [CaptureHole, OcrHole, RoiHole, OcrInitHole];
     internal static IReadOnlyList<FunctionSymbol> GetCaptureHoles() => CaptureHoles;
 }

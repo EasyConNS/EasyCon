@@ -1,4 +1,4 @@
-using AvaloniaEdit.Folding;
+﻿using AvaloniaEdit.Folding;
 using AvaloniaEdit.Highlighting;
 using EasyCon.Core;
 using EasyCon.Core.Config;
@@ -699,7 +699,12 @@ namespace EasyCon2.App
 
             _vpadService?.Deactivate();
             _state.ScriptStartTime = DateTime.Now;
-            _scriptService.Run(this, new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming), OcrDelegateFactory.Create(_captureService.GetFrame));
+            var ocrCache = new EasyCon.Capture.OcrEngineCache();
+            var ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
+            var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
+            var fallbackDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata";
+            var ocrDelegate = OcrDelegateFactory.Create(_captureService.GetFrame, ocrCache, fallbackDataPath);
+            _scriptService.Run(this, new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming), ocrDelegate, ocrInit, ocrConf);
         }
 
         private bool CheckFwVersion()

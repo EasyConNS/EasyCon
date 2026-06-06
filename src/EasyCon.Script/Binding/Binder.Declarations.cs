@@ -128,11 +128,6 @@ internal sealed partial class Binder
     {
         if (_function == null && allowGlobal)
         {
-            if (_libGlobalNames != null && _libGlobalNames.Contains(syntax.Tag))
-            {
-                _diagnostics.ReportGlobalVariableConflictsWithLib(syntax.Syntax.Location, syntax.Tag);
-                return new GlobalVariableSymbol(syntax.Tag, isReadOnly, type);
-            }
             var gvar = new GlobalVariableSymbol(syntax.Tag, isReadOnly, type);
             _scope.TryDeclareVariable(gvar);
             return gvar;
@@ -147,11 +142,6 @@ internal sealed partial class Binder
     {
         if (_function == null && allowGlobal)
         {
-            if (_libGlobalNames != null && _libGlobalNames.Contains(syntax.Tag))
-            {
-                _diagnostics.ReportGlobalVariableConflictsWithLib(syntax.Syntax.Location, syntax.Tag);
-                return new GlobalVariableSymbol(syntax.Tag, isReadOnly, type);
-            }
             var gvar = new GlobalVariableSymbol(syntax.Tag, isReadOnly, type);
             _scope.TryDeclareVariable(gvar);
             return gvar;

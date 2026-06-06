@@ -23,11 +23,11 @@ public sealed class ECSearch
         ];
     }
 
-    public static string FindOCR(string text, Mat srcBmp, out double matchDegree)
+    public static string FindOCR(string text, Mat srcBmp, out double matchDegree, string dataPath)
     {
         using MemoryStream memoryStream = new();
         memoryStream.Write(srcBmp.ToPngBytes());
-        var resultTxt = OCRDetect.TesserDetect(memoryStream, out var confidence).Trim();
+        var resultTxt = OCRDetect.TesserDetect(memoryStream, out var confidence, lang: "chi_sim", dataPath: dataPath).Trim();
         Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{confidence}");
         Debug.WriteLine($"对比原始文本:{text}，对比对象：{resultTxt}");
         // 计算编辑距离
@@ -70,7 +70,7 @@ public sealed class ECSearch
 
 public static class ILExtLeg
 {
-    public static List<Point> Search(this ImgLabel self, Mat ss, out double md)
+    public static List<Point> Search(this ImgLabel self, Mat ss, out double md, string tessdataPath)
     {
         if (self.TargetWidth > self.RangeWidth || self.TargetHeight > self.RangeHeight)
             throw new Exception("搜索图片大于搜索范围");
@@ -82,7 +82,7 @@ public static class ILExtLeg
             List<Point> result = new();
             if (self.searchMethod == SearchMethod.TesserDetect)
             {
-                var rlttxt = ECSearch.FindOCR(self.ImgBase64, range, out md);
+                var rlttxt = ECSearch.FindOCR(self.ImgBase64, range, out md, tessdataPath);
                 result = [new Point(0, 0)];
             }
             else
@@ -90,7 +90,7 @@ public static class ILExtLeg
                 byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
                 if (self.searchMethod == SearchMethod.MaskedSqDiffNormed)
                 {
-                    using var targetRGBA = imageBytes.ToMat();
+                    using var targetRGBA = Cv2.ImDecode(imageBytes, ImreadModes.Unchanged);
                     if (targetRGBA.Channels() != 4)
                         throw new Exception("Masked matching requires RGBA image");
                     Cv2.Split(targetRGBA, out var channels);

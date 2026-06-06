@@ -1,5 +1,6 @@
 using EasyCon.Script.Syntax;
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace EasyCon.Script.Resolution;
 
@@ -17,18 +18,22 @@ internal sealed class ImportResolver
     /// </summary>
     public (ImmutableArray<SyntaxTree> Trees,
             ImmutableDictionary<string, SyntaxTree> AliasedTrees,
-            DiagnosticBag Diagnostics) Resolve(SyntaxTree mainTree)
+            DiagnosticBag Diagnostics) Resolve(SyntaxTree mainTree, CompilationTiming timing)
     {
         var trees = ImmutableArray.CreateBuilder<SyntaxTree>();
         var loadedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var aliasedTrees = ImmutableDictionary.CreateBuilder<string, SyntaxTree>(StringComparer.OrdinalIgnoreCase);
 
         // 预加载内嵌标准库（最先加载）
+        var sw = Stopwatch.StartNew();
         trees.Add(StdLib.GetStdTree());
         trees.Add(StdLib.GetVisionTree());
+        timing.StdLibLoad = sw.Elapsed;
 
         // 从 import 语句加载指定的 lib 文件（递归解析嵌套 import）
+        sw.Restart();
         ResolveImportsRecursive(mainTree, trees, loadedPaths, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        timing.ImportResolve = sw.Elapsed;
 
         // 收集主脚本的 aliased import → SyntaxTree 映射
         foreach (var member in mainTree.Root.Members)
@@ -45,7 +50,9 @@ internal sealed class ImportResolver
         }
 
         // 自动加载 lib 目录下的其余脚本（跳过已由 import 显式加载的文件）
+        sw.Restart();
         AutoLoadLibDirectory(mainTree, trees, loadedPaths);
+        timing.AutoLoadLib = sw.Elapsed;
 
         // 主脚本最后加载
         trees.Add(mainTree);
@@ -104,6 +111,7 @@ internal sealed class ImportResolver
 
     /// <summary>
     /// 自动加载 lib/ 目录下的 .ecs 文件，跳过已由显式 import 加载的文件。
+    /// 并行解析以加速大型 lib 目录。
     /// </summary>
     private static void AutoLoadLibDirectory(
         SyntaxTree mainTree,
@@ -122,11 +130,21 @@ internal sealed class ImportResolver
         if (!Directory.Exists(libDir))
             return;
 
-        foreach (var libFile in Directory.GetFiles(libDir, "*.ecs"))
+        var filesToLoad = Directory.GetFiles(libDir, "*.ecs")
+            .Select(f => Path.GetFullPath(f))
+            .Where(f => loadedPaths.Add(f))
+            .ToArray();
+
+        if (filesToLoad.Length == 0)
+            return;
+
+        var loaded = new SyntaxTree[filesToLoad.Length];
+        Parallel.For(0, filesToLoad.Length, i =>
         {
-            var fullPath = Path.GetFullPath(libFile);
-            if (loadedPaths.Add(fullPath))
-                trees.Add(SyntaxTree.Load(fullPath, isLib: true));
-        }
+            loaded[i] = SyntaxTree.Load(filesToLoad[i], isLib: true);
+        });
+
+        foreach (var tree in loaded)
+            trees.Add(tree);
     }
 }

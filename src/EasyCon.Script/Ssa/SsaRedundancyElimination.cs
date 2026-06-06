@@ -1,4 +1,4 @@
-using EasyCon.Script.Binding;
+﻿using EasyCon.Script.Binding;
 using EasyCon.Script.Symbols;
 
 namespace EasyCon.Script.Ssa;
@@ -145,17 +145,33 @@ static class SsaRedundancyElimination
 
     private static void ComputeRpo(SsaFunction func)
     {
+        // 迭代 DFS 求 RPO，避免深 CFG 递归栈溢出
         var visited = new HashSet<SsaBlock>();
-        int index = 0;
-        DfsRpo(func.Entry, visited, ref index, func);
-    }
+        var postOrder = new List<SsaBlock>();
+        var stack = new Stack<(SsaBlock Block, bool Processed)>();
+        stack.Push((func.Entry, false));
 
-    private static void DfsRpo(SsaBlock block, HashSet<SsaBlock> visited, ref int index, SsaFunction func)
-    {
-        if (!visited.Add(block)) return;
-        foreach (var succ in block.GetSuccessors())
-            DfsRpo(succ, visited, ref index, func);
-        block.RpoIndex = index++;
+        while (stack.Count > 0)
+        {
+            var (block, processed) = stack.Pop();
+            if (!visited.Add(block)) continue;
+            if (processed)
+            {
+                postOrder.Add(block);
+                continue;
+            }
+            // 先标记为待处理（post-order），再压入后继
+            stack.Push((block, true));
+            // 反向压入以保持原始后继顺序
+            var succs = block.GetSuccessors().Reverse();
+            foreach (var succ in succs)
+                stack.Push((succ, false));
+        }
+
+        // RPO = post-order 的逆序
+        int index = 0;
+        for (int i = postOrder.Count - 1; i >= 0; i--)
+            postOrder[i].RpoIndex = index++;
     }
 
     internal readonly record struct CseKey(SsaOp Op, int Arg0Id, int Arg1Id, int ExtraHash, int AuxHash = 0)

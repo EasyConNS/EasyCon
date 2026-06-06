@@ -35,9 +35,8 @@ static class SsaCfgSimplification
 
             var pred = block.Predecessors[0];
 
-            // 前驱必须恰好有一个后继（即 block）
-            var predSuccs = pred.GetSuccessors().ToList();
-            if (predSuccs.Count != 1 || predSuccs[0] != block)
+            // 前驱必须恰好有一个后继（即 block）：无条件跳转且目标是 block
+            if (pred.BranchCondition != null || pred.JumpTarget != block)
                 continue;
 
             // 如果前驱有 Phi 节点，不能合并（Phi 节点需要多个前驱）
@@ -45,7 +44,7 @@ static class SsaCfgSimplification
                 continue;
 
             // 执行合并
-            MergeBlockIntoPredecessor(func, pred, block);
+            MergeBlockIntoPredecessor(func, pred, block, i);
             changed = true;
         }
 
@@ -55,7 +54,7 @@ static class SsaCfgSimplification
     /// <summary>
     /// 将 block 合并到 pred 中。
     /// </summary>
-    private static void MergeBlockIntoPredecessor(SsaFunction func, SsaBlock pred, SsaBlock block)
+    private static void MergeBlockIntoPredecessor(SsaFunction func, SsaBlock pred, SsaBlock block, int blockIndex)
     {
         // 1. 将 block 的 Phis 添加到 pred 的 Phis（虽然此时 block 只有一个前驱，但可能有 Phi）
         pred.Phis.AddRange(block.Phis);
@@ -87,8 +86,8 @@ static class SsaCfgSimplification
             }
         }
 
-        // 5. 从 func.Blocks 中移除 block
-        func.Blocks.Remove(block);
+        // 5. 从 func.Blocks 中移除 block（使用已知索引，避免 O(N) 线性搜索）
+        func.Blocks.RemoveAt(blockIndex);
     }
 
     // ============ 不可达块删除 ============

@@ -1,4 +1,4 @@
-using EasyCon.Capture;
+﻿using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
@@ -101,11 +101,17 @@ public class ScriptService : IScriptService
                 {
                     if (!labelDict.TryGetValue(lblName, out var il)) return 0;
                     using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
-                    il.Search(mat, out var md);
+                    il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
                     return (int)md;
                 };
 
-                _runner.Run(_logService, pad, OcrDelegateFactory.Create(() => _captureService.GetMatFrame()), frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token);
+                var ocrCache = new OcrEngineCache();
+                var ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
+                var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
+                var fallbackDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata";
+                var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.GetMatFrame(), ocrCache, fallbackDataPath);
+
+                _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)

@@ -17,7 +17,6 @@ internal sealed partial class Binder
     const int _max_allow_level = 3;
     private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
-    private readonly ImmutableHashSet<string>? _libGlobalNames;
     private readonly bool _isLibBinder;
     private readonly Resolution.ResolutionResult? _resolution;
 
@@ -31,7 +30,6 @@ internal sealed partial class Binder
         ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? lazyFunctionBodies = null,
         DiagnosticBag? programDiagnostics = null,
         HashSet<FunctionSymbol>? bindingFunctions = null,
-        ImmutableHashSet<string>? libGlobalNames = null,
         bool isLibBinder = false,
         Resolution.ResolutionResult? resolution = null)
     {
@@ -40,7 +38,6 @@ internal sealed partial class Binder
         _lazyFunctionBodies = lazyFunctionBodies;
         _programDiagnostics = programDiagnostics;
         _bindingFunctions = bindingFunctions;
-        _libGlobalNames = libGlobalNames;
         _isLibBinder = isLibBinder;
         _resolution = resolution;
 
@@ -78,7 +75,6 @@ internal sealed partial class Binder
         // --- Phase 1: lib 绑定（每个 lib 文件独立 scope，避免不同文件的函数冲突） ---
         var libUserFunctions = new List<FunctionSymbol>();
         var libGlobalStmts = new List<BoundStmt>();
-        var libGlobalNamesBuilder = ImmutableHashSet.CreateBuilder<string>();
         var allLibDiagnostics = new DiagnosticBag();
 
         foreach (var libTree in libTrees)
@@ -121,7 +117,6 @@ internal sealed partial class Binder
                 diagnostics.AddRange(binderFn.Diagnostics);
             }
 
-            libGlobalNamesBuilder.UnionWith(fileBinder._scope.GetDeclaredVariableNames());
             allLibDiagnostics.AddRange(fileBinder.Diagnostics);
 
             // 将当前 lib 文件的函数导入到 libOnlyScope，使后续 lib 文件可以跨文件调用
@@ -131,9 +126,6 @@ internal sealed partial class Binder
 
         var libModule = new ModuleSymbol("lib", isLib: true);
         var mainModule = new ModuleSymbol("main", isLib: false);
-
-        // 收集 lib 全局变量名（用于 main 声明冲突检测）
-        var libGlobalNames = libGlobalNamesBuilder.ToImmutable();
 
         // --- Phase 2: 主脚本绑定（惰性绑定函数体） ---
         var bindingFunctions = new HashSet<FunctionSymbol>();
@@ -172,7 +164,7 @@ internal sealed partial class Binder
 
         var mainBinder = new Binder(mainBindingScope, function: null,
             functionBodies, diagnostics, bindingFunctions,
-            libGlobalNames: libGlobalNames, resolution: resolution);
+            resolution: resolution);
 
         var mainUserFunctions = new List<FunctionSymbol>();
         var mainGlobalStmts = new List<BoundStmt>();
@@ -278,8 +270,6 @@ internal sealed partial class Binder
     private static BoundScope CreateRootScope()
     {
         var result = new BoundScope(null);
-
-        result.TryDeclareStruct("Pixel", BuiltinFunctions.PixelStructDef);
 
         foreach (var f in BuiltinFunctions.GetAll())
             result.TryDeclareFunction(f);

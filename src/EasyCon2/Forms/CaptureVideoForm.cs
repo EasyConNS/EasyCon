@@ -466,7 +466,7 @@ namespace EasyCon2.Forms
             double matchDegree = 0;
             try
             {
-                list = imglManager.Current.Search(ss, out matchDegree);
+                list = imglManager.Current.Search(ss, out matchDegree, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
                 sw.Stop();
 
                 double max_matchDegree = 0;

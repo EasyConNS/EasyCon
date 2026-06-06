@@ -55,7 +55,8 @@ public sealed class SsaValue
         or SsaOp.StoreLocal or SsaOp.StoreGlobal or SsaOp.StoreField
         or SsaOp.StoreIndex or SsaOp.StoreFieldIndex or SsaOp.Return
         or SsaOp.ImageLabel or SsaOp.Capture or SsaOp.Ocr or SsaOp.Roi
-        or SsaOp.Rand;
+        or SsaOp.Rand
+        or SsaOp.OcrInit;
 
     public override string ToString() => $"v{Id}:{Op}({Type})";
 }

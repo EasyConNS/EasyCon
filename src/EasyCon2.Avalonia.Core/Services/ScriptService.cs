@@ -1,4 +1,4 @@
-using EasyCon.Capture;
+﻿using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
 using EasyCon.Core.Services;
@@ -90,7 +90,7 @@ public class ScriptService : IScriptService
             LogPrint?.Invoke("-- 开始运行 --", "Lime");
             try
             {
-                _runner.Run(_logService, _deviceService.CreateGamePadAdapter(), null, _frameDelegate, MatExtensions.CropBase64, _labelMatchDelegate, _labelNames, _cts.Token);
+                _runner.Run(_logService, _deviceService.CreateGamePadAdapter(), null, null, () => 0, _frameDelegate, MatExtensions.CropBase64, _labelMatchDelegate, _labelNames, _cts.Token);
                 LogPrint?.Invoke("-- 运行结束 --", "Lime");
                 _logService.AddLog("运行结束");
             }

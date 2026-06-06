@@ -19,6 +19,8 @@ internal interface IEvalContext
     ICGamePad? GamePad { get; }
     IIoAdapter? IoAdapter { get; }
     OcrDelegate? Ocr { get; }
+    OcrInitDelegate? OcrInit { get; }
+    Func<int> OcrConf { get; }
     FrameDelegate? Frame { get; }
     RoiDelegate? Roi { get; }
     LabelMatchDelegate? LabelMatch { get; }

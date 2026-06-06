@@ -6,6 +6,7 @@ using EasyCon.Script.Syntax;
 using EasyScript;
 using System.CodeDom.Compiler;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 
 namespace EasyCon.Script;
@@ -25,22 +26,27 @@ public sealed class CompileResult
     public SsaProgram? Program { get; }
     public bool KeyAction { get; }
     public bool NeedIL { get; }
+    public CompilationTiming? Timing { get; }
 
-    internal CompileResult(ImmutableArray<Diagnostic> diagnostics, SsaProgram? program, bool keyAction, bool needIL)
+    internal CompileResult(ImmutableArray<Diagnostic> diagnostics, SsaProgram? program, bool keyAction, bool needIL, CompilationTiming? timing = null)
     {
         Diagnostics = diagnostics;
         Program = program;
         KeyAction = keyAction;
         NeedIL = needIL;
+        Timing = timing;
     }
 }
 
 public sealed class Compilation
 {
-    private Compilation(ResolutionResult result)
+    private readonly CompilationTiming _timing;
+
+    private Compilation(ResolutionResult result, CompilationTiming timing)
     {
         Result = result;
         SyntaxTrees = result.Trees;
+        _timing = timing;
     }
 
     /// <summary>Resolution 阶段的完整产出。</summary>
@@ -48,11 +54,12 @@ public sealed class Compilation
 
     public ImmutableArray<SyntaxTree> SyntaxTrees { get; }
 
-    public static Compilation Create(SyntaxTree mainTree)
+    public static Compilation Create(SyntaxTree mainTree, CompilationTiming? timing = null)
     {
+        timing ??= new CompilationTiming();
         var resolver = new Resolver();
-        var result = resolver.Resolve(mainTree);
-        return new Compilation(result);
+        var result = resolver.Resolve(mainTree, timing);
+        return new Compilation(result, timing);
     }
 
     /// <summary>
@@ -61,20 +68,27 @@ public sealed class Compilation
     /// </summary>
     public CompileResult Compile(ImmutableHashSet<string>? extVars)
     {
+        var sw = Stopwatch.StartNew();
         var bound = Binder.BindProgram(Result, extVars);
+        _timing.Binding = sw.Elapsed;
         var keyAction = bound.KeyAction;
         // 编译失败时回退到 BoundProgram 的乐观假设；成功路径下用 SSA 调用图分析的精确结果覆盖
         var needIL = bound.NeedIL;
 
         if (bound.Diagnostics.HasErrors())
-            return new CompileResult(bound.Diagnostics, null, keyAction, needIL);
+            return new CompileResult(bound.Diagnostics, null, keyAction, needIL, _timing);
 
         // Bound → SSA → Optimize
+        sw.Restart();
         var ssaProgram = SsaProgramBuilder.Build(bound);
-        SsaOptimizer.Optimize(ssaProgram);
+        _timing.SsaBuild = sw.Elapsed;
+
+        sw.Restart();
+        SsaOptimizer.Optimize(ssaProgram, _timing.SsaOptimizeDetails);
+        _timing.SsaOptimize = sw.Elapsed;
 
         // SSA 阶段已经做了调用图可达性分析，这里采用精确结果
-        return new CompileResult(ssaProgram.Diagnostics, ssaProgram, keyAction, ssaProgram.NeedIL);
+        return new CompileResult(ssaProgram.Diagnostics, ssaProgram, keyAction, ssaProgram.NeedIL, _timing);
     }
 
     public string FormatCode()

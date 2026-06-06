@@ -1,4 +1,8 @@
 using EasyCon.Script.Binding;
+using EasyCon.Script.Runtime;
+using EasyCon.Script.Symbols;
+using System.Collections.Immutable;
+
 namespace EasyCon.Script.Ssa;
 
 /// <summary>
@@ -47,7 +51,7 @@ public enum SsaOp : byte
     // ---- 类型转换 ----
     ConvBoolToInt, ConvByteToInt, ConvIntToUInt,
     ConvIntToUInt64, ConvIntToDouble, ConvIntToByte,
-    ConvUIntToUInt64, ConvUInt64ToPtr, ConvPtrToInt,
+    ConvUIntToUInt64, ConvUInt64ToPtr, ConvPtrToInt, ConvIntToPtr,
     ConvDoubleToInt, ConvToString,
     ConvUInt64ToInt,
     ConvToInt,      // 运行时通用转换：调用 Value.ToInt()
@@ -88,10 +92,13 @@ public enum SsaOp : byte
     Wait,           // Arg0=duration
     Rand,           // Arg0=max, 返回 [0, max) 随机整数
 
+    // ---- OCR 引擎初始化 ----
+    OcrInit,        // Arg0=lang, Arg1=dataPath, ExtraArgs=[engineMode, psmode], 结果=0/1(bool)
+
     // ---- 采集卡打洞函数 ----
     Capture,        // Arg0=x, ExtraArgs=[y, w, h]
-    Ocr,            // Arg0=x, ExtraArgs=[y, w, h, lang]
-    Roi,            // Arg0=image, ExtraArgs=[x, y, w, h]
+    Ocr,            // Arg0=x, Arg1=y, ExtraArgs=[w, h, lang]
+    Roi,            // Arg0=image, Arg1=x, ExtraArgs=[y, w, h]
 
     // ---- 运行时 ----
     RuntimeValue,   // AuxSymbol 存 name string（特殊用法）
