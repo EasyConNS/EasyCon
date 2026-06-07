@@ -12,6 +12,7 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Text;
 using System.Windows.Input;
+using Resources = EasyCon2.UI.Common.Properties.Resources;
 using Window = Avalonia.Controls.Window;
 using WindowState = Avalonia.Controls.WindowState;
 
@@ -29,6 +30,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private Window? _espConfigWindow;
     private MonitorViewModel? _monitorViewModel;
     private readonly FileTreeViewModel _fileTreeViewModel;
+    private string? _projectDirectoryPath;
 
     // 窗口标题（含版本号）
     [ObservableProperty]
@@ -119,20 +121,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isMonitorVisible = true;
 
-    // 监视器工具条可见性（鼠标悬停）
-    [ObservableProperty]
-    private bool _isMonitorToolbarVisible = false;
-
     // 监视器暂停状态
     [ObservableProperty]
     private bool _isMonitorPaused = false;
 
     // 监视器暂停按钮文本
     public string MonitorPauseButtonText => IsMonitorPaused ? "继续" : "暂停";
-
-    // 日志工具条可见性
-    [ObservableProperty]
-    private bool _isLogToolbarVisible = false;
+    public string MonitorVisibilityButtonText => IsMonitorVisible ? "监视器关闭" : "监视器显示";
 
     // 监视器视图
     [ObservableProperty]
@@ -177,6 +172,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _selectedFirmware = "leonardo";
 
+    [ObservableProperty]
+    private bool _isFirmwarePanelExpanded = false;
+
     // 远程控制模块属性（命令保留，UI已隐藏）
     public ICommand OpenEditorCommand { get; }
     public ICommand ConnectNintendoSwitchCommand { get; }
@@ -198,6 +196,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand OpenTagEditorCommand { get; }
     public ICommand OpenESPConfigCommand { get; }
     public ICommand ToggleMonitorPauseCommand { get; }
+    public ICommand OpenCaptureConsoleCommand { get; }
+    public ICommand ShowScriptSyntaxCommand { get; }
+    public ICommand OpenAiAgentCommand { get; }
+    public ICommand ToggleMonitorVisibilityCommand { get; }
+    public ICommand ToggleFirmwarePanelCommand { get; }
+    public ICommand SelectColorSchemeCommand { get; }
 
     // 刷新数据源命令
     public ICommand RefreshSerialPortsCommand { get; }
@@ -324,6 +328,14 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
         ToggleMonitorPauseCommand = new RelayCommand(ToggleMonitorPause);
+        OpenCaptureConsoleCommand = new RelayCommand(OpenCaptureConsole);
+        ShowScriptSyntaxCommand = new RelayCommand(ShowScriptSyntax);
+        OpenAiAgentCommand = new RelayCommand(OpenAiAgent);
+        ToggleMonitorVisibilityCommand = new RelayCommand(ToggleMonitorVisibility);
+        ToggleFirmwarePanelCommand = new RelayCommand(ToggleFirmwarePanel);
+        SelectColorSchemeCommand = new RelayCommand<string>(SelectColorScheme);
+
+        ThemeManager.Instance.ApplyColorScheme(ThemeManager.IndustrialGraySchemeName);
 
         // 初始化示例数据
         InitializeSampleData();
@@ -347,12 +359,23 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenFolderDialogRequested?.Invoke();
     }
 
+    private void SelectColorScheme(string? colorSchemeName)
+    {
+        if (string.IsNullOrWhiteSpace(colorSchemeName))
+            return;
+
+        ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
+        _logService.AddLog($"已切换配色: {colorSchemeName}");
+    }
+
     /// <summary>
     /// 由 MainWindow 调用：用户选择了项目目录后加载文件树。
     /// </summary>
     public void OpenProjectFromDirectory(string directoryPath)
     {
+        _projectDirectoryPath = directoryPath;
         _fileTreeViewModel.LoadDirectory(directoryPath);
+        UpdateFileTreeForSelectedEditorTab();
         _logService.AddLog($"已打开项目: {directoryPath}");
     }
 
@@ -375,15 +398,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     var label = ECCore.LoadIL(filePath);
                     var tagVm = new TagEditorViewModel(label);
 
-                    // 将 System.Drawing.Image 转换为 Avalonia IImage 绑定到目标图
-                    var sdImage = label.GetImage();
-                    if (sdImage != null)
-                    {
-                        using var ms = new MemoryStream();
-                        sdImage.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                        ms.Position = 0;
-                        tagVm.TargetImage = new Bitmap(ms);
-                    }
+                    tagVm.TargetImage = CreateAvaloniaBitmap(label);
 
                     TagEditorViewModel = tagVm;
                 }
@@ -503,6 +518,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // 更新文件树到脚本所在目录
         var dir = Path.GetDirectoryName(path);
+        _projectDirectoryPath = dir;
         _fileTreeViewModel.LoadDirectory(dir);
 
         // 初始化内嵌编辑器
@@ -729,10 +745,124 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private void ToggleMonitorVisibility()
+    {
+        IsMonitorVisible = !IsMonitorVisible;
+        if (_monitorViewModel == null) return;
+
+        if (IsMonitorVisible)
+            _monitorViewModel.StartMonitoring();
+        else
+            _monitorViewModel.StopMonitoring();
+    }
+
+    private void ToggleFirmwarePanel()
+    {
+        IsFirmwarePanelExpanded = !IsFirmwarePanelExpanded;
+    }
+
+    private void OpenCaptureConsole()
+    {
+        _logService.AddLog("搜图控制台功能待接入");
+    }
+
+    private void ShowScriptSyntax()
+    {
+        var textBox = new TextBox
+        {
+            Text = Resources.scriptdoc,
+            IsReadOnly = true,
+            AcceptsReturn = true,
+            TextWrapping = global::Avalonia.Media.TextWrapping.Wrap,
+            FontFamily = new global::Avalonia.Media.FontFamily("Microsoft YaHei UI, Consolas"),
+            FontSize = 13,
+            Padding = new global::Avalonia.Thickness(12)
+        };
+        ScrollViewer.SetVerticalScrollBarVisibility(textBox, global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto);
+        ScrollViewer.SetHorizontalScrollBarVisibility(textBox, global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled);
+
+        var window = new Window
+        {
+            Title = "脚本语法",
+            Width = 820,
+            Height = 640,
+            MinWidth = 520,
+            MinHeight = 360,
+            Content = textBox
+        };
+        window.Show();
+    }
+
+    private void OpenAiAgent()
+    {
+        _logService.AddLog("AI Agent 功能待接入");
+    }
+
     partial void OnCurrentScriptPathChanged(string value)
     {
         (OpenEditorCommand as RelayCommand)?.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ScriptDisplayPath));
+        if (SelectedEditorTab == 1)
+            UpdateFileTreeForSelectedEditorTab();
+    }
+
+    partial void OnSelectedEditorTabChanged(int value)
+    {
+        UpdateFileTreeForSelectedEditorTab();
+    }
+
+    private void UpdateFileTreeForSelectedEditorTab()
+    {
+        if (SelectedEditorTab == 1)
+        {
+            _fileTreeViewModel.ShowImgLabelTree(GetCurrentScriptRootDirectory());
+            return;
+        }
+
+        _fileTreeViewModel.ShowNormalTree();
+    }
+
+    private string? GetCurrentScriptRootDirectory()
+    {
+        var currentPath = CurrentScriptPath;
+        if (!string.IsNullOrWhiteSpace(currentPath) &&
+            currentPath != "未选择脚本" &&
+            File.Exists(currentPath))
+        {
+            if (IsPathInsideDirectory(currentPath, _projectDirectoryPath))
+                return _projectDirectoryPath;
+
+            return Path.GetDirectoryName(currentPath);
+        }
+
+        return _projectDirectoryPath;
+    }
+
+    private static bool IsPathInsideDirectory(string filePath, string? directoryPath)
+    {
+        if (string.IsNullOrWhiteSpace(directoryPath) || !Directory.Exists(directoryPath))
+            return false;
+
+        try
+        {
+            var relativePath = Path.GetRelativePath(directoryPath, filePath);
+            return !relativePath.StartsWith("..", StringComparison.Ordinal) &&
+                   !Path.IsPathRooted(relativePath);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static Bitmap? CreateAvaloniaBitmap(EasyCon.Capture.ImgLabel label)
+    {
+        var sdImage = label.GetImage();
+        using var clone = new System.Drawing.Bitmap(sdImage);
+        using var ms = new MemoryStream();
+        clone.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+        ms.Position = 0;
+        return new Bitmap(ms);
     }
 
     partial void OnIsMonitorPausedChanged(bool value)
@@ -743,6 +873,11 @@ public partial class MainWindowViewModel : ViewModelBase
             _monitorViewModel.StopMonitoring();
         else
             _monitorViewModel.StartMonitoring();
+    }
+
+    partial void OnIsMonitorVisibleChanged(bool value)
+    {
+        OnPropertyChanged(nameof(MonitorVisibilityButtonText));
     }
 
     private void DropFile(string? path)

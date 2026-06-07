@@ -8,6 +8,9 @@
                              FontFamily="Consolas"
                              FontSize="14"
                              WordWrap="False"
-                             Background="#FAFAF7"
-                             Foreground="#26251E" />
+                             Background="#FFFFFF"
+                             Foreground="#26251E"
+                             Padding="6"
+                             BorderBrush="#9EA0A6"
+                             BorderThickness="1" />
 </UserControl>

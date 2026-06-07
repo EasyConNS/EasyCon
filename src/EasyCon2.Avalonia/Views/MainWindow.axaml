@@ -19,6 +19,7 @@
           Height="800"
           MinWidth="800"
           MinHeight="600"
+          Background="{DynamicResource WorkbenchWindowBrush}"
           behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
 
     <Window.Resources>
@@ -26,35 +27,137 @@
         <conv:BoolToRunColorConverter x:Key="BoolToRunColor" />
     </Window.Resources>
 
-    <Grid RowDefinitions="*,Auto">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="文件">
+                <MenuItem Header="新建" InputGesture="Ctrl+N" IsEnabled="False"/>
+                <MenuItem Header="打开" InputGesture="Ctrl+O"
+                          Command="{Binding OpenScriptCommand}"
+                          CommandParameter="{Binding $parent[Window]}"/>
+                <MenuItem Header="保存" InputGesture="Ctrl+S" IsEnabled="False"/>
+                <MenuItem Header="另存为" InputGesture="Ctrl+Shift+S" IsEnabled="False"/>
+                <MenuItem Header="关闭" InputGesture="Ctrl+W" IsEnabled="False"/>
+                <Separator/>
+                <MenuItem Header="退出" InputGesture="Ctrl+Q" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="编辑">
+                <MenuItem Header="查找替换" InputGesture="Ctrl+F" IsEnabled="False"/>
+                <MenuItem Header="查找下一个" InputGesture="F3" IsEnabled="False"/>
+                <MenuItem Header="注释/取消注释" InputGesture="Ctrl+OemQuestion" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="视图">
+                <MenuItem Header="配色">
+                    <MenuItem Header="工业灰"
+                              Command="{Binding SelectColorSchemeCommand}"
+                              CommandParameter="工业灰"/>
+                    <MenuItem Header="暖色调"
+                              Command="{Binding SelectColorSchemeCommand}"
+                              CommandParameter="暖色调"/>
+                    <MenuItem Header="Dark模式"
+                              Command="{Binding SelectColorSchemeCommand}"
+                              CommandParameter="Dark模式"/>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="脚本">
+                <MenuItem Header="格式化" InputGesture="Ctrl+R" IsEnabled="False"/>
+                <MenuItem Header="运行" InputGesture="F5" Command="{Binding RunScriptCommand}"/>
+            </MenuItem>
+            <MenuItem Header="搜图">
+                <MenuItem Header="采集卡类型" IsEnabled="False"/>
+                <MenuItem Header="搜图说明" IsEnabled="False"/>
+                <MenuItem Header="设置环境变量" IsEnabled="False"/>
+                <MenuItem Header="搜图控制台" Command="{Binding OpenCaptureConsoleCommand}"/>
+            </MenuItem>
+            <MenuItem Header="设置">
+                <MenuItem Header="推送设置" IsEnabled="False"/>
+                <MenuItem Header="显示调试信息" IsEnabled="False"/>
+                <MenuItem Header="烧录自动运行" IsEnabled="False"/>
+                <MenuItem Header="显示折叠" IsEnabled="False"/>
+                <MenuItem Header="代码自动补全" IsEnabled="False"/>
+                <MenuItem Header="深色模式" IsEnabled="False"/>
+                <MenuItem Header="高精度模式" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="蓝牙" IsEnabled="False">
+                <MenuItem Header="蓝牙设备驱动配置"/>
+            </MenuItem>
+            <MenuItem Header="ESP32">
+                <MenuItem Header="手柄设置" Command="{Binding OpenESPConfigCommand}"/>
+                <MenuItem Header="取消配对" IsEnabled="False"/>
+            </MenuItem>
+            <MenuItem Header="画图" IsEnabled="False">
+                <MenuItem Header="喷射战士"/>
+                <MenuItem Header="自由画板（鼠标代替摇杆）"/>
+            </MenuItem>
+            <MenuItem Header="帮助">
+                <MenuItem Header="固件模式" IsEnabled="False"/>
+                <MenuItem Header="联机模式" IsEnabled="False"/>
+                <MenuItem Header="烧录模式" IsEnabled="False"/>
+                <MenuItem Header="脚本语法" Command="{Binding ShowScriptSyntaxCommand}"/>
+                <Separator/>
+                <MenuItem Header="检查更新" IsEnabled="False"/>
+                <MenuItem Header="项目源码" IsEnabled="False"/>
+                <MenuItem Header="关于" IsEnabled="False"/>
+            </MenuItem>
+        </Menu>
 
-        <!-- 上部主操作区：三列布局 -->
-        <Grid Grid.Row="0" ColumnDefinitions="220,*,5,300">
+        <Grid RowDefinitions="*,Auto,Auto">
+
+            <!-- 上部主操作区：三列布局 -->
+            <Grid Grid.Row="0" ColumnDefinitions="220,*,5,300">
 
             <!-- 第一列：文件层级侧边栏 -->
             <Border Grid.Column="0"
-                    BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                    Background="{DynamicResource WorkbenchSideBrush}"
+                    BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                     BorderThickness="0,0,1,0">
                 <ContentControl Content="{Binding FileTreeView}" />
             </Border>
 
             <!-- 第二列：标签切换（文本编辑器 / 标签编辑器） -->
-            <Border Grid.Column="1">
+            <Border Grid.Column="1"
+                    Background="{DynamicResource WorkbenchWindowBrush}">
                 <TabControl SelectedIndex="{Binding SelectedEditorTab}">
                     <TabItem Header="文本编辑">
                         <Grid RowDefinitions="Auto,*">
                             <!-- 脚本路径栏 -->
                             <Border Grid.Row="0"
                                     Padding="8,4"
-                                    BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                                    Background="{DynamicResource WorkbenchPanelBrush}"
+                                    BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                                     BorderThickness="0,0,0,1">
-                                <TextBlock Text="{Binding ScriptDisplayPath}"
-                                           FontSize="12"
-                                           Opacity="0.6"
-                                           TextTrimming="CharacterEllipsis"/>
+                                <Grid ColumnDefinitions="*,Auto,24">
+                                    <TextBlock Text="{Binding ScriptDisplayPath}"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <Button Grid.Column="1"
+                                            Classes="flat-link"
+                                            Content="脚本语法"
+                                            Command="{Binding ShowScriptSyntaxCommand}"/>
+                                    <Border Grid.Column="2"
+                                            Classes="help-dot"
+                                            Margin="6,0,0,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="?"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource WorkbenchOnAccentBrush}"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"/>
+                                    </Border>
+                                </Grid>
                             </Border>
                             <!-- 编辑器始终显示 -->
-                            <editor:ScriptEditorControl x:Name="ScriptEditor" Grid.Row="1"/>
+                            <Grid Grid.Row="1">
+                                <editor:ScriptEditorControl x:Name="ScriptEditor"/>
+                                <Button Classes="ai-agent"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,0,10,10"
+                                        Content="✦ AI Agent"
+                                        Command="{Binding OpenAiAgentCommand}"/>
+                            </Grid>
                         </Grid>
                     </TabItem>
                     <TabItem Header="标签编辑">
@@ -67,7 +170,7 @@
             <GridSplitter Grid.Column="2"
                           HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch"
-                          Background="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                          Background="{DynamicResource WorkbenchBorderBrush}"
                           ResizeBehavior="PreviousAndNext"/>
 
             <!-- 第三列：监视器（上） + 日志（下） -->
@@ -75,56 +178,52 @@
 
                 <!-- 第三列上半部分：监视器 -->
                 <Border Grid.Row="0"
-                        BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                        BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                         BorderThickness="0,0,0,1"
-                        PointerEntered="MonitorArea_PointerEntered"
-                        PointerExited="MonitorArea_PointerExited">
+                        DoubleTapped="MonitorArea_DoubleTapped">
                     <Grid>
-                        <ContentControl Content="{Binding MonitorView}" />
-                        <!-- 暂停按钮覆盖层 -->
-                        <Border HorizontalAlignment="Right"
+                        <ContentControl Content="{Binding MonitorView}"
+                                        IsVisible="{Binding IsMonitorVisible}" />
+                        <Button HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
                                 Margin="8"
-                                IsVisible="{Binding IsMonitorToolbarVisible}"
-                                Background="{DynamicResource ThemeControlFillColorDefaultBrush}"
-                                Padding="5"
-                                CornerRadius="4">
-                            <Button Content="{Binding MonitorPauseButtonText}"
-                                    Command="{Binding ToggleMonitorPauseCommand}"
-                                    Padding="10,5"
-                                    HorizontalContentAlignment="Center"/>
-                        </Border>
+                                Classes="flat-link"
+                                Content="{Binding MonitorVisibilityButtonText}"
+                                Command="{Binding ToggleMonitorVisibilityCommand}"/>
                     </Grid>
                 </Border>
 
                 <!-- 第三列下半部分：日志输出 -->
-                <Grid Grid.Row="1">
-                    <TextBox Text="{Binding LogOutput}"
+                <Grid Grid.Row="1" RowDefinitions="28,*">
+                    <Grid Grid.Row="0"
+                          ColumnDefinitions="*,Auto"
+                          Background="{DynamicResource WorkbenchPanelBrush}">
+                        <TextBlock Text="输出窗口"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                   FontSize="12"/>
+                        <Button Grid.Column="1"
+                                Classes="flat-link"
+                                Content="清空输出 ↻"
+                                Foreground="{DynamicResource WorkbenchAmberBrush}"
+                                Command="{Binding ClearLogCommand}"
+                                Margin="0,0,8,0"/>
+                    </Grid>
+                    <TextBox Grid.Row="1"
+                            Text="{Binding LogOutput}"
                             IsReadOnly="True"
                             AcceptsReturn="True"
                             TextWrapping="NoWrap"
                             ScrollViewer.VerticalScrollBarVisibility="Auto"
                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                            FontFamily="Consolas, Microsoft YaHei"
+                            FontFamily="{DynamicResource WorkbenchMonoFontFamily}"
                             FontSize="13"
                             Padding="10"
-                            behaviors:AutoScrollBehavior.IsEnabled="True"
-                            PointerEntered="LogBox_PointerEntered"
-                            PointerExited="LogBox_PointerExited"/>
-                    <!-- 工具条覆盖层 -->
-                    <Border HorizontalAlignment="Right"
-                            VerticalAlignment="Top"
-                            Margin="10"
-                            IsVisible="{Binding IsLogToolbarVisible}"
-                            Background="{DynamicResource ThemeControlFillColorDefaultBrush}"
-                            Padding="5"
-                            PointerEntered="LogBox_PointerEntered"
-                            PointerExited="LogBox_PointerExited">
-                        <Button Content="清屏"
-                               Command="{Binding ClearLogCommand}"
-                               Padding="10,5"
-                               HorizontalContentAlignment="Center"/>
-                    </Border>
+                            Background="{DynamicResource WorkbenchLogBrush}"
+                            Foreground="{DynamicResource WorkbenchLogTextBrush}"
+                            BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                            behaviors:AutoScrollBehavior.IsEnabled="True"/>
                 </Grid>
             </Grid>
         </Grid>
@@ -132,7 +231,8 @@
         <!-- 下部模块操作区 -->
         <Border Grid.Row="1"
                Padding="10"
-               BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+               Background="{DynamicResource WorkbenchPanelBrush}"
+               BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                BorderThickness="0,1,0,0">
             <Grid ColumnDefinitions="*,*,*,*"
                  HorizontalAlignment="Stretch">
@@ -166,6 +266,7 @@
                                     Content="自动连接"
                                     Command="{Binding AutoConnectNintendoSwitchCommand}"
                                     IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                    Classes="outline-accent"
                                     Margin="5,0,0,0"
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"/>
@@ -210,72 +311,140 @@
                                        Foreground="{Binding IsControllerConnected, Converter={StaticResource BoolToGreenBrush}}"/>
                         </StackPanel>
                     </GroupBox.Header>
-                    <StackPanel Orientation="Vertical" Spacing="10">
+                    <Grid RowDefinitions="Auto,Auto"
+                          ColumnDefinitions="*,Auto,Auto"
+                          RowSpacing="10"
+                          ColumnSpacing="10">
                         <!-- 第一排：下拉框 + 开启映射按钮 -->
-                        <Grid ColumnDefinitions="*,Auto">
+                        <Grid Grid.Row="0"
+                              Grid.Column="0"
+                              Grid.ColumnSpan="2"
+                              ColumnDefinitions="*">
                             <ComboBox Grid.Column="0"
                                       ItemsSource="{Binding ControlSourceOptions}"
                                       SelectedItem="{Binding SelectedControlSource}"
                                       HorizontalAlignment="Stretch"
                                       behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshControlSourcesCommand}"/>
-                            <Button Grid.Column="1"
-                                    Content="{Binding ControllerButtonText}"
-                                    Command="{Binding ConnectControllerCommand}"
-                                    IsEnabled="{Binding !IsConnectingController}"
-                                    Margin="5,0,0,0"
-                                    Padding="8,4"
-                                    VerticalAlignment="Center"/>
                         </Grid>
-                        <!-- 第二排：录制脚本 + 停止录制 + 修改按键映射 -->
-                        <Grid ColumnDefinitions="*,*,*">
-                            <Button Grid.Column="0"
-                                    Content="录制脚本"
-                                    Command="{Binding StartRecordCommand}"
-                                    Margin="0,0,5,0"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"/>
-                            <Button Grid.Column="1"
-                                    Content="停止录制"
-                                    Command="{Binding StopRecordCommand}"
-                                    Margin="5,0,5,0"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"/>
-                            <Button Grid.Column="2"
-                                    Content="修改按键映射"
-                                    Command="{Binding EditKeyMappingCommand}"
-                                    CommandParameter="{Binding $parent[Window]}"
-                                    IsEnabled="{Binding IsEditKeyMappingEnabled}"
-                                    Margin="5,0,0,0"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"/>
-                        </Grid>
-                    </StackPanel>
+                        <Button Grid.Row="0"
+                                Grid.Column="2"
+                                Content="{Binding ControllerButtonText}"
+                                Command="{Binding ConnectControllerCommand}"
+                                IsEnabled="{Binding !IsConnectingController}"
+                                Padding="8,4"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Stretch"/>
+                        <!-- 第二排：录制脚本 + 停止录制 + 按键映射 -->
+                        <Button Grid.Row="1"
+                                Grid.Column="0"
+                                Content="录制脚本"
+                                Command="{Binding StartRecordCommand}"
+                                Padding="12,4"
+                                HorizontalAlignment="Left"
+                                HorizontalContentAlignment="Center"/>
+                        <Button Grid.Row="1"
+                                Grid.Column="1"
+                                Content="停止录制"
+                                Command="{Binding StopRecordCommand}"
+                                Padding="12,4"
+                                HorizontalContentAlignment="Center"/>
+                        <Button Grid.Row="1"
+                                Grid.Column="2"
+                                Content="按键映射"
+                                Command="{Binding EditKeyMappingCommand}"
+                                CommandParameter="{Binding $parent[Window]}"
+                                IsEnabled="{Binding IsEditKeyMappingEnabled}"
+                                Padding="12,4"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"/>
+                    </Grid>
                 </GroupBox>
 
                 <!-- 运行脚本按钮（不变） -->
                 <Border Grid.Column="3"
-                       Margin="5"
-                       Padding="10">
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="10">
-                        <TextBlock Text="{Binding RunTimeDisplay}"
-                                   FontSize="24"
-                                   FontWeight="Bold"
-                                   FontFamily="Consolas"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
-                        <Button Content="{Binding RunButtonText}"
-                                Command="{Binding RunScriptCommand}"
-                                FontSize="18"
-                                FontWeight="Bold"
-                                Foreground="White"
-                                Background="{Binding IsRunning, Converter={StaticResource BoolToRunColor}}"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"
-                                VerticalContentAlignment="Center"/>
-                    </StackPanel>
+                        Margin="5"
+                        Padding="10"
+                        Background="{DynamicResource WorkbenchPanelBrush}">
+                    <Grid>
+                        <StackPanel Orientation="Vertical"
+                                    HorizontalAlignment="Stretch"
+                                    Spacing="8"
+                                    Margin="0,0,0,22">
+                            <TextBlock Text="{Binding RunTimeDisplay}"
+                                       FontSize="24"
+                                       FontWeight="Bold"
+                                       FontFamily="Consolas"
+                                       Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                            <Button Content="{Binding RunButtonText}"
+                                    Command="{Binding RunScriptCommand}"
+                                    Classes="run-button"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Foreground="{DynamicResource WorkbenchOnAccentBrush}"
+                                    Background="{Binding IsRunning, Converter={StaticResource BoolToRunColor}}"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                        <Button Classes="footer-reveal"
+                                Command="{Binding ToggleFirmwarePanelCommand}"
+                                IsVisible="{Binding !IsFirmwarePanelExpanded}"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Bottom"
+                                Margin="0,0,0,-8">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="固件与远程设置"
+                                           VerticalAlignment="Center"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                                <TextBlock Text="↓"
+                                           VerticalAlignment="Center"
+                                           FontSize="13"
+                                           Foreground="{DynamicResource WorkbenchAccentBrush}"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
                 </Border>
             </Grid>
         </Border>
-    </Grid>
+
+            <Grid Grid.Row="2"
+                  ColumnDefinitions="Auto,Auto,Auto,Auto,16,Auto,120,Auto,*,Auto"
+                  IsVisible="{Binding IsFirmwarePanelExpanded}"
+                  Margin="12,6,12,8"
+                  ColumnSpacing="8">
+                    <Button Grid.Column="0"
+                            Content="远程运行"
+                            Command="{Binding RemoteRunCommand}"/>
+                    <Button Grid.Column="1"
+                            Content="远程停止"
+                            Command="{Binding RemoteStopCommand}"/>
+                    <Button Grid.Column="2"
+                            Content="编译烧录"
+                            Command="{Binding CompileFlashCommand}"/>
+                    <Button Grid.Column="3"
+                            Content="清除烧录"
+                            Command="{Binding ClearFlashCommand}"/>
+                    <TextBlock Grid.Column="5"
+                               Text="固件"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource WorkbenchTextBrush}"/>
+                    <ComboBox Grid.Column="6"
+                              ItemsSource="{Binding FirmwareOptions}"
+                              SelectedItem="{Binding SelectedFirmware}"/>
+                    <Button Grid.Column="7"
+                            Content="生成"
+                            Command="{Binding GenerateFirmwareCommand}"/>
+                    <Button Grid.Column="9"
+                            Classes="footer-reveal"
+                            Content="↑"
+                            Foreground="{DynamicResource WorkbenchAccentBrush}"
+                            FontSize="16"
+                            Command="{Binding ToggleFirmwarePanelCommand}"/>
+            </Grid>
+        </Grid>
+    </DockPanel>
 </Window>

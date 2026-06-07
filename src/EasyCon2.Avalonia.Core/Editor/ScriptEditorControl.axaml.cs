@@ -355,9 +355,9 @@ public partial class ScriptEditorControl : UserControl
         if (_isDarkTheme)
         {
             _editor.Background = new SolidColorBrush(
-                Color.FromRgb(20, 20, 19));
+                Color.FromRgb(32, 33, 35));
             _editor.Foreground = new SolidColorBrush(
-                Color.FromRgb(250, 249, 245));
+                Color.FromRgb(240, 240, 243));
 
             var current = _editor.SyntaxHighlighting;
             if (current != null && !current.Name.EndsWith("-Dark"))
@@ -370,7 +370,7 @@ public partial class ScriptEditorControl : UserControl
         else
         {
             _editor.Background = new SolidColorBrush(
-                Color.FromRgb(250, 250, 247));
+                Color.FromRgb(255, 255, 255));
             _editor.Foreground = new SolidColorBrush(
                 Color.FromRgb(38, 37, 30));
 

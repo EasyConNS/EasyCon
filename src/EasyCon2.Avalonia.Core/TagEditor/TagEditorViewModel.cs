@@ -20,7 +20,19 @@ public partial class TagEditorViewModel : ObservableObject
     [ObservableProperty]
     private IImage? _rangePreviewImage;
 
+    [ObservableProperty]
+    private string _matchScoreText = "匹配度： --";
+
     public static readonly IReadOnlyList<SearchMethod> SearchMethods = ECCore.GetSearchMethods().ToList();
+
+    public static readonly IReadOnlyList<string> ParameterOptions =
+    [
+        "无",
+        "灰度",
+        "二值",
+        "高斯模糊",
+        "其他"
+    ];
 
     #region Proxy properties from ImgLabel
 
@@ -94,6 +106,17 @@ public partial class TagEditorViewModel : ObservableObject
 
     partial void OnUseOtherChanged(bool value) => Label.UseOther = value;
 
+    [ObservableProperty]
+    private string _selectedParameterOption = "无";
+
+    partial void OnSelectedParameterOptionChanged(string value)
+    {
+        UseGrayscale = value == "灰度";
+        UseBinary = value == "二值";
+        UseGaussianBlur = value == "高斯模糊";
+        UseOther = value == "其他";
+    }
+
     #endregion
 
     public TagEditorViewModel() { }
@@ -119,7 +142,73 @@ public partial class TagEditorViewModel : ObservableObject
         UseBinary = label.UseBinary;
         UseGaussianBlur = label.UseGaussianBlur;
         UseOther = label.UseOther;
+        SelectedParameterOption = GetParameterOption();
     }
 
     public ImgLabel ToImgLabel() => Label with { };
+
+    [RelayCommand]
+    private void Save()
+    {
+        Label.Save(Label.path);
+    }
+
+    [RelayCommand]
+    private void IncrementCoordinate(string name)
+    {
+        AdjustCoordinate(name, 1);
+    }
+
+    [RelayCommand]
+    private void DecrementCoordinate(string name)
+    {
+        AdjustCoordinate(name, -1);
+    }
+
+    private void AdjustCoordinate(string name, int delta)
+    {
+        static int Clamp(int value) => Math.Clamp(value, 0, 9999);
+
+        switch (name)
+        {
+            case nameof(TargetX):
+                TargetX = Clamp(TargetX + delta);
+                break;
+            case nameof(TargetY):
+                TargetY = Clamp(TargetY + delta);
+                break;
+            case nameof(TargetWidth):
+                TargetWidth = Clamp(TargetWidth + delta);
+                break;
+            case nameof(TargetHeight):
+                TargetHeight = Clamp(TargetHeight + delta);
+                break;
+            case nameof(RangeX):
+                RangeX = Clamp(RangeX + delta);
+                break;
+            case nameof(RangeY):
+                RangeY = Clamp(RangeY + delta);
+                break;
+            case nameof(RangeWidth):
+                RangeWidth = Clamp(RangeWidth + delta);
+                break;
+            case nameof(RangeHeight):
+                RangeHeight = Clamp(RangeHeight + delta);
+                break;
+        }
+    }
+
+    private string GetParameterOption()
+    {
+        if (UseGrayscale)
+            return "灰度";
+        if (UseBinary)
+            return "二值";
+        if (UseGaussianBlur)
+            return "高斯模糊";
+        if (UseOther)
+            return "其他";
+
+        return "无";
+    }
 }

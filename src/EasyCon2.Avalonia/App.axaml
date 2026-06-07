@@ -13,6 +13,7 @@
     </Application.DataTemplates>
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://EasyCon2.Avalonia/Styles/EasyConWorkbenchTheme.axaml" />
         <!-- AvaloniaEdit styles (required!) -->
         <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
     </Application.Styles>

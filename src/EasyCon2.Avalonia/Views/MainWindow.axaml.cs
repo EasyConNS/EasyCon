@@ -25,11 +25,26 @@ public partial class MainWindow : Window
 
     private void OnLoaded(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
+        ThemeManager.Instance.DarkModeChanged += OnDarkModeChanged;
+        ApplyEditorTheme(ThemeManager.Instance.IsDarkMode);
+
         if (DataContext is MainWindowViewModel vm)
         {
             vm.EmbeddedEditorInitializeRequested += OnEmbeddedEditorInitializeRequested;
             vm.OpenFolderDialogRequested += OnOpenFolderDialogRequested;
         }
+    }
+
+    private void OnDarkModeChanged(bool isDarkMode)
+    {
+        ApplyEditorTheme(isDarkMode);
+    }
+
+    private void ApplyEditorTheme(bool isDarkMode)
+    {
+        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
+        if (editor != null)
+            editor.IsDarkTheme = isDarkMode;
     }
 
     private void OnEmbeddedEditorInitializeRequested(string filePath)
@@ -132,6 +147,8 @@ public partial class MainWindow : Window
             vm.OnMainWindowClosing();
         }
 
+        ThemeManager.Instance.DarkModeChanged -= OnDarkModeChanged;
+
         // 清理编辑器资源
         var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
         editor?.Cleanup();
@@ -139,29 +156,9 @@ public partial class MainWindow : Window
             _ = _lspService.DisposeAsync();
     }
 
-    // 日志区工具条指针进出 —— 纯 UI 逻辑，保留在 code-behind
-    private void LogBox_PointerEntered(object? sender, PointerEventArgs e)
+    private void MonitorArea_DoubleTapped(object? sender, TappedEventArgs e)
     {
         if (DataContext is MainWindowViewModel vm)
-            vm.IsLogToolbarVisible = true;
-    }
-
-    private void LogBox_PointerExited(object? sender, PointerEventArgs e)
-    {
-        if (DataContext is MainWindowViewModel vm)
-            vm.IsLogToolbarVisible = false;
-    }
-
-    // 监视器工具条指针进出
-    private void MonitorArea_PointerEntered(object? sender, PointerEventArgs e)
-    {
-        if (DataContext is MainWindowViewModel vm)
-            vm.IsMonitorToolbarVisible = true;
-    }
-
-    private void MonitorArea_PointerExited(object? sender, PointerEventArgs e)
-    {
-        if (DataContext is MainWindowViewModel vm)
-            vm.IsMonitorToolbarVisible = false;
+            vm.ToggleMonitorVisibilityCommand.Execute(null);
     }
 }

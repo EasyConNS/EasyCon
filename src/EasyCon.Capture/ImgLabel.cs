@@ -68,9 +68,9 @@ public record ImgLabel
         if (IsBase64String(basestr) && method.IsImageMethod())
         {
             byte[] imageBytes = Convert.FromBase64String(basestr);
-            using var ms = new MemoryStream(imageBytes, 0, imageBytes.Length);
-            ms.Write(imageBytes, 0, imageBytes.Length);
-            return Image.FromStream(ms, true);
+            using var ms = new MemoryStream(imageBytes);
+            using var image = Image.FromStream(ms, true, true);
+            return new Bitmap(image);
         }
         else
         {

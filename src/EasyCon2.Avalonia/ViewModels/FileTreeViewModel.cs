@@ -20,11 +20,44 @@ public partial class FileTreeViewModel : ViewModelBase
     private bool _hasLoadedDirectory = false;
 
     private readonly HashSet<string> _expandedDirs = [];
+    private string? _normalDirectoryPath;
 
     public event Action<string>? FileActivated;
     public event Action? OpenProjectRequested;
 
     public void LoadDirectory(string? directoryPath)
+    {
+        _normalDirectoryPath = directoryPath;
+        LoadDirectoryCore(directoryPath);
+    }
+
+    public void ShowNormalTree()
+    {
+        LoadDirectoryCore(_normalDirectoryPath);
+    }
+
+    public void ShowImgLabelTree(string? baseDirectoryPath)
+    {
+        RootItems.Clear();
+        _expandedDirs.Clear();
+        FlatItems.Clear();
+        SelectedFlatItem = null;
+
+        var labelDirectoryPath = string.IsNullOrWhiteSpace(baseDirectoryPath)
+            ? "ImgLabel"
+            : Path.Combine(baseDirectoryPath, "ImgLabel");
+
+        var root = new FileTreeItem("ImgLabel", labelDirectoryPath, true);
+        if (Directory.Exists(labelDirectoryPath))
+            LoadChildren(root, depth: 0, maxDepth: 3);
+
+        RootItems.Add(root);
+        _expandedDirs.Add(root.FullPath);
+        RebuildFlatList();
+        HasLoadedDirectory = true;
+    }
+
+    private void LoadDirectoryCore(string? directoryPath)
     {
         RootItems.Clear();
         _expandedDirs.Clear();
