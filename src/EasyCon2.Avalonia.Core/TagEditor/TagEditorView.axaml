@@ -9,127 +9,441 @@
         <cvt:SearchMethodDescriptionConverter x:Key="SearchMethodDesc"/>
     </UserControl.Resources>
 
-    <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+    <UserControl.Styles>
+        <Style Selector="NumericUpDown.coordinate-number">
+            <Setter Property="Width" Value="48"/>
+            <Setter Property="MinWidth" Value="48"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="NumericUpDown.coordinate-number /template/ TextBox">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TextBlock.coordinate-label">
+            <Setter Property="Width" Value="24"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TextBlock.field-label">
+            <Setter Property="Width" Value="76"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="TextBox.tag-name-input">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Width" Value="128"/>
+            <Setter Property="MinWidth" Value="128"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="ComboBox.compact-combo">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="8,0"/>
+        </Style>
+
+        <Style Selector="ComboBox.compact-combo /template/ ContentPresenter">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="ComboBox.parameter-dropdown">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Width" Value="90"/>
+            <Setter Property="MinWidth" Value="90"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="CheckBox.parameter-check">
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style Selector="TextBlock.section-title">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}"/>
+        </Style>
+
+        <Style Selector="TextBlock.preview-label">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}"/>
+        </Style>
+
+        <Style Selector="TextBlock.match-score">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.coordinate-spin-button">
+            <Setter Property="Width" Value="18"/>
+            <Setter Property="MinWidth" Value="18"/>
+            <Setter Property="Height" Value="14"/>
+            <Setter Property="MinHeight" Value="14"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
             BorderThickness="1"
             CornerRadius="4"
-            Padding="8">
+            Background="{DynamicResource WorkbenchInputBrush}"
+            Padding="6">
 
         <Grid RowDefinitions="*,Auto" RowSpacing="8">
 
-            <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+            <Border BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="2"
+                    Background="{DynamicResource WorkbenchInputBrush}"
                     ClipToBounds="True">
-                <Image Source="{Binding SourceImage}"
-                       Stretch="Uniform"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center" />
-            </Border>
-
-            <StackPanel Grid.Row="1" Spacing="4" Margin="0,4,0,4">
-
-                <!-- 标签名 + 搜索方法 -->
-                <StackPanel Orientation="Horizontal" Spacing="16">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="标签名:" VerticalAlignment="Center" Width="56"/>
-                        <TextBox Text="{Binding LabelName}" MinWidth="120"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                        <TextBlock Text="搜索方法:" VerticalAlignment="Center" Width="64"/>
-                        <ComboBox SelectedItem="{Binding SearchMethod}"
-                                  ItemsSource="{x:Static vm:TagEditorViewModel.SearchMethods}"
-                                  MinWidth="140">
-                            <ComboBox.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Converter={StaticResource SearchMethodDesc}}"/>
-                                </DataTemplate>
-                            </ComboBox.ItemTemplate>
-                        </ComboBox>
-                    </StackPanel>
-
-                    <!-- 预处理选项 -->
-                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <CheckBox Content="灰度" IsChecked="{Binding UseGrayscale}"/>
-                        <CheckBox Content="二值" IsChecked="{Binding UseBinary}"/>
-                        <CheckBox Content="高斯模糊" IsChecked="{Binding UseGaussianBlur}"/>
-                        <CheckBox Content="其他" IsChecked="{Binding UseOther}"/>
-                    </StackPanel>
-                </StackPanel>
-
-                <Grid ColumnDefinitions="*,*,Auto,Auto"
-                      ColumnSpacing="16">
-
-                    <!-- 目标位置 -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="目标位置:" FontWeight="SemiBold"/>
-                        <Grid ColumnDefinitions="24,120,24,120">
-                            <TextBlock Text="X:" VerticalAlignment="Center"/>
-                            <NumericUpDown Grid.Column="1" Value="{Binding TargetX}"
-                                           Minimum="0" Maximum="9999"/>
-                            <TextBlock Grid.Column="2" Text="Y:" VerticalAlignment="Center"/>
-                            <NumericUpDown Grid.Column="3" Value="{Binding TargetY}"
-                                           Minimum="0" Maximum="9999"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="24,120,24,120">
-                            <TextBlock Text="宽:" VerticalAlignment="Center"/>
-                            <NumericUpDown Grid.Column="1" Value="{Binding TargetWidth}"
-                                           Minimum="0" Maximum="9999"/>
-                            <TextBlock Grid.Column="2" Text="高:" VerticalAlignment="Center"/>
-                            <NumericUpDown Grid.Column="3" Value="{Binding TargetHeight}"
-                                           Minimum="0" Maximum="9999"/>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- 搜索范围 -->
-                    <StackPanel Grid.Column="1" Spacing="4">
-                        <TextBlock Text="搜索范围:" FontWeight="SemiBold"/>
-                        <Grid ColumnDefinitions="24,120,24,120">
-                            <TextBlock Text="X:" VerticalAlignment="Center"/>
-                            <NumericUpDown Grid.Column="1" Value="{Binding RangeX}"
-                                           Minimum="0" Maximum="9999"/>
-                            <TextBlock Grid.Column="2" Text="Y:" VerticalAlignment="Center"/>
-                            <NumericUpDown Grid.Column="3" Value="{Binding RangeY}"
-                                           Minimum="0" Maximum="9999"/>
-                        </Grid>
-                        <Grid ColumnDefinitions="24,120,24,120">
-                            <TextBlock Text="宽:" VerticalAlignment="Center"/>
-                            <NumericUpDown Grid.Column="1" Value="{Binding RangeWidth}"
-                                           Minimum="0" Maximum="9999"/>
-                            <TextBlock Grid.Column="2" Text="高:" VerticalAlignment="Center"/>
-                            <NumericUpDown Grid.Column="3" Value="{Binding RangeHeight}"
-                                           Minimum="0" Maximum="9999"/>
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- 目标图 preview -->
-                    <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
-                        <TextBlock Text="目标图" HorizontalAlignment="Center" FontSize="11"/>
-                        <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
-                                BorderThickness="1"
-                                Width="120" Height="80"
-                                ClipToBounds="True">
-                            <Image Source="{Binding TargetImage}"
-                                   Stretch="Uniform"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
-                        </Border>
-                    </StackPanel>
-
-                    <!-- 结果图 preview -->
-                    <StackPanel Grid.Column="3" Spacing="2" VerticalAlignment="Center">
-                        <TextBlock Text="结果图" HorizontalAlignment="Center" FontSize="11"/>
-                        <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
-                                BorderThickness="1"
-                                Width="120" Height="80"
-                                ClipToBounds="True">
-                            <Image Source="{Binding RangePreviewImage}"
-                                   Stretch="Uniform"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
-                        </Border>
+                <Grid ColumnDefinitions="*,Auto">
+                    <Image Source="{Binding SourceImage}"
+                           Stretch="Uniform"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1"
+                                Spacing="8"
+                                Margin="8"
+                                Width="96"
+                                VerticalAlignment="Top">
+                        <Button Content="截图"
+                                IsEnabled="False"
+                                HorizontalAlignment="Stretch"/>
+                        <Button Content="圈选范围"
+                                IsEnabled="False"
+                                HorizontalAlignment="Stretch"/>
+                        <Button Content="圈选目标"
+                                IsEnabled="False"
+                                HorizontalAlignment="Stretch"/>
+                        <Button Content="动态测试"
+                                IsEnabled="False"
+                                HorizontalAlignment="Stretch"/>
                     </StackPanel>
                 </Grid>
-            </StackPanel>
+            </Border>
+
+            <ScrollViewer Grid.Row="1"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Disabled">
+            <Grid ColumnDefinitions="*,Auto"
+                  ColumnSpacing="12"
+                  MinWidth="380"
+                  Margin="8,0,0,0">
+
+                    <Grid RowDefinitions="Auto,Auto,Auto"
+                          RowSpacing="8"
+                          HorizontalAlignment="Stretch">
+                        <Grid ColumnDefinitions="76,128,Auto"
+                              ColumnSpacing="8"
+                              HorizontalAlignment="Left">
+                            <TextBlock Text="标签名称:"
+                                       Classes="field-label"/>
+                            <TextBox Grid.Column="1"
+                                     Classes="tag-name-input"
+                                     Text="{Binding LabelName}"
+                                     />
+                            <Button Grid.Column="2"
+                                    Content="保存"
+                                    IsEnabled="False"
+                                    Padding="14,4"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Grid Grid.Row="1"
+                              ColumnDefinitions="*,*"
+                              ColumnSpacing="12"
+                              HorizontalAlignment="Stretch">
+                            <Grid ColumnDefinitions="76,190,*"
+                                  ColumnSpacing="6"
+                                  HorizontalAlignment="Left">
+                                <TextBlock Text="搜索方法:"
+                                           Classes="field-label"/>
+                                <ComboBox Grid.Column="1"
+                                          Classes="compact-combo"
+                                          SelectedItem="{Binding SearchMethod}"
+                                          ItemsSource="{x:Static vm:TagEditorViewModel.SearchMethods}"
+                                          Width="180"
+                                          MinWidth="180">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Converter={StaticResource SearchMethodDesc}}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
+                            <Grid Grid.Column="1"
+                                  ColumnDefinitions="48,90,*"
+                                  ColumnSpacing="6"
+                                  HorizontalAlignment="Left">
+                                <TextBlock Text="参数:"
+                                           Classes="field-label"
+                                           Width="48"/>
+                                <ComboBox Grid.Column="1"
+                                          Classes="compact-combo parameter-dropdown"
+                                          SelectionBoxItem="{Binding SelectedParameterDisplay}"
+                                          SelectedIndex="{Binding ParameterComboSelectedIndex, Mode=TwoWay}"
+                                          FontSize="{Binding SelectedParameterFontSize}">
+                                    <ComboBoxItem>
+                                        <CheckBox Content="灰度"
+                                                  Classes="parameter-check"
+                                                  IsChecked="{Binding UseGrayscale}"/>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem>
+                                        <CheckBox Content="二值"
+                                                  Classes="parameter-check"
+                                                  IsChecked="{Binding UseBinary}"/>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem>
+                                        <CheckBox Content="高斯模糊"
+                                                  Classes="parameter-check"
+                                                  IsChecked="{Binding UseGaussianBlur}"/>
+                                    </ComboBoxItem>
+                                    <ComboBoxItem>
+                                        <CheckBox Content="其他"
+                                                  Classes="parameter-check"
+                                                  IsChecked="{Binding UseOther}"/>
+                                    </ComboBoxItem>
+                                </ComboBox>
+                            </Grid>
+                        </Grid>
+                        <Grid Grid.Row="2"
+                              ColumnDefinitions="*,*"
+                              ColumnSpacing="8"
+                              HorizontalAlignment="Stretch">
+                            <StackPanel Spacing="10"
+                                        HorizontalAlignment="Left">
+                                <TextBlock Text="目标位置:"
+                                           Classes="section-title"
+                                           HorizontalAlignment="Left"/>
+                                <Grid RowDefinitions="Auto,Auto"
+                                      RowSpacing="10"
+                                      ColumnSpacing="2"
+                                      HorizontalAlignment="Left">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="66"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="66"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="X" Classes="coordinate-label"/>
+                                    <Grid Grid.Column="1"
+                                          ColumnDefinitions="Auto,Auto"
+                                          VerticalAlignment="Center">
+                                        <NumericUpDown Classes="coordinate-number"
+                                                       ShowButtonSpinner="False"
+                                                       Value="{Binding TargetX}"
+                                                       Minimum="0"
+                                                       Maximum="9999"/>
+                                        <StackPanel Grid.Column="1">
+                                            <Button Classes="coordinate-spin-button" Content="^" Command="{Binding IncrementCoordinateCommand}" CommandParameter="TargetX"/>
+                                            <Button Classes="coordinate-spin-button" Content="v" Command="{Binding DecrementCoordinateCommand}" CommandParameter="TargetX"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Grid.Column="2" Text="Y" Classes="coordinate-label"/>
+                                    <Grid Grid.Column="3"
+                                          ColumnDefinitions="Auto,Auto"
+                                          VerticalAlignment="Center">
+                                        <NumericUpDown Classes="coordinate-number"
+                                                       ShowButtonSpinner="False"
+                                                       Value="{Binding TargetY}"
+                                                       Minimum="0"
+                                                       Maximum="9999"/>
+                                        <StackPanel Grid.Column="1">
+                                            <Button Classes="coordinate-spin-button" Content="^" Command="{Binding IncrementCoordinateCommand}" CommandParameter="TargetY"/>
+                                            <Button Classes="coordinate-spin-button" Content="v" Command="{Binding DecrementCoordinateCommand}" CommandParameter="TargetY"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Grid.Row="1" Text="宽" Classes="coordinate-label"/>
+                                    <Grid Grid.Row="1"
+                                          Grid.Column="1"
+                                          ColumnDefinitions="Auto,Auto"
+                                          VerticalAlignment="Center">
+                                        <NumericUpDown Classes="coordinate-number"
+                                                       ShowButtonSpinner="False"
+                                                       Value="{Binding TargetWidth}"
+                                                       Minimum="0"
+                                                       Maximum="9999"/>
+                                        <StackPanel Grid.Column="1">
+                                            <Button Classes="coordinate-spin-button" Content="^" Command="{Binding IncrementCoordinateCommand}" CommandParameter="TargetWidth"/>
+                                            <Button Classes="coordinate-spin-button" Content="v" Command="{Binding DecrementCoordinateCommand}" CommandParameter="TargetWidth"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="高" Classes="coordinate-label"/>
+                                    <Grid Grid.Row="1"
+                                          Grid.Column="3"
+                                          ColumnDefinitions="Auto,Auto"
+                                          VerticalAlignment="Center">
+                                        <NumericUpDown Classes="coordinate-number"
+                                                       ShowButtonSpinner="False"
+                                                       Value="{Binding TargetHeight}"
+                                                       Minimum="0"
+                                                       Maximum="9999"/>
+                                        <StackPanel Grid.Column="1">
+                                            <Button Classes="coordinate-spin-button" Content="^" Command="{Binding IncrementCoordinateCommand}" CommandParameter="TargetHeight"/>
+                                            <Button Classes="coordinate-spin-button" Content="v" Command="{Binding DecrementCoordinateCommand}" CommandParameter="TargetHeight"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1"
+                                        Spacing="10"
+                                        HorizontalAlignment="Left">
+                                <TextBlock Text="搜索范围:"
+                                           Classes="section-title"
+                                           HorizontalAlignment="Left"/>
+                                <Grid RowDefinitions="Auto,Auto"
+                                      RowSpacing="10"
+                                      ColumnSpacing="2"
+                                      HorizontalAlignment="Left">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="66"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="66"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="X" Classes="coordinate-label"/>
+                                    <Grid Grid.Column="1"
+                                          ColumnDefinitions="Auto,Auto"
+                                          VerticalAlignment="Center">
+                                        <NumericUpDown Classes="coordinate-number"
+                                                       ShowButtonSpinner="False"
+                                                       Value="{Binding RangeX}"
+                                                       Minimum="0"
+                                                       Maximum="9999"/>
+                                        <StackPanel Grid.Column="1">
+                                            <Button Classes="coordinate-spin-button" Content="^" Command="{Binding IncrementCoordinateCommand}" CommandParameter="RangeX"/>
+                                            <Button Classes="coordinate-spin-button" Content="v" Command="{Binding DecrementCoordinateCommand}" CommandParameter="RangeX"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Grid.Column="2" Text="Y" Classes="coordinate-label"/>
+                                    <Grid Grid.Column="3"
+                                          ColumnDefinitions="Auto,Auto"
+                                          VerticalAlignment="Center">
+                                        <NumericUpDown Classes="coordinate-number"
+                                                       ShowButtonSpinner="False"
+                                                       Value="{Binding RangeY}"
+                                                       Minimum="0"
+                                                       Maximum="9999"/>
+                                        <StackPanel Grid.Column="1">
+                                            <Button Classes="coordinate-spin-button" Content="^" Command="{Binding IncrementCoordinateCommand}" CommandParameter="RangeY"/>
+                                            <Button Classes="coordinate-spin-button" Content="v" Command="{Binding DecrementCoordinateCommand}" CommandParameter="RangeY"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Grid.Row="1" Text="宽" Classes="coordinate-label"/>
+                                    <Grid Grid.Row="1"
+                                          Grid.Column="1"
+                                          ColumnDefinitions="Auto,Auto"
+                                          VerticalAlignment="Center">
+                                        <NumericUpDown Classes="coordinate-number"
+                                                       ShowButtonSpinner="False"
+                                                       Value="{Binding RangeWidth}"
+                                                       Minimum="0"
+                                                       Maximum="9999"/>
+                                        <StackPanel Grid.Column="1">
+                                            <Button Classes="coordinate-spin-button" Content="^" Command="{Binding IncrementCoordinateCommand}" CommandParameter="RangeWidth"/>
+                                            <Button Classes="coordinate-spin-button" Content="v" Command="{Binding DecrementCoordinateCommand}" CommandParameter="RangeWidth"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="高" Classes="coordinate-label"/>
+                                    <Grid Grid.Row="1"
+                                          Grid.Column="3"
+                                          ColumnDefinitions="Auto,Auto"
+                                          VerticalAlignment="Center">
+                                        <NumericUpDown Classes="coordinate-number"
+                                                       ShowButtonSpinner="False"
+                                                       Value="{Binding RangeHeight}"
+                                                       Minimum="0"
+                                                       Maximum="9999"/>
+                                        <StackPanel Grid.Column="1">
+                                            <Button Classes="coordinate-spin-button" Content="^" Command="{Binding IncrementCoordinateCommand}" CommandParameter="RangeHeight"/>
+                                            <Button Classes="coordinate-spin-button" Content="v" Command="{Binding DecrementCoordinateCommand}" CommandParameter="RangeHeight"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+
+                    <StackPanel Grid.Column="1"
+                                Width="158"
+                                Spacing="8"
+                                HorizontalAlignment="Right">
+                        <Grid ColumnDefinitions="Auto,Auto"
+                              ColumnSpacing="8">
+                            <TextBlock Text="目&#x0a;标&#x0a;图"
+                                       Classes="preview-label"
+                                       TextAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                            <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+                                    Grid.Column="1"
+                                    BorderThickness="1"
+                                    Width="120"
+                                    Height="76"
+                                    ClipToBounds="True">
+                                <Image Source="{Binding TargetImage}"
+                                       Stretch="Uniform"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+
+                        <TextBlock Text="匹配度: --%"
+                                   Classes="match-score"/>
+
+                        <Grid ColumnDefinitions="Auto,Auto"
+                              ColumnSpacing="8">
+                            <TextBlock Text="结&#x0a;果&#x0a;图"
+                                       Classes="preview-label"
+                                       TextAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                            <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+                                    Grid.Column="1"
+                                    BorderThickness="1"
+                                    Width="120"
+                                    Height="76"
+                                    ClipToBounds="True">
+                                <Image Source="{Binding RangePreviewImage}"
+                                       Stretch="Uniform"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+            </Grid>
+            </ScrollViewer>
         </Grid>
     </Border>
 </UserControl>
