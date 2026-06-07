@@ -104,7 +104,22 @@ public sealed partial class ThemeManager : ViewModelBase
         SetResource("WorkbenchInputMinHeight", palette.InputMinHeight);
         SetResource("WorkbenchUiFontFamily", palette.UiFontFamily);
         SetResource("WorkbenchMonoFontFamily", palette.MonoFontFamily);
+        SetTabShapeResources(colorSchemeName);
         DarkModeChanged?.Invoke(IsDarkMode);
+    }
+
+    private static void SetTabShapeResources(string colorSchemeName)
+    {
+        var useStraightTab = colorSchemeName == IndustrialGraySchemeName;
+        var fillGeometry = useStraightTab
+            ? "M 0,0 L 88,0 L 100,32 L 0,32 Z"
+            : "M 0,0 L 82,0 C 91,0 95,7 97,15 L 100,32 L 0,32 Z";
+        var borderGeometry = useStraightTab
+            ? "M 0,0 L 88,0 L 100,32"
+            : "M 0,0 L 82,0 C 91,0 95,7 97,15 L 100,32";
+
+        SetResource("WorkbenchTabFillGeometry", StreamGeometry.Parse(fillGeometry));
+        SetResource("WorkbenchTabBorderGeometry", StreamGeometry.Parse(borderGeometry));
     }
 
     private static void SetResource(string key, object value)

@@ -137,7 +137,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private FileTreeView? _fileTreeView;
 
-    // 编辑器标签页索引（0=文本编辑, 1=标签编辑）
+    // 编辑器标签页索引（0=文本编辑, 1=标签编辑, 2=用户配置, 3=功能中心）
     [ObservableProperty]
     private int _selectedEditorTab = 0;
 
@@ -806,6 +806,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSelectedEditorTabChanged(int value)
     {
+        UpdateFileTreeForSelectedEditorTab();
     }
 
     private void UpdateFileTreeForSelectedEditorTab()

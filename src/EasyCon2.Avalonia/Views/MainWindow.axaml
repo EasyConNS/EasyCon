@@ -112,11 +112,19 @@
                 <ContentControl Content="{Binding FileTreeView}" />
             </Border>
 
-            <!-- 第二列：标签切换（文本编辑器 / 标签编辑器） -->
+            <!-- 第二列：标签切换（文本编辑器 / 标签编辑器 / 用户配置 / 功能中心） -->
             <Border Grid.Column="1"
                     Background="{DynamicResource WorkbenchWindowBrush}">
-                <TabControl SelectedIndex="{Binding SelectedEditorTab}">
-                    <TabItem Header="文本编辑">
+                <TabControl Classes="folder-tabs"
+                            SelectedIndex="{Binding SelectedEditorTab}">
+                    <TabControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1"
+                                         ClipToBounds="False"/>
+                        </ItemsPanelTemplate>
+                    </TabControl.ItemsPanel>
+                    <TabItem Classes="tab-layer-0"
+                             Header="文本编辑">
                         <Grid RowDefinitions="Auto,*">
                             <!-- 脚本路径栏 -->
                             <Border Grid.Row="0"
@@ -159,9 +167,14 @@
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem Header="标签编辑">
+                    <TabItem Classes="tab-layer-1"
+                             Header="标签编辑">
                         <tag:TagEditorView x:Name="TagEditor" DataContext="{Binding TagEditorViewModel}"/>
                     </TabItem>
+                    <TabItem Classes="tab-layer-2"
+                             Header="用户配置"/>
+                    <TabItem Classes="tab-layer-3"
+                             Header="功能中心"/>
                 </TabControl>
             </Border>
 
