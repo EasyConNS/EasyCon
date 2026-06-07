@@ -173,7 +173,22 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _selectedFirmware = "leonardo";
 
     [ObservableProperty]
-    private bool _isFirmwarePanelExpanded = false;
+    private bool _autoSwitchLayoutEnabled = false;
+
+    [ObservableProperty]
+    private bool _isIdleThreeColumnLayoutSelected = true;
+
+    [ObservableProperty]
+    private bool _isIdleTwoColumnLayoutSelected = false;
+
+    [ObservableProperty]
+    private bool _isRunningThreeColumnLayoutSelected = false;
+
+    [ObservableProperty]
+    private bool _isRunningTwoColumnLayoutSelected = true;
+
+    [ObservableProperty]
+    private bool _isRunningOneColumnLayoutSelected = false;
 
     // 远程控制模块属性（命令保留，UI已隐藏）
     public ICommand OpenEditorCommand { get; }
@@ -195,14 +210,15 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand ShowMonitorCommand { get; }
     public ICommand OpenTagEditorCommand { get; }
     public ICommand OpenESPConfigCommand { get; }
+    public ICommand OpenAlertConfigCommand { get; }
     public ICommand ToggleMonitorPauseCommand { get; }
 
     public ICommand ShowScriptSyntaxCommand { get; }
     public ICommand OpenAiAgentCommand { get; }
 
     public ICommand ToggleMonitorVisibilityCommand { get; }
-    public ICommand ToggleFirmwarePanelCommand { get; }
     public ICommand SelectColorSchemeCommand { get; }
+    public ICommand RestoreDefaultLayoutCommand { get; }
 
     // 刷新数据源命令
     public ICommand RefreshSerialPortsCommand { get; }
@@ -328,12 +344,13 @@ public partial class MainWindowViewModel : ViewModelBase
         ShowMonitorCommand = new RelayCommand(ShowMonitor);
         OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
+        OpenAlertConfigCommand = new RelayCommand<Window>(OpenAlertConfig);
         ToggleMonitorPauseCommand = new RelayCommand(ToggleMonitorPause);
         ShowScriptSyntaxCommand = new RelayCommand(ShowScriptSyntax);
         OpenAiAgentCommand = new RelayCommand(OpenAiAgent);
         ToggleMonitorVisibilityCommand = new RelayCommand(ToggleMonitorVisibility);
-        ToggleFirmwarePanelCommand = new RelayCommand(ToggleFirmwarePanel);
         SelectColorSchemeCommand = new RelayCommand<string>(SelectColorScheme);
+        RestoreDefaultLayoutCommand = new RelayCommand(RestoreDefaultLayout);
 
         ThemeManager.Instance.ApplyColorScheme(ThemeManager.IndustrialGraySchemeName);
 
@@ -748,6 +765,22 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private void OpenAlertConfig(Window? window)
+    {
+        try
+        {
+            var alertConfigWindow = new AlertConfigWindow();
+            if (window != null)
+                alertConfigWindow.ShowDialog(window);
+            else
+                alertConfigWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开推送配置失败: {ex.Message}");
+        }
+    }
+
     private void ToggleMonitorVisibility()
     {
         IsMonitorVisible = !IsMonitorVisible;
@@ -759,9 +792,46 @@ public partial class MainWindowViewModel : ViewModelBase
             _monitorViewModel.StopMonitoring();
     }
 
-    private void ToggleFirmwarePanel()
+    private void RestoreDefaultLayout()
     {
-        IsFirmwarePanelExpanded = !IsFirmwarePanelExpanded;
+        IsIdleThreeColumnLayoutSelected = true;
+        IsIdleTwoColumnLayoutSelected = false;
+        IsRunningThreeColumnLayoutSelected = false;
+        IsRunningTwoColumnLayoutSelected = true;
+        IsRunningOneColumnLayoutSelected = false;
+    }
+
+    partial void OnIsIdleThreeColumnLayoutSelectedChanged(bool value)
+    {
+        if (!value) return;
+        IsIdleTwoColumnLayoutSelected = false;
+    }
+
+    partial void OnIsIdleTwoColumnLayoutSelectedChanged(bool value)
+    {
+        if (!value) return;
+        IsIdleThreeColumnLayoutSelected = false;
+    }
+
+    partial void OnIsRunningThreeColumnLayoutSelectedChanged(bool value)
+    {
+        if (!value) return;
+        IsRunningTwoColumnLayoutSelected = false;
+        IsRunningOneColumnLayoutSelected = false;
+    }
+
+    partial void OnIsRunningTwoColumnLayoutSelectedChanged(bool value)
+    {
+        if (!value) return;
+        IsRunningThreeColumnLayoutSelected = false;
+        IsRunningOneColumnLayoutSelected = false;
+    }
+
+    partial void OnIsRunningOneColumnLayoutSelectedChanged(bool value)
+    {
+        if (!value) return;
+        IsRunningThreeColumnLayoutSelected = false;
+        IsRunningTwoColumnLayoutSelected = false;
     }
 
     private void ShowScriptSyntax()

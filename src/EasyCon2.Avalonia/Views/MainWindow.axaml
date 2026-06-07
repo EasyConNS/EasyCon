@@ -28,78 +28,7 @@
     </Window.Resources>
 
     <DockPanel>
-        <Menu DockPanel.Dock="Top">
-            <MenuItem Header="文件">
-                <MenuItem Header="新建" InputGesture="Ctrl+N" IsEnabled="False"/>
-                <MenuItem Header="打开" InputGesture="Ctrl+O"
-                          Command="{Binding OpenScriptCommand}"
-                          CommandParameter="{Binding $parent[Window]}"/>
-                <MenuItem Header="保存" InputGesture="Ctrl+S" IsEnabled="False"/>
-                <MenuItem Header="另存为" InputGesture="Ctrl+Shift+S" IsEnabled="False"/>
-                <MenuItem Header="关闭" InputGesture="Ctrl+W" IsEnabled="False"/>
-                <Separator/>
-                <MenuItem Header="退出" InputGesture="Ctrl+Q" IsEnabled="False"/>
-            </MenuItem>
-            <MenuItem Header="编辑">
-                <MenuItem Header="查找替换" InputGesture="Ctrl+F" IsEnabled="False"/>
-                <MenuItem Header="查找下一个" InputGesture="F3" IsEnabled="False"/>
-                <MenuItem Header="注释/取消注释" InputGesture="Ctrl+OemQuestion" IsEnabled="False"/>
-            </MenuItem>
-            <MenuItem Header="视图">
-                <MenuItem Header="配色">
-                    <MenuItem Header="工业灰"
-                              Command="{Binding SelectColorSchemeCommand}"
-                              CommandParameter="工业灰"/>
-                    <MenuItem Header="暖色调"
-                              Command="{Binding SelectColorSchemeCommand}"
-                              CommandParameter="暖色调"/>
-                    <MenuItem Header="Dark模式"
-                              Command="{Binding SelectColorSchemeCommand}"
-                              CommandParameter="Dark模式"/>
-                </MenuItem>
-            </MenuItem>
-            <MenuItem Header="脚本">
-                <MenuItem Header="格式化" InputGesture="Ctrl+R" IsEnabled="False"/>
-                <MenuItem Header="运行" InputGesture="F5" Command="{Binding RunScriptCommand}"/>
-            </MenuItem>
-            <MenuItem Header="搜图">
-                <MenuItem Header="采集卡类型" IsEnabled="False"/>
-                <MenuItem Header="搜图说明" IsEnabled="False"/>
-                <MenuItem Header="设置环境变量" IsEnabled="False"/>
-            </MenuItem>
-            <MenuItem Header="设置">
-                <MenuItem Header="推送设置" IsEnabled="False"/>
-                <MenuItem Header="显示调试信息" IsEnabled="False"/>
-                <MenuItem Header="烧录自动运行" IsEnabled="False"/>
-                <MenuItem Header="显示折叠" IsEnabled="False"/>
-                <MenuItem Header="代码自动补全" IsEnabled="False"/>
-                <MenuItem Header="深色模式" IsEnabled="False"/>
-                <MenuItem Header="高精度模式" IsEnabled="False"/>
-            </MenuItem>
-            <MenuItem Header="蓝牙" IsEnabled="False">
-                <MenuItem Header="蓝牙设备驱动配置"/>
-            </MenuItem>
-            <MenuItem Header="ESP32">
-                <MenuItem Header="手柄设置" Command="{Binding OpenESPConfigCommand}"/>
-                <MenuItem Header="取消配对" IsEnabled="False"/>
-            </MenuItem>
-            <MenuItem Header="画图" IsEnabled="False">
-                <MenuItem Header="喷射战士"/>
-                <MenuItem Header="自由画板（鼠标代替摇杆）"/>
-            </MenuItem>
-            <MenuItem Header="帮助">
-                <MenuItem Header="固件模式" IsEnabled="False"/>
-                <MenuItem Header="联机模式" IsEnabled="False"/>
-                <MenuItem Header="烧录模式" IsEnabled="False"/>
-                <MenuItem Header="脚本语法" Command="{Binding ShowScriptSyntaxCommand}"/>
-                <Separator/>
-                <MenuItem Header="检查更新" IsEnabled="False"/>
-                <MenuItem Header="项目源码" IsEnabled="False"/>
-                <MenuItem Header="关于" IsEnabled="False"/>
-            </MenuItem>
-        </Menu>
-
-        <Grid RowDefinitions="*,Auto,Auto">
+        <Grid RowDefinitions="*,Auto">
 
             <!-- 上部主操作区：三列布局 -->
             <Grid Grid.Row="0" ColumnDefinitions="220,*,5,300">
@@ -172,9 +101,395 @@
                         <tag:TagEditorView x:Name="TagEditor" DataContext="{Binding TagEditorViewModel}"/>
                     </TabItem>
                     <TabItem Classes="tab-layer-2"
-                             Header="用户配置"/>
+                             Header="用户配置">
+                        <ScrollViewer Classes="settings-scroll"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel Classes="settings-page">
+                                <Border Classes="settings-card">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Classes="card-title"
+                                                   Text="帮助"/>
+                                        <WrapPanel>
+                                            <Button Classes="tool-button card-action"
+                                                    Content="固件模式"/>
+                                            <Button Classes="tool-button card-action"
+                                                    Content="联机模式"/>
+                                            <Button Classes="tool-button card-action"
+                                                    Content="烧录模式"/>
+                                            <Button Classes="tool-button card-action"
+                                                    Content="脚本语法"/>
+                                            <Button Classes="tool-button card-action"
+                                                    Content="检查更新"/>
+                                            <Button Classes="tool-button card-action"
+                                                    Content="项目源码"/>
+                                            <Button Classes="tool-button card-action"
+                                                    Content="关于"/>
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="settings-card">
+                                    <StackPanel Spacing="14">
+                                        <TextBlock Classes="card-title"
+                                                   Text="配置"/>
+
+                                        <Grid Classes="settings-row"
+                                              ColumnDefinitions="160,*,Auto">
+                                            <TextBlock Text="采集卡类型"
+                                                       VerticalAlignment="Center"/>
+                                            <ComboBox Grid.Column="1"
+                                                      SelectedIndex="0"
+                                                      HorizontalAlignment="Stretch">
+                                                <ComboBoxItem Content="ANY"/>
+                                                <ComboBoxItem Content="DSHOW"/>
+                                                <ComboBoxItem Content="MSMF"/>
+                                                <ComboBoxItem Content="DC1394"/>
+                                            </ComboBox>
+                                            <Button Grid.Column="2"
+                                                    Classes="tool-button"
+                                                    Content="设置环境变量"
+                                                    Margin="8,0,0,0"/>
+                                        </Grid>
+
+                                        <Grid Classes="settings-row"
+                                              ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="推送设置"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1"
+                                                    Classes="tool-button"
+                                                    Content="添加配置"
+                                                    Command="{Binding OpenAlertConfigCommand}"
+                                                    CommandParameter="{Binding $parent[Window]}"/>
+                                        </Grid>
+
+                                        <Grid Classes="settings-row"
+                                              ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="代码自动补全"
+                                                       VerticalAlignment="Center"/>
+                                            <ToggleSwitch Grid.Column="1"
+                                                          IsChecked="False"/>
+                                        </Grid>
+
+                                        <Grid Classes="settings-row"
+                                              ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="高精度模式"
+                                                       VerticalAlignment="Center"/>
+                                            <ToggleSwitch Grid.Column="1"
+                                                          IsChecked="False"/>
+                                        </Grid>
+
+                                        <Grid Classes="settings-row"
+                                              ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="蓝牙设备驱动配置"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1"
+                                                    Classes="tool-button"
+                                                    Content="设备驱动配置"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="settings-card">
+                                    <StackPanel Spacing="14">
+                                        <TextBlock Classes="card-title"
+                                                   Text="外观样式"/>
+
+                                        <TextBlock Classes="setting-caption"
+                                                   Text="主题"/>
+                                        <Grid ColumnDefinitions="*,*,*"
+                                              ColumnSpacing="10">
+                                            <Button Grid.Column="0"
+                                                    Classes="theme-option"
+                                                    Command="{Binding SelectColorSchemeCommand}"
+                                                    CommandParameter="工业灰">
+                                                <Border Classes="theme-preview industrial">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Classes="theme-strip"/>
+                                                        <TextBlock Text="工业灰"
+                                                                   FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Button>
+                                            <Button Grid.Column="1"
+                                                    Classes="theme-option"
+                                                    Command="{Binding SelectColorSchemeCommand}"
+                                                    CommandParameter="暖色调">
+                                                <Border Classes="theme-preview light">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Classes="theme-strip"/>
+                                                        <TextBlock Text="浅色"
+                                                                   FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Button>
+                                            <Button Grid.Column="2"
+                                                    Classes="theme-option"
+                                                    Command="{Binding SelectColorSchemeCommand}"
+                                                    CommandParameter="Dark模式">
+                                                <Border Classes="theme-preview dark">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Classes="theme-strip"/>
+                                                        <TextBlock Text="深色"
+                                                                   FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Button>
+                                        </Grid>
+
+                                        <Border Classes="inline-config-panel">
+                                            <StackPanel Spacing="12">
+                                                <Grid ColumnDefinitions="*,Auto,Auto"
+                                                      ColumnSpacing="10">
+                                                    <TextBlock Text="窗口栏"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center"/>
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="视运行状态自动切换布局"
+                                                               VerticalAlignment="Center"/>
+                                                    <ToggleSwitch Grid.Column="2"
+                                                                  IsChecked="{Binding AutoSwitchLayoutEnabled}"/>
+                                                </Grid>
+
+                                                <StackPanel IsEnabled="{Binding AutoSwitchLayoutEnabled}"
+                                                            Spacing="12">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <TextBlock Text="自定义布局区域"
+                                                                   VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="1"
+                                                                Classes="tool-button"
+                                                                Content="恢复默认"
+                                                                Command="{Binding RestoreDefaultLayoutCommand}"/>
+                                                    </Grid>
+
+                                                    <TextBlock Classes="setting-caption"
+                                                               Text="未运行时预览"/>
+                                                    <Grid ColumnDefinitions="*,*"
+                                                          ColumnSpacing="10">
+                                                        <RadioButton Classes="layout-option"
+                                                                     GroupName="IdleLayoutOptions"
+                                                                     IsChecked="{Binding IsIdleThreeColumnLayoutSelected}">
+                                                            <Border Classes="layout-preview">
+                                                                <Grid ColumnDefinitions="0.7*,1.9*,0.8*"
+                                                                      ColumnSpacing="4">
+                                                                    <Border Classes="layout-cell tree-cell">
+                                                                        <TextBlock Text="工作树"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <Border Grid.Column="1"
+                                                                            Classes="layout-cell editor-cell">
+                                                                        <TextBlock Text="编辑区"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <Grid Grid.Column="2"
+                                                                          RowDefinitions="*,*"
+                                                                          RowSpacing="4">
+                                                                        <Border Classes="layout-cell video-cell">
+                                                                            <TextBlock Text="视频源"
+                                                                                       HorizontalAlignment="Center"
+                                                                                       VerticalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Row="1"
+                                                                                Classes="layout-cell output-cell">
+                                                                            <TextBlock Text="输出区"
+                                                                                       HorizontalAlignment="Center"
+                                                                                       VerticalAlignment="Center"/>
+                                                                        </Border>
+                                                                    </Grid>
+                                                                </Grid>
+                                                            </Border>
+                                                        </RadioButton>
+
+                                                        <RadioButton Grid.Column="1"
+                                                                     Classes="layout-option"
+                                                                     GroupName="IdleLayoutOptions"
+                                                                     IsChecked="{Binding IsIdleTwoColumnLayoutSelected}">
+                                                            <Border Classes="layout-preview">
+                                                                <Grid ColumnDefinitions="0.7*,2.6*"
+                                                                      ColumnSpacing="4">
+                                                                    <Border Classes="layout-cell tree-cell">
+                                                                        <TextBlock Text="工作树"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <Border Grid.Column="1"
+                                                                            Classes="layout-cell editor-cell">
+                                                                        <TextBlock Text="编辑区"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                </Grid>
+                                                            </Border>
+                                                        </RadioButton>
+                                                    </Grid>
+
+                                                    <TextBlock Classes="setting-caption"
+                                                               Text="运行时预览"/>
+                                                    <Grid ColumnDefinitions="*,*,*"
+                                                          ColumnSpacing="10">
+                                                        <RadioButton Classes="layout-option"
+                                                                     GroupName="RunningLayoutOptions"
+                                                                     IsChecked="{Binding IsRunningThreeColumnLayoutSelected}">
+                                                            <Border Classes="layout-preview">
+                                                                <Grid ColumnDefinitions="0.7*,1.9*,0.8*"
+                                                                      ColumnSpacing="4">
+                                                                    <Border Classes="layout-cell tree-cell">
+                                                                        <TextBlock Text="工作树"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <Border Grid.Column="1"
+                                                                            Classes="layout-cell editor-cell">
+                                                                        <TextBlock Text="编辑区"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <Grid Grid.Column="2"
+                                                                          RowDefinitions="*,*"
+                                                                          RowSpacing="4">
+                                                                        <Border Classes="layout-cell video-cell">
+                                                                            <TextBlock Text="视频源"
+                                                                                       HorizontalAlignment="Center"
+                                                                                       VerticalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Row="1"
+                                                                                Classes="layout-cell output-cell">
+                                                                            <TextBlock Text="输出区"
+                                                                                       HorizontalAlignment="Center"
+                                                                                       VerticalAlignment="Center"/>
+                                                                        </Border>
+                                                                    </Grid>
+                                                                </Grid>
+                                                            </Border>
+                                                        </RadioButton>
+
+                                                        <RadioButton Grid.Column="1"
+                                                                     Classes="layout-option"
+                                                                     GroupName="RunningLayoutOptions"
+                                                                     IsChecked="{Binding IsRunningTwoColumnLayoutSelected}">
+                                                            <Border Classes="layout-preview">
+                                                                <Grid ColumnDefinitions="*,*"
+                                                                      ColumnSpacing="4">
+                                                                    <Border Classes="layout-cell video-cell">
+                                                                        <TextBlock Text="视频源"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                    <Border Grid.Column="1"
+                                                                            Classes="layout-cell output-cell">
+                                                                        <TextBlock Text="输出区"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                </Grid>
+                                                            </Border>
+                                                        </RadioButton>
+
+                                                        <RadioButton Grid.Column="2"
+                                                                     Classes="layout-option"
+                                                                     GroupName="RunningLayoutOptions"
+                                                                     IsChecked="{Binding IsRunningOneColumnLayoutSelected}">
+                                                            <Border Classes="layout-preview">
+                                                                <Border Classes="layout-cell output-cell">
+                                                                    <TextBlock Text="输出区"
+                                                                               HorizontalAlignment="Center"
+                                                                               VerticalAlignment="Center"/>
+                                                                </Border>
+                                                            </Border>
+                                                        </RadioButton>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
                     <TabItem Classes="tab-layer-3"
-                             Header="功能中心"/>
+                             Header="功能中心">
+                        <ScrollViewer Classes="settings-scroll"
+                                      VerticalScrollBarVisibility="Auto">
+                            <StackPanel Classes="settings-page">
+                                <Border Classes="settings-card">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Classes="card-title"
+                                                   Text="远程运行"/>
+                                        <Grid ColumnDefinitions="*,*"
+                                              ColumnSpacing="10">
+                                            <Button Content="远程运行"
+                                                    HorizontalAlignment="Stretch"/>
+                                            <Button Grid.Column="1"
+                                                    Content="远程停止"
+                                                    HorizontalAlignment="Stretch"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="settings-card">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Classes="card-title"
+                                                   Text="编译烧录"/>
+                                        <Grid ColumnDefinitions="*,*"
+                                              ColumnSpacing="10">
+                                            <Button Content="编译烧录"
+                                                    HorizontalAlignment="Stretch"/>
+                                            <Button Grid.Column="1"
+                                                    Content="清除烧录"
+                                                    HorizontalAlignment="Stretch"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="settings-card">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Classes="card-title"
+                                                   Text="固件"/>
+                                        <Grid ColumnDefinitions="*,Auto"
+                                              ColumnSpacing="10">
+                                            <ComboBox ItemsSource="{Binding FirmwareOptions}"
+                                                      SelectedItem="{Binding SelectedFirmware}"
+                                                      HorizontalAlignment="Stretch"/>
+                                            <Button Grid.Column="1"
+                                                    Content="生成"
+                                                    MinWidth="96"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Classes="settings-card">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Spacing="4">
+                                            <TextBlock Classes="card-title"
+                                                       Text="蓝牙手柄设置"/>
+                                            <TextBlock Classes="setting-caption"
+                                                       Text="ESP32 手柄参数配置"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1"
+                                                Content="配置"
+                                                MinWidth="96"
+                                                VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <Border Classes="settings-card">
+                                    <StackPanel Spacing="12">
+                                        <TextBlock Classes="card-title"
+                                                   Text="画图"/>
+                                        <Grid ColumnDefinitions="*,*"
+                                              ColumnSpacing="10">
+                                            <Button Content="喷射战士"
+                                                    HorizontalAlignment="Stretch"/>
+                                            <Button Grid.Column="1"
+                                                    Content="自由画板"
+                                                    HorizontalAlignment="Stretch"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
                 </TabControl>
             </Border>
 
@@ -372,8 +687,7 @@
                     <Grid>
                         <StackPanel Orientation="Vertical"
                                     HorizontalAlignment="Stretch"
-                                    Spacing="8"
-                                    Margin="0,0,0,22">
+                                    Spacing="8">
                             <TextBlock Text="{Binding RunTimeDisplay}"
                                        FontSize="24"
                                        FontWeight="Bold"
@@ -393,62 +707,10 @@
                                     HorizontalContentAlignment="Center"
                                     VerticalContentAlignment="Center"/>
                         </StackPanel>
-                        <Button Classes="footer-reveal"
-                                Command="{Binding ToggleFirmwarePanelCommand}"
-                                IsVisible="{Binding !IsFirmwarePanelExpanded}"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Bottom"
-                                Margin="0,0,0,-8">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <TextBlock Text="固件与远程设置"
-                                           VerticalAlignment="Center"
-                                           FontSize="13"
-                                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
-                                <TextBlock Text="↓"
-                                           VerticalAlignment="Center"
-                                           FontSize="13"
-                                           Foreground="{DynamicResource WorkbenchAccentBrush}"/>
-                            </StackPanel>
-                        </Button>
                     </Grid>
                 </Border>
             </Grid>
         </Border>
-
-            <Grid Grid.Row="2"
-                  ColumnDefinitions="Auto,Auto,Auto,Auto,16,Auto,120,Auto,*,Auto"
-                  IsVisible="{Binding IsFirmwarePanelExpanded}"
-                  Margin="12,6,12,8"
-                  ColumnSpacing="8">
-                    <Button Grid.Column="0"
-                            Content="远程运行"
-                            Command="{Binding RemoteRunCommand}"/>
-                    <Button Grid.Column="1"
-                            Content="远程停止"
-                            Command="{Binding RemoteStopCommand}"/>
-                    <Button Grid.Column="2"
-                            Content="编译烧录"
-                            Command="{Binding CompileFlashCommand}"/>
-                    <Button Grid.Column="3"
-                            Content="清除烧录"
-                            Command="{Binding ClearFlashCommand}"/>
-                    <TextBlock Grid.Column="5"
-                               Text="固件"
-                               VerticalAlignment="Center"
-                               Foreground="{DynamicResource WorkbenchTextBrush}"/>
-                    <ComboBox Grid.Column="6"
-                              ItemsSource="{Binding FirmwareOptions}"
-                              SelectedItem="{Binding SelectedFirmware}"/>
-                    <Button Grid.Column="7"
-                            Content="生成"
-                            Command="{Binding GenerateFirmwareCommand}"/>
-                    <Button Grid.Column="9"
-                            Classes="footer-reveal"
-                            Content="↑"
-                            Foreground="{DynamicResource WorkbenchAccentBrush}"
-                            FontSize="16"
-                            Command="{Binding ToggleFirmwarePanelCommand}"/>
-            </Grid>
         </Grid>
     </DockPanel>
 </Window>

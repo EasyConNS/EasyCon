@@ -4,63 +4,74 @@
              x:Class="EasyCon2.Avalonia.Core.AlertConfig.AlertItemView"
              x:DataType="vm:AlertItemViewModel">
 
-    <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}"
+    <Border Background="{DynamicResource WorkbenchPanelBrush}"
+            BorderBrush="{DynamicResource WorkbenchGroupBorderBrush}"
             BorderThickness="1"
-            CornerRadius="4"
+            CornerRadius="{DynamicResource WorkbenchCardRadius}"
             Padding="8"
             Margin="0,0,0,8">
         <StackPanel>
             <!-- Header row: clickable name area + enable toggle + delete -->
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <Button Grid.Column="0"
                         Command="{Binding ToggleExpandCommand}"
-                        Width="24" Height="24"
-                        Padding="0"
-                        VerticalAlignment="Center">
-                    <Panel>
-                        <TextBlock Text="▶" FontSize="10"
+                        MinHeight="42"
+                        Padding="8,0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Center">
+                    <Grid ColumnDefinitions="24,*">
+                        <TextBlock Text="▶"
+                                   FontSize="12"
                                    IsVisible="{Binding !IsExpanded}"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <TextBlock Text="▼" FontSize="10"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                        <TextBlock Text="▼"
+                                   FontSize="12"
                                    IsVisible="{Binding IsExpanded}"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Panel>
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   FontWeight="SemiBold"
+                                   FontSize="15"
+                                   Foreground="{DynamicResource WorkbenchTextBrush}"/>
+                    </Grid>
                 </Button>
 
-                <TextBlock Grid.Column="1"
-                           Text="{Binding Name}"
-                           VerticalAlignment="Center"
-                           Margin="8,0,0,0"
-                           FontWeight="SemiBold"
-                           Cursor="Hand"
-                           PointerPressed="OnNameClick"/>
-
-                <ToggleSwitch Grid.Column="2"
+                <ToggleSwitch Grid.Column="1"
                               IsChecked="{Binding Enable}"
                               OnContent="" OffContent=""
                               Margin="8,0,8,0">
                     <ToggleSwitch.Styles>
                         <Style Selector="ToggleSwitch /template/ Border#SwitchThumb">
-                            <Setter Property="Background" Value="#4CAF50"/>
+                            <Setter Property="Background" Value="{DynamicResource WorkbenchRunBrush}"/>
                         </Style>
                     </ToggleSwitch.Styles>
                 </ToggleSwitch>
 
-                <Button Grid.Column="3"
+                <Button Grid.Column="2"
                         Command="{Binding DeleteCommand}"
                         Width="24" Height="24"
                         Padding="0"
                         Background="Transparent"
+                        BorderThickness="0"
                         ToolTip.Tip="删除">
                     <TextBlock Text="✕" FontSize="12"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                               Foreground="Red"/>
+                               Foreground="{DynamicResource WorkbenchDangerBrush}"/>
                 </Button>
             </Grid>
 
             <!-- Expanded edit area -->
             <StackPanel IsVisible="{Binding IsExpanded}"
-                        Margin="24,8,0,0"
+                        Margin="8,8,0,0"
                         Spacing="8">
 
                 <!-- 推送名称* -->
@@ -115,6 +126,7 @@
                     </ItemsControl>
                     <Button Content="+ 添加"
                             HorizontalAlignment="Left"
+                            Classes="tool-button"
                             Command="{Binding AddHeaderCommand}"/>
                 </StackPanel>
 
@@ -153,6 +165,7 @@
                     </ItemsControl>
                     <Button Content="+ 添加"
                             HorizontalAlignment="Left"
+                            Classes="tool-button"
                             Command="{Binding AddVariableCommand}"/>
                 </StackPanel>
 

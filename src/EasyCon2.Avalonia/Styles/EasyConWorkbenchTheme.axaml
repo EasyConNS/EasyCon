@@ -245,6 +245,196 @@
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
     </Style>
 
+    <Style Selector="ScrollViewer.settings-scroll">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchWindowBrush}" />
+    </Style>
+
+    <Style Selector="StackPanel.settings-page">
+        <Setter Property="Margin" Value="14" />
+        <Setter Property="Spacing" Value="12" />
+    </Style>
+
+    <Style Selector="Border.settings-card">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchGroupBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchCardRadius}" />
+        <Setter Property="Padding" Value="14" />
+    </Style>
+
+    <Style Selector="TextBlock.card-title">
+        <Setter Property="FontSize" Value="15" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.setting-caption">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+    </Style>
+
+    <Style Selector="Grid.settings-row">
+        <Setter Property="MinHeight" Value="34" />
+    </Style>
+
+    <Style Selector="Button.card-action">
+        <Setter Property="Margin" Value="0,0,8,8" />
+    </Style>
+
+    <Style Selector="Border.inline-config-panel">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <Style Selector="Button.theme-option">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+
+    <Style Selector="Button.theme-option:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Border.theme-preview">
+        <Setter Property="MinHeight" Value="96" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
+        <Setter Property="Padding" Value="10" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.industrial">
+        <Setter Property="Background" Value="#F0F1F5" />
+        <Setter Property="BorderBrush" Value="#9EA1A8" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.light">
+        <Setter Property="Background" Value="#FAF9F5" />
+        <Setter Property="BorderBrush" Value="#E6DFD8" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.dark">
+        <Setter Property="Background" Value="#202123" />
+        <Setter Property="BorderBrush" Value="#30343A" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.dark TextBlock">
+        <Setter Property="Foreground" Value="#F0F0F3" />
+    </Style>
+
+    <Style Selector="Border.theme-strip">
+        <Setter Property="Height" Value="30" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.industrial Border.theme-strip">
+        <Setter Property="Background" Value="#35AEE2" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.light Border.theme-strip">
+        <Setter Property="Background" Value="#CC785C" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.dark Border.theme-strip">
+        <Setter Property="Background" Value="#5B9BD7" />
+    </Style>
+
+    <Style Selector="Border.layout-preview">
+        <Setter Property="Height" Value="78" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
+        <Setter Property="Padding" Value="6" />
+    </Style>
+
+    <Style Selector="Border.layout-cell">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
+    </Style>
+
+    <Style Selector="Border.layout-cell.video-cell">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchBorderBrush}" />
+    </Style>
+
+    <Style Selector="Border.layout-cell.output-cell">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchBorderBrush}" />
+    </Style>
+
+    <Style Selector="Border.layout-cell.tree-cell">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonBrush}" />
+    </Style>
+
+    <Style Selector="Border.layout-cell.editor-cell">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonBrush}" />
+    </Style>
+
+    <Style Selector="Border.layout-cell TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="TextBlock.layout-caption">
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style Selector="RadioButton.layout-option">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border x:Name="OptionChrome"
+                        Background="Transparent"
+                        BorderBrush="Transparent"
+                        BorderThickness="2"
+                        CornerRadius="{DynamicResource WorkbenchControlRadius}"
+                        Padding="4">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Stretch"
+                                      VerticalAlignment="Stretch"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <Style Selector="RadioButton.layout-option:pointerover /template/ Border#OptionChrome">
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+    </Style>
+
+    <Style Selector="RadioButton.layout-option:checked /template/ Border#OptionChrome">
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
+    <Style Selector="RadioButton.layout-option:checked Border.layout-preview">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
+    <Style Selector="RadioButton.layout-option:disabled">
+        <Setter Property="Opacity" Value="0.55" />
+    </Style>
+
     <Style Selector="TabControl">
         <Setter Property="Background" Value="{DynamicResource WorkbenchWindowBrush}" />
         <Setter Property="Padding" Value="0" />

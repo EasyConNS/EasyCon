@@ -4,7 +4,8 @@
              x:Class="EasyCon2.Avalonia.Core.AlertConfig.AlertConfigControl"
              x:DataType="vm:AlertConfigViewModel">
 
-    <DockPanel Margin="16">
+    <DockPanel Margin="16"
+               Background="{DynamicResource WorkbenchWindowBrush}">
         <!-- Bottom buttons -->
         <StackPanel DockPanel.Dock="Bottom"
                     Orientation="Horizontal"
@@ -20,7 +21,7 @@
                     Cursor="Hand"
                     Click="OnOpenFile">
                 <TextBlock Text="打开配置文件目录"
-                           Foreground="{DynamicResource SystemControlHighlightAccentBrush}"
+                           Foreground="{DynamicResource WorkbenchAccentBrush}"
                            TextDecorations="Underline"/>
             </Button>
             <Button Content="保存"
@@ -34,8 +35,10 @@
         <!-- Hidden items hint -->
         <Border DockPanel.Dock="Bottom"
                 IsVisible="{Binding HasHiddenItems}"
-                Background="{DynamicResource SystemControlHighlightAltRevealBackgroundBrush}"
-                CornerRadius="4"
+                Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}"
+                BorderBrush="{DynamicResource WorkbenchAccentBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource WorkbenchControlRadius}"
                 Padding="8,4"
                 Margin="0,8,0,0">
             <TextBlock>
