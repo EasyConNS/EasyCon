@@ -27,6 +27,63 @@
         <conv:BoolToRunColorConverter x:Key="BoolToRunColor" />
     </Window.Resources>
 
+    <Window.Styles>
+        <Style Selector="ToggleButton.debug-switch">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Panel Width="30"
+                           Height="16">
+                        <Border x:Name="SwitchTrack"
+                                Width="30"
+                                Height="16"
+                                CornerRadius="8"
+                                Background="{DynamicResource WorkbenchInputBrush}"
+                                BorderBrush="{DynamicResource WorkbenchMutedTextBrush}"
+                                BorderThickness="1"/>
+                        <Border x:Name="SwitchThumb"
+                                Width="10"
+                                Height="10"
+                                Margin="4,0,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                CornerRadius="5"
+                                Background="{DynamicResource WorkbenchLogTextBrush}"/>
+                    </Panel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="ToggleButton.debug-switch:checked /template/ Border#SwitchTrack">
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+        </Style>
+        <Style Selector="ToggleButton.debug-switch:checked /template/ Border#SwitchThumb">
+            <Setter Property="Margin" Value="16,0,0,0" />
+            <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
+        </Style>
+        <Style Selector="Button.editor-toolbar-button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.editor-toolbar-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        </Style>
+    </Window.Styles>
+
     <DockPanel>
         <Grid RowDefinitions="*,Auto">
 
@@ -61,17 +118,53 @@
                                     Background="{DynamicResource WorkbenchPanelBrush}"
                                     BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                                     BorderThickness="0,0,0,1">
-                                <Grid ColumnDefinitions="*,Auto,24">
+                                <Grid ColumnDefinitions="*,Auto,Auto,24">
                                     <TextBlock Text="{Binding ScriptDisplayPath}"
                                                FontSize="12"
                                                Foreground="{DynamicResource WorkbenchMutedTextBrush}"
                                                VerticalAlignment="Center"
                                                TextTrimming="CharacterEllipsis"/>
-                                    <Button Grid.Column="1"
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                Spacing="2"
+                                                VerticalAlignment="Center"
+                                                Margin="8,0,12,0">
+                                        <Button Classes="editor-toolbar-button"
+                                                Command="{Binding SaveScriptCommand}"
+                                                CommandParameter="{Binding $parent[Window]}"
+                                                ToolTip.Tip="保存">
+                                            <TextBlock Text="&#xE74E;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="13"/>
+                                        </Button>
+                                        <Button Classes="editor-toolbar-button"
+                                                Command="{Binding SaveScriptAsCommand}"
+                                                CommandParameter="{Binding $parent[Window]}"
+                                                ToolTip.Tip="另存为">
+                                            <TextBlock Text="&#xE792;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="13"/>
+                                        </Button>
+                                        <Button Classes="editor-toolbar-button"
+                                                Command="{Binding CloseScriptCommand}"
+                                                ToolTip.Tip="关闭">
+                                            <TextBlock Text="&#xE711;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="12"/>
+                                        </Button>
+                                        <Button Classes="editor-toolbar-button"
+                                                Command="{Binding FormatScriptCommand}"
+                                                ToolTip.Tip="格式化">
+                                            <TextBlock Text="&#xE72C;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="13"/>
+                                        </Button>
+                                    </StackPanel>
+                                    <Button Grid.Column="2"
                                             Classes="flat-link"
                                             Content="脚本语法"
                                             Command="{Binding ShowScriptSyntaxCommand}"/>
-                                    <Border Grid.Column="2"
+                                    <Border Grid.Column="3"
                                             Classes="help-dot"
                                             Margin="6,0,0,0"
                                             VerticalAlignment="Center">
@@ -521,28 +614,42 @@
                 </Border>
 
                 <!-- 第三列下半部分：日志输出 -->
-                <Grid Grid.Row="1" RowDefinitions="28,*">
+                <Grid Grid.Row="1" RowDefinitions="34,*">
                     <Grid Grid.Row="0"
-                          ColumnDefinitions="*,Auto"
+                          ColumnDefinitions="*,Auto,34"
                           Background="{DynamicResource WorkbenchPanelBrush}">
                         <TextBlock Text="输出窗口"
                                    Margin="8,0,0,0"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource WorkbenchMutedTextBrush}"
                                    FontSize="12"/>
-                        <Button Grid.Column="1"
+                        <TextBlock Grid.Column="1"
+                                   Text="调试模式"
+                                   Margin="0,0,4,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                   FontSize="12"/>
+                        <ToggleButton Grid.Column="2"
+                                      Classes="debug-switch"
+                                      IsChecked="{Binding ShowDebugInfo}"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid Grid.Row="1">
+                        <TextBox Classes="log-output"
+                                Text="{Binding LogOutput}"
+                                Padding="10,30,10,10"
+                                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                behaviors:AutoScrollBehavior.IsEnabled="True"/>
+                        <Button HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
                                 Classes="flat-link"
                                 Content="清空输出 ↻"
                                 Foreground="{DynamicResource WorkbenchAmberBrush}"
                                 Command="{Binding ClearLogCommand}"
-                                Margin="0,0,8,0"/>
+                                Margin="0,6,12,0"/>
                     </Grid>
-                    <TextBox Grid.Row="1"
-                            Classes="log-output"
-                            Text="{Binding LogOutput}"
-                            ScrollViewer.VerticalScrollBarVisibility="Auto"
-                            ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                            behaviors:AutoScrollBehavior.IsEnabled="True"/>
                 </Grid>
             </Grid>
         </Grid>

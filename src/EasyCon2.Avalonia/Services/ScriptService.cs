@@ -5,6 +5,7 @@ using EasyCon.Script;
 using EasyScript;
 using OpenCvSharp;
 using System.Collections.Immutable;
+using System.Text.RegularExpressions;
 
 namespace EasyCon2.Avalonia.Services;
 
@@ -24,6 +25,37 @@ public class ScriptService : IScriptService
         _deviceService = deviceService;
         _captureService = captureService;
         _logService = logService;
+    }
+
+    public Task<bool> CompileAsync(string scriptText, string? fileName)
+    {
+        _logService.AddLog("开始编译...");
+
+        try
+        {
+            var diag = _runner.Init(scriptText, []);
+            if (diag.HasErrors())
+            {
+                var first = diag.First(d => d.IsError);
+                _logService.AddLog($"行 {first.Location.StartLine + 1}: {first.Message}");
+                return Task.FromResult(false);
+            }
+
+            _logService.AddLog("编译完成");
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"编译异常: {ex.Message}");
+            return Task.FromResult(false);
+        }
+    }
+
+    public string GetFormattedCode()
+    {
+        var formattedCode = _runner.ToCode().Trim();
+        formattedCode = Regex.Replace(formattedCode, ",(?! )", ", ");
+        return formattedCode;
     }
 
     public void Run(string scriptPath)

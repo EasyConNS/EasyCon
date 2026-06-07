@@ -20,6 +20,8 @@ namespace EasyCon2.Avalonia.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
+    private const string NoScriptPathText = "未选择脚本";
+    private const string UntitledScriptText = "未命名脚本";
     private readonly ILogService _logService;
     private readonly IDeviceService _deviceService;
     private readonly ICaptureService _captureService;
@@ -38,11 +40,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
     // 当前脚本路径
     [ObservableProperty]
-    private string _currentScriptPath = "未选择脚本";
+    private string _currentScriptPath = NoScriptPathText;
 
     // 日志输出
     [ObservableProperty]
     private string _logOutput = "";
+
+    [ObservableProperty]
+    private bool _showDebugInfo;
 
     // 单片机连接相关属性
     [ObservableProperty]
@@ -150,8 +155,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         get
         {
-            if (string.IsNullOrEmpty(CurrentScriptPath) || CurrentScriptPath == "未选择脚本")
-                return "未命名脚本";
+            if (string.IsNullOrEmpty(CurrentScriptPath) || CurrentScriptPath == NoScriptPathText)
+                return UntitledScriptText;
             if (CurrentScriptPath.Length <= 30)
                 return CurrentScriptPath;
             var fileName = Path.GetFileName(CurrentScriptPath);
@@ -191,6 +196,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isRunningOneColumnLayoutSelected = false;
 
     // 远程控制模块属性（命令保留，UI已隐藏）
+    public ICommand SaveScriptCommand { get; }
+    public ICommand SaveScriptAsCommand { get; }
+    public ICommand CloseScriptCommand { get; }
+    public ICommand FormatScriptCommand { get; }
     public ICommand OpenEditorCommand { get; }
     public ICommand ConnectNintendoSwitchCommand { get; }
     public ICommand AutoConnectNintendoSwitchCommand { get; }
@@ -243,6 +252,13 @@ public partial class MainWindowViewModel : ViewModelBase
         _fileTreeViewModel = new FileTreeViewModel();
         _fileTreeViewModel.FileActivated += OnFileTreeFileActivated;
         _fileTreeViewModel.OpenProjectRequested += OnOpenProjectRequested;
+        _fileTreeViewModel.NewScriptRequested += NewScript;
+        _fileTreeViewModel.OpenScriptRequested += OnOpenScriptRequested;
+        _fileTreeViewModel.OpenProjectFolderRequested += OnOpenProjectFolderRequested;
+        _fileTreeViewModel.SaveScriptRequested += OnSaveScriptRequested;
+        _fileTreeViewModel.SaveScriptAsRequested += OnSaveScriptAsRequested;
+        _fileTreeViewModel.CloseProjectRequested += CloseProject;
+        _fileTreeViewModel.FileOperationMessage += _logService.AddLog;
         var fileTreeView = new FileTreeView { DataContext = _fileTreeViewModel };
         FileTreeView = fileTreeView;
 
@@ -322,6 +338,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // 初始化命令
         OpenScriptCommand = new AsyncRelayCommand<Window>(OpenScriptAsync);
+        SaveScriptCommand = new AsyncRelayCommand<Window>(SaveScriptAsync);
+        SaveScriptAsCommand = new AsyncRelayCommand<Window>(SaveScriptAsAsync);
+        CloseScriptCommand = new RelayCommand(CloseScript);
+        FormatScriptCommand = new AsyncRelayCommand(FormatScriptAsync);
         OpenEditorCommand = new RelayCommand(OpenEditor, CanOpenEditor);
         ConnectNintendoSwitchCommand = new RelayCommand(ConnectNintendoSwitch);
         AutoConnectNintendoSwitchCommand = new RelayCommand(AutoConnectNintendoSwitch);
@@ -520,6 +540,131 @@ public partial class MainWindowViewModel : ViewModelBase
             var file = files[0];
             OpenScriptFromPath(file.Path.LocalPath);
         }
+    }
+
+    private void OnOpenScriptRequested(Window? window)
+    {
+        _ = OpenScriptAsync(window);
+    }
+
+    private void OnOpenProjectFolderRequested(Window? window)
+    {
+        _ = OpenProjectFolderAsync(window);
+    }
+
+    private void OnSaveScriptRequested(Window? window)
+    {
+        _ = SaveScriptAsync(window);
+    }
+
+    private void OnSaveScriptAsRequested(Window? window)
+    {
+        _ = SaveScriptAsAsync(window);
+    }
+
+    private async Task OpenProjectFolderAsync(Window? window)
+    {
+        if (window == null)
+            return;
+
+        var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "打开项目目录",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0)
+            OpenProjectFromDirectory(folders[0].Path.LocalPath);
+    }
+
+    private async Task SaveScriptAsync(Window? window)
+    {
+        if (!HasSelectedScriptPath())
+        {
+            await SaveScriptAsAsync(window);
+            return;
+        }
+
+        SaveEditorText(CurrentScriptPath);
+    }
+
+    private async Task SaveScriptAsAsync(Window? window)
+    {
+        if (window == null)
+            return;
+
+        var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "另存为",
+            SuggestedFileName = HasSelectedScriptPath() ? Path.GetFileName(CurrentScriptPath) : $"{UntitledScriptText}.ecs",
+            DefaultExtension = "ecs",
+            FileTypeChoices =
+            [
+                new FilePickerFileType("ECS脚本文件") { Patterns = ["*.ecs"] },
+                new FilePickerFileType("文本文件") { Patterns = ["*.txt"] },
+                new FilePickerFileType("所有文件") { Patterns = ["*"] }
+            ]
+        });
+
+        if (file == null)
+            return;
+
+        CurrentScriptPath = file.Path.LocalPath;
+        SaveEditorText(CurrentScriptPath);
+
+        var dir = Path.GetDirectoryName(CurrentScriptPath);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            _projectDirectoryPath = dir;
+            _fileTreeViewModel.LoadDirectory(dir);
+        }
+    }
+
+    private void CloseScript()
+    {
+        EditorText = "";
+        CurrentScriptPath = NoScriptPathText;
+        SelectedEditorTab = 0;
+    }
+
+    private void NewScript()
+    {
+        EditorText = "";
+        CurrentScriptPath = UntitledScriptText;
+        SelectedEditorTab = 0;
+        _logService.AddLog("已新建脚本");
+    }
+
+    private void CloseProject()
+    {
+        _projectDirectoryPath = null;
+        _fileTreeViewModel.LoadDirectory(null);
+        _logService.AddLog("已关闭项目");
+    }
+
+    private async Task FormatScriptAsync()
+    {
+        if (string.IsNullOrWhiteSpace(EditorText))
+            return;
+
+        if (await _scriptService.CompileAsync(EditorText, null))
+        {
+            EditorText = _scriptService.GetFormattedCode();
+            _logService.AddLog("格式化完成");
+        }
+    }
+
+    private bool HasSelectedScriptPath()
+    {
+        return !string.IsNullOrWhiteSpace(CurrentScriptPath)
+            && CurrentScriptPath != NoScriptPathText
+            && CurrentScriptPath != UntitledScriptText;
+    }
+
+    private void SaveEditorText(string path)
+    {
+        File.WriteAllText(path, EditorText, new UTF8Encoding(false));
+        _logService.AddLog($"已保存脚本: {path}");
     }
 
     /// <summary>
@@ -721,7 +866,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private bool CanOpenEditor()
     {
-        return !string.IsNullOrEmpty(CurrentScriptPath) && CurrentScriptPath != "未选择脚本";
+        return HasSelectedScriptPath();
     }
 
     private void OpenEditor()
@@ -1014,6 +1159,11 @@ public partial class MainWindowViewModel : ViewModelBase
         UpdateEditKeyMappingEnabled();
     }
 
+    partial void OnShowDebugInfoChanged(bool value)
+    {
+        _deviceService.ShowDebugInfo = value;
+    }
+
     private void RunScript()
     {
         if (_scriptService.IsRunning)
@@ -1022,7 +1172,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        if (string.IsNullOrEmpty(CurrentScriptPath) || CurrentScriptPath == "未选择脚本")
+        if (!HasSelectedScriptPath())
         {
             _scriptService.RunFromContent(EditorText);
             return;

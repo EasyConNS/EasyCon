@@ -4,9 +4,125 @@
              x:Class="EasyCon2.Avalonia.Views.FileTreeView"
              x:DataType="vm:FileTreeViewModel">
 
-    <Grid Background="{DynamicResource WorkbenchTreeBrush}">
+    <UserControl.Styles>
+        <Style Selector="Button.worktree-tool-button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.worktree-tool-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="34,*"
+          Background="{DynamicResource WorkbenchTreeBrush}">
+        <Border Grid.Row="0"
+                Background="{DynamicResource WorkbenchSideBrush}"
+                BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,0,4,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Text="工作树"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                           FontSize="12"/>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="1"
+                            Margin="0,0,2,0"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding HasLoadedDirectory}">
+                    <Button Classes="worktree-tool-button"
+                            Command="{Binding CreateFileCommand}"
+                            ToolTip.Tip="新建文件">
+                        <TextBlock Text="&#xE7C3;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="13"/>
+                    </Button>
+                    <Button Classes="worktree-tool-button"
+                            Command="{Binding CreateFolderCommand}"
+                            ToolTip.Tip="新建文件夹">
+                        <TextBlock Text="&#xE8F4;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="13"/>
+                    </Button>
+                    <Button Classes="worktree-tool-button"
+                            Command="{Binding RefreshTreeCommand}"
+                            ToolTip.Tip="刷新">
+                        <TextBlock Text="&#xE72C;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="13"/>
+                    </Button>
+                    <Button Classes="worktree-tool-button"
+                            Command="{Binding ToggleExpandCollapseAllCommand}"
+                            ToolTip.Tip="折叠/展开">
+                        <TextBlock Text="&#xE8A7;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="13"/>
+                    </Button>
+                </StackPanel>
+                <Menu Grid.Column="2"
+                      Width="30"
+                      Height="30"
+                      Padding="0"
+                      Background="Transparent"
+                      VerticalAlignment="Center">
+                    <MenuItem Padding="0"
+                              Width="30"
+                              Height="30"
+                              Foreground="{DynamicResource WorkbenchMutedTextBrush}">
+                        <MenuItem.Header>
+                            <TextBlock Text="&#xE712;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="14"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </MenuItem.Header>
+                        <MenuItem Header="新建脚本"
+                                  Command="{Binding NewScriptCommand}"/>
+                        <MenuItem Header="打开脚本"
+                                  Command="{Binding OpenScriptCommand}"
+                                  CommandParameter="{Binding $parent[Window]}"/>
+                        <MenuItem Header="打开项目"
+                                  Command="{Binding OpenProjectFolderCommand}"
+                                  CommandParameter="{Binding $parent[Window]}"/>
+                        <Separator/>
+                        <MenuItem Header="保存文件"
+                                  Command="{Binding SaveScriptCommand}"
+                                  CommandParameter="{Binding $parent[Window]}"/>
+                        <MenuItem Header="另存为文件"
+                                  Command="{Binding SaveScriptAsCommand}"
+                                  CommandParameter="{Binding $parent[Window]}"/>
+                        <Separator/>
+                        <MenuItem Header="复制"
+                                  Command="{Binding CopySelectedItemCommand}"/>
+                        <MenuItem Header="剪切"
+                                  Command="{Binding CutSelectedItemCommand}"/>
+                        <MenuItem Header="粘贴"
+                                  Command="{Binding PasteItemCommand}"/>
+                        <MenuItem Header="删除"
+                                  Command="{Binding DeleteSelectedItemCommand}"/>
+                        <Separator/>
+                        <MenuItem Header="关闭项目"
+                                  Command="{Binding CloseProjectCommand}"/>
+                    </MenuItem>
+                </Menu>
+            </Grid>
+        </Border>
+
         <!-- 文件列表 -->
         <ListBox x:Name="FileList"
+                 Grid.Row="1"
                  ItemsSource="{Binding FlatItems}"
                  SelectedItem="{Binding SelectedFlatItem}"
                  Tapped="OnItemTapped"
@@ -14,6 +130,20 @@
                  IsVisible="{Binding HasLoadedDirectory}"
                   Background="{DynamicResource WorkbenchTreeBrush}"
                   BorderThickness="0">
+            <ListBox.ContextMenu>
+                <ContextMenu x:CompileBindings="False"
+                             DataContext="{Binding $parent[ListBox].DataContext}">
+                    <MenuItem Header="复制"
+                              Command="{Binding CopySelectedItemCommand}"/>
+                    <MenuItem Header="剪切"
+                              Command="{Binding CutSelectedItemCommand}"/>
+                    <MenuItem Header="粘贴"
+                              Command="{Binding PasteItemCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="删除"
+                              Command="{Binding DeleteSelectedItemCommand}"/>
+                </ContextMenu>
+            </ListBox.ContextMenu>
             <ListBox.Styles>
                 <!-- 去掉 ListBoxItem 默认内边距，让目录背景铺满 -->
                 <Style Selector="ListBoxItem">
@@ -70,6 +200,7 @@
 
         <!-- 空状态：沉浸式打开项目按钮 -->
         <Border IsVisible="{Binding !HasLoadedDirectory}"
+                Grid.Row="1"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Padding="18,12">
