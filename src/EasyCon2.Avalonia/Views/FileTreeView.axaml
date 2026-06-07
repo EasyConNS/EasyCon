@@ -121,15 +121,15 @@
         </Border>
 
         <!-- 文件列表 -->
-        <ListBox x:Name="FileList"
-                 Grid.Row="1"
-                 ItemsSource="{Binding FlatItems}"
-                 SelectedItem="{Binding SelectedFlatItem}"
-                 Tapped="OnItemTapped"
-                 DoubleTapped="OnItemDoubleTapped"
-                 IsVisible="{Binding HasLoadedDirectory}"
-                  Background="{DynamicResource WorkbenchTreeBrush}"
-                  BorderThickness="0">
+        <Grid Grid.Row="1">
+            <ListBox x:Name="FileList"
+                     ItemsSource="{Binding FlatItems}"
+                     SelectedItem="{Binding SelectedFlatItem}"
+                     Tapped="OnItemTapped"
+                     DoubleTapped="OnItemDoubleTapped"
+                     IsVisible="{Binding HasLoadedDirectory}"
+                     Background="{DynamicResource WorkbenchTreeBrush}"
+                     BorderThickness="0">
             <ListBox.ContextMenu>
                 <ContextMenu x:CompileBindings="False"
                              DataContext="{Binding $parent[ListBox].DataContext}">
@@ -197,6 +197,23 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+
+            <!-- 吸顶目录 -->
+            <Border x:Name="StickyHeader"
+                    IsVisible="False"
+                    VerticalAlignment="Top"
+                    Background="{DynamicResource WorkbenchTreeFolderBrush}"
+                    BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="0,3"
+                    ZIndex="1">
+                <TextBlock x:Name="StickyHeaderText"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource WorkbenchTextBrush}"
+                           VerticalAlignment="Center"/>
+            </Border>
+        </Grid>
 
         <!-- 空状态：沉浸式打开项目按钮 -->
         <Border IsVisible="{Binding !HasLoadedDirectory}"

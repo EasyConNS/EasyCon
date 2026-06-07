@@ -50,27 +50,6 @@ public partial class FileTreeViewModel : ViewModelBase
         LoadDirectoryCore(_normalDirectoryPath);
     }
 
-    public void ShowImgLabelTree(string? baseDirectoryPath)
-    {
-        RootItems.Clear();
-        _expandedDirs.Clear();
-        FlatItems.Clear();
-        SelectedFlatItem = null;
-
-        var labelDirectoryPath = string.IsNullOrWhiteSpace(baseDirectoryPath)
-            ? "ImgLabel"
-            : Path.Combine(baseDirectoryPath, "ImgLabel");
-
-        var root = new FileTreeItem("ImgLabel", labelDirectoryPath, true);
-        if (Directory.Exists(labelDirectoryPath))
-            LoadChildren(root, depth: 0, maxDepth: 3);
-
-        RootItems.Add(root);
-        _expandedDirs.Add(root.FullPath);
-        RebuildFlatList();
-        HasLoadedDirectory = true;
-    }
-
     private void LoadDirectoryCore(string? directoryPath)
     {
         RootItems.Clear();
@@ -536,8 +515,9 @@ public partial class FileTreeViewModel : ViewModelBase
 
     private void FlattenItem(FileTreeItem item, int indent)
     {
-        FlatItems.Add(new FileTreeDisplayItem(item.Name, item.FullPath, item.IsDirectory, indent));
-        if (item.IsDirectory && _expandedDirs.Contains(item.FullPath))
+        var isExpanded = item.IsDirectory && _expandedDirs.Contains(item.FullPath);
+        FlatItems.Add(new FileTreeDisplayItem(item.Name, item.FullPath, item.IsDirectory, indent, isExpanded));
+        if (isExpanded)
         {
             foreach (var child in item.Children)
                 FlattenItem(child, indent + 1);

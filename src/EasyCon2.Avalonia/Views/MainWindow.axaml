@@ -210,13 +210,9 @@
                                             <Button Classes="tool-button card-action"
                                                     Content="烧录模式"/>
                                             <Button Classes="tool-button card-action"
-                                                    Content="脚本语法"/>
-                                            <Button Classes="tool-button card-action"
                                                     Content="检查更新"/>
                                             <Button Classes="tool-button card-action"
                                                     Content="项目源码"/>
-                                            <Button Classes="tool-button card-action"
-                                                    Content="关于"/>
                                         </WrapPanel>
                                     </StackPanel>
                                 </Border>

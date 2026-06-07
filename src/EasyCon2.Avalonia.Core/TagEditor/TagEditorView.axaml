@@ -138,6 +138,9 @@
                                 Margin="8"
                                 Width="96"
                                 VerticalAlignment="Top">
+                        <Button Content="打开"
+                                Command="{Binding OpenFileCommand}"
+                                HorizontalAlignment="Stretch"/>
                         <Button Content="截图"
                                 IsEnabled="False"
                                 HorizontalAlignment="Stretch"/>

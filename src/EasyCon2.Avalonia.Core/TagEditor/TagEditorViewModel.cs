@@ -178,6 +178,12 @@ public partial class TagEditorViewModel : ObservableObject
 
     #endregion
 
+    [RelayCommand]
+    private void OpenFile()
+    {
+        // TODO: 通过 IDialogService 打开图片文件并加载到 SourceImage
+    }
+
     public TagEditorViewModel() { }
 
     public TagEditorViewModel(ImgLabel label)

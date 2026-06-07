@@ -412,7 +412,6 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _projectDirectoryPath = directoryPath;
         _fileTreeViewModel.LoadDirectory(directoryPath);
-        UpdateFileTreeForSelectedEditorTab();
         _logService.AddLog($"已打开项目: {directoryPath}");
     }
 
@@ -424,6 +423,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             case ".txt":
             case ".ecs":
+            case ".md":
+            case ".py":
                 CurrentScriptPath = filePath;
                 SelectedEditorTab = 0;
                 InitializeEmbeddedEditor(filePath);
@@ -442,10 +443,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
                 break;
             default:
-                // 未知扩展名默认文本编辑器打开
-                CurrentScriptPath = filePath;
-                SelectedEditorTab = 0;
-                InitializeEmbeddedEditor(filePath);
+                _logService.AddLog($"暂不支持打开该文件类型: {ext}");
                 break;
         }
     }
@@ -1015,24 +1013,6 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         (OpenEditorCommand as RelayCommand)?.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ScriptDisplayPath));
-        if (SelectedEditorTab == 1)
-            UpdateFileTreeForSelectedEditorTab();
-    }
-
-    partial void OnSelectedEditorTabChanged(int value)
-    {
-        UpdateFileTreeForSelectedEditorTab();
-    }
-
-    private void UpdateFileTreeForSelectedEditorTab()
-    {
-        if (SelectedEditorTab == 1)
-        {
-            _fileTreeViewModel.ShowImgLabelTree(GetCurrentScriptRootDirectory());
-            return;
-        }
-
-        _fileTreeViewModel.ShowNormalTree();
     }
 
     private string? GetCurrentScriptRootDirectory()
