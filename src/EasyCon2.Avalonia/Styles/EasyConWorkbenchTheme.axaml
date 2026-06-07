@@ -16,8 +16,8 @@
         <Color x:Key="WorkbenchRunColor">#34C95B</Color>
         <Color x:Key="WorkbenchDangerColor">#E36A54</Color>
         <Color x:Key="WorkbenchInputColor">#FFFFFF</Color>
-        <Color x:Key="WorkbenchLogColor">#000000</Color>
-        <Color x:Key="WorkbenchLogTextColor">#F2F2F2</Color>
+        <Color x:Key="WorkbenchLogColor">#E0E1E6</Color>
+        <Color x:Key="WorkbenchLogTextColor">#333338</Color>
         <Color x:Key="WorkbenchOnAccentColor">#FFFFFF</Color>
         <Color x:Key="WorkbenchAmberColor">#FF8B00</Color>
         <Color x:Key="WorkbenchButtonColor">#F4F5F8</Color>
@@ -197,6 +197,39 @@
         <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
         <Setter Property="SelectionBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
+    <Style Selector="TextBox:pointerover">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+    </Style>
+
+    <Style Selector="TextBox:focus">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
+    <!-- Read-only log TextBox: fix background so FluentTheme hover/focus states don't override it -->
+    <Style Selector="TextBox.log-output">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchLogBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchLogTextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
+        <Setter Property="Padding" Value="10" />
+        <Setter Property="FontFamily" Value="{DynamicResource WorkbenchMonoFontFamily}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="IsReadOnly" Value="True" />
+        <Setter Property="AcceptsReturn" Value="True" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+
+    <Style Selector="TextBox.log-output:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchLogBrush}" />
+    </Style>
+
+    <Style Selector="TextBox.log-output:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchLogBrush}" />
     </Style>
 
     <Style Selector="GroupBox">

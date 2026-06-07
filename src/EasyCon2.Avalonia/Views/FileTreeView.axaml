@@ -34,7 +34,7 @@
                                 Background="{DynamicResource WorkbenchTreeRootBrush}"
                                 IsVisible="{Binding IsRootDirectory}"
                                 Margin="0,1">
-                            <TextBlock Text="{Binding Name}"
+                            <TextBlock Text="{Binding DisplayName}"
                                        Margin="12,0,0,0"
                                        FontSize="{Binding DisplayFontSize}"
                                        FontWeight="{Binding DisplayFontWeight}"
@@ -45,7 +45,7 @@
                                 Background="{DynamicResource WorkbenchTreeFolderBrush}"
                                 IsVisible="{Binding IsSubDirectory}"
                                 Margin="0,1">
-                            <TextBlock Text="{Binding Name}"
+                            <TextBlock Text="{Binding DisplayName}"
                                        Margin="12,0,0,0"
                                        FontSize="{Binding DisplayFontSize}"
                                        FontWeight="{Binding DisplayFontWeight}"

@@ -66,7 +66,6 @@
                 <MenuItem Header="采集卡类型" IsEnabled="False"/>
                 <MenuItem Header="搜图说明" IsEnabled="False"/>
                 <MenuItem Header="设置环境变量" IsEnabled="False"/>
-                <MenuItem Header="搜图控制台" Command="{Binding OpenCaptureConsoleCommand}"/>
             </MenuItem>
             <MenuItem Header="设置">
                 <MenuItem Header="推送设置" IsEnabled="False"/>
@@ -150,7 +149,7 @@
                             </Border>
                             <!-- 编辑器始终显示 -->
                             <Grid Grid.Row="1">
-                                <editor:ScriptEditorControl x:Name="ScriptEditor"/>
+                                <editor:ScriptEditorControl x:Name="ScriptEditor" EditorText="{Binding EditorText, Mode=TwoWay}"/>
                                 <Button Classes="ai-agent"
                                         HorizontalAlignment="Right"
                                         VerticalAlignment="Bottom"
@@ -211,18 +210,10 @@
                                 Margin="0,0,8,0"/>
                     </Grid>
                     <TextBox Grid.Row="1"
+                            Classes="log-output"
                             Text="{Binding LogOutput}"
-                            IsReadOnly="True"
-                            AcceptsReturn="True"
-                            TextWrapping="NoWrap"
                             ScrollViewer.VerticalScrollBarVisibility="Auto"
                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                            FontFamily="{DynamicResource WorkbenchMonoFontFamily}"
-                            FontSize="13"
-                            Padding="10"
-                            Background="{DynamicResource WorkbenchLogBrush}"
-                            Foreground="{DynamicResource WorkbenchLogTextBrush}"
-                            BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                             behaviors:AutoScrollBehavior.IsEnabled="True"/>
                 </Grid>
             </Grid>

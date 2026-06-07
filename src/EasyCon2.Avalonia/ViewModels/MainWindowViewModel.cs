@@ -196,9 +196,10 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand OpenTagEditorCommand { get; }
     public ICommand OpenESPConfigCommand { get; }
     public ICommand ToggleMonitorPauseCommand { get; }
-    public ICommand OpenCaptureConsoleCommand { get; }
+
     public ICommand ShowScriptSyntaxCommand { get; }
     public ICommand OpenAiAgentCommand { get; }
+
     public ICommand ToggleMonitorVisibilityCommand { get; }
     public ICommand ToggleFirmwarePanelCommand { get; }
     public ICommand SelectColorSchemeCommand { get; }
@@ -328,7 +329,6 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
         ToggleMonitorPauseCommand = new RelayCommand(ToggleMonitorPause);
-        OpenCaptureConsoleCommand = new RelayCommand(OpenCaptureConsole);
         ShowScriptSyntaxCommand = new RelayCommand(ShowScriptSyntax);
         OpenAiAgentCommand = new RelayCommand(OpenAiAgent);
         ToggleMonitorVisibilityCommand = new RelayCommand(ToggleMonitorVisibility);
@@ -397,9 +397,6 @@ public partial class MainWindowViewModel : ViewModelBase
                 {
                     var label = ECCore.LoadIL(filePath);
                     var tagVm = new TagEditorViewModel(label);
-
-                    tagVm.TargetImage = CreateAvaloniaBitmap(label);
-
                     TagEditorViewModel = tagVm;
                 }
                 catch (Exception ex)
@@ -529,6 +526,12 @@ public partial class MainWindowViewModel : ViewModelBase
     /// 请求主窗口初始化内嵌编辑器。由 MainWindow 调用。
     /// </summary>
     public event Action<string>? EmbeddedEditorInitializeRequested;
+
+    /// <summary>
+    /// 当前编辑区文本（TwoWay 绑定到 ScriptEditorControl.EditorText）。
+    /// </summary>
+    [ObservableProperty]
+    private string _editorText = "";
 
     /// <summary>
     /// 请求主窗口弹出打开项目目录对话框。
@@ -761,11 +764,6 @@ public partial class MainWindowViewModel : ViewModelBase
         IsFirmwarePanelExpanded = !IsFirmwarePanelExpanded;
     }
 
-    private void OpenCaptureConsole()
-    {
-        _logService.AddLog("搜图控制台功能待接入");
-    }
-
     private void ShowScriptSyntax()
     {
         var textBox = new TextBox
@@ -808,7 +806,6 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSelectedEditorTabChanged(int value)
     {
-        UpdateFileTreeForSelectedEditorTab();
     }
 
     private void UpdateFileTreeForSelectedEditorTab()
@@ -853,16 +850,6 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             return false;
         }
-    }
-
-    private static Bitmap? CreateAvaloniaBitmap(EasyCon.Capture.ImgLabel label)
-    {
-        var sdImage = label.GetImage();
-        using var clone = new System.Drawing.Bitmap(sdImage);
-        using var ms = new MemoryStream();
-        clone.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-        ms.Position = 0;
-        return new Bitmap(ms);
     }
 
     partial void OnIsMonitorPausedChanged(bool value)
@@ -966,7 +953,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (string.IsNullOrEmpty(CurrentScriptPath) || CurrentScriptPath == "未选择脚本")
         {
-            _logService.AddLog("请先选择脚本文件");
+            _scriptService.RunFromContent(EditorText);
             return;
         }
 

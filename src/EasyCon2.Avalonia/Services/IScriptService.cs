@@ -5,5 +5,6 @@ public interface IScriptService
     bool IsRunning { get; }
     event Action<bool> IsRunningChanged;
     void Run(string scriptPath);
+    void RunFromContent(string content);
     void Stop();
 }

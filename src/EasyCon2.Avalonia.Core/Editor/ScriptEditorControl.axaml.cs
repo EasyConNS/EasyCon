@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -53,6 +54,28 @@ public partial class ScriptEditorControl : UserControl
     {
         get => _completionController?.EnableAutoCompletion ?? false;
         set { if (_completionController != null) _completionController.EnableAutoCompletion = value; }
+    }
+
+    public static readonly DirectProperty<ScriptEditorControl, string> EditorTextProperty =
+        AvaloniaProperty.RegisterDirect<ScriptEditorControl, string>(
+            nameof(EditorText),
+            o => o.EditorText,
+            (o, v) => o.EditorText = v,
+            defaultBindingMode: global::Avalonia.Data.BindingMode.TwoWay);
+
+    private string _editorText = string.Empty;
+
+    public string EditorText
+    {
+        get => _editorText;
+        set
+        {
+            if (_editorText == value) return;
+            _editorText = value;
+            _editor.Text = value;
+            TryOpenLspDocument();
+            RaisePropertyChanged(EditorTextProperty, default, value);
+        }
     }
 
     public string Text
@@ -122,6 +145,8 @@ public partial class ScriptEditorControl : UserControl
 
     private void OnTextChanged(object? sender, EventArgs e)
     {
+        _editorText = _editor.Text;
+        RaisePropertyChanged(EditorTextProperty, default, _editorText);
         EditorTextChanged?.Invoke(this, EventArgs.Empty);
 
         if (!_lspDocumentOpened)

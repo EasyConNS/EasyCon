@@ -18,8 +18,6 @@ src/EasyCon2.UI.Common/Resources/Amiibo/AmiiboImages/
 *.userprefs
 .claude/
 PLAN.md
-CLAUDE.md
-AGENTS.md
 
 # Build results
 [Dd]ebug/
