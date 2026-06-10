@@ -261,6 +261,14 @@
 
                                         <Grid Classes="settings-row"
                                               ColumnDefinitions="*,Auto">
+                                            <TextBlock Text="显示代码折叠"
+                                                       VerticalAlignment="Center"/>
+                                            <ToggleSwitch Grid.Column="1"
+                                                          IsChecked="{Binding ShowFolding}"/>
+                                        </Grid>
+
+                                        <Grid Classes="settings-row"
+                                              ColumnDefinitions="*,Auto">
                                             <TextBlock Text="高精度模式"
                                                        VerticalAlignment="Center"/>
                                             <ToggleSwitch Grid.Column="1"
@@ -508,9 +516,11 @@
                                         <Grid ColumnDefinitions="*,*"
                                               ColumnSpacing="10">
                                             <Button Content="远程运行"
+                                                    Command="{Binding RemoteRunCommand}"
                                                     HorizontalAlignment="Stretch"/>
                                             <Button Grid.Column="1"
                                                     Content="远程停止"
+                                                    Command="{Binding RemoteStopCommand}"
                                                     HorizontalAlignment="Stretch"/>
                                         </Grid>
                                     </StackPanel>
@@ -523,9 +533,11 @@
                                         <Grid ColumnDefinitions="*,*"
                                               ColumnSpacing="10">
                                             <Button Content="编译烧录"
+                                                    Command="{Binding CompileFlashCommand}"
                                                     HorizontalAlignment="Stretch"/>
                                             <Button Grid.Column="1"
                                                     Content="清除烧录"
+                                                    Command="{Binding ClearFlashCommand}"
                                                     HorizontalAlignment="Stretch"/>
                                         </Grid>
                                     </StackPanel>
@@ -542,6 +554,7 @@
                                                       HorizontalAlignment="Stretch"/>
                                             <Button Grid.Column="1"
                                                     Content="生成"
+                                                    Command="{Binding GenerateFirmwareCommand}"
                                                     MinWidth="96"/>
                                         </Grid>
                                     </StackPanel>
@@ -557,6 +570,7 @@
                                         </StackPanel>
                                         <Button Grid.Column="1"
                                                 Content="配置"
+                                                Command="{Binding OpenESPConfigCommand}"
                                                 MinWidth="96"
                                                 VerticalAlignment="Center"/>
                                     </Grid>

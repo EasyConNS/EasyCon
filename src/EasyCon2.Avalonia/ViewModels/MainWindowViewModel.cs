@@ -180,6 +180,10 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _autoSwitchLayoutEnabled = false;
 
+    // 显示代码折叠
+    [ObservableProperty]
+    private bool _showFolding = true;
+
     [ObservableProperty]
     private bool _isIdleThreeColumnLayoutSelected = true;
 
@@ -264,6 +268,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // 初始化监视器视图
         InitializeMonitorView();
+
+        // 初始化标签编辑器（默认空实例，始终可用）
+        InitializeTagEditor();
 
         // 订阅日志事件（LogService 已批量合并，此处每 100ms 最多触发一次）
         _logService.LogAppended += text =>
@@ -415,6 +422,11 @@ public partial class MainWindowViewModel : ViewModelBase
         _logService.AddLog($"已打开项目: {directoryPath}");
     }
 
+    /// <summary>
+    /// 获取当前项目目录路径（供 MainWindow 调用）。
+    /// </summary>
+    public string? GetCurrentProjectDirectory() => _projectDirectoryPath;
+
     private void OnFileTreeFileActivated(string filePath)
     {
         // 双击文件时不更新目录，只在右侧标签页打开内容
@@ -434,8 +446,18 @@ public partial class MainWindowViewModel : ViewModelBase
                 try
                 {
                     var label = ECCore.LoadIL(filePath);
-                    var tagVm = new TagEditorViewModel(label);
-                    TagEditorViewModel = tagVm;
+                    if (TagEditorViewModel != null)
+                    {
+                        TagEditorViewModel.LoadFromLabel(label);
+                    }
+                    else
+                    {
+                        var tagVm = new TagEditorViewModel(label);
+                        tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
+                        tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
+                        tagVm.LogMessage += _logService.AddLog;
+                        TagEditorViewModel = tagVm;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -466,6 +488,15 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _logService.AddLog($"初始化监视器失败: {ex.Message}");
         }
+    }
+
+    private void InitializeTagEditor()
+    {
+        var tagVm = new TagEditorViewModel();
+        tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
+        tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
+        tagVm.LogMessage += _logService.AddLog;
+        TagEditorViewModel = tagVm;
     }
 
     private void InitializeSampleData()
@@ -565,10 +596,16 @@ public partial class MainWindowViewModel : ViewModelBase
         if (window == null)
             return;
 
+        // 使用当前项目目录或用户文档目录作为默认位置
+        var startPath = _projectDirectoryPath
+            ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        var startFolder = await window.StorageProvider.TryGetFolderFromPathAsync(startPath);
+
         var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
             Title = "打开项目目录",
-            AllowMultiple = false
+            AllowMultiple = false,
+            SuggestedStartLocation = startFolder
         });
 
         if (folders.Count > 0)
@@ -697,6 +734,11 @@ public partial class MainWindowViewModel : ViewModelBase
     /// 请求主窗口弹出打开项目目录对话框。
     /// </summary>
     public event Action? OpenFolderDialogRequested;
+
+    /// <summary>
+    /// 请求主窗口切换代码折叠显示状态。
+    /// </summary>
+    public event Action<bool>? FoldingVisibilityChanged;
 
     private void InitializeEmbeddedEditor(string filePath)
     {
@@ -1063,6 +1105,98 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(MonitorVisibilityButtonText));
     }
 
+    partial void OnShowFoldingChanged(bool value)
+    {
+        FoldingVisibilityChanged?.Invoke(value);
+    }
+
+    partial void OnIsCaptureSourceConnectedChanged(bool value)
+    {
+        // 同步更新标签编辑器的视频源连接状态
+        if (TagEditorViewModel != null)
+        {
+            TagEditorViewModel.IsCaptureConnected = value;
+        }
+    }
+
+    private void OnTagEditorOpenFileRequested()
+    {
+        OpenTagEditorImageFile();
+    }
+
+    private void OnTagEditorCaptureScreenshot()
+    {
+        CaptureScreenshotForTagEditor();
+    }
+
+    private async void OpenTagEditorImageFile()
+    {
+        // 使用当前主窗口作为父窗口
+        var mainWindow = App.Current?.ApplicationLifetime is global::Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+
+        if (mainWindow == null) return;
+
+        try
+        {
+            // 使用 AppPaths.CaptureCacheDir 作为默认目录
+            var cacheDir = EasyCon.Core.Config.AppPaths.CaptureCacheDir;
+            var startFolder = await mainWindow.StorageProvider.TryGetFolderFromPathAsync(cacheDir);
+
+            var files = await mainWindow.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "选择图片文件",
+                AllowMultiple = false,
+                SuggestedStartLocation = startFolder,
+                FileTypeFilter =
+                [
+                    new FilePickerFileType("图片文件") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"] },
+                    new FilePickerFileType("所有文件") { Patterns = ["*"] }
+                ]
+            });
+
+            if (files.Count > 0 && TagEditorViewModel != null)
+            {
+                var filePath = files[0].Path.LocalPath;
+                TagEditorViewModel.LoadImageFromFile(filePath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开文件对话框失败: {ex.Message}");
+        }
+    }
+
+    private void CaptureScreenshotForTagEditor()
+    {
+        if (!_captureService.IsConnected)
+        {
+            _logService.AddLog("请先连接视频源");
+            return;
+        }
+
+        try
+        {
+            using var mat = _captureService.GetMatFrame();
+            if (mat == null || mat.Empty())
+            {
+                _logService.AddLog("截图失败：无法获取视频帧");
+                return;
+            }
+
+            // 将Mat编码为字节数组，然后转换为Bitmap
+            var imageBytes = mat.ToBytes(".png");
+            var bitmap = new global::Avalonia.Media.Imaging.Bitmap(new MemoryStream(imageBytes));
+            TagEditorViewModel?.SetScreenshot(bitmap);
+            _logService.AddLog("截图成功");
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"截图失败：{ex.Message}");
+        }
+    }
+
     private void DropFile(string? path)
     {
         if (!string.IsNullOrEmpty(path))
@@ -1203,8 +1337,15 @@ public partial class MainWindowViewModel : ViewModelBase
             _logService.AddLog("请先连接单片机");
             return;
         }
-        _logService.AddLog("执行远程运行命令");
-        // TODO: 实现远程运行逻辑
+
+        if (_deviceService.RemoteStart())
+        {
+            _logService.AddLog("远程运行成功");
+        }
+        else
+        {
+            _logService.AddLog("远程运行失败");
+        }
     }
 
     private void RemoteStop()
@@ -1214,19 +1355,66 @@ public partial class MainWindowViewModel : ViewModelBase
             _logService.AddLog("请先连接单片机");
             return;
         }
-        _logService.AddLog("执行远程停止命令");
-        // TODO: 实现远程停止逻辑
+
+        if (_deviceService.RemoteStop())
+        {
+            _logService.AddLog("远程停止成功");
+        }
+        else
+        {
+            _logService.AddLog("远程停止失败");
+        }
     }
 
-    private void CompileFlash()
+    private async void CompileFlash()
     {
         if (!IsNintendoSwitchConnected)
         {
             _logService.AddLog("请先连接单片机");
             return;
         }
-        _logService.AddLog("执行编译烧录命令");
-        // TODO: 实现编译烧录逻辑
+
+        if (string.IsNullOrWhiteSpace(EditorText))
+        {
+            _logService.AddLog("没有可烧录的脚本");
+            return;
+        }
+
+        _logService.AddLog("开始编译...");
+
+        // 编译脚本
+        if (!await _scriptService.CompileAsync(EditorText, HasSelectedScriptPath() ? CurrentScriptPath : null))
+        {
+            _logService.AddLog("编译失败，无法烧录");
+            return;
+        }
+
+        // 组装为字节码
+        var bytes = await _scriptService.Build(true);
+        if (bytes == null || bytes.Length == 0)
+        {
+            _logService.AddLog("编译结果为空，无法烧录");
+            return;
+        }
+
+        // 检查固件版本
+        var version = _deviceService.GetVersion();
+        if (version != 0x45)
+        {
+            _logService.AddLog($"固件版本不匹配 (当前: 0x{version:X2}，需要: 0x45)，请先更新固件");
+            return;
+        }
+
+        // 烧录
+        _logService.AddLog($"正在烧录 ({bytes.Length} 字节)...");
+        if (_deviceService.Flash(bytes))
+        {
+            _logService.AddLog("烧录成功");
+        }
+        else
+        {
+            _logService.AddLog("烧录失败");
+        }
     }
 
     private void ClearFlash()
@@ -1236,30 +1424,147 @@ public partial class MainWindowViewModel : ViewModelBase
             _logService.AddLog("请先连接单片机");
             return;
         }
-        _logService.AddLog("执行清除烧录命令");
-        // TODO: 实现清除烧录逻辑
+
+        _logService.AddLog("正在清除烧录...");
+        // 使用空字节数组清除烧录
+        if (_deviceService.Flash(Array.Empty<byte>()))
+        {
+            _logService.AddLog("清除烧录成功");
+        }
+        else
+        {
+            _logService.AddLog("清除烧录失败");
+        }
     }
 
-    private void GenerateFirmware()
+    private async void GenerateFirmware()
+    {
+        if (string.IsNullOrWhiteSpace(EditorText))
+        {
+            _logService.AddLog("没有可生成固件的脚本");
+            return;
+        }
+
+        _logService.AddLog("开始编译...");
+
+        // 编译脚本
+        if (!await _scriptService.CompileAsync(EditorText, HasSelectedScriptPath() ? CurrentScriptPath : null))
+        {
+            _logService.AddLog("编译失败，无法生成固件");
+            return;
+        }
+
+        // 组装为字节码
+        var bytes = await _scriptService.Build(false);
+        if (bytes == null || bytes.Length == 0)
+        {
+            _logService.AddLog("编译结果为空，无法生成固件");
+            return;
+        }
+
+        _logService.AddLog($"正在生成固件 ({SelectedFirmware})...");
+
+        try
+        {
+            // 检查固件目录
+            var firmwarePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Firmware");
+            if (!Directory.Exists(firmwarePath))
+            {
+                _logService.AddLog("固件目录不存在，请确认程序Firmware目录下是否有对应固件文件");
+                return;
+            }
+
+            // 查找对应的固件文件
+            var firmwareFile = GetFirmwareFile(firmwarePath, SelectedFirmware);
+            if (firmwareFile == null)
+            {
+                _logService.AddLog($"未找到 {SelectedFirmware} 对应的固件文件");
+                return;
+            }
+
+            // 读取固件模板并写入脚本
+            var hexContent = File.ReadAllText(firmwareFile);
+            var outputFileName = Path.GetFileNameWithoutExtension(firmwareFile) + "+Script" + Path.GetExtension(firmwareFile);
+            var outputPath = Path.Combine(Environment.CurrentDirectory, outputFileName);
+
+            // 使用HexWriter写入脚本到固件
+            var resultHex = EasyCon.Script.Asm.HexWriter.WriteHex(hexContent, bytes, 924, 0x45);
+            File.WriteAllText(outputPath, resultHex);
+
+            _logService.AddLog($"固件已生成: {outputPath}");
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"生成固件失败: {ex.Message}");
+        }
+    }
+
+    private static string? GetFirmwareFile(string firmwarePath, string coreName)
+    {
+        var dir = new DirectoryInfo(firmwarePath);
+        if (!dir.Exists) return null;
+
+        var max = 0;
+        string? filename = null;
+        foreach (var fi in dir.GetFiles("*.hex"))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(
+                fi.Name,
+                $@"^{coreName} v(\d+)\.hex$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (m.Success)
+            {
+                var ver = int.Parse(m.Groups[1].Value);
+                if (ver > max)
+                {
+                    max = ver;
+                    filename = fi.FullName;
+                }
+            }
+        }
+        return filename;
+    }
+
+    private void StartRecord()
     {
         if (!IsNintendoSwitchConnected)
         {
             _logService.AddLog("请先连接单片机");
             return;
         }
-        _logService.AddLog($"生成固件: {SelectedFirmware}");
-        // TODO: 实现固件生成逻辑
-    }
 
-    private void StartRecord()
-    {
+        if (!IsControllerConnected)
+        {
+            _logService.AddLog("请先连接虚拟手柄");
+            return;
+        }
+
         _logService.AddLog("开始录制脚本");
-        // TODO: 实现录制逻辑
+        var device = _deviceService.GetDevice();
+        device.StartRecord();
     }
 
     private void StopRecord()
     {
-        _logService.AddLog("停止录制");
-        // TODO: 实现停止录制逻辑
+        if (!IsNintendoSwitchConnected)
+        {
+            _logService.AddLog("请先连接单片机");
+            return;
+        }
+
+        var device = _deviceService.GetDevice();
+        device.StopRecord();
+
+        var script = device.GetRecordScript();
+        if (!string.IsNullOrEmpty(script))
+        {
+            EditorText = script;
+            _logService.AddLog("录制完成，脚本已加载到编辑器");
+        }
+        else
+        {
+            _logService.AddLog("录制完成，但没有生成脚本内容");
+        }
     }
 }

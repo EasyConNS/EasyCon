@@ -3,9 +3,11 @@ namespace EasyCon2.Avalonia.Services;
 public interface IScriptService
 {
     bool IsRunning { get; }
+    bool HasKeyAction { get; }
     event Action<bool> IsRunningChanged;
     Task<bool> CompileAsync(string scriptText, string? fileName);
     string GetFormattedCode();
+    Task<byte[]> Build(bool autoRun);
     void Run(string scriptPath);
     void RunFromContent(string content);
     void Stop();

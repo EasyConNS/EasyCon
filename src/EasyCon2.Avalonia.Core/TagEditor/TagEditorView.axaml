@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:EasyCon2.Avalonia.Core.TagEditor"
+             xmlns:tag="using:EasyCon2.Avalonia.Core.TagEditor"
              xmlns:cvt="using:EasyCon2.Avalonia.Core.Converters"
              x:Class="EasyCon2.Avalonia.Core.TagEditor.TagEditorView"
              x:DataType="vm:TagEditorViewModel">
@@ -129,10 +130,13 @@
                     Background="{DynamicResource WorkbenchInputBrush}"
                     ClipToBounds="True">
                 <Grid ColumnDefinitions="*,Auto">
-                    <Image Source="{Binding SourceImage}"
-                           Stretch="Uniform"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center" />
+                    <tag:SelectableImage x:Name="ImageControl"
+                                         Source="{Binding SourceImage}"
+                                         SelectionMode="{Binding CurrentSelectionMode}"
+                                         RangeRect="{Binding RangeRect, Mode=TwoWay}"
+                                         TargetRect="{Binding TargetRect, Mode=TwoWay}"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Stretch" />
                     <StackPanel Grid.Column="1"
                                 Spacing="8"
                                 Margin="8"
@@ -142,13 +146,16 @@
                                 Command="{Binding OpenFileCommand}"
                                 HorizontalAlignment="Stretch"/>
                         <Button Content="截图"
-                                IsEnabled="False"
+                                Command="{Binding CaptureScreenshotCommand}"
                                 HorizontalAlignment="Stretch"/>
-                        <Button Content="圈选范围"
-                                IsEnabled="False"
+                        <Button Content="{Binding RangeButtonText}"
+                                Command="{Binding ToggleRangeSelectionCommand}"
                                 HorizontalAlignment="Stretch"/>
-                        <Button Content="圈选目标"
-                                IsEnabled="False"
+                        <Button Content="{Binding TargetButtonText}"
+                                Command="{Binding ToggleTargetSelectionCommand}"
+                                HorizontalAlignment="Stretch"/>
+                        <Button Content="清除圈选"
+                                Command="{Binding ClearSelectionCommand}"
                                 HorizontalAlignment="Stretch"/>
                         <Button Content="动态测试"
                                 IsEnabled="False"
@@ -179,7 +186,7 @@
                                      />
                             <Button Grid.Column="2"
                                     Content="保存"
-                                    IsEnabled="False"
+                                    Command="{Binding SaveLabelCommand}"
                                     Padding="14,4"
                                     VerticalAlignment="Center"/>
                         </Grid>

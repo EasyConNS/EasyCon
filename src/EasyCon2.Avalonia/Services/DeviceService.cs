@@ -78,6 +78,36 @@ public class DeviceService : IDeviceService
         return null;
     }
 
+    public bool RemoteStart()
+    {
+        if (!_isConnected) return false;
+        return _nintendoSwitch.RemoteStart();
+    }
+
+    public bool RemoteStop()
+    {
+        if (!_isConnected) return false;
+        return _nintendoSwitch.RemoteStop();
+    }
+
+    public bool Flash(byte[] asmBytes)
+    {
+        if (!_isConnected) return false;
+        return _nintendoSwitch.Flash(asmBytes);
+    }
+
+    public int GetVersion()
+    {
+        if (!_isConnected) return -1;
+        return _nintendoSwitch.GetVersion();
+    }
+
+    public bool UnPair()
+    {
+        if (!_isConnected) return false;
+        return _nintendoSwitch.UnPair();
+    }
+
     private void OnNSLog(string message)
     {
         _logService.AddLog($"NS LOG >> {message}");

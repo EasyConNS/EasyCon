@@ -12,4 +12,15 @@ public interface IDeviceService
     string? AutoConnect();
     void Disconnect();
     NintendoSwitch GetDevice();
+
+    // 远程控制
+    bool RemoteStart();
+    bool RemoteStop();
+
+    // 烧录
+    bool Flash(byte[] asmBytes);
+    int GetVersion();
+
+    // 配对
+    bool UnPair();
 }

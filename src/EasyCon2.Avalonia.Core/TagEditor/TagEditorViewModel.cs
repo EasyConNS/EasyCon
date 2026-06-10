@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -74,49 +75,91 @@ public partial class TagEditorViewModel : ObservableObject
     #region Proxy properties from ImgLabel
 
     [ObservableProperty]
-    private string _labelName = "";
+    private string _labelName = "5号路孵蛋屋主人";
 
-    partial void OnLabelNameChanged(string value) => Label.name = value;
+    /// <summary>
+    /// 标签名称是否有值（用于控制保存按钮可用性）
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasLabelName = true;
+
+    partial void OnLabelNameChanged(string value)
+    {
+        Label.name = value;
+        HasLabelName = !string.IsNullOrWhiteSpace(value);
+    }
 
     [ObservableProperty]
     private int _targetX;
 
-    partial void OnTargetXChanged(int value) => Label.TargetX = value;
+    partial void OnTargetXChanged(int value)
+    {
+        Label.TargetX = value;
+        UpdateTargetRect();
+    }
 
     [ObservableProperty]
     private int _targetY;
 
-    partial void OnTargetYChanged(int value) => Label.TargetY = value;
+    partial void OnTargetYChanged(int value)
+    {
+        Label.TargetY = value;
+        UpdateTargetRect();
+    }
 
     [ObservableProperty]
     private int _targetWidth;
 
-    partial void OnTargetWidthChanged(int value) => Label.TargetWidth = value;
+    partial void OnTargetWidthChanged(int value)
+    {
+        Label.TargetWidth = value;
+        UpdateTargetRect();
+    }
 
     [ObservableProperty]
     private int _targetHeight;
 
-    partial void OnTargetHeightChanged(int value) => Label.TargetHeight = value;
+    partial void OnTargetHeightChanged(int value)
+    {
+        Label.TargetHeight = value;
+        UpdateTargetRect();
+    }
 
     [ObservableProperty]
     private int _rangeX;
 
-    partial void OnRangeXChanged(int value) => Label.RangeX = value;
+    partial void OnRangeXChanged(int value)
+    {
+        Label.RangeX = value;
+        UpdateRangeRect();
+    }
 
     [ObservableProperty]
     private int _rangeY;
 
-    partial void OnRangeYChanged(int value) => Label.RangeY = value;
+    partial void OnRangeYChanged(int value)
+    {
+        Label.RangeY = value;
+        UpdateRangeRect();
+    }
 
     [ObservableProperty]
     private int _rangeWidth;
 
-    partial void OnRangeWidthChanged(int value) => Label.RangeWidth = value;
+    partial void OnRangeWidthChanged(int value)
+    {
+        Label.RangeWidth = value;
+        UpdateRangeRect();
+    }
 
     [ObservableProperty]
     private int _rangeHeight;
 
-    partial void OnRangeHeightChanged(int value) => Label.RangeHeight = value;
+    partial void OnRangeHeightChanged(int value)
+    {
+        Label.RangeHeight = value;
+        UpdateRangeRect();
+    }
 
     [ObservableProperty]
     private SearchMethod _searchMethod = SearchMethod.CCoeffNormed;
@@ -178,10 +221,184 @@ public partial class TagEditorViewModel : ObservableObject
 
     #endregion
 
+    /// <summary>
+    /// 请求主窗口打开文件选择对话框。
+    /// </summary>
+    public event Action? OpenFileRequested;
+
+    /// <summary>
+    /// 请求主窗口执行截图操作。
+    /// </summary>
+    public event Action? CaptureScreenshotRequested;
+
+    /// <summary>
+    /// 日志输出事件。
+    /// </summary>
+    public event Action<string>? LogMessage;
+
+    /// <summary>
+    /// 视频源是否已连接（用于控制截图按钮可用性）。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CaptureScreenshotCommand))]
+    private bool _isCaptureConnected;
+
+    /// <summary>
+    /// 当前圈选模式
+    /// </summary>
+    [ObservableProperty]
+    private SelectionMode _currentSelectionMode = SelectionMode.None;
+
+    /// <summary>
+    /// 范围矩形（图片坐标）
+    /// </summary>
+    [ObservableProperty]
+    private Rect _rangeRect;
+
+    /// <summary>
+    /// 目标矩形（图片坐标）
+    /// </summary>
+    [ObservableProperty]
+    private Rect _targetRect;
+
+    /// <summary>
+    /// 圈选范围按钮文本
+    /// </summary>
+    public string RangeButtonText => CurrentSelectionMode == SelectionMode.Range ? "确定范围" : "圈选范围";
+
+    /// <summary>
+    /// 圈选目标按钮文本
+    /// </summary>
+    public string TargetButtonText => CurrentSelectionMode == SelectionMode.Target ? "确定目标" : "圈选目标";
+
+    partial void OnCurrentSelectionModeChanged(SelectionMode value)
+    {
+        OnPropertyChanged(nameof(RangeButtonText));
+        OnPropertyChanged(nameof(TargetButtonText));
+    }
+
+    partial void OnRangeRectChanged(Rect value)
+    {
+        // 圈选范围矩形变化 → 更新搜索范围坐标
+        if (value.Width > 0 && value.Height > 0)
+        {
+            RangeX = (int)value.X;
+            RangeY = (int)value.Y;
+            RangeWidth = (int)value.Width;
+            RangeHeight = (int)value.Height;
+        }
+    }
+
+    partial void OnTargetRectChanged(Rect value)
+    {
+        // 圈选目标矩形变化 → 更新目标位置坐标
+        if (value.Width > 0 && value.Height > 0)
+        {
+            TargetX = (int)value.X;
+            TargetY = (int)value.Y;
+            TargetWidth = (int)value.Width;
+            TargetHeight = (int)value.Height;
+        }
+    }
+
     [RelayCommand]
     private void OpenFile()
     {
-        // TODO: 通过 IDialogService 打开图片文件并加载到 SourceImage
+        OpenFileRequested?.Invoke();
+    }
+
+    [RelayCommand(CanExecute = nameof(IsCaptureConnected))]
+    private void CaptureScreenshot()
+    {
+        CaptureScreenshotRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// 设置截图结果（由主窗口调用）。
+    /// </summary>
+    public void SetScreenshot(Bitmap bitmap)
+    {
+        SourceImage = bitmap;
+    }
+
+    [RelayCommand]
+    private void ToggleRangeSelection()
+    {
+        CurrentSelectionMode = CurrentSelectionMode == SelectionMode.Range
+            ? SelectionMode.None
+            : SelectionMode.Range;
+    }
+
+    [RelayCommand]
+    private void ToggleTargetSelection()
+    {
+        CurrentSelectionMode = CurrentSelectionMode == SelectionMode.Target
+            ? SelectionMode.None
+            : SelectionMode.Target;
+    }
+
+    [RelayCommand]
+    private void ClearSelection()
+    {
+        CurrentSelectionMode = SelectionMode.None;
+        RangeRect = default;
+        TargetRect = default;
+    }
+
+    [RelayCommand(CanExecute = nameof(HasLabelName))]
+    private void SaveLabel()
+    {
+        try
+        {
+            // 验证标签数据
+            if (!Label.Valid())
+            {
+                LogMessage?.Invoke("标签数据不完善，无法保存");
+                return;
+            }
+
+            // 确定保存路径
+            var savePath = !string.IsNullOrEmpty(Label.path)
+                ? Label.path
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ImgLabel");
+
+            // 保存（同名文件覆盖）
+            Label.Save(savePath);
+
+            LogMessage?.Invoke($"标签已保存: {Label.name}.IL");
+        }
+        catch (Exception ex)
+        {
+            LogMessage?.Invoke($"保存失败: {ex.Message}");
+        }
+    }
+
+    private void UpdateRangeRect()
+    {
+        RangeRect = new Rect(RangeX, RangeY, RangeWidth, RangeHeight);
+    }
+
+    private void UpdateTargetRect()
+    {
+        TargetRect = new Rect(TargetX, TargetY, TargetWidth, TargetHeight);
+    }
+
+    /// <summary>
+    /// 从文件路径加载图片到SourceImage。
+    /// </summary>
+    public void LoadImageFromFile(string filePath)
+    {
+        try
+        {
+            if (File.Exists(filePath))
+            {
+                SourceImage = new Bitmap(filePath);
+            }
+        }
+        catch
+        {
+            // 忽略加载错误
+        }
     }
 
     public TagEditorViewModel() { }
@@ -193,6 +410,25 @@ public partial class TagEditorViewModel : ObservableObject
 
     public void LoadFromLabel(ImgLabel label)
     {
+        // 复制所有属性到 Label 对象
+        Label.name = label.name;
+        Label.path = label.path;
+        Label.ImgBase64 = label.ImgBase64;
+        Label.searchMethod = label.searchMethod;
+        Label.TargetX = label.TargetX;
+        Label.TargetY = label.TargetY;
+        Label.TargetWidth = label.TargetWidth;
+        Label.TargetHeight = label.TargetHeight;
+        Label.RangeX = label.RangeX;
+        Label.RangeY = label.RangeY;
+        Label.RangeWidth = label.RangeWidth;
+        Label.RangeHeight = label.RangeHeight;
+        Label.UseGrayscale = label.UseGrayscale;
+        Label.UseBinary = label.UseBinary;
+        Label.UseGaussianBlur = label.UseGaussianBlur;
+        Label.UseOther = label.UseOther;
+
+        // 更新 UI 属性
         LabelName = label.name;
         TargetX = label.TargetX;
         TargetY = label.TargetY;
@@ -208,6 +444,10 @@ public partial class TagEditorViewModel : ObservableObject
         UseGaussianBlur = label.UseGaussianBlur;
         UseOther = label.UseOther;
         SelectedParameterOption = GetParameterOption();
+
+        // 同步矩形到 SelectableImage 控件
+        RangeRect = new Rect(RangeX, RangeY, RangeWidth, RangeHeight);
+        TargetRect = new Rect(TargetX, TargetY, TargetWidth, TargetHeight);
 
         TargetImage = CreateTargetImage(label);
     }

@@ -32,6 +32,7 @@ public partial class MainWindow : Window
         {
             vm.EmbeddedEditorInitializeRequested += OnEmbeddedEditorInitializeRequested;
             vm.OpenFolderDialogRequested += OnOpenFolderDialogRequested;
+            vm.FoldingVisibilityChanged += OnFoldingVisibilityChanged;
         }
     }
 
@@ -54,10 +55,16 @@ public partial class MainWindow : Window
 
     private async void OnOpenFolderDialogRequested()
     {
+        // 使用当前项目目录或用户文档目录作为默认位置
+        var startPath = (DataContext as MainWindowViewModel)?.GetCurrentProjectDirectory()
+            ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        var startFolder = await StorageProvider.TryGetFolderFromPathAsync(startPath);
+
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
             Title = "打开项目目录",
-            AllowMultiple = false
+            AllowMultiple = false,
+            SuggestedStartLocation = startFolder
         });
 
         if (folders.Count > 0 && DataContext is MainWindowViewModel vm)
@@ -90,7 +97,8 @@ public partial class MainWindow : Window
 
         editor.EditorTextChanged += (_, _) =>
         {
-            if (_foldingManager != null)
+            // 检查ViewModel的ShowFolding属性
+            if (DataContext is MainWindowViewModel vm && vm.ShowFolding && _foldingManager != null)
                 _foldingStrategy?.UpdateFoldings(_foldingManager, editor.TextDocument);
         };
     }
@@ -144,6 +152,7 @@ public partial class MainWindow : Window
         {
             vm.EmbeddedEditorInitializeRequested -= OnEmbeddedEditorInitializeRequested;
             vm.OpenFolderDialogRequested -= OnOpenFolderDialogRequested;
+            vm.FoldingVisibilityChanged -= OnFoldingVisibilityChanged;
             vm.OnMainWindowClosing();
         }
 
@@ -160,5 +169,21 @@ public partial class MainWindow : Window
     {
         if (DataContext is MainWindowViewModel vm)
             vm.ToggleMonitorVisibilityCommand.Execute(null);
+    }
+
+    private void OnFoldingVisibilityChanged(bool showFolding)
+    {
+        if (showFolding)
+        {
+            var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
+            if (editor != null && _foldingManager != null && _foldingStrategy != null)
+            {
+                _foldingStrategy.UpdateFoldings(_foldingManager, editor.TextDocument);
+            }
+        }
+        else
+        {
+            _foldingManager?.Clear();
+        }
     }
 }

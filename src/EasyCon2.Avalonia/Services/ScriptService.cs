@@ -18,6 +18,7 @@ public class ScriptService : IScriptService
     private CancellationTokenSource? _cts;
 
     public bool IsRunning { get; private set; }
+    public bool HasKeyAction => _runner.HasKeyAction;
     public event Action<bool> IsRunningChanged;
 
     public ScriptService(IDeviceService deviceService, ICaptureService captureService, ILogService logService)
@@ -56,6 +57,20 @@ public class ScriptService : IScriptService
         var formattedCode = _runner.ToCode().Trim();
         formattedCode = Regex.Replace(formattedCode, ",(?! )", ", ");
         return formattedCode;
+    }
+
+    public Task<byte[]> Build(bool autoRun)
+    {
+        try
+        {
+            var bytes = _runner.Assemble(autoRun);
+            return Task.FromResult(bytes);
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"编译失败: {ex.Message}");
+            return Task.FromResult(Array.Empty<byte>());
+        }
     }
 
     public void Run(string scriptPath)
