@@ -86,12 +86,18 @@ sealed class ParenthesizedExpression(Token lp, BaseExpr expression, Token rp) : 
 }
 
 // 数组定义表达式 ：右值
-sealed class IndexDefExpression(Token lb, ImmutableArray<BaseExpr> index, Token rb) : BaseExpr(lb)
+sealed class IndexDefExpression(Token lb, ImmutableArray<BaseExpr> index, Token rb, Token? elementTypeToken = null) : BaseExpr(lb)
 {
     public ImmutableArray<BaseExpr> Index { get; } = index;
     public readonly Token Lb = lb;
     public readonly Token Rb = rb;
-    public override string GetCodeText() => $"[{string.Join(", ", Index.Select(arg => arg.GetCodeText()))}]";
+    /// <summary>[] 后面可选的类型标注 token，例如 []int 中的 int</summary>
+    public readonly Token? ElementTypeToken = elementTypeToken;
+    public override string GetCodeText()
+    {
+        var suffix = ElementTypeToken != null ? ElementTypeToken.Value : "";
+        return $"[{string.Join(", ", Index.Select(arg => arg.GetCodeText()))}]{suffix}";
+    }
 }
 
 // 索引表达式

@@ -566,6 +566,24 @@ END");
         ExpectParse("FOR 3\nFOR 2\nA\nNEXT\nNEXT");
     }
 
+    [Test]
+    public void For_ExpressionUpperBound()
+    {
+        ExpectParse("FOR $i = 0 TO $n - 1\nA\nNEXT");
+    }
+
+    [Test]
+    public void For_ExpressionLowerBound()
+    {
+        ExpectParse("FOR $i = $a + 1 TO 10\nA\nNEXT");
+    }
+
+    [Test]
+    public void For_BothBoundsExpression()
+    {
+        ExpectParse("FOR $i = $a * 2 TO $b - 3\nA\nNEXT");
+    }
+
     #endregion
 
     #region 循环 WHILE

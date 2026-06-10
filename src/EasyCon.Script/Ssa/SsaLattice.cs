@@ -24,59 +24,63 @@ internal struct LatticeValue
     public ConstPayload Value;
     public SsaOp ConstKind; // 仅 Tag==Const 时有效
 
+    /// <summary>数组长度侧信道：-1=未知，0+=编译期已知长度。不参与格 Meet，仅由 EvaluateArray* 设置。</summary>
+    public int KnownArrayLength;
+
     // ---- 工厂方法 ----
 
-    public static LatticeValue Top() => new() { Tag = LatticeTag.Top };
+    public static LatticeValue Top() => new() { Tag = LatticeTag.Top, KnownArrayLength = -1 };
 
-    public static LatticeValue Bottom() => new() { Tag = LatticeTag.Bottom };
+    public static LatticeValue Bottom() => new() { Tag = LatticeTag.Bottom, KnownArrayLength = -1 };
 
     public static LatticeValue ConstInt(int v)
     {
         var p = new ConstPayload(); p.SetInt(v);
-        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstInt, Value = p };
+        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstInt, Value = p, KnownArrayLength = -1 };
     }
 
     public static LatticeValue ConstBool(bool v)
     {
         var p = new ConstPayload(); p.SetBool(v);
-        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstBool, Value = p };
+        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstBool, Value = p, KnownArrayLength = -1 };
     }
 
     public static LatticeValue ConstDouble(double v)
     {
         var p = new ConstPayload(); p.SetDouble(v);
-        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstDouble, Value = p };
+        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstDouble, Value = p, KnownArrayLength = -1 };
     }
 
     public static LatticeValue ConstByte(byte v)
     {
         var p = new ConstPayload(); p.SetByte(v);
-        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstByte, Value = p };
+        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstByte, Value = p, KnownArrayLength = -1 };
     }
 
     public static LatticeValue ConstUInt(uint v)
     {
         var p = new ConstPayload(); p.SetUInt(v);
-        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstUInt, Value = p };
+        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstUInt, Value = p, KnownArrayLength = -1 };
     }
 
     public static LatticeValue ConstUInt64(ulong v)
     {
         var p = new ConstPayload(); p.SetUInt64(v);
-        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstUInt64, Value = p };
+        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstUInt64, Value = p, KnownArrayLength = -1 };
     }
 
     public static LatticeValue ConstString(string v) => new()
     {
         Tag = LatticeTag.Const,
         ConstKind = SsaOp.ConstString,
+        KnownArrayLength = -1,
         // 字符串需要特殊处理，不存 ConstPayload
     };
 
     public static LatticeValue ConstPtr(long v)
     {
         var p = new ConstPayload(); p.SetPtr(v);
-        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstPtr, Value = p };
+        return new() { Tag = LatticeTag.Const, ConstKind = SsaOp.ConstPtr, Value = p, KnownArrayLength = -1 };
     }
 
     // ---- 从 SsaValue 的常量载荷创建 ----

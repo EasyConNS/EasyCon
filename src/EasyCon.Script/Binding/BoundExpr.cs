@@ -68,10 +68,12 @@ internal sealed class BoundIndexDeclxpression : BoundExpr
     public readonly ImmutableArray<BoundExpr> Items;
     public override BoundNodeKind Kind => BoundNodeKind.IndexDecl;
 
-    public BoundIndexDeclxpression(AstNode syntax, ImmutableArray<BoundExpr> items) : base(syntax)
+    public BoundIndexDeclxpression(AstNode syntax, ImmutableArray<BoundExpr> items, ScriptType? annotatedElementType = null) : base(syntax)
     {
         Items = items;
-        var elementType = items.Select(i => i.Type).FirstOrDefault(ScriptType.Int);
+        // 优先使用类型标注，其次从元素推断，最后默认 int
+        var elementType = annotatedElementType
+            ?? items.Select(i => i.Type).FirstOrDefault(ScriptType.Int);
         Type = ScriptType.ArrayOf(elementType);
     }
 }

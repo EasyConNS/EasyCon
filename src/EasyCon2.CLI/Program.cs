@@ -122,7 +122,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         {
             if (!errlist.Add(d.Location.StartLine))
                 continue;
-            outdap.Error($"!!编译失败!!{d.Message}: 行{d.Location.StartLine + 1}");
+            outdap.Error($"!!编译失败!!{d.Message}: 行{d.Location.StartLine + 1} 在({d.FileName})");
         }
         return;
     }

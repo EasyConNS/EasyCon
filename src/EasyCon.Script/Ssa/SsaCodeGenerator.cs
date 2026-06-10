@@ -313,7 +313,11 @@ sealed class SsaCodeGenerator
         headerBlock.Predecessors.Add(_currentBlock);
 
         // headerBlock：判断条件
+        // 必须在求值前清空 defs：header 是多前驱块（回边会追加到 Predecessors），
+        // 循环体内修改的变量（如 $i）如果在 defs 中仍保留初始常量值，
+        // EmitVariable 会直接返回旧值而不发出 LoadLocal，导致条件编译为常量。
         SwitchToBlock(headerBlock);
+        _defs.Clear();
         var cond = EmitExpression(whileStmt.Condition);
         _currentBlock.BranchCondition = cond;
         cond.Uses++;
@@ -464,7 +468,9 @@ sealed class SsaCodeGenerator
         headerBlock.Predecessors.Add(_currentBlock);
 
         // headerBlock: 评估条件，true → break, false → body
+        // 必须在求值前清空 defs（与 EmitWhile 同理）
         SwitchToBlock(headerBlock);
+        _defs.Clear();
         var cond = EmitExpression(untilStmt.Condition);
         _currentBlock.BranchCondition = cond;
         cond.Uses++;

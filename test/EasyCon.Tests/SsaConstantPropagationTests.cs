@@ -401,4 +401,183 @@ public class SsaConstantPropagationTests
     }
 
     #endregion
+
+    #region 数组长度常量折叠
+
+    private SsaValue ArrayInitOp(SsaBlock block, ScriptType elemType, params SsaValue[] elements)
+    {
+        var arrType = ScriptType.ArrayOf(elemType);
+        var v = new SsaValue(_vid++, SsaOp.ArrayInit, arrType);
+        if (elements.Length > 0) { v.Arg0 = elements[0]; elements[0].Uses++; }
+        if (elements.Length > 1)
+        {
+            v.ExtraArgs = new List<SsaValue>();
+            for (int i = 1; i < elements.Length; i++) { v.ExtraArgs.Add(elements[i]); elements[i].Uses++; }
+        }
+        v.Block = block;
+        block.Instructions.Add(v);
+        return v;
+    }
+
+    private SsaValue ArrayLenOp(SsaBlock block, SsaValue arr)
+    {
+        var v = new SsaValue(_vid++, SsaOp.ArrayLen, ScriptType.Int);
+        v.Arg0 = arr; arr.Uses++;
+        v.Block = block;
+        block.Instructions.Add(v);
+        return v;
+    }
+
+    private SsaValue ArrayAppendOp(SsaBlock block, SsaValue arr, SsaValue val, ScriptType elemType)
+    {
+        var v = new SsaValue(_vid++, SsaOp.ArrayAppend, ScriptType.ArrayOf(elemType));
+        v.Arg0 = arr; v.Arg1 = val; arr.Uses++; val.Uses++;
+        v.Block = block;
+        block.Instructions.Add(v);
+        return v;
+    }
+
+    private SsaValue ConcatOp(SsaBlock block, SsaValue left, SsaValue right, ScriptType elemType)
+    {
+        var v = new SsaValue(_vid++, SsaOp.Concat, ScriptType.ArrayOf(elemType));
+        v.Arg0 = left; v.Arg1 = right; left.Uses++; right.Uses++;
+        v.Block = block;
+        block.Instructions.Add(v);
+        return v;
+    }
+
+    [Test]
+    public void Sccp_ArrayLen_FoldArrayInit()
+    {
+        var func = CreateFunction();
+        var entry = Block(func);
+        var arr = ArrayInitOp(entry, ScriptType.Int, ConstI(entry, 1), ConstI(entry, 2), ConstI(entry, 3));
+        var len = ArrayLenOp(entry, arr);
+        Ret(entry, len);
+
+        SsaConstantPropagation.Run(func);
+
+        Assert.That(len.Op, Is.EqualTo(SsaOp.ConstInt));
+        Assert.That(len.Const.GetInt(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Sccp_ArrayLen_FoldEmpty()
+    {
+        var func = CreateFunction();
+        var entry = Block(func);
+        var arr = ArrayInitOp(entry, ScriptType.Int);
+        var len = ArrayLenOp(entry, arr);
+        Ret(entry, len);
+
+        SsaConstantPropagation.Run(func);
+
+        Assert.That(len.Op, Is.EqualTo(SsaOp.ConstInt));
+        Assert.That(len.Const.GetInt(), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Sccp_ArrayLen_FoldAppend()
+    {
+        var func = CreateFunction();
+        var entry = Block(func);
+        var arr = ArrayInitOp(entry, ScriptType.Int, ConstI(entry, 1), ConstI(entry, 2));
+        var appended = ArrayAppendOp(entry, arr, ConstI(entry, 3), ScriptType.Int);
+        var len = ArrayLenOp(entry, appended);
+        Ret(entry, len);
+
+        SsaConstantPropagation.Run(func);
+
+        Assert.That(len.Op, Is.EqualTo(SsaOp.ConstInt));
+        Assert.That(len.Const.GetInt(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Sccp_ArrayLen_ChainedAppend()
+    {
+        var func = CreateFunction();
+        var entry = Block(func);
+        var arr = ArrayInitOp(entry, ScriptType.Int, ConstI(entry, 1));
+        var a1 = ArrayAppendOp(entry, arr, ConstI(entry, 2), ScriptType.Int);
+        var a2 = ArrayAppendOp(entry, a1, ConstI(entry, 3), ScriptType.Int);
+        var len = ArrayLenOp(entry, a2);
+        Ret(entry, len);
+
+        SsaConstantPropagation.Run(func);
+
+        Assert.That(len.Op, Is.EqualTo(SsaOp.ConstInt));
+        Assert.That(len.Const.GetInt(), Is.EqualTo(3));
+    }
+
+    [Test]
+    public void Sccp_ArrayLen_NoFoldDynamic()
+    {
+        var func = CreateFunction();
+        var entry = Block(func);
+        var sym = new LocalVariableSymbol("$arr", false, ScriptType.ArrayOf(ScriptType.Int));
+        sym.Slot = new SlotDesc(SlotCategory.Handle, 0);
+        var load = LoadL(entry, sym);
+        var len = ArrayLenOp(entry, load);
+        Ret(entry, len);
+
+        SsaConstantPropagation.Run(func);
+
+        // LoadLocal 结果长度未知，ArrayLen 不应被折叠
+        Assert.That(len.Op, Is.EqualTo(SsaOp.ArrayLen));
+    }
+
+    [Test]
+    public void Sccp_ArrayLen_EnablesBranchFold()
+    {
+        // LEN([1,2,3]) == 3 → ConstBool(true) → 折叠分支
+        var func = CreateFunction();
+        var entry = Block(func);
+        var trueBlock = Block(func);
+        var falseBlock = Block(func);
+        var merge = Block(func);
+
+        var arr = ArrayInitOp(entry, ScriptType.Int, ConstI(entry, 1), ConstI(entry, 2), ConstI(entry, 3));
+        var len = ArrayLenOp(entry, arr);
+        var cmp = Bin(entry, SsaOp.EqInt, len, ConstI(entry, 3), ScriptType.Bool);
+        CondBranch(entry, cmp, trueBlock, falseBlock);
+
+        var tVal = ConstI(trueBlock, 42);
+        Branch(trueBlock, merge);
+
+        var fVal = ConstI(falseBlock, 0);
+        Branch(falseBlock, merge);
+
+        var phi = Phi(merge, ScriptType.Int, tVal, fVal);
+        Ret(merge, phi);
+
+        SsaConstantPropagation.Run(func);
+
+        // ArrayLen 应被折叠为 ConstInt(3)
+        Assert.That(len.Op, Is.EqualTo(SsaOp.ConstInt));
+        Assert.That(len.Const.GetInt(), Is.EqualTo(3));
+        // 比较结果应被折叠为 ConstBool(true)
+        Assert.That(cmp.Op, Is.EqualTo(SsaOp.ConstBool));
+        // 分支应被折叠为无条件跳转
+        Assert.That(entry.BranchCondition, Is.Null);
+        Assert.That(entry.JumpTarget, Is.SameAs(trueBlock));
+    }
+
+    [Test]
+    public void Sccp_Concat_KnownLength()
+    {
+        var func = CreateFunction();
+        var entry = Block(func);
+        var left = ArrayInitOp(entry, ScriptType.Int, ConstI(entry, 1), ConstI(entry, 2));
+        var right = ArrayInitOp(entry, ScriptType.Int, ConstI(entry, 3), ConstI(entry, 4));
+        var concat = ConcatOp(entry, left, right, ScriptType.Int);
+        var len = ArrayLenOp(entry, concat);
+        Ret(entry, len);
+
+        SsaConstantPropagation.Run(func);
+
+        Assert.That(len.Op, Is.EqualTo(SsaOp.ConstInt));
+        Assert.That(len.Const.GetInt(), Is.EqualTo(4));
+    }
+
+    #endregion
 }

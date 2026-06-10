@@ -93,8 +93,21 @@ internal sealed partial class Binder
 
     private BoundExpr BindIndexExpression(IndexDefExpression syntax)
     {
+        // 解析可选的类型标注：[]int, []string 等
+        ScriptType? annotatedElementType = null;
+        if (syntax.ElementTypeToken is { } elemTypeTok)
+        {
+            annotatedElementType = LookupType(elemTypeTok.Value);
+            if (annotatedElementType is null)
+            {
+                _diagnostics.ReportUnknownType(syntax.Syntax.Location, elemTypeTok);
+                return new BoundErrorExpression(syntax);
+            }
+        }
+
         if (syntax.Index.Length == 0)
-            return new BoundIndexDeclxpression(syntax, []);
+            return new BoundIndexDeclxpression(syntax, [], annotatedElementType);
+
         var boundIndexs = ImmutableArray.CreateBuilder<BoundExpr>();
 
         foreach (var index in syntax.Index)
@@ -108,7 +121,7 @@ internal sealed partial class Binder
             return new BoundErrorExpression(syntax);
         }
 
-        return new BoundIndexDeclxpression(syntax, boundIndexs.ToImmutable());
+        return new BoundIndexDeclxpression(syntax, boundIndexs.ToImmutable(), annotatedElementType);
     }
 
     private BoundExpr BindIndexVisitExpression(IndexVisitExpression syntax)
@@ -163,7 +176,8 @@ internal sealed partial class Binder
             || (type.Equals(ScriptType.UInt64) && expr.Type.Equals(ScriptType.Int))
             || (type.Equals(ScriptType.UInt64) && expr.Type.Equals(ScriptType.UInt))
             || (type.Equals(ScriptType.Byte) && expr.Type.Equals(ScriptType.Int))
-            || (type.Equals(ScriptType.Ptr) && expr.Type.Equals(ScriptType.Int)))
+            || (type.Equals(ScriptType.Ptr) && expr.Type.Equals(ScriptType.Int))
+            || (type.Equals(ScriptType.Int) && expr.Type.Equals(ScriptType.Bool)))
             return new BoundConversionExpression(expr.Syntax, type, expr);
         _diagnostics.ReportCannotConvert(expr.Syntax.Syntax.Location, expr.Type, type);
         return new BoundErrorExpression(expr.Syntax);

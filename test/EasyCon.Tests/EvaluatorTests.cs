@@ -1472,6 +1472,40 @@ RETURN LEN($a.data)");
         Assert.That(value.AsInt(), Is.EqualTo(3));
     }
 
+    [Test]
+    public void Array_EmptyWithTypeAnnotation_Int()
+    {
+        // 空数组 + 类型标注: []int 应为 int[]
+        var (compileResult, value, _) = CompileAndEval(@"
+$a = []int
+$a = APPEND($a, 42)
+RETURN $a[0]");
+        Assert.That(compileResult.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
+        Assert.That(value.AsInt(), Is.EqualTo(42));
+    }
+
+    [Test]
+    public void Array_EmptyWithTypeAnnotation_String()
+    {
+        // 空数组 + 类型标注: []string 应为 string[]
+        var (compileResult, value, _) = CompileAndEval(@"
+$a = []string
+$a = APPEND($a, ""hello"")
+RETURN $a[0]");
+        Assert.That(compileResult.Diagnostics.HasErrors(), Is.False,
+            $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
+        Assert.That(value.AsString(), Is.EqualTo("hello"));
+    }
+
+    [Test]
+    public void Array_EmptyWithTypeAnnotation_InvalidType_Error()
+    {
+        // 类型标注不存在时报错
+        var (result, _) = Eval("$a = []nosuchtype");
+        Assert.That(result.Diagnostics.HasErrors(), Is.True);
+    }
+
     #endregion
 
     #region STRUCT — 错误情况

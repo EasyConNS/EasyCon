@@ -167,8 +167,9 @@ static class SsaInterprocedural
     }
 
     /// <summary>
-    /// 判断是否可内联的单块叶子函数。
-    /// 条件：单基本块 + 无副作用指令（除 Return）+ 有 Return + 无 Call（叶子函数）。
+    /// 判断是否可内联的单块函数。
+    /// 条件：单基本块 + 有 Return + 无 Call + 仅允许 StoreGlobal 作为副作用。
+    /// StoreGlobal 是幂等的全局数组写入，内联到调用点语义不变。
     /// </summary>
     private static bool IsInlineableSingleBlockFunction(SsaFunction func)
     {
@@ -185,6 +186,9 @@ static class SsaInterprocedural
                 hasReturn = true;
                 continue;
             }
+            // StoreGlobal 可安全内联（全局数组写入语义不变）
+            if (inst.Op is SsaOp.StoreGlobal)
+                continue;
             if (inst.HasSideEffect)
                 return false;
             if (inst.Op is SsaOp.Call or SsaOp.StaticCall)
@@ -198,6 +202,7 @@ static class SsaInterprocedural
     /// 尝试内联单块函数。
     /// 将 callee 的非参数、非 Return 指令克隆（新 ID）到 caller，
     /// 参数 LoadLocal 替换为实参，Return 的返回值替换 Call 的所有使用。
+    /// 支持 void 函数（Return 无返回值时仅删除 Call 指令）。
     /// </summary>
     private static bool TryInlineSingleBlock(
         SsaFunction callee,
@@ -220,7 +225,7 @@ static class SsaInterprocedural
         // 值映射：callee 的 SsaValue → caller 中对应的 SsaValue
         var valueMap = new Dictionary<SsaValue, SsaValue>();
 
-        // 找到返回值和 Return 指令
+        // 找到 Return 指令（允许 void 返回）
         SsaValue? returnInst = null;
         foreach (var inst in calleeBlock.Instructions)
         {
@@ -230,7 +235,7 @@ static class SsaInterprocedural
                 break;
             }
         }
-        if (returnInst == null || returnInst.Arg0 == null)
+        if (returnInst == null)
             return false;
 
         // 第一遍：映射参数的 LoadLocal → 实参
@@ -257,18 +262,21 @@ static class SsaInterprocedural
             callIndex++; // Call 指令的位置后移
         }
 
-        // 解析返回值
-        var retValue = ResolveOperand(returnInst.Arg0, valueMap);
-        if (retValue == null)
+        // 解析返回值（void 函数返回 null）
+        SsaValue? retValue = returnInst.Arg0 != null ? ResolveOperand(returnInst.Arg0, valueMap) : null;
+        if (returnInst.Arg0 != null && retValue == null)
             return false;
 
         // 删除 Call 指令
         SsaOptimizer.DecrementUses(callInst);
         callerBlock.Instructions.RemoveAt(callIndex);
 
-        // 替换所有使用
-        SsaOptimizer.ReplaceAllUsesInFunction(caller, callInst, retValue);
-        retValue.Uses += callInst.Uses;
+        // 替换所有使用（仅非 void 函数有返回值需要替换）
+        if (retValue != null)
+        {
+            SsaOptimizer.ReplaceAllUsesInFunction(caller, callInst, retValue);
+            retValue.Uses += callInst.Uses;
+        }
 
         return true;
     }

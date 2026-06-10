@@ -248,10 +248,10 @@ internal partial class Parser
         if (loopc.Type != TokenType.VAR)
             _diagnostics.ReportUnexpectedToken(loopc.Location, loopc, TokenType.VAR);
         Match(TokenType.ASSIGN);
-        var lower = Match(type => type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR);
+        var lower = ParseExpression();
         Match(TokenType.TO);
-        var upper = Match(type => type == TokenType.INT || type == TokenType.CONST || type == TokenType.VAR);
-        return new For_Full(forToken, (VariableExpr)Formatter.GetValueEx(loopc), Formatter.GetValueEx(lower), Formatter.GetValueEx(upper));
+        var upper = ParseExpression();
+        return new For_Full(forToken, (VariableExpr)Formatter.GetValueEx(loopc), lower, upper);
     }
 
     private WhileStmt ParseWhile()
@@ -548,7 +548,7 @@ internal partial class Parser
         return new Callv1Expression(identifier, openParen, arguments, closeParen);
     }
 
-    // [1,2,3]
+    // [1,2,3] or []int
     private BaseExpr ParseIndexDefExpression()
     {
         var lb = Match(TokenType.LeftBracket, "语法需要'['");
@@ -563,11 +563,15 @@ internal partial class Parser
                 parseNext = false;
         }
         var rb = Match(TokenType.RightBracket, "语法需要']'");
-        if (items.Count == 0)
+
+        // 可选的类型标注：[]int, []string 等
+        Token? elementTypeToken = null;
+        if (Check(TokenType.IDENT))
         {
-            // TODO
+            elementTypeToken = Advance();
         }
-        return new IndexDefExpression(lb, [.. items], rb);
+
+        return new IndexDefExpression(lb, [.. items], rb, elementTypeToken);
     }
 
     // baseExpr[expr] or baseExpr[start:end]
@@ -576,7 +580,7 @@ internal partial class Parser
         var lb = Match(TokenType.LeftBracket, "语法需要'[");
 
         var ommitstart = Check(TokenType.COLON);
-        var start = Check(TokenType.COLON) ? new LiteralExpr(Current, 0) : ParsePrimary();
+        var start = Check(TokenType.COLON) ? new LiteralExpr(Current, 0) : ParseExpression();
         // [expr]
         if (Check(TokenType.RightBracket))
         {
@@ -586,7 +590,7 @@ internal partial class Parser
         // [start:end]
         Match(TokenType.COLON, "语法不正确[<start>:<end>]");
 
-        var end = Check(TokenType.RightBracket) ? new LiteralExpr(Current, "") : ParsePrimary();
+        var end = Check(TokenType.RightBracket) ? new LiteralExpr(Current, "") : ParseExpression();
         Match(TokenType.RightBracket, "语法需要']'");
         return new SliceExpression(lb, baseExpr, start, end, ommitstart);
     }

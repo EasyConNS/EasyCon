@@ -12,6 +12,19 @@ public abstract class ScriptArray
     public abstract int Length { get; }
     public abstract Value this[int index] { get; }
 
+    public override string ToString()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('[');
+        for (int i = 0; i < Length; i++)
+        {
+            if (i > 0) sb.Append(", ");
+            sb.Append(this[i].ToObject());
+        }
+        sb.Append(']');
+        return sb.ToString();
+    }
+
     /// <summary>原地修改指定索引的元素</summary>
     public abstract void SetItem(int index, Value value);
 
@@ -52,6 +65,30 @@ public abstract class ScriptArray
         if (elementType.Equals(ScriptType.Ptr))
             return new LongArray(elements, elementType);
         return new ValueArray(elements, elementType);
+    }
+
+    /// <summary>
+    /// 从类型化数组直接构造，跳过 Value 中间层。用于编译期预计算。
+    /// </summary>
+    public static ScriptArray CreateDirect(ScriptType elementType, object typedData)
+    {
+        if (elementType.Equals(ScriptType.Int))
+            return new IntArray((int[])typedData, elementType);
+        if (elementType.Equals(ScriptType.Bool))
+            return new BoolArray((int[])typedData, elementType);
+        if (elementType.Equals(ScriptType.Byte))
+            return new ByteArray((byte[])typedData, elementType);
+        if (elementType.Equals(ScriptType.UInt))
+            return new UIntArray((uint[])typedData, elementType);
+        if (elementType.Equals(ScriptType.UInt64))
+            return new UInt64Array((ulong[])typedData, elementType);
+        if (elementType.Equals(ScriptType.Double))
+            return new DoubleArray((double[])typedData, elementType);
+        if (elementType.Equals(ScriptType.String))
+            return new StringArray((string?[])typedData, elementType);
+        if (elementType.Equals(ScriptType.Ptr))
+            return new LongArray((long[])typedData, elementType);
+        throw new InvalidOperationException($"无类型化数组实现: {elementType}");
     }
 
     internal static ScriptType InferElementType(IReadOnlyList<Value> elements)

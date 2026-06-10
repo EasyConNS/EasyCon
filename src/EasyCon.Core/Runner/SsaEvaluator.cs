@@ -28,6 +28,9 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private Value[] _tailCallArgs = [];
     private readonly Dictionary<string, Func<Value>> _runtimeValueGetters = [];
 
+    // 自递归函数集合：构造时预计算，递归调用需要缓存隔离
+    private readonly HashSet<FunctionSymbol> _recursiveFunctions = [];
+
     // 函数返回值暂存（HandleReturnToCache 写入，GetReturnValue 读取）
     private Value _returnValue;
 
@@ -116,12 +119,35 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         RegisterCallables();
         RegisterRuntimeValueGetters();
 
+        // 预计算自递归函数集合：递归调用需要缓存隔离
+        foreach (var (sym, func) in _functions)
+            foreach (var block in func.Blocks)
+                foreach (var inst in block.Instructions)
+                    if (inst.Op is SsaOp.Call or SsaOp.StaticCall && inst.Aux is FunctionSymbol called && called == sym)
+                    {
+                        _recursiveFunctions.Add(sym);
+                        goto nextFunc;
+                    }
+        nextFunc:;
+
         // 预分配类型化缓存，预计算所有常量
         int maxId = 0;
         foreach (var func in _functions.Values)
             foreach (var block in func.Blocks)
                 foreach (var val in block.Instructions.Concat(block.Phis))
                     if (val.Id > maxId) maxId = val.Id;
+
+#if DEBUG
+        // 验证 SSA ID 全局唯一性：零拷贝共享缓存方案的前提条件
+        {
+            var seenIds = new HashSet<int>();
+            foreach (var func in _functions.Values)
+                foreach (var block in func.Blocks)
+                    foreach (var val in block.Instructions.Concat(block.Phis))
+                        Debug.Assert(seenIds.Add(val.Id), $"SSA ID 冲突: {val.Id}，零拷贝缓存方案不安全");
+        }
+#endif
+
         int cacheSize = maxId + 1;
         _intCache = new int[cacheSize];
         _longCache = new long[cacheSize];
@@ -138,6 +164,14 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 foreach (var val in block.Instructions)
                     if (val.IsConstant)
                         PrecomputeConstant(val);
+
+        // 预计算全常量 ArrayInit：跳过运行时 PackToValue 开销
+        foreach (var func in _functions.Values)
+            foreach (var block in func.Blocks)
+                foreach (var val in block.Instructions)
+                    if (val.Op == SsaOp.ArrayInit && IsAllConstantArgs(val))
+                        PrecomputeArrayInit(val);
+
         ResetCaches();
     }
 
@@ -520,7 +554,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 {
                     var obj = _objCache[val.Arg0!.Id];
                     _intCache[val.Id] = obj is ScriptArray arr ? arr.Length
-                        : obj is string s ? new System.Globalization.StringInfo(s).LengthInTextElements
+                        : obj is string s ? s.Length
                         : 0;
                     break;
                 }
@@ -618,6 +652,108 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             case SsaOp.ConstString: _constObj[val.Id] = val.ConstString ?? ""; break;
             case SsaOp.ConstPtr: _constLong[val.Id] = val.Const.GetPtr(); break;
         }
+    }
+
+    /// <summary>检查 ArrayInit 的所有元素是否都是编译期常量</summary>
+    private static bool IsAllConstantArgs(SsaValue val)
+    {
+        if (val.Arg0 != null && !val.Arg0.IsConstant) return false;
+        if (val.ExtraArgs != null)
+            foreach (var arg in val.ExtraArgs)
+                if (!arg.IsConstant) return false;
+        return true;
+    }
+
+    /// <summary>预计算全常量 ArrayInit：直接从常量缓存构建类型化数组</summary>
+    private void PrecomputeArrayInit(SsaValue val)
+    {
+        var elemType = ((ArrayType)val.Type).ElementType;
+        int count = (val.Arg0 != null ? 1 : 0) + (val.ExtraArgs?.Count ?? 0);
+
+        if (count == 0)
+        {
+            _constObj[val.Id] = ScriptArray.Create(elemType, Array.Empty<Value>());
+            return;
+        }
+
+        var cat = GetSlotCategory(elemType);
+
+        if (cat == SlotCategory.Int)
+        {
+            var data = new int[count];
+            int idx = 0;
+            if (val.Arg0 != null) data[idx++] = _constInt[val.Arg0.Id];
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constInt[a.Id];
+            _constObj[val.Id] = elemType.Equals(ScriptType.Byte)
+                ? ScriptArray.CreateDirect(ScriptType.Byte, ToByteArray(data))
+                : elemType.Equals(ScriptType.Bool)
+                    ? ScriptArray.CreateDirect(ScriptType.Bool, data)
+                    : elemType.Equals(ScriptType.UInt)
+                        ? ScriptArray.CreateDirect(ScriptType.UInt, ToUIntArray(data))
+                        : new IntArray(data, elemType);
+        }
+        else if (cat == SlotCategory.Long)
+        {
+            var data = new long[count];
+            int idx = 0;
+            if (val.Arg0 != null) data[idx++] = _constLong[val.Arg0.Id];
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constLong[a.Id];
+            _constObj[val.Id] = elemType.Equals(ScriptType.UInt64)
+                ? ScriptArray.CreateDirect(ScriptType.UInt64, ToULongArray(data))
+                : new LongArray(data, elemType);
+        }
+        else if (cat == SlotCategory.Double)
+        {
+            var data = new double[count];
+            int idx = 0;
+            if (val.Arg0 != null) data[idx++] = _constDouble[val.Arg0.Id];
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constDouble[a.Id];
+            _constObj[val.Id] = new DoubleArray(data, elemType);
+        }
+        else // Handle: string 等
+        {
+            var items = new Value[count];
+            int idx = 0;
+            if (val.Arg0 != null) items[idx++] = PackConstToValue(val.Arg0);
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) items[idx++] = PackConstToValue(a);
+            _constObj[val.Id] = ScriptArray.Create(elemType, items);
+        }
+    }
+
+    private static byte[] ToByteArray(int[] src)
+    {
+        var r = new byte[src.Length];
+        for (int i = 0; i < src.Length; i++) r[i] = (byte)src[i];
+        return r;
+    }
+
+    private static uint[] ToUIntArray(int[] src)
+    {
+        var r = new uint[src.Length];
+        for (int i = 0; i < src.Length; i++) r[i] = unchecked((uint)src[i]);
+        return r;
+    }
+
+    private static ulong[] ToULongArray(long[] src)
+    {
+        var r = new ulong[src.Length];
+        for (int i = 0; i < src.Length; i++) r[i] = unchecked((ulong)src[i]);
+        return r;
+    }
+
+    /// <summary>从常量缓存打包为 Value（仅用于 PrecomputeArrayInit 的 fallback 路径）</summary>
+    private Value PackConstToValue(SsaValue v)
+    {
+        return GetSlotCategory(v.Type) switch
+        {
+            SlotCategory.Int => PackIntToValue(_constInt[v.Id], v.Type),
+            SlotCategory.Long => v.Type.Equals(ScriptType.UInt64)
+                ? Value.FromUInt64((ulong)_constLong[v.Id])
+                : Value.FromPtr(_constLong[v.Id]),
+            SlotCategory.Double => Value.FromDouble(_constDouble[v.Id]),
+            SlotCategory.Handle => PackObjToValue(_constObj[v.Id], v.Type),
+            _ => Value.Void
+        };
     }
 
     // ============ 类型化缓存工具方法 ============
@@ -895,7 +1031,10 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         Value result;
         if (argCount == 0)
         {
-            result = _callables[function].Invoke(ReadOnlySpan<Value>.Empty, this, _token);
+            // 用户函数快速路径：跳过 _callables 字典查找和委托虚分派
+            result = _functions.ContainsKey(function)
+                ? EvaluateFunctionWithTailRecursion(function, ReadOnlySpan<Value>.Empty, _token)
+                : _callables[function].Invoke(ReadOnlySpan<Value>.Empty, this, _token);
         }
         else
         {
@@ -909,7 +1048,11 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 if (val.ExtraArgs != null)
                     for (int i = 0; i < val.ExtraArgs.Count; i++)
                         args[i + 1] = PackToValue(val.ExtraArgs[i]);
-                result = _callables[function].Invoke(args.AsSpan(0, argCount), this, _token);
+                var span = args.AsSpan(0, argCount);
+                // 用户函数快速路径：跳过 _callables 字典查找和委托虚分派
+                result = _functions.ContainsKey(function)
+                    ? EvaluateFunctionWithTailRecursion(function, span, _token)
+                    : _callables[function].Invoke(span, this, _token);
             }
             finally
             {
@@ -924,6 +1067,9 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
     private void ExecuteArrayInitToCache(SsaValue val)
     {
+        // 全常量 ArrayInit 已在构造时预计算到 _constObj，ResetCaches 拷贝到 _objCache
+        if (_objCache[val.Id] != null) return;
+
         var items = new List<Value>();
         if (val.Arg0 != null)
         {
@@ -943,14 +1089,19 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
         if (obj is string s)
         {
-            if (index < 0 || index >= new System.Globalization.StringInfo(s).LengthInTextElements)
-                throw new Exception("数组下标越界");
+            if (index < 0 || index >= s.Length)
+            {
+                // 临时追踪：记录越界前的上下文
+                var ctx = index > 0 && index <= s.Length ? s[index - 1].ToString() : "?";
+                var ctx2 = index > 1 && index <= s.Length ? s[index - 2].ToString() : "?";
+                throw new Exception($"数组下标越界: 字符串长度={s.Length}, index={index}, 前5=[{s[..Math.Min(5, s.Length)]}], s[{index - 2}]='{ctx2}', s[{index - 1}]='{ctx}', val.Id={val.Id}, Arg0.Id={val.Arg0!.Id}, Arg0.Op={val.Arg0!.Op}");
+            }
             _objCache[val.Id] = s[index].ToString();
             return;
         }
 
         var container = (ScriptArray)obj!;
-        if (index < 0 || index >= container.Length) throw new Exception("数组下标越界");
+        if (index < 0 || index >= container.Length) throw new Exception($"数组下标越界: 数组长度={container.Length}, index={index}");
         var elemValue = container[index];
         // 将 Value 元素解包到类型化缓存
         var elemType = ((ArrayType)val.Arg0!.Type).ElementType;
@@ -999,20 +1150,20 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         else if (obj is ScriptArray arr)
             endIdx = arr.Length;
         else if (obj is string s)
-            endIdx = new System.Globalization.StringInfo(s).LengthInTextElements;
+            endIdx = s.Length;
         else
             endIdx = 0;
 
         if (obj is string str)
         {
-            if (start >= new System.Globalization.StringInfo(str).LengthInTextElements || endIdx > new System.Globalization.StringInfo(str).LengthInTextElements || start > endIdx)
-                throw new Exception("数组下标越界");
+            if (start > str.Length || endIdx > str.Length || start > endIdx)
+                throw new Exception($"数组下标越界: 字符串长度={str.Length}, start={start}, end={endIdx}");
             _objCache[val.Id] = str[new Range(start, endIdx)];
         }
         else if (obj is ScriptArray container)
         {
-            if (start >= container.Length || endIdx > container.Length || start > endIdx)
-                throw new Exception("数组下标越界");
+            if (start > container.Length || endIdx > container.Length || start > endIdx)
+                throw new Exception($"数组下标越界: 数组长度={container.Length}, start={start}, end={endIdx}");
             _objCache[val.Id] = container.GetRange(start, endIdx - start);
         }
         else
@@ -1368,60 +1519,75 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             UnpackToSlot(param.Slot, frame, param.Type, args[i]);
         }
 
-        // 保存调用方的缓存，为被调函数分配新缓存
-        var callerInt = _intCache;
-        var callerLong = _longCache;
-        var callerDouble = _doubleCache;
-        var callerObj = _objCache;
-        var cacheLen = callerInt.Length;
-        _intCache = new int[cacheLen];
-        _longCache = new long[cacheLen];
-        _doubleCache = new double[cacheLen];
-        _objCache = new object?[cacheLen];
-        ResetCaches();
-
-        try
+        // 自递归函数需要缓存隔离（同一函数多次入栈，SSA ID 重叠）
+        if (_recursiveFunctions.Contains(function))
         {
-            while (true)
+            var callerInt = _intCache;
+            var callerLong = _longCache;
+            var callerDouble = _doubleCache;
+            var callerObj = _objCache;
+            var cacheLen = callerInt.Length;
+            _intCache = new int[cacheLen];
+            _longCache = new long[cacheLen];
+            _doubleCache = new double[cacheLen];
+            _objCache = new object?[cacheLen];
+            ResetCaches();
+
+            try
             {
-                if (token.IsCancellationRequested)
-                    throw new OperationCanceledException(token);
-
-                _tailCallRequested = false;
-                _localFrames.Push(frame);
-                try
+                while (true)
                 {
-                    EvaluateFunction(func);
-                }
-                finally
-                {
-                    _localFrames.Pop();
-                }
+                    if (token.IsCancellationRequested)
+                        throw new OperationCanceledException(token);
 
-                if (!_tailCallRequested)
-                    return GetReturnValue();
+                    _tailCallRequested = false;
+                    _localFrames.Push(frame);
+                    try { EvaluateFunction(func); }
+                    finally { _localFrames.Pop(); }
 
-                // 释放本次迭代中分配的 handles，防止尾递归内存泄漏
-                _heap.FreeAll(frame.Handles);
-                Array.Clear(frame.Handles);
-                // 写入尾调用的新参数（FreeAll 之后再写入，避免 handle 被释放）
-                var parameters = function.Parameters;
-                for (int i = 0; i < parameters.Length; i++)
-                    UnpackToSlot(parameters[i].Slot, frame, parameters[i].Type, _tailCallArgs[i]);
-                // 重置缓存避免残留
-                _intCache = new int[cacheLen];
-                _longCache = new long[cacheLen];
-                _doubleCache = new double[cacheLen];
-                _objCache = new object?[cacheLen];
-                ResetCaches();
+                    if (!_tailCallRequested)
+                        return GetReturnValue();
+
+                    _heap.FreeAll(frame.Handles);
+                    Array.Clear(frame.Handles);
+                    var parameters = function.Parameters;
+                    for (int i = 0; i < parameters.Length; i++)
+                        UnpackToSlot(parameters[i].Slot, frame, parameters[i].Type, _tailCallArgs[i]);
+                    _intCache = new int[cacheLen];
+                    _longCache = new long[cacheLen];
+                    _doubleCache = new double[cacheLen];
+                    _objCache = new object?[cacheLen];
+                    ResetCaches();
+                }
+            }
+            finally
+            {
+                _intCache = callerInt;
+                _longCache = callerLong;
+                _doubleCache = callerDouble;
+                _objCache = callerObj;
             }
         }
-        finally
+
+        // 非递归函数：零拷贝路径，SSA ID 全局唯一，缓存可安全共享
+        while (true)
         {
-            _intCache = callerInt;
-            _longCache = callerLong;
-            _doubleCache = callerDouble;
-            _objCache = callerObj;
+            if (token.IsCancellationRequested)
+                throw new OperationCanceledException(token);
+
+            _tailCallRequested = false;
+            _localFrames.Push(frame);
+            try { EvaluateFunction(func); }
+            finally { _localFrames.Pop(); }
+
+            if (!_tailCallRequested)
+                return GetReturnValue();
+
+            _heap.FreeAll(frame.Handles);
+            Array.Clear(frame.Handles);
+            var parameters = function.Parameters;
+            for (int i = 0; i < parameters.Length; i++)
+                UnpackToSlot(parameters[i].Slot, frame, parameters[i].Type, _tailCallArgs[i]);
         }
     }
 

@@ -162,14 +162,24 @@ static class SsaConstantPropagation
             or SsaOp.Capture or SsaOp.Ocr or SsaOp.Roi
             or SsaOp.Rand
             or SsaOp.RuntimeValue or SsaOp.ImageLabel
-            or SsaOp.ArrayInit or SsaOp.LoadIndex or SsaOp.LoadField or SsaOp.LoadFieldIndex
-            or SsaOp.Slice or SsaOp.ArrayLen or SsaOp.Contains or SsaOp.ArrayAppend
+            or SsaOp.LoadIndex or SsaOp.LoadField or SsaOp.LoadFieldIndex
+            or SsaOp.Slice or SsaOp.Contains
             or SsaOp.DeepCopy or SsaOp.StructInit)
         {
             // 这些指令结果为 Bottom（非常量）
             UpdateLattice(inst, LatticeValue.Bottom(), lattice, ssaWorklist, useMap);
             return;
         }
+
+        // 数组操作：长度传播（KnownArrayLength 侧信道）
+        if (inst.Op == SsaOp.ArrayInit)
+            { EvaluateArrayInit(inst, lattice, ssaWorklist, useMap); return; }
+        if (inst.Op == SsaOp.ArrayAppend)
+            { EvaluateArrayAppend(inst, lattice, ssaWorklist, useMap); return; }
+        if (inst.Op == SsaOp.ArrayLen)
+            { EvaluateArrayLen(inst, lattice, ssaWorklist, useMap); return; }
+        if (inst.Op == SsaOp.Concat)
+            { EvaluateConcat(inst, lattice, ssaWorklist, useMap); return; }
 
         // Phi 不在这里处理
         if (inst.Op == SsaOp.Phi)
@@ -196,6 +206,64 @@ static class SsaConstantPropagation
 
         // 无操作数指令（无 Arg0）→ Bottom
         UpdateLattice(inst, LatticeValue.Bottom(), lattice, ssaWorklist, useMap);
+    }
+
+    // ---- 数组长度传播 ----
+
+    private static void EvaluateArrayInit(
+        SsaValue inst,
+        Dictionary<SsaValue, LatticeValue> lattice,
+        Queue<SsaValue> ssaWorklist,
+        Dictionary<SsaValue, List<SsaValue>> useMap)
+    {
+        // 元素数始终静态已知
+        int elementCount = (inst.Arg0 != null ? 1 : 0) + (inst.ExtraArgs?.Count ?? 0);
+        var result = LatticeValue.Bottom();
+        result.KnownArrayLength = elementCount;
+        UpdateLattice(inst, result, lattice, ssaWorklist, useMap);
+    }
+
+    private static void EvaluateArrayAppend(
+        SsaValue inst,
+        Dictionary<SsaValue, LatticeValue> lattice,
+        Queue<SsaValue> ssaWorklist,
+        Dictionary<SsaValue, List<SsaValue>> useMap)
+    {
+        var sourceLattice = GetLatticeOrBottom(inst.Arg0!, lattice);
+        var result = LatticeValue.Bottom();
+        if (sourceLattice.KnownArrayLength >= 0)
+            result.KnownArrayLength = sourceLattice.KnownArrayLength + 1;
+        UpdateLattice(inst, result, lattice, ssaWorklist, useMap);
+    }
+
+    private static void EvaluateArrayLen(
+        SsaValue inst,
+        Dictionary<SsaValue, LatticeValue> lattice,
+        Queue<SsaValue> ssaWorklist,
+        Dictionary<SsaValue, List<SsaValue>> useMap)
+    {
+        var containerLattice = GetLatticeOrBottom(inst.Arg0!, lattice);
+        if (containerLattice.KnownArrayLength >= 0)
+        {
+            // 数组长度编译期已知 → 常量 int
+            UpdateLattice(inst, LatticeValue.ConstInt(containerLattice.KnownArrayLength), lattice, ssaWorklist, useMap);
+            return;
+        }
+        UpdateLattice(inst, LatticeValue.Bottom(), lattice, ssaWorklist, useMap);
+    }
+
+    private static void EvaluateConcat(
+        SsaValue inst,
+        Dictionary<SsaValue, LatticeValue> lattice,
+        Queue<SsaValue> ssaWorklist,
+        Dictionary<SsaValue, List<SsaValue>> useMap)
+    {
+        var leftLattice = GetLatticeOrBottom(inst.Arg0!, lattice);
+        var rightLattice = GetLatticeOrBottom(inst.Arg1!, lattice);
+        var result = LatticeValue.Bottom();
+        if (leftLattice.KnownArrayLength >= 0 && rightLattice.KnownArrayLength >= 0)
+            result.KnownArrayLength = leftLattice.KnownArrayLength + rightLattice.KnownArrayLength;
+        UpdateLattice(inst, result, lattice, ssaWorklist, useMap);
     }
 
     private static void ProcessTerminator(
@@ -302,8 +370,23 @@ static class SsaConstantPropagation
     {
         if (!lattice.TryGetValue(val, out var current))
             current = LatticeValue.Top();
-        if (LatticeValue.Meet(ref current, newValue))
+
+        // 数组长度侧信道：Meet 不感知 KnownArrayLength，需单独传播
+        bool lengthChanged = false;
+        if (newValue.KnownArrayLength >= 0 && current.KnownArrayLength != newValue.KnownArrayLength)
         {
+            if (current.KnownArrayLength < 0) // 未知 → 已知
+            {
+                current.KnownArrayLength = newValue.KnownArrayLength;
+                lengthChanged = true;
+            }
+        }
+
+        if (LatticeValue.Meet(ref current, newValue) || lengthChanged)
+        {
+            // Meet 可能创建新的 Bottom()（KnownArrayLength=-1），回填侧信道
+            if (current.KnownArrayLength < 0 && newValue.KnownArrayLength >= 0)
+                current.KnownArrayLength = newValue.KnownArrayLength;
             lattice[val] = current;
             // 值发生了变化，通知所有使用者
             ssaWorklist.Enqueue(val);

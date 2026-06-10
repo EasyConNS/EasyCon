@@ -13,9 +13,9 @@ internal struct EvalFrame
 
     public EvalFrame(int intSlots, int longSlots, int doubleSlots, int handleSlots)
     {
-        Ints = intSlots > 0 ? new int[intSlots] : [];
-        Longs = longSlots > 0 ? new long[longSlots] : [];
-        Doubles = doubleSlots > 0 ? new double[doubleSlots] : [];
-        Handles = handleSlots > 0 ? new int[handleSlots] : [];
+        Ints = intSlots > 0 ? new int[intSlots] : Array.Empty<int>();
+        Longs = longSlots > 0 ? new long[longSlots] : Array.Empty<long>();
+        Doubles = doubleSlots > 0 ? new double[doubleSlots] : Array.Empty<double>();
+        Handles = handleSlots > 0 ? new int[handleSlots] : Array.Empty<int>();
     }
 }
