@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core;
 using EasyCon2.Avalonia.Core.TagEditor;
+using EasyCon2.Avalonia.Core.Terminal;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Views;
 using System.Collections.ObjectModel;
@@ -27,8 +28,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ICaptureService _captureService;
     private readonly IScriptService _scriptService;
     private readonly IControllerService _controllerService;
-    private readonly StringBuilder _logBuilder = new();
-    private const int MaxLogLength = 100_000;
+    private readonly AnsiParser _ansiParser = new();
     private Window? _espConfigWindow;
     private MonitorViewModel? _monitorViewModel;
     private readonly FileTreeViewModel _fileTreeViewModel;
@@ -42,9 +42,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _currentScriptPath = NoScriptPathText;
 
-    // 日志输出
-    [ObservableProperty]
-    private string _logOutput = "";
+    // 日志输出行集合（TerminalControl 绑定）
+    public ObservableCollection<TerminalLine> LogLines { get; } = new();
 
     [ObservableProperty]
     private bool _showDebugInfo;
@@ -277,15 +276,17 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (text == null)
             {
-                _logBuilder.Clear();
-                LogOutput = "";
+                LogLines.Clear();
             }
             else
             {
-                _logBuilder.Append(text);
-                if (_logBuilder.Length > MaxLogLength)
-                    _logBuilder.Remove(0, _logBuilder.Length - MaxLogLength / 2);
-                LogOutput = _logBuilder.ToString();
+                // 按换行拆分，每行生成一个 TerminalLine
+                var rawLines = text.Split('\n');
+                foreach (var rawLine in rawLines)
+                {
+                    if (string.IsNullOrEmpty(rawLine)) continue;
+                    LogLines.Add(_ansiParser.ParseLine(rawLine));
+                }
             }
         };
 
@@ -363,9 +364,9 @@ public partial class MainWindowViewModel : ViewModelBase
         DropFileCommand = new RelayCommand<string>(DropFile);
         RemoteRunCommand = new RelayCommand(RemoteRun);
         RemoteStopCommand = new RelayCommand(RemoteStop);
-        CompileFlashCommand = new RelayCommand(CompileFlash);
+        CompileFlashCommand = new AsyncRelayCommand(CompileFlashAsync);
         ClearFlashCommand = new RelayCommand(ClearFlash);
-        GenerateFirmwareCommand = new RelayCommand(GenerateFirmware);
+        GenerateFirmwareCommand = new AsyncRelayCommand(GenerateFirmwareAsync);
         StartRecordCommand = new RelayCommand(StartRecord);
         StopRecordCommand = new RelayCommand(StopRecord);
         ShowMonitorCommand = new RelayCommand(ShowMonitor);
@@ -394,8 +395,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         // 添加一些初始日志
-        _logBuilder.Append("欢迎使用 EasyCon2!\n");
-        LogOutput = _logBuilder.ToString();
+        LogLines.Add(_ansiParser.ParseLine("欢迎使用 EasyCon2!"));
     }
 
     private void OnOpenProjectRequested()
@@ -1121,7 +1121,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnTagEditorOpenFileRequested()
     {
-        OpenTagEditorImageFile();
+        OpenTagEditorImageFileAsync();
     }
 
     private void OnTagEditorCaptureScreenshot()
@@ -1129,7 +1129,7 @@ public partial class MainWindowViewModel : ViewModelBase
         CaptureScreenshotForTagEditor();
     }
 
-    private async void OpenTagEditorImageFile()
+    private async Task OpenTagEditorImageFileAsync()
     {
         // 使用当前主窗口作为父窗口
         var mainWindow = App.Current?.ApplicationLifetime is global::Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
@@ -1366,7 +1366,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private async void CompileFlash()
+    private async Task CompileFlashAsync()
     {
         if (!IsNintendoSwitchConnected)
         {
@@ -1390,7 +1390,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         // 组装为字节码
-        var bytes = await _scriptService.Build(true);
+        var bytes = await _scriptService.BuildAsync(true);
         if (bytes == null || bytes.Length == 0)
         {
             _logService.AddLog("编译结果为空，无法烧录");
@@ -1437,7 +1437,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private async void GenerateFirmware()
+    private async Task GenerateFirmwareAsync()
     {
         if (string.IsNullOrWhiteSpace(EditorText))
         {
@@ -1455,7 +1455,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         // 组装为字节码
-        var bytes = await _scriptService.Build(false);
+        var bytes = await _scriptService.BuildAsync(false);
         if (bytes == null || bytes.Length == 0)
         {
             _logService.AddLog("编译结果为空，无法生成固件");

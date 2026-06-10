@@ -7,7 +7,7 @@ public interface IScriptService
     event Action<bool> IsRunningChanged;
     Task<bool> CompileAsync(string scriptText, string? fileName);
     string GetFormattedCode();
-    Task<byte[]> Build(bool autoRun);
+    Task<byte[]> BuildAsync(bool autoRun);
     void Run(string scriptPath);
     void RunFromContent(string content);
     void Stop();

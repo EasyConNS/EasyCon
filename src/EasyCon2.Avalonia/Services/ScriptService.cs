@@ -59,7 +59,7 @@ public class ScriptService : IScriptService
         return formattedCode;
     }
 
-    public Task<byte[]> Build(bool autoRun)
+    public Task<byte[]> BuildAsync(bool autoRun)
     {
         try
         {

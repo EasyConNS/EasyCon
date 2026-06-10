@@ -53,7 +53,12 @@ public partial class MainWindow : Window
         LoadFileInEditor(filePath);
     }
 
-    private async void OnOpenFolderDialogRequested()
+    private void OnOpenFolderDialogRequested()
+    {
+        _ = OpenFolderDialogAsync();
+    }
+
+    private async Task OpenFolderDialogAsync()
     {
         // 使用当前项目目录或用户文档目录作为默认位置
         var startPath = (DataContext as MainWindowViewModel)?.GetCurrentProjectDirectory()

@@ -6,6 +6,7 @@
          xmlns:controls="using:EasyCon2.Avalonia.Controls"
          xmlns:editor="using:EasyCon2.Avalonia.Core.Editor"
          xmlns:tag="using:EasyCon2.Avalonia.Core.TagEditor"
+         xmlns:terminal="using:EasyCon2.Avalonia.Core.Terminal"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          mc:Ignorable="d"
@@ -646,12 +647,11 @@
                                       VerticalAlignment="Center"/>
                     </Grid>
                     <Grid Grid.Row="1">
-                        <TextBox Classes="log-output"
-                                Text="{Binding LogOutput}"
-                                Padding="10,30,10,10"
-                                ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                behaviors:AutoScrollBehavior.IsEnabled="True"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Auto">
+                            <terminal:TerminalControl
+                                ItemsSource="{Binding LogLines}"/>
+                        </ScrollViewer>
                         <Button HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
                                 Classes="flat-link"

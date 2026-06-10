@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:terminal="using:EasyCon2.Avalonia.Core.Terminal">
     <Styles.Resources>
         <Color x:Key="WorkbenchWindowColor">#D0D1D6</Color>
         <Color x:Key="WorkbenchTitleColor">#F8F8FA</Color>
@@ -211,27 +212,12 @@
         <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
     </Style>
 
-    <!-- Read-only log TextBox: fix background so FluentTheme hover/focus states don't override it -->
-    <Style Selector="TextBox.log-output">
+    <!-- Terminal output control -->
+    <Style Selector="terminal|TerminalControl">
         <Setter Property="Background" Value="{DynamicResource WorkbenchLogBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchLogTextBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
-        <Setter Property="Padding" Value="10" />
         <Setter Property="FontFamily" Value="{DynamicResource WorkbenchMonoFontFamily}" />
         <Setter Property="FontSize" Value="13" />
-        <Setter Property="IsReadOnly" Value="True" />
-        <Setter Property="AcceptsReturn" Value="True" />
-        <Setter Property="TextWrapping" Value="NoWrap" />
-    </Style>
-
-    <Style Selector="TextBox.log-output:pointerover /template/ Border#PART_BorderElement">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchLogBrush}" />
-    </Style>
-
-    <Style Selector="TextBox.log-output:focus /template/ Border#PART_BorderElement">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchLogBrush}" />
     </Style>
 
     <Style Selector="GroupBox">
