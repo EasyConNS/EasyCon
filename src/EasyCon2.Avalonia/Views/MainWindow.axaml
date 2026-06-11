@@ -180,7 +180,9 @@
                             </Border>
                             <!-- 编辑器始终显示 -->
                             <Grid Grid.Row="1">
-                                <editor:ScriptEditorControl x:Name="ScriptEditor" EditorText="{Binding EditorText, Mode=TwoWay}"/>
+                                <editor:ScriptEditorControl x:Name="ScriptEditor"
+                                                            EditorText="{Binding EditorText, Mode=TwoWay}"
+                                                            EnableAutoCompletion="{Binding IsAutoCompletionEnabled}"/>
                                 <Button Classes="ai-agent"
                                         HorizontalAlignment="Right"
                                         VerticalAlignment="Bottom"
@@ -228,13 +230,9 @@
                                             <TextBlock Text="采集卡类型"
                                                        VerticalAlignment="Center"/>
                                             <ComboBox Grid.Column="1"
-                                                      SelectedIndex="0"
-                                                      HorizontalAlignment="Stretch">
-                                                <ComboBoxItem Content="ANY"/>
-                                                <ComboBoxItem Content="DSHOW"/>
-                                                <ComboBoxItem Content="MSMF"/>
-                                                <ComboBoxItem Content="DC1394"/>
-                                            </ComboBox>
+                                                      ItemsSource="{Binding CaptureTypeOptions}"
+                                                      SelectedItem="{Binding SelectedCaptureType}"
+                                                      HorizontalAlignment="Stretch"/>
                                             <Button Grid.Column="2"
                                                     Classes="tool-button"
                                                     Content="设置环境变量"
@@ -257,7 +255,7 @@
                                             <TextBlock Text="代码自动补全"
                                                        VerticalAlignment="Center"/>
                                             <ToggleSwitch Grid.Column="1"
-                                                          IsChecked="False"/>
+                                                          IsChecked="{Binding IsAutoCompletionEnabled}"/>
                                         </Grid>
 
                                         <Grid Classes="settings-row"
@@ -273,7 +271,7 @@
                                             <TextBlock Text="高精度模式"
                                                        VerticalAlignment="Center"/>
                                             <ToggleSwitch Grid.Column="1"
-                                                          IsChecked="False"/>
+                                                          IsChecked="{Binding IsHighResolutionTimingEnabled}"/>
                                         </Grid>
 
                                         <Grid Classes="settings-row"

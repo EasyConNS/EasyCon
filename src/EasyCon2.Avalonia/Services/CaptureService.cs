@@ -14,6 +14,7 @@ public class CaptureService : ICaptureService
     private OpenCVCapture? _capture;
 
     private readonly Size resol = new(1920, 1080);
+    public string CaptureType { get; set; } = "ANY";
 
     public bool IsConnected
     {
@@ -69,7 +70,7 @@ public class CaptureService : ICaptureService
         {
             _capture?.Dispose();
             _capture = new OpenCVCapture();
-            if (!_capture.Open(deviceId, (int)VideoCaptureAPIs.ANY))
+            if (!_capture.Open(deviceId, (int)GetCaptureApi()))
             {
                 _capture = null;
                 return false;
@@ -120,5 +121,16 @@ public class CaptureService : ICaptureService
         {
             _capture?.SetProperties(width, height);
         }
+    }
+
+    private VideoCaptureAPIs GetCaptureApi()
+    {
+        return CaptureType switch
+        {
+            "DSHOW" => VideoCaptureAPIs.DSHOW,
+            "MSMF" => VideoCaptureAPIs.MSMF,
+            "DC1394" => VideoCaptureAPIs.DC1394,
+            _ => VideoCaptureAPIs.ANY
+        };
     }
 }

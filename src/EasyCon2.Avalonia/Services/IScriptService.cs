@@ -4,6 +4,7 @@ public interface IScriptService
 {
     bool IsRunning { get; }
     bool HasKeyAction { get; }
+    bool HighResolutionTiming { get; set; }
     event Action<bool> IsRunningChanged;
     Task<bool> CompileAsync(string scriptText, string? fileName);
     string GetFormattedCode();

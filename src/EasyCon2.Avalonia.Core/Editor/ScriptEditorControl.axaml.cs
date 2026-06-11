@@ -50,10 +50,26 @@ public partial class ScriptEditorControl : UserControl
         }
     }
 
+    private bool _enableAutoCompletion;
+
+    public static readonly DirectProperty<ScriptEditorControl, bool> EnableAutoCompletionProperty =
+        AvaloniaProperty.RegisterDirect<ScriptEditorControl, bool>(
+            nameof(EnableAutoCompletion),
+            o => o.EnableAutoCompletion,
+            (o, v) => o.EnableAutoCompletion = v);
+
     public bool EnableAutoCompletion
     {
-        get => _completionController?.EnableAutoCompletion ?? false;
-        set { if (_completionController != null) _completionController.EnableAutoCompletion = value; }
+        get => _enableAutoCompletion;
+        set
+        {
+            if (_enableAutoCompletion == value) return;
+            var oldValue = _enableAutoCompletion;
+            _enableAutoCompletion = value;
+            if (_completionController != null)
+                _completionController.EnableAutoCompletion = value;
+            RaisePropertyChanged(EnableAutoCompletionProperty, oldValue, value);
+        }
     }
 
     public static readonly DirectProperty<ScriptEditorControl, string> EditorTextProperty =
@@ -187,6 +203,7 @@ public partial class ScriptEditorControl : UserControl
         {
             _lspCompletionAdapter = new LspCompletionAdapter(_lspService);
             _completionController = new CodeCompletionController(_editor, _lspCompletionAdapter);
+            _completionController.EnableAutoCompletion = EnableAutoCompletion;
 
             _lspHoverHandler = new LspHoverHandler(_editor, _lspService);
             _lspDefinitionHandler = new LspDefinitionHandler(_editor, _lspService);

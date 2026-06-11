@@ -19,6 +19,7 @@ public class ScriptService : IScriptService
 
     public bool IsRunning { get; private set; }
     public bool HasKeyAction => _runner.HasKeyAction;
+    public bool HighResolutionTiming { get; set; }
     public event Action<bool> IsRunningChanged;
 
     public ScriptService(IDeviceService deviceService, ICaptureService captureService, ILogService logService)
@@ -119,7 +120,7 @@ public class ScriptService : IScriptService
 
                 ICGamePad? pad = null;
                 if (_runner.HasKeyAction)
-                    pad = new GamePadAdapter(_deviceService.GetDevice());
+                    pad = new GamePadAdapter(_deviceService.GetDevice(), HighResolutionTiming);
 
                 _captureService.SetCaptureProperties(1920, 1080);
 
@@ -225,7 +226,7 @@ public class ScriptService : IScriptService
 
                 ICGamePad? pad = null;
                 if (_runner.HasKeyAction)
-                    pad = new GamePadAdapter(_deviceService.GetDevice());
+                    pad = new GamePadAdapter(_deviceService.GetDevice(), HighResolutionTiming);
 
                 _captureService.SetCaptureProperties(1920, 1080);
 

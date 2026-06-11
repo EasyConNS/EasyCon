@@ -5,6 +5,7 @@ namespace EasyCon2.Avalonia.Services;
 public interface ICaptureService
 {
     bool IsConnected { get; }
+    string CaptureType { get; set; }
     event Action? ConnectionLost;
     event Action? ConnectionRestored;
     string[] GetAvailableSources();

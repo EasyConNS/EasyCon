@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core;
+using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.TagEditor;
 using EasyCon2.Avalonia.Core.Terminal;
 using EasyCon2.Avalonia.Services;
@@ -33,6 +34,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private MonitorViewModel? _monitorViewModel;
     private readonly FileTreeViewModel _fileTreeViewModel;
     private string? _projectDirectoryPath;
+    private ConfigState _userConfig = new();
+    private bool _isLoadingUserSettings;
 
     // 窗口标题（含版本号）
     [ObservableProperty]
@@ -183,11 +186,23 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _selectedFirmware = "leonardo";
 
     [ObservableProperty]
+    private ObservableCollection<string> _captureTypeOptions = new() { "ANY", "DSHOW", "MSMF", "DC1394" };
+
+    [ObservableProperty]
+    private string _selectedCaptureType = "ANY";
+
+    [ObservableProperty]
+    private bool _isAutoCompletionEnabled = false;
+
+    [ObservableProperty]
     private bool _autoSwitchLayoutEnabled = false;
 
     // 显示代码折叠
     [ObservableProperty]
     private bool _showFolding = true;
+
+    [ObservableProperty]
+    private bool _isHighResolutionTimingEnabled = false;
 
     [ObservableProperty]
     private bool _isIdleThreeColumnLayoutSelected = true;
@@ -387,7 +402,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SelectColorSchemeCommand = new RelayCommand<string>(SelectColorScheme);
         RestoreDefaultLayoutCommand = new RelayCommand(RestoreDefaultLayout);
 
-        ThemeManager.Instance.ApplyColorScheme(ThemeManager.IndustrialGraySchemeName);
+        LoadUserSettings();
 
         // 初始化示例数据
         InitializeSampleData();
@@ -405,6 +420,100 @@ public partial class MainWindowViewModel : ViewModelBase
         LogLines.Add(_ansiParser.ParseLine("欢迎使用 EasyCon2!"));
     }
 
+    private void LoadUserSettings()
+    {
+        _isLoadingUserSettings = true;
+        try
+        {
+            _userConfig = ConfigManager.LoadConfig();
+
+            SelectedCaptureType = NormalizeCaptureType(_userConfig.CaptureType);
+            _captureService.CaptureType = SelectedCaptureType;
+            IsAutoCompletionEnabled = _userConfig.EnableAutoCompletion;
+            ShowFolding = _userConfig.ShowFolding;
+            IsHighResolutionTimingEnabled = _userConfig.HighResolutionTiming;
+            _scriptService.HighResolutionTiming = IsHighResolutionTimingEnabled;
+            ShowDebugInfo = _userConfig.ShowDebugInfo;
+            AutoSwitchLayoutEnabled = _userConfig.AutoSwitchLayoutEnabled;
+            ApplySavedLayoutSettings(_userConfig);
+
+            var colorSchemeName = NormalizeColorSchemeName(_userConfig.ColorSchemeName, _userConfig.DarkMode);
+            ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
+        }
+        catch (Exception ex)
+        {
+            _userConfig = new ConfigState();
+            ThemeManager.Instance.ApplyColorScheme(ThemeManager.IndustrialGraySchemeName);
+            _logService.AddLog($"读取用户配置失败，已使用默认设置: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingUserSettings = false;
+        }
+    }
+
+    private void SaveUserSettings()
+    {
+        if (_isLoadingUserSettings)
+            return;
+
+        _userConfig.CaptureType = NormalizeCaptureType(SelectedCaptureType);
+        _userConfig.EnableAutoCompletion = IsAutoCompletionEnabled;
+        _userConfig.ShowFolding = ShowFolding;
+        _userConfig.HighResolutionTiming = IsHighResolutionTimingEnabled;
+        _userConfig.ShowDebugInfo = ShowDebugInfo;
+        _userConfig.AutoSwitchLayoutEnabled = AutoSwitchLayoutEnabled;
+        _userConfig.IsIdleThreeColumnLayoutSelected = IsIdleThreeColumnLayoutSelected;
+        _userConfig.IsIdleTwoColumnLayoutSelected = IsIdleTwoColumnLayoutSelected;
+        _userConfig.IsRunningThreeColumnLayoutSelected = IsRunningThreeColumnLayoutSelected;
+        _userConfig.IsRunningTwoColumnLayoutSelected = IsRunningTwoColumnLayoutSelected;
+        _userConfig.IsRunningOneColumnLayoutSelected = IsRunningOneColumnLayoutSelected;
+        _userConfig.ColorSchemeName = ThemeManager.Instance.SelectedColorSchemeName;
+        _userConfig.DarkMode = ThemeManager.Instance.IsDarkMode;
+
+        try
+        {
+            ConfigManager.SaveConfig(_userConfig);
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"保存用户配置失败: {ex.Message}");
+        }
+    }
+
+    private void ApplySavedLayoutSettings(ConfigState config)
+    {
+        var idleTwoColumn = config.IsIdleTwoColumnLayoutSelected;
+        IsIdleThreeColumnLayoutSelected = !idleTwoColumn;
+        IsIdleTwoColumnLayoutSelected = idleTwoColumn;
+
+        var runningOneColumn = config.IsRunningOneColumnLayoutSelected;
+        var runningThreeColumn = config.IsRunningThreeColumnLayoutSelected && !runningOneColumn;
+        IsRunningThreeColumnLayoutSelected = runningThreeColumn;
+        IsRunningTwoColumnLayoutSelected = !runningThreeColumn && !runningOneColumn;
+        IsRunningOneColumnLayoutSelected = runningOneColumn;
+    }
+
+    private static string NormalizeCaptureType(string? captureType)
+    {
+        return captureType switch
+        {
+            "DSHOW" or "MSMF" or "DC1394" => captureType,
+            _ => "ANY"
+        };
+    }
+
+    private static string NormalizeColorSchemeName(string? colorSchemeName, bool legacyDarkMode)
+    {
+        return colorSchemeName switch
+        {
+            ThemeManager.IndustrialGraySchemeName => ThemeManager.IndustrialGraySchemeName,
+            ThemeManager.WarmToneSchemeName => ThemeManager.WarmToneSchemeName,
+            ThemeManager.DarkModeSchemeName => ThemeManager.DarkModeSchemeName,
+            _ => legacyDarkMode ? ThemeManager.DarkModeSchemeName : ThemeManager.IndustrialGraySchemeName
+        };
+    }
+
     private void OnOpenProjectRequested()
     {
         OpenFolderDialogRequested?.Invoke();
@@ -416,6 +525,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
 
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
+        SaveUserSettings();
         _logService.AddLog($"已切换配色: {colorSchemeName}");
     }
 
@@ -995,35 +1105,46 @@ public partial class MainWindowViewModel : ViewModelBase
 
     partial void OnIsIdleThreeColumnLayoutSelectedChanged(bool value)
     {
-        if (!value) return;
-        IsIdleTwoColumnLayoutSelected = false;
+        if (value)
+            IsIdleTwoColumnLayoutSelected = false;
+        SaveUserSettings();
     }
 
     partial void OnIsIdleTwoColumnLayoutSelectedChanged(bool value)
     {
-        if (!value) return;
-        IsIdleThreeColumnLayoutSelected = false;
+        if (value)
+            IsIdleThreeColumnLayoutSelected = false;
+        SaveUserSettings();
     }
 
     partial void OnIsRunningThreeColumnLayoutSelectedChanged(bool value)
     {
-        if (!value) return;
-        IsRunningTwoColumnLayoutSelected = false;
-        IsRunningOneColumnLayoutSelected = false;
+        if (value)
+        {
+            IsRunningTwoColumnLayoutSelected = false;
+            IsRunningOneColumnLayoutSelected = false;
+        }
+        SaveUserSettings();
     }
 
     partial void OnIsRunningTwoColumnLayoutSelectedChanged(bool value)
     {
-        if (!value) return;
-        IsRunningThreeColumnLayoutSelected = false;
-        IsRunningOneColumnLayoutSelected = false;
+        if (value)
+        {
+            IsRunningThreeColumnLayoutSelected = false;
+            IsRunningOneColumnLayoutSelected = false;
+        }
+        SaveUserSettings();
     }
 
     partial void OnIsRunningOneColumnLayoutSelectedChanged(bool value)
     {
-        if (!value) return;
-        IsRunningThreeColumnLayoutSelected = false;
-        IsRunningTwoColumnLayoutSelected = false;
+        if (value)
+        {
+            IsRunningThreeColumnLayoutSelected = false;
+            IsRunningTwoColumnLayoutSelected = false;
+        }
+        SaveUserSettings();
     }
 
     private void ShowScriptSyntax()
@@ -1112,9 +1233,32 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(MonitorVisibilityButtonText));
     }
 
+    partial void OnSelectedCaptureTypeChanged(string value)
+    {
+        _captureService.CaptureType = NormalizeCaptureType(value);
+        SaveUserSettings();
+    }
+
+    partial void OnIsAutoCompletionEnabledChanged(bool value)
+    {
+        SaveUserSettings();
+    }
+
+    partial void OnAutoSwitchLayoutEnabledChanged(bool value)
+    {
+        SaveUserSettings();
+    }
+
     partial void OnShowFoldingChanged(bool value)
     {
         FoldingVisibilityChanged?.Invoke(value);
+        SaveUserSettings();
+    }
+
+    partial void OnIsHighResolutionTimingEnabledChanged(bool value)
+    {
+        _scriptService.HighResolutionTiming = value;
+        SaveUserSettings();
     }
 
     partial void OnIsCaptureSourceConnectedChanged(bool value)
@@ -1289,6 +1433,7 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnShowDebugInfoChanged(bool value)
     {
         _deviceService.ShowDebugInfo = value;
+        SaveUserSettings();
     }
 
     private void RunScript()
