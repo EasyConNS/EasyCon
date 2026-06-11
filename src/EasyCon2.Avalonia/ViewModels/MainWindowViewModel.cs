@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -26,6 +27,17 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private const string NoScriptPathText = "未选择脚本";
     private const string UntitledScriptText = "未命名脚本";
+    private const string WelcomeText = "欢迎使用 easycon";
+    private static readonly Color[] WelcomePalette =
+    [
+        Color.FromRgb(0xF9, 0x5D, 0x6A),
+        Color.FromRgb(0xF8, 0xB4, 0x4C),
+        Color.FromRgb(0x9C, 0xD8, 0x5B),
+        Color.FromRgb(0x46, 0xD6, 0xC8),
+        Color.FromRgb(0x5A, 0x9C, 0xFF),
+        Color.FromRgb(0xC7, 0x7D, 0xFF)
+    ];
+
     private readonly ILogService _logService;
     private readonly IDeviceService _deviceService;
     private readonly ICaptureService _captureService;
@@ -35,9 +47,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private Window? _espConfigWindow;
     private MonitorViewModel? _monitorViewModel;
     private readonly FileTreeViewModel _fileTreeViewModel;
+    private readonly System.Timers.Timer _welcomeTimer = new(120);
     private string? _projectDirectoryPath;
     private ConfigState _userConfig = new();
     private bool _isLoadingUserSettings;
+    private int _welcomeColorOffset;
 
     // 窗口标题（含版本号）
     [ObservableProperty]
@@ -60,6 +74,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _currentScriptPath = NoScriptPathText;
 
     // 日志输出行集合（TerminalControl 绑定）
+    public ObservableCollection<TerminalLine> WelcomeLines { get; } = new();
     public ObservableCollection<TerminalLine> LogLines { get; } = new();
 
     [ObservableProperty]
@@ -324,7 +339,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 foreach (var rawLine in rawLines)
                 {
                     if (string.IsNullOrEmpty(rawLine)) continue;
-                    LogLines.Add(_ansiParser.ParseLine(rawLine));
+                    LogLines.Add(ParseLogLine(rawLine, color));
                 }
             }
         };
@@ -351,18 +366,23 @@ public partial class MainWindowViewModel : ViewModelBase
         // 订阅脚本运行状态变化
         _scriptService.IsRunningChanged += running =>
         {
-            IsRunning = running;
-            RunButtonText = running ? "停止" : "运行";
-            if (running)
+            Dispatcher.UIThread.Post(() =>
             {
-                _runStartTime = DateTime.Now;
-                _runTimer.Start();
-            }
-            else
-            {
-                _runTimer.Stop();
-                RunTimeDisplay = "00:00:00";
-            }
+                IsRunning = running;
+                RunButtonText = running ? "停止" : "运行";
+                RefreshWelcomeConsole();
+
+                if (running)
+                {
+                    _runStartTime = DateTime.Now;
+                    _runTimer.Start();
+                }
+                else
+                {
+                    _runTimer.Stop();
+                    RunTimeDisplay = "00:00:00";
+                }
+            });
         };
 
         // 订阅手柄热插拔事件
@@ -426,6 +446,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // 初始化示例数据
         InitializeSampleData();
+        InitializeWelcomeConsole();
 
         _runTimer.Elapsed += (s, e) =>
         {
@@ -436,8 +457,87 @@ public partial class MainWindowViewModel : ViewModelBase
             });
         };
 
-        // 添加一些初始日志
-        LogLines.Add(_ansiParser.ParseLine("\x1b[31m欢\x1b[93m迎\x1b[32m使\x1b[96m用\x1b[0m \x1b[34mE\x1b[95ma\x1b[36ms\x1b[91my\x1b[33mC\x1b[92mo\x1b[35mn\x1b[94m2\x1b[31m!\x1b[0m"));
+    }
+
+    private void InitializeWelcomeConsole()
+    {
+        RefreshWelcomeConsole();
+        _welcomeTimer.Elapsed += (_, _) => Dispatcher.UIThread.Post(RefreshWelcomeConsole);
+        _welcomeTimer.Start();
+    }
+
+    private void RefreshWelcomeConsole()
+    {
+        WelcomeLines.Clear();
+        WelcomeLines.Add(CreateWelcomeLine());
+
+        if (_scriptService.IsRunning)
+            _welcomeColorOffset++;
+    }
+
+    private TerminalLine CreateWelcomeLine()
+    {
+        var line = new TerminalLine();
+
+        for (var i = 0; i < WelcomeText.Length; i++)
+        {
+            var color = WelcomePalette[Mod(i - _welcomeColorOffset, WelcomePalette.Length)];
+            line.Segments.Add(new TextSegment(WelcomeText[i].ToString(), color));
+        }
+
+        return line;
+    }
+
+    private TerminalLine ParseLogLine(string rawLine, string? color)
+    {
+        if (rawLine.Contains('\x1b'))
+            return _ansiParser.ParseLine(rawLine);
+
+        var foreground = TryParseLogColor(color);
+        if (foreground == null)
+            return _ansiParser.ParseLine(rawLine);
+
+        var line = new TerminalLine();
+        line.Segments.Add(new TextSegment(rawLine, foreground));
+        return line;
+    }
+
+    private static Color? TryParseLogColor(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color))
+            return null;
+
+        return color.Trim() switch
+        {
+            "Lime" => Color.FromRgb(0x32, 0xD7, 0x4B),
+            "Orange" => Color.FromRgb(0xF5, 0x9E, 0x0B),
+            "OrangeRed" => Color.FromRgb(0xFF, 0x5A, 0x3D),
+            "Red" => Color.FromRgb(0xEF, 0x44, 0x44),
+            "Yellow" => Color.FromRgb(0xF4, 0xD0, 0x3F),
+            "Green" => Color.FromRgb(0x22, 0xC5, 0x5E),
+            "Cyan" => Color.FromRgb(0x22, 0xD3, 0xEE),
+            "Blue" => Color.FromRgb(0x60, 0xA5, 0xFA),
+            "Magenta" => Color.FromRgb(0xE8, 0x79, 0xF9),
+            _ => TryParseAvaloniaColor(color)
+        };
+    }
+
+    private static Color? TryParseAvaloniaColor(string color)
+    {
+        try
+        {
+            return Color.Parse(color);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static int Mod(int value, int divisor)
+    {
+        var result = value % divisor;
+        return result < 0 ? result + divisor : result;
     }
 
     private void LoadUserSettings()
@@ -1544,6 +1644,9 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public void OnMainWindowClosing()
     {
+        _welcomeTimer.Stop();
+        _welcomeTimer.Dispose();
+
         if (_espConfigWindow != null)
         {
             _espConfigWindow.Close();

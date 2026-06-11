@@ -48,6 +48,9 @@ public class TerminalControl : Control, ILogicalScrollable
         StyledProperty<IBrush>.Register<TerminalControl, IBrush>(nameof(SelectionBrush),
             new SolidColorBrush(Color.FromArgb(0x60, 0x00, 0x78, 0xD4)));
 
+    public static readonly StyledProperty<Thickness> ContentPaddingProperty =
+        StyledProperty<Thickness>.Register<TerminalControl, Thickness>(nameof(ContentPadding), new Thickness(10));
+
     #endregion
 
     #region Fields
@@ -72,9 +75,6 @@ public class TerminalControl : Control, ILogicalScrollable
     private TextPos? _selAnchor;
     private TextPos? _selActive;
     private bool _isSelecting;
-
-    // Content padding
-    private const double Pad = 10;
 
     #endregion
 
@@ -128,6 +128,12 @@ public class TerminalControl : Control, ILogicalScrollable
         set => SetValue(SelectionBrushProperty, value);
     }
 
+    public Thickness ContentPadding
+    {
+        get => GetValue(ContentPaddingProperty);
+        set => SetValue(ContentPaddingProperty, value);
+    }
+
     #endregion
 
     #region Constructor
@@ -152,6 +158,10 @@ public class TerminalControl : Control, ILogicalScrollable
         {
             _metricsValid = false;
             InvalidateVisual();
+        }
+        else if (change.Property == ContentPaddingProperty)
+        {
+            UpdateScroll();
         }
     }
 
@@ -180,9 +190,10 @@ public class TerminalControl : Control, ILogicalScrollable
         if (_lines.Count == 0) return;
 
         // Visible line range
-        var firstLine = Math.Max(0, (int)((_offset.Y - Pad) / _lineHeight));
+        var pad = ContentPadding;
+        var firstLine = Math.Max(0, (int)((_offset.Y - pad.Top) / _lineHeight));
         var lastLine = Math.Min(_lines.Count - 1,
-            firstLine + (int)((_viewport.Height + Pad * 2) / _lineHeight) + 1);
+            firstLine + (int)((_viewport.Height + pad.Top + pad.Bottom) / _lineHeight) + 1);
 
         // 1. Draw selection highlight (under text)
         DrawSelection(context, firstLine, lastLine);
@@ -193,8 +204,8 @@ public class TerminalControl : Control, ILogicalScrollable
         for (var i = firstLine; i <= lastLine; i++)
         {
             var line = _lines[i];
-            var y = Pad + i * _lineHeight - _offset.Y;
-            var x = Pad - _offset.X;
+            var y = pad.Top + i * _lineHeight - _offset.Y;
+            var x = pad.Left - _offset.X;
 
             foreach (var seg in line.Segments)
             {
@@ -218,12 +229,13 @@ public class TerminalControl : Control, ILogicalScrollable
                     seg.Text, CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight, tf, fontSize, fg);
 
-                context.DrawText(ft, new Point(x, y));
+                var textY = y + Math.Max(0, (_lineHeight - ft.Height) / 2);
+                context.DrawText(ft, new Point(x, textY));
 
                 // Underline
                 if (seg.Underline)
                 {
-                    var lineY = y + ft.Height;
+                    var lineY = textY + ft.Height;
                     context.DrawLine(new Pen(fg, 1),
                         new Point(x, lineY), new Point(x + ft.Width, lineY));
                 }
@@ -283,9 +295,10 @@ public class TerminalControl : Control, ILogicalScrollable
 
     private TextPos HitTest(Point pt)
     {
-        var line = (int)((pt.Y - Pad + _offset.Y) / _lineHeight);
+        var pad = ContentPadding;
+        var line = (int)((pt.Y - pad.Top + _offset.Y) / _lineHeight);
         line = Math.Clamp(line, 0, Math.Max(0, _lines.Count - 1));
-        var col = (int)((pt.X - Pad + _offset.X) / _charWidth);
+        var col = (int)((pt.X - pad.Left + _offset.X) / _charWidth);
         col = Math.Max(0, col);
         return new TextPos(line, col);
     }
@@ -339,11 +352,12 @@ public class TerminalControl : Control, ILogicalScrollable
 
         for (var i = Math.Max(start.Line, firstLine); i <= Math.Min(end.Line, lastLine); i++)
         {
-            var y = Pad + i * _lineHeight - _offset.Y;
+            var pad = ContentPadding;
+            var y = pad.Top + i * _lineHeight - _offset.Y;
             var sCol = i == start.Line ? start.Col : 0;
             var eCol = i == end.Line ? Math.Min(end.Col, _lines[i].TextLength) : _lines[i].TextLength;
 
-            var x = Pad + sCol * _charWidth - _offset.X;
+            var x = pad.Left + sCol * _charWidth - _offset.X;
             var w = (eCol - sCol) * _charWidth;
             if (w > 0)
                 ctx.DrawRectangle(brush, null, new Rect(x, y, w, _lineHeight));
@@ -430,7 +444,8 @@ public class TerminalControl : Control, ILogicalScrollable
         if (!AutoScroll || !_isAtBottom) return;
         EnsureMetrics();
 
-        var maxY = Math.Max(0, _lines.Count * _lineHeight + Pad * 2 - _viewport.Height);
+        var pad = ContentPadding;
+        var maxY = Math.Max(0, _lines.Count * _lineHeight + pad.Top + pad.Bottom - _viewport.Height);
         _offset = new Vector(_offset.X, maxY);
     }
 
@@ -531,9 +546,10 @@ public class TerminalControl : Control, ILogicalScrollable
             if (len > maxLen) maxLen = len;
         }
 
+        var pad = ContentPadding;
         _extent = new Size(
-            Math.Max(maxLen * _charWidth + Pad * 2, _viewport.Width),
-            _lines.Count * _lineHeight + Pad * 2);
+            Math.Max(maxLen * _charWidth + pad.Left + pad.Right, _viewport.Width),
+            _lines.Count * _lineHeight + pad.Top + pad.Bottom);
 
         if (_isAtBottom && AutoScroll)
             _offset = new Vector(_offset.X, Math.Max(0, _extent.Height - _viewport.Height));

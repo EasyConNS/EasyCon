@@ -678,19 +678,32 @@
                                       HorizontalAlignment="Left"
                                       VerticalAlignment="Center"/>
                     </Grid>
-                    <Grid Grid.Row="1">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                      HorizontalScrollBarVisibility="Auto">
+                    <Grid Grid.Row="1" RowDefinitions="26,*">
+                        <Border Grid.Row="0"
+                                Background="{DynamicResource WorkbenchLogBrush}">
                             <terminal:TerminalControl
-                                ItemsSource="{Binding LogLines}"/>
-                        </ScrollViewer>
-                        <Button HorizontalAlignment="Right"
-                                VerticalAlignment="Top"
+                                ItemsSource="{Binding WelcomeLines}"
+                                MaxLineCount="1"
+                                AutoScroll="False"
+                                ContentPadding="10,0,0,0"
+                                VerticalContentAlignment="Center"/>
+                        </Border>
+                        <Grid Grid.Row="1">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Auto">
+                                <terminal:TerminalControl
+                                    ItemsSource="{Binding LogLines}"
+                                    ContentPadding="10,0,0,0"/>
+                            </ScrollViewer>
+                        </Grid>
+                        <Button Grid.Row="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center"
                                 Classes="flat-link"
                                 Content="清空输出 ↻"
                                 Foreground="{DynamicResource WorkbenchAmberBrush}"
                                 Command="{Binding ClearLogCommand}"
-                                Margin="0,6,12,0"/>
+                                Margin="0,0,12,0"/>
                     </Grid>
                 </Grid>
             </Grid>
