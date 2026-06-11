@@ -771,28 +771,34 @@
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Stretch"/>
                         <!-- 第二排：录制脚本 + 停止录制 + 按键映射 -->
-                        <Button Grid.Row="1"
-                                Grid.Column="0"
-                                Content="录制脚本"
-                                Command="{Binding StartRecordCommand}"
-                                Padding="12,4"
-                                HorizontalAlignment="Left"
-                                HorizontalContentAlignment="Center"/>
-                        <Button Grid.Row="1"
-                                Grid.Column="1"
-                                Content="停止录制"
-                                Command="{Binding StopRecordCommand}"
-                                Padding="12,4"
-                                HorizontalContentAlignment="Center"/>
-                        <Button Grid.Row="1"
-                                Grid.Column="2"
-                                Content="按键映射"
-                                Command="{Binding EditKeyMappingCommand}"
-                                CommandParameter="{Binding $parent[Window]}"
-                                IsEnabled="{Binding IsEditKeyMappingEnabled}"
-                                Padding="12,4"
-                                HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center"/>
+                        <Grid Grid.Row="1"
+                              Grid.Column="0"
+                              Grid.ColumnSpan="3"
+                              ColumnDefinitions="*,*,*"
+                              ColumnSpacing="10">
+                            <Button Grid.Column="0"
+                                    Content="录制脚本"
+                                    Command="{Binding StartRecordCommand}"
+                                    IsEnabled="{Binding IsStartRecordEnabled}"
+                                    Padding="12,4"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                            <Button Grid.Column="1"
+                                    Content="停止录制"
+                                    Command="{Binding StopRecordCommand}"
+                                    IsEnabled="{Binding IsStopRecordEnabled}"
+                                    Padding="12,4"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                            <Button Grid.Column="2"
+                                    Content="按键映射"
+                                    Command="{Binding EditKeyMappingCommand}"
+                                    CommandParameter="{Binding $parent[Window]}"
+                                    IsEnabled="{Binding IsEditKeyMappingEnabled}"
+                                    Padding="12,4"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                        </Grid>
                     </Grid>
                 </GroupBox>
 

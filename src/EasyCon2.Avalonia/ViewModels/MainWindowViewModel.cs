@@ -108,6 +108,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isEditKeyMappingEnabled = true;
 
+    [ObservableProperty]
+    private bool _isRecording = false;
+
+    public bool IsStartRecordEnabled => !IsRecording;
+    public bool IsStopRecordEnabled => IsRecording;
+
     // 运行脚本相关属性
     [ObservableProperty]
     private bool _isRunning = false;
@@ -297,6 +303,7 @@ public partial class MainWindowViewModel : ViewModelBase
             IsNintendoSwitchConnected = false;
             NintendoSwitchStatus = "已断开";
             NintendoSwitchButtonText = "连接单片机";
+            IsRecording = false;
         };
 
         // 订阅视频源外部断开事件
@@ -1273,6 +1280,12 @@ public partial class MainWindowViewModel : ViewModelBase
         UpdateEditKeyMappingEnabled();
     }
 
+    partial void OnIsRecordingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsStartRecordEnabled));
+        OnPropertyChanged(nameof(IsStopRecordEnabled));
+    }
+
     partial void OnShowDebugInfoChanged(bool value)
     {
         _deviceService.ShowDebugInfo = value;
@@ -1528,6 +1541,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void StartRecord()
     {
+        if (IsRecording)
+        {
+            _logService.AddLog("脚本录制已在进行中");
+            return;
+        }
+
         if (!IsNintendoSwitchConnected)
         {
             _logService.AddLog("请先连接单片机");
@@ -1543,6 +1562,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _logService.AddLog("开始录制脚本");
         var device = _deviceService.GetDevice();
         device.StartRecord();
+        IsRecording = true;
     }
 
     private void StopRecord()
@@ -1553,8 +1573,15 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        if (!IsRecording)
+        {
+            _logService.AddLog("当前没有正在录制的脚本");
+            return;
+        }
+
         var device = _deviceService.GetDevice();
         device.StopRecord();
+        IsRecording = false;
 
         var script = device.GetRecordScript();
         if (!string.IsNullOrEmpty(script))
