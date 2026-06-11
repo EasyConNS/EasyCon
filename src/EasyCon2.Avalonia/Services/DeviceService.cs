@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using EasyCon.Core;
+using EasyCon.Core.Services;
 using EasyDevice;
 
 namespace EasyCon2.Avalonia.Services;

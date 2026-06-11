@@ -14,6 +14,7 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Text;
 using System.Windows.Input;
+using ILogService = EasyCon.Core.Services.ILogService;
 using Resources = EasyCon2.UI.Common.Properties.Resources;
 using Window = Avalonia.Controls.Window;
 using WindowState = Avalonia.Controls.WindowState;
@@ -282,7 +283,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _fileTreeViewModel.SaveScriptRequested += OnSaveScriptRequested;
         _fileTreeViewModel.SaveScriptAsRequested += OnSaveScriptAsRequested;
         _fileTreeViewModel.CloseProjectRequested += CloseProject;
-        _fileTreeViewModel.FileOperationMessage += _logService.AddLog;
+        _fileTreeViewModel.FileOperationMessage += message => _logService.AddLog(message);
         var fileTreeView = new FileTreeView { DataContext = _fileTreeViewModel };
         FileTreeView = fileTreeView;
 
@@ -293,7 +294,7 @@ public partial class MainWindowViewModel : ViewModelBase
         InitializeTagEditor();
 
         // 订阅日志事件（LogService 已批量合并，此处每 100ms 最多触发一次）
-        _logService.LogAppended += text =>
+        _logService.LogAppended += (text, color) =>
         {
             if (text == null)
             {
@@ -572,7 +573,7 @@ public partial class MainWindowViewModel : ViewModelBase
                         var tagVm = new TagEditorViewModel(label);
                         tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
                         tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
-                        tagVm.LogMessage += _logService.AddLog;
+                        tagVm.LogMessage += message => _logService.AddLog(message);
                         TagEditorViewModel = tagVm;
                     }
                 }
@@ -612,7 +613,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var tagVm = new TagEditorViewModel();
         tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
         tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
-        tagVm.LogMessage += _logService.AddLog;
+        tagVm.LogMessage += message => _logService.AddLog(message);
         TagEditorViewModel = tagVm;
     }
 

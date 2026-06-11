@@ -1,6 +1,7 @@
 using Avalonia.Threading;
 using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Services;
 using OpenCvSharp;
 
 namespace EasyCon2.Avalonia.Services;

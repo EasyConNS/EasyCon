@@ -8,6 +8,7 @@ using EasyCon2.Avalonia.Services;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
+using ILogService = EasyCon.Core.Services.ILogService;
 using Resources = EasyCon2.UI.Common.Properties.Resources;
 
 namespace EasyCon2.Avalonia.ViewModels;

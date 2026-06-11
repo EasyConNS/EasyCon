@@ -1,6 +1,7 @@
 ﻿using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
+using EasyCon.Core.Services;
 using EasyCon.Script;
 using EasyScript;
 using OpenCvSharp;

@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.ViewModels;
 using EasyCon2.Avalonia.Views;
+using CoreLogService = EasyCon2.Avalonia.Core.Services.LogService;
 
 namespace EasyCon2.Avalonia;
 
@@ -18,7 +19,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var logService = new LogService();
+            var logService = new CoreLogService();
             var deviceService = new DeviceService(logService);
             var captureService = new CaptureService(logService);
             var scriptService = new ScriptService(deviceService, captureService, logService);
