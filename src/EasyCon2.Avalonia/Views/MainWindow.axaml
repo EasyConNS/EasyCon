@@ -6,6 +6,7 @@
          xmlns:controls="using:EasyCon2.Avalonia.Controls"
          xmlns:editor="using:EasyCon2.Avalonia.Core.Editor"
          xmlns:tag="using:EasyCon2.Avalonia.Core.TagEditor"
+         xmlns:agent="using:EasyCon2.Avalonia.Core.AiAgent"
          xmlns:terminal="using:EasyCon2.Avalonia.Core.Terminal"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -188,7 +189,9 @@
                                         VerticalAlignment="Bottom"
                                         Margin="0,0,10,10"
                                         Content="✦ AI Agent"
-                                        Command="{Binding OpenAiAgentCommand}"/>
+                                        Command="{Binding OpenAiAgentCommand}"
+                                        IsVisible="{Binding !AiAgentPanel.IsOpen}"/>
+                                <agent:AiAgentPanel DataContext="{Binding AiAgentPanel}"/>
                             </Grid>
                         </Grid>
                     </TabItem>
@@ -686,7 +689,7 @@
                                 MaxLineCount="1"
                                 AutoScroll="False"
                                 ContentPadding="10,0,0,0"
-                                VerticalContentAlignment="Center"/>
+                                />
                         </Border>
                         <Grid Grid.Row="1">
                             <ScrollViewer VerticalScrollBarVisibility="Auto"

@@ -1,0 +1,110 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.Core.AiAgent"
+             x:Class="EasyCon2.Avalonia.Core.AiAgent.AiAgentPanel"
+             x:DataType="vm:AiAgentPanelViewModel"
+             IsVisible="{Binding IsOpen}">
+
+    <UserControl.Styles>
+        <Style Selector="Button.agent-icon-button">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="MinWidth" Value="28"/>
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.agent-icon-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="Button.agent-send-button">
+            <Setter Property="Width" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="MinWidth" Value="34"/>
+            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchOnAccentBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output">
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input">
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="MinHeight" Value="54"/>
+            <Setter Property="MaxHeight" Value="110"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="{DynamicResource WorkbenchPanelBrush}"
+            BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+            BorderThickness="0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <Grid RowDefinitions="34,*,Auto">
+            <Grid Grid.Row="0"
+                  ColumnDefinitions="*,Auto"
+                  Background="{DynamicResource WorkbenchMenuBrush}">
+                <TextBlock Text="AI Agent"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource WorkbenchTextBrush}"/>
+                <Button Grid.Column="1"
+                        Classes="agent-icon-button"
+                        Command="{Binding CloseCommand}"
+                        ToolTip.Tip="关闭">
+                    <TextBlock Text="&#xE711;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="11"/>
+                </Button>
+            </Grid>
+
+            <TextBox Grid.Row="1"
+                     Classes="agent-output"
+                     Margin="10"
+                     Text="{Binding ConversationText}"
+                     IsReadOnly="True"
+                     VerticalAlignment="Stretch"
+                     HorizontalAlignment="Stretch"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+
+            <Grid Grid.Row="2"
+                  ColumnDefinitions="*,Auto"
+                  ColumnSpacing="8"
+                  Margin="10,0,10,10">
+                <TextBox Classes="agent-input"
+                         Text="{Binding InputText, Mode=TwoWay}"
+                         PlaceholderText="输入消息"/>
+                <Button Grid.Column="1"
+                        Classes="agent-send-button"
+                        Command="{Binding SendCommand}"
+                        VerticalAlignment="Bottom"
+                        ToolTip.Tip="发送">
+                    <TextBlock Text="&#xE724;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="14"/>
+                </Button>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core;
 using EasyCon.Core.Config;
+using EasyCon2.Avalonia.Core.AiAgent;
 using EasyCon2.Avalonia.Core.TagEditor;
 using EasyCon2.Avalonia.Core.Terminal;
 using EasyCon2.Avalonia.Services;
@@ -186,6 +187,8 @@ public partial class MainWindowViewModel : ViewModelBase
     // 标签编辑器 ViewModel
     [ObservableProperty]
     private TagEditorViewModel? _tagEditorViewModel;
+
+    public AiAgentPanelViewModel AiAgentPanel { get; } = new();
 
     // 脚本路径显示文本（超30字符中间省略）
     public string ScriptDisplayPath
@@ -1351,7 +1354,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OpenAiAgent()
     {
-        _logService.AddLog("AI Agent 功能待接入");
+        AiAgentPanel.IsOpen = true;
     }
 
     partial void OnCurrentScriptPathChanged(string value)
