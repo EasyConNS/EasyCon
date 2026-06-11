@@ -23,7 +23,7 @@ public sealed partial class ThemeManager : ViewModelBase
     public static ThemeManager Instance => _instance.Value;
 
     [ObservableProperty]
-    private string _selectedColorSchemeName = IndustrialGraySchemeName;
+    private string _selectedColorSchemeName = WarmToneSchemeName;
 
     public string[] ColorSchemeNames { get; } = { IndustrialGraySchemeName, WarmToneSchemeName, DarkModeSchemeName };
 

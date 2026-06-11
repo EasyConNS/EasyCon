@@ -73,10 +73,13 @@ public static class ILExtLeg
     public static List<Point> Search(this ImgLabel self, Mat ss, out double md, string tessdataPath)
     {
         if (self.TargetWidth > self.RangeWidth || self.TargetHeight > self.RangeHeight)
-            throw new Exception("搜索图片大于搜索范围");
+            throw new Exception($"搜图标签[{self.name}]搜索图片大于搜索范围\n" +
+                $"  搜图范围(ROI): X={self.RangeX}, Y={self.RangeY}, W={self.RangeWidth}, H={self.RangeHeight}\n" +
+                $"  目标区域(Target): X={self.TargetX}, Y={self.TargetY}, W={self.TargetWidth}, H={self.TargetHeight}");
 
         try
         {
+            Console.Error.WriteLine($"[Search] ss size: {ss.Width}x{ss.Height}, channels={ss.Channels()}, type={ss.Type()}, roi=({self._round.X},{self._round.Y},{self._round.Width},{self._round.Height})");
             using var range = new Mat(ss, self._round);
 
             List<Point> result = new();
@@ -112,7 +115,9 @@ public static class ILExtLeg
         }
         catch (OpenCVException ex)
         {
-            throw new Exception($"搜图标签[{self.name}]执行异常：{ex.Message}");
+            throw new Exception($"搜图标签[{self.name}]执行异常：{ex.Message}\n" +
+                $"  搜图范围(ROI): X={self.RangeX}, Y={self.RangeY}, W={self.RangeWidth}, H={self.RangeHeight}\n" +
+                $"  目标区域(Target): X={self.TargetX}, Y={self.TargetY}, W={self.TargetWidth}, H={self.TargetHeight}");
         }
     }
 }

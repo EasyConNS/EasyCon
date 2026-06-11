@@ -332,17 +332,51 @@ public partial class TagEditorViewModel : ObservableObject
     [RelayCommand]
     private void ToggleTargetSelection()
     {
-        CurrentSelectionMode = CurrentSelectionMode == SelectionMode.Target
-            ? SelectionMode.None
-            : SelectionMode.Target;
+        // 从"圈选中"切换到"确定"时，裁剪目标区域并更新目标图和 ImgBase64
+        if (CurrentSelectionMode == SelectionMode.Target)
+        {
+            CurrentSelectionMode = SelectionMode.None;
+            UpdateTargetImageFromRoi();
+        }
+        else
+        {
+            CurrentSelectionMode = SelectionMode.Target;
+        }
     }
 
-    [RelayCommand]
-    private void ClearSelection()
+    /// <summary>
+    /// 根据 TargetRect 从 SourceImage 裁剪 ROI，更新 TargetImage 和 Label.ImgBase64。
+    /// </summary>
+    private void UpdateTargetImageFromRoi()
     {
-        CurrentSelectionMode = SelectionMode.None;
-        RangeRect = default;
-        TargetRect = default;
+        if (SourceImage is not Bitmap src)
+            return;
+
+        var rect = TargetRect;
+        if (rect.Width <= 0 || rect.Height <= 0)
+            return;
+
+        // 裁剪区域限制在图片范围内
+        var cropRect = rect.Intersect(new Rect(0, 0, src.PixelSize.Width, src.PixelSize.Height));
+        if (cropRect.Width <= 0 || cropRect.Height <= 0)
+            return;
+
+        // 用 RenderTargetBitmap 裁剪 ROI 区域
+        var pixelSize = new PixelSize((int)cropRect.Width, (int)cropRect.Height);
+        var rtb = new RenderTargetBitmap(pixelSize, new Vector(96, 96));
+        using (var ctx = rtb.CreateDrawingContext())
+        {
+            var srcRect = new Rect(cropRect.X, cropRect.Y, cropRect.Width, cropRect.Height);
+            var dstRect = new Rect(0, 0, cropRect.Width, cropRect.Height);
+            ctx.DrawImage(src, srcRect, dstRect);
+        }
+
+        // 写入内存流，同时更新 TargetImage 和 ImgBase64
+        var ms = new MemoryStream();
+        rtb.Save(ms);
+        ms.Position = 0;
+        TargetImage = new Bitmap(ms);
+        Label.ImgBase64 = Convert.ToBase64String(ms.ToArray());
     }
 
     [RelayCommand(CanExecute = nameof(HasLabelName))]

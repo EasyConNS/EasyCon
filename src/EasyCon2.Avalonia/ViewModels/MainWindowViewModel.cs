@@ -11,6 +11,7 @@ using EasyCon2.Avalonia.Core.Terminal;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Views;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using System.Windows.Input;
@@ -41,6 +42,18 @@ public partial class MainWindowViewModel : ViewModelBase
     // 窗口标题（含版本号）
     [ObservableProperty]
     private string _windowTitle;
+
+    // 当前版本号（用户配置页显示）
+    [ObservableProperty]
+    private string _currentVersion = "";
+
+    // 是否正在检查更新
+    [ObservableProperty]
+    private bool _isCheckingUpdate;
+
+    // 检查更新按钮文本
+    [ObservableProperty]
+    private string _checkUpdateButtonText = "检查更新";
 
     // 当前脚本路径
     [ObservableProperty]
@@ -253,6 +266,8 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand ToggleMonitorVisibilityCommand { get; }
     public ICommand SelectColorSchemeCommand { get; }
     public ICommand RestoreDefaultLayoutCommand { get; }
+    public IAsyncRelayCommand CheckUpdateCommand { get; }
+    public IRelayCommand OpenGitHubCommand { get; }
 
     // 刷新数据源命令
     public ICommand RefreshSerialPortsCommand { get; }
@@ -262,10 +277,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService)
     {
         // 窗口标题
-        var ver = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
+        var fullVer = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
+        var ver = fullVer;
         var plusIdx = ver.IndexOf('+');
         if (plusIdx > 0) ver = ver[..plusIdx];
         WindowTitle = $"伊机控 EasyCon v{ver}  QQ群:946057081";
+        CurrentVersion = $"当前版本：v{fullVer}";
 
         _logService = logService;
         _deviceService = deviceService;
@@ -402,6 +419,8 @@ public partial class MainWindowViewModel : ViewModelBase
         ToggleMonitorVisibilityCommand = new RelayCommand(ToggleMonitorVisibility);
         SelectColorSchemeCommand = new RelayCommand<string>(SelectColorScheme);
         RestoreDefaultLayoutCommand = new RelayCommand(RestoreDefaultLayout);
+        CheckUpdateCommand = new AsyncRelayCommand(CheckUpdateAsync);
+        OpenGitHubCommand = new RelayCommand(OpenGitHub);
 
         LoadUserSettings();
 
@@ -418,7 +437,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         // 添加一些初始日志
-        LogLines.Add(_ansiParser.ParseLine("欢迎使用 EasyCon2!"));
+        LogLines.Add(_ansiParser.ParseLine("\x1b[31m欢\x1b[93m迎\x1b[32m使\x1b[96m用\x1b[0m \x1b[34mE\x1b[95ma\x1b[36ms\x1b[91my\x1b[33mC\x1b[92mo\x1b[35mn\x1b[94m2\x1b[31m!\x1b[0m"));
     }
 
     private void LoadUserSettings()
@@ -528,6 +547,61 @@ public partial class MainWindowViewModel : ViewModelBase
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
         SaveUserSettings();
         _logService.AddLog($"已切换配色: {colorSchemeName}");
+    }
+
+    private async Task CheckUpdateAsync()
+    {
+        IsCheckingUpdate = true;
+        CheckUpdateButtonText = "正在检查…";
+        try
+        {
+            using var client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(5);
+            var data = await client.GetStringAsync("https://gitee.com/api/v5/repos/EasyConNS/EasyCon/tags?sort=updated&direction=desc&per_page=3");
+            var tags = System.Text.Json.JsonSerializer.Deserialize<VerInfo[]>(data);
+            if (tags == null || tags.Length == 0)
+            {
+                CheckUpdateButtonText = "检查失败";
+                return;
+            }
+            var cutoff = new DateTime(2026, 4, 27, 0, 0, 0, DateTimeKind.Utc);
+            var latest = tags.FirstOrDefault(t => t.commit != null && t.commit.date >= cutoff);
+            if (latest == null)
+            {
+                CheckUpdateButtonText = "当前已是最新版本";
+                return;
+            }
+            var curVer = Assembly.GetEntryAssembly()?.GetName().Version;
+            CheckUpdateButtonText = latest.Ver > curVer
+                ? $"发现新版本 v{latest.Ver}"
+                : "当前已是最新版本";
+        }
+        catch
+        {
+            CheckUpdateButtonText = "检查失败";
+        }
+        finally
+        {
+            IsCheckingUpdate = false;
+        }
+    }
+
+    private void OpenGitHub()
+    {
+        Process.Start(new ProcessStartInfo("https://github.com/EasyConNS/EasyCon") { UseShellExecute = true });
+    }
+
+    private record CommitInfo
+    {
+        public string sha { get; set; } = "";
+        public DateTime date { get; set; }
+    }
+
+    private record VerInfo
+    {
+        public string name { get; set; } = "";
+        public CommitInfo? commit { get; set; }
+        public Version Ver => new(name ?? "");
     }
 
     /// <summary>
@@ -1741,3 +1815,4 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 }
+

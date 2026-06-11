@@ -7,30 +7,38 @@
     <DockPanel Margin="16"
                Background="{DynamicResource WorkbenchWindowBrush}">
         <!-- Bottom buttons -->
-        <StackPanel DockPanel.Dock="Bottom"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right"
-                    Spacing="8"
-                    Margin="0,12,0,0">
-            <Button Content="添加配置"
-                    Command="{Binding AddItemCommand}"
-                    IsEnabled="{Binding CanAdd}"/>
-            <Button Background="Transparent"
-                    BorderThickness="0"
-                    Padding="4,2"
-                    Cursor="Hand"
-                    Click="OnOpenFile">
-                <TextBlock Text="打开配置文件目录"
-                           Foreground="{DynamicResource WorkbenchAccentBrush}"
-                           TextDecorations="Underline"/>
-            </Button>
-            <Button Content="保存"
-                    Click="OnSave"
-                    IsDefault="True"/>
-            <Button Content="取消"
-                    Click="OnCancel"
-                    IsCancel="True"/>
-        </StackPanel>
+        <Grid DockPanel.Dock="Bottom"
+              ColumnDefinitions="Auto,*"
+              Margin="0,12,0,0">
+            <StackPanel Grid.Column="0"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Left"
+                        Spacing="8">
+                <Button Content="添加配置"
+                        Command="{Binding AddItemCommand}"
+                        IsEnabled="{Binding CanAdd}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8">
+                <Button Background="Transparent"
+                        BorderThickness="0"
+                        Padding="4,2"
+                        Cursor="Hand"
+                        Click="OnOpenFile">
+                    <TextBlock Text="打开配置文件目录"
+                               Foreground="{DynamicResource WorkbenchAccentBrush}"
+                               TextDecorations="Underline"/>
+                </Button>
+                <Button Content="保存"
+                        Click="OnSave"
+                        IsDefault="True"/>
+                <Button Content="取消"
+                        Click="OnCancel"
+                        IsCancel="True"/>
+            </StackPanel>
+        </Grid>
 
         <!-- Hidden items hint -->
         <Border DockPanel.Dock="Bottom"

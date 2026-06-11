@@ -154,9 +154,6 @@
                         <Button Content="{Binding TargetButtonText}"
                                 Command="{Binding ToggleTargetSelectionCommand}"
                                 HorizontalAlignment="Stretch"/>
-                        <Button Content="清除圈选"
-                                Command="{Binding ClearSelectionCommand}"
-                                HorizontalAlignment="Stretch"/>
                         <Button Content="动态测试"
                                 IsEnabled="False"
                                 HorizontalAlignment="Stretch"/>
