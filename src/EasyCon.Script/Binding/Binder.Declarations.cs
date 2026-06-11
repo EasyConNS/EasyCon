@@ -29,6 +29,18 @@ internal sealed partial class Binder
         }
 
         var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
+
+        // 尝试复用 DeclarationCollector 已创建的 FunctionSymbol 实例，
+        // 避免 Binder 和 DeclarationCollector 各持一份实例导致 Layout 等运行时属性不一致。
+        var existing = TryFindMatchingFunction(syntax.Declare.Name, parameters);
+        if (existing != null)
+        {
+            if (!_scope.TryDeclareFunction(existing))
+                _diagnostics.ReportFunctionAlreadyDeclared(syntax.Declare.Location, syntax.Declare.Name);
+            return existing;
+        }
+
+        // 兜底：DeclarationCollector 未创建过（如旧 API 路径），创建新实例
         var function = new FunctionSymbol(syntax.Declare.Name, parameters.ToImmutable(), returnType) { Declaration = syntax };
         function.LocalSlotCount = parameters.Count;
 
@@ -63,6 +75,17 @@ internal sealed partial class Binder
         }
 
         var returnType = BindTypeClause(syntax, syntax.ReturnType) ?? ScriptType.Void;
+
+        // 尝试复用 DeclarationCollector 已创建的 FunctionSymbol 实例
+        var existing = TryFindMatchingFunction(syntax.Name, parameters);
+        if (existing != null)
+        {
+            if (!_scope.TryDeclareFunction(existing))
+                _diagnostics.ReportFunctionAlreadyDeclared(syntax.Location, syntax.Name);
+            return existing;
+        }
+
+        // 兜底：DeclarationCollector 未创建过
         var function = new FunctionSymbol(syntax.Name, parameters.ToImmutable(), returnType, libraryName: syntax.Library, externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
         function.LocalSlotCount = parameters.Count;
 
@@ -75,6 +98,40 @@ internal sealed partial class Binder
         if (!_scope.TryDeclareFunction(function))
             _diagnostics.ReportFunctionAlreadyDeclared(syntax.Location, syntax.Name);
         return function;
+    }
+
+    /// <summary>
+    /// 从 DeclarationCollector 创建的 scope（GlobalScope + ModuleScopes）中查找与目标签名匹配的 FunctionSymbol。
+    /// 复用同一实例确保 Layout 等运行时属性在整个管线中保持一致。
+    /// </summary>
+    private FunctionSymbol? TryFindMatchingFunction(string name, ImmutableArray<ParamSymbol>.Builder parameters)
+    {
+        if (_resolution == null) return null;
+
+        // 依次搜索 GlobalScope（非 aliased 函数）和 ModuleScopes（aliased import 函数）
+        List<BoundScope?> scopes = [_resolution.GlobalScope];
+        if (_resolution.ModuleScopes != null)
+            scopes.AddRange(_resolution.ModuleScopes.Values);
+
+        foreach (var scope in scopes)
+        {
+            if (scope == null) continue;
+            foreach (var candidate in scope.TryLookupFuncs(name))
+            {
+                if (candidate.Parameters.Length != parameters.Count) continue;
+                bool match = true;
+                for (int i = 0; i < parameters.Count; i++)
+                {
+                    if (!candidate.Parameters[i].Type.Equals(parameters[i].Type))
+                    {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) return candidate;
+            }
+        }
+        return null;
     }
 
     private void BindStructDeclaration(StructDeclBlock syntax)

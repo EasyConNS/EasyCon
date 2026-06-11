@@ -48,6 +48,21 @@ if errorlevel 1 (
     exit /b 1
 )
 
+:: ========== 编译 EasyCon2.Avalonia ==========
+set "PROJ_NAME=EasyCon2.Avalonia"
+set "PROJ_DIR=%ROOT_DIR%\src\%PROJ_NAME%"
+
+echo 正在编译 "%PROJ_NAME%"...
+if exist "%PROJ_DIR%\bin" rmdir /s /q "%PROJ_DIR%\bin"
+if exist "%PROJ_DIR%\obj" rmdir /s /q "%PROJ_DIR%\obj"
+
+dotnet publish "%PROJ_DIR%\%PROJ_NAME%.csproj" --nologo -c Release -r win-x64 -f %TFM% -p:PublishSingleFile=true --self-contained false -o "%PUBLISH_DIR%"
+if errorlevel 1 (
+    echo 错误: 编译 "%PROJ_NAME%" 失败
+    pause
+    exit /b 1
+)
+
 :: ========== 重命名文件 ==========
 echo 正在重命名文件...
 
@@ -55,6 +70,7 @@ echo 正在重命名文件...
 for /f %%i in ('git -C "%ROOT_DIR%" rev-parse --short HEAD') do set "COMMIT_ID=%%i"
 
 if exist "%PUBLISH_DIR%\EasyCon2.exe" ren "%PUBLISH_DIR%\EasyCon2.exe" "EasyCon2.!COMMIT_ID!.exe"
+if exist "%PUBLISH_DIR%\EasyCon2.Avalonia.exe" ren "%PUBLISH_DIR%\EasyCon2.Avalonia.exe" "EasyCon2.Avalonia.!COMMIT_ID!.exe"
 if exist "%PUBLISH_DIR%\EasyCon2.CLI.exe" ren "%PUBLISH_DIR%\EasyCon2.CLI.exe" "ezcon.exe"
 
 :: ========== 复制额外文件 ==========
