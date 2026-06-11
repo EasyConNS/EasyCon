@@ -9,6 +9,12 @@ public sealed partial class ThemeManager : ViewModelBase
     public const string IndustrialGraySchemeName = "工业灰";
     public const string WarmToneSchemeName = "暖色调";
     public const string DarkModeSchemeName = "Dark模式";
+    private const double WorkbenchMenuHeight = 34;
+    private const double WorkbenchButtonMinHeight = 32;
+    private const double WorkbenchCompactButtonMinHeight = 26;
+    private const double WorkbenchInputMinHeight = 34;
+    private static readonly FontFamily WorkbenchUiFontFamily = new("Microsoft YaHei UI, Microsoft YaHei, Inter");
+    private static readonly FontFamily WorkbenchMonoFontFamily = new("Consolas, Microsoft YaHei");
 
     private static readonly Lazy<ThemeManager> _instance = new(
         () => new ThemeManager(),
@@ -194,12 +200,12 @@ public sealed partial class ThemeManager : ViewModelBase
             Color.FromRgb(0xA7, 0xAA, 0xB1),
             new CornerRadius(0),
             new CornerRadius(0),
-            34,
-            32,
-            26,
-            34,
-            new FontFamily("Microsoft YaHei UI, Microsoft YaHei, Inter"),
-            new FontFamily("Consolas, Microsoft YaHei"));
+            WorkbenchMenuHeight,
+            WorkbenchButtonMinHeight,
+            WorkbenchCompactButtonMinHeight,
+            WorkbenchInputMinHeight,
+            WorkbenchUiFontFamily,
+            WorkbenchMonoFontFamily);
 
         public static WorkbenchPalette WarmTone { get; } = new(
             Color.FromRgb(0xFA, 0xF9, 0xF5),
@@ -229,12 +235,12 @@ public sealed partial class ThemeManager : ViewModelBase
             Color.FromRgb(0xE6, 0xDF, 0xD8),
             new CornerRadius(8),
             new CornerRadius(12),
-            40,
-            40,
-            32,
-            40,
-            new FontFamily("Inter, Microsoft YaHei UI, Microsoft YaHei, Segoe UI"),
-            new FontFamily("JetBrains Mono, Consolas, Microsoft YaHei"));
+            WorkbenchMenuHeight,
+            WorkbenchButtonMinHeight,
+            WorkbenchCompactButtonMinHeight,
+            WorkbenchInputMinHeight,
+            WorkbenchUiFontFamily,
+            WorkbenchMonoFontFamily);
 
         public static WorkbenchPalette DarkMode { get; } = new(
             Color.FromRgb(0x10, 0x10, 0x11),
@@ -264,11 +270,11 @@ public sealed partial class ThemeManager : ViewModelBase
             Color.FromRgb(0x24, 0x27, 0x2B),
             new CornerRadius(8),
             new CornerRadius(8),
-            40,
-            40,
-            32,
-            40,
-            new FontFamily("Inter, Microsoft YaHei UI, Microsoft YaHei, Segoe UI"),
-            new FontFamily("JetBrains Mono, Consolas, Microsoft YaHei"));
+            WorkbenchMenuHeight,
+            WorkbenchButtonMinHeight,
+            WorkbenchCompactButtonMinHeight,
+            WorkbenchInputMinHeight,
+            WorkbenchUiFontFamily,
+            WorkbenchMonoFontFamily);
     }
 }
