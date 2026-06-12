@@ -25,14 +25,18 @@
         </Style>
 
         <Style Selector="Button.agent-send-button">
-            <Setter Property="Width" Value="34"/>
-            <Setter Property="Height" Value="34"/>
-            <Setter Property="MinWidth" Value="34"/>
-            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="46"/>
+            <Setter Property="MinWidth" Value="46"/>
+            <Setter Property="MinHeight" Value="46"/>
             <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="{DynamicResource WorkbenchOnAccentBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
 
         <Style Selector="TextBox.agent-output">
@@ -46,10 +50,10 @@
         <Style Selector="TextBox.agent-input">
             <Setter Property="AcceptsReturn" Value="True"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Padding" Value="12,0"/>
             <Setter Property="MinHeight" Value="54"/>
             <Setter Property="MaxHeight" Value="110"/>
-            <Setter Property="VerticalContentAlignment" Value="Top"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
     </UserControl.Styles>
 
@@ -97,10 +101,16 @@
                 <Button Grid.Column="1"
                         Classes="agent-send-button"
                         Command="{Binding SendCommand}"
-                        VerticalAlignment="Bottom"
+                        VerticalAlignment="Center"
                         ToolTip.Tip="发送">
-                    <PathIcon Data="M0,2 L16,8 L0,14 L4,8 Z"
-                               Width="14" Height="14"/>
+                    <Path Data="M2,3 L18,10 L2,17 L5,10 Z M5,10 L18,10"
+                          Width="20"
+                          Height="20"
+                          Stretch="Uniform"
+                          Fill="Transparent"
+                          Stroke="{DynamicResource WorkbenchOnAccentBrush}"
+                          StrokeThickness="2"
+                          StrokeLineCap="Round"/>
                 </Button>
             </Grid>
         </Grid>

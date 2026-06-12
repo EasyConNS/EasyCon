@@ -110,8 +110,23 @@ public sealed partial class ThemeManager : ObservableObject
         SetResource("WorkbenchInputMinHeight", palette.InputMinHeight);
         SetResource("WorkbenchUiFontFamily", palette.UiFontFamily);
         SetResource("WorkbenchMonoFontFamily", palette.MonoFontFamily);
+        SetComboBoxGlyphResources(colorSchemeName, palette);
         SetTabShapeResources(colorSchemeName);
         DarkModeChanged?.Invoke(IsDarkMode);
+    }
+
+    private static void SetComboBoxGlyphResources(string colorSchemeName, WorkbenchPalette palette)
+    {
+        var glyphColor = colorSchemeName == DarkModeSchemeName
+            ? palette.ControlBorder
+            : palette.Text;
+        var glyphBrush = new SolidColorBrush(glyphColor);
+
+        SetResource("ComboBoxDropDownGlyphForeground", glyphBrush);
+        SetResource("ComboBoxDropDownGlyphForegroundPointerOver", glyphBrush);
+        SetResource("ComboBoxDropDownGlyphForegroundPressed", glyphBrush);
+        SetResource("ComboBoxDropDownGlyphForegroundFocused", glyphBrush);
+        SetResource("ComboBoxDropDownGlyphForegroundDisabled", glyphBrush);
     }
 
     private static void SetTabShapeResources(string colorSchemeName)

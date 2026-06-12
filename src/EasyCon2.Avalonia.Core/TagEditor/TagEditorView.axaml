@@ -114,6 +114,18 @@
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+
+        <Style Selector="Window.dark StackPanel.selection-actions Button:disabled">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Foreground" Value="#9AA0A8"/>
+        </Style>
+
+        <Style Selector="Window.dark StackPanel.selection-actions Button:disabled /template/ ContentPresenter">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchButtonBorderBrush}"/>
+            <Setter Property="Foreground" Value="#9AA0A8"/>
+        </Style>
     </UserControl.Styles>
 
     <Border BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
@@ -138,6 +150,7 @@
                                          HorizontalAlignment="Stretch"
                                          VerticalAlignment="Stretch" />
                     <StackPanel Grid.Column="1"
+                                Classes="selection-actions"
                                 Spacing="8"
                                 Margin="8"
                                 Width="96"

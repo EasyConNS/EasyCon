@@ -49,6 +49,8 @@ public partial class MainWindow : Window
 
     private void ApplyEditorTheme(bool isDarkMode)
     {
+        Classes.Set("dark", isDarkMode);
+
         var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
         if (editor != null)
             editor.IsDarkTheme = isDarkMode;

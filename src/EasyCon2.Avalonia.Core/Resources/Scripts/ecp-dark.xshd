@@ -1,26 +1,26 @@
 <?xml version="1.0"?>
-<SyntaxDefinition name="ecp-dark"
+<SyntaxDefinition name="ECScript-Dark"
         xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
-	<Color name="Comment" foreground="#586E75" />
-	<Color name="String" foreground="#2AA198" />
-	<Color name="NumberLiteral" foreground="#D33682"/>
-	<Color name="Keywords" fontWeight="bold" foreground="#859900" />
-	<Color name="Funcs" fontWeight="bold" foreground="#268BD2" />
-	<Color name="GamePadKey" fontWeight="bold" foreground="#CB4B16" />
-	<Color name="Variable" foreground="#93A1A1" />
-	<Color name="CaptureVariable" foreground="#6C71C4" />
-	<Color name="Constant" foreground="#B58900" />
+    <Color name="Comment" foreground="#6A9955" />
+    <Color name="String" foreground="#dca995" />
+    <Color name="NumberLiteral" foreground="#90C990"/>
+    <Color name="Keywords" fontWeight="bold" foreground="#569CD6" />
+    <Color name="Funcs" fontWeight="bold" foreground="#DCDCAA" />
+    <Color name="GamePadKey" fontWeight="bold" foreground="#CE9178" />
+    <Color name="Variable" foreground="#9CDCFE" />
+    <Color name="CaptureVariable" foreground="#4EC9B0" />
+    <Color name="Constant" foreground="#4FC1FF" />
 
-	<RuleSet name="CommentMarkerSet">
-		<Keywords fontWeight="bold" foreground="#CB4B16">
-			<Word>TODO</Word>
-			<Word>FIXME</Word>
-		</Keywords>
-		<Keywords fontWeight="bold" foreground="#CB4B16">
-			<Word>HACK</Word>
-			<Word>UNDONE</Word>
-		</Keywords>
-	</RuleSet>
+    <RuleSet name="CommentMarkerSet">
+        <Keywords fontWeight="bold" foreground="#F44747">
+            <Word>TODO</Word>
+            <Word>FIXME</Word>
+        </Keywords>
+        <Keywords fontWeight="bold" foreground="#F44747">
+            <Word>HACK</Word>
+            <Word>UNDONE</Word>
+        </Keywords>
+    </RuleSet>
 
 	<RuleSet ignoreCase="true">
 		<Span color="Comment" begin="#" />

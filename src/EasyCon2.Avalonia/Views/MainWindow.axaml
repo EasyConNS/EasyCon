@@ -26,7 +26,6 @@
           behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
 
     <Window.Resources>
-        <conv:BoolToGreenBrushConverter x:Key="BoolToGreenBrush" />
         <conv:BoolToRunColorConverter x:Key="BoolToRunColor" />
     </Window.Resources>
 
@@ -122,6 +121,34 @@
 
         <Style Selector="Grid.feature-row Button">
             <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <Style Selector="Window.dark Border.dark-disabled-buttons Button:disabled">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Foreground" Value="#9AA0A8" />
+        </Style>
+
+        <Style Selector="Window.dark Border.dark-disabled-buttons Button:disabled /template/ ContentPresenter">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchButtonBorderBrush}" />
+            <Setter Property="Foreground" Value="#9AA0A8" />
+        </Style>
+
+        <Style Selector="Window.dark Border.disabled-feature-card">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Window.dark Border.module-actions ComboBox /template/ PathIcon#PART_DropDownGlyph">
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        </Style>
+
+        <Style Selector="Border.module-actions TextBlock.connection-status.connected">
+            <Setter Property="Foreground" Value="#4CAF50" />
+        </Style>
+
+        <Style Selector="Window.dark Border.module-actions TextBlock.connection-status.disconnected">
+            <Setter Property="Foreground" Value="#d38263" />
         </Style>
     </Window.Styles>
 
@@ -672,7 +699,7 @@
                                     </Grid>
                                 </Border>
 
-                                <Border Classes="settings-card"
+                                <Border Classes="settings-card dark-disabled-buttons disabled-feature-card"
                                         IsEnabled="False"
                                         Opacity="0.5">
                                     <StackPanel Spacing="12">
@@ -780,6 +807,7 @@
 
         <!-- 下部模块操作区 -->
         <Border Grid.Row="1"
+               Classes="module-actions dark-disabled-buttons"
                Padding="10"
                Background="{DynamicResource WorkbenchPanelBrush}"
                BorderBrush="{DynamicResource WorkbenchBorderBrush}"
@@ -796,7 +824,9 @@
                             <TextBlock Text="单片机连接" FontWeight="Bold"/>
                             <TextBlock Text="{Binding NintendoSwitchStatus}"
                                        FontWeight="Bold"
-                                       Foreground="{Binding IsNintendoSwitchConnected, Converter={StaticResource BoolToGreenBrush}}"/>
+                                       Classes="connection-status"
+                                       Classes.connected="{Binding IsNintendoSwitchConnected}"
+                                       Classes.disconnected="{Binding !IsNintendoSwitchConnected}"/>
                         </StackPanel>
                     </GroupBox.Header>
                     <StackPanel Orientation="Vertical" Spacing="10">
@@ -833,7 +863,9 @@
                             <TextBlock Text="视频源" FontWeight="Bold"/>
                             <TextBlock Text="{Binding CaptureSourceStatus}"
                                        FontWeight="Bold"
-                                       Foreground="{Binding IsCaptureSourceConnected, Converter={StaticResource BoolToGreenBrush}}"/>
+                                       Classes="connection-status"
+                                       Classes.connected="{Binding IsCaptureSourceConnected}"
+                                       Classes.disconnected="{Binding !IsCaptureSourceConnected}"/>
                         </StackPanel>
                     </GroupBox.Header>
                     <StackPanel Orientation="Vertical" Spacing="10">
@@ -858,7 +890,9 @@
                             <TextBlock Text="虚拟手柄" FontWeight="Bold"/>
                             <TextBlock Text="{Binding ControlSourceStatus}"
                                        FontWeight="Bold"
-                                       Foreground="{Binding IsControllerConnected, Converter={StaticResource BoolToGreenBrush}}"/>
+                                       Classes="connection-status"
+                                       Classes.connected="{Binding IsControllerConnected}"
+                                       Classes.disconnected="{Binding !IsControllerConnected}"/>
                         </StackPanel>
                     </GroupBox.Header>
                     <Grid RowDefinitions="Auto,Auto"

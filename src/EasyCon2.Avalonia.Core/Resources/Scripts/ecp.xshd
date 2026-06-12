@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<SyntaxDefinition name="ecp"
+<SyntaxDefinition name="ECScript"
         xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
 	<Color name="Comment" foreground="Green" />
 	<Color name="String" foreground="#fff99157" />
