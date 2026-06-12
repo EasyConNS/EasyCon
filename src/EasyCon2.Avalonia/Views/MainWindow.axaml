@@ -8,6 +8,7 @@
          xmlns:tag="using:EasyCon2.Avalonia.Core.TagEditor"
          xmlns:agent="using:EasyCon2.Avalonia.Core.AiAgent"
          xmlns:terminal="using:EasyCon2.Avalonia.Core.Terminal"
+         xmlns:views="using:EasyCon2.Avalonia.Views"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          mc:Ignorable="d"
@@ -135,7 +136,7 @@
                     Background="{DynamicResource WorkbenchSideBrush}"
                     BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                     BorderThickness="0,0,1,0">
-                <ContentControl Content="{Binding FileTreeView}" />
+                <views:FileTreeView DataContext="{Binding FileTreeVM}" />
             </Border>
 
             <!-- 第二列：标签切换（文本编辑器 / 标签编辑器 / 用户配置 / 功能中心） -->
@@ -171,33 +172,27 @@
                                                 Margin="8,0,12,0">
                                         <Button Classes="editor-toolbar-button"
                                                 Command="{Binding SaveScriptCommand}"
-                                                CommandParameter="{Binding $parent[Window]}"
                                                 ToolTip.Tip="保存">
-                                            <TextBlock Text="&#xE74E;"
-                                                       FontFamily="Segoe MDL2 Assets"
-                                                       FontSize="13"/>
+                                            <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z"
+                                                       Width="13" Height="13"/>
                                         </Button>
                                         <Button Classes="editor-toolbar-button"
                                                 Command="{Binding SaveScriptAsCommand}"
-                                                CommandParameter="{Binding $parent[Window]}"
                                                 ToolTip.Tip="另存为">
-                                            <TextBlock Text="&#xE792;"
-                                                       FontFamily="Segoe MDL2 Assets"
-                                                       FontSize="13"/>
+                                            <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z M10,10 L16,13 L10,16 Z"
+                                                       Width="13" Height="13"/>
                                         </Button>
                                         <Button Classes="editor-toolbar-button"
                                                 Command="{Binding CloseScriptCommand}"
                                                 ToolTip.Tip="关闭">
-                                            <TextBlock Text="&#xE711;"
-                                                       FontFamily="Segoe MDL2 Assets"
-                                                       FontSize="12"/>
+                                            <PathIcon Data="M1,0 L8,7 L15,0 L16,1 L9,8 L16,15 L15,16 L8,9 L1,16 L0,15 L7,8 L0,1 Z"
+                                                       Width="12" Height="12"/>
                                         </Button>
                                         <Button Classes="editor-toolbar-button"
                                                 Command="{Binding FormatScriptCommand}"
                                                 ToolTip.Tip="格式化">
-                                            <TextBlock Text="&#xE72C;"
-                                                       FontFamily="Segoe MDL2 Assets"
-                                                       FontSize="13"/>
+                                            <PathIcon Data="M13,3 C16,6 16,10 13,13 L11,11 C13,9 13,7 11,5 Z M3,13 C0,10 0,6 3,3 L5,5 C3,7 3,9 5,11 Z M12,1 L16,4 L12,4 Z M4,15 L0,12 L4,12 Z"
+                                                       Width="13" Height="13"/>
                                         </Button>
                                     </StackPanel>
                                     <Button Grid.Column="2"
@@ -324,9 +319,8 @@
                                                        VerticalAlignment="Center"/>
                                             <Button Grid.Column="1"
                                                     Classes="tool-button"
-                                                    Content="添加配置"
-                                                    Command="{Binding OpenAlertConfigCommand}"
-                                                    CommandParameter="{Binding $parent[Window]}"/>
+                                                    Content="打开配置"
+                                                    Command="{Binding OpenAlertConfigCommand}"/>
                                         </Grid>
 
                                         <Grid Classes="settings-row"
@@ -362,15 +356,6 @@
                                                           IsChecked="{Binding IsHighResolutionTimingEnabled}"/>
                                         </Grid>
 
-                                        <Grid Classes="settings-row"
-                                              ColumnDefinitions="*,Auto">
-                                            <TextBlock Text="蓝牙设备驱动配置"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       VerticalAlignment="Center"/>
-                                            <Button Grid.Column="1"
-                                                    Classes="tool-button"
-                                                    Content="设备驱动配置"/>
-                                        </Grid>
                                     </StackPanel>
                                 </Border>
 
@@ -687,7 +672,9 @@
                                     </Grid>
                                 </Border>
 
-                                <Border Classes="settings-card">
+                                <Border Classes="settings-card"
+                                        IsEnabled="False"
+                                        Opacity="0.5">
                                     <StackPanel Spacing="12">
                                         <TextBlock Classes="card-title"
                                                    Text="画图"/>
@@ -724,8 +711,9 @@
                         BorderThickness="0,0,0,1"
                         DoubleTapped="MonitorArea_DoubleTapped">
                     <Grid>
-                        <ContentControl Content="{Binding MonitorView}"
-                                        IsVisible="{Binding IsMonitorVisible}" />
+                        <Grid IsVisible="{Binding IsMonitorVisible}">
+                            <views:MonitorView DataContext="{Binding MonitorVM}" />
+                        </Grid>
                         <Button HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
                                 Margin="8"
@@ -919,7 +907,6 @@
                             <Button Grid.Column="2"
                                     Content="按键映射"
                                     Command="{Binding EditKeyMappingCommand}"
-                                    CommandParameter="{Binding $parent[Window]}"
                                     IsEnabled="{Binding IsEditKeyMappingEnabled}"
                                     Padding="12,4"
                                     HorizontalAlignment="Stretch"
@@ -963,3 +950,4 @@
         </Grid>
     </DockPanel>
 </Window>
+

@@ -29,10 +29,10 @@ public partial class FileTreeViewModel : ViewModelBase
     public event Action<string>? FileActivated;
     public event Action? OpenProjectRequested;
     public event Action? NewScriptRequested;
-    public event Action<Window?>? OpenScriptRequested;
-    public event Action<Window?>? OpenProjectFolderRequested;
-    public event Action<Window?>? SaveScriptRequested;
-    public event Action<Window?>? SaveScriptAsRequested;
+    public event Action? OpenScriptRequested;
+    public event Action? OpenProjectFolderRequested;
+    public event Action? SaveScriptRequested;
+    public event Action? SaveScriptAsRequested;
     public event Action? CloseProjectRequested;
     public event Action<string>? FileOperationMessage;
 
@@ -116,27 +116,27 @@ public partial class FileTreeViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void OpenScript(Window? window)
+    private void OpenScript()
     {
-        OpenScriptRequested?.Invoke(window);
+        OpenScriptRequested?.Invoke();
     }
 
     [RelayCommand]
-    private void OpenProjectFolder(Window? window)
+    private void OpenProjectFolder()
     {
-        OpenProjectFolderRequested?.Invoke(window);
+        OpenProjectFolderRequested?.Invoke();
     }
 
     [RelayCommand]
-    private void SaveScript(Window? window)
+    private void SaveScript()
     {
-        SaveScriptRequested?.Invoke(window);
+        SaveScriptRequested?.Invoke();
     }
 
     [RelayCommand]
-    private void SaveScriptAs(Window? window)
+    private void SaveScriptAs()
     {
-        SaveScriptAsRequested?.Invoke(window);
+        SaveScriptAsRequested?.Invoke();
     }
 
     [RelayCommand]

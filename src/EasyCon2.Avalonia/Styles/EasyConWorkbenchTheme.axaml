@@ -59,8 +59,8 @@
         <x:Double x:Key="WorkbenchButtonMinHeight">32</x:Double>
         <x:Double x:Key="WorkbenchCompactButtonMinHeight">26</x:Double>
         <x:Double x:Key="WorkbenchInputMinHeight">34</x:Double>
-        <FontFamily x:Key="WorkbenchUiFontFamily">Microsoft YaHei UI, Microsoft YaHei, Inter</FontFamily>
-        <FontFamily x:Key="WorkbenchMonoFontFamily">Consolas, Microsoft YaHei</FontFamily>
+        <FontFamily x:Key="WorkbenchUiFontFamily">Inter, Noto Sans CJK SC, WenQuanYi Micro Hei, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+        <FontFamily x:Key="WorkbenchMonoFontFamily">Cascadia Code, Consolas, DejaVu Sans Mono, Noto Sans Mono CJK SC</FontFamily>
         <StreamGeometry x:Key="WorkbenchTabFillGeometry">M 0,0 L 88,0 L 100,32 L 0,32 Z</StreamGeometry>
         <StreamGeometry x:Key="WorkbenchTabBorderGeometry">M 0,0 L 88,0 L 100,32</StreamGeometry>
     </Styles.Resources>

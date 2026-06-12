@@ -72,9 +72,8 @@
                         Classes="agent-icon-button"
                         Command="{Binding CloseCommand}"
                         ToolTip.Tip="关闭">
-                    <TextBlock Text="&#xE711;"
-                               FontFamily="Segoe MDL2 Assets"
-                               FontSize="11"/>
+                    <PathIcon Data="M1,0 L8,7 L15,0 L16,1 L9,8 L16,15 L15,16 L8,9 L1,16 L0,15 L7,8 L0,1 Z"
+                               Width="10" Height="10"/>
                 </Button>
             </Grid>
 
@@ -100,9 +99,8 @@
                         Command="{Binding SendCommand}"
                         VerticalAlignment="Bottom"
                         ToolTip.Tip="发送">
-                    <TextBlock Text="&#xE724;"
-                               FontFamily="Segoe MDL2 Assets"
-                               FontSize="14"/>
+                    <PathIcon Data="M0,2 L16,8 L0,14 L4,8 Z"
+                               Width="14" Height="14"/>
                 </Button>
             </Grid>
         </Grid>

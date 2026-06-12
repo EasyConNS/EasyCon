@@ -8,6 +8,8 @@ public partial class ColorPickerPopup : Window
 {
     public Color SelectedColor { get; private set; }
 
+    public ColorPickerPopup() : this(Colors.Black) { }
+
     public ColorPickerPopup(Color initialColor)
     {
         SelectedColor = initialColor;

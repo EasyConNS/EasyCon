@@ -15,6 +15,8 @@ public partial class TagEditorViewModel : ObservableObject
     public ImgLabel Label { get; } = new();
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ToggleRangeSelectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ToggleTargetSelectionCommand))]
     private IImage? _sourceImage;
 
     [ObservableProperty]
@@ -22,6 +24,8 @@ public partial class TagEditorViewModel : ObservableObject
 
     [ObservableProperty]
     private IImage? _rangePreviewImage;
+
+    public bool HasSourceImage => _sourceImage != null;
 
     public static readonly IReadOnlyList<SearchMethod> SearchMethods = ECCore.GetSearchMethods().ToList();
 
@@ -321,7 +325,7 @@ public partial class TagEditorViewModel : ObservableObject
         SourceImage = bitmap;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(HasSourceImage))]
     private void ToggleRangeSelection()
     {
         CurrentSelectionMode = CurrentSelectionMode == SelectionMode.Range
@@ -329,7 +333,7 @@ public partial class TagEditorViewModel : ObservableObject
             : SelectionMode.Range;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(HasSourceImage))]
     private void ToggleTargetSelection()
     {
         // 从"圈选中"切换到"确定"时，裁剪目标区域并更新目标图和 ImgBase64

@@ -6,7 +6,7 @@
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
     <Application.Resources>
         <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
-        <FontFamily x:Key="ContentControlThemeFontFamily">Microsoft YaHei</FontFamily>
+        <FontFamily x:Key="ContentControlThemeFontFamily">Inter, Noto Sans CJK SC, WenQuanYi Micro Hei, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
     </Application.Resources>
     <Application.DataTemplates>
         <local:ViewLocator />

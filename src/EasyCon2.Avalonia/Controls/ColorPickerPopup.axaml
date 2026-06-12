@@ -3,7 +3,7 @@
         x:Class="EasyCon2.Avalonia.Controls.ColorPickerPopup"
         Title="选择颜色"
         Width="260"
-        Height="280"
+        Height="350"
         WindowStartupLocation="CenterOwner">
 
     <StackPanel Margin="16" Spacing="12">

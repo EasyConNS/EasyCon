@@ -4,6 +4,7 @@ using Avalonia.Platform.Storage;
 using AvaloniaEdit.Folding;
 using EasyCon2.Avalonia.Core.Editor;
 using EasyCon2.Avalonia.Core.Editor.Lsp;
+using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.ViewModels;
 using System.ComponentModel;
 
@@ -34,6 +35,11 @@ public partial class MainWindow : Window
             vm.OpenFolderDialogRequested += OnOpenFolderDialogRequested;
             vm.FoldingVisibilityChanged += OnFoldingVisibilityChanged;
         }
+
+        // 默认初始化编辑器并连接 LSP 服务
+        EnsureEditorInitialized();
+        if (_lspService != null && !_lspService.IsConnected)
+            _ = _lspService.InitializeAsync(string.Empty);
     }
 
     private void OnDarkModeChanged(bool isDarkMode)

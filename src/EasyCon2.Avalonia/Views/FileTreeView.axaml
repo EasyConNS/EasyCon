@@ -45,30 +45,26 @@
                     <Button Classes="worktree-tool-button"
                             Command="{Binding CreateFileCommand}"
                             ToolTip.Tip="新建文件">
-                        <TextBlock Text="&#xE7C3;"
-                                   FontFamily="Segoe MDL2 Assets"
-                                   FontSize="13"/>
+                        <PathIcon Data="M6,0 H10 V6 H16 V10 H10 V16 H6 V10 H0 V6 H6 Z"
+                                  Width="12" Height="12"/>
                     </Button>
                     <Button Classes="worktree-tool-button"
                             Command="{Binding CreateFolderCommand}"
                             ToolTip.Tip="新建文件夹">
-                        <TextBlock Text="&#xE8F4;"
-                                   FontFamily="Segoe MDL2 Assets"
-                                   FontSize="13"/>
+                        <PathIcon Data="M1,1 H6 L7.5,3 H15 V5 H1 Z M1,6 H15 V15 H1 Z"
+                                  Width="14" Height="14"/>
                     </Button>
                     <Button Classes="worktree-tool-button"
                             Command="{Binding RefreshTreeCommand}"
                             ToolTip.Tip="刷新">
-                        <TextBlock Text="&#xE72C;"
-                                   FontFamily="Segoe MDL2 Assets"
-                                   FontSize="13"/>
+                        <PathIcon Data="M13,3 C16,6 16,10 13,13 L11,11 C13,9 13,7 11,5 Z M3,13 C0,10 0,6 3,3 L5,5 C3,7 3,9 5,11 Z M12,1 L16,4 L12,4 Z M4,15 L0,12 L4,12 Z"
+                                  Width="14" Height="14"/>
                     </Button>
                     <Button Classes="worktree-tool-button"
                             Command="{Binding ToggleExpandCollapseAllCommand}"
                             ToolTip.Tip="折叠/展开">
-                        <TextBlock Text="&#xE8A7;"
-                                   FontFamily="Segoe MDL2 Assets"
-                                   FontSize="13"/>
+                        <PathIcon Data="M0,0 H6.5 V6.5 H0 Z M9.5,0 H16 V6.5 H9.5 Z M0,9.5 H6.5 V16 H0 Z M9.5,9.5 H16 V16 H9.5 Z"
+                                  Width="12" Height="12"/>
                     </Button>
                 </StackPanel>
                 <Menu Grid.Column="2"
@@ -82,9 +78,8 @@
                               Height="30"
                               Foreground="{DynamicResource WorkbenchMutedTextBrush}">
                         <MenuItem.Header>
-                            <TextBlock Text="&#xE712;"
-                                       FontFamily="Segoe MDL2 Assets"
-                                       FontSize="14"
+                            <PathIcon Data="M0,5 H4 V11 H0 Z M6,5 H10 V11 H6 Z M12,5 H16 V11 H12 Z"
+                                       Width="14" Height="14"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                         </MenuItem.Header>

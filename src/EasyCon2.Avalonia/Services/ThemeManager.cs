@@ -2,9 +2,9 @@ using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace EasyCon2.Avalonia.ViewModels;
+namespace EasyCon2.Avalonia.Services;
 
-public sealed partial class ThemeManager : ViewModelBase
+public sealed partial class ThemeManager : ObservableObject
 {
     public const string IndustrialGraySchemeName = "工业灰";
     public const string WarmToneSchemeName = "暖色调";
@@ -13,8 +13,8 @@ public sealed partial class ThemeManager : ViewModelBase
     private const double WorkbenchButtonMinHeight = 32;
     private const double WorkbenchCompactButtonMinHeight = 26;
     private const double WorkbenchInputMinHeight = 34;
-    private static readonly FontFamily WorkbenchUiFontFamily = new("Microsoft YaHei UI, Microsoft YaHei, Inter");
-    private static readonly FontFamily WorkbenchMonoFontFamily = new("Consolas, Microsoft YaHei");
+    private static readonly FontFamily WorkbenchUiFontFamily = new("Inter, Noto Sans CJK SC, WenQuanYi Micro Hei, Microsoft YaHei UI, Microsoft YaHei");
+    private static readonly FontFamily WorkbenchMonoFontFamily = new("Cascadia Code, Consolas, DejaVu Sans Mono, Noto Sans Mono CJK SC");
 
     private static readonly Lazy<ThemeManager> _instance = new(
         () => new ThemeManager(),

@@ -1,4 +1,3 @@
-using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
@@ -8,10 +7,10 @@ using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.AiAgent;
+using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Core.TagEditor;
 using EasyCon2.Avalonia.Core.Terminal;
 using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Views;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reflection;
@@ -19,8 +18,6 @@ using System.Text;
 using System.Windows.Input;
 using ILogService = EasyCon.Core.Services.ILogService;
 using Resources = EasyCon2.UI.Common.Properties.Resources;
-using Window = Avalonia.Controls.Window;
-using WindowState = Avalonia.Controls.WindowState;
 
 namespace EasyCon2.Avalonia.ViewModels;
 
@@ -43,8 +40,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly ICaptureService _captureService;
     private readonly IScriptService _scriptService;
     private readonly IControllerService _controllerService;
+    private readonly IDialogService _dialogService;
+    private readonly IWindowService _windowService;
     private readonly AnsiParser _ansiParser = new();
-    private Window? _espConfigWindow;
     private MonitorViewModel? _monitorViewModel;
     private readonly FileTreeViewModel _fileTreeViewModel;
     private readonly System.Timers.Timer _welcomeTimer = new(120);
@@ -171,13 +169,11 @@ public partial class MainWindowViewModel : ViewModelBase
     public string MonitorPauseButtonText => IsMonitorPaused ? "继续" : "暂停";
     public string MonitorVisibilityButtonText => IsMonitorVisible ? "监视器关闭" : "监视器显示";
 
-    // 监视器视图
-    [ObservableProperty]
-    private MonitorView? _monitorView;
+    // 监视器 ViewModel（View 在 XAML 中声明）
+    public MonitorViewModel? MonitorVM => _monitorViewModel;
 
-    // 文件树视图
-    [ObservableProperty]
-    private FileTreeView? _fileTreeView;
+    // 文件树 ViewModel（View 在 XAML 中声明）
+    public FileTreeViewModel FileTreeVM => _fileTreeViewModel;
 
     // 编辑器标签页索引（0=文本编辑, 1=标签编辑, 2=用户配置, 3=功能中心）
     [ObservableProperty]
@@ -295,7 +291,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand RefreshCaptureSourcesCommand { get; }
     public ICommand RefreshControlSourcesCommand { get; }
 
-    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService)
+    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService)
     {
         // 窗口标题
         var fullVer = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
@@ -310,6 +306,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _captureService = captureService;
         _scriptService = scriptService;
         _controllerService = controllerService;
+        _dialogService = dialogService;
+        _windowService = windowService;
 
         // 初始化文件树
         _fileTreeViewModel = new FileTreeViewModel();
@@ -322,11 +320,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _fileTreeViewModel.SaveScriptAsRequested += OnSaveScriptAsRequested;
         _fileTreeViewModel.CloseProjectRequested += CloseProject;
         _fileTreeViewModel.FileOperationMessage += message => _logService.AddLog(message);
-        var fileTreeView = new FileTreeView { DataContext = _fileTreeViewModel };
-        FileTreeView = fileTreeView;
 
-        // 初始化监视器视图
-        InitializeMonitorView();
+        // 初始化监视器 ViewModel
+        InitializeMonitorViewModel();
 
         // 初始化标签编辑器（默认空实例，始终可用）
         InitializeTagEditor();
@@ -411,9 +407,9 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         // 初始化命令
-        OpenScriptCommand = new AsyncRelayCommand<Window>(OpenScriptAsync);
-        SaveScriptCommand = new AsyncRelayCommand<Window>(SaveScriptAsync);
-        SaveScriptAsCommand = new AsyncRelayCommand<Window>(SaveScriptAsAsync);
+        OpenScriptCommand = new AsyncRelayCommand(OpenScriptAsync);
+        SaveScriptCommand = new AsyncRelayCommand(SaveScriptAsync);
+        SaveScriptAsCommand = new AsyncRelayCommand(SaveScriptAsAsync);
         CloseScriptCommand = new RelayCommand(CloseScript);
         FormatScriptCommand = new AsyncRelayCommand(FormatScriptAsync);
         OpenEditorCommand = new RelayCommand(OpenEditor, CanOpenEditor);
@@ -421,7 +417,7 @@ public partial class MainWindowViewModel : ViewModelBase
         AutoConnectNintendoSwitchCommand = new RelayCommand(AutoConnectNintendoSwitch);
         ConnectCaptureSourceCommand = new RelayCommand(ConnectCaptureSource);
         ConnectControllerCommand = new RelayCommand(ConnectController);
-        EditKeyMappingCommand = new RelayCommand<Window>(EditKeyMapping);
+        EditKeyMappingCommand = new RelayCommand(EditKeyMapping);
         RunScriptCommand = new RelayCommand(RunScript);
         ClearLogCommand = new RelayCommand(ClearLog);
         RefreshSerialPortsCommand = new RelayCommand(RefreshSerialPorts);
@@ -438,7 +434,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ShowMonitorCommand = new RelayCommand(ShowMonitor);
         OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
-        OpenAlertConfigCommand = new RelayCommand<Window>(OpenAlertConfig);
+        OpenAlertConfigCommand = new RelayCommand(OpenAlertConfig);
         ToggleMonitorPauseCommand = new RelayCommand(ToggleMonitorPause);
         ShowScriptSyntaxCommand = new RelayCommand(ShowScriptSyntax);
         OpenAiAgentCommand = new RelayCommand(OpenAiAgent);
@@ -803,19 +799,13 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private void InitializeMonitorView()
+    private void InitializeMonitorViewModel()
     {
         try
         {
-            // 创建监视器视图和视图模型
             _monitorViewModel = new MonitorViewModel(_captureService);
-
-            var monitorView = new MonitorView();
-            monitorView.DataContext = _monitorViewModel;
-            MonitorView = monitorView;
-
-            // 监视器默认可见
             IsMonitorVisible = true;
+            OnPropertyChanged(nameof(MonitorVM));
         }
         catch (Exception ex)
         {
@@ -880,104 +870,75 @@ public partial class MainWindowViewModel : ViewModelBase
             SelectedControlSource = oldSelected;
     }
 
-    private async Task OpenScriptAsync(Window? window)
+    private async Task OpenScriptAsync()
     {
-        if (window == null)
-            return;
-
-        var files = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "打开脚本文件",
-            AllowMultiple = false,
-            FileTypeFilter =
-            [
-                new FilePickerFileType("ECS脚本文件") { Patterns = ["*.ecs"] },
-                new FilePickerFileType("文本文件") { Patterns = ["*.txt"] },
-                new FilePickerFileType("所有文件") { Patterns = ["*"] }
-            ]
-        });
+        var files = await _dialogService.OpenFilesAsync("打开脚本文件",
+        [
+            new FilePickerFileType("ECS脚本文件") { Patterns = ["*.ecs"] },
+            new FilePickerFileType("文本文件") { Patterns = ["*.txt"] },
+            new FilePickerFileType("所有文件") { Patterns = ["*"] }
+        ]);
 
         if (files.Count > 0)
-        {
-            var file = files[0];
-            OpenScriptFromPath(file.Path.LocalPath);
-        }
+            OpenScriptFromPath(files[0]);
     }
 
-    private void OnOpenScriptRequested(Window? window)
+    private void OnOpenScriptRequested()
     {
-        _ = OpenScriptAsync(window);
+        _ = OpenScriptAsync();
     }
 
-    private void OnOpenProjectFolderRequested(Window? window)
+    private void OnOpenProjectFolderRequested()
     {
-        _ = OpenProjectFolderAsync(window);
+        _ = OpenProjectFolderAsync();
     }
 
-    private void OnSaveScriptRequested(Window? window)
+    private void OnSaveScriptRequested()
     {
-        _ = SaveScriptAsync(window);
+        _ = SaveScriptAsync();
     }
 
-    private void OnSaveScriptAsRequested(Window? window)
+    private void OnSaveScriptAsRequested()
     {
-        _ = SaveScriptAsAsync(window);
+        _ = SaveScriptAsAsync();
     }
 
-    private async Task OpenProjectFolderAsync(Window? window)
+    private async Task OpenProjectFolderAsync()
     {
-        if (window == null)
-            return;
-
-        // 使用当前项目目录或用户文档目录作为默认位置
         var startPath = _projectDirectoryPath
             ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        var startFolder = await window.StorageProvider.TryGetFolderFromPathAsync(startPath);
 
-        var folders = await window.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "打开项目目录",
-            AllowMultiple = false,
-            SuggestedStartLocation = startFolder
-        });
+        var folder = await _dialogService.OpenFolderAsync("打开项目目录", startPath);
 
-        if (folders.Count > 0)
-            OpenProjectFromDirectory(folders[0].Path.LocalPath);
+        if (folder != null)
+            OpenProjectFromDirectory(folder);
     }
 
-    private async Task SaveScriptAsync(Window? window)
+    private async Task SaveScriptAsync()
     {
         if (!HasSelectedScriptPath())
         {
-            await SaveScriptAsAsync(window);
+            await SaveScriptAsAsync();
             return;
         }
 
         SaveEditorText(CurrentScriptPath);
     }
 
-    private async Task SaveScriptAsAsync(Window? window)
+    private async Task SaveScriptAsAsync()
     {
-        if (window == null)
-            return;
-
-        var file = await window.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-        {
-            Title = "另存为",
-            SuggestedFileName = HasSelectedScriptPath() ? Path.GetFileName(CurrentScriptPath) : $"{UntitledScriptText}.ecs",
-            DefaultExtension = "ecs",
-            FileTypeChoices =
-            [
-                new FilePickerFileType("ECS脚本文件") { Patterns = ["*.ecs"] },
-                new FilePickerFileType("文本文件") { Patterns = ["*.txt"] },
-                new FilePickerFileType("所有文件") { Patterns = ["*"] }
-            ]
-        });
+        var suggestedName = HasSelectedScriptPath() ? Path.GetFileName(CurrentScriptPath) : $"{UntitledScriptText}.ecs";
+        var file = await _dialogService.SaveFileAsync("另存为", "ecs",
+        [
+            new FilePickerFileType("ECS脚本文件") { Patterns = ["*.ecs"] },
+            new FilePickerFileType("文本文件") { Patterns = ["*.txt"] },
+            new FilePickerFileType("所有文件") { Patterns = ["*"] }
+        ], suggestedName);
 
         if (file == null)
             return;
 
-        CurrentScriptPath = file.Path.LocalPath;
+        CurrentScriptPath = file;
         SaveEditorText(CurrentScriptPath);
 
         var dir = Path.GetDirectoryName(CurrentScriptPath);
@@ -1212,23 +1173,13 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         try
         {
-            // 创建监视器视图和视图模型（如果尚未创建）
             if (_monitorViewModel == null)
             {
                 _monitorViewModel = new MonitorViewModel(_captureService);
+                OnPropertyChanged(nameof(MonitorVM));
             }
 
-            if (MonitorView == null)
-            {
-                var monitorView = new MonitorView();
-                monitorView.DataContext = _monitorViewModel;
-                MonitorView = monitorView;
-            }
-
-            // 显示监视器
             IsMonitorVisible = true;
-
-            // 启动监视
             _monitorViewModel.StartMonitoring();
         }
         catch (Exception ex)
@@ -1262,41 +1213,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OpenESPConfig()
     {
-        if (_espConfigWindow != null)
-        {
-            if (_espConfigWindow.WindowState == WindowState.Minimized)
-                _espConfigWindow.WindowState = WindowState.Normal;
-            _espConfigWindow.Activate();
-            return;
-        }
-
-        try
-        {
-            var vm = new ViewModels.ESPConfigViewModel(_deviceService, _logService);
-            _espConfigWindow = new ESPConfigWindow { DataContext = vm };
-            _espConfigWindow.Closed += (_, _) => _espConfigWindow = null;
-            _espConfigWindow.Show();
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"打开手柄设置失败: {ex.Message}\n{ex.StackTrace}");
-        }
+        _windowService.ShowESPConfigWindow();
     }
 
-    private void OpenAlertConfig(Window? window)
+    private void OpenAlertConfig()
     {
-        try
-        {
-            var alertConfigWindow = new AlertConfigWindow();
-            if (window != null)
-                alertConfigWindow.ShowDialog(window);
-            else
-                alertConfigWindow.Show();
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"打开推送配置失败: {ex.Message}");
-        }
+        _windowService.ShowAlertConfigWindow();
     }
 
     private void ToggleMonitorVisibility()
@@ -1365,29 +1287,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void ShowScriptSyntax()
     {
-        var textBox = new TextBox
-        {
-            Text = Resources.scriptdoc,
-            IsReadOnly = true,
-            AcceptsReturn = true,
-            TextWrapping = global::Avalonia.Media.TextWrapping.Wrap,
-            FontFamily = new global::Avalonia.Media.FontFamily("Microsoft YaHei UI, Consolas"),
-            FontSize = 13,
-            Padding = new global::Avalonia.Thickness(12)
-        };
-        ScrollViewer.SetVerticalScrollBarVisibility(textBox, global::Avalonia.Controls.Primitives.ScrollBarVisibility.Auto);
-        ScrollViewer.SetHorizontalScrollBarVisibility(textBox, global::Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled);
-
-        var window = new Window
-        {
-            Title = "脚本语法",
-            Width = 820,
-            Height = 640,
-            MinWidth = 520,
-            MinHeight = 360,
-            Content = textBox
-        };
-        window.Show();
+        _windowService.ShowScriptSyntaxWindow();
     }
 
     private void OpenAiAgent()
@@ -1494,7 +1394,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnTagEditorOpenFileRequested()
     {
-        OpenTagEditorImageFileAsync();
+        _ = OpenTagEditorImageFileAsync();
     }
 
     private void OnTagEditorCaptureScreenshot()
@@ -1504,36 +1404,17 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async Task OpenTagEditorImageFileAsync()
     {
-        // 使用当前主窗口作为父窗口
-        var mainWindow = App.Current?.ApplicationLifetime is global::Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
-            ? desktop.MainWindow
-            : null;
-
-        if (mainWindow == null) return;
-
         try
         {
-            // 使用 AppPaths.CaptureCacheDir 作为默认目录
             var cacheDir = EasyCon.Core.Config.AppPaths.CaptureCacheDir;
-            var startFolder = await mainWindow.StorageProvider.TryGetFolderFromPathAsync(cacheDir);
-
-            var files = await mainWindow.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "选择图片文件",
-                AllowMultiple = false,
-                SuggestedStartLocation = startFolder,
-                FileTypeFilter =
-                [
-                    new FilePickerFileType("图片文件") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"] },
-                    new FilePickerFileType("所有文件") { Patterns = ["*"] }
-                ]
-            });
+            var files = await _dialogService.OpenFilesAsync("选择图片文件",
+            [
+                new FilePickerFileType("图片文件") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"] },
+                new FilePickerFileType("所有文件") { Patterns = ["*"] }
+            ], cacheDir);
 
             if (files.Count > 0 && TagEditorViewModel != null)
-            {
-                var filePath = files[0].Path.LocalPath;
-                TagEditorViewModel.LoadImageFromFile(filePath);
-            }
+                TagEditorViewModel.LoadImageFromFile(files[0]);
         }
         catch (Exception ex)
         {
@@ -1629,11 +1510,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _logService.AddLog("手柄已断开连接");
     }
 
-    private void EditKeyMapping(Window? window)
+    private void EditKeyMapping()
     {
-        if (window == null) return;
-        var keyMappingWindow = new KeyMappingWindow();
-        keyMappingWindow.ShowDialog(window);
+        _windowService.ShowKeyMappingWindow();
     }
 
     private void UpdateEditKeyMappingEnabled()
@@ -1694,20 +1573,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _welcomeTimer.Stop();
         _welcomeTimer.Dispose();
 
-        if (_espConfigWindow != null)
-        {
-            _espConfigWindow.Close();
-            _espConfigWindow = null;
-        }
-
         // 关闭嵌入式监视器
         if (_monitorViewModel != null)
         {
             _monitorViewModel.Close();
             _monitorViewModel = null;
         }
-
-        MonitorView = null;
 
         // 释放控制器资源（SDL3 事件循环等）
         _controllerService.Dispose();

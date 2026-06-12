@@ -2,7 +2,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EasyCon2.Avalonia.Controls;
+using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Model;
 using EasyCon2.Avalonia.Services;
 using System.Collections.ObjectModel;
@@ -17,6 +17,7 @@ public partial class ESPConfigViewModel : ViewModelBase
 {
     private readonly IDeviceService _deviceService;
     private readonly ILogService _logService;
+    private readonly IDialogService _dialogService;
     private Dictionary<string, List<AmiiboInfo>> _amiibosDict = new();
     private List<AmiiboInfo> _allAmiibos = new();
     private static readonly string AmiiboDir = Path.Combine(AppContext.BaseDirectory, "Amiibo");
@@ -28,10 +29,11 @@ public partial class ESPConfigViewModel : ViewModelBase
 
     private bool IsDeviceConnected => _deviceService.IsConnected;
 
-    public ESPConfigViewModel(IDeviceService deviceService, ILogService logService)
+    public ESPConfigViewModel(IDeviceService deviceService, ILogService logService, IDialogService dialogService)
     {
         _deviceService = deviceService;
         _logService = logService;
+        _dialogService = dialogService;
         InitializeAmiiboData();
     }
 
@@ -126,19 +128,10 @@ public partial class ESPConfigViewModel : ViewModelBase
     [RelayCommand]
     private async Task PickGripRColorAsync() => GripRColor = await PickColorAsync(GripRColor);
 
-    private static async Task<Color> PickColorAsync(Color current)
+    private async Task<Color> PickColorAsync(Color current)
     {
-        var popup = new ColorPickerPopup(current);
-        var result = await popup.ShowDialog<Color?>(GetActiveWindow());
+        var result = await _dialogService.PickColorAsync(current);
         return result ?? current;
-    }
-
-    private static global::Avalonia.Controls.Window GetActiveWindow()
-    {
-        var app = (global::Avalonia.Application.Current!)
-            ?? throw new InvalidOperationException("No application");
-        var lifetime = (global::Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)app.ApplicationLifetime!;
-        return lifetime.MainWindow!;
     }
 
     #endregion

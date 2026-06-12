@@ -190,7 +190,7 @@ public class ScriptService : IScriptService
 
         IsRunning = true;
         IsRunningChanged?.Invoke(true);
-        _logService.AddLog("开始运行编辑区脚本");
+        _logService.AddLog("===开始运行脚本===");
 
         Task.Run(() =>
         {
