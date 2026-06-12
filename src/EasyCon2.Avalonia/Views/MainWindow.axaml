@@ -84,6 +84,44 @@
             <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
         </Style>
+
+        <!-- 限制用户配置行的最小可读宽度，避免窗口过窄时控件挤出卡片。 -->
+        <Style Selector="Grid.settings-row">
+            <Setter Property="MinWidth" Value="320" />
+        </Style>
+
+        <!-- 固定设置行中的开关宽度，隐藏 On/Off 后仍保持稳定尺寸。 -->
+        <Style Selector="Grid.settings-row ToggleSwitch">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Width" Value="46" />
+        </Style>
+
+        <!-- 允许设置行里的输入控件跟随列宽收缩。 -->
+        <Style Selector="Grid.settings-row ComboBox">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <Style Selector="Grid.settings-row TextBox">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <!-- 允许设置行里的工具按钮在窄屏时由容器裁切，而不是撑开布局。 -->
+        <Style Selector="Grid.settings-row Button.tool-button">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <!-- 功能中心卡片行使用独立局部样式，避免窄屏时按钮撑出容器。 -->
+        <Style Selector="Grid.feature-row">
+            <Setter Property="MinWidth" Value="320" />
+        </Style>
+
+        <Style Selector="Grid.feature-row ComboBox">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <Style Selector="Grid.feature-row Button">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
     </Window.Styles>
 
     <DockPanel>
@@ -202,7 +240,9 @@
                     <TabItem Classes="tab-layer-2"
                              Header="用户配置">
                         <ScrollViewer Classes="settings-scroll"
-                                      VerticalScrollBarVisibility="Auto">
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto"
+                                      MinWidth="340">
                             <StackPanel Classes="settings-page">
                                 <Border Classes="settings-card">
                                     <StackPanel Spacing="12">
@@ -263,8 +303,9 @@
                                                    Text="配置"/>
 
                                         <Grid Classes="settings-row"
-                                              ColumnDefinitions="160,*,Auto">
+                                              ColumnDefinitions="110,*,Auto">
                                             <TextBlock Text="采集卡类型"
+                                                       TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center"/>
                                             <ComboBox Grid.Column="1"
                                                       ItemsSource="{Binding CaptureTypeOptions}"
@@ -279,6 +320,7 @@
                                         <Grid Classes="settings-row"
                                               ColumnDefinitions="*,Auto">
                                             <TextBlock Text="推送设置"
+                                                       TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center"/>
                                             <Button Grid.Column="1"
                                                     Classes="tool-button"
@@ -290,30 +332,40 @@
                                         <Grid Classes="settings-row"
                                               ColumnDefinitions="*,Auto">
                                             <TextBlock Text="代码自动补全"
+                                                       TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center"/>
                                             <ToggleSwitch Grid.Column="1"
+                                                          OnContent=""
+                                                          OffContent=""
                                                           IsChecked="{Binding IsAutoCompletionEnabled}"/>
                                         </Grid>
 
                                         <Grid Classes="settings-row"
                                               ColumnDefinitions="*,Auto">
                                             <TextBlock Text="显示代码折叠"
+                                                       TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center"/>
                                             <ToggleSwitch Grid.Column="1"
+                                                          OnContent=""
+                                                          OffContent=""
                                                           IsChecked="{Binding ShowFolding}"/>
                                         </Grid>
 
                                         <Grid Classes="settings-row"
                                               ColumnDefinitions="*,Auto">
                                             <TextBlock Text="高精度模式"
+                                                       TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center"/>
                                             <ToggleSwitch Grid.Column="1"
+                                                          OnContent=""
+                                                          OffContent=""
                                                           IsChecked="{Binding IsHighResolutionTimingEnabled}"/>
                                         </Grid>
 
                                         <Grid Classes="settings-row"
                                               ColumnDefinitions="*,Auto">
                                             <TextBlock Text="蓝牙设备驱动配置"
+                                                       TextTrimming="CharacterEllipsis"
                                                        VerticalAlignment="Center"/>
                                             <Button Grid.Column="1"
                                                     Classes="tool-button"
@@ -326,6 +378,22 @@
                                     <StackPanel Spacing="14">
                                         <TextBlock Classes="card-title"
                                                    Text="外观样式"/>
+
+                                        <Grid Classes="settings-row"
+                                              ColumnDefinitions="110,*,Auto">
+                                            <TextBlock Text="欢迎词"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"/>
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding WelcomeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     PlaceholderText="欢迎使用 easycon"
+                                                     HorizontalAlignment="Stretch"/>
+                                            <Button Grid.Column="2"
+                                                    Classes="tool-button"
+                                                    Content="重置"
+                                                    Command="{Binding ResetWelcomeTextCommand}"
+                                                    Margin="8,0,0,0"/>
+                                        </Grid>
 
                                         <TextBlock Classes="setting-caption"
                                                    Text="主题"/>
@@ -378,8 +446,11 @@
                                                                VerticalAlignment="Center"/>
                                                     <TextBlock Grid.Column="1"
                                                                Text="视运行状态自动切换布局"
+                                                               TextTrimming="CharacterEllipsis"
                                                                VerticalAlignment="Center"/>
                                                     <ToggleSwitch Grid.Column="2"
+                                                                  OnContent=""
+                                                                  OffContent=""
                                                                   IsChecked="{Binding AutoSwitchLayoutEnabled}"/>
                                                 </Grid>
 
@@ -543,13 +614,16 @@
                     <TabItem Classes="tab-layer-3"
                              Header="功能中心">
                         <ScrollViewer Classes="settings-scroll"
-                                      VerticalScrollBarVisibility="Auto">
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto"
+                                      MinWidth="340">
                             <StackPanel Classes="settings-page">
                                 <Border Classes="settings-card">
                                     <StackPanel Spacing="12">
                                         <TextBlock Classes="card-title"
                                                    Text="远程运行"/>
-                                        <Grid ColumnDefinitions="*,*"
+                                        <Grid Classes="feature-row"
+                                              ColumnDefinitions="*,*"
                                               ColumnSpacing="10">
                                             <Button Content="远程运行"
                                                     Command="{Binding RemoteRunCommand}"
@@ -566,7 +640,8 @@
                                     <StackPanel Spacing="12">
                                         <TextBlock Classes="card-title"
                                                    Text="编译烧录"/>
-                                        <Grid ColumnDefinitions="*,*"
+                                        <Grid Classes="feature-row"
+                                              ColumnDefinitions="*,*"
                                               ColumnSpacing="10">
                                             <Button Content="编译烧录"
                                                     Command="{Binding CompileFlashCommand}"
@@ -583,21 +658,22 @@
                                     <StackPanel Spacing="12">
                                         <TextBlock Classes="card-title"
                                                    Text="固件"/>
-                                        <Grid ColumnDefinitions="*,Auto"
+                                        <Grid Classes="feature-row"
+                                              ColumnDefinitions="*,Auto"
                                               ColumnSpacing="10">
                                             <ComboBox ItemsSource="{Binding FirmwareOptions}"
                                                       SelectedItem="{Binding SelectedFirmware}"
                                                       HorizontalAlignment="Stretch"/>
                                             <Button Grid.Column="1"
                                                     Content="生成"
-                                                    Command="{Binding GenerateFirmwareCommand}"
-                                                    MinWidth="96"/>
+                                                    Command="{Binding GenerateFirmwareCommand}"/>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
 
                                 <Border Classes="settings-card">
-                                    <Grid ColumnDefinitions="*,Auto">
+                                    <Grid Classes="feature-row"
+                                          ColumnDefinitions="*,Auto">
                                         <StackPanel Spacing="4">
                                             <TextBlock Classes="card-title"
                                                        Text="蓝牙手柄设置"/>
@@ -607,7 +683,6 @@
                                         <Button Grid.Column="1"
                                                 Content="配置"
                                                 Command="{Binding OpenESPConfigCommand}"
-                                                MinWidth="96"
                                                 VerticalAlignment="Center"/>
                                     </Grid>
                                 </Border>
@@ -616,7 +691,8 @@
                                     <StackPanel Spacing="12">
                                         <TextBlock Classes="card-title"
                                                    Text="画图"/>
-                                        <Grid ColumnDefinitions="*,*"
+                                        <Grid Classes="feature-row"
+                                              ColumnDefinitions="*,*"
                                               ColumnSpacing="10">
                                             <Button Content="喷射战士"
                                                     HorizontalAlignment="Stretch"/>
@@ -682,15 +758,25 @@
                                       VerticalAlignment="Center"/>
                     </Grid>
                     <Grid Grid.Row="1" RowDefinitions="26,*">
-                        <Border Grid.Row="0"
-                                Background="{DynamicResource WorkbenchLogBrush}">
-                            <terminal:TerminalControl
-                                ItemsSource="{Binding WelcomeLines}"
-                                MaxLineCount="1"
-                                AutoScroll="False"
-                                ContentPadding="10,0,0,0"
-                                />
-                        </Border>
+                        <Grid Grid.Row="0"
+                              ColumnDefinitions="*,Auto"
+                              Background="{DynamicResource WorkbenchLogBrush}"
+                              ClipToBounds="True">
+                            <terminal:TerminalControl Grid.Column="0"
+                                                      ItemsSource="{Binding WelcomeLines}"
+                                                      MaxLineCount="1"
+                                                      AutoScroll="False"
+                                                      MarqueeHorizontalOverflow="True"
+                                                      ContentPadding="10,4,0,0"/>
+                            <Button Grid.Column="1"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Classes="flat-link"
+                                    Content="清空输出 ↻"
+                                    Foreground="{DynamicResource WorkbenchAmberBrush}"
+                                    Command="{Binding ClearLogCommand}"
+                                    Margin="8,0,12,0"/>
+                        </Grid>
                         <Grid Grid.Row="1">
                             <ScrollViewer VerticalScrollBarVisibility="Auto"
                                           HorizontalScrollBarVisibility="Auto">
@@ -699,14 +785,6 @@
                                     ContentPadding="10,0,0,0"/>
                             </ScrollViewer>
                         </Grid>
-                        <Button Grid.Row="0"
-                                HorizontalAlignment="Right"
-                                VerticalAlignment="Center"
-                                Classes="flat-link"
-                                Content="清空输出 ↻"
-                                Foreground="{DynamicResource WorkbenchAmberBrush}"
-                                Command="{Binding ClearLogCommand}"
-                                Margin="0,0,12,0"/>
                     </Grid>
                 </Grid>
             </Grid>

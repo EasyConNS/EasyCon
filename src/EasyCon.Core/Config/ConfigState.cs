@@ -2,6 +2,8 @@ namespace EasyCon.Core.Config;
 
 public record ConfigState
 {
+    public const string DefaultWelcomeText = "欢迎使用 easycon";
+
     public string CaptureType { get; set; } = "ANY";
     public bool ShowControllerHelp { get; set; } = true;
     public bool EnableAutoCompletion { get; set; } = false;
@@ -19,4 +21,5 @@ public record ConfigState
     public bool IsRunningOneColumnLayoutSelected { get; set; } = false;
     public double EditorFontSize { get; set; } = 14;
     public bool HighResolutionTiming { get; set; } = false;
+    public string WelcomeText { get; set; } = DefaultWelcomeText;
 }

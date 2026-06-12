@@ -4,6 +4,8 @@ using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -51,11 +53,15 @@ public class TerminalControl : Control, ILogicalScrollable
     public static readonly StyledProperty<Thickness> ContentPaddingProperty =
         StyledProperty<Thickness>.Register<TerminalControl, Thickness>(nameof(ContentPadding), new Thickness(10));
 
+    public static readonly StyledProperty<bool> MarqueeHorizontalOverflowProperty =
+        StyledProperty<bool>.Register<TerminalControl, bool>(nameof(MarqueeHorizontalOverflow));
+
     #endregion
 
     #region Fields
 
     private readonly List<TerminalLine> _lines = new();
+    private readonly DispatcherTimer _marqueeTimer;
 
     // Metrics
     private Typeface _typeface = default!;
@@ -68,6 +74,10 @@ public class TerminalControl : Control, ILogicalScrollable
     private Vector _offset;
     private Size _extent;
     private Size _viewport;
+    private double _contentWidth;
+    private double _marqueeLineWidth;
+    private double _marqueeOffset;
+    private bool _isAttached;
     private bool _isAtBottom = true;
 
     // Selection
@@ -134,6 +144,12 @@ public class TerminalControl : Control, ILogicalScrollable
         set => SetValue(ContentPaddingProperty, value);
     }
 
+    public bool MarqueeHorizontalOverflow
+    {
+        get => GetValue(MarqueeHorizontalOverflowProperty);
+        set => SetValue(MarqueeHorizontalOverflowProperty, value);
+    }
+
     #endregion
 
     #region Constructor
@@ -142,6 +158,12 @@ public class TerminalControl : Control, ILogicalScrollable
     {
         FocusableProperty.OverrideDefaultValue<TerminalControl>(true);
         ClipToBoundsProperty.OverrideDefaultValue<TerminalControl>(true);
+    }
+
+    public TerminalControl()
+    {
+        _marqueeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+        _marqueeTimer.Tick += OnMarqueeTick;
     }
 
     #endregion
@@ -163,6 +185,26 @@ public class TerminalControl : Control, ILogicalScrollable
         {
             UpdateScroll();
         }
+        else if (change.Property == MarqueeHorizontalOverflowProperty)
+        {
+            _marqueeOffset = 0;
+            UpdateMarqueeTimer();
+            InvalidateVisual();
+        }
+    }
+
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _isAttached = true;
+        UpdateMarqueeTimer();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _isAttached = false;
+        _marqueeTimer.Stop();
+        base.OnDetachedFromVisualTree(e);
     }
 
     protected override Size MeasureOverride(Size availableSize) => availableSize;
@@ -195,8 +237,11 @@ public class TerminalControl : Control, ILogicalScrollable
         var lastLine = Math.Min(_lines.Count - 1,
             firstLine + (int)((_viewport.Height + pad.Top + pad.Bottom) / _lineHeight) + 1);
 
+        var isMarqueeActive = IsMarqueeActive();
+
         // 1. Draw selection highlight (under text)
-        DrawSelection(context, firstLine, lastLine);
+        if (!isMarqueeActive)
+            DrawSelection(context, firstLine, lastLine);
 
         // 2. Draw text
         var defaultFg = Foreground ?? Brushes.Black;
@@ -205,43 +250,49 @@ public class TerminalControl : Control, ILogicalScrollable
         {
             var line = _lines[i];
             var y = pad.Top + i * _lineHeight - _offset.Y;
-            var x = pad.Left - _offset.X;
+            var x = pad.Left - GetHorizontalRenderOffset();
+            var lineWidth = MeasureLineWidth(line, fontSize, defaultFg);
 
-            foreach (var seg in line.Segments)
+            DrawLine(context, line, x, y, fontSize, defaultFg);
+
+            if (isMarqueeActive && lineWidth > 0)
+                DrawLine(context, line, x + GetMarqueeCycleWidth(), y, fontSize, defaultFg);
+        }
+    }
+
+    private void DrawLine(DrawingContext context, TerminalLine line, double x, double y, double fontSize, IBrush defaultFg)
+    {
+        foreach (var seg in line.Segments)
+        {
+            if (string.IsNullOrEmpty(seg.Text)) continue;
+
+            var fg = seg.Foreground != null
+                ? new SolidColorBrush(seg.Foreground.Value)
+                : defaultFg;
+
+            var tf = seg.Bold ? _boldTypeface : _typeface;
+            var ft = new FormattedText(
+                seg.Text, CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight, tf, fontSize, fg);
+
+            if (seg.Background != null)
             {
-                if (string.IsNullOrEmpty(seg.Text)) continue;
-
-                var fg = seg.Foreground != null
-                    ? new SolidColorBrush(seg.Foreground.Value)
-                    : defaultFg;
-
-                // Background fill for segment
-                if (seg.Background != null)
-                {
-                    var segWidth = seg.Text.Length * _charWidth;
-                    context.DrawRectangle(
-                        new SolidColorBrush(seg.Background.Value), null,
-                        new Rect(x, y, segWidth, _lineHeight));
-                }
-
-                var tf = seg.Bold ? _boldTypeface : _typeface;
-                var ft = new FormattedText(
-                    seg.Text, CultureInfo.CurrentCulture,
-                    FlowDirection.LeftToRight, tf, fontSize, fg);
-
-                var textY = y + Math.Max(0, (_lineHeight - ft.Height) / 2);
-                context.DrawText(ft, new Point(x, textY));
-
-                // Underline
-                if (seg.Underline)
-                {
-                    var lineY = textY + ft.Height;
-                    context.DrawLine(new Pen(fg, 1),
-                        new Point(x, lineY), new Point(x + ft.Width, lineY));
-                }
-
-                x += ft.Width;
+                context.DrawRectangle(
+                    new SolidColorBrush(seg.Background.Value), null,
+                    new Rect(x, y, ft.Width, _lineHeight));
             }
+
+            var textY = y + Math.Max(0, (_lineHeight - ft.Height) / 2);
+            context.DrawText(ft, new Point(x, textY));
+
+            if (seg.Underline)
+            {
+                var lineY = textY + ft.Height;
+                context.DrawLine(new Pen(fg, 1),
+                    new Point(x, lineY), new Point(x + ft.Width, lineY));
+            }
+
+            x += ft.Width;
         }
     }
 
@@ -538,24 +589,92 @@ public class TerminalControl : Control, ILogicalScrollable
         EnsureMetrics();
         if (_viewport.Width <= 0 || _viewport.Height <= 0) return;
 
-        // Compute max line width
-        var maxLen = 0;
+        var maxLineWidth = 0d;
+        var defaultFg = Foreground ?? Brushes.Black;
+        var fontSize = FontSize;
         foreach (var line in _lines)
         {
-            var len = line.TextLength;
-            if (len > maxLen) maxLen = len;
+            var width = MeasureLineWidth(line, fontSize, defaultFg);
+            if (width > maxLineWidth) maxLineWidth = width;
         }
 
         var pad = ContentPadding;
+        _marqueeLineWidth = maxLineWidth;
+        _contentWidth = maxLineWidth + pad.Left + pad.Right;
         _extent = new Size(
-            Math.Max(maxLen * _charWidth + pad.Left + pad.Right, _viewport.Width),
+            Math.Max(_contentWidth, _viewport.Width),
             _lines.Count * _lineHeight + pad.Top + pad.Bottom);
+
+        var marqueeCycleWidth = GetMarqueeCycleWidth();
+        if (marqueeCycleWidth <= 0 || _marqueeOffset >= marqueeCycleWidth)
+            _marqueeOffset = 0;
 
         if (_isAtBottom && AutoScroll)
             _offset = new Vector(_offset.X, Math.Max(0, _extent.Height - _viewport.Height));
 
+        UpdateMarqueeTimer();
         _scrollInvalidated?.Invoke(this, EventArgs.Empty);
         InvalidateVisual();
+    }
+
+    private double GetHorizontalRenderOffset()
+    {
+        return IsMarqueeActive() ? _marqueeOffset : _offset.X;
+    }
+
+    private bool IsMarqueeActive()
+    {
+        return MarqueeHorizontalOverflow && _contentWidth > _viewport.Width;
+    }
+
+    private double GetMarqueeCycleWidth()
+    {
+        return _marqueeLineWidth + Math.Max(_charWidth * 4, 24);
+    }
+
+    private void UpdateMarqueeTimer()
+    {
+        if (_isAttached && IsMarqueeActive())
+            _marqueeTimer.Start();
+        else
+            _marqueeTimer.Stop();
+    }
+
+    private void OnMarqueeTick(object? sender, EventArgs e)
+    {
+        if (!IsMarqueeActive())
+        {
+            if (_marqueeOffset != 0)
+            {
+                _marqueeOffset = 0;
+                InvalidateVisual();
+            }
+            return;
+        }
+
+        var cycleWidth = GetMarqueeCycleWidth();
+        _marqueeOffset = cycleWidth <= 0 ? 0 : (_marqueeOffset + 1) % cycleWidth;
+        InvalidateVisual();
+    }
+
+    private double MeasureLineWidth(TerminalLine line, double fontSize, IBrush defaultFg)
+    {
+        var width = 0d;
+        foreach (var seg in line.Segments)
+        {
+            if (string.IsNullOrEmpty(seg.Text)) continue;
+
+            var fg = seg.Foreground != null
+                ? new SolidColorBrush(seg.Foreground.Value)
+                : defaultFg;
+            var tf = seg.Bold ? _boldTypeface : _typeface;
+            var ft = new FormattedText(
+                seg.Text, CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight, tf, fontSize, fg);
+            width += ft.Width;
+        }
+
+        return width;
     }
 
     #endregion

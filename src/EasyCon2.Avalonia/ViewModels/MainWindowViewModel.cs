@@ -28,7 +28,6 @@ public partial class MainWindowViewModel : ViewModelBase
 {
     private const string NoScriptPathText = "未选择脚本";
     private const string UntitledScriptText = "未命名脚本";
-    private const string WelcomeText = "欢迎使用 easycon";
     private static readonly Color[] WelcomePalette =
     [
         Color.FromRgb(0xF9, 0x5D, 0x6A),
@@ -237,6 +236,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isHighResolutionTimingEnabled = false;
 
     [ObservableProperty]
+    private string _welcomeText = ConfigState.DefaultWelcomeText;
+
+    [ObservableProperty]
     private bool _isIdleThreeColumnLayoutSelected = true;
 
     [ObservableProperty]
@@ -284,6 +286,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand ToggleMonitorVisibilityCommand { get; }
     public ICommand SelectColorSchemeCommand { get; }
     public ICommand RestoreDefaultLayoutCommand { get; }
+    public ICommand ResetWelcomeTextCommand { get; }
     public IAsyncRelayCommand CheckUpdateCommand { get; }
     public IRelayCommand OpenGitHubCommand { get; }
 
@@ -442,6 +445,7 @@ public partial class MainWindowViewModel : ViewModelBase
         ToggleMonitorVisibilityCommand = new RelayCommand(ToggleMonitorVisibility);
         SelectColorSchemeCommand = new RelayCommand<string>(SelectColorScheme);
         RestoreDefaultLayoutCommand = new RelayCommand(RestoreDefaultLayout);
+        ResetWelcomeTextCommand = new RelayCommand(ResetWelcomeText);
         CheckUpdateCommand = new AsyncRelayCommand(CheckUpdateAsync);
         OpenGitHubCommand = new RelayCommand(OpenGitHub);
 
@@ -465,7 +469,17 @@ public partial class MainWindowViewModel : ViewModelBase
     private void InitializeWelcomeConsole()
     {
         RefreshWelcomeConsole();
-        _welcomeTimer.Elapsed += (_, _) => Dispatcher.UIThread.Post(RefreshWelcomeConsole);
+        _welcomeTimer.Elapsed += (_, _) =>
+        {
+            if (!_scriptService.IsRunning)
+                return;
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                _welcomeColorOffset++;
+                UpdateWelcomeConsoleColors();
+            });
+        };
         _welcomeTimer.Start();
     }
 
@@ -473,22 +487,39 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         WelcomeLines.Clear();
         WelcomeLines.Add(CreateWelcomeLine());
-
-        if (_scriptService.IsRunning)
-            _welcomeColorOffset++;
     }
 
     private TerminalLine CreateWelcomeLine()
     {
         var line = new TerminalLine();
+        FillWelcomeLine(line);
+        return line;
+    }
 
-        for (var i = 0; i < WelcomeText.Length; i++)
+    private void UpdateWelcomeConsoleColors()
+    {
+        if (WelcomeLines.Count == 0)
         {
-            var color = WelcomePalette[Mod(i - _welcomeColorOffset, WelcomePalette.Length)];
-            line.Segments.Add(new TextSegment(WelcomeText[i].ToString(), color));
+            RefreshWelcomeConsole();
+            return;
         }
 
-        return line;
+        var line = WelcomeLines[0];
+        line.Segments.Clear();
+        FillWelcomeLine(line);
+
+        // 仅触发重绘通知，不让集合经历 Clear 状态，避免跑马灯偏移被重置。
+        WelcomeLines[0] = line;
+    }
+
+    private void FillWelcomeLine(TerminalLine line)
+    {
+        var welcomeText = WelcomeText ?? string.Empty;
+        for (var i = 0; i < welcomeText.Length; i++)
+        {
+            var color = WelcomePalette[Mod(i - _welcomeColorOffset, WelcomePalette.Length)];
+            line.Segments.Add(new TextSegment(welcomeText[i].ToString(), color));
+        }
     }
 
     private TerminalLine ParseLogLine(string rawLine, string? color)
@@ -557,6 +588,7 @@ public partial class MainWindowViewModel : ViewModelBase
             IsHighResolutionTimingEnabled = _userConfig.HighResolutionTiming;
             _scriptService.HighResolutionTiming = IsHighResolutionTimingEnabled;
             ShowDebugInfo = _userConfig.ShowDebugInfo;
+            WelcomeText = _userConfig.WelcomeText ?? ConfigState.DefaultWelcomeText;
             AutoSwitchLayoutEnabled = _userConfig.AutoSwitchLayoutEnabled;
             ApplySavedLayoutSettings(_userConfig);
 
@@ -585,6 +617,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _userConfig.ShowFolding = ShowFolding;
         _userConfig.HighResolutionTiming = IsHighResolutionTimingEnabled;
         _userConfig.ShowDebugInfo = ShowDebugInfo;
+        _userConfig.WelcomeText = WelcomeText ?? string.Empty;
         _userConfig.AutoSwitchLayoutEnabled = AutoSwitchLayoutEnabled;
         _userConfig.IsIdleThreeColumnLayoutSelected = IsIdleThreeColumnLayoutSelected;
         _userConfig.IsIdleTwoColumnLayoutSelected = IsIdleTwoColumnLayoutSelected;
@@ -650,6 +683,11 @@ public partial class MainWindowViewModel : ViewModelBase
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
         SaveUserSettings();
         _logService.AddLog($"已切换配色: {colorSchemeName}");
+    }
+
+    private void ResetWelcomeText()
+    {
+        WelcomeText = ConfigState.DefaultWelcomeText;
     }
 
     private async Task CheckUpdateAsync()
@@ -1436,6 +1474,12 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnIsHighResolutionTimingEnabledChanged(bool value)
     {
         _scriptService.HighResolutionTiming = value;
+        SaveUserSettings();
+    }
+
+    partial void OnWelcomeTextChanged(string value)
+    {
+        RefreshWelcomeConsole();
         SaveUserSettings();
     }
 
