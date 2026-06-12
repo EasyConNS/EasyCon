@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:EasyCon2.Avalonia.Core.AiAgent"
-             x:Class="EasyCon2.Avalonia.Core.AiAgent.AiAgentPanel"
-             x:DataType="vm:AiAgentPanelViewModel"
+             x:Class="EasyCon2.Avalonia.Core.AiAgent.AiAgentView"
+             x:DataType="vm:AiAgentViewModel"
              IsVisible="{Binding IsOpen}">
 
     <UserControl.Styles>
@@ -50,10 +50,10 @@
         <Style Selector="TextBox.agent-input">
             <Setter Property="AcceptsReturn" Value="True"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Padding" Value="12,0"/>
-            <Setter Property="MinHeight" Value="54"/>
-            <Setter Property="MaxHeight" Value="110"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="MinHeight" Value="81"/>
+            <Setter Property="MaxHeight" Value="165"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
         </Style>
     </UserControl.Styles>
 
@@ -77,7 +77,7 @@
                         Command="{Binding CloseCommand}"
                         ToolTip.Tip="关闭">
                     <PathIcon Data="M1,0 L8,7 L15,0 L16,1 L9,8 L16,15 L15,16 L8,9 L1,16 L0,15 L7,8 L0,1 Z"
-                               Width="10" Height="10"/>
+                              Width="10" Height="10"/>
                 </Button>
             </Grid>
 
@@ -95,10 +95,12 @@
                   ColumnDefinitions="*,Auto"
                   ColumnSpacing="8"
                   Margin="10,0,10,10">
-                <TextBox Classes="agent-input"
-                         Text="{Binding InputText, Mode=TwoWay}"
+                <TextBox x:Name="InputTextBox"
+                         Classes="agent-input"
+                         Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          PlaceholderText="输入消息"/>
-                <Button Grid.Column="1"
+                <Button x:Name="SendButton"
+                        Grid.Column="1"
                         Classes="agent-send-button"
                         Command="{Binding SendCommand}"
                         VerticalAlignment="Center"

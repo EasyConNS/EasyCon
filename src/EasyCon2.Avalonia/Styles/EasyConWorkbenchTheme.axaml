@@ -212,6 +212,21 @@
         <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
     </Style>
 
+    <Style Selector="Window.dark ListBoxItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+    </Style>
+
+    <Style Selector="Window.dark ComboBoxItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+    </Style>
+
+    <Style Selector="Window.dark MenuItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+    </Style>
+
     <!-- Terminal output control -->
     <Style Selector="terminal|TerminalControl">
         <Setter Property="Background" Value="{DynamicResource WorkbenchLogBrush}" />

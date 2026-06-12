@@ -183,7 +183,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private TagEditorViewModel? _tagEditorViewModel;
 
-    public AiAgentPanelViewModel AiAgentPanel { get; } = new();
+    public AiAgentViewModel AiAgent { get; } = new();
 
     // 脚本路径显示文本（超30字符中间省略）
     public string ScriptDisplayPath
@@ -1292,7 +1292,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OpenAiAgent()
     {
-        AiAgentPanel.IsOpen = true;
+        AiAgent.IsOpen = true;
     }
 
     partial void OnCurrentScriptPathChanged(string value)
