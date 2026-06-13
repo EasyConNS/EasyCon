@@ -8,8 +8,8 @@ public interface IChatClient : IDisposable
     Task<ChatResponse> SendAsync(ChatRequest request, CancellationToken ct = default);
 
     /// <summary>
-    /// 发送聊天请求并以流式方式返回文本片段。
-    /// 每个 yield 的字符串是一个增量 token，拼接后得到完整回复。
+    /// 发送聊天请求并以流式方式返回增量片段。
+    /// 每个 yield 的 StreamDelta 标记了类型（正文/思考/错误），拼接后得到完整回复。
     /// </summary>
-    IAsyncEnumerable<string> SendStreamAsync(ChatRequest request, CancellationToken ct = default);
+    IAsyncEnumerable<StreamDelta> SendStreamAsync(ChatRequest request, CancellationToken ct = default);
 }

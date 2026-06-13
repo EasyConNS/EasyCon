@@ -23,6 +23,19 @@ public class ScriptService : IScriptService
     public bool HighResolutionTiming { get; set; }
     public event Action<bool> IsRunningChanged;
 
+    /// <summary>
+    /// 获取脚本运行需求（需先编译）。
+    /// </summary>
+    public ScriptRequirements GetRequirements()
+    {
+        return new ScriptRequirements(
+            HasKeyAction: _runner.HasKeyAction,
+            NeedImageRecognition: _runner.NeedILLoad,
+            DeviceConnected: _deviceService.IsConnected,
+            CaptureConnected: _captureService.IsConnected
+        );
+    }
+
     public ScriptService(IDeviceService deviceService, ICaptureService captureService, ILogService logService)
     {
         _deviceService = deviceService;
@@ -101,6 +114,17 @@ public class ScriptService : IScriptService
                     return;
                 }
 
+                // 检查脚本运行需求
+                var requirements = GetRequirements();
+                if (!requirements.CanRun)
+                {
+                    var reasons = requirements.GetBlockReasons();
+                    foreach (var reason in reasons)
+                        _logService.AddLog($"❌ {reason}");
+                    return;
+                }
+
+                // 尝试自动连接单片机
                 if (_runner.HasKeyAction && !_deviceService.IsConnected)
                 {
                     _logService.AddLog("脚本需要单片机，尝试自动连接...");
@@ -111,12 +135,6 @@ public class ScriptService : IScriptService
                         return;
                     }
                     _logService.AddLog($"自动连接成功: {port}");
-                }
-
-                if (_runner.NeedILLoad && !_captureService.IsConnected)
-                {
-                    _logService.AddLog("错误: 脚本需要连接视频源");
-                    return;
                 }
 
                 ICGamePad? pad = null;
@@ -207,6 +225,17 @@ public class ScriptService : IScriptService
                     return;
                 }
 
+                // 检查脚本运行需求
+                var requirements = GetRequirements();
+                if (!requirements.CanRun)
+                {
+                    var reasons = requirements.GetBlockReasons();
+                    foreach (var reason in reasons)
+                        _logService.AddLog($"❌ {reason}");
+                    return;
+                }
+
+                // 尝试自动连接单片机
                 if (_runner.HasKeyAction && !_deviceService.IsConnected)
                 {
                     _logService.AddLog("脚本需要单片机，尝试自动连接...");
@@ -217,12 +246,6 @@ public class ScriptService : IScriptService
                         return;
                     }
                     _logService.AddLog($"自动连接成功: {port}");
-                }
-
-                if (_runner.NeedILLoad && !_captureService.IsConnected)
-                {
-                    _logService.AddLog("错误: 脚本需要连接视频源");
-                    return;
                 }
 
                 ICGamePad? pad = null;

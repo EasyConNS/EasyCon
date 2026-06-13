@@ -21,7 +21,7 @@ using Resources = EasyCon2.UI.Common.Properties.Resources;
 
 namespace EasyCon2.Avalonia.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+public partial class MainWindowViewModel : ViewModelBase, IToolCallService
 {
     private const string NoScriptPathText = "未选择脚本";
     private const string UntitledScriptText = "未命名脚本";
@@ -50,6 +50,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private ConfigState _userConfig = new();
     private bool _isLoadingUserSettings;
     private int _welcomeColorOffset;
+
+    /// <summary>日志环形缓冲，供 AI 工具读取近期运行日志。</summary>
+    private const int LogBufferSize = 200;
+    private readonly Queue<string> _logBuffer = new();
 
     // 窗口标题（含版本号）
     [ObservableProperty]
@@ -183,7 +187,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private TagEditorViewModel? _tagEditorViewModel;
 
-    public AiAgentViewModel AiAgent { get; } = new();
+    public AiAgentViewModel AiAgent { get; }
 
     // 脚本路径显示文本（超30字符中间省略）
     public string ScriptDisplayPath
@@ -293,6 +297,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService)
     {
+        // 初始化 AI Agent，注入编辑区服务
+        AiAgent = new AiAgentViewModel(this);
+
         // 窗口标题
         var fullVer = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
         var ver = fullVer;
@@ -333,6 +340,7 @@ public partial class MainWindowViewModel : ViewModelBase
             if (text == null)
             {
                 LogLines.Clear();
+                _logBuffer.Clear();
             }
             else
             {
@@ -342,6 +350,11 @@ public partial class MainWindowViewModel : ViewModelBase
                 {
                     if (string.IsNullOrEmpty(rawLine)) continue;
                     LogLines.Add(ParseLogLine(rawLine, color));
+
+                    // 同步入环形缓冲，供 AI 工具读取
+                    _logBuffer.Enqueue(rawLine);
+                    while (_logBuffer.Count > LogBufferSize)
+                        _logBuffer.Dequeue();
                 }
             }
         };
@@ -971,18 +984,6 @@ public partial class MainWindowViewModel : ViewModelBase
         _logService.AddLog("已关闭项目");
     }
 
-    private async Task FormatScriptAsync()
-    {
-        if (string.IsNullOrWhiteSpace(EditorText))
-            return;
-
-        if (await _scriptService.CompileAsync(EditorText, null))
-        {
-            EditorText = _scriptService.GetFormattedCode();
-            _logService.AddLog("格式化完成");
-        }
-    }
-
     private bool HasSelectedScriptPath()
     {
         return !string.IsNullOrWhiteSpace(CurrentScriptPath)
@@ -1023,6 +1024,146 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     private string _editorText = "";
+
+    #region IToolCallService 实现（供 AI Agent 工具调用）
+
+    /// <summary>
+    /// IToolCallService 实现：供 AI Agent 工具读取编辑区脚本内容。
+    /// </summary>
+    public string GetScriptContent() => EditorText ?? string.Empty;
+
+    /// <summary>
+    /// IToolCallService 实现：写入脚本内容到编辑区（UI 线程编组）。
+    /// append 为 true 时追加到末尾，false 时替换全部内容。
+    /// </summary>
+    public void WriteScriptContent(string content, bool append)
+    {
+        Dispatcher.UIThread.Invoke(() =>
+        {
+            if (append && !string.IsNullOrEmpty(EditorText))
+            {
+                EditorText = EditorText + Environment.NewLine + content;
+            }
+            else
+            {
+                EditorText = content;
+            }
+        });
+    }
+
+    /// <summary>
+    /// IToolCallService 实现：查找并替换编辑区文本（UI 线程编组）。
+    /// oldString 为空或未找到匹配时返回 -1，否则返回实际替换次数。
+    /// </summary>
+    public int EditScriptContent(string oldString, string newString, int count)
+    {
+        var current = EditorText ?? string.Empty;
+        if (string.IsNullOrEmpty(oldString))
+            return -1;
+
+        if (!current.Contains(oldString, StringComparison.Ordinal))
+            return -1;
+
+        var replaced = 0;
+        var result = count <= 0
+            ? current.Replace(oldString, newString, StringComparison.Ordinal) // 全部替换
+            : ReplaceLimited(current, oldString, newString, count, out replaced);
+
+        if (count <= 0)
+            replaced = current.Split([oldString], StringSplitOptions.None).Length - 1;
+
+        Dispatcher.UIThread.Invoke(() => EditorText = result);
+        return replaced;
+    }
+
+    /// <summary>有限次数替换。</summary>
+    private static string ReplaceLimited(string source, string oldStr, string newStr, int maxCount, out int replaced)
+    {
+        replaced = 0;
+        var sb = new StringBuilder(source.Length);
+        var span = source.AsSpan();
+        int pos = 0;
+
+        while (replaced < maxCount)
+        {
+            var idx = source.IndexOf(oldStr, pos, StringComparison.Ordinal);
+            if (idx < 0) break;
+
+            sb.Append(span[pos..idx]);
+            sb.Append(newStr);
+            pos = idx + oldStr.Length;
+            replaced++;
+        }
+
+        sb.Append(span[pos..]);
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// IToolCallService 实现：获取当前脚本路径。
+    /// </summary>
+    public string? GetScriptPath() => HasSelectedScriptPath() ? CurrentScriptPath : null;
+
+    /// <summary>
+    /// IToolCallService 实现：编译当前脚本。
+    /// </summary>
+    public async Task<bool> CompileScriptAsync()
+    {
+        var text = EditorText;
+        var path = HasSelectedScriptPath() ? CurrentScriptPath : null;
+        return await _scriptService.CompileAsync(text, path);
+    }
+
+    /// <summary>
+    /// IToolCallService 实现：格式化当前脚本并写入编辑区，返回格式化后的文本。
+    /// 编译失败时返回错误提示，成功时格式化并写入编辑区。
+    /// </summary>
+    public async Task<string> FormatScriptAsync()
+    {
+        var text = EditorText;
+        if (string.IsNullOrWhiteSpace(text))
+            return "(编辑区无脚本内容)";
+
+        var path = HasSelectedScriptPath() ? CurrentScriptPath : null;
+        if (!await _scriptService.CompileAsync(text, path))
+            return "(编译失败，无法格式化，请先用 compile_script 检查错误)";
+
+        var formatted = _scriptService.GetFormattedCode();
+        await Dispatcher.UIThread.InvokeAsync(() => EditorText = formatted);
+        return formatted;
+    }
+
+    /// <summary>
+    /// IToolCallService 实现：获取设备连接与运行状态快照。
+    /// 包含单片机、视频源、虚拟手柄连接状态及脚本运行状态。
+    /// </summary>
+    public DeviceStatusInfo GetDeviceStatus()
+    {
+        return new DeviceStatusInfo(
+            IsNintendoSwitchConnected,
+            IsCaptureSourceConnected,
+            IsControllerConnected,
+            _scriptService.IsRunning
+        );
+    }
+
+    /// <summary>
+    /// IToolCallService 实现：获取最近 N 条日志（按行）。
+    /// 日志为空时返回提示文本，否则返回最近 maxLines 行日志。
+    /// </summary>
+    public string GetRecentLogs(int maxLines)
+    {
+        if (_logBuffer.Count == 0)
+            return "(暂无日志)";
+
+        var lines = _logBuffer.Count <= maxLines
+            ? _logBuffer.ToArray()
+            : _logBuffer.Skip(_logBuffer.Count - maxLines).ToArray();
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    #endregion
 
     /// <summary>
     /// 请求主窗口弹出打开项目目录对话框。
@@ -1836,4 +1977,3 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 }
-

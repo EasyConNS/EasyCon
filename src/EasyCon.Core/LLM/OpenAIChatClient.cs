@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using EasyCon.Core.LLM.Tools;
 
 namespace EasyCon.Core.LLM;
 
@@ -51,7 +52,7 @@ public sealed class OpenAIChatClient : IChatClient
         }
     }
 
-    public async IAsyncEnumerable<string> SendStreamAsync(ChatRequest request, [EnumeratorCancellation] CancellationToken ct = default)
+    public async IAsyncEnumerable<StreamDelta> SendStreamAsync(ChatRequest request, [EnumeratorCancellation] CancellationToken ct = default)
     {
         request.Stream = true;
 
@@ -63,7 +64,11 @@ public sealed class OpenAIChatClient : IChatClient
         {
             using var msg = CreateRequestMessage(request);
             resp = await _http.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, ct);
-            resp.EnsureSuccessStatusCode();
+            if (!resp.IsSuccessStatusCode)
+            {
+                var errBody = await resp.Content.ReadAsStringAsync(ct);
+                errorMsg = ExtractErrorMessage(errBody, resp.StatusCode);
+            }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -71,12 +76,12 @@ public sealed class OpenAIChatClient : IChatClient
         }
         catch (HttpRequestException ex)
         {
-            errorMsg = $"\n[错误] {ex.Message}";
+            errorMsg = ex.Message;
         }
 
         if (errorMsg is not null)
         {
-            yield return errorMsg;
+            yield return StreamDelta.Error(errorMsg);
             yield break;
         }
 
@@ -93,8 +98,7 @@ public sealed class OpenAIChatClient : IChatClient
                 var data = line["data: ".Length..];
                 if (data == "[DONE]") break;
 
-                var delta = ExtractDelta(data);
-                if (delta is not null)
+                foreach (var delta in ExtractDeltas(data))
                     yield return delta;
             }
         }
@@ -118,11 +122,19 @@ public sealed class OpenAIChatClient : IChatClient
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
 
-            var content = root
+            var message = root
                 .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString() ?? "";
+                .GetProperty("message");
+
+            var content = message.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.String
+                ? c.GetString() ?? ""
+                : "";
+
+            // 兼容不同供应商的思考字段命名：reasoning_content、reasoning
+            var thinkingContent = GetThinkingContent(message);
+
+            // 解析工具调用
+            var toolCalls = ParseToolCalls(message);
 
             var usage = root.TryGetProperty("usage", out var u) ? u : default;
 
@@ -131,6 +143,8 @@ public sealed class OpenAIChatClient : IChatClient
                 Id = root.TryGetProperty("id", out var id) ? id.GetString() ?? "" : "",
                 Model = root.TryGetProperty("model", out var m) ? m.GetString() ?? "" : "",
                 Content = content,
+                ThinkingContent = thinkingContent,
+                ToolCalls = toolCalls,
                 PromptTokens = usage.ValueKind != JsonValueKind.Undefined && usage.TryGetProperty("prompt_tokens", out var pt) ? pt.GetInt32() : 0,
                 CompletionTokens = usage.ValueKind != JsonValueKind.Undefined && usage.TryGetProperty("completion_tokens", out var ct2) ? ct2.GetInt32() : 0,
                 TotalTokens = usage.ValueKind != JsonValueKind.Undefined && usage.TryGetProperty("total_tokens", out var tt) ? tt.GetInt32() : 0,
@@ -143,43 +157,190 @@ public sealed class OpenAIChatClient : IChatClient
         }
     }
 
-    private static string? ExtractDelta(string data)
+    /// <summary>
+    /// 从 message 节点提取思考/推理内容，兼容不同供应商字段命名。
+    /// 优先级：reasoning_content → reasoning
+    /// </summary>
+    private static string? GetThinkingContent(JsonElement message)
     {
+        if (message.TryGetProperty("reasoning_content", out var rc) && rc.ValueKind == JsonValueKind.String)
+            return rc.GetString();
+
+        if (message.TryGetProperty("reasoning", out var r) && r.ValueKind == JsonValueKind.String)
+            return r.GetString();
+
+        return null;
+    }
+
+    /// <summary>
+    /// 从 message 节点解析 tool_calls 数组（非流式完整结果）。
+    /// </summary>
+    private static List<ToolCall>? ParseToolCalls(JsonElement message)
+    {
+        if (!message.TryGetProperty("tool_calls", out var toolCallsEl) || toolCallsEl.ValueKind != JsonValueKind.Array)
+            return null;
+
+        var result = new List<ToolCall>(toolCallsEl.GetArrayLength());
+        foreach (var tc in toolCallsEl.EnumerateArray())
+        {
+            var id = tc.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String ? idEl.GetString() ?? "" : "";
+            var type = tc.TryGetProperty("type", out var typeEl) && typeEl.ValueKind == JsonValueKind.String ? typeEl.GetString() ?? "function" : "function";
+
+            string name = "";
+            string arguments = "";
+            if (tc.TryGetProperty("function", out var fnEl) && fnEl.ValueKind == JsonValueKind.Object)
+            {
+                name = fnEl.TryGetProperty("name", out var nameEl) && nameEl.ValueKind == JsonValueKind.String ? nameEl.GetString() ?? "" : "";
+                // arguments 可能缺失或为非字符串，统一取原始 JSON 兼容
+                arguments = fnEl.TryGetProperty("arguments", out var argsEl)
+                    ? argsEl.ValueKind == JsonValueKind.String
+                        ? argsEl.GetString() ?? ""
+                        : argsEl.GetRawText()
+                    : "";
+            }
+
+            result.Add(new ToolCall
+            {
+                Id = id,
+                Type = type,
+                Function = new FunctionCall { Name = name, Arguments = arguments }
+            });
+        }
+
+        return result.Count > 0 ? result : null;
+    }
+
+    /// <summary>
+    /// 从流式 chunk 提取增量片段列表，解析 content、reasoning_content 和 tool_calls。
+    /// 单个 chunk 可能同时包含多种 delta。
+    /// </summary>
+    private static List<StreamDelta> ExtractDeltas(string data)
+    {
+        var deltas = new List<StreamDelta>();
+
         try
         {
             using var doc = JsonDocument.Parse(data);
             var choices = doc.RootElement.GetProperty("choices");
-            if (choices.GetArrayLength() == 0) return null;
+            if (choices.GetArrayLength() == 0) return deltas;
 
             var delta = choices[0].GetProperty("delta");
-            if (delta.TryGetProperty("content", out var content))
-                return content.GetString();
-            return null;
+
+            // 思考字段：reasoning_content → reasoning
+            if (TryGetThinking(delta, out var thinking))
+                deltas.Add(StreamDelta.Thinking(thinking));
+
+            // 工具调用增量
+            if (delta.TryGetProperty("tool_calls", out var toolCallsEl) && toolCallsEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var tc in toolCallsEl.EnumerateArray())
+                {
+                    var toolDelta = ParseToolCallDelta(tc);
+                    if (toolDelta is not null)
+                        deltas.Add(StreamDelta.ToolCall(toolDelta));
+                }
+            }
+
+            // 正文内容
+            if (delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
+            {
+                var text = content.GetString();
+                if (text is not null)
+                    deltas.Add(StreamDelta.Content(text));
+            }
         }
         catch
         {
-            return null;
+            // 解析失败静默跳过单个 chunk
         }
+
+        return deltas;
+    }
+
+    /// <summary>
+    /// 解析流式 delta 中的单个 tool_call 增量。
+    /// </summary>
+    private static ToolCallDelta? ParseToolCallDelta(JsonElement tc)
+    {
+        var index = tc.TryGetProperty("index", out var idxEl) && idxEl.ValueKind == JsonValueKind.Number
+            ? idxEl.GetInt32()
+            : 0;
+
+        var id = tc.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String ? idEl.GetString() : null;
+        var type = tc.TryGetProperty("type", out var typeEl) && typeEl.ValueKind == JsonValueKind.String ? typeEl.GetString() : null;
+
+        string? name = null;
+        string? arguments = null;
+        if (tc.TryGetProperty("function", out var fnEl) && fnEl.ValueKind == JsonValueKind.Object)
+        {
+            name = fnEl.TryGetProperty("name", out var nameEl) && nameEl.ValueKind == JsonValueKind.String ? nameEl.GetString() : null;
+            // arguments 可能为非字符串（部分模型不规范），统一取原始文本
+            if (fnEl.TryGetProperty("arguments", out var argsEl))
+            {
+                arguments = argsEl.ValueKind == JsonValueKind.String
+                    ? argsEl.GetString()
+                    : argsEl.ValueKind == JsonValueKind.Null ? null : argsEl.GetRawText();
+            }
+        }
+
+        return new ToolCallDelta
+        {
+            Index = index,
+            Id = id,
+            Type = type,
+            Function = new FunctionCallDelta { Name = name, Arguments = arguments }
+        };
+    }
+
+    /// <summary>
+    /// 从 delta 节点提取思考片段，兼容 reasoning_content 和 reasoning 命名。
+    /// </summary>
+    private static bool TryGetThinking(JsonElement delta, out string? thinking)
+    {
+        thinking = null;
+
+        if (delta.TryGetProperty("reasoning_content", out var rc) && rc.ValueKind == JsonValueKind.String)
+        {
+            thinking = rc.GetString();
+            return thinking is not null;
+        }
+
+        if (delta.TryGetProperty("reasoning", out var r) && r.ValueKind == JsonValueKind.String)
+        {
+            thinking = r.GetString();
+            return thinking is not null;
+        }
+
+        return false;
     }
 
     private static ChatResponse ErrorFrom(string body, System.Net.HttpStatusCode status)
     {
-        string? msg = null;
-        try
-        {
-            using var doc = JsonDocument.Parse(body);
-            msg = doc.RootElement
-                .GetProperty("error")
-                .GetProperty("message")
-                .GetString();
-        }
-        catch { /* ignore */ }
-
         return new ChatResponse
         {
             Success = false,
-            ErrorMessage = $"HTTP {(int)status}: {msg ?? body}"
+            ErrorMessage = $"HTTP {(int)status}: {ExtractErrorMessage(body, status)}"
         };
+    }
+
+    /// <summary>
+    /// 从错误响应体中提取 message 字段，失败则返回原始 body（截断）。
+    /// </summary>
+    private static string ExtractErrorMessage(string body, System.Net.HttpStatusCode status)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("error", out var err))
+            {
+                if (err.ValueKind == JsonValueKind.Object && err.TryGetProperty("message", out var msg))
+                    return msg.GetString() ?? body;
+                return err.GetRawText();
+            }
+        }
+        catch { /* ignore */ }
+
+        return body.Length > 500 ? body[..500] + "..." : body;
     }
 
     public void Dispose()
