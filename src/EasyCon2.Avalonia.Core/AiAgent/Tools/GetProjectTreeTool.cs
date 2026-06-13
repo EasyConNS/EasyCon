@@ -21,9 +21,9 @@ public class GetProjectTreeTool : IAiTool
 
     public JsonSchema Parameters => new() { Type = "object" };
 
-    public Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var tree = _service.GetProjectTree();
-        return Task.FromResult(tree ?? "(未打开项目)");
+        return Task.FromResult(ToolResult.Ok(tree ?? "(未打开项目)"));
     }
 }

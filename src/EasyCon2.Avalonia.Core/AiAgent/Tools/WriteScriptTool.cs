@@ -38,10 +38,10 @@ public class WriteScriptTool : IAiTool
         Required = ["content"]
     };
 
-    public Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         if (!args.TryGetValue("content", out var contentEl) || contentEl.ValueKind != JsonValueKind.String)
-            return Task.FromResult("[错误] 缺少必填参数 content");
+            return Task.FromResult(ToolResult.Error("缺少必填参数 content"));
 
         var content = contentEl.GetString() ?? "";
         var mode = args.TryGetValue("mode", out var modeEl) && modeEl.ValueKind == JsonValueKind.String
@@ -51,6 +51,6 @@ public class WriteScriptTool : IAiTool
 
         _service.WriteScriptContent(content, append);
 
-        return Task.FromResult(append ? "✅ 已追加到编辑区末尾。" : "✅ 已替换编辑区内容。");
+        return Task.FromResult(ToolResult.Ok(append ? "✅ 已追加到编辑区末尾。" : "✅ 已替换编辑区内容。"));
     }
 }

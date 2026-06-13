@@ -26,15 +26,15 @@ public class GetFrameTool : IAiTool
 
     public JsonSchema Parameters => new() { Type = "object" };
 
-    public Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var status = _service.GetDeviceStatus();
         if (!status.IsCaptureConnected)
-            return Task.FromResult("视频源未连接，请先连接视频源后再试。");
+            return Task.FromResult(ToolResult.Error("视频源未连接，请先连接视频源后再试。"));
 
         var base64 = _service.GetCurrentFrameBase64();
         if (base64 is null)
-            return Task.FromResult("帧获取失败，请检查视频源连接状态。");
+            return Task.FromResult(ToolResult.Error("帧获取失败，请检查视频源连接状态。"));
 
         // 暂存图片消息，由编排层注入历史
         PendingImage = ChatMessage.User(
@@ -43,6 +43,6 @@ public class GetFrameTool : IAiTool
             ContentPart.FromImageBase64("image/png", base64)
         ]);
 
-        return Task.FromResult("已获取当前画面，正在分析...");
+        return Task.FromResult(ToolResult.Ok("已获取当前画面，正在分析..."));
     }
 }

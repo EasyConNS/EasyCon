@@ -20,11 +20,11 @@ public class FormatScriptTool : IAiTool
 
     public JsonSchema Parameters => new() { Type = "object" };
 
-    public async Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public async Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var formatted = await _service.FormatScriptAsync();
         return formatted.StartsWith("(")
-            ? formatted
-            : "✅ 格式化完成：\n" + formatted;
+            ? ToolResult.Error(formatted)
+            : ToolResult.Ok("✅ 格式化完成：\n" + formatted);
     }
 }

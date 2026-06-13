@@ -221,8 +221,20 @@ public sealed class OpenAIChatClient : IChatClient
         try
         {
             using var doc = JsonDocument.Parse(data);
-            var choices = doc.RootElement.GetProperty("choices");
-            if (choices.GetArrayLength() == 0) return deltas;
+            var root = doc.RootElement;
+
+            // Token 用量（流式最后一个 chunk 可能携带 usage 字段）
+            if (root.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object)
+            {
+                var pt = usage.TryGetProperty("prompt_tokens", out var ptEl) ? ptEl.GetInt32() : 0;
+                var ct = usage.TryGetProperty("completion_tokens", out var ctEl) ? ctEl.GetInt32() : 0;
+                var tt = usage.TryGetProperty("total_tokens", out var ttEl) ? ttEl.GetInt32() : 0;
+                if (tt > 0)
+                    deltas.Add(StreamDelta.Usage(pt, ct, tt));
+            }
+
+            if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
+                return deltas;
 
             var delta = choices[0].GetProperty("delta");
 

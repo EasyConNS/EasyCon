@@ -49,10 +49,10 @@ public class GrepScriptTool : IAiTool
         Required = ["pattern"]
     };
 
-    public Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         if (!args.TryGetValue("pattern", out var patEl) || patEl.ValueKind != JsonValueKind.String)
-            return Task.FromResult("[错误] 缺少必填参数 pattern");
+            return Task.FromResult(ToolResult.Error("缺少必填参数 pattern"));
 
         var pattern = patEl.GetString() ?? "";
         var context = 2;
@@ -70,7 +70,7 @@ public class GrepScriptTool : IAiTool
 
         var text = _service.GetScriptContent() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(text))
-            return Task.FromResult("(编辑区无脚本内容)");
+            return Task.FromResult(ToolResult.Ok("(编辑区无脚本内容)"));
 
         var lines = text.Replace("\r\n", "\n").Split('\n');
         var totalLines = lines.Length;
@@ -85,7 +85,9 @@ public class GrepScriptTool : IAiTool
         }
         catch (RegexParseException ex)
         {
-            return Task.FromResult($"[错误] 正则表达式无效: {ex.Message}");
+            return Task.FromResult(ToolResult.Retryable(
+                $"正则表达式无效: {ex.Message}",
+                "请检查正则语法，例如用 \\\\. 转义点号，用 \\b 匹配词边界。"));
         }
 
         // 第一遍：收集匹配行号
@@ -98,7 +100,7 @@ public class GrepScriptTool : IAiTool
 
         var totalCount = matchLines.Count;
         if (totalCount == 0)
-            return Task.FromResult($"未找到匹配 \"{pattern}\"（共 {totalLines} 行）。");
+            return Task.FromResult(ToolResult.Ok($"未找到匹配 \"{pattern}\"（共 {totalLines} 行）。"));
 
         // 第二遍：合并上下文区间
         var displayCount = Math.Min(matchLines.Count, maxResults);
@@ -143,6 +145,6 @@ public class GrepScriptTool : IAiTool
         if (displayCount < totalCount)
             sb.AppendLine($"  ...（还有 {totalCount - displayCount} 条匹配未显示）");
 
-        return Task.FromResult(sb.ToString().TrimEnd());
+        return Task.FromResult(ToolResult.Ok(sb.ToString().TrimEnd()));
     }
 }

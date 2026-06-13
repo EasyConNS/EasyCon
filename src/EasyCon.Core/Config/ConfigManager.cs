@@ -48,6 +48,9 @@ public static class ConfigManager
 
     public static ModelsConfig LoadModelsConfig()
     {
+        var path = AppPaths.ModelsConfig;
+        if (!File.Exists(path))
+            GenerateDefaultModels(path);
         return Load<ModelsConfig>(AppPaths.ModelsConfig, _jsonReadOptions);
     }
 
@@ -113,6 +116,36 @@ public static class ConfigManager
       }
     }
   ]
+}
+""";
+        File.WriteAllText(path, json);
+    }
+
+    private static void GenerateDefaultModels(string path)
+    {
+        var json = """
+{
+  "models": {
+    "providers": {
+      "minicpm": {
+        "baseUrl": "https://api.modelbest.cn/v1",
+        "apiKey": "sk-pQ8L2zF3XmR5kY9wV4jB7hN1tC6vM0xG3aD5sH2bJ9lK4cZ8",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "MiniCPM-V-4.6-Instruct",
+            "name": "MiniCPM-V 4.6",
+            "vision": true
+          },
+          {
+            "id": "MiniCPM-V-4.6-Thinking",
+            "name": "MiniCPM-V 4.6 Thinking",
+            "vision": true
+          }
+        ]
+      }
+    }
+  }
 }
 """;
         File.WriteAllText(path, json);

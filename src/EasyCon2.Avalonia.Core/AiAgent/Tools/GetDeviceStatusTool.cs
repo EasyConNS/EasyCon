@@ -19,7 +19,7 @@ public class GetDeviceStatusTool : IAiTool
 
     public JsonSchema Parameters => new() { Type = "object" };
 
-    public Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var s = _service.GetDeviceStatus();
         var text = string.Join("\n",
@@ -27,6 +27,6 @@ public class GetDeviceStatusTool : IAiTool
             $"视频源: {(s.IsCaptureConnected ? "已连接" : "未连接")}",
             $"虚拟手柄: {(s.IsControllerConnected ? "已连接" : "未连接")}",
             $"脚本运行: {(s.IsScriptRunning ? "运行中" : "未运行")}");
-        return Task.FromResult(text);
+        return Task.FromResult(ToolResult.Ok(text));
     }
 }

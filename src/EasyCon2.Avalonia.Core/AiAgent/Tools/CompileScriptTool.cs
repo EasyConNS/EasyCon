@@ -20,11 +20,11 @@ public class CompileScriptTool : IAiTool
 
     public JsonSchema Parameters => new() { Type = "object" };
 
-    public async Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public async Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var ok = await _service.CompileScriptAsync();
         return ok
-            ? "✅ 编译成功，无错误。"
-            : "❌ 编译失败。请调用 get_logs 查看错误详情。";
+            ? ToolResult.Ok("✅ 编译成功，无错误。")
+            : ToolResult.Retryable("编译失败。", "请调用 get_logs 查看错误详情，修复语法错误后重新编译。");
     }
 }

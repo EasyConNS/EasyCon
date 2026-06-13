@@ -6,7 +6,6 @@ using EasyCon.Core.Config;
 using EasyCon.Core.LLM;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
-using EasyCon.Core.LLM.Tools;
 using EasyCon2.Avalonia.Core.AiAgent.Tools;
 using EasyCon2.Avalonia.Core.Services;
 
@@ -14,20 +13,17 @@ namespace EasyCon2.Avalonia.Core.AiAgent;
 
 public partial class AiAgentViewModel : ObservableObject
 {
-    /// <summary>工具调度最大循环次数，防止模型无限调用工具。ReAct 视觉循环需要更多轮次。</summary>
-    private const int MaxToolRounds = 50;
-
     private readonly List<ChatMessage> _history = [];
     private readonly ToolRegistry _tools = new();
     private readonly IToolCallService? _toolCallService;
     private GetFrameTool? _getFrameTool;
-    private int _frameImageIndex = -1;
+    private AgentOrchestrator? _orchestrator;
 
     private string _conversationPrefix = "";
     private readonly StringBuilder _pendingReply = new();
     private readonly StringBuilder _pendingThinking = new();
-    private ToolCallAccumulator _toolAccumulator = new();
     private ModelsConfig? _cachedConfig;
+    private int _totalTokensUsed;
 
     [ObservableProperty]
     private bool _isOpen;
@@ -47,6 +43,9 @@ public partial class AiAgentViewModel : ObservableObject
     [ObservableProperty]
     private ModelEntry? _selectedEntry;
 
+    [ObservableProperty]
+    private string _tokenUsage = "";
+
     private CancellationTokenSource? _cts;
 
     public ObservableCollection<ModelEntry> AllModels { get; } = [];
@@ -59,19 +58,7 @@ public partial class AiAgentViewModel : ObservableObject
     {
         _toolCallService = toolCallService;
         if (toolCallService is not null)
-        {
-            _tools.Register(new ReadScriptTool(toolCallService));
-            _tools.Register(new WriteScriptTool(toolCallService));
-            _tools.Register(new EditScriptTool(toolCallService));
-            _tools.Register(new GrepScriptTool(toolCallService));
-            _tools.Register(new CompileScriptTool(toolCallService));
-            _tools.Register(new FormatScriptTool(toolCallService));
-            _tools.Register(new GetDeviceStatusTool(toolCallService));
-            _tools.Register(new GetLogsTool(toolCallService));
-            _tools.Register(new GetProjectTreeTool(toolCallService));
-            _tools.Register(new RunScriptTool(toolCallService));
-            _tools.Register(new StopScriptTool(toolCallService));
-        }
+            DefaultTools.RegisterAll(_tools, toolCallService);
     }
 
     partial void OnSelectedEntryChanged(ModelEntry? value)
@@ -87,6 +74,9 @@ public partial class AiAgentViewModel : ObservableObject
         {
             _tools.Unregister("get_frame");
         }
+
+        // 模型切换后重建编排器
+        _orchestrator = new AgentOrchestrator(_tools, _getFrameTool);
     }
 
     partial void OnConversationTextChanged(string value)
@@ -113,11 +103,13 @@ public partial class AiAgentViewModel : ObservableObject
     private void NewChat()
     {
         _history.Clear();
-        _frameImageIndex = -1;
+        _orchestrator?.ResetFrameIndex();
         _conversationPrefix = "";
         _pendingReply.Clear();
         _pendingThinking.Clear();
+        _totalTokensUsed = 0;
         ConversationText = "";
+        TokenUsage = "";
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -151,7 +143,10 @@ public partial class AiAgentViewModel : ObservableObject
         _cts = new CancellationTokenSource();
         try
         {
-            await RunConversationAsync(_cts.Token);
+            _orchestrator ??= new AgentOrchestrator(_tools, _getFrameTool);
+
+            var provider = GetProviderConfig(SelectedEntry.ProviderKey);
+            await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token);
             _conversationPrefix = ConversationText;
         }
         catch (OperationCanceledException)
@@ -175,140 +170,53 @@ public partial class AiAgentViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 执行对话主循环：发送请求 → 流式接收 → 若有工具调用则执行并回传 → 循环。
+    /// 处理编排器事件，更新 UI 状态。
     /// </summary>
-    private async Task RunConversationAsync(CancellationToken ct)
+    private void HandleAgentEvent(AgentEvent evt)
     {
-        var provider = GetProviderConfig(SelectedEntry!.ProviderKey);
-        var toolDefs = _tools.ToToolDefinitions();
-        var hasTools = toolDefs.Count > 0;
-
-        for (var round = 0; round < MaxToolRounds; round++)
+        switch (evt)
         {
-            // 每轮新建对话前缀占位
-            _conversationPrefix = AppendMessage(_conversationPrefix, "AI", "");
-            _pendingReply.Clear();
-            _pendingThinking.Clear();
-            _toolAccumulator = new ToolCallAccumulator();
-            ConversationText = _conversationPrefix;
+            case AgentEvent.RoundStart:
+                _conversationPrefix = AppendMessage(_conversationPrefix, "AI", "");
+                _pendingReply.Clear();
+                _pendingThinking.Clear();
+                ConversationText = _conversationPrefix;
+                break;
 
-            using var client = ChatClientFactory.Create(provider);
-            var request = new ChatRequest
-            {
-                Model = SelectedEntry.ModelId,
-                Messages = BuildMessages(round)
-            };
-            if (hasTools)
-            {
-                request.Tools = toolDefs;
-                request.ToolChoice = ToolChoice.Auto;
-            }
-
-            var hasContent = false;
-            await foreach (var delta in client.SendStreamAsync(request, ct))
-            {
-                switch (delta.Type)
-                {
-                    case DeltaType.Thinking:
-                        _pendingThinking.Append(delta.Text);
-                        break;
-                    case DeltaType.Content:
-                        _pendingReply.Append(delta.Text);
-                        hasContent = true;
-                        break;
-                    case DeltaType.ToolCall:
-                        if (delta.ToolCallDelta is not null)
-                            _toolAccumulator.Append(delta.ToolCallDelta);
-                        break;
-                    case DeltaType.Error:
-                        _pendingReply.Append($"[错误] {delta.Text}");
-                        break;
-                }
-
+            case AgentEvent.ContentDelta d:
+                _pendingReply.Append(d.Text);
                 ConversationText = BuildDisplayText();
-            }
+                break;
 
-            // 没有工具调用或没有注册工具 → 本轮即最终回复，结束循环
-            var toolCalls = _toolAccumulator.Build();
-            if (!hasTools || toolCalls.Count == 0)
-            {
-                if (hasContent)
-                    _history.Add(ChatMessage.Assistant(_pendingReply.ToString()));
-                return;
-            }
+            case AgentEvent.ThinkingDelta d:
+                _pendingThinking.Append(d.Text);
+                ConversationText = BuildDisplayText();
+                break;
 
-            // 将 assistant 的工具调用加入历史（回放上下文）
-            _history.Add(ChatMessage.Assistant(toolCalls));
+            case AgentEvent.ToolExecuting t:
+                _conversationPrefix = AppendMessage(_conversationPrefix, "工具", $"{t.Name} → 执行中...");
+                ConversationText = _conversationPrefix;
+                break;
 
-            // 批量执行工具调用（并行执行，保持结果顺序）
-            var results = await ExecuteToolCallsAsync(toolCalls, ct);
+            case AgentEvent.ToolCompleted t:
+                // 替换最后一行的"执行中..."为实际结果
+                _conversationPrefix = AppendMessage(_conversationPrefix, "工具", $"{t.Name} → {t.Summary}");
+                ConversationText = _conversationPrefix;
+                break;
 
-            // 按顺序将工具结果加入历史
-            for (var i = 0; i < toolCalls.Count; i++)
-            {
-                _history.Add(ChatMessage.Tool(toolCalls[i].Id, results[i], toolCalls[i].Function.Name));
-            }
+            case AgentEvent.UsageUpdated u:
+                _totalTokensUsed += u.Total;
+                TokenUsage = $"本轮: {u.Total} tokens | 累计: {_totalTokensUsed}";
+                break;
 
-            // 如果 get_frame 捕获了图片，替换历史中的旧图片（不累积）
-            if (_getFrameTool?.PendingImage is { } img)
-            {
-                if (_frameImageIndex >= 0 && _frameImageIndex < _history.Count)
-                    _history[_frameImageIndex] = img;
-                else
-                {
-                    _frameImageIndex = _history.Count;
-                    _history.Add(img);
-                }
-                _getFrameTool.PendingImage = null;
-            }
+            case AgentEvent.Error e:
+                _pendingReply.Append($"[错误] {e.Message}");
+                ConversationText = BuildDisplayText();
+                break;
 
-            // 工具结果已追加到历史，下一轮继续对话
-        }
-
-        // 达到最大轮次仍未结束
-        _history.Add(ChatMessage.Assistant(_pendingReply.ToString()));
-        _conversationPrefix += "\n[已达到工具调用最大轮次]";
-    }
-
-    /// <summary>
-    /// 批量执行工具调用（并行执行，保持结果顺序）。
-    /// </summary>
-    private async Task<List<string>> ExecuteToolCallsAsync(List<ToolCall> toolCalls, CancellationToken ct)
-    {
-        // 单个工具调用直接执行
-        if (toolCalls.Count == 1)
-        {
-            var result = await ExecuteToolCallAsync(toolCalls[0], ct);
-            return [result];
-        }
-
-        // 多个工具调用并行执行
-        var tasks = toolCalls.Select(tc => ExecuteToolCallAsync(tc, ct)).ToArray();
-        var results = await Task.WhenAll(tasks);
-        return results.ToList();
-    }
-
-    /// <summary>
-    /// 执行单个工具调用，返回结果文本。
-    /// </summary>
-    private async Task<string> ExecuteToolCallAsync(ToolCall toolCall, CancellationToken ct)
-    {
-        var fn = toolCall.Function;
-        var tool = _tools.Get(fn.Name);
-        if (tool is null)
-            return $"[错误] 未知工具: {fn.Name}";
-
-        try
-        {
-            var args = fn.ParseArguments();
-            var result = await tool.ExecuteAsync(args, ct);
-            _conversationPrefix = AppendMessage(_conversationPrefix, "工具", $"{fn.Name} → {Truncate(result, 200)}");
-            ConversationText = _conversationPrefix;
-            return result;
-        }
-        catch (Exception ex)
-        {
-            return $"[工具执行异常] {ex.Message}";
+            case AgentEvent.Completed:
+                // 最终内容由编排器写入 history，这里不需要额外操作
+                break;
         }
     }
 
@@ -326,6 +234,7 @@ public partial class AiAgentViewModel : ObservableObject
     [RelayCommand]
     private void RefreshModels()
     {
+        ChatClientFactory.ClearCache();
         _cachedConfig = ConfigManager.LoadModelsConfig();
         AllModels.Clear();
 
@@ -355,113 +264,6 @@ public partial class AiAgentViewModel : ObservableObject
         return _cachedConfig.Models.Providers[providerKey];
     }
 
-    private List<ChatMessage> BuildMessages(int currentRound = 0)
-    {
-        // 基础系统提示词
-        var systemPrompt = SystemPrompts.Default;
-
-        // 检查最近几条用户消息是否涉及脚本相关话题
-        var needsScriptSyntax = IsScriptRelatedQuery(_history);
-        var needsVision = IsVisionRelatedQuery(_history);
-        var needsExecution = IsScriptExecutionQuery(_history);
-
-        if (needsScriptSyntax)
-            systemPrompt += SystemPrompts.ScriptSyntax;
-
-        // 视觉 + 脚本执行同时需要时，注入联合 ReAct 循环（包含两者规则）
-        if (needsVision && needsExecution)
-        {
-            systemPrompt += SystemPrompts.ReActLoop;
-        }
-        else
-        {
-            // 否则按需独立注入
-            if (needsVision)
-                systemPrompt += SystemPrompts.Vision;
-            if (needsExecution)
-                systemPrompt += SystemPrompts.ScriptExecution;
-        }
-
-        // 动态注入轮次预算信息，帮助模型主动结束
-        if (currentRound > 0)
-        {
-            var remaining = MaxToolRounds - currentRound;
-            systemPrompt += $"\n\n[系统] 当前已使用 {currentRound} 轮工具调用，剩余 {remaining} 轮。" +
-                            (remaining <= 10 ? " 轮次即将耗尽，请尽快完成目标并回复用户。" : "");
-        }
-
-        var messages = new List<ChatMessage>(_history.Count + 1) { ChatMessage.System(systemPrompt) };
-        messages.AddRange(_history);
-        return messages;
-    }
-
-    /// <summary>
-    /// 判断最近的用户消息是否涉及脚本编写或理解。
-    /// </summary>
-    private static bool IsScriptRelatedQuery(List<ChatMessage> history)
-    {
-        // 检查最近3条用户消息
-        var recentUserMessages = history
-            .Where(m => m.Role == "user")
-            .TakeLast(3)
-            .Select(m => m.Content?.ToString()?.ToLowerInvariant() ?? "")
-            .ToList();
-
-        var scriptKeywords = new[]
-        {
-            "脚本", "script", "ecs", "语法", "函数", "循环", "条件", "变量",
-            "按键", "摇杆", "图像识别", "编译", "格式化", "代码", "编写",
-            "for", "if", "func", "while", "break", "continue",
-            "print", "alert", "wait", "time", "rand",
-            "怎么写", "如何写", "帮我写", "示例", "教程", "文档"
-        };
-
-        return recentUserMessages.Any(msg =>
-            scriptKeywords.Any(keyword => msg.Contains(keyword)));
-    }
-
-    /// <summary>
-    /// 判断对话是否涉及视觉分析。
-    /// </summary>
-    private static bool IsVisionRelatedQuery(List<ChatMessage> history)
-    {
-        var recentMessages = history
-            .Where(m => m.Role is "user" or "tool")
-            .TakeLast(5)
-            .Select(m => m.Content?.ToString()?.ToLowerInvariant() ?? "")
-            .ToList();
-
-        var visionKeywords = new[]
-        {
-            "画面", "屏幕", "截图", "看看", "识别", "看到", "图像", "看图",
-            "get_frame", "帧", "画面中", "当前画面", "frame", "screenshot", "vision"
-        };
-
-        return recentMessages.Any(msg =>
-            visionKeywords.Any(keyword => msg.Contains(keyword)));
-    }
-
-    /// <summary>
-    /// 判断对话是否涉及脚本运行/自动化执行。
-    /// </summary>
-    private static bool IsScriptExecutionQuery(List<ChatMessage> history)
-    {
-        var recentMessages = history
-            .Where(m => m.Role is "user" or "tool")
-            .TakeLast(5)
-            .Select(m => m.Content?.ToString()?.ToLowerInvariant() ?? "")
-            .ToList();
-
-        var executionKeywords = new[]
-        {
-            "运行", "执行", "自动", "帮我", "钓鱼", "刷", "打", "挂机",
-            "run_script", "stop_script", "跑脚本", "运行脚本", "停止脚本"
-        };
-
-        return recentMessages.Any(msg =>
-            executionKeywords.Any(keyword => msg.Contains(keyword)));
-    }
-
     private static string AppendMessage(string existing, string role, string content)
     {
         var sep = string.IsNullOrEmpty(existing) ? "" : $"{Environment.NewLine}{Environment.NewLine}";
@@ -475,11 +277,5 @@ public partial class AiAgentViewModel : ObservableObject
     {
         if (string.IsNullOrEmpty(thinking)) return "";
         return $"<details>{Environment.NewLine}<summary>💭 思考过程</summary>{Environment.NewLine}{thinking}{Environment.NewLine}</details>{Environment.NewLine}{Environment.NewLine}";
-    }
-
-    private static string Truncate(string text, int max)
-    {
-        if (string.IsNullOrEmpty(text)) return "";
-        return text.Length <= max ? text : text[..max] + "...";
     }
 }

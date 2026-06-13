@@ -40,7 +40,7 @@ public class ReadScriptTool : IAiTool
         }
     };
 
-    public Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var text = _service.GetScriptContent() ?? string.Empty;
         var lines = text.Length == 0 ? [] : text.Replace("\r\n", "\n").Split('\n');
@@ -54,7 +54,7 @@ public class ReadScriptTool : IAiTool
 
         if (startLine > endLine || lines.Length == 0)
         {
-            return Task.FromResult("(编辑区无脚本内容)");
+            return Task.FromResult(ToolResult.Ok("(编辑区无脚本内容)"));
         }
 
         // 带行号输出，便于模型定位
@@ -69,7 +69,7 @@ public class ReadScriptTool : IAiTool
             ? $"共 {lines.Length} 行：\n"
             : $"第 {startLine}-{endLine} 行（共 {lines.Length} 行）：\n";
 
-        return Task.FromResult(header + sb);
+        return Task.FromResult(ToolResult.Ok(header + sb));
     }
 
     private static bool TryGetInt(Dictionary<string, JsonElement> args, string key, out int value)

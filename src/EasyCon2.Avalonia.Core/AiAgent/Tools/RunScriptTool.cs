@@ -19,18 +19,18 @@ public class RunScriptTool : IAiTool
 
     public JsonSchema Parameters => new() { Type = "object" };
 
-    public async Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public async Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var status = _service.GetDeviceStatus();
         if (!status.IsDeviceConnected)
-            return "单片机未连接，请先连接设备后再运行脚本。";
+            return ToolResult.Error("单片机未连接，请先连接设备后再运行脚本。");
 
         if (_service.IsScriptRunning)
-            return "脚本已在运行中，请先调用 stop_script 停止。";
+            return ToolResult.Retryable("脚本已在运行中。", "请先调用 stop_script 停止当前脚本，再重新运行。");
 
         var ok = await _service.RunScriptAsync();
         return ok
-            ? "脚本已启动运行。"
-            : "编译失败，请调用 get_logs 查看错误信息。";
+            ? ToolResult.Ok("脚本已启动运行。")
+            : ToolResult.Retryable("编译失败，无法运行。", "请调用 get_logs 查看错误信息，修复后重新编译运行。");
     }
 }

@@ -42,19 +42,19 @@ public class EditScriptTool : IAiTool
         Required = ["old_string", "new_string"]
     };
 
-    public Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         if (!args.TryGetValue("old_string", out var oldEl) || oldEl.ValueKind != JsonValueKind.String)
-            return Task.FromResult("[错误] 缺少必填参数 old_string");
+            return Task.FromResult(ToolResult.Error("缺少必填参数 old_string"));
 
         if (!args.TryGetValue("new_string", out var newEl))
-            return Task.FromResult("[错误] 缺少必填参数 new_string");
+            return Task.FromResult(ToolResult.Error("缺少必填参数 new_string"));
 
         var oldString = oldEl.GetString() ?? "";
         var newString = newEl.ValueKind == JsonValueKind.String ? (newEl.GetString() ?? "") : "";
 
         if (string.IsNullOrEmpty(oldString))
-            return Task.FromResult("[错误] old_string 不能为空");
+            return Task.FromResult(ToolResult.Error("old_string 不能为空"));
 
         var count = 0;
         if (args.TryGetValue("count", out var countEl) && countEl.ValueKind == JsonValueKind.Number && countEl.TryGetInt32(out var n))
@@ -63,9 +63,11 @@ public class EditScriptTool : IAiTool
         var replaced = _service.EditScriptContent(oldString, newString, count);
 
         if (replaced < 0)
-            return Task.FromResult($"[未找到] 编辑区中未找到匹配的文本。请先用 read_script 确认内容。");
+            return Task.FromResult(ToolResult.Retryable(
+                "编辑区中未找到匹配的文本。",
+                "请先用 read_script 确认编辑区的实际内容，确保 old_string 完全匹配。"));
 
         var scope = count > 0 ? $"（限制替换 {count} 处）" : "（全部）";
-        return Task.FromResult($"✅ 已替换 {replaced} 处{scope}：\n  \"{oldString}\" → \"{newString}\"");
+        return Task.FromResult(ToolResult.Ok($"✅ 已替换 {replaced} 处{scope}：\n  \"{oldString}\" → \"{newString}\""));
     }
 }

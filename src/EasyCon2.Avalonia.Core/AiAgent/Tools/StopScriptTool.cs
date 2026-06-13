@@ -19,12 +19,12 @@ public class StopScriptTool : IAiTool
 
     public JsonSchema Parameters => new() { Type = "object" };
 
-    public Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         if (!_service.IsScriptRunning)
-            return Task.FromResult("当前没有运行中的脚本。");
+            return Task.FromResult(ToolResult.Ok("当前没有运行中的脚本。"));
 
         _service.StopScript();
-        return Task.FromResult("脚本已停止。");
+        return Task.FromResult(ToolResult.Ok("脚本已停止。"));
     }
 }

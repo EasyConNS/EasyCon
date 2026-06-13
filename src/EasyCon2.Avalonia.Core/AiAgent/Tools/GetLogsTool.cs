@@ -30,12 +30,12 @@ public class GetLogsTool : IAiTool
         }
     };
 
-    public Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var lines = 20;
         if (args.TryGetValue("lines", out var el) && el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var n))
             lines = Math.Clamp(n, 1, 200);
 
-        return Task.FromResult(_service.GetRecentLogs(lines));
+        return Task.FromResult(ToolResult.Ok(_service.GetRecentLogs(lines)));
     }
 }

@@ -24,9 +24,9 @@ public interface IAiTool
     JsonSchema Parameters { get; }
 
     /// <summary>
-    /// 执行工具调用，返回结果文本（回传给模型）。
+    /// 执行工具调用，返回结果（含状态信息，回传给模型）。
     /// </summary>
     /// <param name="args">已解析的参数字典，可能为空。</param>
     /// <param name="ct">取消令牌。</param>
-    Task<string> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default);
+    Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default);
 }
