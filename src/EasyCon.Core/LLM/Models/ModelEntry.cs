@@ -10,4 +10,6 @@ public class ModelEntry
     public string ModelId { get; init; } = "";
     public string ModelName { get; init; } = "";
     public string ProviderLabel { get; init; } = "";
+    /// <summary>是否支持视觉（图片输入）。</summary>
+    public bool Vision { get; init; }
 }

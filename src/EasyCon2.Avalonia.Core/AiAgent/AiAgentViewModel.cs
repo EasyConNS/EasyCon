@@ -14,11 +14,14 @@ namespace EasyCon2.Avalonia.Core.AiAgent;
 
 public partial class AiAgentViewModel : ObservableObject
 {
-    /// <summary>工具调度最大循环次数，防止模型无限调用工具。</summary>
-    private const int MaxToolRounds = 8;
+    /// <summary>工具调度最大循环次数，防止模型无限调用工具。ReAct 视觉循环需要更多轮次。</summary>
+    private const int MaxToolRounds = 50;
 
     private readonly List<ChatMessage> _history = [];
     private readonly ToolRegistry _tools = new();
+    private readonly IToolCallService? _toolCallService;
+    private GetFrameTool? _getFrameTool;
+    private int _frameImageIndex = -1;
 
     private string _conversationPrefix = "";
     private readonly StringBuilder _pendingReply = new();
@@ -54,6 +57,7 @@ public partial class AiAgentViewModel : ObservableObject
 
     public AiAgentViewModel(IToolCallService? toolCallService)
     {
+        _toolCallService = toolCallService;
         if (toolCallService is not null)
         {
             _tools.Register(new ReadScriptTool(toolCallService));
@@ -64,6 +68,24 @@ public partial class AiAgentViewModel : ObservableObject
             _tools.Register(new FormatScriptTool(toolCallService));
             _tools.Register(new GetDeviceStatusTool(toolCallService));
             _tools.Register(new GetLogsTool(toolCallService));
+            _tools.Register(new GetProjectTreeTool(toolCallService));
+            _tools.Register(new RunScriptTool(toolCallService));
+            _tools.Register(new StopScriptTool(toolCallService));
+        }
+    }
+
+    partial void OnSelectedEntryChanged(ModelEntry? value)
+    {
+        if (_toolCallService is null) return;
+
+        if (value?.Vision == true)
+        {
+            _getFrameTool ??= new GetFrameTool(_toolCallService);
+            _tools.Register(_getFrameTool);
+        }
+        else
+        {
+            _tools.Unregister("get_frame");
         }
     }
 
@@ -91,6 +113,7 @@ public partial class AiAgentViewModel : ObservableObject
     private void NewChat()
     {
         _history.Clear();
+        _frameImageIndex = -1;
         _conversationPrefix = "";
         _pendingReply.Clear();
         _pendingThinking.Clear();
@@ -173,7 +196,7 @@ public partial class AiAgentViewModel : ObservableObject
             var request = new ChatRequest
             {
                 Model = SelectedEntry.ModelId,
-                Messages = BuildMessages()
+                Messages = BuildMessages(round)
             };
             if (hasTools)
             {
@@ -224,6 +247,19 @@ public partial class AiAgentViewModel : ObservableObject
             for (var i = 0; i < toolCalls.Count; i++)
             {
                 _history.Add(ChatMessage.Tool(toolCalls[i].Id, results[i], toolCalls[i].Function.Name));
+            }
+
+            // 如果 get_frame 捕获了图片，替换历史中的旧图片（不累积）
+            if (_getFrameTool?.PendingImage is { } img)
+            {
+                if (_frameImageIndex >= 0 && _frameImageIndex < _history.Count)
+                    _history[_frameImageIndex] = img;
+                else
+                {
+                    _frameImageIndex = _history.Count;
+                    _history.Add(img);
+                }
+                _getFrameTool.PendingImage = null;
             }
 
             // 工具结果已追加到历史，下一轮继续对话
@@ -304,7 +340,8 @@ public partial class AiAgentViewModel : ObservableObject
                     ProviderKey = providerKey,
                     ModelId = m.Id,
                     ModelName = m.Name,
-                    ProviderLabel = providerKey
+                    ProviderLabel = providerKey,
+                    Vision = m.Vision
                 });
             }
         }
@@ -318,15 +355,39 @@ public partial class AiAgentViewModel : ObservableObject
         return _cachedConfig.Models.Providers[providerKey];
     }
 
-    private List<ChatMessage> BuildMessages()
+    private List<ChatMessage> BuildMessages(int currentRound = 0)
     {
         // 基础系统提示词
         var systemPrompt = SystemPrompts.Default;
 
         // 检查最近几条用户消息是否涉及脚本相关话题
-        if (IsScriptRelatedQuery(_history))
-        {
+        var needsScriptSyntax = IsScriptRelatedQuery(_history);
+        var needsVision = IsVisionRelatedQuery(_history);
+        var needsExecution = IsScriptExecutionQuery(_history);
+
+        if (needsScriptSyntax)
             systemPrompt += SystemPrompts.ScriptSyntax;
+
+        // 视觉 + 脚本执行同时需要时，注入联合 ReAct 循环（包含两者规则）
+        if (needsVision && needsExecution)
+        {
+            systemPrompt += SystemPrompts.ReActLoop;
+        }
+        else
+        {
+            // 否则按需独立注入
+            if (needsVision)
+                systemPrompt += SystemPrompts.Vision;
+            if (needsExecution)
+                systemPrompt += SystemPrompts.ScriptExecution;
+        }
+
+        // 动态注入轮次预算信息，帮助模型主动结束
+        if (currentRound > 0)
+        {
+            var remaining = MaxToolRounds - currentRound;
+            systemPrompt += $"\n\n[系统] 当前已使用 {currentRound} 轮工具调用，剩余 {remaining} 轮。" +
+                            (remaining <= 10 ? " 轮次即将耗尽，请尽快完成目标并回复用户。" : "");
         }
 
         var messages = new List<ChatMessage>(_history.Count + 1) { ChatMessage.System(systemPrompt) };
@@ -357,6 +418,48 @@ public partial class AiAgentViewModel : ObservableObject
 
         return recentUserMessages.Any(msg =>
             scriptKeywords.Any(keyword => msg.Contains(keyword)));
+    }
+
+    /// <summary>
+    /// 判断对话是否涉及视觉分析。
+    /// </summary>
+    private static bool IsVisionRelatedQuery(List<ChatMessage> history)
+    {
+        var recentMessages = history
+            .Where(m => m.Role is "user" or "tool")
+            .TakeLast(5)
+            .Select(m => m.Content?.ToString()?.ToLowerInvariant() ?? "")
+            .ToList();
+
+        var visionKeywords = new[]
+        {
+            "画面", "屏幕", "截图", "看看", "识别", "看到", "图像", "看图",
+            "get_frame", "帧", "画面中", "当前画面", "frame", "screenshot", "vision"
+        };
+
+        return recentMessages.Any(msg =>
+            visionKeywords.Any(keyword => msg.Contains(keyword)));
+    }
+
+    /// <summary>
+    /// 判断对话是否涉及脚本运行/自动化执行。
+    /// </summary>
+    private static bool IsScriptExecutionQuery(List<ChatMessage> history)
+    {
+        var recentMessages = history
+            .Where(m => m.Role is "user" or "tool")
+            .TakeLast(5)
+            .Select(m => m.Content?.ToString()?.ToLowerInvariant() ?? "")
+            .ToList();
+
+        var executionKeywords = new[]
+        {
+            "运行", "执行", "自动", "帮我", "钓鱼", "刷", "打", "挂机",
+            "run_script", "stop_script", "跑脚本", "运行脚本", "停止脚本"
+        };
+
+        return recentMessages.Any(msg =>
+            executionKeywords.Any(keyword => msg.Contains(keyword)));
     }
 
     private static string AppendMessage(string existing, string role, string content)

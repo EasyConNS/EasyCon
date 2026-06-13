@@ -4,6 +4,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.AiAgent;
@@ -1162,6 +1163,105 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
 
         return string.Join(Environment.NewLine, lines);
     }
+
+    /// <summary>
+    /// IToolCallService 实现：获取当前项目的目录结构树（紧凑 Markdown 格式）。
+    /// 标签文件（.IL/.ILX）标记为 `标签`，库文件（lib/ 目录下的 .ecs）标记为 `库`。
+    /// </summary>
+    public string? GetProjectTree()
+    {
+        if (string.IsNullOrEmpty(_projectDirectoryPath) || !System.IO.Directory.Exists(_projectDirectoryPath))
+            return null;
+
+        var sb = new StringBuilder();
+        BuildTreeMd(sb, _projectDirectoryPath, 0, false);
+        return sb.ToString();
+    }
+
+    private static void BuildTreeMd(StringBuilder sb, string path, int depth, bool isInLib)
+    {
+        var indent = new string(' ', depth * 2);
+        var entries = System.IO.Directory.GetFileSystemEntries(path)
+            .Where(e => !System.IO.Path.GetFileName(e).StartsWith('.'))
+            .OrderBy(e => !System.IO.Directory.Exists(e))
+            .ThenBy(e => System.IO.Path.GetFileName(e), StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var name = System.IO.Path.GetFileName(path);
+        var currentIsLib = isInLib || string.Equals(name, "lib", StringComparison.OrdinalIgnoreCase);
+
+        foreach (var entry in entries)
+        {
+            var entryName = System.IO.Path.GetFileName(entry);
+            var isDir = System.IO.Directory.Exists(entry);
+
+            if (isDir)
+            {
+                sb.Append(indent).Append("- ").Append(entryName).Append("/\n");
+                BuildTreeMd(sb, entry, depth + 1, currentIsLib);
+            }
+            else
+            {
+                var tag = "";
+                var ext = System.IO.Path.GetExtension(entry).ToUpperInvariant();
+                if (ext is ".IL" or ".ILX") tag = " `标签`";
+                else if (currentIsLib && ext is ".ECS" or ".TXT") tag = " `库`";
+
+                sb.Append(indent).Append("- ").Append(entryName).Append(tag).Append('\n');
+            }
+        }
+    }
+
+    /// <summary>
+    /// IToolCallService 实现：获取当前视频帧的 base64 PNG 字符串（半分辨率）。
+    /// 复用脚本执行的帧获取管线：GetMatFrame → Resize(0.5) → ToPngBytes → Base64。
+    /// </summary>
+    public string? GetCurrentFrameBase64()
+    {
+        var mat = _captureService.GetMatFrame();
+        if (mat is null) return null;
+
+        try
+        {
+            if (mat.Empty()) return null;
+            using var resized = mat.Resize(0.5);
+            var bytes = resized.ToPngBytes();
+            return Convert.ToBase64String(bytes);
+        }
+        finally
+        {
+            mat.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// IToolCallService 实现：编译并运行当前编辑区脚本。
+    /// </summary>
+    public async Task<bool> RunScriptAsync()
+    {
+        if (_scriptService.IsRunning) return false;
+
+        var text = EditorText ?? string.Empty;
+        var path = HasSelectedScriptPath() ? CurrentScriptPath : null;
+        if (!await _scriptService.CompileAsync(text, path))
+            return false;
+
+        if (path is not null)
+            _scriptService.Run(path);
+        else
+            _scriptService.RunFromContent(text);
+        return true;
+    }
+
+    /// <summary>
+    /// IToolCallService 实现：停止正在运行的脚本。
+    /// </summary>
+    public void StopScript() => _scriptService.Stop();
+
+    /// <summary>
+    /// IToolCallService 实现：脚本是否正在运行。
+    /// </summary>
+    public bool IsScriptRunning => _scriptService.IsRunning;
 
     #endregion
 

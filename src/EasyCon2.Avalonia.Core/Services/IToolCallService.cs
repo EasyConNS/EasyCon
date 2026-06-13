@@ -52,6 +52,39 @@ public interface IToolCallService
     /// </summary>
     DeviceStatusInfo GetDeviceStatus();
 
+    // ── 项目 ────────────────────────────────
+
+    /// <summary>
+    /// 获取当前项目的目录结构树（文本形式）。
+    /// 返回 null 表示未打开项目。
+    /// </summary>
+    string? GetProjectTree();
+
+    // ── 脚本执行 ──────────────────────────────
+
+    /// <summary>
+    /// 编译并运行当前编辑区脚本。返回是否成功启动。
+    /// </summary>
+    Task<bool> RunScriptAsync();
+
+    /// <summary>
+    /// 停止正在运行的脚本。
+    /// </summary>
+    void StopScript();
+
+    /// <summary>
+    /// 脚本是否正在运行。
+    /// </summary>
+    bool IsScriptRunning { get; }
+
+    // ── 视觉 ────────────────────────────────
+
+    /// <summary>
+    /// 获取当前视频帧的 base64 PNG 字符串（半分辨率）。
+    /// 视频源未连接或帧获取失败时返回 null。
+    /// </summary>
+    string? GetCurrentFrameBase64();
+
     // ── 日志 ────────────────────────────────
 
     /// <summary>

@@ -19,6 +19,11 @@ public class ToolRegistry
     }
 
     /// <summary>
+    /// 按名称注销一个工具。不存在时静默忽略。
+    /// </summary>
+    public void Unregister(string name) => _tools.Remove(name);
+
+    /// <summary>
     /// 是否注册了指定名称的工具。
     /// </summary>
     public bool Contains(string name) => _tools.ContainsKey(name);
