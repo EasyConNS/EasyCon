@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:EasyCon2.Avalonia.Core.AiAgent"
+             xmlns:model="using:EasyCon.Core.LLM.Models"
              x:Class="EasyCon2.Avalonia.Core.AiAgent.AiAgentView"
              x:DataType="vm:AiAgentViewModel"
              IsVisible="{Binding IsOpen}">
@@ -24,19 +25,20 @@
             <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
         </Style>
 
-        <Style Selector="Button.agent-send-button">
-            <Setter Property="Width" Value="46"/>
-            <Setter Property="Height" Value="46"/>
-            <Setter Property="MinWidth" Value="46"/>
-            <Setter Property="MinHeight" Value="46"/>
+        <Style Selector="Button.agent-action-button">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="MinWidth" Value="32"/>
+            <Setter Property="MinHeight" Value="32"/>
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}"/>
+            <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{DynamicResource WorkbenchOnAccentBrush}"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.agent-action-button /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="6"/>
         </Style>
 
         <Style Selector="TextBox.agent-output">
@@ -50,10 +52,18 @@
         <Style Selector="TextBox.agent-input">
             <Setter Property="AcceptsReturn" Value="True"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Padding" Value="12,10,80,10"/>
             <Setter Property="MinHeight" Value="81"/>
             <Setter Property="MaxHeight" Value="165"/>
             <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+
+        <Style Selector="ComboBox.agent-model-combo">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="MaxWidth" Value="200"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
     </UserControl.Styles>
 
@@ -63,8 +73,9 @@
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
         <Grid RowDefinitions="34,*,Auto">
+            <!-- 标题栏 -->
             <Grid Grid.Row="0"
-                  ColumnDefinitions="*,Auto"
+                  ColumnDefinitions="*,Auto,Auto"
                   Background="{DynamicResource WorkbenchMenuBrush}">
                 <TextBlock Text="AI Agent"
                            Margin="12,0,0,0"
@@ -74,6 +85,14 @@
                            Foreground="{DynamicResource WorkbenchTextBrush}"/>
                 <Button Grid.Column="1"
                         Classes="agent-icon-button"
+                        Command="{Binding NewChatCommand}"
+                        ToolTip.Tip="新对话">
+                    <PathIcon Data="M9,1 L9,15 M1,7 L17,7"
+                              Width="10" Height="10"
+                              StrokeThickness="2"/>
+                </Button>
+                <Button Grid.Column="2"
+                        Classes="agent-icon-button"
                         Command="{Binding CloseCommand}"
                         ToolTip.Tip="关闭">
                     <PathIcon Data="M1,0 L8,7 L15,0 L16,1 L9,8 L16,15 L15,16 L8,9 L1,16 L0,15 L7,8 L0,1 Z"
@@ -81,39 +100,77 @@
                 </Button>
             </Grid>
 
-            <TextBox Grid.Row="1"
+            <!-- 输出区 -->
+            <TextBox x:Name="OutputTextBox"
+                     Grid.Row="1"
                      Classes="agent-output"
                      Margin="10"
                      Text="{Binding ConversationText}"
+                     CaretIndex="{Binding OutputCaretIndex, Mode=OneWay}"
                      IsReadOnly="True"
                      VerticalAlignment="Stretch"
                      HorizontalAlignment="Stretch"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
 
-            <Grid Grid.Row="2"
-                  ColumnDefinitions="*,Auto"
-                  ColumnSpacing="8"
-                  Margin="10,0,10,10">
+            <!-- 输入区：输入框 + 右下角叠加控件 -->
+            <Grid Grid.Row="2" Margin="10,0,10,10">
                 <TextBox x:Name="InputTextBox"
                          Classes="agent-input"
                          Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          PlaceholderText="输入消息"/>
-                <Button x:Name="SendButton"
-                        Grid.Column="1"
-                        Classes="agent-send-button"
-                        Command="{Binding SendCommand}"
-                        VerticalAlignment="Center"
-                        ToolTip.Tip="发送">
-                    <Path Data="M2,3 L18,10 L2,17 L5,10 Z M5,10 L18,10"
-                          Width="20"
-                          Height="20"
-                          Stretch="Uniform"
-                          Fill="Transparent"
-                          Stroke="{DynamicResource WorkbenchOnAccentBrush}"
-                          StrokeThickness="2"
-                          StrokeLineCap="Round"/>
-                </Button>
+
+                <!-- 右下角叠加：模型选择 + 发送/停止 -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Spacing="4"
+                            Margin="0,0,6,6">
+                    <ComboBox Classes="agent-model-combo"
+                              ItemsSource="{Binding AllModels}"
+                              SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              ToolTip.Tip="选择模型">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="model:ModelEntry">
+                                <StackPanel Spacing="1">
+                                    <TextBlock Text="{Binding ModelName}" FontSize="12"/>
+                                    <TextBlock Text="{Binding ProviderLabel}"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <Grid Width="32" Height="32" VerticalAlignment="Center">
+                        <Button x:Name="SendButton"
+                                Classes="agent-action-button"
+                                Background="{DynamicResource WorkbenchAccentBrush}"
+                                Command="{Binding SendOrStopCommand}"
+                                ToolTip.Tip="发送"
+                                IsVisible="{Binding !IsGenerating}">
+                            <Path Data="M2,3 L18,10 L2,17 L5,10 Z M5,10 L18,10"
+                                  Width="14" Height="14"
+                                  Stretch="Uniform"
+                                  Fill="Transparent"
+                                  Stroke="{DynamicResource WorkbenchOnAccentBrush}"
+                                  StrokeThickness="2"
+                                  StrokeLineCap="Round"/>
+                        </Button>
+                        <Button x:Name="StopButton"
+                                Classes="agent-action-button"
+                                Background="{DynamicResource ErrorBrush}"
+                                Command="{Binding SendOrStopCommand}"
+                                ToolTip.Tip="停止"
+                                IsVisible="{Binding IsGenerating}">
+                            <Path Data="M4,4 L16,4 L16,16 L4,16 Z"
+                                  Width="12" Height="12"
+                                  Stretch="Uniform"
+                                  Fill="{DynamicResource WorkbenchOnAccentBrush}"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
             </Grid>
         </Grid>
     </Border>

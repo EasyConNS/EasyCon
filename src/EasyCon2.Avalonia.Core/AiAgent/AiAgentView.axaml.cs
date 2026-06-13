@@ -25,10 +25,11 @@ public partial class AiAgentView : UserControl
             return;
         }
 
-        var command = SendButton.Command;
-        var parameter = SendButton.CommandParameter;
-        if (command?.CanExecute(parameter) == true)
-            command.Execute(parameter);
+        // 回车发送：找到当前可见的按钮触发命令
+        var btn = StopButton.IsVisible ? StopButton : SendButton;
+        var command = btn.Command;
+        if (command?.CanExecute(btn.CommandParameter) == true)
+            command.Execute(btn.CommandParameter);
     }
 
     private void InsertNewLine()

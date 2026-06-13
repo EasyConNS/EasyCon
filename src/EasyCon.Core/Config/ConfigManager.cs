@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using EasyCon.Core.LLM.Models;
 
 namespace EasyCon.Core.Config;
 
@@ -43,6 +44,16 @@ public static class ConfigManager
     public static void SaveAlert(AlertConfig config)
     {
         Save(AppPaths.AlertConfig, config);
+    }
+
+    public static ModelsConfig LoadModelsConfig()
+    {
+        return Load<ModelsConfig>(AppPaths.ModelsConfig, _jsonReadOptions);
+    }
+
+    public static void SaveModelsConfig(ModelsConfig config)
+    {
+        Save(AppPaths.ModelsConfig, config);
     }
 
     private static T Load<T>(string path, JsonSerializerOptions? options = null) where T : new()
