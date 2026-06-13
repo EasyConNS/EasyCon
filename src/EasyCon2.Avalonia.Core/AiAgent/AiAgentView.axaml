@@ -41,6 +41,11 @@
             <Setter Property="CornerRadius" Value="6"/>
         </Style>
 
+        <Style Selector="Button.agent-action-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"/>
+            <Setter Property="BorderBrush" Value="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
+        </Style>
+
         <Style Selector="TextBox.agent-output">
             <Setter Property="AcceptsReturn" Value="True"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -88,8 +93,7 @@
                         Command="{Binding NewChatCommand}"
                         ToolTip.Tip="新对话">
                     <PathIcon Data="M9,1 L9,15 M1,7 L17,7"
-                              Width="10" Height="10"
-                              StrokeThickness="2"/>
+                              Width="10" Height="10"/>
                 </Button>
                 <Button Grid.Column="2"
                         Classes="agent-icon-button"

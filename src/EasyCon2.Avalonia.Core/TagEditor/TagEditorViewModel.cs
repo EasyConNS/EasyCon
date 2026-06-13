@@ -25,7 +25,7 @@ public partial class TagEditorViewModel : ObservableObject
     [ObservableProperty]
     private IImage? _rangePreviewImage;
 
-    public bool HasSourceImage => _sourceImage != null;
+    public bool HasSourceImage => SourceImage != null;
 
     public static readonly IReadOnlyList<SearchMethod> SearchMethods = ECCore.GetSearchMethods().ToList();
 

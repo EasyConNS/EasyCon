@@ -22,7 +22,7 @@
         <Color x:Key="WorkbenchOnAccentColor">#FFFFFF</Color>
         <Color x:Key="WorkbenchAmberColor">#FF8B00</Color>
         <Color x:Key="WorkbenchButtonColor">#F4F5F8</Color>
-        <Color x:Key="WorkbenchButtonHoverColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchButtonHoverColor">#E8E9ED</Color>
         <Color x:Key="WorkbenchButtonBorderColor">#C1C3C9</Color>
         <Color x:Key="WorkbenchOutlineAccentBackgroundColor">#F7FBFF</Color>
         <Color x:Key="WorkbenchControlBorderColor">#B8BBC1</Color>
@@ -110,6 +110,11 @@
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchOnAccentBrush}" />
         <Setter Property="FontSize" Value="18" />
         <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="Button.run-button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchRunBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchRunBrush}" />
     </Style>
 
     <Style Selector="Button.outline-accent">
@@ -318,9 +323,17 @@
         <Setter Property="BorderBrush" Value="#9EA1A8" />
     </Style>
 
+    <Style Selector="Border.theme-preview.industrial TextBlock">
+        <Setter Property="Foreground" Value="#66676B" />
+    </Style>
+
     <Style Selector="Border.theme-preview.light">
         <Setter Property="Background" Value="#FAF9F5" />
         <Setter Property="BorderBrush" Value="#E6DFD8" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.light TextBlock">
+        <Setter Property="Foreground" Value="#141413" />
     </Style>
 
     <Style Selector="Border.theme-preview.dark">
