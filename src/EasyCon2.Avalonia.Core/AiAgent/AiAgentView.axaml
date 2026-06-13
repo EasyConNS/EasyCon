@@ -92,8 +92,12 @@
                         Classes="agent-icon-button"
                         Command="{Binding NewChatCommand}"
                         ToolTip.Tip="新对话">
-                    <PathIcon Data="M9,1 L9,15 M1,7 L17,7"
-                              Width="10" Height="10"/>
+                    <Path Data="M9,1 L9,15 M1,7 L17,7"
+                          Width="14" Height="14"
+                          Stretch="Uniform"
+                          Stroke="{DynamicResource WorkbenchMutedTextBrush}"
+                          StrokeThickness="2"
+                          StrokeLineCap="Round"/>
                 </Button>
                 <Button Grid.Column="2"
                         Classes="agent-icon-button"
