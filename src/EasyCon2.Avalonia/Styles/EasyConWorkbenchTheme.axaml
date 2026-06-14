@@ -431,32 +431,32 @@
     </Style>
 
     <Style Selector="Border.theme-preview.classic">
-        <Setter Property="Background" Value="#FAFAFA" />
-        <Setter Property="BorderBrush" Value="#AEB4BD" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchSettingsCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchSettingsCardBorderBrush}" />
         <Setter Property="CornerRadius" Value="2" />
     </Style>
 
     <Style Selector="Border.theme-preview.classic TextBlock">
-        <Setter Property="Foreground" Value="#40454D" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
     </Style>
 
     <Style Selector="Border.theme-preview.classic Border.theme-strip">
-        <Setter Property="Background" Value="#35AEE2" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
         <Setter Property="CornerRadius" Value="1" />
     </Style>
 
     <Style Selector="Border.theme-preview.rounded">
-        <Setter Property="Background" Value="#F8F5F0" />
-        <Setter Property="BorderBrush" Value="#D8C8B6" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchSettingsCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchSettingsCardBorderBrush}" />
         <Setter Property="CornerRadius" Value="14" />
     </Style>
 
     <Style Selector="Border.theme-preview.rounded TextBlock">
-        <Setter Property="Foreground" Value="#4A3E35" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
     </Style>
 
     <Style Selector="Border.theme-preview.rounded Border.theme-strip">
-        <Setter Property="Background" Value="#D9845D" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
         <Setter Property="CornerRadius" Value="12" />
     </Style>
 
@@ -657,13 +657,13 @@
     </Style>
 
     <Style Selector="Grid.card-header">
-        <Setter Property="Height" Value="44" />
+        <Setter Property="Height" Value="{DynamicResource WorkbenchTitleBarHeight}" />
         <Setter Property="ColumnSpacing" Value="8" />
         <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
     </Style>
 
     <Style Selector="TextBlock.card-header-title">
-        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />

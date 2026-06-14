@@ -704,8 +704,8 @@
 
                                         <Grid ColumnDefinitions="*,Auto,Auto"
                                               ColumnSpacing="10">
-                                            <TextBlock Classes="setting-caption"
-                                                       Text="外观"/>
+                                            <TextBlock Classes="setting-caption" Text="外观"
+                                                       VerticalAlignment="Center"/>
                                             <TextBlock Grid.Column="1"
                                                        Classes="setting-caption"
                                                        Text="跟随系统自动切换"
@@ -1566,7 +1566,8 @@
                                         </Grid>
 
                                         <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
-                                            <TextBlock Classes="setting-caption" Text="外观"/>
+                                            <TextBlock Classes="setting-caption" Text="外观"
+                                                       VerticalAlignment="Center"/>
                                             <TextBlock Grid.Column="1"
                                                        Classes="setting-caption"
                                                        Text="跟随系统自动切换"
