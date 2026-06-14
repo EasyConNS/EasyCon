@@ -71,8 +71,6 @@
         <Thickness x:Key="WorkbenchCardPagePadding">18</Thickness>
         <x:Double x:Key="WorkbenchCardGap">18</x:Double>
         <BoxShadows x:Key="WorkbenchCardShadow">0 10 28 -8 #3E48564A</BoxShadows>
-        <Thickness x:Key="WorkbenchWindowFrameMargin">8</Thickness>
-        <BoxShadows x:Key="WorkbenchWindowShadow">0 18 46 -8 #00000066</BoxShadows>
         <SolidColorBrush x:Key="WorkbenchStatusDisconnectedBrush" Color="#FFF0F3" />
         <SolidColorBrush x:Key="WorkbenchStatusDisconnectedTextBrush" Color="#FF3B3B" />
         <LinearGradientBrush x:Key="WorkbenchShadowToLeftBrush"
@@ -95,7 +93,6 @@
         </LinearGradientBrush>
         <CornerRadius x:Key="WorkbenchControlRadius">0</CornerRadius>
         <CornerRadius x:Key="WorkbenchCardRadius">0</CornerRadius>
-        <CornerRadius x:Key="WorkbenchWindowRadius">0</CornerRadius>
         <x:Double x:Key="WorkbenchMenuHeight">34</x:Double>
         <x:Double x:Key="WorkbenchTitleBarHeight">34</x:Double>
         <x:Double x:Key="WorkbenchButtonMinHeight">32</x:Double>
@@ -110,32 +107,6 @@
         <Setter Property="FontFamily" Value="{DynamicResource WorkbenchUiFontFamily}" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
-    </Style>
-
-    <Style Selector="Border.window-shell">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchWindowBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchWindowRadius}" />
-        <Setter Property="BoxShadow" Value="{DynamicResource WorkbenchWindowShadow}" />
-        <Setter Property="Margin" Value="{DynamicResource WorkbenchWindowFrameMargin}" />
-    </Style>
-
-    <Style Selector="Border.window-shell-content">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchWindowBrush}" />
-        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchWindowRadius}" />
-        <Setter Property="ClipToBounds" Value="True" />
-    </Style>
-
-    <Style Selector="Window.maximized Border.window-shell">
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="BoxShadow" Value="0 0 0 0 #00000000" />
-        <Setter Property="CornerRadius" Value="0" />
-        <Setter Property="Margin" Value="0" />
-    </Style>
-
-    <Style Selector="Window.maximized Border.window-shell-content">
-        <Setter Property="CornerRadius" Value="0" />
     </Style>
 
     <Style Selector="Menu">
@@ -308,32 +279,6 @@
     <Style Selector="TextBox:focus">
         <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
-    </Style>
-
-    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobBounds">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
-    </Style>
-
-    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchTrack">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
-    </Style>
-
-    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchThumb">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}" />
-    </Style>
-
-    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobOn">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}" />
-    </Style>
-
-    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobOff">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}" />
-    </Style>
-
-    <Style Selector="ToggleSwitch:checked /template/ Panel#PART_SwitchKnob">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}" />
     </Style>
 
     <Style Selector="Window.dark ListBoxItem:pointerover">
@@ -513,20 +458,6 @@
     <Style Selector="Border.theme-preview.rounded Border.theme-strip">
         <Setter Property="Background" Value="#D9845D" />
         <Setter Property="CornerRadius" Value="12" />
-    </Style>
-
-    <Style Selector="Border.theme-preview.glass">
-        <Setter Property="Background" Value="#E8F1F6" />
-        <Setter Property="BorderBrush" Value="#9EB6C5" />
-        <Setter Property="Opacity" Value="0.88" />
-    </Style>
-
-    <Style Selector="Border.theme-preview.glass TextBlock">
-        <Setter Property="Foreground" Value="#263F4C" />
-    </Style>
-
-    <Style Selector="Border.theme-preview.glass Border.theme-strip">
-        <Setter Property="Background" Value="#71B7D2" />
     </Style>
 
     <Style Selector="Border.layout-preview">
@@ -746,14 +677,14 @@
 
     <Style Selector="Button.title-tab">
         <Setter Property="MinWidth" Value="0" />
-        <Setter Property="MinHeight" Value="34" />
-        <Setter Property="Height" Value="34" />
-        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="Padding" Value="10,0" />
         <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
-        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontSize" Value="12" />
     </Style>
 
     <Style Selector="Button.title-tab:pointerover /template/ ContentPresenter">

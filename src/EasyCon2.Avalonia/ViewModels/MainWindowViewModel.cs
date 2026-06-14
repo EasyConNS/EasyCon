@@ -64,8 +64,6 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
 
     public string VersionBadgeText { get; }
 
-    public string QqGroupText { get; } = "QQ群: 946057081";
-
     // 当前版本号（用户配置页显示）
     [ObservableProperty]
     private string _currentVersion = "";
@@ -241,6 +239,13 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     [ObservableProperty]
     private bool _autoSwitchLayoutEnabled = false;
 
+    [ObservableProperty]
+    private bool _autoSwitchColorSchemeEnabled = false;
+
+    private bool? _systemPrefersDarkColorScheme;
+
+    public bool IsManualColorSchemeEnabled => !AutoSwitchColorSchemeEnabled;
+
     // 显示代码折叠
     [ObservableProperty]
     private bool _showFolding = true;
@@ -327,7 +332,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
         if (plusIdx > 0) ver = ver[..plusIdx];
         BrandTitle = "伊机控 EasyCon";
         VersionBadgeText = $"v{ver}";
-        WindowTitle = $"伊机控 EasyCon v{ver}  QQ群:946057081";
+        WindowTitle = $"{BrandTitle} {VersionBadgeText}";
         CurrentVersion = $"当前版本：v{fullVer}";
 
         _logService = logService;
@@ -623,6 +628,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
             ShowDebugInfo = _userConfig.ShowDebugInfo;
             WelcomeText = _userConfig.WelcomeText ?? ConfigState.DefaultWelcomeText;
             AutoSwitchLayoutEnabled = _userConfig.AutoSwitchLayoutEnabled;
+            AutoSwitchColorSchemeEnabled = _userConfig.AutoSwitchColorSchemeEnabled;
             ApplySavedLayoutSettings(_userConfig);
 
             var colorSchemeName = NormalizeColorSchemeName(_userConfig.ColorSchemeName, _userConfig.DarkMode);
@@ -655,6 +661,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
         _userConfig.ShowDebugInfo = ShowDebugInfo;
         _userConfig.WelcomeText = WelcomeText ?? string.Empty;
         _userConfig.AutoSwitchLayoutEnabled = AutoSwitchLayoutEnabled;
+        _userConfig.AutoSwitchColorSchemeEnabled = AutoSwitchColorSchemeEnabled;
         _userConfig.IsIdleThreeColumnLayoutSelected = IsIdleThreeColumnLayoutSelected;
         _userConfig.IsIdleTwoColumnLayoutSelected = IsIdleTwoColumnLayoutSelected;
         _userConfig.IsRunningThreeColumnLayoutSelected = IsRunningThreeColumnLayoutSelected;
@@ -713,7 +720,6 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
         {
             ThemeManager.ClassicStyleName => ThemeManager.ClassicStyleName,
             ThemeManager.RoundedStyleName => ThemeManager.RoundedStyleName,
-            ThemeManager.GlassStyleName => ThemeManager.GlassStyleName,
             _ => colorSchemeName == ThemeManager.whiteGraySchemeName
                 ? ThemeManager.ClassicStyleName
                 : ThemeManager.RoundedStyleName
@@ -727,7 +733,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
 
     private void SelectColorScheme(string? colorSchemeName)
     {
-        if (string.IsNullOrWhiteSpace(colorSchemeName))
+        if (AutoSwitchColorSchemeEnabled || string.IsNullOrWhiteSpace(colorSchemeName))
             return;
 
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
@@ -743,6 +749,27 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
         ThemeManager.Instance.ApplyThemeStyle(themeStyleName);
         SaveUserSettings();
         _logService.AddLog($"已切换风格: {themeStyleName}");
+    }
+
+    public void UpdateSystemColorScheme(bool prefersDark)
+    {
+        _systemPrefersDarkColorScheme = prefersDark;
+
+        if (AutoSwitchColorSchemeEnabled)
+            ApplySystemColorScheme();
+    }
+
+    private void ApplySystemColorScheme()
+    {
+        if (_systemPrefersDarkColorScheme is not { } prefersDark)
+            return;
+
+        var colorSchemeName = prefersDark
+            ? ThemeManager.DarkModeSchemeName
+            : ThemeManager.whiteGraySchemeName;
+
+        ThemeManager.Instance.ApplyColorScheme(colorSchemeName, followSystemThemeVariant: true);
+        SaveUserSettings();
     }
 
     private void SelectEditorTab(string? tabIndexText)
@@ -1661,6 +1688,16 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
 
     partial void OnAutoSwitchLayoutEnabledChanged(bool value)
     {
+        SaveUserSettings();
+    }
+
+    partial void OnAutoSwitchColorSchemeEnabledChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsManualColorSchemeEnabled));
+
+        if (value)
+            ApplySystemColorScheme();
+
         SaveUserSettings();
     }
 

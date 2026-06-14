@@ -22,10 +22,18 @@ internal static class WindowFrameService
 
     public static void SetupWindow(Window window)
     {
-        if (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS())
+        if (OperatingSystem.IsWindows())
         {
             window.WindowDecorations = WindowDecorations.BorderOnly;
             window.SystemDecorations = WindowDecorations.BorderOnly;
+            window.ExtendClientAreaToDecorationsHint = true;
+            window.BorderThickness = new Thickness(1);
+            UpdateWindowStatePadding(window);
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            window.WindowDecorations = WindowDecorations.Full;
+            window.SystemDecorations = WindowDecorations.Full;
             window.ExtendClientAreaToDecorationsHint = true;
             window.BorderThickness = new Thickness(1);
             UpdateWindowStatePadding(window);

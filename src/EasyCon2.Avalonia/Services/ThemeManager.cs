@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Styling;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace EasyCon2.Avalonia.Services;
@@ -11,7 +12,6 @@ public sealed partial class ThemeManager : ObservableObject
     public const string DarkModeSchemeName = "Dark模式";
     public const string ClassicStyleName = "经典";
     public const string RoundedStyleName = "卡片式";
-    public const string GlassStyleName = "磨砂玻璃";
     private const double WorkbenchMenuHeight = 34;
     private const double WorkbenchButtonMinHeight = 32;
     private const double WorkbenchCompactButtonMinHeight = 26;
@@ -32,7 +32,7 @@ public sealed partial class ThemeManager : ObservableObject
     private string _selectedThemeStyleName = RoundedStyleName;
 
     public string[] ColorSchemeNames { get; } = { whiteGraySchemeName, WarmToneSchemeName, DarkModeSchemeName };
-    public string[] ThemeStyleNames { get; } = { ClassicStyleName, RoundedStyleName, GlassStyleName };
+    public string[] ThemeStyleNames { get; } = { ClassicStyleName, RoundedStyleName };
 
     public bool IsDarkMode => SelectedColorSchemeName == DarkModeSchemeName;
 
@@ -44,7 +44,7 @@ public sealed partial class ThemeManager : ObservableObject
         ApplyThemeStyle(SelectedThemeStyleName);
     }
 
-    public void ApplyColorScheme(string colorSchemeName)
+    public void ApplyColorScheme(string colorSchemeName, bool followSystemThemeVariant = false)
     {
         var palette = colorSchemeName switch
         {
@@ -58,7 +58,9 @@ public sealed partial class ThemeManager : ObservableObject
             return;
 
         SelectedColorSchemeName = colorSchemeName;
+        ApplyAvaloniaThemeVariant(colorSchemeName, followSystemThemeVariant);
         var windowColor = GetWindowColor(colorSchemeName, SelectedThemeStyleName, palette.Window);
+        var titleColor = GetTitleColor(SelectedThemeStyleName, palette.Title, windowColor);
         var settingsCardColor = GetSettingsCardColor(colorSchemeName);
         var statusDisconnectedBackground = GetStatusDisconnectedBackground(colorSchemeName, palette.Panel);
         var statusDisconnectedText = GetStatusDisconnectedText(colorSchemeName, palette.Accent);
@@ -66,7 +68,7 @@ public sealed partial class ThemeManager : ObservableObject
         var statusConnectedText = GetStatusConnectedText();
 
         SetResource("WorkbenchWindowColor", windowColor);
-        SetResource("WorkbenchTitleColor", palette.Title);
+        SetResource("WorkbenchTitleColor", titleColor);
         SetResource("WorkbenchMenuColor", palette.Menu);
         SetResource("WorkbenchPanelColor", palette.Panel);
         SetResource("WorkbenchTreeColor", palette.Tree);
@@ -99,7 +101,7 @@ public sealed partial class ThemeManager : ObservableObject
         SetResource("WorkbenchStatusConnectedBackgroundColor", statusConnectedBackground);
 
         SetResource("WorkbenchWindowBrush", new SolidColorBrush(windowColor));
-        SetResource("WorkbenchTitleBrush", new SolidColorBrush(palette.Title));
+        SetResource("WorkbenchTitleBrush", new SolidColorBrush(titleColor));
         SetResource("WorkbenchMenuBrush", new SolidColorBrush(palette.Menu));
         SetResource("WorkbenchPanelBrush", new SolidColorBrush(palette.Panel));
         SetResource("WorkbenchTreeBrush", new SolidColorBrush(palette.Tree));
@@ -129,6 +131,7 @@ public sealed partial class ThemeManager : ObservableObject
         SetResource("WorkbenchStatusDisconnectedTextBrush", new SolidColorBrush(statusDisconnectedText));
         SetResource("WorkbenchStatusConnectedBrush", new SolidColorBrush(statusConnectedBackground));
         SetResource("WorkbenchStatusConnectedTextBrush", new SolidColorBrush(statusConnectedText));
+        SetFluentAccentResources(palette);
         SetDirectionalShadowResources(SelectedThemeStyleName == ClassicStyleName, palette.DirectionalShadow);
         SetComboBoxGlyphResources(colorSchemeName, palette);
         DarkModeChanged?.Invoke(IsDarkMode);
@@ -140,7 +143,6 @@ public sealed partial class ThemeManager : ObservableObject
         {
             ClassicStyleName => WorkbenchStyle.Classic,
             RoundedStyleName => WorkbenchStyle.Rounded,
-            GlassStyleName => WorkbenchStyle.Glass,
             _ => null
         };
 
@@ -151,7 +153,6 @@ public sealed partial class ThemeManager : ObservableObject
 
         SetResource("WorkbenchControlRadius", style.ControlRadius);
         SetResource("WorkbenchCardRadius", style.CardRadius);
-        SetResource("WorkbenchWindowRadius", GetWindowRadius(themeStyleName));
         SetResource("WorkbenchMenuHeight", style.MenuHeight);
         SetResource("WorkbenchButtonMinHeight", style.ButtonMinHeight);
         SetResource("WorkbenchCompactButtonMinHeight", style.CompactButtonMinHeight);
@@ -167,21 +168,22 @@ public sealed partial class ThemeManager : ObservableObject
         SetResource("WorkbenchSettingsCardShadow", style.SettingsCardShadow);
         SetResource("WorkbenchCardLayoutVisible", themeStyleName == RoundedStyleName);
         SetResource("WorkbenchClassicLayoutVisible", themeStyleName != RoundedStyleName);
-        SetResource("WorkbenchTitleBarHeight", themeStyleName == RoundedStyleName ? 46d : style.MenuHeight);
+        SetResource("WorkbenchTitleBarHeight", style.MenuHeight);
         SetResource("WorkbenchCardPagePadding", themeStyleName == RoundedStyleName
             ? new Thickness(18, 8, 18, 18)
             : new Thickness(0));
-        SetResource("WorkbenchWindowFrameMargin", new Thickness(8));
-        SetResource("WorkbenchWindowShadow", GetWindowShadow(themeStyleName));
 
         var palette = GetColorScheme(SelectedColorSchemeName);
         if (palette is not null)
         {
             var windowColor = GetWindowColor(SelectedColorSchemeName, themeStyleName, palette.Window);
+            var titleColor = GetTitleColor(themeStyleName, palette.Title, windowColor);
             var settingsCardColor = GetSettingsCardColor(SelectedColorSchemeName);
             var statusDisconnectedBackground = GetStatusDisconnectedBackground(SelectedColorSchemeName, palette.Panel);
             SetResource("WorkbenchWindowColor", windowColor);
+            SetResource("WorkbenchTitleColor", titleColor);
             SetResource("WorkbenchWindowBrush", new SolidColorBrush(windowColor));
+            SetResource("WorkbenchTitleBrush", new SolidColorBrush(titleColor));
             SetResource("WorkbenchSettingsCardColor", settingsCardColor);
             SetResource("WorkbenchSettingsCardBrush", new SolidColorBrush(settingsCardColor));
             SetResource("WorkbenchStatusDisconnectedBackgroundColor", statusDisconnectedBackground);
@@ -210,6 +212,13 @@ public sealed partial class ThemeManager : ObservableObject
         return fallbackColor;
     }
 
+    private static Color GetTitleColor(string themeStyleName, Color fallbackColor, Color windowColor)
+    {
+        return themeStyleName == RoundedStyleName
+            ? windowColor
+            : fallbackColor;
+    }
+
     private static Color GetSettingsCardColor(string colorSchemeName)
     {
         return colorSchemeName switch
@@ -217,28 +226,6 @@ public sealed partial class ThemeManager : ObservableObject
             WarmToneSchemeName => Color.FromRgb(0xFA, 0xF9, 0xF5),
             DarkModeSchemeName => Color.FromRgb(0x17, 0x17, 0x17),
             _ => Color.FromRgb(0xF9, 0xFA, 0xFB)
-        };
-    }
-
-    private static CornerRadius GetWindowRadius(string themeStyleName)
-    {
-        return themeStyleName switch
-        {
-            RoundedStyleName => new CornerRadius(18),
-            ClassicStyleName => new CornerRadius(6),
-            GlassStyleName => new CornerRadius(18),
-            _ => new CornerRadius(0)
-        };
-    }
-
-    private static BoxShadows GetWindowShadow(string themeStyleName)
-    {
-        return themeStyleName switch
-        {
-            ClassicStyleName => BoxShadows.Parse("0 14 34 -10 #00000055"),
-            RoundedStyleName => BoxShadows.Parse("0 18 46 -8 #00000066"),
-            GlassStyleName => BoxShadows.Parse("0 18 46 -8 #00000066"),
-            _ => BoxShadows.Parse("0 0 0 0 #00000000")
         };
     }
 
@@ -306,6 +293,30 @@ public sealed partial class ThemeManager : ObservableObject
         SetResource("ComboBoxDropDownGlyphForegroundPressed", glyphBrush);
         SetResource("ComboBoxDropDownGlyphForegroundFocused", glyphBrush);
         SetResource("ComboBoxDropDownGlyphForegroundDisabled", glyphBrush);
+    }
+
+    private static void SetFluentAccentResources(WorkbenchColorScheme palette)
+    {
+        SetResource("SystemAccentColor", palette.Accent);
+        SetResource("SystemAccentColorLight1", palette.Accent);
+        SetResource("SystemAccentColorLight2", palette.Accent);
+        SetResource("SystemAccentColorLight3", palette.Accent);
+        SetResource("SystemAccentColorDark1", palette.Accent);
+        SetResource("SystemAccentColorDark2", palette.Accent);
+        SetResource("SystemAccentColorDark3", palette.Accent);
+    }
+
+    private static void ApplyAvaloniaThemeVariant(string colorSchemeName, bool followSystemThemeVariant)
+    {
+        var application = Application.Current;
+        if (application == null)
+            return;
+
+        application.RequestedThemeVariant = followSystemThemeVariant
+            ? ThemeVariant.Default
+            : colorSchemeName == DarkModeSchemeName
+                ? ThemeVariant.Dark
+                : ThemeVariant.Light;
     }
 
     private static void SetResource(string key, object value)
@@ -480,22 +491,5 @@ public sealed partial class ThemeManager : ObservableObject
             new Thickness(1),
             BoxShadows.Parse("0 10 28 -8 #3E48564A"),
             BoxShadows.Parse("0 10 28 -8 #3E48564A"));
-
-        public static WorkbenchStyle Glass { get; } = new(
-            new CornerRadius(12),
-            new CornerRadius(16),
-            WorkbenchMenuHeight,
-            WorkbenchButtonMinHeight,
-            WorkbenchCompactButtonMinHeight,
-            WorkbenchInputMinHeight,
-            WorkbenchUiFontFamily,
-            WorkbenchMonoFontFamily,
-            new Thickness(0, 0, 1, 0),
-            new Thickness(0, 0, 0, 1),
-            new Thickness(0, 1, 0, 0),
-            new Thickness(1),
-            new Thickness(1),
-            BoxShadows.Parse("0 0 0 0 #00000000"),
-            BoxShadows.Parse("0 0 0 0 #00000000"));
     }
 }

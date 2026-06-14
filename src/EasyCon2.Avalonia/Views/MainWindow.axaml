@@ -25,46 +25,15 @@
            CanResize="True"
            ExtendClientAreaToDecorationsHint="True"
             ExtendClientAreaTitleBarHeightHint="{DynamicResource WorkbenchTitleBarHeight}"
-           Background="Transparent"
+           Background="{DynamicResource WorkbenchWindowBrush}"
            behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
 
     <Window.Styles>
-        <Style Selector="ToggleButton.debug-switch">
-            <Setter Property="Width" Value="30" />
-            <Setter Property="Height" Value="16" />
-            <Setter Property="MinWidth" Value="0" />
+        <Style Selector="ToggleSwitch.compact-switch">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="MinWidth" Value="46" />
             <Setter Property="MinHeight" Value="0" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Panel Width="30"
-                           Height="16">
-                        <Border x:Name="SwitchTrack"
-                                Width="30"
-                                Height="16"
-                                CornerRadius="8"
-                                Background="{DynamicResource WorkbenchInputBrush}"
-                                BorderBrush="{DynamicResource WorkbenchMutedTextBrush}"
-                                BorderThickness="1"/>
-                        <Border x:Name="SwitchThumb"
-                                Width="10"
-                                Height="10"
-                                Margin="4,0,0,0"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Center"
-                                CornerRadius="5"
-                                Background="{DynamicResource WorkbenchLogTextBrush}"/>
-                    </Panel>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-        <Style Selector="ToggleButton.debug-switch:checked /template/ Border#SwitchTrack">
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchMutedTextBrush}" />
-        </Style>
-        <Style Selector="ToggleButton.debug-switch:checked /template/ Border#SwitchThumb">
-            <Setter Property="Margin" Value="16,0,0,0" />
         </Style>
         <Style Selector="Button.editor-toolbar-button">
             <Setter Property="Width" Value="24" />
@@ -84,10 +53,10 @@
         </Style>
 
         <Style Selector="Button.window-caption-button">
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
-            <Setter Property="MinWidth" Value="34" />
-            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Width" Value="52" />
+            <Setter Property="Height" Value="{DynamicResource WorkbenchTitleBarHeight}" />
+            <Setter Property="MinWidth" Value="52" />
+            <Setter Property="MinHeight" Value="{DynamicResource WorkbenchTitleBarHeight}" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="CornerRadius" Value="0" />
             <Setter Property="Background" Value="Transparent" />
@@ -96,6 +65,7 @@
             <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="16" />
         </Style>
 
         <Style Selector="Button.window-caption-button /template/ ContentPresenter">
@@ -107,13 +77,37 @@
         <Style Selector="Button.window-caption-button:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
             <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
         </Style>
 
-        <Style Selector="Button.window-caption-button:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
+        <Style Selector="Button.window-caption-button.close:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#E81123" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+        </Style>
+
+        <Style Selector="Grid.title-platform-layout">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+
+        <Style Selector="Window.platform-windows Grid.title-layout-windows">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <Style Selector="Window.platform-macos Grid.title-layout-macos">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <Style Selector="TextBlock.title-brand">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <Style Selector="TextBlock.title-version">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
 
         <!-- 限制用户配置行的最小可读宽度，避免窗口过窄时控件挤出卡片。 -->
@@ -230,58 +224,44 @@
         </Style>
     </Window.Styles>
 
-    <Grid Background="Transparent">
-    <Border Classes="window-shell">
-    <Border Classes="window-shell-content">
+    <Grid Background="{DynamicResource WorkbenchWindowBrush}">
     <Grid RowDefinitions="Auto,*">
         <Border Grid.Row="0"
                 Height="{DynamicResource WorkbenchTitleBarHeight}"
                 Background="{DynamicResource WorkbenchTitleBrush}"
                 BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                 BorderThickness="0">
-            <Grid ColumnDefinitions="*,Auto,*">
+            <Grid>
                 <Border Grid.ColumnSpan="3"
                         Background="Transparent"
                         chrome:WindowDecorationProperties.ElementRole="TitleBar"/>
-                <Border Grid.Column="0"
-                        Background="Transparent"
-                        chrome:WindowDecorationProperties.ElementRole="TitleBar">
+                <Grid Classes="title-platform-layout title-layout-windows"
+                      Background="Transparent"
+                      chrome:WindowDecorationProperties.ElementRole="TitleBar">
                     <StackPanel Orientation="Horizontal"
                                 Spacing="8"
                                 Margin="14,0,16,0"
-                                VerticalAlignment="Center">
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False">
                         <Image Source="/Assets/favicon.ico"
                                Width="16"
                                Height="16"
                                VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding BrandTitle}"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource WorkbenchTextBrush}"
-                                   FontSize="13"
-                                   TextTrimming="CharacterEllipsis"/>
-                        <Border Classes="version-badge"
-                                IsVisible="{DynamicResource WorkbenchCardLayoutVisible}">
+                        <TextBlock Classes="title-brand"
+                                   Text="{Binding BrandTitle}"/>
+                        <Border Classes="version-badge">
                             <TextBlock Text="{Binding VersionBadgeText}"
                                        Foreground="{DynamicResource WorkbenchAccentBrush}"
                                        FontSize="12"/>
                         </Border>
-                        <TextBlock Text="{Binding QqGroupText}"
-                                   IsVisible="{DynamicResource WorkbenchCardLayoutVisible}"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
-                                   FontSize="12"/>
                     </StackPanel>
-                </Border>
-                <Grid Grid.Column="1"
-                      HorizontalAlignment="Center">
-                    <Border Background="Transparent"
-                            chrome:WindowDecorationProperties.ElementRole="TitleBar"
-                            IsVisible="{DynamicResource WorkbenchClassicLayoutVisible}"/>
                     <StackPanel Orientation="Horizontal"
                                 HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
+                                VerticalAlignment="Bottom"
                                 Spacing="10"
-                                IsVisible="{DynamicResource WorkbenchCardLayoutVisible}">
+                                IsVisible="{DynamicResource WorkbenchCardLayoutVisible}"
+                                chrome:WindowDecorationProperties.ElementRole="User">
                         <Button Classes="title-tab"
                                 Classes.selected="{Binding IsTextEditorTabSelected}"
                                 Command="{Binding SelectEditorTabCommand}"
@@ -323,24 +303,88 @@
                             </StackPanel>
                         </Button>
                     </StackPanel>
+                    <StackPanel HorizontalAlignment="Right"
+                                Orientation="Horizontal"
+                                chrome:WindowDecorationProperties.ElementRole="User">
+                        <Button Classes="window-caption-button"
+                                Content="−"
+                                Click="MinimizeButton_Click"
+                                ToolTip.Tip="最小化"/>
+                        <Button x:Name="MaximizeRestoreButton"
+                                Classes="window-caption-button"
+                                Content="□"
+                                Click="MaximizeRestoreButton_Click"
+                                ToolTip.Tip="最大化"/>
+                        <Button Classes="window-caption-button close"
+                                Content="×"
+                                Click="CloseButton_Click"
+                                ToolTip.Tip="关闭"/>
+                    </StackPanel>
                 </Grid>
-                <StackPanel Grid.Column="2"
-                             HorizontalAlignment="Right"
-                             Orientation="Horizontal">
-                    <Button Classes="window-caption-button"
-                            Content="−"
-                            Click="MinimizeButton_Click"
-                            ToolTip.Tip="最小化"/>
-                    <Button x:Name="MaximizeRestoreButton"
-                            Classes="window-caption-button"
-                            Content="□"
-                            Click="MaximizeRestoreButton_Click"
-                            ToolTip.Tip="最大化"/>
-                    <Button Classes="window-caption-button close"
-                            Content="×"
-                            Click="CloseButton_Click"
-                            ToolTip.Tip="关闭"/>
-                </StackPanel>
+                <Grid Classes="title-platform-layout title-layout-macos"
+                      Background="Transparent"
+                      chrome:WindowDecorationProperties.ElementRole="TitleBar">
+                    <Border Grid.Column="0"
+                            Background="Transparent"
+                            chrome:WindowDecorationProperties.ElementRole="TitleBar"/>
+                    <TextBlock Classes="title-brand"
+                               Text="{Binding BrandTitle}"
+                               Margin="78,0,16,0"
+                               HorizontalAlignment="Left"
+                               IsHitTestVisible="False"/>
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom"
+                                Spacing="10"
+                                IsVisible="{DynamicResource WorkbenchCardLayoutVisible}"
+                                chrome:WindowDecorationProperties.ElementRole="User">
+                        <Button Classes="title-tab"
+                                Classes.selected="{Binding IsTextEditorTabSelected}"
+                                Command="{Binding SelectEditorTabCommand}"
+                                CommandParameter="0">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="M2,14 L5.5,13 L14,4.5 L11.5,2 L3,10.5 Z M10.5,3 L13,5.5 M2,14 L6,14"
+                                          Width="15" Height="15"/>
+                                <TextBlock Text="文本编辑"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="title-tab"
+                                Classes.selected="{Binding IsTagEditorTabSelected}"
+                                Command="{Binding SelectEditorTabCommand}"
+                                CommandParameter="1">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="M2,2 H8 L15,9 L9,15 L2,8 Z M5,5 H5.1"
+                                          Width="15" Height="15"/>
+                                <TextBlock Text="标签编辑"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="title-tab"
+                                Classes.selected="{Binding IsUserConfigTabSelected}"
+                                Command="{Binding SelectEditorTabCommand}"
+                                CommandParameter="2">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="M8,1 L9,4 L12,5 L15,4 L14,7 L15,10 L12,11 L9,10 L8,15 L7,10 L4,11 L1,10 L2,7 L1,4 L4,5 L7,4 Z"
+                                          Width="15" Height="15"/>
+                                <TextBlock Text="用户配置"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Classes="title-tab"
+                                Classes.selected="{Binding IsFeatureCenterTabSelected}"
+                                Command="{Binding SelectEditorTabCommand}"
+                                CommandParameter="3">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="M1,1 H6 V6 H1 Z M10,1 H15 V6 H10 Z M1,10 H6 V15 H1 Z M10,10 H15 V15 H10 Z"
+                                          Width="15" Height="15"/>
+                                <TextBlock Text="功能中心"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                    <TextBlock Classes="title-version"
+                               Text="{Binding VersionBadgeText}"
+                               Margin="16,0,14,0"
+                               HorizontalAlignment="Right"
+                               IsHitTestVisible="False"/>
+                </Grid>
             </Grid>
         </Border>
         <Grid Grid.Row="1">
@@ -629,7 +673,7 @@
 
                                         <TextBlock Classes="setting-caption"
                                                    Text="风格"/>
-                                        <Grid ColumnDefinitions="*,*,*"
+                                        <Grid ColumnDefinitions="*,*"
                                               ColumnSpacing="10">
                                             <Button Grid.Column="0"
                                                     Classes="theme-option"
@@ -655,24 +699,27 @@
                                                     </StackPanel>
                                                 </Border>
                                             </Button>
-                                            <Button Grid.Column="2"
-                                                    Classes="theme-option"
-                                                    Command="{Binding SelectThemeStyleCommand}"
-                                                    CommandParameter="磨砂玻璃">
-                                                <Border Classes="theme-preview glass">
-                                                    <StackPanel Spacing="8">
-                                                        <Border Classes="theme-strip"/>
-                                                        <TextBlock Text="磨砂玻璃"
-                                                                   FontWeight="SemiBold"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </Button>
                                         </Grid>
 
-                                        <TextBlock Classes="setting-caption"
-                                                   Text="配色"/>
-                                        <Grid ColumnDefinitions="*,*,*"
+                                        <Grid ColumnDefinitions="*,Auto,Auto"
                                               ColumnSpacing="10">
+                                            <TextBlock Classes="setting-caption"
+                                                       Text="配色"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Classes="setting-caption"
+                                                       Text="跟随系统自动切换"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"/>
+                                            <ToggleSwitch Grid.Column="2"
+                                                          Classes="compact-switch"
+                                                          OnContent=""
+                                                          OffContent=""
+                                                          IsChecked="{Binding AutoSwitchColorSchemeEnabled}"
+                                                          VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,*,*"
+                                              ColumnSpacing="10"
+                                              IsEnabled="{Binding IsManualColorSchemeEnabled}">
                                             <Button Grid.Column="0"
                                                     Classes="theme-option"
                                                     Command="{Binding SelectColorSchemeCommand}"
@@ -1053,8 +1100,10 @@
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource WorkbenchMutedTextBrush}"
                                    FontSize="12"/>
-                        <ToggleButton Grid.Column="2"
-                                      Classes="debug-switch"
+                        <ToggleSwitch Grid.Column="2"
+                                      Classes="compact-switch"
+                                      OnContent=""
+                                      OffContent=""
                                       IsChecked="{Binding ShowDebugInfo}"
                                       HorizontalAlignment="Left"
                                       VerticalAlignment="Center"/>
@@ -1490,7 +1539,7 @@
                                                     Margin="8,0,0,0"/>
                                         </Grid>
                                         <TextBlock Classes="setting-caption" Text="风格"/>
-                                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                                             <Button Grid.Column="0"
                                                     Classes="theme-option"
                                                     Command="{Binding SelectThemeStyleCommand}"
@@ -1513,21 +1562,24 @@
                                                     </StackPanel>
                                                 </Border>
                                             </Button>
-                                            <Button Grid.Column="2"
-                                                    Classes="theme-option"
-                                                    Command="{Binding SelectThemeStyleCommand}"
-                                                    CommandParameter="磨砂玻璃">
-                                                <Border Classes="theme-preview glass">
-                                                    <StackPanel Spacing="8">
-                                                        <Border Classes="theme-strip"/>
-                                                        <TextBlock Text="磨砂玻璃" FontWeight="SemiBold"/>
-                                                    </StackPanel>
-                                                </Border>
-                                            </Button>
                                         </Grid>
 
-                                        <TextBlock Classes="setting-caption" Text="配色"/>
-                                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                                            <TextBlock Classes="setting-caption" Text="配色"/>
+                                            <TextBlock Grid.Column="1"
+                                                       Classes="setting-caption"
+                                                       Text="跟随系统自动切换"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"/>
+                                            <ToggleSwitch Grid.Column="2"
+                                                          Classes="compact-switch"
+                                                          OnContent=""
+                                                          OffContent=""
+                                                          IsChecked="{Binding AutoSwitchColorSchemeEnabled}"
+                                                          VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10"
+                                              IsEnabled="{Binding IsManualColorSchemeEnabled}">
                                             <Button Grid.Column="0"
                                                     Classes="theme-option"
                                                     Command="{Binding SelectColorSchemeCommand}"
@@ -1862,8 +1914,10 @@
                                            Classes="card-header-action"
                                            Text="调试模式"
                                            Margin="0,0,6,0"/>
-                                <ToggleButton Grid.Column="2"
-                                              Classes="debug-switch"
+                                <ToggleSwitch Grid.Column="2"
+                                              Classes="compact-switch"
+                                              OnContent=""
+                                              OffContent=""
                                               IsChecked="{Binding ShowDebugInfo}"
                                               HorizontalAlignment="Left"
                                               VerticalAlignment="Center"/>
@@ -2093,76 +2147,6 @@
         </Grid>
         </Grid>
     </Grid>
-    </Border>
-    </Border>
-    <Border Tag="North"
-            Height="6"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Top"
-            Background="Transparent"
-            Cursor="TopSide"
-            PointerPressed="ResizeEdge_PointerPressed"
-            ZIndex="1000"/>
-    <Border Tag="South"
-            Height="6"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Bottom"
-            Background="Transparent"
-            Cursor="BottomSide"
-            PointerPressed="ResizeEdge_PointerPressed"
-            ZIndex="1000"/>
-    <Border Tag="West"
-            Width="6"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Stretch"
-            Background="Transparent"
-            Cursor="LeftSide"
-            PointerPressed="ResizeEdge_PointerPressed"
-            ZIndex="1000"/>
-    <Border Tag="East"
-            Width="6"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Stretch"
-            Background="Transparent"
-            Cursor="RightSide"
-            PointerPressed="ResizeEdge_PointerPressed"
-            ZIndex="1000"/>
-    <Border Tag="NorthWest"
-            Width="10"
-            Height="10"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
-            Background="Transparent"
-            Cursor="TopLeftCorner"
-            PointerPressed="ResizeEdge_PointerPressed"
-            ZIndex="1001"/>
-    <Border Tag="NorthEast"
-            Width="10"
-            Height="10"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Top"
-            Background="Transparent"
-            Cursor="TopRightCorner"
-            PointerPressed="ResizeEdge_PointerPressed"
-            ZIndex="1001"/>
-    <Border Tag="SouthWest"
-            Width="10"
-            Height="10"
-            HorizontalAlignment="Left"
-            VerticalAlignment="Bottom"
-            Background="Transparent"
-            Cursor="BottomLeftCorner"
-            PointerPressed="ResizeEdge_PointerPressed"
-            ZIndex="1001"/>
-    <Border Tag="SouthEast"
-            Width="10"
-            Height="10"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Bottom"
-            Background="Transparent"
-            Cursor="BottomRightCorner"
-            PointerPressed="ResizeEdge_PointerPressed"
-            ZIndex="1001"/>
     </Grid>
 </Window>
 

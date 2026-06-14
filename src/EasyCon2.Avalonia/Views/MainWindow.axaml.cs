@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.Styling;
 using AvaloniaEdit.Folding;
 using EasyCon2.Avalonia.Core.Editor;
 using EasyCon2.Avalonia.Core.Editor.Lsp;
@@ -22,16 +23,28 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         WindowFrameService.SetupWindow(this);
+        SetTitleBarPlatformClasses();
         InitializeComponent();
         Closing += OnClosing;
         Loaded += OnLoaded;
     }
 
+    private void SetTitleBarPlatformClasses()
+    {
+        var isMacOS = OperatingSystem.IsMacOS();
+        Classes.Set("platform-macos", isMacOS);
+        Classes.Set("platform-windows", !isMacOS);
+    }
+
     private void OnLoaded(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
     {
+        if (Application.Current != null)
+            Application.Current.ActualThemeVariantChanged += OnApplicationActualThemeVariantChanged;
+
         ThemeManager.Instance.DarkModeChanged += OnDarkModeChanged;
         ApplyEditorTheme(ThemeManager.Instance.IsDarkMode);
         UpdateWindowCaptionState();
+        UpdateSystemColorScheme();
 
         if (DataContext is MainWindowViewModel vm)
         {
@@ -49,6 +62,17 @@ public partial class MainWindow : Window
     private void OnDarkModeChanged(bool isDarkMode)
     {
         ApplyEditorTheme(isDarkMode);
+    }
+
+    private void OnApplicationActualThemeVariantChanged(object? sender, EventArgs e)
+    {
+        UpdateSystemColorScheme();
+    }
+
+    private void UpdateSystemColorScheme()
+    {
+        if (DataContext is MainWindowViewModel vm)
+            vm.UpdateSystemColorScheme(Application.Current?.ActualThemeVariant == ThemeVariant.Dark);
     }
 
     private void ApplyEditorTheme(bool isDarkMode)
@@ -180,6 +204,8 @@ public partial class MainWindow : Window
         }
 
         ThemeManager.Instance.DarkModeChanged -= OnDarkModeChanged;
+        if (Application.Current != null)
+            Application.Current.ActualThemeVariantChanged -= OnApplicationActualThemeVariantChanged;
 
         // 清理编辑器资源
         foreach (var editor in GetScriptEditors())
@@ -238,28 +264,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void MinimizeButton_Click(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
-    }
-
-    private void MaximizeRestoreButton_Click(object? sender, RoutedEventArgs e)
-    {
-        ToggleWindowState();
-    }
-
-    private void CloseButton_Click(object? sender, RoutedEventArgs e)
-    {
-        Close();
-    }
-
-    private void ToggleWindowState()
-    {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-    }
-
     private void UpdateWindowCaptionState()
     {
         Classes.Set("maximized", WindowState == WindowState.Maximized);
@@ -271,17 +275,21 @@ public partial class MainWindow : Window
         ToolTip.SetTip(MaximizeRestoreButton, WindowState == WindowState.Maximized ? "还原" : "最大化");
     }
 
-    private void ResizeEdge_PointerPressed(object? sender, PointerPressedEventArgs e)
+    private void MinimizeButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (WindowState != WindowState.Normal)
-            return;
-
-        if (sender is not Control { Tag: string edgeName })
-            return;
-
-        if (!Enum.TryParse<WindowEdge>(edgeName, out var edge))
-            return;
-
-        BeginResizeDrag(edge, e);
+        WindowState = WindowState.Minimized;
     }
+
+    private void MaximizeRestoreButton_Click(object? sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
+    }
+
+    private void CloseButton_Click(object? sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
 }

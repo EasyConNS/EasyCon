@@ -48,13 +48,7 @@
                 <ToggleSwitch Grid.Column="1"
                               IsChecked="{Binding Enable}"
                               OnContent="" OffContent=""
-                              Margin="8,0,8,0">
-                    <ToggleSwitch.Styles>
-                        <Style Selector="ToggleSwitch /template/ Border#SwitchThumb">
-                            <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}"/>
-                        </Style>
-                    </ToggleSwitch.Styles>
-                </ToggleSwitch>
+                              Margin="8,0,8,0"/>
 
                 <Button Grid.Column="2"
                         Command="{Binding DeleteCommand}"
