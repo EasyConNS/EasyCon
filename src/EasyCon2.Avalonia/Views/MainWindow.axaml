@@ -1,7 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
          xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
-         xmlns:conv="using:EasyCon2.Avalonia.Converters"
          xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
          xmlns:controls="using:EasyCon2.Avalonia.Controls"
          xmlns:editor="using:EasyCon2.Avalonia.Core.Editor"
@@ -9,6 +8,7 @@
          xmlns:agent="using:EasyCon2.Avalonia.Core.AiAgent"
          xmlns:terminal="using:EasyCon2.Avalonia.Core.Terminal"
          xmlns:views="using:EasyCon2.Avalonia.Views"
+         xmlns:chrome="using:Avalonia.Controls.Chrome"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          mc:Ignorable="d"
@@ -18,16 +18,16 @@
           x:DataType="vm:MainWindowViewModel"
           Icon="/Assets/favicon.ico"
           Title="{Binding WindowTitle}"
-          Width="1200"
-          Height="800"
-          MinWidth="800"
-          MinHeight="600"
-          Background="{DynamicResource WorkbenchWindowBrush}"
-          behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
-
-    <Window.Resources>
-        <conv:BoolToRunColorConverter x:Key="BoolToRunColor" />
-    </Window.Resources>
+           Width="1200"
+           Height="800"
+           MinWidth="800"
+           MinHeight="600"
+           WindowDecorations="None"
+           CanResize="True"
+           ExtendClientAreaToDecorationsHint="True"
+           ExtendClientAreaTitleBarHeightHint="34"
+           Background="{DynamicResource WorkbenchWindowBrush}"
+           behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
 
     <Window.Styles>
         <Style Selector="ToggleButton.debug-switch">
@@ -62,11 +62,10 @@
             </Setter>
         </Style>
         <Style Selector="ToggleButton.debug-switch:checked /template/ Border#SwitchTrack">
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchMutedTextBrush}" />
         </Style>
         <Style Selector="ToggleButton.debug-switch:checked /template/ Border#SwitchThumb">
             <Setter Property="Margin" Value="16,0,0,0" />
-            <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
         </Style>
         <Style Selector="Button.editor-toolbar-button">
             <Setter Property="Width" Value="24" />
@@ -83,6 +82,39 @@
         <Style Selector="Button.editor-toolbar-button:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        </Style>
+
+        <Style Selector="Button.window-caption-button">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="MinWidth" Value="34" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="Button.window-caption-button /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style Selector="Button.window-caption-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style Selector="Button.window-caption-button:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
         </Style>
 
         <!-- 限制用户配置行的最小可读宽度，避免窗口过窄时控件挤出卡片。 -->
@@ -152,34 +184,100 @@
         </Style>
     </Window.Styles>
 
+    <Grid>
     <DockPanel>
+        <Border DockPanel.Dock="Top"
+                Height="34"
+                Background="{DynamicResource WorkbenchTitleBrush}"
+                BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Border Grid.Column="0"
+                        Background="Transparent"
+                        chrome:WindowDecorationProperties.ElementRole="TitleBar">
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8"
+                                Margin="10,0,14,0"
+                                VerticalAlignment="Center">
+                        <Image Source="/Assets/favicon.ico"
+                               Width="16"
+                               Height="16"
+                               VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding WindowTitle}"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WorkbenchTextBrush}"
+                                   FontSize="12"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1"
+                        Background="Transparent"
+                        chrome:WindowDecorationProperties.ElementRole="TitleBar"/>
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal">
+                    <Button Classes="window-caption-button"
+                            Content="−"
+                            Click="MinimizeButton_Click"
+                            ToolTip.Tip="最小化"/>
+                    <Button x:Name="MaximizeRestoreButton"
+                            Classes="window-caption-button"
+                            Content="□"
+                            Click="MaximizeRestoreButton_Click"
+                            ToolTip.Tip="最大化"/>
+                    <Button Classes="window-caption-button close"
+                            Content="×"
+                            Click="CloseButton_Click"
+                            ToolTip.Tip="关闭"/>
+                </StackPanel>
+            </Grid>
+        </Border>
         <Grid RowDefinitions="*,Auto">
 
             <!-- 上部主操作区：三列布局 -->
-            <Grid Grid.Row="0" ColumnDefinitions="220,*,5,300">
+            <Grid Grid.Row="0" ColumnDefinitions="220,*,300"
+                  ClipToBounds="True">
 
             <!-- 第一列：文件层级侧边栏 -->
             <Border Grid.Column="0"
                     Background="{DynamicResource WorkbenchSideBrush}"
                     BorderBrush="{DynamicResource WorkbenchBorderBrush}"
-                    BorderThickness="0,0,1,0">
-                <views:FileTreeView DataContext="{Binding FileTreeVM}" />
+                    BorderThickness="{DynamicResource WorkbenchSidebarDividerThickness}">
+                <Grid>
+                    <views:FileTreeView DataContext="{Binding FileTreeVM}" />
+                    <Border Width="10"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Stretch"
+                            Background="{DynamicResource WorkbenchShadowToLeftBrush}"
+                            IsHitTestVisible="False"
+                            IsVisible="{DynamicResource WorkbenchClassicShadowVisible}"
+                            ZIndex="1"/>
+                </Grid>
             </Border>
+
+            <GridSplitter Grid.Column="0"
+                          Width="4"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent"
+                          ResizeBehavior="CurrentAndNext"
+                          ResizeDirection="Columns"
+                          ZIndex="10"/>
 
             <!-- 第二列：标签切换（文本编辑器 / 标签编辑器 / 用户配置 / 功能中心） -->
             <Border Grid.Column="1"
-                    Background="{DynamicResource WorkbenchWindowBrush}">
+                    Background="{DynamicResource WorkbenchPanelBrush}">
                 <TabControl Classes="folder-tabs"
                             SelectedIndex="{Binding SelectedEditorTab}">
                     <TabControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Rows="1"
-                                         ClipToBounds="False"/>
+                                         ClipToBounds="True"/>
                         </ItemsPanelTemplate>
                     </TabControl.ItemsPanel>
                     <TabItem Classes="tab-layer-0"
                              Header="文本编辑">
-                        <Grid RowDefinitions="Auto,*">
+                        <Grid RowDefinitions="Auto,*"
+                              Background="{DynamicResource WorkbenchPanelBrush}">
                             <!-- 脚本路径栏 -->
                             <Border Grid.Row="0"
                                     Padding="8,4"
@@ -240,7 +338,8 @@
                                 </Grid>
                             </Border>
                             <!-- 编辑器始终显示 -->
-                            <Grid Grid.Row="1">
+                            <Grid Grid.Row="1"
+                                  Background="{DynamicResource WorkbenchInputBrush}">
                                 <editor:ScriptEditorControl x:Name="ScriptEditor"
                                                             EditorText="{Binding EditorText, Mode=TwoWay}"
                                                             EnableAutoCompletion="{Binding IsAutoCompletionEnabled}"/>
@@ -258,7 +357,9 @@
                     </TabItem>
                     <TabItem Classes="tab-layer-1"
                              Header="标签编辑">
-                        <tag:TagEditorView x:Name="TagEditor" DataContext="{Binding TagEditorViewModel}"/>
+                        <Border Background="{DynamicResource WorkbenchPanelBrush}">
+                            <tag:TagEditorView x:Name="TagEditor" DataContext="{Binding TagEditorViewModel}"/>
+                        </Border>
                     </TabItem>
                     <TabItem Classes="tab-layer-2"
                              Header="用户配置">
@@ -409,17 +510,59 @@
                                         </Grid>
 
                                         <TextBlock Classes="setting-caption"
-                                                   Text="主题"/>
+                                                   Text="风格"/>
+                                        <Grid ColumnDefinitions="*,*,*"
+                                              ColumnSpacing="10">
+                                            <Button Grid.Column="0"
+                                                    Classes="theme-option"
+                                                    Command="{Binding SelectThemeStyleCommand}"
+                                                    CommandParameter="经典">
+                                                <Border Classes="theme-preview classic">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Classes="theme-strip"/>
+                                                        <TextBlock Text="经典"
+                                                                   FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Button>
+                                            <Button Grid.Column="1"
+                                                    Classes="theme-option"
+                                                    Command="{Binding SelectThemeStyleCommand}"
+                                                    CommandParameter="卡片式">
+                                                <Border Classes="theme-preview rounded">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Classes="theme-strip"/>
+                                                        <TextBlock Text="卡片式"
+                                                                   FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Button>
+                                            <Button Grid.Column="2"
+                                                    Classes="theme-option"
+                                                    Command="{Binding SelectThemeStyleCommand}"
+                                                    CommandParameter="磨砂玻璃">
+                                                <Border Classes="theme-preview glass">
+                                                    <StackPanel Spacing="8">
+                                                        <Border Classes="theme-strip"/>
+                                                        <TextBlock Text="磨砂玻璃"
+                                                                   FontWeight="SemiBold"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Button>
+                                        </Grid>
+
+                                        <TextBlock Classes="setting-caption"
+                                                   Text="配色"/>
                                         <Grid ColumnDefinitions="*,*,*"
                                               ColumnSpacing="10">
                                             <Button Grid.Column="0"
                                                     Classes="theme-option"
                                                     Command="{Binding SelectColorSchemeCommand}"
-                                                    CommandParameter="工业灰">
-                                                <Border Classes="theme-preview industrial">
+                                                    CommandParameter="白色">
+                                                <Border Classes="theme-preview white">
                                                     <StackPanel Spacing="8">
                                                         <Border Classes="theme-strip"/>
-                                                        <TextBlock Text="工业灰"
+                                                        <TextBlock Text="白色"
                                                                    FontWeight="SemiBold"/>
                                                     </StackPanel>
                                                 </Border>
@@ -427,11 +570,11 @@
                                             <Button Grid.Column="1"
                                                     Classes="theme-option"
                                                     Command="{Binding SelectColorSchemeCommand}"
-                                                    CommandParameter="暖色调">
+                                                    CommandParameter="暖色">
                                                 <Border Classes="theme-preview light">
                                                     <StackPanel Spacing="8">
                                                         <Border Classes="theme-strip"/>
-                                                        <TextBlock Text="浅色"
+                                                        <TextBlock Text="暖色"
                                                                    FontWeight="SemiBold"/>
                                                     </StackPanel>
                                                 </Border>
@@ -724,21 +867,28 @@
             </Border>
 
             <!-- 第二列与第三列之间的拖拽分割线 -->
-            <GridSplitter Grid.Column="2"
-                          HorizontalAlignment="Stretch"
+            <GridSplitter Grid.Column="1"
+                          Width="4"
+                          HorizontalAlignment="Right"
                           VerticalAlignment="Stretch"
-                          Background="{DynamicResource WorkbenchBorderBrush}"
-                          ResizeBehavior="PreviousAndNext"/>
+                          Background="Transparent"
+                          ResizeBehavior="CurrentAndNext"
+                          ResizeDirection="Columns"
+                          ZIndex="10"/>
 
             <!-- 第三列：监视器（上） + 日志（下） -->
-            <Grid Grid.Column="3" RowDefinitions="*,*">
+            <Grid Grid.Column="2"
+                  RowDefinitions="*,*"
+                  Background="{DynamicResource WorkbenchPanelBrush}">
 
                 <!-- 第三列上半部分：监视器 -->
                 <Border Grid.Row="0"
+                        Background="{DynamicResource WorkbenchPanelBrush}"
                         BorderBrush="{DynamicResource WorkbenchBorderBrush}"
-                        BorderThickness="0,0,0,1"
+                        BorderThickness="{DynamicResource WorkbenchBottomDividerThickness}"
+                        ClipToBounds="True"
                         DoubleTapped="MonitorArea_DoubleTapped">
-                    <Grid>
+                    <Grid Background="{DynamicResource WorkbenchPanelBrush}">
                         <Grid IsVisible="{Binding IsMonitorVisible}">
                             <views:MonitorView DataContext="{Binding MonitorVM}" />
                         </Grid>
@@ -748,11 +898,27 @@
                                 Classes="flat-link"
                                 Content="{Binding MonitorVisibilityButtonText}"
                                 Command="{Binding ToggleMonitorVisibilityCommand}"/>
+                        <Border Height="10"
+                                VerticalAlignment="Bottom"
+                                Background="{DynamicResource WorkbenchShadowToTopBrush}"
+                                IsHitTestVisible="False"
+                                IsVisible="{DynamicResource WorkbenchClassicShadowVisible}"/>
                     </Grid>
                 </Border>
 
+                <GridSplitter Grid.Row="0"
+                              Height="4"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Bottom"
+                              Background="Transparent"
+                              ResizeBehavior="CurrentAndNext"
+                              ResizeDirection="Rows"
+                              ZIndex="10"/>
+
                 <!-- 第三列下半部分：日志输出 -->
-                <Grid Grid.Row="1" RowDefinitions="34,*">
+                <Grid Grid.Row="1"
+                      RowDefinitions="34,*"
+                      Background="{DynamicResource WorkbenchLogBrush}">
                     <Grid Grid.Row="0"
                           ColumnDefinitions="*,Auto,34"
                           Background="{DynamicResource WorkbenchPanelBrush}">
@@ -793,9 +959,11 @@
                                     Command="{Binding ClearLogCommand}"
                                     Margin="8,0,12,0"/>
                         </Grid>
-                        <Grid Grid.Row="1">
+                        <Grid Grid.Row="1"
+                              Background="{DynamicResource WorkbenchLogBrush}">
                             <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                          HorizontalScrollBarVisibility="Auto">
+                                          HorizontalScrollBarVisibility="Auto"
+                                          Background="{DynamicResource WorkbenchLogBrush}">
                                 <terminal:TerminalControl
                                     ItemsSource="{Binding LogLines}"
                                     ContentPadding="10,0,0,0"/>
@@ -803,7 +971,23 @@
                         </Grid>
                     </Grid>
                 </Grid>
+                <Border Grid.RowSpan="2"
+                        Width="10"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Stretch"
+                        Background="{DynamicResource WorkbenchShadowToRightBrush}"
+                        IsHitTestVisible="False"
+                        IsVisible="{DynamicResource WorkbenchClassicShadowVisible}"
+                        ZIndex="20"/>
             </Grid>
+
+            <Border Grid.ColumnSpan="3"
+                    Height="12"
+                    VerticalAlignment="Bottom"
+                    Background="{DynamicResource WorkbenchShadowToTopBrush}"
+                    IsHitTestVisible="False"
+                    IsVisible="{DynamicResource WorkbenchClassicShadowVisible}"
+                    ZIndex="20"/>
         </Grid>
 
         <!-- 下部模块操作区 -->
@@ -812,7 +996,7 @@
                Padding="10"
                Background="{DynamicResource WorkbenchPanelBrush}"
                BorderBrush="{DynamicResource WorkbenchBorderBrush}"
-               BorderThickness="0,1,0,0">
+               BorderThickness="{DynamicResource WorkbenchTopDividerThickness}">
             <Grid ColumnDefinitions="*,*,*,*"
                  HorizontalAlignment="Stretch">
 
@@ -969,10 +1153,10 @@
                             <Button Content="{Binding RunButtonText}"
                                     Command="{Binding RunScriptCommand}"
                                     Classes="run-button"
+                                    Classes.running="{Binding IsRunning}"
                                     FontSize="18"
                                     FontWeight="Bold"
                                     Foreground="{DynamicResource WorkbenchOnAccentBrush}"
-                                    Background="{Binding IsRunning, Converter={StaticResource BoolToRunColor}}"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"
@@ -984,5 +1168,74 @@
         </Border>
         </Grid>
     </DockPanel>
+    <Border Tag="North"
+            Height="6"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top"
+            Background="Transparent"
+            Cursor="TopSide"
+            PointerPressed="ResizeEdge_PointerPressed"
+            ZIndex="1000"/>
+    <Border Tag="South"
+            Height="6"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Bottom"
+            Background="Transparent"
+            Cursor="BottomSide"
+            PointerPressed="ResizeEdge_PointerPressed"
+            ZIndex="1000"/>
+    <Border Tag="West"
+            Width="6"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Stretch"
+            Background="Transparent"
+            Cursor="LeftSide"
+            PointerPressed="ResizeEdge_PointerPressed"
+            ZIndex="1000"/>
+    <Border Tag="East"
+            Width="6"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Stretch"
+            Background="Transparent"
+            Cursor="RightSide"
+            PointerPressed="ResizeEdge_PointerPressed"
+            ZIndex="1000"/>
+    <Border Tag="NorthWest"
+            Width="10"
+            Height="10"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Background="Transparent"
+            Cursor="TopLeftCorner"
+            PointerPressed="ResizeEdge_PointerPressed"
+            ZIndex="1001"/>
+    <Border Tag="NorthEast"
+            Width="10"
+            Height="10"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Top"
+            Background="Transparent"
+            Cursor="TopRightCorner"
+            PointerPressed="ResizeEdge_PointerPressed"
+            ZIndex="1001"/>
+    <Border Tag="SouthWest"
+            Width="10"
+            Height="10"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Bottom"
+            Background="Transparent"
+            Cursor="BottomLeftCorner"
+            PointerPressed="ResizeEdge_PointerPressed"
+            ZIndex="1001"/>
+    <Border Tag="SouthEast"
+            Width="10"
+            Height="10"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Background="Transparent"
+            Cursor="BottomRightCorner"
+            PointerPressed="ResizeEdge_PointerPressed"
+            ZIndex="1001"/>
+    </Grid>
 </Window>
 

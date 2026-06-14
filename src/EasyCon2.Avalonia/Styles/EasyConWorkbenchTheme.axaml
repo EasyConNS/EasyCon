@@ -2,31 +2,31 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:terminal="using:EasyCon2.Avalonia.Core.Terminal">
     <Styles.Resources>
-        <Color x:Key="WorkbenchWindowColor">#D0D1D6</Color>
-        <Color x:Key="WorkbenchTitleColor">#F8F8FA</Color>
-        <Color x:Key="WorkbenchMenuColor">#E5E6EB</Color>
-        <Color x:Key="WorkbenchPanelColor">#F0F1F5</Color>
-        <Color x:Key="WorkbenchTreeColor">#F3F4F8</Color>
-        <Color x:Key="WorkbenchTreeRootColor">#CFCFD1</Color>
-        <Color x:Key="WorkbenchTreeFolderColor">#E2E2E4</Color>
-        <Color x:Key="WorkbenchSideColor">#C7C8CD</Color>
-        <Color x:Key="WorkbenchBorderColor">#9EA1A8</Color>
-        <Color x:Key="WorkbenchTextColor">#66676B</Color>
-        <Color x:Key="WorkbenchMutedTextColor">#7B7C81</Color>
+        <Color x:Key="WorkbenchWindowColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchTitleColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchMenuColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchPanelColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchTreeColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchTreeRootColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchTreeFolderColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchSideColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchBorderColor">#D6DAE0</Color>
+        <Color x:Key="WorkbenchTextColor">#2F333A</Color>
+        <Color x:Key="WorkbenchMutedTextColor">#6D737C</Color>
         <Color x:Key="WorkbenchAccentColor">#35AEE2</Color>
-        <Color x:Key="WorkbenchRunColor">#34C95B</Color>
+        <Color x:Key="WorkbenchRunColor">#35AEE2</Color>
         <Color x:Key="WorkbenchDangerColor">#E36A54</Color>
         <Color x:Key="WorkbenchInputColor">#FFFFFF</Color>
-        <Color x:Key="WorkbenchLogColor">#E0E1E6</Color>
-        <Color x:Key="WorkbenchLogTextColor">#333338</Color>
+        <Color x:Key="WorkbenchLogColor">#F6F8FB</Color>
+        <Color x:Key="WorkbenchLogTextColor">#2F333A</Color>
         <Color x:Key="WorkbenchOnAccentColor">#FFFFFF</Color>
         <Color x:Key="WorkbenchAmberColor">#FF8B00</Color>
-        <Color x:Key="WorkbenchButtonColor">#F4F5F8</Color>
-        <Color x:Key="WorkbenchButtonHoverColor">#E8E9ED</Color>
-        <Color x:Key="WorkbenchButtonBorderColor">#C1C3C9</Color>
-        <Color x:Key="WorkbenchOutlineAccentBackgroundColor">#F7FBFF</Color>
-        <Color x:Key="WorkbenchControlBorderColor">#B8BBC1</Color>
-        <Color x:Key="WorkbenchGroupBorderColor">#A7AAB1</Color>
+        <Color x:Key="WorkbenchButtonColor">#FFFFFF</Color>
+        <Color x:Key="WorkbenchButtonHoverColor">#F3F6FA</Color>
+        <Color x:Key="WorkbenchButtonBorderColor">#D6DAE0</Color>
+        <Color x:Key="WorkbenchOutlineAccentBackgroundColor">#F5FBFF</Color>
+        <Color x:Key="WorkbenchControlBorderColor">#C8CED6</Color>
+        <Color x:Key="WorkbenchGroupBorderColor">#D6DAE0</Color>
 
         <SolidColorBrush x:Key="WorkbenchWindowBrush" Color="{StaticResource WorkbenchWindowColor}" />
         <SolidColorBrush x:Key="WorkbenchTitleBrush" Color="{StaticResource WorkbenchTitleColor}" />
@@ -53,6 +53,33 @@
         <SolidColorBrush x:Key="WorkbenchOutlineAccentBackgroundBrush" Color="{StaticResource WorkbenchOutlineAccentBackgroundColor}" />
         <SolidColorBrush x:Key="WorkbenchControlBorderBrush" Color="{StaticResource WorkbenchControlBorderColor}" />
         <SolidColorBrush x:Key="WorkbenchGroupBorderBrush" Color="{StaticResource WorkbenchGroupBorderColor}" />
+        <SolidColorBrush x:Key="WorkbenchSettingsCardBrush" Color="#FFFFFF" />
+        <SolidColorBrush x:Key="WorkbenchSettingsCardBorderBrush" Color="{StaticResource WorkbenchControlBorderColor}" />
+        <x:Boolean x:Key="WorkbenchClassicShadowVisible">False</x:Boolean>
+        <Thickness x:Key="WorkbenchSidebarDividerThickness">0,0,1,0</Thickness>
+        <Thickness x:Key="WorkbenchBottomDividerThickness">0,0,0,1</Thickness>
+        <Thickness x:Key="WorkbenchTopDividerThickness">0,1,0,0</Thickness>
+        <Thickness x:Key="WorkbenchEditorBorderThickness">1</Thickness>
+        <Thickness x:Key="WorkbenchSettingsCardBorderThickness">1</Thickness>
+        <BoxShadows x:Key="WorkbenchSettingsCardShadow">0 0 0 0 #00000000</BoxShadows>
+        <LinearGradientBrush x:Key="WorkbenchShadowToLeftBrush"
+                             StartPoint="0%,0%"
+                             EndPoint="100%,0%">
+            <GradientStop Color="Transparent" Offset="0" />
+            <GradientStop Color="Transparent" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="WorkbenchShadowToRightBrush"
+                             StartPoint="0%,0%"
+                             EndPoint="100%,0%">
+            <GradientStop Color="Transparent" Offset="0" />
+            <GradientStop Color="Transparent" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="WorkbenchShadowToTopBrush"
+                             StartPoint="0%,0%"
+                             EndPoint="0%,100%">
+            <GradientStop Color="Transparent" Offset="0" />
+            <GradientStop Color="Transparent" Offset="1" />
+        </LinearGradientBrush>
         <CornerRadius x:Key="WorkbenchControlRadius">0</CornerRadius>
         <CornerRadius x:Key="WorkbenchCardRadius">0</CornerRadius>
         <x:Double x:Key="WorkbenchMenuHeight">34</x:Double>
@@ -61,8 +88,6 @@
         <x:Double x:Key="WorkbenchInputMinHeight">34</x:Double>
         <FontFamily x:Key="WorkbenchUiFontFamily">Inter, Noto Sans CJK SC, WenQuanYi Micro Hei, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
         <FontFamily x:Key="WorkbenchMonoFontFamily">Cascadia Code, Consolas, DejaVu Sans Mono, Noto Sans Mono CJK SC</FontFamily>
-        <StreamGeometry x:Key="WorkbenchTabFillGeometry">M 0,0 L 88,0 L 100,32 L 0,32 Z</StreamGeometry>
-        <StreamGeometry x:Key="WorkbenchTabBorderGeometry">M 0,0 L 88,0 L 100,32</StreamGeometry>
     </Styles.Resources>
 
     <Style Selector="Window">
@@ -102,10 +127,22 @@
         <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
     </Style>
 
+    <Style Selector="Window.dark Button:pointerover">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+
+    <Style Selector="Window.dark Button:pointerover /template/ ContentPresenter">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+
+    <Style Selector="Window.dark Button:pointerover TextBlock">
+        <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+
     <Style Selector="Button.run-button">
         <Setter Property="MinHeight" Value="54" />
-        <Setter Property="Background" Value="{DynamicResource WorkbenchRunBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchRunBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchOnAccentBrush}" />
         <Setter Property="FontSize" Value="18" />
@@ -113,8 +150,18 @@
     </Style>
 
     <Style Selector="Button.run-button:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchRunBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchRunBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
+    <Style Selector="Button.run-button.running">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchDangerBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchDangerBrush}" />
+    </Style>
+
+    <Style Selector="Button.run-button.running:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchDangerBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchDangerBrush}" />
     </Style>
 
     <Style Selector="Button.outline-accent">
@@ -181,6 +228,11 @@
         <Setter Property="FontWeight" Value="Bold" />
     </Style>
 
+    <Style Selector="Button.ai-agent:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
     <Style Selector="Border.help-dot">
         <Setter Property="Width" Value="18" />
         <Setter Property="Height" Value="18" />
@@ -219,17 +271,17 @@
 
     <Style Selector="Window.dark ListBoxItem:pointerover">
         <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
-        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
     </Style>
 
     <Style Selector="Window.dark ComboBoxItem:pointerover">
         <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
-        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
     </Style>
 
     <Style Selector="Window.dark MenuItem:pointerover">
         <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
-        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
     </Style>
 
     <!-- Terminal output control -->
@@ -252,7 +304,7 @@
     </Style>
 
     <Style Selector="ScrollViewer.settings-scroll">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchWindowBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
     </Style>
 
     <Style Selector="StackPanel.settings-page">
@@ -261,11 +313,12 @@
     </Style>
 
     <Style Selector="Border.settings-card">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchGroupBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchSettingsCardBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchSettingsCardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="{DynamicResource WorkbenchSettingsCardBorderThickness}" />
         <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchCardRadius}" />
         <Setter Property="Padding" Value="14" />
+        <Setter Property="BoxShadow" Value="{DynamicResource WorkbenchSettingsCardShadow}" />
     </Style>
 
     <Style Selector="TextBlock.card-title">
@@ -318,12 +371,12 @@
         <Setter Property="Padding" Value="10" />
     </Style>
 
-    <Style Selector="Border.theme-preview.industrial">
-        <Setter Property="Background" Value="#F0F1F5" />
+    <Style Selector="Border.theme-preview.white">
+        <Setter Property="Background" Value="#FAFAFA" />
         <Setter Property="BorderBrush" Value="#9EA1A8" />
     </Style>
 
-    <Style Selector="Border.theme-preview.industrial TextBlock">
+    <Style Selector="Border.theme-preview.white TextBlock">
         <Setter Property="Foreground" Value="#66676B" />
     </Style>
 
@@ -351,7 +404,7 @@
         <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
     </Style>
 
-    <Style Selector="Border.theme-preview.industrial Border.theme-strip">
+    <Style Selector="Border.theme-preview.white Border.theme-strip">
         <Setter Property="Background" Value="#35AEE2" />
     </Style>
 
@@ -361,6 +414,50 @@
 
     <Style Selector="Border.theme-preview.dark Border.theme-strip">
         <Setter Property="Background" Value="#5B9BD7" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.classic">
+        <Setter Property="Background" Value="#FAFAFA" />
+        <Setter Property="BorderBrush" Value="#AEB4BD" />
+        <Setter Property="CornerRadius" Value="2" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.classic TextBlock">
+        <Setter Property="Foreground" Value="#40454D" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.classic Border.theme-strip">
+        <Setter Property="Background" Value="#35AEE2" />
+        <Setter Property="CornerRadius" Value="1" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.rounded">
+        <Setter Property="Background" Value="#F8F5F0" />
+        <Setter Property="BorderBrush" Value="#D8C8B6" />
+        <Setter Property="CornerRadius" Value="14" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.rounded TextBlock">
+        <Setter Property="Foreground" Value="#4A3E35" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.rounded Border.theme-strip">
+        <Setter Property="Background" Value="#D9845D" />
+        <Setter Property="CornerRadius" Value="12" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.glass">
+        <Setter Property="Background" Value="#E8F1F6" />
+        <Setter Property="BorderBrush" Value="#9EB6C5" />
+        <Setter Property="Opacity" Value="0.88" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.glass TextBlock">
+        <Setter Property="Foreground" Value="#263F4C" />
+    </Style>
+
+    <Style Selector="Border.theme-preview.glass Border.theme-strip">
+        <Setter Property="Background" Value="#71B7D2" />
     </Style>
 
     <Style Selector="Border.layout-preview">
@@ -450,14 +547,14 @@
     </Style>
 
     <Style Selector="TabControl">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchWindowBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
         <Setter Property="Padding" Value="0" />
     </Style>
 
     <Style Selector="TabControl.folder-tabs">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchWindowBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="ClipToBounds" Value="False" />
+        <Setter Property="ClipToBounds" Value="True" />
     </Style>
 
     <Style Selector="TabItem">
@@ -479,44 +576,38 @@
 
     <Style Selector="TabControl.folder-tabs TabItem">
         <Setter Property="FontSize" Value="13" />
-        <Setter Property="Padding" Value="10,0,20,0" />
-        <Setter Property="MinWidth" Value="0" />
-        <Setter Property="MinHeight" Value="32" />
-        <Setter Property="Height" Value="32" />
-        <Setter Property="MaxHeight" Value="32" />
+        <Setter Property="Padding" Value="18,0" />
+        <Setter Property="MinWidth" Value="96" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="MaxHeight" Value="34" />
         <Setter Property="Margin" Value="0" />
-        <Setter Property="ClipToBounds" Value="False" />
+        <Setter Property="ClipToBounds" Value="True" />
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
-        <Setter Property="Background" Value="{DynamicResource WorkbenchSideBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchBorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
         <Setter Property="Template">
             <ControlTemplate>
-                <Grid MinHeight="32"
-                      Height="32"
-                      MaxHeight="32"
-                      ClipToBounds="False"
-                      HorizontalAlignment="Stretch">
-                    <Border Background="Transparent"/>
-                    <Path x:Name="TabFill"
-                          Data="{DynamicResource WorkbenchTabFillGeometry}"
-                          Stretch="Fill"
-                          Fill="{TemplateBinding Background}"
-                          StrokeThickness="0"
-                          IsHitTestVisible="False"/>
-                    <Path x:Name="TabBorder"
-                          Data="{DynamicResource WorkbenchTabBorderGeometry}"
-                          Stretch="Fill"
-                          Stroke="{TemplateBinding BorderBrush}"
-                          StrokeThickness="1.2"
-                          IsHitTestVisible="False"/>
+                <Grid MinHeight="34"
+                      Height="34"
+                      MaxHeight="34"
+                      ClipToBounds="True"
+                      HorizontalAlignment="Stretch"
+                      RowDefinitions="*,2">
+                    <Border Grid.RowSpan="2"
+                            Background="{TemplateBinding Background}"/>
                     <ContentPresenter Content="{TemplateBinding Header}"
                                       Margin="{TemplateBinding Padding}"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center"
                                       ZIndex="1"
                                       RecognizesAccessKey="True"/>
+                    <Border Grid.Row="1"
+                            Background="{TemplateBinding BorderBrush}"
+                            HorizontalAlignment="Stretch"
+                            IsHitTestVisible="False"/>
                 </Grid>
             </ControlTemplate>
         </Setter>
@@ -527,38 +618,29 @@
     </Style>
 
     <Style Selector="TabControl.folder-tabs TabItem.tab-layer-1">
-        <Setter Property="Margin" Value="-28,0,0,0" />
-        <Setter Property="Padding" Value="38,0,20,0" />
         <Setter Property="ZIndex" Value="30" />
     </Style>
 
     <Style Selector="TabControl.folder-tabs TabItem.tab-layer-2">
-        <Setter Property="Margin" Value="-28,0,0,0" />
-        <Setter Property="Padding" Value="38,0,20,0" />
         <Setter Property="ZIndex" Value="20" />
     </Style>
 
     <Style Selector="TabControl.folder-tabs TabItem.tab-layer-3">
-        <Setter Property="Margin" Value="-28,0,0,0" />
-        <Setter Property="Padding" Value="38,0,20,0" />
         <Setter Property="ZIndex" Value="10" />
     </Style>
 
     <Style Selector="TabControl.folder-tabs TabItem:pointerover">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchTreeFolderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
     </Style>
 
     <Style Selector="TabControl.folder-tabs TabItem:selected">
         <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
     </Style>
 
-    <Style Selector="TabControl.folder-tabs TabItem:selected /template/ Path#TabBorder">
-        <Setter Property="Stroke" Value="{DynamicResource WorkbenchAccentBrush}" />
-    </Style>
-
     <Style Selector="GridSplitter">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchBorderBrush}" />
+        <Setter Property="Background" Value="Transparent" />
     </Style>
 </Styles>

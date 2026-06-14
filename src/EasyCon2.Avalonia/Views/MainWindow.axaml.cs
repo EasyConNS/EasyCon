@@ -1,5 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using AvaloniaEdit.Folding;
 using EasyCon2.Avalonia.Core.Editor;
@@ -28,6 +30,7 @@ public partial class MainWindow : Window
     {
         ThemeManager.Instance.DarkModeChanged += OnDarkModeChanged;
         ApplyEditorTheme(ThemeManager.Instance.IsDarkMode);
+        UpdateWindowCaptionState();
 
         if (DataContext is MainWindowViewModel vm)
         {
@@ -198,5 +201,58 @@ public partial class MainWindow : Window
         {
             _foldingManager?.Clear();
         }
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == WindowStateProperty)
+            UpdateWindowCaptionState();
+    }
+
+    private void MinimizeButton_Click(object? sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
+    private void MaximizeRestoreButton_Click(object? sender, RoutedEventArgs e)
+    {
+        ToggleWindowState();
+    }
+
+    private void CloseButton_Click(object? sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void ToggleWindowState()
+    {
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
+    }
+
+    private void UpdateWindowCaptionState()
+    {
+        if (MaximizeRestoreButton == null)
+            return;
+
+        MaximizeRestoreButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
+        ToolTip.SetTip(MaximizeRestoreButton, WindowState == WindowState.Maximized ? "还原" : "最大化");
+    }
+
+    private void ResizeEdge_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (WindowState != WindowState.Normal)
+            return;
+
+        if (sender is not Control { Tag: string edgeName })
+            return;
+
+        if (!Enum.TryParse<WindowEdge>(edgeName, out var edge))
+            return;
+
+        BeginResizeDrag(edge, e);
     }
 }

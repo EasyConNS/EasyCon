@@ -16,9 +16,7 @@
 
   <ItemGroup>
     <!-- Amiibo图片：复制到输出目录Amiibo/AmiiboImages/ -->
-    <None Include="..\EasyCon2.UI.Common\Resources\Amiibo\AmiiboImages\*.jpg"
-          Link="Amiibo\AmiiboImages\%(Filename)%(Extension)"
-          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\EasyCon2.UI.Common\Resources\Amiibo\AmiiboImages\*.jpg" Link="Amiibo\AmiiboImages\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

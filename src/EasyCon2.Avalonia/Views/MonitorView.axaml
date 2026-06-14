@@ -4,7 +4,7 @@
              xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
              x:Class="EasyCon2.Avalonia.Views.MonitorView"
              x:DataType="vm:MonitorViewModel">
-    <Border BorderBrush="{DynamicResource WorkbenchBorderBrush}" BorderThickness="2" Background="{DynamicResource WorkbenchWindowBrush}">
+    <Border Background="{DynamicResource WorkbenchPanelBrush}">
         <Grid>
         <Image Source="{Binding CurrentFrame}"
                Stretch="Uniform"

@@ -11,6 +11,7 @@ public record ConfigState
     public bool AutoSaveLog { get; set; } = false;
     public bool DarkMode { get; set; } = false;
     public string ColorSchemeName { get; set; } = "";
+    public string ThemeStyleName { get; set; } = "";
     public bool ShowFolding { get; set; } = true;
     public bool ShowDebugInfo { get; set; } = false;
     public bool AutoSwitchLayoutEnabled { get; set; } = false;

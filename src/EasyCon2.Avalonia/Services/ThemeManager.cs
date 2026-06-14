@@ -6,9 +6,12 @@ namespace EasyCon2.Avalonia.Services;
 
 public sealed partial class ThemeManager : ObservableObject
 {
-    public const string IndustrialGraySchemeName = "工业灰";
-    public const string WarmToneSchemeName = "暖色调";
+    public const string whiteGraySchemeName = "白色";
+    public const string WarmToneSchemeName = "暖色";
     public const string DarkModeSchemeName = "Dark模式";
+    public const string ClassicStyleName = "经典";
+    public const string RoundedStyleName = "卡片式";
+    public const string GlassStyleName = "磨砂玻璃";
     private const double WorkbenchMenuHeight = 34;
     private const double WorkbenchButtonMinHeight = 32;
     private const double WorkbenchCompactButtonMinHeight = 26;
@@ -25,7 +28,11 @@ public sealed partial class ThemeManager : ObservableObject
     [ObservableProperty]
     private string _selectedColorSchemeName = WarmToneSchemeName;
 
-    public string[] ColorSchemeNames { get; } = { IndustrialGraySchemeName, WarmToneSchemeName, DarkModeSchemeName };
+    [ObservableProperty]
+    private string _selectedThemeStyleName = RoundedStyleName;
+
+    public string[] ColorSchemeNames { get; } = { whiteGraySchemeName, WarmToneSchemeName, DarkModeSchemeName };
+    public string[] ThemeStyleNames { get; } = { ClassicStyleName, RoundedStyleName, GlassStyleName };
 
     public bool IsDarkMode => SelectedColorSchemeName == DarkModeSchemeName;
 
@@ -34,15 +41,16 @@ public sealed partial class ThemeManager : ObservableObject
     private ThemeManager()
     {
         ApplyColorScheme(SelectedColorSchemeName);
+        ApplyThemeStyle(SelectedThemeStyleName);
     }
 
     public void ApplyColorScheme(string colorSchemeName)
     {
         var palette = colorSchemeName switch
         {
-            IndustrialGraySchemeName => WorkbenchPalette.IndustrialGray,
-            WarmToneSchemeName => WorkbenchPalette.WarmTone,
-            DarkModeSchemeName => WorkbenchPalette.DarkMode,
+            whiteGraySchemeName => WorkbenchColorScheme.whiteGray,
+            WarmToneSchemeName => WorkbenchColorScheme.WarmTone,
+            DarkModeSchemeName => WorkbenchColorScheme.DarkMode,
             _ => null
         };
 
@@ -50,6 +58,7 @@ public sealed partial class ThemeManager : ObservableObject
             return;
 
         SelectedColorSchemeName = colorSchemeName;
+        var settingsCardColor = GetSettingsCardColor(colorSchemeName, SelectedThemeStyleName, palette.Panel);
 
         SetResource("WorkbenchWindowColor", palette.Window);
         SetResource("WorkbenchTitleColor", palette.Title);
@@ -76,6 +85,9 @@ public sealed partial class ThemeManager : ObservableObject
         SetResource("WorkbenchOutlineAccentBackgroundColor", palette.OutlineAccentBackground);
         SetResource("WorkbenchControlBorderColor", palette.ControlBorder);
         SetResource("WorkbenchGroupBorderColor", palette.GroupBorder);
+        SetResource("WorkbenchSettingsCardColor", settingsCardColor);
+        SetResource("WorkbenchSettingsCardBorderColor", palette.ControlBorder);
+        SetResource("WorkbenchDirectionalShadowColor", palette.DirectionalShadow);
 
         SetResource("WorkbenchWindowBrush", new SolidColorBrush(palette.Window));
         SetResource("WorkbenchTitleBrush", new SolidColorBrush(palette.Title));
@@ -102,20 +114,105 @@ public sealed partial class ThemeManager : ObservableObject
         SetResource("WorkbenchOutlineAccentBackgroundBrush", new SolidColorBrush(palette.OutlineAccentBackground));
         SetResource("WorkbenchControlBorderBrush", new SolidColorBrush(palette.ControlBorder));
         SetResource("WorkbenchGroupBorderBrush", new SolidColorBrush(palette.GroupBorder));
-        SetResource("WorkbenchControlRadius", palette.ControlRadius);
-        SetResource("WorkbenchCardRadius", palette.CardRadius);
-        SetResource("WorkbenchMenuHeight", palette.MenuHeight);
-        SetResource("WorkbenchButtonMinHeight", palette.ButtonMinHeight);
-        SetResource("WorkbenchCompactButtonMinHeight", palette.CompactButtonMinHeight);
-        SetResource("WorkbenchInputMinHeight", palette.InputMinHeight);
-        SetResource("WorkbenchUiFontFamily", palette.UiFontFamily);
-        SetResource("WorkbenchMonoFontFamily", palette.MonoFontFamily);
+        SetResource("WorkbenchSettingsCardBrush", new SolidColorBrush(settingsCardColor));
+        SetResource("WorkbenchSettingsCardBorderBrush", new SolidColorBrush(palette.ControlBorder));
+        SetDirectionalShadowResources(SelectedThemeStyleName == ClassicStyleName, palette.DirectionalShadow);
         SetComboBoxGlyphResources(colorSchemeName, palette);
-        SetTabShapeResources(colorSchemeName);
         DarkModeChanged?.Invoke(IsDarkMode);
     }
 
-    private static void SetComboBoxGlyphResources(string colorSchemeName, WorkbenchPalette palette)
+    public void ApplyThemeStyle(string themeStyleName)
+    {
+        var style = themeStyleName switch
+        {
+            ClassicStyleName => WorkbenchStyle.Classic,
+            RoundedStyleName => WorkbenchStyle.Rounded,
+            GlassStyleName => WorkbenchStyle.Glass,
+            _ => null
+        };
+
+        if (style == null)
+            return;
+
+        SelectedThemeStyleName = themeStyleName;
+
+        SetResource("WorkbenchControlRadius", style.ControlRadius);
+        SetResource("WorkbenchCardRadius", style.CardRadius);
+        SetResource("WorkbenchMenuHeight", style.MenuHeight);
+        SetResource("WorkbenchButtonMinHeight", style.ButtonMinHeight);
+        SetResource("WorkbenchCompactButtonMinHeight", style.CompactButtonMinHeight);
+        SetResource("WorkbenchInputMinHeight", style.InputMinHeight);
+        SetResource("WorkbenchUiFontFamily", style.UiFontFamily);
+        SetResource("WorkbenchMonoFontFamily", style.MonoFontFamily);
+        SetResource("WorkbenchSidebarDividerThickness", style.SidebarDividerThickness);
+        SetResource("WorkbenchBottomDividerThickness", style.BottomDividerThickness);
+        SetResource("WorkbenchTopDividerThickness", style.TopDividerThickness);
+        SetResource("WorkbenchEditorBorderThickness", style.EditorBorderThickness);
+        SetResource("WorkbenchSettingsCardBorderThickness", style.SettingsCardBorderThickness);
+        SetResource("WorkbenchSettingsCardShadow", style.SettingsCardShadow);
+
+        var palette = GetColorScheme(SelectedColorSchemeName);
+        if (palette is not null)
+        {
+            var settingsCardColor = GetSettingsCardColor(SelectedColorSchemeName, themeStyleName, palette.Panel);
+            SetResource("WorkbenchSettingsCardColor", settingsCardColor);
+            SetResource("WorkbenchSettingsCardBrush", new SolidColorBrush(settingsCardColor));
+        }
+
+        SetDirectionalShadowResources(themeStyleName == ClassicStyleName, palette?.DirectionalShadow ?? Colors.Transparent);
+    }
+
+    private static WorkbenchColorScheme? GetColorScheme(string colorSchemeName)
+    {
+        return colorSchemeName switch
+        {
+            whiteGraySchemeName => WorkbenchColorScheme.whiteGray,
+            WarmToneSchemeName => WorkbenchColorScheme.WarmTone,
+            DarkModeSchemeName => WorkbenchColorScheme.DarkMode,
+            _ => null
+        };
+    }
+
+    private static Color GetSettingsCardColor(string colorSchemeName, string themeStyleName, Color fallbackColor)
+    {
+        if (themeStyleName != ClassicStyleName)
+            return fallbackColor;
+
+        return colorSchemeName switch
+        {
+            WarmToneSchemeName => Color.FromRgb(0xFA, 0xF9, 0xF5),
+            DarkModeSchemeName => Color.FromRgb(0x17, 0x17, 0x17),
+            _ => Color.FromRgb(0xF9, 0xFA, 0xFB)
+        };
+    }
+
+    private static void SetDirectionalShadowResources(bool isClassicStyle, Color shadowColor)
+    {
+        var activeShadow = isClassicStyle ? shadowColor : Colors.Transparent;
+
+        SetResource("WorkbenchClassicShadowVisible", isClassicStyle);
+        SetResource("WorkbenchShadowToLeftBrush", CreateDirectionalShadowBrush(activeShadow, true));
+        SetResource("WorkbenchShadowToRightBrush", CreateDirectionalShadowBrush(activeShadow, true, true));
+        SetResource("WorkbenchShadowToTopBrush", CreateDirectionalShadowBrush(activeShadow, false));
+    }
+
+    private static LinearGradientBrush CreateDirectionalShadowBrush(Color shadowColor, bool horizontal, bool reverse = false)
+    {
+        return new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = horizontal
+                ? new RelativePoint(1, 0, RelativeUnit.Relative)
+                : new RelativePoint(0, 1, RelativeUnit.Relative),
+            GradientStops =
+            {
+                new GradientStop(reverse ? shadowColor : Colors.Transparent, 0),
+                new GradientStop(reverse ? Colors.Transparent : shadowColor, 1)
+            }
+        };
+    }
+
+    private static void SetComboBoxGlyphResources(string colorSchemeName, WorkbenchColorScheme palette)
     {
         var glyphColor = colorSchemeName == DarkModeSchemeName
             ? palette.ControlBorder
@@ -129,20 +226,6 @@ public sealed partial class ThemeManager : ObservableObject
         SetResource("ComboBoxDropDownGlyphForegroundDisabled", glyphBrush);
     }
 
-    private static void SetTabShapeResources(string colorSchemeName)
-    {
-        var useStraightTab = colorSchemeName == IndustrialGraySchemeName;
-        var fillGeometry = useStraightTab
-            ? "M 0,0 L 88,0 L 100,32 L 0,32 Z"
-            : "M 0,0 L 82,0 C 91,0 95,7 97,15 L 100,32 L 0,32 Z";
-        var borderGeometry = useStraightTab
-            ? "M 0,0 L 88,0 L 100,32"
-            : "M 0,0 L 82,0 C 91,0 95,7 97,15 L 100,32";
-
-        SetResource("WorkbenchTabFillGeometry", StreamGeometry.Parse(fillGeometry));
-        SetResource("WorkbenchTabBorderGeometry", StreamGeometry.Parse(borderGeometry));
-    }
-
     private static void SetResource(string key, object value)
     {
         var resources = Application.Current?.Resources;
@@ -152,7 +235,7 @@ public sealed partial class ThemeManager : ObservableObject
         resources[key] = value;
     }
 
-    private sealed record WorkbenchPalette(
+    private sealed record WorkbenchColorScheme(
         Color Window,
         Color Title,
         Color Menu,
@@ -178,51 +261,37 @@ public sealed partial class ThemeManager : ObservableObject
         Color OutlineAccentBackground,
         Color ControlBorder,
         Color GroupBorder,
-        CornerRadius ControlRadius,
-        CornerRadius CardRadius,
-        double MenuHeight,
-        double ButtonMinHeight,
-        double CompactButtonMinHeight,
-        double InputMinHeight,
-        FontFamily UiFontFamily,
-        FontFamily MonoFontFamily)
+        Color DirectionalShadow)
     {
-        public static WorkbenchPalette IndustrialGray { get; } = new(
-            Color.FromRgb(0xD0, 0xD1, 0xD6),
-            Color.FromRgb(0xF8, 0xF8, 0xFA),
-            Color.FromRgb(0xE5, 0xE6, 0xEB),
-            Color.FromRgb(0xF0, 0xF1, 0xF5),
-            Color.FromRgb(0xF3, 0xF4, 0xF8),
-            Color.FromRgb(0xCF, 0xCF, 0xD1),
-            Color.FromRgb(0xE2, 0xE2, 0xE4),
-            Color.FromRgb(0xC7, 0xC8, 0xCD),
-            Color.FromRgb(0x9E, 0xA1, 0xA8),
-            Color.FromRgb(0x66, 0x67, 0x6B),
-            Color.FromRgb(0x7B, 0x7C, 0x81),
+        public static WorkbenchColorScheme whiteGray { get; } = new(
+            Color.FromRgb(0xFF, 0xFF, 0xFF),
+            Color.FromRgb(0xFF, 0xFF, 0xFF),
+            Color.FromRgb(0xFF, 0xFF, 0xFF),
+            Color.FromRgb(0xFF, 0xFF, 0xFF),
+            Color.FromRgb(0xFF, 0xFF, 0xFF),
+            Color.FromRgb(0xFF, 0xFF, 0xFF),
+            Color.FromRgb(0xFF, 0xFF, 0xFF),
+            Color.FromRgb(0xFF, 0xFF, 0xFF),
+            Color.FromRgb(0xD6, 0xDA, 0xE0),
+            Color.FromRgb(0x2F, 0x33, 0x3A),
+            Color.FromRgb(0x6D, 0x73, 0x7C),
             Color.FromRgb(0x35, 0xAE, 0xE2),
-            Color.FromRgb(0x34, 0xC9, 0x5B),
+            Color.FromRgb(0x35, 0xAE, 0xE2),
             Color.FromRgb(0xE3, 0x6A, 0x54),
             Color.FromRgb(0xFF, 0xFF, 0xFF),
-            Color.FromRgb(0xE0, 0xE1, 0xE6),
-            Color.FromRgb(0x33, 0x34, 0x38),
+            Color.FromRgb(0xF6, 0xF8, 0xFB),
+            Color.FromRgb(0x2F, 0x33, 0x3A),
             Color.FromRgb(0xFF, 0xFF, 0xFF),
             Color.FromRgb(0xFF, 0x8B, 0x00),
-            Color.FromRgb(0xF4, 0xF5, 0xF8),
-            Color.FromRgb(0xE0, 0xE2, 0xE8),
-            Color.FromRgb(0xC1, 0xC3, 0xC9),
-            Color.FromRgb(0xF7, 0xFB, 0xFF),
-            Color.FromRgb(0xB8, 0xBB, 0xC1),
-            Color.FromRgb(0xA7, 0xAA, 0xB1),
-            new CornerRadius(0),
-            new CornerRadius(0),
-            WorkbenchMenuHeight,
-            WorkbenchButtonMinHeight,
-            WorkbenchCompactButtonMinHeight,
-            WorkbenchInputMinHeight,
-            WorkbenchUiFontFamily,
-            WorkbenchMonoFontFamily);
+            Color.FromRgb(0xFF, 0xFF, 0xFF),
+            Color.FromRgb(0xF3, 0xF6, 0xFA),
+            Color.FromRgb(0xD6, 0xDA, 0xE0),
+            Color.FromRgb(0xF5, 0xFB, 0xFF),
+            Color.FromRgb(0xC8, 0xCE, 0xD6),
+            Color.FromRgb(0xD6, 0xDA, 0xE0),
+            Color.FromArgb(0x1A, 0x3E, 0x48, 0x56));
 
-        public static WorkbenchPalette WarmTone { get; } = new(
+        public static WorkbenchColorScheme WarmTone { get; } = new(
             Color.FromRgb(0xFA, 0xF9, 0xF5),
             Color.FromRgb(0xFA, 0xF9, 0xF5),
             Color.FromRgb(0xFA, 0xF9, 0xF5),
@@ -235,7 +304,7 @@ public sealed partial class ThemeManager : ObservableObject
             Color.FromRgb(0x14, 0x14, 0x13),
             Color.FromRgb(0x6C, 0x6A, 0x64),
             Color.FromRgb(0xCC, 0x78, 0x5C),
-            Color.FromRgb(0x5D, 0xB8, 0x72),
+            Color.FromRgb(0xCC, 0x78, 0x5C),
             Color.FromRgb(0xC6, 0x45, 0x45),
             Color.FromRgb(0xFF, 0xFF, 0xFF),
             Color.FromRgb(0xEA, 0xE5, 0xDC),
@@ -248,16 +317,9 @@ public sealed partial class ThemeManager : ObservableObject
             Color.FromRgb(0xF5, 0xF0, 0xE8),
             Color.FromRgb(0xE6, 0xDF, 0xD8),
             Color.FromRgb(0xE6, 0xDF, 0xD8),
-            new CornerRadius(8),
-            new CornerRadius(12),
-            WorkbenchMenuHeight,
-            WorkbenchButtonMinHeight,
-            WorkbenchCompactButtonMinHeight,
-            WorkbenchInputMinHeight,
-            WorkbenchUiFontFamily,
-            WorkbenchMonoFontFamily);
+            Color.FromArgb(0x16, 0x54, 0x45, 0x36));
 
-        public static WorkbenchPalette DarkMode { get; } = new(
+        public static WorkbenchColorScheme DarkMode { get; } = new(
             Color.FromRgb(0x10, 0x10, 0x11),
             Color.FromRgb(0x17, 0x17, 0x17),
             Color.FromRgb(0x17, 0x17, 0x17),
@@ -270,7 +332,7 @@ public sealed partial class ThemeManager : ObservableObject
             Color.FromRgb(0xF0, 0xF0, 0xF3),
             Color.FromRgb(0xCC, 0xCC, 0xCC),
             Color.FromRgb(0x5B, 0x9B, 0xD7),
-            Color.FromRgb(0x16, 0xA3, 0x4A),
+            Color.FromRgb(0x5B, 0x9B, 0xD7),
             Color.FromRgb(0xEB, 0x8E, 0x90),
             Color.FromRgb(0x20, 0x21, 0x23),
             Color.FromRgb(0x1A, 0x1B, 0x1E),
@@ -283,13 +345,71 @@ public sealed partial class ThemeManager : ObservableObject
             Color.FromRgb(0x17, 0x17, 0x17),
             Color.FromRgb(0x30, 0x34, 0x3A),
             Color.FromRgb(0x24, 0x27, 0x2B),
-            new CornerRadius(8),
-            new CornerRadius(8),
+            Color.FromArgb(0x0C, 0xFF, 0xFF, 0xFF));
+    }
+
+    private sealed record WorkbenchStyle(
+        CornerRadius ControlRadius,
+        CornerRadius CardRadius,
+        double MenuHeight,
+        double ButtonMinHeight,
+        double CompactButtonMinHeight,
+        double InputMinHeight,
+        FontFamily UiFontFamily,
+        FontFamily MonoFontFamily,
+        Thickness SidebarDividerThickness,
+        Thickness BottomDividerThickness,
+        Thickness TopDividerThickness,
+        Thickness EditorBorderThickness,
+        Thickness SettingsCardBorderThickness,
+        BoxShadows SettingsCardShadow)
+    {
+        public static WorkbenchStyle Classic { get; } = new(
+            new CornerRadius(0),
+            new CornerRadius(0),
             WorkbenchMenuHeight,
             WorkbenchButtonMinHeight,
             WorkbenchCompactButtonMinHeight,
             WorkbenchInputMinHeight,
             WorkbenchUiFontFamily,
-            WorkbenchMonoFontFamily);
+            WorkbenchMonoFontFamily,
+            new Thickness(0),
+            new Thickness(0),
+            new Thickness(0),
+            new Thickness(0),
+            new Thickness(1),
+            BoxShadows.Parse("0 -3 8 -6 #263E4856"));
+
+        public static WorkbenchStyle Rounded { get; } = new(
+            new CornerRadius(8),
+            new CornerRadius(12),
+            WorkbenchMenuHeight,
+            WorkbenchButtonMinHeight,
+            WorkbenchCompactButtonMinHeight,
+            WorkbenchInputMinHeight,
+            WorkbenchUiFontFamily,
+            WorkbenchMonoFontFamily,
+            new Thickness(0, 0, 1, 0),
+            new Thickness(0, 0, 0, 1),
+            new Thickness(0, 1, 0, 0),
+            new Thickness(1),
+            new Thickness(1),
+            BoxShadows.Parse("0 0 0 0 #00000000"));
+
+        public static WorkbenchStyle Glass { get; } = new(
+            new CornerRadius(12),
+            new CornerRadius(16),
+            WorkbenchMenuHeight,
+            WorkbenchButtonMinHeight,
+            WorkbenchCompactButtonMinHeight,
+            WorkbenchInputMinHeight,
+            WorkbenchUiFontFamily,
+            WorkbenchMonoFontFamily,
+            new Thickness(0, 0, 1, 0),
+            new Thickness(0, 0, 0, 1),
+            new Thickness(0, 1, 0, 0),
+            new Thickness(1),
+            new Thickness(1),
+            BoxShadows.Parse("0 0 0 0 #00000000"));
     }
 }

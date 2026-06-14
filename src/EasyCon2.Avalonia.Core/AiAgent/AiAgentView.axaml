@@ -22,7 +22,7 @@
 
         <Style Selector="Button.agent-icon-button:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
         <Style Selector="Button.agent-action-button">
@@ -44,6 +44,8 @@
         <Style Selector="Button.agent-action-button:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"/>
             <Setter Property="BorderBrush" Value="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Opacity" Value="0.86"/>
         </Style>
 
         <Style Selector="TextBox.agent-output">
@@ -51,7 +53,84 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Padding" Value="10"/>
             <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
             <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-output">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-output:pointerover">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-output:focus">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-output:focus-visible">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-output:focus-within">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:pointerover">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:focus">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:focus-visible">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:focus-within">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:pointerover /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:focus /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:focus-visible /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-output:focus-within /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
         </Style>
 
         <Style Selector="TextBox.agent-input">
@@ -60,7 +139,77 @@
             <Setter Property="Padding" Value="12,10,80,10"/>
             <Setter Property="MinHeight" Value="81"/>
             <Setter Property="MaxHeight" Value="165"/>
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
             <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-input">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="CaretBrush" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-input /template/ TextBlock">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-input /template/ TextBlock#PART_Placeholder">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:pointerover">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus-visible">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus-within">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:pointerover /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus-visible /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus-within /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
         </Style>
 
         <Style Selector="ComboBox.agent-model-combo">
@@ -68,7 +217,36 @@
             <Setter Property="Padding" Value="4,2"/>
             <Setter Property="MaxWidth" Value="200"/>
             <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo:pointerover">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo:pointerover /template/ Border">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo ComboBoxItem:pointerover">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo ComboBoxItem:pointerover /template/ Border">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo ComboBoxItem:pointerover /template/ Border#BackgroundPresenter">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
     </UserControl.Styles>
 

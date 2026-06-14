@@ -11,6 +11,6 @@
                              Background="#FFFFFF"
                              Foreground="#26251E"
                              Padding="6"
-                             BorderBrush="#9EA0A6"
-                             BorderThickness="1" />
+                             BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
+                             BorderThickness="{DynamicResource WorkbenchEditorBorderThickness}" />
 </UserControl>

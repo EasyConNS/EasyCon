@@ -285,6 +285,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     public ICommand OpenAiAgentCommand { get; }
 
     public ICommand ToggleMonitorVisibilityCommand { get; }
+    public ICommand SelectThemeStyleCommand { get; }
     public ICommand SelectColorSchemeCommand { get; }
     public ICommand RestoreDefaultLayoutCommand { get; }
     public ICommand ResetWelcomeTextCommand { get; }
@@ -453,6 +454,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
         ShowScriptSyntaxCommand = new RelayCommand(ShowScriptSyntax);
         OpenAiAgentCommand = new RelayCommand(OpenAiAgent);
         ToggleMonitorVisibilityCommand = new RelayCommand(ToggleMonitorVisibility);
+        SelectThemeStyleCommand = new RelayCommand<string>(SelectThemeStyle);
         SelectColorSchemeCommand = new RelayCommand<string>(SelectColorScheme);
         RestoreDefaultLayoutCommand = new RelayCommand(RestoreDefaultLayout);
         ResetWelcomeTextCommand = new RelayCommand(ResetWelcomeText);
@@ -603,12 +605,15 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
             ApplySavedLayoutSettings(_userConfig);
 
             var colorSchemeName = NormalizeColorSchemeName(_userConfig.ColorSchemeName, _userConfig.DarkMode);
+            var themeStyleName = NormalizeThemeStyleName(_userConfig.ThemeStyleName, colorSchemeName);
             ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
+            ThemeManager.Instance.ApplyThemeStyle(themeStyleName);
         }
         catch (Exception ex)
         {
             _userConfig = new ConfigState();
-            ThemeManager.Instance.ApplyColorScheme(ThemeManager.IndustrialGraySchemeName);
+            ThemeManager.Instance.ApplyColorScheme(ThemeManager.whiteGraySchemeName);
+            ThemeManager.Instance.ApplyThemeStyle(ThemeManager.ClassicStyleName);
             _logService.AddLog($"读取用户配置失败，已使用默认设置: {ex.Message}");
         }
         finally
@@ -635,6 +640,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
         _userConfig.IsRunningTwoColumnLayoutSelected = IsRunningTwoColumnLayoutSelected;
         _userConfig.IsRunningOneColumnLayoutSelected = IsRunningOneColumnLayoutSelected;
         _userConfig.ColorSchemeName = ThemeManager.Instance.SelectedColorSchemeName;
+        _userConfig.ThemeStyleName = ThemeManager.Instance.SelectedThemeStyleName;
         _userConfig.DarkMode = ThemeManager.Instance.IsDarkMode;
 
         try
@@ -673,10 +679,23 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     {
         return colorSchemeName switch
         {
-            ThemeManager.IndustrialGraySchemeName => ThemeManager.IndustrialGraySchemeName,
-            ThemeManager.WarmToneSchemeName => ThemeManager.WarmToneSchemeName,
+            ThemeManager.whiteGraySchemeName or "工业灰" => ThemeManager.whiteGraySchemeName,
+            ThemeManager.WarmToneSchemeName or "暖色调" => ThemeManager.WarmToneSchemeName,
             ThemeManager.DarkModeSchemeName => ThemeManager.DarkModeSchemeName,
-            _ => legacyDarkMode ? ThemeManager.DarkModeSchemeName : ThemeManager.IndustrialGraySchemeName
+            _ => legacyDarkMode ? ThemeManager.DarkModeSchemeName : ThemeManager.whiteGraySchemeName
+        };
+    }
+
+    private static string NormalizeThemeStyleName(string? themeStyleName, string colorSchemeName)
+    {
+        return themeStyleName switch
+        {
+            ThemeManager.ClassicStyleName => ThemeManager.ClassicStyleName,
+            ThemeManager.RoundedStyleName => ThemeManager.RoundedStyleName,
+            ThemeManager.GlassStyleName => ThemeManager.GlassStyleName,
+            _ => colorSchemeName == ThemeManager.whiteGraySchemeName
+                ? ThemeManager.ClassicStyleName
+                : ThemeManager.RoundedStyleName
         };
     }
 
@@ -693,6 +712,16 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
         SaveUserSettings();
         _logService.AddLog($"已切换配色: {colorSchemeName}");
+    }
+
+    private void SelectThemeStyle(string? themeStyleName)
+    {
+        if (string.IsNullOrWhiteSpace(themeStyleName))
+            return;
+
+        ThemeManager.Instance.ApplyThemeStyle(themeStyleName);
+        SaveUserSettings();
+        _logService.AddLog($"已切换风格: {themeStyleName}");
     }
 
     private void ResetWelcomeText()

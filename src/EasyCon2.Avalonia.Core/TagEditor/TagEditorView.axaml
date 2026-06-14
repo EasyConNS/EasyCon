@@ -128,9 +128,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Border BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="4"
+    <Border BorderThickness="0"
             Background="{DynamicResource WorkbenchInputBrush}"
             Padding="6">
 
