@@ -738,7 +738,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
 
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
         SaveUserSettings();
-        _logService.AddLog($"已切换配色: {colorSchemeName}");
+        _logService.AddLog($"已切换外观: {colorSchemeName}");
     }
 
     private void SelectThemeStyle(string? themeStyleName)

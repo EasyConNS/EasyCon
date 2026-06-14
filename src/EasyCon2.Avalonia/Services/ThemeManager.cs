@@ -7,11 +7,11 @@ namespace EasyCon2.Avalonia.Services;
 
 public sealed partial class ThemeManager : ObservableObject
 {
-    public const string whiteGraySchemeName = "白色";
+    public const string whiteGraySchemeName = "浅色";
     public const string WarmToneSchemeName = "暖色";
-    public const string DarkModeSchemeName = "Dark模式";
-    public const string ClassicStyleName = "经典";
-    public const string RoundedStyleName = "卡片式";
+    public const string DarkModeSchemeName = "深色";
+    public const string ClassicStyleName = "默认";
+    public const string RoundedStyleName = "卡片";
     private const double WorkbenchMenuHeight = 34;
     private const double WorkbenchButtonMinHeight = 32;
     private const double WorkbenchCompactButtonMinHeight = 26;
