@@ -21,6 +21,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        WindowFrameService.SetupWindow(this);
         InitializeComponent();
         Closing += OnClosing;
         Loaded += OnLoaded;
@@ -231,7 +232,10 @@ public partial class MainWindow : Window
         base.OnPropertyChanged(change);
 
         if (change.Property == WindowStateProperty)
+        {
+            WindowFrameService.UpdateWindowStatePadding(this);
             UpdateWindowCaptionState();
+        }
     }
 
     private void MinimizeButton_Click(object? sender, RoutedEventArgs e)
@@ -258,6 +262,8 @@ public partial class MainWindow : Window
 
     private void UpdateWindowCaptionState()
     {
+        Classes.Set("maximized", WindowState == WindowState.Maximized);
+
         if (MaximizeRestoreButton == null)
             return;
 

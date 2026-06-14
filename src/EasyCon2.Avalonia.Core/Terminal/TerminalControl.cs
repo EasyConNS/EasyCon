@@ -185,6 +185,12 @@ public class TerminalControl : Control, ILogicalScrollable
         {
             UpdateScroll();
         }
+        else if (change.Property == BackgroundProperty ||
+                 change.Property == ForegroundProperty ||
+                 change.Property == SelectionBrushProperty)
+        {
+            InvalidateVisual();
+        }
         else if (change.Property == MarqueeHorizontalOverflowProperty)
         {
             _marqueeOffset = 0;

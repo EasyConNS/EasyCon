@@ -22,11 +22,10 @@
            Height="800"
            MinWidth="800"
            MinHeight="600"
-           WindowDecorations="None"
            CanResize="True"
            ExtendClientAreaToDecorationsHint="True"
             ExtendClientAreaTitleBarHeightHint="{DynamicResource WorkbenchTitleBarHeight}"
-           Background="{DynamicResource WorkbenchWindowBrush}"
+           Background="Transparent"
            behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
 
     <Window.Styles>
@@ -231,13 +230,15 @@
         </Style>
     </Window.Styles>
 
-    <Grid>
+    <Grid Background="Transparent">
+    <Border Classes="window-shell">
+    <Border Classes="window-shell-content">
     <Grid RowDefinitions="Auto,*">
         <Border Grid.Row="0"
                 Height="{DynamicResource WorkbenchTitleBarHeight}"
                 Background="{DynamicResource WorkbenchTitleBrush}"
                 BorderBrush="{DynamicResource WorkbenchBorderBrush}"
-                BorderThickness="0,0,0,1">
+                BorderThickness="0">
             <Grid ColumnDefinitions="*,Auto,*">
                 <Border Grid.ColumnSpan="3"
                         Background="Transparent"
@@ -2092,6 +2093,8 @@
         </Grid>
         </Grid>
     </Grid>
+    </Border>
+    </Border>
     <Border Tag="North"
             Height="6"
             HorizontalAlignment="Stretch"

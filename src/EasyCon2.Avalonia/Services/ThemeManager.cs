@@ -151,6 +151,7 @@ public sealed partial class ThemeManager : ObservableObject
 
         SetResource("WorkbenchControlRadius", style.ControlRadius);
         SetResource("WorkbenchCardRadius", style.CardRadius);
+        SetResource("WorkbenchWindowRadius", GetWindowRadius(themeStyleName));
         SetResource("WorkbenchMenuHeight", style.MenuHeight);
         SetResource("WorkbenchButtonMinHeight", style.ButtonMinHeight);
         SetResource("WorkbenchCompactButtonMinHeight", style.CompactButtonMinHeight);
@@ -166,7 +167,12 @@ public sealed partial class ThemeManager : ObservableObject
         SetResource("WorkbenchSettingsCardShadow", style.SettingsCardShadow);
         SetResource("WorkbenchCardLayoutVisible", themeStyleName == RoundedStyleName);
         SetResource("WorkbenchClassicLayoutVisible", themeStyleName != RoundedStyleName);
-        SetResource("WorkbenchTitleBarHeight", themeStyleName == RoundedStyleName ? 52d : style.MenuHeight);
+        SetResource("WorkbenchTitleBarHeight", themeStyleName == RoundedStyleName ? 46d : style.MenuHeight);
+        SetResource("WorkbenchCardPagePadding", themeStyleName == RoundedStyleName
+            ? new Thickness(18, 8, 18, 18)
+            : new Thickness(0));
+        SetResource("WorkbenchWindowFrameMargin", new Thickness(8));
+        SetResource("WorkbenchWindowShadow", GetWindowShadow(themeStyleName));
 
         var palette = GetColorScheme(SelectedColorSchemeName);
         if (palette is not null)
@@ -211,6 +217,28 @@ public sealed partial class ThemeManager : ObservableObject
             WarmToneSchemeName => Color.FromRgb(0xFA, 0xF9, 0xF5),
             DarkModeSchemeName => Color.FromRgb(0x17, 0x17, 0x17),
             _ => Color.FromRgb(0xF9, 0xFA, 0xFB)
+        };
+    }
+
+    private static CornerRadius GetWindowRadius(string themeStyleName)
+    {
+        return themeStyleName switch
+        {
+            RoundedStyleName => new CornerRadius(18),
+            ClassicStyleName => new CornerRadius(6),
+            GlassStyleName => new CornerRadius(18),
+            _ => new CornerRadius(0)
+        };
+    }
+
+    private static BoxShadows GetWindowShadow(string themeStyleName)
+    {
+        return themeStyleName switch
+        {
+            ClassicStyleName => BoxShadows.Parse("0 14 34 -10 #00000055"),
+            RoundedStyleName => BoxShadows.Parse("0 18 46 -8 #00000066"),
+            GlassStyleName => BoxShadows.Parse("0 18 46 -8 #00000066"),
+            _ => BoxShadows.Parse("0 0 0 0 #00000000")
         };
     }
 
