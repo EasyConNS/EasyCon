@@ -51,7 +51,7 @@
                               Margin="8,0,8,0">
                     <ToggleSwitch.Styles>
                         <Style Selector="ToggleSwitch /template/ Border#SwitchThumb">
-                            <Setter Property="Background" Value="{DynamicResource WorkbenchRunBrush}"/>
+                            <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}"/>
                         </Style>
                     </ToggleSwitch.Styles>
                 </ToggleSwitch>

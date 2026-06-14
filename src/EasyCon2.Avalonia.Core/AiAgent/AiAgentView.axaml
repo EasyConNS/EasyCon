@@ -255,11 +255,11 @@
             BorderThickness="0"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
-        <Grid RowDefinitions="34,*,Auto">
+        <Grid RowDefinitions="34,1,*,Auto">
             <!-- 标题栏 -->
             <Grid Grid.Row="0"
                   ColumnDefinitions="*,Auto,Auto"
-                  Background="{DynamicResource WorkbenchMenuBrush}">
+                  Background="{DynamicResource WorkbenchPanelBrush}">
                 <TextBlock Text="AI Agent"
                            Margin="12,0,0,0"
                            VerticalAlignment="Center"
@@ -286,9 +286,12 @@
                 </Button>
             </Grid>
 
+            <Border Grid.Row="1"
+                    Background="{DynamicResource WorkbenchBorderBrush}"/>
+
             <!-- 输出区 -->
             <TextBox x:Name="OutputTextBox"
-                     Grid.Row="1"
+                     Grid.Row="2"
                      Classes="agent-output"
                      Margin="10"
                      Text="{Binding ConversationText}"
@@ -300,7 +303,7 @@
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
 
             <!-- 输入区：输入框 + 右下角叠加控件 -->
-            <Grid Grid.Row="2" Margin="10,0,10,10">
+            <Grid Grid.Row="3" Margin="10,0,10,10">
                 <TextBox x:Name="InputTextBox"
                          Classes="agent-input"
                          Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

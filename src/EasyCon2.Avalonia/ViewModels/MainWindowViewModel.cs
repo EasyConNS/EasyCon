@@ -60,6 +60,12 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     [ObservableProperty]
     private string _windowTitle;
 
+    public string BrandTitle { get; }
+
+    public string VersionBadgeText { get; }
+
+    public string QqGroupText { get; } = "QQ群: 946057081";
+
     // 当前版本号（用户配置页显示）
     [ObservableProperty]
     private string _currentVersion = "";
@@ -184,6 +190,12 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     [ObservableProperty]
     private int _selectedEditorTab = 0;
 
+    public bool IsTextEditorTabSelected => SelectedEditorTab == 0;
+    public bool IsTagEditorTabSelected => SelectedEditorTab == 1;
+    public bool IsUserConfigTabSelected => SelectedEditorTab == 2;
+    public bool IsFeatureCenterTabSelected => SelectedEditorTab == 3;
+    public bool IsCardEditorHeaderVisible => IsTextEditorTabSelected && !AiAgent.IsOpen;
+
     // 标签编辑器 ViewModel
     [ObservableProperty]
     private TagEditorViewModel? _tagEditorViewModel;
@@ -285,6 +297,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     public ICommand OpenAiAgentCommand { get; }
 
     public ICommand ToggleMonitorVisibilityCommand { get; }
+    public ICommand SelectEditorTabCommand { get; }
     public ICommand SelectThemeStyleCommand { get; }
     public ICommand SelectColorSchemeCommand { get; }
     public ICommand RestoreDefaultLayoutCommand { get; }
@@ -301,12 +314,19 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     {
         // 初始化 AI Agent，注入编辑区服务
         AiAgent = new AiAgentViewModel(this);
+        AiAgent.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(AiAgent.IsOpen))
+                OnPropertyChanged(nameof(IsCardEditorHeaderVisible));
+        };
 
         // 窗口标题
         var fullVer = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
         var ver = fullVer;
         var plusIdx = ver.IndexOf('+');
         if (plusIdx > 0) ver = ver[..plusIdx];
+        BrandTitle = "伊机控 EasyCon";
+        VersionBadgeText = $"v{ver}";
         WindowTitle = $"伊机控 EasyCon v{ver}  QQ群:946057081";
         CurrentVersion = $"当前版本：v{fullVer}";
 
@@ -454,6 +474,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
         ShowScriptSyntaxCommand = new RelayCommand(ShowScriptSyntax);
         OpenAiAgentCommand = new RelayCommand(OpenAiAgent);
         ToggleMonitorVisibilityCommand = new RelayCommand(ToggleMonitorVisibility);
+        SelectEditorTabCommand = new RelayCommand<string>(SelectEditorTab);
         SelectThemeStyleCommand = new RelayCommand<string>(SelectThemeStyle);
         SelectColorSchemeCommand = new RelayCommand<string>(SelectColorScheme);
         RestoreDefaultLayoutCommand = new RelayCommand(RestoreDefaultLayout);
@@ -722,6 +743,14 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
         ThemeManager.Instance.ApplyThemeStyle(themeStyleName);
         SaveUserSettings();
         _logService.AddLog($"已切换风格: {themeStyleName}");
+    }
+
+    private void SelectEditorTab(string? tabIndexText)
+    {
+        if (!int.TryParse(tabIndexText, out var tabIndex))
+            return;
+
+        SelectedEditorTab = Math.Clamp(tabIndex, 0, 3);
     }
 
     private void ResetWelcomeText()
@@ -1651,6 +1680,15 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     {
         RefreshWelcomeConsole();
         SaveUserSettings();
+    }
+
+    partial void OnSelectedEditorTabChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsTextEditorTabSelected));
+        OnPropertyChanged(nameof(IsTagEditorTabSelected));
+        OnPropertyChanged(nameof(IsUserConfigTabSelected));
+        OnPropertyChanged(nameof(IsFeatureCenterTabSelected));
+        OnPropertyChanged(nameof(IsCardEditorHeaderVisible));
     }
 
     partial void OnIsCaptureSourceConnectedChanged(bool value)

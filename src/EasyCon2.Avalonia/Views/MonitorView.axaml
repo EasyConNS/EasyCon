@@ -36,12 +36,21 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Padding="20">
-            <TextBlock Text="{Binding ErrorMessage}"
-                       FontSize="16"
-                       Foreground="{DynamicResource WorkbenchTextBrush}"
-                       TextWrapping="Wrap"
-                       MaxWidth="400"
-                       HorizontalAlignment="Center"/>
+            <StackPanel Spacing="12"
+                        HorizontalAlignment="Center">
+                <PathIcon Data="M1,4 H11 V12 H1 Z M11,7 L15,4 V12 L11,9 Z"
+                          Width="46"
+                          Height="46"
+                          Foreground="{DynamicResource WorkbenchBorderBrush}"
+                          HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding ErrorMessage}"
+                           FontSize="14"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                           TextWrapping="Wrap"
+                           MaxWidth="400"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+            </StackPanel>
         </Border>
     </Grid>
 </Border>

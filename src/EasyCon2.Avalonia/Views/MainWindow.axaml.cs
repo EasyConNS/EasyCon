@@ -14,9 +14,9 @@ namespace EasyCon2.Avalonia.Views;
 
 public partial class MainWindow : Window
 {
-    private bool _editorInitialized;
+    private readonly HashSet<ScriptEditorControl> _initializedEditors = [];
+    private readonly Dictionary<ScriptEditorControl, FoldingManager> _foldingManagers = [];
     private LspClientService? _lspService;
-    private FoldingManager? _foldingManager;
     private CustomFoldingStrategy? _foldingStrategy;
 
     public MainWindow()
@@ -54,8 +54,7 @@ public partial class MainWindow : Window
     {
         Classes.Set("dark", isDarkMode);
 
-        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
-        if (editor != null)
+        foreach (var editor in GetScriptEditors())
             editor.IsDarkTheme = isDarkMode;
     }
 
@@ -96,26 +95,30 @@ public partial class MainWindow : Window
     /// </summary>
     private void EnsureEditorInitialized()
     {
-        if (_editorInitialized) return;
-        _editorInitialized = true;
-
-        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
-        if (editor == null) return;
-
         EcsHighlightingLoader.RegisterAll();
+
+        _lspService ??= new LspClientService();
+        _foldingStrategy ??= new CustomFoldingStrategy();
+
+        foreach (var editor in GetScriptEditors())
+            EnsureEditorInitialized(editor);
+    }
+
+    private void EnsureEditorInitialized(ScriptEditorControl editor)
+    {
+        if (!_initializedEditors.Add(editor))
+            return;
+
         editor.SyntaxHighlighting = EcsHighlightingLoader.GetByName("ECScript");
+        editor.AttachLsp(_lspService!);
 
-        _lspService = new LspClientService();
-        editor.AttachLsp(_lspService);
-
-        _foldingManager = FoldingManager.Install(editor.TextArea);
-        _foldingStrategy = new CustomFoldingStrategy();
-
+        var foldingManager = FoldingManager.Install(editor.TextArea);
+        _foldingManagers[editor] = foldingManager;
         editor.EditorTextChanged += (_, _) =>
         {
             // 检查ViewModel的ShowFolding属性
-            if (DataContext is MainWindowViewModel vm && vm.ShowFolding && _foldingManager != null)
-                _foldingStrategy?.UpdateFoldings(_foldingManager, editor.TextDocument);
+            if (DataContext is MainWindowViewModel vm && vm.ShowFolding)
+                _foldingStrategy?.UpdateFoldings(foldingManager, editor.TextDocument);
         };
     }
 
@@ -133,8 +136,8 @@ public partial class MainWindow : Window
     {
         EnsureEditorInitialized();
 
-        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
-        if (editor == null) return;
+        var editors = GetScriptEditors().ToArray();
+        if (editors.Length == 0) return;
 
         var ext = Path.GetExtension(filePath);
 
@@ -144,11 +147,14 @@ public partial class MainWindow : Window
             _ = _lspService.InitializeAsync(filePath);
         }
 
-        // 关闭旧 LSP 文档，防止文档叠加
-        editor.Clear();
+        foreach (var editor in editors)
+        {
+            // 关闭旧 LSP 文档，防止文档叠加
+            editor.Clear();
 
-        if (File.Exists(filePath))
-            editor.Load(filePath);
+            if (File.Exists(filePath))
+                editor.Load(filePath);
+        }
     }
 
     /// <summary>
@@ -156,7 +162,7 @@ public partial class MainWindow : Window
     /// </summary>
     public void SaveCurrentEditor(string filePath)
     {
-        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
+        var editor = GetActiveScriptEditor();
         if (editor == null) return;
         editor.Save(filePath);
         editor.IsModified = false;
@@ -175,8 +181,8 @@ public partial class MainWindow : Window
         ThemeManager.Instance.DarkModeChanged -= OnDarkModeChanged;
 
         // 清理编辑器资源
-        var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
-        editor?.Cleanup();
+        foreach (var editor in GetScriptEditors())
+            editor.Cleanup();
         if (_lspService != null)
             _ = _lspService.DisposeAsync();
     }
@@ -191,16 +197,33 @@ public partial class MainWindow : Window
     {
         if (showFolding)
         {
-            var editor = this.FindControl<ScriptEditorControl>("ScriptEditor");
-            if (editor != null && _foldingManager != null && _foldingStrategy != null)
+            foreach (var (editor, foldingManager) in _foldingManagers)
             {
-                _foldingStrategy.UpdateFoldings(_foldingManager, editor.TextDocument);
+                _foldingStrategy?.UpdateFoldings(foldingManager, editor.TextDocument);
             }
         }
         else
         {
-            _foldingManager?.Clear();
+            foreach (var foldingManager in _foldingManagers.Values)
+                foldingManager.Clear();
         }
+    }
+
+    private IEnumerable<ScriptEditorControl> GetScriptEditors()
+    {
+        var classicEditor = this.FindControl<ScriptEditorControl>("ClassicScriptEditor");
+        if (classicEditor != null)
+            yield return classicEditor;
+
+        var cardEditor = this.FindControl<ScriptEditorControl>("CardScriptEditor");
+        if (cardEditor != null)
+            yield return cardEditor;
+    }
+
+    private ScriptEditorControl? GetActiveScriptEditor()
+    {
+        return GetScriptEditors().FirstOrDefault(editor => editor.IsEffectivelyVisible)
+            ?? GetScriptEditors().FirstOrDefault();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

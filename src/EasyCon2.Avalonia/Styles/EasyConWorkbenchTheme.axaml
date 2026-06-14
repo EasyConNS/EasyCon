@@ -55,13 +55,24 @@
         <SolidColorBrush x:Key="WorkbenchGroupBorderBrush" Color="{StaticResource WorkbenchGroupBorderColor}" />
         <SolidColorBrush x:Key="WorkbenchSettingsCardBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="WorkbenchSettingsCardBorderBrush" Color="{StaticResource WorkbenchControlBorderColor}" />
+        <Color x:Key="WorkbenchStatusConnectedColor">#4CAF50</Color>
+        <Color x:Key="WorkbenchStatusConnectedBackgroundColor">#EAF7EE</Color>
+        <SolidColorBrush x:Key="WorkbenchStatusConnectedBrush" Color="{StaticResource WorkbenchStatusConnectedBackgroundColor}" />
+        <SolidColorBrush x:Key="WorkbenchStatusConnectedTextBrush" Color="{StaticResource WorkbenchStatusConnectedColor}" />
         <x:Boolean x:Key="WorkbenchClassicShadowVisible">False</x:Boolean>
         <Thickness x:Key="WorkbenchSidebarDividerThickness">0,0,1,0</Thickness>
         <Thickness x:Key="WorkbenchBottomDividerThickness">0,0,0,1</Thickness>
         <Thickness x:Key="WorkbenchTopDividerThickness">0,1,0,0</Thickness>
         <Thickness x:Key="WorkbenchEditorBorderThickness">1</Thickness>
         <Thickness x:Key="WorkbenchSettingsCardBorderThickness">1</Thickness>
-        <BoxShadows x:Key="WorkbenchSettingsCardShadow">0 0 0 0 #00000000</BoxShadows>
+        <BoxShadows x:Key="WorkbenchSettingsCardShadow">0 10 28 -8 #3E48564A</BoxShadows>
+        <x:Boolean x:Key="WorkbenchCardLayoutVisible">False</x:Boolean>
+        <x:Boolean x:Key="WorkbenchClassicLayoutVisible">True</x:Boolean>
+        <Thickness x:Key="WorkbenchCardPagePadding">18</Thickness>
+        <x:Double x:Key="WorkbenchCardGap">18</x:Double>
+        <BoxShadows x:Key="WorkbenchCardShadow">0 10 28 -8 #3E48564A</BoxShadows>
+        <SolidColorBrush x:Key="WorkbenchStatusDisconnectedBrush" Color="#FFF0F3" />
+        <SolidColorBrush x:Key="WorkbenchStatusDisconnectedTextBrush" Color="#FF3B3B" />
         <LinearGradientBrush x:Key="WorkbenchShadowToLeftBrush"
                              StartPoint="0%,0%"
                              EndPoint="100%,0%">
@@ -83,6 +94,7 @@
         <CornerRadius x:Key="WorkbenchControlRadius">0</CornerRadius>
         <CornerRadius x:Key="WorkbenchCardRadius">0</CornerRadius>
         <x:Double x:Key="WorkbenchMenuHeight">34</x:Double>
+        <x:Double x:Key="WorkbenchTitleBarHeight">34</x:Double>
         <x:Double x:Key="WorkbenchButtonMinHeight">32</x:Double>
         <x:Double x:Key="WorkbenchCompactButtonMinHeight">26</x:Double>
         <x:Double x:Key="WorkbenchInputMinHeight">34</x:Double>
@@ -141,8 +153,8 @@
 
     <Style Selector="Button.run-button">
         <Setter Property="MinHeight" Value="54" />
-        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchRunBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchRunBrush}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchOnAccentBrush}" />
         <Setter Property="FontSize" Value="18" />
@@ -150,8 +162,8 @@
     </Style>
 
     <Style Selector="Button.run-button:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchRunBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchRunBrush}" />
     </Style>
 
     <Style Selector="Button.run-button.running">
@@ -269,6 +281,32 @@
         <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
     </Style>
 
+    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobBounds">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
+    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchTrack">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
+    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchThumb">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}" />
+    </Style>
+
+    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobOn">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}" />
+    </Style>
+
+    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobOff">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}" />
+    </Style>
+
+    <Style Selector="ToggleSwitch:checked /template/ Panel#PART_SwitchKnob">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchOnAccentBrush}" />
+    </Style>
+
     <Style Selector="Window.dark ListBoxItem:pointerover">
         <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
         <Setter Property="Foreground" Value="#FFFFFF" />
@@ -310,6 +348,7 @@
     <Style Selector="StackPanel.settings-page">
         <Setter Property="Margin" Value="14" />
         <Setter Property="Spacing" Value="12" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
 
     <Style Selector="Border.settings-card">
@@ -319,6 +358,7 @@
         <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchCardRadius}" />
         <Setter Property="Padding" Value="14" />
         <Setter Property="BoxShadow" Value="{DynamicResource WorkbenchSettingsCardShadow}" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
 
     <Style Selector="TextBlock.card-title">
@@ -638,6 +678,107 @@
         <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+    </Style>
+
+    <Style Selector="Border.workbench-card">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchCardRadius}" />
+        <Setter Property="BoxShadow" Value="{DynamicResource WorkbenchCardShadow}" />
+    </Style>
+
+    <Style Selector="Border.workbench-card-content">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchCardRadius}" />
+        <Setter Property="ClipToBounds" Value="True" />
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+    </Style>
+
+    <Style Selector="Grid.card-header">
+        <Setter Property="Height" Value="44" />
+        <Setter Property="ColumnSpacing" Value="8" />
+        <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.card-header-title">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="TextBlock.card-header-action">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button.title-tab">
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="Height" Value="34" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style Selector="Button.title-tab:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchBorderBrush}" />
+    </Style>
+
+    <Style Selector="Button.title-tab.selected">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchAccentBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="Button.title-tab.selected /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchAccentBrush}" />
+    </Style>
+
+    <Style Selector="Border.version-badge">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
+        <Setter Property="Padding" Value="7,2" />
+    </Style>
+
+    <Style Selector="Border.status-pill">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchStatusDisconnectedBrush}" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="7,2" />
+    </Style>
+
+    <Style Selector="TextBlock.status-pill-text">
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchStatusDisconnectedTextBrush}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style Selector="Border.status-pill.connected">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchStatusConnectedBrush}" />
+    </Style>
+
+    <Style Selector="Border.status-pill.connected TextBlock.status-pill-text">
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchStatusConnectedTextBrush}" />
+    </Style>
+
+    <Style Selector="Border.status-pill.disconnected TextBlock.status-pill-text">
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchStatusDisconnectedTextBrush}" />
+    </Style>
+
+    <Style Selector="Border.runtime-display">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchLogBrush}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource WorkbenchControlRadius}" />
+        <Setter Property="MinHeight" Value="40" />
     </Style>
 
     <Style Selector="GridSplitter">

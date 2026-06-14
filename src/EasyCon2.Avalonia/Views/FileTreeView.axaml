@@ -219,11 +219,20 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Padding="18,12">
-            <Button Content="打开项目"
-                    Command="{Binding OpenProjectCommand}"
-                    Classes="tree-open-link"
-                    FontSize="14"
-                    Cursor="Hand"/>
+            <StackPanel Spacing="12"
+                        HorizontalAlignment="Center">
+                <PathIcon Data="M1,4 H6 L8,6 H15 V14 H1 Z"
+                          Width="44"
+                          Height="44"
+                          Foreground="{DynamicResource WorkbenchBorderBrush}"
+                          HorizontalAlignment="Center"/>
+                <Button Content="打开项目"
+                        Command="{Binding OpenProjectCommand}"
+                        Classes="tree-open-link"
+                        FontSize="14"
+                        Foreground="{DynamicResource WorkbenchAccentBrush}"
+                        Cursor="Hand"/>
+            </StackPanel>
         </Border>
     </Grid>
 </UserControl>
