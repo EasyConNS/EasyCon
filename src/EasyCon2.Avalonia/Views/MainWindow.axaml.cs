@@ -32,8 +32,13 @@ public partial class MainWindow : Window
     private void SetTitleBarPlatformClasses()
     {
         var isMacOS = OperatingSystem.IsMacOS();
+        var isLinux = OperatingSystem.IsLinux();
+        
         Classes.Set("platform-macos", isMacOS);
+        // Linux复用Windows布局，所以设置platform-windows类
         Classes.Set("platform-windows", !isMacOS);
+        // platform-linux类保留用于未来可能的Linux专用样式
+        Classes.Set("platform-linux", isLinux);
     }
 
     private void OnLoaded(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
