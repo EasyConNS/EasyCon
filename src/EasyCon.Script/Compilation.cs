@@ -88,7 +88,8 @@ public sealed class Compilation
         _timing.SsaOptimize = sw.Elapsed;
 
         // SSA 阶段已经做了调用图可达性分析，这里采用精确结果
-        return new CompileResult(ssaProgram.Diagnostics, ssaProgram, keyAction, ssaProgram.NeedIL, _timing);
+        // KeyAction 同样采用 SSA 精确结果（覆盖嵌套按键），而非顶层扫描的 bound.KeyAction
+        return new CompileResult(ssaProgram.Diagnostics, ssaProgram, ssaProgram.KeyAction, ssaProgram.NeedIL, _timing);
     }
 
     public string FormatCode()

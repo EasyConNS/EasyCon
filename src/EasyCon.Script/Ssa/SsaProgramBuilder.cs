@@ -39,6 +39,12 @@ static class SsaProgramBuilder
             main = functions[bound.MainFunction];
         }
 
+        // KeyAction 由扁平化的 SSA 指令判定（而非 BoundProgram 的顶层扫描）：
+        // BoundProgram.KeyAction 仅扫函数体顶层语句，会遗漏嵌套在 if/while/for 内的按键，
+        // 进而导致 ScriptService 不创建 pad、运行时 GamePad?. 静默丢弃按键。
+        // SSA 已把控制流展开为基本块，扫描指令即可覆盖任意嵌套深度。
+        var keyAction = HasKeyAction(functions.Values);
+
         // 构建 extern 函数列表（保持原样，SsaEvaluator 直接使用 ICallable）
         var externFunctions = bound.ExternFunctions;
 
@@ -51,7 +57,7 @@ static class SsaProgramBuilder
             Diagnostics = bound.Diagnostics,
             StructDefinitions = bound.StructDefinitions,
             ILNames = bound.ILNames,
-            KeyAction = bound.KeyAction,
+            KeyAction = keyAction,
             NeedIL = bound.NeedIL,
         };
 
@@ -67,9 +73,24 @@ static class SsaProgramBuilder
             Diagnostics = bound.Diagnostics,
             StructDefinitions = bound.StructDefinitions,
             ILNames = filteredILNames,
-            KeyAction = bound.KeyAction,
+            KeyAction = keyAction,
             NeedIL = needCapture,
         };
+    }
+
+    /// <summary>
+    /// 扫描所有 SSA 函数的指令，判断程序是否包含任意按键动作（press / key action）。
+    /// SSA 已扁平化（控制流展开为基本块 + 跳转），因此遍历指令可覆盖任意嵌套深度，
+    /// 修正 BoundProgram.KeyAction 仅扫顶层语句而漏检嵌套按键的问题。
+    /// </summary>
+    private static bool HasKeyAction(IEnumerable<SsaFunction> functions)
+    {
+        foreach (var fn in functions)
+        foreach (var block in fn.Blocks)
+        foreach (var value in block.Instructions)
+            if (value.Op is SsaOp.KeyPress or SsaOp.KeyAction)
+                return true;
+        return false;
     }
 
     // ============ Slot 分配（从 Binder 迁移） ============
