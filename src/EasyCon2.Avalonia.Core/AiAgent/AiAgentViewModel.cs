@@ -1,5 +1,3 @@
-using System.Collections.ObjectModel;
-using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Config;
@@ -8,6 +6,8 @@ using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
 using EasyCon2.Avalonia.Core.AiAgent.Tools;
 using EasyCon2.Avalonia.Core.Services;
+using System.Collections.ObjectModel;
+using System.Text;
 
 namespace EasyCon2.Avalonia.Core.AiAgent;
 

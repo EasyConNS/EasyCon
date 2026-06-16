@@ -1,11 +1,11 @@
-using System;
-using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Native;
 using EasyCon2.Avalonia.ViewModels;
 using EasyCon2.Avalonia.Views;
+using System;
+using System.Windows.Input;
 
 namespace EasyCon2.Avalonia;
 

@@ -128,7 +128,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                         _recursiveFunctions.Add(sym);
                         goto nextFunc;
                     }
-        nextFunc:;
+    nextFunc:;
 
         // 预分配类型化缓存，预计算所有常量
         int maxId = 0;

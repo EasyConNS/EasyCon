@@ -1,6 +1,6 @@
+using EasyCon.Core.LLM.Models;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using EasyCon.Core.LLM.Models;
 
 namespace EasyCon.Core.Config;
 

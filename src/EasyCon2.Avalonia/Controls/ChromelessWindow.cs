@@ -1,9 +1,8 @@
-﻿using System;
-
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using EasyCon2.Avalonia.Services;
+using System;
 
 namespace EasyCon2.Avalonia.Controls;
 

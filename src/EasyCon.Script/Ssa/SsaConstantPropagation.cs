@@ -173,13 +173,13 @@ static class SsaConstantPropagation
 
         // 数组操作：长度传播（KnownArrayLength 侧信道）
         if (inst.Op == SsaOp.ArrayInit)
-            { EvaluateArrayInit(inst, lattice, ssaWorklist, useMap); return; }
+        { EvaluateArrayInit(inst, lattice, ssaWorklist, useMap); return; }
         if (inst.Op == SsaOp.ArrayAppend)
-            { EvaluateArrayAppend(inst, lattice, ssaWorklist, useMap); return; }
+        { EvaluateArrayAppend(inst, lattice, ssaWorklist, useMap); return; }
         if (inst.Op == SsaOp.ArrayLen)
-            { EvaluateArrayLen(inst, lattice, ssaWorklist, useMap); return; }
+        { EvaluateArrayLen(inst, lattice, ssaWorklist, useMap); return; }
         if (inst.Op == SsaOp.Concat)
-            { EvaluateConcat(inst, lattice, ssaWorklist, useMap); return; }
+        { EvaluateConcat(inst, lattice, ssaWorklist, useMap); return; }
 
         // Phi 不在这里处理
         if (inst.Op == SsaOp.Phi)

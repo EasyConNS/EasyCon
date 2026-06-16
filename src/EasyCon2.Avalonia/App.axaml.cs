@@ -5,11 +5,11 @@ using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.ViewModels;
 using EasyCon2.Avalonia.Views;
+using CaptureService = EasyCon2.Avalonia.Services.CaptureService;
+using ControllerService = EasyCon2.Avalonia.Services.ControllerService;
 using CoreLogService = EasyCon2.Avalonia.Core.Services.LogService;
 using DeviceService = EasyCon2.Avalonia.Services.DeviceService;
-using CaptureService = EasyCon2.Avalonia.Services.CaptureService;
 using ScriptService = EasyCon2.Avalonia.Services.ScriptService;
-using ControllerService = EasyCon2.Avalonia.Services.ControllerService;
 
 namespace EasyCon2.Avalonia;
 
@@ -18,9 +18,9 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
-        #if DEBUG
-            this.AttachDeveloperTools();
-        #endif
+#if DEBUG
+        this.AttachDeveloperTools();
+#endif
     }
 
     public override void OnFrameworkInitializationCompleted()

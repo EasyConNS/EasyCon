@@ -1,9 +1,9 @@
-using System.Text;
 using EasyCon.Core.LLM;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
 using EasyCon.Core.LLM.Tools;
 using EasyCon2.Avalonia.Core.AiAgent.Tools;
+using System.Text;
 
 namespace EasyCon2.Avalonia.Core.AiAgent;
 

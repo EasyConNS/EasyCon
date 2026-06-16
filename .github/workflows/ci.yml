@@ -88,3 +88,40 @@ jobs:
           name: EasyCon2-${{ github.run_number }}
           path: dist/publish/
           retention-days: 30
+
+  # ========================================
+  # 3. 构建 macOS .app
+  # ========================================
+  build-macos:
+    runs-on: macos-14
+    needs: format
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 缓存 NuGet 包
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: 还原 NuGet 包
+        run: dotnet restore
+
+      - name: 打包 macOS .app
+        shell: bash
+        env:
+          CI: "true"
+        run: bash ci/macos-app.sh
+
+      - name: 上传 macOS 产物
+        uses: actions/upload-artifact@v6
+        with:
+          name: EasyCon2.Avalonia-macos-${{ github.run_number }}
+          path: dist/publish/
+          retention-days: 30

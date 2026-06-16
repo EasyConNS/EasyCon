@@ -1,7 +1,7 @@
-using System.Text;
 using Avalonia.Threading;
 using EasyCon.Capture;
 using EasyCon2.Avalonia.Core.Services;
+using System.Text;
 
 namespace EasyCon2.Avalonia.Services;
 
