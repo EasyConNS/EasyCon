@@ -313,7 +313,7 @@
               IsVisible="{DynamicResource WorkbenchClassicLayoutVisible}">
 
             <!-- 上部主操作区：三列布局 -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,300"
+            <Grid Grid.Row="0" ColumnDefinitions="*,400"
                   ClipToBounds="True">
 
             <Grid Grid.Column="0"
