@@ -1,10 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using AvaloniaEdit.Folding;
+using EasyCon2.Avalonia.Controls;
 using EasyCon2.Avalonia.Core.Editor;
 using EasyCon2.Avalonia.Core.Editor.Lsp;
 using EasyCon2.Avalonia.Services;
@@ -13,7 +13,7 @@ using System.ComponentModel;
 
 namespace EasyCon2.Avalonia.Views;
 
-public partial class MainWindow : Window
+public partial class MainWindow : ChromelessWindow
 {
     private readonly HashSet<ScriptEditorControl> _initializedEditors = [];
     private readonly Dictionary<ScriptEditorControl, FoldingManager> _foldingManagers = [];
@@ -22,23 +22,9 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        WindowFrameService.SetupWindow(this);
-        SetTitleBarPlatformClasses();
         InitializeComponent();
         Closing += OnClosing;
         Loaded += OnLoaded;
-    }
-
-    private void SetTitleBarPlatformClasses()
-    {
-        var isMacOS = OperatingSystem.IsMacOS();
-        var isLinux = OperatingSystem.IsLinux();
-        
-        Classes.Set("platform-macos", isMacOS);
-        // Linux复用Windows布局，所以设置platform-windows类
-        Classes.Set("platform-windows", !isMacOS);
-        // platform-linux类保留用于未来可能的Linux专用样式
-        Classes.Set("platform-linux", isLinux);
     }
 
     private void OnLoaded(object? sender, global::Avalonia.Interactivity.RoutedEventArgs e)
@@ -48,7 +34,6 @@ public partial class MainWindow : Window
 
         ThemeManager.Instance.DarkModeChanged += OnDarkModeChanged;
         ApplyEditorTheme(ThemeManager.Instance.IsDarkMode);
-        UpdateWindowCaptionState();
         UpdateSystemColorScheme();
 
         if (DataContext is MainWindowViewModel vm)
@@ -265,36 +250,8 @@ public partial class MainWindow : Window
         if (change.Property == WindowStateProperty)
         {
             WindowFrameService.UpdateWindowStatePadding(this);
-            UpdateWindowCaptionState();
+            CaptionButtonsControl?.UpdateState(WindowState);
         }
-    }
-
-    private void UpdateWindowCaptionState()
-    {
-        Classes.Set("maximized", WindowState == WindowState.Maximized);
-
-        if (MaximizeRestoreButton == null)
-            return;
-
-        MaximizeRestoreButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
-        ToolTip.SetTip(MaximizeRestoreButton, WindowState == WindowState.Maximized ? "还原" : "最大化");
-    }
-
-    private void MinimizeButton_Click(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
-    }
-
-    private void MaximizeRestoreButton_Click(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-    }
-
-    private void CloseButton_Click(object? sender, RoutedEventArgs e)
-    {
-        Close();
     }
 
 }

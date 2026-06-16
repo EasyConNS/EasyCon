@@ -201,20 +201,6 @@
         <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
 
-    <Style Selector="Button.footer-reveal">
-        <Setter Property="MinHeight" Value="24" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
-        <Setter Property="HorizontalContentAlignment" Value="Left" />
-    </Style>
-
-    <Style Selector="Button.footer-reveal:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderBrush" Value="Transparent" />
-    </Style>
-
     <Style Selector="Button.tree-open-link">
         <Setter Property="MinHeight" Value="24" />
         <Setter Property="Padding" Value="0" />
@@ -500,12 +486,6 @@
         <Setter Property="TextAlignment" Value="Center" />
     </Style>
 
-    <Style Selector="TextBlock.layout-caption">
-        <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
-        <Setter Property="FontSize" Value="11" />
-        <Setter Property="TextWrapping" Value="Wrap" />
-    </Style>
-
     <Style Selector="RadioButton.layout-option">
         <Setter Property="Padding" Value="0" />
         <Setter Property="Background" Value="Transparent" />
@@ -743,5 +723,102 @@
 
     <Style Selector="GridSplitter">
         <Setter Property="Background" Value="Transparent" />
+    </Style>
+
+    <!--
+        Linux 自定义窗口模板：包含 8 个调整大小边框。
+        Windows (BorderOnly) 和 macOS (Full) 系统自带调整大小能力，不需要此模板。
+        ChromelessWindow.OnApplyTemplate 通过 PART_Border* 名称挂接拖拽事件。
+    -->
+    <Style Selector="Window.platform-linux">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <Border Name="PART_TransparencyFallback" IsHitTestVisible="False" />
+                    <Border Background="{TemplateBinding Background}" IsHitTestVisible="False" />
+                    <VisualLayerManager>
+                        <ContentPresenter Name="PART_ContentPresenter"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          Content="{TemplateBinding Content}"
+                                          Margin="{TemplateBinding Padding}" />
+                    </VisualLayerManager>
+                    <!-- 8 个调整大小拖拽边框（12px 热区） -->
+                    <Border x:Name="PART_BorderTopLeft" Width="12" Height="12"
+                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Background="Transparent" Cursor="TopLeftCorner"
+                            Tag="{x:Static WindowEdge.NorthWest}" />
+                    <Border x:Name="PART_BorderTop" Height="12"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Top"
+                            Background="Transparent" Cursor="TopSide"
+                            Tag="{x:Static WindowEdge.North}" />
+                    <Border x:Name="PART_BorderTopRight" Width="12" Height="12"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Background="Transparent" Cursor="TopRightCorner"
+                            Tag="{x:Static WindowEdge.NorthEast}" />
+                    <Border x:Name="PART_BorderLeft" Width="12"
+                            HorizontalAlignment="Left" VerticalAlignment="Stretch"
+                            Background="Transparent" Cursor="LeftSide"
+                            Tag="{x:Static WindowEdge.West}" />
+                    <Border x:Name="PART_BorderRight" Width="12"
+                            HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                            Background="Transparent" Cursor="RightSide"
+                            Tag="{x:Static WindowEdge.East}" />
+                    <Border x:Name="PART_BorderBottomLeft" Width="12" Height="12"
+                            HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                            Background="Transparent" Cursor="BottomLeftCorner"
+                            Tag="{x:Static WindowEdge.SouthWest}" />
+                    <Border x:Name="PART_BorderBottom" Height="12"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
+                            Background="Transparent" Cursor="BottomSide"
+                            Tag="{x:Static WindowEdge.South}" />
+                    <Border x:Name="PART_BorderBottomRight" Width="12" Height="12"
+                            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Background="Transparent" Cursor="BottomRightCorner"
+                            Tag="{x:Static WindowEdge.SouthEast}" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- 最大化时隐藏调整大小边框 -->
+    <Style Selector="Window.platform-linux:maximized /template/ Border#PART_BorderTopLeft,
+                     Window.platform-linux:maximized /template/ Border#PART_BorderTop,
+                     Window.platform-linux:maximized /template/ Border#PART_BorderTopRight,
+                     Window.platform-linux:maximized /template/ Border#PART_BorderLeft,
+                     Window.platform-linux:maximized /template/ Border#PART_BorderRight,
+                     Window.platform-linux:maximized /template/ Border#PART_BorderBottomLeft,
+                     Window.platform-linux:maximized /template/ Border#PART_BorderBottom,
+                     Window.platform-linux:maximized /template/ Border#PART_BorderBottomRight">
+        <Setter Property="IsVisible" Value="False" />
+    </Style>
+
+    <!-- 窗口标题栏系统按钮 -->
+    <Style Selector="Button.window-caption-button">
+        <Setter Property="Width" Value="52" />
+        <Setter Property="Height" Value="{DynamicResource WorkbenchTitleBarHeight}" />
+        <Setter Property="MinWidth" Value="52" />
+        <Setter Property="MinHeight" Value="{DynamicResource WorkbenchTitleBarHeight}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="16" />
+    </Style>
+    <Style Selector="Button.window-caption-button /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Button.window-caption-button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.window-caption-button.close:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#E81123" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
     </Style>
 </Styles>

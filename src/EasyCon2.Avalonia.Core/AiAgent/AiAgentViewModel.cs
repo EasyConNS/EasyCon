@@ -16,7 +16,6 @@ public partial class AiAgentViewModel : ObservableObject
     private readonly List<ChatMessage> _history = [];
     private readonly ToolRegistry _tools = new();
     private readonly IToolCallService? _toolCallService;
-    private GetFrameTool? _getFrameTool;
     private AgentOrchestrator? _orchestrator;
 
     private string _conversationPrefix = "";
@@ -67,8 +66,8 @@ public partial class AiAgentViewModel : ObservableObject
 
         if (value?.Vision == true)
         {
-            _getFrameTool ??= new GetFrameTool(_toolCallService);
-            _tools.Register(_getFrameTool);
+            if (!_tools.Contains("get_frame"))
+                _tools.Register(new GetFrameTool(_toolCallService));
         }
         else
         {
@@ -76,7 +75,7 @@ public partial class AiAgentViewModel : ObservableObject
         }
 
         // 模型切换后重建编排器
-        _orchestrator = new AgentOrchestrator(_tools, _getFrameTool);
+        _orchestrator = new AgentOrchestrator(_tools);
     }
 
     partial void OnConversationTextChanged(string value)
@@ -103,7 +102,7 @@ public partial class AiAgentViewModel : ObservableObject
     private void NewChat()
     {
         _history.Clear();
-        _orchestrator?.ResetFrameIndex();
+        _orchestrator?.ResetState();
         _conversationPrefix = "";
         _pendingReply.Clear();
         _pendingThinking.Clear();
@@ -143,7 +142,7 @@ public partial class AiAgentViewModel : ObservableObject
         _cts = new CancellationTokenSource();
         try
         {
-            _orchestrator ??= new AgentOrchestrator(_tools, _getFrameTool);
+            _orchestrator ??= new AgentOrchestrator(_tools);
 
             var provider = GetProviderConfig(SelectedEntry.ProviderKey);
             await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token);

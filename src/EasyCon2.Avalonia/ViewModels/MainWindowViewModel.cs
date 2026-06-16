@@ -22,7 +22,7 @@ using Resources = EasyCon2.UI.Common.Properties.Resources;
 
 namespace EasyCon2.Avalonia.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase, IToolCallService
+public partial class MainWindowViewModel : ViewModelBase
 {
     private const string NoScriptPathText = "未选择脚本";
     private const string UntitledScriptText = "未命名脚本";
@@ -43,6 +43,7 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     private readonly IControllerService _controllerService;
     private readonly IDialogService _dialogService;
     private readonly IWindowService _windowService;
+    private readonly ToolCallService _toolCallService;
     private readonly AnsiParser _ansiParser = new();
     private MonitorViewModel? _monitorViewModel;
     private readonly FileTreeViewModel _fileTreeViewModel;
@@ -318,7 +319,20 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService)
     {
         // 初始化 AI Agent，注入编辑区服务
-        AiAgent = new AiAgentViewModel(this);
+        _toolCallService = new ToolCallService(
+            scriptService, captureService, _logBuffer,
+            () => _projectDirectoryPath,
+            () => EditorText ?? string.Empty,
+            v => EditorText = v,
+            () => HasSelectedScriptPath() ? CurrentScriptPath : null,
+            () => HasSelectedScriptPath(),
+            () => new DeviceStatusInfo(
+                IsNintendoSwitchConnected,
+                IsCaptureSourceConnected,
+                IsControllerConnected,
+                scriptService.IsRunning)
+        );
+        AiAgent = new AiAgentViewModel(_toolCallService);
         AiAgent.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(AiAgent.IsOpen))
@@ -1111,244 +1125,10 @@ public partial class MainWindowViewModel : ViewModelBase, IToolCallService
     [ObservableProperty]
     private string _editorText = "";
 
-    #region IToolCallService 实现（供 AI Agent 工具调用）
-
     /// <summary>
-    /// IToolCallService 实现：供 AI Agent 工具读取编辑区脚本内容。
+    /// 格式化当前脚本（委托给 ToolCallService，供 FormatScriptCommand 绑定）。
     /// </summary>
-    public string GetScriptContent() => EditorText ?? string.Empty;
-
-    /// <summary>
-    /// IToolCallService 实现：写入脚本内容到编辑区（UI 线程编组）。
-    /// append 为 true 时追加到末尾，false 时替换全部内容。
-    /// </summary>
-    public void WriteScriptContent(string content, bool append)
-    {
-        Dispatcher.UIThread.Invoke(() =>
-        {
-            if (append && !string.IsNullOrEmpty(EditorText))
-            {
-                EditorText = EditorText + Environment.NewLine + content;
-            }
-            else
-            {
-                EditorText = content;
-            }
-        });
-    }
-
-    /// <summary>
-    /// IToolCallService 实现：查找并替换编辑区文本（UI 线程编组）。
-    /// oldString 为空或未找到匹配时返回 -1，否则返回实际替换次数。
-    /// </summary>
-    public int EditScriptContent(string oldString, string newString, int count)
-    {
-        var current = EditorText ?? string.Empty;
-        if (string.IsNullOrEmpty(oldString))
-            return -1;
-
-        if (!current.Contains(oldString, StringComparison.Ordinal))
-            return -1;
-
-        var replaced = 0;
-        var result = count <= 0
-            ? current.Replace(oldString, newString, StringComparison.Ordinal) // 全部替换
-            : ReplaceLimited(current, oldString, newString, count, out replaced);
-
-        if (count <= 0)
-            replaced = current.Split([oldString], StringSplitOptions.None).Length - 1;
-
-        Dispatcher.UIThread.Invoke(() => EditorText = result);
-        return replaced;
-    }
-
-    /// <summary>有限次数替换。</summary>
-    private static string ReplaceLimited(string source, string oldStr, string newStr, int maxCount, out int replaced)
-    {
-        replaced = 0;
-        var sb = new StringBuilder(source.Length);
-        var span = source.AsSpan();
-        int pos = 0;
-
-        while (replaced < maxCount)
-        {
-            var idx = source.IndexOf(oldStr, pos, StringComparison.Ordinal);
-            if (idx < 0) break;
-
-            sb.Append(span[pos..idx]);
-            sb.Append(newStr);
-            pos = idx + oldStr.Length;
-            replaced++;
-        }
-
-        sb.Append(span[pos..]);
-        return sb.ToString();
-    }
-
-    /// <summary>
-    /// IToolCallService 实现：获取当前脚本路径。
-    /// </summary>
-    public string? GetScriptPath() => HasSelectedScriptPath() ? CurrentScriptPath : null;
-
-    /// <summary>
-    /// IToolCallService 实现：编译当前脚本。
-    /// </summary>
-    public async Task<bool> CompileScriptAsync()
-    {
-        var text = EditorText;
-        var path = HasSelectedScriptPath() ? CurrentScriptPath : null;
-        return await _scriptService.CompileAsync(text, path);
-    }
-
-    /// <summary>
-    /// IToolCallService 实现：格式化当前脚本并写入编辑区，返回格式化后的文本。
-    /// 编译失败时返回错误提示，成功时格式化并写入编辑区。
-    /// </summary>
-    public async Task<string> FormatScriptAsync()
-    {
-        var text = EditorText;
-        if (string.IsNullOrWhiteSpace(text))
-            return "(编辑区无脚本内容)";
-
-        var path = HasSelectedScriptPath() ? CurrentScriptPath : null;
-        if (!await _scriptService.CompileAsync(text, path))
-            return "(编译失败，无法格式化，请先用 compile_script 检查错误)";
-
-        var formatted = _scriptService.GetFormattedCode();
-        await Dispatcher.UIThread.InvokeAsync(() => EditorText = formatted);
-        return formatted;
-    }
-
-    /// <summary>
-    /// IToolCallService 实现：获取设备连接与运行状态快照。
-    /// 包含单片机、视频源、虚拟手柄连接状态及脚本运行状态。
-    /// </summary>
-    public DeviceStatusInfo GetDeviceStatus()
-    {
-        return new DeviceStatusInfo(
-            IsNintendoSwitchConnected,
-            IsCaptureSourceConnected,
-            IsControllerConnected,
-            _scriptService.IsRunning
-        );
-    }
-
-    /// <summary>
-    /// IToolCallService 实现：获取最近 N 条日志（按行）。
-    /// 日志为空时返回提示文本，否则返回最近 maxLines 行日志。
-    /// </summary>
-    public string GetRecentLogs(int maxLines)
-    {
-        if (_logBuffer.Count == 0)
-            return "(暂无日志)";
-
-        var lines = _logBuffer.Count <= maxLines
-            ? _logBuffer.ToArray()
-            : _logBuffer.Skip(_logBuffer.Count - maxLines).ToArray();
-
-        return string.Join(Environment.NewLine, lines);
-    }
-
-    /// <summary>
-    /// IToolCallService 实现：获取当前项目的目录结构树（紧凑 Markdown 格式）。
-    /// 标签文件（.IL/.ILX）标记为 `标签`，库文件（lib/ 目录下的 .ecs）标记为 `库`。
-    /// </summary>
-    public string? GetProjectTree()
-    {
-        if (string.IsNullOrEmpty(_projectDirectoryPath) || !System.IO.Directory.Exists(_projectDirectoryPath))
-            return null;
-
-        var sb = new StringBuilder();
-        BuildTreeMd(sb, _projectDirectoryPath, 0, false);
-        return sb.ToString();
-    }
-
-    private static void BuildTreeMd(StringBuilder sb, string path, int depth, bool isInLib)
-    {
-        var indent = new string(' ', depth * 2);
-        var entries = System.IO.Directory.GetFileSystemEntries(path)
-            .Where(e => !System.IO.Path.GetFileName(e).StartsWith('.'))
-            .OrderBy(e => !System.IO.Directory.Exists(e))
-            .ThenBy(e => System.IO.Path.GetFileName(e), StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        var name = System.IO.Path.GetFileName(path);
-        var currentIsLib = isInLib || string.Equals(name, "lib", StringComparison.OrdinalIgnoreCase);
-
-        foreach (var entry in entries)
-        {
-            var entryName = System.IO.Path.GetFileName(entry);
-            var isDir = System.IO.Directory.Exists(entry);
-
-            if (isDir)
-            {
-                sb.Append(indent).Append("- ").Append(entryName).Append("/\n");
-                BuildTreeMd(sb, entry, depth + 1, currentIsLib);
-            }
-            else
-            {
-                var tag = "";
-                var ext = System.IO.Path.GetExtension(entry).ToUpperInvariant();
-                if (ext is ".IL" or ".ILX") tag = " `标签`";
-                else if (currentIsLib && ext is ".ECS" or ".TXT") tag = " `库`";
-
-                sb.Append(indent).Append("- ").Append(entryName).Append(tag).Append('\n');
-            }
-        }
-    }
-
-    /// <summary>
-    /// IToolCallService 实现：获取当前视频帧的 base64 PNG 字符串（半分辨率）。
-    /// 复用脚本执行的帧获取管线：GetMatFrame → Resize(0.5) → ToPngBytes → Base64。
-    /// </summary>
-    public string? GetCurrentFrameBase64()
-    {
-        var mat = _captureService.GetMatFrame();
-        if (mat is null) return null;
-
-        try
-        {
-            if (mat.Empty()) return null;
-            using var resized = mat.Resize(0.5);
-            var bytes = resized.ToPngBytes();
-            return Convert.ToBase64String(bytes);
-        }
-        finally
-        {
-            mat.Dispose();
-        }
-    }
-
-    /// <summary>
-    /// IToolCallService 实现：编译并运行当前编辑区脚本。
-    /// </summary>
-    public async Task<bool> RunScriptAsync()
-    {
-        if (_scriptService.IsRunning) return false;
-
-        var text = EditorText ?? string.Empty;
-        var path = HasSelectedScriptPath() ? CurrentScriptPath : null;
-        if (!await _scriptService.CompileAsync(text, path))
-            return false;
-
-        if (path is not null)
-            _scriptService.Run(path);
-        else
-            _scriptService.RunFromContent(text);
-        return true;
-    }
-
-    /// <summary>
-    /// IToolCallService 实现：停止正在运行的脚本。
-    /// </summary>
-    public void StopScript() => _scriptService.Stop();
-
-    /// <summary>
-    /// IToolCallService 实现：脚本是否正在运行。
-    /// </summary>
-    public bool IsScriptRunning => _scriptService.IsRunning;
-
-    #endregion
+    private Task<string> FormatScriptAsync() => _toolCallService.FormatScriptAsync();
 
     /// <summary>
     /// 请求主窗口弹出打开项目目录对话框。

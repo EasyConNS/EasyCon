@@ -8,7 +8,6 @@
          xmlns:agent="using:EasyCon2.Avalonia.Core.AiAgent"
          xmlns:terminal="using:EasyCon2.Avalonia.Core.Terminal"
          xmlns:views="using:EasyCon2.Avalonia.Views"
-         xmlns:chrome="using:Avalonia.Controls.Chrome"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          mc:Ignorable="d"
@@ -25,7 +24,6 @@
            CanResize="True"
            ExtendClientAreaToDecorationsHint="True"
             ExtendClientAreaTitleBarHeightHint="{DynamicResource WorkbenchTitleBarHeight}"
-           Background="{DynamicResource WorkbenchWindowBrush}"
            behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
 
     <Window.Styles>
@@ -52,38 +50,6 @@
             <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
         </Style>
 
-        <Style Selector="Button.window-caption-button">
-            <Setter Property="Width" Value="52" />
-            <Setter Property="Height" Value="{DynamicResource WorkbenchTitleBarHeight}" />
-            <Setter Property="MinWidth" Value="52" />
-            <Setter Property="MinHeight" Value="{DynamicResource WorkbenchTitleBarHeight}" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="CornerRadius" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="FontSize" Value="16" />
-        </Style>
-
-        <Style Selector="Button.window-caption-button /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-        </Style>
-
-        <Style Selector="Button.window-caption-button:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-        </Style>
-
-        <Style Selector="Button.window-caption-button.close:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#E81123" />
-            <Setter Property="Foreground" Value="#FFFFFF" />
-        </Style>
-
         <Style Selector="Grid.title-platform-layout">
             <Setter Property="IsVisible" Value="False" />
         </Style>
@@ -94,6 +60,25 @@
 
         <Style Selector="Window.platform-macos Grid.title-layout-macos">
             <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <!-- 窗口背景：默认不透明。Linux 下改为透明，为自绘外阴影留出绘制空间。
+             Windows 走 DWM 阴影、macOS 走原生阴影，仍保持不透明。 -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchWindowBrush}" />
+        </Style>
+        <Style Selector="Window.platform-linux">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <!-- Linux 无边框窗口无合成器原生阴影：在内容外层自绘柔和阴影；最大化时收回留白与阴影。 -->
+        <Style Selector="Window.platform-linux Border.window-root">
+            <Setter Property="Margin" Value="12" />
+            <Setter Property="BoxShadow" Value="0 3 8 0 #39000000" />
+        </Style>
+        <Style Selector="Window.platform-linux.maximized Border.window-root">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="BoxShadow" Value="0 0 0 0 #00000000" />
         </Style>
 
         <Style Selector="TextBlock.title-brand">
@@ -224,20 +209,21 @@
         </Style>
     </Window.Styles>
 
+    <Border Classes="window-root"
+            Background="{DynamicResource WorkbenchWindowBrush}">
     <Grid Background="{DynamicResource WorkbenchWindowBrush}">
     <Grid RowDefinitions="Auto,*">
         <Border Grid.Row="0"
                 Height="{DynamicResource WorkbenchTitleBarHeight}"
                 Background="{DynamicResource WorkbenchTitleBrush}"
                 BorderBrush="{DynamicResource WorkbenchBorderBrush}"
-                BorderThickness="0">
+                BorderThickness="0"
+                PointerPressed="BeginMoveWindow"
+                DoubleTapped="MaximizeOrRestoreWindow">
             <Grid>
-                <Border Grid.ColumnSpan="3"
-                        Background="Transparent"
-                        chrome:WindowDecorationProperties.ElementRole="TitleBar"/>
+                <!-- Windows/Linux: 自绘系统按钮（BorderOnly 无原生按钮） -->
                 <Grid Classes="title-platform-layout title-layout-windows"
-                      Background="Transparent"
-                      chrome:WindowDecorationProperties.ElementRole="TitleBar">
+                      Background="Transparent">
                     <StackPanel Orientation="Horizontal"
                                 Spacing="8"
                                 Margin="14,0,16,0"
@@ -248,6 +234,7 @@
                                Width="16"
                                Height="16"
                                VerticalAlignment="Center"/>
+                        <!-- 窗口标题（系统标题被 ExtendClientArea 覆盖，需手动显示） -->
                         <TextBlock Classes="title-brand"
                                    Text="{Binding BrandTitle}"/>
                         <Border Classes="version-badge">
@@ -256,135 +243,69 @@
                                        FontSize="12"/>
                         </Border>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Bottom"
-                                Spacing="10"
-                                IsVisible="{DynamicResource WorkbenchCardLayoutVisible}"
-                                chrome:WindowDecorationProperties.ElementRole="User">
-                        <Button Classes="title-tab"
-                                Classes.selected="{Binding IsTextEditorTabSelected}"
-                                Command="{Binding SelectEditorTabCommand}"
-                                CommandParameter="0">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="M2,14 L5.5,13 L14,4.5 L11.5,2 L3,10.5 Z M10.5,3 L13,5.5 M2,14 L6,14"
-                                          Width="15" Height="15"/>
-                                <TextBlock Text="文本编辑"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="title-tab"
-                                Classes.selected="{Binding IsTagEditorTabSelected}"
-                                Command="{Binding SelectEditorTabCommand}"
-                                CommandParameter="1">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="M2,2 H8 L15,9 L9,15 L2,8 Z M5,5 H5.1"
-                                          Width="15" Height="15"/>
-                                <TextBlock Text="标签编辑"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="title-tab"
-                                Classes.selected="{Binding IsUserConfigTabSelected}"
-                                Command="{Binding SelectEditorTabCommand}"
-                                CommandParameter="2">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="M8,1 L9,4 L12,5 L15,4 L14,7 L15,10 L12,11 L9,10 L8,15 L7,10 L4,11 L1,10 L2,7 L1,4 L4,5 L7,4 Z"
-                                          Width="15" Height="15"/>
-                                <TextBlock Text="用户配置"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="title-tab"
-                                Classes.selected="{Binding IsFeatureCenterTabSelected}"
-                                Command="{Binding SelectEditorTabCommand}"
-                                CommandParameter="3">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="M1,1 H6 V6 H1 Z M10,1 H15 V6 H10 Z M1,10 H6 V15 H1 Z M10,10 H15 V15 H10 Z"
-                                          Width="15" Height="15"/>
-                                <TextBlock Text="功能中心"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                    <StackPanel HorizontalAlignment="Right"
-                                Orientation="Horizontal"
-                                chrome:WindowDecorationProperties.ElementRole="User">
-                        <Button Classes="window-caption-button"
-                                Content="−"
-                                Click="MinimizeButton_Click"
-                                ToolTip.Tip="最小化"/>
-                        <Button x:Name="MaximizeRestoreButton"
-                                Classes="window-caption-button"
-                                Content="□"
-                                Click="MaximizeRestoreButton_Click"
-                                ToolTip.Tip="最大化"/>
-                        <Button Classes="window-caption-button close"
-                                Content="×"
-                                Click="CloseButton_Click"
-                                ToolTip.Tip="关闭"/>
-                    </StackPanel>
+                    <controls:CaptionButtons x:Name="CaptionButtonsControl"
+                                             HorizontalAlignment="Right"/>
                 </Grid>
+                <!-- macOS: 系统交通灯在左侧，窗口标题由系统原生绘制（Full 装饰），
+                     无需手动显示。 -->
                 <Grid Classes="title-platform-layout title-layout-macos"
-                      Background="Transparent"
-                      chrome:WindowDecorationProperties.ElementRole="TitleBar">
-                    <Border Grid.Column="0"
-                            Background="Transparent"
-                            chrome:WindowDecorationProperties.ElementRole="TitleBar"/>
-                    <TextBlock Classes="title-brand"
-                               Text="{Binding BrandTitle}"
-                               Margin="78,0,16,0"
-                               HorizontalAlignment="Left"
-                               IsHitTestVisible="False"/>
-                    <StackPanel Orientation="Horizontal"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Bottom"
-                                Spacing="10"
-                                IsVisible="{DynamicResource WorkbenchCardLayoutVisible}"
-                                chrome:WindowDecorationProperties.ElementRole="User">
-                        <Button Classes="title-tab"
-                                Classes.selected="{Binding IsTextEditorTabSelected}"
-                                Command="{Binding SelectEditorTabCommand}"
-                                CommandParameter="0">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="M2,14 L5.5,13 L14,4.5 L11.5,2 L3,10.5 Z M10.5,3 L13,5.5 M2,14 L6,14"
-                                          Width="15" Height="15"/>
-                                <TextBlock Text="文本编辑"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="title-tab"
-                                Classes.selected="{Binding IsTagEditorTabSelected}"
-                                Command="{Binding SelectEditorTabCommand}"
-                                CommandParameter="1">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="M2,2 H8 L15,9 L9,15 L2,8 Z M5,5 H5.1"
-                                          Width="15" Height="15"/>
-                                <TextBlock Text="标签编辑"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="title-tab"
-                                Classes.selected="{Binding IsUserConfigTabSelected}"
-                                Command="{Binding SelectEditorTabCommand}"
-                                CommandParameter="2">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="M8,1 L9,4 L12,5 L15,4 L14,7 L15,10 L12,11 L9,10 L8,15 L7,10 L4,11 L1,10 L2,7 L1,4 L4,5 L7,4 Z"
-                                          Width="15" Height="15"/>
-                                <TextBlock Text="用户配置"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Classes="title-tab"
-                                Classes.selected="{Binding IsFeatureCenterTabSelected}"
-                                Command="{Binding SelectEditorTabCommand}"
-                                CommandParameter="3">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <PathIcon Data="M1,1 H6 V6 H1 Z M10,1 H15 V6 H10 Z M1,10 H6 V15 H1 Z M10,10 H15 V15 H10 Z"
-                                          Width="15" Height="15"/>
-                                <TextBlock Text="功能中心"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
+                      Background="Transparent">
+                    <!-- 为 macOS 原生交通灯按钮预留空间 -->
+                    <controls:MacOSTrafficLightsSpacer/>
                     <TextBlock Classes="title-version"
                                Text="{Binding VersionBadgeText}"
                                Margin="16,0,14,0"
                                HorizontalAlignment="Right"
                                IsHitTestVisible="False"/>
                 </Grid>
+                <!-- 标签栏与平台无关：原在 Windows/macOS 两套标题栏里各写一份，此处抽为
+                     单一共享实例，居中叠在两套标题栏之上；仅卡片风格（CardLayout）可见。 -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Bottom"
+                            Spacing="10"
+                            IsVisible="{DynamicResource WorkbenchCardLayoutVisible}">
+                    <Button Classes="title-tab"
+                            Classes.selected="{Binding IsTextEditorTabSelected}"
+                            Command="{Binding SelectEditorTabCommand}"
+                            CommandParameter="0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="M2,14 L5.5,13 L14,4.5 L11.5,2 L3,10.5 Z M10.5,3 L13,5.5 M2,14 L6,14"
+                                      Width="15" Height="15"/>
+                            <TextBlock Text="文本编辑"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="title-tab"
+                            Classes.selected="{Binding IsTagEditorTabSelected}"
+                            Command="{Binding SelectEditorTabCommand}"
+                            CommandParameter="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="M2,2 H8 L15,9 L9,15 L2,8 Z M5,5 H5.1"
+                                      Width="15" Height="15"/>
+                            <TextBlock Text="标签编辑"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="title-tab"
+                            Classes.selected="{Binding IsUserConfigTabSelected}"
+                            Command="{Binding SelectEditorTabCommand}"
+                            CommandParameter="2">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="M8,1 L9,4 L12,5 L15,4 L14,7 L15,10 L12,11 L9,10 L8,15 L7,10 L4,11 L1,10 L2,7 L1,4 L4,5 L7,4 Z"
+                                      Width="15" Height="15"/>
+                            <TextBlock Text="用户配置"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="title-tab"
+                            Classes.selected="{Binding IsFeatureCenterTabSelected}"
+                            Command="{Binding SelectEditorTabCommand}"
+                            CommandParameter="3">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="M1,1 H6 V6 H1 Z M10,1 H15 V6 H10 Z M1,10 H6 V15 H1 Z M10,10 H15 V15 H10 Z"
+                                      Width="15" Height="15"/>
+                            <TextBlock Text="功能中心"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
         <Grid Grid.Row="1">
@@ -2150,5 +2071,6 @@
         </Grid>
     </Grid>
     </Grid>
+    </Border>
 </Window>
 

@@ -48,19 +48,116 @@ public class AgentOrchestrator
     private const int ToolTimeoutSeconds = 30;
 
     private readonly ToolRegistry _tools;
-    private readonly GetFrameTool? _getFrameTool;
     private int _frameImageIndex = -1;
+    private readonly ReflectionState _reflectionState = new();
 
-    public AgentOrchestrator(ToolRegistry tools, GetFrameTool? getFrameTool = null)
+    /// <summary>
+    /// 反思状态管理器，追踪执行失败和重复结果，控制反思注入。
+    /// </summary>
+    private class ReflectionState
+    {
+        private const int MaxReflections = 3;
+        private const int FailureThreshold = 2;
+        private const int SameResultThreshold = 2;
+
+        private int _reflectionCount;
+        private int _consecutiveFailures;
+        private int _consecutiveSameResults;
+        private string _lastToolResultHash = string.Empty;
+        private bool _shouldTriggerReflection;
+
+        /// <summary>用户发送新消息时重置反思状态。</summary>
+        public void Reset()
+        {
+            _reflectionCount = 0;
+            _consecutiveFailures = 0;
+            _consecutiveSameResults = 0;
+            _lastToolResultHash = string.Empty;
+            _shouldTriggerReflection = false;
+        }
+
+        /// <summary>追踪工具执行结果。</summary>
+        public void TrackResult(string toolResult)
+        {
+            if (string.IsNullOrEmpty(toolResult))
+                return;
+
+            if (toolResult.Contains("[错误]") || toolResult.Contains("[工具执行异常]") || toolResult.Contains("[错误] 工具"))
+            {
+                _consecutiveFailures++;
+                _consecutiveSameResults = 0; // 失败不算相同结果
+                if (_consecutiveFailures >= FailureThreshold)
+                    _shouldTriggerReflection = true;
+            }
+            else
+            {
+                _consecutiveFailures = 0; // 成功重置失败计数
+                var hash = toolResult.GetHashCode().ToString();
+                if (hash == _lastToolResultHash)
+                {
+                    _consecutiveSameResults++;
+                    if (_consecutiveSameResults >= SameResultThreshold)
+                        _shouldTriggerReflection = true;
+                }
+                else
+                {
+                    _consecutiveSameResults = 0;
+                }
+                _lastToolResultHash = hash;
+            }
+        }
+
+        /// <summary>追踪助手回复中的反思标记。</summary>
+        public void TrackReflectionMarker(string assistantContent)
+        {
+            if (!string.IsNullOrEmpty(assistantContent) && assistantContent.Contains("反思："))
+                _reflectionCount++;
+        }
+
+        /// <summary>判断是否需要注入反思提示。</summary>
+        public bool ShouldInjectReflection()
+        {
+            if (_reflectionCount >= MaxReflections)
+                return false;
+
+            if (!_shouldTriggerReflection)
+                return false;
+
+            _shouldTriggerReflection = false;
+            return true;
+        }
+
+        /// <summary>获取反思深度。</summary>
+        public string GetReflectionDepth()
+        {
+            // 已反思过但仍在循环，或连续失败超过阈值 → 深度反思
+            if (_reflectionCount > 0 || _consecutiveFailures > FailureThreshold)
+                return "deep";
+            return "shallow";
+        }
+
+        /// <summary>获取反思提示文本。</summary>
+        public string GetReflectionPrompt()
+        {
+            return GetReflectionDepth() == "deep"
+                ? SystemPrompts.ReflectionDeep
+                : SystemPrompts.Reflection;
+        }
+    }
+
+    public AgentOrchestrator(ToolRegistry tools)
     {
         _tools = tools;
-        _getFrameTool = getFrameTool;
     }
 
     /// <summary>
-    /// 重置帧图片索引（新对话时调用）。
+    /// 重置帧图片索引和反思状态（新对话时调用）。
     /// </summary>
-    public void ResetFrameIndex() => _frameImageIndex = -1;
+    public void ResetState()
+    {
+        _frameImageIndex = -1;
+        _reflectionState.Reset();
+    }
 
     /// <summary>
     /// 执行完整的 Agent 对话循环。
@@ -81,6 +178,9 @@ public class AgentOrchestrator
         var hasTools = toolDefs.Count > 0;
         var pendingReply = new StringBuilder();
         var pendingThinking = new StringBuilder();
+
+        // 重置反思状态（用户新消息）
+        _reflectionState.Reset();
 
         for (var round = 0; round < MaxToolRounds; round++)
         {
@@ -134,7 +234,10 @@ public class AgentOrchestrator
             if (!hasTools || toolCalls.Count == 0)
             {
                 if (hasContent)
+                {
                     history.Add(ChatMessage.Assistant(pendingReply.ToString()));
+                    _reflectionState.TrackReflectionMarker(pendingReply.ToString());
+                }
                 onEvent(new AgentEvent.Completed(pendingReply.ToString()));
                 return;
             }
@@ -145,23 +248,23 @@ public class AgentOrchestrator
             // 执行工具调用
             var results = await ExecuteToolCallsAsync(toolCalls, history, onEvent, ct);
 
-            // 按顺序将工具结果加入历史
+            // 按顺序将工具结果加入历史，并处理多模态附加消息
             for (var i = 0; i < toolCalls.Count; i++)
             {
-                history.Add(ChatMessage.Tool(toolCalls[i].Id, results[i], toolCalls[i].Function.Name));
-            }
+                history.Add(ChatMessage.Tool(toolCalls[i].Id, results[i].Content, toolCalls[i].Function.Name));
+                _reflectionState.TrackResult(results[i].Content);
 
-            // 帧图片替换（不累积）
-            if (_getFrameTool?.PendingImage is { } img)
-            {
-                if (_frameImageIndex >= 0 && _frameImageIndex < history.Count)
-                    history[_frameImageIndex] = img;
-                else
+                // 处理附加的多模态消息（如 get_frame 的图片）
+                if (results[i].AttachedMessage is { } img)
                 {
-                    _frameImageIndex = history.Count;
-                    history.Add(img);
+                    if (_frameImageIndex >= 0 && _frameImageIndex < history.Count)
+                        history[_frameImageIndex] = img;
+                    else
+                    {
+                        _frameImageIndex = history.Count;
+                        history.Add(img);
+                    }
                 }
-                _getFrameTool.PendingImage = null;
             }
         }
 
@@ -173,7 +276,7 @@ public class AgentOrchestrator
     /// <summary>
     /// 批量执行工具调用（并行执行，保持结果顺序）。
     /// </summary>
-    private async Task<List<string>> ExecuteToolCallsAsync(
+    private async Task<List<ToolResult>> ExecuteToolCallsAsync(
         List<ToolCall> toolCalls,
         List<ChatMessage> history,
         Action<AgentEvent> onEvent,
@@ -191,9 +294,9 @@ public class AgentOrchestrator
     }
 
     /// <summary>
-    /// 执行单个工具调用，返回结果文本。
+    /// 执行单个工具调用，返回完整 ToolResult（含可能的多模态附加消息）。
     /// </summary>
-    private async Task<string> ExecuteToolCallAsync(
+    private async Task<ToolResult> ExecuteToolCallAsync(
         ToolCall toolCall,
         List<ChatMessage> history,
         Action<AgentEvent> onEvent,
@@ -202,7 +305,7 @@ public class AgentOrchestrator
         var fn = toolCall.Function;
         var tool = _tools.Get(fn.Name);
         if (tool is null)
-            return $"[错误] 未知工具: {fn.Name}";
+            return ToolResult.Error($"[错误] 未知工具: {fn.Name}");
 
         try
         {
@@ -215,15 +318,15 @@ public class AgentOrchestrator
             var result = await tool.ExecuteAsync(args, timeoutCts.Token);
             var summary = Truncate(result.Content, 200);
             onEvent(new AgentEvent.ToolCompleted(fn.Name, summary));
-            return result.Content;
+            return result;
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            return $"[错误] 工具 {fn.Name} 执行超时（{ToolTimeoutSeconds}秒），请调整参数后重试。";
+            return ToolResult.Error($"[错误] 工具 {fn.Name} 执行超时（{ToolTimeoutSeconds}秒），请调整参数后重试。");
         }
         catch (Exception ex)
         {
-            return $"[工具执行异常] {ex.Message}";
+            return ToolResult.Error($"[工具执行异常] {ex.Message}");
         }
     }
 
@@ -233,7 +336,14 @@ public class AgentOrchestrator
     internal List<ChatMessage> BuildMessages(List<ChatMessage> history, int currentRound = 0)
     {
         var systemPrompt = BuildSystemPrompt(history, currentRound);
-        var messages = new List<ChatMessage>(history.Count + 1) { ChatMessage.System(systemPrompt) };
+        var messages = new List<ChatMessage>(history.Count + 2) { ChatMessage.System(systemPrompt) };
+
+        // 反思提示注入（在系统提示后、历史消息前）
+        if (_reflectionState.ShouldInjectReflection())
+        {
+            var reflectionPrompt = _reflectionState.GetReflectionPrompt();
+            messages.Add(ChatMessage.System(reflectionPrompt));
+        }
 
         // 滑动窗口截断
         if (history.Count <= MaxHistoryMessages)

@@ -22,15 +22,25 @@ internal static class WindowFrameService
 
     public static void SetupWindow(Window window)
     {
-        window.WindowDecorations = WindowDecorations.BorderOnly;
-        window.SystemDecorations = WindowDecorations.BorderOnly;
         window.ExtendClientAreaToDecorationsHint = true;
 
         if (OperatingSystem.IsMacOS())
         {
-            window.WindowDecorations = WindowDecorations.Full;
+            // macOS: Full 装饰，系统绘制原生交通灯按钮和窗口标题
             window.SystemDecorations = WindowDecorations.Full;
+            window.WindowDecorations = WindowDecorations.Full;
         }
+        else
+        {
+            // Windows/Linux: BorderOnly，无原生系统按钮，由应用自绘
+            window.SystemDecorations = WindowDecorations.BorderOnly;
+            window.WindowDecorations = WindowDecorations.BorderOnly;
+        }
+
+        // Linux 无边框窗口拿不到合成器原生阴影：开启透明，
+        // 由 MainWindow.axaml 中的 BoxShadow 自绘窗口外阴影。
+        if (OperatingSystem.IsLinux())
+            window.TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
 
         window.BorderThickness = new Thickness(1);
         UpdateWindowStatePadding(window);
@@ -38,8 +48,21 @@ internal static class WindowFrameService
 
     public static void UpdateWindowStatePadding(Window window)
     {
-        // Windows和Linux使用相同的padding逻辑
-        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsLinux())
+        // 供 XAML 样式按窗口状态切换自绘阴影（最大化时收回外阴影与留白）。
+        window.Classes.Set("maximized", window.WindowState == WindowState.Maximized);
+
+        // Linux: 阴影留白完全交给 XAML 中的 Border Margin；窗口 Padding 始终为 0，
+        // 否则透明窗口在最大化时会出现外部留白。
+        if (OperatingSystem.IsLinux())
+        {
+            window.Padding = new Thickness(0);
+            window.BorderThickness = window.WindowState == WindowState.Maximized
+                ? new Thickness(0)
+                : new Thickness(1);
+            return;
+        }
+
+        if (!OperatingSystem.IsWindows())
             return;
 
         if (window.WindowState == WindowState.Maximized)
