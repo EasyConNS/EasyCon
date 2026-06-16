@@ -6,8 +6,12 @@
     <string>com.easycon.avalonia</string>
     <key>CFBundleName</key>
     <string>EasyCon</string>
+    <key>CFBundleDisplayName</key>
+    <string>EasyCon</string>
     <key>CFBundleExecutable</key>
     <string>EasyCon2.Avalonia</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleVersion</key>
     <string>SOURCE_GIT_VERSION.0</string>
     <key>CFBundleShortVersionString</key>
@@ -20,5 +24,7 @@
     <string>11.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>EasyCon 需要访问摄像头以进行图像采集，用于脚本中的截图识别与自动化处理。</string>
 </dict>
 </plist>
