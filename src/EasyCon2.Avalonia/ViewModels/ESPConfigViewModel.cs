@@ -3,7 +3,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon2.Avalonia.Core.Services;
-using EasyCon2.Avalonia.Model;
+using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
 using System.Collections.ObjectModel;
 using System.IO;

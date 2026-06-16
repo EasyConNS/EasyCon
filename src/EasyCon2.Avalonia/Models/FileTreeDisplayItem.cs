@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Media;
 
-namespace EasyCon2.Avalonia.ViewModels;
+namespace EasyCon2.Avalonia.Models;
 
 public class FileTreeDisplayItem
 {

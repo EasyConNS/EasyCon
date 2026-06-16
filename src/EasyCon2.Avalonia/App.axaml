@@ -2,19 +2,38 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="EasyCon2.Avalonia.App"
              xmlns:local="using:EasyCon2.Avalonia"
-             Name="伊机控 EasyCon"
+             Name="EasyCon"
              RequestedThemeVariant="Default">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
     <Application.Resources>
         <x:Double x:Key="ControlContentThemeFontSize">12</x:Double>
         <FontFamily x:Key="ContentControlThemeFontFamily">Inter, Noto Sans CJK SC, WenQuanYi Micro Hei, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+
+        <!-- 多语言资源字典：以文化名为键存放；启动时把默认语言合并进 MergedDictionaries 激活（见 App.SetLocale）。 -->
+        <ResourceInclude x:Key="en_US" Source="/Resources/Locales/en_US.axaml" />
+        <ResourceInclude x:Key="zh_CN" Source="/Resources/Locales/zh_CN.axaml" />
     </Application.Resources>
     <Application.DataTemplates>
         <local:ViewLocator />
     </Application.DataTemplates>
+
+    <!-- macOS 应用菜单：覆盖框架默认的 "About Avalonia"。仅 macOS 生效，其它平台被忽略。
+         标题走 DynamicResource 多语言；命令走 x:Static 绑定 App 静态命令字段（见 App.Commands.cs）。 -->
+    <NativeMenu.Menu>
+        <NativeMenu>
+            <!-- 组1：关于 + 检查更新（对应 sourcegit 的 About + SelfUpdate） -->
+            <NativeMenuItem Header="{DynamicResource Text.Menu.About}" Command="{x:Static local:App.OpenAboutCommand}" />
+            <NativeMenuItem Header="{DynamicResource Text.Menu.CheckUpdate}" Command="{x:Static local:App.CheckForUpdateCommand}" Gesture="⌘+Shift+U" />
+            <NativeMenuItemSeparator />
+            <!-- 组2：设置 + 打开配置目录（对应 sourcegit 的 Preferences + OpenAppDataDir） -->
+            <NativeMenuItem Header="{DynamicResource Text.Menu.Preferences}" Command="{x:Static local:App.OpenPreferencesCommand}" Gesture="⌘+," />
+            <NativeMenuItem Header="{DynamicResource Text.Menu.OpenConfigDir}" Command="{x:Static local:App.OpenConfigDirCommand}" Gesture="⌘+Shift+O" />
+        </NativeMenu>
+    </NativeMenu.Menu>
+
     <Application.Styles>
         <FluentTheme />
-        <StyleInclude Source="avares://EasyCon2.Avalonia/Styles/EasyConWorkbenchTheme.axaml" />
+        <StyleInclude Source="avares://EasyCon2.Avalonia/Resources/Styles/EasyConWorkbenchTheme.axaml" />
         <!-- AvaloniaEdit styles (required!) -->
         <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
     </Application.Styles>

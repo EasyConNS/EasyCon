@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
+using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.ViewModels;
 
 namespace EasyCon2.Avalonia.Views;

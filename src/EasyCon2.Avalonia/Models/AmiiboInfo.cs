@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace EasyCon2.Avalonia.Model;
+namespace EasyCon2.Avalonia.Models;
 
 public class AmiiboInfo
 {

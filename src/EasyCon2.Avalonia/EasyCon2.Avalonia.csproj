@@ -1,30 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <ApplicationTitle>伊机控 EasyCon</ApplicationTitle>
+    <ApplicationTitle>EasyCon</ApplicationTitle>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="Resources\Images\**" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EasyCon2.UI.Common\EasyCon2.UI.Common.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Amiibo图片：复制到输出目录Amiibo/AmiiboImages/ -->
-    <None Include="..\EasyCon2.UI.Common\Resources\Amiibo\AmiiboImages\*.jpg" Link="Amiibo\AmiiboImages\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <AvaloniaXaml Remove="Models\**" />
-    <Compile Remove="Models\**" />
-    <EmbeddedResource Remove="Models\**" />
-    <None Remove="Models\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -44,7 +32,4 @@
     <ProjectReference Include="..\EasyCon.SDLInput\EasyCon.SDLInput.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Model\" />
-  </ItemGroup>
 </Project>

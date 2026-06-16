@@ -1,0 +1,8 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- macOS native app menu titles (English). Key convention: Text.Menu.* -->
+    <x:String x:Key="Text.Menu.About" xml:space="preserve">About EasyCon</x:String>
+    <x:String x:Key="Text.Menu.Preferences" xml:space="preserve">Preferences</x:String>
+    <x:String x:Key="Text.Menu.CheckUpdate" xml:space="preserve">Check for Updates</x:String>
+    <x:String x:Key="Text.Menu.OpenConfigDir" xml:space="preserve">Open Config Directory</x:String>
+</ResourceDictionary>

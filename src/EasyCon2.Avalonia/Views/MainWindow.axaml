@@ -15,7 +15,7 @@
          d:DesignHeight="800"
  x:Class="EasyCon2.Avalonia.Views.MainWindow"
           x:DataType="vm:MainWindowViewModel"
-          Icon="/Assets/favicon.ico"
+          Icon="/Resources/Images/favicon.ico"
           Title="{Binding WindowTitle}"
            Width="1200"
            Height="800"
@@ -230,7 +230,7 @@
                                 HorizontalAlignment="Left"
                                 VerticalAlignment="Center"
                                 IsHitTestVisible="False">
-                        <Image Source="/Assets/favicon.ico"
+                        <Image Source="/Resources/Images/favicon.ico"
                                Width="16"
                                Height="16"
                                VerticalAlignment="Center"/>
