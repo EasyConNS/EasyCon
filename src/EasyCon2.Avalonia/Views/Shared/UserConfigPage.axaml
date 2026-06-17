@@ -96,6 +96,17 @@
 
                     <Grid Classes="settings-row"
                           ColumnDefinitions="*,Auto">
+                        <TextBlock Text="模型设置"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="1"
+                                Classes="tool-button"
+                                Content="打开配置"
+                                Command="{Binding OpenModelsConfigCommand}"/>
+                    </Grid>
+
+                    <Grid Classes="settings-row"
+                          ColumnDefinitions="*,Auto">
                         <TextBlock Text="代码自动补全"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>

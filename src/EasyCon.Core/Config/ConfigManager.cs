@@ -6,6 +6,11 @@ namespace EasyCon.Core.Config;
 
 public static class ConfigManager
 {
+    /// <summary>
+    /// models.json 配置保存后触发，用于订阅方（如 AI Agent）刷新内存中的模型列表。
+    /// </summary>
+    public static event Action? ModelsConfigChanged;
+
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,
@@ -57,6 +62,7 @@ public static class ConfigManager
     public static void SaveModelsConfig(ModelsConfig config)
     {
         Save(AppPaths.ModelsConfig, config);
+        ModelsConfigChanged?.Invoke();
     }
 
     private static T Load<T>(string path, JsonSerializerOptions? options = null) where T : new()
@@ -128,6 +134,8 @@ public static class ConfigManager
   "models": {
     "providers": {
       "minicpm": {
+        "name": "面壁智能",
+        "homePage": "https://modelbest.cn",
         "baseUrl": "https://api.modelbest.cn/v1",
         "apiKey": "sk-pQ8L2zF3XmR5kY9wV4jB7hN1tC6vM0xG3aD5sH2bJ9lK4cZ8",
         "api": "openai-completions",

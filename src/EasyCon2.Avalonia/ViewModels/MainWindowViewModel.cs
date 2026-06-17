@@ -297,6 +297,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand OpenTagEditorCommand { get; }
     public ICommand OpenESPConfigCommand { get; }
     public ICommand OpenAlertConfigCommand { get; }
+    public ICommand OpenModelsConfigCommand { get; }
     public ICommand ToggleMonitorPauseCommand { get; }
 
     public ICommand ShowScriptSyntaxCommand { get; }
@@ -489,6 +490,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
         OpenAlertConfigCommand = new RelayCommand(OpenAlertConfig);
+        OpenModelsConfigCommand = new RelayCommand(OpenModelsConfig);
         ToggleMonitorPauseCommand = new RelayCommand(ToggleMonitorPause);
         ShowScriptSyntaxCommand = new RelayCommand(ShowScriptSyntax);
         OpenAiAgentCommand = new RelayCommand(OpenAiAgent);
@@ -1325,6 +1327,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OpenAlertConfig()
     {
         _windowService.ShowAlertConfigWindow();
+    }
+
+    private void OpenModelsConfig()
+    {
+        _windowService.ShowModelsConfigWindow();
     }
 
     private void ToggleMonitorVisibility()

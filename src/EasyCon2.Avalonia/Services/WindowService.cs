@@ -61,6 +61,18 @@ public class WindowService : IWindowService
         }
     }
 
+    public void ShowModelsConfigWindow()
+    {
+        try
+        {
+            new ModelsConfigWindow().Show();
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开模型配置失败: {ex.Message}");
+        }
+    }
+
     public void ShowKeyMappingWindow()
     {
         var owner = GetMainWindow();

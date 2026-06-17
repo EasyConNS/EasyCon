@@ -24,7 +24,7 @@ public partial class AiAgentViewModel : ObservableObject
     private string _conversationPrefix = "";
     private readonly StringBuilder _pendingReply = new();
     private readonly StringBuilder _pendingThinking = new();
-    private ModelsConfig? _cachedConfig;
+    private EasyCon.Core.LLM.Models.ModelsConfig? _cachedConfig;
     private int _totalTokensUsed;
 
     [ObservableProperty]
@@ -64,6 +64,15 @@ public partial class AiAgentViewModel : ObservableObject
             DefaultTools.RegisterAll(_tools, toolCallService);
             InitializeSkills();
         }
+
+        // 订阅模型配置变更通知，保存后自动刷新模型列表。
+        ConfigManager.ModelsConfigChanged += OnModelsConfigChanged;
+    }
+
+    private void OnModelsConfigChanged()
+    {
+        // RefreshModels 已内部清除 ChatClient 缓存并重载 AllModels。
+        RefreshModels();
     }
 
     /// <summary>
@@ -290,7 +299,7 @@ public void ReloadSkills()
                     ProviderKey = providerKey,
                     ModelId = m.Id,
                     ModelName = m.Name,
-                    ProviderLabel = providerKey,
+                    ProviderLabel = string.IsNullOrWhiteSpace(provider.Name) ? providerKey : provider.Name,
                     Vision = m.Vision
                 });
             }

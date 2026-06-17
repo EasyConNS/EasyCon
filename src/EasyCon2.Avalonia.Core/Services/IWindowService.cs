@@ -7,6 +7,7 @@ public interface IWindowService
 {
     void ShowESPConfigWindow();
     void ShowAlertConfigWindow();
+    void ShowModelsConfigWindow();
     void ShowKeyMappingWindow();
     void ShowScriptSyntaxWindow();
 }

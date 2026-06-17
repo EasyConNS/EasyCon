@@ -1,0 +1,204 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.Core.ModelsConfig"
+             xmlns:conv="using:EasyCon2.Avalonia.Core.Converters"
+             x:Class="EasyCon2.Avalonia.Core.ModelsConfig.ProviderItemView"
+             x:DataType="vm:ProviderItemViewModel">
+
+    <Border Background="{DynamicResource WorkbenchPanelBrush}"
+            BorderBrush="{DynamicResource WorkbenchGroupBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="{DynamicResource WorkbenchCardRadius}"
+            Padding="8"
+            Margin="0,0,0,8">
+        <StackPanel>
+            <!-- Header row: clickable name area + delete -->
+            <Grid ColumnDefinitions="*,Auto">
+                <Button Grid.Column="0"
+                        Command="{Binding ToggleExpandCommand}"
+                        MinHeight="42"
+                        Padding="8,0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Center">
+                    <Grid ColumnDefinitions="24,*">
+                        <TextBlock Text="▶"
+                                   FontSize="12"
+                                   IsVisible="{Binding !IsExpanded}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                        <TextBlock Text="▼"
+                                   FontSize="12"
+                                   IsVisible="{Binding IsExpanded}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   FontWeight="SemiBold"
+                                   FontSize="15"
+                                   Foreground="{DynamicResource WorkbenchTextBrush}"/>
+                    </Grid>
+                </Button>
+
+                <Button Grid.Column="1"
+                        Command="{Binding DeleteCommand}"
+                        Width="24" Height="24"
+                        Padding="0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        ToolTip.Tip="删除供应商">
+                    <TextBlock Text="✕" FontSize="12"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{DynamicResource WorkbenchDangerBrush}"/>
+                </Button>
+            </Grid>
+
+            <!-- Expanded edit area -->
+            <StackPanel IsVisible="{Binding IsExpanded}"
+                        Margin="8,8,0,0"
+                        Spacing="8">
+
+                <!-- 供应商名称* -->
+                <StackPanel Spacing="2">
+                    <TextBlock Text="供应商名称*"/>
+                    <TextBox Text="{Binding Name}"
+                             Watermark="例如：面壁智能"/>
+                </StackPanel>
+
+                <!-- 主页(可选) -->
+                <StackPanel Spacing="2">
+                    <TextBlock Text="主页(可选)"/>
+                    <TextBox Text="{Binding HomePage}"
+                             Watermark="https://example.com"/>
+                </StackPanel>
+
+                <!-- 请求地址 URL* -->
+                <StackPanel Spacing="2">
+                    <TextBlock Text="请求地址 URL*"/>
+                    <TextBox Text="{Binding BaseUrl}"
+                             Watermark="https://api.example.com/v1"/>
+                </StackPanel>
+
+                <!-- API Key* -->
+                <StackPanel Spacing="2">
+                    <TextBlock Text="API Key*"/>
+                    <TextBox Text="{Binding ApiKey}"
+                             PasswordChar="{Binding IsApiKeyVisible, Converter={x:Static conv:BoolToMaskCharConverter.Instance}}"
+                             Watermark="sk-...">
+                        <TextBox.InnerRightContent>
+                            <Button Width="24" Height="24"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    ToolTip.Tip="显示/隐藏密钥"
+                                    Cursor="Hand"
+                                    Command="{Binding ToggleApiKeyVisibilityCommand}">
+                                <Path Data="{Binding IsApiKeyVisible, Converter={x:Static conv:BoolToEyeIconConverter.Instance}}"
+                                      Fill="Transparent"
+                                      Stroke="{DynamicResource WorkbenchMutedTextBrush}"
+                                      StrokeThickness="1.5"
+                                      Width="16" Height="16"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Stretch="Uniform"/>
+                            </Button>
+                        </TextBox.InnerRightContent>
+                    </TextBox>
+                </StackPanel>
+
+                <!-- API 类型 -->
+                <StackPanel Spacing="2">
+                    <TextBlock Text="API 类型"/>
+                    <ComboBox SelectedItem="{Binding Api}"
+                              ItemsSource="{x:Static vm:ProviderItemViewModel.ApiTypes}"
+                              IsEnabled="False"/>
+                </StackPanel>
+
+                <!-- 模型列表 -->
+                <Border Background="{DynamicResource WorkbenchWindowBrush}"
+                        BorderBrush="{DynamicResource WorkbenchGroupBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="{DynamicResource WorkbenchControlRadius}"
+                        Padding="8"
+                        Margin="0,4,0,0">
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto,Auto">
+                            <TextBlock Grid.Column="0"
+                                       Text="模型列表"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
+                            <Button Grid.Column="1"
+                                    Content="获取可用模型"
+                                    Classes="tool-button"
+                                    Margin="0,0,4,0"
+                                    IsEnabled="{Binding !IsFetchingModels}"
+                                    Command="{Binding FetchModelsCommand}"/>
+                            <Button Grid.Column="2"
+                                    Content="+ 添加模型"
+                                    Classes="tool-button"
+                                    HorizontalAlignment="Right"
+                                    Command="{Binding AddModelCommand}"/>
+                        </Grid>
+
+                        <TextBlock Text="{Binding FetchModelsStatus}"
+                                   FontSize="12"
+                                   IsVisible="{Binding FetchModelsStatus, Converter={x:Static conv:NotNullToBoolConverter.Instance}}"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                   Margin="0,2,0,0"/>
+
+                        <ItemsControl ItemsSource="{Binding Models}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ModelItemViewModel">
+                                    <Grid ColumnDefinitions="4*,4*,Auto,Auto,Auto"
+                                          Margin="0,0,0,4">
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding Id, Mode=TwoWay}"
+                                                 Watermark="ID"
+                                                 Margin="0,0,4,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Name, Mode=TwoWay}"
+                                                 Watermark="名称"
+                                                 Margin="0,0,4,0"/>
+                                        <ComboBox Grid.Column="2"
+                                                  ItemsSource="{Binding $parent[UserControl].((vm:ProviderItemViewModel)DataContext).AvailableRemoteModels}"
+                                                  SelectedItem="{Binding SelectedRemoteModel, Mode=TwoWay}"
+                                                  ToolTip.Tip="从远端列表选择填充"
+                                                  PlaceholderText=""
+                                                  Width="32"
+                                                  Padding="2"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  IsEnabled="{Binding $parent[UserControl].((vm:ProviderItemViewModel)DataContext).AvailableRemoteModels.Count}"/>
+                                        <CheckBox Grid.Column="3"
+                                                  IsChecked="{Binding Vision}"
+                                                  Content="支持图像输入"
+                                                  VerticalAlignment="Center"
+                                                  Margin="4,0,8,0"/>
+                                        <Button Grid.Column="4"
+                                                Content="✕"
+                                                Width="24" Height="24" Padding="0"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                ToolTip.Tip="删除模型"
+                                                Command="{Binding DeleteCommand}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="尚未配置模型，点击“+ 添加模型”。"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                   IsVisible="{Binding !Models.Count}"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

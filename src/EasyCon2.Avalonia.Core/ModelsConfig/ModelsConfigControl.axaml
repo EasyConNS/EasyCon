@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.Core.ModelsConfig"
+             x:Class="EasyCon2.Avalonia.Core.ModelsConfig.ModelsConfigControl"
+             x:DataType="vm:ModelsConfigViewModel">
+
+    <DockPanel Margin="16"
+               Background="{DynamicResource WorkbenchWindowBrush}">
+        <!-- Bottom buttons -->
+        <Grid DockPanel.Dock="Bottom"
+              ColumnDefinitions="Auto,*"
+              Margin="0,12,0,0">
+            <StackPanel Grid.Column="0"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Left"
+                        Spacing="8">
+                <Button Content="添加供应商"
+                        Command="{Binding AddProviderCommand}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Spacing="8">
+                <Button Background="Transparent"
+                        BorderThickness="0"
+                        Padding="4,2"
+                        Cursor="Hand"
+                        Click="OnOpenFile">
+                    <TextBlock Text="打开配置文件目录"
+                               Foreground="{DynamicResource WorkbenchAccentBrush}"
+                               TextDecorations="Underline"/>
+                </Button>
+                <Button Content="保存"
+                        Click="OnSave"
+                        IsDefault="True"/>
+                <Button Content="取消"
+                        Click="OnCancel"
+                        IsCancel="True"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Empty hint -->
+        <Border DockPanel.Dock="Top"
+                IsVisible="{Binding !Providers.Count}"
+                Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}"
+                BorderBrush="{DynamicResource WorkbenchAccentBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource WorkbenchControlRadius}"
+                Padding="8,4"
+                Margin="0,0,0,8">
+            <TextBlock Text="尚未配置任何供应商，点击左下角“添加供应商”开始。"/>
+        </Border>
+
+        <!-- Provider list -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Providers}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ProviderItemViewModel">
+                        <vm:ProviderItemView/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

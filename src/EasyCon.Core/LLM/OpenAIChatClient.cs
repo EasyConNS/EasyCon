@@ -52,6 +52,40 @@ public sealed class OpenAIChatClient : IChatClient
         }
     }
 
+    /// <summary>
+    /// 获取供应商可用模型列表（OpenAI 兼容的 GET /models 端点）。
+    /// 返回模型 ID 列表（按字母序排序）；失败时抛出含中文信息的异常。
+    /// </summary>
+    public async Task<List<string>> ListModelsAsync(CancellationToken ct = default)
+    {
+        using var resp = await _http.GetAsync("models", ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+
+        if (!resp.IsSuccessStatusCode)
+            throw new InvalidOperationException(
+                $"获取模型列表失败：HTTP {(int)resp.StatusCode} {resp.StatusCode}");
+
+        using var doc = JsonDocument.Parse(body);
+        if (!doc.RootElement.TryGetProperty("data", out var dataEl) || dataEl.ValueKind != JsonValueKind.Array)
+            throw new InvalidOperationException("获取模型列表失败：响应缺少 data 数组");
+
+        var ids = new List<string>(dataEl.GetArrayLength());
+        foreach (var item in dataEl.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.Object
+                && item.TryGetProperty("id", out var idEl)
+                && idEl.ValueKind == JsonValueKind.String)
+            {
+                var id = idEl.GetString();
+                if (!string.IsNullOrWhiteSpace(id))
+                    ids.Add(id);
+            }
+        }
+
+        ids.Sort(StringComparer.Ordinal);
+        return ids;
+    }
+
     public async IAsyncEnumerable<StreamDelta> SendStreamAsync(ChatRequest request, [EnumeratorCancellation] CancellationToken ct = default)
     {
         request.Stream = true;
