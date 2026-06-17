@@ -1,7 +1,7 @@
 using EasyCon.Capture;
 using EasyScript;
+using EzTesseract.Pix;
 using OpenCvSharp;
-using TesseractOCR.Enums;
 
 namespace EasyCon.Core;
 
@@ -35,7 +35,7 @@ public static class OcrDelegateFactory
 
             using var roi = new Mat(frame, new Rect(x, y, w, h));
             using var ms = new MemoryStream(roi.ToPngBytes());
-            using var img = TesseractOCR.Pix.Image.LoadFromMemory(ms.ToArray());
+            using var img = Image.LoadFromMemory(ms.ToArray());
 
             // 优先查缓存
             var cached = cache.TryGet(lang);

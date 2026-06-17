@@ -13,8 +13,21 @@
 		<PackageReference Condition="$([MSBuild]::IsOSPlatform('OSX'))" Include="OneWare.OpenCvSharp4.runtime.osx-arm64" />
 		<PackageReference Condition="'$(OS)' == 'Unix' AND !$([MSBuild]::IsOSPlatform('OSX'))" Include="OpenCvSharp4.official.runtime.linux-x64" />
 		<PackageReference Include="System.Drawing.Common" />
+	</ItemGroup>
 
-		<PackageReference Include="TesseractOCR" />
+	<ItemGroup>
+		<ProjectReference Include="..\EzTesseract\EzTesseract.csproj" />
+	</ItemGroup>
+
+	<!-- EzTesseract 原生库分发：内置 runtimes/<rid>/native/（仓库自包含，不依赖 tools/）。
+	     编译时按当前平台复制对应 native 文件到输出目录；resolver 优先命中输出目录，再回落系统库。 -->
+	<ItemGroup>
+		<None Include="runtimes\win-x64\native\*.dll"
+			Condition="'$(OS)' == 'Windows_NT'"
+			Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="runtimes\linux-x64\native\*.so"
+			Condition="$([MSBuild]::IsOSPlatform('Linux'))"
+			Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 
 </Project>

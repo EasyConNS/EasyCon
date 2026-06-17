@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="EasyCon2.Avalonia.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
@@ -31,4 +35,5 @@
     <AvaloniaResource Include="VPad\Resources\*.png" />
     <EmbeddedResource Include="Resources\Scripts\*.xshd" />
   </ItemGroup>
-</Project>
+
+  </Project>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>跨平台 Tesseract/Leptonica 绑定：NativeLibrary + DllImportResolver，手写对象封装替换 TesseractOCR 依赖</Description>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<IsAotCompatible>true</IsAotCompatible>
+	</PropertyGroup>
+
+</Project>

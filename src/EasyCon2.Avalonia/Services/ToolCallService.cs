@@ -142,6 +142,15 @@ public class ToolCallService : IToolCallService
         return sb.ToString();
     }
 
+    /// <inheritdoc/>
+    public string? GetProjectDirectory()
+    {
+        var projectDir = _getProjectDirectoryPath();
+        return !string.IsNullOrEmpty(projectDir) && Directory.Exists(projectDir)
+            ? projectDir
+            : null;
+    }
+
     private static void BuildTreeMd(StringBuilder sb, string path, int depth, bool isInLib)
     {
         var indent = new string(' ', depth * 2);

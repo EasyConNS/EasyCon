@@ -4,7 +4,9 @@ using EasyCon.Core.Config;
 using EasyCon.Core.LLM;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
+using EasyCon.Core.LLM.Skills;
 using EasyCon2.Avalonia.Core.AiAgent.Tools;
+using EasyCon2.Avalonia.Core.AiAgent.Skills;
 using EasyCon2.Avalonia.Core.Services;
 using System.Collections.ObjectModel;
 using System.Text;
@@ -15,6 +17,7 @@ public partial class AiAgentViewModel : ObservableObject
 {
     private readonly List<ChatMessage> _history = [];
     private readonly ToolRegistry _tools = new();
+    private readonly SkillRegistry _skills = new();
     private readonly IToolCallService? _toolCallService;
     private AgentOrchestrator? _orchestrator;
 
@@ -57,8 +60,47 @@ public partial class AiAgentViewModel : ObservableObject
     {
         _toolCallService = toolCallService;
         if (toolCallService is not null)
+        {
             DefaultTools.RegisterAll(_tools, toolCallService);
+            InitializeSkills();
+        }
     }
+
+    /// <summary>
+    /// 加载内置/用户/项目级技能并注册元工具（list_skills / read_skill）。
+    /// 加载失败时降级为无技能模式（回退到 Orchestrator 的硬编码 prompt）。
+    /// </summary>
+    private void InitializeSkills()
+    {
+        ReloadSkills();
+
+        // 元工具始终注册（即使无技能，list_skills 也能给出"无技能"的明确反馈）
+        _tools.Register(new ListSkillsTool(_skills));
+        _tools.Register(new ReadSkillTool(_skills));
+    }
+
+    /// <summary>
+/// 重新加载技能（用户修改了 skills 目录或切换项目后调用）。
+/// 优先级：内置（代码初始化）→ 用户（文件系统）→ 项目级（文件系统），后者覆盖前者。
+/// </summary>
+public void ReloadSkills()
+{
+    _skills.Clear();
+    try
+    {
+        // 1. 内置技能（代码直接初始化，优先级最低）
+        foreach (var skill in BundledSkills.CreateAll())
+            _skills.Register(skill);
+
+        // 2. 用户和项目级技能（文件系统，优先级更高，可覆盖内置）
+        var projectDir = _toolCallService?.GetProjectDirectory();
+        SkillLoader.LoadToRegistry(_skills, SkillLoader.GetSearchPaths(projectDir));
+    }
+    catch
+    {
+        // 技能加载失败不应阻塞 Agent 初始化
+    }
+}
 
     partial void OnSelectedEntryChanged(ModelEntry? value)
     {
@@ -74,8 +116,8 @@ public partial class AiAgentViewModel : ObservableObject
             _tools.Unregister("get_frame");
         }
 
-        // 模型切换后重建编排器
-        _orchestrator = new AgentOrchestrator(_tools);
+        // 模型切换后重建编排器（注入技能体系）
+        _orchestrator = new AgentOrchestrator(_tools, _skills);
     }
 
     partial void OnConversationTextChanged(string value)
@@ -142,7 +184,7 @@ public partial class AiAgentViewModel : ObservableObject
         _cts = new CancellationTokenSource();
         try
         {
-            _orchestrator ??= new AgentOrchestrator(_tools);
+            _orchestrator ??= new AgentOrchestrator(_tools, _skills);
 
             var provider = GetProviderConfig(SelectedEntry.ProviderKey);
             await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token);

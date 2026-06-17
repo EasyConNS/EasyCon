@@ -1,5 +1,5 @@
-﻿using TesseractOCR;
-using TesseractOCR.Enums;
+using EzTesseract;
+using EzTesseract.Enums;
 
 namespace EasyCon.Capture;
 

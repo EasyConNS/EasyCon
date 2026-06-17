@@ -1,6 +1,7 @@
 using EasyCon.Core.LLM;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
+using EasyCon.Core.LLM.Skills;
 using EasyCon.Core.LLM.Tools;
 using EasyCon2.Avalonia.Core.AiAgent.Tools;
 using System.Text;
@@ -48,6 +49,7 @@ public class AgentOrchestrator
     private const int ToolTimeoutSeconds = 30;
 
     private readonly ToolRegistry _tools;
+    private readonly PromptAssembler? _promptAssembler;
     private int _frameImageIndex = -1;
     private readonly ReflectionState _reflectionState = new();
 
@@ -145,9 +147,17 @@ public class AgentOrchestrator
         }
     }
 
-    public AgentOrchestrator(ToolRegistry tools)
+    public AgentOrchestrator(ToolRegistry tools) : this(tools, skillRegistry: null) { }
+
+    /// <summary>
+    /// 创建带技能体系的编排器。传入的 <paramref name="skillRegistry"/> 为空时，
+    /// 回退到旧的硬编码 SystemPrompts 路径（向后兼容）。
+    /// </summary>
+    public AgentOrchestrator(ToolRegistry tools, SkillRegistry? skillRegistry)
     {
         _tools = tools;
+        if (skillRegistry is { All.Count: > 0 })
+            _promptAssembler = new PromptAssembler(skillRegistry);
     }
 
     /// <summary>
@@ -331,38 +341,72 @@ public class AgentOrchestrator
     }
 
     /// <summary>
+    /// 测试钩子：模拟连续工具失败以触发反思注入。走真实的 TrackResult 阈值路径。
+    /// 仅供单元测试使用，生产代码不应调用。
+    /// </summary>
+    internal void TestHook_SimulateReflectionTrigger()
+    {
+        // FailureThreshold = 2：连续两次失败结果即触发 _shouldTriggerReflection
+        _reflectionState.TrackResult("[错误] 模拟失败 1");
+        _reflectionState.TrackResult("[错误] 模拟失败 2");
+    }
+
+    /// <summary>
     /// 组装发送给模型的消息列表（含系统提示词 + 截断后的历史）。
+    /// 注意：只产出一条 system 消息（位于 messages[0]）。反思提示与截断说明
+    /// 全部合并进该 system 文本，避免部分供应商（如 Qwen/DashScope）抛出
+    /// "System message must be at the beginning."。
     /// </summary>
     internal List<ChatMessage> BuildMessages(List<ChatMessage> history, int currentRound = 0)
     {
-        var systemPrompt = BuildSystemPrompt(history, currentRound);
-        var messages = new List<ChatMessage>(history.Count + 2) { ChatMessage.System(systemPrompt) };
+        // 路径 A：技能体系可用 → 由 PromptAssembler 组装系统提示词
+        var systemPrompt = _promptAssembler is not null
+            ? _promptAssembler.Build(history, currentRound)
+            : BuildSystemPrompt(history, currentRound);
 
-        // 反思提示注入（在系统提示后、历史消息前）
+        // 反思提示合并进同一条 system 消息（而非新增一条 system）
         if (_reflectionState.ShouldInjectReflection())
-        {
-            var reflectionPrompt = _reflectionState.GetReflectionPrompt();
-            messages.Add(ChatMessage.System(reflectionPrompt));
-        }
+            systemPrompt += "\n\n" + _reflectionState.GetReflectionPrompt();
 
         // 滑动窗口截断
+        List<ChatMessage> body;
         if (history.Count <= MaxHistoryMessages)
         {
-            messages.AddRange(history);
+            body = history;
         }
         else
         {
-            var skip = history.Count - MaxHistoryMessages;
-            messages.Add(ChatMessage.System($"[系统提示] 为控制上下文长度，前面的 {skip} 条对话已被省略。"));
-            messages.AddRange(history.Skip(skip));
+            var aligned = SkipToSafeBoundary(history, history.Count - MaxHistoryMessages);
+            systemPrompt += $"\n\n[系统提示] 为控制上下文长度，前面的 {history.Count - aligned.Count} 条对话已被省略。";
+            body = aligned;
         }
 
+        var messages = new List<ChatMessage>(body.Count + 1) { ChatMessage.System(systemPrompt) };
+        messages.AddRange(body);
         return messages;
     }
 
     /// <summary>
-    /// 组装系统提示词：基于工具调用历史决定注入哪些 prompt 段落，
-    /// 关键词检测作为 fallback。
+    /// 滑动窗口截断时，把截断点对齐到可作为对话起点的消息。
+    /// 直接截断可能落在 tool 消息上，形成"孤儿 tool"（缺少前置的
+    /// assistant.tool_calls），违反多数供应商的消息顺序约束。
+    /// 这里向前跳过连续的 tool 消息，直到落在 user / assistant。
+    /// </summary>
+    private static List<ChatMessage> SkipToSafeBoundary(List<ChatMessage> history, int skip)
+    {
+        var start = Math.Min(skip, history.Count);
+        while (start < history.Count && history[start].Role == "tool")
+            start++;
+        return history.Skip(start).ToList();
+    }
+
+    /// <summary>
+    /// [Legacy fallback] 旧的硬编码系统提示词组装逻辑。
+    /// 仅当编排器未注入 SkillRegistry 时使用（向后兼容旧测试与旧调用方）。
+    /// 新代码应通过 <see cref="AgentOrchestrator(ToolRegistry, SkillRegistry?)"/>
+    /// 注入技能体系，由 <see cref="PromptAssembler"/> 接管组装。
+    ///
+    /// 基于工具调用历史决定注入哪些 prompt 段落，关键词检测作为 fallback。
     /// </summary>
     internal string BuildSystemPrompt(List<ChatMessage> history, int currentRound)
     {

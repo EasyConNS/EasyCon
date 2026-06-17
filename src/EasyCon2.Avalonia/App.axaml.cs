@@ -31,7 +31,10 @@ public partial class App : Application
             var deviceService = new DeviceService(logService);
             var captureService = new CaptureService(logService);
             var scriptService = new ScriptService(deviceService, captureService, logService);
-            var controllerService = new ControllerService(deviceService.GetDevice(), scriptService);
+            // Linux 平台暂无底层控制实现，先用 Mock 占位；其它平台走真实实现。
+            IControllerService controllerService = OperatingSystem.IsLinux()
+                ? new MockControllerService()
+                : new ControllerService(deviceService.GetDevice(), scriptService);
             IDialogService dialogService = new DialogService();
             IWindowService windowService = new WindowService(deviceService, logService, dialogService);
             var mainWindow = new MainWindow { DataContext = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService, dialogService, windowService) };

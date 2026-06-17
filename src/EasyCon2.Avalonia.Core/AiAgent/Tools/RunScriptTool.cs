@@ -22,8 +22,6 @@ public class RunScriptTool : IAiTool
     public async Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var status = _service.GetDeviceStatus();
-        if (!status.IsDeviceConnected)
-            return ToolResult.Error("单片机未连接，请先连接设备后再运行脚本。");
 
         if (_service.IsScriptRunning)
             return ToolResult.Retryable("脚本已在运行中。", "请先调用 stop_script 停止当前脚本，再重新运行。");

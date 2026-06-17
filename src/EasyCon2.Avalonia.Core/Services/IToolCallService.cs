@@ -60,6 +60,12 @@ public interface IToolCallService
     /// </summary>
     string? GetProjectTree();
 
+    /// <summary>
+    /// 获取当前项目根目录的绝对路径。未打开项目时返回 null。
+    /// 用于构建项目级 AI 技能搜索路径（&lt;项目&gt;/skills）。
+    /// </summary>
+    string? GetProjectDirectory();
+
     // ── 脚本执行 ──────────────────────────────
 
     /// <summary>

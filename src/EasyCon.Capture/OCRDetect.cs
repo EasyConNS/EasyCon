@@ -1,5 +1,5 @@
-﻿using TesseractOCR;
-using TesseractOCR.Enums;
+using EzTesseract;
+using EzTesseract.Enums;
 
 namespace EasyCon.Capture;
 
@@ -8,11 +8,11 @@ public sealed class OCRDetect
     /// <summary>
     /// 使用外部传入的 Engine 实例执行 OCR（不创建不释放 Engine）。
     /// </summary>
-    public static string TesserDetect(Engine engine, TesseractOCR.Pix.Image img, PageSegMode psm, out float confidence)
+    public static string TesserDetect(Engine engine, EzTesseract.Pix.Image img, PageSegMode psm, out float confidence)
     {
         using var page = engine.Process(img, psm);
         confidence = page.MeanConfidence;
-        return page.Text.Trim('\n');
+        return page.Text;
     }
 
     /// <summary>
@@ -20,14 +20,14 @@ public sealed class OCRDetect
     /// </summary>
     public static string TesserDetect(MemoryStream stream, out float confidence, string lang, string dataPath, string engineMode = "DEFAULT", string psmode = "SINGLE_LINE")
     {
-        using var img = TesseractOCR.Pix.Image.LoadFromMemory(stream.ToArray());
+        using var img = EzTesseract.Pix.Image.LoadFromMemory(stream.ToArray());
         return TesserDetect(img, out confidence, lang, dataPath, engineMode, psmode);
     }
 
     /// <summary>
     /// 按需创建 Engine 执行 OCR（从 Pix.Image）。
     /// </summary>
-    public static string TesserDetect(TesseractOCR.Pix.Image img, out float confidence, string lang, string dataPath, string engineMode = "DEFAULT", string psmode = "SINGLE_LINE")
+    public static string TesserDetect(EzTesseract.Pix.Image img, out float confidence, string lang, string dataPath, string engineMode = "DEFAULT", string psmode = "SINGLE_LINE")
     {
         var em = engineMode.ToUpperInvariant() switch
         {
