@@ -24,12 +24,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
     // 尾调用优化状态
     private SsaFunction? _currentFunc;
-    private bool _tailCallRequested;
-    private Value[] _tailCallArgs = [];
     private readonly Dictionary<string, Func<Value>> _runtimeValueGetters = [];
-
-    // 自递归函数集合：构造时预计算，递归调用需要缓存隔离
-    private readonly HashSet<FunctionSymbol> _recursiveFunctions = [];
 
     // 函数返回值暂存（HandleReturnToCache 写入，GetReturnValue 读取）
     private Value _returnValue;
@@ -47,6 +42,19 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private long[] _longCache = [];
     private double[] _doubleCache = [];
     private object?[] _objCache = [];
+
+    // ---- JIT 桥接公开接口 ----
+    public int[] IntCache => _intCache;
+    public long[] LongCache => _longCache;
+    public double[] DoubleCache => _doubleCache;
+    public object?[] ObjCache => _objCache;
+
+    /// <summary>供 JIT 桥接：访问全局变量槽位映射。</summary>
+    public Dictionary<VariableSymbol, SlotDesc> GlobalSlots => _globalSlots;
+    public int[] GlobalInts => _globalInts;
+    public long[] GlobalLongs => _globalLongs;
+    public double[] GlobalDoubles => _globalDoubles;
+    public int[] GlobalHandles => _globalHandles;
 
     // 预计算的常量值（同样按类型分拆，构造时一次性计算，每次创建新 cache 时拷贝进去）
     private int[] _constInt = [];
@@ -81,6 +89,11 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     Random IEvalContext.Rand => _rand;
     int IEvalContext.Timestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
     bool IEvalContext.CancelLineBreak { get => _cancelLineBreak; set => _cancelLineBreak = value; }
+
+    /// <summary>启用 JIT 编译执行（默认 false，使用解释器）。</summary>
+    public bool UseJit { get; set; }
+
+    private Func<int>? _jitDelegate;
 
     public SsaEvaluator(SsaProgram program, CancellationToken token)
     {
@@ -118,17 +131,6 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
         RegisterCallables();
         RegisterRuntimeValueGetters();
-
-        // 预计算自递归函数集合：递归调用需要缓存隔离
-        foreach (var (sym, func) in _functions)
-            foreach (var block in func.Blocks)
-                foreach (var inst in block.Instructions)
-                    if (inst.Op is SsaOp.Call or SsaOp.StaticCall && inst.Aux is FunctionSymbol called && called == sym)
-                    {
-                        _recursiveFunctions.Add(sym);
-                        goto nextFunc;
-                    }
-    nextFunc:;
 
         // 预分配类型化缓存，预计算所有常量
         int maxId = 0;
@@ -189,7 +191,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             _callables[fn] = new DelegateCallable((args, ctx, tk) =>
             {
                 if (ctx is SsaEvaluator eval)
-                    return eval.EvaluateFunctionWithTailRecursion(fn, args, tk);
+                    return eval.CallUserFunction(fn, args, tk);
                 return ctx.EvaluateFunctionBody(fn);
             });
         }
@@ -210,6 +212,18 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
     public Value Evaluate()
     {
+        if (UseJit && _program.MainFunction != null)
+        {
+            try
+            {
+                return EvaluateJit();
+            }
+            catch
+            {
+                // JIT 失败时回退到解释器
+            }
+        }
+
         var func = _program.MainFunction;
         if (func == null) return Value.Void;
 
@@ -223,6 +237,44 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         {
             PopFrame();
         }
+    }
+
+    private Value EvaluateJit()
+    {
+        if (_jitDelegate == null)
+        {
+            var ops = BuildOpsArray();
+            _jitDelegate = EasyCon.Script.Jit.SsaJitCompiler.CompileToDelegate(
+                _program, this, ops);
+        }
+        var result = _jitDelegate();
+        return Value.FromInt(result);
+    }
+
+    private SsaValue[] BuildOpsArray()
+    {
+        int maxId = 0;
+        foreach (var (_, func) in _functions)
+            foreach (var block in func.Blocks)
+                foreach (var val in block.Instructions.Concat(block.Phis))
+                    if (val.Id > maxId) maxId = val.Id;
+        if (_program.MainFunction != null)
+            foreach (var block in _program.MainFunction.Blocks)
+                foreach (var val in block.Instructions.Concat(block.Phis))
+                    if (val.Id > maxId) maxId = val.Id;
+
+        var ops = new SsaValue[maxId + 1];
+        void Register(SsaFunction func)
+        {
+            foreach (var block in func.Blocks)
+            {
+                foreach (var phi in block.Phis) ops[phi.Id] = phi;
+                foreach (var inst in block.Instructions) ops[inst.Id] = inst;
+            }
+        }
+        foreach (var (_, func) in _functions) Register(func);
+        if (_program.MainFunction != null) Register(_program.MainFunction);
+        return ops;
     }
 
     // ============ 主执行循环 ============
@@ -254,28 +306,6 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 for (int i = 0; i < instCount; i++)
                 {
                     var inst = current.Instructions[i];
-
-                    // 尾调用前截：Call/StaticCall 紧跟 Return，且目标是当前函数 → 跳过实际调用，直接更新帧
-                    if (inst.Op is SsaOp.Call or SsaOp.StaticCall && inst.Aux is FunctionSymbol called
-                        && called == func.Symbol
-                        && i + 1 < instCount
-                        && current.Instructions[i + 1].Op == SsaOp.Return
-                        && current.Instructions[i + 1].Arg0 == inst)
-                    {
-                        // 收集参数值（打包为 Value[]，由 EvaluateFunctionWithTailRecursion 负责释放旧帧再写入）
-                        var argCount = (inst.Arg0 != null ? 1 : 0) + (inst.ExtraArgs?.Count ?? 0);
-                        if (argCount > 0)
-                        {
-                            if (_tailCallArgs.Length < argCount) _tailCallArgs = new Value[argCount];
-                            int ai = 0;
-                            if (inst.Arg0 != null) _tailCallArgs[ai++] = PackToValue(inst.Arg0);
-                            if (inst.ExtraArgs != null)
-                                foreach (var ea in inst.ExtraArgs)
-                                    _tailCallArgs[ai++] = PackToValue(ea);
-                        }
-                        _tailCallRequested = true;
-                        return;
-                    }
 
                     ExecuteInstruction(inst, frame);
                 }
@@ -990,36 +1020,6 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
     private void HandleReturnToCache(SsaValue val)
     {
-        // 尾调用检测：块末尾的 RETURN f(...) 且 f == 当前函数
-        if (_currentFunc != null && val.Arg0 is { Op: SsaOp.Call, Aux: FunctionSymbol called }
-            && called == _currentFunc.Symbol)
-        {
-            var block = val.Block;
-            var insts = block.Instructions;
-            int retIdx = insts.Count - 1;
-            if (retIdx >= 1 && insts[retIdx] == val && insts[retIdx - 1] == val.Arg0)
-            {
-                var frame = _localFrames.Peek();
-                var callVal = val.Arg0;
-                if (callVal.Arg0 != null)
-                {
-                    var p0 = called.Parameters[0];
-                    WriteCacheToSlot(p0.Slot, frame, p0.Type, callVal.Arg0);
-                }
-                if (callVal.ExtraArgs != null)
-                {
-                    for (int i = 0; i < callVal.ExtraArgs.Count; i++)
-                    {
-                        var p = called.Parameters[i + 1];
-                        WriteCacheToSlot(p.Slot, frame, p.Type, callVal.ExtraArgs[i]);
-                    }
-                }
-                _tailCallRequested = true;
-                return;
-            }
-        }
-
-        // 非尾调用：将返回值打包暂存
         _returnValue = val.Arg0 != null ? PackToValue(val.Arg0) : Value.Void;
     }
 
@@ -1033,7 +1033,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         {
             // 用户函数快速路径：跳过 _callables 字典查找和委托虚分派
             result = _functions.ContainsKey(function)
-                ? EvaluateFunctionWithTailRecursion(function, ReadOnlySpan<Value>.Empty, _token)
+                ? CallUserFunction(function, ReadOnlySpan<Value>.Empty, _token)
                 : _callables[function].Invoke(ReadOnlySpan<Value>.Empty, this, _token);
         }
         else
@@ -1051,7 +1051,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 var span = args.AsSpan(0, argCount);
                 // 用户函数快速路径：跳过 _callables 字典查找和委托虚分派
                 result = _functions.ContainsKey(function)
-                    ? EvaluateFunctionWithTailRecursion(function, span, _token)
+                    ? CallUserFunction(function, span, _token)
                     : _callables[function].Invoke(span, this, _token);
             }
             finally
@@ -1503,12 +1503,19 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         _heap.FreeAll(frame.Handles);
     }
 
-    // ============ 尾递归优化 ============
+    // ============ 函数调用入口 ============
 
-    private Value EvaluateFunctionWithTailRecursion(FunctionSymbol function, ReadOnlySpan<Value> args, CancellationToken token)
+    /// <summary>
+    /// 调用用户函数。若为自递归调用（function == _currentFunc），
+    /// 需要缓存隔离：同一函数的 SSA ID 在嵌套调用中会互相覆盖。
+    /// </summary>
+    private Value CallUserFunction(FunctionSymbol function, ReadOnlySpan<Value> args, CancellationToken token)
     {
         if (!_functions.TryGetValue(function, out var func))
             throw new InvalidOperationException($"未找到函数: {function.Name}");
+
+        if (token.IsCancellationRequested)
+            throw new OperationCanceledException(token);
 
         var layout = function.Layout;
         var frame = new EvalFrame(layout.IntSlots, layout.LongSlots, layout.DoubleSlots, layout.HandleSlots);
@@ -1519,76 +1526,37 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             UnpackToSlot(param.Slot, frame, param.Type, args[i]);
         }
 
-        // 自递归函数需要缓存隔离（同一函数多次入栈，SSA ID 重叠）
-        if (_recursiveFunctions.Contains(function))
+        // 自递归调用：同一函数的 SSA ID 在嵌套帧中会互相覆盖，需要缓存隔离
+        var isRecursive = _currentFunc != null && function == _currentFunc.Symbol;
+        if (isRecursive)
         {
-            var callerInt = _intCache;
-            var callerLong = _longCache;
-            var callerDouble = _doubleCache;
-            var callerObj = _objCache;
-            var cacheLen = callerInt.Length;
-            _intCache = new int[cacheLen];
-            _longCache = new long[cacheLen];
-            _doubleCache = new double[cacheLen];
-            _objCache = new object?[cacheLen];
+            var savedInt = _intCache;
+            var savedLong = _longCache;
+            var savedDouble = _doubleCache;
+            var savedObj = _objCache;
+            _intCache = new int[savedInt.Length];
+            _longCache = new long[savedLong.Length];
+            _doubleCache = new double[savedDouble.Length];
+            _objCache = new object?[savedObj.Length];
             ResetCaches();
 
-            try
-            {
-                while (true)
-                {
-                    if (token.IsCancellationRequested)
-                        throw new OperationCanceledException(token);
-
-                    _tailCallRequested = false;
-                    _localFrames.Push(frame);
-                    try { EvaluateFunction(func); }
-                    finally { _localFrames.Pop(); }
-
-                    if (!_tailCallRequested)
-                        return GetReturnValue();
-
-                    _heap.FreeAll(frame.Handles);
-                    Array.Clear(frame.Handles);
-                    var parameters = function.Parameters;
-                    for (int i = 0; i < parameters.Length; i++)
-                        UnpackToSlot(parameters[i].Slot, frame, parameters[i].Type, _tailCallArgs[i]);
-                    _intCache = new int[cacheLen];
-                    _longCache = new long[cacheLen];
-                    _doubleCache = new double[cacheLen];
-                    _objCache = new object?[cacheLen];
-                    ResetCaches();
-                }
-            }
-            finally
-            {
-                _intCache = callerInt;
-                _longCache = callerLong;
-                _doubleCache = callerDouble;
-                _objCache = callerObj;
-            }
-        }
-
-        // 非递归函数：零拷贝路径，SSA ID 全局唯一，缓存可安全共享
-        while (true)
-        {
-            if (token.IsCancellationRequested)
-                throw new OperationCanceledException(token);
-
-            _tailCallRequested = false;
             _localFrames.Push(frame);
             try { EvaluateFunction(func); }
             finally { _localFrames.Pop(); }
 
-            if (!_tailCallRequested)
-                return GetReturnValue();
-
-            _heap.FreeAll(frame.Handles);
-            Array.Clear(frame.Handles);
-            var parameters = function.Parameters;
-            for (int i = 0; i < parameters.Length; i++)
-                UnpackToSlot(parameters[i].Slot, frame, parameters[i].Type, _tailCallArgs[i]);
+            _intCache = savedInt;
+            _longCache = savedLong;
+            _doubleCache = savedDouble;
+            _objCache = savedObj;
         }
+        else
+        {
+            _localFrames.Push(frame);
+            try { EvaluateFunction(func); }
+            finally { _localFrames.Pop(); }
+        }
+
+        return GetReturnValue();
     }
 
     /// <summary>将 Value 解包到帧槽位（用于函数参数传入）</summary>
@@ -1635,5 +1603,35 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             _heap.FreeAll(frame.Handles);
         _localFrames.Clear();
         _heap.FreeAll();
+    }
+
+    // ============ JIT 桥接公开接口 ============
+
+    /// <summary>供 JIT 混合模式调用：执行单条指令。</summary>
+    public void ExecuteInstructionPublic(SsaValue val)
+    {
+        var frame = _localFrames.Count > 0 ? _localFrames.Peek() : new EvalFrame(0, 0, 0, 0);
+        ExecuteInstruction(val, frame);
+    }
+
+    /// <summary>供 JIT 混合模式调用：重置缓存。</summary>
+    public void ResetCachesPublic()
+    {
+        ResetCaches();
+    }
+
+    /// <summary>供 JIT 桥接：按函数符号查找并调用用户函数。</summary>
+    public Value CallFunction(FunctionSymbol symbol, ReadOnlySpan<Value> args)
+    {
+        return CallUserFunction(symbol, args, _token);
+    }
+
+    /// <summary>供 JIT 桥接：判断是否为用户定义函数。</summary>
+    public bool IsUserFunction(FunctionSymbol symbol) => _functions.ContainsKey(symbol);
+
+    /// <summary>供 JIT 桥接：调用外部函数（ICallable）。</summary>
+    public Value CallExternal(FunctionSymbol symbol, ReadOnlySpan<Value> args)
+    {
+        return _callables[symbol].Invoke(args, this, _token);
     }
 }

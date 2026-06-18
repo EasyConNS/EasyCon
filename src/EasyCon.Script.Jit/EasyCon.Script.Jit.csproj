@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>EasyScript JIT 编译器：将 SSA IR 编译为 C# 源码，用 Roslyn 运行时编译执行</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EasyCon.Script\EasyCon.Script.csproj" />
+  </ItemGroup>
+</Project>

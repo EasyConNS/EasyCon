@@ -67,9 +67,13 @@ public sealed class EasyRunner : IRunner
             Frame = frameProvider,
             Roi = roiProvider,
             LabelMatch = labelMatch,
+            UseJit = UseJit,
         };
         evaluator.Evaluate();
     }
+
+    /// <summary>启用 JIT 编译执行（默认 false）。</summary>
+    public bool UseJit { get; set; }
 
     public string ToCode()
     {

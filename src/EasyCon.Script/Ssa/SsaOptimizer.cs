@@ -39,6 +39,15 @@ static class SsaOptimizer
 
         // 内联后做函数内优化（函数间无共享可变状态，可并行）
         sw.Restart();
+
+        // 计算全局最大 SSA ID，供 TRE pass 分配新 ID
+        int globalMaxId = 0;
+        if (program.MainFunction != null)
+            globalMaxId = MaxId(program.MainFunction);
+        foreach (var f in program.Functions.Values)
+            globalMaxId = Math.Max(globalMaxId, MaxId(f));
+        SsaTailRecursionElimination.GlobalNextId = globalMaxId + 1;
+
         if (program.MainFunction != null)
             OptimizeFunction(program.MainFunction);
         var funcList = program.Functions.Values.ToList();
@@ -75,6 +84,7 @@ static class SsaOptimizer
             changed = false;
             changed |= SsaConstantPropagation.Run(func);
             changed |= SsaConstantPropagation.AlgebraicSimplify(func);
+            changed |= SsaTailRecursionElimination.Eliminate(func);
             changed |= SsaRedundancyElimination.PropagateCopies(func);
             changed |= SsaRedundancyElimination.EliminateCommonSubexpressions(func);
             changed |= SsaDeadCodeElimination.EliminateDeadCode(func);
@@ -149,6 +159,19 @@ static class SsaOptimizer
             if (block.JumpTarget != null && block.TrueSuccessor == null) edges++;
         }
         return edges > MaxEdges;
+    }
+
+    private static int MaxId(SsaFunction func)
+    {
+        int max = 0;
+        foreach (var block in func.Blocks)
+        {
+            foreach (var phi in block.Phis)
+                if (phi.Id > max) max = phi.Id;
+            foreach (var inst in block.Instructions)
+                if (inst.Id > max) max = inst.Id;
+        }
+        return max;
     }
 
     // ============ 共享工具方法 ============

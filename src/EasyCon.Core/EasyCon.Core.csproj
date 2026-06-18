@@ -9,6 +9,7 @@
 
 	  <ProjectReference Include="..\EasyCon.Capture\EasyCon.Capture.csproj" />
 	  <ProjectReference Include="..\EasyCon.Script\EasyCon.Script.csproj" />
+	  <ProjectReference Include="..\EasyCon.Script.Jit\EasyCon.Script.Jit.csproj" />
 	  <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
   </ItemGroup>
 
