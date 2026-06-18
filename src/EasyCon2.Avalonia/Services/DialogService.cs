@@ -1,6 +1,3 @@
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using EasyCon2.Avalonia.Controls;
@@ -17,7 +14,7 @@ public class DialogService : IDialogService
         IReadOnlyList<FilePickerFileType>? filters = null,
         string? suggestedStartPath = null)
     {
-        var mainWindow = GetMainWindow();
+        var mainWindow = WindowService.MainWindow;
         if (mainWindow == null) return Array.Empty<string>();
 
         var options = new FilePickerOpenOptions
@@ -42,7 +39,7 @@ public class DialogService : IDialogService
         IReadOnlyList<FilePickerFileType>? filters = null,
         string? suggestedFileName = null)
     {
-        var mainWindow = GetMainWindow();
+        var mainWindow = WindowService.MainWindow;
         if (mainWindow == null) return null;
 
         var file = await mainWindow.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
@@ -59,7 +56,7 @@ public class DialogService : IDialogService
     public async Task<string?> OpenFolderAsync(string title,
         string? suggestedStartPath = null)
     {
-        var mainWindow = GetMainWindow();
+        var mainWindow = WindowService.MainWindow;
         if (mainWindow == null) return null;
 
         var options = new FolderPickerOpenOptions
@@ -80,18 +77,10 @@ public class DialogService : IDialogService
 
     public async Task<Color?> PickColorAsync(Color current)
     {
-        var owner = GetMainWindow();
+        var owner = WindowService.MainWindow;
         if (owner == null) return null;
 
         var popup = new ColorPickerPopup(current);
         return await popup.ShowDialog<Color?>(owner);
-    }
-
-    private static Window? GetMainWindow()
-    {
-        if (Application.Current?.ApplicationLifetime
-            is IClassicDesktopStyleApplicationLifetime desktop)
-            return desktop.MainWindow;
-        return null;
     }
 }

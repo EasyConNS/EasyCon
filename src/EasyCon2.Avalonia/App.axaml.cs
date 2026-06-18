@@ -39,6 +39,11 @@ public partial class App : Application
             IWindowService windowService = new WindowService(deviceService, logService, dialogService);
             var mainWindow = new MainWindow { DataContext = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService, dialogService, windowService) };
             desktop.MainWindow = mainWindow;
+
+            // 注入主窗口引用，确保所有子窗口/弹窗/VPadOverlay 以主窗口为 Owner
+            WindowService.MainWindow = mainWindow;
+            controllerService.SetOwnerWindow(mainWindow);
+
             desktop.Exit += (_, _) => controllerService.Dispose();
         }
 

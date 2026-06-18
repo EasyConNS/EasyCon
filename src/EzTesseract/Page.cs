@@ -1,5 +1,5 @@
-using System.Runtime.InteropServices;
 using EzTesseract.Interop;
+using System.Runtime.InteropServices;
 
 namespace EzTesseract;
 

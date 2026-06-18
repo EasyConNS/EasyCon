@@ -8,7 +8,7 @@ public sealed class MockControllerService : IControllerService
     public event Action? AvailableSourcesChanged;
     public event Action? Disconnected;
 
-    public string[] GetAvailableSources() => [];
+    public string[] GetAvailableSources() => ["键盘"];
 
     public bool TryConnect(string sourceName) => false;
 

@@ -172,11 +172,13 @@ public class ScriptService : IScriptService
                     return (int)md;
                 };
 
-                var ocrCache = new OcrEngineCache();
+                var ocrCache = new OcrEngineCache
+                {
+                    DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
+                };
                 var ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
                 var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
-                var fallbackDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata";
-                var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.GetMatFrame(), ocrCache, fallbackDataPath);
+                var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.GetMatFrame(), ocrCache);
 
                 _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token);
                 _logService.AddLog("脚本运行完成");
@@ -272,11 +274,13 @@ public class ScriptService : IScriptService
                     return Convert.ToBase64String(mat.ToPngBytes());
                 };
 
-                var ocrCache = new OcrEngineCache();
+                var ocrCache = new OcrEngineCache
+                {
+                    DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
+                };
                 var ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
                 var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
-                var fallbackDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata";
-                var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.GetMatFrame(), ocrCache, fallbackDataPath);
+                var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.GetMatFrame(), ocrCache);
 
                 _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, null, null, token);
                 _logService.AddLog("脚本运行完成");

@@ -198,11 +198,13 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
             il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
             return (int)Math.Ceiling(md);
         };
-        var ocrCache = new EasyCon.Capture.OcrEngineCache();
+        var ocrCache = new EasyCon.Capture.OcrEngineCache
+        {
+            DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
+        };
         ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
         ocrConf = () => ocrCache.LastConfidence;
-        var fallbackDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata";
-        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetMatFrame(), ocrCache, fallbackDataPath);
+        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetMatFrame(), ocrCache);
     }
     outdap.Info($"==>开始执行脚本：{file}\n");
 

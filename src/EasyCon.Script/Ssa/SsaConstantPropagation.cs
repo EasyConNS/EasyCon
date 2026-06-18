@@ -17,7 +17,7 @@ static class SsaConstantPropagation
         var executableEdges = new HashSet<(SsaBlock from, SsaBlock to)>();
 
         Analyze(func, lattice, reachableBlocks, executableEdges);
-        return Rewrite(func, lattice, reachableBlocks);
+        return Rewrite(func, lattice);
     }
 
     // ============================================================
@@ -461,8 +461,7 @@ static class SsaConstantPropagation
 
     private static bool Rewrite(
         SsaFunction func,
-        Dictionary<SsaValue, LatticeValue> lattice,
-        HashSet<SsaBlock> reachableBlocks)
+        Dictionary<SsaValue, LatticeValue> lattice)
     {
         bool changed = false;
 
@@ -472,7 +471,7 @@ static class SsaConstantPropagation
         // 2. 常量分支折叠
         changed |= FoldConstantBranches(func, lattice);
 
-        // 3. 简化 Phi（单入参或全部相同）
+        // 3. 简化 Phi（平凡 phi：忽略自引用臂后剩唯一值 → 折叠）
         changed |= SimplifyPhis(func, lattice);
 
         return changed;
@@ -582,8 +581,8 @@ static class SsaConstantPropagation
             block.FalseSuccessor = null;
             block.JumpTarget = keptTarget;
 
-            // 从被删除的后继中移除当前块的前驱引用
-            removedTarget.Predecessors.Remove(block);
+            // 从被删除的后继中移除当前块的前驱引用（同步删除其 phi 对应臂，维护不变量）
+            removedTarget.RemovePredecessor(block);
 
             changed = true;
         }
@@ -592,9 +591,16 @@ static class SsaConstantPropagation
     }
 
     /// <summary>
-    /// Phi 简化：
-    /// - 仅一个可执行入参 → 替换为该值
-    /// - 所有入参相同 → 替换为该值
+    /// Phi 简化（平凡 phi 折叠）：忽略 phi 自引用臂后，若剩余臂全指向同一值即折叠。
+    /// 这是 Braun removeTrivialPhi 规则在优化器层面的体现：phi(x, x, phi) == x。
+    ///
+    /// 与旧实现「严格全臂引用相等」相比，这里能折叠 SCCP 把循环头某臂改写后出现的
+    /// 形如 phi(const, self) 的 phi，打断自引用依赖。
+    ///
+    /// 安全性：折叠条件是「所有非自引用臂均相同」—— 此时每条到达路径都产生该值，
+    /// 与 phi 语义等价，无需支配信息。多臂不同时挑支配臂属支配简化（需 Dominators），
+    /// 本阶段不处理。死边对应的臂由 FoldConstantBranches/RemoveUnreachableBlocks
+    /// 先行删除（RemovePredecessor 同步删臂），故此处无需重复判断可执行性。
     /// </summary>
     private static bool SimplifyPhis(SsaFunction func, Dictionary<SsaValue, LatticeValue> lattice)
     {
@@ -609,23 +615,32 @@ static class SsaConstantPropagation
                 if (phi.ExtraArgs == null || phi.ExtraArgs.Count == 0)
                     continue;
 
-                // 检查是否所有入参都指向同一个值
-                var firstArg = phi.ExtraArgs[0];
-                bool allSame = true;
-                for (int j = 1; j < phi.ExtraArgs.Count; j++)
+                // 收集候选唯一值：跳过自引用臂（phi(phi) 不携带新信息）。
+                SsaValue? unique = null;  // 候选唯一非自引用臂
+                bool ambiguous = false;  // 出现 >1 个不同的非自引用臂
+                bool hasAnyArm = false;  // 是否存在至少一条非自引用臂
+
+                foreach (var arm in phi.ExtraArgs)
                 {
-                    if (phi.ExtraArgs[j] != firstArg)
+                    if (arm == phi)
+                        continue; // 自引用臂忽略
+
+                    hasAnyArm = true;
+                    if (unique == null)
+                        unique = arm;
+                    else if (unique != arm)
                     {
-                        allSame = false;
+                        ambiguous = true;
                         break;
                     }
                 }
 
-                if (!allSame)
+                // 全为自引用（值未定义，运行时取默认）或臂不一致 → 保留 phi
+                if (!hasAnyArm || ambiguous)
                     continue;
 
-                // 记录延迟替换
-                replacements[phi] = firstArg;
+                // 唯一非自引用臂 → 折叠
+                replacements[phi] = unique!;
 
                 // 释放 phi 的 ExtraArgs 引用
                 foreach (var arg in phi.ExtraArgs)

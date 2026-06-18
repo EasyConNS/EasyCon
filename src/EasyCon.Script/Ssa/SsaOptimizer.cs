@@ -83,7 +83,57 @@ static class SsaOptimizer
             changed |= SsaConstantPropagation.DeduplicateConstants(func);
 
         } while (changed && ++iterations < MaxIterations);
+
+#if DEBUG
+        ValidateSsa(func);
+#endif
     }
+
+#if DEBUG
+    /// <summary>
+    /// DEBUG SSA 不变量校验（仅 Debug 构建）。触发即说明构造/优化某处破坏了 SSA 性质：
+    ///   1. phi 臂数 == 前驱数（臂↔前驱位置对应，运行期 FindPredecessorIndex 依赖）。
+    ///   2. 每条 phi 臂引用的值仍定义在 IR 中（非悬空：未被删除的 phi/指令仍被引用）。
+    ///   3. phi 只在 block.Phis、不在 Instructions（ExecuteInstruction 对 Phi 是 no-op 兜底）。
+    /// 不检查「臂定义块支配前驱」——那是支配性质（pruned SSA）的充分非必要条件：
+    /// 拷贝传播/phi 折叠替换臂后，新臂定义块可能不支配前驱，但值在路径上仍可用、语义正确。
+    /// 支配树在 Dominators 模块中可供优化器按需调用，此处不作为硬不变量。
+    /// </summary>
+    private static void ValidateSsa(SsaFunction func)
+    {
+        // 收集本函数所有「仍定义」的 SSA 值（指令 + phi）。臂引用不在此集合即悬空。
+        var allDefs = new HashSet<SsaValue>();
+        foreach (var block in func.Blocks)
+        {
+            foreach (var inst in block.Instructions)
+                allDefs.Add(inst);
+            foreach (var phi in block.Phis)
+                allDefs.Add(phi);
+        }
+
+        foreach (var block in func.Blocks)
+        {
+            foreach (var phi in block.Phis)
+            {
+                var arms = phi.ExtraArgs;
+                Debug.Assert(arms != null, $"phi {phi} 臂列表为 null");
+                Debug.Assert(arms!.Count == block.Predecessors.Count,
+                    $"phi {phi} 臂数({arms.Count}) ≠ 前驱数({block.Predecessors.Count})");
+
+                foreach (var arm in arms)
+                {
+                    // 自引用臂（phi 引用自身）合法
+                    if (arm == phi) continue;
+                    Debug.Assert(arm != null && allDefs.Contains(arm),
+                        $"phi {phi} 引用了悬空 SSA 值 {arm}（不在任何块的指令/phi 列表中）");
+                }
+            }
+
+            foreach (var inst in block.Instructions)
+                Debug.Assert(inst.Op != SsaOp.Phi, $"phi {inst} 误入块 {block} 的 Instructions 列表");
+        }
+    }
+#endif
 
     private static bool IsTooComplex(SsaFunction func)
     {

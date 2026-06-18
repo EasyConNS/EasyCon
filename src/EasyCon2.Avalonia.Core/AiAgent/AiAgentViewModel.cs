@@ -5,8 +5,8 @@ using EasyCon.Core.LLM;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
 using EasyCon.Core.LLM.Skills;
-using EasyCon2.Avalonia.Core.AiAgent.Tools;
 using EasyCon2.Avalonia.Core.AiAgent.Skills;
+using EasyCon2.Avalonia.Core.AiAgent.Tools;
 using EasyCon2.Avalonia.Core.Services;
 using System.Collections.ObjectModel;
 using System.Text;
@@ -89,27 +89,27 @@ public partial class AiAgentViewModel : ObservableObject
     }
 
     /// <summary>
-/// 重新加载技能（用户修改了 skills 目录或切换项目后调用）。
-/// 优先级：内置（代码初始化）→ 用户（文件系统）→ 项目级（文件系统），后者覆盖前者。
-/// </summary>
-public void ReloadSkills()
-{
-    _skills.Clear();
-    try
+    /// 重新加载技能（用户修改了 skills 目录或切换项目后调用）。
+    /// 优先级：内置（代码初始化）→ 用户（文件系统）→ 项目级（文件系统），后者覆盖前者。
+    /// </summary>
+    public void ReloadSkills()
     {
-        // 1. 内置技能（代码直接初始化，优先级最低）
-        foreach (var skill in BundledSkills.CreateAll())
-            _skills.Register(skill);
+        _skills.Clear();
+        try
+        {
+            // 1. 内置技能（代码直接初始化，优先级最低）
+            foreach (var skill in BundledSkills.CreateAll())
+                _skills.Register(skill);
 
-        // 2. 用户和项目级技能（文件系统，优先级更高，可覆盖内置）
-        var projectDir = _toolCallService?.GetProjectDirectory();
-        SkillLoader.LoadToRegistry(_skills, SkillLoader.GetSearchPaths(projectDir));
+            // 2. 用户和项目级技能（文件系统，优先级更高，可覆盖内置）
+            var projectDir = _toolCallService?.GetProjectDirectory();
+            SkillLoader.LoadToRegistry(_skills, SkillLoader.GetSearchPaths(projectDir));
+        }
+        catch
+        {
+            // 技能加载失败不应阻塞 Agent 初始化
+        }
     }
-    catch
-    {
-        // 技能加载失败不应阻塞 Agent 初始化
-    }
-}
 
     partial void OnSelectedEntryChanged(ModelEntry? value)
     {

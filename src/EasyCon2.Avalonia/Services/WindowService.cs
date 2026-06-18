@@ -14,6 +14,12 @@ namespace EasyCon2.Avalonia.Services;
 /// </summary>
 public class WindowService : IWindowService
 {
+    /// <summary>
+    /// 应用主窗口引用，由 App.axaml.cs 在初始化时注入。
+    /// 所有子窗口将此作为 Owner，确保 Z-order 和模态行为正确。
+    /// </summary>
+    public static Window? MainWindow { get; set; }
+
     private readonly IDeviceService _deviceService;
     private readonly ILogService _logService;
     private readonly IDialogService _dialogService;
@@ -41,7 +47,7 @@ public class WindowService : IWindowService
             var vm = new ESPConfigViewModel(_deviceService, _logService, _dialogService);
             _espConfigWindow = new ESPConfigWindow { DataContext = vm };
             _espConfigWindow.Closed += (_, _) => _espConfigWindow = null;
-            _espConfigWindow.Show();
+            _espConfigWindow.Show(MainWindow);
         }
         catch (Exception ex)
         {
@@ -53,7 +59,7 @@ public class WindowService : IWindowService
     {
         try
         {
-            new AlertConfigWindow().Show();
+            new AlertConfigWindow().Show(MainWindow);
         }
         catch (Exception ex)
         {
@@ -65,7 +71,7 @@ public class WindowService : IWindowService
     {
         try
         {
-            new ModelsConfigWindow().Show();
+            new ModelsConfigWindow().Show(MainWindow);
         }
         catch (Exception ex)
         {
@@ -75,10 +81,10 @@ public class WindowService : IWindowService
 
     public void ShowKeyMappingWindow()
     {
-        var owner = GetMainWindow();
-        if (owner == null) return;
-        var keyMappingWindow = new KeyMappingWindow();
-        keyMappingWindow.ShowDialog(owner);
+        if (MainWindow == null) return;
+        var vm = new ViewModels.KeyMappingViewModel();
+        var keyMappingWindow = new KeyMappingWindow { DataContext = vm };
+        keyMappingWindow.ShowDialog(MainWindow);
     }
 
     public void ShowScriptSyntaxWindow()
@@ -105,14 +111,6 @@ public class WindowService : IWindowService
             MinHeight = 360,
             Content = textBox
         };
-        window.Show();
-    }
-
-    private static Window? GetMainWindow()
-    {
-        if (global::Avalonia.Application.Current?.ApplicationLifetime
-            is global::Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
-            return desktop.MainWindow;
-        return null;
+        window.Show(MainWindow);
     }
 }

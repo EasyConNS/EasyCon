@@ -1,6 +1,6 @@
 using EasyCon.Capture;
+using EasyCon.Capture.Ocr;
 using EasyScript;
-using EzTesseract.Pix;
 using OpenCvSharp;
 
 namespace EasyCon.Core;
@@ -8,7 +8,7 @@ namespace EasyCon.Core;
 public static class OcrDelegateFactory
 {
     /// <summary>
-    /// 创建 OcrInitDelegate：初始化并缓存 Tesseract 引擎。
+    /// 创建 OcrInitDelegate：初始化并缓存 OCR 引擎。
     /// </summary>
     public static OcrInitDelegate CreateInit(OcrEngineCache cache)
     {
@@ -17,9 +17,10 @@ public static class OcrDelegateFactory
     }
 
     /// <summary>
-    /// 创建 OcrDelegate：优先复用缓存引擎，未命中时 per-call 兜底。
+    /// 创建 OcrDelegate：从缓存获取或自动初始化引擎，执行 OCR 识别。
+    /// 不再有 per-call 兜底逻辑——引擎始终通过 OcrEngineCache 管理生命周期。
     /// </summary>
-    public static OcrDelegate Create(Func<Mat> frameProvider, OcrEngineCache cache, string fallbackDataPath)
+    public static OcrDelegate Create(Func<Mat> frameProvider, OcrEngineCache cache)
     {
         return (x, y, w, h, lang) =>
         {
@@ -34,22 +35,12 @@ public static class OcrDelegateFactory
             if (w == 0 || h == 0) return "OCR ARGS ERR!";
 
             using var roi = new Mat(frame, new Rect(x, y, w, h));
-            using var ms = new MemoryStream(roi.ToPngBytes());
-            using var img = Image.LoadFromMemory(ms.ToArray());
+            var imageBytes = roi.ToPngBytes();
 
-            // 优先查缓存
-            var cached = cache.TryGet(lang);
-            if (cached != null)
-            {
-                var text = OCRDetect.TesserDetect(cached.Value.Engine, img, cached.Value.Psm, out var conf);
-                cache.LastConfidence = (int)(conf * 100);
-                return text;
-            }
-
-            // Per-call 兜底
-            var fallbackText = OCRDetect.TesserDetect(img, out var fallbackConf, lang, fallbackDataPath);
-            cache.LastConfidence = (int)(fallbackConf * 100);
-            return fallbackText;
+            var recognizer = cache.GetOrInit(lang);
+            var result = recognizer.Recognize(imageBytes);
+            cache.LastConfidence = (int)(result.Confidence * 100);
+            return result.Text;
         };
     }
 }

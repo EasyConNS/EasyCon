@@ -15,7 +15,7 @@ sealed class SsaCodeGenerator
 {
     private readonly FunctionSymbol _function;
     private readonly ImmutableHashSet<FunctionSymbol> _externFunctions;
-    private readonly Dictionary<VariableSymbol, SsaValue> _defs = new();
+    private readonly SsaVariableState _vars;
     private readonly Dictionary<BoundLabel, SsaBlock> _labelBlocks = new();
     private readonly List<SsaBlock> _blocks = new();
     private SsaBlock _currentBlock;
@@ -35,6 +35,7 @@ sealed class SsaCodeGenerator
         _emptySyntax = emptySyntax;
         _nextValueId = startValueId;
         _nextBlockId = startBlockId;
+        _vars = new SsaVariableState(this);
         SwitchToBlock(CreateBlock());
     }
 
@@ -73,6 +74,59 @@ sealed class SsaCodeGenerator
         _currentBlock.Instructions.Add(val);
     }
 
+    // ============ SsaVariableState 协作 API ============
+
+    /// <summary>构造一个 phi 节点（放入 block.Phis，不进 Instructions）。
+    /// 分配全局唯一 Id，臂（ExtraArgs）由调用方随后填充。</summary>
+    internal SsaValue NewPhi(SsaBlock block, ScriptType type, object? aux)
+    {
+        var phi = new SsaValue(_nextValueId++, SsaOp.Phi, type)
+        {
+            Block = block,
+            Aux = aux,
+        };
+        block.Phis.Add(phi);
+        return phi;
+    }
+
+    /// <summary>把 old 在本函数所有用处（Arg0/Arg1/ExtraArgs/BranchCondition）重定向到 @new，
+    /// 并维护 Uses（old.Uses--，@new.Uses++）。供 phi 简化使用。</summary>
+    internal void ReplaceAllUses(SsaValue oldVal, SsaValue newVal)
+    {
+        if (oldVal == newVal) return;
+        foreach (var block in _blocks)
+        {
+            foreach (var inst in block.Instructions)
+                ReplaceOperand(inst, oldVal, newVal);
+            foreach (var phi in block.Phis)
+                ReplaceOperand(phi, oldVal, newVal);
+            if (block.BranchCondition == oldVal)
+            {
+                block.BranchCondition = newVal;
+                newVal.Uses++;
+                oldVal.Uses--;
+            }
+        }
+    }
+
+    private static void ReplaceOperand(SsaValue inst, SsaValue oldVal, SsaValue newVal)
+    {
+        if (inst.Arg0 == oldVal) { inst.Arg0 = newVal; newVal.Uses++; oldVal.Uses--; }
+        if (inst.Arg1 == oldVal) { inst.Arg1 = newVal; newVal.Uses++; oldVal.Uses--; }
+        if (inst.ExtraArgs != null)
+        {
+            for (int i = 0; i < inst.ExtraArgs.Count; i++)
+            {
+                if (inst.ExtraArgs[i] == oldVal)
+                {
+                    inst.ExtraArgs[i] = newVal;
+                    newVal.Uses++;
+                    oldVal.Uses--;
+                }
+            }
+        }
+    }
+
     private SsaBlock GetOrCreateLabelBlock(BoundLabel label)
     {
         if (!_labelBlocks.TryGetValue(label, out var block))
@@ -86,12 +140,9 @@ sealed class SsaCodeGenerator
     private void SwitchToBlock(SsaBlock block, bool fromConditionalBranch = false)
     {
         _currentBlock = block;
-        // 多前驱块（如循环头从回边进入、IF-ELSE 合流）必须清空 defs 强制重新加载。
-        // 条件分支目标（如循环体、IF-THEN）也必须清空 defs，因为 defs 可能包含
-        // 来自前一次迭代或来自不同控制流路径的 stale 值。
-        // 仅在无条件跳转到单前驱块时保留 defs（线性序列优化）。
-        if (block.Predecessors.Count > 1 || fromConditionalBranch)
-            _defs.Clear();
+        // 真 SSA（Braun）下不再需要 Clear：变量定义按块独立存储，
+        // 合并点的值由 phi 决定，循环头/分支目标读变量时由 ReadVariable 自动处理。
+        // block 的封闭（SealBlock）在所有前驱连好后由调用方显式触发。
     }
 
     private static bool NeedsTerminator(SsaBlock block)
@@ -103,13 +154,16 @@ sealed class SsaCodeGenerator
     {
         var func = new SsaFunction(_function);
 
-        // 绑定参数为 StoreLocal，建立 _defs 映射
+        // 入口块无前驱，可立即封闭
+        _vars.SealBlock(_currentBlock);
+
+        // 绑定参数：参数值由调用者通过帧写入，入口发出 LoadLocal 获取，
+        // 并登记为该参数在入口块的 SSA 定义（体内读参数直接命中，无需再次 LoadLocal）。
         foreach (var param in _function.Parameters)
         {
-            // 参数值由调用者通过帧写入，此处发出 LoadLocal 获取
             var load = NewValue(SsaOp.LoadLocal, param.Type, aux: param);
             AddInst(load);
-            _defs[param] = load;
+            _vars.WriteVariable(param, load, _currentBlock);
         }
 
         // 生成语句
@@ -126,6 +180,10 @@ sealed class SsaCodeGenerator
                 block.IsReturn = true;
             }
         }
+
+        // 兜底：封闭所有尚未封闭的块（健壮性，正常路径应在控制流结构末尾显式封闭）
+        foreach (var block in _blocks)
+            _vars.SealBlock(block);
 
         func.Blocks.AddRange(_blocks);
         return func;
@@ -205,13 +263,16 @@ sealed class SsaCodeGenerator
         {
             var store = NewValue(SsaOp.StoreGlobal, variable.Type, initVal, aux: variable);
             AddInst(store);
-            // 全局变量不缓存：后续引用走 LoadGlobal 读取全局存储的当前值
+            // 全局变量不进 SSA：后续引用走 LoadGlobal 读取全局存储的当前值
         }
         else
         {
+            // 局部变量进 SSA：StoreLocal 维持运行时槽位一致性（参数/ EvalFrame 需要），
+            // 同时把 RHS 值登记为该变量在当前块的 SSA 定义——后续读变量直接命中，
+            // 合并点由 phi 自动合并（取代旧的 LoadLocal 重载）。
             var store = NewValue(SsaOp.StoreLocal, variable.Type, initVal, aux: variable);
             AddInst(store);
-            _defs[variable] = initVal;
+            _vars.WriteVariable(variable, initVal, _currentBlock);
         }
     }
 
@@ -240,22 +301,24 @@ sealed class SsaCodeGenerator
         cond.Uses++;
         _currentBlock.TrueSuccessor = thenBlock;
         _currentBlock.FalseSuccessor = elseBlock ?? endBlock;
-        thenBlock.Predecessors.Add(_currentBlock);
-        _currentBlock.FalseSuccessor.Predecessors.Add(_currentBlock);
+        thenBlock.AddPredecessor(_currentBlock);
+        _currentBlock.FalseSuccessor.AddPredecessor(_currentBlock);
 
-        // Then 分支（条件分支目标，清空 defs）
+        // Then 分支（单前驱，进入即封闭）
         SwitchToBlock(thenBlock, fromConditionalBranch: true);
+        _vars.SealBlock(thenBlock);
         EmitStatements(ifStmt.Body.Statements);
         if (NeedsTerminator(_currentBlock))
         {
             _currentBlock.JumpTarget = endBlock;
-            endBlock.Predecessors.Add(_currentBlock);
+            endBlock.AddPredecessor(_currentBlock);
         }
 
         // ElseIfs + Else
         if (elseBlock != null)
         {
             SwitchToBlock(elseBlock, fromConditionalBranch: true);
+            _vars.SealBlock(elseBlock);
             // 处理 ElseIfs 链
             if (!ifStmt.ElseIfs.IsDefaultOrEmpty)
             {
@@ -269,18 +332,20 @@ sealed class SsaCodeGenerator
                     elifCondVal.Uses++;
                     _currentBlock.TrueSuccessor = elifThen;
                     _currentBlock.FalseSuccessor = elifEnd;
-                    elifThen.Predecessors.Add(_currentBlock);
-                    elifEnd.Predecessors.Add(_currentBlock);
+                    elifThen.AddPredecessor(_currentBlock);
+                    elifEnd.AddPredecessor(_currentBlock);
 
                     SwitchToBlock(elifThen, fromConditionalBranch: true);
+                    _vars.SealBlock(elifThen);
                     EmitStatements(elifBody.Statements);
                     if (NeedsTerminator(_currentBlock))
                     {
                         _currentBlock.JumpTarget = endBlock;
-                        endBlock.Predecessors.Add(_currentBlock);
+                        endBlock.AddPredecessor(_currentBlock);
                     }
 
                     SwitchToBlock(elifEnd);
+                    _vars.SealBlock(elifEnd);
                 }
             }
             // Else body
@@ -291,10 +356,12 @@ sealed class SsaCodeGenerator
             if (NeedsTerminator(_currentBlock))
             {
                 _currentBlock.JumpTarget = endBlock;
-                endBlock.Predecessors.Add(_currentBlock);
+                endBlock.AddPredecessor(_currentBlock);
             }
         }
 
+        // endBlock 是合并点：两臂体已全部发出，封闭后 SwitchToBlock 才能在其上读出正确 phi
+        _vars.SealBlock(endBlock);
         SwitchToBlock(endBlock);
     }
 
@@ -310,31 +377,33 @@ sealed class SsaCodeGenerator
 
         // 当前块 → headerBlock
         _currentBlock.JumpTarget = headerBlock;
-        headerBlock.Predecessors.Add(_currentBlock);
+        headerBlock.AddPredecessor(_currentBlock);
 
-        // headerBlock：判断条件
-        // 必须在求值前清空 defs：header 是多前驱块（回边会追加到 Predecessors），
-        // 循环体内修改的变量（如 $i）如果在 defs 中仍保留初始常量值，
-        // EmitVariable 会直接返回旧值而不发出 LoadLocal，导致条件编译为常量。
+        // headerBlock：判断条件（此时 headerBlock 尚未封闭——回边未连好；
+        // 在 header 内读循环变量会触发占位 phi 插入，待回边连好后再封闭回填）
         SwitchToBlock(headerBlock);
-        _defs.Clear();
         var cond = EmitExpression(whileStmt.Condition);
         _currentBlock.BranchCondition = cond;
         cond.Uses++;
         _currentBlock.TrueSuccessor = bodyBlock;
         _currentBlock.FalseSuccessor = endBlock;
-        bodyBlock.Predecessors.Add(_currentBlock);
-        endBlock.Predecessors.Add(_currentBlock);
+        bodyBlock.AddPredecessor(_currentBlock);
+        endBlock.AddPredecessor(_currentBlock);
 
-        // bodyBlock：循环体（条件分支目标，清空 defs）
+        // bodyBlock（单前驱 header，进入即封闭）
         SwitchToBlock(bodyBlock, fromConditionalBranch: true);
+        _vars.SealBlock(bodyBlock);
         EmitStatements(whileStmt.Body.Statements);
         if (NeedsTerminator(_currentBlock))
         {
             _currentBlock.JumpTarget = headerBlock; // 回边
-            headerBlock.Predecessors.Add(_currentBlock);
+            headerBlock.AddPredecessor(_currentBlock);
         }
 
+        // 回边已连好 → 封闭 headerBlock（回填 header 内的占位 phi，闭合循环变量）
+        _vars.SealBlock(headerBlock);
+        // endBlock（单前驱 header false，可封闭）
+        _vars.SealBlock(endBlock);
         SwitchToBlock(endBlock);
     }
 
@@ -352,9 +421,9 @@ sealed class SsaCodeGenerator
             _labelBlocks[forStmt.ContinueLabel] = headerBlock;
 
             _currentBlock.JumpTarget = headerBlock;
-            headerBlock.Predecessors.Add(_currentBlock);
+            headerBlock.AddPredecessor(_currentBlock);
 
-            // header: 无条件 true → body
+            // header: 无条件 true → body（未封闭，回边后封闭）
             SwitchToBlock(headerBlock);
             var trueVal = NewValue(SsaOp.ConstBool, ScriptType.Bool);
             trueVal.Const.SetBool(true);
@@ -363,18 +432,23 @@ sealed class SsaCodeGenerator
             trueVal.Uses++;
             _currentBlock.TrueSuccessor = bodyBlock;
             _currentBlock.FalseSuccessor = endBlock;
-            bodyBlock.Predecessors.Add(_currentBlock);
-            endBlock.Predecessors.Add(_currentBlock);
+            bodyBlock.AddPredecessor(_currentBlock);
+            endBlock.AddPredecessor(_currentBlock);
 
-            // body（条件分支目标，清空 defs）
+            // body（单前驱 header true，进入即封闭）
             SwitchToBlock(bodyBlock, fromConditionalBranch: true);
+            _vars.SealBlock(bodyBlock);
             EmitStatements(forStmt.Body.Statements);
 
             if (NeedsTerminator(_currentBlock))
             {
                 _currentBlock.JumpTarget = headerBlock;
-                headerBlock.Predecessors.Add(_currentBlock);
+                headerBlock.AddPredecessor(_currentBlock);
             }
+
+            // 回边已连好 → 封闭 headerBlock、endBlock
+            _vars.SealBlock(headerBlock);
+            _vars.SealBlock(endBlock);
         }
         else
         {
@@ -383,63 +457,72 @@ sealed class SsaCodeGenerator
             var upperBound = forStmt.UpperBound!;
             var bodyBlock = CreateBlock();
             var continueBlock = CreateBlock();
+            var isGlobal = variable is GlobalVariableSymbol;
+            var storeOp = isGlobal ? SsaOp.StoreGlobal : SsaOp.StoreLocal;
 
             // CONTINUE 跳到 continueBlock（step 发生的地方）
             _labelBlocks[forStmt.ContinueLabel] = continueBlock;
 
-            // 初始化变量: $i = lower
+            // 初始化变量: $i = lower（局部进 SSA：登记定义；全局发 StoreGlobal）
             var initVal = EmitExpression(forStmt.LowerBound!);
-            var storeOp = variable is GlobalVariableSymbol ? SsaOp.StoreGlobal : SsaOp.StoreLocal;
             var store = NewValue(storeOp, ScriptType.Void, initVal, aux: variable);
             AddInst(store);
-            _defs[variable] = initVal;
+            if (!isGlobal)
+                _vars.WriteVariable(variable, initVal, _currentBlock);
 
             // 计算上限值
             var upperVal = EmitExpression(upperBound);
 
             // 当前块 → header
             _currentBlock.JumpTarget = headerBlock;
-            headerBlock.Predecessors.Add(_currentBlock);
+            headerBlock.AddPredecessor(_currentBlock);
 
-            // header: LoadLocal $i + LeqInt → body / end
+            // header: 读 $i（局部走 ReadVariable → header 内触发占位 phi；全局发 LoadGlobal）+ LeqInt → body / end
             SwitchToBlock(headerBlock);
-            var loadOp = variable is GlobalVariableSymbol ? SsaOp.LoadGlobal : SsaOp.LoadLocal;
-            var varVal = NewValue(loadOp, ScriptType.Int, aux: variable);
-            AddInst(varVal);
+            var varVal = isGlobal
+                ? NewValue(SsaOp.LoadGlobal, ScriptType.Int, aux: variable)
+                : _vars.ReadVariable(variable, ScriptType.Int, headerBlock);
+            if (isGlobal) AddInst(varVal);
             var cond = NewValue(SsaOp.LeqInt, ScriptType.Bool, varVal, upperVal);
             AddInst(cond);
             _currentBlock.BranchCondition = cond;
             cond.Uses++;
             _currentBlock.TrueSuccessor = bodyBlock;
             _currentBlock.FalseSuccessor = endBlock;
-            bodyBlock.Predecessors.Add(_currentBlock);
-            endBlock.Predecessors.Add(_currentBlock);
+            bodyBlock.AddPredecessor(_currentBlock);
+            endBlock.AddPredecessor(_currentBlock);
 
-            // body: 用户代码（条件分支目标，清空 defs）
+            // body: 用户代码（单前驱 header true，进入即封闭）
             SwitchToBlock(bodyBlock, fromConditionalBranch: true);
+            _vars.SealBlock(bodyBlock);
             EmitStatements(forStmt.Body.Statements);
 
-            // body 落空 → postBodyCheck: 检查是否需要increment
-            //    如果当前值 == upper：已经是最后迭代的值，直接跳到end（不increment，保持$i = upper）
-            //    如果当前值 < upper：需要继续循环，跳到continueBlock执行increment
+            // body 落空 → postBodyCheck: 检查是否需要 increment
+            //    如果当前值 == upper：已经是最后迭代的值，直接跳到 end（不 increment，保持 $i = upper）
+            //    如果当前值 < upper：需要继续循环，跳到 continueBlock 执行 increment
             if (NeedsTerminator(_currentBlock))
             {
-                var varValCheck = NewValue(loadOp, ScriptType.Int, aux: variable);
-                AddInst(varValCheck);
+                var varValCheck = isGlobal
+                    ? NewValue(SsaOp.LoadGlobal, ScriptType.Int, aux: variable)
+                    : _vars.ReadVariable(variable, ScriptType.Int, _currentBlock);
+                if (isGlobal) AddInst(varValCheck);
                 var isLastIter = NewValue(SsaOp.EqInt, ScriptType.Bool, varValCheck, upperVal);
                 AddInst(isLastIter);
                 _currentBlock.BranchCondition = isLastIter;
                 isLastIter.Uses++;
-                _currentBlock.TrueSuccessor = endBlock;         // 最后一次 → 跳到end（不increment）
+                _currentBlock.TrueSuccessor = endBlock;         // 最后一次 → 跳到 end（不 increment）
                 _currentBlock.FalseSuccessor = continueBlock;   // 否则 → increment
-                endBlock.Predecessors.Add(_currentBlock);
-                continueBlock.Predecessors.Add(_currentBlock);
+                endBlock.AddPredecessor(_currentBlock);
+                continueBlock.AddPredecessor(_currentBlock);
             }
 
-            // continueBlock: increment $i = $i + 1, jump to header
+            // continueBlock（单前驱 body false，进入即封闭）: increment $i = $i + 1, jump to header
             SwitchToBlock(continueBlock);
-            var varValForInc = NewValue(loadOp, ScriptType.Int, aux: variable);
-            AddInst(varValForInc);
+            _vars.SealBlock(continueBlock);
+            var varValForInc = isGlobal
+                ? NewValue(SsaOp.LoadGlobal, ScriptType.Int, aux: variable)
+                : _vars.ReadVariable(variable, ScriptType.Int, continueBlock);
+            if (isGlobal) AddInst(varValForInc);
             var oneVal = NewValue(SsaOp.ConstInt, ScriptType.Int);
             oneVal.Const.SetInt(1);
             AddInst(oneVal);
@@ -447,9 +530,15 @@ sealed class SsaCodeGenerator
             AddInst(stepVal);
             var stepStore = NewValue(storeOp, ScriptType.Void, stepVal, aux: variable);
             AddInst(stepStore);
+            if (!isGlobal)
+                _vars.WriteVariable(variable, stepVal, continueBlock);
 
             _currentBlock.JumpTarget = headerBlock;
-            headerBlock.Predecessors.Add(_currentBlock);
+            headerBlock.AddPredecessor(_currentBlock);
+
+            // 回边已连好 → 封闭 headerBlock（回填 $i 占位 phi：init←initVal, step←stepVal）
+            _vars.SealBlock(headerBlock);
+            _vars.SealBlock(endBlock);
         }
 
         SwitchToBlock(endBlock);
@@ -465,29 +554,31 @@ sealed class SsaCodeGenerator
         _labelBlocks[untilStmt.ContinueLabel] = headerBlock;
 
         _currentBlock.JumpTarget = headerBlock;
-        headerBlock.Predecessors.Add(_currentBlock);
+        headerBlock.AddPredecessor(_currentBlock);
 
-        // headerBlock: 评估条件，true → break, false → body
-        // 必须在求值前清空 defs（与 EmitWhile 同理）
+        // headerBlock: 评估条件，true → break, false → body（未封闭，回边后封闭）
         SwitchToBlock(headerBlock);
-        _defs.Clear();
         var cond = EmitExpression(untilStmt.Condition);
         _currentBlock.BranchCondition = cond;
         cond.Uses++;
         _currentBlock.TrueSuccessor = endBlock;   // 条件为 true → 结束
         _currentBlock.FalseSuccessor = bodyBlock;  // 条件为 false → 继续循环
-        endBlock.Predecessors.Add(_currentBlock);
-        bodyBlock.Predecessors.Add(_currentBlock);
+        endBlock.AddPredecessor(_currentBlock);
+        bodyBlock.AddPredecessor(_currentBlock);
 
-        // bodyBlock: 循环体（条件分支目标，清空 defs） → 跳回 header
+        // bodyBlock（单前驱 header false，进入即封闭） → 跳回 header
         SwitchToBlock(bodyBlock, fromConditionalBranch: true);
+        _vars.SealBlock(bodyBlock);
         EmitStatements(untilStmt.Body.Statements);
         if (NeedsTerminator(_currentBlock))
         {
             _currentBlock.JumpTarget = headerBlock;
-            headerBlock.Predecessors.Add(_currentBlock);
+            headerBlock.AddPredecessor(_currentBlock);
         }
 
+        // 回边已连好 → 封闭 headerBlock；endBlock（单前驱 header true）亦可封闭
+        _vars.SealBlock(headerBlock);
+        _vars.SealBlock(endBlock);
         SwitchToBlock(endBlock);
     }
 
@@ -495,7 +586,7 @@ sealed class SsaCodeGenerator
     {
         var target = GetOrCreateLabelBlock(label);
         _currentBlock.JumpTarget = target;
-        target.Predecessors.Add(_currentBlock);
+        target.AddPredecessor(_currentBlock);
         // 创建新块供后续（不可达）语句使用
         SwitchToBlock(CreateBlock());
     }
@@ -518,8 +609,8 @@ sealed class SsaCodeGenerator
             _currentBlock.FalseSuccessor = target;
             _currentBlock.TrueSuccessor = fallThrough;
         }
-        target.Predecessors.Add(_currentBlock);
-        fallThrough.Predecessors.Add(_currentBlock);
+        target.AddPredecessor(_currentBlock);
+        fallThrough.AddPredecessor(_currentBlock);
         SwitchToBlock(fallThrough, fromConditionalBranch: true);
     }
 
@@ -530,7 +621,7 @@ sealed class SsaCodeGenerator
         if (NeedsTerminator(_currentBlock))
         {
             _currentBlock.JumpTarget = labelBlock;
-            labelBlock.Predecessors.Add(_currentBlock);
+            labelBlock.AddPredecessor(_currentBlock);
         }
         SwitchToBlock(labelBlock);
     }
@@ -667,18 +758,22 @@ sealed class SsaCodeGenerator
 
     private SsaValue EmitVariable(BoundVariableExpression var)
     {
-        if (_defs.TryGetValue(var.Variable, out var def))
-            return def;
-
         // 常量内联：只读变量有编译期值时直接 emit 常量
         if (var.Variable.IsReadOnly && var.Variable.Value != null)
             return EmitConst(var.Type, var.Variable.Value);
 
-        // 全局变量或首次使用
-        var op = var.Variable is GlobalVariableSymbol ? SsaOp.LoadGlobal : SsaOp.LoadLocal;
-        var load = NewValue(op, var.Type, aux: var.Variable);
-        AddInst(load);
-        return load;
+        // 全局变量：保留 memory-SSA（每次 LoadGlobal），不进值 SSA
+        // （全局可被 extern 调用修改，memory-SSA 是正确选择）
+        if (var.Variable is GlobalVariableSymbol)
+        {
+            var load = NewValue(SsaOp.LoadGlobal, var.Type, aux: var.Variable);
+            AddInst(load);
+            return load;
+        }
+
+        // 局部变量：走 Braun ReadVariable。命中定义即返回；
+        // 合并点自动插入 phi；未定义首次读取会得到占位 phi（运行时为默认值）。
+        return _vars.ReadVariable(var.Variable, var.Type, _currentBlock);
     }
 
     private SsaValue EmitBinary(BoundBinaryExpression bin)
@@ -721,8 +816,8 @@ sealed class SsaCodeGenerator
         left.Uses++;
         _currentBlock.TrueSuccessor = evalRight;
         _currentBlock.FalseSuccessor = endBlock;
-        evalRight.Predecessors.Add(_currentBlock);
-        endBlock.Predecessors.Add(_currentBlock);
+        evalRight.AddPredecessor(_currentBlock);
+        endBlock.AddPredecessor(_currentBlock);
 
         // left=false 路径的值：ConstBool(false)
         var falseVal = NewValue(SsaOp.ConstBool, ScriptType.Bool);
@@ -735,7 +830,7 @@ sealed class SsaCodeGenerator
         SwitchToBlock(evalRight, fromConditionalBranch: true);
         var rightVal = EmitExpression(rightExpr);
         _currentBlock.JumpTarget = endBlock;
-        endBlock.Predecessors.Add(_currentBlock);
+        endBlock.AddPredecessor(_currentBlock);
 
         // endBlock: Phi
         SwitchToBlock(endBlock);
@@ -755,8 +850,8 @@ sealed class SsaCodeGenerator
         left.Uses++;
         _currentBlock.TrueSuccessor = endBlock;
         _currentBlock.FalseSuccessor = evalRight;
-        endBlock.Predecessors.Add(_currentBlock);
-        evalRight.Predecessors.Add(_currentBlock);
+        endBlock.AddPredecessor(_currentBlock);
+        evalRight.AddPredecessor(_currentBlock);
 
         var trueVal = NewValue(SsaOp.ConstBool, ScriptType.Bool);
         trueVal.Const.SetBool(true);
@@ -767,7 +862,7 @@ sealed class SsaCodeGenerator
         SwitchToBlock(evalRight, fromConditionalBranch: true);
         var rightVal = EmitExpression(rightExpr);
         _currentBlock.JumpTarget = endBlock;
-        endBlock.Predecessors.Add(_currentBlock);
+        endBlock.AddPredecessor(_currentBlock);
 
         SwitchToBlock(endBlock);
         var phi = NewValue(SsaOp.Phi, ScriptType.Bool);

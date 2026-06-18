@@ -1,12 +1,105 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
         x:Class="EasyCon2.Avalonia.Views.KeyMappingWindow"
+        x:DataType="vm:KeyMappingViewModel"
+        x:Name="Root"
         Title="按键映射"
-        Width="600"
-        Height="500"
+        Width="1020"
+        Height="920"
+        MinWidth="800"
+        MinHeight="600"
         WindowStartupLocation="CenterOwner">
-    <TextBlock Text="按键映射配置"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"
-               FontSize="18" />
+
+    <Grid RowDefinitions="*,Auto,Auto">
+
+        <!-- 手柄图区域（不可滚动，自适应窗口） -->
+        <Viewbox Grid.Row="0" Stretch="Uniform">
+            <Canvas Width="999" Height="830">
+                <!-- 手柄背景图（Fill 拉伸匹配 WinForms 原始布局） -->
+                <Image Source="avares://EasyCon2.Avalonia/Resources/Images/ProController.png"
+                       Width="999" Height="830" Stretch="Fill" />
+
+                <!-- 热区按钮列表 -->
+                <ItemsControl ItemsSource="{Binding KeyActions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas Width="999" Height="830" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <!-- 用 Style 给 ContentPresenter 设置 Canvas 坐标 -->
+                    <ItemsControl.Styles>
+                        <Style Selector="ContentPresenter" x:CompileBindings="False">
+                            <Setter Property="Canvas.Left" Value="{Binding X}" />
+                            <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                        </Style>
+                    </ItemsControl.Styles>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:KeyActionItem">
+                            <Button Width="{Binding Width}"
+                                    Height="{Binding Height}"
+                                    Command="{Binding ElementName=Root, Path=DataContext.StartListeningCommand}"
+                                    CommandParameter="{Binding}"
+                                    Background="Transparent"
+                                    BorderBrush="#88888888"
+                                    BorderThickness="1"
+                                    Cursor="Hand"
+                                    Padding="2"
+                                    ToolTip.Tip="{Binding ActionName}">
+                                <Panel>
+                                    <TextBlock Text="{Binding DisplayKey}"
+                                               FontSize="10"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center" />
+                                    <!-- 监听中指示 -->
+                                    <Border IsVisible="{Binding IsListening}"
+                                            Background="#40FF8C00"
+                                            CornerRadius="2"
+                                            Opacity="0.6" />
+                                </Panel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Canvas>
+        </Viewbox>
+
+        <!-- 状态栏 -->
+        <Border Grid.Row="1"
+                BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                Background="{DynamicResource ThemeBackgroundBrush}"
+                Padding="16,10">
+            <TextBlock Text="{Binding StatusText}"
+                       FontSize="13"
+                       VerticalAlignment="Center" />
+        </Border>
+
+        <!-- 底部按钮 -->
+        <Border Grid.Row="2"
+                BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                BorderThickness="0,1,0,0"
+                Background="{DynamicResource ThemeBackgroundBrush}"
+                Padding="16,12">
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Spacing="16">
+                <Button Command="{Binding ResetDefaultCommand}"
+                        Content="恢复默认"
+                        Padding="24,8" />
+                <Button Command="{Binding CancelCommand}"
+                        Content="取消"
+                        Padding="24,8" />
+                <Button Command="{Binding SaveCommand}"
+                        Content="保存"
+                        Classes="accent"
+                        Padding="24,8" />
+            </StackPanel>
+        </Border>
+
+    </Grid>
 </Window>

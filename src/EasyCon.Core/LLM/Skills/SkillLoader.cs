@@ -1,5 +1,5 @@
-using System.IO;
 using EasyCon.Core.Config;
+using System.IO;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 

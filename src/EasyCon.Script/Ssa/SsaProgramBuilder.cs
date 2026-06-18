@@ -86,10 +86,10 @@ static class SsaProgramBuilder
     private static bool HasKeyAction(IEnumerable<SsaFunction> functions)
     {
         foreach (var fn in functions)
-        foreach (var block in fn.Blocks)
-        foreach (var value in block.Instructions)
-            if (value.Op is SsaOp.KeyPress or SsaOp.KeyAction)
-                return true;
+            foreach (var block in fn.Blocks)
+                foreach (var value in block.Instructions)
+                    if (value.Op is SsaOp.KeyPress or SsaOp.KeyAction)
+                        return true;
         return false;
     }
 

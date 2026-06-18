@@ -699,11 +699,13 @@ namespace EasyCon2.App
 
             _vpadService?.Deactivate();
             _state.ScriptStartTime = DateTime.Now;
-            var ocrCache = new EasyCon.Capture.OcrEngineCache();
+            var ocrCache = new EasyCon.Capture.OcrEngineCache
+            {
+                DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
+            };
             var ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
             var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
-            var fallbackDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata";
-            var ocrDelegate = OcrDelegateFactory.Create(_captureService.GetFrame, ocrCache, fallbackDataPath);
+            var ocrDelegate = OcrDelegateFactory.Create(_captureService.GetFrame, ocrCache);
             _scriptService.Run(this, new GamePadAdapter(_deviceService.Device, _configService.Config.HighResolutionTiming), ocrDelegate, ocrInit, ocrConf);
         }
 

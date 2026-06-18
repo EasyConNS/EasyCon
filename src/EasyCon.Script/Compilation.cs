@@ -121,4 +121,20 @@ public sealed class Compilation
 
         return SsaPrinter.Dump(ssaProgram);
     }
+
+    /// <summary>
+    /// 构建 SSA IR 并返回（默认经优化）。<paramref name="optimize"/>=false 时只返回构造阶段
+    /// （Braun 算法）产出的原始 IR，跳过优化器——供测试稳定观测构造阶段插入的 phi，
+    /// 避免优化器（常量折叠等）把待观测的结构消掉。编译错误时返回 null。
+    /// </summary>
+    public SsaProgram? BuildSsa(ImmutableHashSet<string>? extVars, bool optimize = true)
+    {
+        var bound = Binder.BindProgram(Result, extVars);
+        if (bound.Diagnostics.HasErrors())
+            return null;
+        var ssaProgram = SsaProgramBuilder.Build(bound);
+        if (optimize)
+            SsaOptimizer.Optimize(ssaProgram);
+        return ssaProgram;
+    }
 }

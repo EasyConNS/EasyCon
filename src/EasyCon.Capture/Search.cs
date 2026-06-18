@@ -1,3 +1,4 @@
+using EasyCon.Capture.Ocr;
 using OpenCvSharp;
 using System.Diagnostics;
 using System.Drawing;
@@ -25,15 +26,17 @@ public sealed class ECSearch
 
     public static string FindOCR(string text, Mat srcBmp, out double matchDegree, string dataPath)
     {
-        using MemoryStream memoryStream = new();
-        memoryStream.Write(srcBmp.ToPngBytes());
-        var resultTxt = OCRDetect.TesserDetect(memoryStream, out var confidence, lang: "chi_sim", dataPath: dataPath).Trim();
-        Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{confidence}");
+        var imageBytes = srcBmp.ToPngBytes();
+        var factory = new TesseractEngineFactory();
+        using var recognizer = factory.CreateRecognizer("chi_sim", dataPath, "DEFAULT", "SINGLE_LINE");
+        var result = recognizer.Recognize(imageBytes);
+        var resultTxt = result.Text.Trim();
+        Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{result.Confidence}");
         Debug.WriteLine($"对比原始文本:{text}，对比对象：{resultTxt}");
         // 计算编辑距离
         matchDegree = MatchFacts.StringMatchSimple(resultTxt, text);
         // 置信度*编辑距离为最终相似度
-        matchDegree *= confidence;
+        matchDegree *= result.Confidence;
         return resultTxt;
     }
 
