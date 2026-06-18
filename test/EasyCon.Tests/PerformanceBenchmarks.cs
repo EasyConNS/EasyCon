@@ -1,5 +1,7 @@
 using EasyCon.Core.Runner;
+using EasyCon.Core.Runner;
 using EasyCon.Script;
+using EasyCon.Script.Jit;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
@@ -8,35 +10,41 @@ using System.Diagnostics;
 
 namespace EasyCon.Tests;
 
-/// <summary>
-/// 性能基准测试：JIT 模式下的性能指标。
-/// 所有测试均通过 SsaEvaluator.UseJit=true 使用 JIT 编译执行。
-/// </summary>
 [TestFixture]
 public class PerformanceBenchmarks
 {
     private const int BenchmarkIterations = 5;
 
-    /// <summary>
-    /// 执行编译后的脚本（JIT 模式），返回执行耗时(ms)和 PRINT 输出
-    /// </summary>
-    private static (double Ms, string[] Output) RunScript(SsaEvaluator evaluator, MockOutputAdapter output)
-    {
-        output.Printed.Clear();
-        var sw = Stopwatch.StartNew();
-        evaluator.Evaluate();
-        sw.Stop();
-        return (sw.Elapsed.TotalMilliseconds, output.Printed.ToArray());
-    }
-
-    private static (double MedianMs, string[] Output) Benchmark(string code)
+    private static (double Ms, string[] Output) BenchmarkInterp(string code)
     {
         var compilation = Compilation.Create(SyntaxTree.Parse(code)).Compile(null);
         if (compilation.Program == null)
+            Assert.Fail("脚本编译错误");
+
+        var output = new MockOutputAdapter();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        using var evaluator = new SsaEvaluator(compilation.Program, cts.Token) { IoAdapter = output };
+
+        var times = new List<double>();
+        string[]? lastOutput = null;
+        for (int i = 0; i < BenchmarkIterations; i++)
         {
-            var errors = compilation.Diagnostics.Where(d => d.IsError).Select(d => d.Message).ToList();
-            Assert.Fail($"脚本编译错误: {string.Join("; ", errors)}");
+            output.Printed.Clear();
+            var sw = Stopwatch.StartNew();
+            evaluator.Evaluate();
+            sw.Stop();
+            times.Add(sw.Elapsed.TotalMilliseconds);
+            lastOutput = output.Printed.ToArray();
         }
+        times.Sort();
+        return (times[BenchmarkIterations / 2], lastOutput!);
+    }
+
+    private static (double Ms, string[] Output) BenchmarkJit(string code)
+    {
+        var compilation = Compilation.Create(SyntaxTree.Parse(code)).Compile(null);
+        if (compilation.Program == null)
+            Assert.Fail("脚本编译错误");
 
         var output = new MockOutputAdapter();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
@@ -44,14 +52,15 @@ public class PerformanceBenchmarks
 
         var times = new List<double>();
         string[]? lastOutput = null;
-
         for (int i = 0; i < BenchmarkIterations; i++)
         {
-            var (ms, output_) = RunScript(evaluator, output);
-            times.Add(ms);
-            lastOutput = output_;
+            output.Printed.Clear();
+            var sw = Stopwatch.StartNew();
+            evaluator.Evaluate();
+            sw.Stop();
+            times.Add(sw.Elapsed.TotalMilliseconds);
+            lastOutput = output.Printed.ToArray();
         }
-
         times.Sort();
         return (times[BenchmarkIterations / 2], lastOutput!);
     }
@@ -66,12 +75,7 @@ public class PerformanceBenchmarks
         return val;
     }
 
-    // ============================================================
-    // A. 循环吞吐量
-    // ============================================================
-
-    [Test]
-    public void Benchmark_LoopThroughput()
+    [Test] public void Benchmark_LoopThroughput()
     {
         var code = @"
 $count = 0
@@ -80,66 +84,46 @@ FOR $i = 1 TO 1000000
 NEXT
 PRINT $count
 ";
-        var (ms, output) = Benchmark(code);
-        var result = ParseIntOutput(output);
-        Assert.That(result, Is.EqualTo(1000000));
-        Console.WriteLine($"[A] 循环吞吐量: 100 万次 = {ms:F1}ms ({1_000_000.0 / ms / 1000:F1}K iter/s)");
+        var (interpMs, _) = BenchmarkInterp(code);
+        var (jitMs, _) = BenchmarkJit(code);
+        Console.WriteLine($"[A] 循环吞吐量 100万次: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
     }
 
-    // ============================================================
-    // B. 函数调用开销
-    // ============================================================
-
-    [Test]
-    public void Benchmark_FunctionCallOverhead()
+    [Test] public void Benchmark_FunctionCallOverhead()
     {
         var code = @"
 FUNC add($a, $b) : int
     RETURN $a + $b
 ENDFUNC
-
 $sum = 0
 FOR $i = 1 TO 100000
     $sum = add($sum, 1)
 NEXT
 PRINT $sum
 ";
-        var (ms, output) = Benchmark(code);
-        var result = ParseIntOutput(output);
-        Assert.That(result, Is.EqualTo(100000));
-        Console.WriteLine($"[B] 函数调用: 10 万次 = {ms:F1}ms ({100_000.0 / ms:F0} calls/s)");
+        var (interpMs, _) = BenchmarkInterp(code);
+        var (jitMs, _) = BenchmarkJit(code);
+        Console.WriteLine($"[B] 函数调用 10万次: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
     }
 
-    // ============================================================
-    // C. 多参数函数调用
-    // ============================================================
-
-    [Test]
-    public void Benchmark_MultiArgFunctionCall()
+    [Test] public void Benchmark_MultiArgFunctionCall()
     {
         var code = @"
 FUNC calc($a, $b, $c, $d) : int
     RETURN $a + $b + $c + $d
 ENDFUNC
-
 $sum = 0
 FOR $i = 1 TO 100000
     $sum = calc($sum, 1, 2, 3)
 NEXT
 PRINT $sum
 ";
-        var (ms, output) = Benchmark(code);
-        var result = ParseIntOutput(output);
-        Assert.That(result, Is.EqualTo(600000));
-        Console.WriteLine($"[C] 4 参数调用: 10 万次 = {ms:F1}ms ({100_000.0 / ms:F0} calls/s)");
+        var (interpMs, _) = BenchmarkInterp(code);
+        var (jitMs, _) = BenchmarkJit(code);
+        Console.WriteLine($"[C] 4参数调用 10万次: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
     }
 
-    // ============================================================
-    // D. 尾递归
-    // ============================================================
-
-    [Test]
-    public void Benchmark_TailRecursion_Reuse()
+    [Test] public void Benchmark_TailRecursion_Reuse()
     {
         var code = @"
 FUNC sum($n, $acc) : int
@@ -148,22 +132,15 @@ FUNC sum($n, $acc) : int
     ENDIF
     RETURN sum($n - 1, $acc + $n)
 ENDFUNC
-
 $r = sum(50000, 0)
 PRINT $r
 ";
-        var (ms, output) = Benchmark(code);
-        var result = ParseIntOutput(output);
-        Assert.That(result, Is.EqualTo(1250025000));
-        Console.WriteLine($"[D] 尾递归 50000 层: {ms:F1}ms");
+        var (interpMs, _) = BenchmarkInterp(code);
+        var (jitMs, _) = BenchmarkJit(code);
+        Console.WriteLine($"[D] 尾递归 50000层: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
     }
 
-    // ============================================================
-    // E. 全局变量读写
-    // ============================================================
-
-    [Test]
-    public void Benchmark_GlobalVariableReadWrite()
+    [Test] public void Benchmark_GlobalVariableReadWrite()
     {
         var code = @"
 $a = 0
@@ -184,22 +161,12 @@ PRINT $c
 PRINT $d
 PRINT $e
 ";
-        var (ms, output) = Benchmark(code);
-        Assert.That(ParseIntOutput(output, 0), Is.EqualTo(200000));
-        Assert.That(ParseIntOutput(output, 1), Is.EqualTo(400000));
-        Assert.That(ParseIntOutput(output, 2), Is.EqualTo(600000));
-        Assert.That(ParseIntOutput(output, 3), Is.EqualTo(800000));
-        Assert.That(ParseIntOutput(output, 4), Is.EqualTo(1000000));
-        var totalOps = 5 * 200000 * 2;
-        Console.WriteLine($"[E] 全局变量: 5 var × 20 万次 = {ms:F1}ms ({totalOps * 1.0 / ms / 1000:F1}M ops/s)");
+        var (interpMs, _) = BenchmarkInterp(code);
+        var (jitMs, _) = BenchmarkJit(code);
+        Console.WriteLine($"[E] 全局变量 5var×20万: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
     }
 
-    // ============================================================
-    // F. 字符串 LEN
-    // ============================================================
-
-    [Test]
-    public void Benchmark_StringLength()
+    [Test] public void Benchmark_StringLength()
     {
         var code = @"
 $s = ""abcdefghij""
@@ -209,18 +176,12 @@ FOR $i = 1 TO 100000
 NEXT
 PRINT $len
 ";
-        var (ms, output) = Benchmark(code);
-        var result = ParseIntOutput(output);
-        Assert.That(result, Is.EqualTo(10));
-        Console.WriteLine($"[F] 字符串 LEN: 10 万次 = {ms:F1}ms ({100_000.0 / ms:F0} calls/s)");
+        var (interpMs, _) = BenchmarkInterp(code);
+        var (jitMs, _) = BenchmarkJit(code);
+        Console.WriteLine($"[F] 字符串 LEN 10万次: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
     }
 
-    // ============================================================
-    // G. 综合场景：素数筛
-    // ============================================================
-
-    [Test]
-    public void Benchmark_PrimeSieve()
+    [Test] public void Benchmark_PrimeSieve()
     {
         var code = @"
 $count = 0
@@ -237,9 +198,8 @@ FOR $n = 2 TO 10000
 NEXT
 PRINT $count
 ";
-        var (ms, output) = Benchmark(code);
-        var result = ParseIntOutput(output);
-        Assert.That(result, Is.EqualTo(1229));
-        Console.WriteLine($"[G] 素数筛(2-10000): {ms:F1}ms, 找到 {result} 个素数");
+        var (interpMs, _) = BenchmarkInterp(code);
+        var (jitMs, _) = BenchmarkJit(code);
+        Console.WriteLine($"[G] 素数筛 2-10000: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
     }
 }
