@@ -1,0 +1,13 @@
+.{
+    .name = .ezcv_native,
+    .version = "0.1.0",
+    .fingerprint = 0x699efbb939f5b5,
+    .minimum_zig_version = "0.15.0-dev",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "ezcv_native.cpp",
+        "ezcv_native.h",
+    },
+}

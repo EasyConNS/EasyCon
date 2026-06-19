@@ -14,12 +14,14 @@ public class VideoCapture : IDisposable
     public VideoCapture()
     {
         Handle = EzCvDll.VcCreateDefault();
+        EzCvError.ThrowIfAny();
     }
 
     /// <summary>创建并打开指定设备。</summary>
     public VideoCapture(int index, VideoCaptureAPIs api = VideoCaptureAPIs.ANY)
     {
         Handle = EzCvDll.VcCreateIndex(index, (int)api);
+        EzCvError.ThrowIfAny();
     }
 
     public bool IsOpened()
@@ -29,27 +31,40 @@ public class VideoCapture : IDisposable
 
     public bool Open(int index, VideoCaptureAPIs api = VideoCaptureAPIs.ANY)
     {
-        return EzCvDll.VcOpen(Handle, index, (int)api) != 0;
+        bool ok = EzCvDll.VcOpen(Handle, index, (int)api) != 0;
+        // cv::Exception（如后端初始化失败）抛 OpenCVException；常规 open 失败（设备不存在）
+        // 返回 false 不算异常，不进 last_error。
+        EzCvError.ThrowIfAny();
+        return ok;
     }
 
     public bool Read(Mat mat)
     {
-        return EzCvDll.VcRead(Handle, mat.Handle) != 0;
+        bool ok = EzCvDll.VcRead(Handle, mat.Handle) != 0;
+        // 流末尾无新帧返回 false，不算错误；底层 cv::Exception 才抛。
+        EzCvError.ThrowIfAny();
+        return ok;
     }
 
     public bool Set(VideoCaptureProperties prop, double value)
     {
-        return EzCvDll.VcSet(Handle, (int)prop, value) != 0;
+        bool ok = EzCvDll.VcSet(Handle, (int)prop, value) != 0;
+        EzCvError.ThrowIfAny();
+        return ok;
     }
 
     public bool Set(VideoCaptureProperties prop, int value)
     {
-        return EzCvDll.VcSet(Handle, (int)prop, value) != 0;
+        bool ok = EzCvDll.VcSet(Handle, (int)prop, value) != 0;
+        EzCvError.ThrowIfAny();
+        return ok;
     }
 
     public double Get(VideoCaptureProperties prop)
     {
-        return EzCvDll.VcGet(Handle, (int)prop);
+        var v = EzCvDll.VcGet(Handle, (int)prop);
+        EzCvError.ThrowIfAny();
+        return v;
     }
 
     public void Release()

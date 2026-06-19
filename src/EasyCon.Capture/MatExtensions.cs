@@ -20,21 +20,14 @@ public static class MatExtensions
         if (mat == null || mat.Empty())
             return [];
 
-        try
+        using var image = MatToImageSharp(mat);
+        using var ms = new MemoryStream();
+        var encoder = new PngEncoder
         {
-            using var image = MatToImageSharp(mat);
-            using var ms = new MemoryStream();
-            var encoder = new PngEncoder
-            {
-                CompressionLevel = (PngCompressionLevel)Math.Clamp(compressionLevel, 0, 9)
-            };
-            image.Save(ms, encoder);
-            return ms.ToArray();
-        }
-        catch
-        {
-            return [];
-        }
+            CompressionLevel = (PngCompressionLevel)Math.Clamp(compressionLevel, 0, 9)
+        };
+        image.Save(ms, encoder);
+        return ms.ToArray();
     }
 
     // byte[] 转 Mat（通过 ImageSharp 解码，自动检测格式）
@@ -43,15 +36,8 @@ public static class MatExtensions
         if (bytes == null || bytes.Length == 0)
             return new Mat();
 
-        try
-        {
-            using var image = Image.Load<Rgba32>(bytes);
-            return ImageSharpToMat(image);
-        }
-        catch
-        {
-            return new Mat();
-        }
+        using var image = Image.Load<Rgba32>(bytes);
+        return ImageSharpToMat(image);
     }
 
     // Mat -> ImageSharp Rgba32（BGR/灰度 -> RGBA）

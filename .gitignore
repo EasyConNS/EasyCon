@@ -5,6 +5,15 @@
 
 .vscode
 
+Depend/
+
+# Zig native build artifacts (src/EzCv/native)
+.zig-cache/
+zig-out/
+
+# ezcv native 两阶段构建中间产物（zig-msvc 编译 .obj + link.exe 输出）
+src/EzCv/native/out_*/
+
 # User-specific files
 *.rsuser
 *.suo

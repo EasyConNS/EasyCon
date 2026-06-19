@@ -14,18 +14,21 @@ public class Mat : IDisposable
     public Mat()
     {
         Handle = EzCvDll.MatCreate();
+        EzCvError.ThrowIfAny();
     }
 
     /// <summary>创建指定大小和类型的 Mat。</summary>
     public Mat(int rows, int cols, int type)
     {
         Handle = EzCvDll.MatCreateSized(rows, cols, type);
+        EzCvError.ThrowIfAny();
     }
 
     /// <summary>从已有 Mat 创建 ROI 视图（共享数据）。</summary>
     public Mat(Mat src, Rect roi)
     {
         Handle = EzCvDll.MatCreateRoi(src.Handle, roi.X, roi.Y, roi.Width, roi.Height);
+        EzCvError.ThrowIfAny();
     }
 
     internal Mat(IntPtr handle, bool ownsHandle = true)
@@ -54,6 +57,7 @@ public class Mat : IDisposable
     public Mat Clone()
     {
         var h = EzCvDll.MatClone(Handle);
+        EzCvError.ThrowIfAny();
         return new Mat(h, ownsHandle: true);
     }
 
@@ -61,6 +65,7 @@ public class Mat : IDisposable
     public void ConvertTo(Mat dst, int type)
     {
         EzCvDll.MatConvertTo(Handle, dst.Handle, type);
+        EzCvError.ThrowIfAny();
     }
 
     /// <summary>将 Mat 编码为指定格式的字节数组（默认 PNG）。</summary>

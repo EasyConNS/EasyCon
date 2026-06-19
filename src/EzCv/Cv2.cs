@@ -12,13 +12,16 @@ public static class Cv2
     public static void CvtColor(Mat src, Mat dst, ColorConversionCodes code)
     {
         EzCvDll.CvtColor(src.Handle, dst.Handle, (int)code);
+        EzCvError.ThrowIfAny();
     }
 
     // --- 二值化 ---
 
     public static double Threshold(Mat src, Mat dst, double thresh, double maxval, ThresholdTypes type)
     {
-        return EzCvDll.Threshold(src.Handle, dst.Handle, thresh, maxval, (int)type);
+        var r = EzCvDll.Threshold(src.Handle, dst.Handle, thresh, maxval, (int)type);
+        EzCvError.ThrowIfAny();
+        return r;
     }
 
     // --- Sobel ---
@@ -26,6 +29,7 @@ public static class Cv2
     public static void Sobel(Mat src, Mat dst, int ddepth, int dx, int dy, int ksize = 3)
     {
         EzCvDll.Sobel(src.Handle, dst.Handle, ddepth, dx, dy, ksize);
+        EzCvError.ThrowIfAny();
     }
 
     // --- 加权加法 ---
@@ -33,6 +37,7 @@ public static class Cv2
     public static void AddWeighted(Mat src1, double alpha, Mat src2, double beta, double gamma, Mat dst)
     {
         EzCvDll.AddWeighted(src1.Handle, alpha, src2.Handle, beta, gamma, dst.Handle);
+        EzCvError.ThrowIfAny();
     }
 
     // --- 高斯模糊 ---
@@ -40,6 +45,7 @@ public static class Cv2
     public static void GaussianBlur(Mat src, Mat dst, Size ksize, double sigma)
     {
         EzCvDll.GaussianBlur(src.Handle, dst.Handle, ksize.Width, ksize.Height, sigma);
+        EzCvError.ThrowIfAny();
     }
 
     // --- Laplacian ---
@@ -47,6 +53,7 @@ public static class Cv2
     public static void Laplacian(Mat src, Mat dst, int ddepth, int ksize = 1)
     {
         EzCvDll.Laplacian(src.Handle, dst.Handle, ddepth, ksize);
+        EzCvError.ThrowIfAny();
     }
 
     // --- 绝对值缩放 ---
@@ -54,6 +61,7 @@ public static class Cv2
     public static void ConvertScaleAbs(Mat src, Mat dst)
     {
         EzCvDll.ConvertScaleAbs(src.Handle, dst.Handle);
+        EzCvError.ThrowIfAny();
     }
 
     // --- Canny ---
@@ -61,6 +69,7 @@ public static class Cv2
     public static void Canny(Mat src, Mat dst, double t1, double t2)
     {
         EzCvDll.Canny(src.Handle, dst.Handle, t1, t2);
+        EzCvError.ThrowIfAny();
     }
 
     // --- 缩放 ---
@@ -68,6 +77,7 @@ public static class Cv2
     public static void Resize(Mat src, Mat dst, Size dsize, double fx = 0, double fy = 0, InterpolationFlags interpolation = InterpolationFlags.Linear)
     {
         EzCvDll.Resize(src.Handle, dst.Handle, dsize.Width, dsize.Height, fx, fy, (int)interpolation);
+        EzCvError.ThrowIfAny();
     }
 
     // --- 边界填充 ---
@@ -75,6 +85,7 @@ public static class Cv2
     public static void CopyMakeBorder(Mat src, Mat dst, int top, int bottom, int left, int right, BorderTypes borderType, Scalar value)
     {
         EzCvDll.CopyMakeBorder(src.Handle, dst.Handle, top, bottom, left, right, (int)borderType, value.Val0, value.Val1, value.Val2);
+        EzCvError.ThrowIfAny();
     }
 
     // --- 通道操作 ---
@@ -83,6 +94,7 @@ public static class Cv2
     {
         var handles = new IntPtr[4];
         int count = EzCvDll.Split(src.Handle, handles);
+        EzCvError.ThrowIfAny();
         mv = new Mat[count];
         for (int i = 0; i < count; i++)
             mv[i] = new Mat(handles[i], ownsHandle: true);
@@ -94,6 +106,7 @@ public static class Cv2
         for (int i = 0; i < mv.Length; i++)
             handles[i] = mv[i].Handle;
         EzCvDll.Merge(handles, mv.Length, dst.Handle);
+        EzCvError.ThrowIfAny();
     }
 
     // --- 模板匹配 ---
@@ -101,11 +114,13 @@ public static class Cv2
     public static void MatchTemplate(Mat image, Mat templ, Mat result, TemplateMatchModes method)
     {
         EzCvDll.MatchTemplate(image.Handle, templ.Handle, result.Handle, (int)method);
+        EzCvError.ThrowIfAny();
     }
 
     public static void MatchTemplate(Mat image, Mat templ, Mat result, TemplateMatchModes method, Mat mask)
     {
         EzCvDll.MatchTemplateMasked(image.Handle, templ.Handle, result.Handle, (int)method, mask.Handle);
+        EzCvError.ThrowIfAny();
     }
 
     // --- 最小最大值位置 ---
@@ -113,6 +128,7 @@ public static class Cv2
     public static void MinMaxLoc(Mat src, out double minVal, out double maxVal, out Point minLoc, out Point maxLoc)
     {
         EzCvDll.MinMaxLoc(src.Handle, out minVal, out maxVal, out int minX, out int minY, out int maxX, out int maxY);
+        EzCvError.ThrowIfAny();
         minLoc = new Point(minX, minY);
         maxLoc = new Point(maxX, maxY);
     }
@@ -122,6 +138,7 @@ public static class Cv2
     public static void FindContours(Mat image, out Point[][] contours, out HierarchyIndex[] hierarchy, RetrievalModes mode, ContourApproximationModes method)
     {
         int count = EzCvDll.FindContours(image.Handle, (int)mode, (int)method);
+        EzCvError.ThrowIfAny();
         contours = new Point[count][];
         hierarchy = new HierarchyIndex[count];
 
@@ -169,8 +186,8 @@ public static class Cv2
             fixed (byte* p = data)
             {
                 var h = EzCvDll.ImDecodeMem(p, data.Length, (int)flags);
-                if (h == IntPtr.Zero)
-                    return new Mat(); // 返回空 Mat
+                // 失败（坏数据 / 不支持格式）会通过 last_error 抛 OpenCVException
+                EzCvError.ThrowIfAny();
                 return new Mat(h, ownsHandle: true);
             }
         }
@@ -179,7 +196,7 @@ public static class Cv2
     public static byte[] ImEncode(string ext, Mat img)
     {
         if (img == null || img.Empty())
-            return [];
+            throw new OpenCVException("ImEncode: source Mat is null or empty");
 
         var extBytes = System.Text.Encoding.UTF8.GetBytes(ext + "\0");
         unsafe
@@ -187,8 +204,8 @@ public static class Cv2
             fixed (byte* pExt = extBytes)
             {
                 var pData = EzCvDll.ImEncodeMem(pExt, img.Handle, out int len);
-                if (pData == IntPtr.Zero || len == 0)
-                    return [];
+                // 失败（不支持扩展名 / 无效图像）通过 last_error 抛 OpenCVException
+                EzCvError.ThrowIfAny();
                 var result = new byte[len];
                 System.Runtime.InteropServices.Marshal.Copy(pData, result, 0, len);
                 EzCvDll.FreeBuf(pData);

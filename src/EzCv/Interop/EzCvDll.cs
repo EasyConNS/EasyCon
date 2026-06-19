@@ -156,4 +156,16 @@ internal static partial class EzCvDll
 
     [LibraryImport(NativeLoader.EzCvLib, EntryPoint = "ezcv_vc_release", StringMarshalling = StringMarshalling.Utf8)]
     public static partial void VcRelease(IntPtr vc);
+
+    // =========================================================================
+    // 异常查询 (errno 风格)
+    // =========================================================================
+    // 返回值指向 native thread_local 缓冲，StringMarshalling.Utf8 会拷贝成托管 string。
+    // 无错时返回空串。详见 EzCvError.ThrowIfAny()。
+
+    [LibraryImport(NativeLoader.EzCvLib, EntryPoint = "ezcv_last_error", StringMarshalling = StringMarshalling.Utf8)]
+    public static partial string LastError();
+
+    [LibraryImport(NativeLoader.EzCvLib, EntryPoint = "ezcv_clear_error", StringMarshalling = StringMarshalling.Utf8)]
+    public static partial void ClearError();
 }

@@ -60,8 +60,8 @@ if exist "%PUBLISH_DIR%\EasyCon2.CLI.exe" ren "%PUBLISH_DIR%\EasyCon2.CLI.exe" "
 :: ========== 复制额外文件 ==========
 echo 正在复制额外文件...
 
-:: 复制固件文件
-if exist "%ROOT_DIR%\fw" xcopy /e /y /q "%ROOT_DIR%\fw\*" "%PUBLISH_DIR%\Firmware\"
+:: 复制固件文件（从 assets/fw）
+if exist "%ROOT_DIR%\assets\fw" xcopy /e /y /q "%ROOT_DIR%\assets\fw\*" "%PUBLISH_DIR%\Firmware\"
 if not exist "%PUBLISH_DIR%\Firmware" mkdir "%PUBLISH_DIR%\Firmware"
 
 :: 删除调试文件
