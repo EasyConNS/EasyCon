@@ -1,7 +1,7 @@
 using EasyCon.Capture.Ocr;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
-using OpenCvSharp;
+using EzCv;
 
 namespace EasyCon.Capture.Ocr.Onnx;
 

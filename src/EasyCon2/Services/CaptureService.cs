@@ -2,7 +2,7 @@ using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon2.Forms;
 using EasyScript;
-using OpenCvSharp;
+using EzCv;
 using System.Collections.Immutable;
 using System.Windows.Controls;
 

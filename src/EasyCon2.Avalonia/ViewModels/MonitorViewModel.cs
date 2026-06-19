@@ -5,7 +5,7 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using EasyCon2.Avalonia.Services;
-using OpenCvSharp;
+using EzCv;
 
 namespace EasyCon2.Avalonia.ViewModels;
 

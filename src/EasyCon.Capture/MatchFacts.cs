@@ -1,4 +1,4 @@
-using OpenCvSharp;
+using EzCv;
 using System.Diagnostics;
 
 namespace EasyCon.Capture;

@@ -1,5 +1,5 @@
 using EasyCon.Capture.Ocr;
-using OpenCvSharp;
+using EzCv;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -42,7 +42,7 @@ public sealed class ECSearch
 
     public static Point FindPic(Mat big, Mat small, SearchMethod method, out double matchDegree)
     {
-        OpenCvSharp.Point result = new(-1, -1);
+        EzCv.Point result = new(-1, -1);
         switch (method)
         {
             case SearchMethod.SqDiff:

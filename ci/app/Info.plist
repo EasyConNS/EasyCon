@@ -9,7 +9,7 @@
     <key>CFBundleDisplayName</key>
     <string>EasyCon</string>
     <key>CFBundleExecutable</key>
-    <string>EasyCon2.Avalonia</string>
+    <string>easycon2</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleVersion</key>

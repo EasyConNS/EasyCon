@@ -122,6 +122,6 @@ jobs:
       - name: 上传 macOS 产物
         uses: actions/upload-artifact@v6
         with:
-          name: EasyCon2.Avalonia-macos-${{ github.run_number }}
+          name: easycon2-macos-${{ github.run_number }}
           path: dist/publish/
           retention-days: 30

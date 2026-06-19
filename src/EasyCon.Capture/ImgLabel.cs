@@ -1,4 +1,4 @@
-using OpenCvSharp;
+using EzCv;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text.Json;

@@ -7,7 +7,7 @@ using EasyCon.Script;
 using EasyCon.Script.Syntax;
 using EasyDevice;
 using EasyScript;
-using OpenCvSharp;
+using EzCv;
 using System.Collections.Immutable;
 using System.CommandLine;
 using System.Text;

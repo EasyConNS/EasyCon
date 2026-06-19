@@ -1,4 +1,4 @@
-using OpenCvSharp;
+using EzCv;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
@@ -10,7 +10,7 @@ public static class MatExtensions
     public static Mat Resize(this Mat src, double f = 0.5)
     {
         var newm = new Mat();
-        Cv2.Resize(src, newm, new OpenCvSharp.Size(0, 0), f, f, InterpolationFlags.Area);
+        Cv2.Resize(src, newm, new EzCv.Size(0, 0), f, f, InterpolationFlags.Area);
         return newm;
     }
 

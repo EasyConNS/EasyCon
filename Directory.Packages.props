@@ -18,11 +18,7 @@
     <PackageVersion Include="System.IO.Ports" Version="10.0.6" />
     <PackageVersion Include="System.Management" Version="10.0.6" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageVersion Include="OpenCvSharp4" Version="4.13.0.20260330" />
-    <PackageVersion Include="OpenCvSharp4.Extensions" Version="4.13.0.20260330" />
-    <PackageVersion Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
-    <PackageVersion Include="OpenCvSharp4.official.runtime.linux-x64" Version="4.13.0.20260329" />
-    <PackageVersion Include="OneWare.OpenCvSharp4.runtime.osx-arm64" Version="4.13.0.18" />
+    
     <PackageVersion Include="WebSocketSharp-netstandard" Version="1.0.1" />
     <PackageVersion Include="NLua" Version="1.7.8" />
     <PackageVersion Include="pythonnet" Version="3.0.5" />

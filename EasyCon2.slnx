@@ -23,6 +23,8 @@
   <Folder Name="/Demo/">
   </Folder>
   <Folder Name="/Lib/">
+    <Project Path="src/EzCv/EzCv.csproj" />
+    <Project Path="src/EzTesseract/EzTesseract.csproj" />
     <Project Path="src/EasyCon.Capture/EasyCon.Capture.csproj" />
     <Project Path="src/EasyCon.Core/EasyCon.Core.csproj" />
     <Project Path="src/EasyCon.Device/EasyCon.Device.csproj" />

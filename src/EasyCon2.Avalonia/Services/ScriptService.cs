@@ -4,7 +4,7 @@ using EasyCon.Core.Runner;
 using EasyCon.Core.Services;
 using EasyCon.Script;
 using EasyScript;
-using OpenCvSharp;
+using EzCv;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 

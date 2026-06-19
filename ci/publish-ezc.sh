@@ -149,6 +149,12 @@ if [ "$OS" == "linux" ] || [ "$OS" == "osx" ]; then
     fi
 
     echo "Avalonia UI 编译成功!"
+
+    # 重命名 Avalonia 产物为 easycon2
+    if [ -f "$PUBLISH_DIR/$AVALONIA_PROJ_NAME" ]; then
+        mv "$PUBLISH_DIR/$AVALONIA_PROJ_NAME" "$PUBLISH_DIR/easycon2"
+        echo "  重命名: $AVALONIA_PROJ_NAME -> easycon2"
+    fi
 else
     echo "跳过 Avalonia 发布（仅支持 Linux 和 macOS 平台）"
 fi

@@ -48,6 +48,12 @@ if [ -f "$STAGE_DIR/$CLI_NAME" ]; then
     echo "  重命名: $CLI_NAME -> ezcon"
 fi
 
+# Avalonia 产物重命名为 easycon2
+if [ -f "$STAGE_DIR/$PROJ_NAME" ]; then
+    mv "$STAGE_DIR/$PROJ_NAME" "$STAGE_DIR/easycon2"
+    echo "  重命名: $PROJ_NAME -> easycon2"
+fi
+
 # ========== 组装 .app bundle ==========
 echo "正在组装 .app ..."
 APP_BUNDLE="$STAGE_DIR/$APP_DISPLAY.app"
