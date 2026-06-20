@@ -258,7 +258,7 @@
         <Grid RowDefinitions="34,1,*,Auto">
             <!-- 标题栏 -->
             <Grid Grid.Row="0"
-                  ColumnDefinitions="*,Auto,Auto"
+                  ColumnDefinitions="Auto,*,Auto,Auto"
                   Background="{DynamicResource WorkbenchPanelBrush}">
                 <TextBlock Text="AI Agent"
                            Margin="12,0,0,0"
@@ -266,7 +266,14 @@
                            FontSize="12"
                            FontWeight="SemiBold"
                            Foreground="{DynamicResource WorkbenchTextBrush}"/>
-                <Button Grid.Column="1"
+                <TextBlock Grid.Column="1"
+                           Text="{Binding TokenUsage}"
+                           FontSize="10"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                <Button Grid.Column="2"
                         Classes="agent-icon-button"
                         Command="{Binding NewChatCommand}"
                         ToolTip.Tip="新对话">
@@ -277,7 +284,7 @@
                           StrokeThickness="2"
                           StrokeLineCap="Round"/>
                 </Button>
-                <Button Grid.Column="2"
+                <Button Grid.Column="3"
                         Classes="agent-icon-button"
                         Command="{Binding CloseCommand}"
                         ToolTip.Tip="关闭">
@@ -323,7 +330,14 @@
                         <ComboBox.ItemTemplate>
                             <DataTemplate x:DataType="model:ModelEntry">
                                 <StackPanel Spacing="1">
-                                    <TextBlock Text="{Binding ModelName}" FontSize="12"/>
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding ModelName}" FontSize="12"/>
+                                        <TextBlock Text="支持图像输入"
+                                                   FontSize="9"
+                                                   IsVisible="{Binding Vision}"
+                                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
                                     <TextBlock Text="{Binding ProviderLabel}"
                                                FontSize="10"
                                                Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>

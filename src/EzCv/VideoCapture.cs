@@ -5,6 +5,10 @@ namespace EzCv;
 /// <summary>
 /// 托管 VideoCapture 包装，API 兼容 OpenCvSharp.VideoCapture。
 /// </summary>
+/// <remarks>
+/// 每个 native 调用后调用 GC.KeepAlive(this) 防止托管包装器在 P/Invoke 期间被 GC 回收
+/// （参考 OpenCvSharp NativeMethods 模式）。
+/// </remarks>
 public class VideoCapture : IDisposable
 {
     internal IntPtr Handle { get; private set; }
@@ -26,7 +30,9 @@ public class VideoCapture : IDisposable
 
     public bool IsOpened()
     {
-        return EzCvDll.VcIsOpened(Handle) != 0;
+        var v = EzCvDll.VcIsOpened(Handle) != 0;
+        GC.KeepAlive(this);
+        return v;
     }
 
     public bool Open(int index, VideoCaptureAPIs api = VideoCaptureAPIs.ANY)
@@ -35,6 +41,7 @@ public class VideoCapture : IDisposable
         // cv::Exception（如后端初始化失败）抛 OpenCVException；常规 open 失败（设备不存在）
         // 返回 false 不算异常，不进 last_error。
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
         return ok;
     }
 
@@ -43,6 +50,8 @@ public class VideoCapture : IDisposable
         bool ok = EzCvDll.VcRead(Handle, mat.Handle) != 0;
         // 流末尾无新帧返回 false，不算错误；底层 cv::Exception 才抛。
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
+        GC.KeepAlive(mat);
         return ok;
     }
 
@@ -50,6 +59,7 @@ public class VideoCapture : IDisposable
     {
         bool ok = EzCvDll.VcSet(Handle, (int)prop, value) != 0;
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
         return ok;
     }
 
@@ -57,6 +67,7 @@ public class VideoCapture : IDisposable
     {
         bool ok = EzCvDll.VcSet(Handle, (int)prop, value) != 0;
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
         return ok;
     }
 
@@ -64,6 +75,7 @@ public class VideoCapture : IDisposable
     {
         var v = EzCvDll.VcGet(Handle, (int)prop);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
         return v;
     }
 

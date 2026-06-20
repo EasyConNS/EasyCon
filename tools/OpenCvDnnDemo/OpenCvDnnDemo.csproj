@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- EzCv 自带 OpenCV5 native 库分发，ProjectReference 即可让 native 库随输出目录分发 -->
+    <ProjectReference Include="..\..\src\EzCv\EzCv.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 模型与测试图片随构建复制到输出目录 -->
+    <None Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

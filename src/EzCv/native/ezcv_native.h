@@ -151,6 +151,30 @@ EZCV_API void* ezcv_imdecode_mem(const unsigned char* data, int length, int flag
 EZCV_API unsigned char* ezcv_imencode_mem(const char* ext, void* src, int* out_len);
 EZCV_API void ezcv_free_buf(void* buf);
 
+// 从文件读取图像 (cv::imread)。flags 为 ImreadModes，默认 1=Color
+// 失败返回空 Mat（empty），错误写入 last_error
+EZCV_API void* ezcv_imread(const char* path, int flags);
+
+// 将 Mat 写入文件 (cv::imwrite)。返回 1 成功 / 0 失败
+EZCV_API int ezcv_imwrite(const char* path, void* src);
+
+// =========================================================================
+// 绘图 (imgproc drawing)
+// =========================================================================
+
+// 画矩形（对角顶点）。颜色 r,g,b 顺序（内部转 BGR）。thickness<=0 表示填充
+EZCV_API void ezcv_rectangle(void* img, int x1, int y1, int x2, int y2,
+                             double r, double g, double b, int thickness);
+
+// 画文字（org 为文字左下角基线点）。font_face 对应 cv::HersheyFonts
+EZCV_API void ezcv_put_text(void* img, const char* text, int x, int y,
+                            int font_face, double font_scale,
+                            double r, double g, double b, int thickness);
+
+// 测量文字尺寸。out_w/out_h 写入宽高（baseline 未返回，按 OpenCvSharp GetTextSize 习惯）
+EZCV_API void ezcv_get_text_size(const char* text, int font_face, double font_scale,
+                                 int thickness, int* out_w, int* out_h);
+
 // =========================================================================
 // 视频采集 (videoio)
 // =========================================================================

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 
 namespace EzCv.Interop;
 
@@ -17,7 +18,8 @@ internal static class EzCvError
 
     public static void ThrowIfAny()
     {
-        var msg = EzCvDll.LastError();
+        var ptr = EzCvDll.LastError();
+        var msg = Marshal.PtrToStringUTF8(ptr);
         if (!string.IsNullOrEmpty(msg))
         {
             EzCvDll.ClearError();

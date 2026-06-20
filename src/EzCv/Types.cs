@@ -245,6 +245,23 @@ public enum ImreadModes
     AnyColor = 4,
 }
 
+/// <summary>
+/// Hershey 矢量字体（cv::HersheyFonts），用于 PutText/GetTextSize。
+/// </summary>
+public enum HersheyFonts
+{
+    HersheySimplex = 0,
+    HersheyPlain = 1,
+    HersheyDuplex = 2,
+    HersheyComplex = 3,
+    HersheyTriplex = 4,
+    HersheyComplexSmall = 5,
+    HersheyScriptSimplex = 6,
+    HersheyScriptComplex = 7,
+    /// <summary>常用别名，等价于 HersheySimplex。</summary>
+    Simplex = 0,
+}
+
 public enum VideoCaptureAPIs
 {
     ANY = 0,

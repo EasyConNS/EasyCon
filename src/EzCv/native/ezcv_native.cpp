@@ -377,6 +377,60 @@ EZCV_API void ezcv_free_buf(void* buf) {
     free(buf);
 }
 
+EZCV_API void* ezcv_imread(const char* path, int flags) {
+    EZCV_TRY
+    cv::Mat img = cv::imread(path, flags);
+    if (img.empty()) {
+        // 与 imdecode 一致：解码失败也写一条提示，让 C# 端能区分
+        g_last_error = "imread: empty result (file not found, unreadable, or unsupported format)";
+        return nullptr;
+    }
+    return new cv::Mat(img);
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API int ezcv_imwrite(const char* path, void* src) {
+    EZCV_TRY
+    auto* mat = static_cast<cv::Mat*>(src);
+    return cv::imwrite(path, *mat) ? 1 : 0;
+    EZCV_CATCH(return 0)
+}
+
+// =========================================================================
+// 绘图 (imgproc drawing)
+// =========================================================================
+
+EZCV_API void ezcv_rectangle(void* img, int x1, int y1, int x2, int y2,
+                             double r, double g, double b, int thickness) {
+    EZCV_TRY
+    auto* mat = static_cast<cv::Mat*>(img);
+    cv::rectangle(*mat, cv::Point(x1, y1), cv::Point(x2, y2),
+                  make_scalar(r, g, b), thickness);
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_put_text(void* img, const char* text, int x, int y,
+                            int font_face, double font_scale,
+                            double r, double g, double b, int thickness) {
+    EZCV_TRY
+    auto* mat = static_cast<cv::Mat*>(img);
+    cv::putText(*mat, text, cv::Point(x, y),
+                static_cast<cv::HersheyFonts>(font_face), font_scale,
+                make_scalar(r, g, b), thickness, cv::LINE_AA);
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_get_text_size(const char* text, int font_face, double font_scale,
+                                 int thickness, int* out_w, int* out_h) {
+    EZCV_TRY
+    int baseline = 0;
+    cv::Size sz = cv::getTextSize(text, static_cast<cv::HersheyFonts>(font_face),
+                                  font_scale, thickness, &baseline);
+    if (out_w) *out_w = sz.width;
+    if (out_h) *out_h = sz.height;
+    EZCV_CATCH(return)
+}
+
 // =========================================================================
 // 视频采集 (videoio)
 // =========================================================================

@@ -7,12 +7,15 @@ namespace EzCv.Interop;
 /// <summary>
 /// 跨平台原生库解析器。
 /// <para>
-/// [DllImport] 使用的逻辑库名（"ezcv_native"）由本类在模块加载时
-/// 通过 <see cref="NativeLibrary.SetDllImportResolver"/> 重写为各平台真实文件名
-/// （如 libezcv_native.dylib / libezcv_native.so / ezcv_native.dll）。
+/// 参考 OpenCvSharp NativeMethods.LoadLibraries 模式：
+///   - Windows：通过 DllImportResolver 在输出目录/runtimes 中查找并加载 DLL。
+///   - macOS / Linux：不干预库加载，交给系统动态链接器（dyld / ld.so）。
+///     库放在输出目录中，依赖 @rpath（@loader_path）自动解析。
 /// </para>
 /// <para>
-/// 解析顺序：① 输出目录内 ② runtimes/&lt;rid&gt;/native/ ③ 系统兜底（NativeLibrary.Load 走 ldconfig/dyld）。
+/// 注意：macOS 上 NativeLibrary.Load(path, assembly, searchPath) 会触发
+/// 递归依赖加载（libopencv_world → AppKit/Cocoa/AVFoundation），在 .NET 进程
+/// 上下文下可能导致 malloc 冲突。因此 Unix 上不注册 resolver，与 OpenCvSharp 一致。
 /// </para>
 /// </summary>
 internal static class NativeLoader
@@ -23,6 +26,10 @@ internal static class NativeLoader
     [ModuleInitializer]
     internal static void Init()
     {
+        // 仅在 Windows 上注册 resolver；Unix 上交给系统处理（与 OpenCvSharp 一致）
+        if (!OperatingSystem.IsWindows())
+            return;
+
         var asm = typeof(NativeLoader).Assembly;
         try { NativeLibrary.SetDllImportResolver(asm, Resolve); }
         catch (ArgumentException) { /* 已注册，忽略 */ }
@@ -36,7 +43,7 @@ internal static class NativeLoader
         var names = Candidates();
         foreach (var name in names)
         {
-            var handle = TryLoadFromAppPaths(name, assembly, searchPath);
+            var handle = TryLoadFromAppPaths(name);
             if (handle != IntPtr.Zero) return handle;
             try { handle = NativeLibrary.Load(name, assembly, searchPath); } catch { }
             if (handle != IntPtr.Zero) return handle;
@@ -44,14 +51,13 @@ internal static class NativeLoader
         return IntPtr.Zero;
     }
 
-    private static IntPtr TryLoadFromAppPaths(string fileName, Assembly assembly, DllImportSearchPath? searchPath)
+    private static IntPtr TryLoadFromAppPaths(string fileName)
     {
         var baseDir = AppContext.BaseDirectory;
-        var rid = RuntimeInformation.RuntimeIdentifier;
         var dirs = new[]
         {
             baseDir,
-            Path.Combine(baseDir, "runtimes", rid, "native"),
+            Path.Combine(baseDir, "runtimes", RuntimeInformation.RuntimeIdentifier, "native"),
             Path.Combine(baseDir, "runtimes", ArchitectureFolder(), "native"),
         };
 
@@ -60,14 +66,15 @@ internal static class NativeLoader
             var path = Path.Combine(dir, fileName);
             if (File.Exists(path))
             {
-                try { return NativeLibrary.Load(path, assembly, searchPath); } catch { }
+                if (NativeLibrary.TryLoad(path, out var handle))
+                    return handle;
             }
-            // Unix 下 soname 链：补充探测带版本号文件
             if (!OperatingSystem.IsWindows())
             {
                 foreach (var found in GlobSamePrefix(dir, fileName))
                 {
-                    try { return NativeLibrary.Load(found, assembly, searchPath); } catch { }
+                    if (NativeLibrary.TryLoad(found, out var handle))
+                        return handle;
                 }
             }
         }
@@ -104,7 +111,6 @@ internal static class NativeLoader
             return ["ezcv_native.dll"];
         if (OperatingSystem.IsMacOS())
             return ["libezcv_native.dylib"];
-        // Linux
         return ["libezcv_native.so"];
     }
 }

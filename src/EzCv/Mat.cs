@@ -6,6 +6,10 @@ namespace EzCv;
 /// 托管 Mat 包装，API 兼容 OpenCvSharp.Mat。
 /// 内部持有 ezcv_native 的 Mat 句柄，实现 IDisposable。
 /// </summary>
+/// <remarks>
+/// 每个 native 调用后调用 GC.KeepAlive(this) 防止托管包装器在 P/Invoke 期间被 GC 回收
+/// （参考 OpenCvSharp NativeMethods 模式）。
+/// </remarks>
 public class Mat : IDisposable
 {
     internal IntPtr Handle { get; private set; }
@@ -29,6 +33,7 @@ public class Mat : IDisposable
     {
         Handle = EzCvDll.MatCreateRoi(src.Handle, roi.X, roi.Y, roi.Width, roi.Height);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(src);
     }
 
     internal Mat(IntPtr handle, bool ownsHandle = true)
@@ -40,22 +45,82 @@ public class Mat : IDisposable
     private bool _ownsHandle = true;
     private bool _disposed;
 
-    public int Width => EzCvDll.MatWidth(Handle);
-    public int Height => EzCvDll.MatHeight(Handle);
-    public int Channels() => EzCvDll.MatChannels(Handle);
-    public int Type() => EzCvDll.MatType(Handle);
+    public int Width
+    {
+        get
+        {
+            var v = EzCvDll.MatWidth(Handle);
+            GC.KeepAlive(this);
+            return v;
+        }
+    }
+
+    public int Height
+    {
+        get
+        {
+            var v = EzCvDll.MatHeight(Handle);
+            GC.KeepAlive(this);
+            return v;
+        }
+    }
+
+    public int Channels()
+    {
+        var v = EzCvDll.MatChannels(Handle);
+        GC.KeepAlive(this);
+        return v;
+    }
+
+    public int Type()
+    {
+        var v = EzCvDll.MatType(Handle);
+        GC.KeepAlive(this);
+        return v;
+    }
 
     /// <summary>Mat 的维度数（2D 图像为 2，DNN blob 通常为 4）。</summary>
-    public int Dims => EzCvDll.MatDims(Handle);
+    public int Dims
+    {
+        get
+        {
+            var v = EzCvDll.MatDims(Handle);
+            GC.KeepAlive(this);
+            return v;
+        }
+    }
 
     /// <summary>获取指定维度的尺寸（dim 0 = rows/batch, dim 1 = cols/channels, dim 2+ = 更高维度）。</summary>
-    public int Size(int dim) => EzCvDll.MatSizeDim(Handle, dim);
+    public int Size(int dim)
+    {
+        var v = EzCvDll.MatSizeDim(Handle, dim);
+        GC.KeepAlive(this);
+        return v;
+    }
 
-    public unsafe IntPtr Data => (IntPtr)EzCvDll.MatData(Handle);
+    public unsafe IntPtr Data
+    {
+        get
+        {
+            var v = (IntPtr)EzCvDll.MatData(Handle);
+            GC.KeepAlive(this);
+            return v;
+        }
+    }
 
-    public long Step() => EzCvDll.MatStep(Handle);
+    public long Step()
+    {
+        var v = EzCvDll.MatStep(Handle);
+        GC.KeepAlive(this);
+        return v;
+    }
 
-    public bool Empty() => EzCvDll.MatEmpty(Handle) != 0;
+    public bool Empty()
+    {
+        var v = EzCvDll.MatEmpty(Handle) != 0;
+        GC.KeepAlive(this);
+        return v;
+    }
 
     public bool IsDisposed => _disposed;
 
@@ -64,6 +129,7 @@ public class Mat : IDisposable
     {
         var h = EzCvDll.MatClone(Handle);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
         return new Mat(h, ownsHandle: true);
     }
 
@@ -72,6 +138,8 @@ public class Mat : IDisposable
     {
         EzCvDll.MatConvertTo(Handle, dst.Handle, type);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
+        GC.KeepAlive(dst);
     }
 
     /// <summary>将 Mat 编码为指定格式的字节数组（默认 PNG）。</summary>

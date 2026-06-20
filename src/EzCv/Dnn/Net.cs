@@ -6,6 +6,10 @@ namespace EzCv.Dnn;
 /// DNN 神经网络，API 兼容 OpenCvSharp.Dnn.Net。
 /// 内部持有 ezcv_native 的 cv::dnn::Net 句柄，实现 IDisposable。
 /// </summary>
+/// <remarks>
+/// 每个 native 调用后调用 GC.KeepAlive(this) 防止托管包装器在 P/Invoke 期间被 GC 回收
+/// （参考 OpenCvSharp NativeMethods 模式）。
+/// </remarks>
 public class Net : IDisposable
 {
     internal IntPtr Handle { get; private set; }
@@ -169,6 +173,7 @@ public class Net : IDisposable
     {
         var r = EzCvDll.DnnNetEmpty(Handle);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
         return r != 0;
     }
 
@@ -179,6 +184,8 @@ public class Net : IDisposable
     {
         EzCvDll.DnnNetSetInput(Handle, blob.Handle, name);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
+        GC.KeepAlive(blob);
     }
 
     /// <summary>设置网络输入名称。</summary>
@@ -186,6 +193,7 @@ public class Net : IDisposable
     {
         EzCvDll.DnnNetSetInputsNames(Handle, inputBlobNames, inputBlobNames.Length);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
     }
 
     /// <summary>
@@ -197,6 +205,7 @@ public class Net : IDisposable
     {
         var h = EzCvDll.DnnNetForward(Handle, outputName);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
         return new Mat(h, ownsHandle: true);
     }
 
@@ -212,6 +221,9 @@ public class Net : IDisposable
             handles[i] = outputBlobs[i].Handle;
         EzCvDll.DnnNetForwardMulti(Handle, handles, outputBlobs.Length, outputName);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
+        foreach (var m in outputBlobs)
+            GC.KeepAlive(m);
     }
 
     /// <summary>设置计算后端。</summary>
@@ -219,6 +231,7 @@ public class Net : IDisposable
     {
         EzCvDll.DnnNetSetPreferableBackend(Handle, (int)backendId);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
     }
 
     /// <summary>设置目标设备。</summary>
@@ -226,6 +239,7 @@ public class Net : IDisposable
     {
         EzCvDll.DnnNetSetPreferableTarget(Handle, (int)targetId);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
     }
 
     /// <summary>获取层 ID，未找到返回 -1。</summary>
@@ -233,6 +247,7 @@ public class Net : IDisposable
     {
         var id = EzCvDll.DnnNetGetLayerId(Handle, layerName);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(this);
         return id;
     }
 
@@ -244,6 +259,7 @@ public class Net : IDisposable
             char** names = null;
             int count = EzCvDll.DnnNetGetLayerNames(Handle, &names);
             EzCvError.ThrowIfAny();
+            GC.KeepAlive(this);
             return ReadStringArray(names, count);
         }
     }
@@ -256,6 +272,7 @@ public class Net : IDisposable
             int* ids = null;
             int count = EzCvDll.DnnNetGetUnconnectedOutLayers(Handle, &ids);
             EzCvError.ThrowIfAny();
+            GC.KeepAlive(this);
             var result = new int[count];
             if (count > 0)
             {
@@ -275,6 +292,7 @@ public class Net : IDisposable
             char** names = null;
             int count = EzCvDll.DnnNetGetUnconnectedOutLayersNames(Handle, &names);
             EzCvError.ThrowIfAny();
+            GC.KeepAlive(this);
             return ReadStringArray(names, count);
         }
     }
@@ -292,6 +310,7 @@ public class Net : IDisposable
             int tCount = 0;
             long total = EzCvDll.DnnNetGetPerfProfile(Handle, &tPtr, &tCount);
             EzCvError.ThrowIfAny();
+            GC.KeepAlive(this);
             timings = new double[tCount];
             if (tCount > 0)
             {
@@ -312,6 +331,7 @@ public class Net : IDisposable
         {
             var ptr = EzCvDll.DnnNetDump(Handle);
             EzCvError.ThrowIfAny();
+            GC.KeepAlive(this);
             var result = System.Runtime.InteropServices.Marshal.PtrToStringUTF8(ptr) ?? "";
             EzCvDll.FreeBuf(ptr);
             return result;

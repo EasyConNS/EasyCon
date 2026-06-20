@@ -21,6 +21,7 @@
     <Project Path="test/EasyCon.Lsp.Tests/EasyCon.Lsp.Tests.csproj" />
   </Folder>
   <Folder Name="/Demo/">
+    <Project Path="tools/OpenCvDnnDemo/OpenCvDnnDemo.csproj" />
   </Folder>
   <Folder Name="/Lib/">
     <Project Path="src/EzCv/EzCv.csproj" />

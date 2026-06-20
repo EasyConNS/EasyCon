@@ -189,8 +189,8 @@ public class CaptureService
         lock (_frameLock)
         {
             if (_cvcap == null || !_cvcap.IsOpened) return null;
-            var mat = _cvcap.GetMatFrame();
-            if (mat.Empty()) { mat.Dispose(); return null; }
+            using var mat = _cvcap.GetMatFrame();
+            if (mat.Empty()) return null;
             return mat.Clone();
         }
     }

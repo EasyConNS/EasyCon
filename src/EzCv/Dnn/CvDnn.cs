@@ -6,6 +6,10 @@ namespace EzCv.Dnn;
 /// <summary>
 /// DNN 静态工具函数，API 兼容 OpenCvSharp.Dnn.CvDnn。
 /// </summary>
+/// <remarks>
+/// 每个 native 调用后调用 GC.KeepAlive() 防止托管包装器在 P/Invoke 期间被 GC 回收
+/// （参考 OpenCvSharp NativeMethods 模式）。
+/// </remarks>
 public static class CvDnn
 {
     /// <summary>
@@ -195,6 +199,7 @@ public static class CvDnn
             mean.Val0, mean.Val1, mean.Val2,
             swapRB ? 1 : 0, crop ? 1 : 0);
         EzCvError.ThrowIfAny();
+        GC.KeepAlive(image);
         return new Mat(h, ownsHandle: true);
     }
 

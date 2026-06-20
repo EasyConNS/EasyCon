@@ -113,16 +113,10 @@ public partial class AiAgentViewModel : ObservableObject
 
     partial void OnSelectedEntryChanged(ModelEntry? value)
     {
-        if (_toolCallService is null) return;
-
-        if (value?.Vision == true)
+        if (_toolCallService is null)
         {
-            if (!_tools.Contains("get_frame"))
-                _tools.Register(new GetFrameTool(_toolCallService));
-        }
-        else
-        {
-            _tools.Unregister("get_frame");
+            Console.WriteLine("工具服务为空！！");
+            return;
         }
 
         // 模型切换后重建编排器（注入技能体系）

@@ -105,12 +105,9 @@ public class CaptureService : ICaptureService
             if (_capture == null || !_capture.IsOpened)
                 return null;
 
-            var mat = _capture.GetMatFrame();
+            using var mat = _capture.GetMatFrame();
             if (mat.Empty())
-            {
-                mat.Dispose();
                 return null;
-            }
 
             return mat.Clone();
         }
