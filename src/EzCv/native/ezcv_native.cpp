@@ -10,6 +10,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <opencv2/dnn.hpp>
 #include <opencv2/geometry/2d.hpp>  // boundingRect in OpenCV 5
 #include <vector>
 #include <cstring>
@@ -123,6 +124,18 @@ EZCV_API int ezcv_mat_type(void* mat) {
 
 EZCV_API int64_t ezcv_mat_step(void* mat) {
     return static_cast<int64_t>(static_cast<cv::Mat*>(mat)->step);
+}
+
+EZCV_API int ezcv_mat_dims(void* mat) {
+    return static_cast<cv::Mat*>(mat)->dims;
+}
+
+EZCV_API int ezcv_mat_size_dim(void* mat, int dim) {
+    auto* m = static_cast<cv::Mat*>(mat);
+    if (dim < 0 || dim >= m->dims) {
+        return -1;
+    }
+    return m->size[dim];
 }
 
 EZCV_API unsigned char* ezcv_mat_data(void* mat) {
@@ -420,4 +433,363 @@ EZCV_API void ezcv_vc_release(void* vc) {
     auto* cap = static_cast<cv::VideoCapture*>(vc);
     cap->release();
     delete cap;
+}
+
+// =========================================================================
+// DNN 深度神经网络 (dnn)
+// =========================================================================
+
+// --- 模型加载 ---
+
+EZCV_API void* ezcv_dnn_read_net(const char* model, const char* config, const char* framework, int engine) {
+    EZCV_TRY
+    cv::String cfg = config ? config : "";
+    cv::String fw  = framework ? framework : "";
+    cv::dnn::Net net = cv::dnn::readNet(model, cfg, fw, engine);
+    return new cv::dnn::Net(std::move(net));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void* ezcv_dnn_read_net_from_onnx(const char* onnx_file, int engine) {
+    EZCV_TRY
+    // 显式构造 cv::String 避免与 readNetFromONNX(const char*, size_t, int) 重载歧义
+    cv::dnn::Net net = cv::dnn::readNetFromONNX(cv::String(onnx_file), engine);
+    return new cv::dnn::Net(std::move(net));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void* ezcv_dnn_read_net_from_onnx_mem(const unsigned char* data, int length, int engine) {
+    EZCV_TRY
+    std::vector<uchar> buf(data, data + length);
+    cv::dnn::Net net = cv::dnn::readNetFromONNX(buf, engine);
+    return new cv::dnn::Net(std::move(net));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void* ezcv_dnn_read_net_from_tensorflow(const char* model, int engine) {
+    EZCV_TRY
+    cv::dnn::Net net = cv::dnn::readNetFromTensorflow(cv::String(model), cv::String(), engine);
+    return new cv::dnn::Net(std::move(net));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void* ezcv_dnn_read_net_from_tensorflow_with_config(const char* model, const char* config, int engine) {
+    EZCV_TRY
+    cv::dnn::Net net = cv::dnn::readNetFromTensorflow(cv::String(model), cv::String(config), engine);
+    return new cv::dnn::Net(std::move(net));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void* ezcv_dnn_read_net_from_tensorflow_mem(const unsigned char* model_data, int model_len,
+                                                      const unsigned char* config_data, int config_len,
+                                                      int engine) {
+    EZCV_TRY
+    std::vector<uchar> model_buf(model_data, model_data + model_len);
+    std::vector<uchar> config_buf;
+    if (config_data != nullptr && config_len > 0) {
+        config_buf.assign(config_data, config_data + config_len);
+    }
+    cv::dnn::Net net = cv::dnn::readNetFromTensorflow(model_buf, config_buf, engine);
+    return new cv::dnn::Net(std::move(net));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void* ezcv_dnn_read_net_from_tflite(const char* model, int engine) {
+    EZCV_TRY
+    cv::dnn::Net net = cv::dnn::readNetFromTFLite(cv::String(model), engine);
+    return new cv::dnn::Net(std::move(net));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void* ezcv_dnn_read_net_from_tflite_mem(const unsigned char* data, int length, int engine) {
+    EZCV_TRY
+    std::vector<uchar> buf(data, data + length);
+    cv::dnn::Net net = cv::dnn::readNetFromTFLite(buf, engine);
+    return new cv::dnn::Net(std::move(net));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void* ezcv_dnn_read_tensor_from_onnx(const char* path) {
+    EZCV_TRY
+    cv::Mat tensor = cv::dnn::readTensorFromONNX(cv::String(path));
+    return new cv::Mat(std::move(tensor));
+    EZCV_CATCH(return nullptr)
+}
+
+// --- Net 生命周期 ---
+
+EZCV_API void ezcv_dnn_net_release(void* net) {
+    delete static_cast<cv::dnn::Net*>(net);
+}
+
+EZCV_API int ezcv_dnn_net_empty(void* net) {
+    return static_cast<cv::dnn::Net*>(net)->empty() ? 1 : 0;
+}
+
+// --- Net 推理 ---
+
+EZCV_API void ezcv_dnn_net_set_input(void* net, void* blob, const char* name) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    auto* b = static_cast<cv::Mat*>(blob);
+    n->setInput(*b, name ? name : "");
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_dnn_net_set_inputs_names(void* net, const char** names, int count) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    std::vector<cv::String> nameVec;
+    nameVec.reserve(count);
+    for (int i = 0; i < count; i++)
+        nameVec.emplace_back(names[i]);
+    n->setInputsNames(nameVec);
+    EZCV_CATCH(return)
+}
+
+EZCV_API void* ezcv_dnn_net_forward(void* net, const char* output_name) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    cv::Mat result = n->forward(output_name ? output_name : "");
+    return new cv::Mat(std::move(result));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void ezcv_dnn_net_forward_multi(void* net, void** output_mats, int count, const char* output_name) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    std::vector<cv::Mat> blobs;
+    blobs.resize(count);
+    n->forward(blobs, output_name ? output_name : "");
+    for (int i = 0; i < count; i++) {
+        auto* dst = static_cast<cv::Mat*>(output_mats[i]);
+        *dst = std::move(blobs[i]);
+    }
+    EZCV_CATCH(return)
+}
+
+// --- Net 配置 ---
+
+EZCV_API void ezcv_dnn_net_set_preferable_backend(void* net, int backend_id) {
+    EZCV_TRY
+    static_cast<cv::dnn::Net*>(net)->setPreferableBackend(backend_id);
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_dnn_net_set_preferable_target(void* net, int target_id) {
+    EZCV_TRY
+    static_cast<cv::dnn::Net*>(net)->setPreferableTarget(target_id);
+    EZCV_CATCH(return)
+}
+
+// --- Net 信息查询 ---
+
+EZCV_API int ezcv_dnn_net_get_layer_id(void* net, const char* name) {
+    EZCV_TRY
+    return static_cast<cv::dnn::Net*>(net)->getLayerId(name);
+    EZCV_CATCH(return -1)
+}
+
+EZCV_API int ezcv_dnn_net_get_layer_names(void* net, char*** names) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    auto layerNames = n->getLayerNames();
+    int count = static_cast<int>(layerNames.size());
+    char** result = (char**)malloc(count * sizeof(char*));
+    for (int i = 0; i < count; i++) {
+        const auto& s = layerNames[i];
+        result[i] = (char*)malloc(s.size() + 1);
+        std::memcpy(result[i], s.c_str(), s.size() + 1);
+    }
+    *names = result;
+    return count;
+    EZCV_CATCH(*names = nullptr; return 0)
+}
+
+EZCV_API int ezcv_dnn_net_get_unconnected_out_layers(void* net, int** ids) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    auto layers = n->getUnconnectedOutLayers();
+    int count = static_cast<int>(layers.size());
+    int* result = (int*)malloc(count * sizeof(int));
+    for (int i = 0; i < count; i++)
+        result[i] = layers[i];
+    *ids = result;
+    return count;
+    EZCV_CATCH(*ids = nullptr; return 0)
+}
+
+EZCV_API int ezcv_dnn_net_get_unconnected_out_layers_names(void* net, char*** names) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    auto layerNames = n->getUnconnectedOutLayersNames();
+    int count = static_cast<int>(layerNames.size());
+    char** result = (char**)malloc(count * sizeof(char*));
+    for (int i = 0; i < count; i++) {
+        const auto& s = layerNames[i];
+        result[i] = (char*)malloc(s.size() + 1);
+        std::memcpy(result[i], s.c_str(), s.size() + 1);
+    }
+    *names = result;
+    return count;
+    EZCV_CATCH(*names = nullptr; return 0)
+}
+
+EZCV_API int64_t ezcv_dnn_net_get_perf_profile(void* net, double** timings, int* timing_count) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    std::vector<double> tvec;
+    int64_t total = n->getPerfProfile(tvec);
+    int count = static_cast<int>(tvec.size());
+    double* result = (double*)malloc(count * sizeof(double));
+    for (int i = 0; i < count; i++)
+        result[i] = tvec[i];
+    *timings = result;
+    *timing_count = count;
+    return total;
+    EZCV_CATCH(*timings = nullptr; *timing_count = 0; return 0)
+}
+
+EZCV_API char* ezcv_dnn_net_dump(void* net) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    auto s = n->dump();
+    char* result = (char*)malloc(s.size() + 1);
+    std::memcpy(result, s.c_str(), s.size() + 1);
+    return result;
+    EZCV_CATCH(return nullptr)
+}
+
+// --- DNN 工具函数 ---
+
+EZCV_API void* ezcv_dnn_blob_from_image(void* image, double scale_factor,
+    int w, int h, double r, double g, double b, int swap_rb, int crop) {
+    EZCV_TRY
+    auto* img = static_cast<cv::Mat*>(image);
+    cv::Mat blob = cv::dnn::blobFromImage(*img, scale_factor,
+        cv::Size(w, h), make_scalar(r, g, b), swap_rb != 0, crop != 0);
+    return new cv::Mat(std::move(blob));
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API int ezcv_dnn_nms_boxes(const int* boxes_xywh, const float* scores,
+    int count, float score_threshold, float nms_threshold, int* indices,
+    float eta, int top_k) {
+    EZCV_TRY
+    std::vector<cv::Rect> boxes;
+    std::vector<float> scoresVec;
+    boxes.reserve(count);
+    scoresVec.reserve(count);
+    for (int i = 0; i < count; i++) {
+        boxes.emplace_back(boxes_xywh[i * 4], boxes_xywh[i * 4 + 1],
+                           boxes_xywh[i * 4 + 2], boxes_xywh[i * 4 + 3]);
+        scoresVec.push_back(scores[i]);
+    }
+    std::vector<int> result;
+    cv::dnn::NMSBoxes(boxes, scoresVec, score_threshold, nms_threshold, result, eta, top_k);
+    int n = static_cast<int>(result.size());
+    for (int i = 0; i < n; i++)
+        indices[i] = result[i];
+    return n;
+    EZCV_CATCH(return 0)
+}
+
+// --- DetectionModel 高层 API ---
+
+EZCV_API void* ezcv_dnn_detection_model_new(const char* model, const char* config) {
+    EZCV_TRY
+    cv::String cfg = config ? config : "";
+    return new cv::dnn::DetectionModel(model, cfg);
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void* ezcv_dnn_detection_model_from_net(void* net) {
+    EZCV_TRY
+    auto* n = static_cast<cv::dnn::Net*>(net);
+    return new cv::dnn::DetectionModel(*n);
+    EZCV_CATCH(return nullptr)
+}
+
+EZCV_API void ezcv_dnn_detection_model_release(void* dm) {
+    delete static_cast<cv::dnn::DetectionModel*>(dm);
+}
+
+EZCV_API void ezcv_dnn_detection_model_set_input_size(void* dm, int w, int h) {
+    EZCV_TRY
+    static_cast<cv::dnn::DetectionModel*>(dm)->setInputSize(cv::Size(w, h));
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_dnn_detection_model_set_input_mean(void* dm, double r, double g, double b) {
+    EZCV_TRY
+    static_cast<cv::dnn::DetectionModel*>(dm)->setInputMean(make_scalar(r, g, b));
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_dnn_detection_model_set_input_scale(void* dm, double scale) {
+    EZCV_TRY
+    static_cast<cv::dnn::DetectionModel*>(dm)->setInputScale(scale);
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_dnn_detection_model_set_input_crop(void* dm, int crop) {
+    EZCV_TRY
+    static_cast<cv::dnn::DetectionModel*>(dm)->setInputCrop(crop != 0);
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_dnn_detection_model_set_input_swap_rb(void* dm, int swap_rb) {
+    EZCV_TRY
+    static_cast<cv::dnn::DetectionModel*>(dm)->setInputSwapRB(swap_rb != 0);
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_dnn_detection_model_set_preferable_backend(void* dm, int backend_id) {
+    EZCV_TRY
+    // Model::setPreferableBackend 接受 dnn::Backend 枚举（Net 版本才接受 int）
+    static_cast<cv::dnn::DetectionModel*>(dm)->setPreferableBackend(
+        static_cast<cv::dnn::Backend>(backend_id));
+    EZCV_CATCH(return)
+}
+
+EZCV_API void ezcv_dnn_detection_model_set_preferable_target(void* dm, int target_id) {
+    EZCV_TRY
+    static_cast<cv::dnn::DetectionModel*>(dm)->setPreferableTarget(
+        static_cast<cv::dnn::Target>(target_id));
+    EZCV_CATCH(return)
+}
+
+EZCV_API int ezcv_dnn_detection_model_detect(void* dm, void* frame,
+    int* class_ids, float* confidences, int* boxes_xywh,
+    int max_count, float conf_threshold, float nms_threshold) {
+    EZCV_TRY
+    auto* model = static_cast<cv::dnn::DetectionModel*>(dm);
+    auto* img = static_cast<cv::Mat*>(frame);
+
+    std::vector<int> ids;
+    std::vector<float> confs;
+    std::vector<cv::Rect> rects;
+
+    model->detect(*img, ids, confs, rects, conf_threshold, nms_threshold);
+
+    int n = std::min(static_cast<int>(ids.size()), max_count);
+    for (int i = 0; i < n; i++) {
+        class_ids[i] = ids[i];
+        confidences[i] = confs[i];
+        boxes_xywh[i * 4]     = rects[i].x;
+        boxes_xywh[i * 4 + 1] = rects[i].y;
+        boxes_xywh[i * 4 + 2] = rects[i].width;
+        boxes_xywh[i * 4 + 3] = rects[i].height;
+    }
+    return n;
+    EZCV_CATCH(return 0)
+}
+
+// --- 通用释放 ---
+
+EZCV_API void ezcv_free_string_array(char** arr, int count) {
+    if (!arr) return;
+    for (int i = 0; i < count; i++)
+        free(arr[i]);
+    free(arr);
 }

@@ -45,6 +45,12 @@ public class Mat : IDisposable
     public int Channels() => EzCvDll.MatChannels(Handle);
     public int Type() => EzCvDll.MatType(Handle);
 
+    /// <summary>Mat 的维度数（2D 图像为 2，DNN blob 通常为 4）。</summary>
+    public int Dims => EzCvDll.MatDims(Handle);
+
+    /// <summary>获取指定维度的尺寸（dim 0 = rows/batch, dim 1 = cols/channels, dim 2+ = 更高维度）。</summary>
+    public int Size(int dim) => EzCvDll.MatSizeDim(Handle, dim);
+
     public unsafe IntPtr Data => (IntPtr)EzCvDll.MatData(Handle);
 
     public long Step() => EzCvDll.MatStep(Handle);

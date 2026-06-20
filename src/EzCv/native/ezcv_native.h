@@ -65,6 +65,9 @@ EZCV_API int ezcv_mat_height(void* mat);
 EZCV_API int ezcv_mat_channels(void* mat);
 EZCV_API int ezcv_mat_type(void* mat);
 EZCV_API int64_t ezcv_mat_step(void* mat);
+// 多维维度访问
+EZCV_API int ezcv_mat_dims(void* mat);
+EZCV_API int ezcv_mat_size_dim(void* mat, int dim);
 
 // 获取原始数据指针 (不可在托管端释放)
 EZCV_API unsigned char* ezcv_mat_data(void* mat);
@@ -173,6 +176,148 @@ EZCV_API double ezcv_vc_get(void* vc, int prop_id);
 
 // 释放 VideoCapture
 EZCV_API void ezcv_vc_release(void* vc);
+
+// =========================================================================
+// DNN 深度神经网络 (dnn)
+// =========================================================================
+
+// --- 模型加载 ---
+
+// readNet: 自动检测格式加载网络
+// engine: 1=CLASSIC, 2=NEW, 3=AUTO, 4=ORT (OpenCV 5 EngineType)
+EZCV_API void* ezcv_dnn_read_net(const char* model, const char* config, const char* framework, int engine);
+
+// readNetFromONNX: 从 ONNX 文件加载
+EZCV_API void* ezcv_dnn_read_net_from_onnx(const char* onnx_file, int engine);
+
+// readNetFromONNX: 从内存字节加载
+EZCV_API void* ezcv_dnn_read_net_from_onnx_mem(const unsigned char* data, int length, int engine);
+
+// readNetFromTensorflow: 从 TensorFlow .pb 文件加载
+EZCV_API void* ezcv_dnn_read_net_from_tensorflow(const char* model, int engine);
+
+// readNetFromTensorflow: 从 .pb 文件和 .pbtxt 配置文件加载
+EZCV_API void* ezcv_dnn_read_net_from_tensorflow_with_config(const char* model, const char* config, int engine);
+
+// readNetFromTensorflow: 从内存字节加载
+EZCV_API void* ezcv_dnn_read_net_from_tensorflow_mem(const unsigned char* model_data, int model_len,
+                                                      const unsigned char* config_data, int config_len,
+                                                      int engine);
+
+// readNetFromTFLite: 从 TFLite .tflite 文件加载
+EZCV_API void* ezcv_dnn_read_net_from_tflite(const char* model, int engine);
+
+// readNetFromTFLite: 从内存字节加载
+EZCV_API void* ezcv_dnn_read_net_from_tflite_mem(const unsigned char* data, int length, int engine);
+
+// readTensorFromONNX: 从 ONNX .pb 文件读取张量
+EZCV_API void* ezcv_dnn_read_tensor_from_onnx(const char* path);
+
+// --- Net 生命周期 ---
+
+// 释放 Net
+EZCV_API void ezcv_dnn_net_release(void* net);
+
+// 判空
+EZCV_API int ezcv_dnn_net_empty(void* net);
+
+// --- Net 推理 ---
+
+// 设置输入 blob
+EZCV_API void ezcv_dnn_net_set_input(void* net, void* blob, const char* name);
+
+// 设置输入名称
+EZCV_API void ezcv_dnn_net_set_inputs_names(void* net, const char** names, int count);
+
+// 前向传播 (单输出) — 返回新 Mat
+EZCV_API void* ezcv_dnn_net_forward(void* net, const char* output_name);
+
+// 前向传播 (多输出) — 写入预分配的 Mat 数组
+EZCV_API void ezcv_dnn_net_forward_multi(void* net, void** output_mats, int count, const char* output_name);
+
+// --- Net 配置 ---
+
+// 设置后端 (backend_id: DNN_BACKEND_*)
+EZCV_API void ezcv_dnn_net_set_preferable_backend(void* net, int backend_id);
+
+// 设置目标设备 (target_id: DNN_TARGET_*)
+EZCV_API void ezcv_dnn_net_set_preferable_target(void* net, int target_id);
+
+// --- Net 信息查询 ---
+
+// 获取层 ID，未找到返回 -1
+EZCV_API int ezcv_dnn_net_get_layer_id(void* net, const char* name);
+
+// 获取所有层名称 — 返回数量，names 写入 malloc 的 char* 数组
+// 调用者需通过 ezcv_free_string_array 释放
+EZCV_API int ezcv_dnn_net_get_layer_names(void* net, char*** names);
+
+// 获取未连接输出层 ID — 返回数量，ids 写入 malloc 的 int 数组
+// 调用者需通过 ezcv_free_buf 释放
+EZCV_API int ezcv_dnn_net_get_unconnected_out_layers(void* net, int** ids);
+
+// 获取未连接输出层名称 — 返回数量，names 写入 malloc 的 char* 数组
+// 调用者需通过 ezcv_free_string_array 释放
+EZCV_API int ezcv_dnn_net_get_unconnected_out_layers_names(void* net, char*** names);
+
+// 性能分析 — 返回总 ticks，timings 写入 malloc 的 double 数组
+// 调用者需通过 ezcv_free_buf 释放 timings
+EZCV_API int64_t ezcv_dnn_net_get_perf_profile(void* net, double** timings, int* timing_count);
+
+// 网络 dump — 返回 malloc 的字符串
+// 调用者需通过 ezcv_free_buf 释放
+EZCV_API char* ezcv_dnn_net_dump(void* net);
+
+// --- DNN 工具函数 ---
+
+// blobFromImage: 从图像创建 4D blob
+// mean: 以 r,g,b 顺序传入（内部转换为 Scalar(b,g,r)）
+EZCV_API void* ezcv_dnn_blob_from_image(void* image, double scale_factor,
+    int w, int h, double r, double g, double b, int swap_rb, int crop);
+
+// NMSBoxes: 非极大值抑制
+// boxes_xywh: 连续存储的 [x,y,w,h] 数组，长度 count*4
+// scores: 长度为 count 的分数数组
+// indices: 调用者预分配的 int 数组 (长度 >= count)
+// eta: 自适应阈值系数 (默认 1.0)
+// top_k: 如果 >0，限制输出框数量 (默认 0 表示不限制)
+// 返回选中的索引数量
+EZCV_API int ezcv_dnn_nms_boxes(const int* boxes_xywh, const float* scores,
+    int count, float score_threshold, float nms_threshold, int* indices,
+    float eta, int top_k);
+
+// --- DetectionModel 高层 API ---
+
+// 从文件创建 DetectionModel
+EZCV_API void* ezcv_dnn_detection_model_new(const char* model, const char* config);
+
+// 从已有 Net 创建 DetectionModel
+EZCV_API void* ezcv_dnn_detection_model_from_net(void* net);
+
+// 释放 DetectionModel
+EZCV_API void ezcv_dnn_detection_model_release(void* dm);
+
+// 配置输入参数
+EZCV_API void ezcv_dnn_detection_model_set_input_size(void* dm, int w, int h);
+EZCV_API void ezcv_dnn_detection_model_set_input_mean(void* dm, double r, double g, double b);
+EZCV_API void ezcv_dnn_detection_model_set_input_scale(void* dm, double scale);
+EZCV_API void ezcv_dnn_detection_model_set_input_crop(void* dm, int crop);
+EZCV_API void ezcv_dnn_detection_model_set_input_swap_rb(void* dm, int swap_rb);
+
+// 配置后端/目标
+EZCV_API void ezcv_dnn_detection_model_set_preferable_backend(void* dm, int backend_id);
+EZCV_API void ezcv_dnn_detection_model_set_preferable_target(void* dm, int target_id);
+
+// 检测 — 写入预分配的数组 (class_ids, confidences, boxes_xywh 各 max_count 容量)
+// 返回实际检测数量
+EZCV_API int ezcv_dnn_detection_model_detect(void* dm, void* frame,
+    int* class_ids, float* confidences, int* boxes_xywh,
+    int max_count, float conf_threshold, float nms_threshold);
+
+// --- 通用释放 ---
+
+// 释放字符串数组 (由 get_layer_names 等函数返回)
+EZCV_API void ezcv_free_string_array(char** arr, int count);
 
 #ifdef __cplusplus
 }
