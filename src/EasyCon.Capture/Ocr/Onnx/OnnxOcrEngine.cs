@@ -447,7 +447,7 @@ public sealed class OnnxOcrEngine : IOcrEngine
             }
 
             using var roi = new Mat(src, new Rect(x, y, w, h));
-            var cropBytes = roi.ToPngBytes();
+            var cropBytes = roi.ToBytes(".png");
             var recResult = _recognizer.Recognize(cropBytes);
             results[i] = new OcrResult(recResult.Text, recResult.Confidence, box);
         }

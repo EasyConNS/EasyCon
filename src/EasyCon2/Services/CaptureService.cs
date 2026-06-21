@@ -149,9 +149,9 @@ public class CaptureService
 
                     using var roi = new Mat(frame, new Rect(x, y, w, h));
                     if (w == 0 || h == 0) return null;
-                    return Convert.ToBase64String(roi.Resize(0.5).ToPngBytes());
+                    return Convert.ToBase64String(roi.Resize(0.5).ToBytes(".png"));
                 }
-                return Convert.ToBase64String(frame.Resize(0.5).ToPngBytes());
+                return Convert.ToBase64String(frame.Resize(0.5).ToBytes(".png"));
             }
         };
     }

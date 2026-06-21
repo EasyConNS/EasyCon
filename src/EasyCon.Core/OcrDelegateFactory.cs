@@ -35,7 +35,7 @@ public static class OcrDelegateFactory
             if (w == 0 || h == 0) return "OCR ARGS ERR!";
 
             using var roi = new Mat(frame, new Rect(x, y, w, h));
-            var imageBytes = roi.ToPngBytes();
+            var imageBytes = roi.ToBytes(".png");
 
             var recognizer = cache.GetOrInit(lang);
             var result = recognizer.Recognize(imageBytes);
@@ -62,9 +62,9 @@ public static class FrameDelegateFactory
 
                 using var roi = new Mat(mat, new Rect(x, y, w, h));
                 if (w == 0 || h == 0) return "ROI检查异常";
-                return Convert.ToBase64String(roi.ToPngBytes());
+                return Convert.ToBase64String(roi.ToBytes(".png"));
             }
-            return Convert.ToBase64String(mat.ToPngBytes());
+            return Convert.ToBase64String(mat.ToBytes(".png"));
         };
     }
 }

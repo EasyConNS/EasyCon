@@ -159,9 +159,9 @@ public class ScriptService : IScriptService
 
                         using var roi = new Mat(mat, new Rect(x, y, w, h));
                         if (w == 0 || h == 0) return null;
-                        return Convert.ToBase64String(roi.ToPngBytes());
+                        return Convert.ToBase64String(roi.ToBytes(".png"));
                     }
-                    return Convert.ToBase64String(mat.ToPngBytes());
+                    return Convert.ToBase64String(mat.ToBytes(".png"));
                 };
 
                 LabelMatchDelegate? labelMatchDelegate = lblName =>
@@ -269,9 +269,9 @@ public class ScriptService : IScriptService
 
                         using var roi = new Mat(mat, new Rect(x, y, w, h));
                         if (w == 0 || h == 0) return null;
-                        return Convert.ToBase64String(roi.ToPngBytes());
+                        return Convert.ToBase64String(roi.ToBytes(".png"));
                     }
-                    return Convert.ToBase64String(mat.ToPngBytes());
+                    return Convert.ToBase64String(mat.ToBytes(".png"));
                 };
 
                 var ocrCache = new OcrEngineCache

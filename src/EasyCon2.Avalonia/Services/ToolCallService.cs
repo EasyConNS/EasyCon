@@ -1,6 +1,7 @@
 using Avalonia.Threading;
 using EasyCon.Capture;
 using EasyCon2.Avalonia.Core.Services;
+using EzCv;
 using System.Text;
 
 namespace EasyCon2.Avalonia.Services;
@@ -218,7 +219,7 @@ public class ToolCallService : IToolCallService
         {
             if (mat.Empty()) return null;
             using var resized = mat.Resize(0.5);
-            var bytes = resized.ToPngBytes();
+            var bytes = resized.ToBytes(".png");
             return Convert.ToBase64String(bytes);
         }
         finally

@@ -14,22 +14,6 @@ public static class MatExtensions
         return newm;
     }
 
-    // Mat 转 byte[]（PNG格式）
-    public static byte[] ToPngBytes(this Mat mat, int compressionLevel = 6)
-    {
-        if (mat == null || mat.Empty())
-            return [];
-
-        using var image = MatToImageSharp(mat);
-        using var ms = new MemoryStream();
-        var encoder = new PngEncoder
-        {
-            CompressionLevel = (PngCompressionLevel)Math.Clamp(compressionLevel, 0, 9)
-        };
-        image.Save(ms, encoder);
-        return ms.ToArray();
-    }
-
     // byte[] 转 Mat（通过 ImageSharp 解码，自动检测格式）
     public static Mat ToMat(this byte[] bytes)
     {
@@ -110,7 +94,7 @@ public static class MatExtensions
         h = Math.Clamp(h, 0, mat.Height - y);
         if (w == 0 || h == 0) return null;
         using var roi = new Mat(mat, new Rect(x, y, w, h));
-        return Convert.ToBase64String(roi.ToPngBytes());
+        return Convert.ToBase64String(roi.ToBytes(".png"));
     }
 
     // ImageSharp Rgba32 -> Mat（RGBA -> BGR）

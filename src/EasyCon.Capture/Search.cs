@@ -26,7 +26,7 @@ public sealed class ECSearch
 
     public static string FindOCR(string text, Mat srcBmp, out double matchDegree, string dataPath)
     {
-        var imageBytes = srcBmp.ToPngBytes();
+        var imageBytes = srcBmp.ToBytes(".png");
         var factory = new TesseractEngineFactory();
         using var recognizer = factory.CreateRecognizer("chi_sim", dataPath, "DEFAULT", "SINGLE_LINE");
         var result = recognizer.Recognize(imageBytes);
