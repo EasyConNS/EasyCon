@@ -12,6 +12,7 @@ using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Core.TagEditor;
 using EasyCon2.Avalonia.Core.Terminal;
 using EasyCon2.Avalonia.Services;
+using EzCv;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reflection;
@@ -899,6 +900,7 @@ public partial class MainWindowViewModel : ViewModelBase
                         var tagVm = new TagEditorViewModel(label);
                         tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
                         tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
+                        tagVm.LabelTestRequested += OnTagEditorLabelTest;
                         tagVm.LogMessage += message => _logService.AddLog(message);
                         TagEditorViewModel = tagVm;
                     }
@@ -933,6 +935,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var tagVm = new TagEditorViewModel();
         tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
         tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
+        tagVm.LabelTestRequested += OnTagEditorLabelTest;
         tagVm.LogMessage += message => _logService.AddLog(message);
         TagEditorViewModel = tagVm;
     }
@@ -1532,6 +1535,69 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OnTagEditorCaptureScreenshot()
     {
         CaptureScreenshotForTagEditor();
+    }
+
+    private void OnTagEditorLabelTest()
+    {
+        _ = ExecuteLabelTestAsync();
+    }
+
+    private async Task ExecuteLabelTestAsync()
+    {
+        if (TagEditorViewModel == null) return;
+
+        if (!_captureService.IsConnected)
+        {
+            _logService.AddLog("请先连接视频源");
+            return;
+        }
+
+        try
+        {
+            using var mat = _captureService.GetMatFrame();
+            if (mat == null || mat.Empty())
+            {
+                _logService.AddLog("标签测试失败：无法获取视频帧");
+                return;
+            }
+
+            var label = TagEditorViewModel.Label;
+            var result = label.Search(mat, out double matchDegree, "");
+
+            // 裁剪匹配位置的 ROI 作为结果图
+            Bitmap? resultBitmap = null;
+            if (result.Count > 0)
+            {
+                var pt = result[0];
+                int roiX = label.RangeX + pt.X;
+                int roiY = label.RangeY + pt.Y;
+                int roiW = label.TargetWidth;
+                int roiH = label.TargetHeight;
+
+                // 裁剪区域限制在帧范围内
+                roiX = Math.Clamp(roiX, 0, mat.Width);
+                roiY = Math.Clamp(roiY, 0, mat.Height);
+                roiW = Math.Clamp(roiW, 0, mat.Width - roiX);
+                roiH = Math.Clamp(roiH, 0, mat.Height - roiY);
+
+                if (roiW > 0 && roiH > 0)
+                {
+                    using var roi = new Mat(mat, new Rect(roiX, roiY, roiW, roiH));
+                    var roiBytes = roi.ToBytes(".png");
+                    resultBitmap = new Bitmap(new MemoryStream(roiBytes));
+                }
+            }
+
+            // 更新匹配度显示和结果图
+            TagEditorViewModel.SetTestResult(matchDegree, resultBitmap);
+
+            var status = result.Count > 0 ? "匹配成功" : "未匹配";
+            _logService.AddLog($"标签测试 [{label.name}]: {status}, 匹配度 {matchDegree:F1}%");
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"标签测试失败: {ex.Message}");
+        }
     }
 
     private async Task OpenTagEditorImageFileAsync()

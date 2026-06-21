@@ -6,9 +6,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="FlashCap" />
-		<PackageReference Include="Microsoft.ML.OnnxRuntime" />
-		<PackageReference Include="SixLabors.ImageSharp" />
-		<PackageReference Include="System.Drawing.Common" />
+						<PackageReference Include="System.Drawing.Common" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -165,6 +165,9 @@
                         <Button Content="{Binding TargetButtonText}"
                                 Command="{Binding ToggleTargetSelectionCommand}"
                                 HorizontalAlignment="Stretch"/>
+                        <Button Content="标签测试"
+                                Command="{Binding LabelTestCommand}"
+                                HorizontalAlignment="Stretch"/>
                         <Button Content="动态测试"
                                 IsEnabled="False"
                                 HorizontalAlignment="Stretch"/>
@@ -438,7 +441,7 @@
                             </Border>
                         </Grid>
 
-                        <TextBlock Text="匹配度: --%"
+                        <TextBlock Text="{Binding MatchDegreeText}"
                                    Classes="match-score"/>
 
                         <Grid ColumnDefinitions="Auto,Auto"

@@ -91,36 +91,22 @@ public sealed class RecOptions
 }
 
 /// <summary>
-/// GpuBackend → ONNX Runtime SessionOptions 映射。
+/// GpuBackend → OpenCV DNN Backend / Target 映射。
 /// </summary>
 public static class OnnxProviderMapper
 {
     /// <summary>
-    /// 根据 GpuBackend 创建 ONNX Runtime SessionOptions。
-    /// 调用方负责 Dispose 返回的 SessionOptions。
+    /// 根据 GpuBackend 映射到 OpenCV DNN 的 Backend 和 Target。
     /// </summary>
-    public static Microsoft.ML.OnnxRuntime.SessionOptions CreateSessionOptions(GpuBackend backend)
+    public static (EzCv.Dnn.Backend backend, EzCv.Dnn.Target target) MapBackend(GpuBackend backend)
     {
-        var options = new Microsoft.ML.OnnxRuntime.SessionOptions();
-
-        switch (backend)
+        return backend switch
         {
-            case GpuBackend.Cuda:
-                try { options.AppendExecutionProvider_CUDA(); } catch { /* 不可用时回退 CPU */ }
-                break;
-            case GpuBackend.Metal:
-            case GpuBackend.CoreML:
-                try { options.AppendExecutionProvider_CoreML(); } catch { }
-                break;
-            case GpuBackend.OpenCL:
-            case GpuBackend.Vulkan:
-                // ONNX Runtime 无 OpenCL/Vulkan provider，回退 CPU
-                break;
-            case GpuBackend.Cpu:
-            default:
-                break;
-        }
-
-        return options;
+            GpuBackend.Cuda => (EzCv.Dnn.Backend.CUDA, EzCv.Dnn.Target.CUDA),
+            GpuBackend.OpenCL => (EzCv.Dnn.Backend.DEFAULT, EzCv.Dnn.Target.OPENCL),
+            GpuBackend.Vulkan => (EzCv.Dnn.Backend.DEFAULT, EzCv.Dnn.Target.VULKAN),
+            GpuBackend.Metal or GpuBackend.CoreML => (EzCv.Dnn.Backend.DEFAULT, EzCv.Dnn.Target.CPU),
+            _ => (EzCv.Dnn.Backend.DEFAULT, EzCv.Dnn.Target.CPU),
+        };
     }
 }

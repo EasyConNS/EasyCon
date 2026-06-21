@@ -40,9 +40,8 @@ Capture模块实现UI无关的图像采集与识别功能，是EasyCon2的"眼�
 
 ## 依赖项
 
-- OpenCvSharp4
-- Tesseract（OCR引擎）
-- SixLabors.ImageSharp（图像格式转换）
+- OpenCv
+- Tesseract
 
 ---
 

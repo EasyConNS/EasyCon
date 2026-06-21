@@ -166,6 +166,7 @@ public partial class TagEditorViewModel : ObservableObject
     }
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(LabelTestCommand))]
     private SearchMethod _searchMethod = SearchMethod.CCoeffNormed;
 
     partial void OnSearchMethodChanged(SearchMethod value) => Label.searchMethod = value;
@@ -236,6 +237,11 @@ public partial class TagEditorViewModel : ObservableObject
     public event Action? CaptureScreenshotRequested;
 
     /// <summary>
+    /// 请求主窗口执行标签测试（获取当前帧并执行搜索）。
+    /// </summary>
+    public event Action? LabelTestRequested;
+
+    /// <summary>
     /// 日志输出事件。
     /// </summary>
     public event Action<string>? LogMessage;
@@ -245,7 +251,19 @@ public partial class TagEditorViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CaptureScreenshotCommand))]
+    [NotifyCanExecuteChangedFor(nameof(LabelTestCommand))]
     private bool _isCaptureConnected;
+
+    /// <summary>
+    /// 匹配度显示文本（如 "匹配度: 85.3%"）。
+    /// </summary>
+    [ObservableProperty]
+    private string _matchDegreeText = "匹配度: --%";
+
+    /// <summary>
+    /// 标签测试按钮是否可用。
+    /// </summary>
+    private bool CanLabelTest => IsCaptureConnected && Label.Valid();
 
     /// <summary>
     /// 当前圈选模式
@@ -317,6 +335,24 @@ public partial class TagEditorViewModel : ObservableObject
         CaptureScreenshotRequested?.Invoke();
     }
 
+    [RelayCommand(CanExecute = nameof(CanLabelTest))]
+    private void LabelTest()
+    {
+        LabelTestRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// 设置测试结果（由主窗口调用）。
+    /// </summary>
+    /// <param name="matchDegree">匹配度百分比。</param>
+    /// <param name="rangePreview">搜索范围预览图（可选）。</param>
+    public void SetTestResult(double matchDegree, Bitmap? rangePreview = null)
+    {
+        MatchDegreeText = $"匹配度: {matchDegree:F1}%";
+        if (rangePreview != null)
+            RangePreviewImage = rangePreview;
+    }
+
     /// <summary>
     /// 设置截图结果（由主窗口调用）。
     /// </summary>
@@ -381,6 +417,7 @@ public partial class TagEditorViewModel : ObservableObject
         ms.Position = 0;
         TargetImage = new Bitmap(ms);
         Label.ImgBase64 = Convert.ToBase64String(ms.ToArray());
+        LabelTestCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand(CanExecute = nameof(HasLabelName))]
@@ -488,6 +525,8 @@ public partial class TagEditorViewModel : ObservableObject
         TargetRect = new Rect(TargetX, TargetY, TargetWidth, TargetHeight);
 
         TargetImage = CreateTargetImage(label);
+
+        LabelTestCommand.NotifyCanExecuteChanged();
     }
 
     private static Bitmap? CreateTargetImage(ImgLabel label)

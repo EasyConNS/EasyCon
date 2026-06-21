@@ -1,19 +1,16 @@
 using EasyCon.Capture.Ocr;
-using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntime.Tensors;
 using EzCv;
+using EzCv.Dnn;
 
 namespace EasyCon.Capture.Ocr.Onnx;
 
 /// <summary>
-/// ONNX Runtime 文本检测器 — 基于 PaddleOCR 检测模型（如 PP-OCRv5_mobile_det.onnx）。
+/// OpenCV DNN 文本检测器 — 基于 PaddleOCR 检测模型（如 PP-OCRv5_mobile_det.onnx）。
 /// 实现 IOcrDetector，从图片中定位文字区域。
 /// </summary>
 public sealed class OnnxDetector : IOcrDetector
 {
-    private readonly InferenceSession _session;
-    private readonly string _inputName;
-    private readonly string _outputName;
+    private readonly Net _net;
     private readonly DetOptions _options;
     private bool _disposed;
 
@@ -26,20 +23,19 @@ public sealed class OnnxDetector : IOcrDetector
     /// </summary>
     /// <param name="modelPath">ONNX 模型文件路径（如 PP-OCRv5_mobile_det.onnx）。</param>
     /// <param name="options">检测配置（可选）。</param>
-    /// <param name="sessionOptions">ONNX Runtime 会话选项（可选，用于配置 GPU 等）。</param>
+    /// <param name="backend">DNN 计算后端（默认 DEFAULT）。</param>
+    /// <param name="target">DNN 目标设备（默认 CPU）。</param>
     /// <exception cref="FileNotFoundException">模型文件不存在。</exception>
-    /// <exception cref="OnnxException">模型加载失败。</exception>
-    public OnnxDetector(string modelPath, DetOptions? options = null, SessionOptions? sessionOptions = null)
+    public OnnxDetector(string modelPath, DetOptions? options = null,
+        Backend backend = Backend.DEFAULT, Target target = Target.CPU)
     {
         if (!File.Exists(modelPath))
             throw new FileNotFoundException($"Detection model not found: {modelPath}");
 
         _options = options ?? new DetOptions();
-        _session = sessionOptions != null
-            ? new InferenceSession(modelPath, sessionOptions)
-            : new InferenceSession(modelPath);
-        _inputName = _session.InputNames[0];
-        _outputName = _session.OutputNames[0];
+        _net = CvDnn.ReadNetFromOnnx(modelPath);
+        _net.SetPreferableBackend(backend);
+        _net.SetPreferableTarget(target);
     }
 
     /// <inheritdoc/>
@@ -52,13 +48,11 @@ public sealed class OnnxDetector : IOcrDetector
         if (src.Empty()) return [];
 
         using var preprocessed = PreprocessDet(src, out float scaleX, out float scaleY);
-        var tensor = MatToTensor(preprocessed, DetMean, DetStd);
+        using var blob = CreateDetBlob(preprocessed);
 
-        using var results = _session.Run(
-            [NamedOnnxValue.CreateFromTensor(_inputName, tensor)],
-            [_outputName]);
+        _net.SetInput(blob);
+        using var output = _net.Forward();
 
-        var output = results[0].AsTensor<float>();
         return PostprocessDet(output, _options.BoxThreshold, scaleX, scaleY, src.Width, src.Height);
     }
 
@@ -91,49 +85,50 @@ public sealed class OnnxDetector : IOcrDetector
     }
 
     /// <summary>
-    /// OpenCV Mat → ONNX Tensor（float32, CHW 布局，归一化）。
+    /// 创建检测模型输入 blob：BlobFromImage（mean 减法） + 手动除以 std。
+    /// 归一化公式：(pixel/255 - mean) / std，NCHW 布局。
     /// </summary>
-    private static DenseTensor<float> MatToTensor(Mat mat, float[] mean, float[] std)
+    private static unsafe Mat CreateDetBlob(Mat rgb)
     {
-        int h = mat.Height, w = mat.Width;
-        var tensor = new DenseTensor<float>([1, 3, h, w]);
+        int w = rgb.Width, h = rgb.Height;
 
-        unsafe
+        // BlobFromImage: scale = 1/255, mean = (0.485, 0.456, 0.406), swapRB = false（已是 RGB）
+        var blob = CvDnn.BlobFromImage(rgb, 1.0 / 255.0,
+            new Size(w, h),
+            new Scalar(DetMean[0], DetMean[1], DetMean[2]),
+            swapRB: false, crop: false);
+
+        // 手动除以 std（BlobFromImage 不支持 std 归一化）
+        float* pData = (float*)blob.Data;
+        int planeSize = h * w;
+        float* ch0 = pData;
+        float* ch1 = pData + planeSize;
+        float* ch2 = pData + 2 * planeSize;
+        for (int i = 0; i < planeSize; i++)
         {
-            byte* pData = (byte*)mat.Data;
-            int step = (int)mat.Step();
-            for (int c = 0; c < 3; c++)
-            {
-                for (int y = 0; y < h; y++)
-                {
-                    byte* row = pData + y * step;
-                    for (int x = 0; x < w; x++)
-                    {
-                        float val = row[x * 3 + c] / 255.0f;
-                        val = (val - mean[c]) / std[c];
-                        tensor[0, c, y, x] = val;
-                    }
-                }
-            }
+            ch0[i] /= DetStd[0];
+            ch1[i] /= DetStd[1];
+            ch2[i] /= DetStd[2];
         }
 
-        return tensor;
+        return blob;
     }
 
     /// <summary>
     /// 检测后处理：DB 算法 — 阈值过滤 → 找连通域 → 生成文本框。
     /// </summary>
     private OcrTextBox[] PostprocessDet(
-        Tensor<float> output, float threshold,
+        Mat output, float threshold,
         float scaleX, float scaleY, int origW, int origH)
     {
-        int h = output.Dimensions[2];
-        int w = output.Dimensions[3];
+        int h = output.Size(2);
+        int w = output.Size(3);
 
         // 构建概率二值图
         using var prob = new Mat(h, w, MatType.CV_8UC1);
         unsafe
         {
+            float* pOutput = (float*)output.Data;
             byte* pData = (byte*)prob.Data;
             int step = (int)prob.Step();
             for (int y = 0; y < h; y++)
@@ -141,7 +136,7 @@ public sealed class OnnxDetector : IOcrDetector
                 byte* row = pData + y * step;
                 for (int x = 0; x < w; x++)
                 {
-                    row[x] = output[0, 0, y, x] > threshold ? (byte)255 : (byte)0;
+                    row[x] = pOutput[y * w + x] > threshold ? (byte)255 : (byte)0;
                 }
             }
         }
@@ -213,20 +208,18 @@ public sealed class OnnxDetector : IOcrDetector
     {
         if (_disposed) return;
         _disposed = true;
-        _session.Dispose();
+        _net.Dispose();
         GC.SuppressFinalize(this);
     }
 }
 
 /// <summary>
-/// ONNX Runtime 文本识别器 — 基于 PaddleOCR 识别模型（如 PP-OCRv5_mobile_rec.onnx）。
+/// OpenCV DNN 文本识别器 — 基于 PaddleOCR 识别模型（如 PP-OCRv5_mobile_rec.onnx）。
 /// 实现 IOcrRecognizer，从已裁剪的文字行图片中识别文本。
 /// </summary>
 public sealed class OnnxRecognizer : IOcrRecognizer
 {
-    private readonly InferenceSession _session;
-    private readonly string _inputName;
-    private readonly string _outputName;
+    private readonly Net _net;
     private readonly string[] _charset; // index → character
     private readonly RecOptions _options;
     private bool _disposed;
@@ -239,9 +232,11 @@ public sealed class OnnxRecognizer : IOcrRecognizer
     /// <param name="modelPath">ONNX 模型文件路径（如 PP-OCRv5_mobile_rec.onnx）。</param>
     /// <param name="charsetPath">字符集文件路径（每行一个字符，首行为空白符）。</param>
     /// <param name="options">识别配置（可选）。</param>
-    /// <param name="sessionOptions">ONNX Runtime 会话选项（可选，用于配置 GPU 等）。</param>
+    /// <param name="backend">DNN 计算后端（默认 DEFAULT）。</param>
+    /// <param name="target">DNN 目标设备（默认 CPU）。</param>
     /// <exception cref="FileNotFoundException">模型或字符集文件不存在。</exception>
-    public OnnxRecognizer(string modelPath, string charsetPath, RecOptions? options = null, SessionOptions? sessionOptions = null)
+    public OnnxRecognizer(string modelPath, string charsetPath, RecOptions? options = null,
+        Backend backend = Backend.DEFAULT, Target target = Target.CPU)
     {
         if (!File.Exists(modelPath))
             throw new FileNotFoundException($"Recognition model not found: {modelPath}");
@@ -249,11 +244,9 @@ public sealed class OnnxRecognizer : IOcrRecognizer
             throw new FileNotFoundException($"Charset file not found: {charsetPath}");
 
         _options = options ?? new RecOptions();
-        _session = sessionOptions != null
-            ? new InferenceSession(modelPath, sessionOptions)
-            : new InferenceSession(modelPath);
-        _inputName = _session.InputNames[0];
-        _outputName = _session.OutputNames[0];
+        _net = CvDnn.ReadNetFromOnnx(modelPath);
+        _net.SetPreferableBackend(backend);
+        _net.SetPreferableTarget(target);
         _charset = LoadCharset(charsetPath);
     }
 
@@ -268,13 +261,12 @@ public sealed class OnnxRecognizer : IOcrRecognizer
         if (src.Empty()) return new OcrRecognizeResult(string.Empty, 0f);
 
         using var preprocessed = PreprocessRec(src);
-        var tensor = MatToRecTensor(preprocessed);
+        using var blob = CreateRecBlob(preprocessed);
 
-        using var results = _session.Run(
-            [NamedOnnxValue.CreateFromTensor(_inputName, tensor)],
-            [_outputName]);
+        _net.SetInput(blob);
+        using var output = _net.Forward();
 
-        return CtcDecode(results[0].AsTensor<float>());
+        return CtcDecode(output);
     }
 
     /// <summary>
@@ -298,66 +290,71 @@ public sealed class OnnxRecognizer : IOcrRecognizer
     }
 
     /// <summary>
-    /// 识别模型 Tensor 构建：归一化到 [-1, 1] 范围（(pixel/255 - 0.5) / 0.5）。
+    /// 创建识别模型输入 blob：归一化到 [-1, 1] 范围。
+    /// 公式：(pixel/255 - 0.5) / 0.5 = pixel/127.5 - 1.0
+    /// BlobFromImage: scale = 1/127.5, mean = (1, 1, 1), swapRB = false（已是 RGB）
     /// </summary>
-    private static DenseTensor<float> MatToRecTensor(Mat mat)
+    private static Mat CreateRecBlob(Mat rgb)
     {
-        int h = mat.Height, w = mat.Width;
-        var tensor = new DenseTensor<float>([1, 3, RecImageHeight, w]);
-
-        unsafe
-        {
-            byte* pData = (byte*)mat.Data;
-            int step = (int)mat.Step();
-            for (int c = 0; c < 3; c++)
-            {
-                for (int y = 0; y < h; y++)
-                {
-                    byte* row = pData + y * step;
-                    for (int x = 0; x < w; x++)
-                    {
-                        // (pixel/255 - 0.5) / 0.5 = pixel/127.5 - 1
-                        tensor[0, c, y, x] = row[x * 3 + c] / 127.5f - 1.0f;
-                    }
-                }
-            }
-        }
-
-        return tensor;
+        return CvDnn.BlobFromImage(rgb,
+            1.0 / 127.5,
+            new Size(rgb.Width, rgb.Height),
+            new Scalar(1.0, 1.0, 1.0),
+            swapRB: false, crop: false);
     }
 
     /// <summary>
     /// CTC 贪心解码：去重 + 去空白符 → 查字符集。
+    /// 输出 Mat 形状：[1, T, num_classes] 或 [1, T, num_classes, 1]。
     /// </summary>
-    private OcrRecognizeResult CtcDecode(Tensor<float> output)
+    private OcrRecognizeResult CtcDecode(Mat output)
     {
-        int T = output.Dimensions[1];        // 时间步
-        int numClasses = output.Dimensions[2]; // 类别数
+        int T, numClasses;
+
+        if (output.Dims == 3)
+        {
+            T = output.Size(1);
+            numClasses = output.Size(2);
+        }
+        else if (output.Dims >= 4)
+        {
+            T = output.Size(1);
+            numClasses = output.Size(2);
+        }
+        else
+        {
+            return new OcrRecognizeResult(string.Empty, 0f);
+        }
 
         var indices = new List<int>();
         float totalConf = 0;
         int validCount = 0;
 
-        int prevIdx = -1;
-        for (int t = 0; t < T; t++)
+        unsafe
         {
-            // 找当前时间步最高概率的字符索引
-            float maxProb = float.MinValue;
-            int maxIdx = 0;
-            for (int c = 0; c < numClasses; c++)
+            float* pData = (float*)output.Data;
+            int prevIdx = -1;
+            for (int t = 0; t < T; t++)
             {
-                float p = output[0, t, c];
-                if (p > maxProb) { maxProb = p; maxIdx = c; }
+                // 找当前时间步最高概率的字符索引
+                float maxProb = float.MinValue;
+                int maxIdx = 0;
+                float* row = pData + t * numClasses;
+                for (int c = 0; c < numClasses; c++)
+                {
+                    float p = row[c];
+                    if (p > maxProb) { maxProb = p; maxIdx = c; }
+                }
+
+                // 跳过空白符和重复
+                if (maxIdx == 0) { prevIdx = -1; continue; }
+                if (maxIdx == prevIdx) continue;
+
+                prevIdx = maxIdx;
+                indices.Add(maxIdx);
+                totalConf += maxProb;
+                validCount++;
             }
-
-            // 跳过空白符和重复
-            if (maxIdx == 0) { prevIdx = -1; continue; }
-            if (maxIdx == prevIdx) continue;
-
-            prevIdx = maxIdx;
-            indices.Add(maxIdx);
-            totalConf += maxProb;
-            validCount++;
         }
 
         if (indices.Count == 0)
@@ -393,14 +390,13 @@ public sealed class OnnxRecognizer : IOcrRecognizer
     {
         if (_disposed) return;
         _disposed = true;
-        _session.Dispose();
+        _net.Dispose();
         GC.SuppressFinalize(this);
     }
 }
 
 /// <summary>
-/// ONNX Runtime 端到端 OCR 引擎 — 组合 OnnxDetector + OnnxRecognizer 实现检测+识别一体化。
-/// 对应 ocr-rs 的 OcrEngine 层。
+/// OpenCV DNN 端到端 OCR 引擎 — 组合 OnnxDetector + OnnxRecognizer 实现检测+识别一体化。
 /// </summary>
 public sealed class OnnxOcrEngine : IOcrEngine
 {
@@ -475,14 +471,15 @@ public sealed class OnnxOcrEngine : IOcrEngine
 }
 
 /// <summary>
-/// ONNX 引擎工厂 — 创建 ONNX Runtime 识别器 / 端到端引擎。
+/// ONNX 引擎工厂 — 创建 OpenCV DNN 识别器 / 端到端引擎。
 /// 实现 IOcrEngineFactory，供 OcrEngineCache 插件式使用。
 /// </summary>
 public sealed class OnnxEngineFactory : IOcrEngineFactory
 {
     private readonly string _modelDirectory;
     private readonly string _detModelName;
-    private readonly SessionOptions _sessionOptions;
+    private readonly Backend _backend;
+    private readonly Target _target;
 
     /// <summary>
     /// 创建 ONNX 引擎工厂。
@@ -497,7 +494,7 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
     {
         _modelDirectory = modelDirectory ?? throw new ArgumentNullException(nameof(modelDirectory));
         _detModelName = detModelName;
-        _sessionOptions = OnnxProviderMapper.CreateSessionOptions(backend);
+        (_backend, _target) = OnnxProviderMapper.MapBackend(backend);
     }
 
     /// <inheritdoc/>
@@ -514,7 +511,7 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
             charset = Path.Combine(modelDir, "ppocr_keys_v5.txt");
         }
 
-        return new OnnxRecognizer(recModel, charset, sessionOptions: _sessionOptions);
+        return new OnnxRecognizer(recModel, charset, backend: _backend, target: _target);
     }
 
     /// <inheritdoc/>
@@ -532,16 +529,7 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
         }
 
         return new OnnxOcrEngine(
-            new OnnxDetector(detPath, sessionOptions: _sessionOptions),
-            new OnnxRecognizer(recPath, charsetPath, sessionOptions: _sessionOptions));
+            new OnnxDetector(detPath, backend: _backend, target: _target),
+            new OnnxRecognizer(recPath, charsetPath, backend: _backend, target: _target));
     }
-}
-
-/// <summary>
-/// ONNX Runtime 异常。
-/// </summary>
-public sealed class OnnxException : Exception
-{
-    public OnnxException(string message) : base(message) { }
-    public OnnxException(string message, Exception inner) : base(message, inner) { }
 }
