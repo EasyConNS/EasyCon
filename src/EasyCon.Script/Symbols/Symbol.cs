@@ -3,19 +3,21 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script.Symbols;
 
-public enum SlotCategory : byte
+/// <summary>
+/// 扁平槽位描述：单一索引。
+/// 类型信息在 SSA 操作码中（AddInt/AddDouble 等已特化），存储层无需重复。
+/// 借鉴 CPython localsplus：所有局部变量统一为 TaggedValue 槽位。
+/// </summary>
+public record struct SlotDesc(int Index)
 {
-    Int,    // bool, byte, int, uint
-    Long,   // uint64, ptr
-    Double, // double
-    Handle  // string, array, struct
+    /// <summary>兼容旧代码：未分配槽位用 -1 表示。</summary>
+    public static readonly SlotDesc Unassigned = new(-1);
 }
 
-public record struct SlotDesc(SlotCategory Category, int Index);
-
-public record struct FrameLayout(int IntSlots, int LongSlots, int DoubleSlots, int HandleSlots)
+/// <summary>帧布局：单一槽位计数。</summary>
+public record struct FrameLayout(int SlotCount)
 {
-    public readonly int TotalSlots => IntSlots + LongSlots + DoubleSlots + HandleSlots;
+    public readonly int TotalSlots => SlotCount;
 }
 
 public abstract class Symbol(string name)

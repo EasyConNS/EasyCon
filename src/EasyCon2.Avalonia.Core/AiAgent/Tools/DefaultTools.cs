@@ -22,5 +22,6 @@ public static class DefaultTools
         registry.Register(new RunScriptTool(service));
         registry.Register(new StopScriptTool(service));
         registry.Register(new GetFrameTool(service));
+        registry.Register(new GetWeatherTool());
     }
 }

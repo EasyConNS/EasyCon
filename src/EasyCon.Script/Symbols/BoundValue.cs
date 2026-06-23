@@ -140,7 +140,7 @@ public struct Value : IEquatable<Value>, IComparable<Value>
         return false;
     }
 
-    public static Value CreateArray(ScriptType elementType, IEnumerable<Value> elements)
+    public static Value CreateArray(ScriptType elementType, IEnumerable<Value> elements, IStringHandleStore? stringStore = null)
     {
         var list = elements.ToList();
         foreach (var e in list)
@@ -148,7 +148,9 @@ public struct Value : IEquatable<Value>, IComparable<Value>
             if (!elementType.IsAssignableFrom(e.Type))
                 throw new InvalidOperationException($"元素类型 {e.Type} 与数组声明类型 {elementType} 不匹配");
         }
-        return new Value(TAG_ARRAY, 0, ScriptArray.Create(elementType, list), elementType);
+        // 字符串数组需要 store；未提供时用 SimpleStringStore 兜底（单元测试场景）
+        var store = elementType.Equals(ScriptType.String) ? (stringStore ?? new SimpleStringStore()) : stringStore;
+        return new Value(TAG_ARRAY, 0, ScriptArray.Create(elementType, list, store), elementType);
     }
 
     /// <summary>

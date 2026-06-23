@@ -410,25 +410,24 @@ public static class SsaJitCompiler
     private static void SyncArg(StringBuilder sb, SsaValue? arg, string indent)
     {
         if (arg == null || arg.IsConstant) return;
-        var cache = CacheName(arg);
-        sb.AppendLine($"{indent}Evaluator.{cache}[{arg.Id}] = v{arg.Id};");
+        // 统一缓存：一次 struct copy，无需按类型分流
+        sb.AppendLine($"{indent}Evaluator.Cache[{arg.Id}] = v{arg.Id};");
     }
 
     private static void ReadResult(StringBuilder sb, SsaValue inst, string indent)
     {
-        var cache = CacheName(inst);
-        if (cache == "ObjCache")
-            sb.AppendLine($"{indent}v{inst.Id} = (string)Evaluator.{cache}[{inst.Id}];");
-        else
-            sb.AppendLine($"{indent}v{inst.Id} = Evaluator.{cache}[{inst.Id}];");
+        // 统一缓存读取：根据 SSA 类型选择正确的字段
+        var field = CacheField(inst);
+        sb.AppendLine($"{indent}v{inst.Id} = Evaluator.Cache[{inst.Id}]{field};");
     }
 
-    private static string CacheName(SsaValue v)
+    /// <summary>根据 SSA 值类型选择 TaggedValue 的字段访问器。</summary>
+    private static string CacheField(SsaValue v)
     {
-        if (v.Type == ScriptType.Double) return "DoubleCache";
-        if (v.Type == ScriptType.UInt64 || v.Type == ScriptType.Ptr) return "LongCache";
-        if (v.Type == ScriptType.String || v.Type is ArrayType or StructType) return "ObjCache";
-        return "IntCache";
+        if (v.Type == ScriptType.Double) return ".F64";
+        if (v.Type == ScriptType.UInt64 || v.Type == ScriptType.Ptr) return ".I64";
+        // string/array/struct 在 JIT 中作为 handle (int) 处理；int/bool/byte/uint 直接 .I32
+        return ".I32";
     }
 
     private static void GenerateTerminator(StringBuilder sb, SsaBlock block, Dictionary<SsaBlock, int> blockIndex, string indent, string labelPrefix)

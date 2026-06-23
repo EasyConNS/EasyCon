@@ -23,6 +23,12 @@ public class StreamDelta
     public ToolCallDelta? ToolCallDelta { get; init; }
 
     /// <summary>
+    /// 错误是否可重试（仅 Error 类型有效）。
+    /// true 表示编排器可以安全地丢弃本轮部分数据并重试（如流式传输中途断线）。
+    /// </summary>
+    public bool Retryable { get; init; }
+
+    /// <summary>
     /// Token 用量（Usage 类型使用）。
     /// </summary>
     public int PromptTokens { get; init; }
@@ -32,7 +38,8 @@ public class StreamDelta
     public static StreamDelta Content(string text) => new() { Type = DeltaType.Content, Text = text };
     public static StreamDelta Thinking(string text) => new() { Type = DeltaType.Thinking, Text = text };
     public static StreamDelta ToolCall(ToolCallDelta delta) => new() { Type = DeltaType.ToolCall, ToolCallDelta = delta };
-    public static StreamDelta Error(string text) => new() { Type = DeltaType.Error, Text = text };
+    public static StreamDelta Error(string text, bool retryable = false)
+        => new() { Type = DeltaType.Error, Text = text, Retryable = retryable };
     public static StreamDelta Usage(int prompt, int completion, int total) => new()
     {
         Type = DeltaType.Usage,

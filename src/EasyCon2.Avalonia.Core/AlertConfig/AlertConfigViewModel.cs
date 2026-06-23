@@ -23,6 +23,12 @@ public partial class AlertConfigViewModel : ObservableObject
     [ObservableProperty]
     private bool canAdd;
 
+    [ObservableProperty]
+    private string _errorMessage = "";
+
+    [ObservableProperty]
+    private bool _hasError;
+
     public Action? OnSaveCallback { get; set; }
 
     public void Load()
@@ -32,8 +38,15 @@ public partial class AlertConfigViewModel : ObservableObject
         RefreshVisibleItems();
     }
 
-    public void Save()
+    public bool Save()
     {
+        if (!Validate(out var error))
+        {
+            ErrorMessage = error;
+            HasError = true;
+            return false;
+        }
+
         var config = new AlertConfigType
         {
             timeout = 10,
@@ -41,6 +54,31 @@ public partial class AlertConfigViewModel : ObservableObject
         };
         ConfigManager.SaveAlert(config);
         OnSaveCallback?.Invoke();
+        return true;
+    }
+
+    private bool Validate(out string error)
+    {
+        for (var i = 0; i < _allViewModels.Count; i++)
+        {
+            var vm = _allViewModels[i];
+            var label = _allViewModels.Count > 1 ? $"第 {i + 1} 个推送" : "推送";
+
+            if (string.IsNullOrWhiteSpace(vm.Name))
+            {
+                error = $"{label}：名称不能为空";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(vm.Url))
+            {
+                error = $"{label}：URL 不能为空";
+                return false;
+            }
+        }
+
+        error = "";
+        return true;
     }
 
     [RelayCommand]
@@ -48,10 +86,11 @@ public partial class AlertConfigViewModel : ObservableObject
     {
         if (VisibleItems.Count >= MaxVisibleItems) return;
 
-        var vm = CreateViewModel(new AlertItem { name = $"推送{_allViewModels.Count + 1}" });
+        var vm = CreateViewModel(new AlertItem { name = "" });
         _allViewModels.Add(vm);
         VisibleItems.Add(vm);
         UpdateHiddenState();
+        ClearError();
     }
 
     private void OnItemDeleteRequested(AlertItemViewModel item)
@@ -70,6 +109,13 @@ public partial class AlertConfigViewModel : ObservableObject
         }
 
         UpdateHiddenState();
+        ClearError();
+    }
+
+    private void ClearError()
+    {
+        ErrorMessage = "";
+        HasError = false;
     }
 
     private AlertItemViewModel CreateViewModel(AlertItem item)

@@ -46,7 +46,7 @@ public sealed class SsaValue
         Id = id;
         Op = op;
         Type = type;
-        Slot = new SlotDesc(default, -1); // -1 表示未分配槽位
+        Slot = new SlotDesc(-1); // -1 表示未分配槽位
     }
 
     public bool IsConstant => Op is >= SsaOp.ConstBool and <= SsaOp.ConstPtr;

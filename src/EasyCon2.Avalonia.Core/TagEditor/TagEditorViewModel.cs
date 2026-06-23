@@ -435,7 +435,7 @@ public partial class TagEditorViewModel : ObservableObject
             // 确定保存路径
             var savePath = !string.IsNullOrEmpty(Label.path)
                 ? Label.path
-                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ImgLabel");
+                : Path.Combine(EasyCon.Core.Config.AppPaths.DataDir, "ImgLabel");
 
             // 保存（同名文件覆盖）
             Label.Save(savePath);

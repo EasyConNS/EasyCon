@@ -1,4 +1,5 @@
 using EasyCon.Core.LLM.Tools;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -14,6 +15,7 @@ public sealed class OpenAIChatClient : IChatClient
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault
     };
 
+    private const int MaxRetries = 3;
     private readonly HttpClient _http;
     private bool _disposed;
 
@@ -30,26 +32,54 @@ public sealed class OpenAIChatClient : IChatClient
     public async Task<ChatResponse> SendAsync(ChatRequest request, CancellationToken ct = default)
     {
         request.Stream = false;
-        using var msg = CreateRequestMessage(request);
 
-        try
+        // 请求阶段：带重试的指数退避
+        for (var attempt = 1; attempt <= MaxRetries; attempt++)
         {
-            using var resp = await _http.SendAsync(msg, ct);
-            var body = await resp.Content.ReadAsStringAsync(ct);
+            HttpResponseMessage? resp = null;
+            try
+            {
+                using var msg = CreateRequestMessage(request);
+                resp = await _http.SendAsync(msg, ct);
 
-            if (!resp.IsSuccessStatusCode)
-                return ErrorFrom(body, resp.StatusCode);
+                if (resp.IsSuccessStatusCode)
+                {
+                    var body = await resp.Content.ReadAsStringAsync(ct);
+                    return ParseFullResponse(body);
+                }
 
-            return ParseFullResponse(body);
+                // 可重试状态码 + 还有剩余次数
+                if (IsTransientStatus(resp.StatusCode) && attempt < MaxRetries)
+                {
+                    var retryAfter = ParseRetryAfter(resp);
+                    resp.Dispose();
+                    await Task.Delay(ComputeBackoff(attempt, retryAfter), ct);
+                    continue;
+                }
+
+                // 不可重试 或 最后一次尝试 → 返回错误
+                var errBody = await resp.Content.ReadAsStringAsync(ct);
+                return ErrorFrom(errBody, resp.StatusCode);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return new ChatResponse { Success = false, ErrorMessage = "请求已取消" };
+            }
+            catch (HttpRequestException ex) when (attempt < MaxRetries)
+            {
+                await Task.Delay(ComputeBackoff(attempt, null), ct);
+            }
+            catch (Exception ex)
+            {
+                return new ChatResponse { Success = false, ErrorMessage = ex.Message };
+            }
+            finally
+            {
+                resp?.Dispose();
+            }
         }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            return new ChatResponse { Success = false, ErrorMessage = "请求已取消" };
-        }
-        catch (Exception ex)
-        {
-            return new ChatResponse { Success = false, ErrorMessage = ex.Message };
-        }
+
+        return new ChatResponse { Success = false, ErrorMessage = "重试次数已耗尽" };
     }
 
     /// <summary>
@@ -90,28 +120,9 @@ public sealed class OpenAIChatClient : IChatClient
     {
         request.Stream = true;
 
-        // 发起请求，将异常信息提取到局部变量，避免在 catch 块中 yield
-        HttpResponseMessage? resp = null;
-        string? errorMsg = null;
-
-        try
-        {
-            using var msg = CreateRequestMessage(request);
-            resp = await _http.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, ct);
-            if (!resp.IsSuccessStatusCode)
-            {
-                var errBody = await resp.Content.ReadAsStringAsync(ct);
-                errorMsg = ExtractErrorMessage(errBody, resp.StatusCode);
-            }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            yield break;
-        }
-        catch (HttpRequestException ex)
-        {
-            errorMsg = ex.Message;
-        }
+        // ── 请求阶段：带重试的指数退避（透明重试，未 yield 任何 delta）──
+        // C# 不允许在 catch 块中 yield，因此用局部变量捕获状态，在 try/catch 外部处理。
+        var (resp, errorMsg) = await SendWithRetryAsync(request, ct);
 
         if (errorMsg is not null)
         {
@@ -119,13 +130,39 @@ public sealed class OpenAIChatClient : IChatClient
             yield break;
         }
 
-        using (resp!)
-        await using (var stream = await resp!.Content.ReadAsStreamAsync(ct))
+        if (resp is null)
+        {
+            yield break;  // 用户取消
+        }
+
+        // ── 流读取阶段：异常标记为 Retryable（已 yield 部分数据，不可透明重试）──
+        using (resp)
+        await using (var stream = await resp.Content.ReadAsStreamAsync(ct))
         using (var reader = new StreamReader(stream, Encoding.UTF8))
         {
+            // 同样用局部变量捕获异常信息，避免在 catch 中 yield
+            string? streamError = null;
+            var isRetryable = false;
+
             while (!ct.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync(ct);
+                string? line;
+                try
+                {
+                    line = await reader.ReadLineAsync(ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    yield break;
+                }
+                catch (Exception ex)
+                {
+                    // 网络中断、IO 异常等 → 标记为可重试
+                    streamError = $"流式传输中断: {ex.Message}";
+                    isRetryable = true;
+                    break;
+                }
+
                 if (line is null) break;
 
                 if (!line.StartsWith("data: ", StringComparison.Ordinal)) continue;
@@ -135,7 +172,116 @@ public sealed class OpenAIChatClient : IChatClient
                 foreach (var delta in ExtractDeltas(data))
                     yield return delta;
             }
+
+            if (streamError is not null)
+            {
+                yield return StreamDelta.Error(streamError, retryable: isRetryable);
+                yield break;
+            }
         }
+    }
+
+    /// <summary>
+    /// 请求阶段的重试循环，返回成功的响应或错误信息。
+    /// 与 yield 分离以避免 C# 的 catch 块中不能 yield 的限制。
+    /// </summary>
+    /// <returns>
+    /// (HttpResponseMessage?, string?) — 成功时返回 (resp, null)，
+    /// 失败时返回 (null, errorMessage)，用户取消时返回 (null, null)。
+    /// </returns>
+    private async Task<(HttpResponseMessage?, string?)> SendWithRetryAsync(
+        ChatRequest request, CancellationToken ct)
+    {
+        HttpResponseMessage? resp = null;
+
+        for (var attempt = 1; attempt <= MaxRetries; attempt++)
+        {
+            try
+            {
+                using var msg = CreateRequestMessage(request);
+                resp = await _http.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, ct);
+
+                if (resp.IsSuccessStatusCode)
+                    return (resp, null);
+
+                // 可重试状态码 + 还有剩余次数
+                if (IsTransientStatus(resp.StatusCode) && attempt < MaxRetries)
+                {
+                    var retryAfter = ParseRetryAfter(resp);
+                    resp.Dispose();
+                    resp = null;
+                    await Task.Delay(ComputeBackoff(attempt, retryAfter), ct);
+                    continue;
+                }
+
+                // 不可重试 或 最后一次尝试
+                var errBody = await resp.Content.ReadAsStringAsync(ct);
+                var error = ExtractErrorMessage(errBody, resp.StatusCode);
+                resp.Dispose();
+                return (null, error);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return (null, null);
+            }
+            catch (HttpRequestException ex) when (attempt < MaxRetries)
+            {
+                await Task.Delay(ComputeBackoff(attempt, null), ct);
+            }
+            catch (HttpRequestException ex)
+            {
+                return (null, ex.Message);
+            }
+        }
+
+        return (null, "重试次数已耗尽，无法建立连接");
+    }
+
+    // ── 重试辅助方法 ──────────────────────────────
+
+    /// <summary>
+    /// 计算退避时间：指数退避 (2s, 4s, 8s) + 20% 随机抖动。
+    /// 如果提供了 Retry-After 秒数，优先使用。
+    /// </summary>
+    private static TimeSpan ComputeBackoff(int attempt, int? retryAfterSeconds)
+    {
+        if (retryAfterSeconds is { } seconds and > 0)
+            return TimeSpan.FromSeconds(seconds);
+
+        var backoffMs = 2000 * (1 << (attempt - 1));   // 2000, 4000, 8000
+        var jitterMs = (int)(backoffMs * 0.2 * Random.Shared.NextDouble());
+        return TimeSpan.FromMilliseconds(backoffMs + jitterMs);
+    }
+
+    /// <summary>
+    /// 判断 HTTP 状态码是否为可重试的瞬态错误。
+    /// </summary>
+    private static bool IsTransientStatus(HttpStatusCode status)
+        => status is HttpStatusCode.TooManyRequests        // 429
+               or HttpStatusCode.InternalServerError       // 500
+               or HttpStatusCode.BadGateway                // 502
+               or HttpStatusCode.ServiceUnavailable;       // 503
+
+    /// <summary>
+    /// 从响应头解析 Retry-After（秒数或 HTTP 日期），解析失败返回 null。
+    /// </summary>
+    private static int? ParseRetryAfter(HttpResponseMessage resp)
+    {
+        var header = resp.Headers.RetryAfter;
+        if (header is null) return null;
+
+        // Retry-After 可能是秒数
+        if (header.Delta is { } delta)
+            return (int)delta.TotalSeconds;
+
+        // 或 HTTP 日期（计算距今的秒数）
+        if (header.Date is { } date)
+        {
+            var seconds = (int)(date - DateTimeOffset.UtcNow).TotalSeconds;
+            return seconds > 0 ? seconds : null;
+        }
+
+        return null;
     }
 
     // ── 内部方法 ──────────────────────────────────

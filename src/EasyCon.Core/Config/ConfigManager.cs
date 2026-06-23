@@ -1,3 +1,4 @@
+using EasyCon.Core.LLM.Mcp;
 using EasyCon.Core.LLM.Models;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -10,6 +11,11 @@ public static class ConfigManager
     /// models.json 配置保存后触发，用于订阅方（如 AI Agent）刷新内存中的模型列表。
     /// </summary>
     public static event Action? ModelsConfigChanged;
+
+    /// <summary>
+    /// mcp.json 配置保存后触发，用于订阅方（如 McpManager）差量重连 MCP 服务器。
+    /// </summary>
+    public static event Action? McpConfigChanged;
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -63,6 +69,20 @@ public static class ConfigManager
     {
         Save(AppPaths.ModelsConfig, config);
         ModelsConfigChanged?.Invoke();
+    }
+
+    public static McpConfig LoadMcpConfig()
+    {
+        var path = AppPaths.McpConfig;
+        if (!File.Exists(path))
+            GenerateDefaultMcp(path);
+        return Load<McpConfig>(path, _jsonReadOptions);
+    }
+
+    public static void SaveMcpConfig(McpConfig config)
+    {
+        Save(AppPaths.McpConfig, config);
+        McpConfigChanged?.Invoke();
     }
 
     private static T Load<T>(string path, JsonSerializerOptions? options = null) where T : new()
@@ -151,6 +171,27 @@ public static class ConfigManager
             "vision": true
           }
         ]
+      }
+    }
+  }
+}
+""";
+        File.WriteAllText(path, json);
+    }
+
+    private static void GenerateDefaultMcp(string path)
+    {
+        var json = """
+{
+  "mcp": {
+    "servers": {
+      "filesystem": {
+        "name": "文件系统（示例）",
+        "transport": "stdio",
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+        "env": {},
+        "enabled": false
       }
     }
   }

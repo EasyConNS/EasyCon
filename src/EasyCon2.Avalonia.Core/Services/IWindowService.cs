@@ -8,6 +8,7 @@ public interface IWindowService
     void ShowESPConfigWindow();
     void ShowAlertConfigWindow();
     void ShowModelsConfigWindow();
+    void ShowMcpConfigWindow();
     void ShowKeyMappingWindow();
     void ShowScriptSyntaxWindow();
 }

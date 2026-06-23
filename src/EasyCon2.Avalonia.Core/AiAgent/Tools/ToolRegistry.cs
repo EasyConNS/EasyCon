@@ -24,6 +24,16 @@ public class ToolRegistry
     public void Unregister(string name) => _tools.Remove(name);
 
     /// <summary>
+    /// 按条件批量注销工具。用于 MCP 工具集变更时移除所有旧适配器。
+    /// </summary>
+    public void Unregister(Predicate<IAiTool> match)
+    {
+        var toRemove = _tools.Where(kv => match(kv.Value)).Select(kv => kv.Key).ToList();
+        foreach (var name in toRemove)
+            _tools.Remove(name);
+    }
+
+    /// <summary>
     /// 是否注册了指定名称的工具。
     /// </summary>
     public bool Contains(string name) => _tools.ContainsKey(name);

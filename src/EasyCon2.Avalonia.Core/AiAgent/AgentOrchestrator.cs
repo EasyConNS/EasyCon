@@ -26,13 +26,16 @@ public abstract record AgentEvent
     public record ToolExecuting(string Name) : AgentEvent;
 
     /// <summary>工具调用完成，携带结果摘要。</summary>
-    public record ToolCompleted(string Name, string Summary) : AgentEvent;
+    public record ToolCompleted(string Name, string Summary, string FullResult) : AgentEvent;
 
     /// <summary>Token 用量更新。</summary>
     public record UsageUpdated(int Prompt, int Completion, int Total) : AgentEvent;
 
     /// <summary>错误信息。</summary>
     public record Error(string Message) : AgentEvent;
+
+    /// <summary>流式传输中断，正在重试。</summary>
+    public record Retrying(int Attempt, int MaxAttempts, string Reason) : AgentEvent;
 
     /// <summary>对话循环结束。</summary>
     public record Completed(string FinalContent) : AgentEvent;
@@ -184,6 +187,7 @@ public class AgentOrchestrator
         Action<AgentEvent> onEvent,
         CancellationToken ct)
     {
+        const int maxStreamRetries = 2;
         var toolDefs = _tools.ToToolDefinitions();
         var hasTools = toolDefs.Count > 0;
         var pendingReply = new StringBuilder();
@@ -194,50 +198,93 @@ public class AgentOrchestrator
 
         for (var round = 0; round < MaxToolRounds; round++)
         {
-            onEvent(new AgentEvent.RoundStart(""));
-            pendingReply.Clear();
-            pendingThinking.Clear();
+            var streamSuccess = false;
             var accumulator = new ToolCallAccumulator();
-
-            var client = ChatClientFactory.Create(provider);
-            var request = new ChatRequest
-            {
-                Model = modelId,
-                Messages = BuildMessages(history, round)
-            };
-            if (hasTools)
-            {
-                request.Tools = toolDefs;
-                request.ToolChoice = ToolChoice.Auto;
-            }
-
             var hasContent = false;
-            await foreach (var delta in client.SendStreamAsync(request, ct))
+
+            // ── 流式断线重连循环 ──
+            for (var streamRetry = 0; streamRetry <= maxStreamRetries; streamRetry++)
             {
-                switch (delta.Type)
+                onEvent(new AgentEvent.RoundStart(""));
+                pendingReply.Clear();
+                pendingThinking.Clear();
+                accumulator = new ToolCallAccumulator();
+
+                var client = ChatClientFactory.Create(provider);
+                var request = new ChatRequest
                 {
-                    case DeltaType.Thinking:
-                        pendingThinking.Append(delta.Text);
-                        onEvent(new AgentEvent.ThinkingDelta(delta.Text));
-                        break;
-                    case DeltaType.Content:
-                        pendingReply.Append(delta.Text);
-                        hasContent = true;
-                        onEvent(new AgentEvent.ContentDelta(delta.Text));
-                        break;
-                    case DeltaType.ToolCall:
-                        if (delta.ToolCallDelta is not null)
-                            accumulator.Append(delta.ToolCallDelta);
-                        break;
-                    case DeltaType.Error:
-                        pendingReply.Append($"[错误] {delta.Text}");
-                        onEvent(new AgentEvent.Error(delta.Text));
-                        break;
-                    case DeltaType.Usage:
-                        onEvent(new AgentEvent.UsageUpdated(delta.PromptTokens, delta.CompletionTokens, delta.TotalTokens));
-                        break;
+                    Model = modelId,
+                    Messages = BuildMessages(history, round)
+                };
+                if (hasTools)
+                {
+                    request.Tools = toolDefs;
+                    request.ToolChoice = ToolChoice.Auto;
                 }
+
+                var retryableError = false;
+                hasContent = false;
+
+                await foreach (var delta in client.SendStreamAsync(request, ct))
+                {
+                    switch (delta.Type)
+                    {
+                        case DeltaType.Thinking:
+                            pendingThinking.Append(delta.Text);
+                            onEvent(new AgentEvent.ThinkingDelta(delta.Text));
+                            break;
+                        case DeltaType.Content:
+                            pendingReply.Append(delta.Text);
+                            hasContent = true;
+                            onEvent(new AgentEvent.ContentDelta(delta.Text));
+                            break;
+                        case DeltaType.ToolCall:
+                            if (delta.ToolCallDelta is not null)
+                                accumulator.Append(delta.ToolCallDelta);
+                            break;
+                        case DeltaType.Error:
+                            if (delta.Retryable)
+                            {
+                                // 流式传输中断 → 标记为重试，不追加到回复
+                                retryableError = true;
+                            }
+                            else
+                            {
+                                pendingReply.Append($"[错误] {delta.Text}");
+                                onEvent(new AgentEvent.Error(delta.Text));
+                            }
+                            break;
+                        case DeltaType.Usage:
+                            onEvent(new AgentEvent.UsageUpdated(delta.PromptTokens, delta.CompletionTokens, delta.TotalTokens));
+                            break;
+                    }
+
+                    if (retryableError) break;
+                }
+
+                // 可重试错误 → 丢弃本轮部分数据，等待后重发同一轮请求
+                if (retryableError && streamRetry < maxStreamRetries)
+                {
+                    onEvent(new AgentEvent.Retrying(
+                        streamRetry + 1, maxStreamRetries, "流式传输中断，正在重新连接..."));
+                    await Task.Delay(TimeSpan.FromSeconds(2 * (streamRetry + 1)), ct);
+                    continue;
+                }
+
+                // 可重试错误但重试已耗尽
+                if (retryableError)
+                {
+                    onEvent(new AgentEvent.Error("流式传输多次中断，无法恢复"));
+                    history.Add(ChatMessage.Assistant(pendingReply.ToString()));
+                    onEvent(new AgentEvent.Completed(pendingReply.ToString() + "\n[连接中断]"));
+                    return;
+                }
+
+                streamSuccess = true;
+                break;
             }
+
+            if (!streamSuccess) continue;
 
             // 没有工具调用或没有注册工具 → 本轮即最终回复
             var toolCalls = accumulator.Build();
@@ -327,7 +374,7 @@ public class AgentOrchestrator
 
             var result = await tool.ExecuteAsync(args, timeoutCts.Token);
             var summary = Truncate(result.Content, 200);
-            onEvent(new AgentEvent.ToolCompleted(fn.Name, summary));
+            onEvent(new AgentEvent.ToolCompleted(fn.Name, summary, result.Content));
             return result;
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)

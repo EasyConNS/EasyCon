@@ -44,9 +44,10 @@ public abstract class ScriptArray
     public abstract bool Contains(Value item);
 
     /// <summary>
-    /// 根据元素类型创建对应的强类型数组实例
+    /// 根据元素类型创建对应的强类型数组实例。
+    /// 字符串数组需要 IStringHandleStore 以 handle 形式存储（参考 Python intern + LuaJIT GCstr）。
     /// </summary>
-    public static ScriptArray Create(ScriptType elementType, IReadOnlyList<Value> elements)
+    public static ScriptArray Create(ScriptType elementType, IReadOnlyList<Value> elements, IStringHandleStore? stringStore = null)
     {
         if (elementType.Equals(ScriptType.Int))
             return new IntArray(elements, elementType);
@@ -61,7 +62,7 @@ public abstract class ScriptArray
         if (elementType.Equals(ScriptType.Double))
             return new DoubleArray(elements, elementType);
         if (elementType.Equals(ScriptType.String))
-            return new StringArray(elements, elementType);
+            return new StringArray(elements, elementType, stringStore ?? throw new ArgumentNullException(nameof(stringStore), "字符串数组需要 IStringHandleStore"));
         if (elementType.Equals(ScriptType.Ptr))
             return new LongArray(elements, elementType);
         return new ValueArray(elements, elementType);
@@ -69,8 +70,9 @@ public abstract class ScriptArray
 
     /// <summary>
     /// 从类型化数组直接构造，跳过 Value 中间层。用于编译期预计算。
+    /// 字符串元素以 int[] handle 形式提供（已通过 IStringHandleStore.Intern 驻留）。
     /// </summary>
-    public static ScriptArray CreateDirect(ScriptType elementType, object typedData)
+    public static ScriptArray CreateDirect(ScriptType elementType, object typedData, IStringHandleStore? stringStore = null)
     {
         if (elementType.Equals(ScriptType.Int))
             return new IntArray((int[])typedData, elementType);
@@ -85,11 +87,20 @@ public abstract class ScriptArray
         if (elementType.Equals(ScriptType.Double))
             return new DoubleArray((double[])typedData, elementType);
         if (elementType.Equals(ScriptType.String))
-            return new StringArray((string?[])typedData, elementType);
+            return new StringArray((int[])typedData, elementType, stringStore ?? throw new ArgumentNullException(nameof(stringStore), "字符串数组需要 IStringHandleStore"));
         if (elementType.Equals(ScriptType.Ptr))
             return new LongArray((long[])typedData, elementType);
         throw new InvalidOperationException($"无类型化数组实现: {elementType}");
     }
+
+    /// <summary>是否包含需要释放的嵌套 handle（如 StringArray 持有字符串 handle）。</summary>
+    public virtual bool HasNestedHandles => false;
+
+    /// <summary>
+    /// 释放该数组持有的所有嵌套 handle（由 RuntimeHeap 在 Free 数组时回调）。
+    /// 默认实现为空；StringArray 等持有 handle 的子类重写。
+    /// </summary>
+    public virtual void FreeNestedHandles() { }
 
     internal static ScriptType InferElementType(IReadOnlyList<Value> elements)
     {
@@ -359,57 +370,99 @@ public sealed class DoubleArray : ScriptArray
     public override bool Contains(Value item) => Array.IndexOf(_data, item.AsDouble()) >= 0;
 }
 
+/// <summary>
+/// Handle 式字符串数组：内部存储 int[] handle，通过 IStringHandleStore 解引用。
+/// 参考 Python list of PyObject*（每槽位是指针）+ LuaJIT 全局 GCstr 驻留。
+///
+/// 优势：
+///   1. 内存紧凑：int[] (4B/slot) vs string[] (8B/slot)
+///   2. Clone/GetRange 时为每个 handle 分配独立副本（Copy），值语义安全
+///   3. Contains 优先 handle 整数比较（intern 后相同内容 → 相同 handle）
+///   4. 跨缓存边界零开销：与 TaggedValue.FromStringHandle 完全对齐
+///
+/// 注意：StringArray 的 handle 依赖 IStringHandleStore（RuntimeHeap）的生命周期。
+/// 调用者在检查返回的 ScriptArray 内容时，evaluator 必须仍存活。
+/// </summary>
 public sealed class StringArray : ScriptArray
 {
-    private readonly string?[] _data;
+    private int[] _handles;
     private readonly ScriptType _elementType;
+    private readonly IStringHandleStore _store;
 
     public override ScriptType ElementType => _elementType;
-    public override int Length => _data.Length;
-    public override Value this[int index] => Value.FromString(_data[index]!);
+    public override int Length => _handles.Length;
+    public override Value this[int index] => Value.FromString(_store.Get(_handles[index]));
 
-    public StringArray(string?[] data, ScriptType elementType) { _data = data; _elementType = elementType; }
-    public StringArray(IReadOnlyList<Value> elements, ScriptType elementType)
+    /// <summary>从已有的 handle 数组直接构造（共享 handle，不深拷贝）。</summary>
+    public StringArray(int[] handles, ScriptType elementType, IStringHandleStore store)
+    {
+        _handles = handles;
+        _elementType = elementType;
+        _store = store;
+    }
+
+    public StringArray(IReadOnlyList<Value> elements, ScriptType elementType, IStringHandleStore store)
     {
         _elementType = elementType;
-        _data = new string[elements.Count];
-        for (int i = 0; i < elements.Count; i++) _data[i] = elements[i].AsString();
+        _store = store;
+        _handles = new int[elements.Count];
+        for (int i = 0; i < elements.Count; i++) _handles[i] = store.Intern(elements[i].AsString());
     }
 
-    public override void SetItem(int index, Value value) => _data[index] = value.AsString();
+    public override void SetItem(int index, Value value) => _handles[index] = _store.Intern(value.AsString());
+
+    /// <summary>值语义深拷贝：为每个 handle 分配独立副本（Copy），避免释放时悬空。</summary>
     public override ScriptArray Clone()
     {
-        var newArr = new string?[_data.Length];
-        Array.Copy(_data, newArr, _data.Length);
-        return new StringArray(newArr, _elementType);
+        var newArr = new int[_handles.Length];
+        for (int i = 0; i < _handles.Length; i++) newArr[i] = _store.Copy(_handles[i]);
+        return new StringArray(newArr, _elementType, _store);
     }
+
     public override ScriptArray Append(Value value)
     {
-        var newArr = new string?[_data.Length + 1];
-        Array.Copy(_data, newArr, _data.Length);
-        newArr[_data.Length] = value.AsString();
-        return new StringArray(newArr, _elementType);
+        var newArr = new int[_handles.Length + 1];
+        for (int i = 0; i < _handles.Length; i++) newArr[i] = _store.Copy(_handles[i]);
+        newArr[_handles.Length] = _store.Intern(value.AsString());
+        return new StringArray(newArr, _elementType, _store);
     }
+
     public override ScriptArray AddRange(ScriptArray other)
     {
         var o = (StringArray)other;
-        var newArr = new string?[_data.Length + o._data.Length];
-        Array.Copy(_data, newArr, _data.Length);
-        Array.Copy(o._data, 0, newArr, _data.Length, o._data.Length);
-        return new StringArray(newArr, _elementType);
+        var newArr = new int[_handles.Length + o._handles.Length];
+        for (int i = 0; i < _handles.Length; i++) newArr[i] = _store.Copy(_handles[i]);
+        for (int i = 0; i < o._handles.Length; i++) newArr[_handles.Length + i] = o._store.Copy(o._handles[i]);
+        return new StringArray(newArr, _elementType, _store);
     }
+
     public override ScriptArray GetRange(int offset, int count)
     {
-        var newArr = new string?[count];
-        Array.Copy(_data, offset, newArr, 0, count);
-        return new StringArray(newArr, _elementType);
+        var newArr = new int[count];
+        for (int i = 0; i < count; i++) newArr[i] = _store.Copy(_handles[offset + i]);
+        return new StringArray(newArr, _elementType, _store);
     }
+
+    /// <summary>
+    /// 包含检查：参考 Python/LuaJIT 的 intern 快速路径。
+    /// intern 后相同内容 → 相同 handle，直接整数比较 O(n)。
+    /// </summary>
     public override bool Contains(Value item)
     {
-        var target = item.AsString();
-        for (int i = 0; i < _data.Length; i++)
-            if (string.Equals(_data[i], target, StringComparison.Ordinal)) return true;
-        return false;
+        var target = _store.Intern(item.AsString());
+        return Array.IndexOf(_handles, target) >= 0;
+    }
+
+    public override bool HasNestedHandles => true;
+
+    /// <summary>释放该数组持有的所有字符串 handle（由 RuntimeHeap 在 Free 数组时回调）。</summary>
+    public override void FreeNestedHandles()
+    {
+        for (int i = 0; i < _handles.Length; i++)
+        {
+            _store.Free(_handles[i]);
+            _handles[i] = 0;
+        }
     }
 }
 

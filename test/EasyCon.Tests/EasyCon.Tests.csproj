@@ -27,7 +27,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\EasyCon.Script\EasyCon.Script.csproj" />
     <ProjectReference Include="..\..\src\EasyCon.Core\EasyCon.Core.csproj" />
-    <ProjectReference Include="..\..\src\EasyCon.Script.Jit\EasyCon.Script.Jit.csproj" />
   </ItemGroup>
 
 </Project>

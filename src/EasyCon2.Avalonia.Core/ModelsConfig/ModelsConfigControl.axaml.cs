@@ -23,9 +23,8 @@ public partial class ModelsConfigControl : UserControl
 
     private void OnSave(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is ModelsConfigViewModel vm)
-            vm.Save();
-        SaveRequested?.Invoke();
+        if (DataContext is ModelsConfigViewModel vm && vm.Save())
+            SaveRequested?.Invoke();
     }
 
     private void OnCancel(object? sender, RoutedEventArgs e)

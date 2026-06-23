@@ -61,7 +61,7 @@ public static class SsaJitInterop
     {
         if (returnType.Equals(ScriptType.Void)) return 0;
         var val = result.AsInt();
-        eval.IntCache[resultId] = val;
+        eval.Cache[resultId] = TaggedValue.FromInt(val);
         return val;
     }
 }

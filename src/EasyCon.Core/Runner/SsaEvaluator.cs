@@ -29,38 +29,16 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     // 函数返回值暂存（HandleReturnToCache 写入，GetReturnValue 读取）
     private Value _returnValue;
 
-    // 类型化全局存储
-    private int[] _globalInts = [];
-    private long[] _globalLongs = [];
-    private double[] _globalDoubles = [];
-    private int[] _globalHandles = [];
-    private readonly Dictionary<VariableSymbol, SlotDesc> _globalSlots = [];
+    // 全局变量：统一 TaggedValue 数组（按 _globalIndex[variable] 索引）
+    private TaggedValue[] _globals = [];
+    private readonly Dictionary<VariableSymbol, int> _globalIndex = [];
 
-    // 类型化 SSA 值缓存：按 SsaValue.ScriptType 分类存储，消除 Value 结构体开销
-    // Int/UInt/Bool/Byte → _intCache, UInt64/Ptr → _longCache, Double → _doubleCache, String/Array/Struct → _objCache
-    private int[] _intCache = [];
-    private long[] _longCache = [];
-    private double[] _doubleCache = [];
-    private object?[] _objCache = [];
+    // 统一 SSA 值缓存：按 SSA 值 ID 索引，替代 4 路类型分裂数组
+    // 类型信息在 SSA 操作码（AddInt/AddDouble 等已特化），存储层无需类型分裂
+    private TaggedValue[] _cache = [];
 
-    // ---- JIT 桥接公开接口 ----
-    public int[] IntCache => _intCache;
-    public long[] LongCache => _longCache;
-    public double[] DoubleCache => _doubleCache;
-    public object?[] ObjCache => _objCache;
-
-    /// <summary>供 JIT 桥接：访问全局变量槽位映射。</summary>
-    public Dictionary<VariableSymbol, SlotDesc> GlobalSlots => _globalSlots;
-    public int[] GlobalInts => _globalInts;
-    public long[] GlobalLongs => _globalLongs;
-    public double[] GlobalDoubles => _globalDoubles;
-    public int[] GlobalHandles => _globalHandles;
-
-    // 预计算的常量值（同样按类型分拆，构造时一次性计算，每次创建新 cache 时拷贝进去）
-    private int[] _constInt = [];
-    private long[] _constLong = [];
-    private double[] _constDouble = [];
-    private object?[] _constObj = [];
+    // 预计算的常量值（构造时一次性计算，ResetCaches 时拷贝进 _cache）
+    private TaggedValue[] _constCache = [];
 
     private readonly long _TIME = DateTime.Now.Ticks;
     private readonly Random _rand = new();
@@ -93,13 +71,20 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     /// <summary>启用 JIT 编译执行（默认 false，使用解释器）。</summary>
     public bool UseJit { get; set; }
 
+    // ---- JIT 桥接公开接口 ----
+    /// <summary>供 JIT 混合模式访问的统一 SSA 值缓存。</summary>
+    public TaggedValue[] Cache => _cache;
+    /// <summary>供 JIT 桥接：访问全局变量索引映射。</summary>
+    public Dictionary<VariableSymbol, int> GlobalIndex => _globalIndex;
+    public TaggedValue[] Globals => _globals;
+
     private Func<int>? _jitDelegate;
 
     public SsaEvaluator(SsaProgram program, CancellationToken token)
     {
         _program = program;
         _token = token;
-        _localFrames.Push(new EvalFrame(0, 0, 0, 0));
+        _localFrames.Push(new EvalFrame(0));
 
         foreach (var kv in _program.Functions)
             _functions.Add(kv.Key, kv.Value);
@@ -110,29 +95,16 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         foreach (var func in _functions.Values)
             CollectGlobalVars(func, globalVarList, seen);
 
-        int intIdx = 0, longIdx = 0, doubleIdx = 0, handleIdx = 0;
+        // 扁平全局槽位分配：单一计数器（类型信息在 SSA 操作码，不在槽位）
+        int globalIdx = 0;
         foreach (var gv in globalVarList)
-        {
-            var cat = GetSlotCategory(gv.Type);
-            var idx = cat switch
-            {
-                SlotCategory.Int => intIdx++,
-                SlotCategory.Long => longIdx++,
-                SlotCategory.Double => doubleIdx++,
-                SlotCategory.Handle => handleIdx++,
-                _ => intIdx++
-            };
-            _globalSlots[gv] = new SlotDesc(cat, idx);
-        }
-        _globalInts = new int[intIdx];
-        _globalLongs = new long[longIdx];
-        _globalDoubles = new double[doubleIdx];
-        _globalHandles = new int[handleIdx];
+            _globalIndex[gv] = globalIdx++;
+        _globals = new TaggedValue[globalIdx];
 
         RegisterCallables();
         RegisterRuntimeValueGetters();
 
-        // 预分配类型化缓存，预计算所有常量
+        // 预分配统一缓存，预计算所有常量
         int maxId = 0;
         foreach (var func in _functions.Values)
             foreach (var block in func.Blocks)
@@ -151,23 +123,17 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 #endif
 
         int cacheSize = maxId + 1;
-        _intCache = new int[cacheSize];
-        _longCache = new long[cacheSize];
-        _doubleCache = new double[cacheSize];
-        _objCache = new object?[cacheSize];
+        _cache = new TaggedValue[cacheSize];
+        _constCache = new TaggedValue[cacheSize];
 
         // 预计算常量：SSA 常量不依赖控制流，总是可用
-        _constInt = new int[cacheSize];
-        _constLong = new long[cacheSize];
-        _constDouble = new double[cacheSize];
-        _constObj = new object?[cacheSize];
         foreach (var func in _functions.Values)
             foreach (var block in func.Blocks)
                 foreach (var val in block.Instructions)
                     if (val.IsConstant)
                         PrecomputeConstant(val);
 
-        // 预计算全常量 ArrayInit：跳过运行时 PackToValue 开销
+        // 预计算全常量 ArrayInit：跳过运行时装箱开销
         foreach (var func in _functions.Values)
             foreach (var block in func.Blocks)
                 foreach (var val in block.Instructions)
@@ -291,14 +257,16 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
             while (!_token.IsCancellationRequested)
             {
-                // 1. 执行 Phi 节点
+                // 1. 执行 Phi 节点：一次 struct copy，无类型 dispatch
                 foreach (var phi in current.Phis)
                 {
                     int armIdx = FindPredecessorIndex(current, lastBlock);
                     Debug.Assert(phi.ExtraArgs != null && armIdx < phi.ExtraArgs.Count);
                     int srcId = phi.ExtraArgs[armIdx].Id;
-                    CopyToSlot(phi, srcId, frame);
-                    CopyToCache(phi.Id, srcId, phi.Type);
+                    _cache[phi.Id] = _cache[srcId];
+                    var desc = phi.Slot;
+                    if (desc.Index >= 0)
+                        WriteCacheToSlot(desc, frame, phi);
                 }
 
                 // 2. 执行普通指令
@@ -318,7 +286,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
                 if (current.BranchCondition != null)
                 {
-                    current = _intCache[current.BranchCondition.Id] != 0
+                    current = _cache[current.BranchCondition.Id].AsBool()
                         ? current.TrueSuccessor!
                         : current.FalseSuccessor!;
                 }
@@ -376,181 +344,197 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             case SsaOp.ConstPtr:
                 break; // 常量已在缓存初始化时写入
 
-            // ---- 加载/存储 ----
+            // ---- 加载/存储：扁平帧，一次 struct copy 无分支 ----
             case SsaOp.LoadLocal:
-                LoadLocalToCache(val, frame);
+            {
+                var slotIdx = ((LocalVariableSymbol)val.Aux!).Slot.Index;
+                _cache[val.Id] = frame.Locals[slotIdx];
                 break;
+            }
             case SsaOp.StoreLocal:
-                StoreLocalFromCache(val, frame);
+            {
+                var slotIdx = ((LocalVariableSymbol)val.Aux!).Slot.Index;
+                StoreLocalSlot(slotIdx, val.Type, val.Arg0!);
                 break;
+            }
             case SsaOp.LoadGlobal:
-                LoadGlobalToCache(val);
+                _cache[val.Id] = _globals[_globalIndex[(VariableSymbol)val.Aux!]];
                 break;
             case SsaOp.StoreGlobal:
-                StoreGlobalFromCache(val);
+            {
+                var gidx = _globalIndex[(VariableSymbol)val.Aux!];
+                StoreGlobalSlot(gidx, val.Type, val.Arg0!);
                 break;
+            }
 
-            // ---- 算术 (int) ----
+            // ---- 算术 (int)：直接读 .I32 字段，SSA 操作码已保证类型正确 ----
             case SsaOp.AddInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] + _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 + _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.SubInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] - _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 - _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.MulInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] * _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 * _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.DivInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] / _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 / _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.ModInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] % _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 % _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.RoundDivInt:
-                _intCache[val.Id] = RoundDiv(_intCache[val.Arg0!.Id], _intCache[val.Arg1!.Id]);
+                _cache[val.Id] = TaggedValue.FromInt(RoundDiv(_cache[val.Arg0!.Id].I32, _cache[val.Arg1!.Id].I32));
                 break;
 
             // ---- 算术 (uint) ----
             case SsaOp.AddUInt:
-                _intCache[val.Id] = unchecked((int)((long)(uint)_intCache[val.Arg0!.Id] + (uint)_intCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt((uint)_cache[val.Arg0!.Id].I32 + (uint)_cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.SubUInt:
-                _intCache[val.Id] = unchecked((int)((long)(uint)_intCache[val.Arg0!.Id] - (uint)_intCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt((uint)_cache[val.Arg0!.Id].I32 - (uint)_cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.MulUInt:
-                _intCache[val.Id] = unchecked((int)((long)(uint)_intCache[val.Arg0!.Id] * (uint)_intCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt((uint)_cache[val.Arg0!.Id].I32 * (uint)_cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.DivUInt:
-                _intCache[val.Id] = unchecked((int)((uint)_intCache[val.Arg0!.Id] / (uint)_intCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt((uint)_cache[val.Arg0!.Id].I32 / (uint)_cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.ModUInt:
-                _intCache[val.Id] = unchecked((int)((uint)_intCache[val.Arg0!.Id] % (uint)_intCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt((uint)_cache[val.Arg0!.Id].I32 % (uint)_cache[val.Arg1!.Id].I32);
                 break;
 
             // ---- 算术 (double) ----
             case SsaOp.AddDouble:
-                _doubleCache[val.Id] = _doubleCache[val.Arg0!.Id] + _doubleCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromDouble(_cache[val.Arg0!.Id].F64 + _cache[val.Arg1!.Id].F64);
                 break;
             case SsaOp.SubDouble:
-                _doubleCache[val.Id] = _doubleCache[val.Arg0!.Id] - _doubleCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromDouble(_cache[val.Arg0!.Id].F64 - _cache[val.Arg1!.Id].F64);
                 break;
             case SsaOp.MulDouble:
-                _doubleCache[val.Id] = _doubleCache[val.Arg0!.Id] * _doubleCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromDouble(_cache[val.Arg0!.Id].F64 * _cache[val.Arg1!.Id].F64);
                 break;
             case SsaOp.DivDouble:
-                _doubleCache[val.Id] = _doubleCache[val.Arg0!.Id] / _doubleCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromDouble(_cache[val.Arg0!.Id].F64 / _cache[val.Arg1!.Id].F64);
                 break;
 
             // ---- 算术 (uint64) ----
             case SsaOp.AddUInt64:
-                _longCache[val.Id] = unchecked((long)((ulong)_longCache[val.Arg0!.Id] + (ulong)_longCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt64(_cache[val.Arg0!.Id].AsUInt64() + _cache[val.Arg1!.Id].AsUInt64());
                 break;
             case SsaOp.SubUInt64:
-                _longCache[val.Id] = unchecked((long)((ulong)_longCache[val.Arg0!.Id] - (ulong)_longCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt64(_cache[val.Arg0!.Id].AsUInt64() - _cache[val.Arg1!.Id].AsUInt64());
                 break;
             case SsaOp.MulUInt64:
-                _longCache[val.Id] = unchecked((long)((ulong)_longCache[val.Arg0!.Id] * (ulong)_longCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt64(_cache[val.Arg0!.Id].AsUInt64() * _cache[val.Arg1!.Id].AsUInt64());
                 break;
             case SsaOp.DivUInt64:
-                _longCache[val.Id] = unchecked((long)((ulong)_longCache[val.Arg0!.Id] / (ulong)_longCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt64(_cache[val.Arg0!.Id].AsUInt64() / _cache[val.Arg1!.Id].AsUInt64());
                 break;
             case SsaOp.ModUInt64:
-                _longCache[val.Id] = unchecked((long)((ulong)_longCache[val.Arg0!.Id] % (ulong)_longCache[val.Arg1!.Id]));
+                _cache[val.Id] = TaggedValue.FromUInt64(_cache[val.Arg0!.Id].AsUInt64() % _cache[val.Arg1!.Id].AsUInt64());
                 break;
 
             // ---- 位运算 ----
             case SsaOp.AndInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] & _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 & _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.OrInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] | _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 | _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.XorInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] ^ _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 ^ _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.ShlInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] << _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 << _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.ShrInt:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] >> _intCache[val.Arg1!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32 >> _cache[val.Arg1!.Id].I32);
                 break;
             case SsaOp.NotInt:
-                _intCache[val.Id] = ~_intCache[val.Arg0!.Id];
+                _cache[val.Id] = TaggedValue.FromInt(~_cache[val.Arg0!.Id].I32);
                 break;
 
-            // ---- 比较 (int) → 结果是 bool，存入 _intCache ----
-            case SsaOp.EqInt: _intCache[val.Id] = _intCache[val.Arg0!.Id] == _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.NeqInt: _intCache[val.Id] = _intCache[val.Arg0!.Id] != _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LtInt: _intCache[val.Id] = _intCache[val.Arg0!.Id] < _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LeqInt: _intCache[val.Id] = _intCache[val.Arg0!.Id] <= _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GtInt: _intCache[val.Id] = _intCache[val.Arg0!.Id] > _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GeqInt: _intCache[val.Id] = _intCache[val.Arg0!.Id] >= _intCache[val.Arg1!.Id] ? 1 : 0; break;
+            // ---- 比较 (int) → 结果是 bool ----
+            case SsaOp.EqInt:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 == _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.NeqInt: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 != _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.LtInt:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 <  _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.LeqInt: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 <= _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.GtInt:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 >  _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.GeqInt: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 >= _cache[val.Arg1!.Id].I32); break;
 
             // ---- 比较 (uint) ----
-            case SsaOp.EqUInt: _intCache[val.Id] = (uint)_intCache[val.Arg0!.Id] == (uint)_intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.NeqUInt: _intCache[val.Id] = (uint)_intCache[val.Arg0!.Id] != (uint)_intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LtUInt: _intCache[val.Id] = (uint)_intCache[val.Arg0!.Id] < (uint)_intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LeqUInt: _intCache[val.Id] = (uint)_intCache[val.Arg0!.Id] <= (uint)_intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GtUInt: _intCache[val.Id] = (uint)_intCache[val.Arg0!.Id] > (uint)_intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GeqUInt: _intCache[val.Id] = (uint)_intCache[val.Arg0!.Id] >= (uint)_intCache[val.Arg1!.Id] ? 1 : 0; break;
+            case SsaOp.EqUInt:  _cache[val.Id] = TaggedValue.FromBool((uint)_cache[val.Arg0!.Id].I32 == (uint)_cache[val.Arg1!.Id].I32); break;
+            case SsaOp.NeqUInt: _cache[val.Id] = TaggedValue.FromBool((uint)_cache[val.Arg0!.Id].I32 != (uint)_cache[val.Arg1!.Id].I32); break;
+            case SsaOp.LtUInt:  _cache[val.Id] = TaggedValue.FromBool((uint)_cache[val.Arg0!.Id].I32 <  (uint)_cache[val.Arg1!.Id].I32); break;
+            case SsaOp.LeqUInt: _cache[val.Id] = TaggedValue.FromBool((uint)_cache[val.Arg0!.Id].I32 <= (uint)_cache[val.Arg1!.Id].I32); break;
+            case SsaOp.GtUInt:  _cache[val.Id] = TaggedValue.FromBool((uint)_cache[val.Arg0!.Id].I32 >  (uint)_cache[val.Arg1!.Id].I32); break;
+            case SsaOp.GeqUInt: _cache[val.Id] = TaggedValue.FromBool((uint)_cache[val.Arg0!.Id].I32 >= (uint)_cache[val.Arg1!.Id].I32); break;
 
             // ---- 比较 (double) ----
-            case SsaOp.EqDouble: _intCache[val.Id] = _doubleCache[val.Arg0!.Id] == _doubleCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.NeqDouble: _intCache[val.Id] = _doubleCache[val.Arg0!.Id] != _doubleCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LtDouble: _intCache[val.Id] = _doubleCache[val.Arg0!.Id] < _doubleCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LeqDouble: _intCache[val.Id] = _doubleCache[val.Arg0!.Id] <= _doubleCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GtDouble: _intCache[val.Id] = _doubleCache[val.Arg0!.Id] > _doubleCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GeqDouble: _intCache[val.Id] = _doubleCache[val.Arg0!.Id] >= _doubleCache[val.Arg1!.Id] ? 1 : 0; break;
+            case SsaOp.EqDouble:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].F64 == _cache[val.Arg1!.Id].F64); break;
+            case SsaOp.NeqDouble: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].F64 != _cache[val.Arg1!.Id].F64); break;
+            case SsaOp.LtDouble:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].F64 <  _cache[val.Arg1!.Id].F64); break;
+            case SsaOp.LeqDouble: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].F64 <= _cache[val.Arg1!.Id].F64); break;
+            case SsaOp.GtDouble:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].F64 >  _cache[val.Arg1!.Id].F64); break;
+            case SsaOp.GeqDouble: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].F64 >= _cache[val.Arg1!.Id].F64); break;
 
             // ---- 比较 (uint64) ----
-            case SsaOp.EqUInt64: _intCache[val.Id] = (ulong)_longCache[val.Arg0!.Id] == (ulong)_longCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.NeqUInt64: _intCache[val.Id] = (ulong)_longCache[val.Arg0!.Id] != (ulong)_longCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LtUInt64: _intCache[val.Id] = (ulong)_longCache[val.Arg0!.Id] < (ulong)_longCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LeqUInt64: _intCache[val.Id] = (ulong)_longCache[val.Arg0!.Id] <= (ulong)_longCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GtUInt64: _intCache[val.Id] = (ulong)_longCache[val.Arg0!.Id] > (ulong)_longCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GeqUInt64: _intCache[val.Id] = (ulong)_longCache[val.Arg0!.Id] >= (ulong)_longCache[val.Arg1!.Id] ? 1 : 0; break;
+            case SsaOp.EqUInt64:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].AsUInt64() == _cache[val.Arg1!.Id].AsUInt64()); break;
+            case SsaOp.NeqUInt64: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].AsUInt64() != _cache[val.Arg1!.Id].AsUInt64()); break;
+            case SsaOp.LtUInt64:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].AsUInt64() <  _cache[val.Arg1!.Id].AsUInt64()); break;
+            case SsaOp.LeqUInt64: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].AsUInt64() <= _cache[val.Arg1!.Id].AsUInt64()); break;
+            case SsaOp.GtUInt64:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].AsUInt64() >  _cache[val.Arg1!.Id].AsUInt64()); break;
+            case SsaOp.GeqUInt64: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].AsUInt64() >= _cache[val.Arg1!.Id].AsUInt64()); break;
 
             // ---- 比较 (bool/string/ptr/byte) ----
-            case SsaOp.EqBool: _intCache[val.Id] = _intCache[val.Arg0!.Id] == _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.NeqBool: _intCache[val.Id] = _intCache[val.Arg0!.Id] != _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.EqString: _intCache[val.Id] = string.Equals((string)_objCache[val.Arg0!.Id]!, (string)_objCache[val.Arg1!.Id]!, StringComparison.Ordinal) ? 1 : 0; break;
-            case SsaOp.NeqString: _intCache[val.Id] = !string.Equals((string)_objCache[val.Arg0!.Id]!, (string)_objCache[val.Arg1!.Id]!, StringComparison.Ordinal) ? 1 : 0; break;
-            case SsaOp.EqPtr: _intCache[val.Id] = _longCache[val.Arg0!.Id] == _longCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.NeqPtr: _intCache[val.Id] = _longCache[val.Arg0!.Id] != _longCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.EqByte: _intCache[val.Id] = _intCache[val.Arg0!.Id] == _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.NeqByte: _intCache[val.Id] = _intCache[val.Arg0!.Id] != _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LtByte: _intCache[val.Id] = _intCache[val.Arg0!.Id] < _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.LeqByte: _intCache[val.Id] = _intCache[val.Arg0!.Id] <= _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GtByte: _intCache[val.Id] = _intCache[val.Arg0!.Id] > _intCache[val.Arg1!.Id] ? 1 : 0; break;
-            case SsaOp.GeqByte: _intCache[val.Id] = _intCache[val.Arg0!.Id] >= _intCache[val.Arg1!.Id] ? 1 : 0; break;
+            case SsaOp.EqBool:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 == _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.NeqBool: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 != _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.EqString:
+                _cache[val.Id] = TaggedValue.FromBool(string.Equals(CoerceString(val.Arg0!.Id), CoerceString(val.Arg1!.Id), StringComparison.Ordinal));
+                break;
+            case SsaOp.NeqString:
+                _cache[val.Id] = TaggedValue.FromBool(!string.Equals(CoerceString(val.Arg0!.Id), CoerceString(val.Arg1!.Id), StringComparison.Ordinal));
+                break;
+            case SsaOp.EqPtr:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I64 == _cache[val.Arg1!.Id].I64); break;
+            case SsaOp.NeqPtr: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I64 != _cache[val.Arg1!.Id].I64); break;
+            case SsaOp.EqByte:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 == _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.NeqByte: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 != _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.LtByte:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 <  _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.LeqByte: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 <= _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.GtByte:  _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 >  _cache[val.Arg1!.Id].I32); break;
+            case SsaOp.GeqByte: _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 >= _cache[val.Arg1!.Id].I32); break;
 
             // ---- 逻辑 ----
             case SsaOp.LogicNot:
-                _intCache[val.Id] = _intCache[val.Arg0!.Id] == 0 ? 1 : 0;
+                _cache[val.Id] = TaggedValue.FromBool(_cache[val.Arg0!.Id].I32 == 0);
                 break;
 
             // ---- 类型转换 ----
-            case SsaOp.ConvBoolToInt: _intCache[val.Id] = _intCache[val.Arg0!.Id]; break;       // bool(0/1) → int
-            case SsaOp.ConvByteToInt: _intCache[val.Id] = _intCache[val.Arg0!.Id]; break;       // byte → int
-            case SsaOp.ConvIntToUInt: _intCache[val.Id] = _intCache[val.Arg0!.Id]; break;       // bit-preserving
-            case SsaOp.ConvIntToUInt64: _longCache[val.Id] = _intCache[val.Arg0!.Id]; break;
-            case SsaOp.ConvIntToDouble: _doubleCache[val.Id] = _intCache[val.Arg0!.Id]; break;
-            case SsaOp.ConvIntToByte: _intCache[val.Id] = (byte)_intCache[val.Arg0!.Id]; break;
-            case SsaOp.ConvUIntToUInt64: _longCache[val.Id] = (uint)_intCache[val.Arg0!.Id]; break;
-            case SsaOp.ConvUInt64ToPtr: _longCache[val.Id] = _longCache[val.Arg0!.Id]; break;     // bit-preserving
-            case SsaOp.ConvPtrToInt: _intCache[val.Id] = (int)_longCache[val.Arg0!.Id]; break;
-            case SsaOp.ConvIntToPtr: _longCache[val.Id] = _intCache[val.Arg0!.Id]; break;
-            case SsaOp.ConvDoubleToInt: _intCache[val.Id] = (int)_doubleCache[val.Arg0!.Id]; break;
-            case SsaOp.ConvUInt64ToInt: _intCache[val.Id] = unchecked((int)(ulong)_longCache[val.Arg0!.Id]); break;
+            case SsaOp.ConvBoolToInt:   _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32); break;
+            case SsaOp.ConvByteToInt:   _cache[val.Id] = TaggedValue.FromInt(_cache[val.Arg0!.Id].I32); break;
+            case SsaOp.ConvIntToUInt:   _cache[val.Id] = TaggedValue.FromUInt(unchecked((uint)_cache[val.Arg0!.Id].I32)); break;
+            case SsaOp.ConvIntToUInt64: _cache[val.Id] = TaggedValue.FromUInt64((ulong)_cache[val.Arg0!.Id].I32); break;
+            case SsaOp.ConvIntToDouble: _cache[val.Id] = TaggedValue.FromDouble(_cache[val.Arg0!.Id].I32); break;
+            case SsaOp.ConvIntToByte:   _cache[val.Id] = TaggedValue.FromByte((byte)_cache[val.Arg0!.Id].I32); break;
+            case SsaOp.ConvUIntToUInt64:_cache[val.Id] = TaggedValue.FromUInt64((uint)_cache[val.Arg0!.Id].I32); break;
+            case SsaOp.ConvUInt64ToPtr: _cache[val.Id] = TaggedValue.FromPtr(_cache[val.Arg0!.Id].I64); break;
+            case SsaOp.ConvPtrToInt:    _cache[val.Id] = TaggedValue.FromInt((int)_cache[val.Arg0!.Id].I64); break;
+            case SsaOp.ConvIntToPtr:    _cache[val.Id] = TaggedValue.FromPtr(_cache[val.Arg0!.Id].I32); break;
+            case SsaOp.ConvDoubleToInt: _cache[val.Id] = TaggedValue.FromInt((int)_cache[val.Arg0!.Id].F64); break;
+            case SsaOp.ConvUInt64ToInt: _cache[val.Id] = TaggedValue.FromInt(unchecked((int)_cache[val.Arg0!.Id].AsUInt64())); break;
             case SsaOp.ConvToString:
-                _objCache[val.Id] = ConvToString(val.Arg0!);
+                _cache[val.Id] = TaggedValue.FromStringHandle(StoreString(ConvToString(val.Arg0!)));
                 break;
             case SsaOp.ConvToInt:
-                _intCache[val.Id] = ConvToInt(val.Arg0!);
+                _cache[val.Id] = TaggedValue.FromInt(ConvToInt(val.Arg0!));
                 break;
             case SsaOp.ArrayAppend:
-                _objCache[val.Id] = ((ScriptArray)_objCache[val.Arg0!.Id]!).Append(PackToValue(val.Arg1!));
+            {
+                var arr = CoerceArray(val.Arg0!.Id);
+                _cache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(arr.Append(CacheToValue(val.Arg1!))));
                 break;
+            }
 
             // ---- 控制流（Phi 在主循环中处理） ----
             case SsaOp.Phi:
@@ -581,15 +565,13 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 ExecuteSliceToCache(val);
                 break;
             case SsaOp.ArrayLen:
-                {
-                    var obj = _objCache[val.Arg0!.Id];
-                    _intCache[val.Id] = obj is ScriptArray arr ? arr.Length
-                        : obj is string s ? s.Length
-                        : 0;
-                    break;
-                }
+            {
+                var obj = DerefHandle(val.Arg0!);
+                _cache[val.Id] = TaggedValue.FromInt(obj is ScriptArray arr ? arr.Length : obj is string s ? s.Length : 0);
+                break;
+            }
             case SsaOp.Contains:
-                _intCache[val.Id] = PackToValue(val.Arg1!).Contains(PackToValue(val.Arg0!)) ? 1 : 0;
+                _cache[val.Id] = TaggedValue.FromBool(CacheToValue(val.Arg1!).Contains(CacheToValue(val.Arg0!)));
                 break;
             case SsaOp.Concat:
                 ExecuteConcatToCache(val);
@@ -600,7 +582,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
             // ---- 结构体 ----
             case SsaOp.StructInit:
-                _objCache[val.Id] = new EcsStruct(((StructType)val.Type).Definition);
+                _cache[val.Id] = TaggedValue.FromStructHandle(StoreStruct(new EcsStruct(((StructType)val.Type).Definition)));
                 break;
             case SsaOp.LoadField:
                 ExecuteLoadFieldToCache(val);
@@ -632,7 +614,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 ExecuteWait(val);
                 break;
             case SsaOp.Rand:
-                _intCache[val.Id] = _rand.Next(_intCache[val.Arg0!.Id]);
+                _cache[val.Id] = TaggedValue.FromInt(_rand.Next(_cache[val.Arg0!.Id].I32));
                 break;
 
             // ---- OCR 引擎初始化 ----
@@ -667,20 +649,20 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         }
     }
 
-    // ============ 常量预计算（写入类型化常量缓存） ============
+    // ============ 常量预计算（写入统一常量缓存） ============
 
     private void PrecomputeConstant(SsaValue val)
     {
         switch (val.Op)
         {
-            case SsaOp.ConstBool: _constInt[val.Id] = val.Const.GetBool() ? 1 : 0; break;
-            case SsaOp.ConstByte: _constInt[val.Id] = val.Const.GetByte(); break;
-            case SsaOp.ConstInt: _constInt[val.Id] = val.Const.GetInt(); break;
-            case SsaOp.ConstUInt: _constInt[val.Id] = val.Const.GetInt(); break; // bit-preserving
-            case SsaOp.ConstUInt64: _constLong[val.Id] = unchecked((long)val.Const.GetUInt64()); break;
-            case SsaOp.ConstDouble: _constDouble[val.Id] = val.Const.GetDouble(); break;
-            case SsaOp.ConstString: _constObj[val.Id] = val.ConstString ?? ""; break;
-            case SsaOp.ConstPtr: _constLong[val.Id] = val.Const.GetPtr(); break;
+            case SsaOp.ConstBool:   _constCache[val.Id] = TaggedValue.FromBool(val.Const.GetBool()); break;
+            case SsaOp.ConstByte:   _constCache[val.Id] = TaggedValue.FromByte(val.Const.GetByte()); break;
+            case SsaOp.ConstInt:    _constCache[val.Id] = TaggedValue.FromInt(val.Const.GetInt()); break;
+            case SsaOp.ConstUInt:   _constCache[val.Id] = TaggedValue.FromUInt(val.Const.GetUInt()); break;
+            case SsaOp.ConstUInt64: _constCache[val.Id] = TaggedValue.FromUInt64(val.Const.GetUInt64()); break;
+            case SsaOp.ConstDouble: _constCache[val.Id] = TaggedValue.FromDouble(val.Const.GetDouble()); break;
+            case SsaOp.ConstString: _constCache[val.Id] = TaggedValue.FromStringHandle(StoreString(val.ConstString ?? "")); break;
+            case SsaOp.ConstPtr:    _constCache[val.Id] = TaggedValue.FromPtr(val.Const.GetPtr()); break;
         }
     }
 
@@ -702,325 +684,232 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
         if (count == 0)
         {
-            _constObj[val.Id] = ScriptArray.Create(elemType, Array.Empty<Value>());
+            _constCache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(ScriptArray.Create(elemType, Array.Empty<Value>(), _heap)));
             return;
         }
 
-        var cat = GetSlotCategory(elemType);
-
-        if (cat == SlotCategory.Int)
+        // 按元素类型构建：编译期已知，分支预测稳定
+        if (elemType.Equals(ScriptType.Byte))
+        {
+            var data = new byte[count];
+            int idx = 0;
+            if (val.Arg0 != null) data[idx++] = (byte)_constCache[val.Arg0.Id].I32;
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = (byte)_constCache[a.Id].I32;
+            _constCache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(ScriptArray.CreateDirect(ScriptType.Byte, data)));
+        }
+        else if (elemType.Equals(ScriptType.Bool))
         {
             var data = new int[count];
             int idx = 0;
-            if (val.Arg0 != null) data[idx++] = _constInt[val.Arg0.Id];
-            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constInt[a.Id];
-            _constObj[val.Id] = elemType.Equals(ScriptType.Byte)
-                ? ScriptArray.CreateDirect(ScriptType.Byte, ToByteArray(data))
-                : elemType.Equals(ScriptType.Bool)
-                    ? ScriptArray.CreateDirect(ScriptType.Bool, data)
-                    : elemType.Equals(ScriptType.UInt)
-                        ? ScriptArray.CreateDirect(ScriptType.UInt, ToUIntArray(data))
-                        : new IntArray(data, elemType);
+            if (val.Arg0 != null) data[idx++] = _constCache[val.Arg0.Id].I32;
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constCache[a.Id].I32;
+            _constCache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(ScriptArray.CreateDirect(ScriptType.Bool, data)));
         }
-        else if (cat == SlotCategory.Long)
+        else if (elemType.Equals(ScriptType.UInt))
+        {
+            var data = new uint[count];
+            int idx = 0;
+            if (val.Arg0 != null) data[idx++] = unchecked((uint)_constCache[val.Arg0.Id].I32);
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = unchecked((uint)_constCache[a.Id].I32);
+            _constCache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(ScriptArray.CreateDirect(ScriptType.UInt, data)));
+        }
+        else if (elemType.Equals(ScriptType.Int))
+        {
+            var data = new int[count];
+            int idx = 0;
+            if (val.Arg0 != null) data[idx++] = _constCache[val.Arg0.Id].I32;
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constCache[a.Id].I32;
+            _constCache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(new IntArray(data, elemType)));
+        }
+        else if (elemType.Equals(ScriptType.UInt64))
+        {
+            var data = new ulong[count];
+            int idx = 0;
+            if (val.Arg0 != null) data[idx++] = _constCache[val.Arg0.Id].AsUInt64();
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constCache[a.Id].AsUInt64();
+            _constCache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(ScriptArray.CreateDirect(ScriptType.UInt64, data)));
+        }
+        else if (elemType.Equals(ScriptType.Ptr))
         {
             var data = new long[count];
             int idx = 0;
-            if (val.Arg0 != null) data[idx++] = _constLong[val.Arg0.Id];
-            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constLong[a.Id];
-            _constObj[val.Id] = elemType.Equals(ScriptType.UInt64)
-                ? ScriptArray.CreateDirect(ScriptType.UInt64, ToULongArray(data))
-                : new LongArray(data, elemType);
+            if (val.Arg0 != null) data[idx++] = _constCache[val.Arg0.Id].I64;
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constCache[a.Id].I64;
+            _constCache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(new LongArray(data, elemType)));
         }
-        else if (cat == SlotCategory.Double)
+        else if (elemType.Equals(ScriptType.Double))
         {
             var data = new double[count];
             int idx = 0;
-            if (val.Arg0 != null) data[idx++] = _constDouble[val.Arg0.Id];
-            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constDouble[a.Id];
-            _constObj[val.Id] = new DoubleArray(data, elemType);
+            if (val.Arg0 != null) data[idx++] = _constCache[val.Arg0.Id].F64;
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) data[idx++] = _constCache[a.Id].F64;
+            _constCache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(new DoubleArray(data, elemType)));
         }
-        else // Handle: string 等
+        else // string / 其他引用类型
         {
             var items = new Value[count];
             int idx = 0;
-            if (val.Arg0 != null) items[idx++] = PackConstToValue(val.Arg0);
-            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) items[idx++] = PackConstToValue(a);
-            _constObj[val.Id] = ScriptArray.Create(elemType, items);
+            if (val.Arg0 != null) items[idx++] = ConstToValue(val.Arg0);
+            if (val.ExtraArgs != null) foreach (var a in val.ExtraArgs) items[idx++] = ConstToValue(a);
+            _constCache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(ScriptArray.Create(elemType, items, _heap)));
         }
     }
 
-    private static byte[] ToByteArray(int[] src)
+    /// <summary>从常量缓存读出为 Value（用于 PrecomputeArrayInit 的引用类型 fallback）。
+    /// 注意：此方法在构造期间被调用，必须从 _constCache 读取，而非 _cache。</summary>
+    private Value ConstToValue(SsaValue v)
     {
-        var r = new byte[src.Length];
-        for (int i = 0; i < src.Length; i++) r[i] = (byte)src[i];
-        return r;
-    }
-
-    private static uint[] ToUIntArray(int[] src)
-    {
-        var r = new uint[src.Length];
-        for (int i = 0; i < src.Length; i++) r[i] = unchecked((uint)src[i]);
-        return r;
-    }
-
-    private static ulong[] ToULongArray(long[] src)
-    {
-        var r = new ulong[src.Length];
-        for (int i = 0; i < src.Length; i++) r[i] = unchecked((ulong)src[i]);
-        return r;
-    }
-
-    /// <summary>从常量缓存打包为 Value（仅用于 PrecomputeArrayInit 的 fallback 路径）</summary>
-    private Value PackConstToValue(SsaValue v)
-    {
-        return GetSlotCategory(v.Type) switch
+        var tv = _constCache[v.Id];
+        if (!tv.IsHandle) return tv.ToValue();
+        // 引用类型：从 _constCache 中的 handle 解引用还原为 Value
+        var obj = tv.Tag switch
         {
-            SlotCategory.Int => PackIntToValue(_constInt[v.Id], v.Type),
-            SlotCategory.Long => v.Type.Equals(ScriptType.UInt64)
-                ? Value.FromUInt64((ulong)_constLong[v.Id])
-                : Value.FromPtr(_constLong[v.Id]),
-            SlotCategory.Double => Value.FromDouble(_constDouble[v.Id]),
-            SlotCategory.Handle => PackObjToValue(_constObj[v.Id], v.Type),
-            _ => Value.Void
+            TaggedValue.STRING => (object?)_heap.GetString(tv.Handle),
+            TaggedValue.ARRAY  => _heap.GetArray(tv.Handle),
+            TaggedValue.STRUCT => _heap.GetStruct(tv.Handle),
+            _ => null
         };
-    }
-
-    // ============ 类型化缓存工具方法 ============
-
-    /// <summary>重置执行缓存，拷贝常量到活跃缓存</summary>
-    private void ResetCaches()
-    {
-        Array.Copy(_constInt, _intCache, _constInt.Length);
-        Array.Copy(_constLong, _longCache, _constLong.Length);
-        Array.Copy(_constDouble, _doubleCache, _constDouble.Length);
-        Array.Copy(_constObj, _objCache, _constObj.Length);
-    }
-
-    /// <summary>将 SSA 值从类型化缓存打包为 Value（仅用于函数调用边界）</summary>
-    private Value PackToValue(SsaValue v)
-    {
-        return GetSlotCategory(v.Type) switch
-        {
-            SlotCategory.Int => PackIntToValue(_intCache[v.Id], v.Type),
-            SlotCategory.Long => v.Type.Equals(ScriptType.UInt64)
-                ? Value.FromUInt64((ulong)_longCache[v.Id])
-                : Value.FromPtr(_longCache[v.Id]),
-            SlotCategory.Double => Value.FromDouble(_doubleCache[v.Id]),
-            SlotCategory.Handle => PackObjToValue(_objCache[v.Id], v.Type),
-            _ => Value.Void
-        };
-    }
-
-    /// <summary>将 SSA 值从类型化缓存打包为 Value（按指定类型，用于 Phi 等跨类型场景）</summary>
-    private Value PackToValue(SsaValue v, ScriptType type)
-    {
-        return GetSlotCategory(type) switch
-        {
-            SlotCategory.Int => PackIntToValue(_intCache[v.Id], type),
-            SlotCategory.Long => type.Equals(ScriptType.UInt64)
-                ? Value.FromUInt64((ulong)_longCache[v.Id])
-                : Value.FromPtr(_longCache[v.Id]),
-            SlotCategory.Double => Value.FromDouble(_doubleCache[v.Id]),
-            SlotCategory.Handle => PackObjToValue(_objCache[v.Id], type),
-            _ => Value.Void
-        };
-    }
-
-    private static Value PackIntToValue(int val, ScriptType type)
-    {
-        if (type.Equals(ScriptType.Bool)) return Value.FromBool(val != 0);
-        if (type.Equals(ScriptType.Byte)) return Value.FromByte((byte)val);
-        if (type.Equals(ScriptType.UInt)) return Value.FromUInt(unchecked((uint)val));
-        return Value.FromInt(val);
-    }
-
-    private static Value PackObjToValue(object? obj, ScriptType type)
-    {
         if (obj is string s) return Value.FromString(s);
-        if (obj is ScriptArray arr) return Value.FromArray(arr, ((ArrayType)type).ElementType);
+        if (obj is ScriptArray arr) return Value.FromArray(arr, ((ArrayType)v.Type).ElementType);
         if (obj is EcsStruct es) return Value.FromStruct(es);
         return Value.Void;
     }
 
-    /// <summary>将 Value 解包到类型化缓存（仅用于函数调用返回值边界）</summary>
-    private void UnpackToCache(int id, ScriptType type, Value value)
+    // ============ 统一缓存工具方法 ============
+
+    /// <summary>重置执行缓存，拷贝常量到活跃缓存。</summary>
+    private void ResetCaches()
     {
-        switch (GetSlotCategory(type))
+        Array.Copy(_constCache, _cache, _constCache.Length);
+    }
+
+    /// <summary>从缓存读出 TaggedValue 并按 SSA 类型还原为 Value（用于函数调用边界、数组元素打包等）。</summary>
+    private Value CacheToValue(SsaValue v)
+    {
+        var tv = _cache[v.Id];
+        if (tv.IsHandle)
         {
-            case SlotCategory.Int:
-                _intCache[id] = WriteIntSlot(type, value);
-                break;
-            case SlotCategory.Long:
-                _longCache[id] = type.Equals(ScriptType.UInt64)
-                    ? (long)value.AsUInt64()
-                    : value.AsPtr();
-                break;
-            case SlotCategory.Double:
-                _doubleCache[id] = value.AsDouble();
-                break;
-            case SlotCategory.Handle:
-                _objCache[id] = ExtractHandleObj(type, value);
-                break;
+            var obj = DerefHandle(v);
+            if (obj is string s) return Value.FromString(s);
+            if (obj is ScriptArray arr) return Value.FromArray(arr, ((ArrayType)v.Type).ElementType);
+            if (obj is EcsStruct es) return Value.FromStruct(es);
+            return Value.Void;
         }
+        return tv.ToValue();
     }
 
-    private static object? ExtractHandleObj(ScriptType type, Value value)
+    /// <summary>将 Value 解包到缓存（用于函数返回值、数组元素解包等边界）。</summary>
+    private void ValueToCache(int id, ScriptType type, Value value)
     {
-        if (type.Equals(ScriptType.String)) return value.AsString();
-        if (type is ArrayType) return value.AsArray();
-        if (type is StructType) return value.AsStruct();
-        return null;
+        if (type.Equals(ScriptType.Int))    _cache[id] = TaggedValue.FromInt(value.AsInt());
+        else if (type.Equals(ScriptType.Bool))   _cache[id] = TaggedValue.FromBool(value.AsBool());
+        else if (type.Equals(ScriptType.Byte))   _cache[id] = TaggedValue.FromByte(value.AsByte());
+        else if (type.Equals(ScriptType.UInt))   _cache[id] = TaggedValue.FromUInt(value.AsUInt());
+        else if (type.Equals(ScriptType.Double)) _cache[id] = TaggedValue.FromDouble(value.AsDouble());
+        else if (type.Equals(ScriptType.UInt64)) _cache[id] = TaggedValue.FromUInt64(value.AsUInt64());
+        else if (type.Equals(ScriptType.Ptr))    _cache[id] = TaggedValue.FromPtr(value.AsPtr());
+        else if (type.Equals(ScriptType.String)) _cache[id] = TaggedValue.FromStringHandle(StoreString(value.AsString()));
+        else if (type is ArrayType)              _cache[id] = TaggedValue.FromArrayHandle(StoreArray(value.AsArray().Clone()));
+        else if (type is StructType)             _cache[id] = TaggedValue.FromStructHandle(StoreStruct(new EcsStruct(value.AsStruct().Definition, value.AsStruct().NativePtr)));
     }
 
-    /// <summary>从缓存中读取原始值（用于 ConvToString 等需要通用读取的场景）</summary>
-    private object? ReadRaw(SsaValue v)
-    {
-        return GetSlotCategory(v.Type) switch
-        {
-            SlotCategory.Int => v.Type.Equals(ScriptType.Bool) ? (_intCache[v.Id] != 0) : _intCache[v.Id],
-            SlotCategory.Long => _longCache[v.Id],
-            SlotCategory.Double => _doubleCache[v.Id],
-            SlotCategory.Handle => _objCache[v.Id],
-            _ => null
-        };
-    }
-
-    /// <summary>通用 int 转换（用于 ConvToInt）</summary>
+    /// <summary>通用 int 转换（用于 ConvToInt）。</summary>
     private int ConvToInt(SsaValue v)
     {
-        return GetSlotCategory(v.Type) switch
-        {
-            SlotCategory.Int => _intCache[v.Id],
-            SlotCategory.Double => (int)_doubleCache[v.Id],
-            _ => throw new InvalidCastException($"无法从 {v.Type} 转换为 int")
-        };
+        var tv = _cache[v.Id];
+        if (tv.IsIntegerCategory) return tv.I32;
+        if (tv.IsDoubleCategory)  return (int)tv.F64;
+        throw new InvalidCastException($"无法从 {v.Type} 转换为 int");
     }
 
-    /// <summary>通用 string 转换（用于 ConvToString）— 通过 Value.ToString() 确保数组等类型正确格式化</summary>
+    /// <summary>通用 string 转换（用于 ConvToString）— 通过 Value.ToString() 确保数组等类型正确格式化。</summary>
     private string ConvToString(SsaValue v)
     {
-        var cat = GetSlotCategory(v.Type);
-        return cat switch
-        {
-            SlotCategory.Int => v.Type.Equals(ScriptType.Bool)
-                ? (_intCache[v.Id] != 0 ? "true" : "false")
-                : _intCache[v.Id].ToString(),
-            SlotCategory.Long => v.Type.Equals(ScriptType.UInt64)
-                ? ((ulong)_longCache[v.Id]).ToString()
-                : _longCache[v.Id].ToString(),
-            SlotCategory.Double => _doubleCache[v.Id].ToString(),
-            SlotCategory.Handle => PackToValue(v).ToString(),
-            _ => ""
-        };
+        var tv = _cache[v.Id];
+        if (v.Type.Equals(ScriptType.Bool))   return tv.I32 != 0 ? "true" : "false";
+        if (tv.IsIntegerCategory)             return tv.I32.ToString();
+        if (v.Type.Equals(ScriptType.UInt64)) return tv.AsUInt64().ToString();
+        if (v.Type.Equals(ScriptType.Ptr))    return tv.I64.ToString();
+        if (tv.IsDoubleCategory)              return tv.F64.ToString();
+        if (tv.IsHandle)                      return CacheToValue(v).ToString();
+        return "";
     }
 
-    /// <summary>将缓存中的值拷贝到目标 SSA 值的缓存槽位（Phi 使用）</summary>
-    private void CopyToCache(int dstId, int srcId, ScriptType type)
-    {
-        switch (GetSlotCategory(type))
-        {
-            case SlotCategory.Int: _intCache[dstId] = _intCache[srcId]; break;
-            case SlotCategory.Long: _longCache[dstId] = _longCache[srcId]; break;
-            case SlotCategory.Double: _doubleCache[dstId] = _doubleCache[srcId]; break;
-            case SlotCategory.Handle: _objCache[dstId] = _objCache[srcId]; break;
-        }
-    }
-
-    /// <summary>将缓存中的值写入帧槽位（Phi/StoreLocal 使用）</summary>
-    private void CopyToSlot(SsaValue phi, int srcId, EvalFrame frame)
-    {
-        var desc = phi.Slot;
-        if (desc.Index < 0) return;
-        switch (desc.Category)
-        {
-            case SlotCategory.Int: frame.Ints[desc.Index] = _intCache[srcId]; break;
-            case SlotCategory.Long: frame.Longs[desc.Index] = _longCache[srcId]; break;
-            case SlotCategory.Double: frame.Doubles[desc.Index] = _doubleCache[srcId]; break;
-            case SlotCategory.Handle:
-                if (frame.Handles[desc.Index] != 0) _heap.Free(frame.Handles[desc.Index]);
-                frame.Handles[desc.Index] = StoreHandleObj(phi.Type, _objCache[srcId]);
-                break;
-        }
-    }
-
-    /// <summary>获取函数返回值（由 HandleReturnToCache 暂存）</summary>
+    /// <summary>获取函数返回值（由 HandleReturnToCache 暂存）。</summary>
     private Value GetReturnValue()
     {
         return _returnValue;
     }
 
-    // ============ 缓存访问器（用于需要通用 Value 的边界场景） ============
+    // ============ 缓存访问器（统一缓存版本） ============
 
-    /// <summary>从对象缓存读取字符串</summary>
-    private string CoerceString(int id) => _objCache[id] as string ?? "";
-    /// <summary>从对象缓存读取数组</summary>
-    private ScriptArray CoerceArray(int id) => (ScriptArray)_objCache[id]!;
-    /// <summary>从对象缓存读取结构体</summary>
-    private EcsStruct CoerceStruct(int id) => (EcsStruct)_objCache[id]!;
+    /// <summary>从缓存读出字符串（解引用 handle）。</summary>
+    private string CoerceString(int id) => _cache[id].IsString ? _heap.GetString(_cache[id].Handle) : "";
+    /// <summary>从缓存读出数组（解引用 handle）。</summary>
+    private ScriptArray CoerceArray(int id) => _heap.GetArray(_cache[id].Handle);
+    /// <summary>从缓存读出结构体（解引用 handle）。</summary>
+    private EcsStruct CoerceStruct(int id) => _heap.GetStruct(_cache[id].Handle);
 
-    // ============ 辅助执行方法（类型化缓存版本） ============
-
-    private void LoadLocalToCache(SsaValue val, EvalFrame frame)
+    /// <summary>从缓存读出引用对象（按 SSA 值类型解引用 handle）。</summary>
+    private object? DerefHandle(SsaValue v)
     {
-        var desc = ((LocalVariableSymbol)val.Aux!).Slot;
-        switch (desc.Category)
+        var tv = _cache[v.Id];
+        if (!tv.IsHandle) return null;
+        return tv.Tag switch
         {
-            case SlotCategory.Int: _intCache[val.Id] = frame.Ints[desc.Index]; break;
-            case SlotCategory.Long: _longCache[val.Id] = frame.Longs[desc.Index]; break;
-            case SlotCategory.Double: _doubleCache[val.Id] = frame.Doubles[desc.Index]; break;
-            case SlotCategory.Handle: _objCache[val.Id] = _heap.DerefObject(frame.Handles[desc.Index], val.Type); break;
-        }
+            TaggedValue.STRING => _heap.GetString(tv.Handle),
+            TaggedValue.ARRAY  => _heap.GetArray(tv.Handle),
+            TaggedValue.STRUCT => _heap.GetStruct(tv.Handle),
+            _ => null
+        };
     }
 
-    private void StoreLocalFromCache(SsaValue val, EvalFrame frame)
+    /// <summary>把对象存入 heap 返回 handle（string 直接共享引用，array 深拷贝保持值语义）。</summary>
+    private int StoreString(string s) => _heap.StoreString(s);
+    private int StoreArray(ScriptArray arr) => _heap.StoreArray(arr);
+    private int StoreStruct(EcsStruct s) => _heap.StoreStruct(s);
+
+    /// <summary>从缓存中读出 TaggedValue 的 src 值，按 type 深拷贝并写入本地槽位（Phi/StoreLocal 使用）。</summary>
+    private void StoreLocalSlot(int slotIdx, ScriptType type, SsaValue src)
     {
-        var variable = (LocalVariableSymbol)val.Aux!;
-        var desc = variable.Slot;
-        switch (desc.Category)
-        {
-            case SlotCategory.Int: frame.Ints[desc.Index] = _intCache[val.Arg0!.Id]; break;
-            case SlotCategory.Long: frame.Longs[desc.Index] = _longCache[val.Arg0!.Id]; break;
-            case SlotCategory.Double: frame.Doubles[desc.Index] = _doubleCache[val.Arg0!.Id]; break;
-            case SlotCategory.Handle:
-                if (frame.Handles[desc.Index] != 0) _heap.Free(frame.Handles[desc.Index]);
-                frame.Handles[desc.Index] = StoreHandleObj(variable.Type, _objCache[val.Arg0!.Id]);
-                break;
-        }
+        var frame = _localFrames.Peek();
+        // 引用类型：释放旧 handle，重新存入（保持值语义）
+        if (_cache[src.Id].IsHandle)
+            frame.Locals[slotIdx] = CopyHandleForStore(type, _cache[src.Id]);
+        else
+            frame.Locals[slotIdx] = _cache[src.Id];
     }
 
-    private void LoadGlobalToCache(SsaValue val)
+    private void StoreGlobalSlot(int gidx, ScriptType type, SsaValue src)
     {
-        var desc = _globalSlots[(VariableSymbol)val.Aux!];
-        switch (desc.Category)
-        {
-            case SlotCategory.Int: _intCache[val.Id] = _globalInts[desc.Index]; break;
-            case SlotCategory.Long: _longCache[val.Id] = _globalLongs[desc.Index]; break;
-            case SlotCategory.Double: _doubleCache[val.Id] = _globalDoubles[desc.Index]; break;
-            case SlotCategory.Handle: _objCache[val.Id] = _heap.DerefObject(_globalHandles[desc.Index], val.Type); break;
-        }
+        if (_cache[src.Id].IsHandle)
+            _globals[gidx] = CopyHandleForStore(type, _cache[src.Id]);
+        else
+            _globals[gidx] = _cache[src.Id];
     }
 
-    private void StoreGlobalFromCache(SsaValue val)
+    /// <summary>引用类型的 TaggedValue 复制为新的 handle（string 共享，array/struct 深拷贝）。</summary>
+    private TaggedValue CopyHandleForStore(ScriptType type, TaggedValue tv)
     {
-        var variable = (VariableSymbol)val.Aux!;
-        var desc = _globalSlots[variable];
-        var srcArg = val.Arg0;
-        switch (desc.Category)
+        if (!tv.IsHandle) return tv;
+        return tv.Tag switch
         {
-            case SlotCategory.Int: _globalInts[desc.Index] = srcArg != null ? _intCache[srcArg.Id] : 0; break;
-            case SlotCategory.Long: _globalLongs[desc.Index] = srcArg != null ? _longCache[srcArg.Id] : 0; break;
-            case SlotCategory.Double: _globalDoubles[desc.Index] = srcArg != null ? _doubleCache[srcArg.Id] : 0; break;
-            case SlotCategory.Handle:
-                if (_globalHandles[desc.Index] != 0) _heap.Free(_globalHandles[desc.Index]);
-                _globalHandles[desc.Index] = srcArg != null ? StoreHandleObj(variable.Type, _objCache[srcArg.Id]) : 0;
-                break;
-        }
+            TaggedValue.STRING => TaggedValue.FromStringHandle(_heap.DeepCopyHandle(tv.Handle)),
+            TaggedValue.ARRAY  => TaggedValue.FromArrayHandle(_heap.DeepCopyHandle(tv.Handle)),
+            TaggedValue.STRUCT => TaggedValue.FromStructHandle(_heap.DeepCopyHandle(tv.Handle)),
+            _ => tv
+        };
+    }
+
+    /// <summary>把 src 的 TaggedValue 值（已存的）写入 dst 槽位（不深拷贝，仅用于 phi/帧内复制）。</summary>
+    private void WriteCacheToSlot(SlotDesc desc, EvalFrame frame, SsaValue src)
+    {
+        frame.Locals[desc.Index] = _cache[src.Id];
     }
 
     private void HandleReturnToCache(SsaValue val)
     {
-        _returnValue = val.Arg0 != null ? PackToValue(val.Arg0) : Value.Void;
+        _returnValue = val.Arg0 != null ? CacheToValue(val.Arg0) : Value.Void;
     }
 
     private void ExecuteCallToCache(SsaValue val)
@@ -1044,10 +933,10 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
                 : new Value[argCount];
             try
             {
-                if (val.Arg0 != null) args[0] = PackToValue(val.Arg0);
+                if (val.Arg0 != null) args[0] = CacheToValue(val.Arg0);
                 if (val.ExtraArgs != null)
                     for (int i = 0; i < val.ExtraArgs.Count; i++)
-                        args[i + 1] = PackToValue(val.ExtraArgs[i]);
+                        args[i + 1] = CacheToValue(val.ExtraArgs[i]);
                 var span = args.AsSpan(0, argCount);
                 // 用户函数快速路径：跳过 _callables 字典查找和委托虚分派
                 result = _functions.ContainsKey(function)
@@ -1060,79 +949,76 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             }
         }
 
-        // 将返回值解包到类型化缓存
+        // 将返回值解包到统一缓存
         if (function.ReturnType.Equals(ScriptType.Void)) return;
-        UnpackToCache(val.Id, function.ReturnType, result);
+        ValueToCache(val.Id, function.ReturnType, result);
     }
 
     private void ExecuteArrayInitToCache(SsaValue val)
     {
-        // 全常量 ArrayInit 已在构造时预计算到 _constObj，ResetCaches 拷贝到 _objCache
-        if (_objCache[val.Id] != null) return;
+        // 全常量 ArrayInit 已在构造时预计算到 _constCache，ResetCaches 拷贝到 _cache
+        if (_cache[val.Id].Tag != 0) return;
 
         var items = new List<Value>();
         if (val.Arg0 != null)
         {
-            items.Add(PackToValue(val.Arg0));
+            items.Add(CacheToValue(val.Arg0));
             if (val.ExtraArgs != null)
                 foreach (var arg in val.ExtraArgs)
-                    items.Add(PackToValue(arg));
+                    items.Add(CacheToValue(arg));
         }
         var elemType = ((ArrayType)val.Type).ElementType;
-        _objCache[val.Id] = ScriptArray.Create(elemType, items);
+        _cache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(ScriptArray.Create(elemType, items, _heap)));
     }
 
     private void ExecuteLoadIndexToCache(SsaValue val)
     {
-        var obj = _objCache[val.Arg0!.Id];
-        var index = _intCache[val.Arg1!.Id];
+        var obj = DerefHandle(val.Arg0!);
+        var index = _cache[val.Arg1!.Id].I32;
 
         if (obj is string s)
         {
             if (index < 0 || index >= s.Length)
             {
-                // 临时追踪：记录越界前的上下文
                 var ctx = index > 0 && index <= s.Length ? s[index - 1].ToString() : "?";
                 var ctx2 = index > 1 && index <= s.Length ? s[index - 2].ToString() : "?";
                 throw new Exception($"数组下标越界: 字符串长度={s.Length}, index={index}, 前5=[{s[..Math.Min(5, s.Length)]}], s[{index - 2}]='{ctx2}', s[{index - 1}]='{ctx}', val.Id={val.Id}, Arg0.Id={val.Arg0!.Id}, Arg0.Op={val.Arg0!.Op}");
             }
-            _objCache[val.Id] = s[index].ToString();
+            _cache[val.Id] = TaggedValue.FromStringHandle(StoreString(s[index].ToString()));
             return;
         }
 
         var container = (ScriptArray)obj!;
         if (index < 0 || index >= container.Length) throw new Exception($"数组下标越界: 数组长度={container.Length}, index={index}");
         var elemValue = container[index];
-        // 将 Value 元素解包到类型化缓存
         var elemType = ((ArrayType)val.Arg0!.Type).ElementType;
-        UnpackToCache(val.Id, elemType, elemValue);
+        ValueToCache(val.Id, elemType, elemValue);
     }
 
     private void ExecuteStoreIndexFromCache(SsaValue val)
     {
         var container = CoerceArray(val.Arg0!.Id);
-        var index = _intCache[val.Arg1!.Id];
+        var index = _cache[val.Arg1!.Id].I32;
         var elemType = ((ArrayType)val.Arg0!.Type).ElementType;
-        var value = PackToValue(val.ExtraArgs![0], elemType);
+        var value = CacheToValue(val.ExtraArgs![0]);
 
-        // 原地修改
+        // 原地修改：若容器是本地/全局变量持有的 handle，直接 SetItem
         if (val.Arg0 is { Op: SsaOp.LoadLocal, Aux: LocalVariableSymbol local })
         {
             var frame = _localFrames.Peek();
-            var handle = local.Slot.Category == SlotCategory.Handle ? frame.Handles[local.Slot.Index] : 0;
-            if (handle != 0)
+            ref var slot = ref frame.Locals[local.Slot.Index];
+            if (slot.IsArray)
             {
-                _heap.GetArray(handle).SetItem(index, value);
+                _heap.GetArray(slot.Handle).SetItem(index, value);
                 return;
             }
         }
         else if (val.Arg0 is { Op: SsaOp.LoadGlobal, Aux: GlobalVariableSymbol gv })
         {
-            var desc = _globalSlots[gv];
-            var handle = desc.Category == SlotCategory.Handle ? _globalHandles[desc.Index] : 0;
-            if (handle != 0)
+            ref var gslot = ref _globals[_globalIndex[gv]];
+            if (gslot.IsArray)
             {
-                _heap.GetArray(handle).SetItem(index, value);
+                _heap.GetArray(gslot.Handle).SetItem(index, value);
                 return;
             }
         }
@@ -1141,12 +1027,11 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
     private void ExecuteSliceToCache(SsaValue val)
     {
-        var obj = _objCache[val.Arg0!.Id];
-        var start = _intCache[val.Arg1!.Id];
-        // end 参数：如果有 ExtraArgs 且类型为 Int，读取缓存；否则使用容器长度
+        var obj = DerefHandle(val.Arg0!);
+        var start = _cache[val.Arg1!.Id].I32;
         int endIdx;
         if (val.ExtraArgs != null && val.ExtraArgs[0].Type.Equals(ScriptType.Int))
-            endIdx = _intCache[val.ExtraArgs[0].Id];
+            endIdx = _cache[val.ExtraArgs[0].Id].I32;
         else if (obj is ScriptArray arr)
             endIdx = arr.Length;
         else if (obj is string s)
@@ -1158,13 +1043,13 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         {
             if (start > str.Length || endIdx > str.Length || start > endIdx)
                 throw new Exception($"数组下标越界: 字符串长度={str.Length}, start={start}, end={endIdx}");
-            _objCache[val.Id] = str[new Range(start, endIdx)];
+            _cache[val.Id] = TaggedValue.FromStringHandle(StoreString(str[new Range(start, endIdx)]));
         }
         else if (obj is ScriptArray container)
         {
             if (start > container.Length || endIdx > container.Length || start > endIdx)
                 throw new Exception($"数组下标越界: 数组长度={container.Length}, start={start}, end={endIdx}");
-            _objCache[val.Id] = container.GetRange(start, endIdx - start);
+            _cache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(container.GetRange(start, endIdx - start)));
         }
         else
         {
@@ -1179,38 +1064,30 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         // 字符串拼接：任一侧为 string 时，双侧 ToString 后拼接
         if (leftType.Equals(ScriptType.String) || rightType.Equals(ScriptType.String))
         {
-            var left = leftType.Equals(ScriptType.String) ? CoerceString(val.Arg0!.Id) : _intCache[val.Arg0!.Id].ToString();
-            var right = rightType.Equals(ScriptType.String) ? CoerceString(val.Arg1!.Id) : _intCache[val.Arg1!.Id].ToString();
-            _objCache[val.Id] = string.Concat(left, right);
+            var left = leftType.Equals(ScriptType.String) ? CoerceString(val.Arg0!.Id) : _cache[val.Arg0!.Id].I32.ToString();
+            var right = rightType.Equals(ScriptType.String) ? CoerceString(val.Arg1!.Id) : _cache[val.Arg1!.Id].I32.ToString();
+            _cache[val.Id] = TaggedValue.FromStringHandle(StoreString(string.Concat(left, right)));
         }
         else
         {
-            var left = PackToValue(val.Arg0!);
-            var right = PackToValue(val.Arg1!);
+            var left = CacheToValue(val.Arg0!);
+            var right = CacheToValue(val.Arg1!);
             var result = left.Concat(right); // returns Value
-            // 从返回的 Value 中提取原始对象
             if (result.Type.Equals(ScriptType.String))
-                _objCache[val.Id] = result.AsString();
+                _cache[val.Id] = TaggedValue.FromStringHandle(StoreString(result.AsString()));
             else if (result.AsArray() is ScriptArray arr)
-                _objCache[val.Id] = arr;
-            else
-                _objCache[val.Id] = result;
+                _cache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(arr));
         }
     }
 
     private void ExecuteDeepCopyToCache(SsaValue val)
     {
-        var cat = GetSlotCategory(val.Arg0!.Type);
-        if (cat == SlotCategory.Handle && val.Arg0!.Type.Equals(ScriptType.String))
-        {
-            // string 不可变，直接复制引用
-            _objCache[val.Id] = _objCache[val.Arg0!.Id];
-        }
+        // 统一缓存下：DeepCopy 仅对引用类型需要深拷贝，其余直接 struct copy
+        var src = _cache[val.Arg0!.Id];
+        if (src.IsHandle)
+            _cache[val.Id] = CopyHandleForStore(val.Arg0!.Type, src);
         else
-        {
-            // 其他类型直接拷贝到同类型缓存
-            CopyToCache(val.Id, val.Arg0!.Id, val.Arg0!.Type);
-        }
+            _cache[val.Id] = src;
     }
 
     private void ExecuteLoadFieldToCache(SsaValue val)
@@ -1223,15 +1100,15 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             var items = new Value[arrType.Count];
             for (int i = 0; i < arrType.Count; i++)
                 items[i] = RawToValue(instance.GetFieldElement(field, i), arrType.ElementType);
-            _objCache[val.Id] = ScriptArray.Create(arrType.ElementType, items);
+            _cache[val.Id] = TaggedValue.FromArrayHandle(StoreArray(ScriptArray.Create(arrType.ElementType, items, _heap)));
             return;
         }
         if (field.FieldType is StructType)
         {
-            _objCache[val.Id] = instance.GetNested(field);
+            _cache[val.Id] = TaggedValue.FromStructHandle(StoreStruct(instance.GetNested(field)));
             return;
         }
-        // 基本类型字段：写入对应的类型化缓存
+        // 基本类型字段：写入统一缓存
         var raw = instance.GetField(field);
         WriteRawToCache(val.Id, field.FieldType, raw);
     }
@@ -1247,13 +1124,13 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private void ExecuteLoadFieldIndexToCache(SsaValue val)
     {
         var instance = CoerceStruct(val.Arg0!.Id);
-        var index = _intCache[val.Arg1!.Id];
+        var index = _cache[val.Arg1!.Id].I32;
         var field = (EcsFieldDef)val.Aux!;
         var elemType = val.Type;
 
         if (elemType is StructType)
         {
-            _objCache[val.Id] = instance.GetNested(field, index);
+            _cache[val.Id] = TaggedValue.FromStructHandle(StoreStruct(instance.GetNested(field, index)));
             return;
         }
         var raw = instance.GetFieldElement(field, index);
@@ -1263,7 +1140,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private void ExecuteStoreFieldIndexFromCache(SsaValue val)
     {
         var instance = CoerceStruct(val.Arg0!.Id);
-        var index = _intCache[val.Arg1!.Id];
+        var index = _cache[val.Arg1!.Id].I32;
         var field = (EcsFieldDef)val.Aux!;
         var elemType = TypeLayout.GetElementType(field.FieldType);
         var raw = ReadRawForType(val.ExtraArgs![0], elemType);
@@ -1282,7 +1159,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private void ExecuteKeyPress(SsaValue val)
     {
         var key = ((GamePadKeySymbol)val.Aux!).Key;
-        var dur = _intCache[val.Arg0!.Id];
+        var dur = _cache[val.Arg0!.Id].I32;
         GamePad?.ClickButtons(key, dur, _token);
     }
 
@@ -1296,26 +1173,26 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private void ExecuteStickPress(SsaValue val)
     {
         var key = ((GamePadKeySymbol)val.Aux!).Key;
-        var dur = _intCache[val.Arg0!.Id];
+        var dur = _cache[val.Arg0!.Id].I32;
         var packed = val.Const.GetInt();
         GamePad?.ClickStick(key, (byte)((packed >> 16) & 0xFF), (byte)((packed >> 8) & 0xFF), dur, _token);
     }
 
     private void ExecuteWait(SsaValue val)
     {
-        var dur = _intCache[val.Arg0!.Id];
+        var dur = _cache[val.Arg0!.Id].I32;
         CustomDelay.Delay(dur, _token);
     }
 
     private void ExecuteCaptureToCache(SsaValue val)
     {
-        var x = _intCache[val.Arg0!.Id];
-        var y = _intCache[val.Arg1!.Id];
+        var x = _cache[val.Arg0!.Id].I32;
+        var y = _cache[val.Arg1!.Id].I32;
         var extras = val.ExtraArgs!;
-        var w = _intCache[extras[0].Id];
-        var h = _intCache[extras[1].Id];
+        var w = _cache[extras[0].Id].I32;
+        var h = _cache[extras[1].Id].I32;
         var result = Frame?.Invoke(x, y, w, h);
-        _objCache[val.Id] = result ?? "ERR!!FRAME NOT SUPPORT";
+        _cache[val.Id] = TaggedValue.FromStringHandle(StoreString(result ?? "ERR!!FRAME NOT SUPPORT"));
     }
 
     private void ExecuteOcrInitToCache(SsaValue val)
@@ -1326,31 +1203,31 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         var engineMode = CoerceString(extras[0].Id);
         var psmode = CoerceString(extras[1].Id);
         var result = OcrInit?.Invoke(lang, dataPath, engineMode, psmode);
-        _intCache[val.Id] = result == true ? 1 : 0;
+        _cache[val.Id] = TaggedValue.FromBool(result == true);
     }
 
     private void ExecuteOcrToCache(SsaValue val)
     {
-        var x = _intCache[val.Arg0!.Id];
-        var y = _intCache[val.Arg1!.Id];
+        var x = _cache[val.Arg0!.Id].I32;
+        var y = _cache[val.Arg1!.Id].I32;
         var extras = val.ExtraArgs!;
-        var w = _intCache[extras[0].Id];
-        var h = _intCache[extras[1].Id];
+        var w = _cache[extras[0].Id].I32;
+        var h = _cache[extras[1].Id].I32;
         var lang = CoerceString(extras[2].Id);
         var result = Ocr?.Invoke(x, y, w, h, lang);
-        _objCache[val.Id] = result ?? "ERR!!OCR NOT SUPPORT";
+        _cache[val.Id] = TaggedValue.FromStringHandle(StoreString(result ?? "ERR!!OCR NOT SUPPORT"));
     }
 
     private void ExecuteRoiToCache(SsaValue val)
     {
         var image = CoerceString(val.Arg0!.Id);
-        var x = _intCache[val.Arg1!.Id];
+        var x = _cache[val.Arg1!.Id].I32;
         var extras = val.ExtraArgs!;
-        var y = _intCache[extras[0].Id];
-        var w = _intCache[extras[1].Id];
-        var h = _intCache[extras[2].Id];
+        var y = _cache[extras[0].Id].I32;
+        var w = _cache[extras[1].Id].I32;
+        var h = _cache[extras[2].Id].I32;
         var result = Roi?.Invoke(image, x, y, w, h);
-        _objCache[val.Id] = result ?? "ERR!!ROI NOT SUPPORT";
+        _cache[val.Id] = TaggedValue.FromStringHandle(StoreString(result ?? "ERR!!ROI NOT SUPPORT"));
     }
 
     private void ExecuteRuntimeValueToCache(SsaValue val)
@@ -1359,7 +1236,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         if (_runtimeValueGetters.TryGetValue(name, out var getter))
         {
             var v = getter(); // returns Value
-            UnpackToCache(val.Id, val.Type, v);
+            ValueToCache(val.Id, val.Type, v);
             return;
         }
         throw new Exception($"找不到运行时变量 \"{name}\"");
@@ -1370,94 +1247,39 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         var name = ((RuntimeValueNameSymbol)val.Aux!).Name;
         if (LabelMatch is not { } matcher)
             throw new Exception("图像标签匹配器未初始化");
-        _intCache[val.Id] = matcher(name); // LabelMatchDelegate returns int
+        _cache[val.Id] = TaggedValue.FromInt(matcher(name)); // LabelMatchDelegate returns int
     }
 
-    // ============ 槽位读写 ============
+    // ============ 原始值读写（结构体字段中转） ============
 
-    private static SlotCategory GetSlotCategory(ScriptType type)
-    {
-        if (type.Equals(ScriptType.Bool) || type.Equals(ScriptType.Byte) ||
-            type.Equals(ScriptType.Int) || type.Equals(ScriptType.UInt))
-            return SlotCategory.Int;
-        if (type.Equals(ScriptType.UInt64) || type.Equals(ScriptType.Ptr))
-            return SlotCategory.Long;
-        if (type.Equals(ScriptType.Double))
-            return SlotCategory.Double;
-        return SlotCategory.Handle;
-    }
-
-    /// <summary>将类型化缓存中的值写入帧槽位</summary>
-    private void WriteCacheToSlot(SlotDesc desc, EvalFrame frame, ScriptType type, SsaValue src)
-    {
-        switch (desc.Category)
-        {
-            case SlotCategory.Int:
-                frame.Ints[desc.Index] = _intCache[src.Id];
-                break;
-            case SlotCategory.Long:
-                frame.Longs[desc.Index] = _longCache[src.Id];
-                break;
-            case SlotCategory.Double:
-                frame.Doubles[desc.Index] = _doubleCache[src.Id];
-                break;
-            case SlotCategory.Handle:
-                if (frame.Handles[desc.Index] != 0) _heap.Free(frame.Handles[desc.Index]);
-                frame.Handles[desc.Index] = StoreHandleObj(type, _objCache[src.Id]);
-                break;
-        }
-    }
-
-    /// <summary>将 object 存入堆 handle</summary>
-    private int StoreHandleObj(ScriptType type, object? obj)
-    {
-        if (type.Equals(ScriptType.String))
-            return _heap.StoreString(obj as string ?? "");
-        if (type is ArrayType)
-            return _heap.StoreArray(((ScriptArray)obj!).Clone());
-        if (type is StructType)
-        {
-            var src = (EcsStruct)obj!;
-            return _heap.StoreStruct(new EcsStruct(src.Definition, src.NativePtr));
-        }
-        throw new InvalidOperationException($"不支持 handle 存储: {type}");
-    }
-
-    /// <summary>从缓存读取原始值用于结构体字段写入</summary>
+    /// <summary>从缓存读出原始值用于结构体字段写入（按 ScriptType）。</summary>
     private object ReadRawForType(SsaValue v, ScriptType type)
     {
-        if (type.Equals(ScriptType.Byte)) return (byte)_intCache[v.Id];
-        if (type.Equals(ScriptType.Int)) return _intCache[v.Id];
-        if (type.Equals(ScriptType.Bool)) return _intCache[v.Id] != 0;
-        if (type.Equals(ScriptType.UInt)) return unchecked((uint)_intCache[v.Id]);
-        if (type.Equals(ScriptType.UInt64)) return (ulong)_longCache[v.Id];
-        if (type.Equals(ScriptType.Ptr)) return new IntPtr(_longCache[v.Id]);
-        if (type.Equals(ScriptType.Double)) return _doubleCache[v.Id];
+        var tv = _cache[v.Id];
+        if (type.Equals(ScriptType.Byte))   return (byte)tv.I32;
+        if (type.Equals(ScriptType.Int))    return tv.I32;
+        if (type.Equals(ScriptType.Bool))   return tv.I32 != 0;
+        if (type.Equals(ScriptType.UInt))   return unchecked((uint)tv.I32);
+        if (type.Equals(ScriptType.UInt64)) return tv.AsUInt64();
+        if (type.Equals(ScriptType.Ptr))    return new IntPtr(tv.I64);
+        if (type.Equals(ScriptType.Double)) return tv.F64;
         if (type.Equals(ScriptType.String)) return CoerceString(v.Id);
-        if (type is StructType) return CoerceStruct(v.Id);
-        return _intCache[v.Id];
+        if (type is StructType)             return CoerceStruct(v.Id);
+        return tv.I32;
     }
 
-    /// <summary>将结构体原始字段值写入类型化缓存</summary>
+    /// <summary>将结构体原始字段值写入统一缓存（按 ScriptType）。</summary>
     private void WriteRawToCache(int id, ScriptType type, object raw)
     {
-        if (type.Equals(ScriptType.Byte)) _intCache[id] = (byte)raw;
-        else if (type.Equals(ScriptType.Int)) _intCache[id] = (int)raw;
-        else if (type.Equals(ScriptType.Bool)) _intCache[id] = (bool)raw ? 1 : 0;
-        else if (type.Equals(ScriptType.UInt)) _intCache[id] = unchecked((int)(uint)raw);
-        else if (type.Equals(ScriptType.UInt64)) _longCache[id] = unchecked((long)(ulong)raw);
-        else if (type.Equals(ScriptType.Ptr)) _longCache[id] = ((IntPtr)raw).ToInt64();
-        else if (type.Equals(ScriptType.Double)) _doubleCache[id] = (double)raw;
-        else if (type.Equals(ScriptType.String)) _objCache[id] = (string)raw;
-        else if (type is StructType) _objCache[id] = (EcsStruct)raw;
-    }
-
-    private static int WriteIntSlot(ScriptType type, Value value)
-    {
-        if (type.Equals(ScriptType.Bool)) return value.AsBool() ? 1 : 0;
-        if (type.Equals(ScriptType.Byte)) return value.AsByte();
-        if (type.Equals(ScriptType.UInt)) return unchecked((int)value.AsUInt());
-        return value.AsInt();
+        if (type.Equals(ScriptType.Byte))         _cache[id] = TaggedValue.FromByte((byte)raw);
+        else if (type.Equals(ScriptType.Int))     _cache[id] = TaggedValue.FromInt((int)raw);
+        else if (type.Equals(ScriptType.Bool))    _cache[id] = TaggedValue.FromBool((bool)raw);
+        else if (type.Equals(ScriptType.UInt))    _cache[id] = TaggedValue.FromUInt((uint)raw);
+        else if (type.Equals(ScriptType.UInt64))  _cache[id] = TaggedValue.FromUInt64((ulong)raw);
+        else if (type.Equals(ScriptType.Ptr))     _cache[id] = TaggedValue.FromPtr(((IntPtr)raw).ToInt64());
+        else if (type.Equals(ScriptType.Double))  _cache[id] = TaggedValue.FromDouble((double)raw);
+        else if (type.Equals(ScriptType.String))  _cache[id] = TaggedValue.FromStringHandle(StoreString((string)raw));
+        else if (type is StructType)              _cache[id] = TaggedValue.FromStructHandle(StoreStruct((EcsStruct)raw));
     }
 
     private static Value RawToValue(object raw, ScriptType type)
@@ -1494,13 +1316,16 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     private void PushFrame(FunctionSymbol function)
     {
         var layout = function.Layout;
-        _localFrames.Push(new EvalFrame(layout.IntSlots, layout.LongSlots, layout.DoubleSlots, layout.HandleSlots));
+        _localFrames.Push(new EvalFrame(layout.SlotCount));
     }
 
     private void PopFrame()
     {
         var frame = _localFrames.Pop();
-        _heap.FreeAll(frame.Handles);
+        // 释放该帧持有的所有 handle
+        var locals = frame.Locals;
+        for (int i = 0; i < locals.Length; i++)
+            if (locals[i].IsHandle) _heap.Free(locals[i].Handle);
     }
 
     // ============ 函数调用入口 ============
@@ -1518,36 +1343,27 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
             throw new OperationCanceledException(token);
 
         var layout = function.Layout;
-        var frame = new EvalFrame(layout.IntSlots, layout.LongSlots, layout.DoubleSlots, layout.HandleSlots);
+        var frame = new EvalFrame(layout.SlotCount);
 
         for (int i = 0; i < args.Length; i++)
         {
             var param = function.Parameters[i];
-            UnpackToSlot(param.Slot, frame, param.Type, args[i]);
+            ValueToSlot(frame, param.Slot.Index, param.Type, args[i]);
         }
 
         // 自递归调用：同一函数的 SSA ID 在嵌套帧中会互相覆盖，需要缓存隔离
         var isRecursive = _currentFunc != null && function == _currentFunc.Symbol;
         if (isRecursive)
         {
-            var savedInt = _intCache;
-            var savedLong = _longCache;
-            var savedDouble = _doubleCache;
-            var savedObj = _objCache;
-            _intCache = new int[savedInt.Length];
-            _longCache = new long[savedLong.Length];
-            _doubleCache = new double[savedDouble.Length];
-            _objCache = new object?[savedObj.Length];
+            var savedCache = _cache;
+            _cache = new TaggedValue[savedCache.Length];
             ResetCaches();
 
             _localFrames.Push(frame);
             try { EvaluateFunction(func); }
             finally { _localFrames.Pop(); }
 
-            _intCache = savedInt;
-            _longCache = savedLong;
-            _doubleCache = savedDouble;
-            _objCache = savedObj;
+            _cache = savedCache;
         }
         else
         {
@@ -1559,26 +1375,22 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
         return GetReturnValue();
     }
 
-    /// <summary>将 Value 解包到帧槽位（用于函数参数传入）</summary>
-    private void UnpackToSlot(SlotDesc desc, EvalFrame frame, ScriptType type, Value value)
+    /// <summary>将 Value 解包到帧槽位（用于函数参数传入）。</summary>
+    private void ValueToSlot(EvalFrame frame, int slotIdx, ScriptType type, Value value)
     {
-        switch (desc.Category)
+        if (type.Equals(ScriptType.Int))         frame.Locals[slotIdx] = TaggedValue.FromInt(value.AsInt());
+        else if (type.Equals(ScriptType.Bool))   frame.Locals[slotIdx] = TaggedValue.FromBool(value.AsBool());
+        else if (type.Equals(ScriptType.Byte))   frame.Locals[slotIdx] = TaggedValue.FromByte(value.AsByte());
+        else if (type.Equals(ScriptType.UInt))   frame.Locals[slotIdx] = TaggedValue.FromUInt(value.AsUInt());
+        else if (type.Equals(ScriptType.UInt64)) frame.Locals[slotIdx] = TaggedValue.FromUInt64(value.AsUInt64());
+        else if (type.Equals(ScriptType.Ptr))    frame.Locals[slotIdx] = TaggedValue.FromPtr(value.AsPtr());
+        else if (type.Equals(ScriptType.Double)) frame.Locals[slotIdx] = TaggedValue.FromDouble(value.AsDouble());
+        else if (type.Equals(ScriptType.String)) frame.Locals[slotIdx] = TaggedValue.FromStringHandle(StoreString(value.AsString()));
+        else if (type is ArrayType)              frame.Locals[slotIdx] = TaggedValue.FromArrayHandle(StoreArray(value.AsArray().Clone()));
+        else if (type is StructType)
         {
-            case SlotCategory.Int:
-                frame.Ints[desc.Index] = WriteIntSlot(type, value);
-                break;
-            case SlotCategory.Long:
-                frame.Longs[desc.Index] = type.Equals(ScriptType.UInt64)
-                    ? (long)value.AsUInt64()
-                    : value.AsPtr();
-                break;
-            case SlotCategory.Double:
-                frame.Doubles[desc.Index] = value.AsDouble();
-                break;
-            case SlotCategory.Handle:
-                if (frame.Handles[desc.Index] != 0) _heap.Free(frame.Handles[desc.Index]);
-                frame.Handles[desc.Index] = StoreHandleObj(type, ExtractHandleObj(type, value));
-                break;
+            var src = value.AsStruct();
+            frame.Locals[slotIdx] = TaggedValue.FromStructHandle(StoreStruct(new EcsStruct(src.Definition, src.NativePtr)));
         }
     }
 
@@ -1598,9 +1410,13 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
     public void Dispose()
     {
-        _heap.FreeAll(_globalHandles);
+        // 释放全局槽位中的所有 handle
+        for (int i = 0; i < _globals.Length; i++)
+            if (_globals[i].IsHandle) _heap.Free(_globals[i].Handle);
+        // 释放所有帧中的 handle
         foreach (var frame in _localFrames)
-            _heap.FreeAll(frame.Handles);
+            for (int i = 0; i < frame.Locals.Length; i++)
+                if (frame.Locals[i].IsHandle) _heap.Free(frame.Locals[i].Handle);
         _localFrames.Clear();
         _heap.FreeAll();
     }
@@ -1610,7 +1426,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     /// <summary>供 JIT 混合模式调用：执行单条指令。</summary>
     public void ExecuteInstructionPublic(SsaValue val)
     {
-        var frame = _localFrames.Count > 0 ? _localFrames.Peek() : new EvalFrame(0, 0, 0, 0);
+        var frame = _localFrames.Count > 0 ? _localFrames.Peek() : new EvalFrame(0);
         ExecuteInstruction(val, frame);
     }
 

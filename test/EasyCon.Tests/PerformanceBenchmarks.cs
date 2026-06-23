@@ -1,7 +1,6 @@
 using EasyCon.Core.Runner;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
-using EasyCon.Script.Jit;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
@@ -40,31 +39,6 @@ public class PerformanceBenchmarks
         return (times[BenchmarkIterations / 2], lastOutput!);
     }
 
-    private static (double Ms, string[] Output) BenchmarkJit(string code)
-    {
-        var compilation = Compilation.Create(SyntaxTree.Parse(code)).Compile(null);
-        if (compilation.Program == null)
-            Assert.Fail("脚本编译错误");
-
-        var output = new MockOutputAdapter();
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-        using var evaluator = new SsaEvaluator(compilation.Program, cts.Token) { IoAdapter = output, UseJit = true };
-
-        var times = new List<double>();
-        string[]? lastOutput = null;
-        for (int i = 0; i < BenchmarkIterations; i++)
-        {
-            output.Printed.Clear();
-            var sw = Stopwatch.StartNew();
-            evaluator.Evaluate();
-            sw.Stop();
-            times.Add(sw.Elapsed.TotalMilliseconds);
-            lastOutput = output.Printed.ToArray();
-        }
-        times.Sort();
-        return (times[BenchmarkIterations / 2], lastOutput!);
-    }
-
     private static int ParseIntOutput(string[] output, int index = 0)
     {
         if (output.Length <= index)
@@ -85,8 +59,7 @@ NEXT
 PRINT $count
 ";
         var (interpMs, _) = BenchmarkInterp(code);
-        var (jitMs, _) = BenchmarkJit(code);
-        Console.WriteLine($"[A] 循环吞吐量 100万次: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
+        Console.WriteLine($"[A] 循环吞吐量 100万次: 解释器={interpMs:F1}ms ({1_000_000.0 / interpMs / 1000:F1}K iter/s)");
     }
 
     [Test] public void Benchmark_FunctionCallOverhead()
@@ -102,8 +75,7 @@ NEXT
 PRINT $sum
 ";
         var (interpMs, _) = BenchmarkInterp(code);
-        var (jitMs, _) = BenchmarkJit(code);
-        Console.WriteLine($"[B] 函数调用 10万次: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
+        Console.WriteLine($"[B] 函数调用 10万次: 解释器={interpMs:F1}ms ({100_000.0 / interpMs:F0} calls/s)");
     }
 
     [Test] public void Benchmark_MultiArgFunctionCall()
@@ -119,8 +91,7 @@ NEXT
 PRINT $sum
 ";
         var (interpMs, _) = BenchmarkInterp(code);
-        var (jitMs, _) = BenchmarkJit(code);
-        Console.WriteLine($"[C] 4参数调用 10万次: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
+        Console.WriteLine($"[C] 4参数调用 10万次: 解释器={interpMs:F1}ms ({100_000.0 / interpMs:F0} calls/s)");
     }
 
     [Test] public void Benchmark_TailRecursion_Reuse()
@@ -136,8 +107,7 @@ $r = sum(50000, 0)
 PRINT $r
 ";
         var (interpMs, _) = BenchmarkInterp(code);
-        var (jitMs, _) = BenchmarkJit(code);
-        Console.WriteLine($"[D] 尾递归 50000层: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
+        Console.WriteLine($"[D] 尾递归 50000层: 解释器={interpMs:F1}ms");
     }
 
     [Test] public void Benchmark_GlobalVariableReadWrite()
@@ -162,8 +132,9 @@ PRINT $d
 PRINT $e
 ";
         var (interpMs, _) = BenchmarkInterp(code);
-        var (jitMs, _) = BenchmarkJit(code);
-        Console.WriteLine($"[E] 全局变量 5var×20万: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
+        // 5 个变量 × 20 万次 × 2 (读+写)
+        var totalOps = 5 * 200000 * 2;
+        Console.WriteLine($"[E] 全局变量 5var×20万: 解释器={interpMs:F1}ms ({totalOps * 1.0 / interpMs / 1000:F1}M ops/s)");
     }
 
     [Test] public void Benchmark_StringLength()
@@ -177,8 +148,7 @@ NEXT
 PRINT $len
 ";
         var (interpMs, _) = BenchmarkInterp(code);
-        var (jitMs, _) = BenchmarkJit(code);
-        Console.WriteLine($"[F] 字符串 LEN 10万次: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
+        Console.WriteLine($"[F] 字符串 LEN 10万次: 解释器={interpMs:F1}ms ({100_000.0 / interpMs:F0} calls/s)");
     }
 
     [Test] public void Benchmark_PrimeSieve()
@@ -198,8 +168,8 @@ FOR $n = 2 TO 10000
 NEXT
 PRINT $count
 ";
-        var (interpMs, _) = BenchmarkInterp(code);
-        var (jitMs, _) = BenchmarkJit(code);
-        Console.WriteLine($"[G] 素数筛 2-10000: 解释器={interpMs:F1}ms, JIT={jitMs:F1}ms, 加速={interpMs / jitMs:F1}x");
+        var (interpMs, output) = BenchmarkInterp(code);
+        var result = ParseIntOutput(output);
+        Console.WriteLine($"[G] 素数筛 2-10000: 解释器={interpMs:F1}ms, 找到 {result} 个素数");
     }
 }

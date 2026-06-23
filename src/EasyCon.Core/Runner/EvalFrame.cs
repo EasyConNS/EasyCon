@@ -1,21 +1,19 @@
+using EasyCon.Script.Symbols;
+
 namespace EasyCon.Core.Runner;
 
 /// <summary>
-/// 类型化执行帧，按类别存储变量，替代 Value[]。
-/// Handle 字段存储 1-based 索引到 RuntimeHeap（0 = null）。
+/// 扁平执行帧：统一的 TaggedValue 数组，替代 4 路分裂的 Ints/Longs/Doubles/Handles。
+/// 类比 CPython 的 localsplus —— 一个连续数组存放所有局部变量。
+/// 类型信息在 SSA 操作码中，存储层无需类型分裂。
 /// </summary>
 internal struct EvalFrame
 {
-    public int[] Ints;
-    public long[] Longs;
-    public double[] Doubles;
-    public int[] Handles;
+    /// <summary>局部变量槽位（含参数），编译时按 SlotIndex 索引。</summary>
+    public TaggedValue[] Locals;
 
-    public EvalFrame(int intSlots, int longSlots, int doubleSlots, int handleSlots)
+    public EvalFrame(int slotCount)
     {
-        Ints = intSlots > 0 ? new int[intSlots] : Array.Empty<int>();
-        Longs = longSlots > 0 ? new long[longSlots] : Array.Empty<long>();
-        Doubles = doubleSlots > 0 ? new double[doubleSlots] : Array.Empty<double>();
-        Handles = handleSlots > 0 ? new int[handleSlots] : Array.Empty<int>();
+        Locals = slotCount > 0 ? new TaggedValue[slotCount] : Array.Empty<TaggedValue>();
     }
 }

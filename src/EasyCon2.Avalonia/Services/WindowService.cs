@@ -79,6 +79,18 @@ public class WindowService : IWindowService
         }
     }
 
+    public void ShowMcpConfigWindow()
+    {
+        try
+        {
+            new McpConfigWindow().Show(MainWindow);
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开 MCP 配置失败: {ex.Message}");
+        }
+    }
+
     public void ShowKeyMappingWindow()
     {
         if (MainWindow == null) return;

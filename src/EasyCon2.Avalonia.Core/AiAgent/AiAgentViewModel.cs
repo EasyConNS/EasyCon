@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Config;
@@ -7,6 +8,7 @@ using EasyCon.Core.LLM.Models;
 using EasyCon.Core.LLM.Skills;
 using EasyCon2.Avalonia.Core.AiAgent.Skills;
 using EasyCon2.Avalonia.Core.AiAgent.Tools;
+using EasyCon2.Avalonia.Core.Mcp;
 using EasyCon2.Avalonia.Core.Services;
 using System.Collections.ObjectModel;
 using System.Text;
@@ -19,22 +21,21 @@ public partial class AiAgentViewModel : ObservableObject
     private readonly ToolRegistry _tools = new();
     private readonly SkillRegistry _skills = new();
     private readonly IToolCallService? _toolCallService;
+    private readonly IMcpManager? _mcpManager;
     private AgentOrchestrator? _orchestrator;
 
-    private string _conversationPrefix = "";
+    // 保留（用于流式内容节流累加）
     private readonly StringBuilder _pendingReply = new();
     private readonly StringBuilder _pendingThinking = new();
+
+    // 新增
+    private AssistantMessage? _currentAssistant;
+    private readonly Dictionary<string, ToolCallMessage> _pendingTools = new();
     private EasyCon.Core.LLM.Models.ModelsConfig? _cachedConfig;
     private int _totalTokensUsed;
 
     [ObservableProperty]
     private bool _isOpen;
-
-    [ObservableProperty]
-    private string _conversationText = "";
-
-    [ObservableProperty]
-    private int _outputCaretIndex;
 
     [ObservableProperty]
     private string _inputText = "";
@@ -46,19 +47,25 @@ public partial class AiAgentViewModel : ObservableObject
     private ModelEntry? _selectedEntry;
 
     [ObservableProperty]
-    private string _tokenUsage = "";
+    private string _tokenUsage = "tokens: --";
 
     private CancellationTokenSource? _cts;
+    private bool _uiUpdateScheduled;
 
     public ObservableCollection<ModelEntry> AllModels { get; } = [];
 
+    public ObservableCollection<ChatMessageItem> Messages { get; } = [];
+
     private bool _initialized;
 
-    public AiAgentViewModel() : this(null) { }
+    public AiAgentViewModel() : this(null, null) { }
 
-    public AiAgentViewModel(IToolCallService? toolCallService)
+    public AiAgentViewModel(IToolCallService? toolCallService) : this(toolCallService, null) { }
+
+    public AiAgentViewModel(IToolCallService? toolCallService, IMcpManager? mcpManager)
     {
         _toolCallService = toolCallService;
+        _mcpManager = mcpManager;
         if (toolCallService is not null)
         {
             DefaultTools.RegisterAll(_tools, toolCallService);
@@ -67,6 +74,13 @@ public partial class AiAgentViewModel : ObservableObject
 
         // 订阅模型配置变更通知，保存后自动刷新模型列表。
         ConfigManager.ModelsConfigChanged += OnModelsConfigChanged;
+
+        // 订阅 MCP 配置变更通知，保存后差量重连服务器并刷新工具集。
+        ConfigManager.McpConfigChanged += OnMcpConfigChanged;
+
+        // 订阅 MCP 工具集变更，重注册适配器。
+        if (_mcpManager is not null)
+            _mcpManager.ToolsChanged += OnMcpToolsChanged;
     }
 
     private void OnModelsConfigChanged()
@@ -123,18 +137,57 @@ public partial class AiAgentViewModel : ObservableObject
         _orchestrator = new AgentOrchestrator(_tools, _skills);
     }
 
-    partial void OnConversationTextChanged(string value)
-    {
-        OutputCaretIndex = value.Length;
-    }
-
     partial void OnIsOpenChanged(bool value)
     {
         if (value && !_initialized)
         {
             _initialized = true;
             RefreshModels();
+            // 首次打开时初始化 MCP 连接（fire-and-forget，不阻塞 UI）。
+            if (_mcpManager is not null)
+                _ = InitializeMcpAsync();
         }
+    }
+
+    private async Task InitializeMcpAsync()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await _mcpManager!.InitializeAsync(cts.Token);
+        }
+        catch (Exception ex)
+        {
+            // MCP 初始化失败不阻塞 Agent，仅记录日志。
+            Dispatcher.UIThread.Post(() => Messages.Add(new ToolCallMessage { Name = "MCP", Summary = $"初始化失败: {ex.Message}", Success = false }));
+        }
+    }
+
+    private void OnMcpConfigChanged()
+    {
+        if (_mcpManager is null) return;
+        // 配置变更后差量重连（fire-and-forget）。
+        _ = RefreshMcpAsync();
+    }
+
+    private async Task RefreshMcpAsync()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await _mcpManager!.RefreshAsync(cts.Token);
+        }
+        catch (Exception ex)
+        {
+            Dispatcher.UIThread.Post(() => Messages.Add(new ToolCallMessage { Name = "MCP", Summary = $"刷新失败: {ex.Message}", Success = false }));
+        }
+    }
+
+    private void OnMcpToolsChanged()
+    {
+        // 移除所有旧的 MCP 工具适配器，重新注册。
+        _tools.Unregister(t => t is McpToolAdapter);
+        McpTools.RegisterAll(_tools, _mcpManager!);
     }
 
     [RelayCommand]
@@ -148,12 +201,11 @@ public partial class AiAgentViewModel : ObservableObject
     {
         _history.Clear();
         _orchestrator?.ResetState();
-        _conversationPrefix = "";
-        _pendingReply.Clear();
-        _pendingThinking.Clear();
+        _currentAssistant = null;
+        _pendingTools.Clear();
         _totalTokensUsed = 0;
-        ConversationText = "";
-        TokenUsage = "";
+        Messages.Clear();
+        TokenUsage = "tokens: --";
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -173,7 +225,7 @@ public partial class AiAgentViewModel : ObservableObject
             var hint = AllModels.Count == 0
                 ? "未配置模型供应商。请在配置目录下创建 models.json 文件。"
                 : "请先选择一个模型。";
-            ConversationText = AppendMessage(ConversationText, "系统", hint);
+            Messages.Add(new ToolCallMessage { Name = "提示", Summary = hint, Success = false });
             return;
         }
 
@@ -181,7 +233,7 @@ public partial class AiAgentViewModel : ObservableObject
         InputText = "";
         IsGenerating = true;
 
-        _conversationPrefix = AppendMessage(_conversationPrefix, "你", message);
+        Messages.Add(new UserMessage { Content = message });
         _history.Add(ChatMessage.User(message));
 
         _cts = new CancellationTokenSource();
@@ -191,22 +243,28 @@ public partial class AiAgentViewModel : ObservableObject
 
             var provider = GetProviderConfig(SelectedEntry.ProviderKey);
             await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token);
-            _conversationPrefix = ConversationText;
         }
         catch (OperationCanceledException)
         {
-            ConversationText = _conversationPrefix + "[已停止]";
-            _conversationPrefix = ConversationText;
+            var prev = _currentAssistant;
+            if (prev is not null)
+                Dispatcher.UIThread.Post(() => prev.Content += "\n[已停止]");
         }
         catch (Exception ex)
         {
-            ConversationText = _conversationPrefix + $"[错误] {ex.Message}";
-            _conversationPrefix = ConversationText;
+            var prev = _currentAssistant;
+            if (prev is not null)
+                Dispatcher.UIThread.Post(() => prev.Content += $"\n[错误] {ex.Message}");
         }
         finally
         {
             _pendingReply.Clear();
             _pendingThinking.Clear();
+            var prev = _currentAssistant;
+            if (prev is not null)
+                Dispatcher.UIThread.Post(() => prev.IsStreaming = false);
+            _currentAssistant = null;
+            _pendingTools.Clear();
             _cts?.Dispose();
             _cts = null;
             IsGenerating = false;
@@ -215,64 +273,127 @@ public partial class AiAgentViewModel : ObservableObject
 
     /// <summary>
     /// 处理编排器事件，更新 UI 状态。
+    /// 连续事件（ContentDelta / ThinkingDelta）经过节流，避免 UI 线程被高频更新淹没。
+    /// 离散事件（ToolExecuting / ToolCompleted 等）直接派发到 UI 线程。
     /// </summary>
     private void HandleAgentEvent(AgentEvent evt)
     {
         switch (evt)
         {
             case AgentEvent.RoundStart:
-                _conversationPrefix = AppendMessage(_conversationPrefix, "AI", "");
                 _pendingReply.Clear();
                 _pendingThinking.Clear();
-                ConversationText = _conversationPrefix;
+                // 将上一轮正在流式的 AI 消息标记为完成，自动折叠思考
+                var prev = _currentAssistant;
+                _currentAssistant = new AssistantMessage { IsStreaming = true };
+                _pendingTools.Clear();
+                if (prev is not null)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        prev.IsStreaming = false;
+                        if (prev.Thinking is not null)
+                            prev.Thinking.IsExpanded = false;
+                    }, DispatcherPriority.Background);
+                }
+                Dispatcher.UIThread.Post(() => Messages.Add(_currentAssistant), DispatcherPriority.Background);
                 break;
 
             case AgentEvent.ContentDelta d:
                 _pendingReply.Append(d.Text);
-                ConversationText = BuildDisplayText();
+                ScheduleUiUpdate();
                 break;
 
             case AgentEvent.ThinkingDelta d:
                 _pendingThinking.Append(d.Text);
-                ConversationText = BuildDisplayText();
+                ScheduleUiUpdate();
                 break;
 
             case AgentEvent.ToolExecuting t:
-                _conversationPrefix = AppendMessage(_conversationPrefix, "工具", $"{t.Name} → 执行中...");
-                ConversationText = _conversationPrefix;
+                var toolMsg = new ToolCallMessage { Name = t.Name, Success = false, Summary = "执行中..." };
+                _pendingTools[t.Name] = toolMsg;
+                Dispatcher.UIThread.Post(() => Messages.Add(toolMsg), DispatcherPriority.Background);
                 break;
 
             case AgentEvent.ToolCompleted t:
-                // 替换最后一行的"执行中..."为实际结果
-                _conversationPrefix = AppendMessage(_conversationPrefix, "工具", $"{t.Name} → {t.Summary}");
-                ConversationText = _conversationPrefix;
+                if (_pendingTools.TryGetValue(t.Name, out var pending))
+                {
+                    var msg = pending;
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        msg.Success = true;
+                        msg.Summary = t.Summary;
+                        msg.FullResult = t.FullResult;
+                    }, DispatcherPriority.Background);
+                }
                 break;
 
             case AgentEvent.UsageUpdated u:
-                _totalTokensUsed += u.Total;
-                TokenUsage = $"本轮: {u.Total} tokens | 累计: {_totalTokensUsed}";
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _totalTokensUsed += u.Total;
+                    TokenUsage = $"本轮: {u.Total} tokens | 累计: {_totalTokensUsed}";
+                }, DispatcherPriority.Background);
+                break;
+
+            case AgentEvent.Retrying r:
+                Dispatcher.UIThread.Post(() =>
+                {
+                    Messages.Add(new ToolCallMessage
+                    {
+                        Name = "重试",
+                        Summary = $"第 {r.Attempt}/{r.MaxAttempts} 次重试: {r.Reason}",
+                        Success = false
+                    });
+                }, DispatcherPriority.Background);
                 break;
 
             case AgentEvent.Error e:
-                _pendingReply.Append($"[错误] {e.Message}");
-                ConversationText = BuildDisplayText();
+                if (_currentAssistant is not null)
+                {
+                    var current = _currentAssistant;
+                    Dispatcher.UIThread.Post(() => current.Content += $"[错误] {e.Message}", DispatcherPriority.Background);
+                }
                 break;
 
             case AgentEvent.Completed:
-                // 最终内容由编排器写入 history，这里不需要额外操作
+                _uiUpdateScheduled = false;
+                if (_currentAssistant is not null)
+                {
+                    var current = _currentAssistant;
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        current.IsStreaming = false;
+                        if (current.Thinking is not null)
+                            current.Thinking.IsExpanded = false;
+                    }, DispatcherPriority.Background);
+                }
+                _pendingTools.Clear();
                 break;
         }
     }
 
     /// <summary>
-    /// 拼接当前显示文本（前缀 + 思考块 + 待定回复）。
+    /// 节流式 UI 更新：将 StringBuilder 中的累积内容写入当前 AssistantMessage。
+    /// 用于 ContentDelta / ThinkingDelta 等高频连续事件。
     /// </summary>
-    private string BuildDisplayText()
+    private void ScheduleUiUpdate()
     {
-        var thinkingBlock = _pendingThinking.Length > 0
-            ? FormatThinkingBlock(_pendingThinking.ToString())
-            : "";
-        return string.Concat(_conversationPrefix, thinkingBlock, _pendingReply);
+        if (_uiUpdateScheduled) return;
+        _uiUpdateScheduled = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _uiUpdateScheduled = false;
+            if (_currentAssistant is not null)
+            {
+                _currentAssistant.Content = _pendingReply.ToString();
+                if (_pendingThinking.Length > 0)
+                {
+                    _currentAssistant.Thinking ??= new ThinkingBlock();
+                    _currentAssistant.Thinking.Text = _pendingThinking.ToString();
+                }
+            }
+        }, DispatcherPriority.Background);
     }
 
     [RelayCommand]
@@ -306,20 +427,5 @@ public partial class AiAgentViewModel : ObservableObject
     {
         _cachedConfig ??= ConfigManager.LoadModelsConfig();
         return _cachedConfig.Models.Providers[providerKey];
-    }
-
-    private static string AppendMessage(string existing, string role, string content)
-    {
-        var sep = string.IsNullOrEmpty(existing) ? "" : $"{Environment.NewLine}{Environment.NewLine}";
-        return $"{existing}{sep}{role}: {content}";
-    }
-
-    /// <summary>
-    /// 将思考内容格式化为可折叠文本块。
-    /// </summary>
-    internal static string FormatThinkingBlock(string thinking)
-    {
-        if (string.IsNullOrEmpty(thinking)) return "";
-        return $"<details>{Environment.NewLine}<summary>💭 思考过程</summary>{Environment.NewLine}{thinking}{Environment.NewLine}</details>{Environment.NewLine}{Environment.NewLine}";
     }
 }

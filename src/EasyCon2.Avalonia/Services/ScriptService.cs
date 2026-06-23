@@ -1,5 +1,6 @@
 ﻿using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Config;
 using EasyCon.Core.Runner;
 using EasyCon.Core.Services;
 using EasyCon.Script;
@@ -103,7 +104,7 @@ public class ScriptService : IScriptService
             {
                 var scriptBasePath = Path.GetDirectoryName(scriptPath) ?? "";
                 scriptBasePath = Path.GetFullPath(scriptBasePath);
-                var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
+                var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppPaths.DataDir);
 
                 var diag = _runner.Load(scriptPath, [.. label.Select(il => il.name)]);
 

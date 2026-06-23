@@ -8,6 +8,7 @@ using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.AiAgent;
+using EasyCon2.Avalonia.Core.Mcp;
 using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Core.TagEditor;
 using EasyCon2.Avalonia.Core.Terminal;
@@ -45,6 +46,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IWindowService _windowService;
     private readonly ToolCallService _toolCallService;
+    private readonly IMcpManager _mcpManager;
     private readonly AnsiParser _ansiParser = new();
     private MonitorViewModel? _monitorViewModel;
     private readonly FileTreeViewModel _fileTreeViewModel;
@@ -299,6 +301,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand OpenESPConfigCommand { get; }
     public ICommand OpenAlertConfigCommand { get; }
     public ICommand OpenModelsConfigCommand { get; }
+    public ICommand OpenMcpConfigCommand { get; }
     public ICommand ToggleMonitorPauseCommand { get; }
 
     public ICommand ShowScriptSyntaxCommand { get; }
@@ -334,7 +337,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 IsControllerConnected,
                 scriptService.IsRunning)
         );
-        AiAgent = new AiAgentViewModel(_toolCallService);
+        _mcpManager = new McpManager(logService);
+        AiAgent = new AiAgentViewModel(_toolCallService, _mcpManager);
         AiAgent.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(AiAgent.IsOpen))
@@ -492,6 +496,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
         OpenAlertConfigCommand = new RelayCommand(OpenAlertConfig);
         OpenModelsConfigCommand = new RelayCommand(OpenModelsConfig);
+        OpenMcpConfigCommand = new RelayCommand(OpenMcpConfig);
         ToggleMonitorPauseCommand = new RelayCommand(ToggleMonitorPause);
         ShowScriptSyntaxCommand = new RelayCommand(ShowScriptSyntax);
         OpenAiAgentCommand = new RelayCommand(OpenAiAgent);
@@ -1337,6 +1342,11 @@ public partial class MainWindowViewModel : ViewModelBase
         _windowService.ShowModelsConfigWindow();
     }
 
+    private void OpenMcpConfig()
+    {
+        _windowService.ShowMcpConfigWindow();
+    }
+
     private void ToggleMonitorVisibility()
     {
         IsMonitorVisible = !IsMonitorVisible;
@@ -1780,6 +1790,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // 释放控制器资源（SDL3 事件循环等）
         _controllerService.Dispose();
+
+        // 释放 MCP 连接（终止子进程）
+        _mcpManager.Dispose();
     }
 
     private void RemoteRun()

@@ -515,7 +515,7 @@ public class SsaConstantPropagationTests
         var func = CreateFunction();
         var entry = Block(func);
         var sym = new LocalVariableSymbol("$arr", false, ScriptType.ArrayOf(ScriptType.Int));
-        sym.Slot = new SlotDesc(SlotCategory.Handle, 0);
+        sym.Slot = new SlotDesc(0);
         var load = LoadL(entry, sym);
         var len = ArrayLenOp(entry, load);
         Ret(entry, len);

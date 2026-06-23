@@ -1,5 +1,6 @@
 using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Config;
 using EasyCon.Core.Services;
 
 namespace EasyCon2.Avalonia.Core.Services;
@@ -23,7 +24,7 @@ public class CaptureService : ICaptureService
 
     public void LoadImgLabels(string path)
     {
-        var (labels, _, _) = ECCore.LoadImgLabels(path, AppDomain.CurrentDomain.BaseDirectory);
+        var (labels, _, _) = ECCore.LoadImgLabels(path, AppPaths.DataDir);
         _loadedLabels = labels.Select(il => new ImgLabelInfo(il.name)).ToList();
         _logService.AddLog($"已加载搜图标签：{_loadedLabels.Count}");
     }

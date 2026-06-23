@@ -6,8 +6,9 @@ namespace EasyCon.Core.Runner;
 /// <summary>
 /// Handle-based 运行时堆，管理 string、ScriptArray、EcsStruct 的生命周期。
 /// Handle 从 1 开始，0 表示 null/空。
+/// 实现 IStringHandleStore：提供字符串驻留（Intern）能力，参考 Python/LuaJIT 的全局字符串表。
 /// </summary>
-internal sealed class RuntimeHeap
+internal sealed class RuntimeHeap : IStringHandleStore
 {
     private const byte TAG_FREE = 0;
     private const byte TAG_STRING = 1;
@@ -21,11 +22,29 @@ internal sealed class RuntimeHeap
     private readonly Stack<int> _freeList = [];
     private int _count;
 
+    /// <summary>
+    /// 字符串驻留表：内容 → handle。参考 CPython PyUnicode_InternInPlace / LuaJIT 全局 string hash。
+    /// 相同内容映射到相同 handle，使 == 比较退化为整数比较。
+    /// </summary>
+    private readonly Dictionary<string, int> _internMap = new(StringComparer.Ordinal);
+
     public int StoreString(string value)
     {
         int handle = AllocSlot();
         _strings[handle] = value;
         _tags[handle] = TAG_STRING;
+        return handle;
+    }
+
+    /// <summary>
+    /// 驻留字符串：已存在则返回已有 handle，否则分配新 handle 并登记。
+    /// 保证内容相同的字符串共享同一 handle（content-addressed）。
+    /// </summary>
+    public int Intern(string value)
+    {
+        if (_internMap.TryGetValue(value, out int existing)) return existing;
+        int handle = StoreString(value);
+        _internMap[value] = handle;
         return handle;
     }
 
@@ -70,6 +89,9 @@ internal sealed class RuntimeHeap
         handle > 0 && handle < _tags.Length && _tags[handle] == TAG_STRING
             ? _strings[handle] ?? string.Empty
             : string.Empty;
+
+    /// <summary>IStringHandleStore.Get 实现：等同 GetString。</summary>
+    public string Get(int handle) => GetString(handle);
 
     public ScriptArray GetArray(int handle) =>
         handle > 0 && handle < _tags.Length && _tags[handle] == TAG_ARRAY
@@ -137,6 +159,14 @@ internal sealed class RuntimeHeap
         };
     }
 
+    /// <summary>复制 handle 指向的字符串为新的独立 handle（IStringHandleStore 实现）。</summary>
+    public int Copy(int handle)
+    {
+        if (handle == 0) return 0;
+        if (handle <= 0 || handle >= _tags.Length || _tags[handle] != TAG_STRING) return 0;
+        return StoreString(_strings[handle]!);
+    }
+
     public void Free(int handle)
     {
         if (handle <= 0 || handle >= _tags.Length || _tags[handle] == TAG_FREE) return;
@@ -148,10 +178,16 @@ internal sealed class RuntimeHeap
         }
         else if (_tags[handle] == TAG_ARRAY)
         {
+            // 递归释放数组持有的嵌套 handle（StringArray 内部的字符串 handle）
+            _arrays[handle]?.FreeNestedHandles();
             _arrays[handle] = null;
         }
         else if (_tags[handle] == TAG_STRING)
         {
+            // 从驻留表中移除（允许未来相同内容重新分配）
+            var s = _strings[handle];
+            if (s != null && _internMap.TryGetValue(s, out int mapped) && mapped == handle)
+                _internMap.Remove(s);
             _strings[handle] = null;
         }
 

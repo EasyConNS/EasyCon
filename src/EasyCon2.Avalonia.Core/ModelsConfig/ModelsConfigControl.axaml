@@ -8,7 +8,7 @@
                Background="{DynamicResource WorkbenchWindowBrush}">
         <!-- Bottom buttons -->
         <Grid DockPanel.Dock="Bottom"
-              ColumnDefinitions="Auto,*"
+              ColumnDefinitions="Auto,*,Auto"
               Margin="0,12,0,0">
             <StackPanel Grid.Column="0"
                         Orientation="Horizontal"
@@ -17,7 +17,14 @@
                 <Button Content="添加供应商"
                         Command="{Binding AddProviderCommand}"/>
             </StackPanel>
-            <StackPanel Grid.Column="1"
+            <TextBlock Grid.Column="1"
+                       Text="{Binding ErrorMessage}"
+                       Foreground="{DynamicResource WorkbenchDangerBrush}"
+                       FontSize="13"
+                       VerticalAlignment="Center"
+                       Margin="12,0,0,0"
+                       IsVisible="{Binding HasError}"/>
+            <StackPanel Grid.Column="2"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Spacing="8">

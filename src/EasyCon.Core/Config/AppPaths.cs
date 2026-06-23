@@ -11,6 +11,7 @@ public static class AppPaths
     public static string AlertConfig => Path.Combine(ConfigDir, "alert.json");
     public static string KeyMappingConfig => Path.Combine(ConfigDir, "keymapping.json");
     public static string ModelsConfig => Path.Combine(ConfigDir, "models.json");
+    public static string McpConfig => Path.Combine(ConfigDir, "mcp.json");
 
     public static string CaptureCacheDir { get; } = InitSubDir(DataDir, "cache");
 

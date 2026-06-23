@@ -9,6 +9,7 @@ using AvaloniaEdit.Document;
 using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Search;
 using EasyCon.Core;
+using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.Editor.Lsp;
 using System.Diagnostics;
 
@@ -348,7 +349,7 @@ public partial class ScriptEditorControl : UserControl
 
         try
         {
-            var (labels, _, _) = ECCore.LoadImgLabels(scriptDir, AppDomain.CurrentDomain.BaseDirectory);
+            var (labels, _, _) = ECCore.LoadImgLabels(scriptDir, AppPaths.DataDir);
             _lspCompletionAdapter.UpdateImgLabels(labels.Select(il => il.name));
         }
         catch

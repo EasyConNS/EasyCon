@@ -50,7 +50,10 @@ public class EvaluatorTests
         var result = compilation.Compile(labelNames);
         if (result.Program == null)
             return (result, Value.Void, output);
-        using var evaluator = new SsaEvaluator(result.Program, new CancellationTokenSource().Token)
+        // 注意：不使用 using —— 返回的 Value 可能包含 ScriptArray，
+        // 其内部 handle 依赖 evaluator 的 RuntimeHeap 生命周期。
+        // 在调用者检查完返回值后，evaluator 由 GC 回收。
+        var evaluator = new SsaEvaluator(result.Program, new CancellationTokenSource().Token)
         {
             IoAdapter = output,
             LabelMatch = labelMatch,

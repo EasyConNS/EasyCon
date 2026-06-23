@@ -12,6 +12,12 @@ public partial class ModelsConfigViewModel : ObservableObject
 {
     public ObservableCollection<ProviderItemViewModel> Providers { get; } = [];
 
+    [ObservableProperty]
+    private string _errorMessage = "";
+
+    [ObservableProperty]
+    private bool _hasError;
+
     public Action? OnSaveCallback { get; set; }
 
     public void Load()
@@ -25,8 +31,15 @@ public partial class ModelsConfigViewModel : ObservableObject
         }
     }
 
-    public void Save()
+    public bool Save()
     {
+        if (!Validate(out var error))
+        {
+            ErrorMessage = error;
+            HasError = true;
+            return false;
+        }
+
         var config = new ModelsConfigType();
         var usedKeys = new HashSet<string>(StringComparer.Ordinal);
 
@@ -38,6 +51,31 @@ public partial class ModelsConfigViewModel : ObservableObject
 
         ConfigManager.SaveModelsConfig(config);
         OnSaveCallback?.Invoke();
+        return true;
+    }
+
+    private bool Validate(out string error)
+    {
+        for (var i = 0; i < Providers.Count; i++)
+        {
+            var vm = Providers[i];
+            var label = Providers.Count > 1 ? $"第 {i + 1} 个供应商" : "供应商";
+
+            if (string.IsNullOrWhiteSpace(vm.Name))
+            {
+                error = $"{label}：名称不能为空";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(vm.BaseUrl))
+            {
+                error = $"{label}：请求地址不能为空";
+                return false;
+            }
+        }
+
+        error = "";
+        return true;
     }
 
     [RelayCommand]
@@ -45,13 +83,24 @@ public partial class ModelsConfigViewModel : ObservableObject
     {
         var vm = new ProviderItemViewModel
         {
-            Name = $"供应商{Providers.Count + 1}",
+            Name = "",
             RequestDelete = OnProviderDeleteRequested
         };
         Providers.Add(vm);
+        ClearError();
     }
 
-    private void OnProviderDeleteRequested(ProviderItemViewModel item) => Providers.Remove(item);
+    private void OnProviderDeleteRequested(ProviderItemViewModel item)
+    {
+        Providers.Remove(item);
+        ClearError();
+    }
+
+    private void ClearError()
+    {
+        ErrorMessage = "";
+        HasError = false;
+    }
 
     /// <summary>
     /// 决定保存时的字典 key：优先沿用 OriginalKey，否则由 Name 生成 slug；

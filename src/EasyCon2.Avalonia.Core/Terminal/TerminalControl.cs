@@ -82,6 +82,7 @@ public class TerminalControl : Control, ILogicalScrollable
 
     // Selection
     private record struct TextPos(int Line, int Col);
+    private readonly record struct SegMetrics(double StartX, double CharWidth, int StartCol, int Length);
     private TextPos? _selAnchor;
     private TextPos? _selActive;
     private bool _isSelecting;
@@ -352,10 +353,13 @@ public class TerminalControl : Control, ILogicalScrollable
 
     private TextPos HitTest(Point pt)
     {
+        EnsureMetrics();
         var pad = ContentPadding;
         var line = (int)((pt.Y - pad.Top + _offset.Y) / _lineHeight);
         line = Math.Clamp(line, 0, Math.Max(0, _lines.Count - 1));
-        var col = (int)((pt.X - pad.Left + _offset.X) / _charWidth);
+        var xOffset = pt.X - pad.Left + _offset.X;
+        var metrics = GetLineMetrics(_lines[line]);
+        var col = XToColumn(metrics, xOffset);
         col = Math.Max(0, col);
         return new TextPos(line, col);
     }
@@ -399,6 +403,65 @@ public class TerminalControl : Control, ILogicalScrollable
         }
     }
 
+    /// <summary>
+    /// 测量一行的所有段，返回每段的实际像素度量（与 DrawLine 一致的 FormattedText 测量）。
+    /// </summary>
+    private List<SegMetrics> GetLineMetrics(TerminalLine line)
+    {
+        var result = new List<SegMetrics>();
+        var defaultFg = Foreground ?? Brushes.Black;
+        var fontSize = FontSize;
+        var x = 0.0;
+        var col = 0;
+
+        foreach (var seg in line.Segments)
+        {
+            if (string.IsNullOrEmpty(seg.Text)) continue;
+
+            var fg = seg.Foreground != null
+                ? new SolidColorBrush(seg.Foreground.Value)
+                : defaultFg;
+            var tf = seg.Bold ? _boldTypeface : _typeface;
+            var ft = new FormattedText(
+                seg.Text, CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight, tf, fontSize, fg);
+
+            var charWidth = ft.Width / seg.Text.Length;
+            result.Add(new SegMetrics(x, charWidth, col, seg.Text.Length));
+            x += ft.Width;
+            col += seg.Text.Length;
+        }
+
+        return result;
+    }
+
+    /// <summary>将字符列号转换为行内的实际像素 X 偏移。</summary>
+    private static double ColumnToX(List<SegMetrics> metrics, int targetCol)
+    {
+        foreach (var m in metrics)
+        {
+            if (targetCol <= m.StartCol + m.Length)
+                return m.StartX + (targetCol - m.StartCol) * m.CharWidth;
+        }
+        // 超出行尾
+        return metrics.Count > 0
+            ? metrics[^1].StartX + metrics[^1].Length * metrics[^1].CharWidth
+            : 0;
+    }
+
+    /// <summary>将行内的像素 X 偏移转换为字符列号。</summary>
+    private static int XToColumn(List<SegMetrics> metrics, double xOffset)
+    {
+        foreach (var m in metrics)
+        {
+            var segEndX = m.StartX + m.Length * m.CharWidth;
+            if (xOffset < segEndX)
+                return m.StartCol + Math.Max(0, (int)((xOffset - m.StartX) / m.CharWidth));
+        }
+        // 超出行尾
+        return metrics.Count > 0 ? metrics[^1].StartCol + metrics[^1].Length : 0;
+    }
+
     private void DrawSelection(DrawingContext ctx, int firstLine, int lastLine)
     {
         if (_selAnchor == null || _selActive == null) return;
@@ -414,8 +477,10 @@ public class TerminalControl : Control, ILogicalScrollable
             var sCol = i == start.Line ? start.Col : 0;
             var eCol = i == end.Line ? Math.Min(end.Col, _lines[i].TextLength) : _lines[i].TextLength;
 
-            var x = pad.Left + sCol * _charWidth - _offset.X;
-            var w = (eCol - sCol) * _charWidth;
+            var metrics = GetLineMetrics(_lines[i]);
+            var x = pad.Left + ColumnToX(metrics, sCol) - _offset.X;
+            var endX = pad.Left + ColumnToX(metrics, eCol) - _offset.X;
+            var w = endX - x;
             if (w > 0)
                 ctx.DrawRectangle(brush, null, new Rect(x, y, w, _lineHeight));
         }

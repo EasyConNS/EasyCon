@@ -66,8 +66,7 @@ public static class SsaPrinter
         var sym = func.Symbol;
         var tag = isMain ? " ; main" : "";
         sb.AppendLine($"func {sym.ReturnType} {sym.Name}({FormatParams(sym.Parameters)}){tag}");
-        sb.AppendLine($"  ; frame: int={func.Layout.IntSlots}, long={func.Layout.LongSlots}, " +
-                       $"double={func.Layout.DoubleSlots}, handle={func.Layout.HandleSlots}");
+        sb.AppendLine($"  ; frame: slots={func.Layout.SlotCount}");
         sb.AppendLine("{");
 
         // 重建块 ID -> 索引映射（用于输出简短名称）

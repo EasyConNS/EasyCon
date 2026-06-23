@@ -48,91 +48,6 @@
             <Setter Property="Opacity" Value="0.86"/>
         </Style>
 
-        <Style Selector="TextBox.agent-output">
-            <Setter Property="AcceptsReturn" Value="True"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Padding" Value="10"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-            <Setter Property="FocusAdorner" Value="{x:Null}"/>
-            <Setter Property="VerticalContentAlignment" Value="Top"/>
-        </Style>
-
-        <Style Selector="Window.dark TextBox.agent-output">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-        </Style>
-
-        <Style Selector="Window.dark TextBox.agent-output:pointerover">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-        </Style>
-
-        <Style Selector="Window.dark TextBox.agent-output:focus">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-        </Style>
-
-        <Style Selector="Window.dark TextBox.agent-output:focus-visible">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-        </Style>
-
-        <Style Selector="Window.dark TextBox.agent-output:focus-within">
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:pointerover">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-            <Setter Property="FocusAdorner" Value="{x:Null}"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:focus">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-            <Setter Property="FocusAdorner" Value="{x:Null}"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:focus-visible">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-            <Setter Property="FocusAdorner" Value="{x:Null}"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:focus-within">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-            <Setter Property="FocusAdorner" Value="{x:Null}"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:pointerover /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:focus /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:focus-visible /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-        </Style>
-
-        <Style Selector="TextBox.agent-output:focus-within /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
-        </Style>
-
         <Style Selector="TextBox.agent-input">
             <Setter Property="AcceptsReturn" Value="True"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -250,6 +165,134 @@
         </Style>
     </UserControl.Styles>
 
+    <UserControl.DataTemplates>
+        <!-- 用户消息：右侧气泡 -->
+        <DataTemplate DataType="vm:UserMessage">
+            <Border HorizontalAlignment="Right"
+                    MaxWidth="560"
+                    Background="{DynamicResource WorkbenchAccentBrush}"
+                    CornerRadius="12,4,12,12"
+                    Padding="12,8"
+                    Margin="0,4,0,8">
+                <TextBlock Text="{Binding Content}"
+                           TextWrapping="Wrap"
+                           FontSize="13"
+                           Foreground="{DynamicResource WorkbenchOnAccentBrush}"/>
+            </Border>
+        </DataTemplate>
+
+        <!-- AI 消息：左侧气泡 + 思考折叠 -->
+        <DataTemplate DataType="vm:AssistantMessage">
+            <StackPanel Margin="0,4,0,8" MaxWidth="560">
+                <!-- 思考过程折叠块（在上方） -->
+                <Border Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}"
+                        BorderBrush="{DynamicResource WorkbenchAccentBrush}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="8,6"
+                        Margin="0,0,0,4"
+                        HorizontalAlignment="Left"
+                        IsVisible="{Binding Thinking, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <StackPanel Spacing="6">
+                        <Button Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                HorizontalAlignment="Left"
+                                Cursor="Hand"
+                                Command="{Binding Thinking.ToggleExpandCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="▶" IsVisible="{Binding !Thinking.IsExpanded}" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="▼" IsVisible="{Binding Thinking.IsExpanded}" FontSize="11" VerticalAlignment="Center"/>
+                                <TextBlock Text="💭 思考过程"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource WorkbenchAccentBrush}"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{Binding Thinking.Text}"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                   IsVisible="{Binding Thinking.IsExpanded}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 正文气泡 -->
+                <Border Background="{DynamicResource WorkbenchInputBrush}"
+                        BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4,12,12,12"
+                        Padding="12,8"
+                        HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding Content}"
+                               TextWrapping="Wrap"
+                               FontSize="13"
+                               Foreground="{DynamicResource WorkbenchTextBrush}"/>
+                </Border>
+
+                <!-- 流式生成中指示器 -->
+                <TextBlock Text="正在生成..."
+                           FontSize="11"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                           Margin="0,2,0,0"
+                           IsVisible="{Binding IsStreaming}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- 工具调用消息：紧凑行 -->
+        <DataTemplate DataType="vm:ToolCallMessage">
+            <Border Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}"
+                    BorderBrush="{DynamicResource WorkbenchAccentBrush}"
+                    BorderThickness="1,1,1,1"
+                    CornerRadius="4"
+                    Padding="8,4"
+                    Margin="0,2,0,2">
+                <StackPanel Spacing="4">
+                    <!-- 折叠标题行 -->
+                    <Button Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            HorizontalAlignment="Left"
+                            Cursor="Hand"
+                            Command="{Binding ToggleExpandCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="▶" IsVisible="{Binding !IsExpanded}" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Text="▼" IsVisible="{Binding IsExpanded}" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Text="🔧"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Name}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource WorkbenchTextBrush}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="✓"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource WorkbenchAccentBrush}"
+                                       IsVisible="{Binding Success}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Summary}"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Button>
+                    <!-- 展开的完整结果 -->
+                    <Border Background="{DynamicResource WorkbenchInputBrush}"
+                            Padding="8,6"
+                            CornerRadius="4"
+                            IsVisible="{Binding IsExpanded}">
+                        <TextBlock Text="{Binding FullResult}"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource WorkbenchTextBrush}"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
     <Border Background="{DynamicResource WorkbenchPanelBrush}"
             BorderBrush="{DynamicResource WorkbenchBorderBrush}"
             BorderThickness="0"
@@ -297,17 +340,19 @@
                     Background="{DynamicResource WorkbenchBorderBrush}"/>
 
             <!-- 输出区 -->
-            <TextBox x:Name="OutputTextBox"
-                     Grid.Row="2"
-                     Classes="agent-output"
-                     Margin="10"
-                     Text="{Binding ConversationText}"
-                     CaretIndex="{Binding OutputCaretIndex, Mode=OneWay}"
-                     IsReadOnly="True"
-                     VerticalAlignment="Stretch"
-                     HorizontalAlignment="Stretch"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+            <ScrollViewer x:Name="OutputScrollViewer"
+                          Grid.Row="2"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Messages}"
+                              Margin="10">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ChatMessageItem">
+                            <ContentControl Content="{Binding}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
 
             <!-- 输入区：输入框 + 右下角叠加控件 -->
             <Grid Grid.Row="3" Margin="10,0,10,10">

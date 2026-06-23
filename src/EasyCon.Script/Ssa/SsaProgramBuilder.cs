@@ -101,14 +101,15 @@ static class SsaProgramBuilder
         AllocateSlotsRecursive(body, ref nextSlot);
         function.LocalSlotCount = nextSlot;
 
-        int intIdx = 0, longIdx = 0, doubleIdx = 0, handleIdx = 0;
+        // 扁平槽位分配：单一计数器（类型信息在 SSA 操作码，不在槽位）
+        int slotIdx = 0;
 
         foreach (var p in function.Parameters)
-            AssignSlotDesc(p, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+            p.Slot = new SlotDesc(slotIdx++);
 
-        AssignSlotDescsRecursive(body, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+        AssignSlotsRecursive(body, ref slotIdx);
 
-        function.Layout = new FrameLayout(intIdx, longIdx, doubleIdx, handleIdx);
+        function.Layout = new FrameLayout(slotIdx);
     }
 
     private static void AllocateSlotsRecursive(BoundBlockStatement body, ref int nextSlot)
@@ -146,20 +147,7 @@ static class SsaProgramBuilder
         }
     }
 
-    private static void AssignSlotDesc(LocalVariableSymbol local, ref int intIdx, ref int longIdx, ref int doubleIdx, ref int handleIdx)
-    {
-        var cat = GetSlotCategory(local.Type);
-        local.Slot = new SlotDesc(cat, cat switch
-        {
-            SlotCategory.Int => intIdx++,
-            SlotCategory.Long => longIdx++,
-            SlotCategory.Double => doubleIdx++,
-            SlotCategory.Handle => handleIdx++,
-            _ => intIdx++
-        });
-    }
-
-    private static void AssignSlotDescsRecursive(BoundBlockStatement body, ref int intIdx, ref int longIdx, ref int doubleIdx, ref int handleIdx)
+    private static void AssignSlotsRecursive(BoundBlockStatement body, ref int slotIdx)
     {
         foreach (var stmt in body.Statements)
         {
@@ -167,42 +155,30 @@ static class SsaProgramBuilder
             {
                 case BoundVariableDeclaration vd
                     when vd.Variable is LocalVariableSymbol local:
-                    AssignSlotDesc(local, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                    local.Slot = new SlotDesc(slotIdx++);
                     break;
                 case BoundBlockStatement inner:
-                    AssignSlotDescsRecursive(inner, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                    AssignSlotsRecursive(inner, ref slotIdx);
                     break;
                 case BoundIfStatement ifStmt:
-                    AssignSlotDescsRecursive(ifStmt.Body, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                    AssignSlotsRecursive(ifStmt.Body, ref slotIdx);
                     foreach (var (_, elifBody) in ifStmt.ElseIfs)
-                        AssignSlotDescsRecursive(elifBody, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                        AssignSlotsRecursive(elifBody, ref slotIdx);
                     if (ifStmt.ElseBody != null)
-                        AssignSlotDescsRecursive(ifStmt.ElseBody, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                        AssignSlotsRecursive(ifStmt.ElseBody, ref slotIdx);
                     break;
                 case BoundWhileStatement whileStmt:
-                    AssignSlotDescsRecursive(whileStmt.Body, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                    AssignSlotsRecursive(whileStmt.Body, ref slotIdx);
                     break;
                 case BoundForStatement forStmt:
                     if (forStmt.Variable is LocalVariableSymbol forLocal2)
-                        AssignSlotDesc(forLocal2, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
-                    AssignSlotDescsRecursive(forStmt.Body, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                        forLocal2.Slot = new SlotDesc(slotIdx++);
+                    AssignSlotsRecursive(forStmt.Body, ref slotIdx);
                     break;
                 case BoundUntilStatement untilStmt:
-                    AssignSlotDescsRecursive(untilStmt.Body, ref intIdx, ref longIdx, ref doubleIdx, ref handleIdx);
+                    AssignSlotsRecursive(untilStmt.Body, ref slotIdx);
                     break;
             }
         }
-    }
-
-    private static SlotCategory GetSlotCategory(ScriptType type)
-    {
-        if (type.Equals(ScriptType.Bool) || type.Equals(ScriptType.Byte) ||
-            type.Equals(ScriptType.Int) || type.Equals(ScriptType.UInt))
-            return SlotCategory.Int;
-        if (type.Equals(ScriptType.UInt64) || type.Equals(ScriptType.Ptr))
-            return SlotCategory.Long;
-        if (type.Equals(ScriptType.Double))
-            return SlotCategory.Double;
-        return SlotCategory.Handle;
     }
 }
