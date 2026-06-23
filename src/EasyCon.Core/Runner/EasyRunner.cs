@@ -53,11 +53,11 @@ public sealed class EasyRunner : IRunner
         return _result.Diagnostics;
     }
 
-    public void Run(IIoAdapter ioAdapter, ICGamePad pad, OcrDelegate? ocr, OcrInitDelegate? ocrInit, Func<int> ocrConf, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token)
+    public void Run(IIoAdapter ioAdapter, ICGamePad pad, OcrDelegate? ocr, OcrInitDelegate? ocrInit, Func<int> ocrConf, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token, string[]? args = null)
     {
         if (_result?.Program == null) return;
 
-        using var evaluator = new SsaEvaluator(_result.Program, token)
+        using var evaluator = new SsaEvaluator(_result.Program, token, args)
         {
             GamePad = pad,
             IoAdapter = ioAdapter,

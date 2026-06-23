@@ -43,7 +43,7 @@ public partial class ThinkingBlock : ObservableObject
     private string _text = "";
 
     [ObservableProperty]
-    private bool _isExpanded = true;
+    private bool _isExpanded;
 
     [RelayCommand]
     private void ToggleExpand() => IsExpanded = !IsExpanded;

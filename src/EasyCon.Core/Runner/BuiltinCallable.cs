@@ -297,6 +297,15 @@ internal static class BuiltinCallable
         return Value.FromInt(ctx.OcrConf());
     }
 
+    public static Value ImplArg(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    {
+        var idx = args[0].AsInt();
+        var argv = ctx.Args;
+        if (idx < 0 || idx >= argv.Length)
+            return Value.FromString("");
+        return Value.FromString(argv[idx]);
+    }
+
     /// <summary>
     /// 获取所有保留内置函数及其对应的 Callable。
     /// </summary>
@@ -321,6 +330,7 @@ internal static class BuiltinCallable
             (BuiltinFunctions.AppendFile, new DelegateCallable(ImplAppendFile)),
             (BuiltinFunctions.FileExists, new DelegateCallable(ImplFileExists)),
             (BuiltinFunctions.OcrConf, new DelegateCallable(ImplOcrConf)),
+            (BuiltinFunctions.Arg, new DelegateCallable(ImplArg)),
         ];
     }
 

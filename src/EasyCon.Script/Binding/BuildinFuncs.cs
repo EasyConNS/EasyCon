@@ -49,6 +49,9 @@ public static class BuiltinFunctions
         [new("var", ScriptType.Any)],
         ScriptType.Int);
 
+    // --- 脚本参数 ---
+    public static readonly FunctionSymbol Arg = new("ARG", [new("index", ScriptType.Int)], ScriptType.String);
+
     // --- OCR 置信度查询（普通 callable，注册到 root scope）---
     public static readonly FunctionSymbol OcrConf = new("OCR_CONF", [], ScriptType.Int);
 
@@ -81,7 +84,7 @@ public static class BuiltinFunctions
     // --- 注册到 root scope 的函数列表 ---
 
     private static readonly FunctionSymbol[] All =
-        [Wait, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, OcrConf,
+        [Wait, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Arg, OcrConf,
          FOpen, FRead, FWrite, FClose, FEof, ReadFile, WriteFile, AppendFile, FileExists];
 
     internal static IReadOnlyList<FunctionSymbol> GetAll() => All;

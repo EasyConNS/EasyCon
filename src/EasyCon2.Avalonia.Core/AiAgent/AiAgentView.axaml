@@ -7,6 +7,10 @@
              IsVisible="{Binding IsOpen}">
 
     <UserControl.Styles>
+        <Style Selector="Button.thinking-toggle /template/ ContentPresenter">
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
         <Style Selector="Button.agent-icon-button">
             <Setter Property="Width" Value="28"/>
             <Setter Property="Height" Value="28"/>
@@ -174,7 +178,7 @@
                     CornerRadius="12,4,12,12"
                     Padding="12,8"
                     Margin="0,4,0,8">
-                <TextBlock Text="{Binding Content}"
+                <SelectableTextBlock Text="{Binding Content}"
                            TextWrapping="Wrap"
                            FontSize="13"
                            Foreground="{DynamicResource WorkbenchOnAccentBrush}"/>
@@ -183,39 +187,29 @@
 
         <!-- AI 消息：左侧气泡 + 思考折叠 -->
         <DataTemplate DataType="vm:AssistantMessage">
-            <StackPanel Margin="0,4,0,8" MaxWidth="560">
-                <!-- 思考过程折叠块（在上方） -->
-                <Border Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}"
-                        BorderBrush="{DynamicResource WorkbenchAccentBrush}"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Padding="8,6"
-                        Margin="0,0,0,4"
-                        HorizontalAlignment="Left"
+            <StackPanel Margin="0,4,0,8" MaxWidth="560" HorizontalAlignment="Left">
+                <!-- 思考过程（无色背景 + 缩进） -->
+                <StackPanel Margin="12,0,0,4"
                         IsVisible="{Binding Thinking, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <StackPanel Spacing="6">
-                        <Button Background="Transparent"
-                                BorderThickness="0"
-                                Padding="0"
-                                HorizontalAlignment="Left"
-                                Cursor="Hand"
-                                Command="{Binding Thinking.ToggleExpandCommand}">
-                            <StackPanel Orientation="Horizontal" Spacing="4">
-                                <TextBlock Text="▶" IsVisible="{Binding !Thinking.IsExpanded}" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="▼" IsVisible="{Binding Thinking.IsExpanded}" FontSize="11" VerticalAlignment="Center"/>
-                                <TextBlock Text="💭 思考过程"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource WorkbenchAccentBrush}"/>
-                            </StackPanel>
-                        </Button>
-                        <TextBlock Text="{Binding Thinking.Text}"
-                                   TextWrapping="Wrap"
+                    <Button Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            Classes="thinking-toggle"
+                            HorizontalAlignment="Left"
+                            Cursor="Hand"
+                            Command="{Binding Thinking.ToggleExpandCommand}">
+                        <TextBlock Text="💭 思考过程"
                                    FontSize="12"
-                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
-                                   IsVisible="{Binding Thinking.IsExpanded}"/>
-                    </StackPanel>
-                </Border>
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                    </Button>
+                    <SelectableTextBlock Text="{Binding Thinking.Text}"
+                               TextWrapping="Wrap"
+                               FontSize="11"
+                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                               Opacity="0.75"
+                               IsVisible="{Binding Thinking.IsExpanded}"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
 
                 <!-- 正文气泡 -->
                 <Border Background="{DynamicResource WorkbenchInputBrush}"
@@ -224,7 +218,7 @@
                         CornerRadius="4,12,12,12"
                         Padding="12,8"
                         HorizontalAlignment="Left">
-                    <TextBlock Text="{Binding Content}"
+                    <SelectableTextBlock Text="{Binding Content}"
                                TextWrapping="Wrap"
                                FontSize="13"
                                Foreground="{DynamicResource WorkbenchTextBrush}"/>
@@ -246,7 +240,8 @@
                     BorderThickness="1,1,1,1"
                     CornerRadius="4"
                     Padding="8,4"
-                    Margin="0,2,0,2">
+                    Margin="0,2,0,2"
+                    HorizontalAlignment="Left">
                 <StackPanel Spacing="4">
                     <!-- 折叠标题行 -->
                     <Button Background="Transparent"
@@ -283,7 +278,7 @@
                             Padding="8,6"
                             CornerRadius="4"
                             IsVisible="{Binding IsExpanded}">
-                        <TextBlock Text="{Binding FullResult}"
+                        <SelectableTextBlock Text="{Binding FullResult}"
                                    TextWrapping="Wrap"
                                    FontSize="12"
                                    Foreground="{DynamicResource WorkbenchTextBrush}"/>
@@ -298,10 +293,10 @@
             BorderThickness="0"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
-        <Grid RowDefinitions="34,1,*,Auto">
+        <Grid RowDefinitions="34,1,*,Auto,Auto">
             <!-- 标题栏 -->
             <Grid Grid.Row="0"
-                  ColumnDefinitions="Auto,*,Auto,Auto"
+                  ColumnDefinitions="Auto,*,Auto,Auto,Auto"
                   Background="{DynamicResource WorkbenchPanelBrush}">
                 <TextBlock Text="AI Agent"
                            Margin="12,0,0,0"
@@ -318,6 +313,18 @@
                            Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
                 <Button Grid.Column="2"
                         Classes="agent-icon-button"
+                        Command="{Binding ToggleDebugPanelCommand}"
+                        ToolTip.Tip="调试面板"
+                        IsVisible="{Binding IsDebugBuild}">
+                    <Path Data="M4,2 L7,5 L4,8 M9,2 L12,5 L9,8"
+                          Width="14" Height="14"
+                          Stretch="Uniform"
+                          Stroke="{DynamicResource WorkbenchMutedTextBrush}"
+                          StrokeThickness="2"
+                          StrokeLineCap="Round"/>
+                </Button>
+                <Button Grid.Column="3"
+                        Classes="agent-icon-button"
                         Command="{Binding NewChatCommand}"
                         ToolTip.Tip="新对话">
                     <Path Data="M9,1 L9,15 M1,7 L17,7"
@@ -327,7 +334,7 @@
                           StrokeThickness="2"
                           StrokeLineCap="Round"/>
                 </Button>
-                <Button Grid.Column="3"
+                <Button Grid.Column="4"
                         Classes="agent-icon-button"
                         Command="{Binding CloseCommand}"
                         ToolTip.Tip="关闭">
@@ -346,16 +353,40 @@
                           HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl ItemsSource="{Binding Messages}"
                               Margin="10">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ChatMessageItem">
-                            <ContentControl Content="{Binding}"/>
+                            <ContentControl Content="{Binding}"
+                                            HorizontalAlignment="Stretch"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
 
+            <!-- 调试面板 -->
+            <Border Grid.Row="3"
+                    Background="{DynamicResource WorkbenchInputBrush}"
+                    BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
+                    BorderThickness="0,1,0,0"
+                    IsVisible="{Binding ShowDebugPanel}"
+                    MaxHeight="160"
+                    Margin="10,0,10,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding DebugLogText}"
+                               FontSize="10"
+                               FontFamily="Consolas, monospace"
+                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                               TextWrapping="Wrap"
+                               Margin="6,4"/>
+                </ScrollViewer>
+            </Border>
+
             <!-- 输入区：输入框 + 右下角叠加控件 -->
-            <Grid Grid.Row="3" Margin="10,0,10,10">
+            <Grid Grid.Row="4" Margin="10,0,10,10">
                 <TextBox x:Name="InputTextBox"
                          Classes="agent-input"
                          Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -408,14 +439,14 @@
                         </Button>
                         <Button x:Name="StopButton"
                                 Classes="agent-action-button"
-                                Background="{DynamicResource ErrorBrush}"
+                                Background="#E53935"
                                 Command="{Binding SendOrStopCommand}"
                                 ToolTip.Tip="停止"
                                 IsVisible="{Binding IsGenerating}">
                             <Path Data="M4,4 L16,4 L16,16 L4,16 Z"
                                   Width="12" Height="12"
                                   Stretch="Uniform"
-                                  Fill="{DynamicResource WorkbenchOnAccentBrush}"/>
+                                  Fill="White"/>
                         </Button>
                     </Grid>
                 </StackPanel>

@@ -27,6 +27,7 @@ internal interface IEvalContext
     Random Rand { get; }
     int Timestamp { get; }
     bool CancelLineBreak { get; set; }
+    string[] Args { get; }
 
     Value EvaluateFunctionBody(FunctionSymbol function);
 }

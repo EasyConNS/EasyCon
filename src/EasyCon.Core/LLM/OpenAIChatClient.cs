@@ -19,6 +19,11 @@ public sealed class OpenAIChatClient : IChatClient
     private readonly HttpClient _http;
     private bool _disposed;
 
+    /// <summary>
+    /// 调试日志回调。订阅此事件可捕获原始 SSE 数据和解析异常，用于诊断模型兼容性问题。
+    /// </summary>
+    public static event Action<string>? DebugLog;
+
     public OpenAIChatClient(string baseUrl, string apiKey)
     {
         _http = new HttpClient
@@ -168,6 +173,13 @@ public sealed class OpenAIChatClient : IChatClient
                 if (!line.StartsWith("data: ", StringComparison.Ordinal)) continue;
                 var data = line["data: ".Length..];
                 if (data == "[DONE]") break;
+
+                // 调试：记录原始 SSE 数据（截断长内容）
+                if (DebugLog is not null)
+                {
+                    var preview = data.Length > 500 ? data[..500] + "..." : data;
+                    DebugLog($"[SSE] {preview}");
+                }
 
                 foreach (var delta in ExtractDeltas(data))
                     yield return delta;
@@ -416,7 +428,10 @@ public sealed class OpenAIChatClient : IChatClient
             if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
                 return deltas;
 
-            var delta = choices[0].GetProperty("delta");
+            // 使用 TryGetProperty 而非 GetProperty：部分模型（如 MiniCPM）的 chunk
+            // 可能只包含 finish_reason 而无 delta 字段，GetProperty 会抛异常被静默吞掉
+            if (!choices[0].TryGetProperty("delta", out var delta))
+                return deltas;
 
             // 思考字段：reasoning_content → reasoning
             if (TryGetThinking(delta, out var thinking))
@@ -441,9 +456,11 @@ public sealed class OpenAIChatClient : IChatClient
                     deltas.Add(StreamDelta.Content(text));
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // 解析失败静默跳过单个 chunk
+            // 解析失败时记录原始数据，方便诊断模型兼容性问题
+            var preview = data.Length > 300 ? data[..300] + "..." : data;
+            DebugLog?.Invoke($"[SSE解析失败] {ex.Message}\n原始数据: {preview}");
         }
 
         return deltas;

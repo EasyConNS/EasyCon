@@ -39,6 +39,9 @@ public abstract record AgentEvent
 
     /// <summary>对话循环结束。</summary>
     public record Completed(string FinalContent) : AgentEvent;
+
+    /// <summary>调试信息（原始 SSE 数据、解析异常等）。</summary>
+    public record DebugInfo(string Message) : AgentEvent;
 }
 
 /// <summary>
@@ -196,138 +199,148 @@ public class AgentOrchestrator
         // 重置反思状态（用户新消息）
         _reflectionState.Reset();
 
-        for (var round = 0; round < MaxToolRounds; round++)
+        // 订阅调试日志，转发到 UI
+        var debugHandler = new Action<string>(msg => onEvent(new AgentEvent.DebugInfo(msg)));
+        OpenAIChatClient.DebugLog += debugHandler;
+        try
         {
-            var streamSuccess = false;
-            var accumulator = new ToolCallAccumulator();
-            var hasContent = false;
-
-            // ── 流式断线重连循环 ──
-            for (var streamRetry = 0; streamRetry <= maxStreamRetries; streamRetry++)
+            for (var round = 0; round < MaxToolRounds; round++)
             {
-                onEvent(new AgentEvent.RoundStart(""));
-                pendingReply.Clear();
-                pendingThinking.Clear();
-                accumulator = new ToolCallAccumulator();
+                var streamSuccess = false;
+                var accumulator = new ToolCallAccumulator();
+                var hasContent = false;
 
-                var client = ChatClientFactory.Create(provider);
-                var request = new ChatRequest
+                // ── 流式断线重连循环 ──
+                for (var streamRetry = 0; streamRetry <= maxStreamRetries; streamRetry++)
                 {
-                    Model = modelId,
-                    Messages = BuildMessages(history, round)
-                };
-                if (hasTools)
-                {
-                    request.Tools = toolDefs;
-                    request.ToolChoice = ToolChoice.Auto;
-                }
+                    onEvent(new AgentEvent.RoundStart(""));
+                    pendingReply.Clear();
+                    pendingThinking.Clear();
+                    accumulator = new ToolCallAccumulator();
 
-                var retryableError = false;
-                hasContent = false;
-
-                await foreach (var delta in client.SendStreamAsync(request, ct))
-                {
-                    switch (delta.Type)
+                    var client = ChatClientFactory.Create(provider);
+                    var request = new ChatRequest
                     {
-                        case DeltaType.Thinking:
-                            pendingThinking.Append(delta.Text);
-                            onEvent(new AgentEvent.ThinkingDelta(delta.Text));
-                            break;
-                        case DeltaType.Content:
-                            pendingReply.Append(delta.Text);
-                            hasContent = true;
-                            onEvent(new AgentEvent.ContentDelta(delta.Text));
-                            break;
-                        case DeltaType.ToolCall:
-                            if (delta.ToolCallDelta is not null)
-                                accumulator.Append(delta.ToolCallDelta);
-                            break;
-                        case DeltaType.Error:
-                            if (delta.Retryable)
-                            {
-                                // 流式传输中断 → 标记为重试，不追加到回复
-                                retryableError = true;
-                            }
-                            else
-                            {
-                                pendingReply.Append($"[错误] {delta.Text}");
-                                onEvent(new AgentEvent.Error(delta.Text));
-                            }
-                            break;
-                        case DeltaType.Usage:
-                            onEvent(new AgentEvent.UsageUpdated(delta.PromptTokens, delta.CompletionTokens, delta.TotalTokens));
-                            break;
+                        Model = modelId,
+                        Messages = BuildMessages(history, round)
+                    };
+                    if (hasTools)
+                    {
+                        request.Tools = toolDefs;
+                        request.ToolChoice = ToolChoice.Auto;
                     }
 
-                    if (retryableError) break;
+                    var retryableError = false;
+                    hasContent = false;
+
+                    await foreach (var delta in client.SendStreamAsync(request, ct))
+                    {
+                        switch (delta.Type)
+                        {
+                            case DeltaType.Thinking:
+                                pendingThinking.Append(delta.Text);
+                                onEvent(new AgentEvent.ThinkingDelta(delta.Text));
+                                break;
+                            case DeltaType.Content:
+                                pendingReply.Append(delta.Text);
+                                hasContent = true;
+                                onEvent(new AgentEvent.ContentDelta(delta.Text));
+                                break;
+                            case DeltaType.ToolCall:
+                                if (delta.ToolCallDelta is not null)
+                                    accumulator.Append(delta.ToolCallDelta);
+                                break;
+                            case DeltaType.Error:
+                                if (delta.Retryable)
+                                {
+                                    // 流式传输中断 → 标记为重试，不追加到回复
+                                    retryableError = true;
+                                }
+                                else
+                                {
+                                    pendingReply.Append($"[错误] {delta.Text}");
+                                    onEvent(new AgentEvent.Error(delta.Text));
+                                }
+                                break;
+                            case DeltaType.Usage:
+                                onEvent(new AgentEvent.UsageUpdated(delta.PromptTokens, delta.CompletionTokens, delta.TotalTokens));
+                                break;
+                        }
+
+                        if (retryableError) break;
+                    }
+
+                    // 可重试错误 → 丢弃本轮部分数据，等待后重发同一轮请求
+                    if (retryableError && streamRetry < maxStreamRetries)
+                    {
+                        onEvent(new AgentEvent.Retrying(
+                            streamRetry + 1, maxStreamRetries, "流式传输中断，正在重新连接..."));
+                        await Task.Delay(TimeSpan.FromSeconds(2 * (streamRetry + 1)), ct);
+                        continue;
+                    }
+
+                    // 可重试错误但重试已耗尽
+                    if (retryableError)
+                    {
+                        onEvent(new AgentEvent.Error("流式传输多次中断，无法恢复"));
+                        history.Add(ChatMessage.Assistant(pendingReply.ToString()));
+                        onEvent(new AgentEvent.Completed(pendingReply.ToString() + "\n[连接中断]"));
+                        return;
+                    }
+
+                    streamSuccess = true;
+                    break;
                 }
 
-                // 可重试错误 → 丢弃本轮部分数据，等待后重发同一轮请求
-                if (retryableError && streamRetry < maxStreamRetries)
-                {
-                    onEvent(new AgentEvent.Retrying(
-                        streamRetry + 1, maxStreamRetries, "流式传输中断，正在重新连接..."));
-                    await Task.Delay(TimeSpan.FromSeconds(2 * (streamRetry + 1)), ct);
-                    continue;
-                }
+                if (!streamSuccess) continue;
 
-                // 可重试错误但重试已耗尽
-                if (retryableError)
+                // 没有工具调用或没有注册工具 → 本轮即最终回复
+                var toolCalls = accumulator.Build();
+                if (!hasTools || toolCalls.Count == 0)
                 {
-                    onEvent(new AgentEvent.Error("流式传输多次中断，无法恢复"));
-                    history.Add(ChatMessage.Assistant(pendingReply.ToString()));
-                    onEvent(new AgentEvent.Completed(pendingReply.ToString() + "\n[连接中断]"));
+                    if (hasContent)
+                    {
+                        history.Add(ChatMessage.Assistant(pendingReply.ToString()));
+                        _reflectionState.TrackReflectionMarker(pendingReply.ToString());
+                    }
+                    onEvent(new AgentEvent.Completed(pendingReply.ToString()));
                     return;
                 }
 
-                streamSuccess = true;
-                break;
-            }
+                // 将 assistant 的工具调用加入历史
+                history.Add(ChatMessage.Assistant(toolCalls));
 
-            if (!streamSuccess) continue;
+                // 执行工具调用
+                var results = await ExecuteToolCallsAsync(toolCalls, history, onEvent, ct);
 
-            // 没有工具调用或没有注册工具 → 本轮即最终回复
-            var toolCalls = accumulator.Build();
-            if (!hasTools || toolCalls.Count == 0)
-            {
-                if (hasContent)
+                // 按顺序将工具结果加入历史，并处理多模态附加消息
+                for (var i = 0; i < toolCalls.Count; i++)
                 {
-                    history.Add(ChatMessage.Assistant(pendingReply.ToString()));
-                    _reflectionState.TrackReflectionMarker(pendingReply.ToString());
-                }
-                onEvent(new AgentEvent.Completed(pendingReply.ToString()));
-                return;
-            }
+                    history.Add(ChatMessage.Tool(toolCalls[i].Id, results[i].Content, toolCalls[i].Function.Name));
+                    _reflectionState.TrackResult(results[i].Content);
 
-            // 将 assistant 的工具调用加入历史
-            history.Add(ChatMessage.Assistant(toolCalls));
-
-            // 执行工具调用
-            var results = await ExecuteToolCallsAsync(toolCalls, history, onEvent, ct);
-
-            // 按顺序将工具结果加入历史，并处理多模态附加消息
-            for (var i = 0; i < toolCalls.Count; i++)
-            {
-                history.Add(ChatMessage.Tool(toolCalls[i].Id, results[i].Content, toolCalls[i].Function.Name));
-                _reflectionState.TrackResult(results[i].Content);
-
-                // 处理附加的多模态消息（如 get_frame 的图片）
-                if (results[i].AttachedMessage is { } img)
-                {
-                    if (_frameImageIndex >= 0 && _frameImageIndex < history.Count)
-                        history[_frameImageIndex] = img;
-                    else
+                    // 处理附加的多模态消息（如 get_frame 的图片）
+                    if (results[i].AttachedMessage is { } img)
                     {
-                        _frameImageIndex = history.Count;
-                        history.Add(img);
+                        if (_frameImageIndex >= 0 && _frameImageIndex < history.Count)
+                            history[_frameImageIndex] = img;
+                        else
+                        {
+                            _frameImageIndex = history.Count;
+                            history.Add(img);
+                        }
                     }
                 }
             }
-        }
 
-        // 达到最大轮次
-        history.Add(ChatMessage.Assistant(pendingReply.ToString()));
-        onEvent(new AgentEvent.Completed(pendingReply.ToString() + "\n[已达到工具调用最大轮次]"));
+            // 达到最大轮次
+            history.Add(ChatMessage.Assistant(pendingReply.ToString()));
+            onEvent(new AgentEvent.Completed(pendingReply.ToString() + "\n[已达到工具调用最大轮次]"));
+        }
+        finally
+        {
+            OpenAIChatClient.DebugLog -= debugHandler;
+        }
     }
 
     /// <summary>

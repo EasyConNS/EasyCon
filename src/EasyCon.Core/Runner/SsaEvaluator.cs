@@ -40,6 +40,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     // 预计算的常量值（构造时一次性计算，ResetCaches 时拷贝进 _cache）
     private TaggedValue[] _constCache = [];
 
+    private readonly string[] _args;
     private readonly long _TIME = DateTime.Now.Ticks;
     private readonly Random _rand = new();
     private bool _cancelLineBreak = false;
@@ -67,6 +68,7 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
     Random IEvalContext.Rand => _rand;
     int IEvalContext.Timestamp => (int)((DateTime.Now.Ticks - _TIME) / 10_000);
     bool IEvalContext.CancelLineBreak { get => _cancelLineBreak; set => _cancelLineBreak = value; }
+    string[] IEvalContext.Args => _args;
 
     /// <summary>启用 JIT 编译执行（默认 false，使用解释器）。</summary>
     public bool UseJit { get; set; }
@@ -80,8 +82,9 @@ public sealed class SsaEvaluator : IEvalContext, IDisposable
 
     private Func<int>? _jitDelegate;
 
-    public SsaEvaluator(SsaProgram program, CancellationToken token)
+    public SsaEvaluator(SsaProgram program, CancellationToken token, string[]? args = null)
     {
+        _args = args ?? [];
         _program = program;
         _token = token;
         _localFrames.Push(new EvalFrame(0));

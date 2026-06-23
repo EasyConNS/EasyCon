@@ -13,11 +13,14 @@ using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Core.TagEditor;
 using EasyCon2.Avalonia.Core.Terminal;
 using EasyCon2.Avalonia.Services;
+using EasyCon2.Avalonia.Views;
 using EzCv;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using ILogService = EasyCon.Core.Services.ILogService;
 using Resources = EasyCon2.UI.Common.Properties.Resources;
@@ -1745,7 +1748,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SaveUserSettings();
     }
 
-    private void RunScript()
+    private async void RunScript()
     {
         if (_scriptService.IsRunning)
         {
@@ -1753,13 +1756,36 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        string[]? args = null;
+        if (HasArgsShebang(EditorText))
+        {
+            args = await ShowArgsDialog();
+            if (args == null) return; // 用户取消
+        }
+
         if (!HasSelectedScriptPath())
         {
-            _scriptService.RunFromContent(EditorText);
+            _scriptService.RunFromContent(EditorText, args);
             return;
         }
 
-        _scriptService.Run(CurrentScriptPath);
+        _scriptService.Run(CurrentScriptPath, args);
+    }
+
+    private static bool HasArgsShebang(string script)
+    {
+        var firstLine = script.Split('\n', '\r').FirstOrDefault()?.Trim();
+        return firstLine != null && firstLine.StartsWith("#! args");
+    }
+
+    private async Task<string[]?> ShowArgsDialog()
+    {
+        var owner = WindowService.MainWindow;
+        if (owner == null) return null;
+
+        var dialog = new ScriptArgsWindow();
+        await dialog.ShowDialog<string[]?>(owner);
+        return dialog.Args;
     }
 
     private void ClearLog()

@@ -33,6 +33,7 @@ public partial class AiAgentViewModel : ObservableObject
     private readonly Dictionary<string, ToolCallMessage> _pendingTools = new();
     private EasyCon.Core.LLM.Models.ModelsConfig? _cachedConfig;
     private int _totalTokensUsed;
+    private readonly List<string> _debugLogs = [];
 
     [ObservableProperty]
     private bool _isOpen;
@@ -48,6 +49,19 @@ public partial class AiAgentViewModel : ObservableObject
 
     [ObservableProperty]
     private string _tokenUsage = "tokens: --";
+
+#if DEBUG
+    public bool IsDebugBuild => true;
+#else
+    public bool IsDebugBuild => false;
+#endif
+
+    [ObservableProperty]
+    private bool _showDebugPanel;
+
+    /// <summary>调试日志 — 原始 SSE 数据和解析异常，用于诊断模型兼容性问题。</summary>
+    public string DebugLogText => string.Join("\n", _debugLogs);
+    public bool HasDebugLogs => _debugLogs.Count > 0;
 
     private CancellationTokenSource? _cts;
     private bool _uiUpdateScheduled;
@@ -189,6 +203,9 @@ public partial class AiAgentViewModel : ObservableObject
         _tools.Unregister(t => t is McpToolAdapter);
         McpTools.RegisterAll(_tools, _mcpManager!);
     }
+
+    [RelayCommand]
+    private void ToggleDebugPanel() => ShowDebugPanel = !ShowDebugPanel;
 
     [RelayCommand]
     private void Close()
@@ -356,11 +373,29 @@ public partial class AiAgentViewModel : ObservableObject
                 }
                 break;
 
+            case AgentEvent.DebugInfo d:
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _debugLogs.Add(d.Message);
+                    while (_debugLogs.Count > 50)
+                        _debugLogs.RemoveAt(0);
+                    OnPropertyChanged(nameof(DebugLogText));
+                    OnPropertyChanged(nameof(HasDebugLogs));
+                }, DispatcherPriority.Background);
+                break;
+
             case AgentEvent.Completed:
                 _uiUpdateScheduled = false;
                 if (_currentAssistant is not null)
                 {
                     var current = _currentAssistant;
+                    // 先直接设置内容（节流回调可能尚未执行，Background 优先级最低）
+                    current.Content = _pendingReply.ToString().TrimStart('\n', '\r');
+                    if (_pendingThinking.Length > 0)
+                    {
+                        current.Thinking ??= new ThinkingBlock();
+                        current.Thinking.Text = _pendingThinking.ToString();
+                    }
                     Dispatcher.UIThread.Post(() =>
                     {
                         current.IsStreaming = false;
@@ -386,7 +421,7 @@ public partial class AiAgentViewModel : ObservableObject
             _uiUpdateScheduled = false;
             if (_currentAssistant is not null)
             {
-                _currentAssistant.Content = _pendingReply.ToString();
+                _currentAssistant.Content = _pendingReply.ToString().TrimStart('\n', '\r');
                 if (_pendingThinking.Length > 0)
                 {
                     _currentAssistant.Thinking ??= new ThinkingBlock();

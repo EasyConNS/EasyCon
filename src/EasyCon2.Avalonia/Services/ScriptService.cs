@@ -89,7 +89,7 @@ public class ScriptService : IScriptService
         }
     }
 
-    public void Run(string scriptPath)
+    public void Run(string scriptPath, string[]? args = null)
     {
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
@@ -181,7 +181,7 @@ public class ScriptService : IScriptService
                 var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
                 var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.GetMatFrame(), ocrCache);
 
-                _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token);
+                _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token, args);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)
@@ -204,7 +204,7 @@ public class ScriptService : IScriptService
         }, token);
     }
 
-    public void RunFromContent(string content)
+    public void RunFromContent(string content, string[]? args = null)
     {
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
@@ -283,7 +283,7 @@ public class ScriptService : IScriptService
                 var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
                 var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.GetMatFrame(), ocrCache);
 
-                _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, null, null, token);
+                _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, null, null, token, args);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)

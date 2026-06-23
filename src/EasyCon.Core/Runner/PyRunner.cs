@@ -32,7 +32,7 @@ public sealed class PyRunner : IRunner
         return [];
     }
 
-    public void Run(IIoAdapter output, ICGamePad pad, OcrDelegate? ocr, OcrInitDelegate? ocrInit, Func<int> ocrConf, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token)
+    public void Run(IIoAdapter output, ICGamePad pad, OcrDelegate? ocr, OcrInitDelegate? ocrInit, Func<int> ocrConf, FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch, ImmutableHashSet<string>? labelNames, CancellationToken token, string[]? args = null)
     {
         // 使用Python全局解释器锁（GIL）确保线程安全。
         // Py.GIL()返回一个实现了IDisposable接口的GIL上下文，使用using语句可以确保在代码块执行完毕后正确释放GIL。
