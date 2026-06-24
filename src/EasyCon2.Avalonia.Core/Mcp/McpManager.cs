@@ -201,15 +201,8 @@ internal sealed class McpSessionFactory : IMcpSessionFactory
         if (transport != McpTransport.Stdio)
             throw new NotSupportedException($"暂不支持传输类型: {transport}");
 
-        var transportOptions = new StdioClientTransportOptions
-        {
-            Name = command,
-            Command = command,
-            Arguments = args.ToList(),
-            EnvironmentVariables = env.ToDictionary(kv => kv.Key, kv => kv.Value)
-        };
-
-        var client = await McpClient.CreateAsync(new StdioClientTransport(transportOptions), cancellationToken: ct);
+        var customTransport = new CustomStdioClientTransport(command, args.ToList(), env.ToDictionary(kv => kv.Key, kv => kv.Value));
+        var client = await McpClient.CreateAsync(customTransport, cancellationToken: ct);
         return new McpSessionWrapper(client);
     }
 }

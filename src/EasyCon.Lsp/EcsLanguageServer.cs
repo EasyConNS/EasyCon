@@ -1,6 +1,7 @@
 using EasyCon.Lsp.Handlers;
 using EmmyLua.LanguageServer.Framework.Protocol.Message.Initialize;
 using EmmyLua.LanguageServer.Framework.Server;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 
@@ -27,7 +28,15 @@ public static class EcsLanguageServer
             serverInfo.Version = "0.1.0";
         });
 
-        await server.Run();
+        try
+        {
+            await server.Run();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("Stream closed"))
+        {
+            // 客户端关闭连接，正常退出
+            Debug.WriteLine("[LSP] Server exited: client disconnected");
+        }
     }
 
     public static async Task RunTcpAsync(string host, int port)
