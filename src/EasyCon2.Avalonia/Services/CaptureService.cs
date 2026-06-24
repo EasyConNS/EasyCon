@@ -96,7 +96,8 @@ public class CaptureService : ICaptureService
     }
 
     /// <summary>
-    /// 线程安全地获取一帧图像。返回的是 Mat 的 Clone 副本，确保调用者拥有唯一的引用。
+    /// 线程安全地获取一帧图像。直接返回底层新建的 Mat，调用者负责 Dispose。
+    /// OpenCVCapture.GetMatFrame() 每次都 new Mat + videoCapture.Read，无共享引用，无需 Clone。
     /// </summary>
     public Mat? GetMatFrame()
     {
@@ -105,11 +106,14 @@ public class CaptureService : ICaptureService
             if (_capture == null || !_capture.IsOpened)
                 return null;
 
-            using var mat = _capture.GetMatFrame();
+            var mat = _capture.GetMatFrame();
             if (mat.Empty())
+            {
+                mat.Dispose();
                 return null;
+            }
 
-            return mat.Clone();
+            return mat;
         }
     }
 

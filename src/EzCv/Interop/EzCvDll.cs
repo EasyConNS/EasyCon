@@ -4,8 +4,8 @@ namespace EzCv.Interop;
 
 /// <summary>
 /// ezcv_native C API 绑定（OpenCV 5 capture 实际用到的子集）。全部 Cdecl。
-/// 平台特定库名：参考 OpenCvSharp 的 DllExtern 模式，在 macOS/Linux 上使用完整
-/// 文件名（libezcv_native.dylib / .so），Windows 使用 ezcv_native.dll。
+/// DllImport 统一使用逻辑短名 "ezcv_native"，由 NativeLoader 在运行时按平台
+/// 解析为实际文件名（ezcv_native.dll / libezcv_native.dylib / .so）。
 /// </summary>
 /// <remarks>
 /// DllImport 属性参考 OpenCvSharp NativeMethods 模式：
@@ -16,14 +16,10 @@ namespace EzCv.Interop;
 /// </remarks>
 internal static partial class EzCvDll
 {
-    // 跨平台库名常量：Windows 用短名，macOS/Linux 用完整文件名。
-    // macOS 上 [LibraryImport] 配合逻辑短名会触发 .NET 10 的 malloc 冲突，
-    // 完整文件名绕过此问题（与 OpenCvSharp 在 Unix 上不干预加载的策略一致）。
-#if WINDOWS
-    private const string DllName = "ezcv_native.dll";
-#else
-    private const string DllName = "libezcv_native.dylib";
-#endif
+    // 统一使用逻辑短名，由 NativeLoader 在运行时按平台解析为实际文件名。
+    // Windows：resolver 在 runtimes/win-x64/native/ 中查找 ezcv_native.dll。
+    // macOS/Linux：resolver 在 runtimes/<rid>/native/ 中查找 libezcv_native.{dylib,so}。
+    private const string DllName = "ezcv_native";
 
     // 字符串 DllImport 通用属性（不含 CallingConvention / ExactSpelling，每个入口显式声明）。
     private const UnmanagedType StrMarshal = UnmanagedType.LPUTF8Str;

@@ -212,20 +212,12 @@ public class ToolCallService : IToolCallService
 
     public string? GetCurrentFrameBase64()
     {
-        var mat = _captureService.GetMatFrame();
-        if (mat is null) return null;
+        using var mat = _captureService.GetMatFrame();
+        if (mat is null || mat.Empty()) return null;
 
-        try
-        {
-            if (mat.Empty()) return null;
-            using var resized = mat.Resize(0.5);
-            var bytes = resized.ToBytes(".png");
-            return Convert.ToBase64String(bytes);
-        }
-        finally
-        {
-            mat.Dispose();
-        }
+        using var resized = mat.Resize(0.5);
+        var bytes = resized.ToBytes(".png");
+        return Convert.ToBase64String(bytes);
     }
 
     // ── 日志 ────────────────────────────────

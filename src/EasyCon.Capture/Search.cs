@@ -93,10 +93,9 @@ public static class ILExtLeg
             }
             else
             {
-                byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
                 if (self.searchMethod == SearchMethod.MaskedSqDiffNormed)
                 {
-                    using var targetRGBA = Cv2.ImDecode(imageBytes, ImreadModes.Unchanged);
+                    var targetRGBA = self.GetCachedTargetMatRGBA();
                     if (targetRGBA.Channels() != 4)
                         throw new Exception("Masked matching requires RGBA image");
                     Cv2.Split(targetRGBA, out var channels);
@@ -108,7 +107,7 @@ public static class ILExtLeg
                 }
                 else
                 {
-                    using var target = imageBytes.ToMat();
+                    var target = self.GetCachedTargetMat();
                     result = [ECSearch.FindPic(range, target, self.searchMethod, out md)];
                 }
             }

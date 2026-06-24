@@ -9,7 +9,25 @@ namespace EasyCon.Capture;
 public record ImgLabel
 {
     public SearchMethod searchMethod { get; set; } = SearchMethod.CCoeffNormed;
-    public string ImgBase64 { get; set; } = string.Empty;
+
+    private string _imgBase64 = string.Empty;
+    public string ImgBase64
+    {
+        get => _imgBase64;
+        set
+        {
+            _imgBase64 = value;
+            InvalidateTargetCache();
+        }
+    }
+
+    /// <summary>缓存的 BGR 目标 Mat，惰性解码，生命周期由 ImgLabel 管理。</summary>
+    [JsonIgnore]
+    private Mat? _cachedMat;
+
+    /// <summary>缓存的 RGBA 目标 Mat（MaskedSqDiffNormed 路径使用），惰性解码。</summary>
+    [JsonIgnore]
+    private Mat? _cachedMatRGBA;
 
     public int RangeX { get; set; } = 0;
     public int RangeY { get; set; } = 0;
@@ -44,6 +62,41 @@ public record ImgLabel
         if (!searchMethod.IsImageMethod()) return;
         ImgBase64 = ImageToBase64(img);
         _image = null;
+    }
+
+    /// <summary>
+    /// 获取缓存的 BGR 目标 Mat。首次调用时从 ImgBase64 解码，后续直接返回缓存。
+    /// </summary>
+    internal Mat GetCachedTargetMat()
+    {
+        if (_cachedMat is { } cached)
+            return cached;
+        byte[] imageBytes = Convert.FromBase64String(ImgBase64);
+        _cachedMat = imageBytes.ToMat(); // ImreadModes.Color → BGR
+        return _cachedMat;
+    }
+
+    /// <summary>
+    /// 获取缓存的 RGBA 目标 Mat（MaskedSqDiffNormed 路径使用）。
+    /// </summary>
+    internal Mat GetCachedTargetMatRGBA()
+    {
+        if (_cachedMatRGBA is { } cached)
+            return cached;
+        byte[] imageBytes = Convert.FromBase64String(ImgBase64);
+        _cachedMatRGBA = Cv2.ImDecode(imageBytes, ImreadModes.Unchanged);
+        return _cachedMatRGBA;
+    }
+
+    /// <summary>
+    /// 释放缓存的目标 Mat。ImgBase64 变更时自动调用。
+    /// </summary>
+    internal void InvalidateTargetCache()
+    {
+        _cachedMat?.Dispose();
+        _cachedMat = null;
+        _cachedMatRGBA?.Dispose();
+        _cachedMatRGBA = null;
     }
 
     private static bool IsBase64String(string s)

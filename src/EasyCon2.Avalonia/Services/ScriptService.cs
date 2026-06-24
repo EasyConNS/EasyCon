@@ -1,4 +1,4 @@
-﻿using EasyCon.Capture;
+using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon.Core.Runner;
@@ -91,22 +91,65 @@ public class ScriptService : IScriptService
 
     public void Run(string scriptPath, string[]? args = null)
     {
+        _logService.AddLog($"开始运行脚本: {Path.GetFileName(scriptPath)}");
+        ExecuteScriptAsync(() =>
+        {
+            var scriptBasePath = Path.GetFullPath(Path.GetDirectoryName(scriptPath) ?? "");
+            var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppPaths.DataDir);
+            var diag = _runner.Load(scriptPath, [.. label.Select(il => il.name)]);
+            var labelDict = label.ToDictionary(il => il.name);
+            return (diag, BuildLabelMatchDelegate(labelDict), (ImmutableHashSet<string>)[.. labelDict.Keys]);
+        }, args);
+    }
+
+    public void RunFromContent(string content, string[]? args = null)
+    {
+        _logService.AddLog("===开始运行脚本===");
+        ExecuteScriptAsync(() =>
+        {
+            var diag = _runner.Init(content, []);
+            return (diag, null, (ImmutableHashSet<string>)[]);
+        }, args);
+    }
+
+    public void Stop()
+    {
+        _cts?.Cancel();
+    }
+
+    // ── 私有方法 ────────────────────────────────
+
+    private LabelMatchDelegate? BuildLabelMatchDelegate(Dictionary<string, ImgLabel> labelDict)
+    {
+        if (labelDict.Count == 0) return null;
+        return lblName =>
+        {
+            if (!labelDict.TryGetValue(lblName, out var il)) return 0;
+            using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
+            il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
+            return (int)md;
+        };
+    }
+
+    /// <summary>
+    /// 脚本执行主流程：编译 → 检查需求 → 连接设备 → 构建委托 → 运行。
+    /// </summary>
+    /// <param name="compile">编译回调，返回 (诊断结果, 标签匹配委托, 标签名集合)</param>
+    private void ExecuteScriptAsync(
+        Func<(ImmutableArray<Diagnostic> diag, LabelMatchDelegate? labelMatch, ImmutableHashSet<string> labelNames)> compile,
+        string[]? args)
+    {
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
         IsRunning = true;
         IsRunningChanged?.Invoke(true);
-        _logService.AddLog($"开始运行脚本: {Path.GetFileName(scriptPath)}");
 
         Task.Run(() =>
         {
             try
             {
-                var scriptBasePath = Path.GetDirectoryName(scriptPath) ?? "";
-                scriptBasePath = Path.GetFullPath(scriptBasePath);
-                var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppPaths.DataDir);
-
-                var diag = _runner.Load(scriptPath, [.. label.Select(il => il.name)]);
+                var (diag, labelMatchDelegate, labelNames) = compile();
 
                 if (diag.HasErrors())
                 {
@@ -144,34 +187,7 @@ public class ScriptService : IScriptService
 
                 _captureService.SetCaptureProperties(1920, 1080);
 
-                var labelDict = label.ToDictionary(il => il.name);
-                ImmutableHashSet<string>? labelNames = [.. labelDict.Keys];
-
-                FrameDelegate? frameDelegate = (x, y, w, h) =>
-                {
-                    using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
-                    if (mat.Empty()) return null;
-                    if (x >= 0 && y >= 0 && w >= 0 && h >= 0)
-                    {
-                        x = Math.Clamp(x, 0, mat.Width);
-                        y = Math.Clamp(y, 0, mat.Height);
-                        w = Math.Clamp(w, 0, mat.Width - x);
-                        h = Math.Clamp(h, 0, mat.Height - y);
-
-                        using var roi = new Mat(mat, new Rect(x, y, w, h));
-                        if (w == 0 || h == 0) return null;
-                        return Convert.ToBase64String(roi.ToBytes(".png"));
-                    }
-                    return Convert.ToBase64String(mat.ToBytes(".png"));
-                };
-
-                LabelMatchDelegate? labelMatchDelegate = lblName =>
-                {
-                    if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-                    using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
-                    il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
-                    return (int)md;
-                };
+                var frameDelegate = FrameDelegateFactory.CreateFrame(() => _captureService.GetMatFrame());
 
                 var ocrCache = new OcrEngineCache
                 {
@@ -202,112 +218,5 @@ public class ScriptService : IScriptService
                 IsRunningChanged?.Invoke(false);
             }
         }, token);
-    }
-
-    public void RunFromContent(string content, string[]? args = null)
-    {
-        _cts = new CancellationTokenSource();
-        var token = _cts.Token;
-
-        IsRunning = true;
-        IsRunningChanged?.Invoke(true);
-        _logService.AddLog("===开始运行脚本===");
-
-        Task.Run(() =>
-        {
-            try
-            {
-                ImmutableHashSet<string>? labelNames = [];
-
-                var diag = _runner.Init(content, labelNames);
-
-                if (diag.HasErrors())
-                {
-                    foreach (var d in diag)
-                        _logService.AddLog($"编译失败: {d.Message} (行{d.Location.StartLine + 1})");
-                    return;
-                }
-
-                // 检查脚本运行需求
-                var requirements = GetRequirements();
-                if (!requirements.CanRun)
-                {
-                    var reasons = requirements.GetBlockReasons();
-                    foreach (var reason in reasons)
-                        _logService.AddLog($"❌ {reason}");
-                    return;
-                }
-
-                // 尝试自动连接单片机
-                if (_runner.HasKeyAction && !_deviceService.IsConnected)
-                {
-                    _logService.AddLog("脚本需要单片机，尝试自动连接...");
-                    var port = _deviceService.AutoConnect();
-                    if (port == null)
-                    {
-                        _logService.AddLog("错误: 自动连接单片机失败");
-                        return;
-                    }
-                    _logService.AddLog($"自动连接成功: {port}");
-                }
-
-                ICGamePad? pad = null;
-                if (_runner.HasKeyAction)
-                    pad = new GamePadAdapter(_deviceService.GetDevice(), HighResolutionTiming);
-
-                _captureService.SetCaptureProperties(1920, 1080);
-
-                FrameDelegate? frameDelegate = (x, y, w, h) =>
-                {
-                    using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
-                    if (mat.Empty()) return null;
-                    if (x >= 0 && y >= 0 && w >= 0 && h >= 0)
-                    {
-                        x = Math.Clamp(x, 0, mat.Width);
-                        y = Math.Clamp(y, 0, mat.Height);
-                        w = Math.Clamp(w, 0, mat.Width - x);
-                        h = Math.Clamp(h, 0, mat.Height - y);
-
-                        using var roi = new Mat(mat, new Rect(x, y, w, h));
-                        if (w == 0 || h == 0) return null;
-                        return Convert.ToBase64String(roi.ToBytes(".png"));
-                    }
-                    return Convert.ToBase64String(mat.ToBytes(".png"));
-                };
-
-                var ocrCache = new OcrEngineCache
-                {
-                    DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
-                };
-                var ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
-                var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
-                var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.GetMatFrame(), ocrCache);
-
-                _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, null, null, token, args);
-                _logService.AddLog("脚本运行完成");
-            }
-            catch (OperationCanceledException)
-            {
-                _logService.AddLog("脚本已终止");
-            }
-            catch (ScriptException ex)
-            {
-                _logService.AddLog($"运行出错: {ex.Message} (行{ex.Address})");
-            }
-            catch (Exception ex)
-            {
-                _logService.AddLog($"意外错误: {ex.Message}");
-            }
-            finally
-            {
-                IsRunning = false;
-                IsRunningChanged?.Invoke(false);
-            }
-        }, token);
-    }
-
-    public void Stop()
-    {
-        _cts?.Cancel();
     }
 }

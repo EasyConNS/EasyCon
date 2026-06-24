@@ -7,15 +7,9 @@ namespace EzCv.Interop;
 /// <summary>
 /// 跨平台原生库解析器。
 /// <para>
-/// 参考 OpenCvSharp NativeMethods.LoadLibraries 模式：
-///   - Windows：通过 DllImportResolver 在输出目录/runtimes 中查找并加载 DLL。
-///   - macOS / Linux：不干预库加载，交给系统动态链接器（dyld / ld.so）。
-///     库放在输出目录中，依赖 @rpath（@loader_path）自动解析。
-/// </para>
-/// <para>
-/// 注意：macOS 上 NativeLibrary.Load(path, assembly, searchPath) 会触发
-/// 递归依赖加载（libopencv_world → AppKit/Cocoa/AVFoundation），在 .NET 进程
-/// 上下文下可能导致 malloc 冲突。因此 Unix 上不注册 resolver，与 OpenCvSharp 一致。
+/// DllImport 统一使用逻辑名 "ezcv_native"，本 resolver 在所有平台上将其解析为
+/// 平台对应的实际文件（ezcv_native.dll / libezcv_native.dylib / libezcv_native.so），
+/// 优先从输出目录和 runtimes/&lt;rid&gt;/native/ 中加载。
 /// </para>
 /// </summary>
 internal static class NativeLoader
@@ -26,10 +20,8 @@ internal static class NativeLoader
     [ModuleInitializer]
     internal static void Init()
     {
-        // 仅在 Windows 上注册 resolver；Unix 上交给系统处理（与 OpenCvSharp 一致）
-        if (!OperatingSystem.IsWindows())
-            return;
-
+        // 所有平台均注册 resolver：DllImport 使用逻辑名 "ezcv_native"，
+        // resolver 负责在 runtimes/<rid>/native/ 中查找平台对应的实际文件。
         var asm = typeof(NativeLoader).Assembly;
         try { NativeLibrary.SetDllImportResolver(asm, Resolve); }
         catch (ArgumentException) { /* 已注册，忽略 */ }
