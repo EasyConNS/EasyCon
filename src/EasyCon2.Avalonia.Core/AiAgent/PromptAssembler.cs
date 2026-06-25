@@ -23,16 +23,19 @@ public sealed class PromptAssembler
     public PromptAssembler(SkillRegistry skills) => _skills = skills;
 
     /// <summary>
-    /// 组装系统提示词。
+    /// 基础角色提示词（不含技能相关内容），用于单独作为 system 角色消息发送。
+    /// </summary>
+    public string GetBaseRolePrompt() => BaseRolePrompt;
+
+    /// <summary>
+    /// 组装技能相关内容（技能索引 + 已激活技能 body + 轮次预算）。
+    /// 不含基础角色提示词，由调用方以 system 角色单独发送。
     /// </summary>
     /// <param name="history">完整对话历史（用于评估触发）。</param>
     /// <param name="round">当前 ReAct 轮次。</param>
     public string Build(IReadOnlyList<ChatMessage> history, int round = 0)
     {
         var sb = new StringBuilder();
-
-        // ── 角色基线（替代 SystemPrompts.Default 的核心部分）──
-        sb.Append(BaseRolePrompt);
 
         // ── Level 1：技能索引 ──
         var index = BuildSkillIndex();
@@ -47,7 +50,7 @@ public sealed class PromptAssembler
                 sb.Append("\n\n").Append(body);
         }
 
-        // ── 轮次预算提醒（保留原 Orchestrator 行为）──
+        // ── 轮次预算提醒 ──
         if (round > 0)
         {
             var remaining = AgentOrchestrator.MaxToolRounds - round;
@@ -94,11 +97,17 @@ public sealed class PromptAssembler
     }
 
     /// <summary>
+    /// 身份标识（仅第一句），作为独立 system 消息发送。
+    /// </summary>
+    public string GetIdentityPrompt() => IdentityPrompt;
+
+    /// <summary>
     /// 角色 prompt 基线。迁移自 <see cref="SystemPrompts.Default"/>，
     /// 去掉与具体技能（脚本语法等）耦合的部分，仅保留身份与通用行为规范。
     /// </summary>
+    private const string IdentityPrompt = "你是 EasyCon（伊机控）的 AI 助手。";
+
     private const string BaseRolePrompt = """
-        你是 EasyCon（伊机控）的 AI 助手。
         EasyCon 是一个游戏手柄自动化脚本工具，支持脚本编写、图像识别、按键映射等功能。
         请用中文回答问题，回答简洁准确。
 

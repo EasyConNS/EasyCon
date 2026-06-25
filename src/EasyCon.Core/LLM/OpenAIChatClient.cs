@@ -356,10 +356,16 @@ public sealed class OpenAIChatClient : IChatClient
     private static string? GetThinkingContent(JsonElement message)
     {
         if (message.TryGetProperty("reasoning_content", out var rc) && rc.ValueKind == JsonValueKind.String)
-            return rc.GetString();
+        {
+            var text = rc.GetString();
+            if (!string.IsNullOrEmpty(text)) return text;
+        }
 
         if (message.TryGetProperty("reasoning", out var r) && r.ValueKind == JsonValueKind.String)
-            return r.GetString();
+        {
+            var text = r.GetString();
+            if (!string.IsNullOrEmpty(text)) return text;
+        }
 
         return null;
     }
@@ -448,11 +454,12 @@ public sealed class OpenAIChatClient : IChatClient
                 }
             }
 
-            // 正文内容
+            // 正文内容（跳过空字符串，避免部分模型在 reasoning_content 非空时
+            // 仍返回 content:"" 的 chunk，导致空 Content delta 传播到 UI）
             if (delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
             {
                 var text = content.GetString();
-                if (text is not null)
+                if (!string.IsNullOrEmpty(text))
                     deltas.Add(StreamDelta.Content(text));
             }
         }
@@ -511,13 +518,13 @@ public sealed class OpenAIChatClient : IChatClient
         if (delta.TryGetProperty("reasoning_content", out var rc) && rc.ValueKind == JsonValueKind.String)
         {
             thinking = rc.GetString();
-            return thinking is not null;
+            return !string.IsNullOrEmpty(thinking);
         }
 
         if (delta.TryGetProperty("reasoning", out var r) && r.ValueKind == JsonValueKind.String)
         {
             thinking = r.GetString();
-            return thinking is not null;
+            return !string.IsNullOrEmpty(thinking);
         }
 
         return false;

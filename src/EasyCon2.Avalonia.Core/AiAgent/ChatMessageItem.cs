@@ -25,13 +25,18 @@ public partial class UserMessage : ChatMessageItem
 public partial class AssistantMessage : ChatMessageItem
 {
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBubbleVisible))]
     private string _content = "";
 
     [ObservableProperty]
     private ThinkingBlock? _thinking;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBubbleVisible))]
     private bool _isStreaming;
+
+    /// <summary>正文气泡是否可见：流式期间始终可见，结束后仅非空内容可见。</summary>
+    public bool IsBubbleVisible => IsStreaming || !string.IsNullOrWhiteSpace(Content);
 }
 
 /// <summary>

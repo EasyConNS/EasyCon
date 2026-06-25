@@ -7,10 +7,14 @@ namespace EasyCon.Core.LLM;
 public static class SystemPrompts
 {
     /// <summary>
-    /// 默认系统提示词。
+    /// 身份标识（仅第一句），作为独立 system 消息发送。
+    /// </summary>
+    public const string Identity = "你是 EasyCon（伊机控）的 AI 助手。";
+
+    /// <summary>
+    /// 默认系统提示词（不含身份标识句，身份标识已独立为 <see cref="Identity"/>）。
     /// </summary>
     public const string Default = """
-        你是 EasyCon（伊机控）的 AI 助手。
         EasyCon 是一个游戏手柄自动化脚本工具，支持脚本编写、图像识别、按键映射等功能。
         请用中文回答问题，回答简洁准确。
 

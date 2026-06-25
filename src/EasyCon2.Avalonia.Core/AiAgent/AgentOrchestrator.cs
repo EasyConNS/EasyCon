@@ -4,6 +4,7 @@ using EasyCon.Core.LLM.Models;
 using EasyCon.Core.LLM.Skills;
 using EasyCon.Core.LLM.Tools;
 using EasyCon2.Avalonia.Core.AiAgent.Tools;
+using System.IO;
 using System.Text;
 
 namespace EasyCon2.Avalonia.Core.AiAgent;
@@ -210,12 +211,14 @@ public class AgentOrchestrator
                 var accumulator = new ToolCallAccumulator();
                 var hasContent = false;
 
+                // RoundStart 在流式重试循环之外发射，确保即使重试 UI 也只创建一个 AssistantMessage
+                onEvent(new AgentEvent.RoundStart(""));
+                pendingReply.Clear();
+                pendingThinking.Clear();
+
                 // ── 流式断线重连循环 ──
                 for (var streamRetry = 0; streamRetry <= maxStreamRetries; streamRetry++)
                 {
-                    onEvent(new AgentEvent.RoundStart(""));
-                    pendingReply.Clear();
-                    pendingThinking.Clear();
                     accumulator = new ToolCallAccumulator();
 
                     var client = ChatClientFactory.Create(provider);
@@ -412,24 +415,35 @@ public class AgentOrchestrator
     }
 
     /// <summary>
-    /// 组装发送给模型的消息列表（含系统提示词 + 截断后的历史）。
-    /// 注意：只产出一条 system 消息（位于 messages[0]）。反思提示与截断说明
-    /// 全部合并进该 system 文本，避免部分供应商（如 Qwen/DashScope）抛出
-    /// "System message must be at the beginning."。
+    /// 组装发送给模型的消息列表。
+    /// 结构：
+    ///   [0] system: 基础角色提示词（干净，不包裹）
+    ///   [1..N] user: &lt;system-reminder&gt; 包裹的技能内容 / 反思 / 截断 / AGENTS.md 上下文
+    ///   最后为对话历史。
     /// </summary>
     internal List<ChatMessage> BuildMessages(List<ChatMessage> history, int currentRound = 0)
     {
-        // 路径 A：技能体系可用 → 由 PromptAssembler 组装系统提示词
-        var systemPrompt = _promptAssembler is not null
+        // 基础角色提示词（始终使用 system 角色，不包裹）
+        var identityPrompt = _promptAssembler is not null
+            ? _promptAssembler.GetIdentityPrompt()
+            : SystemPrompts.Identity;
+        var baseRolePrompt = _promptAssembler is not null
+            ? _promptAssembler.GetBaseRolePrompt()
+            : SystemPrompts.Default;
+
+        // 技能内容（路径 A：PromptAssembler / 路径 B：Legacy BuildSystemPrompt）
+        var skillContent = _promptAssembler is not null
             ? _promptAssembler.Build(history, currentRound)
             : BuildSystemPrompt(history, currentRound);
 
-        // 反思提示合并进同一条 system 消息（而非新增一条 system）
-        if (_reflectionState.ShouldInjectReflection())
-            systemPrompt += "\n\n" + _reflectionState.GetReflectionPrompt();
+        // 反思提示
+        var reflectionPrompt = _reflectionState.ShouldInjectReflection()
+            ? _reflectionState.GetReflectionPrompt()
+            : null;
 
         // 滑动窗口截断
         List<ChatMessage> body;
+        string? truncationNotice = null;
         if (history.Count <= MaxHistoryMessages)
         {
             body = history;
@@ -437,11 +451,46 @@ public class AgentOrchestrator
         else
         {
             var aligned = SkipToSafeBoundary(history, history.Count - MaxHistoryMessages);
-            systemPrompt += $"\n\n[系统提示] 为控制上下文长度，前面的 {history.Count - aligned.Count} 条对话已被省略。";
+            truncationNotice = $"[系统提示] 为控制上下文长度，前面的 {history.Count - aligned.Count} 条对话已被省略。";
             body = aligned;
         }
 
-        var messages = new List<ChatMessage>(body.Count + 1) { ChatMessage.System(systemPrompt) };
+        var messages = new List<ChatMessage>();
+
+        // ── [0] system: 身份标识（仅一句）──
+        messages.Add(ChatMessage.System(identityPrompt));
+
+        // ── [1] system: 基础角色提示词（干净，不包裹）──
+        messages.Add(ChatMessage.System(baseRolePrompt));
+
+        // ── [1] user: <system-reminder> 技能内容 ──
+        if (!string.IsNullOrWhiteSpace(skillContent))
+            messages.Add(ChatMessage.User($"<system-reminder>\n{skillContent}\n</system-reminder>"));
+
+        // ── [2] user: <system-reminder> 反思提示 ──
+        if (reflectionPrompt is not null)
+            messages.Add(ChatMessage.User($"<system-reminder>\n{reflectionPrompt}\n</system-reminder>"));
+
+        // ── [3] user: <system-reminder> 截断说明 ──
+        if (truncationNotice is not null)
+            messages.Add(ChatMessage.User($"<system-reminder>\n{truncationNotice}\n</system-reminder>"));
+
+        // ── [4] user: <system-reminder> AGENTS.md 上下文 ──
+        var agentsMdPath = FindAgentsMd();
+        var currentDate = DateTime.Now.ToString("yyyy-MM-dd");
+        messages.Add(ChatMessage.User($@"<system-reminder>
+As you answer the user's questions, you can use the following context:
+Codebase and user instructions are shown below. Be sure to adhere to these instructions. IMPORTANT: These instructions OVERRIDE any default behavior and you MUST follow them exactly as written.
+
+Contents of {agentsMdPath ?? "AGENTS.md"} (user default instructions):
+
+# currentDate
+Today's date is {currentDate}.
+
+IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.
+</system-reminder>"));
+
+        // ── [5..n] 对话历史 ──
         messages.AddRange(body);
         return messages;
     }
@@ -461,16 +510,48 @@ public class AgentOrchestrator
     }
 
     /// <summary>
-    /// [Legacy fallback] 旧的硬编码系统提示词组装逻辑。
+    /// 查找 AGENTS.md 文件路径。按以下优先级：
+    /// 1. 当前工作目录向上查找
+    /// 2. 应用程序基目录向上查找
+    /// 未找到返回 null。
+    /// </summary>
+    private static string? FindAgentsMd()
+    {
+        var dir = Environment.CurrentDirectory;
+        var path = FindInParents(dir, "AGENTS.md");
+        if (path is not null) return path;
+
+        dir = AppContext.BaseDirectory;
+        return FindInParents(dir, "AGENTS.md");
+    }
+
+    /// <summary>
+    /// 从指定目录开始向上查找文件，直到文件系统根。
+    /// </summary>
+    private static string? FindInParents(string startDir, string fileName)
+    {
+        var dir = startDir;
+        while (!string.IsNullOrEmpty(dir))
+        {
+            var path = Path.Combine(dir, fileName);
+            if (File.Exists(path)) return path;
+            var parent = Path.GetDirectoryName(dir);
+            if (parent == dir) break;
+            dir = parent!;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// [Legacy fallback] 旧的硬编码技能内容组装逻辑（不含基础角色提示词）。
     /// 仅当编排器未注入 SkillRegistry 时使用（向后兼容旧测试与旧调用方）。
-    /// 新代码应通过 <see cref="AgentOrchestrator(ToolRegistry, SkillRegistry?)"/>
-    /// 注入技能体系，由 <see cref="PromptAssembler"/> 接管组装。
+    /// 基础角色提示词（SystemPrompts.Default）由 BuildMessages 以 system 角色单独发送。
     ///
     /// 基于工具调用历史决定注入哪些 prompt 段落，关键词检测作为 fallback。
     /// </summary>
     internal string BuildSystemPrompt(List<ChatMessage> history, int currentRound)
     {
-        var systemPrompt = SystemPrompts.Default;
+        var sb = new StringBuilder();
 
         // 扫描历史中实际的工具调用
         var usedTools = history
@@ -494,28 +575,30 @@ public class AgentOrchestrator
             needsExecution = HasRecentUserKeyword(history, ["运行", "执行", "自动", "跑脚本"]);
 
         if (needsScriptSyntax)
-            systemPrompt += SystemPrompts.ScriptSyntax;
+            sb.Append(SystemPrompts.ScriptSyntax);
 
         if (needsVision && needsExecution)
         {
-            systemPrompt += SystemPrompts.ReActLoop;
+            sb.Append(SystemPrompts.ReActLoop);
         }
         else
         {
             if (needsVision)
-                systemPrompt += SystemPrompts.Vision;
+                sb.Append(SystemPrompts.Vision);
             if (needsExecution)
-                systemPrompt += SystemPrompts.ScriptExecution;
+                sb.Append(SystemPrompts.ScriptExecution);
         }
 
         if (currentRound > 0)
         {
             var remaining = MaxToolRounds - currentRound;
-            systemPrompt += $"\n\n[系统] 当前已使用 {currentRound} 轮工具调用，剩余 {remaining} 轮。" +
-                            (remaining <= 10 ? " 轮次即将耗尽，请尽快完成目标并回复用户。" : "");
+            sb.Append("\n\n[系统] 当前已使用 ")
+              .Append(currentRound).Append(" 轮工具调用，剩余 ").Append(remaining).Append(" 轮。");
+            if (remaining <= 10)
+                sb.Append(" 轮次即将耗尽，请尽快完成目标并回复用户。");
         }
 
-        return systemPrompt;
+        return sb.ToString();
     }
 
     private static bool HasRecentUserKeyword(List<ChatMessage> history, string[] keywords)

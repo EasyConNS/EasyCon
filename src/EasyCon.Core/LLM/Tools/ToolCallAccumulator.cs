@@ -21,7 +21,10 @@ public class ToolCallAccumulator
             _calls[delta.Index] = acc;
         }
 
-        if (delta.Id is not null)
+        // 注意：部分供应商（如 DeepSeek）在后续分片中返回 id="" 和 name=""
+        // 而不是 null，因此不能用 is not null 判断，必须排除空字符串。
+        // 一旦 id/name 已被首分片设置，后续空字符串不应覆盖。
+        if (!string.IsNullOrEmpty(delta.Id))
             acc.Id = delta.Id;
 
         if (delta.Type is not null)
@@ -29,7 +32,7 @@ public class ToolCallAccumulator
 
         if (delta.Function is not null)
         {
-            if (delta.Function.Name is not null)
+            if (!string.IsNullOrEmpty(delta.Function.Name))
                 acc.Name = delta.Function.Name;
 
             if (delta.Function.Arguments is not null)
@@ -39,12 +42,17 @@ public class ToolCallAccumulator
 
     /// <summary>
     /// 构建最终的完整 ToolCall 列表。
+    /// 自动过滤缺少名称或 ID 的残缺工具调用（非标准格式的模型可能产生此类异常 delta）。
     /// </summary>
     public List<ToolCall> Build()
     {
         var result = new List<ToolCall>(_calls.Count);
         foreach (var (_, acc) in _calls)
         {
+            // 跳过缺少名称或 ID 的残缺工具调用
+            if (string.IsNullOrWhiteSpace(acc.Name) || string.IsNullOrWhiteSpace(acc.Id))
+                continue;
+
             result.Add(new ToolCall
             {
                 Id = acc.Id,

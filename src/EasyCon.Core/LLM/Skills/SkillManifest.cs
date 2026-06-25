@@ -32,4 +32,14 @@ public sealed class SkillManifest
     /// 同名/同触发场景下的排序权重，数值越小优先级越高。默认 100。
     /// </summary>
     public int Priority { get; set; } = 100;
+
+    /// <summary>
+    /// 执行上下文。"fork" 表示独立子 Agent 执行；空或其它值表示 inline（注入主 prompt）。
+    /// </summary>
+    public string Context { get; set; } = "";
+
+    /// <summary>
+    /// 子 Agent 模式下允许使用的工具集合。null 或空表示允许全部工具。
+    /// </summary>
+    public HashSet<string> AllowedTools { get; set; } = new(StringComparer.Ordinal);
 }

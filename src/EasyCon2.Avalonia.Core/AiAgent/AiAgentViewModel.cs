@@ -12,6 +12,7 @@ using EasyCon2.Avalonia.Core.Mcp;
 using EasyCon2.Avalonia.Core.Services;
 using System.Collections.ObjectModel;
 using System.Text;
+using System.Text.Json;
 
 namespace EasyCon2.Avalonia.Core.AiAgent;
 
@@ -58,6 +59,12 @@ public partial class AiAgentViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _showDebugPanel;
+
+    /// <summary>对话标题，首次请求结束后由模型自动生成。</summary>
+    [ObservableProperty]
+    private string _sessionTitle = "AI Agent";
+
+    private bool _hasGeneratedTitle;
 
     /// <summary>调试日志 — 原始 SSE 数据和解析异常，用于诊断模型兼容性问题。</summary>
     public string DebugLogText => string.Join("\n", _debugLogs);
@@ -114,6 +121,14 @@ public partial class AiAgentViewModel : ObservableObject
         // 元工具始终注册（即使无技能，list_skills 也能给出"无技能"的明确反馈）
         _tools.Register(new ListSkillsTool(_skills));
         _tools.Register(new ReadSkillTool(_skills));
+
+        // execute_skill：延迟解析 provider/modelId（模型可能切换）
+        var executor = new SkillExecutor(_skills, _tools,
+            getProvider: () => SelectedEntry is not null
+                ? GetProviderConfig(SelectedEntry.ProviderKey)
+                : new ProviderConfig(),
+            getModelId: () => SelectedEntry?.ModelId ?? "");
+        _tools.Register(new ExecuteSkillTool(executor));
     }
 
     /// <summary>
@@ -131,11 +146,17 @@ public partial class AiAgentViewModel : ObservableObject
 
             // 2. 用户和项目级技能（文件系统，优先级更高，可覆盖内置）
             var projectDir = _toolCallService?.GetProjectDirectory();
-            SkillLoader.LoadToRegistry(_skills, SkillLoader.GetSearchPaths(projectDir));
+            var paths = SkillLoader.GetSearchPaths(projectDir).ToList();
+            SkillLoader.LoadToRegistry(_skills, paths);
+
+            Console.WriteLine(
+                $"[AiAgent] 技能加载完成: 共 {_skills.All.Count} 个技能, " +
+                $"搜索路径: [{string.Join(", ", paths)}]");
         }
-        catch
+        catch (Exception ex)
         {
-            // 技能加载失败不应阻塞 Agent 初始化
+            Console.WriteLine(
+                $"[AiAgent] 技能加载失败: {ex.Message}");
         }
     }
 
@@ -157,6 +178,8 @@ public partial class AiAgentViewModel : ObservableObject
         {
             _initialized = true;
             RefreshModels();
+            // 首次打开时重新加载技能（确保用户技能目录变更后能被感知）
+            ReloadSkills();
             // 首次打开时初始化 MCP 连接（fire-and-forget，不阻塞 UI）。
             if (_mcpManager is not null)
                 _ = InitializeMcpAsync();
@@ -223,6 +246,8 @@ public partial class AiAgentViewModel : ObservableObject
         _totalTokensUsed = 0;
         Messages.Clear();
         TokenUsage = "tokens: --";
+        SessionTitle = "AI Agent";
+        _hasGeneratedTitle = false;
     }
 
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -260,6 +285,15 @@ public partial class AiAgentViewModel : ObservableObject
 
             var provider = GetProviderConfig(SelectedEntry.ProviderKey);
             await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token);
+
+            // 首次请求结束后异步生成对话标题（不阻塞主流程）
+            if (!_hasGeneratedTitle)
+            {
+                _hasGeneratedTitle = true;
+                var firstMessage = message;
+                var capturedProvider = provider;
+                _ = GenerateTitleAsync(firstMessage, capturedProvider, SelectedEntry.ModelId);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -396,6 +430,7 @@ public partial class AiAgentViewModel : ObservableObject
                         current.Thinking ??= new ThinkingBlock();
                         current.Thinking.Text = _pendingThinking.ToString();
                     }
+
                     Dispatcher.UIThread.Post(() =>
                     {
                         current.IsStreaming = false;
@@ -429,6 +464,51 @@ public partial class AiAgentViewModel : ObservableObject
                 }
             }
         }, DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// 异步生成对话标题，通过非流式请求让模型总结会话主题。
+    /// 解析 JSON 格式响应 {"title":"..."} 并更新 SessionTitle。
+    /// 失败时静默降级，不影响主对话流程。
+    /// </summary>
+    private async Task GenerateTitleAsync(string userMessage, ProviderConfig provider, string modelId)
+    {
+        try
+        {
+            var client = ChatClientFactory.Create(provider);
+            var request = new ChatRequest
+            {
+                Model = modelId,
+                Messages =
+                [
+                    ChatMessage.System("Generate a concise title for this coding session.\n\nRules:\n- Use the user's primary language.\n- Use 3-7 words when possible.\n- Keep it recognizable in a session list.\n- Preserve important proper nouns, file names, APIs, and technology names.\n- Do not use markdown, numbering, quotes, trailing punctuation, or explanations.\n- Return only JSON in this shape: {\"title\":\"...\"}"),
+                    ChatMessage.User(userMessage)
+                ],
+                Temperature = 0.3,
+                MaxTokens = 100
+            };
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var response = await client.SendAsync(request, cts.Token);
+
+            if (response.Success && !string.IsNullOrWhiteSpace(response.Content))
+            {
+                using var doc = JsonDocument.Parse(response.Content);
+                if (doc.RootElement.TryGetProperty("title", out var titleEl))
+                {
+                    var title = titleEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(title))
+                    {
+                        var trimmed = title.Trim().Trim('"', '\'', '，', '。');
+                        Dispatcher.UIThread.Post(() => SessionTitle = trimmed);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // 标题生成失败不影响主对话，静默降级
+        }
     }
 
     [RelayCommand]

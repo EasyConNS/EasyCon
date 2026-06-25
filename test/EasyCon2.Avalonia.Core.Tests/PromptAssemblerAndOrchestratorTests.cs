@@ -20,12 +20,13 @@ public class PromptAssemblerAndOrchestratorTests
         var assembler = new PromptAssembler(new SkillRegistry());
         var history = new List<ChatMessage> { ChatMessage.User("你好") };
 
-        var prompt = assembler.Build(history);
+        var baseRole = assembler.GetBaseRolePrompt();
+        var skillContent = assembler.Build(history);
 
         Assert.Multiple(() =>
         {
-            Assert.That(prompt, Does.Contain("EasyCon"), "应包含角色基线");
-            Assert.That(prompt, Does.Not.Contain("可用技能"), "无技能不应输出技能索引");
+            Assert.That(baseRole, Does.Contain("EasyCon"), "基础角色应包含 EasyCon 身份");
+            Assert.That(skillContent, Is.Empty, "无技能时技能内容应为空");
         });
     }
 
@@ -97,11 +98,18 @@ public class PromptAssemblerAndOrchestratorTests
 
         var messages = orchestrator.BuildMessages(history);
 
-        var systemText = messages[0].Content?.ToString() ?? "";
         Assert.Multiple(() =>
         {
-            Assert.That(messages.Count(m => m.Role == "system"), Is.EqualTo(1), "始终单条 system");
-            Assert.That(systemText, Does.Contain("可用技能"), "技能路径应输出索引");
+            // [0] system: 身份标识, [1] system: 基础角色
+            Assert.That(messages[0].Role, Is.EqualTo("system"), "身份标识应为 system");
+            Assert.That(messages[1].Role, Is.EqualTo("system"), "基础角色应为 system");
+            Assert.That(messages.Count(m => m.Role == "system"), Is.EqualTo(2), "两条 system 消息");
+
+            // 技能内容在后续 user 消息中
+            var skillMsg = messages.FirstOrDefault(m =>
+                m.Role == "user" && m.Content?.ToString()?.Contains("可用技能") == true);
+            Assert.That(skillMsg, Is.Not.Null, "技能路径应输出索引");
+            Assert.That(skillMsg!.Content?.ToString(), Does.Contain("<system-reminder>"), "技能内容应包裹 system-reminder");
         });
     }
 
@@ -113,13 +121,17 @@ public class PromptAssemblerAndOrchestratorTests
         var history = new List<ChatMessage> { ChatMessage.User("你好") };
 
         var messages = orchestrator.BuildMessages(history);
-        var systemText = messages[0].Content?.ToString() ?? "";
 
         Assert.Multiple(() =>
         {
-            Assert.That(messages.Count(m => m.Role == "system"), Is.EqualTo(1));
-            Assert.That(systemText, Does.Not.Contain("可用技能"), "旧路径不应输出技能索引");
-            Assert.That(systemText, Does.Contain("EasyCon"), "旧路径仍输出角色 prompt");
+            // [0] system: 身份标识
+            Assert.That(messages[0].Role, Is.EqualTo("system"));
+            Assert.That(messages[0].Content?.ToString(), Is.EqualTo("你是 EasyCon（伊机控）的 AI 助手。"));
+            // [1] system: 基础角色，包含 EasyCon
+            Assert.That(messages[1].Role, Is.EqualTo("system"));
+            Assert.That(messages[1].Content?.ToString(), Does.Contain("EasyCon"), "旧路径仍输出角色 prompt");
+            Assert.That(messages[1].Content?.ToString(), Does.Not.Contain("可用技能"), "旧路径基础角色不应输出技能索引");
+            Assert.That(messages.Count(m => m.Role == "system"), Is.EqualTo(2));
         });
     }
 

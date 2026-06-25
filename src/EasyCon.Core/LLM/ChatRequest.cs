@@ -19,7 +19,7 @@ public class ChatRequest
 
     [JsonPropertyName("max_tokens")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public int MaxTokens { get; set; } = 4096;
+    public int MaxTokens { get; set; } = 64000;
 
     [JsonPropertyName("stream")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]

@@ -27,8 +27,8 @@ public sealed class McpToolAdapter : IAiTool
         _connection = connection;
         _tool = tool;
 
-        // 构造唯一名称：serverKey__toolName
-        var rawName = $"{connection.ServerKey}__{tool.Name}";
+        // 构造唯一名称：mcp__serverKey__toolName
+        var rawName = $"mcp__{connection.ServerKey}__{tool.Name}";
         _name = rawName.Length <= MaxToolNameLength
             ? rawName
             : rawName[..MaxToolNameLength]; // 截断兜底

@@ -12,7 +12,12 @@ public class ChatMessage
     [JsonPropertyName("role")]
     public string Role { get; set; } = "user";
 
+    /// <summary>
+    /// 消息内容。可为字符串、List&lt;ContentPart&gt; 多模态数组，或 null（assistant tool_calls 消息）。
+    /// 显式标注 Never 确保 null 也序列化为 "content": null，部分供应商严格要求此格式。
+    /// </summary>
     [JsonPropertyName("content")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
     public object? Content { get; set; }
 
     /// <summary>

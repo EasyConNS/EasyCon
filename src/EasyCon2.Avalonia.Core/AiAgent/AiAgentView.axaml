@@ -217,7 +217,8 @@
                         BorderThickness="1"
                         CornerRadius="4,12,12,12"
                         Padding="12,8"
-                        HorizontalAlignment="Left">
+                        HorizontalAlignment="Left"
+                        IsVisible="{Binding IsBubbleVisible}">
                     <SelectableTextBlock Text="{Binding Content}"
                                TextWrapping="Wrap"
                                FontSize="13"
@@ -225,7 +226,7 @@
                 </Border>
 
                 <!-- 流式生成中指示器 -->
-                <TextBlock Text="正在生成..."
+                <TextBlock Text="思考中..."
                            FontSize="11"
                            Foreground="{DynamicResource WorkbenchMutedTextBrush}"
                            Margin="0,2,0,0"
@@ -298,7 +299,7 @@
             <Grid Grid.Row="0"
                   ColumnDefinitions="Auto,*,Auto,Auto,Auto"
                   Background="{DynamicResource WorkbenchPanelBrush}">
-                <TextBlock Text="AI Agent"
+                <TextBlock Text="{Binding SessionTitle}"
                            Margin="12,0,0,0"
                            VerticalAlignment="Center"
                            FontSize="12"
