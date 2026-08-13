@@ -26,6 +26,7 @@ src/EasyCon2.UI.Common/Resources/Amiibo/AmiiboImages/
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 .claude/
+.omo/
 PLAN.md
 
 # Build results
