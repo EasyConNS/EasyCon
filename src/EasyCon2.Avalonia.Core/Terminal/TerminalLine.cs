@@ -19,6 +19,11 @@ public class TerminalLine
 {
     public List<TextSegment> Segments { get; } = new();
 
+    // 由 TerminalControl 缓存的测量宽度（行宽仅依赖字体，与前景色无关）。
+    // 字体变更时通过 WidthMetricsVersion 与控件的 _metricsVersion 对比失效。
+    internal double Width = -1;
+    internal int WidthMetricsVersion = -1;
+
     private int? _textLength;
 
     /// <summary>所有段的文本总长度（缓存在首次访问后）。</summary>

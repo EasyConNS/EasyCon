@@ -28,6 +28,8 @@ public class LogService : ILogService, IDisposable
                 fileSizeLimitBytes: 10 * 1024 * 1024,
                 retainedFileCountLimit: null,
                 shared: false,
+                buffered: true,
+                flushToDiskInterval: TimeSpan.FromSeconds(2),
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}")
             .CreateLogger();
     }
@@ -84,6 +86,13 @@ public class LogService : ILogService, IDisposable
             batch = _entries.ToArray();
             _entries.Clear();
         }
+
+        // 高频打印保护：UI 每次只消费最近的一批（完整记录已由 Serilog 落盘），
+        // 避免海量行一次性推给 UI 线程导致卡死。被跳过的旧行仅不再展示，文件仍完整。
+        const int MaxUiBatch = 500;
+        if (batch.Length > MaxUiBatch)
+            batch = batch[^MaxUiBatch..];
+
         Dispatcher.UIThread.Post(() =>
         {
             foreach (var (text, color) in batch)
