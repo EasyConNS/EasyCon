@@ -1,6 +1,7 @@
 // See https://aka.ms/new-console-template for more information
 using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Logging;
 using EasyCon.Core.Runner;
 using EasyCon.Lsp;
 using EasyCon.Script;
@@ -97,8 +98,9 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     string COM = parseResult.GetValue(portOption) ?? defaultCOMPort;
     bool verbose = parseResult.GetValue(verboseOption);
 
-    // 输出接口
-    var outdap = new ConsoleOutAdapter();
+    // 输出接口（同时写入滚动日志文件）。using 声明确保早退路径也会落盘。
+    using var fileLogger = new RollingFileLogger();
+    var outdap = new ConsoleOutAdapter { FileLogger = fileLogger };
 
     Console.WriteLine($"准备执行脚本...  环境信息=>采集设备：{vId}[{refs}]  单片机端口：{COM}");
 

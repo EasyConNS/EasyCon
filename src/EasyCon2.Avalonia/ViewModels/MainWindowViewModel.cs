@@ -63,6 +63,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private const int LogBufferSize = 200;
     private readonly Queue<string> _logBuffer = new();
 
+    /// <summary>UI 日志显示行数上限，超过后丢弃最旧的行，避免内存无限增长。</summary>
+    private const int MaxLogLines = 10000;
+
     // 窗口标题（含版本号）
     [ObservableProperty]
     private string _windowTitle;
@@ -405,6 +408,14 @@ public partial class MainWindowViewModel : ViewModelBase
                     _logBuffer.Enqueue(rawLine);
                     while (_logBuffer.Count > LogBufferSize)
                         _logBuffer.Dequeue();
+                }
+
+                // 有界显示：丢弃最旧的日志行，防止内存无限增长
+                if (LogLines.Count > MaxLogLines)
+                {
+                    int excess = LogLines.Count - MaxLogLines;
+                    for (int i = 0; i < excess; i++)
+                        LogLines.RemoveAt(0);
                 }
             }
         };
