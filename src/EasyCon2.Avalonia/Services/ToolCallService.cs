@@ -212,8 +212,9 @@ public class ToolCallService : IToolCallService
 
     public string? GetCurrentFrameBase64()
     {
-        using var mat = _captureService.GetMatFrame();
-        if (mat is null || mat.Empty()) return null;
+        using var lease = _captureService.AcquireLatestFrame();
+        if (lease == null || lease.Mat.Empty()) return null;
+        var mat = lease.Mat;
 
         using var resized = mat.Resize(0.5);
         var bytes = resized.ToBytes(".png");

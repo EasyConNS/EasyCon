@@ -125,8 +125,8 @@ public class ScriptService : IScriptService
         return lblName =>
         {
             if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-            using var mat = _captureService.GetMatFrame() ?? throw new Exception("采集卡未连接");
-            il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
+            using var lease = _captureService.AcquireLatestFrame() ?? throw new Exception("采集卡未连接");
+            il.Search(lease.Mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
             return (int)md;
         };
     }
@@ -187,7 +187,7 @@ public class ScriptService : IScriptService
 
                 _captureService.SetCaptureProperties(1920, 1080);
 
-                var frameDelegate = FrameDelegateFactory.CreateFrame(() => _captureService.GetMatFrame());
+                var frameDelegate = FrameDelegateFactory.CreateFrame(() => _captureService.AcquireLatestFrame());
 
                 var ocrCache = new OcrEngineCache
                 {
@@ -195,7 +195,7 @@ public class ScriptService : IScriptService
                 };
                 var ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
                 var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
-                var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.GetMatFrame(), ocrCache);
+                var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.AcquireLatestFrame(), ocrCache);
 
                 _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token, args);
                 _logService.AddLog("脚本运行完成");

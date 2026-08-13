@@ -1,4 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
+// See https://aka.ms/new-console-template for more information
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
@@ -176,6 +176,14 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         // 设置采集卡分辨率为1080p
         cvcap.SetProperties(1920, 1080);
     }
+
+    FrameProducer? producer = null;
+    if (cvcap != null)
+    {
+        producer = new FrameProducer(cvcap);
+        producer.Start();
+    }
+
     FrameDelegate? frameDelegate = null;
     LabelMatchDelegate? labelMatchDelegate = null;
     ImmutableHashSet<string>? labelNames = null;
@@ -188,14 +196,14 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         var labelDict = label.ToDictionary(il => il.name);
         labelNames = [.. labelDict.Keys];
 
-        frameDelegate = FrameDelegateFactory.CreateFrame(() => cvcap.GetMatFrame());
+        frameDelegate = FrameDelegateFactory.CreateFrame(() => producer!.Store.AcquireLatest());
 
         labelMatchDelegate = lblName =>
         {
             if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-            using var mat = cvcap.GetMatFrame();
-            if (mat.Empty()) return 0;
-            il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
+            using var lease = producer!.Store.AcquireLatest();
+            if (lease == null || lease.Mat.Empty()) return 0;
+            il.Search(lease.Mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
             return (int)Math.Ceiling(md);
         };
         var ocrCache = new EasyCon.Capture.OcrEngineCache
@@ -204,7 +212,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         };
         ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
         ocrConf = () => ocrCache.LastConfidence;
-        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetMatFrame(), ocrCache);
+        ocrDelegate = OcrDelegateFactory.Create(() => producer!.Store.AcquireLatest(), ocrCache);
     }
     outdap.Info($"==>开始执行脚本：{file}\n");
 
@@ -223,6 +231,10 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         Console.Error.WriteLine();
         Console.Error.WriteLine(exx.StackTrace);
         outdap.Error($"!!意外错误!!{exx.Message}");
+    }
+    finally
+    {
+        producer?.Dispose();
     }
 });
 

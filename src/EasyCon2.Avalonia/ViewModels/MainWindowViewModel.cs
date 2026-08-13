@@ -1567,12 +1567,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            using var mat = _captureService.GetMatFrame();
-            if (mat == null || mat.Empty())
+            using var lease = _captureService.AcquireLatestFrame();
+            if (lease == null || lease.Mat.Empty())
             {
                 _logService.AddLog("标签测试失败：无法获取视频帧");
                 return;
             }
+            var mat = lease.Mat;
 
             var label = TagEditorViewModel.Label;
             var result = label.Search(mat, out double matchDegree, "");
@@ -1643,12 +1644,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            using var mat = _captureService.GetMatFrame();
-            if (mat == null || mat.Empty())
+            using var lease = _captureService.AcquireLatestFrame();
+            if (lease == null || lease.Mat.Empty())
             {
                 _logService.AddLog("截图失败：无法获取视频帧");
                 return;
             }
+            var mat = lease.Mat;
 
             // 将Mat编码为字节数组，然后转换为Bitmap
             var imageBytes = mat.ToBytes(".png");
