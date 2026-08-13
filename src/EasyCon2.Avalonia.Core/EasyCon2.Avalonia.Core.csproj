@@ -30,6 +30,8 @@
     <PackageReference Include="Avalonia.AvaloniaEdit" />
     <PackageReference Include="OmniSharp.Extensions.LanguageClient" />
     <PackageReference Include="ModelContextProtocol.Core" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 
   <ItemGroup>
