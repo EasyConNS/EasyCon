@@ -97,7 +97,20 @@ public sealed class FrameProducer : IDisposable
 
     public void Dispose()
     {
+        // 先记录循环任务，再 Stop（Stop 会把 _loopTask 置 null）。
+        // 若采集循环卡在阻塞 Read 上（设备停滞但 IsOpened 仍为 true），
+        // Stop 等待超时后循环仍在运行，此时释放底层 VideoCapture 属于 use-after-release，
+        // 可能崩溃或挂起，故放弃释放（native 句柄交由进程退出兜底）。
+        var loop = _loopTask;
         Stop();
-        _capture.Dispose();
+
+        if (loop == null || loop.IsCompleted)
+        {
+            _capture.Dispose();
+        }
+        else
+        {
+            Debug.WriteLine("FrameProducer: 采集循环未在超时内退出，跳过 VideoCapture 释放");
+        }
     }
 }
