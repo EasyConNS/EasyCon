@@ -117,9 +117,10 @@ public partial class MonitorViewModel : ObservableObject
 
         try
         {
-            using var mat = _captureService.GetMatFrame();
-            if (mat != null && !mat.Empty())
+            using var lease = _captureService.AcquireLatestFrame();
+            if (lease != null && !lease.Mat.Empty())
             {
+                var mat = lease.Mat;
                 var bitmap = RenderFrame(mat);
                 if (bitmap != null)
                 {
