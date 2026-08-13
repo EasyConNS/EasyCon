@@ -13,6 +13,11 @@ public interface IDeviceService
     void Disconnect();
     NintendoSwitch GetDevice();
 
+    /// <summary>
+    /// 释放所有按键并清空待发送队列，脚本终止时调用。
+    /// </summary>
+    void Reset();
+
     // 远程控制
     bool RemoteStart();
     bool RemoteStop();
