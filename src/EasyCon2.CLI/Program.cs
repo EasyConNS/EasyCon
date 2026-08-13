@@ -1,7 +1,6 @@
 // See https://aka.ms/new-console-template for more information
 using EasyCon.Capture;
 using EasyCon.Core;
-using EasyCon.Core.Logging;
 using EasyCon.Core.Runner;
 using EasyCon.Lsp;
 using EasyCon.Script;
@@ -9,6 +8,7 @@ using EasyCon.Script.Syntax;
 using EasyDevice;
 using EasyScript;
 using EzCv;
+using Serilog;
 using System.Collections.Immutable;
 using System.CommandLine;
 using System.Text;
@@ -99,7 +99,18 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     bool verbose = parseResult.GetValue(verboseOption);
 
     // 输出接口（同时写入滚动日志文件）。using 声明确保早退路径也会落盘。
-    using var fileLogger = new RollingFileLogger();
+    var logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+    Directory.CreateDirectory(logDir);
+    using var fileLogger = new LoggerConfiguration()
+        .WriteTo.File(
+            Path.Combine(logDir, "easycon-.log"),
+            rollingInterval: RollingInterval.Day,
+            rollOnFileSizeLimit: true,
+            fileSizeLimitBytes: 10 * 1024 * 1024,
+            retainedFileCountLimit: null,
+            shared: false,
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}")
+        .CreateLogger();
     var outdap = new ConsoleOutAdapter { FileLogger = fileLogger };
 
     Console.WriteLine($"准备执行脚本...  环境信息=>采集设备：{vId}[{refs}]  单片机端口：{COM}");
