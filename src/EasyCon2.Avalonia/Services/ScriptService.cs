@@ -115,6 +115,7 @@ public class ScriptService : IScriptService
     public void Stop()
     {
         _cts?.Cancel();
+        _deviceService.Reset();
     }
 
     // ── 私有方法 ────────────────────────────────
@@ -214,6 +215,7 @@ public class ScriptService : IScriptService
             }
             finally
             {
+                _deviceService.Reset();
                 IsRunning = false;
                 IsRunningChanged?.Invoke(false);
             }

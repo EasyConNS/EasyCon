@@ -75,6 +75,7 @@ public partial class NintendoSwitch : IReporter
             Signal();
             _keystrokes.Clear();
             _reset = true;
+            clientCon?.ClearQueue();
         }
     }
 
