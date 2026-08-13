@@ -75,6 +75,9 @@ public class TerminalControl : Control, ILogicalScrollable
     private Size _extent;
     private Size _viewport;
     private double _contentWidth;
+    // 最大行宽缓存：增量维护，避免每次加行都全量 MeasureLineWidth（O(n²) 卡顿根因）
+    private double _maxLineWidth;
+    private int _maxLineIndex = -1;   // -1 = 未知，需全量重算
     private double _marqueeLineWidth;
     private double _marqueeOffset;
     private bool _isAttached;
@@ -180,6 +183,7 @@ public class TerminalControl : Control, ILogicalScrollable
         else if (change.Property == FontSizeProperty || change.Property == FontFamilyProperty)
         {
             _metricsValid = false;
+            _maxLineIndex = -1;   // 行宽依赖字体，缓存失效
             InvalidateVisual();
         }
         else if (change.Property == ContentPaddingProperty)
@@ -519,12 +523,34 @@ public class TerminalControl : Control, ILogicalScrollable
                 }
                 break;
 
+            case NotifyCollectionChangedAction.Remove:
+                if (e.OldItems != null)
+                {
+                    bool changed = false;
+                    foreach (TerminalLine? removed in e.OldItems)
+                    {
+                        if (removed == null) continue;
+                        int idx = _lines.IndexOf(removed);
+                        if (idx < 0) continue;              // 已因截断移出窗口，无需处理
+                        _lines.RemoveAt(idx);
+                        changed = true;
+                        if (_maxLineIndex >= 0)
+                        {
+                            if (_maxLineIndex == idx) _maxLineIndex = -1;   // 最大行被移除，重算
+                            else if (_maxLineIndex > idx) _maxLineIndex--;
+                        }
+                    }
+                    if (changed)
+                        UpdateScroll();
+                }
+                break;
+
             case NotifyCollectionChangedAction.Reset:
                 Rebuild();
                 break;
 
             default:
-                // Remove/Replace/Move — full rebuild (rare for terminal output)
+                // Replace/Move — full rebuild (rare for terminal output)
                 Rebuild();
                 break;
         }
@@ -537,7 +563,27 @@ public class TerminalControl : Control, ILogicalScrollable
         // Truncate old lines beyond MaxLineCount
         var max = MaxLineCount;
         if (_lines.Count > max)
-            _lines.RemoveRange(0, _lines.Count - max);
+        {
+            var removed = _lines.Count - max;
+            _lines.RemoveRange(0, removed);
+            if (_maxLineIndex >= 0)
+            {
+                if (_maxLineIndex < removed)
+                    _maxLineIndex = -1;
+                else
+                    _maxLineIndex -= removed;
+            }
+        }
+
+        // 仅测量新增行，增量更新最大行宽
+        var w = MeasureLineWidth(line, FontSize, Foreground ?? Brushes.Black);
+        if (_maxLineIndex < 0)
+            RecomputeMaxWidth();
+        else if (w > _maxLineWidth)
+        {
+            _maxLineWidth = w;
+            _maxLineIndex = _lines.Count - 1;
+        }
 
         ScrollToBottomIfNeeded();
         UpdateScroll();
@@ -546,6 +592,7 @@ public class TerminalControl : Control, ILogicalScrollable
     private void Rebuild()
     {
         _lines.Clear();
+        _maxLineIndex = -1;
 
         if (ItemsSource != null)
         {
@@ -660,14 +707,9 @@ public class TerminalControl : Control, ILogicalScrollable
         EnsureMetrics();
         if (_viewport.Width <= 0 || _viewport.Height <= 0) return;
 
-        var maxLineWidth = 0d;
-        var defaultFg = Foreground ?? Brushes.Black;
-        var fontSize = FontSize;
-        foreach (var line in _lines)
-        {
-            var width = MeasureLineWidth(line, fontSize, defaultFg);
-            if (width > maxLineWidth) maxLineWidth = width;
-        }
+        if (_maxLineIndex < 0)
+            RecomputeMaxWidth();
+        var maxLineWidth = _maxLineWidth;
 
         var pad = ContentPadding;
         _marqueeLineWidth = maxLineWidth;
@@ -728,6 +770,24 @@ public class TerminalControl : Control, ILogicalScrollable
         InvalidateVisual();
     }
 
+    /// <summary>全量重算最大行宽（初始/重建/清空/字体变更/最大行被截断时调用）。</summary>
+    private void RecomputeMaxWidth()
+    {
+        _maxLineWidth = 0d;
+        _maxLineIndex = -1;
+        var defaultFg = Foreground ?? Brushes.Black;
+        var fontSize = FontSize;
+        for (int i = 0; i < _lines.Count; i++)
+        {
+            var w = MeasureLineWidth(_lines[i], fontSize, defaultFg);
+            if (w > _maxLineWidth)
+            {
+                _maxLineWidth = w;
+                _maxLineIndex = i;
+            }
+        }
+    }
+
     private double MeasureLineWidth(TerminalLine line, double fontSize, IBrush defaultFg)
     {
         var width = 0d;
@@ -756,6 +816,7 @@ public class TerminalControl : Control, ILogicalScrollable
     public void Clear()
     {
         _lines.Clear();
+        _maxLineIndex = -1;
         _selAnchor = null;
         _selActive = null;
         _isAtBottom = true;
