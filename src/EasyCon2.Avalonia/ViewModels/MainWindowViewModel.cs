@@ -598,13 +598,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private TerminalLine ParseLogLine(string rawLine, string? color)
     {
+        // 仅含 ANSI 转义序列的行才需要解析器；纯文本行直接构造单段，避免 StringBuilder + 拷贝开销。
         if (rawLine.Contains('\x1b'))
             return _ansiParser.ParseLine(rawLine);
 
         var foreground = TryParseLogColor(color);
-        if (foreground == null)
-            return _ansiParser.ParseLine(rawLine);
-
         var line = new TerminalLine();
         line.Segments.Add(new TextSegment(rawLine, foreground));
         return line;

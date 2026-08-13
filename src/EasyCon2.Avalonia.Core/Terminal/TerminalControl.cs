@@ -69,6 +69,7 @@ public class TerminalControl : Control, ILogicalScrollable
     private double _lineHeight;
     private double _charWidth;
     private bool _metricsValid;
+    private int _metricsVersion;   // 字体变更时递增，用于失效行宽缓存
 
     // Scroll
     private Vector _offset;
@@ -637,6 +638,7 @@ public class TerminalControl : Control, ILogicalScrollable
         _lineHeight = measure.Height * 1.25; // line spacing
         _charWidth = measure.Width;
         _metricsValid = true;
+        _metricsVersion++;
     }
 
     #endregion
@@ -790,6 +792,10 @@ public class TerminalControl : Control, ILogicalScrollable
 
     private double MeasureLineWidth(TerminalLine line, double fontSize, IBrush defaultFg)
     {
+        // 行宽只依赖字体（尺寸/字族），与前景色无关；按字体版本缓存，避免每行反复 FormattedText（高频打印卡顿根因）。
+        if (line.WidthMetricsVersion == _metricsVersion)
+            return line.Width;
+
         var width = 0d;
         foreach (var seg in line.Segments)
         {
@@ -805,6 +811,8 @@ public class TerminalControl : Control, ILogicalScrollable
             width += ft.Width;
         }
 
+        line.Width = width;
+        line.WidthMetricsVersion = _metricsVersion;
         return width;
     }
 
