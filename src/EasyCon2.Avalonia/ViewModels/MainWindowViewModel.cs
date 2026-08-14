@@ -63,6 +63,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private const int LogBufferSize = 200;
     private readonly Queue<string> _logBuffer = new();
 
+    /// <summary>UI 日志显示行数上限，超过后丢弃最旧的行，避免内存无限增长。</summary>
+    private const int MaxLogLines = 10000;
+
     // 窗口标题（含版本号）
     [ObservableProperty]
     private string _windowTitle;
@@ -406,6 +409,14 @@ public partial class MainWindowViewModel : ViewModelBase
                     while (_logBuffer.Count > LogBufferSize)
                         _logBuffer.Dequeue();
                 }
+
+                // 有界显示：丢弃最旧的日志行，防止内存无限增长
+                if (LogLines.Count > MaxLogLines)
+                {
+                    int excess = LogLines.Count - MaxLogLines;
+                    for (int i = 0; i < excess; i++)
+                        LogLines.RemoveAt(0);
+                }
             }
         };
 
@@ -587,13 +598,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private TerminalLine ParseLogLine(string rawLine, string? color)
     {
+        // 仅含 ANSI 转义序列的行才需要解析器；纯文本行直接构造单段，避免 StringBuilder + 拷贝开销。
         if (rawLine.Contains('\x1b'))
             return _ansiParser.ParseLine(rawLine);
 
         var foreground = TryParseLogColor(color);
-        if (foreground == null)
-            return _ansiParser.ParseLine(rawLine);
-
         var line = new TerminalLine();
         line.Segments.Add(new TextSegment(rawLine, foreground));
         return line;
@@ -1567,12 +1576,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            using var mat = _captureService.GetMatFrame();
-            if (mat == null || mat.Empty())
+            using var lease = _captureService.AcquireLatestFrame();
+            if (lease == null || lease.Mat.Empty())
             {
                 _logService.AddLog("标签测试失败：无法获取视频帧");
                 return;
             }
+            var mat = lease.Mat;
 
             var label = TagEditorViewModel.Label;
             var result = label.Search(mat, out double matchDegree, "");
@@ -1643,12 +1653,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            using var mat = _captureService.GetMatFrame();
-            if (mat == null || mat.Empty())
+            using var lease = _captureService.AcquireLatestFrame();
+            if (lease == null || lease.Mat.Empty())
             {
                 _logService.AddLog("截图失败：无法获取视频帧");
                 return;
             }
+            var mat = lease.Mat;
 
             // 将Mat编码为字节数组，然后转换为Bitmap
             var imageBytes = mat.ToBytes(".png");

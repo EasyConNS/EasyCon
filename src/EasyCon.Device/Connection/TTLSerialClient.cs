@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Ports;
 using static EasyDevice.Connection.SerialPortClient;
@@ -78,6 +79,11 @@ internal class TTLv2SerialClient(string name, int port) : IConnection
         BytesSent?.Invoke(_serialPortClient.ConnectPort, val);
         _serialPortClient.SendCommand(val);
     }
+
+    public override void ClearQueue()
+    {
+        // SerialPortClient 无发送队列，空实现
+    }
 }
 
 class TTLSerialClient : IConnection
@@ -88,7 +94,7 @@ class TTLSerialClient : IConnection
     SerialPort _sport;
 
     readonly List<byte> _inBuffer = new();
-    readonly List<byte[]> _outBuffer = new();
+    readonly ConcurrentQueue<byte[]> _outQueue = new();
     DateTime _time = DateTime.MinValue;
     Status _status = Status.Connecting;
 
@@ -144,6 +150,7 @@ class TTLSerialClient : IConnection
     public override void Disconnect()
     {
         source?.Cancel();
+        ClearQueue();
     }
 
     void Loop()
@@ -192,12 +199,9 @@ class TTLSerialClient : IConnection
                 }
 
                 // write
-                lock (_outBuffer)
-                {
-                    outBuffer.Clear();
-                    _outBuffer.ForEach(item => outBuffer.AddRange(item));
-                    _outBuffer.Clear();
-                }
+                outBuffer.Clear();
+                while (_outQueue.TryDequeue(out var item))
+                    outBuffer.AddRange(item);
                 if (outBuffer.Count > 0)
                 {
                     var bytes = outBuffer.ToArray();
@@ -227,10 +231,14 @@ class TTLSerialClient : IConnection
 #if DEBUG
         Debug.WriteLine("Output: " + string.Join(" ", val.Select(b => b.ToString("X2"))));
 #endif
-        lock (_outBuffer)
+        _outQueue.Enqueue(val);
+        _time = DateTime.Now;
+    }
+
+    public override void ClearQueue()
+    {
+        while (_outQueue.TryDequeue(out _))
         {
-            _outBuffer.Add(val);
-            _time = DateTime.Now;
         }
     }
 }

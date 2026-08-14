@@ -44,7 +44,11 @@ public partial class App : Application
             WindowService.MainWindow = mainWindow;
             controllerService.SetOwnerWindow(mainWindow);
 
-            desktop.Exit += (_, _) => controllerService.Dispose();
+            desktop.Exit += (_, _) =>
+            {
+                controllerService.Dispose();
+                logService.Dispose();
+            };
         }
 
         // 默认启用简体中文（语言资源在 App.axaml 中以文化名为键注册，由 SetLocale 合并激活）。

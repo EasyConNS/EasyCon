@@ -12,7 +12,7 @@ public class CaptureService : ICaptureService
     private readonly object _captureLock = new();
     private readonly System.Timers.Timer _monitorTimer = new(1000);
     private readonly Dictionary<string, int> _sourceIndexMap = new();
-    private OpenCVCapture? _capture;
+    private FrameProducer? _producer;
 
     private readonly Size resol = new(1920, 1080);
     public string CaptureType { get; set; } = "ANY";
@@ -23,7 +23,7 @@ public class CaptureService : ICaptureService
         {
             lock (_captureLock)
             {
-                return _capture?.IsOpened ?? false;
+                return _producer?.IsOpened ?? false;
             }
         }
     }
@@ -41,7 +41,7 @@ public class CaptureService : ICaptureService
         {
             lock (_captureLock)
             {
-                if (_capture == null || !_capture.IsOpened)
+                if (_producer == null || !_producer.IsOpened)
                 {
                     _monitorTimer.Stop();
                     Dispatcher.UIThread.Post(() =>
@@ -69,18 +69,22 @@ public class CaptureService : ICaptureService
 
         lock (_captureLock)
         {
-            _capture?.Dispose();
-            _capture = new OpenCVCapture();
-            if (!_capture.Open(deviceId, (int)GetCaptureApi()))
+            _producer?.Dispose();
+            var capture = new OpenCVCapture();
+            if (!capture.Open(deviceId, (int)GetCaptureApi()))
             {
-                _capture = null;
+                capture.Dispose();
                 return false;
             }
+
+            capture.SetResolution(resol.Width, resol.Height);
+            capture.SetProperties();
+            capture.GetProperties();
+
+            _producer = new FrameProducer(capture);
+            _producer.Start();
         }
 
-        _capture.SetResolution(resol.Width, resol.Height);
-        _capture.SetProperties();
-        _capture.GetProperties();
         _monitorTimer.Start();
         return true;
     }
@@ -90,38 +94,26 @@ public class CaptureService : ICaptureService
         _monitorTimer.Stop();
         lock (_captureLock)
         {
-            _capture?.Release();
-            _capture = null;
+            _producer?.Dispose();
+            _producer = null;
         }
     }
 
     /// <summary>
-    /// 线程安全地获取一帧图像。直接返回底层新建的 Mat，调用者负责 Dispose。
-    /// OpenCVCapture.GetMatFrame() 每次都 new Mat + videoCapture.Read，无共享引用，无需 Clone。
+    /// 获取最新一帧的租约。热路径无锁，仅对 _producer 引用做易失读取。
+    /// 未连接或尚无帧时返回 null；调用者须持有租约直至不再使用 Mat。
     /// </summary>
-    public Mat? GetMatFrame()
+    public FrameLease? AcquireLatestFrame()
     {
-        lock (_captureLock)
-        {
-            if (_capture == null || !_capture.IsOpened)
-                return null;
-
-            var mat = _capture.GetMatFrame();
-            if (mat.Empty())
-            {
-                mat.Dispose();
-                return null;
-            }
-
-            return mat;
-        }
+        var producer = Volatile.Read(ref _producer);
+        return producer?.Store.AcquireLatest();
     }
 
     public void SetCaptureProperties(int width, int height)
     {
         lock (_captureLock)
         {
-            _capture?.SetProperties(width, height);
+            _producer?.SetProperties(width, height);
         }
     }
 

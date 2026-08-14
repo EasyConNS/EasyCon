@@ -1,4 +1,5 @@
 using EasyCon.Core.Config;
+using Serilog;
 using EasyScript;
 using System;
 using System.Drawing;
@@ -6,6 +7,9 @@ using System.Drawing;
 class ConsoleOutAdapter : IIoAdapter
 {
     private readonly AlertDispatcher _dispatcher = new(ConfigManager.LoadAlert());
+
+    /// <summary>可选的滚动文件日志器，设置后控制台输出会同步写入文件。</summary>
+    public ILogger? FileLogger { get; set; }
 
     private bool _msgNewLine = true;
     private bool _msgFirstLine = true;
@@ -48,6 +52,7 @@ class ConsoleOutAdapter : IIoAdapter
         }
         ColorfulConsole.Write(message, color ?? Color.White);
         _msgNewLine = true;
+        FileLogger?.Information(message);
     }
 
     public void Alert(string message)

@@ -67,6 +67,8 @@ public class DeviceService : IDeviceService
 
     public NintendoSwitch GetDevice() => _nintendoSwitch;
 
+    public void Reset() => _nintendoSwitch.Reset();
+
     public string? AutoConnect()
     {
         var ports = GetAvailablePorts();

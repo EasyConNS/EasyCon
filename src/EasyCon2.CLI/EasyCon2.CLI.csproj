@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 
   <ItemGroup>

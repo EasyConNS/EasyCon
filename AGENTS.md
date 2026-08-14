@@ -1,48 +1,110 @@
-<!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
+# AGENTS.md — EasyCon
 
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
+## Project overview
 
-### When to use graph tools FIRST
+EasyCon is a Nintendo Switch automation tool with virtual controller, image recognition (OpenCV + custom EzCv), and a custom ECS scripting language. .NET 10.0, C# (LangVersion=preview).
 
-- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
-- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
-- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
-- **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview` + `list_communities`
+**Entry points**: `src/EasyCon2.Avalonia` (GUI), `src/EasyCon2.CLI` (CLI), `src/EasyCon2` (legacy WPF, deprecated).
 
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
+## Build & test commands
 
-### Key Tools
+```powershell
+# Build entire solution
+dotnet build
 
-| Tool | Use when |
-|------|----------|
-| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context` | Need source snippets for review — token-efficient |
-| `get_impact_radius` | Understanding blast radius of a change |
-| `get_affected_flows` | Finding which execution paths are impacted |
-| `query_graph` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes` | Finding functions/classes by name or keyword |
-| `get_architecture_overview` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
+# Run all tests (Release)
+ci\test.bat
+# or
+dotnet test EasyCon2.slnx -c Release
 
-### Workflow
+# Run tests in Debug
+ci\test.bat Debug
 
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes` for code review.
-3. Use `get_affected_flows` to understand impact.
-4. Use `query_graph` pattern="tests_for" to check coverage.
+# Run a single test project
+dotnet test test/EasyCon.Tests/EasyCon.Tests.csproj
 
-## 架构规范：MVVM
+# Check formatting (CI blocks merges on failure)
+dotnet format --verify-no-changes
 
-本项目 Avalonia UI（EasyCon2.Avalonia / EasyCon2.Avalonia.Core）采用 MVVM 架构。
+# Auto-fix formatting
+dotnet format
 
-- **ViewModel 中不引用任何 Avalonia 控件类型**（Window、Control、TextBox 等）。
-- **View → ViewModel 通信**：优先使用绑定（`{Binding ...}`、`{x:Bind ...}`），避免在 code-behind 中订阅 ViewModel 事件。
-- **ViewModel → View 通信**：优先使用可观察属性（`[ObservableProperty]`、`AvaloniaProperty`）通过绑定驱动 UI；需要 View 主动推送数据给 ViewModel 时，用 `AvaloniaProperty`（DirectProperty / StyledProperty）配合 TwoWay 绑定，而非事件回调。
-- **Code-behind 仅用于**：平台级 API（文件对话框、拖放）、UI 布局自适应（SizeChanged）、视觉树初始化（FoldingManager、LSP）。业务逻辑不进 code-behind。
-- **自定义控件**：需要暴露可绑定属性时，使用 `AvaloniaProperty.RegisterDirect` / `Register`，不要用普通 CLR 属性 + 事件。
+# Publish (Windows x64)
+ci\windows-x64.bat
+```
+
+**Solution file** is `EasyCon2.slnx` (XML-based MSBuild solution, .NET 10+). Not `.sln`.
+
+## Solution structure
+
+| Directory | Role |
+|---|---|
+| `src/EasyCon.Core` | Core abstractions, interfaces, models |
+| `src/EasyCon.Device` | Hardware device communication (serial) |
+| `src/EasyCon.Capture` | Screen/image capture |
+| `src/EasyCon.Script` | ECS script parser, compiler, runtime |
+| `src/EasyCon.Script.Jit` | JIT compiler for ECS scripts |
+| `src/EzCv` | Custom OpenCV wrapper (Zig native interop) |
+| `src/EzTesseract` | OCR (Tesseract wrapper) |
+| `src/EasyCon.Lsp` | LSP language server for ECS scripts |
+| `src/EasyCon.Server` | HTTP/WebSocket server for remote control |
+| `src/EasyCon2.Avalonia` | Avalonia GUI (MVVM) |
+| `src/EasyCon2.Avalonia.Core` | Shared Avalonia viewmodels/logic |
+| `src/EasyCon2.UI.Common` | Shared UI resources, styles |
+| `src/EasyCon.WinInput` | Windows input simulation |
+| `src/EasyCon.SDLInput` | Cross-platform input via SDL3 |
+| `test/EasyCon.Tests` | Core/Script tests (NUnit) |
+| `test/EasyCon.Lsp.Tests` | LSP tests |
+| `test/EasyCon.WinInput.Tests` | Windows input tests |
+
+## Code conventions (enforced by .editorconfig)
+
+- **Indent**: 4 spaces, no tabs
+- **Line endings**: CRLF
+- **No final newline** (`insert_final_newline = false`) — unusual, don't "fix" it
+- **Private fields**: `_camelCase` prefix
+- **Explicit types**: `csharp_style_var_* = false` — prefer explicit types over `var`
+- **Nullable enabled** solution-wide
+- **No `this.` qualification** for fields/properties/methods
+- **Braces**: Allman style (`csharp_new_line_before_open_brace = all`)
+- **Unused parameters**: `all` severity (will flag as suggestion)
+
+## Package management
+
+**Central package management** is enabled (`Directory.Packages.props`). Individual `.csproj` files have `<PackageReference>` with no `Version` attribute. Add new packages to `Directory.Packages.props`, not inline.
+
+## MVVM architecture (Avalonia UI)
+
+The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict MVVM:
+
+- **ViewModel must NOT reference any Avalonia control types** (Window, Control, TextBox, etc.)
+- **View → ViewModel**: prefer bindings (`{Binding}`, `{x:Bind}`), avoid code-behind event subscriptions
+- **ViewModel → View**: use `[ObservableProperty]` (CommunityToolkit.Mvvm) or `AvaloniaProperty` with bindings
+- **Code-behind** is only for: platform APIs (file dialogs, drag-drop), layout (SizeChanged), visual tree init (FoldingManager, LSP). No business logic.
+- **Custom controls**: use `AvaloniaProperty.RegisterDirect` / `Register`, not plain CLR properties + events
+
+## Testing
+
+- **Framework**: NUnit (NOT xUnit or MSTest)
+- Test projects: `EasyCon.Tests`, `EasyCon.Lsp.Tests`, `EasyCon.WinInput.Tests`, `EasyCon2.Avalonia.Core.Tests`
+- Use `[Test]` attribute, not `[Fact]`
+
+## CI pipeline
+
+- **format** job runs first (blocking): `dotnet format --verify-no-changes`
+- **Auto Fix Format** workflow auto-commits formatting fixes on PRs to main/dev
+- Main branch: Release build + test + publish artifact
+- Dev branch: Debug build + test only
+- PR format commits use `[skip ci]` to avoid recursive triggers
+
+## Native code (EzCv)
+
+`src/EzCv` uses Zig for native OpenCV interop. Build artifacts live in `.zig-cache/` and `src/EzCv/native/out_*/`. Changes to Zig source require a Zig toolchain to rebuild native binaries. Prebuilt binaries may be expected for normal .NET workflows.
+
+## Documentation
+
+- `docs/Script.md` — ECS scripting language reference
+- `docs/Framework.md` — system architecture
+- `docs/VM1.md` / `docs/VM2.md` — virtual machine instruction sets
+- `docs/GETTING_STARTED.md` — user setup guide
+- `src/EasyCon2.Avalonia/DOCUMENTATION_INDEX.md` — UI docs index

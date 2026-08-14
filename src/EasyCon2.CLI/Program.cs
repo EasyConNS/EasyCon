@@ -1,4 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
+// See https://aka.ms/new-console-template for more information
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
@@ -8,6 +8,7 @@ using EasyCon.Script.Syntax;
 using EasyDevice;
 using EasyScript;
 using EzCv;
+using Serilog;
 using System.Collections.Immutable;
 using System.CommandLine;
 using System.Text;
@@ -97,8 +98,20 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     string COM = parseResult.GetValue(portOption) ?? defaultCOMPort;
     bool verbose = parseResult.GetValue(verboseOption);
 
-    // 输出接口
-    var outdap = new ConsoleOutAdapter();
+    // 输出接口（同时写入滚动日志文件）。using 声明确保早退路径也会落盘。
+    var logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
+    Directory.CreateDirectory(logDir);
+    using var fileLogger = new LoggerConfiguration()
+        .WriteTo.File(
+            Path.Combine(logDir, "easycon-.log"),
+            rollingInterval: RollingInterval.Day,
+            rollOnFileSizeLimit: true,
+            fileSizeLimitBytes: 10 * 1024 * 1024,
+            retainedFileCountLimit: null,
+            shared: false,
+            outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}")
+        .CreateLogger();
+    var outdap = new ConsoleOutAdapter { FileLogger = fileLogger };
 
     Console.WriteLine($"准备执行脚本...  环境信息=>采集设备：{vId}[{refs}]  单片机端口：{COM}");
 
@@ -176,6 +189,14 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         // 设置采集卡分辨率为1080p
         cvcap.SetProperties(1920, 1080);
     }
+
+    FrameProducer? producer = null;
+    if (cvcap != null)
+    {
+        producer = new FrameProducer(cvcap);
+        producer.Start();
+    }
+
     FrameDelegate? frameDelegate = null;
     LabelMatchDelegate? labelMatchDelegate = null;
     ImmutableHashSet<string>? labelNames = null;
@@ -188,14 +209,14 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         var labelDict = label.ToDictionary(il => il.name);
         labelNames = [.. labelDict.Keys];
 
-        frameDelegate = FrameDelegateFactory.CreateFrame(() => cvcap.GetMatFrame());
+        frameDelegate = FrameDelegateFactory.CreateFrame(() => producer!.Store.AcquireLatest());
 
         labelMatchDelegate = lblName =>
         {
             if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-            using var mat = cvcap.GetMatFrame();
-            if (mat.Empty()) return 0;
-            il.Search(mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
+            using var lease = producer!.Store.AcquireLatest();
+            if (lease == null || lease.Mat.Empty()) return 0;
+            il.Search(lease.Mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
             return (int)Math.Ceiling(md);
         };
         var ocrCache = new EasyCon.Capture.OcrEngineCache
@@ -204,7 +225,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         };
         ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
         ocrConf = () => ocrCache.LastConfidence;
-        ocrDelegate = OcrDelegateFactory.Create(() => cvcap.GetMatFrame(), ocrCache);
+        ocrDelegate = OcrDelegateFactory.Create(() => producer!.Store.AcquireLatest(), ocrCache);
     }
     outdap.Info($"==>开始执行脚本：{file}\n");
 
@@ -223,6 +244,10 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         Console.Error.WriteLine();
         Console.Error.WriteLine(exx.StackTrace);
         outdap.Error($"!!意外错误!!{exx.Message}");
+    }
+    finally
+    {
+        producer?.Dispose();
     }
 });
 
