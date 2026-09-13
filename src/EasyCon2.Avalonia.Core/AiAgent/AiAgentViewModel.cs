@@ -255,7 +255,7 @@ public partial class AiAgentViewModel : ObservableObject
     {
         if (IsGenerating)
         {
-            _cts?.Cancel();
+            _cts?.CancelAsync();
             return;
         }
 

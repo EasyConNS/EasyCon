@@ -26,15 +26,11 @@ public class SsaConstructionTests
     private static (CompileResult Result, MockOutputAdapter Output) Eval(string code)
     {
         var output = new MockOutputAdapter();
-        var compilation = Compilation.Create(SyntaxTree.Parse(code));
-        var result = compilation.Compile(null);
-        if (result.Program == null)
+        var result = Compilation.CompileSource(code, new CompileOptions { UseDiskCache = false });
+        if (result.Image == null)
             return (result, output);
-        using var evaluator = new SsaEvaluator(result.Program, new CancellationTokenSource().Token)
-        {
-            IoAdapter = output,
-        };
-        evaluator.Evaluate();
+        EcxVm.Run(result.Image!, output, null, null, null, () => 0, null, null, null,
+            new CancellationTokenSource().Token, [], result.NativeSymbols);
         return (result, output);
     }
 
@@ -54,7 +50,7 @@ public class SsaConstructionTests
     /// 走完整编译管线（含优化）：用于验证优化后的真实 IR 形态。</summary>
     private static SsaProgram CompileIr(string code)
     {
-        var result = Compilation.Create(SyntaxTree.Parse(code)).Compile(null);
+        var result = Compilation.CompileSource(code, new CompileOptions { UseDiskCache = false });
         Assert.That(result.Program, Is.Not.Null, () =>
             string.Join("; ", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
         return result.Program!;
@@ -66,9 +62,10 @@ public class SsaConstructionTests
     /// 用未优化 IR 才能稳定验证「合并点/循环头确实插入了 phi」。</summary>
     private static SsaProgram CompileIrNoOptimize(string code)
     {
-        var prog = Compilation.Create(SyntaxTree.Parse(code)).BuildSsa(null, optimize: false);
-        Assert.That(prog, Is.Not.Null, "脚本编译错误");
-        return prog!;
+        var result = Compilation.CompileSource(code, new CompileOptions { Optimize = false, UseDiskCache = false });
+        Assert.That(result.Program, Is.Not.Null, "脚本编译错误: " +
+            string.Join("; ", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
+        return result.Program!;
     }
 
     /// <summary>统计整个程序所有函数中某 SsaOp 的出现次数。</summary>

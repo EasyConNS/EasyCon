@@ -64,13 +64,4 @@ internal static class StdLib
         #    RETURN __OCR_INIT__($lang, $dataPath, $engineMode, $psmode)
         #ENDFUNC
         """;
-
-    private static SyntaxTree? _stdTree;
-    private static SyntaxTree? _visionTree;
-
-    public static SyntaxTree GetStdTree() =>
-        _stdTree ??= SyntaxTree.Parse(StdSource, isLib: true);
-
-    public static SyntaxTree GetVisionTree() =>
-        _visionTree ??= SyntaxTree.Parse(VisionSource, isLib: true);
 }

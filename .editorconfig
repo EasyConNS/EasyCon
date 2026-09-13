@@ -6,6 +6,14 @@ root = true
 dotnet_diagnostic.CA1416.severity = suggestion
 # 事件处理器需要 async void，不要改为 async Task
 dotnet_diagnostic.VSTHRD110.severity = none
+# async void 命令/事件处理器是仓库既定风格（RelayCommand(Action)、fire-and-forget 释放）
+dotnet_diagnostic.VSTHRD100.severity = none
+# dotnet format（10.0.x 起）把无修复器的分析器告警计入 --verify-no-changes 门禁，
+# 以下为预存噪音（无修复器、不指向本仓库待办），本地与 CI 统一抑制保持判定一致
+dotnet_diagnostic.VSTHRD101.severity = none
+dotnet_diagnostic.VSTHRD105.severity = none
+dotnet_diagnostic.VSTHRD200.severity = none
+dotnet_diagnostic.CA2255.severity = none
 
 #### Core EditorConfig 选项 ####
 

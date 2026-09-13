@@ -1,64 +1,47 @@
 using System.Diagnostics;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
-using EasyCon.Script.Ssa;
-using EasyCon.Script.Syntax;
 using EasyScript;
 
 var output = new MockOutput();
 
-// Warmup
-SyntaxTree.Parse("RETURN 1");
+Console.WriteLine("=== Compile + EcxVm profiling ===\n");
 
-Console.WriteLine("=== Evaluate profiling ===\n");
-
-var mainTree = SyntaxTree.Parse(File.ReadAllText("D:/repositories/ecstest/main.ecs"));
+// 统一编译链路（docs/Pipeline.md）：CompileFile → EcxImage → EcxVm 桥
+var mainPath = "D:/repositories/ecstest/main.ecs";
 
 // First run - everything cold
 var sw = Stopwatch.StartNew();
-var comp = Compilation.Create(mainTree);
-Console.WriteLine($"Compilation.Create: {sw.ElapsedMilliseconds}ms");
+var result = Compilation.CompileFile(mainPath, new CompileOptions { UseDiskCache = false });
+Console.WriteLine($"CompileFile (cold): {sw.ElapsedMilliseconds}ms");
+Console.WriteLine($"Diagnostics: {result.Diagnostics.Length}");
 
 sw.Restart();
-var compileResult = comp.Compile(null);
-Console.WriteLine($"Compile: {sw.ElapsedMilliseconds}ms");
+EcxVm.Run(result.Image!, output, null, null, null, () => 0, null, null, null,
+    CancellationToken.None, [], result.NativeSymbols);
+Console.WriteLine($"EcxVm.Run: {sw.ElapsedMilliseconds}ms");
 
-sw.Restart();
-using (var evaluator = new SsaEvaluator(compileResult.Program!, CancellationToken.None) { IoAdapter = output })
-{
-    evaluator.Evaluate();
-}
-Console.WriteLine($"Evaluate: {sw.ElapsedMilliseconds}ms");
-Console.WriteLine($"Diagnostics: {compileResult.Diagnostics.Length}");
-
-// Second run - with cache
+// Second run
 Console.WriteLine("\n--- Second run ---");
 sw.Restart();
-var comp2 = Compilation.Create(mainTree);
-Console.WriteLine($"Compilation.Create: {sw.ElapsedMilliseconds}ms");
+var result2 = Compilation.CompileFile(mainPath, new CompileOptions { UseDiskCache = false });
+Console.WriteLine($"CompileFile: {sw.ElapsedMilliseconds}ms");
 
 sw.Restart();
-var compileResult2 = comp2.Compile(null);
-Console.WriteLine($"Compile: {sw.ElapsedMilliseconds}ms");
-
-sw.Restart();
-using (var evaluator2 = new SsaEvaluator(compileResult2.Program!, CancellationToken.None) { IoAdapter = output })
-{
-    evaluator2.Evaluate();
-}
-Console.WriteLine($"Evaluate: {sw.ElapsedMilliseconds}ms");
+EcxVm.Run(result2.Image!, output, null, null, null, () => 0, null, null, null,
+    CancellationToken.None, [], result2.NativeSymbols);
+Console.WriteLine($"EcxVm.Run: {sw.ElapsedMilliseconds}ms");
 
 // 10 iterations
-Console.WriteLine("\n--- 10 Evaluate iterations ---");
+Console.WriteLine("\n--- 10 compile+run iterations ---");
 sw.Restart();
 for (int i = 0; i < 10; i++)
 {
-    var c = Compilation.Create(mainTree);
-    var cr = c.Compile(null);
-    using var e = new SsaEvaluator(cr.Program!, CancellationToken.None) { IoAdapter = output };
-    e.Evaluate();
+    var r = Compilation.CompileFile(mainPath, new CompileOptions { UseDiskCache = false });
+    EcxVm.Run(r.Image!, output, null, null, null, () => 0, null, null, null,
+        CancellationToken.None, [], r.NativeSymbols);
 }
-Console.WriteLine($"10 iterations: {sw.ElapsedMilliseconds}ms  avg={sw.ElapsedMilliseconds/10}ms");
+Console.WriteLine($"10 iterations: {sw.ElapsedMilliseconds}ms  avg={sw.ElapsedMilliseconds / 10}ms");
 
 class MockOutput : IIoAdapter
 {

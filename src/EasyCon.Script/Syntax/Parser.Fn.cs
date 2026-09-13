@@ -392,7 +392,10 @@ internal partial class Parser
                     _diagnostics.ReportInvalidExpressionStatement(first.Location);
                 }
                 var args = ParseArguments();
-                if (SyntaxTree.LegacyCompat && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
+                // v1 特例（行为偏差注记，LegacySyntax 语义单点）：PRINT 后接「&」时旧解析器
+                // 把 & 当分隔符吞掉；PRINT 后接调用/成员链时走下方 CallStmtWithArgs 字面量回退
+                // （不求值实参）。LegacySyntax=false（新语法模式）不执行该吞并。
+                if (_syntaxTree.LegacySyntax && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
                 {
                     if (Check(TokenType.BitAnd)) Advance();
                 }

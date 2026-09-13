@@ -7,7 +7,7 @@ namespace EasyCon.Script.Ssa;
 
 /// <summary>
 /// 将 BoundProgram 转换为 SsaProgram。
-/// 遍历所有函数体，通过 SsaCodeGenerator 生成 SSA IR。
+/// 遍历所有函数体，通过 SsaBuilder 生成 SSA IR。
 /// </summary>
 static class SsaProgramBuilder
 {
@@ -23,7 +23,7 @@ static class SsaProgramBuilder
         {
             AllocateLocalSlots(sym, body);
 
-            var gen = new SsaCodeGenerator(sym, body.Syntax, globalValueId, globalBlockId, externSet);
+            var gen = new SsaBuilder(sym, body.Syntax, globalValueId, globalBlockId, externSet);
             var ssaFunc = gen.Generate(body);
             ssaFunc.Layout = sym.Layout;
             functions[sym] = ssaFunc;

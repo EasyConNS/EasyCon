@@ -16,13 +16,12 @@ public class PerformanceBenchmarks
 
     private static (double Ms, string[] Output) BenchmarkInterp(string code)
     {
-        var compilation = Compilation.Create(SyntaxTree.Parse(code)).Compile(null);
-        if (compilation.Program == null)
+        var result = Compilation.CompileSource(code, new CompileOptions { UseDiskCache = false });
+        if (result.Image == null)
             Assert.Fail("脚本编译错误");
 
         var output = new MockOutputAdapter();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-        using var evaluator = new SsaEvaluator(compilation.Program, cts.Token) { IoAdapter = output };
 
         var times = new List<double>();
         string[]? lastOutput = null;
@@ -30,7 +29,8 @@ public class PerformanceBenchmarks
         {
             output.Printed.Clear();
             var sw = Stopwatch.StartNew();
-            evaluator.Evaluate();
+            EcxVm.Run(result.Image!, output, null, null, null, () => 0, null, null, null,
+                cts.Token, [], result.NativeSymbols);
             sw.Stop();
             times.Add(sw.Elapsed.TotalMilliseconds);
             lastOutput = output.Printed.ToArray();
@@ -49,7 +49,8 @@ public class PerformanceBenchmarks
         return val;
     }
 
-    [Test] public void Benchmark_LoopThroughput()
+    [Test]
+    public void Benchmark_LoopThroughput()
     {
         var code = @"
 $count = 0
@@ -62,7 +63,8 @@ PRINT $count
         Console.WriteLine($"[A] 循环吞吐量 100万次: 解释器={interpMs:F1}ms ({1_000_000.0 / interpMs / 1000:F1}K iter/s)");
     }
 
-    [Test] public void Benchmark_FunctionCallOverhead()
+    [Test]
+    public void Benchmark_FunctionCallOverhead()
     {
         var code = @"
 FUNC add($a, $b) : int
@@ -78,7 +80,8 @@ PRINT $sum
         Console.WriteLine($"[B] 函数调用 10万次: 解释器={interpMs:F1}ms ({100_000.0 / interpMs:F0} calls/s)");
     }
 
-    [Test] public void Benchmark_MultiArgFunctionCall()
+    [Test]
+    public void Benchmark_MultiArgFunctionCall()
     {
         var code = @"
 FUNC calc($a, $b, $c, $d) : int
@@ -94,7 +97,8 @@ PRINT $sum
         Console.WriteLine($"[C] 4参数调用 10万次: 解释器={interpMs:F1}ms ({100_000.0 / interpMs:F0} calls/s)");
     }
 
-    [Test] public void Benchmark_TailRecursion_Reuse()
+    [Test]
+    public void Benchmark_TailRecursion_Reuse()
     {
         var code = @"
 FUNC sum($n, $acc) : int
@@ -110,7 +114,8 @@ PRINT $r
         Console.WriteLine($"[D] 尾递归 50000层: 解释器={interpMs:F1}ms");
     }
 
-    [Test] public void Benchmark_GlobalVariableReadWrite()
+    [Test]
+    public void Benchmark_GlobalVariableReadWrite()
     {
         var code = @"
 $a = 0
@@ -137,7 +142,8 @@ PRINT $e
         Console.WriteLine($"[E] 全局变量 5var×20万: 解释器={interpMs:F1}ms ({totalOps * 1.0 / interpMs / 1000:F1}M ops/s)");
     }
 
-    [Test] public void Benchmark_StringLength()
+    [Test]
+    public void Benchmark_StringLength()
     {
         var code = @"
 $s = ""abcdefghij""
@@ -151,7 +157,8 @@ PRINT $len
         Console.WriteLine($"[F] 字符串 LEN 10万次: 解释器={interpMs:F1}ms ({100_000.0 / interpMs:F0} calls/s)");
     }
 
-    [Test] public void Benchmark_PrimeSieve()
+    [Test]
+    public void Benchmark_PrimeSieve()
     {
         var code = @"
 $count = 0
@@ -171,5 +178,27 @@ PRINT $count
         var (interpMs, output) = BenchmarkInterp(code);
         var result = ParseIntOutput(output);
         Console.WriteLine($"[G] 素数筛 2-10000: 解释器={interpMs:F1}ms, 找到 {result} 个素数");
+    }
+
+    [Test]
+    public void Benchmark_ContainerAssignReturn()
+    {
+        // COW（move-on-unique）目标场景：新容器字面量的赋值/传参/返回 —— 唯一引用时跳过容器深拷贝
+        var code = @"
+FUNC make():INT[]
+    RETURN [1, 2, 3, 4, 5, 6, 7, 8]
+ENDFUNC
+$acc = 0
+$s = [0, 0, 0, 0, 0, 0, 0, 0]
+FOR $i = 1 TO 50000
+    $s = [1, 2, 3, 4, 5, 6, 7, 8]
+    $t = make()
+    $acc = $acc + $t[7]
+NEXT
+PRINT $acc
+";
+        var (interpMs, output) = BenchmarkInterp(code);
+        var result = ParseIntOutput(output);
+        Console.WriteLine($"[H] 容器赋值/返回 5万次: 解释器={interpMs:F1}ms (累加={result})");
     }
 }

@@ -241,7 +241,9 @@ public class ImgLabelManager
 ## 3. Script模块详细设计
 
 ### 3.1 模块概述
-Script模块实现ECS脚本的解析和执行，采用编译器设计原理实现完整的脚本语言支持。编译管线为 `SourceText → Lexer → Parser → Binder → Evaluator`，另有 `Assembly/` 用于生成单片机字节码。
+Script模块实现ECS脚本的解析和执行，采用编译器设计原理实现完整的脚本语言支持。编译管线为 `SourceText → Lexer → Parser → Binder → SSA → Evaluator`。
+
+**执行后端**（VM2，详见 `docs/VM2.md`）：SSA 之后新增字节码编译后端——`SsaProgram → BytecodeEncoder → EcxLinker → ECX 镜像 → 纯 C 虚拟机`。`SsaEvaluator` 保留为回归基准；`Assembly/`（VM1 单片机字节码）已废弃，由 VM2 取代。
 
 ### 3.2 目录结构
 
@@ -443,6 +445,8 @@ internal sealed class Evaluator
 
 Evaluator直接遍历绑定树（BoundProgram）执行脚本，不经过虚拟机/字节码中间层。
 
+> **VM2 后端注意**：现行执行路径为 `SsaEvaluator`（SSA 解释器）与实验性 JIT；VM2 字节码管线（`Bytecode/` + 纯 C 虚拟机）为新的官方后端，规格见 `docs/VM2.md`。
+
 ### 3.9 输出接口
 
 #### IIoAdapter接口
@@ -475,8 +479,8 @@ public interface ICGamePad
 
 ### 3.10 单片机字节码生成
 
-#### Assembler（Assembly/Assembler.cs）
-将绑定后的程序转换为单片机可执行的字节码，通过 `HexWriter` 输出HEX格式文件。`Instructions/` 目录包含各指令的汇编实现（AsmKey、AsmStick、AsmFor等）。
+#### Assembler（Assembly/）
+**已废弃**：`Assembler.Assemble` 直接抛出"此版本暂不支持编译"，VM1 的 2 字节指令集无法承载现代语言特性。取代者为 VM2 字节码管线（`Bytecode/` 目录 + `docs/VM2.md`）。
 
 ---
 

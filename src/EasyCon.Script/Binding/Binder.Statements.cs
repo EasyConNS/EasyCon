@@ -380,14 +380,6 @@ internal sealed partial class Binder
     {
         var boundexpr = BindExpression(syntax.Expression);
 
-        // lib 全局变量赋值：右侧不能是函数调用
-        if (_isLibBinder && _function == null)
-        {
-            if (syntax.AssignmentToken.Type.OperatorIsAug() || boundexpr.Kind == BoundNodeKind.CallExpression)
-                _diagnostics.ReportLibGlobalVariableMustBeConstant(syntax.Location, varTarget.Tag);
-            // return BindErrorStatement(syntax);
-        }
-
         var desugared = DesugarAugmentedAssign(syntax, () => BindVarExpression(varTarget), boundexpr.Type, boundexpr);
         if (desugared is not null) boundexpr = desugared;
 

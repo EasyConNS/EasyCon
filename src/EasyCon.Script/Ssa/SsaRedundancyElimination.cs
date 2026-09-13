@@ -29,8 +29,12 @@ static class SsaRedundancyElimination
 
             if (inst.Op is SsaOp.StoreLocal or SsaOp.StoreGlobal)
             {
-                if (inst.Aux != null && inst.Arg0 != null)
-                    known[inst.Aux] = inst.Arg0;
+                // 仅标量可前递：句柄类型（array/struct）的 Store 是深拷贝边界——
+                // store 之后对源值的字段/元素改写不会反映到变量槽，
+                // 跨 Call 清空 known 后回读槽会拿到拷贝前的旧对象（值语义破坏）
+                if (inst.Aux is VariableSymbol vs && inst.Arg0 != null
+                    && vs.Type is not ArrayType and not StructType)
+                    known[vs] = inst.Arg0;
             }
             else if (inst.Op is SsaOp.LoadLocal or SsaOp.LoadGlobal)
             {
@@ -125,6 +129,18 @@ static class SsaRedundancyElimination
                 {
                     // 找到相同表达式，用 existing 替换 inst 的所有使用
                     SsaOptimizer.ReplaceAllUsesInBlock(block, inst, existing);
+                    // phi 臂是跨块使用（臂值在本块终结符的边副本处读取，A-01）：
+                    // 删除本块定义须同步改写后继块 phi 的对应臂，否则臂引用悬空
+                    foreach (var succ in block.GetSuccessors())
+                    {
+                        foreach (var phi in succ.Phis)
+                        {
+                            if (phi.ExtraArgs == null) continue;
+                            for (int arm = 0; arm < succ.Predecessors.Count && arm < phi.ExtraArgs.Count; arm++)
+                                if (succ.Predecessors[arm] == block && phi.ExtraArgs[arm] == inst)
+                                    phi.ExtraArgs[arm] = existing;
+                        }
+                    }
                     existing.Uses += inst.Uses;
                     inst.Uses = 0;
                     block.Instructions.RemoveAt(i);

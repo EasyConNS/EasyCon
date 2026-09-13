@@ -1,0 +1,9 @@
+$arr = [10, 20, 30]
+$arr[1] = 99
+$slice = $arr[0:2]
+$s = "n=" & $arr[1] & ",len=" & LEN($arr) & ",s0=" & $slice[0]
+PRINT $s
+$has = 99 in $arr
+PRINT $has
+$cat = $arr + $slice
+PRINT LEN($cat)

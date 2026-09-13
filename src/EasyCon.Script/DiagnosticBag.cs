@@ -9,6 +9,14 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 {
     private readonly List<Diagnostic> _diagnostics = [];
 
+    /// <summary>
+    /// 模块级诊断单点（.err 重放与异常包装共用的唯一构造形态）：
+    /// 「[模块名] 前缀 + 默认落点」（落点经 <see cref="Modules.ModuleLocations.Default"/>，
+    /// 无源码上下文时为零跨度 + 模块文件名）。两处消费方必须复用本方法，保证重放/包装文本形态一致。
+    /// </summary>
+    public static Diagnostic FromMessage(SyntaxTree? tree, string moduleName, string text)
+        => Diagnostic.Error(Modules.ModuleLocations.Default(tree), $"[{moduleName}] {text}");
+
     public IEnumerator<Diagnostic> GetEnumerator() => _diagnostics.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -95,11 +103,6 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         ReportError(location, message);
     }
 
-    public void ReportOnlyOneFileCanHaveGlobalStatements(TextLocation location)
-    {
-        ReportError(location, "脚本主语句只能存在一个文件中");
-    }
-
     public void ReportAllPathsMustReturn(TextLocation location)
     {
         ReportError(location, "函数所有路径必须有返回值");
@@ -154,11 +157,6 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     public void ReportVoidExpressionCannotAssign(TextLocation location)
     {
         ReportError(location, "空值表达式无法赋值");
-    }
-
-    public void ReportLibGlobalVariableMustBeConstant(TextLocation location, string varName)
-    {
-        ReportError(location, $"库全局变量 '{varName}' 的初始值必须是常量表达式");
     }
 
     public void ReportReadOnlyVariable(Token variableToken)
@@ -252,5 +250,10 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     public void ReportImportFileNotFound(TextLocation location, string path)
     {
         ReportError(location, $"导入文件不存在: {path}");
+    }
+
+    public void ReportModuleNameConflict(TextLocation location, string moduleName, string path)
+    {
+        ReportError(location, $"模块名冲突: {moduleName}（{path}）");
     }
 }

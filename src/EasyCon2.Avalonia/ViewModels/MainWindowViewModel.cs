@@ -1086,14 +1086,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void CloseScript()
     {
-        EditorText = "";
+        SetEditorTextWithoutDirtyTracking("");
+        IsScriptModified = false;
         CurrentScriptPath = NoScriptPathText;
         SelectedEditorTab = 0;
     }
 
     private void NewScript()
     {
-        EditorText = "";
+        SetEditorTextWithoutDirtyTracking("");
+        IsScriptModified = false;
         CurrentScriptPath = UntitledScriptText;
         SelectedEditorTab = 0;
         _logService.AddLog("已新建脚本");
@@ -1116,6 +1118,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void SaveEditorText(string path)
     {
         File.WriteAllText(path, EditorText, new UTF8Encoding(false));
+        IsScriptModified = false;
         _logService.AddLog($"已保存脚本: {path}");
     }
 
@@ -1132,8 +1135,17 @@ public partial class MainWindowViewModel : ViewModelBase
         _projectDirectoryPath = dir;
         _fileTreeViewModel.LoadDirectory(dir);
 
-        // 初始化内嵌编辑器
-        InitializeEmbeddedEditor(path);
+        // 初始化内嵌编辑器（加载文件内容不属于用户修改）
+        _suppressDirtyTracking = true;
+        try
+        {
+            InitializeEmbeddedEditor(path);
+        }
+        finally
+        {
+            _suppressDirtyTracking = false;
+        }
+        IsScriptModified = false;
     }
 
     /// <summary>
@@ -1146,6 +1158,44 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     [ObservableProperty]
     private string _editorText = "";
+
+    /// <summary>
+    /// 当前脚本内容是否有未保存的修改。
+    /// </summary>
+    [ObservableProperty]
+    private bool _isScriptModified;
+
+    /// <summary>
+    /// 程序化设置编辑区文本（打开/新建/关闭脚本）时抑制修改标记。
+    /// </summary>
+    private bool _suppressDirtyTracking;
+
+    /// <summary>
+    /// 在不触发修改标记的情况下设置编辑区文本。
+    /// </summary>
+    private void SetEditorTextWithoutDirtyTracking(string text)
+    {
+        _suppressDirtyTracking = true;
+        try
+        {
+            EditorText = text;
+        }
+        finally
+        {
+            _suppressDirtyTracking = false;
+        }
+    }
+
+    partial void OnEditorTextChanged(string value)
+    {
+        if (!_suppressDirtyTracking)
+            IsScriptModified = true;
+    }
+
+    partial void OnIsScriptModifiedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ScriptDisplayPath));
+    }
 
     /// <summary>
     /// 格式化当前脚本（委托给 ToolCallService，供 FormatScriptCommand 绑定）。
@@ -1770,7 +1820,7 @@ public partial class MainWindowViewModel : ViewModelBase
         string[]? args = null;
         if (HasArgsShebang(EditorText))
         {
-            args = await ShowArgsDialog();
+            args = await ShowArgsDialogAsync();
             if (args == null) return; // 用户取消
         }
 
@@ -1789,7 +1839,7 @@ public partial class MainWindowViewModel : ViewModelBase
         return firstLine != null && firstLine.StartsWith("#! args");
     }
 
-    private async Task<string[]?> ShowArgsDialog()
+    private async Task<string[]?> ShowArgsDialogAsync()
     {
         var owner = WindowService.MainWindow;
         if (owner == null) return null;

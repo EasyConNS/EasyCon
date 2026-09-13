@@ -15,15 +15,27 @@ static class SsaInterprocedural
 
     /// <summary>
     /// 从 MainFunction 出发，沿 Call 指令收集所有可达函数，移除不可达的。
+    /// 模块编译（ModuleSystem.md M5）传全部导出为根：导出对外可见，
+    /// 不得因「模块内无调用」被消除。
     /// </summary>
-    internal static void RemoveUnreachableFunctions(SsaProgram program)
+    internal static void RemoveUnreachableFunctions(SsaProgram program, IEnumerable<FunctionSymbol>? roots = null)
     {
         if (program.MainFunction == null) return;
 
         // 1. 收集所有可达函数
         var reachable = new HashSet<FunctionSymbol>();
         var worklist = new Stack<SsaFunction>();
-        worklist.Push(program.MainFunction);
+        if (roots != null)
+        {
+            foreach (var root in roots)
+                if (program.Functions.TryGetValue(root, out var rootFn))
+                    worklist.Push(rootFn);
+            if (worklist.Count == 0) return;
+        }
+        else
+        {
+            worklist.Push(program.MainFunction);
+        }
 
         while (worklist.Count > 0)
         {
@@ -118,22 +130,31 @@ static class SsaInterprocedural
     private static int _globalInlineIdCounter;
 
     /// <summary>
+    /// 每次 Optimize 入口调用：把内联 ID 计数器强制重置为程序最大 ID + 1。
+    /// 修复进程内残留计数器与新程序主序列撞号的 bug（SSA ID 冲突）。
+    /// </summary>
+    internal static void ResetIdCounter(SsaProgram program)
+    {
+        int maxId = 0;
+        foreach (var func in program.Functions.Values)
+            foreach (var block in func.Blocks)
+                foreach (var val in block.Instructions.Concat(block.Phis))
+                    if (val.Id > maxId) maxId = val.Id;
+        if (program.MainFunction != null)
+            foreach (var block in program.MainFunction.Blocks)
+                foreach (var val in block.Instructions.Concat(block.Phis))
+                    if (val.Id > maxId) maxId = val.Id;
+        _globalInlineIdCounter = maxId + 1;
+    }
+
+    /// <summary>
     /// 内联单基本块函数：将 callee 的指令克隆（带全新 ID）到 caller 的调用点，
     /// 参数引用替换为实参，Return 替换为返回值。
     /// 支持任意单块叶子函数（算术、比较、类型转换等），不限于 LoadLocal+Return。
     /// </summary>
     internal static bool InlineTrivialFunctions(SsaProgram program, SsaFunction caller)
     {
-        // 初始化 ID 计数器为程序最大 ID + 1
-        if (_globalInlineIdCounter == 0)
-        {
-            int maxId = 0;
-            foreach (var func in program.Functions.Values)
-                foreach (var block in func.Blocks)
-                    foreach (var val in block.Instructions.Concat(block.Phis))
-                        if (val.Id > maxId) maxId = val.Id;
-            _globalInlineIdCounter = maxId + 1;
-        }
+        // 计数器由 ResetIdCounter 在每次 Optimize 入口强制重置（进程残留会导致 ID 冲突）
 
         bool changed = false;
 

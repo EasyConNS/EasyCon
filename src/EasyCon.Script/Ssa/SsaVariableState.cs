@@ -26,9 +26,9 @@ internal sealed class SsaVariableState
     // 未封闭块的占位 phi 列表（按块分组，方便 SealBlock 时遍历）。
     private readonly Dictionary<SsaBlock, List<(VariableSymbol var, SsaValue phi)>> _incompleteByBlock = new();
 
-    private readonly SsaCodeGenerator _gen;
+    private readonly SsaBuilder _gen;
 
-    public SsaVariableState(SsaCodeGenerator gen) { _gen = gen; }
+    public SsaVariableState(SsaBuilder gen) { _gen = gen; }
 
     public bool IsSealed(SsaBlock block) => _sealed.Contains(block);
 

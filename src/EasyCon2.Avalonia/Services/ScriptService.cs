@@ -92,7 +92,7 @@ public class ScriptService : IScriptService
     public void Run(string scriptPath, string[]? args = null)
     {
         _logService.AddLog($"开始运行脚本: {Path.GetFileName(scriptPath)}");
-        ExecuteScriptAsync(() =>
+        ExecuteScript(() =>
         {
             var scriptBasePath = Path.GetFullPath(Path.GetDirectoryName(scriptPath) ?? "");
             var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppPaths.DataDir);
@@ -105,7 +105,7 @@ public class ScriptService : IScriptService
     public void RunFromContent(string content, string[]? args = null)
     {
         _logService.AddLog("===开始运行脚本===");
-        ExecuteScriptAsync(() =>
+        ExecuteScript(() =>
         {
             var diag = _runner.Init(content, []);
             return (diag, null, (ImmutableHashSet<string>)[]);
@@ -136,7 +136,7 @@ public class ScriptService : IScriptService
     /// 脚本执行主流程：编译 → 检查需求 → 连接设备 → 构建委托 → 运行。
     /// </summary>
     /// <param name="compile">编译回调，返回 (诊断结果, 标签匹配委托, 标签名集合)</param>
-    private void ExecuteScriptAsync(
+    private void ExecuteScript(
         Func<(ImmutableArray<Diagnostic> diag, LabelMatchDelegate? labelMatch, ImmutableHashSet<string> labelNames)> compile,
         string[]? args)
     {

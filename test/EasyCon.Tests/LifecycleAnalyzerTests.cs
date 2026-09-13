@@ -12,22 +12,8 @@ public class LifecycleAnalyzerTests
 {
     private static (bool Success, List<string> Errors) Compile(string code)
     {
-        var tree = SyntaxTree.Parse(code);
-        var errors = tree.Diagnostics.Where(d => d.IsError).Select(d => d.Message).ToList();
-        if (errors.Count == 0)
-        {
-            try
-            {
-                var compilation = Compilation.Create(tree);
-                var diag = compilation.Compile([]).Diagnostics;
-                foreach (var d in diag)
-                    errors.Add(d.Message);
-            }
-            catch (Exception ex)
-            {
-                errors.Add(ex.Message);
-            }
-        }
+        var result = Compilation.CompileSource(code, new CompileOptions { UseDiskCache = false });
+        var errors = result.Diagnostics.Where(d => d.IsError).Select(d => d.Message).ToList();
         return (errors.Count == 0, errors);
     }
 
@@ -51,7 +37,7 @@ public class LifecycleAnalyzerTests
     {
         // 两个变量生命周期不重叠，应该分配到相同slot
         ExpectBind(@"
-FUNC test()
+FUNC test():INT
     $a = 1
     $b = $a
     RETURN $b
@@ -63,7 +49,7 @@ ENDFUNC");
     {
         // 两个变量生命周期重叠，应该分配到不同slot
         ExpectBind(@"
-FUNC test()
+FUNC test():INT
     $a = 1
     $b = 2
     $c = $a + $b
@@ -75,8 +61,9 @@ ENDFUNC");
     public void Lifecycle_NestedBlocks()
     {
         ExpectBind(@"
-FUNC test()
+FUNC test():INT
     $outer = 1
+    $result = 0
     IF $outer == 1
         $inner = 2
         $result = $outer + $inner
@@ -92,9 +79,10 @@ ENDFUNC");
     public void Lifecycle_ComplexScenario()
     {
         ExpectBind(@"
-FUNC test()
+FUNC test():INT
     $a = 1
     $b = 2
+    $result = 0
     IF $a < $b
         $c = $a + $b
         $d = $c * 2
@@ -115,7 +103,7 @@ ENDFUNC");
     public void Lifecycle_SlotOptimization()
     {
         var code = @"
-FUNC test()
+FUNC test():INT
     $a = 1
     $b = $a + 1
     RETURN $b
@@ -130,7 +118,7 @@ ENDFUNC";
     public void Lifecycle_NonOverlappingVariables_ShouldShareSlots()
     {
         var code = @"
-FUNC test()
+FUNC test():INT
     $a = 1
     $b = $a + 1
     RETURN $b

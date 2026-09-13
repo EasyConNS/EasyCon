@@ -362,3 +362,5 @@ dist/
 
 # Worktrees
 .worktrees/
+# ecs-vm native build artifact (built on demand by ci/build-vm.sh / native/build.sh)
+src/EasyCon.Vm/native/ecs-vm

@@ -14,13 +14,21 @@ namespace EasyCon.Script.Ssa;
 /// </summary>
 static class SsaOptimizer
 {
-    public static void Optimize(SsaProgram program, SsaOptimizeTiming? optTiming = null)
+    public static void Optimize(SsaProgram program, SsaOptimizeTiming? optTiming = null, IEnumerable<Symbols.FunctionSymbol>? moduleRoots = null)
     {
         var sw = Stopwatch.StartNew();
 
-        // 先移除不可达函数
-        SsaInterprocedural.RemoveUnreachableFunctions(program);
+        // 先移除不可达函数（模块编译传全部导出为根）
+        SsaInterprocedural.RemoveUnreachableFunctions(program, moduleRoots);
         if (optTiming != null) optTiming.RemoveUnreachable1 = sw.Elapsed;
+
+        // 全局提升（mem2reg）：常量全局折叠 + 单函数全局提升为 SSA 寄存器，
+        // 消除 LoadGlobal/StoreGlobal 重指令。默认启用；ECS_DISABLE_GLOBAL_PROMOTION=1 可退出。
+        if (Environment.GetEnvironmentVariable("ECS_DISABLE_GLOBAL_PROMOTION") != "1")
+            SsaGlobalPromotion.Run(program);
+
+        // 重置内联 ID 计数器（进程残留会与新程序主序列撞号，SSA ID 冲突 bug）
+        SsaInterprocedural.ResetIdCounter(program);
 
         // 内联 trivial 函数（单基本块 + 仅 Return）
         sw.Restart();
@@ -50,7 +58,11 @@ static class SsaOptimizer
 
         if (program.MainFunction != null)
             OptimizeFunction(program.MainFunction);
-        var funcList = program.Functions.Values.ToList();
+        // MainFunction 已在 Functions 字典中且已直接优化过，排除之：
+        // 否则会被并行循环再优化一遍（重复优化非幂等 pass 会破坏 IR，转储也会互相覆盖）
+        var funcList = program.Functions.Values
+            .Where(f => !ReferenceEquals(f, program.MainFunction))
+            .ToList();
         if (funcList.Count > 0)
             Parallel.ForEach(funcList, OptimizeFunction);
         if (optTiming != null) optTiming.IntraFunctionOpt = sw.Elapsed;
@@ -63,7 +75,7 @@ static class SsaOptimizer
 
         // 内联后包装函数不再被引用，再次清理
         sw.Restart();
-        SsaInterprocedural.RemoveUnreachableFunctions(program);
+        SsaInterprocedural.RemoveUnreachableFunctions(program, moduleRoots);
         if (optTiming != null) optTiming.RemoveUnreachable2 = sw.Elapsed;
     }
 

@@ -43,7 +43,7 @@ ci\windows-x64.bat
 | `src/EasyCon.Device` | Hardware device communication (serial) |
 | `src/EasyCon.Capture` | Screen/image capture |
 | `src/EasyCon.Script` | ECS script parser, compiler, runtime |
-| `src/EasyCon.Script.Jit` | JIT compiler for ECS scripts |
+| `src/EasyCon.Vm` | Native C VM (ecs-vm, C99) executing .ecx bytecode on MCU |
 | `src/EzCv` | Custom OpenCV wrapper (Zig native interop) |
 | `src/EzTesseract` | OCR (Tesseract wrapper) |
 | `src/EasyCon.Lsp` | LSP language server for ECS scripts |

@@ -242,7 +242,7 @@ internal sealed partial class Binder
             return BindErrorStatement(syntax);
         }
 
-        if (SyntaxTree.LegacyCompat && syntax.Args.Length == 1 && syntax.Args[0] is VariableExpr legacyVar)
+        if (_legacySyntax && syntax.Args.Length == 1 && syntax.Args[0] is VariableExpr legacyVar)
         {
             var builtinFunc = candidates.FirstOrDefault(c => BuiltinFunctions.GetAll().Contains(c));
             // TIME 支持库函数匹配（builtin 或 stdlib 均可）

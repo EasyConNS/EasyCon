@@ -382,7 +382,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         {
             var tokenType = keywords[word.ToLower()];
             AddToken(tokenType, word.ToUpper(), start);
-            if (SyntaxTree.LegacyCompat)
+            if (syntaxTree.LegacySyntax)
             {
                 if (tokenType == TokenType.IF || tokenType == TokenType.ELIF)
                     _expectEqualAfterIf = true;
@@ -433,7 +433,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     Advance();
                     AddToken(TokenType.EQL, "==", start);
                 }
-                else if (_expectEqualAfterIf && SyntaxTree.LegacyCompat)
+                else if (_expectEqualAfterIf && syntaxTree.LegacySyntax)
                 {
                     AddToken(TokenType.EQL, "=", start);
                     _expectEqualAfterIf = false;

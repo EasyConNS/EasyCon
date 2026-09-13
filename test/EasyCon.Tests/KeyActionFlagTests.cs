@@ -15,8 +15,7 @@ public class KeyActionFlagTests
 {
     private static CompileResult Compile(string code)
     {
-        var compilation = Compilation.Create(SyntaxTree.Parse(code));
-        return compilation.Compile(null);
+        return Compilation.CompileSource(code, new CompileOptions { UseDiskCache = false });
     }
 
     private static void AssertNoErrors(CompileResult result)

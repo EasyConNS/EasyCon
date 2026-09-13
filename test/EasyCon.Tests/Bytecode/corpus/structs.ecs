@@ -1,0 +1,19 @@
+STRUCT Point
+    $x:INT
+    $y:INT
+END
+FUNC make($px:INT, $py:INT):Point
+    $p = Point{}
+    $p.x = $px
+    $p.y = $py
+    RETURN $p
+ENDFUNC
+$p = make(11, 7)
+$px = $p.x
+PRINT $px
+$py = $p.y
+PRINT $py
+PRINT $p
+$fixed = [1, 2, 3]
+$n = LEN($fixed)
+PRINT $n

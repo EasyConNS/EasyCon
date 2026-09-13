@@ -13,22 +13,8 @@ public class BinderTests
 {
     private static (bool Success, List<string> Errors) Compile(string code, ImmutableHashSet<string>? exvar = null)
     {
-        var tree = SyntaxTree.Parse(code);
-        var errors = tree.Diagnostics.Where(d => d.IsError).Select(d => d.Message).ToList();
-        if (errors.Count == 0)
-        {
-            try
-            {
-                var compilation = Compilation.Create(tree);
-                var diag = compilation.Compile(exvar ?? []);
-                foreach (var d in diag.Diagnostics)
-                    errors.Add(d.Message);
-            }
-            catch (Exception ex)
-            {
-                errors.Add(ex.Message);
-            }
-        }
+        var result = Compilation.CompileSource(code, new CompileOptions { ExtVars = exvar, UseDiskCache = false });
+        var errors = result.Diagnostics.Where(d => d.IsError).Select(d => d.Message).ToList();
         return (errors.Count == 0, errors);
     }
 
@@ -479,26 +465,6 @@ $r = first([1, 2, 3])", "无法");
 
     #endregion
 
-    #region 库脚本限制
-
-    [Test]
-    public void Lib_AllowsDefinitions()
-    {
-        // 库脚本允许常量和函数定义
-        var tree = SyntaxTree.Parse("_CONST = 5\nFUNC f\nA\nENDFUNC", isLib: true);
-        Assert.That(tree.Diagnostics.HasErrors(), Is.False);
-    }
-
-    [Test]
-    public void Lib_AllowsVariableAssignmentWithConstantInit()
-    {
-        // 库脚本允许带常量初始值的变量声明
-        var tree = SyntaxTree.Parse("$x = 10", isLib: true);
-        Assert.That(tree.Diagnostics.HasErrors(), Is.False);
-    }
-
-    #endregion
-
     #region 返回路径检查
 
     [Test]
@@ -515,15 +481,16 @@ ENDFUNC");
     }
 
     [Test]
-    public void ReturnPath_MissingReturn_Allowed()
+    public void ReturnPath_MissingReturn_Reported()
     {
-        // 语言不强制所有路径都有返回值
-        ExpectBind(@"
+        // 模块模式急切绑定全部导出函数（v1 惰性绑定只检查被调用函数，
+        // 未调用函数的缺失返回是检查盲区）；非 void 函数缺返回路径 → 报告
+        ExpectError(@"
 FUNC bad($x:int) : int
     IF $x > 0
         RETURN $x
     ENDIF
-ENDFUNC");
+ENDFUNC", "所有路径必须有返回值");
     }
 
     #endregion

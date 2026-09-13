@@ -40,6 +40,8 @@ var portDevCommand = new Command("port", "单片机端口功能");
 var videoCommand = new Command("video", "视频采集设备功能");
 var formatCommand = new Command("format", "格式化脚本");
 var irCommand = new Command("ir", "打印 SSA IR（中间表示）");
+var modulesCommand = new Command("modules", "输出模块项目的独立编译清单（依赖图/缓存/导出，ModuleSystem.md M7）");
+var compileCommand = new Command("compile", "脚本编译为 ECX 镜像（独立编译管线；可与 ecs-vm run 组成全链路）");
 
 #region 命令行参数解析
 var scriptOption = new Argument<string>("file")
@@ -385,6 +387,59 @@ rootCommand.Subcommands.Add(portDevCommand);
 rootCommand.Subcommands.Add(videoCommand);
 rootCommand.Subcommands.Add(formatCommand);
 rootCommand.Subcommands.Add(irCommand);
+
+modulesCommand.Arguments.Add(scriptOption);
+modulesCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    string file = parseResult.GetValue(scriptOption)!;
+    var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(file);
+
+    Console.WriteLine($"独立编译：{(project.Success ? "成功" : "失败")}  缓存命中 {project.CacheHits} / 未命中 {project.CacheMisses} / 错误重放 {project.ErrorHits} / GC 清理 {project.GarbageCollected}");
+    Console.WriteLine();
+    Console.WriteLine($"{"#",4}  {"模块",-12} {"函数",4} {"导出",4} {"导入",4} {"init",-5} 槽位");
+    for (int i = 0; i < project.Artifacts.Count; i++)
+    {
+        var a = project.Artifacts[i];
+        Console.WriteLine($"{i,4}  {a.Name,-12} {a.Functions.Count,4} {a.Exports.Count,4} {a.Imports.Count,4} {(a.HasInit ? "有" : "-"),-5} {a.Functions.Max(f => f.NSlots)}");
+    }
+    Console.WriteLine();
+    Console.WriteLine($"入口 = {(project.Image != null ? project.Image.Functions[project.Image.Entry].Name : "-")}");
+    foreach (var w in project.Warnings)
+        Console.WriteLine($"警告: {w}");
+    foreach (var d in project.Diagnostics)
+        Console.Error.WriteLine($"错误: {d}");
+    return project.Success ? 0 : 1;
+});
+
+rootCommand.Subcommands.Add(modulesCommand);
+
+compileCommand.Arguments.Add(scriptOption);
+var outOption = new Option<string>("--out", "-o")
+{
+    Description = "输出 .ecx 路径（缺省 = 脚本同名 .ecx）",
+};
+compileCommand.Options.Add(outOption);
+compileCommand.SetAction(async (parseResult, cancellationToken) =>
+{
+    string file = parseResult.GetValue(scriptOption)!;
+    string outPath = parseResult.GetValue(outOption) ?? Path.ChangeExtension(file, ".ecx");
+
+    var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(file);
+    foreach (var w in project.Warnings)
+        Console.WriteLine($"警告: {w}");
+    if (!project.Success)
+    {
+        foreach (var d in project.Diagnostics)
+            Console.Error.WriteLine($"错误: {d}");
+        return 1;
+    }
+    File.WriteAllBytes(outPath, EasyCon.Script.Bytecode.EcxWriter.Write(project.Image!, stripDebug: false));
+    Console.WriteLine($"已生成 {outPath}（{new FileInfo(outPath).Length} B，{project.Image!.Functions.Count} 函数，模块: {string.Join(" → ", project.Artifacts.Select(a => a.Name))}）");
+    Console.WriteLine($"执行: ecs-vm run {outPath}");
+    return 0;
+});
+
+rootCommand.Subcommands.Add(compileCommand);
 
 var lspCommand = new Command("lsp", "启动 ECS 语言服务端");
 var stdioOption = new Option<bool>("--stdio")

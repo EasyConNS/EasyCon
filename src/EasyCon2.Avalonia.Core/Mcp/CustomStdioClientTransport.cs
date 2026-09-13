@@ -138,7 +138,7 @@ internal sealed class StdioProcessTransport : TransportBase
 
     public override async ValueTask DisposeAsync()
     {
-        _cts.Cancel();
+        await _cts.CancelAsync();
         if (_readTask != null)
         {
             try { await _readTask.WaitAsync(TimeSpan.FromSeconds(2)); }

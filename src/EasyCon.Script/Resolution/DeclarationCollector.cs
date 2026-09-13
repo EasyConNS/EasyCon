@@ -189,7 +189,7 @@ internal sealed class DeclarationCollector
         return type;
     }
 
-    private static ScriptType? ResolveTypeFromName(string name, BoundScope scope)
+    internal static ScriptType? ResolveTypeFromName(string name, BoundScope scope)
     {
         var upper = name.ToUpper();
         if (upper.EndsWith(']'))
@@ -221,7 +221,7 @@ internal sealed class DeclarationCollector
 
     #endregion
 
-    private static BoundScope CreateRootScope()
+    internal static BoundScope CreateRootScope()
     {
         var result = new BoundScope(null);
         foreach (var f in BuiltinFunctions.GetAll())

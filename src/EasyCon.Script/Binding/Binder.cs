@@ -17,12 +17,12 @@ internal sealed partial class Binder
     const int _max_allow_level = 3;
     private BoundScope _scope;
     private readonly HashSet<string> _ilNames = [];
-    private readonly bool _isLibBinder;
-    private readonly Resolution.ResolutionResult? _resolution;
 
     private readonly ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? _lazyFunctionBodies;
     private readonly DiagnosticBag? _programDiagnostics;
+    private readonly Resolution.ResolutionResult? _resolution;
     private readonly HashSet<FunctionSymbol>? _bindingFunctions;
+    private readonly bool _legacySyntax;
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
@@ -30,16 +30,16 @@ internal sealed partial class Binder
         ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? lazyFunctionBodies = null,
         DiagnosticBag? programDiagnostics = null,
         HashSet<FunctionSymbol>? bindingFunctions = null,
-        bool isLibBinder = false,
-        Resolution.ResolutionResult? resolution = null)
+        Resolution.ResolutionResult? resolution = null,
+        bool legacySyntax = true)
     {
         _scope = new BoundScope(parent);
         _function = function;
         _lazyFunctionBodies = lazyFunctionBodies;
         _programDiagnostics = programDiagnostics;
-        _bindingFunctions = bindingFunctions;
-        _isLibBinder = isLibBinder;
         _resolution = resolution;
+        _bindingFunctions = bindingFunctions;
+        _legacySyntax = legacySyntax;
 
         if (function != null)
         {
@@ -48,7 +48,15 @@ internal sealed partial class Binder
         }
     }
 
-    public static BoundProgram BindProgram(Resolution.ResolutionResult resolution, ImmutableHashSet<string>? externalVariables = default)
+    /// <summary>
+    /// 模块单树绑定（统一链路，docs/Pipeline.md）：每模块只绑定自己的语法树——
+    /// 函数/extern 声明 + 顶层语句（$eval）+（可选）急切绑定全部函数体（导出对外可见）。
+    /// 依赖以接口合成符号提供（InterfaceScopeSynthesizer），Declaration=null 自动跳过绑体。
+    /// v1 的 lib/main 双阶段合并绑定（libOnlyScope、$eval 语句拼接、aliased 源码树比对）
+    /// 随源码级合并管线一并退役。
+    /// </summary>
+    public static BoundProgram BindProgram(Resolution.ResolutionResult resolution, ImmutableHashSet<string>? externalVariables = default,
+        bool eagerBindMainFunctions = false, bool legacySyntax = true)
     {
         var parentScope = resolution.GlobalScope ?? CreateRootScope();
         parentScope.SetValidExternalVariables(externalVariables ?? []);
@@ -60,186 +68,77 @@ internal sealed partial class Binder
         if (diagnostics.HasErrors())
             return ErrorProgram(diagnostics);
 
-        var libTrees = resolution.Trees.Where(t => t.IsLib).ToList();
-        var mainTrees = resolution.Trees.Where(t => !t.IsLib).ToList();
-
         var functionBodies = ImmutableDictionary.CreateBuilder<FunctionSymbol, BoundBlockStatement>();
         var externFunctions = ImmutableArray.CreateBuilder<FunctionSymbol>();
         var ilNames = new HashSet<string>();
 
-        // 创建 lib-only scope：在 root scope 和 lib scope 之间插入洞函数
-        var libOnlyScope = new BoundScope(parentScope);
-        foreach (var hole in BuiltinFunctions.GetCaptureHoles())
-            libOnlyScope.TryDeclareFunction(hole);
+        // --- 模块声明绑定（函数/extern）---
+        var bindingFunctions = new HashSet<FunctionSymbol>();
+        var moduleBinder = new Binder(new BoundScope(parentScope), function: null,
+            functionBodies, diagnostics, bindingFunctions, resolution: resolution, legacySyntax: legacySyntax);
 
-        // --- Phase 1: lib 绑定（每个 lib 文件独立 scope，避免不同文件的函数冲突） ---
-        var libUserFunctions = new List<FunctionSymbol>();
-        var libGlobalStmts = new List<BoundStmt>();
-        var allLibDiagnostics = new DiagnosticBag();
-
-        foreach (var libTree in libTrees)
+        var moduleFunctions = new List<FunctionSymbol>();
+        foreach (var member in resolution.Trees.SelectMany(t => t.Root.Members))
         {
-            // 每个 lib 文件使用独立的 scope，避免不同文件的同名函数冲突
-            var fileScope = new BoundScope(libOnlyScope);
-            var fileBinder = new Binder(fileScope, function: null, isLibBinder: true, resolution: resolution);
-            var fileFunctions = new List<FunctionSymbol>();
-
-            foreach (var member in libTree.Root.Members)
+            switch (member)
             {
-                switch (member)
-                {
-                    case FuncDeclBlock func:
-                        var fn = fileBinder.BindFuncDeclaration(func);
-                        libUserFunctions.Add(fn);
-                        fileFunctions.Add(fn);
-                        break;
-                    case ExternFuncStmt ext:
-                        externFunctions.Add(fileBinder.BindExternDeclaration(ext));
-                        break;
-                        // StructDeclBlock 已在 Resolution 阶段由 DeclarationCollector 处理
-                }
+                case FuncDeclBlock func:
+                    moduleFunctions.Add(moduleBinder.BindFuncDeclaration(func));
+                    break;
+                case ExternFuncStmt ext:
+                    externFunctions.Add(moduleBinder.BindExternDeclaration(ext));
+                    break;
+                    // StructDeclBlock 已在解析作用域合成阶段声明（InterfaceScopeSynthesizer）
             }
+        }
 
-            foreach (var member in libTree.Root.Members)
-            {
-                if (member is not FuncDeclBlock and not ExternFuncStmt and not StructDeclBlock)
-                    libGlobalStmts.Add(fileBinder.BindStatement(member));
-            }
+        // --- 顶层语句（$eval：模块初始化 + 主脚本主体）---
+        var moduleGlobalStmts = new List<BoundStmt>();
+        foreach (var member in resolution.Trees.SelectMany(t => t.Root.Members))
+        {
+            if (member is not FuncDeclBlock and not ExternFuncStmt and not StructDeclBlock)
+                moduleGlobalStmts.Add(moduleBinder.BindStatement(member));
+        }
 
-            // 绑定当前 lib 文件的函数体（使用 fileBinder._scope，因为全局变量声明在该 scope 中）
-            foreach (var function in fileFunctions)
+        // 导出函数对外可见，必须全体编码：急切绑定全部函数体
+        //（惰性绑定只覆盖被调用者，会丢未被调用的导出）
+        if (eagerBindMainFunctions)
+        {
+            foreach (var function in moduleFunctions)
             {
-                var (body, binderFn) = BindFunctionBody(function, fileBinder._scope);
+                if (functionBodies.ContainsKey(function)) continue;
+                var (body, binderFn) = BindFunctionBody(function, moduleBinder._scope, legacySyntax: legacySyntax);
                 if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(body))
                     binderFn.Diagnostics.ReportAllPathsMustReturn(function.Declaration!.Declare.Location);
                 functionBodies.Add(function, body);
                 ilNames.UnionWith(binderFn._ilNames);
                 diagnostics.AddRange(binderFn.Diagnostics);
             }
-
-            allLibDiagnostics.AddRange(fileBinder.Diagnostics);
-
-            // 将当前 lib 文件的函数导入到 libOnlyScope，使后续 lib 文件可以跨文件调用
-            foreach (var function in fileFunctions)
-                libOnlyScope.TryDeclareFunction(function);
         }
-
-        var libModule = new ModuleSymbol("lib", isLib: true);
-        var mainModule = new ModuleSymbol("main", isLib: false);
-
-        // --- Phase 2: 主脚本绑定（惰性绑定函数体） ---
-        var bindingFunctions = new HashSet<FunctionSymbol>();
-
-        // 收集 aliased import 的文件路径集合（这些模块的函数只能通过命名空间限定访问）
-        var aliasedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (resolution.AliasedTrees != null)
-        {
-            foreach (var tree in resolution.AliasedTrees.Values)
-            {
-                if (!string.IsNullOrEmpty(tree.Text.FileName))
-                    aliasedPaths.Add(Path.GetFullPath(tree.Text.FileName));
-            }
-        }
-
-        // 构建 aliased 函数声明集合，用于过滤
-        var aliasedFuncDecls = new HashSet<FuncDeclBlock>();
-        foreach (var libTree in libTrees)
-        {
-            var treePath = libTree.Text.FileName;
-            if (!string.IsNullOrEmpty(treePath) && aliasedPaths.Contains(Path.GetFullPath(treePath)))
-            {
-                foreach (var member in libTree.Root.Members)
-                    if (member is FuncDeclBlock func)
-                        aliasedFuncDecls.Add(func);
-            }
-        }
-
-        // 将非 aliased 的 lib 函数导入到主 scope（aliased 模块的函数只能通过 ns.func() 访问）
-        var mainBindingScope = new BoundScope(parentScope);
-        foreach (var function in libUserFunctions)
-        {
-            if (function.Declaration == null || !aliasedFuncDecls.Contains(function.Declaration))
-                mainBindingScope.TryDeclareFunction(function);
-        }
-
-        var mainBinder = new Binder(mainBindingScope, function: null,
-            functionBodies, diagnostics, bindingFunctions,
-            resolution: resolution);
-
-        var mainUserFunctions = new List<FunctionSymbol>();
-        var mainGlobalStmts = new List<BoundStmt>();
-        var mainMembers = mainTrees.SelectMany(t => t.Root.Members);
-
-        foreach (var member in mainMembers)
-        {
-            switch (member)
-            {
-                case FuncDeclBlock func:
-                    mainUserFunctions.Add(mainBinder.BindFuncDeclaration(func));
-                    break;
-                case ExternFuncStmt ext:
-                    externFunctions.Add(mainBinder.BindExternDeclaration(ext));
-                    break;
-                    // StructDeclBlock 已在 Resolution 阶段由 DeclarationCollector 处理
-            }
-        }
-
-        // 多文件全局语句检测（仅检查 mainTrees）
-        var firstGlobalPerTree = mainTrees
-            .Select(t => t.Root.Members.FirstOrDefault(m => m is not FuncDeclBlock and not EmptyStmt
-                and not ImportStmt and not ExternFuncStmt and not StructDeclBlock))
-            .Where(g => g != null)
-            .ToArray();
-        if (firstGlobalPerTree.Length > 1)
-            foreach (var g in firstGlobalPerTree)
-                diagnostics.ReportOnlyOneFileCanHaveGlobalStatements(g!.Location);
-
-        foreach (var member in mainMembers)
-        {
-            if (member is not FuncDeclBlock and not ExternFuncStmt and not StructDeclBlock)
-                mainGlobalStmts.Add(mainBinder.BindStatement(member));
-        }
-
-        ilNames.UnionWith(mainBinder._ilNames);
-        diagnostics.AddRange(allLibDiagnostics);
-        diagnostics.AddRange(mainBinder.Diagnostics);
+        ilNames.UnionWith(moduleBinder._ilNames);
+        diagnostics.AddRange(moduleBinder.Diagnostics);
 
         if (diagnostics.HasErrors())
             return ErrorProgram(diagnostics);
 
-        // --- Phase 3: 构建 $eval 主函数 ---
-        var allGlobalStmts = libGlobalStmts.Concat(mainGlobalStmts);
+        // --- $eval：模块顶层语句（main 模块即主脚本主体；lib 模块即 &lt;init:module&gt; 语义）---
         var main = new FunctionSymbol("$eval", [], ScriptType.Void);
-        var evalBody = new BoundBlockStatement(main.Declaration!, [.. allGlobalStmts]);
+        var evalBody = new BoundBlockStatement(main.Declaration!, [.. moduleGlobalStmts]);
         functionBodies.Add(main, evalBody);
 
-        var allStructDefs = mainBinder._scope.CollectAllStructDefs();
+        var allStructDefs = moduleBinder._scope.CollectAllStructDefs();
 
-        return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), externFunctions.ToImmutable(), [.. ilNames], allStructDefs)
-        {
-            Modules = [libModule, mainModule]
-        };
-    }
-
-    /// <summary>
-    /// 兼容旧 API：无 ResolutionResult 时回退到原有逻辑。
-    /// </summary>
-    public static BoundProgram BindProgram(ImmutableArray<SyntaxTree> syntaxTrees, ImmutableHashSet<string>? externalVariables = default)
-    {
-        var resolution = new Resolution.ResolutionResult(syntaxTrees, null,
-            System.Collections.Immutable.ImmutableDictionary<string, BoundScope>.Empty,
-            System.Collections.Immutable.ImmutableDictionary<string, SyntaxTree>.Empty,
-            new DiagnosticBag());
-        return BindProgram(resolution, externalVariables);
+        return new BoundProgram(main, [.. diagnostics], functionBodies.ToImmutable(), externFunctions.ToImmutable(), [.. ilNames], allStructDefs);
     }
 
     private static (BoundBlockStatement Body, Binder Binder) BindFunctionBody(
         FunctionSymbol function, BoundScope scope,
         ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? lazyFunctionBodies = null,
         DiagnosticBag? programDiagnostics = null,
-        HashSet<FunctionSymbol>? bindingFunctions = null)
+        HashSet<FunctionSymbol>? bindingFunctions = null,
+        bool legacySyntax = true)
     {
-        var binderFn = new Binder(scope, function, lazyFunctionBodies, programDiagnostics, bindingFunctions);
+        var binderFn = new Binder(scope, function, lazyFunctionBodies, programDiagnostics, bindingFunctions, legacySyntax: legacySyntax);
         var stmts = ImmutableArray.CreateBuilder<BoundStmt>();
         foreach (var stmt in function.Declaration!.Statements)
             stmts.Add(binderFn.BindStatement(stmt));

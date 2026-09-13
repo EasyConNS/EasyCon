@@ -329,23 +329,27 @@ static class SsaConstantPropagation
         Dictionary<SsaValue, List<SsaValue>> useMap,
         Dictionary<SsaValue, List<SsaBlock>> branchCondMap)
     {
-        if (!useMap.TryGetValue(changedVal, out var users))
-            return;
-
-        foreach (var user in users)
+        // useMap 只含「指令/phi 操作数」边；仅被用作 BranchCondition 的值不在其中。
+        // 此时不能早退——条件值的格从 Const 降到 Bottom 后必须重烧终结符，
+        // 否则乐观标记的分支边被永久冻结（内层回边不可达 → 循环 phi 停留在
+        // 乐观常量 → `IF $isPrime == 1` 被误折叠为恒真）。
+        if (useMap.TryGetValue(changedVal, out var users))
         {
-            // 只处理可达块中的指令
-            if (!reachableBlocks.Contains(user.Block))
-                continue;
+            foreach (var user in users)
+            {
+                // 只处理可达块中的指令
+                if (!reachableBlocks.Contains(user.Block))
+                    continue;
 
-            if (user.Op == SsaOp.Phi)
-            {
-                // Phi 需要重新 meet
-                EvaluatePhi(user, user.Block, lattice, reachableBlocks, executableEdges, ssaWorklist, useMap);
-            }
-            else
-            {
-                EvaluateInstruction(user, lattice, ssaWorklist, useMap);
+                if (user.Op == SsaOp.Phi)
+                {
+                    // Phi 需要重新 meet
+                    EvaluatePhi(user, user.Block, lattice, reachableBlocks, executableEdges, ssaWorklist, useMap);
+                }
+                else
+                {
+                    EvaluateInstruction(user, lattice, ssaWorklist, useMap);
+                }
             }
         }
 

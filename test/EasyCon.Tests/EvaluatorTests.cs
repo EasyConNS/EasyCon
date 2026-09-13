@@ -46,19 +46,16 @@ public class EvaluatorTests
         string code, LabelMatchDelegate? labelMatch = null, ImmutableHashSet<string>? labelNames = null)
     {
         var output = new MockOutputAdapter();
-        var compilation = Compilation.Create(SyntaxTree.Parse(code));
-        var result = compilation.Compile(labelNames);
-        if (result.Program == null)
-            return (result, Value.Void, output);
-        // 注意：不使用 using —— 返回的 Value 可能包含 ScriptArray，
-        // 其内部 handle 依赖 evaluator 的 RuntimeHeap 生命周期。
-        // 在调用者检查完返回值后，evaluator 由 GC 回收。
-        var evaluator = new SsaEvaluator(result.Program, new CancellationTokenSource().Token)
+        // 统一编译链路（docs/Pipeline.md）：CompileSource → EcxImage → EcxVm 桥
+        var result = Compilation.CompileSource(code, new CompileOptions
         {
-            IoAdapter = output,
-            LabelMatch = labelMatch,
-        };
-        var value = evaluator.Evaluate();
+            ExtVars = labelNames,
+            UseDiskCache = false,
+        });
+        if (result.Image == null)
+            return (result, Value.Void, output);
+        var value = EcxVm.Run(result.Image!, output, null, null, null, () => 0, null, null, labelMatch,
+            new CancellationTokenSource().Token, [], result.NativeSymbols);
         return (result, value, output);
     }
 
@@ -977,39 +974,37 @@ RETURN $r[1:]");
     [Test]
     public void Error_DivisionByZero()
     {
-        Assert.Throws<DivideByZeroException>(() => EvalValue("$a = 10\nRETURN $a / 0"));
+        Assert.Throws<ScriptException>(() => EvalValue("$a = 10\nRETURN $a / 0"));
     }
 
     [Test]
     public void Error_ModuloByZero()
     {
-        Assert.Throws<DivideByZeroException>(() => EvalValue("$a = 10\nRETURN $a % 0"));
+        Assert.Throws<ScriptException>(() => EvalValue("$a = 10\nRETURN $a % 0"));
     }
 
     [Test]
     public void Error_ArrayIndexOutOfBounds()
     {
-        Assert.Throws<Exception>(() => EvalValue("$a = [1, 2]\nRETURN $a[5]"));
+        Assert.Catch(() => EvalValue("$a = [1, 2]\nRETURN $a[5]"));
     }
 
     [Test]
     public void Error_ArrayNegativeIndex()
     {
-        Assert.Throws<Exception>(() => EvalValue("$a = [1, 2]\n$i = 0 - 1\nRETURN $a[$i]"));
+        Assert.Catch(() => EvalValue("$a = [1, 2]\n$i = 0 - 1\nRETURN $a[$i]"));
     }
 
     [Test]
     public void Error_ArraySliceOutOfBounds()
     {
-        Assert.Throws<Exception>(() => EvalValue("$a = [1, 2]\nRETURN $a[0:10]"));
+        Assert.Catch(() => EvalValue("$a = [1, 2]\nRETURN $a[0:10]"));
     }
 
     [Test]
     public void Error_UndefinedVariable()
     {
-        var tree = SyntaxTree.Parse("$r = $undefined");
-        var compilation = Compilation.Create(tree);
-        var result = compilation.Compile(null);
+        var result = Compilation.CompileSource("$r = $undefined", new CompileOptions { UseDiskCache = false });
         Assert.That(result.Diagnostics.HasErrors(), Is.True);
     }
 
@@ -1160,16 +1155,14 @@ RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
             var filePath = Path.Combine(tempDir, "test.ecs");
             File.WriteAllText(filePath, "RETURN __FILE__");
 
-            var tree = SyntaxTree.Load(filePath);
-            var compilation = Compilation.Create(tree);
-            var compileResult = compilation.Compile(null);
+            var compileResult = Compilation.CompileFile(filePath, new CompileOptions { UseDiskCache = false });
 
             Assert.That(compileResult.Diagnostics.HasErrors(), Is.False,
                 $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
 
             var output = new MockOutputAdapter();
-            using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { IoAdapter = output };
-            var value = evaluator.Evaluate();
+            var value = EcxVm.Run(compileResult.Image!, output, null, null, null, () => 0, null, null, null,
+                new CancellationTokenSource().Token, [], compileResult.NativeSymbols);
 
             Assert.That(value.AsString(), Is.EqualTo(tempDir));
         }
@@ -1241,12 +1234,12 @@ RETURN $r", matcher, labelNames);
         // 绑定通过（标签已声明）但运行时 LabelMatch 为 null → 抛异常
         var labelNames = ImmutableHashSet.Create("myLabel");
         var output = new MockOutputAdapter();
-        var compilation = Compilation.Create(SyntaxTree.Parse("RETURN @myLabel"));
-        var compileResult = compilation.Compile(labelNames);
+        var compileResult = Compilation.CompileSource("RETURN @myLabel",
+            new CompileOptions { ExtVars = labelNames, UseDiskCache = false });
 
         Assert.That(compileResult.Diagnostics.HasErrors(), Is.False);
-        using var evaluator = new SsaEvaluator(compileResult.Program!, new CancellationTokenSource().Token) { IoAdapter = output };
-        Assert.Throws<Exception>(() => evaluator.Evaluate());
+        Assert.Catch(() => EcxVm.Run(compileResult.Image!, output, null, null, null, () => 0, null, null, null,
+            new CancellationTokenSource().Token, [], compileResult.NativeSymbols));
     }
 
     [Test]

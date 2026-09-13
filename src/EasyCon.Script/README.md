@@ -2,25 +2,28 @@
 
 ## 模块概述
 
-Script 模块实现自研 ECS 脚本语言的完整编译管线。管线为 `SourceText → Lexer → Parser → Resolution → Binder → SSA IR → SSA Optimize`，最终产出优化后的 SSA 中间表示。另有 `Assembly/` 子系统用于生成单片机 HEX 字节码。
+Script 模块实现自研 ECS 脚本语言的完整编译管线。管线为 `SourceText → Lexer → Parser → ModuleGraphBuilder（模块图 + lib/ 自动加载）→ 每模块 Binder → SSA IR → SSA Optimize → BytecodeEncoder → EcxLinker`，最终产出可执行 ECX 镜像（桌面 EcxInterpreter 与单片机 C VM 共用）。另有 `Assembly/` 子系统用于生成单片机 HEX 字节码（v1 遗留，已停用）。
 
 ## 编译管线
 
 ```
 源代码 → Lexer（词法分析）→ Parser（语法分析）→ SyntaxTree
-→ Resolution（文件加载+声明收集）→ Binder（绑定+类型检查）→ BoundProgram
-→ SsaCodeGenerator（SSA 生成）→ SsaProgram → SsaOptimizer（SSA 优化）→ SsaProgram
+→ ModuleGraphBuilder（IMPORT 图 + 环检测 + lib/ 自动加载 + 拓扑序）
+→ ModuleCompilePipeline（缓存编排 → Binder 绑定+类型检查 → BoundProgram）
+→ SsaBuilder（SSA 生成）→ SsaProgram → SsaOptimizer（SSA 优化）→ SsaProgram
+→ EcxModuleEncoder（编码）→ ModuleArtifact(.ecm) → EcxLinker（链接）→ EcxImage
 ```
 
 ### 各阶段职责
 
 - **Lexer** — 将源文本转为 Token 流，支持关键字、标识符、字面量、位运算符、复合赋值运算符、特殊变量前缀（`_` 常量 / `$` 变量 / `@` 外部变量）等
 - **Parser** — 递归下降语法分析，生成以 `CompilationUnit` 为根的语法树。为 partial 类，函数声明解析在 `Parser.Fn.cs` 中
-- **Resolution** — 编排文件加载和顶层声明收集，包含两个子阶段：
-  - `ImportResolver`：解析 import 声明、加载 lib 文件、检测循环导入、自动加载 lib/ 目录
-  - `DeclarationCollector`：收集所有 SyntaxTree 的顶层声明（函数签名、extern、结构体），构建 `GlobalScope` 和 per-alias `ModuleScope`
+- **Resolution** — 声明收集与接口消费，包含：
+  - `DeclarationCollector`：收集 SyntaxTree 的顶层声明（函数签名、extern、结构体），构建 `GlobalScope` 和 per-alias `ModuleScope`
+  - `InterfaceScopeSynthesizer`：模块管线中由依赖接口区（`ModuleInterface`）合成绑定所需的作用域（接口式独立编译，docs/ModuleSystem.md）
+- **Modules** — 项目级编排：`ModuleGraphBuilder`（IMPORT 递归图 + 环检测 + lib/ 自动加载）、`ModuleCompilePipeline`（disk/process/.err 三层缓存编排）、`ProjectCompiler`（总编排 + 链接）、`ModuleCache`（obj/ 内容寻址缓存）
 - **Binder** — 将语法树绑定到类型化 Bound 树，同时完成类型检查、作用域管理（`BoundScope`）和符号解析。分为 `Binder.cs`（入口）、`Binder.Declarations.cs`、`Binder.Expressions.cs`、`Binder.Statements.cs`、`Binder.Calls.cs`
-- **SSA 生成** — `SsaCodeGenerator` 将 Bound IR 转换为 SSA 形式的三地址码（`SsaBlock` + `SsaValue`），支持 Phi 节点、短路求值拆分、类型特化操作码
+- **SSA 生成** — `SsaBuilder`（partial：`SsaBuilder.cs` 入口 + `Blocks`/`Statements`/`Expressions`/`Intrinsics`）将 Bound IR 转换为 SSA 形式的三地址码（`SsaBlock` + `SsaValue`），支持 Phi 节点、短路求值拆分、类型特化操作码
 - **SSA 优化** — `SsaOptimizer` 驱动多遍优化至不动点：
   - 函数间：移除不可达函数、内联 trivial 函数、内联 intrinsic 包装函数
   - 函数内：SCCP 常量传播 → 代数化简 → 拷贝传播 → 全局 CSE → 死代码消除 → CFG 简化 → 常量去重（迭代至收敛）
@@ -29,8 +32,8 @@ Script 模块实现自研 ECS 脚本语言的完整编译管线。管线为 `Sou
 ### 编译入口
 
 ```csharp
-var compilation = Compilation.Create(SyntaxTree.Load(path));
-var result = compilation.Compile(extVars); // CompileResult: Diagnostics + SsaProgram?
+var result = Compilation.CompileSource(source, options);   // 或 CompileFile(path)
+// ModuleProjectResult: Diagnostics + EcxImage（桌面/单片机共用产物）+ 缓存统计
 ```
 
 `CompileResult` 包含诊断信息、优化后的 `SsaProgram`、以及 `KeyAction` / `NeedIL` 标记。
@@ -124,16 +127,16 @@ Symbol → ModuleSymbol（命名空间模块）
 
 ```
 EasyCon.Script/
-├── Assembly/          单片机字节码生成
-│   └── Instructions/  汇编指令实现
+├── Assembly/          单片机字节码生成（v1 遗留，已停用）
 ├── Binding/           绑定阶段（类型检查、作用域、Bound 树）
+├── Bytecode/          VM2 后端：指令集/格式表、编码器、链接器、ECX 解释器、ECM/ECX 序列化、模块接口
 ├── IO/                TextWriter 扩展
-├── Parsing/           AST 节点定义（语句、表达式）
-├── Resolution/        文件加载与声明收集
+├── Modules/           项目编译编排：模块图/缓存管线/ProjectCompiler
+├── Resolution/        声明收集与接口消费（DeclarationCollector、InterfaceScopeSynthesizer）
 ├── Runtime/           运行时类型（EcsStruct、ScriptArray）
-├── Ssa/               SSA IR 生成与优化
+├── Ssa/               SSA IR 生成（SsaBuilder partial 族）与优化
 ├── Symbols/           符号系统（Value、ScriptType、Symbol）
-├── Syntax/            词法分析、语法分析、格式化
+├── Syntax/            词法分析、语法分析、AST 节点、格式化
 └── Text/              源文本基础设施（SourceText、TextLine、TextLocation）
 ```
 

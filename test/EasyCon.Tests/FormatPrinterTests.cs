@@ -75,10 +75,7 @@ NEXT
 
     private static string Format(string code)
     {
-        var tree = SyntaxTree.Parse(code);
-        Assert.That(tree.Diagnostics.Where(d => d.IsError), Is.Empty);
-
-        return Normalize(Compilation.Create(tree).FormatCode());
+        return Normalize(Compilation.FormatSource(code));
     }
 
     private static string Normalize(string text) =>

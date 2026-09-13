@@ -1,6 +1,6 @@
 using EasyCon.Core.Config;
-using Serilog;
 using EasyScript;
+using Serilog;
 using System;
 using System.Drawing;
 
