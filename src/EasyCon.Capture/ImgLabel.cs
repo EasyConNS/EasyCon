@@ -44,6 +44,17 @@ public record ImgLabel
     public bool UseGaussianBlur { get; set; } = false;
     public bool UseOther { get; set; } = false;
 
+    /// <summary>FRLG OCR 场景键，例如 FRLG_JPN_NAME。</summary>
+    public string OcrScene { get; set; } = string.Empty;
+
+    /// <summary>最近一次标签测试读到的文本，不写入 IL 文件。</summary>
+    [JsonIgnore]
+    public string LastOcrText { get; internal set; } = string.Empty;
+
+    /// <summary>最近一次标签测试失败原因，不写入 IL 文件。</summary>
+    [JsonIgnore]
+    public string LastOcrFailure { get; internal set; } = string.Empty;
+
     [JsonIgnore]
     public string name { get; set; } = "5号路蛋屋主人";
 
@@ -173,6 +184,8 @@ public record ImgLabel
     public bool Valid()
     {
         if (ImgBase64.Length == 0 && searchMethod.IsImageMethod()) return false;
+        if (searchMethod == SearchMethod.FrlgOcr)
+            return Ocr.Frlg.FrlgOcr.IsScene(OcrScene) && RangeWidth > 0 && RangeHeight > 0;
         return true;
     }
 
@@ -209,6 +222,6 @@ public static class ILExt
 
     private static bool ILTxtType(this SearchMethod method)
     {
-        return method == SearchMethod.TesserDetect;
+        return method.IsTextMethod();
     }
 }

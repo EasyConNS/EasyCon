@@ -6,10 +6,17 @@
 
 	<ItemGroup>
 		<PackageReference Include="FlashCap" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime" />
 						<PackageReference Include="System.Drawing.Common" />
 	</ItemGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="EasyCon.Tests" />
+		<EmbeddedResource Include="Ocr\Frlg\Resources\DialogDigits\*.png" LogicalName="Frlg/DialogDigits/%(Filename)%(Extension)" />
+		<EmbeddedResource Include="Ocr\Frlg\Resources\Digits\*.png" LogicalName="Frlg/Digits/%(Filename)%(Extension)" />
+		<EmbeddedResource Include="Ocr\Frlg\Resources\LevelDigits\*.png" LogicalName="Frlg/LevelDigits/%(Filename)%(Extension)" />
+		<EmbeddedResource Include="Ocr\Frlg\Resources\Text\*.json" LogicalName="Frlg/Text/%(Filename)%(Extension)" />
+		<None Include="..\..\models\frlg\**\*" Link="models/frlg/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
 		<ProjectReference Include="..\EzCv\EzCv.csproj" />
 		<ProjectReference Include="..\EzTesseract\EzTesseract.csproj" />
 	</ItemGroup>

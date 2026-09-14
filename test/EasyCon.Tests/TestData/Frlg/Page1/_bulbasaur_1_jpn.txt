@@ -1,0 +1,4 @@
+bulbasaur
+6
+male
+Lax

@@ -183,7 +183,7 @@
                   MinWidth="380"
                   Margin="8,0,0,0">
 
-                    <Grid RowDefinitions="Auto,Auto,Auto"
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto"
                           RowSpacing="8"
                           HorizontalAlignment="Stretch">
                         <Grid ColumnDefinitions="76,128,Auto"
@@ -260,6 +260,29 @@
                             </Grid>
                         </Grid>
                         <Grid Grid.Row="2"
+                              ColumnDefinitions="76,300,Auto"
+                              ColumnSpacing="6"
+                              HorizontalAlignment="Left"
+                              IsVisible="{Binding IsFrlgOcrMethod}">
+                            <TextBlock Text="OCR 场景:"
+                                       Classes="field-label"/>
+                            <ComboBox Grid.Column="1"
+                                      Classes="compact-combo"
+                                      SelectedItem="{Binding SelectedFrlgScene}"
+                                      ItemsSource="{x:Static vm:TagEditorViewModel.OcrScenes}"
+                                      Width="290">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Label}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Grid.Column="2"
+                                    Content="使用默认区域"
+                                    Command="{Binding ApplyDefaultFrlgRegionCommand}"
+                                    Padding="12,4"/>
+                        </Grid>
+                        <Grid Grid.Row="3"
                               ColumnDefinitions="*,*"
                               ColumnSpacing="8"
                               HorizontalAlignment="Stretch">
@@ -443,6 +466,21 @@
 
                         <TextBlock Text="{Binding MatchDegreeText}"
                                    Classes="match-score"/>
+
+                        <TextBlock Text="{Binding OcrResultText}"
+                                   IsVisible="{Binding IsFrlgOcrMethod}"
+                                   TextWrapping="Wrap"/>
+
+                        <TextBox Text="{Binding OcrCall}"
+                                 IsVisible="{Binding IsFrlgOcrMethod}"
+                                 IsReadOnly="True"
+                                 TextWrapping="Wrap"
+                                 ToolTip.Tip="可选中并复制到脚本"/>
+
+                        <Button Content="复制 OCR 调用"
+                                IsVisible="{Binding IsFrlgOcrMethod}"
+                                Click="CopyOcrCall"
+                                HorizontalAlignment="Stretch"/>
 
                         <Grid ColumnDefinitions="Auto,Auto"
                               ColumnSpacing="8">

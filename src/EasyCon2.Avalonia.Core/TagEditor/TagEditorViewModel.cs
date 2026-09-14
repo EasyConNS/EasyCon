@@ -4,6 +4,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Capture;
+using EasyCon.Capture.Ocr.Frlg;
 using EasyCon.Core;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -28,6 +29,8 @@ public partial class TagEditorViewModel : ObservableObject
     public bool HasSourceImage => SourceImage != null;
 
     public static readonly IReadOnlyList<SearchMethod> SearchMethods = ECCore.GetSearchMethods().ToList();
+
+    public static readonly IReadOnlyList<FrlgSceneDefinition> OcrScenes = FrlgScenes.All;
 
     public static readonly IReadOnlyList<string> ParameterOptions =
     [
@@ -136,6 +139,7 @@ public partial class TagEditorViewModel : ObservableObject
     {
         Label.RangeX = value;
         UpdateRangeRect();
+        OnOcrRegionChanged();
     }
 
     [ObservableProperty]
@@ -145,6 +149,7 @@ public partial class TagEditorViewModel : ObservableObject
     {
         Label.RangeY = value;
         UpdateRangeRect();
+        OnOcrRegionChanged();
     }
 
     [ObservableProperty]
@@ -154,6 +159,7 @@ public partial class TagEditorViewModel : ObservableObject
     {
         Label.RangeWidth = value;
         UpdateRangeRect();
+        OnOcrRegionChanged();
     }
 
     [ObservableProperty]
@@ -163,13 +169,39 @@ public partial class TagEditorViewModel : ObservableObject
     {
         Label.RangeHeight = value;
         UpdateRangeRect();
+        OnOcrRegionChanged();
     }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(LabelTestCommand))]
     private SearchMethod _searchMethod = SearchMethod.CCoeffNormed;
 
-    partial void OnSearchMethodChanged(SearchMethod value) => Label.searchMethod = value;
+    partial void OnSearchMethodChanged(SearchMethod value)
+    {
+        Label.searchMethod = value;
+        if (value == SearchMethod.FrlgOcr && SelectedFrlgScene == null)
+            SelectedFrlgScene = OcrScenes[0];
+        OnPropertyChanged(nameof(IsFrlgOcrMethod));
+        OnPropertyChanged(nameof(OcrCall));
+        LabelTestCommand.NotifyCanExecuteChanged();
+    }
+
+    [ObservableProperty]
+    private FrlgSceneDefinition? _selectedFrlgScene;
+
+    partial void OnSelectedFrlgSceneChanged(FrlgSceneDefinition? value)
+    {
+        Label.OcrScene = value?.Key ?? string.Empty;
+        OcrResultText = string.Empty;
+        OnPropertyChanged(nameof(OcrCall));
+        LabelTestCommand.NotifyCanExecuteChanged();
+    }
+
+    public bool IsFrlgOcrMethod => SearchMethod == SearchMethod.FrlgOcr;
+
+    public string OcrCall => SelectedFrlgScene == null
+        ? string.Empty
+        : $"OCR({RangeX}, {RangeY}, {RangeWidth}, {RangeHeight}, \"{SelectedFrlgScene.Key}\")";
 
     [ObservableProperty]
     private bool _useGrayscale;
@@ -260,6 +292,9 @@ public partial class TagEditorViewModel : ObservableObject
     [ObservableProperty]
     private string _matchDegreeText = "匹配度: --%";
 
+    [ObservableProperty]
+    private string _ocrResultText = string.Empty;
+
     /// <summary>
     /// 标签测试按钮是否可用。
     /// </summary>
@@ -346,9 +381,13 @@ public partial class TagEditorViewModel : ObservableObject
     /// </summary>
     /// <param name="matchDegree">匹配度百分比。</param>
     /// <param name="rangePreview">搜索范围预览图（可选）。</param>
-    public void SetTestResult(double matchDegree, Bitmap? rangePreview = null)
+    public void SetTestResult(double matchDegree, Bitmap? rangePreview = null,
+        string recognizedText = "", string failure = "")
     {
         MatchDegreeText = $"匹配度: {matchDegree:F1}%";
+        OcrResultText = recognizedText.Length > 0
+            ? $"识别结果: {recognizedText}"
+            : failure.Length > 0 ? $"未识别: {failure}" : string.Empty;
         if (rangePreview != null)
             RangePreviewImage = rangePreview;
     }
@@ -359,6 +398,20 @@ public partial class TagEditorViewModel : ObservableObject
     public void SetScreenshot(Bitmap bitmap)
     {
         SourceImage = bitmap;
+    }
+
+    [RelayCommand]
+    private void ApplyDefaultFrlgRegion()
+    {
+        if (SourceImage is not Bitmap source || SelectedFrlgScene == null)
+            return;
+
+        EzCv.Rect region = FrlgOcr.DefaultRegion(SelectedFrlgScene.Key,
+            source.PixelSize.Width, source.PixelSize.Height);
+        RangeX = region.X;
+        RangeY = region.Y;
+        RangeWidth = region.Width;
+        RangeHeight = region.Height;
     }
 
     [RelayCommand(CanExecute = nameof(HasSourceImage))]
@@ -502,6 +555,7 @@ public partial class TagEditorViewModel : ObservableObject
         Label.UseBinary = label.UseBinary;
         Label.UseGaussianBlur = label.UseGaussianBlur;
         Label.UseOther = label.UseOther;
+        Label.OcrScene = label.OcrScene;
 
         // 更新 UI 属性
         LabelName = label.name;
@@ -513,6 +567,7 @@ public partial class TagEditorViewModel : ObservableObject
         RangeY = label.RangeY;
         RangeWidth = label.RangeWidth;
         RangeHeight = label.RangeHeight;
+        SelectedFrlgScene = FrlgScenes.Find(label.OcrScene);
         SearchMethod = label.searchMethod;
         UseGrayscale = label.UseGrayscale;
         UseBinary = label.UseBinary;
@@ -597,5 +652,11 @@ public partial class TagEditorViewModel : ObservableObject
             return "其他";
 
         return "默认";
+    }
+
+    private void OnOcrRegionChanged()
+    {
+        OnPropertyChanged(nameof(OcrCall));
+        LabelTestCommand.NotifyCanExecuteChanged();
     }
 }

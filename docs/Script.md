@@ -473,6 +473,10 @@ $img = FRAME($x, $y, $w, $h)     # 截取指定区域
 $text = OCR($x, $y, $w, $h)              # 默认中文识别
 $text = OCR($x, $y, $w, $h, $lang)      # 指定语言
 
+# FRLG 固定场景（完整场景列表、模型安装与来源见 docs/FRLG-OCR-SOURCES.md）
+$tid = OCR($x, $y, $w, $h, "FRLG_JPN_TID")
+$name = OCR($x, $y, $w, $h, "FRLG_JPN_NAME")
+
 # ROI - 区域提取
 $cropped = ROI($img, $x, $y, $w, $h)
 ```

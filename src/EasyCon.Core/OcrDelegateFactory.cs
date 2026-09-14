@@ -1,5 +1,6 @@
 using EasyCon.Capture;
 using EasyCon.Capture.Ocr;
+using EasyCon.Capture.Ocr.Frlg;
 using EasyScript;
 using EzCv;
 
@@ -25,23 +26,7 @@ public static class OcrDelegateFactory
         return (x, y, w, h, lang) =>
         {
             using var lease = frameProvider?.Invoke();
-            if (lease == null || lease.Mat.Empty()) return "OCR NOT SUPPORT";
-            var frame = lease.Mat;
-
-            x = Math.Clamp(x, 0, frame.Width);
-            y = Math.Clamp(y, 0, frame.Height);
-            w = Math.Clamp(w, 0, frame.Width - x);
-            h = Math.Clamp(h, 0, frame.Height - y);
-
-            if (w == 0 || h == 0) return "OCR ARGS ERR!";
-
-            using var roi = new Mat(frame, new Rect(x, y, w, h));
-            var imageBytes = roi.ToBytes(".png");
-
-            var recognizer = cache.GetOrInit(lang);
-            var result = recognizer.Recognize(imageBytes);
-            cache.LastConfidence = (int)(result.Confidence * 100);
-            return result.Text;
+            return Recognize(lease?.Mat, x, y, w, h, lang, cache);
         };
     }
 
@@ -53,23 +38,38 @@ public static class OcrDelegateFactory
         return (x, y, w, h, lang) =>
         {
             using var frame = frameProvider?.Invoke();
-            if (frame == null || frame.Empty()) return "OCR NOT SUPPORT";
-
-            x = Math.Clamp(x, 0, frame.Width);
-            y = Math.Clamp(y, 0, frame.Height);
-            w = Math.Clamp(w, 0, frame.Width - x);
-            h = Math.Clamp(h, 0, frame.Height - y);
-
-            if (w == 0 || h == 0) return "OCR ARGS ERR!";
-
-            using var roi = new Mat(frame, new Rect(x, y, w, h));
-            var imageBytes = roi.ToBytes(".png");
-
-            var recognizer = cache.GetOrInit(lang);
-            var result = recognizer.Recognize(imageBytes);
-            cache.LastConfidence = (int)(result.Confidence * 100);
-            return result.Text;
+            return Recognize(frame, x, y, w, h, lang, cache);
         };
+    }
+
+    private static string Recognize(Mat? frame, int x, int y, int w, int h, string lang, OcrEngineCache cache)
+    {
+        cache.LastConfidence = 0;
+        cache.LastFrlgResult = null;
+
+        if (FrlgOcr.IsScene(lang))
+        {
+            FrlgReadResult frlgResult = FrlgOcr.ReadFrame(frame, new Rect(x, y, w, h), lang,
+                textReader: FrlgScenes.Find(lang)!.UsesTextBackend ? cache.FrlgText : null);
+            cache.LastFrlgResult = frlgResult;
+            cache.LastConfidence = frlgResult.Quality;
+            return frlgResult.Text;
+        }
+
+        if (frame == null || frame.Empty()) return "OCR NOT SUPPORT";
+
+        x = Math.Clamp(x, 0, frame.Width);
+        y = Math.Clamp(y, 0, frame.Height);
+        w = Math.Clamp(w, 0, frame.Width - x);
+        h = Math.Clamp(h, 0, frame.Height - y);
+        if (w == 0 || h == 0) return "OCR ARGS ERR!";
+
+        using Mat roi = new(frame, new Rect(x, y, w, h));
+        byte[] imageBytes = roi.ToBytes(".png");
+        IOcrRecognizer recognizer = cache.GetOrInit(lang);
+        OcrRecognizeResult recognized = recognizer.Recognize(imageBytes);
+        cache.LastConfidence = (int)(recognized.Confidence * 100);
+        return recognized.Text;
     }
 }
 

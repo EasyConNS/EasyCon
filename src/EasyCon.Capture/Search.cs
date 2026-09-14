@@ -1,4 +1,5 @@
 using EasyCon.Capture.Ocr;
+using EasyCon.Capture.Ocr.Frlg;
 using EzCv;
 using System.Diagnostics;
 using System.Drawing;
@@ -9,6 +10,16 @@ namespace EasyCon.Capture;
 
 public sealed class ECSearch
 {
+    private static readonly Lazy<FrlgTextReader> _frlgTextReader = new();
+
+    internal static FrlgReadResult ReadFrlg(Mat frame, Rect region, string scene)
+    {
+        FrlgSceneDefinition definition = FrlgScenes.Find(scene)
+            ?? throw new Exception($"不支持的 FRLG OCR 场景: {scene}");
+        return FrlgOcr.ReadFrame(frame, region, scene,
+            textReader: definition.UsesTextBackend ? _frlgTextReader.Value : null);
+    }
+
     public static ImgLabel LoadIL(string dir) => ImgLabel.Load(dir);
     public static IEnumerable<SearchMethod> GetEnableSearchMethods()
     {
@@ -21,6 +32,7 @@ public sealed class ECSearch
             SearchMethod.EdgeDetectXY,
             SearchMethod.EdgeDetectLaplacian,
             SearchMethod.TesserDetect,
+            SearchMethod.FrlgOcr,
         ];
     }
 
@@ -75,7 +87,8 @@ public static class ILExtLeg
 {
     public static List<Point> Search(this ImgLabel self, Mat ss, out double md, string tessdataPath)
     {
-        if (self.TargetWidth > self.RangeWidth || self.TargetHeight > self.RangeHeight)
+        if (self.searchMethod.IsImageMethod()
+            && (self.TargetWidth > self.RangeWidth || self.TargetHeight > self.RangeHeight))
             throw new Exception($"搜图标签[{self.name}]搜索图片大于搜索范围\n" +
                 $"  搜图范围(ROI): X={self.RangeX}, Y={self.RangeY}, W={self.RangeWidth}, H={self.RangeHeight}\n" +
                 $"  目标区域(Target): X={self.TargetX}, Y={self.TargetY}, W={self.TargetWidth}, H={self.TargetHeight}");
@@ -83,6 +96,15 @@ public static class ILExtLeg
         try
         {
             Console.Error.WriteLine($"[Search] ss size: {ss.Width}x{ss.Height}, channels={ss.Channels()}, type={ss.Type()}, roi=({self._round.X},{self._round.Y},{self._round.Width},{self._round.Height})");
+            if (self.searchMethod == SearchMethod.FrlgOcr)
+            {
+                FrlgReadResult read = ECSearch.ReadFrlg(ss, self._round, self.OcrScene);
+                self.LastOcrText = read.Text;
+                self.LastOcrFailure = read.Failure;
+                md = read.Success ? read.Quality : 0;
+                return read.Success ? [new Point(0, 0)] : [];
+            }
+
             using var range = new Mat(ss, self._round);
 
             List<Point> result = new();

@@ -32,9 +32,13 @@ public enum SearchMethod
     MaskedSqDiffNormed = 14,
     [Description("OCR单行文本识别")]
     TesserDetect = 107,
+    [Description("FRLG 场景 OCR")]
+    FrlgOcr = 108,
 }
 
 public static class SearchMethodExtension
 {
     public static bool IsImageMethod(this SearchMethod method) => method < SearchMethod.TesserDetect;
+
+    public static bool IsTextMethod(this SearchMethod method) => method is SearchMethod.TesserDetect or SearchMethod.FrlgOcr;
 }

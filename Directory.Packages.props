@@ -9,6 +9,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Microsoft.ML.OnnxRuntime" Version="1.27.1" />
     <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.17" />
     <PackageVersion Include="AvaloniaEdit.TextMate" Version="12.0.0" />
     <PackageVersion Include="GamepadApi" Version="1.0.1" />

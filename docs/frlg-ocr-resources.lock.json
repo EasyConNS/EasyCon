@@ -1,0 +1,330 @@
+{
+  "revisions": {
+    "EasyConNS/EasyCon": "0718a15b484d7f2a70c43b5f0c3c670f07e2f23a",
+    "PokemonAutomation/Arduino-Source": "a772133ebc497aed05439f464a6222d3d83e0c10",
+    "PokemonAutomation/Packages": "e8cc29cdc9e9c16faf406a1d154d70ad687b375c",
+    "PokemonAutomation/CommandLineTests": "46b892bd7f2106a1f34de11aa300b492aee06b83",
+    "PaddlePaddle/PaddleOCR": "2661c7c0ef5c613e8f93c6e93b2e052399f0f854",
+    "tesseract-ocr/tessdata": "ced78752cc61322fb554c280d13360b35b8684e4"
+  },
+  "files": [
+    {
+      "path": "docs/licenses/PaddleOCR-Apache-2.0.txt",
+      "source": "https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/2661c7c0ef5c613e8f93c6e93b2e052399f0f854/LICENSE",
+      "sha256": "3840c5c0c61c294264d2dd77b8777be6ddd90121ef4e0e64abcd22edea581d6e",
+      "bytes": 11376
+    },
+    {
+      "path": "docs/licenses/TesseractData-Apache-2.0.txt",
+      "source": "https://raw.githubusercontent.com/tesseract-ocr/tessdata/ced78752cc61322fb554c280d13360b35b8684e4/LICENSE",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "bytes": 11358
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/0.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/0.png",
+      "sha256": "53de642ff070664a20b5fb32aa5f948f687235e4d521ac969def6c6e3f30a53f",
+      "bytes": 403
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/1.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/1.png",
+      "sha256": "1b3fe2533d20cb12ee4bada67e696ba0514fee0d25ada90a9e029cec5b7fa88e",
+      "bytes": 319
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/2.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/2.png",
+      "sha256": "024109b3f0a4ba4656b2a34d63f3e4d47a77c39451048f0fdab713457ac1e01f",
+      "bytes": 483
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/3.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/3.png",
+      "sha256": "80d4cdddf4d4629db300d7c47574866b06309af50856eb848e41e875ad152365",
+      "bytes": 550
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/4.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/4.png",
+      "sha256": "63165e2052a1c94ea79dff4581b00161db96fc5da7d4f70c40d1e2c87a4dc1a8",
+      "bytes": 515
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/5.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/5.png",
+      "sha256": "81768a4d5adab6459fb1e3c0580574fadd8e1203b87a4df52a51280e488b5c0a",
+      "bytes": 451
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/6.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/6.png",
+      "sha256": "5ed4733382a7a95a4c122fabe780025d60ca6b22eef87c3ae5894ae5a072261c",
+      "bytes": 368
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/7.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/7.png",
+      "sha256": "392352c09b0e28a58fbbad2c97d8ed5c9165585730f96afe556b26086e2e7de7",
+      "bytes": 441
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/8.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/8.png",
+      "sha256": "a68e8bcebbe6c92f28b81ed64bc50919d49b9f26ab10d9deb323f01af203cd35",
+      "bytes": 400
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Digits/9.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/Digits/9.png",
+      "sha256": "30b1ff9b5270adaf3c128b9c3b9eaf8f9ab3b0ecabf62e81c70323b91356afb7",
+      "bytes": 401
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/0.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/0.png",
+      "sha256": "8152a5290c7393501439e4ca337e7e0bde2b49ab6e7432aea281d97a1c595968",
+      "bytes": 439
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/1.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/1.png",
+      "sha256": "411e636e847be04513efe4366063b81a86719996a6898a791e87e42cb673192e",
+      "bytes": 305
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/2.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/2.png",
+      "sha256": "26d1eb18c1fecc81d0a384a271b88474e79ecfaf06addb440fd779ed4340966c",
+      "bytes": 528
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/3.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/3.png",
+      "sha256": "214493c38a82649bebdfc6298561c40fe907f29d80d553372841f0755d57ea21",
+      "bytes": 524
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/4.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/4.png",
+      "sha256": "1d14c144d1ebca367c9221604099c203c29d071e27b9522741adc139a2ad7013",
+      "bytes": 467
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/5.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/5.png",
+      "sha256": "4a97492ec0f7154d7139ebeebafa2ee2d5cc0720b36a9a2b4d56c9d9af5271b0",
+      "bytes": 499
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/6.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/6.png",
+      "sha256": "b4fa05cbafa5fdeae347949f883d845087868db126a92679ec25f5b72fd021ae",
+      "bytes": 500
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/7.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/7.png",
+      "sha256": "398bb2eb14e7c309599f455f180c315e451248469ef5bef7f100f811c4a44d15",
+      "bytes": 451
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/8.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/8.png",
+      "sha256": "d6c9ee283d7fa37cd2d5f3044de1a5796ee53bd451e6876e03d4dd64e3154e62",
+      "bytes": 462
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/LevelDigits/9.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/LevelDigits/9.png",
+      "sha256": "819600aa2078d947faff50e3181d8b379abc3de73cbeeb8dd7b5c962bb7762df",
+      "bytes": 580
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/0.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/0.png",
+      "sha256": "54b2e3c76af3aea3b613ac970235da7d71a04f3cfb4fd49eab4759ed12404461",
+      "bytes": 3525
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/1.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/1.png",
+      "sha256": "636b30018735f29749043e5970cf6de9a9f254a6d840815b89e08b5a2123968c",
+      "bytes": 2356
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/2.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/2.png",
+      "sha256": "53ec8c5a5b5aabe85fb80810e08e0d521dba154221179730a642cd1f799fb4de",
+      "bytes": 3301
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/3.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/3.png",
+      "sha256": "338617b05afa0d5b96df3b03e977f1260b5231bbc97967efd76e4b83ff0419b5",
+      "bytes": 3043
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/4.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/4.png",
+      "sha256": "ad094fb3ce97c55155ddad50403806711f2b612439ca291d2f2e68e56c70f473",
+      "bytes": 4159
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/5.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/5.png",
+      "sha256": "7cf9f51ebcf2ad7c322e025086c929702dcb1833fed36d0ae7c484e135a43229",
+      "bytes": 2866
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/6.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/6.png",
+      "sha256": "887ab7d103f48c2ac683ddb7c127a2ad246c57c7b8e6039639f1e8b8e618bfaa",
+      "bytes": 3619
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/7.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/7.png",
+      "sha256": "95558936aa2a10e43e9d3136fe006205574392dc967a161184fadbc2d71a2683",
+      "bytes": 2473
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/8.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/8.png",
+      "sha256": "e2b2ea208868e3c9455c008f69d24e0d3fe03a8db60e8bde9143a3c54158b660",
+      "bytes": 3849
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/DialogDigits/9.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/DialogDigits/9.png",
+      "sha256": "ec0aeb65a79b04b8005906b9637d82afa8f75300fff29f98cf9122a8186fe67e",
+      "bytes": 3516
+    },
+    {
+      "path": "docs/licenses/PokemonAutomation-MIT.txt",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Arduino-Source/a772133ebc497aed05439f464a6222d3d83e0c10/LICENSE",
+      "sha256": "1f99df4498b3925a9804b565b0b7d3f4c0cf770704ac5770a9573efeab1c77b6",
+      "bytes": 1094
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/nyash_jpn_45345.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/TrainerIdReader/nyash_jpn_45345.png",
+      "sha256": "07ba83e2bcd6ce4413ece05010eb3c3d438867f923318d1f39886f0c1abc1705",
+      "bytes": 450032
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/tom_eng_60895.jpg",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/TrainerIdReader/tom_eng_60895.jpg",
+      "sha256": "7aabaf0bdd904653a5b8db99a29e2159abb6909e9113601d5497c2b2583b5e04",
+      "bytes": 182453
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Text/PokemonNameDisplay.json",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/Pokemon/PokemonNameDisplay.json",
+      "sha256": "5131b8e7c2919cf6763a540bec38e25fe8b8d3525982d99d4cfa855790d2c764",
+      "bytes": 304179
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Text/PokemonOCR-jpn.json",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/Pokemon/PokemonNameOCR/PokemonOCR-jpn.json",
+      "sha256": "7901ccbecc1f1edf4c470f1e4d86b582901dbddb7aa24719e4be45c0ab9865f5",
+      "bytes": 53263
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Text/NatureCheckerOCR.json",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PokemonFRLG/NatureCheckerOCR.json",
+      "sha256": "b272481bc0d8147a97f9f99196edcf33b00183a1a31d2d06ab7cc9c126433f3f",
+      "bytes": 6217
+    },
+    {
+      "path": "src/EasyCon.Capture/Ocr/Frlg/Resources/Text/CharacterReductions.json",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/OCR/CharacterReductions.json",
+      "sha256": "73324c761d4a602d5362977966997d46d95961307a2e07750319c1824533f2fa",
+      "bytes": 303
+    },
+    {
+      "path": "models/frlg/chinese/rec.onnx",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PaddleOCR/chinese/rec.onnx",
+      "sha256": "26fa4f47060f58e25962b9af6beaee05c8182b90e026c4ecc6db165d9dfdc38a",
+      "bytes": 84468836
+    },
+    {
+      "path": "models/frlg/chinese/dict.txt",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PaddleOCR/chinese/dict.txt",
+      "sha256": "d1979e9f794c464c0d2e0b70a7fe14dd978e9dc644c0e71f14158cdf8342af1b",
+      "bytes": 74012
+    },
+    {
+      "path": "models/frlg/chinese/config.json",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PaddleOCR/chinese/config.json",
+      "sha256": "12cb91770e4da0ded935c97f47dc758bef56e5461be24b0b43fc0e4d5dea3878",
+      "bytes": 1145
+    },
+    {
+      "path": "models/frlg/PaddleOCR-README.md",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/PaddleOCR/README.md",
+      "sha256": "e92ef69580611b4659d5f884bde5fb69b4ff35bea60bd8220871c816d4b9c2a2",
+      "bytes": 192
+    },
+    {
+      "path": "models/frlg/tessdata/jpn.traineddata",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/Tesseract/jpn.traineddata",
+      "sha256": "6f416b902d129d8cc28e99c33244034b1cf52549e8560f6320b06d317852159a",
+      "bytes": 35659159
+    },
+    {
+      "path": "models/frlg/Tesseract-README.md",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/Packages/e8cc29cdc9e9c16faf406a1d154d70ad687b375c/Resources/Tesseract/README.md",
+      "sha256": "b635a2a6758c83ab77961582af836e8d010c492ff416b317c8ee2c7095d628b5",
+      "bytes": 1039
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/Page1/bulbasaur_1_jpn.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/StatsReader/Page1/bulbasaur_1_jpn.png",
+      "sha256": "08b3d097f41d872b148712c1f0e128eecd4a58e43ee4f990d2cedd5bfb5dfdea",
+      "bytes": 395352
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/Page1/_bulbasaur_1_jpn.txt",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/StatsReader/Page1/_bulbasaur_1_jpn.txt",
+      "sha256": "3dc5a4492bfb59c9478247e48b3eb2bb1c85a5af822db198579d23685d6da6c4",
+      "bytes": 21
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/Page1/deoxys_1_jpn.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/StatsReader/Page1/deoxys_1_jpn.png",
+      "sha256": "4855ff99da683839f7fe6f514cb6fb57234504331b6f9f8e83fa2f8ab270b6b1",
+      "bytes": 807030
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/Page1/_deoxys_1_jpn.txt",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/StatsReader/Page1/_deoxys_1_jpn.txt",
+      "sha256": "c8c111cc29f207d0d52a6ec53289bba37ded9212403ef9fb29f8de095c3d88ce",
+      "bytes": 29
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/Page2/deoxys_1_jpn.png",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/StatsReader/Page2/deoxys_1_jpn.png",
+      "sha256": "f98158669067439d8d175b1df7333fa9cf181dad23529cf4abdc2f9ff5dcae69",
+      "bytes": 919063
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/Page2/_deoxys_1_jpn.txt",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/StatsReader/Page2/_deoxys_1_jpn.txt",
+      "sha256": "4a59b648005eda6b9ef7315ff7637975ff2968e64166baa7f4a9b54d1aff4e1c",
+      "bytes": 21
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/Wild/eng_dragonair.jpg",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/WildEncounterReader/eng_dragonair.jpg",
+      "sha256": "c94f5f7f818a66d73826f592dbc5486ba81023cba4dd85bde59b118353d5269a",
+      "bytes": 154252
+    },
+    {
+      "path": "test/EasyCon.Tests/TestData/Frlg/Wild/eng_chansey.jpg",
+      "source": "https://raw.githubusercontent.com/PokemonAutomation/CommandLineTests/46b892bd7f2106a1f34de11aa300b492aee06b83/PokemonFRLG/WildEncounterReader/eng_chansey.jpg",
+      "sha256": "197cd9538bf7963a7b854e6ebe26948e14cfee710782048f1183966a7a58ddfe",
+      "bytes": 159594
+    }
+  ]
+}

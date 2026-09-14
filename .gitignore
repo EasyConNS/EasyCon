@@ -364,3 +364,6 @@ dist/
 .worktrees/
 # ecs-vm native build artifact (built on demand by ci/build-vm.sh / native/build.sh)
 src/EasyCon.Vm/native/ecs-vm
+
+# Optional FRLG OCR models downloaded by tools/FrlgOcr/fetch_resources.py
+models/frlg/

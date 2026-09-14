@@ -29,4 +29,8 @@
     <ProjectReference Include="..\..\src\EasyCon.Core\EasyCon.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="TestData\Frlg\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

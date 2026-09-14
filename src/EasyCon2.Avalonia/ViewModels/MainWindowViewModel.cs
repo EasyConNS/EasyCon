@@ -1639,13 +1639,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
             // 裁剪匹配位置的 ROI 作为结果图
             Bitmap? resultBitmap = null;
-            if (result.Count > 0)
+            bool isFrlgOcr = label.searchMethod == SearchMethod.FrlgOcr;
+            if (isFrlgOcr || result.Count > 0)
             {
-                var pt = result[0];
-                int roiX = label.RangeX + pt.X;
-                int roiY = label.RangeY + pt.Y;
-                int roiW = label.TargetWidth;
-                int roiH = label.TargetHeight;
+                System.Drawing.Point pt = result.Count > 0 ? result[0] : new System.Drawing.Point(0, 0);
+                int roiX = isFrlgOcr ? label.RangeX : label.RangeX + pt.X;
+                int roiY = isFrlgOcr ? label.RangeY : label.RangeY + pt.Y;
+                int roiW = isFrlgOcr ? label.RangeWidth : label.TargetWidth;
+                int roiH = isFrlgOcr ? label.RangeHeight : label.TargetHeight;
 
                 // 裁剪区域限制在帧范围内
                 roiX = Math.Clamp(roiX, 0, mat.Width);
@@ -1662,10 +1663,16 @@ public partial class MainWindowViewModel : ViewModelBase
             }
 
             // 更新匹配度显示和结果图
-            TagEditorViewModel.SetTestResult(matchDegree, resultBitmap);
+            TagEditorViewModel.SetTestResult(matchDegree, resultBitmap,
+                label.LastOcrText, label.LastOcrFailure);
 
             var status = result.Count > 0 ? "匹配成功" : "未匹配";
-            _logService.AddLog($"标签测试 [{label.name}]: {status}, 匹配度 {matchDegree:F1}%");
+            string ocrDetails = isFrlgOcr
+                ? label.LastOcrText.Length > 0
+                    ? $", 识别结果 {label.LastOcrText}"
+                    : $", 原因 {label.LastOcrFailure}"
+                : string.Empty;
+            _logService.AddLog($"标签测试 [{label.name}]: {status}, 匹配度 {matchDegree:F1}%{ocrDetails}");
         }
         catch (Exception ex)
         {

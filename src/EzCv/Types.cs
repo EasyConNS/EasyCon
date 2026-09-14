@@ -171,6 +171,7 @@ public static class MatType
 
 public enum ColorConversionCodes
 {
+    BGRA2BGR = 1,
     BGR2GRAY = 6,
     RGB2GRAY = 7,
     BGR2RGB = 4,
