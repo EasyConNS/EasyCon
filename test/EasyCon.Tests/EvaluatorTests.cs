@@ -838,6 +838,32 @@ RETURN $a[0] + $a[1] + $a[2]").AsInt(), Is.EqualTo(60));
     }
 
     [Test]
+    public void Builtin_STRING_Numbers()
+    {
+        Assert.That(EvalValue("$s = STRING(42)\nRETURN $s").AsString(), Is.EqualTo("42"));
+        Assert.That(EvalValue("$s = STRING(3.14)\nRETURN $s").AsString(), Is.EqualTo("3.14"));
+    }
+
+    [Test]
+    public void Builtin_STRING_BoolViaVariable()
+    {
+        Assert.That(EvalValue("$flag = 1 > 0\n$s = STRING($flag)\nRETURN $s").AsString(), Is.EqualTo("true"));
+    }
+
+    [Test]
+    public void Builtin_ENV_ExistingVariable()
+    {
+        Environment.SetEnvironmentVariable("EC_EVAL_TEST_ENV", "hello-env");
+        Assert.That(EvalValue("$v = ENV(\"EC_EVAL_TEST_ENV\")\nRETURN $v").AsString(), Is.EqualTo("hello-env"));
+    }
+
+    [Test]
+    public void Builtin_ENV_MissingVariable_ReturnsEmpty()
+    {
+        Assert.That(EvalValue("$v = ENV(\"EC_EVAL_NO_SUCH_ENV__\")\nRETURN $v").AsString(), Is.Empty);
+    }
+
+    [Test]
     public void Builtin_PRINT_MixedVariables()
     {
         var (_, o) = Eval(@"
