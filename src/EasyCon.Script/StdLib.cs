@@ -44,7 +44,6 @@ internal static class StdLib
         ENDFUNC
 
         FUNC OCR($x: INT, $y: INT, $w: INT, $h: INT, $lang: STRING): STRING
-            OCR_INIT $lang
             RETURN __OCR__($x, $y, $w, $h, $lang)
         ENDFUNC
 
@@ -56,12 +55,12 @@ internal static class StdLib
             RETURN __OCR_INIT__($lang, __APP__ + "/Tessdata", "DEFAULT", "SINGLE_LINE")
         ENDFUNC
 
-        #FUNC OCR_INIT($lang: STRING, $dataPath: STRING): BOOL
-        #    RETURN __OCR_INIT__($lang, $dataPath, "DEFAULT", "SINGLE_LINE")
-        #ENDFUNC
+        FUNC OCR_INIT($lang: STRING, $dataPath: STRING): BOOL
+            RETURN __OCR_INIT__($lang, $dataPath, "DEFAULT", "SINGLE_LINE")
+        ENDFUNC
 
-        #FUNC OCR_INIT($lang: STRING, $dataPath: STRING, $engineMode: STRING, $psmode: STRING): BOOL
-        #    RETURN __OCR_INIT__($lang, $dataPath, $engineMode, $psmode)
-        #ENDFUNC
+        FUNC OCR_INIT($lang: STRING, $dataPath: STRING, $engineMode: STRING, $psmode: STRING): BOOL
+            RETURN __OCR_INIT__($lang, $dataPath, $engineMode, $psmode)
+        ENDFUNC
         """;
 }
