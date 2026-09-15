@@ -258,4 +258,25 @@ public class ModuleCacheOptimizationTests
         Assert.That(run2.Timing!.LexingAndParsing, Is.GreaterThan(TimeSpan.Zero),
             "关闭进程缓存后每次现编都全量 parse");
     }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void FfiDeclarationsRemainAvailableAcrossCompilations(bool useDiskCache)
+    {
+        string script = Path.Combine(_dir, "ffi.ecs");
+        File.WriteAllText(script,
+            "EXTERN FUNC ffi_probe($value:INT):INT FROM \"ffi-probe.dll\"\n$result = ffi_probe(3)\nPRINT $result\n");
+        CompileOptions options = new() { UseDiskCache = useDiskCache, ObjDir = _objDir };
+
+        CompileResult first = Compilation.CompileFile(script, options);
+        CompileResult second = Compilation.CompileFile(script, options);
+
+        Assert.That(first.Image, Is.Not.Null);
+        Assert.That(second.Image, Is.Not.Null);
+        Assert.That(first.NativeSymbols.Any(s => s.ExternalName == "ffi_probe"), Is.True);
+        Assert.That(second.NativeSymbols.Any(s => s.ExternalName == "ffi_probe"), Is.True,
+            "A cached FFI bytecode call must retain its native function signature for VM dispatch. "
+            + $"First names: {string.Join(",", first.Image!.Natives.Select(n => n.Name))}; "
+            + $"second names: {string.Join(",", second.Image!.Natives.Select(n => n.Name))}");
+    }
 }

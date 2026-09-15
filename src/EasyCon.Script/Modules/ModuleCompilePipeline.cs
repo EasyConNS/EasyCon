@@ -75,6 +75,13 @@ internal sealed class ModuleCompilePipeline
                     artifact = null;
             }
 
+            // The ECM artifact records native names but not FunctionSymbol signatures.
+            // An FFI cache hit would leave NativeSymbols empty, so the VM cannot
+            // dispatch a subsequent run. Recompile only modules that call external
+            // native functions until the artifact format carries those signatures.
+            if (artifact != null && artifact.Natives.Any(n => n.Name.Contains('!')))
+                artifact = null;
+
             if (artifact == null)
             {
                 // 错误缓存重放（§7.3）：同 cacheKey 的历史编译失败 → 快速失败，不绑定/编码也不 parse
