@@ -76,6 +76,24 @@ public sealed class DetOptions
 
     /// <summary>是否合并相邻文本框。</summary>
     public bool MergeBoxes { get; set; } = true;
+
+    /// <summary>输入尺寸的对齐倍数。</summary>
+    public int InputMultiple { get; set; } = 32;
+
+    /// <summary>输入归一化比例。OpenCV 使用 <c>(pixel - mean) * scale</c>。</summary>
+    public double Scale { get; set; } = 1.0 / 255;
+
+    /// <summary>三个输入通道的均值，使用归一化前的像素尺度。</summary>
+    public double[] Mean { get; set; } = [123.675, 116.28, 103.53];
+
+    /// <summary>三个输入通道在应用比例后的标准差。</summary>
+    public double[] StandardDeviation { get; set; } = [0.229, 0.224, 0.225];
+
+    /// <summary>是否将 OpenCV 的 BGR 输入转换成 RGB。</summary>
+    public bool SwapRedBlue { get; set; } = true;
+
+    /// <summary>宽高填充像素值。</summary>
+    public byte PaddingValue { get; set; }
 }
 
 /// <summary>
@@ -88,6 +106,36 @@ public sealed class RecOptions
 
     /// <summary>批处理大小（默认 6）。</summary>
     public int BatchSize { get; set; } = 6;
+
+    /// <summary>识别模型输入高度。</summary>
+    public int ImageHeight { get; set; } = 32;
+
+    /// <summary>按宽高比缩放后的最小输入宽度。</summary>
+    public int MinImageWidth { get; set; } = 8;
+
+    /// <summary>按宽高比缩放后的最大输入宽度。</summary>
+    public int MaxImageWidth { get; set; } = 2048;
+
+    /// <summary>输入宽度对齐倍数；1 表示不额外填充。</summary>
+    public int WidthMultiple { get; set; } = 8;
+
+    /// <summary>输入归一化比例。OpenCV 使用 <c>(pixel - mean) * scale</c>。</summary>
+    public double Scale { get; set; } = 1.0 / 127.5;
+
+    /// <summary>三个输入通道的均值。</summary>
+    public double[] Mean { get; set; } = [127.5, 127.5, 127.5];
+
+    /// <summary>是否将 OpenCV 的 BGR 输入转换成 RGB。</summary>
+    public bool SwapRedBlue { get; set; } = true;
+
+    /// <summary>宽度填充像素值。</summary>
+    public byte PaddingValue { get; set; }
+
+    /// <summary>CTC 空白类别索引。</summary>
+    public int BlankIndex { get; set; }
+
+    /// <summary>模型比词典多一个尾部类别时，是否将其解释为空格。</summary>
+    public bool AppendSpaceClass { get; set; } = true;
 }
 
 /// <summary>

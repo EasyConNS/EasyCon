@@ -14,10 +14,6 @@ public sealed class OnnxDetector : IOcrDetector
     private readonly DetOptions _options;
     private bool _disposed;
 
-    // PaddleOCR 检测模型预处理参数
-    private static readonly float[] DetMean = [0.485f, 0.456f, 0.406f];
-    private static readonly float[] DetStd = [0.229f, 0.224f, 0.225f];
-
     /// <summary>
     /// 从文件路径加载检测模型。
     /// </summary>
@@ -33,6 +29,7 @@ public sealed class OnnxDetector : IOcrDetector
             throw new FileNotFoundException($"Detection model not found: {modelPath}");
 
         _options = options ?? new DetOptions();
+        ValidateOptions(_options);
         _net = CvDnn.ReadNetFromOnnx(modelPath);
         _net.SetPreferableBackend(backend);
         _net.SetPreferableTarget(target);
@@ -57,45 +54,49 @@ public sealed class OnnxDetector : IOcrDetector
     }
 
     /// <summary>
-    /// 检测预处理：BGR→RGB、缩放（限制最大边长）、填充到 32 的倍数。
+    /// 检测预处理：按配置调整通道顺序、限制最大边长并对齐输入尺寸。
     /// </summary>
     private Mat PreprocessDet(Mat src, out float scaleX, out float scaleY)
     {
-        using var rgb = new Mat();
-        Cv2.CvtColor(src, rgb, ColorConversionCodes.BGR2RGB);
+        using var ordered = new Mat();
+        if (_options.SwapRedBlue)
+            Cv2.CvtColor(src, ordered, ColorConversionCodes.BGR2RGB);
+        else
+            src.ConvertTo(ordered, src.Type());
 
         // 缩放到 max_side_len
-        float ratio = (float)_options.MaxSideLen / Math.Max(rgb.Width, rgb.Height);
+        float ratio = (float)_options.MaxSideLen / Math.Max(ordered.Width, ordered.Height);
         if (ratio < 1.0f)
         {
-            int newW = (int)(rgb.Width * ratio);
-            int newH = (int)(rgb.Height * ratio);
-            Cv2.Resize(rgb, rgb, new Size(newW, newH), 0, 0, InterpolationFlags.Linear);
+            int newW = Math.Max(1, (int)(ordered.Width * ratio));
+            int newH = Math.Max(1, (int)(ordered.Height * ratio));
+            Cv2.Resize(ordered, ordered, new Size(newW, newH), 0, 0, InterpolationFlags.Linear);
         }
 
-        scaleX = (float)src.Width / rgb.Width;
-        scaleY = (float)src.Height / rgb.Height;
+        scaleX = (float)src.Width / ordered.Width;
+        scaleY = (float)src.Height / ordered.Height;
 
-        // 填充到 32 的倍数
-        int padW = ((rgb.Width + 31) / 32) * 32 - rgb.Width;
-        int padH = ((rgb.Height + 31) / 32) * 32 - rgb.Height;
-        Cv2.CopyMakeBorder(rgb, rgb, 0, padH, 0, padW, BorderTypes.Constant, Scalar.Black);
+        int multiple = _options.InputMultiple;
+        int padW = (multiple - ordered.Width % multiple) % multiple;
+        int padH = (multiple - ordered.Height % multiple) % multiple;
+        double value = _options.PaddingValue;
+        Cv2.CopyMakeBorder(ordered, ordered, 0, padH, 0, padW, BorderTypes.Constant,
+            new Scalar(value, value, value));
 
-        return rgb.Clone();
+        return ordered.Clone();
     }
 
     /// <summary>
     /// 创建检测模型输入 blob：BlobFromImage（mean 减法） + 手动除以 std。
     /// 归一化公式：(pixel/255 - mean) / std，NCHW 布局。
     /// </summary>
-    private static unsafe Mat CreateDetBlob(Mat rgb)
+    private unsafe Mat CreateDetBlob(Mat image)
     {
-        int w = rgb.Width, h = rgb.Height;
+        int w = image.Width, h = image.Height;
 
-        // BlobFromImage: scale = 1/255, mean = (0.485, 0.456, 0.406), swapRB = false（已是 RGB）
-        var blob = CvDnn.BlobFromImage(rgb, 1.0 / 255.0,
+        var blob = CvDnn.BlobFromImage(image, _options.Scale,
             new Size(w, h),
-            new Scalar(DetMean[0], DetMean[1], DetMean[2]),
+            new Scalar(_options.Mean[0], _options.Mean[1], _options.Mean[2]),
             swapRB: false, crop: false);
 
         // 手动除以 std（BlobFromImage 不支持 std 归一化）
@@ -106,9 +107,9 @@ public sealed class OnnxDetector : IOcrDetector
         float* ch2 = pData + 2 * planeSize;
         for (int i = 0; i < planeSize; i++)
         {
-            ch0[i] /= DetStd[0];
-            ch1[i] /= DetStd[1];
-            ch2[i] /= DetStd[2];
+            ch0[i] /= (float)_options.StandardDeviation[0];
+            ch1[i] /= (float)_options.StandardDeviation[1];
+            ch2[i] /= (float)_options.StandardDeviation[2];
         }
 
         return blob;
@@ -121,6 +122,11 @@ public sealed class OnnxDetector : IOcrDetector
         Mat output, float threshold,
         float scaleX, float scaleY, int origW, int origH)
     {
+        if (output.Dims != 4 || output.Size(0) != 1 || output.Size(1) != 1)
+            throw new InvalidDataException("ONNX OCR detector output must have shape [1,1,H,W].");
+        if ((output.Type() & 7) != MatType.CV_32F)
+            throw new InvalidDataException("ONNX OCR detector output must contain float32 scores.");
+
         int h = output.Size(2);
         int w = output.Size(3);
 
@@ -168,6 +174,24 @@ public sealed class OnnxDetector : IOcrDetector
             boxes = MergeNearbyBoxes(boxes);
 
         return [.. boxes];
+    }
+
+    private static void ValidateOptions(DetOptions options)
+    {
+        if (options.MaxSideLen <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), "MaxSideLen must be positive.");
+        if (options.InputMultiple <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), "InputMultiple must be positive.");
+        if (!float.IsFinite(options.BoxThreshold) || options.BoxThreshold is < 0 or > 1)
+            throw new ArgumentOutOfRangeException(nameof(options), "BoxThreshold must be between 0 and 1.");
+        if (!double.IsFinite(options.Scale))
+            throw new ArgumentOutOfRangeException(nameof(options), "Scale must be finite.");
+        if (options.Mean == null || options.Mean.Length != 3
+            || options.Mean.Any(value => !double.IsFinite(value)))
+            throw new ArgumentException("Mean must contain exactly three values.", nameof(options));
+        if (options.StandardDeviation == null || options.StandardDeviation.Length != 3
+            || options.StandardDeviation.Any(value => !double.IsFinite(value) || value <= 0))
+            throw new ArgumentException("StandardDeviation must contain exactly three positive values.", nameof(options));
     }
 
     /// <summary>合并垂直方向重叠的相邻文本框。</summary>
@@ -220,17 +244,15 @@ public sealed class OnnxDetector : IOcrDetector
 public sealed class OnnxRecognizer : IOcrRecognizer
 {
     private readonly Net _net;
-    private readonly string[] _charset; // index → character
+    private readonly string[] _charset;
     private readonly RecOptions _options;
     private bool _disposed;
-
-    private const int RecImageHeight = 32;
 
     /// <summary>
     /// 从文件路径加载识别模型和字符集。
     /// </summary>
     /// <param name="modelPath">ONNX 模型文件路径（如 PP-OCRv5_mobile_rec.onnx）。</param>
-    /// <param name="charsetPath">字符集文件路径（每行一个字符，首行为空白符）。</param>
+    /// <param name="charsetPath">字符集文件路径（每行一个类别文本；CTC 空白类别不写入词典）。</param>
     /// <param name="options">识别配置（可选）。</param>
     /// <param name="backend">DNN 计算后端（默认 DEFAULT）。</param>
     /// <param name="target">DNN 目标设备（默认 CPU）。</param>
@@ -244,6 +266,7 @@ public sealed class OnnxRecognizer : IOcrRecognizer
             throw new FileNotFoundException($"Charset file not found: {charsetPath}");
 
         _options = options ?? new RecOptions();
+        ValidateOptions(_options);
         _net = CvDnn.ReadNetFromOnnx(modelPath);
         _net.SetPreferableBackend(backend);
         _net.SetPreferableTarget(target);
@@ -270,120 +293,113 @@ public sealed class OnnxRecognizer : IOcrRecognizer
     }
 
     /// <summary>
-    /// 识别预处理：BGR→RGB、高度缩放到 32（保持宽高比）、宽度填充到 8 的倍数。
+    /// 识别预处理：按配置调整通道顺序、高度和宽度对齐。
     /// </summary>
-    private static Mat PreprocessRec(Mat src)
+    private Mat PreprocessRec(Mat src)
     {
-        using var rgb = new Mat();
-        Cv2.CvtColor(src, rgb, ColorConversionCodes.BGR2RGB);
+        using var ordered = new Mat();
+        if (_options.SwapRedBlue)
+            Cv2.CvtColor(src, ordered, ColorConversionCodes.BGR2RGB);
+        else
+            src.ConvertTo(ordered, src.Type());
 
-        float ratio = (float)RecImageHeight / rgb.Height;
-        int newW = (int)(rgb.Width * ratio);
-        Cv2.Resize(rgb, rgb, new Size(newW, RecImageHeight), 0, 0, InterpolationFlags.Linear);
+        int newW = (int)Math.Round((double)ordered.Width * _options.ImageHeight / ordered.Height);
+        newW = Math.Clamp(newW, _options.MinImageWidth, _options.MaxImageWidth);
+        int inputW = AlignWidth(newW, _options.WidthMultiple, _options.MaxImageWidth);
+        newW = Math.Min(newW, inputW);
 
-        // 宽度填充到 8 的倍数（最小 8）
-        int padW = ((newW + 7) / 8) * 8 - newW;
-        if (padW > 0)
-            Cv2.CopyMakeBorder(rgb, rgb, 0, 0, 0, padW, BorderTypes.Constant, Scalar.Black);
+        using var resized = new Mat();
+        Cv2.Resize(ordered, resized, new Size(newW, _options.ImageHeight), 0, 0, InterpolationFlags.Linear);
+        if (inputW == newW) return resized.Clone();
 
-        return rgb.Clone();
+        var padded = new Mat();
+        double value = _options.PaddingValue;
+        Cv2.CopyMakeBorder(resized, padded, 0, 0, 0, inputW - newW,
+            BorderTypes.Constant, new Scalar(value, value, value));
+        return padded;
     }
 
     /// <summary>
-    /// 创建识别模型输入 blob：归一化到 [-1, 1] 范围。
-    /// 公式：(pixel/255 - 0.5) / 0.5 = pixel/127.5 - 1.0
-    /// BlobFromImage: scale = 1/127.5, mean = (1, 1, 1), swapRB = false（已是 RGB）
+    /// 创建识别模型输入 blob。OpenCV 的归一化公式为
+    /// <c>(pixel - mean) * scale</c>。
     /// </summary>
-    private static Mat CreateRecBlob(Mat rgb)
+    private Mat CreateRecBlob(Mat image)
     {
-        return CvDnn.BlobFromImage(rgb,
-            1.0 / 127.5,
-            new Size(rgb.Width, rgb.Height),
-            new Scalar(1.0, 1.0, 1.0),
+        return CvDnn.BlobFromImage(image,
+            _options.Scale,
+            new Size(image.Width, image.Height),
+            new Scalar(_options.Mean[0], _options.Mean[1], _options.Mean[2]),
             swapRB: false, crop: false);
     }
 
     /// <summary>
     /// CTC 贪心解码：去重 + 去空白符 → 查字符集。
-    /// 输出 Mat 形状：[1, T, num_classes] 或 [1, T, num_classes, 1]。
+    /// 输出 Mat 支持 [T, C]、[1, T, C] 或尾部为 1 的 [1, T, C, ...]。
     /// </summary>
     private OcrRecognizeResult CtcDecode(Mat output)
     {
         int T, numClasses;
 
-        if (output.Dims == 3)
+        if (output.Dims == 2)
         {
-            T = output.Size(1);
-            numClasses = output.Size(2);
+            T = output.Size(0);
+            numClasses = output.Size(1);
         }
-        else if (output.Dims >= 4)
+        else if (output.Dims >= 3 && output.Size(0) == 1)
         {
             T = output.Size(1);
             numClasses = output.Size(2);
+            for (int i = 3; i < output.Dims; i++)
+                if (output.Size(i) != 1)
+                    throw new InvalidDataException("ONNX OCR output has unsupported trailing dimensions.");
         }
         else
         {
-            return new OcrRecognizeResult(string.Empty, 0f);
+            throw new InvalidDataException("ONNX OCR output must have shape [T,C] or [1,T,C].");
         }
 
-        var indices = new List<int>();
-        float totalConf = 0;
-        int validCount = 0;
+        if ((output.Type() & 7) != MatType.CV_32F)
+            throw new InvalidDataException("ONNX OCR output must contain float32 scores.");
 
         unsafe
         {
-            float* pData = (float*)output.Data;
-            int prevIdx = -1;
-            for (int t = 0; t < T; t++)
-            {
-                // 找当前时间步最高概率的字符索引
-                float maxProb = float.MinValue;
-                int maxIdx = 0;
-                float* row = pData + t * numClasses;
-                for (int c = 0; c < numClasses; c++)
-                {
-                    float p = row[c];
-                    if (p > maxProb) { maxProb = p; maxIdx = c; }
-                }
-
-                // 跳过空白符和重复
-                if (maxIdx == 0) { prevIdx = -1; continue; }
-                if (maxIdx == prevIdx) continue;
-
-                prevIdx = maxIdx;
-                indices.Add(maxIdx);
-                totalConf += maxProb;
-                validCount++;
-            }
+            var scores = new ReadOnlySpan<float>((void*)output.Data, checked(T * numClasses));
+            return PaddleCtcDecoder.Decode(scores, T, numClasses, _charset, _options);
         }
-
-        if (indices.Count == 0)
-            return new OcrRecognizeResult(string.Empty, 0f);
-
-        // 查字符集
-        var chars = new char[indices.Count];
-        for (int i = 0; i < indices.Count; i++)
-        {
-            int idx = indices[i];
-            chars[i] = idx < _charset.Length ? _charset[idx][0] : '?';
-        }
-
-        float confidence = validCount > 0 ? totalConf / validCount : 0f;
-        if (confidence < _options.MinScore)
-            return new OcrRecognizeResult(string.Empty, confidence);
-
-        return new OcrRecognizeResult(new string(chars), confidence);
     }
 
-    /// <summary>加载字符集文件：每行一个字符，首行为空白符。</summary>
+    internal static int AlignWidth(int width, int multiple, int maximum)
+    {
+        int aligned = (int)Math.Min((long)int.MaxValue,
+            ((long)width + multiple - 1) / multiple * multiple);
+        if (aligned <= maximum) return aligned;
+        int bounded = maximum / multiple * multiple;
+        return bounded > 0 ? bounded : maximum;
+    }
+
+    private static void ValidateOptions(RecOptions options)
+    {
+        if (options.ImageHeight <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), "ImageHeight must be positive.");
+        if (options.MinImageWidth <= 0 || options.MaxImageWidth < options.MinImageWidth)
+            throw new ArgumentOutOfRangeException(nameof(options), "Invalid recognition width range.");
+        if (options.WidthMultiple <= 0)
+            throw new ArgumentOutOfRangeException(nameof(options), "WidthMultiple must be positive.");
+        if (options.Mean == null || options.Mean.Length != 3
+            || options.Mean.Any(value => !double.IsFinite(value)))
+            throw new ArgumentException("Mean must contain exactly three values.", nameof(options));
+        if (!double.IsFinite(options.Scale))
+            throw new ArgumentOutOfRangeException(nameof(options), "Scale must be finite.");
+        if (!float.IsFinite(options.MinScore) || options.MinScore is < 0 or > 1)
+            throw new ArgumentOutOfRangeException(nameof(options), "MinScore must be between 0 and 1.");
+        if (options.BlankIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(options), "BlankIndex cannot be negative.");
+    }
+
+    /// <summary>加载字符集文件。CTC 空白类别不写入词典。</summary>
     private static string[] LoadCharset(string path)
     {
-        var lines = File.ReadAllLines(path);
-        var charset = new string[lines.Length + 1];
-        charset[0] = " "; // 空白符占位
-        for (int i = 0; i < lines.Length; i++)
-            charset[i + 1] = lines[i].TrimEnd('\r', '\n');
-        return charset;
+        return File.ReadAllLines(path);
     }
 
     public void Dispose()
@@ -500,36 +516,112 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
     /// <inheritdoc/>
     public IOcrRecognizer CreateRecognizer(string lang, string dataPath, string engineMode, string psmode)
     {
-        var modelDir = string.IsNullOrEmpty(dataPath) ? _modelDirectory : dataPath;
-        var recModel = Path.Combine(modelDir, $"{lang}_rec.onnx");
-        var charset = Path.Combine(modelDir, $"{lang}_dict.txt");
-
-        if (!File.Exists(recModel))
-        {
-            // 回退：尝试不带语言前缀的通用模型名
-            recModel = Path.Combine(modelDir, "PP-OCRv5_mobile_rec.onnx");
-            charset = Path.Combine(modelDir, "ppocr_keys_v5.txt");
-        }
-
-        return new OnnxRecognizer(recModel, charset, backend: _backend, target: _target);
+        ResolvedModels models = ResolveModels(lang, dataPath, psmode);
+        return new OnnxRecognizer(models.RecognitionModel, models.CharacterDictionary,
+            models.Config.Recognition, _backend, _target);
     }
 
     /// <inheritdoc/>
     public IOcrEngine? CreateEngine(string lang, string dataPath, string engineMode, string psmode)
     {
-        var modelDir = string.IsNullOrEmpty(dataPath) ? _modelDirectory : dataPath;
-        var detPath = Path.Combine(modelDir, _detModelName);
-        var recPath = Path.Combine(modelDir, $"{lang}_rec.onnx");
-        var charsetPath = Path.Combine(modelDir, $"{lang}_dict.txt");
+        ResolvedModels models = ResolveModels(lang, dataPath, psmode);
+        return new OnnxOcrEngine(
+            new OnnxDetector(models.DetectionModel, models.Config.Detection, _backend, _target),
+            new OnnxRecognizer(models.RecognitionModel, models.CharacterDictionary,
+                models.Config.Recognition, _backend, _target));
+    }
 
-        if (!File.Exists(recPath))
+    private ResolvedModels ResolveModels(string lang, string dataPath, string psmode)
+    {
+        string modelDirectory = Path.GetFullPath(string.IsNullOrWhiteSpace(dataPath) ? _modelDirectory : dataPath);
+        string? configPath = ResolveConfigPath(modelDirectory, lang, psmode);
+        OnnxOcrModelConfig config = configPath == null ? new() : OnnxOcrModelConfig.Load(configPath);
+        string resourceDirectory = configPath == null ? modelDirectory : Path.GetDirectoryName(configPath)!;
+
+        string recognitionModel = ResolveResource(config.RecognitionModel, resourceDirectory,
+            Path.Combine(modelDirectory, $"{lang}_rec.onnx"),
+            Path.Combine(modelDirectory, "PP-OCRv5_mobile_rec.onnx"));
+        string dictionary = ResolveResource(config.CharacterDictionary, resourceDirectory,
+            Path.Combine(modelDirectory, $"{lang}_dict.txt"),
+            Path.Combine(modelDirectory, "ppocr_keys_v5.txt"));
+        string detectionModel = ResolveResource(config.DetectionModel, resourceDirectory,
+            Path.Combine(modelDirectory, _detModelName));
+
+        return new(config, recognitionModel, dictionary, detectionModel);
+    }
+
+    private static string? ResolveConfigPath(string modelDirectory, string lang, string psmode)
+    {
+        if (!string.IsNullOrWhiteSpace(psmode)
+            && psmode.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
         {
-            recPath = Path.Combine(modelDir, "PP-OCRv5_mobile_rec.onnx");
-            charsetPath = Path.Combine(modelDir, "ppocr_keys_v5.txt");
+            string explicitPath = Path.GetFullPath(Path.IsPathRooted(psmode)
+                ? psmode : Path.Combine(modelDirectory, psmode));
+            if (!File.Exists(explicitPath))
+                throw new FileNotFoundException($"ONNX OCR config not found: {explicitPath}");
+            return explicitPath;
         }
 
-        return new OnnxOcrEngine(
-            new OnnxDetector(detPath, backend: _backend, target: _target),
-            new OnnxRecognizer(recPath, charsetPath, backend: _backend, target: _target));
+        string sidecar = Path.Combine(modelDirectory, $"{lang}_ocr.json");
+        return File.Exists(sidecar) ? sidecar : null;
+    }
+
+    private static string ResolveResource(string configuredPath, string resourceDirectory,
+        params string[] fallbacks)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredPath))
+            return Path.GetFullPath(Path.IsPathRooted(configuredPath)
+                ? configuredPath : Path.Combine(resourceDirectory, configuredPath));
+        return fallbacks.FirstOrDefault(File.Exists) ?? fallbacks[0];
+    }
+
+    private sealed record ResolvedModels(OnnxOcrModelConfig Config, string RecognitionModel,
+        string CharacterDictionary, string DetectionModel);
+}
+
+internal static class PaddleCtcDecoder
+{
+    public static OcrRecognizeResult Decode(ReadOnlySpan<float> scores, int timeSteps, int classCount,
+        IReadOnlyList<string> dictionary, RecOptions options)
+    {
+        if (timeSteps < 0 || classCount <= 0 || scores.Length != checked(timeSteps * classCount))
+            throw new ArgumentException("CTC score shape does not match the supplied data.", nameof(scores));
+        if (options.BlankIndex >= classCount)
+            throw new InvalidDataException("CTC blank index is outside the model output.");
+
+        int expectedClasses = dictionary.Count + 1;
+        int maximumClasses = expectedClasses + (options.AppendSpaceClass ? 1 : 0);
+        if (classCount < expectedClasses || classCount > maximumClasses)
+            throw new InvalidDataException("ONNX OCR model and character dictionary shapes disagree.");
+
+        var text = new System.Text.StringBuilder();
+        float totalConfidence = 0;
+        int emitted = 0;
+        int previous = options.BlankIndex;
+
+        for (int t = 0; t < timeSteps; t++)
+        {
+            ReadOnlySpan<float> row = scores.Slice(t * classCount, classCount);
+            int best = 0;
+            for (int c = 1; c < row.Length; c++)
+                if (row[c] > row[best]) best = c;
+
+            if (best != options.BlankIndex && best != previous)
+            {
+                int dictionaryIndex = best < options.BlankIndex ? best : best - 1;
+                if (dictionaryIndex < dictionary.Count)
+                    text.Append(dictionary[dictionaryIndex]);
+                else
+                    text.Append(' ');
+                totalConfidence += row[best];
+                emitted++;
+            }
+            previous = best;
+        }
+
+        float confidence = emitted == 0 ? 0 : totalConfidence / emitted;
+        return confidence < options.MinScore
+            ? new OcrRecognizeResult(string.Empty, confidence)
+            : new OcrRecognizeResult(text.ToString(), confidence);
     }
 }

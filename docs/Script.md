@@ -473,9 +473,22 @@ $img = FRAME($x, $y, $w, $h)     # 截取指定区域
 $text = OCR($x, $y, $w, $h)              # 默认中文识别
 $text = OCR($x, $y, $w, $h, $lang)      # 指定语言
 
+# OCR_INIT - 显式初始化 Tesseract 或 OpenCV ONNX 后端
+$ok = OCR_INIT($lang, $dataPath)
+$ok = OCR_INIT($lang, $dataPath, $engineMode, $modeOrConfig)
+
 # ROI - 区域提取
 $cropped = ROI($img, $x, $y, $w, $h)
 ```
+
+ONNX 模式示例：
+
+```ecs
+$ok = OCR_INIT("sample", __APP__ + "/Models/sample", "ONNX", "sample_ocr.json")
+$text = OCR(100, 80, 420, 64, "sample")
+```
+
+ONNX 模型清单、预处理参数和设备后端详见 [OpenCV ONNX OCR 后端](OnnxOcr.md)。
 
 ---
 

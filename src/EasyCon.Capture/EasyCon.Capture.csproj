@@ -10,6 +10,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="EasyCon.Tests" />
 		<ProjectReference Include="..\EzCv\EzCv.csproj" />
 		<ProjectReference Include="..\EzTesseract\EzTesseract.csproj" />
 	</ItemGroup>

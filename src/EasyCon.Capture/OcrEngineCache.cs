@@ -1,4 +1,5 @@
 using EasyCon.Capture.Ocr;
+using EasyCon.Capture.Ocr.Onnx;
 
 namespace EasyCon.Capture;
 
@@ -12,26 +13,35 @@ public sealed class OcrEngineCache : IDisposable
 {
     private sealed record CachedEntry(IOcrRecognizer Engine, string DataPath, string EngineMode, string Psmode);
 
-    private readonly IOcrEngineFactory _factory;
+    private readonly IOcrEngineFactory? _factory;
     private readonly Dictionary<string, CachedEntry> _engines = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// 创建引擎缓存。
     /// </summary>
-    /// <param name="factory">引擎工厂（默认 Tesseract）。</param>
+    /// <param name="factory">可选的固定引擎工厂；不提供时根据 engineMode 选择 Tesseract 或 ONNX。</param>
     public OcrEngineCache(IOcrEngineFactory? factory = null)
     {
-        _factory = factory ?? new TesseractEngineFactory();
+        _factory = factory;
     }
 
     /// <summary>最近一次 OCR 调用的置信度 (0~100)</summary>
     public int LastConfidence { get; set; }
+
+    /// <summary>最近一次初始化失败的原因；成功后清空。</summary>
+    public string? LastError { get; private set; }
 
     /// <summary>
     /// 默认 tessdata / 模型目录路径。
     /// 当 GetOrInit 触发自动初始化时使用此路径。
     /// </summary>
     public string DefaultDataPath { get; set; } = string.Empty;
+
+    /// <summary>自动初始化时使用的引擎模式。</summary>
+    public string DefaultEngineMode { get; set; } = "DEFAULT";
+
+    /// <summary>自动初始化时使用的页面模式或 ONNX 配置文件。</summary>
+    public string DefaultPsmode { get; set; } = "SINGLE_LINE";
 
     /// <summary>
     /// 初始化并缓存指定语言的引擎。相同参数时跳过（幂等），不同参数时替换。
@@ -43,20 +53,24 @@ public sealed class OcrEngineCache : IDisposable
             if (existing.DataPath == dataPath
                 && existing.EngineMode == engineMode
                 && existing.Psmode == psmode)
+            {
+                LastError = null;
                 return true; // 完全匹配，跳过
-
-            existing.Engine.Dispose();
-            _engines.Remove(lang);
+            }
         }
 
         try
         {
-            var engine = _factory.CreateRecognizer(lang, dataPath, engineMode, psmode);
+            IOcrEngineFactory factory = _factory ?? CreateFactory(dataPath, engineMode);
+            var engine = factory.CreateRecognizer(lang, dataPath, engineMode, psmode);
+            if (existing != null) existing.Engine.Dispose();
             _engines[lang] = new CachedEntry(engine, dataPath, engineMode, psmode);
+            LastError = null;
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            LastError = ex.Message;
             return false;
         }
     }
@@ -80,8 +94,30 @@ public sealed class OcrEngineCache : IDisposable
         if (_engines.TryGetValue(lang, out var cached))
             return cached.Engine;
 
-        Init(lang, DefaultDataPath, "DEFAULT", "SINGLE_LINE");
+        if (!Init(lang, DefaultDataPath, DefaultEngineMode, DefaultPsmode))
+            throw new InvalidOperationException(LastError ?? $"Failed to initialize OCR language '{lang}'.");
         return _engines[lang].Engine;
+    }
+
+    private static IOcrEngineFactory CreateFactory(string dataPath, string engineMode)
+    {
+        bool isOnnxMode = engineMode.Equals("ONNX", StringComparison.OrdinalIgnoreCase)
+            || engineMode.StartsWith("ONNX:", StringComparison.OrdinalIgnoreCase);
+        if (!isOnnxMode)
+            return new TesseractEngineFactory();
+
+        GpuBackend backend = ParseOnnxBackend(engineMode);
+        return new OnnxEngineFactory(dataPath, backend: backend);
+    }
+
+    internal static GpuBackend ParseOnnxBackend(string engineMode)
+    {
+        string[] parts = engineMode.Split(':', 2, StringSplitOptions.TrimEntries);
+        if (!parts[0].Equals("ONNX", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"Not an ONNX engine mode: {engineMode}", nameof(engineMode));
+        if (parts.Length == 1 || string.IsNullOrWhiteSpace(parts[1])) return GpuBackend.Cpu;
+        if (Enum.TryParse(parts[1], true, out GpuBackend backend) && Enum.IsDefined(backend)) return backend;
+        throw new ArgumentException($"Unknown ONNX backend '{parts[1]}'.", nameof(engineMode));
     }
 
     public void Dispose()

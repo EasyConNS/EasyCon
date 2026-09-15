@@ -2,9 +2,9 @@
 
 ## 模块概述
 
-Capture模块实现UI无关的图像采集与识别功能，是EasyCon2的"眼睛"。基于OpenCvSharp封装，为上层提供视频帧获取、模板匹配、OCR文字识别和颜色检测等能力。
+Capture模块实现UI无关的图像采集与识别功能，是EasyCon2的"眼睛"。基于 EzCv 的 OpenCV 5 封装，为上层提供视频帧获取、模板匹配、OCR文字识别和颜色检测等能力。
 
-本模块可看作OpenCvSharp的轻量业务封装，核心关注点是将OpenCV能力映射到Switch自动化场景（如识别游戏画面状态、定位UI元素）。
+本模块可看作 OpenCV 的轻量业务封装，核心关注点是将 OpenCV 能力映射到图像采集和自动化场景。
 
 ## 核心功能
 
@@ -20,6 +20,7 @@ Capture模块实现UI无关的图像采集与识别功能，是EasyCon2的"眼�
 
 ### OCR文字识别
 - 基于Tesseract引擎，支持多语言识别
+- 基于 OpenCV 5 DNN 的可配置 ONNX 检测/识别后端
 - 支持白名单/黑名单过滤，提升特定场景识别精度
 
 ### 图像标签系统
@@ -36,7 +37,8 @@ Capture模块实现UI无关的图像采集与识别功能，是EasyCon2的"眼�
 - **OpenCVCapture** — 视频帧获取，封装OpenCV VideoCapture
 - **ECSearch** — 图像搜索门面，统一接口调用模板匹配、OCR、像素匹配等算法
 - **ImgLabel** — 图像标签数据模型，存储搜索参数和目标图像
-- **OCRDetect** — Tesseract OCR封装
+- **OcrEngineCache** — 按语言缓存并选择 Tesseract / ONNX 识别器
+- **OnnxOcrEngine** — OpenCV DNN 检测与 CTC 识别实现
 
 ## 依赖项
 
