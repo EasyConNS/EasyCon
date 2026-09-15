@@ -1,6 +1,6 @@
 using EasyDevice;
 
-namespace EasyCon2.Avalonia.Services;
+namespace EasyCon2.Avalonia.Core.Services;
 
 public interface IDeviceService
 {

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using EasyCon.Core.Input;
 using EasyCon.SDLInput;
+using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Core.VPad;
 using EasyDevice;
 using SDL;

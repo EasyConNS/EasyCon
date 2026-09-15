@@ -2,6 +2,7 @@ using Avalonia.Threading;
 using EasyCon.Core;
 using EasyCon.Core.Services;
 using EasyDevice;
+using IDeviceService = EasyCon2.Avalonia.Core.Services.IDeviceService;
 
 namespace EasyCon2.Avalonia.Services;
 

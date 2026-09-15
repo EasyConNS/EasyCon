@@ -1,6 +1,6 @@
 using EasyCon.Capture;
 
-namespace EasyCon2.Avalonia.Services;
+namespace EasyCon2.Avalonia.Core.Services;
 
 public interface ICaptureService
 {

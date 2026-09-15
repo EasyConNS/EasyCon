@@ -5,7 +5,7 @@ using EasyDevice;
 
 namespace EasyCon2.Avalonia.Core.Services;
 
-public class DeviceService : IDeviceService
+public class DeviceService : EasyCon.Core.Services.IDeviceService
 {
     private readonly ILogService _logService;
     private readonly NintendoSwitch _nintendoSwitch = new();
