@@ -1,13 +1,14 @@
-// See https://aka.ms/new-console-template for more information
+﻿// See https://aka.ms/new-console-template for more information
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Runner;
 using EasyCon.Lsp;
 using EasyCon.Script;
+using EasyCon.Script.Ssa;
 using EasyCon.Script.Syntax;
 using EasyDevice;
 using EasyScript;
-using EzCv;
+using OpenCvSharp;
 using Serilog;
 using System.Collections.Immutable;
 using System.CommandLine;
@@ -22,7 +23,8 @@ bool isLspCommand = args.Length > 0 && args[0] == "lsp";
 string defaultCOMPort = "COM22";
 
 NintendoSwitch NS = new();
-EasyRunner runner = new();
+EasyCon.Core.Script.IScriptEngine engine = new EasyCon.Core.Script.EasyScriptEngine();
+EasyCon.Core.Script.IScriptSession? session = null;
 
 if (!isFormatCommand && !isLspCommand)
 {
@@ -35,7 +37,6 @@ if (!isFormatCommand && !isLspCommand)
 var rootCommand = new RootCommand("EasyCon CLI Runner");
 
 var runScriptCommand = new Command("run", "运行伊机控脚本");
-var runLuaCommand = new Command("runlua", "运行lua脚本");
 var portDevCommand = new Command("port", "单片机端口功能");
 var videoCommand = new Command("video", "视频采集设备功能");
 var formatCommand = new Command("format", "格式化脚本");
@@ -127,9 +128,12 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
 
     OpenCVCapture? cvcap = null;
     outdap.Log("正在解析脚本...");
-    var diag = runner.Load(file, [.. label.Select(il => il.name)]);
-    Console.WriteLine(runner.Timing?.ToReport());
-
+    session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
+    {
+        Compile = new CompileOptions { ExtVars = [.. label.Select(il => il.name)], UseDiskCache = false },
+    });
+    Console.WriteLine(session.Info.Timing?.ToReport());
+    var diag = session.Info.Diagnostics;
     if (diag.HasErrors())
     {
         HashSet<int> errlist = [];
@@ -144,7 +148,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
 
     bool isMock = COM.Equals("mock", StringComparison.OrdinalIgnoreCase);
 
-    if (runner.HasKeyAction)
+    if (session.Info.KeyAction)
     {
         if (isMock)
         {
@@ -177,7 +181,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         }
     }
 
-    if (runner.NeedILLoad)
+    if (session.Info.NeedIL)
     {
         cvcap = new();
         outdap.Log("准备打开采集卡...");
@@ -199,21 +203,20 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         producer.Start();
     }
 
-    FrameDelegate? frameDelegate = null;
-    LabelMatchDelegate? labelMatchDelegate = null;
-    ImmutableHashSet<string>? labelNames = null;
-    OcrDelegate? ocrDelegate = null;
-    OcrInitDelegate? ocrInit = null;
-    Func<int> ocrConf = () => 0;
+    // 能力装配（P6）：帧/ROI/标签/OCR/推理经服务接口注入
+    var capabilities = new EasyCon.Core.Capabilities.CapabilitySet
+    {
+        Console = new EasyCon.Core.Capabilities.ConsoleIoAdapter(outdap),
+    };
 
     if (cvcap != null && label.Count() > 0)
     {
         var labelDict = label.ToDictionary(il => il.name);
-        labelNames = [.. labelDict.Keys];
 
-        frameDelegate = FrameDelegateFactory.CreateFrame(() => producer!.Store.AcquireLatest());
+        var frameDelegate = FrameDelegateFactory.CreateFrame(() => producer!.Store.AcquireLatest());
+        capabilities.Capture = new EasyCon.Core.Capabilities.DelegateCaptureSource(frameDelegate);
 
-        labelMatchDelegate = lblName =>
+        LabelMatchDelegate labelMatchDelegate = lblName =>
         {
             if (!labelDict.TryGetValue(lblName, out var il)) return 0;
             using var lease = producer!.Store.AcquireLatest();
@@ -221,20 +224,22 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
             il.Search(lease.Mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
             return (int)Math.Ceiling(md);
         };
-        var ocrCache = new EasyCon.Capture.OcrEngineCache
-        {
-            DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
-        };
-        ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
-        ocrConf = () => ocrCache.LastConfidence;
-        ocrDelegate = OcrDelegateFactory.Create(() => producer!.Store.AcquireLatest(), ocrCache);
+        capabilities.Vision = new EasyCon.Core.Capabilities.DelegateVisionService(
+            MatExtensions.CropBase64, labelMatchDelegate);
+
+        capabilities.Ocr = new EasyCon.Core.Capabilities.TesseractOcrService(
+            new EasyCon.Capture.OcrEngineCache
+            {
+                DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
+            });
     }
     outdap.Info($"==>开始执行脚本：{file}\n");
 
     try
     {
         ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
-        runner.Run(outdap, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, cancellationToken);
+        capabilities.Input = new EasyCon.Core.Capabilities.PadInputAdapter(pad);
+        session.Run(cancellationToken, capabilities);
         outdap.Info("脚本运行完成");
     }
     catch (ScriptException ex)
@@ -308,13 +313,6 @@ videoCommand.Validators.Add(result =>
 });
 #endregion
 
-runLuaCommand.Arguments.Add(scriptOption);
-runLuaCommand.SetAction(async (parseResult, cancellationToken) =>
-{
-
-    string file = parseResult.GetValue(scriptOption)!;
-    LuaRunner.ExecuteFile(file);
-});
 
 var formatOutputOption = new Option<string>("-o", "输出文件");
 
@@ -329,7 +327,12 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
 
-    var diag = runner.Load(file, [.. label.Select(il => il.name)]);
+    session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
+    {
+        Compile = new CompileOptions { ExtVars = [.. label.Select(il => il.name)], UseDiskCache = false },
+        Capabilities = new EasyCon.Core.Capabilities.CapabilitySet(),
+    });
+    var diag = session.Info.Diagnostics;
 
     if (diag.HasErrors())
     {
@@ -340,7 +343,7 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
         return 1;
     }
 
-    var formatted = runner.ToCode();
+    var formatted = session.Info.FormatCode();
 
     if (!string.IsNullOrEmpty(outputFile))
     {
@@ -366,7 +369,12 @@ irCommand.SetAction(async (parseResult, cancellationToken) =>
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
 
-    var diag = runner.Load(file, [.. label.Select(il => il.name)]);
+    session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
+    {
+        Compile = new CompileOptions { ExtVars = [.. label.Select(il => il.name)], UseDiskCache = false },
+        Capabilities = new EasyCon.Core.Capabilities.CapabilitySet(),
+    });
+    var diag = session.Info.Diagnostics;
 
     if (diag.HasErrors())
     {
@@ -377,12 +385,39 @@ irCommand.SetAction(async (parseResult, cancellationToken) =>
         return 1;
     }
 
-    Console.Write(runner.DumpIr(beforeOptimize: raw));
+    Console.Write(DumpIr(engine, session, file, raw));
     return 0;
 });
 
+static string DumpIr(EasyCon.Core.Script.IScriptEngine engine, EasyCon.Core.Script.IScriptSession session,
+    string file, bool beforeOptimize)
+{
+    if (!beforeOptimize)
+    {
+        var prog = session.Info.Program;
+        if (prog == null)
+            return string.Join("\n", session.Info.Diagnostics.Where(d => d.IsError).Select(d => $"error: {d.Message}"));
+        return SsaPrinter.Dump(prog);
+    }
+
+    // 优化前：关闭优化重新编译（同一脚本文件与标签扩展名）
+    var (label, _, _) = ECCore.LoadImgLabels(
+        Path.GetFullPath(Path.GetDirectoryName(file) ?? ""), AppDomain.CurrentDomain.BaseDirectory);
+    var rerun = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
+    {
+        Compile = new CompileOptions
+        {
+            ExtVars = [.. label.Select(il => il.name)],
+            Optimize = false,
+            UseDiskCache = false,
+        },
+    });
+    return rerun.Info.Program != null
+        ? SsaPrinter.Dump(rerun.Info.Program)
+        : string.Join("\n", rerun.Info.Diagnostics.Where(d => d.IsError).Select(d => $"error: {d.Message}"));
+}
+
 rootCommand.Subcommands.Add(runScriptCommand);
-rootCommand.Subcommands.Add(runLuaCommand);
 rootCommand.Subcommands.Add(portDevCommand);
 rootCommand.Subcommands.Add(videoCommand);
 rootCommand.Subcommands.Add(formatCommand);

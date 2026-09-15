@@ -3,6 +3,7 @@ using EasyCon.Script;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
+using EasyCon.Tests.Support;
 using EasyScript;
 using System.Collections.Immutable;
 
@@ -51,7 +52,7 @@ public class LibTests
     {
         if (compileResult.Image == null)
             throw new Exception($"编译错误: {string.Join("; ", compileResult.Diagnostics.Where(d => d.IsError).Select(d => d.Message))}");
-        return EcxVm.Run(compileResult.Image!, new MockOutputAdapter(), null, null, null, () => 0, null, null, null,
+        return EcxVm.Run(compileResult.Image!, EcsTestHost.Capabilities(new MockOutputAdapter()),
             new CancellationTokenSource().Token, [], compileResult.NativeSymbols);
     }
 

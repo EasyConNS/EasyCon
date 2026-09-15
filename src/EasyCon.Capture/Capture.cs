@@ -1,6 +1,6 @@
-using EasyCon.Capture.win;
-using EzCv;
+﻿using EasyCon.Capture.win;
 using FlashCap;
+using OpenCvSharp;
 using System.Diagnostics;
 
 namespace EasyCon.Capture;

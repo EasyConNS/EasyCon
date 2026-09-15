@@ -1,3 +1,4 @@
+using EasyCon.Core.Capabilities;
 using EasyCon.Script.Binding;
 using EasyCon.Script.Symbols;
 using EasyScript;
@@ -20,6 +21,6 @@ internal sealed class LazyNativeCallable : ICallable
         _resolved = new Lazy<ICallable>(() => _loader.ResolveFunction(_symbol));
     }
 
-    public Value Invoke(ReadOnlySpan<Value> args, IEvalContext context, CancellationToken token)
-        => _resolved.Value.Invoke(args, context, token);
+    public Value Invoke(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => _resolved.Value.Invoke(args, capabilities, token);
 }

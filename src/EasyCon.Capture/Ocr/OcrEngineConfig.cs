@@ -1,4 +1,4 @@
-namespace EasyCon.Capture.Ocr;
+﻿namespace EasyCon.Capture.Ocr;
 
 /// <summary>
 /// OCR 引擎通用配置。
@@ -98,15 +98,15 @@ public static class OnnxProviderMapper
     /// <summary>
     /// 根据 GpuBackend 映射到 OpenCV DNN 的 Backend 和 Target。
     /// </summary>
-    public static (EzCv.Dnn.Backend backend, EzCv.Dnn.Target target) MapBackend(GpuBackend backend)
+    public static (OpenCvSharp.Dnn.Backend backend, OpenCvSharp.Dnn.Target target) MapBackend(GpuBackend backend)
     {
         return backend switch
         {
-            GpuBackend.Cuda => (EzCv.Dnn.Backend.CUDA, EzCv.Dnn.Target.CUDA),
-            GpuBackend.OpenCL => (EzCv.Dnn.Backend.DEFAULT, EzCv.Dnn.Target.OPENCL),
-            GpuBackend.Vulkan => (EzCv.Dnn.Backend.DEFAULT, EzCv.Dnn.Target.VULKAN),
-            GpuBackend.Metal or GpuBackend.CoreML => (EzCv.Dnn.Backend.DEFAULT, EzCv.Dnn.Target.CPU),
-            _ => (EzCv.Dnn.Backend.DEFAULT, EzCv.Dnn.Target.CPU),
+            GpuBackend.Cuda => (OpenCvSharp.Dnn.Backend.CUDA, OpenCvSharp.Dnn.Target.CUDA),
+            GpuBackend.OpenCL => (OpenCvSharp.Dnn.Backend.DEFAULT, OpenCvSharp.Dnn.Target.OPENCL),
+            GpuBackend.Vulkan => (OpenCvSharp.Dnn.Backend.DEFAULT, OpenCvSharp.Dnn.Target.VULKAN),
+            GpuBackend.Metal or GpuBackend.CoreML => (OpenCvSharp.Dnn.Backend.DEFAULT, OpenCvSharp.Dnn.Target.CPU),
+            _ => (OpenCvSharp.Dnn.Backend.DEFAULT, OpenCvSharp.Dnn.Target.CPU),
         };
     }
 }

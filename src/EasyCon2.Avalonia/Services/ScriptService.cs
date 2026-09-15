@@ -1,11 +1,12 @@
-using EasyCon.Capture;
+﻿using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Capabilities;
 using EasyCon.Core.Config;
-using EasyCon.Core.Runner;
+using EasyCon.Core.Script;
 using EasyCon.Core.Services;
 using EasyCon.Script;
 using EasyScript;
-using EzCv;
+using OpenCvSharp;
 using System.Collections.Immutable;
 using System.Text.RegularExpressions;
 
@@ -16,11 +17,12 @@ public class ScriptService : IScriptService
     private readonly IDeviceService _deviceService;
     private readonly ICaptureService _captureService;
     private readonly ILogService _logService;
-    private readonly EasyRunner _runner = new();
+    private readonly IScriptEngine _engine = new EasyScriptEngine();
+    private IScriptSession? _session;
     private CancellationTokenSource? _cts;
 
     public bool IsRunning { get; private set; }
-    public bool HasKeyAction => _runner.HasKeyAction;
+    public bool HasKeyAction => _session?.Info.KeyAction ?? false;
     public bool HighResolutionTiming { get; set; }
     public event Action<bool> IsRunningChanged;
 
@@ -30,8 +32,8 @@ public class ScriptService : IScriptService
     public ScriptRequirements GetRequirements()
     {
         return new ScriptRequirements(
-            HasKeyAction: _runner.HasKeyAction,
-            NeedImageRecognition: _runner.NeedILLoad,
+            HasKeyAction: HasKeyAction,
+            NeedImageRecognition: _session?.Info.NeedIL ?? false,
             DeviceConnected: _deviceService.IsConnected,
             CaptureConnected: _captureService.IsConnected
         );
@@ -50,16 +52,8 @@ public class ScriptService : IScriptService
 
         try
         {
-            var diag = _runner.Init(scriptText, []);
-            if (diag.HasErrors())
-            {
-                var first = diag.First(d => d.IsError);
-                _logService.AddLog($"行 {first.Location.StartLine + 1}: {first.Message}");
-                return Task.FromResult(false);
-            }
-
-            _logService.AddLog("编译完成");
-            return Task.FromResult(true);
+            _session = CompileCore(() => _engine.FromSource(scriptText, Options([])));
+            return Task.FromResult(_session != null);
         }
         catch (Exception ex)
         {
@@ -70,7 +64,7 @@ public class ScriptService : IScriptService
 
     public string GetFormattedCode()
     {
-        var formattedCode = _runner.ToCode().Trim();
+        var formattedCode = (_session?.Info.FormatCode() ?? "").Trim();
         formattedCode = Regex.Replace(formattedCode, ",(?! )", ", ");
         return formattedCode;
     }
@@ -79,8 +73,8 @@ public class ScriptService : IScriptService
     {
         try
         {
-            var bytes = _runner.Assemble(autoRun);
-            return Task.FromResult(bytes);
+            // v1 Assemble 已随 IRunner 移除（P2）；ECX 产物请用 CLI compile
+            throw new NotImplementedException("v1 Assemble 已移除；请用 CLI compile 产出 .ecx");
         }
         catch (Exception ex)
         {
@@ -96,20 +90,16 @@ public class ScriptService : IScriptService
         {
             var scriptBasePath = Path.GetFullPath(Path.GetDirectoryName(scriptPath) ?? "");
             var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppPaths.DataDir);
-            var diag = _runner.Load(scriptPath, [.. label.Select(il => il.name)]);
             var labelDict = label.ToDictionary(il => il.name);
-            return (diag, BuildLabelMatchDelegate(labelDict), (ImmutableHashSet<string>)[.. labelDict.Keys]);
+            var session = CompileCore(() => _engine.LoadFile(scriptPath, Options([.. labelDict.Keys])));
+            return (session, BuildLabelMatchDelegate(labelDict));
         }, args);
     }
 
     public void RunFromContent(string content, string[]? args = null)
     {
         _logService.AddLog("===开始运行脚本===");
-        ExecuteScript(() =>
-        {
-            var diag = _runner.Init(content, []);
-            return (diag, null, (ImmutableHashSet<string>)[]);
-        }, args);
+        ExecuteScript(() => (_session = CompileCore(() => _engine.FromSource(content, Options([]))), null), args);
     }
 
     public void Stop()
@@ -119,6 +109,27 @@ public class ScriptService : IScriptService
     }
 
     // ── 私有方法 ────────────────────────────────
+
+    static ScriptHostOptions Options(ImmutableHashSet<string> extVars) => new()
+    {
+        Compile = new CompileOptions { ExtVars = extVars, UseDiskCache = false },
+    };
+
+    /// <summary>编译并落诊断日志；出错返回 null。</summary>
+    IScriptSession? CompileCore(Func<IScriptSession> compile)
+    {
+        var session = compile();
+        ImmutableArray<Diagnostic> diag = session.Info.Diagnostics;
+        if (diag.HasErrors())
+        {
+            var first = diag.First(d => d.IsError);
+            _logService.AddLog($"行 {first.Location.StartLine + 1}: {first.Message}");
+            return null;
+        }
+
+        _logService.AddLog("编译完成");
+        return session;
+    }
 
     private LabelMatchDelegate? BuildLabelMatchDelegate(Dictionary<string, ImgLabel> labelDict)
     {
@@ -133,12 +144,10 @@ public class ScriptService : IScriptService
     }
 
     /// <summary>
-    /// 脚本执行主流程：编译 → 检查需求 → 连接设备 → 构建委托 → 运行。
+    /// 脚本执行主流程：编译 → 检查需求 → 连接设备 → 能力装配 → 运行。
     /// </summary>
-    /// <param name="compile">编译回调，返回 (诊断结果, 标签匹配委托, 标签名集合)</param>
-    private void ExecuteScript(
-        Func<(ImmutableArray<Diagnostic> diag, LabelMatchDelegate? labelMatch, ImmutableHashSet<string> labelNames)> compile,
-        string[]? args)
+    /// <param name="compile">编译回调，返回 (会话（null=编译失败）, 标签匹配委托)</param>
+    private void ExecuteScript(Func<(IScriptSession? Session, LabelMatchDelegate? LabelMatch)> compile, string[]? args)
     {
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
@@ -150,14 +159,9 @@ public class ScriptService : IScriptService
         {
             try
             {
-                var (diag, labelMatchDelegate, labelNames) = compile();
-
-                if (diag.HasErrors())
-                {
-                    foreach (var d in diag)
-                        _logService.AddLog($"编译失败: {d.Message} (行{d.Location.StartLine + 1})");
+                var (session, labelMatch) = compile();
+                if (session == null)
                     return;
-                }
 
                 // 检查脚本运行需求
                 var requirements = GetRequirements();
@@ -170,7 +174,7 @@ public class ScriptService : IScriptService
                 }
 
                 // 尝试自动连接单片机
-                if (_runner.HasKeyAction && !_deviceService.IsConnected)
+                if (HasKeyAction && !_deviceService.IsConnected)
                 {
                     _logService.AddLog("脚本需要单片机，尝试自动连接...");
                     var port = _deviceService.AutoConnect();
@@ -183,22 +187,28 @@ public class ScriptService : IScriptService
                 }
 
                 ICGamePad? pad = null;
-                if (_runner.HasKeyAction)
+                if (HasKeyAction)
                     pad = new GamePadAdapter(_deviceService.GetDevice(), HighResolutionTiming);
 
                 _captureService.SetCaptureProperties(1920, 1080);
 
                 var frameDelegate = FrameDelegateFactory.CreateFrame(() => _captureService.AcquireLatestFrame());
 
-                var ocrCache = new OcrEngineCache
+                // 能力装配（P6）：帧/ROI/标签/OCR/推理经服务接口注入
+                var capabilities = new CapabilitySet
                 {
-                    DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
+                    Input = pad != null ? new PadInputAdapter(pad) : null,
+                    Console = new ConsoleIoAdapter(_logService),
+                    Capture = new DelegateCaptureSource(frameDelegate),
+                    Vision = new DelegateVisionService(MatExtensions.CropBase64, labelMatch),
+                    Ocr = new TesseractOcrService(new OcrEngineCache
+                    {
+                        DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
+                    }),
+                    Inference = new DnnInference(),
                 };
-                var ocrInit = OcrDelegateFactory.CreateInit(ocrCache);
-                var ocrConf = (Func<int>)(() => ocrCache.LastConfidence);
-                var ocrDelegate = OcrDelegateFactory.Create(() => _captureService.AcquireLatestFrame(), ocrCache);
 
-                _runner.Run(_logService, pad, ocrDelegate, ocrInit, ocrConf, frameDelegate, MatExtensions.CropBase64, labelMatchDelegate, labelNames, token, args);
+                session.Run(token, capabilities);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)

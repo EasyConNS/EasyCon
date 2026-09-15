@@ -34,8 +34,28 @@ enum {
     OP_NewArrV, OP_NewArrE, OP_GetI, OP_SetI, OP_Slice, OP_Cont, OP_Append, OP_Cat, OP_Len,
     OP_NewSt, OP_GetF, OP_PutF, OP_GetFI, OP_PutFI,
     OP_WaitI, OP_WaitV, OP_KeyI, OP_KeyV, OP_KeySt, OP_StickSet, OP_StickP, OP_StickPv,
-    OP_Img, OP_Rand, OP_Time, OP_Beep, OP_Amiibo,
+    OP_Img, OP_Rand,
 };
+
+/* ---- 文件族 syscall 编号（uvm32 式编号 ABI，与 C# EcsSyscall 一致，docs/VM2.md §9.1） ----
+ * CallN 的 EXT 字旗标置位时，低 31 位 = 编号，直接引擎内建分发，不经原生名表。
+ * 文件实现仍转发 host->native（传规范名）；caps 缺失行为与名表时代逐字一致。 */
+#define ECS_SYSCALL_FLAG     0x80000000u
+enum {
+    ECS_SYSCALL_FWRITE = 1, ECS_SYSCALL_FREAD,
+    ECS_SYSCALL_FOPEN, ECS_SYSCALL_FCLOSE, ECS_SYSCALL_FEOF,
+    ECS_SYSCALL_READFILE, ECS_SYSCALL_WRITEFILE, ECS_SYSCALL_APPENDFILE, ECS_SYSCALL_FILE_EXISTS,
+    ECS_SYSCALL_ALERT, ECS_SYSCALL_ARG, ECS_SYSCALL_ENV, ECS_SYSCALL_APP,
+    ECS_SYSCALL_TIME, ECS_SYSCALL_BEEP, ECS_SYSCALL_AMIIBO, ECS_SYSCALL_OCR_CONF,
+};
+
+/* ---- 镜像特征需求掩码（镜像头保留位 u16 @0x0A，与 C# EcsImageFeatures 一致，VM2.md §9.1） ----
+ * 加载规则：host->feats 缺位 → 拒跑（IL → ECS_ERR_IL 既有码，其余 → ECS_ERR_FEAT）。
+ * 旧镜像掩码 = 0，IL 由 flags.I 投影，行为兼容。 */
+#define ECS_FEAT_IL       0x1u
+#define ECS_FEAT_CAPTURE  0x2u
+#define ECS_FEAT_FFI      0x4u
+#define ECS_FEAT_FILE     0x8u
 
 /* 有 32 位 EXT 后随数据字的操作码集合——单一事实源，与 C# EcsFormat 表 / docs/VM2.md §4.1
  * 对齐（新增 EXT 指令双端各改一处表 + 执行/发射语义）。EXT 后随字是「数据」（Call/CallN
@@ -77,58 +97,41 @@ enum {
     ECS_ERR_IMAGE = 3, ECS_ERR_OPCODE = 4, ECS_ERR_SLOT = 5, ECS_ERR_TYPE = 6,
     ECS_ERR_INDEX = 7, ECS_ERR_DIVZERO = 8, ECS_ERR_DEPTH = 9,
     ECS_ERR_NOSUCHNATIVE = 10, ECS_ERR_HOST = 11, ECS_ERR_OOM = 12,
-    ECS_ERR_IL = 13,            /* 脚本携带图像标签/采集依赖，本平台禁止执行（单片机约束） */
+    ECS_ERR_IL = 13,            /* 镜像需要图像标签能力（FEAT_IL），本宿主不提供 */
+    ECS_ERR_FEAT = 14,          /* 镜像特征需求超出宿主提供（FEAT_CAPTURE/FFI/FILE 缺位） */
 };
 
-/* ---- 平台能力位（MODULE_DESIGN.md §5 平台抽象层模式：
-        宿主声明本平台已实现的能力；VM 只提供已实现能力，
-        未实现的原生/域操作静默忽略并返回默认值，不报错） ---- */
-enum {
-    ECS_CAP_PRINT   = 1 << 0,   /* FWRITE stdout / host print */
-    ECS_CAP_ALERT   = 1 << 1,
-    ECS_CAP_BEEP    = 1 << 2,
-    ECS_CAP_FILE    = 1 << 3,   /* FOPEN/FREAD/... 文件句柄族 */
-    ECS_CAP_CAPTURE = 1 << 4,   /* __CAPTURE__/__OCR__/__ROI__ 采集卡洞 */
-    ECS_CAP_FFI     = 1 << 5,   /* EXTERN FFI */
-    ECS_CAP_STDIN   = 1 << 6,   /* FREAD stdin */
-};
-#define ECS_CAP_ALL_DESKTOP (ECS_CAP_PRINT | ECS_CAP_ALERT | ECS_CAP_BEEP | \
-                             ECS_CAP_FILE | ECS_CAP_CAPTURE | ECS_CAP_FFI | ECS_CAP_STDIN)
-#define ECS_CAP_ALL_MCU     0   /* 单片机：全部忽略，脚本副作用仅按键/摇杆/延时 */
-
-/* ---- 宿主接口（依赖注入；任何回调可为 NULL → 对应功能 no-op 或报错） ---- */
+/* ---- 宿主接口（依赖注入；任何回调可为 NULL → 对应功能 no-op 或报错） ----
+ * 分层（docs/VM2.md §1）：L1 域操作回调（wait/key/stick/rand）+ L2 syscall 处理器（编号，
+ * 语义在宿主）+ L3 动态原生（按名）。特征掩码 feats = 本宿主提供的高级能力（ECS_FEAT_*），
+ * 加载期对镜像特征需求校验，缺位即拒跑。 */
 typedef struct ecs_host {
     void *ud;
-    uint32_t caps;              /* 平台能力位，见 ECS_CAP_* */
-    const char *const *args;    /* ARG(i) */
+    uint32_t feats;             /* 本宿主提供的特征位（ECS_FEAT_*），加载期校验用 */
+    const char *const *args;    /* ECS_SYSCALL_ARG */
     int32_t nargs;
-    const uint16_t *app_dir;    /* APP */
-    /* 核心域操作 */
+    const uint16_t *app_dir;    /* ECS_SYSCALL_APP */
+    /* L1 核心域操作 */
     void    (*wait_ms)(void *ud, int32_t ms);
     void    (*key)(void *ud, uint8_t key, int32_t dur_ms);           /* 点击 */
     void    (*key_state)(void *ud, uint8_t key, int down);           /* 按住/松开 */
     void    (*stick_set)(void *ud, uint8_t side, int32_t x, int32_t y);
     void    (*stick_click)(void *ud, uint8_t side, int32_t x, int32_t y, int32_t dur_ms);
-    int32_t (*img_label)(void *ud, const uint16_t *name, int32_t units); /* 置信度；无匹配 → -1 */
     int32_t (*rand)(void *ud, int32_t max);                          /* [0, max)；max<=0 → 0 */
-    int32_t (*time_ms)(void *ud);
-    void    (*beep)(void *ud, int32_t freq, int32_t dur_ms);
-    void    (*amiibo)(void *ud, int32_t slot);
-    /* 输出/输入（FWRITE stdout 行断协议的落点） */
-    void    (*print)(void *ud, const uint16_t *units, int32_t len, int newline);
-    int32_t (*read_line)(void *ud, uint16_t *buf, int32_t cap);      /* 返回长度，EOF → -1 */
-    /* 文件系统（FOPEN/FREAD/FWRITE/FCLOSE/FEOF 文件句柄转发） */
-    void   *(*f_open)(void *ud, const uint16_t *path, const uint16_t *mode);
-    int32_t (*f_read)(void *ud, void *h, uint16_t *buf, int32_t cap);
-    int32_t (*f_write)(void *ud, void *h, const uint16_t *buf, int32_t len);
-    void    (*f_close)(void *ud, void *h);
-    int32_t (*f_eof)(void *ud, void *h);
-    /* 扩展原生（ENCODE/JQ/READFILE/采集卡洞/EXTERN FFI 等按名分发）；返回 0=成功 */
+    /* L2 平台 syscall（ECS_SYSCALL_*，语义在宿主参考实现；返回 0=成功，非 0=ECS_ERR_NOSUCHNATIVE） */
+    int     (*syscall)(void *ud, int32_t id, ecs_value *args, int32_t nargs, ecs_value *ret);
+    /* L3 动态原生（采集洞/EXTERN FFI/ENCODE/JQ 按名分发）；返回 0=成功，非 0=ECS_ERR_NOSUCHNATIVE */
     int     (*native)(void *ud, const char *name, ecs_value *args, int32_t nargs, ecs_value *ret);
 } ecs_host;
 
+
 /* ---- VM 实例 ---- */
 typedef struct ecs_vm ecs_vm;
+/* ---- 宿主访问 VM 数据的唯一通道（syscall 处理器内使用；uvm32 arg_get* 同构） ----
+ * 读实参字符串（VM 堆句柄解引用）：返回长度，非串/空串 → 0（越界访问不可能逃逸） */
+int32_t ecs_vm_arg_str(ecs_vm *vm, ecs_value v, const uint16_t **units);
+/* 分配 VM 堆字符串作为返回值（UTF-16 units；units=NULL 或 len<=0 → 空串） */
+void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_t len);
 
 ecs_vm *ecs_vm_new(const ecs_host *host);
 /* 加载并校验镜像；image 缓冲区须在 vm 生命周期内保持有效（不拷贝） */

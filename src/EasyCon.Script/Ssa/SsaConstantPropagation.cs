@@ -974,7 +974,11 @@ static class SsaConstantPropagation
                 inst.ConstString = operand.Const.GetInt().ToString();
                 return true;
             case SsaOp.ConvToInt:
-                SsaOptimizer.SetIntResult(inst, operand.Const.GetInt());
+                // 数字字符串常量按 PC 端 ToInt 语义直接解析（与运行期一致）
+                if (operand.Op == SsaOp.ConstString)
+                    SsaOptimizer.SetIntResult(inst, Bytecode.EcsConvText.ParseIntLiteral(operand.ConstString));
+                else
+                    SsaOptimizer.SetIntResult(inst, operand.Const.GetInt());
                 return true;
             default: return false;
         }

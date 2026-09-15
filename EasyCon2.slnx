@@ -24,7 +24,6 @@
     <Project Path="tools/OpenCvDnnDemo/OpenCvDnnDemo.csproj" />
   </Folder>
   <Folder Name="/Lib/">
-    <Project Path="src/EzCv/EzCv.csproj" />
     <Project Path="src/EzTesseract/EzTesseract.csproj" />
     <Project Path="src/EasyCon.Capture/EasyCon.Capture.csproj" />
     <Project Path="src/EasyCon.Core/EasyCon.Core.csproj" />
@@ -40,5 +39,4 @@
   </Folder>
   <Project Path="src/EasyCon2.Avalonia/EasyCon2.Avalonia.csproj" />
   <Project Path="src/EasyCon2.CLI/EasyCon2.CLI.csproj" Id="a2867adb-139a-43d0-a421-9895222dcc7c" />
-  <Project Path="src/EasyCon2/EasyCon2.csproj" />
 </Solution>

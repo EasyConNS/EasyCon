@@ -1,7 +1,7 @@
-using EasyCon.Capture;
+﻿using EasyCon.Capture;
 using EasyCon.Capture.Ocr;
 using EasyScript;
-using EzCv;
+using OpenCvSharp;
 
 namespace EasyCon.Core;
 

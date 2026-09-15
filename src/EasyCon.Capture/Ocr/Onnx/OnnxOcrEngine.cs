@@ -1,6 +1,6 @@
-using EasyCon.Capture.Ocr;
-using EzCv;
-using EzCv.Dnn;
+﻿using EasyCon.Capture.Ocr;
+using OpenCvSharp;
+using OpenCvSharp.Dnn;
 
 namespace EasyCon.Capture.Ocr.Onnx;
 
@@ -33,7 +33,7 @@ public sealed class OnnxDetector : IOcrDetector
             throw new FileNotFoundException($"Detection model not found: {modelPath}");
 
         _options = options ?? new DetOptions();
-        _net = CvDnn.ReadNetFromOnnx(modelPath);
+        _net = Cv2.Dnn.ReadNetFromONNX(modelPath);
         _net.SetPreferableBackend(backend);
         _net.SetPreferableTarget(target);
     }
@@ -93,7 +93,7 @@ public sealed class OnnxDetector : IOcrDetector
         int w = rgb.Width, h = rgb.Height;
 
         // BlobFromImage: scale = 1/255, mean = (0.485, 0.456, 0.406), swapRB = false（已是 RGB）
-        var blob = CvDnn.BlobFromImage(rgb, 1.0 / 255.0,
+        var blob = Cv2.Dnn.BlobFromImage(rgb, 1.0 / 255.0,
             new Size(w, h),
             new Scalar(DetMean[0], DetMean[1], DetMean[2]),
             swapRB: false, crop: false);
@@ -244,7 +244,7 @@ public sealed class OnnxRecognizer : IOcrRecognizer
             throw new FileNotFoundException($"Charset file not found: {charsetPath}");
 
         _options = options ?? new RecOptions();
-        _net = CvDnn.ReadNetFromOnnx(modelPath);
+        _net = Cv2.Dnn.ReadNetFromONNX(modelPath);
         _net.SetPreferableBackend(backend);
         _net.SetPreferableTarget(target);
         _charset = LoadCharset(charsetPath);
@@ -296,7 +296,7 @@ public sealed class OnnxRecognizer : IOcrRecognizer
     /// </summary>
     private static Mat CreateRecBlob(Mat rgb)
     {
-        return CvDnn.BlobFromImage(rgb,
+        return Cv2.Dnn.BlobFromImage(rgb,
             1.0 / 127.5,
             new Size(rgb.Width, rgb.Height),
             new Scalar(1.0, 1.0, 1.0),

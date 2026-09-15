@@ -20,7 +20,7 @@
 0x06   2    flags           §2.1
 0x08   1    max_slots       全程序最大帧槽（= max(funcs.nslots)，宿主预分配帧区依据）
 0x09   1    max_depth       静态调用图最长链（含 <main>；宿主预分配深度）
-0x0A   2    保留 = 0
+0x0A   2    feats           特征需求掩码（EcsImageFeatures：IL/CAPTURE/FFI/FILE/VISION；IL 亦由 flags.I 投影；VISION=0x10，C 参考桩不提供 → 加载期拒跑）
 0x0C   4×6  const_count / struct_count / global_count / native_count / func_count / debug_count
 0x24   ...  常量池 → 类型表 → 全局表 → 原生名表 → 函数表 → 代码区 → 调试区（可选）→ entry:u32（收尾 4 字节）
 ```
@@ -34,7 +34,7 @@
 | 0 | D | 调试区存在（函数名表） |
 | 1 | K | KeyAction——程序含按键指令，宿主须创建手柄 |
 | 2 | I | NeedIL——程序引用图像标签；无 IL 能力的平台加载即拒（`ECS_ERR_IL`） |
-| 3–15 | 保留 | 必须 0 |
+
 
 ### 2.2 各表条目
 
@@ -49,7 +49,8 @@
         加载器按声明序计算 slot_offset 与总 nslots（嵌套递归展开，环 → ECS_ERR_IMAGE）。
 
 全局表: name:utf8 module_idx:u8 type:u8        名字仅调试用，运行期按索引访问
-原生名表: name:utf8                            CallN 的 ext = 本表索引；EXTERN FFI 为 "库!导出名"
+原生名表: name:utf8                            仅 L3：采集洞 "__xxx__" / EXTERN FFI "库!导出名" / ENCODE / JQ
+                                              （L2 文件族/平台 syscall 编号直传 CallN ext，bit31=1，不进本表）
 
 函数表: 11 字节定长 ×N —— nparams:u8 nslots:u8 attrs:u8(bit0=hasret) code_off:u32 code_words:u32
         code_off 单位=指令字、相对代码区起始；函数索引 = 表序 = Call ext。
@@ -57,7 +58,7 @@
 
 ### 2.3 加载校验清单（全部通过才可运行，任一失败 → `ECS_ERR_IMAGE`）
 
-magic/版本 → 保留位=0 → 各节计数与剩余长度一致（末尾恰剩 entry 4 字节）→ entry < func_count →
+magic/版本 → 特征校验（feats & FEAT_IL → ECS_ERR_IL；feats & ~host->feats → ECS_ERR_FEAT）→ 各节计数与剩余长度一致（末尾恰剩 entry 4 字节）→ entry < func_count →
 每个 FuncDef：nslots ≤ max_slots、code_off+code_words ≤ 代码区总字数 → 指令流静态抽查
 （操作码合法、槽位 <255、Jmp 目标在本函数内、Call ext < func_count、CallN ext < native_count、
 LoadK Bx < const_count）→ 类型表嵌套展开无环。校验宁可严格：格式是编译器产物而非手写体。

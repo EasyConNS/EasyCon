@@ -1,5 +1,5 @@
-using EasyCon.Capture;
-using EzCv;
+﻿using EasyCon.Capture;
+using OpenCvSharp;
 using System.Drawing;
 using System.Runtime.Versioning;
 

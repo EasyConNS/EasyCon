@@ -3,6 +3,7 @@ using EasyCon.Script;
 using EasyCon.Script.Binding;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Syntax;
+using EasyCon.Tests.Support;
 using EasyScript;
 
 namespace EasyCon.Tests;
@@ -29,7 +30,7 @@ public class SsaConstructionTests
         var result = Compilation.CompileSource(code, new CompileOptions { UseDiskCache = false });
         if (result.Image == null)
             return (result, output);
-        EcxVm.Run(result.Image!, output, null, null, null, () => 0, null, null, null,
+        EcxVm.Run(result.Image!, EcsTestHost.Capabilities(output),
             new CancellationTokenSource().Token, [], result.NativeSymbols);
         return (result, output);
     }

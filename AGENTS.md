@@ -2,9 +2,9 @@
 
 ## Project overview
 
-EasyCon is a Nintendo Switch automation tool with virtual controller, image recognition (OpenCV + custom EzCv), and a custom ECS scripting language. .NET 10.0, C# (LangVersion=preview).
+EasyCon is a Nintendo Switch automation tool with virtual controller, image recognition (OpenCV via OpenCvSharp5), and a custom ECS scripting language. .NET 10.0, C# (LangVersion=preview).
 
-**Entry points**: `src/EasyCon2.Avalonia` (GUI), `src/EasyCon2.CLI` (CLI), `src/EasyCon2` (legacy WPF, deprecated).
+**Entry points**: `src/EasyCon2.Avalonia` (GUI), `src/EasyCon2.CLI` (CLI).
 
 ## Build & test commands
 
@@ -39,12 +39,11 @@ ci\windows-x64.bat
 
 | Directory | Role |
 |---|---|
-| `src/EasyCon.Core` | Core abstractions, interfaces, models |
+| `src/EasyCon.Core` | Core abstractions; capability model (`Capabilities/`: CapabilitySet + IPadInput/IConsoleIo/IFileSystem/ICaptureSource/IVisionService/IOcrService/IInference); script engine surface (`Script/`: IScriptEngine/IScriptSession) |
 | `src/EasyCon.Device` | Hardware device communication (serial) |
 | `src/EasyCon.Capture` | Screen/image capture |
 | `src/EasyCon.Script` | ECS script parser, compiler, runtime |
 | `src/EasyCon.Vm` | Native C VM (ecs-vm, C99) executing .ecx bytecode on MCU |
-| `src/EzCv` | Custom OpenCV wrapper (Zig native interop) |
 | `src/EzTesseract` | OCR (Tesseract wrapper) |
 | `src/EasyCon.Lsp` | LSP language server for ECS scripts |
 | `src/EasyCon.Server` | HTTP/WebSocket server for remote control |
@@ -97,13 +96,14 @@ The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict
 - Dev branch: Debug build + test only
 - PR format commits use `[skip ci]` to avoid recursive triggers
 
-## Native code (EzCv)
+## Native code (OpenCV)
 
-`src/EzCv` uses Zig for native OpenCV interop. Build artifacts live in `.zig-cache/` and `src/EzCv/native/out_*/`. Changes to Zig source require a Zig toolchain to rebuild native binaries. Prebuilt binaries may be expected for normal .NET workflows.
+OpenCV bindings come from the `OpenCvSharp5` NuGet packages (OpenCV 5.0); native binaries ship via `OpenCvSharp5.runtime.*` packages referenced by `src/EasyCon.Capture` (and `tools/OpenCvDnnDemo`).
 
 ## Documentation
 
 - `docs/Script.md` — ECS scripting language reference
+- `docs/Functions.md` — script function handbook (script-author-facing, CN)
 - `docs/Framework.md` — system architecture
 - `docs/VM1.md` / `docs/VM2.md` — virtual machine instruction sets
 - `docs/GETTING_STARTED.md` — user setup guide

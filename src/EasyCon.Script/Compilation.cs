@@ -99,7 +99,7 @@ public sealed class CompileOptions
     /// </summary>
     public string ProductFingerprint()
     {
-        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}";
+        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}";
     }
 }
 

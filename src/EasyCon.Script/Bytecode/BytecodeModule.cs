@@ -151,6 +151,11 @@ public sealed class EcxImage
     public bool KeyAction;
     /// <summary>程序引用图像标签——对齐 CompileResult.NeedIL。</summary>
     public bool NeedIL;
+    /// <summary>
+    /// 特征需求掩码（EcsImageFeatures：CAPTURE/FFI/FILE；IL 由 NeedIL 投影，写入头部保留位
+    /// u16 @0x0A）。加载规则：host 掩码缺位 → 拒跑（IL → ECS_ERR_IL，其余 → ECS_ERR_FEAT）。
+    /// </summary>
+    public uint Features;
     /// <summary>全程序最大帧槽数（max(funcs.nslots)，静态预分配帧区用，EcmEcxFormat §2.1）。</summary>
     public int MaxSlots;
     /// <summary>静态调用图最长链（递归按 1 计；运行期上限另由 ECS_MAX_CALL_DEPTH 约束）。</summary>

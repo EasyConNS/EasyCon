@@ -46,6 +46,8 @@ public abstract class EcxNativeContext
 public sealed class EcxHost
 {
     public EcsCaps Caps { get; set; } = EcsCaps.AllDesktop;
+    /// <summary>S-14 行断协议状态（FWRITE/ALERT 尾部 '\' 挂起下一行换行；宿主所有）。</summary>
+    public bool PendingBreak;
     public readonly List<string> WaitLog = new();
     public readonly List<string> KeyLog = new();
     public readonly List<string> KeyStateLog = new();
@@ -71,12 +73,101 @@ public sealed class EcxHost
     public Action<string> Alert { get; set; } = _ => { };
     public Func<string> ReadLine { get; set; } = () => "";
     /// <summary>
-    /// 扩展原生（ENCODE/JQ/文件 IO/采集卡洞/FFI）；null 或返回 null = 未实现。
+    /// 扩展原生（ENCODE/JQ/采集卡洞/FFI）；null 或返回 null = 未实现。
     /// 字符串实参/返回值经 <see cref="EcxNativeContext"/> 解引用/分配——镜像句柄离开解释器堆无意义。
     /// </summary>
     public Func<string, TaggedValue[], EcxNativeContext, TaggedValue?>? Native { get; set; }
+    /// <summary>
+    /// L2 平台 syscall 处理器（编号语义，docs/VM2.md §9.1）；缺省为桌面参考实现
+    /// <see cref="ReferenceSyscall"/>（行断协议 + Caps 门控 + 文件族转发 Native）。返回 null = 未实现。
+    /// </summary>
+    public Func<int, TaggedValue[], EcxNativeContext, TaggedValue?>? Syscall { get; set; }
     public string[] Args { get; set; } = [];
     public string AppDir { get; set; } = "";
+
+    public EcxHost()
+    {
+        Syscall = ReferenceSyscall;   // 桌面参考实现；专用宿主可整体替换
+    }
+
+    /// <summary>
+    /// L2 平台 syscall 桌面参考实现（编号语义的唯一 C# 权威，与 C harness 桩逐字对齐；
+    /// 由 VM 核 <c>CallNative/CallSyscall</c> 平移而来）：
+    /// FWRITE/FREAD 行断协议 + Caps 门控；文件实现转发 <see cref="Native"/>（规范名，BuiltinMap）。
+    /// 返回 null = 未实现（调用方报 ERR_NOSUCHNATIVE）。
+    /// </summary>
+    private TaggedValue? ReferenceSyscall(int id, TaggedValue[] args, EcxNativeContext ctx)
+    {
+        switch (id)
+        {
+            case EcsSyscall.FWrite:
+                return FWriteReference(args[0].I64, args, ctx);
+            case EcsSyscall.FRead:
+                if (args[0].I64 == 0)
+                    return Caps.HasFlag(EcsCaps.Stdin) ? ctx.Str(ReadLine()) : ctx.Str("");
+                return Caps.HasFlag(EcsCaps.File)
+                    ? Native?.Invoke(EcsSyscall.Names[id], args, ctx)
+                    : ctx.Str("");
+            case EcsSyscall.Alert:
+                if (Caps.HasFlag(EcsCaps.Alert))
+                {
+                    // 行断协议对齐（与 FWRITE stdout / 金标准 ImplAlert 一致）：剥尾 `\` 续行
+                    var alert = ctx.Str(args[0]);
+                    Alert(alert.EndsWith('\\') ? alert[..^1] : alert);
+                }
+                return TaggedValue.Void;   // 无 Alert 能力：静默忽略
+            case EcsSyscall.Arg:
+                {
+                    var i = args[0].I32;
+                    return ctx.Str(i >= 0 && i < Args.Length ? Args[i] : "");
+                }
+            case EcsSyscall.Env:
+                return ctx.Str(Environment.GetEnvironmentVariable(ctx.Str(args[0])) ?? "");
+            case EcsSyscall.App:
+                return ctx.Str(AppDir);
+            case EcsSyscall.Time:
+                return TaggedValue.FromInt(TimeMs());
+            case EcsSyscall.OcrConf:
+                return Native?.Invoke(EcsSyscall.Names[id], args, ctx) ?? TaggedValue.FromInt(0);
+            case EcsSyscall.Beep:
+                if (Caps.HasFlag(EcsCaps.Beep))
+                    Beep(args[0].I32, args[1].I32);
+                return TaggedValue.Void;   // 无 Beep 能力：静默忽略
+            case EcsSyscall.Amiibo:
+                if (args[0].I32 <= 9)   // S-13：n>9 静默忽略
+                    Amiibo(args[0].I32);
+                return TaggedValue.Void;
+            default:
+                return null;   // 未知编号 → ERR_NOSUCHNATIVE
+        }
+    }
+
+    /// <summary>FWRITE：句柄 1=stdout 行断协议；0=no-op 返 len；2=print(newline)；>2=文件族转发。</summary>
+    private TaggedValue? FWriteReference(long handle, TaggedValue[] args, EcxNativeContext ctx)
+    {
+        var s = ctx.Str(args[1]);
+        if (handle == 1)
+        {
+            if (Caps.HasFlag(EcsCaps.Print))
+            {
+                var output = s.EndsWith('\\') ? s[..^1] : s;
+                Print(output, !PendingBreak);
+                PendingBreak = s.EndsWith('\\');
+            }
+            return TaggedValue.FromInt(s.Length);
+        }
+        if (handle == 0)
+            return TaggedValue.FromInt(s.Length);
+        if (handle == 2)
+        {
+            if (Caps.HasFlag(EcsCaps.Print))
+                Print(s, true);
+            return TaggedValue.FromInt(s.Length);
+        }
+        return Caps.HasFlag(EcsCaps.File)
+            ? Native?.Invoke(EcsSyscall.Names[EcsSyscall.FWrite], args, ctx)
+            : TaggedValue.FromInt(-1);
+    }
 
     /// <summary>开启事件与输出记录（默认委托 → *Log 列表，格式与金标准 mock 一致）。</summary>
     public void EnableRecording()
@@ -138,9 +229,11 @@ public sealed class EcxInterpreter
     readonly List<int> _refCounts = new();     // 与 _heap 平行：槽位对象引用计数（ecs_vm.c §4.2 rc / VM2.md §8.4）
     readonly List<int> _freeSlots = new();     // 已释放下标自由链（复用；句柄 = 列表下标，恒不移除/移动元素）
     readonly List<Frame> _frames = new();
+    readonly List<Frame> _framePool = new();    // 弹帧回收池：Slots 容量只增，出租时 Array.Clear 复位
     readonly TaggedValue[] _globals;
     readonly EcxNativeContext _nativeCtx;
-    bool _pendingBreak;                         // FWRITE 行断协议状态（S-14）
+    TaggedValue[]? _internedStrings;            // 常量池串驻留（下标对齐 Consts；缓存持常驻引用）
+    CancellationToken _token;                   // 当前 Run 的取消令牌（Step 装载）
     int _steps;
     int _budget = 1_000_000;
 
@@ -355,13 +448,15 @@ public sealed class EcxInterpreter
         items[idx] = v;
     }
 
-    /// <summary>弹帧并释放被弹帧槽位持有的全部句柄（Ret/Ret0，对齐 ecs_vm.c 帧退出语义）。</summary>
+    /// <summary>弹帧并释放被弹帧槽位持有的全部句柄（Ret/Ret0，对齐 ecs_vm.c 帧退出语义）；
+    /// 帧体回收进池（出租时复位）。</summary>
     void PopFrame(Frame frame)
     {
         _frames.RemoveAt(_frames.Count - 1);
         var slots = frame.Slots;
         for (int i = 0; i < slots.Length; i++)
             Release(slots[i]);
+        _framePool.Add(frame);
     }
 
     /// <summary>S-01 深拷贝：数组/结构体一层新容器（出生引用，子项 retain）；字符串共享（retain 补接收槽引用）。
@@ -469,20 +564,62 @@ public sealed class EcxInterpreter
 
     // ---- 主循环 ----
 
+    /// <summary>帧出租：池空新建；复用时槽位 Array.Clear 复位为 Void（StoreFresh「无旧值」直写契约），
+    /// 容量不足则扩容（容量只增不缩，递归峰值即池上限——池随弹帧回收，天然 ≤ 峰值深度）。</summary>
+    Frame RentFrame(int nslots)
+    {
+        if (_framePool.Count > 0)
+        {
+            var f = _framePool[^1];
+            _framePool.RemoveAt(_framePool.Count - 1);
+            if (f.Slots.Length < nslots)
+                f.Slots = new TaggedValue[nslots];
+            else
+                Array.Clear(f.Slots);
+            return f;
+        }
+        return new Frame { Slots = new TaggedValue[nslots] };
+    }
+
+    /// <summary>常量池串驻留：同一串常量全镜像生命周期仅分配一次堆串（缓存自身持引用，句柄永不归零）。
+    /// 返回值为缓存借用，接收槽经 <see cref="MoveToSlot"/> retain 补引用——可观察语义不变：
+    /// 串不可变、EqS 按内容比较（EcxInterpreter.cs EqS case）。</summary>
+    TaggedValue InternedString(int kx)
+    {
+        var cache = _internedStrings ??= new TaggedValue[_image.Consts.Count];
+        var v = cache[kx];
+        if (v.Tag == EcsTag.String)
+            return v;
+        v = NewString(_image.Consts[kx].Str ?? "");
+        _refCounts[v.Handle]++;   // 缓存常驻引用（Store 的出生引用归缓存）
+        cache[kx] = v;
+        return v;
+    }
+
     int Step(CancellationToken token)
     {
+        _token = token;
         if (_frames.Count == 0)
         {
-            _frames.Add(new Frame { Fn = _image.Functions[_image.Entry], Slots = new TaggedValue[_image.Functions[_image.Entry].NSlots] });
+            var fn = _image.Functions[_image.Entry];
+            var f = RentFrame(fn.NSlots);
+            f.Fn = fn;
+            f.Pc = 0;
+            f.RetSlot = -1;
+            _frames.Add(f);
         }
+        if (_token.IsCancellationRequested)
+            return CANCELLED;
 
         while (true)
         {
-            if (token.IsCancellationRequested)
-                return CANCELLED;
+            // 取消检查合并：每指令只做预算计数（1 分支）；token 在入口、预算边界与宿主调用后检查
+            // （纯计算最坏 1M 步 ≈ 十几毫秒感知；等待/按键型脚本在宿主调用返回后立即感知）
             if (++_steps >= _budget)
             {
                 _steps = 0;
+                if (_token.IsCancellationRequested)
+                    return CANCELLED;
                 return YIELD;
             }
 
@@ -512,16 +649,19 @@ public sealed class EcxInterpreter
                         break;
                     case EcsOpcode.LoadK:
                         {
-                            var k = _image.Consts[b | (c << 8)];
-                            StoreFresh(ref R[a], k.Tag switch
-                            {
-                                EcsTag.String => NewString(k.Str ?? ""),
-                                EcsTag.Double => TaggedValue.FromDouble(k.Float64),
-                                EcsTag.UInt64 => TaggedValue.FromUInt64(unchecked((ulong)k.Int64)),
-                                EcsTag.Ptr => TaggedValue.FromPtr(k.Int64),
-                                EcsTag.UInt => TaggedValue.FromUInt(unchecked((uint)k.Int64)),
-                                _ => TaggedValue.FromInt((int)k.Int64),
-                            });
+                            var kx = b | (c << 8);
+                            var k = _image.Consts[kx];
+                            if (k.Tag == EcsTag.String)
+                                MoveToSlot(ref R[a], InternedString(kx));   // 驻留串：借用 + retain，槽旧值照常释放
+                            else
+                                StoreFresh(ref R[a], k.Tag switch
+                                {
+                                    EcsTag.Double => TaggedValue.FromDouble(k.Float64),
+                                    EcsTag.UInt64 => TaggedValue.FromUInt64(unchecked((ulong)k.Int64)),
+                                    EcsTag.Ptr => TaggedValue.FromPtr(k.Int64),
+                                    EcsTag.UInt => TaggedValue.FromUInt(unchecked((uint)k.Int64)),
+                                    _ => TaggedValue.FromInt((int)k.Int64),
+                                });
                             break;
                         }
                     case EcsOpcode.LoadBool:
@@ -560,19 +700,40 @@ public sealed class EcxInterpreter
                         {
                             uint target = ext;
                             var callee = _image.Functions[(int)target];
-                            var nf = new Frame { Fn = callee, Slots = new TaggedValue[callee.NSlots], RetSlot = c == 255 ? -1 : c, Pc = 0 };   // C=255：无接收槽（结果未使用的调用）
+                            var nf = RentFrame(callee.NSlots);
+                            nf.Fn = callee;
+                            nf.RetSlot = c == 255 ? -1 : c;   // C=255：无接收槽（结果未使用的调用）
+                            nf.Pc = 0;
                             for (int i = 0; i < b; i++)
-                                StoreFresh(ref nf.Slots[i], DeepCopyCopyOnWrite(R[a + i]));   // S-17 实参（COW：唯一引用移交；新帧槽无旧值，StoreFresh 恒等价）
+                                StoreFresh(ref nf.Slots[i], DeepCopyCopyOnWrite(R[a + i]));   // S-17 实参（COW：唯一引用移交；池出租槽已清零，StoreFresh 恒等价）
                             _frames.Add(nf);
                             break;
                         }
                     case EcsOpcode.CallN:
                         {
-                            uint nid = ext;
-                            var name = _image.Natives[(int)nid].Name;
-                            var ret = CallNative(name, R, a, b);
+                            uint target = ext;
+                            var args = new TaggedValue[b];   // 实参按值快照：原生看不见帧槽
+                            for (int i = 0; i < b; i++)
+                                args[i] = R[a + i];
+                            TaggedValue ret;
+                            if ((target & EcsSyscall.CallFlag) != 0)
+                            {
+                                // L2：编号 syscall，语义在宿主参考实现（VM 核纯调度）
+                                var handler = _host.Syscall;
+                                ret = handler is { } h && h((int)(target & 0x7FFFFFFFu), args, _nativeCtx) is { } v
+                                    ? v
+                                    : throw new SimError(ERR_NOSUCHNATIVE, $"syscall 未实现: 编号 {target & 0x7FFFFFFFu}");
+                            }
+                            else
+                            {
+                                if (target >= (uint)_image.Natives.Count)
+                                    throw new SimError(ERR_NOSUCHNATIVE, $"原生索引越界 {target}");
+                                ret = HostNative(_image.Natives[(int)target].Name, args);   // L3 名表路径：FFI/采集洞/ENCODE/JQ
+                            }
                             if (c != 255)
                                 StoreFresh(ref R[c], ret);   // C=255：无接收槽；原生返回值恒为新建对象/标量（EcxNativeContext 契约），出生引用即接收槽引用
+                            if (_token.IsCancellationRequested)
+                                return CANCELLED;   // 宿主调用后即时取消（原生内含 PRINT/READ/WAIT 类长延迟）
                             break;
                         }
                     case EcsOpcode.Ret:
@@ -601,7 +762,8 @@ public sealed class EcxInterpreter
                         break;
 
                     default:
-                        ExecOther(op, ins, ext, R);
+                        if (ExecOther(op, ins, ext, R))
+                            return CANCELLED;
                         break;
                 }
             }
@@ -614,8 +776,9 @@ public sealed class EcxInterpreter
         }
     }
 
-    /// <summary>非控制流/非调用的算术与数据指令。</summary>
-    void ExecOther(EcsOpcode op, uint ins, uint ext, TaggedValue[] R)
+    /// <summary>非控制流/非调用的算术与数据指令。返回 true = 本指令调用了宿主且取消已请求，
+    /// 调用方立即终止（等待/按键类长延迟宿主调用的取消感知点）。</summary>
+    bool ExecOther(EcsOpcode op, uint ins, uint ext, TaggedValue[] R)
     {
         int a = (int)((ins >> 8) & 0xFF);
         int b = (int)((ins >> 16) & 0xFF);
@@ -858,48 +1021,43 @@ public sealed class EcxInterpreter
                     break;
                 }
 
-            // ---- 域操作 ----
-            case EcsOpcode.WaitI: _host.WaitMs(b | (c << 8)); break;
-            case EcsOpcode.WaitV: _host.WaitMs(R[a].I32); break;
-            case EcsOpcode.KeyI: _host.Key(a, b | (c << 8)); break;
-            case EcsOpcode.KeyV: _host.Key(a, R[b].I32); break;
-            case EcsOpcode.KeySt: _host.KeyState(a, b); break;
-            case EcsOpcode.StickSet: _host.StickSet(a, b, c); break;
+            // ---- 域操作（宿主调用：返回取消状态，取消感知点）----
+            case EcsOpcode.WaitI: _host.WaitMs(b | (c << 8)); return _token.IsCancellationRequested;
+            case EcsOpcode.WaitV: _host.WaitMs(R[a].I32); return _token.IsCancellationRequested;
+            case EcsOpcode.KeyI: _host.Key(a, b | (c << 8)); return _token.IsCancellationRequested;
+            case EcsOpcode.KeyV: _host.Key(a, R[b].I32); return _token.IsCancellationRequested;
+            case EcsOpcode.KeySt: _host.KeyState(a, b); return _token.IsCancellationRequested;
+            case EcsOpcode.StickSet: _host.StickSet(a, b, c); return _token.IsCancellationRequested;
             case EcsOpcode.StickP:
                 {
                     _host.StickClick(a, b, c, unchecked((int)ext));
-                    break;
+                    return _token.IsCancellationRequested;
                 }
             case EcsOpcode.StickPv:
                 {
                     _host.StickClick(a, (int)(ext & 0xFF), (int)((ext >> 16) & 0xFF), R[c].I32);
-                    break;
+                    return _token.IsCancellationRequested;
                 }
             case EcsOpcode.Img:   // ABx：标签名 = 常量池[Bx]（EcsOpcode.cs 注释为权威）
                 {
                     var name = _image.Consts[b | (c << 8)].Str ?? "";
                     StoreFresh(ref R[a], TaggedValue.FromInt(_host.ImgLabel(name)));
-                    break;
+                    return _token.IsCancellationRequested;
                 }
             case EcsOpcode.Rand:
                 {
                     var max = R[b].I32;
                     if (max < 0) throw new SimError(ERR_INDEX, "RAND 参数为负");
                     StoreFresh(ref R[a], TaggedValue.FromInt(max == 0 ? 0 : _host.Rand(max)));
-                    break;
+                    return _token.IsCancellationRequested;
                 }
-            case EcsOpcode.Time: StoreFresh(ref R[a], TaggedValue.FromInt(_host.TimeMs())); break;
-            case EcsOpcode.Beep: _host.Beep(R[a].I32, R[b].I32); break;
-            case EcsOpcode.Amiibo:
-                if (R[a].I32 <= 9)
-                    _host.Amiibo(R[a].I32);
-                break;
 
             case EcsOpcode.Halt:
                 throw new SimError(OK, "halt");
             default:
                 throw new SimError(4, $"未实现操作码 {op}");
         }
+        return false;
     }
 
     void ZeroFill(EcsStructLayout layout, TaggedValue[] slots)
@@ -1062,6 +1220,8 @@ public sealed class EcxInterpreter
                     return TaggedValue.FromInt(v.I32);
                 if (v.Tag == EcsTag.Double)
                     return TaggedValue.FromInt(SaturateD2I(v.F64));
+                if (v.Tag == EcsTag.String)
+                    return TaggedValue.FromInt(EcsConvText.ParseIntLiteral(StrOrNull(v.Handle)));   // PC 端：数字字符串解析，失败 0
                 throw new SimError(ERR_TYPE, "无法转换为 int");
             default:
                 throw new SimError(ERR_TYPE, $"未知转换 {kind}");
@@ -1112,77 +1272,6 @@ public sealed class EcxInterpreter
         if (x.Tag == EcsTag.Double)
             return x.F64 == y.F64;
         return x.I64 == y.I64;
-    }
-
-    TaggedValue CallNative(string name, TaggedValue[] R, int argBase, int nargs)
-    {
-        var args = new TaggedValue[nargs];
-        for (int i = 0; i < nargs; i++)
-            args[i] = R[argBase + i];
-
-        switch (name)
-        {
-            case "FWRITE":
-                {
-                    // 能力缺失（单片机）：静默忽略输出，仍返回长度；文件句柄无 File 能力 → -1
-                    var handle = args[0].I64;
-                    var s = StrOrNull(args[1].Handle) ?? "";
-                    if (handle == 1)
-                    {
-                        if (_host.Caps.HasFlag(EcsCaps.Print))
-                        {
-                            var output = s.EndsWith('\\') ? s[..^1] : s;
-                            _host.Print(output, !_pendingBreak);
-                            _pendingBreak = s.EndsWith('\\');
-                        }
-                        return TaggedValue.FromInt(s.Length);
-                    }
-                    if (handle == 0)
-                        return TaggedValue.FromInt(s.Length);
-                    if (handle == 2)
-                    {
-                        if (_host.Caps.HasFlag(EcsCaps.Print))
-                            _host.Print(s, true);
-                        return TaggedValue.FromInt(s.Length);
-                    }
-                    return _host.Caps.HasFlag(EcsCaps.File)
-                        ? HostNative(name, args)
-                        : TaggedValue.FromInt(-1);
-                }
-            case "FREAD":
-                if (args[0].I64 == 0)
-                    return _host.Caps.HasFlag(EcsCaps.Stdin) ? NewString(_host.ReadLine()) : NewString("");
-                return HostNative(name, args);
-            case "ALERT":
-                if (_host.Caps.HasFlag(EcsCaps.Alert))
-                {
-                    // 行断协议对齐（与 FWRITE stdout / 金标准 ImplAlert 一致）：剥尾 `\` 续行
-                    var alert = StrOrNull(args[0].Handle) ?? "";
-                    _host.Alert(alert.EndsWith('\\') ? alert[..^1] : alert);
-                }
-                return default;   // 无 Alert 能力：静默忽略
-            case "ARG":
-                {
-                    var i = args[0].I32;
-                    return NewString(i >= 0 && i < _host.Args.Length ? _host.Args[i] : "");
-                }
-            case "ENV":
-                return NewString(Environment.GetEnvironmentVariable(StrOrNull(args[0].Handle) ?? "") ?? "");
-            case "APP":
-                return NewString(_host.AppDir);
-            case "OCR_CONF":
-                return HostNative(name, args) is { } v ? v : TaggedValue.FromInt(0);
-            case "AMIIBO":
-                if (args[0].I32 <= 9)
-                    _host.Amiibo(args[0].I32);
-                return default;
-            case "BEEP":
-                if (_host.Caps.HasFlag(EcsCaps.Beep))
-                    _host.Beep(args[0].I32, args[1].I32);
-                return default;   // 无 Beep 能力：静默忽略
-            default:
-                return HostNative(name, args);
-        }
     }
 
     TaggedValue HostNative(string name, TaggedValue[] args)

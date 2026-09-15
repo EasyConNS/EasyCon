@@ -8,8 +8,8 @@ static class Formatter
     // 运行时常量：求值阶段通过 getter 获取
     internal static readonly Dictionary<string, ScriptType> SpecialConsts = new()
     {
-        ["__TIME__"] = ScriptType.Int,
-        ["__APP__"] = ScriptType.String,
+        [RuntimeValues.Time] = ScriptType.Int,
+        [RuntimeValues.App] = ScriptType.String,
     };
 
     // 编译期常量：解析阶段直接折叠为字面量

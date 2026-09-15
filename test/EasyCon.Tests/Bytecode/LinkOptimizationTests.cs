@@ -1,13 +1,16 @@
 using EasyCon.Script;
 using EasyCon.Script.Bytecode;
 using EasyCon.Script.Modules;
+using EasyCon.Tests.Support;
 
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
 /// 链接期优化回归（EcmEcxFormat §6.1-3 方向的落地）：
 /// 1. &lt;main&gt; 壳消除——init 调用序列前插 $eval 本体，入口函数命名 &lt;main&gt;（$eval 为 v1 占位名）；
-/// 2. 死函数消除——自入口 BFS 调用图，stdlib/vision 未调用函数体不进镜像（fid 重映射）。
+/// 2. 死函数消除——自入口 BFS 调用图，stdlib/vision 未调用函数体不进镜像（fid 重映射）；
+/// 3. 死存储清扫——SSA φ 降级/变量落槽的边副本与无人读取的常量物化不进镜像（防线 1 编码期
+///    死 φ 免槽位 + 防线 3 反向活跃性清扫，见 DeadStoreSweep）。
 /// 不变量：每镜像函数均自入口可达；入口返回值（顶层 RETURN）与 init 先于 main 的次序不变。
 /// </summary>
 [TestFixture]
@@ -177,19 +180,40 @@ public class LinkOptimizationTests
     [Test]
     public void DeadNativesAndConsts_StrippedFromTables()
     {
-        // 仅 PRINT（→ FWRITE 原生）：采集洞/OCR 系原生名与死常量不进镜像表
+        // L2 全集编号化：PRINT/ALERT/ARG 全走 syscall 编号，原生名表为空；
+        // 采集洞/FFI（未引用）不进表。语义经 EcxHost 参考处理器不变。
         File.WriteAllText(Path.Combine(_dir, "main.ecs"),
-            "$s = \"hi\" & 1\nPRINT $s\n");
+            "ALERT(\"boot\")\n$r = ARG(0)\nPRINT $r\n");
 
         var result = Compilation.CompileFile(Path.Combine(_dir, "main.ecs"));
         Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
             string.Join("\n", result.Diagnostics));
         var image = result.Image!;
 
-        var nativeNames = image.Natives.Select(n => n.Name).ToList();
-        foreach (var dead in new[] { "__OCR__", "__OCR_INIT__", "__ROI__", "APP" })
-            Assert.That(nativeNames, Does.Not.Contain(dead), $"未引用原生名 {dead} 应被消除");
-        Assert.That(nativeNames, Does.Contain("FWRITE"), "在用原生名保留");
+        // 名表只承载 L3（采集洞 "__xxx__" / FFI "库!导出名" / ENCODE / JQ）——本脚本全不引用
+        Assert.That(image.Natives, Is.Empty, "L2 全集编号化后，纯内建脚本名表应为空");
+        Assert.That(image.Features & EcsImageFeatures.File, Is.Not.Zero, "文件族 syscall → FILE");
+        Assert.That(image.Features & (EcsImageFeatures.Ffi | EcsImageFeatures.Capture | EcsImageFeatures.Il),
+            Is.Zero, "无 FFI/采集洞/IL 需求");
+
+        // syscall 编号调用在镜像中直传旗标：FWRITE=1 / ALERT=10 / ARG=11
+        var seen = new HashSet<int>();
+        foreach (var f in image.Functions)
+        {
+            for (int w = 0; w < f.Code.Count; w++)
+            {
+                if ((EcsOpcode)(f.Code[w] & 0xFF) != EcsOpcode.CallN)
+                    continue;
+                if (w + 1 >= f.Code.Count)
+                    break;
+                uint ext = f.Code[w + 1];
+                if ((ext & EcsSyscall.CallFlag) != 0)
+                    seen.Add((int)(ext & 0x7FFFFFFFu));
+                w++;
+            }
+        }
+        Assert.That(seen, Is.SupersetOf(new[] { EcsSyscall.FWrite, EcsSyscall.Alert, EcsSyscall.Arg }),
+            "PRINT/ALERT/ARG 应发对应编号的 syscall CallN");
 
         // 常量池不大于被引用数（每条至少被一处 LoadK/Img 引用）
         int refs = 0;
@@ -201,8 +225,9 @@ public class LinkOptimizationTests
             "常量池每条都应被至少一处引用（死常量已消除）");
 
         var host = RecordedHost();
+        host.Args = new[] { "x" };
         Assert.That(EcxInterpreter.Run(image, host), Is.EqualTo(0));
-        Assert.That(host.Lines, Is.EqualTo(new[] { "hi1" }));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "x" }), "syscall 与名表原生混用语义不变");
     }
 
     [Test]
@@ -224,5 +249,39 @@ public class LinkOptimizationTests
         host.ImgLabel = name => name == "enemy" ? 3 : -1;
         Assert.That(EcxInterpreter.Run(image, host), Is.EqualTo(0));
         Assert.That(host.Lines, Is.EqualTo(new[] { "seen", "end" }), "Img 常量重映射后标签解析正确");
+    }
+
+    [Test]
+    public void DeadStore_Guangshu_NoDeadHomes_NoDeadPhiSlots()
+    {
+        // 防线 1 + 防线 3 以真实例程锁定（docs/Pipeline.md）：
+        // 出口边死 φ 免槽位分配；FOR 迭代变量 home（SetVar）与死 φ 边副本被反向活跃性清扫
+        var path = CorpusAssert.ExamplePath("光速过帧v1.4精准版.txt");
+        if (path.Length == 0)
+            Assert.Ignore("例程文件不存在");
+        var result = Compilation.CompileFile(path, new CompileOptions { UseDiskCache = false });
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
+            string.Join("\n", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
+        var image = result.Image!;
+        var main = image.Functions.Single(f => f.Name == "<main>");
+
+        Assert.That(image.MaxSlots, Is.LessThanOrEqualTo(19), "死 φ 槽应免分配（22 基线 − 3 出口边死 φ）");
+
+        int setVar = 0, move = 0;
+        for (int w = 0; w < main.Code.Count;)
+        {
+            var op = (EcsOpcode)(main.Code[w] & 0xFF);
+            if (op == EcsOpcode.SetVar) setVar++;
+            if (op == EcsOpcode.Move) move++;
+            w += EcsFormat.WordCount(op);
+        }
+        Assert.That(setVar, Is.EqualTo(0), "FOR 迭代变量 home 槽全函数无读取者，SetVar 应被清扫");
+        Assert.That(move, Is.LessThanOrEqualTo(15), "出口边死副本与无人读取的落槽应被清扫（编码期 23 条基线）");
+
+        Assert.That(EcxWriter.Write(image).Length, Is.LessThan(600), "死存储清除后镜像应 < 600B（清扫前 604B）");
+
+        // 语义不变由 FullChain/CvmCross 双端对拍锁定；此处锁解释器可执行到底
+        var host = RecordedHost();
+        Assert.That(EcxInterpreter.Run(image, host), Is.EqualTo(0));
     }
 }

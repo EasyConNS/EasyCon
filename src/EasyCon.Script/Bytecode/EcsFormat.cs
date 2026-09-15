@@ -206,9 +206,6 @@ public static class EcsFormat
         F(EcsOpcode.StickPv, EcsInsFormat.Ext, EcsResultSlot.None, EcsExtKind.StickXY);
         F(EcsOpcode.Img, EcsInsFormat.ABx);
         F(EcsOpcode.Rand, EcsInsFormat.Iabc);
-        F(EcsOpcode.Time, EcsInsFormat.Iabc);
-        F(EcsOpcode.Beep, EcsInsFormat.Iabc, EcsResultSlot.None);
-        F(EcsOpcode.Amiibo, EcsInsFormat.Iabc, EcsResultSlot.None);
 
         // 完整性自检：每个枚举值必须显式登记。新增 EcsOpcode 值漏登时在此抛出
         //（而不是静默按 Iabc 编码/扫描——那正是历史 EXT 误读缺陷的成因形态）。

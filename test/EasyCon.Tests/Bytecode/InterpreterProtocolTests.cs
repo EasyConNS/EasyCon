@@ -55,7 +55,8 @@ public class InterpreterProtocolTests
     [Test]
     public void Cancel_MidRun_AtHostNative_ReturnsCancelled()
     {
-        // WAIT 原生回调内取消 → 下一次 Step 循环顶检查生效；取消点之后的指令不得执行
+        // WAIT 原生回调内取消 → 宿主调用返回后立即感知（ExecOther 域操作返回取消状态）；
+        // 取消点之后的指令不得执行
         var image = CompileImage("WAIT 500\nPRINT \"after-wait\"\n", "cancel-mid");
         using var cts = new CancellationTokenSource();
         var host = new EcxHost();

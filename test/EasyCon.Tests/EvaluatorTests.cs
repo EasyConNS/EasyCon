@@ -3,6 +3,7 @@ using EasyCon.Script;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
+using EasyCon.Tests.Support;
 using EasyScript;
 using System.Collections.Immutable;
 using System.Linq;
@@ -54,7 +55,7 @@ public class EvaluatorTests
         });
         if (result.Image == null)
             return (result, Value.Void, output);
-        var value = EcxVm.Run(result.Image!, output, null, null, null, () => 0, null, null, labelMatch,
+        var value = EcxVm.Run(result.Image!, EcsTestHost.Capabilities(output, labelMatch: labelMatch),
             new CancellationTokenSource().Token, [], result.NativeSymbols);
         return (result, value, output);
     }
@@ -1161,7 +1162,7 @@ RETURN double(inc(5))").AsInt(), Is.EqualTo(12));
                 $"Expected no errors, got: {string.Join(", ", compileResult.Diagnostics.Select(d => d.Message))}");
 
             var output = new MockOutputAdapter();
-            var value = EcxVm.Run(compileResult.Image!, output, null, null, null, () => 0, null, null, null,
+            var value = EcxVm.Run(compileResult.Image!, EcsTestHost.Capabilities(output),
                 new CancellationTokenSource().Token, [], compileResult.NativeSymbols);
 
             Assert.That(value.AsString(), Is.EqualTo(tempDir));
@@ -1238,7 +1239,7 @@ RETURN $r", matcher, labelNames);
             new CompileOptions { ExtVars = labelNames, UseDiskCache = false });
 
         Assert.That(compileResult.Diagnostics.HasErrors(), Is.False);
-        Assert.Catch(() => EcxVm.Run(compileResult.Image!, output, null, null, null, () => 0, null, null, null,
+        Assert.Catch(() => EcxVm.Run(compileResult.Image!, EcsTestHost.Capabilities(output),
             new CancellationTokenSource().Token, [], compileResult.NativeSymbols));
     }
 

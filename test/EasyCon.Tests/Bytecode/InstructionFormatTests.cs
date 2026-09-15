@@ -84,7 +84,7 @@ public class InstructionFormatTests
             EcsOpcode.LoadBool, EcsOpcode.Move, EcsOpcode.SetVar, EcsOpcode.AddI,
             EcsOpcode.DivD, EcsOpcode.EqS, EcsOpcode.Conv, EcsOpcode.GetI,
             EcsOpcode.SetI, EcsOpcode.Append, EcsOpcode.Cat, EcsOpcode.Len,
-            EcsOpcode.GetF, EcsOpcode.PutF, EcsOpcode.Rand, EcsOpcode.Time,
+            EcsOpcode.GetF, EcsOpcode.PutF, EcsOpcode.Rand, EcsOpcode.StickSet,
         };
         foreach (var op in iabc)
             Assert.That(EcsFormat.Get(op), Is.EqualTo(EcsInsFormat.Iabc), $"{op}");

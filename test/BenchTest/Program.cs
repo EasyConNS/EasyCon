@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using EasyCon.Core.Capabilities;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
 using EasyScript;
 
 var output = new MockOutput();
+var caps = new CapabilitySet { Console = new ConsoleIoAdapter(output) };
 
 Console.WriteLine("=== Compile + EcxVm profiling ===\n");
 
@@ -17,8 +19,7 @@ Console.WriteLine($"CompileFile (cold): {sw.ElapsedMilliseconds}ms");
 Console.WriteLine($"Diagnostics: {result.Diagnostics.Length}");
 
 sw.Restart();
-EcxVm.Run(result.Image!, output, null, null, null, () => 0, null, null, null,
-    CancellationToken.None, [], result.NativeSymbols);
+EcxVm.Run(result.Image!, caps, CancellationToken.None, [], result.NativeSymbols);
 Console.WriteLine($"EcxVm.Run: {sw.ElapsedMilliseconds}ms");
 
 // Second run
@@ -28,8 +29,7 @@ var result2 = Compilation.CompileFile(mainPath, new CompileOptions { UseDiskCach
 Console.WriteLine($"CompileFile: {sw.ElapsedMilliseconds}ms");
 
 sw.Restart();
-EcxVm.Run(result2.Image!, output, null, null, null, () => 0, null, null, null,
-    CancellationToken.None, [], result2.NativeSymbols);
+EcxVm.Run(result2.Image!, caps, CancellationToken.None, [], result2.NativeSymbols);
 Console.WriteLine($"EcxVm.Run: {sw.ElapsedMilliseconds}ms");
 
 // 10 iterations
@@ -38,8 +38,7 @@ sw.Restart();
 for (int i = 0; i < 10; i++)
 {
     var r = Compilation.CompileFile(mainPath, new CompileOptions { UseDiskCache = false });
-    EcxVm.Run(r.Image!, output, null, null, null, () => 0, null, null, null,
-        CancellationToken.None, [], r.NativeSymbols);
+    EcxVm.Run(r.Image!, caps, CancellationToken.None, [], r.NativeSymbols);
 }
 Console.WriteLine($"10 iterations: {sw.ElapsedMilliseconds}ms  avg={sw.ElapsedMilliseconds / 10}ms");
 

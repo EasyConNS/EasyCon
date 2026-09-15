@@ -364,3 +364,10 @@ dist/
 .worktrees/
 # ecs-vm native build artifact (built on demand by ci/build-vm.sh / native/build.sh)
 src/EasyCon.Vm/native/ecs-vm
+
+# PaddleOCR ONNX models (external assets, not committed; tests Ignore when missing)
+PP-OCRv5_mobile_det.onnx
+PP-OCRv5_mobile_rec.onnx
+*_rec.onnx
+*_dict.txt
+ppocr_keys_v5.txt

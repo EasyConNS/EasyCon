@@ -1,3 +1,4 @@
+using EasyCon.Core.Capabilities;
 using EasyCon.Script;
 using EasyCon.Script.Binding;
 using EasyCon.Script.Bytecode;
@@ -9,24 +10,24 @@ namespace EasyCon.Core.Runner;
 
 /// <summary>
 /// 桌面 ECX 执行桥（统一链路的执行端，docs/Pipeline.md）：
-/// 把设备宿主（IO/手柄/OCR/采集/标签）与文件 IO/FFI 原生装配到 <see cref="EcxHost"/>，
-/// 用 <see cref="EcxInterpreter"/> 执行 <see cref="EcxImage"/>，并把 VM 错误码映射回
-/// <see cref="ScriptException"/>。事件语义与金标准 SsaEvaluator 逐项对齐（对拍测试锁定）。
+/// 把能力集（<see cref="CapabilitySet"/>，输入/控制台/环境/文件/采集/视觉/OCR/推理）
+/// 装配成 <see cref="EcxHost"/> 委托与评估桥，用 <see cref="EcxInterpreter"/> 执行
+/// <see cref="EcxImage"/>，并把 VM 错误码映射回 <see cref="ScriptException"/>。
+/// 事件语义与金标准 SsaEvaluator 逐项对齐（对拍测试锁定）。
 /// </summary>
 public static class EcxVm
 {
-    /// <summary>执行镜像到完成/取消/出错；返回入口函数返回值（顶层 RETURN）。</summary>
+    /// <summary>
+    /// 能力集执行入口：由 <see cref="CapabilitySet"/> 生成 host 委托与评估桥
+    /// （能力模型纯属 PC 装配层，VM 核不感知）。执行到完成/取消/出错，
+    /// 返回入口函数返回值（顶层 RETURN）。
+    /// </summary>
     /// <param name="nativeSymbols">全项目 extern 符号（FFI 原生按名分发的签名来源）。</param>
-    public static Value Run(EcxImage image, IIoAdapter? ioAdapter, ICGamePad? pad,
-        OcrDelegate? ocr, OcrInitDelegate? ocrInit, Func<int> ocrConf,
-        FrameDelegate? frameProvider, RoiDelegate? roiProvider, LabelMatchDelegate? labelMatch,
-        CancellationToken token, string[]? args = null,
-        ImmutableArray<FunctionSymbol> nativeSymbols = default)
+    public static Value Run(EcxImage image, CapabilitySet capabilities, CancellationToken token,
+        string[]? args = null, ImmutableArray<FunctionSymbol> nativeSymbols = default)
     {
         var startTicks = DateTime.Now.Ticks;
         var rand = new Random();
-        var evalCtx = new HostEvalContext(ioAdapter, pad, ocr, ocrInit, ocrConf,
-            frameProvider, roiProvider, labelMatch, rand, args ?? []);
 
         var externMap = new Dictionary<(string Lib, string Name), FunctionSymbol>();
         foreach (var sym in nativeSymbols)
@@ -37,43 +38,12 @@ public static class EcxVm
         }
         NativeLoader? loader = null;
 
-        var host = new EcxHost
-        {
-            Args = args ?? [],
-            AppDir = AppDomain.CurrentDomain.BaseDirectory,   // __APP__
-            WaitMs = ms => CustomDelay.Delay(ms, token),
-            TimeMs = () => (int)((DateTime.Now.Ticks - startTicks) / 10_000),
-            Rand = max => rand.Next(max),
-            ImgLabel = name => labelMatch != null
-                ? labelMatch(name)
-                : throw new Exception("图像标签匹配器未初始化"),
-            Print = (s, newline) => ioAdapter?.Print(s, newline),
-            Alert = s => ioAdapter?.Alert(s),
-            ReadLine = () => Console.ReadLine() ?? "",   // v1 FREAD stdin 走控制台（ImplFRead）
-            Key = (k, d) => pad?.ClickButtons((GamePadKey)k, d, token),
-            KeyState = (k, d) =>
-            {
-                if (d != 0)
-                    pad?.PressButtons((GamePadKey)k);
-                else
-                    pad?.ReleaseButtons((GamePadKey)k);
-            },
-            StickSet = (s, x, y) => pad?.SetStick(s == 1 ? GamePadKey.RS : GamePadKey.LS, (byte)x, (byte)y),
-            StickClick = (s, x, y, d) => pad?.ClickStick(s == 1 ? GamePadKey.RS : GamePadKey.LS, (byte)x, (byte)y, d, token),
-            Amiibo = i => pad?.ChangeAmiibo((uint)i),
-            Beep = (f, d) =>
-            {
-                if (f is < 37 or > 32767)
-                    throw new Exception("BEEP参数freq范围不正确(37~32767)");
-                Console.Beep(f, d);
-            },
-        };
-
+        var host = BuildHost(capabilities, token, args, startTicks, rand);
         host.Native = (name, argv, ctx) =>
         {
             // 内建/采集洞：复用金标准的 BuiltinCallable 实现（文件 IO/ENCODE/JQ 等）
             if (BuiltinMap.TryGetValue(name, out var callable))
-                return ctx.FromValue(callable.Invoke(ToValues(argv, ctx), evalCtx, token));
+                return ctx.FromValue(callable.Invoke(ToValues(argv, ctx), capabilities, token));
 
             // FFI：按名分发（BytecodeEncoder.BuildNativeName → "库!导出名"）
             var bang = name.IndexOf('!');
@@ -82,15 +52,14 @@ public static class EcxVm
             {
                 loader ??= new NativeLoader();
                 var fn = loader.ResolveFunction(sym);
-                return ctx.FromValue(fn.Invoke(ToValues(argv, ctx), evalCtx, token));
+                return ctx.FromValue(fn.Invoke(ToValues(argv, ctx), capabilities, token));
             }
             return null;   // → ERR_NOSUCHNATIVE
         };
 
-        int code;
         try
         {
-            code = EcxInterpreter.Run(image, host, out _, out var errorFunc, out var errorPc, out var result, token);
+            int code = EcxInterpreter.Run(image, host, out _, out var errorFunc, out var errorPc, out var result, token);
             if (code == EcxInterpreter.OK)
                 return result;
             if (code == EcxInterpreter.CANCELLED)
@@ -100,8 +69,47 @@ public static class EcxVm
         }
         finally
         {
-            BuiltinCallable.CloseAllFiles();
+            DesktopFileSystem.Instance.CloseAllFiles();
         }
+    }
+
+    static EcxHost BuildHost(CapabilitySet capabilities, CancellationToken token, string[]? args,
+        long startTicks, Random rand)
+    {
+        IPadInput? input = capabilities.Input;
+        IVisionService? vision = capabilities.Vision;
+        IConsoleIo? console = capabilities.Console;
+        return new EcxHost
+        {
+            Args = capabilities.Environment?.Args ?? args ?? [],
+            AppDir = capabilities.Environment?.AppDir ?? AppDomain.CurrentDomain.BaseDirectory,   // __APP__
+            WaitMs = ms => CustomDelay.Delay(ms, token),
+            TimeMs = () => (int)((DateTime.Now.Ticks - startTicks) / 10_000),
+            Rand = max => rand.Next(max),
+            ImgLabel = name => vision != null
+                ? vision.MatchLabel(name)
+                : throw new Exception("图像标签匹配器未初始化"),
+            Print = (s, newline) => console?.Print(s, newline),
+            Alert = s => console?.Alert(s),
+            ReadLine = () => Console.ReadLine() ?? "",   // v1 FREAD stdin 走控制台（ImplFRead）
+            Key = (k, d) => input?.ClickButtons((GamePadKey)k, d, token),
+            KeyState = (k, d) =>
+            {
+                if (d != 0)
+                    input?.PressButtons((GamePadKey)k);
+                else
+                    input?.ReleaseButtons((GamePadKey)k);
+            },
+            StickSet = (s, x, y) => input?.SetStick(s == 1 ? GamePadKey.RS : GamePadKey.LS, (byte)x, (byte)y),
+            StickClick = (s, x, y, d) => input?.ClickStick(s == 1 ? GamePadKey.RS : GamePadKey.LS, (byte)x, (byte)y, d, token),
+            Amiibo = i => input?.ChangeAmiibo((uint)i),
+            Beep = (f, d) =>
+            {
+                if (f is < 37 or > 32767)
+                    throw new Exception("BEEP参数freq范围不正确(37~32767)");
+                Console.Beep(f, d);
+            },
+        };
     }
 
     static readonly Dictionary<string, ICallable> BuiltinMap =
@@ -124,29 +132,4 @@ public static class EcxVm
         EcxInterpreter.ERR_NOSUCHNATIVE => "原生函数未实现",
         _ => $"虚拟机错误码 {code}",
     };
-
-    /// <summary>BuiltinCallable 所需的 IEvalContext 适配（宿主委托直通）。</summary>
-    sealed class HostEvalContext(
-        IIoAdapter? ioAdapter, ICGamePad? pad, OcrDelegate? ocr, OcrInitDelegate? ocrInit,
-        Func<int> ocrConf, FrameDelegate? frame, RoiDelegate? roi, LabelMatchDelegate? labelMatch,
-        Random rand, string[] args) : IEvalContext
-    {
-        public ICGamePad? GamePad => pad;
-        public IIoAdapter? IoAdapter => ioAdapter;
-        public OcrDelegate? Ocr => ocr;
-        public OcrInitDelegate? OcrInit => ocrInit;
-        public Func<int> OcrConf => ocrConf;
-        public FrameDelegate? Frame => frame;
-        public RoiDelegate? Roi => roi;
-        public LabelMatchDelegate? LabelMatch => labelMatch;
-        public Random Rand => rand;
-        public int Timestamp => (int)((DateTime.Now.Ticks - _startTicks) / 10_000);
-        public bool CancelLineBreak { get; set; }
-        public string[] Args => args;
-
-        readonly long _startTicks = DateTime.Now.Ticks;
-
-        public Value EvaluateFunctionBody(FunctionSymbol function)
-            => throw new InvalidOperationException("宿主上下文不支持函数体执行");
-    }
 }

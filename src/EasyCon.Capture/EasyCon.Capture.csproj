@@ -6,11 +6,14 @@
 
 	<ItemGroup>
 		<PackageReference Include="FlashCap" />
-						<PackageReference Include="System.Drawing.Common" />
+		<PackageReference Include="System.Drawing.Common" />
+		<PackageReference Include="OpenCvSharp5" />
+		<PackageReference Include="OpenCvSharp5.runtime.win" />
+		<PackageReference Include="OpenCvSharp5.official.runtime.linux-x64" />
+		<PackageReference Include="OpenCvSharp5.runtime.osx.arm64" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\EzCv\EzCv.csproj" />
 		<ProjectReference Include="..\EzTesseract\EzTesseract.csproj" />
 	</ItemGroup>
 

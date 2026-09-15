@@ -1,7 +1,7 @@
-using Avalonia.Threading;
+﻿using Avalonia.Threading;
 using EasyCon.Capture;
 using EasyCon2.Avalonia.Core.Services;
-using EzCv;
+using OpenCvSharp;
 using System.Text;
 
 namespace EasyCon2.Avalonia.Services;

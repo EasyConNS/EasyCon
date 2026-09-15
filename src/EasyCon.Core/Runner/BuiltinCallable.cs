@@ -1,61 +1,23 @@
+using EasyCon.Core.Capabilities;
 using EasyCon.Script.Binding;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyScript;
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
-using System.IO;
 using System.Text;
 using System.Text.Json;
 
 namespace EasyCon.Core.Runner;
 
 /// <summary>
-/// 内置函数 Callable 实现。每个静态方法对应一个内置函数的执行逻辑。
+/// L3 名表原生的宿主实现（由 EcxVm.BuiltinMap 按名分发）：
+/// 采集洞（__CAPTURE__ 系）、ENCODE/JQ、OCR_CONF，以及 L2 文件族 syscall 转发而来的
+/// 文件实现（规范名见 EcsSyscall.Names，落 <see cref="IFileSystem"/>）。
+/// L2 其余平台 syscall 的语义在 EcxHost.ReferenceSyscall，不经本类。
 /// </summary>
 internal static class BuiltinCallable
 {
-    // ---- 文件句柄表（静态，跨 evaluator 共享） ----
-    // 标准句柄：0=stdin, 1=stdout, 2=stderr
-    private static readonly ConcurrentDictionary<long, StreamReader> _readers = new();
-    private static readonly ConcurrentDictionary<long, StreamWriter> _writers = new();
-    private static long _nextHandle = 3;
-
-    /// <summary>关闭所有打开的文件句柄（evaluator 结束时调用）。</summary>
-    public static void CloseAllFiles()
-    {
-        foreach (var kvp in _readers) { try { kvp.Value.Dispose(); } catch { } }
-        foreach (var kvp in _writers) { try { kvp.Value.Dispose(); } catch { } }
-        _readers.Clear();
-        _writers.Clear();
-        _nextHandle = 3;
-    }
-
-    public static Value ImplAlert(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var s = args[0].AsString();
-        var output = s.EndsWith('\\') ? s[..^1] : s;
-        ctx.IoAdapter?.Alert(output);
-        return Value.Void;
-    }
-
-    public static Value ImplAmiibo(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var index = args[0].AsInt();
-        if (index > 9) return Value.Void;
-        ctx.GamePad?.ChangeAmiibo((uint)index);
-        return Value.Void;
-    }
-
-    public static Value ImplBeep(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var freq = args[0].AsInt();
-        if (freq < 37 || freq > 32767) throw new Exception("BEEP参数freq范围不正确(37~32767)");
-        Console.Beep(freq, args[1].AsInt());
-        return Value.Void;
-    }
-
-    public static Value ImplJq(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplJq(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
         try
         {
@@ -105,7 +67,7 @@ internal static class BuiltinCallable
         }
     }
 
-    public static Value ImplStrEncode(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplStrEncode(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
         var array = args[0].AsArray();
         var bytes = new byte[array.Length];
@@ -118,193 +80,167 @@ internal static class BuiltinCallable
         };
     }
 
-    public static Value ImplEnv(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        return Environment.GetEnvironmentVariable(args[0].AsString()) ?? "";
-    }
-
     // --- 采集卡洞函数 ---
 
-    public static Value ImplCaptureHole(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplCaptureHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
-        var result = ctx.Frame?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt());
+        var result = capabilities.Capture?.CaptureFrame(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt());
         return Value.FromString(result ?? "ERR!!FRAME NOT SUPPORT");
     }
 
-    public static Value ImplOcrHole(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplOcrHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
-        var result = ctx.Ocr?.Invoke(args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsString());
+        IOcrService? ocr = capabilities.Ocr;
+        string? result = ocr switch
+        {
+            null => null,
+            // 旧委托直通：OcrDelegate 自带采集（P3 随洞改造退役）
+            DelegateOcrService legacy => legacy.Ocr?.Invoke(
+                args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsString()),
+            // 通用服务：区域帧在采集侧裁好，识别服务收整图（query 缺省区域）
+            _ => OcrRecognize(ocr, capabilities.Capture,
+                args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsString()),
+        };
         return Value.FromString(result ?? "ERR!!OCR NOT SUPPORT");
     }
 
-    public static Value ImplRoiHole(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    static string OcrRecognize(IOcrService ocr, ICaptureSource? capture, int x, int y, int w, int h, string lang)
+    {
+        var frame = capture?.CaptureFrame(x, y, w, h);
+        return frame == null
+            ? "ERR!!OCR NOT SUPPORT"
+            : ocr.Recognize(ImageRef.FromBase64(frame), new OcrQuery { Language = lang });
+    }
+
+    public static Value ImplRoiHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
         var image = args[0].AsString();
-        var result = ctx.Roi?.Invoke(image, args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt());
+        var result = capabilities.Vision?.Crop(image, args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt());
         return Value.FromString(result ?? "ERR!!ROI NOT SUPPORT");
     }
 
-    // ============ 文件 IO ============
+    // ============ 文件 IO（L2 文件族 syscall 转发落点，语义在 IFileSystem） ============
 
-    // ---- 低级句柄 API ----
+    public static Value ImplFOpen(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => Value.FromPtr(Files(capabilities).Open(args[0].AsString(), args[1].AsString()));
 
-    public static Value ImplFOpen(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
+    public static Value ImplFRead(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => Value.FromString(Files(capabilities).Read(args[0].AsPtr(), args[1].AsInt()));
+
+    public static Value ImplFWrite(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => Value.FromInt(Files(capabilities).Write(args[0].AsPtr(), args[1].AsString()));
+
+    public static Value ImplFClose(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
-        var path = args[0].AsString();
-        var mode = args[1].AsString();
+        Files(capabilities).Close(args[0].AsPtr());
+        return Value.Void;
+    }
+
+    public static Value ImplFEof(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => Value.FromBool(Files(capabilities).Eof(args[0].AsPtr()));
+
+    public static Value ImplReadFile(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => Value.FromString(Files(capabilities).ReadAllText(args[0].AsString()));
+
+    public static Value ImplWriteFile(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        Files(capabilities).WriteAllText(args[0].AsString(), args[1].AsString());
+        return Value.Void;
+    }
+
+    public static Value ImplAppendFile(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        Files(capabilities).AppendAllText(args[0].AsString(), args[1].AsString());
+        return Value.Void;
+    }
+
+    public static Value ImplFileExists(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => Value.FromBool(Files(capabilities).Exists(args[0].AsString()));
+
+    public static Value ImplOcrConf(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => Value.FromInt(capabilities.Ocr?.LastConfidence ?? 0);
+
+    // ============ ONNX 推理实验函数（IInference；Vision 特征位，P5） ============
+    // 纯标量协议：原生边界（EcxNativeContext）不携带数组——NET_RUN 返回输出长度，
+    // 结果缓存于线程槽，NET_OUT(i) 逐元素读取（脚本同步语义 = 单线程执行）。
+
+    [ThreadStatic] static float[]? _lastNetOutput;
+
+    public static Value ImplNetLoad(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => Value.FromInt(capabilities.Inference?.Load(args[0].AsString()) ?? -1);
+
+    public static Value ImplNetRun(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        IInference? inference = capabilities.Inference;
+        if (inference == null)
+        {
+            _lastNetOutput = null;
+            return Value.FromInt(0);
+        }
+
         try
         {
-            long handle = Interlocked.Increment(ref _nextHandle) - 1;
-            switch (mode)
+            ScriptArray input = args[1].AsArray();
+            var floats = new float[input.Length];
+            for (int i = 0; i < input.Length; i++)
+                floats[i] = ToFloat(input[i]);
+
+            float[]? output = inference.Run(args[0].AsInt(), floats);
+            _lastNetOutput = output;
+            return Value.FromInt(output?.Length ?? 0);
+        }
+        catch
+        {
+            _lastNetOutput = null;
+            return Value.FromInt(0);   // 实验面：非法输入（非数组/未知会话）→ 空输出
+        }
+    }
+
+    /// <summary>数值元素容错转换（数组字面量/变量可能是任意数值标签）。</summary>
+    static float ToFloat(Value v) => v.ToObject() switch
+    {
+        double d => (float)d,
+        int i => i,
+        long l => l,
+        uint ui => ui,
+        ulong ul => ul,
+        byte b => b,
+        bool bo => bo ? 1f : 0f,
+        _ => throw new InvalidCastException("NET_RUN 输入必须为数值数组"),
+    };
+
+    public static Value ImplNetOut(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        var output = _lastNetOutput;
+        int index = args[0].AsInt();
+        if (output == null || index < 0 || index >= output.Length)
+            return Value.FromDouble(0);
+        return Value.FromDouble(output[index]);
+    }
+
+    /// <summary>
+    /// __OCR_INIT__ 洞：旧位置参数签名映射 <see cref="OcrConfig"/>
+    /// （lang → Language，dataPath → ModelPath，engineMode/psmode → Options["tess:*"]）。
+    /// 未装配 OCR 能力返回 false。
+    /// </summary>
+    public static Value ImplOcrInitHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        var cfg = new OcrConfig
+        {
+            Language = args[0].AsString(),
+            ModelPath = args[1].AsString(),
+            Options = new Dictionary<string, string>
             {
-                case "r":
-                    _readers[handle] = new StreamReader(path, Encoding.UTF8);
-                    break;
-                case "w":
-                    _writers[handle] = new StreamWriter(path, false, Encoding.UTF8);
-                    break;
-                case "a":
-                    _writers[handle] = new StreamWriter(path, true, Encoding.UTF8);
-                    break;
-                default:
-                    return Value.FromPtr(-1);
-            }
-            return Value.FromPtr(handle);
-        }
-        catch
-        {
-            return Value.FromPtr(-1);
-        }
+                ["tess:engineMode"] = args[2].AsString(),
+                ["tess:psmode"] = args[3].AsString(),
+            },
+        };
+        return Value.FromBool(capabilities.Ocr?.Init(cfg) ?? false);
     }
 
-    public static Value ImplFRead(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var handle = args[0].AsPtr();
-        var count = args[1].AsInt();
-
-        // 标准输入
-        if (handle == 0)
-        {
-            var line = Console.ReadLine() ?? "";
-            return Value.FromString(line);
-        }
-
-        // 文件句柄
-        if (!_readers.TryGetValue(handle, out var reader))
-            return Value.FromString("");
-
-        try
-        {
-            if (count <= 0)
-                return Value.FromString(reader.ReadToEnd());
-
-            var buffer = new char[count];
-            int read = reader.Read(buffer, 0, count);
-            return Value.FromString(new string(buffer, 0, read));
-        }
-        catch
-        {
-            return Value.FromString("");
-        }
-    }
-
-    public static Value ImplFWrite(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var handle = args[0].AsPtr();
-        var data = args[1].AsString();
-
-        // 标准输出 — 走 IoAdapter
-        if (handle == 1)
-        {
-            var s = data;
-            var output = s.EndsWith('\\') ? s[..^1] : s;
-            ctx.IoAdapter?.Print(output, !ctx.CancelLineBreak);
-            ctx.CancelLineBreak = s.EndsWith('\\');
-            return Value.FromInt(data.Length);
-        }
-        // 标准错误
-        if (handle == 2)
-        {
-            ctx.IoAdapter?.Print(data, true);
-            return Value.FromInt(data.Length);
-        }
-
-        // 文件句柄
-        if (!_writers.TryGetValue(handle, out var writer))
-            return Value.FromInt(-1);
-
-        try
-        {
-            writer.Write(data);
-            return Value.FromInt(data.Length);
-        }
-        catch
-        {
-            return Value.FromInt(-1);
-        }
-    }
-
-    public static Value ImplFClose(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var handle = args[0].AsPtr();
-        if (handle < 3) return Value.Void;
-
-        if (_readers.TryRemove(handle, out var reader))
-            try { reader.Dispose(); } catch { }
-        if (_writers.TryRemove(handle, out var writer))
-            try { writer.Dispose(); } catch { }
-
-        return Value.Void;
-    }
-
-    public static Value ImplFEof(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var handle = args[0].AsPtr();
-        if (handle == 0) return Value.FromBool(false);
-        if (!_readers.TryGetValue(handle, out var reader))
-            return Value.FromBool(true);
-        try { return Value.FromBool(reader.Peek() == -1); }
-        catch { return Value.FromBool(true); }
-    }
-
-    // ---- 高级便捷 API ----
-
-    public static Value ImplReadFile(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        try { return Value.FromString(File.ReadAllText(args[0].AsString())); }
-        catch { return Value.FromString(""); }
-    }
-
-    public static Value ImplWriteFile(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        try { File.WriteAllText(args[0].AsString(), args[1].AsString()); } catch { }
-        return Value.Void;
-    }
-
-    public static Value ImplAppendFile(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        try { File.AppendAllText(args[0].AsString(), args[1].AsString()); } catch { }
-        return Value.Void;
-    }
-
-    public static Value ImplFileExists(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        return Value.FromBool(File.Exists(args[0].AsString()));
-    }
-
-    public static Value ImplOcrConf(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        return Value.FromInt(ctx.OcrConf());
-    }
-
-    public static Value ImplArg(ReadOnlySpan<Value> args, IEvalContext ctx, CancellationToken token)
-    {
-        var idx = args[0].AsInt();
-        var argv = ctx.Args;
-        if (idx < 0 || idx >= argv.Length)
-            return Value.FromString("");
-        return Value.FromString(argv[idx]);
-    }
+    /// <summary>文件能力缺省回落桌面参考实现（FCLOSE 句柄表清理随 DesktopFileSystem.Instance）。</summary>
+    static IFileSystem Files(CapabilitySet capabilities)
+        => capabilities.Files ?? DesktopFileSystem.Instance;
 
     /// <summary>
     /// 获取所有保留内置函数及其对应的 Callable。
@@ -313,10 +249,6 @@ internal static class BuiltinCallable
     {
         return
         [
-            (BuiltinFunctions.Alert, new DelegateCallable(ImplAlert)),
-            (BuiltinFunctions.Amiibo, new DelegateCallable(ImplAmiibo)),
-            (BuiltinFunctions.Beep, new DelegateCallable(ImplBeep)),
-            (BuiltinFunctions.Env, new DelegateCallable(ImplEnv)),
             (BuiltinFunctions.StrEncode, new DelegateCallable(ImplStrEncode)),
             (BuiltinFunctions.Jq, new DelegateCallable(ImplJq)),
             // 文件 IO
@@ -330,7 +262,10 @@ internal static class BuiltinCallable
             (BuiltinFunctions.AppendFile, new DelegateCallable(ImplAppendFile)),
             (BuiltinFunctions.FileExists, new DelegateCallable(ImplFileExists)),
             (BuiltinFunctions.OcrConf, new DelegateCallable(ImplOcrConf)),
-            (BuiltinFunctions.Arg, new DelegateCallable(ImplArg)),
+            // ONNX 推理实验
+            (BuiltinFunctions.NetLoad, new DelegateCallable(ImplNetLoad)),
+            (BuiltinFunctions.NetRun, new DelegateCallable(ImplNetRun)),
+            (BuiltinFunctions.NetOut, new DelegateCallable(ImplNetOut)),
         ];
     }
 
@@ -344,6 +279,7 @@ internal static class BuiltinCallable
             (BuiltinFunctions.CaptureHole, new DelegateCallable(ImplCaptureHole)),
             (BuiltinFunctions.OcrHole, new DelegateCallable(ImplOcrHole)),
             (BuiltinFunctions.RoiHole, new DelegateCallable(ImplRoiHole)),
+            (BuiltinFunctions.OcrInitHole, new DelegateCallable(ImplOcrInitHole)),
         ];
     }
 }

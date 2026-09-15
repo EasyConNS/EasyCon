@@ -380,6 +380,11 @@ public static partial class BytecodeEncoder
             foreach (var phi in successor.Phis)
             {
                 var arm = phi.ExtraArgs![armIdx];
+                if (!_slots.ContainsKey(phi))
+                {
+                    ReleaseDying(from, arm);   // 死 φ（防线 1）：副本不发射，臂读取记账照常结算（块内槽池不变量不受影响）
+                    continue;
+                }
                 moves.Add((Slot(phi), Slot(arm)));
             }
             EmitParallelCopy(moves);

@@ -111,6 +111,18 @@ public class FullChainVerificationTests
     }
 
     [Test]
+    public void FullChain_Bdsp_RealRoutine()
+    {
+        var path = CorpusAssert.ExamplePath("BDSP图鉴过帧v2.1光速过帧版.txt");
+        if (path.Length == 0)
+            Assert.Ignore("例程文件不存在");
+        var source = File.ReadAllText(path);
+        // 真实例程翻页次数缩减，保持验证强度与耗时平衡
+        var trimmed = source.Replace("_翻几次 = 1", "_翻几次 = 2");
+        AssertFullChain(trimmed, "bdsp.ecs", "bdsp");
+    }
+
+    [Test]
     public void FullChain_ModuleProject_Nested()
     {
         // 独立编译专属链路：嵌套依赖 + 顶层常量 + init 顺序 + 导入标记

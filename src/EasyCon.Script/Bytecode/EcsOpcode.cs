@@ -90,9 +90,107 @@ public enum EcsOpcode : byte
     StickPv,    // iABC + ext32: A=side，B=0，C=持续毫秒槽位，ext=高16位x|低16位y（packed）
     Img,        // ABx : R[A] = 图像标签匹配置信度，标签名 = 常量池[Bx]
     Rand,       // iABC: R[A] = rand() % R[B]（B=0→0；B<0→错误，对齐 Random.Next）
-    Time,       // iABC: R[A] = 运行毫秒时间戳
-    Beep,       // iABC: freq=R[A]，dur=R[B]（保留：BEEP 实际走 CALLN，见 VM2.md §9.1）
-    Amiibo,     // iABC: 切换 amiibo 槽位 R[A]（>9 静默忽略；保留：实际走 CALLN）
+}
+
+/// <summary>
+/// 平台 syscall 编号 ABI（uvm32 式，docs/VM2.md §9.1）：L2 封闭集合全部编号化。
+/// CallN 的 EXT 字带上 0x80000000 旗标时，低 31 位 = 编号，直接双端分发，不经原生名表。
+/// 语义在宿主参考实现（C# EcxHost.Syscall / C harness 桩），引擎只做取号分发；
+/// 文件实现转发宿主时使用 <see cref="Names"/> 中的规范名（宿主委托签名不变）。
+/// ABI 分配规则：新增追加号段、废弃不回收（VmSemanticContract §四）。
+/// </summary>
+public static class EcsSyscall
+{
+    /// <summary>CallN EXT 旗标：置位 = syscall 编号调用（与 Call 的导入标记共用位，操作码不同不冲突）。</summary>
+    public const uint CallFlag = 0x80000000u;
+
+    /// <summary>编码 ABI 修订号（进缓存键 ProductFingerprint；编号分配/编码语义变化时递增）。
+    /// 1 = 名表原生时代；2 = L2 全集 syscall 编号化。</summary>
+    public const int AbiRevision = 2;
+
+    // ---- 文件族（1..9 连续，IsFileFamily 依赖）----
+    public const int FWrite = 1;
+    public const int FRead = 2;
+    public const int FOpen = 3;
+    public const int FClose = 4;
+    public const int FEof = 5;
+    public const int ReadFile = 6;
+    public const int WriteFile = 7;
+    public const int AppendFile = 8;
+    public const int FileExists = 9;
+
+    // ---- 平台 syscall（10..，只追加不回收）----
+    public const int Alert = 10;
+    public const int Arg = 11;
+    public const int Env = 12;
+    public const int App = 13;
+    public const int Time = 14;
+    public const int Beep = 15;
+    public const int Amiibo = 16;
+    public const int OcrConf = 17;
+
+    /// <summary>文件族上界（含）。</summary>
+    public const int FileFamilyMax = FileExists;
+
+    /// <summary>规范名（转发宿主 / 反汇编渲染用；与 BuiltinFunctions 声明名一致）。</summary>
+    public static readonly string[] Names =
+    [
+        "",
+        "FWRITE", "FREAD", "FOPEN", "FCLOSE", "FEOF", "READFILE", "WRITEFILE", "APPENDFILE", "FILE_EXISTS",
+        "ALERT", "ARG", "ENV", "APP", "TIME", "BEEP", "AMIIBO", "OCR_CONF",
+    ];
+
+    /// <summary>声明名 → syscall 编号（内建符号专用；extern FFI 不走此表）。</summary>
+    public static bool TryGetId(string name, out int id)
+    {
+        for (int i = 1; i < Names.Length; i++)
+        {
+            if (Names[i] != name)
+                continue;
+            id = i;
+            return true;
+        }
+        id = 0;
+        return false;
+    }
+
+    /// <summary>声明名 → CallN EXT 目标字（旗标 | 编号）；非 syscall 族返回 false。</summary>
+    public static bool TryGetTarget(string name, out uint target)
+    {
+        if (TryGetId(name, out var id))
+        {
+            target = CallFlag | unchecked((uint)id);
+            return true;
+        }
+        target = 0;
+        return false;
+    }
+}
+
+/// <summary>
+/// 镜像特征需求掩码（镜像头保留位 u16 @0x0A，docs/VM2.md §9.1）：表达「本镜像需要宿主提供
+/// 的高级能力」，加载规则 `host_feats & image_feats != image_feats` → 拒跑。IL 位由 flags.I
+/// 投影（旧镜像掩码缺省 = 仅 IL 位，兼容）；加载期 IL 越界 → ECS_ERR_IL（既有码），其余越界
+/// → ECS_ERR_FEAT。
+/// </summary>
+public static class EcsImageFeatures
+{
+    public const uint Il = 0x1;        // 图像标签（flags.I 同源投影）
+    public const uint Capture = 0x2;   // 可达采集洞（__CAPTURE__ 系）
+    public const uint Ffi = 0x4;       // EXTERN FFI（"库!导出名" 动态原生）
+    public const uint File = 0x8;      // 文件族 syscall
+    public const uint Vision = 0x10;   // ONNX 推理实验函数（NET_LOAD/NET_RUN）；MCU 参考桩不支持 → 拒跑
+}
+
+/// <summary>
+/// PC 端转换语义助手：数字字符串 → int 十进制解析
+/// （允许前后空白与 +/- 号，System int 范围；无法解析返回 0）。
+/// </summary>
+public static class EcsConvText
+{
+    public static int ParseIntLiteral(string? s)
+        => int.TryParse(s, System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : 0;
 }
 
 /// <summary>ECS 运行时值标签，与 TaggedValue 常量保持一致。</summary>

@@ -1,3 +1,4 @@
+using EasyCon.Script.Binding;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
@@ -166,9 +167,11 @@ public static class EcxPipeline
                             : unchecked((uint)(funcBase + (int)ext));
                         code[w + 1] = target;
                     },
-                    // CallN 目标：原生名表按名合并（EXT 后随字）
+                    // CallN 目标：原生名表按名合并（EXT 后随字）；旗标置位 = syscall 编号直传（VM2.md §9.1）
                     OnCallN = (code, w, oldId) =>
                     {
+                        if ((oldId & 0x80000000u) != 0)
+                            return;
                         var name = art.Natives[(int)oldId].Name;
                         if (!imageNativeIds.TryGetValue(name, out var newId))
                         {
@@ -243,6 +246,10 @@ public static class EcxPipeline
         };
         // 链接期死函数消除：stdlib/vision 供给的未调用函数体不进镜像（入口可达性为准）
         StripUnreachableFunctions(image);
+        // 死存储清扫（防线 3，LLVM DeadMachineInstructionElim 的镜像级等价）：SSA φ 降级/变量
+        // 落槽在块边界留下的死 Move/SetVar、无人读取的常量物化不进最终镜像。置于常量池压缩
+        // 之前——清扫可能删掉某常量最后一个 LoadK 引用，使其进入死元素集一并消除。
+        DeadStoreSweep.Sweep(image);
         // 死元素消除：常量池/原生名表中仅被死函数引用的条目不进镜像（保序压缩 + 索引重映射）。
         // 全局表不参与：每个模块全局的声明即顶层语句，必被 <init:module>/<main> 的 StoreG 引用
         //（init 恒保留），不存在死项；结构体类型表同理暂不裁剪（真实产物为 0 条，见 EcmEcxFormat §6.1）。
@@ -250,10 +257,61 @@ public static class EcxPipeline
         // v1 语义对齐（CaptureAnalyzer 全程序视角）：采集卡需求 = 任意模块含图像标签（乐观）
         // ∪ 自入口可达采集洞函数（精确）。各模块的 SSA 分析器看不见跨模块调用链
         // （接口符号无函数体），这里在合并镜像上补全调用图可达性。
-        image.NeedIL = needIL || ImageReachesCaptureHole(image);
+        bool reachesHole = ImageReachesCaptureHole(image);
+        image.NeedIL = needIL || reachesHole;
+
+        // 特征需求掩码（VM2.md §9.1）：文件族 syscall / FFI 动态原生 / 采集洞 / IL（NeedIL 投影）。
+        // 死函数消除后扫描 = 入口可达语义；FFI 判据 = 名表含 "库!导出名"（'!' 分隔符）。
+        image.Features = ComputeFeatures(image, reachesHole);
         ComputeResourceRequirements(image);
         return image;
     }
+
+    /// <summary>特征需求掩码（清单驱动，BuiltinFunctions.Manifest.FeatureBit）：
+    /// syscall 编号 / 名表键 → FILE/VISION；名表原生含 '!' → FFI（FFI 为结构判据）；
+    /// 采集洞可达 → CAPTURE；NeedIL → IL（两者同为结构位，不经清单）。</summary>
+    static uint ComputeFeatures(EcxImage image, bool reachesHole)
+    {
+        uint feats = image.NeedIL ? EcsImageFeatures.Il : 0;
+        if (reachesHole)
+            feats |= EcsImageFeatures.Capture;
+
+        // 清单 → 查询表：L2 syscall 编号 / L3 名表键 → 特征位
+        var syscallBits = new Dictionary<int, uint>();
+        var nativeBits = new Dictionary<string, uint>(StringComparer.Ordinal);
+        foreach (var d in Binding.BuiltinFunctions.Manifest)
+        {
+            if (d.FeatureBit == 0)
+                continue;
+            if (d.Route == Binding.BuiltinFunctions.BuiltinRoute.Syscall
+                && EcsSyscall.TryGetTarget(d.Symbol.Name, out var target))
+                syscallBits[(int)(target & 0x7FFFFFFFu)] = d.FeatureBit;
+            else if (d.Route == Binding.BuiltinFunctions.BuiltinRoute.NativeName)
+                nativeBits[d.Symbol.Name] = d.FeatureBit;
+        }
+
+        var scan = new InstructionScanner.Callbacks();
+        scan.OnCallN = (code, w, target) =>
+        {
+            if ((target & EcsSyscall.CallFlag) != 0)
+            {
+                if (syscallBits.TryGetValue((int)(target & 0x7FFFFFFFu), out var bit))
+                    feats |= bit;
+            }
+            else if (target < (uint)image.Natives.Count)
+            {
+                var name = image.Natives[(int)target].Name;
+                if (name.Contains('!'))
+                    feats |= EcsImageFeatures.Ffi;
+                else if (nativeBits.TryGetValue(name, out var bit))
+                    feats |= bit;
+            }
+        };
+        foreach (var f in image.Functions)
+            InstructionScanner.Scan(f.Code, scan);
+        return feats;
+    }
+
 
     /// <summary>
     /// 常量池/原生名表死元素消除：扫描保留函数的引用（LoadK/Img 的常量 Bx、CallN 的原生 EXT），
@@ -268,7 +326,8 @@ public static class EcxPipeline
         var refs = new InstructionScanner.Callbacks
         {
             OnConstRef = (code, w, bx) => usedConsts.Add(bx),
-            OnCallN = (code, w, nid) => usedNatives.Add((int)nid),
+            // 旗标置位 = syscall 编号，非名表引用
+            OnCallN = (code, w, nid) => { if ((nid & 0x80000000u) == 0) usedNatives.Add((int)nid); },
         };
         foreach (var fn in image.Functions)
             InstructionScanner.Scan(fn.Code, refs);
@@ -297,7 +356,8 @@ public static class EcxPipeline
         var remapTable = new InstructionScanner.Callbacks
         {
             OnConstRef = (code, w, bx) => code[w] = (code[w] & 0xFFFF) | (uint)constNewIndex[bx] << 16,
-            OnCallN = (code, w, nid) => code[w + 1] = unchecked((uint)nativeNewIndex[(int)nid]),
+            // 旗标置位 = syscall 编号直传，不参与名表重映射
+            OnCallN = (code, w, nid) => { if ((nid & 0x80000000u) == 0) code[w + 1] = unchecked((uint)nativeNewIndex[(int)nid]); },
         };
         foreach (var fn in image.Functions)
             InstructionScanner.Scan(fn.Code, remapTable);
@@ -373,7 +433,7 @@ public static class EcxPipeline
         var holeScan = new InstructionScanner.Callbacks();
         holeScan.OnCallN = (code, w, nid) =>
         {
-            if (nid < (uint)image.Natives.Count && holeNames.Contains(image.Natives[(int)nid].Name))
+            if ((nid & 0x80000000u) == 0 && nid < (uint)image.Natives.Count && holeNames.Contains(image.Natives[(int)nid].Name))
             {
                 foundHole = true;
                 holeScan.Stop = true;   // 命中即停（等价原实现的即时 return true）

@@ -299,7 +299,11 @@ internal struct LatticeValue
             case SsaOp.ConvUInt64ToPtr: return ConstPtr(unchecked((long)operand.Value.GetUInt64()));
             case SsaOp.ConvPtrToInt: return ConstInt(unchecked((int)operand.Value.GetPtr()));
             case SsaOp.ConvUInt64ToInt: return ConstInt(unchecked((int)operand.Value.GetUInt64()));
-            case SsaOp.ConvToInt: return ConstInt(operand.Value.GetInt());
+            case SsaOp.ConvToInt:
+                // 字符串常量载荷不入 Lattice（ConstString 无 payload），交由常量传播 pass 解析折叠
+                if (operand.ConstKind == SsaOp.ConstString)
+                    return Bottom();
+                return ConstInt(operand.Value.GetInt());
             default: return Bottom();
         }
     }

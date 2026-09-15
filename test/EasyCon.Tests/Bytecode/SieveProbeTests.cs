@@ -3,6 +3,7 @@ using EasyCon.Script;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Syntax;
 using EasyCon.Script.Text;
+using EasyCon.Tests.Support;
 using EasyScript;
 using System.Collections.Immutable;
 using System.Text;
@@ -33,7 +34,7 @@ public class SieveProbeTests
         var result = Compilation.CompileSource(source, new CompileOptions { UseDiskCache = false });
         Assert.That(result.Image, Is.Not.Null);
         var io = new ProbeIo();
-        EcxVm.Run(result.Image!, io, null, null, null, () => 0, null, null, null,
+        EcxVm.Run(result.Image!, EcsTestHost.Capabilities(io),
             new CancellationTokenSource().Token, [], result.NativeSymbols);
         TestContext.Out.WriteLine("PRINT=" + string.Join(" | ", io.Lines));
     }

@@ -210,10 +210,10 @@ public static partial class BytecodeEncoder
                 case SsaOp.RuntimeValue:
                     {
                         var name = ((RuntimeValueNameSymbol)v.Aux!).Name;
-                        if (name == "__TIME__")
-                            EmitIabc(EcsOpcode.Time, Slot(v), 0, 0);
-                        else if (name == "__APP__")
-                            EmitStagedCall(EcsOpcode.CallN, _ctx.NativeId("APP"), Array.Empty<SsaValue>(), Slot(v));
+                        if (name == Syntax.RuntimeValues.Time)
+                            EmitStagedCall(EcsOpcode.CallN, unchecked((int)(EcsSyscall.CallFlag | (uint)EcsSyscall.Time)), Array.Empty<SsaValue>(), Slot(v));
+                        else if (name == Syntax.RuntimeValues.App)
+                            EmitStagedCall(EcsOpcode.CallN, unchecked((int)(EcsSyscall.CallFlag | (uint)EcsSyscall.App)), Array.Empty<SsaValue>(), Slot(v));
                         else
                             throw Fail($"不支持的运行时值 {name}");
                         break;
@@ -294,7 +294,12 @@ public static partial class BytecodeEncoder
             }
             else
             {
-                EmitStagedCall(EcsOpcode.CallN, _ctx.NativeId(NativeName(sym)), args,
+                // 文件族 → syscall 编号调用（EXT 旗标 0x80000000|编号，不进原生名表，docs/VM2.md §9.1）；
+                // 其余内建/采集洞 → CallN 按名分发。
+                var targetId = EcsSyscall.TryGetTarget(NativeName(sym), out var scTarget)
+                    ? unchecked((int)scTarget)
+                    : _ctx.NativeId(NativeName(sym));
+                EmitStagedCall(EcsOpcode.CallN, targetId, args,
                     hasResult ? Slot(v) : -1);
             }
         }

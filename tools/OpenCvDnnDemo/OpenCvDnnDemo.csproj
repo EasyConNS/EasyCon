@@ -7,8 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- EzCv 自带 OpenCV5 native 库分发，ProjectReference 即可让 native 库随输出目录分发 -->
-    <ProjectReference Include="..\..\src\EzCv\EzCv.csproj" />
+    <!-- OpenCvSharp5 自带 OpenCV5 native 库分发（runtime 包），native 库随输出目录分发 -->
+    <PackageReference Include="OpenCvSharp5" />
+    <PackageReference Include="OpenCvSharp5.runtime.win" />
+    <PackageReference Include="OpenCvSharp5.official.runtime.linux-x64" />
+    <PackageReference Include="OpenCvSharp5.runtime.osx.arm64" />
   </ItemGroup>
 
   <ItemGroup>

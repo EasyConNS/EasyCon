@@ -1,3 +1,5 @@
+using EasyCon.Core.Capabilities;
+using EasyCon.Script;
 using EasyCon.Script.Bytecode;
 using EasyScript;
 using System.Text;
@@ -51,6 +53,19 @@ internal sealed class RecordingPad : ICGamePad
 /// </summary>
 internal static class EcsTestHost
 {
+    /// <summary>测试委托桩 → CapabilitySet（引擎面执行用）。</summary>
+    public static CapabilitySet Capabilities(IIoAdapter io, ICGamePad? pad = null,
+        FrameDelegate? frame = null, RoiDelegate? roi = null, LabelMatchDelegate? labelMatch = null,
+        OcrDelegate? ocr = null, OcrInitDelegate? ocrInit = null, Func<int>? ocrConf = null)
+        => new()
+        {
+            Input = pad != null ? new PadInputAdapter(pad) : null,
+            Console = new ConsoleIoAdapter(io),
+            Capture = frame != null ? new DelegateCaptureSource(frame) : null,
+            Vision = roi != null || labelMatch != null ? new DelegateVisionService(roi, labelMatch) : null,
+            Ocr = ocr != null || ocrInit != null || ocrConf != null ? new DelegateOcrService(ocr, ocrInit, ocrConf) : null,
+        };
+
     /// <summary>录制型 EcxHost（EnableRecording 装配，输出行与事件日志供对拍）。</summary>
     public static EcxHost CreateRecording()
     {

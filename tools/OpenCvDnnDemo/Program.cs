@@ -1,4 +1,4 @@
-// OpenCvDnnDemo — 用 EzCv（OpenCV 5 DNN）复刻 dnnpy/inference_onnx.py 的 YOLO11 ONNX 推理。
+﻿// OpenCvDnnDemo — 用 EzCv（OpenCV 5 DNN）复刻 dnnpy/inference_onnx.py 的 YOLO11 ONNX 推理。
 //
 // 流程对照（行号对应 /Users/chaos/Desktop/dnnpy/inference_onnx.py）：
 //   Main            ← 脚本底部 (L350-362)
@@ -7,8 +7,8 @@
 //   Postprocess     ← postprocess_yolo11x (L227-295) : [1,84,8400] 转置/置信度过滤/坐标还原/NMS
 //   DrawDetections  ← draw_detections (L298-334) : 画框 + 标签
 
-using EzCv;
-using EzCv.Dnn;
+using OpenCvSharp;
+using OpenCvSharp.Dnn;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -65,7 +65,7 @@ internal static class Program
         Console.WriteLine($"输入尺寸：{InputSize}x{InputSize}");
 
         // 1) 加载 ONNX 模型
-        using var net = CvDnn.ReadNetFromOnnx(onnxPath);
+        using var net = Cv2.Dnn.ReadNetFromONNX(onnxPath);
         // CPU 后端
         net.SetPreferableBackend(Backend.OPENCV);
         net.SetPreferableTarget(Target.CPU);
@@ -124,7 +124,7 @@ internal static class Program
 
         using var letterboxed = Letterbox(rgb, targetSize, out ratio, out dw, out dh);
 
-        var blob = CvDnn.BlobFromImage(
+        var blob = Cv2.Dnn.BlobFromImage(
             letterboxed,
             scaleFactor: 1.0 / 255.0,
             size: new Size(targetSize, targetSize),
@@ -231,9 +231,9 @@ internal static class Program
         if (candRects.Count == 0)
             return (Array.Empty<Rect>(), Array.Empty<float>(), Array.Empty<int>());
 
-        int[] keepIndices = CvDnn.NMSBoxes(
+        Cv2.Dnn.NMSBoxes(
             candRects.ToArray(), candScores.ToArray(),
-            ConfidenceThres, IouThres);
+            ConfidenceThres, IouThres, out int[] keepIndices);
 
         var boxes = new Rect[keepIndices.Length];
         var scores = new float[keepIndices.Length];
@@ -263,7 +263,7 @@ internal static class Program
             color, thickness: 2);
 
         string label = $"{ClassNames[classId]}: {score:F2}";
-        var textSize = Cv2.GetTextSize(label, HersheyFonts.HersheySimplex, 0.5, 1);
+        var textSize = Cv2.GetTextSize(label, HersheyFonts.HersheySimplex, 0.5, 1, out _);
         int labelX = box.X;
         int labelY = box.Y - 10 > textSize.Height ? box.Y - 10 : box.Y + 10;
 

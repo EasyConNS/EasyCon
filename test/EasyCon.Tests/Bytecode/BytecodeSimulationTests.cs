@@ -29,7 +29,7 @@ public class BytecodeSimulationTests
     /// <summary>经 EcxVm 桥执行（与桌面运行时同一装配面）。</summary>
     static List<string> RunChain(CompileResult result, RecordingIo io, RecordingPad pad)
     {
-        EcxVm.Run(result.Image!, io, pad, null, null, () => 0, null, null, null,
+        EcxVm.Run(result.Image!, EcsTestHost.Capabilities(io, pad),
             new CancellationTokenSource().Token, [], result.NativeSymbols);
         return io.Lines;
     }
@@ -139,6 +139,77 @@ public class BytecodeSimulationTests
         Assert.That(bytes.Length, Is.LessThan(2048), "光速过帧镜像应小于 2KB");
         var disasm = EcxDisassembler.Disassemble(image);
         Assert.That(disasm, Does.Contain("CallN").And.Contain("FWRITE"));
+    }
+
+    // ---------- BDSP图鉴过帧：例程模拟测试 ----------
+
+    const string BdspExampleName = "BDSP图鉴过帧v2.1光速过帧版.txt";
+
+    static string BdspSource(string? replaceFrom = null, string? replaceTo = null)
+    {
+        var examplePath = Path.Combine(TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "examples", BdspExampleName);
+        Assert.That(File.Exists(examplePath), Is.True, "例程文件不存在");
+        var source = File.ReadAllText(examplePath);
+        return replaceFrom == null ? source : source.Replace(replaceFrom, replaceTo!);
+    }
+
+    static CompileResult CompileBdsp(string source)
+    {
+        var result = Compilation.CompileSource(source, new CompileOptions { UseDiskCache = false });
+        Assert.That(result.Diagnostics.Where(d => d.IsError).ToList(),
+            Is.Empty, "编译诊断：" + string.Join("\n", result.Diagnostics));
+        Assert.That(result.Image, Is.Not.Null);
+        return result;
+    }
+
+    [Test]
+    public void Bdsp_FanPath_EventsAndSemantics()
+    {
+        // 默认 mode=1（翻图鉴）/ 地上：main 折叠为 DISAHNGA → FAN → DISHANGB；
+        // _翻几次 1→2 缩短模拟时长，每次翻页 PRINT 一行
+        var result = CompileBdsp(BdspSource("_翻几次 = 1", "_翻几次 = 2"));
+
+        var io = new RecordingIo();
+        var pad = new RecordingPad();
+        var lines = RunChain(result, io, pad);
+        Assert.That(lines, Is.EqualTo(new[] { "已过帧1次", "已过帧2次" }),
+            "FAN 每次翻页 PRINT 一行，$1 跨 FUNC 累计");
+
+        // 唤醒 5×LCLICK + DISAHNGA 6 键（B/B/X/PLUS/B/UP）+ FAN 的 A 与每页 1×DOWN + DISHANGB 6 键（B/B/PLUS/A/HOME/HOME）
+        Assert.That(pad.Events.Count(e => e.StartsWith("KEY ")), Is.EqualTo(20), "KEY 点击事件计数");
+        // 每页 RS RIGHT + LS RIGHT（4 次 SetStick）+ DISHANGB RS/LS RESET（2 次）
+        Assert.That(pad.Events.Count(e => e.StartsWith("STICK ")), Is.EqualTo(6), "摇杆方向设置事件");
+        Assert.That(pad.Events.Count(e => e.StartsWith("STICKC ")), Is.EqualTo(1), "LS RIGHT,100 摇杆点击");
+        // 裸方向键（DOWN）编译为 50ms 点击（KeyI），不产生按压状态事件
+        Assert.That(pad.Events.Where(e => e.StartsWith("KEYST ")), Is.Empty, "裸方向键应为点击而非按压");
+
+        // ECM roundtrip 后重链接执行一致（格式验证）
+        var host = new EcxHost();
+        host.EnableRecording();
+        var roundtripLines = RunAfterRoundtrip(result, host);
+        Assert.That(roundtripLines, Is.EqualTo(lines), "roundtrip 后输出不一致");
+    }
+
+    [Test]
+    public void Bdsp_FullScript_ConstFoldAndWholeFuncDce()
+    {
+        // 源码 8 个 FUNC：mode=1（_过帧模式=1）与 地上（_在哪测帧=1）编译期常量折叠后，
+        // 仅 DISAHNGA/FAN/DISHANGB 可达；KAIGUAN/GUO/YEWAI/DIXIAA/DIXIAB 被链接期整函数 DCE 消除
+        var result = CompileBdsp(BdspSource());
+        var image = result.Image!;
+        var bytes = EcxWriter.Write(image);
+
+        var names = image.Functions.Select(f => f.Name).ToList();
+        Assert.That(names, Does.Contain("DISAHNGA").And.Contain("FAN").And.Contain("DISHANGB"),
+            "mode=1 地上路径三函数应保留");
+        Assert.That(names, Does.Not.Contain("KAIGUAN").And.Not.Contain("GUO")
+            .And.Not.Contain("YEWAI").And.Not.Contain("DIXIAA").And.Not.Contain("DIXIAB"),
+            "不可达模式的整函数应被 DCE 消除");
+        Assert.That(image.Globals.Select(g => g.Name), Is.EqualTo(new[] { "$1", "$2" }),
+            "跨 FUNC 共享的脚本变量进全局表");
+        Assert.That(bytes.Length, Is.LessThan(1024), "BDSP 镜像应小于 1KB");
+        Assert.That(EcxDisassembler.Disassemble(image), Does.Contain("Call"), "含用户函数调用");
     }
 
     // ---------- 通用管线：算术/字符串/数组/结构体/控制流 ----------

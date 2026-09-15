@@ -4,6 +4,7 @@ using EasyCon.Script;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
+using EasyCon.Tests.Support;
 using EasyScript;
 using System.Diagnostics;
 
@@ -29,7 +30,7 @@ public class PerformanceBenchmarks
         {
             output.Printed.Clear();
             var sw = Stopwatch.StartNew();
-            EcxVm.Run(result.Image!, output, null, null, null, () => 0, null, null, null,
+            EcxVm.Run(result.Image!, EcsTestHost.Capabilities(output),
                 cts.Token, [], result.NativeSymbols);
             sw.Stop();
             times.Add(sw.Elapsed.TotalMilliseconds);

@@ -68,19 +68,25 @@ rc==1 时 `retain` 共享移交、跳过容器拷贝，rc>1 维持深拷贝。�
 ## 四、C VM 结构与平台契约
 
 - **形态**：单翻译单元 C99（`ecs_vm.h` API 契约 + `ecs_vm.c` + `ecs_main.c` harness），仅依赖 libc；
-  `sh ci/build-vm.sh`（cc/gcc/clang 探测，全无则跳过）。
-- **五区段**：镜像解析（表指针直指 image 缓冲，零拷贝可 XIP，加载即全量校验 → 堆（句柄表 + rc +
-  空闲链 + §二原语）→ 解释器主循环（压帧/弹帧非递归，YIELD 预算步进可重入）→ 结构体布局展开
-  （加载期算 slot_offset，嵌套递归 + 环检测）→ 核心原生表（FWRITE 协议、ARG/ENV/APP、文件族转发
-  宿主，未注册 → `ECS_ERR_NOSUCHNATIVE`）。
-- **平台能力位** `ECS_CAP_*`（print/alert/beep/file/capture/ffi/stdin）：桌面 = ALL_DESKTOP；
-  MCU = 0——能力缺失一律静默忽略/默认值，脚本副作用仅按键/摇杆/延时；NeedIL 镜像加载即
-  `ECS_ERR_IL(13)` 拒跑（`Mcu_ImageLabel_Rejected` 锁定）。
+  `sh ci/build-vm.sh`（cc/gcc/clang 探测，全无则跳过）。VM 核对 L2/L3 **纯调度**（取号/取名 →
+  宿主回调），无内建语义；行断协议、caps 门控、getenv、ARG 均在宿主参考实现
+  （C# `EcxHost.Syscall` / C `ecs_main.c` 桩）。
+- **五区段**：镜像解析（表指针直指 image 缓冲，零拷贝可 XIP，加载即全量校验 + 特征校验 → 堆
+  （句柄表 + rc + 空闲链 + §二原语）→ 解释器主循环（压帧/弹帧非递归，YIELD 预算步进可重入）→
+  结构体布局展开（加载期算 slot_offset，嵌套递归 + 环检测）→ 宿主回调分发（L2 编号 syscall /
+  L3 名表原生，未注册 → `ECS_ERR_NOSUCHNATIVE`）。
+- **L2/L3 分流 ABI**（VM2.md §9.1）：`CallN` EXT 字 `bit31=1` → 低 31 位为 syscall 编号
+  （FWRITE=1..OCR_CONF=17 全 L2 封闭集，C# `EcsSyscall` ↔ C `ECS_SYSCALL_*`，**不进原生名表**）；
+  `bit31=0` → 原生名表索引（仅 L3：采集洞 `__xxx__` / EXTERN FFI "库!导出名" / ENCODE / JQ）。
+- **特征需求掩码**（镜像头保留位 u16 @0x0A；IL 由 flags.I 投影）：加载规则
+  `feats & FEAT_IL → ECS_ERR_IL(13)`；`feats & ~host->feats → ECS_ERR_FEAT(14)`——FFI/采集洞
+  镜像加载期拒跑（不再等到运行期）；文件族由 MCU 参考桩覆盖（`feats = FEAT_FILE`），行为 =
+  静默/默认值（FWRITE 返 len、FREAD/串返空、TIME=0、BEEP/ALERT/AMIIBO no-op，S-13）。
 - **harness**：`ecs-vm run image.ecx [--trace] [--print]`——stdout=输出；stderr=事件 TSV
   （KEY/KEYST/STICK/STICKC/WAIT/AMIIBO/BEEP，与 `EcxHost.EnableRecording` 同格式）；`--print` 为
   PC 侧验证通道，缺省即 MCU 精确语义。
 - **错误码**：OK/YIELD/CANCELLED/IMAGE/OPCODE/SLOT/TYPE/INDEX/DIVZERO/DEPTH/NOSUCHNATIVE/HOST/
-  OOM/IL（全集见 `ecs_vm.h`）；错误现场 `error_func/error_pc` ↔ `EcxInterpreter` ErrorFunc/ErrorPc。
+  OOM/IL/FEAT（全集见 `ecs_vm.h`）；错误现场 `error_func/error_pc` ↔ `EcxInterpreter` ErrorFunc/ErrorPc。
 
 ## 五、验证体系
 

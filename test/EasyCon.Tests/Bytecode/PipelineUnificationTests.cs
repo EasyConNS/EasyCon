@@ -24,7 +24,7 @@ public class PipelineUnificationTests
     {
         Assert.That(result.Diagnostics.Where(d => d.IsError).ToList(), Is.Empty,
             "统一链路编译失败：" + string.Join("\n", result.Diagnostics));
-        EcxVm.Run(result.Image!, io, pad, null, null, () => 0, null, null, null,
+        EcxVm.Run(result.Image!, EcsTestHost.Capabilities(io, pad),
             new CancellationTokenSource().Token, [], result.NativeSymbols);
         return (io.Lines, pad.Events);
     }

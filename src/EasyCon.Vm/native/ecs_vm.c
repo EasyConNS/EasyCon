@@ -228,16 +228,6 @@ static ecs_value new_str_units(ecs_vm *vm, const uint16_t *units, int32_t len)
     return v;
 }
 
-static ecs_value new_str_ascii(ecs_vm *vm, const char *s)
-{
-    int32_t n = (int32_t)strlen(s);
-    uint16_t *tmp = (uint16_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(uint16_t));
-    if (!tmp) return void_value();
-    for (int32_t i = 0; i < n; i++) tmp[i] = (uint16_t)(unsigned char)s[i];
-    ecs_value v = new_str_units(vm, tmp, n);
-    free(tmp);
-    return v;
-}
 
 static int32_t hnew_arr(ecs_vm *vm, uint8_t etag, int32_t cap)
 {
@@ -658,12 +648,17 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
     if ((uint32_t)r_bytes(&r, 4) != 0x32435845u) return ECS_ERR_IMAGE;  /* "ECX2" */
     if (r_bytes(&r, 2) != 1) return ECS_ERR_IMAGE;                      /* format_ver */
     uint32_t flags = (uint32_t)r_bytes(&r, 2);
-    /* 单片机约束：携带图像标签的镜像（NeedIL）禁止在本平台执行 */
-    if ((flags & 0x4) != 0)
-        return ECS_ERR_IL;
     (void)r_bytes(&r, 1);                                               /* max_slots */
     (void)r_bytes(&r, 1);                                               /* max_depth */
-    if (r_bytes(&r, 2) != 0) return ECS_ERR_IMAGE;                      /* 保留位 = 0 */
+    /* 特征需求掩码（原保留位 u16 @0x0C，VM2.md §9.1）：IL 由 flags.I 投影（EcmEcxFormat §2.1）。
+       加载规则：宿主 feats 缺位 → 拒跑（IL → ECS_ERR_IL 既有码，其余 → ECS_ERR_FEAT）。 */
+    uint32_t feats = (uint32_t)r_bytes(&r, 2);
+    if ((flags & 0x4) != 0)
+        feats |= ECS_FEAT_IL;
+    if ((feats & ECS_FEAT_IL) != 0)
+        return ECS_ERR_IL;
+    if ((feats & ~vm->host.feats) != 0)
+        return ECS_ERR_FEAT;
     int32_t nconsts = r_count(&r);
     int32_t nstructs = r_count(&r);
     int32_t nglobals = r_count(&r);
@@ -820,126 +815,18 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
  * §4.5 核心原生表
  * ============================================================ */
 
-static ecs_value call_native_by_name(ecs_vm *vm, const char *name, ecs_value *args, int32_t nargs, int *err)
+/* ---- 宿主访问 VM 数据的唯一通道（syscall 处理器内使用；uvm32 arg_get* 同构） ---- */
+
+int32_t ecs_vm_arg_str(ecs_vm *vm, ecs_value v, const uint16_t **units)
 {
-    ecs_value ret = void_value();
-    *err = 0;
-    (void)nargs;
+    int32_t len = 0;
+    str_or_null(vm, v, units, &len);
+    return len;
+}
 
-    if (strcmp(name, "FWRITE") == 0)
-    {
-        /* S-14：句柄 1=stdout 行断协议；0=no-op 返回 len；2=print(newline=true)；>2=文件族 */
-        int64_t handle = args[0].i64;
-        const uint16_t *u; int32_t len;
-        str_or_null(vm, args[1], &u, &len);
-        if (handle == 1)
-        {
-            if (vm->host.caps & ECS_CAP_PRINT)
-            {
-                int ends_break = len > 0 && u && u[len - 1] == (uint16_t)'\\';
-                int32_t out_len = ends_break ? len - 1 : len;
-                if (vm->host.print)
-                    vm->host.print(vm->host.ud, u, out_len, !vm->pending_break);
-                vm->pending_break = ends_break;
-            }
-            return make_int((int32_t)len);
-        }
-        if (handle == 0)
-            return make_int((int32_t)len);
-        if (handle == 2)
-        {
-            if (vm->host.caps & ECS_CAP_PRINT)
-            {
-                if (vm->host.print)
-                    vm->host.print(vm->host.ud, u, len, 1);
-            }
-            return make_int((int32_t)len);
-        }
-        if (!(vm->host.caps & ECS_CAP_FILE))
-            return make_int(-1);
-        /* 文件句柄 → host->native 统一处理 */
-    }
-    else if (strcmp(name, "FREAD") == 0)
-    {
-        if (args[0].i64 == 0)
-        {
-            if ((vm->host.caps & ECS_CAP_STDIN) && vm->host.read_line)
-            {
-                uint16_t buf[1024];
-                int32_t n = vm->host.read_line(vm->host.ud, buf, 1024);
-                if (n < 0) n = 0;
-                return new_str_units(vm, buf, n);
-            }
-            return new_str_units(vm, NULL, 0);
-        }
-        /* 非 stdin → host->native */
-    }
-    else if (strcmp(name, "ALERT") == 0)
-    {
-        if (vm->host.caps & ECS_CAP_ALERT)
-        {
-            const uint16_t *u; int32_t len;
-            str_or_null(vm, args[0], &u, &len);
-            if (vm->host.print)
-                vm->host.print(vm->host.ud, u, len, 1);
-        }
-        return ret;   /* 无能力：静默忽略 */
-    }
-    else if (strcmp(name, "ARG") == 0)
-    {
-        int32_t i = args[0].i32;
-        if (i >= 0 && i < vm->host.nargs && vm->host.args)
-            return new_str_ascii(vm, vm->host.args[i]);
-        return new_str_units(vm, NULL, 0);
-    }
-    else if (strcmp(name, "ENV") == 0)
-    {
-        const uint16_t *u; int32_t len;
-        str_or_null(vm, args[0], &u, &len);
-        char key[512];
-        int32_t n = 0;
-        if (u)
-            for (; n < len && n < 511; n++)
-                key[n] = u[n] < 128 ? (char)u[n] : '?';
-        key[n] = 0;
-        const char *val = getenv(key);
-        return new_str_ascii(vm, val ? val : "");
-    }
-    else if (strcmp(name, "APP") == 0)
-    {
-        if (vm->host.app_dir)
-        {
-            int32_t n = 0;
-            while (vm->host.app_dir[n] != 0) n++;
-            return new_str_units(vm, vm->host.app_dir, n);
-        }
-        return new_str_units(vm, NULL, 0);
-    }
-    else if (strcmp(name, "AMIIBO") == 0)
-    {
-        if (args[0].i32 <= 9 && vm->host.amiibo)   /* S-13：n>9 静默忽略 */
-            vm->host.amiibo(vm->host.ud, args[0].i32);
-        return ret;
-    }
-    else if (strcmp(name, "BEEP") == 0)
-    {
-        if (vm->host.caps & ECS_CAP_BEEP && vm->host.beep)
-            vm->host.beep(vm->host.ud, args[0].i32, args[1].i32);
-        return ret;
-    }
-    /* OCR_CONF / ENCODE / JQ / 文件 IO / 采集卡洞 / EXTERN FFI → host->native 按名分发 */
-
-    if (!vm->host.native)
-    {
-        *err = 1;   /* ECS_ERR_NOSUCHNATIVE */
-        return ret;
-    }
-    if (vm->host.native(vm->host.ud, name, args, nargs, &ret) != 0)
-    {
-        *err = 1;
-        return ret;
-    }
-    return ret;
+void ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_t len)
+{
+    *ret = new_str_units(vm, units, len);
 }
 
 /* ============================================================
@@ -1080,6 +967,8 @@ static ecs_value do_conv(ecs_vm *vm, uint32_t kind, ecs_value v, int *err)
                 { r.tag = ECS_INT; r.i32 = v.i32; }
             else if (v.tag == ECS_DOUBLE)
                 { r.tag = ECS_INT; r.i32 = saturate_d2i(v.f64); }
+            else if (v.tag == ECS_STRING)
+                { r.tag = ECS_INT; r.i32 = 0; }   /* 字符串解析为 PC 端实现；MCU 端静默返回 0 */
             else
                 *err = 1;
             break;
@@ -1603,18 +1492,6 @@ static int exec_data_op(ecs_vm *vm, uint32_t op, ecs_value *R,
             store_fresh(vm, &R[a], make_int(v));
             break;
         }
-        case OP_Time:
-        {
-            int32_t t = 0;
-            if (vm->host.time_ms) t = vm->host.time_ms(vm->host.ud);
-            store_fresh(vm, &R[a], make_int(t));
-            break;
-        }
-        case OP_Beep: if (vm->host.beep) vm->host.beep(vm->host.ud, R[a].i32, R[b].i32); break;
-        case OP_Amiibo:
-            if (R[a].i32 <= 9 && vm->host.amiibo)   /* S-13 */
-                vm->host.amiibo(vm->host.ud, R[a].i32);
-            break;
 
         default:
             FAIL(ECS_ERR_OPCODE);
@@ -1749,8 +1626,14 @@ int ecs_vm_run(ecs_vm *vm)
                     vm->error_func = fr->func_index; vm->error_pc = (int32_t)fr->ret_pc - 1;
                     return ECS_ERR_OPCODE;
                 }
-                uint32_t nid = code[fr->ret_pc++];
-                if (nid >= (uint32_t)vm->nnatives || b > 8)
+                uint32_t target = code[fr->ret_pc++];
+                if (b > 8)
+                {
+                    vm->error_func = fr->func_index; vm->error_pc = (int32_t)fr->ret_pc - 1;
+                    return ECS_ERR_NOSUCHNATIVE;
+                }
+                /* 旗标置位 = 文件族 syscall 编号（VM2.md §9.1）；否则原生名表索引 */
+                if ((target & ECS_SYSCALL_FLAG) == 0 && target >= (uint32_t)vm->nnatives)
                 {
                     vm->error_func = fr->func_index; vm->error_pc = (int32_t)fr->ret_pc - 1;
                     return ECS_ERR_NOSUCHNATIVE;
@@ -1766,7 +1649,19 @@ int ecs_vm_run(ecs_vm *vm)
                     args[i] = R[a + i];
                 }
                 int nerr = 0;
-                ecs_value ret = call_native_by_name(vm, vm->natives[nid], args, b, &nerr);
+                ecs_value ret = void_value();
+                if ((target & ECS_SYSCALL_FLAG) != 0)
+                {
+                    /* L2：编号 syscall，语义在宿主参考实现（VM 核纯调度） */
+                    if (!vm->host.syscall || vm->host.syscall(vm->host.ud, (int32_t)(target & ~ECS_SYSCALL_FLAG), args, b, &ret) != 0)
+                        nerr = 1;
+                }
+                else
+                {
+                    /* L3：名表动态原生（采集洞 / EXTERN FFI / ENCODE / JQ） */
+                    if (!vm->host.native || vm->host.native(vm->host.ud, vm->natives[target], args, b, &ret) != 0)
+                        nerr = 1;
+                }
                 if (nerr)
                 {
                     vm->error_func = fr->func_index; vm->error_pc = (int32_t)fr->ret_pc - 1;

@@ -933,10 +933,12 @@ $str = STRING(42)                # "42"
 $str = STRING(true)              # "true"
 $str = STRING(3.14)              # "3.14"
 
-# INT - 转换为整数
-$num = INT("123")                # 123
+# INT - 转换为整数：数值截断取整；数字字符串直接解析
 $num = INT(3.14)                 # 3
-$num = INT(true)                 # 1
+$num = INT("123")                # 123
+$num = INT("  -45 ")             # -45（支持前后空白与正负号）
+# 无法解析的字符串（如 "12a"、空串）返回 0；
+# 布尔值传参建议先存入 BOOL 变量再使用。
 ```
 
 ### 10.4 字符串编码函数
@@ -1250,6 +1252,31 @@ FUNC multiply($a, $b):INT
     RETURN $a * $b
 ENDFUNC
 ```
+
+---
+
+## ONNX 推理实验函数（NET_*）
+
+> 实验面：走 L3 名表，宿主须装配 `IInference` 能力（OpenCvSharp.Dnn 后端）；
+> 镜像带 VISION 特征位——单片机参考桩不支持，加载期拒跑（ECS_ERR_FEAT）。
+
+```ecs
+# 加载 ONNX 模型，返回会话句柄（-1 = 失败）
+$net = NET_LOAD("models/demo.onnx")
+
+# 执行推理：输入为数值数组（展平），返回输出元素个数（0 = 失败）
+$in = [1, 2, 3]
+$n = NET_RUN($net, $in)
+
+# 逐元素读取输出（越界返回 0）
+$o0 = NET_OUT(0)
+PRINT $o0
+```
+
+约束：
+- 纯标量协议——原生调用边界不携带数组，输出只能经 `NET_OUT(i)` 逐个读取。
+- 未装配推理能力时：`NET_LOAD` 返回 -1、`NET_RUN` 返回 0、`NET_OUT` 返回 0（不报错）。
+- 模型文件为外部资产，不入库。
 
 ---
 

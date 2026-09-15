@@ -1,6 +1,7 @@
 ﻿using EasyCon.Capture;
 using EasyCon.Core;
-using EasyCon.Core.Runner;
+using EasyCon.Core.Capabilities;
+using EasyCon.Core.Script;
 using EasyCon.Core.Services;
 using EasyCon.Script;
 using EasyScript;
@@ -14,7 +15,8 @@ public class ScriptService : IScriptService
 {
     private readonly ILogService _logService;
     private readonly IDeviceService _deviceService;
-    private readonly EasyRunner _runner = new();
+    private readonly IScriptEngine _engine = new EasyScriptEngine();
+    private IScriptSession? _session;
     private FrameDelegate? _frameDelegate;
     private LabelMatchDelegate? _labelMatchDelegate;
     private ImmutableHashSet<string>? _labelNames;
@@ -50,10 +52,14 @@ public class ScriptService : IScriptService
 
         try
         {
-            var extVarNames = _labelNames ?? [];
-            ImmutableArray<Diagnostic> diag = fileName == null
-                ? _runner.Init(scriptText, extVarNames)
-                : _runner.Load(fileName, extVarNames);
+            var options = new ScriptHostOptions
+            {
+                Compile = new CompileOptions { ExtVars = _labelNames ?? [], UseDiskCache = false },
+            };
+            _session = fileName == null
+                ? _engine.FromSource(scriptText, options)
+                : _engine.LoadFile(fileName, options);
+            ImmutableArray<Diagnostic> diag = _session.Info.Diagnostics;
             if (diag.HasErrors())
             {
                 var d1 = diag.Where(d => d.IsError).First();
@@ -76,6 +82,8 @@ public class ScriptService : IScriptService
 
     public void Run()
     {
+        if (_session == null)
+            return;
         _vpadDeactivate?.Invoke();
         _logService.AddLog("开始运行");
 
@@ -84,13 +92,27 @@ public class ScriptService : IScriptService
 
         _cts?.Cancel();
         _cts = new();
+        var session = _session;
         Task.Run(() =>
         {
             _startTime = DateTime.Now;
             LogPrint?.Invoke("-- 开始运行 --", "Lime");
             try
             {
-                _runner.Run(_logService, _deviceService.CreateGamePadAdapter(), null, null, () => 0, _frameDelegate, MatExtensions.CropBase64, _labelMatchDelegate, _labelNames, _cts.Token);
+                // 能力装配（P1/P6）：帧/ROI/标签/OCR/推理经服务接口注入
+                var capabilities = new CapabilitySet
+                {
+                    Input = new PadInputAdapter(_deviceService.CreateGamePadAdapter()),
+                    Console = new ConsoleIoAdapter(_logService),
+                    Capture = _frameDelegate != null ? new DelegateCaptureSource(_frameDelegate) : null,
+                    Vision = new DelegateVisionService(MatExtensions.CropBase64, _labelMatchDelegate),
+                    Ocr = new TesseractOcrService(new OcrEngineCache
+                    {
+                        DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata",
+                    }),
+                    Inference = new DnnInference(),
+                };
+                session.Run(_cts.Token, capabilities);
                 LogPrint?.Invoke("-- 运行结束 --", "Lime");
                 _logService.AddLog("运行结束");
             }
@@ -134,15 +156,16 @@ public class ScriptService : IScriptService
 
     public string GetFormattedCode()
     {
-        var formattedCode = _runner.ToCode().Trim();
+        var formattedCode = (_session?.Info.FormatCode() ?? "").Trim();
         formattedCode = Regex.Replace(formattedCode, ",(?! )", ", ");
         return formattedCode;
     }
 
     public async Task<byte[]> Build(bool autoRun)
     {
-        var bytes = _runner.Assemble(autoRun);
-        return bytes ?? [];
+        // v1 Assemble 已随 IRunner 移除（P2）；ECX 产物请用 CLI compile
+        await Task.CompletedTask;
+        throw new NotImplementedException("v1 Assemble 已移除；请用 CLI compile 产出 .ecx");
     }
 
     private Action? _vpadDeactivate;

@@ -78,6 +78,8 @@ public static partial class BytecodeEncoder
                 var info = Info(block);
                 foreach (var phi in block.Phis)
                 {
+                    if (!_totalReads.ContainsKey(phi))
+                        continue;   // 死 φ（防线 1）：全函数无读取——不占槽，前驱边不产生副本（EmitEdgeCopies 跳过）
                     _slots[phi] = _next++;
                     hasPhi = true;
                 }

@@ -31,7 +31,7 @@ public static class EcxWriter
         w.Write(flags);
         w.Write((byte)Math.Min(image.MaxSlots, 255));
         w.Write((byte)Math.Min(image.MaxDepth, 255));
-        w.Write((ushort)0);                             // 保留
+        w.Write((ushort)(image.Features & 0xFFFF));     // 特征需求掩码（原保留位，VM2.md §9.1）
         w.Write(image.Consts.Count);
         w.Write(image.Structs.Count);
         w.Write(image.Globals.Count);

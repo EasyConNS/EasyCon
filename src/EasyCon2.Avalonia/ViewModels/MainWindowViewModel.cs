@@ -1,4 +1,4 @@
-using Avalonia.Media;
+﻿using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -14,7 +14,7 @@ using EasyCon2.Avalonia.Core.TagEditor;
 using EasyCon2.Avalonia.Core.Terminal;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Views;
-using EzCv;
+using OpenCvSharp;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;

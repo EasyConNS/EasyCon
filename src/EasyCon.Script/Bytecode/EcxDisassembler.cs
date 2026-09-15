@@ -70,7 +70,7 @@ public static class EcxDisassembler
             EcsOpcode.Jpt => $"{op} r{a}, {Sign16(word >> 16):+0;-0}",
             EcsOpcode.Jpf => $"{op} r{a}, {Sign16(word >> 16):+0;-0}",
             EcsOpcode.Call => $"{op} args=r{a}..+{b}, recv={(c == 255 ? "-" : $"r{c}")}, func[{ext}]{FuncText(image, ext)}",
-            EcsOpcode.CallN => $"{op} args=r{a}..+{b}, recv={(c == 255 ? "-" : $"r{c}")}, native[{ext}]{NativeText(image, ext)}",
+            EcsOpcode.CallN => $"{op} args=r{a}..+{b}, recv={(c == 255 ? "-" : $"r{c}")}, {CallNTargetText(image, ext)}",
             EcsOpcode.Slice => $"{op} r{a}, r{b}, r{c}, end={(ext == 0xFFFFFFFF ? "-" : $"r{ext}")}",
             EcsOpcode.GetFI => $"{op} r{a}, r{b}.field[{c}], idx=r{ext}",
             EcsOpcode.PutFI => $"{op} r{b}.field[{c}] = r{a}, idx=r{ext}",
@@ -83,7 +83,7 @@ public static class EcxDisassembler
     static string FormatExt(EcsOpcode op, uint ext, EcxImage image) => op switch
     {
         EcsOpcode.Call => $"func[{ext}]{FuncText(image, ext)}",
-        EcsOpcode.CallN => $"native[{ext}]{NativeText(image, ext)}",
+        EcsOpcode.CallN => CallNTargetText(image, ext),
         EcsOpcode.Slice => ext == 0xFFFFFFFF ? "end=-" : $"end=r{ext}",
         EcsOpcode.GetFI => $"idx=r{ext}",
         EcsOpcode.PutFI => $"idx=r{ext}",
@@ -106,4 +106,14 @@ public static class EcxDisassembler
 
     static string NativeText(EcxImage image, uint nid)
         => nid < (uint)image.Natives.Count ? $" ; {image.Natives[(int)nid].Name}" : "";
+
+    /// <summary>CallN 目标：旗标置位 = syscall 编号（渲染规范名）；否则原生名表索引。</summary>
+    static string CallNTargetText(EcxImage image, uint ext)
+    {
+        if ((ext & EcsSyscall.CallFlag) == 0)
+            return $"native[{ext}]{NativeText(image, ext)}";
+        var id = ext & 0x7FFFFFFFu;
+        var name = id < (uint)EcsSyscall.Names.Length ? EcsSyscall.Names[id] : "?syscall";
+        return $"syscall[{id}] ; {name}";
+    }
 }
