@@ -15,7 +15,7 @@ ModuleCompilePipeline（逐模块）：cacheKey 三路查找（disk .ecm / 进�
              │  未命中 → parse → InterfaceScopeSynthesizer（依赖以接口区提供）
              │        → Binder 急切绑定 → SSA → 优化（导出为根）→ EcxModuleEncoder → 原子写回 obj/
              ▼
-EcxPipeline.Link ─► EcxImage（桌面 EcxInterpreter 与 MCU C VM 共用同一产物）
+EcxPipeline.Link ─► EcxImage（桌面可带宽槽旁表；MCU 由 EcxWriter 校验后写为 ECX2）
 ```
 
 - **无源码级合并**：任何编译只 parse 自己那份源码；stdlib（std/vision）内嵌源码随编译器发布，

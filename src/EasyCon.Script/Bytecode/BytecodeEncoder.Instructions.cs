@@ -309,7 +309,7 @@ public static partial class BytecodeEncoder
                     ? unchecked((uint)localFid)
                     : 0x80000000u | unchecked((uint)_ctx.ImportId(sym.Name, sym.Parameters.Length));
                 EmitExt(EcsOpcode.Call, _stagingBase, args.Count,
-                    hasResult ? _receiveSlot : 255, target);
+                    hasResult ? _receiveSlot : -1, target);
 
                 if (hasResult)
                     EmitIabc(EcsOpcode.Move, Slot(v), _receiveSlot, 0);
@@ -331,7 +331,7 @@ public static partial class BytecodeEncoder
             for (int i = 0; i < args.Count; i++)
                 EmitIabc(EcsOpcode.Move, _stagingBase + i, Slot(args[i]), 0);
             EmitExt(op, _stagingBase, args.Count,
-                resultSlot >= 0 ? resultSlot : 255, unchecked((uint)targetId));
+                resultSlot, unchecked((uint)targetId));
         }
 
         void EmitHoleCall(SsaValue v, string native)

@@ -9,7 +9,8 @@
 
 - 小端。元数据字符串 = `u16 字节长 + UTF-8`；脚本常量字符串 = `u16 code unit 数 + UTF-16LE`（长度与 C# `string.Length` 同义）。
 - ECX 整体加载地址须 4 字节对齐；各 u32 字段相对镜像起点天然 4 字节对齐（头部定长 0x24，表条目均为 4 的倍数内字段）。
-- 计数上限（编码器与加载器双向强制）：槽位 ≤255，Bx ≤65535，单函数指令 ≤2²⁴，常量 ≤65535。
+- ECX2 计数上限（写出器与加载器双向强制）：槽位/参数数量 ≤255，Bx ≤65535，
+  单函数指令 ≤2²⁴，常量 ≤65535。桌面内存镜像与 ECM v5 的宽槽旁表不受槽位 255 限制。
 
 ## 2. ECX —— 链接后可执行镜像（format_ver = 2）
 
@@ -77,13 +78,13 @@ LoadK Bx < const_count）→ 类型表嵌套展开无环。校验宁可严格：
 | 5/6 | UINT64/DOUBLE | i64/f64 | | 6/7 | double/string |
 | 7/9/12 | STRING/ARRAY/STRUCT | i64 低 32 位=堆句柄 | | 8/9/10/11 | array/ptr/struct/any |
 
-## 4. ECM —— 模块产物（"ECM2" format_ver = 3）
+## 4. ECM —— 模块产物（"ECM2" format_ver = 5）
 
 开发链路上的编译缓存（ModuleSystem.md §6），与 ECX 同族但带名字与接口区（不必最省）。
 当前布局与 `EcmFormat.Write/Read` 逐字段一致：
 
 ```
-"ECM2" ver:u16(=3) flags:u16(HasEval=bit0；与下方标志字节 bit0 同值冗余，读侧以标志字节为准)
+"ECM2" ver:u16(=5) flags:u16(HasEval=bit0；与下方标志字节 bit0 同值冗余，读侧以标志字节为准)
 链接标志字节:u8   bit0=HasEval bit1=HasInit bit2=KeyAction bit3=NeedIL   ← v3 新增：跨缓存存活
 InitFid:u32       <init:module> 函数的模块局部 fid（无 init 时 0）
 module_name:utf8
@@ -93,12 +94,17 @@ module_name:utf8
 struct_count { StructDef }        # 本模块声明集（与 ECX Field 同构）
 global_count { name:utf8 type:u8 }# 模块私有全局
 native_count { name:utf8 }
-func_count { name:utf8 nparams:u8 nslots:u8 hasret:u8 code_off:u32 code_words:u32 }
+func_count { name:utf8 nparams:i32 nslots:i32 hasret:u8 code_off:u32 code_words:u32 }
 code_bytes:u32 { u32... }
 const_count { EcsConst }
-import_count { name:utf8 nparams:u8 hasret:u8 }    # Call ext = 0x80000000 | importIdx
-export_count { name:utf8 local_fid:u32 nparams:u8 hasret:u8 }
+import_count { name:utf8 nparams:i32 hasret:u8 }    # Call ext = 0x80000000 | importIdx
+export_count { name:utf8 local_fid:u32 nparams:i32 hasret:u8 }
 il_count { name:utf8 }
+line_table_func_count:u32
+  { value_count:u32 { value:i32 } }                  # v4：每函数 [pc,line,...] 桌面源码行映射
+wide_operand_func_count:u32
+  { entry_count:u32 { pc:i32 mask:u8 a:i32 b:i32 c:i32 } }
+                                                     # v5：每函数桌面宽槽/宽调用参数旁表
 ```
 
 ### 4.1 引用规则（编码期闭合矩阵；链接期唯一重写点）
@@ -120,7 +126,9 @@ il_count { name:utf8 }
 ## 5. 版本与演进
 
 - `format_ver` 单调递增，加载器拒绝更高版本；语义不兼容变更必须升版本（旧缓存经严格版本校验自然失效）。
-- ECX v1 冻结项：32 位定长指令、8 位槽、16 位常量索引、UTF-16 常量串。ECM 当前版本 v3（含链接标志节）。
+- ECX v1 冻结项：32 位定长指令、8 位槽、16 位常量索引、UTF-16 常量串。ECM 当前版本 v5；
+  v4 增加桌面行号表，v5 增加桌面宽槽旁表和 32 位函数参数/槽位计数。ECM 是编译缓存格式，
+  这些字段不会进入 MCU ECX2。
 
 ### 5.1 格式 v2 窗口设计备注（统一链路遗留项，实施须与 C VM 协商升版本）
 

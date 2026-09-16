@@ -28,7 +28,7 @@ public sealed class CompileResult
     public bool KeyAction { get; }
     public bool NeedIL { get; }
     public CompilationTiming? Timing { get; }
-    /// <summary>链接后的可执行镜像（统一链路产物：桌面 EcxInterpreter 与 MCU .ecx 共用；失败为 null）。</summary>
+    /// <summary>链接后的内存执行镜像；桌面可含宽槽旁表，MCU 导出由 EcxWriter 校验 ECX2 子集。</summary>
     public EcxImage? Image { get; }
     /// <summary>链接序模块产物（std → vision → 依赖拓扑序 → main）。</summary>
     public List<ModuleArtifact> Artifacts { get; }

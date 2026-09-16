@@ -111,7 +111,8 @@ public static class DeadStoreSweep
         for (int i = 0; i < count; i++)
         {
             uint ins = code[instrPc[i]];
-            int a = (int)((ins >> 8) & 0xFF), b = (int)((ins >> 16) & 0xFF), c = (int)((ins >> 24) & 0xFF);
+            EcsOperands operands = f.OperandsAt(instrPc[i], ins);
+            int a = operands.A, b = operands.B, c = operands.C;
             var u = new List<int>();
             int d;
             switch (ops[i])
@@ -123,7 +124,7 @@ public static class DeadStoreSweep
                 case EcsOpcode.Ret: u.Add(a); d = -1; break;
                 case EcsOpcode.Call or EcsOpcode.CallN:
                     for (int k = 0; k < b; k++) u.Add(a + k);   // 实参窗
-                    d = c == 255 ? -1 : c;                       // C=255：无接收槽
+                    d = c;                                       // -1：无接收槽
                     break;
                 case EcsOpcode.NewArrV:
                     d = a;
@@ -256,6 +257,7 @@ public static class DeadStoreSweep
         // ---- 5. 压缩重写：跳转偏移按 old→new pc 重映射（被删指令映射到其后继首个存活指令）----
         var newPcOf = new int[n];
         var newCode = new List<uint>(n);
+        var newWideOperands = new Dictionary<int, EcsWideOperands>();
         int np = 0;
         for (int i = 0; i < count; i++)
         {
@@ -265,6 +267,8 @@ public static class DeadStoreSweep
             int wc = EcsFormat.WordCount(ops[i]);
             for (int k = 0; k < wc; k++)
                 newCode.Add(code[instrPc[i] + k]);
+            if (f.WideOperands.TryGetValue(instrPc[i], out EcsWideOperands wide))
+                newWideOperands[np] = wide;
             np += wc;
         }
         int nextPc = np;
@@ -289,6 +293,7 @@ public static class DeadStoreSweep
         }
 
         f.Code = newCode;
+        f.WideOperands = newWideOperands;
     }
 
     /// <summary>可删族：纯拷贝/物化（定义槽死 ⇒ 指令死）。</summary>

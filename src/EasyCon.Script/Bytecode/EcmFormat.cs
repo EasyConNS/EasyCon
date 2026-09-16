@@ -9,7 +9,7 @@ namespace EasyCon.Script.Bytecode;
 public static class EcmFormat
 {
     public const uint Magic = 0x324D4345;   // "ECM2"
-    public const ushort Version = 4;        // v4：函数节增行号表（LineTable，pc→源码行，诊断/运行错误映射用）
+    public const ushort Version = 5;        // v5：桌面宽槽（int32 nparams/nslots + WideOperands 旁表）
 
     public static byte[] Write(ModuleArtifact module)
     {
@@ -76,8 +76,8 @@ public static class EcmFormat
         foreach (var f in module.Functions)
         {
             WriteUtf8(w, f.Name);
-            w.Write((byte)f.NParams);
-            w.Write((byte)f.NSlots);
+            w.Write(f.NParams);
+            w.Write(f.NSlots);
             w.Write(f.HasReturn ? (byte)1 : (byte)0);
             w.Write(codeOffset);
             w.Write((uint)f.Code.Count);
@@ -98,7 +98,7 @@ public static class EcmFormat
         foreach (var i in module.Imports)
         {
             WriteUtf8(w, i.Name);
-            w.Write((byte)i.NParams);
+            w.Write(i.NParams);
             w.Write(i.HasReturn ? (byte)1 : (byte)0);
         }
         w.Write(module.Exports.Count);
@@ -106,7 +106,7 @@ public static class EcmFormat
         {
             WriteUtf8(w, e.Name);
             w.Write((uint)e.LocalFid);
-            w.Write((byte)e.NParams);
+            w.Write(e.NParams);
             w.Write(e.HasReturn ? (byte)1 : (byte)0);
         }
 
@@ -122,6 +122,21 @@ public static class EcmFormat
             w.Write(f.LineTable.Count);
             foreach (var v in f.LineTable)
                 w.Write(v);
+        }
+
+        // 桌面宽槽旁表（v5；ECX2/MCU 镜像不含本节）
+        w.Write(module.Functions.Count);
+        foreach (EcsFunction f in module.Functions)
+        {
+            w.Write(f.WideOperands.Count);
+            foreach (KeyValuePair<int, EcsWideOperands> pair in f.WideOperands.OrderBy(pair => pair.Key))
+            {
+                w.Write(pair.Key);
+                w.Write(pair.Value.Mask);
+                w.Write(pair.Value.A);
+                w.Write(pair.Value.B);
+                w.Write(pair.Value.C);
+            }
         }
 
         w.Flush();
@@ -233,13 +248,13 @@ public static class EcmFormat
             natives.Add(new EcsNative { Name = ReadUtf8(r) });
 
         // 函数表（记录 code_off/code_words）+ 代码区
-        var funcMetas = new List<(string Name, byte NParams, byte NSlots, bool HasReturn, uint Off, uint Words)>();
+        var funcMetas = new List<(string Name, int NParams, int NSlots, bool HasReturn, uint Off, uint Words)>();
         int funcCount = ReadCount(r);
         for (int fi = 0; fi < funcCount; fi++)
         {
             var fname = ReadUtf8(r);
-            var nparams = r.ReadByte();
-            var nslots = r.ReadByte();
+            var nparams = r.ReadInt32();
+            var nslots = r.ReadInt32();
             var hasret = r.ReadByte() != 0;
             var off = r.ReadUInt32();
             var words = r.ReadUInt32();
@@ -274,7 +289,7 @@ public static class EcmFormat
         var imports = new List<EcsImport>();
         int importCount = ReadCount(r);
         for (int i = 0; i < importCount; i++)
-            imports.Add(new EcsImport { Name = ReadUtf8(r), NParams = r.ReadByte(), HasReturn = r.ReadByte() != 0 });
+            imports.Add(new EcsImport { Name = ReadUtf8(r), NParams = r.ReadInt32(), HasReturn = r.ReadByte() != 0 });
 
         var exports = new List<EcsExport>();
         int exportCount = ReadCount(r);
@@ -282,7 +297,7 @@ public static class EcmFormat
         {
             var ename = ReadUtf8(r);
             var localFid = (int)r.ReadUInt32();
-            var nparams = r.ReadByte();
+            var nparams = r.ReadInt32();
             var hasret = r.ReadByte() != 0;
             exports.Add(new EcsExport { Name = ename, LocalFid = localFid, NParams = nparams, HasReturn = hasret });
         }
@@ -302,6 +317,24 @@ public static class EcmFormat
                 int count = ReadCount(r);
                 for (int i = 0; i < count; i++)
                     functions[fi].LineTable.Add(r.ReadInt32());
+            }
+        }
+
+        // 桌面宽槽旁表（v5）
+        int wideFuncCount = ReadCount(r);
+        if (wideFuncCount != functions.Count)
+            throw new BytecodeException(new[] { new BytecodeDiagnostic("ECM 宽槽函数数量与函数表不一致", name, 0) });
+        for (int fi = 0; fi < wideFuncCount; fi++)
+        {
+            int count = ReadCount(r);
+            for (int i = 0; i < count; i++)
+            {
+                int pc = r.ReadInt32();
+                byte mask = r.ReadByte();
+                EcsWideOperands operands = new(mask, r.ReadInt32(), r.ReadInt32(), r.ReadInt32());
+                if (pc < 0 || pc >= functions[fi].Code.Count || mask == 0 || (mask & ~7) != 0)
+                    throw new BytecodeException(new[] { new BytecodeDiagnostic("ECM 宽槽旁表损坏", functions[fi].Name, pc) });
+                functions[fi].WideOperands[pc] = operands;
             }
         }
 

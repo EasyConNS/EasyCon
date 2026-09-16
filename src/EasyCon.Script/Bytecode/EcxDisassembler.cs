@@ -33,20 +33,22 @@ public static class EcxDisassembler
             for (int i = 0; i < f.Code.Count;)
             {
                 var op = (EcsOpcode)(f.Code[i] & 0xFF);
-                sb.AppendLine($"  {i,4}: {FormatInstruction(image, f.Code, i, out int words)}");
+                sb.AppendLine($"  {i,4}: {FormatInstruction(image, f, i, out int words)}");
                 i += words;
             }
         }
         return sb.ToString();
     }
 
-    static string FormatInstruction(EcxImage image, List<uint> code, int i, out int words)
+    static string FormatInstruction(EcxImage image, EcsFunction function, int i, out int words)
     {
+        List<uint> code = function.Code;
         var word = code[i];
         var op = (EcsOpcode)(word & 0xFF);
-        int a = (int)((word >> 8) & 0xFF);
-        int b = (int)((word >> 16) & 0xFF);
-        int c = (int)((word >> 24) & 0xFF);
+        EcsOperands operands = function.OperandsAt(i, word);
+        int a = operands.A;
+        int b = operands.B;
+        int c = operands.C;
         uint ext = 0;
         bool hasExt = EcsFormat.Get(op) == EcsInsFormat.Ext;
         if (hasExt && i + 1 < code.Count)
@@ -69,8 +71,8 @@ public static class EcxDisassembler
             EcsOpcode.Jmp => $"{op} {Sign24(word >> 8):+0;-0}",
             EcsOpcode.Jpt => $"{op} r{a}, {Sign16(word >> 16):+0;-0}",
             EcsOpcode.Jpf => $"{op} r{a}, {Sign16(word >> 16):+0;-0}",
-            EcsOpcode.Call => $"{op} args=r{a}..+{b}, recv={(c == 255 ? "-" : $"r{c}")}, func[{ext}]{FuncText(image, ext)}",
-            EcsOpcode.CallN => $"{op} args=r{a}..+{b}, recv={(c == 255 ? "-" : $"r{c}")}, {CallNTargetText(image, ext)}",
+            EcsOpcode.Call => $"{op} args=r{a}..+{b}, recv={(c < 0 ? "-" : $"r{c}")}, func[{ext}]{FuncText(image, ext)}",
+            EcsOpcode.CallN => $"{op} args=r{a}..+{b}, recv={(c < 0 ? "-" : $"r{c}")}, {CallNTargetText(image, ext)}",
             EcsOpcode.Slice => $"{op} r{a}, r{b}, r{c}, end={(ext == 0xFFFFFFFF ? "-" : $"r{ext}")}",
             EcsOpcode.GetFI => $"{op} r{a}, r{b}.field[{c}], idx=r{ext}",
             EcsOpcode.PutFI => $"{op} r{b}.field[{c}] = r{a}, idx=r{ext}",

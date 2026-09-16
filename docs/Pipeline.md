@@ -1,7 +1,8 @@
 # 统一脚本编译链路
 
 > C# 侧单一编译链路：**源码 → Parser → ProjectCompiler（模块图 + lib/ 自动加载）→ 每模块独立编译 →
-> EcxImage**；桌面由 **EcxInterpreter** 执行 ECX 镜像，单片机由 **C VM** 执行同一二进制。
+> EcxImage**；桌面由 **EcxInterpreter** 执行内存镜像，单片机由 **EcxWriter** 把可兼容子集写为
+> ECX2 后交给 C VM。桌面镜像可用宽槽旁表超过 ECX2 的 255 槽上限。
 > 关联：`docs/ModuleSystem.md`（模块/缓存）、`docs/VmSemanticContract.md`（双端语义契约）、
 > `docs/EcmEcxFormat.md`（二进制格式）、`docs/VM2.md`（指令集规格）。
 
@@ -11,11 +12,11 @@
 源码 ─► Parser ─► ProjectCompiler（模块图 + lib/ 自动加载）
                      │  每模块：InterfaceScopeSynthesizer → Binder（模块单树绑定）→ SSA → 优化 → 编码
                      ▼
-              EcxPipeline.Link ─► EcxImage（ECX 二进制）
+              EcxPipeline.Link ─► EcxImage（内存执行镜像）
                      ├─ 桌面：IScriptEngine（EasyScriptEngine）→ EcxVm 桥
                      │        （CapabilitySet 能力装配：输入/控制台/环境/文件/采集/视觉/OCR/推理）
-                     │        → EcxInterpreter
-                     └─ MCU ：EcxWriter → .ecx → C VM（ecs-vm）
+                     │        → EcxInterpreter（支持 ECM 宽槽旁表）
+                     └─ MCU ：EcxWriter（校验 ECX2 上限）→ .ecx → C VM（ecs-vm）
 ```
 执行面（P6 收敛）：GUI/CLI 经 `IScriptEngine.FromSource/LoadFile` 得到 `IScriptSession`
 （`Info` = CompileResult 诊断/镜像/符号），`Run(token, capabilities)` 以**能力集**
@@ -34,6 +35,9 @@
   据此设置镜像 NeedIL 标志。
 - **Link 纯函数化**：在深拷贝副本上重写——不污染调用方产物，`CompileResult.Artifacts` 可安全
   .ecm roundtrip。
+- **桌面宽槽**：`EcsFunction.WideOperands` 保存超过 8 位的槽号与调用参数数量，桌面解释器优先
+  读取旁表；ECM v5 持久化旁表。`EcxWriter` 不写旁表，并在 `nslots/nparams > 255` 或存在宽槽时
+  明确拒绝 MCU 导出，因此 PC 容量不再由烧录格式决定，ECX2 ABI 保持不变。
 - **FWRITE 句柄 0**：写入 no-op 返回写入长度（S-14，见 VmSemanticContract）。
 - **EXT 扫描铁律**：EXT 后随字是「数据」，数值可能恰好等于某个操作码——一切线性扫描必须按
   `EcsFormat.ExtWords` 步进跳过（C 侧 `ecs_op_has_ext`），否则把数据误读为指令。

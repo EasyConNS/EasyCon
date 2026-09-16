@@ -24,11 +24,19 @@ public static class EcxWriter
         // 不做静默截断——按设计，编译产物超出 MCU 容量应响亮失败（编译产物过大天然无法执行）。
         if (image.MaxSlots > 255)
             throw new BytecodeException(new[] { new BytecodeDiagnostic(
-                $"镜像 max_slots {image.MaxSlots} 超出 ECX 冻结格式上限 255（产物过大，单片机无法执行）", null, 0) });
+                $"镜像 max_slots {image.MaxSlots} 超出 MCU ECX2 上限 255；该镜像只能在桌面运行", null, 0) });
         foreach (var f in image.Functions)
+        {
             if (f.NSlots > 255)
                 throw new BytecodeException(new[] { new BytecodeDiagnostic(
-                    $"函数 {f.Name} 帧槽位 {f.NSlots} 超出 ECX 冻结格式上限 255", f.Name, 0) });
+                    $"函数 {f.Name} 帧槽位 {f.NSlots} 超出 MCU ECX2 上限 255；该镜像只能在桌面运行", f.Name, 0) });
+            if (f.NParams > 255)
+                throw new BytecodeException(new[] { new BytecodeDiagnostic(
+                    $"函数 {f.Name} 参数数量 {f.NParams} 超出 MCU ECX2 上限 255；该镜像只能在桌面运行", f.Name, 0) });
+            if (f.WideOperands.Count > 0)
+                throw new BytecodeException(new[] { new BytecodeDiagnostic(
+                    $"函数 {f.Name} 使用桌面宽槽操作数，不能导出为 MCU ECX2", f.Name, f.WideOperands.Keys.Min()) });
+        }
 
         using var ms = new MemoryStream();
         using var w = new BinaryWriter(ms);

@@ -69,6 +69,12 @@ public sealed class EcsFunction
     public int NSlots;
     public bool HasReturn;
     public List<uint> Code = new();
+    /// <summary>
+    /// PC 执行专用的宽 A/B/C 操作数旁表，键为指令首字的 pc。ECX2 指令本体仍保留低 8 位，
+    /// 因此可烧录函数通常没有旁表项；桌面解释器用这里的完整整数槽号解除 255 槽限制。
+    /// 该旁表写入 ECM 编译缓存，但不写入 MCU .ecx。
+    /// </summary>
+    public Dictionary<int, EcsWideOperands> WideOperands = new();
     /// <summary>链接后在本镜像函数表中的下标。</summary>
     public int ImageIndex;
 
@@ -94,6 +100,30 @@ public sealed class EcsFunction
                 hi = mid - 1;
         }
         return result;
+    }
+
+    /// <summary>读取指令操作数；桌面宽槽旁表只覆盖超出 ECX2 8 位字段的槽位。</summary>
+    public EcsOperands OperandsAt(int pc, uint word)
+    {
+        int a = (int)((word >> 8) & 0xFF);
+        int b = (int)((word >> 16) & 0xFF);
+        int c = (int)((word >> 24) & 0xFF);
+        bool hasWideC = false;
+        if (WideOperands.TryGetValue(pc, out EcsWideOperands wide))
+        {
+            if ((wide.Mask & EcsWideOperands.AMask) != 0) a = wide.A;
+            if ((wide.Mask & EcsWideOperands.BMask) != 0) b = wide.B;
+            if ((wide.Mask & EcsWideOperands.CMask) != 0)
+            {
+                c = wide.C;
+                hasWideC = true;
+            }
+        }
+        if (!hasWideC && ((EcsOpcode)(word & 0xFF) is EcsOpcode.Call or EcsOpcode.CallN) && c == 255)
+        {
+            c = -1;   // ECX2 兼容哨兵；旁表中的 C=255 则表示真实桌面槽位 255
+        }
+        return new EcsOperands(a, b, c);
     }
 }
 
@@ -159,7 +189,7 @@ public sealed class ModuleArtifact
 }
 
 /// <summary>
-/// 链接后可执行镜像（ECX 的内存表示），纯 C 虚拟机的唯一输入。
+/// 链接后内存执行镜像。桌面可携带宽槽旁表；纯 C VM 只接收 EcxWriter 校验后的 ECX2 子集。
 /// </summary>
 public sealed class EcxImage
 {
@@ -204,4 +234,15 @@ public class BytecodeException : Exception
     {
         Diagnostics = [.. diagnostics];
     }
+}
+
+/// <summary>解码后的完整 iABC 操作数。</summary>
+public readonly record struct EcsOperands(int A, int B, int C);
+
+/// <summary>桌面宽槽旁表项；Mask 指定哪些字段覆盖 ECX2 指令字中的 8 位值。</summary>
+public readonly record struct EcsWideOperands(byte Mask, int A, int B, int C)
+{
+    public const byte AMask = 1;
+    public const byte BMask = 2;
+    public const byte CMask = 4;
 }

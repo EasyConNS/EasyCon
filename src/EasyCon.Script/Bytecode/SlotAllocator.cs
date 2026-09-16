@@ -137,7 +137,6 @@ public static partial class BytecodeEncoder
                     if (!_totalReads.ContainsKey(phi))
                         continue;   // 死 φ（防线 1）：全函数无读取——不占槽，前驱边不产生副本（EmitEdgeCopies 跳过）
                     _slots[phi] = _next++;
-                    _phiSlotCount++;
                     hasPhi = true;
                 }
                 foreach (var inst in block.Instructions)
@@ -158,10 +157,7 @@ public static partial class BytecodeEncoder
                     int readsHere = info.UseCount.TryGetValue(inst, out var c) ? c : 0;
                     int totalReads = _totalReads.TryGetValue(inst, out var t) ? t : 0;
                     if (totalReads > readsHere)
-                    {
                         _slots[inst] = _next++;         // 跨块：专用槽
-                        _crossBlockSlotCount++;
-                    }
                     else
                     {
                         _pooled.Add(inst);              // 块内：定义时入池
@@ -191,7 +187,6 @@ public static partial class BytecodeEncoder
             _receiveSlot = _stagingBase + stagingCount;
             _next += stagingCount + 1;
             _maxArity = maxArity;
-            _fixedSlotCount = _next;
 
             // 池区在所有保留槽之后生长
             _poolNext = _next;

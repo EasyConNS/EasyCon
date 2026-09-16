@@ -112,6 +112,7 @@ public static class EcxPipeline
                     NSlots = f.NSlots,
                     HasReturn = f.HasReturn,
                     Code = f.Code.ToList(),
+                    WideOperands = new Dictionary<int, EcsWideOperands>(f.WideOperands),
                     LineTable = [.. f.LineTable],   // 行号表随镜像携带（运行错误 pc→行映射）
                 };
                 moduleCopies.Add(copy);
@@ -225,6 +226,9 @@ public static class EcxPipeline
             }
             var entryFn = imageFunctions[entry];
             entryFn.Code.InsertRange(0, header);
+            if (entryFn.WideOperands.Count > 0)
+                entryFn.WideOperands = entryFn.WideOperands.ToDictionary(
+                    pair => pair.Key + header.Count, pair => pair.Value);
             // 行号表 pc 随前插同步平移（与指令绝对位置同迁）
             for (int i = 0; i < entryFn.LineTable.Count; i += 2)
                 entryFn.LineTable[i] += header.Count;

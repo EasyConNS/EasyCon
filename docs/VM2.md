@@ -122,8 +122,9 @@ ToStr ToInt`。
 **EXT 铁律**：EXT 后随字是数据，数值可能恰等于操作码——一切线性扫描按 `EcsFormat.ExtWords` /
 `ecs_op_has_ext` 步进跳过。权威表：C# `EcsFormat.BuildTable`（漏登自检抛出）↔ C `ecs_op_has_ext`。
 
-容量上限（编码期强制）：槽位 ≤ 255、Bx ≤ 65535、单函数 ≤ 2²⁴ 字；Jpt/Jpf 偏移越界由编码器
-跳转反转模板消化。
+MCU ECX2 容量上限（`EcxWriter` 写出时强制）：槽位/参数数量 ≤255、Bx ≤65535、单函数 ≤2²⁴ 字。
+桌面内存镜像以 `EcsFunction.WideOperands` 保存完整槽号与调用参数数量，不受 255 限制；旁表只进入
+ECM 编译缓存，不进入 ECX2。Jpt/Jpf 偏移越界仍由编码器跳转反转模板消化。
 
 ### 3.2 指令表
 
@@ -190,12 +191,12 @@ LCLICK=11 RCLICK=12 HOME=13 CAPTURE=14`；HAT `TOP=16..TOP_LEFT=23`；摇杆 `LS
 [SlotCount ..)                        专用槽：phi 结果（死 φ 免分配）与跨块值
 (..)                                  保留区：Neq 中间槽、并行副本 scratch、实参 staging、返回值 receive
 (.. nSlots)                           块内槽池：块内值与常量，定义/物化时取用，末次读取归还
-nSlots ≤ 255
+桌面 nSlots:int32；MCU ECX2 nSlots ≤ 255
 ```
 
 - **池化判据**：phi 恒专用（**全函数零读取的死 φ 不分配槽、前驱边不产生副本**）；其余值全部读取
   都在定义块内 → 池化；跨块 → 专用槽。phi 臂读取按臂↔前驱对齐计入前驱块。
-- **常量块首惰性物化**：常量在每个使用块的块首物化（`LoadI/LoadBool/LoadK`），末次读取归还；
+- **常量按使用点物化**：常量在实际读取前物化（`LoadI/LoadBool/LoadK`），末次读取后立即归还；
   零使用不物化。立即数操作数（`KeyI/WaitI/StickP` 常量时长）不占槽。
 - **链接期死存储清扫**（`DeadStoreSweep`）：反向活跃性删除落槽/边副本残留的死
   `Move/SetVar/LoadI/LoadBool/LoadK/LoadG`（防线 3），pc 重映射保持跳转合法。
@@ -203,7 +204,8 @@ nSlots ≤ 255
 ### 3.4 调用约定
 
 实参连续暂存调用者 `R[base..base+n)`，`Call` 深拷贝进被调帧槽 `0..n-1`；返回值经接收槽 C 深拷贝
-交接（255 = 无）。递归天然支持；深度上限 `ECS_MAX_CALL_DEPTH`（512）→ `ECS_ERR_DEPTH`；尾递归
+交接（ECX2 中 255 = 无；桌面解码为 -1，真实桌面槽 255 由宽槽旁表区分）。递归天然支持；
+深度上限 `ECS_MAX_CALL_DEPTH`（512）→ `ECS_ERR_DEPTH`；尾递归
 由 SSA 优化器（TRE）变循环回边，VM 无 tail-call 指令。
 
 ---

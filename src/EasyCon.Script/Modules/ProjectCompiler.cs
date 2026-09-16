@@ -50,7 +50,7 @@ public sealed class ModuleProjectResult
 ///
 /// std/vision 为隐式依赖（内嵌源码、模块名固定），先于一切用户模块编译；
 /// lib/ 自动加载对齐 v1 ImportResolver 顺序语义（显式 import 之后、main 之前，全局可见无 alias）。
-/// 桌面执行（EcxInterpreter）与 MCU 分发（.ecx）共用同一 EcxImage 产物。
+/// 桌面执行直接消费 EcxImage（可含宽槽旁表）；MCU 分发由 EcxWriter 校验并写出 ECX2 子集。
 /// </summary>
 public static class ProjectCompiler
 {

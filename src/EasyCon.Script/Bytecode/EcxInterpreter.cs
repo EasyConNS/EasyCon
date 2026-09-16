@@ -625,11 +625,13 @@ public sealed class EcxInterpreter
 
             var frame = _frames[^1];
             var code = frame.Fn.Code;
-            var ins = code[frame.Pc++];
+            int instructionPc = frame.Pc++;
+            var ins = code[instructionPc];
             var op = (EcsOpcode)(ins & 0xFF);
-            int a = (int)((ins >> 8) & 0xFF);
-            int b = (int)((ins >> 16) & 0xFF);
-            int c = (int)((ins >> 24) & 0xFF);
+            EcsOperands operands = frame.Fn.OperandsAt(instructionPc, ins);
+            int a = operands.A;
+            int b = operands.B;
+            int c = operands.C;
             // EXT 后随数据字按 EcsFormat 表预取（权威集合/语义见 ExtKind）：执行 case 只消费
             // ext，不再各自负责「记得读后随字」——漏读会把数据误读为下一条指令（历史 F4 缺陷形态）。
             uint ext = 0;
@@ -702,7 +704,7 @@ public sealed class EcxInterpreter
                             var callee = _image.Functions[(int)target];
                             var nf = RentFrame(callee.NSlots);
                             nf.Fn = callee;
-                            nf.RetSlot = c == 255 ? -1 : c;   // C=255：无接收槽（结果未使用的调用）
+                            nf.RetSlot = c;   // -1：无接收槽；非负值含桌面宽槽 255+
                             nf.Pc = 0;
                             for (int i = 0; i < b; i++)
                                 StoreFresh(ref nf.Slots[i], DeepCopyCopyOnWrite(R[a + i]));   // S-17 实参（COW：唯一引用移交；池出租槽已清零，StoreFresh 恒等价）
@@ -730,8 +732,8 @@ public sealed class EcxInterpreter
                                     throw new SimError(ERR_NOSUCHNATIVE, $"原生索引越界 {target}");
                                 ret = HostNative(_image.Natives[(int)target].Name, args);   // L3 名表路径：FFI/采集洞/ENCODE/JQ
                             }
-                            if (c != 255)
-                                StoreFresh(ref R[c], ret);   // C=255：无接收槽；原生返回值恒为新建对象/标量（EcxNativeContext 契约），出生引用即接收槽引用
+                            if (c >= 0)
+                                StoreFresh(ref R[c], ret);   // -1：无接收槽；原生返回值恒为新建对象/标量（EcxNativeContext 契约），出生引用即接收槽引用
                             if (_token.IsCancellationRequested)
                                 return CANCELLED;   // 宿主调用后即时取消（原生内含 PRINT/READ/WAIT 类长延迟）
                             break;
@@ -762,7 +764,7 @@ public sealed class EcxInterpreter
                         break;
 
                     default:
-                        if (ExecOther(op, ins, ext, R))
+                        if (ExecOther(op, ext, R, a, b, c))
                             return CANCELLED;
                         break;
                 }
@@ -778,12 +780,8 @@ public sealed class EcxInterpreter
 
     /// <summary>非控制流/非调用的算术与数据指令。返回 true = 本指令调用了宿主且取消已请求，
     /// 调用方立即终止（等待/按键类长延迟宿主调用的取消感知点）。</summary>
-    bool ExecOther(EcsOpcode op, uint ins, uint ext, TaggedValue[] R)
+    bool ExecOther(EcsOpcode op, uint ext, TaggedValue[] R, int a, int b, int c)
     {
-        int a = (int)((ins >> 8) & 0xFF);
-        int b = (int)((ins >> 16) & 0xFF);
-        int c = (int)((ins >> 24) & 0xFF);
-
         switch (op)
         {
             // ---- 算术（S-02/S-05）----

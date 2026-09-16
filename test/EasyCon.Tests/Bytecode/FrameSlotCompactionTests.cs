@@ -10,6 +10,112 @@ namespace EasyCon.Tests.Bytecode;
 public class FrameSlotCompactionTests
 {
     [Test]
+    public void DesktopExecution_AllowsWideFrameSlots_WhileMcuExportRejectsThem()
+    {
+        string parameters = string.Join(",", Enumerable.Range(0, 260).Select(i => $"$p{i}:INT"));
+        string arguments = string.Join(",", Enumerable.Range(0, 259).Select(i => i.ToString()).Append("$dynamic"));
+        string source = $"""
+            FUNC pick({parameters}):INT
+                IF $p258 == -1
+                    RETURN $p0
+                ENDIF
+                RETURN $p259
+            ENDFUNC
+            $dynamic = TIME()
+            $result = pick({arguments})
+            PRINT $result
+            """;
+
+        CompileResult result = Compilation.CompileSource(source, new CompileOptions
+        {
+            UseDiskCache = false,
+            UseProcessCache = false,
+        });
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
+            string.Join("\n", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
+
+        Assert.That(result.Image!.Functions.Any(f => f.Name == "pick"), Is.True,
+            string.Join(", ", result.Image.Functions.Select(f => $"{f.Name}/{f.NParams}/{f.NSlots}")));
+        EcsFunction function = result.Image.Functions.Single(f => f.Name == "pick");
+        Assert.That(function.NSlots, Is.GreaterThan(255));
+        Assert.That(function.WideOperands, Is.Not.Empty);
+
+        EcxHost host = new();
+        host.TimeMs = () => 259;
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(result.Image, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "259" }));
+
+        List<ModuleArtifact> cachedArtifacts = result.Artifacts
+            .Select(artifact => EcmFormat.Read(EcmFormat.Write(artifact)))
+            .ToList();
+        EcxImage cachedImage = EcxPipeline.Link(cachedArtifacts, result.KeyAction, result.NeedIL);
+        EcxHost cachedHost = new();
+        cachedHost.TimeMs = () => 259;
+        cachedHost.EnableRecording();
+        Assert.That(EcxInterpreter.Run(cachedImage, cachedHost), Is.EqualTo(0));
+        Assert.That(cachedHost.Lines, Is.EqualTo(new[] { "259" }), "ECM 缓存往返必须保留桌面宽槽");
+
+        BytecodeException error = Assert.Throws<BytecodeException>(() => EcxWriter.Write(result.Image))!;
+        Assert.That(error.Message, Does.Contain("只能在桌面运行").Or.Contain("桌面宽槽"));
+    }
+
+    [Test]
+    public void DesktopWideCall_WithoutReceiveSlot_PreservesNoReceiveSentinel()
+    {
+        string parameters = string.Join(",", Enumerable.Range(0, 260).Select(i => $"$p{i}:INT"));
+        string arguments = string.Join(",", Enumerable.Range(0, 259).Select(i => i.ToString()).Append("$dynamic"));
+        string source = $"""
+            FUNC emit({parameters}):INT
+                PRINT $p259
+                RETURN $p0
+            ENDFUNC
+            $dynamic = TIME()
+            _ = emit({arguments})
+            """;
+
+        CompileResult result = Compilation.CompileSource(source, new CompileOptions
+        {
+            UseDiskCache = false,
+            UseProcessCache = false,
+        });
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
+            string.Join("\n", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
+
+        EcsFunction entry = result.Image!.Functions[result.Image.Entry];
+        int callPc = entry.WideOperands.Keys.Single(pc =>
+            (EcsOpcode)(entry.Code[pc] & 0xFF) == EcsOpcode.Call
+            && (entry.WideOperands[pc].Mask & EcsWideOperands.BMask) != 0);
+        EcsOperands operands = entry.OperandsAt(callPc, entry.Code[callPc]);
+        Assert.Multiple(() =>
+        {
+            Assert.That(operands.B, Is.EqualTo(260));
+            Assert.That(operands.C, Is.EqualTo(-1));
+            Assert.That(entry.WideOperands[callPc].Mask & EcsWideOperands.BMask, Is.Not.Zero);
+            Assert.That(entry.WideOperands[callPc].Mask & EcsWideOperands.CMask, Is.Zero);
+        });
+
+        EcsFunction slot255Function = new()
+        {
+            Name = "slot255",
+            Module = "test",
+            WideOperands = new Dictionary<int, EcsWideOperands>
+            {
+                [0] = new(EcsWideOperands.CMask, 0, 0, 255),
+            },
+        };
+        uint callWithSlot255 = (uint)EcsOpcode.Call | 255u << 24;
+        Assert.That(slot255Function.OperandsAt(0, callWithSlot255).C, Is.EqualTo(255),
+            "旁表中的 C=255 必须表示真实桌面槽位，而不是 ECX2 无接收哨兵");
+
+        EcxHost host = new();
+        host.TimeMs = () => 259;
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(result.Image, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "259" }));
+    }
+
+    [Test]
     public void MoreThan255DeadLocalHomes_CompileAndExecute()
     {
         var source = new StringBuilder();

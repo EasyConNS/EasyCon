@@ -68,6 +68,39 @@ public static class EcsFormat
     /// <summary>结果槽写集（执行语义的编码侧投影，见 EcsResultSlot）。</summary>
     public static EcsResultSlot ResultSlot(EcsOpcode op) => Table[(int)op].Result;
 
+    /// <summary>
+    /// iABC/ABx/AsBx 中允许桌面内存镜像扩宽的字段。主体是帧槽号；Call/CallN 的参数数量
+    /// 与宽参数窗同步扩宽。其余立即数与字段索引继续遵循冻结的 VM2 指令格式。
+    /// </summary>
+    public static byte DesktopWideOperandMask(EcsOpcode op) => op switch
+    {
+        EcsOpcode.LoadI or EcsOpcode.LoadK or EcsOpcode.LoadBool or EcsOpcode.LoadG
+            or EcsOpcode.NewArrE or EcsOpcode.NewSt or EcsOpcode.Img => EcsWideOperands.AMask,
+        EcsOpcode.Move or EcsOpcode.SetVar or EcsOpcode.BnotI or EcsOpcode.Not or EcsOpcode.NegI
+            or EcsOpcode.NegD or EcsOpcode.Conv or EcsOpcode.Len or EcsOpcode.GetF
+            or EcsOpcode.Rand => EcsWideOperands.AMask | EcsWideOperands.BMask,
+        EcsOpcode.StoreG or EcsOpcode.Ret or EcsOpcode.WaitV => EcsWideOperands.AMask,
+        EcsOpcode.Jpt or EcsOpcode.Jpf => EcsWideOperands.AMask,
+        EcsOpcode.Call or EcsOpcode.CallN => EcsWideOperands.AMask | EcsWideOperands.BMask | EcsWideOperands.CMask,
+        EcsOpcode.NewArrV => EcsWideOperands.AMask | EcsWideOperands.CMask,
+        EcsOpcode.GetI or EcsOpcode.SetI or EcsOpcode.Slice or EcsOpcode.Cont
+            or EcsOpcode.Append or EcsOpcode.Cat => EcsWideOperands.AMask | EcsWideOperands.BMask | EcsWideOperands.CMask,
+        EcsOpcode.PutF or EcsOpcode.GetFI or EcsOpcode.PutFI => EcsWideOperands.AMask | EcsWideOperands.BMask,
+        EcsOpcode.KeyV => EcsWideOperands.BMask,
+        EcsOpcode.StickPv => EcsWideOperands.CMask,
+        EcsOpcode.AddI or EcsOpcode.SubI or EcsOpcode.MulI or EcsOpcode.DivI or EcsOpcode.ModI or EcsOpcode.RDivI
+            or EcsOpcode.AddU or EcsOpcode.SubU or EcsOpcode.MulU or EcsOpcode.DivU or EcsOpcode.ModU
+            or EcsOpcode.AddL or EcsOpcode.SubL or EcsOpcode.MulL or EcsOpcode.DivL or EcsOpcode.ModL
+            or EcsOpcode.AddD or EcsOpcode.SubD or EcsOpcode.MulD or EcsOpcode.DivD
+            or EcsOpcode.BandI or EcsOpcode.BorI or EcsOpcode.BxorI or EcsOpcode.ShlI or EcsOpcode.ShrI
+            or EcsOpcode.EqI or EcsOpcode.LtI or EcsOpcode.LeI or EcsOpcode.GtI or EcsOpcode.GeI
+            or EcsOpcode.EqU or EcsOpcode.LtU or EcsOpcode.LeU or EcsOpcode.GtU or EcsOpcode.GeU
+            or EcsOpcode.EqD or EcsOpcode.LtD or EcsOpcode.LeD or EcsOpcode.GtD or EcsOpcode.GeD
+            or EcsOpcode.EqL or EcsOpcode.LtL or EcsOpcode.LeL or EcsOpcode.GtL or EcsOpcode.GeL
+            or EcsOpcode.EqS or EcsOpcode.EqP => EcsWideOperands.AMask | EcsWideOperands.BMask | EcsWideOperands.CMask,
+        _ => 0,
+    };
+
     /// <summary>指令总字数（4 字节字为单位；EXT=2，其余=1）。</summary>
     public static int WordCount(EcsOpcode op) => Get(op) == EcsInsFormat.Ext ? 2 : 1;
 

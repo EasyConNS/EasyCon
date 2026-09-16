@@ -62,7 +62,7 @@ public enum EcsOpcode : byte
     Ret0,       // 返回 VOID
 
     // ---- 数组 / 字符串 ----
-    NewArrV,    // iABC + ext32: R[A] = 数组字面量，元素取 R[B..B+C)，ext=元素类型码
+    NewArrV,    // iABC + ext32: R[A] = 数组字面量，元素取 R[C..C+B)，ext=元素类型码
     NewArrE,    // ABx : R[A] = 空数组，元素类型码 Bx（EcsTypeCode）
     GetI,       // iABC: R[A] = R[B][R[C]]（数组元素 / 字符串单字符）
     SetI,       // iABC: R[B][R[C]] = R[A]（原地修改）

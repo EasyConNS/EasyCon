@@ -163,6 +163,7 @@ public static partial class BytecodeEncoder
         readonly int _fid;
         readonly ModuleEncodeContext _ctx;
         readonly List<uint> _code = new();
+        readonly Dictionary<int, EcsWideOperands> _wideOperands = new();
         readonly Dictionary<SsaValue, int> _slots = new();
         readonly Dictionary<LocalVariableSymbol, int> _localSlots = new();
         readonly HashSet<SsaValue> _materializedConstants = new();
@@ -192,9 +193,6 @@ public static partial class BytecodeEncoder
         int _tplArr = -1;
         int _tplChunk = -1;
         int _tplChunkSize;   // 模板分块构建的单块元素数（staging 槽预算内取满）
-        int _fixedSlotCount;
-        int _phiSlotCount;
-        int _crossBlockSlotCount;
         const int MaxInlineArrayChunkArity = 32;
 
         public EcsFunction Result = null!;
@@ -250,11 +248,30 @@ public static partial class BytecodeEncoder
         static uint Word(EcsOpcode op, int a, int b, int c)
             => (uint)op | (uint)(a & 0xFF) << 8 | (uint)(b & 0xFF) << 16 | (uint)(c & 0xFF) << 24;
 
+        void EmitWord(EcsOpcode op, int a, int b, int c)
+        {
+            bool isCall = op is EcsOpcode.Call or EcsOpcode.CallN;
+            bool noReceive = isCall && c < 0;
+            int encodedC = noReceive ? 255 : c;
+            byte slotMask = EcsFormat.DesktopWideOperandMask(op);
+            byte wideMask = 0;
+            if ((slotMask & EcsWideOperands.AMask) != 0 && a > 255)
+                wideMask |= EcsWideOperands.AMask;
+            if ((slotMask & EcsWideOperands.BMask) != 0 && b > 255)
+                wideMask |= EcsWideOperands.BMask;
+            if ((slotMask & EcsWideOperands.CMask) != 0
+                && (c > 255 || (isCall && c == 255)))
+                wideMask |= EcsWideOperands.CMask;
+            if (wideMask != 0)
+                _wideOperands[_code.Count] = new EcsWideOperands(wideMask, a, b, c);
+            Emit(Word(op, a, b, encodedC));
+        }
+
         void EmitIabc(EcsOpcode op, int a, int b, int c)
         {
             if (EcsFormat.Get(op) != EcsInsFormat.Iabc)
                 throw Fail($"{op} 登记格式为 {EcsFormat.Get(op)}，不能按 Iabc 发射（与 EcsFormat 表不一致）");
-            Emit(Word(op, a, b, c));
+            EmitWord(op, a, b, c);
         }
 
         void EmitAbx(EcsOpcode op, int a, int bx)
@@ -263,7 +280,7 @@ public static partial class BytecodeEncoder
                 throw Fail($"{op} 登记格式为 {EcsFormat.Get(op)}，不能按 ABx 发射（与 EcsFormat 表不一致）");
             if (bx < 0 || bx > 0xFFFF)
                 throw Fail($"{op} 的 Bx 越界: {bx}");
-            Emit(Word(op, a, bx & 0xFF, (bx >> 8) & 0xFF));
+            EmitWord(op, a, bx & 0xFF, (bx >> 8) & 0xFF);
         }
 
         void EmitAsBx(EcsOpcode op, int a, int sbx)
@@ -272,7 +289,7 @@ public static partial class BytecodeEncoder
                 throw Fail($"{op} 登记格式为 {EcsFormat.Get(op)}，不能按 AsBx 发射（与 EcsFormat 表不一致）");
             if (sbx < short.MinValue || sbx > short.MaxValue)
                 throw Fail($"{op} 的 sBx 越界: {sbx}");
-            Emit(Word(op, a, sbx & 0xFF, (sbx >> 8) & 0xFF));
+            EmitWord(op, a, sbx & 0xFF, (sbx >> 8) & 0xFF);
         }
 
         // EXT 后随字是数据（唯一权威集合见 EcsFormat 表）：发射即登记，扫描侧经 ExtWords 步进。
@@ -280,7 +297,7 @@ public static partial class BytecodeEncoder
         {
             if (EcsFormat.ExtWords(op) != 1)
                 throw Fail($"{op} 非 EXT 指令，不能携带后随数据字（与 EcsFormat 表不一致）");
-            Emit(Word(op, a, b, c));
+            EmitWord(op, a, b, c);
             Emit(ext);
         }
 
@@ -304,10 +321,10 @@ public static partial class BytecodeEncoder
 
         void MarkLabel(int label) => _labels[label] = _code.Count;
 
-        void EmitJmpToBlock(SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJmpBlock, target)); Emit(Word(EcsOpcode.Jmp, 0, 0, 0)); }
-        void EmitJptToBlock(int cond, SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJptBlock, target)); Emit(Word(EcsOpcode.Jpt, cond, 0, 0)); }
-        void EmitJpfToBlock(int cond, SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJpfBlock, target)); Emit(Word(EcsOpcode.Jpf, cond, 0, 0)); }
-        void EmitJmpToLabel(int label) { _fixups.Add(new Fixup(_code.Count, FixJmpLabel, label)); Emit(Word(EcsOpcode.Jmp, 0, 0, 0)); }
+        void EmitJmpToBlock(SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJmpBlock, target)); EmitWord(EcsOpcode.Jmp, 0, 0, 0); }
+        void EmitJptToBlock(int cond, SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJptBlock, target)); EmitWord(EcsOpcode.Jpt, cond, 0, 0); }
+        void EmitJpfToBlock(int cond, SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJpfBlock, target)); EmitWord(EcsOpcode.Jpf, cond, 0, 0); }
+        void EmitJmpToLabel(int label) { _fixups.Add(new Fixup(_code.Count, FixJmpLabel, label)); EmitWord(EcsOpcode.Jmp, 0, 0, 0); }
 
         // ---- 主流程 ----
 
@@ -317,11 +334,6 @@ public static partial class BytecodeEncoder
             EmitBlocks();
             Patch();
 
-            if (_poolNext > 255)
-                throw Fail($"帧槽位超出 255 上限: {_poolNext}；"
-                    + $"局部 home={_localSlots.Count}，phi={_phiSlotCount}，"
-                    + $"跨块值={_crossBlockSlotCount}，固定区={_fixedSlotCount}，"
-                    + $"池峰值={_poolNext - _fixedSlotCount}");
             Result = new EcsFunction
             {
                 Name = _symbol.Name,
@@ -330,6 +342,7 @@ public static partial class BytecodeEncoder
                 NSlots = _poolNext,
                 HasReturn = !_symbol.ReturnType.Equals(ScriptType.Void),
                 Code = _code,
+                WideOperands = _wideOperands,
             };
             var lineTable = new List<int>(_linePcs.Count * 2);
             for (int i = 0; i < _linePcs.Count; i++)
@@ -484,8 +497,8 @@ public static partial class BytecodeEncoder
         }
 
         // 条件跳转到标签：Kind 必须用 Label 变体（Patch 按 Kind 区分块/标签转型）
-        void EmitFixJpf(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJpfLabel, label)); Emit(Word(EcsOpcode.Jpf, cond, 0, 0)); }
-        void EmitFixJpt(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJptLabel, label)); Emit(Word(EcsOpcode.Jpt, cond, 0, 0)); }
+        void EmitFixJpf(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJpfLabel, label)); EmitWord(EcsOpcode.Jpf, cond, 0, 0); }
+        void EmitFixJpt(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJptLabel, label)); EmitWord(EcsOpcode.Jpt, cond, 0, 0); }
 
         /// <summary>出边 φ 副本发射（Sessa 并行拷贝见 EmitParallelCopy）。
         /// 臂读取的结算不在本方法——统一由终结符结算计划回放（含死 φ 臂），
