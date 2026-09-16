@@ -25,7 +25,7 @@ public interface IScriptEngine
     /// <summary>编译源码并返回会话（诊断经 <see cref="IScriptSession.Info"/> 查看）。</summary>
     IScriptSession FromSource(string code, ScriptHostOptions options);
 
-    /// <summary>编译脚本文件并返回会话。</summary>
+    /// <summary>编译脚本文件并返回会话；相对 FFI 库路径在运行时以主脚本目录为基准。</summary>
     IScriptSession LoadFile(string path, ScriptHostOptions options);
 }
 

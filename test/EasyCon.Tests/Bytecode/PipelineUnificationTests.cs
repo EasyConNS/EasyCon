@@ -1,4 +1,5 @@
 using EasyCon.Core.Runner;
+using EasyCon.Core.Script;
 using EasyCon.Script;
 using EasyCon.Tests.Support;
 using EasyScript;
@@ -172,6 +173,40 @@ public class PipelineUnificationTests
         var (lines, _) = RunNewChain(result, io, new RecordingPad());
 
         Assert.That(lines, Is.EqualTo(new[] { "42" }));
+    }
+
+    [Test]
+    [Platform("Win")]
+    public void ExternFfi_RelativeLibraryPathUsesScriptDirectory()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"Ecs FFI {Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var library = Path.GetRelativePath(dir,
+                Path.Combine(Environment.SystemDirectory, "msvcrt.dll"));
+            if (Path.IsPathFullyQualified(library))
+                Assert.Ignore("临时目录与系统目录不在同一卷，无法构造相对 DLL 路径");
+            library = library.Replace('\\', '/');
+            var script = Path.Combine(dir, "main.ecs");
+            File.WriteAllText(script, $$"""
+                EXTERN FUNC ffi_abs($x:INT):INT AS "abs" FROM "{{library}}"
+                $result = ffi_abs(-42)
+                PRINT $result
+                """);
+
+            var engine = new EasyScriptEngine();
+            var session = engine.LoadFile(script, new ScriptHostOptions());
+            var io = new RecordingIo();
+            session.Run(CancellationToken.None, EcsTestHost.Capabilities(io));
+
+            Assert.That(io.Lines, Is.EqualTo(new[] { "42" }));
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+                Directory.Delete(dir, true);
+        }
     }
 
     [Test]

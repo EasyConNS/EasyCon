@@ -23,8 +23,10 @@ public static class EcxVm
     /// 返回入口函数返回值（顶层 RETURN）。
     /// </summary>
     /// <param name="nativeSymbols">全项目 extern 符号（FFI 原生按名分发的签名来源）。</param>
+    /// <param name="nativeLibraryDirectory">相对 FFI 库路径的解析目录；源码文件会话使用主脚本目录。</param>
     public static Value Run(EcxImage image, CapabilitySet capabilities, CancellationToken token,
-        string[]? args = null, ImmutableArray<FunctionSymbol> nativeSymbols = default)
+        string[]? args = null, ImmutableArray<FunctionSymbol> nativeSymbols = default,
+        string? nativeLibraryDirectory = null)
     {
         var startTicks = DateTime.Now.Ticks;
         var rand = new Random();
@@ -50,7 +52,7 @@ public static class EcxVm
             if (bang > 0
                 && externMap.TryGetValue((name[..bang], name[(bang + 1)..]), out var sym))
             {
-                loader ??= new NativeLoader();
+                loader ??= new NativeLoader(nativeLibraryDirectory);
                 var fn = loader.ResolveFunction(sym);
                 return ctx.FromValue(fn.Invoke(ToValues(argv, ctx), capabilities, token));
             }

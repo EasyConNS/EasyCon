@@ -19,6 +19,7 @@ internal sealed class NativeLoader
     private static readonly ConcurrentDictionary<DelegateSignature, Type> s_delegateTypeCache = new();
     private static readonly ModuleBuilder s_moduleBuilder;
     private static int s_typeIndex;
+    private readonly string? _baseDirectory;
 
     [RequiresDynamicCode("Calls System.Reflection.Emit.AssemblyBuilder.DefineDynamicAssembly(AssemblyName, AssemblyBuilderAccess)")]
     static NativeLoader()
@@ -27,6 +28,13 @@ internal sealed class NativeLoader
             new AssemblyName("NativeLoaderAssembly"),
             AssemblyBuilderAccess.Run);
         s_moduleBuilder = assembly.DefineDynamicModule("NativeLoaderModule");
+    }
+
+    internal NativeLoader(string? baseDirectory = null)
+    {
+        _baseDirectory = string.IsNullOrWhiteSpace(baseDirectory)
+            ? null
+            : Path.GetFullPath(baseDirectory);
     }
 
     public ImmutableArray<(FunctionSymbol Symbol, LazyNativeCallable Callable)> RegisterExternFunctions(
@@ -42,7 +50,8 @@ internal sealed class NativeLoader
     internal ICallable ResolveFunction(FunctionSymbol symbol)
     {
         var libName = symbol.LibraryName;
-        var handle = s_loadedLibs.GetOrAdd(libName, name =>
+        var loadName = ResolveLibraryName(libName);
+        var handle = s_loadedLibs.GetOrAdd(loadName, name =>
         {
             try { return NativeLibrary.Load(name); }
             catch (Exception ex)
@@ -51,7 +60,7 @@ internal sealed class NativeLoader
             }
         });
 
-        var funcPtr = s_funcPtrCache.GetOrAdd((libName, symbol.ExternalName), _ =>
+        var funcPtr = s_funcPtrCache.GetOrAdd((loadName, symbol.ExternalName), _ =>
         {
             try { return NativeLibrary.GetExport(handle, symbol.ExternalName); }
             catch (Exception ex)
@@ -61,6 +70,17 @@ internal sealed class NativeLoader
         });
 
         return CreateCallable(symbol, funcPtr);
+    }
+
+    private string ResolveLibraryName(string libraryName)
+    {
+        if (_baseDirectory == null || Path.IsPathFullyQualified(libraryName))
+            return libraryName;
+
+        string candidate = Path.GetFullPath(Path.Combine(_baseDirectory, libraryName));
+        bool hasDirectory = libraryName.Contains(Path.DirectorySeparatorChar)
+            || libraryName.Contains(Path.AltDirectorySeparatorChar);
+        return hasDirectory || File.Exists(candidate) ? candidate : libraryName;
     }
 
     [RequiresDynamicCode("Calls System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer(nint, Type)")]

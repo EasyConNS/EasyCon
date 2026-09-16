@@ -13,16 +13,19 @@ public sealed class EasyScriptEngine : IScriptEngine
     public IScriptSession FromSource(string code, ScriptHostOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        return new Session(Compilation.CompileSource(code, options.Compile), options);
+        return new Session(Compilation.CompileSource(code, options.Compile), options, null);
     }
 
     public IScriptSession LoadFile(string path, ScriptHostOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        return new Session(Compilation.CompileFile(path, options.Compile), options);
+        string fullPath = Path.GetFullPath(path);
+        return new Session(Compilation.CompileFile(fullPath, options.Compile), options,
+            Path.GetDirectoryName(fullPath));
     }
 
-    sealed class Session(CompileResult result, ScriptHostOptions options) : IScriptSession
+    sealed class Session(CompileResult result, ScriptHostOptions options,
+        string? nativeLibraryDirectory) : IScriptSession
     {
         public CompileResult Info => result;
 
@@ -30,7 +33,8 @@ public sealed class EasyScriptEngine : IScriptEngine
         {
             if (result.Image is not { } image)
                 return;
-            EcxVm.Run(image, capabilities ?? options.Capabilities, cancellationToken, options.Args, result.NativeSymbols);
+            EcxVm.Run(image, capabilities ?? options.Capabilities, cancellationToken, options.Args,
+                result.NativeSymbols, nativeLibraryDirectory);
         }
     }
 }
