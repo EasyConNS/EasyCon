@@ -646,7 +646,7 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
 
     reader r = { image, len, 0, 0 };
     if ((uint32_t)r_bytes(&r, 4) != 0x32435845u) return ECS_ERR_IMAGE;  /* "ECX2" */
-    if (r_bytes(&r, 2) != 1) return ECS_ERR_IMAGE;                      /* format_ver */
+    if (r_bytes(&r, 2) != 2) return ECS_ERR_IMAGE;                      /* format_ver = 2（全局名在调试区） */
     uint32_t flags = (uint32_t)r_bytes(&r, 2);
     (void)r_bytes(&r, 1);                                               /* max_slots */
     (void)r_bytes(&r, 1);                                               /* max_depth */
@@ -748,9 +748,7 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
     if (!vm->globals) return ECS_ERR_OOM;
     for (int32_t g = 0; g < nglobals; g++)
     {
-        char *name = r_utf8(&r);
-        free(name);
-        (void)r_bytes(&r, 2);   /* 模块 idx + 类型码 */
+        (void)r_bytes(&r, 2);   /* 模块 idx + 类型码（v2：名字在调试区） */
         if (r.overflow) return ECS_ERR_IMAGE;
     }
 
@@ -792,13 +790,20 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
         r.pos += (size_t)code_bytes;
     }
 
-    /* ---- 调试名区（可选） ---- */
+    /* ---- 调试名区（可选）：函数名表 + 全局名表（debug_count == nfuncs + nglobals，
+     * EcmEcxFormat §2.9）。名字纯诊断用，全局名读后即弃。 ---- */
     if (debug_count > 0)
     {
-        if (debug_count != nfuncs) return ECS_ERR_IMAGE;
+        if (debug_count != nfuncs + nglobals) return ECS_ERR_IMAGE;
         for (int32_t f = 0; f < nfuncs; f++)
         {
             vm->funcs[f].name = r_utf8(&r);
+            if (r.overflow) return ECS_ERR_IMAGE;
+        }
+        for (int32_t g = 0; g < nglobals; g++)
+        {
+            char *gname = r_utf8(&r);
+            free(gname);
             if (r.overflow) return ECS_ERR_IMAGE;
         }
     }

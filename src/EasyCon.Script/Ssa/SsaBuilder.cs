@@ -19,8 +19,16 @@ sealed partial class SsaBuilder
     private readonly Dictionary<BoundLabel, SsaBlock> _labelBlocks = new();
     private readonly List<SsaBlock> _blocks = new();
     private SsaBlock _currentBlock;
+    /// <summary>当前块是否为「死续块」：EmitGoto（BREAK/CONTINUE/GOTO）跳转后创建的
+    /// 无前驱承接块，其后的语句为不可达死代码。结构化语句（if/for/while/until）与
+    /// 标签/跳转不得从死续块引出 fallthrough 边——否则合并点的 SealBlock 会沿这条
+    /// 幽灵边穿透读取变量，在未封闭的死块里生成 0 臂占位 φ（fuzz 孤立块根因：
+    /// `b34 preds=[] jmp->b33 phis=[v189<-[]]`）。</summary>
+    private bool _inDeadSink;
     private int _nextValueId;
     private int _nextBlockId;
+    /// <summary>当前语句源码行（1 基，0=未知）；NewValue 盖戳到 SsaValue.Line。</summary>
+    private int _currentLine;
     private readonly AstNode _emptySyntax;
 
     public int NextValueId => _nextValueId;
@@ -57,7 +65,8 @@ sealed partial class SsaBuilder
             Arg0 = arg0,
             Arg1 = arg1,
             Aux = aux,
-            Block = _currentBlock
+            Block = _currentBlock,
+            Line = _currentLine
         };
         if (arg0 != null) arg0.Uses++;
         if (arg1 != null) arg1.Uses++;

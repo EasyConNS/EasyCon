@@ -323,57 +323,12 @@ public class SsaOptimizerTests
 
     #endregion
 
-    #region 常量折叠
+    #region 常量折叠（经 SCCP）
 
     [Test]
-    public void FoldConst_IntAdd()
+    public void Sccp_IntDiv_ByZero_NoFold()
     {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var a = ConstI(entry, 3);
-        var b = ConstI(entry, 4);
-        var add = Bin(entry, SsaOp.AddInt, a, b, ScriptType.Int);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(add.Op, Is.EqualTo(SsaOp.ConstInt));
-        Assert.That(add.Const.GetInt(), Is.EqualTo(7));
-    }
-
-    [Test]
-    public void FoldConst_IntSub()
-    {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var a = ConstI(entry, 10);
-        var b = ConstI(entry, 3);
-        var sub = Bin(entry, SsaOp.SubInt, a, b, ScriptType.Int);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(sub.Const.GetInt(), Is.EqualTo(7));
-    }
-
-    [Test]
-    public void FoldConst_IntMul()
-    {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var a = ConstI(entry, 3);
-        var b = ConstI(entry, 4);
-        var mul = Bin(entry, SsaOp.MulInt, a, b, ScriptType.Int);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(mul.Const.GetInt(), Is.EqualTo(12));
-    }
-
-    [Test]
-    public void FoldConst_IntDiv_ByZero_NoFold()
-    {
+        // 除零不折叠：保持运行期 ERR_DIVZERO 语义（折叠契约由 SCCP 承载）
         var func = CreateFunction();
         var entry = Block(func);
         var a = ConstI(entry, 1);
@@ -381,117 +336,9 @@ public class SsaOptimizerTests
         var div = Bin(entry, SsaOp.DivInt, a, b, ScriptType.Int);
         Ret(entry);
 
-        SsaConstantPropagation.FoldConstants(func);
+        SsaConstantPropagation.Run(func);
 
-        // 除零不折叠，保持原样
         Assert.That(div.Op, Is.EqualTo(SsaOp.DivInt));
-    }
-
-    [Test]
-    public void FoldConst_DoubleAdd()
-    {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var a = ConstD(entry, 1.5);
-        var b = ConstD(entry, 2.5);
-        var add = Bin(entry, SsaOp.AddDouble, a, b, ScriptType.Double);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(add.Op, Is.EqualTo(SsaOp.ConstDouble));
-        Assert.That(add.Const.GetDouble(), Is.EqualTo(4.0));
-    }
-
-    [Test]
-    public void FoldConst_IntLt_True()
-    {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var a = ConstI(entry, 3);
-        var b = ConstI(entry, 5);
-        var lt = Bin(entry, SsaOp.LtInt, a, b, ScriptType.Bool);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(lt.Op, Is.EqualTo(SsaOp.ConstBool));
-        Assert.That(lt.Const.GetBool(), Is.True);
-    }
-
-    [Test]
-    public void FoldConst_LogicNot_True()
-    {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var b = ConstB(entry, true);
-        var not = Un(entry, SsaOp.LogicNot, b, ScriptType.Bool);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(not.Op, Is.EqualTo(SsaOp.ConstBool));
-        Assert.That(not.Const.GetBool(), Is.False);
-    }
-
-    [Test]
-    public void FoldConst_BitwiseNot()
-    {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var v = ConstI(entry, 0xFF);
-        var not = Un(entry, SsaOp.NotInt, v, ScriptType.Int);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(not.Op, Is.EqualTo(SsaOp.ConstInt));
-        Assert.That(not.Const.GetInt(), Is.EqualTo(~0xFF));
-    }
-
-    [Test]
-    public void FoldConst_ConvBoolToInt_True()
-    {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var b = ConstB(entry, true);
-        var conv = Un(entry, SsaOp.ConvBoolToInt, b, ScriptType.Int);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(conv.Op, Is.EqualTo(SsaOp.ConstInt));
-        Assert.That(conv.Const.GetInt(), Is.EqualTo(1));
-    }
-
-    [Test]
-    public void FoldConst_ConvIntToDouble()
-    {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var v = ConstI(entry, 42);
-        var conv = Un(entry, SsaOp.ConvIntToDouble, v, ScriptType.Double);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(conv.Op, Is.EqualTo(SsaOp.ConstDouble));
-        Assert.That(conv.Const.GetDouble(), Is.EqualTo(42.0));
-    }
-
-    [Test]
-    public void FoldConst_ConvDoubleToInt()
-    {
-        var func = CreateFunction();
-        var entry = Block(func);
-        var v = ConstD(entry, 3.7);
-        var conv = Un(entry, SsaOp.ConvDoubleToInt, v, ScriptType.Int);
-        Ret(entry);
-
-        SsaConstantPropagation.FoldConstants(func);
-
-        Assert.That(conv.Op, Is.EqualTo(SsaOp.ConstInt));
-        Assert.That(conv.Const.GetInt(), Is.EqualTo(3));
     }
 
     #endregion

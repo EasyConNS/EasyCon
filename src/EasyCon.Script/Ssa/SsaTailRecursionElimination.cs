@@ -80,7 +80,8 @@ static class SsaTailRecursionElimination
                 {
                     Arg0 = newVal,
                     Aux = param,
-                    Block = block
+                    Block = block,
+                    Line = newVal.Line   // 参数写回继承实参行（TRE 克隆保值行号）
                 };
                 block.Instructions.Insert(block.Instructions.Count - 1, store);
                 newVal.Uses++;

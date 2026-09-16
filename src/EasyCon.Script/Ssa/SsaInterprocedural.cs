@@ -315,6 +315,7 @@ static class SsaInterprocedural
             Const = original.Const,
             ConstString = original.ConstString,
             Aux = original.Aux,
+            Line = original.Line,   // 行号随克隆保留（内联后错误现场仍映射回源行）
         };
 
         cloned.Arg0 = ResolveOperand(original.Arg0, valueMap);

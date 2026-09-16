@@ -234,18 +234,19 @@ Link 在深拷贝副本上进行，不污染调用方产物（`.ecm` 可安全 r
 ```text
 偏移  字段
 0     magic "ECX2"（4 字节）
-4     format_ver:u16 = 1
-6     flags:u16   bit0 D=调试名表存在；bit1 K=KeyAction；bit2 I=NeedIL；其余 0
+4     format_ver:u16 = 2
+6     flags:u16   bit0 D=调试名区存在；bit1 K=KeyAction；bit2 I=NeedIL；其余 0
 8     max_slots:u8
 9     max_depth:u8
 10    feats:u16   特征需求掩码（EcsImageFeatures：IL/CAPTURE/FFI/FILE/VISION）
 12    const_count:u32 × 常量条目（tag:u8 + payload；STRING = units:u16 + UTF-16LE）
 ?     struct_count:u32 × StructDef（name:utf8, nfields:u8, Field{name,kind,base,elem,count:u16}）
-?     global_count:u32 × Global（name:utf8, module:u8, type:u8）
+?     global_count:u32 × Global（module:u8 + type:u8 定长；名字在调试区）
 ?     native_count:u32 × Native（name:utf8）
 ?     func_count:u32 × FuncDef（nparams:u8, nslots:u8, hasret:u8, code_off:u32, code_words:u32）
 ?     代码区（u32 指令字序列，4 字节对齐）
-?     调试区（D=1 时：函数名表，按 fid 序；stripDebug 产 MCU 发布版时整区不存在，debug_count=0）
+?     调试区（D=1 时：函数名表 + 全局名表，debug_count = func_count + global_count；
+      stripDebug 产 MCU 发布版时整区不存在，debug_count=0）
 末    entry:u32
 ```
 

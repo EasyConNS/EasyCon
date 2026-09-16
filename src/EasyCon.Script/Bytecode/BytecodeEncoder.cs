@@ -54,6 +54,60 @@ public sealed class ModuleEncodeContext
     /// </summary>
     public IReadOnlySet<FunctionSymbol>? ExternalFunctions;
 
+    readonly Dictionary<string, int> _hiddenGlobalSlots = new(StringComparer.Ordinal);
+    readonly Dictionary<string, string> _hiddenGlobalOwners = new(StringComparer.Ordinal);
+
+    /// <summary>模板全局的注册结果：模板数组槽 + 构建守卫槽（均模块局部全局槽）。</summary>
+    public readonly record struct ArrayTemplateSlots(int Template, int Guard);
+
+    /// <summary>全常量数组字面量 → 常量模板全局（内容键去重，模块级共享；见 BytecodeEncoder.ArrayTemplate）。</summary>
+    public readonly Dictionary<string, ArrayTemplateSlots> ArrayTemplates = new(StringComparer.Ordinal);
+
+    /// <summary>铸造模块私有隐藏全局（用户标识符不含 '#'，无碰撞面）。同名幂等。</summary>
+    public int MintGlobal(string name, EcsTypeCode type)
+    {
+        if (_hiddenGlobalSlots.TryGetValue(name, out var slot))
+            return slot;
+        slot = Globals.Count;
+        _hiddenGlobalSlots[name] = slot;
+        Globals.Add(new EcsGlobal { Name = name, Module = ModuleName, Type = type });
+        return slot;
+    }
+
+    /// <summary>
+    /// 取（或建）内容键对应的常量模板：模板数组全局 + 守卫全局（构建一次标志）。
+    /// 命名 = "#tpl" + FNV-1a64(内容键)；FNV 碰撞时以 -n 后缀消歧（_hiddenGlobalOwners 校验内容归属）。
+    /// </summary>
+    public ArrayTemplateSlots ArrayTemplate(string contentKey)
+    {
+        if (ArrayTemplates.TryGetValue(contentKey, out var hit))
+            return hit;
+        var baseName = $"#tpl{Fnv1a64(contentKey):x16}";
+        var name = baseName;
+        var suffix = 0;
+        while (_hiddenGlobalOwners.TryGetValue(name, out var owner) && owner != contentKey)
+            name = $"{baseName}-{++suffix}";
+        var slots = new ArrayTemplateSlots(
+            MintGlobal(name, EcsTypeCode.Array),
+            MintGlobal(name + "!ok", EcsTypeCode.Int));
+        ArrayTemplates[contentKey] = slots;
+        _hiddenGlobalOwners[name] = contentKey;
+        _hiddenGlobalOwners[name + "!ok"] = contentKey;
+        return slots;
+    }
+
+    static ulong Fnv1a64(string s)
+    {
+        const ulong Prime = 0x100000001B3;
+        ulong hash = 0xCBF29CE484222325;
+        foreach (var c in s)
+        {
+            hash ^= c;
+            hash *= Prime;
+        }
+        return hash;
+    }
+
     public int ImportId(string name, int nparams)
     {
         var key = (name, nparams);
@@ -113,6 +167,14 @@ public static partial class BytecodeEncoder
         readonly Dictionary<SsaBlock, BlockUseInfo> _useInfo = new();
         readonly HashSet<SsaValue> _pooled = new();
         readonly Dictionary<SsaValue, int> _totalReads = new();
+        /// <summary>结算计划：直接发射的指令 → 待结算操作数（登记遍历同点推导，发射只回放）。</summary>
+        readonly Dictionary<SsaValue, SsaValue[]> _instReleases = new();
+        /// <summary>结算计划：块终结符 → 待结算值（返回值/分支条件/出边 φ 臂，含死 φ 臂）。</summary>
+        readonly Dictionary<SsaBlock, SsaValue[]> _terminatorReleases = new();
+        /// <summary>行号表构建缓冲（稀疏：仅行变化处记录，发射点由 EmitInst 驱动）。</summary>
+        readonly List<int> _linePcs = new();
+        readonly List<int> _lineLines = new();
+        int _currentEmitLine;
         readonly Dictionary<SsaBlock, int> _blockStart = new();
         readonly List<Fixup> _fixups = new();
         readonly List<int> _labels = new();
@@ -124,6 +186,10 @@ public static partial class BytecodeEncoder
         int _maxArity;
         int _receiveSlot;
         int _neqTemp = -1;   // Neq = Eq+Not 的共享中间槽（发射原子，不嵌套）
+        int _tplGuard = -1;  // 常量模板构建暂存槽（守卫标志/模板数组/当前分块；发射原子，不嵌套）
+        int _tplArr = -1;
+        int _tplChunk = -1;
+        int _tplChunkSize;   // 模板分块构建的单块元素数（staging 槽预算内取满）
 
         public EcsFunction Result = null!;
 
@@ -231,6 +297,24 @@ public static partial class BytecodeEncoder
                 HasReturn = !_symbol.ReturnType.Equals(ScriptType.Void),
                 Code = _code,
             };
+            var lineTable = new List<int>(_linePcs.Count * 2);
+            for (int i = 0; i < _linePcs.Count; i++)
+            {
+                lineTable.Add(_linePcs[i]);
+                lineTable.Add(_lineLines[i]);
+            }
+            Result.LineTable = lineTable;
+        }
+
+        /// <summary>记录发射行号（稀疏表：仅行变化时追加 (pc, line)；0 行未知则继承上一登记）。</summary>
+        void SetEmitLine(SsaValue? v)
+        {
+            var line = v?.Line ?? 0;
+            if (line <= 0 || line == _currentEmitLine)
+                return;
+            _currentEmitLine = line;
+            _linePcs.Add(_code.Count);
+            _lineLines.Add(line);
         }
 
         // ---- 块发射 ----
@@ -251,31 +335,15 @@ public static partial class BytecodeEncoder
 
                 foreach (var inst in block.Instructions)
                 {
-                    switch (inst.Op)
-                    {
-                        case SsaOp.Phi:
-                        case SsaOp.CondBranch:
-                        case SsaOp.Branch:
-                        case SsaOp.Return:
-                        case SsaOp.Nop:
-                            continue;   // 终结符/标记，由 EmitTerminator 处理
-                        case SsaOp.ConstBool:
-                        case SsaOp.ConstByte:
-                        case SsaOp.ConstInt:
-                        case SsaOp.ConstUInt:
-                        case SsaOp.ConstUInt64:
-                        case SsaOp.ConstDouble:
-                        case SsaOp.ConstString:
-                        case SsaOp.ConstPtr:
-                            continue;   // 常量在块首按需物化（这里物理占位的常量指令不发射）
-                        default:
-                            // 先结算操作数末次读取（槽位可被结果复用），再为块内结果取槽
-                            ReleaseOperands(block, inst);
-                            if (_pooled.Contains(inst))
-                                _slots[inst] = PoolAlloc();
-                            EmitInst(inst);
-                            break;
-                    }
+                    if (!IsDirectlyEmitted(inst.Op))
+                        continue;   // 终结符/标记由 EmitTerminator 处理；常量占位由块首按需物化
+                    // 回放登记期推导的结算计划：先结算操作数末次读取（槽位可被结果复用），再为块内结果取槽
+                    if (_instReleases.TryGetValue(inst, out var releases))
+                        foreach (var v in releases)
+                            ReleaseDying(block, v);
+                    if (_pooled.Contains(inst))
+                        _slots[inst] = PoolAlloc();
+                    EmitInst(inst);
                 }
                 EmitTerminator(block);
             }
@@ -289,16 +357,22 @@ public static partial class BytecodeEncoder
 
         void EmitTerminator(SsaBlock block)
         {
+            EmitTerminatorShape(block);
+            // 回放登记期推导的终结符结算计划：返回值/分支条件/出边 φ 臂（每条出边一次，含死 φ 臂）
+            if (_terminatorReleases.TryGetValue(block, out var termReleases))
+                foreach (var v in termReleases)
+                    ReleaseDying(block, v);
+        }
+
+        void EmitTerminatorShape(SsaBlock block)
+        {
             if (block.IsReturn)
             {
                 SsaValue? retVal = null;
                 foreach (var inst in block.Instructions)
                     if (inst.Op == SsaOp.Return) { retVal = inst.Arg0; break; }
                 if (retVal != null)
-                {
                     EmitIabc(EcsOpcode.Ret, Slot(retVal), 0, 0);
-                    ReleaseDying(block, retVal);
-                }
                 else
                     EmitIabc(EcsOpcode.Ret0, 0, 0, 0);
                 return;
@@ -350,7 +424,6 @@ public static partial class BytecodeEncoder
                     EmitEdgeCopies(f, block);
                     EmitJmpToBlock(f);
                 }
-                ReleaseDying(block, block.BranchCondition);   // 条件已被终止符全部读取
                 return;
             }
 
@@ -370,6 +443,9 @@ public static partial class BytecodeEncoder
         void EmitFixJpf(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJpfLabel, label)); Emit(Word(EcsOpcode.Jpf, cond, 0, 0)); }
         void EmitFixJpt(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJptLabel, label)); Emit(Word(EcsOpcode.Jpt, cond, 0, 0)); }
 
+        /// <summary>出边 φ 副本发射（Sessa 并行拷贝见 EmitParallelCopy）。
+        /// 臂读取的结算不在本方法——统一由终结符结算计划回放（含死 φ 臂），
+        /// 副本选择与记账分离，避免「发射一处推导、结算多处推导」漂移。</summary>
         void EmitEdgeCopies(SsaBlock successor, SsaBlock from)
         {
             int armIdx = successor.Predecessors.IndexOf(from);
@@ -379,18 +455,11 @@ public static partial class BytecodeEncoder
             var moves = new List<(int Dst, int Src)>();
             foreach (var phi in successor.Phis)
             {
-                var arm = phi.ExtraArgs![armIdx];
                 if (!_slots.ContainsKey(phi))
-                {
-                    ReleaseDying(from, arm);   // 死 φ（防线 1）：副本不发射，臂读取记账照常结算（块内槽池不变量不受影响）
-                    continue;
-                }
-                moves.Add((Slot(phi), Slot(arm)));
+                    continue;   // 死 φ（防线 1）：不占槽、不发副本，臂读取由计划照常结算
+                moves.Add((Slot(phi), Slot(phi.ExtraArgs![armIdx])));
             }
             EmitParallelCopy(moves);
-            // 副本已发射 = 臂读取完成，结算块内槽（t==f 防御路径只发一份，也只结算一次）
-            foreach (var phi in successor.Phis)
-                ReleaseDying(from, phi.ExtraArgs![armIdx]);
         }
 
         /// <summary>并行副本（Sessa 算法；交换环经 scratch 槽打破，docs/VM2.md §5.3）。</summary>

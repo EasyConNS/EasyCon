@@ -370,25 +370,18 @@ public class LexerTests
 
     #region 诊断（错误 token）
 
-    [Test]
-    public void Diagnostic_UnterminatedString()
+    static IEnumerable<TestCaseData> LexerDiagnosticCases()
     {
-        var tree = SyntaxTree.Parse("\"unterminated");
-        Assert.That(tree.Diagnostics.Count, Is.GreaterThan(0));
+        yield return new TestCaseData("\"unterminated").SetName("Diagnostic_UnterminatedString");
+        yield return new TestCaseData("$x = 1.2.3").SetName("Diagnostic_InvalidDecimalNumber");
+        yield return new TestCaseData("$x = 10 \u0001").SetName("Diagnostic_BadCharacter");
     }
 
-    [Test]
-    public void Diagnostic_InvalidDecimalNumber()
+    [TestCaseSource(nameof(LexerDiagnosticCases))]
+    public void Diagnostic_Cases(string code)
     {
-        var tree = SyntaxTree.Parse("$x = 1.2.3");
-        Assert.That(tree.Diagnostics.Count, Is.GreaterThan(0));
-    }
-
-    [Test]
-    public void Diagnostic_BadCharacter()
-    {
-        var tree = SyntaxTree.Parse("$x = 10 ");
-        Assert.That(tree.Diagnostics.Count, Is.GreaterThan(0));
+        var tree = SyntaxTree.Parse(code);
+        Assert.That(tree.Diagnostics.Count, Is.GreaterThan(0), $"预期诊断但解析成功: {code}");
     }
 
     #endregion

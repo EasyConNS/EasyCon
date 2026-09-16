@@ -231,82 +231,6 @@ CAPTURE");
         ExpectParse("$v:int = 0\n$v += 1");
     }
 
-    [Test]
-    public void Variable_AssignmentWithTypeAnnotation_FieldAccess_Error()
-    {
-        // 字段访问不支持类型标注
-        ExpectError("$obj.field:int = 10");
-    }
-
-    [Test]
-    public void Variable_AssignmentWithTypeAnnotation_ArrayIndex_Error()
-    {
-        // 数组索引不支持类型标注
-        ExpectError("$arr[0]:int = 10");
-    }
-
-    [Test]
-    public void Variable_AssignmentWithArrayTypeAnnotation_Error()
-    {
-        // 变量赋值不支持定长数组类型标注
-        ExpectError("$x:int[10] = [1,2,3,4,5,6,7,8,9,10]");
-    }
-
-    [Test]
-    public void Error_TypedAssignment_MissingValue()
-    {
-        ExpectError("$var:int =");
-    }
-
-    [Test]
-    public void Error_TypedAssignment_AugmentedMissingValue()
-    {
-        ExpectError("$var:int += ");
-    }
-
-    [Test]
-    public void Error_TypeAnnotation_MissingTypeName()
-    {
-        // 冒号后缺类型名
-        ExpectError("$var: = 1");
-    }
-
-    [Test]
-    public void Error_TypeAnnotation_EmptyAfterColon()
-    {
-        ExpectError("$var:");
-    }
-
-    [Test]
-    public void Error_ArrayTypeAnnotation_NonIntegerSize()
-    {
-        // 数组大小必须是整数
-        ExpectError("$var:int[abc]");
-    }
-
-    [Test]
-    public void Error_StructField_DynamicLengthArray()
-    {
-        // 结构体字段不支持动态长度数组，只支持固定长度
-        ExpectError(@"
-STRUCT Test
-    $data:int[]
-END");
-    }
-
-    [Test]
-    public void Error_PlainAssignment_MissingValue()
-    {
-        ExpectError("$var = ");
-    }
-
-    [Test]
-    public void Error_PlainAssignment_NoOperator()
-    {
-        // 只有变量没有赋值操作符
-        ExpectError("$var");
-    }
-
     #endregion
 
     #region 表达式 — 字面量和标识符
@@ -492,12 +416,6 @@ END");
     }
 
     [Test]
-    public void Lvalue_SliceIsError()
-    {
-        ExpectError("$a[1:3] = 5");
-    }
-
-    [Test]
     public void String_Index()
     {
         ExpectParse("$s = \"abc\"\n$r = $s[1]");
@@ -662,12 +580,6 @@ END");
     }
 
     [Test]
-    public void Func_FixedLengthArrayParameter_NotSupported()
-    {
-        ExpectError("FUNC first($items:STRING[4]):STRING\nRETURN $items[0]\nENDFUNC");
-    }
-
-    [Test]
     public void Func_ChineseName()
     {
         ExpectParse("FUNC 测试函数\nA\nENDFUNC");
@@ -790,164 +702,6 @@ ENDIF
 
     #endregion
 
-    #region 错误 — 结构性错误
-
-    [Test]
-    public void Error_MismatchedIf_MissingEndif()
-    {
-        ExpectError("IF $x == 1\nA", "没有正确结束");
-    }
-
-    [Test]
-    public void Error_MismatchedFor_MissingNext()
-    {
-        ExpectError("FOR 3\nA", "没有正确结束");
-    }
-
-    [Test]
-    public void Error_MismatchedFunc_MissingEndfunc()
-    {
-        ExpectError("FUNC foo\nA", "没有正确结束");
-    }
-
-    [Test]
-    public void Error_MismatchedWhile_MissingEnd()
-    {
-        ExpectError("WHILE $i < 5\nA", "没有正确结束");
-    }
-
-    [Test]
-    public void Error_MismatchedUntil_MissingEnd()
-    {
-        ExpectError("UNTIL $i >= 5\nA", "没有正确结束");
-    }
-
-    [Test]
-    public void Error_ExtraEndif()
-    {
-        ExpectError("ENDIF", "多余的");
-    }
-
-    [Test]
-    public void Error_ExtraNext()
-    {
-        ExpectError("NEXT", "多余的");
-    }
-
-    [Test]
-    public void Error_ElifWithoutIf()
-    {
-        ExpectError("ELIF $x == 1\nA", "ELIF");
-    }
-
-    [Test]
-    public void Error_ElseWithoutIf()
-    {
-        ExpectError("ELSE\nA", "ELSE");
-    }
-
-    [Test]
-    public void Error_ElseAfterElse()
-    {
-        ExpectError("IF $x == 1\nA\nELSE\nB\nELSE\nC\nENDIF", "一个If只能对应一个Else");
-    }
-
-    #endregion
-
-    #region 错误 — 表达式错误
-
-    [Test]
-    public void Error_TrailingOperator()
-    {
-        ExpectError("$v = 1 +");
-        ExpectError("$v = 1 -");
-        ExpectError("$v = 1 *");
-        ExpectError("$v = 1 /");
-        ExpectError("$v = 1 %");
-    }
-
-    [Test]
-    public void Error_TrailingComparison()
-    {
-        ExpectError("$v = 1 ==");
-        ExpectError("$v = 1 !=");
-        ExpectError("$v = 1 >");
-        ExpectError("$v = 1 <");
-    }
-
-    [Test]
-    public void Error_TrailingLogical()
-    {
-        ExpectError("$v = 1 and");
-        ExpectError("$v = 1 or");
-    }
-
-    [Test]
-    public void Error_TrailingBitwise()
-    {
-        ExpectError("$v = 1 &");
-        ExpectError("$v = 1 |");
-        ExpectError("$v = 1 ^");
-        ExpectError("$v = 1 <<");
-        ExpectError("$v = 1 >>");
-    }
-
-    [Test]
-    public void Error_MultipleTrailingOperators()
-    {
-        ExpectError("$v = 1 + *");
-        ExpectError("$v = 1 * /");
-    }
-
-    [Test]
-    public void Error_UnmatchedParen()
-    {
-        ExpectError("$v = (1 + 2");
-    }
-
-    [Test]
-    public void Error_ExpressionInIf()
-    {
-        ExpectError("IF $a +\nA\nENDIF");
-        ExpectError("IF $a ==\nA\nENDIF");
-    }
-
-    [Test]
-    public void Error_ExpressionInFor()
-    {
-        ExpectError("FOR $a = 1 +\nNEXT");
-    }
-
-    [Test]
-    public void Error_AugmentedAssignmentTrailing()
-    {
-        ExpectError("$v += ");
-        ExpectError("$v -= ");
-        ExpectError("$v *= ");
-    }
-
-    #endregion
-
-    #region 错误 — 词法错误传播
-
-    [Test]
-    public void Error_UnterminatedString()
-    {
-        ExpectError("$s=\"unterminated", "字符串没有结束引号");
-    }
-
-    [Test]
-    public void Error_InvalidToken()
-    {
-        ExpectError("FOR 3\nA\nNEXT\nEXTRA", "无效的表达式语句");
-    }
-
-    [Test]
-    public void Error_BadCharacter()
-    {
-        ExpectError("$val = 10 @", "多余的");
-    }
-
     #region 赋值目标
 
     [Test]
@@ -982,5 +736,93 @@ ENDIF
 
     #endregion
 
+    #region 错误 — 诊断用例表
+
+    /// <summary>错误诊断用例表（表格化，原 35 个 ExpectError 方法 1:1 迁移，无覆盖缺口）：
+    /// 每条 = (代码, 期望错误片段)；Contains 为 null 时仅要求解析失败。</summary>
+    static IEnumerable<TestCaseData> AssignmentTypeErrorCases()
+    {
+        // 字段/索引/定长数组类型标注、缺值、缺类型名、结构体动态数组等
+        yield return new TestCaseData("$obj.field:int = 10", (string?)null).SetName("Variable_AssignmentWithTypeAnnotation_FieldAccess_Error");
+        yield return new TestCaseData("$arr[0]:int = 10", (string?)null).SetName("Variable_AssignmentWithTypeAnnotation_ArrayIndex_Error");
+        yield return new TestCaseData("$x:int[10] = [1,2,3,4,5,6,7,8,9,10]", (string?)null).SetName("Variable_AssignmentWithArrayTypeAnnotation_Error");
+        yield return new TestCaseData("$var:int =", (string?)null).SetName("Error_TypedAssignment_MissingValue");
+        yield return new TestCaseData("$var:int += ", (string?)null).SetName("Error_TypedAssignment_AugmentedMissingValue");
+        yield return new TestCaseData("$var: = 1", (string?)null).SetName("Error_TypeAnnotation_MissingTypeName");
+        yield return new TestCaseData("$var:", (string?)null).SetName("Error_TypeAnnotation_EmptyAfterColon");
+        yield return new TestCaseData("$var:int[abc]", (string?)null).SetName("Error_ArrayTypeAnnotation_NonIntegerSize");
+        yield return new TestCaseData("\nSTRUCT Test\n    $data:int[]\nEND", (string?)null).SetName("Error_StructField_DynamicLengthArray");
+        yield return new TestCaseData("$var = ", (string?)null).SetName("Error_PlainAssignment_MissingValue");
+        yield return new TestCaseData("$var", (string?)null).SetName("Error_PlainAssignment_NoOperator");
+        yield return new TestCaseData("$a[1:3] = 5", (string?)null).SetName("Lvalue_SliceIsError");
+        yield return new TestCaseData("FUNC first($items:STRING[4]):STRING\nRETURN $items[0]\nENDFUNC", (string?)null).SetName("Func_FixedLengthArrayParameter_NotSupported");
+    }
+
+    static IEnumerable<TestCaseData> StructuralErrorCases()
+    {
+        // 结构不匹配：缺 ENDIF/NEXT/ENDFUNC/END、多余 ENDIF/NEXT、孤立 ELIF/ELSE、重复 ELSE
+        yield return new TestCaseData("IF $x == 1\nA", "没有正确结束").SetName("Error_MismatchedIf_MissingEndif");
+        yield return new TestCaseData("FOR 3\nA", "没有正确结束").SetName("Error_MismatchedFor_MissingNext");
+        yield return new TestCaseData("FUNC foo\nA", "没有正确结束").SetName("Error_MismatchedFunc_MissingEndfunc");
+        yield return new TestCaseData("WHILE $i < 5\nA", "没有正确结束").SetName("Error_MismatchedWhile_MissingEnd");
+        yield return new TestCaseData("UNTIL $i >= 5\nA", "没有正确结束").SetName("Error_MismatchedUntil_MissingEnd");
+        yield return new TestCaseData("ENDIF", "多余的").SetName("Error_ExtraEndif");
+        yield return new TestCaseData("NEXT", "多余的").SetName("Error_ExtraNext");
+        yield return new TestCaseData("ELIF $x == 1\nA", "ELIF").SetName("Error_ElifWithoutIf");
+        yield return new TestCaseData("ELSE\nA", "ELSE").SetName("Error_ElseWithoutIf");
+        yield return new TestCaseData("IF $x == 1\nA\nELSE\nB\nELSE\nC\nENDIF", "一个If只能对应一个Else").SetName("Error_ElseAfterElse");
+    }
+
+    static IEnumerable<TestCaseData> ExpressionErrorCases()
+    {
+        // 尾随操作符、未匹配括号、残缺条件/边界表达式、增强赋值缺值
+        yield return new TestCaseData("$v = 1 +", (string?)null).SetName("Error_TrailingOperator_Add");
+        yield return new TestCaseData("$v = 1 -", (string?)null).SetName("Error_TrailingOperator_Sub");
+        yield return new TestCaseData("$v = 1 *", (string?)null).SetName("Error_TrailingOperator_Mul");
+        yield return new TestCaseData("$v = 1 /", (string?)null).SetName("Error_TrailingOperator_Div");
+        yield return new TestCaseData("$v = 1 %", (string?)null).SetName("Error_TrailingOperator_Mod");
+        yield return new TestCaseData("$v = 1 ==", (string?)null).SetName("Error_TrailingComparison_Eql");
+        yield return new TestCaseData("$v = 1 !=", (string?)null).SetName("Error_TrailingComparison_Neq");
+        yield return new TestCaseData("$v = 1 >", (string?)null).SetName("Error_TrailingComparison_Gtr");
+        yield return new TestCaseData("$v = 1 <", (string?)null).SetName("Error_TrailingComparison_Less");
+        yield return new TestCaseData("$v = 1 and", (string?)null).SetName("Error_TrailingLogical_And");
+        yield return new TestCaseData("$v = 1 or", (string?)null).SetName("Error_TrailingLogical_Or");
+        yield return new TestCaseData("$v = 1 &", (string?)null).SetName("Error_TrailingBitwise_And");
+        yield return new TestCaseData("$v = 1 |", (string?)null).SetName("Error_TrailingBitwise_Or");
+        yield return new TestCaseData("$v = 1 ^", (string?)null).SetName("Error_TrailingBitwise_Xor");
+        yield return new TestCaseData("$v = 1 <<", (string?)null).SetName("Error_TrailingBitwise_Shl");
+        yield return new TestCaseData("$v = 1 >>", (string?)null).SetName("Error_TrailingBitwise_Shr");
+        yield return new TestCaseData("$v = 1 + *", (string?)null).SetName("Error_MultipleTrailingOperators_AddMul");
+        yield return new TestCaseData("$v = 1 * /", (string?)null).SetName("Error_MultipleTrailingOperators_MulDiv");
+        yield return new TestCaseData("$v = (1 + 2", (string?)null).SetName("Error_UnmatchedParen");
+        yield return new TestCaseData("IF $a +\nA\nENDIF", (string?)null).SetName("Error_ExpressionInIf_Add");
+        yield return new TestCaseData("IF $a ==\nA\nENDIF", (string?)null).SetName("Error_ExpressionInIf_Eql");
+        yield return new TestCaseData("FOR $a = 1 +\nNEXT", (string?)null).SetName("Error_ExpressionInFor");
+        yield return new TestCaseData("$v += ", (string?)null).SetName("Error_AugmentedAssignmentTrailing_Add");
+        yield return new TestCaseData("$v -= ", (string?)null).SetName("Error_AugmentedAssignmentTrailing_Sub");
+        yield return new TestCaseData("$v *= ", (string?)null).SetName("Error_AugmentedAssignmentTrailing_Mul");
+    }
+
+    static IEnumerable<TestCaseData> LexicalErrorCases()
+    {
+        // 词法错误传播到语法层
+        yield return new TestCaseData("$s=\"unterminated", "字符串没有结束引号").SetName("Error_UnterminatedString");
+        yield return new TestCaseData("FOR 3\nA\nNEXT\nEXTRA", "无效的表达式语句").SetName("Error_InvalidToken");
+        yield return new TestCaseData("$val = 10 @", "多余的").SetName("Error_BadCharacter");
+    }
+
+    [TestCaseSource(nameof(AssignmentTypeErrorCases))]
+    public void ParseError_AssignmentAndType(string code, string? contains) => ExpectError(code, contains);
+
+    [TestCaseSource(nameof(StructuralErrorCases))]
+    public void ParseError_Structural(string code, string? contains) => ExpectError(code, contains);
+
+    [TestCaseSource(nameof(ExpressionErrorCases))]
+    public void ParseError_Expression(string code, string? contains) => ExpectError(code, contains);
+
+    [TestCaseSource(nameof(LexicalErrorCases))]
+    public void ParseError_Lexical(string code, string? contains) => ExpectError(code, contains);
+
     #endregion
+
 }

@@ -11,12 +11,12 @@
 - ECX 整体加载地址须 4 字节对齐；各 u32 字段相对镜像起点天然 4 字节对齐（头部定长 0x24，表条目均为 4 的倍数内字段）。
 - 计数上限（编码器与加载器双向强制）：槽位 ≤255，Bx ≤65535，单函数指令 ≤2²⁴，常量 ≤65535。
 
-## 2. ECX —— 链接后可执行镜像（format_ver = 1）
+## 2. ECX —— 链接后可执行镜像（format_ver = 2）
 
 ```
 偏移   大小  内容
 0x00   4    magic = "ECX2"
-0x04   2    format_ver = 1
+0x04   2    format_ver = 2
 0x06   2    flags           §2.1
 0x08   1    max_slots       全程序最大帧槽（= max(funcs.nslots)，宿主预分配帧区依据）
 0x09   1    max_depth       静态调用图最长链（含 <main>；宿主预分配深度）
@@ -27,11 +27,14 @@
 
 代码区总字节数 = Σ code_words（无独立长度字段）；`EcxWriter.Write(image, stripDebug: true)` 剥离调试区（flags.D=0、debug_count=0），供 MCU 发布版减容。
 
+uvm32 式纯净镜像：核心全局表项定长 2 字节，全局名与函数名同住调试区，运行期按索引访问；
+MCU 发布镜像（stripDebug）零名字重量。
+
 ### 2.1 flags (u16)
 
 | 位 | 名 | 含义 |
 |----|----|------|
-| 0 | D | 调试区存在（函数名表） |
+| 0 | D | 调试区存在（函数名表 + 全局名表） |
 | 1 | K | KeyAction——程序含按键指令，宿主须创建手柄 |
 | 2 | I | NeedIL——程序引用图像标签；无 IL 能力的平台加载即拒（`ECS_ERR_IL`） |
 
@@ -48,12 +51,15 @@
                 2=NestedStruct(ext=嵌套 sid, 槽数=嵌套 nslots) 3=Boxed(1 槽, 动态数组声明, 访问→ECS_ERR_TYPE)
         加载器按声明序计算 slot_offset 与总 nslots（嵌套递归展开，环 → ECS_ERR_IMAGE）。
 
-全局表: name:utf8 module_idx:u8 type:u8        名字仅调试用，运行期按索引访问
+全局表: module_idx:u8 type:u8                定长 2 字节，运行期按索引访问；名字在调试区
 原生名表: name:utf8                            仅 L3：采集洞 "__xxx__" / EXTERN FFI "库!导出名" / ENCODE / JQ
                                               （L2 文件族/平台 syscall 编号直传 CallN ext，bit31=1，不进本表）
 
 函数表: 11 字节定长 ×N —— nparams:u8 nslots:u8 attrs:u8(bit0=hasret) code_off:u32 code_words:u32
         code_off 单位=指令字、相对代码区起始；函数索引 = 表序 = Call ext。
+
+调试区（flags.D=1；debug_count = func_count + global_count）:
+        函数名表（按 fid 序）→ 全局名表（按全局槽序）。名字纯诊断用，加载器可读后即弃。
 ```
 
 ### 2.3 加载校验清单（全部通过才可运行，任一失败 → `ECS_ERR_IMAGE`）

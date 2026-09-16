@@ -112,6 +112,7 @@ public static class EcxPipeline
                     NSlots = f.NSlots,
                     HasReturn = f.HasReturn,
                     Code = f.Code.ToList(),
+                    LineTable = [.. f.LineTable],   // 行号表随镜像携带（运行错误 pc→行映射）
                 };
                 moduleCopies.Add(copy);
                 imageFunctions.Add(copy);
@@ -222,7 +223,11 @@ public static class EcxPipeline
                 header.Add((uint)EcsOpcode.Call | 255u << 24);   // C=255：无接收槽
                 header.Add(fid);
             }
-            imageFunctions[entry].Code.InsertRange(0, header);
+            var entryFn = imageFunctions[entry];
+            entryFn.Code.InsertRange(0, header);
+            // 行号表 pc 随前插同步平移（与指令绝对位置同迁）
+            for (int i = 0; i < entryFn.LineTable.Count; i += 2)
+                entryFn.LineTable[i] += header.Count;
         }
 
         // 入口命名：$eval 是 v1 时代顶层语句序列的占位名，链接后入口统一命名为 <main>

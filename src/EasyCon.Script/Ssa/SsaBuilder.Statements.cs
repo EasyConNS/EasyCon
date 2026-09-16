@@ -17,6 +17,11 @@ sealed partial class SsaBuilder
     {
         foreach (var stmt in stmts)
         {
+            // 语句粒度行号（JVM LineNumberTable 同粒度）：语句内表达式继承语句行；
+            // 合成语句（EmptyStmt 等，Line=0 表示未知）保持上一行
+            var stmtLine = stmt.Syntax?.Line ?? 0;
+            if (stmtLine > 0)
+                _currentLine = stmtLine;
             EmitStatement(stmt);
             if (_currentBlock.IsTerminated)
                 break;
@@ -111,6 +116,10 @@ sealed partial class SsaBuilder
 
     private void EmitIf(BoundIfStatement ifStmt)
     {
+        // 死续区内整个 IF 不可达：不建任何块/边（死块若接了边，合并点 sealed 时
+        // 会沿幽灵边生成 0 臂占位 φ）
+        if (_inDeadSink) return;
+
         var cond = EmitExpression(ifStmt.Condition);
 
         var thenBlock = CreateBlock();
@@ -130,7 +139,7 @@ sealed partial class SsaBuilder
         SwitchToBlock(thenBlock, fromConditionalBranch: true);
         _vars.SealBlock(thenBlock);
         EmitStatements(ifStmt.Body.Statements);
-        if (NeedsTerminator(_currentBlock))
+        if (NeedsTerminator(_currentBlock) && !_inDeadSink)
         {
             _currentBlock.JumpTarget = endBlock;
             endBlock.AddPredecessor(_currentBlock);
@@ -160,7 +169,7 @@ sealed partial class SsaBuilder
                     SwitchToBlock(elifThen, fromConditionalBranch: true);
                     _vars.SealBlock(elifThen);
                     EmitStatements(elifBody.Statements);
-                    if (NeedsTerminator(_currentBlock))
+                    if (NeedsTerminator(_currentBlock) && !_inDeadSink)
                     {
                         _currentBlock.JumpTarget = endBlock;
                         endBlock.AddPredecessor(_currentBlock);
@@ -175,7 +184,7 @@ sealed partial class SsaBuilder
             {
                 EmitStatements(ifStmt.ElseBody.Statements);
             }
-            if (NeedsTerminator(_currentBlock))
+            if (NeedsTerminator(_currentBlock) && !_inDeadSink)
             {
                 _currentBlock.JumpTarget = endBlock;
                 endBlock.AddPredecessor(_currentBlock);
@@ -189,6 +198,8 @@ sealed partial class SsaBuilder
 
     private void EmitWhile(BoundWhileStatement whileStmt)
     {
+        if (_inDeadSink) return;
+
         var headerBlock = CreateBlock();
         var bodyBlock = CreateBlock();
         var endBlock = CreateBlock();
@@ -216,7 +227,7 @@ sealed partial class SsaBuilder
         SwitchToBlock(bodyBlock, fromConditionalBranch: true);
         _vars.SealBlock(bodyBlock);
         EmitStatements(whileStmt.Body.Statements);
-        if (NeedsTerminator(_currentBlock))
+        if (NeedsTerminator(_currentBlock) && !_inDeadSink)
         {
             _currentBlock.JumpTarget = headerBlock; // 回边
             headerBlock.AddPredecessor(_currentBlock);
@@ -231,6 +242,8 @@ sealed partial class SsaBuilder
 
     private void EmitFor(BoundForStatement forStmt)
     {
+        if (_inDeadSink) return;
+
         var headerBlock = CreateBlock();
         var endBlock = CreateBlock();
 
@@ -262,7 +275,7 @@ sealed partial class SsaBuilder
             _vars.SealBlock(bodyBlock);
             EmitStatements(forStmt.Body.Statements);
 
-            if (NeedsTerminator(_currentBlock))
+            if (NeedsTerminator(_currentBlock) && !_inDeadSink)
             {
                 _currentBlock.JumpTarget = headerBlock;
                 headerBlock.AddPredecessor(_currentBlock);
@@ -322,7 +335,7 @@ sealed partial class SsaBuilder
             // body 落空 → postBodyCheck: 检查是否需要 increment
             //    如果当前值 == upper：已经是最后迭代的值，直接跳到 end（不 increment，保持 $i = upper）
             //    如果当前值 < upper：需要继续循环，跳到 continueBlock 执行 increment
-            if (NeedsTerminator(_currentBlock))
+            if (NeedsTerminator(_currentBlock) && !_inDeadSink)
             {
                 var varValCheck = isGlobal
                     ? NewValue(SsaOp.LoadGlobal, ScriptType.Int, aux: variable)
@@ -368,6 +381,8 @@ sealed partial class SsaBuilder
 
     private void EmitUntil(BoundUntilStatement untilStmt)
     {
+        if (_inDeadSink) return;
+
         var headerBlock = CreateBlock();
         var bodyBlock = CreateBlock();
         var endBlock = CreateBlock();
@@ -392,7 +407,7 @@ sealed partial class SsaBuilder
         SwitchToBlock(bodyBlock, fromConditionalBranch: true);
         _vars.SealBlock(bodyBlock);
         EmitStatements(untilStmt.Body.Statements);
-        if (NeedsTerminator(_currentBlock))
+        if (NeedsTerminator(_currentBlock) && !_inDeadSink)
         {
             _currentBlock.JumpTarget = headerBlock;
             headerBlock.AddPredecessor(_currentBlock);
@@ -407,14 +422,19 @@ sealed partial class SsaBuilder
     private void EmitGoto(BoundLabel label)
     {
         var target = GetOrCreateLabelBlock(label);
+        // 死续区内再跳转：区块仍死，不接线（块保持无前驱，后续按死块收尾）
+        if (_inDeadSink) return;
         _currentBlock.JumpTarget = target;
         target.AddPredecessor(_currentBlock);
         // 创建新块供后续（不可达）语句使用
         SwitchToBlock(CreateBlock());
+        _inDeadSink = true;
     }
 
     private void EmitCondGoto(BoundConditionalGotoStatement cgs)
     {
+        // 死续区内的条件跳转整体不可达：不建边（fallThrough 块无前驱会成幽灵）
+        if (_inDeadSink) return;
         var cond = EmitExpression(cgs.Condition);
         var target = GetOrCreateLabelBlock(cgs.Label);
         var fallThrough = CreateBlock();
@@ -439,8 +459,9 @@ sealed partial class SsaBuilder
     private void EmitLabel(BoundLabel label)
     {
         var labelBlock = GetOrCreateLabelBlock(label);
-        // 如果当前块未终止，连接到 labelBlock
-        if (NeedsTerminator(_currentBlock))
+        // 如果当前块未终止，连接到 labelBlock（死续块不接线：其边是幽灵，标签块的
+        // 真实入边来自指向它的 goto 本身）
+        if (NeedsTerminator(_currentBlock) && !_inDeadSink)
         {
             _currentBlock.JumpTarget = labelBlock;
             labelBlock.AddPredecessor(_currentBlock);

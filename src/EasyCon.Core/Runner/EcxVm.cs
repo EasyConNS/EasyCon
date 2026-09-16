@@ -64,8 +64,11 @@ public static class EcxVm
                 return result;
             if (code == EcxInterpreter.CANCELLED)
                 throw new OperationCanceledException(token);
+            // Address 语义 = 源码行（1 基，经行号表映射；无表回退 0），pc 保留在消息里供诊断
+            var faultFunc = errorFunc >= 0 && errorFunc < image.Functions.Count ? image.Functions[errorFunc] : null;
+            var sourceLine = faultFunc?.LineAt(errorPc) ?? 0;
             throw new ScriptException(
-                $"!!运行出错!!{Describe(code)}（函数 {image.FunctionName(errorFunc)}，指令 {errorPc}）", errorPc);
+                $"!!运行出错!!{Describe(code)}（函数 {image.FunctionName(errorFunc)}，指令 {errorPc}）", sourceLine);
         }
         finally
         {

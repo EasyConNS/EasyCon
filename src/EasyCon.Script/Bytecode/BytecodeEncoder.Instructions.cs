@@ -15,6 +15,7 @@ public static partial class BytecodeEncoder
 
         void EmitInst(SsaValue v)
         {
+            SetEmitLine(v);
             switch (v.Op)
             {
                 // ---- 局部/全局 ----
@@ -121,7 +122,12 @@ public static partial class BytecodeEncoder
                 case SsaOp.ConvToInt: EmitConv(EcsConvKind.ToInt, v); break;
 
                 // ---- 复合数据 ----
-                case SsaOp.ArrayInit: EmitArrayInit(v); break;
+                case SsaOp.ArrayInit:
+                    if (IsTemplateArrayInit(v))
+                        EmitTemplateArrayInit(v);   // 全常量大字面量：常量模板降级，槽位 O(1)（见 ArrayTemplate）
+                    else
+                        EmitInlineArrayInit(v);
+                    break;
                 case SsaOp.LoadIndex: EmitIabc(EcsOpcode.GetI, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
                 case SsaOp.StoreIndex: EmitIabc(EcsOpcode.SetI, Slot(v.ExtraArgs![0]), Slot(v.Arg0!), Slot(v.Arg1!)); break;
                 case SsaOp.Slice:
@@ -247,7 +253,8 @@ public static partial class BytecodeEncoder
         void EmitConv(EcsConvKind kind, SsaValue v)
             => EmitIabc(EcsOpcode.Conv, Slot(v), Slot(v.Arg0!), (int)kind);
 
-        void EmitArrayInit(SsaValue v)
+        /// <summary>内联数组字面量（小字面量/含非常量元素）：staging + NewArrV（docs/VM2.md §5.2）。</summary>
+        void EmitInlineArrayInit(SsaValue v)
         {
             var elemCode = TypeCode(((ArrayType)v.Type).ElementType);
             if (v.Arg0 == null)

@@ -16,6 +16,8 @@ sealed partial class SsaBuilder
     private void SwitchToBlock(SsaBlock block, bool fromConditionalBranch = false)
     {
         _currentBlock = block;
+        // 每次切换到真实块都离开死续区（EmitGoto 切到新承接块后再单独置位）
+        _inDeadSink = false;
         // 真 SSA（Braun）下不再需要 Clear：变量定义按块独立存储，
         // 合并点的值由 phi 决定，循环头/分支目标读变量时由 ReadVariable 自动处理。
         // block 的封闭（SealBlock）在所有前驱连好后由调用方显式触发。

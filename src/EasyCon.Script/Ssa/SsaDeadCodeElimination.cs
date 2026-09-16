@@ -23,6 +23,13 @@ static class SsaDeadCodeElimination
                 if (inst.Uses == 0 && !inst.HasSideEffect && dead.Add(inst))
                     worklist.Enqueue(inst);
             }
+            // Phi 同样参与死代码消除：结果无用的 phi 会经 worklist 递减其臂 Uses，
+            // 若 sweep 只删指令不删 phi，死 phi 的臂引用会成为悬空（fuzz 悬空 ConstInt 根因）
+            foreach (var phi in block.Phis)
+            {
+                if (phi.Uses == 0 && dead.Add(phi))
+                    worklist.Enqueue(phi);
+            }
         }
 
         if (dead.Count == 0) return false;
@@ -44,13 +51,19 @@ static class SsaDeadCodeElimination
             }
         }
 
-        // Phase 3: sweep — 统一从 block 中移除所有死指令
+        // Phase 3: sweep — 统一从 block 中移除所有死指令（含死 phi：与 Phase 2 的
+        // 臂 Uses 递减配套，否则死 phi 残留且其臂引用已衰减的值）
         foreach (var block in func.Blocks)
         {
             for (int i = block.Instructions.Count - 1; i >= 0; i--)
             {
                 if (dead.Contains(block.Instructions[i]))
                     block.Instructions.RemoveAt(i);
+            }
+            for (int i = block.Phis.Count - 1; i >= 0; i--)
+            {
+                if (dead.Contains(block.Phis[i]))
+                    block.Phis.RemoveAt(i);
             }
         }
 

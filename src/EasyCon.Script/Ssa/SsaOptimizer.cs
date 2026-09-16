@@ -83,6 +83,22 @@ static class SsaOptimizer
     private const int MaxBlocks = 50;
     private const int MaxEdges = 400;
 
+    internal static readonly bool TraceEval = Environment.GetEnvironmentVariable("ECX_PASS_TRACE") == "1";
+
+    /// <summary>DEBUG/Release 通用诊断：ECX_PASS_TRACE=1 时逐 pass dump $eval 的 CFG
+    /// （fuzz 隔离种子的定位基建；未设环境变量时零成本）。</summary>
+    private static void Dump(SsaFunction func, string tag)
+    {
+        if (!func.Symbol.Name.Contains("eval")) return;
+        foreach (var b in func.Blocks)
+        {
+            var bc = b.BranchCondition != null ? $" bc=v{b.BranchCondition.Id}:{b.BranchCondition.Op}" : (b.JumpTarget != null ? $" jmp->b{b.JumpTarget.Id}" : (b.IsReturn ? " ret" : " ??"));
+            var phis = b.Phis.Count > 0
+                ? " phis=[" + string.Join(",", b.Phis.Select(p => $"v{p.Id}<-[{string.Join(",", p.ExtraArgs?.Select(a => $"v{a.Id}:{a.Op}") ?? [])}]")) + "]" : "";
+            Console.Error.WriteLine($"[opt {tag}] b{b.Id} preds=[{string.Join(",", b.Predecessors.Select(p => p.Id))}]{bc}{phis} insts=[{string.Join(", ", b.Instructions.Select(i => $"v{i.Id}:{i.Op}(u{i.Uses})"))}]");
+        }
+    }
+
     internal static void OptimizeFunction(SsaFunction func)
     {
         if (IsTooComplex(func))
@@ -95,14 +111,22 @@ static class SsaOptimizer
         {
             changed = false;
             changed |= SsaConstantPropagation.Run(func);
+            if (TraceEval) Dump(func, $"it{iterations} SCCP");
             changed |= SsaConstantPropagation.AlgebraicSimplify(func);
+            if (TraceEval) Dump(func, $"it{iterations} Algebraic");
             changed |= SsaTailRecursionElimination.Eliminate(func);
             changed |= SsaRedundancyElimination.PropagateCopies(func);
+            if (TraceEval) Dump(func, $"it{iterations} PropCopies");
             changed |= SsaRedundancyElimination.EliminateCommonSubexpressions(func);
+            if (TraceEval) Dump(func, $"it{iterations} CSE");
             changed |= SsaDeadCodeElimination.EliminateDeadCode(func);
+            if (TraceEval) Dump(func, $"it{iterations} DCE");
             changed |= SsaCfgSimplification.MergeBlocks(func);
+            if (TraceEval) Dump(func, $"it{iterations} Merge");
             changed |= SsaCfgSimplification.RemoveUnreachableBlocks(func);
+            if (TraceEval) Dump(func, $"it{iterations} Unreach");
             changed |= SsaConstantPropagation.DeduplicateConstants(func);
+            if (TraceEval) Dump(func, $"it{iterations} Dedup");
 
         } while (changed && ++iterations < MaxIterations);
 

@@ -41,6 +41,12 @@ public sealed class SsaValue
     /// <summary>附加参数列表（Phi/Call/ArrayInit 等多参数场景）</summary>
     public List<SsaValue>? ExtraArgs;
 
+    /// <summary>
+    /// 来源源码行（1 基；构建期由 SsaBuilder 按当前语句盖戳，DebugLoc 语义）。
+    /// 0 = 未知（优化器合成/克隆的值）——编码期行号表继承上一条已记录行。
+    /// </summary>
+    public int Line;
+
     public SsaValue(int id, SsaOp op, ScriptType type)
     {
         Id = id;

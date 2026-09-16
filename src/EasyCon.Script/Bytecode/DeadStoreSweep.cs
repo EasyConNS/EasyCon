@@ -215,9 +215,11 @@ public static class DeadStoreSweep
                     var liveOut = new HashSet<int>();
                     foreach (var s in succs[b])
                         liveOut.UnionWith(liveIn[s]);
-                    var next = new HashSet<int>(gen[b]);
+                    // liveIn = gen ∪ (liveOut \ kill)：gen 是块内向上暴露的使用，
+                    // 发生在本块任何定义之前，不受 kill 影响（kill 只作用于 liveOut）
+                    var next = new HashSet<int>(liveOut);
                     next.ExceptWith(kill[b]);
-                    next.UnionWith(liveOut);
+                    next.UnionWith(gen[b]);
                     if (!next.SetEquals(liveIn[b]))
                     {
                         liveIn[b] = next;

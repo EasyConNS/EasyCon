@@ -111,6 +111,12 @@ static class SsaConstantPropagation
         // meet 所有可执行边上的入参
         var result = LatticeValue.Top();
         bool hasIncoming = false;
+        var _tracePhi = Environment.GetEnvironmentVariable("ECX_PHI_TRACE") == "1" && true;
+        if (_tracePhi && block.Predecessors.Count > 1)
+        {
+            var ex = string.Join(",", block.Predecessors.Select(p => executableEdges.Contains((p, block)) ? $"{p.Id}✓" : $"{p.Id}✗"));
+            Console.Error.WriteLine($"[phi-eval] v{phi.Id} b{block.Id} preds=[{ex}] arms=[{string.Join(",", phi.ExtraArgs?.Select(a => $"v{a.Id}") ?? [])}]");
+        }
 
         if (phi.ExtraArgs != null)
         {
@@ -131,6 +137,12 @@ static class SsaConstantPropagation
         if (!hasIncoming)
             return;
 
+        if (_tracePhi)
+        {
+            var armLatts = string.Join(",", (phi.ExtraArgs ?? new List<SsaValue>()).Select(a =>
+                lattice.TryGetValue(a, out var al) ? $"v{a.Id}:{al.Tag}{(al.Tag == LatticeTag.Const ? $"({al.Value.GetInt()})" : "")}" : $"v{a.Id}:无"));
+            Console.Error.WriteLine($"[phi-eval] v{phi.Id} 结果={result.Tag}{(result.Tag == LatticeTag.Const ? $"({result.Value.GetInt()})" : "")} 臂lattice=[{armLatts}]");
+        }
         UpdateLattice(phi, result, lattice, ssaWorklist, useMap);
     }
 
@@ -399,7 +411,21 @@ static class SsaConstantPropagation
 
     private static LatticeValue GetLatticeOrBottom(SsaValue val, Dictionary<SsaValue, LatticeValue> lattice)
     {
-        return lattice.TryGetValue(val, out var lv) ? lv : LatticeValue.Bottom();
+        if (lattice.TryGetValue(val, out var lv))
+        {
+            // 常量定义的格不依赖其所属块的处理：块可能因先前 pass 的合法折叠而不可达/被删，
+            // 但常量值自包含。这里按需物化，避免「可达指令引用不可达块常量」时格恒 Top、
+            // 循环 φ 的回边臂冻结为 Top → φ meet 收敛为假常量 → 循环条件被折叠成恒真
+            // （fuzz 实证：seeds 108/233 WHILE 条件消失的静默死循环）。
+            if (lv.Tag == LatticeTag.Top && val.IsConstant)
+            {
+                var c = LatticeValue.FromConstant(val);
+                lattice[val] = c;
+                return c;
+            }
+            return lv;
+        }
+        return LatticeValue.Bottom();
     }
 
     /// <summary>
@@ -468,6 +494,18 @@ static class SsaConstantPropagation
         Dictionary<SsaValue, LatticeValue> lattice)
     {
         bool changed = false;
+
+        if (Environment.GetEnvironmentVariable("ECX_SCCP_TRACE") == "1" && true)
+        {
+            foreach (var block in func.Blocks)
+            {
+                if (block.BranchCondition != null && lattice.TryGetValue(block.BranchCondition, out var bc) && bc.Tag == LatticeTag.Const)
+                    Console.Error.WriteLine($"[sccp-final] fn={func.Symbol.Name} b{block.Id} bc=v{block.BranchCondition.Id} 折叠为={bc.Value.GetInt()}");
+                foreach (var phi in block.Phis)
+                    if (lattice.TryGetValue(phi, out var pl) && pl.Tag == LatticeTag.Const)
+                        Console.Error.WriteLine($"[sccp-final] fn={func.Symbol.Name} b{block.Id} PHI v{phi.Id} 折叠为={pl.Value.GetInt()}");
+            }
+        }
 
         // 1. 将 lattice 中为 Const 的非常量指令改写为常量
         changed |= RewriteConstants(func, lattice);
@@ -848,34 +886,16 @@ static class SsaConstantPropagation
             foreach (var (inst, replacement) in replacements)
             {
                 replaceMap[inst] = replacement;
-                // 释放 inst 的操作数引用
-                SsaOptimizer.ReleaseOperands(inst);
-                inst.Uses = 0;
                 changed = true;
             }
+            // 先重定向使用点——ApplyReplaceMap 内部做 Uses 转移（@new.Uses += old.Uses），
+            // 此处不得预先 Release/清零（会转移 0，替换值被 DCE 误删而引用点悬空）
             SsaOptimizer.ApplyReplaceMap(func, replaceMap);
+            // 再释放被折叠指令的操作数引用；指令本体 Uses==0，由下一轮 DCE 清除
+            foreach (var (inst, _) in replacements)
+                SsaOptimizer.ReleaseOperands(inst);
         }
 
-        return changed;
-    }
-
-    // ============ 常量折叠（已被 SCCP 替代，保留供单元测试） ============
-
-    [Obsolete("已被 SCCP 替代，仅保留供单元测试")]
-    internal static bool FoldConstants(SsaFunction func)
-    {
-        bool changed = false;
-        foreach (var block in func.Blocks)
-        {
-            for (int i = 0; i < block.Instructions.Count; i++)
-            {
-                var inst = block.Instructions[i];
-                var oldOp = inst.Op;
-                FoldInPlace(inst);
-                if (inst.Op != oldOp)
-                    changed = true;
-            }
-        }
         return changed;
     }
 

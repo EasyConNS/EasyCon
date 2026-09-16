@@ -71,6 +71,30 @@ public sealed class EcsFunction
     public List<uint> Code = new();
     /// <summary>链接后在本镜像函数表中的下标。</summary>
     public int ImageIndex;
+
+    /// <summary>
+    /// 行号表（交错 [pc, line, ...]，pc 严格递增；JVM LineNumberTable 同型稀疏表）。
+    /// 运行错误经 LineAt(pc) 映射回源码行；仅进 ECM 缓存与桌面诊断，不写入 MCU .ecx。
+    /// </summary>
+    public List<int> LineTable = new();
+
+    /// <summary>pc → 源码行（1 基；空表或 pc 早于首登记返回 0）。二分取 ≤pc 的最近登记。</summary>
+    public int LineAt(int pc)
+    {
+        int lo = 0, hi = LineTable.Count / 2 - 1, result = 0;
+        while (lo <= hi)
+        {
+            int mid = (lo + hi) / 2;
+            if (LineTable[mid * 2] <= pc)
+            {
+                result = LineTable[mid * 2 + 1];
+                lo = mid + 1;
+            }
+            else
+                hi = mid - 1;
+        }
+        return result;
+    }
 }
 
 /// <summary>镜像原生函数名表条目。</summary>

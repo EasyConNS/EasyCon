@@ -126,15 +126,56 @@ static class SsaCfgSimplification
         }
 
         bool changed = false;
+        if (Environment.GetEnvironmentVariable("ECX_UR_TRACE") == "1" && func.Symbol.Name.Contains("eval"))
+        {
+            var removedIds = func.Blocks.Where(b => !reachable.Contains(b)).Select(b => b.Id).ToList();
+            if (removedIds.Count > 0)
+            {
+                Console.Error.WriteLine($"[ur] fn={func.Symbol.Name} entry=b{func.Entry.Id} reachable={reachable.Count}/{func.Blocks.Count} removed=[{string.Join(",", removedIds)}]");
+                foreach (var b in func.Blocks)
+                {
+                    var r = reachable.Contains(b) ? "R" : "X";
+                    var bc = b.BranchCondition != null ? $" bc=v{b.BranchCondition.Id}:{b.BranchCondition.Op}" : (b.JumpTarget != null ? $" jmp->b{b.JumpTarget.Id}" : (b.IsReturn ? " ret" : " NO-TERM"));
+                    var phis = b.Phis.Count > 0 ? " phis" : "";
+                    Console.Error.WriteLine($"[urb {r}] b{b.Id} preds=[{string.Join(",", b.Predecessors.Select(p => p.Id))}]{bc}{phis} insts={b.Instructions.Count}");
+                }
+            }
+            // 断裂边诊断：被删块存在「可达前驱」→ 该前驱的 GetSuccessors 漏边
+            foreach (var b in func.Blocks)
+            {
+                if (reachable.Contains(b)) continue;
+                var rp = b.Predecessors.Where(reachable.Contains).ToList();
+                if (rp.Count > 0)
+                {
+                    var missing = string.Join(",", rp.SelectMany(p => p.GetSuccessors()).Where(s => s == b).Select(_ => "edge").DefaultIfEmpty("NONE-IN-SUCCS"));
+                    Console.Error.WriteLine($"[ur-cut] b{b.Id} 可达前驱=[{string.Join(",", rp.Select(p => p.Id))}] 该前驱 successors 含本块={missing}");
+                    foreach (var p in rp)
+                        Console.Error.WriteLine($"[ur-cut]   pred b{p.Id}: bc={(p.BranchCondition != null ? $"v{p.BranchCondition.Id}:{p.BranchCondition.Op}" : "null")} jump={(p.JumpTarget != null ? $"b{p.JumpTarget.Id}" : "null")} isRet={p.IsReturn}");
+                }
+            }
+        }
         for (int i = func.Blocks.Count - 1; i >= 0; i--)
         {
             if (!reachable.Contains(func.Blocks[i]))
             {
+                var doomed = func.Blocks[i];
                 // 递减被删除块中所有指令的操作数引用
-                foreach (var inst in func.Blocks[i].Instructions)
+                foreach (var inst in doomed.Instructions)
                     SsaOptimizer.DecrementUses(inst);
-                foreach (var phi in func.Blocks[i].Phis)
+                foreach (var phi in doomed.Phis)
                     SsaOptimizer.DecrementUses(phi);
+                // 仍被外部引用的常量（如其它存活块 φ 的臂）迁移到入口块再删：
+                // 常量自包含（无操作数依赖），迁移后引用不悬空。
+                // fuzz 实证：dedup 代表/循环 init 常量所在块因合法折叠不可达后被删，
+                // Φ 臂指向已移出 IR 的 ConstInt（GP-off 12 种子签名）。
+                foreach (var inst in doomed.Instructions)
+                {
+                    if (inst.Uses > 0 && inst.IsConstant)
+                    {
+                        inst.Block = func.Entry;
+                        func.Entry.Instructions.Add(inst);
+                    }
+                }
                 func.Blocks.RemoveAt(i);
                 changed = true;
             }

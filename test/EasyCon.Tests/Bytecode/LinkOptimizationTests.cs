@@ -72,6 +72,13 @@ public class LinkOptimizationTests
         return host;
     }
 
+    /// <summary>带 3s 预算的解释器执行：误删活跃副本的回归形态是死循环，此处以 CANCELLED 显形而非挂死测试进程。</summary>
+    static int RunBounded(EcxImage image, EcxHost host)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        return EcxInterpreter.Run(image, host, cts.Token);
+    }
+
     [Test]
     public void Entry_IsMainWithPrependedInits_NoEvalPlaceholder()
     {
@@ -283,5 +290,63 @@ public class LinkOptimizationTests
         // 语义不变由 FullChain/CvmCross 双端对拍锁定；此处锁解释器可执行到底
         var host = RecordedHost();
         Assert.That(EcxInterpreter.Run(image, host), Is.EqualTo(0));
+    }
+
+    [Test]
+    public void DeadStore_LiveInEquation_LoopCarriedHomeKept_WhileTerminates()
+    {
+        // liveIn = gen ∪ (liveOut \ kill) 回归锁（fuzz 模板覆盖不到的形态）：
+        // $x 循环携带且体内先读后写（写 = 回边 φ 前驱副本 Move hx←t_x），循环头只读 $i 不读 $x
+        // ⇒ hx ∈ gen∩kill(body) 且 hx ∉ liveOut(body)。旧方程 (gen\kill) ∪ liveOut 把 hx
+        // 抠出 liveIn(body)，hx 的初始化边副本与回边前驱副本被误删 → hx 永不更新 →
+        // $i 冻结在初值 → WHILE 永不退出。
+        var result = Compilation.CompileSource(
+            """
+            $i = 0
+            $x = 0
+            WHILE $i < 3
+                $i = $x
+                $x = $x + 1
+            END
+            PRINT $i
+            """,
+            new CompileOptions { UseDiskCache = false });
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
+            string.Join("\n", result.Diagnostics));
+        Assert.That(result.Image, Is.Not.Null);
+
+        var host = RecordedHost();
+        Assert.That(RunBounded(result.Image!, host), Is.EqualTo(EcxInterpreter.OK),
+            "WHILE 应正常退出（被误删的活跃副本会以死循环显形）");
+        Assert.That(host.Lines, Is.EqualTo(new[] { "3" }));
+    }
+
+    [Test]
+    public void DeadStore_LiveInEquation_GuardedDiamond_LoopTerminates()
+    {
+        // 同上的守卫菱形变体：φ 边副本落在 IF 臂块，liveIn 缺陷经 then/else 两臂复制放大。
+        // $k 用变量而非字面量，防止 SCCP 折叠分支把菱形拍平（拍平后形态不再触发）。
+        var result = Compilation.CompileSource(
+            """
+            $i = 0
+            $x = 0
+            $k = 1
+            WHILE $i < 3
+                IF $k == 1
+                    $x = $x + 1
+                ENDIF
+                $i = $x
+            END
+            PRINT $i
+            """,
+            new CompileOptions { UseDiskCache = false });
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
+            string.Join("\n", result.Diagnostics));
+        Assert.That(result.Image, Is.Not.Null);
+
+        var host = RecordedHost();
+        Assert.That(RunBounded(result.Image!, host), Is.EqualTo(EcxInterpreter.OK),
+            "WHILE 应正常退出（被误删的活跃副本会以死循环显形）");
+        Assert.That(host.Lines, Is.EqualTo(new[] { "3" }));
     }
 }

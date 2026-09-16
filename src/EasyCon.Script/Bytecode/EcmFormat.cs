@@ -9,7 +9,7 @@ namespace EasyCon.Script.Bytecode;
 public static class EcmFormat
 {
     public const uint Magic = 0x324D4345;   // "ECM2"
-    public const ushort Version = 3;        // v3：HasEval 后增链接标志节（HasInit/InitFid/KeyAction/NeedIL）
+    public const ushort Version = 4;        // v4：函数节增行号表（LineTable，pc→源码行，诊断/运行错误映射用）
 
     public static byte[] Write(ModuleArtifact module)
     {
@@ -114,6 +114,15 @@ public static class EcmFormat
         w.Write(module.ILNames.Count);
         foreach (var il in module.ILNames)
             WriteUtf8(w, il);
+
+        // 行号表（v4；稀疏交错 [pc, line, ...]，仅诊断用不进 MCU .ecx）
+        w.Write(module.Functions.Count);
+        foreach (var f in module.Functions)
+        {
+            w.Write(f.LineTable.Count);
+            foreach (var v in f.LineTable)
+                w.Write(v);
+        }
 
         w.Flush();
         return ms.ToArray();
@@ -283,6 +292,18 @@ public static class EcmFormat
         int ilCount = ReadCount(r);
         for (int i = 0; i < ilCount; i++)
             ilNames.Add(ReadUtf8(r));
+
+        // 行号表（v4；与 Write 尾节同序）
+        if (fileVersion >= 4)
+        {
+            int lineFuncCount = ReadCount(r);
+            for (int fi = 0; fi < lineFuncCount && fi < functions.Count; fi++)
+            {
+                int count = ReadCount(r);
+                for (int i = 0; i < count; i++)
+                    functions[fi].LineTable.Add(r.ReadInt32());
+            }
+        }
 
         if (r.BaseStream.Position != r.BaseStream.Length)
             throw new BytecodeException(new[] { new BytecodeDiagnostic("ECM 存在未消费的尾部字节", name, 0) });
