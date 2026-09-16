@@ -12,8 +12,10 @@ namespace EasyCon.Script.Bytecode;
 ///
 /// use/def 表按 EcxInterpreter 逐 op 语义登记；未登记操作码 fail-closed（抛出），
 /// 指令集扩充时须显式登记——与 EcsFormat「漏登自检」原则一致。use 只可保守多记（少删不误删），
-/// def 漏记同向安全。NSlots 不回收（槽位重编号需重写全部寄存器操作数，16B/槽的收益
-/// 与重编码风险不成比例；死 φ 的槽已由防线 1 在编码期免分配）。
+/// def 漏记同向安全。NSlots 回收在编码期完成（BytecodeEncoder：StoreLocal 仅参数发射——
+/// 非参数局部的帧槽无读取者；TRE 回边参数 store 保留——entry 循环头每轮重读参数槽——
+/// 配合 AssignSlots 步骤 0 存活局部重编号，非参数局部不占帧槽）；
+/// 死 φ 的槽由防线 1 在编码期免分配。
 /// </summary>
 public static class DeadStoreSweep
 {

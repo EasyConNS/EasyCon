@@ -164,6 +164,8 @@ public static partial class BytecodeEncoder
         readonly ModuleEncodeContext _ctx;
         readonly List<uint> _code = new();
         readonly Dictionary<SsaValue, int> _slots = new();
+        /// <summary>存活局部槽位重编号（旧帧槽 → 压缩槽；AssignSlots 步骤 0 构建，SymSlot 消费）。</summary>
+        readonly Dictionary<int, int> _localSlotRemap = new();
         readonly Dictionary<SsaBlock, BlockUseInfo> _useInfo = new();
         readonly HashSet<SsaValue> _pooled = new();
         readonly Dictionary<SsaValue, int> _totalReads = new();
@@ -207,11 +209,13 @@ public static partial class BytecodeEncoder
 
         int Slot(SsaValue v) => _slots[v];
 
-        static int SymSlot(LocalVariableSymbol s)
+        int SymSlot(LocalVariableSymbol s)
         {
             var idx = s.Slot.Index;
             if (idx < 0) throw new BytecodeException(new[] { new BytecodeDiagnostic($"符号 {s.Name} 未分配槽位（SSA 不变量破坏）", null, 0) });
-            return idx;
+            if (!_localSlotRemap.TryGetValue(idx, out var mapped))
+                throw Fail($"符号 {s.Name} 的帧槽 {idx} 不在存活局部表（登记/发射遍历漂移）");
+            return mapped;
         }
 
         void Emit(uint word) => _code.Add(word);

@@ -35,8 +35,9 @@ public static partial class BytecodeEncoder
         };
 
         /// <summary>
-        /// 槽位分配（docs/VM2.md §4.3）：跨块/块内分类 + 块内槽池 + 常量块首惰性物化。
-        /// phi 结果恒跨块（写入发生在前驱边的并行副本）；其余值当且仅当全部读取都在定义块内池化；
+        /// 槽位分配（docs/VM2.md §4.3）：存活局部压缩重编号 + 跨块/块内分类 + 块内槽池 + 常量块首惰性物化。
+        /// 优化删除的局部不占帧槽（步骤 0 重编号）；phi 结果恒跨块（写入发生在前驱边的并行副本）；
+        /// 其余值当且仅当全部读取都在定义块内池化；
         /// 常量是纯值，一律池化并按使用块块首物化（零使用的死常量不物化）。
         /// 活性依据：块内直线 defs/uses 全序，「定义分配 + 末次读取归还」即精确活性；
         /// phi 臂读取按臂↔前驱对齐计入对应前驱块（副本在前驱终结符发射）。
@@ -49,7 +50,28 @@ public static partial class BytecodeEncoder
         /// </summary>
         void AssignSlots()
         {
-            _next = _fn.Layout.SlotCount;
+            // 0. 存活局部重编号（编码期槽位回收）：局部读值全走 SSA（构建期 mem2reg），
+            // StoreLocal 仅参数 store 发射（EmitInst；TRE 回边写参数帧槽，entry 循环头重读）。
+            // 帧槽读取者 = 参数入口 LoadLocal（Call ABI 播种）；仅给仍被引用的符号保留槽位；
+            // 参数窗 [0, NParams) 恒等映射保留，其余（防御性：若未来出现非参数 LoadLocal）压缩到参数窗之后。
+            var liveLocalSlots = new SortedSet<int>();
+            foreach (var block in _fn.Blocks)
+                foreach (var inst in block.Instructions)
+                {
+                    if (inst.Op == SsaOp.LoadLocal && inst.Aux is LocalVariableSymbol lv)
+                        liveLocalSlots.Add(lv.Slot.Index);
+                    else if (inst.Op == SsaOp.StoreLocal && inst.Aux is ParamSymbol ps)
+                        liveLocalSlots.Add(ps.Slot.Index);
+                }
+            int compacted = _symbol.Parameters.Length;
+            foreach (var oldIdx in liveLocalSlots)
+            {
+                if (oldIdx < _symbol.Parameters.Length)
+                    _localSlotRemap[oldIdx] = oldIdx;
+                else
+                    _localSlotRemap[oldIdx] = compacted++;
+            }
+            _next = compacted;
 
             // 1. 使用点收集 + 结算计划推导（同源）：操作数/分支条件记在使用块；phi 臂记在对应前驱
             foreach (var block in _fn.Blocks)
@@ -74,6 +96,11 @@ public static partial class BytecodeEncoder
                     // 常量模板降级（ArrayTemplate）：元素是编译期数据（构建段直连常量池/模板全局），
                     // 不读槽——不登记使用、不物化块首常量、不进结算计划
                     if (IsTemplateArrayInit(inst))
+                        continue;
+
+                    // 非参数 StoreLocal 不发射（EmitInst）：操作数不读槽——不登记使用、不物化块首常量、不进结算计划；
+                    // 参数 store 照常发射，操作数登记/结算与普通指令一致
+                    if (inst.Op == SsaOp.StoreLocal && inst.Aux is not ParamSymbol)
                         continue;
 
                     // 登记与计划同点判定：立即数消费不读槽 → 既不登记也不进计划

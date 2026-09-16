@@ -185,14 +185,17 @@ LCLICK=11 RCLICK=12 HOME=13 CAPTURE=14`；HAT `TOP=16..TOP_LEFT=23`；摇杆 `LS
 ### 3.3 槽位模型
 
 ```text
-[0 .. nParams)                        参数符号槽
-[nParams .. FrameLayout.SlotCount)    局部变量符号槽（home slot）
-[SlotCount ..)                        专用槽：phi 结果（死 φ 免分配）与跨块值
+[0 .. nParams)                        参数符号槽（恒等映射：Call 实参窗 + TRE 回边 store）
+[nParams .. nLocals)                  存活局部符号槽（编码期压缩重编号；优化删除的局部不占槽）
+[nLocals ..)                          专用槽：phi 结果（死 φ 免分配）与跨块值
 (..)                                  保留区：Neq 中间槽、并行副本 scratch、实参 staging、返回值 receive
 (.. nSlots)                           块内槽池：块内值与常量，定义/物化时取用，末次读取归还
 nSlots ≤ 255
 ```
 
+- **编码期槽位回收**：非参数 `StoreLocal` 不发射——局部读值全走 SSA（构建期 mem2reg），
+  帧槽无读取者，对无人读取槽的写入不可观察；参数 store 保留（Call ABI 播种 + TRE 回边是
+  真实读取者）。仍被引用的局部符号槽压缩重编号到参数窗之后（`AssignSlots` 步骤 0）。
 - **池化判据**：phi 恒专用（**全函数零读取的死 φ 不分配槽、前驱边不产生副本**）；其余值全部读取
   都在定义块内 → 池化；跨块 → 专用槽。phi 臂读取按臂↔前驱对齐计入前驱块。
 - **常量块首惰性物化**：常量在每个使用块的块首物化（`LoadI/LoadBool/LoadK`），末次读取归还；
