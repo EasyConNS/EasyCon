@@ -11,10 +11,9 @@ public static partial class BytecodeEncoder
 {
     sealed partial class Encoder
     {
-        /// <summary>块内使用信息：常量按使用块块首物化；UseCount 含终结符/phi 臂读取。</summary>
+        /// <summary>块内使用信息；UseCount 含终结符/phi 臂读取。</summary>
         sealed class BlockUseInfo
         {
-            public readonly List<SsaValue> Consts = new();
             public readonly Dictionary<SsaValue, int> UseCount = new();
         }
 
@@ -35,9 +34,9 @@ public static partial class BytecodeEncoder
         };
 
         /// <summary>
-        /// 槽位分配（docs/VM2.md §4.3）：跨块/块内分类 + 块内槽池 + 常量块首惰性物化。
+        /// 槽位分配（docs/VM2.md §4.3）：跨块/块内分类 + 块内槽池 + 常量按使用点物化。
         /// phi 结果恒跨块（写入发生在前驱边的并行副本）；其余值当且仅当全部读取都在定义块内池化；
-        /// 常量是纯值，一律池化并按使用块块首物化（零使用的死常量不物化）。
+        /// 常量是纯值，一律池化并在实际读取前物化（零使用的死常量不物化）。
         /// 活性依据：块内直线 defs/uses 全序，「定义分配 + 末次读取归还」即精确活性；
         /// phi 臂读取按臂↔前驱对齐计入对应前驱块（副本在前驱终结符发射）。
         ///
@@ -49,7 +48,7 @@ public static partial class BytecodeEncoder
         /// </summary>
         void AssignSlots()
         {
-            _next = _fn.Layout.SlotCount;
+            _next = AssignLocalSlots();
 
             // 1. 使用点收集 + 结算计划推导（同源）：操作数/分支条件记在使用块；phi 臂记在对应前驱
             foreach (var block in _fn.Blocks)
@@ -70,6 +69,8 @@ public static partial class BytecodeEncoder
                 {
                     if (inst.Op == SsaOp.Return && returnValue == null)
                         returnValue = inst.Arg0;   // 与 EmitTerminator 一致取首条 Return
+                    if (IsDeadLocalStore(inst))
+                        continue;
 
                     // 常量模板降级（ArrayTemplate）：元素是编译期数据（构建段直连常量池/模板全局），
                     // 不读槽——不登记使用、不物化块首常量、不进结算计划
@@ -125,7 +126,7 @@ public static partial class BytecodeEncoder
                     _terminatorReleases[block] = [.. terminatorReleases];
             }
 
-            // 2. 分类：跨块值专用槽；块内值登记池化；常量已按块登记
+            // 2. 分类：跨块值专用槽；块内值登记池化；常量按读取点物化
             bool hasPhi = false, hasNeq = false, hasTpl = false;
             int maxArity = 1;
             foreach (var block in _fn.Blocks)
@@ -136,6 +137,7 @@ public static partial class BytecodeEncoder
                     if (!_totalReads.ContainsKey(phi))
                         continue;   // 死 φ（防线 1）：全函数无读取——不占槽，前驱边不产生副本（EmitEdgeCopies 跳过）
                     _slots[phi] = _next++;
+                    _phiSlotCount++;
                     hasPhi = true;
                 }
                 foreach (var inst in block.Instructions)
@@ -150,13 +152,16 @@ public static partial class BytecodeEncoder
                     int arity = templateInit ? 0 : ArityOf(inst);
                     if (arity > maxArity) maxArity = arity;
 
-                    if (inst.IsConstant) { _pooled.Add(inst); continue; }   // 常量池化：Consts 已在步骤 1 登记
+                    if (inst.IsConstant) { _pooled.Add(inst); continue; }
                     if (!NeedsSlot(inst.Op)) continue;
 
                     int readsHere = info.UseCount.TryGetValue(inst, out var c) ? c : 0;
                     int totalReads = _totalReads.TryGetValue(inst, out var t) ? t : 0;
                     if (totalReads > readsHere)
+                    {
                         _slots[inst] = _next++;         // 跨块：专用槽
+                        _crossBlockSlotCount++;
+                    }
                     else
                     {
                         _pooled.Add(inst);              // 块内：定义时入池
@@ -186,10 +191,45 @@ public static partial class BytecodeEncoder
             _receiveSlot = _stagingBase + stagingCount;
             _next += stagingCount + 1;
             _maxArity = maxArity;
+            _fixedSlotCount = _next;
 
             // 池区在所有保留槽之后生长
             _poolNext = _next;
         }
+
+        /// <summary>
+        /// 优化后的 SSA 只为仍会读取的局部变量保留 home 槽。参数 ABI 固定占用
+        /// 0..NParams-1；其余局部变量若没有 LoadLocal，StoreLocal 即为不可观察的死写。
+        /// </summary>
+        int AssignLocalSlots()
+        {
+            int next = _symbol.Parameters.Length;
+            foreach (ParamSymbol parameter in _symbol.Parameters)
+                _localSlots[parameter] = parameter.Ordinal;
+
+            foreach (SsaBlock block in _fn.Blocks)
+            {
+                foreach (SsaValue inst in block.Instructions)
+                {
+                    if (inst.Op != SsaOp.LoadLocal || inst.Aux is not LocalVariableSymbol local
+                        || _localSlots.ContainsKey(local))
+                        continue;
+
+                    if (local is ParamSymbol parameter
+                        && parameter.Ordinal >= 0 && parameter.Ordinal < _symbol.Parameters.Length)
+                        _localSlots[local] = parameter.Ordinal;
+                    else
+                        _localSlots[local] = next++;
+                }
+            }
+
+            return next;
+        }
+
+        bool IsDeadLocalStore(SsaValue inst)
+            => inst.Op == SsaOp.StoreLocal
+                && inst.Aux is LocalVariableSymbol local
+                && !_localSlots.ContainsKey(local);
 
         /// <summary>
         /// 该操作数是否被指令以立即数形式消费（KeyI/WaitI/StickP 的常量时长）。
@@ -242,11 +282,7 @@ public static partial class BytecodeEncoder
             _totalReads[v] = _totalReads.TryGetValue(v, out var t) ? t + 1 : 1;
             var info = Info(reader);
             if (!info.UseCount.TryGetValue(v, out var c))
-            {
                 info.UseCount[v] = 1;
-                if (v.IsConstant)
-                    info.Consts.Add(v);
-            }
             else
                 info.UseCount[v] = c + 1;
         }
@@ -279,6 +315,12 @@ public static partial class BytecodeEncoder
             left--;
             info.UseCount[v] = left;
             Debug.Assert(left >= 0, "读取结算次数超过登记次数");
+            if (v.IsConstant)
+            {
+                if (_materializedConstants.Remove(v))
+                    _poolFree.Add(_slots[v]);
+                return;
+            }
             if (left == 0)
                 _poolFree.Add(_slots[v]);
         }
@@ -289,17 +331,26 @@ public static partial class BytecodeEncoder
             if (inst.ExtraArgs != null) n += inst.ExtraArgs.Count;
             return inst.Op switch
             {
-                SsaOp.Call or SsaOp.StaticCall or SsaOp.ArrayInit => n,
+                SsaOp.ArrayInit => Math.Min(MaxInlineArrayChunkArity, n),
+                SsaOp.Call or SsaOp.StaticCall => n,
                 SsaOp.Capture or SsaOp.Ocr or SsaOp.Roi or SsaOp.OcrInit => n,
                 _ => 0,
             };
         }
 
-        // ---- 常量物化（块首惰性，替代函数级 prologue）----
+        // ---- 常量物化（实际读取前加载，读取后立即归还）----
+
+        void MaterializeConstant(SsaValue value)
+        {
+            if (!value.IsConstant || !_materializedConstants.Add(value))
+                return;
+            _slots[value] = PoolAlloc();
+            EmitLoadConst(value);
+        }
 
         void EmitLoadConst(SsaValue v) => EmitConstToSlot(v, Slot(v));
 
-        /// <summary>常量 → 指定槽（LoadBool/LoadI 短立即数/LoadK 常量池）；块首物化与常量模板构建段共用。</summary>
+        /// <summary>常量 → 指定槽（LoadBool/LoadI 短立即数/LoadK 常量池）；使用点物化与常量模板构建段共用。</summary>
         void EmitConstToSlot(SsaValue v, int dst)
         {
             switch (v.Op)

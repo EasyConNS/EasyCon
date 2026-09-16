@@ -13,7 +13,7 @@ public static partial class BytecodeEncoder
     {
         // ---- 指令选择（docs/VM2.md §5.2 映射表）----
 
-        void EmitInst(SsaValue v)
+        void EmitInst(SsaBlock block, SsaValue v)
         {
             SetEmitLine(v);
             switch (v.Op)
@@ -126,7 +126,7 @@ public static partial class BytecodeEncoder
                     if (IsTemplateArrayInit(v))
                         EmitTemplateArrayInit(v);   // 全常量大字面量：常量模板降级，槽位 O(1)（见 ArrayTemplate）
                     else
-                        EmitInlineArrayInit(v);
+                        EmitInlineArrayInit(block, v);
                     break;
                 case SsaOp.LoadIndex: EmitIabc(EcsOpcode.GetI, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
                 case SsaOp.StoreIndex: EmitIabc(EcsOpcode.SetI, Slot(v.ExtraArgs![0]), Slot(v.Arg0!), Slot(v.Arg1!)); break;
@@ -254,7 +254,7 @@ public static partial class BytecodeEncoder
             => EmitIabc(EcsOpcode.Conv, Slot(v), Slot(v.Arg0!), (int)kind);
 
         /// <summary>内联数组字面量（小字面量/含非常量元素）：staging + NewArrV（docs/VM2.md §5.2）。</summary>
-        void EmitInlineArrayInit(SsaValue v)
+        void EmitInlineArrayInit(SsaBlock block, SsaValue v)
         {
             var elemCode = TypeCode(((ArrayType)v.Type).ElementType);
             if (v.Arg0 == null)
@@ -265,9 +265,24 @@ public static partial class BytecodeEncoder
 
             var args = new List<SsaValue> { v.Arg0 };
             if (v.ExtraArgs != null) args.AddRange(v.ExtraArgs);
-            for (int i = 0; i < args.Count; i++)
-                EmitIabc(EcsOpcode.Move, _stagingBase + i, Slot(args[i]), 0);
-            EmitExt(EcsOpcode.NewArrV, Slot(v), args.Count, _stagingBase, elemCode);
+            int offset = 0;
+            while (offset < args.Count)
+            {
+                int count = Math.Min(MaxInlineArrayChunkArity, args.Count - offset);
+                for (int i = 0; i < count; i++)
+                {
+                    SsaValue arg = args[offset + i];
+                    MaterializeConstant(arg);
+                    EmitIabc(EcsOpcode.Move, _stagingBase + i, Slot(arg), 0);
+                    ReleaseDying(block, arg);
+                }
+
+                int chunkSlot = offset == 0 ? Slot(v) : _receiveSlot;
+                EmitExt(EcsOpcode.NewArrV, chunkSlot, count, _stagingBase, elemCode);
+                if (offset > 0)
+                    EmitIabc(EcsOpcode.Cat, Slot(v), Slot(v), _receiveSlot);
+                offset += count;
+            }
         }
 
         void EmitCallInst(SsaValue v)

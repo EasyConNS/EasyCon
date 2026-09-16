@@ -181,7 +181,7 @@ static class SsaOptimizer
     }
 #endif
 
-    private static bool IsTooComplex(SsaFunction func)
+    internal static bool IsTooComplex(SsaFunction func)
     {
         int blocks = func.Blocks.Count;
         if (blocks > MaxBlocks)

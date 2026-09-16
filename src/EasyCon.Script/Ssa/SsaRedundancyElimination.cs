@@ -127,22 +127,9 @@ static class SsaRedundancyElimination
 
                 if (available.TryGetValue(key, out var existing))
                 {
-                    // 找到相同表达式，用 existing 替换 inst 的所有使用
-                    SsaOptimizer.ReplaceAllUsesInBlock(block, inst, existing);
-                    // phi 臂是跨块使用（臂值在本块终结符的边副本处读取，A-01）：
-                    // 删除本块定义须同步改写后继块 phi 的对应臂，否则臂引用悬空
-                    foreach (var succ in block.GetSuccessors())
-                    {
-                        foreach (var phi in succ.Phis)
-                        {
-                            if (phi.ExtraArgs == null) continue;
-                            for (int arm = 0; arm < succ.Predecessors.Count && arm < phi.ExtraArgs.Count; arm++)
-                                if (succ.Predecessors[arm] == block && phi.ExtraArgs[arm] == inst)
-                                    phi.ExtraArgs[arm] = existing;
-                        }
-                    }
-                    existing.Uses += inst.Uses;
-                    inst.Uses = 0;
+                    // available 可来自支配块，inst 的使用也可能穿过多个无 phi 的块。
+                    // 删除定义前必须改写整个函数，否则远端使用会留下悬空 SSA 值。
+                    SsaOptimizer.ReplaceAllUsesInFunction(func, inst, existing);
                     block.Instructions.RemoveAt(i);
                     i--;
                     changed = true;

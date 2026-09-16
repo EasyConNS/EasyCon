@@ -91,6 +91,10 @@ internal static class SsaGlobalPromotion
                 continue;   // C. 真正的跨函数全局，保持原样
 
             var fn1 = fnsTouched.First();
+            // 非裁剪式提升会在每个合流点为所有候选全局建立 phi。复杂函数后续又会
+            // 跳过函数内优化，保留原有全局读写可避免 phi 数量把 VM 帧槽撑爆。
+            if (SsaOptimizer.IsTooComplex(fn1))
+                continue;
             if (!functionLocals.TryGetValue(fn1, out var globals))
                 functionLocals[fn1] = globals = new();
             globals[g] = new GlobalInfo

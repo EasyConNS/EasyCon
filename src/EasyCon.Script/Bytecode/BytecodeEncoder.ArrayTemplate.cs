@@ -15,7 +15,7 @@ public static partial class BytecodeEncoder
     public const int TemplateArrayMinElements = 8;
 
     /// <summary>常量模板构建的分块元素数（NewArrV 的 C:8 ≤ 255、staging 槽预算内取值）。</summary>
-    public const int TemplateChunkSize = 128;
+    public const int TemplateChunkSize = 32;
 
     sealed partial class Encoder
     {

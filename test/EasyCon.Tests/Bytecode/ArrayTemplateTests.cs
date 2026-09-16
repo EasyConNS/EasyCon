@@ -56,7 +56,7 @@ public class ArrayTemplateTests
         sb.Append("$big = ").AppendLine(Literal(9600));
         var result = Compile(sb.ToString());
         Assert.That(result.Image!.MaxSlots, Is.LessThanOrEqualTo(255),
-            "帧槽位与字面量长度无关（staging 分块区固定 ~128+尾槽）");
+            "帧槽位与字面量长度无关（staging 分块区大小固定）");
         Assert.That(EcxWriter.Write(result.Image), Is.Not.Empty, "镜像应可过 MCU 冻结格式序列化");
     }
 
@@ -151,7 +151,7 @@ public class ArrayTemplateTests
     [Test]
     public void Template_LargeLiteral_RaggedTailChunk_SumMatches()
     {
-        // 130 = 128 + 2：覆盖多分块 + 残块尾的缝合路径（count = min(chunkSize, remaining)）
+        // 130 不能被 TemplateChunkSize 整除：覆盖多分块 + 残块尾的缝合路径。
         var sb = new StringBuilder();
         sb.Append("$big = ").AppendLine(Literal(130));
         sb.Append("""
@@ -164,7 +164,7 @@ public class ArrayTemplateTests
             PRINT $sum
             """);
         var lines = Run(Compile(sb.ToString()));
-        Assert.That(lines[0], Is.EqualTo("8385"), "130 元素 0..129 求和（128 整块 + 2 残块）");
+        Assert.That(lines[0], Is.EqualTo("8385"), "130 元素 0..129 求和（多整块 + 残块）");
     }
 
     // ---------- 路径分离与模板复用 ----------

@@ -192,9 +192,19 @@ public class PipelineUnificationTests
             Is.True, "csv_windows/csv_linux 同签名导出应触发歧义警告");
 
         var io = new RecordingIo();
-        Assert.Catch(() => RunNewChain(result, io, new RecordingPad()),
-            "非 Windows 平台 msvcrt.dll FFI 必然失败（Windows 上运行到完成）");
-        Assert.That(io.Lines, Is.EqualTo(new[] { "========== CSV文件读取测试 ==========", "" }),
-            "FFI 失败前输出行（构造到 csv_open 为止）");
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.DoesNotThrow(() => RunNewChain(result, io, new RecordingPad()),
+                "Windows 应能加载 msvcrt.dll 并运行到脚本返回");
+            Assert.That(io.Lines.Take(2), Is.EqualTo(new[] { "========== CSV文件读取测试 ==========", "" }));
+            Assert.That(io.Lines, Does.Contain("文件打开失败，退出"));
+        }
+        else
+        {
+            Assert.Catch(() => RunNewChain(result, io, new RecordingPad()),
+                "非 Windows 平台 msvcrt.dll FFI 必然失败");
+            Assert.That(io.Lines, Is.EqualTo(new[] { "========== CSV文件读取测试 ==========", "" }),
+                "FFI 失败前输出行（构造到 csv_open 为止）");
+        }
     }
 }

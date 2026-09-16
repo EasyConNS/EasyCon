@@ -164,6 +164,8 @@ public static partial class BytecodeEncoder
         readonly ModuleEncodeContext _ctx;
         readonly List<uint> _code = new();
         readonly Dictionary<SsaValue, int> _slots = new();
+        readonly Dictionary<LocalVariableSymbol, int> _localSlots = new();
+        readonly HashSet<SsaValue> _materializedConstants = new();
         readonly Dictionary<SsaBlock, BlockUseInfo> _useInfo = new();
         readonly HashSet<SsaValue> _pooled = new();
         readonly Dictionary<SsaValue, int> _totalReads = new();
@@ -190,6 +192,10 @@ public static partial class BytecodeEncoder
         int _tplArr = -1;
         int _tplChunk = -1;
         int _tplChunkSize;   // 模板分块构建的单块元素数（staging 槽预算内取满）
+        int _fixedSlotCount;
+        int _phiSlotCount;
+        int _crossBlockSlotCount;
+        const int MaxInlineArrayChunkArity = 32;
 
         public EcsFunction Result = null!;
 
@@ -205,12 +211,37 @@ public static partial class BytecodeEncoder
 
         // ---- 槽位与发射工具 ----
 
-        int Slot(SsaValue v) => _slots[v];
-
-        static int SymSlot(LocalVariableSymbol s)
+        int Slot(SsaValue v)
         {
-            var idx = s.Slot.Index;
-            if (idx < 0) throw new BytecodeException(new[] { new BytecodeDiagnostic($"符号 {s.Name} 未分配槽位（SSA 不变量破坏）", null, 0) });
+            if (_slots.TryGetValue(v, out int slot))
+                return slot;
+
+            string definition = "不在当前函数块中";
+            string use = "无使用点";
+            foreach (SsaBlock block in _fn.Blocks)
+            {
+                int definitionIndex = block.Instructions.IndexOf(v);
+                if (definitionIndex >= 0)
+                    definition = $"块 {block.Id} 指令 {definitionIndex}";
+                for (int i = 0; i < block.Instructions.Count; i++)
+                {
+                    SsaValue inst = block.Instructions[i];
+                    if (inst.Arg0 == v || inst.Arg1 == v || inst.ExtraArgs?.Contains(v) == true)
+                    {
+                        use = $"块 {block.Id} 指令 {i} ({inst.Op})";
+                        break;
+                    }
+                }
+                if (use != "无使用点")
+                    break;
+            }
+            throw Fail($"SSA 值 {v} 未分配槽位；定义={definition}，首个使用={use}，池化={_pooled.Contains(v)}");
+        }
+
+        int SymSlot(LocalVariableSymbol s)
+        {
+            if (!_localSlots.TryGetValue(s, out int idx))
+                throw new BytecodeException(new[] { new BytecodeDiagnostic($"符号 {s.Name} 未分配槽位（SSA 不变量破坏）", null, 0) });
             return idx;
         }
 
@@ -287,7 +318,10 @@ public static partial class BytecodeEncoder
             Patch();
 
             if (_poolNext > 255)
-                throw Fail($"帧槽位超出 255 上限: {_poolNext}");
+                throw Fail($"帧槽位超出 255 上限: {_poolNext}；"
+                    + $"局部 home={_localSlots.Count}，phi={_phiSlotCount}，"
+                    + $"跨块值={_crossBlockSlotCount}，固定区={_fixedSlotCount}，"
+                    + $"池峰值={_poolNext - _fixedSlotCount}");
             Result = new EcsFunction
             {
                 Name = _symbol.Name,
@@ -324,26 +358,32 @@ public static partial class BytecodeEncoder
             foreach (var block in _fn.Blocks)
             {
                 _blockStart[block] = _code.Count;
-                var info = Info(block);
-
-                // 块首惰性物化本块引用的常量（含 phi 臂读取）——每块独立池槽
-                foreach (var c in info.Consts)
-                {
-                    _slots[c] = PoolAlloc();
-                    EmitLoadConst(c);
-                }
+                _materializedConstants.Clear();
 
                 foreach (var inst in block.Instructions)
                 {
+                    if (IsDeadLocalStore(inst))
+                        continue;
                     if (!IsDirectlyEmitted(inst.Op))
-                        continue;   // 终结符/标记由 EmitTerminator 处理；常量占位由块首按需物化
+                        continue;   // 终结符/标记由 EmitTerminator 处理；常量在实际读取前物化
+                    if (inst.Op == SsaOp.ArrayInit && !IsTemplateArrayInit(inst))
+                    {
+                        if (_pooled.Contains(inst))
+                            _slots[inst] = PoolAlloc();
+                        EmitInst(block, inst);
+                        continue;
+                    }
                     // 回放登记期推导的结算计划：先结算操作数末次读取（槽位可被结果复用），再为块内结果取槽
                     if (_instReleases.TryGetValue(inst, out var releases))
+                    {
+                        foreach (var v in releases)
+                            MaterializeConstant(v);
                         foreach (var v in releases)
                             ReleaseDying(block, v);
+                    }
                     if (_pooled.Contains(inst))
                         _slots[inst] = PoolAlloc();
-                    EmitInst(inst);
+                    EmitInst(block, inst);
                 }
                 EmitTerminator(block);
             }
@@ -357,9 +397,13 @@ public static partial class BytecodeEncoder
 
         void EmitTerminator(SsaBlock block)
         {
+            if (_terminatorReleases.TryGetValue(block, out var termReleases))
+                foreach (var v in termReleases)
+                    MaterializeConstant(v);
+
             EmitTerminatorShape(block);
             // 回放登记期推导的终结符结算计划：返回值/分支条件/出边 φ 臂（每条出边一次，含死 φ 臂）
-            if (_terminatorReleases.TryGetValue(block, out var termReleases))
+            if (termReleases != null)
                 foreach (var v in termReleases)
                     ReleaseDying(block, v);
         }
