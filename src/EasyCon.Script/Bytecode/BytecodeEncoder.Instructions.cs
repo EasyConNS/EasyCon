@@ -15,6 +15,8 @@ public static partial class BytecodeEncoder
 
         void EmitInst(SsaBlock block, SsaValue v)
         {
+            if (v.Op == SsaOp.StoreLocal && v.Aux is not ParamSymbol)
+                return;   // 非参数局部 store 不发射：见 switch 内 StoreLocal 注释；也不记行号（空 pc 项会破坏行号表严格递增）
             SetEmitLine(v);
             switch (v.Op)
             {
@@ -23,6 +25,11 @@ public static partial class BytecodeEncoder
                     EmitIabc(EcsOpcode.Move, Slot(v), SymSlot((LocalVariableSymbol)v.Aux!), 0);
                     break;
                 case SsaOp.StoreLocal:
+                    // 仅参数 store 发射：TRE 把自尾调用改写成回边参数 store（Aux = 参数符号），
+                    // entry 块（参数 LoadLocal 所在）随之成为循环头，每轮迭代重读参数帧槽——
+                    // 参数 store 有真实读取者（Call ABI 播种 + TRE 回边），目标槽走恒等映射的参数窗。
+                    // 非参数局部不发射：局部读值全走 SSA（构建期 mem2reg），帧槽无读取者，
+                    // 对无人读取槽的写入不可观察（DeadStoreSweep 对死 SetVar 的同判定），编码期直接省去。
                     EmitIabc(EcsOpcode.SetVar, SymSlot((LocalVariableSymbol)v.Aux!), Slot(v.Arg0!), 0);
                     break;
                 case SsaOp.LoadGlobal:

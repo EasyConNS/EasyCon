@@ -34,8 +34,9 @@ public static partial class BytecodeEncoder
         };
 
         /// <summary>
-        /// 槽位分配（docs/VM2.md §4.3）：跨块/块内分类 + 块内槽池 + 常量按使用点物化。
-        /// phi 结果恒跨块（写入发生在前驱边的并行副本）；其余值当且仅当全部读取都在定义块内池化；
+        /// 槽位分配（docs/VM2.md §4.3）：存活局部压缩重编号 + 跨块/块内分类 + 块内槽池 + 常量按使用点物化。
+        /// 优化删除的局部不占帧槽；phi 结果恒跨块（写入发生在前驱边的并行副本）；
+        /// 其余值当且仅当全部读取都在定义块内池化；
         /// 常量是纯值，一律池化并在实际读取前物化（零使用的死常量不物化）。
         /// 活性依据：块内直线 defs/uses 全序，「定义分配 + 末次读取归还」即精确活性；
         /// phi 臂读取按臂↔前驱对齐计入对应前驱块（副本在前驱终结符发射）。
@@ -75,6 +76,11 @@ public static partial class BytecodeEncoder
                     // 常量模板降级（ArrayTemplate）：元素是编译期数据（构建段直连常量池/模板全局），
                     // 不读槽——不登记使用、不物化块首常量、不进结算计划
                     if (IsTemplateArrayInit(inst))
+                        continue;
+
+                    // 非参数 StoreLocal 不发射（EmitInst）：操作数不读槽——不登记使用、不物化块首常量、不进结算计划；
+                    // 参数 store 照常发射，操作数登记/结算与普通指令一致
+                    if (inst.Op == SsaOp.StoreLocal && inst.Aux is not ParamSymbol)
                         continue;
 
                     // 登记与计划同点判定：立即数消费不读槽 → 既不登记也不进计划
