@@ -102,7 +102,7 @@ internal sealed class NativeLoader
                     foreach (var i in stringParamIndices)
                     {
                         if (nativeArgs[i] is IntPtr ptrArg)
-                            Marshal.FreeHGlobal(ptrArg);
+                            Marshal.FreeCoTaskMem(ptrArg);
                     }
                 }
             };
@@ -217,7 +217,7 @@ internal sealed class NativeLoader
     }
 
     /// <summary>
-    /// 将字符串按平台编码分配到非托管内存：Windows 用 UTF-16，Linux/macOS 用 ANSI（.NET 上映射为 UTF-8）
+    /// 将字符串以 UTF-8 分配到非托管内存；调用后必须用 FreeCoTaskMem 释放。
     /// </summary>
     private static IntPtr MarshalStringToNative(string value)
     {
