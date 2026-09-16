@@ -1,3 +1,4 @@
+using EasyCon.Core.Capabilities;
 using EasyCon.Core.Runner;
 using EasyCon.Core.Script;
 using EasyCon.Script;
@@ -31,6 +32,19 @@ public class PipelineUnificationTests
     }
 
     // ---------- 用例（单文件语义语料已迁至 corpus/，由 CorpusCrossValidationTests 数据驱动执行） ----------
+
+    [Test]
+    public void KeyAction_WithoutInputCapability_FailsInsteadOfSilentlyContinuing()
+    {
+        var result = Compilation.CompileSource("A");
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty);
+        Assert.That(result.Image!.KeyAction, Is.True);
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            EcxVm.Run(result.Image, new CapabilitySet(), CancellationToken.None));
+
+        Assert.That(error!.Message, Does.Contain("未装配输入能力"));
+    }
 
     [Test]
     public void LibAutoLoad_AndInitOrder()

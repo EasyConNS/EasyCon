@@ -159,6 +159,7 @@ public class ScriptService : IScriptService
             try
             {
                 var (session, labelMatch) = compile();
+                _session = session;
                 if (session == null)
                     return;
 

@@ -28,6 +28,9 @@ public static class EcxVm
         string[]? args = null, ImmutableArray<FunctionSymbol> nativeSymbols = default,
         string? nativeLibraryDirectory = null)
     {
+        if (image.KeyAction && capabilities.Input == null)
+            throw new InvalidOperationException("脚本包含按键操作，但宿主未装配输入能力");
+
         var startTicks = DateTime.Now.Ticks;
         var rand = new Random();
 

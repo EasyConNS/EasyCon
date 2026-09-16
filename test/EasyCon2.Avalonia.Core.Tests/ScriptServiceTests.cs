@@ -235,6 +235,38 @@ public class ScriptServiceTests
     }
 
     [Test]
+    public async Task RunFile_AfterCompilingScriptWithoutKeys_UsesCurrentFileRequirements()
+    {
+        var log = new FakeLogService();
+        var device = new FakeDeviceService();
+        var service = CreateService(log, device, new FakeCaptureService());
+        var dir = Path.Combine(Path.GetTempPath(), $"EasyConScriptService_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        var script = Path.Combine(dir, "keys.ecs");
+        File.WriteAllText(script, "A");
+
+        try
+        {
+            Assert.That(await service.CompileAsync("PRINT ready", null), Is.True);
+
+            service.Run(script);
+            await WaitUntilAsync(() => !service.IsRunning, "文件脚本应在按键需求门控后结束运行");
+
+            var messages = log.Snapshot();
+            Assert.Multiple(() =>
+            {
+                Assert.That(service.HasKeyAction, Is.True, "需求必须来自本次文件编译会话，不能沿用旧会话");
+                Assert.That(messages, Does.Contain("❌ 脚本包含按键操作，需要连接单片机"));
+                Assert.That(messages, Does.Not.Contain("脚本运行完成"), "缺少输入设备时不得静默吞掉按键后完成");
+            });
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Test]
     public async Task Stop_CancelsRunningScript_AndRaisesIsRunningChangedFalse()
     {
         var log = new FakeLogService();
