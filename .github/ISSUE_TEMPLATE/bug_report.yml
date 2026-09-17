@@ -1,0 +1,47 @@
+name: Bug 报告
+description: 报告一个可复现的问题
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！信息越完整，问题越容易被定位和修复。
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 简要说明遇到了什么问题
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开…
+        2. 点击…
+        3. 出现…
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为与实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境
+      description: 运行模式（联机 / 烧录 / 固件）、操作系统、程序版本、单片机型号等
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 截图 / 示例脚本
+      description: 有相关材料请一并附上（可选）
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 修复建议
+      description: 如果已定位到原因或有修复思路，欢迎说明（可选）

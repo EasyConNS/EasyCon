@@ -1,0 +1,39 @@
+name: 功能提案（先讨论）
+description: 提议新功能或行为变更——功能类改动请先在这里讨论，达成共识后再动手实现
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **为什么需要这一步？** 功能更新容易在产品观念与取舍上产生分歧。
+        请先在这里把想法讨论清楚、与维护者达成共识后再动手实现；
+        未经讨论直接提交的功能 / 架构类 PR 可能不会被合并，即使代码本身没有问题。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题 / 使用场景
+      description: 现在有什么做不到或不方便的地方？希望达到什么效果？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的方案
+      description: 大致思路即可，不必是完整设计
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 备选方案
+      description: 还考虑过哪些做法？各自有什么取舍？（可选）
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 是否涉及核心功能或架构
+      description: 例如脚本语言 / 编译器 / VM、虚拟手柄与设备通信、图像识别管线、核心抽象与模块划分
+      options:
+        - 不涉及，属于小的独立改动
+        - 涉及，或可能涉及
+        - 不确定
+    validations:
+      required: true
