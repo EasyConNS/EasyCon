@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<Description>跨平台 Tesseract/Leptonica 绑定：NativeLibrary + DllImportResolver，手写对象封装替换 TesseractOCR 依赖</Description>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<IsAotCompatible>true</IsAotCompatible>
+	</PropertyGroup>
+
+	<!-- Tesseract/Leptonica 原生库分发：从本项目 runtimes 复制到输出目录。
+	     编译时按当前平台复制对应 native 文件；resolver 优先命中输出目录，再回落系统库。 -->
+	<ItemGroup>
+		<None Include="runtimes\osx-arm64\native\*.dylib"
+			Condition="$([MSBuild]::IsOSPlatform('OSX'))"
+			Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="runtimes\win-x64\native\*.dll"
+			Condition="'$(OS)' == 'Windows_NT'"
+			Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="runtimes\linux-x64\native\*.so"
+			Condition="$([MSBuild]::IsOSPlatform('Linux'))"
+			Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+</Project>

@@ -20,10 +20,15 @@ internal sealed class BoundUnaryOperator
 
     private static BoundUnaryOperator[] _operators =
     {
-        new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.Int, a=> -a.AsInt()),
-        new(TokenType.BitNot, BoundUnaryOperatorKind.BitwiseNot, ScriptType.Int, a=> ~a.AsInt()),
-        new(TokenType.LogicNot, BoundUnaryOperatorKind.LogicNot, ScriptType.Bool, a=> !a.AsBool()),
-
+        new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.Int, a => -a.AsInt()),
+        new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.Byte, a => Value.FromByte((byte)(-a.AsByte()))),
+        new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.UInt, a => Value.FromUInt(unchecked((uint)(-(int)a.AsUInt())))),
+        new(TokenType.BitNot, BoundUnaryOperatorKind.BitwiseNot, ScriptType.Int, a => ~a.AsInt()),
+        new(TokenType.BitNot, BoundUnaryOperatorKind.BitwiseNot, ScriptType.Byte, a => Value.FromByte((byte)(~a.AsByte()))),
+        new(TokenType.BitNot, BoundUnaryOperatorKind.BitwiseNot, ScriptType.UInt, a => Value.FromUInt(~a.AsUInt())),
+        new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.UInt64, a => Value.FromUInt64(unchecked((ulong)(-(long)a.AsUInt64())))),
+        new(TokenType.BitNot, BoundUnaryOperatorKind.BitwiseNot, ScriptType.UInt64, a => Value.FromUInt64(~a.AsUInt64())),
+        new(TokenType.LogicNot, BoundUnaryOperatorKind.LogicNot, ScriptType.Bool, a => !a.AsBool()),
     };
 
     public static BoundUnaryOperator? Bind(TokenType kind, ScriptType operandType)

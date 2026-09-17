@@ -1,0 +1,23 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="EasyCon2.Avalonia.Views.ScriptArgsWindow"
+        Title="脚本参数"
+        Width="400"
+        Height="320"
+        CanResize="True"
+        MinWidth="320"
+        MinHeight="240"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Icon="/Resources/Images/favicon.ico">
+    <Grid RowDefinitions="*,Auto" Margin="16">
+        <ScrollViewer Grid.Row="0">
+            <StackPanel x:Name="ArgsPanel" Spacing="8" />
+        </ScrollViewer>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+            <Button x:Name="AddArgButton" Content="+ 添加参数" />
+            <Button Content="取消" IsCancel="True" />
+            <Button x:Name="RunButton" Content="运行" IsDefault="True" />
+        </StackPanel>
+    </Grid>
+</Window>

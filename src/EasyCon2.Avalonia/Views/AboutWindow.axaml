@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="EasyCon2.Avalonia.Views.AboutWindow"
+        Title="关于 EasyCon"
+        Width="340"
+        Height="200"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Icon="/Resources/Images/favicon.ico">
+    <StackPanel HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Spacing="12">
+        <Image Source="/Resources/Images/favicon.ico"
+               Width="56"
+               Height="56"
+               HorizontalAlignment="Center" />
+        <TextBlock Text="EasyCon"
+                   FontSize="22"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center" />
+        <TextBlock x:Name="VersionText"
+                   FontSize="12"
+                   HorizontalAlignment="Center"
+                   Foreground="{DynamicResource ThemeForegroundBrush}"
+                   Opacity="0.65" />
+    </StackPanel>
+</Window>

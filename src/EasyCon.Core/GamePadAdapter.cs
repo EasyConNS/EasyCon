@@ -4,11 +4,11 @@ using EasyScript;
 
 namespace EasyCon.Core;
 
-public class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
+public sealed class GamePadAdapter(NintendoSwitch easyPad, bool highResolution = false) : ICGamePad
 {
     private readonly NintendoSwitch NS = easyPad;
 
-    public DelayType DelayMethod => DelayType.HighResolution;
+    public DelayType DelayMethod => highResolution ? DelayType.HighResolution : DelayType.LowCPU;
 
     void ICGamePad.ClickButtons(GamePadKey key, int duration, CancellationToken token)
     {
@@ -65,5 +65,10 @@ public class GamePadAdapter(NintendoSwitch easyPad) : ICGamePad
         {
             NS.Down(key.ToECKey(x, y));
         }
+    }
+
+    void ICGamePad.Reset()
+    {
+        NS.Reset();
     }
 }

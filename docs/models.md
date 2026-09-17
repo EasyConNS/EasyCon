@@ -35,7 +35,7 @@
 #### 3. script模块 (required)
 - **功能**: 脚本语言解析和执行
 - **实现**: `EasyCon.Script` 项目
-- **接口**: `IOutputAdapter`, `ICGamePad`, `Compilation`, `Evaluator`
+- **接口**: `IIoAdapter`, `ICGamePad`, `Compilation`, `Evaluator`
 - **特性**:
   - SourceText→Lexer→Parser→Binder→Evaluator 编译管线
   - 绑定器进行类型检查和作用域分析

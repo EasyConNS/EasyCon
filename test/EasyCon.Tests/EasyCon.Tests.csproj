@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFrameworks>$(TFMS)</TargetFrameworks>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
@@ -26,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\EasyCon.Script\EasyCon.Script.csproj" />
+    <ProjectReference Include="..\..\src\EasyCon.Core\EasyCon.Core.csproj" />
   </ItemGroup>
 
 </Project>

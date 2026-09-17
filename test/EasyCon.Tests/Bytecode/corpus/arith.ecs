@@ -1,0 +1,19 @@
+FUNC fact($n):INT
+    IF $n <= 1
+        RETURN 1
+    ENDIF
+    RETURN $n * fact($n - 1)
+ENDFUNC
+$sum = 0
+FOR $i = 1 TO 10
+    $sum += $i
+NEXT
+PRINT $sum
+PRINT fact(10)
+$d = 7 / 2
+PRINT $d
+$rd = 7 \ 2
+PRINT $rd
+IF $sum > 50 and fact(3) == 6
+    PRINT "cond-ok"
+ENDIF

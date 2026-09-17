@@ -6,39 +6,12 @@ namespace EasyCon.Script.Syntax;
 public abstract class AstNode(Token syntax)
 {
     public Token Syntax { get; } = syntax;
-    public int Line => Syntax.Location.StartLine + 1;
 
-    public virtual T Accept<T>(IAstVisitor<T> visitor) { throw new NotImplementedException(); }
+    /// <summary>起始源码行（1 基）；合成节点（无 SourceText，如 EmptyStmt）返回 0 表示未知。</summary>
+    public int Line => Syntax?.Location?.Text == null ? 0 : Syntax.Location.StartLine + 1;
 
-    // public readonly List<TriviaNode> LeadingTrivia = [];
-    // public readonly List<TriviaNode> TrailingTrivia = [];
+    internal virtual T Accept<T>(IAstVisitor<T> visitor) { throw new NotImplementedException(); }
 }
 
 
 public abstract class Member(Token key) : AstNode(key) { }
-
-// 表达式节点
-public abstract class Expression(Token key) : AstNode(key) { }
-
-// 字面量表达式
-public sealed class LiteralExpression : Expression
-{
-    public object Value { get; }
-
-    public LiteralExpression(Token keyword, object value) : base(keyword)
-    {
-        // 在构造时验证数值范围
-        if (value is string strValue)
-        {
-            Value = strValue;
-        }
-        else if (value is bool)
-            Value = (bool)value;
-        else if (value is uint intValue)
-        {
-            Value = intValue;
-        }
-        else
-            throw new Exception($"Unexpected literal '{value}' of type {value.GetType()}");
-    }
-}

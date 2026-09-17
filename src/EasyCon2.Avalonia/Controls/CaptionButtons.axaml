@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="34"
+             x:Class="EasyCon2.Avalonia.Controls.CaptionButtons"
+             x:Name="ThisControl">
+    <StackPanel Orientation="Horizontal">
+        <Button Classes="window-caption-button"
+                Content="&#x2212;"
+                Click="OnMinimize"
+                IsVisible="{Binding !#ThisControl.IsCloseButtonOnly}"/>
+        <Button x:Name="PART_MaxRestore"
+                Classes="window-caption-button"
+                Content="&#x25A1;"
+                Click="OnMaximizeRestore"
+                IsVisible="{Binding !#ThisControl.IsCloseButtonOnly}"/>
+        <Button Classes="window-caption-button close"
+                Content="&#x00D7;"
+                Click="OnClose"/>
+    </StackPanel>
+</UserControl>

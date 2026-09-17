@@ -28,11 +28,13 @@ public enum SearchMethod
     EdgeDetectLaplacian = 12,
     [Description("Canny边缘检测")]
     EdgeDetectCanny = 13,
+    [Description("透明背景标准差匹配")]
+    MaskedSqDiffNormed = 14,
     [Description("OCR单行文本识别")]
     TesserDetect = 107,
 }
 
 public static class SearchMethodExtension
 {
-    public static bool IsImageMethod(this SearchMethod method) => method <= SearchMethod.EdgeDetectLaplacian;
+    public static bool IsImageMethod(this SearchMethod method) => method < SearchMethod.TesserDetect;
 }

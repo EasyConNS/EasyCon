@@ -1,0 +1,457 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.Core.AiAgent"
+             xmlns:model="using:EasyCon.Core.LLM.Models"
+             x:Class="EasyCon2.Avalonia.Core.AiAgent.AiAgentView"
+             x:DataType="vm:AiAgentViewModel"
+             IsVisible="{Binding IsOpen}">
+
+    <UserControl.Styles>
+        <Style Selector="Button.thinking-toggle /template/ ContentPresenter">
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.agent-icon-button">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="MinWidth" Value="28"/>
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.agent-icon-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="Button.agent-action-button">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="MinWidth" Value="32"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.agent-action-button /template/ ContentPresenter">
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+
+        <Style Selector="Button.agent-action-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"/>
+            <Setter Property="BorderBrush" Value="{Binding BorderBrush, RelativeSource={RelativeSource TemplatedParent}}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Opacity" Value="0.86"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input">
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Padding" Value="12,10,80,10"/>
+            <Setter Property="MinHeight" Value="81"/>
+            <Setter Property="MaxHeight" Value="165"/>
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="VerticalContentAlignment" Value="Top"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-input">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="CaretBrush" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-input /template/ TextBlock">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark TextBox.agent-input /template/ TextBlock#PART_Placeholder">
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:pointerover">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus-visible">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus-within">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:pointerover /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus-visible /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="TextBox.agent-input:focus-within /template/ Border">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchInputBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}"/>
+        </Style>
+
+        <Style Selector="ComboBox.agent-model-combo">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="MaxWidth" Value="200"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo:pointerover">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo:pointerover /template/ Border">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo ComboBoxItem:pointerover">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo ComboBoxItem:pointerover /template/ Border">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="Window.dark ComboBox.agent-model-combo ComboBoxItem:pointerover /template/ Border#BackgroundPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+    </UserControl.Styles>
+
+    <UserControl.DataTemplates>
+        <!-- 用户消息：右侧气泡 -->
+        <DataTemplate DataType="vm:UserMessage">
+            <Border HorizontalAlignment="Right"
+                    MaxWidth="560"
+                    Background="{DynamicResource WorkbenchAccentBrush}"
+                    CornerRadius="12,4,12,12"
+                    Padding="12,8"
+                    Margin="0,4,0,8">
+                <SelectableTextBlock Text="{Binding Content}"
+                           TextWrapping="Wrap"
+                           FontSize="13"
+                           Foreground="{DynamicResource WorkbenchOnAccentBrush}"/>
+            </Border>
+        </DataTemplate>
+
+        <!-- AI 消息：左侧气泡 + 思考折叠 -->
+        <DataTemplate DataType="vm:AssistantMessage">
+            <StackPanel Margin="0,4,0,8" MaxWidth="560" HorizontalAlignment="Left">
+                <!-- 思考过程（无色背景 + 缩进） -->
+                <StackPanel Margin="12,0,0,4"
+                        IsVisible="{Binding Thinking, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Button Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            Classes="thinking-toggle"
+                            HorizontalAlignment="Left"
+                            Cursor="Hand"
+                            Command="{Binding Thinking.ToggleExpandCommand}">
+                        <TextBlock Text="💭 思考过程"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                    </Button>
+                    <SelectableTextBlock Text="{Binding Thinking.Text}"
+                               TextWrapping="Wrap"
+                               FontSize="11"
+                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                               Opacity="0.75"
+                               IsVisible="{Binding Thinking.IsExpanded}"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
+
+                <!-- 正文气泡 -->
+                <Border Background="{DynamicResource WorkbenchInputBrush}"
+                        BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4,12,12,12"
+                        Padding="12,8"
+                        HorizontalAlignment="Left"
+                        IsVisible="{Binding IsBubbleVisible}">
+                    <SelectableTextBlock Text="{Binding Content}"
+                               TextWrapping="Wrap"
+                               FontSize="13"
+                               Foreground="{DynamicResource WorkbenchTextBrush}"/>
+                </Border>
+
+                <!-- 流式生成中指示器 -->
+                <TextBlock Text="思考中..."
+                           FontSize="11"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                           Margin="0,2,0,0"
+                           IsVisible="{Binding IsStreaming}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- 工具调用消息：紧凑行 -->
+        <DataTemplate DataType="vm:ToolCallMessage">
+            <Border Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}"
+                    BorderBrush="{DynamicResource WorkbenchAccentBrush}"
+                    BorderThickness="1,1,1,1"
+                    CornerRadius="4"
+                    Padding="8,4"
+                    Margin="0,2,0,2"
+                    HorizontalAlignment="Left">
+                <StackPanel Spacing="4">
+                    <!-- 折叠标题行 -->
+                    <Button Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            HorizontalAlignment="Left"
+                            Cursor="Hand"
+                            Command="{Binding ToggleExpandCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="▶" IsVisible="{Binding !IsExpanded}" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Text="▼" IsVisible="{Binding IsExpanded}" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Text="🔧"
+                                       FontSize="12"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Name}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource WorkbenchTextBrush}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="✓"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource WorkbenchAccentBrush}"
+                                       IsVisible="{Binding Success}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Summary}"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Button>
+                    <!-- 展开的完整结果 -->
+                    <Border Background="{DynamicResource WorkbenchInputBrush}"
+                            Padding="8,6"
+                            CornerRadius="4"
+                            IsVisible="{Binding IsExpanded}">
+                        <SelectableTextBlock Text="{Binding FullResult}"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource WorkbenchTextBrush}"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <Border Background="{DynamicResource WorkbenchPanelBrush}"
+            BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+            BorderThickness="0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <Grid RowDefinitions="34,1,*,Auto,Auto">
+            <!-- 标题栏 -->
+            <Grid Grid.Row="0"
+                  ColumnDefinitions="Auto,*,Auto,Auto,Auto"
+                  Background="{DynamicResource WorkbenchPanelBrush}">
+                <TextBlock Text="{Binding SessionTitle}"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource WorkbenchTextBrush}"/>
+                <TextBlock Grid.Column="1"
+                           Text="{Binding TokenUsage}"
+                           FontSize="10"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                <Button Grid.Column="2"
+                        Classes="agent-icon-button"
+                        Command="{Binding ToggleDebugPanelCommand}"
+                        ToolTip.Tip="调试面板"
+                        IsVisible="{Binding IsDebugBuild}">
+                    <Path Data="M4,2 L7,5 L4,8 M9,2 L12,5 L9,8"
+                          Width="14" Height="14"
+                          Stretch="Uniform"
+                          Stroke="{DynamicResource WorkbenchMutedTextBrush}"
+                          StrokeThickness="2"
+                          StrokeLineCap="Round"/>
+                </Button>
+                <Button Grid.Column="3"
+                        Classes="agent-icon-button"
+                        Command="{Binding NewChatCommand}"
+                        ToolTip.Tip="新对话">
+                    <Path Data="M9,1 L9,15 M1,7 L17,7"
+                          Width="14" Height="14"
+                          Stretch="Uniform"
+                          Stroke="{DynamicResource WorkbenchMutedTextBrush}"
+                          StrokeThickness="2"
+                          StrokeLineCap="Round"/>
+                </Button>
+                <Button Grid.Column="4"
+                        Classes="agent-icon-button"
+                        Command="{Binding CloseCommand}"
+                        ToolTip.Tip="关闭">
+                    <PathIcon Data="M1,0 L8,7 L15,0 L16,1 L9,8 L16,15 L15,16 L8,9 L1,16 L0,15 L7,8 L0,1 Z"
+                              Width="10" Height="10"/>
+                </Button>
+            </Grid>
+
+            <Border Grid.Row="1"
+                    Background="{DynamicResource WorkbenchBorderBrush}"/>
+
+            <!-- 输出区 -->
+            <ScrollViewer x:Name="OutputScrollViewer"
+                          Grid.Row="2"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Messages}"
+                              Margin="10">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ChatMessageItem">
+                            <ContentControl Content="{Binding}"
+                                            HorizontalAlignment="Stretch"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- 调试面板 -->
+            <Border Grid.Row="3"
+                    Background="{DynamicResource WorkbenchInputBrush}"
+                    BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
+                    BorderThickness="0,1,0,0"
+                    IsVisible="{Binding ShowDebugPanel}"
+                    MaxHeight="160"
+                    Margin="10,0,10,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <TextBlock Text="{Binding DebugLogText}"
+                               FontSize="10"
+                               FontFamily="Consolas, monospace"
+                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                               TextWrapping="Wrap"
+                               Margin="6,4"/>
+                </ScrollViewer>
+            </Border>
+
+            <!-- 输入区：输入框 + 右下角叠加控件 -->
+            <Grid Grid.Row="4" Margin="10,0,10,10">
+                <TextBox x:Name="InputTextBox"
+                         Classes="agent-input"
+                         Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="输入消息"/>
+
+                <!-- 右下角叠加：模型选择 + 发送/停止 -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Spacing="4"
+                            Margin="0,0,6,6">
+                    <ComboBox Classes="agent-model-combo"
+                              ItemsSource="{Binding AllModels}"
+                              SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              ToolTip.Tip="选择模型">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="model:ModelEntry">
+                                <StackPanel Spacing="1">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding ModelName}" FontSize="12"/>
+                                        <TextBlock Text="支持图像输入"
+                                                   FontSize="9"
+                                                   IsVisible="{Binding Vision}"
+                                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ProviderLabel}"
+                                               FontSize="10"
+                                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <Grid Width="32" Height="32" VerticalAlignment="Center">
+                        <Button x:Name="SendButton"
+                                Classes="agent-action-button"
+                                Background="{DynamicResource WorkbenchAccentBrush}"
+                                Command="{Binding SendOrStopCommand}"
+                                ToolTip.Tip="发送"
+                                IsVisible="{Binding !IsGenerating}">
+                            <Path Data="M2,3 L18,10 L2,17 L5,10 Z M5,10 L18,10"
+                                  Width="14" Height="14"
+                                  Stretch="Uniform"
+                                  Fill="Transparent"
+                                  Stroke="{DynamicResource WorkbenchOnAccentBrush}"
+                                  StrokeThickness="2"
+                                  StrokeLineCap="Round"/>
+                        </Button>
+                        <Button x:Name="StopButton"
+                                Classes="agent-action-button"
+                                Background="#E53935"
+                                Command="{Binding SendOrStopCommand}"
+                                ToolTip.Tip="停止"
+                                IsVisible="{Binding IsGenerating}">
+                            <Path Data="M4,4 L16,4 L16,16 L4,16 Z"
+                                  Width="12" Height="12"
+                                  Stretch="Uniform"
+                                  Fill="White"/>
+                        </Button>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace EasyCon.Script.Assembly;
+namespace EasyCon.Script.Asm;
 
 public static class HexWriter
 {
@@ -67,7 +67,7 @@ class IntelHex
     public byte[] Data { get; private set; }
     public byte Checksum { get; private set; }
 
-    public static IntelHex Parse(string line)
+    public static IntelHex? Parse(string line)
     {
         try
         {

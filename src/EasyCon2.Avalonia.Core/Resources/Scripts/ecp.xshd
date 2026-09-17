@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<SyntaxDefinition name="ecp"
+<SyntaxDefinition name="ECScript"
         xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
 	<Color name="Comment" foreground="Green" />
 	<Color name="String" foreground="#fff99157" />
@@ -47,19 +47,24 @@
 			<Word>IMPORT</Word>
 			<Word>FOR</Word>
 			<Word>TO</Word>
+			<Word>IN</Word>
 			<Word>STEP</Word>
 			<Word>NEXT</Word>
 			<Word>BREAK</Word>
 			<Word>CONTINUE</Word>
 			<Word>WHILE</Word>
+				<Word>UNTIL</Word>
 			<Word>END</Word>
 			<Word>IF</Word>
 			<Word>ELIF</Word>
 			<Word>ELSE</Word>
 			<Word>ENDIF</Word>
+			<Word>STRUCT</Word>
 			<Word>FUNC</Word>
 			<Word>RETURN</Word>
 			<Word>ENDFUNC</Word>
+			<Word>EXTERN</Word>
+			<Word>FROM</Word>
 			<Word>CALL</Word>
 			<Word>and</Word>
 			<Word>or</Word>

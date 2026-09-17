@@ -13,6 +13,10 @@
 ### 虚拟机文档
 - **[V1指令集](VM1.md)** - 单片机端虚拟机指令集文档
 - **[V2指令集](VM2.md)** - 新一代虚拟机指令集设计
+- **[双端语义契约](VmSemanticContract.md)** - ECS 字节码双端语义/RC 协议权威表（S-01..S-19）与验证体系
+- **[二进制格式](EcmEcxFormat.md)** - ECM/ECX 位级格式规范
+- **[模块系统设计](ModuleSystem.md)** - 接口式独立编译与内容寻址缓存
+- **[统一编译链路](Pipeline.md)** - 编译链路现状与单一事实源落点
 
 ### 功能文档
 - **[EasyCon Assist](EasyCon%20Assist.md)** - 远程助手功能说明

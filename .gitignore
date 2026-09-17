@@ -3,6 +3,17 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+.vscode
+
+Depend/
+
+# Zig native build artifacts (src/EzCv/native)
+.zig-cache/
+zig-out/
+
+# ezcv native 两阶段构建中间产物（zig-msvc 编译 .obj + link.exe 输出）
+src/EzCv/native/out_*/
+
 # User-specific files
 *.rsuser
 *.suo
@@ -10,13 +21,13 @@
 *.userosscache
 *.sln.docstates
 *.lscache
+src/EasyCon2.UI.Common/Resources/Amiibo/AmiiboImages/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 .claude/
+.omo/
 PLAN.md
-CLAUDE.md
-AGENTS.md
 
 # Build results
 [Dd]ebug/
@@ -347,3 +358,16 @@ healthchecksdb
 dist/
 # Added by code-review-graph
 .code-review-graph/
+.codegraph/
+
+# Worktrees
+.worktrees/
+# ecs-vm native build artifact (built on demand by ci/build-vm.sh / native/build.sh)
+src/EasyCon.Vm/native/ecs-vm
+
+# PaddleOCR ONNX models (external assets, not committed; tests Ignore when missing)
+PP-OCRv5_mobile_det.onnx
+PP-OCRv5_mobile_rec.onnx
+*_rec.onnx
+*_dict.txt
+ppocr_keys_v5.txt

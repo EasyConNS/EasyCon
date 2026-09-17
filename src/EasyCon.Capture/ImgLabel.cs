@@ -1,16 +1,33 @@
-using OpenCvSharp;
+﻿using OpenCvSharp;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Point = System.Drawing.Point;
 
 namespace EasyCon.Capture;
 
 public record ImgLabel
 {
     public SearchMethod searchMethod { get; set; } = SearchMethod.CCoeffNormed;
-    public string ImgBase64 { get; set; } = string.Empty;
+
+    private string _imgBase64 = string.Empty;
+    public string ImgBase64
+    {
+        get => _imgBase64;
+        set
+        {
+            _imgBase64 = value;
+            InvalidateTargetCache();
+        }
+    }
+
+    /// <summary>缓存的 BGR 目标 Mat，惰性解码，生命周期由 ImgLabel 管理。</summary>
+    [JsonIgnore]
+    private Mat? _cachedMat;
+
+    /// <summary>缓存的 RGBA 目标 Mat（MaskedSqDiffNormed 路径使用），惰性解码。</summary>
+    [JsonIgnore]
+    private Mat? _cachedMatRGBA;
 
     public int RangeX { get; set; } = 0;
     public int RangeY { get; set; } = 0;
@@ -21,6 +38,11 @@ public record ImgLabel
     public int TargetY { get; set; } = 0;
     public int TargetWidth { get; set; } = 0;
     public int TargetHeight { get; set; } = 0;
+
+    public bool UseGrayscale { get; set; } = false;
+    public bool UseBinary { get; set; } = false;
+    public bool UseGaussianBlur { get; set; } = false;
+    public bool UseOther { get; set; } = false;
 
     [JsonIgnore]
     public string name { get; set; } = "5号路蛋屋主人";
@@ -40,6 +62,41 @@ public record ImgLabel
         if (!searchMethod.IsImageMethod()) return;
         ImgBase64 = ImageToBase64(img);
         _image = null;
+    }
+
+    /// <summary>
+    /// 获取缓存的 BGR 目标 Mat。首次调用时从 ImgBase64 解码，后续直接返回缓存。
+    /// </summary>
+    internal Mat GetCachedTargetMat()
+    {
+        if (_cachedMat is { } cached)
+            return cached;
+        byte[] imageBytes = Convert.FromBase64String(ImgBase64);
+        _cachedMat = imageBytes.ToMat(); // ImreadModes.Color → BGR
+        return _cachedMat;
+    }
+
+    /// <summary>
+    /// 获取缓存的 RGBA 目标 Mat（MaskedSqDiffNormed 路径使用）。
+    /// </summary>
+    internal Mat GetCachedTargetMatRGBA()
+    {
+        if (_cachedMatRGBA is { } cached)
+            return cached;
+        byte[] imageBytes = Convert.FromBase64String(ImgBase64);
+        _cachedMatRGBA = Cv2.ImDecode(imageBytes, ImreadModes.Unchanged);
+        return _cachedMatRGBA;
+    }
+
+    /// <summary>
+    /// 释放缓存的目标 Mat。ImgBase64 变更时自动调用。
+    /// </summary>
+    internal void InvalidateTargetCache()
+    {
+        _cachedMat?.Dispose();
+        _cachedMat = null;
+        _cachedMatRGBA?.Dispose();
+        _cachedMatRGBA = null;
     }
 
     private static bool IsBase64String(string s)
@@ -64,9 +121,9 @@ public record ImgLabel
         if (IsBase64String(basestr) && method.IsImageMethod())
         {
             byte[] imageBytes = Convert.FromBase64String(basestr);
-            using var ms = new MemoryStream(imageBytes, 0, imageBytes.Length);
-            ms.Write(imageBytes, 0, imageBytes.Length);
-            return Image.FromStream(ms, true);
+            using var ms = new MemoryStream(imageBytes);
+            using var image = Image.FromStream(ms, true, true);
+            return new Bitmap(image);
         }
         else
         {
@@ -121,7 +178,7 @@ public record ImgLabel
 
     public static ImgLabel Load(string path)
     {
-        var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception();
+        var temp = JsonSerializer.Deserialize<ImgLabel>(File.ReadAllText(path)) ?? throw new Exception("标签解析失败");
         temp.name = Path.GetFileNameWithoutExtension(path);
         temp.path = Path.GetDirectoryName(path) ?? string.Empty;
         return temp;
@@ -132,15 +189,14 @@ public static class ILExt
 {
     public static void Save(this ImgLabel self, string path)
     {
+        if (self.path != "")
+        {
+            path = self.path;
+        }
         // save the imglabel to loc
         if (!Directory.Exists(path))
         {
             Directory.CreateDirectory(path);
-        }
-
-        if (self.path != "")
-        {
-            path = self.path;
         }
         if (self.searchMethod.ILTxtType())
         {
@@ -154,50 +210,5 @@ public static class ILExt
     private static bool ILTxtType(this SearchMethod method)
     {
         return method == SearchMethod.TesserDetect;
-    }
-
-    public static List<Point> Search(this ImgLabel self, Mat ss, out double md)
-    {
-        if (self.TargetWidth > self.RangeWidth || self.TargetHeight > self.RangeHeight)
-            throw new Exception("搜索图片大于搜索范围");
-
-        try
-        {
-            // 从原始Bitmap中绘制裁剪区域到新的Bitmap对象
-            using var range = new Mat(ss, self._round);
-            //#if DEBUG
-            //using (new Window("结果1", range))
-            //{
-            //    Cv2.WaitKey();
-            //}
-            //#endif
-            List<Point> result = new();
-            if (self.searchMethod == SearchMethod.TesserDetect)
-            {
-                using var target = new Mat(ss, self._target);
-                var rlttxt = ECSearch.FindOCR(self.ImgBase64, target, out md);
-                result = [new Point(self.TargetX - self.RangeX, self.TargetY - self.RangeY)];
-            }
-            else
-            {
-                byte[] imageBytes = Convert.FromBase64String(self.ImgBase64);
-                using var target = imageBytes.ToMat();
-                result = ECSearch.FindPic(range, target, self.searchMethod, out md);
-            }
-            md *= 100;
-
-            // update the search pic
-            //if (md >= _matchDegree)
-            //{
-            //    Debug.WriteLine("update img");
-            //    searchImg = sourcePic.Clone(new Rectangle(result[0].X, result[0].Y, TargetWidth, TargetHeight), sourcePic.PixelFormat);
-            //}
-
-            return result;
-        }
-        catch (OpenCVException ex)
-        {
-            throw new Exception($"搜图标签[{self.name}]执行异常：{ex.Message}");
-        }
     }
 }

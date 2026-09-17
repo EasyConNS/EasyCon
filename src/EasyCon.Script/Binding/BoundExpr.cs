@@ -1,3 +1,4 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using System.Collections.Immutable;
@@ -8,50 +9,7 @@ internal abstract class BoundExpr(AstNode expr) : BoundNode
 {
     public AstNode Syntax = expr;
     public abstract ScriptType Type { get; }
-    public Value ConstantValue = Value.Void;
-
-    public List<string> GetReferencedVariables()
-    {
-        var variables = new List<string>();
-        CollectVariables(this, variables);
-        return variables;
-    }
-    private void CollectVariables(BoundNode node, List<string> variables)
-    {
-        if (node == null) return;
-        if (node is BoundVariableExpression varNode)
-        {
-            variables.Add(varNode.Variable.Name);
-        }
-        else if (node is BoundIndexVariableExpression idxVarNode)
-        {
-            // TODO
-        }
-        else if (node is BoundUnaryExpression unaryNode)
-        {
-            CollectVariables(unaryNode.Operand, variables);
-        }
-        else if (node is BoundBinaryExpression binOpNode)
-        {
-            CollectVariables(binOpNode.Left, variables);
-            CollectVariables(binOpNode.Right, variables);
-        }
-        else if (node is BoundConversionExpression convNode)
-        {
-            CollectVariables(convNode.Expression, variables);
-        }
-        else if (node is BoundCallExpression callNode)
-        {
-            foreach (var arg in callNode.Arguments)
-            {
-                CollectVariables(arg, variables);
-            }
-        }
-        else if (node is BoundAssignExpression assignNode)
-        {
-            CollectVariables(assignNode.Expression, variables);
-        }
-    }
+    public object? ConstantValue = null;
 }
 
 internal sealed class BoundErrorExpression(AstNode expr) : BoundExpr(expr)
@@ -61,13 +19,15 @@ internal sealed class BoundErrorExpression(AstNode expr) : BoundExpr(expr)
     public override BoundNodeKind Kind => throw new NotImplementedException();
 }
 
+
 internal sealed class BoundLiteralExpression : BoundExpr
 {
-    public override ScriptType Type { get; }
+    public readonly ScriptType LiteralType;
+    public override ScriptType Type => LiteralType;
     public override BoundNodeKind Kind => BoundNodeKind.Literal;
-    public BoundLiteralExpression(AstNode syntax, Value value) : base(syntax)
+    public BoundLiteralExpression(AstNode syntax, object? value, ScriptType type) : base(syntax)
     {
-        Type = value.Type;
+        LiteralType = type;
         ConstantValue = value;
     }
 }
@@ -81,7 +41,7 @@ internal sealed class BoundVariableExpression : BoundExpr
     {
         Variable = variable;
         Type = variable.Type;
-        ConstantValue = Value.From(variable.Value);
+        ConstantValue = variable.Value;
     }
 }
 
@@ -108,19 +68,26 @@ internal sealed class BoundIndexDeclxpression : BoundExpr
     public readonly ImmutableArray<BoundExpr> Items;
     public override BoundNodeKind Kind => BoundNodeKind.IndexDecl;
 
-    public BoundIndexDeclxpression(AstNode syntax, ImmutableArray<BoundExpr> items) : base(syntax)
+    public BoundIndexDeclxpression(AstNode syntax, ImmutableArray<BoundExpr> items, ScriptType? annotatedElementType = null) : base(syntax)
     {
         Items = items;
-        // 如果数组为空，默认元素类型INT
-        var elementType = items.Select(i => i.Type).FirstOrDefault(ScriptType.Int);
-        Type = ScriptType.Array.Bind(elementType);
+        // 优先使用类型标注，其次从元素推断，最后默认 int
+        var elementType = annotatedElementType
+            ?? items.Select(i => i.Type).FirstOrDefault(ScriptType.Int);
+        Type = ScriptType.ArrayOf(elementType);
     }
 }
 
-internal sealed class BoundExternalVariableExpression(ExtVarExpr syntax, string name) : BoundExpr(syntax)
+internal sealed class BoundRuntimeValueExpression(AstNode syntax, string name, ScriptType type) : BoundExpr(syntax)
 {
     public readonly string Name = name;
+    public override ScriptType Type { get; } = type;
+    public override BoundNodeKind Kind => BoundNodeKind.RuntimeValue;
+}
 
+internal sealed class BoundImageLabelExpression(AstNode syntax, string name) : BoundExpr(syntax)
+{
+    public readonly string Name = name;
     public override ScriptType Type => ScriptType.Int;
     public override BoundNodeKind Kind => BoundNodeKind.ExLabelVariable;
 }
@@ -142,6 +109,7 @@ internal sealed class BoundBinaryExpression(AstNode syntax, BoundExpr left, Boun
 
     public override ScriptType Type => Op.Type;
     public override BoundNodeKind Kind => BoundNodeKind.BinaryExpression;
+
 }
 
 internal sealed class BoundConversionExpression(AstNode syntax, ScriptType type, BoundExpr expr) : BoundExpr(syntax)
@@ -152,18 +120,25 @@ internal sealed class BoundConversionExpression(AstNode syntax, ScriptType type,
     public BoundExpr Expression = expr;
 }
 
-internal sealed class BoundAssignExpression(AstNode syntax, VariableSymbol variable, BoundExpr expr) : BoundExpr(syntax)
-{
-    public override ScriptType Type => Expression.Type;
-    public readonly VariableSymbol Variable = variable;
-    public readonly BoundExpr Expression = expr;
-    public override BoundNodeKind Kind => BoundNodeKind.AssignmentExpression;
-}
-
 internal sealed class BoundCallExpression(AstNode syntax, FunctionSymbol function, ImmutableArray<BoundExpr> arguments, ScriptType instantiatedType) : BoundExpr(syntax)
 {
     public override ScriptType Type { get; } = instantiatedType;
     public readonly FunctionSymbol Function = function;
     public readonly ImmutableArray<BoundExpr> Arguments = arguments;
     public override BoundNodeKind Kind => BoundNodeKind.CallExpression;
+}
+
+internal sealed class BoundStructInitExpression(AstNode syntax, EcsStructDef def) : BoundExpr(syntax)
+{
+    public override ScriptType Type { get; } = new StructType(def);
+    public readonly EcsStructDef Definition = def;
+    public override BoundNodeKind Kind => BoundNodeKind.StructInit;
+}
+
+internal sealed class BoundFieldAccessExpression(AstNode syntax, BoundExpr target, EcsFieldDef field, ScriptType resultType) : BoundExpr(syntax)
+{
+    public override ScriptType Type { get; } = resultType;
+    public readonly BoundExpr Target = target;
+    public readonly EcsFieldDef Field = field;
+    public override BoundNodeKind Kind => BoundNodeKind.FieldAccess;
 }

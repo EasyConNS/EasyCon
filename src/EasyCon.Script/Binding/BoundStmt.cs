@@ -1,3 +1,4 @@
+using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyScript;
@@ -56,20 +57,6 @@ internal sealed class BoundVariableDeclaration(AstNode syntax, VariableSymbol va
     public override BoundNodeKind Kind => BoundNodeKind.VariableDeclaration;
 }
 
-internal sealed class BoundConstantDeclaration(AstNode syntax, VariableSymbol constant, BoundExpr initializer) : BoundStmt(syntax)
-{
-    public override BoundNodeKind Kind => BoundNodeKind.ConstantDeclaration;
-    public VariableSymbol Constant { get; } = constant;
-    public BoundExpr Initializer { get; } = initializer;
-}
-
-internal sealed class BoundAssignmentStatement(AstNode syntax, VariableSymbol variable, BoundExpr expression) : BoundStmt(syntax)
-{
-    public override BoundNodeKind Kind => BoundNodeKind.VariableAssignment;
-    public VariableSymbol Variable { get; } = variable;
-    public BoundExpr Expression { get; } = expression;
-}
-
 internal class BoundKeyActStatement(AstNode syntax, GamePadKey key, bool up = false) : BoundStmt(syntax)
 {
     public override BoundNodeKind Kind => BoundNodeKind.KeyAction;
@@ -96,4 +83,20 @@ internal class BoundStickActStatement(AstNode syntax, GamePadKey key, byte x, by
 internal sealed class BoundStickPressStatement(AstNode syntax, GamePadKey key, BoundExpr duration, byte x, byte y, int degree = 1) : BoundStickActStatement(syntax, key, x, y, degree)
 {
     public readonly BoundExpr Duration = duration;
+}
+
+internal sealed class BoundFieldAssignStatement(AstNode syntax, BoundExpr target, EcsFieldDef field, BoundExpr value) : BoundStmt(syntax)
+{
+    public override BoundNodeKind Kind => BoundNodeKind.FieldAssignment;
+    public readonly BoundExpr Target = target;
+    public readonly EcsFieldDef Field = field;
+    public readonly BoundExpr Value = value;
+}
+
+internal sealed class BoundIndexAssignStatement(AstNode syntax, BoundExpr container, BoundExpr index, BoundExpr value) : BoundStmt(syntax)
+{
+    public override BoundNodeKind Kind => BoundNodeKind.IndexAssignment;
+    public readonly BoundExpr Container = container;
+    public readonly BoundExpr Index = index;
+    public readonly BoundExpr Value = value;
 }

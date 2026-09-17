@@ -1,0 +1,8 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- macOS 原生应用菜单标题（简体中文）。键名约定：Text.Menu.* -->
+    <x:String x:Key="Text.Menu.About" xml:space="preserve">关于 EasyCon</x:String>
+    <x:String x:Key="Text.Menu.Preferences" xml:space="preserve">设置</x:String>
+    <x:String x:Key="Text.Menu.CheckUpdate" xml:space="preserve">检查更新</x:String>
+    <x:String x:Key="Text.Menu.OpenConfigDir" xml:space="preserve">打开配置目录</x:String>
+</ResourceDictionary>

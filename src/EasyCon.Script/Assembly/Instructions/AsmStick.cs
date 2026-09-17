@@ -1,4 +1,4 @@
-namespace EasyCon.Script.Assembly.Instructions;
+namespace EasyCon.Script.Asm.Instructions;
 
 abstract class AsmStick : Instruction
 {
@@ -39,7 +39,7 @@ class AsmStick_Standard : AsmStick
 
 class AsmStick_Hold : AsmStick
 {
-    public Instruction HoldUntil;
+    public Instruction? HoldUntil;
 
     public static Instruction Create(int keycode, int dindex)
     {

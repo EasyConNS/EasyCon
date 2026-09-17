@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
+             xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
+             x:Class="EasyCon2.Avalonia.Views.MonitorView"
+             x:DataType="vm:MonitorViewModel">
+    <Border Background="{DynamicResource WorkbenchPanelBrush}">
+        <Grid>
+        <Image Source="{Binding CurrentFrame}"
+               Stretch="Uniform"
+               StretchDirection="Both"
+               HorizontalAlignment="Stretch"
+               VerticalAlignment="Stretch"
+               RenderOptions.BitmapInterpolationMode="HighQuality"
+               behaviors:VideoFrameBehavior.FrameIndex="{Binding FrameIndex}"/>
+
+        <!-- 加载提示 -->
+        <Border Background="{DynamicResource WorkbenchPanelBrush}"
+                IsVisible="{Binding IsLoading}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="20">
+            <StackPanel Spacing="10">
+                <TextBlock Text="正在加载视频..."
+                           FontSize="16"
+                           Foreground="{DynamicResource WorkbenchTextBrush}"
+                           HorizontalAlignment="Center"/>
+                <ProgressBar IsIndeterminate="True"
+                             Width="200"
+                             Height="4"/>
+            </StackPanel>
+        </Border>
+
+        <!-- 错误提示 -->
+        <Border IsVisible="{Binding HasError}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="20">
+            <StackPanel Spacing="12"
+                        HorizontalAlignment="Center">
+                <PathIcon Data="M1,4 H11 V12 H1 Z M11,7 L15,4 V12 L11,9 Z"
+                          Width="46"
+                          Height="46"
+                          Foreground="{DynamicResource WorkbenchBorderBrush}"
+                          HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding ErrorMessage}"
+                           FontSize="14"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                           TextWrapping="Wrap"
+                           MaxWidth="400"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Border>
+</UserControl>

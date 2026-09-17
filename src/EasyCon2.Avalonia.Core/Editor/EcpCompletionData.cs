@@ -9,7 +9,7 @@ internal class EcpCompletionData : ICompletionData
 {
     public EcpCompletionData(string text) { Text = text; }
 
-    public IImage Image => null;
+    public IImage? Image => null;
 
     public string Text { get; }
 

@@ -14,6 +14,8 @@ public partial class ECCore
 
     public static IEnumerable<SearchMethod> GetSearchMethods() => ECSearch.GetEnableSearchMethods();
 
+    public static ImgLabel LoadIL(string file) => ECSearch.LoadIL(file);
+
     public static (IEnumerable<ImgLabel>, int, int) LoadImgLabels(params string[] paths)
     {
         var ILs = ImmutableArray.CreateBuilder<ImgLabel>();

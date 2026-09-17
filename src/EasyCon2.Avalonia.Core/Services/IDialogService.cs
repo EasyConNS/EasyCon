@@ -1,21 +1,23 @@
+using Avalonia.Media;
+using Avalonia.Platform.Storage;
+
 namespace EasyCon2.Avalonia.Core.Services;
 
 public interface IDialogService
 {
-    void ShowMessage(string message, string title = "");
-    MessageBoxResult ShowQuestion(string message, string title = "");
-    string? ShowOpenFileDialog(string title, string filter);
-    string? ShowSaveFileDialog(string title, string filter);
-    void ShowAlertConfigDialog();
-    void ShowCaptureConsole();
-    void RequestClose();
-}
+    // 文件/文件夹对话框
+    Task<IReadOnlyList<string>> OpenFilesAsync(string title,
+        IReadOnlyList<FilePickerFileType>? filters = null,
+        string? suggestedStartPath = null);
 
-public enum MessageBoxResult
-{
-    None,
-    OK,
-    Cancel,
-    Yes,
-    No,
+    Task<string?> SaveFileAsync(string title,
+        string defaultExtension,
+        IReadOnlyList<FilePickerFileType>? filters = null,
+        string? suggestedFileName = null);
+
+    Task<string?> OpenFolderAsync(string title,
+        string? suggestedStartPath = null);
+
+    // 颜色选择器
+    Task<Color?> PickColorAsync(Color current);
 }

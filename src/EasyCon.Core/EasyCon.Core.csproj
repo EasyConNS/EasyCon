@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>warnings</Nullable>
   </PropertyGroup>
   <ItemGroup>
-	  <PackageReference Include="pythonnet" />
-	  <PackageReference Include="NLua" />
-	  
+	  <PackageReference Include="YamlDotNet" />
+
 	  <ProjectReference Include="..\EasyCon.Capture\EasyCon.Capture.csproj" />
 	  <ProjectReference Include="..\EasyCon.Script\EasyCon.Script.csproj" />
 	  <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />

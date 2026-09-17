@@ -1,0 +1,99 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
+             x:Class="EasyCon2.Avalonia.Views.Shared.FeatureCenterPage"
+             x:DataType="vm:MainWindowViewModel">
+    <ScrollViewer Classes="settings-scroll"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto"
+                  MinWidth="340">
+        <StackPanel Classes="settings-page">
+            <Border Classes="settings-card">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="card-title"
+                               Text="远程运行"/>
+                    <Grid Classes="feature-row"
+                          ColumnDefinitions="*,*"
+                          ColumnSpacing="10">
+                        <Button Content="远程运行"
+                                Command="{Binding RemoteRunCommand}"
+                                HorizontalAlignment="Stretch"/>
+                        <Button Grid.Column="1"
+                                Content="远程停止"
+                                Command="{Binding RemoteStopCommand}"
+                                HorizontalAlignment="Stretch"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="settings-card">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="card-title"
+                               Text="编译烧录"/>
+                    <Grid Classes="feature-row"
+                          ColumnDefinitions="*,*"
+                          ColumnSpacing="10">
+                        <Button Content="编译烧录"
+                                Command="{Binding CompileFlashCommand}"
+                                HorizontalAlignment="Stretch"/>
+                        <Button Grid.Column="1"
+                                Content="清除烧录"
+                                Command="{Binding ClearFlashCommand}"
+                                HorizontalAlignment="Stretch"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="settings-card">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="card-title"
+                               Text="固件"/>
+                    <Grid Classes="feature-row"
+                          ColumnDefinitions="*,Auto"
+                          ColumnSpacing="10">
+                        <ComboBox ItemsSource="{Binding FirmwareOptions}"
+                                  SelectedItem="{Binding SelectedFirmware}"
+                                  HorizontalAlignment="Stretch"/>
+                        <Button Grid.Column="1"
+                                Content="生成"
+                                Command="{Binding GenerateFirmwareCommand}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Classes="settings-card">
+                <Grid Classes="feature-row"
+                      ColumnDefinitions="*,Auto">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="card-title"
+                                   Text="蓝牙手柄设置"/>
+                        <TextBlock Classes="setting-caption"
+                                   Text="ESP32 手柄参数配置"/>
+                    </StackPanel>
+                    <Button Grid.Column="1"
+                            Content="配置"
+                            Command="{Binding OpenESPConfigCommand}"
+                            VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <Border Classes="settings-card dark-disabled-buttons disabled-feature-card"
+                    IsEnabled="False"
+                    Opacity="0.5">
+                <StackPanel Spacing="12">
+                    <TextBlock Classes="card-title"
+                               Text="画图"/>
+                    <Grid Classes="feature-row"
+                          ColumnDefinitions="*,*"
+                          ColumnSpacing="10">
+                        <Button Content="喷射战士"
+                                HorizontalAlignment="Stretch"/>
+                        <Button Grid.Column="1"
+                                Content="自由画板"
+                                HorizontalAlignment="Stretch"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

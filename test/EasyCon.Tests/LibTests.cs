@@ -1,5 +1,9 @@
+using EasyCon.Core.Runner;
 using EasyCon.Script;
+using EasyCon.Script.Ssa;
+using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
+using EasyCon.Tests.Support;
 using EasyScript;
 using System.Collections.Immutable;
 
@@ -38,56 +42,35 @@ public class LibTests
 
     private string WriteLib(string fileName, string code)
     {
-        Directory.CreateDirectory(_libDir);
         var path = Path.Combine(_libDir, fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, code);
         return path;
     }
 
-    private static (Compilation Compilation, bool Success, List<string> Errors) CompileFile(string filePath)
+    private static Value EvalResult(CompileResult compileResult)
     {
-        var tree = SyntaxTree.Load(filePath);
-        var errors = tree.Diagnostics.Where(d => d.IsError).Select(d => d.Message).ToList();
-        if (errors.Count == 0)
-        {
-            try
-            {
-                var compilation = Compilation.Create(tree);
-                var diag = compilation.Compile([]);
-                foreach (var d in diag)
-                    errors.Add(d.Message);
-                if (errors.Count == 0)
-                    return (compilation, true, errors);
-            }
-            catch (Exception ex)
-            {
-                errors.Add(ex.Message);
-            }
-        }
-        return (null!, false, errors);
+        if (compileResult.Image == null)
+            throw new Exception($"编译错误: {string.Join("; ", compileResult.Diagnostics.Where(d => d.IsError).Select(d => d.Message))}");
+        return EcxVm.Run(compileResult.Image!, EcsTestHost.Capabilities(new MockOutputAdapter()),
+            new CancellationTokenSource().Token, [], compileResult.NativeSymbols);
     }
 
-    private static (EvaluationResult Result, bool Success, List<string> Errors) RunFile(
+    private static (CompileResult Result, bool Success, List<string> Errors) CompileFile(string filePath)
+    {
+        var result = Compilation.CompileFile(filePath, new CompileOptions { UseDiskCache = false });
+        var errors = result.Diagnostics.Where(d => d.IsError).Select(d => d.Message).ToList();
+        return (result, errors.Count == 0, errors);
+    }
+
+    private static (Value Result, bool Success, List<string> Errors) RunFile(
         string filePath,
         ImmutableDictionary<string, Func<int>>? extGetters = null)
     {
-        var tree = SyntaxTree.Load(filePath);
-        var errors = tree.Diagnostics.Where(d => d.IsError).Select(d => d.Message).ToList();
-        if (errors.Count > 0)
-            return (null!, false, errors);
-
-        var compilation = Compilation.Create(tree);
-        var diag = compilation.Compile([]);
-        foreach (var d in diag)
-            errors.Add(d.Message);
-        if (errors.Count > 0)
-            return (null!, false, errors);
-
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null,
-            extGetters ?? [],
-            new CancellationTokenSource().Token);
-        return (result, !result.Diagnostics.HasErrors(), []);
+        var (result, success, errors) = CompileFile(filePath);
+        if (!success)
+            return (Value.Void, false, errors);
+        return (EvalResult(result), true, []);
     }
 
     #region 自动加载
@@ -147,17 +130,7 @@ ENDFUNC
 
     #endregion
 
-    #region 库脚本解析限制
-
-    [Test]
-    public void LibParse_VariableDef_Succeeds()
-    {
-        WriteLib("vars.ecs", "$count = 10");
-        var mainPath = WriteMain("$x = 1");
-        var (_, success, errors) = CompileFile(mainPath);
-
-        Assert.That(success, Is.True, string.Join("; ", errors));
-    }
+    #region 库模块顶层语句（模块语义：v1 lib 白名单退役，顶层语句合法化为 &lt;init:module&gt;）
 
     [Test]
     public void LibParse_ConstantDef_Succeeds()
@@ -184,62 +157,27 @@ ENDFUNC
     }
 
     [Test]
-    public void LibParse_IfStatement_Fails()
+    public void LibInit_TopLevelStatements_BecomeInit()
     {
-        WriteLib("bad.ecs", @"
-IF 1
-    $x = 1
-ENDIF
-");
-        var mainPath = WriteMain("$x = 1");
-        var (_, success, errors) = CompileFile(mainPath);
+        // 模块语义（ModuleSystem.md §6）：lib 顶层语句进入 &lt;init:module&gt;，链接序先于 main 执行
+        WriteLib("init.ecs", "$cnt = 0\n$cnt = $cnt + 1\n");
+        var mainPath = WriteMain("$x = 1\nRETURN $x");
+        var (result, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
+        Assert.That(success, Is.True, string.Join("; ", errors));
+        var init = result.Artifacts.Single(a => a.Name == "init");
+        Assert.That(init.HasInit, Is.True, "顶层语句应置 HasInit（&lt;init:module&gt;）");
     }
 
     [Test]
-    public void LibParse_ForLoop_Fails()
+    public void LibInit_WaitAndKeyStatements_Compile()
     {
-        WriteLib("bad.ecs", "FOR $i = 1 TO 5\nNEXT");
-        var mainPath = WriteMain("$x = 1");
-        var (_, success, errors) = CompileFile(mainPath);
+        WriteLib("init.ecs", "WAIT 1\nA 1\n");
+        var mainPath = WriteMain("$x = 1\nRETURN $x");
+        var (result, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
-    }
-
-    [Test]
-    public void LibParse_WhileLoop_Fails()
-    {
-        WriteLib("bad.ecs", "WHILE 0\nEND");
-        var mainPath = WriteMain("$x = 1");
-        var (_, success, errors) = CompileFile(mainPath);
-
-        Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
-    }
-
-    [Test]
-    public void LibParse_WaitStatement_Fails()
-    {
-        WriteLib("bad.ecs", "WAIT 100");
-        var mainPath = WriteMain("$x = 1");
-        var (_, success, errors) = CompileFile(mainPath);
-
-        Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
-    }
-
-    [Test]
-    public void LibParse_KeyPress_Fails()
-    {
-        WriteLib("bad.ecs", "A 100");
-        var mainPath = WriteMain("$x = 1");
-        var (_, success, errors) = CompileFile(mainPath);
-
-        Assert.That(success, Is.False);
-        Assert.That(errors, Has.Some.Contains("库脚本只允许变量定义、常量定义和函数定义"));
+        Assert.That(success, Is.True, string.Join("; ", errors));
+        Assert.That(result.Image!.KeyAction, Is.True, "lib init 的按键应并集进 KeyAction");
     }
 
     #endregion
@@ -284,10 +222,10 @@ $r = leak()
 
     #endregion
 
-    #region 作用域隔离 - lib 可以访问自身变量和常量
+    #region 作用域隔离 - lib 可以访问自身常量
 
     [Test]
-    public void LibScope_CanAccessLibOwnGlobal()
+    public void LibScope_CanAccessLibOwnConstant()
     {
         WriteLib("lib1.ecs", @"
 _offset = 10
@@ -295,40 +233,16 @@ FUNC addOffset($x) : int
     RETURN $x + _offset
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = addOffset(5)");
+        var mainPath = WriteMain("$r = addOffset(5)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(15));
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(15));
     }
 
-    [Test]
-    public void LibScope_CanAccessLibVariable()
-    {
-        WriteLib("lib1.ecs", @"
-$counter = 0
-FUNC incCounter : int
-    $counter = $counter + 1
-    RETURN $counter
-ENDFUNC
-");
-        var mainPath = WriteMain(@"
-$a = incCounter()
-$r = incCounter()
-");
-        var (compilation, success, errors) = CompileFile(mainPath);
-
-        Assert.That(success, Is.True, string.Join("; ", errors));
-
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(2));
-    }
+    #endregion
 
     [Test]
     public void LibScope_LibFuncCanCallOtherLibFunc()
@@ -341,42 +255,38 @@ FUNC sumSquares($a, $b) : int
     RETURN square($a) + square($b)
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = sumSquares(3, 4)");
+        var mainPath = WriteMain("$r = sumSquares(3, 4)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(25));
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(25));
     }
 
     [Test]
     public void LibScope_MultipleLibFiles_CrossRef()
     {
-        WriteLib("a.ecs", @"
+        // 模块语义：跨模块调用需显式 IMPORT（b IMPORT a；lib 内 import 解析到自身 lib/ 子目录）
+        WriteLib("lib/a.ecs", @"
 FUNC double($x) : int
     RETURN $x * 2
 ENDFUNC
 ");
         WriteLib("b.ecs", @"
+IMPORT ""a.ecs""
 FUNC quad($x) : int
     RETURN double(double($x))
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = quad(3)");
+        var mainPath = WriteMain("$r = quad(3)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(12));
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(12));
     }
-
-    #endregion
 
     #region 主脚本调用 lib 函数
 
@@ -388,15 +298,13 @@ FUNC add($a, $b) : int
     RETURN $a + $b
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = add(10, 20)");
+        var mainPath = WriteMain("$r = add(10, 20)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(30));
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(30));
     }
 
     [Test]
@@ -410,55 +318,156 @@ FUNC fib($n) : int
     RETURN fib($n - 1) + fib($n - 2)
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = fib(10)");
+        var mainPath = WriteMain("$r = fib(10)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.EqualTo(55));
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(55));
     }
 
     [Test]
-    public void MainCannotAccess_LibVariable()
+    public void LibGlobal_NotAccessibleFromMain()
     {
-        WriteLib("lib1.ecs", "$libVar = 100");
-        var mainPath = WriteMain("$r = $libVar");
-        var (_, success, errors) = CompileFile(mainPath);
+        // main 引用 lib 全局变量 → 编译错误（变量不可见）
+        WriteLib("lib1.ecs", "_data = 42");
+        var mainPath = WriteMain("$r = _data");
+        var (compilation, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.False, "main script should not access lib variables");
+        Assert.That(success, Is.False);
         Assert.That(errors, Has.Some.Contains("找不到变量"));
     }
 
     [Test]
-    public void MainCannotAccess_LibConstant()
+    public void LibGlobal_SameNameMainGlobal_NoConflict()
     {
-        WriteLib("lib1.ecs", "_LIB_CONST = 100");
-        var mainPath = WriteMain("$r = _LIB_CONST");
-        var (_, success, errors) = CompileFile(mainPath);
+        // main 声明与 lib 同名全局变量 → 不冲突（lib 变量不暴露）
+        WriteLib("lib1.ecs", "_offset = 10");
+        var mainPath = WriteMain("_offset = 20\nRETURN _offset");
+        var (compilation, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.False, "main script should not access lib constants");
+        Assert.That(success, Is.True, string.Join("; ", errors));
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(20));
+    }
+
+    [Test]
+    public void LibGlobal_LibFuncCanAccessOwnGlobal()
+    {
+        // lib 函数访问 lib 自身全局变量（回归）
+        WriteLib("lib1.ecs", @"
+_offset = 10
+FUNC addOffset($x) : int
+    RETURN $x + _offset
+ENDFUNC
+");
+        var mainPath = WriteMain("$r = addOffset(5)\nRETURN $r");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(15));
+    }
+
+    [Test]
+    public void LibGlobal_MainFuncLocalCanShadowName()
+    {
+        // main 函数内声明与 lib 全局同名的局部变量 → 允许
+        WriteLib("lib1.ecs", @"
+_data = 99
+FUNC getLibData() : int
+    RETURN _data
+ENDFUNC
+");
+        var mainPath = WriteMain(@"
+FUNC mainFunc() : int
+    $data = 1
+    RETURN $data
+ENDFUNC
+$r = mainFunc()
+RETURN $r");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void LibGlobal_VarIsolation()
+    {
+        // lib 中 $counter 是可变全局变量，lib 函数可读写，main 不可见
+        WriteLib("lib1.ecs", @"
+$counter = 0
+FUNC increment() : int
+    $counter = $counter + 1
+    RETURN $counter
+ENDFUNC
+FUNC getCounter() : int
+    RETURN $counter
+ENDFUNC
+");
+        var mainPath = WriteMain(@"
+$r = increment()
+$r = increment()
+$r = getCounter()
+RETURN $r");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(2));
+    }
+
+    [Test]
+    public void LibGlobal_VarNoConflictWithMain()
+    {
+        // main 声明与 lib 同名 $ 全局变量 → 不冲突（lib 变量不暴露）
+        WriteLib("lib1.ecs", "$total = 0");
+        var mainPath = WriteMain("$total = 10\nRETURN $total");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(10));
+    }
+
+    [Test]
+    public void LibGlobal_VarNotAccessibleFromMain()
+    {
+        // main 引用 lib $ 全局变量 → 编译错误（变量不可见）
+        WriteLib("lib1.ecs", "$count = 5");
+        var mainPath = WriteMain("$r = $count");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.False);
         Assert.That(errors, Has.Some.Contains("找不到变量"));
     }
 
-    #endregion
-
-    #region IsLib 标记
-
     [Test]
-    public void IsLib_MainTree_IsFalse()
+    public void LibGlobal_VarInit_ArbitraryExpressions()
     {
-        var tree = SyntaxTree.Parse("$x = 1");
-        Assert.That(tree.IsLib, Is.False);
+        // 模块语义：lib 顶层赋值是 &lt;init&gt; 语句，非常量表达式合法（运行期求值）
+        WriteLib("lib1.ecs", "$val = 1 + 2\nFUNC get() : int\n RETURN $val\nENDFUNC");
+        var mainPath = WriteMain("RETURN get()");
+        var (result, success, errors) = CompileFile(mainPath);
+        Assert.That(success, Is.True, string.Join("; ", errors));
+        Assert.That(EvalResult(result).AsInt(), Is.EqualTo(3));
     }
 
     [Test]
-    public void IsLib_LibTree_IsTrue()
+    public void LibGlobal_VarNonConstantInit_RunsAtInit()
     {
-        var tree = SyntaxTree.Parse("$x = 1", isLib: true);
-        Assert.That(tree.IsLib, Is.True);
+        WriteLib("lib1.ecs", "$v = RAND(10)\nFUNC get() : int\n RETURN $v\nENDFUNC");
+        var mainPath = WriteMain("RETURN get()");
+        var (result, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+        Assert.That(EvalResult(result).AsInt(), Is.InRange(0, 9));
     }
 
     #endregion
@@ -473,15 +482,86 @@ FUNC myRand : int
     RETURN RAND(100)
 ENDFUNC
 ");
-        var mainPath = WriteMain("$r = myRand()");
+        var mainPath = WriteMain("$r = myRand()\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
 
-        var result = compilation.Evaluate(
-            new MockOutputAdapter(), null, [],
-            new CancellationTokenSource().Token);
-        Assert.That(result.Result.AsInt(), Is.InRange(0, 99));
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.InRange(0, 99));
+    }
+
+    #endregion
+
+    #region import 语句加载 lib
+
+    [Test]
+    public void Import_LoadsLibFile()
+    {
+        WriteLib("math.ecs", @"
+FUNC triple($x) : int
+    RETURN $x * 3
+ENDFUNC
+");
+        var mainPath = WriteMain(@"IMPORT ""math.ecs""
+$r = triple(7)
+RETURN $r");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(21));
+    }
+
+    [Test]
+    public void Import_MultipleImports()
+    {
+        WriteLib("a.ecs", @"
+FUNC add($a, $b) : int
+    RETURN $a + $b
+ENDFUNC
+");
+        WriteLib("b.ecs", @"
+FUNC mul($a, $b) : int
+    RETURN $a * $b
+ENDFUNC
+");
+        var mainPath = WriteMain(@"IMPORT ""a.ecs""
+IMPORT ""b.ecs""
+$r = add(mul(3, 4), 5)
+RETURN $r");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(17));
+    }
+
+    [Test]
+    public void Import_AndAutoLoad_Coexist()
+    {
+        WriteLib("a.ecs", @"
+FUNC add($a, $b) : int
+    RETURN $a + $b
+ENDFUNC
+");
+        WriteLib("b.ecs", @"
+FUNC mul($a, $b) : int
+    RETURN $a * $b
+ENDFUNC
+");
+        // 只 import a.ecs，b.ecs 通过自动加载
+        var mainPath = WriteMain(@"IMPORT ""a.ecs""
+$r = add(mul(3, 4), 1)
+RETURN $r");
+        var (compilation, success, errors) = CompileFile(mainPath);
+
+        Assert.That(success, Is.True, string.Join("; ", errors));
+
+        var result = EvalResult(compilation);
+        Assert.That(result.AsInt(), Is.EqualTo(13));
     }
 
     #endregion

@@ -1,0 +1,183 @@
+# CSV文件读取库
+# 使用extern导入libc标准库文件操作函数
+# 支持RFC 4180 CSV格式：逗号分隔，双引号包裹字符串，""转义引号
+
+# ========== libc extern 函数声明 (AS形式 + lib_前缀) ==========
+
+# 文件操作
+EXTERN FUNC lib_fopen($path:STRING, $mode:STRING):PTR AS "fopen" FROM "libc.so.6"
+EXTERN FUNC lib_fclose($stream:PTR):INT AS "fclose" FROM "libc.so.6"
+EXTERN FUNC lib_fgets($buf:PTR, $size:INT, $stream:PTR):STRING AS "fgets" FROM "libc.so.6"
+EXTERN FUNC lib_feof($stream:PTR):INT AS "feof" FROM "libc.so.6"
+EXTERN FUNC lib_fread($buf:PTR, $size:INT, $count:INT, $stream:PTR):INT AS "fread" FROM "libc.so.6"
+EXTERN FUNC lib_fseek($stream:PTR, $offset:INT, $whence:INT):INT AS "fseek" FROM "libc.so.6"
+EXTERN FUNC lib_ftell($stream:PTR):INT AS "ftell" FROM "libc.so.6"
+
+# 内存操作
+EXTERN FUNC lib_malloc($size:INT):PTR AS "malloc" FROM "libc.so.6"
+EXTERN FUNC lib_free($ptr:PTR) AS "free" FROM "libc.so.6"
+
+# 字符串操作
+EXTERN FUNC lib_strchr($s:STRING, $c:INT):STRING AS "strchr" FROM "libc.so.6"
+
+# ========== 全局状态 ==========
+
+$csv_lines = []string
+
+# ========== 内部工具函数 ==========
+
+# 在字符串中查找字符首次出现的位置
+# $str: 搜索的字符串
+# $ch: 要查找的字符(ASCII码)
+# 返回: 字符位置索引，未找到返回-1
+FUNC csv_strpos($str:STRING, $ch:INT):INT
+    $rest = lib_strchr($str, $ch)
+    IF $rest == ""
+        RETURN -1
+    ENDIF
+    RETURN LEN($str) - LEN($rest)
+ENDFUNC
+
+# 解析一行CSV文本为字段数组
+# 处理RFC 4180格式：双引号包裹、逗号分隔、""转义引号
+# $line: 一行CSV文本（不含换行符）
+# 返回: 字段字符串数组
+FUNC csv_parse_line($line:STRING):STRING[]
+    $fields = []string
+    $len = LEN($line)
+    $i = 0
+    $field = ""
+    $inQuote = 1 > 2
+
+    WHILE $i < $len
+        $ch = $line[$i]
+
+        IF not $inQuote
+            # === 引号外 ===
+            IF $ch == '"'
+                # 进入引号
+                $inQuote = 1 > 0
+                $i += 1
+                CONTINUE
+            ENDIF
+            IF $ch == ","
+                # 字段分隔符：保存当前字段，开始新字段
+                $fields = APPEND($fields, $field)
+                $field = ""
+                $i += 1
+                CONTINUE
+            ENDIF
+            # 普通字符追加到字段
+            $field = $field & $ch
+        ELSE
+            # === 引号内 ===
+            IF $ch == '"'
+                # 检查是否为转义引号 ""
+                IF $i + 1 < $len
+                    $next = $line[$i + 1]
+                    IF $next == '"'
+                        # 转义引号：追加一个"并跳过两个字符
+                        $field = $field & '"'
+                        $i += 2
+                        CONTINUE
+                    ENDIF
+                ENDIF
+                # 结束引号
+                $inQuote = 1 > 2
+                $i += 1
+                CONTINUE
+            ENDIF
+            # 引号内的普通字符
+            $field = $field & $ch
+        ENDIF
+
+        $i += 1
+    END
+
+    # 添加最后一个字段
+    $fields = APPEND($fields, $field)
+    RETURN $fields
+ENDFUNC
+
+# ========== 公共API ==========
+
+# 打开CSV文件并读取所有行到内存
+# $path: CSV文件路径
+# 返回: 数据行数，失败返回-1
+FUNC csv_open($path:STRING):INT
+    $fp = lib_fopen($path, "r")
+    IF $fp == 0
+        PRINT "错误: 无法打开文件 " & $path
+        RETURN -1
+    ENDIF
+
+    # 分配读取缓冲区
+    $bufSize = 4096
+    $buf = lib_malloc($bufSize)
+    $csv_lines = []string
+
+    # 逐行读取文件
+    FOR
+        $line = lib_fgets($buf, $bufSize, $fp)
+        # fgets返回空字符串表示EOF或错误
+        IF $line == ""
+            BREAK
+        ENDIF
+
+        # 去除行尾换行符 \n 和 \r
+        $len = LEN($line)
+        IF $len > 0
+            $last = $line[$len - 1]
+            IF $last == "\n"
+                $line = $line[0:$len - 1]
+                $len = LEN($line)
+            ENDIF
+        ENDIF
+        IF $len > 0
+            $last = $line[$len - 1]
+            IF $last == "\r"
+                $line = $line[0:$len - 1]
+            ENDIF
+        ENDIF
+
+        $csv_lines = APPEND($csv_lines, $line)
+    NEXT
+
+    # 释放资源
+    lib_free($buf)
+    lib_fclose($fp)
+
+    RETURN LEN($csv_lines)
+ENDFUNC
+
+# 按索引获取CSV行数据
+# $index: 行索引（从0开始）
+# 返回: 该行的字段字符串数组，索引越界返回空数组
+FUNC csv_get_row($index:INT):STRING[]
+    $empty = []string
+    $total = LEN($csv_lines)
+    IF $index < 0 or $index >= $total
+        PRINT "错误: 行索引 " & $index & " 超出范围 [0, " & $total & ")"
+        RETURN $empty
+    ENDIF
+    $raw = $csv_lines[$index]
+    RETURN csv_parse_line($raw)
+ENDFUNC
+
+# 获取CSV文件总行数
+# 返回: 已加载的行数
+FUNC csv_line_count():INT
+    RETURN LEN($csv_lines)
+ENDFUNC
+
+# 获取指定行指定列的字段值
+# $row: 行索引
+# $col: 列索引
+# 返回: 字段值字符串，越界返回空字符串
+FUNC csv_get_field($row:INT, $col:INT):STRING
+    $fields = csv_get_row($row)
+    IF $col < 0 or $col >= LEN($fields)
+        RETURN ""
+    ENDIF
+    RETURN $fields[$col]
+ENDFUNC

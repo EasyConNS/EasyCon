@@ -2,7 +2,7 @@ using EasyScript;
 
 namespace EasyCon.Core.Services;
 
-public interface ILogService : IOutputAdapter
+public interface ILogService : IIoAdapter
 {
     event Action<string?, string?>? LogAppended;
     void Clear();

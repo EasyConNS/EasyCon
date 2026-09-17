@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mcp="using:EasyCon2.Avalonia.Core.Mcp"
+             x:Class="EasyCon2.Avalonia.Core.Mcp.McpConfigControl"
+             x:DataType="mcp:McpConfigViewModel">
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
+        <StackPanel Grid.Row="0" Spacing="8">
+            <TextBlock Text="MCP 服务器配置" FontSize="18" FontWeight="Bold"/>
+            <TextBlock Text="配置 Model Context Protocol 服务器，AI Agent 可调用其提供的工具、资源和提示模板。" Opacity="0.7" TextWrapping="Wrap"/>
+            <Button Content="添加服务器" Command="{Binding AddServerCommand}" HorizontalAlignment="Left"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" Margin="0,16,0,0">
+            <ItemsControl ItemsSource="{Binding Servers}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="mcp:McpServerItemViewModel">
+                        <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,0,12">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding Name}" Watermark="服务器名称"/>
+                                    <Button Grid.Column="1" Content="删除" Command="{Binding DeleteCommand}" Margin="8,0,0,0"/>
+                                </Grid>
+                                
+                                <TextBox Text="{Binding Command}" Watermark="命令 (如 npx, node, python)"/>
+                                <TextBox Text="{Binding ArgsText}" Watermark="参数 (逗号分隔)"/>
+                                <TextBox Text="{Binding EnvText}" Watermark="环境变量 (KEY=VALUE，每行一个)" AcceptsReturn="True" MinHeight="60"/>
+                                
+                                <CheckBox IsChecked="{Binding Enabled}" Content="启用"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding ErrorMessage}"
+                       Foreground="{DynamicResource WorkbenchDangerBrush}"
+                       FontSize="13"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding HasError}"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="取消" Click="OnCancel"/>
+                <Button Content="保存" Click="OnSave" Classes="accent"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

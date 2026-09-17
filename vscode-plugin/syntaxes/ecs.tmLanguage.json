@@ -2,17 +2,21 @@
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
   "name": "EasyCon Script",
   "scopeName": "source.ecs",
-  "fileTypes": ["ecs"],
+  "fileTypes": [".ecs"],
   "patterns": [
     { "include": "#comments" },
     { "include": "#strings" },
-    { "include": "#variables" },
-    { "include": "#operators" },
-    { "include": "#numbers" },
+    { "include": "#extern_funcs" },
+    { "include": "#func_refs" },
     { "include": "#keywords" },
-    { "include": "#gamepad" },
-    { "include": "#support" },
-    { "include": "#identifiers" }
+    { "include": "#numbers" },
+    { "include": "#variables" },
+    { "include": "#externals" },
+    { "include": "#operators" },
+    { "include": "#buttons" },
+    { "include": "#sticks" },
+    { "include": "#directions" },
+    { "include": "#builtins" }
   ],
   "repository": {
     "comments": {
@@ -44,7 +48,13 @@
           },
           "endCaptures": {
             "0": { "name": "punctuation.definition.string.end.ecs" }
-          }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.ecs",
+              "match": "\\\\."
+            }
+          ]
         },
         {
           "begin": "'",
@@ -55,23 +65,125 @@
           },
           "endCaptures": {
             "0": { "name": "punctuation.definition.string.end.ecs" }
+          },
+          "patterns": [
+            {
+              "name": "constant.character.escape.ecs",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "extern_funcs": {
+      "patterns": [
+        {
+          "begin": "(?i)\b(EXTERN)\\s+(FUNC)\\s+([a-zA-Z_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff\uFF01]*)",
+          "end": "(?=$|\\n)",
+          "beginCaptures": {
+            "1": { "name": "keyword.other.extern.ecs" },
+            "2": { "name": "storage.function.declaration.ecs" },
+            "3": { "name": "entity.name.function.ecs" }
+          },
+          "patterns": [
+            {
+              "match": "(?i)\\b(INT|BOOL|STRING|PTR|DOUBLE|VOID)\\b",
+              "name": "storage.type.ecs"
+            },
+            {
+              "match": "\"[^\"]*\"",
+              "name": "string.quoted.double.ecs"
+            },
+            {
+              "match": "(?i)\\b(FROM)\\b",
+              "name": "keyword.other.extern.ecs"
+            },
+            {
+              "match": "\\$\\$?[a-zA-Z0-9_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff]*",
+              "name": "variable.other.ecs"
+            }
+          ]
+        }
+      ]
+    },
+    "func_refs": {
+      "patterns": [
+        {
+          "begin": "(?i)\\b(FUNC)\\b",
+          "end": "(?=$|\\n)",
+          "name": "storage.function.declaration.ecs",
+          "beginCaptures": {
+            "1": { "name": "storage.function.declaration.ecs" }
+          },
+          "patterns": [
+            {
+              "match": "\\b([a-zA-Z_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff\uFF01]*)\\s*(?=\\()",
+              "captures": {
+                "1": { "name": "entity.name.function.ecs" }
+              }
+            },
+            {
+              "match": "\\b([a-zA-Z_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff\uFF01]*)\\b",
+              "captures": {
+                "1": { "name": "entity.name.function.ecs" }
+              }
+            },
+            {
+              "match": "\\$\\$?[a-zA-Z0-9_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff]*",
+              "name": "variable.other.ecs"
+            },
+            {
+              "match": ":",
+              "name": "keyword.control.ecs"
+            },
+            {
+              "match": "(?i)\\b(INT|BOOL|STRING|PTR|DOUBLE|VOID)\\b",
+              "name": "storage.type.ecs"
+            }
+          ]
+        },
+        {
+          "match": "\\b(CALL)\\s+([a-zA-Z_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff\uFF01]*)",
+          "captures": {
+            "1": { "name": "keyword.control.ecs" },
+            "2": { "name": "entity.name.function.ecs" }
           }
         }
       ]
     },
-    "variables": {
+    "keywords": {
       "patterns": [
         {
-          "match": "(?i)\\$[a-zA-Z0-9_\u4e00-\u9fff]+\\b",
-          "name": "variable.other.ecs"
+          "match": "(?i)\\b(EXTERN|FROM)\\b",
+          "name": "keyword.other.extern.ecs"
         },
         {
-          "match": "(?i)@[a-zA-Z0-9_\u4e00-\u9fff]+\\b",
-          "name": "variable.other.capture.ecs"
+          "match": "(?i)\\b(ENDFUNC)\\b",
+          "name": "storage.function.declaration.ecs"
         },
         {
-          "match": "(?i)_[a-zA-Z0-9_\u4e00-\u9fff]+\\b",
-          "name": "constant.other.ecs"
+          "match": "(?i)\\b(BREAK|CONTINUE|RETURN)\\b",
+          "name": "keyword.control.flow.ecs"
+        },
+        {
+          "match": "(?i)\\b(FOR|WHILE|UNTIL|END|NEXT)\\b",
+          "name": "keyword.control.repeat.ecs"
+        },
+        {
+          "match": "(?i)\\b(IF|ELIF|ELSE|ENDIF)\\b",
+          "name": "keyword.control.conditional.ecs"
+        },
+        {
+          "match": "(?i)\\b(STRUCT)\\b",
+          "name": "keyword.control.struct.ecs"
+        },
+        {
+          "match": "(?i)\\b(INT|BOOL|STRING|PTR|DOUBLE|VOID)\\b",
+          "name": "storage.type.ecs"
+        },
+        {
+          "match": "(?i)\\b(IMPORT|TO|STEP|TRUE|FALSE|RESET|WAIT|CALL)\\b",
+          "name": "keyword.control.ecs"
         }
       ]
     },
@@ -83,50 +195,19 @@
         }
       ]
     },
-    "keywords": {
+    "variables": {
       "patterns": [
         {
-          "match": "(?i)\\b(ENDFUNC)\\b",
-          "name": "storage.function.declaration.ecs"
-        },
+          "match": "\\$\\$?[a-zA-Z0-9_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff]*",
+          "name": "variable.other.ecs"
+        }
+      ]
+    },
+    "externals": {
+      "patterns": [
         {
-          "begin": "(?i)\\b(FUNC)\\b",
-          "end": "(?=$|\\n)",
-          "name": "storage.function.declaration.ecs",
-          "patterns": [
-            {
-              "match": "(?i)\\b[a-zA-Z_][a-zA-Z0-9_\u4e00-\u9fff]*\\b(?=\\s*\\()",
-              "name": "entity.name.function.ecs"
-            },
-            {
-              "match": "\\$[a-zA-Z0-9_\u4e00-\u9fff]+\\b",
-              "name": "variable.other.ecs"
-            },
-            {
-              "match": ":",
-              "name": "keyword.control.ecs"
-            },
-            {
-              "match": "(?i)\\b(INT|BOOL|STRING)\\b",
-              "name": "storage.type.ecs"
-            }
-          ]
-        },
-        {
-          "match": "(?i)\\b(BREAK|CONTINUE|RETURN)\\b",
-          "name": "keyword.control.flow.ecs"
-        },
-        {
-          "match": "(?i)\\b(FOR|WHILE|END|NEXT)\\b",
-          "name": "keyword.control.repeat.ecs"
-        },
-        {
-          "match": "(?i)\\b(IF|ELIF|ELSE|ENDIF)\\b",
-          "name": "keyword.control.conditional.ecs"
-        },
-        {
-          "match": "(?i)\\b(INT|BOOL|STRING)\\b",
-          "name": "storage.type.ecs"
+          "match": "@[a-zA-Z_\u4e00-\u9fff][a-zA-Z0-9_\u4e00-\u9fff]*",
+          "name": "variable.language.ecs"
         }
       ]
     },
@@ -138,7 +219,7 @@
         },
         {
           "name": "keyword.operator.comparison.ecs",
-          "match": "(\\b(and|or)\\b)|(==|!=|<=|>=|<|>)"
+          "match": "(?i)\\b(and|or|in)\\b|(==|!=|<=|>=|<|>)"
         },
         {
           "name": "keyword.operator.arithmetic.ecs",
@@ -162,27 +243,35 @@
         }
       ]
     },
-    "gamepad": {
+    "buttons": {
       "patterns": [
         {
-          "match": "(?i)\\b(A|B|X|Y|L|R|ZL|ZR|PLUS|MINUS|LCLICK|RCLICK|HOME|CAPTURE|UP|UPRIGHT|RIGHT|DOWNRIGHT|DOWN|DOWNLEFT|LEFT|UPLEFT|LS|RS)\\b",
-          "name": "constant.language.gamepad.ecs"
+          "name": "entity.name.tag",
+          "match": "\\b(?i:LCLICK|RCLICK|CAPTURE|MINUS|HOME|PLUS|ZL|ZR|UP|DOWN|LEFT|RIGHT|L|R|A|B|X|Y)\\b"
         }
       ]
     },
-    "identifiers": {
+    "sticks": {
       "patterns": [
         {
-          "match": "(?i)\\b[a-zA-Z][a-zA-Z0-9_\u4e00-\u9fff]*\\b",
-          "name": "entity.name.function.ecs"
+          "name": "storage.type",
+          "match": "\\b(?i:LS|RS)\\b"
         }
       ]
     },
-    "support": {
+    "directions": {
+      "patterns": [
+        {
+          "name": "constant.language",
+          "match": "\\b(?i:DOWNLEFT|DOWNRIGHT|UPLEFT|UPRIGHT)\\b"
+        }
+      ]
+    },
+    "builtins": {
       "patterns": [
         {
           "comment": "Built-in functions",
-          "match": "(?i)\\b(RAND|TIME|PRINT|ALERT|WAIT|AMIIBO|BEEP)\\b",
+          "match": "\\b(?i:RAND|TIME|PRINT|ALERT|WAIT|AMIIBO|BEEP)\\b",
           "name": "support.function.builtin.ecs"
         }
       ]

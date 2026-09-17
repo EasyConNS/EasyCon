@@ -6,38 +6,27 @@
     <LangVersion>preview</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="AvalonEdit" Version="6.3.1.120" />
+    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.17" />
     <PackageVersion Include="AvaloniaEdit.TextMate" Version="12.0.0" />
     <PackageVersion Include="GamepadApi" Version="1.0.1" />
+    <PackageVersion Include="ppy.SDL3-CS" Version="2026.429.0" />
     <PackageVersion Include="System.CommandLine" Version="3.0.0-preview.2.26159.112" />
+    <PackageVersion Include="System.Drawing.Common" Version="11.0.0-preview.4.26230.115" />
     <PackageVersion Include="System.IO.Ports" Version="10.0.6" />
     <PackageVersion Include="System.Management" Version="10.0.6" />
-    <PackageVersion Include="WPF-UI" Version="4.2.0" />
-    <PackageVersion Include="WPF-UI.DependencyInjection" Version="4.2.0" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageVersion Include="OpenCvSharp4" Version="4.13.0.20260330" />
-    <PackageVersion Include="OpenCvSharp4.Extensions" Version="4.13.0.20260330" />
-    <PackageVersion Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
-    <PackageVersion Include="OpenCvSharp4.WpfExtensions" Version="4.13.0.20260330" />
-    <PackageVersion Include="OpenCvSharp4.official.runtime.linux-x64" Version="4.13.0.20260329" />
-    <PackageVersion Include="OneWare.OpenCvSharp4.runtime.osx-arm64" Version="4.13.0.18" />
-    <PackageVersion Include="SharpDX" Version="4.2.0" />
-    <PackageVersion Include="SharpDX.XInput" Version="4.2.0" />
     <PackageVersion Include="WebSocketSharp-netstandard" Version="1.0.1" />
-    <PackageVersion Include="Tesseract" Version="5.2.0" />
-    <PackageVersion Include="Tesseract.Drawing" Version="5.2.0" />
-    <PackageVersion Include="NLua" Version="1.7.8" />
-    <PackageVersion Include="pythonnet" Version="3.0.5" />
-    <PackageVersion Include="Avalonia" Version="12.0.1" />
-    <PackageVersion Include="Avalonia.Desktop" Version="12.0.1" />
-    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.1" />
+    <PackageVersion Include="Avalonia" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.4" />
     <PackageVersion Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
-    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.0.1" />
-    <PackageVersion Include="Avalonia.Win32.Interoperability" Version="12.0.1" />
+    <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Win32.Interoperability" Version="12.0.4" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
+    <PackageVersion Include="MessageBox.Avalonia" Version="12.0.0" />
     <PackageVersion Include="SukiUI" Version="6.0.3" />
     <PackageVersion Include="coverlet.collector" Version="8.0.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
@@ -45,6 +34,16 @@
     <PackageVersion Include="NUnit.Analyzers" Version="4.12.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
     <PackageVersion Include="FlashCap" Version="1.11.0" />
-    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageVersion Include="OpenCvSharp5" Version="5.0.0.20260905" />
+    <PackageVersion Include="OpenCvSharp5.runtime.win" Version="5.0.0.20260905" />
+    <PackageVersion Include="OpenCvSharp5.official.runtime.linux-x64" Version="5.0.0.20260905" />
+    <PackageVersion Include="OpenCvSharp5.runtime.osx.arm64" Version="5.0.0.20260905" />
+    <PackageVersion Include="OmniSharp.Extensions.LanguageClient" Version="0.19.9" />
+    <PackageVersion Include="EmmyLua.LanguageServer.Framework" Version="0.9.2" />
+    <PackageVersion Include="YamlDotNet" Version="18.0.0" />
+    <PackageVersion Include="ModelContextProtocol.Core" Version="1.4.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageVersion Include="Serilog" Version="4.3.1" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>
 </Project>

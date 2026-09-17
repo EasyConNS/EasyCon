@@ -1,4 +1,4 @@
-namespace EasyCon.Script.Assembly.Instructions;
+namespace EasyCon.Script.Asm.Instructions;
 
 abstract class AsmKey : Instruction
 {
@@ -68,7 +68,7 @@ class AsmKey_Compressed : AsmKey
 
 class AsmKey_Hold : AsmKey
 {
-    public Instruction HoldUntil;
+    public Instruction? HoldUntil;
 
     public static Instruction Create(int keycode)
     {

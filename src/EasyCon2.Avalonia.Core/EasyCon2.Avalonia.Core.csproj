@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="EasyCon2.Avalonia.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
@@ -15,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
+    <ProjectReference Include="..\EasyCon.Lsp\EasyCon.Lsp.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,10 +28,15 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.AvaloniaEdit" />
+    <PackageReference Include="OmniSharp.Extensions.LanguageClient" />
+    <PackageReference Include="ModelContextProtocol.Core" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="VPad\Resources\*.png" />
     <EmbeddedResource Include="Resources\Scripts\*.xshd" />
   </ItemGroup>
-</Project>
+
+  </Project>

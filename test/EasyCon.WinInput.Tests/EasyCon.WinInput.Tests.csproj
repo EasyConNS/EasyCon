@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\EasyCon.WinInput\EasyCon.WinInput.csproj" />
+    <ProjectReference Include="..\..\src\EasyCon.Core\EasyCon.Core.csproj" />
   </ItemGroup>
 
 </Project>

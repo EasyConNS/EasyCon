@@ -1,10 +1,10 @@
-namespace EasyCon.Script.Assembly.Instructions;
+namespace EasyCon.Script.Asm.Instructions;
 
 class AsmFor : Instruction
 {
-    public AsmNext Next;
+    public AsmNext? Next;
 
-    public static Instruction Create(AsmNext next = null)
+    public static Instruction Create(AsmNext? next = null)
     {
         var ins = new AsmFor();
         ins.Next = next;

@@ -1,4 +1,4 @@
-using EasyCon.Capture.win;
+﻿using EasyCon.Capture.win;
 using FlashCap;
 using OpenCvSharp;
 using System.Diagnostics;

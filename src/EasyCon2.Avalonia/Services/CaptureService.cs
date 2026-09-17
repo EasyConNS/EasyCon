@@ -1,6 +1,8 @@
-using Avalonia.Threading;
+﻿using Avalonia.Threading;
 using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Services;
+using EasyCon2.Avalonia.Core.Services;
 using OpenCvSharp;
 
 namespace EasyCon2.Avalonia.Services;
@@ -11,9 +13,10 @@ public class CaptureService : ICaptureService
     private readonly object _captureLock = new();
     private readonly System.Timers.Timer _monitorTimer = new(1000);
     private readonly Dictionary<string, int> _sourceIndexMap = new();
-    private OpenCVCapture? _capture;
+    private FrameProducer? _producer;
 
     private readonly Size resol = new(1920, 1080);
+    public string CaptureType { get; set; } = "ANY";
 
     public bool IsConnected
     {
@@ -21,13 +24,15 @@ public class CaptureService : ICaptureService
         {
             lock (_captureLock)
             {
-                return _capture?.IsOpened ?? false;
+                return _producer?.IsOpened ?? false;
             }
         }
     }
 
     public event Action? ConnectionLost;
+#pragma warning disable CS0067
     public event Action? ConnectionRestored;
+#pragma warning restore CS0067
 
     public CaptureService(ILogService logService)
     {
@@ -37,7 +42,7 @@ public class CaptureService : ICaptureService
         {
             lock (_captureLock)
             {
-                if (_capture == null || !_capture.IsOpened)
+                if (_producer == null || !_producer.IsOpened)
                 {
                     _monitorTimer.Stop();
                     Dispatcher.UIThread.Post(() =>
@@ -65,18 +70,22 @@ public class CaptureService : ICaptureService
 
         lock (_captureLock)
         {
-            _capture?.Dispose();
-            _capture = new OpenCVCapture();
-            if (!_capture.Open(deviceId, (int)VideoCaptureAPIs.ANY))
+            _producer?.Dispose();
+            var capture = new OpenCVCapture();
+            if (!capture.Open(deviceId, (int)GetCaptureApi()))
             {
-                _capture = null;
+                capture.Dispose();
                 return false;
             }
+
+            capture.SetResolution(resol.Width, resol.Height);
+            capture.SetProperties();
+            capture.GetProperties();
+
+            _producer = new FrameProducer(capture);
+            _producer.Start();
         }
 
-        _capture.SetResolution(resol.Width, resol.Height);
-        _capture.SetProperties();
-        _capture.GetProperties();
         _monitorTimer.Start();
         return true;
     }
@@ -86,37 +95,37 @@ public class CaptureService : ICaptureService
         _monitorTimer.Stop();
         lock (_captureLock)
         {
-            _capture?.Release();
-            _capture = null;
+            _producer?.Dispose();
+            _producer = null;
         }
     }
 
     /// <summary>
-    /// 线程安全地获取一帧图像。返回的是 Mat 的 Clone 副本，确保调用者拥有唯一的引用。
+    /// 获取最新一帧的租约。热路径无锁，仅对 _producer 引用做易失读取。
+    /// 未连接或尚无帧时返回 null；调用者须持有租约直至不再使用 Mat。
     /// </summary>
-    public Mat? GetMatFrame()
+    public FrameLease? AcquireLatestFrame()
     {
-        lock (_captureLock)
-        {
-            if (_capture == null || !_capture.IsOpened)
-                return null;
-
-            var mat = _capture.GetMatFrame();
-            if (mat.Empty())
-            {
-                mat.Dispose();
-                return null;
-            }
-
-            return mat.Clone();
-        }
+        var producer = Volatile.Read(ref _producer);
+        return producer?.Store.AcquireLatest();
     }
 
     public void SetCaptureProperties(int width, int height)
     {
         lock (_captureLock)
         {
-            _capture?.SetProperties(width, height);
+            _producer?.SetProperties(width, height);
         }
+    }
+
+    private VideoCaptureAPIs GetCaptureApi()
+    {
+        return CaptureType switch
+        {
+            "DSHOW" => VideoCaptureAPIs.DSHOW,
+            "MSMF" => VideoCaptureAPIs.MSMF,
+            "DC1394" => VideoCaptureAPIs.DC1394,
+            _ => VideoCaptureAPIs.ANY
+        };
     }
 }

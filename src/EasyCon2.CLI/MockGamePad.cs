@@ -38,4 +38,9 @@ class MockGamePad : ICGamePad
     {
         Console.WriteLine($"[MOCK] Amiibo -> {index}");
     }
+
+    public void Reset()
+    {
+        Console.WriteLine($"[MOCK] GamePad RESET");
+    }
 }

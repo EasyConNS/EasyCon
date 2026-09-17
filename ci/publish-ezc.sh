@@ -149,8 +149,19 @@ if [ "$OS" == "linux" ] || [ "$OS" == "osx" ]; then
     fi
 
     echo "Avalonia UI 编译成功!"
+
+    # 重命名 Avalonia 产物为 easycon2
+    if [ -f "$PUBLISH_DIR/$AVALONIA_PROJ_NAME" ]; then
+        mv "$PUBLISH_DIR/$AVALONIA_PROJ_NAME" "$PUBLISH_DIR/easycon2"
+        echo "  重命名: $AVALONIA_PROJ_NAME -> easycon2"
+    fi
 else
     echo "跳过 Avalonia 发布（仅支持 Linux 和 macOS 平台）"
+fi
+# 删除调试文件
+if [ -d "$PUBLISH_DIR" ]; then
+    rm -f "$PUBLISH_DIR"/*.pdb 2>/dev/null || true
+    echo "已删除 pdb 调试文件"
 fi
 
 # ========== 复制到 dist 目录 ==========

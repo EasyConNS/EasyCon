@@ -98,8 +98,6 @@ internal sealed partial class Parser
 
     public CompicationUnit ParseProgram()
     {
-        int address = 1;
-
         var unit = new Stack<List<Statement>>();
         unit.Push([]);
         var result = unit.Peek();
@@ -115,7 +113,7 @@ internal sealed partial class Parser
 
             Statement? st = null;
             if (_grouptokens.Length == 0)
-                st = new EmptyStmt();
+                st = Statement.Empty;
             // If there's only one token and it's a comment, create a CommentStmt
             else if (_grouptokens.Length == 1 && Current.Type == TokenType.COMMENT)
             {
@@ -148,11 +146,8 @@ internal sealed partial class Parser
             // Handle empty lines
             else
             {
-                st = new EmptyStmt();
+                st = Statement.Empty;
             }
-
-            // update address
-            st.Address = address;
 
             if (st is ImportStmt)
             {
@@ -161,14 +156,22 @@ internal sealed partial class Parser
                     _diagnostics.ReportBadStruct(st.Syntax.Location, "导入只能在脚本开头");
                 }
             }
-            if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncStmt || st.Kind == StatementKind.WhileStmt)
+            if (st.Kind == StatementKind.ExternFuncDecl)
             {
-                if (st.Kind == StatementKind.FuncStmt)
+                if (unit.Count > 1)
+                {
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "EXTERN 声明必须在顶层");
+                    st = new EmptyStmt();
+                }
+            }
+            if (st.Kind == StatementKind.ForStmt || (st.Kind == StatementKind.IfStmt) || st.Kind == StatementKind.FuncDecl || st.Kind == StatementKind.WhileStmt || st.Kind == StatementKind.UntilStmt || st.Kind == StatementKind.StructDecl)
+            {
+                if (st.Kind == StatementKind.FuncDecl || st.Kind == StatementKind.StructDecl)
                 {
                     if (unit.Count > 1)
                     {
-                        _diagnostics.ReportBadStruct(st.Syntax.Location, "函数必须在顶层定义");
-                        // 跳过函数定义，继续解析
+                        var msg = st.Kind == StatementKind.FuncDecl ? "函数必须在顶层定义" : "STRUCT 必须在顶层定义";
+                        _diagnostics.ReportBadStruct(st.Syntax.Location, msg);
                         st = new EmptyStmt();
                     }
                 }
@@ -177,6 +180,11 @@ internal sealed partial class Parser
             }
             else if (st.Kind == StatementKind.ElseIf)
             {
+                if (result.Count == 0)
+                {
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "ELIF需要对应的If语句");
+                    continue;
+                }
                 if (result.First().Kind != StatementKind.IfStmt)
                 {
                     _diagnostics.ReportBadStruct(st.Syntax.Location, "ELIF需要对应的If语句");
@@ -192,6 +200,11 @@ internal sealed partial class Parser
             }
             else if (st.Kind == StatementKind.Else)
             {
+                if (result.Count == 0)
+                {
+                    _diagnostics.ReportBadStruct(st.Syntax.Location, "ELSE需要对应的If语句");
+                    continue;
+                }
                 if (result.First().Kind != StatementKind.IfStmt)
                 {
                     _diagnostics.ReportBadStruct(st.Syntax.Location, "ELSE需要对应的If语句");
@@ -217,8 +230,12 @@ internal sealed partial class Parser
                 {
                     var endStmt = st;
                     bool validEnd = true;
-
-                    if (endStmt.Kind == StatementKind.EndIf && result.First().Kind != StatementKind.IfStmt)
+                    if (result.Count == 0)
+                    {
+                        _diagnostics.ReportBadStruct(st.Syntax.Location, "END需要对应的语句开头");
+                        validEnd = false;
+                    }
+                    else if (endStmt.Kind == StatementKind.EndIf && result.First().Kind != StatementKind.IfStmt)
                     {
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "ENDIF需要对应的If语句");
                         validEnd = false;
@@ -228,12 +245,12 @@ internal sealed partial class Parser
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "NEXT需要对应的For语句");
                         validEnd = false;
                     }
-                    else if (endStmt.Kind == StatementKind.EndFuncStmt && result.First().Kind != StatementKind.FuncStmt)
+                    else if (endStmt.Kind == StatementKind.EndFuncStmt && result.First().Kind != StatementKind.FuncDecl)
                     {
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "ENDFUNC需要对应的Func语句");
                         validEnd = false;
                     }
-                    else if (result.First().Kind != StatementKind.IfStmt && result.First().Kind != StatementKind.ForStmt && result.First().Kind != StatementKind.WhileStmt && result.First().Kind != StatementKind.FuncStmt)
+                    else if (result.First().Kind != StatementKind.IfStmt && result.First().Kind != StatementKind.ForStmt && result.First().Kind != StatementKind.WhileStmt && result.First().Kind != StatementKind.UntilStmt && result.First().Kind != StatementKind.FuncDecl && result.First().Kind != StatementKind.StructDecl)
                     {
                         _diagnostics.ReportBadStruct(st.Syntax.Location, "END需要对应的语句开头");
                         validEnd = false;
@@ -245,10 +262,12 @@ internal sealed partial class Parser
 
                         st = result.First().Kind switch
                         {
-                            StatementKind.IfStmt => new IfBlock((IfStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.ForStmt => new ForBlock((ForStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.WhileStmt => new WhileBlock((WhileStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
-                            StatementKind.FuncStmt => new FuncDeclBlock((FuncStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt) { Address = result.First().Address },
+                            StatementKind.IfStmt => new IfBlock((IfStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.ForStmt => new ForBlock((ForStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.WhileStmt => new WhileBlock((WhileStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.UntilStmt => new UntilBlock((UntilStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.FuncDecl => new FuncDeclBlock((FuncStmt)result.First(), [.. body.Skip(1)], (EndBlockStmt)endStmt),
+                            StatementKind.StructDecl => new StructDeclBlock((StructStmt)result.First(), body.Skip(1).OfType<StructFieldStmt>().ToImmutableArray(), (EndBlockStmt)endStmt),
                             _ => st // 保持原样
                         };
                         result = unit.Peek();
@@ -262,24 +281,11 @@ internal sealed partial class Parser
             }
 
             result.Add(st);
-            address += 1;
-
         }
         if (unit.Count > 1)
         {
             var first = unit.Peek().First();
             _diagnostics.ReportBadStruct(first.Syntax.Location, "语句块没有正确结束");
-        }
-
-        // lib 脚本后置校验：顶层只允许变量定义、常量定义和函数定义
-        if (_syntaxTree.IsLib)
-        {
-            foreach (var st in result)
-            {
-                if (st is EmptyStmt or FuncDeclBlock or ConstantDeclStmt or AssignmentStmt)
-                    continue;
-                _diagnostics.ReportBadStruct(st.Syntax.Location, "库脚本只允许变量定义、常量定义和函数定义");
-            }
         }
 
         return new CompicationUnit([.. result]);
@@ -319,7 +325,6 @@ internal sealed partial class Parser
             yield return (start, start + length);
         }
     }
-
 }
 
 public static class TokExt

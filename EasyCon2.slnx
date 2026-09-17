@@ -18,23 +18,25 @@
   <Folder Name="/Test/">
     <Project Path="test/EasyCon.Tests/EasyCon.Tests.csproj" />
     <Project Path="test/EasyCon.WinInput.Tests/EasyCon.WinInput.Tests.csproj" />
+    <Project Path="test/EasyCon.Lsp.Tests/EasyCon.Lsp.Tests.csproj" />
   </Folder>
   <Folder Name="/Demo/">
-    <Project Path="tools/DirectInput/DirectInput.csproj" />
-    <Project Path="tools/GamepadApiDemo/GamepadApiDemo.csproj" />
+    <Project Path="tools/OpenCvDnnDemo/OpenCvDnnDemo.csproj" />
   </Folder>
   <Folder Name="/Lib/">
+    <Project Path="src/EzTesseract/EzTesseract.csproj" />
     <Project Path="src/EasyCon.Capture/EasyCon.Capture.csproj" />
     <Project Path="src/EasyCon.Core/EasyCon.Core.csproj" />
     <Project Path="src/EasyCon.Device/EasyCon.Device.csproj" />
     <Project Path="src/EasyCon.Script/EasyCon.Script.csproj" />
     <Project Path="src/EasyCon2.Avalonia.Core/EasyCon2.Avalonia.Core.csproj" />
     <Project Path="src/EasyCon.WinInput/EasyCon.WinInput.csproj" />
+    <Project Path="src/EasyCon.SDLInput/EasyCon.SDLInput.csproj" />
+    <Project Path="src/EasyCon.Lsp/EasyCon.Lsp.csproj" />
   </Folder>
   <Folder Name="/Common/">
     <Project Path="src/EasyCon2.UI.Common/EasyCon2.UI.Common.csproj" />
   </Folder>
   <Project Path="src/EasyCon2.Avalonia/EasyCon2.Avalonia.csproj" />
   <Project Path="src/EasyCon2.CLI/EasyCon2.CLI.csproj" Id="a2867adb-139a-43d0-a421-9895222dcc7c" />
-  <Project Path="src/EasyCon2/EasyCon2.csproj" />
 </Solution>

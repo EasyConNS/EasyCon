@@ -1,0 +1,18 @@
+STRUCT Item
+    $v:INT
+END
+STRUCT Box
+    $it:Item
+    $n:INT
+END
+FUNC make():Box
+    $b = Box{}
+    $b.it.v = 41
+    $b.n = 9
+    RETURN $b
+ENDFUNC
+$b = make()
+$y = $b.it.v
+PRINT $y
+$z = $b.n
+PRINT $z

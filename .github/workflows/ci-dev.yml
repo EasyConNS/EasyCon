@@ -81,6 +81,10 @@ jobs:
       - name: 还原 NuGet 包
         run: dotnet restore
 
+      - name: 构建 ecs-vm（无 C 工具链则跳过）
+        shell: bash
+        run: sh ci/build-vm.sh
+
       - name: Build (Debug)
         run: dotnet build --no-restore --configuration Debug
 

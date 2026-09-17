@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Threading;
 using EasyCon.Core.Config;
 using EasyCon.Core.Input;
@@ -14,6 +15,7 @@ public class VPadService
     private bool _active;
     private Func<bool>? _escKeyDown;
     private Func<bool>? _escKeyUp;
+    private Window? _owner;
 
     public VPadService(NintendoSwitch gamepad, IControllerAdapter adapter)
     {
@@ -22,6 +24,8 @@ public class VPadService
     }
 
     public bool IsActive => _active;
+    public event Action? Exited;
+    public event Action<int, bool>? OverlayKeyEvent;
 
     private bool Active
     {
@@ -31,9 +35,11 @@ public class VPadService
             _active = value;
             _binder?.SetEnabled(value);
             if (_overlay != null)
-                Dispatcher.UIThread.Post(() => _overlay.IsActive = value);
+                Dispatcher.UIThread.Post(() => _overlay?.IsActive = value);
         }
     }
+
+    public void SetOwner(Window owner) => _owner = owner;
 
     public void Show()
     {
@@ -48,18 +54,18 @@ public class VPadService
         {
             _overlay = new VPadOverlay(_gamepad, _adapter);
             _overlay.ToggleRequested += () => Active = !Active;
-            _overlay.HideRequested += () =>
-            {
-                Active = false;
-                Dispatcher.UIThread.Post(() => _overlay.Hide());
-            };
+            _overlay.HideRequested += Exit;
+            _overlay.KeyEvent += (sc, down) => OverlayKeyEvent?.Invoke(sc, down);
             _overlay.Closed += (_, _) =>
             {
                 Active = false;
                 _overlay = null;
             };
             _overlay.IsActive = Active;
-            _overlay.Show();
+            if (_owner != null)
+                _overlay.Show(_owner);
+            else
+                _overlay.Show();
         });
     }
 
@@ -85,10 +91,17 @@ public class VPadService
         _binder?.RegisterEscapeKey(keydown, keyup);
     }
 
-    public void HideOverlay()
+    public void Exit()
     {
         Active = false;
-        Dispatcher.UIThread.Post(() => _overlay?.Hide());
+        if (_overlay != null)
+        {
+            if (Dispatcher.UIThread.CheckAccess())
+                _overlay.Close();
+            else
+                Dispatcher.UIThread.Post(() => _overlay?.Close());
+        }
+        Exited?.Invoke();
     }
 
     public void Deactivate()

@@ -61,8 +61,16 @@ videotype=ANY #采集卡打开类型
 ```powershell
 .\ci\build-vsix.ps1
 ```
+脚本会在vscode-plugin目录下生成 `vscode-esc-x.x.x.vsix` 插件安装包。  
 
-脚本会在vscode-plugin目录下生成 `easycon-for-vscode-x.x.x.vsix` 插件安装包。
+**use vsce package:**
+```
+npm install -g vsce
+cd vscode-plugin
+npm i
+vsce package --out ../dist
+```
+
 
 ## 安装
 

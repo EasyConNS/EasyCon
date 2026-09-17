@@ -1,12 +1,12 @@
 namespace EasyCon.Script.Syntax;
 
-public interface IAstVisitor<T>
+internal interface IAstVisitor<T>
 {
     T VisitMember(Member ast);
-    T VisitExpression(Expression ast);
+    T VisitExpression(BaseExpr ast);
 }
 
-public abstract class AstVisitor : IAstVisitor<AstNode>
+internal abstract class AstVisitor : IAstVisitor<AstNode>
 {
     protected AstVisitor() { }
 
@@ -15,7 +15,7 @@ public abstract class AstVisitor : IAstVisitor<AstNode>
         return ast.Accept(this);
     }
 
-    public AstNode VisitExpression(Expression ast)
+    public AstNode VisitExpression(BaseExpr ast)
     {
         throw new NotImplementedException();
     }

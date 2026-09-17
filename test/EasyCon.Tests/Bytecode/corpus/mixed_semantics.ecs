@@ -1,0 +1,38 @@
+$g = 0
+FUNC fact($n): INT
+    IF $n <= 1
+        RETURN 1
+    ENDIF
+    RETURN $n * fact($n - 1)
+ENDFUNC
+FUNC add($a, $b): INT
+    RETURN $a + $b
+ENDFUNC
+STRUCT Point
+    $x:INT
+    $y:INT
+END
+$g = fact(5)
+$t = add(3, 4)
+$p = Point{}
+$p.x = 11
+$p.y = $t
+$px = $p.x
+$py = $p.y
+$arr = [10, 20, 30]
+$arr[1] = 99
+$slice = $arr[0:2]
+$s = "n=" & $g & ",x=" & $px & ",y=" & $py & ",len=" & LEN($arr) & "," & LEN($slice)
+PRINT $s
+$cmp = $px > $py
+PRINT $cmp
+$has = 20 in $arr
+PRINT "has20:" & $has
+$i = 0
+WHILE $i < 3
+    $i += 1
+    IF $i == 2
+        CONTINUE
+    ENDIF
+    PRINT "i=" & $i
+END

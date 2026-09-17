@@ -1,0 +1,239 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
+             xmlns:models="using:EasyCon2.Avalonia.Models"
+             x:Class="EasyCon2.Avalonia.Views.FileTreeView"
+             x:DataType="vm:FileTreeViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Button.worktree-tool-button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.worktree-tool-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="34,*"
+          Background="{DynamicResource WorkbenchTreeBrush}">
+        <Border Grid.Row="0"
+                Background="{DynamicResource WorkbenchSideBrush}"
+                BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,0,4,0">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <TextBlock Text="工作树"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                           FontSize="12"/>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            Spacing="1"
+                            Margin="0,0,2,0"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding HasLoadedDirectory}">
+                    <Button Classes="worktree-tool-button"
+                            Command="{Binding CreateFileCommand}"
+                            ToolTip.Tip="新建文件">
+                        <PathIcon Data="M6,0 H10 V6 H16 V10 H10 V16 H6 V10 H0 V6 H6 Z"
+                                  Width="12" Height="12"/>
+                    </Button>
+                    <Button Classes="worktree-tool-button"
+                            Command="{Binding CreateFolderCommand}"
+                            ToolTip.Tip="新建文件夹">
+                        <PathIcon Data="M1,1 H6 L7.5,3 H15 V5 H1 Z M1,6 H15 V15 H1 Z"
+                                  Width="14" Height="14"/>
+                    </Button>
+                    <Button Classes="worktree-tool-button"
+                            Command="{Binding RefreshTreeCommand}"
+                            ToolTip.Tip="刷新">
+                        <PathIcon Data="M13,3 C16,6 16,10 13,13 L11,11 C13,9 13,7 11,5 Z M3,13 C0,10 0,6 3,3 L5,5 C3,7 3,9 5,11 Z M12,1 L16,4 L12,4 Z M4,15 L0,12 L4,12 Z"
+                                  Width="14" Height="14"/>
+                    </Button>
+                    <Button Classes="worktree-tool-button"
+                            Command="{Binding ToggleExpandCollapseAllCommand}"
+                            ToolTip.Tip="折叠/展开">
+                        <PathIcon Data="M0,0 H6.5 V6.5 H0 Z M9.5,0 H16 V6.5 H9.5 Z M0,9.5 H6.5 V16 H0 Z M9.5,9.5 H16 V16 H9.5 Z"
+                                  Width="12" Height="12"/>
+                    </Button>
+                </StackPanel>
+                <Menu Grid.Column="2"
+                      Width="30"
+                      Height="30"
+                      Padding="0"
+                      Background="Transparent"
+                      VerticalAlignment="Center">
+                    <MenuItem Padding="0"
+                              Width="30"
+                              Height="30"
+                              Foreground="{DynamicResource WorkbenchMutedTextBrush}">
+                        <MenuItem.Header>
+                            <PathIcon Data="M0,5 H4 V11 H0 Z M6,5 H10 V11 H6 Z M12,5 H16 V11 H12 Z"
+                                       Width="14" Height="14"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </MenuItem.Header>
+                        <MenuItem Header="新建脚本"
+                                  Command="{Binding NewScriptCommand}"/>
+                        <MenuItem Header="打开脚本"
+                                  Command="{Binding OpenScriptCommand}"
+                                  CommandParameter="{Binding $parent[Window]}"/>
+                        <MenuItem Header="打开项目"
+                                  Command="{Binding OpenProjectFolderCommand}"
+                                  CommandParameter="{Binding $parent[Window]}"/>
+                        <Separator/>
+                        <MenuItem Header="保存文件"
+                                  Command="{Binding SaveScriptCommand}"
+                                  CommandParameter="{Binding $parent[Window]}"/>
+                        <MenuItem Header="另存为文件"
+                                  Command="{Binding SaveScriptAsCommand}"
+                                  CommandParameter="{Binding $parent[Window]}"/>
+                        <Separator/>
+                        <MenuItem Header="复制"
+                                  Command="{Binding CopySelectedItemCommand}"/>
+                        <MenuItem Header="剪切"
+                                  Command="{Binding CutSelectedItemCommand}"/>
+                        <MenuItem Header="粘贴"
+                                  Command="{Binding PasteItemCommand}"/>
+                        <MenuItem Header="删除"
+                                  Command="{Binding DeleteSelectedItemCommand}"/>
+                        <Separator/>
+                        <MenuItem Header="关闭项目"
+                                  Command="{Binding CloseProjectCommand}"/>
+                    </MenuItem>
+                </Menu>
+            </Grid>
+        </Border>
+
+        <!-- 文件列表 -->
+        <Grid Grid.Row="1">
+            <ListBox x:Name="FileList"
+                     ItemsSource="{Binding FlatItems}"
+                     SelectedItem="{Binding SelectedFlatItem}"
+                     Tapped="OnItemTapped"
+                     DoubleTapped="OnItemDoubleTapped"
+                     IsVisible="{Binding HasLoadedDirectory}"
+                     Background="{DynamicResource WorkbenchTreeBrush}"
+                     BorderThickness="0">
+            <ListBox.ContextMenu>
+                <ContextMenu x:CompileBindings="False"
+                             DataContext="{Binding $parent[ListBox].DataContext}">
+                    <MenuItem Header="复制"
+                              Command="{Binding CopySelectedItemCommand}"/>
+                    <MenuItem Header="剪切"
+                              Command="{Binding CutSelectedItemCommand}"/>
+                    <MenuItem Header="粘贴"
+                              Command="{Binding PasteItemCommand}"/>
+                    <Separator/>
+                    <MenuItem Header="删除"
+                              Command="{Binding DeleteSelectedItemCommand}"/>
+                </ContextMenu>
+            </ListBox.ContextMenu>
+            <ListBox.Styles>
+                <!-- 去掉 ListBoxItem 默认内边距，让目录背景铺满 -->
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    <Setter Property="Margin" Value="0"/>
+                    <Setter Property="MinHeight" Value="28"/>
+                </Style>
+                <Style Selector="ListBoxItem:pointerover /template/ Border#BackgroundPresenter">
+                    <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}"/>
+                </Style>
+                <Style Selector="ListBoxItem:selected /template/ Border#BackgroundPresenter">
+                    <Setter Property="Background" Value="{DynamicResource WorkbenchAccentBrush}"/>
+                </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="models:FileTreeDisplayItem">
+                    <Grid>
+                        <!-- 目录项：项目根目录、子文件夹、文件区使用三层底色 -->
+                        <Border Padding="{Binding IndentPadding}"
+                                Background="{DynamicResource WorkbenchTreeRootBrush}"
+                                IsVisible="{Binding IsRootDirectory}"
+                                Margin="0,1">
+                            <TextBlock Text="{Binding DisplayName}"
+                                       Margin="12,0,0,0"
+                                       FontSize="{Binding DisplayFontSize}"
+                                       FontWeight="{Binding DisplayFontWeight}"
+                                       Foreground="{DynamicResource WorkbenchTextBrush}"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <Border Padding="{Binding IndentPadding}"
+                                Background="{DynamicResource WorkbenchTreeFolderBrush}"
+                                IsVisible="{Binding IsSubDirectory}"
+                                Margin="0,1">
+                            <TextBlock Text="{Binding DisplayName}"
+                                       Margin="12,0,0,0"
+                                       FontSize="{Binding DisplayFontSize}"
+                                       FontWeight="{Binding DisplayFontWeight}"
+                                       Foreground="{DynamicResource WorkbenchTextBrush}"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <!-- 文件项：无特殊背景，空白缩进 -->
+                        <Border Padding="{Binding IndentPadding}"
+                                IsVisible="{Binding !IsDirectory}"
+                                Margin="0,1">
+                            <TextBlock Text="{Binding Name}"
+                                       Margin="12,0,0,0"
+                                       FontSize="{Binding DisplayFontSize}"
+                                       FontWeight="{Binding DisplayFontWeight}"
+                                       Foreground="{DynamicResource WorkbenchTextBrush}"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+            <!-- 吸顶目录 -->
+            <Border x:Name="StickyHeader"
+                    IsVisible="False"
+                    VerticalAlignment="Top"
+                    Background="{DynamicResource WorkbenchTreeFolderBrush}"
+                    BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                    BorderThickness="0,0,0,1"
+                    Padding="0,3"
+                    ZIndex="1">
+                <TextBlock x:Name="StickyHeaderText"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource WorkbenchTextBrush}"
+                           VerticalAlignment="Center"/>
+            </Border>
+        </Grid>
+
+        <!-- 空状态：沉浸式打开项目按钮 -->
+        <Border IsVisible="{Binding !HasLoadedDirectory}"
+                Grid.Row="1"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Padding="18,12">
+            <StackPanel Spacing="12"
+                        HorizontalAlignment="Center">
+                <PathIcon Data="M1,4 H6 L8,6 H15 V14 H1 Z"
+                          Width="44"
+                          Height="44"
+                          Foreground="{DynamicResource WorkbenchBorderBrush}"
+                          HorizontalAlignment="Center"/>
+                <Button Content="打开项目"
+                        Command="{Binding OpenProjectCommand}"
+                        Classes="tree-open-link"
+                        FontSize="14"
+                        Foreground="{DynamicResource WorkbenchAccentBrush}"
+                        Cursor="Hand"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,5 +1,5 @@
 using EasyCon.Core.Services;
-using EasyCon.Script.Assembly;
+using EasyCon.Script.Asm;
 using System.Diagnostics;
 using System.IO;
 
@@ -33,13 +33,13 @@ public class FirmwareService : IFirmwareService
 
     public async Task<bool> GenerateFirmware(int boardIndex, string scriptText, string? fileName)
     {
-        if (!await _scriptService.Compile(scriptText, fileName))
+        if (!await _scriptService.CompileAsync(scriptText, fileName))
             return false;
 
         try
         {
             _logService.AddLog("开始生成固件...");
-            var bytes = await _scriptService.Build(false);
+            var bytes = await _scriptService.BuildAsync(false);
             var board = _boards[boardIndex];
             var firmwarePath = @"Firmware\";
             File.WriteAllBytes("temp.bin", bytes);
@@ -76,7 +76,7 @@ public class FirmwareService : IFirmwareService
         try
         {
             _logService.AddLog("开始烧录...");
-            var bytes = await _scriptService.Build(autoRun);
+            var bytes = await _scriptService.BuildAsync(autoRun);
             if (bytes.Length > board.DataSize)
                 throw new Exception("长度超出限制");
 

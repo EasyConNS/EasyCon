@@ -1,0 +1,124 @@
+# CSV文件读取测试脚本
+# 测试extern导入libc函数实现的CSV解析器
+
+IMPORT "csv_windows.ecs"
+
+PRINT "========== CSV文件读取测试 =========="
+PRINT ""
+
+# 打开并读取CSV文件
+$csvPath = __FILE__ + "/test.csv"
+$rowCount = csv_open($csvPath)
+
+IF $rowCount < 0
+    PRINT "文件打开失败，退出"
+    RETURN
+ENDIF
+
+PRINT "成功加载CSV文件: " & $csvPath
+PRINT "总行数: " & $rowCount
+PRINT ""
+
+# === 测试1: 遍历所有行 ===
+PRINT "=== 测试1: 遍历所有行 ==="
+FOR $i = 0 TO $rowCount - 1
+    $fields = csv_get_row($i)
+    $fieldCount = LEN($fields)
+    $line = "行" & $i & " (" & $fieldCount & "列): "
+    PRINT $line
+    FOR $j = 0 TO $fieldCount - 1
+        IF $j > 0
+            $line = $line & " | "
+        ENDIF
+        $val = $fields[$j]
+        $line = $line & $val
+    NEXT
+    PRINT $line
+NEXT
+PRINT ""
+
+# === 测试2: 按索引获取指定行 ===
+PRINT "=== 测试2: 按索引获取指定行 ==="
+$row0 = csv_get_row(0)
+$h0 = $row0[0]
+$h1 = $row0[1]
+$h2 = $row0[2]
+$h3 = $row0[3]
+PRINT "第0行(表头): " & $h0 & ", " & $h1 & ", " & $h2 & ", " & $h3
+
+$row2 = csv_get_row(2)
+$r20 = $row2[0]
+$r21 = $row2[1]
+$r22 = $row2[2]
+PRINT "第2行(Bob):  " & $r20 & ", " & $r21 & ", " & $r22
+PRINT ""
+
+# === 测试3: 转义引号处理 ===
+PRINT "=== 测试3: 转义引号处理 ==="
+$row3 = csv_get_row(3)
+PRINT "第3行(含转义引号):"
+$n30 = $row3[0]
+$n32 = $row3[2]
+$n33 = $row3[3]
+PRINT "  Name: " & $n30
+PRINT "  City: " & $n32
+PRINT "  Desc: " & $n33
+PRINT ""
+
+# === 测试4: 含逗号的引号字段 ===
+PRINT "=== 测试4: 含逗号的引号字段 ==="
+PRINT "City字段(含逗号): " & $n32
+PRINT ""
+
+# === 测试5: 空字段处理 ===
+PRINT "=== 测试5: 空字段处理 ==="
+$row5 = csv_get_row(5)
+PRINT "第5行(空字段):"
+PRINT $row5
+$s50 = $row5[0]
+$s51 = $row5[1]
+$s52 = $row5[2]
+$s53 = $row5[3]
+PRINT "  Name: [" & $s50 & "]"
+PRINT "  Age:  [" & $s51 & "]"
+PRINT "  City: [" & $s52 & "]"
+PRINT "  Desc: [" & $s53 & "]"
+PRINT ""
+
+# === 测试6: 中文字符支持 ===
+PRINT "=== 测试6: 中文字符支持 ==="
+$row4 = csv_get_row(4)
+PRINT "第4行(中文):"
+$s40 = $row4[0]
+$s41 = $row4[1]
+$s42 = $row4[2]
+$s43 = $row4[3]
+PRINT "  Name: " & $s40
+PRINT "  Age:  " & $s41
+PRINT "  City: " & $s42
+PRINT "  Desc: " & $s43
+PRINT ""
+
+# === 测试7: csv_get_field 单字段获取 ===
+PRINT "=== 测试7: csv_get_field 单字段获取 ==="
+$name1 = csv_get_field(1, 0)
+$city1 = csv_get_field(1, 2)
+PRINT "第1行 Name=" & $name1 & ", City=" & $city1
+PRINT ""
+
+# === 测试8: 越界访问 ===
+PRINT "=== 测试8: 越界访问 ==="
+$bad = csv_get_row(999)
+$badLen = LEN($bad)
+PRINT "访问第999行返回数组长度: " & $badLen
+$field = csv_get_field(999, 0)
+PRINT "访问第999行第0列返回: [" & $field & "]"
+PRINT ""
+
+# === 测试9: csv_line_count ===
+PRINT "=== 测试9: 行数统计 ==="
+$count = csv_line_count()
+PRINT "csv_line_count() = " & $count
+PRINT ""
+
+PRINT "========== 所有测试完成 =========="

@@ -1,31 +1,33 @@
-using Tesseract;
+using EasyCon.Capture.Ocr;
+using EzTesseract;
+using EzTesseract.Enums;
 
 namespace EasyCon.Capture;
 
-internal class OCRDetect(string lang = "chi_sim", EngineMode engineMode = EngineMode.Default, PageSegMode pageSegMode = PageSegMode.SingleLine)
+/// <summary>
+/// OCR 识别门面 — 提供静态便捷方法，基于 IOcrRecognizer 接口。
+/// 不再支持 per-call 创建/销毁引擎的模式（引擎生命周期由 OcrEngineCache 统一管理）。
+/// </summary>
+public sealed class OCRDetect
 {
-    const string tessdataPath = @"./Tessdata";
-
-    //private readonly string lang = language;
-    //private readonly EngineMode egMode = engineMode;
-    //private readonly PageSegMode psMode = pageSegMode;
-
     /// <summary>
-    /// language: trained tessdata
-    /// enginMod: EngineMode.Default
-    /// pageSegMod: PageSegMode.SingleLine
+    /// 使用 IOcrRecognizer 执行 OCR（引擎由调用方管理生命周期）。
     /// </summary>
-    public string TesserDetect(MemoryStream stream, out float confidence)
+    public static string Recognize(IOcrRecognizer recognizer, byte[] imagePng, out float confidence)
     {
-        using var img = Pix.LoadFromMemory(stream.ToArray());
-        return TesserDetect(img, out confidence);
+        var result = recognizer.Recognize(imagePng);
+        confidence = result.Confidence;
+        return result.Text;
     }
 
-    public string TesserDetect(Pix img, out float confidence)
+    /// <summary>
+    /// 使用外部传入的 Tesseract Engine 实例直接执行 OCR。
+    /// 保留此方法用于需要直接操作 Tesseract 底层引擎的场景。
+    /// </summary>
+    public static string TesserDetect(Engine engine, EzTesseract.Pix.Image img, PageSegMode psm, out float confidence)
     {
-        using var engine = new TesseractEngine(tessdataPath, lang, engineMode);
-        using var page = engine.Process(img, pageSegMode);
-        confidence = page.GetMeanConfidence();
-        return page.GetText();
+        using var page = engine.Process(img, psm);
+        confidence = page.MeanConfidence;
+        return page.Text;
     }
 }

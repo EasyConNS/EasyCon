@@ -1,4 +1,5 @@
-﻿using Avalonia;
+using Avalonia;
+using EasyCon2.Avalonia.Services;
 using System;
 
 namespace EasyCon2.Avalonia;
@@ -16,6 +17,7 @@ sealed class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .UsePlatformWindowFrame()
             .WithInterFont()
             .LogToTrace();
 }

@@ -9,6 +9,8 @@ public interface ICGamePad
     void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token);
     void SetStick(GamePadKey key, byte x, byte y);
     void ChangeAmiibo(uint index);
+
+    void Reset();
 }
 
 public enum GamePadKey : uint

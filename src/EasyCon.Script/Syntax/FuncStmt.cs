@@ -1,0 +1,103 @@
+using EasyCon.Script.Binding;
+using System.Collections.Immutable;
+
+namespace EasyCon.Script.Syntax;
+
+internal sealed class FuncDeclBlock(FuncStmt declare, ImmutableArray<Statement> statements, EndBlockStmt end) : Statement(declare.Syntax)
+{
+    public override StatementKind Kind => StatementKind.FuncDeclBlock;
+    public readonly FuncStmt Declare = declare;
+    public ImmutableArray<Statement> Statements = statements;
+    public readonly EndBlockStmt End = end;
+
+    protected override string _GetString()
+    {
+        throw new NotImplementedException();
+    }
+}
+
+internal sealed class TypeClauseSyntax(Token colonToken, Token identifier, bool isArray = false)
+{
+    public readonly Token Colon = colonToken;
+    public readonly Token Identifier = identifier;
+    public readonly bool IsArray = isArray;
+    public string TypeName => IsArray ? Identifier.Value + "[]" : Identifier.Value;
+}
+
+class FuncStmt(Token identifier, ImmutableArray<ParameterSyntax> paramters, bool omitParn, TypeClauseSyntax? type) : StartBlockStmt(identifier)
+{
+    public override StatementKind Kind => StatementKind.FuncDecl;
+    public readonly Token Identifier = identifier;
+    public string Name => Identifier.Value;
+    public ImmutableArray<ParameterSyntax> Paramters = paramters;
+    public readonly TypeClauseSyntax? Type = type;
+
+    protected override string _GetString()
+    {
+        var parm = string.Join(", ", Paramters.Select(arg => arg.ToString()));
+        parm = Paramters.Length == 0 && !omitParn ? "" : $"({parm})";
+        var type = Type == null ? "" : $": {Type.TypeName.ToUpper()}";
+        return $"FUNC {Name}{parm}{type}";
+    }
+}
+
+internal sealed class ParameterSyntax(VariableExpr varExpr, TypeClauseSyntax? type)
+{
+    public readonly VariableExpr Identifier = varExpr;
+    public readonly TypeClauseSyntax? Type = type;
+
+    public override string ToString()
+    {
+        var type = Type == null ? "" : $": {Type.TypeName.ToUpper()}";
+        return Identifier.GetCodeText() + type;
+    }
+}
+
+class EndFuncStmt(Token syntax) : EndBlockStmt(syntax)
+{
+    public override StatementKind Kind => StatementKind.EndFuncStmt;
+    protected override string _GetString() => "ENDFUNC";
+}
+
+class ReturnStmt(Token syntax, BaseExpr? expression = null) : Statement(syntax)
+{
+    public readonly BaseExpr? Expression = expression;
+    protected override string _GetString()
+    {
+        return $"RETURN {Expression?.GetCodeText()}".TrimEnd();
+    }
+}
+
+class CallStmt(Token syntax, string fnName, BaseExpr[] args, CallType callType = CallType.CallStmt) : Statement(syntax)
+{
+    public readonly string FnName = fnName;
+    public readonly BaseExpr[] Args = args;
+
+    /// <summary>命名空间限定符（可选）。有值时为 lib.func() 形式。</summary>
+    public Token? Namespace { get; init; }
+
+    /// <summary>完整限定名：有 namespace 时为 "lib.func"，否则为 "func"。</summary>
+    public string QualifiedName => Namespace != null ? $"{Namespace.Value}.{FnName}" : FnName;
+
+    protected override string _GetString()
+    {
+        var name = QualifiedName;
+        if (Namespace == null && BuiltinFunctions.GetAll().Select(f => f.Name).Contains(FnName.ToUpper()))
+        {
+            name = FnName.ToUpper();
+        }
+        return callType switch
+        {
+            CallType.CallStmt => $"CALL {name}",
+            _ => $"{name} {string.Join(", ", Args.Select(u => u.GetCodeText()))}".Trim(),
+        };
+
+    }
+}
+
+enum CallType
+{
+    CallStmt,
+    CallStmtWithArgs,
+    CallExpression
+}

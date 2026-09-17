@@ -23,9 +23,8 @@ public partial class AlertConfigControl : UserControl
 
     private void OnSave(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is AlertConfigViewModel vm)
-            vm.Save();
-        SaveRequested?.Invoke();
+        if (DataContext is AlertConfigViewModel vm && vm.Save())
+            SaveRequested?.Invoke();
     }
 
     private void OnCancel(object? sender, RoutedEventArgs e)

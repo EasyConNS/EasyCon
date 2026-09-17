@@ -1,6 +1,6 @@
 using EasyCon.Script.Syntax;
 
-namespace EasyCon.Script.Assembly.Instructions;
+namespace EasyCon.Script.Asm.Instructions;
 
 public enum BitwiseShiftOperator
 {
@@ -18,10 +18,10 @@ abstract class AsmBitwiseShift<T> : Instruction
 
     public AsmBitwiseShift()
     {
-        Op = (uint)(Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute).Operator;
+        Op = (uint)((Attribute.GetCustomAttribute(typeof(T), typeof(AsmBinaryOperatorAttribute)) as AsmBinaryOperatorAttribute)!).Operator;
     }
 
-    public static Instruction Create(uint regdst, ExprBase value)
+    public static Instruction Create(uint regdst, BaseExpr value)
     {
         if ((value is VariableExpr))
         {

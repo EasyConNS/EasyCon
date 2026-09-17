@@ -9,6 +9,14 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 {
     private readonly List<Diagnostic> _diagnostics = [];
 
+    /// <summary>
+    /// 模块级诊断单点（.err 重放与异常包装共用的唯一构造形态）：
+    /// 「[模块名] 前缀 + 默认落点」（落点经 <see cref="Modules.ModuleLocations.Default"/>，
+    /// 无源码上下文时为零跨度 + 模块文件名）。两处消费方必须复用本方法，保证重放/包装文本形态一致。
+    /// </summary>
+    public static Diagnostic FromMessage(SyntaxTree? tree, string moduleName, string text)
+        => Diagnostic.Error(Modules.ModuleLocations.Default(tree), $"[{moduleName}] {text}");
+
     public IEnumerator<Diagnostic> GetEnumerator() => _diagnostics.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -95,11 +103,6 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         ReportError(location, message);
     }
 
-    public void ReportOnlyOneFileCanHaveGlobalStatements(TextLocation location)
-    {
-        ReportError(location, "脚本主语句只能存在一个文件中");
-    }
-
     public void ReportAllPathsMustReturn(TextLocation location)
     {
         ReportError(location, "函数所有路径必须有返回值");
@@ -114,16 +117,6 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     {
         var message = $"类型不匹配：无法将 {fromType} 转换成 {toType}";
         ReportError(location, message);
-    }
-
-    public void ReportGenericTypeInferenceFailed(TextLocation location, string functionName, string typeName)
-    {
-        ReportError(location, $"无法为函数 {functionName} 推导泛型参数 {typeName}");
-    }
-
-    public void ReportGenericTypeConflict(TextLocation location, string typeName, ScriptType existingType, ScriptType actualType)
-    {
-        ReportError(location, $"泛型冲突：{typeName} 同时被推导为 {existingType} 和 {actualType}");
     }
 
     public void ReportVoidFunctionCannotReturn(TextLocation location, FunctionSymbol function, ScriptType type)
@@ -144,6 +137,11 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     public void ReportConstantAlreadyDefined(Token constantToken)
     {
         ReportError(constantToken.Location, $"重复定义的常量 '{constantToken.Value}'");
+    }
+
+    public void ReportCannotAssignToSpecialConstant(Token constantToken)
+    {
+        ReportError(constantToken.Location, $"特殊常量 '{constantToken.Value}' 不能被赋值");
     }
 
     public void ReportUnsupportedBinaryOperator(TextLocation location, Token opToken, ScriptType leftType, ScriptType rightType)
@@ -209,5 +207,53 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     public void ReportFunctionArgumentCountMismatch(TextLocation location, FunctionSymbol fn)
     {
         ReportError(location, $"函数 {fn.Name} 参数数量不匹配");
+    }
+
+    public void ReportFunctionAlreadyDeclared(TextLocation location, string functionName)
+    {
+        ReportError(location, $"重复定义的函数: {functionName}");
+    }
+
+    public void ReportAmbiguousCall(TextLocation location, string functionName, FunctionSymbol[] candidates)
+    {
+        var sigs = string.Join(", ", candidates.Select(c =>
+            $"{c.Name}({string.Join(", ", c.Parameters.Select(p => p.Type.Name))})"));
+        ReportError(location, $"函数调用 '{functionName}' 存在歧义，匹配的重载: {sigs}");
+    }
+
+    public void ReportNoMatchingOverload(TextLocation location, string functionName, ScriptType[] argTypes)
+    {
+        var args = string.Join(", ", argTypes.Select(t => t.Name));
+        ReportError(location, $"找不到匹配的函数 '{functionName}'，参数类型: ({args})");
+    }
+
+    public void ReportNamespaceNotFound(TextLocation location, string name)
+    {
+        ReportError(location, $"命名空间 '{name}' 不存在");
+    }
+
+    public void ReportFunctionNotFoundInNamespace(TextLocation location, string funcName, string nsName)
+    {
+        ReportError(location, $"命名空间 '{nsName}' 中不存在函数 '{funcName}'");
+    }
+
+    public void ReportNamespaceConflictsWithFunction(TextLocation location, string name)
+    {
+        ReportError(location, $"命名空间 '{name}' 与已声明的函数名冲突");
+    }
+
+    public void ReportCircularImport(TextLocation location, string path)
+    {
+        ReportError(location, $"循环导入: {Path.GetFileName(path)}");
+    }
+
+    public void ReportImportFileNotFound(TextLocation location, string path)
+    {
+        ReportError(location, $"导入文件不存在: {path}");
+    }
+
+    public void ReportModuleNameConflict(TextLocation location, string moduleName, string path)
+    {
+        ReportError(location, $"模块名冲突: {moduleName}（{path}）");
     }
 }

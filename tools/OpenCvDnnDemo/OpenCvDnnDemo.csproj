@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- OpenCvSharp5 自带 OpenCV5 native 库分发（runtime 包），native 库随输出目录分发 -->
+    <PackageReference Include="OpenCvSharp5" />
+    <PackageReference Include="OpenCvSharp5.runtime.win" />
+    <PackageReference Include="OpenCvSharp5.official.runtime.linux-x64" />
+    <PackageReference Include="OpenCvSharp5.runtime.osx.arm64" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 模型与测试图片随构建复制到输出目录 -->
+    <None Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

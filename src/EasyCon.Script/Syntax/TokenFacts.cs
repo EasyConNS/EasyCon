@@ -17,7 +17,7 @@ public static class TokenFacts
         {
             TokenType.MUL or TokenType.DIV or TokenType.SlashI or TokenType.MOD or TokenType.BitAnd or TokenType.SHL or TokenType.SHR => 5,
             TokenType.ADD or TokenType.SUB or TokenType.BitOr or TokenType.XOR => 4,
-            TokenType.EQL or TokenType.NEQ or TokenType.LESS or TokenType.LEQ or TokenType.GTR or TokenType.GEQ => 3,
+            TokenType.EQL or TokenType.NEQ or TokenType.LESS or TokenType.LEQ or TokenType.GTR or TokenType.GEQ or TokenType.IN => 3,
             TokenType.LogicAnd => 2,
             TokenType.LogicOr => 1,
             _ => 0,
@@ -62,6 +62,7 @@ public static class TokenFacts
             TokenType.LogicAnd => "and",
             TokenType.LogicOr => "or",
             TokenType.LogicNot => "not",
+            TokenType.IN => "in",
             // Punctuation
             TokenType.LeftParen => "(",
             TokenType.LeftBracket => "[",

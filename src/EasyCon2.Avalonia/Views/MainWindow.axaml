@@ -1,8 +1,14 @@
 <Window xmlns="https://github.com/avaloniaui"
          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
          xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
-         xmlns:conv="using:EasyCon2.Avalonia.Converters"
          xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
+         xmlns:controls="using:EasyCon2.Avalonia.Controls"
+         xmlns:editor="using:EasyCon2.Avalonia.Core.Editor"
+         xmlns:tag="using:EasyCon2.Avalonia.Core.TagEditor"
+         xmlns:agent="using:EasyCon2.Avalonia.Core.AiAgent"
+         xmlns:terminal="using:EasyCon2.Avalonia.Core.Terminal"
+         xmlns:views="using:EasyCon2.Avalonia.Views"
+         xmlns:shared="using:EasyCon2.Avalonia.Views.Shared"
          xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
          xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
          mc:Ignorable="d"
@@ -10,202 +16,1193 @@
          d:DesignHeight="800"
  x:Class="EasyCon2.Avalonia.Views.MainWindow"
           x:DataType="vm:MainWindowViewModel"
-          Icon="/Assets/favicon.ico"
+          Icon="/Resources/Images/favicon.ico"
           Title="{Binding WindowTitle}"
-          Width="1200"
-          Height="800"
-          MinWidth="800"
-          MinHeight="600"
-          behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
+           Width="1200"
+           Height="800"
+           MinWidth="800"
+           MinHeight="600"
+           CanResize="True"
+           ExtendClientAreaToDecorationsHint="True"
+            ExtendClientAreaTitleBarHeightHint="{DynamicResource WorkbenchTitleBarHeight}"
+           behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
 
-    <Window.Resources>
-        <conv:BoolToGreenBrushConverter x:Key="BoolToGreenBrush" />
-    </Window.Resources>
+    <Window.Styles>
+        <Style Selector="ToggleSwitch.compact-switch">
+            <Setter Property="Width" Value="46" />
+            <Setter Property="MinWidth" Value="46" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+        </Style>
+        <Style Selector="Button.editor-toolbar-button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.editor-toolbar-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        </Style>
 
+        <Style Selector="Grid.title-platform-layout">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+
+        <Style Selector="Window.platform-windows Grid.title-layout-windows">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <Style Selector="Window.platform-macos Grid.title-layout-macos">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+
+        <!-- 窗口背景：默认不透明。Linux 下改为透明，为自绘外阴影留出绘制空间。
+             Windows 走 DWM 阴影、macOS 走原生阴影，仍保持不透明。 -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchWindowBrush}" />
+        </Style>
+        <Style Selector="Window.platform-linux">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <!-- Linux 无边框窗口无合成器原生阴影：在内容外层自绘柔和阴影；最大化时收回留白与阴影。 -->
+        <Style Selector="Window.platform-linux Border.window-root">
+            <Setter Property="Margin" Value="12" />
+            <Setter Property="BoxShadow" Value="0 3 8 0 #39000000" />
+        </Style>
+        <Style Selector="Window.platform-linux.maximized Border.window-root">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="BoxShadow" Value="0 0 0 0 #00000000" />
+        </Style>
+
+        <Style Selector="TextBlock.title-brand">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchTextBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <Style Selector="TextBlock.title-version">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+
+        <!-- 限制用户配置行的最小可读宽度，避免窗口过窄时控件挤出卡片。 -->
+        <Style Selector="Grid.settings-row">
+            <Setter Property="MinWidth" Value="320" />
+        </Style>
+
+        <!-- 固定设置行中的开关宽度，隐藏 On/Off 后仍保持稳定尺寸。 -->
+        <Style Selector="Grid.settings-row ToggleSwitch">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Width" Value="46" />
+        </Style>
+
+        <!-- 允许设置行里的输入控件跟随列宽收缩。 -->
+        <Style Selector="Grid.settings-row ComboBox">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <Style Selector="Grid.settings-row TextBox">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <!-- 允许设置行里的工具按钮在窄屏时由容器裁切，而不是撑开布局。 -->
+        <Style Selector="Grid.settings-row Button.tool-button">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <!-- 功能中心卡片行使用独立局部样式，避免窄屏时按钮撑出容器。 -->
+        <Style Selector="Grid.feature-row">
+            <Setter Property="MinWidth" Value="320" />
+        </Style>
+
+        <Style Selector="Grid.feature-row ComboBox">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <Style Selector="Grid.feature-row Button">
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+
+        <Style Selector="Window.dark Border.dark-disabled-buttons Button:disabled">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Foreground" Value="#9AA0A8" />
+        </Style>
+
+        <Style Selector="Window.dark Border.dark-disabled-buttons Button:disabled /template/ ContentPresenter">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource WorkbenchButtonBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchButtonBorderBrush}" />
+            <Setter Property="Foreground" Value="#9AA0A8" />
+        </Style>
+
+        <Style Selector="Window.dark Border.disabled-feature-card">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Window.dark Border.module-actions ComboBox /template/ PathIcon#PART_DropDownGlyph">
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchControlBorderBrush}" />
+        </Style>
+
+        <Style Selector="Border.module-actions TextBlock.connection-status.connected">
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchStatusConnectedTextBrush}" />
+        </Style>
+
+        <Style Selector="Border.module-actions TextBlock.connection-status.disconnected">
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchAccentBrush}" />
+        </Style>
+
+        <Style Selector="Window.dark Border.module-actions TextBlock.connection-status.disconnected">
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchAccentBrush}" />
+        </Style>
+
+        <Style Selector="Border.status-pill.connected">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchStatusConnectedBrush}" />
+        </Style>
+
+        <Style Selector="Border.status-pill.connected TextBlock.status-pill-text">
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchStatusConnectedTextBrush}" />
+        </Style>
+
+        <Style Selector="Window.dark Border.status-pill.connected">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchStatusConnectedBrush}" />
+        </Style>
+
+        <Style Selector="Border.status-pill.disconnected">
+            <Setter Property="Background" Value="{DynamicResource WorkbenchStatusDisconnectedBrush}" />
+        </Style>
+
+        <Style Selector="Border.status-pill.disconnected TextBlock.status-pill-text">
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchStatusDisconnectedTextBrush}" />
+        </Style>
+
+        <Style Selector="Ellipse.connection-indicator">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="Height" Value="8" />
+            <Setter Property="Fill" Value="#FF3B3B" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style Selector="Ellipse.connection-indicator.disconnected">
+            <Setter Property="Fill" Value="{DynamicResource WorkbenchStatusDisconnectedTextBrush}" />
+        </Style>
+
+        <Style Selector="Border.status-pill.disconnected Ellipse.connection-indicator">
+            <Setter Property="Fill" Value="{DynamicResource WorkbenchStatusDisconnectedTextBrush}" />
+        </Style>
+
+        <Style Selector="Ellipse.connection-indicator.connected">
+            <Setter Property="Fill" Value="{DynamicResource WorkbenchStatusConnectedTextBrush}" />
+        </Style>
+
+        <Style Selector="Window.dark Ellipse.connection-indicator.disconnected">
+            <Setter Property="Fill" Value="{DynamicResource WorkbenchStatusDisconnectedTextBrush}" />
+        </Style>
+    </Window.Styles>
+
+    <Border Classes="window-root"
+            Background="{DynamicResource WorkbenchWindowBrush}">
+    <Grid Background="{DynamicResource WorkbenchWindowBrush}">
     <Grid RowDefinitions="Auto,*">
-        <!-- 顶部区域：脚本路径和打开按钮 -->
-        <Border Grid.Row="0" Padding="10">
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0"
-                          Text="{Binding CurrentScriptPath}"
-                          VerticalAlignment="Center"
-                          Margin="0,0,10,0"
-                          TextTrimming="CharacterEllipsis"/>
-                <Button Grid.Column="1"
-                       Content="打开脚本"
-                       Command="{Binding OpenScriptCommand}"
-                       CommandParameter="{Binding $parent[Window]}"
-                       IsEnabled="{Binding !IsRunning}"
-                       MinWidth="100"
-                       HorizontalContentAlignment="Center"/>
+        <Border Grid.Row="0"
+                Height="{DynamicResource WorkbenchTitleBarHeight}"
+                Background="{DynamicResource WorkbenchTitleBrush}"
+                BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                BorderThickness="0"
+                PointerPressed="BeginMoveWindow"
+                DoubleTapped="MaximizeOrRestoreWindow">
+            <Grid>
+                <!-- Windows/Linux: 自绘系统按钮（BorderOnly 无原生按钮） -->
+                <Grid Classes="title-platform-layout title-layout-windows"
+                      Background="Transparent">
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8"
+                                Margin="14,0,16,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                IsHitTestVisible="False">
+                        <Image Source="/Resources/Images/favicon.ico"
+                               Width="16"
+                               Height="16"
+                               VerticalAlignment="Center"/>
+                        <!-- 窗口标题（系统标题被 ExtendClientArea 覆盖，需手动显示） -->
+                        <TextBlock Classes="title-brand"
+                                   Text="{Binding BrandTitle}"/>
+                        <Border Classes="version-badge">
+                            <TextBlock Text="{Binding VersionBadgeText}"
+                                       Foreground="{DynamicResource WorkbenchAccentBrush}"
+                                       FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                    <controls:CaptionButtons x:Name="CaptionButtonsControl"
+                                             HorizontalAlignment="Right"/>
+                </Grid>
+                <!-- macOS: 系统交通灯在左侧，窗口标题由系统原生绘制（Full 装饰），
+                     无需手动显示。 -->
+                <Grid Classes="title-platform-layout title-layout-macos"
+                      Background="Transparent">
+                    <!-- 为 macOS 原生交通灯按钮预留空间 -->
+                    <controls:MacOSTrafficLightsSpacer/>
+                    <TextBlock Classes="title-version"
+                               Text="{Binding VersionBadgeText}"
+                               Margin="16,0,14,0"
+                               HorizontalAlignment="Right"
+                               IsHitTestVisible="False"/>
+                </Grid>
+                <!-- 标签栏与平台无关：原在 Windows/macOS 两套标题栏里各写一份，此处抽为
+                     单一共享实例，居中叠在两套标题栏之上；仅卡片风格（CardLayout）可见。 -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Bottom"
+                            Spacing="10"
+                            IsVisible="{DynamicResource WorkbenchCardLayoutVisible}">
+                    <Button Classes="title-tab"
+                            Classes.selected="{Binding IsTextEditorTabSelected}"
+                            Command="{Binding SelectEditorTabCommand}"
+                            CommandParameter="0">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="M2,14 L5.5,13 L14,4.5 L11.5,2 L3,10.5 Z M10.5,3 L13,5.5 M2,14 L6,14"
+                                      Width="15" Height="15"/>
+                            <TextBlock Text="文本编辑"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="title-tab"
+                            Classes.selected="{Binding IsTagEditorTabSelected}"
+                            Command="{Binding SelectEditorTabCommand}"
+                            CommandParameter="1">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="M2,2 H8 L15,9 L9,15 L2,8 Z M5,5 H5.1"
+                                      Width="15" Height="15"/>
+                            <TextBlock Text="标签编辑"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="title-tab"
+                            Classes.selected="{Binding IsUserConfigTabSelected}"
+                            Command="{Binding SelectEditorTabCommand}"
+                            CommandParameter="2">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="M8,1 L9,4 L12,5 L15,4 L14,7 L15,10 L12,11 L9,10 L8,15 L7,10 L4,11 L1,10 L2,7 L1,4 L4,5 L7,4 Z"
+                                      Width="15" Height="15"/>
+                            <TextBlock Text="用户配置"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="title-tab"
+                            Classes.selected="{Binding IsFeatureCenterTabSelected}"
+                            Command="{Binding SelectEditorTabCommand}"
+                            CommandParameter="3">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="M1,1 H6 V6 H1 Z M10,1 H15 V6 H10 Z M1,10 H6 V15 H1 Z M10,10 H15 V15 H10 Z"
+                                      Width="15" Height="15"/>
+                            <TextBlock Text="功能中心"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
+        <Grid Grid.Row="1">
+        <Grid RowDefinitions="*,Auto"
+              IsVisible="{DynamicResource WorkbenchClassicLayoutVisible}">
 
-        <!-- 主内容区域 -->
-        <Grid Grid.Row="1" RowDefinitions="*,Auto">
-            <!-- 日志输出区 -->
-            <Grid Grid.Row="0">
-                <TextBox Text="{Binding LogOutput}"
-                        IsReadOnly="True"
-                        AcceptsReturn="True"
-                        TextWrapping="NoWrap"
-                        ScrollViewer.VerticalScrollBarVisibility="Auto"
-                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                        FontFamily="Consolas, Microsoft YaHei"
-                        FontSize="14"
-                        Padding="10"
-                        behaviors:AutoScrollBehavior.IsEnabled="True"
-                        PointerEntered="LogBox_PointerEntered"
-                        PointerExited="LogBox_PointerExited"/>
-                <!-- 工具条覆盖层 -->
-                <Border HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Margin="10"
-                        IsVisible="{Binding IsLogToolbarVisible}"
-                        Background="{DynamicResource ThemeControlFillColorDefaultBrush}"
-                        Padding="5"
-                        PointerEntered="LogBox_PointerEntered"
-                        PointerExited="LogBox_PointerExited">
-                    <Button Content="清屏"
-                           Command="{Binding ClearLogCommand}"
-                           Padding="10,5"
-                           HorizontalContentAlignment="Center"/>
-                </Border>
+            <!-- 上部主操作区：三列布局 -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,400"
+                  ClipToBounds="True">
+
+            <Grid Grid.Column="0"
+                  ColumnDefinitions="220,*"
+                  ClipToBounds="True">
+
+            <!-- 第一列：文件层级侧边栏 -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource WorkbenchSideBrush}"
+                    BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                    BorderThickness="{DynamicResource WorkbenchSidebarDividerThickness}">
+                <Grid>
+                    <views:FileTreeView DataContext="{Binding FileTreeVM}" />
+                    <Border Width="10"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Stretch"
+                            Background="{DynamicResource WorkbenchShadowToLeftBrush}"
+                            IsHitTestVisible="False"
+                            IsVisible="{DynamicResource WorkbenchClassicShadowVisible}"
+                            ZIndex="1"/>
+                </Grid>
+            </Border>
+
+            <GridSplitter Grid.Column="0"
+                          Width="4"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent"
+                          ResizeBehavior="CurrentAndNext"
+                          ResizeDirection="Columns"
+                          ZIndex="10"/>
+
+            <!-- 第二列：标签切换（文本编辑器 / 标签编辑器 / 用户配置 / 功能中心） -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource WorkbenchPanelBrush}">
+                <TabControl Classes="folder-tabs"
+                            SelectedIndex="{Binding SelectedEditorTab}">
+                    <TabControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1"
+                                         ClipToBounds="True"/>
+                        </ItemsPanelTemplate>
+                    </TabControl.ItemsPanel>
+                    <TabItem Classes="tab-layer-0"
+                             Header="文本编辑">
+                        <Grid RowDefinitions="Auto,*"
+                              Background="{DynamicResource WorkbenchPanelBrush}">
+                            <!-- 脚本路径栏 -->
+                            <Border Grid.Row="0"
+                                    Padding="8,4"
+                                    Background="{DynamicResource WorkbenchPanelBrush}"
+                                    BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                                    BorderThickness="0,0,0,1">
+                                <Grid ColumnDefinitions="*,Auto,Auto,24">
+                                    <Grid ColumnDefinitions="Auto,*"
+                                          ColumnSpacing="5">
+                                        <TextBlock Grid.Column="0"
+                                                   Text="●"
+                                                   FontSize="10"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource WorkbenchAccentBrush}"
+                                                   IsVisible="{Binding IsScriptModified}"
+                                                   ToolTip.Tip="有未保存的修改"/>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding ScriptDisplayPath}"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                Spacing="2"
+                                                VerticalAlignment="Center"
+                                                Margin="8,0,12,0">
+                                        <Button Classes="editor-toolbar-button"
+                                                Command="{Binding SaveScriptCommand}"
+                                                ToolTip.Tip="保存">
+                                            <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z"
+                                                       Width="13" Height="13"/>
+                                        </Button>
+                                        <Button Classes="editor-toolbar-button"
+                                                Command="{Binding SaveScriptAsCommand}"
+                                                ToolTip.Tip="另存为">
+                                            <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z M10,10 L16,13 L10,16 Z"
+                                                       Width="13" Height="13"/>
+                                        </Button>
+                                        <Button Classes="editor-toolbar-button"
+                                                Command="{Binding CloseScriptCommand}"
+                                                ToolTip.Tip="关闭">
+                                            <PathIcon Data="M1,0 L8,7 L15,0 L16,1 L9,8 L16,15 L15,16 L8,9 L1,16 L0,15 L7,8 L0,1 Z"
+                                                       Width="12" Height="12"/>
+                                        </Button>
+                                        <Button Classes="editor-toolbar-button"
+                                                Command="{Binding FormatScriptCommand}"
+                                                ToolTip.Tip="格式化">
+                                            <PathIcon Data="M13,3 C16,6 16,10 13,13 L11,11 C13,9 13,7 11,5 Z M3,13 C0,10 0,6 3,3 L5,5 C3,7 3,9 5,11 Z M12,1 L16,4 L12,4 Z M4,15 L0,12 L4,12 Z"
+                                                       Width="13" Height="13"/>
+                                        </Button>
+                                    </StackPanel>
+                                    <Button Grid.Column="2"
+                                            Classes="flat-link"
+                                            Content="脚本语法"
+                                            Command="{Binding ShowScriptSyntaxCommand}"/>
+                                    <Border Grid.Column="3"
+                                            Classes="help-dot"
+                                            Margin="6,0,0,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="?"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource WorkbenchOnAccentBrush}"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                            <!-- 编辑器始终显示 -->
+                            <Grid Grid.Row="1"
+                                  Background="{DynamicResource WorkbenchInputBrush}">
+                                <editor:ScriptEditorControl x:Name="ClassicScriptEditor"
+                                                             EditorText="{Binding EditorText, Mode=TwoWay}"
+                                                             EnableAutoCompletion="{Binding IsAutoCompletionEnabled}"/>
+                                <Button Classes="ai-agent"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Bottom"
+                                        Margin="0,0,10,10"
+                                        Content="✦ AI Agent"
+                                        Command="{Binding OpenAiAgentCommand}"
+                                        IsVisible="{Binding !AiAgent.IsOpen}"/>
+                            </Grid>
+                            <agent:AiAgentView Grid.RowSpan="2"
+                                                DataContext="{Binding AiAgent}"/>
+                        </Grid>
+                    </TabItem>
+                    <TabItem Classes="tab-layer-1"
+                             Header="标签编辑">
+                        <Border Background="{DynamicResource WorkbenchPanelBrush}">
+                            <tag:TagEditorView x:Name="ClassicTagEditor" DataContext="{Binding TagEditorViewModel}"/>
+                        </Border>
+                    </TabItem>
+                    <TabItem Classes="tab-layer-2"
+                             Header="用户配置">
+                        <shared:UserConfigPage/>
+                    </TabItem>
+                    <TabItem Classes="tab-layer-3"
+                             Header="功能中心">
+                        <shared:FeatureCenterPage/>
+                    </TabItem>
+                </TabControl>
+            </Border>
+
             </Grid>
 
-            <!-- 底部模块连接器区域 -->
-            <Border Grid.Row="1"
-                   Padding="10">
-                <Grid ColumnDefinitions="*,*,*,*"
-                     HorizontalAlignment="Stretch">
+            <!-- 第二列与第三列之间的拖拽分割线 -->
+            <GridSplitter Grid.Column="0"
+                          Width="4"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent"
+                          ResizeBehavior="CurrentAndNext"
+                          ResizeDirection="Columns"
+                          ZIndex="10"/>
 
-                    <!-- 第一个模块连接器 -->
-                    <Border Grid.Column="0"
-                           BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
-                           BorderThickness="1"
-                           Margin="5"
-                           Padding="10">
-                        <StackPanel Orientation="Vertical" Spacing="10">
-                            <ComboBox ItemsSource="{Binding SerialPortOptions}"
-                                      SelectedItem="{Binding SelectedSerialPort}"
-                                      HorizontalAlignment="Stretch"
-                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshSerialPortsCommand}"/>
-                            <Grid ColumnDefinitions="*,*">
-                                <Button Grid.Column="0"
-                                        Content="{Binding NintendoSwitchButtonText}"
-                                        Command="{Binding ConnectNintendoSwitchCommand}"
-                                        IsEnabled="{Binding !IsConnectingNintendoSwitch}"
-                                        Margin="0,0,5,0"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"/>
-                                <Button Grid.Column="1"
-                                        Content="自动连接"
-                                        Command="{Binding AutoConnectNintendoSwitchCommand}"
-                                        IsEnabled="{Binding !IsConnectingNintendoSwitch}"
-                                        Margin="5,0,0,0"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"/>
-                            </Grid>
+            <!-- 第三列：监视器（上） + 日志（下） -->
+            <Grid Grid.Column="1"
+                  RowDefinitions="*,*"
+                  Background="{DynamicResource WorkbenchPanelBrush}">
+
+                <!-- 第三列上半部分：监视器 -->
+                <Border Grid.Row="0"
+                        Background="{DynamicResource WorkbenchPanelBrush}"
+                        BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+                        BorderThickness="{DynamicResource WorkbenchBottomDividerThickness}"
+                        ClipToBounds="True"
+                        DoubleTapped="MonitorArea_DoubleTapped">
+                    <Grid Background="{DynamicResource WorkbenchPanelBrush}">
+                        <Grid IsVisible="{Binding IsMonitorVisible}">
+                            <views:MonitorView DataContext="{Binding MonitorVM}" />
+                        </Grid>
+                        <Button HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                Margin="8"
+                                Classes="flat-link"
+                                Content="{Binding MonitorVisibilityButtonText}"
+                                Command="{Binding ToggleMonitorVisibilityCommand}"/>
+                        <Border Height="10"
+                                VerticalAlignment="Bottom"
+                                Background="{DynamicResource WorkbenchShadowToTopBrush}"
+                                IsHitTestVisible="False"
+                                IsVisible="{DynamicResource WorkbenchClassicShadowVisible}"/>
+                    </Grid>
+                </Border>
+
+                <GridSplitter Grid.Row="0"
+                              Height="4"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Bottom"
+                              Background="Transparent"
+                              ResizeBehavior="CurrentAndNext"
+                              ResizeDirection="Rows"
+                              ZIndex="10"/>
+
+                <!-- 第三列下半部分：日志输出 -->
+                <Grid Grid.Row="1"
+                      RowDefinitions="34,*"
+                      Background="{DynamicResource WorkbenchLogBrush}">
+                    <Grid Grid.Row="0"
+                          ColumnDefinitions="*,Auto,34"
+                          Background="{DynamicResource WorkbenchPanelBrush}">
+                        <TextBlock Text="输出窗口"
+                                   Margin="8,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                   FontSize="12"/>
+                        <TextBlock Grid.Column="1"
+                                   Text="调试模式"
+                                   Margin="0,0,4,0"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource WorkbenchMutedTextBrush}"
+                                   FontSize="12"/>
+                        <ToggleSwitch Grid.Column="2"
+                                      Classes="compact-switch"
+                                      OnContent=""
+                                      OffContent=""
+                                      IsChecked="{Binding ShowDebugInfo}"
+                                      HorizontalAlignment="Left"
+                                      VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid Grid.Row="1" RowDefinitions="26,*">
+                        <Grid Grid.Row="0"
+                              ColumnDefinitions="*,Auto"
+                              Background="{DynamicResource WorkbenchLogBrush}"
+                              ClipToBounds="True">
+                            <terminal:TerminalControl Grid.Column="0"
+                                                      ItemsSource="{Binding WelcomeLines}"
+                                                      Background="{DynamicResource WorkbenchLogBrush}"
+                                                      Foreground="{DynamicResource WorkbenchLogTextBrush}"
+                                                      MaxLineCount="1"
+                                                      AutoScroll="False"
+                                                      MarqueeHorizontalOverflow="True"
+                                                      ContentPadding="10,4,0,0"/>
+                            <Button Grid.Column="1"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Classes="flat-link"
+                                    Content="清空输出 ↻"
+                                    Foreground="{DynamicResource WorkbenchAmberBrush}"
+                                    Command="{Binding ClearLogCommand}"
+                                    Margin="8,0,12,0"/>
+                        </Grid>
+                        <Grid Grid.Row="1"
+                              Background="{DynamicResource WorkbenchLogBrush}">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          Background="{DynamicResource WorkbenchLogBrush}">
+                                <terminal:TerminalControl
+                                    ItemsSource="{Binding LogLines}"
+                                    ContentPadding="10,0,0,0"/>
+                            </ScrollViewer>
+                        </Grid>
+                    </Grid>
+                </Grid>
+                <Border Grid.RowSpan="2"
+                        Width="10"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Stretch"
+                        Background="{DynamicResource WorkbenchShadowToRightBrush}"
+                        IsHitTestVisible="False"
+                        IsVisible="{DynamicResource WorkbenchClassicShadowVisible}"
+                        ZIndex="20"/>
+            </Grid>
+
+            <Border Grid.ColumnSpan="3"
+                    Height="12"
+                    VerticalAlignment="Bottom"
+                    Background="{DynamicResource WorkbenchShadowToTopBrush}"
+                    IsHitTestVisible="False"
+                    IsVisible="{DynamicResource WorkbenchClassicShadowVisible}"
+                    ZIndex="20"/>
+        </Grid>
+
+        <!-- 下部模块操作区 -->
+        <Border Grid.Row="1"
+               Classes="module-actions dark-disabled-buttons"
+               Padding="10"
+               Background="{DynamicResource WorkbenchPanelBrush}"
+               BorderBrush="{DynamicResource WorkbenchBorderBrush}"
+               BorderThickness="{DynamicResource WorkbenchTopDividerThickness}">
+            <Grid ColumnDefinitions="*,*,*,*"
+                 HorizontalAlignment="Stretch">
+
+                <!-- 第一个模块：单片机连接 -->
+                <GroupBox Grid.Column="0"
+                          Margin="5"
+                          Padding="10">
+                    <GroupBox.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="单片机连接" FontWeight="Bold"/>
+                            <Ellipse Classes="connection-indicator"
+                                     Classes.connected="{Binding IsNintendoSwitchConnected}"
+                                     Classes.disconnected="{Binding !IsNintendoSwitchConnected}"/>
                             <TextBlock Text="{Binding NintendoSwitchStatus}"
-                                      HorizontalAlignment="Center"
-                                      FontWeight="Bold"
-                                      Foreground="{Binding IsNintendoSwitchConnected, Converter={StaticResource BoolToGreenBrush}}"/>
+                                       FontWeight="Bold"
+                                       Classes="connection-status"
+                                       Classes.connected="{Binding IsNintendoSwitchConnected}"
+                                       Classes.disconnected="{Binding !IsNintendoSwitchConnected}"/>
                         </StackPanel>
-                    </Border>
+                    </GroupBox.Header>
+                    <StackPanel Orientation="Vertical" Spacing="10">
+                        <ComboBox ItemsSource="{Binding SerialPortOptions}"
+                                  SelectedItem="{Binding SelectedSerialPort}"
+                                  HorizontalAlignment="Stretch"
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshSerialPortsCommand}"/>
+                        <Grid ColumnDefinitions="*,*">
+                            <Button Grid.Column="0"
+                                    Content="{Binding NintendoSwitchButtonText}"
+                                    Command="{Binding ConnectNintendoSwitchCommand}"
+                                    IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                    Margin="0,0,5,0"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                            <Button Grid.Column="1"
+                                    Content="自动连接"
+                                    Command="{Binding AutoConnectNintendoSwitchCommand}"
+                                    IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                    Classes="outline-accent"
+                                    Margin="5,0,0,0"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+                </GroupBox>
 
-                    <!-- 第二个模块连接器 -->
-                    <Border Grid.Column="1"
-                           BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
-                           BorderThickness="1"
-                           Margin="5"
-                           Padding="10">
-                        <StackPanel Orientation="Vertical" Spacing="10">
-                            <ComboBox ItemsSource="{Binding CaptureSourceOptions}"
-                                      SelectedItem="{Binding SelectedCaptureSource}"
-                                      HorizontalAlignment="Stretch"
-                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <Button Grid.Column="0"
-                                        Content="{Binding CaptureSourceButtonText}"
-                                        Command="{Binding ConnectCaptureSourceCommand}"
-                                        IsEnabled="{Binding !IsConnectingCaptureSource}"
-                                        Margin="0,0,5,0"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"/>
-                                <Button Grid.Column="1"
-                                        Content="监视器"
-                                        Command="{Binding OpenMonitorCommand}"
-                                        IsEnabled="{Binding IsCaptureSourceConnected}"
-                                        Margin="5,0,0,0"
-                                        MinWidth="80"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"/>
-                            </Grid>
+                <!-- 第二个模块：视频源 -->
+                <GroupBox Grid.Column="1"
+                          Margin="5"
+                          Padding="10">
+                    <GroupBox.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="视频源" FontWeight="Bold"/>
+                            <Ellipse Classes="connection-indicator"
+                                     Classes.connected="{Binding IsCaptureSourceConnected}"
+                                     Classes.disconnected="{Binding !IsCaptureSourceConnected}"/>
                             <TextBlock Text="{Binding CaptureSourceStatus}"
-                                      HorizontalAlignment="Center"
-                                      FontWeight="Bold"
-                                      Foreground="{Binding IsCaptureSourceConnected, Converter={StaticResource BoolToGreenBrush}}"/>
+                                       FontWeight="Bold"
+                                       Classes="connection-status"
+                                       Classes.connected="{Binding IsCaptureSourceConnected}"
+                                       Classes.disconnected="{Binding !IsCaptureSourceConnected}"/>
                         </StackPanel>
-                    </Border>
+                    </GroupBox.Header>
+                    <StackPanel Orientation="Vertical" Spacing="10">
+                        <ComboBox ItemsSource="{Binding CaptureSourceOptions}"
+                                  SelectedItem="{Binding SelectedCaptureSource}"
+                                  HorizontalAlignment="Stretch"
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
+                        <Button Content="{Binding CaptureSourceButtonText}"
+                                Command="{Binding ConnectCaptureSourceCommand}"
+                                IsEnabled="{Binding !IsConnectingCaptureSource}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"/>
+                    </StackPanel>
+                </GroupBox>
 
-                    <!-- 第三个模块连接器 -->
-                    <Border Grid.Column="2"
-                           BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
-                           BorderThickness="1"
-                           Margin="5"
-                           Padding="10">
-                        <StackPanel Orientation="Vertical" Spacing="10">
-                            <ComboBox ItemsSource="{Binding ControlSourceOptions}"
+                <!-- 第三个模块：虚拟手柄 -->
+                <GroupBox Grid.Column="2"
+                          Margin="5"
+                          Padding="10">
+                    <GroupBox.Header>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="虚拟手柄" FontWeight="Bold"/>
+                            <Ellipse Classes="connection-indicator"
+                                     Classes.connected="{Binding IsControllerConnected}"
+                                     Classes.disconnected="{Binding !IsControllerConnected}"/>
+                            <TextBlock Text="{Binding ControlSourceStatus}"
+                                       FontWeight="Bold"
+                                       Classes="connection-status"
+                                       Classes.connected="{Binding IsControllerConnected}"
+                                       Classes.disconnected="{Binding !IsControllerConnected}"/>
+                        </StackPanel>
+                    </GroupBox.Header>
+                    <Grid RowDefinitions="Auto,Auto"
+                          ColumnDefinitions="*,Auto,Auto"
+                          RowSpacing="10"
+                          ColumnSpacing="10">
+                        <!-- 第一排：下拉框 + 开启映射按钮 -->
+                        <Grid Grid.Row="0"
+                              Grid.Column="0"
+                              Grid.ColumnSpan="2"
+                              ColumnDefinitions="*">
+                            <ComboBox Grid.Column="0"
+                                      ItemsSource="{Binding ControlSourceOptions}"
                                       SelectedItem="{Binding SelectedControlSource}"
                                       HorizontalAlignment="Stretch"
                                       behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshControlSourcesCommand}"/>
-                            <Grid ColumnDefinitions="*,*">
-                                <Button Grid.Column="0"
-                                        Content="{Binding ControllerButtonText}"
-                                        Command="{Binding ConnectControllerCommand}"
-                                        IsEnabled="{Binding !IsConnectingController}"
-                                        Margin="0,0,5,0"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"/>
-                                <Button Grid.Column="1"
-                                        Content="修改按键映射"
-                                        Command="{Binding EditKeyMappingCommand}"
-                                        CommandParameter="{Binding $parent[Window]}"
-                                        IsEnabled="{Binding IsEditKeyMappingEnabled}"
-                                        Margin="5,0,0,0"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"/>
-                            </Grid>
-                            <TextBlock Text="{Binding ControlSourceStatus}"
-                                      HorizontalAlignment="Center"
-                                      FontWeight="Bold"
-                                      Foreground="{Binding IsControllerConnected, Converter={StaticResource BoolToGreenBrush}}"/>
-                        </StackPanel>
-                    </Border>
+                        </Grid>
+                        <Button Grid.Row="0"
+                                Grid.Column="2"
+                                Content="{Binding ControllerButtonText}"
+                                Command="{Binding ConnectControllerCommand}"
+                                IsEnabled="{Binding !IsConnectingController}"
+                                Padding="8,4"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Stretch"/>
+                        <!-- 第二排：录制脚本 + 停止录制 + 按键映射 -->
+                        <Grid Grid.Row="1"
+                              Grid.Column="0"
+                              Grid.ColumnSpan="3"
+                              ColumnDefinitions="*,*,*"
+                              ColumnSpacing="10">
+                            <Button Grid.Column="0"
+                                    Content="录制脚本"
+                                    Command="{Binding StartRecordCommand}"
+                                    IsEnabled="{Binding IsStartRecordEnabled}"
+                                    Padding="12,4"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                            <Button Grid.Column="1"
+                                    Content="停止录制"
+                                    Command="{Binding StopRecordCommand}"
+                                    IsEnabled="{Binding IsStopRecordEnabled}"
+                                    Padding="12,4"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                            <Button Grid.Column="2"
+                                    Content="按键映射"
+                                    Command="{Binding EditKeyMappingCommand}"
+                                    IsEnabled="{Binding IsEditKeyMappingEnabled}"
+                                    Padding="12,4"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                        </Grid>
+                    </Grid>
+                </GroupBox>
 
-                    <!-- 运行脚本按钮 -->
-                    <Border Grid.Column="3"
-                           Margin="5"
-                           Padding="10">
-                        <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="10">
+                <!-- 运行脚本按钮（不变） -->
+                <Border Grid.Column="3"
+                        Margin="5"
+                        Padding="10"
+                        Background="{DynamicResource WorkbenchPanelBrush}">
+                    <Grid>
+                        <StackPanel Orientation="Vertical"
+                                    HorizontalAlignment="Stretch"
+                                    Spacing="8">
                             <TextBlock Text="{Binding RunTimeDisplay}"
                                        FontSize="24"
                                        FontWeight="Bold"
                                        FontFamily="Consolas"
+                                       Foreground="{DynamicResource WorkbenchMutedTextBrush}"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
                             <Button Content="{Binding RunButtonText}"
                                     Command="{Binding RunScriptCommand}"
+                                    Classes="run-button"
+                                    Classes.running="{Binding IsRunning}"
                                     FontSize="18"
                                     FontWeight="Bold"
+                                    Foreground="{DynamicResource WorkbenchOnAccentBrush}"
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"
                                     VerticalContentAlignment="Center"/>
                         </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+        </Grid>
+
+        <Grid RowDefinitions="*,Auto"
+              IsVisible="{DynamicResource WorkbenchCardLayoutVisible}"
+              Background="{DynamicResource WorkbenchWindowBrush}">
+            <Grid Grid.Row="0"
+                  Margin="{DynamicResource WorkbenchCardPagePadding}"
+                  ColumnDefinitions="*,18,300">
+
+                <Grid Grid.Column="0"
+                      ColumnDefinitions="220,18,*">
+
+                <Border Grid.Column="0"
+                        Classes="workbench-card">
+                    <Border Classes="workbench-card-content"
+                            Margin="1">
+                        <views:FileTreeView DataContext="{Binding FileTreeVM}" />
+                    </Border>
+                </Border>
+
+                <GridSplitter Grid.Column="1"
+                              Width="18"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              Background="Transparent"
+                              ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Columns"
+                              ZIndex="10"/>
+
+                <Border Grid.Column="2"
+                        Classes="workbench-card">
+                    <Border Classes="workbench-card-content"
+                            Margin="1">
+                    <Grid RowDefinitions="Auto,1,*">
+                        <Grid Grid.Row="0"
+                              Classes="card-header"
+                              ColumnDefinitions="*,Auto"
+                              Margin="16,0,14,0"
+                              IsVisible="{Binding IsCardEditorHeaderVisible}">
+                            <Grid ColumnDefinitions="Auto,*"
+                                  ColumnSpacing="5">
+                                <TextBlock Grid.Column="0"
+                                           Text="●"
+                                           FontSize="10"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource WorkbenchAccentBrush}"
+                                           IsVisible="{Binding IsScriptModified}"
+                                           ToolTip.Tip="有未保存的修改"/>
+                                <TextBlock Grid.Column="1"
+                                           Classes="card-header-title"
+                                           Text="{Binding ScriptDisplayPath}"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        Spacing="4"
+                                        VerticalAlignment="Center"
+                                        IsVisible="{Binding IsTextEditorTabSelected}">
+                                <Button Classes="editor-toolbar-button"
+                                        Command="{Binding SaveScriptCommand}"
+                                        ToolTip.Tip="保存">
+                                    <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z"
+                                              Width="13" Height="13"/>
+                                </Button>
+                                <Button Classes="editor-toolbar-button"
+                                        Command="{Binding SaveScriptAsCommand}"
+                                        ToolTip.Tip="另存为">
+                                    <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z M10,10 L16,13 L10,16 Z"
+                                              Width="13" Height="13"/>
+                                </Button>
+                                <Button Classes="editor-toolbar-button"
+                                        Command="{Binding CloseScriptCommand}"
+                                        ToolTip.Tip="关闭">
+                                    <PathIcon Data="M1,0 L8,7 L15,0 L16,1 L9,8 L16,15 L15,16 L8,9 L1,16 L0,15 L7,8 L0,1 Z"
+                                              Width="12" Height="12"/>
+                                </Button>
+                                <Button Classes="editor-toolbar-button"
+                                        Command="{Binding FormatScriptCommand}"
+                                        ToolTip.Tip="格式化">
+                                    <PathIcon Data="M13,3 C16,6 16,10 13,13 L11,11 C13,9 13,7 11,5 Z M3,13 C0,10 0,6 3,3 L5,5 C3,7 3,9 5,11 Z M12,1 L16,4 L12,4 Z M4,15 L0,12 L4,12 Z"
+                                              Width="13" Height="13"/>
+                                </Button>
+                                <Button Classes="flat-link"
+                                        Content="脚本语法"
+                                        Command="{Binding ShowScriptSyntaxCommand}"
+                                        Margin="6,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Grid.Row="1"
+                                Background="{DynamicResource WorkbenchBorderBrush}"
+                                IsVisible="{Binding IsCardEditorHeaderVisible}"/>
+
+                        <Grid Grid.Row="2"
+                              Background="{DynamicResource WorkbenchInputBrush}"
+                              IsVisible="{Binding IsTextEditorTabSelected}">
+                            <editor:ScriptEditorControl x:Name="CardScriptEditor"
+                                                        EditorText="{Binding EditorText, Mode=TwoWay}"
+                                                        EnableAutoCompletion="{Binding IsAutoCompletionEnabled}"/>
+                            <Button Classes="ai-agent"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom"
+                                    Margin="0,0,14,14"
+                                    Content="+ AI Agent"
+                                    Command="{Binding OpenAiAgentCommand}"
+                                    IsVisible="{Binding !AiAgent.IsOpen}"/>
+                            <agent:AiAgentView DataContext="{Binding AiAgent}"/>
+                        </Grid>
+
+                        <Border Grid.Row="2"
+                                Background="{DynamicResource WorkbenchPanelBrush}"
+                                IsVisible="{Binding IsTagEditorTabSelected}">
+                            <tag:TagEditorView x:Name="CardTagEditor"
+                                               DataContext="{Binding TagEditorViewModel}"/>
+                        </Border>
+
+                        <shared:UserConfigPage Grid.Row="2"
+                                               IsVisible="{Binding IsUserConfigTabSelected}"
+                                               IdleLayoutGroupName="CardIdleLayoutOptions"
+                                               RunningLayoutGroupName="CardRunningLayoutOptions"/>
+
+                        <shared:FeatureCenterPage Grid.Row="2"
+                                                  IsVisible="{Binding IsFeatureCenterTabSelected}"/>
+                    </Grid>
+                    </Border>
+                </Border>
+
+                </Grid>
+
+                <GridSplitter Grid.Column="1"
+                              Width="18"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              Background="Transparent"
+                              ResizeBehavior="PreviousAndNext"
+                              ResizeDirection="Columns"
+                              ZIndex="10"/>
+
+                <Grid Grid.Column="2"
+                      RowDefinitions="*,18,*">
+                    <Border Grid.Row="0"
+                            Classes="workbench-card"
+                            DoubleTapped="MonitorArea_DoubleTapped">
+                        <Border Classes="workbench-card-content"
+                                Margin="1">
+                        <Grid RowDefinitions="44,*">
+                            <Grid Grid.Row="0"
+                                  Classes="card-header"
+                                  ColumnDefinitions="*,Auto"
+                                  Margin="16,0">
+                                <TextBlock Classes="card-header-title" Text="视频监视器"/>
+                                <Button Grid.Column="1"
+                                        Classes="flat-link"
+                                        Content="{Binding MonitorVisibilityButtonText}"
+                                        Command="{Binding ToggleMonitorVisibilityCommand}"/>
+                            </Grid>
+                            <Grid Grid.Row="1"
+                                  IsVisible="{Binding IsMonitorVisible}">
+                                <views:MonitorView DataContext="{Binding MonitorVM}"/>
+                            </Grid>
+                        </Grid>
+                        </Border>
+                    </Border>
+
+                    <GridSplitter Grid.Row="1"
+                                  Height="18"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  Background="Transparent"
+                                  ResizeBehavior="PreviousAndNext"
+                                  ResizeDirection="Rows"
+                                  ZIndex="10"/>
+
+                    <Border Grid.Row="2"
+                            Classes="workbench-card">
+                        <Border Classes="workbench-card-content"
+                                Margin="1">
+                        <Grid RowDefinitions="44,*">
+                            <Grid Grid.Row="0"
+                                  Classes="card-header"
+                                  ColumnDefinitions="*,Auto,42"
+                                  Margin="16,0">
+                                <TextBlock Classes="card-header-title" Text="输出窗口"/>
+                                <TextBlock Grid.Column="1"
+                                           Classes="card-header-action"
+                                           Text="调试模式"
+                                           Margin="0,0,6,0"/>
+                                <ToggleSwitch Grid.Column="2"
+                                              Classes="compact-switch"
+                                              OnContent=""
+                                              OffContent=""
+                                              IsChecked="{Binding ShowDebugInfo}"
+                                              HorizontalAlignment="Left"
+                                              VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid Grid.Row="1" RowDefinitions="28,*">
+                                <Grid Grid.Row="0"
+                                      ColumnDefinitions="*,Auto"
+                                      Background="{DynamicResource WorkbenchPanelBrush}">
+                                    <terminal:TerminalControl Grid.Column="0"
+                                                              ItemsSource="{Binding WelcomeLines}"
+                                                              Background="{DynamicResource WorkbenchPanelBrush}"
+                                                              Foreground="{DynamicResource WorkbenchLogTextBrush}"
+                                                              MaxLineCount="1"
+                                                              AutoScroll="False"
+                                                              MarqueeHorizontalOverflow="True"
+                                                              ContentPadding="16,5,0,0"/>
+                                    <Button Grid.Column="1"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Center"
+                                            Classes="flat-link"
+                                            Content="清空输出"
+                                            Command="{Binding ClearLogCommand}"
+                                            Margin="8,0,14,0"/>
+                                </Grid>
+                                <ScrollViewer Grid.Row="1"
+                                              VerticalScrollBarVisibility="Auto"
+                                              HorizontalScrollBarVisibility="Auto"
+                                              Background="{DynamicResource WorkbenchPanelBrush}">
+                                    <terminal:TerminalControl ItemsSource="{Binding LogLines}"
+                                                              Background="{DynamicResource WorkbenchPanelBrush}"
+                                                              Foreground="{DynamicResource WorkbenchLogTextBrush}"
+                                                              ContentPadding="16,2,0,0"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Grid>
+                        </Border>
                     </Border>
                 </Grid>
-            </Border>
+            </Grid>
+
+            <Grid Grid.Row="1"
+                  Margin="18,0,18,18"
+                  ColumnDefinitions="*,*,*,*"
+                  ColumnSpacing="{DynamicResource WorkbenchCardGap}"
+                  Classes="module-actions dark-disabled-buttons">
+
+                <Border Grid.Column="0"
+                        Classes="workbench-card"
+                        Padding="16,12">
+                    <Grid RowDefinitions="Auto,Auto,*,Auto"
+                          RowSpacing="10">
+                        <Grid Grid.Row="0"
+                              ColumnDefinitions="*,Auto"
+                              ColumnSpacing="8">
+                            <TextBlock Classes="card-header-title"
+                                       Text="单片机连接"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"/>
+                            <Border Grid.Column="1"
+                                    Classes="status-pill"
+                                    Classes.connected="{Binding IsNintendoSwitchConnected}"
+                                    Classes.disconnected="{Binding !IsNintendoSwitchConnected}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Ellipse Classes="connection-indicator"
+                                             Classes.connected="{Binding IsNintendoSwitchConnected}"
+                                             Classes.disconnected="{Binding !IsNintendoSwitchConnected}"/>
+                                    <TextBlock Classes="status-pill-text"
+                                               Text="{Binding NintendoSwitchStatus}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <Border Grid.Row="1"
+                                Height="1"
+                                Background="{DynamicResource WorkbenchBorderBrush}"/>
+                        <ComboBox Grid.Row="2"
+                                  ItemsSource="{Binding SerialPortOptions}"
+                                  SelectedItem="{Binding SelectedSerialPort}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshSerialPortsCommand}"/>
+                        <Grid Grid.Row="3"
+                              ColumnDefinitions="*,*"
+                              ColumnSpacing="10"
+                              VerticalAlignment="Bottom">
+                            <Button Content="{Binding NintendoSwitchButtonText}"
+                                    Command="{Binding ConnectNintendoSwitchCommand}"
+                                    IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                    HorizontalAlignment="Stretch"/>
+                            <Button Grid.Column="1"
+                                    Content="自动连接"
+                                    Command="{Binding AutoConnectNintendoSwitchCommand}"
+                                    IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                    Classes="outline-accent"
+                                    HorizontalAlignment="Stretch"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1"
+                        Classes="workbench-card"
+                        Padding="16,12">
+                    <Grid RowDefinitions="Auto,Auto,*,Auto"
+                          RowSpacing="10">
+                        <Grid Grid.Row="0"
+                              ColumnDefinitions="*,Auto"
+                              ColumnSpacing="8">
+                            <TextBlock Classes="card-header-title"
+                                       Text="视频源"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"/>
+                            <Border Grid.Column="1"
+                                    Classes="status-pill"
+                                    Classes.connected="{Binding IsCaptureSourceConnected}"
+                                    Classes.disconnected="{Binding !IsCaptureSourceConnected}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Ellipse Classes="connection-indicator"
+                                             Classes.connected="{Binding IsCaptureSourceConnected}"
+                                             Classes.disconnected="{Binding !IsCaptureSourceConnected}"/>
+                                    <TextBlock Classes="status-pill-text"
+                                               Text="{Binding CaptureSourceStatus}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <Border Grid.Row="1"
+                                Height="1"
+                                Background="{DynamicResource WorkbenchBorderBrush}"/>
+                        <ComboBox Grid.Row="2"
+                                  ItemsSource="{Binding CaptureSourceOptions}"
+                                  SelectedItem="{Binding SelectedCaptureSource}"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Center"
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
+                        <Button Grid.Row="3"
+                                Content="{Binding CaptureSourceButtonText}"
+                                Command="{Binding ConnectCaptureSourceCommand}"
+                                IsEnabled="{Binding !IsConnectingCaptureSource}"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Bottom"/>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="2"
+                        Classes="workbench-card"
+                        Padding="16,12">
+                    <Grid RowDefinitions="Auto,Auto,*,Auto"
+                          RowSpacing="10">
+                        <Grid Grid.Row="0"
+                              ColumnDefinitions="*,Auto"
+                              ColumnSpacing="8">
+                            <TextBlock Classes="card-header-title"
+                                       Text="虚拟手柄"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"/>
+                            <Border Grid.Column="1"
+                                    Classes="status-pill"
+                                    Classes.connected="{Binding IsControllerConnected}"
+                                    Classes.disconnected="{Binding !IsControllerConnected}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Ellipse Classes="connection-indicator"
+                                             Classes.connected="{Binding IsControllerConnected}"
+                                             Classes.disconnected="{Binding !IsControllerConnected}"/>
+                                    <TextBlock Classes="status-pill-text"
+                                               Text="{Binding ControlSourceStatus}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                        <Border Grid.Row="1"
+                                Height="1"
+                                Background="{DynamicResource WorkbenchBorderBrush}"/>
+                        <Grid Grid.Row="2"
+                              ColumnDefinitions="*,Auto"
+                              ColumnSpacing="10"
+                              VerticalAlignment="Center">
+                            <ComboBox ItemsSource="{Binding ControlSourceOptions}"
+                                      SelectedItem="{Binding SelectedControlSource}"
+                                      HorizontalAlignment="Stretch"
+                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshControlSourcesCommand}"/>
+                            <Button Grid.Column="1"
+                                    Content="{Binding ControllerButtonText}"
+                                    Command="{Binding ConnectControllerCommand}"
+                                    IsEnabled="{Binding !IsConnectingController}"/>
+                        </Grid>
+                        <Grid Grid.Row="3"
+                              ColumnDefinitions="*,*,*"
+                              ColumnSpacing="10"
+                              VerticalAlignment="Bottom">
+                            <Button Content="录制脚本"
+                                    Command="{Binding StartRecordCommand}"
+                                    IsEnabled="{Binding IsStartRecordEnabled}"/>
+                            <Button Grid.Column="1"
+                                    Content="停止录制"
+                                    Command="{Binding StopRecordCommand}"
+                                    IsEnabled="{Binding IsStopRecordEnabled}"/>
+                            <Button Grid.Column="2"
+                                    Content="按键映射"
+                                    Command="{Binding EditKeyMappingCommand}"
+                                    IsEnabled="{Binding IsEditKeyMappingEnabled}"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="3"
+                        Classes="workbench-card"
+                        Padding="16,12">
+                    <Grid RowDefinitions="Auto,*" RowSpacing="10">
+                        <TextBlock Classes="card-header-title" Text="运行控制"/>
+                        <StackPanel Grid.Row="1" Spacing="10">
+                            <Border Classes="runtime-display">
+                                <TextBlock Text="{Binding RunTimeDisplay}"
+                                           FontSize="22"
+                                           FontWeight="SemiBold"
+                                           FontFamily="{DynamicResource WorkbenchMonoFontFamily}"
+                                           Foreground="{DynamicResource WorkbenchTextBrush}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <Button Content="{Binding RunButtonText}"
+                                    Command="{Binding RunScriptCommand}"
+                                    Classes="run-button"
+                                    Classes.running="{Binding IsRunning}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
         </Grid>
     </Grid>
+    </Grid>
+    </Border>
 </Window>
+

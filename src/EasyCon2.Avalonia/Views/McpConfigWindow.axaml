@@ -1,0 +1,9 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mcp="using:EasyCon2.Avalonia.Core.Mcp"
+        x:Class="EasyCon2.Avalonia.Views.McpConfigWindow"
+        Title="MCP 服务器配置" Width="820" Height="720"
+        MinWidth="640" MinHeight="500"
+        WindowStartupLocation="CenterOwner">
+    <mcp:McpConfigControl x:Name="McpConfig"/>
+</Window>

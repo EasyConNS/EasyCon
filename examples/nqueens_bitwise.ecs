@@ -1,0 +1,81 @@
+# 位运算优化的八皇后问题解决算法（递归版本）
+
+# 全局变量
+$N = 8
+$count = 0
+$limit = 0
+$full_mask = 65535
+
+# 递归求解函数：使用位掩码表示列、主对角线、副对角线的占用情况
+# $row:     当前行号
+# $columns: 已占用列的位掩码
+# $diag1:   已占用主对角线的位掩码（row-col 恒定）
+# $diag2:   已占用副对角线的位掩码（row+col 恒定）
+FUNC solve($row, $columns, $diag1, $diag2):INT
+    # 所有皇后都放置完成，找到一个有效解
+    IF $row == $N
+        $count += 1
+        RETURN 0
+    ENDIF
+
+    # 计算当前行的可用位置
+    $occupied = $columns | $diag1 | $diag2
+    $inverted = $occupied ^ $full_mask
+    $available = $limit & $inverted
+
+    # 遍历每个可用位置
+    WHILE $available > 0
+        # 提取最右边的1位（最低位）
+        $neg_available = 0 - $available
+        $position = $available & $neg_available
+
+        # 递归到下一行
+        $new_columns = $columns | $position
+        $new_d1_tmp = $diag1 | $position
+        $new_diag1 = $new_d1_tmp << 1
+        $new_d2_tmp = $diag2 | $position
+        $new_diag2 = $new_d2_tmp >> 1
+        $dummy = solve($row + 1, $new_columns, $new_diag1, $new_diag2)
+
+        # 移除当前位置，继续尝试下一个位置
+        $available = $available & ($available - 1)
+    END
+
+    RETURN 0
+ENDFUNC
+
+# 主求解函数
+FUNC solve_nqueens($n):INT
+    $N = $n
+    $count = 0
+
+    # 计算 limit = (1 << N) - 1
+    $bit_value = 1 << $N
+    $limit = $bit_value - 1
+
+    PRINT "开始求解 " & $N & " 皇后问题..."
+
+    $start_time = TIME()
+
+    $dummy = solve(0, 0, 0, 0)
+
+    $end_time = TIME()
+    $elapsed = $end_time - $start_time
+
+    PRINT "求解完成！"
+    PRINT "总解数: " & $count
+    PRINT "耗时: " & $elapsed & " 毫秒"
+
+    RETURN $count
+ENDFUNC
+
+# 求解标准八皇后问题
+PRINT "========== 八皇后问题 =========="
+$result = solve_nqueens(8)
+
+PRINT ""
+PRINT "========== 不同规模对比 =========="
+FOR $n = 4 TO 10
+    $result = solve_nqueens($n)
+    PRINT ""
+NEXT

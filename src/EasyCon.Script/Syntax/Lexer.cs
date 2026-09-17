@@ -17,14 +17,11 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     public DiagnosticBag Diagnostics => _diagnostics;
 
     private bool _expectEqualAfterIf = false;
-    private bool _expectDirectionAgterStick = false;
-    private bool _expectUPDOWNAgterBtn = false;
+    private bool _expectIdent = false;
 
     private void cleanFlags()
     {
         _expectEqualAfterIf = false;
-        _expectUPDOWNAgterBtn = false;
-        _expectDirectionAgterStick = false;
     }
 
     // 关键字字典
@@ -36,6 +33,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             { "else", TokenType.ELSE },
             { "endif", TokenType.ENDIF },
             { "while", TokenType.WHILE },
+            { "until", TokenType.UNTIL },
             { "end", TokenType.END },
             { "for", TokenType.FOR },
             { "to", TokenType.TO },
@@ -52,6 +50,10 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             { "true", TokenType.TRUE },
             { "false", TokenType.FALSE },
             { "reset", TokenType.ResetKeyword },
+            { "extern", TokenType.EXTERN },
+            { "as", TokenType.AS },
+            { "from", TokenType.FROM },
+            { "struct", TokenType.STRUCT },
         };
     private static readonly Dictionary<string, TokenType> logicwords = new()
     {
@@ -63,15 +65,13 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     // 按键关键字
     private static readonly List<string> gamepadKeywords = ["A", "B", "X", "Y", "L", "R", "ZL", "ZR",
         "MINUS", "PLUS", "HOME", "CAPTURE",
-        "LCLICK", "RCLICK",
-        "DOWNLEFT", "DOWNRIGHT", "UPLEFT", "UPRIGHT",
-        "UP", "DOWN", "LEFT", "RIGHT"];
+        "LCLICK", "RCLICK"];
     private static readonly List<string> stickKeywords = ["LS", "RS"];
 
     // 方向关键字
     private static readonly List<string> direcKeywords = ["UP", "DOWN", "LEFT", "RIGHT",
         "DOWNLEFT", "DOWNRIGHT", "UPLEFT", "UPRIGHT"];
-    private static readonly List<string> statKeywords = ["UP", "DOWN"];
+
     public ImmutableArray<Token> Tokenize()
     {
         _tokens.Clear();
@@ -132,6 +132,23 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private void AddToken(TokenType type, string value, int start)
     {
         _tokens.Add(new Token(_text, type, value, start));
+
+        // PRINT/ALERT 只在行首触发特殊参数解析
+        if (type == TokenType.IDENT &&
+            (value.Equals("print", StringComparison.OrdinalIgnoreCase) || value.Equals("alert", StringComparison.OrdinalIgnoreCase)) &&
+            IsLineStart())
+        {
+            ReadPrintArguments();
+        }
+    }
+
+    /// <summary>判断刚添加的 token 是否是当前行的第一个有效 token</summary>
+    private bool IsLineStart()
+    {
+        // tokens 中倒数第二个是前一个 token（最后一个是我们刚加的）
+        if (_tokens.Count < 2) return true;
+        var prev = _tokens[_tokens.Count - 2];
+        return prev.Type == TokenType.NEWLINE;
     }
 
     // 检查是否为标识符起始字符
@@ -205,6 +222,16 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             Advance();
         }
 
+        // 处理小数点（如 1.5）
+        if (_position < _input.Length && Current == '.' && _position + 1 < _input.Length && char.IsDigit(Lookahead))
+        {
+            Advance(); // consume '.'
+            while (_position < _input.Length && char.IsDigit(Current))
+            {
+                Advance();
+            }
+        }
+
         var length = _position - start;
         var number = _input.Substring(start, length);
         if (number.Contains('.'))
@@ -243,37 +270,12 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             {
                 break;
             }
-            if (Current == '\\') // 转义字符
+            if (Current == '\\' && _position + 1 < _input.Length)
             {
-                if (_position >= _input.Length)
-                {
-                    break;
-                }
-
-                var escaped = Lookahead switch
-                {
-                    'n' => '\n',
-                    't' => '\t',
-                    'r' => '\r',
-                    '\'' => '\'',
-                    '"' => '"',
-                    '\\' => '\\',
-                    // 可根据需要添加更多转义
-                    _ => '\0',
-                };
-                if (escaped != '\0')
-                {
-                    sb.Append(escaped);
-                    Advance();
-                    Advance();
-                    continue;
-                }
-                else
-                {
-                    break;
-                }
+                sb.Append(Advance()); // \
+                sb.Append(Advance()); // next char
+                continue;
             }
-
             sb.Append(Advance());
         }
 
@@ -335,7 +337,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             // 2. 识别 & 符号
             if (Current == '&')
             {
-                AddToken(TokenType.BitAnd, "&", start); // 假设 & 对应 BitAnd，或根据你的定义修改
+                AddToken(TokenType.BitAnd, "&", start);
                 Advance();
                 continue;
             }
@@ -380,7 +382,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         {
             var tokenType = keywords[word.ToLower()];
             AddToken(tokenType, word.ToUpper(), start);
-            if (SyntaxTree.LegacyCompat)
+            if (syntaxTree.LegacySyntax)
             {
                 if (tokenType == TokenType.IF || tokenType == TokenType.ELIF)
                     _expectEqualAfterIf = true;
@@ -391,45 +393,29 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
             // and, or, not关键字小写
             AddToken(logicwords[word.ToLower()], word.ToLower(), start);
         }
+        else if (_expectIdent)
+        {
+            AddToken(TokenType.IDENT, word, start);
+            _expectIdent = false;
+        }
         else if ((isAllUpper || isAllLower) && gamepadKeywords.Contains(word.ToUpper()))
         {
-            var ktype = TokenType.ButtonKeyword;
-            if (_expectUPDOWNAgterBtn)
-            {
-                switch (word.ToUpper())
-                {
-                    case "UP":
-                    case "DOWN":
-                        ktype = TokenType.StateKeyword;
-                        break;
-                }
-                _expectUPDOWNAgterBtn = false;
-            }
-            else
-            {
-                _expectUPDOWNAgterBtn = true;
-            }
-            if (_expectDirectionAgterStick)
-            {
-                if (direcKeywords.Contains(word.ToUpper()))
-                {
-                    ktype = TokenType.DirectionKeyword;
-                }
-                _expectDirectionAgterStick = false;
-            }
             // 手柄按键大写
-            AddToken(ktype, word.ToUpper(), start);
+            AddToken(TokenType.ButtonKeyword, word.ToUpper(), start);
         }
         else if ((isAllUpper || isAllLower) && stickKeywords.Contains(word.ToUpper()))
         {
-            _expectDirectionAgterStick = true;
+            // 摇杆关键字
             AddToken(TokenType.StickKeyword, word.ToUpper(), start);
+        }
+        else if ((isAllUpper || isAllLower) && direcKeywords.Contains(word.ToUpper()))
+        {
+            // 方向关键字
+            AddToken(TokenType.DirectionKeyword, word.ToUpper(), start);
         }
         else
         {
             AddToken(TokenType.IDENT, word, start);
-            if (word.Equals("print", StringComparison.OrdinalIgnoreCase) || word.Equals("alert", StringComparison.OrdinalIgnoreCase))
-                ReadPrintArguments();
         }
     }
 
@@ -447,9 +433,9 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     Advance();
                     AddToken(TokenType.EQL, "==", start);
                 }
-                else if (_expectEqualAfterIf && SyntaxTree.LegacyCompat)
+                else if (_expectEqualAfterIf && syntaxTree.LegacySyntax)
                 {
-                    AddToken(TokenType.EQL, "==", start);
+                    AddToken(TokenType.EQL, "=", start);
                     _expectEqualAfterIf = false;
                 }
                 else
@@ -640,6 +626,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                 break;
             case '.':
                 AddToken(TokenType.DOT, ".", start);
+                _expectIdent = true;
                 break;
             default:
                 var span = new SourceSpan(start, 1);
