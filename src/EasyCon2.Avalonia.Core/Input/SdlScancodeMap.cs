@@ -6,6 +6,29 @@ namespace EasyCon2.Avalonia.Core.Input;
 /// </summary>
 public static class SdlScancodeMap
 {
+    /// <summary>按下即清除绑定 —— 这类按键不参与映射捕获。</summary>
+    public static bool IsClearKey(global::Avalonia.Input.Key key)
+    {
+        return key is global::Avalonia.Input.Key.Escape or global::Avalonia.Input.Key.Back;
+    }
+
+    /// <summary>
+    /// 系统保留键 —— 不允许绑定。
+    /// 理由：① 徽标键/菜单键被操作系统截获，无法可靠捕获；
+    /// ② 打印屏幕/Pause 由系统占用；③ 锁定类按键会改变键盘全局状态。
+    /// </summary>
+    public static bool IsReservedKey(global::Avalonia.Input.Key key)
+    {
+        return key is global::Avalonia.Input.Key.LWin
+            or global::Avalonia.Input.Key.RWin
+            or global::Avalonia.Input.Key.Apps
+            or global::Avalonia.Input.Key.PrintScreen
+            or global::Avalonia.Input.Key.Pause
+            or global::Avalonia.Input.Key.CapsLock
+            or global::Avalonia.Input.Key.NumLock
+            or global::Avalonia.Input.Key.Scroll;
+    }
+
     /// <summary>Avalonia Key → SDL_Scancode；不支持的按键返回 -1。</summary>
     public static int FromAvaloniaKey(global::Avalonia.Input.Key key)
     {
