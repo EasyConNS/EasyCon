@@ -85,8 +85,19 @@ The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict
 ## Testing
 
 - **Framework**: NUnit (NOT xUnit or MSTest)
-- Test projects: `EasyCon.Tests`, `EasyCon.Lsp.Tests`, `EasyCon.WinInput.Tests`, `EasyCon2.Avalonia.Core.Tests`
+- Test projects: `EasyCon.Tests`, `EasyCon.Lsp.Tests`, `EasyCon.WinInput.Tests`, `EasyCon2.Avalonia.Core.Tests`, `EasyCon.SDLInput.Tests`
 - Use `[Test]` attribute, not `[Fact]`
+
+### Fake device connection (no-hardware device tests)
+
+Device logic (queue, throttle, report building, serialization) can be exercised without an MCU by injecting a fake connection:
+
+- `EasyCon.Device` exposes the seam: `IConnection` is `public`, and `NintendoSwitch.CreateConnection(connStr, baudrate)` is `protected virtual` (its default returns `TTLSerialClient`). The production enqueue/dequeue path is unchanged.
+- Subclass `NintendoSwitch` in a test project and override `CreateConnection` to return a fake whose `Write(params byte[])` records the payload — that payload is exactly the HID packet sent to the MCU (`SwitchReport.GetBytes()`). Assert on this **dequeue output**, not on internal state.
+- The fake must raise `StatusChanged(Status.Connected)` inside `Connect()` so `TryConnect` succeeds and the background device write loop starts.
+- The write loop is asynchronous (30 ms `MINIMAL_INTERVAL`); wait for recorded bytes with a timeout instead of asserting immediately.
+- `SdlEventLoop` and `SdlKeyboardInputBinder` can be constructed and driven via `HandleKeyEvent` **without loading native SDL**; native SDL is only touched by `SdlEventLoop.Start()`, so never call it in tests.
+- Reference implementation: `test/EasyCon.SDLInput.Tests` (`FakeConnection`, `TestSwitch`, `KeyboardMappingHidTests`). Reuse this pattern for any test that needs device logic without hardware.
 
 ## CI pipeline
 

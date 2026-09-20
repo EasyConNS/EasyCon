@@ -13,6 +13,10 @@ public partial class NintendoSwitch
 {
     private IConnection clientCon { get; set; }
 
+    /// <summary>创建底层连接；测试可覆写以注入假连接（不改变协议与队列逻辑）。</summary>
+    protected virtual IConnection CreateConnection(string connStr, int baudrate)
+        => new TTLSerialClient(connStr, baudrate);
+
     private ConnectResult _TryConnect(string connStr, int baudrate = 115200)
     {
         if (connStr == "")
@@ -40,7 +44,7 @@ public partial class NintendoSwitch
         }
 
         Disconnect();
-        clientCon = new TTLSerialClient(connStr, baudrate);
+        clientCon = CreateConnection(connStr, baudrate);
         clientCon.BytesSent += BytesSent;
         clientCon.BytesReceived += BytesReceived;
         clientCon.StatusChanged += StatusChanged;

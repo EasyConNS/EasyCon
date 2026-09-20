@@ -19,6 +19,7 @@
     <Project Path="test/EasyCon.Tests/EasyCon.Tests.csproj" />
     <Project Path="test/EasyCon.WinInput.Tests/EasyCon.WinInput.Tests.csproj" />
     <Project Path="test/EasyCon.Lsp.Tests/EasyCon.Lsp.Tests.csproj" />
+    <Project Path="test/EasyCon.SDLInput.Tests/EasyCon.SDLInput.Tests.csproj" />
   </Folder>
   <Folder Name="/Demo/">
     <Project Path="tools/OpenCvDnnDemo/OpenCvDnnDemo.csproj" />
