@@ -24,10 +24,12 @@
     <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.4" />
     <PackageVersion Include="Avalonia.AvaloniaEdit" Version="12.0.0" />
     <PackageVersion Include="Avalonia.Fonts.Inter" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Headless" Version="12.0.4" />
     <PackageVersion Include="Avalonia.Win32.Interoperability" Version="12.0.4" />
     <PackageVersion Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.1" />
     <PackageVersion Include="MessageBox.Avalonia" Version="12.0.0" />
     <PackageVersion Include="SukiUI" Version="6.0.3" />
+    <PackageVersion Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.17" />
     <PackageVersion Include="coverlet.collector" Version="8.0.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
     <PackageVersion Include="NUnit" Version="4.5.1" />

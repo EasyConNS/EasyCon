@@ -28,4 +28,8 @@
     <ProjectReference Include="..\..\src\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Svg.Controls.Skia.Avalonia" />
+  </ItemGroup>
+
 </Project>
