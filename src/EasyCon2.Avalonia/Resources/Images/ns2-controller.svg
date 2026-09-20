@@ -12,6 +12,9 @@
 .mk-row { color: #e8c98a; }
 .mk-row-disabled { color: #8a8f99; opacity: 0.45; }
 .ec-shell { fill: currentColor; fill-opacity: 0.05; stroke: currentColor; stroke-width: 3; stroke-linejoin: round; }
+/* 肩键/扳机弧线（l-zl / r-zr）是只有 M+A 的开放弧线；一旦继承 fill 会按隐式闭合
+   在弧与弦之间填充出一块浅色闭环（深色底不明显，浅色底很难看）。它们只应描边。 */
+#l-zl, #r-zr { fill: none; }
 .ec-shoulders path { fill: none; stroke: currentColor; stroke-opacity: 0.7; stroke-width: 7; stroke-linecap: round; }
 .ec-glyph { fill: none; stroke: currentColor; stroke-width: 7; stroke-linecap: round; }
 .ec-screen { fill: #101218; stroke: currentColor; stroke-width: 2; stroke-opacity: 0.6; }
