@@ -3,8 +3,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Config;
 using EasyCon.SDLInput;
+using EasyCon2.Avalonia.Core.Input;
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 
@@ -74,15 +74,8 @@ public partial class KeyMappingViewModel : ViewModelBase
 
     private static KeyMappingConfig LoadCurrent()
     {
-        // 仅当 keymapping.json 已存在时才加载（由本工具保存的 SDL 扫描码值）
-        // 不存在时使用 SdlKeyMappingDefaults 硬编码默认值，避免 WinForms 的 Keys 枚举值
-        var path = Path.Combine(AppPaths.ConfigDir, "keymapping.json");
-        if (File.Exists(path))
-        {
-            try { return ConfigManager.LoadKeyMapping(); }
-            catch { /* 文件损坏，回退默认值 */ }
-        }
-        return SdlKeyMappingDefaults.Create();
+        // 无文件或旧版（VK）格式文件时回退到 SDL 默认值，且不改写用户文件。
+        return KeyMappingStore.Instance.Current;
     }
 
     private void LoadFromConfig(KeyMappingConfig config)
@@ -94,7 +87,7 @@ public partial class KeyMappingViewModel : ViewModelBase
             if (prop != null)
             {
                 item.Scancode = (int)(prop.GetValue(config) ?? 0);
-                item.DisplayKey = ScancodeToDisplayName(item.Scancode);
+                item.DisplayKey = SdlScancodeMap.ToDisplayName(item.Scancode);
             }
         }
     }
@@ -108,6 +101,7 @@ public partial class KeyMappingViewModel : ViewModelBase
             var prop = type.GetProperty(item.PropertyName);
             prop?.SetValue(config, item.Scancode);
         }
+        config.SchemaVersion = KeyMappingConfig.CurrentSchemaVersion;
         return config;
     }
 
@@ -131,7 +125,7 @@ public partial class KeyMappingViewModel : ViewModelBase
     private void Save()
     {
         var config = BuildConfig();
-        ConfigManager.SaveKeyMapping(config);
+        KeyMappingStore.Instance.Save(config);
         CloseWindow();
     }
 
@@ -176,7 +170,7 @@ public partial class KeyMappingViewModel : ViewModelBase
         }
         else
         {
-            sc = KeyToSdlScancode(key);
+            sc = SdlScancodeMap.FromAvaloniaKey(key);
             if (sc < 0) return; // 不支持的按键，忽略
         }
 
@@ -187,243 +181,15 @@ public partial class KeyMappingViewModel : ViewModelBase
                 k => k != ListeningItem && k.Scancode == sc);
             if (conflict != null)
             {
-                StatusText = $"⚠ 按键冲突：「{ScancodeToDisplayName(sc)}」已绑定到 {conflict.ActionName}，请重新选择";
+                StatusText = $"⚠ 按键冲突：「{SdlScancodeMap.ToDisplayName(sc)}」已绑定到 {conflict.ActionName}，请重新选择";
                 return;
             }
         }
 
         ListeningItem.Scancode = sc;
-        ListeningItem.DisplayKey = ScancodeToDisplayName(sc);
+        ListeningItem.DisplayKey = SdlScancodeMap.ToDisplayName(sc);
         ListeningItem.IsListening = false;
         ListeningItem = null;
         StatusText = "点击手柄图上的按钮设置按键映射";
-    }
-
-    // ─── SDL 扫描码 ↔ Avalonia Key 映射 ────────────────────────
-
-    /// <summary>Avalonia Key → SDL_Scancode</summary>
-    private static int KeyToSdlScancode(Key key)
-    {
-        return key switch
-        {
-            Key.A => 4,
-            Key.B => 5,
-            Key.C => 6,
-            Key.D => 7,
-            Key.E => 8,
-            Key.F => 9,
-            Key.G => 10,
-            Key.H => 11,
-            Key.I => 12,
-            Key.J => 13,
-            Key.K => 14,
-            Key.L => 15,
-            Key.M => 16,
-            Key.N => 17,
-            Key.O => 18,
-            Key.P => 19,
-            Key.Q => 20,
-            Key.R => 21,
-            Key.S => 22,
-            Key.T => 23,
-            Key.U => 24,
-            Key.V => 25,
-            Key.W => 26,
-            Key.X => 27,
-            Key.Y => 28,
-            Key.Z => 29,
-            Key.D1 => 30,
-            Key.D2 => 31,
-            Key.D3 => 32,
-            Key.D4 => 33,
-            Key.D5 => 34,
-            Key.D6 => 35,
-            Key.D7 => 36,
-            Key.D8 => 37,
-            Key.D9 => 38,
-            Key.D0 => 39,
-            Key.Return => 40,
-            Key.Escape => 41,
-            Key.Back => 42,
-            Key.Tab => 43,
-            Key.Space => 44,
-            Key.OemMinus => 45,
-            Key.OemPlus => 46,
-            Key.OemOpenBrackets => 47,
-            Key.OemCloseBrackets => 48,
-            Key.OemPipe => 49,
-            Key.OemTilde => 50,
-            Key.OemSemicolon => 51,
-            Key.OemQuotes => 52,
-            Key.OemComma => 54,
-            Key.OemPeriod => 55,
-            Key.OemQuestion => 56,
-            Key.CapsLock => 57,
-            Key.F1 => 58,
-            Key.F2 => 59,
-            Key.F3 => 60,
-            Key.F4 => 61,
-            Key.F5 => 62,
-            Key.F6 => 63,
-            Key.F7 => 64,
-            Key.F8 => 65,
-            Key.F9 => 66,
-            Key.F10 => 67,
-            Key.F11 => 68,
-            Key.F12 => 69,
-            Key.PrintScreen => 70,
-            Key.Scroll => 71,
-            Key.Pause => 72,
-            Key.Insert => 73,
-            Key.Home => 74,
-            Key.PageUp => 75,
-            Key.Delete => 76,
-            Key.End => 77,
-            Key.PageDown => 78,
-            Key.Right => 79,
-            Key.Left => 80,
-            Key.Down => 81,
-            Key.Up => 82,
-            Key.NumLock => 83,
-            Key.Divide => 84,
-            Key.Multiply => 85,
-            Key.Subtract => 86,
-            Key.Add => 87,
-            Key.NumPad1 => 89,
-            Key.NumPad2 => 90,
-            Key.NumPad3 => 91,
-            Key.NumPad4 => 92,
-            Key.NumPad5 => 93,
-            Key.NumPad6 => 94,
-            Key.NumPad7 => 95,
-            Key.NumPad8 => 96,
-            Key.NumPad9 => 97,
-            Key.NumPad0 => 98,
-            Key.Decimal => 99,
-            Key.OemBackslash => 100,
-            Key.LeftCtrl => 224,
-            Key.LeftShift => 225,
-            Key.LeftAlt => 226,
-            Key.LWin => 227,
-            Key.RightCtrl => 228,
-            Key.RightShift => 229,
-            Key.RightAlt => 230,
-            Key.RWin => 231,
-            _ => -1,
-        };
-    }
-
-    /// <summary>SDL_Scancode → 显示名称</summary>
-    private static string ScancodeToDisplayName(int sc)
-    {
-        if (sc == 0) return "—";
-        return sc switch
-        {
-            4 => "A",
-            5 => "B",
-            6 => "C",
-            7 => "D",
-            8 => "E",
-            9 => "F",
-            10 => "G",
-            11 => "H",
-            12 => "I",
-            13 => "J",
-            14 => "K",
-            15 => "L",
-            16 => "M",
-            17 => "N",
-            18 => "O",
-            19 => "P",
-            20 => "Q",
-            21 => "R",
-            22 => "S",
-            23 => "T",
-            24 => "U",
-            25 => "V",
-            26 => "W",
-            27 => "X",
-            28 => "Y",
-            29 => "Z",
-            30 => "1",
-            31 => "2",
-            32 => "3",
-            33 => "4",
-            34 => "5",
-            35 => "6",
-            36 => "7",
-            37 => "8",
-            38 => "9",
-            39 => "0",
-            40 => "Enter",
-            41 => "Esc",
-            42 => "Back",
-            43 => "Tab",
-            44 => "Space",
-            45 => "-",
-            46 => "=",
-            47 => "[",
-            48 => "]",
-            49 => "\\",
-            50 => "`",
-            51 => ";",
-            52 => "'",
-            54 => ",",
-            55 => ".",
-            56 => "/",
-            57 => "Caps",
-            58 => "F1",
-            59 => "F2",
-            60 => "F3",
-            61 => "F4",
-            62 => "F5",
-            63 => "F6",
-            64 => "F7",
-            65 => "F8",
-            66 => "F9",
-            67 => "F10",
-            68 => "F11",
-            69 => "F12",
-            70 => "PrtSc",
-            71 => "ScrLk",
-            72 => "Pause",
-            73 => "Ins",
-            74 => "Home",
-            75 => "PgUp",
-            76 => "Del",
-            77 => "End",
-            78 => "PgDn",
-            79 => "→",
-            80 => "←",
-            81 => "↓",
-            82 => "↑",
-            83 => "NumLk",
-            84 => "N/",
-            85 => "N*",
-            86 => "N-",
-            87 => "N+",
-            88 => "NEnter",
-            89 => "N1",
-            90 => "N2",
-            91 => "N3",
-            92 => "N4",
-            93 => "N5",
-            94 => "N6",
-            95 => "N7",
-            96 => "N8",
-            97 => "N9",
-            98 => "N0",
-            99 => "N.",
-            100 => "\\",
-            224 => "LCtrl",
-            225 => "LShift",
-            226 => "LAlt",
-            227 => "LWin",
-            228 => "RCtrl",
-            229 => "RShift",
-            230 => "RAlt",
-            231 => "RWin",
-            _ => $"SC{sc}",
-        };
     }
 }

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using EasyCon2.Avalonia.Core.Input;
 using EasyDevice;
 
 namespace EasyCon2.Avalonia.Core.VPad;
@@ -105,7 +106,7 @@ public partial class VPadOverlay : Window
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        var sc = ToSdlScancode(e.Key);
+        var sc = SdlScancodeMap.FromAvaloniaKey(e.Key);
         if (sc >= 0)
         {
             KeyEvent?.Invoke(sc, true);
@@ -115,50 +116,11 @@ public partial class VPadOverlay : Window
 
     private void OnKeyUp(object? sender, KeyEventArgs e)
     {
-        var sc = ToSdlScancode(e.Key);
+        var sc = SdlScancodeMap.FromAvaloniaKey(e.Key);
         if (sc >= 0)
         {
             KeyEvent?.Invoke(sc, false);
             e.Handled = true;
         }
-    }
-
-    private static int ToSdlScancode(Key key)
-    {
-        return key switch
-        {
-            Key.A => 4,
-            Key.B => 5,
-            Key.C => 6,
-            Key.D => 7,
-            Key.E => 8,
-            Key.F => 9,
-            Key.G => 10,
-            Key.H => 11,
-            Key.I => 12,
-            Key.J => 13,
-            Key.K => 14,
-            Key.L => 15,
-            Key.M => 16,
-            Key.N => 17,
-            Key.O => 18,
-            Key.P => 19,
-            Key.Q => 20,
-            Key.R => 21,
-            Key.S => 22,
-            Key.T => 23,
-            Key.U => 24,
-            Key.V => 25,
-            Key.W => 26,
-            Key.X => 27,
-            Key.Y => 28,
-            Key.Z => 29,
-            Key.Up => 82,
-            Key.Down => 81,
-            Key.Left => 80,
-            Key.Right => 79,
-            Key.Escape => 41,
-            _ => -1,
-        };
     }
 }
