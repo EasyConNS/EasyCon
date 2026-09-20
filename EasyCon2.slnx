@@ -15,11 +15,14 @@
     <File Path="docs/MODULE_DESIGN.md" />
     <File Path="docs/DESIGN_DOCUMENT.md" />
   </Folder>
+  <Folder Name="/src/" />
   <Folder Name="/Test/">
     <Project Path="test/EasyCon.Tests/EasyCon.Tests.csproj" />
     <Project Path="test/EasyCon.WinInput.Tests/EasyCon.WinInput.Tests.csproj" />
     <Project Path="test/EasyCon.Lsp.Tests/EasyCon.Lsp.Tests.csproj" />
     <Project Path="test/EasyCon.SDLInput.Tests/EasyCon.SDLInput.Tests.csproj" />
+    <Project Path="test/EasyCon2.Avalonia.Core.Tests/EasyCon2.Avalonia.Core.Tests.csproj" />
+    <Project Path="test/EasyCon2.Avalonia.UiTests/EasyCon2.Avalonia.UiTests.csproj" />
   </Folder>
   <Folder Name="/Demo/">
     <Project Path="tools/OpenCvDnnDemo/OpenCvDnnDemo.csproj" />
