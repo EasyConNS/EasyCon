@@ -1,34 +1,89 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
+        xmlns:svg="using:Avalonia.Svg.Skia"
+        xmlns:ctl="using:EasyCon2.Avalonia.Controls"
         x:Class="EasyCon2.Avalonia.Views.KeyMappingWindow"
         x:DataType="vm:KeyMappingViewModel"
         x:Name="Root"
         Title="按键映射"
-        Width="1020"
-        Height="920"
-        MinWidth="800"
-        MinHeight="600"
+        Width="1360"
+        Height="1000"
+        MinWidth="900"
+        MinHeight="680"
         WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="ctl|IconView">
+            <Setter Property="Brush" Value="{DynamicResource MappingAccentBrush}" />
+        </Style>
+        <Style Selector="ctl|IconView.unmapped">
+            <Setter Property="Brush" Value="{DynamicResource MappingUnmappedBrush}" />
+        </Style>
+        <Style Selector="ctl|IconView.highlighted">
+            <Setter Property="Brush" Value="{DynamicResource MappingHighlightBrush}" />
+        </Style>
+        <Style Selector="Panel.mapped Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource MappingAccentBrush}" />
+        </Style>
+        <Style Selector="Panel.mapped TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource MappingAccentBrush}" />
+        </Style>
+        <Style Selector="Panel.unmapped Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource MappingUnmappedBrush}" />
+        </Style>
+        <Style Selector="Panel.unmapped TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource MappingUnmappedBrush}" />
+        </Style>
+        <Style Selector="ctl|IconView.conflicted">
+            <Setter Property="Brush" Value="{DynamicResource MappingConflictBrush}" />
+        </Style>
+        <Style Selector="Panel.conflicted Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource MappingConflictBrush}" />
+        </Style>
+        <Style Selector="Panel.conflicted TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource MappingConflictBrush}" />
+        </Style>
+        <Style Selector="Panel.highlighted Border">
+            <Setter Property="BorderBrush" Value="{DynamicResource MappingHighlightBrush}" />
+        </Style>
+        <Style Selector="Panel.highlighted TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource MappingHighlightBrush}" />
+        </Style>
+    </Window.Styles>
 
     <Grid RowDefinitions="*,Auto,Auto">
 
-        <!-- 手柄图区域（不可滚动，自适应窗口） -->
+        <!-- 固定设计画布 1440×960，等比缩放 -->
         <Viewbox Grid.Row="0" Stretch="Uniform">
-            <Canvas Width="999" Height="830">
-                <!-- 手柄背景图（Fill 拉伸匹配 WinForms 原始布局） -->
-                <Image Source="avares://EasyCon2.Avalonia/Resources/Images/ProController.png"
-                       Width="999" Height="830" Stretch="Fill" />
+            <Canvas Width="1440" Height="960" Background="{DynamicResource MappingBackgroundBrush}">
 
-                <!-- 热区按钮列表 -->
-                <ItemsControl ItemsSource="{Binding KeyActions}">
+                <!-- 标题 -->
+                <TextBlock Canvas.Left="64" Canvas.Top="52"
+                           Text="按键映射"
+                           FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource MappingTitleBrush}" />
+                <TextBlock Canvas.Left="64" Canvas.Top="88"
+                           Text="Key Mapping · Nintendo Switch 2"
+                           FontSize="13" Foreground="{DynamicResource MappingMutedBrush}" />
+                <Path Stroke="{DynamicResource MappingAccentBrush}" StrokeThickness="2" Data="M 64 116 L 176 116" />
+
+                <!-- 引线 / 分组括号 / 短接线 -->
+                <Path Stroke="{DynamicResource MappingAccentBrush}" StrokeThickness="1.8" Opacity="0.85"
+                      Data="M 541.26,261.26 244.08918,188.51649 M 629.95,273.2 244.02302,248.1598 M 588.57,356.07 260,404 M 587,492.85 260,630 M 626.26,602.11 244.26745,762.2123 M 637.02,221.57 245,140 M 812.83,221.57 1195.9716,140.10234 M 908.59,261.26 1195.905,188.5394 M 816.35,270.8 1195.983,248.11443 M 861.76,366.21 1180.0135,380.09906 M 865.27,506.07 1179.0387,607.48376 M 828.19,602.64 1196,763 M 260 308 L 260 500 M 260 560 L 260 704 M 1180 308 L 1180 452 M 1180 512 L 1180 704 M 260 308 L 244 308 M 260 356 L 244 356 M 260 404 L 244 404 M 260 452 L 244 452 M 260 500 L 244 500 M 260 560 L 244 560 M 260 608 L 244 608 M 260 656 L 244 656 M 260 704 L 244 704 M 1180 308 L 1196 308 M 1180 356 L 1196 356 M 1180 404 L 1196 404 M 1180 452 L 1196 452 M 1180 512 L 1196 512 M 1180 560 L 1196 560 M 1180 608 L 1196 608 M 1180 656 L 1196 656 M 1180 704 L 1196 704" />
+
+                <!-- 手柄图（点击热区走 HitTestElements） -->
+                <svg:Svg x:Name="ControllerSvg"
+                         Canvas.Left="294" Canvas.Top="195"
+                         Width="756" Height="651" />
+
+                <!-- 26 行映射（键帽图标 + Switch 图标） -->
+                <ItemsControl ItemsSource="{Binding Rows}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <Canvas Width="999" Height="830" />
+                            <Canvas Width="1440" Height="960" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
 
-                    <!-- 用 Style 给 ContentPresenter 设置 Canvas 坐标 -->
                     <ItemsControl.Styles>
                         <Style Selector="ContentPresenter" x:CompileBindings="False">
                             <Setter Property="Canvas.Left" Value="{Binding X}" />
@@ -37,42 +92,71 @@
                     </ItemsControl.Styles>
 
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:KeyActionItem">
-                            <Button Width="{Binding Width}"
-                                    Height="{Binding Height}"
-                                    Command="{Binding ElementName=Root, Path=DataContext.StartListeningCommand}"
-                                    CommandParameter="{Binding}"
-                                    Background="Transparent"
-                                    BorderBrush="#88888888"
-                                    BorderThickness="1"
+                        <DataTemplate x:DataType="vm:KeyMappingRow">
+                            <Button Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Width="96"
+                                    Height="44"
                                     Cursor="Hand"
-                                    Padding="2"
-                                    ToolTip.Tip="{Binding ActionName}">
-                                <Panel>
-                                    <TextBlock Text="{Binding DisplayKey}"
-                                               FontSize="10"
-                                               TextAlignment="Center"
-                                               TextWrapping="Wrap"
-                                               VerticalAlignment="Center"
-                                               HorizontalAlignment="Center" />
-                                    <!-- 监听中指示 -->
-                                    <Border IsVisible="{Binding IsListening}"
-                                            Background="#40FF8C00"
-                                            CornerRadius="2"
-                                            Opacity="0.6" />
-                                </Panel>
+                                    ToolTip.Tip="{Binding ActionName}"
+                                    Command="{Binding $parent[Window].((vm:KeyMappingViewModel)DataContext).StartListeningCommand}"
+                                    CommandParameter="{Binding}">
+                                <Canvas Width="96" Height="44">
+                                    <Panel Canvas.Left="{Binding KeyIconLeft}"
+                                           Width="44"
+                                           Height="44"
+                                           Classes.mapped="{Binding IsMapped}"
+                                           Classes.unmapped="{Binding IsUnmapped}"
+                                           Classes.conflicted="{Binding IsConflicted}"
+                                           Classes.highlighted="{Binding IsHighlighted}">
+                                            <ctl:IconView Width="44"
+                                                      Height="44"
+                                                      IconId="{Binding KeyIcon}"
+                                                      Classes.conflicted="{Binding IsConflicted}"
+                                                      IsVisible="{Binding HasKeyIcon}" />
+                                        <Border IsVisible="{Binding !HasKeyIcon}"
+                                                BorderThickness="3"
+                                                CornerRadius="6">
+                                            <TextBlock Text="{Binding DisplayKey}"
+                                                       FontSize="12"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Center" />
+                                        </Border>
+                                    </Panel>
+                                    <ctl:IconView Canvas.Left="{Binding ButtonIconLeft}"
+                                                  Width="44"
+                                                  Height="44"
+                                                  IconId="{Binding ButtonIcon}"
+                                                  Classes.mapped="{Binding IsMapped}"
+                                                  Classes.unmapped="{Binding IsUnmapped}"
+                                                  Classes.conflicted="{Binding IsConflicted}"
+                                                  Classes.highlighted="{Binding IsHighlighted}" />
+                                </Canvas>
                             </Button>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
+
+                <!-- 图例 -->
+                <TextBlock Canvas.Left="64" Canvas.Top="918"
+                           Text="蓝色 = 已映射 · 灰色 = 未映射 / 协议不支持 · 红色 = 按键冲突"
+                           FontSize="13" Foreground="{DynamicResource MappingMutedBrush}" />
+
             </Canvas>
         </Viewbox>
 
         <!-- 状态栏 -->
+        <!-- MinHeight=40 是关键：emoji（🎯/⚠）所属字体的行盒比正文高 2px，
+             若让本行按内容自适应（38↔40），Auto 行会吃掉 * 行的高度，
+             导致 Viewbox 重新等比缩放整个 1440×960 画布 —— 表现为全屏小幅抖动。
+             固定最小高度后本行恒为 40，画布尺寸不再随文案变化。请勿移除。 -->
         <Border Grid.Row="1"
-                BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                MinHeight="40"
+                BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                 BorderThickness="0,1,0,0"
-                Background="{DynamicResource ThemeBackgroundBrush}"
+                Background="{DynamicResource WorkbenchPanelBrush}"
                 Padding="16,10">
             <TextBlock Text="{Binding StatusText}"
                        FontSize="13"
@@ -81,9 +165,9 @@
 
         <!-- 底部按钮 -->
         <Border Grid.Row="2"
-                BorderBrush="{DynamicResource ThemeBorderFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource WorkbenchBorderBrush}"
                 BorderThickness="0,1,0,0"
-                Background="{DynamicResource ThemeBackgroundBrush}"
+                Background="{DynamicResource WorkbenchPanelBrush}"
                 Padding="16,12">
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Center"
