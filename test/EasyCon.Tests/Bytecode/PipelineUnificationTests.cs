@@ -175,6 +175,7 @@ public class PipelineUnificationTests
     }
 
     [Test]
+    [Platform("Linux,MacOsX")] 
     public void CsvTestExample_AutoLoadAndShadowUntilFfi()
     {
         // csv_test：显式 IMPORT csv_windows + lib/ 自动加载 csv_linux（同签名遮蔽 + extern）。
