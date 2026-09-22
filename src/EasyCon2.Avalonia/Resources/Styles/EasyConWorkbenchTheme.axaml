@@ -59,6 +59,22 @@
         <Color x:Key="WorkbenchStatusConnectedBackgroundColor">#EAF7EE</Color>
         <SolidColorBrush x:Key="WorkbenchStatusConnectedBrush" Color="{StaticResource WorkbenchStatusConnectedBackgroundColor}" />
         <SolidColorBrush x:Key="WorkbenchStatusConnectedTextBrush" Color="{StaticResource WorkbenchStatusConnectedColor}" />
+
+        <Color x:Key="MappingBackgroundColor">#101011</Color>
+        <Color x:Key="MappingAccentColor">#5C7FA0</Color>
+        <Color x:Key="MappingTitleColor">#F0F0F3</Color>
+        <Color x:Key="MappingMutedColor">#CCCCCC</Color>
+<Color x:Key="MappingUnmappedColor">#6E737C</Color>
+        <Color x:Key="MappingHighlightColor">#FFFFFF</Color>
+        <Color x:Key="MappingConflictColor">#E5484D</Color>
+        <SolidColorBrush x:Key="MappingBackgroundBrush" Color="{StaticResource MappingBackgroundColor}" />
+        <SolidColorBrush x:Key="MappingAccentBrush" Color="{StaticResource MappingAccentColor}" />
+        <SolidColorBrush x:Key="MappingTitleBrush" Color="{StaticResource MappingTitleColor}" />
+        <SolidColorBrush x:Key="MappingMutedBrush" Color="{StaticResource MappingMutedColor}" />
+<SolidColorBrush x:Key="MappingUnmappedBrush" Color="{StaticResource MappingUnmappedColor}" />
+        <SolidColorBrush x:Key="MappingHighlightBrush" Color="{StaticResource MappingHighlightColor}" />
+        <SolidColorBrush x:Key="MappingConflictBrush" Color="{StaticResource MappingConflictColor}" />
+
         <x:Boolean x:Key="WorkbenchClassicShadowVisible">False</x:Boolean>
         <Thickness x:Key="WorkbenchSidebarDividerThickness">0,0,1,0</Thickness>
         <Thickness x:Key="WorkbenchBottomDividerThickness">0,0,0,1</Thickness>

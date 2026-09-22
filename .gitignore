@@ -371,3 +371,6 @@ PP-OCRv5_mobile_rec.onnx
 *_rec.onnx
 *_dict.txt
 ppocr_keys_v5.txt
+
+# Local design references / mockups (working material, not shipped)
+.design/

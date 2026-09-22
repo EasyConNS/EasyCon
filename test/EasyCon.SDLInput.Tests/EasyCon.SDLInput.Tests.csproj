@@ -25,11 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Svg.Controls.Skia.Avalonia" />
+    <ProjectReference Include="..\..\src\EasyCon.SDLInput\EasyCon.SDLInput.csproj" />
   </ItemGroup>
 
 </Project>

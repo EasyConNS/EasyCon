@@ -17,6 +17,11 @@ public static class ConfigManager
     /// </summary>
     public static event Action? McpConfigChanged;
 
+    /// <summary>
+    /// keymapping.json 配置保存后触发，用于订阅方（如 ControllerService）热应用新的按键映射。
+    /// </summary>
+    public static event Action? KeyMappingChanged;
+
     private static readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,
@@ -42,6 +47,7 @@ public static class ConfigManager
     public static void SaveKeyMapping(KeyMappingConfig keyMapping)
     {
         Save(AppPaths.KeyMappingConfig, keyMapping);
+        KeyMappingChanged?.Invoke();
     }
 
     public static AlertConfig LoadAlert()

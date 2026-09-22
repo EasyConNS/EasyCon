@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Media;
+using EasyCon.Core.Config;
 using EasyCon.Core.Input;
 using EasyCon.SDLInput;
 using EasyCon2.Avalonia.Core.Services;
@@ -39,6 +40,7 @@ public sealed class ControllerService : IControllerService
         _detector.GamepadDisconnected += (_) => AvailableSourcesChanged?.Invoke();
         _vpadService.OverlayKeyEvent += OnOverlayKeyEvent;
         _vpadService.Exited += OnVpadExited;
+        ConfigManager.KeyMappingChanged += OnKeyMappingChanged;
 
         _eventLoop.Start();
         _detector.OpenExisting();
@@ -59,7 +61,7 @@ public sealed class ControllerService : IControllerService
         if (sourceName == "键盘")
         {
             _keyboardBinder = new SdlKeyboardInputBinder(_eventLoop, _gamepad);
-            var mapping = SdlKeyMappingDefaults.Create();
+            KeyMappingConfig mapping = KeyMappingStore.Instance.Current;
             _keyboardBinder.UpdateKeyMapping(mapping);
             binder = _keyboardBinder;
         }
@@ -131,9 +133,16 @@ public sealed class ControllerService : IControllerService
 
     public void Dispose()
     {
+        ConfigManager.KeyMappingChanged -= OnKeyMappingChanged;
         Disconnect();
         _eventLoop.Stop();
         _detector.Dispose();
+    }
+
+    private void OnKeyMappingChanged()
+    {
+        if (_keyboardBinder != null)
+            _keyboardBinder.UpdateKeyMapping(KeyMappingStore.Instance.Current);
     }
 
     private void OnOverlayKeyEvent(int scancode, bool down)

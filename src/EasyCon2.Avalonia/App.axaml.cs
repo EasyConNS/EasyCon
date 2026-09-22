@@ -42,6 +42,9 @@ public partial class App : Application
             WindowService.MainWindow = mainWindow;
             controllerService.SetOwnerWindow(mainWindow);
 
+            // 预热按键映射窗口所需的资源（Icons.json / 控制器 SVG），避免首次打开时延迟闪现
+            UiPreloader.Warmup();
+
             desktop.Exit += (_, _) =>
             {
                 controllerService.Dispose();

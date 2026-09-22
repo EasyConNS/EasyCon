@@ -85,8 +85,28 @@ The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict
 ## Testing
 
 - **Framework**: NUnit (NOT xUnit or MSTest)
-- Test projects: `EasyCon.Tests`, `EasyCon.Lsp.Tests`, `EasyCon.WinInput.Tests`, `EasyCon2.Avalonia.Core.Tests`
+- Test projects: `EasyCon.Tests`, `EasyCon.Lsp.Tests`, `EasyCon.WinInput.Tests`, `EasyCon2.Avalonia.Core.Tests`, `EasyCon2.Avalonia.UiTests`, `EasyCon.SDLInput.Tests`
 - Use `[Test]` attribute, not `[Fact]`
+
+### Fake device connection (no-hardware device tests)
+
+Device logic (queue, throttle, report building, serialization) can be exercised without an MCU by injecting a fake connection:
+
+- `EasyCon.Device` exposes the seam: `IConnection` is `public`, and `NintendoSwitch.CreateConnection(connStr, baudrate)` is `protected virtual` (its default returns `TTLSerialClient`). The production enqueue/dequeue path is unchanged.
+- Subclass `NintendoSwitch` in a test project and override `CreateConnection` to return a fake whose `Write(params byte[])` records the payload — that payload is exactly the HID packet sent to the MCU (`SwitchReport.GetBytes()`). Assert on this **dequeue output**, not on internal state.
+- The fake must raise `StatusChanged(Status.Connected)` inside `Connect()` so `TryConnect` succeeds and the background device write loop starts.
+- The write loop is asynchronous (30 ms `MINIMAL_INTERVAL`); wait for recorded bytes with a timeout instead of asserting immediately.
+- `SdlEventLoop` and `SdlKeyboardInputBinder` can be constructed and driven via `HandleKeyEvent` **without loading native SDL**; native SDL is only touched by `SdlEventLoop.Start()`, so never call it in tests.
+- Reference implementation: `test/EasyCon.SDLInput.Tests` (`FakeConnection`, `TestSwitch`, `KeyboardMappingHidTests`). Reuse this pattern for any test that needs device logic without hardware.
+
+### Headless UI tests (Avalonia.Headless)
+
+`test/EasyCon2.Avalonia.UiTests` renders real controls off-screen (no window server) to assert layout and to produce PNGs for visual review:
+
+- Initialize once per fixture with `TestAppBuilder.BuildAvaloniaApp().SetupWithoutStarting()`, then add `FluentTheme` plus `Resources/Styles/EasyConWorkbenchTheme.axaml` to `Application.Current.Styles`.
+- Build the window, set `DataContext`, call `Show()`, then `CaptureRenderedFrame()` to force a render pass and capture it.
+- **Never call `WriteableBitmap.Save` to write a screenshot.** It goes through `Avalonia.Skia.Helpers.ImageSavingHelper` → the SkiaSharp native PNG encoder, which **crashes the test host natively and intermittently** in this headless setup (`Fatal error` at `sk_pngencoder_encode`). The symptom is a run that silently executes fewer tests and exits non-zero, so `ci\test.bat` (and therefore `ci.yml`) turns red at random. Use the `SaveFrame` helper in `KeyMappingWindowRenderTests` instead: it encodes with SkiaSharp directly (`SKImage.FromPixels` + `Encode`), the same path the stable `SvgRenderSmokeTests` uses. Root cause is not yet identified (managed and native SkiaSharp are both 4.148.0, matching `Avalonia.Skia` 12.0.4 — not a version mismatch).
+- Screenshot tests carry `[Explicit]` + `[Category("Manual")]` so they never run in CI. Run them on demand with `dotnet test test\EasyCon2.Avalonia.UiTests -c Release --filter "TestCategory=Manual"`; the PNGs land in `%TEMP%\opencode\svgqa\`.
 
 ## CI pipeline
 
