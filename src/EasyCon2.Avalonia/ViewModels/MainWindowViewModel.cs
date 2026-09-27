@@ -1,6 +1,4 @@
-﻿using Avalonia.Media;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform.Storage;
+﻿using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,9 +10,12 @@ using EasyCon2.Avalonia.Core.Mcp;
 using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Core.TagEditor;
 using EasyCon2.Avalonia.Core.Terminal;
+using EasyCon2.Avalonia.Core.ViewModels;
+using EasyCon2.Avalonia.Markup;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Views;
 using OpenCvSharp;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
@@ -29,17 +30,8 @@ namespace EasyCon2.Avalonia.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    private const string NoScriptPathText = "未选择脚本";
-    private const string UntitledScriptText = "未命名脚本";
-    private static readonly Color[] WelcomePalette =
-    [
-        Color.FromRgb(0xF9, 0x5D, 0x6A),
-        Color.FromRgb(0xF8, 0xB4, 0x4C),
-        Color.FromRgb(0x9C, 0xD8, 0x5B),
-        Color.FromRgb(0x46, 0xD6, 0xC8),
-        Color.FromRgb(0x5A, 0x9C, 0xFF),
-        Color.FromRgb(0xC7, 0x7D, 0xFF)
-    ];
+    private static readonly string NoScriptPathText = L10n.T("Text.Status.NoScriptSelected");
+    private static readonly string UntitledScriptText = L10n.T("Text.Status.UntitledScript");
 
     private readonly ILogService _logService;
     private readonly IDeviceService _deviceService;
@@ -49,22 +41,28 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IWindowService _windowService;
     private readonly ToolCallService _toolCallService;
+    private readonly IImageProcessor? _imageProcessor;
     private readonly IMcpManager _mcpManager;
     private readonly AnsiParser _ansiParser = new();
     private MonitorViewModel? _monitorViewModel;
     private readonly FileTreeViewModel _fileTreeViewModel;
-    private readonly System.Timers.Timer _welcomeTimer = new(120);
     private string? _projectDirectoryPath;
     private ConfigState _userConfig = new();
     private bool _isLoadingUserSettings;
-    private int _welcomeColorOffset;
 
     /// <summary>日志环形缓冲，供 AI 工具读取近期运行日志。</summary>
     private const int LogBufferSize = 200;
-    private readonly Queue<string> _logBuffer = new();
+    private readonly ConcurrentQueue<string> _logBuffer = new();
 
     /// <summary>UI 日志显示行数上限，超过后丢弃最旧的行，避免内存无限增长。</summary>
     private const int MaxLogLines = 10000;
+
+    // 连接编排子 ViewModel（属性名保持与原绑定一致，见各子类）
+    public SwitchConnectionViewModel Switch { get; }
+    public CaptureConnectionViewModel Capture { get; }
+    public ControllerConnectionViewModel Controller { get; }
+    public FlashFirmwareViewModel Firmware { get; }
+    public WelcomeConsoleViewModel Welcome { get; }
 
     // 窗口标题（含版本号）
     [ObservableProperty]
@@ -91,84 +89,19 @@ public partial class MainWindowViewModel : ViewModelBase
     private string _currentScriptPath = NoScriptPathText;
 
     // 日志输出行集合（TerminalControl 绑定）
-    public ObservableCollection<TerminalLine> WelcomeLines { get; } = new();
     public ObservableCollection<TerminalLine> LogLines { get; } = new();
-
-    [ObservableProperty]
-    private bool _showDebugInfo;
-
-    // 单片机连接相关属性
-    [ObservableProperty]
-    private ObservableCollection<string> _serialPortOptions = new();
-
-    [ObservableProperty]
-    private string? _selectedSerialPort;
-
-    [ObservableProperty]
-    private string _nintendoSwitchStatus = "未连接";
-
-    [ObservableProperty]
-    private bool _isConnectingNintendoSwitch = false;
-
-    [ObservableProperty]
-    private bool _isNintendoSwitchConnected = false;
-
-    [ObservableProperty]
-    private string _nintendoSwitchButtonText = "连接单片机";
-
-    // 视频源连接相关属性
-    [ObservableProperty]
-    private ObservableCollection<string> _captureSourceOptions = new();
-
-    [ObservableProperty]
-    private string? _selectedCaptureSource;
-
-    [ObservableProperty]
-    private string _captureSourceStatus = "未连接";
-
-    [ObservableProperty]
-    private bool _isConnectingCaptureSource = false;
-
-    [ObservableProperty]
-    private bool _isCaptureSourceConnected = false;
-
-    [ObservableProperty]
-    private string _captureSourceButtonText = "连接视频源";
-
-    // 虚拟手柄相关属性
-    [ObservableProperty]
-    private ObservableCollection<string> _controlSourceOptions = new();
-
-    [ObservableProperty]
-    private string? _selectedControlSource;
-
-    [ObservableProperty]
-    private string _controlSourceStatus = "未连接";
-
-    [ObservableProperty]
-    private bool _isConnectingController = false;
-
-    [ObservableProperty]
-    private bool _isControllerConnected = false;
-
-    [ObservableProperty]
-    private string _controllerButtonText = "开启映射";
-
-    [ObservableProperty]
-    private bool _isEditKeyMappingEnabled = true;
 
     [ObservableProperty]
     private bool _isRecording = false;
 
     public bool IsStartRecordEnabled => !IsRecording;
     public bool IsStopRecordEnabled => IsRecording;
-
     // 运行脚本相关属性
     [ObservableProperty]
     private bool _isRunning = false;
 
     [ObservableProperty]
-    private string _runButtonText = "运行";
+    private string _runButtonText = L10n.T("Text.Btn.Run");
 
     [ObservableProperty]
     private string _runTimeDisplay = "00:00:00";
@@ -185,8 +118,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isMonitorPaused = false;
 
     // 监视器暂停按钮文本
-    public string MonitorPauseButtonText => IsMonitorPaused ? "继续" : "暂停";
-    public string MonitorVisibilityButtonText => IsMonitorVisible ? "监视器关闭" : "监视器显示";
+    public string MonitorPauseButtonText => IsMonitorPaused ? L10n.T("Text.Btn.Resume") : L10n.T("Text.Btn.Pause");
+    public string MonitorVisibilityButtonText => IsMonitorVisible ? L10n.T("Text.Btn.MonitorHide") : L10n.T("Text.Btn.MonitorShow");
 
     // 监视器 ViewModel（View 在 XAML 中声明）
     public MonitorViewModel? MonitorVM => _monitorViewModel;
@@ -229,19 +162,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    // 固件类型列表
-    [ObservableProperty]
-    private ObservableCollection<string> _firmwareOptions = new() { "leonardo" };
-
     public ICommand OpenScriptCommand { get; }
-    [ObservableProperty]
-    private string _selectedFirmware = "leonardo";
-
-    [ObservableProperty]
-    private ObservableCollection<string> _captureTypeOptions = new() { "ANY", "DSHOW", "MSMF", "DC1394" };
-
-    [ObservableProperty]
-    private string _selectedCaptureType = "ANY";
 
     [ObservableProperty]
     private bool _isAutoCompletionEnabled = false;
@@ -266,6 +187,18 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _welcomeText = ConfigState.DefaultWelcomeText;
 
+    /// <summary>界面语言（与 Resources/Locales 下的字典键一致）。</summary>
+    public string[] LanguageOptions { get; } = { "zh_CN", "en_US" };
+
+    [ObservableProperty]
+    private string _selectedLanguageCode = "zh_CN";
+
+    partial void OnSelectedLanguageCodeChanged(string value)
+    {
+        App.SetLocale(value);
+        ScheduleSaveUserSettings();
+    }
+
     [ObservableProperty]
     private bool _isIdleThreeColumnLayoutSelected = true;
 
@@ -287,19 +220,9 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand CloseScriptCommand { get; }
     public ICommand FormatScriptCommand { get; }
     public ICommand OpenEditorCommand { get; }
-    public ICommand ConnectNintendoSwitchCommand { get; }
-    public ICommand AutoConnectNintendoSwitchCommand { get; }
-    public ICommand ConnectCaptureSourceCommand { get; }
-    public ICommand ConnectControllerCommand { get; }
-    public ICommand EditKeyMappingCommand { get; }
     public ICommand RunScriptCommand { get; }
     public ICommand ClearLogCommand { get; }
     public ICommand DropFileCommand { get; }
-    public ICommand RemoteRunCommand { get; }
-    public ICommand RemoteStopCommand { get; }
-    public ICommand CompileFlashCommand { get; }
-    public ICommand ClearFlashCommand { get; }
-    public ICommand GenerateFirmwareCommand { get; }
     public ICommand StartRecordCommand { get; }
     public ICommand StopRecordCommand { get; }
     public ICommand ShowMonitorCommand { get; }
@@ -322,12 +245,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public IAsyncRelayCommand CheckUpdateCommand { get; }
     public IRelayCommand OpenGitHubCommand { get; }
 
-    // 刷新数据源命令
-    public ICommand RefreshSerialPortsCommand { get; }
-    public ICommand RefreshCaptureSourcesCommand { get; }
-    public ICommand RefreshControlSourcesCommand { get; }
-
-    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService)
+    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService, EasyCon2.Avalonia.Core.Threading.IUiDispatcher uiDispatcher, IImageProcessor? imageProcessor = null)
     {
         // 初始化 AI Agent，注入编辑区服务
         _toolCallService = new ToolCallService(
@@ -338,13 +256,14 @@ public partial class MainWindowViewModel : ViewModelBase
             () => HasSelectedScriptPath() ? CurrentScriptPath : null,
             () => HasSelectedScriptPath(),
             () => new DeviceStatusInfo(
-                IsNintendoSwitchConnected,
-                IsCaptureSourceConnected,
-                IsControllerConnected,
+                Switch.IsNintendoSwitchConnected,
+                Capture.IsCaptureSourceConnected,
+                Controller.IsControllerConnected,
                 scriptService.IsRunning)
         );
         _mcpManager = new McpManager(logService);
-        AiAgent = new AiAgentViewModel(_toolCallService, _mcpManager);
+        AiAgent = new AiAgentViewModel(_toolCallService, _mcpManager, uiDispatcher);
+        _imageProcessor = imageProcessor;
         AiAgent.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(AiAgent.IsOpen))
@@ -368,6 +287,25 @@ public partial class MainWindowViewModel : ViewModelBase
         _controllerService = controllerService;
         _dialogService = dialogService;
         _windowService = windowService;
+
+        // 连接编排子 ViewModel（Switch 必须先于 Controller：后者依赖前者的连接状态）
+        Switch = new SwitchConnectionViewModel(deviceService, logService, uiDispatcher);
+        Capture = new CaptureConnectionViewModel(captureService, logService, uiDispatcher);
+        Controller = new ControllerConnectionViewModel(controllerService, windowService, logService, () => Switch.IsNintendoSwitchConnected, uiDispatcher);
+        Firmware = new FlashFirmwareViewModel(deviceService, scriptService, logService,
+            () => EditorText,
+            () => HasSelectedScriptPath() ? CurrentScriptPath : null);
+        Welcome = new WelcomeConsoleViewModel(scriptService, ConfigState.DefaultWelcomeText, uiDispatcher);
+
+        // 子 VM 与主 VM 的联动
+        Switch.DeviceLost += () => IsRecording = false;
+        Capture.CaptureConnected += ShowMonitor;
+        Capture.CaptureTypeChanged += ScheduleSaveUserSettings;
+        Capture.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(CaptureConnectionViewModel.IsCaptureSourceConnected) && TagEditorViewModel != null)
+                TagEditorViewModel.IsCaptureConnected = Capture.IsCaptureSourceConnected;
+        };
 
         // 初始化文件树
         _fileTreeViewModel = new FileTreeViewModel();
@@ -407,7 +345,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     // 同步入环形缓冲，供 AI 工具读取
                     _logBuffer.Enqueue(rawLine);
                     while (_logBuffer.Count > LogBufferSize)
-                        _logBuffer.Dequeue();
+                        _logBuffer.TryDequeue(out _);
                 }
 
                 // 有界显示：丢弃最旧的日志行，防止内存无限增长
@@ -420,33 +358,14 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         };
 
-        // 订阅设备外部断开事件
-        _deviceService.ConnectionLost += () =>
-        {
-            if (!IsNintendoSwitchConnected) return;
-            IsNintendoSwitchConnected = false;
-            NintendoSwitchStatus = "已断开";
-            NintendoSwitchButtonText = "连接单片机";
-            IsRecording = false;
-        };
-
-        // 订阅视频源外部断开事件
-        _captureService.ConnectionLost += () =>
-        {
-            if (!IsCaptureSourceConnected) return;
-            IsCaptureSourceConnected = false;
-            CaptureSourceStatus = "已断开";
-            CaptureSourceButtonText = "连接视频源";
-        };
-
         // 订阅脚本运行状态变化
         _scriptService.IsRunningChanged += running =>
         {
             Dispatcher.UIThread.Post(() =>
             {
                 IsRunning = running;
-                RunButtonText = running ? "停止" : "运行";
-                RefreshWelcomeConsole();
+                RunButtonText = running ? L10n.T("Text.Btn.Stop") : L10n.T("Text.Btn.Run");
+                Welcome.Refresh();
 
                 if (running)
                 {
@@ -461,25 +380,6 @@ public partial class MainWindowViewModel : ViewModelBase
             });
         };
 
-        // 订阅手柄热插拔事件
-        _controllerService.AvailableSourcesChanged += () =>
-        {
-            Dispatcher.UIThread.Post(RefreshControlSources);
-        };
-
-        // 订阅控制器外部断开事件（VPad 中键/ESC 退出）
-        _controllerService.Disconnected += () =>
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                IsControllerConnected = false;
-                ControlSourceStatus = "未连接";
-                ControllerButtonText = "开启映射";
-                UpdateEditKeyMappingEnabled();
-                _logService.AddLog("手柄已断开连接");
-            });
-        };
-
         // 初始化命令
         OpenScriptCommand = new AsyncRelayCommand(OpenScriptAsync);
         SaveScriptCommand = new AsyncRelayCommand(SaveScriptAsync);
@@ -487,22 +387,9 @@ public partial class MainWindowViewModel : ViewModelBase
         CloseScriptCommand = new RelayCommand(CloseScript);
         FormatScriptCommand = new AsyncRelayCommand(FormatScriptAsync);
         OpenEditorCommand = new RelayCommand(OpenEditor, CanOpenEditor);
-        ConnectNintendoSwitchCommand = new RelayCommand(ConnectNintendoSwitch);
-        AutoConnectNintendoSwitchCommand = new RelayCommand(AutoConnectNintendoSwitch);
-        ConnectCaptureSourceCommand = new RelayCommand(ConnectCaptureSource);
-        ConnectControllerCommand = new RelayCommand(ConnectController);
-        EditKeyMappingCommand = new RelayCommand(EditKeyMapping);
-        RunScriptCommand = new RelayCommand(RunScript);
+        RunScriptCommand = new AsyncRelayCommand(RunScriptAsync);
         ClearLogCommand = new RelayCommand(ClearLog);
-        RefreshSerialPortsCommand = new RelayCommand(RefreshSerialPorts);
-        RefreshCaptureSourcesCommand = new RelayCommand(RefreshCaptureSources);
-        RefreshControlSourcesCommand = new RelayCommand(RefreshControlSources);
         DropFileCommand = new RelayCommand<string>(DropFile);
-        RemoteRunCommand = new RelayCommand(RemoteRun);
-        RemoteStopCommand = new RelayCommand(RemoteStop);
-        CompileFlashCommand = new AsyncRelayCommand(CompileFlashAsync);
-        ClearFlashCommand = new RelayCommand(ClearFlash);
-        GenerateFirmwareCommand = new AsyncRelayCommand(GenerateFirmwareAsync);
         StartRecordCommand = new RelayCommand(StartRecord);
         StopRecordCommand = new RelayCommand(StopRecord);
         ShowMonitorCommand = new RelayCommand(ShowMonitor);
@@ -524,10 +411,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenGitHubCommand = new RelayCommand(OpenGitHub);
 
         LoadUserSettings();
-
-        // 初始化示例数据
         InitializeSampleData();
-        InitializeWelcomeConsole();
 
         _runTimer.Elapsed += (s, e) =>
         {
@@ -539,63 +423,6 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
     }
-
-    private void InitializeWelcomeConsole()
-    {
-        RefreshWelcomeConsole();
-        _welcomeTimer.Elapsed += (_, _) =>
-        {
-            if (!_scriptService.IsRunning)
-                return;
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                _welcomeColorOffset++;
-                UpdateWelcomeConsoleColors();
-            });
-        };
-        _welcomeTimer.Start();
-    }
-
-    private void RefreshWelcomeConsole()
-    {
-        WelcomeLines.Clear();
-        WelcomeLines.Add(CreateWelcomeLine());
-    }
-
-    private TerminalLine CreateWelcomeLine()
-    {
-        var line = new TerminalLine();
-        FillWelcomeLine(line);
-        return line;
-    }
-
-    private void UpdateWelcomeConsoleColors()
-    {
-        if (WelcomeLines.Count == 0)
-        {
-            RefreshWelcomeConsole();
-            return;
-        }
-
-        var line = WelcomeLines[0];
-        line.Segments.Clear();
-        FillWelcomeLine(line);
-
-        // 仅触发重绘通知，不让集合经历 Clear 状态，避免跑马灯偏移被重置。
-        WelcomeLines[0] = line;
-    }
-
-    private void FillWelcomeLine(TerminalLine line)
-    {
-        var welcomeText = WelcomeText ?? string.Empty;
-        for (var i = 0; i < welcomeText.Length; i++)
-        {
-            var color = WelcomePalette[Mod(i - _welcomeColorOffset, WelcomePalette.Length)];
-            line.Segments.Add(new TextSegment(welcomeText[i].ToString(), color));
-        }
-    }
-
     private TerminalLine ParseLogLine(string rawLine, string? color)
     {
         // 仅含 ANSI 转义序列的行才需要解析器；纯文本行直接构造单段，避免 StringBuilder + 拷贝开销。
@@ -608,44 +435,51 @@ public partial class MainWindowViewModel : ViewModelBase
         return line;
     }
 
-    private static Color? TryParseLogColor(string? color)
+    private static RgbColor? TryParseLogColor(string? color)
     {
         if (string.IsNullOrWhiteSpace(color))
             return null;
 
         return color.Trim() switch
         {
-            "Lime" => Color.FromRgb(0x32, 0xD7, 0x4B),
-            "Orange" => Color.FromRgb(0xF5, 0x9E, 0x0B),
-            "OrangeRed" => Color.FromRgb(0xFF, 0x5A, 0x3D),
-            "Red" => Color.FromRgb(0xEF, 0x44, 0x44),
-            "Yellow" => Color.FromRgb(0xF4, 0xD0, 0x3F),
-            "Green" => Color.FromRgb(0x22, 0xC5, 0x5E),
-            "Cyan" => Color.FromRgb(0x22, 0xD3, 0xEE),
-            "Blue" => Color.FromRgb(0x60, 0xA5, 0xFA),
-            "Magenta" => Color.FromRgb(0xE8, 0x79, 0xF9),
-            _ => TryParseAvaloniaColor(color)
+            "Lime" => new RgbColor(0x32, 0xD7, 0x4B),
+            "Orange" => new RgbColor(0xF5, 0x9E, 0x0B),
+            "OrangeRed" => new RgbColor(0xFF, 0x5A, 0x3D),
+            "Red" => new RgbColor(0xEF, 0x44, 0x44),
+            "Yellow" => new RgbColor(0xF4, 0xD0, 0x3F),
+            "Green" => new RgbColor(0x22, 0xC5, 0x5E),
+            "Cyan" => new RgbColor(0x22, 0xD3, 0xEE),
+            "Blue" => new RgbColor(0x60, 0xA5, 0xFA),
+            "Magenta" => new RgbColor(0xE8, 0x79, 0xF9),
+            _ => TryParseHexColor(color)
         };
     }
 
-    private static Color? TryParseAvaloniaColor(string color)
+    /// <summary>解析 #RGB / #RRGGBB / #AARRGGBB 十六进制颜色，其余格式返回 null。</summary>
+    private static RgbColor? TryParseHexColor(string color)
     {
+        var s = color.Trim();
+        if (s.Length == 0 || s[0] != '#') return null;
+
         try
         {
-            return Color.Parse(color);
+            byte Hex(int i) => Convert.ToByte(s.Substring(i, 2), 16);
+            return s.Length switch
+            {
+                9 => new RgbColor(Hex(3), Hex(5), Hex(7)), // #AARRGGBB，忽略 alpha
+                7 => new RgbColor(Hex(1), Hex(3), Hex(5)),
+                4 => new RgbColor(
+                    Convert.ToByte(new string(s[1], 2), 16),
+                    Convert.ToByte(new string(s[2], 2), 16),
+                    Convert.ToByte(new string(s[3], 2), 16)),
+                _ => null
+            };
         }
-        catch
+        catch (FormatException)
         {
             return null;
         }
     }
-
-    private static int Mod(int value, int divisor)
-    {
-        var result = value % divisor;
-        return result < 0 ? result + divisor : result;
-    }
-
     private void LoadUserSettings()
     {
         _isLoadingUserSettings = true;
@@ -653,20 +487,24 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _userConfig = ConfigManager.LoadConfig();
 
-            SelectedCaptureType = NormalizeCaptureType(_userConfig.CaptureType);
-            _captureService.CaptureType = SelectedCaptureType;
+            Capture.SelectedCaptureType = NormalizeCaptureType(_userConfig.CaptureType);
             IsAutoCompletionEnabled = _userConfig.EnableAutoCompletion;
             ShowFolding = _userConfig.ShowFolding;
             IsHighResolutionTimingEnabled = _userConfig.HighResolutionTiming;
             _scriptService.HighResolutionTiming = IsHighResolutionTimingEnabled;
             ShowDebugInfo = _userConfig.ShowDebugInfo;
+            var language = !string.IsNullOrEmpty(_userConfig.LanguageCode) && LanguageOptions.Contains(_userConfig.LanguageCode)
+                ? _userConfig.LanguageCode
+                : "zh_CN";
+            SelectedLanguageCode = language;
+            App.SetLocale(language);
             WelcomeText = _userConfig.WelcomeText ?? ConfigState.DefaultWelcomeText;
             AutoSwitchLayoutEnabled = _userConfig.AutoSwitchLayoutEnabled;
             AutoSwitchColorSchemeEnabled = _userConfig.AutoSwitchColorSchemeEnabled;
             ApplySavedLayoutSettings(_userConfig);
 
-            var colorSchemeName = NormalizeColorSchemeName(_userConfig.ColorSchemeName, _userConfig.DarkMode);
-            var themeStyleName = NormalizeThemeStyleName(_userConfig.ThemeStyleName, colorSchemeName);
+            var colorSchemeName = NormalizeColorSchemeName(ThemeKeys.Restore(_userConfig.ColorSchemeName), _userConfig.DarkMode);
+            var themeStyleName = NormalizeThemeStyleName(ThemeKeys.Restore(_userConfig.ThemeStyleName), colorSchemeName);
             ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
             ThemeManager.Instance.ApplyThemeStyle(themeStyleName);
         }
@@ -683,17 +521,60 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private CancellationTokenSource? _settingsSaveDefer;
+
+    /// <summary>
+    /// 防抖保存用户配置。On*Changed 在连续交互（如欢迎语逐键输入）中高频触发，
+    /// 合并为静默 500ms 后的一次写盘，避免 UI 线程同步 IO 反复打断交互。
+    /// </summary>
+    private void ScheduleSaveUserSettings()
+    {
+        if (_isLoadingUserSettings)
+            return;
+
+        _settingsSaveDefer?.Cancel();
+        _settingsSaveDefer?.Dispose();
+        _settingsSaveDefer = new CancellationTokenSource();
+        var token = _settingsSaveDefer.Token;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(500, token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!token.IsCancellationRequested)
+                    SaveUserSettings();
+            });
+        });
+    }
+
+    /// <summary>立即写入挂起的用户配置（关窗前调用，防止丢失最后一次更改）。</summary>
+    private void FlushPendingUserSettings()
+    {
+        _settingsSaveDefer?.Cancel();
+        SaveUserSettings();
+    }
+
     private void SaveUserSettings()
     {
         if (_isLoadingUserSettings)
             return;
 
-        _userConfig.CaptureType = NormalizeCaptureType(SelectedCaptureType);
+        _userConfig.CaptureType = Capture.SelectedCaptureType ?? "ANY";
         _userConfig.EnableAutoCompletion = IsAutoCompletionEnabled;
         _userConfig.ShowFolding = ShowFolding;
         _userConfig.HighResolutionTiming = IsHighResolutionTimingEnabled;
         _userConfig.ShowDebugInfo = ShowDebugInfo;
         _userConfig.WelcomeText = WelcomeText ?? string.Empty;
+        _userConfig.LanguageCode = SelectedLanguageCode;
         _userConfig.AutoSwitchLayoutEnabled = AutoSwitchLayoutEnabled;
         _userConfig.AutoSwitchColorSchemeEnabled = AutoSwitchColorSchemeEnabled;
         _userConfig.IsIdleThreeColumnLayoutSelected = IsIdleThreeColumnLayoutSelected;
@@ -701,8 +582,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _userConfig.IsRunningThreeColumnLayoutSelected = IsRunningThreeColumnLayoutSelected;
         _userConfig.IsRunningTwoColumnLayoutSelected = IsRunningTwoColumnLayoutSelected;
         _userConfig.IsRunningOneColumnLayoutSelected = IsRunningOneColumnLayoutSelected;
-        _userConfig.ColorSchemeName = ThemeManager.Instance.SelectedColorSchemeName;
-        _userConfig.ThemeStyleName = ThemeManager.Instance.SelectedThemeStyleName;
+        _userConfig.ColorSchemeName = ThemeKeys.Persist(ThemeManager.Instance.SelectedColorSchemeName);
+        _userConfig.ThemeStyleName = ThemeKeys.Persist(ThemeManager.Instance.SelectedThemeStyleName);
         _userConfig.DarkMode = ThemeManager.Instance.IsDarkMode;
 
         try
@@ -762,7 +643,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnOpenProjectRequested()
     {
-        OpenFolderDialogRequested?.Invoke();
+        _ = OpenProjectFolderAsync();
     }
 
     private void SelectColorScheme(string? colorSchemeName)
@@ -771,7 +652,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
 
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
         _logService.AddLog($"已切换外观: {colorSchemeName}");
     }
 
@@ -781,7 +662,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
 
         ThemeManager.Instance.ApplyThemeStyle(themeStyleName);
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
         _logService.AddLog($"已切换风格: {themeStyleName}");
     }
 
@@ -803,7 +684,7 @@ public partial class MainWindowViewModel : ViewModelBase
             : ThemeManager.whiteGraySchemeName;
 
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName, followSystemThemeVariant: true);
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     private void SelectEditorTab(string? tabIndexText)
@@ -841,10 +722,13 @@ public partial class MainWindowViewModel : ViewModelBase
                 CheckUpdateButtonText = "当前已是最新版本";
                 return;
             }
+            // tag 名不保证是合法版本号（v 前缀/任意命名），解析失败按“已是最新”处理，
+            // 不能让单条坏 tag 使更新检查报“检查失败”
             var curVer = Assembly.GetEntryAssembly()?.GetName().Version;
-            CheckUpdateButtonText = latest.Ver > curVer
-                ? $"发现新版本 v{latest.Ver}"
-                : "当前已是最新版本";
+            if (ConfigService.TryParseTagVersion(latest.name) is { } latestVer && latestVer > curVer)
+                CheckUpdateButtonText = $"发现新版本 v{latestVer}";
+            else
+                CheckUpdateButtonText = "当前已是最新版本";
         }
         catch
         {
@@ -858,7 +742,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OpenGitHub()
     {
-        Process.Start(new ProcessStartInfo("https://github.com/EasyConNS/EasyCon") { UseShellExecute = true });
+        try
+        {
+            Process.Start(new ProcessStartInfo("https://github.com/EasyConNS/EasyCon") { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开浏览器失败: {ex.Message}");
+        }
     }
 
     private record CommitInfo
@@ -871,7 +762,6 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         public string name { get; set; } = "";
         public CommitInfo? commit { get; set; }
-        public Version Ver => new(name ?? "");
     }
 
     /// <summary>
@@ -914,7 +804,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     }
                     else
                     {
-                        var tagVm = new TagEditorViewModel(label);
+                        var tagVm = new TagEditorViewModel(label, _imageProcessor);
                         tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
                         tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
                         tagVm.LabelTestRequested += OnTagEditorLabelTest;
@@ -949,7 +839,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void InitializeTagEditor()
     {
-        var tagVm = new TagEditorViewModel();
+        var tagVm = new TagEditorViewModel(_imageProcessor);
         tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
         tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
         tagVm.LabelTestRequested += OnTagEditorLabelTest;
@@ -959,60 +849,26 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void InitializeSampleData()
     {
-        // 获取可用串口列表
-        var ports = _deviceService.GetAvailablePorts();
-        SerialPortOptions = new ObservableCollection<string>(ports);
-
-        // 获取可用视频源列表
-        var captureSources = _captureService.GetAvailableSources();
-        CaptureSourceOptions = new ObservableCollection<string>(captureSources);
-
-        ControlSourceOptions = new ObservableCollection<string>(_controllerService.GetAvailableSources());
-
-        SelectedSerialPort = SerialPortOptions.FirstOrDefault();
-        SelectedCaptureSource = CaptureSourceOptions.FirstOrDefault();
-        SelectedControlSource = ControlSourceOptions.FirstOrDefault();
-
-        _logService.AddLog($"已加载 {ports.Length} 个可用串口, {captureSources.Length} 个视频源");
+        // 串口/视频源/控制源列表已由各连接子 ViewModel 在构造时刷新
+        _logService.AddLog($"已加载 {Switch.SerialPortOptions.Count} 个可用串口, {Capture.CaptureSourceOptions.Count} 个视频源");
     }
-
-    private void RefreshSerialPorts()
-    {
-        var ports = _deviceService.GetAvailablePorts();
-        var oldSelected = SelectedSerialPort;
-        SerialPortOptions = new ObservableCollection<string>(ports);
-        SelectedSerialPort = SerialPortOptions.FirstOrDefault();
-        if (oldSelected != null && SerialPortOptions.Contains(oldSelected))
-            SelectedSerialPort = oldSelected;
-    }
-
-    private void RefreshCaptureSources()
-    {
-        var captureSources = _captureService.GetAvailableSources();
-        var oldSelected = SelectedCaptureSource;
-        CaptureSourceOptions = new ObservableCollection<string>(captureSources);
-        SelectedCaptureSource = CaptureSourceOptions.FirstOrDefault();
-        if (oldSelected != null && CaptureSourceOptions.Contains(oldSelected))
-            SelectedCaptureSource = oldSelected;
-    }
-
-    private void RefreshControlSources()
-    {
-        var oldSelected = SelectedControlSource;
-        ControlSourceOptions = new ObservableCollection<string>(_controllerService.GetAvailableSources());
-        SelectedControlSource = ControlSourceOptions.FirstOrDefault();
-        if (oldSelected != null && ControlSourceOptions.Contains(oldSelected))
-            SelectedControlSource = oldSelected;
-    }
-
     private async Task OpenScriptAsync()
     {
-        var files = await _dialogService.OpenFilesAsync("打开脚本文件",
-        [
-            new FilePickerFileType("ECS脚本文件") { Patterns = ["*.ecs"] },
-            new FilePickerFileType("文本文件") { Patterns = ["*.txt"] },
-            new FilePickerFileType("所有文件") { Patterns = ["*"] }
-        ]);
+        IReadOnlyList<string> files;
+        try
+        {
+            files = await _dialogService.OpenFilesAsync("打开脚本文件",
+            [
+                new FileDialogFilter("ECS脚本文件", ["*.ecs"]),
+                new FileDialogFilter("文本文件", ["*.txt"]),
+                new FileDialogFilter("所有文件", ["*"])
+            ]);
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开文件对话框失败: {ex.Message}");
+            return;
+        }
 
         if (files.Count > 0)
             OpenScriptFromPath(files[0]);
@@ -1043,7 +899,16 @@ public partial class MainWindowViewModel : ViewModelBase
         var startPath = _projectDirectoryPath
             ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
-        var folder = await _dialogService.OpenFolderAsync("打开项目目录", startPath);
+        string? folder;
+        try
+        {
+            folder = await _dialogService.OpenFolderAsync("打开项目目录", startPath);
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开项目目录失败: {ex.Message}");
+            return;
+        }
 
         if (folder != null)
             OpenProjectFromDirectory(folder);
@@ -1063,12 +928,21 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task SaveScriptAsAsync()
     {
         var suggestedName = HasSelectedScriptPath() ? Path.GetFileName(CurrentScriptPath) : $"{UntitledScriptText}.ecs";
-        var file = await _dialogService.SaveFileAsync("另存为", "ecs",
-        [
-            new FilePickerFileType("ECS脚本文件") { Patterns = ["*.ecs"] },
-            new FilePickerFileType("文本文件") { Patterns = ["*.txt"] },
-            new FilePickerFileType("所有文件") { Patterns = ["*"] }
-        ], suggestedName);
+        string? file;
+        try
+        {
+            file = await _dialogService.SaveFileAsync("另存为", "ecs",
+            [
+                new FileDialogFilter("ECS脚本文件", ["*.ecs"]),
+                new FileDialogFilter("文本文件", ["*.txt"]),
+                new FileDialogFilter("所有文件", ["*"])
+            ], suggestedName);
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"保存对话框失败: {ex.Message}");
+            return;
+        }
 
         if (file == null)
             return;
@@ -1117,9 +991,17 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void SaveEditorText(string path)
     {
-        File.WriteAllText(path, EditorText, new UTF8Encoding(false));
-        IsScriptModified = false;
-        _logService.AddLog($"已保存脚本: {path}");
+        try
+        {
+            File.WriteAllText(path, EditorText, new UTF8Encoding(false));
+            IsScriptModified = false;
+            _logService.AddLog($"已保存脚本: {path}");
+        }
+        catch (Exception ex)
+        {
+            // 保存失败必须显式暴露：保持 IsScriptModified，避免"假成功"导致数据丢失
+            _logService.AddLog($"保存脚本失败({path}): {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -1205,7 +1087,6 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// 请求主窗口弹出打开项目目录对话框。
     /// </summary>
-    public event Action? OpenFolderDialogRequested;
 
     /// <summary>
     /// 请求主窗口切换代码折叠显示状态。
@@ -1216,137 +1097,6 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         EmbeddedEditorInitializeRequested?.Invoke(filePath);
     }
-
-    private void ConnectNintendoSwitch()
-    {
-        if (!string.IsNullOrEmpty(SelectedSerialPort))
-        {
-            if (IsNintendoSwitchConnected)
-            {
-                _deviceService.Disconnect();
-                IsNintendoSwitchConnected = false;
-                NintendoSwitchStatus = "未连接";
-                NintendoSwitchButtonText = "连接单片机";
-                _logService.AddLog("单片机已断开连接");
-                return;
-            }
-
-            IsConnectingNintendoSwitch = true;
-            NintendoSwitchStatus = "连接中...";
-            _logService.AddLog($"准备连接单片机({SelectedSerialPort})...");
-
-            var port = SelectedSerialPort;
-            Task.Run(() =>
-            {
-                var ok = _deviceService.TryConnect(port);
-
-                Dispatcher.UIThread.Post(() =>
-                {
-                    IsConnectingNintendoSwitch = false;
-                    if (ok)
-                    {
-                        IsNintendoSwitchConnected = true;
-                        NintendoSwitchStatus = $"已连接{port}";
-                        NintendoSwitchButtonText = "断开连接";
-                        _logService.AddLog($"单片机 ({port}) 连接成功");
-                    }
-                    else
-                    {
-                        NintendoSwitchStatus = "连接失败";
-                    }
-                });
-            });
-        }
-    }
-
-    private void AutoConnectNintendoSwitch()
-    {
-        if (IsNintendoSwitchConnected || IsConnectingNintendoSwitch) return;
-
-        IsConnectingNintendoSwitch = true;
-        NintendoSwitchStatus = "自动连接中...";
-        _logService.AddLog("开始自动扫描串口...");
-
-        Task.Run(() =>
-        {
-            var connectedPort = _deviceService.AutoConnect();
-            Dispatcher.UIThread.Post(() =>
-            {
-                IsConnectingNintendoSwitch = false;
-                if (connectedPort != null)
-                {
-                    IsNintendoSwitchConnected = true;
-                    SelectedSerialPort = connectedPort;
-                    NintendoSwitchStatus = $"已连接{connectedPort}";
-                    NintendoSwitchButtonText = "断开连接";
-                    _logService.AddLog($"自动连接成功: {connectedPort}");
-                }
-                else
-                {
-                    NintendoSwitchStatus = "自动连接失败";
-                    _logService.AddLog("自动连接失败，未找到可用设备");
-                }
-            });
-        });
-    }
-
-    private void ConnectCaptureSource()
-    {
-        if (!string.IsNullOrEmpty(SelectedCaptureSource))
-        {
-            if (IsCaptureSourceConnected)
-            {
-                _captureService.Disconnect();
-                IsCaptureSourceConnected = false;
-                CaptureSourceStatus = "未连接";
-                CaptureSourceButtonText = "连接视频源";
-                _logService.AddLog("视频源已断开连接");
-                return;
-            }
-
-            IsConnectingCaptureSource = true;
-            CaptureSourceStatus = "连接中...";
-            var sourceName = SelectedCaptureSource ?? "";
-            _logService.AddLog($"准备打开视频源({sourceName})...");
-
-            Task.Run(() =>
-            {
-                try
-                {
-                    var ok = _captureService.TryConnect(sourceName);
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        IsConnectingCaptureSource = false;
-                        if (ok)
-                        {
-                            IsCaptureSourceConnected = true;
-                            CaptureSourceStatus = "已连接";
-                            CaptureSourceButtonText = "关闭视频源";
-                            _logService.AddLog($"视频源 ({sourceName}) 已连接");
-
-                            // 自动显示监视器
-                            ShowMonitor();
-                        }
-                        else
-                        {
-                            CaptureSourceStatus = "连接失败";
-                            _logService.AddLog("视频源打开失败");
-                        }
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        IsConnectingCaptureSource = false;
-                        CaptureSourceStatus = "连接失败";
-                        _logService.AddLog($"视频源连接异常: {ex.Message}");
-                    });
-                }
-            });
-        }
-    }
-
     private void ShowMonitor()
     {
         try
@@ -1433,14 +1183,14 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (value)
             IsIdleTwoColumnLayoutSelected = false;
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     partial void OnIsIdleTwoColumnLayoutSelectedChanged(bool value)
     {
         if (value)
             IsIdleThreeColumnLayoutSelected = false;
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     partial void OnIsRunningThreeColumnLayoutSelectedChanged(bool value)
@@ -1450,7 +1200,7 @@ public partial class MainWindowViewModel : ViewModelBase
             IsRunningTwoColumnLayoutSelected = false;
             IsRunningOneColumnLayoutSelected = false;
         }
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     partial void OnIsRunningTwoColumnLayoutSelectedChanged(bool value)
@@ -1460,7 +1210,7 @@ public partial class MainWindowViewModel : ViewModelBase
             IsRunningThreeColumnLayoutSelected = false;
             IsRunningOneColumnLayoutSelected = false;
         }
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     partial void OnIsRunningOneColumnLayoutSelectedChanged(bool value)
@@ -1470,7 +1220,7 @@ public partial class MainWindowViewModel : ViewModelBase
             IsRunningThreeColumnLayoutSelected = false;
             IsRunningTwoColumnLayoutSelected = false;
         }
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     private void ShowScriptSyntax()
@@ -1536,21 +1286,14 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(MonitorVisibilityButtonText));
     }
-
-    partial void OnSelectedCaptureTypeChanged(string value)
-    {
-        _captureService.CaptureType = NormalizeCaptureType(value);
-        SaveUserSettings();
-    }
-
     partial void OnIsAutoCompletionEnabledChanged(bool value)
     {
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     partial void OnAutoSwitchLayoutEnabledChanged(bool value)
     {
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     partial void OnAutoSwitchColorSchemeEnabledChanged(bool value)
@@ -1560,25 +1303,25 @@ public partial class MainWindowViewModel : ViewModelBase
         if (value)
             ApplySystemColorScheme();
 
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     partial void OnShowFoldingChanged(bool value)
     {
         FoldingVisibilityChanged?.Invoke(value);
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     partial void OnIsHighResolutionTimingEnabledChanged(bool value)
     {
         _scriptService.HighResolutionTiming = value;
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
     partial void OnWelcomeTextChanged(string value)
     {
-        RefreshWelcomeConsole();
-        SaveUserSettings();
+        Welcome.SetWelcomeText(value);
+        ScheduleSaveUserSettings();
     }
 
     partial void OnSelectedEditorTabChanged(int value)
@@ -1590,14 +1333,6 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsCardEditorHeaderVisible));
     }
 
-    partial void OnIsCaptureSourceConnectedChanged(bool value)
-    {
-        // 同步更新标签编辑器的视频源连接状态
-        if (TagEditorViewModel != null)
-        {
-            TagEditorViewModel.IsCaptureConnected = value;
-        }
-    }
 
     private void OnTagEditorOpenFileRequested()
     {
@@ -1606,7 +1341,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnTagEditorCaptureScreenshot()
     {
-        CaptureScreenshotForTagEditor();
+        _ = CaptureScreenshotForTagEditorAsync();
     }
 
     private void OnTagEditorLabelTest()
@@ -1626,50 +1361,53 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            using var lease = _captureService.AcquireLatestFrame();
-            if (lease == null || lease.Mat.Empty())
+            byte[]? resultPng = null;
+            double matchDegree = 0;
+            string labelName = "";
+
+            // 帧租约与 OpenCV 模板匹配都在线程池完成，避免大图匹配冻结 UI
+            await Task.Run(() =>
             {
-                _logService.AddLog("标签测试失败：无法获取视频帧");
-                return;
-            }
-            var mat = lease.Mat;
+                using var lease = _captureService.AcquireLatestFrame();
+                if (lease == null || lease.Mat.Empty())
+                    throw new InvalidOperationException(L10n.T("Text.Msg.TagTestNoFrame"));
 
-            var label = TagEditorViewModel.Label;
-            var result = label.Search(mat, out double matchDegree, "");
+                var mat = lease.Mat;
+                var label = TagEditorViewModel.Label;
+                var result = label.Search(mat, out matchDegree, "");
 
-            // 裁剪匹配位置的 ROI 作为结果图
-            Bitmap? resultBitmap = null;
-            if (result.Count > 0)
-            {
-                var pt = result[0];
-                int roiX = label.RangeX + pt.X;
-                int roiY = label.RangeY + pt.Y;
-                int roiW = label.TargetWidth;
-                int roiH = label.TargetHeight;
-
-                // 裁剪区域限制在帧范围内
-                roiX = Math.Clamp(roiX, 0, mat.Width);
-                roiY = Math.Clamp(roiY, 0, mat.Height);
-                roiW = Math.Clamp(roiW, 0, mat.Width - roiX);
-                roiH = Math.Clamp(roiH, 0, mat.Height - roiY);
-
-                if (roiW > 0 && roiH > 0)
+                byte[]? png = null;
+                if (result.Count > 0)
                 {
-                    using var roi = new Mat(mat, new Rect(roiX, roiY, roiW, roiH));
-                    var roiBytes = roi.ToBytes(".png");
-                    resultBitmap = new Bitmap(new MemoryStream(roiBytes));
+                    var pt = result[0];
+                    int roiX = Math.Clamp(label.RangeX + pt.X, 0, mat.Width);
+                    int roiY = Math.Clamp(label.RangeY + pt.Y, 0, mat.Height);
+                    int roiW = Math.Clamp(label.TargetWidth, 0, mat.Width - roiX);
+                    int roiH = Math.Clamp(label.TargetHeight, 0, mat.Height - roiY);
+
+                    if (roiW > 0 && roiH > 0)
+                    {
+                        using var roi = new Mat(mat, new Rect(roiX, roiY, roiW, roiH));
+                        png = roi.ToBytes(".png");
+                    }
                 }
-            }
+
+                resultPng = png;
+                labelName = label.name;
+            });
 
             // 更新匹配度显示和结果图
-            TagEditorViewModel.SetTestResult(matchDegree, resultBitmap);
+            TagEditorViewModel.SetTestResult(matchDegree, resultPng);
 
-            var status = result.Count > 0 ? "匹配成功" : "未匹配";
-            _logService.AddLog($"标签测试 [{label.name}]: {status}, 匹配度 {matchDegree:F1}%");
+            _logService.AddLog(string.Format(L10n.T("Text.Msg.TagTestResult"), labelName, matchDegree));
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logService.AddLog(ex.Message);
         }
         catch (Exception ex)
         {
-            _logService.AddLog($"标签测试失败: {ex.Message}");
+            _logService.AddLog(string.Format(L10n.T("Text.Msg.TagTestFail"), ex.Message));
         }
     }
 
@@ -1680,8 +1418,8 @@ public partial class MainWindowViewModel : ViewModelBase
             var cacheDir = EasyCon.Core.Config.AppPaths.CaptureCacheDir;
             var files = await _dialogService.OpenFilesAsync("选择图片文件",
             [
-                new FilePickerFileType("图片文件") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"] },
-                new FilePickerFileType("所有文件") { Patterns = ["*"] }
+                new FileDialogFilter("图片文件", ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"]),
+                new FileDialogFilter("所有文件", ["*"])
             ], cacheDir);
 
             if (files.Count > 0 && TagEditorViewModel != null)
@@ -1693,7 +1431,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private void CaptureScreenshotForTagEditor()
+    private async Task CaptureScreenshotForTagEditorAsync()
     {
         if (!_captureService.IsConnected)
         {
@@ -1711,10 +1449,10 @@ public partial class MainWindowViewModel : ViewModelBase
             }
             var mat = lease.Mat;
 
-            // 将Mat编码为字节数组，然后转换为Bitmap
-            var imageBytes = mat.ToBytes(".png");
-            var bitmap = new global::Avalonia.Media.Imaging.Bitmap(new MemoryStream(imageBytes));
-            TagEditorViewModel?.SetScreenshot(bitmap);
+            // Mat 编码为 PNG 字节交给 VM（VM 内部解码显示并保留字节供裁剪）；
+            // 1080p PNG 编码可达百毫秒级，放后台执行避免冻结 UI（租约保活至编码完成）
+            var imageBytes = await Task.Run(() => mat.ToBytes(".png"));
+            TagEditorViewModel?.SetScreenshot(imageBytes);
             _logService.AddLog("截图成功");
         }
         catch (Exception ex)
@@ -1729,73 +1467,8 @@ public partial class MainWindowViewModel : ViewModelBase
             OpenScriptFromPath(path);
     }
 
-    private void ConnectController()
-    {
-        if (IsControllerConnected)
-        {
-            DisconnectController();
-            return;
-        }
-
-        if (!IsNintendoSwitchConnected)
-        {
-            _logService.AddLog("请先连接单片机");
-            return;
-        }
-
-        IsConnectingController = true;
-        ControlSourceStatus = "连接中...";
-        _logService.AddLog($"正在连接手柄 ({SelectedControlSource})...");
-
-        var sourceName = SelectedControlSource ?? "";
-        Task.Run(() =>
-        {
-            var ok = _controllerService.TryConnect(sourceName);
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                IsConnectingController = false;
-                if (ok)
-                {
-                    IsControllerConnected = true;
-                    ControlSourceStatus = "已连接";
-                    ControllerButtonText = "断开手柄";
-                    UpdateEditKeyMappingEnabled();
-                    _logService.AddLog($"手柄 ({sourceName}) 连接成功");
-                }
-                else
-                {
-                    ControlSourceStatus = "连接失败";
-                    _logService.AddLog($"手柄 ({sourceName}) 连接失败");
-                }
-            });
-        });
-    }
-
-    private void DisconnectController()
-    {
-        _controllerService.Disconnect();
-        IsControllerConnected = false;
-        ControlSourceStatus = "未连接";
-        ControllerButtonText = "开启映射";
-        UpdateEditKeyMappingEnabled();
-        _logService.AddLog("手柄已断开连接");
-    }
-
-    private void EditKeyMapping()
-    {
-        _windowService.ShowKeyMappingWindow();
-    }
-
-    private void UpdateEditKeyMappingEnabled()
-    {
-        IsEditKeyMappingEnabled = SelectedControlSource == "键盘" && !IsControllerConnected;
-    }
-
-    partial void OnSelectedControlSourceChanged(string? value)
-    {
-        UpdateEditKeyMappingEnabled();
-    }
+    [ObservableProperty]
+    private bool _showDebugInfo;
 
     partial void OnIsRecordingChanged(bool value)
     {
@@ -1806,47 +1479,44 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnShowDebugInfoChanged(bool value)
     {
         _deviceService.ShowDebugInfo = value;
-        SaveUserSettings();
+        ScheduleSaveUserSettings();
     }
 
-    private async void RunScript()
+    private async Task RunScriptAsync()
     {
-        if (_scriptService.IsRunning)
+        try
         {
-            _scriptService.Stop();
-            return;
-        }
+            if (_scriptService.IsRunning)
+            {
+                _scriptService.Stop();
+                return;
+            }
 
-        string[]? args = null;
-        if (HasArgsShebang(EditorText))
+            string[]? args = null;
+            if (HasArgsShebang(EditorText))
+            {
+                args = await _dialogService.ShowScriptArgsDialogAsync();
+                if (args == null) return; // 用户取消
+            }
+
+            if (!HasSelectedScriptPath())
+            {
+                _scriptService.RunFromContent(EditorText, args);
+                return;
+            }
+
+            _scriptService.Run(CurrentScriptPath, args);
+        }
+        catch (Exception ex)
         {
-            args = await ShowArgsDialogAsync();
-            if (args == null) return; // 用户取消
+            _logService.AddLog(string.Format(L10n.T("Text.Msg.RunScriptFail"), ex.Message));
         }
-
-        if (!HasSelectedScriptPath())
-        {
-            _scriptService.RunFromContent(EditorText, args);
-            return;
-        }
-
-        _scriptService.Run(CurrentScriptPath, args);
     }
 
     private static bool HasArgsShebang(string script)
     {
         var firstLine = script.Split('\n', '\r').FirstOrDefault()?.Trim();
         return firstLine != null && firstLine.StartsWith("#! args");
-    }
-
-    private async Task<string[]?> ShowArgsDialogAsync()
-    {
-        var owner = WindowService.MainWindow;
-        if (owner == null) return null;
-
-        var dialog = new ScriptArgsWindow();
-        await dialog.ShowDialog<string[]?>(owner);
-        return dialog.Args;
     }
 
     private void ClearLog()
@@ -1861,12 +1531,31 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// 关窗前确认放弃未保存的脚本修改。返回 true 表示放弃并继续关闭。
+    /// </summary>
+    public async Task<bool> ConfirmCloseWithoutSavingAsync()
+    {
+        try
+        {
+            return await _dialogService.ConfirmAsync("未保存的修改",
+                "当前脚本有未保存的修改，确定不保存直接退出吗？");
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"确认对话框失败: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// 主窗口关闭时调用，关闭所有子窗口和监视器。
     /// </summary>
     public void OnMainWindowClosing()
     {
-        _welcomeTimer.Stop();
-        _welcomeTimer.Dispose();
+        Welcome.Stop();
+
+        // 立即写入防抖中挂起的用户配置
+        FlushPendingUserSettings();
 
         // 关闭嵌入式监视器
         if (_monitorViewModel != null)
@@ -1875,209 +1564,32 @@ public partial class MainWindowViewModel : ViewModelBase
             _monitorViewModel = null;
         }
 
-        // 释放控制器资源（SDL3 事件循环等）
-        _controllerService.Dispose();
-
-        // 释放 MCP 连接（终止子进程）
-        _mcpManager.Dispose();
-    }
-
-    private void RemoteRun()
-    {
-        if (!IsNintendoSwitchConnected)
+        // 停止仍在运行的脚本（复位按键、丢弃排队 HID 报文）
+        if (_scriptService.IsRunning)
         {
-            _logService.AddLog("请先连接单片机");
-            return;
+            _scriptService.Stop();
         }
 
-        if (_deviceService.RemoteStart())
-        {
-            _logService.AddLog("远程运行成功");
-        }
-        else
-        {
-            _logService.AddLog("远程运行失败");
-        }
-    }
+        // 释放控制器资源（SDL3 事件循环等）移至 App desktop.Exit 单一清理入口，
+        // 此处不再提前 Dispose（双通道释放靠幂等保护是巧合不是设计）
 
-    private void RemoteStop()
-    {
-        if (!IsNintendoSwitchConnected)
-        {
-            _logService.AddLog("请先连接单片机");
-            return;
-        }
+        // 取消在途 AI 请求并退订其静态事件订阅
+        AiAgent.Dispose();
 
-        if (_deviceService.RemoteStop())
+        // 释放 MCP 连接（终止子进程）。DisposeAsync 内含最长数秒的进程等待，
+        // 放到后台执行，避免拖住窗口关闭；异常仅记日志（进程即将退出）。
+        _ = Task.Run(async () =>
         {
-            _logService.AddLog("远程停止成功");
-        }
-        else
-        {
-            _logService.AddLog("远程停止失败");
-        }
-    }
-
-    private async Task CompileFlashAsync()
-    {
-        if (!IsNintendoSwitchConnected)
-        {
-            _logService.AddLog("请先连接单片机");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(EditorText))
-        {
-            _logService.AddLog("没有可烧录的脚本");
-            return;
-        }
-
-        _logService.AddLog("开始编译...");
-
-        // 编译脚本
-        if (!await _scriptService.CompileAsync(EditorText, HasSelectedScriptPath() ? CurrentScriptPath : null))
-        {
-            _logService.AddLog("编译失败，无法烧录");
-            return;
-        }
-
-        // 组装为字节码
-        var bytes = await _scriptService.BuildAsync(true);
-        if (bytes == null || bytes.Length == 0)
-        {
-            _logService.AddLog("编译结果为空，无法烧录");
-            return;
-        }
-
-        // 检查固件版本
-        var version = _deviceService.GetVersion();
-        if (version != 0x45)
-        {
-            _logService.AddLog($"固件版本不匹配 (当前: 0x{version:X2}，需要: 0x45)，请先更新固件");
-            return;
-        }
-
-        // 烧录
-        _logService.AddLog($"正在烧录 ({bytes.Length} 字节)...");
-        if (_deviceService.Flash(bytes))
-        {
-            _logService.AddLog("烧录成功");
-        }
-        else
-        {
-            _logService.AddLog("烧录失败");
-        }
-    }
-
-    private void ClearFlash()
-    {
-        if (!IsNintendoSwitchConnected)
-        {
-            _logService.AddLog("请先连接单片机");
-            return;
-        }
-
-        _logService.AddLog("正在清除烧录...");
-        // 使用空字节数组清除烧录
-        if (_deviceService.Flash(Array.Empty<byte>()))
-        {
-            _logService.AddLog("清除烧录成功");
-        }
-        else
-        {
-            _logService.AddLog("清除烧录失败");
-        }
-    }
-
-    private async Task GenerateFirmwareAsync()
-    {
-        if (string.IsNullOrWhiteSpace(EditorText))
-        {
-            _logService.AddLog("没有可生成固件的脚本");
-            return;
-        }
-
-        _logService.AddLog("开始编译...");
-
-        // 编译脚本
-        if (!await _scriptService.CompileAsync(EditorText, HasSelectedScriptPath() ? CurrentScriptPath : null))
-        {
-            _logService.AddLog("编译失败，无法生成固件");
-            return;
-        }
-
-        // 组装为字节码
-        var bytes = await _scriptService.BuildAsync(false);
-        if (bytes == null || bytes.Length == 0)
-        {
-            _logService.AddLog("编译结果为空，无法生成固件");
-            return;
-        }
-
-        _logService.AddLog($"正在生成固件 ({SelectedFirmware})...");
-
-        try
-        {
-            // 检查固件目录
-            var firmwarePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Firmware");
-            if (!Directory.Exists(firmwarePath))
+            try
             {
-                _logService.AddLog("固件目录不存在，请确认程序Firmware目录下是否有对应固件文件");
-                return;
+                await _mcpManager.DisposeAsync();
             }
-
-            // 查找对应的固件文件
-            var firmwareFile = GetFirmwareFile(firmwarePath, SelectedFirmware);
-            if (firmwareFile == null)
+            catch (Exception ex)
             {
-                _logService.AddLog($"未找到 {SelectedFirmware} 对应的固件文件");
-                return;
+                _logService.AddLog($"MCP 清理失败: {ex.Message}");
             }
-
-            // 读取固件模板并写入脚本
-            var hexContent = File.ReadAllText(firmwareFile);
-            var outputFileName = Path.GetFileNameWithoutExtension(firmwareFile) + "+Script" + Path.GetExtension(firmwareFile);
-            var outputPath = Path.Combine(Environment.CurrentDirectory, outputFileName);
-
-            // 使用HexWriter写入脚本到固件
-            var resultHex = EasyCon.Script.Asm.HexWriter.WriteHex(hexContent, bytes, 924, 0x45);
-            File.WriteAllText(outputPath, resultHex);
-
-            _logService.AddLog($"固件已生成: {outputPath}");
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"生成固件失败: {ex.Message}");
-        }
+        });
     }
-
-    private static string? GetFirmwareFile(string firmwarePath, string coreName)
-    {
-        var dir = new DirectoryInfo(firmwarePath);
-        if (!dir.Exists) return null;
-
-        var max = 0;
-        string? filename = null;
-        foreach (var fi in dir.GetFiles("*.hex"))
-        {
-            var m = System.Text.RegularExpressions.Regex.Match(
-                fi.Name,
-                $@"^{coreName} v(\d+)\.hex$",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-            if (m.Success)
-            {
-                var ver = int.Parse(m.Groups[1].Value);
-                if (ver > max)
-                {
-                    max = ver;
-                    filename = fi.FullName;
-                }
-            }
-        }
-        return filename;
-    }
-
     private void StartRecord()
     {
         if (IsRecording)
@@ -2086,27 +1598,34 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        if (!IsNintendoSwitchConnected)
+        if (!Switch.IsNintendoSwitchConnected)
         {
             _logService.AddLog("请先连接单片机");
             return;
         }
 
-        if (!IsControllerConnected)
+        if (!Controller.IsControllerConnected)
         {
             _logService.AddLog("请先连接虚拟手柄");
             return;
         }
 
-        _logService.AddLog("开始录制脚本");
-        var device = _deviceService.GetDevice();
-        device.StartRecord();
-        IsRecording = true;
+        _logService.AddLog(L10n.T("Text.Msg.RecordStart"));
+        try
+        {
+            var device = _deviceService.GetDevice();
+            device.StartRecord();
+            IsRecording = true;
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"开始录制失败: {ex.Message}");
+        }
     }
 
     private void StopRecord()
     {
-        if (!IsNintendoSwitchConnected)
+        if (!Switch.IsNintendoSwitchConnected)
         {
             _logService.AddLog("请先连接单片机");
             return;
@@ -2119,18 +1638,25 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         var device = _deviceService.GetDevice();
-        device.StopRecord();
-        IsRecording = false;
-
-        var script = device.GetRecordScript();
-        if (!string.IsNullOrEmpty(script))
+        try
         {
-            EditorText = script;
-            _logService.AddLog("录制完成，脚本已加载到编辑器");
+            device.StopRecord();
+            IsRecording = false;
+            var script = device.GetRecordScript();
+            if (!string.IsNullOrEmpty(script))
+            {
+                EditorText = script;
+                _logService.AddLog("录制完成，脚本已加载到编辑器");
+            }
+            else
+            {
+                _logService.AddLog("录制完成，但没有生成脚本内容");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _logService.AddLog("录制完成，但没有生成脚本内容");
+            // StopRecord 失败时保持 IsRecording=true，允许用户重试停止
+            _logService.AddLog($"停止录制失败: {ex.Message}");
         }
     }
 }

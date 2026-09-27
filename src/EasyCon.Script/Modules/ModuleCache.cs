@@ -186,11 +186,30 @@ internal sealed class ModuleCache
         var finalPath = Path.Combine(_objDir, ModuleCacheKeys.FileName(artifact.Name, cacheKey));
         var tempPath = Path.Combine(_objDir, $".{artifact.Name}-{Guid.NewGuid():N}.tmp");
         File.WriteAllBytes(tempPath, bytes);
-        File.Move(tempPath, finalPath, overwrite: true);
+        MoveWithRetry(tempPath, finalPath);
 
         var errPath = Path.Combine(_objDir, ModuleCacheKeys.ErrorFileName(artifact.Name, cacheKey));
         if (File.Exists(errPath))
             File.Delete(errPath);
+    }
+
+    static void MoveWithRetry(string tempPath, string finalPath)
+    {
+        // 多进程/多任务共享同一 obj/ 目录时，另一端可能正打开同一 .ecm 读取；
+        // Windows 上覆盖被占用目标会抛 IOException，短暂重试即可让渡读方
+        const int MaxAttempts = 3;
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(tempPath, finalPath, overwrite: true);
+                return;
+            }
+            catch (IOException) when (attempt < MaxAttempts)
+            {
+                System.Threading.Thread.Sleep(20 * attempt);
+            }
+        }
     }
 
     /// <summary>

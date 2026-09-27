@@ -96,7 +96,7 @@ internal sealed partial class Parser
 
     #endregion
 
-    public CompicationUnit ParseProgram()
+    public CompilationUnit ParseProgram()
     {
         var unit = new Stack<List<Statement>>();
         unit.Push([]);
@@ -288,7 +288,7 @@ internal sealed partial class Parser
             _diagnostics.ReportBadStruct(first.Syntax.Location, "语句块没有正确结束");
         }
 
-        return new CompicationUnit([.. result]);
+        return new CompilationUnit([.. result]);
     }
 
     /// <summary>

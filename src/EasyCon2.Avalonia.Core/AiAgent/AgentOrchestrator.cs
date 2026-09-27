@@ -23,11 +23,11 @@ public abstract record AgentEvent
     /// <summary>思考/推理内容增量。</summary>
     public record ThinkingDelta(string Text) : AgentEvent;
 
-    /// <summary>工具调用开始执行。</summary>
-    public record ToolExecuting(string Name) : AgentEvent;
+    /// <summary>工具调用开始执行（Id 关联同轮并行同名调用）。</summary>
+    public record ToolExecuting(string Name, string Id) : AgentEvent;
 
-    /// <summary>工具调用完成，携带结果摘要。</summary>
-    public record ToolCompleted(string Name, string Summary, string FullResult) : AgentEvent;
+    /// <summary>工具调用完成，携带结果摘要（Id 与 <see cref="ToolExecuting"/> 对应）。</summary>
+    public record ToolCompleted(string Name, string Id, string Summary, string FullResult) : AgentEvent;
 
     /// <summary>Token 用量更新。</summary>
     public record UsageUpdated(int Prompt, int Completion, int Total) : AgentEvent;
@@ -57,6 +57,7 @@ public class AgentOrchestrator
 
     private readonly ToolRegistry _tools;
     private readonly PromptAssembler? _promptAssembler;
+    private readonly Func<ProviderConfig, IChatClient>? _clientFactory;
     private int _frameImageIndex = -1;
     private readonly ReflectionState _reflectionState = new();
 
@@ -161,8 +162,21 @@ public class AgentOrchestrator
     /// 回退到旧的硬编码 SystemPrompts 路径（向后兼容）。
     /// </summary>
     public AgentOrchestrator(ToolRegistry tools, SkillRegistry? skillRegistry)
+        : this(tools, skillRegistry, clientFactory: null)
+    {
+    }
+
+    /// <summary>
+    /// 创建编排器并可注入客户端工厂。<paramref name="clientFactory"/> 为空时走
+    /// ChatClientFactory（生产路径）；测试注入 fake client 以覆盖错误链路。
+    /// </summary>
+    public AgentOrchestrator(
+        ToolRegistry tools,
+        SkillRegistry? skillRegistry,
+        Func<ProviderConfig, IChatClient>? clientFactory)
     {
         _tools = tools;
+        _clientFactory = clientFactory;
         if (skillRegistry is { All.Count: > 0 })
             _promptAssembler = new PromptAssembler(skillRegistry);
     }
@@ -200,9 +214,12 @@ public class AgentOrchestrator
         // 重置反思状态（用户新消息）
         _reflectionState.Reset();
 
-        // 订阅调试日志，转发到 UI
+        // 订阅调试日志与请求阶段重试，转发到 UI
         var debugHandler = new Action<string>(msg => onEvent(new AgentEvent.DebugInfo(msg)));
         OpenAIChatClient.DebugLog += debugHandler;
+        var retryHandler = new Action<int, int, string>((attempt, maxAttempts, reason) =>
+            onEvent(new AgentEvent.Retrying(attempt, maxAttempts, reason)));
+        OpenAIChatClient.RequestRetrying += retryHandler;
         try
         {
             for (var round = 0; round < MaxToolRounds; round++)
@@ -221,7 +238,7 @@ public class AgentOrchestrator
                 {
                     accumulator = new ToolCallAccumulator();
 
-                    var client = ChatClientFactory.Create(provider);
+                    var client = _clientFactory?.Invoke(provider) ?? ChatClientFactory.Create(provider);
                     var request = new ChatRequest
                     {
                         Model = modelId,
@@ -276,6 +293,8 @@ public class AgentOrchestrator
                     // 可重试错误 → 丢弃本轮部分数据，等待后重发同一轮请求
                     if (retryableError && streamRetry < maxStreamRetries)
                     {
+                        pendingReply.Clear();
+                        pendingThinking.Clear();
                         onEvent(new AgentEvent.Retrying(
                             streamRetry + 1, maxStreamRetries, "流式传输中断，正在重新连接..."));
                         await Task.Delay(TimeSpan.FromSeconds(2 * (streamRetry + 1)), ct);
@@ -343,6 +362,7 @@ public class AgentOrchestrator
         finally
         {
             OpenAIChatClient.DebugLog -= debugHandler;
+            OpenAIChatClient.RequestRetrying -= retryHandler;
         }
     }
 
@@ -382,15 +402,18 @@ public class AgentOrchestrator
 
         try
         {
-            onEvent(new AgentEvent.ToolExecuting(fn.Name));
+            onEvent(new AgentEvent.ToolExecuting(fn.Name, toolCall.Id));
 
             var args = fn.ParseArguments();
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(TimeSpan.FromSeconds(ToolTimeoutSeconds));
 
-            var result = await tool.ExecuteAsync(args, timeoutCts.Token);
+            // 工具体可能包含长时间同步 CPU 工作（截图编码、grep、目录遍历），
+            // 放到线程池执行，避免整轮 ReAct 循环占用 UI 线程导致界面卡顿。
+            // 注意：同步工具一旦开始执行仍无法被超时中断，取消经 token 尽力传播。
+            var result = await Task.Run(() => tool.ExecuteAsync(args, timeoutCts.Token));
             var summary = Truncate(result.Content, 200);
-            onEvent(new AgentEvent.ToolCompleted(fn.Name, summary, result.Content));
+            onEvent(new AgentEvent.ToolCompleted(fn.Name, toolCall.Id, summary, result.Content));
             return result;
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)

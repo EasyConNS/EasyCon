@@ -9,7 +9,7 @@ namespace EasyCon.Lsp.Tests;
 [TestFixture]
 public class CompletionProviderTests
 {
-    private static CompicationUnit ParseRoot(string source)
+    private static CompilationUnit ParseRoot(string source)
     {
         return SyntaxTree.Parse(source).Root;
     }
@@ -42,7 +42,12 @@ public class CompletionProviderTests
             Assert.That(labels, Does.Contain("PRINT"));
             Assert.That(labels, Does.Contain("ALERT"));
             Assert.That(labels, Does.Contain("RAND"));
-            Assert.That(labels, Does.Contain("TIME"));
+            // 与 BuiltinFunctions.Manifest 同步的真实内建面（旧断言里的 TIME 并非内建函数）
+            Assert.That(labels, Does.Contain("FOPEN"));
+            Assert.That(labels, Does.Contain("OCR_CONF"));
+            // 内建洞函数（__ 前缀）不对用户暴露
+            Assert.That(labels, Does.Not.Contain("__OCR__"));
+            Assert.That(labels, Does.Not.Contain("__CAPTURE__"));
         });
 
         var waitItem = completions.Items.First(i => i.Label == "WAIT");
@@ -50,6 +55,19 @@ public class CompletionProviderTests
         {
             Assert.That(waitItem.Kind, Is.EqualTo(CompletionItemKind.Function));
             Assert.That(waitItem.Detail, Is.Not.Null);
+        });
+    }
+
+    [Test]
+    public void GetCompletions_FiltersByPrefix()
+    {
+        var completions = CompletionProvider.GetCompletions(null, "WH");
+
+        var labels = completions.Items.Select(i => i.Label).ToList();
+        Assert.Multiple(() =>
+        {
+            Assert.That(labels, Does.Contain("WHILE"));
+            Assert.That(labels, Does.Not.Contain("FUNC"));
         });
     }
 

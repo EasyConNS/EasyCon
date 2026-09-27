@@ -12,13 +12,15 @@ namespace EasyCon2.Avalonia.Core.AiAgent.Tools;
 /// </list>
 /// 可用 <c>list_skills</c> 查看所有已注册技能及其执行模式。
 /// </summary>
-public class ExecuteSkillTool : IAiTool
+internal class ExecuteSkillTool : IAiTool
 {
+    public const string ToolName = "execute_skill";
+
     private readonly SkillExecutor _executor;
 
     public ExecuteSkillTool(SkillExecutor executor) => _executor = executor;
 
-    public string Name => "execute_skill";
+    public string Name => ToolName;
 
     public string Description =>
         "执行一个已注册的 skill。skill 是一段预定义的指令，执行后返回结果。" +

@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace EasyDevice;
 
-public class OperationRecords
+internal class OperationRecords
 {
     private List<KeyStroke> records = [];
     string script = "";
@@ -80,7 +80,7 @@ public class OperationRecords
     }
 }
 
-public enum RecordState
+internal enum RecordState
 {
     RECORD_START = 0x00,
     RECORD_PAUSE = 0x01,

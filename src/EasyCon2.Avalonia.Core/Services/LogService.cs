@@ -1,5 +1,5 @@
-using Avalonia.Threading;
 using EasyCon.Core.Services;
+using EasyCon2.Avalonia.Core.Threading;
 using EasyScript;
 using Serilog;
 
@@ -12,21 +12,32 @@ public class LogService : ILogService, IDisposable
     private readonly object _lock = new();
     private readonly string _logDirectory;
     private readonly ILogger _fileLogger;
+    private readonly IUiDispatcher _ui;
 
     public event Action<string?, string?>? LogAppended;
 
-    public LogService()
+    public LogService(IUiDispatcher? uiDispatcher = null)
     {
+        _ui = uiDispatcher ?? SynchronousUiDispatcher.Instance;
         _flushTimer = new Timer(Flush, null, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100));
+        // 安装在 Program Files 等只读目录时创建 logs/ 会失败，回退到 %TEMP% 保证可启动
         _logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
-        Directory.CreateDirectory(_logDirectory);
+        try
+        {
+            Directory.CreateDirectory(_logDirectory);
+        }
+        catch
+        {
+            _logDirectory = Path.Combine(Path.GetTempPath(), "EasyCon", "logs");
+            Directory.CreateDirectory(_logDirectory);
+        }
         _fileLogger = new LoggerConfiguration()
             .WriteTo.File(
                 Path.Combine(_logDirectory, "easycon-.log"),
                 rollingInterval: RollingInterval.Day,
                 rollOnFileSizeLimit: true,
                 fileSizeLimitBytes: 10 * 1024 * 1024,
-                retainedFileCountLimit: null,
+                retainedFileCountLimit: 30,
                 shared: false,
                 buffered: true,
                 flushToDiskInterval: TimeSpan.FromSeconds(2),
@@ -74,7 +85,7 @@ public class LogService : ILogService, IDisposable
     public void Clear()
     {
         lock (_lock) { _entries.Clear(); }
-        Dispatcher.UIThread.Post(() => LogAppended?.Invoke(null, null));
+        _ui.Post(() => LogAppended?.Invoke(null, null));
     }
 
     private void Flush(object? state)
@@ -93,7 +104,7 @@ public class LogService : ILogService, IDisposable
         if (batch.Length > MaxUiBatch)
             batch = batch[^MaxUiBatch..];
 
-        Dispatcher.UIThread.Post(() =>
+        _ui.Post(() =>
         {
             foreach (var (text, color) in batch)
                 LogAppended?.Invoke(text, color);

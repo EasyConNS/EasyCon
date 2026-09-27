@@ -1,8 +1,166 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- macOS 原生应用菜单标题（简体中文）。键名约定：Text.Menu.* -->
+    <!-- 简体中文。键名约定：Text.Menu.* / Text.Panel.* / Text.Tab.* / Text.Btn.* / Text.Status.* / Text.Msg.* / Text.Monitor.* / Text.Config.* / Text.Feature.* -->
+
+    <!-- macOS 原生应用菜单 -->
     <x:String x:Key="Text.Menu.About" xml:space="preserve">关于 EasyCon</x:String>
     <x:String x:Key="Text.Menu.Preferences" xml:space="preserve">设置</x:String>
     <x:String x:Key="Text.Menu.CheckUpdate" xml:space="preserve">检查更新</x:String>
     <x:String x:Key="Text.Menu.OpenConfigDir" xml:space="preserve">打开配置目录</x:String>
+
+    <!-- 面板与标签页 -->
+    <x:String x:Key="Text.Panel.Switch">单片机连接</x:String>
+    <x:String x:Key="Text.Panel.Capture">视频源</x:String>
+    <x:String x:Key="Text.Panel.Monitor">视频监视器</x:String>
+    <x:String x:Key="Text.Panel.Output">输出窗口</x:String>
+    <x:String x:Key="Text.Panel.RunControl">运行控制</x:String>
+    <x:String x:Key="Text.Panel.DebugMode">调试模式</x:String>
+    <x:String x:Key="Text.Panel.Controller">虚拟手柄</x:String>
+    <x:String x:Key="Text.Tab.Editor">文本编辑</x:String>
+    <x:String x:Key="Text.Tab.TagEditor">标签编辑</x:String>
+    <x:String x:Key="Text.Tab.UserConfig">用户配置</x:String>
+    <x:String x:Key="Text.Tab.FeatureCenter">功能中心</x:String>
+
+    <!-- 通用状态与按钮 -->
+    <x:String x:Key="Text.Status.NotConnected">未连接</x:String>
+    <x:String x:Key="Text.Status.Connected">已连接</x:String>
+    <x:String x:Key="Text.Status.Disconnected">已断开</x:String>
+    <x:String x:Key="Text.Status.Connecting">连接中...</x:String>
+    <x:String x:Key="Text.Status.ConnectFailed">连接失败</x:String>
+
+    <!-- 单片机 -->
+    <x:String x:Key="Text.Btn.ConnectSwitch">连接单片机</x:String>
+    <x:String x:Key="Text.Btn.DisconnectSwitch">断开连接</x:String>
+    <x:String x:Key="Text.Btn.AutoConnect">自动连接</x:String>
+    <x:String x:Key="Text.Status.AutoConnecting">自动连接中...</x:String>
+    <x:String x:Key="Text.Status.AutoConnectFailed">自动连接失败</x:String>
+    <x:String x:Key="Text.Msg.ConnectSwitchPrepare">准备连接单片机({0})...</x:String>
+    <x:String x:Key="Text.Msg.ConnectSwitchOk">单片机 ({0}) 连接成功</x:String>
+    <x:String x:Key="Text.Msg.ConnectSwitchError">连接单片机异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.SwitchLost">单片机已断开连接</x:String>
+    <x:String x:Key="Text.Msg.ScanStart">开始自动扫描串口...</x:String>
+    <x:String x:Key="Text.Msg.AutoConnectOk">自动连接成功: {0}</x:String>
+    <x:String x:Key="Text.Msg.AutoConnectFail">自动连接失败，未找到可用设备</x:String>
+    <x:String x:Key="Text.Msg.AutoConnectError">自动连接异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.ConnectFirst">请先连接单片机</x:String>
+    <x:String x:Key="Text.Msg.RemoteRunOk">远程运行成功</x:String>
+    <x:String x:Key="Text.Msg.RemoteRunFail">远程运行失败</x:String>
+    <x:String x:Key="Text.Msg.RemoteRunError">远程运行失败: {0}</x:String>
+    <x:String x:Key="Text.Msg.RemoteStopOk">远程停止成功</x:String>
+    <x:String x:Key="Text.Msg.RemoteStopFail">远程停止失败</x:String>
+    <x:String x:Key="Text.Msg.RemoteStopError">远程停止失败: {0}</x:String>
+
+    <!-- 运行控制 -->
+    <x:String x:Key="Text.Btn.Run">运行</x:String>
+    <x:String x:Key="Text.Btn.Stop">停止</x:String>
+    <x:String x:Key="Text.Msg.RunScriptFail">运行脚本失败: {0}</x:String>
+
+    <!-- 视频源 -->
+    <x:String x:Key="Text.Btn.ConnectCapture">连接视频源</x:String>
+    <x:String x:Key="Text.Btn.DisconnectCapture">关闭视频源</x:String>
+    <x:String x:Key="Text.Msg.OpenCapturePrepare">准备打开视频源({0})...</x:String>
+    <x:String x:Key="Text.Msg.CaptureOk">视频源 ({0}) 已连接</x:String>
+    <x:String x:Key="Text.Msg.CaptureOpenFail">视频源打开失败</x:String>
+    <x:String x:Key="Text.Msg.CaptureError">视频源连接异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.CaptureDisconnected">视频源已断开连接</x:String>
+    <x:String x:Key="Text.Msg.DisconnectCaptureError">断开视频源异常: {0}</x:String>
+
+    <!-- 监视器 -->
+    <x:String x:Key="Text.Monitor.NotConnected">视频源未连接</x:String>
+    <x:String x:Key="Text.Monitor.ConnectFirst">视频源未连接，请先连接视频源</x:String>
+    <x:String x:Key="Text.Monitor.Reconnecting">视频源已断开连接，等待重连...</x:String>
+    <x:String x:Key="Text.Monitor.ReadFail">视频读取失败: {0}</x:String>
+    <x:String x:Key="Text.Btn.MonitorShow">监视器显示</x:String>
+    <x:String x:Key="Text.Btn.MonitorHide">监视器关闭</x:String>
+    <x:String x:Key="Text.Btn.Pause">暂停</x:String>
+    <x:String x:Key="Text.Btn.Resume">继续</x:String>
+
+    <!-- 虚拟手柄 -->
+    <x:String x:Key="Text.Btn.StartMapping">开启映射</x:String>
+    <x:String x:Key="Text.Btn.DisconnectController">断开手柄</x:String>
+    <x:String x:Key="Text.Btn.KeyMapping">按键映射</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerPrepare">正在连接手柄 ({0})...</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerOk">手柄 ({0}) 连接成功</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerFail">手柄 ({0}) 连接失败</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerError">连接手柄异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.ControllerDisconnected">手柄已断开连接</x:String>
+
+    <!-- 烧录与固件 -->
+    <x:String x:Key="Text.Msg.NoScriptToFlash">没有可烧录的脚本</x:String>
+    <x:String x:Key="Text.Msg.CompileStart">开始编译...</x:String>
+    <x:String x:Key="Text.Msg.CompileFailFlash">编译失败，无法烧录</x:String>
+    <x:String x:Key="Text.Msg.CompileEmptyFlash">编译结果为空，无法烧录</x:String>
+    <x:String x:Key="Text.Msg.VersionMismatch">固件版本不匹配 (当前: 0x{0:X2}，需要: 0x{1:X2})，请先更新固件</x:String>
+    <x:String x:Key="Text.Msg.Flashing">正在烧录 ({0} 字节)...</x:String>
+    <x:String x:Key="Text.Msg.FlashOk">烧录成功</x:String>
+    <x:String x:Key="Text.Msg.FlashFail">烧录失败</x:String>
+    <x:String x:Key="Text.Msg.FlashError">烧录失败: {0}</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashing">正在清除烧录...</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashOk">清除烧录成功</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashFail">清除烧录失败</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashError">清除烧录失败: {0}</x:String>
+    <x:String x:Key="Text.Msg.NoScriptForFirmware">没有可生成固件的脚本</x:String>
+    <x:String x:Key="Text.Msg.CompileFailFirmware">编译失败，无法生成固件</x:String>
+    <x:String x:Key="Text.Msg.CompileEmptyFirmware">编译结果为空，无法生成固件</x:String>
+    <x:String x:Key="Text.Msg.FirmwareGenerateStart">正在生成固件 ({0})...</x:String>
+    <x:String x:Key="Text.Msg.FirmwareDirMissing">固件目录不存在，请确认程序Firmware目录下是否有对应固件文件</x:String>
+    <x:String x:Key="Text.Msg.FirmwareFileMissing">未找到 {0} 对应的固件文件</x:String>
+    <x:String x:Key="Text.Msg.FirmwareGenerated">固件已生成: {0}</x:String>
+    <x:String x:Key="Text.Msg.FirmwareError">生成固件失败: {0}</x:String>
+
+    <!-- 录制 -->
+    <x:String x:Key="Text.Btn.RecordStart">录制脚本</x:String>
+    <x:String x:Key="Text.Btn.RecordStop">停止录制</x:String>
+    <x:String x:Key="Text.Msg.RecordStart">开始录制脚本</x:String>
+
+    <!-- 标签测试 -->
+    <x:String x:Key="Text.Msg.TagTestNoFrame">标签测试失败：无法获取视频帧</x:String>
+    <x:String x:Key="Text.Msg.TagTestResult">标签测试 [{0}]: 匹配度 {1:F1}%</x:String>
+    <x:String x:Key="Text.Msg.TagTestFail">标签测试失败: {0}</x:String>
+
+    <!-- 输出与编辑器 -->
+    <x:String x:Key="Text.Btn.ClearOutput">清空输出</x:String>
+    <x:String x:Key="Text.Btn.ScriptSyntax">脚本语法</x:String>
+    <x:String x:Key="Text.Status.NoScriptSelected">未选择脚本</x:String>
+    <x:String x:Key="Text.Status.UntitledScript">未命名脚本</x:String>
+
+    <!-- 用户配置页 -->
+    <x:String x:Key="Text.Config.Appearance">外观</x:String>
+    <x:String x:Key="Text.Config.AppearanceStyle">外观样式</x:String>
+    <x:String x:Key="Text.Config.LightScheme">浅色</x:String>
+    <x:String x:Key="Text.Config.WarmScheme">暖色</x:String>
+    <x:String x:Key="Text.Config.DarkScheme">深色</x:String>
+    <x:String x:Key="Text.Config.ClassicStyle">默认</x:String>
+    <x:String x:Key="Text.Config.CardStyle">卡片</x:String>
+    <x:String x:Key="Text.Config.Language">语言</x:String>
+    <x:String x:Key="Text.Config.WelcomeTitle">欢迎使用 easycon</x:String>
+    <x:String x:Key="Text.Config.WelcomeWord">欢迎词</x:String>
+    <x:String x:Key="Text.Config.AutoComplete">代码自动补全</x:String>
+    <x:String x:Key="Text.Config.ShowFolding">显示代码折叠</x:String>
+    <x:String x:Key="Text.Config.AutoSwitchLayout">视运行状态自动切换布局</x:String>
+    <x:String x:Key="Text.Config.AutoSwitchScheme">跟随系统自动切换</x:String>
+    <x:String x:Key="Text.Config.IdlePreview">未运行时预览</x:String>
+    <x:String x:Key="Text.Config.RunningPreview">运行时预览</x:String>
+    <x:String x:Key="Text.Config.EditorArea">编辑区</x:String>
+    <x:String x:Key="Text.Config.OutputArea">输出区</x:String>
+    <x:String x:Key="Text.Config.WindowBar">窗口栏</x:String>
+    <x:String x:Key="Text.Config.WorkTree">工作树</x:String>
+    <x:String x:Key="Text.Config.CustomLayout">自定义布局区域</x:String>
+    <x:String x:Key="Text.Config.Capture">视频源</x:String>
+    <x:String x:Key="Text.Config.About">关于</x:String>
+    <x:String x:Key="Text.Config.PushSettings">推送设置</x:String>
+    <x:String x:Key="Text.Config.McpServers">MCP 服务器</x:String>
+    <x:String x:Key="Text.Config.Models">模型设置</x:String>
+    <x:String x:Key="Text.Config.CheckUpdate">检查更新</x:String>
+
+    <!-- 功能中心页 -->
+    <x:String x:Key="Text.Feature.CompileFlash">编译烧录</x:String>
+    <x:String x:Key="Text.Feature.ClearFlash">清除烧录</x:String>
+    <x:String x:Key="Text.Feature.Generate">生成</x:String>
+    <x:String x:Key="Text.Feature.Firmware">固件</x:String>
+    <x:String x:Key="Text.Feature.RemoteRun">远程运行</x:String>
+    <x:String x:Key="Text.Feature.RemoteStop">远程停止</x:String>
+    <x:String x:Key="Text.Feature.ControllerBt">蓝牙手柄设置</x:String>
+    <x:String x:Key="Text.Feature.ESPConfig">ESP32 手柄参数配置</x:String>
+    <x:String x:Key="Text.Feature.Drawing">画图</x:String>
 </ResourceDictionary>

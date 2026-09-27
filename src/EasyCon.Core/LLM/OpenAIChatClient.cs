@@ -24,6 +24,12 @@ public sealed class OpenAIChatClient : IChatClient
     /// </summary>
     public static event Action<string>? DebugLog;
 
+    /// <summary>
+    /// 请求阶段透明重试回调（参数：attempt、maxAttempts、原因）。
+    /// 请求阶段的重试对调用方完全透明，订阅此事件才能在 UI 上提示"正在重试"。
+    /// </summary>
+    public static event Action<int, int, string>? RequestRetrying;
+
     public OpenAIChatClient(string baseUrl, string apiKey)
     {
         _http = new HttpClient
@@ -220,8 +226,10 @@ public sealed class OpenAIChatClient : IChatClient
                 if (IsTransientStatus(resp.StatusCode) && attempt < MaxRetries)
                 {
                     var retryAfter = ParseRetryAfter(resp);
+                    var status = resp.StatusCode;
                     resp.Dispose();
                     resp = null;
+                    RequestRetrying?.Invoke(attempt, MaxRetries, $"HTTP {(int)status} {status}");
                     await Task.Delay(ComputeBackoff(attempt, retryAfter), ct);
                     continue;
                 }
@@ -238,6 +246,7 @@ public sealed class OpenAIChatClient : IChatClient
             }
             catch (HttpRequestException ex) when (attempt < MaxRetries)
             {
+                RequestRetrying?.Invoke(attempt, MaxRetries, ex.Message);
                 await Task.Delay(ComputeBackoff(attempt, null), ct);
             }
             catch (HttpRequestException ex)
@@ -412,7 +421,7 @@ public sealed class OpenAIChatClient : IChatClient
     /// 从流式 chunk 提取增量片段列表，解析 content、reasoning_content 和 tool_calls。
     /// 单个 chunk 可能同时包含多种 delta。
     /// </summary>
-    private static List<StreamDelta> ExtractDeltas(string data)
+    internal static List<StreamDelta> ExtractDeltas(string data)
     {
         var deltas = new List<StreamDelta>();
 
@@ -420,6 +429,15 @@ public sealed class OpenAIChatClient : IChatClient
         {
             using var doc = JsonDocument.Parse(data);
             var root = doc.RootElement;
+
+            // 流内错误负载：部分供应商/网关在 HTTP 200 的流里以
+            // data: {"error":{...}} 形式报错（无 choices 字段），
+            // 不解析会被静默丢弃，最终表现为无任何提示的空回复
+            if (root.TryGetProperty("error", out var err))
+            {
+                deltas.Add(StreamDelta.Error(ExtractErrorText(err), retryable: false));
+                return deltas;
+            }
 
             // Token 用量（流式最后一个 chunk 可能携带 usage 字段）
             if (root.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object)
@@ -471,6 +489,24 @@ public sealed class OpenAIChatClient : IChatClient
         }
 
         return deltas;
+    }
+
+    /// <summary>
+    /// 从流内 error 节点提取可读文本，兼容对象（取 message）与字符串两种形态，
+    /// 其余形态回退到原始 JSON（截断）。
+    /// </summary>
+    private static string ExtractErrorText(JsonElement err)
+    {
+        if (err.ValueKind == JsonValueKind.String)
+            return err.GetString() ?? "";
+
+        if (err.ValueKind == JsonValueKind.Object
+            && err.TryGetProperty("message", out var msg)
+            && msg.ValueKind == JsonValueKind.String)
+            return msg.GetString() ?? "";
+
+        var raw = err.GetRawText();
+        return raw.Length > 300 ? raw[..300] + "..." : raw;
     }
 
     /// <summary>

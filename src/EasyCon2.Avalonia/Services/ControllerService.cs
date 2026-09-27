@@ -4,7 +4,7 @@ using EasyCon.Core.Config;
 using EasyCon.Core.Input;
 using EasyCon.SDLInput;
 using EasyCon2.Avalonia.Core.Services;
-using EasyCon2.Avalonia.Core.VPad;
+using EasyCon2.Avalonia.VPad;
 using EasyDevice;
 using SDL;
 
@@ -46,32 +46,36 @@ public sealed class ControllerService : IControllerService
         _detector.OpenExisting();
     }
 
-    public string[] GetAvailableSources()
+    /// <summary>键盘控制源的稳定 id（下拉显示名仍是"键盘"）。</summary>
+    public const string KeyboardSourceId = "keyboard";
+    private const string _gamepadIdPrefix = "gamepad:";
+
+    public IReadOnlyList<ControlSourceInfo> GetAvailableSources()
     {
-        var sources = new List<string> { "键盘" };
+        var sources = new List<ControlSourceInfo> { new("键盘", KeyboardSourceId) };
         foreach (var (id, name) in _detector.ConnectedGamepads)
-            sources.Add($"手柄: {name} ({id})");
-        return sources.ToArray();
+            sources.Add(new ControlSourceInfo($"手柄: {name}", $"{_gamepadIdPrefix}{id}"));
+        return sources;
     }
 
-    public bool TryConnect(string sourceName)
+    public bool TryConnect(string sourceId)
     {
+        // 先清理上一连接的 binder 与事件订阅：任何路径重复进入 TryConnect
+        // （连接进行中二次点击、切换控制源）都不会泄漏旧 binder 或重复订阅
+        CleanupBinder();
+
         IInputBinder binder;
 
-        if (sourceName == "键盘")
+        if (sourceId == KeyboardSourceId)
         {
             _keyboardBinder = new SdlKeyboardInputBinder(_eventLoop, _gamepad);
             KeyMappingConfig mapping = KeyMappingStore.Instance.Current;
             _keyboardBinder.UpdateKeyMapping(mapping);
             binder = _keyboardBinder;
         }
-        else if (sourceName.StartsWith("手柄: "))
+        else if (sourceId.StartsWith(_gamepadIdPrefix, StringComparison.Ordinal))
         {
-            var parenStart = sourceName.LastIndexOf('(');
-            var parenEnd = sourceName.LastIndexOf(')');
-            if (parenStart < 0 || parenEnd < 0) return false;
-            var idStr = sourceName.Substring(parenStart + 1, parenEnd - parenStart - 1);
-            if (!int.TryParse(idStr, out var gpId)) return false;
+            if (!int.TryParse(sourceId[_gamepadIdPrefix.Length..], out var gpId)) return false;
             if (!_detector.HasGamepad(gpId)) return false;
 
             _gamepadBinder = new SdlGamepadInputBinder(_eventLoop, _detector, _gamepad, gpId);

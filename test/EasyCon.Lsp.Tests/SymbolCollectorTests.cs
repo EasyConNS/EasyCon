@@ -7,7 +7,7 @@ namespace EasyCon.Lsp.Tests;
 [TestFixture]
 public class SymbolCollectorTests
 {
-    private static CompicationUnit ParseRoot(string source)
+    private static CompilationUnit ParseRoot(string source)
     {
         return SyntaxTree.Parse(source).Root;
     }

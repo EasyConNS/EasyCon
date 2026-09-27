@@ -24,6 +24,13 @@ public partial class NintendoSwitch : IReporter
     bool _reset = false;
     CancellationTokenSource source = new();
 
+    /// <summary>重连前取消上一条设备写循环，避免新旧两个 Loop 并行向设备写报告。</summary>
+    private void CancelStaleLoop()
+    {
+        try { source.Cancel(); }
+        catch (ObjectDisposedException) { }
+    }
+
     DirectionKey _leftStick = 0;
     DirectionKey _rightStick = 0;
     DirectionKey _hat = 0;
@@ -34,7 +41,7 @@ public partial class NintendoSwitch : IReporter
     public event StatusChangedHandler StatusChanged;
 
     private readonly OperationRecords operationRecords = new();
-    public RecordState recordState = RecordState.RECORD_STOP;
+    internal RecordState recordState = RecordState.RECORD_STOP;
 
     public ConnectResult TryConnect(string constr)
     {
@@ -42,6 +49,7 @@ public partial class NintendoSwitch : IReporter
 
         if (result == ConnectResult.Success)
         {
+            CancelStaleLoop();
             source = new();
             Task.Run(() =>
             {
@@ -55,6 +63,7 @@ public partial class NintendoSwitch : IReporter
             result = _TryConnect(constr, 9600);
             if (result == ConnectResult.Success)
             {
+                CancelStaleLoop();
                 source = new();
                 Task.Run(() =>
                 {

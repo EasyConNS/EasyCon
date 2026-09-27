@@ -2,89 +2,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Ports;
-using static EasyDevice.Connection.SerialPortClient;
 
 namespace EasyDevice.Connection;
-
-internal class TTLv2SerialClient(string name, int port) : IConnection
-{
-    private SerialPortClient _serialPortClient = new(name, port);
-
-    public override event BytesTransferedHandler BytesSent;
-    public override event BytesTransferedHandler BytesReceived;
-    public override event StatusChangedHandler StatusChanged;
-
-    public override Status CurrentStatus
-    {
-        get => _serialPortClient.CurrentState switch
-        {
-            ConnectionState.Connected => Status.Connected,
-            ConnectionState.Connecting => Status.Connecting,
-            _ => Status.Error
-        }; protected set => throw new NotImplementedException();
-    }
-
-    public override void Connect()
-    {
-        _serialPortClient.SetHeartbeat([EzDvCommand.Ready, EzDvCommand.Ready, EzDvCommand.Hello], (bs) => bs.Length == 1 && bs[0] == Reply.Hello);
-
-        void checkopend(object sender, string message)
-        {
-            bool check(byte[] bs) => bs.Length == 1 && bs[0] == Reply.Hello;
-            var recv = _serialPortClient.SendCommand([EzDvCommand.Ready, EzDvCommand.Ready, EzDvCommand.Hello]);
-
-            Console.WriteLine($"[{_serialPortClient.ConnectPort}] --recv-- " + string.Join(" ", recv.Select(b => b.ToString("X2"))));
-
-            if (!check(recv))
-            {
-                _serialPortClient.Close();
-                StatusChanged?.Invoke(Status.Error);
-            }
-        }
-        ;
-        _serialPortClient.ConnectionOpened += checkopend;
-        _serialPortClient.DataReceived += (sender, args) =>
-        {
-            BytesReceived?.Invoke(_serialPortClient.ConnectPort, args.Data);
-        };
-        Task.Run(() =>
-        {
-            try
-            {
-                if (_serialPortClient.Open())
-                {
-                    StatusChanged?.Invoke(CurrentStatus);
-                    _serialPortClient.ConnectionStateChanged += (sender, args) =>
-                    {
-                        StatusChanged?.Invoke(CurrentStatus);
-                    };
-                }
-                throw new Exception("连接失败");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-                StatusChanged?.Invoke(Status.Error);
-            }
-        });
-    }
-
-    public override void Disconnect()
-    {
-        _serialPortClient.Close();
-    }
-
-    public override void Write(params byte[] val)
-    {
-        BytesSent?.Invoke(_serialPortClient.ConnectPort, val);
-        _serialPortClient.SendCommand(val);
-    }
-
-    public override void ClearQueue()
-    {
-        // SerialPortClient 无发送队列，空实现
-    }
-}
 
 class TTLSerialClient : IConnection
 {
@@ -121,7 +40,8 @@ class TTLSerialClient : IConnection
             if (_status == value)
                 return;
             _status = value;
-            Task.Run(() => StatusChanged?.Invoke(_status));
+            var status = value;   // 快照：闭包读字段可能已被后续翻转覆盖
+            Task.Run(() => StatusChanged?.Invoke(status));
         }
     }
 
@@ -151,6 +71,15 @@ class TTLSerialClient : IConnection
     {
         source?.Cancel();
         ClearQueue();
+        // 有界等待写循环退出：其 finally 会 Close 串口。不同步等待时，
+        // 重连路径上新 client 的 _sport.Open() 会与旧 Close 竞争同一 COM 口
+        // （Windows 独占打开），造成间歇性 UnauthorizedAccessException。
+        var t = _t;
+        if (t != null)
+        {
+            try { t.Wait(1500); }
+            catch { /* 任务已故障结束也视为退出（循环 finally 已关闭串口） */ }
+        }
     }
 
     void Loop()
@@ -187,9 +116,8 @@ class TTLSerialClient : IConnection
 
                     if (inBuffer[0] == Reply.Hello)
                     {
-                        // hello received
+                        // hello received（状态翻转经 setter 统一触发，此处不再重复发事件）
                         CurrentStatus = Status.Connected;
-                        StatusChanged?.Invoke(CurrentStatus);
                     }
                     BytesReceived?.Invoke(_connStr, _inBuffer.ToArray());
 #if DEBUG
@@ -213,10 +141,10 @@ class TTLSerialClient : IConnection
                 Thread.Sleep(1);
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Debug.WriteLine($"[{_connStr}] TTLSerialClient 异常退出: {ex}");
             CurrentStatus = Status.Error;
-            StatusChanged?.Invoke(CurrentStatus);
         }
         finally
         {

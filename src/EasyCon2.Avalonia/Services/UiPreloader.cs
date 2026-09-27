@@ -16,7 +16,19 @@ public static class UiPreloader
     /// </summary>
     public static void Warmup()
     {
-        Task.Run(IconRegistry.Preload);
+        // Lazy 工厂在 ExecutionAndPublication 模式下会缓存异常：预热失败后每次取图标
+        // 都会重抛。这里吞掉异常，让首次真实使用时自然重试。
+        Task.Run(() =>
+        {
+            try
+            {
+                IconRegistry.Preload();
+            }
+            catch
+            {
+                // 预热失败不致命，留给首次使用时重试
+            }
+        });
 
         Dispatcher.UIThread.Post(ControllerSvgCache.Warmup, DispatcherPriority.Background);
     }

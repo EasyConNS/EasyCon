@@ -1,4 +1,3 @@
-using Avalonia.Media;
 using System.Text;
 
 namespace EasyCon2.Avalonia.Core.Terminal;
@@ -9,29 +8,29 @@ namespace EasyCon2.Avalonia.Core.Terminal;
 public class AnsiParser
 {
     // 标准 8 色（适配浅色背景）
-    private static readonly Color[] StandardColors =
+    private static readonly RgbColor[] StandardColors =
     [
-        Color.FromRgb(0x00, 0x00, 0x00), // 30: Black
-        Color.FromRgb(0xCC, 0x00, 0x00), // 31: Red
-        Color.FromRgb(0x00, 0x8C, 0x00), // 32: Green
-        Color.FromRgb(0x99, 0x88, 0x00), // 33: Yellow
-        Color.FromRgb(0x00, 0x00, 0xCC), // 34: Blue
-        Color.FromRgb(0xCC, 0x00, 0xCC), // 35: Magenta
-        Color.FromRgb(0x00, 0x88, 0x88), // 36: Cyan
-        Color.FromRgb(0x66, 0x66, 0x66), // 37: White
+        new(0x00, 0x00, 0x00), // 30: Black
+        new(0xCC, 0x00, 0x00), // 31: Red
+        new(0x00, 0x8C, 0x00), // 32: Green
+        new(0x99, 0x88, 0x00), // 33: Yellow
+        new(0x00, 0x00, 0xCC), // 34: Blue
+        new(0xCC, 0x00, 0xCC), // 35: Magenta
+        new(0x00, 0x88, 0x88), // 36: Cyan
+        new(0x66, 0x66, 0x66), // 37: White
     ];
 
     // 高亮 8 色
-    private static readonly Color[] BrightColors =
+    private static readonly RgbColor[] BrightColors =
     [
-        Color.FromRgb(0x80, 0x80, 0x80), // 90: Bright Black
-        Color.FromRgb(0xFF, 0x00, 0x00), // 91: Bright Red
-        Color.FromRgb(0x00, 0xCC, 0x00), // 92: Bright Green
-        Color.FromRgb(0xCC, 0xCC, 0x00), // 93: Bright Yellow
-        Color.FromRgb(0x00, 0x00, 0xFF), // 94: Bright Blue
-        Color.FromRgb(0xFF, 0x00, 0xFF), // 95: Bright Magenta
-        Color.FromRgb(0x00, 0xCC, 0xCC), // 96: Bright Cyan
-        Color.FromRgb(0x33, 0x33, 0x33), // 97: Bright White
+        new(0x80, 0x80, 0x80), // 90: Bright Black
+        new(0xFF, 0x00, 0x00), // 91: Bright Red
+        new(0x00, 0xCC, 0x00), // 92: Bright Green
+        new(0xCC, 0xCC, 0x00), // 93: Bright Yellow
+        new(0x00, 0x00, 0xFF), // 94: Bright Blue
+        new(0xFF, 0x00, 0xFF), // 95: Bright Magenta
+        new(0x00, 0xCC, 0xCC), // 96: Bright Cyan
+        new(0x33, 0x33, 0x33), // 97: Bright White
     ];
 
     /// <summary>
@@ -121,7 +120,7 @@ public class AnsiParser
         }
     }
 
-    private static int ParseExtendedColor(string[] parts, int start, Action<Color?> setter)
+    private static int ParseExtendedColor(string[] parts, int start, Action<RgbColor?> setter)
     {
         if (start >= parts.Length || !int.TryParse(parts[start], out var type))
             return start + 1;
@@ -139,14 +138,14 @@ public class AnsiParser
             && int.TryParse(parts[start + 2], out var g)
             && int.TryParse(parts[start + 3], out var b))
         {
-            setter(Color.FromRgb((byte)r, (byte)g, (byte)b));
+            setter(new RgbColor((byte)r, (byte)g, (byte)b));
             return start + 4;
         }
 
         return start + 1;
     }
 
-    private static Color Get256Color(int index)
+    private static RgbColor Get256Color(int index)
     {
         if (index < 8) return StandardColors[index];
         if (index < 16) return BrightColors[index - 8];
@@ -154,22 +153,22 @@ public class AnsiParser
         {
             // 灰度渐变（232-255）
             var g = (byte)(8 + (index - 232) * 10);
-            return Color.FromRgb(g, g, g);
+            return new RgbColor(g, g, g);
         }
         // 6×6×6 色立方体（16-231）
         index -= 16;
         var ri = index / 36;
         var gi = (index / 6) % 6;
         var bi = index % 6;
-        return Color.FromRgb(CubeComponent(ri), CubeComponent(gi), CubeComponent(bi));
+        return new RgbColor(CubeComponent(ri), CubeComponent(gi), CubeComponent(bi));
     }
 
     private static byte CubeComponent(int level) => (byte)(level > 0 ? 55 + level * 40 : 0);
 
     private class SgrState
     {
-        public Color? Foreground;
-        public Color? Background;
+        public RgbColor? Foreground;
+        public RgbColor? Background;
         public bool Bold;
         public bool Underline;
 

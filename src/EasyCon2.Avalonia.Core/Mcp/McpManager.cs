@@ -28,9 +28,13 @@ public sealed class McpManager : IMcpManager
         }
     }
 
+    /// <summary>
+    /// 连接/断开/重连后工具集变化。在 Initialize/Refresh 调用者的 await 续体上触发
+    /// （当前全部为 UI 线程 fire-and-forget）；若未来从线程池调用，订阅方需自行封送。
+    /// </summary>
     public event Action? ToolsChanged;
 
-    public McpManager(ILogService logService, IMcpSessionFactory? sessionFactory = null)
+    internal McpManager(ILogService logService, IMcpSessionFactory? sessionFactory = null)
     {
         _logService = logService;
         _sessionFactory = sessionFactory ?? new McpSessionFactory();
@@ -77,25 +81,35 @@ public sealed class McpManager : IMcpManager
             var newServers = config.Mcp.Servers;
 
             // 找出需要移除的连接（配置中不存在或被禁用）
+            // 读写与 Remove 统一持 _connections 锁：工具执行线程经 GetConnection/Connections
+            // 并发读取，无锁枚举/删除 List 可抛 InvalidOperationException
             var toRemove = new List<McpServerConnection>();
-            foreach (var conn in _connections.ToList())
+            lock (_connections)
             {
-                if (!newServers.TryGetValue(conn.ServerKey, out var newConfig) || !newConfig.Enabled)
+                foreach (var conn in _connections.ToList())
                 {
-                    toRemove.Add(conn);
-                }
-                else if (ConfigChanged(conn.Config, newConfig))
-                {
-                    // 配置变更 → 断开重连
-                    toRemove.Add(conn);
+                    if (!newServers.TryGetValue(conn.ServerKey, out var newConfig) || !newConfig.Enabled)
+                    {
+                        toRemove.Add(conn);
+                    }
+                    else if (ConfigChanged(conn.Config, newConfig))
+                    {
+                        // 配置变更 → 断开重连
+                        toRemove.Add(conn);
+                    }
                 }
             }
 
             // 断开并移除
             foreach (var conn in toRemove)
             {
-                await conn.DisposeAsync();
-                _connections.Remove(conn);
+                // DisposeAsync 的 Kill+WaitForExit(5s) 位于其首个 await 之前，
+                // 会在调用方线程同步执行；比照关窗路径放线程池，避免冻结 UI
+                await Task.Run(() => conn.DisposeAsync().AsTask());
+                lock (_connections)
+                {
+                    _connections.Remove(conn);
+                }
                 _logService.AddLog($"[MCP] 服务器 '{conn.ServerKey}' 已断开");
             }
 
@@ -131,16 +145,26 @@ public sealed class McpManager : IMcpManager
             return _connections.FirstOrDefault(c => c.ServerKey == serverKey);
     }
 
-    public async void Dispose()
+    public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
         _disposed = true;
 
         foreach (var conn in _connections.ToList())
-            await conn.DisposeAsync();
+        {
+            try
+            {
+                await conn.DisposeAsync();
+            }
+            catch
+            {
+                // 单台服务器清理失败不阻断其余连接的释放
+            }
+        }
 
         _connections.Clear();
-        _lock.Dispose();
+        // 不 Dispose _lock：若与 RefreshAsync 并发，Release 已释放的信号量会抛
+        // ObjectDisposedException；SemaphoreSlim 不持有需及时释放的原生资源。
     }
 
     private async Task<McpServerConnection> ConnectServerAsync(string serverKey, McpServerConfig config, CancellationToken ct)
@@ -202,8 +226,17 @@ internal sealed class McpSessionFactory : IMcpSessionFactory
             throw new NotSupportedException($"暂不支持传输类型: {transport}");
 
         var customTransport = new CustomStdioClientTransport(command, args.ToList(), env.ToDictionary(kv => kv.Key, kv => kv.Value));
-        var client = await McpClient.CreateAsync(customTransport, cancellationToken: ct);
-        return new McpSessionWrapper(client);
+        try
+        {
+            var client = await McpClient.CreateAsync(customTransport, cancellationToken: ct);
+            return new McpSessionWrapper(client);
+        }
+        catch
+        {
+            // 握手失败时 ConnectAsync 已经启动了子进程；不释放它就成了孤儿进程
+            await customTransport.DisposeLastTransportAsync();
+            throw;
+        }
     }
 }
 

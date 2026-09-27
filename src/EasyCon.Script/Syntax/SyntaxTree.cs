@@ -6,7 +6,7 @@ namespace EasyCon.Script.Syntax;
 public sealed class SyntaxTree
 {
     private delegate void ParseHandler(SyntaxTree syntaxTree,
-                                           out CompicationUnit root,
+                                           out CompilationUnit root,
                                            out ImmutableArray<Diagnostic> diagnostics);
     public SourceText Text { get; init; }
     /// <summary>旧版语法兼容（v1 PRINT/IF= 语义；默认 true 保持行为）。
@@ -14,7 +14,7 @@ public sealed class SyntaxTree
     public bool LegacySyntax { get; private set; } = true;
     public ImmutableArray<Diagnostic> Diagnostics { get; init; }
 
-    internal CompicationUnit Root { get; init; }
+    internal CompilationUnit Root { get; init; }
 
     private SyntaxTree(SourceText text, ParseHandler handler, bool legacySyntax)
     {
@@ -34,7 +34,7 @@ public sealed class SyntaxTree
         return Parse(sourceText);
     }
 
-    private static void Parse(SyntaxTree syntaxTree, out CompicationUnit root, out ImmutableArray<Diagnostic> diagnostics)
+    private static void Parse(SyntaxTree syntaxTree, out CompilationUnit root, out ImmutableArray<Diagnostic> diagnostics)
     {
         var parser = new Parser(syntaxTree);
         root = parser.ParseProgram();
@@ -65,7 +65,7 @@ public sealed class SyntaxTree
     {
         var tokens = new ImmutableArray<Token>();
 
-        void ParseTokensHandler(SyntaxTree st, out CompicationUnit _, out ImmutableArray<Diagnostic> d)
+        void ParseTokensHandler(SyntaxTree st, out CompilationUnit _, out ImmutableArray<Diagnostic> d)
         {
             _ = new([]);
             d = default;

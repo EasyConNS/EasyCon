@@ -27,11 +27,22 @@ public sealed class McpToolAdapter : IAiTool
         _connection = connection;
         _tool = tool;
 
-        // 构造唯一名称：mcp__serverKey__toolName
+        // 构造唯一名称：mcp__serverKey__toolName。
+        // 超长截断时追加 serverKey+toolName 的哈希后缀：纯截断会使两个长名工具
+        // 碰撞为同一名字，经 ToolRegistry 覆盖语义后一个工具无声消失
         var rawName = $"mcp__{connection.ServerKey}__{tool.Name}";
-        _name = rawName.Length <= MaxToolNameLength
-            ? rawName
-            : rawName[..MaxToolNameLength]; // 截断兜底
+        if (rawName.Length <= MaxToolNameLength)
+        {
+            _name = rawName;
+        }
+        else
+        {
+            var hash = System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes($"{connection.ServerKey}__{tool.Name}"));
+            var suffix = Convert.ToHexString(hash, 0, 4);   // 8 个十六进制字符
+            var keep = MaxToolNameLength - 1 - suffix.Length;
+            _name = $"{rawName[..keep]}-{suffix}";
+        }
 
         _description = string.IsNullOrWhiteSpace(tool.Description)
             ? $"MCP tool from {connection.ServerKey}"

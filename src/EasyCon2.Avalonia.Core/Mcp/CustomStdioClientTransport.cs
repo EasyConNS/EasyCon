@@ -13,11 +13,12 @@ namespace EasyCon2.Avalonia.Core.Mcp;
 /// 自定义 StdioClientTransport，绕过 SDK 内置实现。
 /// 直接启动目标进程，不经过 cmd.exe 包装，解决 Windows 编码和参数解析问题。
 /// </summary>
-public sealed class CustomStdioClientTransport : IClientTransport
+internal sealed class CustomStdioClientTransport : IClientTransport
 {
     private readonly string _command;
     private readonly IReadOnlyList<string> _args;
     private readonly IReadOnlyDictionary<string, string> _env;
+    private ProcessManagedTransport? _lastTransport;
 
     public string Name { get; }
 
@@ -61,13 +62,45 @@ public sealed class CustomStdioClientTransport : IClientTransport
             throw new IOException($"Failed to start MCP server process: {_command}");
         }
 
+        // stderr 必须持续排空：MCP 服务器普遍向 stderr 打日志，4KB 管道缓冲写满后
+        // 子进程 WriteFile 阻塞 → 服务器整体挂死、所有工具调用超时。丢弃或转日志均可，唯独不能不读。
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var reader = process.StandardError;
+                string? line;
+                while ((line = await reader.ReadLineAsync()) != null)
+                    System.Diagnostics.Debug.WriteLine($"[mcp:{Name}] {line}");
+            }
+            catch
+            {
+                // 进程退出/流关闭后的读取失败属正常收尾
+            }
+        });
+
         // 使用自定义 Transport 实现
         var transport = new StdioProcessTransport(
             process.StandardInput.BaseStream,
             process.StandardOutput.BaseStream,
             Name);
 
-        return Task.FromResult<ITransport>(new ProcessManagedTransport(transport, process));
+        _lastTransport = new ProcessManagedTransport(transport, process);
+        return Task.FromResult<ITransport>(_lastTransport);
+    }
+
+    /// <summary>
+    /// 释放最近一次 <see cref="ConnectAsync"/> 产出的传输（含 Kill 子进程树）。
+    /// SDK 握手（McpClient.CreateAsync）失败时不会处置传输，调用方必须显式调用，
+    /// 否则 MCP 服务器进程会成为孤儿。
+    /// </summary>
+    public async ValueTask DisposeLastTransportAsync()
+    {
+        if (_lastTransport != null)
+        {
+            await _lastTransport.DisposeAsync();
+            _lastTransport = null;
+        }
     }
 }
 
@@ -123,16 +156,22 @@ internal sealed class StdioProcessTransport : TransportBase
                         await WriteMessageAsync(message, _cts.Token);
                     }
                 }
-                catch { /* 忽略解析错误 */ }
+                catch (Exception ex)
+                {
+                    // 单条解析失败继续收（可能是服务器日志混入 stdout），但要留痕
+                    System.Diagnostics.Debug.WriteLine($"[{Name}] 消息解析失败: {ex.Message}");
+                }
             }
         }
         catch (OperationCanceledException)
         {
             // 正常取消
         }
-        catch
+        catch (Exception ex)
         {
-            // 忽略其他错误
+            // 读循环死亡 = 服务器崩溃/管道断开：静默吞掉会让后续所有调用
+            // 变成晦涩的管道错误，至少送进诊断通道
+            System.Diagnostics.Debug.WriteLine($"[{Name}] 读循环异常退出: {ex.Message}");
         }
     }
 

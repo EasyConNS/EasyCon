@@ -7,7 +7,7 @@ namespace EasyCon.Lsp.Analysis;
 
 internal static class HoverProvider
 {
-    public static HoverResponse? GetHover(CompicationUnit? root, string? lineText, Position position)
+    public static HoverResponse? GetHover(CompilationUnit? root, string? lineText, Position position)
     {
         if (lineText == null || root == null) return null;
 
@@ -41,12 +41,18 @@ internal static class HoverProvider
         {
             if (string.Equals(word, sym.Name, sym.Kind is "constant" or "parameter" or "variable" or "field" ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase))
             {
-                // 对于结构体，显示更详细的字段信息
+                // 对于结构体，显示更详细的字段信息（只取本 struct 声明内的字段，
+                // 而不是全文档字段并集）
                 if (sym.Kind == "struct")
                 {
-                    var fields = symbols.Where(s => s.Kind == "field").ToList();
+                    var fields = root.Members
+                        .OfType<StructDeclBlock>()
+                        .FirstOrDefault(b => string.Equals(b.Header.Name, sym.Name, StringComparison.OrdinalIgnoreCase))
+                        ?.Fields
+                        .Select(f => f.Name)
+                        .ToList() ?? [];
                     var fieldList = fields.Count > 0
-                        ? "\n\n**字段:**\n" + string.Join("\n", fields.Select(f => $"- `{f.Name}`"))
+                        ? "\n\n**字段:**\n" + string.Join("\n", fields.Select(f => $"- `{f}`"))
                         : "";
                     return new()
                     {

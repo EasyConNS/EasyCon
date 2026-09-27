@@ -81,7 +81,8 @@ public partial class NintendoSwitch
     {
         Log?.Invoke($"[Send {DateTime.Now:ss.fff}] {_report}");
 
-        clientCon.Write(b.ToArray());
+        var con = clientCon;   // 局部快照：Disconnect 可并发置 null
+        con?.Write(b.ToArray());
     }
 
     bool SendSync(Func<byte, bool> predicate, int timeout = 100, params byte[] bytes)
@@ -98,15 +99,19 @@ public partial class NintendoSwitch
         }
         try
         {
-            clientCon.BytesReceived += h;
-            clientCon.Write(bytes);
+            var con = clientCon;
+            if (con == null)
+                return false;
+            con.BytesReceived += h;
+            con.Write(bytes);
             if (!ewh.WaitOne(timeout))
                 return false;
             return true;
         }
         finally
         {
-            clientCon.BytesReceived -= h;
+            if (clientCon != null)
+                clientCon.BytesReceived -= h;
         }
     }
 
@@ -120,14 +125,18 @@ public partial class NintendoSwitch
         }
         try
         {
-            clientCon.BytesReceived += h;
+            var con = clientCon;
+            if (con == null)
+                return false;
+            con.BytesReceived += h;
             for (int i = 0; i < 3; i++)
-                clientCon.Write(EzDvCommand.Ready, EzDvCommand.Hello);
+                con.Write(EzDvCommand.Ready, EzDvCommand.Hello);
             return ewh.WaitOne(50);
         }
         finally
         {
-            clientCon.BytesReceived -= h;
+            if (clientCon != null)
+                clientCon.BytesReceived -= h;
         }
     }
 

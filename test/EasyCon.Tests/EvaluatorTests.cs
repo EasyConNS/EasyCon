@@ -834,7 +834,9 @@ RETURN $a[0] + $a[1] + $a[2]").AsInt(), Is.EqualTo(60));
     [Test]
     public void Builtin_BEEP_OutOfRange_Throws()
     {
-        Assert.Throws<Exception>(() => Eval("BEEP 10, 100"));
+        // 宿主委托异常在 EcxVm.Run 边界统一包装为 ScriptException（IScriptSession 错误契约）
+        var ex = Assert.Throws<ScriptException>(() => Eval("BEEP 10, 100"));
+        Assert.That(ex!.Message, Does.Contain("BEEP参数freq范围不正确"));
     }
 
     [Test]

@@ -47,10 +47,14 @@ public class KeyMappingWindowRenderTests
     [OneTimeSetUp]
     public void OneTimeSetUp()
     {
+        // 其他 fixture（如 MonitorViewModelDoubleBufferTests）可能已初始化过 App；
+        // SetupWithoutStarting 重复调用会抛 InvalidOperationException
+        if (Application.Current == null)
+            TestAppBuilder.BuildAvaloniaApp().SetupWithoutStarting();
+
         if (_stylesInitialized)
             return;
 
-        TestAppBuilder.BuildAvaloniaApp().SetupWithoutStarting();
         Application.Current!.Styles.Add(new FluentTheme());
         Application.Current.Styles.Add(new StyleInclude(new Uri("avares://EasyCon2.Avalonia/"))
         {

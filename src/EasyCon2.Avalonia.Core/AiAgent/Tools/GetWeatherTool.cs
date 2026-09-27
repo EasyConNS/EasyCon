@@ -8,7 +8,7 @@ namespace EasyCon2.Avalonia.Core.AiAgent.Tools;
 /// get_weather 工具：查询指定城市的当前天气信息。
 /// 使用 wttr.in 免费天气 API，无需 API Key。
 /// </summary>
-public class GetWeatherTool : IAiTool
+internal class GetWeatherTool : IAiTool
 {
     private static readonly HttpClient _httpClient = new()
     {

@@ -18,7 +18,6 @@
   <Folder Name="/src/" />
   <Folder Name="/Test/">
     <Project Path="test/EasyCon.Tests/EasyCon.Tests.csproj" />
-    <Project Path="test/EasyCon.WinInput.Tests/EasyCon.WinInput.Tests.csproj" />
     <Project Path="test/EasyCon.Lsp.Tests/EasyCon.Lsp.Tests.csproj" />
     <Project Path="test/EasyCon.SDLInput.Tests/EasyCon.SDLInput.Tests.csproj" />
     <Project Path="test/EasyCon2.Avalonia.Core.Tests/EasyCon2.Avalonia.Core.Tests.csproj" />
@@ -34,7 +33,6 @@
     <Project Path="src/EasyCon.Device/EasyCon.Device.csproj" />
     <Project Path="src/EasyCon.Script/EasyCon.Script.csproj" />
     <Project Path="src/EasyCon2.Avalonia.Core/EasyCon2.Avalonia.Core.csproj" />
-    <Project Path="src/EasyCon.WinInput/EasyCon.WinInput.csproj" />
     <Project Path="src/EasyCon.SDLInput/EasyCon.SDLInput.csproj" />
     <Project Path="src/EasyCon.Lsp/EasyCon.Lsp.csproj" />
   </Folder>

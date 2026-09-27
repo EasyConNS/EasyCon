@@ -3,7 +3,7 @@ namespace EasyCon2.Avalonia.Core.Mcp;
 /// <summary>
 /// MCP 服务器管理器，负责连接生命周期和工具集变更事件。
 /// </summary>
-public interface IMcpManager : IDisposable
+public interface IMcpManager : IAsyncDisposable
 {
     /// <summary>当前所有连接（含 Connecting/Connected/Failed/Disconnected 状态）。</summary>
     IReadOnlyList<McpServerConnection> Connections { get; }

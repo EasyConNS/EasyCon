@@ -6,11 +6,15 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- 从 Core 搬入的 axaml 依赖 x:DataType 编译绑定；App 承接后由本属性维持同级检查 -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Resources\Images\**" />
     <AvaloniaResource Include="Resources\Icons.json" />
+    <AvaloniaResource Include="VPad\Resources\*.png" />
+    <EmbeddedResource Include="Resources\Scripts\*.xshd" />
   </ItemGroup>
 
   <ItemGroup>

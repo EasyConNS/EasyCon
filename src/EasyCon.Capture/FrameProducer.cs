@@ -73,13 +73,15 @@ public sealed class FrameProducer : IDisposable
 
     public void Stop()
     {
+        Task? loop;
         lock (_lifecycleLock)
         {
             _cts?.Cancel();
             _cts = null;
+            loop = _loopTask;
+            _loopTask = null;
         }
 
-        var loop = _loopTask;
         if (loop != null)
         {
             try
@@ -91,17 +93,20 @@ public sealed class FrameProducer : IDisposable
                 // 采集异常已在 Loop 内部捕获，这里兜底忽略
             }
         }
-        _loopTask = null;
         _store.ReleaseCurrent();
     }
 
     public void Dispose()
     {
-        // 先记录循环任务，再 Stop（Stop 会把 _loopTask 置 null）。
+        // 先在锁内记录循环任务，再 Stop（Stop 会把 _loopTask 置 null）。
         // 若采集循环卡在阻塞 Read 上（设备停滞但 IsOpened 仍为 true），
         // Stop 等待超时后循环仍在运行，此时释放底层 VideoCapture 属于 use-after-release，
         // 可能崩溃或挂起，故放弃释放（native 句柄交由进程退出兜底）。
-        var loop = _loopTask;
+        Task? loop;
+        lock (_lifecycleLock)
+        {
+            loop = _loopTask;
+        }
         Stop();
 
         if (loop == null || loop.IsCompleted)

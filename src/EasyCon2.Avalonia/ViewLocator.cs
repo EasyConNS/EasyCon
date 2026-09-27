@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using EasyCon2.Avalonia.ViewModels;
 using System;
+using System.Linq;
 
 namespace EasyCon2.Avalonia;
 
@@ -14,7 +15,13 @@ public class ViewLocator : IDataTemplate
             return null;
 
         var name = data.GetType().FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
-        var type = Type.GetType(name);
+
+        // Type.GetType 只搜索本程序集与 mscorlib，Core 程序集里的 VM（如
+        // AiAgentViewModel）会解析失败；改为扫描全部已加载程序集。
+        var type = Type.GetType(name)
+            ?? AppDomain.CurrentDomain.GetAssemblies()
+                .Select(a => a.GetType(name))
+                .FirstOrDefault(t => t is not null);
 
         if (type != null)
         {

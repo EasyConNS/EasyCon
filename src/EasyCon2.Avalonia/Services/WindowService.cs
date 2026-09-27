@@ -11,19 +11,20 @@ namespace EasyCon2.Avalonia.Services;
 
 /// <summary>
 /// IWindowService 实现 —— 负责所有子窗口的创建与生命周期管理。
+/// 全部子窗口单实例：重复打开只激活已有窗口，避免多份实例各自持有一份
+/// ViewModel 造成保存互相覆盖。
 /// </summary>
 public class WindowService : IWindowService
 {
     /// <summary>
-    /// 应用主窗口引用，由 App.axaml.cs 在初始化时注入。
-    /// 所有子窗口将此作为 Owner，确保 Z-order 和模态行为正确。
+    /// 子窗口的 Owner，由 App 在初始化时注入，确保 Z-order 和模态行为正确。
     /// </summary>
-    public static Window? MainWindow { get; set; }
+    public Window? Owner { get; set; }
 
     private readonly IDeviceService _deviceService;
     private readonly ILogService _logService;
     private readonly IDialogService _dialogService;
-    private Window? _espConfigWindow;
+    private readonly Dictionary<Type, Window> _openWindows = [];
 
     public WindowService(IDeviceService deviceService, ILogService logService, IDialogService dialogService)
     {
@@ -33,73 +34,51 @@ public class WindowService : IWindowService
     }
 
     public void ShowESPConfigWindow()
-    {
-        if (_espConfigWindow != null)
+        => ShowSingleton(() => new ESPConfigWindow
         {
-            if (_espConfigWindow.WindowState == WindowState.Minimized)
-                _espConfigWindow.WindowState = WindowState.Normal;
-            _espConfigWindow.Activate();
+            DataContext = new ESPConfigViewModel(_deviceService, _logService, _dialogService)
+        });
+
+    public void ShowAlertConfigWindow()
+        => ShowSingleton(() => new AlertConfigWindow());
+
+    public void ShowModelsConfigWindow()
+        => ShowSingleton(() => new ModelsConfigWindow());
+
+    public void ShowMcpConfigWindow()
+        => ShowSingleton(() => new McpConfigWindow());
+
+    public void ShowKeyMappingWindow()
+        => ShowSingleton(() => new KeyMappingWindow { DataContext = new KeyMappingViewModel() });
+
+    public void ShowScriptSyntaxWindow()
+        => ShowSingleton(BuildScriptSyntaxWindow);
+
+    private void ShowSingleton<TWindow>(Func<TWindow> create) where TWindow : Window
+    {
+        var type = typeof(TWindow);
+        if (_openWindows.TryGetValue(type, out var existing) && existing.IsVisible)
+        {
+            if (existing.WindowState == WindowState.Minimized)
+                existing.WindowState = WindowState.Normal;
+            existing.Activate();
             return;
         }
 
         try
         {
-            var vm = new ESPConfigViewModel(_deviceService, _logService, _dialogService);
-            _espConfigWindow = new ESPConfigWindow { DataContext = vm };
-            _espConfigWindow.Closed += (_, _) => _espConfigWindow = null;
-            _espConfigWindow.Show(MainWindow);
+            var window = create();
+            _openWindows[type] = window;
+            window.Closed += (_, _) => _openWindows.Remove(type);
+            window.Show(Owner);
         }
         catch (Exception ex)
         {
-            _logService.AddLog($"打开手柄设置失败: {ex.Message}\n{ex.StackTrace}");
+            _logService.AddLog($"打开 {type.Name} 失败: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
-    public void ShowAlertConfigWindow()
-    {
-        try
-        {
-            new AlertConfigWindow().Show(MainWindow);
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"打开推送配置失败: {ex.Message}");
-        }
-    }
-
-    public void ShowModelsConfigWindow()
-    {
-        try
-        {
-            new ModelsConfigWindow().Show(MainWindow);
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"打开模型配置失败: {ex.Message}");
-        }
-    }
-
-    public void ShowMcpConfigWindow()
-    {
-        try
-        {
-            new McpConfigWindow().Show(MainWindow);
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"打开 MCP 配置失败: {ex.Message}");
-        }
-    }
-
-    public void ShowKeyMappingWindow()
-    {
-        if (MainWindow == null) return;
-        var vm = new ViewModels.KeyMappingViewModel();
-        var keyMappingWindow = new KeyMappingWindow { DataContext = vm };
-        keyMappingWindow.ShowDialog(MainWindow);
-    }
-
-    public void ShowScriptSyntaxWindow()
+    private static Window BuildScriptSyntaxWindow()
     {
         var textBox = new TextBox
         {
@@ -114,7 +93,7 @@ public class WindowService : IWindowService
         ScrollViewer.SetVerticalScrollBarVisibility(textBox, ScrollBarVisibility.Auto);
         ScrollViewer.SetHorizontalScrollBarVisibility(textBox, ScrollBarVisibility.Disabled);
 
-        var window = new Window
+        return new Window
         {
             Title = "脚本语法",
             Width = 820,
@@ -123,6 +102,5 @@ public class WindowService : IWindowService
             MinHeight = 360,
             Content = textBox
         };
-        window.Show(MainWindow);
     }
 }

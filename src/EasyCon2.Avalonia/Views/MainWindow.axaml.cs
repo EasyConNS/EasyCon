@@ -39,7 +39,6 @@ public partial class MainWindow : ChromelessWindow
         if (DataContext is MainWindowViewModel vm)
         {
             vm.EmbeddedEditorInitializeRequested += OnEmbeddedEditorInitializeRequested;
-            vm.OpenFolderDialogRequested += OnOpenFolderDialogRequested;
             vm.FoldingVisibilityChanged += OnFoldingVisibilityChanged;
         }
 
@@ -76,32 +75,6 @@ public partial class MainWindow : ChromelessWindow
     private void OnEmbeddedEditorInitializeRequested(string filePath)
     {
         LoadFileInEditor(filePath);
-    }
-
-    private void OnOpenFolderDialogRequested()
-    {
-        _ = OpenFolderDialogAsync();
-    }
-
-    private async Task OpenFolderDialogAsync()
-    {
-        // 使用当前项目目录或用户文档目录作为默认位置
-        var startPath = (DataContext as MainWindowViewModel)?.GetCurrentProjectDirectory()
-            ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        var startFolder = await StorageProvider.TryGetFolderFromPathAsync(startPath);
-
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "打开项目目录",
-            AllowMultiple = false,
-            SuggestedStartLocation = startFolder
-        });
-
-        if (folders.Count > 0 && DataContext is MainWindowViewModel vm)
-        {
-            var path = folders[0].Path.LocalPath;
-            vm.OpenProjectFromDirectory(path);
-        }
     }
 
     /// <summary>
@@ -172,23 +145,21 @@ public partial class MainWindow : ChromelessWindow
         }
     }
 
-    /// <summary>
-    /// 保存当前编辑器内容。
-    /// </summary>
-    public void SaveCurrentEditor(string filePath)
-    {
-        var editor = GetActiveScriptEditor();
-        if (editor == null) return;
-        editor.Save(filePath);
-        editor.IsModified = false;
-    }
+    private bool _closeConfirmed;
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
+        // 有未保存修改时先确认：本次关闭被取消，确认放弃后置位重入关闭
+        if (!_closeConfirmed && DataContext is MainWindowViewModel { IsScriptModified: true } vmPending)
+        {
+            e.Cancel = true;
+            _ = ConfirmCloseAsync(vmPending);
+            return;
+        }
+
         if (DataContext is MainWindowViewModel vm)
         {
             vm.EmbeddedEditorInitializeRequested -= OnEmbeddedEditorInitializeRequested;
-            vm.OpenFolderDialogRequested -= OnOpenFolderDialogRequested;
             vm.FoldingVisibilityChanged -= OnFoldingVisibilityChanged;
             vm.OnMainWindowClosing();
         }
@@ -202,6 +173,15 @@ public partial class MainWindow : ChromelessWindow
             editor.Cleanup();
         if (_lspService != null)
             _ = _lspService.DisposeAsync();
+    }
+
+    private async Task ConfirmCloseAsync(MainWindowViewModel vm)
+    {
+        if (await vm.ConfirmCloseWithoutSavingAsync())
+        {
+            _closeConfirmed = true;
+            Close();
+        }
     }
 
     private void MonitorArea_DoubleTapped(object? sender, TappedEventArgs e)

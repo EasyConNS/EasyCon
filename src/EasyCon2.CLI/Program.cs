@@ -26,6 +26,12 @@ NintendoSwitch NS = new();
 EasyCon.Core.Script.IScriptEngine engine = new EasyCon.Core.Script.EasyScriptEngine();
 EasyCon.Core.Script.IScriptSession? session = null;
 
+// 配置损坏必须让用户知道：CLI 无 GUI 弹窗，备份/重置事件直通 stderr
+EasyCon.Core.Config.ConfigManager.ConfigErrorReported += (path, msg) =>
+    Console.Error.WriteLine($"[配置] {msg}");
+// 库层诊断转发（CoreLog 默认仅 Debug.WriteLine，Release 下会丢失）
+EasyCon.Core.Logging.CoreLog.Sink = msg => Console.Error.WriteLine(msg);
+
 if (!isFormatCommand && !isLspCommand)
 {
     Console.WriteLine("------------------------------------------");
@@ -74,7 +80,7 @@ var verboseOption = new Option<bool>("--verbose")
 };
 var portOption = new Option<string>("--port", "-p")
 {
-    Description = "联机设备端口",
+    Description = "联机设备端口；传 mock 使用虚拟单片机（无硬件试跑）",
     DefaultValueFactory = _ => defaultCOMPort
 };
 
@@ -143,7 +149,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
                 continue;
             outdap.Error($"!!编译失败!!{d.Message}: 行{d.Location.StartLine + 1} 在({d.FileName})");
         }
-        return;
+        return 1;
     }
 
     bool isMock = COM.Equals("mock", StringComparison.OrdinalIgnoreCase);
@@ -175,7 +181,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
             if (NS.TryConnect(COM) != NintendoSwitch.ConnectResult.Success)
             {
                 outdap.Error("单片机连接失败！！");
-                return;
+                return 1;
             }
             outdap.Info("单片机连接成功.");
         }
@@ -188,7 +194,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         if (!cvcap.Open(vId, (int)refs))
         {
             outdap.Error("采集卡打开失败！！");
-            return;
+            return 1;
         }
         outdap.Info("采集卡打开成功.");
 
@@ -209,6 +215,15 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         Console = new EasyCon.Core.Capabilities.ConsoleIoAdapter(outdap),
     };
 
+    // OCR 无条件装配（与 GUI 对齐）：tessdata 缺失时识别会给出明确错误而非「能力不存在」
+    var ocrCache = new EasyCon.Capture.OcrEngineCache
+    {
+        DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
+    };
+    capabilities.Ocr = new EasyCon.Core.Capabilities.TesseractOcrService(ocrCache);
+    // ML 推理与 GUI 对齐：缺失时脚本 ML 指令只会静默 -1，无从排查
+    capabilities.Inference = new EasyCon.Core.Capabilities.DnnInference();
+
     if (cvcap != null && label.Count() > 0)
     {
         var labelDict = label.ToDictionary(il => il.name);
@@ -226,12 +241,6 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         };
         capabilities.Vision = new EasyCon.Core.Capabilities.DelegateVisionService(
             MatExtensions.CropBase64, labelMatchDelegate);
-
-        capabilities.Ocr = new EasyCon.Core.Capabilities.TesseractOcrService(
-            new EasyCon.Capture.OcrEngineCache
-            {
-                DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
-            });
     }
     outdap.Info($"==>开始执行脚本：{file}\n");
 
@@ -242,20 +251,33 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         session.Run(cancellationToken, capabilities);
         outdap.Info("脚本运行完成");
     }
+    catch (OperationCanceledException)
+    {
+        outdap.Warn("脚本已终止");
+        return 130;   // SIGINT 约定码：与 Ctrl+C 取消语义区分于一般失败
+    }
     catch (ScriptException ex)
     {
         outdap.Warn($"!!运行出错!!{ex.Message}: 行{ex.Address}");
+        return 1;
     }
     catch (Exception exx)
     {
         Console.Error.WriteLine();
         Console.Error.WriteLine(exx.StackTrace);
         outdap.Error($"!!意外错误!!{exx.Message}");
+        return 2;
     }
     finally
     {
         producer?.Dispose();
+        (capabilities.Ocr as IDisposable)?.Dispose();
+        if (!isMock)
+        {
+            try { NS.Reset(); NS.Disconnect(); } catch { /* 断开失败交由进程退出兜底 */ }
+        }
     }
+    return 0;
 });
 
 #region 端口功能
@@ -292,15 +314,10 @@ videoCommand.Options.Add(videoListOption);
 
 videoCommand.SetAction(async (parseResult, cancellationToken) =>
 {
-    var listDevices = parseResult.GetValue(videoListOption);
-    if (!listDevices)
-    {
-    }
-
+    // Validator 已保证 --list 必填，恒为 true
     ECCapture.GetCaptureCamera().ToList().ForEach(dev =>
     {
         Console.WriteLine($"[{dev.index}] {dev.name}");
-        // Console.WriteLine($"  [{index}] {name}");
     });
 });
 
@@ -494,7 +511,7 @@ lspCommand.SetAction(async (parseResult, cancellationToken) =>
     if (useStdio && tcp != null)
     {
         Console.Error.WriteLine("错误: --stdio 和 --tcp 不能同时指定");
-        return;
+        return 1;
     }
     if (tcp != null)
     {
@@ -504,7 +521,7 @@ lspCommand.SetAction(async (parseResult, cancellationToken) =>
         if (!int.TryParse(portStr, out var port) || port is < 1 or > 65535)
         {
             Console.Error.WriteLine($"错误: 无效的端口号 '{portStr}'，范围 1-65535");
-            return;
+            return 1;
         }
         await EcsLanguageServer.RunTcpAsync(host, port);
     }
@@ -512,6 +529,7 @@ lspCommand.SetAction(async (parseResult, cancellationToken) =>
     {
         await EcsLanguageServer.RunAsync(Console.OpenStandardInput(), Console.OpenStandardOutput());
     }
+    return 0;
 });
 rootCommand.Subcommands.Add(lspCommand);
 

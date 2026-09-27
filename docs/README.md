@@ -27,13 +27,10 @@
 - **[EasyCon.Device](../src/EasyCon.Device/README.md)** - 设备通信模块
 - **[EasyCon.Capture](../src/EasyCon.Capture/README.md)** - 图像处理模块
 - **[EasyCon.Script](../src/EasyCon.Script/README.md)** - 脚本解析模块
-- **[EasyCon.VPad](../src/EasyCon.VPad/README.md)** - 虚拟手柄模块
+- **[EasyCon2.Avalonia](../src/EasyCon2.Avalonia/README.md)** - GUI 宿主（VPad 虚拟手柄位于其 VPad/ 目录）
 
 ### UI设计文档
-- **[UI文档索引](../src/EasyCon2.Avalonia/DOCUMENTATION_INDEX.md)** - UI模块完整文档
-- **[系统设计文档](../src/EasyCon2.Avalonia/DESIGN_DOCUMENT.md)** - 详细架构设计
-- **[UI设计规范](../src/EasyCon2.Avalonia/UI_DESIGN.md)** - 界面设计文档
-- **[模块详细设计](../src/EasyCon2.Avalonia/MODULE_DESIGN.md)** - 功能模块设计
+- **[README](../src/EasyCon2.Avalonia/README.md)** - GUI 项目说明
 
 ## 🎯 文档分类
 

@@ -47,8 +47,8 @@ ci\windows-x64.bat
 | `src/EzTesseract` | OCR (Tesseract wrapper) |
 | `src/EasyCon.Lsp` | LSP language server for ECS scripts |
 | `src/EasyCon.Server` | HTTP/WebSocket server for remote control |
-| `src/EasyCon2.Avalonia` | Avalonia GUI (MVVM) |
-| `src/EasyCon2.Avalonia.Core` | Shared Avalonia viewmodels/logic |
+| `src/EasyCon2.Avalonia` | Avalonia GUI (MVVM): views/controls + all ViewModels |
+| `src/EasyCon2.Avalonia.Core` | Pure VM/logic layer — zero Avalonia package references (View components live in `EasyCon2.Avalonia` under the same `EasyCon2.Avalonia.Core.*` namespaces) |
 | `src/EasyCon2.UI.Common` | Shared UI resources, styles |
 | `src/EasyCon.WinInput` | Windows input simulation |
 | `src/EasyCon.SDLInput` | Cross-platform input via SDL3 |
@@ -76,7 +76,7 @@ ci\windows-x64.bat
 
 The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict MVVM:
 
-- **ViewModel must NOT reference any Avalonia control types** (Window, Control, TextBox, etc.)
+- **ViewModel must NOT reference any Avalonia control types** (Window, Control, TextBox, etc.). `EasyCon2.Avalonia.Core` carries no Avalonia package references, so this constraint is **enforced by the compiler** — a ViewModel that starts using Avalonia types simply fails to build. View components still live under `EasyCon2.Avalonia.Core.*` namespaces (inside the `EasyCon2.Avalonia` project) because `ViewLocator` and axaml `using:` clauses resolve them by namespace.
 - **View → ViewModel**: prefer bindings (`{Binding}`, `{x:Bind}`), avoid code-behind event subscriptions
 - **ViewModel → View**: use `[ObservableProperty]` (CommunityToolkit.Mvvm) or `AvaloniaProperty` with bindings
 - **Code-behind** is only for: platform APIs (file dialogs, drag-drop), layout (SizeChanged), visual tree init (FoldingManager, LSP). No business logic.

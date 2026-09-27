@@ -24,4 +24,7 @@ public record ConfigState
     public double EditorFontSize { get; set; } = 14;
     public bool HighResolutionTiming { get; set; } = false;
     public string WelcomeText { get; set; } = DefaultWelcomeText;
+
+    /// <summary>界面语言（文化代码，如 zh_CN / en_US）。空值 = 默认 zh_CN。</summary>
+    public string LanguageCode { get; set; } = "";
 }

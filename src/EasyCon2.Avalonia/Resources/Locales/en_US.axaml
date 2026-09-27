@@ -1,8 +1,166 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- macOS native app menu titles (English). Key convention: Text.Menu.* -->
+    <!-- English (US). Key convention: Text.Menu.* / Text.Panel.* / Text.Tab.* / Text.Btn.* / Text.Status.* / Text.Msg.* / Text.Monitor.* / Text.Config.* / Text.Feature.* -->
+
+    <!-- macOS native app menu -->
     <x:String x:Key="Text.Menu.About" xml:space="preserve">About EasyCon</x:String>
     <x:String x:Key="Text.Menu.Preferences" xml:space="preserve">Preferences</x:String>
     <x:String x:Key="Text.Menu.CheckUpdate" xml:space="preserve">Check for Updates</x:String>
     <x:String x:Key="Text.Menu.OpenConfigDir" xml:space="preserve">Open Config Directory</x:String>
+
+    <!-- Panels and tabs -->
+    <x:String x:Key="Text.Panel.Switch">MCU Connection</x:String>
+    <x:String x:Key="Text.Panel.Capture">Capture</x:String>
+    <x:String x:Key="Text.Panel.Monitor">Monitor</x:String>
+    <x:String x:Key="Text.Panel.Output">Output</x:String>
+    <x:String x:Key="Text.Panel.RunControl">Run Control</x:String>
+    <x:String x:Key="Text.Panel.DebugMode">Debug Mode</x:String>
+    <x:String x:Key="Text.Panel.Controller">Virtual Controller</x:String>
+    <x:String x:Key="Text.Tab.Editor">Editor</x:String>
+    <x:String x:Key="Text.Tab.TagEditor">Tag Editor</x:String>
+    <x:String x:Key="Text.Tab.UserConfig">Settings</x:String>
+    <x:String x:Key="Text.Tab.FeatureCenter">Feature Center</x:String>
+
+    <!-- Common status and buttons -->
+    <x:String x:Key="Text.Status.NotConnected">Not Connected</x:String>
+    <x:String x:Key="Text.Status.Connected">Connected</x:String>
+    <x:String x:Key="Text.Status.Disconnected">Disconnected</x:String>
+    <x:String x:Key="Text.Status.Connecting">Connecting...</x:String>
+    <x:String x:Key="Text.Status.ConnectFailed">Connection Failed</x:String>
+
+    <!-- MCU -->
+    <x:String x:Key="Text.Btn.ConnectSwitch">Connect MCU</x:String>
+    <x:String x:Key="Text.Btn.DisconnectSwitch">Disconnect</x:String>
+    <x:String x:Key="Text.Btn.AutoConnect">Auto Connect</x:String>
+    <x:String x:Key="Text.Status.AutoConnecting">Auto Connecting...</x:String>
+    <x:String x:Key="Text.Status.AutoConnectFailed">Auto Connect Failed</x:String>
+    <x:String x:Key="Text.Msg.ConnectSwitchPrepare">Preparing to connect MCU ({0})...</x:String>
+    <x:String x:Key="Text.Msg.ConnectSwitchOk">MCU ({0}) connected</x:String>
+    <x:String x:Key="Text.Msg.ConnectSwitchError">MCU connect error: {0}</x:String>
+    <x:String x:Key="Text.Msg.SwitchLost">MCU disconnected</x:String>
+    <x:String x:Key="Text.Msg.ScanStart">Scanning serial ports...</x:String>
+    <x:String x:Key="Text.Msg.AutoConnectOk">Auto connected: {0}</x:String>
+    <x:String x:Key="Text.Msg.AutoConnectFail">Auto connect failed, no device found</x:String>
+    <x:String x:Key="Text.Msg.AutoConnectError">Auto connect error: {0}</x:String>
+    <x:String x:Key="Text.Msg.ConnectFirst">Connect the MCU first</x:String>
+    <x:String x:Key="Text.Msg.RemoteRunOk">Remote run started</x:String>
+    <x:String x:Key="Text.Msg.RemoteRunFail">Remote run failed</x:String>
+    <x:String x:Key="Text.Msg.RemoteRunError">Remote run failed: {0}</x:String>
+    <x:String x:Key="Text.Msg.RemoteStopOk">Remote stop succeeded</x:String>
+    <x:String x:Key="Text.Msg.RemoteStopFail">Remote stop failed</x:String>
+    <x:String x:Key="Text.Msg.RemoteStopError">Remote stop failed: {0}</x:String>
+
+    <!-- Run control -->
+    <x:String x:Key="Text.Btn.Run">Run</x:String>
+    <x:String x:Key="Text.Btn.Stop">Stop</x:String>
+    <x:String x:Key="Text.Msg.RunScriptFail">Failed to run script: {0}</x:String>
+
+    <!-- Capture -->
+    <x:String x:Key="Text.Btn.ConnectCapture">Connect Capture</x:String>
+    <x:String x:Key="Text.Btn.DisconnectCapture">Close Capture</x:String>
+    <x:String x:Key="Text.Msg.OpenCapturePrepare">Preparing to open capture ({0})...</x:String>
+    <x:String x:Key="Text.Msg.CaptureOk">Capture ({0}) connected</x:String>
+    <x:String x:Key="Text.Msg.CaptureOpenFail">Failed to open capture</x:String>
+    <x:String x:Key="Text.Msg.CaptureError">Capture connect error: {0}</x:String>
+    <x:String x:Key="Text.Msg.CaptureDisconnected">Capture disconnected</x:String>
+    <x:String x:Key="Text.Msg.DisconnectCaptureError">Capture disconnect error: {0}</x:String>
+
+    <!-- Monitor -->
+    <x:String x:Key="Text.Monitor.NotConnected">Capture not connected</x:String>
+    <x:String x:Key="Text.Monitor.ConnectFirst">Capture not connected, connect it first</x:String>
+    <x:String x:Key="Text.Monitor.Reconnecting">Capture disconnected, waiting to reconnect...</x:String>
+    <x:String x:Key="Text.Monitor.ReadFail">Failed to read frame: {0}</x:String>
+    <x:String x:Key="Text.Btn.MonitorShow">Show Monitor</x:String>
+    <x:String x:Key="Text.Btn.MonitorHide">Hide Monitor</x:String>
+    <x:String x:Key="Text.Btn.Pause">Pause</x:String>
+    <x:String x:Key="Text.Btn.Resume">Resume</x:String>
+
+    <!-- Virtual controller -->
+    <x:String x:Key="Text.Btn.StartMapping">Start Mapping</x:String>
+    <x:String x:Key="Text.Btn.DisconnectController">Disconnect</x:String>
+    <x:String x:Key="Text.Btn.KeyMapping">Key Mapping</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerPrepare">Connecting controller ({0})...</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerOk">Controller ({0}) connected</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerFail">Controller ({0}) connection failed</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerError">Controller connect error: {0}</x:String>
+    <x:String x:Key="Text.Msg.ControllerDisconnected">Controller disconnected</x:String>
+
+    <!-- Flash and firmware -->
+    <x:String x:Key="Text.Msg.NoScriptToFlash">No script to flash</x:String>
+    <x:String x:Key="Text.Msg.CompileStart">Compiling...</x:String>
+    <x:String x:Key="Text.Msg.CompileFailFlash">Compile failed, cannot flash</x:String>
+    <x:String x:Key="Text.Msg.CompileEmptyFlash">Compile produced no output, cannot flash</x:String>
+    <x:String x:Key="Text.Msg.VersionMismatch">Firmware version mismatch (current: 0x{0:X2}, required: 0x{1:X2}), please update the firmware</x:String>
+    <x:String x:Key="Text.Msg.Flashing">Flashing ({0} bytes)...</x:String>
+    <x:String x:Key="Text.Msg.FlashOk">Flash succeeded</x:String>
+    <x:String x:Key="Text.Msg.FlashFail">Flash failed</x:String>
+    <x:String x:Key="Text.Msg.FlashError">Flash failed: {0}</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashing">Clearing flash...</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashOk">Flash cleared</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashFail">Failed to clear flash</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashError">Failed to clear flash: {0}</x:String>
+    <x:String x:Key="Text.Msg.NoScriptForFirmware">No script for firmware generation</x:String>
+    <x:String x:Key="Text.Msg.CompileFailFirmware">Compile failed, cannot generate firmware</x:String>
+    <x:String x:Key="Text.Msg.CompileEmptyFirmware">Compile produced no output, cannot generate firmware</x:String>
+    <x:String x:Key="Text.Msg.FirmwareGenerateStart">Generating firmware ({0})...</x:String>
+    <x:String x:Key="Text.Msg.FirmwareDirMissing">Firmware directory missing - check the Firmware folder next to the program</x:String>
+    <x:String x:Key="Text.Msg.FirmwareFileMissing">No firmware file found for {0}</x:String>
+    <x:String x:Key="Text.Msg.FirmwareGenerated">Firmware generated: {0}</x:String>
+    <x:String x:Key="Text.Msg.FirmwareError">Firmware generation failed: {0}</x:String>
+
+    <!-- Recording -->
+    <x:String x:Key="Text.Btn.RecordStart">Record Script</x:String>
+    <x:String x:Key="Text.Btn.RecordStop">Stop Recording</x:String>
+    <x:String x:Key="Text.Msg.RecordStart">Recording script started</x:String>
+
+    <!-- Tag test -->
+    <x:String x:Key="Text.Msg.TagTestNoFrame">Tag test failed: no video frame available</x:String>
+    <x:String x:Key="Text.Msg.TagTestResult">Tag test [{0}]: match {1:F1}%</x:String>
+    <x:String x:Key="Text.Msg.TagTestFail">Tag test failed: {0}</x:String>
+
+    <!-- Output and editor -->
+    <x:String x:Key="Text.Btn.ClearOutput">Clear Output</x:String>
+    <x:String x:Key="Text.Btn.ScriptSyntax">Script Syntax</x:String>
+    <x:String x:Key="Text.Status.NoScriptSelected">No script selected</x:String>
+    <x:String x:Key="Text.Status.UntitledScript">Untitled Script</x:String>
+
+    <!-- Settings page -->
+    <x:String x:Key="Text.Config.Appearance">Appearance</x:String>
+    <x:String x:Key="Text.Config.AppearanceStyle">Appearance Style</x:String>
+    <x:String x:Key="Text.Config.LightScheme">Light</x:String>
+    <x:String x:Key="Text.Config.WarmScheme">Warm</x:String>
+    <x:String x:Key="Text.Config.DarkScheme">Dark</x:String>
+    <x:String x:Key="Text.Config.ClassicStyle">Classic</x:String>
+    <x:String x:Key="Text.Config.CardStyle">Card</x:String>
+    <x:String x:Key="Text.Config.Language">Language</x:String>
+    <x:String x:Key="Text.Config.WelcomeTitle">Welcome to easycon</x:String>
+    <x:String x:Key="Text.Config.WelcomeWord">Welcome Text</x:String>
+    <x:String x:Key="Text.Config.AutoComplete">Code Completion</x:String>
+    <x:String x:Key="Text.Config.ShowFolding">Show Code Folding</x:String>
+    <x:String x:Key="Text.Config.AutoSwitchLayout">Switch layout with run state</x:String>
+    <x:String x:Key="Text.Config.AutoSwitchScheme">Follow system theme</x:String>
+    <x:String x:Key="Text.Config.IdlePreview">Idle Preview</x:String>
+    <x:String x:Key="Text.Config.RunningPreview">Running Preview</x:String>
+    <x:String x:Key="Text.Config.EditorArea">Editor Area</x:String>
+    <x:String x:Key="Text.Config.OutputArea">Output Area</x:String>
+    <x:String x:Key="Text.Config.WindowBar">Window Bar</x:String>
+    <x:String x:Key="Text.Config.WorkTree">Work Tree</x:String>
+    <x:String x:Key="Text.Config.CustomLayout">Custom Layout Areas</x:String>
+    <x:String x:Key="Text.Config.Capture">Capture</x:String>
+    <x:String x:Key="Text.Config.About">About</x:String>
+    <x:String x:Key="Text.Config.PushSettings">Push Settings</x:String>
+    <x:String x:Key="Text.Config.McpServers">MCP Servers</x:String>
+    <x:String x:Key="Text.Config.Models">Models</x:String>
+    <x:String x:Key="Text.Config.CheckUpdate">Check for Updates</x:String>
+
+    <!-- Feature center page -->
+    <x:String x:Key="Text.Feature.CompileFlash">Compile &amp; Flash</x:String>
+    <x:String x:Key="Text.Feature.ClearFlash">Clear Flash</x:String>
+    <x:String x:Key="Text.Feature.Generate">Generate</x:String>
+    <x:String x:Key="Text.Feature.Firmware">Firmware</x:String>
+    <x:String x:Key="Text.Feature.RemoteRun">Remote Run</x:String>
+    <x:String x:Key="Text.Feature.RemoteStop">Remote Stop</x:String>
+    <x:String x:Key="Text.Feature.ControllerBt">Bluetooth Controller</x:String>
+    <x:String x:Key="Text.Feature.ESPConfig">ESP32 Controller Settings</x:String>
+    <x:String x:Key="Text.Feature.Drawing">Drawing</x:String>
 </ResourceDictionary>

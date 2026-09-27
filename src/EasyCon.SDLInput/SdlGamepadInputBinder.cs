@@ -33,6 +33,9 @@ public sealed unsafe class SdlGamepadInputBinder : IInputBinder, IDisposable
     {
         _started = false;
         _enabled = false;
+        // 复位设备：断开/切换控制源时清掉最后一份报告（如按住的摇杆方向），
+        // 否则该状态会一直残留在 Switch 上，直到下一个 binder 写入
+        _switch.Reset();
     }
 
     public void SetEnabled(bool enabled)

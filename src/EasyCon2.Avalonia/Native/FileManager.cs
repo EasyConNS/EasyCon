@@ -18,25 +18,32 @@ public static class FileManager
         if (string.IsNullOrEmpty(path))
             return;
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        try
         {
-            if (Directory.Exists(path))
-                Process.Start("open", Quote(path));
-            else if (File.Exists(path))
-                Process.Start("open", $"{Quote(path)} -R");
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                if (Directory.Exists(path))
+                    Process.Start("open", Quote(path));
+                else if (File.Exists(path))
+                    Process.Start("open", $"{Quote(path)} -R");
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                if (Directory.Exists(path))
+                    Process.Start("xdg-open", Quote(path));
+                else if (File.Exists(path))
+                    Process.Start("xdg-open", Quote(Path.GetDirectoryName(path)!));
+            }
+            else
+            {
+                // Windows
+                if (Directory.Exists(path) || File.Exists(path))
+                    Process.Start(new ProcessStartInfo("explorer.exe", Quote(path)) { UseShellExecute = true });
+            }
         }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        catch (Exception ex)
         {
-            if (Directory.Exists(path))
-                Process.Start("xdg-open", Quote(path));
-            else if (File.Exists(path))
-                Process.Start("xdg-open", Quote(Path.GetDirectoryName(path)!));
-        }
-        else
-        {
-            // Windows
-            if (Directory.Exists(path) || File.Exists(path))
-                Process.Start(new ProcessStartInfo("explorer.exe", Quote(path)) { UseShellExecute = true });
+            App.LogSink?.Invoke($"[文件管理器] 打开失败: {path}: {ex.Message}");
         }
     }
 

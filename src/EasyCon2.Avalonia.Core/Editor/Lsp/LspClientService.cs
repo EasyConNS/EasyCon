@@ -5,7 +5,6 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Client.Capabilities;
 using OmniSharp.Extensions.LanguageServer.Protocol.Document;
 using OmniSharp.Extensions.LanguageServer.Protocol.General;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
-using System.Diagnostics;
 using System.IO.Pipes;
 using ServerCapabilities = OmniSharp.Extensions.LanguageServer.Protocol.Server.Capabilities.ServerCapabilities;
 
@@ -13,6 +12,14 @@ namespace EasyCon2.Avalonia.Core.Editor.Lsp;
 
 public class LspClientService : IDisposable, IAsyncDisposable
 {
+    /// <summary>
+    /// 诊断日志汇点。GUI 启动时注入（写入日志文件），未设置时保持静默。
+    /// 此前所有失败仅 Debug.WriteLine，Release 构建下完全无输出。
+    /// </summary>
+    public static Action<string>? LogSink { get; set; }
+
+    private static void Log(string message) => LogSink?.Invoke($"[LSP] {message}");
+
     private readonly object _lock = new();
     private ILanguageClient? _client;
     private readonly LspDocumentManager _documentManager;
@@ -22,6 +29,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
     private Task? _serverTask;
     private NamedPipeServerStream? _serverPipe;
     private NamedPipeClientStream? _clientPipe;
+    private Task? _initialization;
 
     public bool IsConnected
     {
@@ -39,27 +47,39 @@ public class LspClientService : IDisposable, IAsyncDisposable
         _documentManager = new LspDocumentManager(this);
     }
 
-    public async Task InitializeAsync(string filePath, CancellationToken ct = default)
+    public Task InitializeAsync(string filePath, CancellationToken ct = default)
     {
-        _filePath = filePath;
-        await TryConnectAsync(ct);
+        lock (_lock)
+        {
+            // 启动与打开文件会并发触发初始化；后到者必须复用在途任务，
+            // 否则新连接的字段直接覆盖旧值，旧管道与语言服务进程成为孤儿
+            if (_initialization != null) return _initialization;
+
+            _filePath = filePath;
+            _initialization = TryConnectAsync(ct);
+            return _initialization;
+        }
     }
 
     private async Task TryConnectAsync(CancellationToken ct)
     {
-        lock (_lock) { if (_disposed) return; }
-
         try
         {
+            lock (_lock) { if (_disposed) return; }
+
             await StartAndInitializeAsync(ct);
             Connected?.Invoke();
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[LSP] Connection failed: {ex.Message}");
+            Log($"Connection failed: {ex.Message}");
             ConnectionFailed?.Invoke($"LSP 服务启动失败: {ex.Message}");
             Cleanup();
+        }
+        finally
+        {
+            lock (_lock) _initialization = null;
         }
     }
 
@@ -79,7 +99,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[LSP] Server exited: {ex.Message}");
+                Log($"Server exited: {ex.Message}");
             }
         });
 
@@ -147,7 +167,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
         if (client == null) return null;
 
         try { return await client.RequestCompletion(parameters, ct); }
-        catch (Exception ex) { Debug.WriteLine($"[LSP] Completion failed: {ex.Message}"); return null; }
+        catch (Exception ex) { Log($"Completion failed: {ex.Message}"); return null; }
     }
 
     public async Task<Hover?> RequestHoverAsync(HoverParams parameters, CancellationToken ct = default)
@@ -157,7 +177,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
         if (client == null) return null;
 
         try { return await client.RequestHover(parameters, ct); }
-        catch (Exception ex) { Debug.WriteLine($"[LSP] Hover failed: {ex.Message}"); return null; }
+        catch (Exception ex) { Log($"Hover failed: {ex.Message}"); return null; }
     }
 
     public async Task<LocationOrLocationLinks?> RequestDefinitionAsync(DefinitionParams parameters, CancellationToken ct = default)
@@ -167,7 +187,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
         if (client == null) return null;
 
         try { return await client.RequestDefinition(parameters, ct); }
-        catch (Exception ex) { Debug.WriteLine($"[LSP] Definition failed: {ex.Message}"); return null; }
+        catch (Exception ex) { Log($"Definition failed: {ex.Message}"); return null; }
     }
 
     public async Task<IEnumerable<SymbolInformationOrDocumentSymbol>?> RequestDocumentSymbolAsync(
@@ -178,7 +198,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
         if (client == null) return null;
 
         try { return await client.RequestDocumentSymbol(parameters, ct); }
-        catch (Exception ex) { Debug.WriteLine($"[LSP] DocumentSymbol failed: {ex.Message}"); return null; }
+        catch (Exception ex) { Log($"DocumentSymbol failed: {ex.Message}"); return null; }
     }
 
     public async Task<SemanticTokens?> RequestSemanticTokensAsync(SemanticTokensParams parameters, CancellationToken ct = default)
@@ -188,7 +208,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
         if (client == null) return null;
 
         try { return await client.RequestSemanticTokensFull(parameters, ct); }
-        catch (Exception ex) { Debug.WriteLine($"[LSP] SemanticTokens failed: {ex.Message}"); return null; }
+        catch (Exception ex) { Log($"SemanticTokens failed: {ex.Message}"); return null; }
     }
 
     public void SendDidOpen(DidOpenTextDocumentParams parameters)
@@ -197,7 +217,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
         lock (_lock) client = _isInitialized ? _client : null;
         if (client == null) return;
         try { client.DidOpenTextDocument(parameters); }
-        catch (Exception ex) { Debug.WriteLine($"[LSP] didOpen failed: {ex.Message}"); }
+        catch (Exception ex) { Log($"didOpen failed: {ex.Message}"); }
     }
 
     public void SendDidChange(DidChangeTextDocumentParams parameters)
@@ -206,7 +226,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
         lock (_lock) client = _isInitialized ? _client : null;
         if (client == null) return;
         try { client.DidChangeTextDocument(parameters); }
-        catch (Exception ex) { Debug.WriteLine($"[LSP] didChange failed: {ex.Message}"); }
+        catch (Exception ex) { Log($"didChange failed: {ex.Message}"); }
     }
 
     public void SendDidClose(DidCloseTextDocumentParams parameters)
@@ -215,7 +235,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
         lock (_lock) client = _isInitialized ? _client : null;
         if (client == null) return;
         try { client.DidCloseTextDocument(parameters); }
-        catch (Exception ex) { Debug.WriteLine($"[LSP] didClose failed: {ex.Message}"); }
+        catch (Exception ex) { Log($"didClose failed: {ex.Message}"); }
     }
 
     public async ValueTask ShutdownAsync()
@@ -242,7 +262,7 @@ public class LspClientService : IDisposable, IAsyncDisposable
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[LSP] Shutdown error: {ex.Message}");
+                Log($"Shutdown error: {ex.Message}");
             }
             client.Dispose();
         }

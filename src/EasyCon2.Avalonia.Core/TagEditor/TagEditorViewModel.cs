@@ -1,10 +1,8 @@
-using Avalonia;
-using Avalonia.Media;
-using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon2.Avalonia.Core.Services;
 using System.Collections.ObjectModel;
 using System.IO;
 
@@ -12,20 +10,46 @@ namespace EasyCon2.Avalonia.Core.TagEditor;
 
 public partial class TagEditorViewModel : ObservableObject
 {
+    private readonly IImageProcessor? _imageProcessor;
+
     public ImgLabel Label { get; } = new();
 
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(ToggleRangeSelectionCommand))]
-    [NotifyCanExecuteChangedFor(nameof(ToggleTargetSelectionCommand))]
-    private IImage? _sourceImage;
+    private byte[]? _sourcePng;
 
-    [ObservableProperty]
-    private IImage? _targetImage;
+    /// <summary>源截图 PNG 字节。显示位图由 View 侧解码持有，VM 只进出字节、不持有渲染对象。</summary>
+    public byte[]? SourcePng
+    {
+        get => _sourcePng;
+        set
+        {
+            if (SetProperty(ref _sourcePng, value))
+            {
+                OnPropertyChanged(nameof(HasSourceImage));
+                ToggleRangeSelectionCommand.NotifyCanExecuteChanged();
+                ToggleTargetSelectionCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
 
-    [ObservableProperty]
-    private IImage? _rangePreviewImage;
+    private byte[]? _targetPng;
 
-    public bool HasSourceImage => SourceImage != null;
+    /// <summary>目标区域预览 PNG 字节（由 TagEditorView 解码显示）。</summary>
+    public byte[]? TargetPng
+    {
+        get => _targetPng;
+        set => SetProperty(ref _targetPng, value);
+    }
+
+    private byte[]? _rangePreviewPng;
+
+    /// <summary>标签测试结果 ROI 预览 PNG 字节（由 TagEditorView 解码显示）。</summary>
+    public byte[]? RangePreviewPng
+    {
+        get => _rangePreviewPng;
+        set => SetProperty(ref _rangePreviewPng, value);
+    }
+
+    public bool HasSourceImage => SourcePng != null;
 
     public static readonly IReadOnlyList<SearchMethod> SearchMethods = ECCore.GetSearchMethods().ToList();
 
@@ -99,7 +123,6 @@ public partial class TagEditorViewModel : ObservableObject
     partial void OnTargetXChanged(int value)
     {
         Label.TargetX = value;
-        UpdateTargetRect();
     }
 
     [ObservableProperty]
@@ -108,7 +131,6 @@ public partial class TagEditorViewModel : ObservableObject
     partial void OnTargetYChanged(int value)
     {
         Label.TargetY = value;
-        UpdateTargetRect();
     }
 
     [ObservableProperty]
@@ -117,7 +139,6 @@ public partial class TagEditorViewModel : ObservableObject
     partial void OnTargetWidthChanged(int value)
     {
         Label.TargetWidth = value;
-        UpdateTargetRect();
     }
 
     [ObservableProperty]
@@ -126,7 +147,6 @@ public partial class TagEditorViewModel : ObservableObject
     partial void OnTargetHeightChanged(int value)
     {
         Label.TargetHeight = value;
-        UpdateTargetRect();
     }
 
     [ObservableProperty]
@@ -135,7 +155,6 @@ public partial class TagEditorViewModel : ObservableObject
     partial void OnRangeXChanged(int value)
     {
         Label.RangeX = value;
-        UpdateRangeRect();
     }
 
     [ObservableProperty]
@@ -144,7 +163,6 @@ public partial class TagEditorViewModel : ObservableObject
     partial void OnRangeYChanged(int value)
     {
         Label.RangeY = value;
-        UpdateRangeRect();
     }
 
     [ObservableProperty]
@@ -153,7 +171,6 @@ public partial class TagEditorViewModel : ObservableObject
     partial void OnRangeWidthChanged(int value)
     {
         Label.RangeWidth = value;
-        UpdateRangeRect();
     }
 
     [ObservableProperty]
@@ -162,7 +179,6 @@ public partial class TagEditorViewModel : ObservableObject
     partial void OnRangeHeightChanged(int value)
     {
         Label.RangeHeight = value;
-        UpdateRangeRect();
     }
 
     [ObservableProperty]
@@ -272,18 +288,6 @@ public partial class TagEditorViewModel : ObservableObject
     private SelectionMode _currentSelectionMode = SelectionMode.None;
 
     /// <summary>
-    /// 范围矩形（图片坐标）
-    /// </summary>
-    [ObservableProperty]
-    private Rect _rangeRect;
-
-    /// <summary>
-    /// 目标矩形（图片坐标）
-    /// </summary>
-    [ObservableProperty]
-    private Rect _targetRect;
-
-    /// <summary>
     /// 圈选范围按钮文本
     /// </summary>
     public string RangeButtonText => CurrentSelectionMode == SelectionMode.Range ? "确定范围" : "圈选范围";
@@ -297,30 +301,6 @@ public partial class TagEditorViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(RangeButtonText));
         OnPropertyChanged(nameof(TargetButtonText));
-    }
-
-    partial void OnRangeRectChanged(Rect value)
-    {
-        // 圈选范围矩形变化 → 更新搜索范围坐标
-        if (value.Width > 0 && value.Height > 0)
-        {
-            RangeX = (int)value.X;
-            RangeY = (int)value.Y;
-            RangeWidth = (int)value.Width;
-            RangeHeight = (int)value.Height;
-        }
-    }
-
-    partial void OnTargetRectChanged(Rect value)
-    {
-        // 圈选目标矩形变化 → 更新目标位置坐标
-        if (value.Width > 0 && value.Height > 0)
-        {
-            TargetX = (int)value.X;
-            TargetY = (int)value.Y;
-            TargetWidth = (int)value.Width;
-            TargetHeight = (int)value.Height;
-        }
     }
 
     [RelayCommand]
@@ -345,20 +325,20 @@ public partial class TagEditorViewModel : ObservableObject
     /// 设置测试结果（由主窗口调用）。
     /// </summary>
     /// <param name="matchDegree">匹配度百分比。</param>
-    /// <param name="rangePreview">搜索范围预览图（可选）。</param>
-    public void SetTestResult(double matchDegree, Bitmap? rangePreview = null)
+    /// <param name="rangePreviewPng">匹配位置 ROI 预览图（PNG 字节，可选）。</param>
+    public void SetTestResult(double matchDegree, byte[]? rangePreviewPng = null)
     {
         MatchDegreeText = $"匹配度: {matchDegree:F1}%";
-        if (rangePreview != null)
-            RangePreviewImage = rangePreview;
+        if (rangePreviewPng != null)
+            RangePreviewPng = rangePreviewPng;
     }
 
     /// <summary>
-    /// 设置截图结果（由主窗口调用）。
+    /// 设置截图结果（由主窗口调用）。PNG 字节保留一份用于后续 ROI 裁剪。
     /// </summary>
-    public void SetScreenshot(Bitmap bitmap)
+    public void SetScreenshot(byte[] pngBytes)
     {
-        SourceImage = bitmap;
+        SourcePng = pngBytes;
     }
 
     [RelayCommand(CanExecute = nameof(HasSourceImage))]
@@ -385,38 +365,32 @@ public partial class TagEditorViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 根据 TargetRect 从 SourceImage 裁剪 ROI，更新 TargetImage 和 Label.ImgBase64。
+    /// 根据目标坐标从源图裁剪 ROI，更新 TargetPng 和 Label.ImgBase64。
+    /// 裁剪经 <see cref="IImageProcessor"/> 在字节层面完成，VM 不持有渲染对象。
     /// </summary>
     private void UpdateTargetImageFromRoi()
     {
-        if (SourceImage is not Bitmap src)
+        if (SourcePng == null)
             return;
-
-        var rect = TargetRect;
-        if (rect.Width <= 0 || rect.Height <= 0)
-            return;
-
-        // 裁剪区域限制在图片范围内
-        var cropRect = rect.Intersect(new Rect(0, 0, src.PixelSize.Width, src.PixelSize.Height));
-        if (cropRect.Width <= 0 || cropRect.Height <= 0)
-            return;
-
-        // 用 RenderTargetBitmap 裁剪 ROI 区域
-        var pixelSize = new PixelSize((int)cropRect.Width, (int)cropRect.Height);
-        var rtb = new RenderTargetBitmap(pixelSize, new Vector(96, 96));
-        using (var ctx = rtb.CreateDrawingContext())
+        if (_imageProcessor == null)
         {
-            var srcRect = new Rect(cropRect.X, cropRect.Y, cropRect.Width, cropRect.Height);
-            var dstRect = new Rect(0, 0, cropRect.Width, cropRect.Height);
-            ctx.DrawImage(src, srcRect, dstRect);
+            LogMessage?.Invoke("图像处理服务不可用，无法裁剪目标区域");
+            return;
         }
 
-        // 写入内存流，同时更新 TargetImage 和 ImgBase64
-        var ms = new MemoryStream();
-        rtb.Save(ms);
-        ms.Position = 0;
-        TargetImage = new Bitmap(ms);
-        Label.ImgBase64 = Convert.ToBase64String(ms.ToArray());
+        if (TargetWidth <= 0 || TargetHeight <= 0)
+            return;
+
+        var cropped = _imageProcessor.Crop(
+            SourcePng, TargetX, TargetY, TargetWidth, TargetHeight);
+        if (cropped == null)
+        {
+            LogMessage?.Invoke("裁剪目标区域失败");
+            return;
+        }
+
+        TargetPng = cropped;
+        Label.ImgBase64 = Convert.ToBase64String(cropped);
         LabelTestCommand.NotifyCanExecuteChanged();
     }
 
@@ -448,37 +422,34 @@ public partial class TagEditorViewModel : ObservableObject
         }
     }
 
-    private void UpdateRangeRect()
-    {
-        RangeRect = new Rect(RangeX, RangeY, RangeWidth, RangeHeight);
-    }
-
-    private void UpdateTargetRect()
-    {
-        TargetRect = new Rect(TargetX, TargetY, TargetWidth, TargetHeight);
-    }
-
     /// <summary>
-    /// 从文件路径加载图片到SourceImage。
+    /// 从文件路径加载图片到 SourcePng。
     /// </summary>
     public void LoadImageFromFile(string filePath)
     {
-        try
+        if (_imageProcessor == null)
         {
-            if (File.Exists(filePath))
-            {
-                SourceImage = new Bitmap(filePath);
-            }
+            LogMessage?.Invoke("图像处理服务不可用，无法加载图片");
+            return;
         }
-        catch
+
+        var png = _imageProcessor.LoadAsPng(filePath);
+        if (png == null)
         {
-            // 忽略加载错误
+            LogMessage?.Invoke($"图片加载失败: {Path.GetFileName(filePath)}");
+            return;
         }
+
+        SourcePng = png;
     }
 
-    public TagEditorViewModel() { }
+    public TagEditorViewModel(IImageProcessor? imageProcessor = null)
+    {
+        _imageProcessor = imageProcessor;
+    }
 
-    public TagEditorViewModel(ImgLabel label)
+    public TagEditorViewModel(ImgLabel label, IImageProcessor? imageProcessor = null)
+        : this(imageProcessor)
     {
         LoadFromLabel(label);
     }
@@ -520,22 +491,17 @@ public partial class TagEditorViewModel : ObservableObject
         UseOther = label.UseOther;
         SelectedParameterOption = GetParameterOption();
 
-        // 同步矩形到 SelectableImage 控件
-        RangeRect = new Rect(RangeX, RangeY, RangeWidth, RangeHeight);
-        TargetRect = new Rect(TargetX, TargetY, TargetWidth, TargetHeight);
-
-        TargetImage = CreateTargetImage(label);
+        TargetPng = CreateTargetPng(label);
 
         LabelTestCommand.NotifyCanExecuteChanged();
     }
 
-    private static Bitmap? CreateTargetImage(ImgLabel label)
+    private static byte[]? CreateTargetPng(ImgLabel label)
     {
         if (string.IsNullOrWhiteSpace(label.ImgBase64) || !label.searchMethod.IsImageMethod())
             return null;
 
-        var bytes = Convert.FromBase64String(label.ImgBase64);
-        return new Bitmap(new MemoryStream(bytes));
+        return Convert.FromBase64String(label.ImgBase64);
     }
 
     public ImgLabel ToImgLabel() => Label with { };

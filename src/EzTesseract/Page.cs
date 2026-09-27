@@ -10,15 +10,28 @@ namespace EzTesseract;
 public sealed class Page : IDisposable
 {
     private readonly Engine _engine;
+    private readonly Pix.Image _image;
+    private readonly int _imageGeneration;
     private bool _recognized;
     private bool _disposed;
 
-    internal Page(Engine engine) => _engine = engine;
+    internal Page(Engine engine, Pix.Image image)
+    {
+        _engine = engine;
+        _image = image;
+        _imageGeneration = engine.ImageGeneration;
+    }
 
     private void ThrowIfDisposed()
     {
         if (_disposed) throw new ObjectDisposedException(nameof(Page));
         if (_engine.Handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(Engine));
+        // SetImage2 不拷贝、不持有 Pix：Pix 已释放后再识别即原生 use-after-free
+        if (_image.Handle == IntPtr.Zero)
+            throw new ObjectDisposedException(nameof(Pix.Image), "Pix 已释放，本 Page 不可再识别");
+        // 引擎已被用于新图像：SetImage2 使旧图数据失效，继续识别会读到新图的结果（静默串图）
+        if (_engine.ImageGeneration != _imageGeneration)
+            throw new InvalidOperationException("引擎已处理新图像，本 Page 已失效（请先取完结果再 Process 下一张）");
     }
 
     /// <summary>识别图像（幂等）。返回非 0 抛异常。</summary>

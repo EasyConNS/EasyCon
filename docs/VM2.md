@@ -65,8 +65,9 @@ typedef struct ecs_value {
 ### 2.2 堆：句柄表 + 引用计数
 
 - 句柄从 1 起，0 = null；句柄表 + 空闲链复用，恒不移除/移动元素。
-- **字符串驻留（intern）**：常量池字符串**首次执行时驻留**（缓存持常驻引用，句柄永不归零；对齐
-  C# `EcxInterpreter.InternedString` 与 C 加载期驻留）；运行期字符串（CAT/切片/转换）新建句柄。
+- **字符串驻留（intern）**：常量池字符串**首次执行时驻留**（缓存持常驻引用，句柄永不归零）；
+  仅 C# `EcxInterpreter.InternedString` 实现，**C 端不驻留**（每次 `LoadK` 新建串，MCU 宿主
+  如需可自行缓存）；运行期字符串（CAT/切片/转换）新建句柄。
   字符串不可变，复制一律共享。
 - 数组：`{elem_type, items[]}`；结构体：`{layout*, slots[]}`，槽区按 StructDef 布局展开。
 - **引用计数不回收环**：ECS 无闭包，实践值为树形；停机随 VM 销毁全量释放。
@@ -172,7 +173,7 @@ KeyI a, Bx / KeyV a, b                   点击按键 a（GamePadKey 码）持�
 KeySt a, b                               b=1 按住 / b=0 松开
 StickSet a, x, y                         设摇杆 a(0=L,1=R) 坐标（回中 128）
 StickP a, x, y, ext:32                   点击摇杆，ext=毫秒
-StickPv a, dur, ext:32                   ext 高16 位 x | 低16 位 y，持续 R[dur] 毫秒
+StickPv a, dur, ext:32                   ext 低16 位 x | 高16 位 y（x=ext&0xFF, y=(ext>>16)&0xFF，与编码器 x|(y<<16) 一致），持续 R[dur] 毫秒
 Img a, Bx                                R[a] = 图像标签匹配置信度（标签名=常量池[Bx]）
 Rand a, b                                R[a] = rand(R[b])（S-12）
 ```

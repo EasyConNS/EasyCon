@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:EasyCon2.Avalonia.Markup"
          xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
          xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
          xmlns:controls="using:EasyCon2.Avalonia.Controls"
@@ -273,7 +274,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="M2,14 L5.5,13 L14,4.5 L11.5,2 L3,10.5 Z M10.5,3 L13,5.5 M2,14 L6,14"
                                       Width="15" Height="15"/>
-                            <TextBlock Text="文本编辑"/>
+                            <TextBlock Text="{loc:Translate Text.Tab.Editor}"/>
                         </StackPanel>
                     </Button>
                     <Button Classes="title-tab"
@@ -283,7 +284,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="M2,2 H8 L15,9 L9,15 L2,8 Z M5,5 H5.1"
                                       Width="15" Height="15"/>
-                            <TextBlock Text="标签编辑"/>
+                            <TextBlock Text="{loc:Translate Text.Tab.TagEditor}"/>
                         </StackPanel>
                     </Button>
                     <Button Classes="title-tab"
@@ -293,7 +294,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="M8,1 L9,4 L12,5 L15,4 L14,7 L15,10 L12,11 L9,10 L8,15 L7,10 L4,11 L1,10 L2,7 L1,4 L4,5 L7,4 Z"
                                       Width="15" Height="15"/>
-                            <TextBlock Text="用户配置"/>
+                            <TextBlock Text="{loc:Translate Text.Tab.UserConfig}"/>
                         </StackPanel>
                     </Button>
                     <Button Classes="title-tab"
@@ -303,7 +304,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <PathIcon Data="M1,1 H6 V6 H1 Z M10,1 H15 V6 H10 Z M1,10 H6 V15 H1 Z M10,10 H15 V15 H10 Z"
                                       Width="15" Height="15"/>
-                            <TextBlock Text="功能中心"/>
+                            <TextBlock Text="{loc:Translate Text.Tab.FeatureCenter}"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -359,7 +360,7 @@
                         </ItemsPanelTemplate>
                     </TabControl.ItemsPanel>
                     <TabItem Classes="tab-layer-0"
-                             Header="文本编辑">
+                             Header="{loc:Translate Text.Tab.Editor}">
                         <Grid RowDefinitions="Auto,*"
                               Background="{DynamicResource WorkbenchPanelBrush}">
                             <!-- 脚本路径栏 -->
@@ -417,7 +418,7 @@
                                     </StackPanel>
                                     <Button Grid.Column="2"
                                             Classes="flat-link"
-                                            Content="脚本语法"
+                                            Content="{loc:Translate Text.Btn.ScriptSyntax}"
                                             Command="{Binding ShowScriptSyntaxCommand}"/>
                                     <Border Grid.Column="3"
                                             Classes="help-dot"
@@ -451,17 +452,17 @@
                         </Grid>
                     </TabItem>
                     <TabItem Classes="tab-layer-1"
-                             Header="标签编辑">
+                             Header="{loc:Translate Text.Tab.TagEditor}">
                         <Border Background="{DynamicResource WorkbenchPanelBrush}">
                             <tag:TagEditorView x:Name="ClassicTagEditor" DataContext="{Binding TagEditorViewModel}"/>
                         </Border>
                     </TabItem>
                     <TabItem Classes="tab-layer-2"
-                             Header="用户配置">
+                             Header="{loc:Translate Text.Tab.UserConfig}">
                         <shared:UserConfigPage/>
                     </TabItem>
                     <TabItem Classes="tab-layer-3"
-                             Header="功能中心">
+                             Header="{loc:Translate Text.Tab.FeatureCenter}">
                         <shared:FeatureCenterPage/>
                     </TabItem>
                 </TabControl>
@@ -525,13 +526,13 @@
                     <Grid Grid.Row="0"
                           ColumnDefinitions="*,Auto,34"
                           Background="{DynamicResource WorkbenchPanelBrush}">
-                        <TextBlock Text="输出窗口"
+                        <TextBlock Text="{loc:Translate Text.Panel.Output}"
                                    Margin="8,0,0,0"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource WorkbenchMutedTextBrush}"
                                    FontSize="12"/>
                         <TextBlock Grid.Column="1"
-                                   Text="调试模式"
+                                   Text="{loc:Translate Text.Panel.DebugMode}"
                                    Margin="0,0,4,0"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource WorkbenchMutedTextBrush}"
@@ -550,7 +551,7 @@
                               Background="{DynamicResource WorkbenchLogBrush}"
                               ClipToBounds="True">
                             <terminal:TerminalControl Grid.Column="0"
-                                                      ItemsSource="{Binding WelcomeLines}"
+                                                      ItemsSource="{Binding Welcome.WelcomeLines}"
                                                       Background="{DynamicResource WorkbenchLogBrush}"
                                                       Foreground="{DynamicResource WorkbenchLogTextBrush}"
                                                       MaxLineCount="1"
@@ -613,34 +614,34 @@
                           Padding="10">
                     <GroupBox.Header>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="单片机连接" FontWeight="Bold"/>
+                            <TextBlock Text="{loc:Translate Text.Panel.Switch}" FontWeight="Bold"/>
                             <Ellipse Classes="connection-indicator"
-                                     Classes.connected="{Binding IsNintendoSwitchConnected}"
-                                     Classes.disconnected="{Binding !IsNintendoSwitchConnected}"/>
-                            <TextBlock Text="{Binding NintendoSwitchStatus}"
+                                     Classes.connected="{Binding Switch.IsNintendoSwitchConnected}"
+                                     Classes.disconnected="{Binding !Switch.IsNintendoSwitchConnected}"/>
+                            <TextBlock Text="{Binding Switch.NintendoSwitchStatus}"
                                        FontWeight="Bold"
                                        Classes="connection-status"
-                                       Classes.connected="{Binding IsNintendoSwitchConnected}"
-                                       Classes.disconnected="{Binding !IsNintendoSwitchConnected}"/>
+                                       Classes.connected="{Binding Switch.IsNintendoSwitchConnected}"
+                                       Classes.disconnected="{Binding !Switch.IsNintendoSwitchConnected}"/>
                         </StackPanel>
                     </GroupBox.Header>
                     <StackPanel Orientation="Vertical" Spacing="10">
-                        <ComboBox ItemsSource="{Binding SerialPortOptions}"
-                                  SelectedItem="{Binding SelectedSerialPort}"
+                        <ComboBox ItemsSource="{Binding Switch.SerialPortOptions}"
+                                  SelectedItem="{Binding Switch.SelectedSerialPort}"
                                   HorizontalAlignment="Stretch"
-                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshSerialPortsCommand}"/>
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Switch.RefreshSerialPortsCommand}"/>
                         <Grid ColumnDefinitions="*,*">
                             <Button Grid.Column="0"
-                                    Content="{Binding NintendoSwitchButtonText}"
-                                    Command="{Binding ConnectNintendoSwitchCommand}"
-                                    IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                    Content="{Binding Switch.NintendoSwitchButtonText}"
+                                    Command="{Binding Switch.ConnectNintendoSwitchCommand}"
+                                    IsEnabled="{Binding !Switch.IsConnectingNintendoSwitch}"
                                     Margin="0,0,5,0"
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"/>
                             <Button Grid.Column="1"
-                                    Content="自动连接"
-                                    Command="{Binding AutoConnectNintendoSwitchCommand}"
-                                    IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                    Content="{loc:Translate Text.Btn.AutoConnect}"
+                                    Command="{Binding Switch.AutoConnectNintendoSwitchCommand}"
+                                    IsEnabled="{Binding !Switch.IsConnectingNintendoSwitch}"
                                     Classes="outline-accent"
                                     Margin="5,0,0,0"
                                     HorizontalAlignment="Stretch"
@@ -655,25 +656,25 @@
                           Padding="10">
                     <GroupBox.Header>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="视频源" FontWeight="Bold"/>
+                            <TextBlock Text="{loc:Translate Text.Panel.Capture}" FontWeight="Bold"/>
                             <Ellipse Classes="connection-indicator"
-                                     Classes.connected="{Binding IsCaptureSourceConnected}"
-                                     Classes.disconnected="{Binding !IsCaptureSourceConnected}"/>
-                            <TextBlock Text="{Binding CaptureSourceStatus}"
+                                     Classes.connected="{Binding Capture.IsCaptureSourceConnected}"
+                                     Classes.disconnected="{Binding !Capture.IsCaptureSourceConnected}"/>
+                            <TextBlock Text="{Binding Capture.CaptureSourceStatus}"
                                        FontWeight="Bold"
                                        Classes="connection-status"
-                                       Classes.connected="{Binding IsCaptureSourceConnected}"
-                                       Classes.disconnected="{Binding !IsCaptureSourceConnected}"/>
+                                       Classes.connected="{Binding Capture.IsCaptureSourceConnected}"
+                                       Classes.disconnected="{Binding !Capture.IsCaptureSourceConnected}"/>
                         </StackPanel>
                     </GroupBox.Header>
                     <StackPanel Orientation="Vertical" Spacing="10">
-                        <ComboBox ItemsSource="{Binding CaptureSourceOptions}"
-                                  SelectedItem="{Binding SelectedCaptureSource}"
+                        <ComboBox ItemsSource="{Binding Capture.CaptureSourceOptions}"
+                                  SelectedItem="{Binding Capture.SelectedCaptureSource}"
                                   HorizontalAlignment="Stretch"
-                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
-                        <Button Content="{Binding CaptureSourceButtonText}"
-                                Command="{Binding ConnectCaptureSourceCommand}"
-                                IsEnabled="{Binding !IsConnectingCaptureSource}"
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Capture.RefreshCaptureSourcesCommand}"/>
+                        <Button Content="{Binding Capture.CaptureSourceButtonText}"
+                                Command="{Binding Capture.ConnectCaptureSourceCommand}"
+                                IsEnabled="{Binding !Capture.IsConnectingCaptureSource}"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"/>
                     </StackPanel>
@@ -685,15 +686,15 @@
                           Padding="10">
                     <GroupBox.Header>
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="虚拟手柄" FontWeight="Bold"/>
+                            <TextBlock Text="{loc:Translate Text.Panel.Controller}" FontWeight="Bold"/>
                             <Ellipse Classes="connection-indicator"
-                                     Classes.connected="{Binding IsControllerConnected}"
-                                     Classes.disconnected="{Binding !IsControllerConnected}"/>
-                            <TextBlock Text="{Binding ControlSourceStatus}"
+                                     Classes.connected="{Binding Controller.IsControllerConnected}"
+                                     Classes.disconnected="{Binding !Controller.IsControllerConnected}"/>
+                            <TextBlock Text="{Binding Controller.ControlSourceStatus}"
                                        FontWeight="Bold"
                                        Classes="connection-status"
-                                       Classes.connected="{Binding IsControllerConnected}"
-                                       Classes.disconnected="{Binding !IsControllerConnected}"/>
+                                       Classes.connected="{Binding Controller.IsControllerConnected}"
+                                       Classes.disconnected="{Binding !Controller.IsControllerConnected}"/>
                         </StackPanel>
                     </GroupBox.Header>
                     <Grid RowDefinitions="Auto,Auto"
@@ -706,16 +707,22 @@
                               Grid.ColumnSpan="2"
                               ColumnDefinitions="*">
                             <ComboBox Grid.Column="0"
-                                      ItemsSource="{Binding ControlSourceOptions}"
-                                      SelectedItem="{Binding SelectedControlSource}"
+                                      ItemsSource="{Binding Controller.ControlSourceOptions}"
+                                      SelectedItem="{Binding Controller.SelectedControlSource}"
                                       HorizontalAlignment="Stretch"
-                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshControlSourcesCommand}"/>
+                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Controller.RefreshControlSourcesCommand}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DisplayName}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                    </ComboBox>
                         </Grid>
                         <Button Grid.Row="0"
                                 Grid.Column="2"
-                                Content="{Binding ControllerButtonText}"
-                                Command="{Binding ConnectControllerCommand}"
-                                IsEnabled="{Binding !IsConnectingController}"
+                                Content="{Binding Controller.ControllerButtonText}"
+                                Command="{Binding Controller.ConnectControllerCommand}"
+                                IsEnabled="{Binding !Controller.IsConnectingController}"
                                 Padding="8,4"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Stretch"/>
@@ -726,23 +733,23 @@
                               ColumnDefinitions="*,*,*"
                               ColumnSpacing="10">
                             <Button Grid.Column="0"
-                                    Content="录制脚本"
+                                    Content="{loc:Translate Text.Btn.RecordStart}"
                                     Command="{Binding StartRecordCommand}"
                                     IsEnabled="{Binding IsStartRecordEnabled}"
                                     Padding="12,4"
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"/>
                             <Button Grid.Column="1"
-                                    Content="停止录制"
+                                    Content="{loc:Translate Text.Btn.RecordStop}"
                                     Command="{Binding StopRecordCommand}"
                                     IsEnabled="{Binding IsStopRecordEnabled}"
                                     Padding="12,4"
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"/>
                             <Button Grid.Column="2"
-                                    Content="按键映射"
-                                    Command="{Binding EditKeyMappingCommand}"
-                                    IsEnabled="{Binding IsEditKeyMappingEnabled}"
+                                    Content="{loc:Translate Text.Btn.KeyMapping}"
+                                    Command="{Binding Controller.EditKeyMappingCommand}"
+                                    IsEnabled="{Binding Controller.IsEditKeyMappingEnabled}"
                                     Padding="12,4"
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"/>
@@ -865,7 +872,7 @@
                                               Width="13" Height="13"/>
                                 </Button>
                                 <Button Classes="flat-link"
-                                        Content="脚本语法"
+                                        Content="{loc:Translate Text.Btn.ScriptSyntax}"
                                         Command="{Binding ShowScriptSyntaxCommand}"
                                         Margin="6,0,0,0"/>
                             </StackPanel>
@@ -932,7 +939,7 @@
                                   Classes="card-header"
                                   ColumnDefinitions="*,Auto"
                                   Margin="16,0">
-                                <TextBlock Classes="card-header-title" Text="视频监视器"/>
+                                <TextBlock Classes="card-header-title" Text="{loc:Translate Text.Panel.Monitor}"/>
                                 <Button Grid.Column="1"
                                         Classes="flat-link"
                                         Content="{Binding MonitorVisibilityButtonText}"
@@ -964,10 +971,10 @@
                                   Classes="card-header"
                                   ColumnDefinitions="*,Auto,42"
                                   Margin="16,0">
-                                <TextBlock Classes="card-header-title" Text="输出窗口"/>
+                                <TextBlock Classes="card-header-title" Text="{loc:Translate Text.Panel.Output}"/>
                                 <TextBlock Grid.Column="1"
                                            Classes="card-header-action"
-                                           Text="调试模式"
+                                           Text="{loc:Translate Text.Panel.DebugMode}"
                                            Margin="0,0,6,0"/>
                                 <ToggleSwitch Grid.Column="2"
                                               Classes="compact-switch"
@@ -982,7 +989,7 @@
                                       ColumnDefinitions="*,Auto"
                                       Background="{DynamicResource WorkbenchPanelBrush}">
                                     <terminal:TerminalControl Grid.Column="0"
-                                                              ItemsSource="{Binding WelcomeLines}"
+                                                              ItemsSource="{Binding Welcome.WelcomeLines}"
                                                               Background="{DynamicResource WorkbenchPanelBrush}"
                                                               Foreground="{DynamicResource WorkbenchLogTextBrush}"
                                                               MaxLineCount="1"
@@ -1028,19 +1035,19 @@
                               ColumnDefinitions="*,Auto"
                               ColumnSpacing="8">
                             <TextBlock Classes="card-header-title"
-                                       Text="单片机连接"
+                                       Text="{loc:Translate Text.Panel.Switch}"
                                        TextTrimming="CharacterEllipsis"
                                        VerticalAlignment="Center"/>
                             <Border Grid.Column="1"
                                     Classes="status-pill"
-                                    Classes.connected="{Binding IsNintendoSwitchConnected}"
-                                    Classes.disconnected="{Binding !IsNintendoSwitchConnected}">
+                                    Classes.connected="{Binding Switch.IsNintendoSwitchConnected}"
+                                    Classes.disconnected="{Binding !Switch.IsNintendoSwitchConnected}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Ellipse Classes="connection-indicator"
-                                             Classes.connected="{Binding IsNintendoSwitchConnected}"
-                                             Classes.disconnected="{Binding !IsNintendoSwitchConnected}"/>
+                                             Classes.connected="{Binding Switch.IsNintendoSwitchConnected}"
+                                             Classes.disconnected="{Binding !Switch.IsNintendoSwitchConnected}"/>
                                     <TextBlock Classes="status-pill-text"
-                                               Text="{Binding NintendoSwitchStatus}"/>
+                                               Text="{Binding Switch.NintendoSwitchStatus}"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -1048,23 +1055,23 @@
                                 Height="1"
                                 Background="{DynamicResource WorkbenchBorderBrush}"/>
                         <ComboBox Grid.Row="2"
-                                  ItemsSource="{Binding SerialPortOptions}"
-                                  SelectedItem="{Binding SelectedSerialPort}"
+                                  ItemsSource="{Binding Switch.SerialPortOptions}"
+                                  SelectedItem="{Binding Switch.SelectedSerialPort}"
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Center"
-                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshSerialPortsCommand}"/>
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Switch.RefreshSerialPortsCommand}"/>
                         <Grid Grid.Row="3"
                               ColumnDefinitions="*,*"
                               ColumnSpacing="10"
                               VerticalAlignment="Bottom">
-                            <Button Content="{Binding NintendoSwitchButtonText}"
-                                    Command="{Binding ConnectNintendoSwitchCommand}"
-                                    IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                            <Button Content="{Binding Switch.NintendoSwitchButtonText}"
+                                    Command="{Binding Switch.ConnectNintendoSwitchCommand}"
+                                    IsEnabled="{Binding !Switch.IsConnectingNintendoSwitch}"
                                     HorizontalAlignment="Stretch"/>
                             <Button Grid.Column="1"
-                                    Content="自动连接"
-                                    Command="{Binding AutoConnectNintendoSwitchCommand}"
-                                    IsEnabled="{Binding !IsConnectingNintendoSwitch}"
+                                    Content="{loc:Translate Text.Btn.AutoConnect}"
+                                    Command="{Binding Switch.AutoConnectNintendoSwitchCommand}"
+                                    IsEnabled="{Binding !Switch.IsConnectingNintendoSwitch}"
                                     Classes="outline-accent"
                                     HorizontalAlignment="Stretch"/>
                         </Grid>
@@ -1080,19 +1087,19 @@
                               ColumnDefinitions="*,Auto"
                               ColumnSpacing="8">
                             <TextBlock Classes="card-header-title"
-                                       Text="视频源"
+                                       Text="{loc:Translate Text.Panel.Capture}"
                                        TextTrimming="CharacterEllipsis"
                                        VerticalAlignment="Center"/>
                             <Border Grid.Column="1"
                                     Classes="status-pill"
-                                    Classes.connected="{Binding IsCaptureSourceConnected}"
-                                    Classes.disconnected="{Binding !IsCaptureSourceConnected}">
+                                    Classes.connected="{Binding Capture.IsCaptureSourceConnected}"
+                                    Classes.disconnected="{Binding !Capture.IsCaptureSourceConnected}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Ellipse Classes="connection-indicator"
-                                             Classes.connected="{Binding IsCaptureSourceConnected}"
-                                             Classes.disconnected="{Binding !IsCaptureSourceConnected}"/>
+                                             Classes.connected="{Binding Capture.IsCaptureSourceConnected}"
+                                             Classes.disconnected="{Binding !Capture.IsCaptureSourceConnected}"/>
                                     <TextBlock Classes="status-pill-text"
-                                               Text="{Binding CaptureSourceStatus}"/>
+                                               Text="{Binding Capture.CaptureSourceStatus}"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -1100,15 +1107,15 @@
                                 Height="1"
                                 Background="{DynamicResource WorkbenchBorderBrush}"/>
                         <ComboBox Grid.Row="2"
-                                  ItemsSource="{Binding CaptureSourceOptions}"
-                                  SelectedItem="{Binding SelectedCaptureSource}"
+                                  ItemsSource="{Binding Capture.CaptureSourceOptions}"
+                                  SelectedItem="{Binding Capture.SelectedCaptureSource}"
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Center"
-                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshCaptureSourcesCommand}"/>
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Capture.RefreshCaptureSourcesCommand}"/>
                         <Button Grid.Row="3"
-                                Content="{Binding CaptureSourceButtonText}"
-                                Command="{Binding ConnectCaptureSourceCommand}"
-                                IsEnabled="{Binding !IsConnectingCaptureSource}"
+                                Content="{Binding Capture.CaptureSourceButtonText}"
+                                Command="{Binding Capture.ConnectCaptureSourceCommand}"
+                                IsEnabled="{Binding !Capture.IsConnectingCaptureSource}"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Bottom"/>
                     </Grid>
@@ -1123,19 +1130,19 @@
                               ColumnDefinitions="*,Auto"
                               ColumnSpacing="8">
                             <TextBlock Classes="card-header-title"
-                                       Text="虚拟手柄"
+                                       Text="{loc:Translate Text.Panel.Controller}"
                                        TextTrimming="CharacterEllipsis"
                                        VerticalAlignment="Center"/>
                             <Border Grid.Column="1"
                                     Classes="status-pill"
-                                    Classes.connected="{Binding IsControllerConnected}"
-                                    Classes.disconnected="{Binding !IsControllerConnected}">
+                                    Classes.connected="{Binding Controller.IsControllerConnected}"
+                                    Classes.disconnected="{Binding !Controller.IsControllerConnected}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Ellipse Classes="connection-indicator"
-                                             Classes.connected="{Binding IsControllerConnected}"
-                                             Classes.disconnected="{Binding !IsControllerConnected}"/>
+                                             Classes.connected="{Binding Controller.IsControllerConnected}"
+                                             Classes.disconnected="{Binding !Controller.IsControllerConnected}"/>
                                     <TextBlock Classes="status-pill-text"
-                                               Text="{Binding ControlSourceStatus}"/>
+                                               Text="{Binding Controller.ControlSourceStatus}"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -1146,30 +1153,36 @@
                               ColumnDefinitions="*,Auto"
                               ColumnSpacing="10"
                               VerticalAlignment="Center">
-                            <ComboBox ItemsSource="{Binding ControlSourceOptions}"
-                                      SelectedItem="{Binding SelectedControlSource}"
+                            <ComboBox ItemsSource="{Binding Controller.ControlSourceOptions}"
+                                      SelectedItem="{Binding Controller.SelectedControlSource}"
                                       HorizontalAlignment="Stretch"
-                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding RefreshControlSourcesCommand}"/>
+                                      behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Controller.RefreshControlSourcesCommand}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding DisplayName}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                    </ComboBox>
                             <Button Grid.Column="1"
-                                    Content="{Binding ControllerButtonText}"
-                                    Command="{Binding ConnectControllerCommand}"
-                                    IsEnabled="{Binding !IsConnectingController}"/>
+                                    Content="{Binding Controller.ControllerButtonText}"
+                                    Command="{Binding Controller.ConnectControllerCommand}"
+                                    IsEnabled="{Binding !Controller.IsConnectingController}"/>
                         </Grid>
                         <Grid Grid.Row="3"
                               ColumnDefinitions="*,*,*"
                               ColumnSpacing="10"
                               VerticalAlignment="Bottom">
-                            <Button Content="录制脚本"
+                            <Button Content="{loc:Translate Text.Btn.RecordStart}"
                                     Command="{Binding StartRecordCommand}"
                                     IsEnabled="{Binding IsStartRecordEnabled}"/>
                             <Button Grid.Column="1"
-                                    Content="停止录制"
+                                    Content="{loc:Translate Text.Btn.RecordStop}"
                                     Command="{Binding StopRecordCommand}"
                                     IsEnabled="{Binding IsStopRecordEnabled}"/>
                             <Button Grid.Column="2"
-                                    Content="按键映射"
-                                    Command="{Binding EditKeyMappingCommand}"
-                                    IsEnabled="{Binding IsEditKeyMappingEnabled}"/>
+                                    Content="{loc:Translate Text.Btn.KeyMapping}"
+                                    Command="{Binding Controller.EditKeyMappingCommand}"
+                                    IsEnabled="{Binding Controller.IsEditKeyMappingEnabled}"/>
                         </Grid>
                     </Grid>
                 </Border>
@@ -1178,7 +1191,7 @@
                         Classes="workbench-card"
                         Padding="16,12">
                     <Grid RowDefinitions="Auto,*" RowSpacing="10">
-                        <TextBlock Classes="card-header-title" Text="运行控制"/>
+                        <TextBlock Classes="card-header-title" Text="{loc:Translate Text.Panel.RunControl}"/>
                         <StackPanel Grid.Row="1" Spacing="10">
                             <Border Classes="runtime-display">
                                 <TextBlock Text="{Binding RunTimeDisplay}"

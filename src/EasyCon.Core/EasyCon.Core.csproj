@@ -1,8 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Nullable>warnings</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="EasyCon.Tests" />
+  </ItemGroup>
   <ItemGroup>
 	  <PackageReference Include="YamlDotNet" />
 

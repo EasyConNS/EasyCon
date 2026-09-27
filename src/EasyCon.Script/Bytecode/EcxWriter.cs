@@ -132,6 +132,8 @@ public static class EcxWriter
             case EcsTag.String:
                 {
                     var units = Encoding.Unicode.GetBytes(c.Str ?? "");
+                    if (units.Length / 2 > 0xFFFF)
+                        throw new BytecodeException(new[] { new BytecodeDiagnostic($"常量池字符串超过 65535 code units: {c.Str?[..64]}…", null, 0) });
                     w.Write((ushort)(units.Length / 2));
                     w.Write(units);
                     break;

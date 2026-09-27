@@ -9,7 +9,9 @@ namespace EasyCon2.Avalonia.Core.AlertConfig;
 public partial class AlertConfigViewModel : ObservableObject
 {
     private const int MaxVisibleItems = 5;
+    private const int DefaultTimeoutSeconds = 10;
     private List<AlertItemViewModel> _allViewModels = [];
+    private int _timeoutSeconds = DefaultTimeoutSeconds;
 
     [ObservableProperty]
     private ObservableCollection<AlertItemViewModel> visibleItems = [];
@@ -34,6 +36,7 @@ public partial class AlertConfigViewModel : ObservableObject
     public void Load()
     {
         var config = ConfigManager.LoadAlert();
+        _timeoutSeconds = config.timeout > 0 ? config.timeout : DefaultTimeoutSeconds;
         _allViewModels = [.. config.alerts.Select(CreateViewModel)];
         RefreshVisibleItems();
     }
@@ -49,7 +52,8 @@ public partial class AlertConfigViewModel : ObservableObject
 
         var config = new AlertConfigType
         {
-            timeout = 10,
+            // 保留用户已配置的 timeout：此前硬编码 10，每次保存都会覆盖掉原值
+            timeout = _timeoutSeconds,
             alerts = [.. _allViewModels.Select(vm => vm.ToAlertItem())]
         };
         ConfigManager.SaveAlert(config);

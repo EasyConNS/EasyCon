@@ -16,7 +16,7 @@ namespace EasyCon2.Avalonia.Core.AiAgent;
 ///       执行完毕后返回子 Agent 的最终回复。</item>
 /// </list>
 /// </summary>
-public class SkillExecutor
+internal class SkillExecutor
 {
     private readonly SkillRegistry _skills;
     private readonly ToolRegistry _tools;
@@ -109,7 +109,8 @@ public class SkillExecutor
             }
             catch (OperationCanceledException)
             {
-                return "[子Agent] 执行超时";
+                // 区分用户主动停止与超时：一律报「超时」会带偏模型的自我修正方向
+                return ct.IsCancellationRequested ? "[子Agent] 执行已停止" : "[子Agent] 执行超时";
             }
 
             if (!response.Success)
@@ -136,11 +137,14 @@ public class SkillExecutor
 
     /// <summary>
     /// 按 skill 的 <c>allowed_tools</c> 白名单过滤工具定义。
-    /// 白名单为空时允许全部工具。
+    /// 白名单为空时允许全部工具，但 <c>execute_skill</c> 一律排除：
+    /// 否则子 Agent 可再 fork 子 Agent，LLM 循环嵌套与开销无上界。
     /// </summary>
     private List<ToolDefinition> BuildSubAgentToolDefs(Skill skill)
     {
-        var allTools = _tools.ToToolDefinitions();
+        var allTools = _tools.ToToolDefinitions()
+            .Where(t => t.Function.Name != Tools.ExecuteSkillTool.ToolName)
+            .ToList();
         var allowed = skill.Manifest.AllowedTools;
         if (allowed is null || allowed.Count == 0)
             return allTools;

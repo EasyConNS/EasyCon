@@ -8,6 +8,12 @@ class ConsoleOutAdapter : IIoAdapter
 {
     private readonly AlertDispatcher _dispatcher = new(ConfigManager.LoadAlert());
 
+    public ConsoleOutAdapter()
+    {
+        // 只订阅一次：此前每次 Alert 都 += 且从不退订，结果按调用次数翻倍打印
+        _dispatcher.OnResult += (_, result) => Print(result);
+    }
+
     /// <summary>可选的滚动文件日志器，设置后控制台输出会同步写入文件。</summary>
     public ILogger? FileLogger { get; set; }
 
@@ -52,23 +58,26 @@ class ConsoleOutAdapter : IIoAdapter
         }
         ColorfulConsole.Write(message, color ?? Color.White);
         _msgNewLine = true;
-        FileLogger?.Information(message);
+        // 文件日志按严重度落盘（stdout 侧无严重度概念）
+        var level = color == Color.Red ? Serilog.Events.LogEventLevel.Error
+            : color == Color.Orange ? Serilog.Events.LogEventLevel.Warning
+            : Serilog.Events.LogEventLevel.Information;
+        FileLogger?.Write(level, message);
     }
 
     public void Alert(string message)
     {
-        Task.Run(async () =>
+        try
         {
-            try
-            {
-                _dispatcher.OnResult += (_, result) => Print(result);
-                await _dispatcher.DispatchAsync(message);
-            }
-            catch (Exception e)
-            {
-                Print($"推送失败:{e.Message}");
-            }
-        }).Wait();
+            // CLI 脚本线程同步等待推送完成；有界 30s，防止慢速 HTTP 长时间卡住脚本推进
+            var dispatch = _dispatcher.DispatchAsync(message);
+            if (!dispatch.Wait(TimeSpan.FromSeconds(30)))
+                Print("推送超时（30秒），已放弃等待");
+        }
+        catch (Exception e)
+        {
+            Print($"推送失败:{e.Message}");
+        }
     }
 
     public string ReadLine()
@@ -98,10 +107,18 @@ class ConsoleOutAdapter : IIoAdapter
     }
 }
 
-public static class ColorfulConsole
+internal static class ColorfulConsole
 {
-    public static void Write(string message, Color color)
+    private static bool AnsiEnabled => !Console.IsOutputRedirected && Environment.GetEnvironmentVariable("NO_COLOR") is null;
+
+    internal static void Write(string message, Color color)
     {
+        if (!AnsiEnabled)
+        {
+            // 重定向/NO_COLOR：剥离转义序列，保证 `ecs run x > log` 产物是纯文本
+            Console.Write(message);
+            return;
+        }
         var ac = AnsiColors.White;
         if (color == Color.Gray)
             ac = AnsiColors.Gray;
@@ -112,12 +129,11 @@ public static class ColorfulConsole
         else if (color == Color.Red)
             ac = AnsiColors.Red;
 
-
         Console.Write($"{ac}{message}{AnsiColors.Reset}");
     }
 }
 
-public static class AnsiColors
+internal static class AnsiColors
 {
     public const string Reset = "\u001b[0m";
     public const string White = Reset;

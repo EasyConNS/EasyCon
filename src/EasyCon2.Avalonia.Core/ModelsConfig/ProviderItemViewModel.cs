@@ -113,9 +113,9 @@ public partial class ProviderItemViewModel : ObservableObject
 
         try
         {
-            var client = new OpenAIChatClient(BaseUrl, ApiKey);
+            // using 保证中途抛异常时连接也被释放（此前 Dispose 在 try 内，失败即泄漏）
+            using var client = new OpenAIChatClient(BaseUrl, ApiKey);
             var ids = await client.ListModelsAsync();
-            client.Dispose();
 
             AvailableRemoteModels.Clear();
             foreach (var id in ids)

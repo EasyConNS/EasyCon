@@ -273,10 +273,23 @@ public sealed class EcxInterpreter
     public const int OK = 0;
     public const int YIELD = 1;
     public const int CANCELLED = 2;
-    public const int ERR_DIVZERO = 8;
-    public const int ERR_INDEX = 7;
+    // 错误码 ABI 与 native/ecs_vm.h 结果码枚举一致（VmHeaderContractTests 锁定头文件侧）
+    public const int ERR_IMAGE = 3;
+    public const int ERR_OPCODE = 4;
+    public const int ERR_SLOT = 5;
     public const int ERR_TYPE = 6;
+    public const int ERR_INDEX = 7;
+    public const int ERR_DIVZERO = 8;
+    public const int ERR_DEPTH = 9;
     public const int ERR_NOSUCHNATIVE = 10;
+    public const int ERR_HOST = 11;
+    public const int ERR_OOM = 12;
+    public const int ERR_IL = 13;
+    public const int ERR_FEAT = 14;
+
+    /// <summary>调用深度上限（与 C 侧 ECS_MAX_CALL_DEPTH 一致：深递归双端同样报 ERR_DEPTH，
+    /// 避免同一镜像在 MCU 报错而 PC 端 OOM 的对拍分裂）。</summary>
+    public const int MaxCallDepth = 512;
 
     EcxInterpreter(EcxImage image, EcxHost host)
     {
@@ -700,6 +713,8 @@ public sealed class EcxInterpreter
                         {
                             uint target = ext;
                             var callee = _image.Functions[(int)target];
+                            if (_frames.Count >= MaxCallDepth)
+                                throw new SimError(ERR_DEPTH, $"调用深度超过上限 {MaxCallDepth}");
                             var nf = RentFrame(callee.NSlots);
                             nf.Fn = callee;
                             nf.RetSlot = c == 255 ? -1 : c;   // C=255：无接收槽（结果未使用的调用）
@@ -712,6 +727,8 @@ public sealed class EcxInterpreter
                     case EcsOpcode.CallN:
                         {
                             uint target = ext;
+                            if (b > 8)
+                                throw new SimError(ERR_NOSUCHNATIVE, $"原生调用实参超过上限 8: {b}");   // 与 C 侧一致拒绝
                             var args = new TaggedValue[b];   // 实参按值快照：原生看不见帧槽
                             for (int i = 0; i < b; i++)
                                 args[i] = R[a + i];
@@ -769,6 +786,8 @@ public sealed class EcxInterpreter
             }
             catch (SimError e)
             {
+                if (e.Code == OK)
+                    return OK;   // Halt 正常停机：不留错误现场（与 C VM 对齐）
                 ErrorFunc = _image.Functions.IndexOf(frame.Fn);
                 ErrorPc = frame.Pc - 1;   // 取指后已自增，回退到失败指令下标（与 C VM 对齐）
                 return e.Code;
@@ -1055,7 +1074,7 @@ public sealed class EcxInterpreter
             case EcsOpcode.Halt:
                 throw new SimError(OK, "halt");
             default:
-                throw new SimError(4, $"未实现操作码 {op}");
+                throw new SimError(ERR_OPCODE, $"未实现操作码 {op}");
         }
         return false;
     }

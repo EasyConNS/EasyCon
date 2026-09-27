@@ -2,19 +2,13 @@
   <PropertyGroup>
     <OutputType>Library</OutputType>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="EasyCon2.Avalonia.Core.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Avalonia" />
-    <PackageReference Include="Avalonia.Desktop" />
-    <PackageReference Include="Avalonia.Themes.Fluent" />
-    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <!-- TerminalLine 的行宽缓存等 internal 成员由 App 侧控件（TerminalControl）访问 -->
+    <InternalsVisibleTo Include="EasyCon2.Avalonia" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,16 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.AvaloniaEdit" />
     <PackageReference Include="OmniSharp.Extensions.LanguageClient" />
     <PackageReference Include="ModelContextProtocol.Core" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Sinks.File" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <AvaloniaResource Include="VPad\Resources\*.png" />
-    <EmbeddedResource Include="Resources\Scripts\*.xshd" />
   </ItemGroup>
 
   </Project>

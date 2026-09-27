@@ -72,6 +72,14 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
     private static readonly List<string> direcKeywords = ["UP", "DOWN", "LEFT", "RIGHT",
         "DOWNLEFT", "DOWNRIGHT", "UPLEFT", "UPRIGHT"];
 
+    // ---- 词表导出（LSP 契约消费）：单一事实源，EasyCon.Lsp 的 Constants 从这里派生，
+    //      禁止在 LSP 侧手抄关键字/按键词表（历史上已发生 CALL/UNTIL/STRUCT 双向漂移） ----
+    internal static IEnumerable<string> KeywordNames => keywords.Keys;
+    internal static IEnumerable<string> LogicWordNames => logicwords.Keys;
+    internal static IReadOnlyList<string> GamepadKeywordNames => gamepadKeywords;
+    internal static IReadOnlyList<string> StickKeywordNames => stickKeywords;
+    internal static IReadOnlyList<string> DirectionKeywordNames => direcKeywords;
+
     public ImmutableArray<Token> Tokenize()
     {
         _tokens.Clear();

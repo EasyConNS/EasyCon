@@ -12,7 +12,7 @@ namespace EasyCon.Script.Bytecode;
 /// 指令扫描全部经 <see cref="InstructionScanner"/>（EXT 步进由 EcsFormat 表驱动）；
 /// 模块编码（SsaProgram → ModuleArtifact）见 <see cref="EcxModuleEncoder"/>。
 /// </summary>
-public static class EcxPipeline
+internal static class EcxPipeline
 {
     // ============ 阶段二：链接模块产物 → EcxImage（docs/EcmEcxFormat.md §4.1 重写矩阵）============
 

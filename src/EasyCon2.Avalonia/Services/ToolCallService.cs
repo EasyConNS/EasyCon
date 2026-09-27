@@ -2,6 +2,7 @@
 using EasyCon.Capture;
 using EasyCon2.Avalonia.Core.Services;
 using OpenCvSharp;
+using System.Collections.Concurrent;
 using System.Text;
 
 namespace EasyCon2.Avalonia.Services;
@@ -14,7 +15,7 @@ public class ToolCallService : IToolCallService
 {
     private readonly IScriptService _scriptService;
     private readonly ICaptureService _captureService;
-    private readonly Queue<string> _logBuffer;
+    private readonly ConcurrentQueue<string> _logBuffer;
     private readonly Func<string?> _getProjectDirectoryPath;
     private readonly Func<string> _getEditorText;
     private readonly Action<string> _setEditorText;
@@ -25,7 +26,7 @@ public class ToolCallService : IToolCallService
     public ToolCallService(
         IScriptService scriptService,
         ICaptureService captureService,
-        Queue<string> logBuffer,
+        ConcurrentQueue<string> logBuffer,
         Func<string?> getProjectDirectoryPath,
         Func<string> getEditorText,
         Action<string> setEditorText,
@@ -50,6 +51,8 @@ public class ToolCallService : IToolCallService
 
     public void WriteScriptContent(string content, bool append)
     {
+        // 读-改-写整体在 UI 线程内完成，避免与用户编辑交错导致丢更新；
+        // 调用方（编排器线程池线程）阻塞等待 UI 线程执行，UI 本身不阻塞。
         Dispatcher.UIThread.Invoke(() =>
         {
             if (append && !string.IsNullOrEmpty(_getEditorText()))
@@ -61,23 +64,26 @@ public class ToolCallService : IToolCallService
 
     public int EditScriptContent(string oldString, string newString, int count)
     {
-        var current = _getEditorText() ?? string.Empty;
         if (string.IsNullOrEmpty(oldString))
             return -1;
 
-        if (!current.Contains(oldString, StringComparison.Ordinal))
-            return -1;
+        return Dispatcher.UIThread.Invoke(() =>
+        {
+            var current = _getEditorText() ?? string.Empty;
+            if (!current.Contains(oldString, StringComparison.Ordinal))
+                return -1;
 
-        var replaced = 0;
-        var result = count <= 0
-            ? current.Replace(oldString, newString, StringComparison.Ordinal)
-            : ReplaceLimited(current, oldString, newString, count, out replaced);
+            var replaced = 0;
+            var result = count <= 0
+                ? current.Replace(oldString, newString, StringComparison.Ordinal)
+                : ReplaceLimited(current, oldString, newString, count, out replaced);
 
-        if (count <= 0)
-            replaced = current.Split([oldString], StringSplitOptions.None).Length - 1;
+            if (count <= 0)
+                replaced = current.Split([oldString], StringSplitOptions.None).Length - 1;
 
-        Dispatcher.UIThread.Invoke(() => _setEditorText(result));
-        return replaced;
+            _setEditorText(result);
+            return replaced;
+        });
     }
 
     private static string ReplaceLimited(string source, string oldStr, string newStr, int maxCount, out int replaced)

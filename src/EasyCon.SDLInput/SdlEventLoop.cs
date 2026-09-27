@@ -13,6 +13,12 @@ public sealed class SdlEventLoop : IDisposable
     public event Action<SDL_GamepadAxisEvent>? GamepadAxisEvent;
     public event Action<SDL_GamepadDeviceEvent>? GamepadDeviceEvent;
 
+    /// <summary>
+    /// 事件处理器抛出的异常经此上报（宿主接到日志）；后台线程上的未处理异常
+    /// 会直接终止整个进程，因此 Dispatch 内必须兜住。未设置时静默忽略。
+    /// </summary>
+    public static Action<Exception>? HandlerException { get; set; }
+
     public void Start()
     {
         lock (_lock)
@@ -26,21 +32,33 @@ public sealed class SdlEventLoop : IDisposable
 
     public void Stop()
     {
+        bool wasRunning;
         lock (_lock)
         {
-            if (!_running) return;
+            wasRunning = _running;
             _running = false;
         }
-        _thread?.Join();
+        if (!wasRunning) return;
+
+        // 有界等待：正常 1ms 轮询循环瞬间退出；若 SDL_PollEvent 卡死，
+        // 不能让窗口关闭路径（UI 线程）无限冻结。线程为 IsBackground，残留无害。
+        _thread?.Join(TimeSpan.FromSeconds(2));
         _thread = null;
     }
 
     private void Run()
     {
-        SDL3.SDL_Init(SDL_InitFlags.SDL_INIT_VIDEO | SDL_InitFlags.SDL_INIT_GAMEPAD);
-
+        // SDL_Init 在 try 内并检查返回值：原生库缺失/初始化失败时上报而非
+        // 让 DllNotFoundException 变成进程级未处理异常，或失败后静默空转
         try
         {
+            if (!SDL3.SDL_Init(SDL_InitFlags.SDL_INIT_VIDEO | SDL_InitFlags.SDL_INIT_GAMEPAD))
+            {
+                HandlerException?.Invoke(new InvalidOperationException(
+                    $"SDL_Init 失败: {SDL3.SDL_GetError()}"));
+                return;
+            }
+
             while (_running)
             {
                 PollEvents();
@@ -68,19 +86,31 @@ public sealed class SdlEventLoop : IDisposable
         if (t == (uint)SDL_EventType.SDL_EVENT_KEY_DOWN || t == (uint)SDL_EventType.SDL_EVENT_KEY_UP)
         {
             if (!ev.key.repeat)
-                KeyEvent?.Invoke(ev.key);
+                SafeInvoke(KeyEvent, ev.key);
         }
         else if (t == (uint)SDL_EventType.SDL_EVENT_GAMEPAD_BUTTON_DOWN || t == (uint)SDL_EventType.SDL_EVENT_GAMEPAD_BUTTON_UP)
         {
-            GamepadButtonEvent?.Invoke(ev.gbutton);
+            SafeInvoke(GamepadButtonEvent, ev.gbutton);
         }
         else if (t == (uint)SDL_EventType.SDL_EVENT_GAMEPAD_AXIS_MOTION)
         {
-            GamepadAxisEvent?.Invoke(ev.gaxis);
+            SafeInvoke(GamepadAxisEvent, ev.gaxis);
         }
         else if (t == (uint)SDL_EventType.SDL_EVENT_GAMEPAD_ADDED || t == (uint)SDL_EventType.SDL_EVENT_GAMEPAD_REMOVED)
         {
-            GamepadDeviceEvent?.Invoke(ev.gdevice);
+            SafeInvoke(GamepadDeviceEvent, ev.gdevice);
+        }
+    }
+
+    private static void SafeInvoke<T>(Action<T>? handlers, T arg)
+    {
+        try
+        {
+            handlers?.Invoke(arg);
+        }
+        catch (Exception ex)
+        {
+            HandlerException?.Invoke(ex);
         }
     }
 

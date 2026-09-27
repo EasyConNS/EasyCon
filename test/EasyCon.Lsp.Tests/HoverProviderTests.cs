@@ -8,7 +8,7 @@ namespace EasyCon.Lsp.Tests;
 [TestFixture]
 public class HoverProviderTests
 {
-    private static CompicationUnit ParseRoot(string source)
+    private static CompilationUnit ParseRoot(string source)
     {
         return SyntaxTree.Parse(source).Root;
     }

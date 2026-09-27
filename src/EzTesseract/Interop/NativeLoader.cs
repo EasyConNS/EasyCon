@@ -35,19 +35,31 @@ internal static class NativeLoader
         if (!Candidates.TryGetValue(libraryName, out var names))
             return IntPtr.Zero;
 
+        // 聚合各候选的失败原因：全部失败时抛出可诊断的 DllNotFoundException，
+        // 而不是留到首个 P/Invoke 处抛一个「文件在但依赖缺失」与「文件不存在」无法区分的黑盒
+        var failures = new List<string>();
         foreach (var name in names)
         {
             // 1. 应用目录及子目录下按真实文件名查找
-            var handle = TryLoadFromAppPaths(name, assembly, searchPath);
+            var handle = TryLoadFromAppPaths(name, assembly, searchPath, failures);
             if (handle != IntPtr.Zero) return handle;
             // 2. 系统兜底（自动处理 lib 前缀与版本号后缀）
-            try { handle = NativeLibrary.Load(name, assembly, searchPath); } catch { }
+            try
+            {
+                handle = NativeLibrary.Load(name, assembly, searchPath);
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"{name}: {ex.Message}");
+            }
             if (handle != IntPtr.Zero) return handle;
         }
-        return IntPtr.Zero;
+        throw new DllNotFoundException(
+            $"原生库 {libraryName} 全部候选加载失败（{(OperatingSystem.IsWindows() ? "请确认 tesseract/leptonica DLL 位于输出目录" : "请安装 tesseract/leptonica 系统库")}）：" +
+            string.Join("; ", failures));
     }
 
-    private static IntPtr TryLoadFromAppPaths(string fileName, Assembly assembly, DllImportSearchPath? searchPath)
+    private static IntPtr TryLoadFromAppPaths(string fileName, Assembly assembly, DllImportSearchPath? searchPath, List<string> failures)
     {
         var baseDir = AppContext.BaseDirectory;
         // 候选目录：输出目录、runtimes/<rid>/native、tools 内置库
@@ -65,14 +77,16 @@ internal static class NativeLoader
             var path = Path.Combine(dir, fileName);
             if (File.Exists(path))
             {
-                try { return NativeLibrary.Load(path, assembly, searchPath); } catch { }
+                try { return NativeLibrary.Load(path, assembly, searchPath); }
+                catch (Exception ex) { failures.Add($"{path}: {ex.Message}"); }
             }
             // Linux 下 soname 链：libtesseract.so.5 可能只存在 libtesseract.so.5.0.5，补充探测带版本号文件
             if (!OperatingSystem.IsWindows())
             {
                 foreach (var found in GlobSamePrefix(dir, fileName))
                 {
-                    try { return NativeLibrary.Load(found, assembly, searchPath); } catch { }
+                    try { return NativeLibrary.Load(found, assembly, searchPath); }
+                    catch (Exception ex) { failures.Add($"{found}: {ex.Message}"); }
                 }
             }
         }

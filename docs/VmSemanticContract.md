@@ -24,7 +24,7 @@
 | S-13 | Amiibo：n>9 静默忽略 | case Amiibo | OP_Amiibo | corpus |
 | S-14 | FWRITE 行断协议：`\` 结尾剥掉并挂起下一行换行（pending_break）；句柄 0 写=no-op 返 len；2=print(newline)；>2→f_write | 宿主 `IIoAdapter` + `EcxNativeContext` | FWRITE native + `pending_break` | CvmCrossValidationTests（事件 TSV） |
 | S-15 | Slice/索引越界不 clamp → `ECS_ERR_INDEX` | case Slice | OP_Slice | corpus |
-| S-16 | 结构体字段三种类（Scalar/FixedArray/Nested）；Boxed 访问→`ECS_ERR_TYPE`；PutF 写 BYTE 截断 `&0xFF`；嵌套 GetF 视图写穿透 | `WriteStructSlot` / GetF case | OP_GetF/PutF + `sync_view` | CowSemanticsTests、corpus |
+| S-16 | 结构体字段三种类（Scalar/FixedArray/Nested）；Boxed 访问→`ECS_ERR_TYPE`；PutF 写仅对 BOOL 归一（BYTE 截断在读侧：GetF/GetFI 读时 `&0xFF`）；嵌套 GetF 视图写穿透 | `WriteStructSlot` / GetF case | OP_GetF/PutF + `sync_view` | CowSemanticsTests、corpus |
 | S-17 | 调用约定：实参深拷贝进新帧槽 0..n-1；返回值深拷贝到接收槽 C≠255；深度上限 512→`ECS_ERR_DEPTH` | case Call/CallN/Ret | OP_Call/CallN/Ret + `push_frame` | InterpreterHeapRefcountTests、CvmCrossValidationTests |
 | S-18 | 停机协议：入口返回→OK；取消→CANCELLED；预算→YIELD 可续跑 | `EcxInterpreter.Step` | `ecs_vm_run` 返回码 | InterpreterProtocolTests |
 | S-19 | 引用计数协议（见第二节） | 见下 | 见下 | InterpreterHeapRefcountTests（HeapCountsConsistent） |

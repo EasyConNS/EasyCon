@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:EasyCon2.Avalonia.Markup"
              xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
              x:Class="EasyCon2.Avalonia.Views.Shared.UserConfigPage"
              x:DataType="vm:MainWindowViewModel"
@@ -12,7 +13,7 @@
             <Border Classes="settings-card">
                 <StackPanel Spacing="12">
                     <TextBlock Classes="card-title"
-                               Text="关于"/>
+                               Text="{loc:Translate Text.Config.About}"/>
                     <Grid ColumnDefinitions="*,Auto,Auto">
                         <TextBlock Text="{Binding CurrentVersion}"
                                    TextTrimming="CharacterEllipsis"
@@ -74,8 +75,8 @@
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
                         <ComboBox Grid.Column="1"
-                                  ItemsSource="{Binding CaptureTypeOptions}"
-                                  SelectedItem="{Binding SelectedCaptureType}"
+                                  ItemsSource="{Binding Capture.CaptureTypeOptions}"
+                                  SelectedItem="{Binding Capture.SelectedCaptureType}"
                                   HorizontalAlignment="Stretch"/>
                         <Button Grid.Column="2"
                                 Classes="tool-button"
@@ -85,7 +86,7 @@
 
                     <Grid Classes="settings-row"
                           ColumnDefinitions="*,Auto">
-                        <TextBlock Text="推送设置"
+                        <TextBlock Text="{loc:Translate Text.Config.PushSettings}"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
                         <Button Grid.Column="1"
@@ -96,7 +97,7 @@
 
                     <Grid Classes="settings-row"
                           ColumnDefinitions="*,Auto">
-                        <TextBlock Text="模型设置"
+                        <TextBlock Text="{loc:Translate Text.Config.Models}"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
                         <Button Grid.Column="1"
@@ -107,7 +108,7 @@
 
                     <Grid Classes="settings-row"
                           ColumnDefinitions="*,Auto">
-                        <TextBlock Text="MCP 服务器"
+                        <TextBlock Text="{loc:Translate Text.Config.McpServers}"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
                         <Button Grid.Column="1"
@@ -118,7 +119,7 @@
 
                     <Grid Classes="settings-row"
                           ColumnDefinitions="*,Auto">
-                        <TextBlock Text="代码自动补全"
+                        <TextBlock Text="{loc:Translate Text.Config.AutoComplete}"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
                         <ToggleSwitch Grid.Column="1"
@@ -129,7 +130,7 @@
 
                     <Grid Classes="settings-row"
                           ColumnDefinitions="*,Auto">
-                        <TextBlock Text="显示代码折叠"
+                        <TextBlock Text="{loc:Translate Text.Config.ShowFolding}"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
                         <ToggleSwitch Grid.Column="1"
@@ -155,16 +156,27 @@
             <Border Classes="settings-card">
                 <StackPanel Spacing="14">
                     <TextBlock Classes="card-title"
-                               Text="外观样式"/>
+                               Text="{loc:Translate Text.Config.AppearanceStyle}"/>
 
                     <Grid Classes="settings-row"
                           ColumnDefinitions="110,*,Auto">
-                        <TextBlock Text="欢迎词"
+                        <TextBlock Text="{loc:Translate Text.Config.Language}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1"
+                                  ItemsSource="{Binding LanguageOptions}"
+                                  SelectedItem="{Binding SelectedLanguageCode}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
+
+                    <Grid Classes="settings-row"
+                          ColumnDefinitions="110,*,Auto">
+                        <TextBlock Text="{loc:Translate Text.Config.WelcomeWord}"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
                         <TextBox Grid.Column="1"
                                  Text="{Binding WelcomeText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 PlaceholderText="欢迎使用 easycon"
+                                 PlaceholderText="{loc:Translate Text.Config.WelcomeTitle}"
                                  HorizontalAlignment="Stretch"/>
                         <Button Grid.Column="2"
                                 Classes="tool-button"
@@ -184,7 +196,7 @@
                             <Border Classes="theme-preview classic">
                                 <StackPanel Spacing="8">
                                     <Border Classes="theme-strip"/>
-                                    <TextBlock Text="默认"
+                                    <TextBlock Text="{loc:Translate Text.Config.ClassicStyle}"
                                                FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Border>
@@ -196,7 +208,7 @@
                             <Border Classes="theme-preview rounded">
                                 <StackPanel Spacing="8">
                                     <Border Classes="theme-strip"/>
-                                    <TextBlock Text="卡片"
+                                    <TextBlock Text="{loc:Translate Text.Config.CardStyle}"
                                                FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Border>
@@ -205,11 +217,11 @@
 
                     <Grid ColumnDefinitions="*,Auto,Auto"
                           ColumnSpacing="10">
-                        <TextBlock Classes="setting-caption" Text="外观"
+                        <TextBlock Classes="setting-caption" Text="{loc:Translate Text.Config.Appearance}"
                                    VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1"
                                    Classes="setting-caption"
-                                   Text="跟随系统自动切换"
+                                   Text="{loc:Translate Text.Config.AutoSwitchScheme}"
                                    TextTrimming="CharacterEllipsis"
                                    VerticalAlignment="Center"/>
                         <ToggleSwitch Grid.Column="2"
@@ -229,7 +241,7 @@
                             <Border Classes="theme-preview white">
                                 <StackPanel Spacing="8">
                                     <Border Classes="theme-strip"/>
-                                    <TextBlock Text="浅色"
+                                    <TextBlock Text="{loc:Translate Text.Config.LightScheme}"
                                                FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Border>
@@ -241,7 +253,7 @@
                             <Border Classes="theme-preview light">
                                 <StackPanel Spacing="8">
                                     <Border Classes="theme-strip"/>
-                                    <TextBlock Text="暖色"
+                                    <TextBlock Text="{loc:Translate Text.Config.WarmScheme}"
                                                FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Border>
@@ -253,7 +265,7 @@
                             <Border Classes="theme-preview dark">
                                 <StackPanel Spacing="8">
                                     <Border Classes="theme-strip"/>
-                                    <TextBlock Text="深色"
+                                    <TextBlock Text="{loc:Translate Text.Config.DarkScheme}"
                                                FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Border>
@@ -264,11 +276,11 @@
                         <StackPanel Spacing="12">
                             <Grid ColumnDefinitions="*,Auto,Auto"
                                   ColumnSpacing="10">
-                                <TextBlock Text="窗口栏"
+                                <TextBlock Text="{loc:Translate Text.Config.WindowBar}"
                                            FontWeight="SemiBold"
                                            VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
-                                           Text="视运行状态自动切换布局"
+                                           Text="{loc:Translate Text.Config.AutoSwitchLayout}"
                                            TextTrimming="CharacterEllipsis"
                                            VerticalAlignment="Center"/>
                                 <ToggleSwitch Grid.Column="2"
@@ -280,7 +292,7 @@
                             <StackPanel IsEnabled="{Binding AutoSwitchLayoutEnabled}"
                                         Spacing="12">
                                 <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Text="自定义布局区域"
+                                    <TextBlock Text="{loc:Translate Text.Config.CustomLayout}"
                                                VerticalAlignment="Center"/>
                                     <Button Grid.Column="1"
                                             Classes="tool-button"
@@ -289,7 +301,7 @@
                                 </Grid>
 
                                 <TextBlock Classes="setting-caption"
-                                           Text="未运行时预览"/>
+                                           Text="{loc:Translate Text.Config.IdlePreview}"/>
                                 <Grid ColumnDefinitions="*,*"
                                       ColumnSpacing="10">
                                     <RadioButton Classes="layout-option"
@@ -299,13 +311,13 @@
                                             <Grid ColumnDefinitions="0.7*,1.9*,0.8*"
                                                   ColumnSpacing="4">
                                                 <Border Classes="layout-cell tree-cell">
-                                                    <TextBlock Text="工作树"
+                                                    <TextBlock Text="{loc:Translate Text.Config.WorkTree}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"/>
                                                 </Border>
                                                 <Border Grid.Column="1"
                                                         Classes="layout-cell editor-cell">
-                                                    <TextBlock Text="编辑区"
+                                                    <TextBlock Text="{loc:Translate Text.Config.EditorArea}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"/>
                                                 </Border>
@@ -313,13 +325,13 @@
                                                       RowDefinitions="*,*"
                                                       RowSpacing="4">
                                                     <Border Classes="layout-cell video-cell">
-                                                        <TextBlock Text="视频源"
+                                                        <TextBlock Text="{loc:Translate Text.Config.Capture}"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Center"/>
                                                     </Border>
                                                     <Border Grid.Row="1"
                                                             Classes="layout-cell output-cell">
-                                                        <TextBlock Text="输出区"
+                                                        <TextBlock Text="{loc:Translate Text.Config.OutputArea}"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Center"/>
                                                     </Border>
@@ -336,13 +348,13 @@
                                             <Grid ColumnDefinitions="0.7*,2.6*"
                                                   ColumnSpacing="4">
                                                 <Border Classes="layout-cell tree-cell">
-                                                    <TextBlock Text="工作树"
+                                                    <TextBlock Text="{loc:Translate Text.Config.WorkTree}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"/>
                                                 </Border>
                                                 <Border Grid.Column="1"
                                                         Classes="layout-cell editor-cell">
-                                                    <TextBlock Text="编辑区"
+                                                    <TextBlock Text="{loc:Translate Text.Config.EditorArea}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"/>
                                                 </Border>
@@ -352,7 +364,7 @@
                                 </Grid>
 
                                 <TextBlock Classes="setting-caption"
-                                           Text="运行时预览"/>
+                                           Text="{loc:Translate Text.Config.RunningPreview}"/>
                                 <Grid ColumnDefinitions="*,*,*"
                                       ColumnSpacing="10">
                                     <RadioButton Classes="layout-option"
@@ -362,13 +374,13 @@
                                             <Grid ColumnDefinitions="0.7*,1.9*,0.8*"
                                                   ColumnSpacing="4">
                                                 <Border Classes="layout-cell tree-cell">
-                                                    <TextBlock Text="工作树"
+                                                    <TextBlock Text="{loc:Translate Text.Config.WorkTree}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"/>
                                                 </Border>
                                                 <Border Grid.Column="1"
                                                         Classes="layout-cell editor-cell">
-                                                    <TextBlock Text="编辑区"
+                                                    <TextBlock Text="{loc:Translate Text.Config.EditorArea}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"/>
                                                 </Border>
@@ -376,13 +388,13 @@
                                                       RowDefinitions="*,*"
                                                       RowSpacing="4">
                                                     <Border Classes="layout-cell video-cell">
-                                                        <TextBlock Text="视频源"
+                                                        <TextBlock Text="{loc:Translate Text.Config.Capture}"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Center"/>
                                                     </Border>
                                                     <Border Grid.Row="1"
                                                             Classes="layout-cell output-cell">
-                                                        <TextBlock Text="输出区"
+                                                        <TextBlock Text="{loc:Translate Text.Config.OutputArea}"
                                                                    HorizontalAlignment="Center"
                                                                    VerticalAlignment="Center"/>
                                                     </Border>
@@ -399,13 +411,13 @@
                                             <Grid ColumnDefinitions="*,*"
                                                   ColumnSpacing="4">
                                                 <Border Classes="layout-cell video-cell">
-                                                    <TextBlock Text="视频源"
+                                                    <TextBlock Text="{loc:Translate Text.Config.Capture}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"/>
                                                 </Border>
                                                 <Border Grid.Column="1"
                                                         Classes="layout-cell output-cell">
-                                                    <TextBlock Text="输出区"
+                                                    <TextBlock Text="{loc:Translate Text.Config.OutputArea}"
                                                                HorizontalAlignment="Center"
                                                                VerticalAlignment="Center"/>
                                                 </Border>
@@ -419,7 +431,7 @@
                                                  IsChecked="{Binding IsRunningOneColumnLayoutSelected}">
                                         <Border Classes="layout-preview">
                                             <Border Classes="layout-cell output-cell">
-                                                <TextBlock Text="输出区"
+                                                <TextBlock Text="{loc:Translate Text.Config.OutputArea}"
                                                            HorizontalAlignment="Center"
                                                            VerticalAlignment="Center"/>
                                             </Border>

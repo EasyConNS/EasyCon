@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon2.Avalonia.Models;
@@ -26,6 +27,8 @@ public partial class FileTreeViewModel : ViewModelBase
 
     private readonly HashSet<string> _expandedDirs = [];
     private string? _normalDirectoryPath;
+    // 目录加载代数：快速连续切换目录时，过期加载的结果不得覆盖最新一次
+    private int _loadGeneration;
 
     public event Action<string>? FileActivated;
     public event Action? OpenProjectRequested;
@@ -64,21 +67,48 @@ public partial class FileTreeViewModel : ViewModelBase
             return;
         }
 
-        try
+        // 目录枚举（递归 3 层）在大目录上耗时数百毫秒，放线程池执行；
+        // 构建的是尚未挂入任何可观察集合的普通对象树，离线安全
+        var loadId = ++_loadGeneration;
+        _ = LoadRootInBackgroundAsync(directoryPath, loadId);
+    }
+
+    private async Task LoadRootInBackgroundAsync(string directoryPath, int loadId)
+    {
+        var root = await Task.Run(() => TryBuildRoot(directoryPath));
+        Dispatcher.UIThread.Post(() =>
         {
-            var dirInfo = new DirectoryInfo(directoryPath);
-            var root = new FileTreeItem(dirInfo.Name, directoryPath, true);
-            LoadChildren(root, depth: 0, maxDepth: 3);
+            if (loadId != _loadGeneration)
+                return;
+
+            if (root == null)
+            {
+                HasLoadedDirectory = false;
+                return;
+            }
+
             RootItems.Add(root);
 
             // 根目录默认展开
             _expandedDirs.Add(root.FullPath);
             RebuildFlatList();
             HasLoadedDirectory = true;
+        });
+    }
+
+    /// <summary>在工作线程上构建根节点树；失败返回 null。只做枚举，不触碰可观察状态。</summary>
+    private static FileTreeItem? TryBuildRoot(string directoryPath)
+    {
+        try
+        {
+            var dirInfo = new DirectoryInfo(directoryPath);
+            var root = new FileTreeItem(dirInfo.Name, directoryPath, true);
+            LoadChildren(root, depth: 0, maxDepth: 3);
+            return root;
         }
         catch
         {
-            HasLoadedDirectory = false;
+            return null;
         }
     }
 
@@ -409,21 +439,39 @@ public partial class FileTreeViewModel : ViewModelBase
             return;
         }
 
-        var dirInfo = new DirectoryInfo(rootPath);
-        var root = new FileTreeItem(dirInfo.Name, rootPath, true);
-        LoadChildren(root, depth: 0, maxDepth: 3);
-        RootItems.Add(root);
+        // 枚举放后台（同 LoadDirectoryCore），完成后回 UI 线程恢复展开/选中状态
+        var loadId = ++_loadGeneration;
+        _ = ReloadRootInBackgroundAsync(rootPath, expandedDirs, selectedPath, loadId);
+    }
 
-        _expandedDirs.Clear();
-        foreach (var directory in expandedDirs)
+    private async Task ReloadRootInBackgroundAsync(string rootPath, HashSet<string> expandedDirs, string? selectedPath, int loadId)
+    {
+        var root = await Task.Run(() => TryBuildRoot(rootPath));
+        Dispatcher.UIThread.Post(() =>
         {
-            if (IsPathInsideDirectory(directory, rootPath))
-                _expandedDirs.Add(directory);
-        }
+            if (loadId != _loadGeneration)
+                return;
 
-        _expandedDirs.Add(root.FullPath);
-        HasLoadedDirectory = true;
-        RebuildFlatList(selectedPath);
+            if (root == null)
+            {
+                HasLoadedDirectory = false;
+                AreAllDirectoriesExpanded = false;
+                return;
+            }
+
+            RootItems.Add(root);
+
+            _expandedDirs.Clear();
+            foreach (var directory in expandedDirs)
+            {
+                if (IsPathInsideDirectory(directory, rootPath))
+                    _expandedDirs.Add(directory);
+            }
+
+            _expandedDirs.Add(root.FullPath);
+            HasLoadedDirectory = true;
+            RebuildFlatList(selectedPath);
+        });
     }
 
     private static string GetUniquePath(string directoryPath, string baseName, string extension)

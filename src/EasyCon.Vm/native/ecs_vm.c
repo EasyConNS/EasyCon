@@ -175,13 +175,16 @@ static int32_t heap_alloc_slot(ecs_vm *vm)
     if (vm->objs_count >= vm->objs_cap)
     {
         int32_t cap = vm->objs_cap ? vm->objs_cap * 2 : 64;
+        /* 先扩空闲表再扩对象表：realloc 成功后旧块即失效，任一步失败时已接管
+           的指针必须保持自洽（free_list 偏大无害——push 上界由 objs_count 决定），
+           不能 free 新块留下悬垂的 vm->objs */
+        int32_t *grown_free = (int32_t *)realloc(vm->free_list, (size_t)cap * sizeof(int32_t));
+        if (!grown_free) return -1;
+        vm->free_list = grown_free;
+        vm->free_cap = cap;
         ecs_obj **grown = (ecs_obj **)realloc(vm->objs, (size_t)cap * sizeof(ecs_obj *));
         if (!grown) return -1;
         vm->objs = grown;
-        int32_t *grown_free = (int32_t *)realloc(vm->free_list, (size_t)cap * sizeof(int32_t));
-        if (!grown_free) { free(grown); return -1; }
-        vm->free_list = grown_free;
-        vm->free_cap = cap;
         vm->objs_cap = cap;
     }
     int32_t h = vm->objs_count++;
@@ -638,6 +641,163 @@ static int32_t expand_struct_slots(ecs_structdef *defs, int32_t sid, uint8_t *vi
     return total;
 }
 
+static int32_t sign16(uint32_t v);
+static int32_t sign24(uint32_t v);
+
+/* ============================================================
+ * §4.4.1 加载期指令流静态抽查（EcmEcxFormat §2.3）
+ * 操作码合法、槽位操作数 < 函数 nslots、常量/全局/结构/原生索引在界内、
+ * Jmp/Jpt/Jpf 目标落在函数体内、EXT 数据字存在且 ext 槽在界内。
+ * 损坏/手写镜像在此拒绝，不再依赖执行期逐条（且不完整的）检查。
+ */
+static int validate_code(ecs_vm *vm)
+{
+#define V_SLOT(x) do { if ((x) >= fn->nslots) return ECS_ERR_SLOT; } while (0)
+#define V_EXT() do { if (pc >= fn->words) return ECS_ERR_OPCODE; pc++; } while (0)
+    for (int32_t f = 0; f < vm->nfuncs; f++)
+    {
+        const ecs_funcdef *fn = &vm->funcs[f];
+        uint32_t pc = 0;
+        while (pc < fn->words)
+        {
+            uint32_t ins = fn->code[pc++];
+            uint32_t op = ins & 0xFF;
+            int32_t a = (int32_t)((ins >> 8) & 0xFF);
+            int32_t b = (int32_t)((ins >> 16) & 0xFF);
+            int32_t c = (int32_t)((ins >> 24) & 0xFF);
+            if (op > OP_Rand) return ECS_ERR_OPCODE;
+#ifdef ECS_VALIDATE_DEBUG
+            fprintf(stderr, "V f=%d pc=%u op=%u a=%d b=%d c=%d nslots=%d\n", f, pc - 1, op, a, b, c, fn->nslots);
+#endif
+            switch (op)
+            {
+                /* 无槽位操作数 */
+                case OP_Nop: case OP_Halt: case OP_Img: case OP_Ret0:
+                case OP_WaitI: case OP_KeyI: case OP_KeySt: case OP_StickSet:
+                    break;
+                /* 仅 a 为目的槽 */
+                case OP_LoadI: case OP_LoadBool: case OP_NewArrE: case OP_WaitV:
+                    V_SLOT(a);
+                    break;
+                case OP_LoadK:
+                    V_SLOT(a);
+                    if ((int32_t)(b | (c << 8)) >= vm->nconsts) return ECS_ERR_SLOT;
+                    break;
+                case OP_LoadG:
+                    V_SLOT(a);
+                    if ((int32_t)(b | (c << 8)) >= vm->nglobals) return ECS_ERR_SLOT;
+                    break;
+                case OP_StoreG:
+                    V_SLOT(a);
+                    if ((int32_t)(b | (c << 8)) >= vm->nglobals) return ECS_ERR_SLOT;
+                    break;
+                /* a + b 双槽 */
+                case OP_Move: case OP_SetVar: case OP_BnotI: case OP_Not:
+                case OP_NegI: case OP_NegD: case OP_Conv: case OP_Len:
+                case OP_Rand:
+                    V_SLOT(a); V_SLOT(b);
+                    break;
+                /* a=按键码(非槽位) + b 目标槽 */
+                case OP_KeyV:
+                    V_SLOT(b);
+                    break;
+                /* a + b + c 三槽（算术/比较/容器） */
+                case OP_AddI: case OP_SubI: case OP_MulI: case OP_DivI: case OP_ModI:
+                case OP_RDivI:
+                case OP_AddU: case OP_SubU: case OP_MulU: case OP_DivU: case OP_ModU:
+                case OP_AddL: case OP_SubL: case OP_MulL: case OP_DivL: case OP_ModL:
+                case OP_AddD: case OP_SubD: case OP_MulD: case OP_DivD:
+                case OP_BandI: case OP_BorI: case OP_BxorI: case OP_ShlI: case OP_ShrI:
+                case OP_EqI: case OP_LtI: case OP_LeI: case OP_GtI: case OP_GeI:
+                case OP_EqU: case OP_LtU: case OP_LeU: case OP_GtU: case OP_GeU:
+                case OP_EqD: case OP_LtD: case OP_LeD: case OP_GtD: case OP_GeD:
+                case OP_EqL: case OP_LtL: case OP_LeL: case OP_GtL: case OP_GeL:
+                case OP_EqS: case OP_EqP:
+                case OP_GetI: case OP_SetI: case OP_Cont: case OP_Append:
+                case OP_Cat: case OP_GetF: case OP_PutF:
+                    V_SLOT(a); V_SLOT(b); V_SLOT(c);
+                    break;
+                case OP_Jmp:
+                {
+                    int32_t t = (int32_t)pc + sign24(ins >> 8);
+                    if (t < 0 || (uint32_t)t > fn->words) return ECS_ERR_OPCODE;
+                    break;
+                }
+                case OP_Jpt: case OP_Jpf:
+                {
+                    V_SLOT(a);
+                    int32_t t = (int32_t)pc + sign16(ins >> 16);
+                    if (t < 0 || (uint32_t)t > fn->words) return ECS_ERR_OPCODE;
+                    break;
+                }
+                case OP_Call:
+                {
+                    V_SLOT(a);
+                    if (a + b > fn->nslots) return ECS_ERR_SLOT;
+                    if (c != ECS_RECEIVE_NONE) V_SLOT(c);
+                    V_EXT();
+                    uint32_t target = fn->code[pc - 1];
+                    if ((target & ECS_IMPORT_FLAG) != 0 || target >= (uint32_t)vm->nfuncs)
+                        return ECS_ERR_OPCODE;
+                    break;
+                }
+                case OP_CallN:
+                {
+                    if (b > 8) return ECS_ERR_NOSUCHNATIVE;
+                    V_SLOT(a);
+                    if (a + b > fn->nslots) return ECS_ERR_SLOT;
+                    if (c != ECS_RECEIVE_NONE) V_SLOT(c);
+                    V_EXT();
+                    uint32_t target = fn->code[pc - 1];
+                    if ((target & ECS_SYSCALL_FLAG) == 0 && target >= (uint32_t)vm->nnatives)
+                        return ECS_ERR_NOSUCHNATIVE;
+                    break;
+                }
+                case OP_NewArrV:
+                    V_SLOT(a);
+                    if (c + b > fn->nslots) return ECS_ERR_SLOT;
+                    V_EXT();
+                    break;
+                case OP_Slice:
+                {
+                    V_SLOT(a); V_SLOT(b); V_SLOT(c);
+                    V_EXT();
+                    uint32_t ext = fn->code[pc - 1];
+                    if (ext != 0xFFFFFFFFu && (int32_t)ext >= fn->nslots) return ECS_ERR_SLOT;
+                    break;
+                }
+                case OP_NewSt:
+                    V_SLOT(a);
+                    if ((int32_t)(b | (c << 8)) >= vm->nstructs) return ECS_ERR_SLOT;
+                    break;
+                case OP_GetFI: case OP_PutFI:
+                {
+                    V_SLOT(a); V_SLOT(b); V_SLOT(c);
+                    V_EXT();
+                    uint32_t ext = fn->code[pc - 1];
+                    if (ext >= (uint32_t)fn->nslots) return ECS_ERR_SLOT;
+                    break;
+                }
+                case OP_StickP:
+                    V_EXT();
+                    break;
+                case OP_StickPv:
+                    V_SLOT(c);
+                    V_EXT();
+                    break;
+                case OP_Ret:
+                    V_SLOT(a);
+                    break;
+                default:
+                    return ECS_ERR_OPCODE;
+            }
+        }
+    }
+    return ECS_OK;
+#undef V_SLOT
+#undef V_EXT
+}
+
 int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
 {
     if (!vm || !image || len < 0x24) return ECS_ERR_IMAGE;
@@ -648,7 +808,7 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
     if ((uint32_t)r_bytes(&r, 4) != 0x32435845u) return ECS_ERR_IMAGE;  /* "ECX2" */
     if (r_bytes(&r, 2) != 2) return ECS_ERR_IMAGE;                      /* format_ver = 2（全局名在调试区） */
     uint32_t flags = (uint32_t)r_bytes(&r, 2);
-    (void)r_bytes(&r, 1);                                               /* max_slots */
+    int32_t header_max_slots = (int32_t)r_bytes(&r, 1);
     (void)r_bytes(&r, 1);                                               /* max_depth */
     /* 特征需求掩码（原保留位 u16 @0x0C，VM2.md §9.1）：IL 由 flags.I 投影（EcmEcxFormat §2.1）。
        加载规则：宿主 feats 缺位 → 拒跑（IL → ECS_ERR_IL 既有码，其余 → ECS_ERR_FEAT）。 */
@@ -669,8 +829,8 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
 
     /* ---- 常量池 ---- */
     vm->consts = (const_ent *)calloc((size_t)(nconsts > 0 ? nconsts : 1), sizeof(const_ent));
-    vm->nconsts = nconsts;
     if (!vm->consts) return ECS_ERR_OOM;
+    vm->nconsts = nconsts;
     for (int32_t i = 0; i < nconsts; i++)
     {
         const_ent *c = &vm->consts[i];
@@ -709,8 +869,8 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
 
     /* ---- 类型表（计数消费后统一布局展开，§4.4） ---- */
     vm->structs = (ecs_structdef *)calloc((size_t)(nstructs > 0 ? nstructs : 1), sizeof(ecs_structdef));
-    vm->nstructs = nstructs;
     if (!vm->structs) return ECS_ERR_OOM;
+    vm->nstructs = nstructs;
     for (int32_t s = 0; s < nstructs; s++)
     {
         ecs_structdef *def = &vm->structs[s];
@@ -744,8 +904,8 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
 
     /* ---- 全局槽 ---- */
     vm->globals = (ecs_value *)calloc((size_t)(nglobals > 0 ? nglobals : 1), sizeof(ecs_value));
-    vm->nglobals = nglobals;
     if (!vm->globals) return ECS_ERR_OOM;
+    vm->nglobals = nglobals;
     for (int32_t g = 0; g < nglobals; g++)
     {
         (void)r_bytes(&r, 2);   /* 模块 idx + 类型码（v2：名字在调试区） */
@@ -754,8 +914,8 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
 
     /* ---- 原生名表 ---- */
     vm->natives = (char **)calloc((size_t)(nnatives > 0 ? nnatives : 1), sizeof(char *));
-    vm->nnatives = nnatives;
     if (!vm->natives) return ECS_ERR_OOM;
+    vm->nnatives = nnatives;
     for (int32_t n = 0; n < nnatives; n++)
     {
         vm->natives[n] = r_utf8(&r);
@@ -764,8 +924,8 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
 
     /* ---- 函数表（11 字节定长）+ 代码区指针 ---- */
     vm->funcs = (ecs_funcdef *)calloc((size_t)nfuncs, sizeof(ecs_funcdef));
-    vm->nfuncs = nfuncs;
     if (!vm->funcs) return ECS_ERR_OOM;
+    vm->nfuncs = nfuncs;
     uint32_t last_off = 0, last_words = 0;
     for (int32_t f = 0; f < nfuncs; f++)
     {
@@ -776,6 +936,7 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
         fd->code_off = (uint32_t)r_bytes(&r, 4);
         fd->words = (uint32_t)r_bytes(&r, 4);
         if (r.overflow) return ECS_ERR_IMAGE;
+        if (fd->nslots > header_max_slots) return ECS_ERR_IMAGE;   /* §2.3：nslots ≤ max_slots */
         if (fd->code_off != last_off && fd->code_off != last_off + last_words)
             return ECS_ERR_IMAGE;                    /* 非连续（允许首函数偏移 0） */
         last_off = fd->code_off;
@@ -788,6 +949,12 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
         for (int32_t f = 0; f < nfuncs; f++)
             vm->funcs[f].code = (const uint32_t *)(code_base + (size_t)vm->funcs[f].code_off * 4);
         r.pos += (size_t)code_bytes;
+    }
+
+    /* ---- 指令流静态抽查（§4.4.1）：槽位/索引/跳转目标/EXT 结构全部核验 ---- */
+    {
+        int vrc = validate_code(vm);
+        if (vrc != ECS_OK) return vrc;
     }
 
     /* ---- 调试名区（可选）：函数名表 + 全局名表（debug_count == nfuncs + nglobals，
@@ -905,19 +1072,22 @@ void ecs_vm_free(ecs_vm *vm)
         sweep_obj(vm, h);
     free(vm->objs);
     free(vm->free_list);
-    for (int32_t i = 0; i < vm->nstructs; i++)
-    {
-        for (int32_t f = 0; f < vm->structs[i].nfields; f++)
-            free(vm->structs[i].fields[f].name);
-        free(vm->structs[i].fields);
-        free(vm->structs[i].name);
-    }
+    if (vm->structs)
+        for (int32_t i = 0; i < vm->nstructs; i++)
+        {
+            for (int32_t f = 0; f < vm->structs[i].nfields; f++)
+                free(vm->structs[i].fields[f].name);
+            free(vm->structs[i].fields);
+            free(vm->structs[i].name);
+        }
     free(vm->structs);
-    for (int32_t i = 0; i < vm->nnatives; i++)
-        free(vm->natives[i]);
+    if (vm->natives)
+        for (int32_t i = 0; i < vm->nnatives; i++)
+            free(vm->natives[i]);
     free(vm->natives);
-    for (int32_t i = 0; i < vm->nfuncs; i++)
-        free(vm->funcs[i].name);
+    if (vm->funcs)
+        for (int32_t i = 0; i < vm->nfuncs; i++)
+            free(vm->funcs[i].name);
     free(vm->funcs);
     free(vm->consts);
     free(vm->globals);

@@ -16,9 +16,6 @@ namespace EasyCon2.Avalonia.ViewModels;
 /// </summary>
 public partial class KeyMappingViewModel : ViewModelBase
 {
-    /// <summary>取消时恢复用的原始配置（当前窗口直接关闭，保留引用以便未来回滚）。</summary>
-    private readonly KeyMappingConfig _original;
-
     /// <summary>加载时生效的配置 —— 用于回写 4 个无行的 D-pad 斜向属性。</summary>
     private readonly KeyMappingConfig _loaded;
 
@@ -42,10 +39,10 @@ public partial class KeyMappingViewModel : ViewModelBase
 
     public KeyMappingViewModel()
     {
-        _original = LoadCurrent();
-        _loaded = _original;
+        var original = LoadCurrent();
+        _loaded = original;
         BuildRows();
-        LoadFromConfig(_original);
+        LoadFromConfig(original);
     }
 
     // ─── 初始化 26 行 ──────────────────────────────────────────
@@ -177,9 +174,17 @@ public partial class KeyMappingViewModel : ViewModelBase
     [RelayCommand]
     private void Save()
     {
-        KeyMappingConfig config = BuildConfig();
-        KeyMappingStore.Instance.Save(config);
-        CloseWindow();
+        try
+        {
+            KeyMappingConfig config = BuildConfig();
+            KeyMappingStore.Instance.Save(config);
+            CloseWindow();
+        }
+        catch (Exception ex)
+        {
+            // 写盘失败必须让用户知道（窗口保留，配置仍在内存中生效）
+            StatusText = $"⚠ 保存失败: {ex.Message}";
+        }
     }
 
     [RelayCommand]

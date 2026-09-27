@@ -70,6 +70,20 @@ public static class EcxVm
             throw new ScriptException(
                 $"!!运行出错!!{Describe(code)}（函数 {image.FunctionName(errorFunc)}，指令 {errorPc}）", sourceLine);
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ScriptException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // 宿主委托（视觉匹配/BEEP/原生 FFI 等）抛出的异常不带 VM 错误码，
+            // 在此统一包装成 ScriptException，兑现 IScriptSession 的错误契约
+            throw new ScriptException($"!!运行出错!!宿主能力异常: {ex.Message}");
+        }
         finally
         {
             DesktopFileSystem.Instance.CloseAllFiles();
@@ -94,7 +108,7 @@ public static class EcxVm
                 : throw new Exception("图像标签匹配器未初始化"),
             Print = (s, newline) => console?.Print(s, newline),
             Alert = s => console?.Alert(s),
-            ReadLine = () => Console.ReadLine() ?? "",   // v1 FREAD stdin 走控制台（ImplFRead）
+            ReadLine = () => console != null ? console.ReadLine() : Console.ReadLine() ?? "",
             Key = (k, d) => input?.ClickButtons((GamePadKey)k, d, token),
             KeyState = (k, d) =>
             {
@@ -110,7 +124,10 @@ public static class EcxVm
             {
                 if (f is < 37 or > 32767)
                     throw new Exception("BEEP参数freq范围不正确(37~32767)");
-                Console.Beep(f, d);
+                if (console != null)
+                    console.Beep(f, d);
+                else
+                    Console.Beep(f, d);
             },
         };
     }
@@ -129,10 +146,14 @@ public static class EcxVm
 
     static string Describe(int code) => code switch
     {
+        EcxInterpreter.ERR_OPCODE => "非法操作码",
+        EcxInterpreter.ERR_SLOT => "槽位/索引越界",
         EcxInterpreter.ERR_DIVZERO => "整数除零",
         EcxInterpreter.ERR_INDEX => "下标越界",
         EcxInterpreter.ERR_TYPE => "类型错误",
+        EcxInterpreter.ERR_DEPTH => "调用深度超限",
         EcxInterpreter.ERR_NOSUCHNATIVE => "原生函数未实现",
+        EcxInterpreter.ERR_OOM => "解释器内存不足",
         _ => $"虚拟机错误码 {code}",
     };
 }

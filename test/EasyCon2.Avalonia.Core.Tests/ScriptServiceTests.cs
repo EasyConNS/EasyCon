@@ -161,6 +161,8 @@ public class ScriptServiceTests
         {
         }
 
+        public Task DisconnectAsync() => Task.CompletedTask;
+
         public FrameLease? AcquireLatestFrame() => null;
 
         public void SetCaptureProperties(int width, int height)
@@ -264,5 +266,56 @@ public class ScriptServiceTests
             Assert.That(messages, Does.Contain("脚本已终止"));
             Assert.That(device.ResetCalls, Is.GreaterThanOrEqualTo(1), "终止时应释放按键");
         });
+    }
+
+    [Test]
+    public async Task RunFromContent_PureWaitScript_CompletesAndResetsIsRunning()
+    {
+        var log = new FakeLogService();
+        var device = new FakeDeviceService();
+        var service = CreateService(log, device, new FakeCaptureService());
+
+        service.RunFromContent("WAIT 100");
+
+        await WaitUntilAsync(() => !service.IsRunning, "脚本完成后 IsRunning 应复位", detail: () => string.Join(" | ", log.Snapshot()));
+        Assert.That(log.Snapshot(), Does.Contain("脚本运行完成"));
+    }
+
+    [Test]
+    public async Task RunThenImmediateStop_AlwaysResetsIsRunning()
+    {
+        // 回归：此前 token 传给 Task.Run，启动瞬间取消会让委托体不执行，
+        // finally 丢失 → IsRunning 永久卡死
+        var log = new FakeLogService();
+        var device = new FakeDeviceService();
+        var service = CreateService(log, device, new FakeCaptureService());
+
+        service.RunFromContent("WAIT 10000");
+        service.Stop();
+
+        await WaitUntilAsync(() => !service.IsRunning, "启动后立即停止，IsRunning 也必须复位", detail: () => string.Join(" | ", log.Snapshot()));
+        Assert.That(device.ResetCalls, Is.GreaterThanOrEqualTo(1), "停止路径必须触发设备 Reset");
+    }
+
+    [Test]
+    public async Task RunFromContent_WhileAlreadyRunning_IsRejectedAndAllowsRestartAfterFinish()
+    {
+        var log = new FakeLogService();
+        var device = new FakeDeviceService();
+        var service = CreateService(log, device, new FakeCaptureService());
+
+        service.RunFromContent("WAIT 10000");
+        await WaitUntilAsync(() => service.IsRunning, "第一个脚本应进入运行状态");
+
+        service.RunFromContent("WAIT 10000");
+
+        Assert.That(log.Snapshot(), Does.Contain("脚本已在运行中，忽略本次启动请求"), "运行中重复启动应被拒绝");
+
+        service.Stop();
+        await WaitUntilAsync(() => !service.IsRunning, "停止后 IsRunning 应复位");
+
+        service.RunFromContent("WAIT 50");
+        await WaitUntilAsync(() => !service.IsRunning, "复位后应能再次启动并正常完成", detail: () => string.Join(" | ", log.Snapshot()));
+        Assert.That(log.Snapshot(), Does.Contain("脚本运行完成"));
     }
 }

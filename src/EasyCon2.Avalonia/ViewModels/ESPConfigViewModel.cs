@@ -49,7 +49,7 @@ public partial class ESPConfigViewModel : ViewModelBase
     public List<string> ControllerModeNames { get; } = ["Pro", "JoyCon-R", "JoyCon-L"];
 
     [RelayCommand]
-    private void SetMode()
+    private async Task SetModeAsync()
     {
         if (!IsDeviceConnected)
         {
@@ -58,16 +58,10 @@ public partial class ESPConfigViewModel : ViewModelBase
         }
 
         var ns = _deviceService.GetDevice();
-        if (ns.ChangeControllerMode(SelectedMode))
-        {
-            StatusMessage = "手柄模式修改成功，请重启手柄后查看效果";
-            _logService.AddLog("手柄模式修改成功");
-        }
-        else
-        {
-            StatusMessage = "手柄模式修改失败";
-            _logService.AddLog("手柄模式修改失败");
-        }
+        // 同步串口 I/O（分包重试）放后台执行，避免冻结 UI；续体经 await 回到 UI 线程
+        var ok = await Task.Run(() => ns.ChangeControllerMode(SelectedMode));
+        StatusMessage = ok ? "手柄模式修改成功，请重启手柄后查看效果" : "手柄模式修改失败";
+        _logService.AddLog(ok ? "手柄模式修改成功" : "手柄模式修改失败");
     }
 
     #endregion
@@ -87,7 +81,7 @@ public partial class ESPConfigViewModel : ViewModelBase
     private Color _gripRColor = Colors.Yellow;
 
     [RelayCommand]
-    private void SetColor()
+    private async Task SetColorAsync()
     {
         if (!IsDeviceConnected)
         {
@@ -104,16 +98,9 @@ public partial class ESPConfigViewModel : ViewModelBase
         ];
 
         var ns = _deviceService.GetDevice();
-        if (ns.ChangeControllerColor(color))
-        {
-            StatusMessage = "手柄颜色修改成功，请重启手柄后查看效果";
-            _logService.AddLog("手柄颜色修改成功");
-        }
-        else
-        {
-            StatusMessage = "手柄颜色修改失败";
-            _logService.AddLog("手柄颜色修改失败");
-        }
+        var ok = await Task.Run(() => ns.ChangeControllerColor(color));
+        StatusMessage = ok ? "手柄颜色修改成功，请重启手柄后查看效果" : "手柄颜色修改失败";
+        _logService.AddLog(ok ? "手柄颜色修改成功" : "手柄颜色修改失败");
     }
 
     [RelayCommand]
@@ -130,8 +117,8 @@ public partial class ESPConfigViewModel : ViewModelBase
 
     private async Task<Color> PickColorAsync(Color current)
     {
-        var result = await _dialogService.PickColorAsync(current);
-        return result ?? current;
+        var result = await _dialogService.PickColorAsync(new DialogColor(current.A, current.R, current.G, current.B));
+        return result == null ? current : Color.FromArgb(result.A, result.R, result.G, result.B);
     }
 
     #endregion
@@ -171,6 +158,12 @@ public partial class ESPConfigViewModel : ViewModelBase
     [ObservableProperty]
     private Bitmap? _amiiboPreviewImage;
 
+    partial void OnAmiiboPreviewImageChanged(Bitmap? oldValue, Bitmap? newValue)
+    {
+        // 更换预览图后释放旧的原生位图（Amiibo 选择会反复触发）
+        (oldValue as IDisposable)?.Dispose();
+    }
+
     partial void OnSelectedGameChanged(string? value)
     {
         if (value == null) return;
@@ -208,7 +201,7 @@ public partial class ESPConfigViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SaveAmiibo()
+    private async Task SaveAmiiboAsync()
     {
         if (!IsDeviceConnected)
         {
@@ -254,16 +247,10 @@ public partial class ESPConfigViewModel : ViewModelBase
             }
 
             var ns = _deviceService.GetDevice();
-            if (ns.SaveAmiibo((byte)SelectedSaveIndex, data))
-            {
-                StatusMessage = $"Amiibo已保存到槽位 {SelectedSaveIndex}";
-                _logService.AddLog($"Amiibo已保存到槽位 {SelectedSaveIndex}");
-            }
-            else
-            {
-                StatusMessage = "Amiibo存储失败";
-                _logService.AddLog("Amiibo存储失败");
-            }
+            var index = (byte)SelectedSaveIndex;
+            var ok = await Task.Run(() => ns.SaveAmiibo(index, data));
+            StatusMessage = ok ? $"Amiibo已保存到槽位 {index}" : "Amiibo存储失败";
+            _logService.AddLog(ok ? $"Amiibo已保存到槽位 {index}" : "Amiibo存储失败");
         }
         catch (Exception ex)
         {
@@ -273,7 +260,7 @@ public partial class ESPConfigViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void ActivateAmiibo()
+    private async Task ActivateAmiiboAsync()
     {
         if (!IsDeviceConnected)
         {
@@ -288,16 +275,10 @@ public partial class ESPConfigViewModel : ViewModelBase
         }
 
         var ns = _deviceService.GetDevice();
-        if (ns.ChangeAmiiboIndex((byte)CurrentAmiiboIndex))
-        {
-            StatusMessage = $"已激活 Amiibo 槽位 {CurrentAmiiboIndex}";
-            _logService.AddLog($"已激活 Amiibo 槽位 {CurrentAmiiboIndex}");
-        }
-        else
-        {
-            StatusMessage = "Amiibo激活失败";
-            _logService.AddLog("Amiibo激活失败");
-        }
+        var index = (byte)CurrentAmiiboIndex;
+        var ok = await Task.Run(() => ns.ChangeAmiiboIndex(index));
+        StatusMessage = ok ? $"已激活 Amiibo 槽位 {index}" : "Amiibo激活失败";
+        _logService.AddLog(ok ? $"已激活 Amiibo 槽位 {index}" : "Amiibo激活失败");
     }
 
     #endregion
@@ -368,7 +349,8 @@ public partial class ESPConfigViewModel : ViewModelBase
 
         try
         {
-            AmiiboPreviewImage = new Bitmap(imagePath);
+            var bitmap = new Bitmap(imagePath);
+            AmiiboPreviewImage = bitmap;
         }
         catch
         {

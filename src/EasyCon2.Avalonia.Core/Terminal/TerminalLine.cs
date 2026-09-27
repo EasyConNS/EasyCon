@@ -1,5 +1,3 @@
-using Avalonia.Media;
-
 namespace EasyCon2.Avalonia.Core.Terminal;
 
 /// <summary>
@@ -7,8 +5,8 @@ namespace EasyCon2.Avalonia.Core.Terminal;
 /// </summary>
 public record TextSegment(
     string Text,
-    Color? Foreground = null,
-    Color? Background = null,
+    RgbColor? Foreground = null,
+    RgbColor? Background = null,
     bool Bold = false,
     bool Underline = false);
 

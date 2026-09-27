@@ -34,7 +34,7 @@ public interface IMcpSession : IAsyncDisposable
 /// MCP 会话工厂，生产实现使用 SDK 的 <c>McpClient.CreateAsync</c>；
 /// 测试实现可返回预设的 <see cref="IMcpSession"/>。
 /// </summary>
-public interface IMcpSessionFactory
+internal interface IMcpSessionFactory
 {
     Task<IMcpSession> CreateAsync(
         McpTransport transport,

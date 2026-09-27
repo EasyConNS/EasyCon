@@ -5,7 +5,7 @@ namespace EasyCon.Script.Bytecode;
 /// <summary>
 /// ECX 镜像反汇编器（调试/CI 黄金快照，docs/VM2.md §10.3）。
 /// </summary>
-public static class EcxDisassembler
+internal static class EcxDisassembler
 {
     public static string Disassemble(EcxImage image)
     {

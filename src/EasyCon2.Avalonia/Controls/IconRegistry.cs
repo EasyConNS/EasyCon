@@ -73,18 +73,28 @@ public static class IconRegistry
 
     private static IReadOnlyDictionary<string, IReadOnlyList<IconShape>> LoadIcons()
     {
-        Dictionary<string, IReadOnlyList<IconShape>> result = new(StringComparer.Ordinal);
-
-        using Stream stream = AssetLoader.Open(new Uri(IconsUri));
-        Dictionary<string, IconEntry>? raw = JsonSerializer.Deserialize<Dictionary<string, IconEntry>>(stream);
-        if (raw == null)
-            return result;
-
-        foreach (KeyValuePair<string, IconEntry> pair in raw)
+        try
         {
-            result[pair.Key] = pair.Value.Shapes;
-        }
+            Dictionary<string, IReadOnlyList<IconShape>> result = new(StringComparer.Ordinal);
 
-        return result;
+            using Stream stream = AssetLoader.Open(new Uri(IconsUri));
+            Dictionary<string, IconEntry>? raw = JsonSerializer.Deserialize<Dictionary<string, IconEntry>>(stream);
+            if (raw == null)
+                return result;
+
+            foreach (KeyValuePair<string, IconEntry> pair in raw)
+            {
+                result[pair.Key] = pair.Value.Shapes;
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            // 资源缺失/JSON 损坏是环境问题，返回空表并留痕；
+            // 不能让异常被 Lazy 缓存，否则图标功能整个进程永久失效
+            App.LogSink?.Invoke($"[图标] Icons.json 加载失败: {ex.Message}");
+            return new Dictionary<string, IReadOnlyList<IconShape>>(StringComparer.Ordinal);
+        }
     }
 }

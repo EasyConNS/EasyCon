@@ -1,5 +1,7 @@
 using System.ComponentModel;
 
+namespace EasyCon.Capture;
+
 public enum SearchMethod
 {
     [Description("平方差匹配")]

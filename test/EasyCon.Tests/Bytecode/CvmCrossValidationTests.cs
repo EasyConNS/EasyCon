@@ -130,6 +130,46 @@ public class CvmCrossValidationTests
     }
 
     [Test]
+    public void Cvm_Validator_KeyV_KeyCodeOperand_NotATargetSlot()
+    {
+        // KeyV 的 a 是按键码（GamePadKey）而非槽位，b 才是目标槽——合法脚本的键码
+        // 可以远大于 nslots，加载期校验若把 a 当槽位检查会拒载正常镜像；
+        // b 越界仍须在加载期拒绝（ECS_ERR_SLOT=5，校验失败即退出码）。
+        // 用键码 12(RCLICK) 远超本脚本槽数，确保「a 被误当槽位」必然拒载、用例可抓住回归。
+        const string source = """
+        FOR $i = 1 TO 2
+            RCLICK $i
+        NEXT
+        """;
+        var result = Compilation.CompileSource(source, new CompileOptions { UseDiskCache = false });
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
+            string.Join("; ", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
+        var ecx = EcxWriter.Write(result.Image!);
+
+        var (okExit, _, okErr) = RunCvm(ecx, "keyv-legal");
+        Assert.That(okExit, Is.EqualTo(0), $"合法 KeyV 镜像应正常加载执行；stderr={okErr}");
+        Assert.That(CvmRunner.ParseTsvByTag(okErr, "KEY"), Is.EqualTo(new[] { "KEY 12 1", "KEY 12 2" }));
+
+        // 把 KeyV 字的 b 槽改写成 0xFE（远超本镜像槽数）→ 加载期拒载
+        int patched = 0;
+        for (int i = 0; i + 3 < ecx.Length; i++)
+        {
+            if (ecx[i] == (byte)EcsOpcode.KeyV && ecx[i + 2] < 0x10)
+            {
+                ecx[i + 2] = 0xFE;
+                patched++;
+            }
+        }
+        Assert.That(patched, Is.GreaterThanOrEqualTo(1), "镜像中应存在 KeyV 指令字");
+
+        var (badExit, _, badErr) = RunCvm(ecx, "keyv-badslot");
+        Assert.That(badExit, Is.EqualTo(5), $"b 越界应报 ECS_ERR_SLOT(5)；stderr={badErr}");
+        // 加载期校验失败的标志：ECS_ERR=5 且无运行期错误的 func/pc 定位（中文标签受本地代码页影响，不断言）
+        Assert.That(badErr, Does.Contain("ECS_ERR=5"));
+        Assert.That(badErr, Does.Not.Contain("func="));
+    }
+
+    [Test]
     public void Mcu_ImageLabel_Rejected()
     {
         // 单片机约束：携带图像标签的镜像（NeedIL）→ 加载期 ECS_ERR_IL 拒绝执行

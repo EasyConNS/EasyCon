@@ -58,7 +58,7 @@ sealed class ImportStmt(Token syntax, Token model, string path = "") : Statement
         : $"IMPORT \"{Lib}\"";
 }
 
-sealed class CompicationUnit(ImmutableArray<Statement> members)
+sealed class CompilationUnit(ImmutableArray<Statement> members)
 {
     public readonly ImmutableArray<Statement> Members = members;
 }

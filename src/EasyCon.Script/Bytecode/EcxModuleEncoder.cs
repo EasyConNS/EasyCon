@@ -11,7 +11,7 @@ namespace EasyCon.Script.Bytecode;
 /// 落导入标记（链接期解析）；类型表布局见 <see cref="EcxStructLayouts"/>；
 /// 产物合并 → EcxImage 见 <see cref="EcxPipeline"/>。
 /// </summary>
-public static class EcxModuleEncoder
+internal static class EcxModuleEncoder
 {
     /// <summary>
 

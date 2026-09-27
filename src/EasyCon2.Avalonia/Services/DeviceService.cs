@@ -6,7 +6,7 @@ using IDeviceService = EasyCon2.Avalonia.Core.Services.IDeviceService;
 
 namespace EasyCon2.Avalonia.Services;
 
-public class DeviceService : IDeviceService
+public class DeviceService : IDeviceService, IDisposable
 {
     private readonly ILogService _logService;
     private readonly NintendoSwitch _nintendoSwitch = new();
@@ -64,6 +64,23 @@ public class DeviceService : IDeviceService
     {
         _nintendoSwitch.Disconnect();
         _isConnected = false;
+    }
+
+    /// <summary>应用退出时调用：断开串口连接（Reset 复位手柄 + 丢弃排队报文）。</summary>
+    public void Dispose()
+    {
+        try
+        {
+            if (_isConnected)
+            {
+                _nintendoSwitch.Reset();
+                _nintendoSwitch.Disconnect();
+            }
+        }
+        catch
+        {
+            // 退出路径尽力而为；串口句柄最终由进程退出兜底
+        }
     }
 
     public NintendoSwitch GetDevice() => _nintendoSwitch;

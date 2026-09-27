@@ -103,12 +103,11 @@ public class McpManagerTests
     }
 
     [Test]
-    public void McpManager_Dispose_ClearsConnections()
+    public async Task McpManager_Dispose_ClearsConnectionsAsync()
     {
         var log = new FakeLogService();
         var manager = new McpManager(log);
-
-        manager.Dispose();
+        await manager.DisposeAsync();
 
         Assert.That(manager.Connections, Is.Empty);
     }

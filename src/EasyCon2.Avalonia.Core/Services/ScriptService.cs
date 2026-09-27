@@ -17,12 +17,18 @@ public class ScriptService : IScriptService
     private readonly ICaptureService _captureService;
     private readonly ILogService _logService;
     private readonly IScriptEngine _engine = new EasyScriptEngine();
+    private readonly object _runGate = new();
     private IScriptSession? _session;
     private CancellationTokenSource? _cts;
 
     public bool IsRunning { get; private set; }
     public bool HasKeyAction => _session?.Info.KeyAction ?? false;
     public bool HighResolutionTiming { get; set; }
+
+    /// <summary>
+    /// 运行状态变化。注意：可能在调用线程（启动确认前）或脚本工作线程（结束时）触发，
+    /// 订阅方必须自行封送到 UI 线程后再操作 UI。
+    /// </summary>
     public event Action<bool> IsRunningChanged;
 
     /// <summary>
@@ -45,19 +51,20 @@ public class ScriptService : IScriptService
         _logService = logService;
     }
 
-    public Task<bool> CompileAsync(string scriptText, string? fileName)
+    public async Task<bool> CompileAsync(string scriptText, string? fileName)
     {
         _logService.AddLog("开始编译...");
 
         try
         {
-            _session = CompileCore(() => _engine.FromSource(scriptText, Options([])));
-            return Task.FromResult(_session != null);
+            // 编译大脚本可达数秒，放线程池执行，避免冻结调用方所在的 UI 线程
+            _session = await Task.Run(() => CompileCore(() => _engine.FromSource(scriptText, Options([]))));
+            return _session != null;
         }
         catch (Exception ex)
         {
             _logService.AddLog($"编译异常: {ex.Message}");
-            return Task.FromResult(false);
+            return false;
         }
     }
 
@@ -103,8 +110,25 @@ public class ScriptService : IScriptService
 
     public void Stop()
     {
-        _cts?.Cancel();
-        _deviceService.Reset();
+        lock (_runGate)
+        {
+            _cts?.Cancel();
+        }
+
+        // Reset 会抢设备写循环的锁，移到后台执行，避免卡顿串口拖住 UI 线程。
+        var device = _deviceService;
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                device.Reset();
+            }
+            catch (Exception ex)
+            {
+                // 复位失败时设备可能停在最后一次按键状态，必须留痕
+                _logService.AddLog($"设备复位失败: {ex.Message}");
+            }
+        });
     }
 
     // ── 私有方法 ────────────────────────────────
@@ -148,14 +172,28 @@ public class ScriptService : IScriptService
     /// <param name="compile">编译回调，返回 (会话（null=编译失败）, 标签匹配委托)</param>
     private void ExecuteScript(Func<(IScriptSession? Session, LabelMatchDelegate? LabelMatch)> compile, string[]? args)
     {
-        _cts = new CancellationTokenSource();
-        var token = _cts.Token;
+        CancellationToken token;
+        lock (_runGate)
+        {
+            if (IsRunning)
+            {
+                _logService.AddLog("脚本已在运行中，忽略本次启动请求");
+                return;
+            }
 
-        IsRunning = true;
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+            token = _cts.Token;
+            IsRunning = true;
+        }
+
         IsRunningChanged?.Invoke(true);
 
+        // 不把 token 传给 Task.Run：token 预先取消时任务不会调度，委托体（含 finally
+        // 的状态复位）整体不执行，IsRunning 将永久卡死。取消只经 session.Run(token) 生效。
         Task.Run(() =>
         {
+            CapabilitySet? capabilities = null;
             try
             {
                 var (session, labelMatch) = compile();
@@ -194,7 +232,7 @@ public class ScriptService : IScriptService
                 var frameDelegate = FrameDelegateFactory.CreateFrame(() => _captureService.AcquireLatestFrame());
 
                 // 能力装配（P6）：帧/ROI/标签/OCR/推理经服务接口注入
-                var capabilities = new CapabilitySet
+                capabilities = new CapabilitySet
                 {
                     Input = pad != null ? new PadInputAdapter(pad) : null,
                     Console = new ConsoleIoAdapter(_logService),
@@ -224,10 +262,26 @@ public class ScriptService : IScriptService
             }
             finally
             {
-                _deviceService.Reset();
-                IsRunning = false;
+                // OCR 缓存与推理引擎持有原生 Tesseract/DNN 资源，随本次运行释放
+                (capabilities?.Ocr as IDisposable)?.Dispose();
+                (capabilities?.Inference as IDisposable)?.Dispose();
+
+                try
+                {
+                    _deviceService.Reset();
+                }
+                catch (Exception ex)
+                {
+                    // 复位失败不能拦住下面的 IsRunning 复位，否则运行按钮永久卡死
+                    _logService.AddLog($"设备复位失败: {ex.Message}");
+                }
+
+                lock (_runGate)
+                {
+                    IsRunning = false;
+                }
                 IsRunningChanged?.Invoke(false);
             }
-        }, token);
+        });
     }
 }

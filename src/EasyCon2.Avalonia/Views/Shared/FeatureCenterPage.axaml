@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:EasyCon2.Avalonia.Markup"
              xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
              x:Class="EasyCon2.Avalonia.Views.Shared.FeatureCenterPage"
              x:DataType="vm:MainWindowViewModel">
@@ -11,16 +12,16 @@
             <Border Classes="settings-card">
                 <StackPanel Spacing="12">
                     <TextBlock Classes="card-title"
-                               Text="远程运行"/>
+                               Text="{loc:Translate Text.Feature.RemoteRun}"/>
                     <Grid Classes="feature-row"
                           ColumnDefinitions="*,*"
                           ColumnSpacing="10">
-                        <Button Content="远程运行"
-                                Command="{Binding RemoteRunCommand}"
+                        <Button Content="{loc:Translate Text.Feature.RemoteRun}"
+                                Command="{Binding Switch.RemoteRunCommand}"
                                 HorizontalAlignment="Stretch"/>
                         <Button Grid.Column="1"
-                                Content="远程停止"
-                                Command="{Binding RemoteStopCommand}"
+                                Content="{loc:Translate Text.Feature.RemoteStop}"
+                                Command="{Binding Switch.RemoteStopCommand}"
                                 HorizontalAlignment="Stretch"/>
                     </Grid>
                 </StackPanel>
@@ -29,16 +30,16 @@
             <Border Classes="settings-card">
                 <StackPanel Spacing="12">
                     <TextBlock Classes="card-title"
-                               Text="编译烧录"/>
+                               Text="{loc:Translate Text.Feature.CompileFlash}"/>
                     <Grid Classes="feature-row"
                           ColumnDefinitions="*,*"
                           ColumnSpacing="10">
-                        <Button Content="编译烧录"
-                                Command="{Binding CompileFlashCommand}"
+                        <Button Content="{loc:Translate Text.Feature.CompileFlash}"
+                                Command="{Binding Firmware.CompileFlashCommand}"
                                 HorizontalAlignment="Stretch"/>
                         <Button Grid.Column="1"
-                                Content="清除烧录"
-                                Command="{Binding ClearFlashCommand}"
+                                Content="{loc:Translate Text.Feature.ClearFlash}"
+                                Command="{Binding Firmware.ClearFlashCommand}"
                                 HorizontalAlignment="Stretch"/>
                     </Grid>
                 </StackPanel>
@@ -47,16 +48,16 @@
             <Border Classes="settings-card">
                 <StackPanel Spacing="12">
                     <TextBlock Classes="card-title"
-                               Text="固件"/>
+                               Text="{loc:Translate Text.Feature.Firmware}"/>
                     <Grid Classes="feature-row"
                           ColumnDefinitions="*,Auto"
                           ColumnSpacing="10">
-                        <ComboBox ItemsSource="{Binding FirmwareOptions}"
-                                  SelectedItem="{Binding SelectedFirmware}"
+                        <ComboBox ItemsSource="{Binding Firmware.FirmwareOptions}"
+                                  SelectedItem="{Binding Firmware.SelectedFirmware}"
                                   HorizontalAlignment="Stretch"/>
                         <Button Grid.Column="1"
-                                Content="生成"
-                                Command="{Binding GenerateFirmwareCommand}"/>
+                                Content="{loc:Translate Text.Feature.Generate}"
+                                Command="{Binding Firmware.GenerateFirmwareCommand}"/>
                     </Grid>
                 </StackPanel>
             </Border>
@@ -66,9 +67,9 @@
                       ColumnDefinitions="*,Auto">
                     <StackPanel Spacing="4">
                         <TextBlock Classes="card-title"
-                                   Text="蓝牙手柄设置"/>
+                                   Text="{loc:Translate Text.Feature.ControllerBt}"/>
                         <TextBlock Classes="setting-caption"
-                                   Text="ESP32 手柄参数配置"/>
+                                   Text="{loc:Translate Text.Feature.ESPConfig}"/>
                     </StackPanel>
                     <Button Grid.Column="1"
                             Content="配置"
@@ -82,7 +83,7 @@
                     Opacity="0.5">
                 <StackPanel Spacing="12">
                     <TextBlock Classes="card-title"
-                               Text="画图"/>
+                               Text="{loc:Translate Text.Feature.Drawing}"/>
                     <Grid Classes="feature-row"
                           ColumnDefinitions="*,*"
                           ColumnSpacing="10">
