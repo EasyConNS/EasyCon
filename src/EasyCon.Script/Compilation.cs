@@ -88,6 +88,11 @@ public sealed class CompileOptions
     /// ModuleProjectResult.ProcessCacheHits/Misses。
     /// </summary>
     public bool UseProcessCache { get; set; } = true;
+    /// <summary>
+    /// 允许桌面解释器为超过 255 槽位的函数生成 PC 专用宽指令流。
+    /// ECM/ECX 与 MCU ABI 不变，烧录/产物编译路径不得启用。
+    /// </summary>
+    public bool EnablePcWideSlots { get; set; }
     /// <summary>旧版语法兼容（v1 PRINT/IF= 语义）。默认 true 保持行为；影响产物 → 进缓存键
     /// （见 <see cref="ProductFingerprint"/>）。</summary>
     public bool LegacySyntax { get; set; } = true;
@@ -99,7 +104,7 @@ public sealed class CompileOptions
     /// </summary>
     public string ProductFingerprint()
     {
-        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}";
+        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|W={(EnablePcWideSlots ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}";
     }
 }
 
