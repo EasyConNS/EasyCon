@@ -193,6 +193,24 @@ public class ModuleProjectTests
     }
 
     [Test]
+    public void AutoLoad_RootLibAlreadyDiscoveredByAnotherLib_RemainsVisibleToMain()
+    {
+        Write("lib/a.ecs", "IMPORT \"../b.ecs\"\nFUNC fromA():INT\n    RETURN fromB() + 1\nENDFUNC\n");
+        Write("lib/b.ecs", "FUNC fromB():INT\n    RETURN 41\nENDFUNC\n");
+        Write("main.ecs", "$result = fromB()\nPRINT $result\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        Assert.That(project.Diagnostics.Where(d => d.IsError), Is.Empty);
+        var host = new EcxHost();
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "41" }));
+    }
+
+    [Test]
     public void InitRunsBeforeMain_TopologicalOrder()
     {
         // 依赖链 main → mathx → utils：&lt;init&gt; 顺序应为 utils → mathx → main（模块模式能力）

@@ -152,8 +152,14 @@ internal static class ModuleGraphBuilder
                 foreach (var file in Directory.GetFiles(libDir, "*.ecs").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
                 {
                     var fullPath = Path.GetFullPath(file);
-                    if (byPath.ContainsKey(fullPath))
-                        continue;   // 已由显式 import 加载（自动加载去重，v1 同语义）
+                    if (byPath.TryGetValue(fullPath, out var existingModuleName))
+                    {
+                        // 该根级 lib 可能已被另一个 lib 递归导入。节点无需重复收集，但它仍
+                        // 属于 main 的自动加载集合，必须保持全局无 alias 可见。
+                        if (!mainNode.Dependencies.Contains(existingModuleName))
+                            mainNode.Dependencies.Add(existingModuleName);
+                        continue;
+                    }
                     var moduleName = Path.GetFileNameWithoutExtension(fullPath);
                     if (nodes.ContainsKey(moduleName))
                     {
