@@ -1499,13 +1499,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (args == null) return; // 用户取消
             }
 
-            if (!HasSelectedScriptPath())
-            {
-                _scriptService.RunFromContent(EditorText, args);
-                return;
-            }
-
-            _scriptService.Run(CurrentScriptPath, args);
+            string? fileName = HasSelectedScriptPath() ? CurrentScriptPath : null;
+            _scriptService.RunFromContent(EditorText, args, fileName);
         }
         catch (Exception ex)
         {
