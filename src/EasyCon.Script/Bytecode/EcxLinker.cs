@@ -112,7 +112,9 @@ internal static class EcxPipeline
                     NSlots = f.NSlots,
                     HasReturn = f.HasReturn,
                     Code = f.Code.ToList(),
+                    PcCode = f.PcCode?.Select(i => i.Clone()).ToList(),
                     LineTable = [.. f.LineTable],   // 行号表随镜像携带（运行错误 pc→行映射）
+                    PcLineTable = [.. f.PcLineTable],
                 };
                 moduleCopies.Add(copy);
                 imageFunctions.Add(copy);
@@ -183,6 +185,39 @@ internal static class EcxPipeline
                         code[w + 1] = unchecked((uint)newId);
                     },
                 });
+
+                if (f.PcCode != null)
+                {
+                    foreach (EcsPcInstruction ins in f.PcCode)
+                    {
+                        switch (ins.Op)
+                        {
+                            case EcsOpcode.LoadG or EcsOpcode.StoreG:
+                                ins.B += globalBase;
+                                break;
+                            case EcsOpcode.NewSt:
+                                ins.B = moduleSidMaps[m][ins.B];
+                                break;
+                            case EcsOpcode.LoadK or EcsOpcode.Img:
+                                {
+                                    EcsConst cst = art.Pool.Consts[ins.B];
+                                    long bits = cst.Tag == EcsTag.Double
+                                        ? BitConverter.DoubleToInt64Bits(cst.Float64)
+                                        : cst.Int64;
+                                    ins.B = imageConstIndex[(cst.Tag, bits, cst.Str)];
+                                    break;
+                                }
+                            case EcsOpcode.Call:
+                                ins.Ext = (ins.Ext & ImportFlag) != 0
+                                    ? ResolveImport(artifacts, exportIndex, art, ins.Ext & ~ImportFlag)
+                                    : unchecked((uint)(funcBase + (int)ins.Ext));
+                                break;
+                            case EcsOpcode.CallN when (ins.Ext & EcsSyscall.CallFlag) == 0:
+                                ins.Ext = unchecked((uint)imageNativeIds[art.Natives[(int)ins.Ext].Name]);
+                                break;
+                        }
+                    }
+                }
             }
 
             imageGlobals.AddRange(art.Globals);
@@ -228,6 +263,15 @@ internal static class EcxPipeline
             // 行号表 pc 随前插同步平移（与指令绝对位置同迁）
             for (int i = 0; i < entryFn.LineTable.Count; i += 2)
                 entryFn.LineTable[i] += header.Count;
+            if (entryFn.PcCode != null)
+            {
+                var pcHeader = initFids
+                    .Select(fid => new EcsPcInstruction(EcsOpcode.Call, c: -1, ext: fid))
+                    .ToList();
+                entryFn.PcCode.InsertRange(0, pcHeader);
+                for (int i = 0; i < entryFn.PcLineTable.Count; i += 2)
+                    entryFn.PcLineTable[i] += pcHeader.Count;
+            }
         }
 
         // 入口命名：$eval 是 v1 时代顶层语句序列的占位名，链接后入口统一命名为 <main>
@@ -365,7 +409,19 @@ internal static class EcxPipeline
             OnCallN = (code, w, nid) => { if ((nid & 0x80000000u) == 0) code[w + 1] = unchecked((uint)nativeNewIndex[(int)nid]); },
         };
         foreach (var fn in image.Functions)
+        {
             InstructionScanner.Scan(fn.Code, remapTable);
+            if (fn.PcCode != null)
+            {
+                foreach (EcsPcInstruction ins in fn.PcCode)
+                {
+                    if (ins.Op is EcsOpcode.LoadK or EcsOpcode.Img)
+                        ins.B = constNewIndex[ins.B];
+                    else if (ins.Op == EcsOpcode.CallN && (ins.Ext & EcsSyscall.CallFlag) == 0)
+                        ins.Ext = unchecked((uint)nativeNewIndex[(int)ins.Ext]);
+                }
+            }
+        }
         image.Consts = keptConsts;
         image.Natives = keptNatives;
     }
@@ -415,7 +471,13 @@ internal static class EcxPipeline
             OnCall = (code, w, target) => code[w + 1] = unchecked((uint)newIndexOf[(int)target]),
         };
         foreach (var fn in kept)
+        {
             InstructionScanner.Scan(fn.Code, remapFid);
+            if (fn.PcCode != null)
+                foreach (EcsPcInstruction ins in fn.PcCode)
+                    if (ins.Op == EcsOpcode.Call)
+                        ins.Ext = unchecked((uint)newIndexOf[(int)ins.Ext]);
+        }
         image.Functions = kept;
         image.Entry = newIndexOf[image.Entry];
     }

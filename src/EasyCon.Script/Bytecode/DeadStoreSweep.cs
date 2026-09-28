@@ -27,6 +27,11 @@ public static class DeadStoreSweep
 
     static void SweepFunction(EcsFunction f)
     {
+        // 宽函数的 ECX Code 仅是链接扫描用影子流，槽位字段已经按 8 位截断；
+        // 不能用它做活跃性分析，否则会误删 PcCode 对应的真实指令。
+        if (f.PcCode != null)
+            return;
+
         var code = f.Code;
         if (code.Count == 0)
             return;

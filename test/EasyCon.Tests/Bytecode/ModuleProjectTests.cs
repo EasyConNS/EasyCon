@@ -1,6 +1,7 @@
 using EasyCon.Script;
 using EasyCon.Script.Bytecode;
 using EasyCon.Script.Modules;
+using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyCon.Script.Text;
 using System.Collections.Immutable;
@@ -190,6 +191,38 @@ public class ModuleProjectTests
         Assert.That(project.Success, Is.False, "缺失导入应失败");
         Assert.That(project.Diagnostics.Any(d => d.Message.Contains("导入文件不存在") || d.Message.Contains("导入库不存在")), Is.True,
             string.Join("; ", project.Diagnostics));
+    }
+
+    [Test]
+    public void AutoLoad_RootLibAlreadyDiscoveredByAnotherLib_RemainsVisibleToMain()
+    {
+        Write("lib/a.ecs", "IMPORT \"../b.ecs\"\nFUNC fromA():INT\n    RETURN fromB() + 1\nENDFUNC\n");
+        Write("lib/b.ecs", "FUNC fromB():INT\n    RETURN 41\nENDFUNC\n");
+        Write("main.ecs", "$result = fromB()\nPRINT $result\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        Assert.That(project.Diagnostics.Where(d => d.IsError), Is.Empty);
+        var host = new EcxHost();
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "41" }));
+    }
+
+    [Test]
+    public void RelativeExternPath_ResolvesAgainstDeclaringModule()
+    {
+        Write("lib/probe.ecs", "EXTERN FUNC probe($value:INT):INT FROM \"../probe.dll\"\n");
+        Write("main.ecs", "IMPORT \"probe.ecs\" AS p\n$x = p.probe(1)\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        Assert.That(project.NativeSymbols, Has.One.Matches<FunctionSymbol>(symbol =>
+            symbol.LibraryName == Path.GetFullPath(Path.Combine(_dir, "probe.dll"))));
     }
 
     [Test]

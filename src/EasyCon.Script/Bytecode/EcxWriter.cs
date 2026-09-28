@@ -20,6 +20,10 @@ public static class EcxWriter
     /// </summary>
     public static byte[] Write(EcxImage image, bool stripDebug = false)
     {
+        if (image.Functions.Any(f => f.PcCode != null))
+            throw new BytecodeException(new[] { new BytecodeDiagnostic(
+                "PC 宽槽位指令不能写入 ECX（单片机仅支持冻结的 8 位槽位格式）", null, 0) });
+
         // 槽位在 ECX 冻结格式里是 u8（max_slots、FuncDef.nslots）：超出即无法表示。
         // 不做静默截断——按设计，编译产物超出 MCU 容量应响亮失败（编译产物过大天然无法执行）。
         if (image.MaxSlots > 255)

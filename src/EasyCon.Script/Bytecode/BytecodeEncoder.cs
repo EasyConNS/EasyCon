@@ -53,6 +53,8 @@ public sealed class ModuleEncodeContext
     /// v1 合并编译路径不设置（null），行为不变。
     /// </summary>
     public IReadOnlySet<FunctionSymbol>? ExternalFunctions;
+    /// <summary>为桌面解释器保留完整槽位操作数；不改变 ECX 影子指令流。</summary>
+    public bool EnablePcWideSlots;
 
     readonly Dictionary<string, int> _hiddenGlobalSlots = new(StringComparer.Ordinal);
     readonly Dictionary<string, string> _hiddenGlobalOwners = new(StringComparer.Ordinal);
@@ -163,6 +165,7 @@ public static partial class BytecodeEncoder
         readonly int _fid;
         readonly ModuleEncodeContext _ctx;
         readonly List<uint> _code = new();
+        readonly List<EcsPcInstruction> _pcCode = new();
         readonly Dictionary<SsaValue, int> _slots = new();
         /// <summary>存活局部槽位重编号（旧帧槽 → 压缩槽；AssignSlots 步骤 0 构建，SymSlot 消费）。</summary>
         readonly Dictionary<int, int> _localSlotRemap = new();
@@ -176,10 +179,13 @@ public static partial class BytecodeEncoder
         /// <summary>行号表构建缓冲（稀疏：仅行变化处记录，发射点由 EmitInst 驱动）。</summary>
         readonly List<int> _linePcs = new();
         readonly List<int> _lineLines = new();
+        readonly List<int> _pcLinePcs = new();
         int _currentEmitLine;
         readonly Dictionary<SsaBlock, int> _blockStart = new();
+        readonly Dictionary<SsaBlock, int> _pcBlockStart = new();
         readonly List<Fixup> _fixups = new();
         readonly List<int> _labels = new();
+        readonly List<int> _pcLabels = new();
         readonly List<int> _poolFree = new();
         int _next;
         int _poolNext;
@@ -228,6 +234,7 @@ public static partial class BytecodeEncoder
             if (EcsFormat.Get(op) != EcsInsFormat.Iabc)
                 throw Fail($"{op} 登记格式为 {EcsFormat.Get(op)}，不能按 Iabc 发射（与 EcsFormat 表不一致）");
             Emit(Word(op, a, b, c));
+            _pcCode.Add(new EcsPcInstruction(op, a, b, c));
         }
 
         void EmitAbx(EcsOpcode op, int a, int bx)
@@ -237,6 +244,7 @@ public static partial class BytecodeEncoder
             if (bx < 0 || bx > 0xFFFF)
                 throw Fail($"{op} 的 Bx 越界: {bx}");
             Emit(Word(op, a, bx & 0xFF, (bx >> 8) & 0xFF));
+            _pcCode.Add(new EcsPcInstruction(op, a, bx));
         }
 
         void EmitAsBx(EcsOpcode op, int a, int sbx)
@@ -246,6 +254,7 @@ public static partial class BytecodeEncoder
             if (sbx < short.MinValue || sbx > short.MaxValue)
                 throw Fail($"{op} 的 sBx 越界: {sbx}");
             Emit(Word(op, a, sbx & 0xFF, (sbx >> 8) & 0xFF));
+            _pcCode.Add(new EcsPcInstruction(op, a, sbx));
         }
 
         // EXT 后随字是数据（唯一权威集合见 EcsFormat 表）：发射即登记，扫描侧经 ExtWords 步进。
@@ -255,6 +264,7 @@ public static partial class BytecodeEncoder
                 throw Fail($"{op} 非 EXT 指令，不能携带后随数据字（与 EcsFormat 表不一致）");
             Emit(Word(op, a, b, c));
             Emit(ext);
+            _pcCode.Add(new EcsPcInstruction(op, a, b, c, ext));
         }
 
         BytecodeException Fail(string message)
@@ -272,15 +282,27 @@ public static partial class BytecodeEncoder
         int NewLabel()
         {
             _labels.Add(-1);
+            _pcLabels.Add(-1);
             return _labels.Count - 1;
         }
 
-        void MarkLabel(int label) => _labels[label] = _code.Count;
+        void MarkLabel(int label)
+        {
+            _labels[label] = _code.Count;
+            _pcLabels[label] = _pcCode.Count;
+        }
 
-        void EmitJmpToBlock(SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJmpBlock, target)); Emit(Word(EcsOpcode.Jmp, 0, 0, 0)); }
-        void EmitJptToBlock(int cond, SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJptBlock, target)); Emit(Word(EcsOpcode.Jpt, cond, 0, 0)); }
-        void EmitJpfToBlock(int cond, SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJpfBlock, target)); Emit(Word(EcsOpcode.Jpf, cond, 0, 0)); }
-        void EmitJmpToLabel(int label) { _fixups.Add(new Fixup(_code.Count, FixJmpLabel, label)); Emit(Word(EcsOpcode.Jmp, 0, 0, 0)); }
+        void EmitJmpToBlock(SsaBlock target) => EmitJump(EcsOpcode.Jmp, 0, FixJmpBlock, target);
+        void EmitJptToBlock(int cond, SsaBlock target) => EmitJump(EcsOpcode.Jpt, cond, FixJptBlock, target);
+        void EmitJpfToBlock(int cond, SsaBlock target) => EmitJump(EcsOpcode.Jpf, cond, FixJpfBlock, target);
+        void EmitJmpToLabel(int label) => EmitJump(EcsOpcode.Jmp, 0, FixJmpLabel, label);
+
+        void EmitJump(EcsOpcode op, int cond, int kind, object target)
+        {
+            _fixups.Add(new Fixup(_code.Count, _pcCode.Count, kind, target));
+            Emit(Word(op, cond, 0, 0));
+            _pcCode.Add(new EcsPcInstruction(op, cond));
+        }
 
         // ---- 主流程 ----
 
@@ -290,7 +312,7 @@ public static partial class BytecodeEncoder
             EmitBlocks();
             Patch();
 
-            if (_poolNext > 255)
+            if (_poolNext > 255 && !_ctx.EnablePcWideSlots)
                 throw Fail($"帧槽位超出 255 上限: {_poolNext}");
             Result = new EcsFunction
             {
@@ -308,6 +330,17 @@ public static partial class BytecodeEncoder
                 lineTable.Add(_lineLines[i]);
             }
             Result.LineTable = lineTable;
+            if (_poolNext > 255)
+            {
+                Result.PcCode = _pcCode;
+                var pcLineTable = new List<int>(_pcLinePcs.Count * 2);
+                for (int i = 0; i < _pcLinePcs.Count; i++)
+                {
+                    pcLineTable.Add(_pcLinePcs[i]);
+                    pcLineTable.Add(_lineLines[i]);
+                }
+                Result.PcLineTable = pcLineTable;
+            }
         }
 
         /// <summary>记录发射行号（稀疏表：仅行变化时追加 (pc, line)；0 行未知则继承上一登记）。</summary>
@@ -318,6 +351,7 @@ public static partial class BytecodeEncoder
                 return;
             _currentEmitLine = line;
             _linePcs.Add(_code.Count);
+            _pcLinePcs.Add(_pcCode.Count);
             _lineLines.Add(line);
         }
 
@@ -328,6 +362,7 @@ public static partial class BytecodeEncoder
             foreach (var block in _fn.Blocks)
             {
                 _blockStart[block] = _code.Count;
+                _pcBlockStart[block] = _pcCode.Count;
                 var info = Info(block);
 
                 // 块首惰性物化本块引用的常量（含 phi 臂读取）——每块独立池槽
@@ -444,8 +479,8 @@ public static partial class BytecodeEncoder
         }
 
         // 条件跳转到标签：Kind 必须用 Label 变体（Patch 按 Kind 区分块/标签转型）
-        void EmitFixJpf(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJpfLabel, label)); Emit(Word(EcsOpcode.Jpf, cond, 0, 0)); }
-        void EmitFixJpt(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJptLabel, label)); Emit(Word(EcsOpcode.Jpt, cond, 0, 0)); }
+        void EmitFixJpf(int cond, int label) => EmitJump(EcsOpcode.Jpf, cond, FixJpfLabel, label);
+        void EmitFixJpt(int cond, int label) => EmitJump(EcsOpcode.Jpt, cond, FixJptLabel, label);
 
         /// <summary>出边 φ 副本发射（Sessa 并行拷贝见 EmitParallelCopy）。
         /// 臂读取的结算不在本方法——统一由终结符结算计划回放（含死 φ 臂），
@@ -515,6 +550,12 @@ public static partial class BytecodeEncoder
                 };
                 int offset = target - (fixup.WordIdx + 1);
                 uint word = _code[fixup.WordIdx];
+                int pcTarget = fixup.Kind switch
+                {
+                    FixJmpBlock or FixJptBlock or FixJpfBlock => _pcBlockStart[(SsaBlock)fixup.Target],
+                    _ => _pcLabels[(int)fixup.Target],
+                };
+                int pcOffset = pcTarget - (fixup.PcIdx + 1);
 
                 switch (fixup.Kind)
                 {
@@ -523,6 +564,7 @@ public static partial class BytecodeEncoder
                             if (offset < -8388608 || offset > 8388607)
                                 throw Fail("Jmp 偏移超出 s24（函数过大）");
                             _code[fixup.WordIdx] = (word & 0xFF) | (uint)(offset & 0xFFFFFF) << 8;
+                            _pcCode[fixup.PcIdx].A = pcOffset;
                             break;
                         }
                     case FixJptBlock or FixJpfBlock or FixJptLabel or FixJpfLabel:
@@ -530,6 +572,7 @@ public static partial class BytecodeEncoder
                             if (offset < short.MinValue || offset > short.MaxValue)
                                 throw Fail("条件跳转偏移超出 s16（函数过大，A-04）");
                             _code[fixup.WordIdx] = (word & 0xFFFF) | (uint)(offset & 0xFFFF) << 16;
+                            _pcCode[fixup.PcIdx].B = pcOffset;
                             break;
                         }
                 }
@@ -539,12 +582,13 @@ public static partial class BytecodeEncoder
         sealed class Fixup
         {
             public readonly int WordIdx;
+            public readonly int PcIdx;
             public readonly int Kind;
             public readonly object Target;
 
-            public Fixup(int wordIdx, int kind, object target)
+            public Fixup(int wordIdx, int pcIdx, int kind, object target)
             {
-                WordIdx = wordIdx; Kind = kind; Target = target;
+                WordIdx = wordIdx; PcIdx = pcIdx; Kind = kind; Target = target;
             }
         }
 
