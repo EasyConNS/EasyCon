@@ -134,7 +134,7 @@ internal sealed class DeclarationCollector
 
         var returnType = ResolveType(syntax.ReturnType, syntax, scope) ?? ScriptType.Void;
         var function = new FunctionSymbol(syntax.Name, parameters.ToImmutable(), returnType,
-            libraryName: syntax.Library,
+            libraryName: ExternLibraryPath.Resolve(syntax.Library, syntax.Location.FileName),
             externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
         function.LocalSlotCount = parameters.Count;
 

@@ -1,6 +1,7 @@
 using EasyCon.Script;
 using EasyCon.Script.Bytecode;
 using EasyCon.Script.Modules;
+using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyCon.Script.Text;
 using System.Collections.Immutable;
@@ -208,6 +209,20 @@ public class ModuleProjectTests
         host.EnableRecording();
         Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
         Assert.That(host.Lines, Is.EqualTo(new[] { "41" }));
+    }
+
+    [Test]
+    public void RelativeExternPath_ResolvesAgainstDeclaringModule()
+    {
+        Write("lib/probe.ecs", "EXTERN FUNC probe($value:INT):INT FROM \"../probe.dll\"\n");
+        Write("main.ecs", "IMPORT \"probe.ecs\" AS p\n$x = p.probe(1)\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        Assert.That(project.NativeSymbols, Has.One.Matches<FunctionSymbol>(symbol =>
+            symbol.LibraryName == Path.GetFullPath(Path.Combine(_dir, "probe.dll"))));
     }
 
     [Test]

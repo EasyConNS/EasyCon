@@ -1,3 +1,4 @@
+using EasyCon.Script.Resolution;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
@@ -86,7 +87,9 @@ internal sealed partial class Binder
         }
 
         // 兜底：DeclarationCollector 未创建过
-        var function = new FunctionSymbol(syntax.Name, parameters.ToImmutable(), returnType, libraryName: syntax.Library, externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
+        var function = new FunctionSymbol(syntax.Name, parameters.ToImmutable(), returnType,
+            libraryName: ExternLibraryPath.Resolve(syntax.Library, syntax.Location.FileName),
+            externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
         function.LocalSlotCount = parameters.Count;
 
         if (BuiltinFunctions.GetAll().Any(b => b.Name == syntax.Name.ToUpper()))
