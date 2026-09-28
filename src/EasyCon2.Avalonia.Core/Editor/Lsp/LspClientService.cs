@@ -107,17 +107,19 @@ public class LspClientService : IDisposable, IAsyncDisposable
             PipeOptions.Asynchronous);
         await _clientPipe.ConnectAsync();
 
+        // GUI 启动时允许先建立无文件的 LSP 连接；空字符串不是有效文件系统路径，
+        // 不能传给 DocumentUri.FromFileSystemPath。
         DocumentUri? rootUri = null;
-        if (_filePath != null)
-            rootUri = DocumentUri.FromFileSystemPath(_filePath);
+        if (!string.IsNullOrWhiteSpace(_filePath))
+            rootUri = DocumentUri.FromFileSystemPath(Path.GetFullPath(_filePath));
 
         _client = LanguageClient.Create(options =>
         {
             options.WithInput(_clientPipe)
                    .WithOutput(_clientPipe);
 
-            if (rootUri != null)
-                options.WithRootUri(rootUri!);
+            if (rootUri is not null)
+                options.WithRootUri(rootUri);
 
             options.WithClientCapabilities(new ClientCapabilities
             {
