@@ -99,7 +99,8 @@ public sealed class CompileOptions
     /// </summary>
     public string ProductFingerprint()
     {
-        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}";
+        // M revisions invalidate artifacts when project/module visibility semantics change.
+        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=2";
     }
 }
 
@@ -116,6 +117,18 @@ public sealed class Compilation
     {
         options ??= new CompileOptions();
         var project = ProjectCompiler.CompileProject(SyntaxTree.Parse(code), options);
+        return FromProject(project);
+    }
+
+    /// <summary>统一链路编译内存源码并保留源文件路径与同目录 lib/ 上下文。</summary>
+    public static CompileResult CompileSource(string code, string fileName, CompileOptions? options = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+        options ??= new CompileOptions();
+        string fullPath = Path.GetFullPath(fileName);
+        SyntaxTree mainTree = SyntaxTree.Parse(SourceText.From(code, fullPath), options.LegacySyntax);
+        string scriptDir = Path.GetDirectoryName(fullPath)!;
+        var project = ProjectCompiler.CompileProject(mainTree, scriptDir, options);
         return FromProject(project);
     }
 

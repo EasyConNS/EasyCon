@@ -49,6 +49,14 @@ internal static class ModuleCacheKeys
     public static string ErrorFileName(string moduleName, string cacheKey)
         => $"{moduleName}-{cacheKey[..8]}.err";
 
+    /// <summary>根级库的预声明接口缓存键；源码变更或编译语义变更都会失效。</summary>
+    public static string InterfaceKey(string moduleName, string source, string productFingerprint)
+        => Compute(source, [], ModuleInterface.CurrentCompilerVersion,
+            $"interface|{moduleName}|{productFingerprint}");
+
+    public static string InterfaceFileName(string moduleName, string cacheKey)
+        => $"{moduleName}-{cacheKey[..8]}.eci";
+
     /// <summary>长度前缀规范项（防拼接歧义）。</summary>
     static void AppendItem(StringBuilder sb, string s)
         => sb.Append(s.Length).Append(':').Append(s);
@@ -159,6 +167,44 @@ internal sealed class ModuleCache
         }
     }
 
+    /// <summary>加载可用作根级库预声明的接口缓存；无效/损坏条目按未命中处理。</summary>
+    public ModuleInterface? TryLoadInterface(string moduleName, string source, string productFingerprint)
+    {
+        var cacheKey = ModuleCacheKeys.InterfaceKey(moduleName, source, productFingerprint);
+        var path = Path.Combine(_objDir, ModuleCacheKeys.InterfaceFileName(moduleName, cacheKey));
+        if (!File.Exists(path))
+            return null;
+
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: false);
+            var iface = ModuleInterfaceFormat.Read(reader);
+            if (stream.Position != stream.Length
+                || iface.Name != moduleName
+                || iface.CompilerVersion != ModuleInterface.CurrentCompilerVersion
+                || iface.InterfaceHash != InterfaceHasher.Compute(iface))
+                return null;
+            return iface;
+        }
+        catch (Exception ex) when (ex is IOException or BytecodeException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>原子写入根级库预声明接口。</summary>
+    public void StoreInterface(ModuleInterface iface, string source, string productFingerprint)
+    {
+        var cacheKey = ModuleCacheKeys.InterfaceKey(iface.Name, source, productFingerprint);
+        var finalPath = Path.Combine(_objDir, ModuleCacheKeys.InterfaceFileName(iface.Name, cacheKey));
+        var tempPath = Path.Combine(_objDir, $".{iface.Name}-{Guid.NewGuid():N}.tmp");
+        using (var stream = File.Create(tempPath))
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: false))
+            ModuleInterfaceFormat.Write(writer, iface);
+        MoveWithRetry(tempPath, finalPath);
+    }
+
     /// <summary>错误缓存重放（§7.3）：同 cacheKey 的历史编译失败诊断，命中即快速失败。</summary>
     public List<string>? TryLoadErrors(string moduleName, string cacheKey)
     {
@@ -223,7 +269,7 @@ internal sealed class ModuleCache
         foreach (var file in Directory.EnumerateFiles(_objDir))
         {
             var ext = Path.GetExtension(file);
-            if (ext is not (".ecm" or ".err"))
+            if (ext is not (".ecm" or ".err" or ".eci"))
                 continue;
             if (keepFileNames.Contains(Path.GetFileName(file)))
                 continue;

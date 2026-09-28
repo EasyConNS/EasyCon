@@ -107,11 +107,24 @@ internal static class InterfaceScopeSynthesizer
         // ---- 函数：非 alias → GlobalScope；alias → 独立 ModuleScope ----
         var moduleScopes = ImmutableDictionary.CreateBuilder<string, BoundScope>(StringComparer.OrdinalIgnoreCase);
         var externalFunctions = new HashSet<FunctionSymbol>();
+        var localFunctions = mainTree.Root.Members
+            .Select(member => member switch
+            {
+                FuncDeclBlock function => (Name: function.Declare.Name.ToUpperInvariant(), Count: function.Declare.Paramters.Length),
+                ExternFuncStmt external => (Name: external.Name.ToUpperInvariant(), Count: external.Parameters.Length),
+                _ => (Name: "", Count: -1),
+            })
+            .Where(function => function.Count >= 0)
+            .ToHashSet();
         foreach (var (iface, alias) in imports)
         {
             var target = alias is null ? globalScope : new BoundScope(globalScope);
             foreach (var f in iface.Functions)
             {
+                // 本模块自己的同名/同参数数声明优先；把 peer 的重复导出塞进同一
+                // GlobalScope 会让 Binder 把本地函数误当成冲突。AS 导入仍保留独立作用域。
+                if (alias is null && localFunctions.Contains((f.Name.ToUpperInvariant(), f.Params.Count)))
+                    continue;
                 var symbol = DeclareExport(target, f, diagnostics);
                 if (symbol is not null)
                     externalFunctions.Add(symbol);

@@ -27,6 +27,7 @@ internal sealed class ModuleCompilePipeline
     readonly int _procHitsBefore;
     readonly int _procMissesBefore;
     readonly Dictionary<string, string> _cacheKeys = new(StringComparer.OrdinalIgnoreCase);
+    readonly HashSet<string> _interfaceCacheFiles = new(StringComparer.OrdinalIgnoreCase);
 
     public ModuleCompilePipeline(Dictionary<string, ModuleNode> nodes, ModuleCache? cache,
         CompileOptions options, ModuleProjectResult result)
@@ -42,12 +43,20 @@ internal sealed class ModuleCompilePipeline
     /// <summary>缓存 GC 引用闭包所需的 模块名 → cacheKey 映射。</summary>
     public IReadOnlyDictionary<string, string> CacheKeys => _cacheKeys;
 
+    /// <summary>本次根级库接口预声明缓存文件，供 obj/ GC 保留当前图仍引用的条目。</summary>
+    public IReadOnlySet<string> InterfaceCacheFiles => _interfaceCacheFiles;
+
     /// <summary>全项目 extern 符号并集（FFI 原生按名分发的类型来源）。</summary>
     public HashSet<FunctionSymbol> NativeSymbols => _nativeSymbols;
 
     /// <summary>按拓扑序编译全部模块；false = 已失败（诊断与统计已写入 result，调用方直接返回）。</summary>
     public bool CompileAll(List<ModuleNode> compileOrder)
     {
+        // 根级自动库互相可见，但它们的接口尚未由逐模块编译产出；先建立一份
+        // 仅用于绑定/cache-key 的声明接口，再按正常顺序编译并用真实产物替换。
+        if (!PrepareImplicitRootLibInterfaces(compileOrder))
+            return Fail();
+
         var timing = _result.Timing;
         foreach (var node in compileOrder)
         {
@@ -118,6 +127,39 @@ internal sealed class ModuleCompilePipeline
             node.Interface = artifact.Interface!;
         }
         FillCacheStats();
+        return true;
+    }
+
+    bool PrepareImplicitRootLibInterfaces(List<ModuleNode> compileOrder)
+    {
+        foreach (var node in compileOrder.Where(n => n.IsImplicitRootLib))
+        {
+            string interfaceKey = ModuleCacheKeys.InterfaceKey(
+                node.Name, node.Source, _options.ProductFingerprint());
+            _interfaceCacheFiles.Add(ModuleCacheKeys.InterfaceFileName(node.Name, interfaceKey));
+
+            var cachedInterface = _cache?.TryLoadInterface(
+                node.Name, node.Source, _options.ProductFingerprint());
+            if (cachedInterface != null)
+            {
+                node.Interface = cachedInterface;
+                continue;
+            }
+
+            if (node.Tree == null && !EnsureParsed(node))
+                return false;
+
+            try
+            {
+                node.Interface = ModuleInterfaceBuilder.FromSyntaxTree(node.Tree!, node.Name);
+                _cache?.StoreInterface(node.Interface, node.Source, _options.ProductFingerprint());
+            }
+            catch (Exception ex)
+            {
+                _result.Diagnostics.Add(DiagnosticBag.FromMessage(node.Tree, node.Name, ex.Message));
+                return false;
+            }
+        }
         return true;
     }
 
@@ -214,6 +256,8 @@ internal sealed class ModuleCompilePipeline
             if (_options.Optimize)
                 SsaOptimizer.Optimize(ssa, moduleRoots: ssa.Functions.Keys);
             timing.SsaOptimize += sw.Elapsed;
+
+            SsaUseDefValidator.ValidateProgram(ssa);
 
             if (isMain)
                 _result.Program = ssa;
