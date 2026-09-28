@@ -102,7 +102,7 @@ public static class ProjectCompiler
         CompileOptions options, ModuleProjectResult result, bool allowLibAutoLoad)
     {
         ModuleCache? cache = null;
-        if (options.UseDiskCache && objDir.Length > 0)
+        if (!options.EnablePcWideSlots && options.UseDiskCache && objDir.Length > 0)
             cache = new ModuleCache(objDir);
 
         // 主树语法错误：编译前短路（不建图、不触碰缓存统计）

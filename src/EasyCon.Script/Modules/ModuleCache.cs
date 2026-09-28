@@ -10,7 +10,7 @@ namespace EasyCon.Script.Modules;
 /// 模块缓存键与 obj/ 磁盘缓存（docs/ModuleSystem.md §7）。
 ///
 /// cacheKey = SHA256(源码内容 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ 影响产物的编译选项)（§7.2）。
-/// 进键的选项集中在 CompileOptions.ProductFingerprint()（当前：Optimize/LegacySyntax/ExtVars）；
+/// 进键的选项集中在 CompileOptions.ProductFingerprint()（当前：Optimize/LegacySyntax/PcWideSlots/ExtVars）；
 /// KeepSsa 不影响序列化产物、UseDiskCache/ObjDir/GcMaxAge 与产物内容无关，均不进键。
 /// 文件名 = &lt;模块名&gt;-&lt;cacheKey 前 8 位&gt;.ecm；实现体改动 → 源码变 → 新键新文件，
 /// 接口未变时下游 cacheKey 不变 → 下游缓存全命中（Merkle 失效模型，§2.3）。

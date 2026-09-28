@@ -60,6 +60,30 @@ public sealed class EcsGlobal
     public int ImageSlot;
 }
 
+/// <summary>
+/// PC 解释器专用宽指令。ECX 的 A/B/C 字段仍保持 8 位；该表示只在桌面运行时
+/// 保存完整槽位编号，不参与 ECM/ECX 序列化。
+/// </summary>
+public sealed class EcsPcInstruction
+{
+    public EcsOpcode Op;
+    public int A;
+    public int B;
+    public int C;
+    public uint Ext;
+
+    public EcsPcInstruction(EcsOpcode op, int a = 0, int b = 0, int c = 0, uint ext = 0)
+    {
+        Op = op;
+        A = a;
+        B = b;
+        C = c;
+        Ext = ext;
+    }
+
+    public EcsPcInstruction Clone() => new(Op, A, B, C, Ext);
+}
+
 /// <summary>链接后的函数。</summary>
 public sealed class EcsFunction
 {
@@ -69,6 +93,11 @@ public sealed class EcsFunction
     public int NSlots;
     public bool HasReturn;
     public List<uint> Code = new();
+    /// <summary>
+    /// 桌面解释器宽指令流。仅槽位超过 ECX 8 位上限的函数设置；Code 仍保留为
+    /// 链接/扫描用的 ECX 影子流，且不得写入 ECM/ECX。
+    /// </summary>
+    public List<EcsPcInstruction>? PcCode;
     /// <summary>链接后在本镜像函数表中的下标。</summary>
     public int ImageIndex;
 
@@ -78,16 +107,20 @@ public sealed class EcsFunction
     /// </summary>
     public List<int> LineTable = new();
 
+    /// <summary>PcCode 对应的稀疏行号表；仅桌面宽函数使用。</summary>
+    public List<int> PcLineTable = new();
+
     /// <summary>pc → 源码行（1 基；空表或 pc 早于首登记返回 0）。二分取 ≤pc 的最近登记。</summary>
     public int LineAt(int pc)
     {
-        int lo = 0, hi = LineTable.Count / 2 - 1, result = 0;
+        List<int> table = PcCode != null ? PcLineTable : LineTable;
+        int lo = 0, hi = table.Count / 2 - 1, result = 0;
         while (lo <= hi)
         {
             int mid = (lo + hi) / 2;
-            if (LineTable[mid * 2] <= pc)
+            if (table[mid * 2] <= pc)
             {
-                result = LineTable[mid * 2 + 1];
+                result = table[mid * 2 + 1];
                 lo = mid + 1;
             }
             else

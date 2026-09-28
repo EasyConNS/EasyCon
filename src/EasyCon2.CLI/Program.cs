@@ -136,7 +136,13 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     outdap.Log("正在解析脚本...");
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = new CompileOptions { ExtVars = [.. label.Select(il => il.name)], UseDiskCache = false },
+        Compile = new CompileOptions
+        {
+            ExtVars = [.. label.Select(il => il.name)],
+            UseDiskCache = false,
+            UseProcessCache = false,
+            EnablePcWideSlots = true,
+        },
     });
     Console.WriteLine(session.Info.Timing?.ToReport());
     var diag = session.Info.Diagnostics;
@@ -346,7 +352,13 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
 
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = new CompileOptions { ExtVars = [.. label.Select(il => il.name)], UseDiskCache = false },
+        Compile = new CompileOptions
+        {
+            ExtVars = [.. label.Select(il => il.name)],
+            UseDiskCache = false,
+            UseProcessCache = false,
+            EnablePcWideSlots = true,
+        },
         Capabilities = new EasyCon.Core.Capabilities.CapabilitySet(),
     });
     var diag = session.Info.Diagnostics;
@@ -388,7 +400,13 @@ irCommand.SetAction(async (parseResult, cancellationToken) =>
 
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = new CompileOptions { ExtVars = [.. label.Select(il => il.name)], UseDiskCache = false },
+        Compile = new CompileOptions
+        {
+            ExtVars = [.. label.Select(il => il.name)],
+            UseDiskCache = false,
+            UseProcessCache = false,
+            EnablePcWideSlots = true,
+        },
         Capabilities = new EasyCon.Core.Capabilities.CapabilitySet(),
     });
     var diag = session.Info.Diagnostics;
@@ -427,6 +445,8 @@ static string DumpIr(EasyCon.Core.Script.IScriptEngine engine, EasyCon.Core.Scri
             ExtVars = [.. label.Select(il => il.name)],
             Optimize = false,
             UseDiskCache = false,
+            UseProcessCache = false,
+            EnablePcWideSlots = true,
         },
     });
     return rerun.Info.Program != null

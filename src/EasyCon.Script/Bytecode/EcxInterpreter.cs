@@ -637,17 +637,48 @@ public sealed class EcxInterpreter
             }
 
             var frame = _frames[^1];
-            var code = frame.Fn.Code;
-            var ins = code[frame.Pc++];
-            var op = (EcsOpcode)(ins & 0xFF);
-            int a = (int)((ins >> 8) & 0xFF);
-            int b = (int)((ins >> 16) & 0xFF);
-            int c = (int)((ins >> 24) & 0xFF);
-            // EXT 后随数据字按 EcsFormat 表预取（权威集合/语义见 ExtKind）：执行 case 只消费
-            // ext，不再各自负责「记得读后随字」——漏读会把数据误读为下一条指令（历史 F4 缺陷形态）。
-            uint ext = 0;
-            if (EcsFormat.ExtWords(op) > 0)
-                ext = code[frame.Pc++];
+            int instructionPc = frame.Pc;
+            bool pcWide = frame.Fn.PcCode != null;
+            EcsOpcode op;
+            int a;
+            int b;
+            int c;
+            uint ext;
+            if (frame.Fn.PcCode is { } pcCode)
+            {
+                EcsPcInstruction pcIns = pcCode[frame.Pc++];
+                op = pcIns.Op;
+                a = pcIns.A;
+                b = pcIns.B;
+                c = pcIns.C;
+                ext = pcIns.Ext;
+            }
+            else
+            {
+                List<uint> code = frame.Fn.Code;
+                uint ins = code[frame.Pc++];
+                op = (EcsOpcode)(ins & 0xFF);
+                a = (int)((ins >> 8) & 0xFF);
+                b = (int)((ins >> 16) & 0xFF);
+                c = (int)((ins >> 24) & 0xFF);
+                ext = EcsFormat.ExtWords(op) > 0 ? code[frame.Pc++] : 0;
+                switch (EcsFormat.Get(op))
+                {
+                    case EcsInsFormat.ABx:
+                        b |= c << 8;
+                        c = 0;
+                        break;
+                    case EcsInsFormat.AsBx:
+                        b = (short)(ins >> 16);
+                        c = 0;
+                        break;
+                    case EcsInsFormat.IsJ:
+                        a = Sign24(ins >> 8);
+                        b = 0;
+                        c = 0;
+                        break;
+                }
+            }
             var R = frame.Slots;
 
             try
@@ -658,11 +689,11 @@ public sealed class EcxInterpreter
 
                     // ---- 常量与移动 ----
                     case EcsOpcode.LoadI:
-                        StoreFresh(ref R[a], TaggedValue.FromInt((short)(ins >> 16)));
+                        StoreFresh(ref R[a], TaggedValue.FromInt(b));
                         break;
                     case EcsOpcode.LoadK:
                         {
-                            var kx = b | (c << 8);
+                            int kx = b;
                             var k = _image.Consts[kx];
                             if (k.Tag == EcsTag.String)
                                 MoveToSlot(ref R[a], InternedString(kx));   // 驻留串：借用 + retain，槽旧值照常释放
@@ -687,25 +718,25 @@ public sealed class EcxInterpreter
                         StoreFresh(ref R[a], DeepCopyCopyOnWrite(R[b]));
                         break;
                     case EcsOpcode.LoadG:
-                        MoveToSlot(ref R[a], _globals[b | (c << 8)]);
+                        MoveToSlot(ref R[a], _globals[b]);
                         break;
                     case EcsOpcode.StoreG:
                         {
                             var nv = DeepCopyCopyOnWrite(R[a]);
-                            var gx = b | (c << 8);
+                            int gx = b;
                             Release(_globals[gx]);
                             _globals[gx] = nv;
                             break;
                         }
 
                     case EcsOpcode.Jmp:
-                        frame.Pc += Sign24(ins >> 8);
+                        frame.Pc += a;
                         break;
                     case EcsOpcode.Jpt:
-                        frame.Pc += R[a].I32 != 0 ? Sign16(ins >> 16) : 0;
+                        frame.Pc += R[a].I32 != 0 ? b : 0;
                         break;
                     case EcsOpcode.Jpf:
-                        frame.Pc += R[a].I32 == 0 ? Sign16(ins >> 16) : 0;
+                        frame.Pc += R[a].I32 == 0 ? b : 0;
                         break;
 
                     // ---- 调用 ----
@@ -717,7 +748,7 @@ public sealed class EcxInterpreter
                                 throw new SimError(ERR_DEPTH, $"调用深度超过上限 {MaxCallDepth}");
                             var nf = RentFrame(callee.NSlots);
                             nf.Fn = callee;
-                            nf.RetSlot = c == 255 ? -1 : c;   // C=255：无接收槽（结果未使用的调用）
+                            nf.RetSlot = pcWide ? c : c == 255 ? -1 : c;
                             nf.Pc = 0;
                             for (int i = 0; i < b; i++)
                                 StoreFresh(ref nf.Slots[i], DeepCopyCopyOnWrite(R[a + i]));   // S-17 实参（COW：唯一引用移交；池出租槽已清零，StoreFresh 恒等价）
@@ -747,7 +778,7 @@ public sealed class EcxInterpreter
                                     throw new SimError(ERR_NOSUCHNATIVE, $"原生索引越界 {target}");
                                 ret = HostNative(_image.Natives[(int)target].Name, args);   // L3 名表路径：FFI/采集洞/ENCODE/JQ
                             }
-                            if (c != 255)
+                            if (pcWide ? c >= 0 : c != 255)
                                 StoreFresh(ref R[c], ret);   // C=255：无接收槽；原生返回值恒为新建对象/标量（EcxNativeContext 契约），出生引用即接收槽引用
                             if (_token.IsCancellationRequested)
                                 return CANCELLED;   // 宿主调用后即时取消（原生内含 PRINT/READ/WAIT 类长延迟）
@@ -779,7 +810,7 @@ public sealed class EcxInterpreter
                         break;
 
                     default:
-                        if (ExecOther(op, ins, ext, R))
+                        if (ExecOther(op, a, b, c, ext, R))
                             return CANCELLED;
                         break;
                 }
@@ -789,7 +820,7 @@ public sealed class EcxInterpreter
                 if (e.Code == OK)
                     return OK;   // Halt 正常停机：不留错误现场（与 C VM 对齐）
                 ErrorFunc = _image.Functions.IndexOf(frame.Fn);
-                ErrorPc = frame.Pc - 1;   // 取指后已自增，回退到失败指令下标（与 C VM 对齐）
+                ErrorPc = instructionPc;
                 return e.Code;
             }
         }
@@ -797,12 +828,8 @@ public sealed class EcxInterpreter
 
     /// <summary>非控制流/非调用的算术与数据指令。返回 true = 本指令调用了宿主且取消已请求，
     /// 调用方立即终止（等待/按键类长延迟宿主调用的取消感知点）。</summary>
-    bool ExecOther(EcsOpcode op, uint ins, uint ext, TaggedValue[] R)
+    bool ExecOther(EcsOpcode op, int a, int b, int c, uint ext, TaggedValue[] R)
     {
-        int a = (int)((ins >> 8) & 0xFF);
-        int b = (int)((ins >> 16) & 0xFF);
-        int c = (int)((ins >> 24) & 0xFF);
-
         switch (op)
         {
             // ---- 算术（S-02/S-05）----
@@ -880,7 +907,7 @@ public sealed class EcxInterpreter
                     break;
                 }
             case EcsOpcode.NewArrE:   // ABx：元素类型码在 Bx
-                StoreFresh(ref R[a], TaggedValue.FromArrayHandle(Store(new SimArray { ElemTag = (byte)(b | (c << 8)) })));
+                StoreFresh(ref R[a], TaggedValue.FromArrayHandle(Store(new SimArray { ElemTag = (byte)b })));
                 break;
             case EcsOpcode.GetI:
                 {
@@ -1011,7 +1038,7 @@ public sealed class EcxInterpreter
             // ---- 结构体 ----
             case EcsOpcode.NewSt:   // ABx：类型表索引在 Bx
                 {
-                    var layout = _image.Structs[b | (c << 8)];
+                    var layout = _image.Structs[b];
                     var st = new SimStruct { Layout = layout, Slots = new TaggedValue[layout.SlotCount] };
                     ZeroFill(layout, st.Slots);
                     StoreFresh(ref R[a], TaggedValue.FromStructHandle(Store(st)));
@@ -1041,9 +1068,9 @@ public sealed class EcxInterpreter
                 }
 
             // ---- 域操作（宿主调用：返回取消状态，取消感知点）----
-            case EcsOpcode.WaitI: _host.WaitMs(b | (c << 8)); return _token.IsCancellationRequested;
+            case EcsOpcode.WaitI: _host.WaitMs(b); return _token.IsCancellationRequested;
             case EcsOpcode.WaitV: _host.WaitMs(R[a].I32); return _token.IsCancellationRequested;
-            case EcsOpcode.KeyI: _host.Key(a, b | (c << 8)); return _token.IsCancellationRequested;
+            case EcsOpcode.KeyI: _host.Key(a, b); return _token.IsCancellationRequested;
             case EcsOpcode.KeyV: _host.Key(a, R[b].I32); return _token.IsCancellationRequested;
             case EcsOpcode.KeySt: _host.KeyState(a, b); return _token.IsCancellationRequested;
             case EcsOpcode.StickSet: _host.StickSet(a, b, c); return _token.IsCancellationRequested;
@@ -1059,7 +1086,7 @@ public sealed class EcxInterpreter
                 }
             case EcsOpcode.Img:   // ABx：标签名 = 常量池[Bx]（EcsOpcode.cs 注释为权威）
                 {
-                    var name = _image.Consts[b | (c << 8)].Str ?? "";
+                    var name = _image.Consts[b].Str ?? "";
                     StoreFresh(ref R[a], TaggedValue.FromInt(_host.ImgLabel(name)));
                     return _token.IsCancellationRequested;
                 }
@@ -1449,7 +1476,6 @@ public sealed class EcxInterpreter
 
     string? StrOrNullPub(TaggedValue v) => v.IsString ? StrOrNull(v.Handle) : null;
 
-    static int Sign16(uint v) => (int)(ushort)v << 16 >> 16;
     static int Sign24(uint v) => (int)(v & 0xFFFFFF) << 8 >> 8;
 
     sealed class SimError : Exception

@@ -76,7 +76,7 @@ internal sealed class ModuleCompilePipeline
                 if (artifact != null && artifact.Interface!.Dependencies.Count != node.Dependencies.Count)
                     artifact = null;   // 依赖集合变化（防御；cacheKey 已覆盖，双保险）
             }
-            else if (_options.UseProcessCache)
+            else if (_options.UseProcessCache && !_options.EnablePcWideSlots)
             {
                 // 进程级产物缓存：仅现编路径（UseDiskCache=false）；命中反序列化出新实例，无别名共享
                 artifact = ProcessModuleCache.TryLoad(node.Name, cacheKey);
@@ -120,7 +120,7 @@ internal sealed class ModuleCompilePipeline
                     return Fail();
                 }
                 _cache?.Store(artifact, cacheKey);
-                if (_cache == null && _options.UseProcessCache)
+                if (_cache == null && _options.UseProcessCache && !_options.EnablePcWideSlots)
                     ProcessModuleCache.Store(artifact, cacheKey);
             }
             node.Artifact = artifact;
@@ -264,7 +264,7 @@ internal sealed class ModuleCompilePipeline
 
             bool hasInit = isMain || ModuleInterfaceBuilder.FromSyntaxTree(moduleTree, node.Name).HasInit;
             var artifact = EcxModuleEncoder.CompileWholeProgramAsModule(ssa, node.Name, externalFunctions,
-                hasInit: hasInit, isMain: isMain);
+                hasInit: hasInit, isMain: isMain, enablePcWideSlots: _options.EnablePcWideSlots);
             artifact.Ssa = _options.KeepSsa ? ssa : null;
 
             // 接口区：声明收集层提取；依赖表 = 图边（含隐式 std/vision，§4.4）

@@ -13,6 +13,10 @@ public static class EcmFormat
 
     public static byte[] Write(ModuleArtifact module)
     {
+        if (module.Functions.Any(f => f.PcCode != null))
+            throw new BytecodeException(new[] { new BytecodeDiagnostic(
+                "PC 宽槽位指令不能写入 ECM；请使用桌面解释器直接运行", module.Name, 0) });
+
         using var ms = new MemoryStream();
         using var w = new BinaryWriter(ms);
 

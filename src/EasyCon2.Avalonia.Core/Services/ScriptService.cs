@@ -136,7 +136,13 @@ public class ScriptService : IScriptService
 
     static ScriptHostOptions Options(ImmutableHashSet<string> extVars) => new()
     {
-        Compile = new CompileOptions { ExtVars = extVars, UseDiskCache = false },
+        Compile = new CompileOptions
+        {
+            ExtVars = extVars,
+            UseDiskCache = false,
+            UseProcessCache = false,
+            EnablePcWideSlots = true,
+        },
     };
 
     /// <summary>编译并落诊断日志；出错返回 null。</summary>
