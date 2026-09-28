@@ -11,9 +11,20 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script;
 
-public class ScriptException(string message, int address = 0) : Exception(message)
+public class ScriptException : Exception
 {
-    public int Address { get; private set; } = address;
+    public ScriptException(string message, int address = 0) : base(message)
+    {
+        Address = address;
+    }
+
+    public ScriptException(string message, Exception innerException, int address = 0)
+        : base(message, innerException)
+    {
+        Address = address;
+    }
+
+    public int Address { get; private set; }
 }
 
 /// <summary>
@@ -104,8 +115,8 @@ public sealed class CompileOptions
     /// </summary>
     public string ProductFingerprint()
     {
-        // M revisions invalidate artifacts when project/module visibility semantics change.
-        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|W={(EnablePcWideSlots ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=2";
+        // M revisions invalidate artifacts when project/module visibility or path semantics change.
+        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|W={(EnablePcWideSlots ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=3";
     }
 }
 

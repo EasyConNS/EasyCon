@@ -60,13 +60,14 @@ internal sealed class ModuleCompilePipeline
         var timing = _result.Timing;
         foreach (var node in compileOrder)
         {
+            string sourceContext = ModuleCacheKeys.SourceContext(node.Path);
             var depIfaces = node.Dependencies
                 .Where(_nodes.ContainsKey)
                 .Select(d => _nodes[d].Interface)
                 .ToList();
             var cacheKey = ModuleCacheKeys.Compute(node.Source,
                 depIfaces.Select(i => i.InterfaceHash).ToList(), ModuleInterface.CurrentCompilerVersion,
-                _options.ProductFingerprint());
+                _options.ProductFingerprint(), sourceContext);
             _cacheKeys[node.Name] = cacheKey;
 
             ModuleArtifact? artifact = null;
@@ -134,12 +135,13 @@ internal sealed class ModuleCompilePipeline
     {
         foreach (var node in compileOrder.Where(n => n.IsImplicitRootLib))
         {
+            string sourceContext = ModuleCacheKeys.SourceContext(node.Path);
             string interfaceKey = ModuleCacheKeys.InterfaceKey(
-                node.Name, node.Source, _options.ProductFingerprint());
+                node.Name, node.Source, _options.ProductFingerprint(), sourceContext);
             _interfaceCacheFiles.Add(ModuleCacheKeys.InterfaceFileName(node.Name, interfaceKey));
 
             var cachedInterface = _cache?.TryLoadInterface(
-                node.Name, node.Source, _options.ProductFingerprint());
+                node.Name, node.Source, _options.ProductFingerprint(), sourceContext);
             if (cachedInterface != null)
             {
                 node.Interface = cachedInterface;
@@ -152,7 +154,7 @@ internal sealed class ModuleCompilePipeline
             try
             {
                 node.Interface = ModuleInterfaceBuilder.FromSyntaxTree(node.Tree!, node.Name);
-                _cache?.StoreInterface(node.Interface, node.Source, _options.ProductFingerprint());
+                _cache?.StoreInterface(node.Interface, node.Source, _options.ProductFingerprint(), sourceContext);
             }
             catch (Exception ex)
             {
