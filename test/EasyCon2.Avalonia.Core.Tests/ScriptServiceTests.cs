@@ -469,6 +469,8 @@ public class ScriptServiceTests
         var log = new FakeLogService();
         var service = CreateService(log, new FakeDeviceService(switchDevice), new FakeCaptureService());
         var packets = new ConcurrentQueue<byte[]>();
+        byte[] pressedA = new SwitchReport { Button = (ushort)SwitchButton.A }.GetBytes();
+        byte[] released = new SwitchReport().GetBytes();
         using var stopCollector = new CancellationTokenSource();
         Task collector = Task.Run(() =>
         {
@@ -484,7 +486,9 @@ public class ScriptServiceTests
             service.RunFromContent("FOR 200\nA\nNEXT\n");
             await WaitUntilAsync(() => !service.IsRunning, "按键循环应执行完成", timeoutMs: 60000,
                 detail: () => string.Join(" | ", log.Snapshot()));
-            await Task.Delay(100);
+            await WaitUntilAsync(() => HasCompleteHidReportSequence(packets, pressedA, released),
+                "设备写入队列应收到完整的 200 次按下和最后释放报告", timeoutMs: 5000,
+                detail: () => DescribeHidReports(packets, pressedA, released));
         }
         finally
         {
@@ -493,8 +497,6 @@ public class ScriptServiceTests
             switchDevice.Disconnect();
         }
 
-        byte[] pressedA = new SwitchReport { Button = (ushort)SwitchButton.A }.GetBytes();
-        byte[] released = new SwitchReport().GetBytes();
         byte[][] hidReports = packets.ToArray();
         int lastPress = Array.FindLastIndex(hidReports, packet => packet.SequenceEqual(pressedA));
         int lastRelease = Array.FindLastIndex(hidReports, packet => packet.SequenceEqual(released));
@@ -506,6 +508,25 @@ public class ScriptServiceTests
                 $"最后一次 A 按下后必须收到释放 HID 报告；按下数={hidReports.Count(packet => packet.SequenceEqual(pressedA))}，释放数={hidReports.Count(packet => packet.SequenceEqual(released))}");
             Assert.That(log.Snapshot(), Does.Contain("脚本运行完成"));
         });
+    }
+
+    private static bool HasCompleteHidReportSequence(ConcurrentQueue<byte[]> packets, byte[] pressedA, byte[] released)
+    {
+        byte[][] reports = packets.ToArray();
+        int pressCount = reports.Count(packet => packet.SequenceEqual(pressedA));
+        int lastPress = Array.FindLastIndex(reports, packet => packet.SequenceEqual(pressedA));
+        int lastRelease = Array.FindLastIndex(reports, packet => packet.SequenceEqual(released));
+        return pressCount >= 200 && lastRelease > lastPress;
+    }
+
+    private static string DescribeHidReports(ConcurrentQueue<byte[]> packets, byte[] pressedA, byte[] released)
+    {
+        byte[][] reports = packets.ToArray();
+        int pressCount = reports.Count(packet => packet.SequenceEqual(pressedA));
+        int releaseCount = reports.Count(packet => packet.SequenceEqual(released));
+        int lastPress = Array.FindLastIndex(reports, packet => packet.SequenceEqual(pressedA));
+        int lastRelease = Array.FindLastIndex(reports, packet => packet.SequenceEqual(released));
+        return $"按下数={pressCount}，释放数={releaseCount}，最后按下索引={lastPress}，最后释放索引={lastRelease}";
     }
 
     [Test]
