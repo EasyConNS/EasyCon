@@ -71,8 +71,14 @@ if exist "%PUBLISH_DIR%\*.pdb" del /q "%PUBLISH_DIR%\*.pdb"
 echo 正在移动到dist文件夹...
 
 robocopy "%PUBLISH_DIR%" "%DIST_DIR%\publish" /move /e
+set "ROBOCOPY_EXIT_CODE=!ERRORLEVEL!"
+if !ROBOCOPY_EXIT_CODE! GEQ 8 (
+    echo 错误: 复制发布文件失败，Robocopy 退出码 !ROBOCOPY_EXIT_CODE!
+    exit /b !ROBOCOPY_EXIT_CODE!
+)
 if exist "%PUBLISH_DIR%" rmdir /s /q "%PUBLISH_DIR%"
 
 echo 构建完成!
 echo 输出目录: "%DIST_DIR%\publish"
 if "%CI%"=="" pause
+exit /b 0
