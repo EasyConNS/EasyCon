@@ -473,10 +473,12 @@ public class ScriptServiceTests
         byte[] released = new SwitchReport().GetBytes();
         void RecordSentPacket(string _, byte[] packet) => packets.Enqueue(packet.ToArray());
         connection.BytesSent += RecordSentPacket;
+        const int pressDurationMs = 100;
 
         try
         {
-            service.RunFromContent("FOR 200\nA\nNEXT\n");
+            // 留出多个设备写循环周期，避免 CI runner 调度抖动让短按状态被合并。
+            service.RunFromContent($"FOR 200\nA {pressDurationMs}\nNEXT\n");
             await WaitUntilAsync(() => !service.IsRunning, "按键循环应执行完成", timeoutMs: 60000,
                 detail: () => string.Join(" | ", log.Snapshot()));
             await WaitUntilAsync(() => HasCompleteHidReportSequence(packets, pressedA, released),
