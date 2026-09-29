@@ -1652,8 +1652,10 @@ public partial class MainWindowViewModel : ViewModelBase
             _scriptService.Stop();
         }
 
-        // 释放控制器资源（SDL3 事件循环等）移至 App desktop.Exit 单一清理入口，
-        // 此处不再提前 Dispose（双通道释放靠幂等保护是巧合不是设计）
+        // 主窗口一关 vpad 必须退出（覆盖层 + SDL 键盘钩子），不能等 desktop.Exit：
+        // 任何残留窗口拖住 lifetime 都会让 vpad 挂着（ac7e16c 回归）。Disconnect 幂等；
+        // Dispose（SDL3 事件循环等）仍留在 App desktop.Exit 单一清理入口。
+        _controllerService.Disconnect();
 
         // 取消在途 AI 请求并退订其静态事件订阅
         AiAgent.Dispose();

@@ -16,6 +16,8 @@ public class VPadService
     private Func<bool>? _escKeyDown;
     private Func<bool>? _escKeyUp;
     private Window? _owner;
+    /// <summary>覆盖层会话号：Show/Exit 各自递增，使在途的创建 Post 失效（跨线程调用，需 Interlocked）。</summary>
+    private int _session;
 
     public VPadService(NintendoSwitch gamepad, IControllerAdapter adapter)
     {
@@ -50,18 +52,29 @@ public class VPadService
         }
 
         Active = true;
+        int session = Interlocked.Increment(ref _session);
         Dispatcher.UIThread.Post(() =>
         {
-            _overlay = new VPadOverlay(_gamepad, _adapter);
-            _overlay.ToggleRequested += () => Active = !Active;
-            _overlay.HideRequested += Exit;
-            _overlay.KeyEvent += (sc, down) => OverlayKeyEvent?.Invoke(sc, down);
-            _overlay.Closed += (_, _) => OnOverlayClosed();
-            _overlay.IsActive = Active;
+            // Exit 抢在本 Post 之前执行（或二次 Show 已开新会话）时不得再创建，
+            // 否则此后 _isConnected 已为 false，没有任何路径会关闭这个孤儿覆盖层
+            if (session != Volatile.Read(ref _session))
+                return;
+
+            var overlay = new VPadOverlay(_gamepad, _adapter);
+            overlay.ToggleRequested += () => Active = !Active;
+            overlay.HideRequested += Exit;
+            overlay.KeyEvent += (sc, down) => OverlayKeyEvent?.Invoke(sc, down);
+            overlay.Closed += (_, _) => OnOverlayClosed();
+            overlay.IsActive = Active;
             if (_owner != null)
-                _overlay.Show(_owner);
+                overlay.Show(_owner);
             else
-                _overlay.Show();
+                overlay.Show();
+
+            _overlay = overlay;
+            // Exit 在创建过程中从其它线程插入：关掉刚显示的覆盖层（Closed → OnOverlayClosed 补发 Exited）
+            if (session != Volatile.Read(ref _session))
+                overlay.Close();
         });
     }
 
@@ -90,6 +103,7 @@ public class VPadService
     public void Exit()
     {
         Active = false;
+        Interlocked.Increment(ref _session);
         if (_overlay != null)
         {
             if (Dispatcher.UIThread.CheckAccess())

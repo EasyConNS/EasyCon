@@ -35,7 +35,7 @@ public static class BundledSkills
 
             - 关键字必须全大写（IF/FOR/FUNC/WAIT/PRINT），禁止混用大小写
             - 逻辑运算符全小写（and/or/not）
-            - 变量以 `$` 开头
+            - 变量以 `$` 开头，常量以 `_` 开头
             - 脚本以行为基础，每条指令独占一行
             - 流程控制块必须换行书写，IF/ENDIF、FOR/NEXT、WHILE/END 等各占一行，禁止同行
             - **严格遵循语法**：只能使用语法说明中明确列出的关键字、函数、结构，禁止自创语法、臆造函数

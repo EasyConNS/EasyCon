@@ -59,6 +59,13 @@ public sealed class SdlEventLoop : IDisposable
                 return;
             }
 
+            // 全局键盘捕获（SDL 3.4.4+）：Windows 下 SDL 据此以 RAWINPUT+INPUTSINK 注册，
+            // 不创建窗口、不抢焦点，任意前台应用下都能收到 SDL 键盘事件，且只观察不吞键
+            // （不带 NOLEGACY/NOHOTKEYS，前台应用的正常按键流程不受影响）。
+            // 其它平台/旧版 SDL 会忽略这两个 hint，回落到窗口焦点路径（VPadOverlay 聚焦仍可用）。
+            SDL3.SDL_SetHint(SDL3.SDL_HINT_WINDOWS_RAW_KEYBOARD, "1");
+            SDL3.SDL_SetHint(SDL3.SDL_HINT_WINDOWS_RAW_KEYBOARD_INPUTSINK, "1");
+
             while (_running)
             {
                 PollEvents();

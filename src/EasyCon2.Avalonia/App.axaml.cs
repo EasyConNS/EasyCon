@@ -84,6 +84,10 @@ public partial class App : Application
             var windowService = new WindowService(deviceService, logService, dialogService);
             var mainWindow = new MainWindow { DataContext = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService, dialogService, windowService, uiDispatcher, new SkiaImageProcessor()) };
             desktop.MainWindow = mainWindow;
+            // 默认 OnLastWindowClose 下，键盘映射等子窗口或 VPadOverlay 存活时关主窗口
+            // 不会触发 desktop.Exit，vpad 清理永远不执行（残留 SDL 钩子 + Topmost 悬浮窗）。
+            // 主窗口关闭即应用关停，剩余窗口由框架强制关闭。
+            desktop.ShutdownMode = global::Avalonia.Controls.ShutdownMode.OnMainWindowClose;
 
             // 注入主窗口 Owner，子窗口/弹窗/VPadOverlay 以主窗口为 Owner
             windowService.Owner = mainWindow;
