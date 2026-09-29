@@ -28,6 +28,11 @@
             ExtendClientAreaTitleBarHeightHint="{DynamicResource WorkbenchTitleBarHeight}"
            behaviors:FileDropBehavior.Command="{Binding DropFileCommand}">
 
+    <Window.KeyBindings>
+        <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveScriptCommand}"/>
+        <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveScriptAsCommand}"/>
+    </Window.KeyBindings>
+
     <Window.Styles>
         <Style Selector="ToggleSwitch.compact-switch">
             <Setter Property="Width" Value="46" />
@@ -393,13 +398,13 @@
                                                 Margin="8,0,12,0">
                                         <Button Classes="editor-toolbar-button"
                                                 Command="{Binding SaveScriptCommand}"
-                                                ToolTip.Tip="保存">
+                                                ToolTip.Tip="{loc:Translate Text.Btn.SaveScript}">
                                             <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z"
                                                        Width="13" Height="13"/>
                                         </Button>
                                         <Button Classes="editor-toolbar-button"
                                                 Command="{Binding SaveScriptAsCommand}"
-                                                ToolTip.Tip="另存为">
+                                                ToolTip.Tip="{loc:Translate Text.Btn.SaveScriptAs}">
                                             <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z M10,10 L16,13 L10,16 Z"
                                                        Width="13" Height="13"/>
                                         </Button>
@@ -849,13 +854,13 @@
                                         IsVisible="{Binding IsTextEditorTabSelected}">
                                 <Button Classes="editor-toolbar-button"
                                         Command="{Binding SaveScriptCommand}"
-                                        ToolTip.Tip="保存">
+                                        ToolTip.Tip="{loc:Translate Text.Btn.SaveScript}">
                                     <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z"
                                               Width="13" Height="13"/>
                                 </Button>
                                 <Button Classes="editor-toolbar-button"
                                         Command="{Binding SaveScriptAsCommand}"
-                                        ToolTip.Tip="另存为">
+                                        ToolTip.Tip="{loc:Translate Text.Btn.SaveScriptAs}">
                                     <PathIcon Data="M0,0 H12 L16,4 V16 H0 Z M3,0 V6 H11 V0 Z M3,10 H13 V15 H3 Z M10,10 L16,13 L10,16 Z"
                                               Width="13" Height="13"/>
                                 </Button>

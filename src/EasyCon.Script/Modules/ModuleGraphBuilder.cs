@@ -11,6 +11,8 @@ internal sealed class ModuleNode
 {
     public required string Name;
     public required string Source;
+    /// <summary>主脚本同目录 lib/ 中由自动加载发现的根级库。</summary>
+    public bool IsImplicitRootLib;
     /// <summary>语法树（惰性）：仅缓存未命中/主模块才 parse——缓存命中路径只读 .ecm 接口区
     /// （图构建经 Lexer 令牌扫描 IMPORT，不对依赖全量 parse）。</summary>
     public SyntaxTree? Tree;
@@ -37,9 +39,11 @@ internal static class ModuleLocations
 /// <summary>
 /// 模块依赖图构建（docs/ModuleSystem.md §3.3/§5.3 的图构建半区）：
 /// main 树注册 + IMPORT 递归展开 + 环检测（DFS 当前路径栈）+ lib/ 自动加载（v1
-/// ImportResolver 顺序语义：显式 import 之后、main 之前）→ 隐式 std/vision 依赖注入 →
-/// 拓扑序编译序列（被依赖者在前，main 最后）。依赖模块只做 Lexer 令牌级导入扫描
-/// （禁止裸正则），全量 parse 推迟到缓存未命中之后（编译管线的 EnsureParsed）。
+/// ImportResolver 顺序语义：显式 import 之后、main 之前）→ 根级自动库共享接口 →
+/// 隐式 std/vision 依赖注入 →
+/// 依赖序/根级库包序编译序列（main 最后）。依赖模块只做 Lexer 令牌级导入扫描
+/// （禁止裸正则）；根级库包的声明接口在缓存查找前预扫描，其余模块全量 parse
+/// 仍推迟到缓存未命中之后（编译管线的 EnsureParsed）。
 /// 致命错误经 <see cref="DiagnosticBag"/> 上报（HasErrors 由调用方判定）；非致命提示透传。
 /// </summary>
 internal static class ModuleGraphBuilder
@@ -152,12 +156,14 @@ internal static class ModuleGraphBuilder
                 foreach (var file in Directory.GetFiles(libDir, "*.ecs").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
                 {
                     var fullPath = Path.GetFullPath(file);
-                    if (byPath.TryGetValue(fullPath, out var existingModuleName))
+                    if (byPath.TryGetValue(fullPath, out string? existingName))
                     {
-                        // 该根级 lib 可能已被另一个 lib 递归导入。节点无需重复收集，但它仍
-                        // 属于 main 的自动加载集合，必须保持全局无 alias 可见。
-                        if (!mainNode.Dependencies.Contains(existingModuleName))
-                            mainNode.Dependencies.Add(existingModuleName);
+                        // 显式/间接导入只负责加载一次；若它也位于主脚本根级 lib/，
+                        // 仍须成为自动库包成员并对 main 可见。
+                        ModuleNode existingNode = nodes[existingName];
+                        existingNode.IsImplicitRootLib = true;
+                        if (!mainNode.Dependencies.Contains(existingName))
+                            mainNode.Dependencies.Add(existingName);
                         continue;
                     }
                     var moduleName = Path.GetFileNameWithoutExtension(fullPath);
@@ -171,6 +177,7 @@ internal static class ModuleGraphBuilder
                     {
                         Name = moduleName,
                         Source = File.ReadAllText(fullPath),
+                        IsImplicitRootLib = true,
                         Tree = null,
                         Path = fullPath,
                     };
@@ -183,6 +190,23 @@ internal static class ModuleGraphBuilder
                 }
             }
             timing.AutoLoadLib += sw.Elapsed;
+        }
+
+        // 根级自动加载库属于同一个隐式库包。主脚本一直可以看到所有自动库，
+        // 这里把同一包内的接口也提供给每个库，恢复旧版“库文件无需互相 IMPORT
+        // 也能互调”的语义。只连接自动发现的根级库；显式 IMPORT 的 alias 作用域
+        // 仍保持原有隔离。编译管线会在消费这些边之前预先建立根级库接口。
+        var implicitRootLibs = nodes.Values
+            .Where(n => n.IsImplicitRootLib)
+            .OrderBy(n => n.Path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        foreach (var node in implicitRootLibs)
+        {
+            foreach (var peer in implicitRootLibs)
+            {
+                if (!ReferenceEquals(node, peer) && !node.Dependencies.Contains(peer.Name))
+                    node.Dependencies.Add(peer.Name);
+            }
         }
 
         // ---- 隐式依赖：std/vision 先于一切用户模块；main 恒最后 ----

@@ -85,6 +85,19 @@ public static class ProjectCompiler
             allowLibAutoLoad: false);
     }
 
+    /// <summary>从带源文件路径的内存源码编译（保留编辑器未保存内容，同时启用同目录 lib/）。</summary>
+    public static ModuleProjectResult CompileProject(SyntaxTree mainTree, string scriptDir,
+        CompileOptions? options = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(scriptDir);
+        options ??= new CompileOptions();
+        var result = new ModuleProjectResult();
+        scriptDir = Path.GetFullPath(scriptDir);
+        return CompileCore(mainTree, scriptDir,
+            options.ObjDir ?? (options.UseDiskCache ? Path.Combine(scriptDir, "obj") : ""),
+            options, result, allowLibAutoLoad: true);
+    }
+
     static ModuleProjectResult CompileCore(SyntaxTree mainTree, string? scriptDir, string objDir,
         CompileOptions options, ModuleProjectResult result, bool allowLibAutoLoad)
     {
@@ -141,6 +154,7 @@ public static class ProjectCompiler
                 .Where(n => pipeline.CacheKeys.ContainsKey(n.Name))
                 .Select(n => ModuleCacheKeys.FileName(n.Name, pipeline.CacheKeys[n.Name]))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            keepFileNames.UnionWith(pipeline.InterfaceCacheFiles);
             result.GarbageCollected = cache.GarbageCollect(keepFileNames, options.GcMaxAge ?? TimeSpan.FromDays(30));
         }
 

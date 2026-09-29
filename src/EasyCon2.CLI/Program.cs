@@ -264,7 +264,8 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     }
     catch (ScriptException ex)
     {
-        outdap.Warn($"!!运行出错!!{ex.Message}: 行{ex.Address}");
+        string lineInfo = ex.Address > 0 ? $": 行{ex.Address}" : "";
+        outdap.Warn($"!!运行出错!!{ex.Message}{lineInfo}");
         return 1;
     }
     catch (Exception exx)

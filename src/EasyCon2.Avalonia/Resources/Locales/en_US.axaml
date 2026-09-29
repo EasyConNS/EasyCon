@@ -21,6 +21,19 @@
     <x:String x:Key="Text.Tab.UserConfig">Settings</x:String>
     <x:String x:Key="Text.Tab.FeatureCenter">Feature Center</x:String>
 
+    <!-- Work tree sorting and script save shortcuts -->
+    <x:String x:Key="Text.WorkTree.Sort">Sort by</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.NameAscending">Name: ascending</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.NameDescending">Name: descending</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ModifiedNewest">Modified: newest first</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ModifiedOldest">Modified: oldest first</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ExtensionAscending">File type: ascending</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ExtensionDescending">File type: descending</x:String>
+    <x:String x:Key="Text.WorkTree.SaveScript">Save File</x:String>
+    <x:String x:Key="Text.WorkTree.SaveScriptAs">Save As</x:String>
+    <x:String x:Key="Text.Btn.SaveScript">Save (Ctrl+S)</x:String>
+    <x:String x:Key="Text.Btn.SaveScriptAs">Save As (Ctrl+Shift+S)</x:String>
+
     <!-- Common status and buttons -->
     <x:String x:Key="Text.Status.NotConnected">Not Connected</x:String>
     <x:String x:Key="Text.Status.Connected">Connected</x:String>

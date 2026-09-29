@@ -27,4 +27,7 @@ public record ConfigState
 
     /// <summary>界面语言（文化代码，如 zh_CN / en_US）。空值 = 默认 zh_CN。</summary>
     public string LanguageCode { get; set; } = "";
+
+    /// <summary>工作树排序偏好。字符串值保持稳定，不依赖 Avalonia.Core 中的枚举序号。</summary>
+    public string FileTreeSortMode { get; set; } = "name-asc";
 }

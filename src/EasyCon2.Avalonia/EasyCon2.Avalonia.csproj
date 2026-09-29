@@ -11,6 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="EasyCon2.Avalonia.UiTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaResource Include="Resources\Images\**" />
     <AvaloniaResource Include="Resources\Icons.json" />
     <AvaloniaResource Include="VPad\Resources\*.png" />

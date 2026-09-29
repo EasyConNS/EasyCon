@@ -19,8 +19,10 @@ EcxPipeline.Link ─► EcxImage（桌面 EcxInterpreter 与 MCU C VM 共用同�
 ```
 
 - **无源码级合并**：任何编译只 parse 自己那份源码；stdlib（std/vision）内嵌源码随编译器发布，
-  首次编译任一脚本时与用户模块同走 obj/ 缓存自然产出 `.ecm`，此后零解析。
-- `lib/` 自动加载：main 同目录 `lib/*.ecs` 注册为隐式模块（显式 import 之后、main 之前编译，全局可见无 alias，按文件名序，跳过显式 import）。
+  首次编译任一脚本时与用户模块同走 obj/ 缓存自然产出 `.ecm`，此后零解析；根级自动库为建立共享接口会先做声明接口预扫描，不会合并源码或重编函数体。
+- 根级自动库预声明接口另存为 `.eci`，缓存键覆盖库源码、模块名和编译语义指纹；缓存命中时无需为建立共享接口重新 parse，obj/ GC 会保留当前项目仍使用的接口条目。
+- `lib/` 自动加载：main 同目录 `lib/*.ecs` 注册为隐式模块（显式 import 之后、main 之前编译，全局可见无 alias，按文件名序）。文件即使先被显式或间接 `IMPORT` 加载，自动扫描时仍登记为根级自动库，并对 main 可见。根级自动库组成一个隐式库包，库之间共享接口，因此库文件也无需额外 `IMPORT` 即可互相调用；显式 `IMPORT ... AS` 的别名隔离仍然保留。
+- 根级库间的共享边用于绑定接口和缓存键，实际导入路径仍决定显式 `IMPORT` 环检测；初始化顺序沿用实际导入后序和根级库文件名序，每个模块只初始化一次。编辑器以文件路径编译内存文本时沿用源文件目录、根级 `lib/` 和标签上下文，不会回退到磁盘旧内容。
 - 关键接缝：接口合成的函数符号 `Declaration = null`，Binder 的 `EnsureFunctionBodyBound`
   天然跳过绑体、调用点直接生成 Call（体由链接期提供）——绑定器零改动消费接口。
 
@@ -67,8 +69,10 @@ interface_hash = SHA-256(CompilerVersion
 
 ## 5. 缓存系统（`Modules/ModuleCache.cs`）
 
-- **cacheKey** = SHA256(源码 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ `CompileOptions.ProductFingerprint()`)。
+- **cacheKey** = SHA256(源码 ⊕ 文件模块的规范化源路径上下文 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ `CompileOptions.ProductFingerprint()`)。
   影响产物的选项集中在 ProductFingerprint（Optimize / LegacySyntax / ExtVars）；其余选项不进键。
+  源路径上下文用于保证 `EXTERN ... FROM "相对路径"` 始终按声明 `.ecs` 所在目录解析；内嵌 `std/vision` 与内存伪文件名使用空上下文，仍可跨项目共享。
+  `.eci` 预声明接口缓存也包含相同路径上下文，避免复用其他项目目录解析出的原生库绝对路径。
   文件名 = `<模块名>-<key 前 8 位>.ecm`，不同版本并存免锁竞争。
 - **读**：全量校验 interface_hash（短码碰撞防御）+ `ModuleArtifact.IntegrityCheck()`（disk 与进程缓存两条 TryLoad 共享）；损坏按未命中重编。
 - **写**：`temp + rename` 原子替换；成功后删除同键 `.err`。
@@ -77,7 +81,13 @@ interface_hash = SHA-256(CompilerVersion
 - **进程缓存**：仅 `UseDiskCache=false` 现编路径，存 EcmFormat 字节、命中反序列化出新实例（杜绝别名共享）。
 - **GC**：运行末扫描 obj/，删除引用闭包之外且 mtime 超龄（默认 30 天，可配）的 .ecm/.err。
 
-## 6. 语义保持要点
+## 6. FFI 原生库路径
+
+`EXTERN FUNC ... FROM "..."` 中含目录分隔符的相对路径，以声明所在 `.ecs` 文件的目录为基准解析为绝对路径；主脚本中的声明以主脚本目录为基准。绝对路径保持原样，`FrlgFfi.dll` 这类不含目录分隔符的库名继续交由操作系统按默认规则搜索。格式化只重写语法树中的原始声明，不会把本机绝对路径写回脚本。
+
+运行时加载失败会包含最终尝试的库路径，并区分声明文件缺失、文件格式/位数不兼容及目标库存在但其本体或原生依赖无法加载；底层异常保留为内部异常信息。
+
+## 7. 语义保持要点
 
 | 语义 | 行为 |
 |------|------|
@@ -89,7 +99,7 @@ interface_hash = SHA-256(CompilerVersion
 | lib 顶层语句先于 main | 链接器在 `<main>` 头部按拓扑序前插 `<init>` 调用（无合成壳） |
 | LSP/编辑器语义 | 源码级实时分析，不经模块管线（明确出界） |
 
-## 7. 测试锚点
+## 8. 测试锚点
 
 `ModuleProjectTests`（管线/诊断/警告/GC，M7 区段）、`Cache_MerkleInvalidation` 等缓存组
 （`ModuleCacheOptimizationTests`）、`ModuleInterfaceTests`（round-trip）、

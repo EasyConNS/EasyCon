@@ -9,7 +9,7 @@ namespace EasyCon.Script.Modules;
 /// <summary>
 /// 模块缓存键与 obj/ 磁盘缓存（docs/ModuleSystem.md §7）。
 ///
-/// cacheKey = SHA256(源码内容 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ 影响产物的编译选项)（§7.2）。
+/// cacheKey = SHA256(源码内容 ⊕ 源文件路径上下文 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ 影响产物的编译选项)（§7.2）。
 /// 进键的选项集中在 CompileOptions.ProductFingerprint()（当前：Optimize/LegacySyntax/PcWideSlots/ExtVars）；
 /// KeepSsa 不影响序列化产物、UseDiskCache/ObjDir/GcMaxAge 与产物内容无关，均不进键。
 /// 文件名 = &lt;模块名&gt;-&lt;cacheKey 前 8 位&gt;.ecm；实现体改动 → 源码变 → 新键新文件，
@@ -18,6 +18,17 @@ namespace EasyCon.Script.Modules;
 /// </summary>
 internal static class ModuleCacheKeys
 {
+    /// <summary>
+    /// 文件模块的规范化路径上下文。EXTERN 相对库路径以声明文件目录为基准，
+    /// 所以路径参与缓存键；内嵌模块与内存伪文件名保持空上下文以继续共享缓存。
+    /// </summary>
+    public static string SourceContext(string sourceFileName)
+    {
+        if (string.IsNullOrWhiteSpace(sourceFileName) || sourceFileName.StartsWith('<'))
+            return "";
+        return Path.GetFullPath(sourceFileName);
+    }
+
     /// <summary>规范化排序后的外部变量集（ExtVars 集合序不定，进键前排序保证键稳定）。</summary>
     public static string ExtVarsKey(ImmutableHashSet<string>? extVars)
     {
@@ -27,10 +38,11 @@ internal static class ModuleCacheKeys
     }
 
     public static string Compute(string source, IReadOnlyList<string> depInterfaceHashes, string compilerVersion,
-        string productFingerprint = "")
+        string productFingerprint = "", string sourceContext = "")
     {
         var sb = new StringBuilder();
         AppendItem(sb, source);
+        AppendItem(sb, sourceContext);
         foreach (var h in depInterfaceHashes)
             AppendItem(sb, h);
         AppendItem(sb, compilerVersion);
@@ -48,6 +60,15 @@ internal static class ModuleCacheKeys
     /// <summary>错误缓存 sidecar 文件名（§7.3 错误重放）：同 cacheKey 的编译失败记录。</summary>
     public static string ErrorFileName(string moduleName, string cacheKey)
         => $"{moduleName}-{cacheKey[..8]}.err";
+
+    /// <summary>根级库的预声明接口缓存键；源码变更或编译语义变更都会失效。</summary>
+    public static string InterfaceKey(string moduleName, string source, string productFingerprint,
+        string sourceContext = "")
+        => Compute(source, [], ModuleInterface.CurrentCompilerVersion,
+            $"interface|{moduleName}|{productFingerprint}", sourceContext);
+
+    public static string InterfaceFileName(string moduleName, string cacheKey)
+        => $"{moduleName}-{cacheKey[..8]}.eci";
 
     /// <summary>长度前缀规范项（防拼接歧义）。</summary>
     static void AppendItem(StringBuilder sb, string s)
@@ -159,6 +180,46 @@ internal sealed class ModuleCache
         }
     }
 
+    /// <summary>加载可用作根级库预声明的接口缓存；无效/损坏条目按未命中处理。</summary>
+    public ModuleInterface? TryLoadInterface(string moduleName, string source, string productFingerprint,
+        string sourceContext = "")
+    {
+        var cacheKey = ModuleCacheKeys.InterfaceKey(moduleName, source, productFingerprint, sourceContext);
+        var path = Path.Combine(_objDir, ModuleCacheKeys.InterfaceFileName(moduleName, cacheKey));
+        if (!File.Exists(path))
+            return null;
+
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: false);
+            var iface = ModuleInterfaceFormat.Read(reader);
+            if (stream.Position != stream.Length
+                || iface.Name != moduleName
+                || iface.CompilerVersion != ModuleInterface.CurrentCompilerVersion
+                || iface.InterfaceHash != InterfaceHasher.Compute(iface))
+                return null;
+            return iface;
+        }
+        catch (Exception ex) when (ex is IOException or BytecodeException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>原子写入根级库预声明接口。</summary>
+    public void StoreInterface(ModuleInterface iface, string source, string productFingerprint,
+        string sourceContext = "")
+    {
+        var cacheKey = ModuleCacheKeys.InterfaceKey(iface.Name, source, productFingerprint, sourceContext);
+        var finalPath = Path.Combine(_objDir, ModuleCacheKeys.InterfaceFileName(iface.Name, cacheKey));
+        var tempPath = Path.Combine(_objDir, $".{iface.Name}-{Guid.NewGuid():N}.tmp");
+        using (var stream = File.Create(tempPath))
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: false))
+            ModuleInterfaceFormat.Write(writer, iface);
+        MoveWithRetry(tempPath, finalPath);
+    }
+
     /// <summary>错误缓存重放（§7.3）：同 cacheKey 的历史编译失败诊断，命中即快速失败。</summary>
     public List<string>? TryLoadErrors(string moduleName, string cacheKey)
     {
@@ -223,7 +284,7 @@ internal sealed class ModuleCache
         foreach (var file in Directory.EnumerateFiles(_objDir))
         {
             var ext = Path.GetExtension(file);
-            if (ext is not (".ecm" or ".err"))
+            if (ext is not (".ecm" or ".err" or ".eci"))
                 continue;
             if (keepFileNames.Contains(Path.GetFileName(file)))
                 continue;

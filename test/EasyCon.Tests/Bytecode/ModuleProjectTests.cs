@@ -1,6 +1,8 @@
+using EasyCon.Core.Runner;
 using EasyCon.Script;
 using EasyCon.Script.Bytecode;
 using EasyCon.Script.Modules;
+using EasyCon.Script.Resolution;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyCon.Script.Text;
@@ -118,6 +120,150 @@ public class ModuleProjectTests
     }
 
     [Test]
+    public void RootAutoLoadedLibs_CanCallEachOtherWithoutImport()
+    {
+        // 根级 lib/*.ecs 是一个隐式库包：每个库都能看到其他根级自动库的接口，
+        // 与主脚本无需 IMPORT 即可调用所有自动库的语义一致。
+        Write("lib/a.ecs", "FUNC double($x:INT):INT\n    RETURN $x * 2\nENDFUNC\n");
+        Write("lib/b.ecs", "FUNC quad($x:INT):INT\n    RETURN double(double($x))\nENDFUNC\n");
+        Write("main.ecs", "$r = quad(3)\nPRINT $r\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"));
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+
+        var host = new EcxHost();
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "12" }));
+        Assert.That(project.Artifacts.Single(a => a.Name == "b").Interface!.Dependencies
+            .Select(d => d.Name), Does.Contain("a"));
+    }
+
+    [Test]
+    public void RootAutoLoadedLib_IndirectlyImportedBeforeScan_RemainsVisibleToMain()
+    {
+        Write("lib/00_wrapper.ecs", "IMPORT \"../27_target.ecs\"\nFUNC wrapper():INT\n    RETURN target()\nENDFUNC\n");
+        Write("lib/27_target.ecs", "FUNC target():INT\n    RETURN 42\nENDFUNC\n");
+        Write("main.ecs", "$r = target()\nPRINT $r\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        var host = new EcxHost();
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "42" }));
+        Assert.That(project.Artifacts.Single(a => a.Name == "main").Interface!.Dependencies
+            .Select(d => d.Name), Does.Contain("27_target"));
+    }
+
+    [Test]
+    public void RootAutoLoadedLib_IndirectlyImportedTargetIsVisibleToPeerLibrary()
+    {
+        Write("lib/00_wrapper.ecs", "IMPORT \"../27_target.ecs\"\nFUNC wrapper():INT\n    RETURN target()\nENDFUNC\n");
+        Write("lib/02_consumer.ecs", "FUNC consume():INT\n    RETURN target()\nENDFUNC\n");
+        Write("lib/27_target.ecs", "FUNC target():INT\n    RETURN 42\nENDFUNC\n");
+        Write("main.ecs", "$r = consume()\nPRINT $r\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        var host = new EcxHost();
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "42" }));
+        Assert.That(project.Artifacts.Single(a => a.Name == "02_consumer").Interface!.Dependencies
+            .Select(d => d.Name), Does.Contain("27_target"));
+    }
+
+    [Test]
+    public void ExplicitAliasToRootAutoLoadedLib_RemainsScopedToTheImporter()
+    {
+        Write("lib/target.ecs", "FUNC target():INT\n    RETURN 42\nENDFUNC\n");
+        Write("main.ecs", "IMPORT \"target.ecs\" AS t\n$r = t.target()\nPRINT $r\n");
+
+        var aliased = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+        Assert.That(aliased.Success, Is.True, string.Join("\n", aliased.Diagnostics));
+        var host = new EcxHost();
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(aliased.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "42" }));
+
+        Write("main.ecs", "IMPORT \"target.ecs\" AS t\n$r = target()\nPRINT $r\n");
+        var unqualified = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+        Assert.That(unqualified.Success, Is.False, "AS 导入不得额外注入无别名函数");
+        Assert.That(unqualified.Diagnostics.Any(d => d.IsError && d.Message.Contains("target")), Is.True,
+            string.Join("\n", unqualified.Diagnostics));
+    }
+
+    [Test]
+    public void RootAutoLoadedLibs_SupportForwardAndMutualCalls_AndInitializeOnceInStableOrder()
+    {
+        Write("lib/a.ecs", "PRINT \"a-init\"\nFUNC alpha($depth:INT):INT\n    IF $depth < 1\n        RETURN 7\n    END\n    RETURN beta($depth - 1)\nENDFUNC\n");
+        Write("lib/b.ecs", "PRINT \"b-init\"\nFUNC beta($depth:INT):INT\n    IF $depth < 1\n        RETURN 42\n    END\n    RETURN alpha($depth - 1)\nENDFUNC\n");
+        Write("main.ecs", "$r = alpha(3)\nPRINT $r\nPRINT \"main-init\"\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        var host = new EcxHost();
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "a-init", "b-init", "42", "main-init" }));
+        Assert.That(host.Lines.Count(line => line == "a-init"), Is.EqualTo(1));
+        Assert.That(host.Lines.Count(line => line == "b-init"), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void RootLibraryPredeclaration_MatchesFinalInterfaceAndInvalidatesDiskCacheOnSignatureChange()
+    {
+        Write("lib/00_wrapper.ecs", "IMPORT \"../27_target.ecs\"\nFUNC wrapper():INT\n    RETURN target()\nENDFUNC\n");
+        Write("lib/27_target.ecs", "FUNC target():INT\n    RETURN 42\nENDFUNC\n");
+        Write("main.ecs", "$r = target()\nPRINT $r\n");
+        string mainPath = Path.Combine(_dir, "main.ecs");
+        var options = new CompileOptions { ObjDir = _objDir, UseDiskCache = true, UseProcessCache = false };
+
+        var cold = ProjectCompiler.CompileProject(mainPath, options);
+        Assert.That(cold.Success, Is.True, string.Join("\n", cold.Diagnostics));
+        Assert.That(cold.CacheMisses, Is.GreaterThanOrEqualTo(5));
+        var targetSyntax = SyntaxTree.Load(Path.Combine(_dir, "lib", "27_target.ecs"));
+        var declaredInterface = ModuleInterfaceBuilder.FromSyntaxTree(targetSyntax, "27_target");
+        var finalInterface = cold.Artifacts.Single(a => a.Name == "27_target").Interface!;
+        Assert.Multiple(() =>
+        {
+            Assert.That(finalInterface.InterfaceHash, Is.EqualTo(declaredInterface.InterfaceHash));
+            Assert.That(finalInterface.HasInit, Is.EqualTo(declaredInterface.HasInit));
+            Assert.That(finalInterface.Functions.Select(f => f.DeepEquals(declaredInterface.Functions.Single(d => d.Name == f.Name))),
+                Is.All.True);
+            Assert.That(finalInterface.Structs.Select(s => s.DeepEquals(declaredInterface.Structs.SingleOrDefault(d => d.Name == s.Name))),
+                Is.All.True);
+        });
+
+        var diskHot = ProjectCompiler.CompileProject(mainPath, options);
+        Assert.That(diskHot.Success, Is.True, string.Join("\n", diskHot.Diagnostics));
+        Assert.That(diskHot.CacheMisses, Is.EqualTo(0));
+        Assert.That(diskHot.CacheHits, Is.GreaterThanOrEqualTo(5));
+
+        File.WriteAllText(Path.Combine(_dir, "lib", "27_target.ecs"),
+            "FUNC target($value:INT):INT\n    RETURN $value + 2\nENDFUNC\n");
+        Write("lib/00_wrapper.ecs", "IMPORT \"../27_target.ecs\"\nFUNC wrapper($value:INT):INT\n    RETURN target($value)\nENDFUNC\n");
+        Write("main.ecs", "$r = target(40)\nPRINT $r\n");
+        var changed = ProjectCompiler.CompileProject(mainPath, options);
+        Assert.That(changed.Success, Is.True, string.Join("\n", changed.Diagnostics));
+        Assert.That(changed.CacheMisses, Is.GreaterThanOrEqualTo(3),
+            "目标签名变化应使目标库、绑定目标签名的 peer 库和 main 失效");
+        var changedHost = new EcxHost();
+        changedHost.EnableRecording();
+        Assert.That(EcxInterpreter.Run(changed.Image!, changedHost), Is.EqualTo(0));
+        Assert.That(changedHost.Lines, Is.EqualTo(new[] { "42" }));
+    }
+
+    [Test]
     public void Cache_MerkleInvalidation()
     {
         WriteNestedProject();
@@ -147,13 +293,12 @@ public class ModuleProjectTests
         Assert.That(EcxInterpreter.Run(run3.Image!, host3), Is.EqualTo(0));
         Assert.That(host3.Lines, Is.EqualTo(new[] { "43", "8", "6", "main-end" }), "utils 重编后行为一致");
 
-        // run4：utils 接口变化（新增导出）→ 直接依赖 mathx 级联失效重编；
-        // main 的缓存键只含 mathx 接口哈希（未变）→ main 命中（跨层 Merkle 正确性）
+        // run4：utils 接口变化（新增导出）→ mathx 与 main 都能看见 utils，随之失效重编。
         File.WriteAllText(Path.Combine(_dir, "lib", "utils.ecs"),
             UtilsSource + "\nFUNC ping():INT\n    RETURN 1\nENDFUNC\n");
         var run4 = ProjectCompiler.CompileProject(mainPath, new CompileOptions { ObjDir = _objDir });
         Assert.That(run4.Success, Is.True, string.Join("\n", run4.Diagnostics));
-        Assert.That(run4.CacheMisses, Is.EqualTo(2), "utils + mathx 重编，main 命中");
+        Assert.That(run4.CacheMisses, Is.EqualTo(3), "utils + mathx + 可见 utils 接口的 main 重编");
         var host4 = new EcxHost();
         host4.EnableRecording();
         Assert.That(EcxInterpreter.Run(run4.Image!, host4), Is.EqualTo(0));
@@ -223,6 +368,119 @@ public class ModuleProjectTests
         Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
         Assert.That(project.NativeSymbols, Has.One.Matches<FunctionSymbol>(symbol =>
             symbol.LibraryName == Path.GetFullPath(Path.Combine(_dir, "probe.dll"))));
+    }
+
+    [Test]
+    public void RelativeExternPaths_ResolveAgainstMainRootAndNestedDeclarations()
+    {
+        Write("lib/probe.ecs", "EXTERN FUNC root_probe($value:INT):INT FROM \"../native/root.dll\"\n");
+        Write("lib/nested/nestedprobe.ecs", "EXTERN FUNC nested_probe($value:INT):INT FROM \"../../native/nested.dll\"\n");
+        Write("lib/autoload.ecs", "EXTERN FUNC autoload_probe($value:INT):INT FROM \"../native/autoload.dll\"\n");
+        Write("main.ecs", "IMPORT \"probe.ecs\" AS p\nIMPORT \"nested/nestedprobe.ecs\" AS n\n"
+            + "EXTERN FUNC main_probe($value:INT):INT FROM \"native/main.dll\"\n"
+            + "$result = main_probe(1) + p.root_probe(2) + n.nested_probe(3) + autoload_probe(4)\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false, UseProcessCache = false });
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        var libraries = project.NativeSymbols.ToDictionary(symbol => symbol.Name, symbol => symbol.LibraryName);
+        Assert.Multiple(() =>
+        {
+            Assert.That(libraries["main_probe"], Is.EqualTo(Path.GetFullPath(Path.Combine(_dir, "native", "main.dll"))));
+            Assert.That(libraries["root_probe"], Is.EqualTo(Path.GetFullPath(Path.Combine(_dir, "native", "root.dll"))));
+            Assert.That(libraries["nested_probe"], Is.EqualTo(Path.GetFullPath(Path.Combine(_dir, "native", "nested.dll"))));
+            Assert.That(libraries["autoload_probe"], Is.EqualTo(Path.GetFullPath(Path.Combine(_dir, "native", "autoload.dll"))));
+        });
+    }
+
+    [Test]
+    public void ExternPath_PreservesAbsoluteAndBareNames_AndFormatterKeepsRawSyntax()
+    {
+        string sourcePath = Path.Combine(_dir, "lib", "probe.ecs");
+        string absolutePath = Path.GetFullPath(Path.Combine(_dir, "native", "probe.dll"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(ExternLibraryPath.Resolve(absolutePath, sourcePath), Is.EqualTo(absolutePath));
+            Assert.That(ExternLibraryPath.Resolve("FrlgFfi.dll", sourcePath), Is.EqualTo("FrlgFfi.dll"));
+            Assert.That(ExternLibraryPath.Resolve("../native/probe.dll", "<memory>"), Is.EqualTo("../native/probe.dll"));
+        });
+
+        const string relativeDeclaration = "EXTERN FUNC probe():INT FROM \"../native/probe.dll\"";
+        string formatted = Compilation.FormatSource(relativeDeclaration);
+        Assert.That(formatted, Does.Contain("FROM \"../native/probe.dll\""));
+        Assert.That(formatted, Does.Not.Contain(absolutePath));
+    }
+
+    [Test]
+    public void MissingNativeLibrary_ReportsAttemptedPathAndPreservesLoaderException()
+    {
+        string missingPath = Path.GetFullPath(Path.Combine(_dir, "native", "missing.dll"));
+        var symbol = new FunctionSymbol("probe", [], ScriptType.Int, libraryName: missingPath);
+
+        var exception = Assert.Throws<ScriptException>(() => new NativeLoader().ResolveFunction(symbol));
+
+        Assert.That(exception!.Message, Does.Contain(missingPath).And.Contain("文件不存在"));
+        Assert.That(exception.InnerException, Is.Not.Null);
+        Assert.That(exception.Address, Is.Zero, "NativeLoader 没有源行元数据时保留未知位置哨兵");
+    }
+
+    [Test]
+    public void RelativeExternPath_DiskCachesAreIsolatedByDeclaringDirectory()
+    {
+        Write("lib/ffi.ecs", "EXTERN FUNC probe($value:INT):INT FROM \"../native/FrlgFfi.dll\"\n");
+        Write("main.ecs", "IMPORT \"ffi.ecs\" AS ffi\n$result = ffi.probe(1)\n");
+        var optionsA = new CompileOptions { ObjDir = _objDir, UseProcessCache = false };
+        var projectA = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"), optionsA);
+        Assert.That(projectA.Success, Is.True, string.Join("\n", projectA.Diagnostics));
+
+        string dirB = Path.Combine(Path.GetTempPath(), $"Ecs FFI Cache 汉字_{Guid.NewGuid():N}");
+        string objDirB = Path.Combine(dirB, "obj");
+        Directory.CreateDirectory(Path.Combine(dirB, "lib"));
+        Directory.CreateDirectory(objDirB);
+        try
+        {
+            File.WriteAllText(Path.Combine(dirB, "lib", "ffi.ecs"),
+                "EXTERN FUNC probe($value:INT):INT FROM \"../native/FrlgFfi.dll\"\n");
+            File.WriteAllText(Path.Combine(dirB, "main.ecs"),
+                "IMPORT \"ffi.ecs\" AS ffi\n$result = ffi.probe(1)\n");
+            foreach (string cachedFile in Directory.GetFiles(_objDir))
+                File.Copy(cachedFile, Path.Combine(objDirB, Path.GetFileName(cachedFile)));
+
+            var optionsB = new CompileOptions { ObjDir = objDirB, UseProcessCache = false };
+            var projectB = ProjectCompiler.CompileProject(Path.Combine(dirB, "main.ecs"), optionsB);
+            string expectedLibrary = Path.GetFullPath(Path.Combine(dirB, "native", "FrlgFfi.dll"));
+
+            Assert.That(projectB.Success, Is.True, string.Join("\n", projectB.Diagnostics));
+            Assert.That(projectB.NativeSymbols.Single().LibraryName, Is.EqualTo(expectedLibrary));
+            Assert.That(projectB.CacheHits, Is.GreaterThanOrEqualTo(2), "std/vision 仍可跨项目共享");
+            Assert.That(projectB.CacheMisses, Is.GreaterThanOrEqualTo(2), "用户 FFI 模块和 main 应按源路径重新编译");
+            Assert.That(Directory.GetFiles(objDirB, "ffi-*.eci"), Has.Length.EqualTo(2),
+                "B 项目应生成独立于 A 项目的 .eci");
+            Assert.That(Directory.GetFiles(objDirB, "ffi-*.ecm"), Has.Length.EqualTo(2),
+                "B 项目应生成独立于 A 项目的 .ecm");
+
+            string ffiSource = File.ReadAllText(Path.Combine(dirB, "lib", "ffi.ecs"));
+            var cachedInterface = new ModuleCache(objDirB).TryLoadInterface("ffi", ffiSource,
+                optionsB.ProductFingerprint(), Path.GetFullPath(Path.Combine(dirB, "lib", "ffi.ecs")));
+            Assert.That(cachedInterface!.Functions.Single().ExternLibrary, Is.EqualTo(expectedLibrary));
+
+            ProcessModuleCache.Clear();
+            var processOptions = new CompileOptions { UseDiskCache = false, UseProcessCache = true };
+            var processA = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"), processOptions);
+            var processB = ProjectCompiler.CompileProject(Path.Combine(dirB, "main.ecs"), processOptions);
+            Assert.That(processA.Success, Is.True, string.Join("\n", processA.Diagnostics));
+            Assert.That(processB.Success, Is.True, string.Join("\n", processB.Diagnostics));
+            Assert.That(processB.NativeSymbols.Single().LibraryName, Is.EqualTo(expectedLibrary));
+            Assert.That(processB.ProcessCacheMisses, Is.GreaterThanOrEqualTo(2),
+                "进程缓存不得把 A 的 FFI 模块或 main 带入 B");
+        }
+        finally
+        {
+            ProcessModuleCache.Clear();
+            if (Directory.Exists(dirB))
+                Directory.Delete(dirB, recursive: true);
+        }
     }
 
     [Test]

@@ -115,6 +115,42 @@ public partial class ConfigManagerTests
     }
 
     [Test]
+    public void ConfigState_LoadsLegacyJsonAndDefaultsFileTreeSortMode()
+    {
+        File.WriteAllText(_path, """{"DarkMode":true,"LanguageCode":"en_US"}""");
+
+        ConfigState loaded = ConfigManager.LoadFrom<ConfigState>(_path);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded.DarkMode, Is.True);
+            Assert.That(loaded.LanguageCode, Is.EqualTo("en_US"));
+            Assert.That(loaded.FileTreeSortMode, Is.EqualTo("name-asc"));
+        });
+    }
+
+    [Test]
+    public void ConfigState_RoundTripsFileTreeSortModeWithoutLosingExistingSettings()
+    {
+        var config = new ConfigState
+        {
+            DarkMode = true,
+            LanguageCode = "en_US",
+            FileTreeSortMode = "modified-desc"
+        };
+
+        ConfigManager.SaveTo(_path, config);
+        ConfigState loaded = ConfigManager.LoadFrom<ConfigState>(_path);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded.FileTreeSortMode, Is.EqualTo("modified-desc"));
+            Assert.That(loaded.DarkMode, Is.True);
+            Assert.That(loaded.LanguageCode, Is.EqualTo("en_US"));
+        });
+    }
+
+    [Test]
     public void WriteDefaultTo_CreatesFileWithGivenContent()
     {
         var json = """{"name":"default"}""";

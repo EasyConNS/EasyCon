@@ -203,10 +203,7 @@ public class ToolCallService : IToolCallService
         if (!await _scriptService.CompileAsync(text, path))
             return false;
 
-        if (path is not null)
-            _scriptService.Run(path);
-        else
-            _scriptService.RunFromContent(text);
+        _scriptService.RunFromContent(text, fileName: path);
         return true;
     }
 

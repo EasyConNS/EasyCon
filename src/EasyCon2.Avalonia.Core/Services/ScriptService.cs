@@ -58,11 +58,12 @@ public class ScriptService : IScriptService
         try
         {
             // 编译大脚本可达数秒，放线程池执行，避免冻结调用方所在的 UI 线程
-            _session = await Task.Run(() => CompileCore(() => _engine.FromSource(scriptText, Options([]))));
+            _session = await Task.Run(() => CompileContent(scriptText, fileName).Session);
             return _session != null;
         }
         catch (Exception ex)
         {
+            _session = null;
             _logService.AddLog($"编译异常: {ex.Message}");
             return false;
         }
@@ -94,18 +95,18 @@ public class ScriptService : IScriptService
         _logService.AddLog($"开始运行脚本: {Path.GetFileName(scriptPath)}");
         ExecuteScript(() =>
         {
-            var scriptBasePath = Path.GetFullPath(Path.GetDirectoryName(scriptPath) ?? "");
-            var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppPaths.DataDir);
-            var labelDict = label.ToDictionary(il => il.name);
-            var session = CompileCore(() => _engine.LoadFile(scriptPath, Options([.. labelDict.Keys])));
+            string fullPath = Path.GetFullPath(scriptPath);
+            Dictionary<string, ImgLabel> labelDict = LoadScriptLabels(fullPath);
+            IScriptSession? session = CompileCore(
+                () => _engine.LoadFile(fullPath, Options([.. labelDict.Keys])), fullPath);
             return (session, BuildLabelMatchDelegate(labelDict));
         }, args);
     }
 
-    public void RunFromContent(string content, string[]? args = null)
+    public void RunFromContent(string content, string[]? args = null, string? fileName = null)
     {
         _logService.AddLog("===开始运行脚本===");
-        ExecuteScript(() => (_session = CompileCore(() => _engine.FromSource(content, Options([]))), null), args);
+        ExecuteScript(() => CompileContent(content, fileName), args);
     }
 
     public void Stop()
@@ -145,19 +146,69 @@ public class ScriptService : IScriptService
     };
 
     /// <summary>编译并落诊断日志；出错返回 null。</summary>
-    IScriptSession? CompileCore(Func<IScriptSession> compile)
+    IScriptSession? CompileCore(Func<IScriptSession> compile, string? sourcePath = null)
     {
         var session = compile();
         ImmutableArray<Diagnostic> diag = session.Info.Diagnostics;
         if (diag.HasErrors())
         {
-            var first = diag.First(d => d.IsError);
-            _logService.AddLog($"行 {first.Location.StartLine + 1}: {first.Message}");
+            var errors = diag.Where(d => d.IsError)
+                .DistinctBy(d => (d.FileName, d.Location.StartLine, d.Message))
+                .Take(8);
+            foreach (Diagnostic error in errors)
+            {
+                string location = FormatDiagnosticLocation(error, sourcePath);
+                _logService.AddLog($"{location}: {error.Message}");
+            }
+            return null;
+        }
+
+        if (session.Info.Image == null)
+        {
+            _logService.AddLog("编译错误: 编译未生成可运行镜像");
             return null;
         }
 
         _logService.AddLog("编译完成");
         return session;
+    }
+
+    (IScriptSession? Session, LabelMatchDelegate? LabelMatch) CompileContent(string content, string? fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            IScriptSession? inMemorySession = CompileCore(() => _engine.FromSource(content, Options([])));
+            return (inMemorySession, null);
+        }
+
+        string fullPath = Path.GetFullPath(fileName);
+        Dictionary<string, ImgLabel> labelDict = LoadScriptLabels(fullPath);
+        IScriptSession? session = CompileCore(
+            () => _engine.FromSource(content, fullPath, Options([.. labelDict.Keys])), fullPath);
+        return (session, BuildLabelMatchDelegate(labelDict));
+    }
+
+    static Dictionary<string, ImgLabel> LoadScriptLabels(string scriptPath)
+    {
+        string scriptBasePath = Path.GetDirectoryName(Path.GetFullPath(scriptPath)) ?? "";
+        var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppPaths.DataDir);
+        return label.ToDictionary(il => il.name);
+    }
+
+    static string FormatDiagnosticLocation(Diagnostic diagnostic, string? sourcePath)
+    {
+        int line = diagnostic.Location.StartLine + 1;
+        if (string.IsNullOrWhiteSpace(diagnostic.FileName))
+            return $"行 {line}";
+
+        string fileName = diagnostic.FileName;
+        if (!string.IsNullOrWhiteSpace(sourcePath))
+        {
+            string baseDirectory = Path.GetDirectoryName(Path.GetFullPath(sourcePath)) ?? "";
+            if (Path.IsPathRooted(fileName))
+                fileName = Path.GetRelativePath(baseDirectory, Path.GetFullPath(fileName));
+        }
+        return $"{fileName.Replace('\\', '/')}:{line}";
     }
 
     private LabelMatchDelegate? BuildLabelMatchDelegate(Dictionary<string, ImgLabel> labelDict)
@@ -203,11 +254,20 @@ public class ScriptService : IScriptService
             try
             {
                 var (session, labelMatch) = compile();
+                _session = session;
                 if (session == null)
                     return;
 
-                // 检查脚本运行需求
-                var requirements = GetRequirements();
+                token.ThrowIfCancellationRequested();
+
+                // 运行所需能力必须来自本次编译结果；CompileAsync 可能并发更新公开的编辑器会话。
+                bool hasKeyAction = session.Info.KeyAction;
+                bool needImageRecognition = session.Info.NeedIL;
+                ScriptRequirements requirements = new(
+                    HasKeyAction: hasKeyAction,
+                    NeedImageRecognition: needImageRecognition,
+                    DeviceConnected: _deviceService.IsConnected,
+                    CaptureConnected: _captureService.IsConnected);
                 if (!requirements.CanRun)
                 {
                     var reasons = requirements.GetBlockReasons();
@@ -217,7 +277,7 @@ public class ScriptService : IScriptService
                 }
 
                 // 尝试自动连接单片机
-                if (HasKeyAction && !_deviceService.IsConnected)
+                if (hasKeyAction && !_deviceService.IsConnected)
                 {
                     _logService.AddLog("脚本需要单片机，尝试自动连接...");
                     var port = _deviceService.AutoConnect();
@@ -230,7 +290,7 @@ public class ScriptService : IScriptService
                 }
 
                 ICGamePad? pad = null;
-                if (HasKeyAction)
+                if (hasKeyAction)
                     pad = new GamePadAdapter(_deviceService.GetDevice(), HighResolutionTiming);
 
                 _captureService.SetCaptureProperties(1920, 1080);
@@ -251,6 +311,9 @@ public class ScriptService : IScriptService
                     Inference = new DnnInference(),
                 };
 
+                if (hasKeyAction && capabilities.Input == null)
+                    throw new InvalidOperationException("脚本包含按键操作，但运行能力中未装配输入设备");
+
                 session.Run(token, capabilities);
                 _logService.AddLog("脚本运行完成");
             }
@@ -261,6 +324,10 @@ public class ScriptService : IScriptService
             catch (ScriptException ex)
             {
                 _logService.AddLog($"运行出错: {ex.Message} (行{ex.Address})");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logService.AddLog($"运行错误: {ex.Message}");
             }
             catch (Exception ex)
             {

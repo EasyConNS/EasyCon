@@ -10,7 +10,7 @@ public interface IScriptService
     string GetFormattedCode();
     Task<byte[]> BuildAsync(bool autoRun);
     void Run(string scriptPath, string[]? args = null);
-    void RunFromContent(string content, string[]? args = null);
+    void RunFromContent(string content, string[]? args = null, string? fileName = null);
     void Stop();
 
     /// <summary>
