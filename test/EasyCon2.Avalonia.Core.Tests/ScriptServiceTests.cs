@@ -471,15 +471,8 @@ public class ScriptServiceTests
         var packets = new ConcurrentQueue<byte[]>();
         byte[] pressedA = new SwitchReport { Button = (ushort)SwitchButton.A }.GetBytes();
         byte[] released = new SwitchReport().GetBytes();
-        using var stopCollector = new CancellationTokenSource();
-        Task collector = Task.Run(() =>
-        {
-            while (!stopCollector.IsCancellationRequested)
-            {
-                if (connection.TryTake(out byte[] packet, 100))
-                    packets.Enqueue(packet);
-            }
-        });
+        void RecordSentPacket(string _, byte[] packet) => packets.Enqueue(packet.ToArray());
+        connection.BytesSent += RecordSentPacket;
 
         try
         {
@@ -492,8 +485,7 @@ public class ScriptServiceTests
         }
         finally
         {
-            await stopCollector.CancelAsync();
-            await collector;
+            connection.BytesSent -= RecordSentPacket;
             switchDevice.Disconnect();
         }
 
