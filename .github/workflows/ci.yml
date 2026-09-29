@@ -78,6 +78,12 @@ jobs:
         shell: cmd
         run: ci\test.bat
 
+      - name: 串行运行真实窗口保存快捷键回归
+        run: >-
+          dotnet test test/EasyCon2.Avalonia.UiTests/EasyCon2.Avalonia.UiTests.csproj
+          --configuration Release --no-build
+          --filter "FullyQualifiedName~MainWindowSaveTests.CtrlS_SavesLatestEditorTextFromTheFocusedEditor"
+
       - name: 发布 EasyCon2
         shell: cmd
         run: ci\windows-x64.bat

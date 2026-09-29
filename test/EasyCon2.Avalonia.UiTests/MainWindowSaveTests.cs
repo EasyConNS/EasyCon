@@ -60,8 +60,7 @@ public class MainWindowSaveTests
     public void CtrlS_SavesLatestEditorTextFromTheFocusedEditor(string themeStyle, string editorName)
     {
         string scriptPath = Path.Combine(_tempRoot, "focused-script.ecs");
-        File.WriteAllText(scriptPath, "before");
-        TestServices services = new();
+        TestServices services = new() { SavePath = scriptPath };
         MainWindowViewModel vm = CreateViewModel(services, new ConfigState { ThemeStyleName = themeStyle });
         MainWindow? window = null;
 
@@ -75,15 +74,13 @@ public class MainWindowSaveTests
             Dispatcher.UIThread.RunJobs();
 
             ScriptEditorControl editor = window.FindControl<ScriptEditorControl>(editorName)!;
-            vm.CurrentScriptPath = scriptPath;
-            vm.EditorText = "before";
             editor.TextEditor.CaretOffset = editor.TextEditor.Document.TextLength;
             editor.TextEditor.TextArea.Focus();
             WaitUntil(() => editor.TextEditor.TextArea.IsFocused,
                 TimeSpan.FromSeconds(3),
                 $"编辑器文本区没有获得焦点（窗口激活={window.IsActive}，文本区可见={editor.TextEditor.TextArea.IsEffectivelyVisible}）");
 
-            window.KeyTextInput("-latest");
+            window.KeyTextInput("before-latest");
             const string expectedText = "before-latest";
             WaitUntil(() => vm.EditorText == expectedText, TimeSpan.FromSeconds(3), "输入没有同步到当前编辑文档");
 
@@ -93,12 +90,13 @@ public class MainWindowSaveTests
             window.KeyReleaseQwerty(PhysicalKey.ControlLeft, RawInputModifiers.None);
 
             WaitUntil(() => !vm.IsScriptModified && File.ReadAllText(scriptPath) == expectedText,
-                TimeSpan.FromSeconds(5), "Ctrl+S 没有保存当前编辑器中的最新文本");
+                TimeSpan.FromSeconds(5), "空白编辑区直接输入后，Ctrl+S 没有保存最新文本");
 
             Assert.Multiple(() =>
             {
                 Assert.That(File.ReadAllText(scriptPath), Is.EqualTo(expectedText));
                 Assert.That(vm.IsScriptModified, Is.False);
+                Assert.That(services.SaveDialogCalls, Is.EqualTo(1), "无路径文档首次 Ctrl+S 应打开一次保存对话框");
                 Assert.That(services.Messages.Count(message => message.StartsWith("已保存脚本:", StringComparison.Ordinal)), Is.EqualTo(1),
                     "一次 Ctrl+S 只能进入一次保存流程");
             });
@@ -132,6 +130,64 @@ public class MainWindowSaveTests
         {
             vm.IsScriptModified = false;
             window?.Close();
+            vm.OnMainWindowClosing();
+        }
+    }
+
+    [Test]
+    public async Task ModifiedEditorWithoutPath_CanSaveDirectInputAndAfterPathIsCleared()
+    {
+        string firstPath = Path.Combine(_tempRoot, "direct-input.ecs");
+        string secondPath = Path.Combine(_tempRoot, "after-close.ecs");
+        TestServices services = new() { SavePath = firstPath };
+        MainWindowViewModel vm = CreateViewModel(services);
+        try
+        {
+            Assert.That(vm.SaveScriptCommand.CanExecute(null), Is.False,
+                "没有路径且未编辑的空白区不应启动保存");
+
+            vm.EditorText = "typed before creating a document";
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.IsScriptModified, Is.True);
+                Assert.That(vm.SaveScriptCommand.CanExecute(null), Is.True);
+                Assert.That(vm.SaveScriptAsCommand.CanExecute(null), Is.True);
+            });
+
+            Task firstSave = vm.SaveScriptCommand.ExecuteAsync(null);
+            WaitUntil(() => firstSave.IsCompleted, TimeSpan.FromSeconds(5), "直接输入后的首次保存没有结束");
+            await firstSave.ConfigureAwait(false);
+            WaitUntil(() => vm.FileTreeVM.HasLoadedDirectory, TimeSpan.FromSeconds(5), "首次保存后没有加载目标目录");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(File.ReadAllText(firstPath), Is.EqualTo("typed before creating a document"));
+                Assert.That(vm.CurrentScriptPath, Is.EqualTo(firstPath));
+                Assert.That(vm.GetCurrentProjectDirectory(), Is.EqualTo(_tempRoot));
+                Assert.That(services.SaveDialogCalls, Is.EqualTo(1));
+            });
+
+            // Simulate the editor returning to a no-path state after its prior document closes.
+            vm.CurrentScriptPath = string.Empty;
+            vm.EditorText = "typed after clearing the previous document path";
+            services.SavePath = secondPath;
+
+            Assert.That(vm.SaveScriptCommand.CanExecute(null), Is.True,
+                "关闭文档后直接输入的内容也应可保存");
+            Task secondSave = vm.SaveScriptCommand.ExecuteAsync(null);
+            WaitUntil(() => secondSave.IsCompleted, TimeSpan.FromSeconds(5), "关闭文档后输入内容的保存没有结束");
+            await secondSave.ConfigureAwait(false);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(File.ReadAllText(secondPath), Is.EqualTo("typed after clearing the previous document path"));
+                Assert.That(vm.CurrentScriptPath, Is.EqualTo(secondPath));
+                Assert.That(vm.IsScriptModified, Is.False);
+                Assert.That(services.SaveDialogCalls, Is.EqualTo(2));
+            });
+        }
+        finally
+        {
             vm.OnMainWindowClosing();
         }
     }

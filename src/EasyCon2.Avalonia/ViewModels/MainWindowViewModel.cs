@@ -947,8 +947,8 @@ public partial class MainWindowViewModel : ViewModelBase
         IsSavingScript = true;
         try
         {
-            string previousPath = CurrentScriptPath;
-            bool needsSaveDialog = saveAs || !HasSelectedScriptPath();
+            bool hadSelectedScriptPath = HasSelectedScriptPath();
+            bool needsSaveDialog = saveAs || !hadSelectedScriptPath;
             string targetPath;
             if (needsSaveDialog)
             {
@@ -993,7 +993,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 if (IsPathInsideDirectory(targetPath, _projectDirectoryPath))
                     _fileTreeViewModel.NotifyFileSaved(targetPath);
             }
-            else if (saveAs || previousPath == UntitledScriptText)
+            else if (saveAs || !hadSelectedScriptPath)
             {
                 string? directory = Path.GetDirectoryName(targetPath);
                 if (!string.IsNullOrWhiteSpace(directory))
@@ -1013,7 +1013,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         return !IsSavingScript
             && IsTextEditorTabSelected
-            && (CurrentScriptPath == UntitledScriptText || HasSelectedScriptPath());
+            && (CurrentScriptPath == UntitledScriptText || HasSelectedScriptPath() || IsScriptModified);
     }
 
     private void NotifySaveCommandCanExecuteChanged()

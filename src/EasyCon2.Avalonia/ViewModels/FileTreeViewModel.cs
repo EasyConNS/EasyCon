@@ -24,6 +24,9 @@ public partial class FileTreeViewModel : ViewModelBase
     private bool _hasLoadedDirectory = false;
 
     [ObservableProperty]
+    private bool _isLoadingDirectory;
+
+    [ObservableProperty]
     private bool _areAllDirectoriesExpanded = false;
 
     [ObservableProperty]
@@ -103,12 +106,26 @@ public partial class FileTreeViewModel : ViewModelBase
             SelectedFlatItem = null;
             HasLoadedDirectory = false;
             AreAllDirectoriesExpanded = false;
+            IsLoadingDirectory = false;
             return Task.CompletedTask;
         }
 
         string? existingRootPath = RootItems.Count > 0 ? RootItems[0].FullPath : null;
         bool sameRoot = existingRootPath != null && PathsEqual(existingRootPath, directoryPath);
         string? selectedPath = sameRoot ? SelectedFlatItem?.FullPath : null;
+
+        if (!sameRoot)
+        {
+            // 切换项目时清掉旧树，避免旧项目仍被当成当前操作目标。
+            RootItems.Clear();
+            _expandedDirs.Clear();
+            FlatItems = [];
+            SelectedFlatItem = null;
+            HasLoadedDirectory = false;
+            AreAllDirectoriesExpanded = false;
+        }
+
+        IsLoadingDirectory = true;
 
         // 目录枚举（递归 3 层）在大目录上耗时数百毫秒，放线程池执行；
         // 构建的是尚未挂入任何可观察集合的普通对象树，离线安全
@@ -129,8 +146,10 @@ public partial class FileTreeViewModel : ViewModelBase
 
         await _invokeOnUiThreadAsync(() =>
         {
-            if (loadId != _loadGeneration)
+            if (loadId != _loadGeneration || !PathsEqual(directoryPath, _normalDirectoryPath ?? string.Empty))
                 return;
+
+            IsLoadingDirectory = false;
 
             if (root == null)
             {
@@ -205,6 +224,7 @@ public partial class FileTreeViewModel : ViewModelBase
     partial void OnHasLoadedDirectoryChanged(bool value)
     {
         OnPropertyChanged(nameof(IsSortMenuEnabled));
+        NotifyFileOperationCommands();
     }
 
     private void NotifySortSelectionProperties()
@@ -284,6 +304,9 @@ public partial class FileTreeViewModel : ViewModelBase
     [RelayCommand]
     private void CreateFile()
     {
+        if (!HasLoadedDirectory || RootItems.Count == 0)
+            return;
+
         var directoryPath = GetSelectedTargetDirectory();
         if (string.IsNullOrWhiteSpace(directoryPath))
             return;
@@ -307,6 +330,9 @@ public partial class FileTreeViewModel : ViewModelBase
     [RelayCommand]
     private void CreateFolder()
     {
+        if (!HasLoadedDirectory || RootItems.Count == 0)
+            return;
+
         var directoryPath = GetSelectedTargetDirectory();
         if (string.IsNullOrWhiteSpace(directoryPath))
             return;
@@ -482,7 +508,7 @@ public partial class FileTreeViewModel : ViewModelBase
 
     private bool CanPasteItem()
     {
-        if (string.IsNullOrWhiteSpace(_clipboardPath) || !PathExists(_clipboardPath))
+        if (!HasLoadedDirectory || string.IsNullOrWhiteSpace(_clipboardPath) || !PathExists(_clipboardPath))
             return false;
 
         var targetDirectory = GetSelectedTargetDirectory();
@@ -539,10 +565,12 @@ public partial class FileTreeViewModel : ViewModelBase
             SelectedFlatItem = null;
             HasLoadedDirectory = false;
             AreAllDirectoriesExpanded = false;
+            IsLoadingDirectory = false;
             return;
         }
 
         // 枚举期间保留旧树和当前交互状态；提交时恢复当下仍然有效的状态。
+        IsLoadingDirectory = true;
         _ = ReloadRootInBackgroundAsync(rootPath, selectedPath, loadId);
     }
 
@@ -560,8 +588,10 @@ public partial class FileTreeViewModel : ViewModelBase
 
         await _invokeOnUiThreadAsync(() =>
         {
-            if (loadId != _loadGeneration)
+            if (loadId != _loadGeneration || !PathsEqual(rootPath, _normalDirectoryPath ?? string.Empty))
                 return;
+
+            IsLoadingDirectory = false;
 
             if (root == null)
             {

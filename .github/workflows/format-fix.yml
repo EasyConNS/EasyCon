@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   format-fix:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: windows-latest
     permissions:
       contents: write
@@ -55,3 +56,24 @@ jobs:
           git add .
           git commit -m "style: auto-fix dotnet format [skip ci]"
           git push
+
+  format-fork-check:
+    if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 检查 fork PR 代码格式
+        run: dotnet format EasyCon2.slnx --verify-no-changes --verbosity diagnostic
