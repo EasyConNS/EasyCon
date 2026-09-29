@@ -1,8 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:EasyCon2.Avalonia.Markup"
              xmlns:vm="using:EasyCon2.Avalonia.ViewModels"
+             xmlns:filetree="using:EasyCon2.Avalonia.Core.FileTree"
              xmlns:models="using:EasyCon2.Avalonia.Models"
              x:Class="EasyCon2.Avalonia.Views.FileTreeView"
+             x:Name="root"
              x:DataType="vm:FileTreeViewModel">
 
     <UserControl.Styles>
@@ -83,7 +86,48 @@
                                        Width="14" Height="14"
                                        HorizontalAlignment="Center"
                                        VerticalAlignment="Center"/>
-                        </MenuItem.Header>
+                    </MenuItem.Header>
+                        <MenuItem Header="{loc:Translate Text.WorkTree.Sort}"
+                                  IsEnabled="{Binding IsSortMenuEnabled}"
+                                  x:CompileBindings="False">
+                            <MenuItem Header="{loc:Translate Text.WorkTree.Sort.NameAscending}"
+                                      ToggleType="Radio"
+                                      GroupName="{Binding SortMenuGroupName, ElementName=root}"
+                                      IsChecked="{Binding IsNameAscendingSelected, Mode=OneWay}"
+                                      Command="{Binding SelectSortModeCommand}"
+                                      CommandParameter="{x:Static filetree:FileTreeSortMode.NameAscending}"/>
+                            <MenuItem Header="{loc:Translate Text.WorkTree.Sort.NameDescending}"
+                                      ToggleType="Radio"
+                                      GroupName="{Binding SortMenuGroupName, ElementName=root}"
+                                      IsChecked="{Binding IsNameDescendingSelected, Mode=OneWay}"
+                                      Command="{Binding SelectSortModeCommand}"
+                                      CommandParameter="{x:Static filetree:FileTreeSortMode.NameDescending}"/>
+                            <MenuItem Header="{loc:Translate Text.WorkTree.Sort.ModifiedNewest}"
+                                      ToggleType="Radio"
+                                      GroupName="{Binding SortMenuGroupName, ElementName=root}"
+                                      IsChecked="{Binding IsModifiedNewestSelected, Mode=OneWay}"
+                                      Command="{Binding SelectSortModeCommand}"
+                                      CommandParameter="{x:Static filetree:FileTreeSortMode.ModifiedNewestFirst}"/>
+                            <MenuItem Header="{loc:Translate Text.WorkTree.Sort.ModifiedOldest}"
+                                      ToggleType="Radio"
+                                      GroupName="{Binding SortMenuGroupName, ElementName=root}"
+                                      IsChecked="{Binding IsModifiedOldestSelected, Mode=OneWay}"
+                                      Command="{Binding SelectSortModeCommand}"
+                                      CommandParameter="{x:Static filetree:FileTreeSortMode.ModifiedOldestFirst}"/>
+                            <MenuItem Header="{loc:Translate Text.WorkTree.Sort.ExtensionAscending}"
+                                      ToggleType="Radio"
+                                      GroupName="{Binding SortMenuGroupName, ElementName=root}"
+                                      IsChecked="{Binding IsExtensionAscendingSelected, Mode=OneWay}"
+                                      Command="{Binding SelectSortModeCommand}"
+                                      CommandParameter="{x:Static filetree:FileTreeSortMode.ExtensionAscending}"/>
+                            <MenuItem Header="{loc:Translate Text.WorkTree.Sort.ExtensionDescending}"
+                                      ToggleType="Radio"
+                                      GroupName="{Binding SortMenuGroupName, ElementName=root}"
+                                      IsChecked="{Binding IsExtensionDescendingSelected, Mode=OneWay}"
+                                      Command="{Binding SelectSortModeCommand}"
+                                      CommandParameter="{x:Static filetree:FileTreeSortMode.ExtensionDescending}"/>
+                        </MenuItem>
+                        <Separator/>
                         <MenuItem Header="新建脚本"
                                   Command="{Binding NewScriptCommand}"/>
                         <MenuItem Header="打开脚本"
@@ -93,10 +137,12 @@
                                   Command="{Binding OpenProjectFolderCommand}"
                                   CommandParameter="{Binding $parent[Window]}"/>
                         <Separator/>
-                        <MenuItem Header="保存文件"
+                        <MenuItem Header="{loc:Translate Text.WorkTree.SaveScript}"
+                                  InputGesture="Ctrl+S"
                                   Command="{Binding SaveScriptCommand}"
                                   CommandParameter="{Binding $parent[Window]}"/>
-                        <MenuItem Header="另存为文件"
+                        <MenuItem Header="{loc:Translate Text.WorkTree.SaveScriptAs}"
+                                  InputGesture="Ctrl+Shift+S"
                                   Command="{Binding SaveScriptAsCommand}"
                                   CommandParameter="{Binding $parent[Window]}"/>
                         <Separator/>

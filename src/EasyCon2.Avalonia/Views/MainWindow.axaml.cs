@@ -15,13 +15,20 @@ namespace EasyCon2.Avalonia.Views;
 
 public partial class MainWindow : ChromelessWindow
 {
+    private readonly bool _initializeEditorServices;
     private readonly HashSet<ScriptEditorControl> _initializedEditors = [];
     private readonly Dictionary<ScriptEditorControl, FoldingManager> _foldingManagers = [];
     private LspClientService? _lspService;
     private CustomFoldingStrategy? _foldingStrategy;
 
     public MainWindow()
+        : this(initializeEditorServices: true)
     {
+    }
+
+    internal MainWindow(bool initializeEditorServices)
+    {
+        _initializeEditorServices = initializeEditorServices;
         InitializeComponent();
         Closing += OnClosing;
         Loaded += OnLoaded;
@@ -42,10 +49,13 @@ public partial class MainWindow : ChromelessWindow
             vm.FoldingVisibilityChanged += OnFoldingVisibilityChanged;
         }
 
-        // 默认初始化编辑器并连接 LSP 服务
-        EnsureEditorInitialized();
-        if (_lspService != null && !_lspService.IsConnected)
-            _ = _lspService.InitializeAsync(string.Empty);
+        // 测试可保留真实窗口/编辑控件和快捷键路由，同时跳过外部 LSP 进程。
+        if (_initializeEditorServices)
+        {
+            EnsureEditorInitialized();
+            if (_lspService != null && !_lspService.IsConnected)
+                _ = _lspService.InitializeAsync(string.Empty);
+        }
     }
 
     private void OnDarkModeChanged(bool isDarkMode)

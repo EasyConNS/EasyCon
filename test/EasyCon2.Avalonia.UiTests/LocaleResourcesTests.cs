@@ -43,6 +43,15 @@ public class LocaleResourcesTests
             "Text.Btn.StartMapping",
             "Text.Btn.MonitorHide",
             "Text.Btn.Run",
+            "Text.WorkTree.Sort",
+            "Text.WorkTree.Sort.NameAscending",
+            "Text.WorkTree.Sort.NameDescending",
+            "Text.WorkTree.Sort.ModifiedNewest",
+            "Text.WorkTree.Sort.ModifiedOldest",
+            "Text.WorkTree.Sort.ExtensionAscending",
+            "Text.WorkTree.Sort.ExtensionDescending",
+            "Text.Btn.SaveScript",
+            "Text.Btn.SaveScriptAs",
         };
 
         foreach (var locale in new[] { "zh_CN", "en_US" })

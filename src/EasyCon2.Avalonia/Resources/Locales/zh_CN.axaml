@@ -21,6 +21,19 @@
     <x:String x:Key="Text.Tab.UserConfig">用户配置</x:String>
     <x:String x:Key="Text.Tab.FeatureCenter">功能中心</x:String>
 
+    <!-- 工作树排序与脚本保存快捷键 -->
+    <x:String x:Key="Text.WorkTree.Sort">排序方式</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.NameAscending">名称：正序</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.NameDescending">名称：倒序</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ModifiedNewest">修改时间：最新优先</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ModifiedOldest">修改时间：最早优先</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ExtensionAscending">文件类型：正序</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ExtensionDescending">文件类型：倒序</x:String>
+    <x:String x:Key="Text.WorkTree.SaveScript">保存文件</x:String>
+    <x:String x:Key="Text.WorkTree.SaveScriptAs">另存为文件</x:String>
+    <x:String x:Key="Text.Btn.SaveScript">保存 (Ctrl+S)</x:String>
+    <x:String x:Key="Text.Btn.SaveScriptAs">另存为 (Ctrl+Shift+S)</x:String>
+
     <!-- 通用状态与按钮 -->
     <x:String x:Key="Text.Status.NotConnected">未连接</x:String>
     <x:String x:Key="Text.Status.Connected">已连接</x:String>

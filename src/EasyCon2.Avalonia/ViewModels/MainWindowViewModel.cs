@@ -6,6 +6,7 @@ using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.AiAgent;
+using EasyCon2.Avalonia.Core.FileTree;
 using EasyCon2.Avalonia.Core.Mcp;
 using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Core.TagEditor;
@@ -40,6 +41,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IControllerService _controllerService;
     private readonly IDialogService _dialogService;
     private readonly IWindowService _windowService;
+    private readonly Func<ConfigState> _loadUserConfig;
+    private readonly Action<ConfigState> _saveUserConfig;
     private readonly ToolCallService _toolCallService;
     private readonly IImageProcessor? _imageProcessor;
     private readonly IMcpManager _mcpManager;
@@ -215,8 +218,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _isRunningOneColumnLayoutSelected = false;
 
     // 远程控制模块属性（命令保留，UI已隐藏）
-    public ICommand SaveScriptCommand { get; }
-    public ICommand SaveScriptAsCommand { get; }
+    public IAsyncRelayCommand SaveScriptCommand { get; }
+    public IAsyncRelayCommand SaveScriptAsCommand { get; }
     public ICommand CloseScriptCommand { get; }
     public ICommand FormatScriptCommand { get; }
     public ICommand OpenEditorCommand { get; }
@@ -245,8 +248,10 @@ public partial class MainWindowViewModel : ViewModelBase
     public IAsyncRelayCommand CheckUpdateCommand { get; }
     public IRelayCommand OpenGitHubCommand { get; }
 
-    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService, EasyCon2.Avalonia.Core.Threading.IUiDispatcher uiDispatcher, IImageProcessor? imageProcessor = null)
+    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService, EasyCon2.Avalonia.Core.Threading.IUiDispatcher uiDispatcher, IImageProcessor? imageProcessor = null, Func<ConfigState>? loadUserConfig = null, Action<ConfigState>? saveUserConfig = null)
     {
+        _loadUserConfig = loadUserConfig ?? ConfigManager.LoadConfig;
+        _saveUserConfig = saveUserConfig ?? ConfigManager.SaveConfig;
         // 初始化 AI Agent，注入编辑区服务
         _toolCallService = new ToolCallService(
             scriptService, captureService, _logBuffer,
@@ -310,6 +315,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // 初始化文件树
         _fileTreeViewModel = new FileTreeViewModel();
         _fileTreeViewModel.FileActivated += OnFileTreeFileActivated;
+        _fileTreeViewModel.SortModeChanged += OnFileTreeSortModeChanged;
         _fileTreeViewModel.OpenProjectRequested += OnOpenProjectRequested;
         _fileTreeViewModel.NewScriptRequested += NewScript;
         _fileTreeViewModel.OpenScriptRequested += OnOpenScriptRequested;
@@ -382,8 +388,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // 初始化命令
         OpenScriptCommand = new AsyncRelayCommand(OpenScriptAsync);
-        SaveScriptCommand = new AsyncRelayCommand(SaveScriptAsync);
-        SaveScriptAsCommand = new AsyncRelayCommand(SaveScriptAsAsync);
+        SaveScriptCommand = new AsyncRelayCommand(SaveScriptAsync, CanSaveScript);
+        SaveScriptAsCommand = new AsyncRelayCommand(SaveScriptAsAsync, CanSaveScript);
         CloseScriptCommand = new RelayCommand(CloseScript);
         FormatScriptCommand = new AsyncRelayCommand(FormatScriptAsync);
         OpenEditorCommand = new RelayCommand(OpenEditor, CanOpenEditor);
@@ -485,7 +491,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _isLoadingUserSettings = true;
         try
         {
-            _userConfig = ConfigManager.LoadConfig();
+            _userConfig = _loadUserConfig();
+            _fileTreeViewModel.SelectSortModeCommand.Execute(
+                FileTreeSortModeSettings.FromSettingValue(_userConfig.FileTreeSortMode));
 
             Capture.SelectedCaptureType = NormalizeCaptureType(_userConfig.CaptureType);
             IsAutoCompletionEnabled = _userConfig.EnableAutoCompletion;
@@ -575,6 +583,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _userConfig.ShowDebugInfo = ShowDebugInfo;
         _userConfig.WelcomeText = WelcomeText ?? string.Empty;
         _userConfig.LanguageCode = SelectedLanguageCode;
+        _userConfig.FileTreeSortMode = FileTreeSortModeSettings.ToSettingValue(_fileTreeViewModel.SortMode);
         _userConfig.AutoSwitchLayoutEnabled = AutoSwitchLayoutEnabled;
         _userConfig.AutoSwitchColorSchemeEnabled = AutoSwitchColorSchemeEnabled;
         _userConfig.IsIdleThreeColumnLayoutSelected = IsIdleThreeColumnLayoutSelected;
@@ -588,7 +597,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         try
         {
-            ConfigManager.SaveConfig(_userConfig);
+            _saveUserConfig(_userConfig);
         }
         catch (Exception ex)
         {
@@ -886,12 +895,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnSaveScriptRequested()
     {
-        _ = SaveScriptAsync();
+        ExecuteSaveCommand(SaveScriptCommand);
     }
 
     private void OnSaveScriptAsRequested()
     {
-        _ = SaveScriptAsAsync();
+        ExecuteSaveCommand(SaveScriptAsCommand);
+    }
+
+    private static void ExecuteSaveCommand(IAsyncRelayCommand command)
+    {
+        if (command.CanExecute(null))
+            _ = command.ExecuteAsync(null);
     }
 
     private async Task OpenProjectFolderAsync()
@@ -916,46 +931,100 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private async Task SaveScriptAsync()
     {
-        if (!HasSelectedScriptPath())
-        {
-            await SaveScriptAsAsync();
-            return;
-        }
-
-        SaveEditorText(CurrentScriptPath);
+        await SaveScriptCoreAsync(saveAs: false);
     }
 
     private async Task SaveScriptAsAsync()
     {
-        var suggestedName = HasSelectedScriptPath() ? Path.GetFileName(CurrentScriptPath) : $"{UntitledScriptText}.ecs";
-        string? file;
+        await SaveScriptCoreAsync(saveAs: true);
+    }
+
+    private async Task SaveScriptCoreAsync(bool saveAs)
+    {
+        if (IsSavingScript || !CanSaveScript())
+            return;
+
+        IsSavingScript = true;
         try
         {
-            file = await _dialogService.SaveFileAsync("另存为", "ecs",
-            [
-                new FileDialogFilter("ECS脚本文件", ["*.ecs"]),
-                new FileDialogFilter("文本文件", ["*.txt"]),
-                new FileDialogFilter("所有文件", ["*"])
-            ], suggestedName);
+            string previousPath = CurrentScriptPath;
+            bool needsSaveDialog = saveAs || !HasSelectedScriptPath();
+            string targetPath;
+            if (needsSaveDialog)
+            {
+                string suggestedName = HasSelectedScriptPath()
+                    ? Path.GetFileName(CurrentScriptPath)
+                    : $"{UntitledScriptText}.ecs";
+                string? selectedPath;
+                try
+                {
+                    selectedPath = await _dialogService.SaveFileAsync("另存为", "ecs",
+                    [
+                        new FileDialogFilter("ECS脚本文件", ["*.ecs"]),
+                        new FileDialogFilter("文本文件", ["*.txt"]),
+                        new FileDialogFilter("所有文件", ["*"])
+                    ], suggestedName);
+                }
+                catch (Exception ex)
+                {
+                    _logService.AddLog($"保存对话框失败: {ex.Message}");
+                    return;
+                }
+
+                if (selectedPath == null)
+                    return;
+
+                targetPath = selectedPath;
+            }
+            else
+            {
+                targetPath = CurrentScriptPath;
+            }
+
+            if (!SaveEditorText(targetPath, EditorText))
+                return;
+
+            CurrentScriptPath = targetPath;
+            IsScriptModified = false;
+            _logService.AddLog($"已保存脚本: {targetPath}");
+
+            if (!string.IsNullOrWhiteSpace(_projectDirectoryPath))
+            {
+                if (IsPathInsideDirectory(targetPath, _projectDirectoryPath))
+                    _fileTreeViewModel.NotifyFileSaved(targetPath);
+            }
+            else if (saveAs || previousPath == UntitledScriptText)
+            {
+                string? directory = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrWhiteSpace(directory))
+                {
+                    _projectDirectoryPath = directory;
+                    await _fileTreeViewModel.LoadDirectoryAsync(directory);
+                }
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            _logService.AddLog($"保存对话框失败: {ex.Message}");
-            return;
+            IsSavingScript = false;
         }
+    }
 
-        if (file == null)
-            return;
+    private bool CanSaveScript()
+    {
+        return !IsSavingScript
+            && IsTextEditorTabSelected
+            && (CurrentScriptPath == UntitledScriptText || HasSelectedScriptPath());
+    }
 
-        CurrentScriptPath = file;
-        SaveEditorText(CurrentScriptPath);
+    private void NotifySaveCommandCanExecuteChanged()
+    {
+        SaveScriptCommand?.NotifyCanExecuteChanged();
+        SaveScriptAsCommand?.NotifyCanExecuteChanged();
+    }
 
-        var dir = Path.GetDirectoryName(CurrentScriptPath);
-        if (!string.IsNullOrEmpty(dir))
-        {
-            _projectDirectoryPath = dir;
-            _fileTreeViewModel.LoadDirectory(dir);
-        }
+    private void OnFileTreeSortModeChanged()
+    {
+        ScheduleSaveUserSettings();
     }
 
     private void CloseScript()
@@ -989,18 +1058,18 @@ public partial class MainWindowViewModel : ViewModelBase
             && CurrentScriptPath != UntitledScriptText;
     }
 
-    private void SaveEditorText(string path)
+    private bool SaveEditorText(string path, string text)
     {
         try
         {
-            File.WriteAllText(path, EditorText, new UTF8Encoding(false));
-            IsScriptModified = false;
-            _logService.AddLog($"已保存脚本: {path}");
+            File.WriteAllText(path, text, new UTF8Encoding(false));
+            return true;
         }
         catch (Exception ex)
         {
             // 保存失败必须显式暴露：保持 IsScriptModified，避免"假成功"导致数据丢失
             _logService.AddLog($"保存脚本失败({path}): {ex.Message}");
+            return false;
         }
     }
 
@@ -1047,6 +1116,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isScriptModified;
 
+    [ObservableProperty]
+    private bool _isSavingScript;
+
     /// <summary>
     /// 程序化设置编辑区文本（打开/新建/关闭脚本）时抑制修改标记。
     /// </summary>
@@ -1072,11 +1144,18 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!_suppressDirtyTracking)
             IsScriptModified = true;
+        NotifySaveCommandCanExecuteChanged();
     }
 
     partial void OnIsScriptModifiedChanged(bool value)
     {
         OnPropertyChanged(nameof(ScriptDisplayPath));
+        NotifySaveCommandCanExecuteChanged();
+    }
+
+    partial void OnIsSavingScriptChanged(bool value)
+    {
+        NotifySaveCommandCanExecuteChanged();
     }
 
     /// <summary>
@@ -1237,6 +1316,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         (OpenEditorCommand as RelayCommand)?.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ScriptDisplayPath));
+        NotifySaveCommandCanExecuteChanged();
     }
 
     private string? GetCurrentScriptRootDirectory()
@@ -1263,8 +1343,14 @@ public partial class MainWindowViewModel : ViewModelBase
         try
         {
             var relativePath = Path.GetRelativePath(directoryPath, filePath);
-            return !relativePath.StartsWith("..", StringComparison.Ordinal) &&
-                   !Path.IsPathRooted(relativePath);
+            StringComparison pathComparison = OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+            return relativePath == "."
+                || (relativePath != ".."
+                    && !relativePath.StartsWith($"..{Path.DirectorySeparatorChar}", pathComparison)
+                    && !relativePath.StartsWith($"..{Path.AltDirectorySeparatorChar}", pathComparison)
+                    && !Path.IsPathRooted(relativePath));
         }
         catch
         {
@@ -1331,6 +1417,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsUserConfigTabSelected));
         OnPropertyChanged(nameof(IsFeatureCenterTabSelected));
         OnPropertyChanged(nameof(IsCardEditorHeaderVisible));
+        NotifySaveCommandCanExecuteChanged();
     }
 
 
