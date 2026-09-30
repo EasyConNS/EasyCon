@@ -1,5 +1,8 @@
 ## V1虚拟机指令集文档记录
 
+> ⚠️ **历史文档**：单片机端旧指令集（2 字节指令），代码侧仅剩死代码
+> （`src/EasyCon.Script/Assembly/`、`src/EasyCon.Device/V1.cs`）。现役虚拟机见 [VM2.md](VM2.md)。
+
 - [文档链接](https://docs.qq.com/sheet/DZm1ydlZadkpncUNo?c=A88A0AZ0&tab=BB08J2)
 
 此文档链接记录伊机控脚本在单片机端的虚拟机指令集，作者铃落，向前辈致敬。

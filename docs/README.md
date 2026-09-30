@@ -2,76 +2,54 @@
 
 欢迎使用伊机控文档系统！这里包含项目的完整技术文档。
 
-## 📚 文档导航
+> 文档分两档：**现状规范**（与代码逐条对齐，可以照着改代码）与 **历史设计**（v1 时代或已失效，
+> 只能当背景阅读）。改代码前请以现状规范 + 代码为准。
 
-### 核心文档
-- **[快速开始](GETTING_STARTED.md)** - 安装配置和使用教程
-- **[系统架构](Framework.md)** - 系统架构和设计理念
-- **[模块系统](models.md)** - 模块化设计和FFI接口  
-- **[脚本语法](Script.md)** - ECS脚本语言完整语法说明
+## 📚 现状规范（可信）
 
-### 虚拟机文档
-- **[V1指令集](VM1.md)** - 单片机端虚拟机指令集文档
-- **[V2指令集](VM2.md)** - 新一代虚拟机指令集设计
-- **[双端语义契约](VmSemanticContract.md)** - ECS 字节码双端语义/RC 协议权威表（S-01..S-19）与验证体系
-- **[二进制格式](EcmEcxFormat.md)** - ECM/ECX 位级格式规范
-- **[模块系统设计](ModuleSystem.md)** - 接口式独立编译与内容寻址缓存
-- **[统一编译链路](Pipeline.md)** - 编译链路现状与单一事实源落点
+### 核心
+- **[系统架构](Framework.md)** — 分层、依赖方向、组合根、模块职责、已知短板
+- **[统一编译链路](Pipeline.md)** — 源码到 EcxImage 的完整阶段与单一事实源落点表
+- **[模块系统](ModuleSystem.md)** — 接口式独立编译、Merkle 式缓存键、接口完备性清单
+- **[脚本语法](Script.md)** — ECS 脚本语言完整语法说明
+- **[函数手册](Functions.md)** — 面向脚本作者的内置函数说明（CN）
 
-### 功能文档
-- **[EasyCon Assist](EasyCon%20Assist.md)** - 远程助手功能说明
-- **[OBS虚拟摄像头](obs-virtual-cam.md)** - OBS虚拟摄像头支持
+### 虚拟机与字节码
+- **[V2 指令集](VM2.md)** — 现役虚拟机规格：值模型、指令表、宿主 ABI、分层（L0-L3）
+- **[双端语义契约](VmSemanticContract.md)** — C# 解释器 ↔ C VM 的 S-01..S-19 强制 checklist 与 RC 协议
+- **[二进制格式](EcmEcxFormat.md)** — ECM/ECX 位级布局、加载校验清单、版本演进
+- **[MCU 产物下发](McuBytecodeDelivery.md)** — 编译为 .ecx 并烧录到单片机的完整实现方案
 
-### 模块实现文档
-- **[EasyCon.Core](../src/EasyCon.Core/README.md)** - 核心功能模块
-- **[EasyCon.Device](../src/EasyCon.Device/README.md)** - 设备通信模块
-- **[EasyCon.Capture](../src/EasyCon.Capture/README.md)** - 图像处理模块
-- **[EasyCon.Script](../src/EasyCon.Script/README.md)** - 脚本解析模块
-- **[EasyCon2.Avalonia](../src/EasyCon2.Avalonia/README.md)** - GUI 宿主（VPad 虚拟手柄位于其 VPad/ 目录）
+### 使用
+- **[快速开始](GETTING_STARTED.md)** — 安装配置和使用教程
 
-### UI设计文档
-- **[README](../src/EasyCon2.Avalonia/README.md)** - GUI 项目说明
+### 模块实现
+- **[EasyCon.Core](../src/EasyCon.Core/README.md)** — 能力端口 + 组合根 + 执行桥（含装配示例）
+- **[EasyCon.Device](../src/EasyCon.Device/README.md)** — 设备通信模块
+- **[EasyCon.Capture](../src/EasyCon.Capture/README.md)** — 图像处理模块
+- **[EasyCon.Script](../src/EasyCon.Script/README.md)** — 脚本解析模块
+- **[EasyCon2.Avalonia](../src/EasyCon2.Avalonia/README.md)** — GUI 宿主（VPad 虚拟手柄位于其 `VPad/` 目录）
 
-## 🎯 文档分类
+## 🗂 历史设计（勿作为实现依据）
 
-### 开发者文档
-- 系统架构文档
-- 模块系统文档
-- 虚拟机指令集文档
-
-### 用户文档  
-- 脚本语法文档
-- 功能使用说明
-
-### 维护状态
-- ✅ **已实现**: 系统架构和模块系统
-- ✅ **已完成**: 脚本系统和虚拟机
-- 🔄 **持续更新**: 文档与代码同步
+| 文档 | 说明 |
+|---|---|
+| [V1 指令集](VM1.md) | 单片机端旧指令集，仅有外链记录；代码侧仅剩死代码（`Script/Assembly/`、`Device/V1.cs`） |
+| [模块化设计](models.md) | v1 时代的模块编号/FFI 设计，与现役 `EcsSyscall`（1..17 扁平编号）不符 |
+| [模块详细设计](MODULE_DESIGN.md) | v1 时代按模块拆的详细设计（含已迁入 GUI 的 VPad、SDL2 时期的输入层） |
+| [项目架构设计文档](DESIGN_DOCUMENT.md) | EasyCon2 早期分层/MVVM/事件传递设计，部分与现状一致但整体待重写 |
+| [EasyCon Assist](EasyCon%20Assist.md) | 远程助手功能说明；对应实现已在 ECX 收敛中移除 |
+| [OBS 虚拟摄像头](obs-virtual-cam.md) | 外部工具配置说明，与主仓代码无关 |
+| [架构审查报告](../ARCHITECTURE_REVIEW_REPORT.md) | 2026-09-26 的 94 条审查发现。P0/P1 大部分已在 `ac7e16c` 落地，**按历史清单读** |
 
 ## 📖 阅读建议
 
-### 新手入门路径
-1. 阅读 [系统架构](Framework.md) 了解整体设计
-2. 学习 [脚本语法](Script.md) 掌握脚本编写
-3. 参考 [模块系统](models.md) 理解扩展机制
+**新手路径**：系统架构 → 脚本语法 → 函数手册 → 快速开始
 
-### 开发者路径
-1. 系统架构 → 了解设计原则
-2. 模块系统 → 理解接口设计
-3. 虚拟机文档 → 深入底层实现
+**改编译器/字节码**：Pipeline.md → ModuleSystem.md → VM2.md → VmSemanticContract.md → EcmEcxFormat.md
 
-## 🔗 相关资源
-
-- [主项目README](../README.md)
-- [源代码目录](../src/)
-- [详细设计文档](../src/EasyCon2.Avalonia/DOCUMENTATION_INDEX.md)
-
-## 📝 文档信息
-
-**状态**: ✅ 已更新至最新架构  
-**最后更新**: 2026年4月16日  
-**版本**: 2.0
+**改宿主/UI**：Framework.md §5-6 → `AGENTS.md` 的分层与组合根规则 → EasyCon.Core README
 
 ---
 
-如有问题或建议，请通过 [GitHub Issues](https://github.com/EasyConNS/EasyCon/issues) 反馈。
+**最后更新**: 2026-09（随组合根收敛与 MCU 下发方案同步）

@@ -1,5 +1,10 @@
 # 伊机控 模块详细设计文档
 
+> ⚠️ **历史文档（v1 时代）**：描述的是 IRunner/Assembly 时期的分模块设计，
+> 与现役 ECX 统一链路不符（VPad 已迁入 `src/EasyCon2.Avalonia/VPad/`，输入层是 SDL3 不是 SDL2，
+> 脚本模块已重写为 词法→绑定→SSA→字节码）。了解现状请读 [Framework.md](Framework.md)、
+> [Pipeline.md](Pipeline.md)、[ModuleSystem.md](ModuleSystem.md)。
+
 ## 1. Device模块详细设计
 
 ### 1.1 模块概述

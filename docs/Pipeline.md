@@ -67,7 +67,10 @@
 
 ## 5. 后续项（未实施）
 
-- GUI 一键产 `.ecx`：经 `IScriptSession.Info.Image` → `EcxWriter`（CLI compile 已可用）。
+- **GUI 一键产 `.ecx` 并烧录**：方案见 `docs/McuBytecodeDelivery.md`（唯一入口
+  `McuImageBuilder` + 预检 + 复用 `NintendoSwitch.Flash`）。注意不能直接复用桌面会话的
+  `Info.Image` —— 桌面档含 PC 宽槽指令，`EcxWriter`/`EcmFormat` 会拒绝序列化，必须重新以
+  Portable 档编译（`ScriptCompileProfiles.Portable`）。CLI `compile` 已可用。
 - 桌面路径缓存化（当前桌面现编）。
 - 运行错误位置映射：产物无行号表，需 pc→源行映射才能恢复源级定位。
 - EcxInterpreter 性能：常量串驻留（对齐 VM2.md §2 字符串驻留规格）/ 帧池复用 / 取消检查三分点

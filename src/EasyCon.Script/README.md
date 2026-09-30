@@ -144,7 +144,7 @@ EasyCon.Script/
 
 - 无外部 NuGet 依赖
 - 上层通过 `Compilation` 类和委托接口使用
-- `InternalsVisibleTo` 暴露给 `EasyCon.Lsp`、`EasyCon.Lsp.Tests`、`EasyCon.Tests`、`BenchTest`
+- `InternalsVisibleTo` 暴露给 `EasyCon.Lsp`、`EasyCon.Lsp.Tests`、`EasyCon.Tests`
 
 ---
 

@@ -1,6 +1,7 @@
-﻿// See https://aka.ms/new-console-template for more information
+// See https://aka.ms/new-console-template for more information
 using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Hosting;
 using EasyCon.Core.Runner;
 using EasyCon.Lsp;
 using EasyCon.Script;
@@ -136,13 +137,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     outdap.Log("正在解析脚本...");
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = new CompileOptions
-        {
-            ExtVars = [.. label.Select(il => il.name)],
-            UseDiskCache = false,
-            UseProcessCache = false,
-            EnablePcWideSlots = true,
-        },
+        Compile = ScriptCompileProfiles.Desktop(label.Select(il => il.name)),
     });
     Console.WriteLine(session.Info.Timing?.ToReport());
     var diag = session.Info.Diagnostics;
@@ -215,29 +210,15 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         producer.Start();
     }
 
-    // 能力装配（P6）：帧/ROI/标签/OCR/推理经服务接口注入
-    var capabilities = new EasyCon.Core.Capabilities.CapabilitySet
-    {
-        Console = new EasyCon.Core.Capabilities.ConsoleIoAdapter(outdap),
-    };
+    // 能力装配：唯一装配点（ScriptHostAssembler）。CLI 只提供原料，
+    // OCR/推理/宿主环境/文件能力的默认值与释放统一由租约承担。
+    ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
 
-    // OCR 无条件装配（与 GUI 对齐）：tessdata 缺失时识别会给出明确错误而非「能力不存在」
-    var ocrCache = new EasyCon.Capture.OcrEngineCache
-    {
-        DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
-    };
-    capabilities.Ocr = new EasyCon.Core.Capabilities.TesseractOcrService(ocrCache);
-    // ML 推理与 GUI 对齐：缺失时脚本 ML 指令只会静默 -1，无从排查
-    capabilities.Inference = new EasyCon.Core.Capabilities.DnnInference();
-
+    LabelMatchDelegate? labelMatchDelegate = null;
     if (cvcap != null && label.Count() > 0)
     {
         var labelDict = label.ToDictionary(il => il.name);
-
-        var frameDelegate = FrameDelegateFactory.CreateFrame(() => producer!.Store.AcquireLatest());
-        capabilities.Capture = new EasyCon.Core.Capabilities.DelegateCaptureSource(frameDelegate);
-
-        LabelMatchDelegate labelMatchDelegate = lblName =>
+        labelMatchDelegate = lblName =>
         {
             if (!labelDict.TryGetValue(lblName, out var il)) return 0;
             using var lease = producer!.Store.AcquireLatest();
@@ -245,16 +226,33 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
             il.Search(lease.Mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
             return (int)Math.Ceiling(md);
         };
-        capabilities.Vision = new EasyCon.Core.Capabilities.DelegateVisionService(
-            MatExtensions.CropBase64, labelMatchDelegate);
     }
+
+    // 有采集源即装配帧与 ROI：标签数量只决定 Vision 的匹配委托，不再决定 FRAME 能力有无。
+    FrameDelegate? frameDelegate = null;
+    RoiDelegate? roiDelegate = null;
+    if (producer != null)
+    {
+        FrameProducer capture = producer;
+        frameDelegate = FrameDelegateFactory.CreateFrame(() => capture.Store.AcquireLatest());
+        roiDelegate = MatExtensions.CropBase64;
+    }
+
+    using var capabilityLease = ScriptHostAssembler.Assemble(new ScriptHostContext
+    {
+        Pad = pad,
+        Console = new EasyCon.Core.Capabilities.ConsoleIoAdapter(outdap),
+        Frame = frameDelegate,
+        Roi = roiDelegate,
+        LabelMatch = labelMatchDelegate,
+        AppDir = AppDomain.CurrentDomain.BaseDirectory,
+    });
+
     outdap.Info($"==>开始执行脚本：{file}\n");
 
     try
     {
-        ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
-        capabilities.Input = new EasyCon.Core.Capabilities.PadInputAdapter(pad);
-        session.Run(cancellationToken, capabilities);
+        session.Run(cancellationToken, capabilityLease.Capabilities);
         outdap.Info("脚本运行完成");
     }
     catch (OperationCanceledException)
@@ -278,7 +276,6 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     finally
     {
         producer?.Dispose();
-        (capabilities.Ocr as IDisposable)?.Dispose();
         if (!isMock)
         {
             try { NS.Reset(); NS.Disconnect(); } catch { /* 断开失败交由进程退出兜底 */ }
@@ -353,13 +350,7 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
 
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = new CompileOptions
-        {
-            ExtVars = [.. label.Select(il => il.name)],
-            UseDiskCache = false,
-            UseProcessCache = false,
-            EnablePcWideSlots = true,
-        },
+        Compile = ScriptCompileProfiles.Desktop(label.Select(il => il.name)),
         Capabilities = new EasyCon.Core.Capabilities.CapabilitySet(),
     });
     var diag = session.Info.Diagnostics;
@@ -401,13 +392,7 @@ irCommand.SetAction(async (parseResult, cancellationToken) =>
 
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = new CompileOptions
-        {
-            ExtVars = [.. label.Select(il => il.name)],
-            UseDiskCache = false,
-            UseProcessCache = false,
-            EnablePcWideSlots = true,
-        },
+        Compile = ScriptCompileProfiles.Desktop(label.Select(il => il.name)),
         Capabilities = new EasyCon.Core.Capabilities.CapabilitySet(),
     });
     var diag = session.Info.Diagnostics;
@@ -441,14 +426,7 @@ static string DumpIr(EasyCon.Core.Script.IScriptEngine engine, EasyCon.Core.Scri
         Path.GetFullPath(Path.GetDirectoryName(file) ?? ""), AppDomain.CurrentDomain.BaseDirectory);
     var rerun = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = new CompileOptions
-        {
-            ExtVars = [.. label.Select(il => il.name)],
-            Optimize = false,
-            UseDiskCache = false,
-            UseProcessCache = false,
-            EnablePcWideSlots = true,
-        },
+        Compile = ScriptCompileProfiles.Desktop(label.Select(il => il.name), optimize: false),
     });
     return rerun.Info.Program != null
         ? SsaPrinter.Dump(rerun.Info.Program)
@@ -465,7 +443,12 @@ modulesCommand.Arguments.Add(scriptOption);
 modulesCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     string file = parseResult.GetValue(scriptOption)!;
-    var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(file);
+    // MCU 分发档：8 位槽位 + obj/ 缓存；同时加载识图标签作为外部变量，
+    // 否则含 @标签 的脚本在此命令下无法通过绑定（docs/McuBytecodeDelivery.md）。
+    var (label, _, _) = ECCore.LoadImgLabels(
+        Path.GetDirectoryName(Path.GetFullPath(file)) ?? "", AppDomain.CurrentDomain.BaseDirectory);
+    var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(
+        file, ScriptCompileProfiles.Portable(label.Select(il => il.name)));
 
     Console.WriteLine($"独立编译：{(project.Success ? "成功" : "失败")}  缓存命中 {project.CacheHits} / 未命中 {project.CacheMisses} / 错误重放 {project.ErrorHits} / GC 清理 {project.GarbageCollected}");
     Console.WriteLine();
@@ -497,7 +480,11 @@ compileCommand.SetAction(async (parseResult, cancellationToken) =>
     string file = parseResult.GetValue(scriptOption)!;
     string outPath = parseResult.GetValue(outOption) ?? Path.ChangeExtension(file, ".ecx");
 
-    var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(file);
+    // MCU 分发档：这是唯一能产出可序列化 .ecx 的档位（桌面档含 PC 宽槽指令，EcxWriter 会拒绝）。
+    var (label, _, _) = ECCore.LoadImgLabels(
+        Path.GetDirectoryName(Path.GetFullPath(file)) ?? "", AppDomain.CurrentDomain.BaseDirectory);
+    var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(
+        file, ScriptCompileProfiles.Portable(label.Select(il => il.name)));
     foreach (var w in project.Warnings)
         Console.WriteLine($"警告: {w}");
     if (!project.Success)

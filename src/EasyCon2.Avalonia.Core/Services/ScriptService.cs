@@ -2,6 +2,7 @@ using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Config;
+using EasyCon.Core.Hosting;
 using EasyCon.Core.Script;
 using EasyCon.Core.Services;
 using EasyCon.Script;
@@ -134,15 +135,11 @@ public class ScriptService : IScriptService
 
     // ── 私有方法 ────────────────────────────────
 
+    // 编译档位与能力装配都走组合根（EasyCon.Core.Hosting）：
+    // 宿主不再手写 CompileOptions / CapabilitySet 字面量，避免与 CLI 漂移。
     static ScriptHostOptions Options(ImmutableHashSet<string> extVars) => new()
     {
-        Compile = new CompileOptions
-        {
-            ExtVars = extVars,
-            UseDiskCache = false,
-            UseProcessCache = false,
-            EnablePcWideSlots = true,
-        },
+        Compile = ScriptCompileProfiles.Desktop(extVars),
     };
 
     /// <summary>编译并落诊断日志；出错返回 null。</summary>
@@ -250,7 +247,6 @@ public class ScriptService : IScriptService
         // 的状态复位）整体不执行，IsRunning 将永久卡死。取消只经 session.Run(token) 生效。
         Task.Run(() =>
         {
-            CapabilitySet? capabilities = null;
             try
             {
                 var (session, labelMatch) = compile();
@@ -297,24 +293,24 @@ public class ScriptService : IScriptService
 
                 var frameDelegate = FrameDelegateFactory.CreateFrame(() => _captureService.AcquireLatestFrame());
 
-                // 能力装配（P6）：帧/ROI/标签/OCR/推理经服务接口注入
-                capabilities = new CapabilitySet
+                // 能力装配：唯一装配点（ScriptHostAssembler）。宿主只提供原料（pad/帧/标签委托/日志），
+                // OCR、推理、宿主环境、文件能力的默认值与释放统一由租约承担。
+                // args 经 HostEnvironment 进入 VM —— 此前 ExecuteScript 的 args 形参被静默丢弃，ARG() 恒为空。
+                using CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
                 {
-                    Input = pad != null ? new PadInputAdapter(pad) : null,
+                    Pad = pad,
                     Console = new ConsoleIoAdapter(_logService),
-                    Capture = new DelegateCaptureSource(frameDelegate),
-                    Vision = new DelegateVisionService(MatExtensions.CropBase64, labelMatch),
-                    Ocr = new TesseractOcrService(new OcrEngineCache
-                    {
-                        DefaultDataPath = AppDomain.CurrentDomain.BaseDirectory + "Tessdata"
-                    }),
-                    Inference = new DnnInference(),
-                };
+                    Frame = frameDelegate,
+                    Roi = MatExtensions.CropBase64,
+                    LabelMatch = labelMatch,
+                    Args = args,
+                    AppDir = AppDomain.CurrentDomain.BaseDirectory,
+                });
 
-                if (hasKeyAction && capabilities.Input == null)
+                if (hasKeyAction && lease.Capabilities.Input == null)
                     throw new InvalidOperationException("脚本包含按键操作，但运行能力中未装配输入设备");
 
-                session.Run(token, capabilities);
+                session.Run(token, lease.Capabilities);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)
@@ -335,9 +331,8 @@ public class ScriptService : IScriptService
             }
             finally
             {
-                // OCR 缓存与推理引擎持有原生 Tesseract/DNN 资源，随本次运行释放
-                (capabilities?.Ocr as IDisposable)?.Dispose();
-                (capabilities?.Inference as IDisposable)?.Dispose();
+                // OCR/推理原生资源的释放已由 CapabilityLease 在 try 作用域内完成，
+                // 此处只收尾设备状态与运行标志。
 
                 try
                 {

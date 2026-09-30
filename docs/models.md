@@ -1,5 +1,10 @@
 ## models
 
+> ⚠️ **历史文档（v1 时代）**：其中的模块编号分段（`0x00-0x4F` + `srv, module_id, function_id`）
+> 与现役 `EcsSyscall`（1..17 扁平编号，无 module_id 概念）不符；引用的 `Evaluator`、
+> `KeyMappingManager` 等类型已不存在。现状见 [VM2.md](VM2.md) §7.3 与
+> [ModuleSystem.md](ModuleSystem.md)。
+
 通用自动化虚拟机平台插件模块，用于实现ffi
 
 **模块系统已实现** ✅

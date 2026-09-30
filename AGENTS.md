@@ -39,22 +39,55 @@ ci\windows-x64.bat
 
 | Directory | Role |
 |---|---|
-| `src/EasyCon.Core` | Core abstractions; capability model (`Capabilities/`: CapabilitySet + IPadInput/IConsoleIo/IFileSystem/ICaptureSource/IVisionService/IOcrService/IInference); script engine surface (`Script/`: IScriptEngine/IScriptSession) |
-| `src/EasyCon.Device` | Hardware device communication (serial) |
-| `src/EasyCon.Capture` | Screen/image capture |
-| `src/EasyCon.Script` | ECS script parser, compiler, runtime |
-| `src/EasyCon.Vm` | Native C VM (ecs-vm, C99) executing .ecx bytecode on MCU |
-| `src/EzTesseract` | OCR (Tesseract wrapper) |
-| `src/EasyCon.Lsp` | LSP language server for ECS scripts |
-| `src/EasyCon.Server` | HTTP/WebSocket server for remote control |
-| `src/EasyCon2.Avalonia` | Avalonia GUI (MVVM): views/controls + all ViewModels |
-| `src/EasyCon2.Avalonia.Core` | Pure VM/logic layer — zero Avalonia package references (View components live in `EasyCon2.Avalonia` under the same `EasyCon2.Avalonia.Core.*` namespaces) |
-| `src/EasyCon2.UI.Common` | Shared UI resources, styles |
-| `src/EasyCon.WinInput` | Windows input simulation |
-| `src/EasyCon.SDLInput` | Cross-platform input via SDL3 |
-| `test/EasyCon.Tests` | Core/Script tests (NUnit) |
+| `src/EasyCon.Core` | **Composition root** + capability model (`Capabilities/`: CapabilitySet + IPadInput/IConsoleIo/IFileSystem/ICaptureSource/IVisionService/IOcrService/IInference/IEnvironment) + host assembler (`Hosting/`: ScriptHostAssembler/ScriptCompileProfiles) + script engine surface (`Script/`: IScriptEngine/IScriptSession) + execution bridge (`Runner/`: EcxVm) + config (`Config/`: ConfigManager) + LLM client (`LLM/`) |
+| `src/EasyCon.Device` | Hardware device communication (serial); zero project references |
+| `src/EasyCon.Capture` | Screen/image capture; vision matching; OCR engine cache |
+| `src/EasyCon.Script` | ECS script parser, binder, SSA, bytecode compiler/linker, CLI-side interpreter; zero project references |
+| `src/EasyCon.Vm` | Native C VM (`native/ecs-vm`, C99) executing .ecx bytecode on MCU. **Not in `EasyCon2.slnx`** — built by `ci/build-vm.sh` and on the fly by `test/EasyCon.Tests/Support/CvmRunner.cs` |
+| `src/EzTesseract` | OCR (hand-written Tesseract/Leptonica bindings); zero project references |
+| `src/EasyCon.Lsp` | LSP language server for ECS scripts (reuses Script's syntax tree only) |
+| `src/EasyCon.SDLInput` | Cross-platform input via SDL3 (the only production input backend) |
+| `src/EasyCon2.Avalonia.Core` | Pure VM/logic layer — zero Avalonia package references |
+| `src/EasyCon2.Avalonia` | Avalonia GUI (MVVM): views/controls + platform service implementations + `VPad/` |
+| `src/EasyCon2.UI.Common` | Legacy resx resources only (see "Layering" below — mostly vestigial) |
+| `test/EasyCon.Tests` | Core/Script tests (NUnit), includes C VM ↔ C# interpreter cross-validation |
 | `test/EasyCon.Lsp.Tests` | LSP tests |
-| `test/EasyCon.WinInput.Tests` | Windows input tests |
+| `test/EasyCon.SDLInput.Tests` | Input→HID mapping tests (fake device connection) |
+| `test/EasyCon2.Avalonia.Core.Tests` | Agent/MCP/LSP-client/script-service tests |
+| `test/EasyCon2.Avalonia.UiTests` | Headless Avalonia render tests |
+| `tools/OpenCvDnnDemo` | OpenCvSharp5 DNN experiment (in slnx under `/Demo/`) |
+
+## Layering and the composition root
+
+The layering does **not** match the "Core is the bottom layer" reading of its name. The real graph is:
+
+```
+EasyCon.Script   EasyCon.Device   EasyCon.Capture ──► EzTesseract     (leaf libraries, zero refs)
+      ▲               ▲                  ▲
+      └───────────────┴──────────────────┘
+                      │
+                EasyCon.Core            ← capability PORTS + COMPOSITION ROOT
+                      ▲
+      ┌───────────────┼──────────────────┐
+EasyCon.SDLInput   EasyCon.Lsp   EasyCon2.Avalonia.Core ──► EasyCon2.Avalonia
+EasyCon2.CLI ──► EasyCon.Core + EasyCon.Lsp
+```
+
+Rules to respect when changing code:
+
+- **`EasyCon.Core` is the composition root**, not a leaf: it references Script/Device/Capture and pulls
+  OpenCV/Tesseract through them. Do not add a project reference *to* Core from Script/Device/Capture/EzTesseract —
+  those four must stay zero-reference leaves.
+- **Never construct `CapabilitySet` outside `Hosting/ScriptHostAssembler`.** Hosts (GUI/CLI) supply only
+  "raw material" (`ScriptHostContext`: pad, frame/ROI/label delegates, console, args); the assembler owns
+  adapter wrapping, defaults (Environment/Files/OCR/DNN) and resource teardown (`CapabilityLease`).
+- **Never hand-write `CompileOptions` literals.** Use `ScriptCompileProfiles.Desktop` (PC wide slots,
+  desktop interpreter only — the image cannot be serialized) or `ScriptCompileProfiles.Portable`
+  (frozen 8-bit slots, the only MCU-distributable and cacheable profile).
+- DI *container* is deliberately absent: composition is explicit constructor passing from
+  `App.axaml.cs` (GUI) and `Program.cs` (CLI).
+- Two known warts, do not spread them: `EasyCon2.Avalonia/ViewModels/` holds a few Avalonia-typed VMs
+  outside the compiler-enforced purity zone, and `EasyCon2.UI.Common` is a vestigial resx-only project.
 
 ## Code conventions (enforced by .editorconfig)
 
@@ -76,7 +109,8 @@ ci\windows-x64.bat
 
 The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict MVVM:
 
-- **ViewModel must NOT reference any Avalonia control types** (Window, Control, TextBox, etc.). `EasyCon2.Avalonia.Core` carries no Avalonia package references, so this constraint is **enforced by the compiler** — a ViewModel that starts using Avalonia types simply fails to build. View components still live under `EasyCon2.Avalonia.Core.*` namespaces (inside the `EasyCon2.Avalonia` project) because `ViewLocator` and axaml `using:` clauses resolve them by namespace.
+- **ViewModel must NOT reference any Avalonia control types** (Window, Control, TextBox, etc.). `EasyCon2.Avalonia.Core` carries no Avalonia package references, so this constraint is **enforced by the compiler** — a ViewModel that starts using Avalonia types simply fails to build. The few Avalonia-typed VMs (`MonitorViewModel`, `ESPConfigViewModel`, `KeyMappingViewModel`, `FileTreeViewModel`, `MainWindowViewModel`, `ControllerConnectionViewModel`) live in `EasyCon2.Avalonia/ViewModels/`, i.e. deliberately outside the enforced zone.
+- **View resolution is explicit, not convention-based**: views are declared in axaml with `DataContext="{Binding ...}"`, or constructed by `WindowService`. The registered `ViewLocator` matches almost nothing and is effectively dead code — do not rely on `FooViewModel → FooView` name mapping. Views for Core-layer VMs live in the `EasyCon2.Avalonia` project but keep `EasyCon2.Avalonia.Core.*` namespaces so axaml `using:` and `x:DataType` resolve.
 - **View → ViewModel**: prefer bindings (`{Binding}`, `{x:Bind}`), avoid code-behind event subscriptions
 - **ViewModel → View**: use `[ObservableProperty]` (CommunityToolkit.Mvvm) or `AvaloniaProperty` with bindings
 - **Code-behind** is only for: platform APIs (file dialogs, drag-drop), layout (SizeChanged), visual tree init (FoldingManager, LSP). No business logic.
@@ -85,7 +119,7 @@ The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict
 ## Testing
 
 - **Framework**: NUnit (NOT xUnit or MSTest)
-- Test projects: `EasyCon.Tests`, `EasyCon.Lsp.Tests`, `EasyCon.WinInput.Tests`, `EasyCon2.Avalonia.Core.Tests`, `EasyCon2.Avalonia.UiTests`, `EasyCon.SDLInput.Tests`
+- Test projects: `EasyCon.Tests`, `EasyCon.Lsp.Tests`, `EasyCon.SDLInput.Tests`, `EasyCon2.Avalonia.Core.Tests`, `EasyCon2.Avalonia.UiTests`
 - Use `[Test]` attribute, not `[Fact]`
 
 ### Fake device connection (no-hardware device tests)
@@ -122,9 +156,21 @@ OpenCV bindings come from the `OpenCvSharp5` NuGet packages (OpenCV 5.0); native
 
 ## Documentation
 
+**Current-state specs (kept in sync with code — trust these):**
+
+- `docs/Pipeline.md` — unified compilation pipeline and single-source-of-truth landing points
+- `docs/ModuleSystem.md` — interface-based independent compilation + content-addressed cache
+- `docs/VM2.md` — bytecode/instruction-set spec (the live VM)
+- `docs/VmSemanticContract.md` — S-01..S-19 dual-end (C# interpreter ↔ C VM) semantic contract
+- `docs/EcmEcxFormat.md` — ECM/ECX bit-level binary format
 - `docs/Script.md` — ECS scripting language reference
 - `docs/Functions.md` — script function handbook (script-author-facing, CN)
-- `docs/Framework.md` — system architecture
-- `docs/VM1.md` / `docs/VM2.md` — virtual machine instruction sets
+- `docs/McuBytecodeDelivery.md` — plan of record for compiling and flashing MCU bytecode
+
+**Historical / partially stale (verify against code before relying on them):**
+
+- `docs/Framework.md` — layering overview; has been corrected for the composition-root reality, but still the softest doc
+- `docs/MODULE_DESIGN.md`, `docs/DESIGN_DOCUMENT.md`, `docs/models.md` — pre-ECX (v1) design docs
+- `ARCHITECTURE_REVIEW_REPORT.md` — 2026-09-26 audit (94 findings). Most P0/P1 items were landed in
+  `ac7e16c`; read it as a **historical checklist**, not a current defect list.
 - `docs/GETTING_STARTED.md` — user setup guide
-- `src/EasyCon2.Avalonia/DOCUMENTATION_INDEX.md` — UI docs index

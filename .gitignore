@@ -374,3 +374,6 @@ ppocr_keys_v5.txt
 
 # Local design references / mockups (working material, not shipped)
 .design/
+
+# macOS 目录元数据
+.DS_Store

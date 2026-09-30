@@ -77,13 +77,13 @@ LoadK Bx < const_count）→ 类型表嵌套展开无环。校验宁可严格：
 | 5/6 | UINT64/DOUBLE | i64/f64 | | 6/7 | double/string |
 | 7/9/12 | STRING/ARRAY/STRUCT | i64 低 32 位=堆句柄 | | 8/9/10/11 | array/ptr/struct/any |
 
-## 4. ECM —— 模块产物（"ECM2" format_ver = 3）
+## 4. ECM —— 模块产物（"ECM2" format_ver = 4）
 
 开发链路上的编译缓存（ModuleSystem.md §6），与 ECX 同族但带名字与接口区（不必最省）。
 当前布局与 `EcmFormat.Write/Read` 逐字段一致：
 
 ```
-"ECM2" ver:u16(=3) flags:u16(HasEval=bit0；与下方标志字节 bit0 同值冗余，读侧以标志字节为准)
+"ECM2" ver:u16(=4) flags:u16(HasEval=bit0；与下方标志字节 bit0 同值冗余，读侧以标志字节为准)
 链接标志字节:u8   bit0=HasEval bit1=HasInit bit2=KeyAction bit3=NeedIL   ← v3 新增：跨缓存存活
 InitFid:u32       <init:module> 函数的模块局部 fid（无 init 时 0）
 module_name:utf8
@@ -99,7 +99,11 @@ const_count { EcsConst }
 import_count { name:utf8 nparams:u8 hasret:u8 }    # Call ext = 0x80000000 | importIdx
 export_count { name:utf8 local_fid:u32 nparams:u8 hasret:u8 }
 il_count { name:utf8 }
+line_func_count { count:u32 { i32... } }          # v4 新增：逐函数行号表，稀疏交错 [pc, line, ...]
 ```
+
+> v4 变更：函数节尾部追加行号表（每函数一份稀疏 `[pc, line, ...]` 交错数组），
+> 供 pc→源码行映射与运行错误定位；纯诊断数据，不进 MCU 的 .ecx 镜像。
 
 ### 4.1 引用规则（编码期闭合矩阵；链接期唯一重写点）
 
@@ -120,7 +124,7 @@ il_count { name:utf8 }
 ## 5. 版本与演进
 
 - `format_ver` 单调递增，加载器拒绝更高版本；语义不兼容变更必须升版本（旧缓存经严格版本校验自然失效）。
-- ECX v1 冻结项：32 位定长指令、8 位槽、16 位常量索引、UTF-16 常量串。ECM 当前版本 v3（含链接标志节）。
+- ECX v1 冻结项：32 位定长指令、8 位槽、16 位常量索引、UTF-16 常量串。ECM 当前版本 v4（v3 起含链接标志节，v4 增行号表）。
 
 ### 5.1 格式 v2 窗口设计备注（统一链路遗留项，实施须与 C VM 协商升版本）
 

@@ -1,5 +1,9 @@
 # EasyCon2 项目架构设计文档
 
+> ⚠️ **历史文档（EasyCon2 早期）**：整体分层/MVVM/事件传递思路部分仍成立，
+> 但 1.1 节之后的具体类型（Runner/ProjectManager/AssistClient 等）多已删除，
+> 且当时尚未引入 ECX 编译链路与能力模型。现状以 [Framework.md](Framework.md) 为准。
+
 ## 1. 项目概述
 
 EasyCon2 是一个面向游戏主机（主要是任天堂Switch）的自动化脚本执行平台。该系统允许用户通过自定义脚本语言控制游戏主机，实现自动化游戏操作、图像识别、虚拟手柄映射等功能。
