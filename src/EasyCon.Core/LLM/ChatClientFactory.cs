@@ -9,7 +9,8 @@ public static class ChatClientFactory
 
     public static IChatClient Create(ProviderConfig provider)
     {
-        var key = $"{provider.Api}|{provider.BaseUrl}";
+        // ApiKey 参与缓存键：同址不同凭证的供应商不得共享客户端（错用对方凭证）
+        var key = $"{provider.Api}|{provider.BaseUrl}|{provider.ApiKey}";
         lock (_lock)
         {
             if (_cache.TryGetValue(key, out var cached))

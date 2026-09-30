@@ -145,8 +145,75 @@ public class ToolCallService : IToolCallService
             return null;
 
         var sb = new StringBuilder();
-        BuildTreeMd(sb, projectDir, 0, false);
+        var state = new TreeBuildState();
+        BuildTreeMd(sb, projectDir, 0, false, state);
         return sb.ToString();
+    }
+
+    /// <summary>目录树构建限制：超限即截断并注明，防止大目录输出挤占上下文。</summary>
+    private const int MaxTreeDepth = 6;
+    private const int MaxTreeEntries = 500;
+    private static readonly HashSet<string> SkippedDirectories = new(StringComparer.OrdinalIgnoreCase)
+        { "bin", "obj", "node_modules" };
+
+    private sealed class TreeBuildState
+    {
+        public int Entries;
+        public bool Truncated;
+    }
+
+    private static void BuildTreeMd(StringBuilder sb, string path, int depth, bool isInLib, TreeBuildState state)
+    {
+        if (state.Truncated)
+            return;
+
+        if (depth > MaxTreeDepth)
+        {
+            sb.Append("[更深目录已省略]\n");
+            return;
+        }
+
+        var indent = new string(' ', depth * 2);
+        IEnumerable<string> entries;
+        try
+        {
+            entries = Directory.GetFileSystemEntries(path)
+                .Where(e => !Path.GetFileName(e).StartsWith('.'))
+                .OrderBy(e => !Directory.Exists(e))
+                .ThenBy(e => Path.GetFileName(e), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception)
+        {
+            return;  // 无权限/已删除的子目录直接跳过
+        }
+
+        var name = Path.GetFileName(path);
+        var currentIsLib = isInLib || string.Equals(name, "lib", StringComparison.OrdinalIgnoreCase);
+
+        foreach (var entry in entries)
+        {
+            if (++state.Entries > MaxTreeEntries)
+            {
+                sb.Append("[项目树已截断：条目超过 ").Append(MaxTreeEntries).Append("]\n");
+                state.Truncated = true;
+                return;
+            }
+
+            var entryName = Path.GetFileName(entry);
+            var isDir = Directory.Exists(entry);
+            if (isDir && SkippedDirectories.Contains(entryName))
+                continue;
+
+            var tag = "";
+            var ext = Path.GetExtension(entry).ToUpperInvariant();
+            if (ext is ".IL" or ".ILX") tag = " `标签`";
+            else if (currentIsLib && ext is ".ECS" or ".TXT") tag = " `库`";
+
+            sb.Append(indent).Append("- ").Append(entryName).Append(tag).Append(isDir ? "/" : "").Append('\n');
+
+            if (isDir)
+                BuildTreeMd(sb, entry, depth + 1, currentIsLib, state);
+        }
     }
 
     /// <inheritdoc/>
@@ -156,40 +223,6 @@ public class ToolCallService : IToolCallService
         return !string.IsNullOrEmpty(projectDir) && Directory.Exists(projectDir)
             ? projectDir
             : null;
-    }
-
-    private static void BuildTreeMd(StringBuilder sb, string path, int depth, bool isInLib)
-    {
-        var indent = new string(' ', depth * 2);
-        var entries = Directory.GetFileSystemEntries(path)
-            .Where(e => !Path.GetFileName(e).StartsWith('.'))
-            .OrderBy(e => !Directory.Exists(e))
-            .ThenBy(e => Path.GetFileName(e), StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        var name = Path.GetFileName(path);
-        var currentIsLib = isInLib || string.Equals(name, "lib", StringComparison.OrdinalIgnoreCase);
-
-        foreach (var entry in entries)
-        {
-            var entryName = Path.GetFileName(entry);
-            var isDir = Directory.Exists(entry);
-
-            if (isDir)
-            {
-                sb.Append(indent).Append("- ").Append(entryName).Append("/\n");
-                BuildTreeMd(sb, entry, depth + 1, currentIsLib);
-            }
-            else
-            {
-                var tag = "";
-                var ext = Path.GetExtension(entry).ToUpperInvariant();
-                if (ext is ".IL" or ".ILX") tag = " `标签`";
-                else if (currentIsLib && ext is ".ECS" or ".TXT") tag = " `库`";
-
-                sb.Append(indent).Append("- ").Append(entryName).Append(tag).Append('\n');
-            }
-        }
     }
 
     // ── 脚本执行 ──────────────────────────────
@@ -220,7 +253,8 @@ public class ToolCallService : IToolCallService
         var mat = lease.Mat;
 
         using var resized = mat.Resize(0.5);
-        var bytes = resized.ToBytes(".png");
+        // JPEG 而非 PNG：同分辨率体积小约一个量级，直接决定多模态上下文的 token 占用
+        var bytes = resized.ToBytes(".jpg", [new ImageEncodingParam(ImwriteFlags.JpegQuality, 80)]);
         return Convert.ToBase64String(bytes);
     }
 
@@ -231,9 +265,11 @@ public class ToolCallService : IToolCallService
         if (_logBuffer.Count == 0)
             return "(暂无日志)";
 
-        var lines = _logBuffer.Count <= maxLines
-            ? _logBuffer.ToArray()
-            : _logBuffer.Skip(_logBuffer.Count - maxLines).ToArray();
+        const int maxLineChars = 500;
+        var lines = (_logBuffer.Count <= maxLines
+                ? _logBuffer.ToArray()
+                : _logBuffer.Skip(_logBuffer.Count - maxLines).ToArray())
+            .Select(l => l.Length <= maxLineChars ? l : l[..maxLineChars] + "…");
 
         return string.Join(Environment.NewLine, lines);
     }

@@ -130,6 +130,8 @@ public sealed class OpenAIChatClient : IChatClient
     public async IAsyncEnumerable<StreamDelta> SendStreamAsync(ChatRequest request, [EnumeratorCancellation] CancellationToken ct = default)
     {
         request.Stream = true;
+        // 不显式请求时多数 OpenAI 兼容端点流式下不回传 usage，token 统计会静默缺失
+        request.StreamOptions ??= new StreamOptions { IncludeUsage = true };
 
         // ── 请求阶段：带重试的指数退避（透明重试，未 yield 任何 delta）──
         // C# 不允许在 catch 块中 yield，因此用局部变量捕获状态，在 try/catch 外部处理。

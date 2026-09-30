@@ -79,8 +79,10 @@ public class AgentOrchestratorErrorPathTests
         Assert.Multiple(() =>
         {
             Assert.That(completed.FinalContent, Does.Contain("[错误] HTTP 401: Unauthorized"));
-            // 错误不算模型回复，不写入对话历史
-            Assert.That(history, Is.Empty);
+            // 错误交代必须写入历史：模型下轮需要知道自己上轮失败过（对齐契约，2026-09 起）
+            Assert.That(history, Has.Count.EqualTo(1));
+            Assert.That(history[0].Role, Is.EqualTo("assistant"));
+            Assert.That(history[0].Content?.ToString(), Does.Contain("HTTP 401"));
         });
     }
 
@@ -98,14 +100,15 @@ public class AgentOrchestratorErrorPathTests
     public async Task EmptyStream_ProducesEmptyFinalContent()
     {
         // 空回复本身由 ViewModel 层兜底为可见的错误提示；
-        // 编排器侧的契约是如实传递空 FinalContent
+        // 编排器侧契约：FinalContent 如实传递空内容，历史落一条空回复交代供模型知悉
         var (events, history) = await RunAsync(new FakeChatClient());
 
         var completed = events.OfType<AgentEvent.Completed>().Single();
         Assert.Multiple(() =>
         {
             Assert.That(completed.FinalContent, Is.Empty);
-            Assert.That(history, Is.Empty);
+            Assert.That(history, Has.Count.EqualTo(1));
+            Assert.That(history[0].Content?.ToString(), Does.Contain("空回复"));
         });
     }
 

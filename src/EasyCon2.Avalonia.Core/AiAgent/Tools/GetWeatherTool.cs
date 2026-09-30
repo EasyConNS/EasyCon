@@ -17,6 +17,8 @@ internal class GetWeatherTool : IAiTool
 
     public string Name => "get_weather";
 
+    public ToolConcurrency Concurrency => ToolConcurrency.Parallel;
+
     public string Description => "获取指定城市或地点的当前天气信息，包括温度、湿度、风速、天气描述等。";
 
     public JsonSchema Parameters => new()

@@ -6,6 +6,7 @@ using EasyCon.Core.LLM.Tools;
 using EasyCon2.Avalonia.Core.AiAgent.Tools;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 
 namespace EasyCon2.Avalonia.Core.AiAgent;
 
@@ -55,25 +56,46 @@ public class AgentOrchestrator
     public const int MaxHistoryMessages = 40;
     private const int ToolTimeoutSeconds = 30;
 
+    /// <summary>取帧工具名。get_frame 的图片消息编排有专属语义，见 AttachFrameImage。</summary>
+    public const string FrameToolName = "get_frame";
+
+    /// <summary>旧帧图降级后的占位文本（保留对话时间轴位置，不再携带像素）。</summary>
+    public const string FrameOmittedPlaceholder = "[旧画面已省略：最新画面见后文]";
+
+    /// <summary>get_frame 与其它工具同轮混调时的拒绝文案（fail-closed，指导模型下轮单独调用）。</summary>
+    public const string FrameMixedRoundError =
+        "[错误] get_frame 必须单独调用：与其它工具同轮执行会让画面早于本轮动作，请本轮只调用 get_frame，其余动作下一轮再调。";
+
+    /// <summary>当前模型不支持视觉输入时 get_frame 的拒绝文案。</summary>
+    public const string FrameVisionUnsupportedError =
+        "[错误] 当前模型不支持视觉输入，无法使用 get_frame。请在模型列表选择具备视觉能力的模型后再试。";
+
+    /// <summary>单个工具结果写入历史的字符预算，超出即截断并附显式尾注。</summary>
+    public const int MaxToolResultChars = 20_000;
+
     private readonly ToolRegistry _tools;
     private readonly PromptAssembler? _promptAssembler;
     private readonly Func<ProviderConfig, IChatClient>? _clientFactory;
-    private int _frameImageIndex = -1;
+    private readonly Func<string?>? _projectDirectoryProvider;
+    private int _latestFrameImageIndex = -1;
     private readonly ReflectionState _reflectionState = new();
 
     /// <summary>
-    /// 反思状态管理器，追踪执行失败和重复结果，控制反思注入。
+    /// 反思状态管理器：失败按结构化状态计数，重复调用按「工具名+参数」签名检测。
+    /// 两者都与结果文本解耦——结果可携带时间戳等每次变化的凭据，不得参与检测。
     /// </summary>
     private class ReflectionState
     {
         private const int MaxReflections = 3;
         private const int FailureThreshold = 2;
-        private const int SameResultThreshold = 2;
+        private const int RepeatedCallThreshold = 3;
 
         private int _reflectionCount;
         private int _consecutiveFailures;
-        private int _consecutiveSameResults;
-        private string _lastToolResultHash = string.Empty;
+        private int _repeatedCallStreak;
+        private string _lastCallSignature = "";
+        private string _lastCallTool = "";
+        private string _triggerReason = "";
         private bool _shouldTriggerReflection;
 
         /// <summary>用户发送新消息时重置反思状态。</summary>
@@ -81,40 +103,43 @@ public class AgentOrchestrator
         {
             _reflectionCount = 0;
             _consecutiveFailures = 0;
-            _consecutiveSameResults = 0;
-            _lastToolResultHash = string.Empty;
+            _repeatedCallStreak = 0;
+            _lastCallSignature = "";
+            _lastCallTool = "";
+            _triggerReason = "";
             _shouldTriggerReflection = false;
         }
 
-        /// <summary>追踪工具执行结果。</summary>
-        public void TrackResult(string toolResult)
-        {
-            if (string.IsNullOrEmpty(toolResult))
+        /// <summary>按工具结果的结构化状态计数失败（Error/Retryable 均计入，Success 重置）。</summary>
+        public void TrackResult(ToolResultStatus status)
+        {            if (status == ToolResultStatus.Success)
+            {
+                _consecutiveFailures = 0;
+                return;
+            }
+
+            _consecutiveFailures++;
+            if (_consecutiveFailures >= FailureThreshold)
+                SetTrigger($"已连续 {_consecutiveFailures} 次工具执行失败");
+        }
+
+        /// <summary>按「工具名+参数签名」检测重复调用，参数变化即重置连击。</summary>
+        public void TrackCall(string toolName, string argumentsJson)
+        {            var signature = toolName + "|" + StableArgumentsKey(argumentsJson);
+            if (signature != _lastCallSignature)
+            {
+                _lastCallSignature = signature;
+                _lastCallTool = toolName;
+                _repeatedCallStreak = 1;
+                return;
+            }
+
+            _repeatedCallStreak++;
+            if (_repeatedCallStreak < RepeatedCallThreshold)
                 return;
 
-            if (toolResult.Contains("[错误]") || toolResult.Contains("[工具执行异常]") || toolResult.Contains("[错误] 工具"))
-            {
-                _consecutiveFailures++;
-                _consecutiveSameResults = 0; // 失败不算相同结果
-                if (_consecutiveFailures >= FailureThreshold)
-                    _shouldTriggerReflection = true;
-            }
-            else
-            {
-                _consecutiveFailures = 0; // 成功重置失败计数
-                var hash = toolResult.GetHashCode().ToString();
-                if (hash == _lastToolResultHash)
-                {
-                    _consecutiveSameResults++;
-                    if (_consecutiveSameResults >= SameResultThreshold)
-                        _shouldTriggerReflection = true;
-                }
-                else
-                {
-                    _consecutiveSameResults = 0;
-                }
-                _lastToolResultHash = hash;
-            }
+            SetTrigger($"已连续 {_repeatedCallStreak} 次以相同参数调用 {_lastCallTool}");
+            _repeatedCallStreak = 0;
         }
 
         /// <summary>追踪助手回复中的反思标记。</summary>
@@ -124,7 +149,7 @@ public class AgentOrchestrator
                 _reflectionCount++;
         }
 
-        /// <summary>判断是否需要注入反思提示。</summary>
+        /// <summary>判断是否需要注入反思提示（触发即消费，一轮最多一条）。</summary>
         public bool ShouldInjectReflection()
         {
             if (_reflectionCount >= MaxReflections)
@@ -137,21 +162,44 @@ public class AgentOrchestrator
             return true;
         }
 
-        /// <summary>获取反思深度。</summary>
-        public string GetReflectionDepth()
-        {
-            // 已反思过但仍在循环，或连续失败超过阈值 → 深度反思
-            if (_reflectionCount > 0 || _consecutiveFailures > FailureThreshold)
-                return "deep";
-            return "shallow";
-        }
+        /// <summary>反思深度：已反思过仍循环，或失败远超阈值，升级为深度反思。</summary>
+        public string GetReflectionDepth() =>
+            _reflectionCount > 0 || _consecutiveFailures > FailureThreshold ? "deep" : "shallow";
 
-        /// <summary>获取反思提示文本。</summary>
+        /// <summary>触发原因（现场数据），随反思提示一同注入。</summary>
+        public string DescribeTrigger() => _triggerReason;
+
         public string GetReflectionPrompt()
         {
-            return GetReflectionDepth() == "deep"
+            var body = GetReflectionDepth() == "deep"
                 ? SystemPrompts.ReflectionDeep
                 : SystemPrompts.Reflection;
+            return $"{DescribeTrigger()}。{body}";
+        }
+
+        private void SetTrigger(string reason)
+        {
+            _triggerReason = reason;
+            _shouldTriggerReflection = true;
+        }
+
+        /// <summary>参数的稳定签名：顶层键排序后拼接，参数微调即产生不同签名。</summary>
+        private static string StableArgumentsKey(string argumentsJson)
+        {
+            if (string.IsNullOrWhiteSpace(argumentsJson)) return "";
+            try
+            {
+                using var doc = JsonDocument.Parse(argumentsJson);
+                if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                    return argumentsJson;
+                return string.Join(";", doc.RootElement.EnumerateObject()
+                    .OrderBy(p => p.Name, StringComparer.Ordinal)
+                    .Select(p => p.Name + "=" + p.Value.GetRawText()));
+            }
+            catch
+            {
+                return argumentsJson;
+            }
         }
     }
 
@@ -169,14 +217,18 @@ public class AgentOrchestrator
     /// <summary>
     /// 创建编排器并可注入客户端工厂。<paramref name="clientFactory"/> 为空时走
     /// ChatClientFactory（生产路径）；测试注入 fake client 以覆盖错误链路。
+    /// <paramref name="projectDirectoryProvider"/> 返回当前脚本项目目录（未打开脚本为 null），
+    /// 用于装配 AGENTS.md 项目指令。
     /// </summary>
     public AgentOrchestrator(
         ToolRegistry tools,
         SkillRegistry? skillRegistry,
-        Func<ProviderConfig, IChatClient>? clientFactory)
+        Func<ProviderConfig, IChatClient>? clientFactory,
+        Func<string?>? projectDirectoryProvider = null)
     {
         _tools = tools;
         _clientFactory = clientFactory;
+        _projectDirectoryProvider = projectDirectoryProvider;
         if (skillRegistry is { All.Count: > 0 })
             _promptAssembler = new PromptAssembler(skillRegistry);
     }
@@ -186,8 +238,24 @@ public class AgentOrchestrator
     /// </summary>
     public void ResetState()
     {
-        _frameImageIndex = -1;
+        _latestFrameImageIndex = -1;
         _reflectionState.Reset();
+    }
+
+    /// <summary>
+    /// 注入帧图片消息：新帧永远紧跟本轮 tool 文本结果追加到历史末尾，
+    /// 旧帧降级为纯文本占位（保留对话时间轴上的位置，不再携带像素）。
+    /// 不变式：历史中至多一张真图，且总在最近一次 get_frame 的 tool 消息之后——
+    /// 视觉模型按消息位置归属画面时序，若把新图原地回写到旧槽位，
+    /// 它会落在后续动作轮之前而被模型解读为"行动前的画面"（旧画面问题的根因）。
+    /// </summary>
+    private void AttachFrameImage(List<ChatMessage> history, ChatMessage img)
+    {
+        if (_latestFrameImageIndex >= 0 && _latestFrameImageIndex < history.Count)
+            history[_latestFrameImageIndex] = ChatMessage.User(FrameOmittedPlaceholder);
+
+        _latestFrameImageIndex = history.Count;
+        history.Add(img);
     }
 
     /// <summary>
@@ -198,12 +266,14 @@ public class AgentOrchestrator
     /// <param name="provider">API 供应商配置。</param>
     /// <param name="onEvent">事件回调，ViewModel 据此更新 UI。</param>
     /// <param name="ct">取消令牌。</param>
+    /// <param name="visionSupported">当前模型是否支持视觉输入，决定 get_frame 是否可用。</param>
     public async Task RunAsync(
         List<ChatMessage> history,
         string modelId,
         ProviderConfig provider,
         Action<AgentEvent> onEvent,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool visionSupported = true)
     {
         const int maxStreamRetries = 2;
         var toolDefs = _tools.ToToolDefinitions();
@@ -305,8 +375,9 @@ public class AgentOrchestrator
                     if (retryableError)
                     {
                         onEvent(new AgentEvent.Error("流式传输多次中断，无法恢复"));
-                        history.Add(ChatMessage.Assistant(pendingReply.ToString()));
-                        onEvent(new AgentEvent.Completed(pendingReply.ToString() + "\n[连接中断]"));
+                        var aborted = ComposeFinal(pendingReply, "[连接中断：多次重试后仍无法完成本轮响应]");
+                        history.Add(ChatMessage.Assistant(aborted));
+                        onEvent(new AgentEvent.Completed(aborted));
                         return;
                     }
 
@@ -320,44 +391,53 @@ public class AgentOrchestrator
                 var toolCalls = accumulator.Build();
                 if (!hasTools || toolCalls.Count == 0)
                 {
+                    // 终局必须落历史：正常回复原样入档，流内错误文本与空回复也要留下交代，
+                    // 模型下轮不应对自己上轮的输出或沉默零认知
+                    history.Add(ChatMessage.Assistant(ComposeFinal(pendingReply, "[模型返回了空回复]")));
                     if (hasContent)
-                    {
-                        history.Add(ChatMessage.Assistant(pendingReply.ToString()));
                         _reflectionState.TrackReflectionMarker(pendingReply.ToString());
-                    }
                     onEvent(new AgentEvent.Completed(pendingReply.ToString()));
                     return;
                 }
 
-                // 将 assistant 的工具调用加入历史
-                history.Add(ChatMessage.Assistant(toolCalls));
+                // 将 assistant 的工具调用加入历史，并检测重复调用签名
+                foreach (var tc in toolCalls)
+                    _reflectionState.TrackCall(tc.Function.Name, tc.Function.Arguments);
+
+                var callMessage = ChatMessage.Assistant(toolCalls);
+                if (pendingReply.Length > 0)
+                {
+                    // 中间轮的助手正文（含按提示词写下的"反思：/思考："）必须随工具调用一起入历史
+                    callMessage.Content = pendingReply.ToString();
+                    _reflectionState.TrackReflectionMarker(pendingReply.ToString());
+                }
+                history.Add(callMessage);
 
                 // 执行工具调用
-                var results = await ExecuteToolCallsAsync(toolCalls, history, onEvent, ct);
+                var results = await ExecuteToolCallsAsync(toolCalls, history, onEvent, ct, visionSupported);
 
                 // 按顺序将工具结果加入历史，并处理多模态附加消息
                 for (var i = 0; i < toolCalls.Count; i++)
                 {
-                    history.Add(ChatMessage.Tool(toolCalls[i].Id, results[i].Content, toolCalls[i].Function.Name));
-                    _reflectionState.TrackResult(results[i].Content);
+                    var content = ApplyResultBudget(results[i].Content);
+                    history.Add(ChatMessage.Tool(toolCalls[i].Id, content, toolCalls[i].Function.Name));
+                    _reflectionState.TrackResult(results[i].Status);
 
                     // 处理附加的多模态消息（如 get_frame 的图片）
                     if (results[i].AttachedMessage is { } img)
-                    {
-                        if (_frameImageIndex >= 0 && _frameImageIndex < history.Count)
-                            history[_frameImageIndex] = img;
-                        else
-                        {
-                            _frameImageIndex = history.Count;
-                            history.Add(img);
-                        }
-                    }
+                        AttachFrameImage(history, img);
                 }
             }
 
             // 达到最大轮次
-            history.Add(ChatMessage.Assistant(pendingReply.ToString()));
-            onEvent(new AgentEvent.Completed(pendingReply.ToString() + "\n[已达到工具调用最大轮次]"));
+            var final = ComposeFinal(pendingReply, "[已达到工具调用最大轮次，任务被中止]");
+            history.Add(ChatMessage.Assistant(final));
+            onEvent(new AgentEvent.Completed(final));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {            // 停止事实写入历史：下一轮模型需要知道自己曾被用户打断
+            history.Add(ChatMessage.Assistant(ComposeFinal(pendingReply, "[已停止]")));
+            throw;
         }
         finally
         {
@@ -366,24 +446,77 @@ public class AgentOrchestrator
         }
     }
 
+    /// <summary>终止交代 = 已流出正文 + 终止标记；正文为空时仅保留标记。</summary>
+    private static string ComposeFinal(StringBuilder pending, string marker)
+    {
+        var text = pending.ToString().Trim();
+        return text.Length == 0 ? marker : text + "\n" + marker;
+    }
+
     /// <summary>
-    /// 批量执行工具调用（并行执行，保持结果顺序）。
+    /// 批量执行工具调用。按模型声明顺序分组调度：Exclusive 工具独占串行，
+    /// 连续声明的 Parallel（只读）工具并行走，写类工具因此天然不与任何工具并发。
     /// </summary>
     private async Task<List<ToolResult>> ExecuteToolCallsAsync(
         List<ToolCall> toolCalls,
         List<ChatMessage> history,
         Action<AgentEvent> onEvent,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool visionSupported)
     {
-        if (toolCalls.Count == 1)
+        // get_frame 有两条 fail-closed 约束：需要视觉能力；必须单独调用
+        // （混轮并行会让画面早于本轮动作而被模型误当行动结果）。
+        var mixedRound = toolCalls.Count > 1;
+
+        Task<ToolResult> Dispatch(ToolCall tc)
         {
-            var result = await ExecuteToolCallAsync(toolCalls[0], history, onEvent, ct);
-            return [result];
+            if (tc.Function.Name == FrameToolName)
+            {
+                if (!visionSupported)
+                    return RejectFrameCall(tc, FrameVisionUnsupportedError, onEvent);
+                if (mixedRound)
+                    return RejectFrameCall(tc, FrameMixedRoundError, onEvent);
+            }
+            return ExecuteToolCallAsync(tc, history, onEvent, ct);
         }
 
-        var tasks = toolCalls.Select(tc => ExecuteToolCallAsync(tc, history, onEvent, ct)).ToArray();
-        var results = await Task.WhenAll(tasks);
+        var results = new ToolResult[toolCalls.Count];
+        var index = 0;
+        while (index < toolCalls.Count)
+        {
+            if (!IsParallelTool(toolCalls[index]))
+            {
+                results[index] = await Dispatch(toolCalls[index]);
+                index++;
+                continue;
+            }
+
+            var end = index + 1;
+            while (end < toolCalls.Count && IsParallelTool(toolCalls[end]))
+                end++;
+
+            var batch = Enumerable.Range(index, end - index)
+                .Select(k => Dispatch(toolCalls[k]))
+                .ToArray();
+            var batchResults = await Task.WhenAll(batch);
+            for (var k = index; k < end; k++)
+                results[k] = batchResults[k - index];
+
+            index = end;
+        }
+
         return results.ToList();
+    }
+
+    private bool IsParallelTool(ToolCall toolCall) =>
+        _tools.Get(toolCall.Function.Name)?.Concurrency == ToolConcurrency.Parallel;
+
+    /// <summary>拒绝 get_frame 调用：不执行工具，直接回传错误结果（事件照常发射，保持 UI 行完整）。</summary>
+    private static Task<ToolResult> RejectFrameCall(ToolCall toolCall, string error, Action<AgentEvent> onEvent)
+    {
+        onEvent(new AgentEvent.ToolExecuting(toolCall.Function.Name, toolCall.Id));
+        onEvent(new AgentEvent.ToolCompleted(toolCall.Function.Name, toolCall.Id, error, error));
+        return Task.FromResult(ToolResult.Error(error));
     }
 
     /// <summary>
@@ -432,16 +565,16 @@ public class AgentOrchestrator
     /// </summary>
     internal void TestHook_SimulateReflectionTrigger()
     {
-        // FailureThreshold = 2：连续两次失败结果即触发 _shouldTriggerReflection
-        _reflectionState.TrackResult("[错误] 模拟失败 1");
-        _reflectionState.TrackResult("[错误] 模拟失败 2");
+        // FailureThreshold = 2：连续两次失败结果即触发
+        _reflectionState.TrackResult(ToolResultStatus.Error);
+        _reflectionState.TrackResult(ToolResultStatus.Error);
     }
 
     /// <summary>
     /// 组装发送给模型的消息列表。
     /// 结构：
     ///   [0] system: 基础角色提示词（干净，不包裹）
-    ///   [1..N] user: &lt;system-reminder&gt; 包裹的技能内容 / 反思 / 截断 / AGENTS.md 上下文
+    ///   [1..N] user: <system-reminder> 包裹的技能内容 / 反思 / 截断
     ///   最后为对话历史。
     /// </summary>
     internal List<ChatMessage> BuildMessages(List<ChatMessage> history, int currentRound = 0)
@@ -473,9 +606,20 @@ public class AgentOrchestrator
         }
         else
         {
-            var aligned = SkipToSafeBoundary(history, history.Count - MaxHistoryMessages);
-            truncationNotice = $"[系统提示] 为控制上下文长度，前面的 {history.Count - aligned.Count} 条对话已被省略。";
-            body = aligned;
+            var start = SkipToSafeBoundaryIndex(history, history.Count - MaxHistoryMessages);
+
+            // 最新帧图必须随其 tool 结果一同出现在请求内：若被滑窗裁掉，
+            // 模型只收到"已获取当前画面"的文本而无图，只能凭旧记忆行动。
+            // 回扩窗口把 [assistant(tool_calls), tool, user(image)] 三联整体带上。
+            if (_latestFrameImageIndex >= 0 && _latestFrameImageIndex < start)
+            {
+                start = _latestFrameImageIndex;
+                while (start > 0 && IsToolSequenceMessage(history[start - 1]))
+                    start--;
+            }
+
+            truncationNotice = $"[系统提示] 为控制上下文长度，前面的 {start} 条对话已被省略。";
+            body = history.Skip(start).ToList();
         }
 
         var messages = new List<ChatMessage>();
@@ -486,83 +630,93 @@ public class AgentOrchestrator
         // ── [1] system: 基础角色提示词（干净，不包裹）──
         messages.Add(ChatMessage.System(baseRolePrompt));
 
-        // ── [1] user: <system-reminder> 技能内容 ──
+        // ── user: <system-reminder> 技能内容 ──
         if (!string.IsNullOrWhiteSpace(skillContent))
             messages.Add(ChatMessage.User($"<system-reminder>\n{skillContent}\n</system-reminder>"));
 
-        // ── [2] user: <system-reminder> 反思提示 ──
-        if (reflectionPrompt is not null)
-            messages.Add(ChatMessage.User($"<system-reminder>\n{reflectionPrompt}\n</system-reminder>"));
-
-        // ── [3] user: <system-reminder> 截断说明 ──
+        // ── user: <system-reminder> 截断说明 ──
         if (truncationNotice is not null)
             messages.Add(ChatMessage.User($"<system-reminder>\n{truncationNotice}\n</system-reminder>"));
 
-        // ── [4] user: <system-reminder> AGENTS.md 上下文 ──
-        var agentsMdPath = FindAgentsMd();
-        var currentDate = DateTime.Now.ToString("yyyy-MM-dd");
-        messages.Add(ChatMessage.User($@"<system-reminder>
+        // ── user: <system-reminder> AGENTS.md 项目指令（存在才注入，内容真实读取）──
+        var agentsMd = LoadAgentsMd();
+        if (agentsMd is not null)
+        {
+            var currentDate = DateTime.Now.ToString("yyyy-MM-dd");
+            messages.Add(ChatMessage.User($@"<system-reminder>
 As you answer the user's questions, you can use the following context:
 Codebase and user instructions are shown below. Be sure to adhere to these instructions. IMPORTANT: These instructions OVERRIDE any default behavior and you MUST follow them exactly as written.
 
-Contents of {agentsMdPath ?? "AGENTS.md"} (user default instructions):
+Contents of AGENTS.md (user default instructions):
+
+{agentsMd}
 
 # currentDate
 Today's date is {currentDate}.
 
 IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.
 </system-reminder>"));
+        }
 
-        // ── [5..n] 对话历史 ──
+        // ── [n..] 对话历史 ──
         messages.AddRange(body);
+
+        // 反思提醒贴着失败现场：追加在对话末尾（而非上下文前部），文本自带触发原因
+        if (reflectionPrompt is not null)
+            messages.Add(ChatMessage.User($"<system-reminder>\n{reflectionPrompt}\n</system-reminder>"));
+
         return messages;
     }
 
     /// <summary>
-    /// 滑动窗口截断时，把截断点对齐到可作为对话起点的消息。
+    /// 滑动窗口截断时，把截断点对齐到可作为对话起点的消息下标。
     /// 直接截断可能落在 tool 消息上，形成"孤儿 tool"（缺少前置的
     /// assistant.tool_calls），违反多数供应商的消息顺序约束。
     /// 这里向前跳过连续的 tool 消息，直到落在 user / assistant。
     /// </summary>
-    private static List<ChatMessage> SkipToSafeBoundary(List<ChatMessage> history, int skip)
+    private static int SkipToSafeBoundaryIndex(List<ChatMessage> history, int skip)
     {
         var start = Math.Min(skip, history.Count);
         while (start < history.Count && history[start].Role == "tool")
             start++;
-        return history.Skip(start).ToList();
+        return start;
     }
 
-    /// <summary>
-    /// 查找 AGENTS.md 文件路径。按以下优先级：
-    /// 1. 当前工作目录向上查找
-    /// 2. 应用程序基目录向上查找
-    /// 未找到返回 null。
-    /// </summary>
-    private static string? FindAgentsMd()
-    {
-        var dir = Environment.CurrentDirectory;
-        var path = FindInParents(dir, "AGENTS.md");
-        if (path is not null) return path;
+    /// <summary>帧图三联回扩时需要吞并的前置消息：tool 结果，或携带 tool_calls 的 assistant。</summary>
+    private static bool IsToolSequenceMessage(ChatMessage m) =>
+        m.Role == "tool" || (m.ToolCalls is { Count: > 0 });
 
-        dir = AppContext.BaseDirectory;
-        return FindInParents(dir, "AGENTS.md");
-    }
+    /// <summary>AGENTS.md 注入内容的字符上限，超出即截断并注明。</summary>
+    internal const int MaxAgentsMdChars = 20_000;
 
     /// <summary>
-    /// 从指定目录开始向上查找文件，直到文件系统根。
+    /// 读取当前脚本项目目录下的 AGENTS.md（用户项目指令）。
+    /// 未打开脚本、目录不存在或无此文件时不注入；读取失败静默跳过，不阻塞请求。
     /// </summary>
-    private static string? FindInParents(string startDir, string fileName)
+    private string? LoadAgentsMd()
     {
-        var dir = startDir;
-        while (!string.IsNullOrEmpty(dir))
+        var projectDir = _projectDirectoryProvider?.Invoke();
+        if (string.IsNullOrEmpty(projectDir))
+            return null;
+
+        var path = Path.Combine(projectDir, "AGENTS.md");
+        if (!File.Exists(path))
+            return null;
+
+        try
         {
-            var path = Path.Combine(dir, fileName);
-            if (File.Exists(path)) return path;
-            var parent = Path.GetDirectoryName(dir);
-            if (parent == dir) break;
-            dir = parent!;
+            var content = File.ReadAllText(path);
+            if (string.IsNullOrWhiteSpace(content))
+                return null;
+            if (content.Length > MaxAgentsMdChars)
+                content = content[..MaxAgentsMdChars]
+                          + $"\n[AGENTS.md 内容过长已截断：仅保留前 {MaxAgentsMdChars} 字符]";
+            return content;
         }
-        return null;
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -637,5 +791,17 @@ IMPORTANT: this context may or may not be relevant to your tasks. You should not
     {
         if (string.IsNullOrEmpty(text)) return "";
         return text.Length <= max ? text : text[..max] + "...";
+    }
+
+    /// <summary>
+    /// 单条工具结果的体积预算：超限截断并附显式尾注。
+    /// 防线设在编排层入口，内置工具与 MCP 工具的长输出都不得静默挤占上下文。
+    /// </summary>
+    internal static string ApplyResultBudget(string content)
+    {
+        if (content.Length <= MaxToolResultChars)
+            return content;
+        return string.Concat(content.AsSpan(0, MaxToolResultChars),
+            $"\n\n[工具输出过长已截断：原始 {content.Length} 字符，仅保留前 {MaxToolResultChars} 字符。]");
     }
 }

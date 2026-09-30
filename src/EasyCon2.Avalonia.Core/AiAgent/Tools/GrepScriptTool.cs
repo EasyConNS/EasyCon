@@ -18,6 +18,8 @@ public class GrepScriptTool : IAiTool
 
     public string Name => "grep_script";
 
+    public ToolConcurrency Concurrency => ToolConcurrency.Parallel;
+
     public string Description => "在编辑区脚本中按正则表达式搜索，返回匹配行号（含上下文行）和总出现次数。与 read_script 的区别是支持正则和精确行号定位。";
 
     public JsonSchema Parameters => new()

@@ -17,6 +17,8 @@ public class ReadSkillTool : IAiTool
 
     public string Name => "read_skill";
 
+    public ToolConcurrency Concurrency => ToolConcurrency.Parallel;
+
     public string Description =>
         "读取指定技能的完整指令或参考文档。技能名可用 list_skills 查询。" +
         "省略 reference 返回技能完整指令（SKILL.md 正文）；" +

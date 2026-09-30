@@ -15,6 +15,8 @@ public class GetLogsTool : IAiTool
 
     public string Name => "get_logs";
 
+    public ToolConcurrency Concurrency => ToolConcurrency.Parallel;
+
     public string Description => "获取最近的运行日志，用于排查编译错误或运行时问题。";
 
     public JsonSchema Parameters => new()

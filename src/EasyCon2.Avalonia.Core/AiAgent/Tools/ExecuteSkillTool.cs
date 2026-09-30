@@ -23,9 +23,9 @@ internal class ExecuteSkillTool : IAiTool
     public string Name => ToolName;
 
     public string Description =>
-        "执行一个已注册的 skill。skill 是一段预定义的指令，执行后返回结果。" +
-        "当用户请求与某个 skill 的描述匹配时，应调用此工具。" +
-        "可用 list_skills 查看所有已注册 skill 的名称和描述。";
+        "执行一个 fork 型 skill（context: fork，独立子任务执行，只回传最终结果）。" +
+        "inline 技能的指令会按需自动注入上下文，也可用 read_skill 获取，无需经此工具。" +
+        "可用 list_skills 查看所有已注册 skill 的名称与执行模式。";
 
     public JsonSchema Parameters => new()
     {
@@ -59,9 +59,6 @@ internal class ExecuteSkillTool : IAiTool
         if (args.TryGetValue("message", out var msgEl) && msgEl.ValueKind == JsonValueKind.String)
             message = msgEl.GetString() ?? "";
 
-        var result = await _executor.ExecuteAsync(skillName, message, ct);
-        return result.StartsWith("[错误]")
-            ? ToolResult.Error(result)
-            : ToolResult.Ok(result);
+        return await _executor.ExecuteAsync(skillName, message, ct);
     }
 }

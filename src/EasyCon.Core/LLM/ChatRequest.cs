@@ -25,6 +25,11 @@ public class ChatRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Stream { get; set; }
 
+    /// <summary>流式请求选项。include_usage 要求服务端在流末尾 chunk 回传 usage 统计。</summary>
+    [JsonPropertyName("stream_options")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public StreamOptions? StreamOptions { get; set; }
+
     /// <summary>
     /// 工具定义列表，模型可据此决定是否调用工具。
     /// </summary>
@@ -41,6 +46,15 @@ public class ChatRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonConverter(typeof(ToolChoiceConverter))]
     public ToolChoice? ToolChoice { get; set; }
+}
+
+/// <summary>
+/// 流式请求选项。
+/// </summary>
+public class StreamOptions
+{
+    [JsonPropertyName("include_usage")]
+    public bool IncludeUsage { get; set; }
 }
 
 /// <summary>

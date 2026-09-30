@@ -37,7 +37,7 @@ public class AgentOrchestratorBuildMessagesTests
     // ── 普通路径 ──────────────────────────────────────────
 
     [Test]
-    public void FreshConversation_HasSystemBaseRole_AndAgentsMdContext()
+    public void FreshConversation_HasSystemBaseRole_WithoutAgentsMdBlock()
     {
         var orchestrator = NewOrchestrator();
         var history = new List<ChatMessage> { ChatMessage.User("你好") };
@@ -49,25 +49,89 @@ public class AgentOrchestratorBuildMessagesTests
             // [0] system: 身份标识（仅一句）
             Assert.That(messages[0].Role, Is.EqualTo("system"), "身份标识应为 system 角色");
             Assert.That(IdentityText(messages), Is.EqualTo("你是 EasyCon（伊机控）的 AI 助手。"), "身份标识应仅为第一句");
-            Assert.That(IdentityText(messages), Does.Not.Contain("<system-reminder>"), "身份标识不应包裹");
 
             // [1] system: 基础角色提示词
             Assert.That(messages[1].Role, Is.EqualTo("system"), "基础角色应为 system 角色");
             Assert.That(BaseRoleText(messages), Does.Contain("EasyCon"), "基础角色应包含 EasyCon");
 
-            // 两条 system 消息
-            Assert.That(SystemCount(messages), Is.EqualTo(2), "应有两条 system 消息（身份 + 基础角色）");
-
-            // AGENTS.md 上下文
-            var agentsMsg = messages[^2];
-            Assert.That(agentsMsg.Role, Is.EqualTo("user"), "AGENTS.md 上下文应为 user 角色");
-            Assert.That(agentsMsg.Content?.ToString(), Does.Contain("<system-reminder>"));
-            Assert.That(agentsMsg.Content?.ToString(), Does.Contain("As you answer the user's questions"));
+            // AGENTS.md 假占位块已移除：不再注入未读取文件内容的死重
+            Assert.That(messages.Any(m =>
+                    m.Content?.ToString()?.Contains("As you answer the user's questions") == true),
+                Is.False, "不得再注入 AGENTS.md 占位块");
 
             // 历史消息在最后
             Assert.That(messages[^1].Role, Is.EqualTo("user"));
             Assert.That(messages[^1].Content?.ToString(), Is.EqualTo("你好"));
         });
+    }
+
+    // ── AGENTS.md 项目指令 ────────────────────────────────
+
+    private static string CreateTempProjectDir()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"agentsmd-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
+    [Test]
+    public void AgentsMd_Injected_WithContent_AndCurrentDate()
+    {
+        var dir = CreateTempProjectDir();
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "AGENTS.md"), "PROJECT-INSTRUCTION-MARKER");
+            var orchestrator = new AgentOrchestrator(new ToolRegistry(), null, null, () => dir);
+
+            var messages = orchestrator.BuildMessages([ChatMessage.User("你好")]);
+
+            var block = messages.FirstOrDefault(m =>
+                m.Role == "user" && m.Content?.ToString()?.Contains("PROJECT-INSTRUCTION-MARKER") == true);
+            Assert.Multiple(() =>
+            {
+                Assert.That(block, Is.Not.Null, "脚本项目目录存在 AGENTS.md 时必须注入其内容");
+                Assert.That(block!.Content?.ToString(), Does.Contain("AGENTS.md"));
+                Assert.That(block.Content?.ToString(), Does.Contain("Today's date is"), "当前日期必须随块携带");
+                // 注入位置：对话历史之前，历史尾部仍是最后的对话消息
+                Assert.That(messages[^1].Content?.ToString(), Is.EqualTo("你好"));
+            });
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Test]
+    public void AgentsMd_Absent_WhenFileMissing()
+    {
+        var dir = CreateTempProjectDir();
+        try
+        {
+            var orchestrator = new AgentOrchestrator(new ToolRegistry(), null, null, () => dir);
+
+            var messages = orchestrator.BuildMessages([ChatMessage.User("你好")]);
+
+            Assert.That(messages.Any(m =>
+                    m.Content?.ToString()?.Contains("As you answer the user's questions") == true),
+                Is.False, "目录无 AGENTS.md 时不得注入占位块");
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Test]
+    public void AgentsMd_Absent_WhenNoProjectDirectory()
+    {
+        var orchestrator = new AgentOrchestrator(new ToolRegistry(), null, null, () => null);
+
+        var messages = orchestrator.BuildMessages([ChatMessage.User("你好")]);
+
+        Assert.That(messages.Any(m =>
+                m.Content?.ToString()?.Contains("As you answer the user's questions") == true),
+            Is.False, "未打开脚本（无项目目录）时不得注入占位块");
     }
 
     // ── 反思路径 ──────────────────────────────────────────
@@ -108,8 +172,8 @@ public class AgentOrchestratorBuildMessagesTests
             // 不应有截断说明
             var allText = string.Join("\n", messages.Select(m => m.Content?.ToString()));
             Assert.That(allText, Does.Not.Contain("已被省略"));
-            // identity + base role + AGENTS.md + 40 history
-            Assert.That(messages.Count, Is.EqualTo(MaxHistoryMessages + 3));
+            // identity + base role + 40 history（AGENTS.md 占位块已移除）
+            Assert.That(messages.Count, Is.EqualTo(MaxHistoryMessages + 2));
         });
     }
 

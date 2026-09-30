@@ -15,6 +15,8 @@ public class GetDeviceStatusTool : IAiTool
 
     public string Name => "get_device_status";
 
+    public ToolConcurrency Concurrency => ToolConcurrency.Parallel;
+
     public string Description => "获取当前设备连接状态：单片机、视频源、虚拟手柄是否连接，以及脚本是否正在运行。";
 
     public JsonSchema Parameters => new() { Type = "object" };

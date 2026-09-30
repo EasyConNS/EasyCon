@@ -20,6 +20,8 @@ public class ReadScriptTool : IAiTool
 
     public string Name => "read_script";
 
+    public ToolConcurrency Concurrency => ToolConcurrency.Parallel;
+
     public string Description => "读取当前编辑区的脚本内容。可指定 start_line 和 end_line（1-based 行号）按行范围部分返回。";
 
     public JsonSchema Parameters => new()
@@ -57,13 +59,23 @@ public class ReadScriptTool : IAiTool
             return Task.FromResult(ToolResult.Ok("(编辑区无脚本内容)"));
         }
 
-        // 带行号输出，便于模型定位
+        // 带行号输出，便于模型定位；超预算即截断并注明，
+        // 提示模型用 start_line/end_line 分段读取剩余部分
+        const int maxOutputChars = 16_000;
         var sb = new StringBuilder();
+        var truncated = false;
         for (var i = startLine; i <= endLine; i++)
         {
+            if (sb.Length > maxOutputChars)
+            {
+                truncated = true;
+                break;
+            }
             sb.Append(i).Append(": ").Append(lines[i - 1]);
             if (i < endLine) sb.Append('\n');
         }
+        if (truncated)
+            sb.Append("\n...[脚本过长已截断：请用 start_line/end_line 参数分段读取剩余部分]");
 
         var header = (startLine == 1 && endLine == lines.Length)
             ? $"共 {lines.Length} 行：\n"

@@ -17,6 +17,8 @@ public class GetProjectTreeTool : IAiTool
 
     public string Name => "get_project_tree";
 
+    public ToolConcurrency Concurrency => ToolConcurrency.Parallel;
+
     public string Description => "获取当前项目的目录结构树。标签文件（.IL/.ILX）标记为 [标签]，库文件（lib/ 目录下的 .ecs）标记为 [库]。";
 
     public JsonSchema Parameters => new() { Type = "object" };

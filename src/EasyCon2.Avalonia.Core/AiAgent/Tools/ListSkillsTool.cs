@@ -17,6 +17,8 @@ public class ListSkillsTool : IAiTool
 
     public string Name => "list_skills";
 
+    public ToolConcurrency Concurrency => ToolConcurrency.Parallel;
+
     public string Description =>
         "列出当前可用的所有技能（name + 描述 + 关联工具 + 参考文档列表）。" +
         "不确定某任务需要哪个技能时先调用此工具查看索引。";

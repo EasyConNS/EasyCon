@@ -70,6 +70,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
     private string _sessionTitle = "AI Agent";
 
     private bool _hasGeneratedTitle;
+    private int _sessionVersion;
 
     /// <summary>调试日志 — 原始 SSE 数据和解析异常，用于诊断模型兼容性问题。</summary>
     public string DebugLogText => string.Join("\n", _debugLogs);
@@ -128,12 +129,13 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
         _tools.Register(new ListSkillsTool(_skills));
         _tools.Register(new ReadSkillTool(_skills));
 
-        // execute_skill：延迟解析 provider/modelId（模型可能切换）
+        // execute_skill：延迟解析 provider/modelId（模型可能切换）；
+        // 无有效供应商时返回 null，由执行器给出可读错误而不是构造空配置
         var executor = new SkillExecutor(_skills, _tools,
             getProvider: () => SelectedEntry is not null
                 && TryGetProviderConfig(SelectedEntry.ProviderKey, out var entryProvider)
                     ? entryProvider
-                    : new ProviderConfig(),
+                    : null,
             getModelId: () => SelectedEntry?.ModelId ?? "");
         _tools.Register(new ExecuteSkillTool(executor));
     }
@@ -178,8 +180,14 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
             return;
         }
 
-        // 模型切换后重建编排器（注入技能体系）
-        _orchestrator = new AgentOrchestrator(_tools, _skills);
+        // 生成中重建编排器会与在跑的 RunAsync 并发写同一份历史，与 NewChat 同款守卫
+        if (IsGenerating)
+            return;
+
+        // 模型切换后重建编排器（注入技能体系 + 脚本项目目录，供 AGENTS.md 装配）
+        _orchestrator = new AgentOrchestrator(_tools, _skills,
+            clientFactory: null,
+            projectDirectoryProvider: () => _toolCallService?.GetProjectDirectory());
     }
 
     partial void OnIsOpenChanged(bool value)
@@ -258,6 +266,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
         _currentAssistant = null;
         _pendingTools.Clear();
         _totalTokensUsed = 0;
+        _sessionVersion++;
         Messages.Clear();
         TokenUsage = "tokens: --";
         SessionTitle = "AI Agent";
@@ -326,16 +335,21 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
         _cts = new CancellationTokenSource();
         try
         {
-            _orchestrator ??= new AgentOrchestrator(_tools, _skills);
+            _orchestrator ??= new AgentOrchestrator(_tools, _skills,
+                clientFactory: null,
+                projectDirectoryProvider: () => _toolCallService?.GetProjectDirectory());
 
-            await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token);
+            await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token,
+                SelectedEntry.Vision);
 
-            // 首次请求结束后异步生成对话标题（不阻塞主流程）
+            // 首次请求结束后异步生成对话标题（不阻塞主流程）；
+            // 请求不绑会话取消令牌，以会话版本号防止旧标题写进新会话
             if (!_hasGeneratedTitle)
             {
                 _hasGeneratedTitle = true;
                 var firstMessage = message;
-                _ = GenerateTitleAsync(firstMessage, provider, SelectedEntry.ModelId);
+                var session = _sessionVersion;
+                _ = GenerateTitleAsync(firstMessage, provider, SelectedEntry.ModelId, session);
             }
         }
         catch (OperationCanceledException)
@@ -549,7 +563,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
     /// 解析 JSON 格式响应 {"title":"..."} 并更新 SessionTitle。
     /// 失败时静默降级，不影响主对话流程。
     /// </summary>
-    private async Task GenerateTitleAsync(string userMessage, ProviderConfig provider, string modelId)
+    private async Task GenerateTitleAsync(string userMessage, ProviderConfig provider, string modelId, int sessionVersion)
     {
         try
         {
@@ -575,7 +589,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
                 if (doc.RootElement.TryGetProperty("title", out var titleEl))
                 {
                     var title = titleEl.GetString();
-                    if (!string.IsNullOrWhiteSpace(title))
+                    if (!string.IsNullOrWhiteSpace(title) && sessionVersion == _sessionVersion)
                     {
                         var trimmed = title.Trim().Trim('"', '\'', '，', '。');
                         _ui.Post(() => SessionTitle = trimmed);
