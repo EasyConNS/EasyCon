@@ -57,6 +57,14 @@ class TTLSerialClient : IConnection
             return;
 
         _sport = new SerialPort(_connStr, _port);
+        // 非 Windows 平台打开串口时系统会先拉高 DTR/RTS，若随后先撤销 DTR，会短暂出现
+        // “RTS 高、DTR 低”，经 ESP32 等板子的自动下载电路拉低 EN 导致单片机复位。
+        // 因此以拉高状态打开，再在 Open 后按“先 RTS、后 DTR”的顺序撤销（见 Loop）。
+        if (!OperatingSystem.IsWindows())
+        {
+            _sport.DtrEnable = true;
+            _sport.RtsEnable = true;
+        }
 
         source = new CancellationTokenSource();
         var token = source.Token;
@@ -88,6 +96,11 @@ class TTLSerialClient : IConnection
         {
             byte[] inBuffer = new byte[2550];
             _sport.Open();
+            if (!OperatingSystem.IsWindows())
+            {
+                _sport.RtsEnable = false;
+                _sport.DtrEnable = false;
+            }
             _sport.DiscardInBuffer();
             _sport.DiscardOutBuffer();
             var stream = _sport.BaseStream;
