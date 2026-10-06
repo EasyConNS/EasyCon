@@ -82,8 +82,8 @@ public sealed class CompileOptions
 {
     /// <summary>外部变量名集合（识图标签等）。</summary>
     public ImmutableHashSet<string>? ExtVars { get; set; }
-    /// <summary>启用 obj/ 磁盘缓存（默认 true：compile/MCU 分发路径收益）。
-    /// 桌面解释器路径应显式置 false 每次现编（与 v1 等价、无回归，ModuleSystem.md §7）。</summary>
+    /// <summary>启用 obj/ 磁盘缓存（默认 true：compile/MCU 分发路径收益；现编宿主可置 false，
+    /// 由进程级 <see cref="UseProcessCache"/> 兜底，ModuleSystem.md §7）。</summary>
     public bool UseDiskCache { get; set; } = true;
     /// <summary>false 时跳过 SSA 优化（DumpIr --raw 用）。</summary>
     public bool Optimize { get; set; } = true;
@@ -99,11 +99,7 @@ public sealed class CompileOptions
     /// ModuleProjectResult.ProcessCacheHits/Misses。
     /// </summary>
     public bool UseProcessCache { get; set; } = true;
-    /// <summary>
-    /// 允许桌面解释器为超过 255 槽位的函数生成 PC 专用宽指令流。
-    /// ECM/ECX 与 MCU ABI 不变，烧录/产物编译路径不得启用。
-    /// </summary>
-    public bool EnablePcWideSlots { get; set; }
+
     /// <summary>旧版语法兼容（v1 PRINT/IF= 语义）。默认 true 保持行为；影响产物 → 进缓存键
     /// （见 <see cref="ProductFingerprint"/>）。</summary>
     public bool LegacySyntax { get; set; } = true;
@@ -115,8 +111,10 @@ public sealed class CompileOptions
     /// </summary>
     public string ProductFingerprint()
     {
-        // M revisions invalidate artifacts when project/module visibility or path semantics change.
-        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|W={(EnablePcWideSlots ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=3";
+        // M = 产物代数：凡「同源码会编出不同产物/语义」的编译器变更（作用域/路径/指令集等）
+        // 必须 +1，使全部旧缓存按未命中重编，不写迁移。2026-10-06 自 7 重置为 1
+        // （无旧版缓存、仅开发测试；旧履历 M4–M7 删除）。下次此类变更直接 +1。
+        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=1";
     }
 }
 

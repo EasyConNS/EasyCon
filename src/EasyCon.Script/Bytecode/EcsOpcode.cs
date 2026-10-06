@@ -90,6 +90,9 @@ public enum EcsOpcode : byte
     StickPv,    // iABC + ext32: A=side，B=0，C=持续毫秒槽位，ext=高16位x|低16位y（packed）
     Img,        // ABx : R[A] = 图像标签匹配置信度，标签名 = 常量池[Bx]
     Rand,       // iABC: R[A] = rand() % R[B]（B=0→0；B<0→错误，对齐 Random.Next）
+    ForStep,    // iABC: FOR 快速路径——R[A]==R[B] → 落入下一块（出循环）；否则 R[A]+=1 跳 C 目标（回 body）
+    CmpJ,       // iABC+J: 比较跳转融合（P2′，Lua LE/EQI 模式）——R[A] kind R[B] 成立 → 跳 Jump；
+                //        C=kind：typeBlock*6+op（0-5 i32 / 6-11 u32 / 12-17 f64 / 18-23 i64；op = Eq,Neq,Lt,Le,Gt,Ge）
 }
 
 /// <summary>
@@ -105,8 +108,9 @@ public static class EcsSyscall
     public const uint CallFlag = 0x80000000u;
 
     /// <summary>编码 ABI 修订号（进缓存键 ProductFingerprint；编号分配/编码语义变化时递增）。
-    /// 1 = 名表原生时代；2 = L2 全集 syscall 编号化。</summary>
-    public const int AbiRevision = 2;
+    /// 1 = 名表原生时代；2 = L2 全集 syscall 编号化；3 = v3 定长指令编码（WaitI/KeyI 时长进数据字、
+    /// ForStep/CmpJ 四操作数进 IabcJ 8B、线上跳转=字节偏移、槽位 u8+255 哨兵）。</summary>
+    public const int AbiRevision = 3;
 
     // ---- 文件族（1..9 连续，IsFileFamily 依赖）----
     public const int FWrite = 1;
@@ -126,7 +130,7 @@ public static class EcsSyscall
     public const int App = 13;
     public const int Time = 14;
     public const int Beep = 15;
-    public const int Amiibo = 16;
+    public const int Amiibo = 16;        // v2.3：Amiibo 槽位选择（0–19，宿主判越界静默；S-13）
     public const int OcrConf = 17;
 
     /// <summary>文件族上界（含）。</summary>
@@ -168,10 +172,10 @@ public static class EcsSyscall
 }
 
 /// <summary>
-/// 镜像特征需求掩码（镜像头保留位 u16 @0x0A，docs/VM2.md §9.1）：表达「本镜像需要宿主提供
-/// 的高级能力」，加载规则 `host_feats & image_feats != image_feats` → 拒跑。IL 位由 flags.I
-/// 投影（旧镜像掩码缺省 = 仅 IL 位，兼容）；加载期 IL 越界 → ECS_ERR_IL（既有码），其余越界
-/// → ECS_ERR_FEAT。
+/// 镜像特征需求掩码（镜像头 feats u16 @0x08，docs/VM2.md §9.1）：表达「本镜像使用到
+/// 的高级能力」。S-21 起 feats 为<b>元信息</b>——加载器缺省不据此拒跑，能力缺失按
+/// EcsCapabilityDefaults 缺省值表降级；宿主 strict_caps 置位时恢复响亮校验
+/// （IL → ECS_ERR_IL，其余缺位 → ECS_ERR_FEAT）。烧录前预检（McuBytecodeDelivery）仍消费本掩码。
 /// </summary>
 public static class EcsImageFeatures
 {
@@ -179,7 +183,7 @@ public static class EcsImageFeatures
     public const uint Capture = 0x2;   // 可达采集洞（__CAPTURE__ 系）
     public const uint Ffi = 0x4;       // EXTERN FFI（"库!导出名" 动态原生）
     public const uint File = 0x8;      // 文件族 syscall
-    public const uint Vision = 0x10;   // ONNX 推理实验函数（NET_LOAD/NET_RUN）；MCU 参考桩不支持 → 拒跑
+    public const uint Vision = 0x10;   // ONNX 推理实验函数（NET_LOAD/NET_RUN/NET_OUT）；缺能力宿主按缺省值表降级
 }
 
 /// <summary>

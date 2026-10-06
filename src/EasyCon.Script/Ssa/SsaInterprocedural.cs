@@ -125,12 +125,13 @@ static class SsaInterprocedural
 
     /// <summary>
     /// 全局 ID 计数器，用于内联时分配新的 SsaValue ID，避免与 caller 的 ID 冲突。
-    /// 在 InlineTrivialFunctions 入口处从程序最大 ID 初始化。
+    /// M3 模块并行：进程级单调（Interlocked），ResetIdCounter 只提升下限（CAS）不重置——
+    /// 重置会让并行模块互相清零、模块内内联 ID 撞号。
     /// </summary>
     private static int _globalInlineIdCounter;
 
     /// <summary>
-    /// 每次 Optimize 入口调用：把内联 ID 计数器强制重置为程序最大 ID + 1。
+    /// 每次 Optimize 入口调用：把内联 ID 计数器下限提升为程序最大 ID + 1（CAS，单调不减）。
     /// 修复进程内残留计数器与新程序主序列撞号的 bug（SSA ID 冲突）。
     /// </summary>
     internal static void ResetIdCounter(SsaProgram program)
@@ -144,7 +145,13 @@ static class SsaInterprocedural
             foreach (var block in program.MainFunction.Blocks)
                 foreach (var val in block.Instructions.Concat(block.Phis))
                     if (val.Id > maxId) maxId = val.Id;
-        _globalInlineIdCounter = maxId + 1;
+        int cur = _globalInlineIdCounter;
+        while (cur < maxId + 1)
+        {
+            int prev = System.Threading.Interlocked.CompareExchange(ref _globalInlineIdCounter, maxId + 1, cur);
+            if (prev == cur) break;
+            cur = prev;
+        }
     }
 
     /// <summary>

@@ -173,8 +173,8 @@ public static partial class BytecodeEncoder
                     {
                         var key = KeyByte(v);
                         var dur = v.Arg0!;
-                        if (dur.IsConstant && dur.Const.GetInt() is >= 0 and <= 0xFFFF)
-                            EmitAbx(EcsOpcode.KeyI, key, dur.Const.GetInt());
+                        if (dur.IsConstant && dur.Const.GetInt() is >= 0)
+                            EmitExt(EcsOpcode.KeyI, key, 0, 0, unchecked((uint)dur.Const.GetInt()));
                         else
                             EmitIabc(EcsOpcode.KeyV, key, Slot(dur), 0);
                         break;
@@ -205,8 +205,8 @@ public static partial class BytecodeEncoder
                 case SsaOp.Wait:
                     {
                         var dur = v.Arg0!;
-                        if (dur.IsConstant && dur.Const.GetInt() is >= 0 and <= 0xFFFF)
-                            EmitAbx(EcsOpcode.WaitI, 0, dur.Const.GetInt());
+                        if (dur.IsConstant && dur.Const.GetInt() is >= 0)
+                            EmitExt(EcsOpcode.WaitI, 0, 0, 0, unchecked((uint)dur.Const.GetInt()));
                         else
                             EmitIabc(EcsOpcode.WaitV, Slot(dur), 0, 0);
                         break;
@@ -299,7 +299,7 @@ public static partial class BytecodeEncoder
 
                 uint target = isLocal
                     ? unchecked((uint)localFid)
-                    : 0x80000000u | unchecked((uint)_ctx.ImportId(sym.Name, sym.Parameters.Length));
+                    : 0x80000000u | unchecked((uint)_ctx.ImportId(sym.OriginModule, sym.Name, sym.Parameters.Length));
                 EmitExt(EcsOpcode.Call, _stagingBase, args.Count,
                     hasResult ? _receiveSlot : -1, target);
 

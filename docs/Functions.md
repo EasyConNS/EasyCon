@@ -118,7 +118,7 @@ WAIT $w                # 随机延时 500~999ms（两步写法，见"实用要�
 $name = ARG(0)
 PRINT $name
 ```
-- CLI 传参：`ecs-run 脚本.ecs -- 参数1 参数2`；GUI 运行时也可填参数。
+- CLI 传参：`ezcon 脚本.ecs -- 参数1 参数2`；GUI 运行时也可填参数。
 
 ### ENV(name): STRING
 读取环境变量，不存在返回空串。
@@ -136,11 +136,12 @@ $home = ENV("HOME")
 ## 5. Amiibo
 
 ### AMIIBO(index)
-切换到手柄的 Amiibo 槽位。`index > 9` 时静默忽略。
+切换 Amiibo 槽位（v2.3 槽位选择；ESP32 本地执行 / 其他宿主静默）。
+槽位合法范围 0~19，越界静默忽略。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| index | INT | 槽位号（0~9） |
+| index | INT | 槽位号（0~19） |
 
 ```ecs
 AMIIBO 3
@@ -455,7 +456,7 @@ ENDIF
 | RAND([max=100]) | 随机整数 [0,max) | INT | ✔ | ✔ |
 | ARG(i) | 第 i 个脚本参数 | STRING | ✔ | ✔ |
 | ENV(name) | 环境变量 | STRING | ✔ | ✔ |
-| AMIIBO(i) | 切换 Amiibo 槽位 | - | ✔ | ✔ |
+| AMIIBO(i) | 切换 Amiibo 槽位（0~19，越界静默） | - | ✔ | ✔ |
 | LEN(v) | 字符串/数组长度 | INT | ✔ | ✔ |
 | APPEND(arr, v) | 追加元素（返回新数组） | ARRAY | ✔ | ✔ |
 | STRING(v) | 转字符串 | STRING | ✔ | ✔ |

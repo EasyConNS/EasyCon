@@ -116,14 +116,14 @@ graph TD
 
 ### 5.2 编译档位
 
-`Hosting/ScriptCompileProfiles` 集中定义两个档位，宿主不得手写选项：
+`Hosting/ScriptCompileProfiles` 集中定义缓存策略，宿主不得手写选项。
+（单流化后**没有宽窄两种产物**——原 Desktop/Portable 的格式维度随 `EnablePcWideSlots` 一起删除；
+「能否装进设备」由烧录前容量预检判定。）
 
-| 档位 | 槽位 | 缓存 | 产物去向 |
-|---|---|---|---|
-| `Desktop` | PC 宽槽位 | 不落盘、现编 | 只供桌面 `EcxInterpreter`。含 `PcCode` 时 `EcxWriter`/`EcmFormat` **拒绝序列化** |
-| `Portable` | 冻结 8 位槽位 | 启用 `obj/` 内容寻址缓存 | 可落 `.ecx` 交 C VM；MCU 分发的唯一合法档位 |
-
-超 255 槽位的函数在 `Portable` 下编译期响亮失败（不静默截断），这是刻意的"产物过大天然不可执行"策略。
+| 档位 | 缓存 | 用途 |
+|---|---|---|
+| `Interactive` | 不落盘、现编（进程缓存兜底） | run/编辑器等高频重编路径 |
+| `Distributable` | 启用 `obj/` 内容寻址缓存 | compile/分发产物路径，产物可落 `.ecx` 交 C VM |
 
 ## 6. 三条主链路
 
@@ -141,7 +141,7 @@ graph TD
 
 | 短板 | 位置 |
 |---|---|
-| MCU 字节码下发链路断裂：GUI 烧录入口抛 `NotImplementedException`，桌面档产物不可序列化 | [McuBytecodeDelivery.md](McuBytecodeDelivery.md) |
+| MCU 字节码下发链路断裂：GUI 烧录入口抛 `NotImplementedException`（产物可序列化，缺的是入口与传输编排） | [McuBytecodeDelivery.md](McuBytecodeDelivery.md) |
 | GUI 与 CLI 各自维护一份"连接-采集-释放"编排（能力装配已收敛，编排尚未） | `App/Services/*` vs `Program.cs` |
 | 上帝类：`MainWindowViewModel`(1745)、`EcxInterpreter`(1486)、`AgentOrchestrator`(806) | — |
 | 少数 VM 带 Avalonia 渲染类型，位于编译器强制区之外 | `EasyCon2.Avalonia/ViewModels/` |

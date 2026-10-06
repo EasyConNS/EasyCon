@@ -205,47 +205,45 @@ public class ScriptHostAssemblerTests
 }
 
 /// <summary>
-/// 编译档位锁定：两档的产物能力有本质区别，不可互换
-/// （Desktop 含 PC 宽槽指令 → EcxWriter/EcmFormat 拒绝序列化 → 不可下发 MCU）。
+/// 编译档位锁定（档位塌缩后，SingleStreamFormat §2 R-5）：产物同形态，
+/// 剩余两档只是缓存策略（与产物内容无关，不进缓存键）。
 /// </summary>
 [TestFixture]
 public class ScriptCompileProfilesTests
 {
     [Test]
-    public void Desktop_AllowsPcWideSlots_AndSkipsCache()
+    public void Interactive_SkipsDiskCache()
     {
-        CompileOptions options = ScriptCompileProfiles.Desktop(["lbl"], optimize: false);
+        CompileOptions options = ScriptCompileProfiles.Interactive(["lbl"], optimize: false);
 
         Assert.Multiple(() =>
         {
-            Assert.That(options.EnablePcWideSlots, Is.True);
-            Assert.That(options.UseDiskCache, Is.False);
-            Assert.That(options.UseProcessCache, Is.False);
+            Assert.That(options.UseDiskCache, Is.False, "现编档不落盘（run/编辑器高频重编）");
+            Assert.That(options.UseProcessCache, Is.True, "进程缓存兜底");
             Assert.That(options.Optimize, Is.False);
             Assert.That(options.ExtVars, Is.EquivalentTo(new[] { "lbl" }));
         });
     }
 
     [Test]
-    public void Portable_FreezesWideSlots_AndEnablesCache()
+    public void Distributable_EnablesDiskCache()
     {
-        CompileOptions options = ScriptCompileProfiles.Portable();
+        CompileOptions options = ScriptCompileProfiles.Distributable();
 
         Assert.Multiple(() =>
         {
-            Assert.That(options.EnablePcWideSlots, Is.False, "便携档必须冻结 8 位槽位（EcxWriter 拒绝 PcCode）");
-            Assert.That(options.UseDiskCache, Is.True, "obj/ 内容寻址缓存只服务可序列化产物");
+            Assert.That(options.UseDiskCache, Is.True, "obj/ 内容寻址缓存服务分发产物");
             Assert.That(options.Optimize, Is.True);
             Assert.That(options.ExtVars, Is.Null);
         });
     }
 
     [Test]
-    public void Profiles_HaveDistinctProductFingerprints()
+    public void Profiles_ShareProductFingerprint()
     {
-        // 产物指纹进缓存键：两档绝不能共享缓存条目
+        // 档位塌缩：两档产物同形态（差异仅在缓存策略，而缓存策略不进键）→ 共享缓存条目
         Assert.That(
-            ScriptCompileProfiles.Desktop([]).ProductFingerprint(),
-            Is.Not.EqualTo(ScriptCompileProfiles.Portable([]).ProductFingerprint()));
+            ScriptCompileProfiles.Interactive([]).ProductFingerprint(),
+            Is.EqualTo(ScriptCompileProfiles.Distributable([]).ProductFingerprint()));
     }
 }

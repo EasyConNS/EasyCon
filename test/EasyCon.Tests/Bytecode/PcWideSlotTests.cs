@@ -7,13 +7,18 @@ using System.Text;
 
 namespace EasyCon.Tests.Bytecode;
 
-/// <summary>PC 宽槽位与冻结 ECX/MCU ABI 的边界验证。</summary>
+/// <summary>
+/// 槽位宽度契约（v3 定长编码修订）：指令操作数槽位 = u8（≤254，255 = 无接收哨兵），
+/// 函数槽位上限随之 ≤254——与 C VM 宿主档案 ECS_MAX_SLOTS=255 对齐（宽槽镜像自 C VM
+/// 诞生起即不可装载；v3 把这条容量线前移到编译期，响亮拒绝而非链接/装载期失败）。
+/// 原 R-5「>255 槽可编译」能力随 varint 基流退役；恢复路径 = 每函数宽窄双布局（挂账）。
+/// 本套件锁：宽槽脚本编译期明确诊断 + 哨兵/高槽边界语义。
+/// </summary>
 [TestFixture]
 public class PcWideSlotTests
 {
-    static string BuildWideSource()
+    static string BuildWideSource(int valueCount)
     {
-        const int valueCount = 270;
         var source = new StringBuilder();
         source.AppendLine("_wideGlobal = 100000");
         source.AppendLine("FUNC bump($x:int) : int");
@@ -31,91 +36,57 @@ public class PcWideSlotTests
     }
 
     [Test]
-    public void WideScript_DefaultEcxModeRejects_ButPcModeRunsHighSlots()
+    public void WideScript_ExceedingV3SlotCap_FailsWithDiagnostic()
     {
-        string source = BuildWideSource();
-        CompileResult narrow = Compilation.CompileSource(source, new CompileOptions
+        string source = BuildWideSource(270);
+        CompileResult result = Compilation.CompileSource(source, new CompileOptions
         {
             UseDiskCache = false,
             UseProcessCache = false,
         });
-        Assert.That(narrow.Diagnostics.Any(d => d.IsError && d.Message.Contains("255", StringComparison.Ordinal)),
-            Is.True, "ECX/MCU 编译模式必须继续拒绝超过 255 的帧槽位");
-
-        CompileResult wide = Compilation.CompileSource(source, new CompileOptions
-        {
-            UseDiskCache = false,
-            UseProcessCache = false,
-            EnablePcWideSlots = true,
-        });
-        Assert.That(wide.Diagnostics.Where(d => d.IsError), Is.Empty,
-            string.Join("\n", wide.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
-        Assert.That(wide.Image, Is.Not.Null);
-        Assert.That(wide.Image!.MaxSlots, Is.GreaterThan(255));
-
-        EcsFunction wideFunction = wide.Image.Functions.Single(f => f.PcCode != null);
-        Assert.That(wideFunction.PcCode!.Any(i => i.A > 255 || i.B > 255 || i.C > 255), Is.True,
-            "PC 指令流必须保留高槽位编号，不能发生 8 位截断");
-
-        var host = new EcxHost();
-        host.EnableRecording();
-        int exitCode = EcxInterpreter.Run(wide.Image, host, out Value result);
-        Assert.That(exitCode, Is.EqualTo(EcxInterpreter.OK));
-        Assert.That(result.AsInt(), Is.EqualTo(100001));
-        Assert.That(host.Lines, Is.EqualTo(new[] { "100001" }));
-
-        Assert.That(() => EcxWriter.Write(wide.Image), Throws.TypeOf<BytecodeException>(),
-            "PC 宽镜像不得写成 MCU ECX");
-        ModuleArtifact wideArtifact = wide.Artifacts.Single(a => a.Functions.Any(f => f.PcCode != null));
-        Assert.That(() => EcmFormat.Write(wideArtifact), Throws.TypeOf<BytecodeException>(),
-            "PC 宽模块不得进入旧 ECM 缓存格式");
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Not.Empty,
+            "v3 定长编码下 >254 槽函数应编译期拒绝（槽位 u8 ≤254，255 = 无接收哨兵）");
+        Assert.That(result.Image, Is.Null);
     }
 
     [Test]
-    public void PcWideMode_DoesNotUseLegacyModuleCaches()
+    public void ProcessCache_HitsOnRepeatedNarrowCompile()
     {
-        ModuleProjectResult first = ProjectCompiler.CompileProject(SyntaxTree.Parse(BuildWideSource()), new CompileOptions
+        // 档位塌缩的附带收益：桌面路径进程级产物缓存（同源码⊕同选项必命中）
+        ModuleProjectResult first = ProjectCompiler.CompileProject(SyntaxTree.Parse(BuildWideSource(250)), new CompileOptions
         {
             UseDiskCache = false,
             UseProcessCache = true,
-            EnablePcWideSlots = true,
         });
-        ModuleProjectResult second = ProjectCompiler.CompileProject(SyntaxTree.Parse(BuildWideSource()), new CompileOptions
+        ModuleProjectResult second = ProjectCompiler.CompileProject(SyntaxTree.Parse(BuildWideSource(250)), new CompileOptions
         {
             UseDiskCache = false,
             UseProcessCache = true,
-            EnablePcWideSlots = true,
         });
 
         Assert.That(first.Diagnostics.Where(d => d.IsError), Is.Empty);
         Assert.That(second.Diagnostics.Where(d => d.IsError), Is.Empty);
-        Assert.That(first.ProcessCacheHits, Is.Zero);
-        Assert.That(first.ProcessCacheMisses, Is.Zero);
-        Assert.That(second.ProcessCacheHits, Is.Zero);
-        Assert.That(second.ProcessCacheMisses, Is.Zero);
         Assert.That(first.Image, Is.Not.Null);
         Assert.That(second.Image, Is.Not.Null);
-        Assert.That(first.Image!.Functions.Any(f => f.PcCode != null), Is.True);
-        Assert.That(second.Image!.Functions.Any(f => f.PcCode != null), Is.True);
+        Assert.That(second.ProcessCacheHits, Is.GreaterThan(0),
+            "同源码⊕同选项编译应命中进程级产物缓存");
     }
 
     [Test]
-    public void PcMode_KeepsNarrowFunctionsOnFrozenInstructionStream()
+    public void NarrowFunctions_RemainOnSingleStream()
     {
         CompileResult result = Compilation.CompileSource("RETURN 42", new CompileOptions
         {
             UseDiskCache = false,
             UseProcessCache = false,
-            EnablePcWideSlots = true,
         });
 
         Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty);
         Assert.That(result.Image, Is.Not.Null);
-        Assert.That(result.Image!.Functions.All(f => f.PcCode == null), Is.True);
         Assert.That(EcxInterpreter.Run(result.Image, new EcxHost(), out Value value),
             Is.EqualTo(EcxInterpreter.OK));
         Assert.That(value.AsInt(), Is.EqualTo(42));
-        Assert.That(EcxWriter.Write(result.Image), Is.Not.Empty);
+        Assert.That(EcsContainer.WriteImage(result.Image), Is.Not.Empty);
     }
 
     [Test]
@@ -126,26 +97,20 @@ public class PcWideSlotTests
             Name = "$eval",
             Module = "lib",
             NSlots = 1,
-            Code = [(uint)EcsOpcode.Ret0],
+            Instructions = [new EcsInstruction(EcsOpcode.Ret0, 0, 0, 0)],
         };
         var entry = new EcsFunction
         {
             Name = "$eval",
             Module = "main",
-            NSlots = 301,
+            NSlots = 255,
             HasReturn = true,
-            Code =
+            Instructions =
             [
-                (uint)EcsOpcode.LoadI | (uint)(300 & 0xFF) << 8 | 7u << 16,
-                (uint)EcsOpcode.Ret | (uint)(300 & 0xFF) << 8,
-            ],
-            PcCode =
-            [
-                new EcsPcInstruction(EcsOpcode.LoadI, 300, 7),
-                new EcsPcInstruction(EcsOpcode.Ret, 300),
+                new EcsInstruction(EcsOpcode.LoadI, 254, 7, 0),
+                new EcsInstruction(EcsOpcode.Ret, 254, 0, 0),
             ],
             LineTable = [0, 1],
-            PcLineTable = [0, 1],
         };
 
         ModuleArtifact Library() => new()
@@ -180,33 +145,27 @@ public class PcWideSlotTests
 
         EcxImage image = EcxPipeline.Link([Library(), Main()], keyAction: false, needIL: false);
         EcsFunction linkedEntry = image.Functions[image.Entry];
-        Assert.That(linkedEntry.PcCode, Is.Not.Null);
-        Assert.That(linkedEntry.PcCode![0].Op, Is.EqualTo(EcsOpcode.Call));
-        Assert.That(linkedEntry.PcCode[0].C, Is.EqualTo(-1));
-        Assert.That(linkedEntry.PcLineTable, Is.EqualTo(new[] { 1, 1 }));
+        Assert.That(linkedEntry.Instructions[0].Op, Is.EqualTo(EcsOpcode.Call));
+        Assert.That(linkedEntry.Instructions[0].C, Is.EqualTo(EcsInstruction.NoSlot));
+        Assert.That(linkedEntry.LineTable, Is.EqualTo(new[] { 1, 1 }), "行号表随前插平移（指令下标单位）");
         Assert.That(EcxInterpreter.Run(image, new EcxHost(), out Value value), Is.EqualTo(EcxInterpreter.OK));
         Assert.That(value.AsInt(), Is.EqualTo(7));
     }
 
     [Test]
-    public void WideCall_CanUseSlot255AsReturnDestination()
+    public void Call_HighSlotReturnDestination_AndNoSlotSentinel()
     {
+        // 槽位上界 254（255 = 无接收哨兵）：高槽返回目的地 + NoSlot 往返（线上 255 ↔ 内存 -1）
         var caller = new EcsFunction
         {
             Name = "caller",
             Module = "main",
-            NSlots = 256,
+            NSlots = 255,
             HasReturn = true,
-            Code =
+            Instructions =
             [
-                (uint)EcsOpcode.Call | 255u << 24,
-                1,
-                (uint)EcsOpcode.Ret | 255u << 8,
-            ],
-            PcCode =
-            [
-                new EcsPcInstruction(EcsOpcode.Call, c: 255, ext: 1),
-                new EcsPcInstruction(EcsOpcode.Ret, 255),
+                new EcsInstruction(EcsOpcode.Call, 0, 0, 254, 1u),
+                new EcsInstruction(EcsOpcode.Ret, 254, 0, 0),
             ],
         };
         var callee = new EcsFunction
@@ -215,21 +174,46 @@ public class PcWideSlotTests
             Module = "main",
             NSlots = 1,
             HasReturn = true,
-            Code =
+            Instructions =
             [
-                (uint)EcsOpcode.LoadI | 9u << 16,
-                (uint)EcsOpcode.Ret,
+                new EcsInstruction(EcsOpcode.LoadI, 0, 9, 0),
+                new EcsInstruction(EcsOpcode.Ret, 0, 0, 0),
             ],
         };
-        var image = new EcxImage
+
+        ModuleArtifact Caller() => new()
         {
-            Functions = [caller, callee],
-            Entry = 0,
-            MaxSlots = 256,
+            Name = "main",
+            Functions = [caller],
+            Pool = new ModulePool(),
+            Imports = [],
+            Exports = [new EcsExport { Name = "$eval", LocalFid = 0 }],
+            Globals = [],
+            Natives = [],
+            Structs = [],
+            ILNames = [],
+            HasEval = true,
+        };
+        ModuleArtifact Callee() => new()
+        {
+            Name = "main",
+            Functions = [callee],
+            Pool = new ModulePool(),
+            Imports = [],
+            Exports = [],
+            Globals = [],
+            Natives = [],
+            Structs = [],
+            ILNames = [],
         };
 
+        EcxImage image = EcxPipeline.Link([Caller(), Callee()], keyAction: false, needIL: false);
         Assert.That(EcxInterpreter.Run(image, new EcxHost(), out Value value), Is.EqualTo(EcxInterpreter.OK));
         Assert.That(value.AsInt(), Is.EqualTo(9));
-        Assert.That(() => EcxWriter.Write(image), Throws.TypeOf<BytecodeException>());
+
+        // 序列化往返：NoSlot（-1）↔ 线上 255
+        var bytes = InstructionCodec.Project(image.Functions[image.Entry].Instructions);
+        var lifted = InstructionCodec.Lift(bytes, 0, bytes.Length, "sentinel");
+        Assert.That(lifted, Is.EqualTo(image.Functions[image.Entry].Instructions), "哨兵与高槽往返逐指令等价");
     }
 }

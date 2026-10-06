@@ -54,17 +54,18 @@ static class SsaOptimizer
             globalMaxId = MaxId(program.MainFunction);
         foreach (var f in program.Functions.Values)
             globalMaxId = Math.Max(globalMaxId, MaxId(f));
-        SsaTailRecursionElimination.GlobalNextId = globalMaxId + 1;
+        var treNextId = new System.Runtime.CompilerServices.StrongBox<int>(globalMaxId + 1);
+        // TRE 新值 ID 计数器按 program 共享（盒跨函数递增；模块并行安全）
 
         if (program.MainFunction != null)
-            OptimizeFunction(program.MainFunction);
+            OptimizeFunction(program.MainFunction, treNextId);
         // MainFunction 已在 Functions 字典中且已直接优化过，排除之：
         // 否则会被并行循环再优化一遍（重复优化非幂等 pass 会破坏 IR，转储也会互相覆盖）
         var funcList = program.Functions.Values
             .Where(f => !ReferenceEquals(f, program.MainFunction))
             .ToList();
         if (funcList.Count > 0)
-            Parallel.ForEach(funcList, OptimizeFunction);
+            Parallel.ForEach(funcList, f => OptimizeFunction(f, treNextId));
         if (optTiming != null) optTiming.IntraFunctionOpt = sw.Elapsed;
 
         // 内联 stdlib 包装函数（需要跨函数查表，放在函数内优化之后）
@@ -99,10 +100,30 @@ static class SsaOptimizer
         }
     }
 
-    internal static void OptimizeFunction(SsaFunction func)
+    /// <summary>函数内 pass（M4 声明化）：名字 + 执行委托。<b>顺序 = 语义契约，禁止重排</b>
+    /// （不动点收敛依赖该序——如 DCE 前须先 PropagateCopies/CSE 清引用）；ECX_PASS_TRACE
+    /// 经统一 instrumentation 输出。TRE 项经闭包共享 program 级 ID 盒（模块并行安全）。</summary>
+    private sealed record IntraPass(string Name, Func<SsaFunction, bool> Run);
+
+    internal static void OptimizeFunction(SsaFunction func, System.Runtime.CompilerServices.StrongBox<int> treNextId)
     {
         if (IsTooComplex(func))
             return;
+
+        // 函数内 pass 流水线（同 pass 列表类 doc：序即契约）
+        var passes = new IntraPass[]
+        {
+            new("SCCP", SsaConstantPropagation.Run),
+            new("Algebraic", SsaConstantPropagation.AlgebraicSimplify),
+            new("TRE", f => SsaTailRecursionElimination.Eliminate(f, ref treNextId.Value)),
+            new("PropCopies", SsaRedundancyElimination.PropagateCopies),
+            new("CSE", SsaRedundancyElimination.EliminateCommonSubexpressions),
+            new("DCE", SsaDeadCodeElimination.EliminateDeadCode),
+            new("Merge", SsaCfgSimplification.MergeBlocks),
+            new("Trampoline", SsaCfgSimplification.FoldEmptyTrampolines),
+            new("Unreach", SsaCfgSimplification.RemoveUnreachableBlocks),
+            new("Dedup", SsaConstantPropagation.DeduplicateConstants),
+        };
 
         bool changed;
         int iterations = 0;
@@ -110,24 +131,11 @@ static class SsaOptimizer
         do
         {
             changed = false;
-            changed |= SsaConstantPropagation.Run(func);
-            if (TraceEval) Dump(func, $"it{iterations} SCCP");
-            changed |= SsaConstantPropagation.AlgebraicSimplify(func);
-            if (TraceEval) Dump(func, $"it{iterations} Algebraic");
-            changed |= SsaTailRecursionElimination.Eliminate(func);
-            changed |= SsaRedundancyElimination.PropagateCopies(func);
-            if (TraceEval) Dump(func, $"it{iterations} PropCopies");
-            changed |= SsaRedundancyElimination.EliminateCommonSubexpressions(func);
-            if (TraceEval) Dump(func, $"it{iterations} CSE");
-            changed |= SsaDeadCodeElimination.EliminateDeadCode(func);
-            if (TraceEval) Dump(func, $"it{iterations} DCE");
-            changed |= SsaCfgSimplification.MergeBlocks(func);
-            if (TraceEval) Dump(func, $"it{iterations} Merge");
-            changed |= SsaCfgSimplification.RemoveUnreachableBlocks(func);
-            if (TraceEval) Dump(func, $"it{iterations} Unreach");
-            changed |= SsaConstantPropagation.DeduplicateConstants(func);
-            if (TraceEval) Dump(func, $"it{iterations} Dedup");
-
+            foreach (var pass in passes)
+            {
+                changed |= pass.Run(func);
+                if (TraceEval) Dump(func, $"it{iterations} {pass.Name}");
+            }
         } while (changed && ++iterations < MaxIterations);
 
 #if DEBUG

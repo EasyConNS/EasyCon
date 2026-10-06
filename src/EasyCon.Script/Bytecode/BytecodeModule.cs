@@ -61,27 +61,19 @@ public sealed class EcsGlobal
 }
 
 /// <summary>
-/// PC 解释器专用宽指令。ECX 的 A/B/C 字段仍保持 8 位；该表示只在桌面运行时
-/// 保存完整槽位编号，不参与 ECM/ECX 序列化。
+/// 唯一指令表示（解码形态，docs/SingleStreamFormat.md §2）：完整宽度操作数，形态与线格式无关。
+/// 线格式的 iABC/ABx/AsBx/IsJ 打包与 EXT 数据字只是 v3 定长序列化投影（<see cref="InstructionCodec"/>），
+/// 内存中不存在第二套字节码。
+/// Jump 仅对 Jmp/Jpt/Jpf 有效，语义 = 相对**指令下标**偏移（前插平移不变；
+/// 线格式投影时由 InstructionCodec 换算为相对字节偏移——内存解释器按下标取指，字节偏移无处落点）。
+/// Call/CallN 的接收槽用 <see cref="NoSlot"/> 表示「无」（varint 直接编码，不再有 255 哨兵歧义）。
 /// </summary>
-public sealed class EcsPcInstruction
+public readonly record struct EcsInstruction(EcsOpcode Op, int A, int B, int C = 0, uint Ext = 0, int Jump = 0)
 {
-    public EcsOpcode Op;
-    public int A;
-    public int B;
-    public int C;
-    public uint Ext;
+    public const int NoSlot = -1;
 
-    public EcsPcInstruction(EcsOpcode op, int a = 0, int b = 0, int c = 0, uint ext = 0)
-    {
-        Op = op;
-        A = a;
-        B = b;
-        C = c;
-        Ext = ext;
-    }
-
-    public EcsPcInstruction Clone() => new(Op, A, B, C, Ext);
+    public bool IsJump => Op is EcsOpcode.Jmp or EcsOpcode.Jpt or EcsOpcode.Jpf;
+    public bool HasExt => EcsFormat.ExtWords(Op) > 0;
 }
 
 /// <summary>链接后的函数。</summary>
@@ -90,35 +82,30 @@ public sealed class EcsFunction
     public required string Name;
     public required string Module;
     public int NParams;
+    /// <summary>不再受 8 位限制；线格式字段为 u16（EcmEcxFormat §2）。</summary>
     public int NSlots;
     public bool HasReturn;
-    public List<uint> Code = new();
-    /// <summary>
-    /// 桌面解释器宽指令流。仅槽位超过 ECX 8 位上限的函数设置；Code 仍保留为
-    /// 链接/扫描用的 ECX 影子流，且不得写入 ECM/ECX。
-    /// </summary>
-    public List<EcsPcInstruction>? PcCode;
+    /// <summary>唯一真值：解码形态指令流（链接各 pass 与解释器的唯一消费形态）。</summary>
+    public List<EcsInstruction> Instructions = new();
     /// <summary>链接后在本镜像函数表中的下标。</summary>
     public int ImageIndex;
 
     /// <summary>
-    /// 行号表（交错 [pc, line, ...]，pc 严格递增；JVM LineNumberTable 同型稀疏表）。
-    /// 运行错误经 LineAt(pc) 映射回源码行；仅进 ECM 缓存与桌面诊断，不写入 MCU .ecx。
+    /// 行号表（交错 [insIndex, line, ...]，insIndex 严格递增；单位 = 指令下标；JVM
+    /// LineNumberTable 同型稀疏表）。运行错误经 LineAt 映射回源码行；
+    /// 容器投影为行号块（字节偏移单位），仅诊断用，MCU 发布镜像省略。
     /// </summary>
     public List<int> LineTable = new();
 
-    /// <summary>PcCode 对应的稀疏行号表；仅桌面宽函数使用。</summary>
-    public List<int> PcLineTable = new();
-
-    /// <summary>pc → 源码行（1 基；空表或 pc 早于首登记返回 0）。二分取 ≤pc 的最近登记。</summary>
-    public int LineAt(int pc)
+    /// <summary>指令下标 → 源码行（1 基；空表或早于首登记返回 0）。二分取 ≤idx 的最近登记。</summary>
+    public int LineAt(int insIndex)
     {
-        List<int> table = PcCode != null ? PcLineTable : LineTable;
+        List<int> table = LineTable;
         int lo = 0, hi = table.Count / 2 - 1, result = 0;
         while (lo <= hi)
         {
             int mid = (lo + hi) / 2;
-            if (table[mid * 2] <= pc)
+            if (table[mid * 2] <= insIndex)
             {
                 result = table[mid * 2 + 1];
                 lo = mid + 1;

@@ -161,16 +161,22 @@ OpenCV bindings come from the `OpenCvSharp5` NuGet packages (OpenCV 5.0); native
 - `docs/Pipeline.md` — unified compilation pipeline and single-source-of-truth landing points
 - `docs/ModuleSystem.md` — interface-based independent compilation + content-addressed cache
 - `docs/VM2.md` — bytecode/instruction-set spec (the live VM)
-- `docs/VmSemanticContract.md` — S-01..S-19 dual-end (C# interpreter ↔ C VM) semantic contract
-- `docs/EcmEcxFormat.md` — ECM/ECX bit-level binary format
+- `docs/VmSemanticContract.md` — S-01..S-21 dual-end (C# interpreter ↔ C VM) semantic contract
+  (S-20 "pinned constants" and S-21 "capability-default degradation" are implemented)
+- `docs/EcmEcxFormat.md` — ECX1 flat image + ECM1 flat module-cache bit-level format
 - `docs/Script.md` — ECS scripting language reference
 - `docs/Functions.md` — script function handbook (script-author-facing, CN)
 - `docs/McuBytecodeDelivery.md` — plan of record for compiling and flashing MCU bytecode
 
+**Outline & decision record (merged; replaces the former root analysis docs):**
+
+- `PROJECT_OUTLINE.md` — current-state map, performance ladder & four-way VM comparison verdict,
+  format/container and C-VM decision records, v2.3 alignment status, compiler-modernization
+  plan (pending: M3/M4, lib-import v2 N1-N3), gates, pitfalls, backlog
+
 **Historical / partially stale (verify against code before relying on them):**
 
 - `docs/Framework.md` — layering overview; has been corrected for the composition-root reality, but still the softest doc
-- `docs/MODULE_DESIGN.md`, `docs/DESIGN_DOCUMENT.md`, `docs/models.md` — pre-ECX (v1) design docs
 - `ARCHITECTURE_REVIEW_REPORT.md` — 2026-09-26 audit (94 findings). Most P0/P1 items were landed in
   `ac7e16c`; read it as a **historical checklist**, not a current defect list.
 - `docs/GETTING_STARTED.md` — user setup guide

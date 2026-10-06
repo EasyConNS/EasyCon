@@ -41,21 +41,12 @@ public class LinkOptimizationTests
         queue.Enqueue(image.Entry);
         while (queue.Count > 0)
         {
-            var words = image.Functions[queue.Dequeue()].Code;
-            for (int w = 0; w < words.Count; w++)
+            var instructions = image.Functions[queue.Dequeue()].Instructions;
+            for (int w = 0; w < instructions.Count; w++)
             {
-                switch ((EcsOpcode)(words[w] & 0xFF))
-                {
-                    case EcsOpcode.Call:
-                        if (keep.Add((int)words[w + 1]))
-                            queue.Enqueue((int)words[w + 1]);
-                        w++;
-                        break;
-                    case EcsOpcode.CallN or EcsOpcode.NewArrV or EcsOpcode.Slice or EcsOpcode.GetFI
-                        or EcsOpcode.PutFI or EcsOpcode.StickP or EcsOpcode.StickPv:
-                        w++;
-                        break;
-                }
+                if (instructions[w].Op == EcsOpcode.Call
+                    && keep.Add((int)instructions[w].Ext))
+                    queue.Enqueue((int)instructions[w].Ext);
             }
         }
         var dead = new List<string>();
@@ -85,7 +76,7 @@ public class LinkOptimizationTests
         File.WriteAllText(Path.Combine(_dir, "lib", "utils.ecs"),
             "PRINT \"init-utils\"\nFUNC twice($x:INT):INT\n    RETURN $x * 2\nENDFUNC\n");
         File.WriteAllText(Path.Combine(_dir, "main.ecs"),
-            "$r = twice(21)\nPRINT $r\n");
+            "IMPORT \"utils.ecs\"\n$r = twice(21)\nPRINT $r\n");
 
         var result = Compilation.CompileFile(Path.Combine(_dir, "main.ecs"));
         Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
@@ -97,7 +88,7 @@ public class LinkOptimizationTests
         Assert.That(entryFn.Name, Is.EqualTo("<main>"));
         Assert.That(image.Functions.Any(f => f.Name == "$eval"), Is.False,
             "$eval 占位名不应残留于镜像");
-        Assert.That((EcsOpcode)(entryFn.Code[0] & 0xFF), Is.EqualTo(EcsOpcode.Call),
+        Assert.That(entryFn.Instructions[0].Op, Is.EqualTo(EcsOpcode.Call),
             "入口首指令应是前插的 <init> 调用");
 
         // init 次序与返回值语义不回归
@@ -180,7 +171,7 @@ public class LinkOptimizationTests
         Assert.That(host.Lines, Is.EqualTo(new[] { "120", "true" }));
 
         // 同一镜像 C VM 可执行（fid 重映射后镜像合法性的直接证据）
-        var ecx = EcxWriter.Write(image);
+        var ecx = EcsContainer.WriteImage(image);
         Assert.That(ecx.Length, Is.GreaterThan(0));
     }
 
@@ -206,27 +197,22 @@ public class LinkOptimizationTests
         // syscall 编号调用在镜像中直传旗标：FWRITE=1 / ALERT=10 / ARG=11
         var seen = new HashSet<int>();
         foreach (var f in image.Functions)
-        {
-            for (int w = 0; w < f.Code.Count; w++)
+            foreach (var ins in f.Instructions)
             {
-                if ((EcsOpcode)(f.Code[w] & 0xFF) != EcsOpcode.CallN)
+                if (ins.Op != EcsOpcode.CallN)
                     continue;
-                if (w + 1 >= f.Code.Count)
-                    break;
-                uint ext = f.Code[w + 1];
+                uint ext = ins.Ext;
                 if ((ext & EcsSyscall.CallFlag) != 0)
                     seen.Add((int)(ext & 0x7FFFFFFFu));
-                w++;
             }
-        }
         Assert.That(seen, Is.SupersetOf(new[] { EcsSyscall.FWrite, EcsSyscall.Alert, EcsSyscall.Arg }),
             "PRINT/ALERT/ARG 应发对应编号的 syscall CallN");
 
         // 常量池不大于被引用数（每条至少被一处 LoadK/Img 引用）
         int refs = 0;
         foreach (var f in image.Functions)
-            for (int w = 0; w < f.Code.Count; w++)
-                if ((EcsOpcode)(f.Code[w] & 0xFF) is EcsOpcode.LoadK or EcsOpcode.Img)
+            foreach (var ins in f.Instructions)
+                if (ins.Op is EcsOpcode.LoadK or EcsOpcode.Img)
                     refs++;
         Assert.That(image.Consts.Count, Is.LessThanOrEqualTo(refs),
             "常量池每条都应被至少一处引用（死常量已消除）");
@@ -272,20 +258,21 @@ public class LinkOptimizationTests
         var image = result.Image!;
         var main = image.Functions.Single(f => f.Name == "<main>");
 
-        Assert.That(image.MaxSlots, Is.LessThanOrEqualTo(19), "死 φ 槽应免分配（22 基线 − 3 出口边死 φ）");
+        // 27 = 19（fast path 活 φ 槽）+ 2（循环不变量外提共享组槽）+ 5（std print 内联临时区：
+        // v3+std 内联后 print/FRAME 壳在调用点展开，共享 fresh 块只涨一次；零 φ 拷贝合并后
+        // 活 φ 槽不增）。死 φ 免分配不变量由下方 setVar/move 断言继续锁定。
+        Assert.That(image.MaxSlots, Is.LessThanOrEqualTo(27), "死 φ 槽应免分配（fast path + 外提共享组槽 + print 内联临时区后基线 27）");
 
         int setVar = 0, move = 0;
-        for (int w = 0; w < main.Code.Count;)
+        foreach (var ins in main.Instructions)
         {
-            var op = (EcsOpcode)(main.Code[w] & 0xFF);
-            if (op == EcsOpcode.SetVar) setVar++;
-            if (op == EcsOpcode.Move) move++;
-            w += EcsFormat.WordCount(op);
+            if (ins.Op == EcsOpcode.SetVar) setVar++;
+            if (ins.Op == EcsOpcode.Move) move++;
         }
         Assert.That(setVar, Is.EqualTo(0), "FOR 迭代变量 home 槽全函数无读取者，SetVar 应被清扫");
-        Assert.That(move, Is.LessThanOrEqualTo(15), "出口边死副本与无人读取的落槽应被清扫（编码期 23 条基线）");
+        Assert.That(move, Is.LessThanOrEqualTo(18), "出口边死副本与无人读取的落槽应被清扫（v3+零φ合并+std 内联基线，Release 实测 18；编码期原基线 15——零 φ 合并把出口副本变成 φ 槽就地写，Move 总数随内联 Conv/Move 临时小幅上移）");
 
-        Assert.That(EcxWriter.Write(image).Length, Is.LessThan(600), "死存储清除后镜像应 < 600B（清扫前 604B）");
+        Assert.That(EcsContainer.WriteImage(image, stripDebug: true).Length, Is.LessThan(600), "死存储清除后 MCU 发布镜像应 < 600B（清扫前 604B）");
 
         // 语义不变由 FullChain/CvmCross 双端对拍锁定；此处锁解释器可执行到底
         var host = RecordedHost();

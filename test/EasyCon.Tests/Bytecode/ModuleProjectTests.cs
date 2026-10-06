@@ -120,13 +120,12 @@ public class ModuleProjectTests
     }
 
     [Test]
-    public void RootAutoLoadedLibs_CanCallEachOtherWithoutImport()
+    public void PeerLibs_CrossCalls_RequireExplicitImport()
     {
-        // 根级 lib/*.ecs 是一个隐式库包：每个库都能看到其他根级自动库的接口，
-        // 与主脚本无需 IMPORT 即可调用所有自动库的语义一致。
+        // 导入规则 v2：模块间依赖只有 IMPORT——lib 内模块互调必须显式导入
         Write("lib/a.ecs", "FUNC double($x:INT):INT\n    RETURN $x * 2\nENDFUNC\n");
-        Write("lib/b.ecs", "FUNC quad($x:INT):INT\n    RETURN double(double($x))\nENDFUNC\n");
-        Write("main.ecs", "$r = quad(3)\nPRINT $r\n");
+        Write("lib/b.ecs", "IMPORT \"a.ecs\"\nFUNC quad($x:INT):INT\n    RETURN double(double($x))\nENDFUNC\n");
+        Write("main.ecs", "IMPORT \"b.ecs\"\n$r = quad(3)\nPRINT $r\n");
 
         var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"));
         Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
@@ -140,11 +139,12 @@ public class ModuleProjectTests
     }
 
     [Test]
-    public void RootAutoLoadedLib_IndirectlyImportedBeforeScan_RemainsVisibleToMain()
+    public void ChainedImports_TargetResolvableViaLibRoot()
     {
-        Write("lib/00_wrapper.ecs", "IMPORT \"../27_target.ecs\"\nFUNC wrapper():INT\n    RETURN target()\nENDFUNC\n");
+        // 导入规则 v2：lib 根唯一（主脚本 lib/），嵌套模块导入无 ../ 逃逸
+        Write("lib/00_wrapper.ecs", "IMPORT \"27_target.ecs\"\nFUNC wrapper():INT\n    RETURN target()\nENDFUNC\n");
         Write("lib/27_target.ecs", "FUNC target():INT\n    RETURN 42\nENDFUNC\n");
-        Write("main.ecs", "$r = target()\nPRINT $r\n");
+        Write("main.ecs", "IMPORT \"00_wrapper.ecs\"\n$r = wrapper()\nPRINT $r\n");
 
         var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
             new CompileOptions { UseDiskCache = false, UseProcessCache = false });
@@ -155,16 +155,16 @@ public class ModuleProjectTests
         Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
         Assert.That(host.Lines, Is.EqualTo(new[] { "42" }));
         Assert.That(project.Artifacts.Single(a => a.Name == "main").Interface!.Dependencies
-            .Select(d => d.Name), Does.Contain("27_target"));
+            .Select(d => d.Name), Does.Contain("00_wrapper"));
     }
 
     [Test]
-    public void RootAutoLoadedLib_IndirectlyImportedTargetIsVisibleToPeerLibrary()
+    public void PeerLib_ImportsTargetExplicitly()
     {
-        Write("lib/00_wrapper.ecs", "IMPORT \"../27_target.ecs\"\nFUNC wrapper():INT\n    RETURN target()\nENDFUNC\n");
-        Write("lib/02_consumer.ecs", "FUNC consume():INT\n    RETURN target()\nENDFUNC\n");
+        Write("lib/00_wrapper.ecs", "IMPORT \"27_target.ecs\"\nFUNC wrapper():INT\n    RETURN target()\nENDFUNC\n");
+        Write("lib/02_consumer.ecs", "IMPORT \"27_target.ecs\"\nFUNC consume():INT\n    RETURN target()\nENDFUNC\n");
         Write("lib/27_target.ecs", "FUNC target():INT\n    RETURN 42\nENDFUNC\n");
-        Write("main.ecs", "$r = consume()\nPRINT $r\n");
+        Write("main.ecs", "IMPORT \"02_consumer.ecs\"\n$r = consume()\nPRINT $r\n");
 
         var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
             new CompileOptions { UseDiskCache = false, UseProcessCache = false });
@@ -201,11 +201,13 @@ public class ModuleProjectTests
     }
 
     [Test]
-    public void RootAutoLoadedLibs_SupportForwardAndMutualCalls_AndInitializeOnceInStableOrder()
+    public void ForwardCalls_AcrossImports_InitializeOnceInStableOrder()
     {
-        Write("lib/a.ecs", "PRINT \"a-init\"\nFUNC alpha($depth:INT):INT\n    IF $depth < 1\n        RETURN 7\n    END\n    RETURN beta($depth - 1)\nENDFUNC\n");
-        Write("lib/b.ecs", "PRINT \"b-init\"\nFUNC beta($depth:INT):INT\n    IF $depth < 1\n        RETURN 42\n    END\n    RETURN alpha($depth - 1)\nENDFUNC\n");
-        Write("main.ecs", "$r = alpha(3)\nPRINT $r\nPRINT \"main-init\"\n");
+        // 导入规则 v2：跨模块互调（IMPORT 环）被拒绝——前向调用 = 单向 IMPORT 链
+        //（互递归函数须同文件）。init 按拓扑序：b（被依赖）先于 a。
+        Write("lib/a.ecs", "IMPORT \"b.ecs\"\nPRINT \"a-init\"\nFUNC alpha($depth:INT):INT\n    IF $depth < 1\n        RETURN beta($depth)\n    END\n    RETURN beta($depth - 1)\nENDFUNC\n");
+        Write("lib/b.ecs", "PRINT \"b-init\"\nFUNC beta($depth:INT):INT\n    IF $depth < 1\n        RETURN 42\n    END\n    RETURN $depth\nENDFUNC\n");
+        Write("main.ecs", "IMPORT \"a.ecs\"\n$r = alpha(0)\nPRINT $r\nPRINT \"main-init\"\n");
 
         var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
             new CompileOptions { UseDiskCache = false, UseProcessCache = false });
@@ -214,35 +216,24 @@ public class ModuleProjectTests
         var host = new EcxHost();
         host.EnableRecording();
         Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
-        Assert.That(host.Lines, Is.EqualTo(new[] { "a-init", "b-init", "42", "main-init" }));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "b-init", "a-init", "42", "main-init" }));
         Assert.That(host.Lines.Count(line => line == "a-init"), Is.EqualTo(1));
         Assert.That(host.Lines.Count(line => line == "b-init"), Is.EqualTo(1));
     }
 
     [Test]
-    public void RootLibraryPredeclaration_MatchesFinalInterfaceAndInvalidatesDiskCacheOnSignatureChange()
+    public void DiskCache_InvalidatesOnSignatureChange_AcrossImportChain()
     {
-        Write("lib/00_wrapper.ecs", "IMPORT \"../27_target.ecs\"\nFUNC wrapper():INT\n    RETURN target()\nENDFUNC\n");
+        // 导入规则 v2：显式 IMPORT 链 main → wrapper → target（lib 根唯一）
+        Write("lib/00_wrapper.ecs", "IMPORT \"27_target.ecs\"\nFUNC wrapper():INT\n    RETURN target()\nENDFUNC\n");
         Write("lib/27_target.ecs", "FUNC target():INT\n    RETURN 42\nENDFUNC\n");
-        Write("main.ecs", "$r = target()\nPRINT $r\n");
+        Write("main.ecs", "IMPORT \"00_wrapper.ecs\"\n$r = wrapper()\nPRINT $r\n");
         string mainPath = Path.Combine(_dir, "main.ecs");
         var options = new CompileOptions { ObjDir = _objDir, UseDiskCache = true, UseProcessCache = false };
 
         var cold = ProjectCompiler.CompileProject(mainPath, options);
         Assert.That(cold.Success, Is.True, string.Join("\n", cold.Diagnostics));
-        Assert.That(cold.CacheMisses, Is.GreaterThanOrEqualTo(5));
-        var targetSyntax = SyntaxTree.Load(Path.Combine(_dir, "lib", "27_target.ecs"));
-        var declaredInterface = ModuleInterfaceBuilder.FromSyntaxTree(targetSyntax, "27_target");
-        var finalInterface = cold.Artifacts.Single(a => a.Name == "27_target").Interface!;
-        Assert.Multiple(() =>
-        {
-            Assert.That(finalInterface.InterfaceHash, Is.EqualTo(declaredInterface.InterfaceHash));
-            Assert.That(finalInterface.HasInit, Is.EqualTo(declaredInterface.HasInit));
-            Assert.That(finalInterface.Functions.Select(f => f.DeepEquals(declaredInterface.Functions.Single(d => d.Name == f.Name))),
-                Is.All.True);
-            Assert.That(finalInterface.Structs.Select(s => s.DeepEquals(declaredInterface.Structs.SingleOrDefault(d => d.Name == s.Name))),
-                Is.All.True);
-        });
+        Assert.That(cold.CacheMisses, Is.GreaterThanOrEqualTo(3));
 
         var diskHot = ProjectCompiler.CompileProject(mainPath, options);
         Assert.That(diskHot.Success, Is.True, string.Join("\n", diskHot.Diagnostics));
@@ -251,16 +242,40 @@ public class ModuleProjectTests
 
         File.WriteAllText(Path.Combine(_dir, "lib", "27_target.ecs"),
             "FUNC target($value:INT):INT\n    RETURN $value + 2\nENDFUNC\n");
-        Write("lib/00_wrapper.ecs", "IMPORT \"../27_target.ecs\"\nFUNC wrapper($value:INT):INT\n    RETURN target($value)\nENDFUNC\n");
-        Write("main.ecs", "$r = target(40)\nPRINT $r\n");
+        Write("lib/00_wrapper.ecs", "IMPORT \"27_target.ecs\"\nFUNC wrapper($value:INT):INT\n    RETURN target($value)\nENDFUNC\n");
+        Write("main.ecs", "IMPORT \"00_wrapper.ecs\"\n$r = wrapper(40)\nPRINT $r\n");
         var changed = ProjectCompiler.CompileProject(mainPath, options);
         Assert.That(changed.Success, Is.True, string.Join("\n", changed.Diagnostics));
-        Assert.That(changed.CacheMisses, Is.GreaterThanOrEqualTo(3),
-            "目标签名变化应使目标库、绑定目标签名的 peer 库和 main 失效");
+        Assert.That(changed.CacheMisses, Is.GreaterThanOrEqualTo(2),
+            "目标签名变化应使目标库与绑定目标签名的 wrapper 失效");
         var changedHost = new EcxHost();
         changedHost.EnableRecording();
         Assert.That(EcxInterpreter.Run(changed.Image!, changedHost), Is.EqualTo(0));
         Assert.That(changedHost.Lines, Is.EqualTo(new[] { "42" }));
+    }
+
+    [Test]
+    public void HierarchicalModule_NestedLibDir_UniqueNames()
+    {
+        // 导入规则 v2 R3：模块名 = 相对 lib/ 的层级路径——lib/net/http.ecs 与 lib/http.ecs
+        // 是两个模块（层级命名不再冲突）；缓存文件名 '/' 落盘转义
+        Write("lib/http.ecs", "FUNC name():INT\n    RETURN 1\nENDFUNC\n");
+        Write("lib/net/http.ecs", "FUNC name():INT\n    RETURN 2\nENDFUNC\n");
+        Write("main.ecs", "IMPORT \"http.ecs\" AS h\nIMPORT \"net/http.ecs\" AS n\n"
+            + "$a = h.name()\n$b = n.name()\n$c = $a + $b\nPRINT $c\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            new CompileOptions { ObjDir = _objDir, UseProcessCache = false });
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        Assert.That(project.Artifacts.Select(a => a.Name), Does.Contain("http").And.Contain("net/http"));
+        var host = new EcxHost();
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "3" }));
+        // 缓存文件名 '/' 转义落盘
+        Assert.That(Directory.GetFiles(_objDir, "net_http-*.ecm"), Has.Length.EqualTo(1),
+            "层级模块名落盘转义");
     }
 
     [Test]
@@ -293,12 +308,13 @@ public class ModuleProjectTests
         Assert.That(EcxInterpreter.Run(run3.Image!, host3), Is.EqualTo(0));
         Assert.That(host3.Lines, Is.EqualTo(new[] { "43", "8", "6", "main-end" }), "utils 重编后行为一致");
 
-        // run4：utils 接口变化（新增导出）→ mathx 与 main 都能看见 utils，随之失效重编。
+        // run4：utils 接口变化（新增导出）→ mathx（调用 utils）失效重编；
+        // v2 下 main 不再可见 utils 接口（无自动加载互见）→ main 命中（Merkle 粒度更优）
         File.WriteAllText(Path.Combine(_dir, "lib", "utils.ecs"),
             UtilsSource + "\nFUNC ping():INT\n    RETURN 1\nENDFUNC\n");
         var run4 = ProjectCompiler.CompileProject(mainPath, new CompileOptions { ObjDir = _objDir });
         Assert.That(run4.Success, Is.True, string.Join("\n", run4.Diagnostics));
-        Assert.That(run4.CacheMisses, Is.EqualTo(3), "utils + mathx + 可见 utils 接口的 main 重编");
+        Assert.That(run4.CacheMisses, Is.EqualTo(2), "utils + mathx 重编；main 键不含 utils 接口 → 命中");
         var host4 = new EcxHost();
         host4.EnableRecording();
         Assert.That(EcxInterpreter.Run(run4.Image!, host4), Is.EqualTo(0));
@@ -339,11 +355,13 @@ public class ModuleProjectTests
     }
 
     [Test]
-    public void AutoLoad_RootLibAlreadyDiscoveredByAnotherLib_RemainsVisibleToMain()
+    public void IndirectImport_Chain_ResolvesViaMainLibRoot()
     {
-        Write("lib/a.ecs", "IMPORT \"../b.ecs\"\nFUNC fromA():INT\n    RETURN fromB() + 1\nENDFUNC\n");
+        // 导入规则 v2：IMPORT 基准 = 主脚本 lib/ 唯一根（沿发现链传播）——lib 内模块
+        // 互导无需 ../ 逃逸；main 只显式导入其直接依赖
+        Write("lib/a.ecs", "IMPORT \"b.ecs\"\nFUNC fromA():INT\n    RETURN fromB() + 1\nENDFUNC\n");
         Write("lib/b.ecs", "FUNC fromB():INT\n    RETURN 41\nENDFUNC\n");
-        Write("main.ecs", "$result = fromB()\nPRINT $result\n");
+        Write("main.ecs", "IMPORT \"a.ecs\"\n$result = fromA()\nPRINT $result\n");
 
         var project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
             new CompileOptions { UseDiskCache = false, UseProcessCache = false });
@@ -353,7 +371,7 @@ public class ModuleProjectTests
         var host = new EcxHost();
         host.EnableRecording();
         Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
-        Assert.That(host.Lines, Is.EqualTo(new[] { "41" }));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "42" }), "fromA = fromB + 1 = 42（链式依赖）");
     }
 
     [Test]
@@ -376,7 +394,7 @@ public class ModuleProjectTests
         Write("lib/probe.ecs", "EXTERN FUNC root_probe($value:INT):INT FROM \"../native/root.dll\"\n");
         Write("lib/nested/nestedprobe.ecs", "EXTERN FUNC nested_probe($value:INT):INT FROM \"../../native/nested.dll\"\n");
         Write("lib/autoload.ecs", "EXTERN FUNC autoload_probe($value:INT):INT FROM \"../native/autoload.dll\"\n");
-        Write("main.ecs", "IMPORT \"probe.ecs\" AS p\nIMPORT \"nested/nestedprobe.ecs\" AS n\n"
+        Write("main.ecs", "IMPORT \"probe.ecs\" AS p\nIMPORT \"nested/nestedprobe.ecs\" AS n\nIMPORT \"autoload.ecs\"\n"
             + "EXTERN FUNC main_probe($value:INT):INT FROM \"native/main.dll\"\n"
             + "$result = main_probe(1) + p.root_probe(2) + n.nested_probe(3) + autoload_probe(4)\n");
 
@@ -455,15 +473,12 @@ public class ModuleProjectTests
             Assert.That(projectB.NativeSymbols.Single().LibraryName, Is.EqualTo(expectedLibrary));
             Assert.That(projectB.CacheHits, Is.GreaterThanOrEqualTo(2), "std/vision 仍可跨项目共享");
             Assert.That(projectB.CacheMisses, Is.GreaterThanOrEqualTo(2), "用户 FFI 模块和 main 应按源路径重新编译");
-            Assert.That(Directory.GetFiles(objDirB, "ffi-*.eci"), Has.Length.EqualTo(2),
-                "B 项目应生成独立于 A 项目的 .eci");
+            // 导入规则 v2：.eci 接口预声明缓存退役——接口区随 .ecm 的 iface blob 携带
             Assert.That(Directory.GetFiles(objDirB, "ffi-*.ecm"), Has.Length.EqualTo(2),
                 "B 项目应生成独立于 A 项目的 .ecm");
-
-            string ffiSource = File.ReadAllText(Path.Combine(dirB, "lib", "ffi.ecs"));
-            var cachedInterface = new ModuleCache(objDirB).TryLoadInterface("ffi", ffiSource,
-                optionsB.ProductFingerprint(), Path.GetFullPath(Path.Combine(dirB, "lib", "ffi.ecs")));
-            Assert.That(cachedInterface!.Functions.Single().ExternLibrary, Is.EqualTo(expectedLibrary));
+            Assert.That(projectB.Artifacts.Single(a => a.Name == "ffi").Interface!.Functions
+                .Single().ExternLibrary, Is.EqualTo(expectedLibrary),
+                "FFI 库路径按声明目录解析并随接口区携带");
 
             ProcessModuleCache.Clear();
             var processOptions = new CompileOptions { UseDiskCache = false, UseProcessCache = true };
@@ -487,7 +502,7 @@ public class ModuleProjectTests
     public void InitRunsBeforeMain_TopologicalOrder()
     {
         // 依赖链 main → mathx → utils：&lt;init&gt; 顺序应为 utils → mathx → main（模块模式能力）
-        Write("lib/lib/utils.ecs", "PRINT \"init-utils\"\nFUNC twice($x):INT\n    RETURN $x * 2\nENDFUNC\n");
+        Write("lib/utils.ecs", "PRINT \"init-utils\"\nFUNC twice($x):INT\n    RETURN $x * 2\nENDFUNC\n");
         Write("lib/mathx.ecs", "IMPORT \"utils.ecs\"\nPRINT \"init-mathx\"\nFUNC triple($x:INT):INT\n    RETURN twice($x) + $x\nENDFUNC\n");
         Write("main.ecs", "IMPORT \"mathx.ecs\"\nPRINT \"init-main\"\n$a = triple(5)\nPRINT $a\n");
 
@@ -558,8 +573,8 @@ public class ModuleProjectTests
         Assert.That(warm.CacheMisses, Is.EqualTo(0), "热编译应全量命中缓存");
 
         // 冷/热镜像逐字节一致（.ecm 往返不得丢嵌套 sid，也不得让布局展开结果参与序列化）
-        var coldBytes = EcxWriter.Write(cold.Image!);
-        var warmBytes = EcxWriter.Write(warm.Image!);
+        var coldBytes = EcsContainer.WriteImage(cold.Image!);
+        var warmBytes = EcsContainer.WriteImage(warm.Image!);
         Assert.That(warmBytes, Is.EqualTo(coldBytes), "缓存往返后镜像应逐字节一致");
 
         // 热缓存镜像可执行：读侧 SlotCount/SlotOffset 展开正确（自嵌套会令 ZeroFill 无限递归）
@@ -621,11 +636,11 @@ public class ModuleProjectTests
     public void NestedLibImport_ConstAndCrossCalls()
     {
         // lib → lib 导入（模块模式新设计；v1 解析器白名单不允许 lib 树携带 IMPORT）：
-        //   level（lib/）IMPORT base（lib/lib/）
+        //   level（lib/）IMPORT base（lib/，lib 根唯一）
         //   - level 的函数调用 base 的函数（链接期 dep→dep 导入解析）
         //   - 两层各自的顶层 CONST 编译期折叠、互不可见
         //   - main 只 IMPORT level：base 经依赖图传递可达（接口闭包）
-        Write("lib/lib/base.ecs", """
+        Write("lib/base.ecs", """
             _base = 10
             FUNC bump($x:INT):INT
                 RETURN $x + _base
@@ -697,10 +712,9 @@ public class ModuleProjectTests
         var host = new EcxHost();
         host.EnableRecording();
         Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
-        // 导入表按（名, 参数个数）解析、链接期首匹配优先（§2.2）：别名只在绑定期限定作用域，
-        // 同名同签名的重复导出在编码后扁平化为名字 → alias 调用同样落到先导入者。
-        // v1 对重复定义直接报错；模块模式按 §6 改为 MD_AMBIGUOUS_EXPORT 警告 + 首匹配遮蔽。
-        Assert.That(host.Lines, Is.EqualTo(new[] { "14", "14" }), "全局限定与 alias 限定均采用先导入者（§2.2 首匹配）");
+        // 导入规则 v2：无限定名 = 首个注入者；alias 限定 = 精确指向来源模块
+        //（限定导入名 "模块!函数"，N2）。v1 对重复定义直接报错；模块模式 = MD_AMBIGUOUS_EXPORT 警告。
+        Assert.That(host.Lines, Is.EqualTo(new[] { "14", "21" }), "无限定首匹配（14）+ alias 精确指向（21）");
     }
 
     [Test]
@@ -743,13 +757,16 @@ public class ModuleProjectTests
         Assert.That(Directory.GetFiles(_objDir, "*.err").Length, Is.EqualTo(1), "失败诊断应持久化 .err");
 
         // run2：同 cacheKey → 错误重放，快速失败（不重新绑定/编码）；
-        // 重放诊断带模块名前缀（docs/Pipeline.md：.err 存字符串，重放构造默认位置）
+        // 重放诊断带模块名前缀（docs/Pipeline.md：.err 存字符串，重放构造默认位置）；
+        // M2 级联：main 依赖失败的 utils → 追加级联诊断（ECX0402）
         var run2 = ProjectCompiler.CompileProject(mainPath, new CompileOptions { ObjDir = _objDir });
         Assert.That(run2.Success, Is.False);
         Assert.That(run2.ErrorHits, Is.EqualTo(1), "应命中错误缓存");
-        Assert.That(run2.Diagnostics.Count, Is.EqualTo(run1.Diagnostics.Count), "重放诊断条数与首次失败一致");
-        Assert.That(run2.Diagnostics.All(d => d.Message.StartsWith("[utils] ")), Is.True,
-            "重放诊断应带模块名前缀：" + string.Join("; ", run2.Diagnostics));
+        Assert.That(run2.Diagnostics.Count(d => d.Message.StartsWith("[utils] ")),
+            Is.EqualTo(run1.Diagnostics.Count(d => d.FileName.EndsWith("utils.ecs"))),
+            "utils 重放诊断条数与首次失败一致：" + string.Join("; ", run2.Diagnostics));
+        Assert.That(run2.Diagnostics.Any(d => d.Code == DiagnosticCodes.DependencyFailed && d.Message.Contains("utils")),
+            Is.True, "main 应带级联诊断：" + string.Join("; ", run2.Diagnostics));
         Assert.That(run2.Diagnostics.Any(d => d.Message.Contains("找不到变量")), Is.True, "重放诊断内容一致");
 
         // run3：修复 lib（源码变 → 新 cacheKey）→ 重编成功

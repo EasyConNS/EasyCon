@@ -35,12 +35,8 @@ public class SlotReclaimTests
     static HashSet<EcsOpcode> OpcodeSet(EcsFunction f)
     {
         var ops = new HashSet<EcsOpcode>();
-        for (int i = 0; i < f.Code.Count;)
-        {
-            var op = (EcsOpcode)(f.Code[i] & 0xFF);
-            ops.Add(op);
-            i += EcsFormat.WordCount(op);
-        }
+        foreach (var ins in f.Instructions)
+            ops.Add(ins.Op);
         return ops;
     }
 

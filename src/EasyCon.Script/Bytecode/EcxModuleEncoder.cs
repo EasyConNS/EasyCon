@@ -29,7 +29,7 @@ internal static class EcxModuleEncoder
 
         IReadOnlySet<FunctionSymbol>? externalFunctions,
 
-        bool hasInit, bool isMain, bool enablePcWideSlots)
+        bool hasInit, bool isMain)
 
     {
 
@@ -51,7 +51,7 @@ internal static class EcxModuleEncoder
 
             Imports = new List<EcsImport>(),
 
-            ImportIds = new Dictionary<(string, int), int>(),
+            ImportIds = new Dictionary<(string?, string, int), int>(),
 
             Globals = new List<EcsGlobal>(),
 
@@ -66,8 +66,6 @@ internal static class EcxModuleEncoder
             Pool = new ModulePool(),
 
             ExternalFunctions = externalFunctions,
-
-            EnablePcWideSlots = enablePcWideSlots,
 
         };
 

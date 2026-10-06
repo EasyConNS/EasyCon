@@ -1,6 +1,7 @@
 # CSV文件读取测试脚本
 # 测试extern导入libc函数实现的CSV解析器
 
+# 平台实现二选一显式导入（导入规则 v2：同签名双导入 = MD_AMBIGUOUS_EXPORT 歧义，禁止依赖遮蔽序）
 IMPORT "csv_windows.ecs"
 
 PRINT "========== CSV文件读取测试 =========="

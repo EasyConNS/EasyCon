@@ -14,8 +14,8 @@
 |----|------|------|------------------|
 | **L0 机器** | 算术/比较/控制流/容器/结构体/调用 | VM 核指令 | 天然支持 |
 | **L1 基础能力** | `WAIT`、按键、摇杆、`RAND` | 专用指令（`WaitI/KeyI/Stick*/Rand`），直连宿主回调 | 全支持 |
-| **L2 平台 syscall** | `FWRITE/FREAD/文件族/ALERT/ARG/ENV/APP/TIME/BEEP/AMIIBO/OCR_CONF` | `CallN` EXT 旗标 + **编号**（§8.2），语义在宿主参考实现 | 参考桩：静默/默认值（TIME=0、FWRITE 返 len、串返空） |
-| **L3 动态原生** | 采集洞 `__CAPTURE__` 系、EXTERN FFI、`ENCODE/JQ`、推理实验 `NET_*` | `CallN` 名表**按名**分发 | 不在功能集：镜像特征位（CAPTURE/FFI/VISION）缺位 → **加载期拒跑** |
+| **L2 平台 syscall** | `FWRITE/FREAD/文件族/ALERT/ARG/ENV/APP/TIME/BEEP/AMIIBO/OCR_CONF` | `CallN` EXT 旗标 + **编号**（§7.3），语义在宿主参考实现 | 参考桩：静默/默认值（TIME=0、FWRITE 返 len、串返空、AMIIBO 槽 0–19 越界静默） |
+| **L3 动态原生** | 采集洞 `__CAPTURE__` 系、EXTERN FFI、`ENCODE/JQ`、推理实验 `NET_*` | `CallN` 名表**按名**分发 | S-21 缺省值表降级（OCR/ROI/ENCODE/JQ→""、NET_LOAD→-1、NET_RUN→0、NET_OUT→0.0、FFI→0）；strict_caps 恢复响亮 |
 
 组件清单（现状）：
 
@@ -110,21 +110,32 @@ ToStr ToInt`。
 
 ## 3. 指令集
 
-### 3.1 编码格式（小端）
+### 3.1 编码格式（小端；线格式 = v3 定长指令（ECX1 平铺容器），见下）
 
-| 格式 | 布局 | 用于 |
+| 格式 | 布局（v3 定长，即线格式） | 用于 |
 |------|------|------|
-| iABC | `op:8 \| A:8 \| B:8 \| C:8` | 三地址运算、域操作 |
-| AsBx | `op:8 \| A:8 \| sBx:16` | LoadI、Jpt/Jpf（s16） |
-| ABx | `op:8 \| A:8 \| Bx:16` | LoadK / NewArrE / NewSt / Img / WaitI / KeyI |
-| IsJ | `op:8 \| s24:24` | Jmp |
-| EXT | iABC + 后随 `ext:32`（8 字节） | Call/CallN 目标、Slice end 槽、GetFI/PutFI 索引槽、StickP/StickPv、NewArrV 元素类型码 |
+| iABC | `op:8 \| A:8 \| B:8 \| C:8`（4B） | 三地址运算、域操作 |
+| AsBx | `op:8 \| A:8 \| sBx:16`（4B） | LoadI（s16 立即数；超界编译期归一 LoadK）、Jpt/Jpf（s16 **字节**偏移） |
+| ABx | `op:8 \| A:8 \| Bx:16`（4B） | LoadK / NewArrE / NewSt / Img |
+| IsJ | `op:8 \| sJ:24`（4B，**字节**偏移） | Jmp |
+| Ext | iABC + 后随 `data:32`（8B） | Call/CallN 目标、Slice end 槽、GetFI/PutFI 索引槽、StickP/StickPv、NewArrV 元素类型码、**WaitI/KeyI 时长**（v3 起） |
+| IabcJ | iABC + 后随 `jump:32`（8B） | **ForStep/CmpJ** 第 4 操作数（跳转**字节**偏移；v3 起） |
 
-**EXT 铁律**：EXT 后随字是数据，数值可能恰等于操作码——一切线性扫描按 `EcsFormat.ExtWords` /
-`ecs_op_has_ext` 步进跳过。权威表：C# `EcsFormat.BuildTable`（漏登自检抛出）↔ C `ecs_op_has_ext`。
+> **单流化 + v3 定长（已实施）**：内存唯一表示为解码形态 `EcsInstruction`（完整 int32 操作数，
+> Jump = 相对指令下标）；文件的 **v3 定长指令流**（ECX1 `.text`）与内存按上表一一对应，
+> 投影/抬升由 `InstructionCodec` 单处换算（线格式跳转 = 相对**字节**偏移：目标 = 指令起始 +
+> 本指令字节数 + delta）。操作数位宽由格式锁定：槽位 u8 ≤254（**C=255 = 无接收槽哨兵**，
+> 内存 `NoSlot=-1`）；AsBx=s16；ABx=Bx16（≤65535，常量池 16 位索引是 pinned 句柄编码前提）；
+> IsJ=s24。越界一律**编译期响亮失败**。
+> 权威表：C# `EcsFormat.BuildTable`（漏登自检抛出）↔ C `ecs_op_words`（字数 1=4B/2=8B）。
 
-容量上限（编码期强制）：槽位 ≤ 255、Bx ≤ 65535、单函数 ≤ 2²⁴ 字；Jpt/Jpf 偏移越界由编码器
-跳转反转模板消化。
+**数据字**：12 条带字指令（Ext 8 条 + ForStep/CmpJ/WaitI/KeyI）的数据字是「数据」——数值可能
+恰好等于某个操作码，一切线性扫描必须按 `EcsFormat.WordCount` 步进跳过（历史 F4 缺陷铁律，
+v3 随定长布局回归）。
+
+容量上限（R-3）：槽位上限 254 已前移到**编译期**（v3 槽位 u8，与宿主档案 `ECS_MAX_SLOTS=255`
+对齐）；加载期校验保留（nslots ≤ 宿主档案）。Jpt/Jpf 偏移越界由编码器跳转反转模板消化，
+超 s16 由 `Project` 响亮失败。
 
 ### 3.2 指令表
 
@@ -191,7 +202,7 @@ LCLICK=11 RCLICK=12 HOME=13 CAPTURE=14`；HAT `TOP=16..TOP_LEFT=23`；摇杆 `LS
 [nLocals ..)                          专用槽：phi 结果（死 φ 免分配）与跨块值
 (..)                                  保留区：Neq 中间槽、并行副本 scratch、实参 staging、返回值 receive
 (.. nSlots)                           块内槽池：块内值与常量，定义/物化时取用，末次读取归还
-nSlots ≤ 255
+nSlots ≤ 宿主容量档案（参考宿主 255；格式字段宽 u16，无格式限制）
 ```
 
 - **编码期槽位回收**：非参数 `StoreLocal` 不发射——局部读值全走 SSA（构建期 mem2reg），
@@ -199,15 +210,32 @@ nSlots ≤ 255
   真实读取者）。仍被引用的局部符号槽压缩重编号到参数窗之后（`AssignSlots` 步骤 0）。
 - **池化判据**：phi 恒专用（**全函数零读取的死 φ 不分配槽、前驱边不产生副本**）；其余值全部读取
   都在定义块内 → 池化；跨块 → 专用槽。phi 臂读取按臂↔前驱对齐计入前驱块。
-- **常量块首惰性物化**：常量在每个使用块的块首物化（`LoadI/LoadBool/LoadK`），末次读取归还；
-  零使用不物化。立即数操作数（`KeyI/WaitI/StickP` 常量时长）不占槽。
+- **常量块首惰性物化 + 循环不变量外提**：常量在每个使用块的块首物化（`LoadI/LoadBool/LoadK`），
+  末次读取归还；零使用不物化。`HoistLoopInvariantConsts`（编码期 AssignSlots 步骤 1.5）把「全部使用块
+  都被某循环 preheader 支配、且循环体内使用块在脊柱上（header→回边源每轮必经）」的常量改挂 preheader
+  块首物化一次（FOR 尾融合后每轮省 2-3 条块首 LoadI）；外提常量按共享组定槽——两常量共享一槽的守卫是
+  双向 BFS（从任一物化点出发不经另一物化块可达对方使用块即拒绝，防覆写读陈值），稀有分支内的常量不外提
+  （无每轮收益，徒占槽）。立即数操作数（`KeyI/WaitI/StickP` 常量时长）不占槽。
 - **链接期死存储清扫**（`DeadStoreSweep`）：反向活跃性删除落槽/边副本残留的死
-  `Move/SetVar/LoadI/LoadBool/LoadK/LoadG`（防线 3），pc 重映射保持跳转合法。
+  `Move/SetVar/LoadI/LoadBool/LoadK/LoadG`（防线 3），pc 重映射保持跳转合法。活跃性 CFG 的终结符集含
+  `ForStep`（exit 目标与 fall-through 两条出边都入图）——漏边会让循环回边副本被误判死指令（嵌套 FOR
+  死循环实证）；use/def 按 `ForStep 读 A/B、写 C` 登记；**`CmpJ` 必须同入终结符集**（读 A/B、
+  C=kind 码非槽位、无 def）——漏入会让比较跳转的两条边不进活跃性图，循环携带值被误删（素数筛
+  回归实证）。无终结符的块（P1a 尾跳转消除后的直落块）
+  必须补对下一块的 fall-through 边——漏边会让直落块 liveOut 为空、块内定义被误删（corpus arith
+  入口初始化实证）。
+- **取指通路局部化 + 比较族直写**（P0，`EcxInterpreter.Step`）：frame/指令流 span/R/pc 为循环局部
+  （换帧显式重载、YIELD/宿主后取消写回 pc）；比较族 21 case 直写不走委托、浮点比较与 C VM 的
+  C 语义对齐（NaN → false）。纯 C# 侧，字节码形态不变。
+- **发射期跳转瘦身**（P1a，`NextIsBlock`）：块尾跳转目标为下一发射块时直落；Jpt+Jpf 双跳转在
+  单侧可直落时只发另一侧。mid-shape 跳转（skip 标签前）不可消除——直落会误入另一臂。
+- **phi 臂二地址合并**（P1b，`TryCoalescePhiArm`）：唯一读取为某 phi 臂的跨块指令与 φ 共槽，
+  边副本 dst==src 自消；守卫 = X 后无读 φ、终结符条件与其他臂不引用 φ（覆写后副本会拿到新值）。
 
 ### 3.4 调用约定
 
 实参连续暂存调用者 `R[base..base+n)`，`Call` 深拷贝进被调帧槽 `0..n-1`；返回值经接收槽 C 深拷贝
-交接（255 = 无）。递归天然支持；深度上限 `ECS_MAX_CALL_DEPTH`（512）→ `ECS_ERR_DEPTH`；尾递归
+交接（NoSlot = -1）。递归天然支持；深度上限 `ECS_MAX_CALL_DEPTH`（512）→ `ECS_ERR_DEPTH`；尾递归
 由 SSA 优化器（TRE）变循环回边，VM 无 tail-call 指令。
 
 ---
@@ -275,26 +303,38 @@ CLI：ecs-vm run image.ecx [--trace] [--print] [-- arg0...]
 ### 6.2 结构与主循环
 
 - 加载期：解析表指针直指 image 缓冲（零拷贝可 XIP）+ 全量校验 + 特征校验（§8.3）+ 结构体布局
-  展开（slot_offset 计算，嵌套递归 + 环检测）。
-- 堆：句柄表（`{kind, rc, payload}`）+ 空闲链；帧 = `malloc(sizeof(frame) + nslots*sizeof(ecs_value))`，
-  弹帧全槽释放。
-- 主循环：非递归调用（压帧/改 PC/弹帧）；步数预算 `ECS_DEFAULT_BUDGET`（100 万步）耗尽 →
-  `ECS_YIELD`（宿主轮询/心跳后重入续跑）；取消 → `ECS_CANCELLED`；错误带 `error_func/error_pc` 现场。
+  展开（slot_offset 计算，嵌套递归 + 环检测）。v3 定长编码：validate 即唯一安全层，
+  **镜像零变换零解码 RAM**——执行期从镜像定宽直取（4B/8B，格式类查表），XIP 原地执行。
+- 堆：固定对象池（单块 = 一对象，空闲链，PROJECT_OUTLINE.md §4）；帧 = arena bump + 整帧清零，
+  弹帧全槽释放后水位回退（PROJECT_OUTLINE.md §3）。
+- 主循环（v3 定长直取）：fr/code/end/R/pc/idx/steps 循环局部化，格式类查表 + switch 取指
+  （WJ 跳转字延迟读），ret_pc（字节）/ret_idx（指令下标）仅在调用边界与让出点写回；非递归调用
+  （压帧/改 PC/弹帧）；步数预算 `ECS_DEFAULT_BUDGET`（100 万步）耗尽 → `ECS_YIELD`（宿主轮询/
+  心跳后重入续跑）；取消 → `ECS_CANCELLED`；错误带 `error_func/error_pc` 现场（pc = 指令下标）。
 - CallN：`bit31=1` → `host.syscall(id, args, nargs, &ret)`；否则 `host.native(name, args, ...)`；
   回调缺失/非 0 返回 → `ECS_ERR_NOSUCHNATIVE`。
 
-### 6.3 特征校验与错误码
+### 6.3 特征元信息与能力降级（S-21）
 
 ```text
-加载期：feats = 头部掩码 | (flags.I ? FEAT_IL : 0)
-  feats & FEAT_IL                    → ECS_ERR_IL     （13，既有码）
-  feats & ~host->feats != 0          → ECS_ERR_FEAT   （14）
+feats = 头部掩码 | (flags.I ? FEAT_IL : 0)     ← 元信息：缺省不拒载
+运行期 miss（宿主回调缺失/未实现）：
+  L2/L3 按缺省值表降级（C# EcsCapabilityDefaults ≡ C ecs_cap_*_default，四路对拍锁定）：
+    FWRITE→len  FREAD/READFILE/ARG/ENV/APP→""  FOPEN→-1  FEof/FILE_EXISTS/TIME/OCR_CONF→0
+    FClose/WriteFile/AppendFile/Alert/Beep/Amiibo→no-op（Void）
+    __CAPTURE__/__ROI__/__OCR__/ENCODE/JQ→""  __OCR_INIT__→0  NET_LOAD→-1  NET_RUN→0  NET_OUT→0.0
+    EXTERN FFI（名含 !）→0；表外（未知编号/未知名）不降级 → ECS_ERR_NOSUCHNATIVE
+  图像标签（Img）→ 目标槽 ← -1
+strict_caps 宿主（ecs-vm --strict-caps / C# EcxHost.StrictCaps）恢复响亮：
+  加载期 feats & FEAT_IL → ECS_ERR_IL（13，先判）；feats & ~host->feats → ECS_ERR_FEAT（14）；
+  运行期 miss → ECS_ERR_NOSUCHNATIVE
 错误码全集：OK/YIELD/CANCELLED/IMAGE/OPCODE/SLOT/TYPE/INDEX/DIVZERO/DEPTH/
-            NOSUCHNATIVE/HOST/OOM/IL/FEAT；错误现场 error_func/error_pc
+            NOSUCHNATIVE/HOST/OOM/IL/FEAT/CRC/POOL；错误现场 error_func/error_pc
+            （pc = 函数内指令下标，与 C# ErrorPc 同单位）
 ```
 
-宿主通过 `host->feats` 声明提供的能力：MCU 参考宿主 = `FEAT_FILE`（L2 桩覆盖文件族静默行为）；
-采集洞/FFI/图像标签缺位即加载期拒跑——比运行期错误更强的保证。
+宿主通过 `host->feats` 声明提供的能力（元信息 + strict 档校验依据）；烧录前预检
+（McuBytecodeDelivery §4）仍消费该掩码。L1 域操作（wait/key/stick/rand）不降级。
 
 ### 6.4 引用计数协议（S-19）
 
@@ -331,7 +371,8 @@ CLI：ecs-vm run image.ecx [--trace] [--print] [-- arg0...]
 ```c
 typedef struct ecs_host {
     void *ud;
-    uint32_t feats;                    /* 提供的特征位（ECS_FEAT_*），加载期校验 */
+    uint32_t feats;                    /* 提供的特征位（ECS_FEAT_*）；strict_caps 时加载期校验 */
+    int strict_caps;                   /* S-21：0 = 缺省值降级（缺省）；1 = 恢复响亮 */
     const char *const *args; int32_t nargs;        /* ARG */
     const uint16_t *app_dir;                       /* APP */
     /* L1 域操作 */
@@ -370,7 +411,7 @@ void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_
 | 13 | APP | 应用目录 |
 | 14 | TIME | 运行毫秒（MCU 参考桩恒 0） |
 | 15 | BEEP | 蜂鸣（MCU 静默） |
-| 16 | AMIIBO | 切换槽位；n>9 静默忽略（S-13） |
+| 16 | AMIIBO | v2.3 Amiibo 槽位选择：槽 0–19 宿主判越界静默（S-13）；无接收槽——任何宿主不写寄存器 |
 | 17 | OCR_CONF | OCR 置信度查询（桌面默认 0） |
 
 ### 7.4 参考宿主
@@ -378,7 +419,7 @@ void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_
 | 宿主 | 文件 | 覆盖 |
 |------|------|------|
 | 桌面参考 | C# `EcxHost.Syscall`（默认装配）+ `EcxVm`（CapabilitySet 能力装配：BuiltinMap/FFI/采集洞） | 全 L2 语义（行断 + Caps 门控 + 文件转发） |
-| MCU 参考 | C `ecs_main.c` 桩（`h_syscall` + `feats = FEAT_FILE`） | 文件族静默/默认值；TIME=0；ALERT/BEEP/AMIIBO no-op；ENV=getenv；ARG=harness args |
+| MCU 参考 | C `ecs_main.c` 桩（`h_syscall` + `feats = FEAT_FILE`） | 文件族静默/默认值；TIME=0；ALERT/BEEP no-op；AMIIBO 槽 0–19 trace（越界静默）；ENV=getenv；ARG=harness args |
 | 桌面全量 | C `EcxInterpreter` ↔ `EcxVm`；`ecs-vm --print` 通道 | corpus / FullChain 双端对拍锁定 |
 
 一致性责任面：仓库内两端由 corpus/FullChain 逐字锁定；第三方宿主对照 §7.3 表 + 参考桩 +
@@ -391,10 +432,11 @@ void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_
 | 项 | 预算 |
 |----|------|
 | ECX 镜像 | flash/XIP（光速过帧 540 B，含调试区；stripDebug 更小） |
+| 指令流 | **零 RAM**：v3 定长 4B/8B，镜像 XIP 原地取指（无解码缓存、无解码段） |
 | 帧区 | `max_depth × max_slots × 16B`（光速过帧 608 B） |
 | 堆 | 句柄表 + 对象，池大小可配（4–64 KB） |
-| VM 本体 | ecs_vm.c ~1800 行 C99 单翻译单元，`cc -O2` 一条命令构建 |
-| 调用深度 | `ECS_MAX_CALL_DEPTH` 512；帧按需 malloc，用户递归不耗宿主栈 |
+| VM 本体 | ecs_vm.c ~2200 行 C99 单翻译单元，`cc -O2` 一条命令构建 |
+| 调用深度 | `ECS_MAX_CALL_DEPTH` 512；帧 = arena bump（PROJECT_OUTLINE.md §3），用户递归不耗宿主栈 |
 
 ---
 

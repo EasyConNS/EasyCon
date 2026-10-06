@@ -58,7 +58,8 @@ public static class ProjectCompiler
     public const string VisionModule = "vision";
     public const string MainModule = "main";
 
-    /// <summary>从脚本文件编译（统一链路主入口；lib/ 自动加载 + obj/ 缓存按 options）。</summary>
+    /// <summary>从脚本文件编译（统一链路主入口；IMPORT 闭包建图 + obj/ 缓存按 options；
+    /// 导入规则 v2 = MODULE_IMPORT_REDESIGN.md，lib/ 不再自动加载）。</summary>
     public static ModuleProjectResult CompileProject(string mainPath, CompileOptions? options = null)
     {
         options ??= new CompileOptions();
@@ -71,21 +72,19 @@ public static class ProjectCompiler
         result.Timing.FileLoad += sw.Elapsed;
 
         return CompileCore(mainTree, scriptDir,
-            options.ObjDir ?? Path.Combine(scriptDir, "obj"), options, result,
-            allowLibAutoLoad: true);
+            options.ObjDir ?? Path.Combine(scriptDir, "obj"), options, result);
     }
 
-    /// <summary>从内存源码编译（单文件场景：无 lib/ 自动加载；磁盘缓存仅显式提供 objDir 时启用）。</summary>
+    /// <summary>从内存源码编译（单文件场景：磁盘缓存仅显式提供 objDir 时启用）。</summary>
     public static ModuleProjectResult CompileProject(SyntaxTree mainTree, CompileOptions? options = null)
     {
         options ??= new CompileOptions();
         var result = new ModuleProjectResult();
         return CompileCore(mainTree, scriptDir: null,
-            objDir: options.ObjDir ?? "", options, result,
-            allowLibAutoLoad: false);
+            objDir: options.ObjDir ?? "", options, result);
     }
 
-    /// <summary>从带源文件路径的内存源码编译（保留编辑器未保存内容，同时启用同目录 lib/）。</summary>
+    /// <summary>从带源文件路径的内存源码编译（保留编辑器未保存内容，IMPORT 解析含同目录 lib/）。</summary>
     public static ModuleProjectResult CompileProject(SyntaxTree mainTree, string scriptDir,
         CompileOptions? options = null)
     {
@@ -95,14 +94,14 @@ public static class ProjectCompiler
         scriptDir = Path.GetFullPath(scriptDir);
         return CompileCore(mainTree, scriptDir,
             options.ObjDir ?? (options.UseDiskCache ? Path.Combine(scriptDir, "obj") : ""),
-            options, result, allowLibAutoLoad: true);
+            options, result);
     }
 
     static ModuleProjectResult CompileCore(SyntaxTree mainTree, string? scriptDir, string objDir,
-        CompileOptions options, ModuleProjectResult result, bool allowLibAutoLoad)
+        CompileOptions options, ModuleProjectResult result)
     {
         ModuleCache? cache = null;
-        if (!options.EnablePcWideSlots && options.UseDiskCache && objDir.Length > 0)
+        if (options.UseDiskCache && objDir.Length > 0)
             cache = new ModuleCache(objDir);
 
         // 主树语法错误：编译前短路（不建图、不触碰缓存统计）
@@ -113,7 +112,7 @@ public static class ProjectCompiler
         }
 
         var diagnostics = new DiagnosticBag();
-        var graph = ModuleGraphBuilder.Build(mainTree, scriptDir, allowLibAutoLoad, result.Timing, diagnostics,
+        var graph = ModuleGraphBuilder.Build(mainTree, scriptDir, result.Timing, diagnostics,
             options.LegacySyntax);
         if (diagnostics.HasErrors())
         {
@@ -154,7 +153,6 @@ public static class ProjectCompiler
                 .Where(n => pipeline.CacheKeys.ContainsKey(n.Name))
                 .Select(n => ModuleCacheKeys.FileName(n.Name, pipeline.CacheKeys[n.Name]))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            keepFileNames.UnionWith(pipeline.InterfaceCacheFiles);
             result.GarbageCollected = cache.GarbageCollect(keepFileNames, options.GcMaxAge ?? TimeSpan.FromDays(30));
         }
 

@@ -2,7 +2,7 @@
  * ecs_main.c — ecs-vm CLI harness（docs/VmSemanticContract.md §四）。
  * 单片机参考宿主：L2 平台 syscall 的语义参考实现 + L1 域操作回调 + L3 无（按需接入）。
  *
- *   ecs-vm run image.ecx [--trace] [--print] [-- arg0 arg1...]
+ *   ecs-vm run image.ecx [--trace] [--print] [--strict-caps] [-- arg0 arg1...]
  *     stdout：脚本 PRINT 输出（UTF-16 → UTF-8；--print 通道开）
  *     stderr：--trace 时逐条域事件 TSV（格式与 C# EcxHost.EnableRecording 一致，供三方对拍）
  *     退出码：ECS_* 结果码；错误时 stderr 打印 func/pc 现场
@@ -164,9 +164,9 @@ static int h_syscall(void *ud, int32_t id, ecs_value *args, int32_t nargs, ecs_v
         case ECS_SYSCALL_BEEP:
             return 0;   /* no-op（静默忽略） */
         case ECS_SYSCALL_AMIIBO:
-            if (args[0].i32 <= 9)   /* S-13：n>9 静默忽略 */
+            if (args[0].i32 >= 0 && args[0].i32 <= 19)   /* S-13：槽位 0–19，越界静默 */
                 trace_event("AMIIBO %d", (int)args[0].i32);
-            return 0;
+            return 0;   /* 无接收槽：任何宿主都不写寄存器 */
         case ECS_SYSCALL_OCR_CONF:
         case ECS_SYSCALL_FOPEN:
         case ECS_SYSCALL_FCLOSE:
@@ -185,11 +185,36 @@ static int sigint_seen = 0;
 
 static int vm_cancel_requested(void) { return sigint_seen; }
 
+/* 错误码符号名（ZeroAllocVm.md §5：池耗尽等须以可归因的符号名呈现） */
+static const char *err_name(int rc)
+{
+    switch (rc)
+    {
+        case ECS_ERR_IMAGE: return "IMAGE";
+        case ECS_ERR_OPCODE: return "OPCODE";
+        case ECS_ERR_SLOT: return "SLOT";
+        case ECS_ERR_TYPE: return "TYPE";
+        case ECS_ERR_INDEX: return "INDEX";
+        case ECS_ERR_DIVZERO: return "DIVZERO";
+        case ECS_ERR_DEPTH: return "DEPTH";
+        case ECS_ERR_NOSUCHNATIVE: return "NOSUCHNATIVE";
+        case ECS_ERR_HOST: return "HOST";
+        case ECS_ERR_OOM: return "OOM";
+        case ECS_ERR_IL: return "IL";
+        case ECS_ERR_FEAT: return "FEAT";
+        case ECS_ERR_SECTION: return "SECTION";
+        case ECS_ERR_UNSUPPORTED: return "UNSUPPORTED";
+        case ECS_ERR_CRC: return "CRC";
+        case ECS_ERR_POOL: return "POOL";
+        default: return "?";
+    }
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 3 || strcmp(argv[1], "run") != 0)
     {
-        fprintf(stderr, "用法: ecs-vm run image.ecx [--trace] [--print] [-- arg0...]\n");
+        fprintf(stderr, "用法: ecs-vm run image.ecx [--trace] [--print] [--strict-caps] [-- arg0...]\n");
         return 2;
     }
     const char *imagePath = argv[2];
@@ -197,12 +222,15 @@ int main(int argc, char **argv)
     int nargs = 0;
     g_trace = 0;
     int pcPrint = 0;   /* PC 验证模式：启用 PRINT 输出通道（单片机构建缺省关，静默返 len） */
+    int strictCaps = 0;   /* S-21 strict_caps（缺省 0 = 缺省值降级） */
     for (int i = 3; i < argc; i++)
     {
         if (strcmp(argv[i], "--trace") == 0)
             g_trace = 1;
         else if (strcmp(argv[i], "--print") == 0)
             pcPrint = 1;
+        else if (strcmp(argv[i], "--strict-caps") == 0)
+            strictCaps = 1;   /* S-21 严格档：feats 加载期校验 + miss 响亮（迁移保底/诊断） */
         else if (strcmp(argv[i], "--") == 0)
         {
             for (int j = i + 1; j < argc && nargs < 64; j++)
@@ -234,6 +262,7 @@ int main(int argc, char **argv)
     ecs_host host;
     memset(&host, 0, sizeof(host));
     host.feats = ECS_FEAT_FILE;     /* 桩覆盖文件族 syscall 的"静默/默认值"行为 */
+    host.strict_caps = strictCaps;  /* S-21：能力缺失走缺省值表；--strict-caps 恢复响亮 */
     host.args = scriptArgs;
     host.nargs = nargs;
     host.wait_ms = h_wait;
@@ -268,7 +297,7 @@ int main(int argc, char **argv)
     {
         int32_t ef, pc;
         ecs_vm_error_location(vm, &ef, &pc);
-        fprintf(stderr, "执行错误: ECS_ERR=%d func=%d pc=%d\n", rc, ef, pc);
+        fprintf(stderr, "执行错误: ECS_ERR=%d(%s) func=%d pc=%d\n", rc, err_name(rc), ef, pc);
     }
 
     ecs_vm_free(vm);

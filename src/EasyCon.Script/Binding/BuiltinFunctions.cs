@@ -125,8 +125,8 @@ public static class BuiltinFunctions
         new(RoiHole, BuiltinRoute.Intrinsic),
         new(OcrInitHole, BuiltinRoute.Intrinsic),
         // L2 平台 syscall（McuAvailable = ecs_main.c h_syscall 实测语义：
-        // FWRITE 行断协议 / FREAD 空串 / ALERT-BEEP-AMIIBO no-op / ARG-ENV 可用 /
-        // APP-TIME 恒默认 / OCR_CONF 与文件族其余未实现 → ERR）
+        // FWRITE 行断协议 / FREAD 空串 / ALERT-BEEP-AMIIBO no-op / ARG-ENV 可用 / APP-TIME 恒默认；
+        // 未实现的 OCR_CONF/文件族其余 → S-21 缺省值表降级，strict_caps 恢复 ERR）
         new(Alert, BuiltinRoute.Syscall, McuAvailable: true),
         new(Arg, BuiltinRoute.Syscall, McuAvailable: true),
         new(Env, BuiltinRoute.Syscall, McuAvailable: true),

@@ -32,17 +32,17 @@ public class PipelineUnificationTests
     // ---------- 用例（单文件语义语料已迁至 corpus/，由 CorpusCrossValidationTests 数据驱动执行） ----------
 
     [Test]
-    public void LibAutoLoad_AndInitOrder()
+    public void Import_AndInitOrder()
     {
         var dir = Path.Combine(Path.GetTempPath(), $"EcsUnify_{Guid.NewGuid():N}");
         Directory.CreateDirectory(Path.Combine(dir, "lib"));
         try
         {
-            // utils：顶层 init（模块全局）+ 导出函数；main 不显式 import（lib/ 自动加载）
+            // utils：顶层 init（模块全局）+ 导出函数；main 显式 IMPORT（导入规则 v2）
             File.WriteAllText(Path.Combine(dir, "lib", "utils.ecs"),
                 "$__mult = 2\nFUNC twice($x):INT\n    RETURN $x * $__mult\nENDFUNC\n");
             File.WriteAllText(Path.Combine(dir, "main.ecs"),
-                "$r = twice(21)\nPRINT $r\nPRINT \"main-end\"\n");
+                "IMPORT \"utils.ecs\"\n$r = twice(21)\nPRINT $r\nPRINT \"main-end\"\n");
 
             var result = Compilation.CompileFile(Path.Combine(dir, "main.ecs"));
             var io = new RecordingIo();
@@ -50,7 +50,7 @@ public class PipelineUnificationTests
 
             Assert.That(lines, Is.EqualTo(new[] { "42", "main-end" }));
 
-            // 链接序：std -> vision -> utils（自动加载，先于 main）-> main；
+            // 链接序：std -> vision -> utils（IMPORT 依赖，先于 main）-> main；
             // 入口 = <main>（$eval 本体前插 init 调用序列并更名，无合成壳函数）
             Assert.That(result.Artifacts.Select(a => a.Name).ToList(),
                 Is.EqualTo(new[] { "std", "vision", "utils", "main" }));
@@ -139,12 +139,12 @@ public class PipelineUnificationTests
                 PRINT $b
                 """);
 
-            // 统一链路：§2.2 首匹配遮蔽——alias 对同名同签名同样落先导入者，
-            // 并以 MD_AMBIGUOUS_EXPORT 警告提示（修复 csv_windows/csv_linux 共存）
+            // 导入规则 v2：无限定名 = 首个注入者（绑定层 first-wins）；alias 限定 = 精确指向
+            // 来源模块（限定导入名 "模块!函数"）；MD_AMBIGUOUS_EXPORT 警告保留
             var result = Compilation.CompileFile(Path.Combine(dir, "main.ecs"));
             var io = new RecordingIo();
             var (lines, _) = RunNewChain(result, io, new RecordingPad());
-            Assert.That(lines, Is.EqualTo(new[] { "14", "14" }), "统一链路首匹配遮蔽（§2.2）");
+            Assert.That(lines, Is.EqualTo(new[] { "14", "21" }), "无限定首匹配（14）+ alias 精确指向（21）");
             Assert.That(result.Diagnostics.Any(d => d.IsWarning && d.Message.Contains("MD_AMBIGUOUS_EXPORT")),
                 Is.True, "应报告 MD_AMBIGUOUS_EXPORT 警告：" + string.Join("; ", result.Diagnostics));
         }
@@ -176,11 +176,11 @@ public class PipelineUnificationTests
 
     [Test]
     [Platform("Linux,MacOsX")]
-    public void CsvTestExample_AutoLoadAndShadowUntilFfi()
+    public void CsvTestExample_PlatformLibFailsAtFfi()
     {
-        // csv_test：显式 IMPORT csv_windows + lib/ 自动加载 csv_linux（同签名遮蔽 + extern）。
-        // 统一链路按首匹配遮蔽采用 csv_windows 版本，成功编译并在首次 FFI 调用处终止
-        // （本机非 Windows，msvcrt.dll 不可加载）。
+        // csv_test：显式 IMPORT csv_windows（v2 下不再自动加载/不再依赖同签名遮蔽序——
+        // 平台实现二选一显式导入）。本机非 Windows：编译成功，首次 FFI 调用处终止
+        // （msvcrt.dll 不可加载）。
         var main = Path.Combine(TestContext.CurrentContext.TestDirectory,
             "..", "..", "..", "..", "..", "examples", "csv_test", "main.ecs");
         if (!File.Exists(main))
@@ -190,7 +190,7 @@ public class PipelineUnificationTests
         Assert.That(result.Diagnostics.Where(d => d.IsError).ToList(), Is.Empty,
             "统一链路编译失败：" + string.Join("\n", result.Diagnostics));
         Assert.That(result.Diagnostics.Any(d => d.IsWarning && d.Message.Contains("MD_AMBIGUOUS_EXPORT")),
-            Is.True, "csv_windows/csv_linux 同签名导出应触发歧义警告");
+            Is.False, "v2 单平台导入不再有同签名歧义");
 
         var io = new RecordingIo();
         Assert.Catch(() => RunNewChain(result, io, new RecordingPad()),

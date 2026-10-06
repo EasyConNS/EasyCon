@@ -19,6 +19,10 @@ internal sealed partial class Parser
         _diagnostics.AddRange(lexer.Diagnostics);
     }
 
+    /// <summary>IMPORT 解析基准：语法树携带的 lib 根（导入规则 v2 = 主脚本 lib/ 唯一根，
+    /// 沿发现链传播）；缺省 = 本文件同目录 lib/（单文件场景）。</summary>
+    string _importBase => _syntaxTree.ImportBase ?? Path.Combine(_filePath, LibPath);
+
     public DiagnosticBag Diagnostics => _diagnostics;
 
     string _fullPath => _text.FileName != "" ? Path.GetFullPath(_text.FileName) : AppDomain.CurrentDomain.BaseDirectory;

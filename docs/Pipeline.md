@@ -36,7 +36,7 @@
   .ecm roundtrip。
 - **FWRITE 句柄 0**：写入 no-op 返回写入长度（S-14，见 VmSemanticContract）。
 - **EXT 扫描铁律**：EXT 后随字是「数据」，数值可能恰好等于某个操作码——一切线性扫描必须按
-  `EcsFormat.ExtWords` 步进跳过（C 侧 `ecs_op_has_ext`），否则把数据误读为指令。
+  `EcsFormat.WordCount` 步进跳过（C 侧 `ecs_op_words`），否则把数据误读为指令。
 
 ## 3. 链接期行为
 
@@ -56,7 +56,7 @@
 
 | 知识 | 落点 |
 |------|------|
-| 指令格式/EXT 语义/结果槽 | `Bytecode/EcsFormat.cs`（漏登自检）+ C 侧 `ecs_op_has_ext` |
+| 指令格式/EXT 语义/结果槽 | `Bytecode/EcsFormat.cs`（漏登自检）+ C 侧 `ecs_op_words` |
 | 内置函数能力清单（路由 + 特征位 + MCU 桩可用标记） | `Binding/BuiltinFunctions.Manifest`（单一登记；`Routes`/`IsIntrinsic` 派生；链接器特征扫描消费 FeatureBit；总表见 VM2.md §7.0） |
 | syscall 编号/镜像特征位 | `Bytecode/EcsOpcode.cs`（`EcsSyscall`/`EcsImageFeatures`）+ C 侧 `ECS_SYSCALL_*`/`ECS_FEAT_*` |
 | 代码线性扫描 | `Bytecode/InstructionScanner.cs`（回调式，链接器各 pass 共享） |
@@ -68,12 +68,12 @@
 ## 5. 后续项（未实施）
 
 - **GUI 一键产 `.ecx` 并烧录**：方案见 `docs/McuBytecodeDelivery.md`（唯一入口
-  `McuImageBuilder` + 预检 + 复用 `NintendoSwitch.Flash`）。注意不能直接复用桌面会话的
-  `Info.Image` —— 桌面档含 PC 宽槽指令，`EcxWriter`/`EcmFormat` 会拒绝序列化，必须重新以
-  Portable 档编译（`ScriptCompileProfiles.Portable`）。CLI `compile` 已可用。
-- 桌面路径缓存化（当前桌面现编）。
-- 运行错误位置映射：产物无行号表，需 pc→源行映射才能恢复源级定位。
-- EcxInterpreter 性能：常量串驻留（对齐 VM2.md §2 字符串驻留规格）/ 帧池复用 / 取消检查三分点
+  `McuImageBuilder` + 预检 + 复用 `NintendoSwitch.Flash`；单流化后产物同形态，
+  GUI 会话镜像可直接序列化，CLI `compile` 已可用）。
+- ~~桌面路径缓存化~~（✅ 单流化档位塌缩后桌面路径已可用进程/磁盘缓存；GUI 默认仍现编）。
+- ~~运行错误位置映射~~（✅ ECM v4 起产物带行号表，桌面路径 `EcxVm` 已实现 pc→源行；
+  行号调试块保留，MCU 发布镜像省略）。
+- EcxInterpreter 性能：常量串 pinned（✅ S-20 已落地）/ 帧池复用（C VM ✅ ZeroAlloc P2）/ 取消检查三分点
   （入口 + 预算边界 + 宿主调用后）已落地；剩余方向：C VM 同型收益（加载期驻留 + 帧池）、
   运行错误位置映射（需 pc→源行表）。
 - 格式 v2 窗口四项（调用约定寄存器化/镜像 CRC/Link 三遍合一/模块并行编译）——设计备注见

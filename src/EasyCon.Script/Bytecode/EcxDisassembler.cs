@@ -3,14 +3,15 @@ using System.Text;
 namespace EasyCon.Script.Bytecode;
 
 /// <summary>
-/// ECX 镜像反汇编器（调试/CI 黄金快照，docs/VM2.md §10.3）。
+/// 镜像反汇编器（调试/CI 黄金快照，docs/VM2.md §10.3）。
+/// 单流化后直接读解码形态——顺带显示真实槽位（不再有影子流截断的失真）。
 /// </summary>
 internal static class EcxDisassembler
 {
     public static string Disassemble(EcxImage image)
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"; ECX image: {image.Functions.Count} funcs, {image.Consts.Count} consts, " +
+        sb.AppendLine($"; ECX1 image: {image.Functions.Count} funcs, {image.Consts.Count} consts, " +
                       $"{image.Structs.Count} structs, {image.Globals.Count} globals, {image.Natives.Count} natives, " +
                       $"entry={image.Entry} keyAction={image.KeyAction} needIL={image.NeedIL}");
         sb.AppendLine($"; modules: {string.Join(", ", image.Modules)}");
@@ -30,53 +31,43 @@ internal static class EcxDisassembler
         {
             sb.AppendLine();
             sb.AppendLine($"func [{image.Functions.IndexOf(f)}] {f.Name} (module={f.Module}, params={f.NParams}, slots={f.NSlots}, hasret={f.HasReturn}):");
-            for (int i = 0; i < f.Code.Count;)
-            {
-                var op = (EcsOpcode)(f.Code[i] & 0xFF);
-                sb.AppendLine($"  {i,4}: {FormatInstruction(image, f.Code, i, out int words)}");
-                i += words;
-            }
+            for (int i = 0; i < f.Instructions.Count; i++)
+                sb.AppendLine($"  {i,4}: {FormatInstruction(image, f.Instructions[i])}");
         }
         return sb.ToString();
     }
 
-    static string FormatInstruction(EcxImage image, List<uint> code, int i, out int words)
+    static string FormatInstruction(EcxImage image, in EcsInstruction ins)
     {
-        var word = code[i];
-        var op = (EcsOpcode)(word & 0xFF);
-        int a = (int)((word >> 8) & 0xFF);
-        int b = (int)((word >> 16) & 0xFF);
-        int c = (int)((word >> 24) & 0xFF);
-        uint ext = 0;
-        bool hasExt = EcsFormat.Get(op) == EcsInsFormat.Ext;
-        if (hasExt && i + 1 < code.Count)
-            ext = code[i + 1];
-        words = EcsFormat.WordCount(op);
+        int a = ins.A, b = ins.B, c = ins.C;
+        uint ext = ins.Ext;
+        string extText = ins.HasExt ? $" {FormatExt(ins.Op, ext, image)}" : "";
+        string tail = ins.IsJump ? $" {ins.Jump:+0;-0}" : extText;
 
-        string extText = hasExt ? $" {FormatExt(op, ext, image)}" : "";
-
-        return op switch
+        return ins.Op switch
         {
-            EcsOpcode.LoadI => $"{op} r{a}, {Sign16(word >> 16)}",
-            EcsOpcode.LoadK => $"{op} r{a}, K[{b | (c << 8)}]{ConstText(image, b | (c << 8))}",
-            EcsOpcode.LoadG => $"{op} r{a}, G[{b | (c << 8)}]{GlobalText(image, b | (c << 8))}",
-            EcsOpcode.StoreG => $"{op} G[{b | (c << 8)}], r{a}{GlobalText(image, b | (c << 8))}",
-            EcsOpcode.NewArrE => $"{op} r{a}, type={b | (c << 8)}",
-            EcsOpcode.NewSt => $"{op} r{a}, struct[{b | (c << 8)}]",
-            EcsOpcode.Img => $"{op} r{a}, {ConstText(image, b | (c << 8))}",
-            EcsOpcode.WaitI => $"{op} {b | (c << 8)}ms",
-            EcsOpcode.KeyI => $"{op} key={a}, {b | (c << 8)}ms",
-            EcsOpcode.Jmp => $"{op} {Sign24(word >> 8):+0;-0}",
-            EcsOpcode.Jpt => $"{op} r{a}, {Sign16(word >> 16):+0;-0}",
-            EcsOpcode.Jpf => $"{op} r{a}, {Sign16(word >> 16):+0;-0}",
-            EcsOpcode.Call => $"{op} args=r{a}..+{b}, recv={(c == 255 ? "-" : $"r{c}")}, func[{ext}]{FuncText(image, ext)}",
-            EcsOpcode.CallN => $"{op} args=r{a}..+{b}, recv={(c == 255 ? "-" : $"r{c}")}, {CallNTargetText(image, ext)}",
-            EcsOpcode.Slice => $"{op} r{a}, r{b}, r{c}, end={(ext == 0xFFFFFFFF ? "-" : $"r{ext}")}",
-            EcsOpcode.GetFI => $"{op} r{a}, r{b}.field[{c}], idx=r{ext}",
-            EcsOpcode.PutFI => $"{op} r{b}.field[{c}] = r{a}, idx=r{ext}",
-            EcsOpcode.StickP => $"{op} side={a}, ({b},{c}), {ext}ms",
-            EcsOpcode.StickPv => $"{op} side={a}, dur=r{c}, xy=({ext & 0xFF},{(ext >> 16) & 0xFF})",
-            _ => $"{op} r{a}, r{b}, r{c}",
+            EcsOpcode.LoadI => $"{ins.Op} r{a}, {b}",
+            EcsOpcode.LoadK => $"{ins.Op} r{a}, K[{b}]{ConstText(image, b)}",
+            EcsOpcode.LoadG => $"{ins.Op} r{a}, G[{b}]{GlobalText(image, b)}",
+            EcsOpcode.StoreG => $"{ins.Op} G[{b}], r{a}{GlobalText(image, b)}",
+            EcsOpcode.NewArrE => $"{ins.Op} r{a}, type={b}",
+            EcsOpcode.NewSt => $"{ins.Op} r{a}, struct[{b}]",
+            EcsOpcode.Img => $"{ins.Op} r{a}, {ConstText(image, b)}",
+            EcsOpcode.WaitI => $"{ins.Op} {ins.Ext}ms",
+            EcsOpcode.KeyI => $"{ins.Op} key={a}, {ins.Ext}ms",
+            EcsOpcode.Jmp => $"{ins.Op}{tail}",
+            EcsOpcode.ForStep => $"{ins.Op} r{a}, limit=r{b}, dst=r{c}, exit={ins.Jump:+0;-0}",
+            EcsOpcode.Jpt => $"{ins.Op} r{a}{tail}",
+            EcsOpcode.Jpf => $"{ins.Op} r{a}{tail}",
+            EcsOpcode.CmpJ => $"{ins.Op} r{a}, r{b}, kind={c}, {ins.Jump:+0;-0}",
+            EcsOpcode.Call => $"{ins.Op} args=r{a}..+{b}, recv={(c < 0 ? "-" : $"r{c}")}, func[{ext}]{FuncText(image, ext)}",
+            EcsOpcode.CallN => $"{ins.Op} args=r{a}..+{b}, recv={(c < 0 ? "-" : $"r{c}")}, {CallNTargetText(image, ext)}",
+            EcsOpcode.Slice => $"{ins.Op} r{a}, r{b}, r{c}, end={(ext == 0xFFFFFFFF ? "-" : $"r{ext}")}",
+            EcsOpcode.GetFI => $"{ins.Op} r{a}, r{b}.field[{c}], idx=r{ext}",
+            EcsOpcode.PutFI => $"{ins.Op} r{b}.field[{c}] = r{a}, idx=r{ext}",
+            EcsOpcode.StickP => $"{ins.Op} side={a}, ({b},{c}), {ext}ms",
+            EcsOpcode.StickPv => $"{ins.Op} side={a}, dur=r{c}, xy=({ext & 0xFF},{(ext >> 16) & 0xFF})",
+            _ => $"{ins.Op} r{a}, r{b}, r{c}{extText}",
         };
     }
 
@@ -91,9 +82,6 @@ internal static class EcxDisassembler
         EcsOpcode.StickPv => $"xy=({ext & 0xFF},{(ext >> 16) & 0xFF})",
         _ => $"0x{ext:X}",
     };
-
-    static int Sign16(uint v) => (int)(ushort)v << 16 >> 16;
-    static int Sign24(uint v) => (int)(v & 0xFFFFFF) << 8 >> 8;
 
     static string ConstText(EcxImage image, int idx)
         => idx < image.Consts.Count ? $" ; {image.Consts[idx]}" : " ; ?const";

@@ -54,6 +54,17 @@ public struct TaggedValue
     public static TaggedValue FromArrayHandle(int handle) => new() { Tag = ARRAY, I64 = handle };
     public static TaggedValue FromStructHandle(int handle) => new() { Tag = STRUCT, I64 = handle };
 
+    /// <summary>
+    /// 静态（pinned）常量串（契约 S-20 / docs/ZeroAllocVm.md §2）：句柄 bit31 置位，低 31 位=常量池索引。
+    /// 字符数据直接取自 <c>EcxImage.Consts[kx].Str</c>（是唯一实例、内容不可变），**不参与引用计数**。
+    /// 与 C 侧 <c>ECS_HANDLE_STATIC</c>/<c>make_static_str</c> 同约定；静态句柄为负值，
+    /// 因此一切 <c>h &gt; 0</c> 守卫天然拒绝它——漏改点会响亮失败而非读错堆。
+    /// </summary>
+    public static TaggedValue FromStaticString(int kx) => new() { Tag = STRING, I64 = StaticFlag | (uint)kx };
+
+    /// <summary>静态句柄标志位（句柄 bit31）。</summary>
+    public const long StaticFlag = 1L << 31;
+
     // ============ 快速提取 ============
 
     public int AsInt() => I32;
@@ -64,8 +75,14 @@ public struct TaggedValue
     public ulong AsUInt64() => unchecked((ulong)I64);
     public long AsPtr() => I64;
 
-    /// <summary>引用类型的 heap handle（低 32 位）。</summary>
+    /// <summary>引用类型的 heap handle（低 32 位）。静态串返回负值（bit31 置位）。</summary>
     public int Handle => (int)I64;
+
+    /// <summary>是否静态（pinned）常量串（S-20）；静态值不参与 RC，也不占对象表。</summary>
+    public bool IsStatic => Tag == STRING && (I64 & StaticFlag) != 0;
+
+    /// <summary>静态串的常量池索引（仅 IsStatic 时有效）。</summary>
+    public int StaticIndex => (int)(I64 & ~StaticFlag);
 
     public bool IsVoid => Tag == VOID;
     public bool IsHandle => Tag is STRING or ARRAY or STRUCT;

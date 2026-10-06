@@ -16,16 +16,23 @@ public sealed class SyntaxTree
 
     internal CompilationUnit Root { get; init; }
 
-    private SyntaxTree(SourceText text, ParseHandler handler, bool legacySyntax)
+    private SyntaxTree(SourceText text, ParseHandler handler, bool legacySyntax, string? importBase)
     {
         Text = text;
         LegacySyntax = legacySyntax;
+        ImportBase = importBase ?? (Text.FileName != ""
+            ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(Text.FileName))!, "lib/")
+            : null);
 
         handler(this, out var root, out var diagnostics);
 
         Diagnostics = diagnostics;
         Root = root;
     }
+
+    /// <summary>IMPORT 解析基准（lib 根；导入规则 v2 = 主脚本 lib/ 唯一根，沿发现链传播）。
+    /// null = 单文件无路径场景（IMPORT 一律报不存在）。</summary>
+    public string? ImportBase { get; }
 
     public static SyntaxTree Load(string fileName)
     {
@@ -46,22 +53,22 @@ public sealed class SyntaxTree
         return Parse(SourceText.From(text), legacySyntax);
     }
 
-    public static SyntaxTree Parse(SourceText text, bool legacySyntax = true)
+    public static SyntaxTree Parse(SourceText text, bool legacySyntax = true, string? importBase = null)
     {
-        return new SyntaxTree(text, Parse, legacySyntax);
+        return new SyntaxTree(text, Parse, legacySyntax, importBase);
     }
 
-    public static ImmutableArray<Token> ParseTokens(string text, bool legacySyntax = true)
+    public static ImmutableArray<Token> ParseTokens(string text, bool legacySyntax = true, string? importBase = null)
     {
         var sourceText = SourceText.From(text);
         return ParseTokens(sourceText, out _);
     }
 
     /// <summary>带文件名的词法扫描（轻量导入扫描用；诊断位置归属正确）。</summary>
-    internal static ImmutableArray<Token> ParseTokens(SourceText text, bool legacySyntax = true)
-        => ParseTokens(text, out _, legacySyntax);
+    internal static ImmutableArray<Token> ParseTokens(SourceText text, bool legacySyntax = true, string? importBase = null)
+        => ParseTokens(text, out _, legacySyntax, importBase);
 
-    private static ImmutableArray<Token> ParseTokens(SourceText text, out ImmutableArray<Diagnostic> diagnostics, bool legacySyntax = true)
+    private static ImmutableArray<Token> ParseTokens(SourceText text, out ImmutableArray<Diagnostic> diagnostics, bool legacySyntax = true, string? importBase = null)
     {
         var tokens = new ImmutableArray<Token>();
 
@@ -74,7 +81,7 @@ public sealed class SyntaxTree
             d = [.. l.Diagnostics];
         }
 
-        var syntaxTree = new SyntaxTree(text, ParseTokensHandler, legacySyntax);
+        var syntaxTree = new SyntaxTree(text, ParseTokensHandler, legacySyntax, importBase);
         diagnostics = syntaxTree.Diagnostics;
         return tokens;
     }

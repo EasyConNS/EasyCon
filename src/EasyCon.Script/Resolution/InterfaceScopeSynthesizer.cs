@@ -125,7 +125,7 @@ internal static class InterfaceScopeSynthesizer
                 // GlobalScope 会让 Binder 把本地函数误当成冲突。AS 导入仍保留独立作用域。
                 if (alias is null && localFunctions.Contains((f.Name.ToUpperInvariant(), f.Params.Count)))
                     continue;
-                var symbol = DeclareExport(target, f, diagnostics);
+                var symbol = DeclareExport(target, f, diagnostics, iface.Name);
                 if (symbol is not null)
                     externalFunctions.Add(symbol);
             }
@@ -143,7 +143,8 @@ internal static class InterfaceScopeSynthesizer
             externalFunctions);
     }
 
-    static FunctionSymbol? DeclareExport(BoundScope scope, ExportedFunction f, DiagnosticBag diagnostics)
+    static FunctionSymbol? DeclareExport(BoundScope scope, ExportedFunction f, DiagnosticBag diagnostics,
+        string sourceModule)
     {
         var parameters = ImmutableArray.CreateBuilder<ParamSymbol>();
         foreach (var p in f.Params)
@@ -164,7 +165,8 @@ internal static class InterfaceScopeSynthesizer
             ? new FunctionSymbol(f.Name, parameters.ToImmutable(), returnType,
                 libraryName: f.ExternLibrary ?? "internal",
                 externalName: f.ExternalName)
-            : new FunctionSymbol(f.Name, parameters.ToImmutable(), returnType);
+            : new FunctionSymbol(f.Name, parameters.ToImmutable(), returnType,
+                originModule: sourceModule);
         symbol.LocalSlotCount = parameters.Count;
         // Declaration 保持 null：EnsureFunctionBodyBound 跳过绑体（Binder.cs:252 既有机制）
 

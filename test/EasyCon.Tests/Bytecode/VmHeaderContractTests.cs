@@ -62,10 +62,10 @@ public class VmHeaderContractTests
     {
         var body = FirstEnumBody(HeaderText(), "操作码（与 C# EcsOpcode");
         var cNames = TokensInOrder(body, "OP_");
-        // C 侧 ecs_op_has_ext 的白名单（与 C# EcsFormat.ExtWords 对应）
+        // C 侧 ecs_op_words 的 2 字指令白名单（与 C# EcsFormat.ExtWords 对应）
         var cExt = new List<string>();
-        var hasExtBody = HeaderText()[HeaderText().IndexOf("ecs_op_has_ext", StringComparison.Ordinal)..];
-        foreach (Match m in Regex.Matches(hasExtBody[..hasExtBody.IndexOf("default:", StringComparison.Ordinal)], @"case OP_([A-Za-z0-9_]+)"))
+        var wordsBody = HeaderText()[HeaderText().IndexOf("ecs_op_words", StringComparison.Ordinal)..];
+        foreach (Match m in Regex.Matches(wordsBody[..wordsBody.IndexOf("default:", StringComparison.Ordinal)], @"case OP_([A-Za-z0-9_]+)"))
             cExt.Add(m.Groups[1].Value);
 
         var csExt = new List<string>();

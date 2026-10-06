@@ -197,6 +197,15 @@ static class SsaConstantPropagation
         if (inst.Op == SsaOp.Phi)
             return;
 
+        // ForStep：分支内嵌自增（SSA 值 = 新循环变量），其值运行期才知道 → 恒 unknown(Bottom)。
+        // 绝不能按二元操作折叠：两侧常量时会被折成常量，循环变量 phi 随之折叠成常量，
+        // ForStep 的自增写入孤立槽位 → 死循环
+        if (inst.Op == SsaOp.ForStep)
+        {
+            UpdateLattice(inst, LatticeValue.Bottom(), lattice, ssaWorklist, useMap);
+            return;
+        }
+
         // 二元操作
         if (inst.Arg0 != null && inst.Arg1 != null)
         {
@@ -287,6 +296,15 @@ static class SsaConstantPropagation
     {
         if (block.BranchCondition != null)
         {
+            // ForStep（FOR 快速路径）是终结符专用值：lattice 恒为 Top，且语义上两条出边都可能执行
+            //（运行期由指令内比较决定走向）→ 必须标记双边，否则循环体被误判不可达而删除
+            if (block.BranchCondition.Op == SsaOp.ForStep)
+            {
+                MarkEdge(block, block.TrueSuccessor!, reachableBlocks, executableEdges, blockWorklist);
+                MarkEdge(block, block.FalseSuccessor!, reachableBlocks, executableEdges, blockWorklist);
+                return;
+            }
+
             var condLattice = GetLatticeOrBottom(block.BranchCondition, lattice);
 
             if (condLattice.Tag == LatticeTag.Const && condLattice.ConstKind == SsaOp.ConstBool)

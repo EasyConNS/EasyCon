@@ -37,7 +37,7 @@ public class BytecodeSimulationTests
     static List<string> RunAfterRoundtrip(CompileResult result, EcxHost host)
     {
         // ECM roundtrip：序列化 -> 反序列化后重链接（验证格式）
-        var restored = result.Artifacts.Select(a => EcmFormat.Read(EcmFormat.Write(a))).ToList();
+        var restored = result.Artifacts.Select(a => EcsContainer.ReadModule(EcsContainer.WriteModule(a))).ToList();
         var image = EcxPipeline.Link(restored, restored.Any(a => a.KeyAction), restored.Any(a => a.NeedIL));
         var code = EcxInterpreter.Run(image, host);
         Assert.That(code, Is.EqualTo(0), $"模拟执行失败：ECS 错误码 {code}");
@@ -133,7 +133,7 @@ public class BytecodeSimulationTests
         var source = File.ReadAllText(examplePath);
         var result = Compile(source, "guangshu_full.ecs");
         var image = result.Image!;
-        var bytes = EcxWriter.Write(image);
+        var bytes = EcsContainer.WriteImage(image);
 
         Assert.That(image.KeyAction, Is.True, "应携带 KeyAction 标志");
         Assert.That(bytes.Length, Is.LessThan(2048), "光速过帧镜像应小于 2KB");
@@ -198,7 +198,7 @@ public class BytecodeSimulationTests
         // 仅 DISAHNGA/FAN/DISHANGB 可达；KAIGUAN/GUO/YEWAI/DIXIAA/DIXIAB 被链接期整函数 DCE 消除
         var result = CompileBdsp(BdspSource());
         var image = result.Image!;
-        var bytes = EcxWriter.Write(image);
+        var bytes = EcsContainer.WriteImage(image);
 
         var names = image.Functions.Select(f => f.Name).ToList();
         Assert.That(names, Does.Contain("DISAHNGA").And.Contain("FAN").And.Contain("DISHANGB"),
@@ -208,7 +208,7 @@ public class BytecodeSimulationTests
             "不可达模式的整函数应被 DCE 消除");
         Assert.That(image.Globals.Select(g => g.Name), Is.EqualTo(new[] { "$1", "$2" }),
             "跨 FUNC 共享的脚本变量进全局表");
-        Assert.That(bytes.Length, Is.LessThan(1024), "BDSP 镜像应小于 1KB");
+        Assert.That(bytes.Length, Is.LessThan(1440), "BDSP 镜像应小于 1.5KB（v3 定长编码，实测 1296B；varint 时代门限 1280）");
         Assert.That(EcxDisassembler.Disassemble(image), Does.Contain("Call"), "含用户函数调用");
     }
 

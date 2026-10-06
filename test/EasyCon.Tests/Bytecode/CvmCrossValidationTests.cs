@@ -52,8 +52,8 @@ public class CvmCrossValidationTests
         return (image, host.Lines, EcsTestHost.EventLogGroups(host));
     }
 
-    (int ExitCode, string Stdout, string Stderr) RunCvm(byte[] ecx, string tag)
-        => CvmRunner.Run(_vmBinary, ecx, tag, _workDir);
+    (int ExitCode, string Stdout, string Stderr) RunCvm(byte[] ecx, string tag, string? extraArgs = null)
+        => CvmRunner.Run(_vmBinary, ecx, tag, _workDir, extraArgs: extraArgs);
 
     // ---------- 结构断言（模块管线镜像 / 错误码 / 深度上限 / NeedIL；常规语义见 corpus/） ----------
 
@@ -61,7 +61,7 @@ public class CvmCrossValidationTests
     public void TwoWay_ModulePipelineImage()
     {
         // 独立编译管线产出的镜像（含 <init>/<main> 合成 + 导入标记链接）同批验证
-        WriteLib("lib/lib/utils.ecs", """
+        WriteLib("lib/utils.ecs", """
             PRINT "init-utils"
             FUNC twice($x):INT
                 RETURN $x * 2
@@ -83,7 +83,7 @@ public class CvmCrossValidationTests
         var project = ProjectCompiler.CompileProject(mainPath, new CompileOptions { UseDiskCache = false });
         Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
         var (_, lines, eventLogs) = RunInterpreter(project.Image!);
-        var ecx = EcxWriter.Write(project.Image!);
+        var ecx = EcsContainer.WriteImage(project.Image!);
         var (exitCode, stdout, stderr) = RunCvm(ecx, "modules");
 
         Assert.That(exitCode, Is.EqualTo(0), $"C VM 退出码：{exitCode}；stderr={stderr}");
@@ -102,7 +102,7 @@ public class CvmCrossValidationTests
         // 模拟解释器：ECS_ERR_DIVZERO(8)
         var host = new EcxHost();
         int code = EcxInterpreter.Run(image, host);
-        var (exitCode, _, _) = RunCvm(EcxWriter.Write(image), "divzero");
+        var (exitCode, _, _) = RunCvm(EcsContainer.WriteImage(image), "divzero");
         Assert.That(code, Is.EqualTo(EcxInterpreter.ERR_DIVZERO), "模拟解释器应报除零");
         Assert.That(exitCode, Is.EqualTo(EcxInterpreter.ERR_DIVZERO), "C VM 应报除零");
     }
@@ -125,7 +125,7 @@ public class CvmCrossValidationTests
         Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
             string.Join("; ", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
         var image = result.Image!;
-        var (exitCode, _, stderr) = RunCvm(EcxWriter.Write(image), "deep");
+        var (exitCode, _, stderr) = RunCvm(EcsContainer.WriteImage(image), "deep");
         Assert.That(exitCode, Is.EqualTo(9), $"失控递归应报 ECS_ERR_DEPTH(9)；stderr={stderr}");
     }
 
@@ -144,7 +144,7 @@ public class CvmCrossValidationTests
         var result = Compilation.CompileSource(source, new CompileOptions { UseDiskCache = false });
         Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,
             string.Join("; ", result.Diagnostics.Where(d => d.IsError).Select(d => d.Message)));
-        var ecx = EcxWriter.Write(result.Image!);
+        var ecx = EcsContainer.WriteImage(result.Image!);
 
         var (okExit, _, okErr) = RunCvm(ecx, "keyv-legal");
         Assert.That(okExit, Is.EqualTo(0), $"合法 KeyV 镜像应正常加载执行；stderr={okErr}");
@@ -161,6 +161,7 @@ public class CvmCrossValidationTests
             }
         }
         Assert.That(patched, Is.GreaterThanOrEqualTo(1), "镜像中应存在 KeyV 指令字");
+        EcsContainer.ResealCrc32(ecx);   // ECX1 全量 CRC 覆盖补丁字节，重封后补丁才能到达槽位校验（CRC 在前）
 
         var (badExit, _, badErr) = RunCvm(ecx, "keyv-badslot");
         Assert.That(badExit, Is.EqualTo(5), $"b 越界应报 ECS_ERR_SLOT(5)；stderr={badErr}");
@@ -170,11 +171,12 @@ public class CvmCrossValidationTests
     }
 
     [Test]
-    public void Mcu_ImageLabel_Rejected()
+    public void Mcu_ImageLabel_DegradesByDefault_RefusesUnderStrictCaps()
     {
-        // 单片机约束：携带图像标签的镜像（NeedIL）→ 加载期 ECS_ERR_IL 拒绝执行
+        // S-21 双态：缺省宿主 → 图像标签镜像加载执行（@label → 目标槽 ← -1，与 C# 缺省 ImgLabel
+        // 一致）；--strict-caps → 恢复加载期 ECS_ERR_IL 拒跑
         var mainPath = Path.Combine(_dir(), "main.ecs");
-        File.WriteAllText(mainPath, "PRINT @enemy\n");
+        File.WriteAllText(mainPath, "$v = @enemy\nPRINT $v\n");
 
         // @enemy 需在 extVars 白名单内才会通过绑定
         var result = Compilation.CompileFile(mainPath, new CompileOptions
@@ -187,9 +189,19 @@ public class CvmCrossValidationTests
         var image = result.Image!;
         Assert.That(image.NeedIL, Is.True, "语料应携带图像标签");
 
-        var ecx = EcxWriter.Write(image);
-        var (exitCode, _, stderr) = RunCvm(ecx, "il");
-        Assert.That(exitCode, Is.EqualTo(13), $"应拒绝执行（ECS_ERR_IL=13）；stderr={stderr}");
+        var ecx = EcsContainer.WriteImage(image);
+
+        // C# 缺省宿主：ImgLabel 缺省 → -1（录制型宿主收 PRINT 行；Native=null → 降级路径）
+        var host = EcsTestHost.CreateRecording();
+        Assert.That(EcxInterpreter.Run(image, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "-1" }));
+
+        var (exitCode, stdout, stderr) = RunCvm(ecx, "il");
+        Assert.That(exitCode, Is.EqualTo(0), $"缺省宿主应降级执行；stderr={stderr}");
+        Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(new[] { "-1" }), "图像标签缺省值双端锁步");
+
+        var (strictExit, _, strictErr) = RunCvm(ecx, "il-strict", extraArgs: "--strict-caps");
+        Assert.That(strictExit, Is.EqualTo(13), $"strict_caps 应恢复加载期拒跑（ECS_ERR_IL=13）；stderr={strictErr}");
     }
 
     string _dir()

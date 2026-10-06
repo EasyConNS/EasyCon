@@ -104,5 +104,8 @@ public enum SsaOp : byte
     RuntimeValue,   // AuxSymbol 存 name string（特殊用法）
     ImageLabel,     // AuxSymbol 存 label name
 
+    // ---- FOR 循环融合（ECS opcode ForStep 的 SSA 形态；只作 BranchCondition，不进 Instructions） ----
+    ForStep,        // Arg0=循环变量(槽内自增), Arg1=上限；==上限 → 跳出(FalseSuccessor)，否则 i+=1 落入循环体
+
     Nop,
 }

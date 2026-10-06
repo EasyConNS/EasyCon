@@ -1,0 +1,7 @@
+AMIIBO 0
+AMIIBO 5
+AMIIBO 19
+AMIIBO 25
+$slot = 7
+AMIIBO $slot
+PRINT "sel-ok"

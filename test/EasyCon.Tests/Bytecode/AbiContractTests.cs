@@ -8,8 +8,9 @@ namespace EasyCon.Tests.Bytecode;
 /// ABI 一致性契约（docs/VM2.md §9.1 / VmSemanticContract §四）：
 /// 1. syscall 编号稳定（发布即 ABI，只追加不回收——锁定常量值）；
 /// 2. L2 全集编号化：内建不进原生名表，名表仅承载 L3（采集洞 "__xxx__" / FFI "库!导出名"）；
-/// 3. 特征需求掩码：FILE/FFI/CAPTURE/IL 链接期计算，写入镜像头保留位 u16 @0x0C；
-/// 4. C VM 加载期拒跑：宿主 feats 缺位 → ECS_ERR_FEAT（IL → ECS_ERR_IL 既有码）。
+/// 3. 特征需求掩码：FILE/FFI/CAPTURE/IL 链接期计算，写入镜像头 feats u16（S-21 元信息）；
+/// 4. C VM 能力缺失双态：缺省 = S-21 缺省值表降级（feats 不拒载）；--strict-caps = 恢复响亮
+///    （IL → ECS_ERR_IL，其余缺位 → ECS_ERR_FEAT）。
 /// </summary>
 [TestFixture]
 public class AbiContractTests
@@ -79,6 +80,14 @@ public class AbiContractTests
         Assert.That(ffiImage.Natives.Select(n => n.Name), Does.Contain("kernel32.dll!Sleep"),
             "FFI 按名进名表（L3）");
 
+        // S-13（v2.3）：语言 AMIIBO n → CallN AMIIBO(#16)，槽位选择 0–19 宿主判越界静默
+        var amiiboScript = Path.Combine(_dir, "amiibo.ecs");
+        File.WriteAllText(amiiboScript, "AMIIBO 3\n");
+        var amiiboImage = Compilation.CompileFile(amiiboScript, new CompileOptions { UseDiskCache = false }).Image!;
+        var amiiboIns = amiiboImage.Functions.SelectMany(f => f.Instructions).Single(i => i.Op == EcsOpcode.CallN);
+        Assert.That(amiiboIns.Ext, Is.EqualTo(EcsSyscall.CallFlag | (uint)EcsSyscall.Amiibo),
+            "AMIIBO 语句 CallN 目标 = AMIIBO(#16)");
+
         var imgScript = Path.Combine(_dir, "img.ecs");
         File.WriteAllText(imgScript, "$v = @enemy\nPRINT $v\n");
         var r = Compilation.CompileFile(imgScript, new CompileOptions
@@ -90,18 +99,23 @@ public class AbiContractTests
     }
 
     [Test]
-    public void Cvm_Load_RefusesFfiWithoutHostSupport()
+    public void Cvm_FfiImage_DegradesByDefault_RefusesUnderStrictCaps()
     {
-        // 特征位升级保证：FFI 镜像在无 FFI 能力的宿主上加载即拒跑（不再等到运行期）
+        // S-21 双态：缺省宿主 → FFI 镜像加载并降级执行（FFI 调用 → int 0 缺省值）；
+        // --strict-caps → 恢复加载期 ECS_ERR_FEAT 拒跑（迁移保底/诊断档）
         if (_vmBinary == null)
             Assert.Ignore("无 cc 编译器，跳过 C VM 侧");
         var ffiScript = Path.Combine(_dir, "ffi2.ecs");
-        File.WriteAllText(ffiScript, "EXTERN FUNC Sleep($ms:INT) FROM \"kernel32.dll\"\nSleep(1)\n");
+        File.WriteAllText(ffiScript, "EXTERN FUNC Sleep($ms:INT) FROM \"kernel32.dll\"\nSleep(1)\nPRINT \"done\"\n");
         var image = Compilation.CompileFile(ffiScript, new CompileOptions { UseDiskCache = false }).Image!;
-        File.WriteAllBytes(Path.Combine(_workDir, "ffi.ecx"), EcxWriter.Write(image));
 
-        var (exitCode, _, _) = CvmRunner.Run(_vmBinary, EcxWriter.Write(image), "abi-ffi", _workDir);
-        Assert.That(exitCode, Is.EqualTo(14), "MCU 参考宿主不提供 FFI → ECS_ERR_FEAT 加载期拒跑");
+        var (exitCode, stdout, stderr) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(image), "abi-ffi", _workDir);
+        Assert.That(exitCode, Is.EqualTo(0), $"缺省宿主应降级执行；stderr={stderr}");
+        Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(new[] { "done" }), "FFI 调用降级为 int 0，脚本继续");
+
+        var (strictExit, _, strictErr) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(image), "abi-ffi-strict", _workDir,
+            extraArgs: "--strict-caps");
+        Assert.That(strictExit, Is.EqualTo(14), $"strict_caps 应恢复加载期拒跑（ECS_ERR_FEAT）；stderr={strictErr}");
     }
 
     [Test]
@@ -122,7 +136,7 @@ public class AbiContractTests
         Assert.That(host.Lines, Is.EqualTo(new[] { "0" }), "EcxHost 默认 TimeMs = 0");
 
         // C VM 侧：桩 TIME 恒 0，逐字对齐（--print 通道开，stdout 可见）
-        var (exitCode, stdout, _) = CvmRunner.Run(_vmBinary, EcxWriter.Write(image), "abi-mix", _workDir);
+        var (exitCode, stdout, _) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(image), "abi-mix", _workDir);
         Assert.That(exitCode, Is.EqualTo(0));
         Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(new[] { "0" }), "TIME 参考桩恒 0");
     }

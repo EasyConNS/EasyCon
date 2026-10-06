@@ -58,7 +58,7 @@ public class FullChainVerificationTests
         Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0), $"[{tag}] 解释器执行失败");
 
         // ② C VM
-        var (exitCode, stdout, stderr) = RunCvm(EcxWriter.Write(project.Image!), tag);
+        var (exitCode, stdout, stderr) = RunCvm(EcsContainer.WriteImage(project.Image!), tag);
 
         // ---- 对拍 ----
         // 已知偏差白名单（§6）：TIME 为真实墙钟，stub 宿主的耗时行不比较
@@ -127,8 +127,8 @@ public class FullChainVerificationTests
     {
         // 独立编译专属链路：嵌套依赖 + 顶层常量 + init 顺序 + 导入标记
         var dir = Path.Combine(_workDir, "proj");
-        Directory.CreateDirectory(Path.Combine(dir, "lib", "lib"));
-        File.WriteAllText(Path.Combine(dir, "lib", "lib", "utils.ecs"),
+        Directory.CreateDirectory(Path.Combine(dir, "lib"));
+        File.WriteAllText(Path.Combine(dir, "lib", "utils.ecs"),
             "_scale = 3\nFUNC scale($x:INT):INT\n    RETURN $x * _scale\nENDFUNC\n");
         File.WriteAllText(Path.Combine(dir, "lib", "level.ecs"),
             "IMPORT \"utils.ecs\"\nFUNC level($x:INT):INT\n    RETURN scale($x) + 1\nENDFUNC\n");
@@ -142,9 +142,38 @@ public class FullChainVerificationTests
         Assert.That(EcxInterpreter.Run(project.Image!, moduleHost), Is.EqualTo(0));
         Assert.That(moduleHost.Lines, Is.EqualTo(new[] { "13" }));
 
-        var (exitCode, stdout, _) = RunCvm(EcxWriter.Write(project.Image!), "proj");
+        var (exitCode, stdout, _) = RunCvm(EcsContainer.WriteImage(project.Image!), "proj");
         Assert.That(exitCode, Is.EqualTo(0));
         Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(new[] { "13" }));
+    }
+
+    [Test]
+    public void FullChain_ModuleProject_TwoImportsFuncCalls()
+    {
+        // 双 IMPORT + 循环内跨模块函数调用（链接期 import 标记解析 / 模块局部 fid → 镜像 fid 重映射）。
+        // 第二行 PRINT add(answer(), 1)：PRINT 参数按「文本片段」解析，非常量/变量的调用文本原样输出
+        //（现行解析行为）——锁双端一致即可。
+        var dir = Path.Combine(_workDir, "proj-imports");
+        Directory.CreateDirectory(Path.Combine(dir, "lib"));
+        File.WriteAllText(Path.Combine(dir, "lib", "answer.ecs"),
+            "FUNC answer():INT\n    RETURN 42\nENDFUNC\n");
+        File.WriteAllText(Path.Combine(dir, "lib", "math.ecs"),
+            "FUNC add($a:INT, $b:INT):INT\n    RETURN $a + $b\nENDFUNC\n");
+        File.WriteAllText(Path.Combine(dir, "main.ecs"),
+            "IMPORT \"answer.ecs\"\nIMPORT \"math.ecs\"\n$total = 0\nFOR $i = 1 TO 5\n    $total = add($total, answer())\nNEXT\nPRINT $total\nPRINT add(answer(), 1)\n");
+
+        var project = ProjectCompiler.CompileProject(Path.Combine(dir, "main.ecs"),
+            new CompileOptions { UseDiskCache = false });
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+
+        var expected = new[] { "210", "add(answer(), 1)" };
+        var host = EcsTestHost.CreateRecording();
+        Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(expected));
+
+        var (exitCode, stdout, _) = RunCvm(EcsContainer.WriteImage(project.Image!), "proj-imports");
+        Assert.That(exitCode, Is.EqualTo(0));
+        Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(expected));
     }
 
     [Test]
@@ -183,7 +212,7 @@ public class FullChainVerificationTests
         Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
         Assert.That(host.Lines, Is.EqualTo(new[] { "41", "9" }));
 
-        var (exitCode, stdout, _) = RunCvm(EcxWriter.Write(project.Image!), "proj-nested");
+        var (exitCode, stdout, _) = RunCvm(EcsContainer.WriteImage(project.Image!), "proj-nested");
         Assert.That(exitCode, Is.EqualTo(0));
         Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(new[] { "41", "9" }));
     }

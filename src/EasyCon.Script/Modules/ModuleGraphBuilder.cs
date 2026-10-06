@@ -11,12 +11,13 @@ internal sealed class ModuleNode
 {
     public required string Name;
     public required string Source;
-    /// <summary>主脚本同目录 lib/ 中由自动加载发现的根级库。</summary>
-    public bool IsImplicitRootLib;
     /// <summary>语法树（惰性）：仅缓存未命中/主模块才 parse——缓存命中路径只读 .ecm 接口区
     /// （图构建经 Lexer 令牌扫描 IMPORT，不对依赖全量 parse）。</summary>
     public SyntaxTree? Tree;
     public required string Path;
+    /// <summary>IMPORT 解析基准（lib 根；导入规则 v2 = 主脚本 lib/ 唯一根，沿发现链传播）。
+    /// null = 单文件无路径场景。</summary>
+    public string? LibRoot;
     /// <summary>依赖节点名（图边；std/vision 隐式依赖注入在前）。</summary>
     public readonly List<string> Dependencies = new();
     public ModuleArtifact Artifact = null!;
@@ -37,13 +38,11 @@ internal static class ModuleLocations
 }
 
 /// <summary>
-/// 模块依赖图构建（docs/ModuleSystem.md §3.3/§5.3 的图构建半区）：
-/// main 树注册 + IMPORT 递归展开 + 环检测（DFS 当前路径栈）+ lib/ 自动加载（v1
-/// ImportResolver 顺序语义：显式 import 之后、main 之前）→ 根级自动库共享接口 →
-/// 隐式 std/vision 依赖注入 →
-/// 依赖序/根级库包序编译序列（main 最后）。依赖模块只做 Lexer 令牌级导入扫描
-/// （禁止裸正则）；根级库包的声明接口在缓存查找前预扫描，其余模块全量 parse
-/// 仍推迟到缓存未命中之后（编译管线的 EnsureParsed）。
+/// 模块依赖图构建（docs/ModuleSystem.md §3.3/§5.3 的图构建半区；导入规则 v2 =
+/// MODULE_IMPORT_REDESIGN.md：去 lib/ 自动加载与根级库互见包，依赖边 = 显式 IMPORT 闭包）：
+/// main 树注册 + IMPORT 递归展开 + 环检测（DFS 当前路径栈）→ 隐式 std/vision 依赖注入 →
+/// 依赖序编译序列（main 最后）。依赖模块只做 Lexer 令牌级导入扫描（禁止裸正则）；
+/// 全量 parse 推迟到缓存未命中之后（编译管线的 EnsureParsed）。
 /// 致命错误经 <see cref="DiagnosticBag"/> 上报（HasErrors 由调用方判定）；非致命提示透传。
 /// </summary>
 internal static class ModuleGraphBuilder
@@ -55,7 +54,7 @@ internal static class ModuleGraphBuilder
         public required List<ModuleNode> CompileOrder;
     }
 
-    public static Graph Build(SyntaxTree mainTree, string? scriptDir, bool allowLibAutoLoad,
+    public static Graph Build(SyntaxTree mainTree, string? scriptDir,
         CompilationTiming timing, DiagnosticBag diagnostics, bool legacySyntax = true)
     {
         var sw = Stopwatch.StartNew();
@@ -83,6 +82,7 @@ internal static class ModuleGraphBuilder
             Source = mainSource,
             Tree = mainTree,
             Path = mainPath,
+            LibRoot = scriptDir != null ? Path.Combine(scriptDir, "lib") : null,
         };
         nodes[ProjectCompiler.MainModule] = mainNode;
         byPath[mainPath] = ProjectCompiler.MainModule;
@@ -115,7 +115,11 @@ internal static class ModuleGraphBuilder
                         node.Dependencies.Add(depName);
                     continue;
                 }
-                var moduleName = Path.GetFileNameWithoutExtension(importPath);
+                // 导入规则 v2（R3）：模块名 = 相对 lib 根的去扩展路径（层级命名空间：
+                // lib/net/http.ecs → 模块 "net/http"；层级目录不再与顶层同名冲突）
+                var moduleName = node.LibRoot != null
+                    ? Path.GetRelativePath(node.LibRoot, importPath)[..^4]
+                    : Path.GetFileNameWithoutExtension(importPath);
                 if (nodes.ContainsKey(moduleName))
                 {
                     diagnostics.ReportModuleNameConflict(importLocation, moduleName, importPath);
@@ -129,6 +133,7 @@ internal static class ModuleGraphBuilder
                     Source = depSource,
                     Tree = null,
                     Path = importPath,
+                    LibRoot = node.LibRoot,   // lib 根沿发现链传播（全项目唯一）
                 };
                 nodes[moduleName] = depNode;
                 byPath[importPath] = moduleName;
@@ -145,69 +150,6 @@ internal static class ModuleGraphBuilder
         sw.Restart();
         Collect(mainNode);
         timing.ImportResolve += sw.Elapsed;
-
-        // ---- lib/ 目录自动加载（v1 ImportResolver 顺序语义：显式 import 之后、main 之前）----
-        if (allowLibAutoLoad && scriptDir != null)
-        {
-            sw.Restart();
-            var libDir = Path.Combine(scriptDir, "lib");
-            if (Directory.Exists(libDir))
-            {
-                foreach (var file in Directory.GetFiles(libDir, "*.ecs").OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
-                {
-                    var fullPath = Path.GetFullPath(file);
-                    if (byPath.TryGetValue(fullPath, out string? existingName))
-                    {
-                        // 显式/间接导入只负责加载一次；若它也位于主脚本根级 lib/，
-                        // 仍须成为自动库包成员并对 main 可见。
-                        ModuleNode existingNode = nodes[existingName];
-                        existingNode.IsImplicitRootLib = true;
-                        if (!mainNode.Dependencies.Contains(existingName))
-                            mainNode.Dependencies.Add(existingName);
-                        continue;
-                    }
-                    var moduleName = Path.GetFileNameWithoutExtension(fullPath);
-                    if (nodes.ContainsKey(moduleName))
-                    {
-                        diagnostics.ReportModuleNameConflict(ModuleLocations.FirstImport(mainTree), moduleName, fullPath);
-                        continue;
-                    }
-                    var swRead = Stopwatch.StartNew();
-                    var libNode = new ModuleNode
-                    {
-                        Name = moduleName,
-                        Source = File.ReadAllText(fullPath),
-                        IsImplicitRootLib = true,
-                        Tree = null,
-                        Path = fullPath,
-                    };
-                    nodes[moduleName] = libNode;
-                    byPath[fullPath] = moduleName;
-                    timing.FileLoad += swRead.Elapsed;
-                    Collect(libNode);   // lib 可再 import 其他模块（嵌套导入）
-                    if (!mainNode.Dependencies.Contains(moduleName))
-                        mainNode.Dependencies.Add(moduleName);
-                }
-            }
-            timing.AutoLoadLib += sw.Elapsed;
-        }
-
-        // 根级自动加载库属于同一个隐式库包。主脚本一直可以看到所有自动库，
-        // 这里把同一包内的接口也提供给每个库，恢复旧版“库文件无需互相 IMPORT
-        // 也能互调”的语义。只连接自动发现的根级库；显式 IMPORT 的 alias 作用域
-        // 仍保持原有隔离。编译管线会在消费这些边之前预先建立根级库接口。
-        var implicitRootLibs = nodes.Values
-            .Where(n => n.IsImplicitRootLib)
-            .OrderBy(n => n.Path, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        foreach (var node in implicitRootLibs)
-        {
-            foreach (var peer in implicitRootLibs)
-            {
-                if (!ReferenceEquals(node, peer) && !node.Dependencies.Contains(peer.Name))
-                    node.Dependencies.Add(peer.Name);
-            }
-        }
 
         // ---- 隐式依赖：std/vision 先于一切用户模块；main 恒最后 ----
         var compileOrder = new List<ModuleNode>
@@ -244,8 +186,8 @@ internal static class ModuleGraphBuilder
 
         var sourceText = SourceText.From(node.Source, node.Path.Length > 0 ? node.Path : node.Name + ".ecs");
         var tokens = SyntaxTree.ParseTokens(sourceText, legacySyntax);
-        // 导入路径解析与 Parser.ParseImport 一致：InitPath = <文件目录>/lib/
-        var initPath = Path.Combine(Path.GetDirectoryName(node.Path) ?? "", "lib");
+        // 导入路径解析与 Parser.ParseImport 一致：基准 = 节点 lib 根（主脚本 lib/ 唯一根）
+        var initPath = node.LibRoot ?? Path.Combine(Path.GetDirectoryName(node.Path) ?? "", "lib");
         var result = new List<(string, TextLocation)>();
         for (int i = 0; i < tokens.Length; i++)
         {

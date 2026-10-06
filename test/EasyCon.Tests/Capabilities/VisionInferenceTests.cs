@@ -99,8 +99,11 @@ public class VisionInferenceTests
     }
 
     [Test]
-    public void Cvm_RejectsVisionBitImage_WithFeatError()
+    public void Cvm_VisionImage_MatchesStubInterpreter_OrRefusesUnderStrictCaps()
     {
+        // S-21 四路对拍（能力矩阵，NET 族切片）：
+        // ① C# 缺能力宿主（Native=null → 缺省值表）≡ ② C VM 参考宿主（native=NULL → ecs_cap_*）逐字；
+        // ③ C VM --strict-caps → 恢复加载期 ECS_ERR_FEAT 拒跑。
         var result = Compilation.CompileSource(Script,
             new CompileOptions { ExtVars = ImmutableHashSet<string>.Empty, UseDiskCache = false });
         Assert.That(result.Diagnostics.Where(d => d.IsError).ToList(), Is.Empty, "编译失败");
@@ -112,16 +115,27 @@ public class VisionInferenceTests
             var vmBinary = CvmRunner.EnsureBuilt(workDir);
             if (vmBinary == null)
             {
-                Assert.Ignore("无 cc 编译器，跳过 C VM Vision 拒跑验证");
+                Assert.Ignore("无 cc 编译器，跳过 C VM Vision 对拍");
                 return;
             }
 
-            byte[] ecx = EcxWriter.Write(result.Image!);
-            var (exitCode, _, stderr) = CvmRunner.Run(vmBinary, ecx, "vision-feat", workDir);
-            // ECS_ERR_FEAT = 14（ecs_vm.h；C 侧加载器通用校验，宿主 feats 不含 VISION 即拒跑）
+            // ① C# 缺能力宿主：参考 syscall + Native=null → 缺省值表（录制型宿主收 PRINT 行）
+            var host = EcsTestHost.CreateRecording();
+            Assert.That(EcxInterpreter.Run(result.Image!, host), Is.EqualTo(0));
+            Assert.That(host.Lines, Is.EqualTo(new[] { "-1", "0", "0" }), "C# 缺省值表降级");
+
+            byte[] ecx = EcsContainer.WriteImage(result.Image!);
+            // ② C VM 缺省（降级）
+            var (exitCode, stdout, stderr) = CvmRunner.Run(vmBinary, ecx, "vision-degrade", workDir);
+            Assert.That(exitCode, Is.EqualTo(0), $"C VM 降级执行；stderr={stderr}");
+            Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(host.Lines), "NET 族缺省值双端锁步");
+
+            // ③ strict
+            var (strictExit, _, strictErr) = CvmRunner.Run(vmBinary, ecx, "vision-strict", workDir,
+                extraArgs: "--strict-caps");
             const int EcsErrFeat = 14;
-            Assert.That(exitCode, Is.EqualTo(EcsErrFeat),
-                "C VM 应拒跑含 Vision 位的镜像（ECS_ERR_FEAT）：" + stderr);
+            Assert.That(strictExit, Is.EqualTo(EcsErrFeat),
+                $"strict_caps 应拒跑含 Vision 位的镜像（ECS_ERR_FEAT）：{strictErr}");
         }
         finally
         {

@@ -97,16 +97,16 @@ internal static class CvmRunner
         return binary;
     }
 
-    /// <summary>执行镜像并采集 stdout（--print）/stderr（--trace 事件 TSV）。</summary>
+    /// <summary>执行镜像并采集 stdout（--print）/stderr（--trace 事件 TSV）；extraArgs 追加宿主旗标（如 --strict-caps）。</summary>
     public static (int ExitCode, string Stdout, string Stderr) Run(string vmBinary, byte[] ecx, string tag,
-        string workDir, int timeoutMs = 120000)
+        string workDir, int timeoutMs = 120000, string? extraArgs = null)
     {
         var ecxPath = Path.Combine(workDir, $"{tag}.ecx");
         File.WriteAllBytes(ecxPath, ecx);
         var psi = new ProcessStartInfo
         {
             FileName = vmBinary,
-            Arguments = $"run \"{ecxPath}\" --print --trace",
+            Arguments = $"run \"{ecxPath}\" --print --trace{(string.IsNullOrEmpty(extraArgs) ? "" : $" {extraArgs}")}",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,

@@ -139,7 +139,7 @@ public class ScriptService : IScriptService
     // 宿主不再手写 CompileOptions / CapabilitySet 字面量，避免与 CLI 漂移。
     static ScriptHostOptions Options(ImmutableHashSet<string> extVars) => new()
     {
-        Compile = ScriptCompileProfiles.Desktop(extVars),
+        Compile = ScriptCompileProfiles.Interactive(extVars),
     };
 
     /// <summary>编译并落诊断日志；出错返回 null。</summary>

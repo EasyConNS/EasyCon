@@ -66,7 +66,7 @@ public class CorpusCrossValidationTests
         if (_vmBinary == null)
             Assert.Ignore("无 cc 编译器，仅完成解释器侧语料验证（C VM 侧跳过）");
 
-        var (exitCode, stdout, stderr) = CvmRunner.Run(_vmBinary, EcxWriter.Write(result.Image!), tag, _workDir);
+        var (exitCode, stdout, stderr) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(result.Image!), tag, _workDir);
         Assert.That(exitCode, Is.EqualTo(0), $"[{tag}] C VM 退出码：{exitCode}；stderr={stderr}");
         Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(expectedLines),
             $"[{tag}] C VM 与期望输出不一致（双端不一致时先判定哪端错，修实现而非改期望）");

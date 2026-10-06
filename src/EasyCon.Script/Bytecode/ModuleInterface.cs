@@ -223,34 +223,34 @@ public static class InterfaceHasher
 }
 
 /// <summary>
-/// 接口序列化（ECM v2 接口区，EcmFormat 内嵌；字节布局小端、UTF-8 长度前置字符串）。
+/// 接口序列化（ECM1 元数据尾块内嵌 blob；字节布局小端、UTF-8 长度前置字符串，内层格式自有版本演进）。
 /// </summary>
 public static class ModuleInterfaceFormat
 {
     public static void Write(BinaryWriter w, ModuleInterface iface)
     {
-        EcmFormat.WriteUtf8(w, iface.Name);
-        EcmFormat.WriteUtf8(w, iface.CompilerVersion);
-        EcmFormat.WriteUtf8(w, iface.InterfaceHash);
+        EcsContainer.WriteUtf8(w, iface.Name);
+        EcsContainer.WriteUtf8(w, iface.CompilerVersion);
+        EcsContainer.WriteUtf8(w, iface.InterfaceHash);
         w.Write(iface.HasInit);
 
         w.Write(iface.Functions.Count);
         foreach (var f in iface.Functions)
         {
-            EcmFormat.WriteUtf8(w, f.Name);
-            EcmFormat.WriteUtf8(w, f.ReturnTypeName);
+            EcsContainer.WriteUtf8(w, f.Name);
+            EcsContainer.WriteUtf8(w, f.ReturnTypeName);
             w.Write(f.IsExtern);
             if (f.IsExtern)
             {
-                EcmFormat.WriteUtf8(w, f.ExternLibrary ?? "");
-                EcmFormat.WriteUtf8(w, f.ExternalName ?? "");
+                EcsContainer.WriteUtf8(w, f.ExternLibrary ?? "");
+                EcsContainer.WriteUtf8(w, f.ExternalName ?? "");
             }
             w.Write(f.DeclLine);
             w.Write(f.Params.Count);
             foreach (var p in f.Params)
             {
-                EcmFormat.WriteUtf8(w, p.Name);
-                EcmFormat.WriteUtf8(w, p.TypeName);
+                EcsContainer.WriteUtf8(w, p.Name);
+                EcsContainer.WriteUtf8(w, p.TypeName);
                 w.Write((byte)p.Ordinal);
                 w.Write(p.HasDefault);
                 if (p.HasDefault)
@@ -261,54 +261,54 @@ public static class ModuleInterfaceFormat
         w.Write(iface.Structs.Count);
         foreach (var s in iface.Structs)
         {
-            EcmFormat.WriteUtf8(w, s.Name);
+            EcsContainer.WriteUtf8(w, s.Name);
             w.Write(s.Fields.Count);
             foreach (var fld in s.Fields)
             {
-                EcmFormat.WriteUtf8(w, fld.Name);
-                EcmFormat.WriteUtf8(w, fld.TypeName);
+                EcsContainer.WriteUtf8(w, fld.Name);
+                EcsContainer.WriteUtf8(w, fld.TypeName);
             }
         }
 
         w.Write(iface.ILNames.Count);
         foreach (var il in iface.ILNames)
-            EcmFormat.WriteUtf8(w, il);
+            EcsContainer.WriteUtf8(w, il);
 
         w.Write(iface.Dependencies.Count);
         foreach (var d in iface.Dependencies)
         {
-            EcmFormat.WriteUtf8(w, d.Name);
-            EcmFormat.WriteUtf8(w, d.InterfaceHash);
+            EcsContainer.WriteUtf8(w, d.Name);
+            EcsContainer.WriteUtf8(w, d.InterfaceHash);
         }
     }
 
     public static ModuleInterface Read(BinaryReader r)
     {
-        var name = EcmFormat.ReadUtf8(r);
-        var version = EcmFormat.ReadUtf8(r);
-        var hash = EcmFormat.ReadUtf8(r);
+        var name = EcsContainer.ReadUtf8(r);
+        var version = EcsContainer.ReadUtf8(r);
+        var hash = EcsContainer.ReadUtf8(r);
         bool hasInit = r.ReadBoolean();
 
-        int funcCount = EcmFormat.ReadCount(r);
+        int funcCount = EcsContainer.ReadCount(r);
         var funcs = new List<ExportedFunction>(funcCount);
         for (int i = 0; i < funcCount; i++)
         {
-            var fname = EcmFormat.ReadUtf8(r);
-            var ret = EcmFormat.ReadUtf8(r);
+            var fname = EcsContainer.ReadUtf8(r);
+            var ret = EcsContainer.ReadUtf8(r);
             bool isExtern = r.ReadBoolean();
             string? lib = null, extName = null;
             if (isExtern)
             {
-                lib = EcmFormat.ReadUtf8(r);
-                extName = EcmFormat.ReadUtf8(r);
+                lib = EcsContainer.ReadUtf8(r);
+                extName = EcsContainer.ReadUtf8(r);
             }
             int declLine = r.ReadInt32();
-            int paramCount = EcmFormat.ReadCount(r);
+            int paramCount = EcsContainer.ReadCount(r);
             var ps = new List<ExportedParam>(paramCount);
             for (int p = 0; p < paramCount; p++)
             {
-                var pname = EcmFormat.ReadUtf8(r);
-                var ptype = EcmFormat.ReadUtf8(r);
+                var pname = EcsContainer.ReadUtf8(r);
+                var ptype = EcsContainer.ReadUtf8(r);
                 int ordinal = r.ReadByte();
                 bool hasDefault = r.ReadBoolean();
                 object? def = hasDefault ? ReadDefault(r) : null;
@@ -326,27 +326,27 @@ public static class ModuleInterfaceFormat
             });
         }
 
-        int structCount = EcmFormat.ReadCount(r);
+        int structCount = EcsContainer.ReadCount(r);
         var structs = new List<ExportedStruct>(structCount);
         for (int i = 0; i < structCount; i++)
         {
-            var sname = EcmFormat.ReadUtf8(r);
-            int fieldCount = EcmFormat.ReadCount(r);
+            var sname = EcsContainer.ReadUtf8(r);
+            int fieldCount = EcsContainer.ReadCount(r);
             var fields = new List<ExportedField>(fieldCount);
             for (int f = 0; f < fieldCount; f++)
-                fields.Add(new ExportedField { Name = EcmFormat.ReadUtf8(r), TypeName = EcmFormat.ReadUtf8(r) });
+                fields.Add(new ExportedField { Name = EcsContainer.ReadUtf8(r), TypeName = EcsContainer.ReadUtf8(r) });
             structs.Add(new ExportedStruct { Name = sname, Fields = fields });
         }
 
-        int ilCount = EcmFormat.ReadCount(r);
+        int ilCount = EcsContainer.ReadCount(r);
         var ilNames = new List<string>(ilCount);
         for (int i = 0; i < ilCount; i++)
-            ilNames.Add(EcmFormat.ReadUtf8(r));
+            ilNames.Add(EcsContainer.ReadUtf8(r));
 
-        int depCount = EcmFormat.ReadCount(r);
+        int depCount = EcsContainer.ReadCount(r);
         var deps = new List<ModuleDependency>(depCount);
         for (int i = 0; i < depCount; i++)
-            deps.Add(new ModuleDependency { Name = EcmFormat.ReadUtf8(r), InterfaceHash = EcmFormat.ReadUtf8(r) });
+            deps.Add(new ModuleDependency { Name = EcsContainer.ReadUtf8(r), InterfaceHash = EcsContainer.ReadUtf8(r) });
 
         return new ModuleInterface
         {
@@ -378,7 +378,7 @@ public static class ModuleInterfaceFormat
                 break;
             case string v:
                 w.Write((byte)3);
-                EcmFormat.WriteUtf8(w, v);
+                EcsContainer.WriteUtf8(w, v);
                 break;
             case bool v:
                 w.Write((byte)4);
@@ -396,7 +396,7 @@ public static class ModuleInterfaceFormat
             0 => null,
             1 => r.ReadInt32(),
             2 => r.ReadDouble(),
-            3 => EcmFormat.ReadUtf8(r),
+            3 => EcsContainer.ReadUtf8(r),
             4 => r.ReadBoolean(),
             var t => throw new BytecodeException(new[] { new BytecodeDiagnostic($"默认值载荷标签非法 {t}", null, 0) }),
         };

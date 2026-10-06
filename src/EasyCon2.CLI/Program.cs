@@ -137,7 +137,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     outdap.Log("正在解析脚本...");
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = ScriptCompileProfiles.Desktop(label.Select(il => il.name)),
+        Compile = ScriptCompileProfiles.Interactive(label.Select(il => il.name)),
     });
     Console.WriteLine(session.Info.Timing?.ToReport());
     var diag = session.Info.Diagnostics;
@@ -350,7 +350,7 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
 
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = ScriptCompileProfiles.Desktop(label.Select(il => il.name)),
+        Compile = ScriptCompileProfiles.Interactive(label.Select(il => il.name)),
         Capabilities = new EasyCon.Core.Capabilities.CapabilitySet(),
     });
     var diag = session.Info.Diagnostics;
@@ -392,7 +392,7 @@ irCommand.SetAction(async (parseResult, cancellationToken) =>
 
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = ScriptCompileProfiles.Desktop(label.Select(il => il.name)),
+        Compile = ScriptCompileProfiles.Interactive(label.Select(il => il.name)),
         Capabilities = new EasyCon.Core.Capabilities.CapabilitySet(),
     });
     var diag = session.Info.Diagnostics;
@@ -426,7 +426,7 @@ static string DumpIr(EasyCon.Core.Script.IScriptEngine engine, EasyCon.Core.Scri
         Path.GetFullPath(Path.GetDirectoryName(file) ?? ""), AppDomain.CurrentDomain.BaseDirectory);
     var rerun = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = ScriptCompileProfiles.Desktop(label.Select(il => il.name), optimize: false),
+        Compile = ScriptCompileProfiles.Interactive(label.Select(il => il.name), optimize: false),
     });
     return rerun.Info.Program != null
         ? SsaPrinter.Dump(rerun.Info.Program)
@@ -448,7 +448,7 @@ modulesCommand.SetAction(async (parseResult, cancellationToken) =>
     var (label, _, _) = ECCore.LoadImgLabels(
         Path.GetDirectoryName(Path.GetFullPath(file)) ?? "", AppDomain.CurrentDomain.BaseDirectory);
     var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(
-        file, ScriptCompileProfiles.Portable(label.Select(il => il.name)));
+        file, ScriptCompileProfiles.Distributable(label.Select(il => il.name)));
 
     Console.WriteLine($"独立编译：{(project.Success ? "成功" : "失败")}  缓存命中 {project.CacheHits} / 未命中 {project.CacheMisses} / 错误重放 {project.ErrorHits} / GC 清理 {project.GarbageCollected}");
     Console.WriteLine();
@@ -474,27 +474,48 @@ var outOption = new Option<string>("--out", "-o")
 {
     Description = "输出 .ecx 路径（缺省 = 脚本同名 .ecx）",
 };
+var stripOption = new Option<bool>("--no-strip")
+{
+    Description = "保留调试段（SEC_LINES/DEBUG_NAMES）；缺省省略（MCU 发布形态）",
+};
+var diagFormatOption = new Option<string>("--diagnostic-format")
+{
+    Description = "诊断输出格式：text（缺省）| json（结构化错误码/位置，CI 消费）",
+};
+compileCommand.Options.Add(stripOption);
 compileCommand.Options.Add(outOption);
+compileCommand.Options.Add(diagFormatOption);
 compileCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     string file = parseResult.GetValue(scriptOption)!;
+    bool strip = !parseResult.GetValue(stripOption);
     string outPath = parseResult.GetValue(outOption) ?? Path.ChangeExtension(file, ".ecx");
+    bool jsonDiag = parseResult.GetValue(diagFormatOption) == "json";
 
-    // MCU 分发档：这是唯一能产出可序列化 .ecx 的档位（桌面档含 PC 宽槽指令，EcxWriter 会拒绝）。
+    // MCU 分发档：obj/ 缓存 + 可分发 .ecx（单流化后全部产物同形态，容量由烧录前预检判定）。
     var (label, _, _) = ECCore.LoadImgLabels(
         Path.GetDirectoryName(Path.GetFullPath(file)) ?? "", AppDomain.CurrentDomain.BaseDirectory);
     var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(
-        file, ScriptCompileProfiles.Portable(label.Select(il => il.name)));
-    foreach (var w in project.Warnings)
-        Console.WriteLine($"警告: {w}");
-    if (!project.Success)
+        file, ScriptCompileProfiles.Distributable(label.Select(il => il.name)));
+    if (jsonDiag)
     {
-        foreach (var d in project.Diagnostics)
-            Console.Error.WriteLine($"错误: {d}");
-        return 1;
+        Console.WriteLine(EasyCon.Script.DiagnosticFormat.ToJson(project.Diagnostics));
+        if (!project.Success)
+            return 1;
     }
-    File.WriteAllBytes(outPath, EasyCon.Script.Bytecode.EcxWriter.Write(project.Image!, stripDebug: false));
-    Console.WriteLine($"已生成 {outPath}（{new FileInfo(outPath).Length} B，{project.Image!.Functions.Count} 函数，模块: {string.Join(" → ", project.Artifacts.Select(a => a.Name))}）");
+    else
+    {
+        foreach (var w in project.Warnings)
+            Console.WriteLine($"警告: {w}");
+        if (!project.Success)
+        {
+            foreach (var d in project.Diagnostics)
+                Console.Error.WriteLine($"错误: {d}");
+            return 1;
+        }
+    }
+    File.WriteAllBytes(outPath, EasyCon.Script.Bytecode.EcsContainer.WriteImage(project.Image!, stripDebug: strip));
+    Console.WriteLine($"已生成 {outPath}（{new FileInfo(outPath).Length} B，{project.Image!.Functions.Count} 函数{(strip ? "，stripDebug" : "，含调试段")}，模块: {string.Join(" → ", project.Artifacts.Select(a => a.Name))}）");
     Console.WriteLine($"执行: ecs-vm run {outPath}");
     return 0;
 });

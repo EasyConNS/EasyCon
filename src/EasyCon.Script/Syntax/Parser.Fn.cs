@@ -96,12 +96,12 @@ internal partial class Parser
         }
 
         MatchEOF();
-        var libSrc = Path.GetFullPath(Path.Combine(_filePath, LibPath, mod.STRTrimQ()));
-        if (!libSrc.StartsWith(_filePath, StringComparison.OrdinalIgnoreCase) || !File.Exists(libSrc))
+        var libSrc = Path.GetFullPath(Path.Combine(_importBase, mod.STRTrimQ()));
+        if (!File.Exists(libSrc))
             _diagnostics.ReportInvalidImport(mod.Location, mod);
 
         // 使用对象初始化器设置Alias属性
-        return new ImportStmt(keyword, mod, Path.Combine(_filePath, LibPath))
+        return new ImportStmt(keyword, mod, _importBase)
         {
             Alias = alias
         };
