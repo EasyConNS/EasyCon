@@ -1,9 +1,9 @@
 using AvaloniaEdit.CodeCompletion;
-using EasyCon2.Avalonia.Core.Editor;
+using EasyCon2.Avalonia.Editor;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using AvTextDocument = AvaloniaEdit.Document.TextDocument;
 
-namespace EasyCon2.Avalonia.Core.Editor.Lsp;
+namespace EasyCon2.Avalonia.Editor.Lsp;
 
 internal class LspCompletionAdapter : ICompletionProvider
 {

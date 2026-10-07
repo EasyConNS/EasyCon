@@ -1,4 +1,4 @@
-namespace EasyCon2.Avalonia.Core.Input;
+namespace EasyCon2.Avalonia.Input;
 
 /// <summary>
 /// Avalonia <see cref="global::Avalonia.Input.Key"/> 与 SDL 扫描码之间的映射，

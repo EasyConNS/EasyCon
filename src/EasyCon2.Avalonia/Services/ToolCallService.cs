@@ -1,6 +1,6 @@
 ﻿using Avalonia.Threading;
 using EasyCon.Capture;
-using EasyCon2.Avalonia.Core.Services;
+using EasyCon2.Avalonia.Services;
 using OpenCvSharp;
 using System.Collections.Concurrent;
 using System.Text;

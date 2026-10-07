@@ -47,8 +47,7 @@ ci\windows-x64.bat
 | `src/EzTesseract` | OCR (hand-written Tesseract/Leptonica bindings); zero project references |
 | `src/EasyCon.Lsp` | LSP language server for ECS scripts (reuses Script's syntax tree only) |
 | `src/EasyCon.SDLInput` | Cross-platform input via SDL3 (the only production input backend) |
-| `src/EasyCon2.Avalonia.Core` | Pure VM/logic layer — zero Avalonia package references |
-| `src/EasyCon2.Avalonia` | Avalonia GUI (MVVM): views/controls + platform service implementations + `VPad/` |
+| `src/EasyCon2.Avalonia` | Avalonia GUI (MVVM), **feature-first layout** (`Shell/` `Monitor/` `FileTree/` `Connection/` `KeyMapping/` `AiAgent/` `Mcp/` `ModelsConfig/` `AlertConfig/` `TagEditor/` `Terminal/` `Editor/` + shared `Services/` `Models/` `Controls/` `Behaviors/` `Converters/`); absorbed former `EasyCon2.Avalonia.Core`; namespaces are `EasyCon2.Avalonia.<Feature>.*` |
 | `src/EasyCon2.UI.Common` | Legacy resx resources only (see "Layering" below — mostly vestigial) |
 | `test/EasyCon.Tests` | Core/Script tests (NUnit), includes C VM ↔ C# interpreter cross-validation |
 | `test/EasyCon.Lsp.Tests` | LSP tests |
@@ -69,7 +68,7 @@ EasyCon.Script   EasyCon.Device   EasyCon.Capture ──► EzTesseract     (lea
                 EasyCon.Core            ← capability PORTS + COMPOSITION ROOT
                       ▲
       ┌───────────────┼──────────────────┐
-EasyCon.SDLInput   EasyCon.Lsp   EasyCon2.Avalonia.Core ──► EasyCon2.Avalonia
+EasyCon.SDLInput   EasyCon.Lsp   EasyCon2.Avalonia
 EasyCon2.CLI ──► EasyCon.Core + EasyCon.Lsp
 ```
 
@@ -86,8 +85,7 @@ Rules to respect when changing code:
   (frozen 8-bit slots, the only MCU-distributable and cacheable profile).
 - DI *container* is deliberately absent: composition is explicit constructor passing from
   `App.axaml.cs` (GUI) and `Program.cs` (CLI).
-- Two known warts, do not spread them: `EasyCon2.Avalonia/ViewModels/` holds a few Avalonia-typed VMs
-  outside the compiler-enforced purity zone, and `EasyCon2.UI.Common` is a vestigial resx-only project.
+- One known wart: `EasyCon2.UI.Common` is a vestigial resx-only project.
 
 ## Code conventions (enforced by .editorconfig)
 
@@ -107,10 +105,10 @@ Rules to respect when changing code:
 
 ## MVVM architecture (Avalonia UI)
 
-The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict MVVM:
+The Avalonia GUI (`EasyCon2.Avalonia`) follows MVVM:
 
-- **ViewModel must NOT reference any Avalonia control types** (Window, Control, TextBox, etc.). `EasyCon2.Avalonia.Core` carries no Avalonia package references, so this constraint is **enforced by the compiler** — a ViewModel that starts using Avalonia types simply fails to build. The few Avalonia-typed VMs (`MonitorViewModel`, `ESPConfigViewModel`, `KeyMappingViewModel`, `FileTreeViewModel`, `MainWindowViewModel`, `ControllerConnectionViewModel`) live in `EasyCon2.Avalonia/ViewModels/`, i.e. deliberately outside the enforced zone.
-- **View resolution is explicit, not convention-based**: views are declared in axaml with `DataContext="{Binding ...}"`, or constructed by `WindowService`. The registered `ViewLocator` matches almost nothing and is effectively dead code — do not rely on `FooViewModel → FooView` name mapping. Views for Core-layer VMs live in the `EasyCon2.Avalonia` project but keep `EasyCon2.Avalonia.Core.*` namespaces so axaml `using:` and `x:DataType` resolve.
+- **ViewModel should NOT reference Avalonia control types** (Window, Control, TextBox, etc.). This was previously **compiler-enforced** by the separate `EasyCon2.Avalonia.Core` project (since merged into `EasyCon2.Avalonia` at user request), so the constraint is now convention-only — do not reintroduce Avalonia types into ViewModels.
+- **View resolution is explicit, not convention-based**: views are declared in axaml with `DataContext="{Binding ...}"`, or constructed by `WindowService`. The former `ViewLocator` (dead code) has been deleted — do not rely on `FooViewModel → FooView` name mapping. Namespaces follow folders: `EasyCon2.Avalonia.<Feature>`; axaml `using:` and `x:DataType` must match.
 - **View → ViewModel**: prefer bindings (`{Binding}`, `{x:Bind}`), avoid code-behind event subscriptions
 - **ViewModel → View**: use `[ObservableProperty]` (CommunityToolkit.Mvvm) or `AvaloniaProperty` with bindings
 - **Code-behind** is only for: platform APIs (file dialogs, drag-drop), layout (SizeChanged), visual tree init (FoldingManager, LSP). No business logic.

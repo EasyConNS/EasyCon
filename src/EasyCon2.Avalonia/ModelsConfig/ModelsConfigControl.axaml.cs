@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using EasyCon.Core.Config;
 
-namespace EasyCon2.Avalonia.Core.ModelsConfig;
+namespace EasyCon2.Avalonia.ModelsConfig;
 
 public partial class ModelsConfigControl : UserControl
 {

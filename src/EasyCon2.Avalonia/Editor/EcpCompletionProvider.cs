@@ -1,7 +1,7 @@
 using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.Document;
 
-namespace EasyCon2.Avalonia.Core.Editor;
+namespace EasyCon2.Avalonia.Editor;
 
 public interface ICompletionProvider
 {

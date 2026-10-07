@@ -10,10 +10,10 @@ using AvaloniaEdit.Highlighting;
 using AvaloniaEdit.Search;
 using EasyCon.Core;
 using EasyCon.Core.Config;
-using EasyCon2.Avalonia.Core.Editor.Lsp;
+using EasyCon2.Avalonia.Editor.Lsp;
 using System.Diagnostics;
 
-namespace EasyCon2.Avalonia.Core.Editor;
+namespace EasyCon2.Avalonia.Editor;
 
 public partial class ScriptEditorControl : UserControl
 {

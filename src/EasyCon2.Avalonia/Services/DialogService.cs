@@ -4,8 +4,9 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using EasyCon2.Avalonia.Controls;
-using EasyCon2.Avalonia.Core.Services;
-using EasyCon2.Avalonia.Views;
+using EasyCon2.Avalonia.Scripting;
+using EasyCon2.Avalonia.Models;
+using EasyCon2.Avalonia.Services;
 
 namespace EasyCon2.Avalonia.Services;
 

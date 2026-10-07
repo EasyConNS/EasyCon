@@ -14,7 +14,6 @@
         <ResourceInclude x:Key="zh_CN" Source="/Resources/Locales/zh_CN.axaml" />
     </Application.Resources>
     <Application.DataTemplates>
-        <local:ViewLocator />
     </Application.DataTemplates>
 
     <!-- macOS 应用菜单：覆盖框架默认的 "About Avalonia"。仅 macOS 生效，其它平台被忽略。

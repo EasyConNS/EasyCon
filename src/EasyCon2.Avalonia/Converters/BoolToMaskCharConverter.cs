@@ -1,7 +1,7 @@
 using Avalonia.Data.Converters;
 using System.Globalization;
 
-namespace EasyCon2.Avalonia.Core.Converters;
+namespace EasyCon2.Avalonia.Converters;
 
 /// <summary>
 /// 布尔 → char 转换。默认：true（隐藏）→ '•'，false（显示）→ '\0'（无遮蔽）。

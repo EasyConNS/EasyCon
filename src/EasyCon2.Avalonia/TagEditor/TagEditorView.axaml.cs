@@ -1,11 +1,11 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
-using EasyCon2.Avalonia.Core.TagEditor;
+using EasyCon2.Avalonia.TagEditor;
 using System;
 using System.IO;
 
-namespace EasyCon2.Avalonia.Core.TagEditor;
+namespace EasyCon2.Avalonia.TagEditor;
 
 public partial class TagEditorView : UserControl
 {

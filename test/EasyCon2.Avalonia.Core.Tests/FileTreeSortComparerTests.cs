@@ -1,4 +1,4 @@
-using EasyCon2.Avalonia.Core.FileTree;
+using EasyCon2.Avalonia.FileTree;
 using System.Globalization;
 
 namespace EasyCon2.Avalonia.Core.Tests;

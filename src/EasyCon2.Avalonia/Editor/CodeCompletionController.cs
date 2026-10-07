@@ -4,7 +4,7 @@ using AvaloniaEdit;
 using AvaloniaEdit.CodeCompletion;
 using System.Diagnostics;
 
-namespace EasyCon2.Avalonia.Core.Editor;
+namespace EasyCon2.Avalonia.Editor;
 
 internal class CodeCompletionController : IDisposable
 {

@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="EasyCon2.Avalonia.UiTests" />
+    <!-- 吸收 EasyCon2.Avalonia.Core 后由本项目直接对外暴露 internal -->
+    <InternalsVisibleTo Include="EasyCon2.Avalonia.Core.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,11 +37,16 @@
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="AvaloniaUI.DiagnosticsSupport" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <!-- 吸收 EasyCon2.Avalonia.Core 后承接的包 -->
+    <PackageReference Include="OmniSharp.Extensions.LanguageClient" />
+    <PackageReference Include="ModelContextProtocol.Core" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
-    <ProjectReference Include="..\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
+    <ProjectReference Include="..\EasyCon.Lsp\EasyCon.Lsp.csproj" />
     <ProjectReference Include="..\EasyCon.SDLInput\EasyCon.SDLInput.csproj" />
   </ItemGroup>
 

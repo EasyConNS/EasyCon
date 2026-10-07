@@ -3,7 +3,7 @@ using AvaloniaEdit.Highlighting.Xshd;
 using System.Reflection;
 using System.Xml;
 
-namespace EasyCon2.Avalonia.Core.Editor;
+namespace EasyCon2.Avalonia.Editor;
 
 public static class EcsHighlightingLoader
 {

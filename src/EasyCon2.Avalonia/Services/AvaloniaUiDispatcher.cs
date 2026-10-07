@@ -1,5 +1,5 @@
 using Avalonia.Threading;
-using EasyCon2.Avalonia.Core.Threading;
+using EasyCon2.Avalonia.Services;
 
 namespace EasyCon2.Avalonia.Services;
 

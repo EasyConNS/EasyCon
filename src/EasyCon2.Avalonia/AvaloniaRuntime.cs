@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
 
-namespace EasyCon2.Avalonia.Core;
+namespace EasyCon2.Avalonia;
 
 public static class AvaloniaRuntime
 {

@@ -1,11 +1,11 @@
 using EasyCon.Capture;
 using EasyCon.Core.Services;
-using EasyCon2.Avalonia.Core.Services;
+using EasyCon2.Avalonia.Services;
 using EasyDevice;
 using EasyDevice.Connection;
 using EasyScript;
 using System.Collections.Concurrent;
-using IDeviceService = EasyCon2.Avalonia.Core.Services.IDeviceService;
+using IDeviceService = EasyCon2.Avalonia.Services.IDeviceService;
 
 namespace EasyCon2.Avalonia.Core.Tests;
 

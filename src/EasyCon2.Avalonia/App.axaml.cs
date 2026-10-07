@@ -3,12 +3,17 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using EasyCon.Core.Config;
-using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.ViewModels;
-using EasyCon2.Avalonia.Views;
+using EasyCon2.Avalonia.Shell;
+using EasyCon2.Avalonia.Monitoring;
+using EasyCon2.Avalonia.Connection;
+using EasyCon2.Avalonia.KeyMapping;
+using EasyCon2.Avalonia.Scripting;
+using EasyCon2.Avalonia.AlertConfig;
+using EasyCon2.Avalonia.Mcp;
+using EasyCon2.Avalonia.ModelsConfig;
 using ControllerService = EasyCon2.Avalonia.Services.ControllerService;
-using CoreLogService = EasyCon2.Avalonia.Core.Services.LogService;
+using CoreLogService = EasyCon2.Avalonia.Services.LogService;
 using DeviceService = EasyCon2.Avalonia.Services.DeviceService;
 
 namespace EasyCon2.Avalonia;
@@ -50,10 +55,10 @@ public partial class App : Application
                 logService.AddLog($"[配置] {path}: {message}");
 
             // LSP 客户端诊断路由到日志文件（Release 下此前完全无输出）
-            EasyCon2.Avalonia.Core.Editor.Lsp.LspClientService.LogSink = message => logService.AddLog(message);
+            EasyCon2.Avalonia.Editor.Lsp.LspClientService.LogSink = message => logService.AddLog(message);
 
             // AI Agent 诊断路由到日志文件（替代丢失的 Console 输出）
-            EasyCon2.Avalonia.Core.AiAgent.AiAgentViewModel.DiagLog = message => logService.AddLog(message);
+            EasyCon2.Avalonia.AiAgent.AiAgentViewModel.DiagLog = message => logService.AddLog(message);
 
             // 全局命令诊断路由到日志文件
             LogSink = message => logService.AddLog(message);
@@ -68,7 +73,7 @@ public partial class App : Application
             SetLocale("zh_CN");
 
             // Core 层 VM 的本地化桥接到 App 的 L10n（保持单一译文来源）
-            EasyCon2.Avalonia.Core.Localization.L10nBridge.Resolver = EasyCon2.Avalonia.Markup.L10n.T;
+            EasyCon2.Avalonia.Localization.L10nBridge.Resolver = EasyCon2.Avalonia.Markup.L10n.T;
 
             // 库层（Capture/Script 等）诊断转发到日志文件
             EasyCon.Core.Logging.CoreLog.Sink = message => logService.AddLog(message);

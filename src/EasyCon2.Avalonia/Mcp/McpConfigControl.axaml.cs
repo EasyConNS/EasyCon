@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
-namespace EasyCon2.Avalonia.Core.Mcp;
+namespace EasyCon2.Avalonia.Mcp;
 
 public partial class McpConfigControl : UserControl
 {

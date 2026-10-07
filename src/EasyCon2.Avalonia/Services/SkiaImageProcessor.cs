@@ -1,4 +1,4 @@
-using EasyCon2.Avalonia.Core.Services;
+using EasyCon2.Avalonia.Services;
 using SkiaSharp;
 
 namespace EasyCon2.Avalonia.Services;

@@ -1,5 +1,5 @@
 using Avalonia.Input;
-using EasyCon2.Avalonia.Core.Input;
+using EasyCon2.Avalonia.Input;
 
 namespace EasyCon2.Avalonia.UiTests;
 

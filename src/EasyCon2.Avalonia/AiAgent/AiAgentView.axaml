@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:EasyCon2.Avalonia.Core.AiAgent"
+             xmlns:vm="using:EasyCon2.Avalonia.AiAgent"
              xmlns:model="using:EasyCon.Core.LLM.Models"
-             x:Class="EasyCon2.Avalonia.Core.AiAgent.AiAgentView"
+             x:Class="EasyCon2.Avalonia.AiAgent.AiAgentView"
              x:DataType="vm:AiAgentViewModel"
              IsVisible="{Binding IsOpen}">
 

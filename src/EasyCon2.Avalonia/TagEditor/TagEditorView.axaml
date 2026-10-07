@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:EasyCon2.Avalonia.Core.TagEditor"
-             xmlns:tag="using:EasyCon2.Avalonia.Core.TagEditor"
-             xmlns:cvt="using:EasyCon2.Avalonia.Core.Converters"
-             x:Class="EasyCon2.Avalonia.Core.TagEditor.TagEditorView"
+             xmlns:vm="using:EasyCon2.Avalonia.TagEditor"
+             xmlns:tag="using:EasyCon2.Avalonia.TagEditor"
+             xmlns:cvt="using:EasyCon2.Avalonia.Converters"
+             x:Class="EasyCon2.Avalonia.TagEditor.TagEditorView"
              x:DataType="vm:TagEditorViewModel">
 
     <UserControl.Resources>

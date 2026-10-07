@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
+    <ProjectReference Include="..\..\src\EasyCon2.Avalonia\EasyCon2.Avalonia.csproj" />
   </ItemGroup>
 
   <ItemGroup>

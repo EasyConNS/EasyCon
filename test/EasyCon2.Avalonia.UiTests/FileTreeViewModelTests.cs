@@ -4,10 +4,11 @@ using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using EasyCon2.Avalonia.Core.FileTree;
+using EasyCon2.Avalonia.FileTree;
 using EasyCon2.Avalonia.Models;
-using EasyCon2.Avalonia.ViewModels;
-using EasyCon2.Avalonia.Views;
+using EasyCon2.Avalonia.Shell;
+using EasyCon2.Avalonia.KeyMapping;
+using EasyCon2.Avalonia.FileTree;
 
 namespace EasyCon2.Avalonia.UiTests;
 

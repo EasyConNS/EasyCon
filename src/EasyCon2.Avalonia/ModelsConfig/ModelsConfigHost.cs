@@ -1,4 +1,4 @@
-namespace EasyCon2.Avalonia.Core.ModelsConfig;
+namespace EasyCon2.Avalonia.ModelsConfig;
 
 public static class ModelsConfigHost
 {

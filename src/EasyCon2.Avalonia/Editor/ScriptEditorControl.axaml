@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:avaloniaEdit="using:AvaloniaEdit"
-             x:Class="EasyCon2.Avalonia.Core.Editor.ScriptEditorControl">
+             x:Class="EasyCon2.Avalonia.Editor.ScriptEditorControl">
 
     <avaloniaEdit:TextEditor x:Name="Editor"
                              ShowLineNumbers="True"

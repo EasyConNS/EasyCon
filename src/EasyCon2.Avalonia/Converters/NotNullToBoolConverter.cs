@@ -1,7 +1,7 @@
 using Avalonia.Data.Converters;
 using System.Globalization;
 
-namespace EasyCon2.Avalonia.Core.Converters;
+namespace EasyCon2.Avalonia.Converters;
 
 /// <summary>
 /// 非空字符串 → true（用于 IsVisible 绑定到可能为 null 的状态文本）。

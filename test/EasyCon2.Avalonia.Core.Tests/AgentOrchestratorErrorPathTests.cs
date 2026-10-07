@@ -1,8 +1,8 @@
 using EasyCon.Core.LLM;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
-using EasyCon2.Avalonia.Core.AiAgent;
-using EasyCon2.Avalonia.Core.AiAgent.Tools;
+using EasyCon2.Avalonia.AiAgent;
+using EasyCon2.Avalonia.AiAgent.Tools;
 using System.Runtime.CompilerServices;
 
 namespace EasyCon2.Avalonia.Core.Tests;

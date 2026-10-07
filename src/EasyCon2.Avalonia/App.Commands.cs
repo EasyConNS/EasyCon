@@ -2,8 +2,14 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Native;
-using EasyCon2.Avalonia.ViewModels;
-using EasyCon2.Avalonia.Views;
+using EasyCon2.Avalonia.Shell;
+using EasyCon2.Avalonia.Monitoring;
+using EasyCon2.Avalonia.Connection;
+using EasyCon2.Avalonia.KeyMapping;
+using EasyCon2.Avalonia.Scripting;
+using EasyCon2.Avalonia.AlertConfig;
+using EasyCon2.Avalonia.Mcp;
+using EasyCon2.Avalonia.ModelsConfig;
 using System;
 using System.Windows.Input;
 

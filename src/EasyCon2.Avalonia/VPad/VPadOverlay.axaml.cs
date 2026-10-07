@@ -1,7 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using EasyCon2.Avalonia.Core.Input;
+using EasyCon2.Avalonia.Input;
 using EasyDevice;
 
 namespace EasyCon2.Avalonia.VPad;

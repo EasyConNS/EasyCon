@@ -13,7 +13,7 @@ using System.Collections.Specialized;
 using System.Globalization;
 using System.Text;
 
-namespace EasyCon2.Avalonia.Core.Terminal;
+namespace EasyCon2.Avalonia.Terminal;
 
 /// <summary>
 /// 终端风格输出控件：支持 ANSI 颜色编码、虚拟化滚动、文本选择/复制、自动截断。

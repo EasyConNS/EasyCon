@@ -1,7 +1,7 @@
 using EasyCon.Core.LLM.Mcp;
 using EasyCon.Core.Services;
-using EasyCon2.Avalonia.Core.AiAgent.Tools;
-using EasyCon2.Avalonia.Core.Mcp;
+using EasyCon2.Avalonia.AiAgent.Tools;
+using EasyCon2.Avalonia.Mcp;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 

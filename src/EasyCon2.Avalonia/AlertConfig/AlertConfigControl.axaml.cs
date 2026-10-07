@@ -2,7 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using EasyCon.Core.Config;
 
-namespace EasyCon2.Avalonia.Core.AlertConfig;
+namespace EasyCon2.Avalonia.AlertConfig;
 
 public partial class AlertConfigControl : UserControl
 {

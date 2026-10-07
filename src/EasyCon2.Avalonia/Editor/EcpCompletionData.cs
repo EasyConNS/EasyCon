@@ -3,7 +3,7 @@ using AvaloniaEdit.CodeCompletion;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Editing;
 
-namespace EasyCon2.Avalonia.Core.Editor;
+namespace EasyCon2.Avalonia.Editor;
 
 internal class EcpCompletionData : ICompletionData
 {

@@ -4,7 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using System.Collections.Specialized;
 
-namespace EasyCon2.Avalonia.Core.AiAgent;
+namespace EasyCon2.Avalonia.AiAgent;
 
 public partial class AiAgentView : UserControl
 {

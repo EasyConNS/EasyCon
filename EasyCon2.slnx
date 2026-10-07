@@ -32,7 +32,6 @@
     <Project Path="src/EasyCon.Core/EasyCon.Core.csproj" />
     <Project Path="src/EasyCon.Device/EasyCon.Device.csproj" />
     <Project Path="src/EasyCon.Script/EasyCon.Script.csproj" />
-    <Project Path="src/EasyCon2.Avalonia.Core/EasyCon2.Avalonia.Core.csproj" />
     <Project Path="src/EasyCon.SDLInput/EasyCon.SDLInput.csproj" />
     <Project Path="src/EasyCon.Lsp/EasyCon.Lsp.csproj" />
   </Folder>

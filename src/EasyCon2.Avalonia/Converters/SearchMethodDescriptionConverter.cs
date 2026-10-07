@@ -3,7 +3,7 @@ using EasyCon.Capture;
 using System.ComponentModel;
 using System.Globalization;
 
-namespace EasyCon2.Avalonia.Core.Converters;
+namespace EasyCon2.Avalonia.Converters;
 
 public class SearchMethodDescriptionConverter : IValueConverter
 {

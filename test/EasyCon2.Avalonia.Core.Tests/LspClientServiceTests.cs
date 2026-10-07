@@ -1,4 +1,4 @@
-using EasyCon2.Avalonia.Core.Editor.Lsp;
+using EasyCon2.Avalonia.Editor.Lsp;
 
 namespace EasyCon2.Avalonia.Core.Tests;
 

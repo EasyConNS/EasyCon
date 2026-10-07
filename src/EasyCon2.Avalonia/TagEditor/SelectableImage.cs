@@ -4,7 +4,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using System;
 
-namespace EasyCon2.Avalonia.Core.TagEditor;
+namespace EasyCon2.Avalonia.TagEditor;
 
 /// <summary>
 /// 支持缩放、平移和圈选的图片控件

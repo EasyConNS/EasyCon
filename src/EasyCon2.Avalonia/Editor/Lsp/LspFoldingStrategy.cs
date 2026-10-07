@@ -1,7 +1,7 @@
 using AvaloniaEdit.Folding;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
-namespace EasyCon2.Avalonia.Core.Editor.Lsp;
+namespace EasyCon2.Avalonia.Editor.Lsp;
 
 public class LspFoldingStrategy
 {

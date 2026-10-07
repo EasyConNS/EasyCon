@@ -1,7 +1,7 @@
 using Avalonia.Data.Converters;
 using System.Globalization;
 
-namespace EasyCon2.Avalonia.Core.Converters;
+namespace EasyCon2.Avalonia.Converters;
 
 /// <summary>
 /// 布尔 → 眼睛 SVG path data（黑白线条矢量）。

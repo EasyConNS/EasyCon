@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:EasyCon2.Avalonia.Core.ModelsConfig"
-             xmlns:conv="using:EasyCon2.Avalonia.Core.Converters"
-             x:Class="EasyCon2.Avalonia.Core.ModelsConfig.ProviderItemView"
+             xmlns:vm="using:EasyCon2.Avalonia.ModelsConfig"
+             xmlns:conv="using:EasyCon2.Avalonia.Converters"
+             x:Class="EasyCon2.Avalonia.ModelsConfig.ProviderItemView"
              x:DataType="vm:ProviderItemViewModel">
 
     <Border Background="{DynamicResource WorkbenchPanelBrush}"

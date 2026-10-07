@@ -2,8 +2,8 @@ using EasyCon.Core.LLM;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
 using EasyCon.Core.LLM.Tools;
-using EasyCon2.Avalonia.Core.AiAgent;
-using EasyCon2.Avalonia.Core.AiAgent.Tools;
+using EasyCon2.Avalonia.AiAgent;
+using EasyCon2.Avalonia.AiAgent.Tools;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 

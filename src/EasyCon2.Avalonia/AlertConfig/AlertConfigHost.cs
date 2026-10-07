@@ -1,4 +1,4 @@
-namespace EasyCon2.Avalonia.Core.AlertConfig;
+namespace EasyCon2.Avalonia.AlertConfig;
 
 public static class AlertConfigHost
 {

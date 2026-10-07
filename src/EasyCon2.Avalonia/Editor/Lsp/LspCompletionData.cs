@@ -4,7 +4,7 @@ using AvaloniaEdit.Document;
 using AvaloniaEdit.Editing;
 using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 
-namespace EasyCon2.Avalonia.Core.Editor.Lsp;
+namespace EasyCon2.Avalonia.Editor.Lsp;
 
 internal class LspCompletionData : ICompletionData
 {

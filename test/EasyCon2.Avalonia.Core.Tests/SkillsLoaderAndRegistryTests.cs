@@ -1,5 +1,5 @@
 using EasyCon.Core.LLM.Skills;
-using EasyCon2.Avalonia.Core.AiAgent.Skills;
+using EasyCon2.Avalonia.AiAgent.Skills;
 
 namespace EasyCon2.Avalonia.Core.Tests;
 

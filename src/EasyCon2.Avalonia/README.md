@@ -4,13 +4,13 @@
 
 基于 Avalonia 12 的跨平台 GUI（CommunityToolkit.Mvvm），支持 Windows、Linux 和 macOS。
 本工程是 **View 宿主 + 平台服务实现层**；纯逻辑与 ViewModel 主体在
-[EasyCon2.Avalonia.Core](../EasyCon2.Avalonia.Core/)（零 Avalonia 包引用，编译器强制）。
+（原 `EasyCon2.Avalonia.Core` 已并入本工程。）
 
 ## 技术架构
 
 - **MVVM**：`Views/`（`.axaml` + 少量 code-behind）↔ ViewModel。功能自洽目录
   （`VPad/`、`Editor/`、`Terminal/`、`TagEditor/`、`AiAgent/`、`Mcp/`、`AlertConfig/`、`ModelsConfig/`）
-  的 View 在本工程、VM 在 Core 工程，但**命名空间统一为 `EasyCon2.Avalonia.Core.*`**，
+  按**功能域组织目录**（Shell/Monitor/FileTree/Connection/KeyMapping/AiAgent/Mcp/…），命名空间统一为 `EasyCon2.Avalonia.<功能域>.*`，
   便于 axaml 的 `using:` 与 `x:DataType` 解析。
 - **组合方式**：**没有 DI 容器**。对象图在 `App.axaml.cs` 的
   `OnFrameworkInitializationCompleted` 里显式 `new`（日志 → 设备 → 采集 → 脚本 → 手柄 →
@@ -44,7 +44,6 @@
 
 ## 相关模块
 
-- [EasyCon2.Avalonia.Core](../EasyCon2.Avalonia.Core/) — 纯 VM/逻辑层（本工程的主要依赖）
 - [EasyCon.Core](../EasyCon.Core/) — 能力端口 + 组合根 + 脚本执行桥
 - [EasyCon.Device](../EasyCon.Device/) — 设备通信
 - [EasyCon.Capture](../EasyCon.Capture/) — 图像采集与识别
