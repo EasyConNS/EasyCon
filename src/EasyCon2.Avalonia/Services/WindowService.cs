@@ -1,15 +1,15 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
-using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Shell;
-using EasyCon2.Avalonia.Monitoring;
+using EasyCon2.Avalonia.AlertConfig;
 using EasyCon2.Avalonia.Connection;
 using EasyCon2.Avalonia.KeyMapping;
-using EasyCon2.Avalonia.Scripting;
-using EasyCon2.Avalonia.AlertConfig;
 using EasyCon2.Avalonia.Mcp;
 using EasyCon2.Avalonia.ModelsConfig;
+using EasyCon2.Avalonia.Monitoring;
+using EasyCon2.Avalonia.Scripting;
+using EasyCon2.Avalonia.Services;
+using EasyCon2.Avalonia.Shell;
 using ILogService = EasyCon.Core.Services.ILogService;
 using Resources = EasyCon2.UI.Common.Properties.Resources;
 

@@ -63,6 +63,21 @@ public static class BuiltinFunctions
         [new("net", ScriptType.Int), new("input", ScriptType.Any)], ScriptType.Int);
     public static readonly FunctionSymbol NetOut = new("NET_OUT", [new("index", ScriptType.Int)], ScriptType.Double);
 
+    // --- NET 句柄族：大数组驻留宿主侧，脚本只见句柄（原生边界纯标量协议不变）。
+    //     __NET_IMAGE__ 为洞（入参 base64 图像，由 StdLib 包装出采集/显式两种形态）。
+    public static readonly FunctionSymbol NetImageHole = new("__NET_IMAGE__",
+        [new("image", ScriptType.String), new("width", ScriptType.Int), new("height", ScriptType.Int), new("mode", ScriptType.String)],
+        ScriptType.Int);
+    public static readonly FunctionSymbol NetRunH = new("NET_RUNH",
+        [new("net", ScriptType.Int), new("tensor", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol NetScale = new("NET_SCALE",
+        [new("tensor", ScriptType.Int), new("scale", ScriptType.Double), new("offset", ScriptType.Double)], ScriptType.Int);
+    public static readonly FunctionSymbol NetFree = new("NET_FREE", [new("handle", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol NetUnload = new("NET_UNLOAD", [new("net", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol NetArgMax = new("NET_ARGMAX", [new("row", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol NetRows = new("NET_ROWS", [], ScriptType.Int);
+
+
     // --- 采集卡打洞函数（lib-only scope 可见，不放入 root scope）---
 
     public static readonly FunctionSymbol CaptureHole = new("__CAPTURE__",
@@ -148,6 +163,13 @@ public static class BuiltinFunctions
         new(NetLoad, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
         new(NetRun, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
         new(NetOut, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetImageHole, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetRunH, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetScale, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetFree, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetUnload, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetArgMax, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetRows, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
         // stdlib 源码（PRINT→FWRITE）
         new(Print, BuiltinRoute.StdlibSource, McuAvailable: true),
     ];
@@ -173,7 +195,8 @@ public static class BuiltinFunctions
 
     private static readonly FunctionSymbol[] All =
         [Wait, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Arg, OcrConf,
-         FOpen, FRead, FWrite, FClose, FEof, ReadFile, WriteFile, AppendFile, FileExists, NetLoad, NetRun, NetOut];
+         FOpen, FRead, FWrite, FClose, FEof, ReadFile, WriteFile, AppendFile, FileExists, NetLoad, NetRun, NetOut,
+         NetRunH, NetScale, NetFree, NetUnload, NetArgMax, NetRows];
 
     internal static IReadOnlyList<FunctionSymbol> GetAll() => All;
 
@@ -181,6 +204,6 @@ public static class BuiltinFunctions
 
     // --- 采集卡洞函数列表（注册到 lib-only scope + callable）---
 
-    private static readonly FunctionSymbol[] CaptureHoles = [CaptureHole, OcrHole, RoiHole, OcrInitHole];
+    private static readonly FunctionSymbol[] CaptureHoles = [CaptureHole, OcrHole, RoiHole, OcrInitHole, NetImageHole];
     internal static IReadOnlyList<FunctionSymbol> GetCaptureHoles() => CaptureHoles;
 }

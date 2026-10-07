@@ -288,6 +288,8 @@ internal struct LatticeValue
         {
             case SsaOp.LogicNot: return ConstBool(!operand.Value.GetBool());
             case SsaOp.NotInt: return ConstInt(~operand.Value.GetInt());
+            case SsaOp.NegInt: return ConstInt(-operand.Value.GetInt());
+            case SsaOp.NegDouble: return ConstDouble(-operand.Value.GetDouble());
             case SsaOp.ConvBoolToInt: return ConstInt(operand.Value.GetBool() ? 1 : 0);
             case SsaOp.ConvByteToInt: return ConstInt(operand.Value.GetInt());
             case SsaOp.ConvIntToDouble: return ConstDouble(operand.Value.GetInt());

@@ -3,7 +3,7 @@ using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Skills;
 using System.Text;
 
-namespace EasyCon2.Avalonia.AiAgent;
+namespace EasyCon.Core.LLM.Agent;
 
 /// <summary>
 /// 系统提示词组装器，替代 <see cref="AgentOrchestrator"/> 中硬编码的 BuildSystemPrompt。

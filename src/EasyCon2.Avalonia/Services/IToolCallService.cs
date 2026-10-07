@@ -1,3 +1,7 @@
+using EasyCon.Core.Capabilities;
+
+
+
 namespace EasyCon2.Avalonia.Services;
 
 /// <summary>
@@ -91,6 +95,41 @@ public interface IToolCallService
     /// </summary>
     string? GetCurrentFrameBase64();
 
+    // ── 原子输入（直接驱动手柄，不经脚本）──
+
+    /// <summary>
+    /// 按键点击：按下并释放，可重复多次。
+    /// 设备未连接或按键名非法时返回失败描述。
+    /// </summary>
+    PadActionResult PressButton(string key, int durationMs, int times, int intervalMs);
+
+    /// <summary>
+    /// 摇杆偏转：设置指定摇杆的 (x,y)（0-255，128 为中心），
+    /// 持续 durationMs 后回中；durationMs 为 0 表示不复位（由调用方负责）。
+    /// </summary>
+    PadActionResult SetStick(string key, int x, int y, int durationMs);
+
+    // ── 原子感知 ─────────────────────────────
+
+    /// <summary>
+    /// 对当前视频帧的指定区域做 OCR（全分辨率）。x=y=w=h=0 表示整图。
+    /// 返回识别文本；视频源未连接或识别失败返回 null。
+    /// </summary>
+    OcrFrameResult? OcrFrame(string? language, int x, int y, int width, int height);
+
+    // ── eval_ecs 能力供给 ────────────────────
+
+    /// <summary>
+    /// 实时采集源（帧委托），供 eval_ecs 片段经 __CAPTURE__/NET_IMAGE 取帧。
+    /// 视频源未就绪时返回 null。
+    /// </summary>
+    ICaptureSource? GetCaptureSource();
+
+    /// <summary>
+    /// 宿主 OCR 服务（eval_ecs 片段的 OCR_INIT/OCR 通路）；未装配返回 null。
+    /// </summary>
+    IOcrService? GetOcrService();
+
     // ── 日志 ────────────────────────────────
 
     /// <summary>
@@ -98,6 +137,12 @@ public interface IToolCallService
     /// </summary>
     string GetRecentLogs(int maxLines);
 }
+
+/// <summary>原子手柄输入的执行结果。</summary>
+public record PadActionResult(bool Success, string Message);
+
+/// <summary>帧 OCR 结果。</summary>
+public record OcrFrameResult(string Text, int Confidence, string Backend);
 
 /// <summary>
 /// 设备连接与运行状态快照。

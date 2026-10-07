@@ -2,7 +2,7 @@ using EasyCon.Core.LLM.Skills;
 using EasyCon.Core.LLM.Tools;
 using System.Text.Json;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// read_skill 元工具：读取技能的完整指令（Level 2）或参考文档（Level 3）。

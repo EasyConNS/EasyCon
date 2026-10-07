@@ -3,6 +3,7 @@ using EasyCon.Script.Binding;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyScript;
+using OpenCvSharp;
 using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
@@ -238,6 +239,146 @@ internal static class BuiltinCallable
         return Value.FromBool(capabilities.Ocr?.Init(cfg) ?? false);
     }
 
+    // ---- NET 句柄族（NET_IMAGE / NET_RUNH / NET_SCALE / NET_FREE / NET_UNLOAD）----
+    // 大数组驻留宿主（IInference 张量表），脚本只见句柄；out 参数仍是扁平输出，
+    // 复用 _lastNetOutput 线程槽与 NET_OUT(i) 读取。
+
+    /// <summary>
+    /// __NET_IMAGE__ 洞：base64 图像 → 缩放 (rw×rh) → 灰度/RGB 平铺 float（0-255 原始值）
+    /// → 张量句柄。mode: "gray"（[1,1,rh,rw]）| "rgb"（[1,3,rh,rw]，CHW）。失败返回 0。
+    /// </summary>
+    public static Value ImplNetImage(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        IInference? inference = capabilities.Inference;
+        if (inference == null)
+            return Value.FromInt(0);
+
+        try
+        {
+            var bytes = Convert.FromBase64String(args[0].AsString());
+            using var mat = Mat.FromImageData(bytes);
+            if (mat.Empty())
+                return Value.FromInt(0);
+
+            int rw = args[1].AsInt();
+            int rh = args[2].AsInt();
+            if (rw <= 0 || rh <= 0)
+                return Value.FromInt(0);
+
+            using var resized = new Mat();
+            Cv2.Resize(mat, resized, new Size(rw, rh), 0, 0, InterpolationFlags.Linear);
+            var mode = args[3].AsString();
+            float[] data;
+            int[] shape;
+            if (mode == "rgb")
+            {
+                using var rgb = new Mat();
+                Cv2.CvtColor(resized, rgb, ColorConversionCodes.BGR2RGB);
+                data = new float[rw * rh * 3];
+                MarshalPlaneCopy(rgb, data, 0, rw * rh);       // R
+                MarshalPlaneCopy(rgb, data, rw * rh, rw * rh); // G
+                MarshalPlaneCopy(rgb, data, 2 * rw * rh, rw * rh); // B
+                shape = [1, 3, rh, rw];
+            }
+            else
+            {
+                using var gray = new Mat();
+                Cv2.CvtColor(resized, gray, ColorConversionCodes.BGR2GRAY);
+                data = new float[rw * rh];
+                MarshalPlaneCopy(gray, data, 0, rw * rh);
+                shape = [1, 1, rh, rw];
+            }
+
+            return Value.FromInt(inference.HoldTensor(data, shape));
+        }
+        catch
+        {
+            return Value.FromInt(0);
+        }
+    }
+
+    /// <summary>把 CV_8UC1/8UC3 Mat 的单个通道拷入目标数组（interleave 布局 → 平面布局）。</summary>
+    static unsafe void MarshalPlaneCopy(Mat source, float[] target, int targetOffset, int planeLength)
+    {
+        int channels = source.Channels();
+        byte* p = (byte*)source.Data;
+        for (int i = 0; i < planeLength; i++)
+            target[targetOffset + i] = p[i * channels];
+    }
+
+    public static Value ImplNetRunH(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        IInference? inference = capabilities.Inference;
+        if (inference == null)
+        {
+            _lastNetOutput = null;
+            return Value.FromInt(0);
+        }
+
+        float[]? output = inference.RunHeld(args[0].AsInt(), args[1].AsInt());
+        _lastNetOutput = output;
+        return Value.FromInt(output?.Length ?? 0);
+    }
+
+    public static Value ImplNetScale(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+        => Value.FromInt(capabilities.Inference?.TransformTensor(
+            args[0].AsInt(), (float)args[1].AsDouble(), (float)args[2].AsDouble()) ?? 0);
+
+    public static Value ImplNetFree(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        capabilities.Inference?.FreeTensor(args[0].AsInt());
+        return Value.FromInt(0);
+    }
+
+    public static Value ImplNetUnload(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        capabilities.Inference?.Unload(args[0].AsInt());
+        return Value.FromInt(0);
+    }
+
+    /// <summary>
+    /// NET_ROWS：最近一次推理输出的行数（[1,T,C] → T；向量输出 → 1）。无输出历史返回 0。
+    /// </summary>
+    public static Value ImplNetRows(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        var shape = capabilities.Inference?.LastOutputShape;
+        if (shape == null || shape.Length < 2)
+            return Value.FromInt(0);
+        return Value.FromInt(shape[1]);
+    }
+
+    /// <summary>
+    /// NET_ARGMAX(row)：输出第 row 行的最大值列下标（分类模型的逐行类别）。
+    /// 无输出历史 / 行越界返回 -1。
+    /// </summary>
+    public static Value ImplNetArgMax(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        var inference = capabilities.Inference;
+        var shape = inference?.LastOutputShape;
+        var output = _lastNetOutput;
+        if (inference == null || shape == null || output == null || shape.Length < 3)
+            return Value.FromInt(-1);
+
+        int cols = shape[2];
+        long rows = cols > 0 ? output.LongLength / cols : 0;
+        int row = args[0].AsInt();
+        if (cols <= 0 || row < 0 || row >= rows)
+            return Value.FromInt(-1);
+
+        int best = 0;
+        float bestVal = float.MinValue;
+        int baseIdx = row * cols;
+        for (int c = 0; c < cols; c++)
+        {
+            if (output[baseIdx + c] > bestVal)
+            {
+                bestVal = output[baseIdx + c];
+                best = c;
+            }
+        }
+        return Value.FromInt(best);
+    }
+
     /// <summary>文件能力缺省回落桌面参考实现（FCLOSE 句柄表清理随 DesktopFileSystem.Instance）。</summary>
     static IFileSystem Files(CapabilitySet capabilities)
         => capabilities.Files ?? DesktopFileSystem.Instance;
@@ -280,6 +421,14 @@ internal static class BuiltinCallable
             (BuiltinFunctions.OcrHole, new DelegateCallable(ImplOcrHole)),
             (BuiltinFunctions.RoiHole, new DelegateCallable(ImplRoiHole)),
             (BuiltinFunctions.OcrInitHole, new DelegateCallable(ImplOcrInitHole)),
+            (BuiltinFunctions.NetImageHole, new DelegateCallable(ImplNetImage)),
+            (BuiltinFunctions.NetRunH, new DelegateCallable(ImplNetRunH)),
+            (BuiltinFunctions.NetScale, new DelegateCallable(ImplNetScale)),
+            (BuiltinFunctions.NetFree, new DelegateCallable(ImplNetFree)),
+            (BuiltinFunctions.NetUnload, new DelegateCallable(ImplNetUnload)),
+            (BuiltinFunctions.NetArgMax, new DelegateCallable(ImplNetArgMax)),
+            (BuiltinFunctions.NetRows, new DelegateCallable(ImplNetRows)),
+
         ];
     }
 }

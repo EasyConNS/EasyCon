@@ -1,7 +1,7 @@
 using EasyCon.Core.LLM.Tools;
 using System.Collections.Concurrent;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// 工具注册中心，管理可用工具并提供按名称分发和 schema 导出。
@@ -47,6 +47,11 @@ public class ToolRegistry
     /// 按名称获取工具。
     /// </summary>
     public IAiTool? Get(string name) => _tools.TryGetValue(name, out var tool) ? tool : null;
+
+    /// <summary>
+    /// 快照当前全部工具（名称 → 工具），供 MCP 导出等遍历场景使用。
+    /// </summary>
+    public IEnumerable<KeyValuePair<string, IAiTool>> Snapshot() => _tools.ToArray();
 
     /// <summary>
     /// 导出 OpenAI tools 数组格式的工具定义列表。

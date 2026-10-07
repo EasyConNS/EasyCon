@@ -1,3 +1,4 @@
+using EasyCon.Core.LLM.Agent;
 using EasyCon.Core.LLM.Models;
 using EasyCon2.Avalonia.AiAgent;
 

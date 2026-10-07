@@ -48,6 +48,9 @@ public enum SsaOp : byte
     // ---- 逻辑 ----
     LogicNot,
 
+    // ---- 一元取负（对应字节码 NegI/NegD）----
+    NegInt, NegDouble,
+
     // ---- 类型转换 ----
     ConvBoolToInt, ConvByteToInt, ConvIntToUInt,
     ConvIntToUInt64, ConvIntToDouble, ConvIntToByte,

@@ -1,0 +1,119 @@
+# ============================================================
+# 宝可梦状态页识别 + 能力值计算（PP-OCR rec，固定 ROI）
+# 布局基准：1920x1080 火红/叶绿英文状态页（见 demo 截图 ppocr2/3.png）
+# 模型：__APP__/models/ppocr/PP-OCRv5_mobile_rec.onnx（外部资产）
+# 原理：rec 输出 [1,T,C]，NET_ARGMAX(i) 取第 i 帧的类别下标；
+#       数字 '0'-'9' 的类别下标固定（见 _D0.._D9），其余类别跳过。
+# ============================================================
+
+# 数字 0-9 在 ppocrv5 字典中的类别下标（blank=0，字典行号+1）
+_D0 = 16163
+_D1 = 16164
+_D2 = 16165
+_D3 = 16166
+_D4 = 16167
+_D5 = 16168
+_D6 = 16169
+_D7 = 16170
+_D8 = 16171
+_D9 = 16172
+
+# 类别下标 → 数字（非数字返回 -1）
+FUNC DigitOf($c): INT
+    IF $c == _D0
+        RETURN 0
+    ENDIF
+    IF $c == _D1
+        RETURN 1
+    ENDIF
+    IF $c == _D2
+        RETURN 2
+    ENDIF
+    IF $c == _D3
+        RETURN 3
+    ENDIF
+    IF $c == _D4
+        RETURN 4
+    ENDIF
+    IF $c == _D5
+        RETURN 5
+    ENDIF
+    IF $c == _D6
+        RETURN 6
+    ENDIF
+    IF $c == _D7
+        RETURN 7
+    ENDIF
+    IF $c == _D8
+        RETURN 8
+    ENDIF
+    IF $c == _D9
+        RETURN 9
+    ENDIF
+    RETURN -1
+ENDFUNC
+
+# 识别一个 ROI 行里的数字，按 CTC 语义拼成整数（去重 + 跳过 blank）
+FUNC DecodeRow($net, $x, $y, $w, $h): INT
+    $rw = ($w * 32 / $h + 7) / 8 * 8
+    $img = NET_IMAGE($x, $y, $w, $h, $rw, 32, "rgb")
+    IF $img <= 0
+        RETURN 0
+    ENDIF
+    $t = PPOCR_NORM($img, "rec")
+    $n = NET_RUNH($net, $t)
+    $rows = NET_ROWS()
+    $val = 0
+    $prev = -1
+    FOR $i = 0 TO $rows - 1
+        $c = NET_ARGMAX($i)
+        IF $c == 0
+            $prev = -1
+        ELSE
+            IF $c != $prev
+                $d = DigitOf($c)
+                IF $d >= 0
+                    $val = $val * 10 + $d
+                ENDIF
+            ENDIF
+            $prev = $c
+        ENDIF
+    END
+    NET_FREE($img)
+    NET_FREE($t)
+    RETURN $val
+ENDFUNC
+
+# ---- 主流程 ----
+$net = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv5_mobile_rec.onnx")
+IF $net > 0
+    # 主行：Lv50 XXX HP65/65（整行数字混排，仅作展示）
+    $hpRow = DecodeRow($net, 190, 130, 1530, 85)
+    PRINT "HP row: " & $hpRow
+
+    # 右列能力值行（标签 + 数字整行，只解析数字）
+    $atk = DecodeRow($net, 990, 262, 730, 74)
+    $def = DecodeRow($net, 990, 344, 730, 72)
+    $spa = DecodeRow($net, 990, 426, 730, 74)
+    $spd = DecodeRow($net, 990, 508, 730, 74)
+    $spe = DecodeRow($net, 990, 592, 730, 78)
+
+    PRINT "ATTACK: " & $atk
+    PRINT "DEFENSE: " & $def
+    PRINT "SP.ATK: " & $spa
+    PRINT "SP.DEF: " & $spd
+    PRINT "SPEED: " & $spe
+
+    # 计算能力值总和（不含 HP）
+    $sum = $atk + $def + $spa + $spd + $spe
+    PRINT "STAT SUM: " & $sum
+
+    # 经验行（HP EXP.POINTS 19531）
+    $exp = DecodeRow($net, 355, 680, 1370, 85)
+    PRINT "EXP POINTS: " & $exp
+
+    NET_UNLOAD($net)
+    PRINT "done"
+ELSE
+    PRINT "NET_LOAD failed (check models/ppocr/)"
+ENDIF

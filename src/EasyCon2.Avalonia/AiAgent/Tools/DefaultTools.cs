@@ -1,3 +1,5 @@
+using EasyCon.Core.LLM.Agent;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon2.Avalonia.Services;
 
 namespace EasyCon2.Avalonia.AiAgent.Tools;
@@ -22,6 +24,10 @@ public static class DefaultTools
         registry.Register(new RunScriptTool(service));
         registry.Register(new StopScriptTool(service));
         registry.Register(new GetFrameTool(service));
+        AtomicRuntimeTools.RegisterAll(registry, service);
+        registry.Register(new EvalEcsTool(
+            captureProvider: () => service.GetCaptureSource(),
+            ocrProvider: () => service.GetOcrService()));
         registry.Register(new GetWeatherTool());
     }
 }

@@ -29,7 +29,7 @@ if exist "%PROJ_DIR%\obj" rmdir /s /q "%PROJ_DIR%\obj"
 dotnet publish "%PROJ_DIR%\%PROJ_NAME%.csproj" --nologo -c Release -r win-x64 -f %TFM% -p:PublishSingleFile=true --self-contained false -o "%PUBLISH_DIR%"
 if errorlevel 1 (
     echo 错误: 编译 "%PROJ_NAME%" 失败
-    pause
+    if "%CI%"=="" pause
     exit /b 1
 )
 
@@ -44,7 +44,7 @@ if exist "%PROJ_DIR%\obj" rmdir /s /q "%PROJ_DIR%\obj"
 dotnet publish "%PROJ_DIR%\%PROJ_NAME%.csproj" --nologo -c Release -r win-x64 -f %TFM% -p:PublishSingleFile=true --self-contained false -o "%PUBLISH_DIR%"
 if errorlevel 1 (
     echo 错误: 编译 "%PROJ_NAME%" 失败
-    pause
+    if "%CI%"=="" pause
     exit /b 1
 )
 

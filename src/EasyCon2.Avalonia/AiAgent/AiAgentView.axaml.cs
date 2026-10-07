@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using EasyCon.Core.LLM.Agent;
+using EasyCon.Core.LLM.Agent.Tools;
 using System.Collections.Specialized;
 
 namespace EasyCon2.Avalonia.AiAgent;

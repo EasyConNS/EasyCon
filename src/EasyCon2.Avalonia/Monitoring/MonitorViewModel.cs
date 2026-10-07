@@ -4,8 +4,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Markup;
+using EasyCon2.Avalonia.Services;
 using OpenCvSharp;
 using System;
 

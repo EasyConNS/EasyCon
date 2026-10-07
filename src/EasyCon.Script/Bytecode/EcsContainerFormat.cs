@@ -647,7 +647,10 @@ public static class EcsContainer
                 var ext = r.ReadUInt16();
                 fields[f] = new EcsFieldLayout
                 {
-                    Name = fname, Kind = kind, Type = type, ElementType = elem,
+                    Name = fname,
+                    Kind = kind,
+                    Type = type,
+                    ElementType = elem,
                     Count = kind == EcsFieldKind.NestedStruct ? 0 : ext,
                     NestedSid = kind == EcsFieldKind.NestedStruct ? ext : 0,
                 };

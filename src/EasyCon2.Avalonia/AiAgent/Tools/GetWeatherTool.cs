@@ -1,3 +1,5 @@
+using EasyCon.Core.LLM.Agent;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Tools;
 using System.Net.Http;
 using System.Text.Json;

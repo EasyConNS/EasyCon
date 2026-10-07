@@ -1,6 +1,6 @@
 using EasyCon.Core.LLM.Messages;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// 工具执行结果，携带状态信息帮助模型决策。

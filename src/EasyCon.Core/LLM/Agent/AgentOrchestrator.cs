@@ -1,14 +1,14 @@
 using EasyCon.Core.LLM;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
 using EasyCon.Core.LLM.Skills;
 using EasyCon.Core.LLM.Tools;
-using EasyCon2.Avalonia.AiAgent.Tools;
 using System.IO;
 using System.Text;
 using System.Text.Json;
 
-namespace EasyCon2.Avalonia.AiAgent;
+namespace EasyCon.Core.LLM.Agent;
 
 /// <summary>
 /// Agent 编排事件，ViewModel 据此更新 UI。
@@ -29,6 +29,9 @@ public abstract record AgentEvent
 
     /// <summary>工具调用完成，携带结果摘要（Id 与 <see cref="ToolExecuting"/> 对应）。</summary>
     public record ToolCompleted(string Name, string Id, string Summary, string FullResult) : AgentEvent;
+
+    /// <summary>工具等待人工确认（UI 据此弹确认框；拒绝后该工具以错误结果回传模型）。</summary>
+    public record ToolAwaitingConfirmation(string Name, string Id, string Reason) : AgentEvent;
 
     /// <summary>Token 用量更新。</summary>
     public record UsageUpdated(int Prompt, int Completion, int Total) : AgentEvent;
@@ -77,6 +80,12 @@ public class AgentOrchestrator
     private readonly PromptAssembler? _promptAssembler;
     private readonly Func<ProviderConfig, IChatClient>? _clientFactory;
     private readonly Func<string?>? _projectDirectoryProvider;
+
+    /// <summary>
+    /// 危险工具（<see cref="IAiTool.RequiresConfirmation"/>）的人工确认回调。
+    /// 返回 true 才执行；为 null 时 fail-closed 直接拒绝该工具调用。
+    /// </summary>
+    private readonly Func<ToolCall, Task<bool>>? _confirmationHandler;
     private int _latestFrameImageIndex = -1;
     private readonly ReflectionState _reflectionState = new();
 
@@ -112,7 +121,8 @@ public class AgentOrchestrator
 
         /// <summary>按工具结果的结构化状态计数失败（Error/Retryable 均计入，Success 重置）。</summary>
         public void TrackResult(ToolResultStatus status)
-        {            if (status == ToolResultStatus.Success)
+        {
+            if (status == ToolResultStatus.Success)
             {
                 _consecutiveFailures = 0;
                 return;
@@ -125,7 +135,8 @@ public class AgentOrchestrator
 
         /// <summary>按「工具名+参数签名」检测重复调用，参数变化即重置连击。</summary>
         public void TrackCall(string toolName, string argumentsJson)
-        {            var signature = toolName + "|" + StableArgumentsKey(argumentsJson);
+        {
+            var signature = toolName + "|" + StableArgumentsKey(argumentsJson);
             if (signature != _lastCallSignature)
             {
                 _lastCallSignature = signature;
@@ -218,17 +229,32 @@ public class AgentOrchestrator
     /// 创建编排器并可注入客户端工厂。<paramref name="clientFactory"/> 为空时走
     /// ChatClientFactory（生产路径）；测试注入 fake client 以覆盖错误链路。
     /// <paramref name="projectDirectoryProvider"/> 返回当前脚本项目目录（未打开脚本为 null），
-    /// 用于装配 AGENTS.md 项目指令。
+    /// 用于装配 AGENTS.md 项目指令与工作区文件工具的根目录。
     /// </summary>
     public AgentOrchestrator(
         ToolRegistry tools,
         SkillRegistry? skillRegistry,
         Func<ProviderConfig, IChatClient>? clientFactory,
         Func<string?>? projectDirectoryProvider = null)
+        : this(tools, skillRegistry, clientFactory, projectDirectoryProvider, confirmationHandler: null)
+    {
+    }
+
+    /// <summary>
+    /// 完整构造：<paramref name="confirmationHandler"/> 为危险工具的人工确认回调
+    /// （返回 true 才执行；null 时危险工具被 fail-closed 拒绝）。
+    /// </summary>
+    public AgentOrchestrator(
+        ToolRegistry tools,
+        SkillRegistry? skillRegistry,
+        Func<ProviderConfig, IChatClient>? clientFactory,
+        Func<string?>? projectDirectoryProvider,
+        Func<ToolCall, Task<bool>>? confirmationHandler)
     {
         _tools = tools;
         _clientFactory = clientFactory;
         _projectDirectoryProvider = projectDirectoryProvider;
+        _confirmationHandler = confirmationHandler;
         if (skillRegistry is { All.Count: > 0 })
             _promptAssembler = new PromptAssembler(skillRegistry);
     }
@@ -477,7 +503,12 @@ public class AgentOrchestrator
                 if (mixedRound)
                     return RejectFrameCall(tc, FrameMixedRoundError, onEvent);
             }
-            return ExecuteToolCallAsync(tc, history, onEvent, ct);
+
+            // 危险工具确认门：无回调 fail-closed 拒绝；回调拒绝则以错误结果回传模型
+            if (_tools.Get(tc.Function.Name) is { RequiresConfirmation: true })
+                return ExecuteWithConfirmationAsync(tc, onEvent, ct);
+
+            return ExecuteToolCallAsync(tc, onEvent, ct);
         }
 
         var results = new ToolResult[toolCalls.Count];
@@ -520,11 +551,55 @@ public class AgentOrchestrator
     }
 
     /// <summary>
+    /// 危险工具执行路径：先向宿主请求人工确认。
+    /// 未配置确认回调时 fail-closed 拒绝；用户拒绝时以可读错误回传模型，工具不执行。
+    /// </summary>
+    private async Task<ToolResult> ExecuteWithConfirmationAsync(
+        ToolCall toolCall,
+        Action<AgentEvent> onEvent,
+        CancellationToken ct)
+    {
+        var reason = $"工具 {toolCall.Function.Name} 需要人工确认";
+        if (_confirmationHandler is null)
+        {
+            var denied = $"{reason}，但当前环境未提供确认机制，已拒绝执行。";
+            onEvent(new AgentEvent.ToolExecuting(toolCall.Function.Name, toolCall.Id));
+            onEvent(new AgentEvent.ToolCompleted(toolCall.Function.Name, toolCall.Id, denied, denied));
+            return ToolResult.Error(denied);
+        }
+
+        onEvent(new AgentEvent.ToolAwaitingConfirmation(toolCall.Function.Name, toolCall.Id, reason));
+        bool approved;
+        try
+        {
+            approved = await _confirmationHandler(toolCall).WaitAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var fault = $"{reason}时确认流程出错: {ex.Message}，已拒绝执行。";
+            onEvent(new AgentEvent.ToolCompleted(toolCall.Function.Name, toolCall.Id, fault, fault));
+            return ToolResult.Error(fault);
+        }
+
+        if (!approved)
+        {
+            var rejected = $"{reason}，用户已拒绝执行。请调整方案或向用户说明后再试。";
+            onEvent(new AgentEvent.ToolCompleted(toolCall.Function.Name, toolCall.Id, rejected, rejected));
+            return ToolResult.Error(rejected);
+        }
+
+        return await ExecuteToolCallAsync(toolCall, onEvent, ct);
+    }
+
+    /// <summary>
     /// 执行单个工具调用，返回完整 ToolResult（含可能的多模态附加消息）。
     /// </summary>
     private async Task<ToolResult> ExecuteToolCallAsync(
         ToolCall toolCall,
-        List<ChatMessage> history,
         Action<AgentEvent> onEvent,
         CancellationToken ct)
     {

@@ -12,7 +12,7 @@ namespace EasyCon.Tests.Bytecode;
 /// 固定池行为（docs/ZeroAllocVm.md §4）：帧段/对象块耗尽 = ECS_ERR_POOL(18)——
 /// **可预期的正常失败**，不是崩溃也不是 OOM；错误现场 pc/func 正确；释放后块可复用。
 /// 池容量属宿主资源档案（§6）：C# 解释器无池（PC 有真实堆），同脚本双端错误码**允许资源性分歧**
-  ///（C# 深递归触达 ERR_DEPTH(9)；C VM 帧段先满触达 ERR_POOL(18)）——语义条目仍由 corpus 锁定。
+///（C# 深递归触达 ERR_DEPTH(9)；C VM 帧段先满触达 ERR_POOL(18)）——语义条目仍由 corpus 锁定。
 /// </summary>
 [TestFixture]
 public class PoolTests

@@ -44,13 +44,40 @@ public static partial class BytecodeEncoder
         /// op：0=Eq，1=Neq，2=Lt，3=Le，4=Gt，5=Ge。非比较族返回 null。</summary>
         internal static int? CmpJKind(SsaOp op) => op switch
         {
-            SsaOp.EqInt => 0, SsaOp.NeqInt => 1, SsaOp.LtInt => 2, SsaOp.LeqInt => 3, SsaOp.GtInt => 4, SsaOp.GeqInt => 5,
-            SsaOp.EqUInt => 6, SsaOp.NeqUInt => 7, SsaOp.LtUInt => 8, SsaOp.LeqUInt => 9, SsaOp.GtUInt => 10, SsaOp.GeqUInt => 11,
-            SsaOp.EqDouble => 12, SsaOp.NeqDouble => 13, SsaOp.LtDouble => 14, SsaOp.LeqDouble => 15, SsaOp.GtDouble => 16, SsaOp.GeqDouble => 17,
-            SsaOp.EqUInt64 => 18, SsaOp.NeqUInt64 => 19, SsaOp.LtUInt64 => 20, SsaOp.LeqUInt64 => 21, SsaOp.GtUInt64 => 22, SsaOp.GeqUInt64 => 23,
-            SsaOp.EqBool => 0, SsaOp.NeqBool => 1,                       // Bool 槽载荷 = I32 0/1，按 i32 比较
-            SsaOp.EqByte => 0, SsaOp.NeqByte => 1, SsaOp.LtByte => 2, SsaOp.LeqByte => 3, SsaOp.GtByte => 4, SsaOp.GeqByte => 5,
-            SsaOp.EqPtr => 18, SsaOp.NeqPtr => 19,                       // Ptr = I64 载荷
+            SsaOp.EqInt => 0,
+            SsaOp.NeqInt => 1,
+            SsaOp.LtInt => 2,
+            SsaOp.LeqInt => 3,
+            SsaOp.GtInt => 4,
+            SsaOp.GeqInt => 5,
+            SsaOp.EqUInt => 6,
+            SsaOp.NeqUInt => 7,
+            SsaOp.LtUInt => 8,
+            SsaOp.LeqUInt => 9,
+            SsaOp.GtUInt => 10,
+            SsaOp.GeqUInt => 11,
+            SsaOp.EqDouble => 12,
+            SsaOp.NeqDouble => 13,
+            SsaOp.LtDouble => 14,
+            SsaOp.LeqDouble => 15,
+            SsaOp.GtDouble => 16,
+            SsaOp.GeqDouble => 17,
+            SsaOp.EqUInt64 => 18,
+            SsaOp.NeqUInt64 => 19,
+            SsaOp.LtUInt64 => 20,
+            SsaOp.LeqUInt64 => 21,
+            SsaOp.GtUInt64 => 22,
+            SsaOp.GeqUInt64 => 23,
+            SsaOp.EqBool => 0,
+            SsaOp.NeqBool => 1,                       // Bool 槽载荷 = I32 0/1，按 i32 比较
+            SsaOp.EqByte => 0,
+            SsaOp.NeqByte => 1,
+            SsaOp.LtByte => 2,
+            SsaOp.LeqByte => 3,
+            SsaOp.GtByte => 4,
+            SsaOp.GeqByte => 5,
+            SsaOp.EqPtr => 18,
+            SsaOp.NeqPtr => 19,                       // Ptr = I64 载荷
             _ => null,
         };
 

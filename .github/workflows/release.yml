@@ -1,0 +1,145 @@
+name: release
+
+on:
+  push:
+    tags: ["v*", "[0-9]*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  # ========================================
+  # 1. Windows x64：测试 + 发布 + zip
+  # ========================================
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 缓存 NuGet 包
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: 还原 NuGet 包
+        run: dotnet restore
+
+      - name: 运行 EasyCon 测试
+        shell: cmd
+        run: ci\test.bat
+
+      - name: 发布 Windows x64
+        shell: cmd
+        run: ci\windows-x64.bat
+
+      - name: 打包 zip
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $gui = Get-ChildItem dist/publish -Filter "EasyCon2.Avalonia.*.exe" | Select-Object -First 1
+          if (-not $gui) { throw "EasyCon2.Avalonia exe missing" }
+          if (-not (Test-Path dist/publish/ezcon.exe)) { throw "ezcon.exe missing" }
+          tar -a -c -f "dist/EasyCon2-$tag-win-x64.zip" -C dist/publish .
+          Get-ChildItem dist
+
+      - name: 上传 Windows 产物
+        uses: actions/upload-artifact@v6
+        with:
+          name: EasyCon2-release-win-x64
+          path: dist/*.zip
+          retention-days: 7
+
+  # ========================================
+  # 2. macOS arm64：测试（含 C VM 差分对拍）+ .app + zip
+  # ========================================
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: 安装 .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 缓存 NuGet 包
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: 还原 NuGet 包
+        run: dotnet restore
+
+      - name: 构建 ecs-vm（无 C 工具链则跳过）
+        shell: bash
+        run: sh ci/build-vm.sh
+
+      - name: 运行 EasyCon 测试（含 C VM 差分对拍）
+        run: dotnet test EasyCon2.slnx -c Release
+
+      - name: 打包 macOS .app
+        shell: bash
+        env:
+          CI: "true"
+        run: bash ci/macos-app.sh
+
+      - name: 打包 zip
+        shell: bash
+        run: |
+          tag="${{ github.ref_name }}"
+          # .app 必须经 ditto 打包以保留权限与资源元数据，zip 内保留 EasyCon.app 顶层目录
+          ditto -c -k --sequesterRsrc --keepParent dist/publish/EasyCon.app "dist/EasyCon2-${tag}-macos-arm64.zip"
+
+      - name: 上传 macOS 产物
+        uses: actions/upload-artifact@v6
+        with:
+          name: EasyCon2-release-macos-arm64
+          path: dist/*.zip
+          retention-days: 7
+
+  # ========================================
+  # 3. 发布 GitHub Release（仅 tag 触发；workflow_dispatch 只构建）
+  # ========================================
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: 下载 Windows 产物
+        uses: actions/download-artifact@v6
+        with:
+          name: EasyCon2-release-win-x64
+          path: dist/
+
+      - name: 下载 macOS 产物
+        uses: actions/download-artifact@v6
+        with:
+          name: EasyCon2-release-macos-arm64
+          path: dist/
+
+      - name: 创建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" dist/*.zip \
+            --title "${{ github.ref_name }}" \
+            --generate-notes --latest

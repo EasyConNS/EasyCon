@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Terminal;
 using EasyCon2.Avalonia.Services;
+using EasyCon2.Avalonia.Terminal;
 using System.Collections.ObjectModel;
 
 namespace EasyCon2.Avalonia.Shell;

@@ -61,6 +61,8 @@ public static partial class BytecodeEncoder
 
                 case SsaOp.AddDouble: EmitIabc(EcsOpcode.AddD, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
                 case SsaOp.SubDouble: EmitIabc(EcsOpcode.SubD, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
+                case SsaOp.NegInt: EmitIabc(EcsOpcode.NegI, Slot(v), Slot(v.Arg0!), 0); break;
+                case SsaOp.NegDouble: EmitIabc(EcsOpcode.NegD, Slot(v), Slot(v.Arg0!), 0); break;
                 case SsaOp.MulDouble: EmitIabc(EcsOpcode.MulD, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
                 case SsaOp.DivDouble: EmitIabc(EcsOpcode.DivD, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
 

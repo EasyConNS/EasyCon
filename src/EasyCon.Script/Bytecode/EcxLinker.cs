@@ -409,7 +409,9 @@ internal static class EcxPipeline
             case EcsOpcode.Slice:
                 remapped = ins with
                 {
-                    A = M(ins.A), B = M(ins.B), C = M(ins.C),
+                    A = M(ins.A),
+                    B = M(ins.B),
+                    C = M(ins.C),
                     Ext = ins.Ext == 0xFFFFFFFFu ? ins.Ext : unchecked((uint)M(unchecked((int)ins.Ext))),
                 };
                 return true;

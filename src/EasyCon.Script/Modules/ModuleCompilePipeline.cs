@@ -1,11 +1,11 @@
 using EasyCon.Script.Binding;
-using System.Collections.Concurrent;
 using EasyCon.Script.Bytecode;
 using EasyCon.Script.Resolution;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
 using EasyCon.Script.Text;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 

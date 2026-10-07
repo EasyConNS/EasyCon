@@ -146,6 +146,9 @@ Device logic (queue, throttle, report building, serialization) can be exercised 
 - **Auto Fix Format** workflow auto-commits formatting fixes on PRs to main/dev
 - Main branch: Release build + test + publish artifact
 - Dev branch: Debug build + test only
+- **Release** (`release.yml`): push a `v*` / `[0-9]*` tag (or run manually) → Windows x64 + macOS arm64
+  build with full tests → both zips attached to a GitHub Release via `gh release create --generate-notes`.
+  `workflow_dispatch` builds and uploads artifacts without publishing. Reuses `ci\windows-x64.bat` / `ci/macos-app.sh`.
 - PR format commits use `[skip ci]` to avoid recursive triggers
 
 ## Native code (OpenCV)

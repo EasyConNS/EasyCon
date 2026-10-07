@@ -191,21 +191,21 @@ public static class InstructionCodec
                     break;
 
                 case EcsInsFormat.AsBx:
-                {
-                    int sbx = (short)(b | c << 8);
-                    if (isBranch) { b = c = 0; rawJump = sbx; }
-                    else { b = sbx; c = 0; }
-                    break;
-                }
+                    {
+                        int sbx = (short)(b | c << 8);
+                        if (isBranch) { b = c = 0; rawJump = sbx; }
+                        else { b = sbx; c = 0; }
+                        break;
+                    }
 
                 case EcsInsFormat.IsJ:
-                {
-                    int sj = stream[insStart + 1] | stream[insStart + 2] << 8 | stream[insStart + 3] << 16;
-                    sj = (sj << 8) >> 8;   // s24 符号扩展
-                    a = b = c = 0;
-                    rawJump = sj;
-                    break;
-                }
+                    {
+                        int sj = stream[insStart + 1] | stream[insStart + 2] << 8 | stream[insStart + 3] << 16;
+                        sj = (sj << 8) >> 8;   // s24 符号扩展
+                        a = b = c = 0;
+                        rawJump = sj;
+                        break;
+                    }
 
                 case EcsInsFormat.Ext:
                     if (op is EcsOpcode.Call or EcsOpcode.CallN && c == 255)

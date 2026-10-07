@@ -55,10 +55,12 @@ public sealed class DnnInference : IInference
             MarshalCopy(input, blob);
             net.SetInput(blob);
             using var output = net.Forward();
+            LastOutputShape = ShapeOf(output);
             return Flatten(output);
         }
         catch
         {
+            LastOutputShape = null;
             return null;
         }
     }
@@ -69,6 +71,101 @@ public sealed class DnnInference : IInference
         {
             if (_nets.Remove(session, out var net))
                 net.Dispose();
+        }
+    }
+
+    // ---- 输出形状跟踪（NET_ARGMAX / NET_ROWS 按行解码）----
+
+    /// <inheritdoc />
+    public int[]? LastOutputShape { get; private set; }
+
+    static int[] ShapeOf(Mat m)
+    {
+        var shape = new int[m.Dims];
+        for (int i = 0; i < m.Dims; i++)
+            shape[i] = m.Size(i);
+        return shape;
+    }
+
+    // ---- 句柄协议（NET_IMAGE / NET_RUNH / NET_SCALE / NET_FREE）：大数组驻留宿主侧 ----
+
+    readonly Dictionary<int, (float[] Data, int[] Shape)> _tensors = new();
+    int _nextTensor;
+
+    /// <inheritdoc />
+    public int HoldTensor(float[] data, int[] shape)
+    {
+        if (data.Length == 0 || shape.Length == 0)
+            return -1;
+        long total = 1;
+        foreach (var dim in shape)
+        {
+            if (dim <= 0) return -1;
+            total *= dim;
+        }
+        if (total != data.Length)
+            return -1;
+
+        lock (_gate)
+        {
+            if (_disposed) return -1;
+            int handle = ++_nextTensor;
+            _tensors[handle] = (data, shape);
+            return handle;
+        }
+    }
+
+    /// <inheritdoc />
+    public void FreeTensor(int handle)
+    {
+        lock (_gate)
+            _tensors.Remove(handle);
+    }
+
+    /// <inheritdoc />
+    public float[]? RunHeld(int session, int tensorHandle)
+    {
+        Net? net;
+        float[] data;
+        int[] shape;
+        lock (_gate)
+        {
+            if (_disposed
+                || !_nets.TryGetValue(session, out net)
+                || !_tensors.TryGetValue(tensorHandle, out var tensor))
+                return null;
+            data = tensor.Data;
+            shape = tensor.Shape;
+        }
+
+        try
+        {
+            using var blob = Mat.FromPixelData(shape, MatType.CV_32FC1, data);
+            net.SetInput(blob);
+            using var output = net.Forward();
+            LastOutputShape = ShapeOf(output);
+            return Flatten(output);
+        }
+        catch
+        {
+            LastOutputShape = null;
+            return null;
+        }
+    }
+
+    /// <summary>按 (scale, offset) 逐元素变换张量，返回新句柄（原张量不变）。</summary>
+    public int TransformTensor(int handle, float scale, float offset)
+    {
+        lock (_gate)
+        {
+            if (_disposed || !_tensors.TryGetValue(handle, out var tensor))
+                return -1;
+            var result = new float[tensor.Data.Length];
+            for (int i = 0; i < tensor.Data.Length; i++)
+                result[i] = tensor.Data[i] * scale + offset;
+            int newHandle = ++_nextTensor;
+            _tensors[newHandle] = (result, tensor.Shape);
+            return newHandle;
         }
     }
 

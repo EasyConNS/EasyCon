@@ -5,19 +5,20 @@ using CommunityToolkit.Mvvm.Input;
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Config;
+using EasyCon.Core.LLM.Agent;
 using EasyCon2.Avalonia.AiAgent;
+using EasyCon2.Avalonia.Connection;
 using EasyCon2.Avalonia.FileTree;
+using EasyCon2.Avalonia.Markup;
 using EasyCon2.Avalonia.Mcp;
 using EasyCon2.Avalonia.Models;
+using EasyCon2.Avalonia.Models;
+using EasyCon2.Avalonia.Monitoring;
 using EasyCon2.Avalonia.Services;
+using EasyCon2.Avalonia.Services;
+using EasyCon2.Avalonia.Shell;
 using EasyCon2.Avalonia.TagEditor;
 using EasyCon2.Avalonia.Terminal;
-using EasyCon2.Avalonia.Monitoring;
-using EasyCon2.Avalonia.Connection;
-using EasyCon2.Avalonia.Shell;
-using EasyCon2.Avalonia.Markup;
-using EasyCon2.Avalonia.Models;
-using EasyCon2.Avalonia.Services;
 using OpenCvSharp;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
@@ -257,7 +258,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _saveUserConfig = saveUserConfig ?? ConfigManager.SaveConfig;
         // 初始化 AI Agent，注入编辑区服务
         _toolCallService = new ToolCallService(
-            scriptService, captureService, _logBuffer,
+            scriptService, captureService, deviceService, _logBuffer,
             () => _projectDirectoryPath,
             () => EditorText ?? string.Empty,
             v => EditorText = v,

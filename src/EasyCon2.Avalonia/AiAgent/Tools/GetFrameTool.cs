@@ -1,3 +1,5 @@
+using EasyCon.Core.LLM.Agent;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Tools;
 using EasyCon2.Avalonia.Services;

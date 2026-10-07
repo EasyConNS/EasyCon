@@ -2,10 +2,15 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Config;
 using EasyCon.Core.LLM;
+using EasyCon.Core.LLM.Agent;
+using EasyCon.Core.LLM.Agent.Skills;
+using EasyCon.Core.LLM.Agent.Tools;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
 using EasyCon.Core.LLM.Skills;
-using EasyCon2.Avalonia.AiAgent.Skills;
+using EasyCon.Core.LLM.Tools;
+using EasyCon.Core.LLM.Tools;
 using EasyCon2.Avalonia.AiAgent.Tools;
 using EasyCon2.Avalonia.Mcp;
 using EasyCon2.Avalonia.Services;
@@ -21,6 +26,13 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
 {
     private readonly List<ChatMessage> _history = [];
     private readonly ToolRegistry _tools = new();
+
+    /// <summary>
+    /// 当前实例的工具注册中心，供 MCP Server 导出（GUI 启动时由 App 读取一次）。
+    /// 仅首个实例生效；工具的动态增删（MCP 客户端工具集变化）不影响已导出引用，
+    /// 导出侧以快照语义工作。
+    /// </summary>
+    public static ToolRegistry? SharedTools { get; private set; }
     private readonly SkillRegistry _skills = new();
     private readonly IToolCallService? _toolCallService;
     private readonly IMcpManager? _mcpManager;
@@ -69,6 +81,14 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _sessionTitle = "AI Agent";
 
+    /// <summary>当前等待人工确认的工具名（无等待时为 null）。</summary>
+    [ObservableProperty]
+    private string? _pendingConfirmationTool;
+
+    /// <summary>危险工具执行前的确认提示文本。</summary>
+    [ObservableProperty]
+    private string? _pendingConfirmationReason;
+
     private bool _hasGeneratedTitle;
     private int _sessionVersion;
 
@@ -93,10 +113,13 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
     {
         _toolCallService = toolCallService;
         _mcpManager = mcpManager;
+        SharedTools ??= _tools;
         _ui = uiDispatcher ?? SynchronousUiDispatcher.Instance;
         if (toolCallService is not null)
         {
             DefaultTools.RegisterAll(_tools, toolCallService);
+            WorkspaceFileTools.RegisterAll(_tools,
+                () => _toolCallService?.GetProjectDirectory());
             InitializeSkills();
         }
 
@@ -187,7 +210,8 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
         // 模型切换后重建编排器（注入技能体系 + 脚本项目目录，供 AGENTS.md 装配）
         _orchestrator = new AgentOrchestrator(_tools, _skills,
             clientFactory: null,
-            projectDirectoryProvider: () => _toolCallService?.GetProjectDirectory());
+            projectDirectoryProvider: () => _toolCallService?.GetProjectDirectory(),
+            confirmationHandler: RequestConfirmationAsync);
     }
 
     partial void OnIsOpenChanged(bool value)
@@ -337,7 +361,8 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
         {
             _orchestrator ??= new AgentOrchestrator(_tools, _skills,
                 clientFactory: null,
-                projectDirectoryProvider: () => _toolCallService?.GetProjectDirectory());
+                projectDirectoryProvider: () => _toolCallService?.GetProjectDirectory(),
+            confirmationHandler: RequestConfirmationAsync);
 
             await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token,
                 SelectedEntry.Vision);
@@ -383,6 +408,45 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// <summary>待确认工具的 TCS：事件到达 UI 前先挂起编排器线程。</summary>
+    private TaskCompletionSource<bool>? _pendingConfirmation;
+
+    /// <summary>是否有等待人工确认的危险工具调用。</summary>
+    public bool HasPendingConfirmation => PendingConfirmationTool is not null;
+
+    /// <summary>
+    /// 编排器的危险工具确认回调：挂起直到用户通过
+    /// <see cref="RespondConfirmation"/> 应答，或会话被取消/结束。
+    /// </summary>
+    private Task<bool> RequestConfirmationAsync(ToolCall toolCall)
+    {
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Interlocked.Exchange(ref _pendingConfirmation, tcs);
+        return tcs.Task;
+    }
+
+    [RelayCommand]
+    private void ApproveConfirmation() => RespondToConfirmation(true);
+
+    [RelayCommand]
+    private void RejectConfirmation() => RespondToConfirmation(false);
+
+    /// <summary>用户对危险工具确认框的应答入口（由视图层绑定调用）。</summary>
+    public void RespondToConfirmation(bool approved)
+    {
+        var tcs = Interlocked.Exchange(ref _pendingConfirmation, null);
+        tcs?.TrySetResult(approved);
+        ClearPendingConfirmation();
+    }
+
+    private void ClearPendingConfirmation()
+    {
+        Interlocked.Exchange(ref _pendingConfirmation, null)?.TrySetResult(false);
+        PendingConfirmationTool = null;
+        PendingConfirmationReason = null;
+        OnPropertyChanged(nameof(HasPendingConfirmation));
+    }
+
     /// 处理编排器事件，更新 UI 状态。
     /// 连续事件（ContentDelta / ThinkingDelta）经过节流，避免 UI 线程被高频更新淹没。
     /// 离散事件（ToolExecuting / ToolCompleted 等）直接派发到 UI 线程。
@@ -437,6 +501,15 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
                         msg.FullResult = t.FullResult;
                     });
                 }
+                break;
+
+            case AgentEvent.ToolAwaitingConfirmation a:
+                _ui.Post(() =>
+                {
+                    PendingConfirmationTool = a.Name;
+                    PendingConfirmationReason = a.Reason;
+                    OnPropertyChanged(nameof(HasPendingConfirmation));
+                });
                 break;
 
             case AgentEvent.UsageUpdated u:
@@ -494,6 +567,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
             case AgentEvent.Completed c:
                 HandleCompleted(c.FinalContent);
                 _pendingTools.Clear();
+                ClearPendingConfirmation();
                 break;
         }
     }

@@ -3,7 +3,7 @@ using EasyCon.Core.LLM.Tools;
 using System.Text;
 using System.Text.Json;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// list_skills 元工具：列出所有已注册技能的名称、描述与可用参考文档。

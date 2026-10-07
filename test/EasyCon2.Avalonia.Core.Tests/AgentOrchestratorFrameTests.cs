@@ -1,4 +1,7 @@
+using EasyCon.Core.Capabilities;
 using EasyCon.Core.LLM;
+using EasyCon.Core.LLM.Agent;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
 using EasyCon.Core.LLM.Tools;
@@ -96,6 +99,18 @@ public class AgentOrchestratorFrameTests
         public void StopScript() { }
         public bool IsScriptRunning => false;
         public string? GetCurrentFrameBase64() => "ZmFrZQ==";
+
+        public PadActionResult PressButton(string key, int durationMs, int times, int intervalMs)
+            => new PadActionResult(false, "test fake");
+
+        public PadActionResult SetStick(string key, int x, int y, int durationMs)
+            => new PadActionResult(false, "test fake");
+
+        public OcrFrameResult? OcrFrame(string? language, int x, int y, int width, int height) => null;
+
+        public ICaptureSource? GetCaptureSource() => null;
+
+        public IOcrService? GetOcrService() => null;
         public string GetRecentLogs(int maxLines) => "";
     }
 

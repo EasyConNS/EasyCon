@@ -1,7 +1,7 @@
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
-using System.Text;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace EasyCon.Script.Bytecode;
 

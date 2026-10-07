@@ -1002,6 +1002,8 @@ static class SsaConstantPropagation
         {
             case SsaOp.LogicNot: SsaOptimizer.SetBoolResult(inst, !operand.Const.GetBool()); return true;
             case SsaOp.NotInt: SsaOptimizer.SetIntResult(inst, ~operand.Const.GetInt()); return true;
+            case SsaOp.NegInt: SsaOptimizer.SetIntResult(inst, -operand.Const.GetInt()); return true;
+            case SsaOp.NegDouble: SsaOptimizer.SetDoubleResult(inst, -operand.Const.GetDouble()); return true;
             case SsaOp.ConvBoolToInt: SsaOptimizer.SetIntResult(inst, operand.Const.GetBool() ? 1 : 0); return true;
             case SsaOp.ConvByteToInt: SsaOptimizer.SetIntResult(inst, operand.Const.GetInt()); return true;
             case SsaOp.ConvIntToDouble: SsaOptimizer.SetDoubleResult(inst, operand.Const.GetInt()); return true;

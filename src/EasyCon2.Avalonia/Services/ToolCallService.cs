@@ -1,6 +1,11 @@
 ﻿using Avalonia.Threading;
 using EasyCon.Capture;
+using EasyCon.Core;
+using EasyCon.Core.Capabilities;
+using EasyCon.Core.Hosting;
 using EasyCon2.Avalonia.Services;
+using EasyDevice;
+using EasyScript;
 using OpenCvSharp;
 using System.Collections.Concurrent;
 using System.Text;
@@ -15,6 +20,7 @@ public class ToolCallService : IToolCallService
 {
     private readonly IScriptService _scriptService;
     private readonly ICaptureService _captureService;
+    private readonly IDeviceService _deviceService;
     private readonly ConcurrentQueue<string> _logBuffer;
     private readonly Func<string?> _getProjectDirectoryPath;
     private readonly Func<string> _getEditorText;
@@ -22,20 +28,27 @@ public class ToolCallService : IToolCallService
     private readonly Func<string?> _getScriptPath;
     private readonly Func<bool> _hasScriptPath;
     private readonly Func<DeviceStatusInfo> _getDeviceStatus;
+    private readonly Func<NintendoSwitch?>? _getDevice;
+    private CapabilityLease? _ocrLease;
 
     public ToolCallService(
         IScriptService scriptService,
         ICaptureService captureService,
+        IDeviceService deviceService,
         ConcurrentQueue<string> logBuffer,
         Func<string?> getProjectDirectoryPath,
         Func<string> getEditorText,
         Action<string> setEditorText,
         Func<string?> getScriptPath,
         Func<bool> hasScriptPath,
-        Func<DeviceStatusInfo> getDeviceStatus)
+        Func<DeviceStatusInfo> getDeviceStatus,
+        Func<NintendoSwitch?>? getDevice = null)
     {
+        _getDevice = getDevice;
+
         _scriptService = scriptService;
         _captureService = captureService;
+        _deviceService = deviceService;
         _logBuffer = logBuffer;
         _getProjectDirectoryPath = getProjectDirectoryPath;
         _getEditorText = getEditorText;
@@ -256,6 +269,141 @@ public class ToolCallService : IToolCallService
         // JPEG 而非 PNG：同分辨率体积小约一个量级，直接决定多模态上下文的 token 占用
         var bytes = resized.ToBytes(".jpg", [new ImageEncodingParam(ImwriteFlags.JpegQuality, 80)]);
         return Convert.ToBase64String(bytes);
+    }
+
+    // ── 原子输入（直接驱动手柄，不经脚本）──
+
+    public PadActionResult PressButton(string key, int durationMs, int times, int intervalMs)
+    {
+        if (!TryParseKey(key, out var gamePadKey, out var keyError))
+            return new PadActionResult(false, keyError);
+        if (!_deviceService.IsConnected)
+            return new PadActionResult(false, "单片机未连接，无法执行按键");
+        if (times < 1 || times > 100)
+            return new PadActionResult(false, $"次数超出范围 (1-100): {times}");
+
+        try
+        {
+            var pad = CreatePad();
+            using var cts = new CancellationTokenSource();
+            for (var i = 0; i < times; i++)
+            {
+                pad.ClickButtons(gamePadKey, Math.Clamp(durationMs, 1, 10_000), cts.Token);
+                if (i < times - 1 && intervalMs > 0)
+                    Thread.Sleep(Math.Clamp(intervalMs, 1, 10_000));
+            }
+            return new PadActionResult(true, $"已按 {key} × {times}（每次 {durationMs}ms，间隔 {intervalMs}ms）");
+        }
+        catch (Exception ex)
+        {
+            return new PadActionResult(false, $"按键执行失败: {ex.Message}");
+        }
+    }
+
+    public PadActionResult SetStick(string key, int x, int y, int durationMs)
+    {
+        if (!TryParseKey(key, out var gamePadKey, out var keyError))
+            return new PadActionResult(false, keyError);
+        if (!_deviceService.IsConnected)
+            return new PadActionResult(false, "单片机未连接，无法设置摇杆");
+        if (x is < 0 or > 255 || y is < 0 or > 255)
+            return new PadActionResult(false, $"摇杆坐标超出范围 (0-255): ({x},{y})");
+
+        try
+        {
+            var pad = CreatePad();
+            pad.SetStick(gamePadKey, (byte)x, (byte)y);
+            if (durationMs > 0)
+            {
+                Thread.Sleep(Math.Clamp(durationMs, 1, 30_000));
+                pad.SetStick(gamePadKey, 128, 128);  // 回中
+            }
+            return new PadActionResult(true,
+                durationMs > 0 ? $"摇杆 {key} 已偏转 ({x},{y}) 持续 {durationMs}ms 后回中"
+                               : $"摇杆 {key} 已偏转 ({x},{y})（保持，不复位）");
+        }
+        catch (Exception ex)
+        {
+            return new PadActionResult(false, $"摇杆执行失败: {ex.Message}");
+        }
+    }
+
+    private ICGamePad CreatePad() => new GamePadAdapter(_deviceService.GetDevice(), highResolution: false);
+
+    private static bool TryParseKey(string key, out GamePadKey parsed, out string error)
+    {
+        if (Enum.TryParse(key.Trim(), ignoreCase: true, out parsed) && parsed != GamePadKey.None)
+        {
+            error = "";
+            return true;
+        }
+        parsed = GamePadKey.None;
+        error = $"未知按键名: {key}（合法值如 A/B/X/Y/L/R/ZL/ZR/PLUS/TOP/LEFT/LS/RS 等）";
+        return false;
+    }
+
+    // ── 原子感知 ─────────────────────────────
+
+    public OcrFrameResult? OcrFrame(string? language, int x, int y, int width, int height)
+    {
+        string base64;
+        using (var lease = _captureService.AcquireLatestFrame())
+        {
+            if (lease == null || lease.Mat.Empty()) return null;
+            var mat = lease.Mat;
+            if (width > 0 && height > 0)
+            {
+                var rect = new Rect(
+                    Math.Clamp(x, 0, Math.Max(0, mat.Width - 1)),
+                    Math.Clamp(y, 0, Math.Max(0, mat.Height - 1)),
+                    Math.Clamp(width, 1, mat.Width - Math.Clamp(x, 0, mat.Width - 1)),
+                    Math.Clamp(height, 1, mat.Height - Math.Clamp(y, 0, mat.Height - 1)));
+                mat = new Mat(mat, rect);
+            }
+            base64 = Convert.ToBase64String(mat.ToBytes(".png"));
+        }
+
+        var ocr = AcquireOcr();
+        if (ocr is null) return null;
+        var text = ocr.Recognize(ImageRef.FromBase64(base64), new OcrQuery
+        {
+            Language = string.IsNullOrWhiteSpace(language) ? null : language,
+            X = 0,
+            Y = 0,
+            Width = 0,
+            Height = 0  // ROI 已在帧上裁剪
+        });
+        return new OcrFrameResult(text, ocr.LastConfidence, ocr.Backend);
+    }
+
+    public ICaptureSource? GetCaptureSource()
+    {
+        if (!_captureService.IsConnected)
+            return null;
+        _captureSource ??= new DelegateCaptureSource(
+            FrameDelegateFactory.CreateFrame(() => _captureService.AcquireLatestFrame()));
+        return _captureSource;
+    }
+
+    private ICaptureSource? _captureSource;
+
+    public IOcrService? GetOcrService() => AcquireOcr();
+
+    /// <summary>
+    /// 惰性装配仅感知用途的能力租约（OCR 走 ScriptHostAssembler 默认值，Pad 为空）。
+    /// 装配一次复用，避免每次工具调用重复初始化 OCR 引擎。
+    /// </summary>
+    private IOcrService? AcquireOcr()
+    {
+        if (_ocrLease is null)
+        {
+            _ocrLease = ScriptHostAssembler.Assemble(new ScriptHostContext
+            {
+                Frame = FrameDelegateFactory.CreateFrame(() => _captureService.AcquireLatestFrame()),
+                AppDir = AppDomain.CurrentDomain.BaseDirectory,
+            });
+        }
+        return _ocrLease.Capabilities.Ocr;
     }
 
     // ── 日志 ────────────────────────────────

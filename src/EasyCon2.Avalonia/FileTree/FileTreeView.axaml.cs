@@ -3,8 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.FileTree;
+using EasyCon2.Avalonia.Models;
 
 namespace EasyCon2.Avalonia.FileTree;
 

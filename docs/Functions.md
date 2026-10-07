@@ -426,6 +426,44 @@ IF $net >= 0
 ENDIF
 ```
 
+### NET_IMAGE(x, y, w, h, rw, rh [, mode]): INT
+抓当前画面（负坐标 = 全帧，正坐标 = ROI），缩放到 rw×rh 并转成张量，返回**张量句柄**（失败 0）。
+大数组驻留宿主侧，脚本只见句柄。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| x, y, w, h | INT | 采集区域；负值 = 全帧 |
+| rw, rh | INT | 目标尺寸（多数 CNN 要求 32 的倍数） |
+| mode | STRING | `"gray"`（[1,1,rh,rw]，缺省）或 `"rgb"`（[1,3,rh,rw]，CHW） |
+
+```ecs
+$img = NET_IMAGE(-1, -1, -1, -1, 640, 640, "rgb")
+```
+
+也有 base64 版重载：`NET_IMAGE($imgB64, rw, rh [, mode])`（图像来自 CAPTURE/ROI 结果）。
+
+### NET_SCALE(tensor, scale, offset): INT
+逐元素变换 t2 = t·scale + offset，返回新张量句柄（原张量不变）。归一化在此组合。
+
+```ecs
+$t = NET_SCALE($img, 0.003921568627, 0.0)    # 0-255 → 0-1
+```
+
+### NET_RUNH(net, tensor): INT
+以句柄张量为输入推理，返回输出元素个数（失败 0）。输出仍用 NET_OUT(i) 逐元素读取。
+
+```ecs
+$n = NET_RUNH($net, $t)
+```
+
+### NET_FREE(handle): INT
+释放张量句柄（长脚本建议显式释放；会话结束宿主统一回收）。
+
+### NET_UNLOAD(net): INT
+卸载模型会话。
+
+完整示例见 `examples/pokemon-stats.ecs`（PP-OCRv5 rec 识别宝可梦状态页并计算能力值）。
+
 ---
 
 ## 10. 实用要点

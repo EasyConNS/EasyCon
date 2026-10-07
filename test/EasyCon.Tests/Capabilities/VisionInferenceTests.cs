@@ -45,6 +45,15 @@ public class VisionInferenceTests
 
         public void Unload(int session) { }
 
+        public int[]? LastOutputShape => null;
+        public int HoldTensor(float[] data, int[] shape) => -1;
+
+        public void FreeTensor(int handle) { }
+
+        public float[]? RunHeld(int session, int tensorHandle) => null;
+
+        public int TransformTensor(int handle, float scale, float offset) => -1;
+
         public void Dispose() { }
     }
 

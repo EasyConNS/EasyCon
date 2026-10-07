@@ -1,3 +1,5 @@
+using EasyCon.Core.LLM.Agent;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon2.Avalonia.Mcp;
 
 namespace EasyCon2.Avalonia.AiAgent.Tools;

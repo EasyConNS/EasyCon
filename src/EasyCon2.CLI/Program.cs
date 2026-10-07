@@ -7,6 +7,7 @@ using EasyCon.Lsp;
 using EasyCon.Script;
 using EasyCon.Script.Ssa;
 using EasyCon.Script.Syntax;
+using EasyCon2.CLI;
 using EasyDevice;
 using EasyScript;
 using OpenCvSharp;
@@ -20,6 +21,7 @@ Console.OutputEncoding = Encoding.UTF8;
 
 bool isFormatCommand = args.Length > 0 && args[0] == "format";
 bool isLspCommand = args.Length > 0 && args[0] == "lsp";
+bool isMcpCommand = args.Length > 0 && args[0] == "--mcp";
 
 string defaultCOMPort = "COM22";
 
@@ -33,7 +35,7 @@ EasyCon.Core.Config.ConfigManager.ConfigErrorReported += (path, msg) =>
 // 库层诊断转发（CoreLog 默认仅 Debug.WriteLine，Release 下会丢失）
 EasyCon.Core.Logging.CoreLog.Sink = msg => Console.Error.WriteLine(msg);
 
-if (!isFormatCommand && !isLspCommand)
+if (!isFormatCommand && !isLspCommand && !isMcpCommand)
 {
     Console.WriteLine("------------------------------------------");
     Console.WriteLine("----    EasyCon CLI Runner v0.0.1     ----");
@@ -561,5 +563,26 @@ lspCommand.SetAction(async (parseResult, cancellationToken) =>
     return 0;
 });
 rootCommand.Subcommands.Add(lspCommand);
+
+rootCommand.Subcommands.Add(AgentCommand.Create());
+
+// --mcp：stdio 模式的 MCP Server（任意外部 agent 经标准 MCP 协议驱动工作区工具）
+if (isMcpCommand)
+{
+    var mcpRegistry = new EasyCon.Core.LLM.Agent.Tools.ToolRegistry();
+    EasyCon.Core.LLM.Agent.Tools.WorkspaceFileTools.RegisterAll(
+        mcpRegistry, () => Directory.GetCurrentDirectory());
+    var mcpSkills = new EasyCon.Core.LLM.Skills.SkillRegistry();
+    foreach (var skill in EasyCon.Core.LLM.Agent.Skills.BundledSkills.CreateAll())
+        mcpSkills.Register(skill);
+    EasyCon.Core.LLM.Skills.SkillLoader.LoadToRegistry(
+        mcpSkills, EasyCon.Core.LLM.Skills.SkillLoader.GetSearchPaths(Directory.GetCurrentDirectory()).ToList());
+    mcpRegistry.Register(new EasyCon.Core.LLM.Agent.Tools.ListSkillsTool(mcpSkills));
+    mcpRegistry.Register(new EasyCon.Core.LLM.Agent.Tools.ReadSkillTool(mcpSkills));
+    Console.Error.WriteLine("[mcp] EasyCon MCP Server (stdio) 已启动，工具目录: " + Directory.GetCurrentDirectory());
+    await EasyCon.Core.LLM.Agent.Mcp.McpServerHost.RunStdioAsync(
+        mcpRegistry, "easycon-cli", "1.0", CancellationToken.None);
+    return 0;
+}
 
 return rootCommand.Parse(args).Invoke();

@@ -1,11 +1,11 @@
 using EasyCon.Core.LLM;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Messages;
 using EasyCon.Core.LLM.Models;
 using EasyCon.Core.LLM.Skills;
 using EasyCon.Core.LLM.Tools;
-using EasyCon2.Avalonia.AiAgent.Tools;
 
-namespace EasyCon2.Avalonia.AiAgent;
+namespace EasyCon.Core.LLM.Agent;
 
 /// <summary>
 /// Skill 执行器。支持两种执行模式：
@@ -16,7 +16,7 @@ namespace EasyCon2.Avalonia.AiAgent;
 ///       执行完毕后返回子 Agent 的最终回复。</item>
 /// </list>
 /// </summary>
-internal class SkillExecutor
+public class SkillExecutor
 {
     private readonly SkillRegistry _skills;
     private readonly ToolRegistry _tools;

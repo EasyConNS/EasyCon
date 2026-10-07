@@ -1,6 +1,6 @@
 using EasyCon.Core.LLM.Skills;
 
-namespace EasyCon2.Avalonia.AiAgent.Skills;
+namespace EasyCon.Core.LLM.Agent.Skills;
 
 /// <summary>
 /// 内置技能：直接在代码中初始化 Skill 对象，不从文件系统加载。

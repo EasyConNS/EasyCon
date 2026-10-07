@@ -1,7 +1,7 @@
 using EasyCon.Core.LLM.Tools;
 using System.Text.Json;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// 工具同轮并发资格。编排器据此决定多工具调用是并行成组还是独占串行。
@@ -39,6 +39,12 @@ public interface IAiTool
     /// 同轮并发资格。默认独占：语义未知的工具（含 MCP 适配）不参与并行。
     /// </summary>
     ToolConcurrency Concurrency => ToolConcurrency.Exclusive;
+
+    /// <summary>
+    /// 是否需要人工确认后才能执行（设备动作等有副作用的危险操作）。
+    /// 编排器在执行前向宿主请求确认；宿主未提供确认回调时 fail-closed 拒绝执行。
+    /// </summary>
+    bool RequiresConfirmation => false;
 
     /// <summary>
     /// 执行工具调用，返回结果（含状态信息，回传给模型）。

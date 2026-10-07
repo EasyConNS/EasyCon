@@ -261,7 +261,8 @@ public class LinkOptimizationTests
         // 27 = 19（fast path 活 φ 槽）+ 2（循环不变量外提共享组槽）+ 5（std print 内联临时区：
         // v3+std 内联后 print/FRAME 壳在调用点展开，共享 fresh 块只涨一次；零 φ 拷贝合并后
         // 活 φ 槽不增）。死 φ 免分配不变量由下方 setVar/move 断言继续锁定。
-        Assert.That(image.MaxSlots, Is.LessThanOrEqualTo(27), "死 φ 槽应免分配（fast path + 外提共享组槽 + print 内联临时区后基线 27）");
+        // 锁定 <main> 自身（image.MaxSlots 含标准库 PPOCR_* 等库函数的独立槽位，随库演进波动）。
+        Assert.That(main.NSlots, Is.LessThanOrEqualTo(27), "死 φ 槽应免分配（fast path + 外提共享组槽 + print 内联临时区后基线 27）");
 
         int setVar = 0, move = 0;
         foreach (var ins in main.Instructions)

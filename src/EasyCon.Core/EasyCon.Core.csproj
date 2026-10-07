@@ -5,9 +5,12 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="EasyCon.Tests" />
+    <InternalsVisibleTo Include="EasyCon2.Avalonia.Core.Tests" />
   </ItemGroup>
   <ItemGroup>
 	  <PackageReference Include="YamlDotNet" />
+	  <PackageReference Include="ModelContextProtocol.Core" />
+	  <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
 
 	  <ProjectReference Include="..\EasyCon.Capture\EasyCon.Capture.csproj" />
 	  <ProjectReference Include="..\EasyCon.Script\EasyCon.Script.csproj" />

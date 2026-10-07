@@ -294,7 +294,7 @@
             BorderThickness="0"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Stretch">
-        <Grid RowDefinitions="34,1,*,Auto,Auto">
+        <Grid RowDefinitions="34,1,*,Auto,Auto,Auto">
             <!-- 标题栏 -->
             <Grid Grid.Row="0"
                   ColumnDefinitions="Auto,*,Auto,Auto,Auto"
@@ -368,6 +368,32 @@
                 </ItemsControl>
             </ScrollViewer>
 
+            <!-- 危险工具人工确认条 -->
+            <Border Grid.Row="4"
+                    Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}"
+                    BorderBrush="{DynamicResource WorkbenchAccentBrush}"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="10,6"
+                    Margin="10,6,10,0"
+                    IsVisible="{Binding HasPendingConfirmation}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock VerticalAlignment="Center"
+                               TextWrapping="Wrap"
+                               FontSize="12"
+                               Foreground="{DynamicResource WorkbenchTextBrush}">
+                        <Run Text="⚠ 工具 "/><Run Text="{Binding PendingConfirmationTool, Mode=OneWay}" FontWeight="Bold"/>
+                        <Run Text=" 请求执行（将操作真实设备），是否允许？"/>
+                    </TextBlock>
+                    <Button Classes="agent-action-button"
+                            Content="允许"
+                            Command="{Binding ApproveConfirmationCommand}"/>
+                    <Button Classes="agent-action-button"
+                            Content="拒绝"
+                            Command="{Binding RejectConfirmationCommand}"/>
+                </StackPanel>
+            </Border>
+
             <!-- 调试面板 -->
             <Border Grid.Row="3"
                     Background="{DynamicResource WorkbenchInputBrush}"
@@ -387,7 +413,7 @@
             </Border>
 
             <!-- 输入区：输入框 + 右下角叠加控件 -->
-            <Grid Grid.Row="4" Margin="10,0,10,10">
+            <Grid Grid.Row="5" Margin="10,0,10,10">
                 <TextBox x:Name="InputTextBox"
                          Classes="agent-input"
                          Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"

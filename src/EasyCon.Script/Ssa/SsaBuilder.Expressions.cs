@@ -161,19 +161,18 @@ sealed partial class SsaBuilder
 
     private SsaValue EmitNegate(ScriptType type, SsaValue operand)
     {
-        var zeroOp = type.Equals(ScriptType.UInt) ? SsaOp.ConstUInt
-            : type.Equals(ScriptType.UInt64) ? SsaOp.ConstUInt64
-            : type.Equals(ScriptType.Byte) ? SsaOp.ConstByte
-            : SsaOp.ConstInt;
-        var zero = NewValue(zeroOp, type);
-        AddInst(zero);  // 常量必须加入指令列表
-        var op = type switch
+        if (type.Equals(ScriptType.Double))
+            return EmitAndAdd(SsaOp.NegDouble, type, operand);
+        if (type.Equals(ScriptType.UInt) || type.Equals(ScriptType.UInt64))
         {
-            _ when type.Equals(ScriptType.UInt) => SsaOp.SubUInt,
-            _ when type.Equals(ScriptType.UInt64) => SsaOp.SubUInt64,
-            _ => SsaOp.SubInt
-        };
-        return EmitAndAdd(op, type, zero, operand);
+            // 无专用取负：0 − x（保持既有语义）
+            var zeroOp = type.Equals(ScriptType.UInt) ? SsaOp.ConstUInt : SsaOp.ConstUInt64;
+            var zero = NewValue(zeroOp, type);
+            AddInst(zero);
+            var subOp = type.Equals(ScriptType.UInt) ? SsaOp.SubUInt : SsaOp.SubUInt64;
+            return EmitAndAdd(subOp, type, zero, operand);
+        }
+        return EmitAndAdd(SsaOp.NegInt, type, operand);
     }
 
     private SsaValue EmitConversion(BoundConversionExpression conv)

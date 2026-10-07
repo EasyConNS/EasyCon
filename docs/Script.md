@@ -1274,6 +1274,36 @@ ENDFUNC
 
 ---
 
+## ONNX 句柄族（NET_IMAGE / NET_RUNH / NET_SCALE / NET_FREE / NET_UNLOAD）
+
+> 与 NET_* 同族（L3 名表 + VISION 特征位，单片机拒跑）。大数组驻留宿主侧，
+> 脚本只见句柄——原生边界纯标量协议不变。适合卷积类视觉模型（det/rec/分类器）。
+
+```ecs
+# 图像 → 张量句柄（抓当前画面；负坐标 = 全帧，正坐标 = ROI）
+$img = NET_IMAGE(-1, -1, -1, -1, 640, 640, "rgb")    # RGB [1,3,640,640]，像素 0-255
+$img = NET_IMAGE(100, 50, 200, 80, 320, 32)          # 灰度 [1,1,32,320]（缺省 mode）
+
+# 逐元素变换 t2 = t·scale + offset（归一化在此组合，如 1/255）
+$t = NET_SCALE($img, 0.003921568627, 0.0)
+
+# 以句柄张量为输入推理：返回输出元素个数（0 = 失败）；NET_OUT(i) 逐元素读取
+$n = NET_RUNH($net, $t)
+$o = NET_OUT(0)
+
+# 释放资源（长脚本建议显式释放张量；会话结束宿主统一回收）
+NET_FREE($img)
+NET_UNLOAD($net)
+```
+
+约定：
+- `NET_IMAGE` 模式串：`"gray"`（[1,1,H,W]）| `"rgb"`（[1,3,H,W]，CHW 平铺）。
+- 像素为 0-255 原始值，模型专属归一化（ImageNet mean/std 等）用 `NET_SCALE` 组合
+  （或沉淀为 lib 库函数）；宿主保持模型中立。
+- 张量形状由宿主按模式自动声明，`NET_RUNH` 校验会话与句柄有效性。
+
+---
+
 ## ONNX 推理实验函数（NET_*）
 
 > 实验面：走 L3 名表，宿主须装配 `IInference` 能力（OpenCvSharp.Dnn 后端）；

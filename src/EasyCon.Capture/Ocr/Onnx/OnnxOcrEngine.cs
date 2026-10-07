@@ -1,4 +1,4 @@
-﻿using EasyCon.Capture.Ocr;
+using EasyCon.Capture.Ocr;
 using OpenCvSharp;
 using OpenCvSharp.Dnn;
 
@@ -14,9 +14,10 @@ public sealed class OnnxDetector : IOcrDetector
     private readonly DetOptions _options;
     private bool _disposed;
 
-    // PaddleOCR 检测模型预处理参数
-    private static readonly float[] DetMean = [0.485f, 0.456f, 0.406f];
-    private static readonly float[] DetStd = [0.229f, 0.224f, 0.225f];
+    // PP-OCRv5 官方 ONNX 导出的检测预处理：等价于 (px/127.5 - 0.5)，即 (px/255 - 0.25) / 0.5。
+    // 实测 ImageNet mean/std 会让概率图大面积饱和（>50% 像素超阈值），此参数组下文本区稀疏（~8%）。
+    private static readonly float[] DetMean = [0.25f, 0.25f, 0.25f];
+    private static readonly float[] DetStd = [0.5f, 0.5f, 0.5f];
 
     /// <summary>
     /// 从文件路径加载检测模型。
@@ -155,6 +156,16 @@ public sealed class OnnxDetector : IOcrDetector
             int bw = (int)(rect.Width * scaleX);
             int bh = (int)(rect.Height * scaleY);
 
+            // unclip-lite：DB 无完整 Vatti 外扩，按比例外扩边界。
+            // 实测（1080p 游戏截图像素字）垂直外扩需 ~h*30%、水平 ~w*1.5% 才不切字，
+            // 否则 rec 对紧框输出空/乱码。
+            int ex = Math.Max(6, (int)(bw * 0.015f));
+            int ey = Math.Max(6, (int)(bh * 0.30f));
+            x -= ex;
+            y -= ey;
+            bw += ex * 2;
+            bh += ey * 2;
+
             // 裁剪到原图范围
             x = Math.Clamp(x, 0, origW);
             y = Math.Clamp(y, 0, origH);
@@ -270,36 +281,34 @@ public sealed class OnnxRecognizer : IOcrRecognizer
     }
 
     /// <summary>
-    /// 识别预处理：BGR→RGB、高度缩放到 32（保持宽高比）、宽度填充到 8 的倍数。
+    /// 识别预处理：高度缩放到 32（保持宽高比）、宽度填充到 8 的倍数。
+    /// 注意：PaddleOCR rec 官方预处理不转 RGB（保持 BGR），与 det 不同。
     /// </summary>
     private static Mat PreprocessRec(Mat src)
     {
-        using var rgb = new Mat();
-        Cv2.CvtColor(src, rgb, ColorConversionCodes.BGR2RGB);
-
-        float ratio = (float)RecImageHeight / rgb.Height;
-        int newW = (int)(rgb.Width * ratio);
-        Cv2.Resize(rgb, rgb, new Size(newW, RecImageHeight), 0, 0, InterpolationFlags.Linear);
+        float ratio = (float)RecImageHeight / src.Height;
+        int newW = (int)(src.Width * ratio);
+        Cv2.Resize(src, src, new Size(newW, RecImageHeight), 0, 0, InterpolationFlags.Linear);
 
         // 宽度填充到 8 的倍数（最小 8）
         int padW = ((newW + 7) / 8) * 8 - newW;
         if (padW > 0)
-            Cv2.CopyMakeBorder(rgb, rgb, 0, 0, 0, padW, BorderTypes.Constant, Scalar.Black);
+            Cv2.CopyMakeBorder(src, src, 0, 0, 0, padW, BorderTypes.Constant, Scalar.Black);
 
-        return rgb.Clone();
+        return src.Clone();
     }
 
     /// <summary>
-    /// 创建识别模型输入 blob：归一化到 [-1, 1] 范围。
-    /// 公式：(pixel/255 - 0.5) / 0.5 = pixel/127.5 - 1.0
-    /// BlobFromImage: scale = 1/127.5, mean = (1, 1, 1), swapRB = false（已是 RGB）
+    /// 创建识别模型输入 blob：与 det 同族的归一化（px/255 - 0.25，不除 std）。
+    /// 实测 PaddleOCR 经典的 (px/127.5 - 1) 会让 v5 导出输出乱码，此参数组出正确文本。
+    /// BlobFromImage: scale = 1/255, mean = (0.25, 0.25, 0.25), swapRB = false（保持 BGR）
     /// </summary>
     private static Mat CreateRecBlob(Mat rgb)
     {
         return Cv2.Dnn.BlobFromImage(rgb,
-            1.0 / 127.5,
+            1.0 / 255.0,
             new Size(rgb.Width, rgb.Height),
-            new Scalar(1.0, 1.0, 1.0),
+            new Scalar(0.25, 0.25, 0.25),
             swapRB: false, crop: false);
     }
 
@@ -313,8 +322,18 @@ public sealed class OnnxRecognizer : IOcrRecognizer
 
         if (output.Dims == 3)
         {
-            T = output.Size(1);
-            numClasses = output.Size(2);
+            if (output.Size(0) == 1)
+            {
+                // [1, T, C]
+                T = output.Size(1);
+                numClasses = output.Size(2);
+            }
+            else
+            {
+                // [T, 1, C]（部分导出的形状）
+                T = output.Size(0);
+                numClasses = output.Size(2);
+            }
         }
         else if (output.Dims >= 4)
         {
@@ -360,12 +379,12 @@ public sealed class OnnxRecognizer : IOcrRecognizer
         if (indices.Count == 0)
             return new OcrRecognizeResult(string.Empty, 0f);
 
-        // 查字符集
+        // 查字符集（PaddleOCR 惯例：末位类别是显式空格，越界按空格回退）
         var chars = new char[indices.Count];
         for (int i = 0; i < indices.Count; i++)
         {
             int idx = indices[i];
-            chars[i] = idx < _charset.Length ? _charset[idx][0] : '?';
+            chars[i] = idx < _charset.Length ? _charset[idx][0] : ' ';
         }
 
         float confidence = validCount > 0 ? totalConf / validCount : 0f;

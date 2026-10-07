@@ -1,7 +1,7 @@
 using EasyCon.Core.LLM.Tools;
 using System.Text.Json;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// execute_skill 工具：按名称执行已注册的 skill。
@@ -12,7 +12,7 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </list>
 /// 可用 <c>list_skills</c> 查看所有已注册技能及其执行模式。
 /// </summary>
-internal class ExecuteSkillTool : IAiTool
+public class ExecuteSkillTool : IAiTool
 {
     public const string ToolName = "execute_skill";
 

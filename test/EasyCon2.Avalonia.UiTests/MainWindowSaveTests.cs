@@ -9,13 +9,13 @@ using EasyCon.Capture;
 using EasyCon.Core.Config;
 using EasyCon.Core.Services;
 using EasyCon2.Avalonia.Editor;
+using EasyCon2.Avalonia.FileTree;
+using EasyCon2.Avalonia.KeyMapping;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Shell;
-using EasyCon2.Avalonia.KeyMapping;
-using EasyCon2.Avalonia.FileTree;
 using EasyDevice;
 
 namespace EasyCon2.Avalonia.UiTests;

@@ -1,3 +1,5 @@
+using EasyCon.Core.LLM.Agent;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Tools;
 using EasyCon2.Avalonia.Services;
 using System.Text.Json;
@@ -9,6 +11,9 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class RunScriptTool : IAiTool
 {
+    /// <summary>脚本会驱动真实硬件，需要人工确认。</summary>
+    public bool RequiresConfirmation => true;
+
     private readonly IToolCallService _service;
 
     public RunScriptTool(IToolCallService service) => _service = service;

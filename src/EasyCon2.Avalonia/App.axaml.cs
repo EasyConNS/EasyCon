@@ -3,15 +3,15 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using EasyCon.Core.Config;
-using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Shell;
-using EasyCon2.Avalonia.Monitoring;
+using EasyCon2.Avalonia.AlertConfig;
 using EasyCon2.Avalonia.Connection;
 using EasyCon2.Avalonia.KeyMapping;
-using EasyCon2.Avalonia.Scripting;
-using EasyCon2.Avalonia.AlertConfig;
 using EasyCon2.Avalonia.Mcp;
 using EasyCon2.Avalonia.ModelsConfig;
+using EasyCon2.Avalonia.Monitoring;
+using EasyCon2.Avalonia.Scripting;
+using EasyCon2.Avalonia.Services;
+using EasyCon2.Avalonia.Shell;
 using ControllerService = EasyCon2.Avalonia.Services.ControllerService;
 using CoreLogService = EasyCon2.Avalonia.Services.LogService;
 using DeviceService = EasyCon2.Avalonia.Services.DeviceService;
@@ -102,17 +102,54 @@ public partial class App : Application
             // 预热按键映射窗口所需的资源（Icons.json / 控制器 SVG），避免首次打开时延迟闪现
             UiPreloader.Warmup();
 
+            // MCP Server：GUI 启动即后台监听 loopback /mcp，任意外部 agent 可驱动
+            // （端口可用环境变量 EC_MCP_PORT 覆盖；设为 0 关闭）。危险工具不导出（fail-closed）。
+            StartMcpServer();
+
             desktop.Exit += (_, _) =>
             {
                 // 单一清理入口：关窗路径只做 UI/配置收尾，服务释放统一在此（带防御）
                 try { if (controllerService is IDisposable cd) cd.Dispose(); } catch { }
                 try { captureService.Dispose(); } catch { }
                 try { deviceService.Dispose(); } catch { }
+                try { _mcpHttpServer?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }
                 logService.Dispose();
                 EasyCon.Core.Logging.CoreLog.Sink = null;
             };
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static EasyCon.Core.LLM.Agent.Mcp.McpHttpServer? _mcpHttpServer;
+
+    private static void StartMcpServer()
+    {
+        var port = int.TryParse(Environment.GetEnvironmentVariable("EC_MCP_PORT"), out var p) ? p : 19390;
+        if (port <= 0)
+        {
+            EasyCon.Core.Logging.CoreLog.Info("[McpServer] EC_MCP_PORT<=0，已禁用 HTTP MCP");
+            return;
+        }
+
+        var registry = EasyCon2.Avalonia.AiAgent.AiAgentViewModel.SharedTools;
+        if (registry is null)
+        {
+            EasyCon.Core.Logging.CoreLog.Info("[McpServer] 无工具注册中心，跳过 HTTP MCP");
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                _mcpHttpServer = await EasyCon.Core.LLM.Agent.Mcp.McpServerHost.StartHttpAsync(
+                    registry, "easycon-gui", "1.0", port, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                EasyCon.Core.Logging.CoreLog.Error($"[McpServer] HTTP MCP 启动失败: {ex.Message}");
+            }
+        });
     }
 }
