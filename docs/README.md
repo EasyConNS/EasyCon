@@ -18,6 +18,7 @@
 | [Framework.md](Framework.md) | 分层依赖图、组合根规则（能力装配/编译档位唯一落点）、三条主链路、已知短板 |
 | [Pipeline.md](Pipeline.md) | 源码 → EcxImage 统一编译链路、链接期行为、单一事实源落点表 |
 | [ModuleSystem.md](ModuleSystem.md) | 接口式独立编译、Merkle 缓存键、接口完备性清单、缓存 GC |
+| [Flow.md](Flow.md) | 节点编排（`*.flow.json`）：图格式、节点目录与语义、执行模型（看门狗/计时/停止/慢感知）、HTTP + MCP 接口、Python 画布（`frontend/`）、已知挂账 |
 
 ## ⚙️ 虚拟机与字节码（改 VM/格式/双端前必读）
 
@@ -44,6 +45,7 @@
 - **写脚本**：GETTING_STARTED → Script → Functions
 - **改编译器**：Pipeline → ModuleSystem → VM2 → VmSemanticContract → EcmEcxFormat（＋ PROJECT_OUTLINE 决策记录）
 - **改宿主/UI**：Framework → `AGENTS.md` 分层规则 → `src/EasyCon.Core/README.md`
+- **做编排/画布**：Flow（＋ `frontend/README.md`；改节点必须同时改 `FlowNodeCatalog` 与 `FlowNodeRuntime`）
 
 ## 维护规则
 

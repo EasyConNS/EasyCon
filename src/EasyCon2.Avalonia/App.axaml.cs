@@ -106,6 +106,10 @@ public partial class App : Application
             // （端口可用环境变量 EC_MCP_PORT 覆盖；设为 0 关闭）。危险工具不导出（fail-closed）。
             StartMcpServer();
 
+            // Flow 服务：与 MCP 并排的第二个 loopback 端点（前端画布/外部工具的 HTTP 后端），
+            // 同时把 FlowServiceTools 注册进 GUI 的 agent 工具注册中心（agent 与画布能力对等）。
+            StartFlowService();
+
             desktop.Exit += (_, _) =>
             {
                 // 单一清理入口：关窗路径只做 UI/配置收尾，服务释放统一在此（带防御）
@@ -113,6 +117,8 @@ public partial class App : Application
                 try { captureService.Dispose(); } catch { }
                 try { deviceService.Dispose(); } catch { }
                 try { _mcpHttpServer?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }
+                try { _flowHttp?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }
+                try { _flowState?.Dispose(); } catch { }
                 logService.Dispose();
                 EasyCon.Core.Logging.CoreLog.Sink = null;
             };
@@ -122,6 +128,51 @@ public partial class App : Application
     }
 
     private static EasyCon.Core.LLM.Agent.Mcp.McpHttpServer? _mcpHttpServer;
+    private static EasyCon.Core.Flow.FlowServiceState? _flowState;
+    private static EasyCon.Core.Flow.FlowServiceHttp? _flowHttp;
+
+    /// <summary>
+    /// Flow 编排服务（HTTP，loopback）：前端 Python 画布与外部工具的后端。
+    /// 端口由 <c>EC_FLOW_PORT</c> 覆盖（默认 19391，0 = 关闭）。
+    ///
+    /// <para>
+    /// 设备持有说明：本服务自带采集源/单片机连接状态，与 GUI 监控页各持一份。
+    /// 同一块采集卡请勿在两处同时打开（驱动层通常独占）；画布流程统一走本服务
+    /// 的 <c>/api/device/*</c> 连接。
+    /// </para>
+    /// </summary>
+    private static void StartFlowService()
+    {
+        var port = int.TryParse(Environment.GetEnvironmentVariable("EC_FLOW_PORT"), out var p) ? p : 19391;
+        if (port <= 0)
+        {
+            EasyCon.Core.Logging.CoreLog.Info("[FlowService] EC_FLOW_PORT<=0，已禁用 HTTP Flow 服务");
+            return;
+        }
+
+        _flowState = new EasyCon.Core.Flow.FlowServiceState();
+
+        // 与 MCP 共用同一注册中心：GUI 内的 agent 也能用画布那套设备/图工具
+        var registry = EasyCon2.Avalonia.AiAgent.AiAgentViewModel.SharedTools;
+        if (registry is not null)
+            EasyCon.Core.Flow.FlowServiceTools.RegisterAll(registry, _flowState);
+        else
+            EasyCon.Core.Logging.CoreLog.Info("[FlowService] 无工具注册中心，未注册 flow_* 工具");
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                _flowHttp = new EasyCon.Core.Flow.FlowServiceHttp(_flowState, port);
+                await _flowHttp.StartAsync(CancellationToken.None);
+                EasyCon.Core.Logging.CoreLog.Info($"[FlowService] 已监听 {_flowHttp.Url}（画布后端）");
+            }
+            catch (Exception ex)
+            {
+                EasyCon.Core.Logging.CoreLog.Error($"[FlowService] 启动失败（端口 {port}）: {ex.Message}");
+            }
+        });
+    }
 
     private static void StartMcpServer()
     {

@@ -17,13 +17,17 @@ namespace EasyCon.Core.LLM.Agent.Mcp;
 /// </summary>
 public static class McpServerHost
 {
-    /// <summary>把注册表中可导出的工具包装为 McpServerTool 列表。</summary>
-    public static List<McpServerTool> ExportTools(ToolRegistry registry)
+    /// <summary>
+    /// 把注册表中可导出的工具包装为 McpServerTool 列表。
+    /// <paramref name="includeDangerous"/> = false 时过滤 RequiresConfirmation 工具（fail-closed 默认）；
+    /// 显式开启后才导出（外部 agent 驱动设备/图，需宿主明确授权）。
+    /// </summary>
+    public static List<McpServerTool> ExportTools(ToolRegistry registry, bool includeDangerous = false)
     {
         var tools = new List<McpServerTool>();
         foreach (var (_, tool) in registry.Snapshot())
         {
-            if (tool.RequiresConfirmation)
+            if (tool.RequiresConfirmation && !includeDangerous)
                 continue;
             tools.Add(McpServerTool.Create(new AiToolAIFunction(tool)));
         }
@@ -37,9 +41,10 @@ public static class McpServerHost
     };
 
     /// <summary>启动 stdio 传输的 MCP Server 并开始运行（阻塞直到 stdin 关闭）。</summary>
-    public static async Task RunStdioAsync(ToolRegistry registry, string name, string version, CancellationToken ct)
+    public static async Task RunStdioAsync(ToolRegistry registry, string name, string version, CancellationToken ct,
+        bool includeDangerous = false)
     {
-        var options = BuildOptions(name, version, ExportTools(registry));
+        var options = BuildOptions(name, version, ExportTools(registry, includeDangerous));
         var server = McpServer.Create(new StdioServerTransport(options), options);
         await server.RunAsync(ct);
     }
@@ -49,9 +54,10 @@ public static class McpServerHost
     /// 返回停止句柄；进程退出时由调用方释放。
     /// </summary>
     public static async Task<McpHttpServer> StartHttpAsync(
-        ToolRegistry registry, string name, string version, int port, CancellationToken ct)
+        ToolRegistry registry, string name, string version, int port, CancellationToken ct,
+        bool includeDangerous = false)
     {
-        var tools = ExportTools(registry);
+        var tools = ExportTools(registry, includeDangerous);
         var http = new McpHttpServer(name, version, tools, port);
         await http.StartAsync(ct);
         return http;

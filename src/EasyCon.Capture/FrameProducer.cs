@@ -1,4 +1,4 @@
-﻿using OpenCvSharp;
+using OpenCvSharp;
 using System.Diagnostics;
 
 namespace EasyCon.Capture;
@@ -21,6 +21,9 @@ public sealed class FrameProducer : IDisposable
     }
 
     public FrameStore Store => _store;
+
+    /// <summary>累计发布帧数（透传 <see cref="FrameStore.FrameCount"/>）。</summary>
+    public long FrameCount => _store.FrameCount;
 
     public bool IsOpened => _capture.IsOpened;
 

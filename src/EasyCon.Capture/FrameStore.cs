@@ -1,4 +1,4 @@
-﻿using OpenCvSharp;
+using OpenCvSharp;
 
 namespace EasyCon.Capture;
 
@@ -19,11 +19,16 @@ public sealed class FrameStore
     }
 
     private FrameSlot? _current;
+    private long _frameCount;
+
+    /// <summary>累计发布帧数（单调递增，供「等待新帧」与慢感知 everyFrames 判定）。</summary>
+    public long FrameCount => Interlocked.Read(ref _frameCount);
 
     public void Publish(Mat mat)
     {
         var slot = new FrameSlot(mat) { Ref = 1 };
         var old = Interlocked.Exchange(ref _current, slot);
+        Interlocked.Increment(ref _frameCount);
         if (old != null) Drop(old);
     }
 

@@ -565,6 +565,8 @@ lspCommand.SetAction(async (parseResult, cancellationToken) =>
 rootCommand.Subcommands.Add(lspCommand);
 
 rootCommand.Subcommands.Add(AgentCommand.Create());
+rootCommand.Subcommands.Add(FlowCommand.Create(NS));
+rootCommand.Subcommands.Add(ServeCommand.Create());
 
 // --mcp：stdio 模式的 MCP Server（任意外部 agent 经标准 MCP 协议驱动工作区工具）
 if (isMcpCommand)
@@ -579,9 +581,21 @@ if (isMcpCommand)
         mcpSkills, EasyCon.Core.LLM.Skills.SkillLoader.GetSearchPaths(Directory.GetCurrentDirectory()).ToList());
     mcpRegistry.Register(new EasyCon.Core.LLM.Agent.Tools.ListSkillsTool(mcpSkills));
     mcpRegistry.Register(new EasyCon.Core.LLM.Agent.Tools.ReadSkillTool(mcpSkills));
-    Console.Error.WriteLine("[mcp] EasyCon MCP Server (stdio) 已启动，工具目录: " + Directory.GetCurrentDirectory());
-    await EasyCon.Core.LLM.Agent.Mcp.McpServerHost.RunStdioAsync(
-        mcpRegistry, "easycon-cli", "1.0", CancellationToken.None);
+    // Flow 服务同源工具（设备查询/连接、编排图运行）——外部 agent 与前端画布能力对等
+    var flowState = new EasyCon.Core.Flow.FlowServiceState();
+    EasyCon.Core.Flow.FlowServiceTools.RegisterAll(mcpRegistry, flowState);
+    var allowDangerous = args.Contains("--allow-dangerous");
+    Console.Error.WriteLine("[mcp] EasyCon MCP Server (stdio) 已启动，工具目录: " + Directory.GetCurrentDirectory()
+        + (allowDangerous ? "（已授权危险工具）" : "（危险工具默认不导出，加 --allow-dangerous 开启）"));
+    try
+    {
+        await EasyCon.Core.LLM.Agent.Mcp.McpServerHost.RunStdioAsync(
+            mcpRegistry, "easycon-cli", "1.0", CancellationToken.None, allowDangerous);
+    }
+    finally
+    {
+        flowState.Dispose();
+    }
     return 0;
 }
 

@@ -141,6 +141,91 @@ public class ScriptHostAssemblerTests
         });
     }
 
+    [Test]
+    public void Assemble_PortOverridesBeatDelegates()
+    {
+        var capture = new FakeCapture();
+        var vision = new FakeVision();
+        var padInput = new FakePadInput();
+
+        using CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
+        {
+            // 端口与委托同时给出：端口优先（Flow 节点/嵌套装配走端口）
+            CaptureSource = capture,
+            VisionService = vision,
+            PadInput = padInput,
+            Frame = (x, y, w, h) => "delegate-frame",
+            Roi = (b64, x, y, w, h) => "delegate-roi",
+            LabelMatch = _ => -1,
+            Pad = new FakePad(),
+            EnableOcr = false,
+            EnableInference = false,
+        });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(lease.Capabilities.Capture, Is.SameAs(capture));
+            Assert.That(lease.Capabilities.Vision, Is.SameAs(vision));
+            Assert.That(lease.Capabilities.Input, Is.SameAs(padInput), "IPadInput 端口不再二次适配");
+        });
+    }
+
+    [Test]
+    public void Lease_BorrowedResourcesSurviveDispose()
+    {
+        var ocr = new FakeOcr();
+        var inference = new FakeInference();
+
+        using (CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
+        {
+            Ocr = ocr,
+            Inference = inference,
+            BorrowResources = true,
+        }))
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(lease.Capabilities.Ocr, Is.SameAs(ocr));
+                Assert.That(lease.Capabilities.Inference, Is.SameAs(inference));
+            });
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ocr.Disposed, Is.False, "借用语义：内层装配结束不得释放外层运行仍在用的服务");
+            Assert.That(inference.Disposed, Is.False);
+        });
+    }
+
+    sealed class FakeCapture : ICaptureSource
+    {
+        public long? FrameIndex => 42;
+
+        public string? CaptureFrame(int x, int y, int width, int height) => "B64";
+    }
+
+    sealed class FakeVision : IVisionService
+    {
+        public int MatchLabel(string labelName) => -1;
+
+        public string? Crop(string imageBase64, int x, int y, int width, int height) => null;
+    }
+
+    sealed class FakePadInput : IPadInput
+    {
+        public void ClickButtons(GamePadKey key, int duration, CancellationToken token) { }
+
+        public void PressButtons(GamePadKey key) { }
+
+        public void ReleaseButtons(GamePadKey key) { }
+
+        public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token) { }
+
+        public void SetStick(GamePadKey key, byte x, byte y) { }
+
+        public void ChangeAmiibo(uint index) { }
+    }
+
     sealed class FakePad : ICGamePad
     {
         public List<string> Events { get; } = [];

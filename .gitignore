@@ -377,3 +377,10 @@ ppocr_keys_v5.txt
 
 # macOS 目录元数据
 .DS_Store
+
+# Python 前端（frontend/，uv 管理）：虚拟环境与缓存不入库
+# 注意：pyproject.toml / uv.lock / .python-version 是**要入库**的（环境可复现）
+frontend/.venv/
+frontend/**/__pycache__/
+frontend/**/*.pyc
+frontend/**/*.egg-info/

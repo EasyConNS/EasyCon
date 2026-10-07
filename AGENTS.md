@@ -33,13 +33,22 @@ dotnet format
 ci\windows-x64.bat
 ```
 
+```bash
+# Python 画布前端（frontend/，uv 管理：pyproject.toml + uv.lock，src/ 布局）
+# 离线自检（35 项）；加 --backend 追加真后端端到端检查（40 项）
+cd frontend && uv run easycon-flow --self-test
+cd frontend && uv run easycon-flow --self-test --backend http://127.0.0.1:19391
+# 无头 UI 冒烟（建窗/载图/跑图/试跑节点；需要后端在跑）
+QT_QPA_PLATFORM=offscreen uv run python -m easycon_flow.uitest --backend http://127.0.0.1:19391
+```
+
 **Solution file** is `EasyCon2.slnx` (XML-based MSBuild solution, .NET 10+). Not `.sln`.
 
 ## Solution structure
 
 | Directory | Role |
 |---|---|
-| `src/EasyCon.Core` | **Composition root** + capability model (`Capabilities/`: CapabilitySet + IPadInput/IConsoleIo/IFileSystem/ICaptureSource/IVisionService/IOcrService/IInference/IEnvironment) + host assembler (`Hosting/`: ScriptHostAssembler/ScriptCompileProfiles) + script engine surface (`Script/`: IScriptEngine/IScriptSession) + execution bridge (`Runner/`: EcxVm) + config (`Config/`: ConfigManager) + LLM client (`LLM/`) |
+| `src/EasyCon.Core` | **Composition root** + capability model (`Capabilities/`: CapabilitySet + IPadInput/IConsoleIo/IFileSystem/ICaptureSource/IVisionService/IOcrService/IInference/IEnvironment) + host assembler (`Hosting/`: ScriptHostAssembler/ScriptCompileProfiles) + script engine surface (`Script/`: IScriptEngine/IScriptSession) + execution bridge (`Runner/`: EcxVm) + config (`Config/`: ConfigManager) + node-graph orchestration (`Flow/`: FlowGraph/FlowNodeCatalog/FlowNodeRuntime/FlowExecutor/FlowServiceState/FlowServiceHttp/FlowServiceTools — spec in `docs/Flow.md`) + LLM client (`LLM/`) |
 | `src/EasyCon.Device` | Hardware device communication (serial); zero project references |
 | `src/EasyCon.Capture` | Screen/image capture; vision matching; OCR engine cache |
 | `src/EasyCon.Script` | ECS script parser, binder, SSA, bytecode compiler/linker, CLI-side interpreter; zero project references |
@@ -55,6 +64,7 @@ ci\windows-x64.bat
 | `test/EasyCon2.Avalonia.Core.Tests` | Agent/MCP/LSP-client/script-service tests |
 | `test/EasyCon2.Avalonia.UiTests` | Headless Avalonia render tests |
 | `tools/OpenCvDnnDemo` | OpenCvSharp5 DNN experiment (in slnx under `/Demo/`) |
+| `frontend/` | **Python** node-graph canvas (PySide6 + NodeGraphQt) for `*.flow.json` orchestration — the only non-.NET code in the repo, added with explicit user approval and confined to this directory. Managed with **uv** (`pyproject.toml` + `uv.lock` + `.python-version`, `src/` layout, console script `easycon-flow`); nodes/types/params all come from the backend (`GET /api/nodes` ← `FlowNodeCatalog`), so no node logic lives here. See `frontend/README.md` and `docs/Flow.md` |
 
 ## Layering and the composition root
 
@@ -168,6 +178,8 @@ OpenCV bindings come from the `OpenCvSharp5` NuGet packages (OpenCV 5.0); native
 - `docs/Script.md` — ECS scripting language reference
 - `docs/Functions.md` — script function handbook (script-author-facing, CN)
 - `docs/McuBytecodeDelivery.md` — plan of record for compiling and flashing MCU bytecode
+- `docs/Flow.md` — node-graph orchestration spec: `*.flow.json` format, node catalog/semantics,
+  execution model (watchdog/timing/stop/slow sensing), HTTP + MCP API, Python canvas, known gaps
 
 **Outline & decision record (merged; replaces the former root analysis docs):**
 

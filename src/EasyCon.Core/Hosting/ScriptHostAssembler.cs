@@ -29,11 +29,20 @@ public sealed class ScriptHostContext
     /// <summary>截屏帧委托（Base64 PNG）；装配器据此装配 <see cref="ICaptureSource"/>。</summary>
     public FrameDelegate? Frame { get; init; }
 
+    /// <summary>截屏帧端口（优先于 <see cref="Frame"/>）；宿主已持有端口实例时用本项。</summary>
+    public ICaptureSource? CaptureSource { get; init; }
+
+    /// <summary>手柄端口（优先于 <see cref="Pad"/>）；嵌套装配（Flow 节点内跑脚本）用本项避免二次适配。</summary>
+    public IPadInput? PadInput { get; init; }
+
     /// <summary>ROI 裁剪委托；与 <see cref="LabelMatch"/> 任一非 null 即装配 <see cref="IVisionService"/>。</summary>
     public RoiDelegate? Roi { get; init; }
 
     /// <summary>图像标签匹配委托；null 时 <c>@标签</c> 求值抛「图像标签匹配器未初始化」。</summary>
     public LabelMatchDelegate? LabelMatch { get; init; }
+
+    /// <summary>图像处理/标签匹配端口（优先于 <see cref="Roi"/>/<see cref="LabelMatch"/> 委托）。</summary>
+    public IVisionService? VisionService { get; init; }
 
     /// <summary>OCR 后端（所有权移交装配结果）；null 且 <see cref="EnableOcr"/> 时装配默认 Tesseract。</summary>
     public IOcrService? Ocr { get; init; }
@@ -58,6 +67,13 @@ public sealed class ScriptHostContext
 
     /// <summary>未显式提供 <see cref="Inference"/> 时是否装配默认 DNN（默认 true）。</summary>
     public bool EnableInference { get; init; } = true;
+
+    /// <summary>
+    /// 借用语义（默认 false = 装配结果接管 <see cref="Ocr"/>/<see cref="Inference"/> 所有权并负责释放）。
+    /// 置 true 时资源所有权仍属调用方——嵌套装配必须如此，
+    /// 否则内层脚本运行结束时释放掉外层运行还在用的 OCR/推理服务。
+    /// </summary>
+    public bool BorrowResources { get; init; }
 }
 
 /// <summary>
@@ -65,7 +81,8 @@ public sealed class ScriptHostContext
 /// 调用方必须在脚本运行结束后 Dispose（通常在 <c>using</c> 作用域内）；重复 Dispose 安全。
 /// 装配器**接管**传入的 <see cref="ScriptHostContext.Ocr"/>/<see cref="ScriptHostContext.Inference"/> 所有权。
 /// </summary>
-public sealed class CapabilityLease(CapabilitySet capabilities, IOcrService? ocr, IInference? inference) : IDisposable
+public sealed class CapabilityLease(CapabilitySet capabilities, IOcrService? ocr, IInference? inference,
+    bool ownsResources = true) : IDisposable
 {
     private int _disposed;
 
@@ -75,6 +92,10 @@ public sealed class CapabilityLease(CapabilitySet capabilities, IOcrService? ocr
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            return;
+
+        // 借用语义：资源所有权在调用方（嵌套装配的外层），内层释放不得拆掉共享服务
+        if (!ownsResources)
             return;
 
         DisposeQuietly(ocr, nameof(IOcrService));
@@ -122,9 +143,10 @@ public static class ScriptHostAssembler
             ? AppDomain.CurrentDomain.BaseDirectory
             : context.AppDir;
 
-        IVisionService? vision = context.Roi is null && context.LabelMatch is null
-            ? null
-            : new DelegateVisionService(context.Roi, context.LabelMatch);
+        IVisionService? vision = context.VisionService
+            ?? (context.Roi is null && context.LabelMatch is null
+                ? null
+                : new DelegateVisionService(context.Roi, context.LabelMatch));
 
         IOcrService? ocr = context.Ocr;
         if (ocr is null && context.EnableOcr)
@@ -145,16 +167,16 @@ public static class ScriptHostAssembler
 
         var capabilities = new CapabilitySet
         {
-            Input = context.Pad is null ? null : new PadInputAdapter(context.Pad),
+            Input = context.PadInput ?? (context.Pad is null ? null : new PadInputAdapter(context.Pad)),
             Console = context.Console,
             Environment = new HostEnvironment(context.Args ?? [], appDir),
             Files = context.Files ?? DesktopFileSystem.Instance,
-            Capture = context.Frame is null ? null : new DelegateCaptureSource(context.Frame),
+            Capture = context.CaptureSource ?? (context.Frame is null ? null : new DelegateCaptureSource(context.Frame)),
             Vision = vision,
             Ocr = ocr,
             Inference = inference,
         };
 
-        return new CapabilityLease(capabilities, ocr, inference);
+        return new CapabilityLease(capabilities, ocr, inference, ownsResources: !context.BorrowResources);
     }
 }
