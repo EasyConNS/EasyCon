@@ -64,6 +64,9 @@ echo 正在复制额外文件...
 if exist "%ROOT_DIR%\assets\fw" xcopy /e /y /q "%ROOT_DIR%\assets\fw\*" "%PUBLISH_DIR%\Firmware\"
 if not exist "%PUBLISH_DIR%\Firmware" mkdir "%PUBLISH_DIR%\Firmware"
 
+:: 复制更新说明
+if exist "%ROOT_DIR%\assets\更新说明.txt" copy /y "%ROOT_DIR%\assets\更新说明.txt" "%PUBLISH_DIR%\更新说明.txt"
+
 :: 删除调试文件
 if exist "%PUBLISH_DIR%\*.pdb" del /q "%PUBLISH_DIR%\*.pdb"
 
