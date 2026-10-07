@@ -169,6 +169,7 @@ public class TerminalControl : Control, ILogicalScrollable
     {
         _marqueeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
         _marqueeTimer.Tick += OnMarqueeTick;
+        ContextMenu = CreateContextMenu();
     }
 
     #endregion
@@ -362,13 +363,57 @@ public class TerminalControl : Control, ILogicalScrollable
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key == Key.C && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        // Ctrl 与 Cmd 都接受：macOS 上复制/全选是 Cmd+C / Cmd+A
+        if (IsCtrlOrCmd(e, Key.C))
         {
-            var text = GetSelectedText();
-            if (!string.IsNullOrEmpty(text))
-                _ = CopyToClipboardAsync(text);
+            CopySelection();
             e.Handled = true;
         }
+        else if (IsCtrlOrCmd(e, Key.A))
+        {
+            SelectAll();
+            e.Handled = true;
+        }
+    }
+
+    private static bool IsCtrlOrCmd(KeyEventArgs e, Key key)
+        => e.Key == key && (e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta));
+
+    private ContextMenu CreateContextMenu()
+    {
+        var copy = new MenuItem { Header = "复制" };
+        copy.Click += (_, _) => CopySelection();
+        var selectAll = new MenuItem { Header = "全选" };
+        selectAll.Click += (_, _) => SelectAll();
+        var copyAll = new MenuItem { Header = "复制全部" };
+        copyAll.Click += (_, _) => CopyAll();
+
+        var menu = new ContextMenu { Items = { copy, selectAll, copyAll } };
+        menu.Opening += (_, _) =>
+        {
+            copy.IsEnabled = !string.IsNullOrEmpty(GetSelectedText());
+            selectAll.IsEnabled = copyAll.IsEnabled = _lines.Count > 0;
+        };
+        return menu;
+    }
+
+    private void CopySelection()
+    {
+        var text = GetSelectedText();
+        if (!string.IsNullOrEmpty(text))
+            _ = CopyToClipboardAsync(text);
+    }
+
+    private void CopyAll()
+    {
+        if (_lines.Count == 0) return;
+        var sb = new StringBuilder();
+        for (var i = 0; i < _lines.Count; i++)
+        {
+            if (i > 0) sb.Append('\n');
+            sb.Append(_lines[i].GetText());
+        }
+        _ = CopyToClipboardAsync(sb.ToString());
     }
 
     private TextPos HitTest(Point pt)
@@ -845,6 +890,15 @@ public class TerminalControl : Control, ILogicalScrollable
         _isAtBottom = true;
         _offset = default;
         UpdateScroll();
+    }
+
+    /// <summary>选中全部文本。</summary>
+    public void SelectAll()
+    {
+        if (_lines.Count == 0) return;
+        _selAnchor = new TextPos(0, 0);
+        _selActive = new TextPos(_lines.Count - 1, _lines[^1].GetText().Length);
+        InvalidateVisual();
     }
 
     /// <summary>获取当前选中文本。</summary>
