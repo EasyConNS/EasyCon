@@ -1,6 +1,7 @@
 using EasyCon.Script;
 using EasyCon.Script.Bytecode;
 using EasyCon.Script.Ssa;
+using EasyCon.Tests.Support;
 using System.Text;
 
 namespace EasyCon.Tests.Bytecode;

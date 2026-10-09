@@ -21,7 +21,7 @@ public sealed class SyntaxTree
         Text = text;
         LegacySyntax = legacySyntax;
         ImportBase = importBase ?? (Text.FileName != ""
-            ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(Text.FileName))!, "lib/")
+            ? Path.GetDirectoryName(Path.GetFullPath(Text.FileName))!
             : null);
 
         handler(this, out var root, out var diagnostics);
@@ -30,7 +30,7 @@ public sealed class SyntaxTree
         Root = root;
     }
 
-    /// <summary>IMPORT 解析基准（lib 根；导入规则 v2 = 主脚本 lib/ 唯一根，沿发现链传播）。
+    /// <summary>IMPORT 解析基准（导入基准 = 导入文件所在目录（docs/ModuleImportRules.md R2））。
     /// null = 单文件无路径场景（IMPORT 一律报不存在）。</summary>
     public string? ImportBase { get; }
 

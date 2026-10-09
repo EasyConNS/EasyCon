@@ -17,16 +17,16 @@ public class PipelineCascadeTests
         Directory.CreateDirectory(Path.Combine(dir, "lib"));
         try
         {
-            // bad（lib/ 顶层 = 自动加载包成员，根级库互见）：绑定错误；
-            // ok（lib/sub/ 层级路径，IMPORT "sub/ok.ecs" 相对 lib/ 解析——非包成员，
-            // 与 bad 无依赖边）；main 同时导入两者
+            // bad（lib/ 顶层，R3 自动导入）：绑定错误；
+            // ok（lib/sub/ 子目录，R4 需显式导入 "lib/sub/ok.ecs"；
+            // 所在目录无同目录兄弟，与 bad 无依赖边）；main 显式导入 ok
             File.WriteAllText(Path.Combine(dir, "lib", "bad.ecs"),
                 "FUNC bad():INT\n    RETURN $nope\nENDFUNC\n");
             Directory.CreateDirectory(Path.Combine(dir, "lib", "sub"));
             File.WriteAllText(Path.Combine(dir, "lib", "sub", "ok.ecs"),
                 "FUNC ok():INT\n    RETURN 1\nENDFUNC\n");
             File.WriteAllText(Path.Combine(dir, "main.ecs"),
-                "IMPORT \"bad.ecs\"\nIMPORT \"sub/ok.ecs\"\n$v = ok()\n");
+                "IMPORT \"lib/sub/ok.ecs\"\n$v = ok()\n");
 
             var project = ProjectCompiler.CompileProject(Path.Combine(dir, "main.ecs"),
                 new CompileOptions { UseDiskCache = false, UseProcessCache = false });
@@ -58,7 +58,7 @@ public class PipelineCascadeTests
             File.WriteAllText(Path.Combine(dir, "lib", "beta.ecs"),
                 "FUNC beta():INT\n    RETURN 2\nENDFUNC\n");
             File.WriteAllText(Path.Combine(dir, "main.ecs"),
-                "IMPORT \"alpha.ecs\"\nIMPORT \"beta.ecs\"\n$v = alpha() + beta()\n");
+                "$v = alpha() + beta()\n");
 
             var project = ProjectCompiler.CompileProject(Path.Combine(dir, "main.ecs"),
                 new CompileOptions { UseDiskCache = false, UseProcessCache = false });

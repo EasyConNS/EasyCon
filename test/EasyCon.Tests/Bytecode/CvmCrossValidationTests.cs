@@ -68,14 +68,12 @@ public class CvmCrossValidationTests
             ENDFUNC
             """);
         WriteLib("lib/mathx.ecs", """
-            IMPORT "utils.ecs"
             FUNC triple($x:INT):INT
                 RETURN twice($x) + $x
             ENDFUNC
             """);
         var mainPath = Path.Combine(_dir(), "main.ecs");
         File.WriteAllText(mainPath, """
-            IMPORT "mathx.ecs"
             $r = triple(5)
             PRINT $r
             """);

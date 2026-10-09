@@ -10,8 +10,9 @@ using System.Collections.Immutable;
 namespace EasyCon.Tests;
 
 /// <summary>
-/// 测试 lib 导入语义（导入规则 v2：lib/ 不自动加载，可见性 = 显式 IMPORT 闭包）、
-/// 隔离绑定、解析限制。
+/// 测试 lib 导入语义（docs/ModuleImportRules.md：R1 同目录互见、
+/// R2 导入基准 = 导入文件所在目录、R3 main 隐式导入 lib/——用例不再显式 import lib、
+/// R4 跨目录必须显式导入）、隔离绑定、解析限制。
 /// </summary>
 [TestFixture]
 public class LibTests
@@ -49,6 +50,15 @@ public class LibTests
         return path;
     }
 
+    private string WriteOuter(string fileName, string code)
+    {
+        // lib/ 之外、main 同目录之外的目录（R4：跨目录必须显式导入）
+        var path = Path.Combine(_tempDir, "other", fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, code);
+        return path;
+    }
+
     private static Value EvalResult(CompileResult compileResult)
     {
         if (compileResult.Image == null)
@@ -74,12 +84,13 @@ public class LibTests
         return (EvalResult(result), true, []);
     }
 
-    #region 自动加载
+    #region 自动导入（R3：main 隐式导入 lib/）
 
     [Test]
-    public void Lib_NotImported_IsNotVisible()
+    public void Module_OuterDir_NotVisible()
     {
-        WriteLib("math.ecs", @"
+        // R4：lib/ 之外且未显式导入的模块不可见（lib/ 经 R3 自动导入，外部目录验证 R4）
+        WriteOuter("math.ecs", @"
 FUNC double($x) : int
     RETURN $x * 2
 ENDFUNC
@@ -87,13 +98,14 @@ ENDFUNC
         var mainPath = WriteMain("$r = double(21)");
         var (_, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.False, "未 IMPORT 的 lib 函数应不可见");
+        Assert.That(success, Is.False, "未导入的外部目录模块应不可见");
         Assert.That(errors, Has.Some.Contains("找不到"));
     }
 
     [Test]
     public void AutoLoad_MultipleLibFiles()
     {
+        // R3：main 隐式导入 lib/ 全部模块——无需 IMPORT 即可调用
         WriteLib("a.ecs", @"
 FUNC add($a, $b) : int
     RETURN $a + $b
@@ -104,7 +116,7 @@ FUNC mul($a, $b) : int
     RETURN $a * $b
 ENDFUNC
 ");
-        var mainPath = WriteMain("IMPORT \"a.ecs\"\nIMPORT \"b.ecs\"\n$r = add(mul(3, 4), 5)");
+        var mainPath = WriteMain("$r = add(mul(3, 4), 5)");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -132,13 +144,13 @@ ENDFUNC
 
     #endregion
 
-    #region 库模块顶层语句（模块语义：v1 lib 白名单退役，顶层语句合法化为 &lt;init:module&gt;）
+    #region 库模块顶层语句（模块语义：lib 顶层语句合法化为 &lt;init:module&gt;）
 
     [Test]
     public void LibParse_ConstantDef_Succeeds()
     {
         WriteLib("const.ecs", "_MAX = 100");
-        var mainPath = WriteMain("IMPORT \"const.ecs\"\n$x = 1");
+        var mainPath = WriteMain("$x = 1");
         var (_, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -152,7 +164,7 @@ FUNC greet : int
     RETURN 42
 ENDFUNC
 ");
-        var mainPath = WriteMain("IMPORT \"func.ecs\"\n$x = greet()");
+        var mainPath = WriteMain("$x = greet()");
         var (_, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -163,11 +175,11 @@ ENDFUNC
     {
         // 模块语义（ModuleSystem.md §6）：lib 顶层语句进入 &lt;init:module&gt;，链接序先于 main 执行
         WriteLib("init.ecs", "$cnt = 0\n$cnt = $cnt + 1\n");
-        var mainPath = WriteMain("IMPORT \"init.ecs\"\n$x = 1\nRETURN $x");
+        var mainPath = WriteMain("$x = 1\nRETURN $x");
         var (result, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
-        var init = result.Artifacts.Single(a => a.Name == "init");
+        var init = result.Artifacts.Single(a => a.Name == "lib/init");
         Assert.That(init.HasInit, Is.True, "顶层语句应置 HasInit（&lt;init:module&gt;）");
     }
 
@@ -175,7 +187,7 @@ ENDFUNC
     public void LibInit_WaitAndKeyStatements_Compile()
     {
         WriteLib("init.ecs", "WAIT 1\nA 1\n");
-        var mainPath = WriteMain("IMPORT \"init.ecs\"\n$x = 1\nRETURN $x");
+        var mainPath = WriteMain("$x = 1\nRETURN $x");
         var (result, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -194,8 +206,7 @@ FUNC leak : int
     RETURN $mainVar
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"IMPORT ""bad.ecs""
-$mainVar = 42
+        var mainPath = WriteMain(@"$mainVar = 42
 $r = leak()
 ");
         var (_, success, errors) = CompileFile(mainPath);
@@ -212,8 +223,7 @@ FUNC leak : int
     RETURN _MAIN_CONST
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"IMPORT ""bad.ecs""
-_MAIN_CONST = 99
+        var mainPath = WriteMain(@"_MAIN_CONST = 99
 $r = leak()
 ");
         var (_, success, errors) = CompileFile(mainPath);
@@ -235,7 +245,7 @@ FUNC addOffset($x) : int
     RETURN $x + _offset
 ENDFUNC
 ");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\n$r = addOffset(5)\nRETURN $r");
+        var mainPath = WriteMain("$r = addOffset(5)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -257,7 +267,7 @@ FUNC sumSquares($a, $b) : int
     RETURN square($a) + square($b)
 ENDFUNC
 ");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\n$r = sumSquares(3, 4)\nRETURN $r");
+        var mainPath = WriteMain("$r = sumSquares(3, 4)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -269,19 +279,18 @@ ENDFUNC
     [Test]
     public void LibScope_MultipleLibFiles_CrossRef()
     {
-        // 模块语义：跨模块调用需显式 IMPORT（b IMPORT a）
+        // 导入规则 R1：同目录互见——lib 内模块互调无需 IMPORT（b 直接调用 a 的 double）
         WriteLib("a.ecs", @"
 FUNC double($x) : int
     RETURN $x * 2
 ENDFUNC
 ");
         WriteLib("b.ecs", @"
-IMPORT ""a.ecs""
 FUNC quad($x) : int
     RETURN double(double($x))
 ENDFUNC
 ");
-        var mainPath = WriteMain("IMPORT \"b.ecs\"\n$r = quad(3)\nRETURN $r");
+        var mainPath = WriteMain("$r = quad(3)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -300,7 +309,7 @@ FUNC add($a, $b) : int
     RETURN $a + $b
 ENDFUNC
 ");
-        var mainPath = WriteMain("IMPORT \"math.ecs\"\n$r = add(10, 20)\nRETURN $r");
+        var mainPath = WriteMain("$r = add(10, 20)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -320,7 +329,7 @@ FUNC fib($n) : int
     RETURN fib($n - 1) + fib($n - 2)
 ENDFUNC
 ");
-        var mainPath = WriteMain("IMPORT \"math.ecs\"\n$r = fib(10)\nRETURN $r");
+        var mainPath = WriteMain("$r = fib(10)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -334,7 +343,7 @@ ENDFUNC
     {
         // main 引用 lib 全局变量 → 编译错误（变量不可见）
         WriteLib("lib1.ecs", "_data = 42");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\n$r = _data");
+        var mainPath = WriteMain("$r = _data");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.False);
@@ -346,7 +355,7 @@ ENDFUNC
     {
         // main 声明与 lib 同名全局变量 → 不冲突（lib 变量不暴露）
         WriteLib("lib1.ecs", "_offset = 10");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\n_offset = 20\nRETURN _offset");
+        var mainPath = WriteMain("_offset = 20\nRETURN _offset");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -364,7 +373,7 @@ FUNC addOffset($x) : int
     RETURN $x + _offset
 ENDFUNC
 ");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\n$r = addOffset(5)\nRETURN $r");
+        var mainPath = WriteMain("$r = addOffset(5)\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -383,9 +392,7 @@ FUNC getLibData() : int
     RETURN _data
 ENDFUNC
 ");
-        // main 显式 IMPORT（导入规则 v2）
-        var mainPath = WriteMain(@"IMPORT ""lib1.ecs""
-FUNC mainFunc() : int
+        var mainPath = WriteMain(@"FUNC mainFunc() : int
     $data = 1
     RETURN $data
 ENDFUNC
@@ -413,8 +420,7 @@ FUNC getCounter() : int
     RETURN $counter
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"IMPORT ""lib1.ecs""
-$r = increment()
+        var mainPath = WriteMain(@"$r = increment()
 $r = increment()
 $r = getCounter()
 RETURN $r");
@@ -431,7 +437,7 @@ RETURN $r");
     {
         // main 声明与 lib 同名 $ 全局变量 → 不冲突（lib 变量不暴露）
         WriteLib("lib1.ecs", "$total = 0");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\n$total = 10\nRETURN $total");
+        var mainPath = WriteMain("$total = 10\nRETURN $total");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -444,7 +450,7 @@ RETURN $r");
     {
         // main 引用 lib $ 全局变量 → 编译错误（变量不可见）
         WriteLib("lib1.ecs", "$count = 5");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\n$r = $count");
+        var mainPath = WriteMain("$r = $count");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.False);
@@ -456,7 +462,7 @@ RETURN $r");
     {
         // 模块语义：lib 顶层赋值是 &lt;init&gt; 语句，非常量表达式合法（运行期求值）
         WriteLib("lib1.ecs", "$val = 1 + 2\nFUNC get() : int\n RETURN $val\nENDFUNC");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\nRETURN get()");
+        var mainPath = WriteMain("RETURN get()");
         var (result, success, errors) = CompileFile(mainPath);
         Assert.That(success, Is.True, string.Join("; ", errors));
         Assert.That(EvalResult(result).AsInt(), Is.EqualTo(3));
@@ -466,7 +472,7 @@ RETURN $r");
     public void LibGlobal_VarNonConstantInit_RunsAtInit()
     {
         WriteLib("lib1.ecs", "$v = RAND(10)\nFUNC get() : int\n RETURN $v\nENDFUNC");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\nRETURN get()");
+        var mainPath = WriteMain("RETURN get()");
         var (result, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -485,7 +491,7 @@ FUNC myRand : int
     RETURN RAND(100)
 ENDFUNC
 ");
-        var mainPath = WriteMain("IMPORT \"lib1.ecs\"\n$r = myRand()\nRETURN $r");
+        var mainPath = WriteMain("$r = myRand()\nRETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
@@ -496,17 +502,18 @@ ENDFUNC
 
     #endregion
 
-    #region import 语句加载 lib
+    #region import 语句显式导入（R4：跨目录必须显式导入）
 
     [Test]
     public void Import_LoadsLibFile()
     {
-        WriteLib("math.ecs", @"
+        // R4：显式导入外部目录模块（相对导入文件目录解析）
+        WriteOuter("math.ecs", @"
 FUNC triple($x) : int
     RETURN $x * 3
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"IMPORT ""math.ecs""
+        var mainPath = WriteMain(@"IMPORT ""other/math.ecs""
 $r = triple(7)
 RETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
@@ -520,18 +527,18 @@ RETURN $r");
     [Test]
     public void Import_MultipleImports()
     {
-        WriteLib("a.ecs", @"
+        WriteOuter("a.ecs", @"
 FUNC add($a, $b) : int
     RETURN $a + $b
 ENDFUNC
 ");
-        WriteLib("b.ecs", @"
+        WriteOuter("b.ecs", @"
 FUNC mul($a, $b) : int
     RETURN $a * $b
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"IMPORT ""a.ecs""
-IMPORT ""b.ecs""
+        var mainPath = WriteMain(@"IMPORT ""other/a.ecs""
+IMPORT ""other/b.ecs""
 $r = add(mul(3, 4), 5)
 RETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
@@ -545,23 +552,22 @@ RETURN $r");
     [Test]
     public void Import_UnimportedLib_NotVisible()
     {
-        // 导入规则 v2：只 IMPORT a.ecs——b.ecs 未导入，mul 不可见
+        // R3+R4：lib/ 的 a 自动可见；外部目录的 b 未显式导入 → mul 不可见
         WriteLib("a.ecs", @"
 FUNC add($a, $b) : int
     RETURN $a + $b
 ENDFUNC
 ");
-        WriteLib("b.ecs", @"
+        WriteOuter("b.ecs", @"
 FUNC mul($a, $b) : int
     RETURN $a * $b
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"IMPORT ""a.ecs""
-$r = add(mul(3, 4), 1)
+        var mainPath = WriteMain(@"$r = add(mul(3, 4), 1)
 RETURN $r");
         var (_, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.False, "未 IMPORT 的 mul 应不可见");
+        Assert.That(success, Is.False, "未导入的外部模块 mul 应不可见");
         Assert.That(errors, Has.Some.Contains("找不到"));
     }
 

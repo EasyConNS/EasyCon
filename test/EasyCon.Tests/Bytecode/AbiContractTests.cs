@@ -65,15 +65,18 @@ public class AbiContractTests
     [Test]
     public void FeatureMask_File_Ffi_Il()
     {
-        // 文件族/PRINT → FILE；extern → FFI；图像标签 → IL（NeedIL 投影）
-        var fileScript = Path.Combine(_dir, "file.ecs");
+        // 文件族/PRINT → FILE；extern → FFI；图像标签 → IL（NeedIL 投影）。
+        // 各脚本分放独立子目录（R1 同目录互见会互相拉进依赖图，污染特征位断言）
+        var fileScript = Path.Combine(_dir, "file", "script.ecs");
+        Directory.CreateDirectory(Path.GetDirectoryName(fileScript)!);
         File.WriteAllText(fileScript, "PRINT \"x\"\n");
         var fileImage = Compilation.CompileFile(fileScript, new CompileOptions { UseDiskCache = false }).Image!;
         Assert.That(fileImage.Features & EcsImageFeatures.File, Is.Not.Zero, "PRINT → FILE");
         Assert.That(fileImage.Features & (EcsImageFeatures.Ffi | EcsImageFeatures.Capture | EcsImageFeatures.Il),
             Is.Zero, "无 FFI/采集洞/IL");
 
-        var ffiScript = Path.Combine(_dir, "ffi.ecs");
+        var ffiScript = Path.Combine(_dir, "ffi", "script.ecs");
+        Directory.CreateDirectory(Path.GetDirectoryName(ffiScript)!);
         File.WriteAllText(ffiScript, "EXTERN FUNC Sleep($ms:INT) FROM \"kernel32.dll\"\nSleep(1)\n");
         var ffiImage = Compilation.CompileFile(ffiScript, new CompileOptions { UseDiskCache = false }).Image!;
         Assert.That(ffiImage.Features & EcsImageFeatures.Ffi, Is.Not.Zero, "EXTERN → FFI");
@@ -81,14 +84,16 @@ public class AbiContractTests
             "FFI 按名进名表（L3）");
 
         // S-13（v2.3）：语言 AMIIBO n → CallN AMIIBO(#16)，槽位选择 0–19 宿主判越界静默
-        var amiiboScript = Path.Combine(_dir, "amiibo.ecs");
+        var amiiboScript = Path.Combine(_dir, "amiibo", "script.ecs");
+        Directory.CreateDirectory(Path.GetDirectoryName(amiiboScript)!);
         File.WriteAllText(amiiboScript, "AMIIBO 3\n");
         var amiiboImage = Compilation.CompileFile(amiiboScript, new CompileOptions { UseDiskCache = false }).Image!;
         var amiiboIns = amiiboImage.Functions.SelectMany(f => f.Instructions).Single(i => i.Op == EcsOpcode.CallN);
         Assert.That(amiiboIns.Ext, Is.EqualTo(EcsSyscall.CallFlag | (uint)EcsSyscall.Amiibo),
             "AMIIBO 语句 CallN 目标 = AMIIBO(#16)");
 
-        var imgScript = Path.Combine(_dir, "img.ecs");
+        var imgScript = Path.Combine(_dir, "img", "script.ecs");
+        Directory.CreateDirectory(Path.GetDirectoryName(imgScript)!);
         File.WriteAllText(imgScript, "$v = @enemy\nPRINT $v\n");
         var r = Compilation.CompileFile(imgScript, new CompileOptions
         {
@@ -105,7 +110,8 @@ public class AbiContractTests
         // --strict-caps → 恢复加载期 ECS_ERR_FEAT 拒跑（迁移保底/诊断档）
         if (_vmBinary == null)
             Assert.Ignore("无 cc 编译器，跳过 C VM 侧");
-        var ffiScript = Path.Combine(_dir, "ffi2.ecs");
+        var ffiScript = Path.Combine(_dir, "ffi2", "script.ecs");
+        Directory.CreateDirectory(Path.GetDirectoryName(ffiScript)!);
         File.WriteAllText(ffiScript, "EXTERN FUNC Sleep($ms:INT) FROM \"kernel32.dll\"\nSleep(1)\nPRINT \"done\"\n");
         var image = Compilation.CompileFile(ffiScript, new CompileOptions { UseDiskCache = false }).Image!;
 
@@ -125,7 +131,8 @@ public class AbiContractTests
         // TIME 恒 0（MCU 参考桩语义），双端 exit=0
         if (_vmBinary == null)
             Assert.Ignore("无 cc 编译器，跳过 C VM 侧");
-        var src = Path.Combine(_dir, "mix.ecs");
+        var src = Path.Combine(_dir, "mix", "script.ecs");
+        Directory.CreateDirectory(Path.GetDirectoryName(src)!);
         File.WriteAllText(src, "$t = TIME()\nPRINT $t\nALERT(\"a\")\n");
         var image = Compilation.CompileFile(src, new CompileOptions { UseDiskCache = false }).Image!;
         Assert.That(image.Features & EcsImageFeatures.File, Is.Not.Zero);

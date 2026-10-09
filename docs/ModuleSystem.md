@@ -8,21 +8,25 @@
 ## 1. 编译模型
 
 ```
-main.ecs ─► ModuleGraphBuilder（IMPORT 递归展开 + 环检测 DFS + lib/ 自动加载）
+main.ecs ─► ModuleGraphBuilder（显式 IMPORT 闭包 + 同目录互见/lib/ 自动导入 + 显式环检测 DFS）
              │  依赖模块只做 Lexer 令牌级导入扫描（建图不 parse；全量 parse 推迟到缓存未命中）
-             ▼  拓扑序（std → vision → 依赖序 → main；DAG 强制，环 = 编译错误）
-ModuleCompilePipeline（逐模块）：cacheKey 三路查找（disk .ecm / 进程缓存 / .err 重放）
+             ▼  编译序：std → vision → 显式边层级 + 同层名序 → main（docs/ModuleImportRules.md §2）
+ModuleCompilePipeline（逐模块）：接口先行预提取（.eci 缓存）→ cacheKey 三路查找
+             │  （disk .ecm / 进程缓存 / .err 重放）
              │  未命中 → parse → InterfaceScopeSynthesizer（依赖以接口区提供）
              │        → Binder 急切绑定 → SSA → 优化（导出为根）→ EcxModuleEncoder → 原子写回 obj/
              ▼
 EcxPipeline.Link ─► EcxImage（桌面 EcxInterpreter 与 MCU C VM 共用同一产物）
 ```
 
+- **导入规则**：R1 模块同目录互见（目录即包）、R2 导入基准 = 导入文件所在目录、R3 main 隐式导入
+  lib/、R4 跨目录显式导入、R5 模块名 = 相对主脚本目录的规范化路径、R7 主脚本并列互不打扰
+  （入口所在目录豁免同目录互见）——完整规则与可见环的编译序论证见 `docs/ModuleImportRules.md`。
 - **无源码级合并**：任何编译只 parse 自己那份源码；stdlib（std/vision）内嵌源码随编译器发布，
-  首次编译任一脚本时与用户模块同走 obj/ 缓存自然产出 `.ecm`，此后零解析；根级自动库为建立共享接口会先做声明接口预扫描，不会合并源码或重编函数体。
-- 根级自动库预声明接口另存为 `.eci`，缓存键覆盖库源码、模块名和编译语义指纹；缓存命中时无需为建立共享接口重新 parse，obj/ GC 会保留当前项目仍使用的接口条目。
-- `lib/` 自动加载：main 同目录 `lib/*.ecs` 注册为隐式模块（显式 import 之后、main 之前编译，全局可见无 alias，按文件名序）。文件即使先被显式或间接 `IMPORT` 加载，自动扫描时仍登记为根级自动库，并对 main 可见。根级自动库组成一个隐式库包，库之间共享接口，因此库文件也无需额外 `IMPORT` 即可互相调用；显式 `IMPORT ... AS` 的别名隔离仍然保留。
-- 根级库间的共享边用于绑定接口和缓存键，实际导入路径仍决定显式 `IMPORT` 环检测；初始化顺序沿用实际导入后序和根级库文件名序，每个模块只初始化一次。编辑器以文件路径编译内存文本时沿用源文件目录、根级 `lib/` 和标签上下文，不会回退到磁盘旧内容。
+  首次编译任一脚本时与用户模块同走 obj/ 缓存自然产出 `.ecm`，此后零解析。
+- **接口先行预提取**：同目录互见产生接口级依赖环，编译序不再保证依赖接口就绪——管线先经
+  `.eci` 接口缓存（按源码内容寻址，含路径上下文）为全部模块备好接口；缓存命中零 parse，
+  未命中 parse 提取并回写。接口提取失败（源码语义错误）留空接口，真实诊断由绑定阶段报告。
 - 关键接缝：接口合成的函数符号 `Declaration = null`，Binder 的 `EnsureFunctionBodyBound`
   天然跳过绑体、调用点直接生成 Call（体由链接期提供）——绑定器零改动消费接口。
 

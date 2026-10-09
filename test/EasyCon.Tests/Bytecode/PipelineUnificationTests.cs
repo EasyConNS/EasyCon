@@ -9,10 +9,7 @@ namespace EasyCon.Tests.Bytecode;
 /// <summary>
 /// 统一编译链路端到端验证（docs/Pipeline.md）：
 /// CompileSource/CompileFile -> EcxImage -> EcxVm 桥 -> EcxInterpreter。
-/// 语义基线为 v1 合并管线金标准时代逐字对拍锁定的记录值
-/// （v1 管线已退役；迁移期的等价性验证见 git 历史中的对拍版本）。
-/// 已知语义演进（ModuleSystem.md §6）：同签名跨模块导出为首匹配遮蔽 + MD_AMBIGUOUS_EXPORT 警告
-/// （v1 直接报「重复定义的函数」错误，csv_windows/csv_linux 共存因此得以修复）。
+/// 已知语义（ModuleSystem.md §7）：同签名跨模块导出为首匹配遮蔽 + MD_AMBIGUOUS_EXPORT 警告。
 /// 记录型宿主桩（RecordingIo/RecordingPad）见 Support/EcsTestHost。
 /// </summary>
 [TestFixture]
@@ -38,11 +35,11 @@ public class PipelineUnificationTests
         Directory.CreateDirectory(Path.Combine(dir, "lib"));
         try
         {
-            // utils：顶层 init（模块全局）+ 导出函数；main 显式 IMPORT（导入规则 v2）
+            // utils：顶层 init（模块全局）+ 导出函数；main 经 R3 自动导入 lib/
             File.WriteAllText(Path.Combine(dir, "lib", "utils.ecs"),
                 "$__mult = 2\nFUNC twice($x):INT\n    RETURN $x * $__mult\nENDFUNC\n");
             File.WriteAllText(Path.Combine(dir, "main.ecs"),
-                "IMPORT \"utils.ecs\"\n$r = twice(21)\nPRINT $r\nPRINT \"main-end\"\n");
+                "$r = twice(21)\nPRINT $r\nPRINT \"main-end\"\n");
 
             var result = Compilation.CompileFile(Path.Combine(dir, "main.ecs"));
             var io = new RecordingIo();
@@ -50,10 +47,10 @@ public class PipelineUnificationTests
 
             Assert.That(lines, Is.EqualTo(new[] { "42", "main-end" }));
 
-            // 链接序：std -> vision -> utils（IMPORT 依赖，先于 main）-> main；
+            // 链接序：std -> vision -> lib/utils（自动依赖，先于 main）-> main；
             // 入口 = <main>（$eval 本体前插 init 调用序列并更名，无合成壳函数）
             Assert.That(result.Artifacts.Select(a => a.Name).ToList(),
-                Is.EqualTo(new[] { "std", "vision", "utils", "main" }));
+                Is.EqualTo(new[] { "std", "vision", "lib/utils", "main" }));
             Assert.That(result.Image!.Functions[result.Image.Entry].Name, Is.EqualTo("<main>"));
         }
         finally
@@ -91,7 +88,6 @@ public class PipelineUnificationTests
                 """);
             File.WriteAllText(Path.Combine(dir, "main.ecs"),
                 """
-                IMPORT "geo.ecs"
                 $pt = Point{}
                 $pt.x = 3
                 $pt.y = 4
@@ -131,16 +127,15 @@ public class PipelineUnificationTests
                 "FUNC dup($x:INT):INT\n    RETURN $x * 3\nENDFUNC\n");
             File.WriteAllText(Path.Combine(dir, "main.ecs"),
                 """
-                IMPORT "a.ecs"
-                IMPORT "b.ecs" AS u2
+                IMPORT "lib/b.ecs" AS u2
                 $a = dup(7)
                 $b = u2.dup(7)
                 PRINT $a
                 PRINT $b
                 """);
 
-            // 导入规则 v2：无限定名 = 首个注入者（绑定层 first-wins）；alias 限定 = 精确指向
-            // 来源模块（限定导入名 "模块!函数"）；MD_AMBIGUOUS_EXPORT 警告保留
+            // 无限定名 = 首个注入者（自动依赖名序：lib/a 先于 lib/b，绑定层 first-wins）；
+            // alias 限定 = 精确指向来源模块（限定导入名 "模块!函数"）；MD_AMBIGUOUS_EXPORT 警告保留
             var result = Compilation.CompileFile(Path.Combine(dir, "main.ecs"));
             var io = new RecordingIo();
             var (lines, _) = RunNewChain(result, io, new RecordingPad());
@@ -178,9 +173,8 @@ public class PipelineUnificationTests
     [Platform("Linux,MacOsX")]
     public void CsvTestExample_PlatformLibFailsAtFfi()
     {
-        // csv_test：显式 IMPORT csv_windows（v2 下不再自动加载/不再依赖同签名遮蔽序——
-        // 平台实现二选一显式导入）。本机非 Windows：编译成功，首次 FFI 调用处终止
-        // （msvcrt.dll 不可加载）。
+        // csv_test：平台实现放 lib/ 子目录（R4 显式导入选择平台，不依赖同签名遮蔽序）。
+        // 本机非 Windows：编译成功，首次 FFI 调用处终止（msvcrt.dll 不可加载）。
         var main = Path.Combine(TestContext.CurrentContext.TestDirectory,
             "..", "..", "..", "..", "..", "examples", "csv_test", "main.ecs");
         if (!File.Exists(main))
@@ -190,7 +184,7 @@ public class PipelineUnificationTests
         Assert.That(result.Diagnostics.Where(d => d.IsError).ToList(), Is.Empty,
             "统一链路编译失败：" + string.Join("\n", result.Diagnostics));
         Assert.That(result.Diagnostics.Any(d => d.IsWarning && d.Message.Contains("MD_AMBIGUOUS_EXPORT")),
-            Is.False, "v2 单平台导入不再有同签名歧义");
+            Is.False, "单平台导入不应有同签名歧义");
 
         var io = new RecordingIo();
         Assert.Catch(() => RunNewChain(result, io, new RecordingPad()),

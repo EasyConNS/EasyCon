@@ -46,35 +46,73 @@ internal sealed class ModuleCompilePipeline
     /// <summary>全项目 extern 符号并集（FFI 原生按名分发的类型来源）。</summary>
     public HashSet<FunctionSymbol> NativeSymbols => _nativeSymbols;
 
-    /// <summary>按拓扑波次编译全部模块（M3）：同波模块互不依赖 → 波内并行；
-    /// main 的层级严格最大（IMPORT 闭包）恒末波。false = 已失败（诊断与统计已写入 result）。
-    /// 线程模型：每模块独立诊断 sink（波末并入全局）+ 状态锁（诊断/计时/缓存键/extern 并集）；
-    /// 产物互不共享（缓存命中反序列化新实例），缓存计数 Interlocked。</summary>
+    /// <summary>编译全部模块：先做接口先行预提取（同目录互见产生接口级依赖环，
+    /// 编译序不再保证依赖接口就绪——docs/ModuleImportRules.md §2），再按确定性序逐模块编译。
+    /// false = 已失败（诊断与统计已写入 result）。
+    /// 线程模型：顺序编译（环内失败级联的确定性优先于波内并行；std/vision 大模块由
+    /// 进程/磁盘缓存兜底）。</summary>
     public bool CompileAll(List<ModuleNode> compileOrder)
     {
-        // 拓扑分波（Kahn 层级）：level(n) = 1 + max(level(dep))；依赖接口在同波之前已就绪
-        var levels = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        // ---- 接口先行预提取：每个用户模块的接口在编译前就绪 ----
+        // 命中 .eci 接口缓存则零 parse（保持「源码不变永不解析」）；未命中才 parse 提取并回写缓存。
+        // 提取失败（语法错误）→ 预标失败 + 诊断并入，依赖者确定性级联，不进入绑定。
+        var failedModules = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
         foreach (var node in compileOrder)
         {
-            var level = 0;
-            foreach (var dep in node.Dependencies)
-                if (levels.TryGetValue(dep, out var depLevel))
-                    level = Math.Max(level, depLevel + 1);
-            levels[node.Name] = level;
-        }
-
-        var failedModules = new ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
-        foreach (var wave in compileOrder.GroupBy(n => levels[n.Name])
-                     .OrderBy(g => g.Key)
-                     .Select(g => g.ToList()))
-        {
-            if (wave.Count == 1)
+            // main 同样预提取：同目录互见是 mutual 的，兄弟模块的自动依赖含 main，
+            // 其接口（导出/HasInit）必须就绪（main 树已由调用方加载，零额外 parse）
+            var sourceContext = ModuleCacheKeys.SourceContext(node.Path);
+            var iface = _cache?.TryLoadInterface(node.Name, node.Source, _options.ProductFingerprint(), sourceContext);
+            if (iface == null && node.Tree == null)
             {
-                CompileOne(wave[0], failedModules);
+                // node.Tree 已存在（main 由调用方加载）则复用——重 parse 会以 "main.ecs"
+                // 兜底名替换内存树的空 FileName，污染诊断位置格式
+                var swParse = Stopwatch.StartNew();
+                var tree = SyntaxTree.Parse(SourceText.From(node.Source, node.Path.Length > 0 ? node.Path : node.Name + ".ecs"),
+                    _options.LegacySyntax, node.ImportBase);
+                lock (_stateLock)
+                    _result.Timing.LexingAndParsing += swParse.Elapsed;
+                if (tree.Diagnostics.Where(d => d.IsError).ToList() is { Count: > 0 } treeErrors)
+                {
+                    var sink = new DiagnosticBag();
+                    sink.AddRange(treeErrors);
+                    MergeDiagnostics(sink);
+                    failedModules.TryAdd(node.Name, 0);
+                    continue;
+                }
+                try
+                {
+                    iface = ModuleInterfaceBuilder.FromSyntaxTree(tree, node.Name);
+                }
+                catch (InvalidOperationException)
+                {
+                    // 接口收集失败 = 源码含语义错误（重复声明等）：留空接口，
+                    // 真实诊断由绑定阶段报告；兄弟模块经 ImportedList 的 null 过滤跳过
+                }
+                if (iface != null)
+                    _cache?.StoreInterface(iface, node.Source, _options.ProductFingerprint(), sourceContext);
+                node.Tree = tree;
+            }
+            else if (iface == null)
+            {
+                // 树已存在但接口缺失（main 首编译）：从现有树提取，失败同上容错
+                try
+                {
+                    var ifaceFromTree = ModuleInterfaceBuilder.FromSyntaxTree(node.Tree!, node.Name);
+                    node.Interface = ifaceFromTree;
+                    _cache?.StoreInterface(ifaceFromTree, node.Source, _options.ProductFingerprint(), sourceContext);
+                }
+                catch (InvalidOperationException)
+                {
+                    // 真实诊断由绑定阶段报告
+                }
                 continue;
             }
-            Parallel.ForEach(wave, node => CompileOne(node, failedModules));
+            node.Interface = iface;
         }
+
+        foreach (var node in compileOrder)
+            CompileOne(node, failedModules);
 
         if (!failedModules.IsEmpty)
             return Fail();
@@ -87,6 +125,9 @@ internal sealed class ModuleCompilePipeline
     /// 失败标记进 <paramref name="failedModules"/> 供依赖者级联拦截）。</summary>
     bool CompileOne(ModuleNode node, ConcurrentDictionary<string, byte> failedModules)
     {
+        // 接口预提取阶段已失败（语法错误）：诊断已并入，跳过避免重复报告
+        if (failedModules.ContainsKey(node.Name))
+            return false;
         // M2 级联容错：依赖模块编译失败 → 级联诊断拦截（不进绑定，避免符号错误风暴），
         // 其余无关模块照常编译——一次编译收集全部模块的诊断（SCRIPT_MODERNIZATION_PLAN.md）。
         var failedDeps = node.Dependencies.Where(failedModules.ContainsKey).ToList();
@@ -106,6 +147,7 @@ internal sealed class ModuleCompilePipeline
         var depIfaces = node.Dependencies
             .Where(_nodes.ContainsKey)
             .Select(d => _nodes[d].Interface)
+            .Where(i => i != null)
             .ToList();
         var cacheKey = ModuleCacheKeys.Compute(node.Source,
             depIfaces.Select(i => i.InterfaceHash).ToList(), ModuleInterface.CurrentCompilerVersion,
@@ -227,13 +269,15 @@ internal sealed class ModuleCompilePipeline
     List<ImportedInterface> ImportedList(ModuleNode node)
     {
         var tree = node.Tree ?? SyntaxTree.Parse(SourceText.From(node.Source, node.Path), _options.LegacySyntax,
-            node.LibRoot);
+            node.ImportBase);
         var importStmts = tree.Root.Members.OfType<ImportStmt>()
             .ToDictionary(i => Path.GetFullPath(i.FullFileName), i => i);
         var list = new List<ImportedInterface>();
         foreach (var depName in node.Dependencies)
         {
             var dep = _nodes[depName];
+            if (dep.Interface == null)
+                continue;   // 接口提取失败（源码语义错误）：绑定阶段该依赖自身会失败并级联
             importStmts.TryGetValue(dep.Path, out var stmt);
             list.Add(new ImportedInterface(dep.Interface, stmt?.Alias?.Value));
         }
@@ -246,7 +290,7 @@ internal sealed class ModuleCompilePipeline
         // parse 耗时计入 LexingAndParsing（缓存命中路径恒为 0，是「零 parse」的可观测证据）
         var swParse = Stopwatch.StartNew();
         var tree = SyntaxTree.Parse(SourceText.From(node.Source, node.Path), _options.LegacySyntax,
-            node.LibRoot);
+            node.ImportBase);
         lock (_stateLock)
             _result.Timing.LexingAndParsing += swParse.Elapsed;
         node.Tree = tree;
@@ -265,7 +309,7 @@ internal sealed class ModuleCompilePipeline
     {
         var timing = _result.Timing;
         var moduleTree = node.Tree ?? SyntaxTree.Parse(SourceText.From(node.Source, node.Path), _options.LegacySyntax,
-            node.LibRoot);
+            node.ImportBase);
         node.Tree = moduleTree;
         try
         {
@@ -305,7 +349,7 @@ internal sealed class ModuleCompilePipeline
             if (isMain)
                 _result.Program = ssa;
 
-            bool hasInit = isMain || ModuleInterfaceBuilder.FromSyntaxTree(moduleTree, node.Name).HasInit;
+            bool hasInit = isMain || (node.Interface?.HasInit ?? false);
             var artifact = EcxModuleEncoder.CompileWholeProgramAsModule(ssa, node.Name, externalFunctions,
                 hasInit: hasInit, isMain: isMain);
             artifact.Ssa = _options.KeepSsa ? ssa : null;

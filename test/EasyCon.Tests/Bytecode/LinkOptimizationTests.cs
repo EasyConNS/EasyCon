@@ -76,7 +76,7 @@ public class LinkOptimizationTests
         File.WriteAllText(Path.Combine(_dir, "lib", "utils.ecs"),
             "PRINT \"init-utils\"\nFUNC twice($x:INT):INT\n    RETURN $x * 2\nENDFUNC\n");
         File.WriteAllText(Path.Combine(_dir, "main.ecs"),
-            "IMPORT \"utils.ecs\"\n$r = twice(21)\nPRINT $r\n");
+            "$r = twice(21)\nPRINT $r\n");
 
         var result = Compilation.CompileFile(Path.Combine(_dir, "main.ecs"));
         Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty,

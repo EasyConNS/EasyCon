@@ -19,15 +19,14 @@ internal sealed partial class Parser
         _diagnostics.AddRange(lexer.Diagnostics);
     }
 
-    /// <summary>IMPORT 解析基准：语法树携带的 lib 根（导入规则 v2 = 主脚本 lib/ 唯一根，
-    /// 沿发现链传播）；缺省 = 本文件同目录 lib/（单文件场景）。</summary>
-    string _importBase => _syntaxTree.ImportBase ?? Path.Combine(_filePath, LibPath);
+    /// <summary>IMPORT 解析基准：语法树携带的目录（R2 = 导入文件所在目录，
+    /// docs/ModuleImportRules.md）；缺省 = 本文件同目录（单文件场景）。</summary>
+    string _importBase => _syntaxTree.ImportBase ?? _filePath;
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
     string _fullPath => _text.FileName != "" ? Path.GetFullPath(_text.FileName) : AppDomain.CurrentDomain.BaseDirectory;
     string _filePath => Path.GetDirectoryName(_fullPath) ?? "";
-    const string LibPath = "lib/";
 
     #region Token Cursor
 

@@ -224,7 +224,7 @@ internal sealed class ModuleCache
     {
         var cacheKey = ModuleCacheKeys.InterfaceKey(iface.Name, source, productFingerprint, sourceContext);
         var finalPath = Path.Combine(_objDir, ModuleCacheKeys.InterfaceFileName(iface.Name, cacheKey));
-        var tempPath = Path.Combine(_objDir, $".{iface.Name}-{Guid.NewGuid():N}.tmp");
+        var tempPath = Path.Combine(_objDir, $".{ModuleCacheKeys.Sanitize(iface.Name)}-{Guid.NewGuid():N}.tmp");
         using (var stream = File.Create(tempPath))
         using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: false))
             ModuleInterfaceFormat.Write(writer, iface);

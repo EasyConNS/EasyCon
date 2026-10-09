@@ -23,7 +23,6 @@ public class ModuleCacheOptimizationTests
         """;
 
     const string MainSource = """
-        IMPORT "utils.ecs"
         $r = twice(21)
         PRINT $r
         """;

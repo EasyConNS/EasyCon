@@ -40,16 +40,16 @@ public sealed class ModuleProjectResult
 /// <summary>
 /// 项目级独立编译编排（docs/ModuleSystem.md §3.3/§5 + 统一链路 docs/Pipeline.md）：
 ///
-///   main.ecs ─► ModuleGraphBuilder（IMPORT 递归展开 + 环检测 + lib/ 自动加载）──► 拓扑序
+///   main.ecs ─► ModuleGraphBuilder（显式 IMPORT 闭包 + 同目录互见/lib/ 自动导入）──► 确定性序
 ///                          │
-///              ModuleCompilePipeline：obj/ 缓存命中 → 读 .ecm（接口区 + 代码区）（M4）
+///              ModuleCompilePipeline：接口先行预提取（.eci 缓存）→ obj/ 缓存命中 → 读 .ecm
 ///                      未命中 → Synthesize(依赖接口) → 急切绑定 → SSA → 优化 →
-///                               编码（外部调用 = 导入标记 / CallN 原生）→ 原子写回 obj/（M5）
+///                               编码（外部调用 = 导入标记 / CallN 原生）→ 原子写回 obj/
 ///                          │
 ///              Link：类型表合并 + 导入解析 + &lt;main&gt;/&lt;init&gt; 合成（M6）──► EcxImage
 ///
 /// std/vision 为隐式依赖（内嵌源码、模块名固定），先于一切用户模块编译；
-/// lib/ 自动加载对齐 v1 ImportResolver 顺序语义（显式 import 之后、main 之前，全局可见无 alias）。
+/// main 隐式导入 lib/*.ecs（R3），同目录互见见 R1（docs/ModuleImportRules.md）。
 /// 桌面执行（EcxInterpreter）与 MCU 分发（.ecx）共用同一 EcxImage 产物。
 /// </summary>
 public static class ProjectCompiler
@@ -58,8 +58,7 @@ public static class ProjectCompiler
     public const string VisionModule = "vision";
     public const string MainModule = "main";
 
-    /// <summary>从脚本文件编译（统一链路主入口；IMPORT 闭包建图 + obj/ 缓存按 options；
-    /// 导入规则 v2 = MODULE_IMPORT_REDESIGN.md，lib/ 不再自动加载）。</summary>
+    /// <summary>从脚本文件编译（统一链路主入口；docs/ModuleImportRules.md）。</summary>
     public static ModuleProjectResult CompileProject(string mainPath, CompileOptions? options = null)
     {
         options ??= new CompileOptions();

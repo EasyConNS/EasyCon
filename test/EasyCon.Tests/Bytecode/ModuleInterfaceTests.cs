@@ -237,7 +237,6 @@ public class ModuleInterfaceTests
         ENDFUNC
         """;
     const string MainSource = """
-        IMPORT "utils.ecs"
         $r = twice(21)
         PRINT $r
         """;
@@ -302,7 +301,6 @@ public class ModuleInterfaceTests
     {
         // 参数个数不匹配 → 两条后端产生同一诊断文本（解析决策等价）
         var badMainSource = """
-            IMPORT "utils.ecs"
             $r = twice(1, 2)
             """;
         var dir = Path.Combine(Path.GetTempPath(), "ecs-mod-" + Guid.NewGuid().ToString("N")[..8]);
