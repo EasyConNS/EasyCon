@@ -24,7 +24,7 @@ public class WorkspaceFileToolsTests
         _root = Path.Combine(Path.GetTempPath(), "easycon-wstest-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_root);
         _registry = new ToolRegistry();
-        WorkspaceFileTools.RegisterAll(_registry, () => _root);
+        WorkspaceFileTools.RegisterAll(_registry, new WorkspaceRoot(() => _root));
     }
 
     [TearDown]
@@ -110,7 +110,7 @@ public class WorkspaceFileToolsTests
         foreach (var name in new[] { "glob_files", "read_file", "write_file", "edit_file" })
         {
             var registry = new ToolRegistry();
-            WorkspaceFileTools.RegisterAll(registry, () => null);
+            WorkspaceFileTools.RegisterAll(registry, new WorkspaceRoot(() => null));
             var result = await registry.Get(name)!.ExecuteAsync(Args(("path", "x"), ("content", "y"), ("pattern", "*")));
             Assert.That(result.Status, Is.EqualTo(ToolResultStatus.Error), name);
         }

@@ -11,9 +11,9 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class StopScriptTool : IAiTool
 {
-    private readonly IToolCallService _service;
+    private readonly IScriptRunPort _run;
 
-    public StopScriptTool(IToolCallService service) => _service = service;
+    public StopScriptTool(IScriptRunPort run) => _run = run;
 
     public string Name => "stop_script";
 
@@ -23,10 +23,10 @@ public class StopScriptTool : IAiTool
 
     public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
-        if (!_service.IsScriptRunning)
+        if (!_run.IsScriptRunning)
             return Task.FromResult(ToolResult.Ok("当前没有运行中的脚本。"));
 
-        _service.StopScript();
+        _run.StopScript();
         return Task.FromResult(ToolResult.Ok("脚本已停止。"));
     }
 }

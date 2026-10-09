@@ -104,7 +104,7 @@ public static class AgentCommand
         SkillLoader.LoadToRegistry(skills, SkillLoader.GetSearchPaths(root).ToList());
 
         var registry = new ToolRegistry();
-        WorkspaceFileTools.RegisterAll(registry, () => root);
+        WorkspaceFileTools.RegisterAll(registry, new WorkspaceRoot(() => root));
         var orchestrator = new AgentOrchestrator(registry, skills,
             clientFactory: null,
             projectDirectoryProvider: () => root,
@@ -117,7 +117,8 @@ public static class AgentCommand
         var history = new List<ChatMessage> { ChatMessage.User(task) };
         try
         {
-            await orchestrator.RunAsync(history, model.Id, provider, HandleEvent, ct, visionSupported: false);
+            // 视觉能力由编排器从模型条目解析；当前注册表无视觉类工具，天然不受影响
+            await orchestrator.RunAsync(history, model.Id, provider, HandleEvent, ct);
             return 0;
         }
         catch (OperationCanceledException)

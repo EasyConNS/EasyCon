@@ -87,7 +87,12 @@ public class AgentOrchestratorOrchestrationTests
     {
         var orchestrator = new AgentOrchestrator(tools.Registry, null, _ => client);
         var history = new List<ChatMessage>();
-        await orchestrator.RunAsync(history, "test-model", new ProviderConfig(), _ => { }, CancellationToken.None, visionSupported);
+        // 视觉能力由编排器从模型条目解析；visionSupported 参数保留用于用例开关
+        var provider = new ProviderConfig
+        {
+            Models = [new ModelInfo { Id = "test-model", Vision = visionSupported }]
+        };
+        await orchestrator.RunAsync(history, "test-model", provider, _ => { }, CancellationToken.None);
         return history;
     }
 

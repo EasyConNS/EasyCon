@@ -65,13 +65,13 @@ public class AgentOrchestrator
     /// <summary>旧帧图降级后的占位文本（保留对话时间轴位置，不再携带像素）。</summary>
     public const string FrameOmittedPlaceholder = "[旧画面已省略：最新画面见后文]";
 
-    /// <summary>get_frame 与其它工具同轮混调时的拒绝文案（fail-closed，指导模型下轮单独调用）。</summary>
+    /// <summary>取帧类工具与其它工具同轮混调时的拒绝文案（fail-closed，指导模型下轮单独调用）。</summary>
     public const string FrameMixedRoundError =
-        "[错误] get_frame 必须单独调用：与其它工具同轮执行会让画面早于本轮动作，请本轮只调用 get_frame，其余动作下一轮再调。";
+        "[错误] 取帧类工具必须单独调用：与其它工具同轮执行会让画面早于本轮动作，请本轮只调用该工具，其余动作下一轮再调。";
 
-    /// <summary>当前模型不支持视觉输入时 get_frame 的拒绝文案。</summary>
+    /// <summary>当前模型不支持视觉输入时取帧类工具的拒绝文案。</summary>
     public const string FrameVisionUnsupportedError =
-        "[错误] 当前模型不支持视觉输入，无法使用 get_frame。请在模型列表选择具备视觉能力的模型后再试。";
+        "[错误] 当前模型不支持视觉输入，无法使用取帧类工具。请在模型列表选择具备视觉能力的模型后再试。";
 
     /// <summary>单个工具结果写入历史的字符预算，超出即截断并附显式尾注。</summary>
     public const int MaxToolResultChars = 20_000;
@@ -292,15 +292,17 @@ public class AgentOrchestrator
     /// <param name="provider">API 供应商配置。</param>
     /// <param name="onEvent">事件回调，ViewModel 据此更新 UI。</param>
     /// <param name="ct">取消令牌。</param>
-    /// <param name="visionSupported">当前模型是否支持视觉输入，决定 get_frame 是否可用。</param>
+    /// <remarks>视觉能力从 provider 中 modelId 对应的模型条目解析（工具的 RequiresVision 由这里裁决），
+    /// 不再接受宿主传入布尔——能力判定收归 runtime，集成方无法误报。</remarks>
     public async Task RunAsync(
         List<ChatMessage> history,
         string modelId,
         ProviderConfig provider,
         Action<AgentEvent> onEvent,
-        CancellationToken ct,
-        bool visionSupported = true)
+        CancellationToken ct)
     {
+        // 模型条目缺失时按"无视觉"处理（fail-closed）：声明了 RequiresVision 的工具会被拒绝
+        var visionSupported = provider.Models.FirstOrDefault(m => m.Id == modelId)?.Vision ?? false;
         const int maxStreamRetries = 2;
         var toolDefs = _tools.ToToolDefinitions();
         var hasTools = toolDefs.Count > 0;
@@ -490,19 +492,17 @@ public class AgentOrchestrator
         CancellationToken ct,
         bool visionSupported)
     {
-        // get_frame 有两条 fail-closed 约束：需要视觉能力；必须单独调用
-        // （混轮并行会让画面早于本轮动作而被模型误当行动结果）。
+        // 取帧类工具有两条 fail-closed 约束：需要视觉能力（RequiresVision）；
+        // 必须单独调用（ReturnsImage——混轮并行会让画面早于本轮动作而被模型误当行动结果）。
         var mixedRound = toolCalls.Count > 1;
 
         Task<ToolResult> Dispatch(ToolCall tc)
         {
-            if (tc.Function.Name == FrameToolName)
-            {
-                if (!visionSupported)
-                    return RejectFrameCall(tc, FrameVisionUnsupportedError, onEvent);
-                if (mixedRound)
-                    return RejectFrameCall(tc, FrameMixedRoundError, onEvent);
-            }
+            var tool = _tools.Get(tc.Function.Name);
+            if (tool is { RequiresVision: true } && !visionSupported)
+                return RejectFrameCall(tc, FrameVisionUnsupportedError, onEvent);
+            if (tool is { ReturnsImage: true } && mixedRound)
+                return RejectFrameCall(tc, FrameMixedRoundError, onEvent);
 
             // 危险工具确认门：无回调 fail-closed 拒绝；回调拒绝则以错误结果回传模型
             if (_tools.Get(tc.Function.Name) is { RequiresConfirmation: true })

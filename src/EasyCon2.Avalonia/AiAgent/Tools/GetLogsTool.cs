@@ -11,9 +11,9 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class GetLogsTool : IAiTool
 {
-    private readonly IToolCallService _service;
+    private readonly IObservabilityPort _service;
 
-    public GetLogsTool(IToolCallService service) => _service = service;
+    public GetLogsTool(IObservabilityPort observability) => _service = observability;
 
     public string Name => "get_logs";
 

@@ -421,8 +421,8 @@ public class ScriptServiceTests
         string libraryPath = Path.Combine(Path.GetDirectoryName(path)!, "lib", "answer.ecs");
         Directory.CreateDirectory(Path.GetDirectoryName(libraryPath)!);
         File.WriteAllText(libraryPath, "FUNC answer():INT\n    RETURN 42\nENDFUNC\n");
-        // 导入规则 v2：lib/ 不自动加载——编辑器内容需显式 IMPORT
-        const string editorText = "IMPORT \"answer.ecs\"\n$r = answer()\nPRINT $r\n";
+        // 导入规则 R3：main 隐式导入 lib/——编辑器内容无需显式 IMPORT
+        const string editorText = "$r = answer()\nPRINT $r\n";
 
         bool compiled = await service.CompileAsync(editorText, path);
 
@@ -435,7 +435,7 @@ public class ScriptServiceTests
 
         service.RunFromContent(editorText, fileName: path);
         await WaitUntilAsync(() => !service.IsRunning, "带路径的编辑器内容应运行完成");
-        Assert.That(log.Snapshot(), Does.Contain("42"), "运行时应能调用显式导入的同目录库");
+        Assert.That(log.Snapshot(), Does.Contain("42"), "运行时应能调用 R3 自动导入的 lib 库");
 
         string labelsDirectory = Path.Combine(Path.GetDirectoryName(path)!, "ImgLabel");
         new ImgLabel { name = "enemy", searchMethod = SearchMethod.TesserDetect }.Save(labelsDirectory);
@@ -448,7 +448,7 @@ public class ScriptServiceTests
     {
         var log = new FakeLogService();
         var service = CreateService(log, new FakeDeviceService(), new FakeCaptureService());
-        string path = CreateScriptFile("main.ecs", "IMPORT \"00_bad.ecs\"\nPRINT 1\n");
+        string path = CreateScriptFile("main.ecs", "PRINT 1\n");
         string libraryPath = Path.Combine(Path.GetDirectoryName(path)!, "lib", "00_bad.ecs");
         Directory.CreateDirectory(Path.GetDirectoryName(libraryPath)!);
         File.WriteAllText(libraryPath, "$r = missing()\n");

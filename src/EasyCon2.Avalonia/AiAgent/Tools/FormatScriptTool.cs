@@ -12,9 +12,9 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class FormatScriptTool : IAiTool
 {
-    private readonly IToolCallService _service;
+    private readonly IScriptEditorPort _service;
 
-    public FormatScriptTool(IToolCallService service) => _service = service;
+    public FormatScriptTool(IScriptEditorPort editor) => _service = editor;
 
     public string Name => "format_script";
 

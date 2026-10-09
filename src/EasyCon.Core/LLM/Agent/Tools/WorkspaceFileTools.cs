@@ -19,13 +19,13 @@ public static class WorkspaceFileTools
 
     /// <summary>把工作区文件工具注册到工具注册中心。</summary>
     /// <param name="registry">工具注册中心。</param>
-    /// <param name="workspaceRootProvider">返回工作区根目录（未打开脚本项目时为 null）。</param>
-    public static void RegisterAll(ToolRegistry registry, Func<string?> workspaceRootProvider)
+    /// <param name="workspace">工作区根端口（未打开脚本项目时 RootPath 为 null）。</param>
+    public static void RegisterAll(ToolRegistry registry, IWorkspaceRoot workspace)
     {
-        registry.Register(new GlobFilesTool(workspaceRootProvider));
-        registry.Register(new ReadFileTool(workspaceRootProvider));
-        registry.Register(new WriteFileTool(workspaceRootProvider));
-        registry.Register(new EditFileTool(workspaceRootProvider));
+        registry.Register(new GlobFilesTool(workspace));
+        registry.Register(new ReadFileTool(workspace));
+        registry.Register(new WriteFileTool(workspace));
+        registry.Register(new EditFileTool(workspace));
     }
 
     /// <summary>把相对路径安全解析到根目录内；逃逸或非法路径返回 null。</summary>
@@ -61,12 +61,28 @@ public static class WorkspaceFileTools
         ToolResult.Error("[错误] 未打开脚本项目，文件工具不可用。请先打开一个脚本文件。");
 }
 
+/// <summary>
+/// 工作区根端口：文件工具经它拿到当前工作区根目录。
+/// 命名端口而非 <c>Func&lt;string?&gt;</c>——依赖可命名、可多态、可用测试替身。
+/// </summary>
+public interface IWorkspaceRoot
+{
+    /// <summary>工作区根目录绝对路径；未打开脚本项目时为 null。</summary>
+    string? RootPath { get; }
+}
+
+/// <summary>IWorkspaceRoot 的默认实现：包装一个（可动态解析的）根路径供给。</summary>
+public sealed class WorkspaceRoot(Func<string?> pathProvider) : IWorkspaceRoot
+{
+    public string? RootPath => pathProvider();
+}
+
 /// <summary>glob_files：按通配符模式列出工作区内的文件。</summary>
 public class GlobFilesTool : IAiTool
 {
-    private readonly Func<string?> _rootProvider;
+    private readonly IWorkspaceRoot _workspace;
 
-    public GlobFilesTool(Func<string?> rootProvider) => _rootProvider = rootProvider;
+    public GlobFilesTool(IWorkspaceRoot workspace) => _workspace = workspace;
 
     public string Name => "glob_files";
 
@@ -91,7 +107,7 @@ public class GlobFilesTool : IAiTool
 
     public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
-        var root = _rootProvider();
+        var root = _workspace.RootPath;
         if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
             return Task.FromResult(WorkspaceFileTools.NoWorkspace());
 
@@ -113,7 +129,7 @@ public class GlobFilesTool : IAiTool
             var rootName = Path.GetFileName(root.TrimEnd(Path.DirectorySeparatorChar));
             var matches = Directory.EnumerateFiles(root, searchPattern, options)
                 .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}.easycon{Path.DirectorySeparatorChar}"))
-                .Select(f => Path.GetRelativePath(root, f))
+                .Select(f => Path.GetRelativePath(root, f).Replace(Path.DirectorySeparatorChar, '/'))
                 .OrderBy(f => f, StringComparer.Ordinal)
                 .Take(200)
                 .ToList();
@@ -131,9 +147,9 @@ public class GlobFilesTool : IAiTool
 /// <summary>read_file：读取工作区内一个 UTF-8 文本文件。</summary>
 public class ReadFileTool : IAiTool
 {
-    private readonly Func<string?> _rootProvider;
+    private readonly IWorkspaceRoot _workspace;
 
-    public ReadFileTool(Func<string?> rootProvider) => _rootProvider = rootProvider;
+    public ReadFileTool(IWorkspaceRoot workspace) => _workspace = workspace;
 
     public string Name => "read_file";
 
@@ -154,7 +170,7 @@ public class ReadFileTool : IAiTool
 
     public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
-        var root = _rootProvider();
+        var root = _workspace.RootPath;
         if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
             return Task.FromResult(WorkspaceFileTools.NoWorkspace());
 
@@ -185,9 +201,9 @@ public class ReadFileTool : IAiTool
 /// <summary>write_file：写入或覆盖工作区内的文本文件（写前自动快照）。</summary>
 public class WriteFileTool : IAiTool
 {
-    private readonly Func<string?> _rootProvider;
+    private readonly IWorkspaceRoot _workspace;
 
-    public WriteFileTool(Func<string?> rootProvider) => _rootProvider = rootProvider;
+    public WriteFileTool(IWorkspaceRoot workspace) => _workspace = workspace;
 
     public string Name => "write_file";
 
@@ -209,7 +225,7 @@ public class WriteFileTool : IAiTool
 
     public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
-        var root = _rootProvider();
+        var root = _workspace.RootPath;
         if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
             return Task.FromResult(WorkspaceFileTools.NoWorkspace());
 
@@ -247,9 +263,9 @@ public class WriteFileTool : IAiTool
 /// <summary>edit_file：在工作区文件内做精确文本替换（写前自动快照）。</summary>
 public class EditFileTool : IAiTool
 {
-    private readonly Func<string?> _rootProvider;
+    private readonly IWorkspaceRoot _workspace;
 
-    public EditFileTool(Func<string?> rootProvider) => _rootProvider = rootProvider;
+    public EditFileTool(IWorkspaceRoot workspace) => _workspace = workspace;
 
     public string Name => "edit_file";
 
@@ -271,7 +287,7 @@ public class EditFileTool : IAiTool
 
     public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
-        var root = _rootProvider();
+        var root = _workspace.RootPath;
         if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
             return Task.FromResult(WorkspaceFileTools.NoWorkspace());
 

@@ -12,9 +12,9 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class CompileScriptTool : IAiTool
 {
-    private readonly IToolCallService _service;
+    private readonly IScriptEditorPort _service;
 
-    public CompileScriptTool(IToolCallService service) => _service = service;
+    public CompileScriptTool(IScriptEditorPort editor) => _service = editor;
 
     public string Name => "compile_script";
 

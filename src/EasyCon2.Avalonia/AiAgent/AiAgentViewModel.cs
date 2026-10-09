@@ -119,7 +119,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
         {
             DefaultTools.RegisterAll(_tools, toolCallService);
             WorkspaceFileTools.RegisterAll(_tools,
-                () => _toolCallService?.GetProjectDirectory());
+                new WorkspaceRoot(() => _toolCallService?.GetProjectDirectory()));
             InitializeSkills();
         }
 
@@ -364,8 +364,8 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
                 projectDirectoryProvider: () => _toolCallService?.GetProjectDirectory(),
             confirmationHandler: RequestConfirmationAsync);
 
-            await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token,
-                SelectedEntry.Vision);
+            // 视觉能力由编排器从 provider+modelId 对应的模型条目解析
+            await _orchestrator.RunAsync(_history, SelectedEntry.ModelId, provider, HandleAgentEvent, _cts.Token);
 
             // 首次请求结束后异步生成对话标题（不阻塞主流程）；
             // 请求不绑会话取消令牌，以会话版本号防止旧标题写进新会话

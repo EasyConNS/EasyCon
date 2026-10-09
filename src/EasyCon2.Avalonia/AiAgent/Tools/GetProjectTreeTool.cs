@@ -13,9 +13,9 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class GetProjectTreeTool : IAiTool
 {
-    private readonly IToolCallService _service;
+    private readonly IWorkspaceInfoPort _service;
 
-    public GetProjectTreeTool(IToolCallService service) => _service = service;
+    public GetProjectTreeTool(IWorkspaceInfoPort workspace) => _service = workspace;
 
     public string Name => "get_project_tree";
 

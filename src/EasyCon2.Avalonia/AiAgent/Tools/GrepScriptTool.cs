@@ -14,9 +14,9 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class GrepScriptTool : IAiTool
 {
-    private readonly IToolCallService _service;
+    private readonly IScriptEditorPort _service;
 
-    public GrepScriptTool(IToolCallService service) => _service = service;
+    public GrepScriptTool(IScriptEditorPort editor) => _service = editor;
 
     public string Name => "grep_script";
 

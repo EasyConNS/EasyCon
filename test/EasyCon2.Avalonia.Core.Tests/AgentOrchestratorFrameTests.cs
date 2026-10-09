@@ -34,6 +34,8 @@ public class AgentOrchestratorFrameTests
         public string Name => "get_frame";
         public string Description => "fake frame tool";
         public JsonSchema Parameters => new() { Type = "object" };
+        public bool RequiresVision => true;
+        public bool ReturnsImage => true;
         public int ExecutedCount;
 
         public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
@@ -84,6 +86,15 @@ public class AgentOrchestratorFrameTests
         public void Dispose() { }
     }
 
+    /// <summary>1x1 PNG（合法最小图像，供帧编码器解码）。</summary>
+    private const string TinyPngBase64 =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+    private sealed class FakeCaptureSource : ICaptureSource
+    {
+        public string? CaptureFrame(int x, int y, int width, int height) => TinyPngBase64;
+    }
+
     private sealed class FakeToolCallService : IToolCallService
     {
         public string GetScriptContent() => "";
@@ -98,18 +109,9 @@ public class AgentOrchestratorFrameTests
         public Task<bool> RunScriptAsync() => Task.FromResult(true);
         public void StopScript() { }
         public bool IsScriptRunning => false;
-        public string? GetCurrentFrameBase64() => "ZmFrZQ==";
 
-        public PadActionResult PressButton(string key, int durationMs, int times, int intervalMs)
-            => new PadActionResult(false, "test fake");
-
-        public PadActionResult SetStick(string key, int x, int y, int durationMs)
-            => new PadActionResult(false, "test fake");
-
-        public OcrFrameResult? OcrFrame(string? language, int x, int y, int width, int height) => null;
-
-        public ICaptureSource? GetCaptureSource() => null;
-
+        public IPadInput? GetPadInput() => null;
+        public ICaptureSource? GetCaptureSource() => new FakeCaptureSource();
         public IOcrService? GetOcrService() => null;
         public string GetRecentLogs(int maxLines) => "";
     }
@@ -138,7 +140,12 @@ public class AgentOrchestratorFrameTests
 
         var orchestrator = new AgentOrchestrator(registry, null, _ => client);
         var history = new List<ChatMessage>();
-        await orchestrator.RunAsync(history, "test-model", new ProviderConfig(), _ => { }, CancellationToken.None);
+        // 模型条目声明视觉能力（编排器从 provider+modelId 解析，不再接受宿主布尔）
+        var provider = new ProviderConfig
+        {
+            Models = [new ModelInfo { Id = "test-model", Vision = true }]
+        };
+        await orchestrator.RunAsync(history, "test-model", provider, _ => { }, CancellationToken.None);
         return (history, client);
     }
 
@@ -253,7 +260,7 @@ public class AgentOrchestratorFrameTests
     [Test]
     public async Task GetFrameResult_ContainsCaptureTimestamp()
     {
-        var tool = new GetFrameTool(new FakeToolCallService());
+        var tool = new GetFrameTool(() => new FakeToolCallService().GetCaptureSource());
 
         var result = await tool.ExecuteAsync([]);
 

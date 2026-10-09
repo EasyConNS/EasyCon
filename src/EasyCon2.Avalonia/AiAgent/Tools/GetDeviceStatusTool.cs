@@ -11,9 +11,9 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class GetDeviceStatusTool : IAiTool
 {
-    private readonly IToolCallService _service;
+    private readonly IObservabilityPort _service;
 
-    public GetDeviceStatusTool(IToolCallService service) => _service = service;
+    public GetDeviceStatusTool(IObservabilityPort observability) => _service = observability;
 
     public string Name => "get_device_status";
 

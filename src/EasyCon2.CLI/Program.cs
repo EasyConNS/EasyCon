@@ -573,7 +573,7 @@ if (isMcpCommand)
 {
     var mcpRegistry = new EasyCon.Core.LLM.Agent.Tools.ToolRegistry();
     EasyCon.Core.LLM.Agent.Tools.WorkspaceFileTools.RegisterAll(
-        mcpRegistry, () => Directory.GetCurrentDirectory());
+        mcpRegistry, new EasyCon.Core.LLM.Agent.Tools.WorkspaceRoot(() => Directory.GetCurrentDirectory()));
     var mcpSkills = new EasyCon.Core.LLM.Skills.SkillRegistry();
     foreach (var skill in EasyCon.Core.LLM.Agent.Skills.BundledSkills.CreateAll())
         mcpSkills.Register(skill);

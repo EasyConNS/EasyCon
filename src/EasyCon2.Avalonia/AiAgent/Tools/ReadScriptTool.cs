@@ -13,11 +13,11 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class ReadScriptTool : IAiTool
 {
-    private readonly IToolCallService _service;
+    private readonly IScriptEditorPort _service;
 
-    public ReadScriptTool(IToolCallService service)
+    public ReadScriptTool(IScriptEditorPort editor)
     {
-        _service = service;
+        _service = editor;
     }
 
     public string Name => "read_script";

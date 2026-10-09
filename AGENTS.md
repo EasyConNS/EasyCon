@@ -95,6 +95,23 @@ Rules to respect when changing code:
   (frozen 8-bit slots, the only MCU-distributable and cacheable profile).
 - DI *container* is deliberately absent: composition is explicit constructor passing from
   `App.axaml.cs` (GUI) and `Program.cs` (CLI).
+- **AI tool layer: runtime knows capabilities, not integrations.** Tool constructors may only depend on
+  Core vocabulary (capability ports like `IPadInput`/`ICaptureSource`/`IOcrService`, LLM infra types,
+  primitives, delegate providers) or a narrow GUI port (`IScriptEditorPort` etc.). The `IToolCallService`
+  facade is a GUI-internal composition view — never take it as a tool dependency. Editor-buffer tools stay
+  in the GUI *by vocabulary* (Core has no concept of "editor"), not merely by consumer count. This boundary
+  is enforced by `ToolPortBoundaryTests`.
+- **Tool contracts live in `IAiTool` metadata, not host flags or prose.** `RequiresVision`/`ReturnsImage`
+  gate vision-dependent tools; the orchestrator resolves model vision from `provider`+`modelId` itself.
+  Do not reintroduce host-supplied booleans (the old `visionSupported` param let GUI silently claim vision
+  for non-vision models). Capability absence (e.g. no Pad assembled) is what makes a tool read-only —
+  `EvalEcsTool` is the reference pattern.
+- **Deferred decision (script run control):** `IScriptRunPort` still starts scripts from editor content
+  (GUI session semantics). When CLI needs to run scripts, introduce an assemblable Core run-control port
+  (over `IScriptEngine`) and migrate `run_script`/`stop_script` onto it — do not duplicate the GUI path.
+- **Accepted wart (MCP transport in Core):** `McpServerHost` (stdio + loopback HTTP) lives in Core via
+  `ModelContextProtocol.Core` because both CLI and GUI host it. If it ever grows host-specific behavior,
+  split the transports into a host-shared project and keep only the tool-catalog export in Core.
 - One known wart: `EasyCon2.UI.Common` is a vestigial resx-only project.
 
 ## Code conventions (enforced by .editorconfig)

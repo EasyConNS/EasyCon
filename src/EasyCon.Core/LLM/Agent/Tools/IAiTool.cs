@@ -47,6 +47,19 @@ public interface IAiTool
     bool RequiresConfirmation => false;
 
     /// <summary>
+    /// 是否依赖多模态视觉（结果里有模型需要"看"的图像）。
+    /// 编排器按当前模型能力过滤：模型不支持视觉时 fail-closed 拒绝调用，
+    /// 不再由宿主传入布尔开关。能力需求属于工具契约，不属于集成方。
+    /// </summary>
+    bool RequiresVision => false;
+
+    /// <summary>
+    /// 结果会向模型附加图像消息。此类调用必须独占一轮（混轮并行会让画面
+    /// 早于本轮动作而被模型误当行动结果），编排器据此拒绝混轮调用。
+    /// </summary>
+    bool ReturnsImage => false;
+
+    /// <summary>
     /// 执行工具调用，返回结果（含状态信息，回传给模型）。
     /// </summary>
     /// <param name="args">已解析的参数字典，可能为空。</param>

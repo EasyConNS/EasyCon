@@ -14,9 +14,14 @@ public class RunScriptTool : IAiTool
     /// <summary>脚本会驱动真实硬件，需要人工确认。</summary>
     public bool RequiresConfirmation => true;
 
-    private readonly IToolCallService _service;
+    private readonly IScriptRunPort _run;
+    private readonly IObservabilityPort _observability;
 
-    public RunScriptTool(IToolCallService service) => _service = service;
+    public RunScriptTool(IScriptRunPort run, IObservabilityPort observability)
+    {
+        _run = run;
+        _observability = observability;
+    }
 
     public string Name => "run_script";
 
@@ -26,12 +31,15 @@ public class RunScriptTool : IAiTool
 
     public async Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
-        var status = _service.GetDeviceStatus();
+        // 连接前置检查：脚本会驱动真实硬件，设备不在线时直接给模型可行动的反馈
+        var status = _observability.GetDeviceStatus();
+        if (!status.IsDeviceConnected)
+            return ToolResult.Retryable("单片机未连接，无法运行脚本。", "请先在连接页连接单片机后重试。");
 
-        if (_service.IsScriptRunning)
+        if (_run.IsScriptRunning)
             return ToolResult.Retryable("脚本已在运行中。", "请先调用 stop_script 停止当前脚本，再重新运行。");
 
-        var ok = await _service.RunScriptAsync();
+        var ok = await _run.RunScriptAsync();
         return ok
             ? ToolResult.Ok("脚本已启动运行。")
             : ToolResult.Retryable("编译失败，无法运行。", "请调用 get_logs 查看错误信息，修复后重新编译运行。");

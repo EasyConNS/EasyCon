@@ -12,9 +12,9 @@ namespace EasyCon2.Avalonia.AiAgent.Tools;
 /// </summary>
 public class WriteScriptTool : IAiTool
 {
-    private readonly IToolCallService _service;
+    private readonly IScriptEditorPort _service;
 
-    public WriteScriptTool(IToolCallService service) => _service = service;
+    public WriteScriptTool(IScriptEditorPort editor) => _service = editor;
 
     public string Name => "write_script";
 
