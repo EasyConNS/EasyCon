@@ -1,0 +1,270 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using EasyCon.Capture.Audio;
+using EasyCon.Core.Services;
+using EasyCon2.Avalonia.Localization;
+using EasyCon2.Avalonia.Services;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Windows.Input;
+
+namespace EasyCon2.Avalonia.Connection;
+
+/// <summary>
+/// 游戏音频输入连接编排。这里只负责选择设备、连接生命周期和电平展示；
+/// 音频块通过 <see cref="IAudioCaptureSource.DataAvailable"/> 保留给后续消费者。
+/// </summary>
+public partial class AudioConnectionViewModel : ObservableObject, IDisposable
+{
+    private readonly IAudioCaptureSource _audioSource;
+    private readonly ILogService _logService;
+    private readonly IUiDispatcher _ui;
+    private CancellationTokenSource? _connectTimeout;
+    private long _lastLevelUpdateTimestamp;
+    private bool _disposed;
+
+    [ObservableProperty]
+    private ObservableCollection<AudioDeviceInfo> _audioSourceOptions = new();
+
+    [ObservableProperty]
+    private AudioDeviceInfo? _selectedAudioSource;
+
+    [ObservableProperty]
+    private string _audioSourceStatus = L10nBridge.T("Text.Status.NotConnected");
+
+    [ObservableProperty]
+    private bool _isConnectingAudioSource;
+
+    [ObservableProperty]
+    private bool _isAudioSourceConnected;
+
+    [ObservableProperty]
+    private string _audioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+
+    [ObservableProperty]
+    private string _audioFormatText = "";
+
+    [ObservableProperty]
+    private string _audioLevelText = "";
+
+    public ICommand ConnectAudioSourceCommand { get; }
+
+    public ICommand RefreshAudioSourcesCommand { get; }
+
+    /// <summary>
+    /// 音频采集源本身，供后续消费者订阅 <see cref="IAudioCaptureSource.DataAvailable"/>；
+    /// 本面板只负责连接生命周期和电平展示，不在这里做判闪决策。
+    /// </summary>
+    public IAudioCaptureSource CaptureSource => _audioSource;
+
+    public AudioConnectionViewModel(IAudioCaptureSource audioSource, ILogService logService, IUiDispatcher uiDispatcher)
+    {
+        _audioSource = audioSource;
+        _logService = logService;
+        _ui = uiDispatcher;
+
+        ConnectAudioSourceCommand = new AsyncRelayCommand(ConnectAudioSourceAsync);
+        RefreshAudioSourcesCommand = new RelayCommand(RefreshAudioSources);
+
+        _audioSource.StateChanged += OnStateChanged;
+        _audioSource.LevelChanged += OnLevelChanged;
+        RefreshAudioSources();
+        SyncState(_audioSource.State);
+    }
+
+    private async Task ConnectAudioSourceAsync()
+    {
+        if (_disposed || IsConnectingAudioSource)
+            return;
+
+        if (IsAudioSourceConnected || _audioSource.State.Status == AudioCaptureStatus.Connecting)
+        {
+            CancelConnectTimeout();
+            await _audioSource.DisconnectAsync();
+            _logService.AddLog(L10nBridge.T("Text.Msg.AudioDisconnected"));
+            return;
+        }
+
+        var selected = SelectedAudioSource;
+        if (selected == null)
+        {
+            _logService.AddLog(L10nBridge.T("Text.Msg.SelectAudioSource"));
+            return;
+        }
+
+        IsConnectingAudioSource = true;
+        AudioSourceStatus = L10nBridge.T("Text.Status.Connecting");
+        AudioSourceButtonText = L10nBridge.T("Text.Btn.DisconnectAudio");
+        AudioFormatText = "";
+        AudioLevelText = "";
+        _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.OpenAudioPrepare"), selected.Name));
+        StartConnectTimeout();
+
+        try
+        {
+            var ok = await Task.Run(() => _audioSource.TryConnect(selected.Id));
+            if (!ok && _audioSource.State.Status != AudioCaptureStatus.Failed)
+                await _ui.InvokeAsync(() => SyncState(new AudioCaptureState(AudioCaptureStatus.Failed, selected, Error: L10nBridge.T("Text.Msg.AudioOpenFail"))));
+        }
+        catch (Exception ex)
+        {
+            CancelConnectTimeout();
+            await _ui.InvokeAsync(() =>
+            {
+                IsConnectingAudioSource = false;
+                IsAudioSourceConnected = false;
+                AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
+                AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+            });
+            _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AudioConnectError"), ex.Message));
+        }
+    }
+
+    private void RefreshAudioSources()
+    {
+        if (_disposed)
+            return;
+
+        try
+        {
+            var oldId = SelectedAudioSource?.Id;
+            AudioSourceOptions = new ObservableCollection<AudioDeviceInfo>(_audioSource.GetAvailableDevices());
+            SelectedAudioSource = oldId == null
+                ? null
+                : AudioSourceOptions.FirstOrDefault(device => device.Id == oldId);
+        }
+        catch (Exception ex)
+        {
+            AudioSourceOptions = new ObservableCollection<AudioDeviceInfo>();
+            SelectedAudioSource = null;
+            _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AudioListError"), ex.Message));
+        }
+    }
+
+    private void OnStateChanged(AudioCaptureState state)
+    {
+        _ui.Post(() => SyncState(state));
+    }
+
+    private void SyncState(AudioCaptureState state)
+    {
+        if (_disposed)
+            return;
+
+        switch (state.Status)
+        {
+            case AudioCaptureStatus.Connecting:
+                IsConnectingAudioSource = true;
+                IsAudioSourceConnected = false;
+                AudioSourceStatus = L10nBridge.T("Text.Status.Connecting");
+                AudioSourceButtonText = L10nBridge.T("Text.Btn.DisconnectAudio");
+                break;
+            case AudioCaptureStatus.Connected:
+                CancelConnectTimeout();
+                IsConnectingAudioSource = false;
+                IsAudioSourceConnected = true;
+                AudioSourceStatus = L10nBridge.T("Text.Status.Connected");
+                AudioSourceButtonText = L10nBridge.T("Text.Btn.DisconnectAudio");
+                AudioFormatText = state.Format == null
+                    ? ""
+                    : string.Format(
+                        L10nBridge.T("Text.Audio.Format"),
+                        state.Format.SampleRate,
+                        state.Format.Channels,
+                        state.Format.BitsPerSample);
+                _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AudioOk"), state.Device?.Name ?? ""));
+                break;
+            case AudioCaptureStatus.Failed:
+                CancelConnectTimeout();
+                IsConnectingAudioSource = false;
+                IsAudioSourceConnected = false;
+                AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
+                AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+                if (!string.IsNullOrWhiteSpace(state.Error))
+                    _logService.AddLog(state.Error);
+                break;
+            default:
+                CancelConnectTimeout();
+                IsConnectingAudioSource = false;
+                IsAudioSourceConnected = false;
+                AudioSourceStatus = L10nBridge.T("Text.Status.NotConnected");
+                AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+                AudioFormatText = "";
+                AudioLevelText = "";
+                break;
+        }
+    }
+
+    private void OnLevelChanged(AudioLevel level)
+    {
+        long now = Stopwatch.GetTimestamp();
+        long last = Interlocked.Read(ref _lastLevelUpdateTimestamp);
+        if (last != 0 && now - last < Stopwatch.Frequency / 10)
+            return;
+        Interlocked.Exchange(ref _lastLevelUpdateTimestamp, now);
+
+        _ui.Post(() =>
+        {
+            if (_disposed || !IsAudioSourceConnected)
+                return;
+
+            if (level.Silent)
+            {
+                AudioLevelText = L10nBridge.T("Text.Status.AudioSilent");
+                return;
+            }
+
+            var peakDb = level.Peak <= 0 ? -60 : Math.Max(-60, 20 * Math.Log10(level.Peak));
+            AudioLevelText = $"{peakDb:F1} dBFS";
+        });
+    }
+
+    private void StartConnectTimeout()
+    {
+        CancelConnectTimeout();
+        _connectTimeout = new CancellationTokenSource();
+        var token = _connectTimeout.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(15), token);
+                if (token.IsCancellationRequested || _disposed || !IsConnectingAudioSource
+                    || _audioSource.State.Status != AudioCaptureStatus.Connecting)
+                    return;
+
+                await _audioSource.DisconnectAsync();
+                await _ui.InvokeAsync(() =>
+                {
+                    IsConnectingAudioSource = false;
+                    IsAudioSourceConnected = false;
+                    AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
+                    AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+                });
+                _logService.AddLog(L10nBridge.T("Text.Msg.AudioTimeout"));
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
+    }
+
+    private void CancelConnectTimeout()
+    {
+        _connectTimeout?.Cancel();
+        _connectTimeout?.Dispose();
+        _connectTimeout = null;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        CancelConnectTimeout();
+        _audioSource.StateChanged -= OnStateChanged;
+        _audioSource.LevelChanged -= OnLevelChanged;
+        _audioSource.Dispose();
+    }
+}

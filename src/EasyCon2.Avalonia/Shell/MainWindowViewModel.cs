@@ -3,6 +3,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Capture;
+using EasyCon.Capture.Audio;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon.Core.LLM.Agent;
@@ -48,6 +49,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IFileSystem _fileSystem;
     private readonly ToolCallService _toolCallService;
     private readonly IImageProcessor? _imageProcessor;
+    private readonly IAudioCaptureSource _audioCaptureSource;
     private readonly IMcpManager _mcpManager;
     private readonly AnsiParser _ansiParser = new();
     private MonitorViewModel? _monitorViewModel;
@@ -64,6 +66,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // 连接编排子 ViewModel（属性名保持与原绑定一致，见各子类）
     public SwitchConnectionViewModel Switch { get; }
     public CaptureConnectionViewModel Capture { get; }
+    public AudioConnectionViewModel Audio { get; }
     public ControllerConnectionViewModel Controller { get; }
     public FlashFirmwareViewModel Firmware { get; }
     public WelcomeConsoleViewModel Welcome { get; }
@@ -285,7 +288,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public IAsyncRelayCommand CheckUpdateCommand { get; }
     public IRelayCommand OpenGitHubCommand { get; }
 
-    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService, EasyCon2.Avalonia.Services.IUiDispatcher uiDispatcher, IImageProcessor? imageProcessor = null, EasyCon2.Avalonia.Services.IUpdateService? updateService = null, EasyCon2.Avalonia.Services.IUserSettingsService? userSettings = null, IFileStorage? fileStorage = null, IFileSystem? fileSystem = null)
+    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService, EasyCon2.Avalonia.Services.IUiDispatcher uiDispatcher, IImageProcessor? imageProcessor = null, EasyCon2.Avalonia.Services.IUpdateService? updateService = null, EasyCon2.Avalonia.Services.IUserSettingsService? userSettings = null, IFileStorage? fileStorage = null, IFileSystem? fileSystem = null, IAudioCaptureSource? audioSource = null)
     {
         _settings = userSettings ?? new UserSettingsService();
         // 脚本文档状态机（必须在任何读代理属性之前就位）；状态变化的对外通知统一经订阅块同步转发，
@@ -338,10 +341,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _updateService = updateService ?? new GiteeUpdateService();
         _fileStorage = fileStorage ?? new LocalFileStorage();
         _fileSystem = fileSystem ?? LocalFileSystem.Instance;
+        _audioCaptureSource = audioSource ?? new WasapiAudioCapture();
 
         // 连接编排子 ViewModel（Switch 必须先于 Controller：后者依赖前者的连接状态）
         Switch = new SwitchConnectionViewModel(deviceService, logService, uiDispatcher);
         Capture = new CaptureConnectionViewModel(captureService, logService, uiDispatcher);
+        Audio = new AudioConnectionViewModel(_audioCaptureSource, logService, uiDispatcher);
         Controller = new ControllerConnectionViewModel(controllerService, windowService, logService, () => Switch.IsNintendoSwitchConnected, uiDispatcher);
         Firmware = new FlashFirmwareViewModel(deviceService, scriptService, logService,
             () => EditorText,
@@ -741,7 +746,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void InitializeSampleData()
     {
         // 串口/视频源/控制源列表已由各连接子 ViewModel 在构造时刷新
-        _logService.AddLog($"已加载 {Switch.SerialPortOptions.Count} 个可用串口, {Capture.CaptureSourceOptions.Count} 个视频源");
+        _logService.AddLog($"已加载 {Switch.SerialPortOptions.Count} 个可用串口, {Capture.CaptureSourceOptions.Count} 个视频源, {Audio.AudioSourceOptions.Count} 个音频源");
     }
     private async Task OpenScriptAsync()
     {
@@ -1362,6 +1367,8 @@ public partial class MainWindowViewModel : ViewModelBase
             _monitorViewModel.Close();
             _monitorViewModel = null;
         }
+
+        Audio.Dispose();
 
         // 停止仍在运行的脚本（复位按键、丢弃排队 HID 报文）
         if (_scriptService.IsRunning)

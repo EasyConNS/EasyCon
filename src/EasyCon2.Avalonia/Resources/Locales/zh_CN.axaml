@@ -16,6 +16,7 @@
     <x:String x:Key="Text.Panel.RunControl">运行控制</x:String>
     <x:String x:Key="Text.Panel.DebugMode">调试模式</x:String>
     <x:String x:Key="Text.Panel.Controller">虚拟手柄</x:String>
+    <x:String x:Key="Text.Panel.Audio">游戏音频</x:String>
     <x:String x:Key="Text.Tab.Editor">文本编辑</x:String>
     <x:String x:Key="Text.Tab.TagEditor">标签编辑</x:String>
     <x:String x:Key="Text.Tab.UserConfig">用户配置</x:String>
@@ -41,6 +42,8 @@
     <x:String x:Key="Text.Status.Disconnected">已断开</x:String>
     <x:String x:Key="Text.Status.Connecting">连接中...</x:String>
     <x:String x:Key="Text.Status.ConnectFailed">连接失败</x:String>
+    <x:String x:Key="Text.Status.AudioSilent">已收到音频，当前静音</x:String>
+    <x:String x:Key="Text.Audio.Format">{0:N0} Hz · {1} 声道 · {2} bit</x:String>
 
     <!-- 检查更新 -->
     <x:String x:Key="Text.Status.CheckingUpdate">正在检查…</x:String>
@@ -84,6 +87,18 @@
     <x:String x:Key="Text.Msg.CaptureError">视频源连接异常: {0}</x:String>
     <x:String x:Key="Text.Msg.CaptureDisconnected">视频源已断开连接</x:String>
     <x:String x:Key="Text.Msg.DisconnectCaptureError">断开视频源异常: {0}</x:String>
+
+    <!-- 游戏音频 -->
+    <x:String x:Key="Text.Btn.ConnectAudio">连接音频源</x:String>
+    <x:String x:Key="Text.Btn.DisconnectAudio">断开音频源</x:String>
+    <x:String x:Key="Text.Msg.SelectAudioSource">请选择音频输入设备</x:String>
+    <x:String x:Key="Text.Msg.OpenAudioPrepare">准备打开音频源 ({0})...</x:String>
+    <x:String x:Key="Text.Msg.AudioOk">音频源 ({0}) 已连接</x:String>
+    <x:String x:Key="Text.Msg.AudioOpenFail">音频源打开失败</x:String>
+    <x:String x:Key="Text.Msg.AudioConnectError">音频源连接异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.AudioDisconnected">音频源已断开连接</x:String>
+    <x:String x:Key="Text.Msg.AudioListError">读取音频输入设备失败: {0}</x:String>
+    <x:String x:Key="Text.Msg.AudioTimeout">打开音频输入超时，请检查设备连接和 Windows 麦克风权限。</x:String>
 
     <!-- 监视器 -->
     <x:String x:Key="Text.Monitor.NotConnected">视频源未连接</x:String>

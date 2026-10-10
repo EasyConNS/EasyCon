@@ -6,6 +6,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="FlashCap" />
+		<PackageReference Include="NAudio" />
 		<PackageReference Include="System.Drawing.Common" />
 		<PackageReference Include="OpenCvSharp5" />
 		<PackageReference Include="OpenCvSharp5.runtime.win" />

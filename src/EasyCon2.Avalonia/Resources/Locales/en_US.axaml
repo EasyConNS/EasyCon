@@ -16,6 +16,7 @@
     <x:String x:Key="Text.Panel.RunControl">Run Control</x:String>
     <x:String x:Key="Text.Panel.DebugMode">Debug Mode</x:String>
     <x:String x:Key="Text.Panel.Controller">Virtual Controller</x:String>
+    <x:String x:Key="Text.Panel.Audio">Game Audio</x:String>
     <x:String x:Key="Text.Tab.Editor">Editor</x:String>
     <x:String x:Key="Text.Tab.TagEditor">Tag Editor</x:String>
     <x:String x:Key="Text.Tab.UserConfig">Settings</x:String>
@@ -41,6 +42,8 @@
     <x:String x:Key="Text.Status.Disconnected">Disconnected</x:String>
     <x:String x:Key="Text.Status.Connecting">Connecting...</x:String>
     <x:String x:Key="Text.Status.ConnectFailed">Connection Failed</x:String>
+    <x:String x:Key="Text.Status.AudioSilent">Audio received, currently silent</x:String>
+    <x:String x:Key="Text.Audio.Format">{0:N0} Hz · {1} channels · {2} bit</x:String>
 
     <!-- Update check -->
     <x:String x:Key="Text.Status.CheckingUpdate">Checking...</x:String>
@@ -84,6 +87,18 @@
     <x:String x:Key="Text.Msg.CaptureError">Capture connect error: {0}</x:String>
     <x:String x:Key="Text.Msg.CaptureDisconnected">Capture disconnected</x:String>
     <x:String x:Key="Text.Msg.DisconnectCaptureError">Capture disconnect error: {0}</x:String>
+
+    <!-- Game audio -->
+    <x:String x:Key="Text.Btn.ConnectAudio">Connect Audio</x:String>
+    <x:String x:Key="Text.Btn.DisconnectAudio">Disconnect Audio</x:String>
+    <x:String x:Key="Text.Msg.SelectAudioSource">Select an audio input</x:String>
+    <x:String x:Key="Text.Msg.OpenAudioPrepare">Preparing to open audio source ({0})...</x:String>
+    <x:String x:Key="Text.Msg.AudioOk">Audio source ({0}) connected</x:String>
+    <x:String x:Key="Text.Msg.AudioOpenFail">Failed to open audio source</x:String>
+    <x:String x:Key="Text.Msg.AudioConnectError">Audio source connect error: {0}</x:String>
+    <x:String x:Key="Text.Msg.AudioDisconnected">Audio source disconnected</x:String>
+    <x:String x:Key="Text.Msg.AudioListError">Failed to read audio inputs: {0}</x:String>
+    <x:String x:Key="Text.Msg.AudioTimeout">Opening audio input timed out. Check the device and Windows microphone permissions.</x:String>
 
     <!-- Monitor -->
     <x:String x:Key="Text.Monitor.NotConnected">Capture not connected</x:String>
