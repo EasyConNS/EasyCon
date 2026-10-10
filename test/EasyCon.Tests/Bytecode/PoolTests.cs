@@ -44,9 +44,10 @@ public class PoolTests
     const int EcsErrPool = 18;   // 与 ecs_vm.h ECS_ERR_POOL 一致（VmHeaderContractTests 锁头文件序）
 
     [Test]
-    public void FramePoolExhausted_BigFrames_ReachPoolBeforeDepth()
+    public void DeepRecursion_ReportsDepth_BeforeResourceExhaustion()
     {
-        // 大帧函数深递归：参考宿主帧段（128KB）在 512 深度前耗尽 → ECS_ERR_POOL（非崩溃非 OOM）
+        // 深递归：生命周期分配（abi_rev 格式）把典型帧压到 ~1KB，64 层深度上限（双端对齐）
+        // 先于帧段耗尽触达 → 双端一致 ECS_ERR_DEPTH（资源性 POOL 分歧随帧缩小消失）
         var sb = new StringBuilder();
         sb.AppendLine("FUNC deep($n) : INT");
         for (int i = 0; i < 40; i++)
@@ -67,15 +68,14 @@ public class PoolTests
         var image = result.Image!;
         Assert.That(image.Functions.Max(f => f.NSlots), Is.GreaterThan(40), "大帧函数已构造");
 
-        // C# 解释器（无池）：一路递归到 ERR_DEPTH(9)
+        // C# 解释器：一路递归到 ERR_DEPTH(9)
         var host = new EcxHost();
         int csCode = EcxInterpreter.Run(image, host);
-        Assert.That(csCode, Is.EqualTo(EcxInterpreter.ERR_DEPTH), "C# 侧触达调用深度上限（池容量属宿主资源差异）");
+        Assert.That(csCode, Is.EqualTo(EcxInterpreter.ERR_DEPTH), "C# 侧触达调用深度上限");
 
-        // C VM（帧段有限）：ECS_ERR_POOL(18)，stderr 带 func/pc 现场
+        // C VM：同镜像同样先触达深度上限（双端一致，无资源性分歧）
         var (exitCode, _, _) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(image), "pool-frame", _workDir);
-        Assert.That(exitCode, Is.EqualTo(EcsErrPool),
-            "C VM 帧段耗尽应报 ECS_ERR_POOL（可预期的正常失败）");
+        Assert.That(exitCode, Is.EqualTo(9), "C VM 深递归应报 ECS_ERR_DEPTH（与 C# 对齐）");
     }
 
     [Test]

@@ -109,8 +109,8 @@ public static class DeadStoreSweep
                 case EcsOpcode.Jpt or EcsOpcode.Jpf: u.Add(ins.A); d = -1; break;
                 case EcsOpcode.Ret: u.Add(ins.A); d = -1; break;
                 case EcsOpcode.Call or EcsOpcode.CallN:
-                    for (int k = 0; k < ins.B; k++) u.Add(ins.A + k);   // 实参窗
-                    d = ins.C;                                          // NoSlot(-1)：无接收槽
+                    for (int k = 0; k < ins.B; k++) u.Add(ins.A + k);   // 实参窗（STAGING）
+                    d = ins.C;                                          // 接收寄存器（0 = RET）
                     break;
                 case EcsOpcode.NewArrV:
                     d = ins.A;

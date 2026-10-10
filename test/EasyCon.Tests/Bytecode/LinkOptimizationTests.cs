@@ -258,11 +258,13 @@ public class LinkOptimizationTests
         var image = result.Image!;
         var main = image.Functions.Single(f => f.Name == "<main>");
 
-        // 27 = 19（fast path 活 φ 槽）+ 2（循环不变量外提共享组槽）+ 5（std print 内联临时区：
-        // v3+std 内联后 print/FRAME 壳在调用点展开，共享 fresh 块只涨一次；零 φ 拷贝合并后
-        // 活 φ 槽不增）。死 φ 免分配不变量由下方 setVar/move 断言继续锁定。
+        // 基线 = AllocBase（24：RET/ARG/STAGING 之后的分配区起点）+ 20（fast path 活 φ 槽
+        // + 循环不变量外提共享组槽 + std print 内联临时区：print/FRAME 壳在调用点展开，
+        // 共享 fresh 块只涨一次；零 φ 拷贝合并后活 φ 槽不增）。死 φ 免分配不变量由下方
+        // setVar/move 断言继续锁定。
         // 锁定 <main> 自身（image.MaxSlots 含标准库 PPOCR_* 等库函数的独立槽位，随库演进波动）。
-        Assert.That(main.NSlots, Is.LessThanOrEqualTo(27), "死 φ 槽应免分配（fast path + 外提共享组槽 + print 内联临时区后基线 27）");
+        Assert.That(main.NSlots, Is.LessThanOrEqualTo(EcsRegisters.AllocBase + 20),
+            $"死 φ 槽应免分配（分配区起点 + 内联临时区后基线 {EcsRegisters.AllocBase + 20}，实际 {main.NSlots}）");
 
         int setVar = 0, move = 0;
         foreach (var ins in main.Instructions)
@@ -271,7 +273,7 @@ public class LinkOptimizationTests
             if (ins.Op == EcsOpcode.Move) move++;
         }
         Assert.That(setVar, Is.EqualTo(0), "FOR 迭代变量 home 槽全函数无读取者，SetVar 应被清扫");
-        Assert.That(move, Is.LessThanOrEqualTo(18), "出口边死副本与无人读取的落槽应被清扫（v3+零φ合并+std 内联基线，Release 实测 18；编码期原基线 15——零 φ 合并把出口副本变成 φ 槽就地写，Move 总数随内联 Conv/Move 临时小幅上移）");
+        Assert.That(move, Is.LessThanOrEqualTo(19), "出口边死副本与无人读取的落槽应被清扫（v3+零φ合并+std 内联基线；abi_rev 4 内联实参救援拷贝 +1——壳体重排 STAGING 前先把外层实参拷到救援位；编码期原基线 15——零 φ 合并把出口副本变成 φ 槽就地写）");
 
         Assert.That(EcsContainer.WriteImage(image, stripDebug: true).Length, Is.LessThan(600), "死存储清除后 MCU 发布镜像应 < 600B（清扫前 604B）");
 

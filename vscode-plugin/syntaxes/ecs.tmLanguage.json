@@ -182,8 +182,13 @@
           "name": "storage.type.ecs"
         },
         {
-          "match": "(?i)\\b(IMPORT|TO|STEP|TRUE|FALSE|RESET|WAIT|CALL)\\b",
+          "match": "(?i)\\b(IMPORT|TO|STEP|RESET|WAIT|CALL)\\b",
           "name": "keyword.control.ecs"
+        },
+        {
+          "comment": "布尔字面量仅全小写合法（TRUE/True 报 ECX0012）",
+          "match": "\\b(true|false)\\b",
+          "name": "constant.language.bool.ecs"
         }
       ]
     },

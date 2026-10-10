@@ -16,7 +16,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from . import flowdoc
 from .api import ApiError, FlowApi
 from .nodes import (LAYER_COLORS, NodeCatalog, add_state, collect_connections,
-                    collect_states, input_port, output_port)
+                    collect_states, input_port, node_id, node_type_of, output_port)
 
 LAYER_LABELS = {
     "sense": "感知",
@@ -85,6 +85,36 @@ class FlowWindow(QtWidgets.QMainWindow):
         self.graph = graph
         self._graph_layout.addWidget(graph.widget)
         self._attach_properties_bin()
+        self._wire_canvas(graph)
+
+    def _wire_canvas(self, graph: NodeGraph) -> None:
+        """画布实例级的删除入口（菜单/快捷键都挂在 graph 实例上，每次换画布必须重接）。"""
+        for key in (QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace):
+            shortcut = QtGui.QShortcut(QtGui.QKeySequence(key), graph.widget)
+            shortcut.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
+            shortcut.activated.connect(self._delete_selected_nodes)
+
+        graph.get_context_menu("graph").add_command(
+            "删除选中节点", lambda _graph: self._delete_selected_nodes())
+        if self.catalog is not None:
+            nodes_menu = graph.get_context_menu("nodes")
+            for type_key in self.catalog.types.values():
+                nodes_menu.add_command(
+                    "删除此节点", lambda _graph, node: self._delete_nodes([node]),
+                    node_type=type_key)
+
+    # ------------------------------------------------------------ 画布删除
+
+    def _delete_nodes(self, nodes: list) -> None:
+        if not nodes:
+            return
+        names = ", ".join(node_id(n) for n in nodes)
+        self.graph.delete_nodes(nodes)
+        self._mark_dirty()
+        self.log(f"[画布] 已删除节点: {names}")
+
+    def _delete_selected_nodes(self) -> None:
+        self._delete_nodes(self.graph.selected_nodes())
 
     # ------------------------------------------------------------ 工具栏
 
@@ -148,7 +178,9 @@ class FlowWindow(QtWidgets.QMainWindow):
         self.palette_tree.setColumnWidth(0, 150)
         self.palette_tree.itemDoubleClicked.connect(self._on_palette_activated)
 
-        hint = QtWidgets.QLabel("双击添加节点；拖动画布空白处平移")
+        hint = QtWidgets.QLabel(
+            "双击添加节点（start 最多一个）；Del/Backspace 删除选中节点，"
+            "右键节点或画布空白处也可删除；拖动画布空白处平移")
         hint.setWordWrap(True)
         hint.setStyleSheet("color:#9aa0aa; padding:4px;")
 
@@ -520,6 +552,10 @@ class FlowWindow(QtWidgets.QMainWindow):
     def add_node(self, node_type: str, pos=None) -> None:
         if self.catalog is None or node_type not in self.catalog.types:
             self.log(f"[画布] 未知节点类型: {node_type}")
+            return
+        if node_type == "start" and any(node_type_of(n) == "start" for n in self.graph.all_nodes()):
+            self.statusBar().showMessage("start 节点只能有一个（图中已有 start，请先删除再添加）。", 5000)
+            self.log("[画布] 拒绝添加第二个 start 节点")
             return
         existing = {n.name() for n in self.graph.all_nodes()}
         new_id = flowdoc.make_node_id(node_type, existing)

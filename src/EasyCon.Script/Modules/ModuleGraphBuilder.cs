@@ -60,7 +60,7 @@ internal static class ModuleGraphBuilder
     }
 
     public static Graph Build(SyntaxTree mainTree, string? scriptDir,
-        CompilationTiming timing, DiagnosticBag diagnostics, bool legacySyntax = true)
+        CompilationTiming timing, DiagnosticBag diagnostics)
     {
         var sw = Stopwatch.StartNew();
         var mainPath = mainTree.Text.FileName;
@@ -104,7 +104,7 @@ internal static class ModuleGraphBuilder
                 diagnostics.ReportCircularImport(NodeLocation(node), node.Path);
                 return;
             }
-            foreach (var (importPath, importLocation) in ScannedImports(node, legacySyntax))
+            foreach (var (importPath, importLocation) in ScannedImports(node))
             {
                 if (!File.Exists(importPath))
                 {
@@ -285,7 +285,7 @@ internal static class ModuleGraphBuilder
     /// <summary>节点的导入引用列表：已 parse 走 AST；未 parse 走 Lexer 令牌扫描
     /// （IMPORT + STRING 令牌对，跳过换行/空白/注释 trivia——杜绝裸正则对注释/字符串的误判）。
     /// 解析基准 = 节点 ImportBase（R2 = 导入文件所在目录）。</summary>
-    static List<(string FullPath, TextLocation Location)> ScannedImports(ModuleNode node, bool legacySyntax)
+    static List<(string FullPath, TextLocation Location)> ScannedImports(ModuleNode node)
     {
         if (node.Tree is { } tree)
             return tree.Root.Members.OfType<ImportStmt>()
@@ -293,7 +293,7 @@ internal static class ModuleGraphBuilder
                 .ToList();
 
         var sourceText = SourceText.From(node.Source, node.Path.Length > 0 ? node.Path : node.Name + ".ecs");
-        var tokens = SyntaxTree.ParseTokens(sourceText, legacySyntax, node.ImportBase);
+        var tokens = SyntaxTree.ParseTokens(sourceText, node.ImportBase);
         var initPath = node.ImportBase;
         var result = new List<(string, TextLocation)>();
         for (int i = 0; i < tokens.Length; i++)

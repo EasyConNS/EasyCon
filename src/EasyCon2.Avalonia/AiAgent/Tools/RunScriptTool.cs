@@ -15,33 +15,32 @@ public class RunScriptTool : IAiTool
     public bool RequiresConfirmation => true;
 
     private readonly IScriptRunPort _run;
-    private readonly IObservabilityPort _observability;
 
-    public RunScriptTool(IScriptRunPort run, IObservabilityPort observability)
+    public RunScriptTool(IScriptRunPort run)
     {
         _run = run;
-        _observability = observability;
     }
 
     public string Name => "run_script";
 
-    public string Description => "编译并运行当前编辑区的脚本。脚本在后台运行，不会阻塞对话。";
+    public string Description =>
+        "编译并运行当前编辑区的脚本。脚本在后台运行，不会阻塞对话。" +
+        "是否需要单片机由脚本内容判定：含按键/摇杆操作时运行服务会自动尝试连接单片机，" +
+        "纯识别/计算脚本无需连接即可运行。启动结果与连接/编译信息请用 get_logs 跟进。";
 
     public JsonSchema Parameters => new() { Type = "object" };
 
     public async Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
-        // 连接前置检查：脚本会驱动真实硬件，设备不在线时直接给模型可行动的反馈
-        var status = _observability.GetDeviceStatus();
-        if (!status.IsDeviceConnected)
-            return ToolResult.Retryable("单片机未连接，无法运行脚本。", "请先在连接页连接单片机后重试。");
-
+        // 不在工具层做连接前置拦截：是否需要单片机由编译产物判定（ScriptService 按
+        // KeyAction 决定自动连接/装配 Pad），纯感知脚本无单片机也应可运行；
+        // 自动连接的成败是异步写日志的，模型经 get_logs 获知。
         if (_run.IsScriptRunning)
             return ToolResult.Retryable("脚本已在运行中。", "请先调用 stop_script 停止当前脚本，再重新运行。");
 
         var ok = await _run.RunScriptAsync();
         return ok
-            ? ToolResult.Ok("脚本已启动运行。")
+            ? ToolResult.Ok("脚本已启动运行。连接/编译等运行期信息以 get_logs 为准。")
             : ToolResult.Retryable("编译失败，无法运行。", "请调用 get_logs 查看错误信息，修复后重新编译运行。");
     }
 }

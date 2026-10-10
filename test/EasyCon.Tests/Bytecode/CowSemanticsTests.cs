@@ -158,8 +158,8 @@ public class CowSemanticsTests
             $s = [0, 0]
             $acc = 0
             FOR $i = 1 TO 20000
-                $s = [$i, $i]
-                $acc = $acc + $s[0]
+                $s = APPEND(APPEND([0], $i), $i)
+                $acc = $acc + $s[1]
             NEXT
             PRINT $acc
             """;

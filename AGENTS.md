@@ -117,7 +117,10 @@ Rules to respect when changing code:
 ## Code conventions (enforced by .editorconfig)
 
 - **Indent**: 4 spaces, no tabs
-- **Line endings**: CRLF
+- **Line endings**: not pinned — `.gitattributes` `* text=auto` keeps repo content normalized to LF;
+  checkout EOL follows each platform's git config (Windows → CRLF, Linux/macOS → LF).
+  `.editorconfig` sets no `end_of_line`, and `dotnet format` therefore doesn't check EOL.
+  The only requirement is that a single file stays internally consistent — mixed-EOL files fail format.
 - **No final newline** (`insert_final_newline = false`) — unusual, don't "fix" it
 - **Private fields**: `_camelCase` prefix
 - **Explicit types**: `csharp_style_var_* = false` — prefer explicit types over `var`

@@ -53,8 +53,6 @@ public sealed class ModuleEncodeContext
     /// v1 合并编译路径不设置（null），行为不变。
     /// </summary>
     public IReadOnlySet<FunctionSymbol>? ExternalFunctions;
-    /// <summary>Call 的无接收槽哨兵（varint 直接编码，不再有 255 双含义）。</summary>
-    public const int NoSlot = EcsInstruction.NoSlot;
 
     readonly Dictionary<string, int> _hiddenGlobalSlots = new(StringComparer.Ordinal);
     readonly Dictionary<string, string> _hiddenGlobalOwners = new(StringComparer.Ordinal);
@@ -192,12 +190,16 @@ public static partial class BytecodeEncoder
         readonly List<Fixup> _fixups = new();
         readonly List<int> _labels = new();
         readonly List<int> _poolFree = new();
+        /// <summary>非常量池化值的剩余读取计数（= 全函数静态读取数；末次读取结算归零归还槽位，
+        /// 参考线性扫描寄存器分配的活动区间末端回收）。</summary>
+        readonly Dictionary<SsaValue, int> _releaseLeft = new();
+        /// <summary>独占槽位全集（φ 结果/ForStep 目标/循环携带值/编码器保留临时）：
+        /// 永不入池，池化归还侧 DEBUG 断言不与之相交。</summary>
+        readonly HashSet<int> _exclusiveSlots = new();
         int _next;
         int _poolNext;
         int _scratch = -1;
         int _stagingBase;
-        int _maxArity;
-        int _receiveSlot;
         int _neqTemp = -1;   // Neq = Eq+Not 的共享中间槽（发射原子，不嵌套）
         int _tplGuard = -1;  // 常量模板构建暂存槽（守卫标志/模板数组/当前分块；发射原子，不嵌套）
         int _tplArr = -1;
@@ -218,7 +220,22 @@ public static partial class BytecodeEncoder
 
         // ---- 槽位与发射工具 ----
 
-        int Slot(SsaValue v) => _slots[v];
+        /// <summary>取值槽位。池化非常量值按需分配：定义发射（EmitBlocks）或首次读取触碰
+        /// （先到先得）——发射序 ≠ 支配序时（CSE 改写 phi 臂/循环结构），读取点可能先于
+        /// 定义点出现，按需分配保证任何触碰点都有槽；归还仍只发生在末次静态读取结算，
+        /// 分配时机不影响活动区间回收收益。</summary>
+        int Slot(SsaValue v)
+        {
+            if (_slots.TryGetValue(v, out var s))
+                return s;
+            if (_pooled.Contains(v) && !v.IsConstant)
+            {
+                s = PoolAlloc();
+                _slots[v] = s;
+                return s;
+            }
+            throw Fail($"槽位未分配（非池化值定义发射前被读取）: v{v.Id} {v.Op} def=块{v.Block?.Id}");
+        }
 
         int SymSlot(LocalVariableSymbol s)
         {
@@ -346,11 +363,16 @@ public static partial class BytecodeEncoder
             EmitBlocks();
             Patch();
 
+            if (_poolNext > EcsRegisters.MaxRegisters)
+                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的寄存器需求 {_poolNext} 超过帧上限 {EcsRegisters.MaxRegisters}（拆分函数或简化深表达式）");
+
             Result = new EcsFunction
             {
                 Name = _symbol.Name,
                 Module = _module,
                 NParams = _symbol.Parameters.Length,
+                // 帧长 = 寄存器高水位（每函数栈窗口）：调用时按此开窗，
+                // 内联器 fresh 块基址与资源档案同源
                 NSlots = _poolNext,
                 HasReturn = !_symbol.ReturnType.Equals(ScriptType.Void),
                 Instructions = _code,
@@ -416,7 +438,8 @@ public static partial class BytecodeEncoder
                     if (_instReleases.TryGetValue(inst, out var releases))
                         foreach (var v in releases)
                             ReleaseDying(block, v);
-                    if (_pooled.Contains(inst))
+                    // 池化结果取槽；读取点先行按需分配过的（发射序 ≠ 支配序）沿用已有槽
+                    if (_pooled.Contains(inst) && !_slots.ContainsKey(inst))
                         _slots[inst] = PoolAlloc();
                     EmitInst(inst);
                 }
@@ -425,8 +448,17 @@ public static partial class BytecodeEncoder
 #if DEBUG
             foreach (var kv in _useInfo)
                 foreach (var uc in kv.Value.UseCount)
-                    if (uc.Value != 0 && _pooled.Contains(uc.Key))
-                        Console.Error.WriteLine($"[slots] 未结算: 块{kv.Key.Id} v{uc.Key.Id} {uc.Key.Op} remain={uc.Value} pooled={_pooled.Contains(uc.Key)}");
+                {
+                    if (uc.Key.IsConstant)
+                    {
+                        // 常量：块内计数归零结算
+                        if (uc.Value != 0 && _pooled.Contains(uc.Key))
+                            Console.Error.WriteLine($"[slots] 未结算: 块{kv.Key.Id} v{uc.Key.Id} {uc.Key.Op} remain={uc.Value} pooled={_pooled.Contains(uc.Key)}");
+                    }
+                    // 非常量池化值：全函数剩余读取计数归零结算
+                    else if (_pooled.Contains(uc.Key) && _releaseLeft.TryGetValue(uc.Key, out var left) && left != 0)
+                        Console.Error.WriteLine($"[slots] 未结算: v{uc.Key.Id} {uc.Key.Op} remain={left}");
+                }
 #endif
         }
 

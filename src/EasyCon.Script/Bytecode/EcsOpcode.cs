@@ -107,10 +107,10 @@ public static class EcsSyscall
     /// <summary>CallN EXT 旗标：置位 = syscall 编号调用（与 Call 的导入标记共用位，操作码不同不冲突）。</summary>
     public const uint CallFlag = 0x80000000u;
 
-    /// <summary>编码 ABI 修订号（进缓存键 ProductFingerprint；编号分配/编码语义变化时递增）。
-    /// 1 = 名表原生时代；2 = L2 全集 syscall 编号化；3 = v3 定长指令编码（WaitI/KeyI 时长进数据字、
-    /// ForStep/CmpJ 四操作数进 IabcJ 8B、线上跳转=字节偏移、槽位 u8+255 哨兵）。</summary>
-    public const int AbiRevision = 3;
+    /// <summary>镜像格式修订号（缓存键成分；格式语义变化时改值，无兼容梯——
+    /// 全新实现不做历史版本分级）。当前 = 每函数寄存器栈窗口 + 帧内固定 RET/ARG/STAGING 布局
+    /// （<see cref="EcsRegisters"/>）+ 定长指令编码 + 无接收哨兵。</summary>
+    public const int AbiRevision = 1;
 
     // ---- 文件族（1..9 连续，IsFileFamily 依赖）----
     public const int FWrite = 1;
@@ -244,4 +244,37 @@ public enum EcsFieldKind : byte
 internal static class EcsJump
 {
     public const int NoTarget = -1;
+}
+
+/// <summary>
+/// 帧内寄存器布局约定（与 native/ecs_vm.h 的 ECS_REG_* 一一对应，双端手工镜像）。
+/// 帧模型 = Dalvik/Lua 式每函数栈窗口：帧长 = 函数自身寄存器高水位（EcsFunction.NSlots，
+/// ≤ <see cref="MaxRegisters"/>，指令域 u8 是唯一上限——项目增长不再牵动寄存器堆），
+/// 调用时在共享值栈上按被调方帧长开窗、返回时弹出。
+/// 帧内布局：[R0 = RET][R1–R7 = ARG 实参窗][R8–R23 = STAGING 暂存][R24 起 = 分配区
+/// （独占：φ/ForStep/循环携带/编码器临时 → 池区）]。RET/ARG/STAGING 全局固定位置，
+/// 分配区随函数伸缩；生命周期分配（SlotAllocator）负责池化与循环活性独占。
+/// </summary>
+public static class EcsRegisters
+{
+    /// <summary>寄存器号上限（指令 A/B/C 域为 u8；Lua 同款天花板）。帧长 ≤ 此值。</summary>
+    public const int MaxRegisters = 255;
+
+    /// <summary>R0 = RET：无显式接收寄存器调用的返回值固定落点（Call 的 C=0）。</summary>
+    public const int Ret = 0;
+
+    /// <summary>R1–R7 = ARG 实参窗：被调方参数由 Call 从调用方 STAGING 深拷贝播种于此
+    /// （S-17 语义）；函数/调用实参上限 = <see cref="ArgCount"/>（绑定层强制）。</summary>
+    public const int ArgBase = 1;
+    public const int ArgCount = 7;
+
+    /// <summary>R8–R23 = STAGING 暂存区（固定位置）：调用出站实参（Move 后 Call 从
+    /// R[A..A+B) 取）与数组字面量分块构建（NewArrV 基址）。与参数窗/分配区物理隔离——
+    /// 出站 Move 不可能覆写存活值，无重叠 Move 冒险；固定位置使链接期内联的重映射可判定。</summary>
+    public const int StagingBase = 8;
+    public const int StagingCount = 16;
+
+    /// <summary>R24 起 = 分配区起点：独占区（φ/ForStep/循环携带/编码器临时）→ 池区，
+    /// 随函数需求伸缩至 <see cref="MaxRegisters"/>。</summary>
+    public const int AllocBase = 24;
 }

@@ -51,7 +51,7 @@ public class StreamInvariantTests
             new(EcsOpcode.LoadI, 201, short.MaxValue, 0),                 // AsBx s16 上界
             new(EcsOpcode.Jmp, 0, 0, 0, 0, -3),                           // 后跳 → idx4
             new(EcsOpcode.Slice, 202, 200, 201, 0xFFFFFFFFu),             // 数据字（end 省略哨兵）
-            new(EcsOpcode.Call, 0, 3, EcsInstruction.NoSlot, 7),          // C = NoSlot（线上 255）
+            new(EcsOpcode.Call, 0, 3, 0, 7),                               // C = RET（无结果调用固定落点）
             new(EcsOpcode.Ret, 202, 0, 0),
         };
 

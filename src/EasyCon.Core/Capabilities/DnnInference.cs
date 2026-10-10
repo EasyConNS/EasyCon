@@ -81,8 +81,9 @@ public sealed class DnnInference : IInference
 
     static int[] ShapeOf(Mat m)
     {
-        var shape = new int[m.Dims];
-        for (int i = 0; i < m.Dims; i++)
+        var dims = m.Dims;
+        var shape = new int[dims];
+        for (int i = 0; i < dims; i++)
             shape[i] = m.Size(i);
         return shape;
     }

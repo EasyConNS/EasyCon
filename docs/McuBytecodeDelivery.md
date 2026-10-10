@@ -30,7 +30,7 @@ flash 容量与 RAM 是两件事。RAM 需求 = **活跃调用路径的帧和**�
 
 | # | 条件 | 判定 | 失败表现 |
 |---|---|---|---|
-| C1 | 容器/ABI 版本匹配 | ECX1 magic/format、`abi_rev` | 加载期拒跑（IMAGE/UNSUPPORTED） |
+| C1 | 容器/格式匹配 | ECX1 magic/format、格式修订号（单值，无分级梯） | 加载期拒跑（IMAGE/UNSUPPORTED） |
 | C2 | 能力满足 | critical 段集 ⊆ 加载器支持集；镜像 feats ⊆ 设备 feats | 预检诊断 + 加载期 fail-closed |
 | C3 | flash 装得下 | 镜像字节 ≤ image_capacity | 预检拒绝 |
 | C4 | RAM 池够 | ①活跃路径帧和 ≤ frame_seg_bytes（非递归可精确算）②单帧 ≤ 帧段 ③递归脚本须声明深度否则拒（fail-closed）④静态极值（平铺头 u16×3 × 元素定宽）≤ obj_block_bytes | 帧段：预检；对象段峰值不可静态判定 → 运行期 `ECS_ERR_POOL` 干净失败（区分帧段满/对象段满） |
@@ -50,7 +50,20 @@ flash 容量与 RAM 是两件事。RAM 需求 = **活跃调用路径的帧和**�
 | P0 | GUI/CLI 接回：`McuImageBuilder` + `McuPreflight` + 编排 `Flash/RemoteStart`（结构化 FlashResult） | 无固件改动 |
 | P1 | 能力查询 0x8A + 传输健壮性（FlashAsync/上限守卫/进度取消） | 固件配合 |
 | P2 | 一键闭环与体验（进度 UI、失败原因定位） | P0/P1 |
-| P3 | CRC 默认开启、产物格式演进 | 双端协商升版 |
+| P3 | 产物格式演进（信任面：C VM 加载期不做 CRC/指令流校验，完整性由传输层负责） | 双端协商 |
 
 测试锚点（实施时建）：`PortableProfile_AllExamplesSerializable`（examples+corpus 全量编译→序列化→往返）、
 预检单测（四条件各一拒绝路径）、`FlashResult` 归因测试。
+
+## 5.5 设备侧字节码来源（`ecs_io`，已实现）
+
+C VM 的加载入口抽象为随机访问读取器（uLua zIO 思路），覆盖三类典型存放位置：
+
+| 来源 | 接入方式 | 拷贝 |
+|---|---|---|
+| RAM 缓冲 | `ecs_vm_load(buf, len)` | 零拷贝（可 XIP） |
+| 内部 flash（内存映射） | `ecs_io_mem` 直载 | 零拷贝（XIP 原地取指） |
+| EEPROM / NVS | `ecs_io` read 回调 → `ecs_vm_load_io` | 拉入 VM 内部副本（free 时释放） |
+
+信任面：加载期仅校验 magic/format/修订号与解析期结构边界（宿主内存安全），字节码内容全信
+（Lua 式最小验证面）。参考实现：`ecs_main.c --io`（stdio seek 读取器演示）。

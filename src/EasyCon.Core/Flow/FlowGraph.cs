@@ -62,6 +62,10 @@ public sealed class FlowGraph
             throw new FlowParseException($"节点 id 重复: {dup.Key}");
         if (Nodes.Count == 0)
             throw new FlowParseException("图中没有任何节点");
+        var starts = Nodes.Where(n => n.Type == "start").ToList();
+        if (starts.Count > 1)
+            throw new FlowParseException(
+                $"start 节点只能有一个，当前 {starts.Count} 个: {string.Join(", ", starts.Select(n => n.Id))}");
         foreach (var e in Exec)
         {
             if (e.FromNode != "start" && Node(e.FromNode) == null)

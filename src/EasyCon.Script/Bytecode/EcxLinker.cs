@@ -205,7 +205,7 @@ internal static class EcxPipeline
         if (initFids.Count > 0)
         {
             var header = initFids
-                .Select(fid => new EcsInstruction(EcsOpcode.Call, 0, 0, EcsInstruction.NoSlot, fid))
+                .Select(fid => new EcsInstruction(EcsOpcode.Call, EcsRegisters.StagingBase, 0, EcsRegisters.Ret, fid))
                 .ToList();
             var entryFn = imageFunctions[entry];
             entryFn.Instructions.InsertRange(0, header);
@@ -377,14 +377,26 @@ internal static class EcxPipeline
         return true;
     }
 
+    /// <summary>壳体槽位重映射（帧布局）：参数在 ARG 窗口 [ArgBase, ArgBase+nParams)
+    /// → 实参救援位；RET/STAGING 全局固定窗口原样保留；分配区值槽 → [freshBase, ...)。</summary>
     static int MapSlot(int s, int argsBase, int nParams, int freshBase)
-        => s < nParams ? argsBase + s : freshBase + (s - nParams);
+        => s >= EcsRegisters.ArgBase && s < EcsRegisters.ArgBase + nParams
+            ? argsBase + (s - EcsRegisters.ArgBase)
+            : freshBase + (s - EcsRegisters.AllocBase);
+
+    /// <summary>帧全局固定寄存器（RET / STAGING 区）不参与内联重映射：
+    /// 它们的语义不随帧基址变化，壳体与调用者共享同一物理窗口。
+    /// ARG 窗位置虽固定，但参数值已拷贝到救援位，须优先重映射。</summary>
+    static bool IsFrameFixedSlot(int s)
+        => s == EcsRegisters.Ret || (s >= EcsRegisters.StagingBase && s < EcsRegisters.AllocBase);
 
     /// <summary>操作数重映射：按槽位性白名单；未列操作码 → false（放弃该调用点内联）。</summary>
     static bool TryRemapForInline(EcsInstruction ins, int argsBase, int nParams, int freshBase,
         out EcsInstruction remapped)
     {
-        int M(int s) => MapSlot(s, argsBase, nParams, freshBase);
+        int M(int s) => s >= EcsRegisters.ArgBase && s < EcsRegisters.ArgBase + nParams
+            ? argsBase + (s - EcsRegisters.ArgBase)
+            : IsFrameFixedSlot(s) ? s : MapSlot(s, argsBase, nParams, freshBase);
         switch (ins.Op)
         {
             // A/B/C 全槽位族
@@ -424,9 +436,9 @@ internal static class EcxPipeline
                 remapped = ins with { A = M(ins.A), B = M(ins.B) };
                 return true;
 
-            // A/C 槽位（B = 参数个数/计数）
+            // A/C 槽位（B = 参数个数/计数）；RET/STAGING 固定窗口由 M 原样保留
             case EcsOpcode.Call or EcsOpcode.CallN:
-                remapped = ins with { A = M(ins.A), C = ins.C == EcsInstruction.NoSlot ? ins.C : M(ins.C) };
+                remapped = ins with { A = M(ins.A), C = M(ins.C) };
                 return true;
 
             // 仅 A 槽位（B/C = 常量/索引/立即数）
@@ -447,21 +459,28 @@ internal static class EcxPipeline
         var call = code[ci];
         if (call.B != g.NParams)
             return false;   // 实参数与壳参数不匹配 → 保持调用
-        int need = freshBase + (g.NSlots - g.NParams);
-        if (need > 254)
-            return false;   // v3 槽位 u8 上限：预算不足 → 保持调用
+        // 实参救援区（固定 STAGING 窗口）：壳体自身会向 STAGING 重排它调用的实参，
+        // 与外层调用暂存在 STAGING 的实参物理重叠——拼接前先拷贝到通用区救援位，壳体参数
+        // 统一改从救援位读取（argsBase = saveBase），消除同窗口两次逻辑调用的覆写冒险。
+        int bodyTemps = g.NSlots - EcsRegisters.AllocBase;
+        int saveBase = freshBase + bodyTemps;
+        int need = saveBase + call.B;
+        if (need > EcsRegisters.MaxRegisters)
+            return false;   // 帧预算不足 → 保持调用
 
         var body = g.Instructions.Take(g.Instructions.Count - 1).ToList();
-        var spliced = new List<EcsInstruction>(body.Count + 1);
+        var spliced = new List<EcsInstruction>(body.Count + call.B + 1);
+        for (int i = 0; i < call.B; i++)
+            spliced.Add(new EcsInstruction(EcsOpcode.Move, saveBase + i, EcsRegisters.StagingBase + i, 0));
         foreach (var ins in body)
         {
-            if (!TryRemapForInline(ins, call.A, g.NParams, freshBase, out var remapped))
+            if (!TryRemapForInline(ins, saveBase, g.NParams, freshBase, out var remapped))
                 return false;
             spliced.Add(remapped);
         }
         var tail = g.Instructions[^1];
-        if (tail.Op == EcsOpcode.Ret && call.C != EcsInstruction.NoSlot)
-            spliced.Add(new EcsInstruction(EcsOpcode.Move, call.C, MapSlot(tail.A, call.A, g.NParams, freshBase), 0));
+        if (tail.Op == EcsOpcode.Ret)
+            spliced.Add(new EcsInstruction(EcsOpcode.Move, call.C, MapSlot(tail.A, saveBase, g.NParams, freshBase), 0));
 
         // 跳转快照（壳体无跳转，仅调用者侧）；拼接后重算下标增量
         var jumps = new List<(int J, int T)>();

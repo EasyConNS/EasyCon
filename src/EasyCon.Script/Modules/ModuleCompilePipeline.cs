@@ -69,7 +69,7 @@ internal sealed class ModuleCompilePipeline
                 // 兜底名替换内存树的空 FileName，污染诊断位置格式
                 var swParse = Stopwatch.StartNew();
                 var tree = SyntaxTree.Parse(SourceText.From(node.Source, node.Path.Length > 0 ? node.Path : node.Name + ".ecs"),
-                    _options.LegacySyntax, node.ImportBase);
+                    node.ImportBase);
                 lock (_stateLock)
                     _result.Timing.LexingAndParsing += swParse.Elapsed;
                 if (tree.Diagnostics.Where(d => d.IsError).ToList() is { Count: > 0 } treeErrors)
@@ -268,8 +268,7 @@ internal sealed class ModuleCompilePipeline
     /// <summary>依赖接口列表（别名随 IMPORT 语句；已 parse 走 AST，未 parse 补 parse 提取语句）。</summary>
     List<ImportedInterface> ImportedList(ModuleNode node)
     {
-        var tree = node.Tree ?? SyntaxTree.Parse(SourceText.From(node.Source, node.Path), _options.LegacySyntax,
-            node.ImportBase);
+        var tree = node.Tree ?? SyntaxTree.Parse(SourceText.From(node.Source, node.Path), node.ImportBase);
         var importStmts = tree.Root.Members.OfType<ImportStmt>()
             .ToDictionary(i => Path.GetFullPath(i.FullFileName), i => i);
         var list = new List<ImportedInterface>();
@@ -289,8 +288,7 @@ internal sealed class ModuleCompilePipeline
     {
         // parse 耗时计入 LexingAndParsing（缓存命中路径恒为 0，是「零 parse」的可观测证据）
         var swParse = Stopwatch.StartNew();
-        var tree = SyntaxTree.Parse(SourceText.From(node.Source, node.Path), _options.LegacySyntax,
-            node.ImportBase);
+        var tree = SyntaxTree.Parse(SourceText.From(node.Source, node.Path), node.ImportBase);
         lock (_stateLock)
             _result.Timing.LexingAndParsing += swParse.Elapsed;
         node.Tree = tree;
@@ -308,8 +306,7 @@ internal sealed class ModuleCompilePipeline
         DiagnosticBag sink, bool isMain)
     {
         var timing = _result.Timing;
-        var moduleTree = node.Tree ?? SyntaxTree.Parse(SourceText.From(node.Source, node.Path), _options.LegacySyntax,
-            node.ImportBase);
+        var moduleTree = node.Tree ?? SyntaxTree.Parse(SourceText.From(node.Source, node.Path), node.ImportBase);
         node.Tree = moduleTree;
         try
         {
@@ -319,8 +316,7 @@ internal sealed class ModuleCompilePipeline
             var (resolution, externalFunctions) = InterfaceScopeSynthesizer.Synthesize(
                 moduleTree, importedIfaces.ToImmutableArray(),
                 includeCaptureHoles: !isMain);
-            var bound = Binder.BindProgram(resolution, _options.ExtVars, eagerBindMainFunctions: true,
-                legacySyntax: _options.LegacySyntax);
+            var bound = Binder.BindProgram(resolution, _options.ExtVars, eagerBindMainFunctions: true);
             lock (_stateLock)
                 timing.Binding += sw.Elapsed;
 

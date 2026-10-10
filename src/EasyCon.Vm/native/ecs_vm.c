@@ -16,7 +16,7 @@
 #include <math.h>
 
 #ifndef ECS_MAX_CALL_DEPTH
-#define ECS_MAX_CALL_DEPTH 512
+#define ECS_MAX_CALL_DEPTH 64   /* 与 C# EcxInterpreter.MaxCallDepth 对齐（对拍分裂防线） */
 #endif
 
 /* ---- 零分配固定池（docs/ZeroAllocVm.md §3/§4；固件常量，参考宿主取宽裕值） ----
@@ -45,7 +45,7 @@
 #endif
 
 #define ECS_DEFAULT_BUDGET 1000000
-#define ECS_NO_SLOT (-1)
+/* 接收槽恒为寄存器号（无哨兵值） */
 #define ECS_IMPORT_FLAG 0x80000000u
 #define FIELD_KIND_FIXED_ARRAY 1
 #define FIELD_KIND_NESTED 2
@@ -141,7 +141,7 @@ typedef struct {
     int32_t func_index;
     uint32_t ret_pc;              /* 续跑点 = 函数内字节偏移（定长取指；仅调用边界与让出点写回） */
     uint32_t ret_idx;             /* 续跑点 = 指令下标（error_pc 诊断单位，与 ret_pc 同点写回） */
-    int32_t ret_slot;             /* ECS_NO_SLOT = 无接收槽 */
+    int32_t ret_slot;             /* 接收寄存器（恒 ≥0；0 = RET 固定落点） */
     uint32_t frame_bytes;         /* 帧段 bump 回退量 */
     ecs_value slots[];
 } frame;
@@ -149,8 +149,9 @@ typedef struct {
 struct ecs_vm {
     ecs_host host;
 
-    const uint8_t *img;           /* 借用；生命周期 = vm */
+    const uint8_t *img;           /* 借用或 io 拉取的内部副本（owned_img=1 时 ecs_vm_free 释放） */
     size_t img_len;
+    int owned_img;                /* ecs_vm_load_io 拉取路径：镜像缓冲归 VM 所有 */
     const_ent *consts;            int32_t nconsts;
     ecs_structdef *structs;       int32_t nstructs;
     ecs_value *globals;           int32_t nglobals;
@@ -897,202 +898,10 @@ static int32_t expand_struct_slots(ecs_structdef *defs, int32_t sid, uint8_t *vi
     return total;
 }
 
-/* ============================================================
- * §4.4.1 加载期指令流静态校验（v3 定长编码，字节寻址）
- * 本函数仍是唯一安全层：操作码合法、指令完整（定长截断即拒）、槽位操作数 < 函数
- * nslots（且 nslots ≤ 宿主档案 ECS_MAX_SLOTS）、常量/全局/结构/原生索引在界内、
- * 跳转落点为指令起始（Jmp/Jpt/Jpf 允许落到函数尾）、数据字存在且 ext 槽在界内。
- * 布局由 ecs_op_words 唯一决定（4B/8B），与 C# EcsFormat.WordCount 逐项对齐。
- * 跳转偏移 = 字节增量（目标 = 指令起始 + 本指令字节数 + delta）；Jmp/Jpt/Jpf 容许
- * 落到函数尾（执行期 pc==code_bytes 同点报 ECS_ERR_OPCODE）。ret_pc = 函数内字节
- * 偏移；error_pc = 指令下标（与 C# EcxInterpreter.ErrorPc 同单位）。
- */
-static int32_t d_find_start(const uint32_t *starts, int32_t n, uint32_t target)
-{
-    int32_t lo = 0, hi = n;
-    while (lo < hi)
-    {
-        int32_t mid = lo + (hi - lo) / 2;
-        if (starts[mid] < target) lo = mid + 1; else hi = mid;
-    }
-    return lo;
-}
-
-static int validate_stream(ecs_vm *vm)
-{
-    for (int32_t f = 0; f < vm->nfuncs; f++)
-    {
-        const ecs_funcdef *fn = &vm->funcs[f];
-        if (fn->nslots > ECS_MAX_SLOTS) return ECS_ERR_SLOT;   /* 宿主容量档案（R-3） */
-        uint32_t end = fn->code_bytes;
-        uint32_t *starts = (uint32_t *)malloc((end ? end : 1) * sizeof(uint32_t));
-        if (!starts) return ECS_ERR_OOM;
-        /* 第一遍：按定长步进记录指令起始字节 */
-        int32_t n = 0;
-        for (uint32_t pc = 0; pc < end;)
-        {
-            starts[n++] = pc;
-            uint32_t op = fn->code[pc];
-            if (op > OP_CmpJ) { free(starts); return ECS_ERR_OPCODE; }
-            pc += ECS_OP_WORDS(op) * 4;
-            if (pc > end) { free(starts); return ECS_ERR_OPCODE; }   /* 定长截断 */
-        }
-        /* 第二遍：逐指令抽取字段并校验（布局由格式表唯一决定） */
-        int rc = ECS_OK;
-        for (uint32_t pc = 0; pc < end && rc == ECS_OK;)
-        {
-            uint32_t op_start = pc;
-            uint32_t op = fn->code[pc];
-            uint32_t size = ECS_OP_WORDS(op) * 4;
-            int32_t a = fn->code[pc + 1];
-            int32_t b = fn->code[pc + 2];
-            int32_t c = fn->code[pc + 3];
-            uint32_t ext = 0;
-            int32_t jump = 0;
-            if (size == 8)
-                ext = rd_u32(fn->code + pc + 4);
-            /* 按格式解释字段（与 C# EcsFormat 布局一一对应） */
-            if (op == OP_LoadI) { b = (int16_t)(b | c << 8); c = 0; }
-            else if (op == OP_LoadK || op == OP_LoadG || op == OP_StoreG || op == OP_NewSt
-                     || op == OP_NewArrE || op == OP_Img)
-                { b = b | c << 8; c = 0; }                                  /* ABx u16 */
-            else if (op == OP_Jpt || op == OP_Jpf)
-                { jump = (int16_t)(b | c << 8); b = c = 0; }                /* AsBx s16 = 跳转 */
-            else if (op == OP_Jmp)
-            {
-                jump = (int32_t)((a | b << 8 | c << 16) << 8) >> 8;         /* IsJ s24 = 跳转 */
-                a = b = c = 0;
-            }
-            else if (op == OP_ForStep || op == OP_CmpJ)
-                jump = (int32_t)ext;                                        /* 数据字 = 跳转偏移 */
-            if ((op == OP_Call || op == OP_CallN) && c == 255)
-                c = ECS_NO_SLOT;                                            /* 无接收槽哨兵 */
-#define V_SLOT(x) do { if ((x) < 0 || (x) >= fn->nslots) { rc = ECS_ERR_SLOT; } } while (0)
-#define V_INDEX(x, hi) do { if ((x) < 0 || (x) >= (hi)) { rc = ECS_ERR_SLOT; } } while (0)
-#define V_JUMP() do { \
-            int64_t t = (int64_t)op_start + size + jump; \
-            if (t < 0 || t > (int64_t)end) { rc = ECS_ERR_OPCODE; } \
-            else if ((uint32_t)t < end) \
-            { \
-                int32_t ti = d_find_start(starts, n, (uint32_t)t); \
-                if (starts[ti] != (uint32_t)t) rc = ECS_ERR_OPCODE; \
-            } \
-        } while (0)
-            switch (op)
-            {
-                case OP_Nop: case OP_Halt: case OP_Ret0:
-                case OP_WaitI: case OP_KeyI: case OP_KeySt: case OP_StickSet:
-                case OP_StickP:
-                    break;
-                case OP_LoadI: case OP_LoadBool: case OP_NewArrE: case OP_WaitV:
-                    V_SLOT(a);
-                    break;
-                case OP_LoadK:
-                    V_SLOT(a); V_INDEX(b, vm->nconsts);
-                    break;
-                case OP_LoadG: case OP_StoreG:
-                    V_SLOT(a); V_INDEX(b, vm->nglobals);
-                    break;
-                case OP_Move: case OP_SetVar: case OP_BnotI: case OP_Not:
-                case OP_NegI: case OP_NegD: case OP_Conv: case OP_Len:
-                case OP_Rand:
-                    V_SLOT(a); V_SLOT(b);
-                    break;
-                case OP_KeyV:
-                    V_SLOT(b);   /* a = 按键码（非槽位） */
-                    break;
-                case OP_Jmp:
-                    V_JUMP();
-                    break;
-                case OP_Jpt: case OP_Jpf:
-                    V_SLOT(a);
-                    V_JUMP();
-                    break;
-                case OP_Call:
-                    V_SLOT(a);
-                    if (rc == ECS_OK && a + b > fn->nslots) rc = ECS_ERR_SLOT;
-                    if (rc == ECS_OK && c != ECS_NO_SLOT) V_SLOT(c);
-                    if (rc == ECS_OK && ext >= (uint32_t)vm->nfuncs) rc = ECS_ERR_OPCODE;
-                    break;
-                case OP_CallN:
-                    if (b > 8) { rc = ECS_ERR_NOSUCHNATIVE; break; }
-                    V_SLOT(a);
-                    if (rc == ECS_OK && a + b > fn->nslots) rc = ECS_ERR_SLOT;
-                    if (rc == ECS_OK && c != ECS_NO_SLOT) V_SLOT(c);
-                    if (rc == ECS_OK && (ext & ECS_SYSCALL_FLAG) == 0 && ext >= (uint32_t)vm->nnatives)
-                        rc = ECS_ERR_NOSUCHNATIVE;
-                    break;
-                case OP_NewArrV:
-                    V_SLOT(a);
-                    if (rc == ECS_OK && c + b > fn->nslots) rc = ECS_ERR_SLOT;
-                    break;
-                case OP_Slice:
-                    V_SLOT(a); V_SLOT(b); V_SLOT(c);
-                    if (rc == ECS_OK && ext != 0xFFFFFFFFu && (int32_t)ext >= fn->nslots) rc = ECS_ERR_SLOT;
-                    break;
-                case OP_NewSt:
-                    V_SLOT(a); V_INDEX(b, vm->nstructs);
-                    break;
-                case OP_GetFI: case OP_PutFI:
-                    V_SLOT(a); V_SLOT(b); V_SLOT(c);
-                    if (rc == ECS_OK && (int32_t)ext >= fn->nslots) rc = ECS_ERR_SLOT;
-                    break;
-                case OP_StickPv:
-                    V_SLOT(c);
-                    break;
-                case OP_Ret:
-                    V_SLOT(a);
-                    break;
-                case OP_ForStep:
-                {
-                    V_SLOT(a); V_SLOT(b); V_SLOT(c);
-                    int64_t t = (int64_t)op_start + size + jump;   /* 出口目标必须是指令起始（函数内） */
-                    if (rc == ECS_OK)
-                    {
-                        if (t < 0 || t >= (int64_t)end) rc = ECS_ERR_OPCODE;
-                        else
-                        {
-                            int32_t ti = d_find_start(starts, n, (uint32_t)t);
-                            if (starts[ti] != (uint32_t)t) rc = ECS_ERR_OPCODE;
-                        }
-                    }
-                    break;
-                }
-                case OP_CmpJ:
-                {
-                    V_SLOT(a); V_SLOT(b);            /* C=kind 码非槽位 */
-                    int64_t t = (int64_t)op_start + size + jump;   /* 跳转目标必须是指令起始（函数内） */
-                    if (rc == ECS_OK)
-                    {
-                        if (t < 0 || t >= (int64_t)end) rc = ECS_ERR_OPCODE;
-                        else
-                        {
-                            int32_t ti = d_find_start(starts, n, (uint32_t)t);
-                            if (starts[ti] != (uint32_t)t) rc = ECS_ERR_OPCODE;
-                        }
-                    }
-                    break;
-                }
-                default:
-                    /* 其余 iABC 算术/比较/容器族：a/b/c 全为槽位 */
-                    V_SLOT(a); V_SLOT(b); V_SLOT(c);
-                    break;
-            }
-            if (rc != ECS_OK) { fprintf(stderr, "[vdbg2] f=%d op=%u a=%d b=%d c=%d jump=%d\n", f, op, a, b, c, jump); break; }
-            pc += size;
-#undef V_SLOT
-#undef V_INDEX
-#undef V_JUMP
-        }
-        free(starts);
-        if (rc != ECS_OK) return rc;
-    }
-    return ECS_OK;
-}
-
-int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
+static int32_t load_image(ecs_vm *vm, const uint8_t *image, size_t len)
 {
     if (!vm || !image || len < 36) return ECS_ERR_IMAGE;
+    vm->owned_img = 0;
     vm->img = image;
     vm->img_len = len;
 
@@ -1109,19 +918,8 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
     uint32_t dbg_size = rd_u32(image + 20);
     if (vm->entry < 0 || 36 + (size_t)name_len > len) return ECS_ERR_IMAGE;
 
-    /* 全量 CRC（字段清零后 IEEE CRC32；无 CRC 段概念——平铺头自带，恒校验） */
-    {
-        uint32_t expect = rd_u32(image + 32);
-        uint32_t crc = 0xFFFFFFFFu;
-        for (size_t i = 0; i < len; i++)
-        {
-            uint8_t b = image[i] - (i >= 32 && i < 36 ? image[i] : 0);
-            crc ^= b;
-            for (int k = 0; k < 8; k++)
-                crc = (crc >> 1) ^ (0xEDB88320u & ~(uint32_t)((crc & 1) - 1));
-        }
-        if ((crc ^ 0xFFFFFFFFu) != expect) return ECS_ERR_CRC;
-    }
+    /* 信任面：不做 CRC / 指令流内容校验——相信宿主提供的字节码
+     * （Lua 式最小验证面）；解析期仅保证宿主内存安全（r_* 越界防护）。 */
 
     /* 特征需求投影（flags.I → FEAT_IL）；strict 语义保留——能力降级为后续契约批次 */
     uint32_t img_feats = feats | ((flags & 0x4) ? ECS_FEAT_IL : 0);
@@ -1268,7 +1066,7 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
             fd->nslots = (uint16_t)r_bytes(&r, 2);
             fd->code_off = (uint32_t)r_bytes(&r, 4);
             if (r.overflow) return ECS_ERR_IMAGE;
-            if (fd->nslots > ECS_MAX_SLOTS) return ECS_ERR_SLOT;
+            if (fd->nslots > ECS_REG_MAX) return ECS_ERR_IMAGE;   /* 帧长上限 = 指令域 u8 */
         }
         if (code_size > len - r.pos) return ECS_ERR_IMAGE;
         const uint8_t *stream = image + r.pos;
@@ -1293,15 +1091,60 @@ int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
     }
     if (pos != len) return ECS_ERR_IMAGE;   /* 平铺布局严格等长（fail-closed） */
 
-    /* ---- 指令流静态校验（§4.4.1）：槽位/索引/跳转落点/数据字全部核验 ---- */
-    /* ---- 指令流静态校验（§4.4.1）：槽位/索引/跳转落点/EXT 结构全部核验 ---- */
-    {
-        int vrc = validate_stream(vm);
-        if (vrc != ECS_OK) return vrc;
-    }
-
     if (vm->entry < 0 || vm->entry >= vm->nfuncs) return ECS_ERR_IMAGE;
     return ECS_OK;
+}
+
+int ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len)
+{
+    if (!vm) return ECS_ERR_IMAGE;
+    return load_image(vm, image, len);
+}
+
+int ecs_vm_load_io(ecs_vm *vm, const ecs_io *io)
+{
+    if (!vm || !io || !io->read || io->size < 36) return ECS_ERR_IMAGE;
+    uint8_t *buf = (uint8_t *)malloc(io->size);
+    if (!buf) return ECS_ERR_OOM;
+    if (io->read(io->ud, 0, buf, io->size) != io->size)
+    {
+        free(buf);
+        return ECS_ERR_IMAGE;   /* 读失败（EEPROM/NVS 短读） */
+    }
+    int32_t rc = load_image(vm, buf, io->size);
+    if (rc != ECS_OK)
+    {
+        free(buf);
+        return rc;
+    }
+    vm->img = buf;              /* 字符串/名字等 pinned 指向内部副本 */
+    vm->img_len = io->size;
+    vm->owned_img = 1;
+    return ECS_OK;
+}
+
+/* ---- 字节码来源抽象（uLua zIO 式）---- */
+
+typedef struct { const uint8_t *buf; uint32_t len; int direct; } mem_io_state;
+
+static uint32_t mem_io_read(void *ud, uint32_t offset, uint8_t *out, uint32_t len)
+{
+    mem_io_state *m = (mem_io_state *)ud;
+    if (offset > m->len) return 0;
+    uint32_t n = m->len - offset < len ? m->len - offset : len;
+    memcpy(out, m->buf + offset, n);
+    return n;
+}
+
+void ecs_io_mem(ecs_io *io, const void *buf, uint32_t len, int direct)
+{
+    static mem_io_state state;   /* 单宿主线程约定（VM 本身非线程安全） */
+    state.buf = (const uint8_t *)buf;
+    state.len = len;
+    state.direct = direct;
+    io->ud = &state;
+    io->size = len;
+    io->read = mem_io_read;
 }
 
 /* ============================================================
@@ -1486,6 +1329,8 @@ void ecs_vm_free(ecs_vm *vm)
             free(vm->structs[i].name);
         }
     free(vm->structs);
+    if (vm->owned_img)
+        free((void *)vm->img);   /* io 拉取路径：镜像内部副本归 VM */
     if (vm->natives)
         for (int32_t i = 0; i < vm->nnatives; i++)
             free(vm->natives[i]);
@@ -1579,7 +1424,7 @@ static int push_frame(ecs_vm *vm, const ecs_funcdef *fn, int32_t func_index)
     memset(fr, 0, need);
     fr->fn = fn;
     fr->func_index = func_index;
-    fr->ret_slot = ECS_NO_SLOT;
+    fr->ret_slot = ECS_REG_RET;   /* 入口帧返回落点（顶层 Ret 走 Result 路径，不消费） */
     fr->frame_bytes = (uint32_t)need;
     vm->frames[vm->depth++] = fr;
     return 0;
@@ -1595,482 +1440,27 @@ static void pop_frame(ecs_vm *vm, frame *fr)
     vm->depth--;
 }
 
-/*
- * 数据/容器/结构体/域操作指令（主循环 default 分派）。EXT 数据字由主循环解码后传入。
- * 返回 0 = 成功；非 0 = 错误码（错误现场由主循环设置）。
- */
-static int exec_data_op(ecs_vm *vm, uint32_t op, ecs_value *R,
-                        int32_t a, int32_t b, int32_t c, uint32_t ext)
-{
-#define FAIL(code) return (code)
-
-    switch (op)
-    {
-        /* ---- 算术（S-02/S-05；无符号回绕对齐 C# unchecked） ---- */
-        case OP_AddI: store_fresh(vm, &R[a], make_int((int32_t)((uint32_t)R[b].i32 + (uint32_t)R[c].i32))); break;
-        case OP_SubI: store_fresh(vm, &R[a], make_int((int32_t)((uint32_t)R[b].i32 - (uint32_t)R[c].i32))); break;
-        case OP_MulI: store_fresh(vm, &R[a], make_int((int32_t)((uint32_t)R[b].i32 * (uint32_t)R[c].i32))); break;
-        case OP_DivI:
-        {
-            if (R[c].i32 == 0) FAIL(ECS_ERR_DIVZERO);
-            store_fresh(vm, &R[a], make_int(R[c].i32 == -1 ? (int32_t)(0u - (uint32_t)R[b].i32) : R[b].i32 / R[c].i32));
-            break;
-        }
-        case OP_ModI:
-        {
-            if (R[c].i32 == 0) FAIL(ECS_ERR_DIVZERO);
-            store_fresh(vm, &R[a], make_int(R[c].i32 == -1 ? 0 : R[b].i32 % R[c].i32));
-            break;
-        }
-        case OP_RDivI:   /* S-05：`（a + b/2) / b */
-        {
-            if (R[c].i32 == 0) FAIL(ECS_ERR_DIVZERO);
-            int32_t num = (int32_t)((uint32_t)R[b].i32 + (uint32_t)(R[c].i32 / 2));
-            store_fresh(vm, &R[a], make_int(R[c].i32 == -1 ? (int32_t)(0u - (uint32_t)num) : num / R[c].i32));
-            break;
-        }
-        case OP_AddU: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT; R[a].i64 = (uint32_t)R[b].i32 + (uint32_t)R[c].i32; break;
-        case OP_SubU: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT; R[a].i64 = (uint32_t)R[b].i32 - (uint32_t)R[c].i32; break;
-        case OP_MulU: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT; R[a].i64 = (uint32_t)R[b].i32 * (uint32_t)R[c].i32; break;
-        case OP_DivU:
-        {
-            if ((uint32_t)R[c].i32 == 0) FAIL(ECS_ERR_DIVZERO);
-            store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT; R[a].i64 = (uint32_t)R[b].i32 / (uint32_t)R[c].i32;
-            break;
-        }
-        case OP_ModU:
-        {
-            if ((uint32_t)R[c].i32 == 0) FAIL(ECS_ERR_DIVZERO);
-            store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT; R[a].i64 = (uint32_t)R[b].i32 % (uint32_t)R[c].i32;
-            break;
-        }
-        case OP_AddL: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT64; R[a].i64 = (int64_t)((uint64_t)R[b].i64 + (uint64_t)R[c].i64); break;
-        case OP_SubL: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT64; R[a].i64 = (int64_t)((uint64_t)R[b].i64 - (uint64_t)R[c].i64); break;
-        case OP_MulL: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT64; R[a].i64 = (int64_t)((uint64_t)R[b].i64 * (uint64_t)R[c].i64); break;
-        case OP_DivL:
-        {
-            if (R[c].i64 == 0) FAIL(ECS_ERR_DIVZERO);
-            store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT64;
-            R[a].i64 = R[c].i64 == -1 ? (int64_t)(0ULL - (uint64_t)R[b].i64) : R[b].i64 / R[c].i64;
-            break;
-        }
-        case OP_ModL:
-        {
-            if (R[c].i64 == 0) FAIL(ECS_ERR_DIVZERO);
-            store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_UINT64;
-            R[a].i64 = R[c].i64 == -1 ? 0 : R[b].i64 % R[c].i64;
-            break;
-        }
-        case OP_AddD: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_DOUBLE; R[a].f64 = R[b].f64 + R[c].f64; break;
-        case OP_SubD: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_DOUBLE; R[a].f64 = R[b].f64 - R[c].f64; break;
-        case OP_MulD: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_DOUBLE; R[a].f64 = R[b].f64 * R[c].f64; break;
-        case OP_DivD: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_DOUBLE; R[a].f64 = R[b].f64 / R[c].f64; break;
-
-        /* ---- 位运算（S-03 掩码；左移用无符号回绕） ---- */
-        case OP_BandI: store_fresh(vm, &R[a], make_int(R[b].i32 & R[c].i32)); break;
-        case OP_BorI: store_fresh(vm, &R[a], make_int(R[b].i32 | R[c].i32)); break;
-        case OP_BxorI: store_fresh(vm, &R[a], make_int(R[b].i32 ^ R[c].i32)); break;
-        case OP_ShlI: store_fresh(vm, &R[a], make_int((int32_t)((uint32_t)R[b].i32 << (R[c].i32 & 31)))); break;
-        case OP_ShrI: store_fresh(vm, &R[a], make_int(R[b].i32 >> (R[c].i32 & 31))); break;
-        case OP_BnotI: store_fresh(vm, &R[a], make_int((int32_t)(~(uint32_t)R[b].i32))); break;
-
-        /* ---- 比较 ---- */
-        case OP_EqI: store_fresh(vm, &R[a], make_bool(R[b].i32 == R[c].i32)); break;
-        case OP_LtI: store_fresh(vm, &R[a], make_bool(R[b].i32 < R[c].i32)); break;
-        case OP_LeI: store_fresh(vm, &R[a], make_bool(R[b].i32 <= R[c].i32)); break;
-        case OP_GtI: store_fresh(vm, &R[a], make_bool(R[b].i32 > R[c].i32)); break;
-        case OP_GeI: store_fresh(vm, &R[a], make_bool(R[b].i32 >= R[c].i32)); break;
-        case OP_EqU: store_fresh(vm, &R[a], make_bool((uint32_t)R[b].i32 == (uint32_t)R[c].i32)); break;
-        case OP_LtU: store_fresh(vm, &R[a], make_bool((uint32_t)R[b].i32 < (uint32_t)R[c].i32)); break;
-        case OP_LeU: store_fresh(vm, &R[a], make_bool((uint32_t)R[b].i32 <= (uint32_t)R[c].i32)); break;
-        case OP_GtU: store_fresh(vm, &R[a], make_bool((uint32_t)R[b].i32 > (uint32_t)R[c].i32)); break;
-        case OP_GeU: store_fresh(vm, &R[a], make_bool((uint32_t)R[b].i32 >= (uint32_t)R[c].i32)); break;
-        case OP_EqD: store_fresh(vm, &R[a], make_bool(cmp_double(R[b].f64, R[c].f64) == 0)); break;
-        case OP_LtD: store_fresh(vm, &R[a], make_bool(cmp_double(R[b].f64, R[c].f64) < 0)); break;
-        case OP_LeD: store_fresh(vm, &R[a], make_bool(cmp_double(R[b].f64, R[c].f64) <= 0)); break;
-        case OP_GtD: store_fresh(vm, &R[a], make_bool(cmp_double(R[b].f64, R[c].f64) > 0)); break;
-        case OP_GeD: store_fresh(vm, &R[a], make_bool(cmp_double(R[b].f64, R[c].f64) >= 0)); break;
-        case OP_EqL: store_fresh(vm, &R[a], make_bool(R[b].i64 == R[c].i64)); break;
-        case OP_LtL: store_fresh(vm, &R[a], make_bool(R[b].i64 < R[c].i64)); break;
-        case OP_LeL: store_fresh(vm, &R[a], make_bool(R[b].i64 <= R[c].i64)); break;
-        case OP_GtL: store_fresh(vm, &R[a], make_bool(R[b].i64 > R[c].i64)); break;
-        case OP_GeL: store_fresh(vm, &R[a], make_bool(R[b].i64 >= R[c].i64)); break;
-        case OP_EqS:
-        {
-            const uint16_t *lx, *ly; int32_t llx, lly;
-            str_or_null(vm, R[b], &lx, &llx);
-            str_or_null(vm, R[c], &ly, &lly);
-            store_fresh(vm, &R[a], make_bool(units_equal(lx, llx, ly, lly)));
-            break;
-        }
-        case OP_EqP: store_fresh(vm, &R[a], make_bool(R[b].i64 == R[c].i64)); break;
-
-        /* ---- 一元与转换 ---- */
-        case OP_Not: store_fresh(vm, &R[a], make_bool(R[b].i32 == 0)); break;
-        case OP_NegI: store_fresh(vm, &R[a], make_int((int32_t)(0u - (uint32_t)R[b].i32))); break;
-        case OP_NegD: store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_DOUBLE; R[a].f64 = -R[b].f64; break;
-        case OP_Conv:
-        {
-            int err = 0;
-            ecs_value r = do_conv(vm, (uint32_t)c, R[b], &err);
-            if (err == 2) FAIL(ECS_ERR_POOL);
-            if (err) FAIL(ECS_ERR_TYPE);
-            store_fresh(vm, &R[a], r);
-            break;
-        }
-
-        /* ---- 数组 / 字符串 ---- */
-        case OP_NewArrV:
-        {
-            int32_t h = hnew_arr(vm, (uint8_t)ext, 0, b);
-            if (h < 0) FAIL(ECS_ERR_POOL);
-            ecs_obj *o = obj_at(vm, h);
-            for (int32_t i = 0; i < b; i++)
-                arr_overwrite(vm, o, i, R[c + i]);
-            store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_ARRAY; R[a].i64 = h;
-            break;
-        }
-        case OP_NewArrE:
-        {
-            int32_t h = hnew_arr(vm, (uint8_t)b, 0, 0);
-            if (h < 0) FAIL(ECS_ERR_POOL);
-            store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_ARRAY; R[a].i64 = h;
-            break;
-        }
-        case OP_GetI:
-        {
-            ecs_value container = R[b];
-            int32_t idx = R[c].i32;
-            if (container.tag == ECS_STRING)
-            {
-                const uint16_t *u; int32_t len;
-                str_or_null(vm, container, &u, &len);
-                if (idx < 0 || idx >= len) FAIL(ECS_ERR_INDEX);
-                store_fresh(vm, &R[a], new_str_units(vm, u ? u + idx : NULL, 1));
-            }
-            else
-            {
-                ecs_obj *arr = heap_obj(vm, (int32_t)container.i64);
-                if (!arr || container.tag != ECS_ARRAY) FAIL(ECS_ERR_TYPE);
-                if (idx < 0 || idx >= arr->h.len) FAIL(ECS_ERR_INDEX);
-                /* S-10 按 elem tag 归一读 */
-                ecs_value item = arr_get(vm, arr, idx);
-                if (OBJ_ETAG(arr->h.flags) == ECS_BYTE) { item.tag = ECS_BYTE; item.i32 &= 0xFF; }
-                else if (OBJ_ETAG(arr->h.flags) == ECS_BOOL) { item = make_bool(item.i32 != 0); }
-                move_to(vm, &R[a], item);
-            }
-            break;
-        }
-        case OP_SetI:
-        {
-            ecs_obj *arr = heap_obj(vm, (int32_t)R[b].i64);
-            if (!arr || R[b].tag != ECS_ARRAY) FAIL(ECS_ERR_TYPE);
-            int32_t idx = R[c].i32;
-            if (idx < 0 || idx >= arr->h.len) FAIL(ECS_ERR_INDEX);
-            ecs_value v = R[a];
-            if (OBJ_ETAG(arr->h.flags) == ECS_BOOL) v = make_bool(v.i32 != 0);   /* CoerceWrite */
-            arr_overwrite(vm, arr, idx, v);
-            break;
-        }
-        case OP_Slice:
-        {
-            ecs_value container = R[b];
-            int32_t start = R[c].i32;
-            if (container.tag == ECS_STRING)
-            {
-                const uint16_t *u; int32_t len;
-                str_or_null(vm, container, &u, &len);
-                int32_t end = ext == 0xFFFFFFFFu ? len : R[(int32_t)ext].i32;
-                if (start < 0 || start > len || end > len || start > end) FAIL(ECS_ERR_INDEX);
-                store_fresh(vm, &R[a], new_str_units(vm, u ? u + start : NULL, end - start));
-            }
-            else
-            {
-                ecs_obj *arr = heap_obj(vm, (int32_t)container.i64);
-                if (!arr || container.tag != ECS_ARRAY) FAIL(ECS_ERR_TYPE);
-                int32_t end = ext == 0xFFFFFFFFu ? arr->h.len : R[(int32_t)ext].i32;
-                if (start < 0 || start > arr->h.len || end > arr->h.len || start > end) FAIL(ECS_ERR_INDEX);
-                int32_t h = hnew_arr(vm, OBJ_ETAG(arr->h.flags), arr->h.sid, end - start);
-                if (h < 0) FAIL(ECS_ERR_POOL);
-                ecs_obj *dst = obj_at(vm, h);
-                for (int32_t i = start; i < end; i++)
-                    arr_overwrite(vm, dst, i - start, arr_get(vm, arr, i));
-                store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_ARRAY; R[a].i64 = h;
-            }
-            break;
-        }
-        case OP_Cont:   /* S-09 */
-        {
-            ecs_value item = R[b];
-            ecs_value container = R[c];
-            if (container.tag == ECS_STRING)
-            {
-                const uint16_t *hay; int32_t hlen;
-                str_or_null(vm, container, &hay, &hlen);
-                if (item.tag != ECS_STRING) FAIL(ECS_ERR_TYPE);
-                const uint16_t *sub; int32_t slen;
-                str_or_null(vm, item, &sub, &slen);
-                store_fresh(vm, &R[a], make_bool(units_contains(hay, hlen, sub, slen)));
-            }
-            else if (container.tag == ECS_ARRAY)
-            {
-                ecs_obj *arr = heap_obj(vm, (int32_t)container.i64);
-                if (!arr) FAIL(ECS_ERR_TYPE);
-                if (item.tag != OBJ_ETAG(arr->h.flags))
-                    store_fresh(vm, &R[a], make_bool(0));   /* 元素类型不匹配 → false */
-                else
-                {
-                    int found = 0;
-                    for (int32_t i = 0; i < arr->h.len; i++)
-                        if (value_equals(vm, arr_get(vm, arr, i), item)) { found = 1; break; }
-                    store_fresh(vm, &R[a], make_bool(found));
-                }
-            }
-            else
-                FAIL(ECS_ERR_TYPE);
-            break;
-        }
-        case OP_Append:
-        {
-            ecs_obj *src = heap_obj(vm, (int32_t)R[b].i64);
-            if (!src || R[b].tag != ECS_ARRAY) FAIL(ECS_ERR_TYPE);
-            int32_t h = hnew_arr(vm, OBJ_ETAG(src->h.flags), src->h.sid, src->h.len + 1);
-            if (h < 0) FAIL(ECS_ERR_POOL);
-            ecs_obj *dst = obj_at(vm, h);
-            for (int32_t i = 0; i < src->h.len; i++)
-                arr_overwrite(vm, dst, i, arr_get(vm, src, i));
-            arr_overwrite(vm, dst, src->h.len, R[c]);
-            store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_ARRAY; R[a].i64 = h;
-            break;
-        }
-        case OP_Cat:   /* S-11 */
-        {
-            ecs_value l = R[b], r = R[c];
-            if (l.tag == ECS_STRING || r.tag == ECS_STRING)
-            {
-                strbuf sb; memset(&sb, 0, sizeof(sb));
-                tostring_top(vm, &sb, l);
-                tostring_top(vm, &sb, r);
-                if (sb.overflow) FAIL(ECS_ERR_POOL);
-                store_fresh(vm, &R[a], new_str_units(vm, sb.units, sb.len));
-            }
-            else if (l.tag == ECS_ARRAY && r.tag == ECS_ARRAY)
-            {
-                ecs_obj *la = heap_obj(vm, (int32_t)l.i64);
-                ecs_obj *ra = heap_obj(vm, (int32_t)r.i64);
-                if (!la || !ra) FAIL(ECS_ERR_TYPE);
-                if (OBJ_ETAG(la->h.flags) != OBJ_ETAG(ra->h.flags)) FAIL(ECS_ERR_TYPE);
-                int32_t h = hnew_arr(vm, OBJ_ETAG(la->h.flags), la->h.sid, la->h.len + ra->h.len);
-                if (h < 0) FAIL(ECS_ERR_POOL);
-                ecs_obj *dst = obj_at(vm, h);
-                for (int32_t i = 0; i < la->h.len; i++)
-                    arr_overwrite(vm, dst, i, arr_get(vm, la, i));
-                for (int32_t i = 0; i < ra->h.len; i++)
-                    arr_overwrite(vm, dst, la->h.len + i, arr_get(vm, ra, i));
-                store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_ARRAY; R[a].i64 = h;
-            }
-            else
-                FAIL(ECS_ERR_TYPE);
-            break;
-        }
-        case OP_Len:
-        {
-            if (R[b].tag == ECS_STRING)
-            {
-                const uint16_t *u; int32_t len;
-                str_or_null(vm, R[b], &u, &len);
-                store_fresh(vm, &R[a], make_int(len));
-            }
-            else if (R[b].tag == ECS_ARRAY)
-            {
-                ecs_obj *arr = heap_obj(vm, (int32_t)R[b].i64);
-                if (!arr) FAIL(ECS_ERR_TYPE);
-                store_fresh(vm, &R[a], make_int(arr->h.len));
-            }
-            else FAIL(ECS_ERR_TYPE);
-            break;
-        }
-
-        /* ---- 结构体 ---- */
-        case OP_NewSt:
-        {
-            int32_t sid = b;
-            if (sid >= vm->nstructs) FAIL(ECS_ERR_SLOT);
-            int32_t h = hnew_st(vm, &vm->structs[sid]);
-            if (h < 0) FAIL(ECS_ERR_POOL);
-            store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_STRUCT; R[a].i64 = h;
-            break;
-        }
-        case OP_GetF:
-        {
-            ecs_obj *st = heap_obj(vm, (int32_t)R[b].i64);
-            if (!st || R[b].tag != ECS_STRUCT) FAIL(ECS_ERR_TYPE);
-            const ecs_structdef *def = &vm->structs[st->h.sid];
-            if (c >= def->nfields) FAIL(ECS_ERR_SLOT);
-            const ecs_fielddef *f = &def->fields[c];
-            ecs_value *slots = (ecs_value *)OBJ_PAYLOAD(st);
-            switch (f->kind)
-            {
-                case 0:   /* Scalar */
-                    if (f->type == ECS_BYTE) { store_fresh(vm, &R[a], slots[f->slot_offset]); R[a].tag = ECS_BYTE; R[a].i32 &= 0xFF; }
-                    else if (f->type == ECS_BOOL) store_fresh(vm, &R[a], make_bool(slots[f->slot_offset].i32 != 0));
-                    else { move_to(vm, &R[a], slots[f->slot_offset]); }
-                    break;
-                case FIELD_KIND_FIXED_ARRAY:
-                {
-                    int32_t h = hnew_arr(vm, f->elem, 0, f->ext);
-                    if (h < 0) FAIL(ECS_ERR_POOL);
-                    ecs_obj *dst = obj_at(vm, h);
-                    for (int32_t i = 0; i < f->ext; i++)
-                        arr_overwrite(vm, dst, i, slots[f->slot_offset + i]);
-                    store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_ARRAY; R[a].i64 = h;
-                    break;
-                }
-                case FIELD_KIND_NESTED:
-                {
-                    const ecs_structdef *nested = &vm->structs[f->ext];
-                    int32_t h = hnew_st(vm, nested);
-                    if (h < 0) FAIL(ECS_ERR_POOL);
-                    ecs_obj *dst = obj_at(vm, h);
-                    ecs_value *dslots = (ecs_value *)OBJ_PAYLOAD(dst);
-                    for (int32_t i = 0; i < nested->nslots; i++)
-                    {
-                        dslots[i] = slots[f->slot_offset + i];
-                        retain(vm, dslots[i]);
-                    }
-                    /* 写穿透视图（对齐 v1 GetNested / 解释器 ViewParent）：记录父链，
-                       后续槽写入经 sync_view 逐级回写父槽区 */
-                    dst->h.view_parent = (int32_t)R[b].i64;
-                    dst->h.view_offset = f->slot_offset;
-                    retain(vm, R[b]);
-                    store_fresh(vm, &R[a], void_value()); R[a].tag = ECS_STRUCT; R[a].i64 = h;
-                    break;
-                }
-                default: FAIL(ECS_ERR_TYPE);   /* Boxed 不受支持（S-16） */
-            }
-            break;
-        }
-        case OP_PutF:
-        {
-            ecs_obj *st = heap_obj(vm, (int32_t)R[b].i64);
-            if (!st || R[b].tag != ECS_STRUCT) FAIL(ECS_ERR_TYPE);
-            const ecs_structdef *def = &vm->structs[st->h.sid];
-            if (c >= def->nfields) FAIL(ECS_ERR_SLOT);
-            const ecs_fielddef *f = &def->fields[c];
-            ecs_value *slots = (ecs_value *)OBJ_PAYLOAD(st);
-            if (f->kind == 0)
-            {
-                ecs_value v = R[a];
-                if (f->type == ECS_BOOL) v = make_bool(v.i32 != 0);
-                move_to(vm, &slots[f->slot_offset], v);
-                if (st->h.view_parent) sync_view(vm, st);
-            }
-            else if (f->kind == FIELD_KIND_NESTED)
-            {
-                ecs_obj *src = heap_obj(vm, (int32_t)R[a].i64);
-                if (!src || R[a].tag != ECS_STRUCT) FAIL(ECS_ERR_TYPE);
-                /* 对齐校验：src 槽数 vs 字段嵌套类型槽数（与 GetF 取嵌套布局一致） */
-                const ecs_structdef *nested_put = &vm->structs[f->ext];
-                const ecs_structdef *src_def = &vm->structs[src->h.sid];
-                if (src_def->nslots != nested_put->nslots) FAIL(ECS_ERR_TYPE);
-                ecs_value *sslots = (ecs_value *)OBJ_PAYLOAD(src);
-                for (int32_t i = 0; i < src_def->nslots; i++)
-                {
-                    release(vm, slots[f->slot_offset + i]);
-                    slots[f->slot_offset + i] = sslots[i];
-                    retain(vm, slots[f->slot_offset + i]);
-                }
-                if (st->h.view_parent) sync_view(vm, st);
-            }
-            else FAIL(ECS_ERR_TYPE);
-            break;
-        }
-        case OP_GetFI:
-        {
-            ecs_obj *st = heap_obj(vm, (int32_t)R[b].i64);
-            if (!st || R[b].tag != ECS_STRUCT) FAIL(ECS_ERR_TYPE);
-            const ecs_structdef *def = &vm->structs[st->h.sid];
-            if (c >= def->nfields) FAIL(ECS_ERR_SLOT);
-            const ecs_fielddef *f = &def->fields[c];
-            if (f->kind != FIELD_KIND_FIXED_ARRAY) FAIL(ECS_ERR_TYPE);
-            int32_t idx = R[(int32_t)ext].i32;
-            if (idx < 0 || idx >= f->ext) FAIL(ECS_ERR_INDEX);
-            ecs_value item = ((ecs_value *)OBJ_PAYLOAD(st))[f->slot_offset + idx];
-            if (f->type == ECS_BYTE) { item.tag = ECS_BYTE; item.i32 &= 0xFF; }
-            else if (f->type == ECS_BOOL) item = make_bool(item.i32 != 0);
-            move_to(vm, &R[a], item);
-            break;
-        }
-        case OP_PutFI:
-        {
-            ecs_obj *st = heap_obj(vm, (int32_t)R[b].i64);
-            if (!st || R[b].tag != ECS_STRUCT) FAIL(ECS_ERR_TYPE);
-            const ecs_structdef *def = &vm->structs[st->h.sid];
-            if (c >= def->nfields) FAIL(ECS_ERR_SLOT);
-            const ecs_fielddef *f = &def->fields[c];
-            if (f->kind != FIELD_KIND_FIXED_ARRAY) FAIL(ECS_ERR_TYPE);
-            int32_t idx = R[(int32_t)ext].i32;
-            if (idx < 0 || idx >= f->ext) FAIL(ECS_ERR_INDEX);
-            ecs_value v = R[a];
-            if (f->type == ECS_BOOL) v = make_bool(v.i32 != 0);
-            ecs_value *slots = (ecs_value *)OBJ_PAYLOAD(st);
-            release(vm, slots[f->slot_offset + idx]);
-            slots[f->slot_offset + idx] = v;
-            retain(vm, v);
-            if (st->h.view_parent) sync_view(vm, st);
-            break;
-        }
-
-        /* ---- 域操作 ---- */
-        case OP_WaitI: if (vm->host.wait_ms) vm->host.wait_ms(vm->host.ud, (int32_t)ext); break;
-        case OP_WaitV: if (vm->host.wait_ms) vm->host.wait_ms(vm->host.ud, R[a].i32); break;
-        case OP_KeyI: if (vm->host.key) vm->host.key(vm->host.ud, (uint8_t)a, (int32_t)ext); break;
-        case OP_KeyV: if (vm->host.key) vm->host.key(vm->host.ud, (uint8_t)a, R[b].i32); break;
-        case OP_KeySt: if (vm->host.key_state) vm->host.key_state(vm->host.ud, (uint8_t)a, b); break;
-        case OP_StickSet: if (vm->host.stick_set) vm->host.stick_set(vm->host.ud, (uint8_t)a, b, c); break;
-        case OP_StickP:
-            if (vm->host.stick_click)
-                vm->host.stick_click(vm->host.ud, (uint8_t)a, b, c, (int32_t)ext);
-            break;
-        case OP_StickPv:
-            if (vm->host.stick_click)
-                vm->host.stick_click(vm->host.ud, (uint8_t)a, (int32_t)(ext & 0xFF), (int32_t)((ext >> 16) & 0xFF), R[c].i32);
-            break;
-        case OP_Img:
-            /* S-21：图像标签能力缺失 → 目标槽 ← -1（与 C# EcxHost 缺省 ImgLabel 一致）；
-             * strict_caps 宿主恢复响亮（IL）。 */
-            if (vm->host.strict_caps)
-                FAIL(ECS_ERR_IL);
-            store_fresh(vm, &R[a], make_int(-1));
-            break;
-        case OP_Rand:   /* S-12 */
-        {
-            int32_t max = R[b].i32;
-            if (max < 0) FAIL(ECS_ERR_INDEX);
-            int32_t v = 0;
-            if (max != 0 && vm->host.rand) v = vm->host.rand(vm->host.ud, max);
-            store_fresh(vm, &R[a], make_int(v));
-            break;
-        }
-
-        default:
-            FAIL(ECS_ERR_OPCODE);
-    }
-    return 0;
-#undef FAIL
-}
-
-
 /* ============================================================
- * §4.3 主循环（v3 定长取指：镜像内定宽指令直读，取指通路局部化）
- * fr/code/end/R/pc/steps/idx 全部循环局部；ret_pc（字节偏移）与 ret_idx（指令
- * 下标）仅在 Call 边界与 YIELD/取消/停机返回点写回帧；换帧（重载 code/end/R/pc）
- * 仅发生在 Call/Ret。error_pc = 指令下标（与 C# ErrorPc 同单位）。
- * validate_stream（§4.4.1）是唯一安全层，本循环不做执行期重检查。
- */
-/* ---- v3 格式类表：一次查表得到「尺寸 + 字段解释」——FETCH 内 switch（跳转表）而非 if 链 ----
+ * §4.5 主派发（直接线程化 / switch 双模）—— 干净重写版
+ *
+ * gcc/clang：computed goto——每操作码一个标签，dispatch 表按操作码值索引，
+ * 取指预检后即跳；handler 按自身格式特化取操作数（FETCH_OPS_*，无二级格式 switch）。
+ * 其余编译器（MSVC 等）：宏回退 switch 循环（同一份 handler 体，VM_CASE=case，
+ * 操作数由 VM_FETCH 统一解码，FETCH_OPS_* 为空）。
+ *
+ * 数据操作已自 exec_data_op 扁平化并入本派发（消除每条数据指令的函数调用）。
+ * 信任字节码：handler 内除语义必需（除零/越界/类型等脚本可见错误）外无验证。
+ * ============================================================ */
+#if defined(__GNUC__) && !defined(ECS_NO_DIRECT_THREADING)
+#define ECS_DIRECT_THREADED 1
+#else
+#define ECS_DIRECT_THREADED 0
+#endif
+
+#if !ECS_DIRECT_THREADED
+/* ---- 回退模式专用：格式类表 + 统一取指宏 ----
  * 类别：ABC=三槽位；ABX=A+Bx16；SBXI=A+sBx16（LoadI）；AJ=A+跳转 s16（Jpt/Jpf）；
- * J=跳转 s24（Jmp）；WJ=iABC+跳转字（ForStep/CmpJ）；WEXT=iABC+数据字（EXT/WaitI/KeyI）。
+ * J=跳转 s24（Jmp）；WJ=iABC+跳转字（ForStep/CmpJ，跳转字延迟读）；WEXT=iABC+数据字。
  * 未列操作码 = FMT_ABC（多数算术/比较/容器族）。与 C# EcsFormat 表逐项对齐。 */
 enum { FMT_ABC, FMT_ABX, FMT_SBXI, FMT_AJ, FMT_J, FMT_WJ, FMT_WEXT };
 static const uint8_t ecs_op_fmt[] = {
@@ -2130,7 +1520,6 @@ static const uint8_t ecs_op_fmt[] = {
             break; /* 跳转字延迟读取：仅转移成立时才碰（热环出口多数不成立） */\
         default: /* FMT_WEXT */ \
             a_ = codebuf[pc + 1]; b_ = codebuf[pc + 2]; c_ = codebuf[pc + 3]; \
-            if (c_ == 255 && (opv == OP_Call || opv == OP_CallN)) c_ = ECS_NO_SLOT; \
             ext_ = rd_u32(codebuf + pc + 4); \
             break; \
     } \
@@ -2139,6 +1528,38 @@ static const uint8_t ecs_op_fmt[] = {
     idx++; \
     pc += op_size; \
 } while (0)
+#endif /* !ECS_DIRECT_THREADED */
+
+/* ---- CmpJ 比较辅助：kind = typeBlock*6 + op（0=Eq,1=Neq,2=Lt,3=Le,4=Gt,5=Ge） ---- */
+static inline uint32_t kind_block(int32_t kind) { return (uint32_t)kind / 6u; }
+static inline int cmp_kind6_i32(int32_t l, int32_t r, int32_t kind)
+{
+    switch (kind % 6) {
+        case 0: return l == r; case 1: return l != r; case 2: return l < r;
+        case 3: return l <= r; case 4: return l > r; default: return l >= r;
+    }
+}
+static inline int cmp_kind6_u32(uint32_t l, uint32_t r, int32_t kind)
+{
+    switch (kind % 6) {
+        case 0: return l == r; case 1: return l != r; case 2: return l < r;
+        case 3: return l <= r; case 4: return l > r; default: return l >= r;
+    }
+}
+static inline int cmp_kind6_f64(double l, double r, int32_t kind)
+{
+    switch (kind % 6) {   /* NaN → 不成立（与 C# cmp_double 语义对齐） */
+        case 0: return l == r; case 1: return l != r; case 2: return l < r;
+        case 3: return l <= r; case 4: return l > r; default: return l >= r;
+    }
+}
+static inline int cmp_kind6_i64(int64_t l, int64_t r, int32_t kind)
+{
+    switch (kind % 6) {
+        case 0: return l == r; case 1: return l != r; case 2: return l < r;
+        case 3: return l <= r; case 4: return l > r; default: return l >= r;
+    }
+}
 
 int ecs_vm_run(ecs_vm *vm)
 {
@@ -2158,176 +1579,1046 @@ int ecs_vm_run(ecs_vm *vm)
     uint32_t idx = fr->ret_idx;
     int32_t steps = vm->steps;
     uint32_t opv = 0, op_start = 0, op_size = 4, op_index = 0;
-    uint8_t fmt = FMT_ABC;
     int32_t a_ = 0, b_ = 0, c_ = 0, jmp_ = 0;
     uint32_t ext_ = 0;
+#if !ECS_DIRECT_THREADED
+    uint8_t fmt = FMT_ABC;
+#endif
 
+#if ECS_DIRECT_THREADED
+    /* 派发表：标签地址按操作码值索引（computed goto，gcc/clang 扩展） */
+    static const void *const dispatch[OP_CmpJ + 1] = {
+        [OP_Nop] = &&L_OP_Nop, [OP_Halt] = &&L_OP_Halt,
+        [OP_LoadI] = &&L_OP_LoadI, [OP_LoadK] = &&L_OP_LoadK, [OP_LoadBool] = &&L_OP_LoadBool,
+        [OP_Move] = &&L_OP_Move, [OP_SetVar] = &&L_OP_SetVar,
+        [OP_LoadG] = &&L_OP_LoadG, [OP_StoreG] = &&L_OP_StoreG,
+        [OP_AddI] = &&L_OP_AddI, [OP_SubI] = &&L_OP_SubI, [OP_MulI] = &&L_OP_MulI,
+        [OP_DivI] = &&L_OP_DivI, [OP_ModI] = &&L_OP_ModI, [OP_RDivI] = &&L_OP_RDivI,
+        [OP_AddU] = &&L_OP_AddU, [OP_SubU] = &&L_OP_SubU, [OP_MulU] = &&L_OP_MulU,
+        [OP_DivU] = &&L_OP_DivU, [OP_ModU] = &&L_OP_ModU,
+        [OP_AddL] = &&L_OP_AddL, [OP_SubL] = &&L_OP_SubL, [OP_MulL] = &&L_OP_MulL,
+        [OP_DivL] = &&L_OP_DivL, [OP_ModL] = &&L_OP_ModL,
+        [OP_AddD] = &&L_OP_AddD, [OP_SubD] = &&L_OP_SubD, [OP_MulD] = &&L_OP_MulD, [OP_DivD] = &&L_OP_DivD,
+        [OP_BandI] = &&L_OP_BandI, [OP_BorI] = &&L_OP_BorI, [OP_BxorI] = &&L_OP_BxorI,
+        [OP_ShlI] = &&L_OP_ShlI, [OP_ShrI] = &&L_OP_ShrI, [OP_BnotI] = &&L_OP_BnotI,
+        [OP_EqI] = &&L_OP_EqI, [OP_LtI] = &&L_OP_LtI, [OP_LeI] = &&L_OP_LeI, [OP_GtI] = &&L_OP_GtI, [OP_GeI] = &&L_OP_GeI,
+        [OP_EqU] = &&L_OP_EqU, [OP_LtU] = &&L_OP_LtU, [OP_LeU] = &&L_OP_LeU, [OP_GtU] = &&L_OP_GtU, [OP_GeU] = &&L_OP_GeU,
+        [OP_EqD] = &&L_OP_EqD, [OP_LtD] = &&L_OP_LtD, [OP_LeD] = &&L_OP_LeD, [OP_GtD] = &&L_OP_GtD, [OP_GeD] = &&L_OP_GeD,
+        [OP_EqL] = &&L_OP_EqL, [OP_LtL] = &&L_OP_LtL, [OP_LeL] = &&L_OP_LeL, [OP_GtL] = &&L_OP_GtL, [OP_GeL] = &&L_OP_GeL,
+        [OP_EqS] = &&L_OP_EqS, [OP_EqP] = &&L_OP_EqP,
+        [OP_Not] = &&L_OP_Not, [OP_NegI] = &&L_OP_NegI, [OP_NegD] = &&L_OP_NegD, [OP_Conv] = &&L_OP_Conv,
+        [OP_Jmp] = &&L_OP_Jmp, [OP_Jpt] = &&L_OP_Jpt, [OP_Jpf] = &&L_OP_Jpf,
+        [OP_Call] = &&L_OP_Call, [OP_CallN] = &&L_OP_CallN, [OP_Ret] = &&L_OP_Ret, [OP_Ret0] = &&L_OP_Ret0,
+        [OP_NewArrV] = &&L_OP_NewArrV, [OP_NewArrE] = &&L_OP_NewArrE,
+        [OP_GetI] = &&L_OP_GetI, [OP_SetI] = &&L_OP_SetI, [OP_Slice] = &&L_OP_Slice,
+        [OP_Cont] = &&L_OP_Cont, [OP_Append] = &&L_OP_Append, [OP_Cat] = &&L_OP_Cat, [OP_Len] = &&L_OP_Len,
+        [OP_NewSt] = &&L_OP_NewSt, [OP_GetF] = &&L_OP_GetF, [OP_PutF] = &&L_OP_PutF,
+        [OP_GetFI] = &&L_OP_GetFI, [OP_PutFI] = &&L_OP_PutFI,
+        [OP_WaitI] = &&L_OP_WaitI, [OP_WaitV] = &&L_OP_WaitV,
+        [OP_KeyI] = &&L_OP_KeyI, [OP_KeyV] = &&L_OP_KeyV, [OP_KeySt] = &&L_OP_KeySt,
+        [OP_StickSet] = &&L_OP_StickSet, [OP_StickP] = &&L_OP_StickP, [OP_StickPv] = &&L_OP_StickPv,
+        [OP_Img] = &&L_OP_Img, [OP_Rand] = &&L_OP_Rand,
+        [OP_ForStep] = &&L_OP_ForStep, [OP_CmpJ] = &&L_OP_CmpJ,
+    };
+    /* 取指（线程化）：取消/预算/边界预检 + 操作码与尺寸；操作数由 handler 特化取 */
+#define VM_FETCH_TH() do { \
+    if (vm->cancel_flag) { vm->steps = steps; fr->ret_pc = pc; fr->ret_idx = idx; return ECS_CANCELLED; } \
+    if (++steps >= vm->budget) { vm->steps = 0; fr->ret_pc = pc; fr->ret_idx = idx; return ECS_YIELD; } \
+    if (pc >= cend) { vm->steps = steps; vm->error_func = fr->func_index; vm->error_pc = (int32_t)idx; return ECS_ERR_OPCODE; } \
+    opv = codebuf[pc]; \
+    op_size = (uint32_t)ECS_OP_WORDS(opv) * 4u; \
+    if (opv > OP_CmpJ || pc + op_size > cend) { vm->steps = steps; vm->error_func = fr->func_index; vm->error_pc = (int32_t)idx; return ECS_ERR_OPCODE; } \
+    op_start = pc; op_index = idx; idx++; pc += op_size; \
+} while (0)
+#define VM_CASE(op) L_##op:
+#define VM_NEXT() do { VM_FETCH_TH(); goto *dispatch[opv]; } while (0)
+#else
+#define VM_CASE(op) case op:
+#define VM_NEXT() break;
+#endif
+
+    /* 错误现场统一出口（脚本可见错误：除零/越界/类型等） */
+#define VM_FAIL(code) do { vm->steps = steps; vm->error_func = fr->func_index; vm->error_pc = (int32_t)op_index; return (code); } while (0)
+
+    /* 操作数取指（handler 按自身格式特化；回退模式由 VM_FETCH 统一解码，此处为空） */
+#if ECS_DIRECT_THREADED
+#define FETCH_OPS_ABC() do { a_ = codebuf[op_start + 1]; b_ = codebuf[op_start + 2]; c_ = codebuf[op_start + 3]; } while (0)
+#define FETCH_OPS_ABX() do { a_ = codebuf[op_start + 1]; b_ = codebuf[op_start + 2] | codebuf[op_start + 3] << 8; c_ = 0; } while (0)
+#define FETCH_OPS_SBXI() do { a_ = codebuf[op_start + 1]; b_ = (int16_t)(codebuf[op_start + 2] | codebuf[op_start + 3] << 8); c_ = 0; } while (0)
+#define FETCH_OPS_AJ() do { a_ = codebuf[op_start + 1]; jmp_ = (int16_t)(codebuf[op_start + 2] | codebuf[op_start + 3] << 8); b_ = c_ = 0; } while (0)
+#define FETCH_OPS_J() do { jmp_ = (int32_t)((codebuf[op_start + 1] | codebuf[op_start + 2] << 8 | codebuf[op_start + 3] << 16) << 8) >> 8; a_ = b_ = c_ = 0; } while (0)
+#define FETCH_OPS_WJ() do { a_ = codebuf[op_start + 1]; b_ = codebuf[op_start + 2]; c_ = codebuf[op_start + 3]; } while (0)
+#define FETCH_OPS_WEXT() do { a_ = codebuf[op_start + 1]; b_ = codebuf[op_start + 2]; c_ = codebuf[op_start + 3]; ext_ = rd_u32(codebuf + op_start + 4); } while (0)
+#else
+#define FETCH_OPS_ABC() do { } while (0)
+#define FETCH_OPS_ABX() do { } while (0)
+#define FETCH_OPS_SBXI() do { } while (0)
+#define FETCH_OPS_AJ() do { } while (0)
+#define FETCH_OPS_J() do { } while (0)
+#define FETCH_OPS_WJ() do { } while (0)
+#define FETCH_OPS_WEXT() do { } while (0)
+#endif
+
+#if ECS_DIRECT_THREADED
+    VM_NEXT();
+#else
     for (;;)
     {
         VM_FETCH();
         switch (opv)
         {
-            case OP_Nop: break;
-            case OP_Halt:
-                vm->steps = steps;
-                vm->error_func = fr->func_index;
-                vm->error_pc = (int32_t)op_index;
-                return ECS_OK;
+#endif
 
-            case OP_LoadI: store_fresh(vm, &R[a_], make_int(b_)); break;
-            case OP_LoadK:
-            {
-                const_ent *k = &vm->consts[b_];
-                switch (k->tag)
-                {
-                    /* S-20：常量串 → pinned（零拷贝引用镜像、零分配、不参与 RC） */
-                    case ECS_STRING: store_fresh(vm, &R[a_], make_static_str(b_)); break;
-                    case ECS_DOUBLE: store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_DOUBLE; R[a_].f64 = k->f64; break;
-                    case ECS_UINT64: store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT64; R[a_].i64 = k->i64; break;
-                    case ECS_PTR: store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_PTR; R[a_].i64 = k->i64; break;
-                    case ECS_UINT: store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT; R[a_].i64 = (uint32_t)k->i64; break;
-                    default: store_fresh(vm, &R[a_], make_int((int32_t)k->i64)); break;
-                }
-                break;
-            }
-            case OP_LoadBool: store_fresh(vm, &R[a_], make_bool(b_ != 0)); break;
-            case OP_Move: move_to(vm, &R[a_], R[b_]); break;
-            case OP_SetVar: store_fresh(vm, &R[a_], deep_copy_cow(vm, R[b_])); break;   /* S-01 + COW；出生引用直写 */
-            case OP_LoadG: move_to(vm, &R[a_], vm->globals[b_]); break;
-            case OP_StoreG: store_fresh(vm, &vm->globals[b_], deep_copy_cow(vm, R[a_])); break;   /* COW；出生引用直写 */
+/* ---- 杂项 ---- */
+VM_CASE(OP_Nop)
+{
+    FETCH_OPS_ABC();
+    VM_NEXT();
+}
+VM_CASE(OP_Halt)
+{
+    vm->steps = steps;
+    vm->error_func = fr->func_index;
+    vm->error_pc = (int32_t)op_index;
+    return ECS_OK;
+}
 
-            case OP_Jmp: pc = op_start + op_size + (uint32_t)jmp_; break;
-            case OP_Jpt: if (R[a_].i32 != 0) pc = op_start + op_size + (uint32_t)jmp_; break;
-            case OP_Jpf: if (R[a_].i32 == 0) pc = op_start + op_size + (uint32_t)jmp_; break;
-            case OP_CmpJ:   /* 比较跳转融合（P2′）：kind=typeBlock*6+op；数据字 = 跳转字节偏移 */
-            {
-                int taken;
-                uint32_t kind = (uint32_t)c_;
-                switch (kind / 6) {
-                    case 0: { int32_t l = R[a_].i32, r = R[b_].i32; switch (kind % 6) {
-                        case 0: taken = l == r; break; case 1: taken = l != r; break; case 2: taken = l < r; break;
-                        case 3: taken = l <= r; break; case 4: taken = l > r; break; default: taken = l >= r; break; } } break;
-                    case 1: { uint32_t l = (uint32_t)R[a_].i32, r = (uint32_t)R[b_].i32; switch (kind % 6) {
-                        case 0: taken = l == r; break; case 1: taken = l != r; break; case 2: taken = l < r; break;
-                        case 3: taken = l <= r; break; case 4: taken = l > r; break; default: taken = l >= r; break; } } break;
-                    case 2: { double l = R[a_].f64, r = R[b_].f64; switch (kind % 6) {
-                        case 0: taken = l == r; break; case 1: taken = l != r; break; case 2: taken = l < r; break;
-                        case 3: taken = l <= r; break; case 4: taken = l > r; break; default: taken = l >= r; break; } } break;
-                    default: { int64_t l = R[a_].i64, r = R[b_].i64; switch (kind % 6) {
-                        case 0: taken = l == r; break; case 1: taken = l != r; break; case 2: taken = l < r; break;
-                        case 3: taken = l <= r; break; case 4: taken = l > r; break; default: taken = l >= r; break; } } break;
-                }
-                if (taken) pc = op_start + op_size + (uint32_t)rd_u32(codebuf + op_start + 4);
-                break;
-            }
+/* ---- 常量与移动 ---- */
+VM_CASE(OP_LoadI)
+{
+    FETCH_OPS_SBXI();
+    store_fresh(vm, &R[a_], make_int(b_));
+    VM_NEXT();
+}
+VM_CASE(OP_LoadK)
+{
+    FETCH_OPS_ABX();
+    const_ent *k = &vm->consts[b_];
+    switch (k->tag)
+    {
+        /* S-20：常量串 → pinned（零拷贝引用镜像、零分配、不参与 RC） */
+        case ECS_STRING: store_fresh(vm, &R[a_], make_static_str(b_)); break;
+        case ECS_DOUBLE: store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_DOUBLE; R[a_].f64 = k->f64; break;
+        case ECS_UINT64: store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT64; R[a_].i64 = k->i64; break;
+        case ECS_PTR: store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_PTR; R[a_].i64 = k->i64; break;
+        case ECS_UINT: store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT; R[a_].i64 = (uint32_t)k->i64; break;
+        default: store_fresh(vm, &R[a_], make_int((int32_t)k->i64)); break;
+    }
+    VM_NEXT();
+}
+VM_CASE(OP_LoadBool)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(b_ != 0));
+    VM_NEXT();
+}
+VM_CASE(OP_Move)
+{
+    FETCH_OPS_ABC();
+    move_to(vm, &R[a_], R[b_]);
+    VM_NEXT();
+}
+VM_CASE(OP_SetVar)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], deep_copy_cow(vm, R[b_]));   /* S-01 + COW；出生引用直写 */
+    VM_NEXT();
+}
+VM_CASE(OP_LoadG)
+{
+    FETCH_OPS_ABX();
+    move_to(vm, &R[a_], vm->globals[b_]);
+    VM_NEXT();
+}
+VM_CASE(OP_StoreG)
+{
+    FETCH_OPS_ABX();
+    store_fresh(vm, &vm->globals[b_], deep_copy_cow(vm, R[a_]));   /* COW；出生引用直写 */
+    VM_NEXT();
+}
 
-            case OP_Call:
-            {
-                fr->ret_pc = pc;          /* 调用者续跑点（下一条指令）：仅调用边界写回 */
-                fr->ret_idx = op_index + 1;
-                int rc = push_frame(vm, &vm->funcs[ext_], (int32_t)ext_);
-                if (rc != 0)
-                {
-                    vm->steps = steps;
-                    vm->error_func = fr->func_index; vm->error_pc = (int32_t)op_index;
-                    return rc;
-                }
-                frame *nf = vm->frames[vm->depth - 1];
-                nf->ret_pc = 0;
-                nf->ret_idx = 0;
-                nf->ret_slot = c_;
-                for (int32_t i = 0; i < b_; i++)
-                    store_fresh(vm, &nf->slots[i], deep_copy_cow(vm, R[a_ + i]));   /* S-17 实参深拷贝 */
-                fr = nf; codebuf = fr->fn->code; cend = fr->fn->code_bytes; R = fr->slots; pc = 0; idx = fr->ret_idx;
-                break;
-            }
-            case OP_CallN:
-            {
-                /* 旗标置位 = 文件族 syscall 编号（VM2.md §9.1）；否则原生名表索引 */
-                ecs_value args[8];
-                for (int32_t i = 0; i < b_; i++)
-                    args[i] = R[a_ + i];
-                int nerr = 0;
-                ecs_value ret = void_value();
-                if ((ext_ & ECS_SYSCALL_FLAG) != 0)
-                {
-                    /* L2：编号 syscall，语义在宿主参考实现（VM 核纯调度）；
-                     * S-21：miss → 缺省值表降级，strict_caps 或表外编号 → 响亮 */
-                    int32_t sid = (int32_t)(ext_ & ~ECS_SYSCALL_FLAG);
-                    if (vm->host.syscall && vm->host.syscall(vm->host.ud, sid, args, b_, &ret) == 0)
-                        nerr = 0;
-                    else if (!vm->host.strict_caps && ecs_cap_syscall_default(vm, sid, args, &ret))
-                        nerr = 0;
-                    else
-                        nerr = 1;
-                }
-                else
-                {
-                    /* L3：名表动态原生（采集洞 / EXTERN FFI / ENCODE / JQ）；
-                     * S-21：miss → 缺省值表降级（FFI → 0、采集/OCR/ENCODE/JQ → 空串、NET 族 →
-                     * 句柄/长度/元素缺省），strict_caps 或表外未知名 → 响亮 */
-                    if (vm->host.native && vm->host.native(vm->host.ud, vm->natives[ext_], args, b_, &ret) == 0)
-                        nerr = 0;
-                    else if (!vm->host.strict_caps && ecs_cap_native_default(vm, vm->natives[ext_], &ret))
-                        nerr = 0;
-                    else
-                        nerr = 1;
-                }
-                if (nerr)
-                {
-                    vm->steps = steps;
-                    vm->error_func = fr->func_index; vm->error_pc = (int32_t)op_index;
-                    return ECS_ERR_NOSUCHNATIVE;
-                }
-                if (c_ != ECS_NO_SLOT)
-                    move_to(vm, &R[c_], ret);
-                break;
-            }
-            case OP_Ret:
-            {
-                /* 拷贝到调用者接收槽（S-17；COW：唯一引用移交）；值须跨弹帧持有 */
-                ecs_value copied = deep_copy_cow(vm, R[a_]);
-                int32_t ret_slot = fr->ret_slot;
-                pop_frame(vm, fr);
-                if (vm->depth == 0) { vm->steps = steps; return ECS_OK; }
-                fr = vm->frames[vm->depth - 1];
-                codebuf = fr->fn->code; cend = fr->fn->code_bytes; R = fr->slots; pc = fr->ret_pc; idx = fr->ret_idx;
-                if (ret_slot != ECS_NO_SLOT)
-                    store_fresh(vm, &R[ret_slot], copied);   /* 出生引用直写（对齐 EcxInterpreter.Ret） */
-                else
-                    release(vm, copied);
-                break;
-            }
-            case OP_Ret0:
-            {
-                pop_frame(vm, fr);
-                if (vm->depth == 0) { vm->steps = steps; return ECS_OK; }
-                fr = vm->frames[vm->depth - 1];
-                codebuf = fr->fn->code; cend = fr->fn->code_bytes; R = fr->slots; pc = fr->ret_pc; idx = fr->ret_idx;
-                break;
-            }
-            case OP_ForStep:   /* FOR 快速路径：tmp=i+1 写 R[c]；tmp>limit → 跳 exit（数据字）；否则落入后继 */
-            {
-                int32_t next = (int32_t)((uint32_t)R[a_].i32 + 1u);
-                store_fresh(vm, &R[c_], make_int(next));
-                if (next > R[b_].i32)
-                    pc = op_start + op_size + (uint32_t)rd_u32(codebuf + op_start + 4);   /* 出口字延迟读 */
-                break;
-            }
+/* ---- 算术（S-02/S-05；无符号回绕对齐 C# unchecked） ---- */
+VM_CASE(OP_AddI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int((int32_t)((uint32_t)R[b_].i32 + (uint32_t)R[c_].i32)));
+    VM_NEXT();
+}
+VM_CASE(OP_SubI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int((int32_t)((uint32_t)R[b_].i32 - (uint32_t)R[c_].i32)));
+    VM_NEXT();
+}
+VM_CASE(OP_MulI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int((int32_t)((uint32_t)R[b_].i32 * (uint32_t)R[c_].i32)));
+    VM_NEXT();
+}
+VM_CASE(OP_DivI)
+{
+    FETCH_OPS_ABC();
+    if (R[c_].i32 == 0) VM_FAIL(ECS_ERR_DIVZERO);
+    store_fresh(vm, &R[a_], make_int(R[c_].i32 == -1 ? (int32_t)(0u - (uint32_t)R[b_].i32) : R[b_].i32 / R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_ModI)
+{
+    FETCH_OPS_ABC();
+    if (R[c_].i32 == 0) VM_FAIL(ECS_ERR_DIVZERO);
+    store_fresh(vm, &R[a_], make_int(R[c_].i32 == -1 ? 0 : R[b_].i32 % R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_RDivI)   /* S-05：`（a + b/2) / b` */
+{
+    FETCH_OPS_ABC();
+    if (R[c_].i32 == 0) VM_FAIL(ECS_ERR_DIVZERO);
+    int32_t num = (int32_t)((uint32_t)R[b_].i32 + (uint32_t)(R[c_].i32 / 2));
+    store_fresh(vm, &R[a_], make_int(R[c_].i32 == -1 ? (int32_t)(0u - (uint32_t)num) : num / R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_AddU)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT; R[a_].i64 = (uint32_t)R[b_].i32 + (uint32_t)R[c_].i32;
+    VM_NEXT();
+}
+VM_CASE(OP_SubU)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT; R[a_].i64 = (uint32_t)R[b_].i32 - (uint32_t)R[c_].i32;
+    VM_NEXT();
+}
+VM_CASE(OP_MulU)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT; R[a_].i64 = (uint32_t)R[b_].i32 * (uint32_t)R[c_].i32;
+    VM_NEXT();
+}
+VM_CASE(OP_DivU)
+{
+    FETCH_OPS_ABC();
+    if ((uint32_t)R[c_].i32 == 0) VM_FAIL(ECS_ERR_DIVZERO);
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT; R[a_].i64 = (uint32_t)R[b_].i32 / (uint32_t)R[c_].i32;
+    VM_NEXT();
+}
+VM_CASE(OP_ModU)
+{
+    FETCH_OPS_ABC();
+    if ((uint32_t)R[c_].i32 == 0) VM_FAIL(ECS_ERR_DIVZERO);
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT; R[a_].i64 = (uint32_t)R[b_].i32 % (uint32_t)R[c_].i32;
+    VM_NEXT();
+}
+VM_CASE(OP_AddL)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT64; R[a_].i64 = (int64_t)((uint64_t)R[b_].i64 + (uint64_t)R[c_].i64);
+    VM_NEXT();
+}
+VM_CASE(OP_SubL)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT64; R[a_].i64 = (int64_t)((uint64_t)R[b_].i64 - (uint64_t)R[c_].i64);
+    VM_NEXT();
+}
+VM_CASE(OP_MulL)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT64; R[a_].i64 = (int64_t)((uint64_t)R[b_].i64 * (uint64_t)R[c_].i64);
+    VM_NEXT();
+}
+VM_CASE(OP_DivL)
+{
+    FETCH_OPS_ABC();
+    if (R[c_].i64 == 0) VM_FAIL(ECS_ERR_DIVZERO);
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT64;
+    R[a_].i64 = R[c_].i64 == -1 ? (int64_t)(0ULL - (uint64_t)R[b_].i64) : R[b_].i64 / R[c_].i64;
+    VM_NEXT();
+}
+VM_CASE(OP_ModL)
+{
+    FETCH_OPS_ABC();
+    if (R[c_].i64 == 0) VM_FAIL(ECS_ERR_DIVZERO);
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_UINT64;
+    R[a_].i64 = R[c_].i64 == -1 ? 0 : R[b_].i64 % R[c_].i64;
+    VM_NEXT();
+}
+VM_CASE(OP_AddD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_DOUBLE; R[a_].f64 = R[b_].f64 + R[c_].f64;
+    VM_NEXT();
+}
+VM_CASE(OP_SubD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_DOUBLE; R[a_].f64 = R[b_].f64 - R[c_].f64;
+    VM_NEXT();
+}
+VM_CASE(OP_MulD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_DOUBLE; R[a_].f64 = R[b_].f64 * R[c_].f64;
+    VM_NEXT();
+}
+VM_CASE(OP_DivD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_DOUBLE; R[a_].f64 = R[b_].f64 / R[c_].f64;
+    VM_NEXT();
+}
 
-            default:
-            {
-                int rc = exec_data_op(vm, opv, R, a_, b_, c_, ext_);
-                if (rc != 0)
-                {
-                    vm->steps = steps;
-                    vm->error_func = fr->func_index;
-                    vm->error_pc = (int32_t)op_index;
-                    return rc;
-                }
-                break;
-            }
+/* ---- 位运算（S-03 掩码；左移用无符号回绕） ---- */
+VM_CASE(OP_BandI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int(R[b_].i32 & R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_BorI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int(R[b_].i32 | R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_BxorI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int(R[b_].i32 ^ R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_ShlI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int((int32_t)((uint32_t)R[b_].i32 << (R[c_].i32 & 31))));
+    VM_NEXT();
+}
+VM_CASE(OP_ShrI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int(R[b_].i32 >> (R[c_].i32 & 31)));
+    VM_NEXT();
+}
+VM_CASE(OP_BnotI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int((int32_t)(~(uint32_t)R[b_].i32)));
+    VM_NEXT();
+}
+
+/* ---- 比较 ---- */
+VM_CASE(OP_EqI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i32 == R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_LtI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i32 < R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_LeI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i32 <= R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_GtI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i32 > R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_GeI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i32 >= R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_EqU)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool((uint32_t)R[b_].i32 == (uint32_t)R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_LtU)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool((uint32_t)R[b_].i32 < (uint32_t)R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_LeU)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool((uint32_t)R[b_].i32 <= (uint32_t)R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_GtU)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool((uint32_t)R[b_].i32 > (uint32_t)R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_GeU)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool((uint32_t)R[b_].i32 >= (uint32_t)R[c_].i32));
+    VM_NEXT();
+}
+VM_CASE(OP_EqD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(cmp_double(R[b_].f64, R[c_].f64) == 0));
+    VM_NEXT();
+}
+VM_CASE(OP_LtD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(cmp_double(R[b_].f64, R[c_].f64) < 0));
+    VM_NEXT();
+}
+VM_CASE(OP_LeD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(cmp_double(R[b_].f64, R[c_].f64) <= 0));
+    VM_NEXT();
+}
+VM_CASE(OP_GtD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(cmp_double(R[b_].f64, R[c_].f64) > 0));
+    VM_NEXT();
+}
+VM_CASE(OP_GeD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(cmp_double(R[b_].f64, R[c_].f64) >= 0));
+    VM_NEXT();
+}
+VM_CASE(OP_EqL)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i64 == R[c_].i64));
+    VM_NEXT();
+}
+VM_CASE(OP_LtL)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i64 < R[c_].i64));
+    VM_NEXT();
+}
+VM_CASE(OP_LeL)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i64 <= R[c_].i64));
+    VM_NEXT();
+}
+VM_CASE(OP_GtL)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i64 > R[c_].i64));
+    VM_NEXT();
+}
+VM_CASE(OP_GeL)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i64 >= R[c_].i64));
+    VM_NEXT();
+}
+VM_CASE(OP_EqS)
+{
+    FETCH_OPS_ABC();
+    const uint16_t *lx, *ly; int32_t llx, lly;
+    str_or_null(vm, R[b_], &lx, &llx);
+    str_or_null(vm, R[c_], &ly, &lly);
+    store_fresh(vm, &R[a_], make_bool(units_equal(lx, llx, ly, lly)));
+    VM_NEXT();
+}
+VM_CASE(OP_EqP)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i64 == R[c_].i64));
+    VM_NEXT();
+}
+
+/* ---- 一元与转换 ---- */
+VM_CASE(OP_Not)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_bool(R[b_].i32 == 0));
+    VM_NEXT();
+}
+VM_CASE(OP_NegI)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], make_int((int32_t)(0u - (uint32_t)R[b_].i32)));
+    VM_NEXT();
+}
+VM_CASE(OP_NegD)
+{
+    FETCH_OPS_ABC();
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_DOUBLE; R[a_].f64 = -R[b_].f64;
+    VM_NEXT();
+}
+VM_CASE(OP_Conv)
+{
+    FETCH_OPS_ABC();
+    int err = 0;
+    ecs_value r = do_conv(vm, (uint32_t)c_, R[b_], &err);
+    if (err == 2) VM_FAIL(ECS_ERR_POOL);
+    if (err) VM_FAIL(ECS_ERR_TYPE);
+    store_fresh(vm, &R[a_], r);
+    VM_NEXT();
+}
+
+/* ---- 控制流 ---- */
+VM_CASE(OP_Jmp)
+{
+    FETCH_OPS_J();
+    pc = op_start + op_size + (uint32_t)jmp_;
+    VM_NEXT();
+}
+VM_CASE(OP_Jpt)
+{
+    FETCH_OPS_AJ();
+    if (R[a_].i32 != 0) pc = op_start + op_size + (uint32_t)jmp_;
+    VM_NEXT();
+}
+VM_CASE(OP_Jpf)
+{
+    FETCH_OPS_AJ();
+    if (R[a_].i32 == 0) pc = op_start + op_size + (uint32_t)jmp_;
+    VM_NEXT();
+}
+
+/* ---- 调用（EXT：目标 ID；接收槽 C 恒为寄存器，0 = RET） ---- */
+VM_CASE(OP_Call)
+{
+    FETCH_OPS_WEXT();
+    fr->ret_pc = pc;          /* 调用者续跑点（下一条指令）：仅调用边界写回 */
+    fr->ret_idx = op_index + 1;
+    int rc = push_frame(vm, &vm->funcs[ext_], (int32_t)ext_);
+    if (rc != 0)
+    {
+        vm->steps = steps;
+        vm->error_func = fr->func_index; vm->error_pc = (int32_t)op_index;
+        return rc;
+    }
+    frame *nf = vm->frames[vm->depth - 1];
+    nf->ret_pc = 0;
+    nf->ret_idx = 0;
+    nf->ret_slot = c_;
+    for (int32_t i = 0; i < b_; i++)
+        store_fresh(vm, &nf->slots[ECS_REG_ARG_BASE + i], deep_copy_cow(vm, R[a_ + i]));   /* S-17 实参深拷贝 → ARG 窗 */
+    fr = nf; codebuf = fr->fn->code; cend = fr->fn->code_bytes; R = fr->slots; pc = 0; idx = fr->ret_idx;
+    VM_NEXT();
+}
+VM_CASE(OP_CallN)
+{
+    FETCH_OPS_WEXT();
+    /* 旗标置位 = 编号 syscall（VM2.md §9.1）；否则原生名表索引。
+     * S-21：miss → 缺省值表降级，strict_caps 或表外 → 响亮。 */
+    ecs_value args[8];
+    for (int32_t i = 0; i < b_; i++)
+        args[i] = R[a_ + i];
+    int nerr = 0;
+    ecs_value ret = void_value();
+    if ((ext_ & ECS_SYSCALL_FLAG) != 0)
+    {
+        int32_t sid = (int32_t)(ext_ & ~ECS_SYSCALL_FLAG);
+        if (vm->host.syscall && vm->host.syscall(vm->host.ud, sid, args, b_, &ret) == 0)
+            nerr = 0;
+        else if (!vm->host.strict_caps && ecs_cap_syscall_default(vm, sid, args, &ret))
+            nerr = 0;
+        else
+            nerr = 1;
+    }
+    else
+    {
+        if (vm->host.native && vm->host.native(vm->host.ud, vm->natives[ext_], args, b_, &ret) == 0)
+            nerr = 0;
+        else if (!vm->host.strict_caps && ecs_cap_native_default(vm, vm->natives[ext_], &ret))
+            nerr = 0;
+        else
+            nerr = 1;
+    }
+    if (nerr)
+    {
+        vm->steps = steps;
+        vm->error_func = fr->func_index; vm->error_pc = (int32_t)op_index;
+        return ECS_ERR_NOSUCHNATIVE;
+    }
+    move_to(vm, &R[c_], ret);   /* 接收寄存器（0 = RET 固定落点） */
+    if (vm->cancel_flag)
+    {
+        vm->steps = steps;
+        fr->ret_pc = pc; fr->ret_idx = op_index + 1;
+        return ECS_CANCELLED;   /* 宿主调用后即时取消（PRINT/READ/WAIT 类长延迟感知点） */
+    }
+    VM_NEXT();
+}
+VM_CASE(OP_Ret)
+{
+    FETCH_OPS_ABC();
+    /* 拷贝到调用者接收槽（S-17；COW：唯一引用移交）；值须跨弹帧持有 */
+    ecs_value copied = deep_copy_cow(vm, R[a_]);
+    int32_t ret_slot = fr->ret_slot;
+    pop_frame(vm, fr);
+    if (vm->depth == 0) { vm->steps = steps; return ECS_OK; }
+    fr = vm->frames[vm->depth - 1];
+    codebuf = fr->fn->code; cend = fr->fn->code_bytes; R = fr->slots; pc = fr->ret_pc; idx = fr->ret_idx;
+    store_fresh(vm, &R[ret_slot], copied);   /* 出生引用直写（对齐 EcxInterpreter.Ret） */
+    VM_NEXT();
+}
+VM_CASE(OP_Ret0)
+{
+    pop_frame(vm, fr);
+    if (vm->depth == 0) { vm->steps = steps; return ECS_OK; }
+    fr = vm->frames[vm->depth - 1];
+    codebuf = fr->fn->code; cend = fr->fn->code_bytes; R = fr->slots; pc = fr->ret_pc; idx = fr->ret_idx;
+    VM_NEXT();
+}
+
+/* ---- 数组 / 字符串 ---- */
+VM_CASE(OP_NewArrV)
+{
+    FETCH_OPS_WEXT();
+    int32_t h = hnew_arr(vm, (uint8_t)ext_, 0, b_);
+    if (h < 0) VM_FAIL(ECS_ERR_POOL);
+    ecs_obj *o = obj_at(vm, h);
+    for (int32_t i = 0; i < b_; i++)
+        arr_overwrite(vm, o, i, R[c_ + i]);
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_ARRAY; R[a_].i64 = h;
+    VM_NEXT();
+}
+VM_CASE(OP_NewArrE)
+{
+    FETCH_OPS_ABX();
+    int32_t h = hnew_arr(vm, (uint8_t)b_, 0, 0);
+    if (h < 0) VM_FAIL(ECS_ERR_POOL);
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_ARRAY; R[a_].i64 = h;
+    VM_NEXT();
+}
+VM_CASE(OP_GetI)
+{
+    FETCH_OPS_ABC();
+    ecs_value container = R[b_];
+    int32_t idx = R[c_].i32;
+    if (container.tag == ECS_STRING)
+    {
+        const uint16_t *u; int32_t len;
+        str_or_null(vm, container, &u, &len);
+        if (idx < 0 || idx >= len) VM_FAIL(ECS_ERR_INDEX);
+        store_fresh(vm, &R[a_], new_str_units(vm, u ? u + idx : NULL, 1));
+    }
+    else
+    {
+        ecs_obj *arr = heap_obj(vm, (int32_t)container.i64);
+        if (!arr || container.tag != ECS_ARRAY) VM_FAIL(ECS_ERR_TYPE);
+        if (idx < 0 || idx >= arr->h.len) VM_FAIL(ECS_ERR_INDEX);
+        /* S-10 按 elem tag 归一读 */
+        ecs_value item = arr_get(vm, arr, idx);
+        if (OBJ_ETAG(arr->h.flags) == ECS_BYTE) { item.tag = ECS_BYTE; item.i32 &= 0xFF; }
+        else if (OBJ_ETAG(arr->h.flags) == ECS_BOOL) { item = make_bool(item.i32 != 0); }
+        move_to(vm, &R[a_], item);
+    }
+    VM_NEXT();
+}
+VM_CASE(OP_SetI)
+{
+    FETCH_OPS_ABC();
+    ecs_obj *arr = heap_obj(vm, (int32_t)R[b_].i64);
+    if (!arr || R[b_].tag != ECS_ARRAY) VM_FAIL(ECS_ERR_TYPE);
+    int32_t idx = R[c_].i32;
+    if (idx < 0 || idx >= arr->h.len) VM_FAIL(ECS_ERR_INDEX);
+    ecs_value v = R[a_];
+    if (OBJ_ETAG(arr->h.flags) == ECS_BOOL) v = make_bool(v.i32 != 0);   /* CoerceWrite */
+    arr_overwrite(vm, arr, idx, v);
+    VM_NEXT();
+}
+VM_CASE(OP_Slice)
+{
+    FETCH_OPS_WEXT();
+    ecs_value container = R[b_];
+    int32_t start = R[c_].i32;
+    if (container.tag == ECS_STRING)
+    {
+        const uint16_t *u; int32_t len;
+        str_or_null(vm, container, &u, &len);
+        int32_t end = ext_ == 0xFFFFFFFFu ? len : R[(int32_t)ext_].i32;
+        if (start < 0 || start > len || end > len || start > end) VM_FAIL(ECS_ERR_INDEX);
+        store_fresh(vm, &R[a_], new_str_units(vm, u ? u + start : NULL, end - start));
+    }
+    else
+    {
+        ecs_obj *arr = heap_obj(vm, (int32_t)container.i64);
+        if (!arr || container.tag != ECS_ARRAY) VM_FAIL(ECS_ERR_TYPE);
+        int32_t end = ext_ == 0xFFFFFFFFu ? arr->h.len : R[(int32_t)ext_].i32;
+        if (start < 0 || start > arr->h.len || end > arr->h.len || start > end) VM_FAIL(ECS_ERR_INDEX);
+        int32_t h = hnew_arr(vm, OBJ_ETAG(arr->h.flags), arr->h.sid, end - start);
+        if (h < 0) VM_FAIL(ECS_ERR_POOL);
+        ecs_obj *dst = obj_at(vm, h);
+        for (int32_t i = start; i < end; i++)
+            arr_overwrite(vm, dst, i - start, arr_get(vm, arr, i));
+        store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_ARRAY; R[a_].i64 = h;
+    }
+    VM_NEXT();
+}
+VM_CASE(OP_Cont)   /* S-09 */
+{
+    FETCH_OPS_ABC();
+    ecs_value item = R[b_];
+    ecs_value container = R[c_];
+    if (container.tag == ECS_STRING)
+    {
+        const uint16_t *hay; int32_t hlen;
+        str_or_null(vm, container, &hay, &hlen);
+        if (item.tag != ECS_STRING) VM_FAIL(ECS_ERR_TYPE);
+        const uint16_t *sub; int32_t slen;
+        str_or_null(vm, item, &sub, &slen);
+        store_fresh(vm, &R[a_], make_bool(units_contains(hay, hlen, sub, slen)));
+    }
+    else if (container.tag == ECS_ARRAY)
+    {
+        ecs_obj *arr = heap_obj(vm, (int32_t)container.i64);
+        if (!arr) VM_FAIL(ECS_ERR_TYPE);
+        if (item.tag != OBJ_ETAG(arr->h.flags))
+            store_fresh(vm, &R[a_], make_bool(0));   /* 元素类型不匹配 → false */
+        else
+        {
+            int found = 0;
+            for (int32_t i = 0; i < arr->h.len; i++)
+                if (value_equals(vm, arr_get(vm, arr, i), item)) { found = 1; break; }
+            store_fresh(vm, &R[a_], make_bool(found));
         }
     }
+    else
+        VM_FAIL(ECS_ERR_TYPE);
+    VM_NEXT();
 }
-#undef VM_FETCH
+VM_CASE(OP_Append)
+{
+    FETCH_OPS_ABC();
+    ecs_obj *src = heap_obj(vm, (int32_t)R[b_].i64);
+    if (!src || R[b_].tag != ECS_ARRAY) VM_FAIL(ECS_ERR_TYPE);
+    int32_t h = hnew_arr(vm, OBJ_ETAG(src->h.flags), src->h.sid, src->h.len + 1);
+    if (h < 0) VM_FAIL(ECS_ERR_POOL);
+    ecs_obj *dst = obj_at(vm, h);
+    for (int32_t i = 0; i < src->h.len; i++)
+        arr_overwrite(vm, dst, i, arr_get(vm, src, i));
+    arr_overwrite(vm, dst, src->h.len, R[c_]);
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_ARRAY; R[a_].i64 = h;
+    VM_NEXT();
+}
+VM_CASE(OP_Cat)   /* S-11 */
+{
+    FETCH_OPS_ABC();
+    ecs_value l = R[b_], r = R[c_];
+    if (l.tag == ECS_STRING || r.tag == ECS_STRING)
+    {
+        strbuf sb; memset(&sb, 0, sizeof(sb));
+        tostring_top(vm, &sb, l);
+        tostring_top(vm, &sb, r);
+        if (sb.overflow) VM_FAIL(ECS_ERR_POOL);
+        store_fresh(vm, &R[a_], new_str_units(vm, sb.units, sb.len));
+    }
+    else if (l.tag == ECS_ARRAY && r.tag == ECS_ARRAY)
+    {
+        ecs_obj *la = heap_obj(vm, (int32_t)l.i64);
+        ecs_obj *ra = heap_obj(vm, (int32_t)r.i64);
+        if (!la || !ra) VM_FAIL(ECS_ERR_TYPE);
+        if (OBJ_ETAG(la->h.flags) != OBJ_ETAG(ra->h.flags)) VM_FAIL(ECS_ERR_TYPE);
+        int32_t h = hnew_arr(vm, OBJ_ETAG(la->h.flags), la->h.sid, la->h.len + ra->h.len);
+        if (h < 0) VM_FAIL(ECS_ERR_POOL);
+        ecs_obj *dst = obj_at(vm, h);
+        for (int32_t i = 0; i < la->h.len; i++)
+            arr_overwrite(vm, dst, i, arr_get(vm, la, i));
+        for (int32_t i = 0; i < ra->h.len; i++)
+            arr_overwrite(vm, dst, la->h.len + i, arr_get(vm, ra, i));
+        store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_ARRAY; R[a_].i64 = h;
+    }
+    else
+        VM_FAIL(ECS_ERR_TYPE);
+    VM_NEXT();
+}
+VM_CASE(OP_Len)
+{
+    FETCH_OPS_ABC();
+    if (R[b_].tag == ECS_STRING)
+    {
+        const uint16_t *u; int32_t len;
+        str_or_null(vm, R[b_], &u, &len);
+        store_fresh(vm, &R[a_], make_int(len));
+    }
+    else if (R[b_].tag == ECS_ARRAY)
+    {
+        ecs_obj *arr = heap_obj(vm, (int32_t)R[b_].i64);
+        if (!arr) VM_FAIL(ECS_ERR_TYPE);
+        store_fresh(vm, &R[a_], make_int(arr->h.len));
+    }
+    else VM_FAIL(ECS_ERR_TYPE);
+    VM_NEXT();
+}
+
+/* ---- 结构体 ---- */
+VM_CASE(OP_NewSt)
+{
+    FETCH_OPS_ABX();
+    int32_t sid = b_;
+    if (sid >= vm->nstructs) VM_FAIL(ECS_ERR_SLOT);
+    int32_t h = hnew_st(vm, &vm->structs[sid]);
+    if (h < 0) VM_FAIL(ECS_ERR_POOL);
+    store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_STRUCT; R[a_].i64 = h;
+    VM_NEXT();
+}
+VM_CASE(OP_GetF)
+{
+    FETCH_OPS_ABC();
+    ecs_obj *st = heap_obj(vm, (int32_t)R[b_].i64);
+    if (!st || R[b_].tag != ECS_STRUCT) VM_FAIL(ECS_ERR_TYPE);
+    const ecs_structdef *def = &vm->structs[st->h.sid];
+    if (c_ >= def->nfields) VM_FAIL(ECS_ERR_SLOT);
+    const ecs_fielddef *f = &def->fields[c_];
+    ecs_value *slots = (ecs_value *)OBJ_PAYLOAD(st);
+    do
+    {
+        switch (f->kind)
+        {
+            case 0:   /* Scalar */
+                if (f->type == ECS_BYTE) { store_fresh(vm, &R[a_], slots[f->slot_offset]); R[a_].tag = ECS_BYTE; R[a_].i32 &= 0xFF; }
+                else if (f->type == ECS_BOOL) store_fresh(vm, &R[a_], make_bool(slots[f->slot_offset].i32 != 0));
+                else { move_to(vm, &R[a_], slots[f->slot_offset]); }
+                break;
+            case FIELD_KIND_FIXED_ARRAY:
+            {
+                int32_t h = hnew_arr(vm, f->elem, 0, f->ext);
+                if (h < 0) VM_FAIL(ECS_ERR_POOL);
+                ecs_obj *dst = obj_at(vm, h);
+                for (int32_t i = 0; i < f->ext; i++)
+                    arr_overwrite(vm, dst, i, slots[f->slot_offset + i]);
+                store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_ARRAY; R[a_].i64 = h;
+                break;
+            }
+            case FIELD_KIND_NESTED:
+            {
+                const ecs_structdef *nested = &vm->structs[f->ext];
+                int32_t h = hnew_st(vm, nested);
+                if (h < 0) VM_FAIL(ECS_ERR_POOL);
+                ecs_obj *dst = obj_at(vm, h);
+                ecs_value *dslots = (ecs_value *)OBJ_PAYLOAD(dst);
+                for (int32_t i = 0; i < nested->nslots; i++)
+                {
+                    dslots[i] = slots[f->slot_offset + i];
+                    retain(vm, dslots[i]);
+                }
+                /* 写穿透视图（对齐 v1 GetNested / 解释器 ViewParent）：记录父链，
+                   后续槽写入经 sync_view 逐级回写父槽区 */
+                dst->h.view_parent = (int32_t)R[b_].i64;
+                dst->h.view_offset = f->slot_offset;
+                retain(vm, R[b_]);
+                store_fresh(vm, &R[a_], void_value()); R[a_].tag = ECS_STRUCT; R[a_].i64 = h;
+                break;
+            }
+            default: VM_FAIL(ECS_ERR_TYPE);   /* Boxed 不受支持（S-16） */
+        }
+    } while (0);   /* 内层 switch：break 语义隔离（线程化模式无外层 switch） */
+    VM_NEXT();
+}
+VM_CASE(OP_PutF)
+{
+    FETCH_OPS_ABC();
+    ecs_obj *st = heap_obj(vm, (int32_t)R[b_].i64);
+    if (!st || R[b_].tag != ECS_STRUCT) VM_FAIL(ECS_ERR_TYPE);
+    const ecs_structdef *def = &vm->structs[st->h.sid];
+    if (c_ >= def->nfields) VM_FAIL(ECS_ERR_SLOT);
+    const ecs_fielddef *f = &def->fields[c_];
+    ecs_value *slots = (ecs_value *)OBJ_PAYLOAD(st);
+    if (f->kind == 0)
+    {
+        ecs_value v = R[a_];
+        if (f->type == ECS_BOOL) v = make_bool(v.i32 != 0);
+        move_to(vm, &slots[f->slot_offset], v);
+        if (st->h.view_parent) sync_view(vm, st);
+    }
+    else if (f->kind == FIELD_KIND_NESTED)
+    {
+        ecs_obj *src = heap_obj(vm, (int32_t)R[a_].i64);
+        if (!src || R[a_].tag != ECS_STRUCT) VM_FAIL(ECS_ERR_TYPE);
+        /* 对齐校验：src 槽数 vs 字段嵌套类型槽数（与 GetF 取嵌套布局一致） */
+        const ecs_structdef *nested_put = &vm->structs[f->ext];
+        const ecs_structdef *src_def = &vm->structs[src->h.sid];
+        if (src_def->nslots != nested_put->nslots) VM_FAIL(ECS_ERR_TYPE);
+        ecs_value *sslots = (ecs_value *)OBJ_PAYLOAD(src);
+        for (int32_t i = 0; i < src_def->nslots; i++)
+        {
+            release(vm, slots[f->slot_offset + i]);
+            slots[f->slot_offset + i] = sslots[i];
+            retain(vm, slots[f->slot_offset + i]);
+        }
+        if (st->h.view_parent) sync_view(vm, st);
+    }
+    else VM_FAIL(ECS_ERR_TYPE);
+    VM_NEXT();
+}
+VM_CASE(OP_GetFI)
+{
+    FETCH_OPS_WEXT();
+    ecs_obj *st = heap_obj(vm, (int32_t)R[b_].i64);
+    if (!st || R[b_].tag != ECS_STRUCT) VM_FAIL(ECS_ERR_TYPE);
+    const ecs_structdef *def = &vm->structs[st->h.sid];
+    if (c_ >= def->nfields) VM_FAIL(ECS_ERR_SLOT);
+    const ecs_fielddef *f = &def->fields[c_];
+    if (f->kind != FIELD_KIND_FIXED_ARRAY) VM_FAIL(ECS_ERR_TYPE);
+    int32_t idx = R[(int32_t)ext_].i32;
+    if (idx < 0 || idx >= f->ext) VM_FAIL(ECS_ERR_INDEX);
+    ecs_value item = ((ecs_value *)OBJ_PAYLOAD(st))[f->slot_offset + idx];
+    if (f->type == ECS_BYTE) { item.tag = ECS_BYTE; item.i32 &= 0xFF; }
+    else if (f->type == ECS_BOOL) item = make_bool(item.i32 != 0);
+    move_to(vm, &R[a_], item);
+    VM_NEXT();
+}
+VM_CASE(OP_PutFI)
+{
+    FETCH_OPS_WEXT();
+    ecs_obj *st = heap_obj(vm, (int32_t)R[b_].i64);
+    if (!st || R[b_].tag != ECS_STRUCT) VM_FAIL(ECS_ERR_TYPE);
+    const ecs_structdef *def = &vm->structs[st->h.sid];
+    if (c_ >= def->nfields) VM_FAIL(ECS_ERR_SLOT);
+    const ecs_fielddef *f = &def->fields[c_];
+    if (f->kind != FIELD_KIND_FIXED_ARRAY) VM_FAIL(ECS_ERR_TYPE);
+    int32_t idx = R[(int32_t)ext_].i32;
+    if (idx < 0 || idx >= f->ext) VM_FAIL(ECS_ERR_INDEX);
+    ecs_value v = R[a_];
+    if (f->type == ECS_BOOL) v = make_bool(v.i32 != 0);
+    ecs_value *slots = (ecs_value *)OBJ_PAYLOAD(st);
+    release(vm, slots[f->slot_offset + idx]);
+    slots[f->slot_offset + idx] = v;
+    retain(vm, v);
+    if (st->h.view_parent) sync_view(vm, st);
+    VM_NEXT();
+}
+
+/* ---- 域操作（宿主回调） ---- */
+VM_CASE(OP_WaitI)
+{
+    FETCH_OPS_WEXT();
+    if (vm->host.wait_ms) vm->host.wait_ms(vm->host.ud, (int32_t)ext_);
+    VM_NEXT();
+}
+VM_CASE(OP_WaitV)
+{
+    FETCH_OPS_ABC();
+    if (vm->host.wait_ms) vm->host.wait_ms(vm->host.ud, R[a_].i32);
+    VM_NEXT();
+}
+VM_CASE(OP_KeyI)
+{
+    FETCH_OPS_WEXT();
+    if (vm->host.key) vm->host.key(vm->host.ud, (uint8_t)a_, (int32_t)ext_);
+    VM_NEXT();
+}
+VM_CASE(OP_KeyV)
+{
+    FETCH_OPS_ABC();
+    if (vm->host.key) vm->host.key(vm->host.ud, (uint8_t)a_, R[b_].i32);
+    VM_NEXT();
+}
+VM_CASE(OP_KeySt)
+{
+    FETCH_OPS_ABC();
+    if (vm->host.key_state) vm->host.key_state(vm->host.ud, (uint8_t)a_, b_);
+    VM_NEXT();
+}
+VM_CASE(OP_StickSet)
+{
+    FETCH_OPS_ABC();
+    if (vm->host.stick_set) vm->host.stick_set(vm->host.ud, (uint8_t)a_, b_, c_);
+    VM_NEXT();
+}
+VM_CASE(OP_StickP)
+{
+    FETCH_OPS_WEXT();
+    if (vm->host.stick_click)
+        vm->host.stick_click(vm->host.ud, (uint8_t)a_, b_, c_, (int32_t)ext_);
+    VM_NEXT();
+}
+VM_CASE(OP_StickPv)
+{
+    FETCH_OPS_WEXT();
+    if (vm->host.stick_click)
+        vm->host.stick_click(vm->host.ud, (uint8_t)a_, (int32_t)(ext_ & 0xFF), (int32_t)((ext_ >> 16) & 0xFF), R[c_].i32);
+    VM_NEXT();
+}
+VM_CASE(OP_Img)
+{
+    FETCH_OPS_ABX();
+    /* S-21：图像标签能力缺失 → 目标槽 ← -1（与 C# EcxHost 缺省 ImgLabel 一致）；
+     * strict_caps 宿主恢复响亮（IL）。 */
+    if (vm->host.strict_caps)
+        VM_FAIL(ECS_ERR_IL);
+    store_fresh(vm, &R[a_], make_int(-1));
+    VM_NEXT();
+}
+VM_CASE(OP_Rand)   /* S-12 */
+{
+    FETCH_OPS_ABC();
+    int32_t max = R[b_].i32;
+    if (max < 0) VM_FAIL(ECS_ERR_INDEX);
+    int32_t v = 0;
+    if (max != 0 && vm->host.rand) v = vm->host.rand(vm->host.ud, max);
+    store_fresh(vm, &R[a_], make_int(v));
+    VM_NEXT();
+}
+
+/* ---- FOR 快速路径 / 比较跳转融合 ---- */
+VM_CASE(OP_ForStep)
+{
+    FETCH_OPS_WJ();
+    /* FOR 快速路径：tmp=i+1 写 R[c]；tmp>limit → 跳 exit（数据字）；否则落入后继 */
+    int32_t next = (int32_t)((uint32_t)R[a_].i32 + 1u);
+    store_fresh(vm, &R[c_], make_int(next));
+    if (next > R[b_].i32)
+        pc = op_start + op_size + (uint32_t)rd_u32(codebuf + op_start + 4);   /* 出口字延迟读 */
+    VM_NEXT();
+}
+VM_CASE(OP_CmpJ)   /* 比较跳转融合（P2′）：kind=typeBlock*6+op；数据字 = 跳转字节偏移 */
+{
+    FETCH_OPS_WJ();
+    int taken;
+    switch (kind_block(c_))
+    {
+        case 0: { int32_t l = R[a_].i32, r = R[b_].i32; taken = cmp_kind6_i32(l, r, c_); } break;
+        case 1: { uint32_t l = (uint32_t)R[a_].i32, r = (uint32_t)R[b_].i32; taken = cmp_kind6_u32(l, r, c_); } break;
+        case 2: { double l = R[a_].f64, r = R[b_].f64; taken = cmp_kind6_f64(l, r, c_); } break;
+        default: { int64_t l = R[a_].i64, r = R[b_].i64; taken = cmp_kind6_i64(l, r, c_); } break;
+    }
+    if (taken)
+        pc = op_start + op_size + (uint32_t)rd_u32(codebuf + op_start + 4);
+    VM_NEXT();
+}
+
+#if !ECS_DIRECT_THREADED
+        default:
+            VM_FAIL(ECS_ERR_OPCODE);
+        }   /* switch (opv) */
+    }   /* for ;; */
+#endif
+
+#undef VM_FAIL
+#undef VM_NEXT
+#undef VM_CASE
+#if ECS_DIRECT_THREADED
+#undef VM_FETCH_TH
+#undef FETCH_OPS_ABC
+#undef FETCH_OPS_ABX
+#undef FETCH_OPS_SBXI
+#undef FETCH_OPS_AJ
+#undef FETCH_OPS_J
+#undef FETCH_OPS_WJ
+#undef FETCH_OPS_WEXT
+#endif
+}
+

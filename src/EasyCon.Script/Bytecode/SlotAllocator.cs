@@ -129,6 +129,7 @@ public static partial class BytecodeEncoder
                     {
                         _coalesced[arm] = phi;
                         _slots[arm] = _slots[phi];
+                        ScrubPooled(arm);
                     }
                     continue;
                 }
@@ -180,10 +181,19 @@ public static partial class BytecodeEncoder
 
                 _coalesced[arm] = phi;
                 _slots[arm] = _slots[phi];
+                ScrubPooled(arm);   // 臂若已按池化分类（其块先于 φ 块处理），共享 φ 独占槽后须退出池化结算
                 // 零 φ 拷贝：遍历全部臂（各臂守卫独立成立；同 φ 多臂在不同前驱边执行，
                 // 分时写同一槽即 φ 语义本身）。常量臂不合并——块首物化在 φ 槽上会覆写
                 // 同迭代仍活跃的旧值。
             }
+        }
+
+        /// <summary>把已池化分类的值退出池化结算（合并共享 φ 槽后，其“末次读取归还”
+        /// 会把 φ 的独占槽放进空闲池——寄存器筛语料实证的槽位污染源）。</summary>
+        void ScrubPooled(SsaValue v)
+        {
+            _pooled.Remove(v);
+            _releaseLeft.Remove(v);
         }
 
         /// <summary>
@@ -352,8 +362,8 @@ public static partial class BytecodeEncoder
         {
             // 0. 存活局部重编号（编码期槽位回收）：局部读值全走 SSA（构建期 mem2reg），
             // StoreLocal 仅参数 store 发射（EmitInst；TRE 回边写参数帧槽，entry 循环头重读）。
-            // 帧槽读取者 = 参数入口 LoadLocal（Call ABI 播种）；仅给仍被引用的符号保留槽位；
-            // 参数窗 [0, NParams) 恒等映射保留，其余（防御性：若未来出现非参数 LoadLocal）压缩到参数窗之后。
+            // 帧槽读取者 = 参数入口 LoadLocal（Call ABI 播种）；参数窗映射到 ARG 寄存器 R1–R7
+            // （Call 深拷贝播种，见 EcsRegisters）；防御性非参数局部（若未来出现）从通用区起。
             var liveLocalSlots = new SortedSet<int>();
             foreach (var block in _fn.Blocks)
                 foreach (var inst in block.Instructions)
@@ -363,15 +373,15 @@ public static partial class BytecodeEncoder
                     else if (inst.Op == SsaOp.StoreLocal && inst.Aux is ParamSymbol ps)
                         liveLocalSlots.Add(ps.Slot.Index);
                 }
-            int compacted = _symbol.Parameters.Length;
+            int nextLocal = EcsRegisters.AllocBase;
             foreach (var oldIdx in liveLocalSlots)
             {
                 if (oldIdx < _symbol.Parameters.Length)
-                    _localSlotRemap[oldIdx] = oldIdx;
+                    _localSlotRemap[oldIdx] = EcsRegisters.ArgBase + oldIdx;
                 else
-                    _localSlotRemap[oldIdx] = compacted++;
+                    _localSlotRemap[oldIdx] = nextLocal++;
             }
-            _next = compacted;
+            _next = nextLocal;
 
             // 1. 使用点收集 + 结算计划推导（同源）：操作数/分支条件记在使用块；phi 臂记在对应前驱
             foreach (var block in _fn.Blocks)
@@ -487,9 +497,18 @@ public static partial class BytecodeEncoder
             //     preheader 块首（从各使用块 Consts 移除）——须在分类/发射前完成
             HoistLoopInvariantConsts();
 
-            // 2. 分类：跨块值专用槽；块内值登记池化；常量已按块登记
+            // 1.6 循环携带活性：值「定义块不在某自然循环内、却有读取落在该循环体内」时，
+            //     末次静态读取结算不安全——循环下一轮会重读该值，而槽位可能已让给别人
+            //     （线性扫描对回边活性的盲区，参考 regalloc 的 loop-nest 感知）。此类值
+            //     退回独占槽（def ∈ L ⟹ 定义随循环体重执行，读取前的本轮定义先写回，池化仍安全）。
+            var loopExclusive = CollectLoopCarriedValues();
+
+            // 2. 分类：φ 结果/ForStep 目标独占槽（跨迭代被边副本/分支原地写，池化会在循环
+            //    存续期间把槽位让给他人）；其余 needs-slot 值（块内与跨块统一）全部池化——
+            //    生命周期由读取点结算驱动（参考线性扫描寄存器分配：值在定义发射时取槽、
+            //    末次静态读取结算后归还；循环内的后续执行不会再遇到已发射完毕的读取点）。
+            //    常量仍按使用块块首物化（每块独立槽 + 块内计数归还）。
             bool hasPhi = false, hasNeq = false, hasTpl = false;
-            int maxArity = 1;
             foreach (var block in _fn.Blocks)
             {
                 var info = Info(block);
@@ -498,6 +517,7 @@ public static partial class BytecodeEncoder
                     if (!_totalReads.ContainsKey(phi))
                         continue;   // 死 φ（防线 1）：全函数无读取——不占槽，前驱边不产生副本（EmitEdgeCopies 跳过）
                     _slots[phi] = _next++;
+                    _exclusiveSlots.Add(_slots[phi]);
                     hasPhi = true;
                     TryCoalescePhiArm(phi, block);
                 }
@@ -509,68 +529,62 @@ public static partial class BytecodeEncoder
                     // P1b 合并指令：槽已随 phi 定槽（共享），跳过独立分类
                     if (_coalesced.ContainsKey(inst))
                         continue;
-                    // ForStep：分支内嵌的自增目标槽必须独占（原地写），恒跨块专属槽；
+                    // ForStep：分支内嵌的自增目标槽必须独占（每迭代原地写），恒跨块专属槽；
                     // 零 φ 拷贝合并例外：目标槽 = φ 槽（C 直写 φ 槽，回边副本自消）
                     if (inst.Op == SsaOp.ForStep)
                     {
                         _slots[inst] = _coalesced.TryGetValue(inst, out var phiSlot) ? _slots[phiSlot] : _next++;
+                        _exclusiveSlots.Add(_slots[inst]);
                         continue;
                     }
                     if (inst.Op is SsaOp.NeqInt or SsaOp.NeqUInt or SsaOp.NeqDouble or SsaOp.NeqUInt64
                         or SsaOp.NeqBool or SsaOp.NeqByte or SsaOp.NeqString or SsaOp.NeqPtr)
                         hasNeq = true;
-                    // 常量模板降级：元素不占槽也不进 staging（maxArity 不计入），结果槽照常分类
-                    bool templateInit = IsTemplateArrayInit(inst);
-                    if (templateInit)
+                    // 常量模板降级：元素不占槽也不进 staging（结果槽照常池化）
+                    if (IsTemplateArrayInit(inst))
                         hasTpl = true;
-                    int arity = templateInit ? 0 : ArityOf(inst);
-                    if (arity > maxArity) maxArity = arity;
 
                     if (inst.IsConstant)
                     {
                         if (!_hoisted.Contains(inst))
-                            _pooled.Add(inst);        // 常量池化：Consts 已在步骤 1 登记
+                            _pooled.Add(inst);        // 常量池化：Consts 已在步骤 1 登记（块首物化）
                         // 外提常量：共享组槽位已在 HoistLoopInvariantConsts 定槽，跳过
                         continue;
                     }
                     if (!NeedsSlot(inst.Op)) continue;
 
-                    int readsHere = info.UseCount.TryGetValue(inst, out var c) ? c : 0;
-                    int totalReads = _totalReads.TryGetValue(inst, out var t) ? t : 0;
-                    if (totalReads > readsHere)
-                        _slots[inst] = _next++;         // 跨块：专用槽
-                    else
+                    if (loopExclusive.Contains(inst))
                     {
-                        _pooled.Add(inst);              // 块内：定义时入池
+                        _slots[inst] = _next++;   // 循环携带活性（见 1.6）：独占
+                        _exclusiveSlots.Add(_slots[inst]);
+                        continue;
                     }
+
+                    // 全池化：不再区分块内/跨块——跨块槽的独占占用是 $eval 顶层脚本
+                    // 寄存器高水位的根因；末次读取结算（ReleaseDying 全函数计数）回收
+                    _pooled.Add(inst);
+                    _releaseLeft[inst] = _totalReads.TryGetValue(inst, out var t) ? t : 0;
                 }
             }
 
-            if (hasNeq) _neqTemp = _next++;
-            if (hasPhi) _scratch = _next++;
+            if (hasNeq) { _neqTemp = _next++; _exclusiveSlots.Add(_neqTemp); }
+            if (hasPhi) { _scratch = _next++; _exclusiveSlots.Add(_scratch); }
             if (hasTpl)
             {
-                _tplGuard = _next++;
-                _tplArr = _next++;
-                _tplChunk = _next++;
+                _tplGuard = _next++; _exclusiveSlots.Add(_tplGuard);
+                _tplArr = _next++; _exclusiveSlots.Add(_tplArr);
+                _tplChunk = _next++; _exclusiveSlots.Add(_tplChunk);
             }
-            _stagingBase = _next;
-            var stagingCount = maxArity;
-            if (hasTpl)
-            {
-                // 常量模板分块构建：staging 区须容纳一个分块（NewArrV 的 C:8 上限 255 之内取满）
-                _tplChunkSize = Math.Min(TemplateChunkSize, 254 - _stagingBase);
-                if (_tplChunkSize <= 0)
-                    throw Fail("常量模板构建 staging 槽不足（函数局部槽过多）");
-                if (stagingCount < _tplChunkSize)
-                    stagingCount = _tplChunkSize;
-            }
-            _receiveSlot = _stagingBase + stagingCount;
-            _next += stagingCount + 1;
-            _maxArity = maxArity;
 
-            // 池区在所有保留槽之后生长
-            _poolNext = _next;
+            // STAGING 暂存区固定于 R8–R23（EcsRegisters，帧内全局固定位置）：调用出站实参
+            // 与数组分块构建共用；与参数窗/分配区物理隔离——出站 Move 不可能覆写存活值，
+            // 无重叠 Move 冒险；链接期内联按固定位置判定重映射。
+            _stagingBase = EcsRegisters.StagingBase;
+            _tplChunkSize = Math.Min(TemplateChunkSize, EcsRegisters.StagingCount);
+
+            // 池区自独占区之后生长（_next 已含全部独占槽；≥ AllocBase）；帧长（NSlots）=
+            // 发射结束后池区高水位（≤ MaxRegisters，Run 期校验）
+            _poolNext = Math.Max(_next, EcsRegisters.AllocBase);
         }
 
         /// <summary>
@@ -619,6 +633,59 @@ public static partial class BytecodeEncoder
             }
         }
 
+        /// <summary>循环携带活性判定（步骤 1.6）：收集「定义块不在其读取所在自然循环体内」的
+        /// 非常量值。这类值的读取会在循环的后续迭代中再次执行，而池化结算已在末次静态读取
+        /// 处把槽位让给别人——线性扫描对回边活性的盲区（参考 regalloc 的 loop-nest 感知）。
+        /// 定义块 ∈ 循环体 ⟹ 定义随每轮迭代重执行、先于本轮读取写回，池化仍安全。</summary>
+        HashSet<SsaValue> CollectLoopCarriedValues()
+        {
+            var result = new HashSet<SsaValue>();
+            if (_fn.Blocks.Count == 0)
+                return result;
+
+            var dom = Dominators.Compute(_fn);
+
+            // 值 → 读取块集合（来自步骤 1 的使用登记；φ 臂读取登记在前驱块）
+            var readBlocks = new Dictionary<SsaValue, List<SsaBlock>>();
+            foreach (var kv in _useInfo)
+                foreach (var v in kv.Value.UseCount.Keys)
+                {
+                    if (v.IsConstant)
+                        continue;
+                    if (!readBlocks.TryGetValue(v, out var list))
+                        readBlocks[v] = list = new List<SsaBlock>();
+                    list.Add(kv.Key);
+                }
+
+            foreach (var tail in _fn.Blocks)
+            {
+                foreach (var header in tail.GetSuccessors())
+                {
+                    if (!dom.Dominates(header, tail))
+                        continue;   // 非回边
+
+                    // 自然循环体：{header} ∪ 从 tail 逆行不经 header 可达的块
+                    var body = new HashSet<SsaBlock> { header };
+                    var stack = new Stack<SsaBlock>();
+                    if (body.Add(tail))
+                        stack.Push(tail);
+                    while (stack.Count > 0)
+                        foreach (var p in stack.Pop().Predecessors)
+                            if (body.Add(p))
+                                stack.Push(p);
+
+                    foreach (var (v, blocks) in readBlocks)
+                    {
+                        if (result.Contains(v) || v.Block == null || body.Contains(v.Block))
+                            continue;
+                        if (blocks.Any(body.Contains))
+                            result.Add(v);
+                    }
+                }
+            }
+            return result;
+        }
+
         void RecordRead(SsaValue v, SsaBlock reader)
         {
             _totalReads[v] = _totalReads.TryGetValue(v, out var t) ? t + 1 : 1;
@@ -641,40 +708,49 @@ public static partial class BytecodeEncoder
             {
                 var s = _poolFree[_poolFree.Count - 1];
                 _poolFree.RemoveAt(_poolFree.Count - 1);
+#if DEBUG
+                Debug.Assert(!_exclusiveSlots.Contains(s), $"池化分配撞上独占槽 {s}（合并臂结算污染）");
+#endif
                 return s;
             }
-            return _poolNext++;
+            var fresh = _poolNext++;
+            if (fresh >= EcsRegisters.MaxRegisters)
+                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的寄存器需求超过帧上限 {EcsRegisters.MaxRegisters}（拆分函数或简化深表达式）");
+            return fresh;
         }
 
-        /// <summary>读取点结算：池化值在读取块内的剩余计数减一，归零即归还槽位。
-        /// 计数按块分段（UseCount）——跨块常量在各使用块有独立槽与独立计数，
-        /// 若用全函数单计数器，首块槽位永远等不到归零（泄漏）。
+        /// <summary>读取点结算：池化值在末次静态读取发射后归还槽位。
+        /// 常量 = 块内计数按块分段（跨块常量在各使用块有独立槽与独立计数，若用全函数
+        /// 单计数器，首块槽位永远等不到归零——泄漏）；非常量值 = 全函数读取计数
+        /// （跨块值不再独占槽位：读取点只有发射序列中登记过的那些，末次结算后
+        /// 循环再执行也不会遇到已发射完毕的读取点，归还即安全）。
         /// 只由结算计划回放调用：计划与登记同点推导，立即数消费天然无键，
         /// 不会出现「无读取的消费」抢走同块真实读取登记的失衡。</summary>
         void ReleaseDying(SsaBlock block, SsaValue? v)
         {
             if (v == null || !_pooled.Contains(v))
                 return;
-            var info = Info(block);
-            if (!info.UseCount.TryGetValue(v, out var left))
-                return;
-            left--;
-            info.UseCount[v] = left;
-            Debug.Assert(left >= 0, "读取结算次数超过登记次数");
-            if (left == 0)
-                _poolFree.Add(_slots[v]);
-        }
-
-        static int ArityOf(SsaValue inst)
-        {
-            int n = inst.Arg0 != null ? 1 : 0;
-            if (inst.ExtraArgs != null) n += inst.ExtraArgs.Count;
-            return inst.Op switch
+            if (v.IsConstant)
             {
-                SsaOp.Call or SsaOp.StaticCall or SsaOp.ArrayInit => n,
-                SsaOp.Capture or SsaOp.Ocr or SsaOp.Roi or SsaOp.OcrInit => n,
-                _ => 0,
-            };
+                var info = Info(block);
+                if (!info.UseCount.TryGetValue(v, out var left))
+                    return;
+                left--;
+                info.UseCount[v] = left;
+                if (left == 0)
+                    _poolFree.Add(_slots[v]);
+                return;
+            }
+            if (!_releaseLeft.TryGetValue(v, out var gleft))
+                return;   // 合并臂等共享槽位（φ 槽）不参与结算
+            gleft--;
+            _releaseLeft[v] = gleft;
+            Debug.Assert(gleft >= 0, "读取结算次数超过登记次数");
+            if (gleft == 0 && _slots.TryGetValue(v, out var slot))
+            {
+                Debug.Assert(!_exclusiveSlots.Contains(slot), $"池化值归还独占槽 {slot}（合并臂未 scrub）");
+                _poolFree.Add(slot);
+            }
         }
 
         // ---- 常量物化（块首惰性，替代函数级 prologue）----

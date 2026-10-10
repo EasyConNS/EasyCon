@@ -188,7 +188,9 @@ public class AgentAlignmentTests
 
         Assert.Multiple(() =>
         {
-            Assert.CatchAsync<OperationCanceledException>(() => run);
+#pragma warning disable VSTHRD003 // run 已在上方启动（Hang 模式），此处断言它被取消
+            Assert.CatchAsync<OperationCanceledException>(async () => await run);
+#pragma warning restore VSTHRD003
             Assert.That(history.Any(m => m.Role == "assistant" && m.Content?.ToString()?.Contains("已停止") == true),
                 "用户停止的事实必须写入历史，模型下轮才能知晓被打断");
         });

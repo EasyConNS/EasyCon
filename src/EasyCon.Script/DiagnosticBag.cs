@@ -52,6 +52,16 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
         ReportError(location, "字符串没有结束引号", DiagnosticCodes.UnterminatedString);
     }
 
+    public void ReportKeywordMustBeLowercase(TextLocation location, string word)
+    {
+        ReportError(location, $"关键字 '{word}' 必须全小写", DiagnosticCodes.KeywordMustBeLowercase);
+    }
+
+    public void ReportArrayConstantRequired(TextLocation location, Token actual)
+    {
+        ReportError(location, $"数组初始化只允许常量元素，意外的 <{actual.Value}>", DiagnosticCodes.ArrayConstantRequired);
+    }
+
     public void ReportUnexpectedToken(TextLocation location, Token actual, TokenType expectedKind)
     {
         ReportError(location, $"需要<{expectedKind}>但是意外的<{actual.Value}>", DiagnosticCodes.UnexpectedToken);
@@ -196,6 +206,12 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
     public void ReportFunctionArgumentCountMismatch(TextLocation location, FunctionSymbol fn)
     {
         ReportError(location, $"函数 {fn.Name} 参数数量不匹配", DiagnosticCodes.FunctionArgumentCountMismatch);
+    }
+
+    public void ReportParamWindowOverflow(TextLocation location, string functionName, int count)
+    {
+        ReportError(location, $"函数 '{functionName}' 的参数个数 {count} 超过实参窗容量 {Bytecode.EcsRegisters.ArgCount}",
+            DiagnosticCodes.ParamWindowOverflow);
     }
 
     public void ReportFunctionAlreadyDeclared(TextLocation location, string functionName)

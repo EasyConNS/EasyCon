@@ -210,6 +210,13 @@ def _check_flowdoc_pure(checker: Checker) -> None:
     dangling = {"nodes": [{"id": "a", "type": "start"}], "exec": [["a", "nope"]]}
     checker.check(any("不存在" in p for p in flowdoc.validate_doc(dangling)), "悬空边应报错")
 
+    two_starts = {"nodes": [{"id": "s1", "type": "start"}, {"id": "s2", "type": "start"},
+                            {"id": "e", "type": "end"}],
+                  "exec": [["s1", "e"], ["s2", "e"]]}
+    problems = flowdoc.validate_doc(two_starts)
+    checker.check(any("start 节点只能有一个" in p and "s2" in p for p in problems),
+                  "多个 start 应报错且列出节点 id")
+
     ok = {"nodes": [{"id": "s", "type": "start"}, {"id": "e", "type": "end"}], "exec": [["s", "e"]]}
     checker.equal(flowdoc.validate_doc(ok), [], "合法图应无问题")
 

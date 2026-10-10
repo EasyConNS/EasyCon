@@ -6,20 +6,16 @@ namespace EasyCon.Script.Syntax;
 public sealed class SyntaxTree
 {
     private delegate void ParseHandler(SyntaxTree syntaxTree,
-                                           out CompilationUnit root,
-                                           out ImmutableArray<Diagnostic> diagnostics);
+                                       out CompilationUnit root,
+                                       out ImmutableArray<Diagnostic> diagnostics);
     public SourceText Text { get; init; }
-    /// <summary>旧版语法兼容（v1 PRINT/IF= 语义；默认 true 保持行为）。
-    /// 经 CompileOptions.LegacySyntax 逐层下传（Parse/ParseTokens/BindProgram），无静态全局。</summary>
-    public bool LegacySyntax { get; private set; } = true;
     public ImmutableArray<Diagnostic> Diagnostics { get; init; }
 
     internal CompilationUnit Root { get; init; }
 
-    private SyntaxTree(SourceText text, ParseHandler handler, bool legacySyntax, string? importBase)
+    private SyntaxTree(SourceText text, ParseHandler handler, string? importBase)
     {
         Text = text;
-        LegacySyntax = legacySyntax;
         ImportBase = importBase ?? (Text.FileName != ""
             ? Path.GetDirectoryName(Path.GetFullPath(Text.FileName))!
             : null);
@@ -48,27 +44,27 @@ public sealed class SyntaxTree
         diagnostics = [.. parser.Diagnostics];
     }
 
-    public static SyntaxTree Parse(string text, bool legacySyntax = true)
+    public static SyntaxTree Parse(string text)
     {
-        return Parse(SourceText.From(text), legacySyntax);
+        return Parse(SourceText.From(text));
     }
 
-    public static SyntaxTree Parse(SourceText text, bool legacySyntax = true, string? importBase = null)
+    public static SyntaxTree Parse(SourceText text, string? importBase = null)
     {
-        return new SyntaxTree(text, Parse, legacySyntax, importBase);
+        return new SyntaxTree(text, Parse, importBase);
     }
 
-    public static ImmutableArray<Token> ParseTokens(string text, bool legacySyntax = true, string? importBase = null)
+    public static ImmutableArray<Token> ParseTokens(string text, string? importBase = null)
     {
         var sourceText = SourceText.From(text);
-        return ParseTokens(sourceText, out _);
+        return ParseTokens(sourceText, out _, importBase);
     }
 
     /// <summary>带文件名的词法扫描（轻量导入扫描用；诊断位置归属正确）。</summary>
-    internal static ImmutableArray<Token> ParseTokens(SourceText text, bool legacySyntax = true, string? importBase = null)
-        => ParseTokens(text, out _, legacySyntax, importBase);
+    internal static ImmutableArray<Token> ParseTokens(SourceText text, string? importBase = null)
+        => ParseTokens(text, out _, importBase);
 
-    private static ImmutableArray<Token> ParseTokens(SourceText text, out ImmutableArray<Diagnostic> diagnostics, bool legacySyntax = true, string? importBase = null)
+    private static ImmutableArray<Token> ParseTokens(SourceText text, out ImmutableArray<Diagnostic> diagnostics, string? importBase = null)
     {
         var tokens = new ImmutableArray<Token>();
 
@@ -81,7 +77,7 @@ public sealed class SyntaxTree
             d = [.. l.Diagnostics];
         }
 
-        var syntaxTree = new SyntaxTree(text, ParseTokensHandler, legacySyntax, importBase);
+        var syntaxTree = new SyntaxTree(text, ParseTokensHandler, importBase);
         diagnostics = syntaxTree.Diagnostics;
         return tokens;
     }

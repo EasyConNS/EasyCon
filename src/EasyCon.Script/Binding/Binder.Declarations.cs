@@ -31,6 +31,10 @@ internal sealed partial class Binder
 
         var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
 
+        // 实参窗容量（帧布局约定：ARG = R1–R7）
+        if (syntax.Declare.Paramters.Length > Bytecode.EcsRegisters.ArgCount)
+            _diagnostics.ReportParamWindowOverflow(syntax.Declare.Location, syntax.Declare.Name, syntax.Declare.Paramters.Length);
+
         // 尝试复用 DeclarationCollector 已创建的 FunctionSymbol 实例，
         // 避免 Binder 和 DeclarationCollector 各持一份实例导致 Layout 等运行时属性不一致。
         var existing = TryFindMatchingFunction(syntax.Declare.Name, parameters);
@@ -76,6 +80,10 @@ internal sealed partial class Binder
         }
 
         var returnType = BindTypeClause(syntax, syntax.ReturnType) ?? ScriptType.Void;
+
+        // 实参窗容量（帧布局约定：ARG = R1–R7）
+        if (syntax.Parameters.Length > Bytecode.EcsRegisters.ArgCount)
+            _diagnostics.ReportParamWindowOverflow(syntax.Location, syntax.Name, syntax.Parameters.Length);
 
         // 尝试复用 DeclarationCollector 已创建的 FunctionSymbol 实例
         var existing = TryFindMatchingFunction(syntax.Name, parameters);

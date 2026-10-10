@@ -87,6 +87,22 @@ public class FlowExecutorTests
     }
 
     [Test]
+    public void MultipleStartNodes_AreRejected()
+    {
+        var ex = Assert.Throws<FlowParseException>(() => Graph("""
+        {
+          "nodes": [
+            { "id": "s1", "type": "start" },
+            { "id": "s2", "type": "start" },
+            { "id": "end", "type": "end" }
+          ],
+          "exec": [ ["s1", "end"], ["s2", "end"] ]
+        }
+        """));
+        Assert.That(ex!.Message, Does.Contain("start 节点只能有一个").And.Contain("s2"));
+    }
+
+    [Test]
     public void Compare_BranchesByLiteralInputs()
     {
         var graph = Graph("""

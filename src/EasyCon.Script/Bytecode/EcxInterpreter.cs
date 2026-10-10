@@ -295,8 +295,9 @@ public sealed class EcxInterpreter
     public const int ERR_FEAT = 14;
 
     /// <summary>调用深度上限（与 C 侧 ECS_MAX_CALL_DEPTH 一致：深递归双端同样报 ERR_DEPTH，
-    /// 避免同一镜像在 MCU 报错而 PC 端 OOM 的对拍分裂）。</summary>
-    public const int MaxCallDepth = 512;
+    /// 避免同一镜像在 MCU 报错而 PC 端 OOM 的对拍分裂）。帧为每函数栈窗口（典型高水位
+    /// 20–40 槽 ≈ 0.3–0.6KB），64 深度在 C VM 帧段（128KB）内余量充足；深递归由尾递归消除（TRE）兜底。</summary>
+    public const int MaxCallDepth = 64;
 
     EcxInterpreter(EcxImage image, EcxHost host)
     {
@@ -587,8 +588,9 @@ public sealed class EcxInterpreter
 
     // ---- 主循环 ----
 
-    /// <summary>帧出租：池空新建；复用时槽位 Array.Clear 复位为 Void（StoreFresh「无旧值」直写契约），
-    /// 容量不足则扩容（容量只增不缩，递归峰值即池上限——池随弹帧回收，天然 ≤ 峰值深度）。</summary>
+    /// <summary>帧出租（每函数栈窗口）：帧长 = 函数寄存器高水位（NSlots ≤255），
+    /// 池空新建；复用时槽位 Array.Clear 复位为 Void（StoreFresh「无旧值」直写契约），
+    /// 容量不足则扩容（容量只增，峰值深度即池上限——池随弹帧回收）。</summary>
     Frame RentFrame(int nslots)
     {
         if (_framePool.Count > 0)
@@ -745,21 +747,19 @@ public sealed class EcxInterpreter
                         }
 
                     // ---- FOR 快速路径：tmp=i+1 写入 R[c]；tmp>limit → 跳 Jump（出循环，$i 保持 ==upper）；否则落入后继 ----
+                    // 信任字节码：跳转目标不校验
                     case EcsOpcode.ForStep:
                         {
                             int next = R[a].I32 + 1;
                             StoreFresh(ref R[c], TaggedValue.FromInt(next));
                             if (next > R[b].I32)
-                            {
-                                int exitTarget = instructionPc + 1 + ins.Jump;
-                                if ((uint)exitTarget >= (uint)code.Length)
-                                    throw new SimError(ERR_OPCODE, $"ForStep 出口越界 {exitTarget}");
-                                pc = exitTarget;
-                            }
+                                pc = instructionPc + 1 + ins.Jump;
                             break;
                         }
 
                     // ---- 调用 ----
+                    // 每函数栈窗口帧：实参从调用方 STAGING（A）深拷贝播种进被调方
+                    // ARG 窗 R1–R7（S-17 语义）；C = 接收寄存器（0 = RET 固定落点）
                     case EcsOpcode.Call:
                         {
                             uint target = ext;
@@ -768,10 +768,10 @@ public sealed class EcxInterpreter
                                 throw new SimError(ERR_DEPTH, $"调用深度超过上限 {MaxCallDepth}");
                             var nf = RentFrame(callee.NSlots);
                             nf.Fn = callee;
-                            nf.RetSlot = c;   // NoSlot(-1)：无接收槽
+                            nf.RetSlot = c;
                             nf.Pc = 0;
                             for (int i = 0; i < b; i++)
-                                StoreFresh(ref nf.Slots[i], DeepCopyCopyOnWrite(R[a + i]));   // S-17 实参（COW：唯一引用移交；池出租槽已清零，StoreFresh 恒等价）
+                                StoreFresh(ref nf.Slots[EcsRegisters.ArgBase + i], DeepCopyCopyOnWrite(R[a + i]));   // S-17 实参（COW：唯一引用移交）
                             frame.Pc = pc;   // 调用者续跑点写回（Ret 时经重载读回）
                             _frames.Add(nf);
                             frameSwitched = true;
@@ -780,8 +780,6 @@ public sealed class EcxInterpreter
                     case EcsOpcode.CallN:
                         {
                             uint target = ext;
-                            if (b > 8)
-                                throw new SimError(ERR_NOSUCHNATIVE, $"原生调用实参超过上限 8: {b}");   // 与 C 侧一致拒绝
                             var args = new TaggedValue[b];   // 实参按值快照：原生看不见帧槽
                             for (int i = 0; i < b; i++)
                                 args[i] = R[a + i];
@@ -802,12 +800,10 @@ public sealed class EcxInterpreter
                             }
                             else
                             {
-                                if (target >= (uint)_image.Natives.Count)
-                                    throw new SimError(ERR_NOSUCHNATIVE, $"原生索引越界 {target}");
-                                ret = HostNative(_image.Natives[(int)target].Name, args);   // L3 名表路径：FFI/采集洞/ENCODE/JQ
+                                ret = HostNative(_image.Natives[(int)target].Name, args);   // L3 名表路径：FFI/采集洞/ENCODE/JQ（信任字节码，目标不校验）
                             }
                             if (c >= 0)
-                                StoreFresh(ref R[c], ret);   // NoSlot(-1)：无接收槽；原生返回值恒为新建对象/标量（EcxNativeContext 契约），出生引用即接收槽引用
+                                StoreFresh(ref R[c], ret);   // 接收寄存器（0 = RET 固定落点）；原生返回值恒为新建对象/标量（EcxNativeContext 契约），出生引用即接收槽引用
                             if (_token.IsCancellationRequested)
                             {
                                 frame.Pc = pc;
@@ -824,14 +820,10 @@ public sealed class EcxInterpreter
                                 PopFrame(frame);
                                 return OK;
                             }
-                            TaggedValue copy = default;
-                            var hasCopy = frame.RetSlot >= 0;
-                            if (hasCopy)
-                                copy = DeepCopyCopyOnWrite(val);   // S-17 返回（COW：唯一引用移交；先于弹帧：val 所属槽位将被释放）
+                            TaggedValue copy = DeepCopyCopyOnWrite(val);   // S-17 返回（COW：唯一引用移交；先于弹帧：val 所属槽位将被释放）
                             int retSlot = frame.RetSlot;
                             PopFrame(frame);
-                            if (hasCopy)
-                                StoreFresh(ref _frames[^1].Slots[retSlot], copy);
+                            StoreFresh(ref _frames[^1].Slots[retSlot], copy);
                             frameSwitched = true;
                             break;
                         }

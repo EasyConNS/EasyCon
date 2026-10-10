@@ -121,11 +121,11 @@ public class AgentVisionToolRoiTests
     }
 
     [Test]
-    public void GetFrameTool_ReportsReadableErrorWhenSourceMissing()
+    public async Task GetFrameTool_ReportsReadableErrorWhenSourceMissing()
     {
         var tool = new GetFrameTool(() => null);
 
-        var result = tool.ExecuteAsync(Args("{}")).Result;
+        var result = await tool.ExecuteAsync(Args("{}"));
 
         Assert.Multiple(() =>
         {
@@ -135,11 +135,11 @@ public class AgentVisionToolRoiTests
     }
 
     [Test]
-    public void OcrFrameTool_ReportsReadableErrorWhenSourceMissing()
+    public async Task OcrFrameTool_ReportsReadableErrorWhenSourceMissing()
     {
         var tool = new OcrFrameTool(() => new FakeOcr(), () => null);
 
-        var result = tool.ExecuteAsync(Args("{}")).Result;
+        var result = await tool.ExecuteAsync(Args("{}"));
 
         Assert.Multiple(() =>
         {

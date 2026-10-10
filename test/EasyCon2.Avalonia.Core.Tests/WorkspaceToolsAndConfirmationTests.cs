@@ -138,10 +138,10 @@ public class ConfirmationGateTests
         }
     }
 
-    private static List<ChatMessage> RunOrchestrator(AgentOrchestrator orchestrator, ScriptedChatClient client)
+    private static async Task<List<ChatMessage>> RunOrchestratorAsync(AgentOrchestrator orchestrator, ScriptedChatClient client)
     {
         var history = new List<ChatMessage> { ChatMessage.User("做点危险的事") };
-        orchestrator.RunAsync(history, "m", new ProviderConfig(), _ => { }, CancellationToken.None).GetAwaiter().GetResult();
+        await orchestrator.RunAsync(history, "m", new ProviderConfig(), _ => { }, CancellationToken.None);
         return history;
     }
 
@@ -180,14 +180,14 @@ public class ConfirmationGateTests
     }
 
     [Test]
-    public void NoHandler_FailClosed_ToolNotExecuted()
+    public async Task NoHandler_FailClosed_ToolNotExecuted()
     {
         var tool = new DangerousTool();
         var client = new ScriptedChatClient();
         var registry = new ToolRegistry().Register(tool);
         var orchestrator = new AgentOrchestrator(registry, null, clientFactory: _ => client);
 
-        var history = RunOrchestrator(orchestrator, client);
+        var history = await RunOrchestratorAsync(orchestrator, client);
 
         Assert.That(tool.ExecuteCount, Is.EqualTo(0));
         Assert.That(history.OfType<ChatMessage>().Any(m =>
@@ -196,7 +196,7 @@ public class ConfirmationGateTests
     }
 
     [Test]
-    public void RejectedByUser_ToolNotExecuted()
+    public async Task RejectedByUser_ToolNotExecuted()
     {
         var tool = new DangerousTool();
         var client = new ScriptedChatClient();
@@ -206,13 +206,13 @@ public class ConfirmationGateTests
             projectDirectoryProvider: null,
             confirmationHandler: _ => Task.FromResult(false));
 
-        RunOrchestrator(orchestrator, client);
+        await RunOrchestratorAsync(orchestrator, client);
 
         Assert.That(tool.ExecuteCount, Is.EqualTo(0));
     }
 
     [Test]
-    public void ApprovedByUser_ToolExecutes()
+    public async Task ApprovedByUser_ToolExecutes()
     {
         var tool = new DangerousTool();
         var client = new ScriptedChatClient();
@@ -222,7 +222,7 @@ public class ConfirmationGateTests
             projectDirectoryProvider: null,
             confirmationHandler: _ => Task.FromResult(true));
 
-        RunOrchestrator(orchestrator, client);
+        await RunOrchestratorAsync(orchestrator, client);
 
         Assert.That(tool.ExecuteCount, Is.EqualTo(1));
     }

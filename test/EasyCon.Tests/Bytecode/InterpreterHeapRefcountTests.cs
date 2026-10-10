@@ -50,12 +50,13 @@ public class InterpreterHeapRefcountTests
     public void LongRun_ArrayLiteralAndIndex_HeapBounded()
     {
         // 含 CSE phi 臂回归：循环体内 SetI 的算术 RHS 与 FOR 增量同形（AddInt($i,1)），
-        // CSE 删除回边块冗余定义时必须同步改写后继 phi 臂（编码器曾因悬空臂 KeyNotFound）
+        // CSE 删除回边块冗余定义时必须同步改写后继 phi 臂（编码器曾因悬空臂 KeyNotFound）。
+        // 注：数组字面量元素现仅允许常量（语法阶段白名单），运行时构造改经 APPEND。
         var (code, vm, host) = Run("""
             $a = [0, 0, 0]
             $n = ""
             FOR $i = 1 TO 40000
-                $a = [$i, $i, $i]
+                $a = APPEND(APPEND([0], $i), $i)
                 $a[1] = $i + 1
             NEXT
             $n = $a[0] & "," & $a[1] & "," & $a[2]
@@ -63,7 +64,7 @@ public class InterpreterHeapRefcountTests
             """);
 
         Assert.That(code, Is.EqualTo(EcxInterpreter.OK));
-        Assert.That(host.Lines, Is.EqualTo(new[] { "40000,40001,40000" }));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "0,40001,40000" }));
         Assert.That(vm.HeapHighWater, Is.LessThan(1000), "数组逐迭代创建应被回收");
         Assert.That(vm.HeapCountsConsistent, Is.True);
     }

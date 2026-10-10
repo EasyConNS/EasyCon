@@ -66,12 +66,10 @@ public sealed class EcsGlobal
 /// 内存中不存在第二套字节码。
 /// Jump 仅对 Jmp/Jpt/Jpf 有效，语义 = 相对**指令下标**偏移（前插平移不变；
 /// 线格式投影时由 InstructionCodec 换算为相对字节偏移——内存解释器按下标取指，字节偏移无处落点）。
-/// Call/CallN 的接收槽用 <see cref="NoSlot"/> 表示「无」（varint 直接编码，不再有 255 哨兵歧义）。
+/// Call/CallN 的接收槽 C 恒为寄存器号（0 = RET 固定落点）。
 /// </summary>
 public readonly record struct EcsInstruction(EcsOpcode Op, int A, int B, int C = 0, uint Ext = 0, int Jump = 0)
 {
-    public const int NoSlot = -1;
-
     public bool IsJump => Op is EcsOpcode.Jmp or EcsOpcode.Jpt or EcsOpcode.Jpf;
     public bool HasExt => EcsFormat.ExtWords(Op) > 0;
 }

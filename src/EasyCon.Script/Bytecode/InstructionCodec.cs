@@ -45,11 +45,9 @@ public static class InstructionCodec
 
     static byte SlotByte(int v, EcsOpcode op, int at)
     {
-        if (v == EcsInstruction.NoSlot)
-            return 255;   // 无接收槽哨兵（槽位号 ≤254，无歧义）
         if (v < 0 || v > 254)
             throw new BytecodeException(new[] { new BytecodeDiagnostic(
-                $"{op} 槽位越界: {v}（v3 定长编码槽位为 u8，≤254）", null, at) });
+                $"{op} 槽位越界: {v}（v3 定长编码槽位为 u8；寄存器 ≤63）", null, at) });
         return (byte)v;
     }
 
@@ -98,7 +96,7 @@ public static class InstructionCodec
                 case EcsInsFormat.Iabc:
                     buf.Add(SlotByte(ins.A, ins.Op, i));
                     buf.Add(ByteOperand(ins.B, ins.Op, "B", i));
-                    buf.Add(ins.C == EcsInstruction.NoSlot ? (byte)255 : ByteOperand(ins.C, ins.Op, "C", i));
+                    buf.Add(ByteOperand(ins.C, ins.Op, "C", i));
                     break;
 
                 case EcsInsFormat.ABx:
@@ -124,7 +122,7 @@ public static class InstructionCodec
                 case EcsInsFormat.Ext:
                     buf.Add(SlotByte(ins.A, ins.Op, i));
                     buf.Add(ByteOperand(ins.B, ins.Op, "B", i));
-                    buf.Add(ins.C == EcsInstruction.NoSlot ? (byte)255 : ByteOperand(ins.C, ins.Op, "C", i));
+                    buf.Add(ByteOperand(ins.C, ins.Op, "C", i));
                     W32(buf, unchecked((int)ins.Ext));
                     break;
 
@@ -181,8 +179,6 @@ public static class InstructionCodec
             switch (EcsFormat.Get(op))
             {
                 case EcsInsFormat.Iabc:
-                    if (op is EcsOpcode.Call or EcsOpcode.CallN && c == 255)
-                        c = EcsInstruction.NoSlot;   // 无接收槽哨兵
                     break;
 
                 case EcsInsFormat.ABx:
@@ -208,8 +204,6 @@ public static class InstructionCodec
                     }
 
                 case EcsInsFormat.Ext:
-                    if (op is EcsOpcode.Call or EcsOpcode.CallN && c == 255)
-                        c = EcsInstruction.NoSlot;
                     ext = word;
                     break;
 

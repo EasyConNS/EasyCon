@@ -128,12 +128,10 @@ public class CvmCrossValidationTests
     }
 
     [Test]
-    public void Cvm_Validator_KeyV_KeyCodeOperand_NotATargetSlot()
+    public void Cvm_KeyV_KeyCodeOperand_ExecutesAndReportsEvents()
     {
-        // KeyV 的 a 是按键码（GamePadKey）而非槽位，b 才是目标槽——合法脚本的键码
-        // 可以远大于 nslots，加载期校验若把 a 当槽位检查会拒载正常镜像；
-        // b 越界仍须在加载期拒绝（ECS_ERR_SLOT=5，校验失败即退出码）。
-        // 用键码 12(RCLICK) 远超本脚本槽数，确保「a 被误当槽位」必然拒载、用例可抓住回归。
+        // KeyV 的 a 是按键码（GamePadKey）而非槽位，b 才是目标槽——键码可以远大于
+        // 帧槽数。信任字节码（abi_rev 格式：加载期无指令流校验）下合法镜像正常执行。
         const string source = """
         FOR $i = 1 TO 2
             RCLICK $i
@@ -147,25 +145,6 @@ public class CvmCrossValidationTests
         var (okExit, _, okErr) = RunCvm(ecx, "keyv-legal");
         Assert.That(okExit, Is.EqualTo(0), $"合法 KeyV 镜像应正常加载执行；stderr={okErr}");
         Assert.That(CvmRunner.ParseTsvByTag(okErr, "KEY"), Is.EqualTo(new[] { "KEY 12 1", "KEY 12 2" }));
-
-        // 把 KeyV 字的 b 槽改写成 0xFE（远超本镜像槽数）→ 加载期拒载
-        int patched = 0;
-        for (int i = 0; i + 3 < ecx.Length; i++)
-        {
-            if (ecx[i] == (byte)EcsOpcode.KeyV && ecx[i + 2] < 0x10)
-            {
-                ecx[i + 2] = 0xFE;
-                patched++;
-            }
-        }
-        Assert.That(patched, Is.GreaterThanOrEqualTo(1), "镜像中应存在 KeyV 指令字");
-        EcsContainer.ResealCrc32(ecx);   // ECX1 全量 CRC 覆盖补丁字节，重封后补丁才能到达槽位校验（CRC 在前）
-
-        var (badExit, _, badErr) = RunCvm(ecx, "keyv-badslot");
-        Assert.That(badExit, Is.EqualTo(5), $"b 越界应报 ECS_ERR_SLOT(5)；stderr={badErr}");
-        // 加载期校验失败的标志：ECS_ERR=5 且无运行期错误的 func/pc 定位（中文标签受本地代码页影响，不断言）
-        Assert.That(badErr, Does.Contain("ECS_ERR=5"));
-        Assert.That(badErr, Does.Not.Contain("func="));
     }
 
     [Test]

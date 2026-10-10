@@ -392,10 +392,8 @@ internal partial class Parser
                     _diagnostics.ReportInvalidExpressionStatement(first.Location);
                 }
                 var args = ParseArguments();
-                // v1 特例（行为偏差注记，LegacySyntax 语义单点）：PRINT 后接「&」时旧解析器
-                // 把 & 当分隔符吞掉；PRINT 后接调用/成员链时走下方 CallStmtWithArgs 字面量回退
-                // （不求值实参）。LegacySyntax=false（新语法模式）不执行该吞并。
-                if (_syntaxTree.LegacySyntax && first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
+                // PRINT 的「&」是输出分隔符（PRINT 语法的一部分），语句装配时吞掉
+                if (first.Value.Equals("print", StringComparison.CurrentCultureIgnoreCase))
                 {
                     if (Check(TokenType.BitAnd)) Advance();
                 }
@@ -491,6 +489,10 @@ internal partial class Parser
                 var okd = double.TryParse(tokdbl.Value, out var dblval);
                 if (!okd) _diagnostics.ReportInvalidNumber(tokdbl.Location, tokdbl.Value);
                 return new LiteralExpr(tokdbl, dblval);
+            case TokenType.TRUE:
+            case TokenType.FALSE:
+                var tokbool = Advance();
+                return new LiteralExpr(tokbool, tokbool.Type == TokenType.TRUE);
             default:
                 var tokdef = Advance();
                 _diagnostics.ReportUnexpectedToken(tokdef.Location, tokdef, TokenType.INT);
@@ -559,7 +561,7 @@ internal partial class Parser
         var parseNext = true;
         while (parseNext && !Check(TokenType.RightBracket) && !CursorEOF)
         {
-            items.Add(ParsePrimary());
+            items.Add(ParseArrayConstElement());
             if (Check(TokenType.COMMA))
                 Advance();
             else
@@ -575,6 +577,63 @@ internal partial class Parser
         }
 
         return new IndexDefExpression(lb, [.. items], rb, elementTypeToken);
+    }
+
+    /// <summary>
+    /// 数组初始化元素：仅允许编译期常量（数字/字符串/true/false/_常量/一元负号数值）。
+    /// 语法阶段即拒绝变量、识图标签与调用，保证数组字面量可在编译期完整求值
+    /// （常量模板/常量池物化的前提）。
+    /// </summary>
+    private BaseExpr ParseArrayConstElement()
+    {
+        // 一元负号仅作用于数值字面量（-1 / -1.5）
+        if (Check(TokenType.SUB) && Peek(1).Type is TokenType.INT or TokenType.Number)
+        {
+            var opToken = Advance();
+            return new UnaryExpression(opToken, ParseNumericLiteral());
+        }
+
+        switch (Current.Type)
+        {
+            case TokenType.INT:
+            case TokenType.Number:
+                return ParseNumericLiteral();
+            case TokenType.STRING:
+                var strToken = Advance();
+                return Formatter.GetValueEx(strToken);
+            case TokenType.TRUE:
+            case TokenType.FALSE:
+                var boolToken = Advance();
+                return new LiteralExpr(boolToken, boolToken.Type == TokenType.TRUE);
+            case TokenType.CONST:
+                var constToken = Advance();
+                // __TIME__/__APP__ 是运行时取值，不属于编译期常量
+                if (Formatter.IsSpecialConst(constToken.Value))
+                {
+                    _diagnostics.ReportArrayConstantRequired(constToken.Location, constToken);
+                    return new LiteralExpr(constToken, "");
+                }
+                return Formatter.GetValueEx(constToken);
+            default:
+                var bad = Current;
+                _diagnostics.ReportArrayConstantRequired(bad.Location, bad);
+                Advance();
+                return new LiteralExpr(bad, 0);
+        }
+    }
+
+    private BaseExpr ParseNumericLiteral()
+    {
+        var tok = Advance();
+        if (tok.Type == TokenType.INT)
+        {
+            var ok = int.TryParse(tok.Value, out var intval);
+            if (!ok) _diagnostics.ReportInvalidNumber(tok.Location, tok.Value);
+            return new LiteralExpr(tok, intval);
+        }
+        var okd = double.TryParse(tok.Value, out var dblval);
+        if (!okd) _diagnostics.ReportInvalidNumber(tok.Location, tok.Value);
+        return new LiteralExpr(tok, dblval);
     }
 
     // baseExpr[expr] or baseExpr[start:end]

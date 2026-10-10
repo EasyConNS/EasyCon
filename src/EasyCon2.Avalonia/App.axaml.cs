@@ -119,8 +119,10 @@ public partial class App : Application
                 try { if (controllerService is IDisposable cd) cd.Dispose(); } catch { }
                 try { captureService.Dispose(); } catch { }
                 try { deviceService.Dispose(); } catch { }
+#pragma warning disable VSTHRD002 // Exit 事件为同步签名：只能限时(2s)同步等待异步服务收尾
                 try { _mcpHttpServer?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }
                 try { _flowHttp?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }
+#pragma warning restore VSTHRD002
                 try { _flowState?.Dispose(); } catch { }
                 logService.Dispose();
                 EasyCon.Core.Logging.CoreLog.Sink = null;
@@ -160,7 +162,9 @@ public partial class App : Application
             ConnectVideo = index => captureService.TryConnect(index)
                 ? null
                 : $"视频源打开失败: [{index}]",
+#pragma warning disable VSTHRD002 // 桥接委托为同步签名：断开必须等采集循环退出（见上注释）
             DisconnectVideo = () => captureService.DisconnectAsync().GetAwaiter().GetResult(),
+#pragma warning restore VSTHRD002
             GetFrameStore = () => captureService.GetFrameStore(),
             IsMcuConnected = () => deviceService.IsConnected,
             ConnectMcu = port => deviceService.TryConnect(port)

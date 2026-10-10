@@ -19,6 +19,8 @@ public static class DiagnosticCodes
     public const string TooMuchLoop = "ECX0009";
     public const string InvalidBreakOrContinue = "ECX0010";
     public const string BadStruct = "ECX0011";
+    public const string KeywordMustBeLowercase = "ECX0012";     // true/false 字面量仅接受全小写
+    public const string ArrayConstantRequired = "ECX0013";      // 数组初始化元素仅允许编译期常量
 
     // ---- 声明与绑定 ----
     public const string VariableNotFound = "ECX0101";
@@ -37,6 +39,7 @@ public static class DiagnosticCodes
     public const string ModuleNameConflict = "ECX0114";
     public const string ImageLabelNotFound = "ECX0115";
     public const string InvalidConstantExpression = "ECX0116";
+    public const string ParamWindowOverflow = "ECX0117";    // 参数个数超过实参窗容量（7）
 
     // ---- 类型 ----
     public const string CannotConvert = "ECX0201";

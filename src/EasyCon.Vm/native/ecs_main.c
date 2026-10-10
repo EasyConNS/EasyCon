@@ -2,7 +2,9 @@
  * ecs_main.c — ecs-vm CLI harness（docs/VmSemanticContract.md §四）。
  * 单片机参考宿主：L2 平台 syscall 的语义参考实现 + L1 域操作回调 + L3 无（按需接入）。
  *
- *   ecs-vm run image.ecx [--trace] [--print] [--strict-caps] [-- arg0 arg1...]
+ *   ecs-vm run image.ecx [--io] [--trace]
+ *     --io：经 ecs_io 读取器加载（模拟 EEPROM/NVS 等位置的字节码来源）
+ *     缺省 = RAM 缓冲直载（可 XIP）；[--print] [--strict-caps] [-- arg0 arg1...]
  *     stdout：脚本 PRINT 输出（UTF-16 → UTF-8；--print 通道开）
  *     stderr：--trace 时逐条域事件 TSV（格式与 C# EcxHost.EnableRecording 一致，供三方对拍）
  *     退出码：ECS_* 结果码；错误时 stderr 打印 func/pc 现场
@@ -210,14 +212,24 @@ static const char *err_name(int rc)
     }
 }
 
+/* ecs_io 适配：stdio 随机访问读（seek + read）——EEPROM/flash/NVS 来源按同型适配 */
+static uint32_t file_io_read(void *ud, uint32_t offset, uint8_t *out, uint32_t len)
+{
+    FILE *f = (FILE *)ud;
+    if (fseek(f, (long)offset, SEEK_SET) != 0)
+        return 0;
+    return (uint32_t)fread(out, 1, (size_t)len, f);
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 3 || strcmp(argv[1], "run") != 0)
     {
-        fprintf(stderr, "用法: ecs-vm run image.ecx [--trace] [--print] [--strict-caps] [-- arg0...]\n");
+        fprintf(stderr, "用法: ecs-vm run image.ecx [--io] [--trace] [--print] [--strict-caps] [-- arg0...]\n");
         return 2;
     }
     const char *imagePath = argv[2];
+    int useIo = 0;
     const char *scriptArgs[64];
     int nargs = 0;
     g_trace = 0;
@@ -229,6 +241,8 @@ int main(int argc, char **argv)
             g_trace = 1;
         else if (strcmp(argv[i], "--print") == 0)
             pcPrint = 1;
+        else if (strcmp(argv[i], "--io") == 0)
+            useIo = 1;
         else if (strcmp(argv[i], "--strict-caps") == 0)
             strictCaps = 1;   /* S-21 严格档：feats 加载期校验 + miss 响亮（迁移保底/诊断） */
         else if (strcmp(argv[i], "--") == 0)
@@ -256,7 +270,6 @@ int main(int argc, char **argv)
         free(image);
         return 2;
     }
-    fclose(f);
 
     /* 参考宿主装配：L1 域操作回调（wait/key/stick + trace）+ L2 syscall 桩 + feats。 */
     ecs_host host;
@@ -279,7 +292,22 @@ int main(int argc, char **argv)
 
     ecs_vm *vm = ecs_vm_new(&host);
     g_vm = vm;
-    int rc = ecs_vm_load(vm, image, (size_t)len);
+    int rc;
+    if (useIo)
+    {
+        /* 经 ecs_io 读取器加载（随机访问 read 回调；宿主以 stdio seek 实现——
+         * EEPROM/内部 flash/NVS 等来源按同型 read 适配） */
+        ecs_io io;
+        io.ud = f;
+        io.size = (uint32_t)len;
+        io.read = file_io_read;
+        rc = ecs_vm_load_io(vm, &io);
+    }
+    else
+    {
+        rc = ecs_vm_load(vm, image, (size_t)len);
+    }
+    fclose(f);
     if (rc != ECS_OK)
     {
         fprintf(stderr, "镜像校验失败: ECS_ERR=%d\n", rc);

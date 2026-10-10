@@ -386,15 +386,29 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
         bool isAllUpper = word.All(char.IsUpper);
         bool isAllLower = word.All(char.IsLower);
 
-        if ((isAllUpper || isAllLower) && keywords.ContainsKey(word.ToLower()))
+        // true/false 字面量：任何大小写形态都按布尔字面量出 token（便于语法恢复），
+        // 但仅全小写合法——TRUE/True 等报 ECX0012。不与通用关键字的全大写兼容规则混用。
+        if (word.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+            word.Equals("false", StringComparison.OrdinalIgnoreCase))
+        {
+            var boolType = word.Equals("true", StringComparison.OrdinalIgnoreCase)
+                ? TokenType.TRUE
+                : TokenType.FALSE;
+            if (!isAllLower)
+            {
+                var kwSpan = new SourceSpan(start, word.Length);
+                var kwLocation = new TextLocation(_text, kwSpan);
+                _diagnostics.ReportKeywordMustBeLowercase(kwLocation, word);
+            }
+            AddToken(boolType, word.ToUpper(), start);
+        }
+        else if ((isAllUpper || isAllLower) && keywords.ContainsKey(word.ToLower()))
         {
             var tokenType = keywords[word.ToLower()];
             AddToken(tokenType, word.ToUpper(), start);
-            if (syntaxTree.LegacySyntax)
-            {
-                if (tokenType == TokenType.IF || tokenType == TokenType.ELIF)
-                    _expectEqualAfterIf = true;
-            }
+            // IF/ELIF 条件中的「=」按比较运算处理（语言标准行为：IF a = b ≡ IF a == b）
+            if (tokenType == TokenType.IF || tokenType == TokenType.ELIF)
+                _expectEqualAfterIf = true;
         }
         else if ((isAllUpper || isAllLower) && logicwords.ContainsKey(word.ToLower()))
         {
@@ -441,7 +455,7 @@ internal sealed partial class Lexer(SyntaxTree syntaxTree)
                     Advance();
                     AddToken(TokenType.EQL, "==", start);
                 }
-                else if (_expectEqualAfterIf && syntaxTree.LegacySyntax)
+                else if (_expectEqualAfterIf)
                 {
                     AddToken(TokenType.EQL, "=", start);
                     _expectEqualAfterIf = false;

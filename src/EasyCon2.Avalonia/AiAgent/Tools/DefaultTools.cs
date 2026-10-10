@@ -23,7 +23,7 @@ public static class DefaultTools
         registry.Register(new FormatScriptTool(service));
 
         // 运行控制与可观测
-        registry.Register(new RunScriptTool(service, service));
+        registry.Register(new RunScriptTool(service));
         registry.Register(new StopScriptTool(service));
         registry.Register(new GetDeviceStatusTool(service));
         registry.Register(new GetLogsTool(service));

@@ -19,7 +19,19 @@ extern "C" {
 #endif
 
 /* ---- 容器 ABI（与 C# EcsSyscall.AbiRevision / ECSC manifest.abi_rev 对齐） ---- */
-#define ECS_ABI_REV 3        /* v3 = 定长指令编码（与 C# EcsSyscall.AbiRevision 对齐） */
+#define ECS_ABI_REV 1        /* 镜像格式修订号（与 C# EcsSyscall.AbiRevision 对齐；
+                              * 全新实现无历史分级，格式语义变化时直接改值） */
+
+/* ---- 帧内寄存器布局（与 C# EcsRegisters 一一对应，双端手工镜像） ----
+ * 帧模型 = Dalvik/Lua 式每函数栈窗口：帧长 = 函数寄存器高水位（funcdef.nslots ≤ 255，
+ * 指令域 u8 是唯一上限），调用时在共享值栈上开窗、返回时弹出。 */
+#define ECS_REG_MAX          255  /* 寄存器号上限（指令 A/B/C 域 u8） */
+#define ECS_REG_RET          0    /* R0 = 返回值固定落点（Call 的 C=0） */
+#define ECS_REG_ARG_BASE     1    /* R1–R7 = 实参窗（Call 从调用方 STAGING 深拷贝播种） */
+#define ECS_REG_ARG_COUNT    7
+#define ECS_REG_STAGING_BASE 8    /* R8–R23 = 出站实参/数组分块暂存（固定位置） */
+#define ECS_REG_STAGING_COUNT 16
+#define ECS_REG_ALLOC_BASE   24   /* R24 起 = 分配区（独占+池，随函数伸缩） */
 #define ECSC_MAGIC  0x43534345u   /* "ECSC" */
 #define ECSC_VERSION 2        /* v2 = 定长指令编码（v1 = varint 基流，互不兼容） */
 #define ECSC_KIND_IMAGE 1
@@ -154,9 +166,25 @@ int32_t ecs_vm_arg_str(ecs_vm *vm, ecs_value v, const uint16_t **units);
 /* 分配 VM 堆字符串作为返回值（UTF-16 units；units=NULL 或 len<=0 → 空串） */
 void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_t len);
 
+/* ---- 字节码来源抽象（uLua zIO 思路，随机访问式）：RAM 缓冲 / 内存映射内部 flash /
+ * EEPROM（逐字节读）/ NVS（分块读）等位置统一经 read 回调供给；VM 信任字节码，
+ * 加载期仅校验 magic/版本/ABI 与结构边界（宿主内存安全），不做内容校验。 ---- */
+typedef struct ecs_io {
+    void *ud;
+    uint32_t size;                /* 镜像总字节数 */
+    /* 从 offset 读 len 字节到 out；返回实际读取字节数（< len = 读失败） */
+    uint32_t (*read)(void *ud, uint32_t offset, uint8_t *out, uint32_t len);
+} ecs_io;
+/* 缓冲来源便捷构造：direct = 1 时零拷贝（可 XIP）；0 时经 read 拉取（演示统一通路） */
+void ecs_io_mem(ecs_io *io, const void *buf, uint32_t len, int direct);
+
 ecs_vm *ecs_vm_new(const ecs_host *host);
-/* 加载并校验 ECSC 镜像；image 缓冲区须在 vm 生命周期内保持有效（不拷贝，可 XIP） */
+/* 加载镜像（RAM 缓冲便捷形式）；image 缓冲区须在 vm 生命周期内保持有效（不拷贝，可 XIP）。
+ * 加载仅校验头（magic/版本/ABI）与解析期结构边界；相信字节码内容（Lua 式最小验证面）。 */
 int     ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len);
+/* 经 ecs_io 加载：镜像经 read 回调拉入 VM 内部缓冲（EEPROM/NVS 等位置的字节码解释执行）；
+ * 内部缓冲由 VM 持有并在 ecs_vm_free 释放。 */
+int     ecs_vm_load_io(ecs_vm *vm, const ecs_io *io);
 /* 运行：ECS_OK / ECS_YIELD（步数预算耗尽，可再次调用继续）/ 负面错误码 */
 int     ecs_vm_run(ecs_vm *vm);
 void    ecs_vm_cancel(ecs_vm *vm);

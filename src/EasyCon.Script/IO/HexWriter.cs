@@ -1,3 +1,5 @@
+// 固件 + 脚本合并写回 Intel HEX（GUI 固件合成用；自 v1 Assembly 目录迁出，
+// 仅保留 HEX 改写工具，v1 汇编器不随迁）。
 using System.Text;
 
 namespace EasyCon.Script.Asm;
@@ -8,7 +10,7 @@ public static class HexWriter
     public static string WriteHex(string hexStr, byte[] asmBytes, int size, int version)
     {
         if (asmBytes.Length > size)
-            throw new AssembleException("烧录失败！字节超出限制");
+            throw new InvalidOperationException("烧录失败！字节超出限制");
         var list = new List<byte>(asmBytes);
         // load hex file
         var lines = hexStr.Split('\r', '\n');
@@ -21,9 +23,9 @@ public static class HexWriter
                 if (hex != null)
                     hexFile.Add(hex);
             }
-            catch (AssembleException ex)
+            catch (InvalidOperationException ex)
             {
-                throw new AssembleException("固件读取失败！" + ex.Message);
+                throw new InvalidOperationException("固件读取失败！" + ex.Message);
             }
         }
         // find data position
@@ -37,10 +39,10 @@ public static class HexWriter
             return true;
         });
         if (index == -1)
-            throw new AssembleException("固件读取失败！未找到数据结构");
+            throw new InvalidOperationException("固件读取失败！未找到数据结构");
         int ver = hexFile[index].Data[2];
         if (ver < version)
-            throw new AssembleException("固件版本不符，请使用最新版的固件");
+            throw new InvalidOperationException("固件版本不符，请使用最新版的固件");
         // write data from asmBytes
         for (int i = 0; i < list.Count;)
         {
@@ -75,7 +77,7 @@ class IntelHex
                 return null;
             line = line.Trim();
             if (line[0] != ':')
-                throw new AssembleException("需要以“:”作为起始");
+                throw new InvalidOperationException("需要以“:”作为起始");
             var bytes = new List<byte>();
             for (int i = 1; i < line.Length; i += 2)
                 bytes.Add(Convert.ToByte(line.Substring(i, 2), 16));
@@ -89,12 +91,12 @@ class IntelHex
             index += hex.DataSize;
             hex.Checksum = bytes[index++];
             if (index != bytes.Count)
-                throw new AssembleException("数据过多");
+                throw new InvalidOperationException("数据过多");
             return hex;
         }
         catch (IndexOutOfRangeException)
         {
-            throw new AssembleException("数据过少");
+            throw new InvalidOperationException("数据过少");
         }
     }
 

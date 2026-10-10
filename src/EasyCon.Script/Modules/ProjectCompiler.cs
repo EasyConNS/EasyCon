@@ -111,8 +111,7 @@ public static class ProjectCompiler
         }
 
         var diagnostics = new DiagnosticBag();
-        var graph = ModuleGraphBuilder.Build(mainTree, scriptDir, result.Timing, diagnostics,
-            options.LegacySyntax);
+        var graph = ModuleGraphBuilder.Build(mainTree, scriptDir, result.Timing, diagnostics);
         if (diagnostics.HasErrors())
         {
             result.Diagnostics.AddRange(diagnostics);

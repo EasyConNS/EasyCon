@@ -264,7 +264,9 @@ def validate_doc(doc: dict) -> list[str]:
         problems.append("图中没有任何节点")
 
     known = set(ids)
-    has_start = any(n.get("type") == "start" for n in nodes)
+    starts = [i for i, n in zip(ids, nodes) if n.get("type") == "start"]
+    if len(starts) > 1:
+        problems.append(f"start 节点只能有一个，当前 {len(starts)} 个: {', '.join(starts)}")
     for edge in doc.get("exec") or []:
         try:
             src_node, _src_port, dst_node = normalize_exec_edge(edge)
@@ -276,7 +278,7 @@ def validate_doc(doc: dict) -> list[str]:
         if dst_node not in known:
             problems.append(f"exec 边引用了不存在的节点: {dst_node}")
 
-    if not has_start:
+    if not starts:
         # 与后端 FindStart 一致：无 start 时靠「唯一无 exec 入边节点」兜底
         targets = set()
         for edge in doc.get("exec") or []:

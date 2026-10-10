@@ -110,7 +110,7 @@ ToStr ToInt`。
 
 ## 3. 指令集
 
-### 3.1 编码格式（小端；线格式 = v3 定长指令（ECX1 平铺容器），见下）
+### 3.1 编码格式（小端；定长指令，ECX1 平铺容器）
 
 | 格式 | 布局（v3 定长，即线格式） | 用于 |
 |------|------|------|
@@ -124,8 +124,8 @@ ToStr ToInt`。
 > **单流化 + v3 定长（已实施）**：内存唯一表示为解码形态 `EcsInstruction`（完整 int32 操作数，
 > Jump = 相对指令下标）；文件的 **v3 定长指令流**（ECX1 `.text`）与内存按上表一一对应，
 > 投影/抬升由 `InstructionCodec` 单处换算（线格式跳转 = 相对**字节**偏移：目标 = 指令起始 +
-> 本指令字节数 + delta）。操作数位宽由格式锁定：槽位 u8 ≤254（**C=255 = 无接收槽哨兵**，
-> 内存 `NoSlot=-1`）；AsBx=s16；ABx=Bx16（≤65535，常量池 16 位索引是 pinned 句柄编码前提）；
+> 本指令字节数 + delta）。操作数位宽由格式锁定：槽位 u8 ≤254（寄存器 ≤255 帧长上限，无哨兵值——
+> Call/CallN 的 C 恒为接收寄存器号）；AsBx=s16；ABx=Bx16（≤65535，常量池 16 位索引是 pinned 句柄编码前提）；
 > IsJ=s24。越界一律**编译期响亮失败**。
 > 权威表：C# `EcsFormat.BuildTable`（漏登自检抛出）↔ C `ecs_op_words`（字数 1=4B/2=8B）。
 
@@ -194,49 +194,51 @@ LCLICK=11 RCLICK=12 HOME=13 CAPTURE=14`；HAT `TOP=16..TOP_LEFT=23`；摇杆 `LS
 （StickSet/StickP 的 side 参数：0=L, 1=R）。摇杆坐标 ∈ [0,255]，回中 (128,128)；方向→坐标换算
 在 C# 编码期完成，VM 不理解角度。
 
-### 3.3 槽位模型
+### 3.3 寄存器与槽位模型（每函数栈窗口）
+
+**帧模型**（Dalvik/Lua 式）：帧 = 函数自身的寄存器窗口，帧长 = 函数寄存器高水位（`EcsFunction.NSlots`
+≤ 255，指令 A/B/C 域 u8 是唯一上限——项目代码量增长不牵动寄存器堆）。调用时在共享值栈上按被调方
+帧长开窗、返回时弹出。帧内布局：
 
 ```text
-[0 .. nParams)                        参数符号槽（恒等映射：Call 实参窗 + TRE 回边 store）
-[nParams .. nLocals)                  存活局部符号槽（编码期压缩重编号；优化删除的局部不占槽）
-[nLocals ..)                          专用槽：phi 结果（死 φ 免分配）与跨块值
-(..)                                  保留区：Neq 中间槽、并行副本 scratch、实参 staging、返回值 receive
-(.. nSlots)                           块内槽池：块内值与常量，定义/物化时取用，末次读取归还
-nSlots ≤ 宿主容量档案（参考宿主 255；格式字段宽 u16，无格式限制）
+R0                       RET：返回值固定落点（Call 的 C=0，无显式接收时）
+R1 .. R7                 ARG 实参窗：被调方参数（Call 从调用方 STAGING 深拷贝播种，S-17）
+R8 .. R23                STAGING 暂存区（固定位置）：调用出站实参 + 数组字面量分块构建
+R24 .. (frameLen-1)      分配区：独占槽（φ 结果/ForStep 目标/循环携带值/编码器临时）→ 池区
+frameLen ≤ 255           帧长 = NSlots = 发射结束后池区高水位
 ```
 
-- **编码期槽位回收**：非参数 `StoreLocal` 不发射——局部读值全走 SSA（构建期 mem2reg），
-  帧槽无读取者，对无人读取槽的写入不可观察；参数 store 保留（Call ABI 播种 + TRE 回边是
-  真实读取者）。仍被引用的局部符号槽压缩重编号到参数窗之后（`AssignSlots` 步骤 0）。
-- **池化判据**：phi 恒专用（**全函数零读取的死 φ 不分配槽、前驱边不产生副本**）；其余值全部读取
-  都在定义块内 → 池化；跨块 → 专用槽。phi 臂读取按臂↔前驱对齐计入前驱块。
+- **生命周期分配**（`AssignSlots`，参考线性扫描寄存器分配）：非常量值统一池化——定义发射
+  （或首次读取触碰，先到先得）时取槽，**末次静态读取结算后归还**（`ReleaseDying` 全函数读取
+  计数归零）；跨迭代安全：循环内的读取点不会在归还后再执行。常量按使用块块首物化（每块独立
+  槽 + 块内计数归还）。
+- **独占槽**（不入池）：φ 结果与 ForStep 目标（跨迭代被边副本/分支原地写）、**循环携带值**
+  （`CollectLoopCarriedValues`：定义块不在其读取所在自然循环体内——线性扫描对回边活性的盲区，
+  素数筛语料实证）、编码器临时（Neq/scratch/模板守卫组）。φ 臂合并（下 P1b）后臂须退出池化
+  结算，否则会把 φ 独占槽错放回空闲池。
+- **STAGING 与参数窗物理隔离**：出站实参 Move 不可能覆写存活值，无重叠 Move 冒险；固定位置使
+  链接期内联（`InlineStdWrappers`）的重映射可判定。内联拼接前先把外层已暂存 STAGING 的实参
+  拷到通用区救援位（壳体重排自身调用实参时会覆写 STAGING 窗口）。
+- **编码期槽位回收**：非参数 `StoreLocal` 不发射——局部读值全走 SSA（构建期 mem2reg）；参数
+  store 保留（Call ABI 播种 + TRE 回边是真实读取者）。
 - **常量块首惰性物化 + 循环不变量外提**：常量在每个使用块的块首物化（`LoadI/LoadBool/LoadK`），
-  末次读取归还；零使用不物化。`HoistLoopInvariantConsts`（编码期 AssignSlots 步骤 1.5）把「全部使用块
-  都被某循环 preheader 支配、且循环体内使用块在脊柱上（header→回边源每轮必经）」的常量改挂 preheader
-  块首物化一次（FOR 尾融合后每轮省 2-3 条块首 LoadI）；外提常量按共享组定槽——两常量共享一槽的守卫是
-  双向 BFS（从任一物化点出发不经另一物化块可达对方使用块即拒绝，防覆写读陈值），稀有分支内的常量不外提
-  （无每轮收益，徒占槽）。立即数操作数（`KeyI/WaitI/StickP` 常量时长）不占槽。
-- **链接期死存储清扫**（`DeadStoreSweep`）：反向活跃性删除落槽/边副本残留的死
-  `Move/SetVar/LoadI/LoadBool/LoadK/LoadG`（防线 3），pc 重映射保持跳转合法。活跃性 CFG 的终结符集含
-  `ForStep`（exit 目标与 fall-through 两条出边都入图）——漏边会让循环回边副本被误判死指令（嵌套 FOR
-  死循环实证）；use/def 按 `ForStep 读 A/B、写 C` 登记；**`CmpJ` 必须同入终结符集**（读 A/B、
-  C=kind 码非槽位、无 def）——漏入会让比较跳转的两条边不进活跃性图，循环携带值被误删（素数筛
-  回归实证）。无终结符的块（P1a 尾跳转消除后的直落块）
-  必须补对下一块的 fall-through 边——漏边会让直落块 liveOut 为空、块内定义被误删（corpus arith
-  入口初始化实证）。
-- **取指通路局部化 + 比较族直写**（P0，`EcxInterpreter.Step`）：frame/指令流 span/R/pc 为循环局部
-  （换帧显式重载、YIELD/宿主后取消写回 pc）；比较族 21 case 直写不走委托、浮点比较与 C VM 的
-  C 语义对齐（NaN → false）。纯 C# 侧，字节码形态不变。
-- **发射期跳转瘦身**（P1a，`NextIsBlock`）：块尾跳转目标为下一发射块时直落；Jpt+Jpf 双跳转在
-  单侧可直落时只发另一侧。mid-shape 跳转（skip 标签前）不可消除——直落会误入另一臂。
-- **phi 臂二地址合并**（P1b，`TryCoalescePhiArm`）：唯一读取为某 phi 臂的跨块指令与 φ 共槽，
-  边副本 dst==src 自消；守卫 = X 后无读 φ、终结符条件与其他臂不引用 φ（覆写后副本会拿到新值）。
+  末次读取归还；零使用不物化。`HoistLoopInvariantConsts`（AssignSlots 步骤 1.5）把「全部使用块
+  都被某循环 preheader 支配、且循环体内使用块在脊柱上」的常量改挂 preheader 块首物化一次；
+  外提常量按共享组定槽（双向 BFS 守卫防覆写读陈值）。立即数操作数（`KeyI/WaitI/StickP` 常量
+  时长）不占槽。
+- **链接期死存储清扫**（`DeadStoreSweep`）：反向活跃性删除死 `Move/SetVar/LoadI/LoadBool/LoadK/
+  LoadG`（防线 3）。活跃性 CFG 的终结符集含 `ForStep` 与 `CmpJ`（素数筛回归实证）；无终结符的
+  直落块必须补 fall-through 边（corpus arith 实证）。
+- **发射优化**：块尾跳转消除（P1a）、phi 臂二地址合并（P1b，合并臂 ScrubPooled 退出池化）、
+  CmpJ 比较跳转融合（P2′）、常量模板降级（全常量 ≥8 元素数组 → 守卫式模板全局）。
+  数组/字符串字面量自语言层即限常量（语法阶段白名单），可在编译期完整固定。
 
 ### 3.4 调用约定
 
-实参连续暂存调用者 `R[base..base+n)`，`Call` 深拷贝进被调帧槽 `0..n-1`；返回值经接收槽 C 深拷贝
-交接（NoSlot = -1）。递归天然支持；深度上限 `ECS_MAX_CALL_DEPTH`（512）→ `ECS_ERR_DEPTH`；尾递归
-由 SSA 优化器（TRE）变循环回边，VM 无 tail-call 指令。
+实参连续暂存调用者 STAGING 区 `R[StagingBase..StagingBase+n)`，`Call` 深拷贝播种进被调方 ARG 窗
+`R[1..1+n)`（S-17）；接收槽 C 恒为寄存器号（无哨兵值），返回值深拷贝交接（C=0 即 RET 落点）。
+实参上限 7（ARG 窗容量，绑定层强制）。递归天然支持；深度上限 `ECS_MAX_CALL_DEPTH`（64，双端对齐）
+→ `ECS_ERR_DEPTH`；尾递归由 SSA 优化器（TRE）变循环回边，VM 无 tail-call 指令。
 
 ---
 
@@ -295,19 +297,24 @@ Link 在深拷贝副本上进行，不污染调用方产物（`.ecm` 可安全 r
 src/EasyCon.Vm/native/  ecs_vm.h（唯一头文件）/ ecs_vm.c（加载器+堆+解释器）/ ecs_main.c（CLI harness）
 构建：cc -O2 -std=c99 -Wall -Wextra -o ecs-vm ecs_vm.c ecs_main.c -lm（单翻译单元可合并）
 嵌入式：两文件加入工程；malloc/free 经宏重定向到池分配器即可
-CLI：ecs-vm run image.ecx [--trace] [--print] [-- arg0...]
+CLI：ecs-vm run image.ecx [--io] [--trace] [--print] [--strict-caps] [-- arg0...]
+  --io = 经 ecs_io 读取器加载（模拟 EEPROM/NVS 等位置的字节码来源）；缺省 = RAM 缓冲直载（可 XIP）
   stdout = PRINT 输出；stderr = --trace 域事件 TSV（KEY/KEYST/STICK/STICKC/WAIT/AMIIBO/BEEP，
   与 C# EcxHost.EnableRecording 同格式）；--print 为 PC 验证通道（缺省 = MCU 精确语义）
 ```
 
 ### 6.2 结构与主循环
 
-- 加载期：解析表指针直指 image 缓冲（零拷贝可 XIP）+ 全量校验 + 特征校验（§8.3）+ 结构体布局
-  展开（slot_offset 计算，嵌套递归 + 环检测）。v3 定长编码：validate 即唯一安全层，
-  **镜像零变换零解码 RAM**——执行期从镜像定宽直取（4B/8B，格式类查表），XIP 原地执行。
+- 加载期（信任面）：解析表指针直指 image 缓冲（零拷贝可 XIP）+ 结构边界防护（r_* 越界即拒，
+  宿主内存安全）+ strict_caps 特征校验（§6.3）+ 结构体布局展开（slot_offset 计算，嵌套递归 +
+  环检测）。**相信字节码**（Lua 式最小验证面）：不做 CRC、不做指令流内容校验（validate_stream
+  已随信任面收缩删除）——执行期从镜像定宽直取（4B/8B，格式类查表），XIP 原地执行。
+- 字节码来源（`ecs_io`，uLua zIO 式随机访问读取器）：RAM 缓冲（`ecs_io_mem` 直载，可 XIP）、
+  内部 flash（内存映射 → 直载零拷贝）、EEPROM/NVS（read 回调分块拉入 VM 内部副本，
+  `ecs_vm_load_io`，副本由 VM 持有并在 `ecs_vm_free` 释放）——**读取这些位置的字节码解释执行**。
 - 堆：固定对象池（单块 = 一对象，空闲链，PROJECT_OUTLINE.md §4）；帧 = arena bump + 整帧清零，
   弹帧全槽释放后水位回退（PROJECT_OUTLINE.md §3）。
-- 主循环（v3 定长直取）：fr/code/end/R/pc/idx/steps 循环局部化，格式类查表 + switch 取指
+- 主循环（定长直取）：fr/code/end/R/pc/idx/steps 循环局部化，格式类查表 + switch 取指
   （WJ 跳转字延迟读），ret_pc（字节）/ret_idx（指令下标）仅在调用边界与让出点写回；非递归调用
   （压帧/改 PC/弹帧）；步数预算 `ECS_DEFAULT_BUDGET`（100 万步）耗尽 → `ECS_YIELD`（宿主轮询/
   心跳后重入续跑）；取消 → `ECS_CANCELLED`；错误带 `error_func/error_pc` 现场（pc = 指令下标）。
@@ -436,7 +443,7 @@ void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_
 | 帧区 | `max_depth × max_slots × 16B`（光速过帧 608 B） |
 | 堆 | 句柄表 + 对象，池大小可配（4–64 KB） |
 | VM 本体 | ecs_vm.c ~2200 行 C99 单翻译单元，`cc -O2` 一条命令构建 |
-| 调用深度 | `ECS_MAX_CALL_DEPTH` 512；帧 = arena bump（PROJECT_OUTLINE.md §3），用户递归不耗宿主栈 |
+| 调用深度 | `ECS_MAX_CALL_DEPTH` 64（与 C# 对齐）；帧 = 每函数栈窗口 arena bump（典型高水位 20–40 槽 ≈ 0.3–0.6KB），用户递归不耗宿主栈；深递归由 TRE 兜底 |
 
 ---
 
