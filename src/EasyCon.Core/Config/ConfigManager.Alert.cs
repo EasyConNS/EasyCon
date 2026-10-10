@@ -9,6 +9,7 @@ public static partial class ConfigManager
     private static readonly object _alertLock = new();
     private static readonly Dictionary<(string Path, string Id), QQNotificationSettings> _qqSessions = [];
     private static readonly Dictionary<string, (string? Source, string[] Ids)> _alertMigrationIds = [];
+    private static readonly Dictionary<string, string> _alertSaveErrors = [];
 
     public static event Action<AlertConfig>? AlertConfigChanged;
 
@@ -54,11 +55,11 @@ public static partial class ConfigManager
                 config = source == null ? CreateDefaultAlert()
                     : JsonSerializer.Deserialize<AlertConfig>(source, _jsonReadOptions) ?? new();
             }
-            catch
+            catch (Exception ex)
             {
-                // 不覆盖无法解析的旧文件，保留用户手动修复的机会。
-                return new AlertConfig { schema_version = 1 };
+                return new AlertConfig { schema_version = 1, load_error = ReportAlertLoadFailure(path, ex) };
             }
+            _alertSaveErrors.Remove(path);
             bool needsSave = source == null || config.schema_version < 1;
             if (config.schema_version < 1 && !config.alerts.Any(item => item.IsQq))
                 config.alerts.Add(AlertItem.CreateQq());
@@ -133,12 +134,41 @@ public static partial class ConfigManager
         }
     }
 
+    private static string ReportAlertLoadFailure(string path, Exception error)
+    {
+        string message;
+        if (error is JsonException)
+        {
+            string backup = $"{path}.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
+            try
+            {
+                File.Copy(path, backup);
+                message = $"推送配置解析失败，已备份到 {backup}，原文件未修改：{error.Message}";
+                _alertSaveErrors.Remove(path);
+            }
+            catch (Exception backupError)
+            {
+                message = $"推送配置解析失败，无法创建备份，已暂停保存，请修复文件后重新打开设置：{backupError.Message}";
+                _alertSaveErrors[path] = message;
+            }
+        }
+        else
+        {
+            message = $"推送配置读取失败，原文件未修改，请排除文件占用或权限问题后重新打开设置：{error.Message}";
+            _alertSaveErrors[path] = message;
+        }
+        ConfigErrorReported?.Invoke(path, message);
+        return message;
+    }
+
     public static void SaveAlert(AlertConfig config, string? path = null)
     {
         path = Path.GetFullPath(path ?? AppPaths.AlertConfig);
         AlertConfig snapshot = new() { schema_version = 1, timeout = config.timeout, alerts = [.. config.alerts.Select(item => item.Clone())] };
         lock (_alertLock)
         {
+            if (_alertSaveErrors.TryGetValue(path, out string? loadError))
+                throw new InvalidOperationException(loadError);
             HashSet<string> ids = EnsureAlertIds(snapshot);
             foreach (AlertItem item in snapshot.alerts)
             {

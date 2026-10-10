@@ -378,15 +378,89 @@ public class AlertConfigurationTests
     }
 
     [Test]
-    public void UnreadableConfiguration_IsNotOverwrittenDuringLoad()
+    public void CorruptConfiguration_IsBackedUpAndReportedBeforeLaterSave()
     {
         const string broken = "{\"alerts\": [未完成的配置";
         File.WriteAllText(ConfigPath, broken);
-        Assert.Multiple(() =>
+        List<string> errors = [];
+        void Report(string path, string message)
         {
-            Assert.That(ConfigManager.LoadAlert(ConfigPath).alerts, Is.Empty);
-            Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(broken));
-        });
+            if (path == ConfigPath)
+                errors.Add(message);
+        }
+        ConfigManager.ConfigErrorReported += Report;
+        try
+        {
+            AlertConfig loaded = ConfigManager.LoadAlert(ConfigPath);
+            string[] backups = Directory.GetFiles(_directory, "alert.json.corrupt-*");
+            Assert.Multiple(() =>
+            {
+                Assert.That(loaded.alerts, Is.Empty);
+                Assert.That(loaded.load_error, Does.Contain("解析失败").And.Contain("已备份"));
+                Assert.That(errors, Is.EqualTo(new[] { loaded.load_error }));
+                Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(broken));
+                Assert.That(backups, Has.Length.EqualTo(1));
+            });
+
+            ConfigManager.SaveAlert(loaded, ConfigPath);
+            Assert.Multiple(() =>
+            {
+                Assert.That(File.ReadAllText(backups.Single()), Is.EqualTo(broken));
+                Assert.That(File.ReadAllText(ConfigPath), Does.Not.Contain("load_error"));
+                Assert.That(ConfigManager.LoadAlert(ConfigPath).load_error, Is.Empty);
+            });
+        }
+        finally
+        {
+            ConfigManager.ConfigErrorReported -= Report;
+        }
+    }
+
+    [Test]
+    public void ReadFailure_BlocksSavingUntilReloadAndPreservesOriginalConfiguration()
+    {
+        if (!OperatingSystem.IsWindows())
+            Assert.Ignore("本用例使用 Windows 文件锁模拟读取失败。");
+        AlertConfig original = ConfigManager.CreateDefaultAlert();
+        original.alerts[0].token = "existing-webhook-token";
+        ConfigManager.SaveAlert(original, ConfigPath);
+        string originalJson = File.ReadAllText(ConfigPath);
+        List<string> errors = [];
+        void Report(string path, string message)
+        {
+            if (path == ConfigPath)
+                errors.Add(message);
+        }
+        ConfigManager.ConfigErrorReported += Report;
+        try
+        {
+            AlertConfig loaded;
+            using (FileStream locked = File.Open(ConfigPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                loaded = ConfigManager.LoadAlert(ConfigPath);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(loaded.load_error, Does.Contain("读取失败").And.Not.Contain("已备份"));
+                    Assert.That(errors, Is.EqualTo(new[] { loaded.load_error }));
+                    Assert.That(Directory.GetFiles(_directory, "alert.json.corrupt-*"), Is.Empty);
+                });
+            }
+            // 编辑器会从草稿重建保存对象，不能仅靠返回对象上的错误标志阻止覆盖。
+            Assert.Throws<InvalidOperationException>(() => ConfigManager.SaveAlert(new AlertConfig(), ConfigPath));
+            Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(originalJson));
+            AlertConfig recovered = ConfigManager.LoadAlert(ConfigPath);
+            ConfigManager.SaveAlert(recovered, ConfigPath);
+            Assert.Multiple(() =>
+            {
+                Assert.That(recovered.load_error, Is.Empty);
+                Assert.That(recovered.alerts[0].token, Is.EqualTo("existing-webhook-token"));
+                Assert.That(Directory.GetFiles(_directory, "*.tmp"), Is.Empty);
+            });
+        }
+        finally
+        {
+            ConfigManager.ConfigErrorReported -= Report;
+        }
     }
 
     [Test]
