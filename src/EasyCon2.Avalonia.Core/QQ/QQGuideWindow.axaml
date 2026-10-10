@@ -45,8 +45,11 @@
             </StackPanel>
             <HyperlinkButton Grid.Column="1" NavigateUri="{x:Static qq:QQGuideCatalog.PlatformUri}"
                              Cursor="Hand" VerticalAlignment="Top" ToolTip.Tip="https://q.qq.com/#/apps">
-                <TextBlock Text="QQ 开放平台 ↗" TextDecorations="Underline"
-                           Foreground="{DynamicResource WorkbenchAccentBrush}"/>
+                <Border BorderThickness="0,0,0,1" Padding="0,0,0,1"
+                        BorderBrush="{DynamicResource WorkbenchAccentBrush}">
+                    <TextBlock Text="QQ 开放平台 ↗" TextDecorations="{x:Null}"
+                               Foreground="{DynamicResource WorkbenchAccentBrush}"/>
+                </Border>
             </HyperlinkButton>
         </Grid>
         <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}">
