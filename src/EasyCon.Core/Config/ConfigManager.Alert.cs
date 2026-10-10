@@ -8,6 +8,7 @@ public static partial class ConfigManager
 {
     private static readonly object _alertLock = new();
     private static readonly Dictionary<(string Path, string Id), QQNotificationSettings> _qqSessions = [];
+    private static readonly Dictionary<string, (string? Source, string[] Ids)> _alertMigrationIds = [];
 
     public static event Action<AlertConfig>? AlertConfigChanged;
 
@@ -46,24 +47,33 @@ public static partial class ConfigManager
         lock (_alertLock)
         {
             AlertConfig config;
+            string? source;
             try
             {
-                config = File.Exists(path)
-                    ? JsonSerializer.Deserialize<AlertConfig>(File.ReadAllText(path), _jsonReadOptions) ?? new()
-                    : CreateDefaultAlert();
+                source = File.Exists(path) ? File.ReadAllText(path) : null;
+                config = source == null ? CreateDefaultAlert()
+                    : JsonSerializer.Deserialize<AlertConfig>(source, _jsonReadOptions) ?? new();
             }
             catch
             {
                 // 不覆盖无法解析的旧文件，保留用户手动修复的机会。
                 return new AlertConfig { schema_version = 1 };
             }
-            bool needsSave = !File.Exists(path) || config.schema_version < 1;
+            bool needsSave = source == null || config.schema_version < 1;
             if (config.schema_version < 1 && !config.alerts.Any(item => item.IsQq))
                 config.alerts.Add(AlertItem.CreateQq());
             if (needsSave)
             {
                 config.schema_version = 1;
+                // 写入失败后的重试沿用同一批标识，避免运行中的通道被当作删除。
+                if (_alertMigrationIds.TryGetValue(path, out (string? Source, string[] Ids) migration)
+                    && migration.Source == source && migration.Ids.Length == config.alerts.Count)
+                {
+                    for (int i = 0; i < config.alerts.Count; i++)
+                        config.alerts[i].id = migration.Ids[i];
+                }
                 _ = EnsureAlertIds(config);
+                _alertMigrationIds[path] = (source, [.. config.alerts.Select(item => item.id)]);
                 AlertItem? item = config.alerts.FirstOrDefault(item => item.IsQq);
                 string legacyPath = legacyQqPath ?? (path == AppPaths.AlertConfig ? AppPaths.QqNotificationConfig : "");
                 if (item != null && File.Exists(legacyPath))
@@ -153,6 +163,7 @@ public static partial class ConfigManager
                 _qqSessions.Remove(key);
             foreach (AlertItem item in snapshot.alerts.Where(item => item.IsQq))
                 _qqSessions[(path, item.id)] = item.qq!.Clone();
+            _alertMigrationIds.Remove(path);
         }
         AlertConfigChanged?.Invoke(snapshot);
     }

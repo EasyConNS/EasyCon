@@ -284,6 +284,99 @@ public class AlertConfigurationTests
         Assert.That(ConfigManager.LoadAlert(ConfigPath).alerts.Count, Is.EqualTo(3));
     }
 
+    [TestCase(false, false)]
+    [TestCase(true, false)]
+    [TestCase(false, true)]
+    [TestCase(true, true)]
+    public async Task RetryingMigrationPreservesActiveAndQueuedNotifications(bool lockFile, bool existingQq)
+    {
+        if (!OperatingSystem.IsWindows())
+            Assert.Ignore("本用例使用 Windows DPAPI 和只读属性或文件锁模拟迁移重试。");
+        AlertConfig original = new();
+        if (existingQq)
+            original.alerts.Add(new AlertItem { provider = AlertItem.QqProvider, name = AlertItem.QqDefaultName });
+        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(original));
+        File.WriteAllText(LegacyPath, JsonSerializer.Serialize(new
+        {
+            app_id = "legacy-app",
+            protected_secret = QQNotificationSecretProtector.Protect("legacy-secret"),
+            remember_secret = true,
+            user_openid = "legacy-user",
+            enabled = true,
+            attach_image = false,
+        }));
+        TaskCompletionSource<bool> active = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> canceled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        FileStream? locked = null;
+        try
+        {
+            if (lockFile)
+                locked = File.Open(ConfigPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            else
+                File.SetAttributes(ConfigPath, FileAttributes.ReadOnly);
+            AlertConfig initial = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+            using MigrationNotificationHandler handler = new()
+            {
+                BeforeMessage = async token =>
+                {
+                    active.TrySetResult(true);
+                    try
+                    {
+                        await release.Task.WaitAsync(token);
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested)
+                    {
+                        canceled.TrySetResult(true);
+                        throw;
+                    }
+                },
+            };
+            using HttpClient http = new(handler);
+            int channels = 0;
+            using AlertDispatcher dispatcher = new(initial, http, settings =>
+            {
+                channels++;
+                return new QQNotificationService(client: new QQNotificationClient(http),
+                    sender: new QQNotificationClient(http), settings: settings, persistSettings: false);
+            });
+            ConcurrentQueue<string> results = new();
+            using AlertService alerts = new(resultLogger: results.Enqueue, dispatcher: dispatcher);
+            alerts.Dispatch("正在发送的提醒");
+            await active.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            alerts.Dispatch("队列中的提醒");
+            Assert.That(alerts.FlushAsync().IsCompleted, Is.False);
+            AlertConfig failedRetry = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+            Assert.That(failedRetry.alerts.Single().id, Is.EqualTo(initial.alerts.Single().id));
+
+            locked?.Dispose();
+            locked = null;
+            File.SetAttributes(ConfigPath, FileAttributes.Normal);
+            AlertConfig editorConfig = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+            Assert.Multiple(() =>
+            {
+                Assert.That(editorConfig.alerts.Single().id, Is.EqualTo(initial.alerts.Single().id));
+                Assert.That(channels, Is.EqualTo(1));
+                Assert.That(canceled.Task.IsCompleted, Is.False);
+                Assert.That(alerts.FlushAsync().IsCompleted, Is.False);
+            });
+            release.TrySetResult(true);
+            await alerts.FlushAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Multiple(() =>
+            {
+                Assert.That(handler.Messages, Is.EqualTo(new[] { "伊机控消息\n正在发送的提醒", "伊机控消息\n队列中的提醒" }));
+                Assert.That(results.Count(result => result.Contains("QQ 通知发送成功")), Is.EqualTo(2));
+                Assert.That(canceled.Task.IsCompleted, Is.False);
+            });
+        }
+        finally
+        {
+            release.TrySetResult(true);
+            locked?.Dispose();
+            File.SetAttributes(ConfigPath, FileAttributes.Normal);
+        }
+    }
+
     [Test]
     public void UnreadableConfiguration_IsNotOverwrittenDuringLoad()
     {
@@ -391,18 +484,24 @@ public class AlertConfigurationTests
     }
     private sealed class MigrationNotificationHandler : HttpMessageHandler
     {
-        private int _messageCount;
-        public int MessageCount => Volatile.Read(ref _messageCount);
+        public ConcurrentQueue<string> Messages { get; } = new();
+        public int MessageCount => Messages.Count;
+        public Func<CancellationToken, Task>? BeforeMessage { get; init; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             if (request.RequestUri!.AbsolutePath.EndsWith("/messages", StringComparison.Ordinal))
-                Interlocked.Increment(ref _messageCount);
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                using JsonDocument body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken));
+                Messages.Enqueue(body.RootElement.GetProperty("content").GetString()!);
+                if (BeforeMessage != null)
+                    await BeforeMessage(cancellationToken);
+            }
+            return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(request.RequestUri.Host == "bots.qq.com"
                     ? "{\"access_token\":\"test-token\",\"expires_in\":7200}" : "{}"),
-            });
+            };
         }
     }
 }
