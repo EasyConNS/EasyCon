@@ -133,10 +133,7 @@ public static partial class ConfigManager
                     continue;
                 QQNotificationSettings settings = item.qq ??= new();
                 settings.enabled = item.enable;
-                if (settings.secret.Length > 0)
-                    settings.protected_secret = settings.remember_secret ? QQNotificationSecretProtector.Protect(settings.secret) : "";
-                else if (!settings.remember_secret)
-                    settings.protected_secret = "";
+                settings.PrepareSecretForSave();
             }
             string temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try

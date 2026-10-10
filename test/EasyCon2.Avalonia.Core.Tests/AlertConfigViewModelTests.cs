@@ -1,5 +1,7 @@
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.Core.AlertConfig;
+using EasyCon2.Avalonia.Core.QQ;
+using System.Text.Json;
 using AlertConfigType = EasyCon.Core.Config.AlertConfig;
 
 namespace EasyCon2.Avalonia.Core.Tests;
@@ -7,6 +9,79 @@ namespace EasyCon2.Avalonia.Core.Tests;
 [TestFixture]
 public class AlertConfigViewModelTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public void SavingWebhookChangePreservesUnreadableCiphertextUnlessExplicitlyForgotten(bool forgetSecret)
+    {
+        string directory = Directory.CreateTempSubdirectory("easycon-qq-editor-secret-tests-").FullName;
+        string path = Path.Combine(directory, "alert.json");
+        try
+        {
+            const string ciphertext = "synthetic-unreadable-ciphertext";
+            AlertConfigType original = ConfigManager.CreateDefaultAlert();
+            AlertItem qq = original.alerts.Single(item => item.IsQq);
+            qq.qq = new QQNotificationSettings
+            {
+                app_id = "app",
+                user_openid = "user",
+                remember_secret = true,
+                protected_secret = ciphertext,
+            };
+            ConfigManager.SaveAlert(original, path);
+            AlertConfigType loaded = ConfigManager.LoadAlert(path);
+            Assert.That(loaded.alerts.Single(item => item.IsQq).qq!.load_error, Is.Not.Empty);
+            using AlertConfigViewModel model = new(config => ConfigManager.SaveAlert(config, path));
+            model.Load(loaded);
+            QQNotificationViewModel qqModel = model.VisibleItems.Single(item => item.IsQq).Qq!;
+            Assert.That(qqModel.CanRememberSecret, Is.True, "允许取消导入配置的记住密钥状态。");
+            if (forgetSecret)
+                qqModel.RememberSecret = false;
+            model.VisibleItems[0].Token = "updated-webhook-token";
+            Assert.That(model.Save(), Is.True);
+
+            using JsonDocument stored = JsonDocument.Parse(File.ReadAllText(path));
+            JsonElement storedQq = stored.RootElement.GetProperty("alerts")[3].GetProperty("qq");
+            Assert.Multiple(() =>
+            {
+                Assert.That(storedQq.GetProperty("protected_secret").GetString(), Is.EqualTo(forgetSecret ? "" : ciphertext));
+                Assert.That(storedQq.GetProperty("remember_secret").GetBoolean(), Is.EqualTo(!forgetSecret));
+                Assert.That(stored.RootElement.GetProperty("alerts")[0].GetProperty("token").GetString(), Is.EqualTo("updated-webhook-token"));
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void EditingCredentialsClearsPreviousCiphertext(bool changeAppId)
+    {
+        AlertItem original = AlertItem.CreateQq();
+        original.qq = new QQNotificationSettings
+        {
+            app_id = "app",
+            secret = changeAppId ? "" : "previous-secret",
+            protected_secret = "previous-ciphertext",
+            remember_secret = true,
+        };
+        AlertConfigType? saved = null;
+        using AlertConfigViewModel model = new(config => saved = config);
+        model.Load(new AlertConfigType { alerts = [original] });
+        QQNotificationViewModel qq = model.VisibleItems.Single().Qq!;
+        if (changeAppId)
+            qq.AppId = "other-app";
+        else
+            qq.Secret = "";
+        Assert.That(model.Save(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(saved!.alerts.Single().qq!.protected_secret, Is.Empty);
+            Assert.That(original.qq.protected_secret, Is.EqualTo("previous-ciphertext"));
+        });
+    }
+
     [Test]
     public void QqEditsAndDeletion_AreAppliedOnlyByGlobalSave()
     {

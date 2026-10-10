@@ -52,6 +52,21 @@ public sealed class QQNotificationSettings
         };
     }
 
+    internal void PrepareSecretForSave()
+    {
+        // 无法解密且未重新填写时，保留原密文，避免保存其它推送项时丢失它。
+        if (secret.Length > 0)
+        {
+            if (!OperatingSystem.IsWindows())
+                remember_secret = false;
+            protected_secret = remember_secret ? QQNotificationSecretProtector.Protect(secret) : "";
+        }
+        else if (!remember_secret)
+        {
+            protected_secret = "";
+        }
+    }
+
     public IReadOnlyList<QQNotificationTarget> Targets()
     {
         List<QQNotificationTarget> result = [];

@@ -97,8 +97,7 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
 
             if (save && _persistSettings)
             {
-                next.protected_secret = next.remember_secret && next.secret.Length > 0
-                    ? QQNotificationSecretProtector.Protect(next.secret) : "";
+                next.PrepareSecretForSave();
                 // 先保存成功，再更新内存。写入失败时保持原来的绑定与配置。
                 ConfigManager.SaveQqNotification(next);
             }

@@ -244,6 +244,42 @@ public class AlertConfigurationTests
     }
 
     [Test]
+    public void ReenteringImportedSecretOnNonWindowsSavesOnlyForCurrentSession()
+    {
+        if (OperatingSystem.IsWindows())
+            Assert.Ignore("本用例验证非 Windows 平台的会话密钥回退。");
+        AlertItem qq = AlertItem.CreateQq();
+        qq.qq = new QQNotificationSettings
+        {
+            app_id = "app",
+            user_openid = "user",
+            remember_secret = true,
+            protected_secret = "imported-windows-ciphertext",
+        };
+        ConfigManager.SaveAlert(new AlertConfig { schema_version = 1, alerts = [qq] }, ConfigPath);
+        AlertConfig loaded = ConfigManager.LoadAlert(ConfigPath);
+        AlertItem imported = loaded.alerts.Single();
+        Assert.That(imported.qq!.load_error, Is.Not.Empty);
+        imported.qq.secret = "new-session-secret";
+        imported.enable = true;
+        Assert.DoesNotThrow(() => ConfigManager.SaveAlert(loaded, ConfigPath));
+
+        string storedText = File.ReadAllText(ConfigPath);
+        using JsonDocument stored = JsonDocument.Parse(storedText);
+        JsonElement storedQq = stored.RootElement.GetProperty("alerts")[0].GetProperty("qq");
+        AlertItem reloaded = ConfigManager.LoadAlert(ConfigPath).alerts.Single();
+        Assert.Multiple(() =>
+        {
+            Assert.That(storedQq.GetProperty("remember_secret").GetBoolean(), Is.False);
+            Assert.That(storedQq.GetProperty("protected_secret").GetString(), Is.Empty);
+            Assert.That(storedQq.TryGetProperty("secret", out _), Is.False);
+            Assert.That(storedText, Does.Not.Contain("new-session-secret"));
+            Assert.That(reloaded.qq!.secret, Is.EqualTo("new-session-secret"));
+            Assert.That(reloaded.enable, Is.True);
+        });
+    }
+
+    [Test]
     public void FailedSave_PreservesPreviousFileAndSessionAndDoesNotPublishChanges()
     {
         if (!OperatingSystem.IsWindows())

@@ -9,6 +9,7 @@ namespace EasyCon2.Avalonia.Core.QQ;
 public partial class QQNotificationViewModel : ObservableObject, IDisposable
 {
     private readonly QQNotificationService _service;
+    private string _protectedSecret = "";
     private bool _suppressChanges;
     private bool _disposed;
 
@@ -22,7 +23,9 @@ public partial class QQNotificationViewModel : ObservableObject, IDisposable
     [NotifyCanExecuteChangedFor(nameof(VerifyCommand))]
     private string _secret = "";
 
-    [ObservableProperty] private bool _rememberSecret;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRememberSecret))]
+    private bool _rememberSecret;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(UserOpenIdDisplay))]
@@ -78,12 +81,13 @@ public partial class QQNotificationViewModel : ObservableObject, IDisposable
     public bool CanEdit => !IsBusy;
     public bool CanVerify => CanEdit && !string.IsNullOrWhiteSpace(AppId) && !string.IsNullOrWhiteSpace(Secret);
     public bool CanBind => Verified && CanEdit;
-    public bool CanRememberSecret => OperatingSystem.IsWindows() && CanEdit;
+    public bool CanRememberSecret => CanEdit && (OperatingSystem.IsWindows() || RememberSecret);
 
     partial void OnAppIdChanged(string value)
     {
         if (_suppressChanges)
             return;
+        _protectedSecret = "";
         Verified = false;
         Enabled = false;
         UserOpenId = "";
@@ -94,6 +98,7 @@ public partial class QQNotificationViewModel : ObservableObject, IDisposable
     {
         if (_suppressChanges)
             return;
+        _protectedSecret = "";
         Verified = false;
         Enabled = false;
     }
@@ -110,6 +115,7 @@ public partial class QQNotificationViewModel : ObservableObject, IDisposable
         }
         catch (OperationCanceledException)
         {
+            Load(_service.Settings);
             ShowMessage("操作已取消。");
         }
         catch (Exception ex)
@@ -200,7 +206,7 @@ public partial class QQNotificationViewModel : ObservableObject, IDisposable
     {
         app_id = AppId.Trim(),
         secret = Secret.Trim(),
-        protected_secret = Secret.Length > 0 ? _service.Settings.protected_secret : "",
+        protected_secret = _protectedSecret,
         remember_secret = RememberSecret,
         user_openid = UserOpenId.Trim(),
         group_openid = GroupOpenId.Trim(),
@@ -217,6 +223,7 @@ public partial class QQNotificationViewModel : ObservableObject, IDisposable
         {
             settings.app_id = AppId;
             settings.secret = Secret;
+            settings.protected_secret = _protectedSecret;
             settings.remember_secret = RememberSecret;
             settings.user_openid = UserOpenId;
             settings.group_openid = GroupOpenId;
@@ -235,6 +242,7 @@ public partial class QQNotificationViewModel : ObservableObject, IDisposable
         _suppressChanges = true;
         try
         {
+            _protectedSecret = settings.protected_secret;
             AppId = settings.app_id;
             Secret = settings.secret;
             RememberSecret = settings.remember_secret;
