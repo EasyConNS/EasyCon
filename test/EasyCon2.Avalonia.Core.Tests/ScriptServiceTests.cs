@@ -192,6 +192,35 @@ public class ScriptServiceTests
 
     // ── 测试 ────────────────────────────────
 
+    private sealed class RecordingAlert : IAlertService
+    {
+        public TaskCompletionSource<string> Message { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Dispatch(string content, string title = "伊机控消息", byte[]? image = null)
+        {
+            Message.TrySetResult(content);
+        }
+    }
+
+    [Test]
+    public async Task RunFromContent_AlertUsesInjectedNotificationServiceAndKeepsRunning()
+    {
+        FakeLogService log = new();
+        RecordingAlert alert = new();
+        ScriptService service = new(new FakeDeviceService(), new FakeCaptureService(), log, alert);
+        service.RunFromContent("ALERT \"任务完成\"\nPRINT \"继续执行\"");
+
+        string message = await alert.Message.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        await WaitUntilAsync(() => !service.IsRunning, "提醒之后脚本应正常结束");
+        Assert.Multiple(() =>
+        {
+            Assert.That(message, Is.EqualTo("任务完成"));
+            Assert.That(log.Snapshot(), Does.Contain("任务完成"));
+            Assert.That(log.Snapshot(), Does.Contain("继续执行"));
+            Assert.That(log.Snapshot(), Does.Contain("脚本运行完成"));
+        });
+    }
+
     [Test]
     public async Task CompileAsync_WhenScriptHasError_ReturnsFalseAndLogsLineAndMessage()
     {

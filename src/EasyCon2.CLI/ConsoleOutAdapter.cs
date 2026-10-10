@@ -1,4 +1,4 @@
-using EasyCon.Core.Config;
+using EasyCon.Core.Services;
 using EasyScript;
 using Serilog;
 using System;
@@ -6,7 +6,7 @@ using System.Drawing;
 
 class ConsoleOutAdapter : IIoAdapter
 {
-    private readonly AlertDispatcher _dispatcher = new(ConfigManager.LoadAlert());
+    public IAlertService? AlertService { get; set; }
 
     /// <summary>可选的滚动文件日志器，设置后控制台输出会同步写入文件。</summary>
     public ILogger? FileLogger { get; set; }
@@ -57,18 +57,8 @@ class ConsoleOutAdapter : IIoAdapter
 
     public void Alert(string message)
     {
-        Task.Run(async () =>
-        {
-            try
-            {
-                _dispatcher.OnResult += (_, result) => Print(result);
-                await _dispatcher.DispatchAsync(message);
-            }
-            catch (Exception e)
-            {
-                Print($"推送失败:{e.Message}");
-            }
-        }).Wait();
+        Warn("[ALERT] " + message);
+        AlertService?.Dispatch(message);
     }
 
     public string ReadLine()

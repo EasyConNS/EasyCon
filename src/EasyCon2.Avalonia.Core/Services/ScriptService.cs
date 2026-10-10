@@ -16,6 +16,7 @@ public class ScriptService : IScriptService
     private readonly IDeviceService _deviceService;
     private readonly ICaptureService _captureService;
     private readonly ILogService _logService;
+    private readonly IAlertService? _alertService;
     private readonly IScriptEngine _engine = new EasyScriptEngine();
     private IScriptSession? _session;
     private CancellationTokenSource? _cts;
@@ -38,11 +39,13 @@ public class ScriptService : IScriptService
         );
     }
 
-    public ScriptService(IDeviceService deviceService, ICaptureService captureService, ILogService logService)
+    public ScriptService(IDeviceService deviceService, ICaptureService captureService, ILogService logService,
+        IAlertService? alertService = null)
     {
         _deviceService = deviceService;
         _captureService = captureService;
         _logService = logService;
+        _alertService = alertService;
     }
 
     public Task<bool> CompileAsync(string scriptText, string? fileName)
@@ -197,7 +200,7 @@ public class ScriptService : IScriptService
                 var capabilities = new CapabilitySet
                 {
                     Input = pad != null ? new PadInputAdapter(pad) : null,
-                    Console = new ConsoleIoAdapter(_logService),
+                    Console = new ConsoleIoAdapter(_logService, _alertService),
                     Capture = new DelegateCaptureSource(frameDelegate),
                     Vision = new DelegateVisionService(MatExtensions.CropBase64, labelMatch),
                     Ocr = new TesseractOcrService(new OcrEngineCache

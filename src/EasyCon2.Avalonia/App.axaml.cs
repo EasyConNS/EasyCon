@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using EasyCon.Capture;
+using EasyCon.Core.Notifications;
 using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.ViewModels;
@@ -28,13 +30,22 @@ public partial class App : Application
             var logService = new CoreLogService();
             var deviceService = new DeviceService(logService);
             var captureService = new CaptureService(logService);
-            var scriptService = new ScriptService(deviceService, captureService, logService);
+            QQNotificationService qqNotificationService = new();
+            AlertService alertService = new(
+                resultLogger: message => logService.Print(message, true),
+                imageProvider: () =>
+                {
+                    using FrameLease? lease = captureService.AcquireLatestFrame();
+                    return NotificationImage.FromFrame(lease?.Mat);
+                },
+                qq: qqNotificationService);
+            var scriptService = new ScriptService(deviceService, captureService, logService, alertService);
             // Linux 平台暂无底层控制实现，先用 Mock 占位；其它平台走真实实现。
             IControllerService controllerService = OperatingSystem.IsLinux()
                 ? new MockControllerService()
                 : new ControllerService(deviceService.GetDevice(), scriptService);
             IDialogService dialogService = new DialogService();
-            IWindowService windowService = new WindowService(deviceService, logService, dialogService);
+            IWindowService windowService = new WindowService(deviceService, logService, dialogService, qqNotificationService);
             var mainWindow = new MainWindow { DataContext = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService, dialogService, windowService) };
             desktop.MainWindow = mainWindow;
 
@@ -45,6 +56,7 @@ public partial class App : Application
             desktop.Exit += (_, _) =>
             {
                 controllerService.Dispose();
+                alertService.Dispose();
                 logService.Dispose();
             };
         }

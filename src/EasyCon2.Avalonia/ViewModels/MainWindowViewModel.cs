@@ -306,6 +306,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand OpenTagEditorCommand { get; }
     public ICommand OpenESPConfigCommand { get; }
     public ICommand OpenAlertConfigCommand { get; }
+    public ICommand OpenQqNotificationCommand { get; }
     public ICommand OpenModelsConfigCommand { get; }
     public ICommand OpenMcpConfigCommand { get; }
     public ICommand ToggleMonitorPauseCommand { get; }
@@ -509,6 +510,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
         OpenAlertConfigCommand = new RelayCommand(OpenAlertConfig);
+        OpenQqNotificationCommand = new RelayCommand(OpenQqNotification);
         OpenModelsConfigCommand = new RelayCommand(OpenModelsConfig);
         OpenMcpConfigCommand = new RelayCommand(OpenMcpConfig);
         ToggleMonitorPauseCommand = new RelayCommand(ToggleMonitorPause);
@@ -1397,6 +1399,11 @@ public partial class MainWindowViewModel : ViewModelBase
     private void OpenAlertConfig()
     {
         _windowService.ShowAlertConfigWindow();
+    }
+
+    private void OpenQqNotification()
+    {
+        _windowService.ShowQqNotificationWindow();
     }
 
     private void OpenModelsConfig()

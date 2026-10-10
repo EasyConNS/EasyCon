@@ -7,6 +7,7 @@ public interface IWindowService
 {
     void ShowESPConfigWindow();
     void ShowAlertConfigWindow();
+    void ShowQqNotificationWindow();
     void ShowModelsConfigWindow();
     void ShowMcpConfigWindow();
     void ShowKeyMappingWindow();

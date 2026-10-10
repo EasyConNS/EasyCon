@@ -57,6 +57,27 @@ public static class ConfigManager
         Save(AppPaths.AlertConfig, config);
     }
 
+    public static QQNotificationSettings LoadQqNotification()
+    {
+        return Load<QQNotificationSettings>(AppPaths.QqNotificationConfig, _jsonReadOptions);
+    }
+
+    public static void SaveQqNotification(QQNotificationSettings settings)
+    {
+        string path = AppPaths.QqNotificationConfig;
+        string temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(settings, _jsonOptions));
+            File.Move(temporaryPath, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+        }
+    }
+
     public static ModelsConfig LoadModelsConfig()
     {
         var path = AppPaths.ModelsConfig;

@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Notifications;
 using EasyCon.Core.Runner;
 using EasyCon.Lsp;
 using EasyCon.Script;
@@ -203,6 +204,15 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         producer.Start();
     }
 
+    using AlertService alertService = new(
+        resultLogger: message => outdap.Print(message),
+        imageProvider: () =>
+        {
+            using FrameLease? lease = producer?.Store.AcquireLatest();
+            return NotificationImage.FromFrame(lease?.Mat);
+        });
+    outdap.AlertService = alertService;
+
     // 能力装配（P6）：帧/ROI/标签/OCR/推理经服务接口注入
     var capabilities = new EasyCon.Core.Capabilities.CapabilitySet
     {
@@ -254,7 +264,19 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     }
     finally
     {
-        producer?.Dispose();
+        try
+        {
+            using CancellationTokenSource notificationTimeout = new(TimeSpan.FromSeconds(60));
+            await alertService.FlushAsync(notificationTimeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            outdap.Warn("等待通知发送超时，剩余通知将在退出时取消，请在 QQ 中核对。");
+        }
+        finally
+        {
+            producer?.Dispose();
+        }
     }
 });
 

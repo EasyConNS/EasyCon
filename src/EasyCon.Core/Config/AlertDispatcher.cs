@@ -4,7 +4,7 @@ using System.Web;
 
 namespace EasyCon.Core.Config;
 
-public class AlertDispatcher
+public class AlertDispatcher : IDisposable
 {
     private readonly List<AlertItem> _items;
     private readonly HttpClient _http;
@@ -17,12 +17,12 @@ public class AlertDispatcher
         _items = config.alerts;
     }
 
-    public async Task DispatchAsync(string content, string title = "伊机控消息")
+    public async Task DispatchAsync(string content, string title = "伊机控消息", CancellationToken cancellationToken = default)
     {
         var enabled = _items.Where(a => a.enable).ToList();
         if (enabled.Count == 0) return;
 
-        var tasks = enabled.Select(item => SendAsync(item, content, title));
+        var tasks = enabled.Select(item => SendAsync(item, content, title, cancellationToken));
         var results = await Task.WhenAll(tasks);
 
         foreach (var result in results)
@@ -31,14 +31,14 @@ public class AlertDispatcher
         }
     }
 
-    private async Task<string> SendAsync(AlertItem item, string content, string title)
+    private async Task<string> SendAsync(AlertItem item, string content, string title, CancellationToken cancellationToken)
     {
         try
         {
             var url = ReplaceVariables(item.url, item.token, item.variables, content, title);
             var method = item.method.Equals("POST", StringComparison.OrdinalIgnoreCase) ? HttpMethod.Post : HttpMethod.Get;
 
-            var request = new HttpRequestMessage(method, url);
+            using var request = new HttpRequestMessage(method, url);
 
             if (item.headers != null)
             {
@@ -68,13 +68,17 @@ public class AlertDispatcher
                 request.Content = new StringContent(body, Encoding.UTF8, contentType);
             }
 
-            var response = await _http.SendAsync(request);
-            var respBody = await response.Content.ReadAsStringAsync();
+            using var response = await _http.SendAsync(request, cancellationToken);
+            var respBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (response.IsSuccessStatusCode)
                 return $"[{item.name}] 推送成功";
             else
                 return $"[{item.name}] 推送失败: HTTP {(int)response.StatusCode} - {respBody}";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -100,4 +104,6 @@ public class AlertDispatcher
 
         return result;
     }
+
+    public void Dispose() => _http.Dispose();
 }

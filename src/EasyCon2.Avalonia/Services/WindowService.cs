@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
+using EasyCon.Core.Notifications;
 using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.ViewModels;
 using EasyCon2.Avalonia.Views;
@@ -23,13 +24,17 @@ public class WindowService : IWindowService
     private readonly IDeviceService _deviceService;
     private readonly ILogService _logService;
     private readonly IDialogService _dialogService;
+    private readonly QQNotificationService? _qqNotificationService;
     private Window? _espConfigWindow;
+    private Window? _qqNotificationWindow;
 
-    public WindowService(IDeviceService deviceService, ILogService logService, IDialogService dialogService)
+    public WindowService(IDeviceService deviceService, ILogService logService, IDialogService dialogService,
+        QQNotificationService? qqNotificationService = null)
     {
         _deviceService = deviceService;
         _logService = logService;
         _dialogService = dialogService;
+        _qqNotificationService = qqNotificationService;
     }
 
     public void ShowESPConfigWindow()
@@ -64,6 +69,33 @@ public class WindowService : IWindowService
         catch (Exception ex)
         {
             _logService.AddLog($"打开推送配置失败: {ex.Message}");
+        }
+    }
+
+    public void ShowQqNotificationWindow()
+    {
+        if (_qqNotificationWindow != null)
+        {
+            if (_qqNotificationWindow.WindowState == WindowState.Minimized)
+                _qqNotificationWindow.WindowState = WindowState.Normal;
+            _qqNotificationWindow.Activate();
+            return;
+        }
+        if (_qqNotificationService == null)
+        {
+            _logService.AddLog("QQ 通知服务尚未初始化");
+            return;
+        }
+
+        try
+        {
+            _qqNotificationWindow = new QQNotificationWindow(_qqNotificationService);
+            _qqNotificationWindow.Closed += (_, _) => _qqNotificationWindow = null;
+            _qqNotificationWindow.Show(MainWindow);
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"打开 QQ 通知设置失败: {ex.Message}");
         }
     }
 
