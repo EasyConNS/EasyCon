@@ -1,24 +1,16 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:qq="using:EasyCon2.Avalonia.Core.QQ"
-        x:Class="EasyCon2.Avalonia.Views.QQNotificationWindow"
-        x:DataType="qq:QQNotificationViewModel"
-        Title="QQ 图片通知"
-        Width="620"
-        Height="700"
-        MinWidth="520"
-        MinHeight="560"
-        WindowStartupLocation="CenterOwner"
-        Icon="/Resources/Images/favicon.ico">
-    <Window.Styles>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:qq="using:EasyCon2.Avalonia.Core.QQ"
+             x:Class="EasyCon2.Avalonia.Views.QQNotificationControl"
+             x:DataType="qq:QQNotificationViewModel">
+    <UserControl.Styles>
         <Style Selector="TextBlock.error">
             <Setter Property="Foreground" Value="{DynamicResource WorkbenchDangerBrush}"/>
         </Style>
-    </Window.Styles>
+    </UserControl.Styles>
     <Grid RowDefinitions="*,Auto">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Margin="24,24,24,14" Spacing="14">
-                <TextBlock Text="QQ 图片通知" FontSize="22" FontWeight="SemiBold"/>
                 <TextBlock Text="脚本 ALERT 会在后台发送文字，并默认附带当前视频画面；无视频画面时发送 EasyCon Logo。" TextWrapping="Wrap" Opacity="0.72"/>
 
                 <TextBlock Text="AppID"/>
@@ -84,4 +76,4 @@
             </StackPanel>
         </StackPanel>
     </Grid>
-</Window>
+</UserControl>

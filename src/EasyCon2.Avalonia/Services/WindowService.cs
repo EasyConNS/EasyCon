@@ -26,7 +26,7 @@ public class WindowService : IWindowService
     private readonly IDialogService _dialogService;
     private readonly QQNotificationService? _qqNotificationService;
     private Window? _espConfigWindow;
-    private Window? _qqNotificationWindow;
+    private Window? _alertConfigWindow;
 
     public WindowService(IDeviceService deviceService, ILogService logService, IDialogService dialogService,
         QQNotificationService? qqNotificationService = null)
@@ -62,40 +62,23 @@ public class WindowService : IWindowService
 
     public void ShowAlertConfigWindow()
     {
-        try
+        if (_alertConfigWindow != null)
         {
-            new AlertConfigWindow().Show(MainWindow);
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"打开推送配置失败: {ex.Message}");
-        }
-    }
-
-    public void ShowQqNotificationWindow()
-    {
-        if (_qqNotificationWindow != null)
-        {
-            if (_qqNotificationWindow.WindowState == WindowState.Minimized)
-                _qqNotificationWindow.WindowState = WindowState.Normal;
-            _qqNotificationWindow.Activate();
-            return;
-        }
-        if (_qqNotificationService == null)
-        {
-            _logService.AddLog("QQ 通知服务尚未初始化");
+            if (_alertConfigWindow.WindowState == WindowState.Minimized)
+                _alertConfigWindow.WindowState = WindowState.Normal;
+            _alertConfigWindow.Activate();
             return;
         }
 
         try
         {
-            _qqNotificationWindow = new QQNotificationWindow(_qqNotificationService);
-            _qqNotificationWindow.Closed += (_, _) => _qqNotificationWindow = null;
-            _qqNotificationWindow.Show(MainWindow);
+            _alertConfigWindow = new AlertConfigWindow(_qqNotificationService);
+            _alertConfigWindow.Closed += (_, _) => _alertConfigWindow = null;
+            _alertConfigWindow.Show(MainWindow);
         }
         catch (Exception ex)
         {
-            _logService.AddLog($"打开 QQ 通知设置失败: {ex.Message}");
+            _logService.AddLog($"打开推送设置失败: {ex.Message}");
         }
     }
 
