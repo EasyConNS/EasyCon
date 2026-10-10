@@ -169,7 +169,7 @@ public static class FlowNodeCatalog
             ],
             Params: []),
 
-        new(Layer: LayerActuation, Type: "script.run", Summary: "执行 .ecs 脚本（ARG 传参，PRINT 回传）",
+        new(Layer: LayerActuation, Type: "script.run", Summary: "执行 ECS 脚本（内联多行或 .ecs 文件；ARG 传参，PRINT 回传）",
             Ports:
             [
                 ExecIn(), ExecOut(),
@@ -179,7 +179,11 @@ public static class FlowNodeCatalog
                 new("ok", "data-out", "number", "执行完成标记（1）"),
                 new("logs", "data-out", "text", "PRINT 输出（\\n 连接）"),
             ],
-            Params: [P("file", "path", "脚本路径（相对路径按 __APP__ 解析）")]),
+            Params:
+            [
+                P("script", "text", "内联 ECS 脚本（多行文本，非空时优先于 file；无脚本目录上下文，不支持模块导入）"),
+                P("file", "path", "脚本路径（相对路径按 __APP__ 解析；与 script 二选一）"),
+            ]),
 
         new(Layer: LayerActuation, Type: "pad.key", Summary: "按键",
             Ports: [ExecIn(), ExecOut()],

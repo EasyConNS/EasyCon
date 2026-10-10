@@ -163,6 +163,48 @@ public class FlowExecutorTests
     }
 
     [Test]
+    public void ScriptNode_InlineScriptRunsAndTakesPrecedenceOverFile()
+    {
+        // 内联 script（多行文本）非空时优先于 file：即写即跑，无脚本目录上下文
+        var appDir = Path.Combine(Path.GetTempPath(), $"easycon-flow-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(appDir);
+        File.WriteAllText(Path.Combine(appDir, "should-not-run.ecs"), "PRINT \"from-file\"");
+
+        var graph = Graph("""
+        {
+          "nodes": [
+            { "id": "run", "type": "script.run",
+              "params": { "script": "$n = ARG(1)\nPRINT \"inline=\" & $n", "file": "should-not-run.ecs" },
+              "inputs": { "arg1": "7" } },
+            { "id": "end", "type": "end" }
+          ],
+          "exec": [ ["start", "run"], ["run", "end"] ]
+        }
+        """);
+        var report = new FlowExecutor(graph, Context(appDir: appDir)).Run(new CancellationTokenSource().Token);
+        Assert.That(report.Error, Is.Null, report.Error ?? "");
+        var run = report.Records["run"];
+        Assert.That(run.LastOutputs["ok"], Is.EqualTo(1));
+        Assert.That(run.LastOutputs["logs"], Is.EqualTo("inline=7"), "应执行内联脚本而不是 file 指向的文件");
+    }
+
+    [Test]
+    public void ScriptNode_RequiresScriptOrFile()
+    {
+        var graph = Graph("""
+        {
+          "nodes": [
+            { "id": "run", "type": "script.run", "params": {} },
+            { "id": "end", "type": "end" }
+          ],
+          "exec": [ ["run", "end"] ]
+        }
+        """);
+        var report = new FlowExecutor(graph, Context()).Run(new CancellationTokenSource().Token);
+        Assert.That(report.Error, Does.Contain("script").And.Contain("file"), "缺参错误应同时提示两种脚本来源");
+    }
+
+    [Test]
     public void PadSequence_DrivesStubPad()
     {
         var pad = new StubPad();

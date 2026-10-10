@@ -40,6 +40,9 @@ public class DeviceService : IDeviceService, IDisposable
 
     public event Action? ConnectionLost;
 
+    /// <summary>连接状态可能已变化（连接/断开尝试后触发，含 Flow 桥接的外部连接）。非 UI 线程。</summary>
+    public event Action? ConnectionStateChanged;
+
     public DeviceService(ILogService logService)
     {
         _logService = logService;
@@ -54,9 +57,12 @@ public class DeviceService : IDeviceService, IDisposable
         if (result == NintendoSwitch.ConnectResult.Success)
         {
             _isConnected = true;
+            ConnectionStateChanged?.Invoke();
             return true;
         }
         _logService.AddLog($"单片机连接失败: {result}");
+        // 失败也广播：重连尝试可能已摘掉旧连接，订阅方按 IsConnected 同步
+        ConnectionStateChanged?.Invoke();
         return false;
     }
 
@@ -64,6 +70,7 @@ public class DeviceService : IDeviceService, IDisposable
     {
         _nintendoSwitch.Disconnect();
         _isConnected = false;
+        ConnectionStateChanged?.Invoke();
     }
 
     /// <summary>应用退出时调用：断开串口连接（Reset 复位手柄 + 丢弃排队报文）。</summary>

@@ -29,17 +29,16 @@ public class GetFrameTool : IAiTool
 
     public JsonSchema Parameters => new() { Type = "object" };
 
-    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public async Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var capture = _captureProvider();
         if (capture is null)
-            return Task.FromResult(ToolResult.Error("视频源未连接，请先连接视频源后再试。"));
+            return ToolResult.Error("视频源未连接，请先连接视频源后再试。");
 
-        var png = capture.CaptureFrame(0, 0, 0, 0);
-        if (string.IsNullOrEmpty(png))
-            return Task.FromResult(ToolResult.Error("帧获取失败，请检查视频源连接状态。"));
-
-        var base64 = ModelFrame.EncodeForModel(png);
+        // 取帧 + 首帧等待 + 模型侧压缩统一走 ModelFrame 收口
+        var base64 = await ModelFrame.CaptureForModelAsync(capture, ct);
+        if (base64 is null)
+            return ToolResult.Error("帧获取失败，请检查视频源连接状态。");
 
         // 捕获时刻随结果文本回传，供模型判断帧的新旧（配合"行动后需重新取帧"的编排约定）
         var capturedAt = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
@@ -51,6 +50,6 @@ public class GetFrameTool : IAiTool
             ContentPart.FromImageBase64("image/jpeg", base64)
         ]);
 
-        return Task.FromResult(ToolResult.Ok($"已获取当前画面（捕获于 {capturedAt}），正在分析...", imageMessage));
+        return ToolResult.Ok($"已获取当前画面（捕获于 {capturedAt}），正在分析...", imageMessage);
     }
 }

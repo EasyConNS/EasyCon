@@ -81,6 +81,14 @@ def run_ui_test(argv: list[str] | None = None) -> int:
     exec_edges = [c for c in collect_connections(window.graph) if c.kind == "exec"]
     check(len(exec_edges) == len(SMOKE_GRAPH["exec"]), f"载图应还原 exec 边（{len(exec_edges)}）")
 
+    # 内嵌参数控件（真后端目录）：控件存在、int 保持 int、属性 → 控件同步
+    wait_node = window.graph.get_node_by_name("wait")
+    check("ms" in wait_node.view.widgets, "wait 节点应内嵌 ms 参数控件")
+    check(isinstance(wait_node.view.widgets["ms"].get_value(), int),
+          "ms 内嵌控件取值应保持 int")
+    wait_node.set_property("ms", 5)
+    check(wait_node.view.widgets["ms"].get_value() == 5, "set_property 应回填内嵌控件")
+
     window.refresh_devices()
     app.processEvents()
     check(window.video_status.text() != "未知", "设备面板应刷新出状态")

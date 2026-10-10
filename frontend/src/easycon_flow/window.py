@@ -256,8 +256,9 @@ class FlowWindow(QtWidgets.QMainWindow):
         self.mcu_combo = QtWidgets.QComboBox()
         self.mcu_combo.setEditable(True)
         self.mcu_combo.setMinimumWidth(260)
-        btn_mcu_mock = QtWidgets.QPushButton("连接 mock")
-        btn_mcu_mock.clicked.connect(lambda: self.connect_mcu("mock"))
+        btn_mcu_refresh = QtWidgets.QPushButton("刷新")
+        btn_mcu_refresh.setToolTip("重新扫描可用串口")
+        btn_mcu_refresh.clicked.connect(self.refresh_devices)
         btn_mcu_on = QtWidgets.QPushButton("连接")
         btn_mcu_on.clicked.connect(lambda: self.connect_mcu(self.mcu_combo.currentText().strip()))
         btn_mcu_off = QtWidgets.QPushButton("断开")
@@ -266,7 +267,7 @@ class FlowWindow(QtWidgets.QMainWindow):
         layout.addWidget(QtWidgets.QLabel("单片机"), 1, 0)
         layout.addWidget(self.mcu_status, 1, 1)
         layout.addWidget(self.mcu_combo, 1, 2)
-        layout.addWidget(btn_mcu_mock, 1, 3)
+        layout.addWidget(btn_mcu_refresh, 1, 3)
         layout.addWidget(btn_mcu_on, 1, 4)
         layout.addWidget(btn_mcu_off, 1, 5)
 
@@ -274,13 +275,17 @@ class FlowWindow(QtWidgets.QMainWindow):
         self.ocr_backend = QtWidgets.QComboBox()
         self.ocr_model_dir = QtWidgets.QLineEdit()
         self.ocr_model_dir.setPlaceholderText("PP-OCR 模型目录（ppocr 后端必填）")
+        btn_ocr_dir = QtWidgets.QPushButton("打开目录…")
+        btn_ocr_dir.setToolTip("选择 PP-OCR 模型目录")
+        btn_ocr_dir.clicked.connect(self.pick_ocr_model_dir)
         btn_ocr_apply = QtWidgets.QPushButton("应用 OCR 设置")
         btn_ocr_apply.clicked.connect(self.apply_ocr)
 
         layout.addWidget(QtWidgets.QLabel("OCR 后端"), 2, 0)
         layout.addWidget(self.ocr_status, 2, 1)
         layout.addWidget(self.ocr_backend, 2, 2)
-        layout.addWidget(self.ocr_model_dir, 2, 3, 1, 2)
+        layout.addWidget(self.ocr_model_dir, 2, 3)
+        layout.addWidget(btn_ocr_dir, 2, 4)
         layout.addWidget(btn_ocr_apply, 2, 5)
 
         note = QtWidgets.QLabel(
@@ -400,12 +405,20 @@ class FlowWindow(QtWidgets.QMainWindow):
 
     def connect_mcu(self, port: str) -> None:
         if not port:
-            QtWidgets.QMessageBox.information(self, "提示", "请选择或输入串口名（mock = 无硬件虚拟手柄）。")
+            QtWidgets.QMessageBox.information(
+                self, "提示", "请选择或输入串口名（没有列表时可先点「刷新」扫描）。")
             return
         self._guard(lambda: self.api.connect_mcu(port), f"单片机已连接: {port}")
 
     def disconnect_mcu(self) -> None:
         self._guard(self.api.disconnect_mcu, "单片机已断开")
+
+    def pick_ocr_model_dir(self) -> None:
+        current = self.ocr_model_dir.text().strip()
+        path = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "选择 PP-OCR 模型目录", current or "")
+        if path:
+            self.ocr_model_dir.setText(path)
 
     def apply_ocr(self) -> None:
         backend = self.ocr_backend.currentText().strip() or "none"

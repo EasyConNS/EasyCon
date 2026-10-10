@@ -106,6 +106,12 @@ public class ScriptServiceTests
             remove { }
         }
 
+        public event Action? ConnectionStateChanged
+        {
+            add { }
+            remove { }
+        }
+
         public void RecordRunningEvent(bool running)
         {
             lock (_lock)
@@ -218,6 +224,12 @@ public class ScriptServiceTests
         public string CaptureType { get; set; } = "ANY";
 
         public event Action? ConnectionLost
+        {
+            add { }
+            remove { }
+        }
+
+        public event Action? ConnectionStateChanged
         {
             add { }
             remove { }

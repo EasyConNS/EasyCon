@@ -38,6 +38,9 @@ public class CaptureService : ICaptureService, IDisposable
     public event Action? ConnectionRestored;
 #pragma warning restore CS0067
 
+    /// <summary>连接状态可能已变化（连接/断开成功后触发，含 Flow 桥接的外部连接）。非 UI 线程。</summary>
+    public event Action? ConnectionStateChanged;
+
     public CaptureService(ILogService logService)
     {
         _logService = logService;
@@ -74,16 +77,20 @@ public class CaptureService : ICaptureService, IDisposable
 
     public bool TryConnect(string sourceName)
     {
-        int deviceId;
         lock (_sourceIndexLock)
         {
-            deviceId = _sourceIndexMap.TryGetValue(sourceName, out var idx) ? idx : 0;
+            return TryConnect(_sourceIndexMap.TryGetValue(sourceName, out var idx) ? idx : 0);
         }
+    }
 
+    /// <summary>按设备索引连接（Flow 服务桥接用：画布/agent 报告的是枚举索引）。</summary>
+    public bool TryConnect(int deviceId)
+    {
         // capture.Open 可阻塞数秒（native 打开采集卡）、旧 producer.Dispose 最长 5 秒，
         // 都放在 _captureLock 之外执行：锁内只做引用替换，避免拖住并发的
         // IsConnected / SetCaptureProperties / AcquireLatestFrame 调用方。
         // 并发的多次 TryConnect/Disconnect 由 _connectLock 串行化。
+        var ok = false;
         lock (_connectLock)
         {
             // 转换期内不许监视定时器评价新旧 producer 之间的过渡态，
@@ -97,24 +104,29 @@ public class CaptureService : ICaptureService, IDisposable
             oldProducer?.Dispose();
 
             var capture = new OpenCVCapture();
-            if (!capture.Open(deviceId, (int)GetCaptureApi()))
+            if (capture.Open(deviceId, (int)GetCaptureApi()))
+            {
+                capture.SetResolution(resol.Width, resol.Height);
+                capture.SetProperties();
+                capture.GetProperties();
+
+                var producer = new FrameProducer(capture);
+                producer.Start();
+                Volatile.Write(ref _producer, producer);
+                ok = true;
+            }
+            else
             {
                 capture.Dispose();
                 // 失败留在干净的无连接状态；监视定时器保持停止，由调用方决定重试
-                return false;
             }
-
-            capture.SetResolution(resol.Width, resol.Height);
-            capture.SetProperties();
-            capture.GetProperties();
-
-            var producer = new FrameProducer(capture);
-            producer.Start();
-            Volatile.Write(ref _producer, producer);
         }
 
-        _monitorTimer.Start();
-        return true;
+        if (ok)
+            _monitorTimer.Start();
+        // 失败也广播：旧 producer 已被摘除，连接状态确实发生了变化
+        ConnectionStateChanged?.Invoke();
+        return ok;
     }
 
     /// <summary>
@@ -132,6 +144,7 @@ public class CaptureService : ICaptureService, IDisposable
                 Volatile.Write(ref _producer, null);
                 producer?.Dispose();
             }
+            ConnectionStateChanged?.Invoke();
         });
     }
 
@@ -150,6 +163,13 @@ public class CaptureService : ICaptureService, IDisposable
     {
         var producer = Volatile.Read(ref _producer);
         return producer?.Store.AcquireLatest();
+    }
+
+    /// <summary>当前帧存储（未连接为 null）。Flow 服务桥接用：复用 GUI 的采集管线而非二次打开采集卡。</summary>
+    public FrameStore? GetFrameStore()
+    {
+        var producer = Volatile.Read(ref _producer);
+        return producer?.Store;
     }
 
     public void SetCaptureProperties(int width, int height)

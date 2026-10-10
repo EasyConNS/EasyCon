@@ -7,6 +7,11 @@ public interface IDeviceService
     bool IsConnected { get; }
     bool ShowDebugInfo { get; set; }
     event Action? ConnectionLost;
+    /// <summary>
+    /// 连接状态可能已变化（任意来源的连接/断开尝试后触发，含 Flow/agent 经设备桥的外部连接）。
+    /// 可能在非 UI 线程触发；订阅方以 <see cref="IsConnected"/> 为唯一事实源做同步。
+    /// </summary>
+    event Action? ConnectionStateChanged;
     string[] GetAvailablePorts();
     bool TryConnect(string port);
     string? AutoConnect();

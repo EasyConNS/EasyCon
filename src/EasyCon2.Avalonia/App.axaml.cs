@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using EasyCon.Core;
+using EasyCon.Core.Capabilities;
 using EasyCon.Core.Config;
 using EasyCon2.Avalonia.AlertConfig;
 using EasyCon2.Avalonia.Connection;
@@ -108,7 +110,8 @@ public partial class App : Application
 
             // Flow 服务：与 MCP 并排的第二个 loopback 端点（前端画布/外部工具的 HTTP 后端），
             // 同时把 FlowServiceTools 注册进 GUI 的 agent 工具注册中心（agent 与画布能力对等）。
-            StartFlowService();
+            // 设备经桥接入监控页实例：画布/agent 的 flow_* 工具与 GUI 操作同一实例。
+            StartFlowService(deviceService, captureService);
 
             desktop.Exit += (_, _) =>
             {
@@ -136,12 +139,12 @@ public partial class App : Application
     /// 端口由 <c>EC_FLOW_PORT</c> 覆盖（默认 19391，0 = 关闭）。
     ///
     /// <para>
-    /// 设备持有说明：本服务自带采集源/单片机连接状态，与 GUI 监控页各持一份。
-    /// 同一块采集卡请勿在两处同时打开（驱动层通常独占）；画布流程统一走本服务
-    /// 的 <c>/api/device/*</c> 连接。
+    /// 设备桥接：画布/agent 的 flow_* 设备工具经 <see cref="EasyCon.Core.Flow.FlowDeviceBridge"/>
+    /// 直接驱动 GUI 监控页持有的采集源/单片机实例——画布、agent（flow_*、get_frame）与 GUI
+    /// 是同一实例，连接状态实时一致，一块采集卡/串口只开一次。
     /// </para>
     /// </summary>
-    private static void StartFlowService()
+    private static void StartFlowService(DeviceService deviceService, CaptureService captureService)
     {
         var port = int.TryParse(Environment.GetEnvironmentVariable("EC_FLOW_PORT"), out var p) ? p : 19391;
         if (port <= 0)
@@ -150,7 +153,24 @@ public partial class App : Application
             return;
         }
 
-        _flowState = new EasyCon.Core.Flow.FlowServiceState();
+        // 桥接 GUI 监控页的设备实例（DisconnectVideo 阻塞等待采集循环退出，勿在 UI 线程调用）
+        _flowState = new EasyCon.Core.Flow.FlowServiceState(new EasyCon.Core.Flow.FlowDeviceBridge
+        {
+            IsVideoConnected = () => captureService.IsConnected,
+            ConnectVideo = index => captureService.TryConnect(index)
+                ? null
+                : $"视频源打开失败: [{index}]",
+            DisconnectVideo = () => captureService.DisconnectAsync().GetAwaiter().GetResult(),
+            GetFrameStore = () => captureService.GetFrameStore(),
+            IsMcuConnected = () => deviceService.IsConnected,
+            ConnectMcu = port => deviceService.TryConnect(port)
+                ? null
+                : $"单片机连接失败: {port}",
+            DisconnectMcu = () => deviceService.Disconnect(),
+            GetPad = () => deviceService.IsConnected
+                ? new PadInputAdapter(new GamePadAdapter(deviceService.GetDevice(), highResolution: false))
+                : null,
+        });
 
         // 与 MCP 共用同一注册中心：GUI 内的 agent 也能用画布那套设备/图工具
         var registry = EasyCon2.Avalonia.AiAgent.AiAgentViewModel.SharedTools;

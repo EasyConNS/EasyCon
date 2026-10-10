@@ -1,3 +1,4 @@
+using EasyCon.Core.Capabilities;
 using OpenCvSharp;
 
 namespace EasyCon.Core.LLM.Agent.Tools;
@@ -9,6 +10,30 @@ namespace EasyCon.Core.LLM.Agent.Tools;
 /// </summary>
 internal static class ModelFrame
 {
+    /// <summary>
+    /// 取帧类工具唯一入口：整帧捕获（语义化 <see cref="ICaptureSource.CaptureFullFrame"/>）→
+    /// 首帧等待（连接后立即取帧的时序竞争，共约 2 秒有界重试）→ 模型侧压缩。
+    /// 无帧返回 null，由调用方决定错误文案；OCR 类工具直接走 CaptureFrame/CaptureFullFrame，
+    /// 不要用本方法（压缩伤识别率）。
+    /// </summary>
+    public static async Task<string?> CaptureForModelAsync(ICaptureSource source, CancellationToken ct = default)
+    {
+        var png = source.CaptureFullFrame();
+        for (var attempt = 0; string.IsNullOrEmpty(png) && attempt < 9; attempt++)
+        {
+            try
+            {
+                await Task.Delay(200, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            png = source.CaptureFullFrame();
+        }
+        return string.IsNullOrEmpty(png) ? null : EncodeForModel(png);
+    }
+
     public static string EncodeForModel(string pngBase64)
     {
         try

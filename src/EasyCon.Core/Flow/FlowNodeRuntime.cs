@@ -5,7 +5,6 @@ using EasyCon.Core.Script;
 using EasyCon.Script;
 using EasyScript;
 using OpenCvSharp;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -132,7 +131,7 @@ public sealed class FlowNodeRuntime(FlowGraph graph, FlowHostContext context)
     {
         if (node.Inputs.ContainsKey("image"))
             return Input(node, "image", token) as string;
-        return context.Capture?.CaptureFrame(-1, -1, -1, -1);
+        return context.Capture?.CaptureFullFrame();
     }
 
     /// <summary>按端口读取数据入边（字面量或引用）；引用触发上游惰性求值。</summary>
@@ -325,26 +324,26 @@ public sealed class FlowNodeRuntime(FlowGraph graph, FlowHostContext context)
     /// <summary>
     /// script.run：能力集必须经唯一装配点组装；本次运行的能力（采集/OCR/推理/手柄）以
     /// **借用**方式传入（所有权仍属整图运行），否则节点租约释放会拆掉后续节点还在用的服务。
+    /// 脚本来源二选一：<c>script</c> 内联多行文本（优先，无脚本目录上下文）或 <c>file</c> 脚本路径。
     /// </summary>
     private string? RunScript(FlowNode node, Dictionary<string, object?> outputs, CancellationToken token)
     {
+        var inline = StrParam(node, "script");
         var file = StrParam(node, "file");
-        if (string.IsNullOrWhiteSpace(file))
-            throw new InvalidOperationException("script.run 缺少 file 参数");
-        var full = Path.IsPathRooted(file) ? file : Path.Combine(context.AppDir, file);
-        if (!File.Exists(full))
-            throw new InvalidOperationException($"脚本文件不存在: {full}");
+        if (string.IsNullOrWhiteSpace(inline) && string.IsNullOrWhiteSpace(file))
+            throw new InvalidOperationException("script.run 需要 script（内联脚本）或 file（脚本路径）参数之一");
 
+        // 现编档：不落盘缓存（交互路径约定，与图形界面即写即跑的脚本一致）
+        var compile = ScriptCompileProfiles.Interactive([]);
         var scriptArgs = new[] { "flow" }
             .Concat(new[] { "arg1", "arg2", "arg3" }.Select(p => StrInput(node, p, token) ?? ""))
             .ToArray();
 
         var lines = new List<string>();
         var engine = new EasyScriptEngine();
-        var session = engine.LoadFile(full, new ScriptHostOptions
-        {
-            Compile = new CompileOptions { ExtVars = ImmutableHashSet<string>.Empty, UseDiskCache = false },
-        });
+        var session = string.IsNullOrWhiteSpace(inline)
+            ? LoadScriptFile(engine, file!, compile)
+            : engine.FromSource(inline, new ScriptHostOptions { Compile = compile });
         using var lease = ScriptHostAssembler.Assemble(new ScriptHostContext
         {
             Console = new FlowConsole(lines),
@@ -362,6 +361,15 @@ public sealed class FlowNodeRuntime(FlowGraph graph, FlowHostContext context)
         outputs["ok"] = 1;
         outputs["logs"] = string.Join("\n", lines);
         return null;
+    }
+
+    /// <summary>解析并加载 file 模式的脚本（相对路径按 __APP__ 基准，保留同目录 lib/ 导入上下文）。</summary>
+    private IScriptSession LoadScriptFile(EasyScriptEngine engine, string file, CompileOptions compile)
+    {
+        var full = Path.IsPathRooted(file) ? file : Path.Combine(context.AppDir, file);
+        if (!File.Exists(full))
+            throw new InvalidOperationException($"脚本文件不存在: {full}");
+        return engine.LoadFile(full, new ScriptHostOptions { Compile = compile });
     }
 
     private IPadInput RequirePad() => context.Pad

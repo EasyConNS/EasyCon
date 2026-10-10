@@ -2,6 +2,12 @@
 
 节点**全部由后端目录驱动**（`GET /api/nodes`）：前端不硬编码任何节点类型、参数或端口。
 后端加一个节点并登记到 FlowNodeCatalog，画布刷新后即出现，无需改前端。
+
+参数控件：每个参数除属性面板（右侧 PropertiesBin）外，还会在**节点体内嵌一个同值控件**，
+可直接在画布上编辑。控件与属性的双向同步由 NodeGraphQt 自带机制完成——
+控件编辑经 value_changed → set_property 写回模型；任何 set_property（含属性面板编辑）
+经 PropertyChangedCmd 自动回填 view.widgets[属性名]。因此内嵌控件的 get_value 必须
+与属性值**严格等值往返**（见 IntNodeSpinBox / _PreviewEdit）。
 """
 
 from __future__ import annotations
@@ -10,6 +16,10 @@ import re
 
 from NodeGraphQt import BaseNode
 from NodeGraphQt.constants import NodePropWidgetEnum
+from NodeGraphQt.widgets.node_widgets import (NodeButton, NodeCheckBox,
+                                             NodeComboBox, NodeLineEdit,
+                                             NodeSpinBox)
+from PySide6 import QtWidgets
 
 from .flowdoc import (DATA_KIND, EXEC_KIND, Connection, NodeState, is_reference)
 
@@ -18,6 +28,8 @@ NODE_ID_PROPERTY = "node_id"
 LITERAL_PREFIX = "lit_"
 SLOW_PREFIX = "slow_"
 PARAM_PREFIX = "p_"
+BUTTON_EDIT_PREFIX = "btn_edit_"
+BUTTON_PICK_PREFIX = "btn_pick_"
 
 # NodeGraphQt 预置属性名（model.py: "reserved for default property"）。
 # 目录里的参数若与之同名（如 state.step 的 name），必须加 p_ 前缀，读取时再剥掉。
@@ -54,12 +66,65 @@ _WIDGET_BY_TYPE = {
     "enum": NodePropWidgetEnum.QCOMBO_BOX.value,
     "path": NodePropWidgetEnum.FILE_OPEN.value,
     "string": NodePropWidgetEnum.QLINE_EDIT.value,
-    "text": NodePropWidgetEnum.QLINE_EDIT.value,
+    "text": NodePropWidgetEnum.QTEXT_EDIT.value,
     "image": NodePropWidgetEnum.QLINE_EDIT.value,
     "any": NodePropWidgetEnum.QLINE_EDIT.value,
 }
 
 _INT_RANGE = (-10_000_000, 10_000_000)
+_FLOAT_RANGE = (-1.0e9, 1.0e9)
+
+
+class IntNodeSpinBox(NodeSpinBox):
+    """内嵌整数微调框。NodeGraphQt 自带 NodeSpinBox.get_value 返回字符串，
+    这里保持 int，属性 ↔ 控件才能严格等值往返（否则 set_property 会把 int 覆盖成 str）。"""
+
+    def get_value(self):
+        return int(self.get_custom_widget().value())
+
+    def set_value(self, value=0):
+        if value != self.get_value():
+            self.get_custom_widget().setValue(int(value))
+
+
+class FloatNodeSpinBox(NodeSpinBox):
+    """同 IntNodeSpinBox，浮点版。"""
+
+    def get_value(self):
+        return float(self.get_custom_widget().value())
+
+    def set_value(self, value=0.0):
+        if value != self.get_value():
+            self.get_custom_widget().setValue(float(value))
+
+
+class PreviewLineEdit(NodeLineEdit):
+    """text（多行）参数的节点内只读预览：显示首行，值原样保留。
+
+    get_value 必须原样返回完整多行文本——属性面板/对话框修改参数后，NodeGraphQt 的
+    PropertyChangedCmd 会比较 widgets[name].get_value() 与新值来决定是否回填控件；
+    若这里返回被行编辑器截断的文本，多行内容会被反向写回模型而丢失。
+    控件只读、value_changed 不接线：预览永不回写，值以节点属性为唯一事实源。
+    """
+
+    def __init__(self, parent=None, name="", label="", text=""):
+        super().__init__(parent, name, label, "")
+        self._full_text = str(text or "")
+        line = self.get_custom_widget()
+        line.setReadOnly(True)
+        line.setText(self._first_line())
+        line.setPlaceholderText("（空 — 点「编辑…」填写）")
+
+    def _first_line(self) -> str:
+        return self._full_text.splitlines()[0] if self._full_text else ""
+
+    def get_value(self):
+        return self._full_text
+
+    def set_value(self, text=""):
+        if str(text) != self._full_text:
+            self._full_text = str(text)
+            self.get_custom_widget().setText(self._first_line())
 
 
 def class_name_for(node_type: str) -> str:
@@ -118,9 +183,15 @@ def make_node_class(spec: dict, slow_fields: list[dict]) -> type:
         self.create_property(NODE_ID_PROPERTY, "", widget_type=NodePropWidgetEnum.HIDDEN.value)
 
         for param in params:
-            _create_property(self, param_property(param["name"]), param.get("type", "string"),
-                             default_value(param), param.get("description", ""),
-                             param.get("options"))
+            prop = param_property(param["name"])
+            value_type = param.get("type", "string")
+            stored = _create_property(self, prop, value_type, default_value(param),
+                                      param.get("description", ""), param.get("options"))
+            try:
+                _embed_param_widget(self, prop, param["name"], value_type, stored,
+                                    param.get("description", ""), param.get("options"))
+            except Exception:  # noqa: BLE001 - 内嵌失败只损失节点内编辑，属性面板仍可用
+                pass
 
         # 未连线的数据入边字面量（与参数同名的端口不重复建控件——参数本身就是那个值）
         param_names = {p["name"] for p in params}
@@ -136,6 +207,7 @@ def make_node_class(spec: dict, slow_fields: list[dict]) -> type:
                              field.get("options"))
 
         self.set_color(*LAYER_COLORS.get(spec.get("layer", "flow"), LAYER_COLORS["flow"]))
+        self.view.draw_node()
 
     return type(class_name_for(node_type), (BaseNode,), {
         "__identifier__": NODE_IDENTIFIER,
@@ -145,8 +217,9 @@ def make_node_class(spec: dict, slow_fields: list[dict]) -> type:
 
 
 def _create_property(node: BaseNode, name: str, value_type: str, value, tooltip: str,
-                     options: list[str] | None) -> None:
-    """建属性；控件类型不兼容时退化为字符串控件（UI 不能因为目录变化而崩）。"""
+                     options: list[str] | None) -> object:
+    """建属性（只进右侧属性面板，不在节点体内嵌控件）；返回实际存入的（归一化）值。
+    控件类型不兼容时退化为字符串控件（UI 不能因为目录变化而崩）。"""
     widget = _WIDGET_BY_TYPE.get(value_type, NodePropWidgetEnum.QLINE_EDIT.value)
     kwargs: dict = {"widget_type": widget, "widget_tooltip": tooltip or None}
     if value_type == "enum" and options:
@@ -164,7 +237,95 @@ def _create_property(node: BaseNode, name: str, value_type: str, value, tooltip:
     try:
         node.create_property(name, value, **kwargs)
     except Exception:  # noqa: BLE001 - 目录里出现未知控件类型时保底
-        node.create_property(name, str(value))
+        value = str(value)
+        node.create_property(name, value)
+    return value
+
+
+def _embed_param_widget(node: BaseNode, prop: str, label: str, value_type: str, value,
+                        tooltip: str, options: list[str] | None) -> None:
+    """在节点体内嵌参数控件（节点上直接编辑参数）。
+
+    控件编辑 → value_changed → set_property 写回模型；属性面板/加载图对参数的任何
+    set_property 由 NodeGraphQt（PropertyChangedCmd）自动回填同名列控件——
+    两边永远显示同一个值。控件类型按参数类型选择：
+    bool 勾选框、int/number/float 微调框、enum 下拉、path 输入框+「…」选文件、
+    text 只读首行预览+「编辑…」多行对话框、其余单行输入。
+    """
+    if value_type == "bool":
+        widget = NodeCheckBox(node.view, prop, label, "", bool(value))
+    elif value_type in ("int", "number"):
+        widget = IntNodeSpinBox(node.view, prop, label, int(value or 0), *_INT_RANGE)
+    elif value_type == "float":
+        widget = FloatNodeSpinBox(node.view, prop, label, float(value or 0.0),
+                                  *_FLOAT_RANGE, True)
+    elif value_type == "enum":
+        widget = NodeComboBox(node.view, prop, label, list(options or []))
+        widget.set_value(str(value))
+    elif value_type == "text":
+        widget = PreviewLineEdit(node.view, prop, label, str(value or ""))
+        _embed_button(node, BUTTON_EDIT_PREFIX + prop, label, "编辑…", tooltip,
+                      lambda checked=False, n=node, p=prop, l=label: _edit_multiline(n, p, l))
+    elif value_type == "path":
+        widget = NodeLineEdit(node.view, prop, label, str(value or ""))
+        _embed_button(node, BUTTON_PICK_PREFIX + prop, label, "…", f"{tooltip}（点击选择文件）",
+                      lambda checked=False, n=node, p=prop: _pick_file(n, p))
+    else:
+        widget = NodeLineEdit(node.view, prop, label, str(value or ""))
+
+    widget.setToolTip(tooltip or "")
+    widget.value_changed.connect(lambda name, val, n=node: n.set_property(name, val))
+    node.view.add_widget(widget)
+
+
+def _embed_button(node: BaseNode, name: str, label: str, text: str, tooltip: str,
+                  on_clicked) -> None:
+    """内嵌一个动作按钮（不承载参数值）。注册同名隐藏属性：update_model() 会把
+    view.widgets 的值写回模型，未登记的属性名会让它抛异常。"""
+    node.create_property(name, "", widget_type=NodePropWidgetEnum.HIDDEN.value)
+    widget = NodeButton(node.view, name, label, text)
+    widget.setToolTip(tooltip or "")
+    widget.get_custom_widget().clicked.connect(on_clicked)
+    node.view.add_widget(widget)
+
+
+def _edit_multiline(node: BaseNode, prop: str, label: str) -> None:
+    """「编辑…」按钮：多行文本对话框（text 参数，如 script.run 的内联脚本）。"""
+    dialog = _MultiLineDialog(f"编辑 {label}", str(node.get_property(prop) or ""),
+                              QtWidgets.QApplication.activeWindow())
+    if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+        node.set_property(prop, dialog.text())
+
+
+def _pick_file(node: BaseNode, prop: str) -> None:
+    """「…」按钮：文件选择对话框（path 参数），写回属性并同步内嵌输入框。"""
+    current = str(node.get_property(prop) or "")
+    path, _ = QtWidgets.QFileDialog.getOpenFileName(
+        QtWidgets.QApplication.activeWindow(), "选择文件", current, "所有文件 (*)")
+    if path:
+        node.set_property(prop, path)
+
+
+class _MultiLineDialog(QtWidgets.QDialog):
+    """多行文本编辑对话框（确定返回 True）。"""
+
+    def __init__(self, title: str, content: str, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.resize(560, 420)
+        layout = QtWidgets.QVBoxLayout(self)
+        self._edit = QtWidgets.QPlainTextEdit()
+        self._edit.setPlainText(content)
+        layout.addWidget(self._edit)
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def text(self) -> str:
+        return self._edit.toPlainText()
 
 
 class NodeCatalog:

@@ -35,7 +35,7 @@ ci\windows-x64.bat
 
 ```bash
 # Python 画布前端（frontend/，uv 管理：pyproject.toml + uv.lock，src/ 布局）
-# 离线自检（35 项）；加 --backend 追加真后端端到端检查（40 项）
+# 离线自检（43 项）；加 --backend 追加真后端端到端检查（48 项）
 cd frontend && uv run easycon-flow --self-test
 cd frontend && uv run easycon-flow --self-test --backend http://127.0.0.1:19391
 # 无头 UI 冒烟（建窗/载图/跑图/试跑节点；需要后端在跑）

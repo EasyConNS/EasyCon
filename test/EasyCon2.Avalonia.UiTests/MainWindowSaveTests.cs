@@ -424,6 +424,7 @@ public class MainWindowSaveTests
         public event Action<string?, string?>? LogAppended;
         public event Action? ConnectionLost;
         public event Action? ConnectionRestored;
+        public event Action? ConnectionStateChanged;
         public event Action<bool>? IsRunningChanged;
         public event Action? AvailableSourcesChanged;
         public event Action? Disconnected;

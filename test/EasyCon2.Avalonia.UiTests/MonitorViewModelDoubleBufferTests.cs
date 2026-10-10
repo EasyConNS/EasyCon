@@ -42,6 +42,7 @@ public class MonitorViewModelDoubleBufferTests
         public string CaptureType { get; set; } = "Fake";
         public event Action? ConnectionLost;
         public event Action? ConnectionRestored;
+        public event Action? ConnectionStateChanged;
         public string[] GetAvailableSources() => Array.Empty<string>();
         public bool TryConnect(string sourceName) => true;
         public Task DisconnectAsync() => Task.CompletedTask;

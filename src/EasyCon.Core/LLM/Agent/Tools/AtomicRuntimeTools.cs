@@ -210,23 +210,23 @@ public class CaptureFrameTool : IAiTool
 
     public JsonSchema Parameters => new() { Type = "object", Properties = new() };
 
-    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    public async Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
     {
         var capture = _captureProvider();
         if (capture is null)
-            return Task.FromResult(ToolResult.Error("[错误] 视频源未连接或无画面"));
+            return ToolResult.Error("[错误] 视频源未连接或无画面");
 
-        var png = capture.CaptureFrame(0, 0, 0, 0);
-        if (string.IsNullOrEmpty(png))
-            return Task.FromResult(ToolResult.Error("[错误] 视频源未连接或无画面"));
+        // 取帧 + 首帧等待 + 模型侧压缩统一走 ModelFrame 收口
+        var base64 = await ModelFrame.CaptureForModelAsync(capture, ct);
+        if (base64 is null)
+            return ToolResult.Error("[错误] 视频源未连接或无画面");
 
-        var base64 = ModelFrame.EncodeForModel(png);
         var image = ChatMessage.User(
         [
             ContentPart.FromText("当前视频画面："),
             ContentPart.FromImageBase64("image/jpeg", base64)
         ]);
-        return Task.FromResult(ToolResult.Ok("[成功] 已获取当前画面（见附加图片）", image));
+        return ToolResult.Ok("[成功] 已获取当前画面（见附加图片）", image);
     }
 }
 
@@ -269,11 +269,13 @@ public class OcrFrameTool : IAiTool
         if (capture is null)
             return Task.FromResult(ToolResult.Error("[错误] 视频源未连接或 OCR 服务不可用"));
 
-        var png = capture.CaptureFrame(
-            GetInt(args, "x", 0),
-            GetInt(args, "y", 0),
-            GetInt(args, "width", 0),
-            GetInt(args, "height", 0));
+        // 工具语义：width/height 任一缺省 0 = 不裁 ROI（全图识别）；显式 ROI 原样透传。
+        // 全图走语义化 CaptureFullFrame（不用 ModelFrame——压缩伤识别率）
+        var width = GetInt(args, "width", 0);
+        var height = GetInt(args, "height", 0);
+        var png = width > 0 && height > 0
+            ? capture.CaptureFrame(GetInt(args, "x", 0), GetInt(args, "y", 0), width, height)
+            : capture.CaptureFullFrame();
         if (string.IsNullOrEmpty(png))
             return Task.FromResult(ToolResult.Error("[错误] 视频源未连接或无画面"));
 

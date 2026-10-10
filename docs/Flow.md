@@ -110,7 +110,7 @@
 | `text.contains` | 决策 | 文本判定，双出口 | `in`、`true`、`false`、`text`(din:text)、`pattern`(din:text)、`hit`(dout:number) | `mode`="contains"(`contains`/`startsWith`/`endsWith`/`equals`/`regex`)、`pattern`=""、`ignoreCase`=true |
 | `state.step` | 决策 | 运行内命名计数器（循环/重试） | `in`、`out`(eout)、`done`(eout)、`value`(din:number)、`value`(dout:number)、`name`(dout:text) | `name`="step"、`op`="inc"(`inc`/`set`/`reset`)、`value`=1、`max`=0 |
 | `vision.changed` | 感知 | 与上次观察到的画面比较，双出口 | `in`、`true`、`false`、`image`(din:image)、`changed`(dout:number) | — |
-| `script.run` | 动作 | 执行 `.ecs` 脚本（ARG 传参，PRINT 回传） | `in`、`out`、`arg1`/`arg2`/`arg3`(din:text)、`ok`(dout:number)、`logs`(dout:text) | `file`(path) |
+| `script.run` | 动作 | 执行 ECS 脚本（内联多行或 .ecs 文件；ARG 传参，PRINT 回传） | `in`、`out`、`arg1`/`arg2`/`arg3`(din:text)、`ok`(dout:number)、`logs`(dout:text) | `script`=""(text)、`file`(path) |
 | `pad.key` | 动作 | 按键 | `in`、`out` | `key`="A"、`durationMs`=100、`times`=1、`intervalMs`=100 |
 | `pad.sequence` | 动作 | 按键序列宏（`"A,100; ↓,200"`） | `in`、`out` | `seq`(string) |
 
@@ -133,10 +133,12 @@
 - **`vision.changed`**：与本节点在本次运行内**上一次观察到的画面**比较；首次执行只建立基线
   （`changed = 0`），因此「等待画面变化」不会在第一帧误触发。指纹取 `image` 入边（内容即输入），
   缺省取当前帧的编码字节。**不要给它配 `slow`**（复用会跳过基线更新）。
-- **`script.run`**：脚本路径相对路径按 `__APP__` 解析；`arg1..arg3` 传成 `ARG(1..3)`；
+- **`script.run`**：脚本来源二选一——`script`（内联多行 ECS 文本，**非空时优先**于 `file`；
+  即写即跑，无脚本目录上下文，不支持模块导入）或 `file`（路径相对按 `__APP__` 解析，
+  保留同目录 `lib/` 导入上下文）。`arg1..arg3` 传成 `ARG(1..3)`；
   `PRINT` 输出以 `\n` 连接进 `logs`；`ok = 1` 表示执行完成。脚本内的能力（采集/OCR/推理/手柄）
   以**借用**方式来自本次运行（`ScriptHostAssembler` 的 `BorrowResources`），
-  内层释放不会拆掉外层还在用的服务。
+  内层释放不会拆掉外层还在用的服务。两种来源都按现编档编译（不落盘缓存）。
 - **`pad.key` / `pad.sequence`**：需要单片机（真机或 `mock`）；`pad.sequence` 的键名支持
   `↑↓←→` 归一化为 `TOP/DOWN/LEFT/RIGHT`；两者都可用停止令牌打断。
 
@@ -248,8 +250,12 @@ GUI 启动时把 Flow 服务与这些工具一并装配进 GUI 的共享注册�
 - **采集源**：`FrameStoreCaptureSource`（最新帧 + 单调 `FrameIndex`）——`waitForNew` 与
   `slow.everyFrames` 依赖帧号。旧的委托适配 `DelegateCaptureSource` 不提供帧号，并把
   「采集卡检查异常」等哨兵字符串归一为 `null`（避免被当成 Base64 图像）。
-- **设备持有**：`FlowServiceState` 自己持有采集卡/单片机连接状态。
-  GUI 监控页另持一份，**同一块采集卡不要两处同时打开**；画布流程统一走 `/api/device/*`。
+- **设备持有**：设备实例单一持有。GUI 宿主下 `FlowServiceState` 经设备桥
+  （`FlowDeviceBridge`，纯委托集）直接驱动 GUI 监控页持有的采集卡/单片机实例——
+  画布（`/api/device/*`）、agent（`flow_*` 工具、`get_frame`）与 GUI 面板是**同一实例**，
+  连接状态实时一致，一块采集卡/串口只开一次；视频源 `api` 参数在桥接下不生效
+  （后端由 GUI 的 CaptureType 配置决定），`mock` 单片机两种模式下都由状态自持。
+  独立宿主（CLI `serve`）不传桥，由 `FlowServiceState` 自己持有连接。
 
 ### 5.1 命令行
 
@@ -278,7 +284,7 @@ dotnet run --project src/EasyCon2.CLI -- serve --port 19391
 | `frontend/pyproject.toml` / `uv.lock` / `.python-version` | 依赖与锁定（PEP 621 + uv）；Python 固定 3.14 |
 | `frontend/src/easycon_flow/flowdoc.py` | flow.json 文档模型 + 画布映射（纯 Python，无 Qt，可单测） |
 | `frontend/src/easycon_flow/api.py` | 后端 HTTP 客户端 |
-| `frontend/src/easycon_flow/nodes.py` | 目录 → NodeGraphQt 节点类；画布 ↔ 状态搬运（含预置属性名冲突规避 `p_` 前缀） |
+| `frontend/src/easycon_flow/nodes.py` | 目录 → NodeGraphQt 节点类；画布 ↔ 状态搬运（含预置属性名冲突规避 `p_` 前缀）；参数在节点体内嵌同值控件（bool/int/enum 直接编辑，path 带「…」选文件，text 带多行编辑对话框，与右侧属性面板双向同步） |
 | `frontend/src/easycon_flow/window.py` | 主窗口：画布 / 节点库 / 属性（含 slow） / 设备面板 / 运行面板 |
 | `frontend/src/easycon_flow/selftest.py` | 离线自检 + 对真后端的端到端往返（`--backend`） |
 | `frontend/src/easycon_flow/uitest.py` | 无头 UI 冒烟（建窗、载图、跑图、试跑节点；需要后端） |

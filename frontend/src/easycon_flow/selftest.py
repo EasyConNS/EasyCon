@@ -86,6 +86,17 @@ FAKE_CATALOG = {
          ],
          "params": [{"name": "key", "type": "enum", "description": "键名", "default": "A",
                      "options": ["A", "B", "TOP"]}]},
+        {"type": "script.run", "layer": "actuation", "summary": "执行脚本",
+         "ports": [
+             {"name": "in", "kind": "exec-in", "type": "exec", "description": ""},
+             {"name": "out", "kind": "exec-out", "type": "exec", "description": ""},
+             {"name": "arg1", "kind": "data-in", "type": "text", "description": "ARG(1)"},
+             {"name": "ok", "kind": "data-out", "type": "number", "description": "完成"},
+         ],
+         "params": [
+             {"name": "script", "type": "text", "description": "内联脚本（多行）"},
+             {"name": "file", "type": "path", "description": "脚本路径"},
+         ]},
     ],
 }
 
@@ -114,6 +125,9 @@ SAMPLE_DOC = {
         {"id": "press", "type": "pad.key",
          "pos": {"x": 480.0, "y": 40.0},
          "params": {"key": "A"}},
+        {"id": "run", "type": "script.run",
+         "pos": {"x": 600.0, "y": 40.0},
+         "params": {"script": "$n = ARG(1)\nPRINT \"n=\" & $n", "file": "scripts/hello.ecs"}},
     ],
     "exec": [
         ["start", "cap"],
@@ -122,7 +136,8 @@ SAMPLE_DOC = {
         ["chk.true", "loop"],
         ["chk.false", "press"],
         ["loop.out", "press"],
-        ["press", "cap"],
+        ["press", "run"],
+        ["run", "cap"],
     ],
 }
 
@@ -216,7 +231,7 @@ def _check_canvas_roundtrip(checker: Checker, payload: dict) -> None:
     checker.equal(max_steps, 500, "看门狗步数解析")
     checker.equal(timeout_sec, 60, "看门狗时长解析")
     checker.equal(len(nodes), len(SAMPLE_DOC["nodes"]), "节点数解析")
-    checker.equal(len(connections), 9, "exec 7 条 + 数据 2 条")
+    checker.equal(len(connections), 10, "exec 8 条 + 数据 2 条")
 
     by_id = {}
     for state in nodes:
@@ -249,12 +264,33 @@ def _check_canvas_roundtrip(checker: Checker, payload: dict) -> None:
                   "参数名与 NodeGraphQt 预置属性同名时仍能往返")
     checker.equal(by_flow_id["loop"].params.get("op"), "inc", "enum 缺省与显式值共存")
 
+    # 内嵌参数控件：节点上直接编辑，值与属性双向一致
+    from .nodes import BUTTON_EDIT_PREFIX, BUTTON_PICK_PREFIX
+    script_text = "$n = ARG(1)\nPRINT \"n=\" & $n"
+    run_node = by_id["run"]
+    checker.check("script" in run_node.view.widgets, "text 参数应内嵌预览控件")
+    checker.check(BUTTON_EDIT_PREFIX + "script" in run_node.view.widgets,
+                  "text 参数应内嵌「编辑…」按钮")
+    checker.check(BUTTON_PICK_PREFIX + "file" in run_node.view.widgets,
+                  "path 参数应内嵌「…」选文件按钮")
+    checker.equal(run_node.view.widgets["script"].get_value(), script_text,
+                  "多行预览控件应保留完整文本（不得被行编辑器截断）")
+    cap_node = by_id["cap"]
+    checker.check(isinstance(cap_node.view.widgets["waitForNew"].get_value(), bool),
+                  "bool 内嵌控件取值应为 bool")
+    checker.equal(cap_node.view.widgets["timeoutMs"].get_value(), 3000, "int 内嵌控件与属性同步")
+    checker.check(isinstance(cap_node.view.widgets["timeoutMs"].get_value(), int),
+                  "int 内嵌控件取值应保持 int（不得退化成字符串）")
+    cap_node.set_property("timeoutMs", 1500)
+    checker.equal(cap_node.view.widgets["timeoutMs"].get_value(), 1500,
+                  "set_property 应回填内嵌控件（属性面板编辑路径）")
+
     canvas_connections = collect_connections(graph)
     exec_edges = sorted([c for c in canvas_connections if c.kind == flowdoc.EXEC_KIND],
                         key=lambda c: (c.src_id, c.src_port, c.dst_id))
     data_edges = sorted([c for c in canvas_connections if c.kind == flowdoc.DATA_KIND],
                         key=lambda c: (c.src_id, c.src_port, c.dst_id))
-    checker.equal(len(exec_edges), 7, "exec 连线数")
+    checker.equal(len(exec_edges), 8, "exec 连线数")
     checker.equal(len(data_edges), 2, "数据连线数")
     checker.check(any(c.src_id == "chk" and c.src_port == "true" and c.dst_id == "loop" for c in exec_edges),
                   "条件出口 chk.true 连线被识别为 exec")

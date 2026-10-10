@@ -13,17 +13,25 @@ namespace EasyCon.Core.Flow;
 
 /// <summary>
 /// Flow 服务状态机：设备（视频源/单片机）的连接管理 + 编排图运行管理 + 单节点试跑。
-/// 前端（Python 画布）与外部 agent 经 HTTP/MCP 访问本状态；设备状态由 EasyCon 单一持有。
+/// 前端（Python 画布）与外部 agent 经 HTTP/MCP 访问本状态。设备实例单一持有：
+/// GUI 宿主经 <see cref="FlowDeviceBridge"/> 把监控页实例接入（画布/agent/GUI 同一实例），
+/// 独立宿主（CLI）不传桥、由本状态自持。
 /// 每次运行/试跑的能力集经 <see cref="ScriptHostAssembler"/> 唯一装配点组装，并按次释放。
 /// </summary>
 public sealed class FlowServiceState : IDisposable
 {
+    private readonly FlowDeviceBridge? _bridge;
     private readonly NintendoSwitch _ns = new();
     private readonly object _gate = new();
     private OpenCVCapture? _capture;
     private FrameProducer? _producer;
     private IPadInput? _pad;
     private bool _mockMcu;
+    private bool _mcuViaBridge;
+    private bool _localVideoConnected;
+
+    /// <summary>桥接模式（GUI 宿主）下设备操作全部委托宿主实例；独立模式为 null。</summary>
+    public FlowServiceState(FlowDeviceBridge? bridge = null) => _bridge = bridge;
     private readonly ConcurrentDictionary<string, FlowRunHandle> _runs = new();
     private int _runSeq;
     private int _disposed;
@@ -44,7 +52,7 @@ public sealed class FlowServiceState : IDisposable
 
     // ---- 视频源 ----
 
-    public bool VideoConnected { get; private set; }
+    public bool VideoConnected => _bridge is not null ? _bridge.IsVideoConnected() : _localVideoConnected;
 
     public object VideoInfo() => new
     {
@@ -53,12 +61,15 @@ public sealed class FlowServiceState : IDisposable
             .Select(c => new { index = c.index, name = c.name }).ToArray(),
     };
 
-    /// <summary>连接视频源；返回错误消息（null = 成功）。</summary>
+    /// <summary>连接视频源；返回错误消息（null = 成功）。桥接模式下 api 由宿主（GUI）配置决定，不透传。</summary>
     public string? ConnectVideo(int index, int api = 0)
     {
         lock (_gate)
         {
-            if (VideoConnected) DisconnectVideo();
+            if (_bridge is not null)
+                return _bridge.ConnectVideo(index);
+
+            if (_localVideoConnected) DisconnectVideo();
             var cap = new OpenCVCapture(index, (OpenCvSharp.VideoCaptureAPIs)api);
             if (!cap.Open(index, api))
                 return $"视频源打开失败: [{index}]";
@@ -66,7 +77,7 @@ public sealed class FlowServiceState : IDisposable
             _capture = cap;
             _producer = new FrameProducer(cap);
             _producer.Start();
-            VideoConnected = true;
+            _localVideoConnected = true;
             return null;
         }
     }
@@ -75,17 +86,23 @@ public sealed class FlowServiceState : IDisposable
     {
         lock (_gate)
         {
+            if (_bridge is not null)
+            {
+                _bridge.DisconnectVideo();
+                return;
+            }
             _producer?.Dispose();
             _producer = null;
             _capture?.Dispose();
             _capture = null;
-            VideoConnected = false;
+            _localVideoConnected = false;
         }
     }
 
     // ---- 单片机 ----
 
-    public bool McuConnected => _mockMcu || _ns.IsConnected();
+    public bool McuConnected => _mockMcu
+        || (_bridge is not null ? _bridge.IsMcuConnected() : _ns.IsConnected());
 
     public object McuInfo() => new
     {
@@ -93,7 +110,7 @@ public sealed class FlowServiceState : IDisposable
         ports = ECCore.GetDeviceNames().ToArray(),
     };
 
-    /// <summary>连接单片机；"mock" 为无硬件虚拟手柄。返回错误消息（null = 成功）。</summary>
+    /// <summary>连接单片机；"mock" 为无硬件虚拟手柄（两种模式都由本状态自持，不走桥）。返回错误消息（null = 成功）。</summary>
     public string? ConnectMcu(string port)
     {
         lock (_gate)
@@ -102,6 +119,17 @@ public sealed class FlowServiceState : IDisposable
             {
                 _pad = new MockFlowPad();
                 _mockMcu = true;
+                _mcuViaBridge = false;
+                return null;
+            }
+            if (_bridge is not null)
+            {
+                var error = _bridge.ConnectMcu(port);
+                if (error != null)
+                    return error;
+                _pad = _bridge.GetPad();
+                _mockMcu = false;
+                _mcuViaBridge = true;
                 return null;
             }
             if (_ns.TryConnect(port) != NintendoSwitch.ConnectResult.Success)
@@ -118,6 +146,14 @@ public sealed class FlowServiceState : IDisposable
         {
             _pad = null;
             _mockMcu = false;
+            if (_bridge is not null)
+            {
+                // mock 连接不经桥：别把宿主侧真实串口顺带断掉
+                if (_mcuViaBridge)
+                    _bridge.DisconnectMcu();
+                _mcuViaBridge = false;
+                return;
+            }
             _ns.Disconnect();
         }
     }
@@ -204,9 +240,13 @@ public sealed class FlowServiceState : IDisposable
     {
         lock (_gate)
         {
-            ICaptureSource? capture = VideoConnected && _producer != null
-                ? new FrameStoreCaptureSource(_producer.Store)
-                : null;
+            // 两种模式统一走 FrameStoreCaptureSource（保留帧号语义：等帧/慢感知依赖 FrameIndex）；
+            // 桥接模式下帧存储就是 GUI 监控页的那一份——画布、agent 的 get_frame 与 GUI 共用同一帧管线
+            ICaptureSource? capture = _bridge is not null
+                ? _bridge.GetFrameStore() is { } store ? new FrameStoreCaptureSource(store) : null
+                : _localVideoConnected && _producer != null
+                    ? new FrameStoreCaptureSource(_producer.Store)
+                    : null;
             IOcrService? ocr = AcquireOcr();
 
             CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext

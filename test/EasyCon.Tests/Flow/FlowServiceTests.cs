@@ -1,4 +1,6 @@
+using EasyCon.Capture;
 using EasyCon.Core.Flow;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -265,6 +267,107 @@ public class FlowServiceTests
         // 不存在的串口：可读错误
         var mcuError = state.ConnectMcu("COM_NOT_EXIST_999");
         Assert.That(mcuError, Is.Not.Null);
+    }
+
+    // ---- 设备桥接（GUI 宿主：画布/agent 与 GUI 面板共享同一实例）----
+
+    /// <summary>宿主侧假设备：记录桥接调用，模拟 GUI 监控页持有的实例。</summary>
+    private sealed class FakeBridge : FlowDeviceBridge
+    {
+        public bool Video;
+        public int? VideoIndex;
+        public string? NextVideoError;
+        public int DisconnectVideoCount;
+        public bool Mcu;
+        public int DisconnectMcuCount;
+        public FrameStore? Store;
+
+        [SetsRequiredMembers]
+        public FakeBridge()
+        {
+            IsVideoConnected = () => Video;
+            ConnectVideo = index =>
+            {
+                VideoIndex = index;
+                if (NextVideoError != null)
+                {
+                    Video = false;   // 与 CaptureService 一致：失败留在干净的无连接状态
+                    return NextVideoError;
+                }
+                Video = true;
+                return null;
+            };
+            DisconnectVideo = () => { DisconnectVideoCount++; Video = false; };
+            GetFrameStore = () => Store;
+            IsMcuConnected = () => Mcu;
+            ConnectMcu = _ => { Mcu = true; return null; };
+            DisconnectMcu = () => { DisconnectMcuCount++; Mcu = false; };
+            GetPad = () => null;
+        }
+    }
+
+    [Test]
+    public void BridgedVideoConnect_DelegatesToHostInstance()
+    {
+        var bridge = new FakeBridge();
+        using var state = new FlowServiceState(bridge);
+
+        // 连接走宿主实例，状态实时一致
+        Assert.That(state.ConnectVideo(2), Is.Null);
+        Assert.That(bridge.VideoIndex, Is.EqualTo(2));
+        Assert.That(state.VideoConnected, Is.True);
+
+        // 宿主连接失败 → 错误原样回传调用方（画布/agent 可读），状态保持未连接
+        bridge.NextVideoError = "视频源打开失败: [3]";
+        Assert.That(state.ConnectVideo(3), Is.EqualTo("视频源打开失败: [3]"));
+        Assert.That(state.VideoConnected, Is.False);
+
+        state.DisconnectVideo();
+        Assert.That(bridge.DisconnectVideoCount, Is.EqualTo(1));
+        Assert.That(state.VideoConnected, Is.False);
+    }
+
+    [Test]
+    public void BridgedMcuConnect_DelegatesRealPortsAndKeepsMockLocal()
+    {
+        var bridge = new FakeBridge();
+        using var state = new FlowServiceState(bridge);
+
+        // 真实串口 → 桥接宿主实例
+        Assert.That(state.ConnectMcu("COM3"), Is.Null);
+        Assert.That(state.McuConnected, Is.True);
+        Assert.That(bridge.Mcu, Is.True);
+
+        state.DisconnectMcu();
+        Assert.That(bridge.DisconnectMcuCount, Is.EqualTo(1), "真实串口断开传导到宿主");
+        Assert.That(state.McuConnected, Is.False);
+
+        // mock → 状态自持；断开不得顺带断掉宿主侧串口
+        Assert.That(state.ConnectMcu("mock"), Is.Null);
+        Assert.That(state.McuConnected, Is.True);
+        state.DisconnectMcu();
+        Assert.That(bridge.DisconnectMcuCount, Is.EqualTo(1), "mock 断开不传导到宿主");
+        Assert.That(state.McuConnected, Is.False);
+    }
+
+    [Test]
+    public void BridgedRunContext_WrapsHostFrameStore()
+    {
+        var store = new FrameStore();   // 非 IDisposable：帧由发布方（FrameProducer）释放
+        var bridge = new FakeBridge { Store = store, Video = true };
+        using var state = new FlowServiceState(bridge);
+
+        var (context, lease) = state.BuildRunContext();
+        try
+        {
+            Assert.That(context.Capture, Is.Not.Null, "宿主已连接 → 运行上下文带采集源");
+            Assert.That(context.Capture!.FrameIndex, Is.EqualTo(store.FrameCount),
+                "帧号语义保留（等帧/慢感知依赖 FrameIndex）");
+        }
+        finally
+        {
+            lease?.Dispose();
+        }
     }
 
     [Test]

@@ -69,6 +69,27 @@ public partial class SwitchConnectionViewModel : ObservableObject
             NintendoSwitchButtonText = L10nBridge.T("Text.Btn.ConnectSwitch");
             DeviceLost?.Invoke();
         };
+
+        // 连接状态可能被外部改变（Flow/agent 经设备桥连接）：以服务真实状态同步面板，
+        // 保证「画布/agent 连接成功 = GUI 面板显示已连接」
+        _deviceService.ConnectionStateChanged += () => _ui.Post(SyncFromService);
+    }
+
+    /// <summary>以 <see cref="IDeviceService.IsConnected"/> 为唯一事实源刷新面板状态。</summary>
+    private void SyncFromService()
+    {
+        var connected = _deviceService.IsConnected;
+        if (IsNintendoSwitchConnected == connected)
+            return;
+        IsNintendoSwitchConnected = connected;
+        NintendoSwitchStatus = connected
+            ? (string.IsNullOrEmpty(SelectedSerialPort)
+                ? L10nBridge.T("Text.Status.Connected")
+                : $"已连接{SelectedSerialPort}")
+            : L10nBridge.T("Text.Status.NotConnected");
+        NintendoSwitchButtonText = connected
+            ? L10nBridge.T("Text.Btn.DisconnectSwitch")
+            : L10nBridge.T("Text.Btn.ConnectSwitch");
     }
 
     private void ConnectNintendoSwitch()

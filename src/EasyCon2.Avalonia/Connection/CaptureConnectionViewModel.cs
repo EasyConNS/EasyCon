@@ -77,6 +77,27 @@ public partial class CaptureConnectionViewModel : ObservableObject
             CaptureSourceStatus = L10nBridge.T("Text.Status.Disconnected");
             CaptureSourceButtonText = L10nBridge.T("Text.Btn.ConnectCapture");
         };
+
+        // 连接状态可能被外部改变（Flow/agent 经设备桥连接）：以服务真实状态同步面板，
+        // 保证「画布/agent 连接成功 = GUI 面板显示已连接」
+        _captureService.ConnectionStateChanged += () => _ui.Post(SyncFromService);
+    }
+
+    /// <summary>以 <see cref="ICaptureService.IsConnected"/> 为唯一事实源刷新面板状态。</summary>
+    private void SyncFromService()
+    {
+        var connected = _captureService.IsConnected;
+        if (IsCaptureSourceConnected == connected)
+            return;
+        IsCaptureSourceConnected = connected;
+        CaptureSourceStatus = connected
+            ? L10nBridge.T("Text.Status.Connected")
+            : L10nBridge.T("Text.Status.NotConnected");
+        CaptureSourceButtonText = connected
+            ? L10nBridge.T("Text.Btn.DisconnectCapture")
+            : L10nBridge.T("Text.Btn.ConnectCapture");
+        if (connected)
+            CaptureConnected?.Invoke();   // 与手动连接一致：父级借此自动打开监视器
     }
 
     private async Task ConnectCaptureSource()

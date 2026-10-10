@@ -54,4 +54,47 @@ public class CaptureSourceTests
         store.Publish(second);
         Assert.That(source.FrameIndex, Is.EqualTo(2));
     }
+
+    [Test]
+    public void CaptureFrame_ZeroRoiIsNull_FullFrameRequiresSentinel()
+    {
+        // 423c4d4 回归病灶：把 (0,0,0,0) 当"全图"传入会被 ROI 收敛成 null。
+        // 端口语义：0 尺寸=空 ROI → null；负数=整帧。工具层必须走 CaptureFullFrame()。
+        var store = new FrameStore();
+        ICaptureSource source = new FrameStoreCaptureSource(store);
+        using var mat = new Mat(8, 8, MatType.CV_8UC3, Scalar.Green);
+        store.Publish(mat);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source.CaptureFrame(0, 0, 0, 0), Is.Null, "0 尺寸 ROI 收敛为空");
+            Assert.That(source.CaptureFrame(-1, -1, -1, -1), Is.Not.Null, "负数哨兵=整帧");
+        });
+    }
+
+    [Test]
+    public void CaptureFullFrame_RoutesThroughCaptureFrameWithSentinel()
+    {
+        // 语义化入口：默认实现必须以 (-1,-1,-1,-1) 落到 CaptureFrame，
+        // 且 FrameStoreCaptureSource 经它拿到的是真实整帧内容
+        var requested = new List<(int X, int Y, int W, int H)>();
+        ICaptureSource recording = new DelegateCaptureSource((x, y, w, h) =>
+        {
+            requested.Add((x, y, w, h));
+            return "B64";
+        });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(recording.CaptureFullFrame(), Is.EqualTo("B64"));
+            Assert.That(requested, Is.EqualTo(new List<(int, int, int, int)> { (-1, -1, -1, -1) }),
+                "语义入口落点必须是整帧哨兵");
+        });
+
+        var store = new FrameStore();
+        ICaptureSource source = new FrameStoreCaptureSource(store);
+        using var mat = new Mat(8, 8, MatType.CV_8UC3, Scalar.Green);
+        store.Publish(mat);
+        Assert.That(source.CaptureFullFrame(), Is.Not.Null);
+    }
 }

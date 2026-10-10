@@ -49,8 +49,8 @@ uv run easycon-flow --backend http://127.0.0.1:19391   # 也可用环境变量 E
 自检（不需要界面；`--backend` 可选）：
 
 ```bash
-uv run easycon-flow --self-test                        # 离线：画布 ↔ flow.json 往返（35 项）
-uv run easycon-flow --self-test --backend http://127.0.0.1:19391   # 追加真后端端到端（40 项）
+uv run easycon-flow --self-test                        # 离线：画布 ↔ flow.json 往返（43 项）
+uv run easycon-flow --self-test --backend http://127.0.0.1:19391   # 追加真后端端到端（48 项）
 
 # 无头 UI 冒烟（真的建窗、载图、跑图、试跑节点；需要后端在跑）
 QT_QPA_PLATFORM=offscreen uv run python -m easycon_flow.uitest --backend http://127.0.0.1:19391
@@ -64,7 +64,7 @@ QT_QPA_PLATFORM=offscreen uv run python -m easycon_flow.uitest --backend http://
 | 区域 | 说明 |
 |---|---|
 | 左：节点库 | 按层（感知 / 决策 / 控制流 / 动作）分组，双击添加节点；悬停看端口与参数说明 |
-| 中：画布 | exec 边（控制流）与数据边（图像/文本/数值）分别连到同名端口；`Delete` 删除节点 |
+| 中：画布 | exec 边（控制流）与数据边（图像/文本/数值）分别连到同名端口；`Delete` 删除节点。**参数直接在节点上编辑**：bool 勾选框 / int 微调框 / enum 下拉 / 字符串输入框内嵌在节点体内，path 参数带「…」选文件按钮，多行文本（如 script.run 的内联脚本）带「编辑…」对话框；与右侧属性面板实时同步 |
 | 右：属性 | 选中节点后编辑参数、数据入边字面量、以及 **slow 慢感知**（`everyFrames` / `onChange` / `intervalMs`） |
 | 下：运行 / 设备 | 设备面板（视频源、单片机、OCR 后端）、运行状态表（执行/复用/计时）、日志 |
 
@@ -73,11 +73,12 @@ QT_QPA_PLATFORM=offscreen uv run python -m easycon_flow.uitest --backend http://
 
 - **运行图**：`POST /api/flow/run` → 每 300ms 轮询 `/api/flow/status` → 画布按节点着色
   （绿=已执行，红=出错节点），状态表显示每个节点的执行次数、slow 复用次数、最近/累计耗时。
-- **执行选中节点**（F6 / 双击）：`POST /api/node/run` 传整图 + `nodeId`，所以该节点的数据入边引用的
+- **执行选中节点**（F6 / 双击节点本体）：`POST /api/node/run` 传整图 + `nodeId`，所以该节点的数据入边引用的
   上游会被一并求值（例如直接试跑 `ocr.text` 会自动先抓一帧），结果弹窗显示输出，输出里有图像时直接预览。
   **actuation 层（`pad.*` / `script.run`）会被后端拒绝**——试跑是只读的，不会驱动设备。
 - **设备面板**：直接操作后端的设备状态（连接/断开采集卡与单片机、切换 OCR 后端）。
-  单片机可以连 `mock`（无硬件虚拟手柄），用来先跑通图再上真机。
+  视频源与单片机都用「刷新」重新扫描可用设备/串口（单片机下拉也可手输串口名）；
+  OCR 的 PP-OCR 模型目录可点「打开目录…」用系统对话框选择。
 - **打开 / 保存**：`*.flow.json` 与后端 `flow` 命令 / `POST /api/flow/run` 完全同格式，文件可互换。
   节点位置写在 `pos` 字段里（后端执行时忽略，仅用于布局）。
 
