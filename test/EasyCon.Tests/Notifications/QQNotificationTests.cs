@@ -72,12 +72,14 @@ public class QQNotificationTests
         });
     }
 
-    [TestCase(QQNotificationTargetKind.User, "/v2/users/")]
-    [TestCase(QQNotificationTargetKind.Group, "/v2/groups/")]
+    [TestCase(QQNotificationTargetKind.User, "/v2/users/", 0)]
+    [TestCase(QQNotificationTargetKind.User, "/v2/users/", 1)]
+    [TestCase(QQNotificationTargetKind.Group, "/v2/groups/", 0)]
+    [TestCase(QQNotificationTargetKind.Group, "/v2/groups/", 1)]
     public async Task Client_UploadsCompletePartsInOrder_WithoutSendingTokenToStorage(
-        QQNotificationTargetKind kind, string route)
+        QQNotificationTargetKind kind, string route, int indexBase)
     {
-        using StubServer server = new() { BlockSize = 2 };
+        using StubServer server = new() { BlockSize = 2, IndexBase = indexBase };
         using HttpClient http = new(server);
         using QQNotificationClient client = new(http);
         client.Configure("app-id", "test-secret");
@@ -103,7 +105,8 @@ public class QQNotificationTests
         Request[] uploads = requests.Where(request => request.Method == HttpMethod.Put).ToArray();
         Assert.Multiple(() =>
         {
-            Assert.That(uploads.Select(request => request.Uri.AbsolutePath), Is.EqualTo(new[] { "/0", "/1", "/2" }));
+            Assert.That(uploads.Select(request => request.Uri.AbsolutePath),
+                Is.EqualTo(Enumerable.Range(indexBase, 3).Select(index => "/" + index)));
             Assert.That(uploads[0].Bytes, Is.EqualTo(new byte[] { 1, 2 }));
             Assert.That(uploads[1].Bytes, Is.EqualTo(new byte[] { 3, 4 }));
             Assert.That(uploads[2].Bytes, Is.EqualTo(new byte[] { 5 }));
@@ -112,7 +115,8 @@ public class QQNotificationTests
                 .All(request => request.Authorization == "QQBot test-token"), Is.True);
         });
         Request[] finished = requests.Where(request => request.Uri.AbsolutePath.EndsWith("/upload_part_finish")).ToArray();
-        Assert.That(finished.Select(request => request.Json.GetProperty("part_index").GetInt32()), Is.EqualTo(new[] { 0, 1, 2 }));
+        Assert.That(finished.Select(request => request.Json.GetProperty("part_index").GetInt32()),
+            Is.EqualTo(Enumerable.Range(indexBase, 3)));
         for (int i = 0; i < finished.Length; i++)
         {
             Assert.Multiple(() =>
@@ -138,10 +142,47 @@ public class QQNotificationTests
         });
     }
 
-    [Test]
-    public async Task Client_RejectsDuplicatePartsBeforeUploading_AndReportsPartialSubmission()
+    [TestCase(0, 3)]
+    [TestCase(0, 8)]
+    [TestCase(1, 3)]
+    [TestCase(1, 8)]
+    public async Task Client_UploadsSinglePartWithEitherIndexBase(int indexBase, int blockSize)
     {
-        using StubServer server = new() { BlockSize = 2, DuplicateParts = true };
+        using StubServer server = new() { BlockSize = blockSize, IndexBase = indexBase };
+        using HttpClient http = new(server);
+        using QQNotificationClient client = new(http);
+        client.Configure("app-id", "test-secret");
+        byte[] image = [1, 2, 3];
+        await client.SendAsync([new QQNotificationTarget(QQNotificationTargetKind.User, "user-id")], "", image);
+
+        Request uploaded = server.Requests.Single(request => request.Method == HttpMethod.Put);
+        Request finished = server.Requests.Single(request => request.Uri.AbsolutePath.EndsWith("/upload_part_finish"));
+        Request message = server.Requests.Single(request => request.Uri.AbsolutePath.EndsWith("/messages"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(uploaded.Uri.AbsolutePath, Is.EqualTo("/" + indexBase));
+            Assert.That(uploaded.Bytes, Is.EqualTo(image));
+            Assert.That(finished.Json.GetProperty("part_index").GetInt32(), Is.EqualTo(indexBase));
+            Assert.That(finished.Json.GetProperty("block_size").GetString(), Is.EqualTo("3"));
+            Assert.That(finished.Json.GetProperty("md5").GetString(),
+                Is.EqualTo(Convert.ToHexString(MD5.HashData(image)).ToLowerInvariant()));
+            Assert.That(message.Json.GetProperty("msg_type").GetInt32(), Is.EqualTo(7));
+            Assert.That(message.Json.GetProperty("media").GetProperty("file_info").GetString(), Is.EqualTo("file-info"));
+        });
+    }
+
+    [TestCase(new int[] { })]
+    [TestCase(new[] { 0, 0 })]
+    [TestCase(new[] { 1, 1 })]
+    [TestCase(new[] { 0 })]
+    [TestCase(new[] { 0, 2 })]
+    [TestCase(new[] { 1, 3 })]
+    [TestCase(new[] { 0, 1, 2 })]
+    [TestCase(new[] { 2, 3 })]
+    [TestCase(new[] { -1, 0 })]
+    public async Task Client_RejectsInvalidPartListsBeforeUploading_AndReportsPartialSubmission(int[] indexes)
+    {
+        using StubServer server = new() { BlockSize = 2, PartIndexes = indexes };
         using HttpClient http = new(server);
         using QQNotificationClient client = new(http);
         client.Configure("app-id", "test-secret");
@@ -159,7 +200,12 @@ public class QQNotificationTests
         {
             Assert.That(error, Is.Not.Null);
             Assert.That(error!.Message, Does.Contain("分片列表不完整").And.Contain("文字已提交"));
+            Assert.That(error.Message, Does.Contain("图片=3 字节").And.Contain("分片大小=2 字节").And.Contain("预期=2 片"));
+            Assert.That(error.Message, Does.Contain($"实际={indexes.Length} 片").And.Contain($"编号=[{string.Join(", ", indexes.Order())}]"));
+            Assert.That(error.Message, Does.Not.Contain("test-secret").And.Not.Contain("test-token").And.Not.Contain("test-storage-signature"));
             Assert.That(server.Requests.Any(request => request.Method == HttpMethod.Put), Is.False);
+            Assert.That(server.Requests.Any(request => request.Uri.AbsolutePath.EndsWith("/files")), Is.False);
+            Assert.That(server.Requests.Count(request => request.Uri.AbsolutePath.EndsWith("/messages")), Is.EqualTo(1));
         });
     }
 
@@ -471,7 +517,8 @@ public class QQNotificationTests
     {
         public ConcurrentQueue<Request> Requests { get; } = new();
         public int BlockSize { get; init; } = 1024 * 1024;
-        public bool DuplicateParts { get; init; }
+        public int IndexBase { get; init; } = 1;
+        public int[]? PartIndexes { get; init; }
         public Func<Request, CancellationToken, Task<HttpResponseMessage?>>? Intercept { get; set; }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -491,13 +538,12 @@ public class QQNotificationTests
             {
                 int length = int.Parse(recorded.Json.GetProperty("file_size").GetString()!);
                 int count = ((length - 1) / BlockSize) + 1;
-                int[] indexes = DuplicateParts ? Enumerable.Repeat(0, count).ToArray()
-                    : Enumerable.Range(0, count).Reverse().ToArray();
+                int[] indexes = PartIndexes ?? Enumerable.Range(IndexBase, count).Reverse().ToArray();
                 return JsonResponse(new
                 {
                     upload_id = "upload-id",
                     block_size = BlockSize.ToString(),
-                    parts = indexes.Select(index => new { index, presigned_url = "https://storage.example/" + index }),
+                    parts = indexes.Select(index => new { index, presigned_url = "https://storage.example/" + index + "?signature=test-storage-signature" }),
                 });
             }
             if (recorded.Uri.AbsolutePath.EndsWith("/files"))

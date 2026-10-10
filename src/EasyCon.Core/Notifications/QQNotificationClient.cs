@@ -278,13 +278,21 @@ public sealed class QQNotificationClient : IDisposable
                 throw new InvalidOperationException("图片上传接口返回了无效的分片地址。");
             uploadParts.Add((index, uploadUri));
         }
-        if (uploadParts.Count != expected || !uploadParts.Select(part => part.Index)
-            .OrderBy(index => index).SequenceEqual(Enumerable.Range(0, expected)))
-            throw new InvalidOperationException("图片上传接口返回的分片列表不完整。");
-
-        foreach ((int index, Uri url) in uploadParts.OrderBy(part => part.Index))
+        uploadParts.Sort((left, right) => left.Index.CompareTo(right.Index));
+        // 兼容从 0 或 1 开始的完整分片列表；字节偏移归零，完成回执保留服务器编号。
+        int indexBase = uploadParts.Count > 0 ? uploadParts[0].Index : 0;
+        if (indexBase is not (0 or 1) || uploadParts.Count != expected || !uploadParts.Select(part => part.Index)
+            .SequenceEqual(Enumerable.Range(indexBase, expected)))
         {
-            int offset = index * blockSize;
+            string indexes = string.Join(", ", uploadParts.Take(8).Select(part => part.Index));
+            if (uploadParts.Count > 8)
+                indexes += ", …";
+            throw new InvalidOperationException($"图片上传接口返回的分片列表不完整（图片={image.Length} 字节，分片大小={blockSize} 字节，预期={expected} 片，实际={uploadParts.Count} 片，编号=[{indexes}]）。");
+        }
+
+        foreach ((int index, Uri url) in uploadParts)
+        {
+            int offset = (index - indexBase) * blockSize;
             int length = Math.Min(blockSize, image.Length - offset);
             using HttpRequestMessage upload = new(HttpMethod.Put, url)
             {
