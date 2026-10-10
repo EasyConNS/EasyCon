@@ -17,6 +17,7 @@ public class ScriptService : IScriptService
     private readonly IDeviceService _deviceService;
     private readonly ICaptureService _captureService;
     private readonly ILogService _logService;
+    private readonly IAlertService? _alertService;
     private readonly IScriptEngine _engine = new EasyScriptEngine();
     private readonly object _runGate = new();
     private IScriptSession? _session;
@@ -45,11 +46,13 @@ public class ScriptService : IScriptService
         );
     }
 
-    public ScriptService(IDeviceService deviceService, ICaptureService captureService, ILogService logService)
+    public ScriptService(IDeviceService deviceService, ICaptureService captureService, ILogService logService,
+        IAlertService? alertService = null)
     {
         _deviceService = deviceService;
         _captureService = captureService;
         _logService = logService;
+        _alertService = alertService;
     }
 
     public async Task<bool> CompileAsync(string scriptText, string? fileName)
@@ -299,7 +302,7 @@ public class ScriptService : IScriptService
                 using CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
                 {
                     Pad = pad,
-                    Console = new ConsoleIoAdapter(_logService),
+                    Console = new ConsoleIoAdapter(_logService, _alertService),
                     Frame = frameDelegate,
                     Roi = MatExtensions.CropBase64,
                     LabelMatch = labelMatch,

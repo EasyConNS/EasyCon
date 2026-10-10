@@ -1,0 +1,231 @@
+#nullable enable
+
+using System.Text.Json;
+
+namespace EasyCon.Core.Config;
+
+public static partial class ConfigManager
+{
+    private static readonly object _alertLock = new();
+    private static readonly Dictionary<(string Path, string Id), QQNotificationSettings> _qqSessions = [];
+    private static readonly Dictionary<string, (string? Source, string[] Ids)> _alertMigrationIds = [];
+    private static readonly Dictionary<string, string> _alertSaveErrors = [];
+
+    public static event Action<AlertConfig>? AlertConfigChanged;
+
+    public static AlertConfig CreateDefaultAlert() => new()
+    {
+        schema_version = 1,
+        alerts =
+        [
+            new AlertItem
+            {
+                name = "PushPlus",
+                url = "https://www.pushplus.plus/send/{{token}}?content={{content}}&title={{title}}",
+            },
+            new AlertItem
+            {
+                name = "Bark",
+                url = "https://api.day.app/{{token}}/{{title}}/{{content}}?group={{group}}&icon={{icon}}",
+                variables = new() { ["group"] = "伊机控", ["icon"] = "https://avatars.githubusercontent.com/u/107608104?s=48&v=4" },
+            },
+            new AlertItem
+            {
+                name = "自定义Webhook",
+                method = "POST",
+                url = "https://example.com/webhook",
+                headers = new() { ["Authorization"] = "Bearer {{token}}", ["Content-Type"] = "application/json" },
+                body = "{\"msg\":\"{{content}}\"}",
+                variables = new() { ["chat_id"] = "" },
+            },
+            AlertItem.CreateQq(),
+        ],
+    };
+
+    public static AlertConfig LoadAlert(string? path = null, string? legacyQqPath = null)
+    {
+        path = Path.GetFullPath(path ?? AppPaths.AlertConfig);
+        lock (_alertLock)
+        {
+            AlertConfig config;
+            string? source;
+            try
+            {
+                source = File.Exists(path) ? File.ReadAllText(path) : null;
+                config = source == null ? CreateDefaultAlert()
+                    : JsonSerializer.Deserialize<AlertConfig>(source, _jsonReadOptions) ?? new();
+            }
+            catch (Exception ex)
+            {
+                return new AlertConfig { schema_version = 1, load_error = ReportAlertLoadFailure(path, ex) };
+            }
+            _alertSaveErrors.Remove(path);
+            bool needsSave = source == null || config.schema_version < 1;
+            if (config.schema_version < 1 && !config.alerts.Any(item => item.IsQq))
+                config.alerts.Add(AlertItem.CreateQq());
+            if (needsSave)
+            {
+                config.schema_version = 1;
+                // 写入失败后的重试沿用同一批标识，避免运行中的通道被当作删除。
+                if (_alertMigrationIds.TryGetValue(path, out (string? Source, string[] Ids) migration)
+                    && migration.Source == source && migration.Ids.Length == config.alerts.Count)
+                {
+                    for (int i = 0; i < config.alerts.Count; i++)
+                        config.alerts[i].id = migration.Ids[i];
+                }
+                _ = EnsureAlertIds(config);
+                _alertMigrationIds[path] = (source, [.. config.alerts.Select(item => item.id)]);
+                AlertItem? item = config.alerts.FirstOrDefault(item => item.IsQq);
+                string legacyPath = legacyQqPath ?? (path == AppPaths.AlertConfig ? AppPaths.QqNotificationConfig : "");
+                if (item != null && File.Exists(legacyPath))
+                {
+                    try
+                    {
+                        item.qq = Load<QQNotificationSettings>(legacyPath, _jsonReadOptions);
+                        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(legacyPath));
+                        item.enable = document.RootElement.TryGetProperty("enabled", out JsonElement enabled)
+                            && enabled.ValueKind == JsonValueKind.True;
+                    }
+                    catch
+                    {
+                        item.qq = new QQNotificationSettings();
+                        item.enable = false;
+                    }
+                }
+            }
+            foreach (AlertItem item in config.alerts.Where(item => item.IsQq))
+            {
+                if (item.name == "QQ 图片通知")
+                    item.name = AlertItem.QqDefaultName;
+                QQNotificationSettings settings = item.qq ??= new();
+                if (_qqSessions.TryGetValue((path, item.id), out QQNotificationSettings? session)
+                    && session.secret.Length > 0 && session.app_id == settings.app_id
+                    && session.protected_secret == settings.protected_secret)
+                {
+                    settings.secret = session.secret;
+                    settings.verified = session.verified;
+                }
+                else if (settings.remember_secret && settings.protected_secret.Length > 0)
+                {
+                    try
+                    {
+                        settings.secret = QQNotificationSecretProtector.Unprotect(settings.protected_secret);
+                    }
+                    catch
+                    {
+                        settings.load_error = "保存的 QQ AppSecret 无法解密，请重新填写。";
+                    }
+                }
+                settings.enabled = item.enable = item.enable && settings.IsReady();
+            }
+            if (needsSave)
+            {
+                // 先恢复会话密钥和启用状态，再发布迁移后的运行时配置。
+                try
+                {
+                    SaveAlert(config, path);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    config.load_error = "推送配置迁移未能保存，已保留内存配置，请稍后重新保存：" + ex.Message;
+                }
+            }
+            return config;
+        }
+    }
+
+    private static string ReportAlertLoadFailure(string path, Exception error)
+    {
+        string message;
+        if (error is JsonException)
+        {
+            string backup = $"{path}.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
+            try
+            {
+                File.Copy(path, backup);
+                message = $"推送配置解析失败，已备份到 {backup}，原文件未修改：{error.Message}";
+                _alertSaveErrors.Remove(path);
+            }
+            catch (Exception backupError)
+            {
+                message = $"推送配置解析失败，无法创建备份，已暂停保存，请修复文件后重新打开设置：{backupError.Message}";
+                _alertSaveErrors[path] = message;
+            }
+        }
+        else
+        {
+            message = $"推送配置读取失败，原文件未修改，请排除文件占用或权限问题后重新打开设置：{error.Message}";
+            _alertSaveErrors[path] = message;
+        }
+        ConfigErrorReported?.Invoke(path, message);
+        return message;
+    }
+
+    public static void SaveAlert(AlertConfig config, string? path = null)
+    {
+        path = Path.GetFullPath(path ?? AppPaths.AlertConfig);
+        AlertConfig snapshot = new() { schema_version = 1, timeout = config.timeout, alerts = [.. config.alerts.Select(item => item.Clone())] };
+        lock (_alertLock)
+        {
+            if (_alertSaveErrors.TryGetValue(path, out string? loadError))
+                throw new InvalidOperationException(loadError);
+            HashSet<string> ids = EnsureAlertIds(snapshot);
+            foreach (AlertItem item in snapshot.alerts)
+            {
+                if (!item.IsQq)
+                    continue;
+                QQNotificationSettings settings = item.qq ??= new();
+                settings.enabled = item.enable;
+                settings.PrepareSecretForSave();
+            }
+            string temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temporaryPath, JsonSerializer.Serialize(snapshot, _jsonOptions));
+                File.Move(temporaryPath, path, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
+            }
+            foreach (var key in _qqSessions.Keys.Where(key => key.Path == path && !ids.Contains(key.Id)).ToArray())
+                _qqSessions.Remove(key);
+            foreach (AlertItem item in snapshot.alerts.Where(item => item.IsQq))
+                _qqSessions[(path, item.id)] = item.qq!.Clone();
+            _alertMigrationIds.Remove(path);
+        }
+        AlertConfigChanged?.Invoke(snapshot);
+    }
+
+    private static HashSet<string> EnsureAlertIds(AlertConfig config)
+    {
+        HashSet<string> ids = [];
+        foreach (AlertItem item in config.alerts)
+        {
+            if (item.id.Length == 0 || !ids.Add(item.id))
+            {
+                item.id = Guid.NewGuid().ToString("N");
+                ids.Add(item.id);
+            }
+        }
+        return ids;
+    }
+
+    public static QQNotificationSettings LoadQqNotification() =>
+        LoadAlert().alerts.FirstOrDefault(item => item.IsQq)?.qq ?? new QQNotificationSettings();
+
+    public static void SaveQqNotification(QQNotificationSettings settings)
+    {
+        AlertConfig config = LoadAlert();
+        AlertItem? item = config.alerts.FirstOrDefault(item => item.IsQq);
+        if (item == null)
+        {
+            item = AlertItem.CreateQq();
+            config.alerts.Add(item);
+        }
+        item.qq = settings.Clone();
+        item.enable = settings.enabled;
+        SaveAlert(config);
+    }
+}

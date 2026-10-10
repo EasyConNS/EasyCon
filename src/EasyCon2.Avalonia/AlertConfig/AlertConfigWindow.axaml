@@ -2,11 +2,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:alert="using:EasyCon2.Avalonia.AlertConfig"
         x:Class="EasyCon2.Avalonia.AlertConfig.AlertConfigWindow"
-        Title="推送配置"
+        Title="推送设置"
         Width="760"
-        Height="640"
+        Height="760"
         MinWidth="620"
-        MinHeight="460"
-        WindowStartupLocation="CenterOwner">
+        MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Resources/Images/favicon.ico">
     <alert:AlertConfigControl x:Name="AlertConfig"/>
 </Window>

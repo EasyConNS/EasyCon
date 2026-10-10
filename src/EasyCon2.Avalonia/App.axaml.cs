@@ -2,9 +2,11 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Config;
+using EasyCon.Core.Notifications;
 using EasyCon2.Avalonia.AlertConfig;
 using EasyCon2.Avalonia.Connection;
 using EasyCon2.Avalonia.KeyMapping;
@@ -82,7 +84,14 @@ public partial class App : Application
 
             var deviceService = new DeviceService(logService);
             var captureService = new CaptureService(logService);
-            var scriptService = new ScriptService(deviceService, captureService, logService);
+            AlertService alertService = new(
+                resultLogger: message => logService.Print(message, true),
+                imageProvider: () =>
+                {
+                    using FrameLease? lease = captureService.AcquireLatestFrame();
+                    return NotificationImage.FromFrame(lease?.Mat);
+                });
+            var scriptService = new ScriptService(deviceService, captureService, logService, alertService);
             // Linux 平台暂无底层控制实现，先用 Mock 占位；其它平台走真实实现。
             IControllerService controllerService = OperatingSystem.IsLinux()
                 ? new MockControllerService()
@@ -117,6 +126,7 @@ public partial class App : Application
             {
                 // 单一清理入口：关窗路径只做 UI/配置收尾，服务释放统一在此（带防御）
                 try { if (controllerService is IDisposable cd) cd.Dispose(); } catch { }
+                try { alertService.Dispose(); } catch { }
                 try { captureService.Dispose(); } catch { }
                 try { deviceService.Dispose(); } catch { }
                 try { _mcpHttpServer?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }

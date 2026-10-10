@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:qq="using:EasyCon2.Avalonia.QQ"
+        x:Class="EasyCon2.Avalonia.QQ.QQGuideImageWindow"
+        x:DataType="qq:QQGuideStep"
+        Title="qq bot 教程 · 完整截图"
+        Width="1120" Height="780" MinWidth="680" MinHeight="480"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="16" RowDefinitions="Auto,*,Auto">
+        <StackPanel Spacing="6" Margin="0,0,0,12">
+            <TextBlock Text="{Binding DisplayTitle}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="原图按实际像素显示，橙框为点击提示；可横向、纵向滚动查看。"
+                       Foreground="{DynamicResource WorkbenchMutedTextBrush}" TextWrapping="Wrap"/>
+        </StackPanel>
+        <ScrollViewer x:Name="ImageScroll" Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                      Background="#FFFFFF">
+            <qq:QQGuideScreenshot Step="{Binding}" FullImage="True"
+                                  Width="{Binding PixelWidth}" Height="{Binding PixelHeight}"
+                                  AutomationProperties.Name="{Binding Title}"/>
+        </ScrollViewer>
+        <Button Grid.Row="2" Content="返回教程" Click="OnClose" IsCancel="True"
+                HorizontalAlignment="Right" Margin="0,12,0,0"/>
+    </Grid>
+</Window>

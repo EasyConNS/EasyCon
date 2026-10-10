@@ -8,6 +8,7 @@ public static class AlertConfigHost
         var vm = new AlertConfigViewModel { OnSaveCallback = onSave };
         var control = new AlertConfigControl { DataContext = vm };
         control.LoadData();
+        control.DetachedFromVisualTree += (_, _) => vm.Dispose();
         return control;
     }
 }
