@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace EasyCon.Core.Config;
 
-public static class ConfigManager
+public static partial class ConfigManager
 {
     /// <summary>
     /// models.json 配置保存后触发，用于订阅方（如 AI Agent）刷新内存中的模型列表。
@@ -57,19 +57,6 @@ public static class ConfigManager
     {
         Save(AppPaths.KeyMappingConfig, keyMapping);
         KeyMappingChanged?.Invoke();
-    }
-
-    public static AlertConfig LoadAlert()
-    {
-        var path = AppPaths.AlertConfig;
-        if (!File.Exists(path))
-            GenerateDefaultAlert(path);
-        return Load<AlertConfig>(path, _jsonReadOptions);
-    }
-
-    public static void SaveAlert(AlertConfig config)
-    {
-        Save(AppPaths.AlertConfig, config);
     }
 
     public static ModelsConfig LoadModelsConfig()
@@ -161,49 +148,6 @@ public static class ConfigManager
         {
             ConfigErrorReported?.Invoke(path, $"默认配置写入失败: {ex.Message}");
         }
-    }
-
-    private static void GenerateDefaultAlert(string path)
-    {
-        var json = """
-{
-  "timeout": 10,
-  "alerts": [
-    {
-      "name": "PushPlus",
-      "enable": false,
-      "url": "https://www.pushplus.plus/send/{{token}}?content={{content}}&title={{title}}",
-      "token": ""
-    },
-    {
-      "name": "Bark",
-      "enable": false,
-      "url": "https://api.day.app/{{token}}/{{title}}/{{content}}?group={{group}}&icon={{icon}}",
-      "token": "",
-      "variables": {
-        "group": "伊机控",
-        "icon": "https://avatars.githubusercontent.com/u/107608104?s=48&v=4"
-      }
-    },
-    {
-      "name": "自定义Webhook",
-      "enable": false,
-      "method": "POST",
-      "url": "https://example.com/webhook",
-      "token": "",
-      "headers": {
-        "Authorization": "Bearer {{token}}",
-        "Content-Type": "application/json"
-      },
-      "body": "{\"msg\":\"{{content}}\"}",
-      "variables": {
-        "chat_id": ""
-      }
-    }
-  ]
-}
-""";
-        WriteDefault(path, json);
     }
 
     internal static string DefaultModelsJson { get; } = """

@@ -8,6 +8,7 @@
                Background="{DynamicResource WorkbenchWindowBrush}">
         <!-- Bottom buttons -->
         <Grid DockPanel.Dock="Bottom"
+              RowDefinitions="Auto,Auto"
               ColumnDefinitions="Auto,*,Auto"
               Margin="0,12,0,0">
             <StackPanel Grid.Column="0"
@@ -15,15 +16,24 @@
                         HorizontalAlignment="Left"
                         Spacing="8">
                 <Button Content="添加配置"
-                        Command="{Binding AddItemCommand}"
-                        IsEnabled="{Binding CanAdd}"/>
+                        IsEnabled="{Binding CanAdd}">
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuItem Header="PushPlus" Command="{Binding AddItemCommand}" CommandParameter="pushplus"/>
+                            <MenuItem Header="Bark" Command="{Binding AddItemCommand}" CommandParameter="bark"/>
+                            <MenuItem Header="自定义Webhook" Command="{Binding AddItemCommand}" CommandParameter="webhook"/>
+                            <MenuItem Header="qq bot" Command="{Binding AddItemCommand}" CommandParameter="qq"/>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
             </StackPanel>
-            <TextBlock Grid.Column="1"
+            <TextBlock Grid.Row="1" Grid.ColumnSpan="3"
                        Text="{Binding ErrorMessage}"
                        Foreground="{DynamicResource WorkbenchDangerBrush}"
                        FontSize="13"
                        VerticalAlignment="Center"
-                       Margin="12,0,0,0"
+                       TextWrapping="Wrap"
+                       Margin="0,8,0,0"
                        IsVisible="{Binding HasError}"/>
             <StackPanel Grid.Column="2"
                         Orientation="Horizontal"
@@ -40,6 +50,7 @@
                 </Button>
                 <Button Content="保存"
                         Click="OnSave"
+                        IsEnabled="{Binding CanSave}"
                         IsDefault="True"/>
                 <Button Content="取消"
                         Click="OnCancel"
@@ -56,13 +67,19 @@
                 CornerRadius="{DynamicResource WorkbenchControlRadius}"
                 Padding="8,4"
                 Margin="0,8,0,0">
-            <TextBlock>
-                <TextBlock.Text>
-                    <MultiBinding StringFormat="{}还有 {0} 条配置未显示">
-                        <Binding Path="HiddenCount"/>
-                    </MultiBinding>
-                </TextBlock.Text>
-            </TextBlock>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock VerticalAlignment="Center">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}还有 {0} 条配置未显示">
+                            <Binding Path="HiddenCount"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+                <Button Grid.Column="1"
+                        Content="显示全部"
+                        Command="{Binding ShowAllItemsCommand}"
+                        Margin="12,0,0,0"/>
+            </Grid>
         </Border>
 
         <!-- Item list -->

@@ -1,4 +1,5 @@
 using EasyCon.Capture;
+using EasyCon.Core.Services;
 using EasyCon.Script;
 using EasyScript;
 
@@ -23,11 +24,15 @@ public sealed class PadInputAdapter(ICGamePad pad) : IPadInput
 }
 
 /// <summary><see cref="IIoAdapter"/> → <see cref="IConsoleIo"/> 适配。</summary>
-public sealed class ConsoleIoAdapter(IIoAdapter io) : IConsoleIo
+public sealed class ConsoleIoAdapter(IIoAdapter io, IAlertService? alertService = null) : IConsoleIo
 {
     public void Print(string message, bool newline = true) => io.Print(message, newline);
 
-    public void Alert(string message) => io.Alert(message);
+    public void Alert(string message)
+    {
+        io.Alert(message);
+        alertService?.Dispatch(message);
+    }
 }
 
 /// <summary>ARG/APP 宿主环境缺省实现。</summary>

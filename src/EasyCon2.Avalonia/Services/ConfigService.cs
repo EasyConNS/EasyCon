@@ -11,7 +11,6 @@ public class ConfigService : IConfigService
     private readonly ILogService _logService;
     private ConfigState _config;
     private KeyMappingConfig _keyMapping;
-    private AlertDispatcher _alertDispatcher;
 
     public ConfigState Config => _config;
     public KeyMappingConfig KeyMapping => _keyMapping;
@@ -21,11 +20,6 @@ public class ConfigService : IConfigService
         _logService = logService;
         _config = LoadOrCreate(() => ConfigManager.LoadConfig());
         _keyMapping = LoadOrCreate(() => ConfigManager.LoadKeyMapping());
-        _alertDispatcher = new AlertDispatcher(ConfigManager.LoadAlert());
-
-        // 只订阅一次：此前在每次 DispatchAlert 里重复 += 且从不退订，
-        // 导致推送结果按调用次数翻倍打印
-        _alertDispatcher.OnResult += (_, result) => _logService.Print(result, true);
     }
 
     public void Save()
@@ -52,7 +46,9 @@ public class ConfigService : IConfigService
         {
             try
             {
-                await _alertDispatcher.DispatchAsync(message);
+                using AlertDispatcher dispatcher = new(ConfigManager.LoadAlert());
+                dispatcher.OnResult += (_, result) => _logService.Print(result, true);
+                await dispatcher.DispatchAsync(message);
             }
             catch (Exception e)
             {
