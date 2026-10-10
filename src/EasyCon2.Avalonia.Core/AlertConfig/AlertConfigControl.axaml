@@ -22,7 +22,7 @@
                             <MenuItem Header="PushPlus" Command="{Binding AddItemCommand}" CommandParameter="pushplus"/>
                             <MenuItem Header="Bark" Command="{Binding AddItemCommand}" CommandParameter="bark"/>
                             <MenuItem Header="自定义Webhook" Command="{Binding AddItemCommand}" CommandParameter="webhook"/>
-                            <MenuItem Header="QQ 图片通知" Command="{Binding AddItemCommand}" CommandParameter="qq"/>
+                            <MenuItem Header="qq bot" Command="{Binding AddItemCommand}" CommandParameter="qq"/>
                         </MenuFlyout>
                     </Button.Flyout>
                 </Button>

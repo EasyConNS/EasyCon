@@ -14,6 +14,7 @@ public class AlertItem
 {
     public const string WebhookProvider = "webhook";
     public const string QqProvider = "qq";
+    public const string QqDefaultName = "qq bot";
 
     public string id { get; set; } = "";
     public string provider { get; set; } = WebhookProvider;
@@ -50,7 +51,7 @@ public class AlertItem
     {
         id = Guid.NewGuid().ToString("N"),
         provider = QqProvider,
-        name = "QQ 图片通知",
+        name = QqDefaultName,
         qq = new QQNotificationSettings(),
     };
 

@@ -50,7 +50,7 @@ public class AlertDispatcherTests
             {
                 Assert.That(message.Uri.AbsolutePath, Is.EqualTo("/v2/users/user/messages"));
                 Assert.That(payload.RootElement.GetProperty("content").GetString(), Is.EqualTo("任务标题\n完成"));
-                Assert.That(results.Any(result => result.Contains("[QQ 图片通知] QQ 通知发送成功")), Is.True);
+                Assert.That(results.Any(result => result.Contains("[qq bot] QQ 通知发送成功")), Is.True);
             });
         }
     }

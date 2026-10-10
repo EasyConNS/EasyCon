@@ -84,6 +84,8 @@ public static partial class ConfigManager
             }
             foreach (AlertItem item in config.alerts.Where(item => item.IsQq))
             {
+                if (item.name == "QQ 图片通知")
+                    item.name = AlertItem.QqDefaultName;
                 QQNotificationSettings settings = item.qq ??= new();
                 if (_qqSessions.TryGetValue((path, item.id), out QQNotificationSettings? session)
                     && session.secret.Length > 0 && session.app_id == settings.app_id

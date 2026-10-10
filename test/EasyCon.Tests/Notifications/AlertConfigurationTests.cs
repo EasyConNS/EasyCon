@@ -117,7 +117,7 @@ public class AlertConfigurationTests
     {
         AlertConfig loaded = ConfigManager.LoadAlert(ConfigPath);
         Assert.That(loaded.alerts.Select(item => item.name),
-            Is.EqualTo(new[] { "PushPlus", "Bark", "自定义Webhook", "QQ 图片通知" }));
+            Is.EqualTo(new[] { "PushPlus", "Bark", "自定义Webhook", "qq bot" }));
         loaded.alerts.RemoveAll(item => item.IsQq);
         ConfigManager.SaveAlert(loaded, ConfigPath);
         Assert.That(ConfigManager.LoadAlert(ConfigPath).alerts.Count, Is.EqualTo(3));

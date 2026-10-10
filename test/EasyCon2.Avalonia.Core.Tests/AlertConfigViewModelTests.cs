@@ -25,7 +25,7 @@ public class AlertConfigViewModelTests
         {
             Assert.That(saved, Is.Null);
             Assert.That(originalQq.enable, Is.False);
-            Assert.That(originalQq.name, Is.EqualTo("QQ 图片通知"));
+            Assert.That(originalQq.name, Is.EqualTo("qq bot"));
             Assert.That(originalQq.qq.attach_image, Is.True);
         });
         Assert.That(model.Save(), Is.True);
