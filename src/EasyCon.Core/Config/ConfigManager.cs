@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace EasyCon.Core.Config;
 
-public static class ConfigManager
+public static partial class ConfigManager
 {
     /// <summary>
     /// models.json 配置保存后触发，用于订阅方（如 AI Agent）刷新内存中的模型列表。
@@ -42,40 +42,6 @@ public static class ConfigManager
     public static void SaveKeyMapping(KeyMappingConfig keyMapping)
     {
         Save(AppPaths.KeyMappingConfig, keyMapping);
-    }
-
-    public static AlertConfig LoadAlert()
-    {
-        var path = AppPaths.AlertConfig;
-        if (!File.Exists(path))
-            GenerateDefaultAlert(path);
-        return Load<AlertConfig>(path, _jsonReadOptions);
-    }
-
-    public static void SaveAlert(AlertConfig config)
-    {
-        Save(AppPaths.AlertConfig, config);
-    }
-
-    public static QQNotificationSettings LoadQqNotification()
-    {
-        return Load<QQNotificationSettings>(AppPaths.QqNotificationConfig, _jsonReadOptions);
-    }
-
-    public static void SaveQqNotification(QQNotificationSettings settings)
-    {
-        string path = AppPaths.QqNotificationConfig;
-        string temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
-        {
-            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(settings, _jsonOptions));
-            File.Move(temporaryPath, path, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-                File.Delete(temporaryPath);
-        }
     }
 
     public static ModelsConfig LoadModelsConfig()
@@ -123,49 +89,6 @@ public static class ConfigManager
     private static void Save<T>(string path, T data)
     {
         File.WriteAllText(path, JsonSerializer.Serialize(data, _jsonOptions));
-    }
-
-    private static void GenerateDefaultAlert(string path)
-    {
-        var json = """
-{
-  "timeout": 10,
-  "alerts": [
-    {
-      "name": "PushPlus",
-      "enable": false,
-      "url": "https://www.pushplus.plus/send/{{token}}?content={{content}}&title={{title}}",
-      "token": ""
-    },
-    {
-      "name": "Bark",
-      "enable": false,
-      "url": "https://api.day.app/{{token}}/{{title}}/{{content}}?group={{group}}&icon={{icon}}",
-      "token": "",
-      "variables": {
-        "group": "伊机控",
-        "icon": "https://avatars.githubusercontent.com/u/107608104?s=48&v=4"
-      }
-    },
-    {
-      "name": "自定义Webhook",
-      "enable": false,
-      "method": "POST",
-      "url": "https://example.com/webhook",
-      "token": "",
-      "headers": {
-        "Authorization": "Bearer {{token}}",
-        "Content-Type": "application/json"
-      },
-      "body": "{\"msg\":\"{{content}}\"}",
-      "variables": {
-        "chat_id": ""
-      }
-    }
-  ]
-}
-""";
-        File.WriteAllText(path, json);
     }
 
     private static void GenerateDefaultModels(string path)

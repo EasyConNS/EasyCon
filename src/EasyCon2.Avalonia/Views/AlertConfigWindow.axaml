@@ -1,7 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:alert="using:EasyCon2.Avalonia.Core.AlertConfig"
-        xmlns:views="using:EasyCon2.Avalonia.Views"
         x:Class="EasyCon2.Avalonia.Views.AlertConfigWindow"
         Title="推送设置"
         Width="760"
@@ -10,22 +9,5 @@
         MinHeight="600"
         WindowStartupLocation="CenterOwner"
         Icon="/Resources/Images/favicon.ico">
-    <Grid RowDefinitions="Auto,*">
-        <StackPanel Margin="24,20,24,12" Spacing="6">
-            <TextBlock Text="推送设置" FontSize="22" FontWeight="SemiBold"/>
-            <TextBlock Text="脚本 ALERT 会通过已启用的通知渠道发送提醒。" TextWrapping="Wrap" Opacity="0.72"/>
-        </StackPanel>
-        <TabControl x:Name="NotificationChannels" Grid.Row="1">
-            <TabItem x:Name="QqTab" Header="QQ 图片通知">
-                <views:QQNotificationControl x:Name="QqConfig"/>
-            </TabItem>
-            <TabItem Header="通用推送">
-                <Grid RowDefinitions="Auto,*">
-                    <TextBlock Text="配置 PushPlus、Bark 或自定义 Webhook 推送。"
-                               Margin="16,16,16,0" TextWrapping="Wrap" Opacity="0.72"/>
-                    <alert:AlertConfigControl x:Name="AlertConfig" Grid.Row="1"/>
-                </Grid>
-            </TabItem>
-        </TabControl>
-    </Grid>
+    <alert:AlertConfigControl x:Name="AlertConfig"/>
 </Window>

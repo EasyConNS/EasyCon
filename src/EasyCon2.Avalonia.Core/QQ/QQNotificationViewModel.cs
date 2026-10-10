@@ -196,6 +196,21 @@ public partial class QQNotificationViewModel : ObservableObject, IDisposable
         }
     }
 
+    public QQNotificationSettings GetSettings() => new()
+    {
+        app_id = AppId.Trim(),
+        secret = Secret.Trim(),
+        protected_secret = Secret.Length > 0 ? _service.Settings.protected_secret : "",
+        remember_secret = RememberSecret,
+        user_openid = UserOpenId.Trim(),
+        group_openid = GroupOpenId.Trim(),
+        user_enabled = UserEnabled,
+        group_enabled = GroupEnabled,
+        enabled = Enabled,
+        attach_image = AttachImage,
+        verified = Verified,
+    };
+
     private void SaveCore()
     {
         _service.Update(settings =>

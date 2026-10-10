@@ -21,7 +21,11 @@ public sealed class QQNotificationSettings
     public string group_openid { get; set; } = "";
     public bool user_enabled { get; set; } = true;
     public bool group_enabled { get; set; }
+    [JsonIgnore]
     public bool enabled { get; set; }
+
+    [JsonIgnore]
+    public string load_error { get; set; } = "";
 
     /// <summary>默认附带当前视频画面；没有画面时由宿主提供 Logo 作为回退。</summary>
     public bool attach_image { get; set; } = true;
@@ -44,6 +48,7 @@ public sealed class QQNotificationSettings
             enabled = enabled,
             attach_image = attach_image,
             verified = verified,
+            load_error = load_error,
         };
     }
 

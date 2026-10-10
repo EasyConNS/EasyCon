@@ -10,7 +10,6 @@ public class ConfigService : IConfigService
     private readonly ILogService _logService;
     private ConfigState _config;
     private KeyMappingConfig _keyMapping;
-    private AlertDispatcher _alertDispatcher;
 
     public ConfigState Config => _config;
     public KeyMappingConfig KeyMapping => _keyMapping;
@@ -20,7 +19,6 @@ public class ConfigService : IConfigService
         _logService = logService;
         _config = LoadOrCreate(() => ConfigManager.LoadConfig());
         _keyMapping = LoadOrCreate(() => ConfigManager.LoadKeyMapping());
-        _alertDispatcher = new AlertDispatcher(ConfigManager.LoadAlert());
     }
 
     public void Save()
@@ -47,8 +45,9 @@ public class ConfigService : IConfigService
         {
             try
             {
-                _alertDispatcher.OnResult += (_, result) => _logService.Print(result, true);
-                await _alertDispatcher.DispatchAsync(message);
+                using AlertDispatcher dispatcher = new(ConfigManager.LoadAlert());
+                dispatcher.OnResult += (_, result) => _logService.Print(result, true);
+                await dispatcher.DispatchAsync(message);
             }
             catch (Exception e)
             {

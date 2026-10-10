@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
-using EasyCon.Core.Notifications;
 using EasyCon2.Avalonia.Core.Services;
 using EasyCon2.Avalonia.ViewModels;
 using EasyCon2.Avalonia.Views;
@@ -24,17 +23,14 @@ public class WindowService : IWindowService
     private readonly IDeviceService _deviceService;
     private readonly ILogService _logService;
     private readonly IDialogService _dialogService;
-    private readonly QQNotificationService? _qqNotificationService;
     private Window? _espConfigWindow;
     private Window? _alertConfigWindow;
 
-    public WindowService(IDeviceService deviceService, ILogService logService, IDialogService dialogService,
-        QQNotificationService? qqNotificationService = null)
+    public WindowService(IDeviceService deviceService, ILogService logService, IDialogService dialogService)
     {
         _deviceService = deviceService;
         _logService = logService;
         _dialogService = dialogService;
-        _qqNotificationService = qqNotificationService;
     }
 
     public void ShowESPConfigWindow()
@@ -72,7 +68,7 @@ public class WindowService : IWindowService
 
         try
         {
-            _alertConfigWindow = new AlertConfigWindow(_qqNotificationService);
+            _alertConfigWindow = new AlertConfigWindow();
             _alertConfigWindow.Closed += (_, _) => _alertConfigWindow = null;
             _alertConfigWindow.Show(MainWindow);
         }

@@ -13,6 +13,7 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
     private readonly ILogService? _log;
     private readonly QQNotificationClient _client;
     private readonly QQNotificationClient _sender;
+    private readonly bool _persistSettings;
     private readonly Channel<PendingNotification> _queue = Channel.CreateBounded<PendingNotification>(
         new BoundedChannelOptions(20) { FullMode = BoundedChannelFullMode.Wait });
     private readonly CancellationTokenSource _shutdown = new();
@@ -34,14 +35,16 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
     public Func<byte[]?>? ImageProvider { get; set; }
 
     public QQNotificationService(ILogService? log = null, QQNotificationClient? client = null,
-        QQNotificationClient? sender = null, QQNotificationSettings? settings = null)
+        QQNotificationClient? sender = null, QQNotificationSettings? settings = null, bool persistSettings = true)
     {
         _log = log;
+        _persistSettings = persistSettings;
         _client = client ?? new QQNotificationClient();
         _sender = sender ?? new QQNotificationClient();
         if (ReferenceEquals(_client, _sender))
             throw new ArgumentException("绑定和自动通知必须使用独立的 QQ 客户端。", nameof(sender));
         _settings = settings?.Clone() ?? LoadSettings();
+        LastError = _settings.load_error;
         _worker = Task.Run(ProcessQueueAsync);
     }
 
@@ -89,10 +92,10 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
                 next.enabled = false;
                 next.verified = false;
             }
-            if (next.enabled && !next.IsReady())
+            if (_persistSettings && next.enabled && !next.IsReady())
                 throw new InvalidOperationException("启用 QQ 通知前，请填写凭据并绑定所有勾选的接收方。");
 
-            if (save)
+            if (save && _persistSettings)
             {
                 next.protected_secret = next.remember_secret && next.secret.Length > 0
                     ? QQNotificationSecretProtector.Protect(next.secret) : "";
@@ -326,26 +329,7 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
         }
     }
 
-    private QQNotificationSettings LoadSettings()
-    {
-        QQNotificationSettings settings = ConfigManager.LoadQqNotification();
-        if (settings.remember_secret && !string.IsNullOrWhiteSpace(settings.protected_secret))
-        {
-            try
-            {
-                settings.secret = QQNotificationSecretProtector.Unprotect(settings.protected_secret);
-            }
-            catch
-            {
-                settings.secret = "";
-                settings.enabled = false;
-                LastError = "保存的 QQ AppSecret 无法解密，请重新填写。";
-            }
-        }
-        if (!settings.IsReady())
-            settings.enabled = false;
-        return settings;
-    }
+    private static QQNotificationSettings LoadSettings() => ConfigManager.LoadQqNotification();
 
     private void CompletePending()
     {

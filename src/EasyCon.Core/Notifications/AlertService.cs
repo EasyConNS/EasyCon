@@ -10,21 +10,21 @@ public sealed class AlertService : IAlertService, IDisposable
 {
     private readonly object _sync = new();
     private readonly Action<string>? _resultLogger;
-    private readonly QQNotificationService _qq;
-    private readonly HashSet<Task> _webhooks = [];
+    private readonly AlertDispatcher _dispatcher;
+    private readonly HashSet<Task> _pending = [];
     private readonly CancellationTokenSource _shutdown = new();
     private readonly CancellationToken _shutdownToken;
     private bool _disposed;
 
     public AlertService(Action<string>? resultLogger = null, Func<byte[]?>? imageProvider = null,
-        QQNotificationService? qq = null)
+        AlertDispatcher? dispatcher = null)
     {
         _resultLogger = resultLogger;
         _shutdownToken = _shutdown.Token;
-        _qq = qq ?? new QQNotificationService();
-        _qq.ImageProvider = imageProvider;
-        _qq.Result += OnQqResult;
-        _qq.Error += OnQqResult;
+        _dispatcher = dispatcher ?? new AlertDispatcher(ConfigManager.LoadAlert());
+        _dispatcher.ImageProvider = imageProvider;
+        _dispatcher.OnResult += OnResult;
+        ConfigManager.AlertConfigChanged += OnConfigurationChanged;
     }
 
     public void Dispatch(string content, string title = "伊机控消息", byte[]? image = null)
@@ -33,33 +33,29 @@ public sealed class AlertService : IAlertService, IDisposable
         {
             if (_disposed)
                 return;
-            _qq.Dispatch(content, title, image);
-            Task task = Task.Run(() => DispatchWebhooksAsync(content, title));
-            _webhooks.Add(task);
+            Task task = DispatchAsync(content, title, image);
+            _pending.Add(task);
             _ = task.ContinueWith(completed =>
             {
                 lock (_sync)
-                    _webhooks.Remove(completed);
+                    _pending.Remove(completed);
             }, TaskScheduler.Default);
         }
     }
 
     public async Task FlushAsync(CancellationToken cancellationToken = default)
     {
-        Task[] webhooks;
+        Task[] pending;
         lock (_sync)
-            webhooks = [.. _webhooks];
-        await Task.WhenAll(_qq.FlushAsync(cancellationToken),
-            Task.WhenAll(webhooks).WaitAsync(cancellationToken)).ConfigureAwait(false);
+            pending = [.. _pending];
+        await Task.WhenAll(pending).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task DispatchWebhooksAsync(string content, string title)
+    private async Task DispatchAsync(string content, string title, byte[]? image)
     {
         try
         {
-            using AlertDispatcher dispatcher = new(ConfigManager.LoadAlert());
-            dispatcher.OnResult += (_, result) => _resultLogger?.Invoke(result);
-            await dispatcher.DispatchAsync(content, title, _shutdownToken).ConfigureAwait(false);
+            await _dispatcher.DispatchAsync(content, title, _shutdownToken, image).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (_shutdownToken.IsCancellationRequested)
         {
@@ -71,7 +67,24 @@ public sealed class AlertService : IAlertService, IDisposable
         }
     }
 
-    private void OnQqResult(string result) => _resultLogger?.Invoke(result);
+    private void OnResult(object? sender, string result) => _resultLogger?.Invoke(result);
+
+    private void OnConfigurationChanged(AlertConfig config)
+    {
+        lock (_sync)
+        {
+            if (_disposed)
+                return;
+            try
+            {
+                _dispatcher.UpdateConfiguration(config);
+            }
+            catch (Exception ex)
+            {
+                _resultLogger?.Invoke("推送配置更新失败：" + ex.Message);
+            }
+        }
+    }
 
     public void Dispose()
     {
@@ -81,10 +94,10 @@ public sealed class AlertService : IAlertService, IDisposable
                 return;
             _disposed = true;
             _shutdown.Cancel();
-            _qq.Result -= OnQqResult;
-            _qq.Error -= OnQqResult;
-            _qq.Dispose();
-            _ = Task.WhenAll(_webhooks).ContinueWith(_ => _shutdown.Dispose(), TaskScheduler.Default);
+            ConfigManager.AlertConfigChanged -= OnConfigurationChanged;
+            _dispatcher.OnResult -= OnResult;
+            _dispatcher.Dispose();
+            _ = Task.WhenAll(_pending).ContinueWith(_ => _shutdown.Dispose(), TaskScheduler.Default);
         }
     }
 }

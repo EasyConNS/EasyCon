@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:EasyCon2.Avalonia.Core.AlertConfig"
+             xmlns:qq="using:EasyCon2.Avalonia.Core.QQ"
              x:Class="EasyCon2.Avalonia.Core.AlertConfig.AlertItemView"
              x:DataType="vm:AlertItemViewModel">
 
@@ -47,11 +48,13 @@
 
                 <ToggleSwitch Grid.Column="1"
                               IsChecked="{Binding Enable}"
+                              IsEnabled="{Binding CanEdit}"
                               OnContent="" OffContent=""
                               Margin="8,0,8,0"/>
 
                 <Button Grid.Column="2"
                         Command="{Binding DeleteCommand}"
+                        IsEnabled="{Binding CanEdit}"
                         Width="24" Height="24"
                         Padding="0"
                         Background="Transparent"
@@ -74,95 +77,101 @@
                     <TextBox Text="{Binding Name}"/>
                 </StackPanel>
 
-                <!-- url* -->
-                <StackPanel Spacing="2">
-                    <TextBlock Text="url*"/>
-                    <TextBox Text="{Binding Url}"/>
+                <StackPanel IsVisible="{Binding IsQq}">
+                    <qq:QQNotificationEditor DataContext="{Binding Qq}"/>
                 </StackPanel>
 
-                <!-- token* -->
-                <StackPanel Spacing="2">
-                    <TextBlock Text="token*"/>
-                    <TextBox Text="{Binding Token}"/>
-                </StackPanel>
+                <StackPanel IsVisible="{Binding !IsQq}" Spacing="8">
+                    <!-- url* -->
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="url*"/>
+                        <TextBox Text="{Binding Url}"/>
+                    </StackPanel>
 
-                <!-- 请求方法(可选) -->
-                <StackPanel Spacing="2">
-                    <TextBlock Text="请求方法(可选)"/>
-                    <ComboBox SelectedItem="{Binding Method}"
-                              ItemsSource="{x:Static vm:AlertItemViewModel.HttpMethods}"/>
-                </StackPanel>
+                    <!-- token* -->
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="token*"/>
+                        <TextBox Text="{Binding Token}"/>
+                    </StackPanel>
 
-                <!-- headers(可选) -->
-                <StackPanel Spacing="2">
-                    <TextBlock Text="headers(可选)"/>
-                    <ItemsControl ItemsSource="{Binding Headers}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:KeyValueEntry">
-                                <Grid ColumnDefinitions="3*,7*,Auto" Margin="0,0,0,4">
-                                    <TextBox Grid.Column="0"
-                                             Text="{Binding Key, Mode=TwoWay}"
-                                             MaxLength="32"
-                                             Watermark="Key"
-                                             Margin="0,0,4,0"/>
-                                    <TextBox Grid.Column="1"
-                                             Text="{Binding Value, Mode=TwoWay}"
-                                             Watermark="Value"
-                                             Margin="0,0,4,0"/>
-                                    <Button Grid.Column="2"
-                                            Content="✕"
-                                            Width="24" Height="24" Padding="0"
-                                            Command="{Binding $parent[UserControl].((vm:AlertItemViewModel)DataContext).RemoveHeaderCommand}"
-                                            CommandParameter="{Binding}"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <Button Content="+ 添加"
-                            HorizontalAlignment="Left"
-                            Classes="tool-button"
-                            Command="{Binding AddHeaderCommand}"/>
-                </StackPanel>
+                    <!-- 请求方法(可选) -->
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="请求方法(可选)"/>
+                        <ComboBox SelectedItem="{Binding Method}"
+                                  ItemsSource="{x:Static vm:AlertItemViewModel.HttpMethods}"/>
+                    </StackPanel>
 
-                <!-- body(可选) -->
-                <StackPanel Spacing="2">
-                    <TextBlock Text="body(可选)"/>
-                    <TextBox Text="{Binding Body}"
-                             AcceptsReturn="True"
-                             Height="60"/>
-                </StackPanel>
+                    <!-- headers(可选) -->
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="headers(可选)"/>
+                        <ItemsControl ItemsSource="{Binding Headers}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:KeyValueEntry">
+                                    <Grid ColumnDefinitions="3*,7*,Auto" Margin="0,0,0,4">
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding Key, Mode=TwoWay}"
+                                                 MaxLength="32"
+                                                 Watermark="Key"
+                                                 Margin="0,0,4,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Value, Mode=TwoWay}"
+                                                 Watermark="Value"
+                                                 Margin="0,0,4,0"/>
+                                        <Button Grid.Column="2"
+                                                Content="✕"
+                                                Width="24" Height="24" Padding="0"
+                                                Command="{Binding $parent[UserControl].((vm:AlertItemViewModel)DataContext).RemoveHeaderCommand}"
+                                                CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Content="+ 添加"
+                                HorizontalAlignment="Left"
+                                Classes="tool-button"
+                                Command="{Binding AddHeaderCommand}"/>
+                    </StackPanel>
 
-                <!-- 变量(可选) -->
-                <StackPanel Spacing="2">
-                    <TextBlock Text="变量(可选)"/>
-                    <ItemsControl ItemsSource="{Binding Variables}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:KeyValueEntry">
-                                <Grid ColumnDefinitions="3*,7*,Auto" Margin="0,0,0,4">
-                                    <TextBox Grid.Column="0"
-                                             Text="{Binding Key, Mode=TwoWay}"
-                                             MaxLength="32"
-                                             Watermark="Key"
-                                             Margin="0,0,4,0"/>
-                                    <TextBox Grid.Column="1"
-                                             Text="{Binding Value, Mode=TwoWay}"
-                                             Watermark="Value"
-                                             Margin="0,0,4,0"/>
-                                    <Button Grid.Column="2"
-                                            Content="✕"
-                                            Width="24" Height="24" Padding="0"
-                                            Command="{Binding $parent[UserControl].((vm:AlertItemViewModel)DataContext).RemoveVariableCommand}"
-                                            CommandParameter="{Binding}"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <Button Content="+ 添加"
-                            HorizontalAlignment="Left"
-                            Classes="tool-button"
-                            Command="{Binding AddVariableCommand}"/>
-                </StackPanel>
+                    <!-- body(可选) -->
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="body(可选)"/>
+                        <TextBox Text="{Binding Body}"
+                                 AcceptsReturn="True"
+                                 Height="60"/>
+                    </StackPanel>
 
+                    <!-- 变量(可选) -->
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="变量(可选)"/>
+                        <ItemsControl ItemsSource="{Binding Variables}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:KeyValueEntry">
+                                    <Grid ColumnDefinitions="3*,7*,Auto" Margin="0,0,0,4">
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding Key, Mode=TwoWay}"
+                                                 MaxLength="32"
+                                                 Watermark="Key"
+                                                 Margin="0,0,4,0"/>
+                                        <TextBox Grid.Column="1"
+                                                 Text="{Binding Value, Mode=TwoWay}"
+                                                 Watermark="Value"
+                                                 Margin="0,0,4,0"/>
+                                        <Button Grid.Column="2"
+                                                Content="✕"
+                                                Width="24" Height="24" Padding="0"
+                                                Command="{Binding $parent[UserControl].((vm:AlertItemViewModel)DataContext).RemoveVariableCommand}"
+                                                CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Content="+ 添加"
+                                HorizontalAlignment="Left"
+                                Classes="tool-button"
+                                Command="{Binding AddVariableCommand}"/>
+                    </StackPanel>
+
+                </StackPanel>
             </StackPanel>
         </StackPanel>
     </Border>
