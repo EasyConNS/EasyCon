@@ -34,7 +34,7 @@ public interface IAudioCaptureSource : IDisposable
 
     IReadOnlyList<AudioDeviceInfo> GetAvailableDevices();
 
-    bool TryConnect(string deviceId);
+    bool TryConnect(string deviceId, CancellationToken cancellationToken = default);
 
     Task DisconnectAsync();
 

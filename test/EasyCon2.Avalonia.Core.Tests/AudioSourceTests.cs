@@ -93,6 +93,21 @@ public class AudioSourceTests
     }
 
     [Test]
+    public async Task WasapiAudioCapture_StateObserverCanDisposeAfterDisconnect()
+    {
+        WasapiAudioCapture source = new();
+        TaskCompletionSource disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        source.StateChanged += _ =>
+        {
+            source.Dispose();
+            disposed.TrySetResult();
+        };
+
+        await source.DisconnectAsync().WaitAsync(TimeSpan.FromSeconds(3));
+        await disposed.Task.WaitAsync(TimeSpan.FromSeconds(3));
+    }
+
+    [Test]
     public async Task AudioConnectionViewModel_RequiresExplicitSelection_AndWaitsForFirstData()
     {
         var source = new FakeAudioSource();
@@ -178,6 +193,232 @@ public class AudioSourceTests
         });
     }
 
+    [Test]
+    public async Task AudioConnectionViewModel_FailureBeforeConnectReturnsClearsConnectedState()
+    {
+        var source = new FakeAudioSource();
+        source.AfterConnectStarted = () =>
+        {
+            source.EmitData(new AudioLevel(0.5, 0.25, false));
+            source.EmitFailure("设备已移除");
+        };
+        var log = new FakeLogService();
+        using var viewModel = new AudioConnectionViewModel(source, log, SynchronousUiDispatcher.Instance)
+        {
+            SelectedAudioSource = new AudioDeviceInfo("capture-1", "Capture 1"),
+        };
+
+        await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)viewModel.ConnectAudioSourceCommand).ExecuteAsync(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source.State.Status, Is.EqualTo(AudioCaptureStatus.Failed));
+            Assert.That(viewModel.IsConnectingAudioSource, Is.False);
+            Assert.That(viewModel.IsAudioSourceConnected, Is.False);
+            Assert.That(viewModel.AudioSourceStatus, Is.EqualTo("Connection Failed"));
+            Assert.That(viewModel.AudioFormatText, Is.Empty);
+            Assert.That(viewModel.AudioLevelText, Is.Empty);
+            Assert.That(log.Messages, Has.Exactly(1).EqualTo("设备已移除"));
+        });
+    }
+
+    [Test]
+    public async Task AudioConnectionViewModel_SlowOpenTimesOutAndIgnoresLateResult()
+    {
+        using ManualResetEventSlim releaseOpen = new(false);
+        TaskCompletionSource opening = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = new FakeAudioSource
+        {
+            BeforeConnect = () =>
+            {
+                opening.TrySetResult();
+                if (!releaseOpen.Wait(TimeSpan.FromSeconds(5)))
+                    throw new TimeoutException("The test did not release native open.");
+            },
+        };
+        var log = new FakeLogService();
+        var ui = new TrackingUiDispatcher();
+        using var viewModel = new AudioConnectionViewModel(source, log, ui, TimeSpan.FromMilliseconds(50))
+        {
+            SelectedAudioSource = new AudioDeviceInfo("capture-1", "Capture 1"),
+        };
+
+        try
+        {
+            Task command = ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)viewModel.ConnectAudioSourceCommand).ExecuteAsync(null);
+            await opening.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            await command.WaitAsync(TimeSpan.FromSeconds(3));
+            await ui.Invoked.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Multiple(() =>
+            {
+                Assert.That(viewModel.IsConnectingAudioSource, Is.False);
+                Assert.That(viewModel.AudioSourceStatus, Is.EqualTo("Connection Failed"));
+                Assert.That(log.Messages, Does.Contain("Text.Msg.AudioTimeout"));
+            });
+
+            releaseOpen.Set();
+            await source.ConnectReturned.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Multiple(() =>
+            {
+                Assert.That(source.State.Status, Is.EqualTo(AudioCaptureStatus.Disconnected));
+                Assert.That(viewModel.IsAudioSourceConnected, Is.False);
+                Assert.That(viewModel.AudioSourceStatus, Is.EqualTo("Connection Failed"));
+            });
+
+            await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)viewModel.ConnectAudioSourceCommand).ExecuteAsync(null);
+            source.EmitData(new AudioLevel(0.5, 0.25, false));
+            Assert.That(viewModel.IsAudioSourceConnected, Is.True, "Timed-out attempts must not prevent a retry.");
+        }
+        finally
+        {
+            releaseOpen.Set();
+        }
+    }
+
+    [Test]
+    public async Task AudioConnectionViewModel_FirstDataWinsAtTimeoutBoundary()
+    {
+        TaskCompletionSource checkedTimeout = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = new FakeAudioSource();
+        source.BeforeConditionalDisconnect = () =>
+        {
+            source.EmitData(new AudioLevel(0.5, 0.25, false));
+            checkedTimeout.TrySetResult();
+        };
+        var log = new FakeLogService();
+        var ui = new TrackingUiDispatcher();
+        using var viewModel = new AudioConnectionViewModel(source, log, ui, TimeSpan.FromMilliseconds(50))
+        {
+            SelectedAudioSource = new AudioDeviceInfo("capture-1", "Capture 1"),
+        };
+
+        await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)viewModel.ConnectAudioSourceCommand).ExecuteAsync(null);
+        await checkedTimeout.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        await ui.SecondInvocation.Task.WaitAsync(TimeSpan.FromSeconds(3));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source.State.Status, Is.EqualTo(AudioCaptureStatus.Connected));
+            Assert.That(viewModel.IsAudioSourceConnected, Is.True);
+            Assert.That(viewModel.IsConnectingAudioSource, Is.False);
+            Assert.That(log.Messages, Does.Not.Contain("Text.Msg.AudioTimeout"));
+        });
+    }
+
+    [Test]
+    public async Task AudioConnectionViewModel_DelayedOldDisconnectCannotCancelRetryTimeout()
+    {
+        using ManualResetEventSlim releaseOpen = new(false);
+        TaskCompletionSource retryOpening = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = new FakeAudioSource { DelayConditionalDisconnectEvent = true };
+        int opens = 0;
+        source.BeforeConnect = () =>
+        {
+            if (Interlocked.Increment(ref opens) == 1)
+                source.EmitConnecting();
+            else
+                retryOpening.TrySetResult();
+            if (!releaseOpen.Wait(TimeSpan.FromSeconds(5)))
+                throw new TimeoutException("The test did not release native open.");
+        };
+        var log = new FakeLogService();
+        var ui = new TrackingUiDispatcher();
+        using var viewModel = new AudioConnectionViewModel(source, log, ui, TimeSpan.FromMilliseconds(150))
+        {
+            SelectedAudioSource = new AudioDeviceInfo("capture-1", "Capture 1"),
+        };
+        var command = (CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)viewModel.ConnectAudioSourceCommand;
+
+        try
+        {
+            await command.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(3));
+            await ui.Invoked.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Task retry = command.ExecuteAsync(null);
+            await retryOpening.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            source.EmitDelayedDisconnection();
+            Assert.That(viewModel.IsConnectingAudioSource, Is.True, "The old terminal event must not cancel the new attempt.");
+            await retry.WaitAsync(TimeSpan.FromSeconds(3));
+            await ui.SecondInvocation.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.That(viewModel.AudioSourceStatus, Is.EqualTo("Connection Failed"));
+        }
+        finally
+        {
+            releaseOpen.Set();
+        }
+    }
+
+    [Test]
+    public async Task AudioConnectionViewModel_TimeoutRecoversBeforeNativeCleanupAndReportsItsFailure()
+    {
+        TaskCompletionSource<bool> cleanup = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = new FakeAudioSource { ConditionalDisconnectCompletion = cleanup.Task };
+        var log = new FakeLogService();
+        TaskCompletionSource timedOut = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource cleanupFailed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        log.LogAppended += (message, _) =>
+        {
+            if (message == "Text.Msg.AudioTimeout")
+                timedOut.TrySetResult();
+            else if (message == "Audio source disconnect error: Native cleanup failed.")
+                cleanupFailed.TrySetResult();
+        };
+        using var viewModel = new AudioConnectionViewModel(source, log, SynchronousUiDispatcher.Instance, TimeSpan.FromMilliseconds(50))
+        {
+            SelectedAudioSource = new AudioDeviceInfo("capture-1", "Capture 1"),
+        };
+
+        try
+        {
+            await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)viewModel.ConnectAudioSourceCommand).ExecuteAsync(null);
+            await timedOut.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Multiple(() =>
+            {
+                Assert.That(cleanup.Task.IsCompleted, Is.False);
+                Assert.That(viewModel.IsConnectingAudioSource, Is.False);
+                Assert.That(viewModel.IsAudioSourceConnected, Is.False);
+                Assert.That(viewModel.AudioSourceStatus, Is.EqualTo("Connection Failed"));
+            });
+
+            cleanup.SetException(new IOException("Native cleanup failed."));
+            await cleanupFailed.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.That(viewModel.AudioSourceStatus, Is.EqualTo("Connection Failed"));
+        }
+        finally
+        {
+            cleanup.TrySetResult(true);
+        }
+    }
+
+    private sealed class TrackingUiDispatcher : IUiDispatcher
+    {
+        public bool IsOnUiThread => true;
+        private int _invocations;
+        public TaskCompletionSource Invoked { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource SecondInvocation { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Post(Action action) => action();
+
+        public Task InvokeAsync(Action action)
+        {
+            action();
+            CompleteInvocation();
+            return Task.CompletedTask;
+        }
+
+        public async Task InvokeAsync(Func<Task> action)
+        {
+            await action();
+            CompleteInvocation();
+        }
+
+        private void CompleteInvocation()
+        {
+            if (Interlocked.Increment(ref _invocations) >= 2)
+                SecondInvocation.TrySetResult();
+            Invoked.TrySetResult();
+        }
+    }
+
     private sealed class FakeAudioSource : IAudioCaptureSource
     {
         private readonly IReadOnlyList<AudioDeviceInfo> _devices =
@@ -187,6 +428,13 @@ public class AudioSourceTests
         ];
 
         public bool ConnectResult { get; init; } = true;
+        public Action? BeforeConnect { get; set; }
+        public Action? AfterConnectStarted { get; set; }
+        public Action? BeforeConditionalDisconnect { get; set; }
+        public bool DelayConditionalDisconnectEvent { get; init; }
+        public Task<bool>? ConditionalDisconnectCompletion { get; init; }
+        private AudioCaptureState? _delayedDisconnected;
+        public TaskCompletionSource ConnectReturned { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public string? LastConnectedId { get; private set; }
         public AudioCaptureState State { get; private set; } = new(AudioCaptureStatus.Disconnected);
 
@@ -198,20 +446,32 @@ public class AudioSourceTests
 
         public IReadOnlyList<AudioDeviceInfo> GetAvailableDevices() => _devices;
 
-        public bool TryConnect(string deviceId)
+        public bool TryConnect(string deviceId, CancellationToken cancellationToken = default)
         {
-            LastConnectedId = deviceId;
-            State = new AudioCaptureState(AudioCaptureStatus.Connecting, _devices.First(device => device.Id == deviceId),
-                new AudioFormat(48_000, 2, 32, "float"));
-            StateChanged?.Invoke(State);
-            if (!ConnectResult)
+            try
             {
-                State = new AudioCaptureState(AudioCaptureStatus.Failed, State.Device, State.Format, "打开音频输入失败");
-                StateChanged?.Invoke(State);
-                return false;
-            }
+                BeforeConnect?.Invoke();
+                if (cancellationToken.IsCancellationRequested)
+                    return false;
 
-            return true;
+                LastConnectedId = deviceId;
+                State = new AudioCaptureState(AudioCaptureStatus.Connecting, _devices.First(device => device.Id == deviceId),
+                    new AudioFormat(48_000, 2, 32, "float"));
+                StateChanged?.Invoke(State);
+                AfterConnectStarted?.Invoke();
+                if (!ConnectResult)
+                {
+                    State = new AudioCaptureState(AudioCaptureStatus.Failed, State.Device, State.Format, "打开音频输入失败");
+                    StateChanged?.Invoke(State);
+                    return false;
+                }
+
+                return true;
+            }
+            finally
+            {
+                ConnectReturned.TrySetResult();
+            }
         }
 
         public Task DisconnectAsync()
@@ -223,12 +483,28 @@ public class AudioSourceTests
 
         public Task<bool> DisconnectIfConnectingAsync()
         {
+            BeforeConditionalDisconnect?.Invoke();
             if (State.Status != AudioCaptureStatus.Connecting)
                 return Task.FromResult(false);
 
             State = new AudioCaptureState(AudioCaptureStatus.Disconnected);
+            if (DelayConditionalDisconnectEvent)
+                _delayedDisconnected = State;
+            else
+                StateChanged?.Invoke(State);
+            return ConditionalDisconnectCompletion ?? Task.FromResult(true);
+        }
+
+        public void EmitConnecting()
+        {
+            State = new AudioCaptureState(AudioCaptureStatus.Connecting);
             StateChanged?.Invoke(State);
-            return Task.FromResult(true);
+        }
+
+        public void EmitDelayedDisconnection()
+        {
+            if (_delayedDisconnected != null)
+                StateChanged?.Invoke(_delayedDisconnected);
         }
 
         public void EmitData(AudioLevel level)

@@ -4,20 +4,40 @@ using System.Diagnostics;
 
 namespace EasyCon.Capture.Audio;
 
+internal sealed record AudioCaptureSession(AudioDeviceInfo Device, IWaveIn Capture, IDisposable? NativeDevice = null);
+
 public sealed class WasapiAudioCapture : IAudioCaptureSource
 {
+    [ThreadStatic]
+    private static WasapiAudioCapture? _callbackSource;
+
     private readonly object _lifecycleLock = new();
     private readonly SemaphoreSlim _operationGate = new(1, 1);
-    private WasapiCapture? _capture;
-    private MMDevice? _nativeDevice;
+    private readonly Func<string, AudioCaptureSession> _openCapture;
+    private readonly Queue<AudioCaptureState> _pendingStates = new();
+    private IWaveIn? _capture;
+    private IDisposable? _nativeDevice;
     private AudioDeviceInfo? _device;
     private AudioFormat? _format;
+    private CancellationToken _captureCancellation;
+    private long _connectionVersion;
+    private long _captureVersion;
     private bool _connectedAnnounced;
-    private int _callbackThreadId;
+    private bool _publishingStates;
     private bool _disposed;
     private AudioCaptureState _state = new(AudioCaptureStatus.Disconnected);
 
-    public bool IsSupported => OperatingSystem.IsWindows();
+    public WasapiAudioCapture() : this(OpenCapture, OperatingSystem.IsWindows())
+    {
+    }
+
+    internal WasapiAudioCapture(Func<string, AudioCaptureSession> openCapture, bool isSupported = true)
+    {
+        _openCapture = openCapture;
+        IsSupported = isSupported;
+    }
+
+    public bool IsSupported { get; }
 
     public AudioCaptureState State
     {
@@ -58,15 +78,26 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
         }
     }
 
-    public bool TryConnect(string deviceId)
+    public bool TryConnect(string deviceId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(deviceId))
             throw new ArgumentException("请选择音频输入设备。", nameof(deviceId));
 
-        _operationGate.Wait();
+        if (ReferenceEquals(_callbackSource, this))
+            throw new InvalidOperationException("请在音频数据回调结束后异步启动连接。");
+
         try
         {
-            return TryConnectCore(deviceId);
+            _operationGate.Wait(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+
+        try
+        {
+            return TryConnectCore(deviceId, cancellationToken);
         }
         finally
         {
@@ -81,25 +112,63 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
 
     public Task<bool> DisconnectIfConnectingAsync()
     {
-        return Task.Run(DisconnectIfConnectingCore);
+        IWaveIn? capture;
+        lock (_lifecycleLock)
+        {
+            if (_disposed || _state.Status != AudioCaptureStatus.Connecting)
+                return Task.FromResult(false);
+
+            // Invalidate opening and callbacks immediately; native cleanup may have to wait for open.
+            _connectionVersion++;
+            capture = _capture;
+            SetStateLocked(new AudioCaptureState(AudioCaptureStatus.Disconnected));
+        }
+
+        return Task.Run(() =>
+        {
+            _operationGate.Wait();
+            try
+            {
+                if (capture != null)
+                    StopCurrentCapture(capture);
+                return true;
+            }
+            finally
+            {
+                _operationGate.Release();
+            }
+        });
     }
 
     public void Dispose()
     {
-        _operationGate.Wait();
+        lock (_lifecycleLock)
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            _connectionVersion++;
+            _state = new AudioCaptureState(AudioCaptureStatus.Disconnected);
+        }
+
+        // A concurrent stop may be joining this callback. Never wait for its gate here.
+        if (ReferenceEquals(_callbackSource, this) || !_operationGate.Wait(0))
+        {
+            _ = Task.Run(() => DisposeResources());
+            return;
+        }
+
+        DisposeResources(gateAcquired: true);
+    }
+
+    private void DisposeResources(bool gateAcquired = false)
+    {
+        if (!gateAcquired)
+            _operationGate.Wait();
         try
         {
-            lock (_lifecycleLock)
-            {
-                if (_disposed)
-                    return;
-
-                _disposed = true;
-            }
-
             StopCurrentCapture();
-            lock (_lifecycleLock)
-                _state = new AudioCaptureState(AudioCaptureStatus.Disconnected);
         }
         finally
         {
@@ -107,58 +176,64 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
         }
     }
 
-    private bool TryConnectCore(string deviceId)
+    private bool TryConnectCore(string deviceId, CancellationToken cancellationToken)
     {
         StopCurrentCapture();
+        long version;
         lock (_lifecycleLock)
-            ThrowIfDisposed();
-
-        if (!IsSupported)
         {
-            SetState(new AudioCaptureState(
-                AudioCaptureStatus.Failed,
-                Error: "当前平台不支持 WASAPI 音频采集。"));
-            return false;
+            ThrowIfDisposed();
+            if (cancellationToken.IsCancellationRequested)
+                return false;
+
+            version = ++_connectionVersion;
+            SetStateLocked(new AudioCaptureState(AudioCaptureStatus.Connecting));
         }
 
-        MMDevice? device = null;
-        WasapiCapture? capture = null;
+        AudioCaptureSession? session = null;
         bool installed = false;
         try
         {
-            using MMDeviceEnumerator enumerator = new();
-            device = enumerator.GetDevice(deviceId);
-            AudioDeviceInfo info = new(device.ID, device.FriendlyName);
-            capture = new WasapiCapture(device);
-            AudioFormat format = ToAudioFormat(capture.WaveFormat);
+            if (!IsSupported)
+                throw new NotSupportedException("当前平台不支持 WASAPI 音频采集。");
 
+            session = _openCapture(deviceId);
+            AudioFormat format = ToAudioFormat(session.Capture.WaveFormat);
             lock (_lifecycleLock)
             {
                 ThrowIfDisposed();
-                _device = info;
+                cancellationToken.ThrowIfCancellationRequested();
+                if (version != _connectionVersion)
+                    throw new OperationCanceledException();
+
+                _device = session.Device;
                 _format = format;
                 _connectedAnnounced = false;
-                _nativeDevice = device;
-                _capture = capture;
-                capture.DataAvailable += OnDataAvailable;
-                capture.RecordingStopped += OnRecordingStopped;
+                _captureCancellation = cancellationToken;
+                _captureVersion = version;
+                _nativeDevice = session.NativeDevice;
+                _capture = session.Capture;
+                session.Capture.DataAvailable += OnDataAvailable;
+                session.Capture.RecordingStopped += OnRecordingStopped;
                 installed = true;
+                SetStateLocked(new AudioCaptureState(AudioCaptureStatus.Connecting, session.Device, format));
             }
 
-            SetState(new AudioCaptureState(AudioCaptureStatus.Connecting, info, format));
-            capture.StartRecording();
+            session.Capture.StartRecording();
             return true;
         }
         catch (Exception ex)
         {
             if (installed)
-                StopCurrentCapture();
-            else
-                DisposeCapture(capture, device);
+                StopCurrentCapture(session!.Capture);
+            else if (session != null)
+                DisposeCapture(session.Capture, session.NativeDevice);
 
-            SetState(new AudioCaptureState(
-                AudioCaptureStatus.Failed,
-                Error: $"打开音频输入失败：{ex.Message}"));
+            lock (_lifecycleLock)
+            {
+                if (!_disposed && version == _connectionVersion)
+                    SetStateLocked(new AudioCaptureState(AudioCaptureStatus.Failed, Error: $"打开音频输入失败：{ex.Message}"));
+            }
             return false;
         }
     }
@@ -172,39 +247,15 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
             {
                 if (_disposed)
                     return;
+                _connectionVersion++;
             }
 
             StopCurrentCapture();
-            SetState(new AudioCaptureState(AudioCaptureStatus.Disconnected));
-        }
-        finally
-        {
-            _operationGate.Release();
-        }
-    }
-
-    private bool DisconnectIfConnectingCore()
-    {
-        _operationGate.Wait();
-        try
-        {
-            WasapiCapture? capture;
-            MMDevice? nativeDevice;
-            int callbackThreadId;
-            AudioCaptureState disconnectedState;
             lock (_lifecycleLock)
             {
-                if (_disposed || _state.Status != AudioCaptureStatus.Connecting)
-                    return false;
-
-                DetachCurrentCaptureLocked(out capture, out nativeDevice, out callbackThreadId);
-                disconnectedState = new AudioCaptureState(AudioCaptureStatus.Disconnected);
-                _state = disconnectedState;
+                if (!_disposed)
+                    SetStateLocked(new AudioCaptureState(AudioCaptureStatus.Disconnected));
             }
-
-            DisposeCapture(capture, nativeDevice, callbackThreadId);
-            PublishStateChanged(disconnectedState);
-            return true;
         }
         finally
         {
@@ -214,49 +265,41 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
 
     private void OnDataAvailable(object? sender, WaveInEventArgs args)
     {
-        if (sender is not WasapiCapture capture)
+        if (sender is not IWaveIn capture)
             return;
 
-        AudioFormat? format;
-        AudioDeviceInfo? device;
-        AudioCaptureState? connectedState = null;
-        int bytesRecorded = args.BytesRecorded;
+        WasapiAudioCapture? previous = _callbackSource;
+        _callbackSource = this;
+        try
+        {
+            PublishAudioData(capture, args);
+        }
+        finally
+        {
+            _callbackSource = previous;
+        }
+    }
+
+    private void PublishAudioData(IWaveIn capture, WaveInEventArgs args)
+    {
+        AudioFormat format;
+        int bytesRecorded = Math.Min(args.BytesRecorded, args.Buffer.Length);
         lock (_lifecycleLock)
         {
-            if (_disposed || !ReferenceEquals(capture, _capture) || _format == null || bytesRecorded <= 0)
-                return;
-
-            _callbackThreadId = Environment.CurrentManagedThreadId;
-            bytesRecorded = Math.Min(bytesRecorded, args.Buffer.Length);
-            if (bytesRecorded <= 0)
+            if (!IsCurrentCaptureLocked(capture) || _format == null || bytesRecorded <= 0)
                 return;
 
             format = _format;
-            device = _device;
             if (!_connectedAnnounced)
             {
                 _connectedAnnounced = true;
-                connectedState = new AudioCaptureState(AudioCaptureStatus.Connected, device, format);
-                _state = connectedState;
+                SetStateLocked(new AudioCaptureState(AudioCaptureStatus.Connected, _device, format));
             }
         }
 
-        if (connectedState != null)
-            PublishStateChanged(connectedState);
-
         byte[] pcm = new byte[bytesRecorded];
         Buffer.BlockCopy(args.Buffer, 0, pcm, 0, bytesRecorded);
-
-        AudioLevel level;
-        try
-        {
-            level = AudioLevelCalculator.Calculate(pcm, format);
-        }
-        catch
-        {
-            level = new AudioLevel(0, 0, true);
-        }
-
+        AudioLevel level = AudioLevelCalculator.Calculate(pcm, format);
         AudioChunk chunk = new(ToNanoseconds(Stopwatch.GetTimestamp()), format, pcm, pcm.Length);
         if (!IsCurrentCapture(capture))
             return;
@@ -268,83 +311,67 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
 
     private void OnRecordingStopped(object? sender, StoppedEventArgs args)
     {
-        if (sender is not WasapiCapture capture)
+        if (sender is not IWaveIn capture)
             return;
 
-        AudioCaptureState? failedState = null;
         lock (_lifecycleLock)
         {
-            if (_disposed || !ReferenceEquals(capture, _capture))
+            if (!IsCurrentCaptureLocked(capture))
                 return;
 
             string message = args.Exception?.Message ?? "音频输入已停止。";
-            failedState = new AudioCaptureState(AudioCaptureStatus.Failed, _device, _format, message);
-            _state = failedState;
+            SetStateLocked(new AudioCaptureState(AudioCaptureStatus.Failed, _device, _format, message));
         }
 
-        StopCurrentCapture(capture, Environment.CurrentManagedThreadId);
-
-        lock (_lifecycleLock)
-        {
-            if (_disposed || !ReferenceEquals(_state, failedState))
-                return;
-        }
-
-        PublishStateChanged(failedState);
+        // This may run on the capture thread; disposal must not join that same thread.
+        _ = Task.Run(() => StopCurrentCapture(capture));
     }
 
-    private void StopCurrentCapture(WasapiCapture? expectedCapture = null, int callbackThreadIdOverride = 0)
+    private void StopCurrentCapture(IWaveIn? expectedCapture = null)
     {
-        WasapiCapture? capture;
-        MMDevice? nativeDevice;
-        int callbackThreadId;
+        IWaveIn? capture;
+        IDisposable? nativeDevice;
         lock (_lifecycleLock)
         {
             if (expectedCapture != null && !ReferenceEquals(expectedCapture, _capture))
                 return;
 
-            DetachCurrentCaptureLocked(out capture, out nativeDevice, out callbackThreadId);
-        }
+            capture = _capture;
+            nativeDevice = _nativeDevice;
+            _capture = null;
+            _nativeDevice = null;
+            _device = null;
+            _format = null;
+            _connectedAnnounced = false;
 
-        if (callbackThreadIdOverride != 0)
-            callbackThreadId = callbackThreadIdOverride;
-        DisposeCapture(capture, nativeDevice, callbackThreadId);
-    }
-
-    private void DetachCurrentCaptureLocked(
-        out WasapiCapture? capture,
-        out MMDevice? nativeDevice,
-        out int callbackThreadId)
-    {
-        capture = _capture;
-        nativeDevice = _nativeDevice;
-        callbackThreadId = _callbackThreadId;
-        _capture = null;
-        _nativeDevice = null;
-        _device = null;
-        _format = null;
-        _connectedAnnounced = false;
-        _callbackThreadId = 0;
-
-        if (capture != null)
-        {
-            capture.DataAvailable -= OnDataAvailable;
-            capture.RecordingStopped -= OnRecordingStopped;
-        }
-    }
-
-    private static void DisposeCapture(WasapiCapture? capture, MMDevice? nativeDevice, int callbackThreadId = 0)
-    {
-        if (capture != null)
-        {
-            if (callbackThreadId != 0 && callbackThreadId == Environment.CurrentManagedThreadId)
+            if (capture != null)
             {
-                _ = Task.Run(() => StopAndDisposeCapture(capture, nativeDevice));
-                return;
+                capture.DataAvailable -= OnDataAvailable;
+                capture.RecordingStopped -= OnRecordingStopped;
             }
+        }
 
-            StopAndDisposeCapture(capture, nativeDevice);
-            return;
+        DisposeCapture(capture, nativeDevice);
+    }
+
+    private static void DisposeCapture(IWaveIn? capture, IDisposable? nativeDevice)
+    {
+        try
+        {
+            capture?.StopRecording();
+        }
+        catch
+        {
+            // Cleanup must also succeed after Windows invalidates an endpoint.
+        }
+
+        try
+        {
+            capture?.Dispose();
+        }
+        catch
+        {
+            // A failed native cleanup must not prevent releasing the endpoint.
         }
 
         try
@@ -357,75 +384,59 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
         }
     }
 
-    private static void StopAndDisposeCapture(WasapiCapture capture, MMDevice? nativeDevice)
-    {
-        try
-        {
-            capture.StopRecording();
-        }
-        catch
-        {
-            // The capture may already have stopped because the endpoint vanished.
-        }
-
-        DisposeCaptureResources(capture, nativeDevice);
-    }
-
-    private static void DisposeCaptureResources(WasapiCapture capture, MMDevice? nativeDevice)
-    {
-        try
-        {
-            capture.Dispose();
-        }
-        catch
-        {
-            // Cleanup must not prevent the caller from reporting the connection state.
-        }
-
-        try
-        {
-            nativeDevice?.Dispose();
-        }
-        catch
-        {
-            // The native endpoint may already have been released by Windows.
-        }
-    }
-
-    private bool IsCurrentCapture(WasapiCapture capture)
+    private bool IsCurrentCapture(IWaveIn capture)
     {
         lock (_lifecycleLock)
-            return !_disposed && ReferenceEquals(capture, _capture);
+            return IsCurrentCaptureLocked(capture);
     }
 
-    private void SetState(AudioCaptureState state)
+    private bool IsCurrentCaptureLocked(IWaveIn capture)
     {
-        lock (_lifecycleLock)
-        {
-            if (_disposed && state.Status != AudioCaptureStatus.Disconnected)
-                return;
-
-            _state = state;
-        }
-
-        PublishStateChanged(state);
+        return !_disposed && ReferenceEquals(capture, _capture)
+            && _captureVersion == _connectionVersion && !_captureCancellation.IsCancellationRequested;
     }
 
-    private void PublishStateChanged(AudioCaptureState state)
+    private void SetStateLocked(AudioCaptureState state)
     {
-        Action<AudioCaptureState>? handlers = StateChanged;
-        if (handlers == null)
+        _state = state;
+        _pendingStates.Enqueue(state);
+        if (_publishingStates)
             return;
 
-        foreach (Action<AudioCaptureState> handler in handlers.GetInvocationList())
+        _publishingStates = true;
+        _ = Task.Run(PublishPendingStates);
+    }
+
+    private void PublishPendingStates()
+    {
+        while (true)
         {
-            try
+            AudioCaptureState state;
+            lock (_lifecycleLock)
             {
-                handler(state);
+                if (!_pendingStates.TryDequeue(out state!))
+                {
+                    _publishingStates = false;
+                    return;
+                }
+                if (_disposed && state.Status != AudioCaptureStatus.Disconnected)
+                    continue;
             }
-            catch
+
+            Action<AudioCaptureState>? handlers = StateChanged;
+            if (handlers == null)
+                continue;
+
+            foreach (Action<AudioCaptureState> handler in handlers.GetInvocationList())
             {
-                // A state observer must not break the capture lifecycle.
+                try
+                {
+                    handler(state);
+                }
+                catch
+                {
+                    // Notifications run in order, outside lifecycle gates and the audio callback.
+                }
             }
         }
     }
@@ -468,6 +479,21 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
         }
     }
 
+    private static AudioCaptureSession OpenCapture(string deviceId)
+    {
+        using MMDeviceEnumerator enumerator = new();
+        MMDevice device = enumerator.GetDevice(deviceId);
+        try
+        {
+            return new AudioCaptureSession(new AudioDeviceInfo(device.ID, device.FriendlyName), new SafeWasapiCapture(device), device);
+        }
+        catch
+        {
+            device.Dispose();
+            throw;
+        }
+    }
+
     private static AudioFormat ToAudioFormat(WaveFormat format)
     {
         string encoding = format.Encoding switch
@@ -479,7 +505,6 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
 
         if (format.Channels <= 0 || format.SampleRate <= 0 || format.BitsPerSample is not (8 or 16 or 24 or 32))
             throw new NotSupportedException("音频设备返回了不支持的采样格式。");
-
         if (encoding == "float" && format.BitsPerSample != 32)
             throw new NotSupportedException("浮点音频必须使用 32 bit 采样。");
 

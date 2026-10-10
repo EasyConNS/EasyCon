@@ -5,7 +5,7 @@ EasyCon 的 Avalonia 主窗口现在可以独立连接 Windows WASAPI 录音输�
 ## 当前范围
 
 - 枚举当前可用的 Windows 录音输入端点，不自动选择默认麦克风。
-- 使用 NAudio `WasapiCapture` 读取共享模式 PCM 数据。
+- 使用 NAudio WASAPI 原语和自有采集线程读取共享模式 PCM 数据；读取、停止和释放异常均转为连接失败通知，避免音频服务停止时异常逃逸线程。
 - 发布采样格式、连续 PCM 数据块、峰值/RMS 电平和连接状态。
 - 在主窗口的经典布局和卡片布局中显示设备、格式、连接状态及峰值 dBFS。
 - 应用退出或主窗口关闭时停止采集并释放 WASAPI 资源。
@@ -17,14 +17,16 @@ EasyCon 的 Avalonia 主窗口现在可以独立连接 Windows WASAPI 录音输�
 `EasyCon.Capture.Audio.IAudioCaptureSource` 提供以下接口：
 
 - `GetAvailableDevices()` 返回 `AudioDeviceInfo`（稳定端点 ID、名称和 `wasapi` 后端标识）。
-- `TryConnect(deviceId)` 开始连接；状态先变为 `Connecting`，首个非空数据块到达后变为 `Connected`。
+- `TryConnect(deviceId, cancellationToken)` 开始连接；状态在打开原生设备前变为 `Connecting`，首个非空数据块到达后变为 `Connected`。取消令牌可终止等待启停锁或阻止迟到的设备安装。
 - `DisconnectAsync()` 停止当前采集并回到 `Disconnected`。
-- `DisconnectIfConnectingAsync()` 只在仍等待首包时停止采集，用于避免首包与超时同时到达时误断开已连接的源。
-- `StateChanged` 通知 `AudioCaptureState`；失败时包含错误文本。
+- `DisconnectIfConnectingAsync()` 只在打开设备或仍等待首包时停止连接；先原子地使本次连接失效，再等待原生资源释放，用于避免首包与超时同时到达时误断开已连接的源。
+- `StateChanged` 在后台队列中依次通知 `AudioCaptureState`，不占用启停锁或采集线程；失败时包含错误文本。界面忽略旧尝试的迟到终态通知。
 - `DataAvailable` 通知 `AudioChunk`。`Pcm` 是设备实际格式的交错小端字节，不重采样、不自动增益、不降噪。
 - `LevelChanged` 通知 `AudioLevel`。界面按峰值计算 dBFS，显示范围下限为 -60 dBFS；静音表示仍有数据到达，并不表示断流。
 
 当前支持 PCM 8/16/24/32 bit 和 IEEE float 32 bit。音频判闪需要统一的 float32 数据、窗口边界和缺包语义，待后续方案确定后再在独立变更中加入。
+
+首包超时从点击连接时起计算，覆盖原生设备打开阶段。超时后界面立即恢复为连接失败并允许重试；若驱动调用暂时阻塞，原生释放会在调用返回后完成，旧连接不能再次启动。数据和电平消费者在采集回调上执行，应保持简短；需要重连时请异步调度，回调内同步 `TryConnect` 会被拒绝。回调内 `Dispose` 或原生打开仍在进行时的 `Dispose` 会先阻止后续数据，再在后台完成资源释放。
 
 ## 平台限制
 
@@ -32,4 +34,4 @@ WASAPI 仅在 Windows 上启用；其它平台的设备列表为空，连接会�
 
 ## 验证
 
-在 Windows 上连接采集卡音频输入，确认面板显示设备名、实际采样率/声道/位深和实时 dBFS。拔出设备或停止输入后，确认状态变为失败而不是静音。自动化测试覆盖 PCM 电平计算、空/非法格式、设备选择和连接状态事件；真实采集卡和不同驱动格式仍需硬件验收。
+在 Windows 上连接采集卡音频输入，确认面板显示设备名、实际采样率/声道/位深和实时 dBFS。拔出设备或停止音频服务后，确认状态变为失败；保持输入设备连接但播放静音时，应继续收到静音包。自动化测试覆盖 PCM 电平及各格式静音包、空/非法格式、设备选择、状态重入释放、并发断开、慢速打开超时和迟到结果、超时边界首包、旧通知与重试、连接调用返回前成功后立即失败，以及原生读取/停止/释放失败。显式手动诊断还保留了旧 NAudio 线程停止异常的无硬件复现。真实采集卡和不同驱动格式仍需硬件验收。

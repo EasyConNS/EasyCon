@@ -19,7 +19,12 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
     private readonly IAudioCaptureSource _audioSource;
     private readonly ILogService _logService;
     private readonly IUiDispatcher _ui;
+    private readonly TimeSpan _connectionTimeout;
     private CancellationTokenSource? _connectTimeout;
+    private CancellationTokenSource? _attemptCancellation;
+    private long _attemptVersion;
+    private long _openingAttempt;
+    private long _timedOutAttempt;
     private long _lastLevelUpdateTimestamp;
     private bool _disposed;
 
@@ -57,11 +62,14 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
     /// </summary>
     public IAudioCaptureSource CaptureSource => _audioSource;
 
-    public AudioConnectionViewModel(IAudioCaptureSource audioSource, ILogService logService, IUiDispatcher uiDispatcher)
+    public AudioConnectionViewModel(IAudioCaptureSource audioSource, ILogService logService, IUiDispatcher uiDispatcher, TimeSpan? connectionTimeout = null)
     {
         _audioSource = audioSource;
         _logService = logService;
         _ui = uiDispatcher;
+        _connectionTimeout = connectionTimeout ?? TimeSpan.FromSeconds(15);
+        if (_connectionTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(connectionTimeout));
 
         ConnectAudioSourceCommand = new AsyncRelayCommand(ConnectAudioSourceAsync);
         RefreshAudioSourcesCommand = new RelayCommand(RefreshAudioSources);
@@ -80,6 +88,8 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
         if (IsAudioSourceConnected || _audioSource.State.Status == AudioCaptureStatus.Connecting)
         {
             CancelConnectTimeout();
+            if (_attemptCancellation != null)
+                await _attemptCancellation.CancelAsync();
             try
             {
                 await _audioSource.DisconnectAsync();
@@ -106,16 +116,43 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
         AudioFormatText = "";
         AudioLevelText = "";
         _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.OpenAudioPrepare"), selected.Name));
-        StartConnectTimeout();
+        long attempt = Interlocked.Increment(ref _attemptVersion);
+        Interlocked.Exchange(ref _openingAttempt, attempt);
+        if (_attemptCancellation != null)
+            await _attemptCancellation.CancelAsync();
+        _attemptCancellation?.Dispose();
+        _attemptCancellation = new CancellationTokenSource();
+        CancellationToken attemptToken = _attemptCancellation.Token;
+        StartConnectTimeout(attempt, _attemptCancellation);
 
         try
         {
-            var ok = await Task.Run(() => _audioSource.TryConnect(selected.Id));
-            if (!ok && _audioSource.State.Status != AudioCaptureStatus.Failed)
-                await _ui.InvokeAsync(() => SyncState(new AudioCaptureState(AudioCaptureStatus.Failed, selected, Error: L10nBridge.T("Text.Msg.AudioOpenFail"))));
+            Task<bool> connection = Task.Run(() => _audioSource.TryConnect(selected.Id, attemptToken));
+            bool ok = await connection.WaitAsync(attemptToken);
+            if (_disposed || attempt != Interlocked.Read(ref _attemptVersion) || attemptToken.IsCancellationRequested)
+                return;
+            await _ui.InvokeAsync(() =>
+            {
+                Interlocked.CompareExchange(ref _openingAttempt, 0, attempt);
+                if (_disposed || attempt != Interlocked.Read(ref _attemptVersion) || attemptToken.IsCancellationRequested)
+                    return;
+
+                AudioCaptureState state = _audioSource.State;
+                if (!ok && state.Status != AudioCaptureStatus.Failed)
+                    SyncState(new AudioCaptureState(AudioCaptureStatus.Failed, selected, Error: L10nBridge.T("Text.Msg.AudioOpenFail")));
+                else if ((IsConnectingAudioSource || IsAudioSourceConnected)
+                    && state.Status is AudioCaptureStatus.Failed or AudioCaptureStatus.Disconnected)
+                    SyncState(state);
+            });
+        }
+        catch (OperationCanceledException) when (attemptToken.IsCancellationRequested)
+        {
+            // A timed-out native open can finish later; its canceled token prevents installation.
         }
         catch (Exception ex)
         {
+            if (_disposed || attempt != Interlocked.Read(ref _attemptVersion) || attemptToken.IsCancellationRequested)
+                return;
             CancelConnectTimeout();
             try
             {
@@ -137,6 +174,10 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
                 Interlocked.Exchange(ref _lastLevelUpdateTimestamp, 0);
             });
             _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AudioConnectError"), ex.Message));
+        }
+        finally
+        {
+            Interlocked.CompareExchange(ref _openingAttempt, 0, attempt);
         }
     }
 
@@ -163,7 +204,19 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
 
     private void OnStateChanged(AudioCaptureState state)
     {
-        _ui.Post(() => SyncState(state));
+        _ui.Post(() =>
+        {
+            if (_timedOutAttempt == Interlocked.Read(ref _attemptVersion) && _timedOutAttempt != 0)
+                return;
+            long opening = Interlocked.Read(ref _openingAttempt);
+            if (opening != 0 && opening == Interlocked.Read(ref _attemptVersion)
+                && state.Status is AudioCaptureStatus.Disconnected or AudioCaptureStatus.Failed)
+                return; // An earlier attempt can still own the backend state while this call waits to open.
+            if (!ReferenceEquals(state, _audioSource.State))
+                return;
+
+            SyncState(state);
+        });
     }
 
     private void SyncState(AudioCaptureState state)
@@ -243,7 +296,7 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
         });
     }
 
-    private void StartConnectTimeout()
+    private void StartConnectTimeout(long attempt, CancellationTokenSource attemptCancellation)
     {
         CancelConnectTimeout();
         _connectTimeout = new CancellationTokenSource();
@@ -252,37 +305,50 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
         {
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(15), token);
-                if (token.IsCancellationRequested || _disposed || !IsConnectingAudioSource
-                    || _audioSource.State.Status != AudioCaptureStatus.Connecting)
-                    return;
-
-                bool timedOut = await _audioSource.DisconnectIfConnectingAsync();
-                if (!timedOut)
-                    return;
-
-                await _ui.InvokeAsync(() =>
+                await Task.Delay(_connectionTimeout, token);
+                await _ui.InvokeAsync(async () =>
                 {
-                    IsConnectingAudioSource = false;
-                    IsAudioSourceConnected = false;
-                    AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
-                    AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
-                    AudioFormatText = "";
-                    AudioLevelText = "";
-                    Interlocked.Exchange(ref _lastLevelUpdateTimestamp, 0);
+                    if (token.IsCancellationRequested || _disposed || !IsConnectingAudioSource
+                        || attempt != Interlocked.Read(ref _attemptVersion))
+                        return;
+
+                    Task<bool> disconnect = _audioSource.DisconnectIfConnectingAsync();
+                    if (_audioSource.State.Status == AudioCaptureStatus.Connected)
+                        return;
+
+                    _timedOutAttempt = attempt;
+                    await attemptCancellation.CancelAsync();
+                    SyncState(new AudioCaptureState(AudioCaptureStatus.Failed));
+                    _logService.AddLog(L10nBridge.T("Text.Msg.AudioTimeout"));
+
+                    // The UI and command have already recovered. Observe native cleanup
+                    // asynchronously, in the same context that started it.
+                    try
+                    {
+                        await disconnect.ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        await _ui.InvokeAsync(() =>
+                        {
+                            if (!_disposed && attempt == Interlocked.Read(ref _attemptVersion))
+                                _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AudioDisconnectError"), ex.Message));
+                        });
+                    }
                 });
-                _logService.AddLog(L10nBridge.T("Text.Msg.AudioTimeout"));
             }
             catch (OperationCanceledException)
             {
             }
             catch (Exception ex)
             {
-                if (token.IsCancellationRequested || _disposed)
+                if (token.IsCancellationRequested || _disposed || attempt != Interlocked.Read(ref _attemptVersion))
                     return;
 
-                await _ui.InvokeAsync(() =>
+                await _ui.InvokeAsync(async () =>
                 {
+                    _timedOutAttempt = attempt;
+                    await attemptCancellation.CancelAsync();
                     IsConnectingAudioSource = false;
                     IsAudioSourceConnected = false;
                     AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
@@ -310,6 +376,9 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
 
         _disposed = true;
         CancelConnectTimeout();
+        _attemptCancellation?.Cancel();
+        _attemptCancellation?.Dispose();
+        _attemptCancellation = null;
         _audioSource.StateChanged -= OnStateChanged;
         _audioSource.LevelChanged -= OnLevelChanged;
         _audioSource.Dispose();
