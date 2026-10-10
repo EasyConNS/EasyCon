@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
@@ -15,10 +16,9 @@ public partial class QQGuideWindow : Window
     {
         if (DataContext is QQGuideViewModel model)
         {
-            QQGuideImageWindow window = new(model.CurrentStep)
-            {
-                RequestedThemeVariant = ActualThemeVariant
-            };
+            QQGuideImageWindow window = new(model.CurrentStep);
+            using IDisposable themeBinding = window.Bind(RequestedThemeVariantProperty,
+                this.GetObservable(ActualThemeVariantProperty));
             await window.ShowDialog(this);
         }
     }

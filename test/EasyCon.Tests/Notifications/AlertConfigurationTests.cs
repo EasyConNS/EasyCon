@@ -1,4 +1,7 @@
 using EasyCon.Core.Config;
+using EasyCon.Core.Notifications;
+using System.Collections.Concurrent;
+using System.Net;
 using System.Text.Json;
 
 namespace EasyCon.Tests.Notifications;
@@ -198,6 +201,78 @@ public class AlertConfigurationTests
         }
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task RetryingMigrationDuringSettingsLoadKeepsRuntimeNotificationsReady(bool lockFile)
+    {
+        if (!OperatingSystem.IsWindows())
+            Assert.Ignore("本用例使用 Windows DPAPI 和只读属性或文件锁模拟迁移重试。");
+        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(new AlertConfig()));
+        File.WriteAllText(LegacyPath, JsonSerializer.Serialize(new
+        {
+            app_id = "legacy-app",
+            protected_secret = QQNotificationSecretProtector.Protect("legacy-secret"),
+            remember_secret = true,
+            user_openid = "legacy-user",
+            enabled = true,
+            attach_image = false,
+        }));
+        FileStream? locked = null;
+        AlertConfig? published = null;
+        void Changed(AlertConfig config) => published = config;
+        ConfigManager.AlertConfigChanged += Changed;
+        try
+        {
+            if (lockFile)
+                locked = File.Open(ConfigPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            else
+                File.SetAttributes(ConfigPath, FileAttributes.ReadOnly);
+            AlertConfig initial = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+            Assert.Multiple(() =>
+            {
+                Assert.That(initial.load_error, Does.Contain("迁移未能保存"));
+                Assert.That(initial.alerts.Single().qq!.IsReady(), Is.True);
+                Assert.That(published, Is.Null);
+            });
+
+            using MigrationNotificationHandler handler = new();
+            using HttpClient http = new(handler);
+            using AlertDispatcher dispatcher = new(initial, http, settings => new QQNotificationService(
+                client: new QQNotificationClient(http), sender: new QQNotificationClient(http),
+                settings: settings, persistSettings: false));
+            ConcurrentQueue<string> results = new();
+            using AlertService alerts = new(resultLogger: results.Enqueue, dispatcher: dispatcher);
+            alerts.Dispatch("迁移前的提醒");
+            await alerts.FlushAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.That(handler.MessageCount, Is.EqualTo(1));
+
+            locked?.Dispose();
+            locked = null;
+            File.SetAttributes(ConfigPath, FileAttributes.Normal);
+            AlertConfig editorConfig = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+            // 模拟打开推送设置后取消：不再次保存编辑器返回的配置。
+            alerts.Dispatch("迁移重试后的提醒");
+            await alerts.FlushAsync().WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Multiple(() =>
+            {
+                Assert.That(editorConfig.load_error, Is.Empty);
+                Assert.That(editorConfig.alerts.Single().enable, Is.True);
+                Assert.That(published!.alerts.Single().qq!.secret, Is.EqualTo("legacy-secret"));
+                Assert.That(published.alerts.Single().qq!.IsReady(), Is.True);
+                Assert.That(handler.MessageCount, Is.EqualTo(2));
+                Assert.That(results.Count(result => result.Contains("QQ 通知发送成功")), Is.EqualTo(2));
+                Assert.That(results.Any(result => result.Contains("凭据不完整")), Is.False);
+                Assert.That(File.ReadAllText(ConfigPath), Does.Not.Contain("legacy-secret"));
+            });
+        }
+        finally
+        {
+            locked?.Dispose();
+            File.SetAttributes(ConfigPath, FileAttributes.Normal);
+            ConfigManager.AlertConfigChanged -= Changed;
+        }
+    }
+
     [Test]
     public void DefaultList_ContainsQqAndHonorsItsDeletion()
     {
@@ -312,6 +387,22 @@ public class AlertConfigurationTests
         finally
         {
             ConfigManager.AlertConfigChanged -= Changed;
+        }
+    }
+    private sealed class MigrationNotificationHandler : HttpMessageHandler
+    {
+        private int _messageCount;
+        public int MessageCount => Volatile.Read(ref _messageCount);
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/messages", StringComparison.Ordinal))
+                Interlocked.Increment(ref _messageCount);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(request.RequestUri.Host == "bots.qq.com"
+                    ? "{\"access_token\":\"test-token\",\"expires_in\":7200}" : "{}"),
+            });
         }
     }
 }

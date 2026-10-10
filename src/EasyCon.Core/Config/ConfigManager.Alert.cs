@@ -81,15 +81,6 @@ public static partial class ConfigManager
                         item.enable = false;
                     }
                 }
-                try
-                {
-                    SaveAlert(config, path);
-                    config = Load<AlertConfig>(path, _jsonReadOptions);
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-                {
-                    config.load_error = "推送配置迁移未能保存，已保留内存配置，请稍后重新保存：" + ex.Message;
-                }
             }
             foreach (AlertItem item in config.alerts.Where(item => item.IsQq))
             {
@@ -115,6 +106,18 @@ public static partial class ConfigManager
                     }
                 }
                 settings.enabled = item.enable = item.enable && settings.IsReady();
+            }
+            if (needsSave)
+            {
+                // 先恢复会话密钥和启用状态，再发布迁移后的运行时配置。
+                try
+                {
+                    SaveAlert(config, path);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    config.load_error = "推送配置迁移未能保存，已保留内存配置，请稍后重新保存：" + ex.Message;
+                }
             }
             return config;
         }

@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
@@ -15,7 +16,8 @@ public partial class QQNotificationEditor : UserControl
         QQGuideWindow guide = new();
         if (TopLevel.GetTopLevel(this) is Window owner)
         {
-            guide.RequestedThemeVariant = owner.ActualThemeVariant;
+            using IDisposable themeBinding = guide.Bind(Window.RequestedThemeVariantProperty,
+                owner.GetObservable(Window.ActualThemeVariantProperty));
             await guide.ShowDialog(owner);
         }
         else
