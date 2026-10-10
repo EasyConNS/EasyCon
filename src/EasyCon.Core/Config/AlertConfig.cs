@@ -8,6 +8,9 @@ public class AlertConfig
     public int schema_version { get; set; }
     public int timeout { get; set; } = 10;
     public List<AlertItem> alerts { get; set; } = [];
+
+    [JsonIgnore]
+    public string load_error { get; set; } = "";
 }
 
 public class AlertItem

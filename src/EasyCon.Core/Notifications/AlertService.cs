@@ -21,7 +21,17 @@ public sealed class AlertService : IAlertService, IDisposable
     {
         _resultLogger = resultLogger;
         _shutdownToken = _shutdown.Token;
-        _dispatcher = dispatcher ?? new AlertDispatcher(ConfigManager.LoadAlert());
+        if (dispatcher == null)
+        {
+            AlertConfig config = ConfigManager.LoadAlert();
+            _dispatcher = new AlertDispatcher(config);
+            if (config.load_error.Length > 0)
+                _resultLogger?.Invoke(config.load_error);
+        }
+        else
+        {
+            _dispatcher = dispatcher;
+        }
         _dispatcher.ImageProvider = imageProvider;
         _dispatcher.OnResult += OnResult;
         ConfigManager.AlertConfigChanged += OnConfigurationChanged;
@@ -34,6 +44,8 @@ public sealed class AlertService : IAlertService, IDisposable
             if (_disposed)
                 return;
             Task task = DispatchAsync(content, title, image);
+            if (task.IsCompletedSuccessfully)
+                return;
             _pending.Add(task);
             _ = task.ContinueWith(completed =>
             {

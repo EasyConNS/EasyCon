@@ -64,8 +64,9 @@ public class AlertConfigurationTests
         });
     }
 
-    [Test]
-    public void LegacyConfiguration_MigratesEncryptedQqIntoExistingListOnce()
+    [TestCase(1)]
+    [TestCase(5)]
+    public void LegacyConfiguration_MigratesEncryptedQqIntoExistingListOnce(int existingCount)
     {
         if (!OperatingSystem.IsWindows())
             Assert.Ignore("DPAPI 仅支持 Windows。");
@@ -77,7 +78,11 @@ public class AlertConfigurationTests
             token = "token",
             headers = new() { ["X-Existing"] = "value" },
         };
-        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(new AlertConfig { timeout = 30, alerts = [webhook] }));
+        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(new AlertConfig
+        {
+            timeout = 30,
+            alerts = Enumerable.Range(0, existingCount).Select(_ => webhook.Clone()).ToList(),
+        }));
         string encrypted = QQNotificationSecretProtector.Protect("legacy-secret");
         string legacy = JsonSerializer.Serialize(new
         {
@@ -96,7 +101,7 @@ public class AlertConfigurationTests
         Assert.Multiple(() =>
         {
             Assert.That(loaded.timeout, Is.EqualTo(30));
-            Assert.That(loaded.alerts.Count, Is.EqualTo(2));
+            Assert.That(loaded.alerts.Count, Is.EqualTo(existingCount + 1));
             Assert.That(loaded.alerts[0].name, Is.EqualTo(webhook.name));
             Assert.That(loaded.alerts[0].token, Is.EqualTo(webhook.token));
             Assert.That(loaded.alerts[0].headers, Is.EqualTo(webhook.headers));
@@ -110,6 +115,87 @@ public class AlertConfigurationTests
         ConfigManager.SaveAlert(loaded, ConfigPath);
         Assert.That(ConfigManager.LoadAlert(ConfigPath, LegacyPath).alerts.Any(item => item.IsQq), Is.False,
             "用户删除 QQ 项后，不应再次导入旧文件。");
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void MigrationSaveFailure_PreservesUsableConfigurationAndAllowsRetry(bool lockFile)
+    {
+        if (!OperatingSystem.IsWindows())
+            Assert.Ignore("本用例使用 Windows 只读属性或文件锁模拟迁移保存失败。");
+        AlertConfig original = new()
+        {
+            timeout = 30,
+            alerts = Enumerable.Range(0, 5).Select(i => new AlertItem
+            {
+                name = "已有推送-" + i,
+                enable = true,
+                url = "https://example.com/notify",
+                token = "existing-token-" + i,
+            }).ToList(),
+        };
+        string originalJson = JsonSerializer.Serialize(original);
+        File.WriteAllText(ConfigPath, originalJson);
+        File.WriteAllText(LegacyPath, JsonSerializer.Serialize(new
+        {
+            app_id = "legacy-app",
+            protected_secret = QQNotificationSecretProtector.Protect("legacy-secret"),
+            remember_secret = true,
+            user_openid = "legacy-user",
+            enabled = true,
+        }));
+        int updates = 0;
+        void Changed(AlertConfig _) => updates++;
+        ConfigManager.AlertConfigChanged += Changed;
+        FileStream? locked = null;
+        try
+        {
+            if (lockFile)
+                locked = File.Open(ConfigPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            else
+                File.SetAttributes(ConfigPath, FileAttributes.ReadOnly);
+            AlertConfig loaded = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+            AlertItem qq = loaded.alerts.Single(item => item.IsQq);
+            Assert.Multiple(() =>
+            {
+                Assert.That(loaded.schema_version, Is.EqualTo(1));
+                Assert.That(loaded.timeout, Is.EqualTo(30));
+                Assert.That(loaded.alerts.Count, Is.EqualTo(6));
+                Assert.That(loaded.alerts.Take(5).Select(item => item.token), Is.EqualTo(original.alerts.Select(item => item.token)));
+                Assert.That(loaded.alerts.All(item => item.id.Length > 0), Is.True);
+                Assert.That(loaded.alerts.Select(item => item.id).Distinct().Count(), Is.EqualTo(6));
+                Assert.That(qq.enable, Is.True);
+                Assert.That(qq.qq!.secret, Is.EqualTo("legacy-secret"));
+                Assert.That(qq.qq.user_openid, Is.EqualTo("legacy-user"));
+                Assert.That(loaded.load_error, Does.Contain("迁移未能保存"));
+                Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(originalJson));
+                Assert.That(updates, Is.Zero);
+                Assert.That(Directory.GetFiles(_directory, "*.tmp"), Is.Empty);
+            });
+            Assert.DoesNotThrow(() =>
+            {
+                using AlertDispatcher dispatcher = new(loaded);
+            }, "迁移保存失败不应阻断通知服务初始化。");
+            locked?.Dispose();
+            locked = null;
+            File.SetAttributes(ConfigPath, FileAttributes.Normal);
+            ConfigManager.SaveAlert(loaded, ConfigPath);
+            AlertConfig reloaded = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+            Assert.Multiple(() =>
+            {
+                Assert.That(reloaded.load_error, Is.Empty);
+                Assert.That(reloaded.alerts.Count, Is.EqualTo(6));
+                Assert.That(reloaded.alerts.Single(item => item.IsQq).enable, Is.True);
+                Assert.That(updates, Is.EqualTo(1));
+                Assert.That(File.ReadAllText(ConfigPath), Does.Not.Contain("load_error"));
+            });
+        }
+        finally
+        {
+            locked?.Dispose();
+            File.SetAttributes(ConfigPath, FileAttributes.Normal);
+            ConfigManager.AlertConfigChanged -= Changed;
+        }
     }
 
     [Test]

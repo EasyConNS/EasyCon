@@ -126,6 +126,82 @@ public class AlertConfigViewModelTests
     }
 
     [Test]
+    public void MigratedSixthQq_CanBeShownEditedDisabledAndDeletedWithoutLosingExistingItems()
+    {
+        AlertItem qqItem = AlertItem.CreateQq();
+        qqItem.enable = true;
+        qqItem.qq = new QQNotificationSettings { app_id = "app", secret = "secret", user_openid = "user" };
+        AlertConfigType original = new()
+        {
+            schema_version = 1,
+            alerts = Enumerable.Range(0, 5).Select(i => new AlertItem
+            {
+                name = "已有推送-" + i,
+                url = "https://example.com/notify",
+                token = "token-" + i,
+            }).Append(qqItem).ToList(),
+        };
+        AlertConfigType? saved = null;
+        using AlertConfigViewModel model = new(config => saved = config);
+        model.Load(original);
+        Assert.Multiple(() =>
+        {
+            Assert.That(model.HiddenCount, Is.EqualTo(1));
+            Assert.That(model.ShowAllItemsCommand.CanExecute(null), Is.True);
+        });
+        model.ShowAllItemsCommand.Execute(null);
+        AlertItemViewModel qq = model.VisibleItems.Single(item => item.IsQq);
+        Assert.Multiple(() =>
+        {
+            Assert.That(model.VisibleItems.Count, Is.EqualTo(6));
+            Assert.That(model.HasHiddenItems, Is.False);
+            Assert.That(model.ShowAllItemsCommand.CanExecute(null), Is.False);
+            Assert.That(model.CanAdd, Is.False);
+            Assert.That(qq.Enable, Is.True);
+        });
+        qq.Enable = false;
+        qq.Name = "已迁入的 QQ";
+        Assert.That(model.Save(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(saved!.alerts.Count, Is.EqualTo(6));
+            Assert.That(saved.alerts.Last().enable, Is.False);
+            Assert.That(saved.alerts.Last().name, Is.EqualTo("已迁入的 QQ"));
+            Assert.That(qqItem.enable, Is.True);
+        });
+        qq.DeleteCommand.Execute(null);
+        Assert.That(model.Save(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(saved!.alerts.Any(item => item.IsQq), Is.False);
+            Assert.That(saved.alerts.Select(item => item.token), Is.EqualTo(original.alerts.Take(5).Select(item => item.token)));
+            Assert.That(saved.alerts.Select(item => item.name), Is.EqualTo(original.alerts.Take(5).Select(item => item.name)));
+        });
+    }
+
+    [Test]
+    public void MigrationWarning_IsDisplayedAndClearedAfterSuccessfulSave()
+    {
+        AlertConfigType config = ConfigManager.CreateDefaultAlert();
+        config.load_error = "推送配置迁移未能保存，请稍后重新保存。";
+        AlertConfigType? saved = null;
+        using AlertConfigViewModel model = new(next => saved = next);
+        model.Load(config);
+        Assert.Multiple(() =>
+        {
+            Assert.That(model.HasError, Is.True);
+            Assert.That(model.ErrorMessage, Is.EqualTo(config.load_error));
+        });
+        Assert.That(model.Save(), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(model.HasError, Is.False);
+            Assert.That(model.ErrorMessage, Is.Empty);
+            Assert.That(saved!.load_error, Is.Empty);
+        });
+    }
+
+    [Test]
     public void SaveFailure_KeepsTheEditorOpenAndDisplaysError()
     {
         bool closed = false;

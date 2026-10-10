@@ -106,8 +106,8 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
             {
                 _generation++;
                 _sending?.Cancel();
-                while (_queue.Reader.TryRead(out _))
-                    CompletePending();
+                while (_queue.Reader.TryRead(out PendingNotification? pending))
+                    CompletePending(pending);
             }
             _settings = next;
         }
@@ -192,13 +192,20 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
 
     public void Dispatch(string content, string title, byte[]? image, CancellationToken cancellationToken)
     {
+        _ = DispatchAsync(content, title, image, cancellationToken);
+    }
+
+    /// <summary>等待本条通知处理完成；未入队的通知立即完成，不等待其他通知。</summary>
+    public Task DispatchAsync(string content, string title = "伊机控消息", byte[]? image = null,
+        CancellationToken cancellationToken = default)
+    {
         cancellationToken.ThrowIfCancellationRequested();
         QQNotificationSettings settings;
         int generation;
         lock (_settingsLock)
         {
             if (_disposed || !_settings.enabled)
-                return;
+                return Task.CompletedTask;
             settings = _settings.Clone();
             generation = _generation;
         }
@@ -213,12 +220,14 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (_disposed || generation != _generation || !_settings.enabled)
-                    return;
-                PendingNotification pending = new(settings.app_id, settings.secret, targets, text, image, generation, cancellationToken);
+                    return Task.CompletedTask;
+                PendingNotification pending = new(settings.app_id, settings.secret, targets, text, image, generation, cancellationToken,
+                    new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously));
                 if (!_queue.Writer.TryWrite(pending))
                     throw new InvalidOperationException("待发送通知过多，当前通知未加入队列。");
                 if (_pendingCount++ == 0)
                     _idle = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                return pending.Completion.Task.WaitAsync(cancellationToken);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -228,6 +237,7 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
         catch (Exception ex)
         {
             ReportError("QQ 通知未发送：" + ex.Message);
+            return Task.CompletedTask;
         }
     }
 
@@ -282,7 +292,7 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
                     {
                         if (ReferenceEquals(_sending, sending))
                             _sending = null;
-                        CompletePending();
+                        CompletePending(pending);
                     }
                     sending?.Dispose();
                 }
@@ -295,8 +305,8 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
         {
             lock (_settingsLock)
             {
-                while (_queue.Reader.TryRead(out _))
-                    CompletePending();
+                while (_queue.Reader.TryRead(out PendingNotification? pending))
+                    CompletePending(pending);
             }
         }
     }
@@ -340,8 +350,9 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
 
     private static QQNotificationSettings LoadSettings() => ConfigManager.LoadQqNotification();
 
-    private void CompletePending()
+    private void CompletePending(PendingNotification pending)
     {
+        pending.Completion.TrySetResult(true);
         if (--_pendingCount == 0)
             _idle.TrySetResult(true);
     }
@@ -399,5 +410,6 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
 
     private sealed record PendingNotification(
         string AppId, string Secret, IReadOnlyList<QQNotificationTarget> Targets,
-        string Content, byte[]? Image, int Generation, CancellationToken CancellationToken);
+        string Content, byte[]? Image, int Generation, CancellationToken CancellationToken,
+        TaskCompletionSource<bool> Completion);
 }

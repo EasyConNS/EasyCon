@@ -88,8 +88,7 @@ public class AlertDispatcher : IDisposable
                 {
                     QQNotificationService service = _qqChannels[item.id].Service;
                     service.ImageProvider = ImageProvider;
-                    service.Dispatch(content, title, image, cancellationToken);
-                    tasks.Add(WaitForQqAsync(service, cancellationToken));
+                    tasks.Add(WaitForQqAsync(service.DispatchAsync(content, title, image, cancellationToken)));
                 }
                 else
                 {
@@ -102,9 +101,9 @@ public class AlertDispatcher : IDisposable
             OnResult?.Invoke(this, result);
     }
 
-    private static async Task<string> WaitForQqAsync(QQNotificationService service, CancellationToken token)
+    private static async Task<string> WaitForQqAsync(Task dispatch)
     {
-        await service.FlushAsync(token).ConfigureAwait(false);
+        await dispatch.ConfigureAwait(false);
         return "";
     }
 

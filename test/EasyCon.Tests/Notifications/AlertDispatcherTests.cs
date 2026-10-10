@@ -98,6 +98,98 @@ public class AlertDispatcherTests
     }
 
     [Test]
+    public async Task FullQqQueue_RejectsWithoutWaitingAndStillSendsWebhooks()
+    {
+        using NotificationHandler handler = new();
+        using HttpClient http = new(handler);
+        TaskCompletionSource<bool> sending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        handler.BeforeResponse = async (request, token) =>
+        {
+            if (request.Uri.AbsolutePath.EndsWith("/messages"))
+            {
+                sending.TrySetResult(true);
+                await release.Task.WaitAsync(token);
+            }
+        };
+        using AlertDispatcher dispatcher = CreateDispatcher(CreateConfig(true, true), http);
+        ConcurrentQueue<string> results = new();
+        dispatcher.OnResult += (_, result) => results.Enqueue(result);
+        Task first = dispatcher.DispatchAsync("blocked-first");
+        List<Task> accepted = [first];
+        try
+        {
+            await sending.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            for (int i = 0; i < 20; i++)
+                accepted.Add(dispatcher.DispatchAsync("queued-" + i));
+            Task[] rejected = Enumerable.Range(0, 100)
+                .Select(i => dispatcher.DispatchAsync("rejected-" + i)).ToArray();
+            await Task.WhenAll(rejected).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Multiple(() =>
+            {
+                Assert.That(accepted.All(task => !task.IsCompleted), Is.True);
+                Assert.That(results.Count(result => result.Contains("待发送通知过多")), Is.EqualTo(100));
+                Assert.That(handler.Requests.Count(request => request.Uri.Host == "webhook.example"), Is.EqualTo(121));
+                Assert.That(handler.Requests.Count(request => request.Uri.AbsolutePath.EndsWith("/messages")), Is.EqualTo(1));
+            });
+            release.TrySetResult(true);
+            await Task.WhenAll(accepted).WaitAsync(TimeSpan.FromSeconds(5));
+            RecordedRequest[] messages = handler.Requests.Where(request => request.Uri.AbsolutePath.EndsWith("/messages")).ToArray();
+            Assert.Multiple(() =>
+            {
+                Assert.That(messages.Length, Is.EqualTo(21));
+                Assert.That(messages.Any(request => request.Body.Contains("rejected-")), Is.False);
+            });
+        }
+        finally
+        {
+            release.TrySetResult(true);
+        }
+    }
+
+    [Test]
+    public async Task CompletedQqDispatch_DoesNotWaitForLaterNotifications()
+    {
+        using NotificationHandler handler = new();
+        using HttpClient http = new(handler);
+        TaskCompletionSource<bool> firstSending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> secondSending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> releaseFirst = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> releaseSecond = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        handler.BeforeResponse = async (request, token) =>
+        {
+            if (request.Body.Contains("blocked-first"))
+            {
+                firstSending.TrySetResult(true);
+                await releaseFirst.Task.WaitAsync(token);
+            }
+            if (request.Body.Contains("blocked-second"))
+            {
+                secondSending.TrySetResult(true);
+                await releaseSecond.Task.WaitAsync(token);
+            }
+        };
+        using AlertDispatcher dispatcher = CreateDispatcher(CreateConfig(false, true), http);
+        Task first = dispatcher.DispatchAsync("blocked-first");
+        try
+        {
+            await firstSending.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task second = dispatcher.DispatchAsync("blocked-second");
+            releaseFirst.TrySetResult(true);
+            await secondSending.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await first.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.That(second.IsCompleted, Is.False);
+            releaseSecond.TrySetResult(true);
+            await second.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally
+        {
+            releaseFirst.TrySetResult(true);
+            releaseSecond.TrySetResult(true);
+        }
+    }
+
+    [Test]
     public void CanceledDispatch_DoesNotSubmitQqOrWebhookRequests()
     {
         using NotificationHandler handler = new();

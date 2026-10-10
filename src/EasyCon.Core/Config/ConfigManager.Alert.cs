@@ -62,6 +62,8 @@ public static partial class ConfigManager
                 config.alerts.Add(AlertItem.CreateQq());
             if (needsSave)
             {
+                config.schema_version = 1;
+                _ = EnsureAlertIds(config);
                 AlertItem? item = config.alerts.FirstOrDefault(item => item.IsQq);
                 string legacyPath = legacyQqPath ?? (path == AppPaths.AlertConfig ? AppPaths.QqNotificationConfig : "");
                 if (item != null && File.Exists(legacyPath))
@@ -79,8 +81,15 @@ public static partial class ConfigManager
                         item.enable = false;
                     }
                 }
-                SaveAlert(config, path);
-                config = Load<AlertConfig>(path, _jsonReadOptions);
+                try
+                {
+                    SaveAlert(config, path);
+                    config = Load<AlertConfig>(path, _jsonReadOptions);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    config.load_error = "推送配置迁移未能保存，已保留内存配置，请稍后重新保存：" + ex.Message;
+                }
             }
             foreach (AlertItem item in config.alerts.Where(item => item.IsQq))
             {
@@ -117,14 +126,9 @@ public static partial class ConfigManager
         AlertConfig snapshot = new() { schema_version = 1, timeout = config.timeout, alerts = [.. config.alerts.Select(item => item.Clone())] };
         lock (_alertLock)
         {
-            HashSet<string> ids = [];
+            HashSet<string> ids = EnsureAlertIds(snapshot);
             foreach (AlertItem item in snapshot.alerts)
             {
-                if (item.id.Length == 0 || !ids.Add(item.id))
-                {
-                    item.id = Guid.NewGuid().ToString("N");
-                    ids.Add(item.id);
-                }
                 if (!item.IsQq)
                     continue;
                 QQNotificationSettings settings = item.qq ??= new();
@@ -151,6 +155,20 @@ public static partial class ConfigManager
                 _qqSessions[(path, item.id)] = item.qq!.Clone();
         }
         AlertConfigChanged?.Invoke(snapshot);
+    }
+
+    private static HashSet<string> EnsureAlertIds(AlertConfig config)
+    {
+        HashSet<string> ids = [];
+        foreach (AlertItem item in config.alerts)
+        {
+            if (item.id.Length == 0 || !ids.Add(item.id))
+            {
+                item.id = Guid.NewGuid().ToString("N");
+                ids.Add(item.id);
+            }
+        }
+        return ids;
     }
 
     public static QQNotificationSettings LoadQqNotification() =>

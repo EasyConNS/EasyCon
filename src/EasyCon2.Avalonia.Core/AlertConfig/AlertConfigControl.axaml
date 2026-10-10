@@ -67,13 +67,19 @@
                 CornerRadius="{DynamicResource WorkbenchControlRadius}"
                 Padding="8,4"
                 Margin="0,8,0,0">
-            <TextBlock>
-                <TextBlock.Text>
-                    <MultiBinding StringFormat="{}还有 {0} 条配置未显示">
-                        <Binding Path="HiddenCount"/>
-                    </MultiBinding>
-                </TextBlock.Text>
-            </TextBlock>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock VerticalAlignment="Center">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}还有 {0} 条配置未显示">
+                            <Binding Path="HiddenCount"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+                <Button Grid.Column="1"
+                        Content="显示全部"
+                        Command="{Binding ShowAllItemsCommand}"
+                        Margin="12,0,0,0"/>
+            </Grid>
         </Border>
 
         <!-- Item list -->

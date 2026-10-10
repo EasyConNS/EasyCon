@@ -28,6 +28,7 @@ public partial class AlertConfigViewModel : ObservableObject, IDisposable
     private int hiddenCount;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ShowAllItemsCommand))]
     private bool hasHiddenItems;
 
     [ObservableProperty]
@@ -48,6 +49,8 @@ public partial class AlertConfigViewModel : ObservableObject, IDisposable
         _timeout = config.timeout;
         _allViewModels = [.. config.alerts.Select(CreateViewModel)];
         RefreshVisibleItems();
+        ErrorMessage = config.load_error;
+        HasError = ErrorMessage.Length > 0;
     }
 
     public bool Save()
@@ -138,6 +141,13 @@ public partial class AlertConfigViewModel : ObservableObject, IDisposable
         VisibleItems.Add(vm);
         UpdateHiddenState();
         ClearError();
+    }
+
+    [RelayCommand(CanExecute = nameof(HasHiddenItems))]
+    private void ShowAllItems()
+    {
+        VisibleItems = new ObservableCollection<AlertItemViewModel>(_allViewModels);
+        UpdateHiddenState();
     }
 
     private void OnItemDeleteRequested(AlertItemViewModel item)
