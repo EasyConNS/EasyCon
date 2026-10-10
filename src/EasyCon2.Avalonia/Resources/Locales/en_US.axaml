@@ -96,6 +96,7 @@
     <x:String x:Key="Text.Msg.AudioOk">Audio source ({0}) connected</x:String>
     <x:String x:Key="Text.Msg.AudioOpenFail">Failed to open audio source</x:String>
     <x:String x:Key="Text.Msg.AudioConnectError">Audio source connect error: {0}</x:String>
+    <x:String x:Key="Text.Msg.AudioDisconnectError">Audio source disconnect error: {0}</x:String>
     <x:String x:Key="Text.Msg.AudioDisconnected">Audio source disconnected</x:String>
     <x:String x:Key="Text.Msg.AudioListError">Failed to read audio inputs: {0}</x:String>
     <x:String x:Key="Text.Msg.AudioTimeout">Opening audio input timed out. Check the device and Windows microphone permissions.</x:String>

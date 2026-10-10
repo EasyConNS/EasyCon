@@ -96,6 +96,7 @@
     <x:String x:Key="Text.Msg.AudioOk">音频源 ({0}) 已连接</x:String>
     <x:String x:Key="Text.Msg.AudioOpenFail">音频源打开失败</x:String>
     <x:String x:Key="Text.Msg.AudioConnectError">音频源连接异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.AudioDisconnectError">音频源断开异常: {0}</x:String>
     <x:String x:Key="Text.Msg.AudioDisconnected">音频源已断开连接</x:String>
     <x:String x:Key="Text.Msg.AudioListError">读取音频输入设备失败: {0}</x:String>
     <x:String x:Key="Text.Msg.AudioTimeout">打开音频输入超时，请检查设备连接和 Windows 麦克风权限。</x:String>

@@ -19,6 +19,7 @@ EasyCon 的 Avalonia 主窗口现在可以独立连接 Windows WASAPI 录音输�
 - `GetAvailableDevices()` 返回 `AudioDeviceInfo`（稳定端点 ID、名称和 `wasapi` 后端标识）。
 - `TryConnect(deviceId)` 开始连接；状态先变为 `Connecting`，首个非空数据块到达后变为 `Connected`。
 - `DisconnectAsync()` 停止当前采集并回到 `Disconnected`。
+- `DisconnectIfConnectingAsync()` 只在仍等待首包时停止采集，用于避免首包与超时同时到达时误断开已连接的源。
 - `StateChanged` 通知 `AudioCaptureState`；失败时包含错误文本。
 - `DataAvailable` 通知 `AudioChunk`。`Pcm` 是设备实际格式的交错小端字节，不重采样、不自动增益、不降噪。
 - `LevelChanged` 通知 `AudioLevel`。界面按峰值计算 dBFS，显示范围下限为 -60 dBFS；静音表示仍有数据到达，并不表示断流。

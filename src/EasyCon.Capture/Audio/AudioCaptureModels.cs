@@ -38,6 +38,12 @@ public interface IAudioCaptureSource : IDisposable
 
     Task DisconnectAsync();
 
+    /// <summary>
+    /// Stops the source only when it is still waiting for its first data block.
+    /// Returns <see langword="true"/> when the connecting operation was stopped.
+    /// </summary>
+    Task<bool> DisconnectIfConnectingAsync();
+
     event Action<AudioCaptureState>? StateChanged;
 
     event Action<AudioLevel>? LevelChanged;

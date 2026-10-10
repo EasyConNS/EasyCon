@@ -6,7 +6,7 @@ public static class AudioLevelCalculator
 {
     public static AudioLevel Calculate(ReadOnlySpan<byte> pcm, AudioFormat format)
     {
-        if (format.Channels <= 0 || format.BitsPerSample is not (8 or 16 or 24 or 32))
+        if (format.SampleRate <= 0 || format.Channels <= 0 || format.BitsPerSample is not (8 or 16 or 24 or 32))
             return new AudioLevel(0, 0, true);
 
         if (format.Encoding == "float" && format.BitsPerSample != 32)

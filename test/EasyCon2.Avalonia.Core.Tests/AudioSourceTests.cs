@@ -23,6 +23,7 @@ public class AudioSourceTests
             "Text.Status.ConnectFailed" => "Connection Failed",
             "Text.Btn.ConnectAudio" => "Connect Audio",
             "Text.Btn.DisconnectAudio" => "Disconnect Audio",
+            "Text.Msg.AudioDisconnectError" => "Audio source disconnect error: {0}",
             "Text.Status.AudioSilent" => "Audio received, currently silent",
             _ => key,
         };
@@ -85,6 +86,9 @@ public class AudioSourceTests
             Assert.That(
                 AudioLevelCalculator.Calculate([0, 0, 0], new AudioFormat(48_000, 2, 12, "pcm")),
                 Is.EqualTo(new AudioLevel(0, 0, true)));
+            Assert.That(
+                AudioLevelCalculator.Calculate([0, 0], new AudioFormat(0, 1, 16, "pcm")),
+                Is.EqualTo(new AudioLevel(0, 0, true)));
         });
     }
 
@@ -146,6 +150,34 @@ public class AudioSourceTests
         });
     }
 
+    [Test]
+    public async Task AudioConnectionViewModel_FailureClearsStaleFormatAndLevel()
+    {
+        var source = new FakeAudioSource();
+        var log = new FakeLogService();
+        using var viewModel = new AudioConnectionViewModel(source, log, SynchronousUiDispatcher.Instance)
+        {
+            SelectedAudioSource = new AudioDeviceInfo("capture-1", "Capture 1"),
+        };
+
+        await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)viewModel.ConnectAudioSourceCommand).ExecuteAsync(null);
+        source.EmitData(new AudioLevel(0.5, 0.25, false));
+        Assert.Multiple(() =>
+        {
+            Assert.That(viewModel.AudioFormatText, Is.Not.Empty);
+            Assert.That(viewModel.AudioLevelText, Does.Contain("dBFS"));
+        });
+
+        source.EmitFailure("设备已移除");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(viewModel.IsAudioSourceConnected, Is.False);
+            Assert.That(viewModel.AudioFormatText, Is.Empty);
+            Assert.That(viewModel.AudioLevelText, Is.Empty);
+        });
+    }
+
     private sealed class FakeAudioSource : IAudioCaptureSource
     {
         private readonly IReadOnlyList<AudioDeviceInfo> _devices =
@@ -189,12 +221,28 @@ public class AudioSourceTests
             return Task.CompletedTask;
         }
 
+        public Task<bool> DisconnectIfConnectingAsync()
+        {
+            if (State.Status != AudioCaptureStatus.Connecting)
+                return Task.FromResult(false);
+
+            State = new AudioCaptureState(AudioCaptureStatus.Disconnected);
+            StateChanged?.Invoke(State);
+            return Task.FromResult(true);
+        }
+
         public void EmitData(AudioLevel level)
         {
             State = State with { Status = AudioCaptureStatus.Connected };
             StateChanged?.Invoke(State);
             LevelChanged?.Invoke(level);
             DataAvailable?.Invoke(new AudioChunk(1, State.Format!, new byte[] { 0, 0, 0, 0 }, 4));
+        }
+
+        public void EmitFailure(string error)
+        {
+            State = new AudioCaptureState(AudioCaptureStatus.Failed, State.Device, State.Format, error);
+            StateChanged?.Invoke(State);
         }
 
         public void Dispose()

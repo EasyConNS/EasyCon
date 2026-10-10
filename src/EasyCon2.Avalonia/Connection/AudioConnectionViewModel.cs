@@ -80,8 +80,16 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
         if (IsAudioSourceConnected || _audioSource.State.Status == AudioCaptureStatus.Connecting)
         {
             CancelConnectTimeout();
-            await _audioSource.DisconnectAsync();
-            _logService.AddLog(L10nBridge.T("Text.Msg.AudioDisconnected"));
+            try
+            {
+                await _audioSource.DisconnectAsync();
+                _logService.AddLog(L10nBridge.T("Text.Msg.AudioDisconnected"));
+            }
+            catch (Exception ex)
+            {
+                _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AudioDisconnectError"), ex.Message));
+                await _ui.InvokeAsync(() => SyncState(_audioSource.State));
+            }
             return;
         }
 
@@ -109,12 +117,24 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             CancelConnectTimeout();
+            try
+            {
+                await _audioSource.DisconnectAsync();
+            }
+            catch (Exception disconnectException)
+            {
+                _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AudioDisconnectError"), disconnectException.Message));
+            }
+
             await _ui.InvokeAsync(() =>
             {
                 IsConnectingAudioSource = false;
                 IsAudioSourceConnected = false;
                 AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
                 AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+                AudioFormatText = "";
+                AudioLevelText = "";
+                Interlocked.Exchange(ref _lastLevelUpdateTimestamp, 0);
             });
             _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AudioConnectError"), ex.Message));
         }
@@ -180,6 +200,9 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
                 IsAudioSourceConnected = false;
                 AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
                 AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+                AudioFormatText = "";
+                AudioLevelText = "";
+                Interlocked.Exchange(ref _lastLevelUpdateTimestamp, 0);
                 if (!string.IsNullOrWhiteSpace(state.Error))
                     _logService.AddLog(state.Error);
                 break;
@@ -191,6 +214,7 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
                 AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
                 AudioFormatText = "";
                 AudioLevelText = "";
+                Interlocked.Exchange(ref _lastLevelUpdateTimestamp, 0);
                 break;
         }
     }
@@ -233,18 +257,41 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
                     || _audioSource.State.Status != AudioCaptureStatus.Connecting)
                     return;
 
-                await _audioSource.DisconnectAsync();
+                bool timedOut = await _audioSource.DisconnectIfConnectingAsync();
+                if (!timedOut)
+                    return;
+
                 await _ui.InvokeAsync(() =>
                 {
                     IsConnectingAudioSource = false;
                     IsAudioSourceConnected = false;
                     AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
                     AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+                    AudioFormatText = "";
+                    AudioLevelText = "";
+                    Interlocked.Exchange(ref _lastLevelUpdateTimestamp, 0);
                 });
                 _logService.AddLog(L10nBridge.T("Text.Msg.AudioTimeout"));
             }
             catch (OperationCanceledException)
             {
+            }
+            catch (Exception ex)
+            {
+                if (token.IsCancellationRequested || _disposed)
+                    return;
+
+                await _ui.InvokeAsync(() =>
+                {
+                    IsConnectingAudioSource = false;
+                    IsAudioSourceConnected = false;
+                    AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
+                    AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+                    AudioFormatText = "";
+                    AudioLevelText = "";
+                    Interlocked.Exchange(ref _lastLevelUpdateTimestamp, 0);
+                });
+                _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AudioDisconnectError"), ex.Message));
             }
         });
     }
