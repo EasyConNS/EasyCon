@@ -9,6 +9,14 @@
         </Style>
     </UserControl.Styles>
     <StackPanel Spacing="10">
+        <WrapPanel Orientation="Horizontal">
+            <Button Content="使用教程" Click="OnOpenGuide" Margin="0,0,12,4"/>
+            <HyperlinkButton NavigateUri="{x:Static qq:QQGuideCatalog.PlatformUri}" Cursor="Hand"
+                             ToolTip.Tip="https://q.qq.com/#/apps" Margin="0,0,0,4">
+                <TextBlock Text="QQ 开放平台 ↗" TextDecorations="Underline"
+                           Foreground="{DynamicResource WorkbenchAccentBrush}"/>
+            </HyperlinkButton>
+        </WrapPanel>
         <TextBlock Text="填写 QQ 机器人凭据，绑定接收方后发送图文测试。修改完成后，点击窗口底部的「保存」。"
                    TextWrapping="Wrap" Opacity="0.72"/>
         <TextBlock Text="AppID"/>

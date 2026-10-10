@@ -1,0 +1,188 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:qq="using:EasyCon2.Avalonia.Core.QQ"
+        x:Class="EasyCon2.Avalonia.Core.QQ.QQGuideWindow"
+        x:DataType="qq:QQGuideViewModel"
+        Title="qq bot 使用教程"
+        Width="1040" Height="800" MinWidth="760" MinHeight="600"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WorkbenchWindowBrush}">
+    <Window.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="TextBlock.heading">
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="TextBlock.subheading">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}"/>
+        </Style>
+        <Style Selector="Border.card">
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource WorkbenchGroupBorderBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource WorkbenchPanelBrush}"/>
+        </Style>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
+        <Style Selector="TextBlock.caution">
+            <Setter Property="Foreground" Value="{DynamicResource WorkbenchDangerBrush}"/>
+        </Style>
+    </Window.Styles>
+    <Grid Margin="24" RowDefinitions="Auto,*,Auto">
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+            <StackPanel Spacing="6">
+                <TextBlock Text="qq bot 使用教程" FontSize="24" FontWeight="SemiBold"/>
+                <TextBlock Text="创建机器人 → 绑定接收方 → 在脚本中发送提醒" Classes="muted"/>
+            </StackPanel>
+            <HyperlinkButton Grid.Column="1" NavigateUri="{x:Static qq:QQGuideCatalog.PlatformUri}"
+                             Cursor="Hand" VerticalAlignment="Top" ToolTip.Tip="https://q.qq.com/#/apps">
+                <TextBlock Text="QQ 开放平台 ↗" TextDecorations="Underline"
+                           Foreground="{DynamicResource WorkbenchAccentBrush}"/>
+            </HyperlinkButton>
+        </Grid>
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedSectionIndex, Mode=TwoWay}">
+            <TabItem Header="1  创建机器人">
+                <Grid Margin="0,16,0,0" ColumnDefinitions="228,16,*" RowDefinitions="*,Auto">
+                    <Border BorderThickness="0,0,1,0" BorderBrush="{DynamicResource WorkbenchGroupBorderBrush}">
+                        <ListBox ItemsSource="{Binding Steps}" SelectedIndex="{Binding SelectedStepIndex, Mode=TwoWay}"
+                                 SelectionChanged="OnStepSelectionChanged"
+                                 Background="Transparent" BorderThickness="0" Margin="0,0,10,0"
+                                 AutomationProperties.Name="注册步骤">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="qq:QQGuideStep">
+                                    <StackPanel Spacing="3">
+                                        <TextBlock Text="{Binding DisplayTitle}" FontSize="13"/>
+                                        <TextBlock Text="{Binding Phase}" Classes="muted" FontSize="11"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                    <ScrollViewer x:Name="StepScroll" Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Spacing="12" Margin="0,0,12,0">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="{Binding CurrentStep.Phase}" Classes="muted"/>
+                                <TextBlock Grid.Column="1" Text="{Binding StepProgress}" Classes="muted"/>
+                            </Grid>
+                            <TextBlock Text="{Binding CurrentStep.Title}" Classes="heading"/>
+                            <ItemsControl ItemsSource="{Binding CurrentStep.Actions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="x:String">
+                                        <TextBlock Text="{Binding}" Margin="0,0,0,6" LineHeight="22"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border Padding="8" CornerRadius="6" Background="#FFFFFF"
+                                    BorderThickness="1" BorderBrush="{DynamicResource WorkbenchGroupBorderBrush}">
+                                <qq:QQGuideScreenshot Step="{Binding CurrentStep}" MaxHeight="330"
+                                                      AutomationProperties.Name="{Binding CurrentStep.Title}"/>
+                            </Border>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="橙框标出需要点击的位置" Classes="muted" FontSize="12" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Content="放大查看完整截图" Click="OnEnlargeImage"/>
+                            </Grid>
+                            <TextBlock Text="{Binding CurrentStep.Detail}" Classes.caution="{Binding CurrentStep.Caution}" LineHeight="22"/>
+                            <Border Classes="card" Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}">
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="完成后" FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding CurrentStep.Result}"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="截图依据 2026 年 9 月的平台界面，实际页面文案可能调整。" Classes="muted" FontSize="12"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <Grid Grid.Row="1" Grid.ColumnSpan="3" ColumnDefinitions="*,Auto,Auto" Margin="0,16,0,0">
+                        <Button Content="已有凭据，直接接入 →" Command="{Binding ShowConnectionCommand}" HorizontalAlignment="Left"/>
+                        <Button Grid.Column="1" Content="← 上一步" Command="{Binding PreviousStepCommand}" Margin="0,0,8,0"/>
+                        <Button Grid.Column="2" Content="{Binding NextStepLabel}" Command="{Binding NextStepCommand}" Classes="outline-accent"/>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="2  接入 EasyCon">
+                <ScrollViewer Margin="0,16,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="12" Margin="0,0,12,0">
+                        <TextBlock Text="在 qq bot 推送项中完成配置" Classes="heading"/>
+                        <TextBlock Text="点击下方「返回 qq bot 配置」，继续在当前编辑项里操作。" Classes="muted"/>
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="1  填入凭据并验证" Classes="subheading"/>
+                                <TextBlock Text="将开放平台的 AppID 和 AppSecret 填入对应输入框，点击「验证凭据」，等待显示「凭据已验证」。"/>
+                                <TextBlock Text="如需下次启动继续使用，Windows 上可勾选「记住 AppSecret」。密钥会使用当前 Windows 用户的 DPAPI 加密保存。" Classes="muted"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="2  绑定接收方" Classes="subheading"/>
+                                <TextBlock Text="私聊：点击「绑定私聊」，等界面显示六位绑定码，再在 QQ 中私聊机器人发送当前绑定码。"/>
+                                <TextBlock Text="群聊：先把机器人加入目标群，再点击「绑定群聊」，在群内 @机器人并发送当前绑定码。"/>
+                                <TextBlock Text="绑定码每 60 秒更新，旧码立即失效。OpenID 由绑定自动取得，不是 QQ 号或群号。开发阶段须在开放平台的「服务范围」和「开发体验号码设置」允许接收方使用机器人。" Classes="muted"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="3  选择接收方，发送图文测试" Classes="subheading"/>
+                                <TextBlock Text="勾选「发送到私聊」或「发送到群聊」；也可以同时选择已绑定的两种接收方。点击「发送图文测试」，到 QQ 中确认文字和 EasyCon Logo 图片都已收到。"/>
+                                <TextBlock Text="保留「通知默认附带当前视频画面」勾选，脚本提醒会附带触发时的最新画面。图文测试始终带图片。" Classes="muted"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card" Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}"
+                                BorderBrush="{DynamicResource WorkbenchAccentBrush}">
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="4  测试成功后，启用并保存" Classes="subheading"/>
+                                <TextBlock Text="打开推送列表中当前 qq bot 项右侧的开关，再点击「推送设置」窗口底部的「保存」，配置才会应用到脚本通知。"/>
+                                <TextBlock Text="验证、绑定和测试仅操作当前编辑项。点击「取消」会放弃本次修改。" Classes="muted"/>
+                            </StackPanel>
+                        </Border>
+                        <Button Content="下一步：脚本提醒 →" Command="{Binding ShowScriptCommand}" HorizontalAlignment="Right"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="3  脚本提醒">
+                <ScrollViewer Margin="0,16,0,0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="16" Margin="0,0,12,0">
+                        <TextBlock Text="用 ALERT 发送提醒" Classes="heading"/>
+                        <TextBlock Text="完成接入并保存后，在需要提醒的位置加入下面这行代码，在 EasyCon 桌面软件中运行脚本。"/>
+                        <Border Classes="card" Background="{DynamicResource WorkbenchOutlineAccentBackgroundBrush}">
+                            <StackPanel Spacing="10">
+                                <TextBox Text="{x:Static qq:QQGuideCatalog.AlertExample}" IsReadOnly="True"
+                                         FontFamily="Consolas, Microsoft YaHei UI" FontSize="18"
+                                         AutomationProperties.Name="ALERT 示例"/>
+                                <TextBlock Text="可以选中示例并复制到脚本中。" Classes="muted" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="收到的通知是什么样" Classes="subheading"/>
+                                <TextBlock Text="默认发送提醒文字和触发 ALERT 时的最新视频画面；没有可用视频帧时，使用 EasyCon Logo。关闭附图选项后，脚本提醒只发送文字。"/>
+                                <TextBlock Text="发送在后台排队。脚本先显示 [ALERT] 并结束是正常的，发送结果稍后写入日志。失败不会中断脚本，也不会自动重发；请在 QQ 中确认实际收到了消息。"/>
+                                <TextBlock Text="脚本必须执行到 ALERT 才会推送。单片机独立运行时不能发送 QQ 通知。" Classes="muted"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="常见问题" Classes="subheading"/>
+                                <TextBlock Text="测试成功，但 ALERT 没发：检查 qq bot 项已启用、勾选了已绑定接收方，并且点击过窗口底部的「保存」。再确认脚本执行到了 ALERT。"/>
+                                <TextBlock Text="绑定没有反应：发送当前显示的六位绑定码；群聊需要 @机器人。检查平台的事件接收方式为 WebSocket，以及接收方在允许的测试范围内。"/>
+                                <TextBlock Text="重启后需要填密钥：未勾选「记住 AppSecret」时，密钥仅在当前会话保留。重新填写、验证并启用后保存即可。"/>
+                                <TextBlock Text="只有文字或发送失败：查看运行日志中 [qq bot] 的结果和平台错误。接口提交成功后也需要到 QQ 中核对文字和图片。"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,20,0,0">
+            <TextBlock Text="配置入口：用户配置 → 推送设置 → qq bot" Classes="muted" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <Button Grid.Column="1" Content="返回 qq bot 配置" Click="OnReturnToConfiguration" IsCancel="True"/>
+        </Grid>
+    </Grid>
+</Window>

@@ -36,6 +36,7 @@
 
   <ItemGroup>
     <AvaloniaResource Include="VPad\Resources\*.png" />
+    <AvaloniaResource Include="QQ\Resources\Guide\*" />
     <EmbeddedResource Include="Resources\Scripts\*.xshd" />
   </ItemGroup>
 
