@@ -97,6 +97,99 @@ public class AlertDispatcherTests
         }
     }
 
+    [Test]
+    public void CanceledDispatch_DoesNotSubmitQqOrWebhookRequests()
+    {
+        using NotificationHandler handler = new();
+        using HttpClient http = new(handler);
+        using AlertDispatcher dispatcher = CreateDispatcher(CreateConfig(true, true), http);
+        using CancellationTokenSource cancellation = new();
+        cancellation.Cancel();
+        Assert.CatchAsync<OperationCanceledException>(() => dispatcher.DispatchAsync("不应发送", cancellationToken: cancellation.Token));
+        Assert.That(handler.Requests, Is.Empty);
+    }
+
+    [Test]
+    public async Task CancelingActiveQq_AbortsRequestAndPreservesOtherNotifications()
+    {
+        using NotificationHandler handler = new();
+        using HttpClient http = new(handler);
+        TaskCompletionSource<bool> sending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> aborted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        handler.BeforeResponse = async (request, token) =>
+        {
+            if (request.Body.Contains("cancel-active"))
+            {
+                sending.TrySetResult(true);
+                try
+                {
+                    await Task.Delay(Timeout.Infinite, token);
+                }
+                finally
+                {
+                    if (token.IsCancellationRequested)
+                        aborted.TrySetResult(true);
+                }
+            }
+        };
+        using AlertDispatcher dispatcher = CreateDispatcher(CreateConfig(false, true), http);
+        using CancellationTokenSource cancellation = new();
+        Task canceled = dispatcher.DispatchAsync("cancel-active", cancellationToken: cancellation.Token);
+        try
+        {
+            await sending.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task retained = dispatcher.DispatchAsync("keep-next");
+            cancellation.Cancel();
+            Assert.CatchAsync<OperationCanceledException>(() => canceled.WaitAsync(TimeSpan.FromSeconds(5)));
+            await aborted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await retained.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.That(handler.Requests.Count(request => request.Body.Contains("keep-next")), Is.EqualTo(1));
+        }
+        finally
+        {
+            cancellation.Cancel();
+        }
+    }
+
+    [Test]
+    public async Task CancelingQueuedQq_SkipsOnlyThatNotification()
+    {
+        using NotificationHandler handler = new();
+        using HttpClient http = new(handler);
+        TaskCompletionSource<bool> sending = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        handler.BeforeResponse = async (request, token) =>
+        {
+            if (request.Body.Contains("blocked-first"))
+            {
+                sending.TrySetResult(true);
+                await release.Task.WaitAsync(token);
+            }
+        };
+        using AlertDispatcher dispatcher = CreateDispatcher(CreateConfig(false, true), http);
+        using CancellationTokenSource cancellation = new();
+        Task first = dispatcher.DispatchAsync("blocked-first");
+        try
+        {
+            await sending.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Task canceled = dispatcher.DispatchAsync("cancel-queued", cancellationToken: cancellation.Token);
+            Task retained = dispatcher.DispatchAsync("keep-next");
+            cancellation.Cancel();
+            Assert.CatchAsync<OperationCanceledException>(() => canceled.WaitAsync(TimeSpan.FromSeconds(5)));
+            release.TrySetResult(true);
+            await Task.WhenAll(first, retained).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Multiple(() =>
+            {
+                Assert.That(handler.Requests.Any(request => request.Body.Contains("cancel-queued")), Is.False);
+                Assert.That(handler.Requests.Count(request => request.Uri.AbsolutePath.EndsWith("/messages")), Is.EqualTo(2));
+            });
+        }
+        finally
+        {
+            release.TrySetResult(true);
+        }
+    }
+
     private static AlertConfig CreateConfig(bool webhookEnabled, bool qqEnabled)
     {
         AlertItem qq = AlertItem.CreateQq();

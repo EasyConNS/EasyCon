@@ -76,6 +76,7 @@ public class AlertDispatcher : IDisposable
     public async Task DispatchAsync(string content, string title = "伊机控消息", CancellationToken cancellationToken = default,
         byte[]? image = null)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         List<Task<string>> tasks = [];
         lock (_sync)
         {
@@ -87,7 +88,7 @@ public class AlertDispatcher : IDisposable
                 {
                     QQNotificationService service = _qqChannels[item.id].Service;
                     service.ImageProvider = ImageProvider;
-                    service.Dispatch(content, title, image);
+                    service.Dispatch(content, title, image, cancellationToken);
                     tasks.Add(WaitForQqAsync(service, cancellationToken));
                 }
                 else

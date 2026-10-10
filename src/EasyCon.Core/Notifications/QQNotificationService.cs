@@ -188,7 +188,11 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
     }
 
     public void Dispatch(string content, string title = "伊机控消息", byte[]? image = null)
+        => Dispatch(content, title, image, CancellationToken.None);
+
+    public void Dispatch(string content, string title, byte[]? image, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         QQNotificationSettings settings;
         int generation;
         lock (_settingsLock)
@@ -207,14 +211,19 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
             string text = string.IsNullOrWhiteSpace(title) ? content : title + "\n" + content;
             lock (_settingsLock)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (_disposed || generation != _generation || !_settings.enabled)
                     return;
-                PendingNotification pending = new(settings.app_id, settings.secret, targets, text, image, generation);
+                PendingNotification pending = new(settings.app_id, settings.secret, targets, text, image, generation, cancellationToken);
                 if (!_queue.Writer.TryWrite(pending))
                     throw new InvalidOperationException("待发送通知过多，当前通知未加入队列。");
                 if (_pendingCount++ == 0)
                     _idle = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -248,9 +257,9 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
                 {
                     lock (_settingsLock)
                     {
-                        if (_disposed || pending.Generation != _generation)
+                        if (_disposed || pending.Generation != _generation || pending.CancellationToken.IsCancellationRequested)
                             continue;
-                        sending = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token);
+                        sending = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token, pending.CancellationToken);
                         _sending = sending;
                     }
                     _sender.Configure(pending.AppId, pending.Secret);
@@ -390,5 +399,5 @@ public sealed class QQNotificationService : IAlertService, IDisposable, IAsyncDi
 
     private sealed record PendingNotification(
         string AppId, string Secret, IReadOnlyList<QQNotificationTarget> Targets,
-        string Content, byte[]? Image, int Generation);
+        string Content, byte[]? Image, int Generation, CancellationToken CancellationToken);
 }

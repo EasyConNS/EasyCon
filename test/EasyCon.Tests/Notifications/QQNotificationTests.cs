@@ -103,13 +103,30 @@ public class QQNotificationTests
         Request[] uploads = requests.Where(request => request.Method == HttpMethod.Put).ToArray();
         Assert.Multiple(() =>
         {
-            Assert.That(uploads.Select(request => request.Uri.AbsolutePath), Is.EqualTo(new[] { "/1", "/2", "/3" }));
+            Assert.That(uploads.Select(request => request.Uri.AbsolutePath), Is.EqualTo(new[] { "/0", "/1", "/2" }));
             Assert.That(uploads[0].Bytes, Is.EqualTo(new byte[] { 1, 2 }));
             Assert.That(uploads[1].Bytes, Is.EqualTo(new byte[] { 3, 4 }));
             Assert.That(uploads[2].Bytes, Is.EqualTo(new byte[] { 5 }));
             Assert.That(uploads.All(request => request.Authorization == null), Is.True);
             Assert.That(requests.Where(request => request.Uri.Host == "api.sgroup.qq.com")
                 .All(request => request.Authorization == "QQBot test-token"), Is.True);
+        });
+        Request[] finished = requests.Where(request => request.Uri.AbsolutePath.EndsWith("/upload_part_finish")).ToArray();
+        Assert.That(finished.Select(request => request.Json.GetProperty("part_index").GetInt32()), Is.EqualTo(new[] { 0, 1, 2 }));
+        for (int i = 0; i < finished.Length; i++)
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(finished[i].Json.GetProperty("block_size").GetString(), Is.EqualTo(uploads[i].Bytes.Length.ToString()));
+                Assert.That(finished[i].Json.GetProperty("md5").GetString(),
+                    Is.EqualTo(Convert.ToHexString(MD5.HashData(uploads[i].Bytes)).ToLowerInvariant()));
+            });
+        }
+        Request merged = requests.Single(request => request.Uri.AbsolutePath.EndsWith("/files"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(merged.Json.GetProperty("file_name").GetString(), Is.EqualTo(prepared.Json.GetProperty("file_name").GetString()));
+            Assert.That(merged.Json.GetProperty("upload_id").GetString(), Is.EqualTo("upload-id"));
         });
         Request[] messages = requests.Where(request => request.Uri.AbsolutePath.EndsWith("/messages")).ToArray();
         Assert.Multiple(() =>
@@ -143,6 +160,80 @@ public class QQNotificationTests
             Assert.That(error, Is.Not.Null);
             Assert.That(error!.Message, Does.Contain("分片列表不完整").And.Contain("文字已提交"));
             Assert.That(server.Requests.Any(request => request.Method == HttpMethod.Put), Is.False);
+        });
+    }
+
+    [Test]
+    public async Task Client_CallerCancellationStopsRemainingRecipients()
+    {
+        using StubServer server = new();
+        TaskCompletionSource<bool> sending = NewSignal();
+        server.Intercept = async (request, token) =>
+        {
+            if (request.Uri.AbsolutePath.StartsWith("/v2/users/") && request.Uri.AbsolutePath.EndsWith("/messages"))
+            {
+                sending.TrySetResult(true);
+                await Task.Delay(Timeout.Infinite, token);
+            }
+            return null;
+        };
+        using HttpClient http = new(server);
+        using QQNotificationClient client = new(http);
+        using CancellationTokenSource cancellation = new();
+        client.Configure("app-id", "test-secret");
+        Task send = client.SendAsync([
+            new QQNotificationTarget(QQNotificationTargetKind.User, "user-id"),
+            new QQNotificationTarget(QQNotificationTargetKind.Group, "group-id"),
+        ], "完成", null, cancellation.Token);
+        try
+        {
+            await sending.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            cancellation.Cancel();
+            Assert.CatchAsync<OperationCanceledException>(() => send.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.That(server.Requests.Any(request => request.Uri.AbsolutePath.StartsWith("/v2/groups/")), Is.False);
+        }
+        finally
+        {
+            cancellation.Cancel();
+        }
+    }
+
+    [TestCase("/messages", false)]
+    [TestCase("/upload_prepare", true)]
+    public async Task Client_TimeoutContinuesOtherRecipientsAndReportsSubmission(string timedOutEndpoint, bool textSubmitted)
+    {
+        using StubServer server = new();
+        server.Intercept = async (request, token) =>
+        {
+            if (request.Uri.AbsolutePath.StartsWith("/v2/users/") && request.Uri.AbsolutePath.EndsWith(timedOutEndpoint))
+                await Task.Delay(Timeout.Infinite, token);
+            return null;
+        };
+        using HttpClient http = new(server) { Timeout = TimeSpan.FromMilliseconds(250) };
+        using QQNotificationClient client = new(http);
+        using CancellationTokenSource caller = new();
+        client.Configure("app-id", "test-secret");
+        InvalidOperationException? error = null;
+        try
+        {
+            await client.SendAsync([
+                new QQNotificationTarget(QQNotificationTargetKind.User, "user-id"),
+                new QQNotificationTarget(QQNotificationTargetKind.Group, "group-id"),
+            ], "完成", [1, 2, 3], caller.Token).WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        catch (InvalidOperationException ex)
+        {
+            error = ex;
+        }
+        Request[] groupMessages = server.Requests.Where(request => request.Uri.AbsolutePath.StartsWith("/v2/groups/")
+            && request.Uri.AbsolutePath.EndsWith("/messages")).ToArray();
+        Assert.Multiple(() =>
+        {
+            Assert.That(caller.IsCancellationRequested, Is.False);
+            Assert.That(error, Is.Not.Null);
+            Assert.That(error!.Message, Does.Contain("私聊"));
+            Assert.That(error.Message.Contains("文字已提交"), Is.EqualTo(textSubmitted));
+            Assert.That(groupMessages.Select(request => request.Json.GetProperty("msg_type").GetInt32()), Is.EqualTo(new[] { 0, 7 }));
         });
     }
 
@@ -400,8 +491,8 @@ public class QQNotificationTests
             {
                 int length = int.Parse(recorded.Json.GetProperty("file_size").GetString()!);
                 int count = ((length - 1) / BlockSize) + 1;
-                int[] indexes = DuplicateParts ? Enumerable.Repeat(1, count).ToArray()
-                    : Enumerable.Range(1, count).Reverse().ToArray();
+                int[] indexes = DuplicateParts ? Enumerable.Repeat(0, count).ToArray()
+                    : Enumerable.Range(0, count).Reverse().ToArray();
                 return JsonResponse(new
                 {
                     upload_id = "upload-id",
@@ -409,8 +500,13 @@ public class QQNotificationTests
                     parts = indexes.Select(index => new { index, presigned_url = "https://storage.example/" + index }),
                 });
             }
-            return recorded.Uri.AbsolutePath.EndsWith("/files")
-                ? JsonResponse(new { file_info = "file-info" }) : JsonResponse(new { });
+            if (recorded.Uri.AbsolutePath.EndsWith("/files"))
+            {
+                if (!recorded.Json.TryGetProperty("file_name", out JsonElement fileName) || fileName.GetString() != "notification.jpg")
+                    return JsonResponse(new { error = "missing file_name" }, HttpStatusCode.BadRequest);
+                return JsonResponse(new { file_info = "file-info" });
+            }
+            return JsonResponse(new { });
         }
 
         public static HttpResponseMessage JsonResponse(object body, HttpStatusCode status = HttpStatusCode.OK) => new(status)

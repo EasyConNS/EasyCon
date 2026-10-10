@@ -238,7 +238,7 @@ public sealed class QQNotificationClient : IDisposable
                         new { msg_type = 7, media = new { file_info = fileInfo } }, cancellationToken).ConfigureAwait(false);
                 }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 string label = target.Kind == QQNotificationTargetKind.User ? "私聊" : "群聊";
                 failures.Add(label + "：" + (textSubmitted ? "文字已提交；" : "") + RedactError(ex.Message));
@@ -250,11 +250,12 @@ public sealed class QQNotificationClient : IDisposable
 
     private async Task<string> UploadImageAsync(string baseUrl, string token, byte[] image, CancellationToken cancellationToken)
     {
+        const string fileName = "notification.jpg";
         using JsonDocument prepared = await SendJsonAsync(HttpMethod.Post, baseUrl + "/upload_prepare", token, new
         {
             file_type = 1,
             file_size = image.Length.ToString(CultureInfo.InvariantCulture),
-            file_name = "notification.jpg",
+            file_name = fileName,
             md5 = HashMd5(image),
             sha1 = Convert.ToHexString(SHA1.HashData(image)).ToLowerInvariant(),
             md5_10m = HashMd5(image.AsSpan(0, Math.Min(image.Length, 10_002_432))),
@@ -278,12 +279,12 @@ public sealed class QQNotificationClient : IDisposable
             uploadParts.Add((index, uploadUri));
         }
         if (uploadParts.Count != expected || !uploadParts.Select(part => part.Index)
-            .OrderBy(index => index).SequenceEqual(Enumerable.Range(1, expected)))
+            .OrderBy(index => index).SequenceEqual(Enumerable.Range(0, expected)))
             throw new InvalidOperationException("图片上传接口返回的分片列表不完整。");
 
         foreach ((int index, Uri url) in uploadParts.OrderBy(part => part.Index))
         {
-            int offset = (index - 1) * blockSize;
+            int offset = index * blockSize;
             int length = Math.Min(blockSize, image.Length - offset);
             using HttpRequestMessage upload = new(HttpMethod.Put, url)
             {
@@ -302,7 +303,7 @@ public sealed class QQNotificationClient : IDisposable
             }, cancellationToken).ConfigureAwait(false);
         }
         using JsonDocument result = await SendJsonAsync(HttpMethod.Post, baseUrl + "/files", token,
-            new { file_type = 1, upload_id = uploadId }, cancellationToken).ConfigureAwait(false);
+            new { file_type = 1, upload_id = uploadId, file_name = fileName }, cancellationToken).ConfigureAwait(false);
         string fileInfo = result.RootElement.TryGetProperty("file_info", out JsonElement fileValue)
             ? fileValue.GetString() ?? "" : "";
         return string.IsNullOrWhiteSpace(fileInfo)
