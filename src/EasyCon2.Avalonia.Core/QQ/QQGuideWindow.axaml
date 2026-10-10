@@ -44,6 +44,7 @@
                 <TextBlock Text="创建机器人 → 绑定接收方 → 在脚本中发送提醒" Classes="muted"/>
             </StackPanel>
             <HyperlinkButton Grid.Column="1" NavigateUri="{x:Static qq:QQGuideCatalog.PlatformUri}"
+                             AutomationProperties.Name="QQ 开放平台"
                              Cursor="Hand" VerticalAlignment="Top" ToolTip.Tip="https://q.qq.com/#/apps">
                 <Border BorderThickness="0,0,0,1" Padding="0,0,0,1"
                         BorderBrush="{DynamicResource WorkbenchAccentBrush}">

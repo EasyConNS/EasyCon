@@ -12,6 +12,7 @@
         <WrapPanel Orientation="Horizontal">
             <Button Content="使用教程" Click="OnOpenGuide" Margin="0,0,12,4"/>
             <HyperlinkButton NavigateUri="{x:Static qq:QQGuideCatalog.PlatformUri}" Cursor="Hand"
+                             AutomationProperties.Name="QQ 开放平台"
                              ToolTip.Tip="https://q.qq.com/#/apps" Margin="0,0,0,4">
                 <Border BorderThickness="0,0,0,1" Padding="0,0,0,1"
                         BorderBrush="{DynamicResource WorkbenchAccentBrush}">
