@@ -12,7 +12,7 @@ namespace EasyCon.Tests.Capabilities;
 
 /// <summary>
 /// P3 OCR 能力面：
-/// __OCR_INIT__/__OCR__ 洞转发 IOcrService（旧签名映射 OcrConfig）、
+/// __TESSERACT_INIT__/__TESSERACT__ 洞转发 IOcrService（旧签名映射 OcrConfig）、
 /// 旧 OcrDelegate 直通（单次调用、无双重采帧）、
 /// Tesseract 后端与旧路径同图同区域对拍（原生库/模型缺失时 Ignore）。
 /// </summary>
@@ -88,7 +88,7 @@ public class OcrCapabilityTests
         };
         session.Run(new CancellationTokenSource().Token, caps);
 
-        // __OCR_INIT__：StdLib 默认签名 → OcrConfig 映射
+        // __TESSERACT_INIT__：StdLib 默认签名 → OcrConfig 映射
         Assert.That(ocr.Inits.Count, Is.EqualTo(1), "OCR_INIT 应触发一次 Init");
         var cfg = ocr.Inits[0];
         Assert.That(cfg.Language, Is.EqualTo("eng"));
@@ -96,7 +96,7 @@ public class OcrCapabilityTests
         Assert.That(cfg.Options["tess:engineMode"], Is.EqualTo("DEFAULT"));
         Assert.That(cfg.Options["tess:psmode"], Is.EqualTo("SINGLE_LINE"));
 
-        // __OCR__：区域采集一次，识别服务收整图（query 缺省区域）+ 语言
+        // __TESSERACT__：区域采集一次，识别服务收整图（query 缺省区域）+ 语言
         Assert.That(capture.Regions, Is.EqualTo(new[] { new[] { 1, 2, 30, 8 } }));
         Assert.That(ocr.Recognitions.Count, Is.EqualTo(1));
         var (image, x, y, w, h, lang) = ocr.Recognitions[0];

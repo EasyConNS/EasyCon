@@ -42,7 +42,7 @@ public enum SsaOp : byte
     EqUInt64, NeqUInt64, LtUInt64, LeqUInt64, GtUInt64, GeqUInt64,
     // ---- 比较（bool/string/ptr/byte） ----
     EqBool, NeqBool, EqString, NeqString,
-    EqPtr, NeqPtr,
+    EqPtr, LtPtr, LeqPtr, GtPtr, GeqPtr, NeqPtr,
     EqByte, NeqByte, LtByte, LeqByte, GtByte, GeqByte,
 
     // ---- 逻辑 ----
@@ -95,13 +95,9 @@ public enum SsaOp : byte
     Wait,           // Arg0=duration
     Rand,           // Arg0=max, 返回 [0, max) 随机整数
 
-    // ---- OCR 引擎初始化 ----
-    OcrInit,        // Arg0=lang, Arg1=dataPath, ExtraArgs=[engineMode, psmode], 结果=0/1(bool)
+    // ---- OCR 引擎初始化 ----,        // Arg0=lang, Arg1=dataPath, ExtraArgs=[engineMode, psmode], 结果=0/1(bool)
 
-    // ---- 采集卡打洞函数 ----
-    Capture,        // Arg0=x, ExtraArgs=[y, w, h]
-    Ocr,            // Arg0=x, Arg1=y, ExtraArgs=[w, h, lang]
-    Roi,            // Arg0=image, Arg1=x, ExtraArgs=[y, w, h]
+    // ---- 采集卡打洞函数 ----,        // Arg0=x, ExtraArgs=[y, w, h],            // Arg0=x, Arg1=y, ExtraArgs=[w, h, lang],            // Arg0=image, Arg1=x, ExtraArgs=[y, w, h]
 
     // ---- 运行时 ----
     RuntimeValue,   // AuxSymbol 存 name string（特殊用法）

@@ -77,7 +77,7 @@ public class AbiContractTests
 
         var ffiScript = Path.Combine(_dir, "ffi", "script.ecs");
         Directory.CreateDirectory(Path.GetDirectoryName(ffiScript)!);
-        File.WriteAllText(ffiScript, "EXTERN FUNC Sleep($ms:INT) FROM \"kernel32.dll\"\nSleep(1)\n");
+        File.WriteAllText(ffiScript, "EXTERN FUNC Sleep($ms:INT) FROM \"kernel32.dll\"\nSleep 1\n");
         var ffiImage = Compilation.CompileFile(ffiScript, new CompileOptions { UseDiskCache = false }).Image!;
         Assert.That(ffiImage.Features & EcsImageFeatures.Ffi, Is.Not.Zero, "EXTERN → FFI");
         Assert.That(ffiImage.Natives.Select(n => n.Name), Does.Contain("kernel32.dll!Sleep"),
@@ -112,7 +112,7 @@ public class AbiContractTests
             Assert.Ignore("无 cc 编译器，跳过 C VM 侧");
         var ffiScript = Path.Combine(_dir, "ffi2", "script.ecs");
         Directory.CreateDirectory(Path.GetDirectoryName(ffiScript)!);
-        File.WriteAllText(ffiScript, "EXTERN FUNC Sleep($ms:INT) FROM \"kernel32.dll\"\nSleep(1)\nPRINT \"done\"\n");
+        File.WriteAllText(ffiScript, "EXTERN FUNC Sleep($ms:INT) FROM \"kernel32.dll\"\nSleep 1\nPRINT \"done\"\n");
         var image = Compilation.CompileFile(ffiScript, new CompileOptions { UseDiskCache = false }).Image!;
 
         var (exitCode, stdout, stderr) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(image), "abi-ffi", _workDir);

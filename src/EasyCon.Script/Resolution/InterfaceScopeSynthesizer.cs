@@ -33,7 +33,7 @@ internal static class InterfaceScopeSynthesizer
 
         // lib 模块可见采集卡洞函数（对齐 v1 libOnlyScope）；main 模块与 v1 一致不注入
         if (includeCaptureHoles)
-            foreach (var hole in Binding.BuiltinFunctions.GetCaptureHoles())
+            foreach (var hole in Binding.BuiltinFunctions.GetLibOnlyHoles())
                 globalScope.TryDeclareFunction(hole);
 
         // ---- 结构体：两遍注册（字段类型可引用其他接口结构体），布局消费端重算 ----

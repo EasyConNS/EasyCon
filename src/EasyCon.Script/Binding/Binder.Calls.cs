@@ -25,9 +25,6 @@ internal sealed partial class Binder
             return (paramTypes, arguments[0].Type);
         }
 
-        if (function.Name == "JQ")
-            return (paramTypes, ScriptType.String);
-
         var returnType = function.ReturnType.Equals(ScriptType.Any)
             ? arguments[0].Type
             : function.ReturnType;

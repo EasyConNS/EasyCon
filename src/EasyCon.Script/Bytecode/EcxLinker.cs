@@ -607,7 +607,7 @@ internal static class EcxPipeline
     /// <summary>自镜像入口 BFS 调用图，判断是否可达任何采集洞函数（CallN "__CAPTURE__" 等）。</summary>
     static bool ImageReachesCaptureHole(EcxImage image)
     {
-        var holeNames = Binding.BuiltinFunctions.GetCaptureHoles()
+        var holeNames = Binding.BuiltinFunctions.GetLibOnlyHoles()
             .Select(h => h.Name)
             .ToHashSet(StringComparer.Ordinal);
 

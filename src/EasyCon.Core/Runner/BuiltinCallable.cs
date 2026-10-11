@@ -89,7 +89,9 @@ internal static class BuiltinCallable
         return Value.FromString(result ?? "ERR!!FRAME NOT SUPPORT");
     }
 
-    public static Value ImplOcrHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    /// <summary>__TESSERACT__ 洞：脚本 OCR 能力面对接的唯一引擎（Tesseract）。
+    /// ppocr 不经此面——走 NET 族张量原语 + std 配方（StdLib PP_OCR_DIGITS）。</summary>
+    public static Value ImplTesseractHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
         IOcrService? ocr = capabilities.Ocr;
         string? result = ocr switch
@@ -140,75 +142,20 @@ internal static class BuiltinCallable
     public static Value ImplFEof(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
         => Value.FromBool(Files(capabilities).Eof(args[0].AsPtr()));
 
-    public static Value ImplReadFile(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
-        => Value.FromString(Files(capabilities).ReadAllText(args[0].AsString()));
-
-    public static Value ImplWriteFile(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
-    {
-        Files(capabilities).WriteAllText(args[0].AsString(), args[1].AsString());
-        return Value.Void;
-    }
-
-    public static Value ImplAppendFile(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
-    {
-        Files(capabilities).AppendAllText(args[0].AsString(), args[1].AsString());
-        return Value.Void;
-    }
-
     public static Value ImplFileExists(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
         => Value.FromBool(Files(capabilities).Exists(args[0].AsString()));
 
     public static Value ImplOcrConf(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
         => Value.FromInt(capabilities.Ocr?.LastConfidence ?? 0);
 
-    // ============ ONNX 推理实验函数（IInference；Vision 特征位，P5） ============
-    // 纯标量协议：原生边界（EcxNativeContext）不携带数组——NET_RUN 返回输出长度，
+    // ============ ONNX 推理函数（IInference；Vision 特征位） ============
+    // 纯标量协议：原生边界（EcxNativeContext）不携带数组——NET_RUNH 返回输出长度，
     // 结果缓存于线程槽，NET_OUT(i) 逐元素读取（脚本同步语义 = 单线程执行）。
 
     [ThreadStatic] static float[]? _lastNetOutput;
 
     public static Value ImplNetLoad(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
-        => Value.FromInt(capabilities.Inference?.Load(args[0].AsString()) ?? -1);
-
-    public static Value ImplNetRun(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
-    {
-        IInference? inference = capabilities.Inference;
-        if (inference == null)
-        {
-            _lastNetOutput = null;
-            return Value.FromInt(0);
-        }
-
-        try
-        {
-            ScriptArray input = args[1].AsArray();
-            var floats = new float[input.Length];
-            for (int i = 0; i < input.Length; i++)
-                floats[i] = ToFloat(input[i]);
-
-            float[]? output = inference.Run(args[0].AsInt(), floats);
-            _lastNetOutput = output;
-            return Value.FromInt(output?.Length ?? 0);
-        }
-        catch
-        {
-            _lastNetOutput = null;
-            return Value.FromInt(0);   // 实验面：非法输入（非数组/未知会话）→ 空输出
-        }
-    }
-
-    /// <summary>数值元素容错转换（数组字面量/变量可能是任意数值标签）。</summary>
-    static float ToFloat(Value v) => v.ToObject() switch
-    {
-        double d => (float)d,
-        int i => i,
-        long l => l,
-        uint ui => ui,
-        ulong ul => ul,
-        byte b => b,
-        bool bo => bo ? 1f : 0f,
-        _ => throw new InvalidCastException("NET_RUN 输入必须为数值数组"),
-    };
+        => Value.FromPtr(capabilities.Inference?.Load(args[0].AsString()) ?? -1);
 
     public static Value ImplNetOut(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
@@ -220,11 +167,11 @@ internal static class BuiltinCallable
     }
 
     /// <summary>
-    /// __OCR_INIT__ 洞：旧位置参数签名映射 <see cref="OcrConfig"/>
+    /// __TESSERACT_INIT__ 洞：旧位置参数签名映射 <see cref="OcrConfig"/>
     /// （lang → Language，dataPath → ModelPath，engineMode/psmode → Options["tess:*"]）。
     /// 未装配 OCR 能力返回 false。
     /// </summary>
-    public static Value ImplOcrInitHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    public static Value ImplTesseractInitHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
         var cfg = new OcrConfig
         {
@@ -251,19 +198,19 @@ internal static class BuiltinCallable
     {
         IInference? inference = capabilities.Inference;
         if (inference == null)
-            return Value.FromInt(0);
+            return Value.FromPtr(0);
 
         try
         {
             var bytes = Convert.FromBase64String(args[0].AsString());
             using var mat = Mat.FromImageData(bytes);
             if (mat.Empty())
-                return Value.FromInt(0);
+                return Value.FromPtr(0);
 
             int rw = args[1].AsInt();
             int rh = args[2].AsInt();
             if (rw <= 0 || rh <= 0)
-                return Value.FromInt(0);
+                return Value.FromPtr(0);
 
             using var resized = new Mat();
             Cv2.Resize(mat, resized, new Size(rw, rh), 0, 0, InterpolationFlags.Linear);
@@ -289,11 +236,11 @@ internal static class BuiltinCallable
                 shape = [1, 1, rh, rw];
             }
 
-            return Value.FromInt(inference.HoldTensor(data, shape));
+            return Value.FromPtr(inference.HoldTensor(data, shape));
         }
         catch
         {
-            return Value.FromInt(0);
+            return Value.FromPtr(0);
         }
     }
 
@@ -315,24 +262,24 @@ internal static class BuiltinCallable
             return Value.FromInt(0);
         }
 
-        float[]? output = inference.RunHeld(args[0].AsInt(), args[1].AsInt());
+        float[]? output = inference.RunHeld((int)args[0].AsPtr(), (int)args[1].AsPtr());
         _lastNetOutput = output;
         return Value.FromInt(output?.Length ?? 0);
     }
 
     public static Value ImplNetScale(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
-        => Value.FromInt(capabilities.Inference?.TransformTensor(
-            args[0].AsInt(), (float)args[1].AsDouble(), (float)args[2].AsDouble()) ?? 0);
+        => Value.FromPtr(capabilities.Inference?.TransformTensor(
+            (int)args[0].AsPtr(), (float)args[1].AsDouble(), (float)args[2].AsDouble()) ?? 0);
 
     public static Value ImplNetFree(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
-        capabilities.Inference?.FreeTensor(args[0].AsInt());
+        capabilities.Inference?.FreeTensor((int)args[0].AsPtr());
         return Value.FromInt(0);
     }
 
     public static Value ImplNetUnload(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
-        capabilities.Inference?.Unload(args[0].AsInt());
+        capabilities.Inference?.Unload((int)args[0].AsPtr());
         return Value.FromInt(0);
     }
 
@@ -379,6 +326,55 @@ internal static class BuiltinCallable
         return Value.FromInt(best);
     }
 
+    /// <summary>
+    /// __CTC_FOLD__ 洞：CTC 贪心折叠最近一次 NET_RUNH 输出（[1,T,C]，与 NET_ARGMAX 同源线程槽）。
+    /// 逐帧 argmax 后：连续同类别去重、blank 帧重置、charset 窗口 [base, base+len) 外的类别
+    /// 跳过（仍参与去重序列）；窗口内类别 c 输出 charset[c-base]。一次宿主遍历，无逐帧 VM 往返。
+    /// 配方语义（ppocr 字典下标、数字子集）由 std CTC_FOLD 传入；自实现解码策略走
+    /// NET_ROWS + NET_ARGMAX 逐帧遍历。
+    /// </summary>
+    public static Value ImplCtcFoldHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
+    {
+        var shape = capabilities.Inference?.LastOutputShape;
+        var output = _lastNetOutput;
+        if (shape == null || output == null || shape.Length < 3)
+            return Value.FromString("");
+
+        int blank = args[0].AsInt();
+        var charset = args[1].AsString();
+        int baseId = args[2].AsInt();
+        int cols = shape[2];
+        long rows = cols > 0 ? output.LongLength / cols : 0;
+
+        var sb = new StringBuilder();
+        int prev = -1;
+        for (int row = 0; row < rows; row++)
+        {
+            int best = 0;
+            float bestVal = float.MinValue;
+            int baseIdx = row * cols;
+            for (int c = 0; c < cols; c++)
+            {
+                if (output[baseIdx + c] > bestVal)
+                {
+                    bestVal = output[baseIdx + c];
+                    best = c;
+                }
+            }
+            if (best == blank)
+            {
+                prev = -1;
+            }
+            else
+            {
+                if (best != prev && best >= baseId && best < baseId + charset.Length)
+                    sb.Append(charset[best - baseId]);
+                prev = best;
+            }
+        }
+        return Value.FromString(sb.ToString());
+    }
+
     /// <summary>文件能力缺省回落桌面参考实现（FCLOSE 句柄表清理随 DesktopFileSystem.Instance）。</summary>
     static IFileSystem Files(CapabilitySet capabilities)
         => capabilities.Files ?? DesktopFileSystem.Instance;
@@ -390,22 +386,18 @@ internal static class BuiltinCallable
     {
         return
         [
-            (BuiltinFunctions.StrEncode, new DelegateCallable(ImplStrEncode)),
-            (BuiltinFunctions.Jq, new DelegateCallable(ImplJq)),
+            (BuiltinFunctions.EncodeHole, new DelegateCallable(ImplStrEncode)),
+            (BuiltinFunctions.JqHole, new DelegateCallable(ImplJq)),
             // 文件 IO
             (BuiltinFunctions.FOpen, new DelegateCallable(ImplFOpen)),
             (BuiltinFunctions.FRead, new DelegateCallable(ImplFRead)),
             (BuiltinFunctions.FWrite, new DelegateCallable(ImplFWrite)),
             (BuiltinFunctions.FClose, new DelegateCallable(ImplFClose)),
             (BuiltinFunctions.FEof, new DelegateCallable(ImplFEof)),
-            (BuiltinFunctions.ReadFile, new DelegateCallable(ImplReadFile)),
-            (BuiltinFunctions.WriteFile, new DelegateCallable(ImplWriteFile)),
-            (BuiltinFunctions.AppendFile, new DelegateCallable(ImplAppendFile)),
             (BuiltinFunctions.FileExists, new DelegateCallable(ImplFileExists)),
             (BuiltinFunctions.OcrConf, new DelegateCallable(ImplOcrConf)),
             // ONNX 推理实验
             (BuiltinFunctions.NetLoad, new DelegateCallable(ImplNetLoad)),
-            (BuiltinFunctions.NetRun, new DelegateCallable(ImplNetRun)),
             (BuiltinFunctions.NetOut, new DelegateCallable(ImplNetOut)),
         ];
     }
@@ -418,9 +410,9 @@ internal static class BuiltinCallable
         return
         [
             (BuiltinFunctions.CaptureHole, new DelegateCallable(ImplCaptureHole)),
-            (BuiltinFunctions.OcrHole, new DelegateCallable(ImplOcrHole)),
+            (BuiltinFunctions.TesseractHole, new DelegateCallable(ImplTesseractHole)),
             (BuiltinFunctions.RoiHole, new DelegateCallable(ImplRoiHole)),
-            (BuiltinFunctions.OcrInitHole, new DelegateCallable(ImplOcrInitHole)),
+            (BuiltinFunctions.TesseractInitHole, new DelegateCallable(ImplTesseractInitHole)),
             (BuiltinFunctions.NetImageHole, new DelegateCallable(ImplNetImage)),
             (BuiltinFunctions.NetRunH, new DelegateCallable(ImplNetRunH)),
             (BuiltinFunctions.NetScale, new DelegateCallable(ImplNetScale)),
@@ -428,6 +420,7 @@ internal static class BuiltinCallable
             (BuiltinFunctions.NetUnload, new DelegateCallable(ImplNetUnload)),
             (BuiltinFunctions.NetArgMax, new DelegateCallable(ImplNetArgMax)),
             (BuiltinFunctions.NetRows, new DelegateCallable(ImplNetRows)),
+            (BuiltinFunctions.CtcFoldHole, new DelegateCallable(ImplCtcFoldHole)),
 
         ];
     }

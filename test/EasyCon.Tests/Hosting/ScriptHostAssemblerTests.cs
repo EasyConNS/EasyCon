@@ -279,8 +279,6 @@ public class ScriptHostAssemblerTests
 
         public int Load(string modelPath) => -1;
 
-        public float[]? Run(int session, float[] input) => null;
-
         public void Unload(int session)
         {
         }

@@ -28,8 +28,8 @@ public class NetHandleTests
         PRINT $n
         $o0 = NET_OUT(0)
         PRINT $o0
-        NET_FREE($t)
-        NET_UNLOAD($net)
+        NET_FREE $t
+        NET_UNLOAD $net
         PRINT "done"
         """;
 
@@ -41,8 +41,6 @@ public class NetHandleTests
         public int Freed;
 
         public int Load(string modelPath) => 5;
-
-        public float[]? Run(int session, float[] input) { LastInput = input; return session == 5 ? input : null; }
 
         public int[]? LastOutputShape => null;
         public int HoldTensor(float[] data, int[] shape) => 9;
@@ -144,7 +142,7 @@ public class NetHandleTests
 
 /// <summary>
 /// 真模型端到端：PP-OCRv5 rec 模型 + 游戏截图（examples/pokemon-stats.ecs）
-/// 依赖 ~/Downloads/EasyCon-PP-OCRv5/*.onnx 与 ~/Downloads/ppocr*.png（外部资产，CI 无 → 跳过）。
+/// 依赖 test/assets/ppocr/ 真机资产（约定见 test/assets/README.md；缺失 → 跳过）。
 /// </summary>
 [TestFixture]
 [Category("Manual")]
@@ -157,11 +155,13 @@ public class NetPpocrRealModelTests
     [Test]
     public void PokemonStats_RecAndCompute()
     {
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var modelPath = Path.Combine(home, "Downloads", "EasyCon-PP-OCRv5", "PP-OCRv5_mobile_rec.onnx");
-        var pngPath = Path.Combine(home, "Downloads", "ppocr2.png");
+        // 真机资产走 test/assets 约定（见 test/assets/README.md）：仓库零硬编码环境路径
+        var assets = Path.GetFullPath(Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "test", "assets"));
+        var modelPath = Path.Combine(assets, "ppocr", "PP-OCRv5_mobile_rec.onnx");
+        var pngPath = Path.Combine(assets, "ppocr", "ppocr2.png");
         if (!File.Exists(modelPath) || !File.Exists(pngPath))
-            Assert.Ignore($"缺模型或截图：{modelPath} / {pngPath}");
+            Assert.Ignore($"缺真机资产（test/assets/README.md）：{modelPath} / {pngPath}");
 
         using var frame = Cv2.ImRead(pngPath, ImreadModes.Color);
         Assert.That(frame.Empty(), Is.False, "截图解码失败");
@@ -169,7 +169,14 @@ public class NetPpocrRealModelTests
         var appDir = Path.Combine(Path.GetTempPath(), $"easycon-stats-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Path.Combine(appDir, "models", "ppocr"));
         var link = Path.Combine(appDir, "models", "ppocr", "PP-OCRv5_mobile_rec.onnx");
-        if (!File.Exists(link)) File.CreateSymbolicLink(link, modelPath);
+        try
+        {
+            if (!File.Exists(link)) File.CreateSymbolicLink(link, modelPath);
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            Assert.Ignore($"无法创建 symlink（Windows 需开发者模式/管理员权限）：{e.Message}");
+        }
 
         var source = File.ReadAllText(Path.Combine(
             AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "examples", "pokemon-stats.ecs"));

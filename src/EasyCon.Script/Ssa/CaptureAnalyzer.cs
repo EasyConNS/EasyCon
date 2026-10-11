@@ -7,7 +7,7 @@ namespace EasyCon.Script.Ssa;
 /// <summary>
 /// 基于 SSA 调用图的采集卡需求分析。
 ///
-/// BoundProgram.NeedIL 是"乐观假设"：只要 lib 里出现了 CaptureHole/OcrHole/RoiHole
+/// BoundProgram.NeedIL 是"乐观假设"：只要 lib 里出现了 CaptureHole/TesseractHole/RoiHole
 /// 的调用（标准库 VisionSource 一定如此），就标记为需要采集卡。这对纯算法脚本
 /// 会导致 CLI 无谓地打开采集卡设备。
 ///
@@ -56,18 +56,13 @@ static class CaptureAnalyzer
             {
                 foreach (var inst in block.Instructions)
                 {
-                    // Case 1: 内联到 SSA 的 vision 洞指令（FRAME/OCR/ROI 经 EmitIntrinsic 处理后）
-                    // 这些指令直接代表一次采集卡操作，无需再向下展开
-                    if (inst.Op is SsaOp.Capture or SsaOp.Ocr or SsaOp.Roi)
-                        return true;
-
-                    // Case 2: 常规函数调用，检查 callee
+                    // 采集洞已全部走通用名表调用（StaticCall + Aux=洞符号），统一按 callee 判定
                     if (inst.Op is not (SsaOp.Call or SsaOp.StaticCall))
                         continue;
                     if (inst.Aux is not FunctionSymbol callee)
                         continue;
 
-                    // 命中未内联的 vision 洞函数 → 一定需要采集卡
+                    // 命中采集洞函数（RequiresCapture 清单）→ 一定需要采集卡
                     if (BuiltinFunctions.RequiresCapture(callee))
                         return true;
 

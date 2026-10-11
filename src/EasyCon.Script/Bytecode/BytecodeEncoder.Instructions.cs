@@ -97,6 +97,10 @@ public static partial class BytecodeEncoder
                 case SsaOp.GeqUInt64: EmitCmp(EcsOpcode.GeL, v); break;
                 case SsaOp.EqString: EmitCmp(EcsOpcode.EqS, v); break;
                 case SsaOp.EqPtr: EmitCmp(EcsOpcode.EqP, v); break;
+                case SsaOp.LtPtr: EmitCmp(EcsOpcode.LtL, v); break;
+                case SsaOp.LeqPtr: EmitCmp(EcsOpcode.LeL, v); break;
+                case SsaOp.GtPtr: EmitCmp(EcsOpcode.GtL, v); break;
+                case SsaOp.GeqPtr: EmitCmp(EcsOpcode.GeL, v); break;
                 case SsaOp.EqBool: EmitCmp(EcsOpcode.EqI, v); break;
                 case SsaOp.EqByte: EmitCmp(EcsOpcode.EqI, v); break;
                 case SsaOp.LtByte: EmitCmp(EcsOpcode.LtI, v); break;
@@ -233,11 +237,6 @@ public static partial class BytecodeEncoder
                             throw Fail($"不支持的运行时值 {name}");
                         break;
                     }
-                case SsaOp.Capture: EmitHoleCall(v, "__CAPTURE__"); break;
-                case SsaOp.Ocr: EmitHoleCall(v, "__OCR__"); break;
-                case SsaOp.Roi: EmitHoleCall(v, "__ROI__"); break;
-                case SsaOp.OcrInit: EmitHoleCall(v, "__OCR_INIT__"); break;
-
                 // ---- 调用 ----
                 case SsaOp.Call:
                 case SsaOp.StaticCall:
@@ -333,16 +332,9 @@ public static partial class BytecodeEncoder
                 resultSlot, unchecked((uint)targetId));
         }
 
-        void EmitHoleCall(SsaValue v, string native)
-        {
-            var args = CallArgs(v);
-            EmitStagedCall(EcsOpcode.CallN, _ctx.NativeId(native), args, Slot(v));
-        }
-
         static IReadOnlyList<SsaValue> CallArgs(SsaValue v)
         {
-            // 洞调用（Capture/Ocr/Roi/OcrInit）的 SSA 形态是 Arg0+Arg1+ExtraArgs，
-            // 普通调用是 Arg0+ExtraArgs（Arg1 恒空）——两者都必须完整打包
+            // Arg0+Arg1+ExtraArgs 全量打包（StaticCall 多参形态 Arg1 可非空）
             var args = new List<SsaValue>();
             if (v.Arg0 != null) args.Add(v.Arg0);
             if (v.Arg1 != null) args.Add(v.Arg1);

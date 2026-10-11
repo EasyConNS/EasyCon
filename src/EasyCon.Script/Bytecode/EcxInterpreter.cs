@@ -137,6 +137,14 @@ public sealed class EcxHost
                 return TaggedValue.FromInt(TimeMs());
             case EcsSyscall.OcrConf:
                 return Native?.Invoke(EcsSyscall.Names[id], args, ctx) ?? TaggedValue.FromInt(0);
+            case EcsSyscall.FOpen:
+            case EcsSyscall.FClose:
+            case EcsSyscall.FEof:
+            case EcsSyscall.FileExists:
+                // 文件族其余：句柄/存在性语义在 BuiltinMap（IFileSystem）；缺 File 能力 → 缺省值表
+                return Caps.HasFlag(EcsCaps.File)
+                    ? Native?.Invoke(EcsSyscall.Names[id], args, ctx)
+                    : EcsCapabilityDefaults.GetSyscallDefault(id, args, ctx);
             case EcsSyscall.Beep:
                 if (Caps.HasFlag(EcsCaps.Beep))
                     Beep(args[0].I32, args[1].I32);

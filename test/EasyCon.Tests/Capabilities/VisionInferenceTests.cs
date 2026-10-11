@@ -10,7 +10,7 @@ using System.Collections.Immutable;
 namespace EasyCon.Tests.Capabilities;
 
 /// <summary>
-/// P5 ONNX 推理脚本面：NET_LOAD/NET_RUN 走 L3 名表转发 IInference（stub 演示脚本），
+/// ONNX 推理脚本面：NET_LOAD/NET_SCALE/NET_RUNH 走 L3 名表转发 IInference（stub 演示脚本），
 /// 镜像 Vision 特征位扫描，以及 C VM 对含 Vision 位镜像的拒跑（exit=ECS_ERR_FEAT）。
 /// </summary>
 [TestFixture]
@@ -19,8 +19,9 @@ public class VisionInferenceTests
     const string Script = """
         $net = NET_LOAD("/models/demo.onnx")
         PRINT $net
-        $in = [1, 2, 3]
-        $n = NET_RUN($net, $in)
+        $t = NET_SCALE($net, 1.0, 0.0)
+        PRINT $t
+        $n = NET_RUNH($net, $t)
         PRINT $n
         $o0 = NET_OUT(0)
         PRINT $o0
@@ -29,7 +30,7 @@ public class VisionInferenceTests
     sealed class StubInference : IInference
     {
         public List<string> Loaded = new();
-        public List<float[]> Ran = new();
+        public List<(int Handle, float Scale, float Offset)> Transformed = new();
 
         public int Load(string modelPath)
         {
@@ -37,22 +38,20 @@ public class VisionInferenceTests
             return 7;
         }
 
-        public float[]? Run(int session, float[] input)
-        {
-            Ran.Add(input);
-            return session == 7 ? [0.5f, -1.25f] : null;
-        }
-
         public void Unload(int session) { }
 
-        public int[]? LastOutputShape => null;
+        public int[]? LastOutputShape => [1, 1, 2];
         public int HoldTensor(float[] data, int[] shape) => -1;
 
         public void FreeTensor(int handle) { }
 
-        public float[]? RunHeld(int session, int tensorHandle) => null;
+        public float[]? RunHeld(int session, int tensorHandle) => session == 7 ? [0.5f, -1.25f] : null;
 
-        public int TransformTensor(int handle, float scale, float offset) => -1;
+        public int TransformTensor(int handle, float scale, float offset)
+        {
+            Transformed.Add((handle, scale, offset));
+            return 10;
+        }
 
         public void Dispose() { }
     }
@@ -73,11 +72,11 @@ public class VisionInferenceTests
         };
         session.Run(new CancellationTokenSource().Token, caps);
 
-        // NET_LOAD → 会话句柄；NET_RUN → 输出长度；NET_OUT(0) → 元素（纯标量协议）
+        // NET_LOAD → 会话句柄；NET_SCALE → 张量句柄；NET_RUNH → 输出长度；NET_OUT(0) → 元素（纯标量协议）
         Assert.That(inference.Loaded, Is.EqualTo(new[] { "/models/demo.onnx" }));
-        Assert.That(inference.Ran.Count, Is.EqualTo(1));
-        Assert.That(inference.Ran[0], Is.EqualTo(new[] { 1f, 2f, 3f }));
-        Assert.That(io.Lines, Is.EqualTo(new[] { "7", "2", "0.5" }));
+        Assert.That(inference.Transformed.Count, Is.EqualTo(1));
+        Assert.That(inference.Transformed[0].Scale, Is.EqualTo(1.0f));
+        Assert.That(io.Lines, Is.EqualTo(new[] { "7", "10", "2", "0.5" }));
     }
 
     [Test]
@@ -90,8 +89,8 @@ public class VisionInferenceTests
         var caps = new CapabilitySet { Console = new ConsoleIoAdapter(io) };
         session.Run(new CancellationTokenSource().Token, caps);
 
-        // 无推理能力：NET_LOAD → -1，NET_RUN → 0（长度），NET_OUT → 0
-        Assert.That(io.Lines, Is.EqualTo(new[] { "-1", "0", "0" }));
+        // 无推理能力：NET_LOAD → -1，NET_SCALE/NET_RUNH → 0（缺省值表），NET_OUT → 0
+        Assert.That(io.Lines, Is.EqualTo(new[] { "-1", "0", "0", "0" }));
     }
 
     [Test]
@@ -131,7 +130,7 @@ public class VisionInferenceTests
             // ① C# 缺能力宿主：参考 syscall + Native=null → 缺省值表（录制型宿主收 PRINT 行）
             var host = EcsTestHost.CreateRecording();
             Assert.That(EcxInterpreter.Run(result.Image!, host), Is.EqualTo(0));
-            Assert.That(host.Lines, Is.EqualTo(new[] { "-1", "0", "0" }), "C# 缺省值表降级");
+            Assert.That(host.Lines, Is.EqualTo(new[] { "-1", "0", "0", "0" }), "C# 缺省值表降级");
 
             byte[] ecx = EcsContainer.WriteImage(result.Image!);
             // ② C VM 缺省（降级）

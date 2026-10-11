@@ -97,7 +97,6 @@ public class NetImageTensorTests
         }
 
         public int Load(string modelPath) => throw new NotSupportedException();
-        public float[]? Run(int session, float[] input) => throw new NotSupportedException();
         public float[]? RunHeld(int session, int tensorHandle) => throw new NotSupportedException();
         public void FreeTensor(int handle) { }
         public void Unload(int session) { }

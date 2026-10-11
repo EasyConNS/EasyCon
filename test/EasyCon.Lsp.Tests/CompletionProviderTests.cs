@@ -46,7 +46,7 @@ public class CompletionProviderTests
             Assert.That(labels, Does.Contain("FOPEN"));
             Assert.That(labels, Does.Contain("OCR_CONF"));
             // 内建洞函数（__ 前缀）不对用户暴露
-            Assert.That(labels, Does.Not.Contain("__OCR__"));
+            Assert.That(labels, Does.Not.Contain("__TESSERACT__"));
             Assert.That(labels, Does.Not.Contain("__CAPTURE__"));
         });
 

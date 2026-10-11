@@ -384,3 +384,7 @@ frontend/.venv/
 frontend/**/__pycache__/
 frontend/**/*.pyc
 frontend/**/*.egg-info/
+
+# 真机测试资产（约定见 test/assets/README.md）：模型/截图体积大不入库，本机自备
+test/assets/*
+!test/assets/README.md

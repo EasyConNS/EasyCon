@@ -362,9 +362,7 @@ static class SsaInterprocedural
     private static readonly Dictionary<string, (SsaOp Op, ScriptType Type, SsaValue?[] Extra)> IntrinsicMap = new()
     {
         ["TIME"] = (SsaOp.RuntimeValue, ScriptType.Int, []),
-        ["FRAME"] = (SsaOp.Capture, ScriptType.String, []),  // 0 参数和 4 参数共用，通过参数数区分
-        ["OCR"] = (SsaOp.Ocr, ScriptType.String, []), // 4 参数版本（"chi_sim" 由包装函数内部提供）
-        ["ROI"] = (SsaOp.Roi, ScriptType.String, []),
+        // FRAME/OCR/ROI 已迁通用名表（__CAPTURE__/__TESSERACT__/__ROI__ 洞调用），不再内联
     };
 
     /// <summary>

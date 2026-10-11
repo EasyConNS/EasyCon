@@ -20,7 +20,7 @@ public class CapabilityMatrixTests
     const string Script = """
         $net = NET_LOAD("/m.onnx")
         PRINT $net
-        $n = NET_RUN($net, [1])
+        $n = NET_SCALE($net, 1.0, 0.0)
         PRINT $n
         $o = NET_OUT(0)
         PRINT $o
@@ -98,15 +98,15 @@ public class CapabilityMatrixTests
             var full = EcsTestHost.CreateRecording();
             full.Native = (name, _, ctx) => name switch
             {
-                "NET_LOAD" => TaggedValue.FromInt(7),    // 会话句柄
-                "NET_RUN" => TaggedValue.FromInt(1),     // 输出长度
+                "NET_LOAD" => TaggedValue.FromPtr(7),    // 会话句柄
+                "NET_SCALE" => TaggedValue.FromPtr(10),  // 张量句柄
                 "NET_OUT" => TaggedValue.FromDouble(0.5),
-                "JQ" => ctx.Str("hi"),
+                "__JQ__" => ctx.Str("hi"),
                 _ => null,
             };
             full.ImgLabel = _ => 3;
             Assert.That(EcxInterpreter.Run(image, full), Is.EqualTo(0), "全能力宿主应正常执行");
-            Assert.That(full.Lines, Is.EqualTo(new[] { "7", "1", "0.5", "hi", "", "0", "3" }),
+            Assert.That(full.Lines, Is.EqualTo(new[] { "7", "10", "0.5", "hi", "", "0", "3" }),
                 "全能力档语义不变（降级层不干预有处理器的调用）");
         }
         finally

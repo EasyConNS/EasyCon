@@ -38,7 +38,6 @@ internal static class Constants
         ["APPENDFILE"] = "追加写入文本文件",
         ["FILE_EXISTS"] = "文件是否存在",
         ["NET_LOAD"] = "加载 ONNX 模型，返回网络句柄",
-        ["NET_RUN"] = "执行一次推理",
         ["NET_OUT"] = "读取输出张量元素",
     };
 

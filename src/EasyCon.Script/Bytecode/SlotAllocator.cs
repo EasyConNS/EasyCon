@@ -77,7 +77,11 @@ public static partial class BytecodeEncoder
             SsaOp.GtByte => 4,
             SsaOp.GeqByte => 5,
             SsaOp.EqPtr => 18,
-            SsaOp.NeqPtr => 19,                       // Ptr = I64 载荷
+            SsaOp.NeqPtr => 19,
+            SsaOp.LtPtr => 20,
+            SsaOp.LeqPtr => 21,
+            SsaOp.GtPtr => 22,
+            SsaOp.GeqPtr => 23,                       // Ptr = I64 载荷
             _ => null,
         };
 

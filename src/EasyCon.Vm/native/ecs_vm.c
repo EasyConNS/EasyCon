@@ -1184,8 +1184,8 @@ static int ecs_cap_syscall_default(ecs_vm *vm, int32_t id, ecs_value *args, ecs_
         return 1;
     case ECS_SYSCALL_FOPEN:
         *ret = (ecs_value){0};
-        ret->tag = ECS_INT;
-        ret->i32 = -1;         /* 无效句柄 */
+        ret->tag = ECS_PTR;
+        ret->i64 = -1;         /* 无效句柄（PTR 类型，与 C# 缺省值表同值） */
         return 1;
     case ECS_SYSCALL_FEOF:
     case ECS_SYSCALL_FILE_EXISTS:
@@ -1224,7 +1224,7 @@ static int ecs_cap_native_default(ecs_vm *vm, const char *name, ecs_value *ret)
         return 1;
     }
     static const char *const str_defaults[] = {
-        "__CAPTURE__", "__ROI__", "__OCR__", "ENCODE", "JQ",
+        "__CAPTURE__", "__ROI__", "__TESSERACT__", "__CTC_FOLD__", "__ENCODE__", "__JQ__",
     };
     for (size_t i = 0; i < sizeof(str_defaults) / sizeof(str_defaults[0]); i++) {
         if (strcmp(name, str_defaults[i]) == 0) {
@@ -1232,12 +1232,33 @@ static int ecs_cap_native_default(ecs_vm *vm, const char *name, ecs_value *ret)
             return 1;
         }
     }
-    if (strcmp(name, "__OCR_INIT__") == 0 || strcmp(name, "NET_RUN") == 0) {
+    if (strcmp(name, "__TESSERACT_INIT__") == 0) {
         *ret = (ecs_value){0};
-        ret->tag = ECS_INT;    /* 初始化失败 / 输出长度 0 */
+        ret->tag = ECS_INT;    /* 初始化失败语义：false */
         return 1;
     }
     if (strcmp(name, "NET_LOAD") == 0) {
+        *ret = (ecs_value){0};
+        ret->tag = ECS_PTR;
+        ret->i64 = -1;         /* 会话句柄：PTR -1 = 失败 */
+        return 1;
+    }
+    /* 张量句柄：ECS_PTR 0 = 无效句柄（与 C# 缺省值表同值） */
+    if (strcmp(name, "__NET_IMAGE__") == 0 || strcmp(name, "NET_SCALE") == 0) {
+        *ret = (ecs_value){0};
+        ret->tag = ECS_PTR;
+        ret->i64 = 0;
+        return 1;
+    }
+    /* 长度/状态：ECS_INT 0；ARGMAX = -1 */
+    if (strcmp(name, "NET_RUNH") == 0 || strcmp(name, "NET_ROWS") == 0 ||
+        strcmp(name, "NET_FREE") == 0 || strcmp(name, "NET_UNLOAD") == 0) {
+        *ret = (ecs_value){0};
+        ret->tag = ECS_INT;
+        ret->i32 = 0;
+        return 1;
+    }
+    if (strcmp(name, "NET_ARGMAX") == 0) {
         *ret = (ecs_value){0};
         ret->tag = ECS_INT;
         ret->i32 = -1;

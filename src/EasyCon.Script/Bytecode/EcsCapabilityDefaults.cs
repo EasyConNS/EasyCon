@@ -31,7 +31,7 @@ public static class EcsCapabilityDefaults
             case EcsSyscall.ReadFile:
                 return ctx.Str("");
             case EcsSyscall.FOpen:
-                return TaggedValue.FromInt(-1);   /* 无效句柄 */
+                return TaggedValue.FromPtr(-1);   /* 无效句柄（PTR 类型——AsPtr 消费方契约） */
             case EcsSyscall.FEof:
             case EcsSyscall.FileExists:
                 return TaggedValue.FromInt(0);
@@ -66,16 +66,25 @@ public static class EcsCapabilityDefaults
         {
             case "__CAPTURE__":   /* 采集/ROI 帧 → 空图串 */
             case "__ROI__":
-            case "__OCR__":       /* OCR → 空串 */
-            case "ENCODE":
-            case "JQ":
+            case "__TESSERACT__": /* Tesseract OCR → 空串 */
+            case "__CTC_FOLD__":  /* CTC 折叠 → 空串 */
+            case "__ENCODE__":
+            case "__JQ__":
                 return ctx.Str("");
-            case "__OCR_INIT__":  /* 初始化失败语义：false */
+            case "__TESSERACT_INIT__":  /* 初始化失败语义：false */
                 return TaggedValue.FromInt(0);
-            case "NET_LOAD":      /* ONNX 推理族（VisionInferenceTests 缺能力档同值） */
+            case "NET_LOAD":      /* 会话句柄：PTR -1 = 失败（VisionInferenceTests 缺能力档同值） */
+                return TaggedValue.FromPtr(-1);
+            case "__NET_IMAGE__": /* 张量句柄：PTR 0 = 无效句柄（与各 Impl 的 null-inference 分支同值） */
+            case "NET_SCALE":
+                return TaggedValue.FromPtr(0);
+            case "NET_RUNH":      /* 输出长度：INT */
+            case "NET_ROWS":
+            case "NET_FREE":      /* 状态：INT */
+            case "NET_UNLOAD":
+                return TaggedValue.FromInt(0);
+            case "NET_ARGMAX":
                 return TaggedValue.FromInt(-1);
-            case "NET_RUN":
-                return TaggedValue.FromInt(0);
             case "NET_OUT":
                 return TaggedValue.FromDouble(0.0);
             default:

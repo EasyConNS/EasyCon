@@ -394,8 +394,8 @@ $line = FREAD(0, 0)
 > 实验功能。脚本带 VISION 标记，面向桌面运行；单片机加载期即识别为桌面专属脚本。
 > 推理结果与具体模型强相关，模型文件由运行环境提供。
 
-### NET_LOAD(path): INT
-加载 ONNX 模型，返回会话句柄；失败返回 -1。
+### NET_LOAD(path): PTR
+加载 ONNX 模型，返回会话句柄（PTR）；失败返回 -1。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
@@ -405,17 +405,29 @@ $line = FREAD(0, 0)
 $net = NET_LOAD("models/demo.onnx")
 ```
 
-### NET_RUN(net, inputArr): INT
-把数值数组送入模型推理，返回**输出元素个数**（失败返回 0）。
+### NET_SCALE(tensor, scale, offset): PTR
+对张量做逐元素仿射变换 `v * scale + offset`（如 PP-OCR 归一化），返回新张量句柄（PTR）。
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
-| net | INT | NET_LOAD 返回的会话句柄 |
-| inputArr | 数组 | 输入数据（数值数组，展平成一维） |
+| tensor | PTR | NET_IMAGE / PPOCR_TENSOR 返回的张量句柄 |
+| scale | DOUBLE | 乘法系数 |
+| offset | DOUBLE | 加法偏移 |
 
 ```ecs
-$in = [1, 2, 3]
-$n = NET_RUN($net, $in)
+$t = NET_SCALE($img, 1.0 / 255, -0.25)
+```
+
+### NET_RUNH(net, tensor): INT
+把张量句柄送入模型推理，返回**输出元素个数**（失败返回 0）。
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| net | PTR | NET_LOAD 返回的会话句柄 |
+| tensor | PTR | 张量句柄 |
+
+```ecs
+$n = NET_RUNH($net, $t)
 ```
 
 ### NET_OUT(index): DOUBLE
@@ -425,12 +437,11 @@ $n = NET_RUN($net, $in)
 |------|------|------|
 | index | INT | 输出元素下标（从 0 开始） |
 
-设计为"标量协议"：先跑 NET_RUN 拿个数，再逐个 NET_OUT 读取。
+设计为"标量协议"：先跑 NET_RUNH 拿个数，再逐个 NET_OUT 读取。
 
 ```ecs
 IF $net >= 0
-    $in = [1, 2, 3]
-    $n = NET_RUN($net, $in)
+    $n = NET_RUNH($net, $t)
     $i = 0
     WHILE $i < $n
         $v = NET_OUT($i)
@@ -526,7 +537,7 @@ $n = NET_RUNH($net, $t)
 | FOPEN/FCLOSE/FEOF | 文件句柄（后续版本开放） | - | 预留 | — |
 | READFILE/WRITEFILE/APPENDFILE/FILE_EXISTS | 整文件读写（后续版本开放） | - | 预留 | — |
 | NET_LOAD(path) | 加载 ONNX 模型 | INT | ✔ | 镜像拒跑 |
-| NET_RUN(net, in) | 推理，返回输出个数 | INT | ✔ | 镜像拒跑 |
+| NET_RUNH(net, tensor) | 推理，返回输出个数 | INT | ✔ | 镜像拒跑 |
 | NET_OUT(i) | 读第 i 个输出 | DOUBLE | ✔ | 镜像拒跑 |
 
 > - 桌面 = GUI / CLI 运行；单片机 = 编译 .ecx 烧录运行。

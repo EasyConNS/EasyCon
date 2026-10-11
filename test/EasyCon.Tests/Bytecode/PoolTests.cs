@@ -59,7 +59,7 @@ public class PoolTests
         sb.AppendLine("    ENDIF");
         sb.AppendLine("    RETURN 0");
         sb.AppendLine("ENDFUNC");
-        sb.AppendLine("deep(100000)");
+        sb.AppendLine("deep 100000");
         sb.AppendLine("PRINT \"unreachable\"");
 
         var result = Compilation.CompileSource(sb.ToString(), new CompileOptions { UseDiskCache = false, UseProcessCache = false });

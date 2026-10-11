@@ -15,7 +15,9 @@
 | **L0 机器** | 算术/比较/控制流/容器/结构体/调用 | VM 核指令 | 天然支持 |
 | **L1 基础能力** | `WAIT`、按键、摇杆、`RAND` | 专用指令（`WaitI/KeyI/Stick*/Rand`），直连宿主回调 | 全支持 |
 | **L2 平台 syscall** | `FWRITE/FREAD/文件族/ALERT/ARG/ENV/APP/TIME/BEEP/AMIIBO/OCR_CONF` | `CallN` EXT 旗标 + **编号**（§7.3），语义在宿主参考实现 | 参考桩：静默/默认值（TIME=0、FWRITE 返 len、串返空、AMIIBO 槽 0–19 越界静默） |
-| **L3 动态原生** | 采集洞 `__CAPTURE__` 系、EXTERN FFI、`ENCODE/JQ`、推理实验 `NET_*` | `CallN` 名表**按名**分发 | S-21 缺省值表降级（OCR/ROI/ENCODE/JQ→""、NET_LOAD→-1、NET_RUN→0、NET_OUT→0.0、FFI→0）；strict_caps 恢复响亮 |
+| **L3 动态原生** | 采集洞 `__CAPTURE__` 系、EXTERN FFI、std 加速洞 `__ENCODE__/__JQ__/__CTC_FOLD__`、推理 `NET_*` | `CallN` 名表**按名**分发 | S-21 缺省值表降级（OCR/ROI/CTC_FOLD/ENCODE/JQ→""、NET_LOAD→-1、NET 句柄族→0、NET_ARGMAX→-1、NET_OUT→0.0、FFI→0）；strict_caps 恢复响亮 |
+
+> **L3 名表面准入规则**：只收两类——(a) 能力洞（语义由 CapabilitySet 定义：采集/OCR/视觉/推理）；(b) std 加速洞（std 定 API 与语义，宿主仅作性能加速器，如 `__CTC_FOLD__`/`__JQ__`/`__ENCODE__`）。实用工具的 API 与语义一律归 std，不得直接占用本面。
 
 组件清单（现状）：
 
@@ -284,7 +286,7 @@ Link 在深拷贝副本上进行，不污染调用方产物（`.ecm` 可安全 r
 末    entry:u32
 ```
 
-原生名表只承载 L3（采集洞/FFI/ENCODE/JQ）；L2 syscall 编号直传 EXT，不占名表
+原生名表只承载 L3（采集洞/FFI/std 加速洞 `__ENCODE__/__JQ__/__CTC_FOLD__`）；L2 syscall 编号直传 EXT，不占名表
 （纯内建脚本名表为空）。
 
 ---
@@ -329,7 +331,7 @@ feats = 头部掩码 | (flags.I ? FEAT_IL : 0)     ← 元信息：缺省不拒�
   L2/L3 按缺省值表降级（C# EcsCapabilityDefaults ≡ C ecs_cap_*_default，四路对拍锁定）：
     FWRITE→len  FREAD/READFILE/ARG/ENV/APP→""  FOPEN→-1  FEof/FILE_EXISTS/TIME/OCR_CONF→0
     FClose/WriteFile/AppendFile/Alert/Beep/Amiibo→no-op（Void）
-    __CAPTURE__/__ROI__/__OCR__/ENCODE/JQ→""  __OCR_INIT__→0  NET_LOAD→-1  NET_RUN→0  NET_OUT→0.0
+    __CAPTURE__/__ROI__/__TESSERACT__/__CTC_FOLD__/__ENCODE__/__JQ__→""  __TESSERACT_INIT__→0  NET_LOAD→-1  __NET_IMAGE__/NET_RUNH/NET_SCALE/NET_ROWS/NET_FREE/NET_UNLOAD→0  NET_ARGMAX→-1  NET_OUT→0.0
     EXTERN FFI（名含 !）→0；表外（未知编号/未知名）不降级 → ECS_ERR_NOSUCHNATIVE
   图像标签（Img）→ 目标槽 ← -1
 strict_caps 宿主（ecs-vm --strict-caps / C# EcxHost.StrictCaps）恢复响亮：
@@ -369,8 +371,9 @@ strict_caps 宿主（ecs-vm --strict-caps / C# EcxHost.StrictCaps）恢复响亮
 | WAIT RAND LEN APPEND STRING INT `__CAPTURE__` 系 | Intrinsic | SSA 内联 → 域指令/纯指令，无宿主调用 |
 | PRINT TIME | StdlibSource | stdlib ECS 源码（PRINT 体调 FWRITE syscall；TIME 体引用 `__TIME__` RuntimeValue → TIME syscall） |
 | ALERT ARG ENV APP BEEP AMIIBO OCR_CONF + 文件族 FOPEN..FILE_EXISTS | Syscall | CallN 编号（§7.3）→ `EcxHost.ReferenceSyscall` / C harness 桩 |
-| ENCODE JQ | NativeName | CallN 名表 → 宿主 `Native`（EcxVm BuiltinMap） |
-| NET_LOAD NET_RUN NET_OUT | NativeName | CallN 名表 → 宿主 `Native`（`IInference` 能力；VISION 特征位；纯标量协议——原生边界不携带数组） |
+| `__ENCODE__` `__JQ__` `__CTC_FOLD__` | NativeName | CallN 名表 → 宿主 `Native`（EcxVm BuiltinMap；std JQ/ENCODE/CTC_FOLD 的加速洞） |
+| JQ ENCODE READFILE WRITEFILE APPENDFILE | StdlibSource | stdlib ECS 源码实现（JQ/ENCODE 体调各自加速洞；READFILE/WRITEFILE/APPENDFILE 组合 FOPEN/FREAD/FWRITE/FCLOSE） |
+| NET_LOAD NET_RUNH NET_SCALE NET_ARGMAX NET_ROWS NET_FREE NET_UNLOAD NET_OUT | NativeName | CallN 名表 → 宿主 `Native`（`IInference` 能力；VISION 特征位；纯标量协议——原生边界不携带数组） |
 | EXTERN "库" FUNC | L3 FFI | CallN 名表 `"库!导出名"` → EcxVm externMap → NativeLoader |
 
 ### 7.1 分层接口（`ecs_host`，全部回调可 NULL）

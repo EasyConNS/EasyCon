@@ -1319,18 +1319,19 @@ NET_UNLOAD($net)
 
 ---
 
-## ONNX 推理实验函数（NET_*）
+## ONNX 推理函数（NET_*）
 
-> 实验面：走 L3 名表，宿主须装配 `IInference` 能力（OpenCvSharp.Dnn 后端）；
+> 走 L3 名表，宿主须装配 `IInference` 能力（OpenCvSharp.Dnn 后端）；
 > 镜像带 VISION 特征位——单片机参考桩不支持，加载期拒跑（ECS_ERR_FEAT）。
 
 ```ecs
 # 加载 ONNX 模型，返回会话句柄（-1 = 失败）
 $net = NET_LOAD("models/demo.onnx")
 
-# 执行推理：输入为数值数组（展平），返回输出元素个数（0 = 失败）
-$in = [1, 2, 3]
-$n = NET_RUN($net, $in)
+# 句柄族：图像/张量大数组驻留宿主，脚本只见句柄
+$img = NET_IMAGE(0, 0, 0, 0, 64, 32, "rgb")   # 采集 → 张量句柄
+$t = NET_SCALE($img, 1.0 / 255, -0.25)        # 仿射变换（如 PP-OCR 归一化）
+$n = NET_RUNH($net, $t)                       # 推理，返回输出元素个数（0 = 失败）
 
 # 逐元素读取输出（越界返回 0）
 $o0 = NET_OUT(0)
@@ -1338,8 +1339,8 @@ PRINT $o0
 ```
 
 约束：
-- 纯标量协议——原生调用边界不携带数组，输出只能经 `NET_OUT(i)` 逐个读取。
-- 未装配推理能力时：`NET_LOAD` 返回 -1、`NET_RUN` 返回 0、`NET_OUT` 返回 0（不报错）。
+- 纯标量协议——原生调用边界不携带数组，大数组驻留宿主（张量/输出经句柄引用），输出经 `NET_OUT(i)` 逐个读取。
+- 未装配推理能力时按 S-21 缺省值表降级（不报错）：`NET_LOAD` 返回 -1、`NET_ARGMAX` 返回 -1、句柄族（`__NET_IMAGE__`/`NET_RUNH`/`NET_SCALE`/`NET_ROWS`/`NET_FREE`/`NET_UNLOAD`）返回 0、`NET_OUT` 返回 0。
 - 模型文件为外部资产，不入库。
 
 ---

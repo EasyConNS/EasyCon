@@ -144,8 +144,8 @@ FUNC csv_open($path:STRING):INT
     NEXT
 
     # 释放资源
-    lib_free($buf)
-    lib_fclose($fp)
+    lib_free $buf
+    lib_fclose $fp
 
     RETURN LEN($csv_lines)
 ENDFUNC

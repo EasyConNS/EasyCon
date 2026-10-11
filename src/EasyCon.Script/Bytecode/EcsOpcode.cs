@@ -183,7 +183,7 @@ public static class EcsImageFeatures
     public const uint Capture = 0x2;   // 可达采集洞（__CAPTURE__ 系）
     public const uint Ffi = 0x4;       // EXTERN FFI（"库!导出名" 动态原生）
     public const uint File = 0x8;      // 文件族 syscall
-    public const uint Vision = 0x10;   // ONNX 推理实验函数（NET_LOAD/NET_RUN/NET_OUT）；缺能力宿主按缺省值表降级
+    public const uint Vision = 0x10;   // ONNX 推理函数（NET_LOAD/NET_RUNH/NET_OUT 句柄族）；缺能力宿主按缺省值表降级
 }
 
 /// <summary>

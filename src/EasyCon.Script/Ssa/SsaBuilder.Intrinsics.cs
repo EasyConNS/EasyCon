@@ -48,56 +48,6 @@ sealed partial class SsaBuilder
             var max = EmitExpression(call.Arguments[0]);
             return EmitAndAdd(SsaOp.Rand, ScriptType.Int, max);
         }
-        if (fn == BuiltinFunctions.CaptureHole)
-        {
-            var x = EmitExpression(call.Arguments[0]);
-            var y = EmitExpression(call.Arguments[1]);
-            var w = EmitExpression(call.Arguments[2]);
-            var h = EmitExpression(call.Arguments[3]);
-            var v = NewValue(SsaOp.Capture, ScriptType.String, x, y);
-            v.ExtraArgs = new List<SsaValue> { w, h };
-            AddExtraUses(v.ExtraArgs);
-            AddInst(v);
-            return v;
-        }
-        if (fn == BuiltinFunctions.OcrHole)
-        {
-            var x = EmitExpression(call.Arguments[0]);
-            var y = EmitExpression(call.Arguments[1]);
-            var w = EmitExpression(call.Arguments[2]);
-            var h = EmitExpression(call.Arguments[3]);
-            var lang = EmitExpression(call.Arguments[4]);
-            var v = NewValue(SsaOp.Ocr, ScriptType.String, x, y);
-            v.ExtraArgs = new List<SsaValue> { w, h, lang };
-            AddExtraUses(v.ExtraArgs);
-            AddInst(v);
-            return v;
-        }
-        if (fn == BuiltinFunctions.RoiHole)
-        {
-            var image = EmitExpression(call.Arguments[0]);
-            var x = EmitExpression(call.Arguments[1]);
-            var y = EmitExpression(call.Arguments[2]);
-            var w = EmitExpression(call.Arguments[3]);
-            var h = EmitExpression(call.Arguments[4]);
-            var v = NewValue(SsaOp.Roi, ScriptType.String, image, x);
-            v.ExtraArgs = new List<SsaValue> { y, w, h };
-            AddExtraUses(v.ExtraArgs);
-            AddInst(v);
-            return v;
-        }
-        if (fn == BuiltinFunctions.OcrInitHole)
-        {
-            var lang = EmitExpression(call.Arguments[0]);
-            var dataPath = EmitExpression(call.Arguments[1]);
-            var engineMode = EmitExpression(call.Arguments[2]);
-            var psmode = EmitExpression(call.Arguments[3]);
-            var v = NewValue(SsaOp.OcrInit, ScriptType.Bool, lang, dataPath);
-            v.ExtraArgs = new List<SsaValue> { engineMode, psmode };
-            AddExtraUses(v.ExtraArgs);
-            AddInst(v);
-            return v;
-        }
         throw new InvalidOperationException($"未知内联函数: {fn.Name}");
     }
 
@@ -179,6 +129,10 @@ sealed partial class SsaBuilder
         BoundBinaryOperatorKind.Equals when op.LeftType.Equals(ScriptType.Bool) => SsaOp.EqBool,
         BoundBinaryOperatorKind.Equals when op.LeftType.Equals(ScriptType.String) => SsaOp.EqString,
         BoundBinaryOperatorKind.Equals when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.EqPtr,
+        BoundBinaryOperatorKind.Less when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.LtPtr,
+        BoundBinaryOperatorKind.LessOrEquals when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.LeqPtr,
+        BoundBinaryOperatorKind.Greater when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.GtPtr,
+        BoundBinaryOperatorKind.GreaterOrEquals when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.GeqPtr,
         BoundBinaryOperatorKind.Equals when op.LeftType.Equals(ScriptType.Byte) => SsaOp.EqByte,
 
         BoundBinaryOperatorKind.NotEquals when op.LeftType.Equals(ScriptType.Int) => SsaOp.NeqInt,
@@ -188,6 +142,10 @@ sealed partial class SsaBuilder
         BoundBinaryOperatorKind.NotEquals when op.LeftType.Equals(ScriptType.Bool) => SsaOp.NeqBool,
         BoundBinaryOperatorKind.NotEquals when op.LeftType.Equals(ScriptType.String) => SsaOp.NeqString,
         BoundBinaryOperatorKind.NotEquals when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.NeqPtr,
+        BoundBinaryOperatorKind.Less when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.LtPtr,
+        BoundBinaryOperatorKind.LessOrEquals when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.LeqPtr,
+        BoundBinaryOperatorKind.Greater when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.GtPtr,
+        BoundBinaryOperatorKind.GreaterOrEquals when op.LeftType.Equals(ScriptType.Ptr) => SsaOp.GeqPtr,
         BoundBinaryOperatorKind.NotEquals when op.LeftType.Equals(ScriptType.Byte) => SsaOp.NeqByte,
 
         BoundBinaryOperatorKind.Less when op.LeftType.Equals(ScriptType.Int) => SsaOp.LtInt,
