@@ -275,9 +275,9 @@ internal static class BuiltinCallable
                 using var rgb = new Mat();
                 Cv2.CvtColor(resized, rgb, ColorConversionCodes.BGR2RGB);
                 data = new float[rw * rh * 3];
-                MarshalPlaneCopy(rgb, data, 0, rw * rh);       // R
-                MarshalPlaneCopy(rgb, data, rw * rh, rw * rh); // G
-                MarshalPlaneCopy(rgb, data, 2 * rw * rh, rw * rh); // B
+                MarshalPlaneCopy(rgb, data, 0, rw * rh, 0);          // R
+                MarshalPlaneCopy(rgb, data, rw * rh, rw * rh, 1);    // G
+                MarshalPlaneCopy(rgb, data, 2 * rw * rh, rw * rh, 2); // B
                 shape = [1, 3, rh, rw];
             }
             else
@@ -285,7 +285,7 @@ internal static class BuiltinCallable
                 using var gray = new Mat();
                 Cv2.CvtColor(resized, gray, ColorConversionCodes.BGR2GRAY);
                 data = new float[rw * rh];
-                MarshalPlaneCopy(gray, data, 0, rw * rh);
+                MarshalPlaneCopy(gray, data, 0, rw * rh, 0);
                 shape = [1, 1, rh, rw];
             }
 
@@ -298,12 +298,12 @@ internal static class BuiltinCallable
     }
 
     /// <summary>把 CV_8UC1/8UC3 Mat 的单个通道拷入目标数组（interleave 布局 → 平面布局）。</summary>
-    static unsafe void MarshalPlaneCopy(Mat source, float[] target, int targetOffset, int planeLength)
+    static unsafe void MarshalPlaneCopy(Mat source, float[] target, int targetOffset, int planeLength, int sourceChannel)
     {
         int channels = source.Channels();
         byte* p = (byte*)source.Data;
         for (int i = 0; i < planeLength; i++)
-            target[targetOffset + i] = p[i * channels];
+            target[targetOffset + i] = p[i * channels + sourceChannel];
     }
 
     public static Value ImplNetRunH(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
