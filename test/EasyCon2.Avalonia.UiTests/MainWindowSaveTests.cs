@@ -377,8 +377,7 @@ public class MainWindowSaveTests
             services,
             services,
             SynchronousUiDispatcher.Instance,
-            loadUserConfig: () => config ?? new ConfigState(),
-            saveUserConfig: _ => { });
+            userSettings: new UserSettingsService(() => config ?? new ConfigState(), _ => { }));
     }
 
     private static void AddStyleIfMissing(string uri)
@@ -482,11 +481,8 @@ public class MainWindowSaveTests
         public Task<DialogColor?> PickColorAsync(DialogColor current) => Task.FromResult<DialogColor?>(null);
         public Task<string[]?> ShowScriptArgsDialogAsync() => Task.FromResult<string[]?>(null);
         public Task<bool> ConfirmAsync(string title, string message) => Task.FromResult(false);
-        public void ShowESPConfigWindow() { }
-        public void ShowAlertConfigWindow() { }
-        public void ShowModelsConfigWindow() { }
-        public void ShowMcpConfigWindow() { }
-        public void ShowKeyMappingWindow() { }
-        public void ShowScriptSyntaxWindow() { }
+        public Window? Owner { get; set; }
+        public void Register(string key, Func<Window> factory) { }
+        public bool Show(string key) => false;
     }
 }

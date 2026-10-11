@@ -6,26 +6,23 @@ using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Config;
 using EasyCon.Core.LLM.Agent;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon2.Avalonia.AiAgent;
 using EasyCon2.Avalonia.Connection;
 using EasyCon2.Avalonia.FileTree;
 using EasyCon2.Avalonia.Markup;
 using EasyCon2.Avalonia.Mcp;
 using EasyCon2.Avalonia.Models;
-using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Monitoring;
 using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Shell;
 using EasyCon2.Avalonia.TagEditor;
 using EasyCon2.Avalonia.Terminal;
-using OpenCvSharp;
 using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using ILogService = EasyCon.Core.Services.ILogService;
@@ -35,8 +32,8 @@ namespace EasyCon2.Avalonia.Shell;
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-    private static readonly string NoScriptPathText = L10n.T("Text.Status.NoScriptSelected");
-    private static readonly string UntitledScriptText = L10n.T("Text.Status.UntitledScript");
+    // 脚本文档四件套（路径/文本/脏标记/保存闸门）的状态机，语义见 IScriptDocumentService
+    private readonly IScriptDocumentService _doc;
 
     private readonly ILogService _logService;
     private readonly IDeviceService _deviceService;
@@ -45,8 +42,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IControllerService _controllerService;
     private readonly IDialogService _dialogService;
     private readonly IWindowService _windowService;
-    private readonly Func<ConfigState> _loadUserConfig;
-    private readonly Action<ConfigState> _saveUserConfig;
+    private readonly IUpdateService _updateService;
+    private readonly IUserSettingsService _settings;
+    private readonly IFileStorage _fileStorage;
+    private readonly IFileSystem _fileSystem;
     private readonly ToolCallService _toolCallService;
     private readonly IImageProcessor? _imageProcessor;
     private readonly IMcpManager _mcpManager;
@@ -54,8 +53,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private MonitorViewModel? _monitorViewModel;
     private readonly FileTreeViewModel _fileTreeViewModel;
     private string? _projectDirectoryPath;
-    private ConfigState _userConfig = new();
-    private bool _isLoadingUserSettings;
 
     /// <summary>日志环形缓冲，供 AI 工具读取近期运行日志。</summary>
     private const int LogBufferSize = 200;
@@ -91,9 +88,8 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _checkUpdateButtonText = "检查更新";
 
-    // 当前脚本路径
-    [ObservableProperty]
-    private string _currentScriptPath = NoScriptPathText;
+    // 当前脚本路径（状态由 _doc 持有，代理属性保持 XAML/测试兼容；通知经 OnDocumentPropertyChanged 转发）
+    public string CurrentScriptPath { get => _doc.CurrentPath; set => _doc.CurrentPath = value; }
 
     // 日志输出行集合（TerminalControl 绑定）
     public ObservableCollection<TerminalLine> LogLines { get; } = new();
@@ -144,9 +140,11 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool IsFeatureCenterTabSelected => SelectedEditorTab == 3;
     public bool IsCardEditorHeaderVisible => IsTextEditorTabSelected && !AiAgent.IsOpen;
 
-    // 标签编辑器 ViewModel
-    [ObservableProperty]
-    private TagEditorViewModel? _tagEditorViewModel;
+    // 标签编辑器协调器：持有唯一的 TagEditorViewModel 实例，负责截图/标注测试/图片打开流程
+    private TagEditorCoordinator? _tagCoordinator;
+
+    // 标签编辑器 ViewModel（转发协调器持有的实例；构造完成后恒非空，实例终生不变）
+    public TagEditorViewModel? TagEditorViewModel => _tagCoordinator?.ViewModel;
 
     public AiAgentViewModel AiAgent { get; }
 
@@ -155,8 +153,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         get
         {
-            if (string.IsNullOrEmpty(CurrentScriptPath) || CurrentScriptPath == NoScriptPathText)
-                return UntitledScriptText;
+            if (string.IsNullOrEmpty(CurrentScriptPath) || CurrentScriptPath == ScriptPathSentinels.NoScriptPath)
+                return ScriptPathSentinels.UntitledScript;
             if (CurrentScriptPath.Length <= 30)
                 return CurrentScriptPath;
             var fileName = Path.GetFileName(CurrentScriptPath);
@@ -203,7 +201,7 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedLanguageCodeChanged(string value)
     {
         App.SetLocale(value);
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     [ObservableProperty]
@@ -252,10 +250,13 @@ public partial class MainWindowViewModel : ViewModelBase
     public IAsyncRelayCommand CheckUpdateCommand { get; }
     public IRelayCommand OpenGitHubCommand { get; }
 
-    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService, EasyCon2.Avalonia.Services.IUiDispatcher uiDispatcher, IImageProcessor? imageProcessor = null, Func<ConfigState>? loadUserConfig = null, Action<ConfigState>? saveUserConfig = null)
+    public MainWindowViewModel(ILogService logService, IDeviceService deviceService, ICaptureService captureService, IScriptService scriptService, IControllerService controllerService, IDialogService dialogService, IWindowService windowService, EasyCon2.Avalonia.Services.IUiDispatcher uiDispatcher, IImageProcessor? imageProcessor = null, EasyCon2.Avalonia.Services.IUpdateService? updateService = null, EasyCon2.Avalonia.Services.IUserSettingsService? userSettings = null, IFileStorage? fileStorage = null, IFileSystem? fileSystem = null)
     {
-        _loadUserConfig = loadUserConfig ?? ConfigManager.LoadConfig;
-        _saveUserConfig = saveUserConfig ?? ConfigManager.SaveConfig;
+        _settings = userSettings ?? new UserSettingsService();
+        // 脚本文档状态机（必须在任何读代理属性之前就位）；状态变化的对外通知统一经订阅块同步转发，
+        // 复刻原 ObservableProperty 生成 setter + On*Changed partial 的全部通知语义（无 Dispatcher 转发）。
+        _doc = new ScriptDocumentService(logService);
+        _doc.PropertyChanged += OnDocumentPropertyChanged;
         // 初始化 AI Agent，注入编辑区服务
         _toolCallService = new ToolCallService(
             scriptService, captureService, deviceService, _logBuffer,
@@ -271,7 +272,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 scriptService.IsRunning)
         );
         _mcpManager = new McpManager(logService);
-        AiAgent = new AiAgentViewModel(_toolCallService, _mcpManager, uiDispatcher);
+        // AI Agent 诊断路由到日志文件（替代丢失的 Console 输出；原为 AiAgentViewModel.DiagLog 静态汇点）
+        AiAgent = new AiAgentViewModel(_toolCallService, _mcpManager, uiDispatcher,
+            diagLog: message => logService.AddLog(message));
         _imageProcessor = imageProcessor;
         AiAgent.PropertyChanged += (_, e) =>
         {
@@ -296,6 +299,9 @@ public partial class MainWindowViewModel : ViewModelBase
         _controllerService = controllerService;
         _dialogService = dialogService;
         _windowService = windowService;
+        _updateService = updateService ?? new GiteeUpdateService();
+        _fileStorage = fileStorage ?? new LocalFileStorage();
+        _fileSystem = fileSystem ?? LocalFileSystem.Instance;
 
         // 连接编排子 ViewModel（Switch 必须先于 Controller：后者依赖前者的连接状态）
         Switch = new SwitchConnectionViewModel(deviceService, logService, uiDispatcher);
@@ -309,7 +315,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // 子 VM 与主 VM 的联动
         Switch.DeviceLost += () => IsRecording = false;
         Capture.CaptureConnected += ShowMonitor;
-        Capture.CaptureTypeChanged += ScheduleSaveUserSettings;
+        Capture.CaptureTypeChanged += () => _settings.ScheduleSave(CollectUserSettings);
         Capture.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(CaptureConnectionViewModel.IsCaptureSourceConnected) && TagEditorViewModel != null)
@@ -420,7 +426,7 @@ public partial class MainWindowViewModel : ViewModelBase
         CheckUpdateCommand = new AsyncRelayCommand(CheckUpdateAsync);
         OpenGitHubCommand = new RelayCommand(OpenGitHub);
 
-        LoadUserSettings();
+        _settings.Load(ApplyUserSettings);
         InitializeSampleData();
 
         _runTimer.Elapsed += (s, e) =>
@@ -490,168 +496,63 @@ public partial class MainWindowViewModel : ViewModelBase
             return null;
         }
     }
-    private void LoadUserSettings()
+    /// <summary>启动时应用用户配置到 VM 属性（apply 方向），由 _settings.Load 调用（IsLoading 保护期内）。</summary>
+    private void ApplyUserSettings(ConfigState cfg)
     {
-        _isLoadingUserSettings = true;
-        try
-        {
-            _userConfig = _loadUserConfig();
-            _fileTreeViewModel.SelectSortModeCommand.Execute(
-                FileTreeSortModeSettings.FromSettingValue(_userConfig.FileTreeSortMode));
+        _fileTreeViewModel.SelectSortModeCommand.Execute(
+            FileTreeSortModeSettings.FromSettingValue(cfg.FileTreeSortMode));
 
-            Capture.SelectedCaptureType = NormalizeCaptureType(_userConfig.CaptureType);
-            IsAutoCompletionEnabled = _userConfig.EnableAutoCompletion;
-            ShowFolding = _userConfig.ShowFolding;
-            IsHighResolutionTimingEnabled = _userConfig.HighResolutionTiming;
-            _scriptService.HighResolutionTiming = IsHighResolutionTimingEnabled;
-            ShowDebugInfo = _userConfig.ShowDebugInfo;
-            var language = !string.IsNullOrEmpty(_userConfig.LanguageCode) && LanguageOptions.Contains(_userConfig.LanguageCode)
-                ? _userConfig.LanguageCode
-                : "zh_CN";
-            SelectedLanguageCode = language;
-            App.SetLocale(language);
-            WelcomeText = _userConfig.WelcomeText ?? ConfigState.DefaultWelcomeText;
-            AutoSwitchLayoutEnabled = _userConfig.AutoSwitchLayoutEnabled;
-            AutoSwitchColorSchemeEnabled = _userConfig.AutoSwitchColorSchemeEnabled;
-            ApplySavedLayoutSettings(_userConfig);
-
-            var colorSchemeName = NormalizeColorSchemeName(ThemeKeys.Restore(_userConfig.ColorSchemeName), _userConfig.DarkMode);
-            var themeStyleName = NormalizeThemeStyleName(ThemeKeys.Restore(_userConfig.ThemeStyleName), colorSchemeName);
-            ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
-            ThemeManager.Instance.ApplyThemeStyle(themeStyleName);
-        }
-        catch (Exception ex)
-        {
-            _userConfig = new ConfigState();
-            ThemeManager.Instance.ApplyColorScheme(ThemeManager.whiteGraySchemeName);
-            ThemeManager.Instance.ApplyThemeStyle(ThemeManager.ClassicStyleName);
-            _logService.AddLog($"读取用户配置失败，已使用默认设置: {ex.Message}");
-        }
-        finally
-        {
-            _isLoadingUserSettings = false;
-        }
-    }
-
-    private CancellationTokenSource? _settingsSaveDefer;
-
-    /// <summary>
-    /// 防抖保存用户配置。On*Changed 在连续交互（如欢迎语逐键输入）中高频触发，
-    /// 合并为静默 500ms 后的一次写盘，避免 UI 线程同步 IO 反复打断交互。
-    /// </summary>
-    private void ScheduleSaveUserSettings()
-    {
-        if (_isLoadingUserSettings)
-            return;
-
-        _settingsSaveDefer?.Cancel();
-        _settingsSaveDefer?.Dispose();
-        _settingsSaveDefer = new CancellationTokenSource();
-        var token = _settingsSaveDefer.Token;
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await Task.Delay(500, token);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (!token.IsCancellationRequested)
-                    SaveUserSettings();
-            });
-        });
-    }
-
-    /// <summary>立即写入挂起的用户配置（关窗前调用，防止丢失最后一次更改）。</summary>
-    private void FlushPendingUserSettings()
-    {
-        _settingsSaveDefer?.Cancel();
-        SaveUserSettings();
-    }
-
-    private void SaveUserSettings()
-    {
-        if (_isLoadingUserSettings)
-            return;
-
-        _userConfig.CaptureType = Capture.SelectedCaptureType ?? "ANY";
-        _userConfig.EnableAutoCompletion = IsAutoCompletionEnabled;
-        _userConfig.ShowFolding = ShowFolding;
-        _userConfig.HighResolutionTiming = IsHighResolutionTimingEnabled;
-        _userConfig.ShowDebugInfo = ShowDebugInfo;
-        _userConfig.WelcomeText = WelcomeText ?? string.Empty;
-        _userConfig.LanguageCode = SelectedLanguageCode;
-        _userConfig.FileTreeSortMode = FileTreeSortModeSettings.ToSettingValue(_fileTreeViewModel.SortMode);
-        _userConfig.AutoSwitchLayoutEnabled = AutoSwitchLayoutEnabled;
-        _userConfig.AutoSwitchColorSchemeEnabled = AutoSwitchColorSchemeEnabled;
-        _userConfig.IsIdleThreeColumnLayoutSelected = IsIdleThreeColumnLayoutSelected;
-        _userConfig.IsIdleTwoColumnLayoutSelected = IsIdleTwoColumnLayoutSelected;
-        _userConfig.IsRunningThreeColumnLayoutSelected = IsRunningThreeColumnLayoutSelected;
-        _userConfig.IsRunningTwoColumnLayoutSelected = IsRunningTwoColumnLayoutSelected;
-        _userConfig.IsRunningOneColumnLayoutSelected = IsRunningOneColumnLayoutSelected;
-        _userConfig.ColorSchemeName = ThemeKeys.Persist(ThemeManager.Instance.SelectedColorSchemeName);
-        _userConfig.ThemeStyleName = ThemeKeys.Persist(ThemeManager.Instance.SelectedThemeStyleName);
-        _userConfig.DarkMode = ThemeManager.Instance.IsDarkMode;
-
-        try
-        {
-            _saveUserConfig(_userConfig);
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"保存用户配置失败: {ex.Message}");
-        }
-    }
-
-    private void ApplySavedLayoutSettings(ConfigState config)
-    {
-        var idleTwoColumn = config.IsIdleTwoColumnLayoutSelected;
+        Capture.SelectedCaptureType = UserSettingsService.NormalizeCaptureType(cfg.CaptureType);
+        IsAutoCompletionEnabled = cfg.EnableAutoCompletion;
+        ShowFolding = cfg.ShowFolding;
+        IsHighResolutionTimingEnabled = cfg.HighResolutionTiming;
+        _scriptService.HighResolutionTiming = IsHighResolutionTimingEnabled;
+        ShowDebugInfo = cfg.ShowDebugInfo;
+        var language = !string.IsNullOrEmpty(cfg.LanguageCode) && LanguageOptions.Contains(cfg.LanguageCode)
+            ? cfg.LanguageCode
+            : "zh_CN";
+        SelectedLanguageCode = language;
+        App.SetLocale(language);
+        WelcomeText = cfg.WelcomeText ?? ConfigState.DefaultWelcomeText;
+        AutoSwitchLayoutEnabled = cfg.AutoSwitchLayoutEnabled;
+        AutoSwitchColorSchemeEnabled = cfg.AutoSwitchColorSchemeEnabled;
+        var idleTwoColumn = cfg.IsIdleTwoColumnLayoutSelected;
         IsIdleThreeColumnLayoutSelected = !idleTwoColumn;
         IsIdleTwoColumnLayoutSelected = idleTwoColumn;
 
-        var runningOneColumn = config.IsRunningOneColumnLayoutSelected;
-        var runningThreeColumn = config.IsRunningThreeColumnLayoutSelected && !runningOneColumn;
+        var runningOneColumn = cfg.IsRunningOneColumnLayoutSelected;
+        var runningThreeColumn = cfg.IsRunningThreeColumnLayoutSelected && !runningOneColumn;
         IsRunningThreeColumnLayoutSelected = runningThreeColumn;
         IsRunningTwoColumnLayoutSelected = !runningThreeColumn && !runningOneColumn;
         IsRunningOneColumnLayoutSelected = runningOneColumn;
+
+        var colorSchemeName = UserSettingsService.NormalizeColorSchemeName(ThemeKeys.Restore(cfg.ColorSchemeName), cfg.DarkMode);
+        var themeStyleName = UserSettingsService.NormalizeThemeStyleName(ThemeKeys.Restore(cfg.ThemeStyleName), colorSchemeName);
+        ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
+        ThemeManager.Instance.ApplyThemeStyle(themeStyleName);
     }
 
-    private static string NormalizeCaptureType(string? captureType)
+    /// <summary>把 VM 属性收集回 ConfigState（collect 方向），写盘由 _settings 负责。</summary>
+    private void CollectUserSettings(ConfigState cfg)
     {
-        return captureType switch
-        {
-            "DSHOW" or "MSMF" or "DC1394" => captureType,
-            _ => "ANY"
-        };
-    }
-
-    private static string NormalizeColorSchemeName(string? colorSchemeName, bool legacyDarkMode)
-    {
-        return colorSchemeName switch
-        {
-            ThemeManager.whiteGraySchemeName or "工业灰" => ThemeManager.whiteGraySchemeName,
-            ThemeManager.WarmToneSchemeName or "暖色调" => ThemeManager.WarmToneSchemeName,
-            ThemeManager.DarkModeSchemeName => ThemeManager.DarkModeSchemeName,
-            _ => legacyDarkMode ? ThemeManager.DarkModeSchemeName : ThemeManager.whiteGraySchemeName
-        };
-    }
-
-    private static string NormalizeThemeStyleName(string? themeStyleName, string colorSchemeName)
-    {
-        return themeStyleName switch
-        {
-            ThemeManager.ClassicStyleName => ThemeManager.ClassicStyleName,
-            ThemeManager.RoundedStyleName => ThemeManager.RoundedStyleName,
-            _ => colorSchemeName == ThemeManager.whiteGraySchemeName
-                ? ThemeManager.ClassicStyleName
-                : ThemeManager.RoundedStyleName
-        };
+        cfg.CaptureType = Capture.SelectedCaptureType ?? "ANY";
+        cfg.EnableAutoCompletion = IsAutoCompletionEnabled;
+        cfg.ShowFolding = ShowFolding;
+        cfg.HighResolutionTiming = IsHighResolutionTimingEnabled;
+        cfg.ShowDebugInfo = ShowDebugInfo;
+        cfg.WelcomeText = WelcomeText ?? string.Empty;
+        cfg.LanguageCode = SelectedLanguageCode;
+        cfg.FileTreeSortMode = FileTreeSortModeSettings.ToSettingValue(_fileTreeViewModel.SortMode);
+        cfg.AutoSwitchLayoutEnabled = AutoSwitchLayoutEnabled;
+        cfg.AutoSwitchColorSchemeEnabled = AutoSwitchColorSchemeEnabled;
+        cfg.IsIdleThreeColumnLayoutSelected = IsIdleThreeColumnLayoutSelected;
+        cfg.IsIdleTwoColumnLayoutSelected = IsIdleTwoColumnLayoutSelected;
+        cfg.IsRunningThreeColumnLayoutSelected = IsRunningThreeColumnLayoutSelected;
+        cfg.IsRunningTwoColumnLayoutSelected = IsRunningTwoColumnLayoutSelected;
+        cfg.IsRunningOneColumnLayoutSelected = IsRunningOneColumnLayoutSelected;
+        cfg.ColorSchemeName = ThemeKeys.Persist(ThemeManager.Instance.SelectedColorSchemeName);
+        cfg.ThemeStyleName = ThemeKeys.Persist(ThemeManager.Instance.SelectedThemeStyleName);
+        cfg.DarkMode = ThemeManager.Instance.IsDarkMode;
     }
 
     private void OnOpenProjectRequested()
@@ -665,7 +566,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
 
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName);
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
         _logService.AddLog($"已切换外观: {colorSchemeName}");
     }
 
@@ -675,7 +576,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
 
         ThemeManager.Instance.ApplyThemeStyle(themeStyleName);
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
         _logService.AddLog($"已切换风格: {themeStyleName}");
     }
 
@@ -697,7 +598,7 @@ public partial class MainWindowViewModel : ViewModelBase
             : ThemeManager.whiteGraySchemeName;
 
         ThemeManager.Instance.ApplyColorScheme(colorSchemeName, followSystemThemeVariant: true);
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     private void SelectEditorTab(string? tabIndexText)
@@ -719,33 +620,13 @@ public partial class MainWindowViewModel : ViewModelBase
         CheckUpdateButtonText = "正在检查…";
         try
         {
-            using var client = new HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(5);
-            var data = await client.GetStringAsync("https://gitee.com/api/v5/repos/EasyConNS/EasyCon/tags?sort=updated&direction=desc&per_page=3");
-            var tags = System.Text.Json.JsonSerializer.Deserialize<VerInfo[]>(data);
-            if (tags == null || tags.Length == 0)
+            var r = await _updateService.CheckAsync();
+            CheckUpdateButtonText = r.Status switch
             {
-                CheckUpdateButtonText = "检查失败";
-                return;
-            }
-            var cutoff = new DateTime(2026, 4, 27, 0, 0, 0, DateTimeKind.Utc);
-            var latest = tags.FirstOrDefault(t => t.commit != null && t.commit.date >= cutoff);
-            if (latest == null)
-            {
-                CheckUpdateButtonText = "当前已是最新版本";
-                return;
-            }
-            // tag 名不保证是合法版本号（v 前缀/任意命名），解析失败按“已是最新”处理，
-            // 不能让单条坏 tag 使更新检查报“检查失败”
-            var curVer = Assembly.GetEntryAssembly()?.GetName().Version;
-            if (ConfigService.TryParseTagVersion(latest.name) is { } latestVer && latestVer > curVer)
-                CheckUpdateButtonText = $"发现新版本 v{latestVer}";
-            else
-                CheckUpdateButtonText = "当前已是最新版本";
-        }
-        catch
-        {
-            CheckUpdateButtonText = "检查失败";
+                UpdateStatus.UpdateAvailable => $"发现新版本 v{r.LatestVersion}",
+                UpdateStatus.UpToDate => "当前已是最新版本",
+                _ => "检查失败",
+            };
         }
         finally
         {
@@ -763,18 +644,6 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             _logService.AddLog($"打开浏览器失败: {ex.Message}");
         }
-    }
-
-    private record CommitInfo
-    {
-        public string sha { get; set; } = "";
-        public DateTime date { get; set; }
-    }
-
-    private record VerInfo
-    {
-        public string name { get; set; } = "";
-        public CommitInfo? commit { get; set; }
     }
 
     /// <summary>
@@ -808,27 +677,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 break;
             case ".il":
                 SelectedEditorTab = 1;
-                try
-                {
-                    var label = ECCore.LoadIL(filePath);
-                    if (TagEditorViewModel != null)
-                    {
-                        TagEditorViewModel.LoadFromLabel(label);
-                    }
-                    else
-                    {
-                        var tagVm = new TagEditorViewModel(label, _imageProcessor);
-                        tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
-                        tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
-                        tagVm.LabelTestRequested += OnTagEditorLabelTest;
-                        tagVm.LogMessage += message => _logService.AddLog(message);
-                        TagEditorViewModel = tagVm;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logService.AddLog($"加载标签文件失败: {ex.Message}");
-                }
+                _tagCoordinator?.LoadLabelFile(filePath);
                 break;
             default:
                 _logService.AddLog($"暂不支持打开该文件类型: {ext}");
@@ -852,12 +701,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void InitializeTagEditor()
     {
-        var tagVm = new TagEditorViewModel(_imageProcessor);
-        tagVm.OpenFileRequested += OnTagEditorOpenFileRequested;
-        tagVm.CaptureScreenshotRequested += OnTagEditorCaptureScreenshot;
-        tagVm.LabelTestRequested += OnTagEditorLabelTest;
-        tagVm.LogMessage += message => _logService.AddLog(message);
-        TagEditorViewModel = tagVm;
+        _tagCoordinator = new TagEditorCoordinator(_captureService, _dialogService, _logService, _imageProcessor);
+        _tagCoordinator.Bind(_tagCoordinator.ViewModel);
     }
 
     private void InitializeSampleData()
@@ -948,17 +793,18 @@ public partial class MainWindowViewModel : ViewModelBase
         if (IsSavingScript || !CanSaveScript())
             return;
 
-        IsSavingScript = true;
+        if (!_doc.TryBeginSave())
+            return;
         try
         {
             bool hadSelectedScriptPath = HasSelectedScriptPath();
-            bool needsSaveDialog = saveAs || !hadSelectedScriptPath;
+            bool needsSaveDialog = saveAs || _doc.NeedsSaveDialog;
             string targetPath;
             if (needsSaveDialog)
             {
                 string suggestedName = HasSelectedScriptPath()
                     ? Path.GetFileName(CurrentScriptPath)
-                    : $"{UntitledScriptText}.ecs";
+                    : $"{ScriptPathSentinels.UntitledScript}.ecs";
                 string? selectedPath;
                 try
                 {
@@ -985,7 +831,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 targetPath = CurrentScriptPath;
             }
 
-            if (!SaveEditorText(targetPath, EditorText))
+            if (!_doc.WriteToFile(targetPath))
                 return;
 
             CurrentScriptPath = targetPath;
@@ -994,7 +840,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
             if (!string.IsNullOrWhiteSpace(_projectDirectoryPath))
             {
-                if (IsPathInsideDirectory(targetPath, _projectDirectoryPath))
+                if (IsPathInsideDirectory(targetPath, _projectDirectoryPath, _fileSystem))
                     _fileTreeViewModel.NotifyFileSaved(targetPath);
             }
             else if (saveAs || !hadSelectedScriptPath)
@@ -1009,7 +855,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         finally
         {
-            IsSavingScript = false;
+            _doc.EndSave();
         }
     }
 
@@ -1017,7 +863,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         return !IsSavingScript
             && IsTextEditorTabSelected
-            && (CurrentScriptPath == UntitledScriptText || HasSelectedScriptPath() || IsScriptModified);
+            && (CurrentScriptPath == ScriptPathSentinels.UntitledScript || HasSelectedScriptPath() || IsScriptModified);
     }
 
     private void NotifySaveCommandCanExecuteChanged()
@@ -1028,22 +874,18 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnFileTreeSortModeChanged()
     {
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     private void CloseScript()
     {
-        SetEditorTextWithoutDirtyTracking("");
-        IsScriptModified = false;
-        CurrentScriptPath = NoScriptPathText;
+        _doc.Close();
         SelectedEditorTab = 0;
     }
 
     private void NewScript()
     {
-        SetEditorTextWithoutDirtyTracking("");
-        IsScriptModified = false;
-        CurrentScriptPath = UntitledScriptText;
+        _doc.NewUntitled();
         SelectedEditorTab = 0;
         _logService.AddLog("已新建脚本");
     }
@@ -1055,34 +897,16 @@ public partial class MainWindowViewModel : ViewModelBase
         _logService.AddLog("已关闭项目");
     }
 
-    private bool HasSelectedScriptPath()
-    {
-        return !string.IsNullOrWhiteSpace(CurrentScriptPath)
-            && CurrentScriptPath != NoScriptPathText
-            && CurrentScriptPath != UntitledScriptText;
-    }
-
-    private bool SaveEditorText(string path, string text)
-    {
-        try
-        {
-            File.WriteAllText(path, text, new UTF8Encoding(false));
-            return true;
-        }
-        catch (Exception ex)
-        {
-            // 保存失败必须显式暴露：保持 IsScriptModified，避免"假成功"导致数据丢失
-            _logService.AddLog($"保存脚本失败({path}): {ex.Message}");
-            return false;
-        }
-    }
+    private bool HasSelectedScriptPath() => _doc.HasSelectedPath;
 
     /// <summary>
     /// 从路径打开脚本，加载文件树并初始化内嵌编辑器。
     /// </summary>
     public void OpenScriptFromPath(string path)
     {
-        CurrentScriptPath = path;
+        // 状态段迁移至文档服务：设路径 + 静默载文本 + 清脏（顺序同原实现）
+        var fileText = File.Exists(path) ? _fileStorage.ReadAllText(path) : string.Empty;
+        _doc.OpenFromPath(path, fileText);
         SelectedEditorTab = 0;
 
         // 更新文件树到脚本所在目录
@@ -1090,17 +914,10 @@ public partial class MainWindowViewModel : ViewModelBase
         _projectDirectoryPath = dir;
         _fileTreeViewModel.LoadDirectory(dir);
 
-        // 初始化内嵌编辑器（加载文件内容不属于用户修改）
-        _suppressDirtyTracking = true;
-        try
-        {
-            InitializeEmbeddedEditor(path);
-        }
-        finally
-        {
-            _suppressDirtyTracking = false;
-        }
-        IsScriptModified = false;
+        // 初始化内嵌编辑器（加载文件内容不属于用户修改）。编辑器 Clear/Load 会经 TwoWay
+        // 绑定回写文本并瞬时置脏，行尾清脏等价于原实现的 IsScriptModified = false。
+        InitializeEmbeddedEditor(path);
+        _doc.IsModified = false;
     }
 
     /// <summary>
@@ -1109,57 +926,52 @@ public partial class MainWindowViewModel : ViewModelBase
     public event Action<string>? EmbeddedEditorInitializeRequested;
 
     /// <summary>
-    /// 当前编辑区文本（TwoWay 绑定到 ScriptEditorControl.EditorText）。
+    /// 当前编辑区文本（TwoWay 绑定到 ScriptEditorControl.EditorText）。状态由 _doc 持有。
     /// </summary>
-    [ObservableProperty]
-    private string _editorText = "";
+    public string EditorText { get => _doc.Text; set => _doc.Text = value; }
 
     /// <summary>
-    /// 当前脚本内容是否有未保存的修改。
+    /// 当前脚本内容是否有未保存的修改。状态由 _doc 持有。
     /// </summary>
-    [ObservableProperty]
-    private bool _isScriptModified;
+    public bool IsScriptModified { get => _doc.IsModified; set => _doc.IsModified = value; }
 
-    [ObservableProperty]
-    private bool _isSavingScript;
-
-    /// <summary>
-    /// 程序化设置编辑区文本（打开/新建/关闭脚本）时抑制修改标记。
-    /// </summary>
-    private bool _suppressDirtyTracking;
+    /// <summary>保存闸门代理：置 true 走幂等 TryBeginSave，置 false 走 EndSave。</summary>
+    public bool IsSavingScript { get => _doc.IsSaving; set { if (value) _doc.TryBeginSave(); else _doc.EndSave(); } }
 
     /// <summary>
-    /// 在不触发修改标记的情况下设置编辑区文本。
+    /// 脚本文档服务状态变化 → VM 对外通知（同步执行，无 Dispatcher 转发）。
+    /// 逐条复刻被删除的 partial 回调语义；四个属性原本均无 [NotifyCanExecuteChangedFor] 特性，
+    /// 命令通知全部来自 partial（SaveScript/SaveScriptAs 经 NotifySaveCommandCanExecuteChanged，
+    /// OpenEditor 仅在 CurrentPath 变化时通知）。
     /// </summary>
-    private void SetEditorTextWithoutDirtyTracking(string text)
+    private void OnDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        _suppressDirtyTracking = true;
-        try
+        switch (e.PropertyName)
         {
-            EditorText = text;
+            case nameof(IScriptDocumentService.Text):
+                // 原 OnEditorTextChanged：脏标记已由服务内置；文本变化仍需通知绑定与命令重估
+                OnPropertyChanged(nameof(EditorText));
+                NotifySaveCommandCanExecuteChanged();
+                break;
+            case nameof(IScriptDocumentService.IsModified):
+                // 原 OnIsScriptModifiedChanged
+                OnPropertyChanged(nameof(IsScriptModified));
+                OnPropertyChanged(nameof(ScriptDisplayPath));
+                NotifySaveCommandCanExecuteChanged();
+                break;
+            case nameof(IScriptDocumentService.IsSaving):
+                // 原 OnIsSavingScriptChanged
+                OnPropertyChanged(nameof(IsSavingScript));
+                NotifySaveCommandCanExecuteChanged();
+                break;
+            case nameof(IScriptDocumentService.CurrentPath):
+                // 原 OnCurrentScriptPathChanged
+                OnPropertyChanged(nameof(CurrentScriptPath));
+                (OpenEditorCommand as RelayCommand)?.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(ScriptDisplayPath));
+                NotifySaveCommandCanExecuteChanged();
+                break;
         }
-        finally
-        {
-            _suppressDirtyTracking = false;
-        }
-    }
-
-    partial void OnEditorTextChanged(string value)
-    {
-        if (!_suppressDirtyTracking)
-            IsScriptModified = true;
-        NotifySaveCommandCanExecuteChanged();
-    }
-
-    partial void OnIsScriptModifiedChanged(bool value)
-    {
-        OnPropertyChanged(nameof(ScriptDisplayPath));
-        NotifySaveCommandCanExecuteChanged();
-    }
-
-    partial void OnIsSavingScriptChanged(bool value)
-    {
-        NotifySaveCommandCanExecuteChanged();
     }
 
     /// <summary>
@@ -1224,22 +1036,22 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OpenESPConfig()
     {
-        _windowService.ShowESPConfigWindow();
+        _windowService.Show(WindowKeys.EspConfig);
     }
 
     private void OpenAlertConfig()
     {
-        _windowService.ShowAlertConfigWindow();
+        _windowService.Show(WindowKeys.AlertConfig);
     }
 
     private void OpenModelsConfig()
     {
-        _windowService.ShowModelsConfigWindow();
+        _windowService.Show(WindowKeys.ModelsConfig);
     }
 
     private void OpenMcpConfig()
     {
-        _windowService.ShowMcpConfigWindow();
+        _windowService.Show(WindowKeys.McpConfig);
     }
 
     private void ToggleMonitorVisibility()
@@ -1266,14 +1078,14 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (value)
             IsIdleTwoColumnLayoutSelected = false;
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnIsIdleTwoColumnLayoutSelectedChanged(bool value)
     {
         if (value)
             IsIdleThreeColumnLayoutSelected = false;
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnIsRunningThreeColumnLayoutSelectedChanged(bool value)
@@ -1283,7 +1095,7 @@ public partial class MainWindowViewModel : ViewModelBase
             IsRunningTwoColumnLayoutSelected = false;
             IsRunningOneColumnLayoutSelected = false;
         }
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnIsRunningTwoColumnLayoutSelectedChanged(bool value)
@@ -1293,7 +1105,7 @@ public partial class MainWindowViewModel : ViewModelBase
             IsRunningThreeColumnLayoutSelected = false;
             IsRunningOneColumnLayoutSelected = false;
         }
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnIsRunningOneColumnLayoutSelectedChanged(bool value)
@@ -1303,12 +1115,12 @@ public partial class MainWindowViewModel : ViewModelBase
             IsRunningThreeColumnLayoutSelected = false;
             IsRunningTwoColumnLayoutSelected = false;
         }
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     private void ShowScriptSyntax()
     {
-        _windowService.ShowScriptSyntaxWindow();
+        _windowService.Show(WindowKeys.ScriptSyntax);
     }
 
     private void OpenAiAgent()
@@ -1316,21 +1128,13 @@ public partial class MainWindowViewModel : ViewModelBase
         AiAgent.IsOpen = true;
     }
 
-    partial void OnCurrentScriptPathChanged(string value)
-    {
-        (OpenEditorCommand as RelayCommand)?.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(ScriptDisplayPath));
-        NotifySaveCommandCanExecuteChanged();
-    }
-
     private string? GetCurrentScriptRootDirectory()
     {
         var currentPath = CurrentScriptPath;
-        if (!string.IsNullOrWhiteSpace(currentPath) &&
-            currentPath != "未选择脚本" &&
-            File.Exists(currentPath))
+        // 用 HasSelectedScriptPath 语义判定（原实现硬编码中文哨兵 "未选择脚本"，英文界面下失效）
+        if (HasSelectedScriptPath() && File.Exists(currentPath))
         {
-            if (IsPathInsideDirectory(currentPath, _projectDirectoryPath))
+            if (IsPathInsideDirectory(currentPath, _projectDirectoryPath, _fileSystem))
                 return _projectDirectoryPath;
 
             return Path.GetDirectoryName(currentPath);
@@ -1339,9 +1143,9 @@ public partial class MainWindowViewModel : ViewModelBase
         return _projectDirectoryPath;
     }
 
-    private static bool IsPathInsideDirectory(string filePath, string? directoryPath)
+    private static bool IsPathInsideDirectory(string filePath, string? directoryPath, IFileSystem fileSystem)
     {
-        if (string.IsNullOrWhiteSpace(directoryPath) || !Directory.Exists(directoryPath))
+        if (string.IsNullOrWhiteSpace(directoryPath) || !fileSystem.DirectoryExists(directoryPath))
             return false;
 
         try
@@ -1378,12 +1182,12 @@ public partial class MainWindowViewModel : ViewModelBase
     }
     partial void OnIsAutoCompletionEnabledChanged(bool value)
     {
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnAutoSwitchLayoutEnabledChanged(bool value)
     {
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnAutoSwitchColorSchemeEnabledChanged(bool value)
@@ -1393,25 +1197,25 @@ public partial class MainWindowViewModel : ViewModelBase
         if (value)
             ApplySystemColorScheme();
 
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnShowFoldingChanged(bool value)
     {
         FoldingVisibilityChanged?.Invoke(value);
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnIsHighResolutionTimingEnabledChanged(bool value)
     {
         _scriptService.HighResolutionTiming = value;
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnWelcomeTextChanged(string value)
     {
         Welcome.SetWelcomeText(value);
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     partial void OnSelectedEditorTabChanged(int value)
@@ -1424,133 +1228,6 @@ public partial class MainWindowViewModel : ViewModelBase
         NotifySaveCommandCanExecuteChanged();
     }
 
-
-    private void OnTagEditorOpenFileRequested()
-    {
-        _ = OpenTagEditorImageFileAsync();
-    }
-
-    private void OnTagEditorCaptureScreenshot()
-    {
-        _ = CaptureScreenshotForTagEditorAsync();
-    }
-
-    private void OnTagEditorLabelTest()
-    {
-        _ = ExecuteLabelTestAsync();
-    }
-
-    private async Task ExecuteLabelTestAsync()
-    {
-        if (TagEditorViewModel == null) return;
-
-        if (!_captureService.IsConnected)
-        {
-            _logService.AddLog("请先连接视频源");
-            return;
-        }
-
-        try
-        {
-            byte[]? resultPng = null;
-            double matchDegree = 0;
-            string labelName = "";
-
-            // 帧租约与 OpenCV 模板匹配都在线程池完成，避免大图匹配冻结 UI
-            await Task.Run(() =>
-            {
-                using var lease = _captureService.AcquireLatestFrame();
-                if (lease == null || lease.Mat.Empty())
-                    throw new InvalidOperationException(L10n.T("Text.Msg.TagTestNoFrame"));
-
-                var mat = lease.Mat;
-                var label = TagEditorViewModel.Label;
-                var result = label.Search(mat, out matchDegree, "");
-
-                byte[]? png = null;
-                if (result.Count > 0)
-                {
-                    var pt = result[0];
-                    int roiX = Math.Clamp(label.RangeX + pt.X, 0, mat.Width);
-                    int roiY = Math.Clamp(label.RangeY + pt.Y, 0, mat.Height);
-                    int roiW = Math.Clamp(label.TargetWidth, 0, mat.Width - roiX);
-                    int roiH = Math.Clamp(label.TargetHeight, 0, mat.Height - roiY);
-
-                    if (roiW > 0 && roiH > 0)
-                    {
-                        using var roi = new Mat(mat, new Rect(roiX, roiY, roiW, roiH));
-                        png = roi.ToBytes(".png");
-                    }
-                }
-
-                resultPng = png;
-                labelName = label.name;
-            });
-
-            // 更新匹配度显示和结果图
-            TagEditorViewModel.SetTestResult(matchDegree, resultPng);
-
-            _logService.AddLog(string.Format(L10n.T("Text.Msg.TagTestResult"), labelName, matchDegree));
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logService.AddLog(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog(string.Format(L10n.T("Text.Msg.TagTestFail"), ex.Message));
-        }
-    }
-
-    private async Task OpenTagEditorImageFileAsync()
-    {
-        try
-        {
-            var cacheDir = EasyCon.Core.Config.AppPaths.CaptureCacheDir;
-            var files = await _dialogService.OpenFilesAsync("选择图片文件",
-            [
-                new FileDialogFilter("图片文件", ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif"]),
-                new FileDialogFilter("所有文件", ["*"])
-            ], cacheDir);
-
-            if (files.Count > 0 && TagEditorViewModel != null)
-                TagEditorViewModel.LoadImageFromFile(files[0]);
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"打开文件对话框失败: {ex.Message}");
-        }
-    }
-
-    private async Task CaptureScreenshotForTagEditorAsync()
-    {
-        if (!_captureService.IsConnected)
-        {
-            _logService.AddLog("请先连接视频源");
-            return;
-        }
-
-        try
-        {
-            using var lease = _captureService.AcquireLatestFrame();
-            if (lease == null || lease.Mat.Empty())
-            {
-                _logService.AddLog("截图失败：无法获取视频帧");
-                return;
-            }
-            var mat = lease.Mat;
-
-            // Mat 编码为 PNG 字节交给 VM（VM 内部解码显示并保留字节供裁剪）；
-            // 1080p PNG 编码可达百毫秒级，放后台执行避免冻结 UI（租约保活至编码完成）
-            var imageBytes = await Task.Run(() => mat.ToBytes(".png"));
-            TagEditorViewModel?.SetScreenshot(imageBytes);
-            _logService.AddLog("截图成功");
-        }
-        catch (Exception ex)
-        {
-            _logService.AddLog($"截图失败：{ex.Message}");
-        }
-    }
 
     private void DropFile(string? path)
     {
@@ -1570,7 +1247,7 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnShowDebugInfoChanged(bool value)
     {
         _deviceService.ShowDebugInfo = value;
-        ScheduleSaveUserSettings();
+        _settings.ScheduleSave(CollectUserSettings);
     }
 
     private async Task RunScriptAsync()
@@ -1640,8 +1317,11 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         Welcome.Stop();
 
+        // 解除标签编辑器协调器的事件订阅
+        _tagCoordinator?.Dispose();
+
         // 立即写入防抖中挂起的用户配置
-        FlushPendingUserSettings();
+        _settings.Flush(CollectUserSettings);
 
         // 关闭嵌入式监视器
         if (_monitorViewModel != null)

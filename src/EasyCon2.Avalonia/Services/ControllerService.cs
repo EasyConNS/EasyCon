@@ -1,10 +1,8 @@
 using Avalonia.Controls;
-using Avalonia.Media;
 using EasyCon.Core.Config;
 using EasyCon.Core.Input;
 using EasyCon.SDLInput;
 using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.VPad;
 using EasyDevice;
 using SDL;
 
@@ -15,8 +13,7 @@ public sealed class ControllerService : IControllerService
     private readonly SdlEventLoop _eventLoop;
     private readonly SdlGamepadDetector _detector;
     private readonly NintendoSwitch _gamepad;
-    private readonly VPadService _vpadService;
-    private readonly ControllerAdapter _adapter;
+    private readonly IVirtualPadService _vpadService;
     private bool _isConnected;
     private SdlKeyboardInputBinder? _keyboardBinder;
     private SdlGamepadInputBinder? _gamepadBinder;
@@ -27,13 +24,16 @@ public sealed class ControllerService : IControllerService
 
     public void SetOwnerWindow(Window owner) => _vpadService.SetOwner(owner);
 
-    public ControllerService(NintendoSwitch gamepad, IScriptService scriptService)
+    /// <summary>
+    /// <paramref name="vpadService"/> 由组合根构造后注入（其 ControllerAdapter 依赖
+    /// IScriptService，装配留在 App 侧），本类不再反向引用 VPad 实现。
+    /// </summary>
+    public ControllerService(NintendoSwitch gamepad, IVirtualPadService vpadService)
     {
         _gamepad = gamepad;
-        _adapter = new ControllerAdapter(scriptService);
         _eventLoop = new SdlEventLoop();
         _detector = new SdlGamepadDetector();
-        _vpadService = new VPadService(gamepad, _adapter);
+        _vpadService = vpadService;
 
         _eventLoop.GamepadDeviceEvent += ev => _detector.HandleDeviceEvent(ev);
         _detector.GamepadConnected += (_, _) => AvailableSourcesChanged?.Invoke();
@@ -162,11 +162,5 @@ public sealed class ControllerService : IControllerService
     private void OnGamepadButtonEvent(SDL_GamepadButtonEvent ev)
     {
         _gamepadBinder?.Poll();
-    }
-
-    private sealed class ControllerAdapter(IScriptService scriptService) : IControllerAdapter
-    {
-        public bool IsRunning() => scriptService.IsRunning;
-        public Color CurrentLight => Colors.White;
     }
 }

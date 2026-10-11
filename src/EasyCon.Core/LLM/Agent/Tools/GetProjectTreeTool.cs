@@ -1,11 +1,8 @@
-using EasyCon.Core.LLM.Agent;
-using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Tools;
-using EasyCon2.Avalonia.Services;
 using System.Text;
 using System.Text.Json;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// get_project_tree 工具：返回当前项目的目录结构树（文本形式）。

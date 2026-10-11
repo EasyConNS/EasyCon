@@ -8,6 +8,7 @@ using EasyCon2.Avalonia.FileTree;
 using EasyCon2.Avalonia.FileTree;
 using EasyCon2.Avalonia.KeyMapping;
 using EasyCon2.Avalonia.Models;
+using EasyCon2.Avalonia.Services;
 using EasyCon2.Avalonia.Shell;
 
 namespace EasyCon2.Avalonia.UiTests;
@@ -458,7 +459,7 @@ public class FileTreeViewModelTests
                 refreshedBCommitted.TrySetResult();
             }
             return Task.CompletedTask;
-        });
+        }, new LocalFileSystem());
 
         await vm.LoadDirectoryAsync(pathA).ConfigureAwait(false);
         vm.SelectedFlatItem = vm.FlatItems.Single(item => item.FullPath == Path.Combine(pathA, "script2.ecs"));
@@ -601,7 +602,7 @@ public class FileTreeViewModelTests
         {
             action();
             return Task.CompletedTask;
-        });
+        }, new LocalFileSystem());
     }
 
     private static FileTreeItem CreateProjectTree(string rootPath)

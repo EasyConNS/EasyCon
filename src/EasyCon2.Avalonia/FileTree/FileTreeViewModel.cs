@@ -1,11 +1,10 @@
-using Avalonia.Controls;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EasyCon2.Avalonia.FileTree;
 using EasyCon2.Avalonia.Models;
+using EasyCon2.Avalonia.Services;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text;
 
 namespace EasyCon2.Avalonia.FileTree;
 
@@ -35,6 +34,7 @@ public partial class FileTreeViewModel : ViewModelBase
     private readonly HashSet<string> _expandedDirs = new(PathComparer);
     private readonly Func<string, Task<FileTreeItem?>> _loadRootAsync;
     private readonly Func<Action, Task> _invokeOnUiThreadAsync;
+    private readonly IFileSystem _fs;
     private string? _normalDirectoryPath;
     // 目录加载代数：快速连续切换目录时，过期加载的结果不得覆盖最新一次
     private int _loadGeneration;
@@ -64,18 +64,26 @@ public partial class FileTreeViewModel : ViewModelBase
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
 
+    private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
     private string? _clipboardPath;
     private bool _isClipboardCut;
 
+    // 默认实现：根目录枚举放线程池；UI 派发走 Services/IUiDispatcher 的 Avalonia 实现（AvaloniaUiDispatcher），
+    // 使 VM 自身不再引用 Avalonia。测试通过内部构造注入自定义委托。
     public FileTreeViewModel()
-        : this(directoryPath => Task.Run(() => TryBuildRoot(directoryPath)), DispatchToUiThreadAsync)
+        : this(
+            directoryPath => Task.Run(() => TryBuildRoot(LocalFileSystem.Instance, directoryPath)),
+            action => AvaloniaUiDispatcher.Instance.InvokeAsync(action),
+            LocalFileSystem.Instance)
     {
     }
 
-    internal FileTreeViewModel(Func<string, Task<FileTreeItem?>> loadRootAsync, Func<Action, Task> invokeOnUiThreadAsync)
+    internal FileTreeViewModel(Func<string, Task<FileTreeItem?>> loadRootAsync, Func<Action, Task> invokeOnUiThreadAsync, IFileSystem fileSystem)
     {
         _loadRootAsync = loadRootAsync;
         _invokeOnUiThreadAsync = invokeOnUiThreadAsync;
+        _fs = fileSystem;
     }
 
     public void LoadDirectory(string? directoryPath)
@@ -98,7 +106,7 @@ public partial class FileTreeViewModel : ViewModelBase
     {
         int loadId = ++_loadGeneration;
 
-        if (string.IsNullOrEmpty(directoryPath) || !Directory.Exists(directoryPath))
+        if (string.IsNullOrEmpty(directoryPath) || !_fs.DirectoryExists(directoryPath))
         {
             RootItems.Clear();
             _expandedDirs.Clear();
@@ -185,17 +193,15 @@ public partial class FileTreeViewModel : ViewModelBase
     }
 
     /// <summary>在工作线程上构建根节点树；失败返回 null。只做枚举，不触碰可观察状态。</summary>
-    private static FileTreeItem? TryBuildRoot(string directoryPath)
+    private static FileTreeItem? TryBuildRoot(IFileSystem fileSystem, string directoryPath)
     {
         try
         {
-            var directoryInfo = new DirectoryInfo(directoryPath);
-            directoryInfo.Refresh();
-            if (!directoryInfo.Exists)
+            if (!fileSystem.DirectoryExists(directoryPath))
                 return null;
 
-            var root = CreateTreeItem(directoryPath, isDirectory: true);
-            LoadChildren(root, depth: 0, maxDepth: 3);
+            var root = CreateTreeItem(fileSystem, directoryPath, isDirectory: true);
+            LoadChildren(fileSystem, root, depth: 0, maxDepth: 3);
             return root;
         }
         catch
@@ -313,9 +319,9 @@ public partial class FileTreeViewModel : ViewModelBase
 
         try
         {
-            Directory.CreateDirectory(directoryPath);
+            _fs.CreateDirectory(directoryPath);
             var filePath = GetUniquePath(directoryPath, "新建文件", ".txt");
-            File.WriteAllText(filePath, string.Empty);
+            _fs.WriteAllText(filePath, string.Empty, Utf8NoBom);
             _expandedDirs.Add(directoryPath);
             ReloadCurrentRootPreservingState(filePath);
             FileActivated?.Invoke(filePath);
@@ -339,9 +345,9 @@ public partial class FileTreeViewModel : ViewModelBase
 
         try
         {
-            Directory.CreateDirectory(directoryPath);
+            _fs.CreateDirectory(directoryPath);
             var folderPath = GetUniquePath(directoryPath, "新建文件夹", string.Empty);
-            Directory.CreateDirectory(folderPath);
+            _fs.CreateDirectory(folderPath);
             _expandedDirs.Add(directoryPath);
             _expandedDirs.Add(folderPath);
             ReloadCurrentRootPreservingState(folderPath);
@@ -411,13 +417,13 @@ public partial class FileTreeViewModel : ViewModelBase
             return;
 
         var targetDirectory = GetSelectedTargetDirectory();
-        if (string.IsNullOrWhiteSpace(targetDirectory) || !Directory.Exists(targetDirectory))
+        if (string.IsNullOrWhiteSpace(targetDirectory) || !_fs.DirectoryExists(targetDirectory))
             return;
 
         try
         {
             var sourcePath = _clipboardPath;
-            var sourceIsDirectory = Directory.Exists(sourcePath);
+            var sourceIsDirectory = _fs.DirectoryExists(sourcePath);
             if (sourceIsDirectory && IsPathInsideDirectory(targetDirectory, sourcePath))
             {
                 FileOperationMessage?.Invoke("无法粘贴到自身或子目录");
@@ -428,9 +434,9 @@ public partial class FileTreeViewModel : ViewModelBase
             if (_isClipboardCut)
             {
                 if (sourceIsDirectory)
-                    Directory.Move(sourcePath, targetPath);
+                    _fs.Move(sourcePath, targetPath);
                 else
-                    File.Move(sourcePath, targetPath);
+                    _fs.MoveFile(sourcePath, targetPath);
 
                 _clipboardPath = null;
                 _isClipboardCut = false;
@@ -438,9 +444,9 @@ public partial class FileTreeViewModel : ViewModelBase
             else
             {
                 if (sourceIsDirectory)
-                    CopyDirectory(sourcePath, targetPath);
+                    _fs.CopyDirectory(sourcePath, targetPath);
                 else
-                    File.Copy(sourcePath, targetPath);
+                    _fs.CopyFile(sourcePath, targetPath, overwrite: false);
             }
 
             _expandedDirs.Add(targetDirectory);
@@ -466,12 +472,12 @@ public partial class FileTreeViewModel : ViewModelBase
         try
         {
             var path = SelectedFlatItem.FullPath;
-            var parentDirectory = Path.GetDirectoryName(path);
+            var parentDirectory = _fs.GetDirectoryName(path);
 
-            if (Directory.Exists(path))
-                Directory.Delete(path, recursive: true);
-            else if (File.Exists(path))
-                File.Delete(path);
+            if (_fs.DirectoryExists(path))
+                _fs.DeleteDirectory(path);
+            else if (_fs.FileExists(path))
+                _fs.DeleteFile(path);
             else
                 return;
 
@@ -512,7 +518,7 @@ public partial class FileTreeViewModel : ViewModelBase
             return false;
 
         var targetDirectory = GetSelectedTargetDirectory();
-        return !string.IsNullOrWhiteSpace(targetDirectory) && Directory.Exists(targetDirectory);
+        return !string.IsNullOrWhiteSpace(targetDirectory) && _fs.DirectoryExists(targetDirectory);
     }
 
     private bool CanDeleteSelectedItem()
@@ -543,7 +549,7 @@ public partial class FileTreeViewModel : ViewModelBase
         if (SelectedFlatItem.IsDirectory)
             return SelectedFlatItem.FullPath;
 
-        return Path.GetDirectoryName(SelectedFlatItem.FullPath);
+        return _fs.GetDirectoryName(SelectedFlatItem.FullPath);
     }
 
     private void ReloadCurrentRootPreservingState(string? selectedPath)
@@ -557,7 +563,7 @@ public partial class FileTreeViewModel : ViewModelBase
 
         var rootPath = RootItems[0].FullPath;
 
-        if (!Directory.Exists(rootPath))
+        if (!_fs.DirectoryExists(rootPath))
         {
             RootItems.Clear();
             _expandedDirs.Clear();
@@ -621,62 +627,45 @@ public partial class FileTreeViewModel : ViewModelBase
         _expandedDirs.RemoveWhere(path => !existingDirectories.Contains(path));
     }
 
-    private static string GetUniquePath(string directoryPath, string baseName, string extension)
+    private string GetUniquePath(string directoryPath, string baseName, string extension)
     {
-        var path = Path.Combine(directoryPath, $"{baseName}{extension}");
-        if (!File.Exists(path) && !Directory.Exists(path))
+        var path = _fs.PathCombine(directoryPath, $"{baseName}{extension}");
+        if (!_fs.FileExists(path) && !_fs.DirectoryExists(path))
             return path;
 
         for (var i = 1; ; i++)
         {
-            path = Path.Combine(directoryPath, $"{baseName} {i}{extension}");
-            if (!File.Exists(path) && !Directory.Exists(path))
+            path = _fs.PathCombine(directoryPath, $"{baseName} {i}{extension}");
+            if (!_fs.FileExists(path) && !_fs.DirectoryExists(path))
                 return path;
         }
     }
 
-    private static string GetUniqueItemPath(string directoryPath, string sourcePath)
+    private string GetUniqueItemPath(string directoryPath, string sourcePath)
     {
-        var name = Path.GetFileName(sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        var name = _fs.GetFileName(sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         return GetUniquePathFromName(directoryPath, name);
     }
 
-    private static string GetUniquePathFromName(string directoryPath, string name)
+    private string GetUniquePathFromName(string directoryPath, string name)
     {
-        var path = Path.Combine(directoryPath, name);
-        if (!File.Exists(path) && !Directory.Exists(path))
+        var path = _fs.PathCombine(directoryPath, name);
+        if (!_fs.FileExists(path) && !_fs.DirectoryExists(path))
             return path;
 
-        var extension = Path.GetExtension(name);
+        var extension = _fs.GetFileExtension(name);
         var baseName = string.IsNullOrEmpty(extension) ? name : name[..^extension.Length];
         for (var i = 1; ; i++)
         {
-            path = Path.Combine(directoryPath, $"{baseName} {i}{extension}");
-            if (!File.Exists(path) && !Directory.Exists(path))
+            path = _fs.PathCombine(directoryPath, $"{baseName} {i}{extension}");
+            if (!_fs.FileExists(path) && !_fs.DirectoryExists(path))
                 return path;
         }
     }
 
-    private static bool PathExists(string path)
+    private bool PathExists(string path)
     {
-        return File.Exists(path) || Directory.Exists(path);
-    }
-
-    private static void CopyDirectory(string sourceDirectory, string targetDirectory)
-    {
-        Directory.CreateDirectory(targetDirectory);
-
-        foreach (var file in Directory.GetFiles(sourceDirectory))
-        {
-            var targetFile = Path.Combine(targetDirectory, Path.GetFileName(file));
-            File.Copy(file, targetFile);
-        }
-
-        foreach (var directory in Directory.GetDirectories(sourceDirectory))
-        {
-            var targetChildDirectory = Path.Combine(targetDirectory, Path.GetFileName(directory));
-            CopyDirectory(directory, targetChildDirectory);
-        }
+        return _fs.FileExists(path) || _fs.DirectoryExists(path);
     }
 
     private static bool IsPathInsideDirectory(string path, string directoryPath)
@@ -733,7 +722,7 @@ public partial class FileTreeViewModel : ViewModelBase
             FileTreeDisplayItem? candidate = displayItems.FirstOrDefault(item => PathsEqual(item.FullPath, candidatePath));
             if (candidate != null)
                 return candidate;
-            candidatePath = Path.GetDirectoryName(candidatePath);
+            candidatePath = _fs.GetDirectoryName(candidatePath);
         }
 
         return null;
@@ -770,14 +759,14 @@ public partial class FileTreeViewModel : ViewModelBase
         }
     }
 
-    private static void LoadChildren(FileTreeItem parent, int depth, int maxDepth)
+    private static void LoadChildren(IFileSystem fileSystem, FileTreeItem parent, int depth, int maxDepth)
     {
         if (depth >= maxDepth) return;
 
-        string[] directories;
+        IReadOnlyList<string> directories;
         try
         {
-            directories = Directory.GetDirectories(parent.FullPath);
+            directories = fileSystem.GetDirectories(parent.FullPath);
         }
         catch
         {
@@ -788,11 +777,11 @@ public partial class FileTreeViewModel : ViewModelBase
         {
             try
             {
-                string directoryName = Path.GetFileName(directory);
+                string directoryName = fileSystem.GetFileName(directory);
                 if (directoryName.StartsWith('.')) continue;
 
-                FileTreeItem child = CreateTreeItem(directory, isDirectory: true);
-                LoadChildren(child, depth + 1, maxDepth);
+                FileTreeItem child = CreateTreeItem(fileSystem, directory, isDirectory: true);
+                LoadChildren(fileSystem, child, depth + 1, maxDepth);
                 parent.Children.Add(child);
             }
             catch
@@ -801,10 +790,10 @@ public partial class FileTreeViewModel : ViewModelBase
             }
         }
 
-        string[] files;
+        IReadOnlyList<string> files;
         try
         {
-            files = Directory.GetFiles(parent.FullPath);
+            files = fileSystem.GetFiles(parent.FullPath);
         }
         catch
         {
@@ -815,10 +804,10 @@ public partial class FileTreeViewModel : ViewModelBase
         {
             try
             {
-                string fileName = Path.GetFileName(file);
+                string fileName = fileSystem.GetFileName(file);
                 if (fileName.StartsWith('.')) continue;
 
-                parent.Children.Add(CreateTreeItem(file, isDirectory: false));
+                parent.Children.Add(CreateTreeItem(fileSystem, file, isDirectory: false));
             }
             catch
             {
@@ -839,12 +828,12 @@ public partial class FileTreeViewModel : ViewModelBase
             return;
         }
 
-        savedItem.UpdateLastWriteTimeUtc(TryGetLastWriteTimeUtc(fullPath));
+        savedItem.UpdateLastWriteTimeUtc(_fs.GetLastWriteTimeUtc(fullPath));
         if (SortMode is FileTreeSortMode.ModifiedNewestFirst or FileTreeSortMode.ModifiedOldestFirst)
             RebuildFlatList(SelectedFlatItem?.FullPath, preserveViewport: true);
     }
 
-    private static FileTreeItem? FindTreeItem(FileTreeItem item, string fullPath)
+    private FileTreeItem? FindTreeItem(FileTreeItem item, string fullPath)
     {
         if (PathsEqual(item.FullPath, fullPath))
             return item;
@@ -859,61 +848,20 @@ public partial class FileTreeViewModel : ViewModelBase
         return null;
     }
 
-    private static FileTreeItem CreateTreeItem(string fullPath, bool isDirectory)
+    private static FileTreeItem CreateTreeItem(IFileSystem fileSystem, string fullPath, bool isDirectory)
     {
+        // 目录名语义与原 DirectoryInfo.Name 一致：先去掉结尾分隔符再取末段（兼容 "C:\temp\" 形态的路径）。
         string name = isDirectory
-            ? new DirectoryInfo(fullPath).Name
-            : Path.GetFileName(fullPath);
+            ? fileSystem.GetFileName(fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+            : fileSystem.GetFileName(fullPath);
         if (string.IsNullOrEmpty(name))
             name = Path.GetPathRoot(fullPath) ?? fullPath;
-        string extension = isDirectory ? string.Empty : Path.GetExtension(name);
-        DateTime? lastWriteTimeUtc = null;
-
-        try
-        {
-            if (isDirectory)
-            {
-                DirectoryInfo directoryInfo = new(fullPath);
-                directoryInfo.Refresh();
-                name = directoryInfo.Name;
-            }
-            else
-            {
-                FileInfo fileInfo = new(fullPath);
-                fileInfo.Refresh();
-                name = fileInfo.Name;
-                extension = fileInfo.Extension;
-                if (fileInfo.Exists)
-                    lastWriteTimeUtc = fileInfo.LastWriteTimeUtc;
-            }
-        }
-        catch
-        {
-            // 节点名和扩展名仍可从路径取得；缺失时间会稳定地排在修改时间组末尾。
-        }
+        string extension = isDirectory ? string.Empty : fileSystem.GetFileExtension(name);
+        DateTime? lastWriteTimeUtc = isDirectory ? null : fileSystem.GetLastWriteTimeUtc(fullPath);
 
         var sortKey = new FileTreeSortKey(name, fullPath, isDirectory, extension, lastWriteTimeUtc);
         return new FileTreeItem(name, fullPath, isDirectory, sortKey);
     }
 
-    private static DateTime? TryGetLastWriteTimeUtc(string fullPath)
-    {
-        try
-        {
-            FileInfo fileInfo = new(fullPath);
-            fileInfo.Refresh();
-            return fileInfo.Exists ? fileInfo.LastWriteTimeUtc : null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static async Task DispatchToUiThreadAsync(Action action)
-    {
-        await Dispatcher.UIThread.InvokeAsync(action);
-    }
-
-    private static bool PathsEqual(string left, string right) => PathComparer.Equals(left, right);
+    private bool PathsEqual(string left, string right) => _fs.ArePathsEqual(left, right);
 }

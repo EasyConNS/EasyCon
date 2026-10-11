@@ -157,7 +157,7 @@ public partial class ControllerConnectionViewModel : ObservableObject
 
     private void EditKeyMapping()
     {
-        _windowService.ShowKeyMappingWindow();
+        _windowService.Show(WindowKeys.KeyMapping);
     }
 
     private void UpdateEditKeyMappingEnabled()

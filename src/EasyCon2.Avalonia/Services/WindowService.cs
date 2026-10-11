@@ -1,24 +1,16 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
-using EasyCon2.Avalonia.AlertConfig;
-using EasyCon2.Avalonia.Connection;
-using EasyCon2.Avalonia.KeyMapping;
-using EasyCon2.Avalonia.Mcp;
-using EasyCon2.Avalonia.ModelsConfig;
-using EasyCon2.Avalonia.Monitoring;
-using EasyCon2.Avalonia.Scripting;
 using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Shell;
 using ILogService = EasyCon.Core.Services.ILogService;
 using Resources = EasyCon2.UI.Common.Properties.Resources;
 
 namespace EasyCon2.Avalonia.Services;
 
 /// <summary>
-/// IWindowService 实现 —— 负责所有子窗口的创建与生命周期管理。
-/// 全部子窗口单实例：重复打开只激活已有窗口，避免多份实例各自持有一份
-/// ViewModel 造成保存互相覆盖。
+/// IWindowService 实现 —— 按键注册表化的单例窗口管理器：各 feature 窗口的
+/// 构造工厂由组合根（App）在启动时注册，本类只负责通用的单例生命周期
+/// （已存在 → 激活，关闭 → 移除键），从而保持 Services 层零 feature 反向依赖。
 /// </summary>
 public class WindowService : IWindowService
 {
@@ -27,64 +19,62 @@ public class WindowService : IWindowService
     /// </summary>
     public Window? Owner { get; set; }
 
-    private readonly IDeviceService _deviceService;
     private readonly ILogService _logService;
-    private readonly IDialogService _dialogService;
-    private readonly Dictionary<Type, Window> _openWindows = [];
+    private readonly Dictionary<string, Func<Window>> _factories = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Window> _open = new(StringComparer.Ordinal);
 
-    public WindowService(IDeviceService deviceService, ILogService logService, IDialogService dialogService)
+    public WindowService(ILogService logService)
     {
-        _deviceService = deviceService;
         _logService = logService;
-        _dialogService = dialogService;
     }
 
-    public void ShowESPConfigWindow()
-        => ShowSingleton(() => new ESPConfigWindow
-        {
-            DataContext = new ESPConfigViewModel(_deviceService, _logService, _dialogService)
-        });
-
-    public void ShowAlertConfigWindow()
-        => ShowSingleton(() => new AlertConfigWindow());
-
-    public void ShowModelsConfigWindow()
-        => ShowSingleton(() => new ModelsConfigWindow());
-
-    public void ShowMcpConfigWindow()
-        => ShowSingleton(() => new McpConfigWindow());
-
-    public void ShowKeyMappingWindow()
-        => ShowSingleton(() => new KeyMappingWindow { DataContext = new KeyMappingViewModel() });
-
-    public void ShowScriptSyntaxWindow()
-        => ShowSingleton(BuildScriptSyntaxWindow);
-
-    private void ShowSingleton<TWindow>(Func<TWindow> create) where TWindow : Window
+    public void Register(string key, Func<Window> factory)
     {
-        var type = typeof(TWindow);
-        if (_openWindows.TryGetValue(type, out var existing) && existing.IsVisible)
+        // 同键不同工厂说明组合根装配冲突，启动期快速失败
+        if (_factories.TryGetValue(key, out var existing) && existing.Method != factory.Method)
+            throw new InvalidOperationException($"窗口键重复注册: {key}");
+        _factories[key] = factory;
+    }
+
+    public bool Show(string key)
+    {
+        if (!_factories.TryGetValue(key, out var create))
+        {
+            _logService.AddLog($"窗口未注册: {key}");
+            return false;
+        }
+
+        if (_open.TryGetValue(key, out var existing) && existing.IsVisible)
         {
             if (existing.WindowState == WindowState.Minimized)
                 existing.WindowState = WindowState.Normal;
             existing.Activate();
-            return;
+            return false;
         }
 
         try
         {
             var window = create();
-            _openWindows[type] = window;
-            window.Closed += (_, _) => _openWindows.Remove(type);
-            window.Show(Owner);
+            _open[key] = window;
+            window.Closed += (_, _) => _open.Remove(key);
+            // Show(Window owner) 不接受 null owner（生产环境由 App 先注入 Owner）
+            if (Owner is not null)
+                window.Show(Owner);
+            else
+                window.Show();
+            return true;
         }
         catch (Exception ex)
         {
-            _logService.AddLog($"打开 {type.Name} 失败: {ex.Message}\n{ex.StackTrace}");
+            _logService.AddLog($"打开窗口({key})失败: {ex.Message}\n{ex.StackTrace}");
+            return false;
         }
     }
 
-    private static Window BuildScriptSyntaxWindow()
+    /// <summary>
+    /// 构造脚本语法帮助窗口（纯 Avalonia 构造，无 feature 依赖，保留在本类）。
+    /// </summary>
+    public static Window BuildScriptSyntaxWindow()
     {
         var textBox = new TextBox
         {

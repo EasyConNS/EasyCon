@@ -1,10 +1,7 @@
-using EasyCon.Core.LLM.Agent;
-using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Tools;
-using EasyCon2.Avalonia.Services;
 using System.Text.Json;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// stop_script 工具：停止正在运行的脚本。

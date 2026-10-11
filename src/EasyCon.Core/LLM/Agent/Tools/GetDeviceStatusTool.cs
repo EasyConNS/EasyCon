@@ -1,10 +1,7 @@
-using EasyCon.Core.LLM.Agent;
-using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Tools;
-using EasyCon2.Avalonia.Services;
 using System.Text.Json;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// get_device_status 工具：返回设备/视频源/手柄连接状态及脚本运行状态。

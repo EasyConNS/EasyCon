@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Services;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
@@ -18,6 +17,8 @@ public partial class ESPConfigViewModel : ViewModelBase
     private readonly IDeviceService _deviceService;
     private readonly ILogService _logService;
     private readonly IDialogService _dialogService;
+    private readonly IFileStorage _fileStorage;
+    private readonly IFileSystem _fileSystem;
     private Dictionary<string, List<AmiiboInfo>> _amiibosDict = new();
     private List<AmiiboInfo> _allAmiibos = new();
     private static readonly string AmiiboDir = Path.Combine(AppContext.BaseDirectory, "Amiibo");
@@ -29,11 +30,13 @@ public partial class ESPConfigViewModel : ViewModelBase
 
     private bool IsDeviceConnected => _deviceService.IsConnected;
 
-    public ESPConfigViewModel(IDeviceService deviceService, ILogService logService, IDialogService dialogService)
+    public ESPConfigViewModel(IDeviceService deviceService, ILogService logService, IDialogService dialogService, IFileStorage? fileStorage = null, IFileSystem? fileSystem = null)
     {
         _deviceService = deviceService;
         _logService = logService;
         _dialogService = dialogService;
+        _fileStorage = fileStorage ?? new LocalFileStorage();
+        _fileSystem = fileSystem ?? LocalFileSystem.Instance;
         InitializeAmiiboData();
     }
 
@@ -227,12 +230,12 @@ public partial class ESPConfigViewModel : ViewModelBase
             if (SelectedGame == "自定义")
             {
                 var filePath = Path.Combine(AmiiboDir, SelectedAmiibo.Name);
-                if (!File.Exists(filePath))
+                if (!_fileSystem.FileExists(filePath))
                 {
                     StatusMessage = "Amiibo文件不存在";
                     return;
                 }
-                data = File.ReadAllBytes(filePath);
+                data = _fileStorage.ReadAllBytes(filePath);
                 if (data.Length != 540)
                 {
                     StatusMessage = "Amiibo文件长度不正确（需要540字节）";
@@ -316,16 +319,17 @@ public partial class ESPConfigViewModel : ViewModelBase
 
     private void LoadCustomAmiibos()
     {
-        if (!Directory.Exists(AmiiboDir))
+        if (!_fileSystem.DirectoryExists(AmiiboDir))
         {
-            Directory.CreateDirectory(AmiiboDir);
+            _fileSystem.CreateDirectory(AmiiboDir);
             StatusMessage = "Amiibo目录已创建，请将bin文件放入Amiibo文件夹";
             HasAmiiboItems = false;
             return;
         }
 
         AmiiboList.Clear();
-        foreach (var file in Directory.GetFiles(AmiiboDir, "*.bin"))
+        // 等价于原 "*.bin" 模式枚举；端口 GetFiles 无 searchPattern 重载，按扩展名过滤
+        foreach (var file in _fileSystem.GetFiles(AmiiboDir).Where(f => f.EndsWith(".bin", StringComparison.OrdinalIgnoreCase)))
         {
             AmiiboList.Add(new AmiiboInfo
             {
@@ -341,7 +345,7 @@ public partial class ESPConfigViewModel : ViewModelBase
         if (string.IsNullOrEmpty(amiibo.Image)) return;
         var imageName = amiibo.Image.Split('/').Last().Replace("png", "jpg");
         var imagePath = Path.Combine(AmiiboDir, "AmiiboImages", imageName);
-        if (!File.Exists(imagePath))
+        if (!_fileSystem.FileExists(imagePath))
         {
             AmiiboPreviewImage = null;
             return;
@@ -361,11 +365,11 @@ public partial class ESPConfigViewModel : ViewModelBase
     private void LoadCustomAmiiboPreview(string fileName)
     {
         var filePath = Path.Combine(AmiiboDir, fileName);
-        if (!File.Exists(filePath)) return;
+        if (!_fileSystem.FileExists(filePath)) return;
 
         try
         {
-            var data = File.ReadAllBytes(filePath);
+            var data = _fileStorage.ReadAllBytes(filePath);
             if (data.Length < 92) return;
 
             string head = data[84].ToString("x2") + data[85].ToString("x2")

@@ -5,6 +5,7 @@ using EasyCon2.Avalonia.Localization;
 using EasyCon2.Avalonia.Services;
 using System;
 using System.Collections.ObjectModel;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Input;
 
@@ -24,6 +25,8 @@ public partial class FlashFirmwareViewModel : ObservableObject
     private readonly IDeviceService _deviceService;
     private readonly IScriptService _scriptService;
     private readonly ILogService _logService;
+    private readonly IFileStorage _fileStorage;
+    private readonly IFileSystem _fileSystem;
     private readonly Func<string?> _getEditorText;
     private readonly Func<string?> _getScriptPath;
 
@@ -42,11 +45,13 @@ public partial class FlashFirmwareViewModel : ObservableObject
     public ICommand ClearFlashCommand { get; }
     public ICommand GenerateFirmwareCommand { get; }
 
-    public FlashFirmwareViewModel(IDeviceService deviceService, IScriptService scriptService, ILogService logService, Func<string?> getEditorText, Func<string?> getScriptPath)
+    public FlashFirmwareViewModel(IDeviceService deviceService, IScriptService scriptService, ILogService logService, Func<string?> getEditorText, Func<string?> getScriptPath, IFileStorage? fileStorage = null, IFileSystem? fileSystem = null)
     {
         _deviceService = deviceService;
         _scriptService = scriptService;
         _logService = logService;
+        _fileStorage = fileStorage ?? new LocalFileStorage();
+        _fileSystem = fileSystem ?? LocalFileSystem.Instance;
         _getEditorText = getEditorText;
         _getScriptPath = getScriptPath;
 
@@ -184,7 +189,7 @@ public partial class FlashFirmwareViewModel : ObservableObject
         {
             // 检查固件目录
             var firmwarePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Firmware");
-            if (!Directory.Exists(firmwarePath))
+            if (!_fileSystem.DirectoryExists(firmwarePath))
             {
                 _logService.AddLog(L10nBridge.T("Text.Msg.FirmwareDirMissing"));
                 return;
@@ -205,13 +210,14 @@ public partial class FlashFirmwareViewModel : ObservableObject
             var protocolVersion = FirmwareProtocolVersion;
             var outputPath = await Task.Run(() =>
             {
-                var hexContent = File.ReadAllText(firmwareFile);
+                var hexContent = _fileStorage.ReadAllText(firmwareFile);
                 var outputFileName = Path.GetFileNameWithoutExtension(firmwareFile) + "+Script" + Path.GetExtension(firmwareFile);
                 var output = Path.Combine(Environment.CurrentDirectory, outputFileName);
 
-                // 使用HexWriter写入脚本到固件
+                // 使用HexWriter写入脚本到固件。UTF8Encoding(false) 与两参 WriteAllText
+                // 重载语义一致（UTF-8 无 BOM）
                 var resultHex = EasyCon.Script.Asm.HexWriter.WriteHex(hexContent, scriptBytes, scriptOffset, protocolVersion);
-                File.WriteAllText(output, resultHex);
+                _fileStorage.WriteAllText(output, resultHex, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
                 return output;
             });
 

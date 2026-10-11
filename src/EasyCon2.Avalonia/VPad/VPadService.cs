@@ -2,11 +2,12 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using EasyCon.Core.Config;
 using EasyCon.Core.Input;
+using EasyCon2.Avalonia.Services;
 using EasyDevice;
 
 namespace EasyCon2.Avalonia.VPad;
 
-public class VPadService
+public sealed class VPadService : IVirtualPadService
 {
     private VPadOverlay? _overlay;
     private IInputBinder? _binder;

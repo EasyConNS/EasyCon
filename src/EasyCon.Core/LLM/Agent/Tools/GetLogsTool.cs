@@ -1,10 +1,7 @@
-using EasyCon.Core.LLM.Agent;
-using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Tools;
-using EasyCon2.Avalonia.Services;
 using System.Text.Json;
 
-namespace EasyCon2.Avalonia.AiAgent.Tools;
+namespace EasyCon.Core.LLM.Agent.Tools;
 
 /// <summary>
 /// get_logs 工具：返回最近的运行日志（按行）。

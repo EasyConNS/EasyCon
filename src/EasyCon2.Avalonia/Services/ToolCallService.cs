@@ -3,6 +3,7 @@ using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Hosting;
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon2.Avalonia.Services;
 using EasyDevice;
 using EasyScript;

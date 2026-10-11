@@ -18,7 +18,8 @@ public class ToolPortBoundaryTests
     private static IEnumerable<Type> ToolTypes()
     {
         var core = typeof(EvalEcsTool).Assembly;
-        var gui = typeof(DefaultTools).Assembly;
+        // 脚本工具已随端口下沉 Core（与 EvalEcsTool 同程序集）；GUI 侧剩 MCP 适配/元工具
+        var gui = typeof(McpTools).Assembly;
         foreach (var t in core.GetTypes().Concat(gui.GetTypes()))
             if (typeof(IAiTool).IsAssignableFrom(t) && t is { IsClass: true, IsAbstract: false })
                 yield return t;

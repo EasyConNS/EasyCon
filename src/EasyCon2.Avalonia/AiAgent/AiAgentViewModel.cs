@@ -28,11 +28,17 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
     private readonly ToolRegistry _tools = new();
 
     /// <summary>
-    /// 当前实例的工具注册中心，供 MCP Server 导出（GUI 启动时由 App 读取一次）。
-    /// 仅首个实例生效；工具的动态增删（MCP 客户端工具集变化）不影响已导出引用，
-    /// 导出侧以快照语义工作。
+    /// 诊断日志汇点（构造时由宿主注入），替代散落的 Console.WriteLine——
+    /// GUI 进程没有控制台，那些输出此前全部丢失。
     /// </summary>
-    public static ToolRegistry? SharedTools { get; private set; }
+    private readonly Action<string>? _diagLog;
+
+    /// <summary>
+    /// 本实例的工具注册中心，供 MCP Server / Flow 服务导出（App 启动时从
+    /// MainWindowViewModel 读取一次）。工具的动态增删（MCP 客户端工具集变化）
+    /// 不影响已导出引用，导出侧以快照语义工作。
+    /// </summary>
+    public ToolRegistry? SharedTools => _tools;
     private readonly SkillRegistry _skills = new();
     private readonly IToolCallService? _toolCallService;
     private readonly IMcpManager? _mcpManager;
@@ -109,15 +115,21 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
 
     public AiAgentViewModel(IToolCallService? toolCallService) : this(toolCallService, null) { }
 
-    public AiAgentViewModel(IToolCallService? toolCallService, IMcpManager? mcpManager, IUiDispatcher? uiDispatcher = null)
+    public AiAgentViewModel(IToolCallService? toolCallService, IMcpManager? mcpManager, IUiDispatcher? uiDispatcher = null, Action<string>? diagLog = null)
     {
         _toolCallService = toolCallService;
         _mcpManager = mcpManager;
-        SharedTools ??= _tools;
+        _diagLog = diagLog;
         _ui = uiDispatcher ?? SynchronousUiDispatcher.Instance;
         if (toolCallService is not null)
         {
-            DefaultTools.RegisterAll(_tools, toolCallService);
+            // 组合视图按窄端口拆开传给 Core 的注册入口（Core 不可见 IToolCallService）
+            DefaultTools.RegisterAll(_tools,
+                editor: toolCallService,
+                run: toolCallService,
+                workspace: toolCallService,
+                observability: toolCallService,
+                device: toolCallService);
             WorkspaceFileTools.RegisterAll(_tools,
                 new WorkspaceRoot(() => _toolCallService?.GetProjectDirectory()));
             InitializeSkills();
@@ -184,13 +196,13 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
             var paths = SkillLoader.GetSearchPaths(projectDir).ToList();
             SkillLoader.LoadToRegistry(_skills, paths);
 
-            DiagLog?.Invoke(
+            _diagLog?.Invoke(
                 $"[AiAgent] 技能加载完成: 共 {_skills.All.Count} 个技能, " +
                 $"搜索路径: [{string.Join(", ", paths)}]");
         }
         catch (Exception ex)
         {
-            DiagLog?.Invoke(
+            _diagLog?.Invoke(
                 $"[AiAgent] 技能加载失败: {ex.Message}");
         }
     }
@@ -199,7 +211,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
     {
         if (_toolCallService is null)
         {
-            DiagLog?.Invoke("[AiAgent] 工具服务为空，无法重建编排器");
+            _diagLog?.Invoke("[AiAgent] 工具服务为空，无法重建编排器");
             return;
         }
 
@@ -385,7 +397,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            DiagLog?.Invoke($"[AiAgent] 发送失败: {ex}");
+            _diagLog?.Invoke($"[AiAgent] 发送失败: {ex}");
             var prev = _currentAssistant;
             if (prev is not null)
                 _ui.Post(() => prev.Content += $"\n[错误] {ex.Message}");
@@ -537,7 +549,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
                 break;
 
             case AgentEvent.Error e:
-                DiagLog?.Invoke($"[AiAgent] {e.Message}");
+                _diagLog?.Invoke($"[AiAgent] {e.Message}");
                 if (_currentAssistant is { } current)
                 {
                     _ui.Post(() => current.Content += $"[错误] {e.Message}");
@@ -553,7 +565,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
                 // 原始 SSE 数据量大且仅调试面板可见（Release 版不渲染），
                 // 只把解析失败等关键诊断同步写入日志文件，保证可追溯
                 if (!d.Message.StartsWith("[SSE] ", StringComparison.Ordinal))
-                    DiagLog?.Invoke($"[AiAgent] {d.Message}");
+                    _diagLog?.Invoke($"[AiAgent] {d.Message}");
                 _ui.Post(() =>
                 {
                     _debugLogs.Add(d.Message);
@@ -689,7 +701,7 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
             if (provider.Api != "openai-completions")
             {
                 // 非 openai 协议的供应商无法接入，记录原因而不是从模型列表无声消失
-                DiagLog?.Invoke($"[AiAgent] 供应商 \"{providerKey}\" 的 API 类型 \"{provider.Api}\" 不受支持，已从模型列表忽略");
+                _diagLog?.Invoke($"[AiAgent] 供应商 \"{providerKey}\" 的 API 类型 \"{provider.Api}\" 不受支持，已从模型列表忽略");
                 continue;
             }
 
@@ -750,12 +762,6 @@ public partial class AiAgentViewModel : ObservableObject, IDisposable
 
         return null;
     }
-
-    /// <summary>
-    /// 诊断日志汇点（GUI 启动时注入），替代散落的 Console.WriteLine——
-    /// GUI 进程没有控制台，那些输出此前全部丢失。
-    /// </summary>
-    public static Action<string>? DiagLog { get; set; }
 
     /// <summary>
     /// 取消在途请求并退订静态事件。应用级单例（MainWindowViewModel）在主窗口
