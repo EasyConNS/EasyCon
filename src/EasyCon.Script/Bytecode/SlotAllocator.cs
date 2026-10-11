@@ -704,10 +704,18 @@ public static partial class BytecodeEncoder
 
         int PoolAlloc()
         {
-            if (_poolFree.Count > 0)
+            // 取用守卫：非常量归还槽只在「归还块支配当前发射块」时复用——归还块执行 ⟹
+            // 其末次读取先于本块的写入；支配不成立则槽位留待后续受支配块（常量归还槽
+            // 无守卫：块首物化自愈，维持原行为）。
+            if (_poolFree.Count > 0 && _freeSlotRelease.Count > 0)
+                _dom ??= Dominators.Compute(_fn);
+            for (int i = _poolFree.Count - 1; i >= 0; i--)
             {
-                var s = _poolFree[_poolFree.Count - 1];
-                _poolFree.RemoveAt(_poolFree.Count - 1);
+                var s = _poolFree[i];
+                if (_freeSlotRelease.TryGetValue(s, out var release) && !_dom!.Dominates(release, _emittingBlock))
+                    continue;
+                _poolFree.RemoveAt(i);
+                _freeSlotRelease.Remove(s);
 #if DEBUG
                 Debug.Assert(!_exclusiveSlots.Contains(s), $"池化分配撞上独占槽 {s}（合并臂结算污染）");
 #endif
@@ -749,8 +757,52 @@ public static partial class BytecodeEncoder
             if (gleft == 0 && _slots.TryGetValue(v, out var slot))
             {
                 Debug.Assert(!_exclusiveSlots.Contains(slot), $"池化值归还独占槽 {slot}（合并臂未 scrub）");
-                _poolFree.Add(slot);
+                if (ReleaseSafeAt(block, v))
+                {
+                    _poolFree.Add(slot);
+                    _freeSlotRelease[slot] = block;
+                }
+                // 不安全：末次读取块不后支配其余读取块——发射序上更晚的取用者可能
+                // 先于本次读取执行（CFG 序 ≠ 发射序），槽位保守保留至函数结束
             }
+        }
+
+        /// <summary>归还安全性（CFG 活性守卫）：末次读取块须后支配该值全部读取块——
+        /// 从任一其他读取块出发，不经末次读取块不可达出口。线性扫描的「末次静态读取
+        /// 归还」以发射序为执行序，循环体内块重排/回边可倒置二者：复用者先覆写归还槽，
+        /// 末次读取随即拿到陈值（LoopCarriedLocalRegressionTests 实证）。</summary>
+        bool ReleaseSafeAt(SsaBlock release, SsaValue v)
+        {
+            foreach (var kv in _useInfo)
+            {
+                if (kv.Key == release || !kv.Value.UseCount.ContainsKey(v))
+                    continue;
+                if (!AllPathsPassThrough(kv.Key, release))
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>从 from 出发、不经 via，能否抵达出口（Return/未终结块）。能 → via 不后支配 from。</summary>
+        bool AllPathsPassThrough(SsaBlock from, SsaBlock via)
+        {
+            var visited = new HashSet<SsaBlock>();
+            var stack = new Stack<SsaBlock>();
+            visited.Add(from);
+            stack.Push(from);
+            while (stack.Count > 0)
+            {
+                var cur = stack.Pop();
+                if (cur.IsReturn || !cur.IsTerminated)
+                    return false;
+                foreach (var s in cur.GetSuccessors())
+                {
+                    if (s == via || !visited.Add(s))
+                        continue;
+                    stack.Push(s);
+                }
+            }
+            return true;
         }
 
         // ---- 常量物化（块首惰性，替代函数级 prologue）----

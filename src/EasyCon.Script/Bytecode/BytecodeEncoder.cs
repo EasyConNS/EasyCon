@@ -190,8 +190,18 @@ public static partial class BytecodeEncoder
         readonly List<Fixup> _fixups = new();
         readonly List<int> _labels = new();
         readonly List<int> _poolFree = new();
+        /// <summary>空闲池槽的归还块（非常量池化值）：归还块支配取用块才可复用——
+        /// 归还块执行 ⟹ 其末次读取先于取用块的写入。发射序 ≠ CFG 序时（循环体内
+        /// 块重排/回边），发射序上更晚的取用者可能先于末次读取执行，无守卫即污染
+        /// （LoopCarriedLocalRegressionTests：$c 的槽被常量 10 复用，$prev := $c
+        /// 边副本读到 $val*10）。</summary>
+        readonly Dictionary<int, SsaBlock> _freeSlotRelease = new();
+        /// <summary>取用守卫用的前向支配树（EmitBlocks 期惰性计算一次）。</summary>
+        Dominators? _dom;
+        /// <summary>当前发射块（EmitBlocks 循环置位；PoolAlloc 归还守卫按其判定）。</summary>
+        SsaBlock _emittingBlock = null!;
         /// <summary>非常量池化值的剩余读取计数（= 全函数静态读取数；末次读取结算归零归还槽位，
-        /// 参考线性扫描寄存器分配的活动区间末端回收）。</summary>
+        /// 参考线性扫描寄存器分配的活动区间末端回收；归还守卫见 _freeSlotRelease）。</summary>
         readonly Dictionary<SsaValue, int> _releaseLeft = new();
         /// <summary>独占槽位全集（φ 结果/ForStep 目标/循环携带值/编码器保留临时）：
         /// 永不入池，池化归还侧 DEBUG 断言不与之相交。</summary>
@@ -408,6 +418,7 @@ public static partial class BytecodeEncoder
                 _blockOrder[_fn.Blocks[i]] = i;
             foreach (var block in _fn.Blocks)
             {
+                _emittingBlock = block;
                 _blockStart[block] = _code.Count;
                 var info = Info(block);
 
