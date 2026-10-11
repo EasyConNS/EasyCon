@@ -43,6 +43,7 @@
     <x:String x:Key="Text.Status.Connecting">连接中...</x:String>
     <x:String x:Key="Text.Status.ConnectFailed">连接失败</x:String>
     <x:String x:Key="Text.Status.AudioSilent">已收到音频，当前静音</x:String>
+    <x:String x:Key="Text.Status.AudioUnsupported">当前平台不支持音频输入</x:String>
     <x:String x:Key="Text.Audio.Format">{0:N0} Hz · {1} 声道 · {2} bit</x:String>
 
     <!-- 检查更新 -->

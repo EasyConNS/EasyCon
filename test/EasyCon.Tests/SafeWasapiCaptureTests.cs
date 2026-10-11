@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace EasyCon2.Avalonia.Core.Tests;
+namespace EasyCon.Tests;
 
 [TestFixture]
 public sealed class SafeWasapiCaptureTests

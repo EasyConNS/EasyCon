@@ -21,6 +21,7 @@ public class AudioSourceTests
             "Text.Status.Connecting" => "Connecting",
             "Text.Status.Connected" => "Connected",
             "Text.Status.ConnectFailed" => "Connection Failed",
+            "Text.Status.AudioUnsupported" => "Audio input is not supported on this platform",
             "Text.Btn.ConnectAudio" => "Connect Audio",
             "Text.Btn.DisconnectAudio" => "Disconnect Audio",
             "Text.Msg.AudioDisconnectError" => "Audio source disconnect error: {0}",
@@ -142,6 +143,24 @@ public class AudioSourceTests
             Assert.That(viewModel.AudioLevelText, Does.Contain("dBFS"));
             Assert.That(viewModel.AudioFormatText, Does.Contain("Hz"));
         });
+    }
+
+    [Test]
+    public async Task AudioConnectionViewModel_UnsupportedPlatform_DisablesAudioSurface()
+    {
+        var source = new FakeAudioSource { IsSupported = false };
+        using var viewModel = new AudioConnectionViewModel(source, new FakeLogService(), SynchronousUiDispatcher.Instance);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(viewModel.IsSupported, Is.False);
+            Assert.That(viewModel.AudioSourceOptions, Is.Empty);
+            Assert.That(viewModel.SelectedAudioSource, Is.Null);
+            Assert.That(viewModel.AudioSourceStatus, Is.EqualTo("Audio input is not supported on this platform"));
+        });
+
+        await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)viewModel.ConnectAudioSourceCommand).ExecuteAsync(null);
+        Assert.That(source.TryConnectCount, Is.Zero, "Unsupported platforms must not invoke the native connection path.");
     }
 
     [Test]
@@ -438,7 +457,8 @@ public class AudioSourceTests
         public string? LastConnectedId { get; private set; }
         public AudioCaptureState State { get; private set; } = new(AudioCaptureStatus.Disconnected);
 
-        public bool IsSupported => true;
+        public bool IsSupported { get; init; } = true;
+        public int TryConnectCount { get; private set; }
 
         public event Action<AudioCaptureState>? StateChanged;
         public event Action<AudioLevel>? LevelChanged;
@@ -450,6 +470,7 @@ public class AudioSourceTests
         {
             try
             {
+                TryConnectCount++;
                 BeforeConnect?.Invoke();
                 if (cancellationToken.IsCancellationRequested)
                     return false;

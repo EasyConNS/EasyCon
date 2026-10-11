@@ -229,6 +229,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(MonitorVisibilityButtonText));
         Switch.RefreshLocalizedTexts();
         Capture.RefreshLocalizedTexts();
+        Audio.RefreshLocalizedTexts();
         Controller.RefreshLocalizedTexts();
     }
 

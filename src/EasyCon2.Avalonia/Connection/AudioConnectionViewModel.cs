@@ -37,6 +37,9 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _audioSourceStatus = L10nBridge.T("Text.Status.NotConnected");
 
+    // 当前状态对应的资源键，供语言切换后按同状态重算译文。
+    private string _audioStatusKey = "Text.Status.NotConnected";
+
     [ObservableProperty]
     private bool _isConnectingAudioSource;
 
@@ -55,6 +58,9 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
     public ICommand ConnectAudioSourceCommand { get; }
 
     public ICommand RefreshAudioSourcesCommand { get; }
+
+    /// <summary>当前平台是否提供音频输入实现。非支持平台的面板只显示说明，不开放交互控件。</summary>
+    public bool IsSupported => _audioSource.IsSupported;
 
     /// <summary>
     /// 音频采集源本身，供后续消费者订阅 <see cref="IAudioCaptureSource.DataAvailable"/>；
@@ -76,13 +82,30 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
 
         _audioSource.StateChanged += OnStateChanged;
         _audioSource.LevelChanged += OnLevelChanged;
+        if (!IsSupported)
+            SetAudioStatus("Text.Status.AudioUnsupported");
         RefreshAudioSources();
         SyncState(_audioSource.State);
     }
 
+    private void SetAudioStatus(string key)
+    {
+        _audioStatusKey = key;
+        AudioSourceStatus = L10nBridge.T(key);
+    }
+
+    /// <summary>语言切换后重算状态和按钮快照文本。</summary>
+    public void RefreshLocalizedTexts()
+    {
+        SetAudioStatus(_audioStatusKey);
+        AudioSourceButtonText = L10nBridge.T(IsAudioSourceConnected
+            ? "Text.Btn.DisconnectAudio"
+            : "Text.Btn.ConnectAudio");
+    }
+
     private async Task ConnectAudioSourceAsync()
     {
-        if (_disposed || IsConnectingAudioSource)
+        if (_disposed || !IsSupported || IsConnectingAudioSource)
             return;
 
         if (IsAudioSourceConnected || _audioSource.State.Status == AudioCaptureStatus.Connecting)
@@ -111,7 +134,7 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
         }
 
         IsConnectingAudioSource = true;
-        AudioSourceStatus = L10nBridge.T("Text.Status.Connecting");
+        SetAudioStatus("Text.Status.Connecting");
         AudioSourceButtonText = L10nBridge.T("Text.Btn.DisconnectAudio");
         AudioFormatText = "";
         AudioLevelText = "";
@@ -167,7 +190,7 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
             {
                 IsConnectingAudioSource = false;
                 IsAudioSourceConnected = false;
-                AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
+                SetAudioStatus("Text.Status.ConnectFailed");
                 AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
                 AudioFormatText = "";
                 AudioLevelText = "";
@@ -185,6 +208,13 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
     {
         if (_disposed)
             return;
+
+        if (!IsSupported)
+        {
+            AudioSourceOptions = new ObservableCollection<AudioDeviceInfo>();
+            SelectedAudioSource = null;
+            return;
+        }
 
         try
         {
@@ -224,19 +254,32 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
         if (_disposed)
             return;
 
+        if (!IsSupported)
+        {
+            CancelConnectTimeout();
+            IsConnectingAudioSource = false;
+            IsAudioSourceConnected = false;
+            SetAudioStatus("Text.Status.AudioUnsupported");
+            AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
+            AudioFormatText = "";
+            AudioLevelText = "";
+            Interlocked.Exchange(ref _lastLevelUpdateTimestamp, 0);
+            return;
+        }
+
         switch (state.Status)
         {
             case AudioCaptureStatus.Connecting:
                 IsConnectingAudioSource = true;
                 IsAudioSourceConnected = false;
-                AudioSourceStatus = L10nBridge.T("Text.Status.Connecting");
+                SetAudioStatus("Text.Status.Connecting");
                 AudioSourceButtonText = L10nBridge.T("Text.Btn.DisconnectAudio");
                 break;
             case AudioCaptureStatus.Connected:
                 CancelConnectTimeout();
                 IsConnectingAudioSource = false;
                 IsAudioSourceConnected = true;
-                AudioSourceStatus = L10nBridge.T("Text.Status.Connected");
+                SetAudioStatus("Text.Status.Connected");
                 AudioSourceButtonText = L10nBridge.T("Text.Btn.DisconnectAudio");
                 AudioFormatText = state.Format == null
                     ? ""
@@ -251,7 +294,7 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
                 CancelConnectTimeout();
                 IsConnectingAudioSource = false;
                 IsAudioSourceConnected = false;
-                AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
+                SetAudioStatus("Text.Status.ConnectFailed");
                 AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
                 AudioFormatText = "";
                 AudioLevelText = "";
@@ -263,7 +306,7 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
                 CancelConnectTimeout();
                 IsConnectingAudioSource = false;
                 IsAudioSourceConnected = false;
-                AudioSourceStatus = L10nBridge.T("Text.Status.NotConnected");
+                SetAudioStatus("Text.Status.NotConnected");
                 AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
                 AudioFormatText = "";
                 AudioLevelText = "";
@@ -351,7 +394,7 @@ public partial class AudioConnectionViewModel : ObservableObject, IDisposable
                     await attemptCancellation.CancelAsync();
                     IsConnectingAudioSource = false;
                     IsAudioSourceConnected = false;
-                    AudioSourceStatus = L10nBridge.T("Text.Status.ConnectFailed");
+                    SetAudioStatus("Text.Status.ConnectFailed");
                     AudioSourceButtonText = L10nBridge.T("Text.Btn.ConnectAudio");
                     AudioFormatText = "";
                     AudioLevelText = "";

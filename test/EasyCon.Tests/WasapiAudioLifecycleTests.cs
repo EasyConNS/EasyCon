@@ -1,7 +1,7 @@
 using EasyCon.Capture.Audio;
 using NAudio.Wave;
 
-namespace EasyCon2.Avalonia.Core.Tests;
+namespace EasyCon.Tests;
 
 [TestFixture]
 public sealed class WasapiAudioLifecycleTests

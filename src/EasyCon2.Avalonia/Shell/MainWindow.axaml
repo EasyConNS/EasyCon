@@ -715,6 +715,8 @@
                         <ComboBox ItemsSource="{Binding Audio.AudioSourceOptions}"
                                   SelectedItem="{Binding Audio.SelectedAudioSource}"
                                   HorizontalAlignment="Stretch"
+                                  IsVisible="{Binding Audio.IsSupported}"
+                                  IsEnabled="{Binding Audio.IsSupported}"
                                   behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Audio.RefreshAudioSourcesCommand}">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
@@ -731,6 +733,7 @@
                         <Button Content="{Binding Audio.AudioSourceButtonText}"
                                 Command="{Binding Audio.ConnectAudioSourceCommand}"
                                 IsEnabled="{Binding !Audio.IsConnectingAudioSource}"
+                                IsVisible="{Binding Audio.IsSupported}"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"/>
                     </StackPanel>
@@ -1210,6 +1213,8 @@
                                       SelectedItem="{Binding Audio.SelectedAudioSource}"
                                       HorizontalAlignment="Stretch"
                                       VerticalAlignment="Center"
+                                      IsVisible="{Binding Audio.IsSupported}"
+                                      IsEnabled="{Binding Audio.IsSupported}"
                                       behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Audio.RefreshAudioSourcesCommand}">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
@@ -1228,6 +1233,7 @@
                                 Content="{Binding Audio.AudioSourceButtonText}"
                                 Command="{Binding Audio.ConnectAudioSourceCommand}"
                                 IsEnabled="{Binding !Audio.IsConnectingAudioSource}"
+                                IsVisible="{Binding Audio.IsSupported}"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Bottom"/>
                     </Grid>

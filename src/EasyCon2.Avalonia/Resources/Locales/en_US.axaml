@@ -43,6 +43,7 @@
     <x:String x:Key="Text.Status.Connecting">Connecting...</x:String>
     <x:String x:Key="Text.Status.ConnectFailed">Connection Failed</x:String>
     <x:String x:Key="Text.Status.AudioSilent">Audio received, currently silent</x:String>
+    <x:String x:Key="Text.Status.AudioUnsupported">Audio input is not supported on this platform</x:String>
     <x:String x:Key="Text.Audio.Format">{0:N0} Hz · {1} channels · {2} bit</x:String>
 
     <!-- Update check -->
