@@ -32,6 +32,9 @@ public partial class ControllerConnectionViewModel : ObservableObject
     [ObservableProperty]
     private string _controlSourceStatus = L10n.T("Text.Status.NotConnected");
 
+    // 当前状态对应的资源键（语言切换后 RefreshLocalizedTexts 据此重算同状态的译文）
+    private string _controlStatusKey = "Text.Status.NotConnected";
+
     [ObservableProperty]
     private bool _isConnectingController = false;
 
@@ -47,6 +50,22 @@ public partial class ControllerConnectionViewModel : ObservableObject
     public ICommand ConnectControllerCommand { get; }
     public ICommand RefreshControlSourcesCommand { get; }
     public ICommand EditKeyMappingCommand { get; }
+
+    /// <summary>记录状态键并刷新状态文本（语言切换时按同状态重算译文）。</summary>
+    private void SetControlStatus(string key)
+    {
+        _controlStatusKey = key;
+        ControlSourceStatus = L10n.T(key);
+    }
+
+    /// <summary>语言切换后重算快照文本：状态保持当前状态不变，按钮按连接状态取对应文案。</summary>
+    public void RefreshLocalizedTexts()
+    {
+        ControlSourceStatus = L10n.T(_controlStatusKey);
+        ControllerButtonText = L10n.T(IsControllerConnected
+            ? "Text.Btn.DisconnectController"
+            : "Text.Btn.StartMapping");
+    }
 
     public ControllerConnectionViewModel(IControllerService controllerService, IWindowService windowService, ILogService logService, Func<bool> isSwitchConnected, IUiDispatcher? uiDispatcher = null)
     {
@@ -69,7 +88,7 @@ public partial class ControllerConnectionViewModel : ObservableObject
         _controllerService.Disconnected += () => _ui.Post(() =>
         {
             IsControllerConnected = false;
-            ControlSourceStatus = L10n.T("Text.Status.NotConnected");
+            SetControlStatus("Text.Status.NotConnected");
             ControllerButtonText = L10n.T("Text.Btn.StartMapping");
             UpdateEditKeyMappingEnabled();
             _logService.AddLog(L10n.T("Text.Msg.ControllerDisconnected"));
@@ -90,12 +109,12 @@ public partial class ControllerConnectionViewModel : ObservableObject
 
         if (!_isSwitchConnected())
         {
-            _logService.AddLog("请先连接单片机");
+            _logService.AddLog(L10n.T("Text.Msg.ConnectFirst"));
             return;
         }
 
         IsConnectingController = true;
-        ControlSourceStatus = L10n.T("Text.Status.Connecting");
+        SetControlStatus("Text.Status.Connecting");
         var selectedSource = SelectedControlSource;
         _logService.AddLog(string.Format(L10n.T("Text.Msg.ConnectControllerPrepare"), selectedSource?.DisplayName ?? ""));
 
@@ -112,14 +131,14 @@ public partial class ControllerConnectionViewModel : ObservableObject
                     if (ok)
                     {
                         IsControllerConnected = true;
-                        ControlSourceStatus = L10n.T("Text.Status.Connected");
+                        SetControlStatus("Text.Status.Connected");
                         ControllerButtonText = L10n.T("Text.Btn.DisconnectController");
                         UpdateEditKeyMappingEnabled();
                         _logService.AddLog(string.Format(L10n.T("Text.Msg.ConnectControllerOk"), selectedSource?.DisplayName));
                     }
                     else
                     {
-                        ControlSourceStatus = L10n.T("Text.Status.ConnectFailed");
+                        SetControlStatus("Text.Status.ConnectFailed");
                         _logService.AddLog(string.Format(L10n.T("Text.Msg.ConnectControllerFail"), selectedSource?.DisplayName));
                     }
                 });
@@ -129,7 +148,7 @@ public partial class ControllerConnectionViewModel : ObservableObject
                 Dispatcher.UIThread.Post(() =>
                 {
                     IsConnectingController = false;
-                    ControlSourceStatus = L10n.T("Text.Status.ConnectFailed");
+                    SetControlStatus("Text.Status.ConnectFailed");
                 });
                 _logService.AddLog(string.Format(L10n.T("Text.Msg.ConnectControllerError"), ex.Message));
             }
@@ -140,7 +159,7 @@ public partial class ControllerConnectionViewModel : ObservableObject
     {
         _controllerService.Disconnect();
         IsControllerConnected = false;
-        ControlSourceStatus = L10n.T("Text.Status.NotConnected");
+        SetControlStatus("Text.Status.NotConnected");
         ControllerButtonText = L10n.T("Text.Btn.StartMapping");
         UpdateEditKeyMappingEnabled();
         _logService.AddLog(L10n.T("Text.Msg.ControllerDisconnected"));

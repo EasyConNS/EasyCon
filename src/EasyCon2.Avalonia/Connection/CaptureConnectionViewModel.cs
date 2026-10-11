@@ -28,6 +28,9 @@ public partial class CaptureConnectionViewModel : ObservableObject
     [ObservableProperty]
     private string _captureSourceStatus = L10nBridge.T("Text.Status.NotConnected");
 
+    // 当前状态对应的资源键（语言切换后 RefreshLocalizedTexts 据此重算同状态的译文）
+    private string _captureStatusKey = "Text.Status.NotConnected";
+
     [ObservableProperty]
     private bool _isConnectingCaptureSource = false;
 
@@ -55,6 +58,22 @@ public partial class CaptureConnectionViewModel : ObservableObject
     /// <summary>采集 API 类型变化（父级借此持久化用户配置）。</summary>
     public event Action? CaptureTypeChanged;
 
+    /// <summary>记录状态键并刷新状态文本（语言切换时按同状态重算译文）。</summary>
+    private void SetCaptureStatus(string key)
+    {
+        _captureStatusKey = key;
+        CaptureSourceStatus = L10nBridge.T(key);
+    }
+
+    /// <summary>语言切换后重算快照文本：状态保持当前状态不变，按钮按连接状态取对应文案。</summary>
+    public void RefreshLocalizedTexts()
+    {
+        CaptureSourceStatus = L10nBridge.T(_captureStatusKey);
+        CaptureSourceButtonText = L10nBridge.T(IsCaptureSourceConnected
+            ? "Text.Btn.DisconnectCapture"
+            : "Text.Btn.ConnectCapture");
+    }
+
     public ICommand ConnectCaptureSourceCommand { get; }
     public ICommand RefreshCaptureSourcesCommand { get; }
 
@@ -74,7 +93,7 @@ public partial class CaptureConnectionViewModel : ObservableObject
         {
             if (!IsCaptureSourceConnected) return;
             IsCaptureSourceConnected = false;
-            CaptureSourceStatus = L10nBridge.T("Text.Status.Disconnected");
+            SetCaptureStatus("Text.Status.Disconnected");
             CaptureSourceButtonText = L10nBridge.T("Text.Btn.ConnectCapture");
         };
 
@@ -90,9 +109,7 @@ public partial class CaptureConnectionViewModel : ObservableObject
         if (IsCaptureSourceConnected == connected)
             return;
         IsCaptureSourceConnected = connected;
-        CaptureSourceStatus = connected
-            ? L10nBridge.T("Text.Status.Connected")
-            : L10nBridge.T("Text.Status.NotConnected");
+        SetCaptureStatus(connected ? "Text.Status.Connected" : "Text.Status.NotConnected");
         CaptureSourceButtonText = connected
             ? L10nBridge.T("Text.Btn.DisconnectCapture")
             : L10nBridge.T("Text.Btn.ConnectCapture");
@@ -121,14 +138,14 @@ public partial class CaptureConnectionViewModel : ObservableObject
                     _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.DisconnectCaptureError"), ex.Message));
                 }
                 IsCaptureSourceConnected = false;
-                CaptureSourceStatus = L10nBridge.T("Text.Status.NotConnected");
+                SetCaptureStatus("Text.Status.NotConnected");
                 CaptureSourceButtonText = L10nBridge.T("Text.Btn.ConnectCapture");
                 _logService.AddLog(L10nBridge.T("Text.Msg.CaptureDisconnected"));
                 return;
             }
 
             IsConnectingCaptureSource = true;
-            CaptureSourceStatus = L10nBridge.T("Text.Status.Connecting");
+            SetCaptureStatus("Text.Status.Connecting");
             var sourceName = SelectedCaptureSource ?? "";
             _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.OpenCapturePrepare"), sourceName));
 
@@ -142,7 +159,7 @@ public partial class CaptureConnectionViewModel : ObservableObject
                     if (ok)
                     {
                         IsCaptureSourceConnected = true;
-                        CaptureSourceStatus = L10nBridge.T("Text.Status.Connected");
+                        SetCaptureStatus("Text.Status.Connected");
                         CaptureSourceButtonText = L10nBridge.T("Text.Btn.DisconnectCapture");
                         _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.CaptureOk"), sourceName));
 
@@ -150,7 +167,7 @@ public partial class CaptureConnectionViewModel : ObservableObject
                     }
                     else
                     {
-                        CaptureSourceStatus = "连接失败";
+                        SetCaptureStatus("Text.Status.ConnectFailed");
                         _logService.AddLog(L10nBridge.T("Text.Msg.CaptureOpenFail"));
                     }
                 });
@@ -160,7 +177,7 @@ public partial class CaptureConnectionViewModel : ObservableObject
                 await _ui.InvokeAsync(() =>
                 {
                     IsConnectingCaptureSource = false;
-                    CaptureSourceStatus = "连接失败";
+                    SetCaptureStatus("Text.Status.ConnectFailed");
                 });
                 _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.CaptureError"), ex.Message));
             }

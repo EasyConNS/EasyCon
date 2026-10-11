@@ -28,6 +28,10 @@ public partial class SwitchConnectionViewModel : ObservableObject
     [ObservableProperty]
     private string _nintendoSwitchStatus = L10nBridge.T("Text.Status.NotConnected");
 
+    // 当前状态对应的资源键与格式参数（如已连接的串口号），供语言切换后重算同状态的译文
+    private string _switchStatusKey = "Text.Status.NotConnected";
+    private string? _switchStatusArg;
+
     [ObservableProperty]
     private bool _isConnectingNintendoSwitch = false;
 
@@ -39,6 +43,25 @@ public partial class SwitchConnectionViewModel : ObservableObject
 
     /// <summary>设备在连接状态下从外部断开（拔线等），供父级联动复位录制等状态。</summary>
     public event Action? DeviceLost;
+
+    /// <summary>记录状态键（及可选格式参数）并刷新状态文本，语言切换时按同状态重算译文。</summary>
+    private void SetSwitchStatus(string key, string? arg = null)
+    {
+        _switchStatusKey = key;
+        _switchStatusArg = arg;
+        NintendoSwitchStatus = arg == null
+            ? L10nBridge.T(key)
+            : string.Format(L10nBridge.T(key), arg);
+    }
+
+    /// <summary>语言切换后重算快照文本：状态保持当前状态不变，按钮按连接状态取对应文案。</summary>
+    public void RefreshLocalizedTexts()
+    {
+        SetSwitchStatus(_switchStatusKey, _switchStatusArg);
+        NintendoSwitchButtonText = L10nBridge.T(IsNintendoSwitchConnected
+            ? "Text.Btn.DisconnectSwitch"
+            : "Text.Btn.ConnectSwitch");
+    }
 
     public ICommand ConnectNintendoSwitchCommand { get; }
     public ICommand AutoConnectNintendoSwitchCommand { get; }
@@ -65,7 +88,7 @@ public partial class SwitchConnectionViewModel : ObservableObject
         {
             if (!IsNintendoSwitchConnected) return;
             IsNintendoSwitchConnected = false;
-            NintendoSwitchStatus = L10nBridge.T("Text.Status.Disconnected");
+            SetSwitchStatus("Text.Status.Disconnected");
             NintendoSwitchButtonText = L10nBridge.T("Text.Btn.ConnectSwitch");
             DeviceLost?.Invoke();
         };
@@ -82,11 +105,17 @@ public partial class SwitchConnectionViewModel : ObservableObject
         if (IsNintendoSwitchConnected == connected)
             return;
         IsNintendoSwitchConnected = connected;
-        NintendoSwitchStatus = connected
-            ? (string.IsNullOrEmpty(SelectedSerialPort)
-                ? L10nBridge.T("Text.Status.Connected")
-                : $"已连接{SelectedSerialPort}")
-            : L10nBridge.T("Text.Status.NotConnected");
+        if (connected)
+        {
+            if (string.IsNullOrEmpty(SelectedSerialPort))
+                SetSwitchStatus("Text.Status.Connected");
+            else
+                SetSwitchStatus("Text.Status.ConnectedWithPort", SelectedSerialPort);
+        }
+        else
+        {
+            SetSwitchStatus("Text.Status.NotConnected");
+        }
         NintendoSwitchButtonText = connected
             ? L10nBridge.T("Text.Btn.DisconnectSwitch")
             : L10nBridge.T("Text.Btn.ConnectSwitch");
@@ -104,14 +133,14 @@ public partial class SwitchConnectionViewModel : ObservableObject
             {
                 _deviceService.Disconnect();
                 IsNintendoSwitchConnected = false;
-                NintendoSwitchStatus = "未连接";
+                SetSwitchStatus("Text.Status.NotConnected");
                 NintendoSwitchButtonText = L10nBridge.T("Text.Btn.ConnectSwitch");
                 _logService.AddLog(L10nBridge.T("Text.Msg.SwitchLost"));
                 return;
             }
 
             IsConnectingNintendoSwitch = true;
-            NintendoSwitchStatus = L10nBridge.T("Text.Status.Connecting");
+            SetSwitchStatus("Text.Status.Connecting");
             _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.ConnectSwitchPrepare"), SelectedSerialPort));
 
             var port = SelectedSerialPort;
@@ -127,13 +156,13 @@ public partial class SwitchConnectionViewModel : ObservableObject
                         if (ok)
                         {
                             IsNintendoSwitchConnected = true;
-                            NintendoSwitchStatus = $"已连接{port}";
+                            SetSwitchStatus("Text.Status.ConnectedWithPort", port);
                             NintendoSwitchButtonText = L10nBridge.T("Text.Btn.DisconnectSwitch");
                             _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.ConnectSwitchOk"), port));
                         }
                         else
                         {
-                            NintendoSwitchStatus = "连接失败";
+                            SetSwitchStatus("Text.Status.ConnectFailed");
                         }
                     });
                 }
@@ -142,7 +171,7 @@ public partial class SwitchConnectionViewModel : ObservableObject
                     _ui.Post(() =>
                     {
                         IsConnectingNintendoSwitch = false;
-                        NintendoSwitchStatus = "连接失败";
+                        SetSwitchStatus("Text.Status.ConnectFailed");
                     });
                     _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.ConnectSwitchError"), ex.Message));
                 }
@@ -155,7 +184,7 @@ public partial class SwitchConnectionViewModel : ObservableObject
         if (IsNintendoSwitchConnected || IsConnectingNintendoSwitch) return;
 
         IsConnectingNintendoSwitch = true;
-        NintendoSwitchStatus = L10nBridge.T("Text.Status.AutoConnecting");
+        SetSwitchStatus("Text.Status.AutoConnecting");
         _logService.AddLog(L10nBridge.T("Text.Msg.ScanStart"));
 
         Task.Run(() =>
@@ -170,13 +199,13 @@ public partial class SwitchConnectionViewModel : ObservableObject
                     {
                         IsNintendoSwitchConnected = true;
                         SelectedSerialPort = connectedPort;
-                        NintendoSwitchStatus = $"已连接{connectedPort}";
+                        SetSwitchStatus("Text.Status.ConnectedWithPort", connectedPort);
                         NintendoSwitchButtonText = L10nBridge.T("Text.Btn.DisconnectSwitch");
                         _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AutoConnectOk"), connectedPort));
                     }
                     else
                     {
-                        NintendoSwitchStatus = L10nBridge.T("Text.Status.AutoConnectFailed");
+                        SetSwitchStatus("Text.Status.AutoConnectFailed");
                         _logService.AddLog(L10nBridge.T("Text.Msg.AutoConnectFail"));
                     }
                 });
@@ -186,7 +215,7 @@ public partial class SwitchConnectionViewModel : ObservableObject
                 _ui.Post(() =>
                 {
                     IsConnectingNintendoSwitch = false;
-                    NintendoSwitchStatus = L10nBridge.T("Text.Status.AutoConnectFailed");
+                    SetSwitchStatus("Text.Status.AutoConnectFailed");
                 });
                 _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.AutoConnectError"), ex.Message));
             }
@@ -207,7 +236,7 @@ public partial class SwitchConnectionViewModel : ObservableObject
     {
         if (!IsNintendoSwitchConnected)
         {
-            _logService.AddLog("请先连接单片机");
+            _logService.AddLog(L10nBridge.T("Text.Msg.ConnectFirst"));
             return;
         }
 
@@ -227,7 +256,7 @@ public partial class SwitchConnectionViewModel : ObservableObject
     {
         if (!IsNintendoSwitchConnected)
         {
-            _logService.AddLog("请先连接单片机");
+            _logService.AddLog(L10nBridge.T("Text.Msg.ConnectFirst"));
             return;
         }
 

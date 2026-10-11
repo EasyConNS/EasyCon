@@ -37,9 +37,16 @@
     <!-- Common status and buttons -->
     <x:String x:Key="Text.Status.NotConnected">Not Connected</x:String>
     <x:String x:Key="Text.Status.Connected">Connected</x:String>
+    <x:String x:Key="Text.Status.ConnectedWithPort">Connected: {0}</x:String>
     <x:String x:Key="Text.Status.Disconnected">Disconnected</x:String>
     <x:String x:Key="Text.Status.Connecting">Connecting...</x:String>
     <x:String x:Key="Text.Status.ConnectFailed">Connection Failed</x:String>
+
+    <!-- Update check -->
+    <x:String x:Key="Text.Status.CheckingUpdate">Checking...</x:String>
+    <x:String x:Key="Text.Status.UpdateAvailable">New version v{0} available</x:String>
+    <x:String x:Key="Text.Status.UpToDate">Up to date</x:String>
+    <x:String x:Key="Text.Status.UpdateCheckFailed">Check failed</x:String>
 
     <!-- MCU -->
     <x:String x:Key="Text.Btn.ConnectSwitch">Connect MCU</x:String>
@@ -165,6 +172,16 @@
     <x:String x:Key="Text.Config.McpServers">MCP Servers</x:String>
     <x:String x:Key="Text.Config.Models">Models</x:String>
     <x:String x:Key="Text.Config.CheckUpdate">Check for Updates</x:String>
+    <x:String x:Key="Text.Config.Configuration">Configuration</x:String>
+    <x:String x:Key="Text.Config.CaptureType">Capture Card Type</x:String>
+    <x:String x:Key="Text.Config.SetEnvVariable">Set Environment Variables</x:String>
+    <x:String x:Key="Text.Config.OpenConfig">Open Config</x:String>
+    <x:String x:Key="Text.Config.HighPrecisionMode">High Precision Mode</x:String>
+    <x:String x:Key="Text.Config.Reset">Reset</x:String>
+    <x:String x:Key="Text.Config.Style">Style</x:String>
+    <x:String x:Key="Text.Config.RestoreDefault">Restore Default</x:String>
+    <x:String x:Key="Text.Config.GitHubToolTip">Open GitHub in browser</x:String>
+    <x:String x:Key="Text.Config.CurrentVersion">Current version: v{0}</x:String>
 
     <!-- Feature center page -->
     <x:String x:Key="Text.Feature.CompileFlash">Compile &amp; Flash</x:String>

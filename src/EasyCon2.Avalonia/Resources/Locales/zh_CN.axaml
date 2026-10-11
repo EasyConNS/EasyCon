@@ -37,9 +37,16 @@
     <!-- 通用状态与按钮 -->
     <x:String x:Key="Text.Status.NotConnected">未连接</x:String>
     <x:String x:Key="Text.Status.Connected">已连接</x:String>
+    <x:String x:Key="Text.Status.ConnectedWithPort">已连接{0}</x:String>
     <x:String x:Key="Text.Status.Disconnected">已断开</x:String>
     <x:String x:Key="Text.Status.Connecting">连接中...</x:String>
     <x:String x:Key="Text.Status.ConnectFailed">连接失败</x:String>
+
+    <!-- 检查更新 -->
+    <x:String x:Key="Text.Status.CheckingUpdate">正在检查…</x:String>
+    <x:String x:Key="Text.Status.UpdateAvailable">发现新版本 v{0}</x:String>
+    <x:String x:Key="Text.Status.UpToDate">当前已是最新版本</x:String>
+    <x:String x:Key="Text.Status.UpdateCheckFailed">检查失败</x:String>
 
     <!-- 单片机 -->
     <x:String x:Key="Text.Btn.ConnectSwitch">连接单片机</x:String>
@@ -165,6 +172,16 @@
     <x:String x:Key="Text.Config.McpServers">MCP 服务器</x:String>
     <x:String x:Key="Text.Config.Models">模型设置</x:String>
     <x:String x:Key="Text.Config.CheckUpdate">检查更新</x:String>
+    <x:String x:Key="Text.Config.Configuration">配置</x:String>
+    <x:String x:Key="Text.Config.CaptureType">采集卡类型</x:String>
+    <x:String x:Key="Text.Config.SetEnvVariable">设置环境变量</x:String>
+    <x:String x:Key="Text.Config.OpenConfig">打开配置</x:String>
+    <x:String x:Key="Text.Config.HighPrecisionMode">高精度模式</x:String>
+    <x:String x:Key="Text.Config.Reset">重置</x:String>
+    <x:String x:Key="Text.Config.Style">风格</x:String>
+    <x:String x:Key="Text.Config.RestoreDefault">恢复默认</x:String>
+    <x:String x:Key="Text.Config.GitHubToolTip">在浏览器中打开 GitHub</x:String>
+    <x:String x:Key="Text.Config.CurrentVersion">当前版本：v{0}</x:String>
 
     <!-- 功能中心页 -->
     <x:String x:Key="Text.Feature.CompileFlash">编译烧录</x:String>

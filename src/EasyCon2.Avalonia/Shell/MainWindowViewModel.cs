@@ -84,9 +84,15 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isCheckingUpdate;
 
+    // 最近一次检查更新结果（null = 尚未检查过），供语言切换后按当前状态重算按钮文本
+    private UpdateCheckResult? _lastUpdateCheckResult;
+
+    // 完整版本号（供语言切换后重算 CurrentVersion 文本）
+    private string _fullVersion = "";
+
     // 检查更新按钮文本
     [ObservableProperty]
-    private string _checkUpdateButtonText = "检查更新";
+    private string _checkUpdateButtonText = L10n.T("Text.Config.CheckUpdate");
 
     // 当前脚本路径（状态由 _doc 持有，代理属性保持 XAML/测试兼容；通知经 OnDocumentPropertyChanged 转发）
     public string CurrentScriptPath { get => _doc.CurrentPath; set => _doc.CurrentPath = value; }
@@ -201,8 +207,37 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedLanguageCodeChanged(string value)
     {
         App.SetLocale(value);
+        RefreshLocalizedTexts();
         _settings.ScheduleSave(CollectUserSettings);
     }
+
+    /// <summary>
+    /// 语言切换后重算全部快照文本（L10n.T 在赋值时快照，不会随字典切换自动刷新）。
+    /// 只换语言、不改变状态：按钮文案按当前状态（运行中/检查中/连接状态等）取对应译法。
+    /// </summary>
+    private void RefreshLocalizedTexts()
+    {
+        RunButtonText = IsRunning ? L10n.T("Text.Btn.Stop") : L10n.T("Text.Btn.Run");
+        CheckUpdateButtonText = IsCheckingUpdate
+            ? L10n.T("Text.Status.CheckingUpdate")
+            : FormatUpdateCheckButtonText(_lastUpdateCheckResult);
+        CurrentVersion = string.Format(L10n.T("Text.Config.CurrentVersion"), _fullVersion);
+        OnPropertyChanged(nameof(MonitorPauseButtonText));
+        OnPropertyChanged(nameof(MonitorVisibilityButtonText));
+        Switch.RefreshLocalizedTexts();
+        Capture.RefreshLocalizedTexts();
+        Controller.RefreshLocalizedTexts();
+    }
+
+    /// <summary>按检查结果取按钮文案；null = 尚未检查过，显示初始文案。</summary>
+    private string FormatUpdateCheckButtonText(UpdateCheckResult? r) => r == null
+        ? L10n.T("Text.Config.CheckUpdate")
+        : r.Status switch
+        {
+            UpdateStatus.UpdateAvailable => string.Format(L10n.T("Text.Status.UpdateAvailable"), r.LatestVersion),
+            UpdateStatus.UpToDate => L10n.T("Text.Status.UpToDate"),
+            _ => L10n.T("Text.Status.UpdateCheckFailed"),
+        };
 
     [ObservableProperty]
     private bool _isIdleThreeColumnLayoutSelected = true;
@@ -290,7 +325,8 @@ public partial class MainWindowViewModel : ViewModelBase
         BrandTitle = "伊机控 EasyCon";
         VersionBadgeText = $"v{ver}";
         WindowTitle = $"{BrandTitle} {VersionBadgeText}";
-        CurrentVersion = $"当前版本：v{fullVer}";
+        _fullVersion = fullVer;
+        CurrentVersion = string.Format(L10n.T("Text.Config.CurrentVersion"), fullVer);
 
         _logService = logService;
         _deviceService = deviceService;
@@ -513,6 +549,7 @@ public partial class MainWindowViewModel : ViewModelBase
             : "zh_CN";
         SelectedLanguageCode = language;
         App.SetLocale(language);
+        RefreshLocalizedTexts();
         WelcomeText = cfg.WelcomeText ?? ConfigState.DefaultWelcomeText;
         AutoSwitchLayoutEnabled = cfg.AutoSwitchLayoutEnabled;
         AutoSwitchColorSchemeEnabled = cfg.AutoSwitchColorSchemeEnabled;
@@ -617,16 +654,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task CheckUpdateAsync()
     {
         IsCheckingUpdate = true;
-        CheckUpdateButtonText = "正在检查…";
+        CheckUpdateButtonText = L10n.T("Text.Status.CheckingUpdate");
         try
         {
             var r = await _updateService.CheckAsync();
-            CheckUpdateButtonText = r.Status switch
-            {
-                UpdateStatus.UpdateAvailable => $"发现新版本 v{r.LatestVersion}",
-                UpdateStatus.UpToDate => "当前已是最新版本",
-                _ => "检查失败",
-            };
+            _lastUpdateCheckResult = r;
+            CheckUpdateButtonText = FormatUpdateCheckButtonText(r);
         }
         finally
         {
@@ -1368,7 +1401,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (!Switch.IsNintendoSwitchConnected)
         {
-            _logService.AddLog("请先连接单片机");
+            _logService.AddLog(L10n.T("Text.Msg.ConnectFirst"));
             return;
         }
 
@@ -1395,7 +1428,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (!Switch.IsNintendoSwitchConnected)
         {
-            _logService.AddLog("请先连接单片机");
+            _logService.AddLog(L10n.T("Text.Msg.ConnectFirst"));
             return;
         }
 
