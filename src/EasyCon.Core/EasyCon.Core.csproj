@@ -17,4 +17,9 @@
 	  <ProjectReference Include="..\EasyCon.Device\EasyCon.Device.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\Images\NotificationLogo.ico"
+                      LogicalName="EasyCon.Core.NotificationLogo.ico" />
+  </ItemGroup>
+
 </Project>

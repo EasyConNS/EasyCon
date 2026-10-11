@@ -5,14 +5,19 @@ namespace EasyCon2.Avalonia.AlertConfig;
 
 public partial class AlertConfigWindow : Window
 {
-    public AlertConfigWindow()
+    public AlertConfigWindow() : this(new AlertConfigViewModel())
+    {
+        AlertConfig.LoadData();
+    }
+
+    public AlertConfigWindow(AlertConfigViewModel vm)
     {
         InitializeComponent();
 
-        var vm = new AlertConfigViewModel();
         AlertConfig.DataContext = vm;
-        AlertConfig.LoadData();
         AlertConfig.SaveRequested += Close;
         AlertConfig.CancelRequested += Close;
+
+        Closed += (_, _) => vm.Dispose();
     }
 }
