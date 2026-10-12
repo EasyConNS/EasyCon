@@ -234,9 +234,10 @@
     <x:String x:Key="Text.AudioLabel.Loaded">Audio opened. Adjust the selection and save it as a new label.</x:String>
     <x:String x:Key="Text.AudioLabel.ClipSummary">Duration {0:F3} s · {1:N0} Hz · {2} channels · {3} bit</x:String>
     <x:String x:Key="Text.AudioLabel.SelectionSummary">Selection {0:F3} → {1:F3} s · Length {2:F3} s</x:String>
-    <x:String x:Key="Text.AudioLabel.Playing">Previewing the selection through the default audio output.</x:String>
+    <x:String x:Key="Text.AudioLabel.PlaybackSummary">Position {0:F3} s / Total {1:F3} s</x:String>
+    <x:String x:Key="Text.AudioLabel.Playing">Previewing through the default audio output. The red cursor shows the playback position.</x:String>
     <x:String x:Key="Text.AudioLabel.Played">Preview finished.</x:String>
-    <x:String x:Key="Text.AudioLabel.Stopped">Preview stopped.</x:String>
+    <x:String x:Key="Text.AudioLabel.Stopped">Preview stopped. The cursor stays here while you adjust the selection.</x:String>
     <x:String x:Key="Text.AudioLabel.SaveFolder">Choose a folder for audio labels</x:String>
     <x:String x:Key="Text.AudioLabel.AlreadyExists">A label with this name already exists. Choose another name or folder.</x:String>
     <x:String x:Key="Text.AudioLabel.Saved">Label saved: {0}</x:String>

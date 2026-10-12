@@ -4,6 +4,7 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Media;
 using EasyCon.Capture.Audio;
+using System.Globalization;
 
 namespace EasyCon2.Avalonia.AudioLabels;
 
@@ -20,6 +21,12 @@ public sealed class AudioWaveform : Control
         AvaloniaProperty.Register<AudioWaveform, double>(nameof(SelectionEnd), defaultBindingMode: BindingMode.TwoWay);
     public static readonly StyledProperty<IBrush> WaveBrushProperty =
         AvaloniaProperty.Register<AudioWaveform, IBrush>(nameof(WaveBrush), Brushes.SteelBlue);
+    public static readonly StyledProperty<double?> PlaybackPositionProperty =
+        AvaloniaProperty.Register<AudioWaveform, double?>(nameof(PlaybackPosition));
+    public static readonly StyledProperty<IBrush> PlaybackBrushProperty =
+        AvaloniaProperty.Register<AudioWaveform, IBrush>(nameof(PlaybackBrush), Brushes.OrangeRed);
+    public static readonly StyledProperty<IBrush> RulerBrushProperty =
+        AvaloniaProperty.Register<AudioWaveform, IBrush>(nameof(RulerBrush), Brushes.Gray);
 
     private double _anchor;
     private bool _dragging;
@@ -27,7 +34,8 @@ public sealed class AudioWaveform : Control
 
     static AudioWaveform()
     {
-        AffectsRender<AudioWaveform>(PeaksProperty, DurationProperty, SelectionStartProperty, SelectionEndProperty, WaveBrushProperty);
+        AffectsRender<AudioWaveform>(PeaksProperty, DurationProperty, SelectionStartProperty, SelectionEndProperty,
+            WaveBrushProperty, PlaybackPositionProperty, PlaybackBrushProperty, RulerBrushProperty);
     }
 
     public AudioWaveformPeak[]? Peaks { get => GetValue(PeaksProperty); set => SetValue(PeaksProperty, value); }
@@ -35,15 +43,19 @@ public sealed class AudioWaveform : Control
     public double SelectionStart { get => GetValue(SelectionStartProperty); set => SetValue(SelectionStartProperty, value); }
     public double SelectionEnd { get => GetValue(SelectionEndProperty); set => SetValue(SelectionEndProperty, value); }
     public IBrush WaveBrush { get => GetValue(WaveBrushProperty); set => SetValue(WaveBrushProperty, value); }
+    public double? PlaybackPosition { get => GetValue(PlaybackPositionProperty); set => SetValue(PlaybackPositionProperty, value); }
+    public IBrush PlaybackBrush { get => GetValue(PlaybackBrushProperty); set => SetValue(PlaybackBrushProperty, value); }
+    public IBrush RulerBrush { get => GetValue(RulerBrushProperty); set => SetValue(RulerBrushProperty, value); }
 
     public override void Render(DrawingContext context)
     {
         base.Render(context);
         Rect bounds = new(Bounds.Size);
         context.FillRectangle(Brushes.Transparent, bounds);
-        if (Peaks is not { Length: > 0 } peaks || Duration <= 0 || bounds.Width <= 0)
+        if (Peaks is not { Length: > 0 } peaks || !double.IsFinite(Duration) || Duration <= 0 || bounds.Width <= 0 || bounds.Height <= 28)
             return;
-        double middle = bounds.Height / 2;
+        double waveHeight = bounds.Height - 28;
+        double middle = waveHeight / 2;
         double scale = Math.Max(0, middle - 12);
         Pen wave = new(WaveBrush, Math.Max(1, bounds.Width / peaks.Length));
         using (context.PushClip(bounds))
@@ -51,7 +63,7 @@ public sealed class AudioWaveform : Control
             double left = Math.Clamp(SelectionStart / Duration, 0, 1) * bounds.Width;
             double right = Math.Clamp(SelectionEnd / Duration, 0, 1) * bounds.Width;
             using (context.PushOpacity(0.16))
-                context.FillRectangle(WaveBrush, new Rect(left, 0, Math.Max(0, right - left), bounds.Height));
+                context.FillRectangle(WaveBrush, new Rect(left, 0, Math.Max(0, right - left), waveHeight));
             using (context.PushOpacity(0.3))
                 context.DrawLine(new Pen(WaveBrush), new Point(0, middle), new Point(bounds.Width, middle));
             for (int index = 0; index < peaks.Length; index++)
@@ -62,10 +74,49 @@ public sealed class AudioWaveform : Control
             }
             foreach (double x in new[] { left, right })
             {
-                context.DrawLine(new Pen(WaveBrush, 2), new Point(x, 0), new Point(x, bounds.Height));
+                context.DrawLine(new Pen(WaveBrush, 2), new Point(x, 0), new Point(x, waveHeight));
                 context.FillRectangle(WaveBrush, new Rect(Math.Clamp(x - 4, 0, Math.Max(0, bounds.Width - 8)), 0, 8, 18), 3);
             }
+            DrawRuler(context, bounds.Width, waveHeight);
+            if (PlaybackPosition is double position && double.IsFinite(position))
+            {
+                double x = Math.Clamp(position / Duration * bounds.Width, 1, Math.Max(1, bounds.Width - 1));
+                context.DrawLine(new Pen(PlaybackBrush, 2), new Point(x, 0), new Point(x, waveHeight));
+                context.FillRectangle(PlaybackBrush, new Rect(Math.Clamp(x - 4, 0, Math.Max(0, bounds.Width - 8)), 0, 8, 8), 2);
+            }
         }
+    }
+
+    private void DrawRuler(DrawingContext context, double width, double top)
+    {
+        FormattedText Label(double seconds) => new(seconds.ToString("0.######", CultureInfo.CurrentCulture) + " s",
+            CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Typeface.Default, 12, RulerBrush);
+
+        Pen tickPen = new(RulerBrush);
+        FormattedText first = Label(0);
+        FormattedText last = Label(Duration);
+        double lastLeft = Math.Max(0, width - last.Width);
+        context.DrawLine(tickPen, new Point(0, top), new Point(width, top));
+        context.DrawText(first, new Point(0, top + 7));
+        double previousRight = first.Width;
+        double minimumStep = Duration / Math.Max(1, Math.Floor(width / 72));
+        double magnitude = Math.Pow(10, Math.Floor(Math.Log10(minimumStep)));
+        double normalized = minimumStep / magnitude;
+        double step = (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * magnitude;
+        for (int index = 1; index * step < Duration; index++)
+        {
+            double seconds = index * step;
+            double x = seconds / Duration * width;
+            context.DrawLine(tickPen, new Point(x, top), new Point(x, top + 4));
+            FormattedText label = Label(seconds);
+            double left = x - label.Width / 2;
+            if (left < previousRight + 8 || left + label.Width + 8 > lastLeft)
+                continue;
+            context.DrawText(label, new Point(left, top + 7));
+            previousRight = left + label.Width;
+        }
+        if (lastLeft >= previousRight + 8)
+            context.DrawText(last, new Point(lastLeft, top + 7));
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
