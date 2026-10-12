@@ -11,7 +11,7 @@ public sealed class AudioDetectionSession : IDisposable
 {
     public const int MaximumLookbackMs = 15_000;
     public const int MaximumTimeoutMs = 300_000;
-    private const long WaitCompletionAllowanceNs = 250_000_000;
+    private const long MaximumPendingAudioNs = 250_000_000;
     private readonly IAudioCaptureSource _source;
     private readonly Func<string, CancellationToken, AudioMatchTemplate> _load;
     private readonly Func<long> _clock;
@@ -64,19 +64,29 @@ public sealed class AudioDetectionSession : IDisposable
         _ = new AudioMatchSettings(threshold);
         long start = _clock();
         long deadline = start + timeoutMs * 1_000_000L;
-        long completionDeadline = deadline + WaitCompletionAllowanceNs;
         _history.Check();
         using Timeline pending = new(_source, _clock, start);
         AudioMatchTemplate template = _load(labelName, token);
         AudioTemplateMatcher matcher = new(template, pending.Format);
+        int framesPerBatch = Math.Max(1, pending.Format.SampleRate / 100);
         long cursor = start;
         bool scored = false;
 
-        void CheckCompletionTime()
+        bool FinishTimeout()
         {
             token.ThrowIfCancellationRequested();
-            if (_clock() > completionDeadline)
-                throw new InvalidOperationException("AUDIO_WAIT 音频分析超过截止后的 250 毫秒处理宽限，结果已作废。");
+            _history.Check();
+            // Inspect stream health only. A small unprocessed tail is a timeout, never extra DSP time.
+            Segment[] queued = pending.Read(cursor, deadline, deadline);
+            int alignment = AudioClip.GetBlockAlign(pending.Format);
+            long queuedFrames = queued.Sum(segment => (long)segment.Pcm.Length / alignment);
+            if (queuedFrames * 1_000_000_000L > pending.Format.SampleRate * MaximumPendingAudioNs)
+                throw new InvalidOperationException("AUDIO_WAIT 音频分析积压，截止时待处理音频超过 250 毫秒；请检查处理负载或由脚本增大 timeoutMs。");
+            pending.RequireCoverage(deadline);
+            token.ThrowIfCancellationRequested();
+            if (!scored)
+                throw new InvalidOperationException("AUDIO_WAIT 在指定时间内未完成一个完整模板的分析；请由脚本增大 timeoutMs，不会自动延长等待。");
+            return false;
         }
 
         while (true)
@@ -84,43 +94,32 @@ public sealed class AudioDetectionSession : IDisposable
             token.ThrowIfCancellationRequested();
             _history.Check();
             long now = _clock();
-            Segment[] segments = pending.Read(cursor, Math.Min(now, deadline), deadline);
-            bool completing = now >= deadline;
-            CheckCompletionTime();
-            if (completing)
-            {
-                // A callback can arrive between the last poll and the deadline. Finish only this
-                // bounded pre-deadline snapshot; the allowance never admits future audio or polls.
-                int alignment = AudioClip.GetBlockAlign(pending.Format);
-                long queuedFrames = segments.Sum(segment => (long)segment.Pcm.Length / alignment);
-                if (queuedFrames * 1_000_000_000L > pending.Format.SampleRate * WaitCompletionAllowanceNs)
-                    throw new InvalidOperationException("AUDIO_WAIT 音频分析积压，截止时待处理音频超过 250 毫秒。");
-            }
+            if (now >= deadline)
+                return FinishTimeout();
+            // Check the deadline between at most 10 ms of samples, including during template warmup.
+            Segment[] segments = pending.Read(cursor, now, deadline, framesPerBatch);
             foreach (Segment segment in segments)
             {
-                CheckCompletionTime();
+                token.ThrowIfCancellationRequested();
+                if (_clock() >= deadline)
+                    return FinishTimeout();
                 bool hit = false;
                 matcher.Append(segment.Pcm.Span, score =>
                 {
-                    CheckCompletionTime();
+                    // Recognition completed after the deadline cannot change the script's decision.
+                    if (_clock() >= deadline)
+                        return;
                     scored = true;
                     hit |= score.Score >= threshold;
                 }, token);
                 token.ThrowIfCancellationRequested();
+                cursor = segment.End;
                 pending.Check();
                 _history.Check();
-                CheckCompletionTime();
+                if (_clock() >= deadline)
+                    return FinishTimeout();
                 if (hit)
                     return true;
-                cursor = segment.End;
-            }
-            if (completing)
-            {
-                pending.RequireCoverage(deadline);
-                CheckCompletionTime();
-                if (!scored)
-                    throw new InvalidOperationException("AUDIO_WAIT 有效音频不足一个完整模板，不能判定为未命中。");
-                return false;
             }
             long remainingNs = deadline - _clock();
             if (remainingNs > 0)
@@ -291,7 +290,7 @@ public sealed class AudioDetectionSession : IDisposable
             }
         }
 
-        public Segment[] Read(long start, long end, long arrivalDeadline = long.MaxValue)
+        public Segment[] Read(long start, long end, long arrivalDeadline = long.MaxValue, int maximumSegmentFrames = int.MaxValue)
         {
             Check();
             lock (_gate)
@@ -309,9 +308,13 @@ public sealed class AudioDetectionSession : IDisposable
                     lastEligibleArrival = packet.Arrival;
                     long from = Math.Max(packet.Frame, FrameAt(start, true));
                     long to = Math.Min(packet.Frame + packet.Pcm.Length / _alignment, FrameAt(end, false));
-                    if (to > from)
+                    while (to > from)
+                    {
+                        long segmentEnd = Math.Min(to, from + maximumSegmentFrames);
                         result.Add(new Segment(packet.Pcm.AsMemory((int)(from - packet.Frame) * _alignment,
-                            (int)(to - from) * _alignment), TimeAt(to)));
+                            (int)(segmentEnd - from) * _alignment), TimeAt(segmentEnd)));
+                        from = segmentEnd;
+                    }
                 }
                 if (arrivalDeadline == long.MaxValue && end - lastEligibleArrival > ToleranceNs)
                     throw new InvalidOperationException("AUDIO 最近 250 毫秒没有有效音频，窗口末尾数据不足。");
