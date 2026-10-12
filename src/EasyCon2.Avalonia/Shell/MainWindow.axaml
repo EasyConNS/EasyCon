@@ -739,6 +739,9 @@
                         <Button Content="{loc:Translate Text.AudioLabel.Title}"
                                 Command="{Binding OpenAudioLabelsCommand}" HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"/>
+                        <Button Content="{loc:Translate Text.AudioMatch.Title}"
+                                Command="{Binding OpenAudioMatchTestCommand}" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"/>
                     </StackPanel>
                 </GroupBox>
 
@@ -1239,6 +1242,8 @@
                                     IsVisible="{Binding Audio.IsSupported}" HorizontalAlignment="Stretch"/>
                             <Button Content="{loc:Translate Text.AudioLabel.Title}"
                                     Command="{Binding OpenAudioLabelsCommand}" HorizontalAlignment="Stretch"/>
+                            <Button Content="{loc:Translate Text.AudioMatch.Title}"
+                                    Command="{Binding OpenAudioMatchTestCommand}" HorizontalAlignment="Stretch"/>
                         </StackPanel>
                     </Grid>
                 </Border>

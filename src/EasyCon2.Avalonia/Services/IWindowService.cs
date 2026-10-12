@@ -29,4 +29,5 @@ public static class WindowKeys
     public const string KeyMapping = "key-mapping";
     public const string ScriptSyntax = "script-syntax";
     public const string AudioLabels = "audio-labels";
+    public const string AudioMatchTest = "audio-match-test";
 }
