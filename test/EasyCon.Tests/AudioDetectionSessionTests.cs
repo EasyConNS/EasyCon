@@ -15,6 +15,9 @@ public class AudioDetectionSessionTests
         using AudioDetectionSession session = rig.Open();
         rig.Feed(AudioTestRig.MakeSound(rate));
         Assert.That(session.Match("tone", 1000), Is.GreaterThan(0.98));
+        rig.PlayOnDelay(AudioTestRig.MakeSound(rate));
+        Assert.That(session.Wait("tone", 1000, 0.98), Is.True,
+            "Deadline checks in smaller batches must preserve the resampled match.");
     }
 
     [Test]
@@ -102,7 +105,7 @@ public class AudioDetectionSessionTests
     [TestCase(44100, 16, "pcm")]
     [TestCase(96000, 16, "pcm")]
     [TestCase(96000, 32, "float")]
-    public void WaitFinishesQueuedTailWhenPollingResumesJustAfterTimeout(int rate, int bitsPerSample, string encoding)
+    public void WaitTimesOutWithQueuedTailWithoutAddingTime(int rate, int bitsPerSample, string encoding)
     {
         AudioTestRig rig = new(new AudioFormat(rate, 1, bitsPerSample, encoding));
         using AudioDetectionSession session = rig.Open();
@@ -112,18 +115,19 @@ public class AudioDetectionSessionTests
         {
             deliver();
             if (rig.Time == AudioTestRig.Epoch + 990_000_000)
-                rig.Advance(15); // The last pre-deadline packet arrives between worker polls.
+                rig.Advance(10); // The last pre-deadline packet arrives between worker polls.
         };
 
         Assert.That(session.Wait("tone", 1000), Is.False);
-        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + 1_005_000_000));
+        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + 1_000_000_000));
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
         Assert.That(rig.Source.StateSubscribers, Is.EqualTo(1));
         Assert.That(rig.Source.Disposed, Is.False);
     }
 
-    [Test]
-    public void WaitCanMatchTheLastPreDeadlinePacketDuringCompletion()
+    [TestCase(1000, false)]
+    [TestCase(1020, true)]
+    public void OnlyAnExplicitLongerTimeoutAllowsTheQueuedMatch(int timeoutMilliseconds, bool expected)
     {
         AudioTestRig rig = new();
         using AudioDetectionSession session = rig.Open();
@@ -134,17 +138,18 @@ public class AudioDetectionSessionTests
         {
             deliver();
             if (rig.Time == AudioTestRig.Epoch + 990_000_000)
-                rig.Advance(15);
+                rig.Advance(10);
         };
 
-        Assert.That(session.Wait("tone", 1000, rig.ReferenceScore()), Is.True);
-        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + 1_005_000_000));
+        Assert.That(session.Wait("tone", timeoutMilliseconds, rig.ReferenceScore()), Is.EqualTo(expected));
+        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + 1_000_000_000));
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
     }
 
-    [TestCase(3, false)]
-    [TestCase(30, true)]
-    public void WaitChecksTheCompletionBudgetDuringAnalysis(int clockStepMilliseconds, bool expires)
+    [TestCase(2)]
+    [TestCase(3)]
+    [TestCase(30)]
+    public void WaitRejectsResultsCompletedAfterTheDeadline(int clockStepMilliseconds)
     {
         AudioTestRig rig = new();
         bool analysisInProgress = false;
@@ -163,21 +168,13 @@ public class AudioDetectionSessionTests
                 analysisInProgress = true; // Clock keeps moving while the final packet is analyzed.
         };
 
-        if (expires)
-            Assert.That(Assert.Throws<InvalidOperationException>(() => session.Wait("tone", 1000, rig.ReferenceScore()))!.Message,
-                Does.Contain("处理宽限"));
-        else
-        {
-            Assert.That(session.Wait("tone", 1000, rig.ReferenceScore()), Is.True);
-            Assert.That(rig.Time, Is.GreaterThan(AudioTestRig.Epoch + 1_000_000_000)
-                .And.LessThanOrEqualTo(AudioTestRig.Epoch + 1_250_000_000));
-        }
+        Assert.That(session.Wait("tone", 1000, rig.ReferenceScore()), Is.False);
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
     }
 
     [TestCase(0)]
     [TestCase(10)]
-    public void WaitCompletionNeverIncludesPacketsAtOrAfterTheListeningDeadline(int lateMilliseconds)
+    public void WaitNeverIncludesPacketsAtOrAfterTheDeadline(int lateMilliseconds)
     {
         AudioTestRig rig = new();
         using AudioDetectionSession session = rig.Open();
@@ -219,32 +216,30 @@ public class AudioDetectionSessionTests
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
     }
 
-    [TestCase(260, false)]
-    [TestCase(261, true)]
-    public void WaitCompletionAllowanceIsBounded(int stallMilliseconds, bool expires)
+    [TestCase(1000)]
+    [TestCase(8000)]
+    public void WaitTimeoutDoesNotAddTimeToTheNextScriptOperation(int timeoutMilliseconds)
     {
         AudioTestRig rig = new();
         using AudioDetectionSession session = rig.Open();
-        rig.PlayOnDelay(new byte[16000], packetMilliseconds: 10);
+        rig.PlayOnDelay(new byte[16 * timeoutMilliseconds], packetMilliseconds: 10);
         Action deliver = rig.AfterDelay!;
         rig.AfterDelay = () =>
         {
             deliver();
-            if (rig.Time == AudioTestRig.Epoch + 990_000_000)
-                rig.Advance(stallMilliseconds);
+            Assert.That(rig.Time, Is.LessThanOrEqualTo(AudioTestRig.Epoch + timeoutMilliseconds * 1_000_000L),
+                "The wait must never schedule a delay beyond the script's deadline.");
         };
 
-        if (expires)
-            Assert.That(Assert.Throws<InvalidOperationException>(() => session.Wait("tone", 1000))!.Message,
-                Does.Contain("处理宽限"));
-        else
-            Assert.That(session.Wait("tone", 1000), Is.False);
+        Assert.That(session.Wait("tone", timeoutMilliseconds), Is.False);
+        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + timeoutMilliseconds * 1_000_000L),
+            "The following script operation starts without a library-added grace period.");
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
     }
 
     [TestCase(false)]
     [TestCase(true)]
-    public void WaitCompletionStillHonorsCancellationAndDisconnection(bool disconnect)
+    public void WaitDeadlineStillHonorsCancellationAndDisconnection(bool disconnect)
     {
         AudioTestRig rig = new();
         using CancellationTokenSource cancellation = new();
