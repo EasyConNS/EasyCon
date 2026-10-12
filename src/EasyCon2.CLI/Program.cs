@@ -2,6 +2,7 @@
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Hosting;
+using EasyCon.Core.Notifications;
 using EasyCon.Core.Runner;
 using EasyCon.Lsp;
 using EasyCon.Script;
@@ -212,6 +213,15 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         producer.Start();
     }
 
+    using AlertService alertService = new(
+        resultLogger: message => outdap.Print(message),
+        imageProvider: () =>
+        {
+            using FrameLease? lease = producer?.Store.AcquireLatest();
+            return NotificationImage.FromFrame(lease?.Mat);
+        });
+    outdap.AlertService = alertService;
+
     // 能力装配：唯一装配点（ScriptHostAssembler）。CLI 只提供原料，
     // OCR/推理/宿主环境/文件能力的默认值与释放统一由租约承担。
     ICGamePad pad = isMock ? new MockGamePad() : new GamePadAdapter(NS);
@@ -277,10 +287,22 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     }
     finally
     {
-        producer?.Dispose();
         if (!isMock)
         {
             try { NS.Reset(); NS.Disconnect(); } catch { /* 断开失败交由进程退出兜底 */ }
+        }
+        try
+        {
+            using CancellationTokenSource notificationTimeout = new(TimeSpan.FromSeconds(60));
+            await alertService.FlushAsync(notificationTimeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            outdap.Warn("等待通知发送超时，剩余通知将在退出时取消，请在 QQ 中核对。");
+        }
+        finally
+        {
+            producer?.Dispose();
         }
     }
     return 0;

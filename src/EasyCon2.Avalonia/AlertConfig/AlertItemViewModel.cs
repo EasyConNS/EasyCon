@@ -1,15 +1,23 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Config;
+using EasyCon.Core.Notifications;
+using EasyCon2.Avalonia.QQ;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 namespace EasyCon2.Avalonia.AlertConfig;
 
-public partial class AlertItemViewModel : ObservableObject
+public partial class AlertItemViewModel : ObservableObject, IDisposable
 {
     public static readonly string[] HttpMethods = ["GET", "POST", "PUT", "HEAD", "OPTIONS"];
 
     private readonly AlertItem _item;
+    private readonly QQNotificationService? _qqService;
+
+    public bool IsQq => _item.IsQq;
+    public QQNotificationViewModel? Qq { get; }
+    public bool CanEdit => Qq?.CanEdit ?? true;
 
     public AlertItemViewModel(AlertItem item)
     {
@@ -26,6 +34,15 @@ public partial class AlertItemViewModel : ObservableObject
 
         Variables = new ObservableCollection<KeyValueEntry>(
             item.variables?.Select(kv => new KeyValueEntry(kv.Key, kv.Value)) ?? []);
+
+        if (IsQq)
+        {
+            QQNotificationSettings settings = item.qq?.Clone() ?? new();
+            settings.enabled = item.enable;
+            _qqService = new QQNotificationService(settings: settings, persistSettings: false);
+            Qq = new QQNotificationViewModel(_qqService);
+            Qq.PropertyChanged += OnQqPropertyChanged;
+        }
     }
 
     public Action<AlertItemViewModel>? RequestDelete { get; set; }
@@ -35,6 +52,20 @@ public partial class AlertItemViewModel : ObservableObject
 
     [ObservableProperty]
     private bool enable;
+
+    partial void OnEnableChanged(bool value)
+    {
+        if (Qq != null)
+            Qq.Enabled = value;
+    }
+
+    private void OnQqPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(QQNotificationViewModel.Enabled))
+            Enable = Qq!.Enabled;
+        if (e.PropertyName == nameof(QQNotificationViewModel.CanEdit))
+            OnPropertyChanged(nameof(CanEdit));
+    }
 
     [ObservableProperty]
     private string method = "GET";
@@ -87,6 +118,8 @@ public partial class AlertItemViewModel : ObservableObject
 
         return new AlertItem
         {
+            id = _item.id,
+            provider = _item.provider,
             name = Name,
             enable = Enable,
             method = Method,
@@ -94,7 +127,18 @@ public partial class AlertItemViewModel : ObservableObject
             token = Token,
             body = Body,
             headers = headersDict.Count > 0 ? headersDict : null,
-            variables = variablesDict.Count > 0 ? variablesDict : null
+            variables = variablesDict.Count > 0 ? variablesDict : null,
+            qq = Qq?.GetSettings(),
         };
+    }
+
+    public void Dispose()
+    {
+        if (Qq != null)
+        {
+            Qq.PropertyChanged -= OnQqPropertyChanged;
+            Qq.Dispose();
+        }
+        _qqService?.Dispose();
     }
 }

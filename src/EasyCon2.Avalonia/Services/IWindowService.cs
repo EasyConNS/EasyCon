@@ -22,10 +22,10 @@ public interface IWindowService
 /// <summary>子窗口注册表的标准键。</summary>
 public static class WindowKeys
 {
-    public const string EspConfig    = "esp-config";
-    public const string AlertConfig  = "alert-config";
+    public const string EspConfig = "esp-config";
+    public const string AlertConfig = "alert-config";
     public const string ModelsConfig = "models-config";
-    public const string McpConfig    = "mcp-config";
-    public const string KeyMapping   = "key-mapping";
+    public const string McpConfig = "mcp-config";
+    public const string KeyMapping = "key-mapping";
     public const string ScriptSyntax = "script-syntax";
 }
