@@ -1,5 +1,6 @@
 #nullable enable
 using EasyCon.Capture;
+using EasyCon.Capture.Audio;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Logging;
 using EasyCon.Core.Maa;
@@ -53,6 +54,15 @@ public sealed class ScriptHostContext
 
     /// <summary>推理后端（所有权移交装配结果）；null 且 <see cref="EnableInference"/> 时装配默认 DNN。</summary>
     public IInference? Inference { get; init; }
+
+    /// <summary>Existing game-audio source, borrowed without connecting or disposing it.</summary>
+    public IAudioCaptureSource? AudioSource { get; init; }
+
+    /// <summary>Audio port override for hosts with their own implementation.</summary>
+    public IAudioService? AudioService { get; init; }
+
+    /// <summary>Saved entry-script directory used to resolve audiolabel/name.audiolabel/label.json.</summary>
+    public string? ScriptDirectory { get; init; }
 
     /// <summary>文件族能力；null = 桌面参考实现 <see cref="DesktopFileSystem.Instance"/>。</summary>
     public IFileSystem? Files { get; init; }
@@ -182,6 +192,8 @@ public static class ScriptHostAssembler
             Vision = vision,
             Ocr = ocr,
             Inference = inference,
+            Audio = context.AudioService ?? (context.AudioSource == null ? null
+                : new AudioLabelService(context.AudioSource, context.ScriptDirectory)),
         };
 
         return new CapabilityLease(capabilities, ocr, inference,

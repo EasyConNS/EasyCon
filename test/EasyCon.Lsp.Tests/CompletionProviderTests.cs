@@ -45,6 +45,8 @@ public class CompletionProviderTests
             // 与 BuiltinFunctions.Manifest 同步的真实内建面（旧断言里的 TIME 并非内建函数）
             Assert.That(labels, Does.Contain("FOPEN"));
             Assert.That(labels, Does.Contain("OCR_CONF"));
+            Assert.That(labels, Does.Contain("AUDIO"));
+            Assert.That(labels, Does.Contain("AUDIO_WAIT"));
             // 内建洞函数（__ 前缀）不对用户暴露
             Assert.That(labels, Does.Not.Contain("__TESSERACT__"));
             Assert.That(labels, Does.Not.Contain("__CAPTURE__"));

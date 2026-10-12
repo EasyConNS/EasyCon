@@ -1,4 +1,5 @@
 using EasyCon.Capture;
+using EasyCon.Capture.Audio;
 using EasyCon.Core.Maa;
 using EasyCon.Core.Services;
 using EasyCon2.Avalonia.Connection;
@@ -18,6 +19,63 @@ namespace EasyCon2.Avalonia.Core.Tests;
 [TestFixture]
 public partial class ScriptServiceTests
 {
+    [Test]
+    public async Task AudioWaitUsesTheSavedScriptDirectoryAndStopCleansListeners()
+    {
+        FakeLogService log = new();
+        ScriptAudioSource audio = new();
+        ScriptService service = new(new FakeDeviceService(), new FakeCaptureService(), log, audioSource: audio);
+        string path = CreateScriptFile("audio.ecs", "RETURN AUDIO_WAIT(\"tone\", 8000)");
+        byte[] pcm = new byte[9600];
+        for (int i = 0; i < pcm.Length / 2; i++)
+            System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(pcm.AsSpan(i * 2),
+                (short)(12000 * Math.Sin(2 * Math.PI * 700 * i / 8000)));
+        AudioLabelStore.Save(Path.Combine(Path.GetDirectoryName(path)!, "audiolabel"), "tone", new AudioClip(audio.State.Format!, pcm));
+        service.Run(path);
+        try
+        {
+            await WaitUntilAsync(() => audio.Subscribers == 2, "运行历史和独立等待应已订阅", detail: () => string.Join(" | ", log.Snapshot()));
+            service.Stop();
+            await WaitUntilAsync(() => !service.IsRunning, "停止应立即取消音频等待");
+            Assert.That(audio.Subscribers, Is.Zero);
+            Assert.That(log.Snapshot(), Does.Contain("脚本已终止"));
+            Assert.That(log.Snapshot(), Does.Not.Contain("脚本运行完成"));
+            Assert.That(audio.Disposed, Is.False);
+        }
+        finally
+        {
+            service.Stop();
+        }
+    }
+
+    [Test]
+    public async Task AudioWithoutHostCapabilityReportsAnError()
+    {
+        FakeLogService log = new();
+        ScriptService service = new(new FakeDeviceService(), new FakeCaptureService(), log);
+        service.RunFromContent("RETURN AUDIO(\"tone\", 1000)");
+        await WaitUntilAsync(() => !service.IsRunning, "缺少音频能力应退出");
+        Assert.That(log.Snapshot().Any(message => message.Contains("未提供脚本音频能力")), Is.True);
+        Assert.That(log.Snapshot(), Does.Not.Contain("脚本运行完成"));
+    }
+
+    private sealed class ScriptAudioSource : IAudioCaptureSource
+    {
+        public bool IsSupported => true;
+        public AudioCaptureState State { get; } = new(AudioCaptureStatus.Connected, Format: new AudioFormat(8000, 1, 16, "pcm"));
+        private int _subscribers;
+        public int Subscribers => Volatile.Read(ref _subscribers);
+        public bool Disposed { get; private set; }
+        public event Action<AudioChunk>? DataAvailable { add => Interlocked.Increment(ref _subscribers); remove => Interlocked.Decrement(ref _subscribers); }
+        public event Action<AudioCaptureState>? StateChanged { add { } remove { } }
+        public event Action<AudioLevel>? LevelChanged { add { } remove { } }
+        public IReadOnlyList<AudioDeviceInfo> GetAvailableDevices() => [];
+        public bool TryConnect(string deviceId, CancellationToken cancellationToken = default) => throw new AssertionException("No second device connection.");
+        public Task DisconnectAsync() => throw new AssertionException("The source is borrowed.");
+        public Task<bool> DisconnectIfConnectingAsync() => throw new AssertionException("The source is borrowed.");
+        public void Dispose() => Disposed = true;
+    }
+
     private List<string> _scriptDirectories = [];
     private readonly List<FakeDeviceService> _devices = [];
 
