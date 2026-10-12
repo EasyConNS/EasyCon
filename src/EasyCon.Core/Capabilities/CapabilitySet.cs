@@ -30,4 +30,7 @@ public sealed class CapabilitySet
 
     /// <summary>ONNX 通用推理（P5）。</summary>
     public IInference? Inference { get; set; }
+
+    /// <summary>Per-run game-audio matching; absence is an error, never a negative detection.</summary>
+    public IAudioService? Audio { get; set; }
 }

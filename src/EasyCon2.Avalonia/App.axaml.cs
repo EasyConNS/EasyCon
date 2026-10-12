@@ -61,7 +61,7 @@ public partial class App : Application
                 });
             var audioSource = new WasapiAudioCapture();
             AudioHistoryBuffer audioHistory = new(audioSource);
-            var scriptService = new ScriptService(deviceService, captureService, logService, alertService);
+            var scriptService = new ScriptService(deviceService, captureService, logService, alertService, audioSource);
             // Linux 平台暂无底层控制实现，先用 Mock 占位；VPadService（虚拟手柄）改为组合根构造后
             // 注入 ControllerService（其 ControllerAdapter 依赖 IScriptService，装配留在 App 侧），
             // 使 Services 层零 VPad 反向引用。

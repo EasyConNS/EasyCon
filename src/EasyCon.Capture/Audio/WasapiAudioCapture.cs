@@ -283,6 +283,7 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
     private void PublishAudioData(IWaveIn capture, WaveInEventArgs args)
     {
         AudioFormat format;
+        AudioCaptureState state;
         int bytesRecorded = Math.Min(args.BytesRecorded, args.Buffer.Length);
         lock (_lifecycleLock)
         {
@@ -295,12 +296,13 @@ public sealed class WasapiAudioCapture : IAudioCaptureSource
                 _connectedAnnounced = true;
                 SetStateLocked(new AudioCaptureState(AudioCaptureStatus.Connected, _device, format));
             }
+            state = _state;
         }
 
         byte[] pcm = new byte[bytesRecorded];
         Buffer.BlockCopy(args.Buffer, 0, pcm, 0, bytesRecorded);
         AudioLevel level = AudioLevelCalculator.Calculate(pcm, format);
-        AudioChunk chunk = new(ToNanoseconds(Stopwatch.GetTimestamp()), format, pcm, pcm.Length);
+        AudioChunk chunk = new(ToNanoseconds(Stopwatch.GetTimestamp()), format, pcm, pcm.Length) { Session = state };
         if (!IsCurrentCapture(capture))
             return;
 

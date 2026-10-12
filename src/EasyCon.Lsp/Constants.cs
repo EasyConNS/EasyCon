@@ -39,6 +39,8 @@ internal static class Constants
         ["FILE_EXISTS"] = "文件是否存在",
         ["NET_LOAD"] = "加载 ONNX 模型，返回网络句柄",
         ["NET_OUT"] = "读取输出张量元素",
+        ["AUDIO"] = "回看本次运行最近 lookbackMs 毫秒的声音，返回最高原始分数 0～1；范围 1～15000ms，历史不足时报错",
+        ["AUDIO_WAIT"] = "仅等待调用后的新声音，命中返回 true，完整有效超时返回 false；阈值 0.1～1，默认 0.85；断流/取消不返回 false",
     };
 
     public static readonly string[] Keywords =

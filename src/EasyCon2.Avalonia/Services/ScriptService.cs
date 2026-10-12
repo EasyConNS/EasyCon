@@ -1,4 +1,5 @@
 using EasyCon.Capture;
+using EasyCon.Capture.Audio;
 using EasyCon.Core;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Config;
@@ -18,6 +19,7 @@ public class ScriptService : IScriptService
     private readonly ICaptureService _captureService;
     private readonly ILogService _logService;
     private readonly IAlertService? _alertService;
+    private readonly IAudioCaptureSource? _audioSource;
     private readonly IScriptEngine _engine = new EasyScriptEngine();
     private readonly object _runGate = new();
     private IScriptSession? _session;
@@ -47,12 +49,13 @@ public class ScriptService : IScriptService
     }
 
     public ScriptService(IDeviceService deviceService, ICaptureService captureService, ILogService logService,
-        IAlertService? alertService = null)
+        IAlertService? alertService = null, IAudioCaptureSource? audioSource = null)
     {
         _deviceService = deviceService;
         _captureService = captureService;
         _logService = logService;
         _alertService = alertService;
+        _audioSource = audioSource;
     }
 
     public async Task<bool> CompileAsync(string scriptText, string? fileName)
@@ -104,13 +107,13 @@ public class ScriptService : IScriptService
             IScriptSession? session = CompileCore(
                 () => _engine.LoadFile(fullPath, Options([.. labelDict.Keys])), fullPath);
             return (session, BuildLabelMatchDelegate(labelDict));
-        }, args);
+        }, args, scriptPath);
     }
 
     public void RunFromContent(string content, string[]? args = null, string? fileName = null)
     {
         _logService.AddLog("===开始运行脚本===");
-        ExecuteScript(() => CompileContent(content, fileName), args);
+        ExecuteScript(() => CompileContent(content, fileName), args, fileName);
     }
 
     public void Stop()
@@ -227,7 +230,8 @@ public class ScriptService : IScriptService
     /// 脚本执行主流程：编译 → 检查需求 → 连接设备 → 能力装配 → 运行。
     /// </summary>
     /// <param name="compile">编译回调，返回 (会话（null=编译失败）, 标签匹配委托)</param>
-    private void ExecuteScript(Func<(IScriptSession? Session, LabelMatchDelegate? LabelMatch)> compile, string[]? args)
+    private void ExecuteScript(Func<(IScriptSession? Session, LabelMatchDelegate? LabelMatch)> compile, string[]? args,
+        string? scriptPath)
     {
         CancellationToken token;
         lock (_runGate)
@@ -308,6 +312,8 @@ public class ScriptService : IScriptService
                     LabelMatch = labelMatch,
                     Args = args,
                     AppDir = AppDomain.CurrentDomain.BaseDirectory,
+                    AudioSource = _audioSource,
+                    ScriptDirectory = string.IsNullOrWhiteSpace(scriptPath) ? null : Path.GetDirectoryName(Path.GetFullPath(scriptPath)),
                 });
 
                 if (hasKeyAction && lease.Capabilities.Input == null)

@@ -10,7 +10,7 @@ EasyCon 的 Avalonia 主窗口现在可以独立连接 Windows WASAPI 录音输�
 - 在主窗口的经典布局和卡片布局中显示设备、格式、连接状态及峰值 dBFS。
 - 应用退出或主窗口关闭时停止采集并释放 WASAPI 资源。
 
-音频面板还提供[声音标签编辑器](AudioLabels.md)，可以截取最近音频、裁剪、试听和保存样本。目前不包含音频判闪、频谱分析、样本匹配或任何自动化决策。后续消费者可以订阅 `MainWindowViewModel.Audio.CaptureSource.DataAvailable`，自行处理 `AudioChunk`；音频采集不会改变现有 ECS 脚本的等待、按键或图像判定行为。
+音频面板还提供[声音标签编辑器和匹配测试](AudioLabels.md)，可以截取、裁剪、试听、保存和校准样本。桌面 ECS 可用 `AUDIO` 回看本次运行历史，或用 `AUDIO_WAIT` 独立等待新声音，再显式决定后续动作。三者复用这一个已连接的音频源，不自动选择麦克风或另开采集设备；原有按键、普通等待和图像标签语义不变。
 
 ## 数据模型
 
@@ -21,10 +21,10 @@ EasyCon 的 Avalonia 主窗口现在可以独立连接 Windows WASAPI 录音输�
 - `DisconnectAsync()` 停止当前采集并回到 `Disconnected`。
 - `DisconnectIfConnectingAsync()` 只在打开设备或仍等待首包时停止连接；先原子地使本次连接失效，再等待原生资源释放，用于避免首包与超时同时到达时误断开已连接的源。
 - `StateChanged` 在后台队列中依次通知 `AudioCaptureState`，不占用启停锁或采集线程；失败时包含错误文本。界面忽略旧尝试的迟到终态通知。
-- `DataAvailable` 通知 `AudioChunk`。`Pcm` 是设备实际格式的交错小端字节，不重采样、不自动增益、不降噪。
+- `DataAvailable` 通知 `AudioChunk`。`Pcm` 是设备实际格式的交错小端字节，不重采样、不自动增益、不降噪。`Session` 是生成该块时的不可变 Connected 状态对象，可用引用身份排除重连之前的迟到块；脚本检测要求来源提供该标识。
 - `LevelChanged` 通知 `AudioLevel`。界面按峰值计算 dBFS，显示范围下限为 -60 dBFS；静音表示仍有数据到达，并不表示断流。
 
-当前支持 PCM 8/16/24/32 bit 和 IEEE float 32 bit。音频判闪需要统一的 float32 数据、窗口边界和缺包语义，待后续方案确定后再在独立变更中加入。
+当前支持 PCM 8/16/24/32 bit 和 IEEE float 32 bit。匹配算法自行进行托管重采样和特征提取，采集层保留原始数据。`TimestampNs` 来自 Stopwatch 单调回调时钟，并非硬件样本时钟；脚本用独立的采样时间线、边界裁剪和可靠性检查，具体限制见[窗口边界说明](AudioLabels.md#ecs-窗口边界与限制)。
 
 首包超时从点击连接时起计算，覆盖原生设备打开阶段。超时后界面立即恢复为连接失败并允许重试；若驱动调用暂时阻塞，原生释放会在调用返回后完成，旧连接不能再次启动。数据和电平消费者在采集回调上执行，应保持简短；需要重连时请异步调度，回调内同步 `TryConnect` 会被拒绝。回调内 `Dispose` 或原生打开仍在进行时的 `Dispose` 会先阻止后续数据，再在后台完成资源释放。
 
