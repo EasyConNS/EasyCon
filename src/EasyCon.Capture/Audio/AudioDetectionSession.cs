@@ -11,6 +11,7 @@ public sealed class AudioDetectionSession : IDisposable
 {
     public const int MaximumLookbackMs = 15_000;
     public const int MaximumTimeoutMs = 300_000;
+    private const long WaitCompletionAllowanceNs = 250_000_000;
     private readonly IAudioCaptureSource _source;
     private readonly Func<string, CancellationToken, AudioMatchTemplate> _load;
     private readonly Func<long> _clock;
@@ -63,47 +64,67 @@ public sealed class AudioDetectionSession : IDisposable
         _ = new AudioMatchSettings(threshold);
         long start = _clock();
         long deadline = start + timeoutMs * 1_000_000L;
+        long completionDeadline = deadline + WaitCompletionAllowanceNs;
         _history.Check();
         using Timeline pending = new(_source, _clock, start);
         AudioMatchTemplate template = _load(labelName, token);
         AudioTemplateMatcher matcher = new(template, pending.Format);
         long cursor = start;
         bool scored = false;
+
+        void CheckCompletionTime()
+        {
+            token.ThrowIfCancellationRequested();
+            if (_clock() > completionDeadline)
+                throw new InvalidOperationException("AUDIO_WAIT 音频分析超过截止后的 250 毫秒处理宽限，结果已作废。");
+        }
+
         while (true)
         {
             token.ThrowIfCancellationRequested();
             _history.Check();
             long now = _clock();
             Segment[] segments = pending.Read(cursor, Math.Min(now, deadline), deadline);
-            if (now >= deadline)
+            bool completing = now >= deadline;
+            CheckCompletionTime();
+            if (completing)
             {
-                // Do not let queued work extend the deadline, or turn unprocessed audio into a negative result.
-                if (segments.Length != 0)
-                    throw new InvalidOperationException("AUDIO_WAIT 音频分析积压，未能在截止时间前完成。");
-                pending.RequireCoverage(deadline);
-                if (!scored)
-                    throw new InvalidOperationException("AUDIO_WAIT 有效音频不足一个完整模板，不能判定为未命中。");
-                return false;
+                // A callback can arrive between the last poll and the deadline. Finish only this
+                // bounded pre-deadline snapshot; the allowance never admits future audio or polls.
+                int alignment = AudioClip.GetBlockAlign(pending.Format);
+                long queuedFrames = segments.Sum(segment => (long)segment.Pcm.Length / alignment);
+                if (queuedFrames * 1_000_000_000L > pending.Format.SampleRate * WaitCompletionAllowanceNs)
+                    throw new InvalidOperationException("AUDIO_WAIT 音频分析积压，截止时待处理音频超过 250 毫秒。");
             }
             foreach (Segment segment in segments)
             {
+                CheckCompletionTime();
                 bool hit = false;
                 matcher.Append(segment.Pcm.Span, score =>
                 {
+                    CheckCompletionTime();
                     scored = true;
                     hit |= score.Score >= threshold;
                 }, token);
                 token.ThrowIfCancellationRequested();
                 pending.Check();
                 _history.Check();
-                if (_clock() >= deadline)
-                    throw new InvalidOperationException("AUDIO_WAIT 音频分析超过截止时间，结果已作废。");
+                CheckCompletionTime();
                 if (hit)
                     return true;
                 cursor = segment.End;
             }
-            int remainingMs = (int)Math.Max(1, (deadline - _clock()) / 1_000_000);
-            _delay(Math.Min(10, remainingMs), token);
+            if (completing)
+            {
+                pending.RequireCoverage(deadline);
+                CheckCompletionTime();
+                if (!scored)
+                    throw new InvalidOperationException("AUDIO_WAIT 有效音频不足一个完整模板，不能判定为未命中。");
+                return false;
+            }
+            long remainingNs = deadline - _clock();
+            if (remainingNs > 0)
+                _delay((int)Math.Clamp(remainingNs / 1_000_000, 1, 10), token);
         }
     }
 
