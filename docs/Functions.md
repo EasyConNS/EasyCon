@@ -536,9 +536,8 @@ END
 - `__DET_BOXES__(thresh, scale, roiX, roiY, mapW, mapH)`：阈值二值化 + 水平膨胀（1×15
   愈合同行间隙）+ 连通域 + unclip（PaddleOCR 同式，v1 ratio=1.0；ratio=2.0 会把大框
   扩成巨型 rec 输入——上调前先加框尺寸护栏）。框按阅读序（y 优先 x）缓存。
-- 访问器越界返回 -1；`DET_COUNT` 未找过为 0。真模型闭环见
-  `NetPpocrRealModelTests.PpocrDet_FindsTextRegions_ExpRowClosedLoop`（ppocr2.png 全页
-  det → 逐框 rec 读出 19531 等全部页面数字）。
+- 访问器越界返回 -1；`DET_COUNT` 未找过为 0。完整用法见参考示例
+  `examples/ppocr-det-find.ecs`（全页 det → 逐框 rec，收集页面数字与文本行）。
 
 std 侧已备好的 PP-OCR rec 配方（字典 `ppocr_keys_v5.txt` 配合标签表层）：
 `PP_OCR_INFER(net, x, y, w, h): INT`——通用推理步骤（采集 → rec 宽度换算 → 归一化 → 推理，

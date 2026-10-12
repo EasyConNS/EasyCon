@@ -1,0 +1,46 @@
+# ============================================================
+# PP-OCR det 自动找框 + rec 逐框识别（参考示例，非自动化测试）
+# 布局基准：任意 1920x1080 界面截图（本例用火红/叶绿状态页 ppocr2.png）
+# 模型：__APP__/models/ppocr/PP-OCRv5_mobile_det.onnx（外部资产）
+#       __APP__/models/ppocr/PP-OCRv5_mobile_rec.onnx
+# 字典：__APP__/models/ppocr/ppocr_keys_v5.txt（整行文本识别用）
+# 原理：det 全页推理一次找齐全部文本框（阅读序 y 优先 x），
+#       逐框跑 rec 配方；数字窗口折叠得页面数值，整字典折叠得文本行。
+# 说明：det 框为文字行级（标签框/数字框分离），按需过滤或合并。
+#       真机资产布局见 test/assets/README.md。
+# ============================================================
+
+# ---- 主流程 ----
+$det = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv5_mobile_det.onnx")
+$rec = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv5_mobile_rec.onnx")
+IF $det > 0 AND $rec > 0
+    $frame = FRAME()
+    $dict = __APP__ + "/models/ppocr/ppocr_keys_v5.txt"
+
+    # det 全页一次找框，返回框数（-1 = 输出缺失/形状错）
+    $count = PP_DET_FIND($det, $frame, 0, 0, 1920, 1080)
+    PRINT "BOXES: " & $count
+    NET_UNLOAD($det)
+
+    # 逐框 rec：数字窗口折叠收集页面数值；整字典折叠收集文本行
+    $digits = ""
+    $lines = ""
+    $i = 0
+    WHILE $i < DET_COUNT()
+        $n = PP_OCR_INFER($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i))
+        $num = CTC_FOLD(0, "0123456789", 16163)
+        IF LEN($num) > 0
+            $digits = $digits + $num + ","
+        ENDIF
+        $text = PP_OCR_TEXT($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i), $dict)
+        IF LEN($text) > 0
+            $lines = $lines + $text + ","
+        ENDIF
+        $i = $i + 1
+    END
+    NET_UNLOAD($rec)
+    PRINT "DIGITS: " & $digits
+    PRINT "LINES: " & $lines
+ELSE
+    PRINT "NET_LOAD failed (check models/ppocr/)"
+ENDIF

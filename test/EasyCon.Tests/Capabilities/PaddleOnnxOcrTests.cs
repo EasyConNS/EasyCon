@@ -11,6 +11,7 @@ namespace EasyCon.Tests.Capabilities;
 /// PP-OCRv4/v5 模型在场时与 Tesseract 后端同图对比（精度/耗时报告输出到 stdout，模型缺失时 Ignore）。
 /// </summary>
 [TestFixture]
+[Explicit]   // 真模型 DNN（OpenCV 5 alpha macOS 间歇 SEGV，见 NetPpocrRealModelTests remarks）——点名 filter 跑
 public class PaddleOnnxOcrTests
 {
     /// <summary>记录调用的假工厂/识别器（模型无关，验证服务管线）。</summary>

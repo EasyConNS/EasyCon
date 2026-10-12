@@ -187,7 +187,8 @@ public class PipelineUnificationTests
             Is.False, "单平台导入不应有同签名歧义");
 
         var io = new RecordingIo();
-        Assert.Catch(() => RunNewChain(result, io, new RecordingPad()),
+        // NUnit 5：Catch 无泛型为精确类型匹配，显式指定 FFI 失败的包装异常类型
+        Assert.Catch<EasyCon.Script.ScriptException>(() => RunNewChain(result, io, new RecordingPad()),
             "非 Windows 平台 msvcrt.dll FFI 必然失败（Windows 上运行到完成）");
         Assert.That(io.Lines, Is.EqualTo(new[] { "========== CSV文件读取测试 ==========", "" }),
             "FFI 失败前输出行（构造到 csv_open 为止）");
