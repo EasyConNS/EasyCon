@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Threading;
+using EasyCon.Capture.Audio;
 using EasyCon.Core;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Config;
@@ -48,6 +49,7 @@ public partial class App : Application
 
             var deviceService = new DeviceService(logService);
             var captureService = new CaptureService(logService);
+            var audioSource = new WasapiAudioCapture();
             var scriptService = new ScriptService(deviceService, captureService, logService);
             // Linux 平台暂无底层控制实现，先用 Mock 占位；VPadService（虚拟手柄）改为组合根构造后
             // 注入 ControllerService（其 ControllerAdapter 依赖 IScriptService，装配留在 App 侧），
@@ -61,7 +63,7 @@ public partial class App : Application
 
             RegisterWindows(windowService, deviceService, logService, dialogService);
 
-            var mainWindowViewModel = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService, dialogService, windowService, uiDispatcher, new SkiaImageProcessor(), updateService: new GiteeUpdateService());
+            var mainWindowViewModel = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService, dialogService, windowService, uiDispatcher, new SkiaImageProcessor(), updateService: new GiteeUpdateService(), audioSource: audioSource);
             var mainWindow = new MainWindow { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
             // 主窗口关闭即应用关停（OnMainWindowClose），剩余窗口由框架强制关闭；
@@ -77,7 +79,7 @@ public partial class App : Application
             UiPreloader.Warmup();
 
             StartLoopbackServices(mainWindowViewModel, deviceService, captureService);
-            WireExitCleanup(desktop, controllerService, captureService, deviceService, logService);
+            WireExitCleanup(desktop, controllerService, captureService, deviceService, audioSource, logService);
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -152,12 +154,13 @@ public partial class App : Application
     }
 
     /// <summary>关窗清理：desktop.Exit 单一清理入口，服务释放统一在此（带防御）。</summary>
-    private static void WireExitCleanup(IClassicDesktopStyleApplicationLifetime desktop, IControllerService controllerService, CaptureService captureService, DeviceService deviceService, CoreLogService logService)
+    private static void WireExitCleanup(IClassicDesktopStyleApplicationLifetime desktop, IControllerService controllerService, CaptureService captureService, DeviceService deviceService, IAudioCaptureSource audioSource, CoreLogService logService)
     {
         desktop.Exit += (_, _) =>
         {
             try { if (controllerService is IDisposable cd) cd.Dispose(); } catch { }
             try { captureService.Dispose(); } catch { }
+            try { audioSource.Dispose(); } catch { }
             try { deviceService.Dispose(); } catch { }
 #pragma warning disable VSTHRD002 // Exit 事件为同步签名：只能限时(2s)同步等待异步服务收尾
             try { _mcpHttpServer?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }
