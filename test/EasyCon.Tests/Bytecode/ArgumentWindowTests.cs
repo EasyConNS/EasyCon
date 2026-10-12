@@ -42,6 +42,9 @@ public class ArgumentWindowTests
     public void UserCall_PreservesEveryArgument_AndRoundTrips(int count, bool optimize)
     {
         CompileResult result = Compile(WeightedFunction(count) + $"RETURN weighted({Arguments(count)})\n", optimize);
+        if (!optimize)
+            Assert.That(result.Image!.Functions.SelectMany(f => f.Instructions)
+                .Any(i => i.Op == EcsOpcode.Call && i.B == count), Is.True, "未优化用例必须执行真实的多参数 Call");
         int expected = Enumerable.Range(1, count).Sum(i => i * i);
         AssertResult(result.Image!, expected);
         AssertResult(EcsContainer.ReadImage(EcsContainer.WriteImage(result.Image!, stripDebug: true)), expected);

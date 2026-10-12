@@ -106,7 +106,10 @@ public class CvmArgumentWindowTests
     {
         string source = ArgumentWindowTests.WeightedFunction(count) +
             $"$r = weighted({ArgumentWindowTests.Arguments(count)})\nPRINT $r\n";
-        CompileResult result = ArgumentWindowTests.Compile(source);
+        // 保留真实 Call 指令，避免全常量调用被纯函数求值折叠后绕过 C VM 参数复制路径。
+        CompileResult result = ArgumentWindowTests.Compile(source, optimize: false);
+        Assert.That(result.Image!.Functions.SelectMany(f => f.Instructions)
+            .Any(i => i.Op == EcsOpcode.Call && i.B == count), Is.True, "必须执行真实的多参数 Call");
         EcxHost host = new();
         host.EnableRecording();
         Assert.That(EcxInterpreter.Run(result.Image!, host), Is.EqualTo(EcxInterpreter.OK));
