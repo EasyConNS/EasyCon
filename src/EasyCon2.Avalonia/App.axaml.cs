@@ -75,9 +75,12 @@ public partial class App : Application
             var mainWindowViewModel = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService, dialogService, windowService, uiDispatcher, new SkiaImageProcessor(), updateService: new GiteeUpdateService(), audioSource: audioSource);
             var mainWindow = new MainWindow { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
-            // 主窗口关闭即应用关停（OnMainWindowClose），剩余窗口由框架强制关闭；
-            // 键盘映射等子窗口或 VPadOverlay 存活时关主窗口不会触发 desktop.Exit，vpad 清理必须挂在主窗口关闭上。
-            desktop.ShutdownMode = global::Avalonia.Controls.ShutdownMode.OnMainWindowClose;
+            // 显式关停，不用 OnMainWindowClose：其 TryShutdown 会被关停瞬间仍在窗口列表里的
+            // 窗口（未保存确认弹窗、键盘映射等子窗口、VPadOverlay）一次性取消
+            // （DoShutdown 见 Windows.Count>0 即 e.Cancel 且后续窗口关闭不再重试），
+            // 进程就此驻留后台主循环。主窗口 Closed 后强制 Shutdown 可绕过该计数。
+            desktop.ShutdownMode = global::Avalonia.Controls.ShutdownMode.OnExplicitShutdown;
+            mainWindow.Closed += (_, _) => Dispatcher.UIThread.Post(() => desktop.Shutdown());
 
             // 注入主窗口 Owner，子窗口/弹窗/VPadOverlay 以主窗口为 Owner
             windowService.Owner = mainWindow;
