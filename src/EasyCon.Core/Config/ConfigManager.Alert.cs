@@ -53,43 +53,64 @@ public static partial class ConfigManager
             {
                 source = File.Exists(path) ? File.ReadAllText(path) : null;
                 config = source == null ? CreateDefaultAlert()
-                    : JsonSerializer.Deserialize<AlertConfig>(source, _jsonReadOptions) ?? new();
+                    : JsonSerializer.Deserialize<AlertConfig>(source, _jsonReadOptions)
+                        ?? throw new JsonException("推送配置不能为空。");
+                NormalizeAlertConfiguration(config);
             }
             catch (Exception ex)
             {
                 return new AlertConfig { schema_version = 1, load_error = ReportAlertLoadFailure(path, ex) };
             }
             _alertSaveErrors.Remove(path);
-            bool needsSave = source == null || config.schema_version < 1;
+            bool needsMigration = source == null || config.schema_version < 1;
             if (config.schema_version < 1 && !config.alerts.Any(item => item.IsQq))
                 config.alerts.Add(AlertItem.CreateQq());
+            string[] originalIds = [.. config.alerts.Select(item => item.id)];
+            // 写入失败后的重试沿用同一批标识，避免运行中的通道被当作删除。
+            if (_alertMigrationIds.TryGetValue(path, out (string? Source, string[] Ids) migration)
+                && migration.Source == source && migration.Ids.Length == config.alerts.Count)
+            {
+                for (int i = 0; i < config.alerts.Count; i++)
+                    config.alerts[i].id = migration.Ids[i];
+            }
+            _ = EnsureAlertIds(config);
+            bool needsSave = needsMigration || !originalIds.SequenceEqual(config.alerts.Select(item => item.id));
             if (needsSave)
             {
                 config.schema_version = 1;
-                // 写入失败后的重试沿用同一批标识，避免运行中的通道被当作删除。
-                if (_alertMigrationIds.TryGetValue(path, out (string? Source, string[] Ids) migration)
-                    && migration.Source == source && migration.Ids.Length == config.alerts.Count)
-                {
-                    for (int i = 0; i < config.alerts.Count; i++)
-                        config.alerts[i].id = migration.Ids[i];
-                }
-                _ = EnsureAlertIds(config);
                 _alertMigrationIds[path] = (source, [.. config.alerts.Select(item => item.id)]);
+            }
+            if (needsMigration)
+            {
                 AlertItem? item = config.alerts.FirstOrDefault(item => item.IsQq);
                 string legacyPath = legacyQqPath ?? (path == AppPaths.AlertConfig ? AppPaths.QqNotificationConfig : "");
-                if (item != null && File.Exists(legacyPath))
+                if (item != null && legacyPath.Length > 0)
                 {
                     try
                     {
-                        item.qq = Load<QQNotificationSettings>(legacyPath, _jsonReadOptions);
+                        // 一次读取成功后才导入，不能把读取失败返回的默认值当作迁移完成。
                         using JsonDocument document = JsonDocument.Parse(File.ReadAllText(legacyPath));
+                        QQNotificationSettings imported = document.RootElement.Deserialize<QQNotificationSettings>(_jsonReadOptions)
+                            ?? throw new JsonException("旧 QQ 配置不能为空。");
+                        NormalizeQqSettings(imported);
+                        item.qq = imported;
                         item.enable = document.RootElement.TryGetProperty("enabled", out JsonElement enabled)
                             && enabled.ValueKind == JsonValueKind.True;
                     }
-                    catch
+                    catch (FileNotFoundException)
                     {
-                        item.qq = new QQNotificationSettings();
-                        item.enable = false;
+                        // 没有旧配置时无需导入。
+                    }
+                    catch (DirectoryNotFoundException)
+                    {
+                        // 没有旧配置目录时无需导入。
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+                    {
+                        config.load_error = "旧 QQ 配置读取失败，已暂停迁移和保存，请修复旧文件后重新打开设置：" + ex.Message;
+                        _alertSaveErrors[path] = config.load_error;
+                        ConfigErrorReported?.Invoke(legacyPath, config.load_error);
+                        needsSave = false;
                     }
                 }
             }
@@ -134,6 +155,36 @@ public static partial class ConfigManager
         }
     }
 
+    private static void NormalizeAlertConfiguration(AlertConfig config)
+    {
+        if (config.alerts == null || config.alerts.Any(item => item == null))
+            throw new JsonException("推送列表及其配置项不能为空。");
+        foreach (AlertItem item in config.alerts)
+        {
+            item.provider ??= AlertItem.WebhookProvider;
+            item.name ??= item.IsQq ? AlertItem.QqDefaultName : "";
+            item.method ??= "GET";
+            item.url ??= "";
+            item.token ??= "";
+            item.body ??= "";
+            if (item.headers?.Values.Any(value => value == null) == true
+                || item.variables?.Values.Any(value => value == null) == true)
+                throw new JsonException("推送配置的请求头和变量值不能为空。");
+            if (item.qq != null)
+                NormalizeQqSettings(item.qq);
+        }
+    }
+
+    private static void NormalizeQqSettings(QQNotificationSettings settings)
+    {
+        settings.app_id ??= "";
+        settings.secret ??= "";
+        settings.protected_secret ??= "";
+        settings.user_openid ??= "";
+        settings.group_openid ??= "";
+        settings.load_error ??= "";
+    }
+
     private static string ReportAlertLoadFailure(string path, Exception error)
     {
         string message;
@@ -169,6 +220,7 @@ public static partial class ConfigManager
         {
             if (_alertSaveErrors.TryGetValue(path, out string? loadError))
                 throw new InvalidOperationException(loadError);
+            NormalizeAlertConfiguration(snapshot);
             HashSet<string> ids = EnsureAlertIds(snapshot);
             foreach (AlertItem item in snapshot.alerts)
             {
@@ -203,7 +255,7 @@ public static partial class ConfigManager
         HashSet<string> ids = [];
         foreach (AlertItem item in config.alerts)
         {
-            if (item.id.Length == 0 || !ids.Add(item.id))
+            if (string.IsNullOrWhiteSpace(item.id) || !ids.Add(item.id))
             {
                 item.id = Guid.NewGuid().ToString("N");
                 ids.Add(item.id);

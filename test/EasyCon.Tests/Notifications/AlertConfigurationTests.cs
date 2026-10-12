@@ -284,22 +284,38 @@ public class AlertConfigurationTests
         Assert.That(ConfigManager.LoadAlert(ConfigPath).alerts.Count, Is.EqualTo(3));
     }
 
-    [TestCase(false, false)]
-    [TestCase(true, false)]
-    [TestCase(false, true)]
-    [TestCase(true, true)]
-    public async Task RetryingMigrationPreservesActiveAndQueuedNotifications(bool lockFile, bool existingQq)
+    [TestCase(false, false, false)]
+    [TestCase(true, false, false)]
+    [TestCase(false, true, false)]
+    [TestCase(true, true, false)]
+    [TestCase(false, true, true)]
+    [TestCase(true, true, true)]
+    public async Task RetryingMigrationOrIdRepairPreservesActiveAndQueuedNotifications(bool lockFile, bool existingQq, bool currentSchema)
     {
         if (!OperatingSystem.IsWindows())
             Assert.Ignore("本用例使用 Windows DPAPI 和只读属性或文件锁模拟迁移重试。");
-        AlertConfig original = new();
+        string encrypted = QQNotificationSecretProtector.Protect("legacy-secret");
+        AlertConfig original = new() { schema_version = currentSchema ? 1 : 0 };
         if (existingQq)
-            original.alerts.Add(new AlertItem { provider = AlertItem.QqProvider, name = AlertItem.QqDefaultName });
+            original.alerts.Add(new AlertItem
+            {
+                provider = AlertItem.QqProvider,
+                name = AlertItem.QqDefaultName,
+                enable = currentSchema,
+                qq = currentSchema ? new QQNotificationSettings
+                {
+                    app_id = "current-app",
+                    protected_secret = encrypted,
+                    remember_secret = true,
+                    user_openid = "current-user",
+                    attach_image = false,
+                } : null,
+            });
         File.WriteAllText(ConfigPath, JsonSerializer.Serialize(original));
         File.WriteAllText(LegacyPath, JsonSerializer.Serialize(new
         {
             app_id = "legacy-app",
-            protected_secret = QQNotificationSecretProtector.Protect("legacy-secret"),
+            protected_secret = encrypted,
             remember_secret = true,
             user_openid = "legacy-user",
             enabled = true,
@@ -316,6 +332,7 @@ public class AlertConfigurationTests
             else
                 File.SetAttributes(ConfigPath, FileAttributes.ReadOnly);
             AlertConfig initial = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+            Assert.That(initial.alerts.Single().qq!.app_id, Is.EqualTo(currentSchema ? "current-app" : "legacy-app"));
             using MigrationNotificationHandler handler = new()
             {
                 BeforeMessage = async token =>
@@ -377,10 +394,14 @@ public class AlertConfigurationTests
         }
     }
 
-    [Test]
-    public void CorruptConfiguration_IsBackedUpAndReportedBeforeLaterSave()
+    [TestCase("{\"alerts\": [未完成的配置")]
+    [TestCase("null")]
+    [TestCase("{\"schema_version\":1,\"alerts\":null}")]
+    [TestCase("{\"schema_version\":1,\"alerts\":[null]}")]
+    [TestCase("{\"schema_version\":1,\"alerts\":[{\"name\":\"webhook\",\"headers\":{\"X-Token\":null}}]}")]
+    [TestCase("{\"schema_version\":1,\"alerts\":[{\"name\":\"webhook\",\"variables\":{\"chat_id\":null}}]}")]
+    public void InvalidConfiguration_IsBackedUpAndReportedBeforeLaterSave(string broken)
     {
-        const string broken = "{\"alerts\": [未完成的配置";
         File.WriteAllText(ConfigPath, broken);
         List<string> errors = [];
         void Report(string path, string message)
@@ -414,6 +435,191 @@ public class AlertConfigurationTests
         {
             ConfigManager.ConfigErrorReported -= Report;
         }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void LegacyReadFailure_DefersMigrationAndBlocksDraftSaveUntilReload(bool existingConfig)
+    {
+        if (!OperatingSystem.IsWindows())
+            Assert.Ignore("本用例使用 Windows 文件锁和 DPAPI 模拟旧配置读取失败。");
+        AlertConfig original = new()
+        {
+            timeout = 30,
+            alerts = [new AlertItem { name = "已有推送", url = "https://example.com/notify", token = "existing-token" }],
+        };
+        string originalJson = JsonSerializer.Serialize(original);
+        if (existingConfig)
+            File.WriteAllText(ConfigPath, originalJson);
+        string legacy = JsonSerializer.Serialize(new
+        {
+            app_id = "legacy-app",
+            protected_secret = QQNotificationSecretProtector.Protect("legacy-secret"),
+            remember_secret = true,
+            user_openid = "legacy-user",
+            enabled = true,
+        });
+        File.WriteAllText(LegacyPath, legacy);
+        List<string> errors = [];
+        int updates = 0;
+        void Report(string path, string message)
+        {
+            if (path == LegacyPath)
+                errors.Add(message);
+        }
+        void Changed(AlertConfig _) => updates++;
+        ConfigManager.ConfigErrorReported += Report;
+        ConfigManager.AlertConfigChanged += Changed;
+        try
+        {
+            AlertConfig initial;
+            using (FileStream locked = File.Open(LegacyPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                initial = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+                AlertConfig retry = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(initial.load_error, Does.Contain("旧 QQ").And.Contain("暂停"));
+                    Assert.That(errors, Has.Count.EqualTo(2));
+                    Assert.That(retry.alerts.Select(item => item.id), Is.EqualTo(initial.alerts.Select(item => item.id)));
+                    Assert.That(initial.alerts[0].token, Is.EqualTo(existingConfig ? "existing-token" : ""));
+                    Assert.That(initial.alerts.Single(item => item.IsQq).enable, Is.False);
+                    Assert.That(File.Exists(ConfigPath), Is.EqualTo(existingConfig));
+                    Assert.That(updates, Is.Zero);
+                });
+                // 设置窗口会重建草稿，保存阻止状态必须按文件路径保留。
+                Assert.Throws<InvalidOperationException>(() => ConfigManager.SaveAlert(new AlertConfig(), ConfigPath));
+                if (existingConfig)
+                    Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(originalJson));
+                using AlertDispatcher dispatcher = new(initial);
+            }
+            Assert.Throws<InvalidOperationException>(() => ConfigManager.SaveAlert(new AlertConfig(), ConfigPath));
+            AlertConfig recovered = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+            AlertItem qq = recovered.alerts.Single(item => item.IsQq);
+            Assert.Multiple(() =>
+            {
+                Assert.That(recovered.load_error, Is.Empty);
+                Assert.That(recovered.alerts.Select(item => item.id), Is.EqualTo(initial.alerts.Select(item => item.id)));
+                Assert.That(recovered.alerts[0].token, Is.EqualTo(existingConfig ? "existing-token" : ""));
+                Assert.That(qq.qq!.app_id, Is.EqualTo("legacy-app"));
+                Assert.That(qq.qq.secret, Is.EqualTo("legacy-secret"));
+                Assert.That(qq.qq.user_openid, Is.EqualTo("legacy-user"));
+                Assert.That(qq.enable, Is.True);
+                Assert.That(updates, Is.EqualTo(1));
+                Assert.That(File.ReadAllText(LegacyPath), Is.EqualTo(legacy));
+                Assert.That(File.ReadAllText(ConfigPath), Does.Not.Contain("legacy-secret"));
+            });
+        }
+        finally
+        {
+            ConfigManager.ConfigErrorReported -= Report;
+            ConfigManager.AlertConfigChanged -= Changed;
+        }
+    }
+
+    [TestCase("null")]
+    [TestCase("{未完成的旧配置")]
+    public void InvalidLegacyConfiguration_DefersMigrationUntilSourceIsCorrected(string legacy)
+    {
+        string original = JsonSerializer.Serialize(new AlertConfig
+        {
+            alerts = [new AlertItem { name = "已有推送", token = "existing-token" }],
+        });
+        File.WriteAllText(ConfigPath, original);
+        File.WriteAllText(LegacyPath, legacy);
+        AlertConfig initial = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+        Assert.Multiple(() =>
+        {
+            Assert.That(initial.load_error, Does.Contain("旧 QQ").And.Contain("暂停"));
+            Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo(original));
+            Assert.That(File.ReadAllText(LegacyPath), Is.EqualTo(legacy));
+        });
+        Assert.Throws<InvalidOperationException>(() => ConfigManager.SaveAlert(new AlertConfig(), ConfigPath));
+
+        File.WriteAllText(LegacyPath, """
+            {"app_id":"legacy-app","user_openid":"legacy-user","protected_secret":null}
+            """);
+        AlertConfig recovered = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+        Assert.Multiple(() =>
+        {
+            Assert.That(recovered.load_error, Is.Empty);
+            Assert.That(recovered.alerts.Select(item => item.id), Is.EqualTo(initial.alerts.Select(item => item.id)));
+            Assert.That(recovered.alerts[0].token, Is.EqualTo("existing-token"));
+            Assert.That(recovered.alerts[1].qq!.app_id, Is.EqualTo("legacy-app"));
+            Assert.That(recovered.alerts[1].qq!.user_openid, Is.EqualTo("legacy-user"));
+            Assert.That(recovered.alerts[1].qq!.protected_secret, Is.Empty);
+        });
+    }
+
+    [Test]
+    public void CurrentSchema_RepairsMissingAndDuplicateIdsWithoutImportingLegacySettings()
+    {
+        AlertConfig original = new()
+        {
+            schema_version = 1,
+            alerts =
+            [
+                new AlertItem { id = "webhook-id", name = "已有推送", token = "existing-token" },
+                new AlertItem { id = "qq-id", provider = AlertItem.QqProvider, name = "保留标识" },
+                new AlertItem { provider = AlertItem.QqProvider, name = "缺少标识" },
+                new AlertItem { id = "qq-id", provider = AlertItem.QqProvider, name = "重复标识" },
+                new AlertItem { id = " ", provider = AlertItem.QqProvider, name = "空白标识" },
+                new AlertItem { id = null!, name = "空标识" },
+            ],
+        };
+        File.WriteAllText(ConfigPath, JsonSerializer.Serialize(original));
+        File.WriteAllText(LegacyPath, "不可导入的旧 QQ 配置");
+        AlertConfig loaded = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+        using AlertDispatcher dispatcher = new(loaded);
+        AlertConfig reloaded = ConfigManager.LoadAlert(ConfigPath, LegacyPath);
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded.load_error, Is.Empty);
+            Assert.That(loaded.alerts, Has.Count.EqualTo(6));
+            Assert.That(loaded.alerts[0].id, Is.EqualTo("webhook-id"));
+            Assert.That(loaded.alerts[1].id, Is.EqualTo("qq-id"));
+            Assert.That(loaded.alerts[0].token, Is.EqualTo("existing-token"));
+            Assert.That(loaded.alerts.All(item => !string.IsNullOrWhiteSpace(item.id)), Is.True);
+            Assert.That(loaded.alerts.Select(item => item.id).Distinct().Count(), Is.EqualTo(6));
+            Assert.That(reloaded.alerts.Select(item => item.id), Is.EqualTo(loaded.alerts.Select(item => item.id)));
+            Assert.That(loaded.alerts.Where(item => item.IsQq).All(item => item.qq!.app_id.Length == 0), Is.True);
+        });
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    public void NullStringFields_AreNormalizedWithoutLosingEncryptedSecrets(int schemaVersion)
+    {
+        string json = $$$"""
+            {"schema_version":{{{schemaVersion}}},"alerts":[
+              {"id":null,"provider":null,"name":null,"method":null,"url":null,"token":null,"body":null},
+              {"id":null,"provider":"qq","name":null,"enable":true,"qq":{
+                "app_id":null,"protected_secret":null,"remember_secret":true,"user_openid":null,"group_openid":null}},
+              {"id":"qq-empty","provider":"qq","name":"qq bot","qq":null},
+              {"id":"qq-ciphertext","provider":"qq","name":"qq bot","qq":{
+                "app_id":"app","protected_secret":"unreadable-ciphertext","remember_secret":true,"user_openid":null}}
+            ]}
+            """;
+        File.WriteAllText(ConfigPath, json);
+        AlertConfig loaded = ConfigManager.LoadAlert(ConfigPath);
+        using AlertDispatcher dispatcher = new(loaded);
+        ConfigManager.SaveAlert(loaded, ConfigPath);
+        AlertConfig reloaded = ConfigManager.LoadAlert(ConfigPath);
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded.load_error, Is.Empty);
+            Assert.That(loaded.alerts, Has.Count.EqualTo(4));
+            Assert.That(loaded.alerts[0].provider, Is.EqualTo(AlertItem.WebhookProvider));
+            Assert.That(loaded.alerts[0].method, Is.EqualTo("GET"));
+            Assert.That(loaded.alerts.All(item => item.name != null && item.url != null && item.token != null && item.body != null), Is.True);
+            Assert.That(loaded.alerts[1].name, Is.EqualTo(AlertItem.QqDefaultName));
+            Assert.That(loaded.alerts[1].qq!.protected_secret, Is.Empty);
+            Assert.That(loaded.alerts.Where(item => item.IsQq).All(item => !item.enable && item.qq != null
+                && item.qq.app_id != null && item.qq.user_openid != null && item.qq.group_openid != null), Is.True);
+            Assert.That(reloaded.alerts.Select(item => item.id), Is.EqualTo(loaded.alerts.Select(item => item.id)));
+            Assert.That(reloaded.alerts[3].qq!.protected_secret, Is.EqualTo("unreadable-ciphertext"));
+            Assert.That(reloaded.alerts[3].qq!.load_error, Does.Contain("无法解密"));
+        });
     }
 
     [Test]

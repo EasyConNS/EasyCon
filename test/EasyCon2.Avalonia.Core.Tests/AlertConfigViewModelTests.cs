@@ -66,6 +66,44 @@ public class AlertConfigViewModelTests
         }
     }
 
+    [Test]
+    public void LoadedNullQqFields_CanBeDisplayedEditedAndSaved()
+    {
+        string directory = Directory.CreateTempSubdirectory("easycon-qq-editor-null-tests-").FullName;
+        string path = Path.Combine(directory, "alert.json");
+        try
+        {
+            File.WriteAllText(path, """
+                {"schema_version":1,"alerts":[{"id":"qq-id","provider":"qq","name":"qq bot","qq":{
+                  "app_id":null,"protected_secret":null,"remember_secret":true,"user_openid":null,"group_openid":null}}]}
+                """);
+            using AlertConfigViewModel model = new(config => ConfigManager.SaveAlert(config, path));
+            model.Load(ConfigManager.LoadAlert(path));
+            QQNotificationViewModel qq = model.VisibleItems.Single().Qq!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(model.HasError, Is.False);
+                Assert.That(qq.AppId, Is.Empty);
+                Assert.That(qq.UserOpenIdDisplay, Is.EqualTo("尚未绑定私聊"));
+                Assert.That(qq.GroupOpenIdDisplay, Is.EqualTo("尚未绑定群聊"));
+            });
+            qq.AppId = "edited-app";
+            qq.UserOpenId = "edited-user";
+            Assert.That(model.Save(), Is.True);
+            AlertItem saved = ConfigManager.LoadAlert(path).alerts.Single();
+            Assert.Multiple(() =>
+            {
+                Assert.That(saved.id, Is.EqualTo("qq-id"));
+                Assert.That(saved.qq!.app_id, Is.EqualTo("edited-app"));
+                Assert.That(saved.qq.user_openid, Is.EqualTo("edited-user"));
+            });
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void EditingCredentialsClearsPreviousCiphertext(bool changeAppId)
