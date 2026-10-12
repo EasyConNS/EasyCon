@@ -80,7 +80,7 @@ public sealed class EcsFunction
     public required string Name;
     public required string Module;
     public int NParams;
-    /// <summary>不再受 8 位限制；线格式字段为 u16（EcmEcxFormat §2）。</summary>
+    /// <summary>不再受 8 位限制；线格式字段为 u16。</summary>
     public int NSlots;
     public bool HasReturn;
     /// <summary>唯一真值：解码形态指令流（链接各 pass 与解释器的唯一消费形态）。</summary>
@@ -121,7 +121,7 @@ public sealed class EcsNative
     public required string Name;
 }
 
-/// <summary>模块导入：需要的外部函数（按 名+参数个数 解析，docs/EcmEcxFormat.md §4.2）。</summary>
+/// <summary>模块导入：需要的外部函数（按 名+参数个数 解析）。</summary>
 public sealed class EcsImport
 {
     public required string Name;
@@ -139,7 +139,7 @@ public sealed class EcsExport
 }
 
 /// <summary>
-/// 模块产物（.ecm 的内存表示，docs/EcmEcxFormat.md §4）。
+/// 模块产物（.ecm 的内存表示）。
 /// 函数 Call 目标：本模块 = 局部 fid；外部 = 0x80000000 | 导入表索引。
 /// LoadG/StoreG Bx = 模块局部全局槽；CallN ext = 模块局部原生 idx；LoadK Bx = 模块常量池 idx。
 /// </summary>
@@ -198,7 +198,7 @@ public sealed class EcxImage
     /// u16 @0x0A）。加载规则：host 掩码缺位 → 拒跑（IL → ECS_ERR_IL，其余 → ECS_ERR_FEAT）。
     /// </summary>
     public uint Features;
-    /// <summary>全程序最大帧槽数（max(funcs.nslots)，静态预分配帧区用，EcmEcxFormat §2.1）。</summary>
+    /// <summary>全程序最大帧槽数（max(funcs.nslots)，静态预分配帧区用）。</summary>
     public int MaxSlots;
     /// <summary>静态调用图最长链（递归按 1 计；运行期上限另由 ECS_MAX_CALL_DEPTH 约束）。</summary>
     public int MaxDepth;

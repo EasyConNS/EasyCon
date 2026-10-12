@@ -4,7 +4,7 @@ using System.Text;
 namespace EasyCon.Script.Bytecode;
 
 /// <summary>
-/// 产物容器（v2.3 零期平铺化，docs/EcmEcxFormat.md）：
+/// 产物容器（v2.3 零期平铺化）：
 /// <c>.ecx</c> 镜像 = ECX1 平铺（<see cref="WriteImage"/>），<c>.ecm</c> 模块缓存 = ECM1 平铺
 /// （<see cref="WriteModule"/>）。同一纪律：定长 36B 头 + 自计数表依序排列 + 头内全量 CRC；
 /// 无逐段框架——格式演进 = 版本断代 + 全量重编（旧产物经魔数不符自然失效）。

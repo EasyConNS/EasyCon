@@ -3,7 +3,7 @@
 > **版本 2.0**。本文档描述模块系统现状：每个 `.ecs` 文件是一个模块（编译单元），
 > 产物为 `.ecm`（接口区 + 代码区）；消费者只读依赖的接口区，接口内容寻址缓存，源码或依赖接口不变则永不重编。
 > 理论对应物：C++20 Named Modules（BMI/IFC）、Rust rmeta、Go build cache、OCaml `.cmi`。
-> 关联：`docs/VM2.md`、`docs/EcmEcxFormat.md`（.ecm 位级布局）、`docs/Pipeline.md`（统一链路）。
+> 关联：`docs/VM2.md`、`docs/Pipeline.md`（统一链路；.ecm 位级布局见 `EcsContainer`/链接器测试）。
 
 ## 1. 编译模型
 

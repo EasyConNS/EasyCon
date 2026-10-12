@@ -7,11 +7,13 @@ using System.Collections.Immutable;
 namespace EasyCon.Tests.Capabilities;
 
 /// <summary>
-/// S-21 能力矩阵四路对拍（V23_VM_REDESIGN.md §2.3）：同一能力受限镜像 ×
+/// S-21 能力矩阵对拍（docs/VM2.md §6.3）：同一能力受限镜像 ×
 /// {全能力宿主, 桩宿主} 两档 × {C# 解释器, C VM} 双端。
-/// 锁定三件事：① 缺能力档双端逐字锁步（C# EcsCapabilityDefaults ≡ C ecs_cap_*）；
-/// ② 全能力宿主语义不受降级层影响；③ strict_caps 双态恢复响亮（C 加载期拒跑 /
-/// C# 运行期 ERR）。平台差异 = 宿主能力差异，不再是 VM 语义差异。
+/// 锁定：① L2 syscall 缺能力档双端逐字锁步（EcsCapabilityDefaults ≡ C ecs_cap_syscall_default）；
+/// ② L3 名表降级是桌面专属——C# 桩宿主按缺省值表降级，C VM native 缺失（含 FFI）
+/// 一律 ECS_ERR_NOSUCHNATIVE 响亮失败（MCU 不支持桌面原生，无名表判断）；
+/// ③ 全能力宿主语义不受降级层影响；④ strict_caps 双态恢复响亮。
+/// 平台差异 = 宿主能力差异，不再是 VM 语义差异。
 /// </summary>
 [TestFixture]
 public class CapabilityMatrixTests
@@ -59,7 +61,7 @@ public class CapabilityMatrixTests
     }
 
     [Test]
-    public void Matrix_FourWay_Lockstep()
+    public void Matrix_CapabilityDefaults_DesktopVsCvm()
     {
         var (image, dir) = Compile();
         var workDir = Path.Combine(dir, "vm");
@@ -68,19 +70,20 @@ public class CapabilityMatrixTests
         {
             var vmBinary = CvmRunner.EnsureBuilt(workDir);
 
-            // ---- ① C# 桩宿主（Native=null → EcsCapabilityDefaults；录制收 PRINT 行）----
+            // ---- ① C# 桩宿主（Native=null → EcsCapabilityDefaults 桌面降级；录制收 PRINT 行）----
             var stub = EcsTestHost.CreateRecording();
             Assert.That(EcxInterpreter.Run(image, stub), Is.EqualTo(0), "C# 桩宿主应降级执行");
-            var stubLines = new[] { "-1", "0", "0", "", "", "0", "-1" };
-            Assert.That(stub.Lines, Is.EqualTo(stubLines), "缺省值表：NET 族/JQ/ENV/TIME/IL");
+            var desktopLines = new[] { "-1", "0", "0", "", "", "0", "-1" };
+            Assert.That(stub.Lines, Is.EqualTo(desktopLines), "桌面缺省值表：NET 族/JQ/ENV/TIME/IL");
 
             if (vmBinary != null)
             {
-                // ---- ② C VM 参考宿主（native=NULL → ecs_cap_*）：与 ① 逐字锁步 ----
+                // ---- ② C VM 参考宿主（native=NULL）：无降级表——首个名表原生 NET_LOAD 即响亮失败 ----
+                // （MCU 不支持桌面原生，含 FFI；非 strict 也无缺省值表。错误码 NOSUCHNATIVE=10。）
                 byte[] ecx = EcsContainer.WriteImage(image);
                 var (exitCode, stdout, stderr) = CvmRunner.Run(vmBinary, ecx, "matrix-stub", workDir);
-                Assert.That(exitCode, Is.EqualTo(0), $"C VM 降级执行；stderr={stderr}");
-                Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(stubLines), "缺能力档双端锁步");
+                Assert.That(exitCode, Is.EqualTo(10), $"C VM native 缺失应响亮失败；stderr={stderr}");
+                Assert.That(stdout.Trim(), Is.Empty, "首条语句即 NET_LOAD，无输出");
 
                 // ---- ③ C VM strict：加载期恢复响亮（本镜像 IL+Vision 双缺位；IL 检查在前 → 13）----
                 var (strictExit, _, strictErr) = CvmRunner.Run(vmBinary, ecx, "matrix-strict", workDir,

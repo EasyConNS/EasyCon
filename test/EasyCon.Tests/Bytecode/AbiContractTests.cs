@@ -5,7 +5,7 @@ using EasyCon.Tests.Support;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// ABI 一致性契约（docs/VM2.md §9.1 / VmSemanticContract §四）：
+/// ABI 一致性契约（docs/VM2.md §9.1）：
 /// 1. syscall 编号稳定（发布即 ABI，只追加不回收——锁定常量值）；
 /// 2. L2 全集编号化：内建不进原生名表，名表仅承载 L3（采集洞 "__xxx__" / FFI "库!导出名"）；
 /// 3. 特征需求掩码：FILE/FFI/CAPTURE/IL 链接期计算，写入镜像头 feats u16（S-21 元信息）；
@@ -104,10 +104,11 @@ public class AbiContractTests
     }
 
     [Test]
-    public void Cvm_FfiImage_DegradesByDefault_RefusesUnderStrictCaps()
+    public void Cvm_FfiImage_RefusesWithoutHost_LoudUnderBothModes()
     {
-        // S-21 双态：缺省宿主 → FFI 镜像加载并降级执行（FFI 调用 → int 0 缺省值）；
-        // --strict-caps → 恢复加载期 ECS_ERR_FEAT 拒跑（迁移保底/诊断档）
+        // 新契约（docs/VM2.md §6.3）：C/MCU 无名表降级、也无 FFI——FFI 调用在缺省宿主
+        // （native=NULL）下非 strict 也在运行期响亮 ECS_ERR_NOSUCHNATIVE(10)；
+        // --strict-caps → 加载期 ECS_ERR_FEAT(14) 拒跑。桌面 FFI 降级是 C# 侧专属。
         if (_vmBinary == null)
             Assert.Ignore("无 cc 编译器，跳过 C VM 侧");
         var ffiScript = Path.Combine(_dir, "ffi2", "script.ecs");
@@ -116,8 +117,8 @@ public class AbiContractTests
         var image = Compilation.CompileFile(ffiScript, new CompileOptions { UseDiskCache = false }).Image!;
 
         var (exitCode, stdout, stderr) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(image), "abi-ffi", _workDir);
-        Assert.That(exitCode, Is.EqualTo(0), $"缺省宿主应降级执行；stderr={stderr}");
-        Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(new[] { "done" }), "FFI 调用降级为 int 0，脚本继续");
+        Assert.That(exitCode, Is.EqualTo(10), $"native 缺失应响亮失败；stderr={stderr}");
+        Assert.That(CvmRunner.SplitLines(stdout), Is.Empty, "首条语句即 FFI 调用，无输出");
 
         var (strictExit, _, strictErr) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(image), "abi-ffi-strict", _workDir,
             extraArgs: "--strict-caps");

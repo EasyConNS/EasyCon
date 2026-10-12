@@ -27,6 +27,13 @@ public interface IInference : IDisposable
     /// <summary>按 (scale, offset) 逐元素变换张量（t2 = t·scale + offset），返回新句柄；失败 -1。</summary>
     int TransformTensor(int handle, float scale, float offset);
 
+    /// <summary>
+    /// 逐通道归一化：result[i] = (x[i] - mean[c]) / std[c]。通道号 c 由持有张量形状推出
+    /// （rank≥4 取 shape[1]，rank=3 取 shape[0]，rank&lt;3 退化为全局仿射）；
+    /// mean/std 长度须为 1 或等于通道数。不可变风格，返回新句柄；失败 -1。
+    /// </summary>
+    int Normalize(int handle, float[] mean, float[] std);
+
     /// <summary>卸载会话（句柄失效）。</summary>
     void Unload(int session);
 

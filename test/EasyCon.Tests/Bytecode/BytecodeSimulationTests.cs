@@ -7,7 +7,7 @@ using EasyScript;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 统一链路语义验证（docs/VmSemanticContract.md §五）：真实例程与混合语料经
+/// 统一链路语义验证：真实例程与混合语料经
 /// CompileSource -> EcxImage -> EcxInterpreter 执行，事件流与语义基线断言
 /// （基线由 v1 金标准 SsaEvaluator 对拍时代逐字锁定，见 PipelineUnificationTests）。
 /// 记录型宿主桩（RecordingIo/RecordingPad）见 Support/EcsTestHost。

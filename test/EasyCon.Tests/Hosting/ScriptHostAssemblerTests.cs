@@ -292,6 +292,8 @@ public class ScriptHostAssemblerTests
 
         public int TransformTensor(int handle, float scale, float offset) => -1;
 
+        public int Normalize(int handle, float[] mean, float[] std) => -1;
+
         public void Dispose() => Disposed = true;
     }
 }

@@ -100,7 +100,7 @@ public enum EcsOpcode : byte
 /// CallN 的 EXT 字带上 0x80000000 旗标时，低 31 位 = 编号，直接双端分发，不经原生名表。
 /// 语义在宿主参考实现（C# EcxHost.Syscall / C harness 桩），引擎只做取号分发；
 /// 文件实现转发宿主时使用 <see cref="Names"/> 中的规范名（宿主委托签名不变）。
-/// ABI 分配规则：新增追加号段、废弃不回收（VmSemanticContract §四）。
+/// ABI 分配规则：新增追加号段、废弃不回收（AbiContractTests 锁定）。
 /// </summary>
 public static class EcsSyscall
 {

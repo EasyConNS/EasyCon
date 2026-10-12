@@ -7,7 +7,7 @@ using EasyCon.Tests.Support;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 全链路打通验证（docs/VmSemanticContract.md §五 验证体系）：
+/// 全链路打通验证：
 /// 真实例程语料 → 统一编译链路（CompileFile，模块管线）→ ECX 落盘 →
 /// 双执行器（EcxInterpreter / C VM 进程）→ 输出与事件全量对拍。
 /// C VM 基建（构建/执行/TSV 解析）见 Support/CvmRunner。

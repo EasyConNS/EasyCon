@@ -288,7 +288,7 @@ public static partial class BytecodeEncoder
             bool hasResult = !sym.ReturnType.Equals(ScriptType.Void) && v.Uses > 0;
 
             // 用户函数（含 stdlib）：值相等语义与 SsaEvaluator 一致（A-07）。
-            // 本模块函数 → 模块局部 fid；跨模块 → 导入表标记 0x80000000|importIdx（docs/EcmEcxFormat.md §4.1）。
+            // 本模块函数 → 模块局部 fid；跨模块 → 导入表标记 0x80000000|importIdx。
             // extern 声明恒走 CallN 按名分发（镜像里没有 extern 的函数体，导入标记将无法解析）；
             // 其余（内建原生等）→ CallN 按名分发。
             bool isLocal = _ctx.LocalFuncIds.TryGetValue(sym, out var localFid);

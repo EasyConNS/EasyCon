@@ -10,7 +10,7 @@ using System.Collections.Immutable;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 双方交叉验证（docs/VmSemanticContract.md §五）：统一编译链路产出的 .ecx 由
+/// 双方交叉验证：统一编译链路产出的 .ecx 由
 /// 模拟解释器 EcxInterpreter ↔ C 虚拟机（ecs-vm）独立执行，输出与事件全量对拍。
 /// C 进程经 cc 现场编译（§5 V7：无 cc 时跳过）；事件 TSV 格式与 EcxHost.EnableRecording 一致。
 /// 常规语义语料已文件化至 corpus/（CorpusCrossValidationTests 数据驱动三方对拍）；

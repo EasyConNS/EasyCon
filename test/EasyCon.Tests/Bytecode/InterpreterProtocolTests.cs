@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 执行协议单测（docs/VmSemanticContract.md S-18）—— EcxInterpreter 执行协议（C# 语义参考实现）：
+/// 执行协议单测—— EcxInterpreter 执行协议（C# 语义参考实现）：
 /// YIELD 预算切片续跑、取消（CANCELLED）、错误现场（错误码 + ErrorFunc/ErrorPc，对齐 C VM ecs_vm_error_location）。
 /// 调用深度上限仅 C VM 承担（ECS_MAX_CALL_DEPTH → ECS_ERR_DEPTH，见 CvmCrossValidationTests.Cvm_CallDepthLimit）；
 /// C# 解释器帧为堆分配，与金标准 SsaEvaluator（.NET 调用栈）一致不设限。

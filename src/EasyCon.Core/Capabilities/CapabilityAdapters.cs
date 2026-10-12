@@ -2,6 +2,7 @@ using EasyCon.Capture;
 using EasyCon.Core.Services;
 using EasyCon.Script;
 using EasyScript;
+using OpenCvSharp;
 
 namespace EasyCon.Core.Capabilities;
 
@@ -85,6 +86,35 @@ public sealed class DelegateVisionService(RoiDelegate? roi, LabelMatchDelegate? 
 
     public string? Crop(string imageBase64, int x, int y, int width, int height)
         => roi?.Invoke(imageBase64, x, y, width, height);
+}
+
+/// <summary>
+/// 桌面参考视觉实现（__ROI__ 洞的能力缺省回落，同 <see cref="DesktopFileSystem"/> 先例）：
+/// OpenCV 解码 + <see cref="FrameDelegateFactory.CropToBase64"/> 裁剪——与采集路径共享同一
+/// 裁剪核（采集形态即本核按坐标裁帧）。MatchLabel 无匹配器语义（抛错）与适配器一致。
+/// </summary>
+public sealed class DesktopVisionService : IVisionService
+{
+    public static readonly DesktopVisionService Instance = new();
+
+    DesktopVisionService()
+    {
+    }
+
+    public string? Crop(string imageBase64, int x, int y, int width, int height)
+    {
+        try
+        {
+            using var mat = Cv2.ImDecode(Convert.FromBase64String(imageBase64), ImreadModes.Color);
+            return FrameDelegateFactory.CropToBase64(mat, x, y, width, height);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public int MatchLabel(string labelName) => throw new Exception("图像标签匹配器未初始化");
 }
 
 /// <summary>

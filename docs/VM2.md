@@ -3,7 +3,7 @@
 > **定位**：ECS 脚本的编译目标与双端执行规范——C# `EcxInterpreter`（桌面）与 C `ecs_vm`（单片机）
 > 消费同一 ECX 镜像。本文是**现状规范**：指令集、二进制格式、宿主 ABI、分层模型。
 > 权威源：`EcsOpcode.cs` / `EcsFormat.cs`（C# 侧）与 `ecs_vm.h`（C 侧）逐项对齐；
-> 双端语义契约与测试矩阵见 `docs/VmSemanticContract.md`；编译链路见 `docs/Pipeline.md`；
+> 双端语义一致性由 corpus/FullChain/ABI 对拍测试锁定（`test/EasyCon.Tests/Bytecode/`）；编译链路见 `docs/Pipeline.md`；
 > 模块系统见 `docs/ModuleSystem.md`。冲突时以代码为准并修本文。
 
 ## 1. 分层架构
@@ -15,7 +15,7 @@
 | **L0 机器** | 算术/比较/控制流/容器/结构体/调用 | VM 核指令 | 天然支持 |
 | **L1 基础能力** | `WAIT`、按键、摇杆、`RAND` | 专用指令（`WaitI/KeyI/Stick*/Rand`），直连宿主回调 | 全支持 |
 | **L2 平台 syscall** | `FWRITE/FREAD/文件族/ALERT/ARG/ENV/APP/TIME/BEEP/AMIIBO/OCR_CONF` | `CallN` EXT 旗标 + **编号**（§7.3），语义在宿主参考实现 | 参考桩：静默/默认值（TIME=0、FWRITE 返 len、串返空、AMIIBO 槽 0–19 越界静默） |
-| **L3 动态原生** | 采集洞 `__CAPTURE__` 系、EXTERN FFI、std 加速洞 `__ENCODE__/__JQ__/__CTC_FOLD__`、推理 `NET_*` | `CallN` 名表**按名**分发 | S-21 缺省值表降级（OCR/ROI/CTC_FOLD/ENCODE/JQ→""、NET_LOAD→-1、NET 句柄族→0、NET_ARGMAX→-1、NET_OUT→0.0、FFI→0）；strict_caps 恢复响亮 |
+| **L3 动态原生** | 采集洞 `__CAPTURE__` 系、EXTERN FFI、std 加速洞 `__ENCODE__/__JQ__/__CTC_FOLD__`、推理 `NET_*`（含 `NET_NORM`/标签表）、YOLO 解码 `__YOLO_DECODE__` + `YOLO_*` 访问器、det 找框 `__DET_BOXES__` + `DET_*` 访问器 | `CallN` 名表**按名**分发 | 桌面缺能力按 C# 缺省值表降级（OCR/ROI/CTC_FOLD/ENCODE/JQ/NET_LABEL→""、NET_LOAD→-1、NET 句柄族→0、NET_ARGMAX/NET_LABELS→-1、NET_OUT→0.0、YOLO/DET 洞/COUNT→0、访问器→-1/-1.0、FFI→0）；**C/MCU 无名表降级与 FFI——native 缺失一律 NOSUCHNATIVE**；strict_caps 双端恢复响亮 |
 
 > **L3 名表面准入规则**：只收两类——(a) 能力洞（语义由 CapabilitySet 定义：采集/OCR/视觉/推理）；(b) std 加速洞（std 定 API 与语义，宿主仅作性能加速器，如 `__CTC_FOLD__`/`__JQ__`/`__ENCODE__`）。实用工具的 API 与语义一律归 std，不得直接占用本面。
 
@@ -314,8 +314,8 @@ CLI：ecs-vm run image.ecx [--io] [--trace] [--print] [--strict-caps] [-- arg0..
 - 字节码来源（`ecs_io`，uLua zIO 式随机访问读取器）：RAM 缓冲（`ecs_io_mem` 直载，可 XIP）、
   内部 flash（内存映射 → 直载零拷贝）、EEPROM/NVS（read 回调分块拉入 VM 内部副本，
   `ecs_vm_load_io`，副本由 VM 持有并在 `ecs_vm_free` 释放）——**读取这些位置的字节码解释执行**。
-- 堆：固定对象池（单块 = 一对象，空闲链，PROJECT_OUTLINE.md §4）；帧 = arena bump + 整帧清零，
-  弹帧全槽释放后水位回退（PROJECT_OUTLINE.md §3）。
+- 堆：固定对象池（单块 = 一对象，空闲链）；帧 = arena bump + 整帧清零，
+  弹帧全槽释放后水位回退。
 - 主循环（定长直取）：fr/code/end/R/pc/idx/steps 循环局部化，格式类查表 + switch 取指
   （WJ 跳转字延迟读），ret_pc（字节）/ret_idx（指令下标）仅在调用边界与让出点写回；非递归调用
   （压帧/改 PC/弹帧）；步数预算 `ECS_DEFAULT_BUDGET`（100 万步）耗尽 → `ECS_YIELD`（宿主轮询/
@@ -328,11 +328,14 @@ CLI：ecs-vm run image.ecx [--io] [--trace] [--print] [--strict-caps] [-- arg0..
 ```text
 feats = 头部掩码 | (flags.I ? FEAT_IL : 0)     ← 元信息：缺省不拒载
 运行期 miss（宿主回调缺失/未实现）：
-  L2/L3 按缺省值表降级（C# EcsCapabilityDefaults ≡ C ecs_cap_*_default，四路对拍锁定）：
+  L2 syscall：双端锁步降级（C# EcsCapabilityDefaults.GetSyscallDefault ≡ C ecs_cap_syscall_default，对拍锁定）：
     FWRITE→len  FREAD/READFILE/ARG/ENV/APP→""  FOPEN→-1  FEof/FILE_EXISTS/TIME/OCR_CONF→0
     FClose/WriteFile/AppendFile/Alert/Beep/Amiibo→no-op（Void）
-    __CAPTURE__/__ROI__/__TESSERACT__/__CTC_FOLD__/__ENCODE__/__JQ__→""  __TESSERACT_INIT__→0  NET_LOAD→-1  __NET_IMAGE__/NET_RUNH/NET_SCALE/NET_ROWS/NET_FREE/NET_UNLOAD→0  NET_ARGMAX→-1  NET_OUT→0.0
-    EXTERN FFI（名含 !）→0；表外（未知编号/未知名）不降级 → ECS_ERR_NOSUCHNATIVE
+  L3 名表：降级是桌面专属（C# GetNativeDefault：OCR/ROI/CTC_FOLD/ENCODE/JQ/NET_LABEL→""、
+    NET_LOAD→-1、NET 句柄族→0、NET_ARGMAX/NET_LABELS→-1、NET_OUT→0.0、YOLO/DET 洞→0、访问器→-1/-1.0）。
+    C/MCU 侧无名表判断、无 FFI——native 缺失一律 ECS_ERR_NOSUCHNATIVE 响亮失败（MCU 不支持桌面原生）。
+  EXTERN FFI：桌面 C# 缺能力 → int 0；C/MCU 无 FFI → NOSUCHNATIVE。
+  表外（未知编号/未知名）双端都不降级 → ECS_ERR_NOSUCHNATIVE
   图像标签（Img）→ 目标槽 ← -1
 strict_caps 宿主（ecs-vm --strict-caps / C# EcxHost.StrictCaps）恢复响亮：
   加载期 feats & FEAT_IL → ECS_ERR_IL（13，先判）；feats & ~host->feats → ECS_ERR_FEAT（14）；
@@ -372,8 +375,12 @@ strict_caps 宿主（ecs-vm --strict-caps / C# EcxHost.StrictCaps）恢复响亮
 | PRINT TIME | StdlibSource | stdlib ECS 源码（PRINT 体调 FWRITE syscall；TIME 体引用 `__TIME__` RuntimeValue → TIME syscall） |
 | ALERT ARG ENV APP BEEP AMIIBO OCR_CONF + 文件族 FOPEN..FILE_EXISTS | Syscall | CallN 编号（§7.3）→ `EcxHost.ReferenceSyscall` / C harness 桩 |
 | `__ENCODE__` `__JQ__` `__CTC_FOLD__` | NativeName | CallN 名表 → 宿主 `Native`（EcxVm BuiltinMap；std JQ/ENCODE/CTC_FOLD 的加速洞） |
+| `__YOLO_DECODE__` | NativeName | CallN 名表 → 宿主 `Native`（std YOLO_DETECT 的加速洞：形状守卫 + 置信度过滤 + letterbox 逆映射；lib-only） |
 | JQ ENCODE READFILE WRITEFILE APPENDFILE | StdlibSource | stdlib ECS 源码实现（JQ/ENCODE 体调各自加速洞；READFILE/WRITEFILE/APPENDFILE 组合 FOPEN/FREAD/FWRITE/FCLOSE） |
 | NET_LOAD NET_RUNH NET_SCALE NET_ARGMAX NET_ROWS NET_FREE NET_UNLOAD NET_OUT | NativeName | CallN 名表 → 宿主 `Native`（`IInference` 能力；VISION 特征位；纯标量协议——原生边界不携带数组） |
+| NET_NORM `__NET_IMAGE_FILE__` | NativeName | CallN 名表 → 宿主 `Native`（同上 VISION 特征位；NORM 逐通道归一化、FILE 洞本地图片走同管线；lib-only 洞不进 root scope） |
+| NET_LABELS NET_LABEL | NativeName | CallN 名表 → 宿主 `Native`（标签表；纯字符串处理，不挂 VISION 特征位） |
+| YOLO_COUNT YOLO_CLS YOLO_SCORE YOLO_X1 YOLO_Y1 YOLO_X2 YOLO_Y2 | NativeName | CallN 名表 → 宿主 `Native`（读 `__YOLO_DECODE__` 命中缓存；VISION 特征位；越界 -1/-1.0） |
 | EXTERN "库" FUNC | L3 FFI | CallN 名表 `"库!导出名"` → EcxVm externMap → NativeLoader |
 
 ### 7.1 分层接口（`ecs_host`，全部回调可 NULL）
@@ -433,7 +440,7 @@ void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_
 | 桌面全量 | C `EcxInterpreter` ↔ `EcxVm`；`ecs-vm --print` 通道 | corpus / FullChain 双端对拍锁定 |
 
 一致性责任面：仓库内两端由 corpus/FullChain 逐字锁定；第三方宿主对照 §7.3 表 + 参考桩 +
-`VmSemanticContract` 自行验证。
+`EcxInterpreter.cs`（C# 语义参考实现）自行验证。
 
 ---
 
@@ -459,10 +466,10 @@ void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_
 | ABI 契约 | `AbiContractTests`（编号稳定、L2 编号化名表为空、特征掩码、C VM 加载期拒跑） |
 | 语义协议 | `InterpreterProtocolTests`（YIELD/取消/错误现场）、`InterpreterHeapRefcountTests`（RC 自洽）、`CowSemanticsTests`（COW 双态） |
 | 链接优化 | `LinkOptimizationTests`（死函数/死存储/死元素）、`BytecodeSizeAnalysisTests`（体积剖析） |
-| 门禁 | 每次语义/结构改动：全量 735 双态 + LSP 66 + `dotnet format --verify-no-changes` + corpus 双端对拍 |
+| 门禁 | 每次语义/结构改动：全量测试双态 + `dotnet format --verify-no-changes` + corpus 双端对拍 |
 
-双端不一致时先判定哪端错：修实现而非改期望（corpus 期望即规格）。语义条目 S-01..S-19 与
-RC 协议的权威清单见 `docs/VmSemanticContract.md`。
+双端不一致时先判定哪端错：修实现而非改期望（corpus 期望即规格）。RC 槽写协议权威实现见
+`EcxInterpreter.cs`（MoveToSlot/StoreFresh/OverwriteItem）与 `ecs_vm.c`（move_to/store_fresh）。
 
 ---
 

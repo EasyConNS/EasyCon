@@ -11,6 +11,16 @@ namespace EasyCon.Core.Capabilities;
 /// </summary>
 public sealed class DnnInference : IInference
 {
+    static DnnInference()
+    {
+        // macOS 必需缓解（OpenCvSharp5 20261011 仍复现）：OpenCV 线程池 worker 退出时
+        // 偶发 objc over-release SEGV（AutoreleasePoolPage，DNN 负载下高概率）——
+        // 单线程消除 worker 退出路径，DNN 推理改在调用线程执行。仅 macOS；
+        // Windows/Linux 保持默认并行。上游修复后可撤销。
+        if (OperatingSystem.IsMacOS())
+            Cv2.SetNumThreads(0);
+    }
+
     readonly Dictionary<int, Net> _nets = new();
     readonly object _gate = new();
     int _nextSession;
@@ -138,6 +148,45 @@ public sealed class DnnInference : IInference
             var result = new float[tensor.Data.Length];
             for (int i = 0; i < tensor.Data.Length; i++)
                 result[i] = tensor.Data[i] * scale + offset;
+            int newHandle = ++_nextTensor;
+            _tensors[newHandle] = (result, tensor.Shape);
+            return newHandle;
+        }
+    }
+
+    /// <summary>
+    /// 逐通道归一化 (x - mean[c]) / std[c]。通道平面布局按 CHW（N=1）：plane = 总长/通道数，
+    /// c = (i / plane) % channels。std 含 0 或长度不匹配 → -1（优雅失败，不产 NaN）。
+    /// </summary>
+    public int Normalize(int handle, float[] mean, float[] std)
+    {
+        lock (_gate)
+        {
+            if (_disposed || !_tensors.TryGetValue(handle, out var tensor)
+                || mean.Length == 0 || std.Length == 0)
+                return -1;
+
+            int channels = tensor.Shape.Length >= 4 ? tensor.Shape[1]
+                         : tensor.Shape.Length == 3 ? tensor.Shape[0]
+                         : 1;
+            if (tensor.Data.Length % channels != 0)
+                return -1;
+            if (mean.Length != 1 && mean.Length != channels)
+                return -1;
+            if (std.Length != 1 && std.Length != channels)
+                return -1;
+            for (int c = 0; c < std.Length; c++)
+                if (std[c] == 0)
+                    return -1;
+
+            int plane = tensor.Data.Length / channels;
+            var result = new float[tensor.Data.Length];
+            for (int i = 0; i < tensor.Data.Length; i++)
+            {
+                int c = mean.Length == 1 ? 0 : (i / plane) % channels;
+                int s = std.Length == 1 ? 0 : (i / plane) % channels;
+                result[i] = (tensor.Data[i] - mean[c]) / std[s];
+            }
             int newHandle = ++_nextTensor;
             _tensors[newHandle] = (result, tensor.Shape);
             return newHandle;

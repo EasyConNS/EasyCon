@@ -96,6 +96,26 @@ public class NetImageTensorTests
             return HoldTensor(tensor.Data.Select(value => value * scale + offset).ToArray(), tensor.Shape);
         }
 
+        public int Normalize(int handle, float[] mean, float[] std)
+        {
+            RecordedTensor tensor = Tensors[handle - 1];
+            int channels = tensor.Shape.Length >= 4 ? tensor.Shape[1]
+                         : tensor.Shape.Length == 3 ? tensor.Shape[0]
+                         : 1;
+            if (tensor.Data.Length % channels != 0
+                || (mean.Length != 1 && mean.Length != channels)
+                || (std.Length != 1 && std.Length != channels))
+                return -1;
+            int plane = tensor.Data.Length / channels;
+            return HoldTensor(tensor.Data.Select((value, i) =>
+            {
+                int c = i / plane % channels;
+                float m = mean.Length == 1 ? mean[0] : mean[c];
+                float s = std.Length == 1 ? std[0] : std[c];
+                return (value - m) / s;
+            }).ToArray(), tensor.Shape);
+        }
+
         public int Load(string modelPath) => throw new NotSupportedException();
         public float[]? RunHeld(int session, int tensorHandle) => throw new NotSupportedException();
         public void FreeTensor(int handle) { }

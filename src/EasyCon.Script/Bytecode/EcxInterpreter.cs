@@ -6,9 +6,9 @@ using System.Text;
 namespace EasyCon.Script.Bytecode;
 
 /// <summary>
-/// 模拟解释器宿主：与 C VM 的 ecs_host vtable 同构（docs/VmSemanticContract.md §四）。
+/// 模拟解释器宿主：与 C VM 的 ecs_host vtable 同构。
 /// </summary>
-/// <summary>平台能力位（对齐 ecs_vm.h 的 ECS_CAP_*；能力注入语义见 docs/VmSemanticContract.md §四）。</summary>
+/// <summary>平台能力位（对齐 ecs_vm.h 的 ECS_CAP_*）。</summary>
 [Flags]
 public enum EcsCaps
 {
@@ -210,7 +210,7 @@ public sealed class EcxHost
 }
 
 /// <summary>
-/// ECX 模拟解释器：字节码语义的 C# 参考实现——语义契约见 docs/VmSemanticContract.md（S-01..S-18）。
+/// ECX 模拟解释器：字节码语义的 C# 参考实现——双端语义由 corpus/FullChain 对拍测试锁定。
 /// 在 C 虚拟机落地前承担"模拟验证"；C VM 完成后作为交叉对比的第二方。
 /// </summary>
 public sealed class EcxInterpreter
@@ -1399,7 +1399,8 @@ public sealed class EcxInterpreter
             EcsTag.Bool => ScriptType.Bool,
             EcsTag.Byte => ScriptType.Byte,
             EcsTag.UInt => ScriptType.UInt,
-            EcsTag.Double => ScriptType.UInt64,
+            EcsTag.Double => ScriptType.Double,
+            EcsTag.UInt64 => ScriptType.UInt64,
             EcsTag.String => ScriptType.String,
             EcsTag.Ptr => ScriptType.Ptr,
             _ => ScriptType.Int,

@@ -6,7 +6,7 @@ using System.Collections.Immutable;
 namespace EasyCon.Script.Bytecode;
 
 /// <summary>
-/// 模块编码器（docs/EcmEcxFormat.md §4）：把「只含本模块函数」的 SSA 全量编码为
+/// 模块编码器：把「只含本模块函数」的 SSA 全量编码为
 /// 独立模块产物（ModuleArtifact，可持久化为 .ecm）。外部依赖符号经 externalFunctions
 /// 落导入标记（链接期解析）；类型表布局见 <see cref="EcxStructLayouts"/>；
 /// 产物合并 → EcxImage 见 <see cref="EcxPipeline"/>。

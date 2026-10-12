@@ -3,11 +3,12 @@ using EasyCon.Script.Symbols;
 namespace EasyCon.Script.Bytecode;
 
 /// <summary>
-/// S-21 能力降级缺省值表（docs/VmSemanticContract.md S-21 / V23_VM_REDESIGN.md §2）：
-/// 宿主能力缺失时，L2 syscall 未实现 / L3 原生无处理器或未知名，按本表返回类型正确的
-/// 中性缺省值——双端（C# 解释器 ↔ C VM <c>ecs_cap_syscall_default/ecs_cap_native_default</c>）
-/// 对同一缺失能力给出<b>逐字相同</b>的结果。本类为单一事实源，C 侧为双生定义，
-/// 漂移由能力矩阵四路对拍（CapabilityMatrixTests）锁定。
+/// S-21 能力降级缺省值表（契约见 docs/VM2.md §6.3）——
+/// <b>桌面宿主专属</b>：可选能力（推理/OCR/文件/FFI）未装配时，L2 syscall 未实现 /
+/// L3 原生缺失按本表返回类型正确的中性缺省值，脚本不响亮失败。
+/// C/MCU 侧没有本表（MCU 不支持桌面原生与 FFI）：C VM native 缺失一律
+/// ECS_ERR_NOSUCHNATIVE 响亮失败；仅 L2 syscall 保留双端锁步的参考桩降级
+/// （C ecs_cap_syscall_default，CapabilityMatrixTests 锁定）。
 ///
 /// 规则：降级不是旁路——按指令的接收槽语义走正常槽写原语，「换一个结果值」；
 /// 表外条目（未知编号 / 未知原生名）不降级，保持 ECS_ERR_NOSUCHNATIVE 响亮失败；
@@ -77,6 +78,8 @@ public static class EcsCapabilityDefaults
                 return TaggedValue.FromPtr(-1);
             case "__NET_IMAGE__": /* 张量句柄：PTR 0 = 无效句柄（与各 Impl 的 null-inference 分支同值） */
             case "NET_SCALE":
+            case "__NET_IMAGE_FILE__":
+            case "NET_NORM":
                 return TaggedValue.FromPtr(0);
             case "NET_RUNH":      /* 输出长度：INT */
             case "NET_ROWS":
@@ -87,6 +90,27 @@ public static class EcsCapabilityDefaults
                 return TaggedValue.FromInt(-1);
             case "NET_OUT":
                 return TaggedValue.FromDouble(0.0);
+            case "NET_LABELS":    /* 标签表：加载失败语义 -1（与 Impl 读失败同值） */
+                return TaggedValue.FromInt(-1);
+            case "NET_LABEL":     /* 未加载/越界 → 空串 */
+                return ctx.Str("");
+            case "__YOLO_DECODE__": /* YOLO 解码：无推理能力 → 0 命中（无目标语义） */
+            case "YOLO_COUNT":
+            case "__DET_BOXES__":   /* det 找框：无推理能力 → 0 框（同无目标语义） */
+            case "DET_COUNT":
+                return TaggedValue.FromInt(0);
+            case "YOLO_CLS":        /* 访问器越界语义：-1（与 NET_ARGMAX 同约定） */
+            case "YOLO_X1":
+            case "YOLO_Y1":
+            case "YOLO_X2":
+            case "YOLO_Y2":
+            case "DET_X":
+            case "DET_Y":
+            case "DET_W":
+            case "DET_H":
+                return TaggedValue.FromInt(-1);
+            case "YOLO_SCORE":
+                return TaggedValue.FromDouble(-1.0);
             default:
                 break;
         }

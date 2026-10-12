@@ -6,7 +6,7 @@
 > `FlowExecutor` / `FlowServiceState` / `FlowServiceHttp` / `FlowServiceTools`）与
 > `frontend/src/easycon_flow/`。冲突时以代码为准并修本文。
 > 相关文档：能力装配见 [Framework.md](Framework.md)，脚本语言见 [Script.md](Script.md)，
-> 字节码契约见 [VM2.md](VM2.md) / [VmSemanticContract.md](VmSemanticContract.md)。
+> 字节码契约见 [VM2.md](VM2.md)。
 
 ## 0. 边界（先看这条，避免误用）
 

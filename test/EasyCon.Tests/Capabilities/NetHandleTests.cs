@@ -55,6 +55,8 @@ public class NetHandleTests
             return 10;
         }
 
+        public int Normalize(int handle, float[] mean, float[] std) => -1;
+
         public void Unload(int session) => Unloaded++;
 
         public void Dispose() { }
@@ -146,6 +148,7 @@ public class NetHandleTests
 /// </summary>
 [TestFixture]
 [Category("Manual")]
+[Explicit]   // OpenCV 5 alpha macOS 原生间歇崩溃（DNN 线程退出 objc over-release，见 PpocrDet remarks）——点名 filter 跑
 public class NetPpocrRealModelTests
 {
     /// <summary>
@@ -169,9 +172,11 @@ public class NetPpocrRealModelTests
         var appDir = Path.Combine(Path.GetTempPath(), $"easycon-stats-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Path.Combine(appDir, "models", "ppocr"));
         var link = Path.Combine(appDir, "models", "ppocr", "PP-OCRv5_mobile_rec.onnx");
+        var dictLink = Path.Combine(appDir, "models", "ppocr", "ppocr_keys_v5.txt");
         try
         {
             if (!File.Exists(link)) File.CreateSymbolicLink(link, modelPath);
+            if (!File.Exists(dictLink)) File.CreateSymbolicLink(dictLink, Path.Combine(assets, "ppocr", "ppocr_keys_v5.txt"));
         }
         catch (UnauthorizedAccessException e)
         {
@@ -185,12 +190,14 @@ public class NetPpocrRealModelTests
         var session = engine.FromSource(source,
             new ScriptHostOptions { Compile = new CompileOptions { ExtVars = ImmutableHashSet<string>.Empty, UseDiskCache = false } });
         var io = new RecordingIo();
+        using var inference = new DnnInference();
         var caps = new CapabilitySet
         {
             Console = new ConsoleIoAdapter(io),
             Environment = new HostEnvironment([], appDir),
-            Inference = new DnnInference(),
+            Inference = inference,
             Capture = new DelegateCaptureSource(FrameDelegateFactory.CreateFrame(() => frame.Clone())),
+            // __ROI__ 走桌面参考回落（DesktopVisionService），测试零装配——与采集路径统一
         };
         session.Run(new CancellationTokenSource().Token, caps);
 
@@ -201,6 +208,7 @@ public class NetPpocrRealModelTests
         string? LineAfter(string prefix) =>
             io.Lines.FirstOrDefault(l => l.StartsWith(prefix))?[prefix.Length..];
 
+        Assert.That(LineAfter("NAME: "), Is.EqualTo("EXEGGCUTE"), "名称识别（PP_OCR_TEXT 整字典）");
         Assert.That(LineAfter("ATTACK: "), Is.EqualTo("31"), "ATTACK 解码");
         Assert.That(LineAfter("DEFENSE: "), Is.EqualTo("46"), "DEFENSE 解码");
         Assert.That(LineAfter("SP.ATK: "), Is.EqualTo("46"), "SP.ATK 解码");
@@ -208,5 +216,183 @@ public class NetPpocrRealModelTests
         Assert.That(LineAfter("SPEED: "), Is.EqualTo("28"), "SPEED 解码");
         Assert.That(LineAfter("EXP POINTS: "), Is.EqualTo("19531"), "EXP 解码");
         Assert.That(LineAfter("STAT SUM: "), Is.EqualTo("183"), "31+46+46+32+28 = 183");
+    }
+
+    /// <summary>
+    /// 真实字典 × 标签表层交叉验证（test/assets/ppocr/ppocr_keys_v5.txt）：
+    /// ① NET_LABELS 加载官方字典（18383 行）；② CTC class → NET_LABEL(cls-1) 对齐
+    /// （blank=0 占位，std 数字常数 16163-16172 的字典行号实证）；
+    /// ③ 同一 EXP 行真模型输出上，脚本侧自实现折叠（NET_ARGMAX × NET_LABEL，策略层
+    /// 可替换性的实机演示）与宿主 CTC_FOLD 洞结果一致（"19531"）。
+    /// </summary>
+    [Test]
+    public void PpocrDictionary_Labels_CrossValidate_ScriptSideFold()
+    {
+        var assets = Path.GetFullPath(Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "test", "assets"));
+        var modelPath = Path.Combine(assets, "ppocr", "PP-OCRv5_mobile_rec.onnx");
+        var pngPath = Path.Combine(assets, "ppocr", "ppocr2.png");
+        var dictPath = Path.Combine(assets, "ppocr", "ppocr_keys_v5.txt");
+        if (!File.Exists(modelPath) || !File.Exists(pngPath) || !File.Exists(dictPath))
+            Assert.Ignore($"缺真机资产（test/assets/README.md）：{modelPath} / {pngPath} / {dictPath}");
+
+        using var frame = Cv2.ImRead(pngPath, ImreadModes.Color);
+        Assert.That(frame.Empty(), Is.False, "截图解码失败");
+
+        var appDir = Path.Combine(Path.GetTempPath(), $"easycon-dict-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(appDir, "models", "ppocr"));
+        var link = Path.Combine(appDir, "models", "ppocr", "PP-OCRv5_mobile_rec.onnx");
+        try
+        {
+            if (!File.Exists(link)) File.CreateSymbolicLink(link, modelPath);
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            Assert.Ignore($"无法创建 symlink（Windows 需开发者模式/管理员权限）：{e.Message}");
+        }
+
+        // PP_OCR_DIGITS 跑洞折叠后，_lastNetOutput 仍驻留 EXP 行 [1,T,C] 输出——
+        // 脚本侧 NET_ROWS + NET_ARGMAX + NET_LABEL(cls-1) 对同一输出自实现同语义折叠
+        // （blank 重置、连续去重、数字窗口 16163-16172 过滤，与洞逐条对应）。
+        // 字典路径经 ARG(0) 注入（路径含空格，不内插进脚本字面量）。
+        const string source = """
+            $n = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv5_mobile_rec.onnx")
+            $dict = NET_LABELS(ARG(0))
+            PRINT $dict
+            $c0 = NET_LABEL(16162)
+            PRINT $c0
+            $c5 = NET_LABEL(16167)
+            PRINT $c5
+            $hole = PP_OCR_DIGITS($n, 355, 680, 1370, 85)
+            PRINT $hole
+            $out = ""
+            $prev = -1
+            $i = 0
+            WHILE $i < NET_ROWS()
+                $cls = NET_ARGMAX($i)
+                IF $cls == 0
+                    $prev = -1
+                ELSE
+                    IF $cls != $prev
+                        IF $cls >= 16163
+                            IF $cls <= 16172
+                                $out = $out + NET_LABEL($cls - 1)
+                            ENDIF
+                        ENDIF
+                    ENDIF
+                    $prev = $cls
+                ENDIF
+                $i = $i + 1
+            END
+            PRINT $out
+            """;
+
+        var engine = new EasyScriptEngine();
+        var session = engine.FromSource(source,
+            new ScriptHostOptions
+            {
+                Compile = new CompileOptions { ExtVars = ImmutableHashSet<string>.Empty, UseDiskCache = false },
+            });
+        Assert.That(session.Info.Diagnostics.Where(d => d.IsError), Is.Empty, "脚本必须编译通过");
+
+        var io = new RecordingIo();
+        using var inference = new DnnInference();
+        var caps = new CapabilitySet
+        {
+            Console = new ConsoleIoAdapter(io),
+            Environment = new HostEnvironment([dictPath], appDir),
+            Inference = inference,
+            Capture = new DelegateCaptureSource(FrameDelegateFactory.CreateFrame(() => frame.Clone())),
+        };
+        session.Run(new CancellationTokenSource().Token, caps);
+
+        TestContext.Out.WriteLine(string.Join("\n", io.Lines));
+        // 字典行数；class 16163/16168 → '0'/'5'；洞折叠与脚本侧自实现折叠同答 "19531"
+        Assert.That(io.Lines, Is.EqualTo(new[] { "18383", "0", "5", "19531", "19531" }));
+    }
+
+    /// <summary>
+    /// det 自动找框真模型闭环（PP-OCRv5 det × rec 双模型）：全页 det 一次找框（≥5 个文本区），
+    /// 遍历全部框逐个 rec + 数字窗口折叠，收集的非空读数必含 "19531"（EXP 行）——
+    /// det 框是文字行级（标签框/数字框分离），验证"det 找框 → rec 逐框"完整链路。
+    /// </summary>
+    /// <remarks>
+    /// 已知平台问题：macOS 上 OpenCV 5 DNN 线程池 worker 退出时偶发 objc over-release
+    /// SEGV（AutoreleasePoolPage；本测试 31 框连续 rec forward 负载高概率触发，全量中止）。
+    /// 缓解 = DnnInference 在 macOS 单线程（SetNumThreads(0)，消除 worker 退出路径）；
+    /// OpenCvSharp5 20260905/20261011 均复现，上游修复后可撤。
+    /// </remarks>
+    [Test]
+    public void PpocrDet_FindsTextRegions_ExpRowClosedLoop()
+    {
+        var assets = Path.GetFullPath(Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "..", "test", "assets"));
+        var detPath = Path.Combine(assets, "ppocr", "PP-OCRv5_mobile_det.onnx");
+        var recPath = Path.Combine(assets, "ppocr", "PP-OCRv5_mobile_rec.onnx");
+        var pngPath = Path.Combine(assets, "ppocr", "ppocr2.png");
+        if (!File.Exists(detPath) || !File.Exists(recPath) || !File.Exists(pngPath))
+            Assert.Ignore($"缺真机资产（test/assets/README.md）：{detPath} / {recPath} / {pngPath}");
+
+        using var frame = Cv2.ImRead(pngPath, ImreadModes.Color);
+        Assert.That(frame.Empty(), Is.False, "截图解码失败");
+
+        var appDir = Path.Combine(Path.GetTempPath(), $"easycon-det-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(appDir, "models", "ppocr"));
+        try
+        {
+            var detLink = Path.Combine(appDir, "models", "ppocr", "PP-OCRv5_mobile_det.onnx");
+            var recLink = Path.Combine(appDir, "models", "ppocr", "PP-OCRv5_mobile_rec.onnx");
+            if (!File.Exists(detLink)) File.CreateSymbolicLink(detLink, detPath);
+            if (!File.Exists(recLink)) File.CreateSymbolicLink(recLink, recPath);
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            Assert.Ignore($"无法创建 symlink（Windows 需开发者模式/管理员权限）：{e.Message}");
+        }
+
+        // det 全页一次 → 框数；遍历全部框逐个 rec + 数字窗口折叠，收集非空读数。
+        // （det 框是文字行级：标签框读出标签、数字框读出数字——数字窗口过滤后标签为空，
+        //  断言收集结果含 "19531"，即"det 找框 → rec 逐框"闭环成立。）
+        const string source = """
+            $det = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv5_mobile_det.onnx")
+            $rec = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv5_mobile_rec.onnx")
+            $frame = FRAME()
+            $c = PP_DET_FIND($det, $frame, 0, 0, 1920, 1080)
+            PRINT $c
+            NET_UNLOAD($det)
+            $all = ""
+            $i = 0
+            WHILE $i < DET_COUNT()
+                $n = PP_OCR_INFER($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i))
+                $t = CTC_FOLD(0, "0123456789", 16163)
+                IF LEN($t) > 0
+                    $all = $all + $t + ","
+                ENDIF
+                $i = $i + 1
+            END
+            PRINT $all
+            """;
+
+        var engine = new EasyScriptEngine();
+        var session = engine.FromSource(source,
+            new ScriptHostOptions { Compile = new CompileOptions { ExtVars = ImmutableHashSet<string>.Empty, UseDiskCache = false } });
+        Assert.That(session.Info.Diagnostics.Where(d => d.IsError), Is.Empty, "脚本必须编译通过");
+
+        var io = new RecordingIo();
+        using var inference = new DnnInference();
+        var caps = new CapabilitySet
+        {
+            Console = new ConsoleIoAdapter(io),
+            Environment = new HostEnvironment([], appDir),
+            Inference = inference,
+            Capture = new DelegateCaptureSource(FrameDelegateFactory.CreateFrame(() => frame.Clone())),
+        };
+        session.Run(new CancellationTokenSource().Token, caps);
+
+        TestContext.Out.WriteLine(string.Join("\n", io.Lines));
+        Assert.That(io.Lines, Has.Count.EqualTo(2), "框数 / 数字收集");
+        Assert.That(int.Parse(io.Lines[0]), Is.GreaterThanOrEqualTo(5),
+            "状态页应有 ≥5 个文本区（名称行/HP 行/4 能力行/EXP 行）");
+        Assert.That(io.Lines[1], Does.Contain("19531"), "det 框 → rec 逐框折叠应含 EXP 19531");
     }
 }

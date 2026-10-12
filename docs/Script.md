@@ -1312,10 +1312,79 @@ NET_UNLOAD($net)
 ```
 
 约定：
-- `NET_IMAGE` 模式串：`"gray"`（[1,1,H,W]）| `"rgb"`（[1,3,H,W]，CHW 平铺）。
-- 像素为 0-255 原始值，模型专属归一化（ImageNet mean/std 等）用 `NET_SCALE` 组合
-  （或沉淀为 lib 库函数）；宿主保持模型中立。
+- `NET_IMAGE` 模式串：`"gray"`（[1,1,H,W]）| `"rgb"`（[1,3,H,W]，CHW 平铺）|
+  `"letter"`（YOLO letterbox：等比缩放至目标内、居中、四周垫 114 灰、RGB 通道）；
+  `"rgb"`/`"gray"` 可加 `'c'` 后缀（如 `"rgbc"`）改为 cover 缩放 + 居中裁剪
+  （不变形不垫边，分类模型常规）。`NET_IMAGE_FILE(path, w, h [, mode])` 同管线吃本地图片文件。
+- 像素为 0-255 原始值，模型专属归一化用 `NET_SCALE`（全局仿射）与
+  `NET_NORM`（逐通道 (x-mean[c])/std[c]，通道号按张量形状自动推断）组合；宿主保持模型中立。
 - 张量形状由宿主按模式自动声明，`NET_RUNH` 校验会话与句柄有效性。
+
+---
+
+## 分类链路配方（NET_NORM + NET_ARGMAX + NET_LABEL）
+
+> ResNet 类图像分类模型全链路——预处理策略全部留在脚本可见的 ECS 层
+> （`NET_SCALE` ⊕ `NET_NORM` 任意组合），解码用已修二维的 `NET_ARGMAX`，类名走标签表。
+
+```ecs
+$net = NET_LOAD("resnet18.onnx")
+
+# 预处理：cover 裁剪 → /255 → ImageNet 逐通道归一化（每步都是通用原语，可自由替换）
+$t = NET_SCALE(NET_IMAGE_FILE("test.png", 224, 224, "rgbc"), 1.0 / 255, 0)
+$t = NET_NORM($t, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+
+# 推理 + 解码：[1,1000] 向量输出按 1 行 1000 列解码
+NET_RUNH($net, $t)
+$cls = NET_ARGMAX(0)
+
+# 类名（可选辅助层：不加载标签表就零依赖）
+NET_LABELS("imagenet_classes.txt")
+PRINT NET_LABEL($cls)
+```
+
+约定：
+- `NET_NORM(tensor, mean, std): PTR` 返回新句柄；mean/std 长度须为 1 或等于通道数，否则 -1。
+- `NET_ARGMAX` **末维 = 类别维**：`[1,T,C]` 逐行（PP-OCR rec/序列解码）、
+  `[1,N]` 向量输出按 1 行 N 列（分类 logits）。`NET_ROWS()` 同口径。
+- `NET_LABELS(path): INT`（**行号即索引**：逐行原样占位，空行/空白字符行也是条目，
+  仅去行尾 CR——保 PP-OCR 类字典的行号语义；重复加载整体替换，失败 -1）、
+  `NET_LABEL(i): STRING`（越界/未加载 → ""）。纯字符串处理，不依赖推理能力。
+  CTC 字典配合：class id c → `NET_LABEL(c - 1)`（blank 占位）。
+- top-k / 概率序列等自定义解码：`NET_OUT(i)` 循环自写（预处理与解码均可替换的出口）。
+
+---
+
+## YOLO26 检测配方（YOLO_DETECT + YOLO_* 访问器）
+
+> std 配方 + 宿主加速洞（与 PP-OCR 的 CTC_FOLD 同一模式）。面向 **YOLO26 端到端导出**
+> （Ultralytics 默认导出即端到端，免 NMS）：输出 `[1,300,6]` =
+> `[x1, y1, x2, y2, conf, class_id]`，坐标在 640×640 letterbox 空间，按分数降序。
+
+```ecs
+$net = NET_LOAD("models/yolo26n.onnx")
+$c = YOLO_DETECT($net, 100, 80, 400, 300, 0.5)   # 采集 ROI → letterbox → 1/255 → 推理 → 解码
+$i = 0
+WHILE $i < YOLO_COUNT()
+    $cls = YOLO_CLS($i)
+    $s = YOLO_SCORE($i)
+    $x = YOLO_X1($i)
+    PRINT $cls
+    $i = $i + 1
+END
+NET_UNLOAD($net)
+```
+
+约定：
+- `YOLO_DETECT(net, x, y, w, h, thresh): INT` 返回命中数；访问器按**命中列表**下标读取，
+  坐标已逆映射回屏幕并**裁剪回 ROI 内容区**（Ultralytics predict 同约定，可直接用于点击/绘制；
+  letterbox 几何由配方计算，与宿主 `"letter"` 模式同式零漂移）。
+- 防呆在配方层：输出元素数 / `NET_ROWS()` ≠ 6（如 `end2end=False` 导出的 `[1,8400,·]`）→ 返回 -1
+  （宿主不做形状假设，协议知识归配方）。
+- 越界语义：`YOLO_CLS`/坐标访问器返回 -1，`YOLO_SCORE` 返回 -1.0（与 NET_ARGMAX 同约定）。
+- 类别名映射（class_id → 名称）属用户脚本策略（COCO 或自训模型的类别表脚本自理）。
+- 想自实现解码策略：`NET_ROWS` + `NET_OUT(i*6+j)` 扁平寻址原始输出。
+- 真模型 smoke（OpenCV DNN × YOLO26n 端到端图已验证兼容，见 test/assets/README.md 资产约定）。
 
 ---
 
@@ -1340,7 +1409,7 @@ PRINT $o0
 
 约束：
 - 纯标量协议——原生调用边界不携带数组，大数组驻留宿主（张量/输出经句柄引用），输出经 `NET_OUT(i)` 逐个读取。
-- 未装配推理能力时按 S-21 缺省值表降级（不报错）：`NET_LOAD` 返回 -1、`NET_ARGMAX` 返回 -1、句柄族（`__NET_IMAGE__`/`NET_RUNH`/`NET_SCALE`/`NET_ROWS`/`NET_FREE`/`NET_UNLOAD`）返回 0、`NET_OUT` 返回 0。
+- 未装配推理能力时按 S-21 缺省值表降级（不报错）：`NET_LOAD` 返回 -1、`NET_ARGMAX` 返回 -1、句柄族（`__NET_IMAGE__`/`__NET_IMAGE_FILE__`/`NET_RUNH`/`NET_SCALE`/`NET_NORM`/`NET_ROWS`/`NET_FREE`/`NET_UNLOAD`）返回 0、`NET_OUT` 返回 0；标签表 `NET_LABELS` 返回 -1、`NET_LABEL` 返回 ""；YOLO 侧 `__YOLO_DECODE__`/`YOLO_COUNT` 返回 0、`YOLO_*` 访问器返回 -1/-1.0。
 - 模型文件为外部资产，不入库。
 
 ---

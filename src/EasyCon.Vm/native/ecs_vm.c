@@ -1,5 +1,5 @@
 /*
- * ecs_vm.c — VM2 纯 C 精简虚拟机实现—— 语义契约见 docs/VmSemanticContract.md（S-01..S-20）。
+ * ecs_vm.c — VM2 纯 C 精简虚拟机实现——双端语义一致性由 corpus/FullChain 对拍测试锁定。
  *
  * 语义基准：EcxInterpreter（C# 模拟解释器，逐条对照；含 .NET 总序比较/饱和转换/无符号回绕）。
  * 内部五区段：镜像解析（§4.1，ECSC 容器）/ 堆（§4.2，固定对象池）/ 解释器主循环（§4.3，
@@ -1213,66 +1213,6 @@ static int ecs_cap_syscall_default(ecs_vm *vm, int32_t id, ecs_value *args, ecs_
     }
 }
 
-static int ecs_cap_native_default(ecs_vm *vm, const char *name, ecs_value *ret)
-{
-    if (name == NULL)
-        return 0;
-    if (strchr(name, '!')) {   /* EXTERN FFI（"库!导出名"）→ int 0 中性缺省 */
-        *ret = (ecs_value){0};
-        ret->tag = ECS_INT;
-        ret->i32 = 0;
-        return 1;
-    }
-    static const char *const str_defaults[] = {
-        "__CAPTURE__", "__ROI__", "__TESSERACT__", "__CTC_FOLD__", "__ENCODE__", "__JQ__",
-    };
-    for (size_t i = 0; i < sizeof(str_defaults) / sizeof(str_defaults[0]); i++) {
-        if (strcmp(name, str_defaults[i]) == 0) {
-            ecs_vm_ret_str(vm, ret, NULL, 0);
-            return 1;
-        }
-    }
-    if (strcmp(name, "__TESSERACT_INIT__") == 0) {
-        *ret = (ecs_value){0};
-        ret->tag = ECS_INT;    /* 初始化失败语义：false */
-        return 1;
-    }
-    if (strcmp(name, "NET_LOAD") == 0) {
-        *ret = (ecs_value){0};
-        ret->tag = ECS_PTR;
-        ret->i64 = -1;         /* 会话句柄：PTR -1 = 失败 */
-        return 1;
-    }
-    /* 张量句柄：ECS_PTR 0 = 无效句柄（与 C# 缺省值表同值） */
-    if (strcmp(name, "__NET_IMAGE__") == 0 || strcmp(name, "NET_SCALE") == 0) {
-        *ret = (ecs_value){0};
-        ret->tag = ECS_PTR;
-        ret->i64 = 0;
-        return 1;
-    }
-    /* 长度/状态：ECS_INT 0；ARGMAX = -1 */
-    if (strcmp(name, "NET_RUNH") == 0 || strcmp(name, "NET_ROWS") == 0 ||
-        strcmp(name, "NET_FREE") == 0 || strcmp(name, "NET_UNLOAD") == 0) {
-        *ret = (ecs_value){0};
-        ret->tag = ECS_INT;
-        ret->i32 = 0;
-        return 1;
-    }
-    if (strcmp(name, "NET_ARGMAX") == 0) {
-        *ret = (ecs_value){0};
-        ret->tag = ECS_INT;
-        ret->i32 = -1;
-        return 1;
-    }
-    if (strcmp(name, "NET_OUT") == 0) {
-        *ret = (ecs_value){0};
-        ret->tag = ECS_DOUBLE;
-        ret->f64 = 0.0;
-        return 1;
-    }
-    return 0;                  /* 未知名不降级 */
-}
-
 /* ============================================================
  * 公共 API：创建 / 配置 / 销毁
  * ============================================================ */
@@ -2160,8 +2100,6 @@ VM_CASE(OP_CallN)
     else
     {
         if (vm->host.native && vm->host.native(vm->host.ud, vm->natives[ext_], args, b_, &ret) == 0)
-            nerr = 0;
-        else if (!vm->host.strict_caps && ecs_cap_native_default(vm, vm->natives[ext_], &ret))
             nerr = 0;
         else
             nerr = 1;

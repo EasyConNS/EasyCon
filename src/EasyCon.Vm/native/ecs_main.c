@@ -1,5 +1,5 @@
 /*
- * ecs_main.c — ecs-vm CLI harness（docs/VmSemanticContract.md §四）。
+ * ecs_main.c — ecs-vm CLI 参考宿主。
  * 单片机参考宿主：L2 平台 syscall 的语义参考实现 + L1 域操作回调 + L3 无（按需接入）。
  *
  *   ecs-vm run image.ecx [--io] [--trace]

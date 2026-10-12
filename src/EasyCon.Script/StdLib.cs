@@ -123,6 +123,15 @@ internal static class StdLib
             RETURN __NET_IMAGE__(__CAPTURE__($x, $y, $w, $h), $rw, $rh, $mode)
         ENDFUNC
 
+        # 本地图像文件 → 张量（与 NET_IMAGE 同管线同 mode 词表；'c' 后缀 = cover + 居中裁剪）
+        FUNC NET_IMAGE_FILE($path: STRING, $w: INT, $h: INT): PTR
+            RETURN __NET_IMAGE_FILE__($path, $w, $h, "gray")
+        ENDFUNC
+
+        FUNC NET_IMAGE_FILE($path: STRING, $w: INT, $h: INT, $mode: STRING): PTR
+            RETURN __NET_IMAGE_FILE__($path, $w, $h, $mode)
+        ENDFUNC
+
         FUNC OCR_INIT($lang: STRING): BOOL
             RETURN __TESSERACT_INIT__($lang, __APP__ + "/Tessdata", "DEFAULT", "SINGLE_LINE")
         ENDFUNC
@@ -140,17 +149,168 @@ internal static class StdLib
             RETURN __CTC_FOLD__($blank, $charset, $base)
         ENDFUNC
 
+        # rec 推理通用步骤：采集 ROI → rec 宽度换算（PP_REC_WIDTH）→ 归一化（PPOCR_NORM）
+        # → 推理。输出驻留宿主线程槽，由任意解码原语消费（CTC_FOLD / NET_ARGMAX+NET_LABEL /
+        # NET_OUT 自实现策略）。返回输出元素个数（0 = 失败）。
+        FUNC PP_OCR_INFER($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT): INT
+            $img = NET_IMAGE($x, $y, $w, $h, PP_REC_WIDTH($w, $h), 32, "rgb")
+            $t = PPOCR_NORM($img, "rec")
+            $n = NET_RUNH($net, $t)
+            NET_FREE $t
+            NET_FREE $img
+            RETURN $n
+        ENDFUNC
+
+        # ---- 共享采集形态：同帧多区域只采集一次。$frame 为整帧 base64（如 FRAME() 全屏），
+        #      区域坐标相对该帧，逐区域 ROI 裁剪在宿主内完成（省 N-1 次采集 + base64 编解码）。
+        #      命名与采集形态同名重载（第二参 STRING = 帧），约定同 NET_IMAGE 的 base64 形态。
+        FUNC PP_OCR_INFER($net: PTR, $frame: STRING, $x: INT, $y: INT, $w: INT, $h: INT): INT
+            $roi = ROI($frame, $x, $y, $w, $h)
+            $img = NET_IMAGE($roi, PP_REC_WIDTH($w, $h), 32, "rgb")
+            $t = PPOCR_NORM($img, "rec")
+            $n = NET_RUNH($net, $t)
+            NET_FREE $t
+            NET_FREE $img
+            RETURN $n
+        ENDFUNC
+
         # PP-OCRv5 rec：固定 ROI → 数字串（'0'-'9' 字典下标 16163-16172，blank=0，
         # 配方常数与 PPOCR_NORM 同源：PP-OCRv5 官方字典实测）。
         # 忠实输出折叠结果（含模型伪影的前导零）；数值化/去前导零属游戏策略，调用方 INT() 自理。
         FUNC PP_OCR_DIGITS($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT): STRING
-            $img = NET_IMAGE($x, $y, $w, $h, PP_REC_WIDTH($w, $h), 32, "rgb")
-            $t = PPOCR_NORM($img, "rec")
+            $n = PP_OCR_INFER($net, $x, $y, $w, $h)
+            RETURN CTC_FOLD(0, "0123456789", 16163)
+        ENDFUNC
+
+        FUNC PP_OCR_DIGITS($net: PTR, $frame: STRING, $x: INT, $y: INT, $w: INT, $h: INT): STRING
+            $n = PP_OCR_INFER($net, $frame, $x, $y, $w, $h)
+            RETURN CTC_FOLD(0, "0123456789", 16163)
+        ENDFUNC
+
+        # PP-OCR rec 通用文本：PP_OCR_INFER + 标签表层整字典折叠（NET_LABELS 行号即索引，
+        # class c → NET_LABEL(c-1)）。去重/blank 重置与 CTC_FOLD 洞同语义，无窗口过滤
+        # （数字子集场景用 PP_OCR_DIGITS）。加载字典会整体替换 NET_LABELS 全局表；
+        # 解码策略需定制时可在脚本侧经 NET_ROWS + NET_ARGMAX 自实现。
+        FUNC PP_OCR_TEXT($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT, $dictPath: STRING): STRING
+            $n = PP_OCR_INFER($net, $x, $y, $w, $h)
+            NET_LABELS $dictPath
+            $text = ""
+            $prev = -1
+            $i = 0
+            WHILE $i < NET_ROWS()
+                $cls = NET_ARGMAX($i)
+                IF $cls == 0
+                    $prev = -1
+                ELSE
+                    IF $cls != $prev
+                        $text = $text + NET_LABEL($cls - 1)
+                    ENDIF
+                    $prev = $cls
+                ENDIF
+                $i = $i + 1
+            END
+            RETURN $text
+        ENDFUNC
+
+        FUNC PP_OCR_TEXT($net: PTR, $frame: STRING, $x: INT, $y: INT, $w: INT, $h: INT, $dictPath: STRING): STRING
+            $n = PP_OCR_INFER($net, $frame, $x, $y, $w, $h)
+            NET_LABELS $dictPath
+            $text = ""
+            $prev = -1
+            $i = 0
+            WHILE $i < NET_ROWS()
+                $cls = NET_ARGMAX($i)
+                IF $cls == 0
+                    $prev = -1
+                ELSE
+                    IF $cls != $prev
+                        $text = $text + NET_LABEL($cls - 1)
+                    ENDIF
+                    $prev = $cls
+                ENDIF
+                $i = $i + 1
+            END
+            RETURN $text
+        ENDFUNC
+
+        # ---- PP-OCR det 文本找框（det 全图一次 → 框 → rec 逐框；det 资产 PP-OCRv5_mobile_det）----
+        # 限边缩放：scale = 960/max(w,h)，小图不放大（钳 1）；rw/rh 32 对齐上取整（pad 在右/下，
+        # 不影响逆映射）。__DET_BOXES__ 阈值 0.30（PaddleOCR det_db_thresh 惯例），逆映射
+        # screen = det/scale + roi，±2px unclip，阅读序缓存。返回框数（-1 = 输出缺失/形状错）。
+        FUNC PP_DET_SCALE($w: INT, $h: INT): DOUBLE
+            $s = 960.00 / $w
+            IF $h > $w
+                $s = 960.00 / $h
+            ENDIF
+            IF $s > 1.00
+                $s = 1.00
+            ENDIF
+            RETURN $s
+        ENDFUNC
+
+        FUNC PP_DET_W($w: INT, $h: INT): INT
+            RETURN (INT($w * PP_DET_SCALE($w, $h) + 0.5) + 31) / 32 * 32
+        ENDFUNC
+
+        FUNC PP_DET_H($w: INT, $h: INT): INT
+            RETURN (INT($h * PP_DET_SCALE($w, $h) + 0.5) + 31) / 32 * 32
+        ENDFUNC
+
+        FUNC PP_DET_FIND($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT): INT
+            $s = PP_DET_SCALE($w, $h)
+            $img = NET_IMAGE($x, $y, $w, $h, PP_DET_W($w, $h), PP_DET_H($w, $h), "rgb")
+            $t = PPOCR_NORM($img, "det")
             $n = NET_RUNH($net, $t)
-            $text = CTC_FOLD(0, "0123456789", 16163)
+            $count = __DET_BOXES__(0.30, $s, $x, $y, PP_DET_W($w, $h), PP_DET_H($w, $h))
             NET_FREE $t
             NET_FREE $img
-            RETURN $text
+            RETURN $count
+        ENDFUNC
+
+        FUNC PP_DET_FIND($net: PTR, $frame: STRING, $x: INT, $y: INT, $w: INT, $h: INT): INT
+            $s = PP_DET_SCALE($w, $h)
+            $roi = ROI($frame, $x, $y, $w, $h)
+            $img = NET_IMAGE($roi, PP_DET_W($w, $h), PP_DET_H($w, $h), "rgb")
+            $t = PPOCR_NORM($img, "det")
+            $n = NET_RUNH($net, $t)
+            $count = __DET_BOXES__(0.30, $s, $x, $y, PP_DET_W($w, $h), PP_DET_H($w, $h))
+            NET_FREE $t
+            NET_FREE $img
+            RETURN $count
+        ENDFUNC
+
+        # ---- YOLO26 适配（端到端免 NMS 导出；输出 [1,300,6] = x1,y1,x2,y2,conf,cls）----
+        # letterbox 几何在此计算（配方持语义），与宿主 __NET_IMAGE__ "letter" 模式同式：
+        # scale = 640/max(w,h)，newW/H = INT(w*scale + 0.5)，pad = (640-new)/2（整除地板）。
+        # 端到端 stride 校验（末维 = 6，防 end2end=False 导出 [1,8400,·] 错位解码）在此配方层：
+        # stride = 输出元素数 / NET_ROWS()。__YOLO_DECODE__ 只做过滤 + 逆映射 (v - pad)/scale
+        # + roi + 内容区裁剪（Ultralytics predict 同约定），命中缓存经 YOLO_COUNT / YOLO_CLS /
+        # YOLO_SCORE / YOLO_X1..Y2 读取（结果按分数降序）。返回命中数（-1 = stride 不符/输出缺失）。
+        FUNC YOLO_DETECT($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT, $thresh: DOUBLE): INT
+            $scale = 640.00 / $w
+            IF $h > $w
+                $scale = 640.00 / $h
+            ENDIF
+            $padX = (640 - INT($w * $scale + 0.5)) / 2
+            $padY = (640 - INT($h * $scale + 0.5)) / 2
+            $img = NET_IMAGE($x, $y, $w, $h, 640, 640, "letter")
+            $norm = NET_SCALE($img, 1.00 / 255, 0)
+            $n = NET_RUNH($net, $norm)
+            IF $n <= 0
+                NET_FREE $norm
+                NET_FREE $img
+                RETURN 0
+            ENDIF
+            $rows = NET_ROWS()
+            IF $n / $rows != 6
+                NET_FREE $norm
+                NET_FREE $img
+                RETURN -1
+            ENDIF
+            $count = __YOLO_DECODE__($thresh, $scale, $padX, $padY, $x, $y)
+            NET_FREE $norm
+            NET_FREE $img
+            RETURN $count
         ENDFUNC
         """;
 }

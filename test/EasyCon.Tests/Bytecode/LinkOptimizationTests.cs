@@ -6,7 +6,7 @@ using EasyCon.Tests.Support;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 链接期优化回归（EcmEcxFormat §6.1-3 方向的落地）：
+/// 链接期优化回归：
 /// 1. &lt;main&gt; 壳消除——init 调用序列前插 $eval 本体，入口函数命名 &lt;main&gt;（$eval 为 v1 占位名）；
 /// 2. 死函数消除——自入口 BFS 调用图，stdlib/vision 未调用函数体不进镜像（fid 重映射）；
 /// 3. 死存储清扫——SSA φ 降级/变量落槽的边副本与无人读取的常量物化不进镜像（防线 1 编码期

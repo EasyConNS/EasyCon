@@ -29,6 +29,7 @@ public class CtcFoldTests
         public void FreeTensor(int handle) { }
         public float[]? RunHeld(int session, int tensorHandle) => Logits;
         public int TransformTensor(int handle, float scale, float offset) => 10;
+        public int Normalize(int handle, float[] mean, float[] std) => 11;
         public void Unload(int session) { }
         public void Dispose() { }
     }

@@ -29,7 +29,7 @@ public sealed class ModulePool
 
 /// <summary>
 /// 模块编码上下文：函数 ID、全局槽、原生表、导入表均为**模块局部**
-/// （docs/EcmEcxFormat.md §4.1——链接期统一重写为镜像全局索引）。
+/// （链接期统一重写为镜像全局索引）。
 /// </summary>
 public sealed class ModuleEncodeContext
 {

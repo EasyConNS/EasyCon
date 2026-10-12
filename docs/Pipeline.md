@@ -2,8 +2,8 @@
 
 > C# 侧单一编译链路：**源码 → Parser → ProjectCompiler（模块图 + lib/ 自动加载）→ 每模块独立编译 →
 > EcxImage**；桌面由 **EcxInterpreter** 执行 ECX 镜像，单片机由 **C VM** 执行同一二进制。
-> 关联：`docs/ModuleSystem.md`（模块/缓存）、`docs/VmSemanticContract.md`（双端语义契约）、
-> `docs/EcmEcxFormat.md`（二进制格式）、`docs/VM2.md`（指令集规格）。
+> 关联：`docs/ModuleSystem.md`（模块/缓存）、`docs/VM2.md`（双端语义，对拍测试锁定）、
+> 产物容器规格见 `EcsContainer`/链接器测试（`test/EasyCon.Tests/Bytecode/`）。
 
 ## 1. 架构
 
@@ -34,7 +34,7 @@
   据此设置镜像 NeedIL 标志。
 - **Link 纯函数化**：在深拷贝副本上重写——不污染调用方产物，`CompileResult.Artifacts` 可安全
   .ecm roundtrip。
-- **FWRITE 句柄 0**：写入 no-op 返回写入长度（S-14，见 VmSemanticContract）。
+- **FWRITE 句柄 0**：写入 no-op 返回写入长度。
 - **EXT 扫描铁律**：EXT 后随字是「数据」，数值可能恰好等于某个操作码——一切线性扫描必须按
   `EcsFormat.WordCount` 步进跳过（C 侧 `ecs_op_words`），否则把数据误读为指令。
 
@@ -60,7 +60,7 @@
 | 内置函数能力清单（路由 + 特征位 + MCU 桩可用标记） | `Binding/BuiltinFunctions.Manifest`（单一登记；`Routes`/`IsIntrinsic` 派生；链接器特征扫描消费 FeatureBit；总表见 VM2.md §7.0） |
 | syscall 编号/镜像特征位 | `Bytecode/EcsOpcode.cs`（`EcsSyscall`/`EcsImageFeatures`）+ C 侧 `ECS_SYSCALL_*`/`ECS_FEAT_*` |
 | 代码线性扫描 | `Bytecode/InstructionScanner.cs`（回调式，链接器各 pass 共享） |
-| RC 槽写 | C# `MoveToSlot/StoreFresh/OverwriteItem`；C `move_to/store_fresh`（规则见 VmSemanticContract §二） |
+| RC 槽写 | C# `MoveToSlot/StoreFresh/OverwriteItem`（EcxInterpreter.cs）；C `move_to/store_fresh`（ecs_vm.c） |
 | 缓存键选项 | `CompileOptions.ProductFingerprint()`；产物自检 `ModuleArtifact.IntegrityCheck()` |
 | 模块诊断构造 | `DiagnosticBag.FromMessage` |
 | 测试基建 | `test/EasyCon.Tests/Support/`（CvmRunner/EcsTestHost/CorpusAssert） |
@@ -77,4 +77,4 @@
   （入口 + 预算边界 + 宿主调用后）已落地；剩余方向：C VM 同型收益（加载期驻留 + 帧池）、
   运行错误位置映射（需 pc→源行表）。
 - 格式 v2 窗口四项（调用约定寄存器化/镜像 CRC/Link 三遍合一/模块并行编译）——设计备注见
-  `docs/EcmEcxFormat.md` §5.1，实施须双端协商升版本。
+  需双端协商升版本（容器写入/校验落点 `EcsContainer`）。

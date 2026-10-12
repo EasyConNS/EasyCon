@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 namespace EasyCon.Script.Bytecode;
 
 /// <summary>
-/// 链接器：模块产物（.ecm）合并 → EcxImage（docs/EcmEcxFormat.md §4 / EcmEcxFormat §2）。
+/// 链接器：模块产物（.ecm）合并 → EcxImage（位级规格见 EcsContainerFormat.cs 头注）。
 /// 类型表合并、导入解析、入口合成、死函数/死表项消除、采集洞可达性、资源需求计算。
 /// 扫描全部经 <see cref="InstructionScanner"/>（解码形态单流——EXT 数据字是指令字段，
 /// 不再有「数据字可能等于操作码」的步进铁律）。模块编码（SsaProgram → ModuleArtifact）
@@ -667,7 +667,7 @@ internal static class EcxPipeline
         return unchecked((uint)(funcBase + resolved.LocalFid));
     }
 
-    /// <summary>静态资源需求：max_slots 与调用图最长链（EcmEcxFormat §2.1，静态预分配用）。
+    /// <summary>静态资源需求：max_slots 与调用图最长链（静态预分配用）。
     /// 容量元数据不进产物（R-3）；内存模型保留供宿主预检/诊断，序列化侧省略。</summary>
     internal static void ComputeResourceRequirements(EcxImage image)
     {

@@ -5,7 +5,7 @@ using EasyCon.Tests.Support;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 双实现对拍语料（docs/VmSemanticContract.md §五 验证体系）：
+/// 双实现对拍语料：
 /// corpus/ 下每用例 = &lt;名&gt;.ecs + &lt;名&gt;.expected（期望输出行，逐行）+ 可选 &lt;名&gt;.events（域事件）。
 ///
 /// 流程：跑「CompileSource → EcxImage → EcxInterpreter」断言输出/事件与期望一致；

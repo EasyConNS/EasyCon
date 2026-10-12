@@ -459,7 +459,7 @@ ENDIF
 |------|------|------|
 | x, y, w, h | INT | 采集区域；负值 = 全帧 |
 | rw, rh | INT | 目标尺寸（多数 CNN 要求 32 的倍数） |
-| mode | STRING | `"gray"`（[1,1,rh,rw]，缺省）或 `"rgb"`（[1,3,rh,rw]，CHW） |
+| mode | STRING | `"gray"`（[1,1,rh,rw]，缺省）、`"rgb"`（[1,3,rh,rw]，CHW）或 `"letter"`（YOLO letterbox：等比缩放至目标内、居中、四周垫 114 灰，RGB 通道）；`"rgb"`/`"gray"` 可加 `'c'` 后缀（如 `"rgbc"`）改为 cover 缩放 + 居中裁剪——不变形不垫边，分类模型常规 |
 
 ```ecs
 $img = NET_IMAGE(-1, -1, -1, -1, 640, 640, "rgb")
@@ -486,6 +486,110 @@ $n = NET_RUNH($net, $t)
 
 ### NET_UNLOAD(net): INT
 卸载模型会话。
+
+### NET_ARGMAX(row): INT
+读取最近一次推理输出第 `row` 行中**概率最大的列下标**（分类/序列模型的逐行解码原语；
+越界或无输出历史返回 -1）。**末维 = 类别维**：`[1,T,C]` 按 T 行 C 列逐行取；
+向量输出 `[1,N]`（或 `[N]`）按 1 行 N 列——分类 logits 直接 `NET_ARGMAX(0)` 得类别。
+PP-OCR rec 的 `[1,T,C]` 输出即按此逐帧取字符下标，或直接用 std `CTC_FOLD`（数字子集，
+宿主加速）/ std `PP_OCR_TEXT`（整字典，标签表层）一次折叠。
+
+### NET_ROWS(): INT
+最近一次推理输出的行数（末维 = 类别维：`[1,T,C]` → T、`[1,N]` → 1；无输出历史返回 0）。
+
+### NET_NORM(tensor, mean, std): PTR
+逐通道归一化 `(x - mean[c]) / std[c]`（ResNet 类模型的硬需求），返回新张量句柄（失败 -1）。
+通道号由宿主按张量形状推断（rank≥4 取 shape[1]，rank=3 取 shape[0]，rank<3 退化为全局仿射）；
+mean/std 长度须为 1 或等于通道数。`/255` 量程折叠留给 NET_SCALE 链式承担——每步都是通用原语。
+
+```ecs
+$t = NET_SCALE(NET_IMAGE($img, 224, 224, "rgbc"), 1.0 / 255, 0)
+$t = NET_NORM($t, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+```
+
+### NET_LABELS(path): INT
+加载分类标签/字典文件，返回标签数；失败 -1（含文件不存在/空文件）。重复加载整体替换。
+**字典级语义：行号即索引**——逐行原样占位（空行/空白字符行也是条目，如 PP-OCR 字典
+首行的全角空格），仅去行尾 CR 与文件末尾换行。纯字符串处理，不依赖推理能力。
+
+### NET_LABEL(index): STRING
+第 `index` 个标签；未加载 / 越界返回 ""。CTC 字典配合：class id c → `NET_LABEL(c - 1)`（blank 占位）。
+
+### PP-OCR det 文本找框（std 配方 PP_DET_FIND + DET_* 访问器）
+det 全图推理**一次**找齐全部文本框（变动布局/未知文本位置的正解；固定 ROI 场景不必用），
+再对每框跑 rec 配方：
+
+```ecs
+$det = NET_LOAD("PP-OCRv5_mobile_det.onnx")
+$c = PP_DET_FIND($det, $frame, 0, 0, 1920, 1080)   # 返回框数（帧形态重载同 rec 配方）
+$i = 0
+WHILE $i < DET_COUNT()
+    $n = PP_OCR_INFER($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i))
+    $t = CTC_FOLD(0, "0123456789", 16163)
+    PRINT $t
+    $i = $i + 1
+END
+```
+
+- 预处理：限边缩放（长边 960、32 对齐，小图不放大）→ det 归一化（`PPOCR_NORM "det"`）；
+  几何（scale/rw/rh）由 std 配方计算并传给洞——宿主不做任何形状假设。
+- `__DET_BOXES__(thresh, scale, roiX, roiY, mapW, mapH)`：阈值二值化 + 水平膨胀（1×15
+  愈合同行间隙）+ 连通域 + unclip（PaddleOCR 同式，v1 ratio=1.0；ratio=2.0 会把大框
+  扩成巨型 rec 输入——上调前先加框尺寸护栏）。框按阅读序（y 优先 x）缓存。
+- 访问器越界返回 -1；`DET_COUNT` 未找过为 0。真模型闭环见
+  `NetPpocrRealModelTests.PpocrDet_FindsTextRegions_ExpRowClosedLoop`（ppocr2.png 全页
+  det → 逐框 rec 读出 19531 等全部页面数字）。
+
+std 侧已备好的 PP-OCR rec 配方（字典 `ppocr_keys_v5.txt` 配合标签表层）：
+`PP_OCR_INFER(net, x, y, w, h): INT`——通用推理步骤（采集 → rec 宽度换算 → 归一化 → 推理，
+输出驻留宿主，解码自由组合）；`PP_OCR_DIGITS(net, x, y, w, h): STRING`（数字子集窗口，
+宿主 CTC_FOLD 加速）；`PP_OCR_TEXT(net, x, y, w, h, dictPath): STRING`（整字典文本，
+标签表层逐帧解码，如宝可梦状态页名称识别；加载字典会整体替换 NET_LABELS 全局表）。
+三者均有**共享采集重载**（第二参传 `STRING` 整帧 base64，如 `FRAME()` 结果）：
+同帧多区域只采集一次，逐区域 `__ROI__` 裁剪在宿主内完成（ROI 走桌面参考回落
+`DesktopVisionService`，与采集路径共享裁剪核，零装配可用）——宝可梦状态页示例
+7 区域仅采集 1 帧。
+
+### NET_IMAGE_FILE(path, rw, rh [, mode]): PTR
+本地图像文件 → 同 `NET_IMAGE` 管线（mode 词表相同，含 `"letter"` 与 `'c'` 裁剪后缀），
+返回张量句柄（失败 0）。与采集版互补：采集走 `NET_IMAGE`，flow/离线图片走本函数。
+
+完整分类链路（ResNet 类模型）：
+
+```ecs
+$net = NET_LOAD("resnet18.onnx")
+$t = NET_SCALE(NET_IMAGE_FILE("test.png", 224, 224, "rgbc"), 1.0 / 255, 0)
+$t = NET_NORM($t, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+NET_RUNH($net, $t)
+NET_LABELS("imagenet_classes.txt")
+PRINT NET_LABEL(NET_ARGMAX(0))       # → 类名
+```
+
+### YOLO26 检测（std 配方 YOLO_DETECT + YOLO_* 访问器）
+面向 **YOLO26 端到端导出**（Ultralytics 默认导出即端到端，免 NMS）：
+输出 `[1,300,6]` = `[x1, y1, x2, y2, conf, class_id]`，坐标在 640×640 letterbox 空间。
+argmax 已由模型内部完成（列语义异质），NET_ARGMAX 不适用——解码走 std 配方 + 宿主加速洞：
+
+```ecs
+$net = NET_LOAD("models/yolo26n.onnx")
+$c = YOLO_DETECT($net, 100, 80, 400, 300, 0.5)   # 返回命中数（输出缺失/非端到端形状 → -1）
+$i = 0
+WHILE $i < YOLO_COUNT()
+    $cls = YOLO_CLS($i)
+    $x = YOLO_X1($i)
+    PRINT $cls
+    $i = $i + 1
+END
+```
+
+- `YOLO_DETECT(net, x, y, w, h, thresh): INT`——采集 ROI → letterbox → 归一化 → 推理 → 解码，
+  返回命中数。逆映射 + 内容区裁剪已完成，访问器直接给屏幕坐标。
+  端到端 stride 校验（输出元素数 / 行数 ≠ 6 → -1，防 `end2end=False` 导出错位解码）在配方层。
+- `YOLO_COUNT()`——最近一次解码的命中数（未解码为 0）。
+- `YOLO_CLS(i): INT` / `YOLO_SCORE(i): DOUBLE` / `YOLO_X1(i)` `YOLO_Y1(i)` `YOLO_X2(i)` `YOLO_Y2(i): INT`——
+  按**命中列表**下标读取（非原始 300 行）；坐标裁剪回 ROI 内容区（Ultralytics predict 同约定）；
+  访问器越界返回 -1（分数 -1.0）。
+- 想自实现解码策略：`NET_ROWS` + `NET_OUT(i*6+j)` 扁平寻址原始输出。
 
 完整示例见 `examples/pokemon-stats.ecs`（PP-OCRv5 rec 识别宝可梦状态页并计算能力值）。
 
@@ -536,9 +640,16 @@ $n = NET_RUNH($net, $t)
 | FREAD(h, count) | 读通道（h=0 读一行输入） | STRING | ✔ | 空串 |
 | FOPEN/FCLOSE/FEOF | 文件句柄（后续版本开放） | - | 预留 | — |
 | READFILE/WRITEFILE/APPENDFILE/FILE_EXISTS | 整文件读写（后续版本开放） | - | 预留 | — |
-| NET_LOAD(path) | 加载 ONNX 模型 | INT | ✔ | 镜像拒跑 |
+| NET_LOAD(path) | 加载 ONNX 模型 | PTR | ✔ | 镜像拒跑 |
 | NET_RUNH(net, tensor) | 推理，返回输出个数 | INT | ✔ | 镜像拒跑 |
 | NET_OUT(i) | 读第 i 个输出 | DOUBLE | ✔ | 镜像拒跑 |
+| NET_ARGMAX(row) | 第 row 行最大概率列下标（末维=类别维） | INT | ✔ | 镜像拒跑 |
+| NET_ROWS() | 最近输出行数 | INT | ✔ | 镜像拒跑 |
+| NET_NORM(t, mean, std) | 逐通道归一化，返回新张量 | PTR | ✔ | 镜像拒跑 |
+| NET_LABELS(path)/NET_LABEL(i) | 标签表加载/按索引取类名 | INT/STRING | ✔ | — |
+| PP_DET_FIND(net,x,y,w,h)/DET_COUNT/DET_X/Y/W/H(i) | det 找框（阅读序），返回框数 | INT | ✔ | 镜像拒跑 |
+| YOLO_DETECT(net,x,y,w,h,thresh) | YOLO26 端到端检测，返回命中数 | INT | ✔ | 镜像拒跑 |
+| YOLO_COUNT()/CLS/SCORE/X1/Y1/X2/Y2(i) | 读最近解码命中（屏幕坐标） | INT/DOUBLE | ✔ | 镜像拒跑 |
 
 > - 桌面 = GUI / CLI 运行；单片机 = 编译 .ecx 烧录运行。
 > - "镜像拒跑"：桌面专属能力在镜像中带有标记，单片机加载期即识别并拒绝运行——确保桌面/单片机脚本各得其所。

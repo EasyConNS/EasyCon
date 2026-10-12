@@ -2,7 +2,7 @@
 
 > 本文是**现状**架构说明，描述代码里真实成立的分层与职责。改架构先改本文。
 > 编译链路细节见 [Pipeline.md](Pipeline.md)，模块系统见 [ModuleSystem.md](ModuleSystem.md)，
-> 双端语义契约见 [VmSemanticContract.md](VmSemanticContract.md)，
+> 双端语义以对拍测试为准（`test/EasyCon.Tests/Bytecode/`），
 > MCU 产物下发见 [McuBytecodeDelivery.md](McuBytecodeDelivery.md)。
 
 ## 1. 定位与技术栈
@@ -73,7 +73,7 @@ graph TD
 3. **内容寻址的模块系统**：接口哈希（Merkle 式）决定失效范围，实现体改动不触发下游重编
    （细节见 [ModuleSystem.md](ModuleSystem.md)）。
 4. **双端语义契约**：C# 解释器与 C VM 的行为逐条锁定在 S-01..S-19，并由 corpus 三方对拍 +
-   结构化 fuzz 保障（见 [VmSemanticContract.md](VmSemanticContract.md)）。
+   结构化 fuzz 保障（对拍测试组，`test/EasyCon.Tests/Bytecode/`）。
 5. **编译器强制的 MVVM 纯度**：`EasyCon2.Avalonia.Core` 零 Avalonia 包引用，
    ViewModel 一旦引入 Avalonia 类型即编译失败。
 6. **单一事实源落点表**：[Pipeline.md §4](Pipeline.md) 为每条"只该存在一处"的知识指定文件，
@@ -153,7 +153,7 @@ graph TD
 
 - [Pipeline.md](Pipeline.md) — 统一编译链路与单一事实源落点
 - [ModuleSystem.md](ModuleSystem.md) — 接口式独立编译与缓存
-- [VM2.md](VM2.md) / [VmSemanticContract.md](VmSemanticContract.md) / [EcmEcxFormat.md](EcmEcxFormat.md) — 虚拟机规格
+- [VM2.md](VM2.md) — 虚拟机规格（产物容器规格见 `EcsContainer`/链接器测试）
 - [McuBytecodeDelivery.md](McuBytecodeDelivery.md) — MCU 产物编译与烧录方案
 - [Script.md](Script.md) / [Functions.md](Functions.md) — 脚本语言与函数手册
 - `AGENTS.md` — 工程约定与"改代码前必读"的分层规则

@@ -137,6 +137,8 @@ public class PaddleOnnxOcrTests
                          Path.Combine(dir, "models"),
                          Path.Combine(dir, "PaddleOCR"),
                          Path.Combine(dir, "assets", "PaddleOCR"),
+                         Path.Combine(dir, "assets", "ppocr"),
+                         Path.Combine(dir, "test", "assets", "ppocr"),   // test/assets 约定布局
                      })
             {
                 if (File.Exists(Path.Combine(candidate, "PP-OCRv5_mobile_det.onnx")))

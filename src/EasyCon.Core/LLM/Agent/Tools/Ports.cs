@@ -33,7 +33,7 @@ public interface IScriptEditorPort
 /// <summary>
 /// 脚本运行端口：编译并运行当前编辑区脚本、停止、运行状态。
 /// 今天经由编辑区内容启动（GUI 会话语义）；待 Core 暴露可装配的脚本运行控制端口
-/// 后再迁移（决策记录见 PROJECT_OUTLINE）。
+/// 后再迁移。
 /// </summary>
 public interface IScriptRunPort
 {

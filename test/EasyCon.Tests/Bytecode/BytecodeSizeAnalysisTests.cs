@@ -73,7 +73,7 @@ public class BytecodeSizeAnalysisTests
 
     /// <summary>
     /// MCU 发布版剥离调试块（stripDebug）：平铺语义 = 去掉尾部调试块 + 头内 dbgSize 清零 +
-    /// flags.D 清零 + CRC 重封，其余字节逐字节不变（EcmEcxFormat.md stripDebug 语义）。
+    /// flags.D 清零 + CRC 重封，其余字节逐字节不变（stripDebug 语义）。
     /// </summary>
     [Test]
     public void Guangshu_DebugStrip_CoreUnchangedAndSmaller()
@@ -143,7 +143,7 @@ public class BytecodeSizeAnalysisTests
     }
 
     /// <summary>
-    /// ECX1 平铺镜像逐表核算（规格：EcmEcxFormat.md；实现 = EcsContainer.WriteImage）。
+    /// ECX1 平铺镜像逐表核算（实现 = EcsContainer.WriteImage）。
     /// 布局：36B 头 + 主模块名 + 自计数表序（consts/structs/globals/natives/funcs）+ .text + 可选 dbg。
     /// </summary>
     internal static List<(string Name, int Bytes)> WalkFlatImage(byte[] b)
