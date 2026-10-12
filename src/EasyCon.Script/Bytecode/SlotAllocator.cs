@@ -364,9 +364,28 @@ public static partial class BytecodeEncoder
         /// </summary>
         void AssignSlots()
         {
+            // 参数窗仅保留实际 NParams；出站窗口按本函数的最大调用/数组需求保留。
+            // 所有出站值先在分配区求值，再搬入隔离窗口，嵌套调用和参数重排不会覆写存活值。
+            _stagingBase = EcsRegisters.ArgBase + _symbol.Parameters.Length;
+            foreach (SsaBlock block in _fn.Blocks)
+                foreach (SsaValue inst in block.Instructions)
+                {
+                    int count = inst.Op switch
+                    {
+                        SsaOp.Call or SsaOp.StaticCall => CallArgs(inst).Count,
+                        SsaOp.ArrayInit => IsTemplateArrayInit(inst)
+                            ? EcsRegisters.ArrayStagingCount : TemplateElements(inst).Count,
+                        _ => 0,
+                    };
+                    _stagingCount = Math.Max(_stagingCount, count);
+                }
+            _allocBase = _stagingBase + _stagingCount;
+            if (_allocBase > EcsRegisters.MaxRegisters)
+                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的参数窗和出站窗口需求 {_allocBase} 超过帧上限 {EcsRegisters.MaxRegisters}");
+
             // 0. 存活局部重编号（编码期槽位回收）：局部读值全走 SSA（构建期 mem2reg），
             // StoreLocal 仅参数 store 发射（EmitInst；TRE 回边写参数帧槽，entry 循环头重读）。
-            // 帧槽读取者 = 参数入口 LoadLocal（Call ABI 播种）；参数窗映射到 ARG 寄存器 R1–R7
+            // 帧槽读取者 = 参数入口 LoadLocal（Call ABI 播种）；参数窗映射到 R1 起的 NParams 个寄存器
             // （Call 深拷贝播种，见 EcsRegisters）；防御性非参数局部（若未来出现）从通用区起。
             var liveLocalSlots = new SortedSet<int>();
             foreach (var block in _fn.Blocks)
@@ -377,7 +396,7 @@ public static partial class BytecodeEncoder
                     else if (inst.Op == SsaOp.StoreLocal && inst.Aux is ParamSymbol ps)
                         liveLocalSlots.Add(ps.Slot.Index);
                 }
-            int nextLocal = EcsRegisters.AllocBase;
+            int nextLocal = _allocBase;
             foreach (var oldIdx in liveLocalSlots)
             {
                 if (oldIdx < _symbol.Parameters.Length)
@@ -580,15 +599,12 @@ public static partial class BytecodeEncoder
                 _tplChunk = _next++; _exclusiveSlots.Add(_tplChunk);
             }
 
-            // STAGING 暂存区固定于 R8–R23（EcsRegisters，帧内全局固定位置）：调用出站实参
-            // 与数组分块构建共用；与参数窗/分配区物理隔离——出站 Move 不可能覆写存活值，
-            // 无重叠 Move 冒险；链接期内联按固定位置判定重映射。
-            _stagingBase = EcsRegisters.StagingBase;
-            _tplChunkSize = Math.Min(TemplateChunkSize, EcsRegisters.StagingCount);
+            // 出站窗口与数组分块共用；参数与分配区均不与它重叠。
+            _tplChunkSize = Math.Min(TemplateChunkSize, _stagingCount);
 
-            // 池区自独占区之后生长（_next 已含全部独占槽；≥ AllocBase）；帧长（NSlots）=
+            // 池区自独占区之后生长（_next 已含全部独占槽；≥ _allocBase）；帧长（NSlots）=
             // 发射结束后池区高水位（≤ MaxRegisters，Run 期校验）
-            _poolNext = Math.Max(_next, EcsRegisters.AllocBase);
+            _poolNext = Math.Max(_next, _allocBase);
         }
 
         /// <summary>

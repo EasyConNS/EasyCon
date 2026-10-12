@@ -47,7 +47,7 @@ public static class InstructionCodec
     {
         if (v < 0 || v > 254)
             throw new BytecodeException(new[] { new BytecodeDiagnostic(
-                $"{op} 槽位越界: {v}（v3 定长编码槽位为 u8；寄存器 ≤63）", null, at) });
+                $"{op} 槽位越界: {v}（v3 定长编码槽位为 u8；寄存器范围 R0–R254）", null, at) });
         return (byte)v;
     }
 

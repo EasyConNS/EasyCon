@@ -767,7 +767,7 @@ public sealed class EcxInterpreter
 
                     // ---- 调用 ----
                     // 每函数栈窗口帧：实参从调用方 STAGING（A）深拷贝播种进被调方
-                    // ARG 窗 R1–R7（S-17 语义）；C = 接收寄存器（0 = RET 固定落点）
+                    // R1 起的参数窗（S-17 语义）；C = 接收寄存器（0 = RET 固定落点）
                     case EcsOpcode.Call:
                         {
                             uint target = ext;

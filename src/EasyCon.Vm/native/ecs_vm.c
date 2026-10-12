@@ -2082,7 +2082,8 @@ VM_CASE(OP_CallN)
     FETCH_OPS_WEXT();
     /* 旗标置位 = 编号 syscall（VM2.md §9.1）；否则原生名表索引。
      * S-21：miss → 缺省值表降级，strict_caps 或表外 → 响亮。 */
-    ecs_value args[8];
+    /* C99 栈快照按实际参数数分配（0 参数也保留合法数组长度），运行期不申请堆内存。 */
+    ecs_value args[b_ > 0 ? b_ : 1];
     for (int32_t i = 0; i < b_; i++)
         args[i] = R[a_ + i];
     int nerr = 0;
@@ -2580,4 +2581,3 @@ VM_CASE(OP_CmpJ)   /* 比较跳转融合（P2′）：kind=typeBlock*6+op；数�
 #undef FETCH_OPS_WEXT
 #endif
 }
-

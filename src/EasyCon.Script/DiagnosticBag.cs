@@ -210,7 +210,7 @@ internal sealed class DiagnosticBag : IEnumerable<Diagnostic>
 
     public void ReportParamWindowOverflow(TextLocation location, string functionName, int count)
     {
-        ReportError(location, $"函数 '{functionName}' 的参数个数 {count} 超过实参窗容量 {Bytecode.EcsRegisters.ArgCount}",
+        ReportError(location, $"函数 '{functionName}' 的参数个数 {count} 超过字节码参数上限 {Bytecode.EcsRegisters.ArgCount}",
             DiagnosticCodes.ParamWindowOverflow);
     }
 

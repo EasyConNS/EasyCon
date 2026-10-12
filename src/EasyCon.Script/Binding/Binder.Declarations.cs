@@ -31,7 +31,7 @@ internal sealed partial class Binder
 
         var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
 
-        // 实参窗容量（帧布局约定：ARG = R1–R7）
+        // 参数数受指令编码/函数帧预算约束，不设独立的固定参数窗容量。
         if (syntax.Declare.Paramters.Length > Bytecode.EcsRegisters.ArgCount)
             _diagnostics.ReportParamWindowOverflow(syntax.Declare.Location, syntax.Declare.Name, syntax.Declare.Paramters.Length);
 
@@ -81,7 +81,7 @@ internal sealed partial class Binder
 
         var returnType = BindTypeClause(syntax, syntax.ReturnType) ?? ScriptType.Void;
 
-        // 实参窗容量（帧布局约定：ARG = R1–R7）
+        // EXTERN 与用户函数使用同一参数数编码上限。
         if (syntax.Parameters.Length > Bytecode.EcsRegisters.ArgCount)
             _diagnostics.ReportParamWindowOverflow(syntax.Location, syntax.Name, syntax.Parameters.Length);
 

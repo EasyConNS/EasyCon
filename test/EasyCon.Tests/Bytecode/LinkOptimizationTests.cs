@@ -258,13 +258,13 @@ public class LinkOptimizationTests
         var image = result.Image!;
         var main = image.Functions.Single(f => f.Name == "<main>");
 
-        // 基线 = AllocBase（24：RET/ARG/STAGING 之后的分配区起点）+ 20（fast path 活 φ 槽
+        // 历史基线 = 24（RET/ARG/STAGING 固定保留区）+ 20（fast path 活 φ 槽
         // + 循环不变量外提共享组槽 + std print 内联临时区：print/FRAME 壳在调用点展开，
         // 共享 fresh 块只涨一次；零 φ 拷贝合并后活 φ 槽不增）。死 φ 免分配不变量由下方
         // setVar/move 断言继续锁定。
         // 锁定 <main> 自身（image.MaxSlots 含标准库 PPOCR_* 等库函数的独立槽位，随库演进波动）。
-        Assert.That(main.NSlots, Is.LessThanOrEqualTo(EcsRegisters.AllocBase + 20),
-            $"死 φ 槽应免分配（分配区起点 + 内联临时区后基线 {EcsRegisters.AllocBase + 20}，实际 {main.NSlots}）");
+        Assert.That(main.NSlots, Is.LessThanOrEqualTo(44),
+            $"死 φ 槽应免分配（历史帧预算 44，实际 {main.NSlots}）");
 
         int setVar = 0, move = 0;
         foreach (var ins in main.Instructions)

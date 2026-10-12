@@ -251,9 +251,10 @@ internal static class EcsJump
 /// 帧模型 = Dalvik/Lua 式每函数栈窗口：帧长 = 函数自身寄存器高水位（EcsFunction.NSlots，
 /// ≤ <see cref="MaxRegisters"/>，指令域 u8 是唯一上限——项目增长不再牵动寄存器堆），
 /// 调用时在共享值栈上按被调方帧长开窗、返回时弹出。
-/// 帧内布局：[R0 = RET][R1–R7 = ARG 实参窗][R8–R23 = STAGING 暂存][R24 起 = 分配区
-/// （独占：φ/ForStep/循环携带/编码器临时 → 池区）]。RET/ARG/STAGING 全局固定位置，
-/// 分配区随函数伸缩；生命周期分配（SlotAllocator）负责池化与循环活性独占。
+/// 帧内布局：[R0 = RET][R1 起 = NParams 个参数][按需 STAGING][分配区
+/// （独占：φ/ForStep/循环携带/编码器临时 → 池区）]。仅 RET/参数入口位置固定；
+/// STAGING 容量由本函数的最大出站调用/数组分块需求决定，不另设 7 参数上限。
+/// 生命周期分配（SlotAllocator）负责池化与循环活性独占。
 /// </summary>
 public static class EcsRegisters
 {
@@ -263,18 +264,12 @@ public static class EcsRegisters
     /// <summary>R0 = RET：无显式接收寄存器调用的返回值固定落点（Call 的 C=0）。</summary>
     public const int Ret = 0;
 
-    /// <summary>R1–R7 = ARG 实参窗：被调方参数由 Call 从调用方 STAGING 深拷贝播种于此
-    /// （S-17 语义）；函数/调用实参上限 = <see cref="ArgCount"/>（绑定层强制）。</summary>
+    /// <summary>R1 起 = 参数窗：Call 从 A 指定的出站窗口深拷贝 NParams 个实参（S-17）。</summary>
     public const int ArgBase = 1;
-    public const int ArgCount = 7;
 
-    /// <summary>R8–R23 = STAGING 暂存区（固定位置）：调用出站实参（Move 后 Call 从
-    /// R[A..A+B) 取）与数组字面量分块构建（NewArrV 基址）。与参数窗/分配区物理隔离——
-    /// 出站 Move 不可能覆写存活值，无重叠 Move 冒险；固定位置使链接期内联的重映射可判定。</summary>
-    public const int StagingBase = 8;
-    public const int StagingCount = 16;
+    /// <summary>参数数的编码上限；参数、出站窗口与临时值还须共同满足函数帧预算。</summary>
+    public const int ArgCount = MaxRegisters - ArgBase;
 
-    /// <summary>R24 起 = 分配区起点：独占区（φ/ForStep/循环携带/编码器临时）→ 池区，
-    /// 随函数需求伸缩至 <see cref="MaxRegisters"/>。</summary>
-    public const int AllocBase = 24;
+    /// <summary>常量数组模板的出站分块预算；无数组构建时不预留这些槽位。</summary>
+    public const int ArrayStagingCount = 16;
 }

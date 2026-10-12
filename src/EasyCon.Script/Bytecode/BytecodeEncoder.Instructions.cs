@@ -274,11 +274,11 @@ public static partial class BytecodeEncoder
 
             var args = new List<SsaValue> { v.Arg0 };
             if (v.ExtraArgs != null) args.AddRange(v.ExtraArgs);
-            if (args.Count > EcsRegisters.StagingCount)
-                throw Fail($"数组字面量元素数 {args.Count} 超过 STAGING 容量 {EcsRegisters.StagingCount}（应走常量模板，内部错误）");
+            if (args.Count > _stagingCount)
+                throw Fail($"数组字面量元素数 {args.Count} 超过 STAGING 容量 {_stagingCount}（内部错误）");
             for (int i = 0; i < args.Count; i++)
-                EmitIabc(EcsOpcode.Move, EcsRegisters.StagingBase + i, Slot(args[i]), 0);
-            EmitExt(EcsOpcode.NewArrV, Slot(v), args.Count, EcsRegisters.StagingBase, elemCode);
+                EmitIabc(EcsOpcode.Move, _stagingBase + i, Slot(args[i]), 0);
+            EmitExt(EcsOpcode.NewArrV, Slot(v), args.Count, _stagingBase, elemCode);
         }
 
         void EmitCallInst(SsaValue v)
@@ -298,17 +298,12 @@ public static partial class BytecodeEncoder
                 || (_ctx.ExternalFunctions != null && _ctx.ExternalFunctions.Contains(sym)));
             if (isLocal || isExternal)
             {
-                if (args.Count > EcsRegisters.ArgCount)
-                    throw Fail($"调用 '{sym.Name}' 实参数 {args.Count} 超过实参窗容量 {EcsRegisters.ArgCount}（绑定层应已拒绝）");
-                for (int i = 0; i < args.Count; i++)
-                    EmitIabc(EcsOpcode.Move, EcsRegisters.StagingBase + i, Slot(args[i]), 0);
-
                 uint target = isLocal
                     ? unchecked((uint)localFid)
                     : 0x80000000u | unchecked((uint)_ctx.ImportId(sym.OriginModule, sym.Name, sym.Parameters.Length));
                 // 接收槽直取结果寄存器：有结果 → Slot(v)；无结果 → RET（R0 固定落点）
-                EmitExt(EcsOpcode.Call, EcsRegisters.StagingBase, args.Count,
-                    hasResult ? Slot(v) : EcsRegisters.Ret, target);
+                EmitStagedCall(EcsOpcode.Call, unchecked((int)target), args,
+                    hasResult ? Slot(v) : EcsRegisters.Ret);
             }
             else
             {
@@ -324,11 +319,11 @@ public static partial class BytecodeEncoder
 
         void EmitStagedCall(EcsOpcode op, int targetId, IReadOnlyList<SsaValue> args, int resultSlot)
         {
-            if (args.Count > EcsRegisters.ArgCount)
-                throw Fail($"原生调用实参数 {args.Count} 超过实参窗容量 {EcsRegisters.ArgCount}（绑定层应已拒绝）");
+            if (args.Count > _stagingCount)
+                throw Fail($"调用实参数 {args.Count} 超过 STAGING 容量 {_stagingCount}（内部错误）");
             for (int i = 0; i < args.Count; i++)
-                EmitIabc(EcsOpcode.Move, EcsRegisters.StagingBase + i, Slot(args[i]), 0);
-            EmitExt(op, EcsRegisters.StagingBase, args.Count,
+                EmitIabc(EcsOpcode.Move, _stagingBase + i, Slot(args[i]), 0);
+            EmitExt(op, args.Count == 0 ? EcsRegisters.Ret : _stagingBase, args.Count,
                 resultSlot, unchecked((uint)targetId));
         }
 
