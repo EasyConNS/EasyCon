@@ -77,7 +77,41 @@ public class AudioLabelEditorRenderTests
             Assert.That(capture.Content?.ToString(), Does.Not.StartWith("Text."));
             Assert.That(vm.ClipSummary, Does.Contain("16,000"));
             Assert.That(vm.Status, Does.Not.StartWith("Text."));
+            Assert.That(vm.PlaybackSummary, Does.Not.StartWith("Text."));
         });
+    }
+
+    [TestCase("zh_CN", "当前位置")]
+    [TestCase("en_US", "Position")]
+    public void PreviewUpdatesCursorAndLocalizedReadoutOnTheUiThreadAndStopKeepsBoth(string locale, string caption)
+    {
+        FakePreview preview = new() { WaitForCancellation = true };
+        WithEditor(locale, ThemeManager.DarkModeSchemeName, (window, vm) =>
+        {
+            vm.SelectionStart = 1.05;
+            vm.SelectionEnd = 1.85;
+            Task playing = vm.PlaySelectionCommand.ExecuteAsync(null);
+            AudioWaveform waveform = window.FindControl<AudioWaveform>("Waveform")!;
+            bool updatedOnUiThread = false;
+            vm.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(vm.PlaybackPosition))
+                    updatedOnUiThread = Dispatcher.UIThread.CheckAccess();
+            };
+            PumpUntilCompleted(Task.Run(() => preview.PositionChanged!(0.3)));
+            Dispatcher.UIThread.RunJobs();
+            using WriteableBitmap? frame = window.CaptureRenderedFrame();
+            Assert.Multiple(() =>
+            {
+                Assert.That(updatedOnUiThread, Is.True);
+                Assert.That(waveform.PlaybackPosition, Is.EqualTo(1.35).Within(0.00001));
+                Assert.That(waveform.IsEnabled, Is.False);
+                Assert.That(window.FindControl<TextBlock>("PlaybackPositionText")!.Text, Does.StartWith(caption).And.Contain("1.350").And.Contain("3.000"));
+            });
+            PumpUntilCompleted(Task.WhenAll(vm.StopPreviewCommand.ExecuteAsync(null), playing));
+            Assert.That(waveform.IsEnabled, Is.True);
+            Assert.That(waveform.PlaybackPosition, Is.EqualTo(1.35).Within(0.00001));
+        }, preview);
     }
 
     [Test]
@@ -92,27 +126,34 @@ public class AudioLabelEditorRenderTests
             ("en_US", ThemeManager.whiteGraySchemeName, "audio-label-english")
         })
         {
+            FakePreview preview = new() { WaitForCancellation = true };
             WithEditor(locale, scheme, (window, vm) =>
             {
                 window.Height = 720;
                 vm.SelectionStart = 1.05;
                 vm.SelectionEnd = 1.85;
+                Task playing = vm.PlaySelectionCommand.ExecuteAsync(null);
+                preview.PositionChanged!(0.3);
+                Dispatcher.UIThread.RunJobs();
+                PumpUntilCompleted(Task.WhenAll(vm.StopPreviewCommand.ExecuteAsync(null), playing));
                 using WriteableBitmap frame = window.CaptureRenderedFrame()!;
                 string output = Path.Combine(Path.GetTempPath(), "easycon-audio-label-qa");
                 Directory.CreateDirectory(output);
                 string path = Path.Combine(output, name + ".png");
                 using ILockedFramebuffer buffer = frame.Lock();
-                SKImageInfo info = new(buffer.Size.Width, buffer.Size.Height, SKColorType.Bgra8888, SKAlphaType.Premul);
+                SKColorType colorType = buffer.Format == PixelFormat.Rgba8888 ? SKColorType.Rgba8888 : SKColorType.Bgra8888;
+                SKImageInfo info = new(buffer.Size.Width, buffer.Size.Height, colorType, SKAlphaType.Premul);
                 using SKImage image = SKImage.FromPixels(info, buffer.Address, buffer.RowBytes);
                 using SKData data = image.Encode(SKEncodedImageFormat.Png, 100);
                 using FileStream stream = File.Create(path);
                 data.SaveTo(stream);
                 TestContext.Out.WriteLine(path);
-            });
+            }, preview);
         }
     }
 
-    private static void WithEditor(string locale, string scheme, Action<AudioLabelEditorWindow, AudioLabelEditorViewModel> action)
+    private static void WithEditor(string locale, string scheme, Action<AudioLabelEditorWindow, AudioLabelEditorViewModel> action,
+        FakePreview? preview = null)
     {
         ResourceDictionary dictionary = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri($"avares://EasyCon2.Avalonia/Resources/Locales/{locale}.axaml"));
         Application.Current!.Resources.MergedDictionaries.Add(dictionary);
@@ -121,7 +162,7 @@ public class AudioLabelEditorRenderTests
         ThemeManager.Instance.ApplyColorScheme(scheme);
         FakeSource source = new();
         using AudioHistoryBuffer history = new(source);
-        using AudioLabelEditorViewModel vm = new(history, new FakePreview(), new FakeDialogs());
+        using AudioLabelEditorViewModel vm = new(history, preview ?? new FakePreview(), new FakeDialogs(), AvaloniaUiDispatcher.Instance);
         AudioLabelEditorWindow window = new() { DataContext = vm };
         try
         {
@@ -137,13 +178,7 @@ public class AudioLabelEditorRenderTests
             Buffer.BlockCopy(samples, 0, pcm, 0, pcm.Length);
             source.Emit(pcm);
             Task capture = vm.CaptureRecentCommand.ExecuteAsync(null);
-            Stopwatch timeout = Stopwatch.StartNew();
-            while (!capture.IsCompleted && timeout.Elapsed < TimeSpan.FromSeconds(5))
-            {
-                Dispatcher.UIThread.RunJobs();
-                Thread.Yield();
-            }
-            Assert.That(capture.IsCompletedSuccessfully, Is.True);
+            PumpUntilCompleted(capture);
             vm.LabelName = locale == "zh_CN" ? "闪光音效" : "Shiny sound";
             using WriteableBitmap? initial = window.CaptureRenderedFrame();
             action(window, vm);
@@ -154,6 +189,18 @@ public class AudioLabelEditorRenderTests
             L10nBridge.Resolver = resolver;
             Application.Current.Resources.MergedDictionaries.Remove(dictionary);
         }
+    }
+
+    private static void PumpUntilCompleted(Task task)
+    {
+        Stopwatch timeout = Stopwatch.StartNew();
+        while (!task.IsCompleted && timeout.Elapsed < TimeSpan.FromSeconds(5))
+        {
+            Dispatcher.UIThread.RunJobs();
+            Thread.Yield();
+        }
+        Dispatcher.UIThread.RunJobs();
+        Assert.That(task.IsCompletedSuccessfully, Is.True);
     }
 
     private sealed class FakeSource : IAudioCaptureSource
@@ -174,7 +221,13 @@ public class AudioLabelEditorRenderTests
     private sealed class FakePreview : IAudioPreview
     {
         public bool IsSupported => true;
-        public Task PlayAsync(AudioClip clip, CancellationToken cancellationToken) => Task.CompletedTask;
+        public bool WaitForCancellation { get; init; }
+        public Action<double>? PositionChanged { get; private set; }
+        public Task PlayAsync(AudioClip clip, CancellationToken cancellationToken, Action<double>? positionChanged = null)
+        {
+            PositionChanged = positionChanged;
+            return WaitForCancellation ? Task.Delay(Timeout.Infinite, cancellationToken) : Task.CompletedTask;
+        }
     }
 
     private sealed class FakeDialogs : IDialogService

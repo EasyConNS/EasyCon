@@ -78,7 +78,7 @@ public partial class App : Application
             var mainWindowViewModel = new MainWindowViewModel(logService, deviceService, captureService, scriptService, controllerService, dialogService, windowService, uiDispatcher, new SkiaImageProcessor(), updateService: new GiteeUpdateService(), audioSource: audioSource);
             windowService.Register(WindowKeys.AudioLabels, () =>
             {
-                AudioLabelEditorViewModel editor = new(audioHistory, new AudioPreview(), dialogService,
+                AudioLabelEditorViewModel editor = new(audioHistory, new AudioPreview(), dialogService, uiDispatcher,
                     () => mainWindowViewModel.CurrentScriptPath);
                 AudioLabelEditorWindow window = new() { DataContext = editor };
                 window.Closed += (_, _) => editor.Dispose();

@@ -234,9 +234,10 @@
     <x:String x:Key="Text.AudioLabel.Loaded">音频已打开。调整选区后可以另存为新标签。</x:String>
     <x:String x:Key="Text.AudioLabel.ClipSummary">总长 {0:F3} 秒 · {1:N0} Hz · {2} 声道 · {3} bit</x:String>
     <x:String x:Key="Text.AudioLabel.SelectionSummary">选区 {0:F3} → {1:F3} 秒 · 时长 {2:F3} 秒</x:String>
-    <x:String x:Key="Text.AudioLabel.Playing">正在通过默认扬声器试听选区。</x:String>
+    <x:String x:Key="Text.AudioLabel.PlaybackSummary">当前位置 {0:F3} 秒 / 总长 {1:F3} 秒</x:String>
+    <x:String x:Key="Text.AudioLabel.Playing">正在通过默认扬声器试听选区，红色游标显示播放位置。</x:String>
     <x:String x:Key="Text.AudioLabel.Played">试听完成。</x:String>
-    <x:String x:Key="Text.AudioLabel.Stopped">试听已停止。</x:String>
+    <x:String x:Key="Text.AudioLabel.Stopped">试听已停止，游标保留在停止位置。调整选区后可再次试听。</x:String>
     <x:String x:Key="Text.AudioLabel.SaveFolder">选择声音标签的保存目录</x:String>
     <x:String x:Key="Text.AudioLabel.AlreadyExists">同名标签已存在。请修改标签名称或选择其他目录。</x:String>
     <x:String x:Key="Text.AudioLabel.Saved">标签已保存：{0}</x:String>

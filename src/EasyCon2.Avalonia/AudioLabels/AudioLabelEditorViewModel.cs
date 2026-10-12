@@ -12,6 +12,7 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
     private readonly AudioHistoryBuffer _history;
     private readonly IAudioPreview _preview;
     private readonly IDialogService _dialogs;
+    private readonly IUiDispatcher _ui;
     private readonly Func<string?> _scriptPath;
     private AudioClip? _clip;
     private CancellationTokenSource? _playback;
@@ -35,14 +36,18 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
     private bool _isPlaying;
 
     [ObservableProperty]
+    private double? _playbackPosition;
+
+    [ObservableProperty]
     private AudioWaveformPeak[] _waveform = [];
 
-    public AudioLabelEditorViewModel(AudioHistoryBuffer history, IAudioPreview preview, IDialogService dialogs,
+    public AudioLabelEditorViewModel(AudioHistoryBuffer history, IAudioPreview preview, IDialogService dialogs, IUiDispatcher ui,
         Func<string?>? scriptPath = null)
     {
         _history = history;
         _preview = preview;
         _dialogs = dialogs;
+        _ui = ui;
         _scriptPath = scriptPath ?? (() => null);
         CaptureRecentCommand = new AsyncRelayCommand(CaptureRecentAsync, () => CanEdit() && _history.IsSupported);
         OpenCommand = new AsyncRelayCommand(OpenAsync, CanEdit);
@@ -70,6 +75,7 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         Duration, _clip.Format.SampleRate, _clip.Format.Channels, _clip.Format.BitsPerSample);
     public string SelectionSummary => string.Format(L10nBridge.T("Text.AudioLabel.SelectionSummary"),
         SelectionStart, SelectionEnd, Math.Max(0, SelectionEnd - SelectionStart));
+    public string PlaybackSummary => string.Format(L10nBridge.T("Text.AudioLabel.PlaybackSummary"), PlaybackPosition ?? 0, Duration);
 
     private bool CanEdit() => !_disposed && !IsBusy && !IsPlaying;
     private bool CanUseSelection() => CanEdit() && HasClip && SelectionEnd > SelectionStart;
@@ -104,6 +110,7 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
 
     partial void OnIsBusyChanged(bool value) => NotifyCommands();
     partial void OnIsPlayingChanged(bool value) => NotifyCommands();
+    partial void OnPlaybackPositionChanged(double? value) => OnPropertyChanged(nameof(PlaybackSummary));
 
     private void NotifyCommands()
     {
@@ -190,11 +197,13 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         // Reset the start before installing a shorter clip so all clamps stay ordered.
         SelectionStart = 0;
         _clip = clip;
+        PlaybackPosition = null;
         Waveform = waveform;
         OnPropertyChanged(nameof(HasClip));
         OnPropertyChanged(nameof(Duration));
         SelectionEnd = Duration;
         OnPropertyChanged(nameof(ClipSummary));
+        OnPropertyChanged(nameof(PlaybackSummary));
         NotifyCommands();
     }
 
@@ -203,13 +212,31 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         if (!CanUseSelection() || _clip == null)
             return;
         AudioClip selection = _clip.Slice(SelectionStart, SelectionEnd);
+        double start = Math.Floor(SelectionStart * _clip.Format.SampleRate) / _clip.Format.SampleRate;
+        double end = Math.Min(Duration, start + selection.DurationSeconds);
+        double lastPosition = 0;
         using CancellationTokenSource playback = new();
         _playback = playback;
+        PlaybackPosition = start;
         IsPlaying = true;
         SetStatus("Text.AudioLabel.Playing");
         try
         {
-            await _preview.PlayAsync(selection, playback.Token);
+            await _preview.PlayAsync(selection, playback.Token, position =>
+            {
+                if (!double.IsFinite(position))
+                    return;
+                double bounded = Math.Max(Volatile.Read(ref lastPosition), Math.Clamp(position, 0, selection.DurationSeconds));
+                Volatile.Write(ref lastPosition, bounded);
+                _ui.Post(() =>
+                {
+                    // A queued update from a stopped/closed preview must never affect the next one.
+                    if (!_disposed && ReferenceEquals(_playback, playback))
+                        PlaybackPosition = Math.Clamp(Math.Max(PlaybackPosition ?? start, start + bounded), start, end);
+                });
+            });
+            playback.Token.ThrowIfCancellationRequested();
+            Volatile.Write(ref lastPosition, selection.DurationSeconds);
             SetStatus("Text.AudioLabel.Played");
         }
         catch (OperationCanceledException) when (playback.IsCancellationRequested)
@@ -222,6 +249,8 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         }
         finally
         {
+            if (!_disposed)
+                PlaybackPosition = Math.Clamp(Math.Max(PlaybackPosition ?? start, start + Volatile.Read(ref lastPosition)), start, end);
             _playback = null;
             IsPlaying = false;
         }
@@ -297,6 +326,7 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(Status));
         OnPropertyChanged(nameof(ClipSummary));
         OnPropertyChanged(nameof(SelectionSummary));
+        OnPropertyChanged(nameof(PlaybackSummary));
     }
 
     public void Dispose()
@@ -305,6 +335,7 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         _ = StopPlaybackAsync();
         // The application owns history and capture; closing the editor releases only its snapshot/playback.
         _clip = null;
+        PlaybackPosition = null;
         Waveform = [];
         NotifyCommands();
     }

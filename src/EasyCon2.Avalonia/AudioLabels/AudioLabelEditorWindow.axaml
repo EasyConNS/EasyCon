@@ -30,11 +30,18 @@
                                          Duration="{Binding Duration}" SelectionStart="{Binding SelectionStart}"
                                          SelectionEnd="{Binding SelectionEnd}" IsEnabled="{Binding CanChangeSelection}"
                                          WaveBrush="{DynamicResource WorkbenchAccentBrush}"
+                                         PlaybackPosition="{Binding PlaybackPosition}"
+                                         PlaybackBrush="{DynamicResource WorkbenchDangerBrush}"
+                                         RulerBrush="{DynamicResource WorkbenchMutedTextBrush}"
                                          AutomationProperties.Name="{loc:Translate Text.AudioLabel.WaveformHint}"/>
                     <TextBlock Grid.Row="1" Text="{loc:Translate Text.AudioLabel.Empty}" IsVisible="{Binding !HasClip}"
                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
                                Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
-                    <TextBlock Grid.Row="2" Text="{Binding ClipSummary}"/>
+                    <WrapPanel Grid.Row="2" Orientation="Horizontal">
+                        <TextBlock x:Name="PlaybackPositionText" Text="{Binding PlaybackSummary}" IsVisible="{Binding HasClip}"
+                                   Margin="0,0,24,0" FontWeight="SemiBold" Foreground="{DynamicResource WorkbenchDangerBrush}"/>
+                        <TextBlock Text="{Binding ClipSummary}" TextWrapping="Wrap"/>
+                    </WrapPanel>
                 </Grid>
             </Border>
             <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto" ColumnSpacing="16">
