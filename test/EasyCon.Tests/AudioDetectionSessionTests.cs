@@ -98,6 +98,181 @@ public class AudioDetectionSessionTests
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1), "The independent wait listener was removed; run history remains.");
     }
 
+    [TestCase(8000, 16, "pcm")]
+    [TestCase(44100, 16, "pcm")]
+    [TestCase(96000, 16, "pcm")]
+    [TestCase(96000, 32, "float")]
+    public void WaitFinishesQueuedTailWhenPollingResumesJustAfterTimeout(int rate, int bitsPerSample, string encoding)
+    {
+        AudioTestRig rig = new(new AudioFormat(rate, 1, bitsPerSample, encoding));
+        using AudioDetectionSession session = rig.Open();
+        rig.PlayOnDelay(new byte[rate * bitsPerSample / 8], packetMilliseconds: 10);
+        Action deliver = rig.AfterDelay!;
+        rig.AfterDelay = () =>
+        {
+            deliver();
+            if (rig.Time == AudioTestRig.Epoch + 990_000_000)
+                rig.Advance(15); // The last pre-deadline packet arrives between worker polls.
+        };
+
+        Assert.That(session.Wait("tone", 1000), Is.False);
+        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + 1_005_000_000));
+        Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
+        Assert.That(rig.Source.StateSubscribers, Is.EqualTo(1));
+        Assert.That(rig.Source.Disposed, Is.False);
+    }
+
+    [Test]
+    public void WaitCanMatchTheLastPreDeadlinePacketDuringCompletion()
+    {
+        AudioTestRig rig = new();
+        using AudioDetectionSession session = rig.Open();
+        // The complete template ends at 990 ms; the last feature needs that final 10 ms packet.
+        rig.PlayOnDelay([.. new byte[6240], .. rig.Sound], packetMilliseconds: 10);
+        Action deliver = rig.AfterDelay!;
+        rig.AfterDelay = () =>
+        {
+            deliver();
+            if (rig.Time == AudioTestRig.Epoch + 990_000_000)
+                rig.Advance(15);
+        };
+
+        Assert.That(session.Wait("tone", 1000, rig.ReferenceScore()), Is.True);
+        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + 1_005_000_000));
+        Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
+    }
+
+    [TestCase(3, false)]
+    [TestCase(30, true)]
+    public void WaitChecksTheCompletionBudgetDuringAnalysis(int clockStepMilliseconds, bool expires)
+    {
+        AudioTestRig rig = new();
+        bool analysisInProgress = false;
+        using AudioDetectionSession session = rig.Open(() =>
+        {
+            if (analysisInProgress)
+                rig.Advance(clockStepMilliseconds);
+            return rig.Time;
+        });
+        rig.PlayOnDelay([.. new byte[6240], .. rig.Sound], packetMilliseconds: 10);
+        Action deliver = rig.AfterDelay!;
+        rig.AfterDelay = () =>
+        {
+            deliver();
+            if (rig.Time == AudioTestRig.Epoch + 990_000_000)
+                analysisInProgress = true; // Clock keeps moving while the final packet is analyzed.
+        };
+
+        if (expires)
+            Assert.That(Assert.Throws<InvalidOperationException>(() => session.Wait("tone", 1000, rig.ReferenceScore()))!.Message,
+                Does.Contain("处理宽限"));
+        else
+        {
+            Assert.That(session.Wait("tone", 1000, rig.ReferenceScore()), Is.True);
+            Assert.That(rig.Time, Is.GreaterThan(AudioTestRig.Epoch + 1_000_000_000)
+                .And.LessThanOrEqualTo(AudioTestRig.Epoch + 1_250_000_000));
+        }
+        Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
+    }
+
+    [TestCase(0)]
+    [TestCase(10)]
+    public void WaitCompletionNeverIncludesPacketsAtOrAfterTheListeningDeadline(int lateMilliseconds)
+    {
+        AudioTestRig rig = new();
+        using AudioDetectionSession session = rig.Open();
+        rig.PlayOnDelay([.. new byte[6400], .. rig.Sound], packetMilliseconds: 10);
+        Action deliver = rig.AfterDelay!;
+        rig.AfterDelay = () =>
+        {
+            deliver();
+            if (rig.Time == AudioTestRig.Epoch + 990_000_000)
+            {
+                rig.Advance(10 + lateMilliseconds);
+                deliver(); // This final piece would complete the matching template, but is too late.
+            }
+        };
+
+        Assert.That(session.Wait("tone", 1000, rig.ReferenceScore()), Is.False);
+        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + (1000 + lateMilliseconds) * 1_000_000L));
+    }
+
+    [Test]
+    public void WaitStillRejectsSubstantialQueuedAudioAtTimeout()
+    {
+        AudioTestRig rig = new();
+        using AudioDetectionSession session = rig.Open();
+        rig.PlayOnDelay(new byte[16000]);
+        Action deliver = rig.AfterDelay!;
+        rig.AfterDelay = () =>
+        {
+            deliver();
+            if (rig.Time == AudioTestRig.Epoch + 700_000_000)
+            {
+                rig.Feed(new byte[4800]); // Worker stalls while 300 ms of eligible audio accumulates.
+                rig.Advance(5);
+            }
+        };
+
+        Assert.That(Assert.Throws<InvalidOperationException>(() => session.Wait("tone", 1000))!.Message,
+            Does.Contain("积压"));
+        Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
+    }
+
+    [TestCase(260, false)]
+    [TestCase(261, true)]
+    public void WaitCompletionAllowanceIsBounded(int stallMilliseconds, bool expires)
+    {
+        AudioTestRig rig = new();
+        using AudioDetectionSession session = rig.Open();
+        rig.PlayOnDelay(new byte[16000], packetMilliseconds: 10);
+        Action deliver = rig.AfterDelay!;
+        rig.AfterDelay = () =>
+        {
+            deliver();
+            if (rig.Time == AudioTestRig.Epoch + 990_000_000)
+                rig.Advance(stallMilliseconds);
+        };
+
+        if (expires)
+            Assert.That(Assert.Throws<InvalidOperationException>(() => session.Wait("tone", 1000))!.Message,
+                Does.Contain("处理宽限"));
+        else
+            Assert.That(session.Wait("tone", 1000), Is.False);
+        Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void WaitCompletionStillHonorsCancellationAndDisconnection(bool disconnect)
+    {
+        AudioTestRig rig = new();
+        using CancellationTokenSource cancellation = new();
+        using AudioDetectionSession session = rig.Open();
+        rig.PlayOnDelay(new byte[16000], packetMilliseconds: 10);
+        Action deliver = rig.AfterDelay!;
+        rig.AfterDelay = () =>
+        {
+            deliver();
+            if (rig.Time == AudioTestRig.Epoch + 990_000_000)
+            {
+                rig.Advance(15);
+                if (disconnect)
+                    rig.Source.Reconnect();
+                else
+                    cancellation.Cancel();
+            }
+        };
+
+        if (disconnect)
+            Assert.Throws<InvalidOperationException>(() => session.Wait("tone", 1000, token: cancellation.Token));
+        else
+            Assert.Throws<OperationCanceledException>(() => session.Wait("tone", 1000, token: cancellation.Token));
+        Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
+        Assert.That(rig.Source.StateSubscribers, Is.EqualTo(1));
+        Assert.That(rig.Source.Disposed, Is.False);
+    }
+
     [Test]
     public void WaitUsesTheRawDiagnosticScoreAndReturnsEarlyWithoutCooldown()
     {
@@ -242,12 +417,12 @@ internal sealed class AudioTestRig
         Template = AudioMatchTemplate.Create(new AudioClip(new AudioFormat(8000, 1, 16, "pcm"), Sound))!;
     }
 
-    public AudioDetectionSession Open() => new(Source, (_, token) =>
+    public AudioDetectionSession Open(Func<long>? clock = null) => new(Source, (_, token) =>
     {
         token.ThrowIfCancellationRequested();
         LoadAction?.Invoke();
         return Template;
-    }, () => Time, (ms, token) =>
+    }, clock ?? (() => Time), (ms, token) =>
     {
         token.ThrowIfCancellationRequested();
         Advance(ms);
@@ -269,17 +444,20 @@ internal sealed class AudioTestRig
         }
     }
 
-    public void PlayOnDelay(byte[] pcm)
+    public void PlayOnDelay(byte[] pcm, int packetMilliseconds = 100)
     {
-        long next = Time + 100_000_000;
+        AudioFormat format = Source.State.Format!;
+        int packetBytes = format.SampleRate * packetMilliseconds / 1000 * AudioClip.GetBlockAlign(format);
+        long next = Time + packetMilliseconds * 1_000_000L;
         int offset = 0;
         AfterDelay = () =>
         {
             if (Time < next || offset >= pcm.Length)
                 return;
-            Source.Emit(pcm.AsSpan(offset, 1600).ToArray());
-            offset += 1600;
-            next += 100_000_000;
+            int length = Math.Min(packetBytes, pcm.Length - offset);
+            Source.Emit(pcm.AsSpan(offset, length).ToArray());
+            offset += length;
+            next += packetMilliseconds * 1_000_000L;
         };
     }
 
