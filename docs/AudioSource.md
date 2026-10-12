@@ -10,7 +10,7 @@ EasyCon 的 Avalonia 主窗口现在可以独立连接 Windows WASAPI 录音输�
 - 在主窗口的经典布局和卡片布局中显示设备、格式、连接状态及峰值 dBFS。
 - 应用退出或主窗口关闭时停止采集并释放 WASAPI 资源。
 
-本次只加入音频源和电平展示，不包含音频判闪、频谱分析、样本匹配或任何自动化决策。后续消费者可以订阅 `MainWindowViewModel.Audio.CaptureSource.DataAvailable`，自行处理 `AudioChunk`；音频采集不会改变现有 ECS 脚本的等待、按键或图像判定行为。
+音频面板还提供[声音标签编辑器](AudioLabels.md)，可以截取最近音频、裁剪、试听和保存样本。目前不包含音频判闪、频谱分析、样本匹配或任何自动化决策。后续消费者可以订阅 `MainWindowViewModel.Audio.CaptureSource.DataAvailable`，自行处理 `AudioChunk`；音频采集不会改变现有 ECS 脚本的等待、按键或图像判定行为。
 
 ## 数据模型
 

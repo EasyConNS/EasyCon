@@ -210,4 +210,35 @@
     <x:String x:Key="Text.Feature.ControllerBt">Bluetooth Controller</x:String>
     <x:String x:Key="Text.Feature.ESPConfig">ESP32 Controller Settings</x:String>
     <x:String x:Key="Text.Feature.Drawing">Drawing</x:String>
+    <!-- Audio label editor -->
+    <x:String x:Key="Text.AudioLabel.Title">Audio labels</x:String>
+    <x:String x:Key="Text.AudioLabel.Intro">Capture recent audio after hearing a sound, select its boundaries, preview and save. Game audio keeps capturing while you edit.</x:String>
+    <x:String x:Key="Text.AudioLabel.Capture">Capture last 10 seconds</x:String>
+    <x:String x:Key="Text.AudioLabel.Open">Open WAV / audio label</x:String>
+    <x:String x:Key="Text.AudioLabel.FileFilter">WAV audio / audio label</x:String>
+    <x:String x:Key="Text.AudioLabel.WaveformHint">Drag to select a clip or adjust either boundary. You can also enter times below.</x:String>
+    <x:String x:Key="Text.AudioLabel.Empty">Capture game audio or open an existing clip</x:String>
+    <x:String x:Key="Text.AudioLabel.Start">Start time (seconds)</x:String>
+    <x:String x:Key="Text.AudioLabel.End">End time (seconds)</x:String>
+    <x:String x:Key="Text.AudioLabel.SelectAll">Select all</x:String>
+    <x:String x:Key="Text.AudioLabel.Play">Preview selection</x:String>
+    <x:String x:Key="Text.AudioLabel.Stop">Stop preview</x:String>
+    <x:String x:Key="Text.AudioLabel.PreviewUnsupported">Preview is unavailable on this platform. Existing audio can still be edited and saved.</x:String>
+    <x:String x:Key="Text.AudioLabel.Name">Label name</x:String>
+    <x:String x:Key="Text.AudioLabel.NamePlaceholder">For example: Shiny sound</x:String>
+    <x:String x:Key="Text.AudioLabel.Save">Save selection as label</x:String>
+    <x:String x:Key="Text.AudioLabel.InvalidName">Use a valid file name without paths, reserved characters, or trailing spaces or periods.</x:String>
+    <x:String x:Key="Text.AudioLabel.Ready">Connect game audio, then capture the last 10 seconds.</x:String>
+    <x:String x:Key="Text.AudioLabel.NoHistory">No recent audio. Connect an audio source and check that data is arriving. Your current selection is kept.</x:String>
+    <x:String x:Key="Text.AudioLabel.Captured">Captured the last {0:F3} seconds. Select the complete sound and preview it.</x:String>
+    <x:String x:Key="Text.AudioLabel.Loaded">Audio opened. Adjust the selection and save it as a new label.</x:String>
+    <x:String x:Key="Text.AudioLabel.ClipSummary">Duration {0:F3} s · {1:N0} Hz · {2} channels · {3} bit</x:String>
+    <x:String x:Key="Text.AudioLabel.SelectionSummary">Selection {0:F3} → {1:F3} s · Length {2:F3} s</x:String>
+    <x:String x:Key="Text.AudioLabel.Playing">Previewing the selection through the default audio output.</x:String>
+    <x:String x:Key="Text.AudioLabel.Played">Preview finished.</x:String>
+    <x:String x:Key="Text.AudioLabel.Stopped">Preview stopped.</x:String>
+    <x:String x:Key="Text.AudioLabel.SaveFolder">Choose a folder for audio labels</x:String>
+    <x:String x:Key="Text.AudioLabel.AlreadyExists">A label with this name already exists. Choose another name or folder.</x:String>
+    <x:String x:Key="Text.AudioLabel.Saved">Label saved: {0}</x:String>
+    <x:String x:Key="Text.AudioLabel.Error">Operation failed: {0}</x:String>
 </ResourceDictionary>
