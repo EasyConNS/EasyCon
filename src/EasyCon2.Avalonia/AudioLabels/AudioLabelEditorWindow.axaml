@@ -1,0 +1,81 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:audio="using:EasyCon2.Avalonia.AudioLabels"
+        xmlns:loc="using:EasyCon2.Avalonia.Markup"
+        x:Class="EasyCon2.Avalonia.AudioLabels.AudioLabelEditorWindow"
+        x:DataType="audio:AudioLabelEditorViewModel"
+        Title="{loc:Translate Text.AudioLabel.Title}"
+        Width="900" Height="720" MinWidth="720" MinHeight="540"
+        Background="{DynamicResource WorkbenchWindowBrush}"
+        Foreground="{DynamicResource WorkbenchTextBrush}"
+        WindowStartupLocation="CenterOwner">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="18">
+            <StackPanel Spacing="6">
+                <TextBlock Text="{loc:Translate Text.AudioLabel.Title}" FontSize="22" FontWeight="SemiBold"/>
+                <TextBlock Text="{loc:Translate Text.AudioLabel.Intro}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+            </StackPanel>
+            <WrapPanel Grid.Row="1" Orientation="Horizontal">
+                <Button x:Name="CaptureRecentButton" Content="{loc:Translate Text.AudioLabel.Capture}"
+                        Command="{Binding CaptureRecentCommand}" Margin="0,0,10,0"/>
+                <Button Content="{loc:Translate Text.AudioLabel.Open}" Command="{Binding OpenCommand}"/>
+            </WrapPanel>
+            <Border Grid.Row="2" Background="{DynamicResource WorkbenchPanelBrush}"
+                    BorderBrush="{DynamicResource WorkbenchBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16">
+                <Grid RowDefinitions="Auto,180,Auto" RowSpacing="10">
+                    <TextBlock Text="{loc:Translate Text.AudioLabel.WaveformHint}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                    <audio:AudioWaveform x:Name="Waveform" Grid.Row="1" Peaks="{Binding Waveform}"
+                                         Duration="{Binding Duration}" SelectionStart="{Binding SelectionStart}"
+                                         SelectionEnd="{Binding SelectionEnd}" IsEnabled="{Binding CanChangeSelection}"
+                                         WaveBrush="{DynamicResource WorkbenchAccentBrush}"
+                                         AutomationProperties.Name="{loc:Translate Text.AudioLabel.WaveformHint}"/>
+                    <TextBlock Grid.Row="1" Text="{loc:Translate Text.AudioLabel.Empty}" IsVisible="{Binding !HasClip}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                    <TextBlock Grid.Row="2" Text="{Binding ClipSummary}"/>
+                </Grid>
+            </Border>
+            <Grid Grid.Row="3" ColumnDefinitions="*,*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{loc:Translate Text.AudioLabel.Start}"/>
+                    <NumericUpDown x:Name="SelectionStartInput" Value="{Binding SelectionStart, Mode=TwoWay}"
+                                   Minimum="0" Maximum="{Binding SelectionEnd}" Increment="0.01" FormatString="F3"
+                                   IsEnabled="{Binding CanChangeSelection}"
+                                   AutomationProperties.Name="{loc:Translate Text.AudioLabel.Start}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{loc:Translate Text.AudioLabel.End}"/>
+                    <NumericUpDown Value="{Binding SelectionEnd, Mode=TwoWay}" Minimum="{Binding SelectionStart}"
+                                   Maximum="{Binding Duration}" Increment="0.01" FormatString="F3"
+                                   IsEnabled="{Binding CanChangeSelection}"
+                                   AutomationProperties.Name="{loc:Translate Text.AudioLabel.End}"/>
+                </StackPanel>
+                <Button Grid.Column="2" VerticalAlignment="Bottom" Content="{loc:Translate Text.AudioLabel.SelectAll}"
+                        Command="{Binding SelectAllCommand}"/>
+            </Grid>
+            <StackPanel Grid.Row="4" Spacing="10">
+                <TextBlock Text="{Binding SelectionSummary}"/>
+                <WrapPanel Orientation="Horizontal">
+                    <Button Content="{loc:Translate Text.AudioLabel.Play}" Command="{Binding PlaySelectionCommand}" Margin="0,0,10,0"/>
+                    <Button Content="{loc:Translate Text.AudioLabel.Stop}" Command="{Binding StopPreviewCommand}"/>
+                </WrapPanel>
+                <TextBlock Text="{loc:Translate Text.AudioLabel.PreviewUnsupported}" IsVisible="{Binding !IsPreviewSupported}"
+                           TextWrapping="Wrap" Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+            </StackPanel>
+            <Grid Grid.Row="5" ColumnDefinitions="*,Auto" ColumnSpacing="16" RowDefinitions="Auto,Auto,Auto" RowSpacing="6">
+                <TextBlock Text="{loc:Translate Text.AudioLabel.Name}"/>
+                <TextBox Grid.Row="1" x:Name="LabelNameInput" Text="{Binding LabelName}" MaxLength="80"
+                         IsEnabled="{Binding CanChangeSelection}" Watermark="{loc:Translate Text.AudioLabel.NamePlaceholder}"
+                         AutomationProperties.Name="{loc:Translate Text.AudioLabel.Name}"/>
+                <Button Grid.Row="1" Grid.Column="1" Content="{loc:Translate Text.AudioLabel.Save}" Command="{Binding SaveCommand}"/>
+                <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Text="{loc:Translate Text.AudioLabel.InvalidName}"
+                           IsVisible="{Binding IsNameInvalid}" TextWrapping="Wrap" Foreground="{DynamicResource WorkbenchDangerBrush}"/>
+            </Grid>
+            <Border Grid.Row="6" Background="{DynamicResource WorkbenchPanelBrush}" CornerRadius="6" Padding="12">
+                <TextBlock Text="{Binding Status}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</Window>

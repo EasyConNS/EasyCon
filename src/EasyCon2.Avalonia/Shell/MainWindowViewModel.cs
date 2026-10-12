@@ -271,6 +271,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand StopRecordCommand { get; }
     public ICommand ShowMonitorCommand { get; }
     public ICommand OpenTagEditorCommand { get; }
+    public ICommand OpenAudioLabelsCommand { get; }
     public ICommand OpenESPConfigCommand { get; }
     public ICommand OpenAlertConfigCommand { get; }
     public ICommand OpenModelsConfigCommand { get; }
@@ -457,6 +458,7 @@ public partial class MainWindowViewModel : ViewModelBase
         StopRecordCommand = new RelayCommand(StopRecord);
         ShowMonitorCommand = new RelayCommand(ShowMonitor);
         OpenTagEditorCommand = new RelayCommand(OpenTagEditor);
+        OpenAudioLabelsCommand = new RelayCommand(() => _windowService.Show(WindowKeys.AudioLabels));
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
         OpenAlertConfigCommand = new RelayCommand(OpenAlertConfig);
         OpenModelsConfigCommand = new RelayCommand(OpenModelsConfig);

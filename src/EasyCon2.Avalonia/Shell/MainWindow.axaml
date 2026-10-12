@@ -738,6 +738,9 @@
                                 IsVisible="{Binding Audio.IsSupported}"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"/>
+                        <Button Content="{loc:Translate Text.AudioLabel.Title}"
+                                Command="{Binding OpenAudioLabelsCommand}" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"/>
                     </StackPanel>
                 </GroupBox>
 
@@ -1233,13 +1236,14 @@
                                        Foreground="{DynamicResource WorkbenchMutedTextBrush}"
                                        TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
-                        <Button Grid.Row="3"
-                                Content="{Binding Audio.AudioSourceButtonText}"
-                                Command="{Binding Audio.ConnectAudioSourceCommand}"
-                                IsEnabled="{Binding !Audio.IsConnectingAudioSource}"
-                                IsVisible="{Binding Audio.IsSupported}"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Bottom"/>
+                        <StackPanel Grid.Row="3" Spacing="6">
+                            <Button Content="{Binding Audio.AudioSourceButtonText}"
+                                    Command="{Binding Audio.ConnectAudioSourceCommand}"
+                                    IsEnabled="{Binding !Audio.IsConnectingAudioSource}"
+                                    IsVisible="{Binding Audio.IsSupported}" HorizontalAlignment="Stretch"/>
+                            <Button Content="{loc:Translate Text.AudioLabel.Title}"
+                                    Command="{Binding OpenAudioLabelsCommand}" HorizontalAlignment="Stretch"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
 
@@ -1340,4 +1344,3 @@
     </Grid>
     </Border>
 </Window>
-
