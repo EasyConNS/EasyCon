@@ -35,6 +35,7 @@
     <PackageVersion Include="NUnit.Analyzers" Version="4.12.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
     <PackageVersion Include="FlashCap" Version="1.11.0" />
+    <PackageVersion Include="NAudio" Version="2.2.1" />
     <PackageVersion Include="OpenCvSharp5" Version="5.0.0.20260905" />
     <PackageVersion Include="OpenCvSharp5.runtime.win" Version="5.0.0.20260905" />
     <PackageVersion Include="OpenCvSharp5.official.runtime.linux-x64" Version="5.0.0.20260905" />
