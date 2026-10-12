@@ -86,6 +86,15 @@ public partial class App : Application
                 editor.CaptureRecentCommand.Execute(null);
                 return window;
             });
+            windowService.Register(WindowKeys.AudioMatchTest, () =>
+            {
+                AudioMatchTestViewModel matcher = new(audioSource, dialogService, uiDispatcher,
+                    () => mainWindowViewModel.CurrentScriptPath);
+                AudioMatchTestWindow window = new() { DataContext = matcher };
+                window.Closed += (_, _) => matcher.Dispose();
+                window.Activated += (_, _) => matcher.RefreshLocalizedTexts();
+                return window;
+            });
             var mainWindow = new MainWindow { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
             // 显式关停，不用 OnMainWindowClose：其 TryShutdown 会被关停瞬间仍在窗口列表里的
