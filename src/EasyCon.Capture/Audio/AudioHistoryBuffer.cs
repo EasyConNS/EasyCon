@@ -23,6 +23,15 @@ public sealed class AudioHistoryBuffer : IDisposable
 
     public bool IsSupported => _source.IsSupported;
 
+    public AudioClipRecording BeginRecording()
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return new AudioClipRecording(_source);
+        }
+    }
+
     public AudioHistoryBuffer(IAudioCaptureSource source, double seconds = 15)
         : this(source, seconds, Stopwatch.GetTimestamp)
     {

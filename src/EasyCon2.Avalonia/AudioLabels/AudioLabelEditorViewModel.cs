@@ -16,6 +16,10 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
     private readonly Func<string?> _scriptPath;
     private AudioClip? _clip;
     private CancellationTokenSource? _playback;
+    private TaskCompletionSource? _playbackEnded;
+    private AudioClipRecording? _recording;
+    private bool _pauseRequested;
+    private bool _startFromCursor;
     private bool _disposed;
     private string _statusKey = "Text.AudioLabel.Ready";
     private object[] _statusArguments = [];
@@ -36,6 +40,21 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
     private bool _isPlaying;
 
     [ObservableProperty]
+    private bool _isPaused;
+
+    [ObservableProperty]
+    private bool _isPreviewTransitioning;
+
+    [ObservableProperty]
+    private bool _isRecording;
+
+    [ObservableProperty]
+    private double _recordingDuration;
+
+    [ObservableProperty]
+    private double _recordingLimit = 15;
+
+    [ObservableProperty]
     private double? _playbackPosition;
 
     [ObservableProperty]
@@ -52,7 +71,11 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         CaptureRecentCommand = new AsyncRelayCommand(CaptureRecentAsync, () => CanEdit() && _history.IsSupported);
         OpenCommand = new AsyncRelayCommand(OpenAsync, CanEdit);
         PlaySelectionCommand = new AsyncRelayCommand(PlaySelectionAsync, () => CanUseSelection() && _preview.IsSupported);
-        StopPreviewCommand = new AsyncRelayCommand(StopPlaybackAsync, () => IsPlaying);
+        TogglePreviewCommand = new AsyncRelayCommand(TogglePreviewAsync,
+            () => !_disposed && !IsBusy && !IsRecording && !IsPreviewTransitioning && _preview.IsSupported && HasClip && SelectionEnd > SelectionStart);
+        StopPreviewCommand = new AsyncRelayCommand(StopPlaybackAsync, () => !_disposed && !IsPreviewTransitioning && (IsPlaying || IsPaused));
+        ToggleRecordingCommand = new RelayCommand(ToggleRecording, () => !IsBusy && (IsRecording || CanEdit()) && _history.IsSupported && !_disposed);
+        SeekPreviewCommand = new RelayCommand<double>(SeekPreview, _ => CanUseSelection());
         SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanUseSelection() && AudioLabelStore.IsValidName(LabelName));
         SelectAllCommand = new RelayCommand(() => { SelectionStart = 0; SelectionEnd = Duration; }, () => CanEdit() && HasClip);
         if (!_history.IsSupported)
@@ -62,7 +85,10 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
     public IAsyncRelayCommand CaptureRecentCommand { get; }
     public IAsyncRelayCommand OpenCommand { get; }
     public IAsyncRelayCommand PlaySelectionCommand { get; }
+    public IAsyncRelayCommand TogglePreviewCommand { get; }
     public IAsyncRelayCommand StopPreviewCommand { get; }
+    public IRelayCommand ToggleRecordingCommand { get; }
+    public IRelayCommand<double> SeekPreviewCommand { get; }
     public IAsyncRelayCommand SaveCommand { get; }
     public IRelayCommand SelectAllCommand { get; }
     public bool HasClip => _clip != null;
@@ -76,8 +102,11 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
     public string SelectionSummary => string.Format(L10nBridge.T("Text.AudioLabel.SelectionSummary"),
         SelectionStart, SelectionEnd, Math.Max(0, SelectionEnd - SelectionStart));
     public string PlaybackSummary => string.Format(L10nBridge.T("Text.AudioLabel.PlaybackSummary"), PlaybackPosition ?? 0, Duration);
+    public string PreviewButtonText => L10nBridge.T(IsPlaying ? "Text.AudioLabel.Pause" : IsPaused ? "Text.AudioLabel.Resume" : "Text.AudioLabel.Play");
+    public string RecordingButtonText => L10nBridge.T(IsRecording ? "Text.AudioLabel.StopRecording" : "Text.AudioLabel.Record");
+    public string RecordingSummary => string.Format(L10nBridge.T("Text.AudioLabel.RecordingSummary"), RecordingDuration, RecordingLimit);
 
-    private bool CanEdit() => !_disposed && !IsBusy && !IsPlaying;
+    private bool CanEdit() => !_disposed && !IsBusy && !IsPlaying && !IsRecording && !IsPreviewTransitioning;
     private bool CanUseSelection() => CanEdit() && HasClip && SelectionEnd > SelectionStart;
 
     partial void OnLabelNameChanged(string value)
@@ -104,12 +133,23 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
 
     private void SelectionChanged()
     {
+        if (IsPaused)
+            SetStatus("Text.AudioLabel.Stopped");
+        IsPaused = false;
+        _startFromCursor = false;
+        if (PlaybackPosition is double position)
+            PlaybackPosition = Math.Clamp(position, SelectionStart, SelectionEnd);
         OnPropertyChanged(nameof(SelectionSummary));
         NotifyCommands();
     }
 
     partial void OnIsBusyChanged(bool value) => NotifyCommands();
     partial void OnIsPlayingChanged(bool value) => NotifyCommands();
+    partial void OnIsPausedChanged(bool value) => NotifyCommands();
+    partial void OnIsPreviewTransitioningChanged(bool value) => NotifyCommands();
+    partial void OnIsRecordingChanged(bool value) => NotifyCommands();
+    partial void OnRecordingDurationChanged(double value) => OnPropertyChanged(nameof(RecordingSummary));
+    partial void OnRecordingLimitChanged(double value) => OnPropertyChanged(nameof(RecordingSummary));
     partial void OnPlaybackPositionChanged(double? value) => OnPropertyChanged(nameof(PlaybackSummary));
 
     private void NotifyCommands()
@@ -117,10 +157,101 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         CaptureRecentCommand.NotifyCanExecuteChanged();
         OpenCommand.NotifyCanExecuteChanged();
         PlaySelectionCommand.NotifyCanExecuteChanged();
+        TogglePreviewCommand.NotifyCanExecuteChanged();
         StopPreviewCommand.NotifyCanExecuteChanged();
+        ToggleRecordingCommand.NotifyCanExecuteChanged();
+        SeekPreviewCommand.NotifyCanExecuteChanged();
         SaveCommand.NotifyCanExecuteChanged();
         SelectAllCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(CanChangeSelection));
+        OnPropertyChanged(nameof(PreviewButtonText));
+        OnPropertyChanged(nameof(RecordingButtonText));
+    }
+
+    private void ToggleRecording()
+    {
+        if (_disposed || IsBusy)
+            return;
+        if (_recording != null)
+        {
+            _recording.Stop();
+            return;
+        }
+        if (!CanEdit())
+            return;
+        try
+        {
+            AudioClipRecording recording = _history.BeginRecording();
+            _recording = recording;
+            IsPaused = false;
+            _startFromCursor = false;
+            RecordingDuration = 0;
+            RecordingLimit = recording.MaximumSeconds;
+            IsRecording = true;
+            SetStatus("Text.AudioLabel.Recording");
+            _ = ObserveRecordingAsync(recording);
+        }
+        catch (Exception ex)
+        {
+            SetStatus("Text.AudioLabel.Error", ex.Message);
+        }
+    }
+
+    private async Task ObserveRecordingAsync(AudioClipRecording recording)
+    {
+        try
+        {
+            while (!recording.Completion.IsCompleted)
+            {
+                await Task.WhenAny(recording.Completion, Task.Delay(50));
+                if (_disposed)
+                    return;
+                RecordingDuration = recording.Duration;
+            }
+            AudioClip clip = await recording.Completion;
+            if (_disposed)
+                return;
+            IsBusy = true;
+            AudioWaveformPeak[] waveform = await Task.Run(() => clip.CreateWaveform());
+            if (!_disposed)
+            {
+                SetClip(clip, waveform);
+                SetStatus(recording.ReachedLimit ? "Text.AudioLabel.RecordedLimit" : "Text.AudioLabel.Recorded", clip.DurationSeconds);
+            }
+        }
+        catch (OperationCanceledException) when (_disposed)
+        {
+        }
+        catch (Exception ex)
+        {
+            SetStatus("Text.AudioLabel.Error", ex.Message);
+        }
+        finally
+        {
+            recording.Dispose();
+            _recording = null;
+            IsRecording = false;
+            IsBusy = false;
+        }
+    }
+
+    private void SeekPreview(double position)
+    {
+        if (!CanUseSelection() || !double.IsFinite(position))
+            return;
+        PlaybackPosition = Math.Clamp(position, SelectionStart, SelectionEnd);
+        _startFromCursor = true;
+    }
+
+    private async Task TogglePreviewAsync()
+    {
+        if (IsPlaying)
+        {
+            _pauseRequested = true;
+            await CancelPlaybackAsync();
+        }
+        else if (PlaySelectionCommand.CanExecute(null))
+            _ = PlaySelectionCommand.ExecuteAsync(null);
     }
 
     private async Task CaptureRecentAsync()
@@ -194,6 +325,8 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
 
     private void SetClip(AudioClip clip, AudioWaveformPeak[] waveform)
     {
+        IsPaused = false;
+        _startFromCursor = false;
         // Reset the start before installing a shorter clip so all clamps stay ordered.
         SelectionStart = 0;
         _clip = clip;
@@ -211,12 +344,23 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
     {
         if (!CanUseSelection() || _clip == null)
             return;
-        AudioClip selection = _clip.Slice(SelectionStart, SelectionEnd);
-        double start = Math.Floor(SelectionStart * _clip.Format.SampleRate) / _clip.Format.SampleRate;
+        double requestedStart = _startFromCursor ? Math.Clamp(PlaybackPosition ?? SelectionStart, SelectionStart, SelectionEnd) : SelectionStart;
+        _startFromCursor = false;
+        IsPaused = false;
+        if (requestedStart >= SelectionEnd)
+        {
+            SetStatus("Text.AudioLabel.Played");
+            return;
+        }
+        AudioClip selection = _clip.Slice(requestedStart, SelectionEnd);
+        double start = Math.Floor(requestedStart * _clip.Format.SampleRate) / _clip.Format.SampleRate;
         double end = Math.Min(Duration, start + selection.DurationSeconds);
         double lastPosition = 0;
         using CancellationTokenSource playback = new();
+        TaskCompletionSource ended = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _playbackEnded = ended;
         _playback = playback;
+        _pauseRequested = false;
         PlaybackPosition = start;
         IsPlaying = true;
         SetStatus("Text.AudioLabel.Playing");
@@ -241,7 +385,9 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         }
         catch (OperationCanceledException) when (playback.IsCancellationRequested)
         {
-            SetStatus("Text.AudioLabel.Stopped");
+            IsPaused = _pauseRequested && !_disposed;
+            _startFromCursor = IsPaused;
+            SetStatus(IsPaused ? "Text.AudioLabel.Paused" : "Text.AudioLabel.Stopped");
         }
         catch (Exception ex)
         {
@@ -252,7 +398,9 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
             if (!_disposed)
                 PlaybackPosition = Math.Clamp(Math.Max(PlaybackPosition ?? start, start + Volatile.Read(ref lastPosition)), start, end);
             _playback = null;
+            _playbackEnded = null;
             IsPlaying = false;
+            ended.TrySetResult();
         }
     }
 
@@ -288,13 +436,26 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
 
     private async Task StopPlaybackAsync()
     {
+        _pauseRequested = false;
+        IsPaused = false;
+        _startFromCursor = false;
+        await CancelPlaybackAsync();
+        SetStatus("Text.AudioLabel.Stopped");
+    }
+
+    private async Task CancelPlaybackAsync()
+    {
         CancellationTokenSource? playback = _playback;
+        Task? ended = _playbackEnded?.Task;
         if (playback == null)
             return;
+        IsPreviewTransitioning = true;
         try
         {
             // Native Stop may wait for the output thread. Never run cancellation callbacks on the UI thread.
             await playback.CancelAsync();
+            if (ended != null)
+                await ended;
         }
         catch (ObjectDisposedException)
         {
@@ -303,6 +464,10 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             SetStatus("Text.AudioLabel.Error", ex.Message);
+        }
+        finally
+        {
+            IsPreviewTransitioning = false;
         }
     }
 
@@ -327,11 +492,15 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(ClipSummary));
         OnPropertyChanged(nameof(SelectionSummary));
         OnPropertyChanged(nameof(PlaybackSummary));
+        OnPropertyChanged(nameof(PreviewButtonText));
+        OnPropertyChanged(nameof(RecordingButtonText));
+        OnPropertyChanged(nameof(RecordingSummary));
     }
 
     public void Dispose()
     {
         _disposed = true;
+        _recording?.Dispose();
         _ = StopPlaybackAsync();
         // The application owns history and capture; closing the editor releases only its snapshot/playback.
         _clip = null;
