@@ -108,14 +108,14 @@ public static partial class BytecodeEncoder
             {
                 int count = Math.Min(_tplChunkSize, elements.Count - offset);
                 for (int j = 0; j < count; j++)
-                    EmitConstToSlot(elements[offset + j], EcsRegisters.StagingBase + j);
+                    EmitConstToSlot(elements[offset + j], _stagingBase + j);
                 if (offset == 0)
                 {
-                    EmitExt(EcsOpcode.NewArrV, _tplArr, count, EcsRegisters.StagingBase, elemCode);
+                    EmitExt(EcsOpcode.NewArrV, _tplArr, count, _stagingBase, elemCode);
                 }
                 else
                 {
-                    EmitExt(EcsOpcode.NewArrV, _tplChunk, count, EcsRegisters.StagingBase, elemCode);
+                    EmitExt(EcsOpcode.NewArrV, _tplChunk, count, _stagingBase, elemCode);
                     EmitIabc(EcsOpcode.Cat, _tplArr, _tplArr, _tplChunk);
                 }
                 offset += count;

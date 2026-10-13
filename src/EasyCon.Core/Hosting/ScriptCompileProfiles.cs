@@ -11,7 +11,8 @@ namespace EasyCon.Core.Hosting;
 /// <para>
 /// 单流化后（docs/SingleStreamFormat.md §2（R-5 档位塌缩））：所有产物都是同一种
 /// 同一产物形态（ECX1 平铺），**没有宽窄之分**——原 Desktop/Portable 的格式维度随 <c>EnablePcWideSlots</c>
-/// 一起删除，varint 基流让 >255 槽位的函数在全部目标下可编译、可序列化、可缓存。
+/// 一起删除。当前定长指令编码的函数帧预算为 255 槽；参数与出站窗口按需分配，
+/// 桌面与 MCU 共用该预算及同一条可序列化指令流。
 /// 「能不能装进设备」是资源问题，由烧录前的容量预检判定（McuTargetProfile），
 /// 不再由编译档位表达。剩余的两档只是**缓存策略**（与产物内容无关，不进缓存键）：
 /// </para>

@@ -39,7 +39,7 @@ public static class DiagnosticCodes
     public const string ModuleNameConflict = "ECX0114";
     public const string ImageLabelNotFound = "ECX0115";
     public const string InvalidConstantExpression = "ECX0116";
-    public const string ParamWindowOverflow = "ECX0117";    // 参数个数超过实参窗容量（7）
+    public const string ParamWindowOverflow = "ECX0117";    // 参数个数超过字节码参数上限
 
     // ---- 类型 ----
     public const string CannotConvert = "ECX0201";

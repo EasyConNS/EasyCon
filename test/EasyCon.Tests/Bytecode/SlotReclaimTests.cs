@@ -66,8 +66,8 @@ public class SlotReclaimTests
 
         // 5 个死局部（SCCP 折叠 + 无观察读取）不再占帧槽：
         // NSlots（帧长 = 寄存器高水位）压到分配区起点 + 少量临时（独占/池）之内；
-        // 参数走 ARG 窗（R1–R7），不占分配区
-        Assert.That(fn.NSlots, Is.LessThanOrEqualTo(EcsRegisters.AllocBase + 4),
+        // 本函数没有出站调用/数组，参数窗之后只需少量临时槽
+        Assert.That(fn.NSlots, Is.LessThanOrEqualTo(EcsRegisters.ArgBase + fn.NParams + 4),
             $"死局部仍占帧槽：params={fn.NParams}, slots={fn.NSlots}");
 
         // 无 SetVar 残留：局部存储不发射（本函数无 DeepCopy，SetVar 不应有任何来源）
@@ -98,8 +98,8 @@ public class SlotReclaimTests
         var result = Compile(source);
         var fn = result.Image!.Functions.Single(f => f.Name == "mix");
 
-        // 参数窗 = Call ABI（实参深拷贝播种进被调方 ARG 窗 R1–R7）
-        Assert.That(fn.NParams, Is.LessThanOrEqualTo(EcsRegisters.ArgCount), "参数窗容量（≤7）");
+        // 参数窗 = Call ABI（实参深拷贝播种进被调方 R1 起的两个槽）
+        Assert.That(fn.NParams, Is.EqualTo(2), "保留函数的两个参数入口槽");
         // 循环变量 $t/$i 全程走 SSA（phi 合并）：无局部存储指令，帧槽只含参数窗 + SSA 临时槽
         Assert.That(OpcodeSet(fn), Does.Not.Contain(EcsOpcode.SetVar), "mix 不应残留局部存储指令");
 

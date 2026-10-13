@@ -27,11 +27,9 @@ extern "C" {
  * 指令域 u8 是唯一上限），调用时在共享值栈上开窗、返回时弹出。 */
 #define ECS_REG_MAX          255  /* 寄存器号上限（指令 A/B/C 域 u8） */
 #define ECS_REG_RET          0    /* R0 = 返回值固定落点（Call 的 C=0） */
-#define ECS_REG_ARG_BASE     1    /* R1–R7 = 实参窗（Call 从调用方 STAGING 深拷贝播种） */
-#define ECS_REG_ARG_COUNT    7
-#define ECS_REG_STAGING_BASE 8    /* R8–R23 = 出站实参/数组分块暂存（固定位置） */
-#define ECS_REG_STAGING_COUNT 16
-#define ECS_REG_ALLOC_BASE   24   /* R24 起 = 分配区（独占+池，随函数伸缩） */
+#define ECS_REG_ARG_BASE     1    /* R1 起 = NParams 个参数（Call 从 A 指定的出站窗深拷贝） */
+#define ECS_REG_ARG_COUNT    (ECS_REG_MAX - ECS_REG_ARG_BASE)
+/* 参数后按需保留出站/数组分块窗口，再分配临时值；位置由编译器编码进指令。 */
 #define ECSC_MAGIC  0x43534345u   /* "ECSC" */
 #define ECSC_VERSION 2        /* v2 = 定长指令编码（v1 = varint 基流，互不兼容） */
 #define ECSC_KIND_IMAGE 1

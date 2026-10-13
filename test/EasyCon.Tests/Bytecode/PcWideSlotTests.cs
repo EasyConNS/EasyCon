@@ -8,8 +8,8 @@ using System.Text;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 固定寄存器帧契约（abi_rev 4）：每帧定长 EcsRegisters.Count 槽（128 = RET + ARG 窗 + 通用区 +
-/// STAGING 暂存），通用区可分配容量编译期锁定——超出即报寄存器溢出诊断（Lua 风格，不 spill）。
+/// 每函数寄存器帧契约：参数和出站窗口按需分配，NSlots ≤ MaxRegisters；
+/// 寄存器预算超出即报溢出诊断（Lua 风格，不 spill）。
 /// Call/CallN 的接收槽 C 恒为寄存器号（0 = RET 固定落点），无哨兵值。
 /// 本套件锁：溢出编译期诊断 + RET 落点 + 指令编解码往返。
 /// </summary>
@@ -95,19 +95,19 @@ public class RegisterFileContractTests
         {
             Name = "$eval",
             Module = "lib",
-            NSlots = EcsRegisters.AllocBase,
+            NSlots = EcsRegisters.ArgBase,
             Instructions = [new EcsInstruction(EcsOpcode.Ret0, 0, 0, 0)],
         };
         var entry = new EcsFunction
         {
             Name = "$eval",
             Module = "main",
-            NSlots = EcsRegisters.AllocBase + 1,
+            NSlots = EcsRegisters.ArgBase + 1,
             HasReturn = true,
             Instructions =
             [
-                new EcsInstruction(EcsOpcode.LoadI, EcsRegisters.AllocBase, 7, 0),
-                new EcsInstruction(EcsOpcode.Ret, EcsRegisters.AllocBase, 0, 0),
+                new EcsInstruction(EcsOpcode.LoadI, EcsRegisters.ArgBase, 7, 0),
+                new EcsInstruction(EcsOpcode.Ret, EcsRegisters.ArgBase, 0, 0),
             ],
             LineTable = [0, 1],
         };
@@ -159,11 +159,11 @@ public class RegisterFileContractTests
         {
             Name = "caller",
             Module = "main",
-            NSlots = EcsRegisters.AllocBase + 1,
+            NSlots = EcsRegisters.ArgBase + 1,
             HasReturn = true,
             Instructions =
             [
-                new EcsInstruction(EcsOpcode.Call, EcsRegisters.StagingBase, 0, EcsRegisters.Ret, 1u),
+                new EcsInstruction(EcsOpcode.Call, EcsRegisters.Ret, 0, EcsRegisters.Ret, 1u),
                 new EcsInstruction(EcsOpcode.Ret, EcsRegisters.Ret, 0, 0),
             ],
         };

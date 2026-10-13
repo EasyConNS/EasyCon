@@ -210,6 +210,8 @@ public static partial class BytecodeEncoder
         int _poolNext;
         int _scratch = -1;
         int _stagingBase;
+        int _stagingCount;
+        int _allocBase;
         int _neqTemp = -1;   // Neq = Eq+Not 的共享中间槽（发射原子，不嵌套）
         int _tplGuard = -1;  // 常量模板构建暂存槽（守卫标志/模板数组/当前分块；发射原子，不嵌套）
         int _tplArr = -1;
