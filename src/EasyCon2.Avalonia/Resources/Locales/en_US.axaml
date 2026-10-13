@@ -236,6 +236,7 @@
     <x:String x:Key="Text.AudioLabel.Name">Label name</x:String>
     <x:String x:Key="Text.AudioLabel.NamePlaceholder">For example: Shiny sound</x:String>
     <x:String x:Key="Text.AudioLabel.Save">Save selection as label</x:String>
+    <x:String x:Key="Text.AudioLabel.SaveHint">Saved script: labels go in its audiolabel folder. Otherwise, choose the script folder; audiolabel is created automatically.</x:String>
     <x:String x:Key="Text.AudioLabel.InvalidName">Use a valid file name without paths, reserved characters, or trailing spaces or periods.</x:String>
     <x:String x:Key="Text.AudioLabel.Ready">Connect game audio to record or capture the last 10 seconds. Recordings last up to 15 seconds, less at high sample rates or channel counts.</x:String>
     <x:String x:Key="Text.AudioLabel.NoHistory">No recent audio. Connect an audio source and check that data is arriving. Your current selection is kept.</x:String>
@@ -248,8 +249,8 @@
     <x:String x:Key="Text.AudioLabel.Played">Preview finished.</x:String>
     <x:String x:Key="Text.AudioLabel.Paused">Preview paused. Click or drag the red cursor to resume from a new position without changing the saved selection.</x:String>
     <x:String x:Key="Text.AudioLabel.Stopped">Preview stopped; the cursor stays here. Next preview starts at the selection start, or click the waveform to seek.</x:String>
-    <x:String x:Key="Text.AudioLabel.SaveFolder">Choose a folder for audio labels</x:String>
-    <x:String x:Key="Text.AudioLabel.AlreadyExists">A label with this name already exists. Choose another name or folder.</x:String>
+    <x:String x:Key="Text.AudioLabel.SaveFolder">Choose the script folder (audiolabel is created automatically)</x:String>
+    <x:String x:Key="Text.AudioLabel.AlreadyExists">A label with this name already exists: {0}. Choose another name and save again.</x:String>
     <x:String x:Key="Text.AudioLabel.Saved">Label saved: {0}</x:String>
     <x:String x:Key="Text.AudioLabel.Error">Operation failed: {0}</x:String>
     <x:String x:Key="Text.AudioMatch.Title">Audio match test</x:String>

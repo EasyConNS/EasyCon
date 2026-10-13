@@ -8,8 +8,9 @@ namespace EasyCon2.Avalonia.Core.Tests;
 [TestFixture]
 public class AudioLabelEditorTests
 {
-    [Test]
-    public async Task PreviewAndSaveUseTheSameFrozenFrameAlignedSelection()
+    [TestCase(null)]
+    [TestCase("untitled.ecs")]
+    public async Task PreviewAndSaveUseTheSameFrozenFrameAlignedSelection(string? scriptPath)
     {
         string directory = Path.Combine(Path.GetTempPath(), "easycon-audio-vm-" + Guid.NewGuid().ToString("N"));
         try
@@ -20,7 +21,7 @@ public class AudioLabelEditorTests
             source.Emit(pcm);
             FakePreview preview = new();
             FakeDialogs dialogs = new() { Folder = Task.FromResult<string?>(directory) };
-            using AudioLabelEditorViewModel vm = new(history, preview, dialogs, SynchronousUiDispatcher.Instance);
+            using AudioLabelEditorViewModel vm = new(history, preview, dialogs, SynchronousUiDispatcher.Instance, () => scriptPath);
             await vm.CaptureRecentCommand.ExecuteAsync(null);
             vm.LabelName = "测试音效";
             vm.SelectionStart = 0.25;
@@ -28,9 +29,10 @@ public class AudioLabelEditorTests
             source.Emit(new byte[32000]);
             await vm.PlaySelectionCommand.ExecuteAsync(null);
             await vm.SaveCommand.ExecuteAsync(null);
-            AudioLabel saved = AudioLabelStore.Load(Path.Combine(directory, "测试音效.audiolabel", "label.json"));
+            AudioLabel saved = AudioLabelStore.Load(Path.Combine(directory, "audiolabel", "测试音效.audiolabel", "label.json"));
             Assert.Multiple(() =>
             {
+                Assert.That(dialogs.FolderRequests, Is.EqualTo(1), "Without a saved script, select the parent of audiolabel.");
                 Assert.That(preview.Played!.Pcm.ToArray(), Is.EqualTo(pcm[8000..24000]));
                 Assert.That(saved.Clip.Pcm.ToArray(), Is.EqualTo(preview.Played.Pcm.ToArray()));
                 Assert.That(vm.IsPlaying, Is.False);
@@ -46,6 +48,161 @@ public class AudioLabelEditorTests
         {
             if (Directory.Exists(directory))
                 Directory.Delete(directory, true);
+        }
+    }
+
+    [TestCase(false, "脚本 文件夹")]
+    [TestCase(true, "脚本 文件夹")]
+    [TestCase(false, "audiolabel")]
+    public async Task SavedScriptCreatesOrReusesItsLabelDirectoryWithoutOpeningAPicker(bool exists, string folderName)
+    {
+        string root = Path.Combine(Path.GetTempPath(), "easycon-audio-save-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string scriptDirectory = Path.Combine(root, folderName);
+            Directory.CreateDirectory(scriptDirectory);
+            string? scriptPath = null;
+            FakeSource source = new();
+            using AudioHistoryBuffer history = new(source);
+            byte[] pcm = Enumerable.Repeat((byte)37, 32000).ToArray();
+            source.Emit(pcm);
+            FakeDialogs dialogs = new();
+            using AudioLabelEditorViewModel vm = new(history, new FakePreview(), dialogs, SynchronousUiDispatcher.Instance, () => scriptPath);
+            await vm.CaptureRecentCommand.ExecuteAsync(null);
+            vm.LabelName = "闪光音效";
+            // The editor may have been opened before the script was saved or switched.
+            scriptPath = Path.Combine(scriptDirectory, "test.ecs");
+            File.WriteAllText(scriptPath, "# audio label test");
+            string labels = Path.Combine(scriptDirectory, "audiolabel");
+            if (exists)
+                AudioLabelStore.Save(labels, "已有音效", new AudioClip(source.State.Format!, pcm));
+
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            string savedPath = Path.Combine(labels, "闪光音效.audiolabel", "label.json");
+            AudioLabel saved = AudioLabelStore.Load(savedPath);
+            Assert.Multiple(() =>
+            {
+                Assert.That(saved.Metadata.Name, Is.EqualTo("闪光音效"));
+                Assert.That(saved.Clip.Pcm.ToArray(), Is.EqualTo(pcm));
+                Assert.That(dialogs.FolderRequests, Is.Zero, "A saved script supplies the destination without a folder picker.");
+                Assert.That(vm.IsBusy, Is.False);
+            });
+            if (exists)
+                Assert.That(AudioLabelStore.Load(Path.Combine(labels, "已有音效.audiolabel", "label.json")).Clip.Pcm.ToArray(), Is.EqualTo(pcm));
+
+            byte[] metadata = File.ReadAllBytes(savedPath);
+            vm.SelectionEnd = 0.5;
+            await vm.SaveCommand.ExecuteAsync(null);
+            Assert.Multiple(() =>
+            {
+                Assert.That(File.ReadAllBytes(savedPath), Is.EqualTo(metadata), "Saving the same name must preserve the existing label.");
+                Assert.That(AudioLabelStore.Load(savedPath).Clip.Pcm.ToArray(), Is.EqualTo(pcm));
+                Assert.That(vm.Status, Is.EqualTo("Text.AudioLabel.AlreadyExists"));
+                Assert.That(dialogs.FolderRequests, Is.Zero);
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, true);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ChoosingAnExistingAudioLabelFolderDoesNotNestIt(bool trailingSeparator)
+    {
+        string root = Path.Combine(Path.GetTempPath(), "easycon-audio-folder-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string labels = Path.Combine(root, "audiolabel");
+            Directory.CreateDirectory(labels);
+            FakeDialogs dialogs = new() { Folder = Task.FromResult<string?>(trailingSeparator ? labels + Path.DirectorySeparatorChar : labels) };
+            FakeSource source = new();
+            using AudioHistoryBuffer history = new(source);
+            source.Emit(new byte[32000]);
+            using AudioLabelEditorViewModel vm = new(history, new FakePreview(), dialogs, SynchronousUiDispatcher.Instance);
+            await vm.CaptureRecentCommand.ExecuteAsync(null);
+            vm.LabelName = "test";
+
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(AudioLabelStore.Load(Path.Combine(labels, "test.audiolabel", "label.json")).Clip.FrameCount, Is.EqualTo(8000));
+                Assert.That(Directory.Exists(Path.Combine(labels, "audiolabel")), Is.False);
+                Assert.That(dialogs.FolderRequests, Is.EqualTo(1));
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, true);
+        }
+    }
+
+    [Test]
+    public async Task CancellingTheFolderPickerKeepsTheSelectionReadyToSave()
+    {
+        FakeSource source = new();
+        using AudioHistoryBuffer history = new(source);
+        source.Emit(new byte[32000]);
+        FakeDialogs dialogs = new();
+        using AudioLabelEditorViewModel vm = new(history, new FakePreview(), dialogs, SynchronousUiDispatcher.Instance);
+        await vm.CaptureRecentCommand.ExecuteAsync(null);
+        vm.LabelName = "cancelled";
+        vm.SelectionStart = 0.25;
+        vm.SelectionEnd = 0.75;
+        string status = vm.Status;
+
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(dialogs.FolderRequests, Is.EqualTo(1));
+            Assert.That(vm.Status, Is.EqualTo(status));
+            Assert.That(vm.SelectionStart, Is.EqualTo(0.25));
+            Assert.That(vm.SelectionEnd, Is.EqualTo(0.75));
+            Assert.That(vm.IsBusy, Is.False);
+            Assert.That(vm.SaveCommand.CanExecute(null), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task AFileBlockingTheAudioLabelDirectoryIsReportedWithoutReplacingIt()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "easycon-audio-blocked-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(root);
+            string blocked = Path.Combine(root, "audiolabel");
+            File.WriteAllText(blocked, "keep this file");
+            FakeSource source = new();
+            using AudioHistoryBuffer history = new(source);
+            source.Emit(new byte[32000]);
+            FakeDialogs dialogs = new();
+            using AudioLabelEditorViewModel vm = new(history, new FakePreview(), dialogs, SynchronousUiDispatcher.Instance,
+                () => Path.Combine(root, "test.ecs"));
+            await vm.CaptureRecentCommand.ExecuteAsync(null);
+            vm.LabelName = "blocked";
+
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(File.ReadAllText(blocked), Is.EqualTo("keep this file"));
+                Assert.That(Directory.GetDirectories(root), Is.Empty);
+                Assert.That(vm.Status, Is.EqualTo("Text.AudioLabel.Error"));
+                Assert.That(vm.IsBusy, Is.False);
+                Assert.That(vm.SaveCommand.CanExecute(null), Is.True);
+                Assert.That(dialogs.FolderRequests, Is.Zero);
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, true);
         }
     }
 
@@ -517,7 +674,12 @@ public class AudioLabelEditorTests
     private sealed class FakeDialogs : IDialogService
     {
         public Task<string?> Folder { get; init; } = Task.FromResult<string?>(null);
-        public Task<string?> OpenFolderAsync(string title, string? suggestedStartPath = null) => Folder;
+        public int FolderRequests { get; private set; }
+        public Task<string?> OpenFolderAsync(string title, string? suggestedStartPath = null)
+        {
+            FolderRequests++;
+            return Folder;
+        }
         public Task<IReadOnlyList<string>> OpenFilesAsync(string title, IReadOnlyList<FileDialogFilter>? filters = null, string? suggestedStartPath = null) => Task.FromResult<IReadOnlyList<string>>([]);
         public Task<string?> SaveFileAsync(string title, string defaultExtension, IReadOnlyList<FileDialogFilter>? filters = null, string? suggestedFileName = null) => Task.FromResult<string?>(null);
         public Task<DialogColor?> PickColorAsync(DialogColor current) => Task.FromResult<DialogColor?>(null);

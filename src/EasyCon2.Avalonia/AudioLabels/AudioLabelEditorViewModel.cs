@@ -413,12 +413,20 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            string? directory = await _dialogs.OpenFolderAsync(L10nBridge.T("Text.AudioLabel.SaveFolder"), SuggestedDirectory());
-            if (_disposed || directory == null)
+            string? scriptDirectory = SuggestedDirectory();
+            string? selectedDirectory = scriptDirectory
+                ?? await _dialogs.OpenFolderAsync(L10nBridge.T("Text.AudioLabel.SaveFolder"));
+            if (_disposed || string.IsNullOrWhiteSpace(selectedDirectory))
                 return;
-            if (Directory.Exists(Path.Combine(directory, name + ".audiolabel")))
+            string parent = Path.TrimEndingDirectorySeparator(Path.GetFullPath(selectedDirectory));
+            // Only a manual selection may already be the label folder; script paths always define its parent.
+            string directory = scriptDirectory == null && string.Equals(Path.GetFileName(parent), "audiolabel",
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)
+                ? parent : Path.Combine(parent, "audiolabel");
+            string target = Path.Combine(directory, name + ".audiolabel");
+            if (Directory.Exists(target) || File.Exists(target))
             {
-                SetStatus("Text.AudioLabel.AlreadyExists");
+                SetStatus("Text.AudioLabel.AlreadyExists", target);
                 return;
             }
             string saved = await Task.Run(() => AudioLabelStore.Save(directory, name, selection));
