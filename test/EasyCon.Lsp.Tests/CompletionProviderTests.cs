@@ -47,6 +47,7 @@ public class CompletionProviderTests
             Assert.That(labels, Does.Contain("OCR_CONF"));
             Assert.That(labels, Does.Contain("AUDIO"));
             Assert.That(labels, Does.Contain("AUDIO_WAIT"));
+            Assert.That(labels, Does.Contain("AUDIO_WAIT_SCORE"));
             // 内建洞函数（__ 前缀）不对用户暴露
             Assert.That(labels, Does.Not.Contain("__TESSERACT__"));
             Assert.That(labels, Does.Not.Contain("__CAPTURE__"));

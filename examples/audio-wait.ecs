@@ -1,11 +1,14 @@
 # 在主窗口连接游戏音频，将“闪光音效”标签保存到本脚本旁的
-# audiolabel/闪光音效.audiolabel/label.json。
-IF AUDIO_WAIT("闪光音效", 8000, 0.85)
-    ALERT "检测到闪光音效"
+# audiolabel/闪光音效.audiolabel/label.json（同目录保留 audio.wav）。
+PRINT "开始监听，最多等待 8 秒"
+$hit = AUDIO_WAIT("闪光音效", 8000, 0.85)
+IF $hit
+    PRINT "检测到闪光音效，结束脚本"
     RETURN
 ELSE
     PRINT "等待超时，指定时间内未确认命中"
 ENDIF
+PRINT "本轮等待结束，可在这里继续下一步操作"
 
 # 8000 是从调用开始计算的 8 秒预算，包含首次模板加载、等待和分析。
 # 截止前确认命中会提前返回 true；到期不补算末尾音频，不增加宽限。

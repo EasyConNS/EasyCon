@@ -42,7 +42,7 @@ public static class EcxVm
         var host = BuildHost(capabilities, token, args, startTicks, rand);
         host.Native = (name, argv, ctx) =>
         {
-            if (name is "AUDIO" or "AUDIO_WAIT")
+            if (name is "AUDIO" or "AUDIO_WAIT" or "AUDIO_WAIT_SCORE")
                 return ctx.FromValue(BuiltinCallable.InvokeAudio(name, ToValues(argv, ctx), audio, token));
             // 内建/采集洞：复用金标准的 BuiltinCallable 实现（文件 IO/ENCODE/JQ 等）
             if (BuiltinMap.TryGetValue(name, out var callable))
@@ -66,7 +66,7 @@ public static class EcxVm
             if ((image.Features & EcsImageFeatures.Audio) != 0)
             {
                 IAudioService service = capabilities.Audio
-                    ?? throw new InvalidOperationException("当前宿主未提供脚本音频能力 AUDIO/AUDIO_WAIT；请使用已连接游戏音频的桌面 GUI。");
+                    ?? throw new InvalidOperationException("当前宿主未提供脚本音频能力 AUDIO/AUDIO_WAIT/AUDIO_WAIT_SCORE；请使用已连接游戏音频的桌面 GUI。");
                 audio = service.BeginRun(token);
             }
             int code = EcxInterpreter.Run(image, host, out _, out var errorFunc, out var errorPc, out var result, token);

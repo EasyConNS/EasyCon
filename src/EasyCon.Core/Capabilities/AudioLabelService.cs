@@ -58,6 +58,8 @@ public sealed class AudioLabelService(IAudioCaptureSource source, string? script
         public bool Wait(string labelName, int timeoutMs, double threshold, CancellationToken token)
             => _detection.Wait(labelName, timeoutMs, threshold, token);
 
+        public double GetWaitScore(CancellationToken token) => _detection.GetWaitScore(token);
+
         public void Dispose() => _detection.Dispose();
     }
 }

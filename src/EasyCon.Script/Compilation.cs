@@ -111,7 +111,8 @@ public sealed class CompileOptions
         // 必须 +1，使全部旧缓存按未命中重编，不写迁移。2026-10-06 自 7 重置为 1
         // （无旧版缓存、仅开发测试；旧履历 M4–M7 删除）。M2：参数/出站窗口按函数需求分配。
         // M3：AUDIO/AUDIO_WAIT 新增根作用域符号与 AUDIO 特征位，旧绑定结果必须失效。
-        return $"O={(Optimize ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=3";
+        // M4：AUDIO_WAIT_SCORE 新增根作用域符号，旧绑定结果必须失效。
+        return $"O={(Optimize ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=4";
     }
 }
 
