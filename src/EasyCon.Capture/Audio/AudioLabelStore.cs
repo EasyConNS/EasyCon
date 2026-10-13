@@ -1,3 +1,4 @@
+using NAudio.Dmo;
 using NAudio.Wave;
 using System.Text.Json;
 
@@ -68,7 +69,22 @@ public static class AudioLabelStore
     {
         using WaveFileReader reader = new(path);
         WaveFormat wave = reader.WaveFormat;
-        string encoding = wave.Encoding switch
+        WaveFormatEncoding waveEncoding = wave.Encoding;
+        if (waveEncoding == WaveFormatEncoding.Extensible)
+        {
+            // WaveFileReader preserves the fmt extension as raw data, not WaveFormatExtensible.
+            Guid subtype = wave switch
+            {
+                WaveFormatExtensible extensible => extensible.SubFormat,
+                WaveFormatExtraData { ExtraSize: >= 22 } extra when extra.ExtraData.Length >= 22
+                    => new Guid(extra.ExtraData.AsSpan(6, 16)),
+                _ => throw new InvalidDataException("The extensible WAV format is incomplete."),
+            };
+            waveEncoding = subtype == AudioMediaSubtypes.MEDIASUBTYPE_PCM ? WaveFormatEncoding.Pcm
+                : subtype == AudioMediaSubtypes.MEDIASUBTYPE_IEEE_FLOAT ? WaveFormatEncoding.IeeeFloat
+                : throw new InvalidDataException("Only PCM and float WAV files are supported.");
+        }
+        string encoding = waveEncoding switch
         {
             WaveFormatEncoding.Pcm => "pcm",
             WaveFormatEncoding.IeeeFloat => "float",

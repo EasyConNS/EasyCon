@@ -143,6 +143,34 @@ public class AudioMatchingTests
     }
 
     [Test]
+    public void DelayedOldAudioCannotCompleteAReconnectedMatch()
+    {
+        AudioClip sound = Sound();
+        FakeSource source = new(sound.Format);
+        using AudioMatchMonitor monitor = new(source, AudioMatchTemplate.Create(sound)!);
+        AudioCaptureState old = source.State;
+        byte[] pcm = sound.Pcm.ToArray();
+        source.Emit(pcm[..(pcm.Length / 2)]);
+        monitor.Poll();
+        source.SetState(new(AudioCaptureStatus.Connected, Format: sound.Format));
+        source.Emit(pcm, old);
+        AudioMatchUpdate delayed = monitor.Poll();
+        Assert.Multiple(() =>
+        {
+            Assert.That(delayed.Score, Is.Null, "Old-session audio must not be recognized as a new sound after reconnecting.");
+            Assert.That(delayed.Hits, Is.Empty);
+        });
+
+        source.Emit(pcm[..(pcm.Length / 2)]);
+        Assert.That(monitor.Poll().Score, Is.Null);
+        source.Emit([1], old);
+        source.Emit(pcm[(pcm.Length / 2)..]);
+        AudioMatchUpdate current = monitor.Poll();
+        Assert.That(current.Score, Is.GreaterThan(0.98), "An invalid old packet must not discard the new session's partial template.");
+        Assert.That(current.Hits, Has.Count.EqualTo(1));
+    }
+
+    [Test]
     public void OverflowAndMalformedPacketsDiscardPendingHits()
     {
         AudioClip sound = Sound();
@@ -160,6 +188,59 @@ public class AudioMatchingTests
         Assert.That(invalid.Status, Is.EqualTo(AudioMatchStatus.InvalidAudio));
         Assert.That(invalid.Score, Is.Null);
         Assert.That(invalid.Hits, Is.Empty);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ReconnectingWhileStateIsBeingReadPreservesNewAudio(bool stateNotification)
+    {
+        AudioClip sound = Sound();
+        FakeSource source = new(sound.Format);
+        using AudioMatchMonitor monitor = new(source, AudioMatchTemplate.Create(sound)!);
+        monitor.Poll();
+        AudioCaptureState previous = source.State;
+        using ManualResetEventSlim snapshotTaken = new();
+        using ManualResetEventSlim releaseSnapshot = new();
+        using ManualResetEventSlim reconnectStarted = new();
+        source.AfterStateSnapshot = () =>
+        {
+            snapshotTaken.Set();
+            if (!releaseSnapshot.Wait(TimeSpan.FromSeconds(5)))
+                throw new TimeoutException("The paused state read was not released.");
+        };
+        Task reader = Task.Factory.StartNew(() =>
+        {
+            if (stateNotification)
+                source.Notify(previous);
+            else
+                monitor.Poll();
+        }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        Task? reconnect = null;
+        try
+        {
+            Assert.That(snapshotTaken.Wait(TimeSpan.FromSeconds(3)), Is.True);
+            reconnect = Task.Factory.StartNew(() =>
+            {
+                reconnectStarted.Set();
+                source.SetState(new(AudioCaptureStatus.Connected, Format: sound.Format));
+                source.Emit(sound.Pcm.ToArray());
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            Assert.That(reconnectStarted.Wait(TimeSpan.FromSeconds(3)), Is.True);
+            // Delivery may finish, or wait behind the paused reader's lock; both orderings must preserve it.
+            await Task.WhenAny(reconnect, Task.Delay(200));
+            releaseSnapshot.Set();
+            await Task.WhenAll(reader, reconnect).WaitAsync(TimeSpan.FromSeconds(3));
+            AudioMatchUpdate current = monitor.Poll();
+            Assert.That(current.Hits, Has.Count.EqualTo(1), "A stale state read must not erase the new connection's complete sound.");
+            Assert.That(current.Score, Is.GreaterThan(0.98));
+        }
+        finally
+        {
+            releaseSnapshot.Set();
+            await reader.WaitAsync(TimeSpan.FromSeconds(3));
+            if (reconnect != null)
+                await reconnect.WaitAsync(TimeSpan.FromSeconds(3));
+        }
     }
 
     [Test]
@@ -226,15 +307,26 @@ public class AudioMatchingTests
     private sealed class FakeSource(AudioFormat format) : IAudioCaptureSource
     {
         public bool IsSupported => true;
-        public AudioCaptureState State { get; private set; } = new(AudioCaptureStatus.Connected, Format: format);
+        private AudioCaptureState _state = new(AudioCaptureStatus.Connected, Format: format);
+        public Action? AfterStateSnapshot;
+        public AudioCaptureState State
+        {
+            get
+            {
+                AudioCaptureState state = Volatile.Read(ref _state);
+                Interlocked.Exchange(ref AfterStateSnapshot, null)?.Invoke();
+                return state;
+            }
+        }
         public bool Disposed { get; private set; }
         private Action<AudioChunk>? _dataAvailable;
         public int SubscriberCount => _dataAvailable?.GetInvocationList().Length ?? 0;
         public event Action<AudioChunk>? DataAvailable { add => _dataAvailable += value; remove => _dataAvailable -= value; }
         public event Action<AudioCaptureState>? StateChanged;
         public event Action<AudioLevel>? LevelChanged { add { } remove { } }
-        public void Emit(byte[] pcm) => _dataAvailable?.Invoke(new AudioChunk(0, State.Format!, pcm, pcm.Length));
-        public AudioCaptureState SetState(AudioCaptureState state) { State = state; Notify(state); return state; }
+        public void Emit(byte[] pcm, AudioCaptureState? session = null)
+            => _dataAvailable?.Invoke(new AudioChunk(0, (session ?? State).Format!, pcm, pcm.Length) { Session = session ?? State });
+        public AudioCaptureState SetState(AudioCaptureState state) { Volatile.Write(ref _state, state); Notify(state); return state; }
         public void Notify(AudioCaptureState state) => StateChanged?.Invoke(state);
         public IReadOnlyList<AudioDeviceInfo> GetAvailableDevices() => [];
         public bool TryConnect(string deviceId, CancellationToken cancellationToken = default) => false;

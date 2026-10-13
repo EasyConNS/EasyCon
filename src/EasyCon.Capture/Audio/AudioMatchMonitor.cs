@@ -83,10 +83,13 @@ public sealed class AudioMatchMonitor : IDisposable
 
     private void OnDataAvailable(AudioChunk chunk)
     {
-        AudioCaptureState state = _source.State;
         lock (_gate)
         {
             if (_disposed)
+                return;
+            AudioCaptureState state = _source.State;
+            // Check identity before validation: even a malformed old packet must leave new audio intact.
+            if (chunk.Session != null && !ReferenceEquals(chunk.Session, state))
                 return;
             if (state.Status != AudioCaptureStatus.Connected || state.Format != chunk.Format)
             {
@@ -123,11 +126,9 @@ public sealed class AudioMatchMonitor : IDisposable
 
     private void OnStateChanged(AudioCaptureState state)
     {
-        if (!ReferenceEquals(state, _source.State))
-            return;
         lock (_gate)
         {
-            if (!_disposed && !ReferenceEquals(state, _session))
+            if (!_disposed && ReferenceEquals(state, _source.State) && !ReferenceEquals(state, _session))
                 ResetLocked(state.Status == AudioCaptureStatus.Connected ? AudioMatchStatus.WarmingUp : AudioMatchStatus.Disconnected, state);
         }
     }
@@ -146,7 +147,7 @@ public sealed class AudioMatchMonitor : IDisposable
     public AudioMatchUpdate Poll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        AudioCaptureState state = _source.State;
+        AudioCaptureState state;
         byte[][] packets;
         long epoch;
         AudioMatchStatus resetStatus;
@@ -154,6 +155,7 @@ public sealed class AudioMatchMonitor : IDisposable
         {
             if (_disposed)
                 return new AudioMatchUpdate(AudioMatchStatus.Disconnected, null, []) { Generation = _epoch };
+            state = _source.State;
             if (!ReferenceEquals(state, _session))
                 ResetLocked(state.Status == AudioCaptureStatus.Connected ? AudioMatchStatus.WaitingForAudio : AudioMatchStatus.Disconnected, state);
             if (_lastPacket != 0 && _clock() - _lastPacket > Stopwatch.Frequency)
@@ -202,10 +204,9 @@ public sealed class AudioMatchMonitor : IDisposable
         }
 
         // A disconnect/overflow during analysis invalidates the whole in-flight batch, including hits.
-        AudioCaptureState latestState = _source.State;
         lock (_gate)
         {
-            if (_disposed || _epoch != epoch || !ReferenceEquals(state, latestState))
+            if (_disposed || _epoch != epoch || !ReferenceEquals(state, _source.State))
                 return new AudioMatchUpdate(AudioMatchStatus.Interrupted, null, []) { Generation = _epoch };
         }
         if (score.HasValue)
@@ -220,9 +221,8 @@ public sealed class AudioMatchMonitor : IDisposable
     /// <summary>Reject a result if its source changed while the consumer was dispatching it.</summary>
     public bool IsCurrent(AudioMatchUpdate update)
     {
-        AudioCaptureState state = _source.State;
         lock (_gate)
-            return !_disposed && _epoch == update.Generation && ReferenceEquals(_session, state)
+            return !_disposed && _epoch == update.Generation && ReferenceEquals(_session, _source.State)
                 && (_lastPacket == 0 || _clock() - _lastPacket <= Stopwatch.Frequency);
     }
 

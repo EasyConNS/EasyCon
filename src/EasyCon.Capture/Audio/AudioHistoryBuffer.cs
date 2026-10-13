@@ -78,6 +78,9 @@ public sealed class AudioHistoryBuffer : IDisposable
             if (_disposed)
                 return;
             AudioCaptureState state = _source.State;
+            // A delayed callback must not populate or invalidate another connection's history.
+            if (chunk.Session != null && !ReferenceEquals(chunk.Session, state))
+                return;
             if (state.Status != AudioCaptureStatus.Connected || state.Format != chunk.Format)
             {
                 Clear();

@@ -1,4 +1,5 @@
 using EasyCon.Capture.Audio;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Text.Json;
 
@@ -58,6 +59,27 @@ public class AudioLabelTests
         Assert.That(history.Snapshot(), Is.Null);
         history.Dispose();
         Assert.That(source.Disposed, Is.False, "History borrows the capture source.");
+    }
+
+    [Test]
+    public void DelayedOldAudioCannotReplaceOrPolluteReconnectedHistory()
+    {
+        FakeSource source = new();
+        source.Connect(_format);
+        using AudioHistoryBuffer history = new(source);
+        AudioCaptureState old = source.State;
+        byte[] previous = Enumerable.Repeat((byte)17, 160).ToArray();
+        source.Emit(previous);
+        source.Connect(_format);
+        source.Emit(previous, old);
+        Assert.That(history.Snapshot(), Is.Null, "A delayed old packet must not seed the new connection's history.");
+
+        byte[] current = Enumerable.Repeat((byte)42, 80).ToArray();
+        source.Emit(current);
+        source.Emit(previous, old);
+        source.Emit([1], old);
+        Assert.That(history.Snapshot()!.Pcm.ToArray(), Is.EqualTo(current),
+            "Old packets must neither append to nor invalidate the current connection's history.");
     }
 
     [Test]
@@ -131,6 +153,79 @@ public class AudioLabelTests
         Assert.That(AudioLabelStore.IsValidName(name), Is.False);
     }
 
+    [TestCase("pcm", 8, 1)]
+    [TestCase("pcm", 16, 2)]
+    [TestCase("pcm", 24, 6)]
+    [TestCase("pcm", 32, 2)]
+    [TestCase("float", 32, 2)]
+    public void ExtensibleWaveImportsPreservePcmAndFloatSamples(string encoding, int bits, int channels)
+    {
+        string path = Path.Combine(Path.GetTempPath(), "easycon-extensible-" + Guid.NewGuid().ToString("N") + ".wav");
+        try
+        {
+            AudioFormat format = new(48000, channels, bits, encoding);
+            byte[] pcm = new byte[AudioClip.GetBlockAlign(format) * 128];
+            new Random(71).NextBytes(pcm);
+            Guid subtype = new(encoding == "pcm" ? "00000001-0000-0010-8000-00aa00389b71" : "00000003-0000-0010-8000-00aa00389b71");
+            WriteExtensibleWave(path, format, pcm, subtype);
+            AudioClip clip = AudioLabelStore.ReadWave(path);
+            Assert.Multiple(() =>
+            {
+                Assert.That(clip.Format, Is.EqualTo(format));
+                Assert.That(clip.FrameCount, Is.EqualTo(128));
+                Assert.That(clip.Pcm.ToArray(), Is.EqualTo(pcm), "Import must preserve raw samples without converting the container bit depth.");
+            });
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void ExtensibleWaveRejectsUnsupportedSubtypeOrTruncatedExtension(bool truncated)
+    {
+        string path = Path.Combine(Path.GetTempPath(), "easycon-invalid-wave-" + Guid.NewGuid().ToString("N") + ".wav");
+        try
+        {
+            Guid subtype = truncated ? new Guid("00000001-0000-0010-8000-00aa00389b71") : Guid.Empty;
+            WriteExtensibleWave(path, new AudioFormat(48000, 2, 16, "pcm"), new byte[512], subtype, truncated ? 20 : 22);
+            Assert.Throws<InvalidDataException>(() => AudioLabelStore.ReadWave(path));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    private static void WriteExtensibleWave(string path, AudioFormat format, byte[] pcm, Guid subtype, int extensionLength = 22)
+    {
+        // A standard RIFF/WAVE extensible fmt chunk, independent of the label writer's output format.
+        int alignment = AudioClip.GetBlockAlign(format);
+        Span<byte> extension = stackalloc byte[22];
+        extension.Clear();
+        BinaryPrimitives.WriteUInt16LittleEndian(extension, (ushort)format.BitsPerSample);
+        subtype.TryWriteBytes(extension[6..]);
+        using BinaryWriter writer = new(File.Create(path));
+        writer.Write("RIFF"u8);
+        writer.Write(4 + 8 + 18 + extensionLength + 8 + pcm.Length);
+        writer.Write("WAVE"u8);
+        writer.Write("fmt "u8);
+        writer.Write(18 + extensionLength);
+        writer.Write((ushort)0xfffe);
+        writer.Write((ushort)format.Channels);
+        writer.Write(format.SampleRate);
+        writer.Write(format.SampleRate * alignment);
+        writer.Write((ushort)alignment);
+        writer.Write((ushort)format.BitsPerSample);
+        writer.Write((ushort)extensionLength);
+        writer.Write(extension[..extensionLength]);
+        writer.Write("data"u8);
+        writer.Write(pcm.Length);
+        writer.Write(pcm);
+    }
+
     [Test]
     public void FloatWaveformIgnoresNonFiniteSamplesAndClampsOutOfRange()
     {
@@ -150,7 +245,8 @@ public class AudioLabelTests
         public event Action<AudioChunk>? DataAvailable;
         public event Action<AudioLevel>? LevelChanged { add { } remove { } }
         public void Connect(AudioFormat format) => State = new(AudioCaptureStatus.Connected, Format: format);
-        public void Emit(byte[] pcm) => DataAvailable?.Invoke(new AudioChunk(0, State.Format!, pcm, pcm.Length));
+        public void Emit(byte[] pcm, AudioCaptureState? session = null)
+            => DataAvailable?.Invoke(new AudioChunk(0, (session ?? State).Format!, pcm, pcm.Length) { Session = session ?? State });
         public void Notify(AudioCaptureState state) => StateChanged?.Invoke(state);
         public void Disconnect() { State = new(AudioCaptureStatus.Disconnected); Notify(State); }
         public IReadOnlyList<AudioDeviceInfo> GetAvailableDevices() => [];
