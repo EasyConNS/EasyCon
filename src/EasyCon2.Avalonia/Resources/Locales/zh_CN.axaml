@@ -236,6 +236,7 @@
     <x:String x:Key="Text.AudioLabel.Name">标签名称</x:String>
     <x:String x:Key="Text.AudioLabel.NamePlaceholder">例如：闪光音效</x:String>
     <x:String x:Key="Text.AudioLabel.Save">保存选区为标签</x:String>
+    <x:String x:Key="Text.AudioLabel.SaveHint">已保存脚本：自动保存到脚本旁的 audiolabel；否则请选择脚本所在文件夹，程序会创建 audiolabel。</x:String>
     <x:String x:Key="Text.AudioLabel.InvalidName">名称不能包含路径或文件名禁用字符，也不能以空格或句点结尾。</x:String>
     <x:String x:Key="Text.AudioLabel.Ready">连接游戏音频后开始录制，或截取最近 10 秒。每次录制最多 15 秒，高采样率或多声道时上限可能更短。</x:String>
     <x:String x:Key="Text.AudioLabel.NoHistory">暂无最近音频。请连接音频源并确认数据持续到达；已有选区会保留。</x:String>
@@ -248,8 +249,8 @@
     <x:String x:Key="Text.AudioLabel.Played">试听完成。</x:String>
     <x:String x:Key="Text.AudioLabel.Paused">试听已暂停。单击波形或拖动红色游标后，继续试听将从新位置开始，不改变保存选区。</x:String>
     <x:String x:Key="Text.AudioLabel.Stopped">试听已停止，游标保留在停止位置。下次从选区起点试听，也可单击波形重新定位。</x:String>
-    <x:String x:Key="Text.AudioLabel.SaveFolder">选择声音标签的保存目录</x:String>
-    <x:String x:Key="Text.AudioLabel.AlreadyExists">同名标签已存在。请修改标签名称或选择其他目录。</x:String>
+    <x:String x:Key="Text.AudioLabel.SaveFolder">选择脚本所在文件夹（自动创建 audiolabel）</x:String>
+    <x:String x:Key="Text.AudioLabel.AlreadyExists">同名标签已存在：{0}。请修改标签名称后再保存。</x:String>
     <x:String x:Key="Text.AudioLabel.Saved">标签已保存：{0}</x:String>
     <x:String x:Key="Text.AudioLabel.Error">操作未完成：{0}</x:String>
     <x:String x:Key="Text.AudioMatch.Title">声音匹配测试</x:String>

@@ -1,5 +1,6 @@
-# 先保存本 ECS，在脚本同级新建 audiolabel 文件夹；ECS 放在这个文件夹外面。
-# 保存标签时选择 audiolabel，程序自动创建 闪光音效.audiolabel；已有标签则整夹复制。
+# 先保存并打开本 ECS，保存声音标签时会自动使用脚本旁的 audiolabel，缺失则创建。
+# 没有打开或保存 ECS 时，选择脚本所在文件夹，程序会在其中创建 audiolabel。
+# 已有标签则整夹复制到 audiolabel 下；ECS 与 audiolabel 同级。
 # 最终路径：脚本目录/audiolabel/闪光音效.audiolabel/label.json（同目录保留 audio.wav）。
 # 标签名称必须与制作时一致，不能只改文件夹名；用于匹配的选区须为 0.15～10 秒。
 # 在主窗口连接游戏音频后运行；目录与排错说明见 docs/AudioLabels.md。

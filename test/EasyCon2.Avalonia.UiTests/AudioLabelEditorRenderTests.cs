@@ -79,6 +79,7 @@ public class AudioLabelEditorRenderTests
             Assert.That(vm.ClipSummary, Does.Contain("16,000"));
             Assert.That(vm.Status, Does.Not.StartWith("Text."));
             Assert.That(vm.PlaybackSummary, Does.Not.StartWith("Text."));
+            Assert.That(window.FindControl<TextBlock>("SaveLocationHint")!.Text, Does.Contain("audiolabel").And.Not.StartWith("Text."));
         });
     }
 
