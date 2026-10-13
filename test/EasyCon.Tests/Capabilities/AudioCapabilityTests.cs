@@ -19,6 +19,7 @@ public class AudioCapabilityTests
     [TestCase("audio-lookback.ecs")]
     [TestCase("audio-wait.ecs")]
     [TestCase("audio-wait-score.ecs")]
+    [TestCase("audio-key-lookback.ecs")]
     public void PublishedExamplesCompile(string file)
     {
         CompileResult result = Compile(ReadExample(file));
