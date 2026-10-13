@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using EasyCon.Capture.Audio;
 using System.Globalization;
+using System.Windows.Input;
 
 namespace EasyCon2.Avalonia.AudioLabels;
 
@@ -27,9 +28,13 @@ public sealed class AudioWaveform : Control
         AvaloniaProperty.Register<AudioWaveform, IBrush>(nameof(PlaybackBrush), Brushes.OrangeRed);
     public static readonly StyledProperty<IBrush> RulerBrushProperty =
         AvaloniaProperty.Register<AudioWaveform, IBrush>(nameof(RulerBrush), Brushes.Gray);
+    public static readonly StyledProperty<ICommand?> SeekCommandProperty =
+        AvaloniaProperty.Register<AudioWaveform, ICommand?>(nameof(SeekCommand));
 
     private double _anchor;
+    private double _pressX;
     private bool _dragging;
+    private bool _moved;
     private int _handle;
 
     static AudioWaveform()
@@ -46,6 +51,7 @@ public sealed class AudioWaveform : Control
     public double? PlaybackPosition { get => GetValue(PlaybackPositionProperty); set => SetValue(PlaybackPositionProperty, value); }
     public IBrush PlaybackBrush { get => GetValue(PlaybackBrushProperty); set => SetValue(PlaybackBrushProperty, value); }
     public IBrush RulerBrush { get => GetValue(RulerBrushProperty); set => SetValue(RulerBrushProperty, value); }
+    public ICommand? SeekCommand { get => GetValue(SeekCommandProperty); set => SetValue(SeekCommandProperty, value); }
 
     public override void Render(DrawingContext context)
     {
@@ -124,16 +130,21 @@ public sealed class AudioWaveform : Control
         base.OnPointerPressed(e);
         if (Duration <= 0 || Bounds.Width <= 0 || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             return;
-        double x = e.GetPosition(this).X;
+        Focus();
+        Point point = e.GetPosition(this);
+        double x = point.X;
         double left = SelectionStart / Duration * Bounds.Width;
         double right = SelectionEnd / Duration * Bounds.Width;
         _handle = Math.Abs(x - left) <= 12 && Math.Abs(x - left) <= Math.Abs(x - right) ? -1
             : Math.Abs(x - right) <= 12 ? 1 : 0;
+        if (PlaybackPosition is double cursor && Math.Abs(x - cursor / Duration * Bounds.Width) <= 8
+            && (_handle == 0 || point.Y <= 8))
+            _handle = 2;
         _anchor = ToSeconds(x);
+        _pressX = x;
+        _moved = false;
         _dragging = true;
         e.Pointer.Capture(this);
-        if (_handle == 0)
-            SetRange(_anchor, _anchor);
         e.Handled = true;
     }
 
@@ -142,8 +153,14 @@ public sealed class AudioWaveform : Control
         base.OnPointerMoved(e);
         if (!_dragging)
             return;
-        double position = ToSeconds(e.GetPosition(this).X);
-        if (_handle == -1)
+        double x = e.GetPosition(this).X;
+        _moved |= Math.Abs(x - _pressX) > 4;
+        if (!_moved)
+            return;
+        double position = ToSeconds(x);
+        if (_handle == 2)
+            Seek(position);
+        else if (_handle == -1)
             SetCurrentValue(SelectionStartProperty, Math.Min(position, SelectionEnd));
         else if (_handle == 1)
             SetCurrentValue(SelectionEndProperty, Math.Max(position, SelectionStart));
@@ -155,8 +172,13 @@ public sealed class AudioWaveform : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
+        if (!_dragging)
+            return;
+        if (!_moved)
+            Seek(ToSeconds(e.GetPosition(this).X));
         _dragging = false;
         e.Pointer.Capture(null);
+        e.Handled = true;
     }
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
@@ -166,6 +188,13 @@ public sealed class AudioWaveform : Control
     }
 
     private double ToSeconds(double x) => Math.Clamp(x / Bounds.Width, 0, 1) * Duration;
+
+    private void Seek(double position)
+    {
+        double bounded = Math.Clamp(position, SelectionStart, SelectionEnd);
+        if (SeekCommand?.CanExecute(bounded) == true)
+            SeekCommand.Execute(bounded);
+    }
 
     private void SetRange(double start, double end)
     {

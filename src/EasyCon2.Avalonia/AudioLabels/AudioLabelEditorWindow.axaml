@@ -4,6 +4,7 @@
         xmlns:loc="using:EasyCon2.Avalonia.Markup"
         x:Class="EasyCon2.Avalonia.AudioLabels.AudioLabelEditorWindow"
         x:DataType="audio:AudioLabelEditorViewModel"
+        audio:AudioLabelKeyboard.TogglePreview="{Binding TogglePreviewCommand}"
         Title="{loc:Translate Text.AudioLabel.Title}"
         Width="900" Height="720" MinWidth="720" MinHeight="540"
         Background="{DynamicResource WorkbenchWindowBrush}"
@@ -17,9 +18,14 @@
                            Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
             </StackPanel>
             <WrapPanel Grid.Row="1" Orientation="Horizontal">
+                <Button x:Name="RecordButton" Content="{Binding RecordingButtonText}"
+                        Command="{Binding ToggleRecordingCommand}" Margin="0,0,10,6"/>
                 <Button x:Name="CaptureRecentButton" Content="{loc:Translate Text.AudioLabel.Capture}"
-                        Command="{Binding CaptureRecentCommand}" Margin="0,0,10,0"/>
-                <Button Content="{loc:Translate Text.AudioLabel.Open}" Command="{Binding OpenCommand}"/>
+                        Command="{Binding CaptureRecentCommand}" Margin="0,0,10,6"/>
+                <Button Content="{loc:Translate Text.AudioLabel.Open}" Command="{Binding OpenCommand}" Margin="0,0,16,6"/>
+                <TextBlock x:Name="RecordingTimeText" Text="{Binding RecordingSummary}" IsVisible="{Binding IsRecording}"
+                           VerticalAlignment="Center" Margin="0,0,0,6" FontWeight="SemiBold"
+                           Foreground="{DynamicResource WorkbenchDangerBrush}"/>
             </WrapPanel>
             <Border Grid.Row="2" Background="{DynamicResource WorkbenchPanelBrush}"
                     BorderBrush="{DynamicResource WorkbenchBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16">
@@ -31,6 +37,7 @@
                                          SelectionEnd="{Binding SelectionEnd}" IsEnabled="{Binding CanChangeSelection}"
                                          WaveBrush="{DynamicResource WorkbenchAccentBrush}"
                                          PlaybackPosition="{Binding PlaybackPosition}"
+                                         SeekCommand="{Binding SeekPreviewCommand}" Focusable="True"
                                          PlaybackBrush="{DynamicResource WorkbenchDangerBrush}"
                                          RulerBrush="{DynamicResource WorkbenchMutedTextBrush}"
                                          AutomationProperties.Name="{loc:Translate Text.AudioLabel.WaveformHint}"/>
@@ -65,8 +72,10 @@
             <StackPanel Grid.Row="4" Spacing="10">
                 <TextBlock Text="{Binding SelectionSummary}"/>
                 <WrapPanel Orientation="Horizontal">
-                    <Button Content="{loc:Translate Text.AudioLabel.Play}" Command="{Binding PlaySelectionCommand}" Margin="0,0,10,0"/>
-                    <Button Content="{loc:Translate Text.AudioLabel.Stop}" Command="{Binding StopPreviewCommand}"/>
+                    <Button x:Name="PreviewButton" Content="{Binding PreviewButtonText}" Command="{Binding TogglePreviewCommand}" Margin="0,0,10,0"/>
+                    <Button x:Name="StopPreviewButton" Content="{loc:Translate Text.AudioLabel.Stop}" Command="{Binding StopPreviewCommand}" Margin="0,0,16,0"/>
+                    <TextBlock Text="{loc:Translate Text.AudioLabel.SpaceHint}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
                 </WrapPanel>
                 <TextBlock Text="{loc:Translate Text.AudioLabel.PreviewUnsupported}" IsVisible="{Binding !IsPreviewSupported}"
                            TextWrapping="Wrap" Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>

@@ -8,6 +8,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using EasyCon.Capture.Audio;
 using EasyCon2.Avalonia.AudioLabels;
 using EasyCon2.Avalonia.Localization;
@@ -115,27 +116,177 @@ public class AudioLabelEditorRenderTests
     }
 
     [Test]
+    public void SpaceControlsPreviewWhileCaptureButtonIsFocusedAndIgnoresKeyRepeat()
+    {
+        FakePreview preview = new() { WaitForCancellation = true };
+        WithEditor("zh_CN", ThemeManager.whiteGraySchemeName, (window, vm) =>
+        {
+            vm.SelectionStart = 0.5;
+            vm.SelectionEnd = 2.5;
+            Button capture = window.FindControl<Button>("CaptureRecentButton")!;
+            int captureClicks = 0;
+            capture.Click += (_, _) => captureClicks++;
+            Assert.That(capture.Focus(), Is.True);
+            window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(vm.IsPlaying, Is.True, "Holding Space must not immediately pause again.");
+            Assert.That(window.FindControl<Button>("PreviewButton")!.Content, Is.EqualTo("暂停试听"));
+            preview.PositionChanged!(0.7);
+            window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            PumpUntilCompleted(vm.TogglePreviewCommand.ExecutionTask!);
+            window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.IsPaused, Is.True);
+                Assert.That(vm.PlaybackPosition, Is.EqualTo(1.2).Within(0.00001));
+                Assert.That(vm.SelectionStart, Is.EqualTo(0.5));
+                Assert.That(vm.SelectionEnd, Is.EqualTo(2.5));
+                Assert.That(captureClicks, Is.Zero);
+                Assert.That(window.FindControl<Button>("PreviewButton")!.Content, Is.EqualTo("继续试听"));
+            });
+            window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Assert.That(vm.IsPlaying, Is.True);
+            Assert.That(vm.PlaybackPosition, Is.EqualTo(1.2).Within(0.00001));
+            PumpUntilCompleted(vm.StopPreviewCommand.ExecuteAsync(null));
+        }, preview);
+    }
+
+    [Test]
+    public void SpaceInTextAndNumericInputsDoesNotStartPreview()
+    {
+        WithEditor("zh_CN", ThemeManager.whiteGraySchemeName, (window, vm) =>
+        {
+            TextBox name = window.FindControl<TextBox>("LabelNameInput")!;
+            Assert.That(name.Focus(), Is.True);
+            name.CaretIndex = name.Text!.Length;
+            window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            window.KeyTextInput(" ");
+            window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Assert.That(name.Text, Does.EndWith(" "));
+            TextBox numeric = window.FindControl<NumericUpDown>("SelectionStartInput")!.GetVisualDescendants().OfType<TextBox>().Single();
+            Assert.That(numeric.Focus(), Is.True);
+            window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Assert.That(vm.IsPlaying, Is.False);
+            Assert.That(vm.IsPaused, Is.False);
+        }, new FakePreview { WaitForCancellation = true });
+    }
+
+    [Test]
+    public void DisabledPreviewShortcutNeverActivatesCaptureOrStopsRecording()
+    {
+        FakeSource source = new();
+        WithEditor("zh_CN", ThemeManager.whiteGraySchemeName, (window, vm) =>
+        {
+            Button capture = window.FindControl<Button>("CaptureRecentButton")!;
+            Assert.That(capture.Focus(), Is.True);
+            window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(vm.HasClip, Is.False);
+            Assert.That(vm.IsBusy, Is.False);
+            vm.ToggleRecordingCommand.Execute(null);
+            Button record = window.FindControl<Button>("RecordButton")!;
+            Assert.That(record.Focus(), Is.True);
+            window.KeyPressQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            window.KeyReleaseQwerty(PhysicalKey.Space, RawInputModifiers.None);
+            Assert.That(vm.IsRecording, Is.True);
+            Assert.That(record.Content, Is.EqualTo("停止录制"));
+            Assert.That(window.FindControl<TextBlock>("RecordingTimeText")!.IsVisible, Is.True);
+            source.Emit(new byte[16000 * 4]);
+            vm.ToggleRecordingCommand.Execute(null);
+            PumpUntil(() => !vm.IsRecording);
+            Assert.Multiple(() =>
+            {
+                Assert.That(vm.Duration, Is.EqualTo(1));
+                Assert.That(vm.RecordingDuration, Is.EqualTo(1));
+                Assert.That(record.Content, Is.EqualTo("开始录制"));
+                Assert.That(window.FindControl<TextBlock>("RecordingTimeText")!.IsVisible, Is.False);
+            });
+        }, source: source, capture: false);
+    }
+
+    [Test]
+    public void PausedClickAndCursorDragSeekWithoutAlteringSelectionAndBoundaryDragStillTrims()
+    {
+        FakePreview preview = new() { WaitForCancellation = true };
+        WithEditor("en_US", ThemeManager.DarkModeSchemeName, (window, vm) =>
+        {
+            vm.SelectionStart = 0.3;
+            vm.SelectionEnd = 2.7;
+            PumpUntilCompleted(vm.TogglePreviewCommand.ExecuteAsync(null));
+            preview.PositionChanged!(1.2);
+            PumpUntilCompleted(vm.TogglePreviewCommand.ExecuteAsync(null));
+            AudioWaveform waveform = window.FindControl<AudioWaveform>("Waveform")!;
+            Point At(double seconds, double y = 80) => waveform.TranslatePoint(new Point(seconds / 3 * waveform.Bounds.Width, y), window)!.Value;
+            window.MouseDown(At(0.6), MouseButton.Left);
+            window.MouseUp(At(0.6), MouseButton.Left);
+            Assert.That(vm.PlaybackPosition, Is.EqualTo(0.6).Within(0.02));
+            window.MouseDown(At(0.6), MouseButton.Left);
+            window.MouseMove(At(2.1));
+            window.MouseUp(At(2.1), MouseButton.Left);
+            Assert.That(vm.PlaybackPosition, Is.EqualTo(2.1).Within(0.02));
+            Assert.That(vm.SelectionStart, Is.EqualTo(0.3));
+            Assert.That(vm.SelectionEnd, Is.EqualTo(2.7));
+            PumpUntilCompleted(vm.TogglePreviewCommand.ExecuteAsync(null));
+            Assert.That(preview.Played!.DurationSeconds, Is.EqualTo(0.6).Within(0.02));
+            PumpUntilCompleted(vm.TogglePreviewCommand.ExecuteAsync(null));
+            // When the cursor overlaps a trim boundary, its top red handle remains draggable.
+            vm.SeekPreviewCommand.Execute(0.3);
+            window.MouseDown(At(0.3, 4), MouseButton.Left);
+            window.MouseMove(At(0.9, 4));
+            window.MouseUp(At(0.9, 4), MouseButton.Left);
+            Assert.That(vm.SelectionStart, Is.EqualTo(0.3));
+            Assert.That(vm.PlaybackPosition, Is.EqualTo(0.9).Within(0.02));
+            window.MouseDown(At(0.3), MouseButton.Left);
+            window.MouseMove(At(0.45));
+            window.MouseUp(At(0.45), MouseButton.Left);
+            Assert.That(vm.SelectionStart, Is.EqualTo(0.45).Within(0.02));
+            Assert.That(vm.IsPaused, Is.False);
+            PumpUntilCompleted(vm.TogglePreviewCommand.ExecuteAsync(null));
+            Assert.That(vm.PlaybackPosition, Is.EqualTo(0.45).Within(0.02));
+            PumpUntilCompleted(vm.StopPreviewCommand.ExecuteAsync(null));
+        }, preview);
+    }
+
+    [Test]
     [Explicit("Creates preview images for visual QA using the safe direct Skia encoder.")]
     [Category("Manual")]
     public void RenderAudioLabelEditorPreviews()
     {
-        foreach ((string locale, string scheme, string name) in new[]
+        foreach ((string locale, string scheme, string name, bool recording) in new[]
         {
-            ("zh_CN", ThemeManager.whiteGraySchemeName, "audio-label-light"),
-            ("zh_CN", ThemeManager.DarkModeSchemeName, "audio-label-dark"),
-            ("en_US", ThemeManager.whiteGraySchemeName, "audio-label-english")
+            ("zh_CN", ThemeManager.whiteGraySchemeName, "audio-label-light", false),
+            ("zh_CN", ThemeManager.DarkModeSchemeName, "audio-label-dark", false),
+            ("en_US", ThemeManager.whiteGraySchemeName, "audio-label-english", false),
+            ("zh_CN", ThemeManager.whiteGraySchemeName, "audio-label-recording", true),
+            ("en_US", ThemeManager.whiteGraySchemeName, "audio-label-recording-english", true)
         })
         {
+            FakeSource source = new();
             FakePreview preview = new() { WaitForCancellation = true };
             WithEditor(locale, scheme, (window, vm) =>
             {
                 window.Height = 720;
                 vm.SelectionStart = 1.05;
                 vm.SelectionEnd = 1.85;
-                Task playing = vm.PlaySelectionCommand.ExecuteAsync(null);
-                preview.PositionChanged!(0.3);
-                Dispatcher.UIThread.RunJobs();
-                PumpUntilCompleted(Task.WhenAll(vm.StopPreviewCommand.ExecuteAsync(null), playing));
+                if (recording)
+                {
+                    window.Width = window.MinWidth;
+                    vm.ToggleRecordingCommand.Execute(null);
+                    source.Emit(new byte[16000 * 4]);
+                    PumpUntil(() => vm.RecordingDuration > 0);
+                }
+                else
+                {
+                    Task playing = vm.PlaySelectionCommand.ExecuteAsync(null);
+                    preview.PositionChanged!(0.3);
+                    Dispatcher.UIThread.RunJobs();
+                    PumpUntilCompleted(Task.WhenAll(vm.TogglePreviewCommand.ExecuteAsync(null), playing));
+                }
                 using WriteableBitmap frame = window.CaptureRenderedFrame()!;
                 string output = Path.Combine(Path.GetTempPath(), "easycon-audio-label-qa");
                 Directory.CreateDirectory(output);
@@ -148,19 +299,19 @@ public class AudioLabelEditorRenderTests
                 using FileStream stream = File.Create(path);
                 data.SaveTo(stream);
                 TestContext.Out.WriteLine(path);
-            }, preview);
+            }, preview, source);
         }
     }
 
     private static void WithEditor(string locale, string scheme, Action<AudioLabelEditorWindow, AudioLabelEditorViewModel> action,
-        FakePreview? preview = null)
+        FakePreview? preview = null, FakeSource? source = null, bool capture = true)
     {
         ResourceDictionary dictionary = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri($"avares://EasyCon2.Avalonia/Resources/Locales/{locale}.axaml"));
         Application.Current!.Resources.MergedDictionaries.Add(dictionary);
         Func<string, string>? resolver = L10nBridge.Resolver;
         L10nBridge.Resolver = L10n.T;
         ThemeManager.Instance.ApplyColorScheme(scheme);
-        FakeSource source = new();
+        source ??= new();
         using AudioHistoryBuffer history = new(source);
         using AudioLabelEditorViewModel vm = new(history, preview ?? new FakePreview(), new FakeDialogs(), AvaloniaUiDispatcher.Instance);
         AudioLabelEditorWindow window = new() { DataContext = vm };
@@ -177,8 +328,8 @@ public class AudioLabelEditorRenderTests
             byte[] pcm = new byte[samples.Length * 2];
             Buffer.BlockCopy(samples, 0, pcm, 0, pcm.Length);
             source.Emit(pcm);
-            Task capture = vm.CaptureRecentCommand.ExecuteAsync(null);
-            PumpUntilCompleted(capture);
+            if (capture)
+                PumpUntilCompleted(vm.CaptureRecentCommand.ExecuteAsync(null));
             vm.LabelName = locale == "zh_CN" ? "闪光音效" : "Shiny sound";
             using WriteableBitmap? initial = window.CaptureRenderedFrame();
             action(window, vm);
@@ -193,14 +344,20 @@ public class AudioLabelEditorRenderTests
 
     private static void PumpUntilCompleted(Task task)
     {
+        PumpUntil(() => task.IsCompleted);
+        Assert.That(task.IsCompletedSuccessfully, Is.True);
+    }
+
+    private static void PumpUntil(Func<bool> completed)
+    {
         Stopwatch timeout = Stopwatch.StartNew();
-        while (!task.IsCompleted && timeout.Elapsed < TimeSpan.FromSeconds(5))
+        while (!completed() && timeout.Elapsed < TimeSpan.FromSeconds(5))
         {
             Dispatcher.UIThread.RunJobs();
             Thread.Yield();
         }
         Dispatcher.UIThread.RunJobs();
-        Assert.That(task.IsCompletedSuccessfully, Is.True);
+        Assert.That(completed(), Is.True);
     }
 
     private sealed class FakeSource : IAudioCaptureSource
@@ -223,9 +380,11 @@ public class AudioLabelEditorRenderTests
         public bool IsSupported => true;
         public bool WaitForCancellation { get; init; }
         public Action<double>? PositionChanged { get; private set; }
+        public AudioClip? Played { get; private set; }
         public Task PlayAsync(AudioClip clip, CancellationToken cancellationToken, Action<double>? positionChanged = null)
         {
             PositionChanged = positionChanged;
+            Played = clip;
             return WaitForCancellation ? Task.Delay(Timeout.Infinite, cancellationToken) : Task.CompletedTask;
         }
     }

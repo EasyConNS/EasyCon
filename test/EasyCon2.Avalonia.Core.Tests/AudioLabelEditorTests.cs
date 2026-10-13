@@ -274,6 +274,196 @@ public class AudioLabelEditorTests
         });
     }
 
+    [TestCase(null)]
+    [TestCase(0.3)]
+    [TestCase(0.8)]
+    public async Task PauseAndResumeUseTheCursorWithoutChangingTheSavedSelection(double? seek)
+    {
+        FakeSource source = new();
+        using AudioHistoryBuffer history = new(source);
+        byte[] pcm = Enumerable.Range(0, 32000).Select(i => (byte)(i % 251)).ToArray();
+        source.Emit(pcm);
+        FakePreview preview = new() { WaitForCancellation = true };
+        QueuedDispatcher ui = new();
+        using AudioLabelEditorViewModel vm = new(history, preview, new FakeDialogs(), ui);
+        await vm.CaptureRecentCommand.ExecuteAsync(null);
+        vm.SelectionStart = 0.25;
+        vm.SelectionEnd = 0.9;
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Action<double> previousCallback = preview.PositionChanged!;
+        previousCallback(0.25);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.IsPaused, Is.True);
+            Assert.That(vm.IsPlaying, Is.False);
+            Assert.That(vm.CanChangeSelection, Is.True);
+            Assert.That(vm.PlaybackPosition, Is.EqualTo(0.5));
+            Assert.That(vm.PreviewButtonText, Is.EqualTo("Text.AudioLabel.Resume"));
+        });
+        if (seek is double position)
+            vm.SeekPreviewCommand.Execute(position);
+        double resume = seek ?? 0.5;
+        previousCallback(0.6);
+        ui.Drain();
+        Assert.That(vm.PlaybackPosition, Is.EqualTo(resume), "A paused cursor must ignore stale output callbacks.");
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(preview.Played!.Pcm.ToArray(), Is.EqualTo(pcm[((int)(resume * 8000) * 4)..28800]));
+            Assert.That(vm.PlaybackPosition, Is.EqualTo(resume).Within(1e-10));
+            Assert.That(vm.SelectionStart, Is.EqualTo(0.25));
+            Assert.That(vm.SelectionEnd, Is.EqualTo(0.9));
+        });
+        await vm.StopPreviewCommand.ExecuteAsync(null);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.That(vm.PlaybackPosition, Is.EqualTo(0.25), "Stop must reset the next start, unlike pause.");
+        Assert.That(preview.Played!.Pcm.ToArray(), Is.EqualTo(pcm[8000..28800]));
+        await vm.StopPreviewCommand.ExecuteAsync(null);
+    }
+
+    [Test]
+    public async Task ChangingSelectionAfterPauseStartsAtTheNewSelectionAndSeekIsClamped()
+    {
+        FakeSource source = new();
+        using AudioHistoryBuffer history = new(source);
+        source.Emit(new byte[32000]);
+        FakePreview preview = new() { WaitForCancellation = true };
+        using AudioLabelEditorViewModel vm = new(history, preview, new FakeDialogs(), SynchronousUiDispatcher.Instance);
+        await vm.CaptureRecentCommand.ExecuteAsync(null);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        preview.PositionChanged!(0.6);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        vm.SelectionStart = 0.2;
+        vm.SelectionEnd = 0.8;
+        Assert.That(vm.IsPaused, Is.False);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.That(vm.PlaybackPosition, Is.EqualTo(0.2));
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        vm.SeekPreviewCommand.Execute(-5);
+        Assert.That(vm.PlaybackPosition, Is.EqualTo(0.2));
+        vm.SeekPreviewCommand.Execute(5);
+        Assert.That(vm.PlaybackPosition, Is.EqualTo(0.8));
+        vm.SeekPreviewCommand.Execute(double.NaN);
+        Assert.That(vm.PlaybackPosition, Is.EqualTo(0.8));
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.That(vm.IsPlaying, Is.False, "Resuming at the end must not unexpectedly rewind.");
+        Assert.That(vm.IsPaused, Is.False);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.That(vm.PlaybackPosition, Is.EqualTo(0.2), "A fresh preview after completion starts at selection start.");
+        await vm.StopPreviewCommand.ExecuteAsync(null);
+    }
+
+    [Test]
+    public async Task ReplacingPausedAudioWithTheSameLengthClearsItsResumePosition()
+    {
+        FakeSource source = new();
+        using AudioHistoryBuffer history = new(source);
+        source.Emit(new byte[32000]);
+        FakePreview preview = new() { WaitForCancellation = true };
+        using AudioLabelEditorViewModel vm = new(history, preview, new FakeDialogs(), SynchronousUiDispatcher.Instance);
+        await vm.CaptureRecentCommand.ExecuteAsync(null);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        preview.PositionChanged!(0.4);
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        await vm.CaptureRecentCommand.ExecuteAsync(null);
+        Assert.That(vm.IsPaused, Is.False);
+        Assert.That(vm.PlaybackPosition, Is.Null);
+        Assert.That(vm.PreviewButtonText, Is.EqualTo("Text.AudioLabel.Play"));
+        await vm.TogglePreviewCommand.ExecuteAsync(null);
+        Assert.That(vm.PlaybackPosition, Is.Zero);
+        await vm.StopPreviewCommand.ExecuteAsync(null);
+    }
+
+    [Test]
+    public async Task RecordingDisablesConflictingActionsAndReplacesTheSnapshotWithNewAudio()
+    {
+        FakeSource source = new();
+        using AudioHistoryBuffer history = new(source);
+        source.Emit(new byte[32000]);
+        FakePreview preview = new();
+        using AudioLabelEditorViewModel vm = new(history, preview, new FakeDialogs(), SynchronousUiDispatcher.Instance);
+        await vm.CaptureRecentCommand.ExecuteAsync(null);
+        vm.LabelName = "new";
+        vm.ToggleRecordingCommand.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.IsRecording, Is.True);
+            Assert.That(vm.RecordingLimit, Is.EqualTo(15));
+            Assert.That(vm.CaptureRecentCommand.CanExecute(null), Is.False);
+            Assert.That(vm.OpenCommand.CanExecute(null), Is.False);
+            Assert.That(vm.SaveCommand.CanExecute(null), Is.False);
+            Assert.That(vm.TogglePreviewCommand.CanExecute(null), Is.False);
+            Assert.That(vm.CanChangeSelection, Is.False);
+            Assert.That(vm.ToggleRecordingCommand.CanExecute(null), Is.True);
+        });
+        byte[] recording = Enumerable.Repeat((byte)42, 16000).ToArray();
+        source.Emit(recording);
+        Task stopped = RecordingFinished(vm);
+        vm.ToggleRecordingCommand.Execute(null);
+        await stopped;
+        await vm.PlaySelectionCommand.ExecuteAsync(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.Duration, Is.EqualTo(0.5));
+            Assert.That(vm.RecordingDuration, Is.EqualTo(0.5));
+            Assert.That(vm.CanChangeSelection, Is.True);
+            Assert.That(preview.Played!.Pcm.ToArray(), Is.EqualTo(recording));
+            Assert.That(source.Disposed, Is.False);
+        });
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task FailedRecordingRetainsTheEditedSnapshotAndClosingNeverDisconnectsCapture(bool disconnect)
+    {
+        FakeSource source = new();
+        using AudioHistoryBuffer history = new(source);
+        source.Emit(new byte[32000]);
+        using AudioLabelEditorViewModel vm = new(history, new FakePreview(), new FakeDialogs(), SynchronousUiDispatcher.Instance);
+        await vm.CaptureRecentCommand.ExecuteAsync(null);
+        vm.SelectionStart = 0.25;
+        vm.ToggleRecordingCommand.Execute(null);
+        source.Emit(new byte[8000]);
+        Task stopped = RecordingFinished(vm);
+        if (disconnect)
+            await source.DisconnectAsync();
+        else
+            source.Emit([1]);
+        await stopped;
+        Assert.Multiple(() =>
+        {
+            Assert.That(vm.Duration, Is.EqualTo(1));
+            Assert.That(vm.SelectionStart, Is.EqualTo(0.25));
+            Assert.That(vm.Status, Is.EqualTo("Text.AudioLabel.Error"));
+            Assert.That(vm.IsBusy, Is.False);
+        });
+        if (!disconnect)
+        {
+            vm.ToggleRecordingCommand.Execute(null);
+            stopped = RecordingFinished(vm);
+            vm.Dispose();
+            await stopped;
+            Assert.That(source.State.Status, Is.EqualTo(AudioCaptureStatus.Connected));
+        }
+        Assert.That(source.Disposed, Is.False);
+    }
+
+    private static Task RecordingFinished(AudioLabelEditorViewModel vm)
+    {
+        TaskCompletionSource finished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Changed(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName == nameof(vm.IsRecording) && !vm.IsRecording)
+            {
+                vm.PropertyChanged -= Changed;
+                finished.TrySetResult();
+            }
+        }
+        vm.PropertyChanged += Changed;
+        return finished.Task.WaitAsync(TimeSpan.FromSeconds(3));
+    }
+
     private sealed class QueuedDispatcher : IUiDispatcher
     {
         private readonly System.Collections.Concurrent.ConcurrentQueue<Action> _pending = new();
