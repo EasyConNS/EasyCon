@@ -10,6 +10,8 @@
 | [GETTING_STARTED.md](GETTING_STARTED.md) | 安装、GUI/CLI 运行脚本、采集画面来源（含 OBS 虚拟摄像头） |
 | [Script.md](Script.md) | ECS 脚本语言完整语法：变量/常量/类型/流程控制/函数/结构体/数组/按键语句/识图标签/IMPORT |
 | [Functions.md](Functions.md) | 内置函数手册（按功能域；速查表含桌面/单片机可用性） |
+| [AudioSource.md](AudioSource.md) | 连接 Windows 游戏音频输入、查看电平及连接排查 |
+| [AudioLabels.md](AudioLabels.md) | 声音标签制作、相对 ECS 的放置位置、首次运行、匹配校准与常见报错 |
 
 ## 🏗️ 架构与编译管线（改编译器/宿主前必读）
 
