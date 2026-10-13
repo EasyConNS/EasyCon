@@ -242,9 +242,10 @@ frameLen ≤ 255           帧长 = NSlots = 发射结束后池区高水位
 
 ### 3.4 调用约定
 
-实参连续暂存调用者 STAGING 区 `R[StagingBase..StagingBase+n)`，`Call` 深拷贝播种进被调方 ARG 窗
-`R[1..1+n)`（S-17）；接收槽 C 恒为寄存器号（无哨兵值），返回值深拷贝交接（C=0 即 RET 落点）。
-实参上限 7（ARG 窗容量，绑定层强制）。递归天然支持；深度上限 `ECS_MAX_CALL_DEPTH`（64，双端对齐）
+实参连续暂存调用者出站窗口 `R[a..a+n)`（A 随调用点编码，位置见 §3.3），`Call` 深拷贝播种进
+被调方参数窗 `R[1..1+n)`（S-17）；接收槽 C 恒为寄存器号（无哨兵值），返回值深拷贝交接
+（C=0 即 RET 落点）。实参无独立固定上限：编码上限 254，实际与出站窗口、存活值共享 255 槽帧
+预算（§3.3；绑定层声明校验 + 编码器预算校验）。递归天然支持；深度上限 `ECS_MAX_CALL_DEPTH`（64，双端对齐）
 → `ECS_ERR_DEPTH`；尾递归由 SSA 优化器（TRE）变循环回边，VM 无 tail-call 指令。
 
 ---
@@ -458,7 +459,7 @@ void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_
 | 帧区 | `max_depth × max_slots × 16B`（光速过帧 608 B） |
 | 堆 | 句柄表 + 对象，池大小可配（4–64 KB） |
 | VM 本体 | ecs_vm.c ~2200 行 C99 单翻译单元，`cc -O2` 一条命令构建 |
-| 调用深度 | `ECS_MAX_CALL_DEPTH` 64（与 C# 对齐）；帧 = 每函数栈窗口 arena bump（典型高水位 20–40 槽 ≈ 0.3–0.6KB），用户递归不耗宿主栈；深递归由 TRE 兜底 |
+| 调用深度 | `ECS_MAX_CALL_DEPTH` 64（与 C# 对齐）；帧 = 每函数栈窗口 arena bump，帧长按需（参数窗 + 出站窗 + 分配区，无全局地板——无出站调用的叶子函数可小至数槽），深度预算按活跃路径帧和估算（McuBytecodeDelivery.md §3 C4）；用户递归不耗宿主栈；深递归由 TRE 兜底 |
 
 ---
 

@@ -44,7 +44,7 @@ public class RegisterFileContractTests
             UseProcessCache = false,
         });
         Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Not.Empty,
-            "通用区容量（EcsRegisters.GenCount）超限应编译期拒绝（寄存器溢出诊断）");
+            "帧寄存器预算（EcsRegisters.MaxRegisters=255）超限应编译期拒绝（寄存器溢出诊断）");
         Assert.That(result.Image, Is.Null);
     }
 

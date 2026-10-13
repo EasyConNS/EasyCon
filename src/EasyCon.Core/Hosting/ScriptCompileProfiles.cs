@@ -9,11 +9,11 @@ namespace EasyCon.Core.Hosting;
 /// 避免 GUI / CLI 各自手写 <see cref="CompileOptions"/> 字面量而悄悄漂移。
 ///
 /// <para>
-/// 单流化后（docs/SingleStreamFormat.md §2（R-5 档位塌缩））：所有产物都是同一种
-/// 同一产物形态（ECX1 平铺），**没有宽窄之分**——原 Desktop/Portable 的格式维度随 <c>EnablePcWideSlots</c>
+/// 单流化后（docs/VM2.md §3.1）：所有产物都是同一形态（ECX1 平铺 + v3 定长指令编码），
+/// **没有宽窄之分**——原 Desktop/Portable 的格式维度随 <c>EnablePcWideSlots</c>
 /// 一起删除。当前定长指令编码的函数帧预算为 255 槽；参数与出站窗口按需分配，
 /// 桌面与 MCU 共用该预算及同一条可序列化指令流。
-/// 「能不能装进设备」是资源问题，由烧录前的容量预检判定（McuTargetProfile），
+/// 「能不能装进设备」是资源问题，由烧录前的容量预检判定（docs/McuBytecodeDelivery.md，计划中），
 /// 不再由编译档位表达。剩余的两档只是**缓存策略**（与产物内容无关，不进缓存键）：
 /// </para>
 /// <list type="bullet">

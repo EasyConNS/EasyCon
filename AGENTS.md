@@ -90,9 +90,12 @@ Rules to respect when changing code:
 - **Never construct `CapabilitySet` outside `Hosting/ScriptHostAssembler`.** Hosts (GUI/CLI) supply only
   "raw material" (`ScriptHostContext`: pad, frame/ROI/label delegates, console, args); the assembler owns
   adapter wrapping, defaults (Environment/Files/OCR/DNN) and resource teardown (`CapabilityLease`).
-- **Never hand-write `CompileOptions` literals.** Use `ScriptCompileProfiles.Desktop` (PC wide slots,
-  desktop interpreter only — the image cannot be serialized) or `ScriptCompileProfiles.Portable`
-  (frozen 8-bit slots, the only MCU-distributable and cacheable profile).
+- **Never hand-write `CompileOptions` literals.** Use `ScriptCompileProfiles.Interactive`
+  (compile-on-the-fly, process cache only) or `ScriptCompileProfiles.Distributable`
+  (obj/ content-addressed cache; the image is MCU-distributable). All products share one
+  format (ECX1 flat + v3 fixed-width encoding); the 255-slot frame budget is shared by
+  params, outbound windows and live values. Device fit is a burn-time capacity precheck
+  concern, not a profile.
 - DI *container* is deliberately absent: composition is explicit constructor passing from
   `App.axaml.cs` (GUI) and `Program.cs` (CLI).
 - **AI tool layer: runtime knows capabilities, not integrations.** Tool constructors may only depend on
@@ -191,21 +194,15 @@ OpenCV bindings come from the `OpenCvSharp5` NuGet packages (OpenCV 5.0); native
 
 - `docs/Pipeline.md` — unified compilation pipeline and single-source-of-truth landing points
 - `docs/ModuleSystem.md` — interface-based independent compilation + content-addressed cache
-- `docs/VM2.md` — bytecode/instruction-set spec (the live VM)
-- `docs/VmSemanticContract.md` — S-01..S-21 dual-end (C# interpreter ↔ C VM) semantic contract
-  (S-20 "pinned constants" and S-21 "capability-default degradation" are implemented)
-- `docs/EcmEcxFormat.md` — ECX1 flat image + ECM1 flat module-cache bit-level format
+- `docs/VM2.md` — bytecode/instruction-set spec (the live VM): ECX1 flat image encoding (§3.1),
+  frame/register model (§3.3), calling convention (§3.4), and the S-01..S-21 dual-end
+  (C# interpreter ↔ C VM) semantic contract inline (S-20 pinned constants / S-21
+  capability-default degradation implemented)
 - `docs/Script.md` — ECS scripting language reference
 - `docs/Functions.md` — script function handbook (script-author-facing, CN)
 - `docs/McuBytecodeDelivery.md` — plan of record for compiling and flashing MCU bytecode
 - `docs/Flow.md` — node-graph orchestration spec: `*.flow.json` format, node catalog/semantics,
   execution model (watchdog/timing/stop/slow sensing), HTTP + MCP API, Python canvas, known gaps
-
-**Outline & decision record (merged; replaces the former root analysis docs):**
-
-- `PROJECT_OUTLINE.md` — current-state map, performance ladder & four-way VM comparison verdict,
-  format/container and C-VM decision records, v2.3 alignment status, compiler-modernization
-  plan (pending: M3/M4, lib-import v2 N1-N3), gates, pitfalls, backlog
 
 **Historical / partially stale (verify against code before relying on them):**
 

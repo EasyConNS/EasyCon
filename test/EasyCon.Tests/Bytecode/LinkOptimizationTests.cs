@@ -273,7 +273,7 @@ public class LinkOptimizationTests
             if (ins.Op == EcsOpcode.Move) move++;
         }
         Assert.That(setVar, Is.EqualTo(0), "FOR 迭代变量 home 槽全函数无读取者，SetVar 应被清扫");
-        Assert.That(move, Is.LessThanOrEqualTo(19), "出口边死副本与无人读取的落槽应被清扫（v3+零φ合并+std 内联基线；abi_rev 4 内联实参救援拷贝 +1——壳体重排 STAGING 前先把外层实参拷到救援位；编码期原基线 15——零 φ 合并把出口副本变成 φ 槽就地写）");
+        Assert.That(move, Is.LessThanOrEqualTo(19), "出口边死副本与无人读取的落槽应被清扫（v3+零φ合并+std 内联基线）");
 
         Assert.That(EcsContainer.WriteImage(image, stripDebug: true).Length, Is.LessThan(600), "死存储清除后 MCU 发布镜像应 < 600B（清扫前 604B）");
 
