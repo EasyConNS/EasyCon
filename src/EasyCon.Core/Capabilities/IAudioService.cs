@@ -11,4 +11,6 @@ public interface IAudioSession : IDisposable
 {
     double Match(string labelName, int lookbackMs, CancellationToken token);
     bool Wait(string labelName, int timeoutMs, double threshold, CancellationToken token);
+    /// <summary>Highest completed score from the latest successful wait; throws until one completes normally.</summary>
+    double GetWaitScore(CancellationToken token);
 }

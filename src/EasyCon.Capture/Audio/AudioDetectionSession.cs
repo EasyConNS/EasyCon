@@ -17,6 +17,7 @@ public sealed class AudioDetectionSession : IDisposable
     private readonly Func<long> _clock;
     private readonly Action<int, CancellationToken> _delay;
     private readonly Timeline _history;
+    private double? _lastWaitScore;
 
     public AudioDetectionSession(IAudioCaptureSource source, Func<string, CancellationToken, AudioMatchTemplate> load)
         : this(source, load, Now, (ms, token) =>
@@ -57,6 +58,8 @@ public sealed class AudioDetectionSession : IDisposable
 
     public bool Wait(string labelName, int timeoutMs, double threshold = 0.85, CancellationToken token = default)
     {
+        // A failed or cancelled new wait must never expose an older wait's result.
+        _lastWaitScore = null;
         token.ThrowIfCancellationRequested();
         if (timeoutMs is < 1 or > MaximumTimeoutMs)
             throw new ArgumentOutOfRangeException(nameof(timeoutMs), "AUDIO_WAIT 超时必须为 1～300000 毫秒。");
@@ -70,7 +73,7 @@ public sealed class AudioDetectionSession : IDisposable
         AudioTemplateMatcher matcher = new(template, pending.Format);
         int framesPerBatch = Math.Max(1, pending.Format.SampleRate / 100);
         long cursor = start;
-        bool scored = false;
+        double? peak = null;
 
         bool FinishTimeout()
         {
@@ -84,8 +87,9 @@ public sealed class AudioDetectionSession : IDisposable
                 throw new InvalidOperationException("AUDIO_WAIT 音频分析积压，截止时待处理音频超过 250 毫秒；请检查处理负载或由脚本增大 timeoutMs。");
             pending.RequireCoverage(deadline);
             token.ThrowIfCancellationRequested();
-            if (!scored)
+            if (peak == null)
                 throw new InvalidOperationException("AUDIO_WAIT 在指定时间内未完成一个完整模板的分析；请由脚本增大 timeoutMs，不会自动延长等待。");
+            _lastWaitScore = peak.Value;
             return false;
         }
 
@@ -109,7 +113,7 @@ public sealed class AudioDetectionSession : IDisposable
                     // Recognition completed after the deadline cannot change the script's decision.
                     if (_clock() >= deadline)
                         return;
-                    scored = true;
+                    peak = Math.Max(peak ?? 0, score.Score);
                     hit |= score.Score >= threshold;
                 }, token);
                 token.ThrowIfCancellationRequested();
@@ -119,12 +123,22 @@ public sealed class AudioDetectionSession : IDisposable
                 if (_clock() >= deadline)
                     return FinishTimeout();
                 if (hit)
+                {
+                    _lastWaitScore = peak;
                     return true;
+                }
             }
             long remainingNs = deadline - _clock();
             if (remainingNs > 0)
                 _delay((int)Math.Clamp(remainingNs / 1_000_000, 1, 10), token);
         }
+    }
+
+    public double GetWaitScore(CancellationToken token = default)
+    {
+        token.ThrowIfCancellationRequested();
+        return _lastWaitScore ?? throw new InvalidOperationException(
+            "AUDIO_WAIT_SCORE 需要先完成一次 AUDIO_WAIT（命中或正常超时）；尚未等待、等待出错或取消时没有有效分数。");
     }
 
     public void Dispose() => _history.Dispose();

@@ -8,6 +8,8 @@ using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Tests.Support;
 using EasyScript;
+using System.Globalization;
+using System.Text;
 
 namespace EasyCon.Tests.Capabilities;
 
@@ -16,11 +18,29 @@ public class AudioCapabilityTests
 {
     [TestCase("audio-lookback.ecs")]
     [TestCase("audio-wait.ecs")]
+    [TestCase("audio-wait-score.ecs")]
     public void PublishedExamplesCompile(string file)
     {
-        string root = new DirectoryInfo(CvmRunner.FindNativeDir()!).Parent!.Parent!.Parent!.FullName;
-        CompileResult result = Compile(File.ReadAllText(Path.Combine(root, "examples", file)));
+        CompileResult result = Compile(ReadExample(file));
         Assert.That(result.Image!.Features & EcsImageFeatures.Audio, Is.Not.Zero);
+    }
+
+    [TestCase(true)]
+    [TestCase(false)]
+    public void PublishedWaitScoreExamplePrintsTheActualNumericScore(bool hit)
+    {
+        AudioTestRig rig = new();
+        RecordingConsole console = new();
+        using CapabilityLease lease = Assemble(new AudioService(rig), console: console);
+        rig.PlayOnDelay(hit ? rig.Sound : new byte[128000]);
+        Run(Compile(ReadExample("audio-wait-score.ecs")), lease);
+        string output = console.Output.ToString();
+        const string prefix = "本次等待最高分：";
+        string scoreLine = output.Split('\n').Single(line => line.StartsWith(prefix, StringComparison.Ordinal));
+        Assert.That(double.TryParse(scoreLine[prefix.Length..], CultureInfo.InvariantCulture, out double score), Is.True, output);
+        Assert.That(score, Is.EqualTo(hit ? rig.ReferenceScore() : 0).Within(1e-6));
+        Assert.That(output, Does.Contain(hit ? "检测到闪光音效，结束脚本" : "等待超时，指定时间内未确认命中"));
+        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + (hit ? 600 : 8000) * 1_000_000L));
     }
 
     [Test]
@@ -56,6 +76,24 @@ public class AudioCapabilityTests
         Assert.That(rig.Source.Subscribers, Is.Zero);
     }
 
+    [TestCase(true)]
+    [TestCase(false)]
+    public void WaitScoreReturnsADoubleAfterHitOrTimeoutAndIsIsolatedPerRun(bool hit)
+    {
+        AudioTestRig rig = new();
+        using CapabilityLease lease = Assemble(new AudioService(rig));
+        rig.PlayOnDelay(hit ? rig.Sound : new byte[32000]);
+        CompileResult script = Compile("$hit = AUDIO_WAIT(\"tone\", 2000)\nRETURN AUDIO_WAIT_SCORE()");
+        Assert.That(Run(script, lease).AsDouble(), Is.EqualTo(hit ? rig.ReferenceScore() : 0).Within(1e-12));
+        Assert.That(rig.Source.Subscribers, Is.Zero);
+        CompileResult readOnly = Compile("RETURN AUDIO_WAIT_SCORE()");
+        Assert.That(readOnly.Image!.Features & EcsImageFeatures.Audio, Is.Not.Zero);
+        Assert.That(Assert.Throws<ScriptException>(() => Run(readOnly, lease))!.Message,
+            Does.Contain("需要先完成一次 AUDIO_WAIT"));
+        Assert.That(rig.Source.Subscribers, Is.Zero);
+        Assert.That(rig.Source.StateSubscribers, Is.Zero);
+    }
+
     [Test]
     public void CancellationIsNotAFalseResultAndClosesAllListeners()
     {
@@ -79,10 +117,16 @@ public class AudioCapabilityTests
         Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch));
         CompileResult wait = Compile("RETURN AUDIO_WAIT(\"tone\", 1000)");
         Assert.That(EcxInterpreter.Run(wait.Image!, new EcxHost()), Is.EqualTo(EcxInterpreter.ERR_NOSUCHNATIVE));
+        CompileResult score = Compile("A 600\nRETURN AUDIO_WAIT_SCORE()");
+        Assert.That(Assert.Throws<ScriptException>(() => Run(score, lease))!.Message, Does.Contain("未提供脚本音频能力"));
+        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch));
+        Assert.That(EcxInterpreter.Run(Compile("RETURN AUDIO_WAIT_SCORE()").Image!, new EcxHost()),
+            Is.EqualTo(EcxInterpreter.ERR_NOSUCHNATIVE));
     }
 
-    [Test]
-    public void McuRejectsAudioAtLoadEvenWithoutStrictCapabilities()
+    [TestCase("AUDIO_WAIT(\"tone\", 1000)")]
+    [TestCase("AUDIO_WAIT_SCORE()")]
+    public void McuRejectsAudioAtLoadEvenWithoutStrictCapabilities(string call)
     {
         string directory = Path.Combine(Path.GetTempPath(), "easycon-audio-vm-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
@@ -91,7 +135,7 @@ public class AudioCapabilityTests
             string? binary = CvmRunner.EnsureBuilt(directory);
             if (binary == null)
                 Assert.Ignore("No C compiler available.");
-            CompileResult script = Compile("A 600\nRETURN AUDIO_WAIT(\"tone\", 1000)");
+            CompileResult script = Compile($"A 600\nRETURN {call}");
             (int exit, string output, string error) = CvmRunner.Run(binary!, EcsContainer.WriteImage(script.Image!), "audio", directory);
             Assert.That(exit, Is.EqualTo(14), error);
             Assert.That(output, Is.Empty);
@@ -112,6 +156,8 @@ public class AudioCapabilityTests
             AudioTestRig rig = new();
             Assert.Throws<InvalidOperationException>(() => new AudioLabelService(rig.Source, null).BeginRun(default));
             using IAudioSession session = new AudioLabelService(rig.Source, directory).BeginRun(default);
+            Assert.That(Assert.Throws<InvalidOperationException>(() => session.GetWaitScore(default))!.Message,
+                Does.Contain("需要先完成一次 AUDIO_WAIT"));
             Assert.That(Assert.Throws<InvalidOperationException>(() => session.Match("missing", 1000, default))!.Message,
                 Does.Contain(Path.Combine(directory, "audiolabel", "missing.audiolabel", "label.json")));
             Assert.Throws<ArgumentException>(() => session.Match("../other", 1000, default));
@@ -129,11 +175,18 @@ public class AudioCapabilityTests
         }
     }
 
-    private static CapabilityLease Assemble(IAudioService? audio = null, IPadInput? pad = null)
+    private static string ReadExample(string file)
+    {
+        string root = new DirectoryInfo(CvmRunner.FindNativeDir()!).Parent!.Parent!.Parent!.FullName;
+        return File.ReadAllText(Path.Combine(root, "examples", file));
+    }
+
+    private static CapabilityLease Assemble(IAudioService? audio = null, IPadInput? pad = null, IConsoleIo? console = null)
         => ScriptHostAssembler.Assemble(new ScriptHostContext
         {
             AudioService = audio,
             PadInput = pad,
+            Console = console,
             EnableOcr = false,
             EnableInference = false,
         });
@@ -168,6 +221,7 @@ public class AudioCapabilityTests
                 thresholds.Add(threshold);
                 return detection.Wait(name, milliseconds, threshold, token);
             }
+            public double GetWaitScore(CancellationToken token) => detection.GetWaitScore(token);
             public void Dispose() => detection.Dispose();
         }
     }
@@ -184,5 +238,17 @@ public class AudioCapabilityTests
         public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token) { }
         public void SetStick(GamePadKey key, byte x, byte y) { }
         public void ChangeAmiibo(uint index) { }
+    }
+
+    private sealed class RecordingConsole : IConsoleIo
+    {
+        public StringBuilder Output { get; } = new();
+        public void Print(string message, bool newline = true)
+        {
+            Output.Append(message);
+            if (newline)
+                Output.Append('\n');
+        }
+        public void Alert(string message) => Assert.Fail("The example should report results through PRINT.");
     }
 }

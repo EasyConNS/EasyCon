@@ -97,6 +97,7 @@ public class AudioDetectionSessionTests
         long start = rig.Time;
         rig.PlayOnDelay(new byte[16000]);
         Assert.That(session.Wait("tone", 1000), Is.False);
+        Assert.That(session.GetWaitScore(), Is.Zero, "Pre-call sound must not contribute to the wait score.");
         Assert.That(rig.Time - start, Is.EqualTo(1_000_000_000));
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1), "The independent wait listener was removed; run history remains.");
     }
@@ -142,6 +143,9 @@ public class AudioDetectionSessionTests
         };
 
         Assert.That(session.Wait("tone", timeoutMilliseconds, rig.ReferenceScore()), Is.EqualTo(expected));
+        Assert.That(session.GetWaitScore(), expected
+            ? Is.EqualTo(rig.ReferenceScore()).Within(1e-12)
+            : Is.LessThan(rig.ReferenceScore()));
         Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + 1_000_000_000));
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
     }
@@ -169,6 +173,7 @@ public class AudioDetectionSessionTests
         };
 
         Assert.That(session.Wait("tone", 1000, rig.ReferenceScore()), Is.False);
+        Assert.That(session.GetWaitScore(), Is.LessThan(rig.ReferenceScore()), "A late completed score must not be saved.");
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
     }
 
@@ -191,6 +196,7 @@ public class AudioDetectionSessionTests
         };
 
         Assert.That(session.Wait("tone", 1000, rig.ReferenceScore()), Is.False);
+        Assert.That(session.GetWaitScore(), Is.LessThan(rig.ReferenceScore()), "Late audio must not enter the saved score.");
         Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + (1000 + lateMilliseconds) * 1_000_000L));
     }
 
@@ -213,6 +219,7 @@ public class AudioDetectionSessionTests
 
         Assert.That(Assert.Throws<InvalidOperationException>(() => session.Wait("tone", 1000))!.Message,
             Does.Contain("积压"));
+        Assert.Throws<InvalidOperationException>(() => session.GetWaitScore());
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
     }
 
@@ -232,6 +239,7 @@ public class AudioDetectionSessionTests
         };
 
         Assert.That(session.Wait("tone", timeoutMilliseconds), Is.False);
+        Assert.That(session.GetWaitScore(), Is.Zero);
         Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + timeoutMilliseconds * 1_000_000L),
             "The following script operation starts without a library-added grace period.");
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
@@ -263,6 +271,7 @@ public class AudioDetectionSessionTests
             Assert.Throws<InvalidOperationException>(() => session.Wait("tone", 1000, token: cancellation.Token));
         else
             Assert.Throws<OperationCanceledException>(() => session.Wait("tone", 1000, token: cancellation.Token));
+        Assert.Throws<InvalidOperationException>(() => session.GetWaitScore());
         Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
         Assert.That(rig.Source.StateSubscribers, Is.EqualTo(1));
         Assert.That(rig.Source.Disposed, Is.False);
@@ -276,11 +285,100 @@ public class AudioDetectionSessionTests
         double score = rig.ReferenceScore();
         rig.PlayOnDelay(rig.Sound);
         Assert.That(session.Wait("tone", 2000, score), Is.True);
+        Assert.That(session.GetWaitScore(), Is.EqualTo(score).Within(1e-12));
         Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + 600_000_000));
         rig.PlayOnDelay(rig.Sound);
         Assert.That(session.Wait("tone", 2000, score), Is.True, "A fresh call has no dedup/cooldown from a prior hit.");
         rig.PlayOnDelay([.. rig.Sound, .. new byte[6400]]);
         Assert.That(session.Wait("tone", 1000, Math.BitIncrement(score)), Is.False, "No rounding before threshold comparison.");
+        Assert.That(session.GetWaitScore(), Is.EqualTo(score).Within(1e-12));
+    }
+
+    [Test]
+    public void WaitScoreIsASnapshotAndLookbackDoesNotOverwriteIt()
+    {
+        AudioTestRig rig = new();
+        using AudioDetectionSession session = rig.Open();
+        Assert.That(Assert.Throws<InvalidOperationException>(() => session.GetWaitScore())!.Message,
+            Does.Contain("需要先完成一次 AUDIO_WAIT"));
+        rig.PlayOnDelay(new byte[16000]);
+        Assert.That(session.Wait("tone", 1000), Is.False);
+        rig.Feed(rig.Sound);
+        Assert.That(session.Match("tone", 1000), Is.GreaterThan(0.98));
+        Assert.That(session.GetWaitScore(), Is.Zero, "AUDIO queries cannot overwrite AUDIO_WAIT's result.");
+
+        rig.Advance(20_000);
+        rig.LoadAction = () => Assert.Fail("Reading a saved score must not reload or analyze the label.");
+        long before = rig.Time;
+        Assert.That(session.GetWaitScore(), Is.Zero);
+        Assert.That(session.GetWaitScore(), Is.Zero, "Reads do not consume the saved result.");
+        Assert.That(rig.Time, Is.EqualTo(before), "No delay or source-health check is needed for an existing snapshot.");
+        using CancellationTokenSource cancelled = new();
+        cancelled.Cancel();
+        Assert.Throws<OperationCanceledException>(() => session.GetWaitScore(cancelled.Token));
+    }
+
+    [Test]
+    public void WaitScoreKeepsThePeakUntilTheNextWaitReplacesIt()
+    {
+        AudioTestRig rig = new();
+        using AudioDetectionSession session = rig.Open();
+        double expected = rig.ReferenceScore();
+        rig.PlayOnDelay([.. rig.Sound, .. new byte[22400]]);
+        Assert.That(session.Wait("tone", 2000, Math.BitIncrement(expected)), Is.False);
+        Assert.That(session.GetWaitScore(), Is.EqualTo(expected).Within(1e-12),
+            "The loud match near the start must survive the silent tail of a timeout.");
+        rig.PlayOnDelay(new byte[16000]);
+        Assert.That(session.Wait("another-label", 1000), Is.False);
+        Assert.That(session.GetWaitScore(), Is.Zero, "A new wait replaces the result even if the label changes.");
+    }
+
+    [TestCase("cancelled-before-call")]
+    [TestCase("cancelled-during-wait")]
+    [TestCase("invalid-threshold")]
+    [TestCase("invalid-timeout")]
+    [TestCase("load-error")]
+    [TestCase("insufficient-audio")]
+    [TestCase("disconnected")]
+    public void AnUnsuccessfulNewWaitClearsThePreviousScore(string failure)
+    {
+        AudioTestRig rig = new();
+        using AudioDetectionSession session = rig.Open();
+        using CancellationTokenSource cancellation = new();
+        rig.PlayOnDelay(rig.Sound);
+        Assert.That(session.Wait("tone", 2000), Is.True);
+        Assert.That(session.GetWaitScore(), Is.GreaterThan(0.85));
+        rig.PlayOnDelay(new byte[32000]);
+        int timeout = 1000;
+        double threshold = 0.85;
+        switch (failure)
+        {
+            case "cancelled-before-call":
+                cancellation.Cancel();
+                break;
+            case "cancelled-during-wait":
+                rig.AfterDelay = cancellation.Cancel;
+                break;
+            case "invalid-threshold":
+                threshold = 85;
+                break;
+            case "invalid-timeout":
+                timeout = 0;
+                break;
+            case "load-error":
+                rig.LoadAction = () => throw new InvalidOperationException("Missing label");
+                break;
+            case "insufficient-audio":
+                timeout = 200;
+                break;
+            case "disconnected":
+                rig.AfterDelay = rig.Source.Reconnect;
+                break;
+        }
+
+        Assert.That(() => session.Wait("tone", timeout, threshold, cancellation.Token), Throws.Exception);
+        Assert.Throws<InvalidOperationException>(() => session.GetWaitScore());
+        Assert.That(rig.Source.Subscribers, Is.EqualTo(1));
     }
 
     [TestCase(0.1)]

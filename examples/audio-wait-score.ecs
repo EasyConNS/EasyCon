@@ -1,0 +1,25 @@
+# 先保存脚本，在主窗口连接游戏音频。
+# 将完整标签目录放到脚本旁：
+# audiolabel/闪光音效.audiolabel/label.json
+# audiolabel/闪光音效.audiolabel/audio.wav
+PRINT "开始监听，最多等待 8 秒"
+$hit = AUDIO_WAIT("闪光音效", 8000, 0.85)
+$score = AUDIO_WAIT_SCORE()
+PRINT "本次等待最高分：" & $score
+
+IF $hit
+    PRINT "检测到闪光音效，结束脚本"
+    RETURN
+ELSE
+    PRINT "等待超时，指定时间内未确认命中"
+ENDIF
+PRINT "本轮等待结束，可在这里继续下一步操作"
+
+# AUDIO_WAIT_SCORE() 无参数，返回最近一次正常结束的 AUDIO_WAIT 的最高分（0～1）。
+# 例如第 3 秒命中，只统计实际等待的前 3 秒，不继续等满 8 秒。
+# 超时只保留截止前已完成分析的分数，不补算末尾音频，也不增加宽限。
+# 是否命中以 $hit 为准；$score 可用于记录结果、比较正负样本和校准阈值。
+# 读取分数不重新分析、不等待、不清空结果；调用 AUDIO() 也不会覆盖此分数。
+# 下一次 AUDIO_WAIT 会重置结果，无论是否换标签；需要保留旧分数时先存入变量。
+# 还没等待、等待出错或取消时没有有效分数，不会用 0 或上次结果代替。
+# 要观察完整 8 秒而不因命中提前结束，参考 audio-lookback.ecs。
