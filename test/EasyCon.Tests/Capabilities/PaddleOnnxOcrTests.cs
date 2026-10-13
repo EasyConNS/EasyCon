@@ -72,9 +72,41 @@ public class PaddleOnnxOcrTests
     [Test]
     public void PaddleOnnxOcr_VsTesseract_OnSameImage()
     {
-        var modelDir = FindPaddleModelDir();
+        var (modelDir, generation) = FindPaddleModelDir();
         if (modelDir == null)
-            Assert.Ignore("PaddleOCR ONNX 模型缺失（PP-OCRv5_mobile_det/rec.onnx），跳过对拍");
+            Assert.Ignore("PaddleOCR ONNX 模型缺失（test/assets/ppocr/，见 assets README），跳过对拍");
+
+        // 代码不绑定模型代际：真实资产 symlink 成部署约定名（det.onnx / eng_rec.onnx / eng_dict.txt）
+        var appDir = Path.Combine(Path.GetTempPath(), $"easycon-paddle-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(appDir);
+        try
+        {
+            foreach (var (link, target) in generation switch
+            {
+                "v6" => new[]
+                {
+                             ("det.onnx", "PP-OCRv6_medium_det.onnx"),
+                             ("eng_rec.onnx", "PP-OCRv6_medium_rec.onnx"),
+                             ("eng_dict.txt", "ppocrv6_dict.txt"),
+                         },
+                _ => new[]
+                {
+                             ("det.onnx", "PP-OCRv5_mobile_det.onnx"),
+                             ("eng_rec.onnx", "PP-OCRv5_mobile_rec.onnx"),
+                             ("eng_dict.txt", "ppocr_keys_v5.txt"),
+                         },
+            })
+            {
+                var targetPath = Path.Combine(modelDir, target);
+                if (!File.Exists(targetPath))
+                    Assert.Ignore($"缺真机资产：{targetPath}");
+                File.CreateSymbolicLink(Path.Combine(appDir, link), targetPath);
+            }
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            Assert.Ignore($"无法创建 symlink（Windows 需开发者模式/管理员权限）：{e.Message}");
+        }
 
         // 合成图：黑底白字（与 P3 对拍同一构造）
         using var mat = new Mat(100, 340, MatType.CV_8UC3);
@@ -86,8 +118,8 @@ public class PaddleOnnxOcrTests
             HersheyFonts.HersheySimplex, 1.8, Scalar.White, 2);
         var base64 = Convert.ToBase64String(mat.ToBytes(".png"));
 
-        using var paddle = new PaddleOnnxOcr(modelDir);
-        Assert.That(paddle.Init(new OcrConfig { Language = "eng" }), Is.True, "PaddleOnnxOcr.Init 失败");
+        using var paddle = new PaddleOnnxOcr(appDir);
+        Assert.That(paddle.Init(new OcrConfig { Language = "eng" }), Is.True, "PaddleOnnxOcr.Init 失败（检查约定名 det.onnx / eng_rec.onnx / eng_dict.txt symlink）");
 
         var sw = System.Diagnostics.Stopwatch.StartNew();
         var paddleText = paddle.Recognize(ImageRef.FromBase64(base64), new OcrQuery { Language = "eng" });
@@ -126,8 +158,11 @@ public class PaddleOnnxOcrTests
         Assert.That(paddleText, Is.Not.Empty, "PaddleOCR 对清晰合成图识别为空");
     }
 
-    /// <summary>向上探测模型目录：须同时含 det 与 rec ONNX 模型（外部资产，不入库）。</summary>
-    static string? FindPaddleModelDir()
+    /// <summary>
+    /// 向上探测模型目录（外部资产，不入库）：优先 PP-OCRv6，缺任一代则试另一代；
+    /// 返回目录与代际标记（测试据此把真实资产 symlink 成部署约定名）。
+    /// </summary>
+    static (string? Dir, string Generation) FindPaddleModelDir()
     {
         string? dir = AppContext.BaseDirectory;
         for (int i = 0; i < 10 && dir != null; i++, dir = Path.GetDirectoryName(dir))
@@ -142,11 +177,13 @@ public class PaddleOnnxOcrTests
                          Path.Combine(dir, "test", "assets", "ppocr"),   // test/assets 约定布局
                      })
             {
+                if (File.Exists(Path.Combine(candidate, "PP-OCRv6_medium_det.onnx")))
+                    return (candidate, "v6");
                 if (File.Exists(Path.Combine(candidate, "PP-OCRv5_mobile_det.onnx")))
-                    return candidate;
+                    return (candidate, "v5");
             }
         }
-        return null;
+        return (null, "");
     }
 
     static string? FindDirWith(string fileName)

@@ -87,7 +87,7 @@ internal static class StdLib
         ENDFUNC
 
         # ---- PP-OCR 适配（纯标准库实现，宿主无特例）----
-        # 依据 PP-OCRv5 官方 ONNX 导出实测：det = (px/255 - 0.25) / 0.5；rec = px/255 - 0.25。
+        # 依据 PP-OCRv5 / PP-OCRv6 官方 ONNX 导出实测同参：det = (px/255 - 0.25) / 0.5；rec = px/255 - 0.25。
         FUNC PPOCR_NORM($tensor: PTR, $kind: STRING): PTR
             IF $kind == "det"
                 RETURN NET_SCALE($tensor, 1.00 / 255 / 0.50, 0 - 0.50)
@@ -174,17 +174,17 @@ internal static class StdLib
             RETURN $n
         ENDFUNC
 
-        # PP-OCRv5 rec：固定 ROI → 数字串（'0'-'9' 字典下标 16163-16172，blank=0，
-        # 配方常数与 PPOCR_NORM 同源：PP-OCRv5 官方字典实测）。
+        # PP-OCR rec：固定 ROI → 数字串。$base 由脚本按所用模型代际指定（'0' 的 class 下标：
+        # v5 字典 16163 / v6 字典 33，std 不硬编码任何代际常数；blank=0，'0'-'9' 需在字典中连续）。
         # 忠实输出折叠结果（含模型伪影的前导零）；数值化/去前导零属游戏策略，调用方 INT() 自理。
-        FUNC PP_OCR_DIGITS($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT): STRING
+        FUNC PP_OCR_DIGITS($net: PTR, $base: INT, $x: INT, $y: INT, $w: INT, $h: INT): STRING
             $n = PP_OCR_INFER($net, $x, $y, $w, $h)
-            RETURN CTC_FOLD(0, "0123456789", 16163)
+            RETURN CTC_FOLD(0, "0123456789", $base)
         ENDFUNC
 
-        FUNC PP_OCR_DIGITS($net: PTR, $frame: STRING, $x: INT, $y: INT, $w: INT, $h: INT): STRING
+        FUNC PP_OCR_DIGITS($net: PTR, $frame: STRING, $base: INT, $x: INT, $y: INT, $w: INT, $h: INT): STRING
             $n = PP_OCR_INFER($net, $frame, $x, $y, $w, $h)
-            RETURN CTC_FOLD(0, "0123456789", 16163)
+            RETURN CTC_FOLD(0, "0123456789", $base)
         ENDFUNC
 
         # PP-OCR rec 通用文本：PP_OCR_INFER + 标签表层整字典折叠（NET_LABELS 行号即索引，
@@ -233,7 +233,7 @@ internal static class StdLib
             RETURN $text
         ENDFUNC
 
-        # ---- PP-OCR det 文本找框（det 全图一次 → 框 → rec 逐框；det 资产 PP-OCRv5_mobile_det）----
+        # ---- PP-OCR det 文本找框（det 全图一次 → 框 → rec 逐框；det 模型经 NET_LOAD 由脚本显式加载）----
         # 限边缩放：scale = 960/max(w,h)，小图不放大（钳 1）；rw/rh 32 对齐上取整（pad 在右/下，
         # 不影响逆映射）。__DET_BOXES__ 阈值 0.30（PaddleOCR det_db_thresh 惯例），逆映射
         # screen = det/scale + roi，±2px unclip，阅读序缓存。返回框数（-1 = 输出缺失/形状错）。

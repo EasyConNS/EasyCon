@@ -1,17 +1,21 @@
 # ============================================================
 # 宝可梦状态页识别（名称 + 能力值计算）（std 配方 PP_OCR_TEXT / PP_OCR_DIGITS，固定 ROI）
 # 布局基准：1920x1080 火红/叶绿英文状态页（见 demo 截图 ppocr2/3.png）
-# 模型：__APP__/models/ppocr/PP-OCRv5_mobile_rec.onnx（外部资产）
-# 字典：__APP__/models/ppocr/ppocr_keys_v5.txt（名称识别经 NET_LABELS 标签表层）
+# 模型：__APP__/models/ppocr/PP-OCRv6_medium_rec.onnx（外部资产，换模型改这里）
+# 字典：__APP__/models/ppocr/ppocrv6_dict.txt（名称识别经 NET_LABELS 标签表层）
+# 数字窗口：_DIGITS_BASE = '0' 的 class 下标，随模型代际指定（std 不钉常数）——
+#       PP-OCRv6 字典 33（数字在表头）；PP-OCRv5 旧资产为 16163（数字在表尾）
 # 原理：rec 输出 [1,T,C]，数字行走 CTC_FOLD 打洞折叠（数字子集窗口）；
 #       名称行走 PP_OCR_TEXT 整字典折叠（NET_ARGMAX × NET_LABEL 逐帧解码）。
 #       自定义解码策略可在脚本侧经 NET_ROWS/NET_ARGMAX 逐帧遍历实现。
 # ============================================================
 
+_DIGITS_BASE = 33
+
 # ---- 主流程 ----
-$net = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv5_mobile_rec.onnx")
+$net = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv6_medium_rec.onnx")
 IF $net > 0
-    $dict = __APP__ + "/models/ppocr/ppocr_keys_v5.txt"
+    $dict = __APP__ + "/models/ppocr/ppocrv6_dict.txt"
 
     # 同帧共享采集：整帧只采一次，各区域坐标相对该帧（省 6 次采集 + base64 编解码）
     $frame = FRAME()
@@ -22,16 +26,16 @@ IF $net > 0
     PRINT "NAME: " & $name
 
     # 主行：Lv50 XXX HP65/65（整行数字混排，仅作展示）
-    $hp = PP_OCR_DIGITS($net, $frame, 190, 130, 1530, 85)
+    $hp = PP_OCR_DIGITS($net, $frame, _DIGITS_BASE, 190, 130, 1530, 85)
     PRINT "HP row: " & $hp
 
     # 右列能力值行（标签 + 数字整行，配方只解析数字）；
     # INT() 数值化吞掉模型伪影的前导零——具体游戏策略归脚本（SPEED 行模型吐 028）
-    $atk = INT(PP_OCR_DIGITS($net, $frame, 990, 262, 730, 74))
-    $def = INT(PP_OCR_DIGITS($net, $frame, 990, 344, 730, 72))
-    $spa = INT(PP_OCR_DIGITS($net, $frame, 990, 426, 730, 74))
-    $spd = INT(PP_OCR_DIGITS($net, $frame, 990, 508, 730, 74))
-    $spe = INT(PP_OCR_DIGITS($net, $frame, 990, 592, 730, 78))
+    $atk = INT(PP_OCR_DIGITS($net, $frame, _DIGITS_BASE, 990, 262, 730, 74))
+    $def = INT(PP_OCR_DIGITS($net, $frame, _DIGITS_BASE, 990, 344, 730, 72))
+    $spa = INT(PP_OCR_DIGITS($net, $frame, _DIGITS_BASE, 990, 426, 730, 74))
+    $spd = INT(PP_OCR_DIGITS($net, $frame, _DIGITS_BASE, 990, 508, 730, 74))
+    $spe = INT(PP_OCR_DIGITS($net, $frame, _DIGITS_BASE, 990, 592, 730, 78))
 
     PRINT "ATTACK: " & $atk
     PRINT "DEFENSE: " & $def
@@ -44,7 +48,7 @@ IF $net > 0
     PRINT "STAT SUM: " & $sum
 
     # 经验行（HP EXP.POINTS 19531）
-    $exp = PP_OCR_DIGITS($net, $frame, 355, 680, 1370, 85)
+    $exp = PP_OCR_DIGITS($net, $frame, _DIGITS_BASE, 355, 680, 1370, 85)
     PRINT "EXP POINTS: " & $exp
 
     NET_UNLOAD $net

@@ -520,12 +520,12 @@ det 全图推理**一次**找齐全部文本框（变动布局/未知文本位�
 再对每框跑 rec 配方：
 
 ```ecs
-$det = NET_LOAD("PP-OCRv5_mobile_det.onnx")
+$det = NET_LOAD("det.onnx")                        # 部署约定名（代码不绑定模型代际）
 $c = PP_DET_FIND($det, $frame, 0, 0, 1920, 1080)   # 返回框数（帧形态重载同 rec 配方）
 $i = 0
 WHILE $i < DET_COUNT()
     $n = PP_OCR_INFER($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i))
-    $t = CTC_FOLD(0, "0123456789", 16163)
+    $t = CTC_FOLD(0, "0123456789", _DIGITS_BASE)   # 窗口起点随模型代际指定（见下）
     PRINT $t
     $i = $i + 1
 END
@@ -539,15 +539,28 @@ END
 - 访问器越界返回 -1；`DET_COUNT` 未找过为 0。完整用法见参考示例
   `examples/ppocr-det-find.ecs`（全页 det → 逐框 rec，收集页面数字与文本行）。
 
-std 侧已备好的 PP-OCR rec 配方（字典 `ppocr_keys_v5.txt` 配合标签表层）：
-`PP_OCR_INFER(net, x, y, w, h): INT`——通用推理步骤（采集 → rec 宽度换算 → 归一化 → 推理，
-输出驻留宿主，解码自由组合）；`PP_OCR_DIGITS(net, x, y, w, h): STRING`（数字子集窗口，
-宿主 CTC_FOLD 加速）；`PP_OCR_TEXT(net, x, y, w, h, dictPath): STRING`（整字典文本，
-标签表层逐帧解码，如宝可梦状态页名称识别；加载字典会整体替换 NET_LABELS 全局表）。
+std 侧已备好的 PP-OCR rec 配方（模型/字典为外部资产，命名约定见 `test/assets/README.md`；
+代码不绑定模型代际）：`PP_OCR_INFER(net, x, y, w, h): INT`——通用推理步骤（采集 → rec
+宽度换算 → 归一化 → 推理，输出驻留宿主，解码自由组合）；`PP_OCR_DIGITS(net, base, x, y, w, h):
+STRING`（数字子集窗口，宿主 CTC_FOLD 加速；`base` = '0' 的 class 下标，由脚本按模型代际
+指定——PP-OCRv6 字典数字在表头（33 起）、v5 在表尾（16163 起），std 不钉任何代际常数）；
+`PP_OCR_TEXT(net, x, y, w, h, dictPath): STRING`（整字典文本，标签表层逐帧解码，
+如宝可梦状态页名称识别；加载字典会整体替换 NET_LABELS 全局表）。
 三者均有**共享采集重载**（第二参传 `STRING` 整帧 base64，如 `FRAME()` 结果）：
 同帧多区域只采集一次，逐区域 `__ROI__` 裁剪在宿主内完成（ROI 走桌面参考回落
 `DesktopVisionService`，与采集路径共享裁剪核，零装配可用）——宝可梦状态页示例
 7 区域仅采集 1 帧。
+
+数字窗口下标自查（模型代际无关的通用写法，`NET_LABELS` 返回行数）：
+
+```ecs
+$count = NET_LABELS($dict)
+$i = 0
+WHILE $i < $count AND NET_LABEL($i) != "0"
+    $i = $i + 1
+END
+# $i < $count 时：$i = '0' 的行号，class 下标 = $i + 1（blank 占 0）
+```
 
 ### NET_IMAGE_FILE(path, rw, rh [, mode]): PTR
 本地图像文件 → 同 `NET_IMAGE` 管线（mode 词表相同，含 `"letter"` 与 `'c'` 裁剪后缀），
@@ -590,7 +603,7 @@ END
   访问器越界返回 -1（分数 -1.0）。
 - 想自实现解码策略：`NET_ROWS` + `NET_OUT(i*6+j)` 扁平寻址原始输出。
 
-完整示例见 `examples/pokemon-stats.ecs`（PP-OCRv5 rec 识别宝可梦状态页并计算能力值）。
+完整示例见 `examples/pokemon-stats.ecs`（PP-OCRv6 rec 识别宝可梦状态页并计算能力值）。
 
 ---
 

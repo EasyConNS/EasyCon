@@ -309,7 +309,7 @@ QT_QPA_PLATFORM=offscreen uv run python -m easycon_flow.uitest --backend http://
 
 | 项 | 现状 / 原因 |
 |---|---|
-| `ocr.screen`（det+rec 全屏 → lines 数组） | **挂账**：Core 的 `IOcrService` 由单行识别器支撑（`EngineCacheOcrService.GetOrInit` → `IOcrRecognizer`），全屏多行需要先暴露 `IOcrEngine` 端到端引擎（Capture 层已有，含 PP-OCRv5 det+rec）。当前 `ocr.text` 走宿主 OCR 通路，`lang`/ROI 由后端决定 |
+| `ocr.screen`（det+rec 全屏 → lines 数组） | **挂账**：Core 的 `IOcrService` 由单行识别器支撑（`EngineCacheOcrService.GetOrInit` → `IOcrRecognizer`），全屏多行需要先暴露 `IOcrEngine` 端到端引擎（Capture 层已有，PP-OCR det+rec 按部署约定名解析）。当前 `ocr.text` 走宿主 OCR 通路，`lang`/ROI 由后端决定 |
 | `vision.label`（标签匹配） | **挂账**：需要宿主注入手柄式视觉原料（GUI 的 `LabelMatch` 委托）到 `FlowServiceState`；目前服务侧 `Vision = null`，`vision.*` 只有 `vision.changed`（不依赖 `IVisionService`）可用 |
 | `switch`（多路分支） | **挂账**：静态端口目录表达不了动态出口；当前用 `compare`/`text.contains` 链或 `state.step` + `script.run` 替代 |
 | `ai.agent`（函数调用回环节点） | **挂账**：需要 provider 抽象（ollama/vllm/siliconflow/onnx/script）+ 按图配置的回调工具集，且默认只读、`pad` 类需显式授权 |

@@ -5,7 +5,7 @@ using OpenCvSharp.Dnn;
 namespace EasyCon.Capture.Ocr.Onnx;
 
 /// <summary>
-/// OpenCV DNN 文本检测器 — 基于 PaddleOCR 检测模型（如 PP-OCRv5_mobile_det.onnx）。
+/// OpenCV DNN 文本检测器 — 基于 PaddleOCR 检测模型（部署约定文件名 det.onnx）。
 /// 实现 IOcrDetector，从图片中定位文字区域。
 /// </summary>
 public sealed class OnnxDetector : IOcrDetector
@@ -14,15 +14,16 @@ public sealed class OnnxDetector : IOcrDetector
     private readonly DetOptions _options;
     private bool _disposed;
 
-    // PP-OCRv5 官方 ONNX 导出的检测预处理：等价于 (px/127.5 - 0.5)，即 (px/255 - 0.25) / 0.5。
-    // 实测 ImageNet mean/std 会让概率图大面积饱和（>50% 像素超阈值），此参数组下文本区稀疏（~8%）。
+    // PP-OCRv5 / v6 官方 ONNX 导出实测同参的检测预处理：等价于 (px/127.5 - 0.5)，即 (px/255 - 0.25) / 0.5。
+    // 实测 ImageNet mean/std 会让 v5 概率图大面积饱和（>50% 像素超阈值），此参数组下文本区稀疏（~8%）；
+    // v6 对预处理不敏感（四种常见参数组检出框一致），沿用同参保持一代配方可互换。
     private static readonly float[] DetMean = [0.25f, 0.25f, 0.25f];
     private static readonly float[] DetStd = [0.5f, 0.5f, 0.5f];
 
     /// <summary>
     /// 从文件路径加载检测模型。
     /// </summary>
-    /// <param name="modelPath">ONNX 模型文件路径（如 PP-OCRv5_mobile_det.onnx）。</param>
+    /// <param name="modelPath">ONNX 模型文件路径（如 det.onnx）。</param>
     /// <param name="options">检测配置（可选）。</param>
     /// <param name="backend">DNN 计算后端（默认 DEFAULT）。</param>
     /// <param name="target">DNN 目标设备（默认 CPU）。</param>
@@ -225,7 +226,7 @@ public sealed class OnnxDetector : IOcrDetector
 }
 
 /// <summary>
-/// OpenCV DNN 文本识别器 — 基于 PaddleOCR 识别模型（如 PP-OCRv5_mobile_rec.onnx）。
+/// OpenCV DNN 文本识别器 — 基于 PaddleOCR 识别模型（部署约定文件名 &lt;lang&gt;_rec.onnx）。
 /// 实现 IOcrRecognizer，从已裁剪的文字行图片中识别文本。
 /// </summary>
 public sealed class OnnxRecognizer : IOcrRecognizer
@@ -240,7 +241,7 @@ public sealed class OnnxRecognizer : IOcrRecognizer
     /// <summary>
     /// 从文件路径加载识别模型和字符集。
     /// </summary>
-    /// <param name="modelPath">ONNX 模型文件路径（如 PP-OCRv5_mobile_rec.onnx）。</param>
+    /// <param name="modelPath">ONNX 模型文件路径（如 &lt;lang&gt;_rec.onnx）。</param>
     /// <param name="charsetPath">字符集文件路径（每行一个字符，首行为空白符）。</param>
     /// <param name="options">识别配置（可选）。</param>
     /// <param name="backend">DNN 计算后端（默认 DEFAULT）。</param>
@@ -501,14 +502,15 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
     private readonly Target _target;
 
     /// <summary>
-    /// 创建 ONNX 引擎工厂。
+    /// 创建 ONNX 引擎工厂。代码不绑定任何模型代际，按部署约定解析（模型与字典同代配对由部署保证）：
+    /// 检测 <paramref name="detModelName"/>（约定 "det.onnx"）；识别 &lt;lang&gt;_rec.onnx；字符集 &lt;lang&gt;_dict.txt。
     /// </summary>
     /// <param name="modelDirectory">模型文件目录。</param>
-    /// <param name="detModelName">检测模型文件名（默认 "PP-OCRv5_mobile_det.onnx"）。</param>
+    /// <param name="detModelName">检测模型文件名（部署约定 "det.onnx"）。</param>
     /// <param name="backend">GPU 后端类型（默认 CPU）。</param>
     public OnnxEngineFactory(
         string modelDirectory,
-        string detModelName = "PP-OCRv5_mobile_det.onnx",
+        string detModelName = "det.onnx",
         GpuBackend backend = GpuBackend.Cpu)
     {
         _modelDirectory = modelDirectory ?? throw new ArgumentNullException(nameof(modelDirectory));
@@ -523,13 +525,6 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
         var recModel = Path.Combine(modelDir, $"{lang}_rec.onnx");
         var charset = Path.Combine(modelDir, $"{lang}_dict.txt");
 
-        if (!File.Exists(recModel))
-        {
-            // 回退：尝试不带语言前缀的通用模型名
-            recModel = Path.Combine(modelDir, "PP-OCRv5_mobile_rec.onnx");
-            charset = Path.Combine(modelDir, "ppocr_keys_v5.txt");
-        }
-
         return new OnnxRecognizer(recModel, charset, backend: _backend, target: _target);
     }
 
@@ -540,12 +535,6 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
         var detPath = Path.Combine(modelDir, _detModelName);
         var recPath = Path.Combine(modelDir, $"{lang}_rec.onnx");
         var charsetPath = Path.Combine(modelDir, $"{lang}_dict.txt");
-
-        if (!File.Exists(recPath))
-        {
-            recPath = Path.Combine(modelDir, "PP-OCRv5_mobile_rec.onnx");
-            charsetPath = Path.Combine(modelDir, "ppocr_keys_v5.txt");
-        }
 
         return new OnnxOcrEngine(
             new OnnxDetector(detPath, backend: _backend, target: _target),

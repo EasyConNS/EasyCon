@@ -118,11 +118,28 @@ public class CtcFoldTests
     [Test]
     public void PpocrV5_RealDictionaryIndices_FoldToValue()
     {
-        // PP-OCRv5 字典下标配方（std PP_OCR_DIGITS 同参）：'0'-'9' = 16163-16172，blank=0。
+        // PP-OCRv5 字典下标（'0'-'9' = 16163-16172，blank=0）——std 不再钉任何代际常数，
+        // 下标由脚本按模型代际指定；本用例锚定 v5 官方字典的实测窗口仍然有效。
         // 序列取自 ppocr2.png EXP 行真实 dump（1,blank,9,5,5,3,3,1）——
         // 20a089c VM 槽位污染回归的原始形状，脚本折叠应得 19531。
         const int d1 = 16164, d9 = 16172, d5 = 16168, d3 = 16166;
         const int cols = 16180;   // 容下 16k 字典类别
+        AssertFoldIs19531(baseId: 16163, d1, d9, d5, d3, cols);
+    }
+
+    [Test]
+    public void PpocrV6_RealDictionaryIndices_FoldToValue()
+    {
+        // PP-OCRv6 字典下标（'0'-'9' = 33-42，数字移到表头，blank=0）——
+        // 同一 argmax 序列形状在 v6 窗口下折叠同答 19531（窗口语义与代际无关）。
+        const int d1 = 34, d9 = 42, d5 = 38, d3 = 36;
+        const int cols = 64;      // 容下 v6 数字窗口即可
+        AssertFoldIs19531(baseId: 33, d1, d9, d5, d3, cols);
+    }
+
+    /// <summary>序列 1,blank,9,5,5,3,3,1（one-hot logits）在给定数字窗口下应折叠为 "19531"。</summary>
+    static void AssertFoldIs19531(int baseId, int d1, int d9, int d5, int d3, int cols)
+    {
         var rows = new[] { 0, d1, 0, d9, d5, d5, d3, d3, d1, 0 };
         var arr = new float[rows.Length * cols];
         for (int i = 0; i < rows.Length; i++)
@@ -133,6 +150,6 @@ public class CtcFoldTests
                     arr[i * cols + c] = -1f;
         }
         var inference = new SeqInference { Logits = arr, Shape = [1, rows.Length, cols] };
-        Assert.That(FoldWith(inference, "0123456789", 0, 16163), Is.EqualTo("19531"));
+        Assert.That(FoldWith(inference, "0123456789", 0, baseId), Is.EqualTo("19531"));
     }
 }
