@@ -413,16 +413,11 @@ public partial class AudioLabelEditorViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
-            string? scriptDirectory = SuggestedDirectory();
-            string? selectedDirectory = scriptDirectory
+            string? scriptDirectory = SuggestedDirectory()
                 ?? await _dialogs.OpenFolderAsync(L10nBridge.T("Text.AudioLabel.SaveFolder"));
-            if (_disposed || string.IsNullOrWhiteSpace(selectedDirectory))
+            if (_disposed || string.IsNullOrWhiteSpace(scriptDirectory))
                 return;
-            string parent = Path.TrimEndingDirectorySeparator(Path.GetFullPath(selectedDirectory));
-            // Only a manual selection may already be the label folder; script paths always define its parent.
-            string directory = scriptDirectory == null && string.Equals(Path.GetFileName(parent), "audiolabel",
-                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)
-                ? parent : Path.Combine(parent, "audiolabel");
+            string directory = Path.Combine(Path.GetFullPath(scriptDirectory), "audiolabel");
             string target = Path.Combine(directory, name + ".audiolabel");
             if (Directory.Exists(target) || File.Exists(target))
             {

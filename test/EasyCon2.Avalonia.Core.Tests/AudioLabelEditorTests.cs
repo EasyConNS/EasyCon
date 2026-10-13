@@ -1,7 +1,9 @@
 using EasyCon.Capture.Audio;
+using EasyCon.Core.Capabilities;
 using EasyCon2.Avalonia.AudioLabels;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
+using System.Buffers.Binary;
 
 namespace EasyCon2.Avalonia.Core.Tests;
 
@@ -111,27 +113,43 @@ public class AudioLabelEditorTests
 
     [TestCase(false)]
     [TestCase(true)]
-    public async Task ChoosingAnExistingAudioLabelFolderDoesNotNestIt(bool trailingSeparator)
+    public async Task ChoosingScriptFolderNamedAudioLabelSavesWhereEcsLoadsIt(bool trailingSeparator)
     {
         string root = Path.Combine(Path.GetTempPath(), "easycon-audio-folder-" + Guid.NewGuid().ToString("N"));
         try
         {
-            string labels = Path.Combine(root, "audiolabel");
-            Directory.CreateDirectory(labels);
-            FakeDialogs dialogs = new() { Folder = Task.FromResult<string?>(trailingSeparator ? labels + Path.DirectorySeparatorChar : labels) };
+            string scriptDirectory = Path.Combine(root, "audiolabel");
+            Directory.CreateDirectory(scriptDirectory);
+            FakeDialogs dialogs = new() { Folder = Task.FromResult<string?>(trailingSeparator ? scriptDirectory + Path.DirectorySeparatorChar : scriptDirectory) };
             FakeSource source = new();
             using AudioHistoryBuffer history = new(source);
-            source.Emit(new byte[32000]);
+            byte[] pcm = new byte[32000];
+            for (int frame = 0; frame < 8000; frame++)
+            {
+                short sample = (short)(16000 * Math.Sin(2 * Math.PI * 440 * frame / 8000));
+                BinaryPrimitives.WriteInt16LittleEndian(pcm.AsSpan(frame * 4), sample);
+                BinaryPrimitives.WriteInt16LittleEndian(pcm.AsSpan(frame * 4 + 2), sample);
+            }
+            source.Emit(pcm);
             using AudioLabelEditorViewModel vm = new(history, new FakePreview(), dialogs, SynchronousUiDispatcher.Instance);
             await vm.CaptureRecentCommand.ExecuteAsync(null);
             vm.LabelName = "test";
 
             await vm.SaveCommand.ExecuteAsync(null);
 
+            // Create the ECS afterward, in the folder selected when the label was saved.
+            string scriptPath = Path.Combine(scriptDirectory, "test.ecs");
+            File.WriteAllText(scriptPath, "RETURN AUDIO(\"test\", 1000)");
+            using IAudioSession session = new AudioLabelService(source, Path.GetDirectoryName(scriptPath)).BeginRun(default);
+            InvalidOperationException? error = Assert.Throws<InvalidOperationException>(() => session.Match("test", 1000, default));
+            Assert.That(error!.Message, Does.Contain("有效历史不足"),
+                "The ECS audio service must load the saved label successfully before reporting its empty playback history.");
+
+            AudioLabel saved = AudioLabelStore.Load(Path.Combine(scriptDirectory, "audiolabel", "test.audiolabel", "label.json"));
             Assert.Multiple(() =>
             {
-                Assert.That(AudioLabelStore.Load(Path.Combine(labels, "test.audiolabel", "label.json")).Clip.FrameCount, Is.EqualTo(8000));
-                Assert.That(Directory.Exists(Path.Combine(labels, "audiolabel")), Is.False);
+                Assert.That(saved.Clip.Pcm.ToArray(), Is.EqualTo(pcm));
+                Assert.That(Directory.Exists(Path.Combine(scriptDirectory, "test.audiolabel")), Is.False);
                 Assert.That(dialogs.FolderRequests, Is.EqualTo(1));
             });
         }
