@@ -186,8 +186,9 @@ public class NetClassifyTests
     {
         var dir = Path.Combine(Path.GetTempPath(), $"easycon-labels-{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
-        var labels1 = Path.Combine(dir, "a.txt");
-        var labels2 = Path.Combine(dir, "b.txt");
+        // ECS 字符串会解析反斜杠转义；插入脚本的文件路径使用正斜杠。
+        var labels1 = Path.Combine(dir, "a.txt").Replace('\\', '/');
+        var labels2 = Path.Combine(dir, "b.txt").Replace('\\', '/');
         File.WriteAllLines(labels1, ["tench", "goldfish", "", "shark"]);   // 空行占位 → 4 条
         File.WriteAllLines(labels2, ["cat", "dog"]);
 
@@ -244,7 +245,7 @@ public class NetClassifyTests
         // B 面 = [0,0,250,250]×4 行——不变形（列序保持）、不垫边（无 114）。
         var dir = Path.Combine(Path.GetTempPath(), $"easycon-img-{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
-        var imagePath = Path.Combine(dir, "t.png");
+        var imagePath = Path.Combine(dir, "t.png").Replace('\\', '/');
         using (var mat = new Mat(8, 4, MatType.CV_8UC3))
         {
             Cv2.Rectangle(mat, new Rect(0, 0, 2, 8), new Scalar(0, 0, 250), -1);
@@ -283,7 +284,7 @@ public class NetClassifyTests
     {
         var dir = Path.Combine(Path.GetTempPath(), $"easycon-img-{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
-        var imagePath = Path.Combine(dir, "t.png");
+        var imagePath = Path.Combine(dir, "t.png").Replace('\\', '/');
         using (var mat = new Mat(4, 4, MatType.CV_8UC3, new Scalar(30, 20, 250)))
             File.WriteAllBytes(imagePath, mat.ToBytes(".png"));
         try
@@ -314,7 +315,7 @@ public class NetClassifyTests
         // 整字典无窗口——数字配方（PP_OCR_DIGITS）过滤掉的字母全部保留。
         var dir = Path.Combine(Path.GetTempPath(), $"easycon-ptext-{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
-        var dictPath = Path.Combine(dir, "dict.txt");
+        var dictPath = Path.Combine(dir, "dict.txt").Replace('\\', '/');
         File.WriteAllLines(dictPath, ["L", "v", "A", "B", "C"]);
 
         // [1,T,C] one-hot：帧 i 在 classes[i] 处置 1
@@ -359,8 +360,8 @@ public class NetClassifyTests
         // → NET_RUNH → NET_ARGMAX(0)（已修二维）→ NET_LABELS/NET_LABEL → 类名
         var dir = Path.Combine(Path.GetTempPath(), $"easycon-walk-{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
-        var imagePath = Path.Combine(dir, "img.png");
-        var labelsPath = Path.Combine(dir, "classes.txt");
+        var imagePath = Path.Combine(dir, "img.png").Replace('\\', '/');
+        var labelsPath = Path.Combine(dir, "classes.txt").Replace('\\', '/');
         using (var mat = new Mat(200, 300, MatType.CV_8UC3, new Scalar(40, 40, 40)))
             File.WriteAllBytes(imagePath, mat.ToBytes(".png"));
         File.WriteAllLines(labelsPath, ["tench", "goldfish", "shark"]);

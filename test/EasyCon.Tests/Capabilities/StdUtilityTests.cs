@@ -71,7 +71,8 @@ public class StdUtilityTests
     [Test]
     public void FileRoundTrip_WriteReadAppend()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"ecs-std-util-{Guid.NewGuid():N}.txt");
+        // 路径将插入 ECS 字符串，避免 Windows 反斜杠被解释成转义。
+        var path = Path.Combine(Path.GetTempPath(), $"ecs-std-util-{Guid.NewGuid():N}.txt").Replace('\\', '/');
         try
         {
             var io = Run($"""
