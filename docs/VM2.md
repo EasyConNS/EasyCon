@@ -34,20 +34,20 @@
 | `src/EasyCon.Script/Modules/*` | 模块图/独立编译/接口缓存（`docs/ModuleSystem.md`） |
 | `src/EasyCon.Vm/native/ecs_vm.h|.c` | C 虚拟机公共 API + 实现（加载器/堆/解释器，纯调度） |
 | `src/EasyCon.Vm/native/ecs_main.c` | CLI harness = MCU 参考宿主（L2 参考桩 + L1 回调） |
-| `ci/build-vm.sh` | CI 构建入口（无 C 工具链则跳过） |
+| `ci/build-vm.sh` | 普通 / budget 构建入口；budget 与 CI 强制模式不允许缺编译器时跳过 |
 
 ---
 
 ## 2. 值模型
 
-### 2.1 值表示：16 字节 tagged union
+### 2.1 值表示：C# 16 字节，C 8 字节
 
-C# `TaggedValue` 与 C `ecs_value` 同构：
+C# `TaggedValue` 保持 16 字节内联载荷。C `ecs_value` 改为 8 字节：
 
 ```c
 typedef struct ecs_value {
-    uint8_t tag;  uint8_t _pad[7];
-    union { int32_t i32; int64_t i64; double f64; };
+    uint8_t tag;  uint8_t _pad[3];
+    union { int32_t i32; uint32_t u32; };
 } ecs_value;
 ```
 
@@ -55,25 +55,32 @@ typedef struct ecs_value {
 |-----|----|------|------|
 | VOID=0 | — | — | 句柄 0 同时表示 null |
 | BOOL=1 / BYTE=2 / INT=3 / UINT=4 | i32 | BOOL 规范化 0/1；UINT 无符号解释 |
-| UINT64=5 | i64 | |
-| DOUBLE=6 | f64 | |
-| STRING=7 | i64 低 32 位 = 句柄 | UTF-16LE code unit 存储；LEN 按 code unit |
-| ARRAY=9 | 句柄 | 元素为定长 `ecs_value` 数组 |
-| PTR=10 | i64 | FFI 指针 |
+| UINT64=5 | C# i64 / C 对象池箱句柄 | 数组内为裸存 8B 位模式 |
+| DOUBLE=6 | C# f64 / C 对象池箱句柄 | 数组内为裸存 8B IEEE754 |
+| STRING=7 | 32 位句柄 | UTF-16LE code unit 存储；LEN 按 code unit |
+| ARRAY=9 | 句柄 | C 按元素 tag 定宽打包；宽元素 8B，内联标量和引用 4B |
+| PTR=10 | C# i64 / C 对象池箱句柄 | 原始指针位模式经宿主辅助 API 读写 |
 | STRUCT=12 | 句柄 | 字段按布局展开的槽区 |
 
 **标签可观察性**：运行时只有 STRING/ARRAY/STRUCT 的标签被解引用检查；BOOL/BYTE/INT/UINT 的标签差异不可观察（读取方式由编译期类型特化的指令决定）。编码器可用 `LoadI`（INT 标签）装 BYTE/UINT 常量，仅 BOOL 用 `LoadBool` 保持 0/1 规范化。
 
+双端共享标签编号、指令和 ECX1 格式，不共享原生值槽布局。C 原生宿主必须重新编译，
+宽值使用 `ecs_vm_arg_wide` / `ecs_vm_ret_wide`，DOUBLE 使用
+`ecs_vm_arg_double` / `ecs_vm_ret_double`；不得读写已删除的 `i64/f64` 字段。
+返回辅助函数创建出生引用，由 CallN 接管。池耗尽返回 `ECS_ERR_POOL`，非法宽返回 tag 返回
+`ECS_ERR_TYPE`；宿主忽略返回码时 VM 仍传播错误。内存档案与迁移说明见 [VmBudget.md](VmBudget.md)。
+
 ### 2.2 堆：句柄表 + 引用计数
 
 - 句柄从 1 起，0 = null；句柄表 + 空闲链复用，恒不移除/移动元素。
-- **字符串驻留（intern）**：常量池字符串**首次执行时驻留**（缓存持常驻引用，句柄永不归零）；
-  仅 C# `EcxInterpreter.InternedString` 实现，**C 端不驻留**（每次 `LoadK` 新建串，MCU 宿主
-  如需可自行缓存）；运行期字符串（CAT/切片/转换）新建句柄。
+- **常量字符串 pinned**：双端使用带 bit31 标记的常量池索引，不占运行对象池，不参与引用计数；
+  C 字符数据直接借用镜像，因此镜像必须在 VM 生命周期内有效。运行期字符串（CAT/切片/转换）新建句柄。
   字符串不可变，复制一律共享。
 - 数组：`{elem_type, items[]}`；结构体：`{layout*, slots[]}`，槽区按 StructDef 布局展开。
 - **引用计数不回收环**：ECS 无闭包，实践值为树形；停机随 VM 销毁全量释放。
 - 自洽不变量：`alloc − release = live = 非空槽位数`（`HeapCountsConsistent` 锁定）。
+- C 宽标量箱不可变，参与引用计数。数组读取宽元素产生出生箱，复制/拼接时直接复制 8B 位模式；
+  membership / TOSTR 的临时箱必须释放。对象池耗尽是可诊断错误，不能静默返回 0。
 
 ### 2.3 拷贝语义（S-01，对拍权威）
 

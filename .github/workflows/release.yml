@@ -16,6 +16,7 @@ env:
   DOTNET_VERSION: '10.0.x'
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1
+  ECSVM_REQUIRE_CC: 1
 
 jobs:
   # ========================================
@@ -40,6 +41,10 @@ jobs:
 
       - name: 还原 NuGet 包
         run: dotnet restore
+
+      - name: 构建 ecs-vm 普通与 budget 档
+        shell: bash
+        run: sh ci/build-vm.sh budget
 
       - name: 运行 EasyCon 测试
         shell: cmd
@@ -89,9 +94,9 @@ jobs:
       - name: 还原 NuGet 包
         run: dotnet restore
 
-      - name: 构建 ecs-vm（无 C 工具链则跳过）
+      - name: 构建 ecs-vm 普通与 budget 档
         shell: bash
-        run: sh ci/build-vm.sh
+        run: sh ci/build-vm.sh budget
 
       - name: 运行 EasyCon 测试（含 C VM 差分对拍）
         run: dotnet test EasyCon2.slnx -c Release

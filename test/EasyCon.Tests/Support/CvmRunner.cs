@@ -18,7 +18,11 @@ internal static class CvmRunner
     {
         // 环境变量显式指定优先（CI 可注入工具链路径）
         var env = Environment.GetEnvironmentVariable("ECSVM_CC");
-        if (!string.IsNullOrWhiteSpace(env) && File.Exists(env)) return env;
+        if (!string.IsNullOrWhiteSpace(env))
+        {
+            if (!File.Exists(env)) throw new InvalidOperationException($"ECSVM_CC 指定的编译器不存在：{env}");
+            return env;
+        }
 
         if (!OperatingSystem.IsWindows())
         {
@@ -70,16 +74,20 @@ internal static class CvmRunner
     {
         _ccPath ??= FindCc();
         if (_ccPath == null)
+        {
+            if (Environment.GetEnvironmentVariable("ECSVM_REQUIRE_CC") == "1")
+                Assert.Fail("ECSVM_REQUIRE_CC=1，但未找到 C99 编译器；不得跳过原生差分验证");
             return null;
+        }
         var nativeDir = FindNativeDir();
         Assert.That(nativeDir, Is.Not.Null, "未找到 ecs_vm.c 源目录");
-        var binary = Path.Combine(workDir, "ecs-vm");
+        var binary = Path.Combine(workDir, OperatingSystem.IsWindows() ? "ecs-vm.exe" : "ecs-vm");
         if (File.Exists(binary))
             return binary;
         var psi = new ProcessStartInfo
         {
             FileName = _ccPath,
-            Arguments = $"-O2 -std=c99 -Wall -Wextra -o \"{binary}\" " +
+            Arguments = $"-O2 -std=c99 -Wall -Wextra -Werror -o \"{binary}\" " +
                         $"\"{Path.Combine(nativeDir!, "ecs_vm.c")}\" \"{Path.Combine(nativeDir!, "ecs_main.c")}\" -lm",
             RedirectStandardError = true,
             RedirectStandardOutput = true,

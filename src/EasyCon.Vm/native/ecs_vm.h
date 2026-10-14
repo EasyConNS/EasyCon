@@ -105,14 +105,16 @@ enum {
     ECS_PTR = 10, ECS_STRUCT = 12,
 };
 
-/* 16 字节 tagged value：tag 在 0 偏移，载荷 8 字节对齐 */
+/* 8 字节标记值（值模型见 docs/VmBudget.md §值模型）：INT 族（BOOL/BYTE/INT/UINT）
+ * 内联 i32 位模式；STRING/ARRAY/STRUCT 为堆句柄 u32（静态串 bit31 置位，S-20）；
+ * 宽标量 DOUBLE/UINT64/PTR 统一装箱——值持对象池 8 字节标量块句柄，参与引用计数，
+ * 数组内宽元素仍为 8B 裸存（装箱只存在于值槽）。脚本可见语义与 16B 时代逐位一致。 */
 typedef struct ecs_value {
     uint8_t  tag;
-    uint8_t  _pad[7];
+    uint8_t  _pad[3];
     union {
-        int32_t i32;      /* BOOL(0/1) / BYTE / INT / UINT（位模式共用） */
-        int64_t i64;      /* UINT64 / PTR / 堆句柄（低 32 位） */
-        double  f64;
+        int32_t  i32;     /* BOOL(0/1) / BYTE / INT / UINT（位模式共用） */
+        uint32_t u32;     /* 堆句柄 / 静态串索引（bit31 = pinned） */
     };
 } ecs_value;
 
@@ -128,6 +130,7 @@ enum {
     ECS_ERR_UNSUPPORTED = 16,   /* 未知 critical 段/端序不符/逃生舱段存在/ABI 修订不符 */
     ECS_ERR_CRC = 17,           /* SEC_CRC32 校验失败 */
     ECS_ERR_POOL = 18,          /* 固定池耗尽：帧段满/对象块满/单对象超块（可预期的正常失败） */
+    ECS_WAITING = 19,           /* wait-yield 模式：WAIT 时长已交宿主，让出等 tick 后从续跑点恢复 */
 };
 
 /* ---- 宿主接口（依赖注入；回调缺失 → L2/L3 按 S-21 缺省值表降级，L1 域操作不降级） ----
@@ -163,6 +166,16 @@ typedef struct ecs_vm ecs_vm;
 int32_t ecs_vm_arg_str(ecs_vm *vm, ecs_value v, const uint16_t **units);
 /* 分配 VM 堆字符串作为返回值（UTF-16 units；units=NULL 或 len<=0 → 空串） */
 void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_t len);
+/* 宿主侧宽标量 ABI（值槽内为装箱句柄，宿主不可直读载荷）：
+ * arg_wide 读取 PTR/UINT64（内联 tag → i32 符号扩展）；DOUBLE 用 arg_double。
+ * ret_wide 的 tag 仅限 ECS_PTR/ECS_UINT64；ret_double 返回 DOUBLE。
+ * 返回 ECS_OK/ECS_ERR_TYPE/ECS_ERR_POOL；失败时 ret 为 VOID，错误也由 CallN 传播，
+ * 因此宿主忽略辅助函数返回码也不会把池耗尽伪装成合法的 0。
+ * ret_* 创建出生引用，CallN 接管它；不能将 args 中借用的堆句柄直接赋给 ret。 */
+int64_t ecs_vm_arg_wide(ecs_vm *vm, ecs_value v);
+int     ecs_vm_ret_wide(ecs_vm *vm, ecs_value *ret, uint8_t tag, int64_t x);
+double  ecs_vm_arg_double(ecs_vm *vm, ecs_value v);
+int     ecs_vm_ret_double(ecs_vm *vm, ecs_value *ret, double x);
 
 /* ---- 字节码来源抽象（uLua zIO 思路，随机访问式）：RAM 缓冲 / 内存映射内部 flash /
  * EEPROM（逐字节读）/ NVS（分块读）等位置统一经 read 回调供给；VM 信任字节码，
@@ -176,6 +189,8 @@ typedef struct ecs_io {
 /* 缓冲来源便捷构造：direct = 1 时零拷贝（可 XIP）；0 时经 read 拉取（演示统一通路） */
 void ecs_io_mem(ecs_io *io, const void *buf, uint32_t len, int direct);
 
+/* 经 ecs_io 加载会把镜像整块拉入 VM 内部副本——定位为 PC/POSIX 仿真专用；
+ * XIP 平台（内部 flash / QSPI MMIO）必须走 ecs_vm_load 指针直传，镜像不占 RAM。 */
 ecs_vm *ecs_vm_new(const ecs_host *host);
 /* 加载镜像（RAM 缓冲便捷形式）；image 缓冲区须在 vm 生命周期内保持有效（不拷贝，可 XIP）。
  * 加载仅校验头（magic/版本/ABI）与解析期结构边界；相信字节码内容（Lua 式最小验证面）。 */
@@ -183,13 +198,31 @@ int     ecs_vm_load(ecs_vm *vm, const uint8_t *image, size_t len);
 /* 经 ecs_io 加载：镜像经 read 回调拉入 VM 内部缓冲（EEPROM/NVS 等位置的字节码解释执行）；
  * 内部缓冲由 VM 持有并在 ecs_vm_free 释放。 */
 int     ecs_vm_load_io(ecs_vm *vm, const ecs_io *io);
-/* 运行：ECS_OK / ECS_YIELD（步数预算耗尽，可再次调用继续）/ 负面错误码 */
+/* 运行：ECS_OK / ECS_YIELD / ECS_WAITING / ECS_CANCELLED / 错误码。
+ * 只有 YIELD/WAITING 可续跑；终止后释放 VM，新任务使用新 VM。 */
 int     ecs_vm_run(ecs_vm *vm);
 void    ecs_vm_cancel(ecs_vm *vm);
 void    ecs_vm_set_budget(ecs_vm *vm, int32_t steps_per_yield);
+/* wait-yield 模式（固件 tick 模型）：置位后 WAIT 通知宿主时长即返回 ECS_WAITING
+ *（续跑点已写回，再次 ecs_vm_run 从 WAIT 后继指令恢复）。宿主必须在等待到期后续跑，
+ * 不得用立即重试的循环吸收 WAITING；取消可立即调用 run。缺省关 = 桌面阻塞语义不变。 */
+void    ecs_vm_set_wait_yield(ecs_vm *vm, int enable);
 /* 最近一次错误的现场（函数索引 + 函数内指令下标；与 C# EcxInterpreter.ErrorPc 同单位） */
 void    ecs_vm_error_location(const ecs_vm *vm, int32_t *out_func, int32_t *out_pc);
 void    ecs_vm_free(ecs_vm *vm);
+
+/* ---- 实例容量度量（容量门禁/预算自检用；不实例化 VM，纯编译期常数） ---- */
+typedef struct {
+    size_t   instance_bytes;   /* sizeof(ecs_vm) − sizeof(ecs_host)：跨指针宽度可移植口径 */
+    size_t   host_bytes;
+    size_t   arena_bytes;
+    size_t   frame_seg_bytes;
+    size_t   obj_seg_bytes;
+    uint32_t obj_block_bytes;
+    uint32_t obj_block_count;
+    uint32_t value_bytes;      /* sizeof(ecs_value) = 8 */
+} ecs_vm_meminfo;
+void ecs_vm_query_meminfo(ecs_vm_meminfo *out);
 
 #ifdef __cplusplus
 }
